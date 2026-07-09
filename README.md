@@ -62,8 +62,28 @@ pytest                        # exécute les tests
 ```bash
 cd frontend
 npm install
-npm run dev       # serveur de dev Vite (http://127.0.0.1:5173)
-npm run build     # build de production (frontend/dist/)
+npm run dev          # serveur de dev Vite (http://127.0.0.1:5173)
+npm run build        # build de production (frontend/dist/)
+npm run lint         # ESLint
+npm run format       # Prettier (écriture) — format:check pour vérifier seulement
+npm run typecheck    # TypeScript strict (tsc -b)
+```
+
+## Qualité & pre-commit
+
+La qualité est **automatisée et bloquante** (cf. [`guide-architecture.md`](guide-architecture.md) §5) :
+
+- **Backend** : `ruff` (lint + format) et `mypy --strict` — configurés dans `backend/pyproject.toml`.
+- **Frontend** : `ESLint` (flat config) + `Prettier` + TypeScript `strict`.
+- **Hooks pre-commit** : `.pre-commit-config.yaml` (racine) lance ruff, mypy, eslint, prettier avant
+  chaque commit.
+
+Activation (une fois, après avoir créé le venv backend et fait `npm install`) :
+
+```bash
+pip install -e "backend[dev]"     # fournit l'outil pre-commit
+pre-commit install                # installe le hook git
+pre-commit run --all-files        # (optionnel) vérifie tout le dépôt
 ```
 
 ## Développement
@@ -82,5 +102,6 @@ npm run build     # build de production (frontend/dist/)
 | [`cahier-des-charges-design.md`](cahier-des-charges-design.md) | Design & ergonomie |
 | [`guide-architecture.md`](guide-architecture.md) | Conventions de code & workflow |
 | [`moteur-placement-lucky-loser.md`](moteur-placement-lucky-loser.md) | Formalisation du moteur de placement |
+| [`docs/dependances.md`](docs/dependances.md) | Registre des dépendances externes (obligatoire à l'ajout d'une lib) |
 | [`docs/adr/`](docs/adr/) | Décisions d'architecture (ADR) |
 | [`epics/`](epics/) · [`stories/`](stories/) | Backlog produit |

@@ -11,12 +11,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Outils de qualité — configurés en détail en E00US002 (ruff, mypy strict, pytest).
+# Outils de qualité (E00US002) : lint/format (ruff), typage strict (mypy), tests (pytest),
+# hooks pre-commit. Versions épinglées ; reflétées dans requirements.txt.
 dev = [
     "ruff==0.8.6",
     "mypy==1.14.1",
     "pytest==8.3.4",
     "httpx==0.28.1",
+    "pre-commit==4.0.1",
 ]
 
 [build-system]
@@ -25,3 +27,33 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["domain*", "application*", "infrastructure*", "api*", "bootstrap*"]
+
+# ---------------------------------------------------------------------------
+# Qualité (E00US002) — cf. guide-architecture.md §5
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["."]
+
+[tool.ruff.lint]
+# Sélection raisonnable : erreurs (E/F), imports (I), pyupgrade (UP), bugbears (B),
+# simplifications (SIM), conventions de nommage (N), compréhensions (C4), règles ruff (RUF).
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "C4", "RUF"]
+
+[tool.ruff.format]
+# Défauts ruff (compatibles Black) : guillemets doubles, indentation espaces.
+
+[tool.mypy]
+python_version = "3.13"
+files = ["."]
+strict = true
+# Confort : messages localisés/lisibles.
+pretty = true
+show_error_codes = true
+warn_unreachable = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

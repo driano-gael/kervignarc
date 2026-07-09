@@ -75,6 +75,11 @@ kervignarc/
   - **Python** : la dépendance est déclarée dans `pyproject.toml` (source de vérité) **et** `requirements.txt` est régénéré pour rester synchronisé — `pip freeze > requirements.txt` (versions épinglées). `requirements.txt` n'est **jamais** édité à la main. La CI **échoue** si `requirements.txt` n'est pas à jour vis-à-vis de `pyproject.toml`.
   - **Frontend** : l'équivalent est `package.json` + lockfile `package-lock.json`, mis à jour par la commande d'ajout (`npm install`).
   - Aucune dépendance « fantôme » : une lib importée mais absente du manifeste est un échec de revue/CI.
+- **Règle — gouvernance des dépendances externes** (parcimonie, sécurité, documentation — cf. [ADR-0009](docs/adr/0009-gouvernance-dependances.md)) : une dépendance est un **coût et une surface de risque**, pas un réflexe.
+  - **Parcimonie** — pas de librairie « plaisir » : on préfère la **bibliothèque standard** ou quelques lignes maison à une lib pour un besoin marginal. Chaque ajout doit répondre à un **besoin réel** (complexité, fiabilité ou temps qu'elle fait gagner), et son **poids/transitivité** est pris en compte. En cas de doute : **on n'ajoute pas**.
+  - **Sécurité** — seules des librairies **sûres** sont autorisées : activement **maintenues**, largement adoptées, **sans vulnérabilité connue** (`pip-audit` / `npm audit` **verts** — bloquant en CI, cf. §3 outillage et EPIC-00), **licence compatible** (permissive : MIT/BSD/Apache/ISC ; copyleft à valider). Sources officielles (PyPI/npm) uniquement ; méfiance sur les paquets récents/peu téléchargés (typosquatting).
+  - **Documentation** — **toute** librairie ajoutée est **documentée** dans le **registre des dépendances** ([`docs/dependances.md`](docs/dependances.md)) : *nom, version, couche/périmètre, rôle, justification (pourquoi elle plutôt que la stdlib/une alternative), licence*. Un ajout non documenté est un **échec de revue**.
+  - **Revue** — l'ajout d'une dépendance est un **point d'attention explicite en revue de PR** (justification + sécurité + entrée de registre). Une dépendance structurante fait l'objet d'un **ADR**.
 
 ---
 
@@ -172,6 +177,9 @@ Chaque couche définit sa propre famille d'exceptions ; le mapping vers une rép
 
 - **ADR** (`docs/adr/NNNN-titre.md`) : format court (contexte / décision / conséquences) pour toute décision structurante. Les arbitrages de ce guide y sont initialement consignés.
 - **Commits conventionnels** : `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`…
+- **Message de commit rédigé et fourni** : tout travail préparé s'accompagne d'un **message de commit prêt à l'emploi**. En développement **assisté**, l'assistant **prépare et propose systématiquement** ce message au moment de committer (l'utilisateur garde la main sur l'exécution de `git commit`/`push`).
+  - **Format** : ligne de résumé conventionnelle `<type>(<scope>): <résumé>` (impératif, ≤ ~72 car., `scope` = ID d'US en minuscules quand pertinent) ; puis un **corps** expliquant le **quoi** et surtout le **pourquoi** (puces autorisées), et les références utiles (`US : ExxUSyyy`, `ADR-XXXX`, `Dépend de :`).
+  - **Cohérence** : le `type` du commit = celui de la branche/US ; un commit ne mélange pas des périmètres sans raison (préférer des commits atomiques, sauf choix explicite de regroupement).
 - **Une branche par user story** : tout développement d'une US se fait sur une **branche dédiée**, jamais directement sur la branche principale.
   - **Nommage** : `<type>/<ExxUSyyy>-<slug-court>` — tout en minuscules, `slug` en kebab-case.
     - Exemples : `feat/e04us003-saisie-fleches`, `fix/e05us012-routing-cascade`, `chore/e00us001-init-monorepo`, `docs/e00us004-garde-fou-imports`.
@@ -201,8 +209,10 @@ Chaque couche définit sa propre famille d'exceptions ; le mapping vers une rép
 - [ ] Tests ajoutés/à jour ; l'oracle 120 reste vert.
 - [ ] Câblage nouveau reflété dans la composition root.
 - [ ] Toute nouvelle **librairie externe** est déclarée dans le manifeste (`pyproject.toml`→`requirements.txt` régénéré ; ou `package.json`) dans le même commit — pas de dépendance fantôme.
+- [ ] Nouvelle dépendance : **justifiée** (parcimonie, pas de lib « plaisir »), **sûre** (`pip-audit`/`npm audit` verts, licence compatible) et **documentée** dans [`docs/dependances.md`](docs/dependances.md) — cf. §3 et ADR-0009.
 - [ ] US développée sur sa **branche dédiée** `<type>/<ExxUSyyy>-<slug>` ; branche supprimée après merge.
 - [ ] Décision structurante ⇒ ADR ; commit conventionnel ; revue avant merge.
+- [ ] **Message de commit** conventionnel **rédigé et fourni** (résumé + corps quoi/pourquoi + réfs US/ADR) — proposé par l'assistant en développement assisté.
 
 ---
 
