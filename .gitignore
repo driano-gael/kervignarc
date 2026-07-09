@@ -1,0 +1,39 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# === Node / Frontend ===
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.local
+
+# === Base de données / runtime ===
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+backups/
+
+# === Éditeurs / OS ===
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# === Divers ===
+*.log
