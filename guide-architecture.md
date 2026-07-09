@@ -37,7 +37,8 @@
         Infrastructure (SQLite, PDF…)   ← adapters sortants
 ```
 
-- **Règle de dépendance (stricte)** : les dépendances pointent **vers le domaine**. Le `domain/` n'importe **jamais** FastAPI, SQLAlchemy, Pydantic, ni aucun module `api/`, `infrastructure/`, `services/`.
+- **Règle de dépendance (stricte)** : les dépendances pointent **vers le domaine**. Le `domain/` n'importe **jamais** FastAPI, SQLAlchemy, Pydantic, ni aucun module `api/`, `infrastructure/`, `application/`, `bootstrap/`.
+  - **Vérifiée automatiquement** (E00US004) : un test d'architecture (`backend/tests/test_domain_isolation.py`, analyse AST) **échoue** si un module de `domain/` importe un framework ou une autre couche. Exécuté par pytest (CI) et par un hook pre-commit. Implémentation maison, sans dépendance dédiée (parcimonie, ADR-0009).
 - Le domaine définit des **ports** (interfaces abstraites : `ArcherRepository`, `RankingStore`…) ; l'infrastructure fournit les **adapters**.
 - Les **politiques** du moteur (`routing`, `scoring`, `seeding`, `byes`, `tiebreak`, `depth`) sont des interfaces du domaine, implémentées comme stratégies interchangeables.
 

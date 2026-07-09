@@ -39,6 +39,14 @@ repos:
         pass_filenames: false
         files: ^backend/.*\.py$
 
+      - id: domain-isolation
+        name: garde-fou imports domaine (hexagonal) — backend
+        entry: pytest backend/tests/test_domain_isolation.py -q
+        language: python
+        additional_dependencies: ["pytest==9.1.1"]
+        pass_filenames: false
+        files: ^backend/(domain/.*|tests/test_domain_isolation)\.py$
+
       - id: eslint
         name: eslint — frontend
         entry: bash -c 'cd frontend && npx --no-install eslint .'
