@@ -1,0 +1,61 @@
+# Hooks pre-commit (E00US002) — qualité bloquante avant chaque commit.
+# cf. guide-architecture.md §5. Installation : `pre-commit install` (depuis la racine).
+#
+# - Backend : ruff (lint+format) et mypy strict tournent dans des environnements
+#   auto-gérés par pre-commit (dépendances épinglées ci-dessous, self-contained).
+# - Frontend : eslint et prettier utilisent les node_modules du projet (npx --no-install) ;
+#   exécuter `npm install` dans frontend/ au préalable.
+default_language_version:
+  python: python3.13
+
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff (lint) — backend
+        entry: ruff check --fix
+        language: python
+        additional_dependencies: ["ruff==0.8.6"]
+        types_or: [python, pyi]
+        files: ^backend/
+
+      - id: ruff-format
+        name: ruff (format) — backend
+        entry: ruff format
+        language: python
+        additional_dependencies: ["ruff==0.8.6"]
+        types_or: [python, pyi]
+        files: ^backend/
+
+      - id: mypy
+        name: mypy (strict) — backend
+        entry: mypy --strict --config-file=backend/pyproject.toml backend
+        language: python
+        additional_dependencies:
+          - "mypy==1.14.1"
+          - "fastapi==0.115.6"
+          - "httpx==0.28.1"
+          - "pytest==8.3.4"
+        pass_filenames: false
+        files: ^backend/.*\.py$
+
+      - id: eslint
+        name: eslint — frontend
+        entry: bash -c 'cd frontend && npx --no-install eslint .'
+        language: system
+        files: ^frontend/.*\.(ts|tsx|js)$
+        pass_filenames: false
+
+      - id: prettier
+        name: prettier (check) — frontend
+        entry: bash -c 'cd frontend && npx --no-install prettier --check .'
+        language: system
+        files: ^frontend/
+        pass_filenames: false
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-toml
