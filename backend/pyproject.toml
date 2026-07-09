@@ -1,0 +1,27 @@
+[project]
+name = "kervignarc-backend"
+version = "0.1.0"
+description = "Backend FastAPI — gestion de tournoi de tir à l'arc en salle (18 m)"
+requires-python = ">=3.13"
+# Source de vérité des dépendances Python (cf. guide-architecture.md §3, ADR-0008).
+# requirements.txt est régénéré depuis cet environnement (pip freeze), jamais édité à la main.
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+]
+
+[project.optional-dependencies]
+# Outils de qualité — configurés en détail en E00US002 (ruff, mypy strict, pytest).
+dev = [
+    "ruff==0.8.6",
+    "mypy==1.14.1",
+    "pytest==8.3.4",
+    "httpx==0.28.1",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["domain*", "application*", "infrastructure*", "api*", "bootstrap*"]
