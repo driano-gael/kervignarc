@@ -1,0 +1,9 @@
+# Normalisation des fins de ligne : LF dans le dépôt, quel que soit l'OS.
+* text=auto eol=lf
+
+# Fichiers binaires (pas de conversion)
+*.xlsx binary
+*.docx binary
+*.png binary
+*.svg text eol=lf
+*.ico binary

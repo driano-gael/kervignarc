@@ -63,17 +63,17 @@ kervignarc/
 ├── frontend/            # React + TS (Vite), organisé par features
 ├── docs/
 │   └── adr/             # Architecture Decision Records
-├── pyproject.toml       # uv + ruff + mypy + pytest — SOURCE DE VÉRITÉ des dépendances Python
+├── pyproject.toml       # ruff + mypy + pytest — SOURCE DE VÉRITÉ des dépendances Python
 ├── requirements.txt     # export synchronisé (voir règle ci-dessous)
 └── README.md
 ```
 
 - **Un seul dépôt** (back + front). Le build front est **embarqué** dans l'exécutable (servi en statique par FastAPI).
-- **Outillage** : **uv** (gestion Python & venv), **pnpm** + **Vite** (front). Versions Python/Node figées.
+- **Outillage** : **`venv`/`pip`** (gestion Python & venv), **npm** + **Vite** (front). Versions Python/Node figées. *(Écart assumé au choix initial uv/pnpm — voir [ADR-0008](docs/adr/0008-outillage-npm-venv.md).)*
 - **Build de release** : pipeline `build front → embarquer → PyInstaller` (exécutable double-clic).
 - **Règle — dépendances externes tenues à jour** : tout **ajout (ou retrait) d'une librairie externe** doit mettre à jour le manifeste de dépendances **dans le même commit/branche que le code qui l'introduit**.
-  - **Python** : la dépendance est déclarée dans `pyproject.toml` (source de vérité) **et** `requirements.txt` est régénéré pour rester synchronisé — `uv export --format requirements-txt -o requirements.txt` (versions épinglées). `requirements.txt` n'est **jamais** édité à la main. La CI **échoue** si `requirements.txt` n'est pas à jour vis-à-vis de `pyproject.toml`/`uv.lock`.
-  - **Frontend** : l'équivalent est `package.json` + lockfile pnpm, mis à jour par la commande d'ajout (`pnpm add`).
+  - **Python** : la dépendance est déclarée dans `pyproject.toml` (source de vérité) **et** `requirements.txt` est régénéré pour rester synchronisé — `pip freeze > requirements.txt` (versions épinglées). `requirements.txt` n'est **jamais** édité à la main. La CI **échoue** si `requirements.txt` n'est pas à jour vis-à-vis de `pyproject.toml`.
+  - **Frontend** : l'équivalent est `package.json` + lockfile `package-lock.json`, mis à jour par la commande d'ajout (`npm install`).
   - Aucune dépendance « fantôme » : une lib importée mais absente du manifeste est un échec de revue/CI.
 
 ---

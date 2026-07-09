@@ -18,6 +18,7 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0005](0005-async-et-sqlite.md) | Accès SQLite : lectures synchrones + file d'écriture (single-writer) | Accepté |
 | [0006](0006-ubiquitous-language.md) | Vocabulaire : métier en français, technique en anglais | Accepté |
 | [0007](0007-erreurs-par-couche.md) | Erreurs typées par couche | Accepté |
+| [0008](0008-outillage-npm-venv.md) | Outillage : npm + venv/pip au lieu de pnpm + uv | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.
