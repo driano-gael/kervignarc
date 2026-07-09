@@ -86,6 +86,20 @@ pre-commit install                # installe le hook git
 pre-commit run --all-files        # (optionnel) vérifie tout le dépôt
 ```
 
+## Intégration continue (CI)
+
+La CI GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) s'exécute sur chaque
+**pull request** et sur `main`. Elle est **bloquante** : le merge est refusé si un job échoue.
+
+- **Backend** : ruff (lint + format), `mypy --strict`, `pytest`, contrôle de synchro
+  `requirements.txt` ↔ `pyproject.toml`, audit `pip-audit`.
+- **Frontend** : ESLint, Prettier, typecheck TS strict, build, audit `npm`.
+
+> **Protection de branche** (à activer une fois côté GitHub) : *Settings › Branches › Add rule* sur
+> `main` → *Require status checks to pass before merging* → sélectionner les jobs **Backend** et
+> **Frontend**. C'est ce réglage qui rend la CI réellement **bloquante** (guide §11 : revue + CI verte
+> avant merge).
+
 ## Développement
 
 - **Une branche par user story** : `<type>/<ExxUSyyy>-<slug>` (ex. `feat/e04us003-saisie-fleches`).

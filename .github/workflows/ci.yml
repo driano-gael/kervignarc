@@ -1,0 +1,132 @@
+name: CI
+
+# CI bloquante (E00US003) : lint + typage + tests + audits de sécurité + synchro des
+# dépendances. Le merge vers main est protégé par ces checks (branche protégée à activer
+# côté GitHub : Settings › Branches › Require status checks). cf. guide-architecture.md §5,
+# ADR-0009 (audits). Objectif : rapide (< quelques minutes).
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Annule les exécutions obsolètes sur une même branche.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend — lint, types, tests, deps
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Installer les dépendances (épinglées)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e . --no-deps
+
+      - name: Ruff (lint)
+        run: ruff check .
+
+      - name: Ruff (format)
+        run: ruff format --check .
+
+      - name: Mypy (strict)
+        run: mypy .
+
+      - name: Tests (pytest)
+        run: pytest
+
+      - name: requirements.txt synchronisé avec pyproject.toml
+        shell: python
+        run: |
+          import re
+          import sys
+          import tomllib
+          from pathlib import Path
+
+          def norm(name: str) -> str:
+              return re.sub(r"[-_.]+", "-", name).lower()
+
+          data = tomllib.loads(Path("pyproject.toml").read_text("utf-8"))
+          project = data["project"]
+          direct = list(project.get("dependencies", []))
+          for extra in project.get("optional-dependencies", {}).values():
+              direct += extra
+
+          have: set[str] = set()
+          for line in Path("requirements.txt").read_text("utf-8").splitlines():
+              m = re.match(r"^([A-Za-z0-9._-]+)==([^\s;]+)", line.strip())
+              if m:
+                  have.add(f"{norm(m.group(1))}=={m.group(2).lower()}")
+
+          missing: list[str] = []
+          for spec in direct:
+              m = re.match(r"^([A-Za-z0-9._-]+)(?:\[[^\]]*\])?==([^\s;]+)", spec)
+              if not m:
+                  missing.append(f"{spec} (doit être épinglé avec ==)")
+              elif f"{norm(m.group(1))}=={m.group(2).lower()}" not in have:
+                  missing.append(f"{m.group(1)}=={m.group(2)}")
+
+          if missing:
+              print("requirements.txt désynchronisé de pyproject.toml. Manquant/incohérent :")
+              for item in missing:
+                  print(f"  - {item}")
+              print('Régénère : pip install -e ".[dev]" && '
+                    "pip freeze --exclude-editable > requirements.txt")
+              sys.exit(1)
+          print("requirements.txt est synchronisé avec pyproject.toml.")
+
+      - name: Audit sécurité (pip-audit)
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt --strict
+
+  frontend:
+    name: Frontend — lint, format, types, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Installer les dépendances (lockfile)
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Prettier (format)
+        run: npm run format:check
+
+      - name: Typecheck (TS strict)
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Audit sécurité (npm)
+        run: npm audit --audit-level=high

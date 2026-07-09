@@ -8,15 +8,18 @@
 > Seules les dépendances **directes** (choisies explicitement) sont listées ; les transitives sont
 > figées par les lockfiles (`requirements.txt`, `package-lock.json`). Versions de référence :
 > manifestes (`backend/pyproject.toml`, `frontend/package.json`). Licences toutes **permissives**.
-> Audits au dernier contrôle (2026-07-09) : `npm audit` = **0 vulnérabilité** ; `pip-audit` = déféré à
-> la CI (E00US003).
+>
+> **Audits de sécurité** (bloquants en CI, cf. `.github/workflows/ci.yml`, E00US003) — dernier contrôle
+> 2026-07-09 : `pip-audit -r requirements.txt --strict` = **aucune vulnérabilité** ; `npm audit
+> --audit-level=high` = **0 vulnérabilité**. Outils d'audit eux-mêmes : `pip-audit` est installé
+> **ad hoc dans la CI** (non embarqué dans les manifestes applicatifs) ; `npm audit` est intégré à npm.
 
 ## Backend — runtime (`backend/pyproject.toml` › `dependencies`)
 
 | Librairie | Version | Rôle | Justification | Licence |
 |---|---|---|---|---|
-| `fastapi` | 0.115.6 | Framework API (REST + WebSocket), validation Pydantic | Socle serveur acté ([ADR-0002](adr/0002-stack-et-topologie.md)) : async, WebSocket natif, typage, sert les statiques front | MIT |
-| `uvicorn[standard]` | 0.34.0 | Serveur ASGI exécutant FastAPI | Serveur de référence pour FastAPI ; `[standard]` = websockets + boucle performante | BSD-3-Clause |
+| `fastapi` | 0.139.0 | Framework API (REST + WebSocket), validation Pydantic | Socle serveur acté ([ADR-0002](adr/0002-stack-et-topologie.md)) : async, WebSocket natif, typage, sert les statiques front | MIT |
+| `uvicorn[standard]` | 0.51.0 | Serveur ASGI exécutant FastAPI | Serveur de référence pour FastAPI ; `[standard]` = websockets + boucle performante | BSD-3-Clause |
 
 ## Backend — développement (`backend/pyproject.toml` › `optional-dependencies.dev`)
 
@@ -24,7 +27,7 @@
 |---|---|---|---|---|
 | `ruff` | 0.8.6 | Lint **+** format Python | Un seul outil rapide remplace flake8+isort+black ; qualité bloquante (guide §5) | MIT |
 | `mypy` | 1.14.1 | Typage statique strict | Exigence « mypy strict » (guide §5) ; fiabilité du domaine | MIT |
-| `pytest` | 8.3.4 | Framework de tests | Standard de fait ; stratégie de tests (guide §9) | MIT |
+| `pytest` | 9.1.1 | Framework de tests | Standard de fait ; stratégie de tests (guide §9) | MIT |
 | `httpx` | 0.28.1 | Client HTTP (tests) | Requis par `fastapi.testclient` pour tester l'API | BSD-3-Clause |
 | `pre-commit` | 4.0.1 | Orchestration des hooks git | Rend la qualité bloquante avant commit (guide §5) | MIT |
 

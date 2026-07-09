@@ -6,8 +6,8 @@ requires-python = ">=3.13"
 # Source de vérité des dépendances Python (cf. guide-architecture.md §3, ADR-0008).
 # requirements.txt est régénéré depuis cet environnement (pip freeze), jamais édité à la main.
 dependencies = [
-    "fastapi==0.115.6",
-    "uvicorn[standard]==0.34.0",
+    "fastapi==0.139.0",
+    "uvicorn[standard]==0.51.0",
 ]
 
 [project.optional-dependencies]
@@ -16,7 +16,7 @@ dependencies = [
 dev = [
     "ruff==0.8.6",
     "mypy==1.14.1",
-    "pytest==8.3.4",
+    "pytest==9.1.1",
     "httpx==0.28.1",
     "pre-commit==4.0.1",
 ]
