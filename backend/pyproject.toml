@@ -8,6 +8,9 @@ requires-python = ">=3.13"
 dependencies = [
     "fastapi==0.139.0",
     "uvicorn[standard]==0.51.0",
+    # Persistance (E00US006) : accès SQLite synchrone + migrations (guide §7, ADR-0005).
+    "sqlalchemy==2.0.51",
+    "alembic==1.18.5",
 ]
 
 [project.optional-dependencies]
@@ -48,6 +51,8 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "C4", "RUF"]
 [tool.mypy]
 python_version = "3.13"
 files = ["."]
+# Scripts de migration Alembic (env.py + versions/) : générés/scriptés, hors typage strict.
+exclude = ['(^|/)migrations/']
 strict = true
 # Confort : messages localisés/lisibles.
 pretty = true

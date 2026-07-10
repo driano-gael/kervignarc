@@ -36,6 +36,8 @@ repos:
           - "fastapi==0.139.0"
           - "httpx==0.28.1"
           - "pytest==9.1.1"
+          - "sqlalchemy==2.0.51"
+          - "alembic==1.18.5"
         pass_filenames: false
         files: ^backend/.*\.py$
 
