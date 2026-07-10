@@ -10,7 +10,7 @@
 > manifestes (`backend/pyproject.toml`, `frontend/package.json`). Licences toutes **permissives**.
 >
 > **Audits de sécurité** (bloquants en CI, cf. `.github/workflows/ci.yml`, E00US003) — dernier contrôle
-> 2026-07-09 : `pip-audit -r requirements.txt --strict` = **aucune vulnérabilité** ; `npm audit
+> 2026-07-10 : `pip-audit -r requirements.txt --strict` = **aucune vulnérabilité** ; `npm audit
 > --audit-level=high` = **0 vulnérabilité**. Outils d'audit eux-mêmes : `pip-audit` est installé
 > **ad hoc dans la CI** (non embarqué dans les manifestes applicatifs) ; `npm audit` est intégré à npm.
 
@@ -20,6 +20,8 @@
 |---|---|---|---|---|
 | `fastapi` | 0.139.0 | Framework API (REST + WebSocket), validation Pydantic | Socle serveur acté ([ADR-0002](adr/0002-stack-et-topologie.md)) : async, WebSocket natif, typage, sert les statiques front | MIT |
 | `uvicorn[standard]` | 0.51.0 | Serveur ASGI exécutant FastAPI | Serveur de référence pour FastAPI ; `[standard]` = websockets + boucle performante | BSD-3-Clause |
+| `sqlalchemy` | 2.0.51 | ORM / Core SQL **synchrone** (accès SQLite, WAL) | Accès DB sync acté ([ADR-0005](adr/0005-async-et-sqlite.md)) ; Core+ORM typés, repositories derrière les ports (E00US006/009) | MIT |
+| `alembic` | 1.18.5 | Migrations de schéma versionnées | Schéma versionné et testé (guide §7) ; standard de fait pour SQLAlchemy | MIT |
 
 ## Backend — développement (`backend/pyproject.toml` › `optional-dependencies.dev`)
 
