@@ -44,6 +44,9 @@ src = ["."]
 # Sélection raisonnable : erreurs (E/F), imports (I), pyupgrade (UP), bugbears (B),
 # simplifications (SIM), conventions de nommage (N), compréhensions (C4), règles ruff (RUF).
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "C4", "RUF"]
+# N818 (suffixe `Error` sur les exceptions) désactivé : le projet nomme ses exceptions
+# en langue métier française, sans suffixe (ADR-0007 : `PlacementInvalide`, `TournoiIntrouvable`…).
+ignore = ["N818"]
 
 [tool.ruff.format]
 # Défauts ruff (compatibles Black) : guillemets doubles, indentation espaces.
