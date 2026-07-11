@@ -1,0 +1,80 @@
+/* Mise en forme du shell (E00US010) — sobre et fonctionnelle, en attendant le design. */
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.app__entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app__titre {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: -0.5px;
+}
+
+.app__contenu {
+  padding-top: 24px;
+}
+
+/* Indicateur d'état de connexion temps réel. */
+.indicateur {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.indicateur__pastille {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.indicateur--connexion {
+  color: var(--warn);
+}
+
+.indicateur--connecte {
+  color: var(--ok);
+}
+
+.indicateur--deconnecte {
+  color: var(--danger);
+}
+
+/* Carte générique. */
+.carte {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 20px;
+  max-width: 360px;
+}
+
+.carte__titre {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.carte__etat {
+  margin: 0;
+}
+
+.carte__etat--ok {
+  color: var(--ok);
+}
+
+.carte__etat--erreur {
+  color: var(--danger);
+}
