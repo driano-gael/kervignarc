@@ -39,6 +39,8 @@
 |---|---|---|---|---|
 | `react` | ^19.2 | Bibliothèque UI | SPA riche (temps réel, glisser-déposer) actée ([ADR-0002](adr/0002-stack-et-topologie.md)) | MIT |
 | `react-dom` | ^19.2 | Rendu DOM de React | Indispensable à React côté navigateur | MIT |
+| `@tanstack/react-query` | ^5.101 | État **serveur** : fetch, cache, invalidation, intégration temps réel | Patron état-serveur acté (guide §8) ; invalidation pilotée par le WebSocket (E00US010) | MIT |
+| `zustand` | ^5.0 | État **UI** local léger | État UI acté (guide §8) ; ex. statut de connexion (E00US010), sans boilerplate Redux | MIT |
 
 ## Frontend — développement (`frontend/package.json` › `devDependencies`)
 
