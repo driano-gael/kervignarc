@@ -54,9 +54,9 @@ def _alembic_config(database_url: str) -> Config:
 
 
 def test_migration_initiale_s_applique(tmp_path: Path) -> None:
-    """`alembic upgrade head` crée la base et l'estampille à la révision baseline."""
+    """`alembic upgrade` vers la baseline crée la base et l'estampille (indépendant du head)."""
     url = _sqlite_url(tmp_path / "kervignarc.db")
-    command.upgrade(_alembic_config(url), "head")
+    command.upgrade(_alembic_config(url), "0001_initiale")
 
     engine = create_database_engine(url)
     try:

@@ -11,8 +11,10 @@ sujet / tournoi (CDC §6.2) viendra avec les US métier.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 from fastapi import APIRouter, WebSocket
+from starlette.websockets import WebSocketDisconnect
 
 from infrastructure.realtime import Broadcaster, LiveEvent, Subscription
 
@@ -33,24 +35,31 @@ async def _pump(websocket: WebSocket, subscription: Subscription) -> None:
     """Pousse les événements vers le client ; s'arrête proprement à la déconnexion.
 
     Deux tâches concurrentes : l'une **émet** les événements diffusés, l'autre **surveille**
-    la fermeture du socket (une réception qui échoue = client parti). Dès que l'une se
-    termine, on annule l'autre.
+    la fermeture du socket. Dès que l'une se termine, on annule l'autre et on l'attend en
+    absorbant son exception (dont l'annulation) : aucune ne fuite au démontage.
     """
+    emettre = asyncio.create_task(_emettre(websocket, subscription))
+    surveiller = asyncio.create_task(_surveiller_deconnexion(websocket))
+    taches = (emettre, surveiller)
+    try:
+        await asyncio.wait(taches, return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        for tache in taches:
+            tache.cancel()
+        for tache in taches:
+            with contextlib.suppress(BaseException):
+                await tache
 
-    async def emit() -> None:
-        while True:
-            event = await subscription.receive()
-            await websocket.send_json(event.as_message())
 
-    async def watch_disconnect() -> None:
-        # Draine les messages entrants : ici, sert uniquement à détecter la fermeture.
+async def _emettre(websocket: WebSocket, subscription: Subscription) -> None:
+    """Émet vers le client chaque événement diffusé (boucle jusqu'à annulation)."""
+    while True:
+        event = await subscription.receive()
+        await websocket.send_json(event.as_message())
+
+
+async def _surveiller_deconnexion(websocket: WebSocket) -> None:
+    """Draine les messages entrants pour détecter la fermeture du socket."""
+    with contextlib.suppress(WebSocketDisconnect):
         while True:
             await websocket.receive_text()
-
-    tasks = [asyncio.create_task(emit()), asyncio.create_task(watch_disconnect())]
-    try:
-        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-    finally:
-        for task in tasks:
-            task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)

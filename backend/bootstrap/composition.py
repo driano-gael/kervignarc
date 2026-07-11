@@ -4,8 +4,8 @@ Point **unique et lisible** où sont assemblés adapters, services applicatifs e
 **sans conteneur DI**. `create_app()` construit l'instance FastAPI et branche ses dépendances ;
 tout ce qui est câblé est visible ici, en un seul endroit.
 
-Extension prévue : les services applicatifs (E00US009) s'instancieront ici, puis seront
-**injectés** dans les routers et les use cases (pas d'accès global, pas de magie DI).
+Les services applicatifs sont **injectés** dans les routers via `app.state` (pas d'accès
+global, pas de magie DI) ; les erreurs typées sont traduites à la frontière API.
 """
 
 import asyncio
@@ -14,9 +14,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from api.erreurs import enregistrer_gestionnaires_erreurs
 from api.health import router as health_router
 from api.realtime import router as realtime_router
-from infrastructure.db import Database, WriteQueue, default_database_url
+from api.v1.tournois import router as tournois_router
+from application.tournois import ServiceTournois
+from infrastructure.db import Database, TournoiRepositorySQL, WriteQueue, default_database_url
 from infrastructure.realtime import Broadcaster, LiveEvent
 
 
@@ -61,10 +64,18 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.state.write_queue = write_queue
     app.state.broadcaster = broadcaster
 
-    # --- Services applicatifs : à assembler ici et injecter dans les routers (E00US009). ---
+    # --- Services applicatifs (E00US009) : repository (adapter) → service, injectés via state. ---
+    # Le repository lit via les sessions courtes du Database ; les écritures du service passent
+    # par la file d'écriture (routage assuré côté router API).
+    tournoi_repository = TournoiRepositorySQL(database.session_factory)
+    app.state.service_tournois = ServiceTournois(tournoi_repository)
+
+    # --- Frontière API : traduction des erreurs typées en réponses HTTP (ADR-0007). ---
+    enregistrer_gestionnaires_erreurs(app)
 
     # --- Adapters entrants (routers API). ---
     app.include_router(health_router)
     app.include_router(realtime_router)
+    app.include_router(tournois_router)
 
     return app
