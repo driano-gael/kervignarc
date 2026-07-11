@@ -11,22 +11,30 @@ L'appelant (handler FastAPI, `async`) **soumet une commande** et récupère une
 boucle événementielle (`asyncio.wrap_future`). Les **lectures ne passent pas** par
 cette file : directes et synchrones, elles restent concurrentes (mode WAL).
 
-Ce **point de passage unique** est l'endroit naturel où brancher, après commit, le
-journal d'audit et la diffusion WebSocket (E00US008) — un seul endroit à instrumenter.
+Ce **point de passage unique** est l'endroit où brancher, après commit, les traitements
+transverses via des **listeners post-commit** : chaque commande réussie notifie les
+listeners enregistrés avec son résultat — c'est ainsi que la diffusion WebSocket est
+déclenchée (E00US008), et où viendra le journal d'audit. Un seul endroit à instrumenter.
 """
 
 from __future__ import annotations
 
+import logging
 import queue
 import threading
 from collections.abc import Callable
 from concurrent.futures import Future
 from typing import Any, TypeVar
 
+_logger = logging.getLogger(__name__)
+
 _T = TypeVar("_T")
 
 WriteCommand = Callable[[], _T]
 """Unité d'écriture : un callable synchrone, sans argument, renvoyant son résultat."""
+
+PostCommitListener = Callable[[Any], None]
+"""Rappel exécuté après une écriture réussie, avec le résultat de la commande."""
 
 # Élément de file : (commande, future) à exécuter, ou `None` = sentinelle d'arrêt.
 _QueueItem = tuple["WriteCommand[Any]", "Future[Any]"] | None
@@ -49,6 +57,16 @@ class WriteQueue:
         self._thread: threading.Thread | None = None
         self._closed = False
         self._lock = threading.Lock()
+        self._post_commit: list[PostCommitListener] = []
+
+    def add_post_commit_listener(self, listener: PostCommitListener) -> None:
+        """Enregistre un rappel exécuté après chaque écriture réussie (avant `start()`).
+
+        Le listener reçoit le résultat de la commande ; il doit être **rapide et
+        non bloquant** (il s'exécute sur le thread du writer). Une exception qu'il lève
+        est journalisée et **n'interrompt pas** le writer ni la `Future` de l'appelant.
+        """
+        self._post_commit.append(listener)
 
     def start(self) -> None:
         """Démarre le thread worker (idempotent)."""
@@ -105,9 +123,18 @@ class WriteQueue:
                 except Exception as exc:  # propagé à l'appelant via la Future
                     future.set_exception(exc)
                 else:
+                    self._notify_post_commit(result)
                     future.set_result(result)
             finally:
                 self._queue.task_done()
+
+    def _notify_post_commit(self, result: Any) -> None:
+        """Notifie les listeners post-commit ; isole leurs erreurs du writer."""
+        for listener in self._post_commit:
+            try:
+                listener(result)
+            except Exception:
+                _logger.exception("Listener post-commit en échec (écriture déjà commitée).")
 
     def __enter__(self) -> WriteQueue:
         self.start()
