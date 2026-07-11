@@ -1,9 +1,9 @@
 // Carte d'état du backend (E00US010) : prouve que le fetch/cache React Query fonctionne.
 
-import { useEtatBackend } from './useEtatBackend'
+import { useSanteBackend } from './useSanteBackend'
 
 export function EtatBackend() {
-  const { data, isPending, isError, error } = useEtatBackend()
+  const { data, isPending, isError, error } = useSanteBackend()
 
   return (
     <section className="carte">

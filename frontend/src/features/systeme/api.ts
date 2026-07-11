@@ -2,10 +2,10 @@
 
 import { fetchJson } from '../../shared/api/client'
 
-export interface EtatBackend {
+export interface SanteBackend {
   status: string
 }
 
-export function getEtatBackend(): Promise<EtatBackend> {
-  return fetchJson<EtatBackend>('/health')
+export function getSanteBackend(): Promise<SanteBackend> {
+  return fetchJson<SanteBackend>('/health')
 }

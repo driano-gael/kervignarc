@@ -33,7 +33,13 @@ export class RealtimeClient {
     ws.onopen = () => this.options.onStatut('connecte')
 
     ws.onmessage = (message) => {
-      const evenement = JSON.parse(message.data as string) as LiveEvent
+      let evenement: LiveEvent
+      try {
+        evenement = JSON.parse(message.data as string) as LiveEvent
+      } catch {
+        // Trame illisible : on l'ignore plutôt que de casser le flux.
+        return
+      }
       // Le message d'accueil ne porte pas de mise à jour de données.
       if (evenement.type !== 'connected') this.options.onEvenement(evenement)
     }
@@ -49,7 +55,17 @@ export class RealtimeClient {
   fermer(): void {
     this.actif = false
     if (this.timerReconnexion !== undefined) window.clearTimeout(this.timerReconnexion)
-    this.ws?.close()
+    if (this.ws !== null) {
+      // Fermeture délibérée : on détache les handlers avant `close()` pour qu'elle soit
+      // **silencieuse** — sinon le `onclose` d'un client démonté (StrictMode) pousserait
+      // `deconnecte` et écraserait le statut d'un client vivant partageant le même store.
+      this.ws.onopen = null
+      this.ws.onmessage = null
+      this.ws.onclose = null
+      this.ws.onerror = null
+      this.ws.close()
+      this.ws = null
+    }
   }
 
   private programmerReconnexion(): void {
