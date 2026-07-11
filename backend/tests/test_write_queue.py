@@ -77,6 +77,44 @@ def test_pont_async_vers_sync() -> None:
     assert asyncio.run(scenario()) == 7
 
 
+def test_listener_post_commit_notifie_avec_le_resultat() -> None:
+    """Après une écriture réussie, les listeners post-commit reçoivent son résultat."""
+    recus: list[object] = []
+    with WriteQueue() as wq:
+        wq.add_post_commit_listener(recus.append)
+        assert wq.submit(lambda: "écrit").result(timeout=2) == "écrit"
+        wq.submit(lambda: None).result(timeout=2)
+    assert recus == ["écrit", None]
+
+
+def test_listener_post_commit_ignore_si_echec() -> None:
+    """Une commande qui échoue ne déclenche aucun listener post-commit."""
+    recus: list[object] = []
+
+    def boom() -> None:
+        raise RuntimeError("échec")
+
+    with WriteQueue() as wq:
+        wq.add_post_commit_listener(recus.append)
+        with pytest.raises(RuntimeError, match="échec"):
+            wq.submit(boom).result(timeout=2)
+        # Une écriture suivante prouve que le worker n'est pas mort.
+        assert wq.submit(lambda: "ok").result(timeout=2) == "ok"
+    assert recus == ["ok"]
+
+
+def test_erreur_de_listener_n_interrompt_pas_le_writer() -> None:
+    """Un listener qui lève est isolé : la Future réussit et le worker continue."""
+
+    def listener_defaillant(_: object) -> None:
+        raise ValueError("listener cassé")
+
+    with WriteQueue() as wq:
+        wq.add_post_commit_listener(listener_defaillant)
+        assert wq.submit(lambda: 1).result(timeout=2) == 1
+        assert wq.submit(lambda: 2).result(timeout=2) == 2
+
+
 def test_submit_apres_arret_est_refuse() -> None:
     """Une fois la file arrêtée, toute soumission est refusée (garde-fou de cycle de vie)."""
     wq = WriteQueue()

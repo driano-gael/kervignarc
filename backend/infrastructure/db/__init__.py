@@ -8,12 +8,18 @@ derrière les ports repository (à venir en E00US009).
 from infrastructure.db.base import Base
 from infrastructure.db.config import DEFAULT_DATABASE_URL, default_database_url
 from infrastructure.db.engine import Database, create_database_engine
-from infrastructure.db.write_queue import WriteCommand, WriteQueue, WriteQueueClosedError
+from infrastructure.db.write_queue import (
+    PostCommitListener,
+    WriteCommand,
+    WriteQueue,
+    WriteQueueClosedError,
+)
 
 __all__ = [
     "DEFAULT_DATABASE_URL",
     "Base",
     "Database",
+    "PostCommitListener",
     "WriteCommand",
     "WriteQueue",
     "WriteQueueClosedError",
