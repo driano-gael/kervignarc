@@ -19,6 +19,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
+from tests.conftest import ConnecterAdmin
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,17 +36,20 @@ def app_competition(tmp_path: Path) -> Iterator[FastAPI]:
     """App câblée sur une base migrée jetable ; l'engine est libéré en fin de test."""
     url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
     _migrer(url)
-    app = create_app(url)
+    app = create_app(url, admin_env_path=tmp_path / ".env")
     try:
         yield app
     finally:
         app.state.database.engine.dispose()
 
 
-def test_tranche_verticale_bout_en_bout(app_competition: FastAPI) -> None:
+def test_tranche_verticale_bout_en_bout(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
     """Tournoi → archer → placement → scores → classement, avec diffusion temps réel."""
     with TestClient(app_competition) as client, client.websocket_connect("/ws") as ws:
         assert ws.receive_json()["type"] == "connected"
+        connecter_admin(client)  # accès admin requis pour créer le tournoi (E10US002)
 
         tournoi = client.post(
             "/api/v1/tournois", json={"nom": "Salle 18m", "date": "2026-03-14"}
@@ -103,9 +107,10 @@ def test_placer_archer_inconnu_404(app_competition: FastAPI) -> None:
     assert reponse.json()["code"] == "archer_introuvable"
 
 
-def test_score_hors_plage_422(app_competition: FastAPI) -> None:
+def test_score_hors_plage_422(app_competition: FastAPI, connecter_admin: ConnecterAdmin) -> None:
     """Un score hors de 0-10 → 422 avec le code métier (règle du domaine)."""
     with TestClient(app_competition) as client:
+        connecter_admin(client)
         tournoi = client.post(
             "/api/v1/tournois", json={"nom": "Salle 18m", "date": "2026-03-14"}
         ).json()

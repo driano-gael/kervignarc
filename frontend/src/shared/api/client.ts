@@ -24,10 +24,22 @@ export class ErreurApi extends Error {
   }
 }
 
+// Jeton d'accès administrateur (E10US002) : joint automatiquement en `Authorization: Bearer`
+// quand une session admin est ouverte. Le store de session s'enregistre ici (inversion de
+// dépendance : le client ne connaît pas le store). Sans session, les requêtes restent anonymes
+// (la lecture publique n'exige rien) ; le serveur ignore l'en-tête sur les routes non protégées.
+let lireJetonAdmin: () => string | null = () => null
+
+export function enregistrerJetonAdmin(fournisseur: () => string | null): void {
+  lireJetonAdmin = fournisseur
+}
+
 export async function fetchJson<T>(chemin: string, options?: RequestInit): Promise<T> {
+  const jeton = lireJetonAdmin()
+  const enteteAuth: Record<string, string> = jeton ? { Authorization: `Bearer ${jeton}` } : {}
   const reponse = await fetch(chemin, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: { 'Content-Type': 'application/json', ...enteteAuth, ...options?.headers },
   })
 
   if (!reponse.ok) {
@@ -39,6 +51,9 @@ export async function fetchJson<T>(chemin: string, options?: RequestInit): Promi
       corps?.details,
     )
   }
+
+  // 204 No Content (ex. déconnexion) : pas de corps à décoder.
+  if (reponse.status === 204) return undefined as T
 
   return (await reponse.json()) as T
 }
