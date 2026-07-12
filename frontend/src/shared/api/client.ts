@@ -52,7 +52,9 @@ export async function fetchJson<T>(chemin: string, options?: RequestInit): Promi
   })
 
   if (!reponse.ok) {
-    if (reponse.status === 401) surNonAutorise()
+    // 401 alors qu'un jeton était joint → session expirée/invalide : on purge. Un 401 sans jeton
+    // (ex. login refusé) n'est pas une expiration de session : on n'y touche pas.
+    if (reponse.status === 401 && jeton) surNonAutorise()
     const corps = (await reponse.json().catch(() => null)) as CorpsErreur | null
     throw new ErreurApi(
       reponse.status,
