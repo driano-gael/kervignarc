@@ -34,6 +34,7 @@ repos:
         additional_dependencies:
           - "mypy==1.14.1"
           - "fastapi==0.139.0"
+          - "uvicorn==0.51.0"
           - "httpx==0.28.1"
           - "pytest==9.1.1"
           - "sqlalchemy==2.0.51"
