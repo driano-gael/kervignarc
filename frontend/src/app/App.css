@@ -25,6 +25,13 @@
   padding-top: 24px;
 }
 
+.app__contenu--colonnes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+}
+
 /* Indicateur d'état de connexion temps réel. */
 .indicateur {
   display: inline-flex;
@@ -62,9 +69,20 @@
   max-width: 360px;
 }
 
+.carte--large {
+  max-width: 560px;
+  flex: 1 1 480px;
+}
+
 .carte__titre {
   margin: 0 0 8px;
   font-size: 18px;
+}
+
+.carte__soustitre {
+  margin: 20px 0 8px;
+  font-size: 15px;
+  color: var(--text-h);
 }
 
 .carte__etat {
@@ -77,4 +95,75 @@
 
 .carte__etat--erreur {
   color: var(--danger);
+}
+
+/* Formulaires (nom de tournoi / d'archer). */
+.formulaire {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.formulaire__champ {
+  flex: 1;
+}
+
+.formulaire__champ,
+.ligne-action__champ {
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+button {
+  padding: 6px 12px;
+  font: inherit;
+  font-weight: 500;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Tableau de classement. */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th,
+.table td {
+  padding: 8px 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.table th {
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.table__total {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.ligne-action {
+  display: flex;
+  gap: 4px;
+}
+
+.ligne-action__champ {
+  width: 4.5em;
 }

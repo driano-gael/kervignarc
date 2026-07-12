@@ -8,12 +8,20 @@ ADR-0005) et traduit les lignes ORM en agrégats de domaine. Les pannes SQLAlche
 
 from __future__ import annotations
 
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
+from domain.archer import Archer, ArcherId
+from domain.score import Score
 from domain.tournoi import Tournoi, TournoiId
-from infrastructure.db.models import TournoiORM
+from infrastructure.db.models import ArcherORM, ScoreORM, TournoiORM
 from infrastructure.erreurs import InfrastructureError
+
+
+def _vers_archer(ligne: ArcherORM) -> Archer:
+    """Traduit une ligne ORM en agrégat de domaine `Archer`."""
+    return Archer(nom=ligne.nom, tournoi_id=ligne.tournoi_id, cible=ligne.cible, id=ligne.id)
 
 
 class TournoiRepositorySQL:
@@ -41,3 +49,89 @@ class TournoiRepositorySQL:
                 return None if ligne is None else Tournoi(nom=ligne.nom, id=ligne.id)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture du tournoi.") from exc
+
+
+class ArcherRepositorySQL:
+    """Adapter SQLite du port `ArcherRepository` (E00US011)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def ajouter(self, archer: Archer) -> Archer:
+        """Persiste l'archer et le renvoie avec son identifiant attribué."""
+        try:
+            with self._session_factory() as session:
+                ligne = ArcherORM(tournoi_id=archer.tournoi_id, nom=archer.nom, cible=archer.cible)
+                session.add(ligne)
+                session.commit()
+                return _vers_archer(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance de l'archer.") from exc
+
+    def par_id(self, archer_id: ArcherId) -> Archer | None:
+        """Relit l'archer d'identifiant donné, ou `None` s'il n'existe pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(ArcherORM, archer_id)
+                return None if ligne is None else _vers_archer(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture de l'archer.") from exc
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Archer]:
+        """Renvoie tous les archers d'un tournoi (liste éventuellement vide)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(ArcherORM).where(ArcherORM.tournoi_id == tournoi_id)
+                ).scalars()
+                return [_vers_archer(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des archers du tournoi.") from exc
+
+    def enregistrer(self, archer: Archer) -> Archer:
+        """Met à jour un archer déjà persisté (ex. placement) et le renvoie."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(ArcherORM, archer.id)
+                if ligne is None:
+                    raise InfrastructureError("Archer à mettre à jour introuvable en base.")
+                ligne.nom = archer.nom
+                ligne.cible = archer.cible
+                session.commit()
+                return _vers_archer(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour de l'archer.") from exc
+
+
+class ScoreRepositorySQL:
+    """Adapter SQLite du port `ScoreRepository` (E00US011)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def ajouter(self, score: Score) -> Score:
+        """Persiste le score et le renvoie avec son identifiant attribué."""
+        try:
+            with self._session_factory() as session:
+                ligne = ScoreORM(archer_id=score.archer_id, points=score.points)
+                session.add(ligne)
+                session.commit()
+                return Score(archer_id=ligne.archer_id, points=ligne.points, id=ligne.id)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance du score.") from exc
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Score]:
+        """Renvoie tous les scores des archers d'un tournoi (jointure archer→tournoi)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(ScoreORM)
+                    .join(ArcherORM, ScoreORM.archer_id == ArcherORM.id)
+                    .where(ArcherORM.tournoi_id == tournoi_id)
+                ).scalars()
+                return [
+                    Score(archer_id=ligne.archer_id, points=ligne.points, id=ligne.id)
+                    for ligne in lignes
+                ]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des scores du tournoi.") from exc

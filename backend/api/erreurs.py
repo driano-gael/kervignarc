@@ -23,7 +23,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from application.erreurs import ApplicationError, TournoiIntrouvable
+from application.erreurs import ApplicationError, ArcherIntrouvable, TournoiIntrouvable
 from domain.erreurs import DomainError
 from infrastructure.erreurs import InfrastructureError
 
@@ -43,8 +43,8 @@ async def _sur_erreur_domaine(_: Request, exc: Exception) -> JSONResponse:
 
 
 async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
-    """Cas d'usage impossible → 404 (introuvable) sinon 409 (conflit)."""
-    status = 404 if isinstance(exc, TournoiIntrouvable) else 409
+    """Cas d'usage impossible → 404 (ressource introuvable) sinon 409 (conflit)."""
+    status = 404 if isinstance(exc, TournoiIntrouvable | ArcherIntrouvable) else 409
     return _reponse(status, getattr(exc, "code", ApplicationError.code), str(exc))
 
 
