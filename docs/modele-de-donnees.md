@@ -43,7 +43,7 @@ erDiagram
 | nom | TEXT | NOT NULL |
 | date | TEXT (date) | NOT NULL |
 | lieu | TEXT | |
-| type | TEXT | `officiel` \| `non_officiel` |
+| type_tournoi | TEXT | `officiel` \| `non_officiel` |
 | statut | TEXT | `brouillon` \| `en_cours` \| `termine` |
 | tarif_depart | REAL | ≥ 0 |
 | gabarit_salle_id | INTEGER | FK → GABARIT_SALLE |

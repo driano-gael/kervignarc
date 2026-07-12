@@ -26,7 +26,11 @@ class TournoiRepository(Protocol):
         ...
 
     def lister(self) -> list[Tournoi]:
-        """Renvoie tous les tournois (liste éventuellement vide)."""
+        """Renvoie tous les tournois (liste éventuellement vide).
+
+        L'ordre n'est **pas** garanti par le port (détail de l'adapter) : un consommateur
+        qui a besoin d'un ordre précis doit le trier lui-même.
+        """
         ...
 
 

@@ -5,9 +5,10 @@ Revises: 0003_archer_score
 Create Date: 2026-07-12
 
 Enrichit la table `tournoi` (E01US001) : `date` (obligatoire), `lieu` (facultatif) et
-`type_tournoi` (`officiel` / `non_officiel`, obligatoire). Un `server_default` couvre les
-éventuelles lignes préexistantes du walking skeleton (rétro-remplissage) ; l'application
-fournit toujours des valeurs réelles à l'insertion (via l'ORM).
+`type_tournoi` (`officiel` / `non_officiel`, obligatoire). Un `server_default` **temporaire**
+rétro-remplit les éventuelles lignes préexistantes du walking skeleton, puis il est **retiré** :
+le `NOT NULL` garde ainsi son effet protecteur (un INSERT direct omettant la valeur échoue au
+lieu d'hériter d'une sentinelle) et l'application fournit toujours les valeurs via l'ORM.
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Ajoute les colonnes `date`, `lieu` et `type_tournoi` à la table `tournoi`."""
+    """Ajoute `date`, `lieu` et `type_tournoi`, puis retire les `server_default` de backfill."""
     with op.batch_alter_table("tournoi") as batch:
         batch.add_column(
             sa.Column("date", sa.Date(), nullable=False, server_default=sa.text("'1970-01-01'"))
@@ -38,6 +39,11 @@ def upgrade() -> None:
                 server_default=sa.text("'non_officiel'"),
             )
         )
+    # Le défaut n'a servi qu'au rétro-remplissage des lignes existantes ; on le retire pour
+    # que le NOT NULL reste réellement contraignant (les valeurs viennent de l'application).
+    with op.batch_alter_table("tournoi") as batch:
+        batch.alter_column("date", server_default=None)
+        batch.alter_column("type_tournoi", server_default=None)
 
 
 def downgrade() -> None:
