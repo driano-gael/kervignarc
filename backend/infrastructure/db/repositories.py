@@ -14,9 +14,20 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from domain.archer import Archer, ArcherId
 from domain.score import Score
-from domain.tournoi import Tournoi, TournoiId
+from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from infrastructure.db.models import ArcherORM, ScoreORM, TournoiORM
 from infrastructure.erreurs import InfrastructureError
+
+
+def _vers_tournoi(ligne: TournoiORM) -> Tournoi:
+    """Traduit une ligne ORM en agrégat de domaine `Tournoi`."""
+    return Tournoi(
+        nom=ligne.nom,
+        date=ligne.date,
+        lieu=ligne.lieu,
+        type_tournoi=TypeTournoi(ligne.type_tournoi),
+        id=ligne.id,
+    )
 
 
 def _vers_archer(ligne: ArcherORM) -> Archer:
@@ -34,10 +45,15 @@ class TournoiRepositorySQL:
         """Persiste le tournoi et le renvoie avec son identifiant attribué."""
         try:
             with self._session_factory() as session:
-                ligne = TournoiORM(nom=tournoi.nom)
+                ligne = TournoiORM(
+                    nom=tournoi.nom,
+                    date=tournoi.date,
+                    lieu=tournoi.lieu,
+                    type_tournoi=tournoi.type_tournoi.value,
+                )
                 session.add(ligne)
                 session.commit()
-                return Tournoi(nom=ligne.nom, id=ligne.id)
+                return _vers_tournoi(ligne)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de persistance du tournoi.") from exc
 
@@ -46,9 +62,20 @@ class TournoiRepositorySQL:
         try:
             with self._session_factory() as session:
                 ligne = session.get(TournoiORM, tournoi_id)
-                return None if ligne is None else Tournoi(nom=ligne.nom, id=ligne.id)
+                return None if ligne is None else _vers_tournoi(ligne)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture du tournoi.") from exc
+
+    def lister(self) -> list[Tournoi]:
+        """Renvoie tous les tournois, du plus récent au plus ancien (par identifiant)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(TournoiORM).order_by(TournoiORM.id.desc())
+                ).scalars()
+                return [_vers_tournoi(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des tournois.") from exc
 
 
 class ArcherRepositorySQL:

@@ -1,6 +1,6 @@
-"""Endpoints REST des tournois (`/api/v1/tournois`) — gabarit de bout en bout (E00US009).
+"""Endpoints REST des tournois (`/api/v1/tournois`) — créer, consulter, lister (E01US001).
 
-Illustre le patron des US métier :
+Suit le patron de bout en bout (E00US009) :
 - **DTO Pydantic** distincts des agrégats de domaine (aucune entité domaine exposée) ;
 - **écriture** routée par la **file d'écriture** (writer unique, ADR-0005), attendue via
   `asyncio.wrap_future` sans bloquer la boucle ;
@@ -11,22 +11,26 @@ Illustre le patron des US métier :
 from __future__ import annotations
 
 import asyncio
+import datetime
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from application.tournois import ServiceTournois
-from domain.tournoi import Tournoi
+from domain.tournoi import Tournoi, TypeTournoi
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1/tournois", tags=["tournois"])
 
 
 class CreerTournoiRequete(BaseModel):
-    """Corps de création d'un tournoi."""
+    """Corps de création d'un tournoi (nom et date requis ; lieu et type facultatifs)."""
 
     nom: str
+    date: datetime.date
+    lieu: str | None = None
+    type_tournoi: TypeTournoi = TypeTournoi.NON_OFFICIEL
 
 
 class TournoiReponse(BaseModel):
@@ -34,12 +38,21 @@ class TournoiReponse(BaseModel):
 
     id: int
     nom: str
+    date: datetime.date
+    lieu: str | None
+    type_tournoi: TypeTournoi
 
     @staticmethod
     def de_agregat(tournoi: Tournoi) -> TournoiReponse:
         """Traduit un agrégat de domaine (persisté) en DTO de réponse."""
         assert tournoi.id is not None, "Un tournoi persisté a toujours un identifiant."
-        return TournoiReponse(id=tournoi.id, nom=tournoi.nom)
+        return TournoiReponse(
+            id=tournoi.id,
+            nom=tournoi.nom,
+            date=tournoi.date,
+            lieu=tournoi.lieu,
+            type_tournoi=tournoi.type_tournoi,
+        )
 
 
 @router.post("", status_code=201, response_model=TournoiReponse)
@@ -47,8 +60,20 @@ async def creer_tournoi(requete: CreerTournoiRequete, request: Request) -> Tourn
     """Crée un tournoi : l'écriture passe par la file (writer unique, ADR-0005)."""
     service: ServiceTournois = request.app.state.service_tournois
     write_queue: WriteQueue = request.app.state.write_queue
-    tournoi = await asyncio.wrap_future(write_queue.submit(lambda: service.creer(requete.nom)))
+    tournoi = await asyncio.wrap_future(
+        write_queue.submit(
+            lambda: service.creer(requete.nom, requete.date, requete.lieu, requete.type_tournoi)
+        )
+    )
     return TournoiReponse.de_agregat(tournoi)
+
+
+@router.get("", response_model=list[TournoiReponse])
+async def lister_tournois(request: Request) -> list[TournoiReponse]:
+    """Liste tous les tournois : lecture directe exécutée hors de la boucle événementielle."""
+    service: ServiceTournois = request.app.state.service_tournois
+    tournois = await run_in_threadpool(service.lister)
+    return [TournoiReponse.de_agregat(tournoi) for tournoi in tournois]
 
 
 @router.get("/{tournoi_id}", response_model=TournoiReponse)

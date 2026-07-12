@@ -47,7 +47,9 @@ def test_tranche_verticale_bout_en_bout(app_competition: FastAPI) -> None:
     with TestClient(app_competition) as client, client.websocket_connect("/ws") as ws:
         assert ws.receive_json()["type"] == "connected"
 
-        tournoi = client.post("/api/v1/tournois", json={"nom": "Salle 18m"}).json()
+        tournoi = client.post(
+            "/api/v1/tournois", json={"nom": "Salle 18m", "date": "2026-03-14"}
+        ).json()
         assert ws.receive_json()["type"] == "donnees_modifiees"
 
         alice = client.post(f"/api/v1/tournois/{tournoi['id']}/archers", json={"nom": "Alice"})
@@ -104,7 +106,9 @@ def test_placer_archer_inconnu_404(app_competition: FastAPI) -> None:
 def test_score_hors_plage_422(app_competition: FastAPI) -> None:
     """Un score hors de 0-10 → 422 avec le code métier (règle du domaine)."""
     with TestClient(app_competition) as client:
-        tournoi = client.post("/api/v1/tournois", json={"nom": "Salle 18m"}).json()
+        tournoi = client.post(
+            "/api/v1/tournois", json={"nom": "Salle 18m", "date": "2026-03-14"}
+        ).json()
         archer = client.post(
             f"/api/v1/tournois/{tournoi['id']}/archers", json={"nom": "Robin"}
         ).json()

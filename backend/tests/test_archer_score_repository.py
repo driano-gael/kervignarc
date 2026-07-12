@@ -6,6 +6,7 @@ persistance, relecture, mise à jour (placement) et jointure score→archer→to
 
 from __future__ import annotations
 
+import datetime
 from pathlib import Path
 
 from alembic import command
@@ -41,7 +42,7 @@ def test_archers_et_scores_bout_en_bout(tmp_path: Path) -> None:
         archers = ArcherRepositorySQL(db.session_factory)
         scores = ScoreRepositorySQL(db.session_factory)
 
-        tournoi = tournois.ajouter(Tournoi.creer("Salle 18m"))
+        tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", datetime.date(2026, 3, 14)))
         assert tournoi.id is not None
 
         alice = archers.ajouter(Archer.creer("Alice", tournoi.id))

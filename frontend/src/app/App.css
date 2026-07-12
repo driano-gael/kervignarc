@@ -104,8 +104,38 @@
   margin-bottom: 8px;
 }
 
+.formulaire--colonne {
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 320px;
+}
+
 .formulaire__champ {
   flex: 1;
+}
+
+/* Liste des tournois existants (boutons-liens). */
+.liste-tournois {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lien {
+  padding: 4px 0;
+  font: inherit;
+  color: var(--accent);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lien:hover {
+  text-decoration: underline;
 }
 
 .formulaire__champ,

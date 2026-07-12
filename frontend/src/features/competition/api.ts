@@ -4,9 +4,21 @@
 
 import { fetchJson } from '../../shared/api/client'
 
+export type TypeTournoi = 'officiel' | 'non_officiel'
+
 export interface Tournoi {
   id: number
   nom: string
+  date: string // ISO (AAAA-MM-JJ)
+  lieu: string | null
+  type_tournoi: TypeTournoi
+}
+
+export interface NouveauTournoi {
+  nom: string
+  date: string
+  lieu?: string | null
+  type_tournoi?: TypeTournoi
 }
 
 export interface Archer {
@@ -35,11 +47,15 @@ export interface Classement {
   lignes: LigneClassement[]
 }
 
-export function creerTournoi(nom: string): Promise<Tournoi> {
+export function creerTournoi(entree: NouveauTournoi): Promise<Tournoi> {
   return fetchJson<Tournoi>('/api/v1/tournois', {
     method: 'POST',
-    body: JSON.stringify({ nom }),
+    body: JSON.stringify(entree),
   })
+}
+
+export function getTournois(): Promise<Tournoi[]> {
+  return fetchJson<Tournoi[]>('/api/v1/tournois')
 }
 
 export function ajouterArcher(tournoiId: number, nom: string): Promise<Archer> {

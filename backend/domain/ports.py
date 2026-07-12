@@ -25,6 +25,10 @@ class TournoiRepository(Protocol):
         """Renvoie le tournoi d'identifiant donné, ou `None` s'il n'existe pas."""
         ...
 
+    def lister(self) -> list[Tournoi]:
+        """Renvoie tous les tournois (liste éventuellement vide)."""
+        ...
+
 
 class ArcherRepository(Protocol):
     """Port de persistance des archers (adapter fourni par l'infrastructure)."""
