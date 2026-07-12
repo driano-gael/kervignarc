@@ -106,11 +106,22 @@ class ServiceAuth:
         login_net = login.strip()
         if login_net == "" or mot_de_passe == "":
             raise IdentifiantsInvalides("Login et mot de passe sont requis.")
+        # Interdit tout saut de ligne : les identifiants sont ecrits ligne a ligne dans
+        # `.env` (`_upsert`) ; une valeur multi-lignes injecterait/ecraserait une autre cle.
+        for valeur in (login_net, mot_de_passe):
+            if valeur.splitlines() != [valeur]:
+                raise IdentifiantsInvalides(
+                    "Login et mot de passe ne peuvent pas contenir de saut de ligne."
+                )
         return IdentifiantsAdmin(login=login_net, mot_de_passe=mot_de_passe)
 
     @staticmethod
     def _correspond(actuels: IdentifiantsAdmin, login: str, mot_de_passe: str) -> bool:
-        # Comparaison en temps constant ; les deux comparaisons sont toujours évaluées.
-        login_ok = hmac.compare_digest(actuels.login, login.strip())
-        mot_de_passe_ok = hmac.compare_digest(actuels.mot_de_passe, mot_de_passe)
+        # Comparaison en temps constant ; les deux comparaisons sont toujours évaluées. Encodage
+        # en octets impératif : `hmac.compare_digest` sur des `str` lève `TypeError` dès qu'un
+        # caractère est non-ASCII (ex. mot de passe accentué) — fréquent pour un public FR.
+        login_ok = hmac.compare_digest(actuels.login.encode("utf-8"), login.strip().encode("utf-8"))
+        mot_de_passe_ok = hmac.compare_digest(
+            actuels.mot_de_passe.encode("utf-8"), mot_de_passe.encode("utf-8")
+        )
         return login_ok and mot_de_passe_ok

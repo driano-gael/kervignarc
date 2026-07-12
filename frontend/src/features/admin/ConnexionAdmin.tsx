@@ -17,7 +17,7 @@ export function ConnexionAdmin() {
   if (etat.isPending) return <p className="carte__etat">Chargement…</p>
   if (etat.isError) {
     return (
-      <p className="carte__etat carte__etat--erreur">
+      <p className="carte__etat carte__etat--erreur" role="alert">
         Accès admin injoignable — {etat.error.message}
       </p>
     )
@@ -78,7 +78,7 @@ function FormulairePremierAcces() {
         </button>
       </form>
       {discordance && (
-        <p className="carte__etat carte__etat--erreur">
+        <p className="carte__etat carte__etat--erreur" role="alert">
           Les deux mots de passe ne correspondent pas.
         </p>
       )}
@@ -133,5 +133,9 @@ function FormulaireConnexion() {
 function MessageErreur({ erreur }: { erreur: Error | null }) {
   if (erreur === null) return null
   const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return <p className="carte__etat carte__etat--erreur">{message}</p>
+  return (
+    <p className="carte__etat carte__etat--erreur" role="alert">
+      {message}
+    </p>
+  )
 }

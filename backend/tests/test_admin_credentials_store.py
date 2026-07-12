@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from application.auth import IdentifiantsAdmin
 from infrastructure.auth import AdminCredentialsStore
 
@@ -60,6 +62,18 @@ def test_upsert_remplace_sans_dupliquer(tmp_path: Path) -> None:
     contenu = env.read_text(encoding="utf-8")
     assert contenu.count("KERVIGNARC_ADMIN_PASSWORD=") == 1
     assert store.lire() == IdentifiantsAdmin(login="orga", mot_de_passe="v2")
+
+
+@pytest.mark.parametrize(
+    "mot_de_passe",
+    ["  espaces autour  ", '"déjà entre guillemets"', "avec = et # dedans", "simple"],
+)
+def test_ecrire_puis_lire_fidelite(tmp_path: Path, mot_de_passe: str) -> None:
+    """L'écriture puis la relecture rendent la valeur **à l'identique**, même ambiguë (espaces de
+    bord, guillemets englobants, caractères spéciaux) — garde-fou contre un lockout silencieux."""
+    store = AdminCredentialsStore(tmp_path / ".env")
+    store.ecrire(IdentifiantsAdmin(login="orga", mot_de_passe=mot_de_passe))
+    assert store.lire() == IdentifiantsAdmin(login="orga", mot_de_passe=mot_de_passe)
 
 
 def test_lire_valeur_editee_a_la_main_avec_guillemets(tmp_path: Path) -> None:

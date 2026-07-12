@@ -33,8 +33,25 @@ def _cle_de_ligne(ligne: str) -> str | None:
 def _valeur_de_ligne(ligne: str) -> str:
     """Valeur brute d'une ligne `KEY=VALEUR` : espaces et un éventuel guillemet englobant ôtés."""
     valeur = ligne.split("=", 1)[1].strip()
-    if len(valeur) >= 2 and valeur[0] == valeur[-1] and valeur[0] in ("'", '"'):
+    if _est_encadree_de_guillemets(valeur):
         valeur = valeur[1:-1]
+    return valeur
+
+
+def _est_encadree_de_guillemets(valeur: str) -> bool:
+    return len(valeur) >= 2 and valeur[0] == valeur[-1] and valeur[0] in ("'", '"')
+
+
+def _formater_valeur(valeur: str) -> str:
+    """Sérialise une valeur pour `.env`, fidèle à l'aller-retour du lecteur.
+
+    Entoure de guillemets doubles quand une écriture brute serait relue différemment — valeur à
+    espaces de bord (le lecteur `strip()`), ou déjà encadrée de guillemets (le lecteur en retire
+    une paire). Sinon écrit la valeur telle quelle. Les sauts de ligne sont exclus en amont
+    (couche service), donc aucun échappement n'est nécessaire ici.
+    """
+    if valeur != valeur.strip() or _est_encadree_de_guillemets(valeur):
+        return f'"{valeur}"'
     return valeur
 
 
@@ -84,10 +101,10 @@ class AdminCredentialsStore:
         for ligne in self._lignes():
             cle = _cle_de_ligne(ligne)
             if cle in restantes:
-                sortie.append(f"{cle}={restantes.pop(cle)}")
+                sortie.append(f"{cle}={_formater_valeur(restantes.pop(cle))}")
             else:
                 sortie.append(ligne)
-        sortie.extend(f"{cle}={valeur}" for cle, valeur in restantes.items())
+        sortie.extend(f"{cle}={_formater_valeur(valeur)}" for cle, valeur in restantes.items())
         contenu = "\n".join(sortie) + "\n"
         try:
             self._env_path.write_text(contenu, encoding="utf-8")

@@ -91,3 +91,32 @@ def test_session_valide_refuse_jeton_absent(tmp_path: Path) -> None:
     service.configurer("admin", "secret")
     assert service.session_valide(None) is False
     assert service.session_valide("jeton-bidon") is False
+
+
+def test_connexion_identifiants_non_ascii(tmp_path: Path) -> None:
+    """Un mot de passe accentué (public FR) doit fonctionner à la reconnexion (garde-fou B1).
+
+    `hmac.compare_digest` sur des `str` non-ASCII lève `TypeError` : la comparaison passe par des
+    octets. On reconfigure via une nouvelle instance pour forcer le vrai chemin de `connexion`.
+    """
+    _service(tmp_path).configurer("délégué", "Décembre-2026")
+    service = _service(tmp_path)
+    jeton = service.connexion("délégué", "Décembre-2026")
+    assert service.session_valide(jeton) is True
+    with pytest.raises(IdentifiantsInvalides):
+        service.connexion("délégué", "decembre-2026")
+
+
+# Sauts de ligne construits via chr() (pas d'échappement littéral en source).
+@pytest.mark.parametrize("valeur", [f"a{chr(10)}b", f"ab{chr(10)}", f"a{chr(13)}b"])
+def test_configurer_rejette_saut_de_ligne(tmp_path: Path, valeur: str) -> None:
+    """Un saut de ligne dans le mot de passe est refusé (anti-injection de clé `.env`, M1)."""
+    with pytest.raises(IdentifiantsInvalides):
+        _service(tmp_path).configurer("admin", valeur)
+
+
+def test_configurer_accepte_espace_interne(tmp_path: Path) -> None:
+    """Un espace interne dans le mot de passe reste autorisé (ce n'est pas un saut de ligne)."""
+    service = _service(tmp_path)
+    jeton = service.configurer("admin", "mot de passe long")
+    assert service.session_valide(jeton) is True
