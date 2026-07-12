@@ -11,11 +11,10 @@ import { ajouterArcher, creerTournoi, getClassement, placerArcher, saisirScore }
 
 const cleClassement = (tournoiId: number) => ['classement', tournoiId] as const
 
-export function useClassement(tournoiId: number | null) {
+export function useClassement(tournoiId: number) {
   return useQuery({
-    queryKey: ['classement', tournoiId],
-    queryFn: () => getClassement(tournoiId as number),
-    enabled: tournoiId !== null,
+    queryKey: cleClassement(tournoiId),
+    queryFn: () => getClassement(tournoiId),
   })
 }
 

@@ -89,7 +89,12 @@ class ArcherRepositorySQL:
             raise InfrastructureError("Échec de lecture des archers du tournoi.") from exc
 
     def enregistrer(self, archer: Archer) -> Archer:
-        """Met à jour un archer déjà persisté (ex. placement) et le renvoie."""
+        """Met à jour un archer déjà persisté (ex. placement) et le renvoie.
+
+        **Contrat** : l'appelant (le service applicatif) garantit l'existence de l'archer
+        (vérifiée en amont). La ligne absente est donc une **incohérence technique**, non
+        un cas métier — d'où `InfrastructureError` (et non une erreur applicative « 404 »).
+        """
         try:
             with self._session_factory() as session:
                 ligne = session.get(ArcherORM, archer.id)
