@@ -20,6 +20,11 @@ frontend/dist/
 frontend/.vite/
 *.local
 
+# === Secrets / identifiants (E10US002) — identifiants admin en clair, jamais versionnés ===
+.env
+.env.*
+!.env.example
+
 # === Base de données / runtime ===
 *.sqlite
 *.sqlite3

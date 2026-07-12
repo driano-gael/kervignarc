@@ -8,7 +8,7 @@ générique, le détail étant journalisé côté serveur.
 | Famille                | HTTP           |
 |------------------------|----------------|
 | `DomainError`          | 422            |
-| `ApplicationError`     | 404 / 409      |
+| `ApplicationError`     | 401 (auth) / 404 / 409 |
 | `InfrastructureError`  | 500 (générique)|
 | `RequestValidationError` (entrée) | 400 |
 """
@@ -23,7 +23,13 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from application.erreurs import ApplicationError, ArcherIntrouvable, TournoiIntrouvable
+from application.erreurs import (
+    ApplicationError,
+    ArcherIntrouvable,
+    IdentifiantsInvalides,
+    NonAuthentifie,
+    TournoiIntrouvable,
+)
 from domain.erreurs import DomainError
 from infrastructure.erreurs import InfrastructureError
 
@@ -43,8 +49,13 @@ async def _sur_erreur_domaine(_: Request, exc: Exception) -> JSONResponse:
 
 
 async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
-    """Cas d'usage impossible → 404 (ressource introuvable) sinon 409 (conflit)."""
-    status = 404 if isinstance(exc, TournoiIntrouvable | ArcherIntrouvable) else 409
+    """Cas d'usage impossible → 401 (auth), 404 (introuvable) ou 409 (conflit d'état)."""
+    if isinstance(exc, IdentifiantsInvalides | NonAuthentifie):
+        status = 401
+    elif isinstance(exc, TournoiIntrouvable | ArcherIntrouvable):
+        status = 404
+    else:
+        status = 409
     return _reponse(status, getattr(exc, "code", ApplicationError.code), str(exc))
 
 

@@ -13,10 +13,11 @@ from __future__ import annotations
 import asyncio
 import datetime
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
+from api.dependances import exiger_admin
 from application.tournois import ServiceTournois
 from domain.tournoi import Tournoi, TypeTournoi
 from infrastructure.db import WriteQueue
@@ -55,9 +56,14 @@ class TournoiReponse(BaseModel):
         )
 
 
-@router.post("", status_code=201, response_model=TournoiReponse)
+@router.post(
+    "",
+    status_code=201,
+    response_model=TournoiReponse,
+    dependencies=[Depends(exiger_admin)],
+)
 async def creer_tournoi(requete: CreerTournoiRequete, request: Request) -> TournoiReponse:
-    """Crée un tournoi : l'écriture passe par la file (writer unique, ADR-0005)."""
+    """Crée un tournoi (**action admin**, E10US002) : l'écriture passe par la file (ADR-0005)."""
     service: ServiceTournois = request.app.state.service_tournois
     write_queue: WriteQueue = request.app.state.write_queue
     tournoi = await asyncio.wrap_future(

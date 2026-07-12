@@ -19,11 +19,14 @@ from api.erreurs import enregistrer_gestionnaires_erreurs
 from api.health import router as health_router
 from api.realtime import router as realtime_router
 from api.spa import frontend_dist_dir, monter_spa
+from api.v1.auth import router as auth_router
 from api.v1.competition import router as competition_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
+from application.auth import ServiceAuth
 from application.classements import ServiceClassement
 from application.tournois import ServiceTournois
+from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
 from infrastructure.db import (
     ArcherRepositorySQL,
     Database,
@@ -35,13 +38,20 @@ from infrastructure.db import (
 from infrastructure.realtime import Broadcaster, LiveEvent
 
 
-def create_app(database_url: str | None = None, *, frontend_dist: Path | None = None) -> FastAPI:
+def create_app(
+    database_url: str | None = None,
+    *,
+    frontend_dist: Path | None = None,
+    admin_env_path: Path | None = None,
+) -> FastAPI:
     """Assemble et renvoie l'application FastAPI entièrement câblée.
 
     `database_url` : surcharge l'URL de la base (tests) ; sinon configuration applicative
     (variable d'environnement KERVIGNARC_DATABASE_URL, sinon défaut local).
     `frontend_dist` : surcharge le répertoire du build front à servir (tests) ; sinon
     résolu par défaut (`frontend/dist/`). Non monté s'il n'existe pas (E00US012).
+    `admin_env_path` : surcharge le fichier `.env` des identifiants admin (tests) ; sinon
+    résolu par défaut (variable KERVIGNARC_ENV_FILE, sinon `.env` local) (E10US002).
     """
     # --- Adapters sortants (infrastructure) : connexion SQLite WAL (E00US006). ---
     # Les repositories (E00US009) consommeront ce Database pour leurs lectures.
@@ -99,12 +109,20 @@ def create_app(database_url: str | None = None, *, frontend_dist: Path | None = 
         tournoi_repository, archer_repository, score_repository
     )
 
+    # --- Accès administrateur (E10US002) : identifiants dans un fichier `.env` local + jetons
+    # de session en mémoire. Auth = concern technique (pas de domaine) ; la dépendance API
+    # `exiger_admin` protège les routes admin (ici, la création de tournoi). ---
+    credentials_store = AdminCredentialsStore(admin_env_path or default_env_path())
+    session_store = SessionStore()
+    app.state.service_auth = ServiceAuth(credentials_store, session_store)
+
     # --- Frontière API : traduction des erreurs typées en réponses HTTP (ADR-0007). ---
     enregistrer_gestionnaires_erreurs(app)
 
     # --- Adapters entrants (routers API). ---
     app.include_router(health_router)
     app.include_router(realtime_router)
+    app.include_router(auth_router)
     app.include_router(tournois_router)
     app.include_router(competition_router)
 

@@ -6,7 +6,10 @@
 // (liste/édition, placement, saisie tactile, écran projeté) viendront comme features dédiées.
 
 import { useState } from 'react'
+import { ConnexionAdmin } from '../admin/ConnexionAdmin'
+import { useDeconnexionAdmin } from '../admin/hooks'
 import { ErreurApi } from '../../shared/api/client'
+import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import type { Tournoi, TypeTournoi } from './api'
 import { TableClassement } from './TableClassement'
 import { useAjouterArcher, useClassement, useCreerTournoi, useTournois } from './hooks'
@@ -20,26 +23,66 @@ export function TrancheVerticale() {
   return <Competition tournoiId={tournoi.id} nom={tournoi.nom} />
 }
 
+// La **création** d'un tournoi est une fonction d'administration (E10US002) : réservée à un
+// admin connecté. La **lecture** (liste des tournois existants, pour en rouvrir un) reste
+// publique. Sans session admin, on présente l'écran de connexion à la place du formulaire.
 function CreationTournoi({ onChoisi }: { onChoisi: (t: Tournoi) => void }) {
+  const jeton = useSessionAdminStore((s) => s.jeton)
+  const tournois = useTournois()
+
+  return (
+    <section className="carte carte--large">
+      <h2 className="carte__titre">Tournois</h2>
+
+      {jeton ? <FormulaireNouveauTournoi onChoisi={onChoisi} /> : <ConnexionAdmin />}
+
+      {tournois.data && tournois.data.length > 0 && (
+        <>
+          <h3 className="carte__soustitre">Tournois existants</h3>
+          <ul className="liste-tournois">
+            {tournois.data.map((t) => (
+              <li key={t.id}>
+                <button type="button" className="lien" onClick={() => onChoisi(t)}>
+                  {t.nom} — {t.date}
+                  {t.lieu ? ` · ${t.lieu}` : ''} · {t.type_tournoi.replace('_', ' ')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  )
+}
+
+function FormulaireNouveauTournoi({ onChoisi }: { onChoisi: (t: Tournoi) => void }) {
   const [nom, setNom] = useState('')
   const [date, setDate] = useState('')
   const [lieu, setLieu] = useState('')
   const [type, setType] = useState<TypeTournoi>('non_officiel')
   const creer = useCreerTournoi()
-  const tournois = useTournois()
+  const deconnexion = useDeconnexionAdmin()
+  const effacerSession = useSessionAdminStore((s) => s.effacer)
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
     if (nom.trim() === '' || date === '') return
     creer.mutate(
       { nom, date, lieu: lieu.trim() || null, type_tournoi: type },
-      { onSuccess: onChoisi },
+      {
+        onSuccess: onChoisi,
+        // Jeton devenu invalide (ex. serveur redémarré) → purge de la session : l'écran
+        // de connexion reprend la main.
+        onError: (erreur) => {
+          if (erreur instanceof ErreurApi && erreur.statut === 401) effacerSession()
+        },
+      },
     )
   }
 
   return (
-    <section className="carte carte--large">
-      <h2 className="carte__titre">Nouveau tournoi</h2>
+    <div>
+      <h3 className="carte__soustitre">Nouveau tournoi</h3>
       <form className="formulaire formulaire--colonne" onSubmit={soumettre}>
         <input
           className="formulaire__champ"
@@ -76,23 +119,10 @@ function CreationTournoi({ onChoisi }: { onChoisi: (t: Tournoi) => void }) {
         </button>
       </form>
       <MessageErreur erreur={creer.error} />
-
-      {tournois.data && tournois.data.length > 0 && (
-        <>
-          <h3 className="carte__soustitre">Tournois existants</h3>
-          <ul className="liste-tournois">
-            {tournois.data.map((t) => (
-              <li key={t.id}>
-                <button type="button" className="lien" onClick={() => onChoisi(t)}>
-                  {t.nom} — {t.date}
-                  {t.lieu ? ` · ${t.lieu}` : ''} · {t.type_tournoi.replace('_', ' ')}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </section>
+      <button type="button" className="lien" onClick={() => deconnexion.mutate()}>
+        Se déconnecter (admin)
+      </button>
+    </div>
   )
 }
 

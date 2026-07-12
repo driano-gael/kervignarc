@@ -151,7 +151,8 @@ Découpage fin des EPICs en user stories **à destination d'un développeur** (m
 | 111 | E05US016 | Routing repêchage-réintégration (WA) |
 | 112 | E11US006 | Restauration depuis une sauvegarde |
 | 113 | E11US007 | Drain de la file d'écriture à l'arrêt |
+| 114 | E10US006 | Modifier le mot de passe admin |
 
 ---
 
-*Séquence indicative au sein d'un jalon (ajustable selon dépendances) ; les jalons se font dans l'ordre. Total : 113 US.*
+*Séquence indicative au sein d'un jalon (ajustable selon dépendances) ; les jalons se font dans l'ordre. Total : 114 US.*
