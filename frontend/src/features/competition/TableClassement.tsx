@@ -1,5 +1,6 @@
-// Tableau de classement live (E00US011) : une ligne par archer (rang, cible, total) avec les
-// actions de la tranche verticale — placer sur une cible, marquer une flèche. Le tableau se
+// Tableau de classement live (E00US011) : une ligne par archer (rang, cible, total). Les colonnes
+// d'**action** (placer sur une cible, marquer une flèche) ne sont rendues que pour un **admin
+// connecté** (E10US001) ; en consultation publique, le tableau est purement en lecture. Il se
 // rafraîchit tout seul à chaque écriture (invalidation via le flux temps réel).
 
 import { useState } from 'react'
@@ -9,9 +10,10 @@ import { usePlacerArcher, useSaisirScore } from './hooks'
 interface TableClassementProps {
   tournoiId: number
   lignes: LigneClassement[]
+  admin: boolean
 }
 
-export function TableClassement({ tournoiId, lignes }: TableClassementProps) {
+export function TableClassement({ tournoiId, lignes, admin }: TableClassementProps) {
   if (lignes.length === 0) {
     return <p className="carte__etat">Aucun archer inscrit pour l'instant.</p>
   }
@@ -24,20 +26,28 @@ export function TableClassement({ tournoiId, lignes }: TableClassementProps) {
           <th scope="col">Archer</th>
           <th scope="col">Cible</th>
           <th scope="col">Total</th>
-          <th scope="col">Placer</th>
-          <th scope="col">Marquer</th>
+          {admin && <th scope="col">Placer</th>}
+          {admin && <th scope="col">Marquer</th>}
         </tr>
       </thead>
       <tbody>
         {lignes.map((ligne) => (
-          <LigneArcher key={ligne.archer_id} tournoiId={tournoiId} ligne={ligne} />
+          <LigneArcher key={ligne.archer_id} tournoiId={tournoiId} ligne={ligne} admin={admin} />
         ))}
       </tbody>
     </table>
   )
 }
 
-function LigneArcher({ tournoiId, ligne }: { tournoiId: number; ligne: LigneClassement }) {
+function LigneArcher({
+  tournoiId,
+  ligne,
+  admin,
+}: {
+  tournoiId: number
+  ligne: LigneClassement
+  admin: boolean
+}) {
   const [cible, setCible] = useState('')
   const [points, setPoints] = useState('')
   const placer = usePlacerArcher(tournoiId)
@@ -66,37 +76,41 @@ function LigneArcher({ tournoiId, ligne }: { tournoiId: number; ligne: LigneClas
       <td>{ligne.nom}</td>
       <td>{ligne.cible ?? '—'}</td>
       <td className="table__total">{ligne.total}</td>
-      <td>
-        <form className="ligne-action" onSubmit={soumettrePlacement}>
-          <input
-            className="ligne-action__champ"
-            type="number"
-            min={1}
-            value={cible}
-            onChange={(e) => setCible(e.target.value)}
-            aria-label={`Cible de ${ligne.nom}`}
-          />
-          <button type="submit" disabled={placer.isPending || cible === ''}>
-            OK
-          </button>
-        </form>
-      </td>
-      <td>
-        <form className="ligne-action" onSubmit={soumettreScore}>
-          <input
-            className="ligne-action__champ"
-            type="number"
-            min={0}
-            max={10}
-            value={points}
-            onChange={(e) => setPoints(e.target.value)}
-            aria-label={`Flèche de ${ligne.nom} (0 à 10)`}
-          />
-          <button type="submit" disabled={marquer.isPending || points === ''}>
-            +
-          </button>
-        </form>
-      </td>
+      {admin && (
+        <td>
+          <form className="ligne-action" onSubmit={soumettrePlacement}>
+            <input
+              className="ligne-action__champ"
+              type="number"
+              min={1}
+              value={cible}
+              onChange={(e) => setCible(e.target.value)}
+              aria-label={`Cible de ${ligne.nom}`}
+            />
+            <button type="submit" disabled={placer.isPending || cible === ''}>
+              OK
+            </button>
+          </form>
+        </td>
+      )}
+      {admin && (
+        <td>
+          <form className="ligne-action" onSubmit={soumettreScore}>
+            <input
+              className="ligne-action__champ"
+              type="number"
+              min={0}
+              max={10}
+              value={points}
+              onChange={(e) => setPoints(e.target.value)}
+              aria-label={`Flèche de ${ligne.nom} (0 à 10)`}
+            />
+            <button type="submit" disabled={marquer.isPending || points === ''}>
+              +
+            </button>
+          </form>
+        </td>
+      )}
     </tr>
   )
 }

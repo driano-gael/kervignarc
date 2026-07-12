@@ -91,17 +91,23 @@ def test_tranche_verticale_bout_en_bout(
         ]
 
 
-def test_ajouter_archer_tournoi_inconnu_404(app_competition: FastAPI) -> None:
-    """Inscrire dans un tournoi inexistant → 404 avec le code applicatif typé."""
+def test_ajouter_archer_tournoi_inconnu_404(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Inscrire dans un tournoi inexistant → 404 (code applicatif typé), une fois authentifié."""
     with TestClient(app_competition) as client:
+        connecter_admin(client)
         reponse = client.post("/api/v1/tournois/999/archers", json={"nom": "Robin"})
     assert reponse.status_code == 404
     assert reponse.json()["code"] == "tournoi_introuvable"
 
 
-def test_placer_archer_inconnu_404(app_competition: FastAPI) -> None:
-    """Placer un archer inexistant → 404 avec le code applicatif typé."""
+def test_placer_archer_inconnu_404(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Placer un archer inexistant → 404 avec le code applicatif typé (une fois authentifié)."""
     with TestClient(app_competition) as client:
+        connecter_admin(client)
         reponse = client.post("/api/v1/archers/999/placement", json={"cible": 1})
     assert reponse.status_code == 404
     assert reponse.json()["code"] == "archer_introuvable"

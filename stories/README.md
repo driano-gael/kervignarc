@@ -61,8 +61,9 @@ Découpage fin des EPICs en user stories **à destination d'un développeur** (m
 | 33 | E03US004 | Ajuster le placement en glisser-déposer |
 | 34 | E03US005 | Empêcher un déplacement invalide |
 | 35 | E03US008 | Générer le plan de cibles (qualif) |
-| 36 | E10US003 | Session scoreur par code de cible |
+| 36 | E10US003 | Session scoreur par code de cible (saisie + validation) |
 | 37 | E10US004 | Habiliter un scoreur sur plusieurs cibles |
+| 37b | E10US007 | Rôle archer : saisir ses scores |
 | 38 | E04US001 | Rattacher un appareil à une cible |
 | 39 | E04US002 | Afficher la grille de saisie (4 archers) |
 | 40 | E04US003 | Saisir les flèches d'une volée (pavé tactile) |
@@ -155,4 +156,4 @@ Découpage fin des EPICs en user stories **à destination d'un développeur** (m
 
 ---
 
-*Séquence indicative au sein d'un jalon (ajustable selon dépendances) ; les jalons se font dans l'ordre. Total : 114 US.*
+*Séquence indicative au sein d'un jalon (ajustable selon dépendances) ; les jalons se font dans l'ordre. Total : 115 US.*

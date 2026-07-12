@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
+from api.dependances import exiger_admin
 from application.archers import ServiceArchers
 from application.classements import ServiceClassement
 from domain.archer import Archer
@@ -110,11 +111,16 @@ class ClassementReponse(BaseModel):
         )
 
 
-@router.post("/tournois/{tournoi_id}/archers", status_code=201, response_model=ArcherReponse)
+@router.post(
+    "/tournois/{tournoi_id}/archers",
+    status_code=201,
+    response_model=ArcherReponse,
+    dependencies=[Depends(exiger_admin)],
+)
 async def ajouter_archer(
     tournoi_id: int, requete: AjouterArcherRequete, request: Request
 ) -> ArcherReponse:
-    """Inscrit un archer à un tournoi (écriture routée par la file, ADR-0005)."""
+    """Inscrit un archer à un tournoi (**écriture**, session requise — E10US001 ; ADR-0005)."""
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue
     archer = await asyncio.wrap_future(
@@ -123,11 +129,15 @@ async def ajouter_archer(
     return ArcherReponse.de_agregat(archer)
 
 
-@router.post("/archers/{archer_id}/placement", response_model=ArcherReponse)
+@router.post(
+    "/archers/{archer_id}/placement",
+    response_model=ArcherReponse,
+    dependencies=[Depends(exiger_admin)],
+)
 async def placer_archer(
     archer_id: int, requete: PlacerArcherRequete, request: Request
 ) -> ArcherReponse:
-    """Place un archer sur une cible (écriture routée par la file)."""
+    """Place un archer sur une cible (**écriture**, session requise — E10US001)."""
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue
     archer = await asyncio.wrap_future(
@@ -136,11 +146,20 @@ async def placer_archer(
     return ArcherReponse.de_agregat(archer)
 
 
-@router.post("/archers/{archer_id}/scores", status_code=201, response_model=ScoreReponse)
+@router.post(
+    "/archers/{archer_id}/scores",
+    status_code=201,
+    response_model=ScoreReponse,
+    dependencies=[Depends(exiger_admin)],
+)
 async def saisir_score(
     archer_id: int, requete: SaisirScoreRequete, request: Request
 ) -> ScoreReponse:
-    """Enregistre une flèche marquée par un archer (écriture routée par la file)."""
+    """Enregistre une flèche marquée par un archer (**écriture**, session requise — E10US001).
+
+    Ouverte à l'admin en intérim ; le rôle scoreur (E10US003) / archer (E10US007) élargiront
+    cette autorisation. La **validation** d'une série restera réservée au scoreur (E04US007).
+    """
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue
     score = await asyncio.wrap_future(

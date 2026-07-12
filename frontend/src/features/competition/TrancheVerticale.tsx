@@ -62,21 +62,14 @@ function FormulaireNouveauTournoi({ onChoisi }: { onChoisi: (t: Tournoi) => void
   const [type, setType] = useState<TypeTournoi>('non_officiel')
   const creer = useCreerTournoi()
   const deconnexion = useDeconnexionAdmin()
-  const effacerSession = useSessionAdminStore((s) => s.effacer)
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
     if (nom.trim() === '' || date === '') return
+    // Un 401 (session expirée) est géré centralement par le client HTTP (purge de session).
     creer.mutate(
       { nom, date, lieu: lieu.trim() || null, type_tournoi: type },
-      {
-        onSuccess: onChoisi,
-        // Jeton devenu invalide (ex. serveur redémarré) → purge de la session : l'écran
-        // de connexion reprend la main.
-        onError: (erreur) => {
-          if (erreur instanceof ErreurApi && erreur.statut === 401) effacerSession()
-        },
-      },
+      { onSuccess: onChoisi },
     )
   }
 
@@ -126,9 +119,41 @@ function FormulaireNouveauTournoi({ onChoisi }: { onChoisi: (t: Tournoi) => void
   )
 }
 
+// Consultation d'un tournoi. Le **classement** est public (lecture seule). Les **actions
+// d'écriture** (inscrire, placer, marquer) ne sont exposées qu'à un admin connecté (E10US001) —
+// un spectateur voit le classement sans aucun contrôle de saisie.
 function Competition({ tournoiId, nom }: { tournoiId: number; nom: string }) {
-  const [nomArcher, setNomArcher] = useState('')
+  const estAdmin = useSessionAdminStore((s) => s.jeton) !== null
   const classement = useClassement(tournoiId)
+
+  return (
+    <section className="carte carte--large">
+      <h2 className="carte__titre">{nom}</h2>
+
+      {estAdmin ? (
+        <InscriptionArcher tournoiId={tournoiId} />
+      ) : (
+        <p className="carte__etat">
+          Consultation en lecture seule. Connectez-vous en admin pour saisir.
+        </p>
+      )}
+
+      <h3 className="carte__soustitre">Classement en direct</h3>
+      {classement.isPending && <p className="carte__etat">Chargement…</p>}
+      {classement.isError && (
+        <p className="carte__etat carte__etat--erreur" role="alert">
+          Classement injoignable — {classement.error.message}
+        </p>
+      )}
+      {classement.data && (
+        <TableClassement tournoiId={tournoiId} lignes={classement.data.lignes} admin={estAdmin} />
+      )}
+    </section>
+  )
+}
+
+function InscriptionArcher({ tournoiId }: { tournoiId: number }) {
+  const [nomArcher, setNomArcher] = useState('')
   const ajouter = useAjouterArcher(tournoiId)
 
   const soumettre = (evenement: React.FormEvent) => {
@@ -138,9 +163,7 @@ function Competition({ tournoiId, nom }: { tournoiId: number; nom: string }) {
   }
 
   return (
-    <section className="carte carte--large">
-      <h2 className="carte__titre">{nom}</h2>
-
+    <>
       <form className="formulaire" onSubmit={soumettre}>
         <input
           className="formulaire__champ"
@@ -154,21 +177,16 @@ function Competition({ tournoiId, nom }: { tournoiId: number; nom: string }) {
         </button>
       </form>
       <MessageErreur erreur={ajouter.error} />
-
-      <h3 className="carte__soustitre">Classement en direct</h3>
-      {classement.isPending && <p className="carte__etat">Chargement…</p>}
-      {classement.isError && (
-        <p className="carte__etat carte__etat--erreur">
-          Classement injoignable — {classement.error.message}
-        </p>
-      )}
-      {classement.data && <TableClassement tournoiId={tournoiId} lignes={classement.data.lignes} />}
-    </section>
+    </>
   )
 }
 
 function MessageErreur({ erreur }: { erreur: Error | null }) {
   if (erreur === null) return null
   const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return <p className="carte__etat carte__etat--erreur">{message}</p>
+  return (
+    <p className="carte__etat carte__etat--erreur" role="alert">
+      {message}
+    </p>
+  )
 }
