@@ -1,27 +1,34 @@
-"""Service applicatif Tournois (E00US009) — orchestre le domaine derrière le port repository.
+"""Service applicatif Tournois — orchestre le domaine derrière le port repository.
 
-Gabarit de use case : il ne connaît ni HTTP, ni SQL, ni la file d'écriture. Il reçoit un
-`TournoiRepository` (port) par **injection** depuis la composition root. Les écritures
-sont sérialisées en amont (file d'écriture, côté API) ; ce service reste synchrone et pur
-d'infrastructure.
+Use cases de configuration d'un tournoi (E01US001) : créer, consulter, lister. Il ne
+connaît ni HTTP, ni SQL, ni la file d'écriture (sérialisation assurée en amont, côté API) ;
+il reste synchrone et pur d'infrastructure.
 """
 
 from __future__ import annotations
 
+import datetime
+
 from application.erreurs import TournoiIntrouvable
 from domain.ports import TournoiRepository
-from domain.tournoi import Tournoi, TournoiId
+from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 
 
 class ServiceTournois:
-    """Cas d'usage des tournois : créer, consulter."""
+    """Cas d'usage des tournois : créer, consulter, lister."""
 
     def __init__(self, repository: TournoiRepository) -> None:
         self._repository = repository
 
-    def creer(self, nom: str) -> Tournoi:
-        """Crée et persiste un tournoi. Lève `DomainError` si le nom est invalide."""
-        tournoi = Tournoi.creer(nom)
+    def creer(
+        self,
+        nom: str,
+        date: datetime.date,
+        lieu: str | None = None,
+        type_tournoi: TypeTournoi = TypeTournoi.NON_OFFICIEL,
+    ) -> Tournoi:
+        """Crée et persiste un tournoi. Lève `DomainError` si les champs sont invalides."""
+        tournoi = Tournoi.creer(nom, date, lieu, type_tournoi)
         return self._repository.ajouter(tournoi)
 
     def consulter(self, tournoi_id: TournoiId) -> Tournoi:
@@ -30,3 +37,7 @@ class ServiceTournois:
         if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         return tournoi
+
+    def lister(self) -> list[Tournoi]:
+        """Renvoie tous les tournois (liste éventuellement vide)."""
+        return self._repository.lister()

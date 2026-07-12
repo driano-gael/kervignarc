@@ -1,38 +1,46 @@
-// Écran de la tranche verticale démontrable (E00US011).
+// Écran de la tranche verticale démontrable (E00US011) + création de tournoi (E01US001).
 //
-// Fil rouge du walking skeleton, de bout en bout : créer un tournoi → inscrire un archer →
-// le placer sur une cible → saisir un score → voir le classement se mettre à jour **en live**.
-// Volontairement minimal et jetable/évolutif : les vrais écrans (placement, saisie tactile,
-// écran projeté) viendront comme features dédiées.
+// Fil rouge : créer/choisir un tournoi (nom, date, lieu, type officiel/non) → inscrire un
+// archer → le placer sur une cible → saisir un score → voir le classement se mettre à jour
+// **en live**. Volontairement minimal et jetable/évolutif : les vrais écrans d'administration
+// (liste/édition, placement, saisie tactile, écran projeté) viendront comme features dédiées.
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
+import type { Tournoi, TypeTournoi } from './api'
 import { TableClassement } from './TableClassement'
-import { useAjouterArcher, useClassement, useCreerTournoi } from './hooks'
+import { useAjouterArcher, useClassement, useCreerTournoi, useTournois } from './hooks'
 
 export function TrancheVerticale() {
-  const [tournoi, setTournoi] = useState<{ id: number; nom: string } | null>(null)
+  const [tournoi, setTournoi] = useState<Tournoi | null>(null)
 
   if (tournoi === null) {
-    return <CreationTournoi onCree={setTournoi} />
+    return <CreationTournoi onChoisi={setTournoi} />
   }
   return <Competition tournoiId={tournoi.id} nom={tournoi.nom} />
 }
 
-function CreationTournoi({ onCree }: { onCree: (t: { id: number; nom: string }) => void }) {
+function CreationTournoi({ onChoisi }: { onChoisi: (t: Tournoi) => void }) {
   const [nom, setNom] = useState('')
+  const [date, setDate] = useState('')
+  const [lieu, setLieu] = useState('')
+  const [type, setType] = useState<TypeTournoi>('non_officiel')
   const creer = useCreerTournoi()
+  const tournois = useTournois()
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
-    if (nom.trim() === '') return
-    creer.mutate(nom, { onSuccess: onCree })
+    if (nom.trim() === '' || date === '') return
+    creer.mutate(
+      { nom, date, lieu: lieu.trim() || null, type_tournoi: type },
+      { onSuccess: onChoisi },
+    )
   }
 
   return (
-    <section className="carte">
+    <section className="carte carte--large">
       <h2 className="carte__titre">Nouveau tournoi</h2>
-      <form className="formulaire" onSubmit={soumettre}>
+      <form className="formulaire formulaire--colonne" onSubmit={soumettre}>
         <input
           className="formulaire__champ"
           value={nom}
@@ -40,11 +48,50 @@ function CreationTournoi({ onCree }: { onCree: (t: { id: number; nom: string }) 
           placeholder="Nom du tournoi"
           aria-label="Nom du tournoi"
         />
-        <button type="submit" disabled={creer.isPending || nom.trim() === ''}>
+        <input
+          className="formulaire__champ"
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          aria-label="Date du tournoi"
+        />
+        <input
+          className="formulaire__champ"
+          value={lieu}
+          onChange={(e) => setLieu(e.target.value)}
+          placeholder="Lieu (facultatif)"
+          aria-label="Lieu du tournoi"
+        />
+        <select
+          className="formulaire__champ"
+          value={type}
+          onChange={(e) => setType(e.target.value as TypeTournoi)}
+          aria-label="Type de tournoi"
+        >
+          <option value="non_officiel">Non officiel</option>
+          <option value="officiel">Officiel</option>
+        </select>
+        <button type="submit" disabled={creer.isPending || nom.trim() === '' || date === ''}>
           Créer
         </button>
       </form>
       <MessageErreur erreur={creer.error} />
+
+      {tournois.data && tournois.data.length > 0 && (
+        <>
+          <h3 className="carte__soustitre">Tournois existants</h3>
+          <ul className="liste-tournois">
+            {tournois.data.map((t) => (
+              <li key={t.id}>
+                <button type="button" className="lien" onClick={() => onChoisi(t)}>
+                  {t.nom} — {t.date}
+                  {t.lieu ? ` · ${t.lieu}` : ''} · {t.type_tournoi.replace('_', ' ')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   )
 }

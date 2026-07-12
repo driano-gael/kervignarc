@@ -7,9 +7,17 @@
 // même si le lien temps réel est momentanément coupé.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ajouterArcher, creerTournoi, getClassement, placerArcher, saisirScore } from './api'
+import {
+  ajouterArcher,
+  creerTournoi,
+  getClassement,
+  getTournois,
+  placerArcher,
+  saisirScore,
+} from './api'
 
 const cleClassement = (tournoiId: number) => ['classement', tournoiId] as const
+const CLE_TOURNOIS = ['tournois'] as const
 
 export function useClassement(tournoiId: number) {
   return useQuery({
@@ -18,8 +26,16 @@ export function useClassement(tournoiId: number) {
   })
 }
 
+export function useTournois() {
+  return useQuery({ queryKey: CLE_TOURNOIS, queryFn: getTournois })
+}
+
 export function useCreerTournoi() {
-  return useMutation({ mutationFn: (nom: string) => creerTournoi(nom) })
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: creerTournoi,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CLE_TOURNOIS }),
+  })
 }
 
 export function useAjouterArcher(tournoiId: number) {

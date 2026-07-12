@@ -6,6 +6,8 @@ ports) suffisent — ni base ni serveur.
 
 from __future__ import annotations
 
+import datetime
+
 import pytest
 
 from application.archers import ServiceArchers
@@ -15,6 +17,8 @@ from domain.archer import Archer, ArcherId
 from domain.erreurs import CibleInvalide, NomArcherInvalide, ScoreInvalide
 from domain.score import Score
 from domain.tournoi import Tournoi, TournoiId
+
+_DATE = datetime.date(2026, 3, 14)
 
 
 class FauxTournoiRepository:
@@ -26,12 +30,21 @@ class FauxTournoiRepository:
 
     def ajouter(self, tournoi: Tournoi) -> Tournoi:
         self._sequence += 1
-        persiste = Tournoi(nom=tournoi.nom, id=self._sequence)
+        persiste = Tournoi(
+            nom=tournoi.nom,
+            date=tournoi.date,
+            lieu=tournoi.lieu,
+            type_tournoi=tournoi.type_tournoi,
+            id=self._sequence,
+        )
         self._tournois[self._sequence] = persiste
         return persiste
 
     def par_id(self, tournoi_id: TournoiId) -> Tournoi | None:
         return self._tournois.get(tournoi_id)
+
+    def lister(self) -> list[Tournoi]:
+        return list(self._tournois.values())
 
 
 class FauxArcherRepository:
@@ -84,7 +97,7 @@ def _monter() -> tuple[ServiceArchers, ServiceClassement, TournoiId]:
     tournois = FauxTournoiRepository()
     archers = FauxArcherRepository()
     scores = FauxScoreRepository(archers)
-    tournoi = tournois.ajouter(Tournoi.creer("Salle 18m"))
+    tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
     assert tournoi.id is not None
     return (
         ServiceArchers(tournois, archers, scores),
