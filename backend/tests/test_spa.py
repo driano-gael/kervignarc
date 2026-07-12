@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api.spa import frontend_dist_dir
@@ -59,8 +60,9 @@ def test_pas_de_build_rien_n_est_monte(tmp_path: Path) -> None:
         app.state.database.engine.dispose()
 
 
-def test_repertoire_dist_par_defaut_pointe_vers_le_front() -> None:
-    """Le répertoire par défaut est `frontend/dist` à la racine du dépôt."""
+def test_repertoire_dist_par_defaut_pointe_vers_le_front(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Le répertoire par défaut (sans surcharge d'env) est `frontend/dist` à la racine."""
+    monkeypatch.delenv("KERVIGNARC_FRONTEND_DIST", raising=False)
     chemin = frontend_dist_dir()
     assert chemin.name == "dist"
     assert chemin.parent.name == "frontend"

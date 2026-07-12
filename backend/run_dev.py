@@ -39,7 +39,13 @@ def construire_front() -> None:
             "ou relancer avec --no-build pour reutiliser un build existant."
         )
     print("-> Build du front (npm run build)...")
-    subprocess.run([npm, "run", "build"], cwd=_FRONTEND_ROOT, check=True)
+    try:
+        subprocess.run([npm, "run", "build"], cwd=_FRONTEND_ROOT, check=True)
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit(
+            "Build du front en échec (voir la sortie npm ci-dessus). "
+            "Corriger le front, ou relancer avec --no-build pour réutiliser un build existant."
+        ) from exc
 
 
 def migrer() -> None:
