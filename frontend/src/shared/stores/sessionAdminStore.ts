@@ -8,7 +8,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { enregistrerJetonAdmin } from '../api/client'
+import { enregistrerJetonAdmin, enregistrerSurNonAutorise } from '../api/client'
 
 interface SessionAdminState {
   jeton: string | null
@@ -29,3 +29,7 @@ export const useSessionAdminStore = create<SessionAdminState>()(
 
 // Le client HTTP lit le jeton courant à chaque requête (Authorization: Bearer <jeton>).
 enregistrerJetonAdmin(() => useSessionAdminStore.getState().jeton)
+
+// Un 401 (session expirée/invalide, ex. serveur redémarré) purge la session : l'UI repasse
+// automatiquement sur l'écran de connexion.
+enregistrerSurNonAutorise(() => useSessionAdminStore.getState().effacer())

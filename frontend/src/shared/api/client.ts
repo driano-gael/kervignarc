@@ -34,6 +34,15 @@ export function enregistrerJetonAdmin(fournisseur: () => string | null): void {
   lireJetonAdmin = fournisseur
 }
 
+// Réaction centralisée à un 401 (session absente/expirée) : le store de session s'y branche
+// pour se purger, ce qui ramène l'UI à l'écran de connexion. Évite de recâbler ce cas sur
+// chaque mutation admin (E10US001 : plusieurs écritures protégées).
+let surNonAutorise: () => void = () => {}
+
+export function enregistrerSurNonAutorise(rappel: () => void): void {
+  surNonAutorise = rappel
+}
+
 export async function fetchJson<T>(chemin: string, options?: RequestInit): Promise<T> {
   const jeton = lireJetonAdmin()
   const enteteAuth: Record<string, string> = jeton ? { Authorization: `Bearer ${jeton}` } : {}
@@ -43,6 +52,9 @@ export async function fetchJson<T>(chemin: string, options?: RequestInit): Promi
   })
 
   if (!reponse.ok) {
+    // 401 alors qu'un jeton était joint → session expirée/invalide : on purge. Un 401 sans jeton
+    // (ex. login refusé) n'est pas une expiration de session : on n'y touche pas.
+    if (reponse.status === 401 && jeton) surNonAutorise()
     const corps = (await reponse.json().catch(() => null)) as CorpsErreur | null
     throw new ErreurApi(
       reponse.status,
