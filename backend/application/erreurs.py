@@ -21,3 +21,9 @@ class TournoiIntrouvable(ApplicationError):
     """Aucun tournoi ne correspond à l'identifiant demandé."""
 
     code = "tournoi_introuvable"
+
+
+class ArcherIntrouvable(ApplicationError):
+    """Aucun archer ne correspond à l'identifiant demandé."""
+
+    code = "archer_introuvable"

@@ -17,9 +17,19 @@ from fastapi import FastAPI
 from api.erreurs import enregistrer_gestionnaires_erreurs
 from api.health import router as health_router
 from api.realtime import router as realtime_router
+from api.v1.competition import router as competition_router
 from api.v1.tournois import router as tournois_router
+from application.archers import ServiceArchers
+from application.classements import ServiceClassement
 from application.tournois import ServiceTournois
-from infrastructure.db import Database, TournoiRepositorySQL, WriteQueue, default_database_url
+from infrastructure.db import (
+    ArcherRepositorySQL,
+    Database,
+    ScoreRepositorySQL,
+    TournoiRepositorySQL,
+    WriteQueue,
+    default_database_url,
+)
 from infrastructure.realtime import Broadcaster, LiveEvent
 
 
@@ -42,11 +52,18 @@ def create_app(database_url: str | None = None) -> FastAPI:
     # renvoyé par une commande d'écriture réussie (point de passage unique, ADR-0005).
     broadcaster = Broadcaster()
 
-    def _broadcast_if_event(result: object) -> None:
+    def _diffuser_apres_ecriture(result: object) -> None:
+        # Walking skeleton (E00US011) : diffusion à **gros grain**. Une commande peut
+        # renvoyer un LiveEvent typé (diffusé tel quel) ; à défaut, toute écriture réussie
+        # émet un événement générique « données modifiées » invitant les clients à se
+        # resynchroniser (le front invalide alors ses requêtes React Query). Les US métier
+        # affineront en événements ciblés par sujet/tournoi (CDC §6.2).
         if isinstance(result, LiveEvent):
             broadcaster.publish(result)
+        else:
+            broadcaster.publish(LiveEvent("donnees_modifiees"))
 
-    write_queue.add_post_commit_listener(_broadcast_if_event)
+    write_queue.add_post_commit_listener(_diffuser_apres_ecriture)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -68,7 +85,15 @@ def create_app(database_url: str | None = None) -> FastAPI:
     # Le repository lit via les sessions courtes du Database ; les écritures du service passent
     # par la file d'écriture (routage assuré côté router API).
     tournoi_repository = TournoiRepositorySQL(database.session_factory)
+    archer_repository = ArcherRepositorySQL(database.session_factory)
+    score_repository = ScoreRepositorySQL(database.session_factory)
     app.state.service_tournois = ServiceTournois(tournoi_repository)
+    app.state.service_archers = ServiceArchers(
+        tournoi_repository, archer_repository, score_repository
+    )
+    app.state.service_classement = ServiceClassement(
+        tournoi_repository, archer_repository, score_repository
+    )
 
     # --- Frontière API : traduction des erreurs typées en réponses HTTP (ADR-0007). ---
     enregistrer_gestionnaires_erreurs(app)
@@ -77,5 +102,6 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.include_router(health_router)
     app.include_router(realtime_router)
     app.include_router(tournois_router)
+    app.include_router(competition_router)
 
     return app

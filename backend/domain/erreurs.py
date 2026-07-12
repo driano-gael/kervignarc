@@ -21,3 +21,21 @@ class NomTournoiInvalide(DomainError):
     """Le nom d'un tournoi est vide (après normalisation)."""
 
     code = "nom_tournoi_invalide"
+
+
+class NomArcherInvalide(DomainError):
+    """Le nom d'un archer est vide (après normalisation)."""
+
+    code = "nom_archer_invalide"
+
+
+class CibleInvalide(DomainError):
+    """Le numéro de cible d'un placement n'est pas un entier strictement positif."""
+
+    code = "cible_invalide"
+
+
+class ScoreInvalide(DomainError):
+    """La valeur d'un score sort de la plage autorisée pour une flèche (0 à 10)."""
+
+    code = "score_invalide"

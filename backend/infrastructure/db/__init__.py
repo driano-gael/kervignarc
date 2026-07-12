@@ -9,8 +9,12 @@ première implémentation (E00US009).
 from infrastructure.db.base import Base
 from infrastructure.db.config import DEFAULT_DATABASE_URL, default_database_url
 from infrastructure.db.engine import Database, create_database_engine
-from infrastructure.db.models import TournoiORM
-from infrastructure.db.repositories import TournoiRepositorySQL
+from infrastructure.db.models import ArcherORM, ScoreORM, TournoiORM
+from infrastructure.db.repositories import (
+    ArcherRepositorySQL,
+    ScoreRepositorySQL,
+    TournoiRepositorySQL,
+)
 from infrastructure.db.write_queue import (
     PostCommitListener,
     WriteCommand,
@@ -20,9 +24,13 @@ from infrastructure.db.write_queue import (
 
 __all__ = [
     "DEFAULT_DATABASE_URL",
+    "ArcherORM",
+    "ArcherRepositorySQL",
     "Base",
     "Database",
     "PostCommitListener",
+    "ScoreORM",
+    "ScoreRepositorySQL",
     "TournoiORM",
     "TournoiRepositorySQL",
     "WriteCommand",
