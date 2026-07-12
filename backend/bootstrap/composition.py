@@ -11,12 +11,14 @@ global, pas de magie DI) ; les erreurs typées sont traduites à la frontière A
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 
 from api.erreurs import enregistrer_gestionnaires_erreurs
 from api.health import router as health_router
 from api.realtime import router as realtime_router
+from api.spa import frontend_dist_dir, monter_spa
 from api.v1.competition import router as competition_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
@@ -33,11 +35,13 @@ from infrastructure.db import (
 from infrastructure.realtime import Broadcaster, LiveEvent
 
 
-def create_app(database_url: str | None = None) -> FastAPI:
+def create_app(database_url: str | None = None, *, frontend_dist: Path | None = None) -> FastAPI:
     """Assemble et renvoie l'application FastAPI entièrement câblée.
 
     `database_url` : surcharge l'URL de la base (tests) ; sinon configuration applicative
     (variable d'environnement KERVIGNARC_DATABASE_URL, sinon défaut local).
+    `frontend_dist` : surcharge le répertoire du build front à servir (tests) ; sinon
+    résolu par défaut (`frontend/dist/`). Non monté s'il n'existe pas (E00US012).
     """
     # --- Adapters sortants (infrastructure) : connexion SQLite WAL (E00US006). ---
     # Les repositories (E00US009) consommeront ce Database pour leurs lectures.
@@ -103,5 +107,11 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.include_router(realtime_router)
     app.include_router(tournois_router)
     app.include_router(competition_router)
+
+    # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement
+    # s'il existe, pour ne jamais masquer les routes API/WS/health ci-dessus. ---
+    dist = frontend_dist if frontend_dist is not None else frontend_dist_dir()
+    if dist.is_dir():
+        monter_spa(app, dist)
 
     return app

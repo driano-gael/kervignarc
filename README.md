@@ -69,6 +69,21 @@ npm run format       # Prettier (écriture) — format:check pour vérifier seul
 npm run typecheck    # TypeScript strict (tsc -b)
 ```
 
+## Démarrage — application complète (exécutable de dev)
+
+Pour lancer **tout en une commande** (build du front → migrations → serveur unique servant
+l'API, le WebSocket **et** la SPA au même origin, sur un **port fixe**) :
+
+```bash
+cd backend
+python run_dev.py            # build front + migrations + http://127.0.0.1:8000
+python run_dev.py --no-build # réutilise un build existant (frontend/dist/)
+```
+
+C'est le mode « proche production » (plus de proxy Vite) et la **base du packaging**
+PyInstaller à venir (EPIC-11). Pour le développement UI au quotidien, préférer les deux
+serveurs séparés (`uvicorn --reload` + `npm run dev`) ci-dessus, qui offrent le rechargement à chaud.
+
 ## Qualité & pre-commit
 
 La qualité est **automatisée et bloquante** (cf. [`guide-architecture.md`](guide-architecture.md) §5) :
