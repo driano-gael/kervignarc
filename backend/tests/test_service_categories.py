@@ -121,6 +121,44 @@ def test_lister_ne_renvoie_que_les_categories_du_tournoi() -> None:
         service.lister(404)
 
 
+def test_precharger_ffta_cree_le_jeu_officiel() -> None:
+    """`precharger_ffta` crée les 32 catégories FFTA, rattachées au tournoi."""
+    service, tournoi_id = _service_avec_tournoi()
+    creees = service.precharger_ffta(tournoi_id)
+    assert len(creees) == 32
+    assert all(c.id is not None and c.tournoi_id == tournoi_id for c in creees)
+    assert [c.libelle for c in service.lister(tournoi_id)] == [c.libelle for c in creees]
+
+
+def test_precharger_ffta_ignore_les_doublons() -> None:
+    """Rejouable : un second pré-chargement ne recrée rien ; un libellé déjà présent est ignoré."""
+    service, tournoi_id = _service_avec_tournoi()
+    service.creer(tournoi_id, "Arc Classique U11 Homme")  # collision de libellé (casse identique)
+    premier = service.precharger_ffta(tournoi_id)
+    assert len(premier) == 31  # la catégorie déjà saisie est ignorée
+    assert service.precharger_ffta(tournoi_id) == []  # tout est déjà présent
+    assert len(service.lister(tournoi_id)) == 32
+
+
+def test_precharger_ffta_leve_si_tournoi_introuvable() -> None:
+    """Pré-charger dans un tournoi inconnu lève `TournoiIntrouvable` (rien créé)."""
+    service = ServiceCategories(FauxTournoiRepository(), FauxCategorieRepository())
+    with pytest.raises(TournoiIntrouvable):
+        service.precharger_ffta(404)
+
+
+def test_precharger_ffta_categories_modifiables_et_supprimables() -> None:
+    """CA : une catégorie pré-chargée reste éditable et supprimable comme les autres."""
+    service, tournoi_id = _service_avec_tournoi()
+    creees = service.precharger_ffta(tournoi_id)
+    premiere, deuxieme = creees[0], creees[1]
+    assert premiere.id is not None and deuxieme.id is not None
+    modifiee = service.modifier(premiere.id, "Libellé personnalisé")
+    assert modifiee.libelle == "Libellé personnalisé"
+    service.supprimer(deuxieme.id)
+    assert len(service.lister(tournoi_id)) == 31
+
+
 def test_modifier_persiste_les_attributs() -> None:
     """`modifier` met à jour la catégorie et conserve son identifiant."""
     service, tournoi_id = _service_avec_tournoi()

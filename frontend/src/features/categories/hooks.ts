@@ -11,6 +11,7 @@ import {
   type ModifierCategorie,
   modifierCategorie,
   type NouvelleCategorie,
+  prechargerCategoriesFFTA,
   supprimerCategorie,
 } from './api'
 
@@ -44,6 +45,14 @@ export function useSupprimerCategorie(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => supprimerCategorie(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: cleCategories(tournoiId) }),
+  })
+}
+
+export function usePrechargerCategoriesFFTA(tournoiId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => prechargerCategoriesFFTA(tournoiId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: cleCategories(tournoiId) }),
   })
 }

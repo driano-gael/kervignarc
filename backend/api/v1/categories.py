@@ -78,6 +78,27 @@ async def lister_categories(tournoi_id: int, request: Request) -> list[Categorie
 
 
 @router.post(
+    "/tournois/{tournoi_id}/categories/precharger-ffta",
+    status_code=201,
+    response_model=list[CategorieReponse],
+    dependencies=[Depends(exiger_admin)],
+)
+async def precharger_categories_ffta(tournoi_id: int, request: Request) -> list[CategorieReponse]:
+    """Pré-charge les catégories FFTA salle (18 m) dans un tournoi (**action admin**, E01US004).
+
+    Une seule écriture via la file (ADR-0005) crée l'ensemble du jeu. Idempotent sur le libellé
+    (les catégories déjà présentes sont ignorées). Renvoie les catégories **créées** (celles
+    ignorées ne sont pas renvoyées) ; les catégories créées restent modifiables/supprimables.
+    """
+    service: ServiceCategories = request.app.state.service_categories
+    write_queue: WriteQueue = request.app.state.write_queue
+    creees = await asyncio.wrap_future(
+        write_queue.submit(lambda: service.precharger_ffta(tournoi_id))
+    )
+    return [CategorieReponse.de_agregat(categorie) for categorie in creees]
+
+
+@router.post(
     "/tournois/{tournoi_id}/categories",
     status_code=201,
     response_model=CategorieReponse,

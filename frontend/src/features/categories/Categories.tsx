@@ -1,8 +1,10 @@
 // Gestion des catégories d'un tournoi (E01US003) — réservée à l'admin (montée sous `estAdmin`).
 //
 // Liste + création + édition des métadonnées (libellé, arme, tranche d'âge, sexe) + suppression
-// à confirmation. L'arme et la tranche d'âge sont en **texte libre** (les presets FFTA officiels
-// viendront en E01US004) ; le sexe est un choix facultatif (Homme / Femme / Mixte).
+// à confirmation. L'arme et la tranche d'âge sont en **texte libre** ; le sexe est un choix
+// facultatif (Homme / Femme / Mixte). Un bouton **pré-charge le jeu de catégories FFTA salle
+// (18 m)** officiel (E01US004) : les catégories ainsi ajoutées sont ordinaires (modifiables et
+// supprimables comme les autres).
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
@@ -11,6 +13,7 @@ import {
   useCategories,
   useCreerCategorie,
   useModifierCategorie,
+  usePrechargerCategoriesFFTA,
   useSupprimerCategorie,
 } from './hooks'
 
@@ -32,6 +35,7 @@ export function Categories({ tournoiId }: { tournoiId: number }) {
   return (
     <section>
       <h3 className="carte__soustitre">Catégories</h3>
+      <PrechargementFFTA tournoiId={tournoiId} />
       <FormulaireCategorie tournoiId={tournoiId} />
       {categories.isError && <MessageErreur erreur={categories.error} />}
       {categories.data && categories.data.length > 0 && (
@@ -43,6 +47,38 @@ export function Categories({ tournoiId }: { tournoiId: number }) {
       )}
     </section>
   )
+}
+
+// Pré-chargement du jeu FFTA salle (18 m) : un clic ajoute les catégories officielles absentes.
+// L'action est rejouable sans doublon (le serveur ignore les libellés déjà présents) ; on annonce
+// le nombre réellement ajouté.
+function PrechargementFFTA({ tournoiId }: { tournoiId: number }) {
+  const precharger = usePrechargerCategoriesFFTA(tournoiId)
+
+  return (
+    <div className="prechargement-ffta">
+      <button
+        type="button"
+        className="bouton--discret"
+        disabled={precharger.isPending}
+        onClick={() => precharger.mutate()}
+      >
+        {precharger.isPending ? 'Pré-chargement…' : 'Pré-charger les catégories FFTA salle (18 m)'}
+      </button>
+      {precharger.isSuccess && (
+        <p className="carte__etat" role="status">
+          {messageResultatFFTA(precharger.data.length)}
+        </p>
+      )}
+      <MessageErreur erreur={precharger.error} />
+    </div>
+  )
+}
+
+function messageResultatFFTA(nombreAjoutees: number): string {
+  if (nombreAjoutees === 0) return 'Les catégories FFTA sont déjà présentes.'
+  if (nombreAjoutees === 1) return '1 catégorie FFTA ajoutée.'
+  return `${nombreAjoutees} catégories FFTA ajoutées.`
 }
 
 function LigneCategorie({ tournoiId, categorie }: { tournoiId: number; categorie: Categorie }) {

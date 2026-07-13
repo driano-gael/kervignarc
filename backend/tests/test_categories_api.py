@@ -142,6 +142,73 @@ def test_supprimer_une_categorie(app_categories: FastAPI, connecter_admin: Conne
         assert client.get(f"/api/v1/tournois/{tournoi_id}/categories").json() == []
 
 
+def test_precharger_ffta_puis_lister(
+    app_categories: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """POST precharger-ffta crée le jeu officiel (201) ; GET liste les 32 catégories."""
+    with TestClient(app_categories) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        reponse = client.post(f"/api/v1/tournois/{tournoi_id}/categories/precharger-ffta")
+        assert reponse.status_code == 201, reponse.text
+        creees = reponse.json()
+        assert len(creees) == 32
+        assert all(c["tournoi_id"] == tournoi_id for c in creees)
+        assert "Arc Classique U11 Homme" in {c["libelle"] for c in creees}
+        liste = client.get(f"/api/v1/tournois/{tournoi_id}/categories").json()
+        assert len(liste) == 32
+
+
+def test_precharger_ffta_idempotent(
+    app_categories: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un second pré-chargement ne recrée rien (201, liste vide) ; le total reste 32."""
+    with TestClient(app_categories) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        client.post(f"/api/v1/tournois/{tournoi_id}/categories/precharger-ffta")
+        rejeu = client.post(f"/api/v1/tournois/{tournoi_id}/categories/precharger-ffta")
+        assert rejeu.status_code == 201
+        assert rejeu.json() == []
+        assert len(client.get(f"/api/v1/tournois/{tournoi_id}/categories").json()) == 32
+
+
+def test_precharger_ffta_categorie_modifiable_et_supprimable(
+    app_categories: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """CA : une catégorie pré-chargée est éditable (PUT) et supprimable (DELETE)."""
+    with TestClient(app_categories) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        creees = client.post(f"/api/v1/tournois/{tournoi_id}/categories/precharger-ffta").json()
+        modif = client.put(
+            f"/api/v1/categories/{creees[0]['id']}", json={"libelle": "Ma catégorie"}
+        )
+        assert modif.status_code == 200
+        assert modif.json()["libelle"] == "Ma catégorie"
+        assert client.delete(f"/api/v1/categories/{creees[1]['id']}").status_code == 204
+        assert len(client.get(f"/api/v1/tournois/{tournoi_id}/categories").json()) == 31
+
+
+def test_precharger_ffta_sans_jeton_401(app_categories: FastAPI) -> None:
+    """Le pré-chargement est une action admin : refusé sans session (401)."""
+    with TestClient(app_categories) as client:
+        reponse = client.post("/api/v1/tournois/1/categories/precharger-ffta")
+    assert reponse.status_code == 401
+    assert reponse.json()["code"] == "non_authentifie"
+
+
+def test_precharger_ffta_tournoi_introuvable(
+    app_categories: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Pré-charger dans un tournoi inconnu → 404 typé."""
+    with TestClient(app_categories) as client:
+        connecter_admin(client)
+        reponse = client.post("/api/v1/tournois/999/categories/precharger-ffta")
+    assert reponse.status_code == 404
+    assert reponse.json()["code"] == "tournoi_introuvable"
+
+
 def test_creer_dans_tournoi_introuvable(
     app_categories: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
