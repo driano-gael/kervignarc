@@ -10,10 +10,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ajouterArcher,
   creerTournoi,
+  demarrerTournoi,
   getClassement,
   getTournois,
+  type ModifierTournoi,
+  modifierTournoi,
   placerArcher,
   saisirScore,
+  supprimerTournoi,
+  terminerTournoi,
 } from './api'
 
 const cleClassement = (tournoiId: number) => ['classement', tournoiId] as const
@@ -34,6 +39,41 @@ export function useCreerTournoi() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: creerTournoi,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CLE_TOURNOIS }),
+  })
+}
+
+// Édition et cycle de vie (E01US002). Chaque mutation invalide la liste des tournois : la
+// vue se resynchronise (statut, métadonnées, disparition d'un tournoi supprimé).
+export function useModifierTournoi() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, entree }: { id: number; entree: ModifierTournoi }) =>
+      modifierTournoi(id, entree),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CLE_TOURNOIS }),
+  })
+}
+
+export function useDemarrerTournoi() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => demarrerTournoi(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CLE_TOURNOIS }),
+  })
+}
+
+export function useTerminerTournoi() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => terminerTournoi(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CLE_TOURNOIS }),
+  })
+}
+
+export function useSupprimerTournoi() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => supprimerTournoi(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CLE_TOURNOIS }),
   })
 }

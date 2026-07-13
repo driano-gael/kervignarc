@@ -6,12 +6,16 @@ import { fetchJson } from '../../shared/api/client'
 
 export type TypeTournoi = 'officiel' | 'non_officiel'
 
+// Cycle de vie d'un tournoi (E01US002) : brouillon → en cours → terminé.
+export type StatutTournoi = 'brouillon' | 'en_cours' | 'termine'
+
 export interface Tournoi {
   id: number
   nom: string
   date: string // ISO (AAAA-MM-JJ)
   lieu: string | null
   type_tournoi: TypeTournoi
+  statut: StatutTournoi
 }
 
 export interface NouveauTournoi {
@@ -20,6 +24,9 @@ export interface NouveauTournoi {
   lieu?: string | null
   type_tournoi?: TypeTournoi
 }
+
+// L'édition porte sur les métadonnées uniquement ; le statut évolue via démarrer/terminer.
+export type ModifierTournoi = NouveauTournoi
 
 export interface Archer {
   id: number
@@ -56,6 +63,25 @@ export function creerTournoi(entree: NouveauTournoi): Promise<Tournoi> {
 
 export function getTournois(): Promise<Tournoi[]> {
   return fetchJson<Tournoi[]>('/api/v1/tournois')
+}
+
+export function modifierTournoi(id: number, entree: ModifierTournoi): Promise<Tournoi> {
+  return fetchJson<Tournoi>(`/api/v1/tournois/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(entree),
+  })
+}
+
+export function demarrerTournoi(id: number): Promise<Tournoi> {
+  return fetchJson<Tournoi>(`/api/v1/tournois/${id}/demarrer`, { method: 'POST' })
+}
+
+export function terminerTournoi(id: number): Promise<Tournoi> {
+  return fetchJson<Tournoi>(`/api/v1/tournois/${id}/terminer`, { method: 'POST' })
+}
+
+export function supprimerTournoi(id: number): Promise<void> {
+  return fetchJson<void>(`/api/v1/tournois/${id}`, { method: 'DELETE' })
 }
 
 export function ajouterArcher(tournoiId: number, nom: string): Promise<Archer> {

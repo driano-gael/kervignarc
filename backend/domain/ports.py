@@ -33,6 +33,14 @@ class TournoiRepository(Protocol):
         """
         ...
 
+    def enregistrer(self, tournoi: Tournoi) -> Tournoi:
+        """Met à jour un tournoi déjà persisté (édition, transition de statut) et le renvoie."""
+        ...
+
+    def supprimer(self, tournoi_id: TournoiId) -> None:
+        """Supprime le tournoi d'identifiant donné (existence garantie par l'appelant)."""
+        ...
+
 
 class ArcherRepository(Protocol):
     """Port de persistance des archers (adapter fourni par l'infrastructure)."""

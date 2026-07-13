@@ -164,6 +164,74 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Variantes de boutons : secondaire (discret) et destructif (suppression). */
+.bouton--discret {
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.bouton--danger {
+  background: var(--danger);
+}
+
+.formulaire__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Gestion des tournois (E01US002) : ligne = ouverture + statut + actions admin. */
+.tournoi {
+  padding: 4px 0;
+}
+
+.tournoi__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tournoi__ligne .lien {
+  flex: 1 1 auto;
+}
+
+.tournoi__actions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.tournoi__actions button {
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
+.cycle-de-vie {
+  margin: 8px 0 4px;
+}
+
+/* Pastille de statut du cycle de vie. */
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+
+.badge--brouillon {
+  color: var(--text);
+}
+
+.badge--en-cours {
+  color: var(--warn);
+}
+
+.badge--termine {
+  color: var(--ok);
+}
+
 /* Tableau de classement. */
 .table {
   width: 100%;

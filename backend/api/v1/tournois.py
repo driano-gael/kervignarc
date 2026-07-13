@@ -1,9 +1,13 @@
-"""Endpoints REST des tournois (`/api/v1/tournois`) — créer, consulter, lister (E01US001).
+"""Endpoints REST des tournois (`/api/v1/tournois`).
+
+- créer, consulter, lister (E01US001) ;
+- éditer, démarrer, terminer, supprimer (E01US002).
 
 Suit le patron de bout en bout (E00US009) :
 - **DTO Pydantic** distincts des agrégats de domaine (aucune entité domaine exposée) ;
 - **écriture** routée par la **file d'écriture** (writer unique, ADR-0005), attendue via
-  `asyncio.wrap_future` sans bloquer la boucle ;
+  `asyncio.wrap_future` sans bloquer la boucle ; toute écriture exige une session admin
+  (`exiger_admin`, E10US001/E10US002) ;
 - **lecture** directe exécutée **hors boucle** (threadpool) ;
 - **erreurs typées** traduites à la frontière (`api/erreurs.py`).
 """
@@ -13,13 +17,13 @@ from __future__ import annotations
 import asyncio
 import datetime
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.tournois import ServiceTournois
-from domain.tournoi import Tournoi, TypeTournoi
+from domain.tournoi import StatutTournoi, Tournoi, TypeTournoi
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1/tournois", tags=["tournois"])
@@ -27,6 +31,15 @@ router = APIRouter(prefix="/api/v1/tournois", tags=["tournois"])
 
 class CreerTournoiRequete(BaseModel):
     """Corps de création d'un tournoi (nom et date requis ; lieu et type facultatifs)."""
+
+    nom: str
+    date: datetime.date
+    lieu: str | None = None
+    type_tournoi: TypeTournoi = TypeTournoi.NON_OFFICIEL
+
+
+class ModifierTournoiRequete(BaseModel):
+    """Corps d'édition des métadonnées d'un tournoi (le statut n'est pas modifiable ici)."""
 
     nom: str
     date: datetime.date
@@ -42,6 +55,7 @@ class TournoiReponse(BaseModel):
     date: datetime.date
     lieu: str | None
     type_tournoi: TypeTournoi
+    statut: StatutTournoi
 
     @staticmethod
     def de_agregat(tournoi: Tournoi) -> TournoiReponse:
@@ -53,6 +67,7 @@ class TournoiReponse(BaseModel):
             date=tournoi.date,
             lieu=tournoi.lieu,
             type_tournoi=tournoi.type_tournoi,
+            statut=tournoi.statut,
         )
 
 
@@ -88,3 +103,66 @@ async def consulter_tournoi(tournoi_id: int, request: Request) -> TournoiReponse
     service: ServiceTournois = request.app.state.service_tournois
     tournoi = await run_in_threadpool(service.consulter, tournoi_id)
     return TournoiReponse.de_agregat(tournoi)
+
+
+@router.put(
+    "/{tournoi_id}",
+    response_model=TournoiReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def modifier_tournoi(
+    tournoi_id: int, requete: ModifierTournoiRequete, request: Request
+) -> TournoiReponse:
+    """Édite les métadonnées d'un tournoi (**action admin**) : écriture via la file (ADR-0005)."""
+    service: ServiceTournois = request.app.state.service_tournois
+    write_queue: WriteQueue = request.app.state.write_queue
+    tournoi = await asyncio.wrap_future(
+        write_queue.submit(
+            lambda: service.modifier(
+                tournoi_id, requete.nom, requete.date, requete.lieu, requete.type_tournoi
+            )
+        )
+    )
+    return TournoiReponse.de_agregat(tournoi)
+
+
+@router.post(
+    "/{tournoi_id}/demarrer",
+    response_model=TournoiReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def demarrer_tournoi(tournoi_id: int, request: Request) -> TournoiReponse:
+    """Démarre un tournoi (`brouillon` → `en_cours`, **action admin**) : écriture via la file."""
+    service: ServiceTournois = request.app.state.service_tournois
+    write_queue: WriteQueue = request.app.state.write_queue
+    tournoi = await asyncio.wrap_future(write_queue.submit(lambda: service.demarrer(tournoi_id)))
+    return TournoiReponse.de_agregat(tournoi)
+
+
+@router.post(
+    "/{tournoi_id}/terminer",
+    response_model=TournoiReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def terminer_tournoi(tournoi_id: int, request: Request) -> TournoiReponse:
+    """Termine un tournoi (`en_cours` → `termine`, **action admin**) : écriture via la file."""
+    service: ServiceTournois = request.app.state.service_tournois
+    write_queue: WriteQueue = request.app.state.write_queue
+    tournoi = await asyncio.wrap_future(write_queue.submit(lambda: service.terminer(tournoi_id)))
+    return TournoiReponse.de_agregat(tournoi)
+
+
+@router.delete(
+    "/{tournoi_id}",
+    status_code=204,
+    dependencies=[Depends(exiger_admin)],
+)
+async def supprimer_tournoi(tournoi_id: int, request: Request) -> Response:
+    """Supprime un tournoi (**action admin**) : refusé (409) s'il est en cours.
+
+    L'écriture passe par la file (ADR-0005) ; renvoie 204 sans contenu en cas de succès.
+    """
+    service: ServiceTournois = request.app.state.service_tournois
+    write_queue: WriteQueue = request.app.state.write_queue
+    await asyncio.wrap_future(write_queue.submit(lambda: service.supprimer(tournoi_id)))
+    return Response(status_code=204)

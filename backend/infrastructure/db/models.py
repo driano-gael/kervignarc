@@ -18,8 +18,8 @@ from infrastructure.db.base import Base
 class TournoiORM(Base):
     """Table `tournoi` — persistance de l'agrégat `Tournoi`.
 
-    `type_tournoi` stocke la **valeur** de l'énumération `TypeTournoi` (`officiel` /
-    `non_officiel`) ; la traduction chaîne ↔ enum est faite par le repository.
+    `type_tournoi` et `statut` stockent la **valeur** de leurs énumérations respectives
+    (`TypeTournoi`, `StatutTournoi`) ; la traduction chaîne ↔ enum est faite par le repository.
     """
 
     __tablename__ = "tournoi"
@@ -29,6 +29,7 @@ class TournoiORM(Base):
     date: Mapped[datetime.date] = mapped_column(nullable=False)
     lieu: Mapped[str | None] = mapped_column(nullable=True)
     type_tournoi: Mapped[str] = mapped_column(nullable=False)
+    statut: Mapped[str] = mapped_column(nullable=False)
 
 
 class ArcherORM(Base):

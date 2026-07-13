@@ -9,11 +9,19 @@ de l'app pointe vers un chemin jetable (voir les fixtures d'app qui passent `adm
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pytest
-from fastapi.testclient import TestClient
 
-ConnecterAdmin = Callable[[TestClient], None]
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
+
+# Alias de type en **forward-ref** (chaîne) : `conftest.py` reste importable sans `fastapi`
+# installé — nécessaire au hook pre-commit `domain-isolation`, qui exécute pytest dans un
+# environnement minimal (pytest seul) et charge malgré tout ce conftest. Au runtime, les
+# annotations sont différées (`from __future__ import annotations`), donc `fastapi` n'est
+# jamais requis ici ; les tests qui s'en servent créent leur `TestClient` ailleurs.
+ConnecterAdmin = Callable[["TestClient"], None]
 
 
 @pytest.fixture
