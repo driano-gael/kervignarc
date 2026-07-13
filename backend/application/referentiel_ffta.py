@@ -28,8 +28,8 @@ _ARC_NU = "Arc Nu"
 # - Arc Classique : toute la plage U11 → S3 ;
 # - Arc à Poulies : U15 → S3 (U15 ouvert depuis la saison 2024/2025) ;
 # - Arc Nu : catégories de classement **regroupées** (U18 = U15+U18 ; Scratch = U21+S1+S2+S3).
-_AGES_CLASSIQUE = ("U11", "U13", "U15", "U18", "U21", "Senior 1", "Senior 2", "Senior 3")
-_AGES_POULIES = ("U15", "U18", "U21", "Senior 1", "Senior 2", "Senior 3")
+_AGES_CLASSIQUE = ("U11", "U13", "U15", "U18", "U21", "S1", "S2", "S3")
+_AGES_POULIES = ("U15", "U18", "U21", "S1", "S2", "S3")
 _AGES_NU = ("U18", "Scratch")
 
 # Sexes distingués au niveau individuel (Hommes / Femmes) — §2. « Mixte » est réservé aux épreuves

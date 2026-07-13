@@ -58,5 +58,5 @@ def test_exemples_de_libelles_attendus() -> None:
     """Quelques libellés de contrôle attestent la composition « arme âge sexe »."""
     libelles = set(_libelles())
     assert "Arc Classique U11 Homme" in libelles
-    assert "Arc à Poulies Senior 3 Femme" in libelles
+    assert "Arc à Poulies S3 Femme" in libelles
     assert "Arc Nu Scratch Homme" in libelles
