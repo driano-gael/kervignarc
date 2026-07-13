@@ -216,6 +216,14 @@ button:disabled {
   margin: 8px 0 4px;
 }
 
+/* Pré-chargement du jeu FFTA salle (18 m) — E01US004. */
+.prechargement-ffta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 8px;
+}
+
 /* Liste des catégories d'un tournoi (E01US003). */
 .liste-categories {
   margin: 8px 0 0;
