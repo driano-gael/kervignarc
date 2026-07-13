@@ -13,9 +13,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from domain.archer import Archer, ArcherId
+from domain.categorie import Categorie, CategorieId, SexeCategorie
 from domain.score import Score
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
-from infrastructure.db.models import ArcherORM, ScoreORM, TournoiORM
+from infrastructure.db.models import ArcherORM, CategorieORM, ScoreORM, TournoiORM
 from infrastructure.erreurs import InfrastructureError
 
 
@@ -34,6 +35,18 @@ def _vers_tournoi(ligne: TournoiORM) -> Tournoi:
 def _vers_archer(ligne: ArcherORM) -> Archer:
     """Traduit une ligne ORM en agrégat de domaine `Archer`."""
     return Archer(nom=ligne.nom, tournoi_id=ligne.tournoi_id, cible=ligne.cible, id=ligne.id)
+
+
+def _vers_categorie(ligne: CategorieORM) -> Categorie:
+    """Traduit une ligne ORM en agrégat de domaine `Categorie`."""
+    return Categorie(
+        tournoi_id=ligne.tournoi_id,
+        libelle=ligne.libelle,
+        arme=ligne.arme,
+        tranche_age=ligne.tranche_age,
+        sexe=None if ligne.sexe is None else SexeCategorie(ligne.sexe),
+        id=ligne.id,
+    )
 
 
 class TournoiRepositorySQL:
@@ -169,6 +182,84 @@ class ArcherRepositorySQL:
                 return _vers_archer(ligne)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour de l'archer.") from exc
+
+
+class CategorieRepositorySQL:
+    """Adapter SQLite du port `CategorieRepository` (E01US003)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def ajouter(self, categorie: Categorie) -> Categorie:
+        """Persiste la catégorie et la renvoie avec son identifiant attribué."""
+        try:
+            with self._session_factory() as session:
+                ligne = CategorieORM(
+                    tournoi_id=categorie.tournoi_id,
+                    libelle=categorie.libelle,
+                    arme=categorie.arme,
+                    tranche_age=categorie.tranche_age,
+                    sexe=None if categorie.sexe is None else categorie.sexe.value,
+                )
+                session.add(ligne)
+                session.commit()
+                return _vers_categorie(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance de la catégorie.") from exc
+
+    def par_id(self, categorie_id: CategorieId) -> Categorie | None:
+        """Relit la catégorie d'identifiant donné, ou `None` si elle n'existe pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(CategorieORM, categorie_id)
+                return None if ligne is None else _vers_categorie(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture de la catégorie.") from exc
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Categorie]:
+        """Renvoie toutes les catégories d'un tournoi (liste éventuellement vide)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(CategorieORM)
+                    .where(CategorieORM.tournoi_id == tournoi_id)
+                    .order_by(CategorieORM.id)
+                ).scalars()
+                return [_vers_categorie(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des catégories du tournoi.") from exc
+
+    def enregistrer(self, categorie: Categorie) -> Categorie:
+        """Met à jour une catégorie déjà persistée (édition) et la renvoie.
+
+        **Contrat** : l'appelant (le service) garantit l'existence (vérifiée en amont). La ligne
+        absente est une **incohérence technique** (non un cas métier) → `InfrastructureError`.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(CategorieORM, categorie.id)
+                if ligne is None:
+                    raise InfrastructureError("Catégorie à mettre à jour introuvable en base.")
+                ligne.libelle = categorie.libelle
+                ligne.arme = categorie.arme
+                ligne.tranche_age = categorie.tranche_age
+                ligne.sexe = None if categorie.sexe is None else categorie.sexe.value
+                session.commit()
+                return _vers_categorie(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour de la catégorie.") from exc
+
+    def supprimer(self, categorie_id: CategorieId) -> None:
+        """Supprime la catégorie d'identifiant donné (existence garantie par l'appelant)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(CategorieORM, categorie_id)
+                if ligne is None:
+                    raise InfrastructureError("Catégorie à supprimer introuvable en base.")
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression de la catégorie.") from exc
 
 
 class ScoreRepositorySQL:

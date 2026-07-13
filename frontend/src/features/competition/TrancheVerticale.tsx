@@ -11,6 +11,7 @@
 import { useState } from 'react'
 import { ConnexionAdmin } from '../admin/ConnexionAdmin'
 import { useDeconnexionAdmin } from '../admin/hooks'
+import { Categories } from '../categories/Categories'
 import { ErreurApi } from '../../shared/api/client'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import type { StatutTournoi, Tournoi, TypeTournoi } from './api'
@@ -315,6 +316,8 @@ function Competition({ tournoi, onRetour }: { tournoi: Tournoi; onRetour: () => 
       </h2>
 
       {estAdmin && <CycleDeVie tournoi={tournoi} />}
+
+      {estAdmin && <Categories tournoiId={tournoi.id} />}
 
       {estAdmin ? (
         <InscriptionArcher tournoiId={tournoi.id} />

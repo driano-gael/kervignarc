@@ -26,6 +26,7 @@ from fastapi.responses import JSONResponse
 from application.erreurs import (
     ApplicationError,
     ArcherIntrouvable,
+    CategorieIntrouvable,
     IdentifiantsInvalides,
     NonAuthentifie,
     TournoiIntrouvable,
@@ -52,7 +53,7 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
     """Cas d'usage impossible → 401 (auth), 404 (introuvable) ou 409 (conflit d'état)."""
     if isinstance(exc, IdentifiantsInvalides | NonAuthentifie):
         status = 401
-    elif isinstance(exc, TournoiIntrouvable | ArcherIntrouvable):
+    elif isinstance(exc, TournoiIntrouvable | ArcherIntrouvable | CategorieIntrouvable):
         status = 404
     else:
         status = 409

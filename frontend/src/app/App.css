@@ -216,6 +216,45 @@ button:disabled {
   margin: 8px 0 4px;
 }
 
+/* Liste des catégories d'un tournoi (E01US003). */
+.liste-categories {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.categorie__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.categorie__libelle {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.categorie__attributs {
+  flex: 1 1 auto;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.categorie__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.categorie__actions button {
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
 /* Pastille de statut du cycle de vie. */
 .badge {
   display: inline-block;
