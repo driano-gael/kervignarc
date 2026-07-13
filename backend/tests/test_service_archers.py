@@ -46,6 +46,14 @@ class FauxTournoiRepository:
     def lister(self) -> list[Tournoi]:
         return list(self._tournois.values())
 
+    def enregistrer(self, tournoi: Tournoi) -> Tournoi:
+        assert tournoi.id is not None
+        self._tournois[tournoi.id] = tournoi
+        return tournoi
+
+    def supprimer(self, tournoi_id: TournoiId) -> None:
+        del self._tournois[tournoi_id]
+
 
 class FauxArcherRepository:
     """Repository en mémoire conforme au port `ArcherRepository`."""

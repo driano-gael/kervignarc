@@ -23,6 +23,24 @@ class TournoiIntrouvable(ApplicationError):
     code = "tournoi_introuvable"
 
 
+class TransitionStatutInvalide(ApplicationError):
+    """Transition de cycle de vie impossible depuis l'état courant (E01US002) → 409.
+
+    Ex. démarrer un tournoi déjà démarré ou terminé, terminer un tournoi non démarré.
+    """
+
+    code = "transition_statut_invalide"
+
+
+class TournoiEnCoursNonSupprimable(ApplicationError):
+    """Suppression refusée : le tournoi est en cours (E01US002) → 409.
+
+    Il faut d'abord le **terminer** ; un tournoi `brouillon` ou `terminé` reste supprimable.
+    """
+
+    code = "tournoi_en_cours_non_supprimable"
+
+
 class ArcherIntrouvable(ApplicationError):
     """Aucun archer ne correspond à l'identifiant demandé."""
 

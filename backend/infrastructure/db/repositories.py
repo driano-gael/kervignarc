@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from domain.archer import Archer, ArcherId
 from domain.score import Score
-from domain.tournoi import Tournoi, TournoiId, TypeTournoi
+from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
 from infrastructure.db.models import ArcherORM, ScoreORM, TournoiORM
 from infrastructure.erreurs import InfrastructureError
 
@@ -26,6 +26,7 @@ def _vers_tournoi(ligne: TournoiORM) -> Tournoi:
         date=ligne.date,
         lieu=ligne.lieu,
         type_tournoi=TypeTournoi(ligne.type_tournoi),
+        statut=StatutTournoi(ligne.statut),
         id=ligne.id,
     )
 
@@ -50,6 +51,7 @@ class TournoiRepositorySQL:
                     date=tournoi.date,
                     lieu=tournoi.lieu,
                     type_tournoi=tournoi.type_tournoi.value,
+                    statut=tournoi.statut.value,
                 )
                 session.add(ligne)
                 session.commit()
@@ -76,6 +78,40 @@ class TournoiRepositorySQL:
                 return [_vers_tournoi(ligne) for ligne in lignes]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des tournois.") from exc
+
+    def enregistrer(self, tournoi: Tournoi) -> Tournoi:
+        """Met à jour un tournoi déjà persisté (édition, transition de statut) et le renvoie.
+
+        **Contrat** : l'appelant (le service) garantit l'existence du tournoi (vérifiée en
+        amont). La ligne absente est donc une **incohérence technique**, non un cas métier
+        — d'où `InfrastructureError` (et non une erreur applicative « 404 »).
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(TournoiORM, tournoi.id)
+                if ligne is None:
+                    raise InfrastructureError("Tournoi à mettre à jour introuvable en base.")
+                ligne.nom = tournoi.nom
+                ligne.date = tournoi.date
+                ligne.lieu = tournoi.lieu
+                ligne.type_tournoi = tournoi.type_tournoi.value
+                ligne.statut = tournoi.statut.value
+                session.commit()
+                return _vers_tournoi(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour du tournoi.") from exc
+
+    def supprimer(self, tournoi_id: TournoiId) -> None:
+        """Supprime le tournoi d'identifiant donné (existence garantie par l'appelant)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(TournoiORM, tournoi_id)
+                if ligne is None:
+                    raise InfrastructureError("Tournoi à supprimer introuvable en base.")
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression du tournoi.") from exc
 
 
 class ArcherRepositorySQL:
