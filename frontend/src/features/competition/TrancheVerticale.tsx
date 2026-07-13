@@ -130,12 +130,15 @@ function LigneTournoi({
                   Annuler
                 </button>
               </>
+            ) : enCours ? (
+              // Un tournoi en cours n'est pas supprimable (garanti aussi côté serveur, 409).
+              // On l'explique par un **texte visible** plutôt qu'un `title` sur un bouton désactivé
+              // (inatteignable au clavier / lecteur d'écran — le CDC vise WCAG AA).
+              <span className="tournoi__note">Terminez le tournoi pour pouvoir le supprimer.</span>
             ) : (
               <button
                 type="button"
                 className="bouton--danger"
-                disabled={enCours}
-                title={enCours ? 'Terminez le tournoi avant de pouvoir le supprimer.' : undefined}
                 onClick={() => setConfirmationSuppression(true)}
               >
                 Supprimer
