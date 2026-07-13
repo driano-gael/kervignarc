@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from domain.archer import Archer, ArcherId
+from domain.categorie import Categorie, CategorieId
 from domain.score import Score
 from domain.tournoi import Tournoi, TournoiId
 
@@ -59,6 +60,30 @@ class ArcherRepository(Protocol):
 
     def enregistrer(self, archer: Archer) -> Archer:
         """Met à jour un archer déjà persisté (ex. après placement) et le renvoie."""
+        ...
+
+
+class CategorieRepository(Protocol):
+    """Port de persistance des catégories (adapter fourni par l'infrastructure)."""
+
+    def ajouter(self, categorie: Categorie) -> Categorie:
+        """Persiste une catégorie et la renvoie avec son identifiant attribué."""
+        ...
+
+    def par_id(self, categorie_id: CategorieId) -> Categorie | None:
+        """Renvoie la catégorie d'identifiant donné, ou `None` si elle n'existe pas."""
+        ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Categorie]:
+        """Renvoie toutes les catégories d'un tournoi (liste éventuellement vide)."""
+        ...
+
+    def enregistrer(self, categorie: Categorie) -> Categorie:
+        """Met à jour une catégorie déjà persistée (édition) et la renvoie."""
+        ...
+
+    def supprimer(self, categorie_id: CategorieId) -> None:
+        """Supprime la catégorie d'identifiant donné (existence garantie par l'appelant)."""
         ...
 
 

@@ -32,6 +32,23 @@ class TournoiORM(Base):
     statut: Mapped[str] = mapped_column(nullable=False)
 
 
+class CategorieORM(Base):
+    """Table `categorie` — persistance de l'agrégat `Categorie` (E01US003).
+
+    `sexe` stocke la **valeur** de l'énumération `SexeCategorie` (`H` / `F` / `mixte`) ou `NULL` ;
+    la traduction chaîne ↔ enum est faite par le repository.
+    """
+
+    __tablename__ = "categorie"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    libelle: Mapped[str] = mapped_column(nullable=False)
+    arme: Mapped[str | None] = mapped_column(nullable=True)
+    tranche_age: Mapped[str | None] = mapped_column(nullable=True)
+    sexe: Mapped[str | None] = mapped_column(nullable=True)
+
+
 class ArcherORM(Base):
     """Table `archer` — persistance de l'agrégat `Archer` (E00US011)."""
 

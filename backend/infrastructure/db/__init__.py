@@ -9,9 +9,10 @@ première implémentation (E00US009).
 from infrastructure.db.base import Base
 from infrastructure.db.config import DEFAULT_DATABASE_URL, default_database_url
 from infrastructure.db.engine import Database, create_database_engine
-from infrastructure.db.models import ArcherORM, ScoreORM, TournoiORM
+from infrastructure.db.models import ArcherORM, CategorieORM, ScoreORM, TournoiORM
 from infrastructure.db.repositories import (
     ArcherRepositorySQL,
+    CategorieRepositorySQL,
     ScoreRepositorySQL,
     TournoiRepositorySQL,
 )
@@ -27,6 +28,8 @@ __all__ = [
     "ArcherORM",
     "ArcherRepositorySQL",
     "Base",
+    "CategorieORM",
+    "CategorieRepositorySQL",
     "Database",
     "PostCommitListener",
     "ScoreORM",

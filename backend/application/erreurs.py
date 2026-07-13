@@ -47,6 +47,12 @@ class ArcherIntrouvable(ApplicationError):
     code = "archer_introuvable"
 
 
+class CategorieIntrouvable(ApplicationError):
+    """Aucune catégorie ne correspond à l'identifiant demandé."""
+
+    code = "categorie_introuvable"
+
+
 class IdentifiantsInvalides(ApplicationError):
     """Login/mot de passe admin incorrects (E10US002). Traduite en 401 à la frontière."""
 

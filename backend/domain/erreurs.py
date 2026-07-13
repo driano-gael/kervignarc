@@ -29,6 +29,12 @@ class NomArcherInvalide(DomainError):
     code = "nom_archer_invalide"
 
 
+class LibelleCategorieInvalide(DomainError):
+    """Le libellé d'une catégorie est vide (après normalisation)."""
+
+    code = "libelle_categorie_invalide"
+
+
 class CibleInvalide(DomainError):
     """Le numéro de cible d'un placement n'est pas un entier strictement positif."""
 
