@@ -1,89 +1,237 @@
-# Référentiel FFTA — Structure (à compléter)
+# Référentiel FFTA — Tir à 18 m (salle)
 
-- **Version** : 0.1 (structure)
-- **Date** : 2026-07-08
-- **But** : consolider les données de règles (catégories, blasons, barèmes, départage) qui alimentent la configuration (EPIC-01) et le moteur (EPIC-05).
+- **Version** : 1.0
+- **Date** : 2026-07-13
+- **Source** : *Règlements sportifs et Arbitrage de la FFTA, édition décembre 2023* — chapitre **II.2 « Le Tir à 18 m »** et **Chapitre I « Les Règlements Généraux »**. Texte intégral archivé dans `docs/sources/ffta/reglement-sportif-ffta-2023_texte-integral.txt`.
+- **But** : source de vérité des règles (catégories, blasons, barèmes, départage, formats) qui alimentent la configuration des tournois (EPIC-01) et le moteur de phases/placement (EPIC-03, EPIC-05). Sert aussi de base documentaire générale sur la discipline.
 
-> ⚠️ **Statut des valeurs** — Ce document fournit la **structure** et des **valeurs à titre indicatif**. Chaque valeur est étiquetée :
-> - `✅ observé` : extrait de `Tableaux.xlsx` (tournoi réel 120).
-> - `❓ à confirmer` : valeur plausible **à valider officiellement** (FFTA / organisateur) avant implémentation.
+> **Légende de statut** — chaque valeur est étiquetée :
+> - `✅ FFTA` : extraite du règlement officiel déc. 2023, **avec l'article cité** entre parenthèses.
+> - `❓ à confirmer` : valeur d'usage ou correspondance non écrite noir sur blanc dans ce règlement (à valider avant d'en coder une valeur numérique).
 >
-> Ne pas coder de valeur `❓` sans confirmation.
+> Les articles cités sans préfixe de chapitre appartiennent au chapitre **II.2 Le Tir à 18 m** ; les renvois au Tir Extérieur ou aux Règlements Généraux sont explicités.
 
 ---
 
-## 1. Catégories
+## 1. Divisions (armes)
 
-Structure d'une catégorie : `code`, `libellé`, `arme`, `tranche d'âge`, `sexe`, `blason associé`, `distance` (=18 m salle).
+La FFTA reconnaît pour le Tir à 18 m trois divisions concourant séparément (art. A.6.2) :
 
-| Code | Libellé | Arme | Âge | Sexe | Blason | Statut |
-|---|---|---|---|---|---|---|
-| _(à remplir)_ | ex. Senior Homme Arc Classique | Classique / Poulie / Nu… | Poussin→Super Vétéran | H/F | cf. §2 | ❓ à confirmer |
+| Division | Nom courant | Équipement de référence | Statut |
+|---|---|---|---|
+| **Arc Classique** | recurve | art. B.3.1 | ✅ FFTA (A.6.2) |
+| **Arc Nu** | barebow | art. B.3.2 / II.3.B.3 | ✅ FFTA (A.6.2) |
+| **Arc à Poulies** | compound | art. B.3.3 | ✅ FFTA (A.6.2) |
 
-**À obtenir** : la liste officielle FFTA salle (arme × âge × sexe) et le blason associé à chacune. Pré-chargée et modifiable (E01US004).
-
----
-
-## 2. Blasons (salle 18 m)
-
-Structure : `nom`, `taille` (**fraction de place sur une cible**), `capacité induite`, `zones de score`, `catégories concernées`.
-
-| Nom | Taille / fraction | Zones de score | Catégories | Statut |
-|---|---|---|---|---|
-| Blason 40 cm monospot | 1 place | 10 (dont X centre) → 1, M | _(à préciser)_ | ❓ à confirmer |
-| Trispot 40 cm (3 spots verticaux) | fraction (petits blasons) | 10 → 6, M (typiquement) | arc à poulies / selon règlement | ❓ à confirmer |
-| _(autres)_ | | | | ❓ à confirmer |
-
-**Notion clé (modèle)** : un blason occupe une **fraction** de la capacité d'une cible ; la somme des fractions d'une cible ≤ sa capacité (1/2/4). C'est cette fraction qui pilote le placement (EPIC-03), pas le nom commercial du blason.
-
-**À obtenir** : dimensions, dispositions (mono/tri/verti), zones de score et affectation par catégorie.
+Divisions **reconnues mais non ouvertes au Championnat de France**, rattachées à une division principale pour le classement (art. A.7.1.2) :
+- **Arcs droits (longbow)** → classés en **Arc Nu**.
+- **Arcs chasse** → classés en **Arc Nu**.
+- **Arcs à poulies nus** → classés en **Arc à Poulies**.
 
 ---
 
-## 3. Barèmes par phase
+## 2. Catégories d'âge
 
-Structure : `phase`, `format de tir`, `mode de score`, `condition de victoire`.
+Catégories reconnues, définies par l'**âge atteint dans l'année civile** de la licence (art. C.3.1 des Règlements Généraux). La saison court du 01/09 au 31/08 suivant.
 
-| Phase | Format de tir | Mode de score | Victoire | Statut |
-|---|---|---|---|---|
-| Qualification | 5 volées de 3 flèches | **Cumul** des points | classement par total | ✅ observé |
-| Barrage (qualif) | 1 volée de 1 flèche | valeur / plus près du centre | départage | ✅ observé |
-| Tours (matchs) | 3 volées de 3 flèches | **Système de sets** | ex. 4 pts → gagnant du match | ✅ observé (4 pts) |
-| ½ finales & finales de placement | 5 volées de 3 flèches | sets | ex. 6 pts → gagnant | ✅ observé (6 pts) |
-| Grande finale | Big Shoot Off | tir décisif | vainqueur = rang 1 | ✅ observé |
+| Code | Âge dans l'année civile | Correspondance usuelle (héritée) | Statut |
+|---|---|---|---|
+| **U11** | 10 ans et moins | Poussin | ✅ FFTA (C.3.1) — corresp. `❓` |
+| **U13** | 11 & 12 ans | Benjamin | ✅ FFTA (C.3.1) — corresp. `❓` |
+| **U15** | 13 & 14 ans | Minime | ✅ FFTA (C.3.1) — corresp. `❓` |
+| **U18** | 15, 16 & 17 ans | Cadet | ✅ FFTA (C.3.1) — corresp. `❓` |
+| **U21** | 18, 19 & 20 ans | Junior | ✅ FFTA (C.3.1) — corresp. `❓` |
+| **Seniors 1 (S1)** | 21 à 39 ans | Senior | ✅ FFTA (C.3.1) — corresp. `❓` |
+| **Seniors 2 (S2)** | 40 à 59 ans | Vétéran | ✅ FFTA (C.3.1) — corresp. `❓` |
+| **Seniors 3 (S3)** | 60 ans et + | Super Vétéran | ✅ FFTA (C.3.1) — corresp. `❓` |
 
-**À confirmer** : points de set exacts (gain/nul), nb de sets, gestion du set nul, format précis du BSO. Ces valeurs deviennent des **presets modifiables** (E01US011, politique `scoring`).
+> Les libellés « Poussin → Super Vétéran » sont la nomenclature historique ; le système officiel en vigueur est **U11…U21 + Seniors 1/2/3**. La correspondance ci-dessus est l'usage courant, **non écrite dans le règlement 2023** (`❓`).
+>
+> **U11** : admis en compétition officielle 18 m à partir de 8 ans, arc classique uniquement, puissance ≤ 18 livres (art. C.3.1.1). Un surclassement en U13 à 10 ans est possible sous certificat médical. Aucun titre/record national U11.
+
+Chaque catégorie d'âge se décline par **sexe** (Hommes / Femmes).
 
 ---
 
-## 4. Règles de départage
+## 3. Catégories officielles par division (classements 18 m)
 
-| Contexte | Règle | Statut |
+Catégories utilisées pour les classements de compétition (art. A.7.1.2), et **blason associé à 18 m** (art. A.7.1.3) :
+
+### Arc Classique
+| Catégories d'âge | Blason à 18 m | Statut |
 |---|---|---|
-| Égalité au classement de qualification | Départage au **nombre de 10**, puis de **9**, … | ❓ à confirmer (usage FFTA courant) |
-| Places décisives (accès tableau) après comptage | **Barrage de tir** (shoot-off) | ✅ observé (barrage au programme) |
-| Match nul en sets | **Shoot-off 1 flèche**, **plus près du centre** gagne | ❓ à confirmer |
+| U11 | **80 cm** (centre à 1,10 m — art. C.3.1.1) | ✅ FFTA (A.7.1.3) |
+| U13, U15 | **60 cm** | ✅ FFTA (A.7.1.3) |
+| U18, U21, S1, S2, S3 | **40 cm** | ✅ FFTA (A.7.1.3) |
 
-Ces règles alimentent la politique `tiebreak` (E04US016, E06US002/003).
+Blasons uniques **ou** triples (verticaux ou triangulaires), au choix de l'organisateur (art. A.7.1.3).
 
----
-
-## 5. Seeding & exempts (tableaux)
-
-| Règle | Détail | Statut |
+### Arc à Poulies
+| Catégories d'âge | Blason à 18 m | Statut |
 |---|---|---|
-| Dimensionnement | Effectif arrondi à la puissance de 2 supérieure | ✅ observé (120 → 128) |
-| Seeding | **Serpent** : rang `r` vs rang `2^k+1−r` ; têtes de série réparties | ✅ observé |
-| Exempts (byes) | Attribués **aux mieux classés** | décision projet (ADR-0004 / E05US006) |
+| U15\*, U18, U21, S1, S2, S3 | **40 cm — triples** | ✅ FFTA (A.7.1.3) |
+
+\* U15 poulies ouvert à partir de la saison 2024/2025 (art. A.7.1.2). Les arcs à poulies **tirent toujours sur triples** (art. A.7.1.3).
+
+### Arc Nu
+| Catégories | Blason à 18 m | Statut |
+|---|---|---|
+| U18 (H/F) — regroupe U15, U18 | **60 cm** | ✅ FFTA (A.7.1.2 / A.7.1.3) |
+| Scratch (H/F) — U21, S1, S2, S3 | **40 cm** | ✅ FFTA (A.7.1.2 / A.7.1.3) |
+
+> **Épreuve de qualification (18 m)** : 60 flèches sur blason de 40 cm ou triple 40 cm pour toutes les catégories (art. A.7.3). Les catégories tirant plus gros (U11 → 80 cm, U13/U15 classique → 60 cm) utilisent le blason de leur ligne.
 
 ---
 
-## 6. À fournir par l'organisateur / la FFTA
+## 4. Blasons 18 m
 
-- [ ] Liste officielle des **catégories** salle + blason associé.
-- [ ] Caractéristiques des **blasons** (dimensions, zones, fractions).
-- [ ] **Points de set** exacts et gestion des nuls ; format du **BSO**.
-- [ ] Règles précises de **départage** (qualif et match).
-- [ ] Un **fichier d'inscrits « inscript'arc »** d'exemple (pour l'import — QT1).
+### 4.1 Types (art. B.2.1)
+Dix types de blasons homologués (fabricant sous licence World Archery) :
+- blason **60 cm** ; triple triangulaire 60 cm ; triple vertical 60 cm ;
+- blason **40 cm** ; triple triangulaire 40 cm ; triple vertical 40 cm ;
+- triple triangulaire 40 cm **arcs classiques/nus** ; triple triangulaire 40 cm **arcs à poulies** ;
+- triple vertical 40 cm **arcs classiques/nus** ; triple vertical 40 cm **arcs à poulies**.
 
-*Une fois ces éléments reçus, ce référentiel passe en v1.0 et sert de source de vérité pour les presets de configuration.*
+À 25 m on emploie le blason **60 cm**, à 18 m le blason **40 cm** (art. B.2.2).
+
+### 4.2 Structure et zones de score (art. B.2.1.1)
+Cinq zones de couleur concentriques, du centre vers l'extérieur : **or (jaune), rouge, bleu clair, noir, blanc**. Chaque couleur est divisée en deux → **10 zones de score**. Largeur d'un anneau (mesurée du centre) : **3 cm** (blason 60 cm), **2 cm** (blason 40 cm). Centre = « mouche / croix centrale » (X).
+
+Valeur des scores et couleurs (art. B.2.1.2, renvoi au Tir Extérieur — table vérifiée) :
+
+| Couleur | Zones (score) | Pantone |
+|---|---|---|
+| Or (jaune) | 10 (X au centre), 9 | 107 U |
+| Rouge | 8, 7 | 032 U |
+| Bleu clair | 6, 5 | 306 U |
+| Noir | 4, 3 | Process Black |
+| Blanc | 2, 1 | — (blanc) |
+| Hors blanc | M (manqué) | — |
+
+Statut : `✅ FFTA` (structure B.2.1.1 + barème couleur→valeur et Pantone de l'art. B.2.1.2 du Tir Extérieur, relu). Le tableau des diamètres B.2.1.3 du chapitre extérieur reproduit à l'identique la colonne 18 m du §4.3 (Ø 60/40 cm), ce qui corrobore ces valeurs.
+
+### 4.3 Diamètres des zones (art. B.2.1.3)
+Diamètres en **cm** de chaque cercle, mesurés depuis le centre. Tolérance ± 1 mm pour les zones 10/9/8, ± 2 mm pour les autres.
+
+| Zone (score) | Ø blason 60 cm | Ø blason 40 cm | Tolérance |
+|---|---|---|---|
+| 10 (poulies, « 10 intérieur ») | 3 cm | 2 cm | ± 1 mm |
+| 10 (classique) | 6 cm | 4 cm | ± 1 mm |
+| 9 | 12 cm | 8 cm | ± 1 mm |
+| 8 | 18 cm | 12 cm | ± 1 mm |
+| 7 | 24 cm | 16 cm | ± 2 mm |
+| 6 | 30 cm | 20 cm | ± 2 mm |
+| 5 | 36 cm | 24 cm | ± 2 mm |
+| 4 | 42 cm | 28 cm | ± 2 mm |
+| 3 | 48 cm | 32 cm | ± 2 mm |
+| 2 | 54 cm | 36 cm | ± 2 mm |
+| 1 | 60 cm | 40 cm | ± 2 mm |
+
+Statut : `✅ FFTA (B.2.1.3)`. Le « 10 intérieur » compound vaut **3 cm** (Ø, blason 60) / **2 cm** (blason 40) — art. B.2.1.1.
+
+### 4.4 Blasons triples (tri-spots) 40 cm (art. B.2.1.1)
+- Trois petits blasons sur fond blanc, disposés en **triangle** ou en **colonne verticale**.
+- **Mêmes dimensions que le 40 cm mais sans les zones 5 → 1** : la zone la plus basse est le **bleu clair = 6**.
+- Taille du cercle du 10 : **40 mm** (Arc Classique / Arc Nu), **20 mm** (Arc à Poulies), version « combinée » = deux cercles de 10.
+- Distance entre centres des jaunes : ≈ **22 cm** (triples 40 cm), ≈ 32 cm (triples 60 cm).
+
+> **Championnats de France** : qualification sur **triples verticaux** (classique et poulies) et blason unique pour l'arc nu ; **toutes les phases finales sur triples verticaux** (art. A.7.1.3, A.7.6, A.7.7). Duels et matchs par équipe : triples verticaux 40 cm.
+
+---
+
+## 5. Agencement des cibles (art. B.2.2)
+
+Hauteurs mesurées du **sol au centre de l'or**. Tolérance de positionnement : **± 2 cm** (art. B.2.2.1.4).
+
+| Configuration | Hauteur du centre | Espacement min. | Statut |
+|---|---|---|---|
+| Blason simple / paire, ou triple vertical | **130 cm** (centre du blason unique / spot du milieu) | 10 cm entre zones marquantes (2 cm pour blasons 60 cm) | ✅ FFTA (B.2.2.1.1) |
+| **4 blasons** 40 cm simples ou triples triangulaires | ligne haute ≤ **162 cm**, ligne basse ≥ **100 cm** | 10 cm entre zones marquantes de même hauteur ; un blason par quart de butte | ✅ FFTA (B.2.2.1.2) |
+| 3 ou 4 triples **verticaux** 40 cm | ligne du milieu à **130 cm** | 10 cm (colonnes 2/3), ≤ 2 cm (colonnes 1-2 et 3-4) | ✅ FFTA (B.2.2.1.3) |
+| 2 triples verticaux (individuel & équipes) | 130 cm | **25 cm** entre colonnes | ✅ FFTA (B.2.2.1.3) |
+
+Aux **éliminatoires et finales**, les triples 40 cm sont placés **par paire sur chaque cible** (art. B.2.2.1). Cibles numérotées (n° ≥ 15 cm, noir/jaune alterné — art. B.2.2.3.2).
+
+**Terrain** (art. B.1) : ligne d'attente ≥ 3 m derrière la ligne de tir ; ligne des 3 m devant ; couloirs ≥ 160 cm pour 2 archers (min. 80 cm/archer, toléré 70 cm) ; tolérance de distance 18 m/25 m = ± 10 cm.
+
+---
+
+## 6. Format des épreuves
+
+### 6.1 Qualification (art. A.7.3)
+- **60 flèches** à 18 m sur blason 40 cm (ou triple 40 cm), par volées de 3 flèches (**20 volées**).
+- **Établissement des scores** toutes les **2 volées de 3 flèches** (ou toutes les volées de 6) — art. B.6.1.2.
+- Classement par **cumul des points**.
+- Épreuve combinée = 2 × 25 m + 2 × 18 m (art. A.7.4).
+
+### 6.2 Duels individuels (phases éliminatoires & finales, art. A.7.5)
+Éliminatoire : **32 meilleurs** placés selon la qualification ; finale : **8 meilleurs** issus de l'éliminatoire. Tir sur triples verticaux 40 cm.
+
+| Division | Format d'un duel | Victoire | Statut |
+|---|---|---|---|
+| **Arc Classique / Arc Nu** | meilleur des **5 sets de 3 flèches** (système de sets) | premier à **6 points de set** | ✅ FFTA (A.7.5.1, B.6.1.4.1) |
+| **Arc à Poulies** | **5 volées de 3 flèches**, **score cumulé** (pas de sets) | plus haut cumul | ✅ FFTA (A.7.5.2, B.6.1.4.2) |
+
+### 6.3 Épreuves par équipes (3 archers, art. A.7.5)
+Éliminatoire : 16 équipes/sexe placées selon la qualification ; finale : 4 équipes/sexe. Volée tirée en **2 minutes**.
+
+| Division | Format d'un match | Victoire | Statut |
+|---|---|---|---|
+| **Arc Classique** | meilleur des **4 sets de 6 flèches** (2/archer) | premier à **5 points de set** | ✅ FFTA (A.7.5.1, B.6.1.5.1) |
+| **Arc à Poulies** | **4 volées de 6 flèches** (2/archer), **cumulé** | plus haut cumul | ✅ FFTA (A.7.5.2, B.6.1.5.2) |
+
+---
+
+## 7. Barème du système de sets (art. B.6.1.4 / B.6.1.5)
+
+Applicable aux duels/matchs **Arc Classique et Arc Nu** (les poulies tirent au cumul, sans sets).
+
+- **Individuel** : score max 30 pts/set (3 flèches). Le vainqueur de la volée marque **2 points de set**, le perdant **0** ; **égalité → 1 point chacun**. Premier à **6 points de set** (duel en 5 sets) = vainqueur.
+- **Équipe** : score max **60 pts/set** (6 flèches), **40** en équipe mixte (2 flèches/archer). Même règle 2 / 1-1 / 0. Premier à **5 points de set** (match en 4 sets) = vainqueur.
+- **Égalité de sets** (5-5 en individuel, 4-4 en équipe) → **tir de barrage** ; le vainqueur du barrage marque **1 point de set supplémentaire** (score final 6-5 ou 5-4).
+
+---
+
+## 8. Départage des égalités
+
+### 8.1 Classement de qualification (art. C.3 / réf. ligne « Tir à 18 m »)
+En cas d'égalité de total : départage au **plus grand nombre de 10**, puis de **9** (spécifique 18 m). `✅ FFTA` (mention « le nombre de 10 et de 9 (Tir à 18 m) »).
+
+### 8.2 Duels & matchs — tir de barrage (art. B.6.5.2)
+- **Individuel** : **1 flèche**, le plus haut score gagne. Si l'égalité subsiste, on **répète au plus près du centre** jusqu'à résolution. Barrage tiré sur la **cible centrale du triple vertical** (B.6.5.2.3).
+- **Équipe** : une volée de **3 flèches (1 par archer)**, plus haut total gagne ; répété si nécessaire (B.6.5.2.2). Blason triple vertical installé horizontalement, 1 butte par équipe (B.6.5.2.3).
+- Le barrage **ne prend pas en compte** le nombre de 10/9 (B.6.5.2). Un archer absent au barrage annoncé est déclaré perdant (B.6.5.2.4).
+
+---
+
+## 9. Contrôle du temps (art. B.2.3, B.5)
+
+- Signaux **sonores** (sifflet) + **visuels** ; en cas de discordance, le **son prévaut** (B.2.3.2).
+- **Feux** verticaux rouge / jaune / vert (rouge en haut), une seule couleur à la fois (B.2.3.3).
+- **Chronomètres digitaux** en décompte, chiffres ≥ 20 cm ; prioritaires sur les feux en cas de divergence (B.2.3.3).
+- Contrôle manuel de secours : panneaux vert / jaune ≥ 120 × 80 cm ; **face jaune montrée à 30 s de la fin** (B.2.3.3).
+- Volée par équipes : **2 minutes** (A.7.5) ; 20 s/flèche aux éliminatoires/finales par équipes des autres tournois (B.5.6.3).
+- Duels : indicateurs d'ordre de tir (lumières vertes/rouges) pour le tir alterné (B.2.3.3, B.2.4.2).
+
+---
+
+## 10. Rattachement au projet
+
+> Ces notes relient le référentiel réglementaire aux besoins applicatifs (cf. [[projet-kervignarc-scope]]). Elles ne font pas partie du règlement FFTA.
+
+- **Catégories (EPIC-01 / E01US003-004)** : une catégorie = `division (arme) × catégorie d'âge × sexe`, avec un **blason associé** (§3) et la distance 18 m. Liste pré-chargeable et modifiable.
+- **Blasons & placement (EPIC-03)** : le paramètre qui pilote le placement n'est pas le nom commercial du blason mais la **fraction de cible** qu'il occupe (1 blason simple, paire, 4 blasons, ou triples verticaux par colonnes). Les hauteurs et espacements du §5 conditionnent la capacité d'une butte.
+- **Barèmes & moteur de phases (EPIC-05 / E01US011)** : les formats du §6-7 deviennent des **presets modifiables** — politique `scoring` (qualif au cumul ; duels en sets pour classique/nu, au cumul pour poulies) ; seuils de set (6 individuel / 5 équipe).
+- **Départage (EPIC-06 / E04US016, E06US002-003)** : politique `tiebreak` — qualif au nombre de 10 puis de 9 ; match nul → barrage 1 flèche (plus près du centre).
+- **Seeding / tableaux (ADR-0004, E05US006)** : effectif arrondi à la puissance de 2 (ex. 32/16 places pour les duels FFTA), placement selon le rang de qualification (« serpent »), exempts aux mieux classés — **décision projet** (`❓` côté FFTA, non normé dans ce chapitre).
+
+---
+
+## 11. Points restés `❓ à confirmer`
+
+- **Correspondance** catégories historiques (Poussin…Super Vétéran) ↔ U11…S3 : usage courant, non écrit dans le règlement 2023.
+- **Découpage exact des 60 flèches de qualification** en volées (20 × 3 retenu par usage + art. B.6.1.2) : à confirmer sur le mandat de l'organisateur.
+- **Règles de seeding/exempts** : non normées dans le chapitre 18 m → décision projet.
+- Un **fichier d'inscrits d'exemple** (format « inscript'arc ») reste à obtenir pour l'import.
+
+*Une fois ces points levés, le référentiel sert de source de vérité pour les presets de configuration.*
