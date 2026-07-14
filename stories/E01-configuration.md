@@ -92,3 +92,21 @@
 - **CA** : `Blason.zones` porte les valeurs admises (ex. `["10","9","8","7","6","M"]`) ; valeur par défaut cohérente à la création ; modifiable comme le reste du blason (RG-8) ; migration des blasons existants ; exposé par l'API et éditable au front.
 - **Notes** : CDC fonctionnel EF-1.3b, consommé par EF-5.2. Corrige E01US005. **Ne traite pas** la hauteur du blason — c'est [DETTE-002](../docs/dette.md), résorbée en EPIC-03.
 - **Dépend de** : E01US005 · **Jalon** : J1
+
+---
+
+> **US de cadrage UX — entretien du 14/07/2026.** Issues de
+> [`cahier-des-charges-ux.md`](../cahier-des-charges-ux.md) (registre des décisions §11).
+
+### E01US015 — Définir le grain de validation d'une phase
+*En tant qu'*administrateur, *je veux* choisir **quand le scoreur valide** pour chaque phase, *afin d'*adapter la charge de mes scoreurs au format de l'épreuve.
+- **CA** : chaque phase porte son **grain de validation** dans **`config.validation`** — *fin de série* · *fin de duel* · *toutes les N volées* ; presets cohérents par type de phase (qualification → **fin de série** ; élimination directe → **fin de duel**) ; **modifiable** ; le grain est **lu par la validation** (E04US007) et **affiché sur la tablette de cible** (E04US002) ; réglé **une fois à la configuration**, jamais le jour J.
+- **Notes** : `D-11`. **S'appuie sur [ADR-0011](../docs/adr/0011-phase-qualification-anticipee.md)** qui a introduit `Phase` avec une `config` JSON ne portant que `scoring`, en précisant que « les autres politiques y viendront **sans changement de schéma** » → **`config.validation` à côté de `config.scoring`, zéro migration**. Motif chiffré : à 3 scoreurs pour ~30 cibles, valider **toutes les 2 volées = ~180 passages par départ** (intenable, une toutes les 40 s) contre **~60 en fin de série** (~20 par scoreur). Cf. E04US007 pour le fondement réglementaire (la validation est un acte **de fin**).
+- **Dépend de** : E01US009 · **Jalon** : J1
+
+### E01US016 — Définir l'identité visuelle du tournoi
+*En tant qu'*organisateur, *je veux* déposer **le logo et les couleurs de mon tournoi**, *afin que* l'écran de salle et le téléphone des archers affichent **ma compétition**, pas un logiciel.
+- **Contexte** : le club a **deux marques** — *Les Archers de Kervignac* (permanent) et l'événement, ex. *Challenge des Champions* (par édition, `docs/elements_design/`). `DV-01`.
+- **CA** : l'organisateur fournit **un logo** (SVG/PNG) et **deux couleurs d'accent** — **rien d'autre** ; le système **dérive** surfaces, bordures, états et variantes de texte, en **thème sombre et clair** ; **contrôle de contraste à la saisie**, en **alerte chiffrée et non bloquante** (`P-4`) : la couleur exacte est **acceptée** pour les aplats, une **variante AA est dérivée** pour le texte et les bordures (`DV-05`) ; **aperçu sur les surfaces réelles** (écran de salle + téléphone), pas un nuancier ; **les couleurs sémantiques ne sont jamais personnalisables** (alerte/succès/info appartiennent au produit, `DV-03`) ; **défaut = identité du club** si rien n'est fourni ; s'applique **au public et à l'écran de salle uniquement** — **jamais à l'admin ni à la saisie** (`D-27`) ; **modifiable à tout moment**, y compris tournoi en cours (`P-3`).
+- **Notes** : `D-27`, `D-28` · [CDC design §3.6](../cahier-des-charges-design.md) (`DV-06`). **Absent des 117 US** : le CDC design v0.1 le portait en question ouverte (`Q-D8`), fermée le 14/07/2026. **La dérivation est du code, pas une décision de designer** : teinte et saturation conservées, clarté ajustée jusqu'au seuil AA — le calcul est reproductible. Cas d'école **vérifié sur la charte réelle** : le rouge club `#B71918` donne **2,55:1** sur le fond anthracite `#1D1D1B` de sa propre charte (échec texte **et** UI) → aplat + variantes `#CC1C1B` (bordure, 3,01:1) et `#E84E4D` (texte, 4,52:1). **Pourquoi l'admin est exclu** : le jour J, un bénévole n'a pas le temps de réapprendre des repères visuels. **Ouvertes** : `Q-UX10` (qui produit le logo — un SVG de graphiste ou un JPEG de téléphone à recadrer ?), `Q-UX11` (une archive fige-t-elle son identité ?).
+- **Dépend de** : E01US001 · **Jalon** : J3 *(avec l'écran de salle — E07US004 ; l'identité n'a pas de surface avant lui)*
