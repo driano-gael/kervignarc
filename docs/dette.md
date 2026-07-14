@@ -33,7 +33,7 @@
 
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
-| [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Les FK enfants vers `tournoi.id` (`categorie`, `archer`, `score`, `blason`) n'ont pas d'`ON DELETE CASCADE`, ni de suppression applicative équivalente | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table enfant (E01US004, E01US005) | US dédiée — non planifiée |
+| [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason` (→ `tournoi.id`) et enfant indirect `score` (→ `archer.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table de la descendance (E01US004, E01US005) | US dédiée — non planifiée |
 
 ## Dette résorbée
 
@@ -43,9 +43,16 @@ _(aucune à ce jour)_
 
 ### DETTE-001 — suppression de tournoi non cascadée
 
-**Constat.** Toutes les tables enfants référencent `tournoi.id` sans politique de suppression :
-`ForeignKey("tournoi.id")` côté modèle, `sa.ForeignKeyConstraint(["tournoi_id"], ["tournoi.id"])`
-côté migrations. Aucun `ondelete`, et le service de suppression ne purge pas les enfants.
+**Constat.** Aucune FK de la descendance de `tournoi` ne porte de politique de suppression, ni côté
+modèle (`ForeignKey(...)` sans `ondelete`) ni côté migrations
+(`sa.ForeignKeyConstraint([...], [...])`), et le service de suppression ne purge pas les enfants.
+La descendance compte deux niveaux :
+
+- **enfants directs** de `tournoi` — `categorie`, `archer`, `blason` (FK → `tournoi.id`) ;
+- **enfant indirect** — `score` (FK → `archer.id`), donc bloquant pour la suppression d'un `archer`,
+  elle-même requise par toute cascade partant du tournoi.
+
+Une résorption qui ne traiterait que les FK vers `tournoi.id` laisserait `score` bloquer la cascade.
 
 **Conséquence.** La suppression d'un tournoi ne réussit que s'il est vide. Dès qu'une catégorie, un
 archer, un score ou un blason y est rattaché, la contrainte FK échoue et l'erreur remonte non
@@ -60,15 +67,16 @@ pas technique, et n'est pas tranché :
 Trancher demande une décision produit ; la trancher au fil d'une US de catégorie ou de blason
 reviendrait à la trancher par accident.
 
-**Aggravation.** Chaque US qui ajoute une table enfant de `tournoi` élargit la dette sans la créer.
-Une telle US doit :
+**Aggravation.** Chaque US qui ajoute une table à la descendance de `tournoi` élargit la dette sans
+la créer. Une telle US doit :
 1. ajouter sa ligne au périmètre de DETTE-001 (colonne « Introduite par ») ;
-2. ne pas inventer de contournement local (pas de purge ad hoc dans un service).
+2. poser le marqueur `# DETTE-001` sur la FK concernée ;
+3. ne pas inventer de contournement local (pas de purge ad hoc dans un service).
 
 **Résorption attendue.** Une US dédiée qui (a) tranche le comportement, (b) l'applique de façon
-homogène à toutes les FK enfants via une migration, (c) mappe l'erreur en `DomainError` → 409 si le
-refus est retenu, (d) couvre les deux cas (tournoi vide / non vide) en test d'intégration.
-Décision structurante ⇒ **ADR**.
+homogène à **toute la descendance** — `score` compris — via une migration, (c) mappe l'erreur en
+`DomainError` → 409 si le refus est retenu, (d) couvre les deux cas (tournoi vide / non vide) en
+test d'intégration. Décision structurante ⇒ **ADR**.
 
 ## Procédure — inscrire une dette
 
