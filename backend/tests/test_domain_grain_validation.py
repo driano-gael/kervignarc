@@ -61,8 +61,10 @@ def test_creer_valide_la_cadence_du_grain_toutes_les_n_volees() -> None:
 def test_le_grain_est_immuable() -> None:
     grain = GrainValidation.fin_de_serie()
 
+    # `setattr` plutôt qu'une affectation directe : mypy refuserait l'affectation sur une dataclass
+    # gelée, ce qui imposerait un `type: ignore` — le backend n'en compte aucun, gardons-le ainsi.
     with pytest.raises(AttributeError):
-        grain.type = TypeGrain.FIN_DE_DUEL  # type: ignore[misc]
+        setattr(grain, "type", TypeGrain.FIN_DE_DUEL)  # noqa: B010
 
 
 def test_deux_grains_de_memes_valeurs_sont_egaux() -> None:

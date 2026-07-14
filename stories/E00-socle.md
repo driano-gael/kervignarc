@@ -73,3 +73,10 @@
 - **CA** : FastAPI sert le **build front** en statique ; un exécutable de dev démarre le tout ; port fixe.
 - **Notes** : base d'EPIC-11 (packaging complet PyInstaller).
 - **Dépend de** : E00US011
+
+### E00US013 — Factoriser les briques d'UI partagées du front
+*En tant que* développeur, *je veux* que l'affichage d'une erreur ait **un seul point de vérité**, *afin qu'*un changement de rendu (couleur, ton, accessibilité) se fasse une fois et non huit.
+- **Contexte** : **[DETTE-004](../docs/dette.md)** — `MessageErreur` est copié **à l'identique** dans 8 features (`admin`, `bareme`, `blasons`, `categories`, `competition`, `gabarits` ×2, `grain-validation`) : même signature, même corps, mêmes classes, même `role="alert"`.
+- **CA** : `MessageErreur` vit dans `frontend/src/shared/ui/` ; les 8 features le consomment ; **zéro copie locale restante** ; le rendu est **inchangé** à l'écran (mêmes classes, même `role="alert"`) ; marqueurs `DETTE-004` retirés et ligne déplacée en « Dette résorbée ».
+- **Notes** : refactor **mécanique et d'un bloc**, pour que la revue porte sur l'équivalence du rendu. Placée **juste avant E01US016** (identité visuelle) et le thème sombre, qui consommeront les tokens de couleur — l'alerte doit être **ambre** (`DV-03`), et ce token ne doit s'appliquer qu'à **un** endroit. ⚠️ Le front n'a **aucun test** : vérifier à l'écran (au moins la connexion admin et une erreur de saisie).
+- **Dépend de** : E00US011 · **Jalon** : J3 *(dette — résorbée là où elle commence à coûter)*

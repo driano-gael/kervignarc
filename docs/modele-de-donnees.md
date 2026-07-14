@@ -232,16 +232,36 @@ Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Exempl
     "tiebreak": "10_puis_9",
     "depth":    "1_a_n"
   },
+  "policies": {
+    "routing":  "cascade",
+    "scoring":  "sets_4pts",
+    "scoring_par_arme": { "poulie": "cumul_volees" },
+    "validation": { "grain": "fin_de_duel" },
+    "seeding":  "serpent",
+    "byes":     "mieux_classes",
+    "tiebreak": "10_puis_9",
+    "depth":    "1_a_n"
+  },
   "params": { "taille_tableau": 128 },
-  "blason_surcharge": { "*": "triple_vertical_40" },
-  "validation": { "grain": "fin_de_duel" }
+  "blason_surcharge": { "*": "triple_vertical_40" }
 }
 ```
 
+> ⚠️ **Cible vs implémentation actuelle.** L'exemple ci-dessus est la forme **cible** (ADR-0004),
+> où toute politique vit sous `policies`. L'implémentation d'aujourd'hui (E01US009 puis E01US015,
+> périmètre ADR-0011 : **une seule phase, `qualification`**) écrit `scoring` et `validation`
+> **à plat à la racine** de `config`, et `scoring` y est un **objet** (`{"volees": N, "fleches": M,
+> "mode": "cumul"}`) et non un **nom de preset** (`"sets_4pts"`) — un barème de qualification est
+> paramétré, pas choisi dans un catalogue. E01US015 s'aligne sur cette forme effective plutôt que
+> d'introduire une 2ᵉ convention dans la même `config`. **C'est le moteur (EPIC-05) qui
+> réconciliera les deux**, quand les presets multi-phases (E01US011) et les autres politiques
+> arriveront ; d'ici là, lire les règles ci-dessous en substituant `config.scoring` à
+> `config.policies.scoring`.
+
 - `validation` porte le **grain de validation** de la phase (`D-11`) : **quand le scoreur valide**.
   Valeurs : `fin_de_serie` (preset de la qualification) · `fin_de_duel` (preset de l'élimination
-  directe) · `toutes_les_n_volees` (+ `"n_volees": N`, qui ne peut pas dépasser
-  `scoring.volees`). C'est une **politique de phase**, pas un réglage global : la qualification
+  directe) · `toutes_les_n_volees` (+ `"n_volees": N`, qui ne peut pas dépasser le nombre de volées
+  du barème de la phase). C'est une **politique de phase**, pas un réglage global : la qualification
   valide en fin de série quand l'élimination directe valide en fin de duel. Fondement : les feuilles
   de marque sont signées « à la fin de la distance, ou de la compétition, **ou du duel** » — la
   validation est un acte **de fin** ; l'article B.6.1.2 (« scores toutes les 2 volées ») porte sur le

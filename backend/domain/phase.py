@@ -65,8 +65,19 @@ def grain_par_defaut(type_phase: TypePhase) -> GrainValidation:
 
     Sert à la création d'une phase **et** à la relecture d'une phase antérieure à E01US015, dont la
     `config` ne porte pas encore de clé `validation` (cf. `repositories._vers_phase`).
+
+    Lève `GrainIncompatibleAvecTypePhase` si le type n'a pas encore de preset déclaré. Injoignable
+    tant que `TypePhase` n'a qu'une valeur, mais explicite pour EPIC-05 : sans ce garde-fou, un type
+    ajouté sans preset lèverait un `KeyError` que `_vers_phase` diagnostiquerait « configuration
+    illisible » — on chercherait une base corrompue au lieu d'une table incomplète.
     """
-    return _GRAIN_PAR_DEFAUT[type_phase]
+    preset = _GRAIN_PAR_DEFAUT.get(type_phase)
+    if preset is None:
+        raise GrainIncompatibleAvecTypePhase(
+            f"Aucun grain de validation par défaut n'est déclaré pour une phase de type "
+            f"« {type_phase.value} »."
+        )
+    return preset
 
 
 @dataclass(frozen=True)
@@ -139,7 +150,9 @@ class Phase:
 
 
 def _verifier_grain_admis(type_phase: TypePhase, validation: GrainValidation) -> None:
-    admis = _GRAINS_ADMIS[type_phase]
+    # `.get` plutôt qu'une indexation : un type sans entrée n'admet aucun grain, ce qui donne un
+    # `GrainIncompatibleAvecTypePhase` au message exact — pas un `KeyError` nu (cf. EPIC-05).
+    admis = _GRAINS_ADMIS.get(type_phase, frozenset())
     if validation.type not in admis:
         raise GrainIncompatibleAvecTypePhase(
             f"Le grain « {validation.type.value} » ne s'applique pas à une phase "
@@ -148,6 +161,14 @@ def _verifier_grain_admis(type_phase: TypePhase, validation: GrainValidation) ->
 
 
 def _verifier_cadence_couverte(validation: GrainValidation, bareme: BaremeQualification) -> None:
+    """Garantit qu'**au moins une** validation aura lieu — pas que la cadence divise le barème.
+
+    Une cadence de 3 sur 20 volées donne 6 validations, la dernière à la volée 18 : les volées 19-20
+    restent hors cadence. Ni les CA d'E01US015 ni le CDC n'exigent la divisibilité, et l'imposer
+    interdirait des réglages légitimes (7 volées sur 20). **C'est E04US007 qui devra décider** si ce
+    reliquat déclenche une validation de fin — la validation étant réglementairement un acte *de
+    fin* (CDC UX §7.3), c'est probable ; ce n'est pas à la configuration de le préempter.
+    """
     if validation.n_volees is None:
         return
     if validation.n_volees > bareme.nb_volees:

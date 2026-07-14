@@ -114,7 +114,14 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
             if "validation" not in config
             else _vers_grain(config["validation"])
         )
-    except (json.JSONDecodeError, KeyError, TypeError, ValueError, DomainError) as exc:
+    except (
+        json.JSONDecodeError,
+        AttributeError,
+        KeyError,
+        TypeError,
+        ValueError,
+        DomainError,
+    ) as exc:
         raise InfrastructureError("Configuration de phase illisible.") from exc
     try:
         return Phase(
@@ -138,6 +145,10 @@ def _vers_grain(validation: Any) -> GrainValidation:
     Passe par `GrainValidation.creer` pour qu'une valeur hors règle (cadence `< 1`, ou manquante
     sur un grain qui l'exige) remonte en `DomainError`, convertie en `InfrastructureError` par
     l'appelant — jamais en value object silencieusement invalide.
+
+    `validation` est typé `Any` parce qu'il sort de `json.loads` : rien ne garantit que ce soit un
+    objet. Une forme inattendue (scalaire, tableau) lève `AttributeError`/`TypeError`, que
+    l'appelant enveloppe comme le reste.
     """
     n_volees = validation.get("n_volees")
     return GrainValidation.creer(
@@ -153,6 +164,11 @@ def _config_phase(phase: Phase) -> str:
     `cumul` (seul mode de la qualification) ; `validation` ne porte `n_volees` que pour le grain
     « toutes les N volées » (les grains de fin n'ont pas de cadence). Les autres politiques du
     moteur (EPIC-05, ADR-0004) s'ajouteront à ce même objet `config` sans changer le schéma.
+
+    # DETTE-003 (docs/dette.md) : les politiques sont écrites **à plat** alors que le modèle cible
+    # (ADR-0004) les range sous `config.policies`, et `scoring` est ici un objet paramétré plutôt
+    # qu'un nom de preset. Forme posée par E01US009 ; E01US015 s'y aligne pour ne pas créer une 2ᵉ
+    # convention. C'est E05US004 qui tranche — ne pas introduire `policies` ici en attendant.
     """
     validation: dict[str, object] = {"grain": phase.validation.type.value}
     if phase.validation.n_volees is not None:

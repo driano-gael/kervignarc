@@ -22,7 +22,8 @@
 
 ### E05US004 — Assembler les politiques d'une phase
 *En tant qu'*administrateur, *je veux* choisir les politiques d'une phase, *afin de* paramétrer son comportement.
-- **CA** : la config JSON d'une phase référence les politiques ; assemblage résolu par la composition root.
+- **CA** : la config JSON d'une phase référence les politiques ; assemblage résolu par la composition root. **Tranche [DETTE-003](../docs/dette.md)** : politiques **à la racine** (forme écrite par E01US009/E01US015) *vs* sous **`config.policies`** (modèle cible ADR-0004), et **objet paramétré** *vs* **nom de preset** pour `scoring` ; met `modele-de-donnees.md` **et** l'ADR-0004 en accord avec la décision ; si `policies` l'emporte, fournit la migration des `config` existantes + un test de relecture de l'ancienne forme.
+- **Notes** : ⚠️ à trancher **avant** d'écrire le moteur — deux conventions coexistent aujourd'hui pour le même champ. Décision structurante ⇒ **ADR** (amende ou remplace l'ADR-0011).
 - **Dépend de** : E05US003 · **Jalon** : J2
 
 ### E05US005 — Arrondi 2^k + seeding serpent

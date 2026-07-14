@@ -298,6 +298,33 @@ def test_un_grain_present_mais_illisible_leve_infrastructure_error(tmp_path: Pat
         db.engine.dispose()
 
 
+@pytest.mark.parametrize(
+    "validation",
+    ['"fin_de_serie"', "[]", "42", "null"],
+    ids=["scalaire_texte", "tableau", "scalaire_nombre", "null"],
+)
+def test_une_cle_validation_qui_nest_pas_un_objet_leve_infrastructure_error(
+    tmp_path: Path, validation: str
+) -> None:
+    """La clé `validation` **présente** doit être un objet : toute autre forme est une base
+    altérée, pas une phase héritée (dont la clé serait *absente*) → `InfrastructureError`."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id = _tournoi(db)
+        _phase_brute(
+            db,
+            tournoi_id,
+            '{"scoring": {"volees": 20, "fleches": 3, "mode": "cumul"},'
+            f' "validation": {validation}}}',
+        )
+        with pytest.raises(InfrastructureError):
+            PhaseRepositorySQL(db.session_factory).par_tournoi_et_type(
+                tournoi_id, TypePhase.QUALIFICATION
+            )
+    finally:
+        db.engine.dispose()
+
+
 def test_un_grain_inconnu_leve_infrastructure_error(tmp_path: Path) -> None:
     """Un grain hors énumération (base altérée) ne produit pas de value object bancal."""
     db = _base(tmp_path)

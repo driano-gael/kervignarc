@@ -120,6 +120,9 @@ function FormulaireGrain({
   )
 }
 
+// DETTE-004 (docs/dette.md) : 8ᵉ copie conforme de ce composant, un par feature. À extraire dans
+// `shared/ui/` (E00US013) — le rendu des erreurs doit avoir un point unique, ne serait-ce que pour
+// appliquer le token d'alerte ambre du CDC design (`DV-03`) une seule fois.
 function MessageErreur({ erreur }: { erreur: Error | null }) {
   if (erreur === null) return null
   const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'

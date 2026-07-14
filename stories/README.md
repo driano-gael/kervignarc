@@ -164,28 +164,31 @@ Découpage fin des EPICs en user stories **à destination d'un développeur** (m
 | 115 | E03US007 | Contrainte séparation catégorie/blason |
 | 116 | E09US005 | Classement PDF par catégorie |
 | 117 | E09US006 | Classement intégral 1→N (PDF) |
-| 118 | **E01US016** | **Définir l'identité visuelle du tournoi** *(`D-27`, `D-28`, `DV-06`)* |
-| 119 | **E07US004** | **Écran de salle : poste rattaché à déroulé automatique** — *réécrite (`D-21`)* |
-| 120 | **E07US007** | **Piloter l'écran de salle depuis l'admin** *(`D-21`)* |
-| 121 | E07US005 | Vue tableaux/arbres live |
-| 122 | E05US019 | Enregistrer une séquence comme modèle |
+| 118 | **E00US013** | **Factoriser les briques d'UI partagées du front** *([DETTE-004](../docs/dette.md))* |
+| 119 | **E01US016** | **Définir l'identité visuelle du tournoi** *(`D-27`, `D-28`, `DV-06`)* |
+| 120 | **E07US004** | **Écran de salle : poste rattaché à déroulé automatique** — *réécrite (`D-21`)* |
+| 121 | **E07US007** | **Piloter l'écran de salle depuis l'admin** *(`D-21`)* |
+| 122 | E07US005 | Vue tableaux/arbres live |
+| 123 | E05US019 | Enregistrer une séquence comme modèle |
 
 > `E01US016` précède `E07US004` : **l'identité n'a pas de surface avant l'écran de salle** — c'est lui, avec
 > l'appli publique, qui la porte (`D-27`). L'admin et la saisie **restent l'outil**, neutres.
+> `E00US013` les précède tous deux : c'est là que la duplication d'UI ([DETTE-004](../docs/dette.md))
+> **commence à coûter** — un token de couleur appliqué en 8 endroits, c'est 8 occasions d'en oublier un.
 
 ## J4 — Confort, richesse & robustesse
 | Seq | US | Titre |
 |---|---|---|
-| 123 | E02US007 | Importer un fichier inscript'arc (parsing + mapping) |
-| 124 | E02US008 | Rapport d'import (rejets, doublons) |
-| 125 | E01US011 | Presets de barèmes multi-phases |
-| 126 | E01US012 | Gérer plusieurs gabarits |
-| 127 | E03US010 | Générer / éditer le déroulé horaire |
-| 128 | E09US007 | Déroulé horaire imprimable |
-| 129 | E05US016 | Routing repêchage-réintégration (WA) |
-| 130 | E11US006 | Restauration depuis une sauvegarde |
-| 131 | E11US007 | Drain de la file d'écriture à l'arrêt |
-| 132 | E10US006 | Modifier le mot de passe admin |
+| 124 | E02US007 | Importer un fichier inscript'arc (parsing + mapping) |
+| 125 | E02US008 | Rapport d'import (rejets, doublons) |
+| 126 | E01US011 | Presets de barèmes multi-phases |
+| 127 | E01US012 | Gérer plusieurs gabarits |
+| 128 | E03US010 | Générer / éditer le déroulé horaire |
+| 129 | E09US007 | Déroulé horaire imprimable |
+| 130 | E05US016 | Routing repêchage-réintégration (WA) |
+| 131 | E11US006 | Restauration depuis une sauvegarde |
+| 132 | E11US007 | Drain de la file d'écriture à l'arrêt |
+| 133 | E10US006 | Modifier le mot de passe admin |
 
 ---
 
@@ -197,4 +200,6 @@ Découpage fin des EPICs en user stories **à destination d'un développeur** (m
 ---
 
 *Séquence indicative au sein d'un jalon (ajustable selon dépendances) ; les jalons se font dans l'ordre.*
-***Total : 132 US actives*** *(+ 1 caduque). Dernière révision : 14/07/2026 — entretien de conception (CDC UX v0.2, CDC design v0.3).*
+***Total : 133 US actives*** *(+ 1 caduque). Dernière révision : 14/07/2026 — entretien de conception
+(CDC UX v0.2, CDC design v0.3), puis ajout d'`E00US013` (résorption de [DETTE-004](../docs/dette.md),
+revue d'E01US015).*
