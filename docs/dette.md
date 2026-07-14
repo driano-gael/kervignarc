@@ -33,7 +33,7 @@
 
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
-| [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason` (→ `tournoi.id`), enfant indirect `score` (→ `archer.id`) et lien latéral `categorie.blason_id` (→ `blason.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006) | US dédiée — non planifiée |
+| [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason`, `gabarit_salle` (→ `tournoi.id`), enfant indirect `score` (→ `archer.id`) et lien latéral `categorie.blason_id` (→ `blason.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006, E01US008) | US dédiée — non planifiée |
 
 ## Dette résorbée
 
@@ -48,7 +48,9 @@ modèle (`ForeignKey(...)` sans `ondelete`) ni côté migrations
 (`sa.ForeignKeyConstraint([...], [...])`), et le service de suppression ne purge pas les enfants.
 La descendance compte trois natures de liens :
 
-- **enfants directs** de `tournoi` — `categorie`, `archer`, `blason` (FK → `tournoi.id`) ;
+- **enfants directs** de `tournoi` — `categorie`, `archer`, `blason` (FK → `tournoi.id`), et
+  `gabarit_salle` pour son **instance** appliquée à un tournoi (E01US008 ; les modèles de
+  bibliothèque, `tournoi_id NULL`, ne sont pas concernés) ;
 - **enfant indirect** — `score` (FK → `archer.id`), donc bloquant pour la suppression d'un `archer`,
   elle-même requise par toute cascade partant du tournoi ;
 - **lien latéral** entre deux enfants du tournoi — `categorie.blason_id` (FK → `blason.id`,

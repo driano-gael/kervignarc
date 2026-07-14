@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import type { Gabarit } from './api'
+import { decrire } from './format'
 import { useAjusterGabarit, useAppliquerGabarit, useGabaritDuTournoi, useGabarits } from './hooks'
 
 const PLAFONDS = [1, 2, 3, 4]
@@ -234,15 +235,6 @@ function FormulaireAjustement({ tournoiId, gabarit }: { tournoiId: number; gabar
       <MessageErreur erreur={ajuster.error} />
     </form>
   )
-}
-
-// Résumé d'un gabarit : nombre de cibles et plafond(s) d'archers observés.
-function decrire(gabarit: Gabarit): string {
-  const plafonds = [...new Set(gabarit.cibles.map((cible) => cible.capacite))].sort((a, b) => a - b)
-  const cibles = `${gabarit.nb_cibles} cible${gabarit.nb_cibles > 1 ? 's' : ''}`
-  const plafond =
-    plafonds.length === 1 ? `max ${plafonds[0]} archer(s)/cible` : `plafonds ${plafonds.join('/')}`
-  return `${cibles} · ${plafond}`
 }
 
 function MessageErreur({ erreur }: { erreur: Error | null }) {
