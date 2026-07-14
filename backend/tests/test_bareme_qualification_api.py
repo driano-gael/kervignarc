@@ -138,6 +138,14 @@ def test_definir_tournoi_inconnu_404(app_bareme: FastAPI, connecter_admin: Conne
     assert reponse.json()["code"] == "tournoi_introuvable"
 
 
+def test_lire_tournoi_inconnu_404(app_bareme: FastAPI) -> None:
+    """Lire le barème d'un tournoi inexistant → 404 `tournoi_introuvable`."""
+    with TestClient(app_bareme) as client:
+        reponse = client.get("/api/v1/tournois/999/bareme-qualification")
+    assert reponse.status_code == 404
+    assert reponse.json()["code"] == "tournoi_introuvable"
+
+
 def test_definir_valeur_invalide_422(app_bareme: FastAPI, connecter_admin: ConnecterAdmin) -> None:
     """Un nombre de volées nul → 422 avec le code métier (règle du domaine)."""
     with TestClient(app_bareme) as client:

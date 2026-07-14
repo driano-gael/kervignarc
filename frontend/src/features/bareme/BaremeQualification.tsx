@@ -22,7 +22,10 @@ export function BaremeQualification({ tournoiId }: { tournoiId: number }) {
       {bareme.isPending && <p className="carte__etat">Chargement…</p>}
       {bareme.isError && <MessageErreur erreur={bareme.error} />}
       {bareme.isSuccess && (
+        // Clé sur les valeurs serveur : le formulaire se re-sème si le barème change côté serveur
+        // (enregistrement, ou diffusion temps réel d'une autre session), sans état à synchroniser.
         <FormulaireBareme
+          key={`${bareme.data?.nb_volees ?? 'x'}-${bareme.data?.nb_fleches_par_volee ?? 'x'}`}
           tournoiId={tournoiId}
           nbVoleesInitial={bareme.data?.nb_volees ?? PRESET_FFTA.nb_volees}
           nbFlechesInitial={bareme.data?.nb_fleches_par_volee ?? PRESET_FFTA.nb_fleches_par_volee}

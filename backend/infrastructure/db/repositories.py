@@ -18,6 +18,7 @@ from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId, SexeCategorie
+from domain.erreurs import DomainError
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.score import Score
@@ -87,16 +88,18 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
     """Traduit une ligne ORM en agrégat `Phase` (config JSON → barème de qualification).
 
     E01US009 : seules des phases `qualification` existent ; le barème est lu depuis
-    `config.scoring`. Une `config` illisible est une **incohérence technique** (le repository en
-    est le seul rédacteur) → `InfrastructureError` (ADR-0007), jamais un traceback brut.
+    `config.scoring`. Une `config` illisible **ou hors règle** (le repository en est le seul
+    rédacteur et écrit toujours un barème valide) est une **incohérence technique** → on relit
+    via `BaremeQualification.creer` pour que même une valeur hors plage remonte en
+    `InfrastructureError` (ADR-0007), jamais en value object silencieusement invalide.
     """
     try:
         scoring = json.loads(ligne.config)["scoring"]
-        bareme = BaremeQualification(
+        bareme = BaremeQualification.creer(
             nb_volees=int(scoring["volees"]),
             nb_fleches_par_volee=int(scoring["fleches"]),
         )
-    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError, DomainError) as exc:
         raise InfrastructureError("Configuration de phase illisible.") from exc
     return Phase(
         tournoi_id=ligne.tournoi_id,

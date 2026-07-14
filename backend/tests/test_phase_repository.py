@@ -127,3 +127,31 @@ def test_config_corrompue_leve_infrastructure_error(tmp_path: Path) -> None:
             )
     finally:
         db.engine.dispose()
+
+
+def test_config_lisible_mais_hors_regle_leve_infrastructure_error(tmp_path: Path) -> None:
+    """Une `config` bien formée mais hors règle (volées 0) remonte aussi en `InfrastructureError`.
+
+    Le repository relit via `BaremeQualification.creer`, si bien qu'une incohérence en base ne
+    produit jamais un value object silencieusement invalide.
+    """
+    db = _base(tmp_path)
+    try:
+        tournoi_id = _tournoi(db)
+        with db.session_factory() as session:
+            session.add(
+                PhaseORM(
+                    tournoi_id=tournoi_id,
+                    ordre=1,
+                    type="qualification",
+                    config='{"scoring": {"volees": 0, "fleches": 3, "mode": "cumul"}}',
+                    statut="a_venir",
+                )
+            )
+            session.commit()
+        with pytest.raises(InfrastructureError):
+            PhaseRepositorySQL(db.session_factory).par_tournoi_et_type(
+                tournoi_id, TypePhase.QUALIFICATION
+            )
+    finally:
+        db.engine.dispose()
