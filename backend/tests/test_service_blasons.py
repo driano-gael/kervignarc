@@ -12,8 +12,9 @@ import datetime
 import pytest
 
 from application.blasons import ServiceBlasons
-from application.erreurs import BlasonIntrouvable, TournoiIntrouvable
+from application.erreurs import BlasonIntrouvable, BlasonReference, TournoiIntrouvable
 from domain.blason import Blason, BlasonId
+from domain.categorie import Categorie, CategorieId
 from domain.erreurs import TailleBlasonInvalide
 from domain.tournoi import Tournoi, TournoiId
 
@@ -76,17 +77,49 @@ class FauxBlasonRepository:
         del self._blasons[blason_id]
 
 
-def _service_avec_tournoi() -> tuple[ServiceBlasons, int]:
-    """Prépare un service avec un tournoi persisté ; renvoie (service, tournoi_id)."""
+class FauxCategorieRepository:
+    """Repository de catégories minimal (seul `par_blason` est exercé par ce service)."""
+
+    def __init__(self) -> None:
+        self._categories: dict[int, Categorie] = {}
+        self._sequence = 0
+
+    def ajouter(self, categorie: Categorie) -> Categorie:
+        self._sequence += 1
+        persiste = dataclasses.replace(categorie, id=self._sequence)
+        self._categories[self._sequence] = persiste
+        return persiste
+
+    def par_id(self, categorie_id: CategorieId) -> Categorie | None:
+        return self._categories.get(categorie_id)
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Categorie]:
+        return [c for c in self._categories.values() if c.tournoi_id == tournoi_id]
+
+    def par_blason(self, blason_id: BlasonId) -> list[Categorie]:
+        return [c for c in self._categories.values() if c.blason_id == blason_id]
+
+    def enregistrer(self, categorie: Categorie) -> Categorie:
+        assert categorie.id in self._categories
+        self._categories[categorie.id] = categorie
+        return categorie
+
+    def supprimer(self, categorie_id: CategorieId) -> None:
+        del self._categories[categorie_id]
+
+
+def _service_avec_tournoi() -> tuple[ServiceBlasons, int, FauxCategorieRepository]:
+    """Prépare un service avec un tournoi persisté ; renvoie (service, tournoi_id, categories)."""
     tournois = FauxTournoiRepository()
     tournoi = tournois.ajouter(Tournoi.creer("Trophée", _DATE))
     assert tournoi.id is not None
-    return ServiceBlasons(tournois, FauxBlasonRepository()), tournoi.id
+    categories = FauxCategorieRepository()
+    return ServiceBlasons(tournois, FauxBlasonRepository(), categories), tournoi.id, categories
 
 
 def test_creer_persiste_et_rattache_au_tournoi() -> None:
     """`creer` attribue un id et rattache le blason au tournoi."""
-    service, tournoi_id = _service_avec_tournoi()
+    service, tournoi_id, _ = _service_avec_tournoi()
     blason = service.creer(tournoi_id, "Trispot 40", 0.5, 3)
     assert blason.id == 1
     assert blason.tournoi_id == tournoi_id
@@ -97,21 +130,23 @@ def test_creer_persiste_et_rattache_au_tournoi() -> None:
 
 def test_creer_leve_si_tournoi_introuvable() -> None:
     """Créer dans un tournoi inconnu lève `TournoiIntrouvable`."""
-    service = ServiceBlasons(FauxTournoiRepository(), FauxBlasonRepository())
+    service = ServiceBlasons(
+        FauxTournoiRepository(), FauxBlasonRepository(), FauxCategorieRepository()
+    )
     with pytest.raises(TournoiIntrouvable):
         service.creer(404, "Blason", 0.5, 1)
 
 
 def test_creer_propage_l_erreur_de_domaine() -> None:
     """Une taille invalide fait remonter l'erreur du domaine (non persisté)."""
-    service, tournoi_id = _service_avec_tournoi()
+    service, tournoi_id, _ = _service_avec_tournoi()
     with pytest.raises(TailleBlasonInvalide):
         service.creer(tournoi_id, "Blason", 0.0, 1)
 
 
 def test_lister_ne_renvoie_que_les_blasons_du_tournoi() -> None:
     """`lister` renvoie les blasons du tournoi demandé (et lève si tournoi inconnu)."""
-    service, tournoi_id = _service_avec_tournoi()
+    service, tournoi_id, _ = _service_avec_tournoi()
     assert service.lister(tournoi_id) == []
     service.creer(tournoi_id, "A", 0.5, 1)
     service.creer(tournoi_id, "B", 1.0, 2)
@@ -122,7 +157,7 @@ def test_lister_ne_renvoie_que_les_blasons_du_tournoi() -> None:
 
 def test_modifier_persiste_les_attributs() -> None:
     """`modifier` met à jour le blason et conserve son identifiant."""
-    service, tournoi_id = _service_avec_tournoi()
+    service, tournoi_id, _ = _service_avec_tournoi()
     cree = service.creer(tournoi_id, "Ancien", 0.25, 4)
     assert cree.id is not None
     modifie = service.modifier(cree.id, "Nouveau", 0.5, 2)
@@ -134,14 +169,14 @@ def test_modifier_persiste_les_attributs() -> None:
 
 def test_modifier_leve_si_introuvable() -> None:
     """`modifier` lève `BlasonIntrouvable` pour un identifiant inconnu."""
-    service, _ = _service_avec_tournoi()
+    service, _, _ = _service_avec_tournoi()
     with pytest.raises(BlasonIntrouvable):
         service.modifier(404, "X", 0.5, 1)
 
 
 def test_supprimer_retire_le_blason() -> None:
     """`supprimer` retire le blason ; il n'apparaît plus dans la liste."""
-    service, tournoi_id = _service_avec_tournoi()
+    service, tournoi_id, _ = _service_avec_tournoi()
     cree = service.creer(tournoi_id, "Monospot", 1.0, 1)
     assert cree.id is not None
     service.supprimer(cree.id)
@@ -150,6 +185,29 @@ def test_supprimer_retire_le_blason() -> None:
 
 def test_supprimer_leve_si_introuvable() -> None:
     """`supprimer` lève `BlasonIntrouvable` pour un identifiant inconnu."""
-    service, _ = _service_avec_tournoi()
+    service, _, _ = _service_avec_tournoi()
     with pytest.raises(BlasonIntrouvable):
         service.supprimer(404)
+
+
+def test_supprimer_refuse_un_blason_reference() -> None:
+    """E01US006 : supprimer un blason encore utilisé par une catégorie lève `BlasonReference`."""
+    service, tournoi_id, categories = _service_avec_tournoi()
+    cree = service.creer(tournoi_id, "Trispot 40", 0.5, 3)
+    assert cree.id is not None
+    categories.ajouter(Categorie.creer(tournoi_id, "Senior H", blason_id=cree.id))
+    with pytest.raises(BlasonReference):
+        service.supprimer(cree.id)
+    assert service.lister(tournoi_id) == [cree]  # le blason est toujours là
+
+
+def test_supprimer_apres_reaffectation() -> None:
+    """E01US006 : une fois la catégorie détachée du blason, celui-ci redevient supprimable."""
+    service, tournoi_id, categories = _service_avec_tournoi()
+    cree = service.creer(tournoi_id, "Trispot 40", 0.5, 3)
+    assert cree.id is not None
+    categorie = categories.ajouter(Categorie.creer(tournoi_id, "Senior H", blason_id=cree.id))
+    assert categorie.id is not None
+    categories.enregistrer(dataclasses.replace(categorie, blason_id=None))
+    service.supprimer(cree.id)
+    assert service.lister(tournoi_id) == []

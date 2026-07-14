@@ -12,6 +12,8 @@ export interface Categorie {
   arme: string | null
   tranche_age: string | null
   sexe: SexeCategorie | null
+  // Blason par défaut (E01US006), facultatif : null = aucun.
+  blason_id: number | null
 }
 
 export interface NouvelleCategorie {
@@ -19,6 +21,7 @@ export interface NouvelleCategorie {
   arme?: string | null
   tranche_age?: string | null
   sexe?: SexeCategorie | null
+  blason_id?: number | null
 }
 
 // L'édition porte sur les mêmes champs que la création.

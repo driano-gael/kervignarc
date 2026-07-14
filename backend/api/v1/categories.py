@@ -28,12 +28,13 @@ router = APIRouter(prefix="/api/v1", tags=["categories"])
 
 
 class CreerCategorieRequete(BaseModel):
-    """Corps de création d'une catégorie (libellé requis ; arme/âge/sexe facultatifs)."""
+    """Corps de création d'une catégorie (libellé requis ; arme/âge/sexe/blason facultatifs)."""
 
     libelle: str
     arme: str | None = None
     tranche_age: str | None = None
     sexe: SexeCategorie | None = None
+    blason_id: int | None = None
 
 
 class ModifierCategorieRequete(BaseModel):
@@ -43,6 +44,7 @@ class ModifierCategorieRequete(BaseModel):
     arme: str | None = None
     tranche_age: str | None = None
     sexe: SexeCategorie | None = None
+    blason_id: int | None = None
 
 
 class CategorieReponse(BaseModel):
@@ -54,6 +56,7 @@ class CategorieReponse(BaseModel):
     arme: str | None
     tranche_age: str | None
     sexe: SexeCategorie | None
+    blason_id: int | None
 
     @staticmethod
     def de_agregat(categorie: Categorie) -> CategorieReponse:
@@ -66,6 +69,7 @@ class CategorieReponse(BaseModel):
             arme=categorie.arme,
             tranche_age=categorie.tranche_age,
             sexe=categorie.sexe,
+            blason_id=categorie.blason_id,
         )
 
 
@@ -113,7 +117,12 @@ async def creer_categorie(
     categorie = await asyncio.wrap_future(
         write_queue.submit(
             lambda: service.creer(
-                tournoi_id, requete.libelle, requete.arme, requete.tranche_age, requete.sexe
+                tournoi_id,
+                requete.libelle,
+                requete.arme,
+                requete.tranche_age,
+                requete.sexe,
+                requete.blason_id,
             )
         )
     )
@@ -134,7 +143,12 @@ async def modifier_categorie(
     categorie = await asyncio.wrap_future(
         write_queue.submit(
             lambda: service.modifier(
-                categorie_id, requete.libelle, requete.arme, requete.tranche_age, requete.sexe
+                categorie_id,
+                requete.libelle,
+                requete.arme,
+                requete.tranche_age,
+                requete.sexe,
+                requete.blason_id,
             )
         )
     )

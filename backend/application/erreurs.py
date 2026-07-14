@@ -59,6 +59,26 @@ class BlasonIntrouvable(ApplicationError):
     code = "blason_introuvable"
 
 
+class BlasonHorsTournoi(ApplicationError):
+    """Blason par défaut incohérent : inexistant ou rattaché à un autre tournoi (E01US006) → 409.
+
+    Règle inter-agrégats : une catégorie ne peut porter comme blason par défaut qu'un blason du
+    **même** tournoi.
+    """
+
+    code = "blason_hors_tournoi"
+
+
+class BlasonReference(ApplicationError):
+    """Suppression refusée : le blason est le blason par défaut d'au moins une catégorie → 409.
+
+    Il faut d'abord **réaffecter** ces catégories (autre blason ou aucun) ; un blason non
+    référencé reste supprimable (E01US006).
+    """
+
+    code = "blason_reference"
+
+
 class IdentifiantsInvalides(ApplicationError):
     """Login/mot de passe admin incorrects (E10US002). Traduite en 401 à la frontière."""
 

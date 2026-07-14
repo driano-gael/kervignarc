@@ -79,6 +79,13 @@ class CategorieRepository(Protocol):
         """Renvoie toutes les catégories d'un tournoi (liste éventuellement vide)."""
         ...
 
+    def par_blason(self, blason_id: BlasonId) -> list[Categorie]:
+        """Renvoie les catégories dont le blason par défaut est `blason_id` (E01US006).
+
+        Sert à refuser la suppression d'un blason encore référencé (liste non vide).
+        """
+        ...
+
     def enregistrer(self, categorie: Categorie) -> Categorie:
         """Met à jour une catégorie déjà persistée (édition) et la renvoie."""
         ...

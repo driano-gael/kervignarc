@@ -77,3 +77,21 @@ def test_modifier_valide_le_libelle() -> None:
     categorie = Categorie.creer(1, "Libre")
     with pytest.raises(LibelleCategorieInvalide):
         categorie.modifier("   ")
+
+
+def test_creer_sans_blason_par_defaut() -> None:
+    """E01US006 : sans blason précisé, `blason_id` vaut None (aucun blason par défaut)."""
+    assert Categorie.creer(1, "Libre").blason_id is None
+
+
+def test_creer_avec_blason_par_defaut() -> None:
+    """E01US006 : `blason_id` transporte le blason par défaut (l'agrégat ne le valide pas)."""
+    categorie = Categorie.creer(1, "Senior H", blason_id=42)
+    assert categorie.blason_id == 42
+
+
+def test_modifier_change_puis_retire_le_blason() -> None:
+    """E01US006 : `modifier` remplace le blason par défaut, `None` le retire."""
+    categorie = Categorie.creer(1, "Senior H", blason_id=42)
+    assert categorie.modifier("Senior H", blason_id=7).blason_id == 7
+    assert categorie.modifier("Senior H").blason_id is None

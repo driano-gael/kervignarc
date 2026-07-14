@@ -3,8 +3,10 @@
 Sert à **classer et cloisonner** les archers (arme, tranche d'âge, sexe). Agrégat de domaine
 **pur** (aucune dépendance framework, immuable), validé à la création/édition : seul le `libelle`
 est obligatoire ; `arme`, `tranche_age` et `sexe` sont facultatifs (le référentiel FFTA officiel
-sera pré-chargé et modifiable en E01US004). L'association à un **blason** par défaut viendra en
-E01US006 (le blason n'existe qu'à partir d'E01US005).
+sera pré-chargé et modifiable en E01US004). Une catégorie peut porter un **blason par défaut**
+facultatif (`blason_id`, E01US006) exploité par le placement (EPIC-03) ; la cohérence de ce lien
+(le blason doit appartenir au même tournoi) relève d'une règle **inter-agrégats**, vérifiée par le
+service applicatif, non par cet agrégat.
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from enum import Enum
 
+from domain.blason import BlasonId
 from domain.erreurs import LibelleCategorieInvalide
 from domain.tournoi import TournoiId
 
@@ -36,6 +39,7 @@ class Categorie:
     arme: str | None = None
     tranche_age: str | None = None
     sexe: SexeCategorie | None = None
+    blason_id: BlasonId | None = None
     id: CategorieId | None = None
 
     @staticmethod
@@ -45,11 +49,14 @@ class Categorie:
         arme: str | None = None,
         tranche_age: str | None = None,
         sexe: SexeCategorie | None = None,
+        blason_id: BlasonId | None = None,
     ) -> Categorie:
         """Crée une catégorie valide ; lève `LibelleCategorieInvalide` si le libellé est vide.
 
         Le libellé, l'arme et la tranche d'âge sont normalisés (espaces de bord retirés) ; une
-        valeur vide devient `None` pour les champs facultatifs.
+        valeur vide devient `None` pour les champs facultatifs. `blason_id` est le blason par
+        défaut, facultatif : `None` = aucun. L'agrégat ne **vérifie pas** l'existence ni le
+        rattachement du blason (règle inter-agrégats portée par le service).
         """
         return Categorie(
             tournoi_id=tournoi_id,
@@ -57,6 +64,7 @@ class Categorie:
             arme=_texte_facultatif(arme),
             tranche_age=_texte_facultatif(tranche_age),
             sexe=sexe,
+            blason_id=blason_id,
         )
 
     def modifier(
@@ -65,11 +73,13 @@ class Categorie:
         arme: str | None = None,
         tranche_age: str | None = None,
         sexe: SexeCategorie | None = None,
+        blason_id: BlasonId | None = None,
     ) -> Categorie:
         """Renvoie une copie aux attributs mis à jour (mêmes règles que `creer`).
 
         L'`id` et le `tournoi_id` sont **préservés** (on ne déplace pas une catégorie d'un
-        tournoi à l'autre). Lève `LibelleCategorieInvalide` si le libellé est vide.
+        tournoi à l'autre). `blason_id` remplace le blason par défaut (`None` le retire). Lève
+        `LibelleCategorieInvalide` si le libellé est vide.
         """
         return replace(
             self,
@@ -77,6 +87,7 @@ class Categorie:
             arme=_texte_facultatif(arme),
             tranche_age=_texte_facultatif(tranche_age),
             sexe=sexe,
+            blason_id=blason_id,
         )
 
 

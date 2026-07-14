@@ -57,6 +57,7 @@ def _vers_categorie(ligne: CategorieORM) -> Categorie:
         arme=ligne.arme,
         tranche_age=ligne.tranche_age,
         sexe=None if ligne.sexe is None else SexeCategorie(ligne.sexe),
+        blason_id=ligne.blason_id,
         id=ligne.id,
     )
 
@@ -212,6 +213,7 @@ class CategorieRepositorySQL:
                     arme=categorie.arme,
                     tranche_age=categorie.tranche_age,
                     sexe=None if categorie.sexe is None else categorie.sexe.value,
+                    blason_id=categorie.blason_id,
                 )
                 session.add(ligne)
                 session.commit()
@@ -241,6 +243,19 @@ class CategorieRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des catégories du tournoi.") from exc
 
+    def par_blason(self, blason_id: BlasonId) -> list[Categorie]:
+        """Renvoie les catégories dont le blason par défaut est `blason_id` (E01US006)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(CategorieORM)
+                    .where(CategorieORM.blason_id == blason_id)
+                    .order_by(CategorieORM.id)
+                ).scalars()
+                return [_vers_categorie(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des catégories par blason.") from exc
+
     def enregistrer(self, categorie: Categorie) -> Categorie:
         """Met à jour une catégorie déjà persistée (édition) et la renvoie.
 
@@ -256,6 +271,7 @@ class CategorieRepositorySQL:
                 ligne.arme = categorie.arme
                 ligne.tranche_age = categorie.tranche_age
                 ligne.sexe = None if categorie.sexe is None else categorie.sexe.value
+                ligne.blason_id = categorie.blason_id
                 session.commit()
                 return _vers_categorie(ligne)
         except SQLAlchemyError as exc:

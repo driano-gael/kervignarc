@@ -50,6 +50,16 @@ def _creer_tournoi(client: TestClient) -> int:
     return int(reponse.json()["id"])
 
 
+def _creer_blason(client: TestClient, tournoi_id: int) -> int:
+    """Crée un blason dans un tournoi et renvoie son identifiant."""
+    reponse = client.post(
+        f"/api/v1/tournois/{tournoi_id}/blasons",
+        json={"nom": "Trispot 40", "taille": 0.5, "capacite": 3},
+    )
+    assert reponse.status_code == 201, reponse.text
+    return int(reponse.json()["id"])
+
+
 def test_creer_puis_lister_une_categorie(
     app_categories: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
@@ -82,7 +92,7 @@ def test_creer_puis_lister_une_categorie(
 def test_creer_defauts_attributs_facultatifs(
     app_categories: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """Sans arme/âge/sexe : champs à None."""
+    """Sans arme/âge/sexe/blason : champs à None."""
     with TestClient(app_categories) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
@@ -92,6 +102,63 @@ def test_creer_defauts_attributs_facultatifs(
     assert cree["arme"] is None
     assert cree["tranche_age"] is None
     assert cree["sexe"] is None
+    assert cree["blason_id"] is None
+
+
+def test_creer_avec_blason_par_defaut(
+    app_categories: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E01US006 : on rattache un blason du tournoi ; la réponse porte `blason_id`."""
+    with TestClient(app_categories) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        blason_id = _creer_blason(client, tournoi_id)
+        cree = client.post(
+            f"/api/v1/tournois/{tournoi_id}/categories",
+            json={"libelle": "Senior H", "blason_id": blason_id},
+        )
+        assert cree.status_code == 201, cree.text
+        assert cree.json()["blason_id"] == blason_id
+
+
+def test_modifier_attache_puis_detache_le_blason(
+    app_categories: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E01US006 : PUT pose un blason par défaut, puis le retire (`blason_id` null)."""
+    with TestClient(app_categories) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        blason_id = _creer_blason(client, tournoi_id)
+        cree = client.post(
+            f"/api/v1/tournois/{tournoi_id}/categories", json={"libelle": "Libre"}
+        ).json()
+        attachee = client.put(
+            f"/api/v1/categories/{cree['id']}",
+            json={"libelle": "Libre", "blason_id": blason_id},
+        )
+        assert attachee.status_code == 200
+        assert attachee.json()["blason_id"] == blason_id
+        detachee = client.put(
+            f"/api/v1/categories/{cree['id']}", json={"libelle": "Libre", "blason_id": None}
+        )
+        assert detachee.json()["blason_id"] is None
+
+
+def test_creer_avec_blason_d_un_autre_tournoi_409(
+    app_categories: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E01US006 : rattacher un blason d'un autre tournoi → 409 typé (`blason_hors_tournoi`)."""
+    with TestClient(app_categories) as client:
+        connecter_admin(client)
+        tournoi_a = _creer_tournoi(client)
+        tournoi_b = _creer_tournoi(client)
+        blason_b = _creer_blason(client, tournoi_b)
+        reponse = client.post(
+            f"/api/v1/tournois/{tournoi_a}/categories",
+            json={"libelle": "Senior H", "blason_id": blason_b},
+        )
+    assert reponse.status_code == 409
+    assert reponse.json()["code"] == "blason_hors_tournoi"
 
 
 def test_lister_categories_d_un_tournoi(
