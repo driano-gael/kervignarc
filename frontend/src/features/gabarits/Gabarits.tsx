@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import type { Gabarit, NouveauGabarit } from './api'
+import { decrire } from './format'
 import { useCreerGabarit, useGabarits, useModifierGabarit, useSupprimerGabarit } from './hooks'
 
 const PLAFONDS = [1, 2, 3, 4]
@@ -86,15 +87,6 @@ function LigneGabarit({ gabarit }: { gabarit: Gabarit }) {
       <MessageErreur erreur={supprimer.error} />
     </li>
   )
-}
-
-// Résumé d'un gabarit : nombre de cibles et plafond(s) d'archers observés.
-function decrire(gabarit: Gabarit): string {
-  const plafonds = [...new Set(gabarit.cibles.map((cible) => cible.capacite))].sort((a, b) => a - b)
-  const cibles = `${gabarit.nb_cibles} cible${gabarit.nb_cibles > 1 ? 's' : ''}`
-  const plafond =
-    plafonds.length === 1 ? `max ${plafonds[0]} archer(s)/cible` : `plafonds ${plafonds.join('/')}`
-  return `${cibles} · ${plafond}`
 }
 
 // Formulaire partagé création / édition : sans `gabarit` il crée, avec il édite. À l'édition,

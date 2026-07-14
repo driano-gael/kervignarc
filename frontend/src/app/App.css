@@ -350,6 +350,28 @@ button:disabled {
   font-size: 13px;
 }
 
+/* Plan de salle d'un tournoi (E01US008) : réglage du plafond cible par cible. */
+.plan-cibles {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+}
+
+.plan-cible {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plan-cible__nom {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: var(--text);
+}
+
 /* Pastille de statut du cycle de vie. */
 .badge {
   display: inline-block;

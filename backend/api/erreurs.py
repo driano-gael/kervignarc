@@ -28,6 +28,7 @@ from application.erreurs import (
     ArcherIntrouvable,
     BlasonIntrouvable,
     CategorieIntrouvable,
+    GabaritDuTournoiAbsent,
     GabaritIntrouvable,
     IdentifiantsInvalides,
     NonAuthentifie,
@@ -61,7 +62,8 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | ArcherIntrouvable
         | CategorieIntrouvable
         | BlasonIntrouvable
-        | GabaritIntrouvable,
+        | GabaritIntrouvable
+        | GabaritDuTournoiAbsent,
     ):
         status = 404
     else:

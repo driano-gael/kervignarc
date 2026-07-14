@@ -79,3 +79,64 @@ def test_modifier_valide_les_attributs() -> None:
     gabarit = GabaritSalle.creer("Salle", 1)
     with pytest.raises(CapaciteCibleInvalide):
         gabarit.modifier("Salle", 1, 9)
+
+
+# --- Application à un tournoi (E01US008) ---
+
+
+def test_pour_tournoi_produit_une_copie_detachee() -> None:
+    """`pour_tournoi` copie nom et plafonds, détache l'`id` et fixe le `tournoi_id`."""
+    modele = GabaritSalle(nom="Salle municipale", capacites=(4, 4, 2), id=7)
+    instance = modele.pour_tournoi(42)
+    assert instance.id is None  # à persister comme une nouvelle ligne
+    assert instance.tournoi_id == 42
+    assert instance.nom == "Salle municipale"
+    assert instance.capacites == (4, 4, 2)
+    # Le modèle d'origine n'est pas muté (dataclass gelée).
+    assert modele.tournoi_id is None
+    assert modele.id == 7
+
+
+def test_ajuster_regle_le_plafond_cible_par_cible() -> None:
+    """`ajuster` fixe un plafond par cible et préserve `id`/`tournoi_id`."""
+    instance = GabaritSalle(nom="Salle", capacites=(4, 4, 4, 4), id=3, tournoi_id=42)
+    ajustee = instance.ajuster("Salle adaptée", (4, 2, 2, 1))
+    assert ajustee.id == 3
+    assert ajustee.tournoi_id == 42
+    assert ajustee.nom == "Salle adaptée"
+    assert ajustee.capacites == (4, 2, 2, 1)
+    assert [c.positions for c in ajustee.cibles] == [
+        ("A", "B", "C", "D"),
+        ("A", "B"),
+        ("A", "B"),
+        ("A",),
+    ]
+
+
+def test_ajuster_peut_changer_le_nombre_de_cibles() -> None:
+    """La longueur de `capacites` redéfinit le nombre de cibles."""
+    instance = GabaritSalle(nom="Salle", capacites=(4, 4), id=3, tournoi_id=42)
+    assert instance.ajuster("Salle", (4, 4, 4, 2, 2)).nb_cibles == 5
+    assert instance.ajuster("Salle", (2,)).nb_cibles == 1
+
+
+def test_ajuster_refuse_un_plafond_hors_plage() -> None:
+    """Chaque plafond ajusté doit rester dans [1, 4]."""
+    instance = GabaritSalle(nom="Salle", capacites=(4, 4), id=3, tournoi_id=42)
+    with pytest.raises(CapaciteCibleInvalide):
+        instance.ajuster("Salle", (4, 5))
+
+
+def test_ajuster_refuse_zero_cible() -> None:
+    """Un ajustement sans aucune cible est refusé."""
+    instance = GabaritSalle(nom="Salle", capacites=(4,), id=3, tournoi_id=42)
+    with pytest.raises(NombreCiblesInvalide):
+        instance.ajuster("Salle", ())
+
+
+def test_ajuster_normalise_le_nom() -> None:
+    """Le nom est normalisé et ne peut pas être vide à l'ajustement."""
+    instance = GabaritSalle(nom="Salle", capacites=(4,), id=3, tournoi_id=42)
+    assert instance.ajuster("  Salle B  ", (4,)).nom == "Salle B"
+    with pytest.raises(NomGabaritInvalide):
+        instance.ajuster("   ", (4,))

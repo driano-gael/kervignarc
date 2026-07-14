@@ -123,8 +123,9 @@ def create_app(
     app.state.service_blasons = ServiceBlasons(
         tournoi_repository, blason_repository, categorie_repository
     )
-    # Gabarits de salle (E01US007) : ressource autonome (aucune dépendance à un tournoi).
-    app.state.service_gabarits = ServiceGabarits(gabarit_repository)
+    # Gabarits de salle : bibliothèque de modèles (E01US007) + application à un tournoi (E01US008,
+    # copie ajustable). Le service vérifie l'existence du tournoi (dépend du port tournoi).
+    app.state.service_gabarits = ServiceGabarits(tournoi_repository, gabarit_repository)
     app.state.service_archers = ServiceArchers(
         tournoi_repository, archer_repository, score_repository
     )
