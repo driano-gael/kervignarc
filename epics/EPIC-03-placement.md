@@ -12,7 +12,7 @@ Répartir automatiquement les archers sur les cibles en respectant les contraint
 ## Périmètre
 ### Inclus
 - **Placement automatique** sur la base du gabarit de salle (EPIC-01).
-- **Contraintes** : capacité 1/2/4, somme des fractions de blasons ≤ capacité, ≥ 2 clubs par cible, séparation catégorie/blason (officiel).
+- **Contraintes** : capacité (**libre ≥ 1**), somme des fractions de blasons ≤ capacité, **hauteur de blason compatible** sur une même butte (un U11 tire à 110 cm, les autres à 130 cm — cf. [DETTE-002](../docs/dette.md), à résorber ici), ≥ 2 clubs par cible, séparation catégorie/blason (contrainte activable, pas liée au type de tournoi).
 - **Ajustement manuel** par glisser-déposer.
 - Attribution **cible + position (A/B/C/D) + départ**.
 - Génération du **plan de cibles** (qui tire où) et du **déroulé horaire**.

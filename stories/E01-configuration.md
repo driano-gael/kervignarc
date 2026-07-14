@@ -36,6 +36,7 @@
 ### E01US006 — Associer catégorie ↔ blason
 *En tant qu'*administrateur, *je veux* lier une catégorie à un blason, *afin que* le placement en tienne compte (officiel).
 - **CA** : chaque catégorie peut porter un blason par défaut ; utilisé par le placement (EPIC-03).
+- **Notes** : le blason de la catégorie est un **défaut**, qu'une **phase pourra surcharger** (« finales sur triples verticaux », FFTA A.7.6/A.7.7) — la surcharge relève d'EPIC-05, cf. EF-1.4.
 - **Dépend de** : E01US003, E01US005 · **Jalon** : J1
 
 ### E01US007 — Définir un gabarit de salle
@@ -51,8 +52,8 @@
 
 ### E01US009 — Définir un barème de qualification
 *En tant qu'*administrateur, *je veux* paramétrer le barème de qualif, *afin de* calculer les scores.
-- **CA** : preset (ex. 5 volées de 3 flèches, cumul) sélectionnable ; valeurs modifiables.
-- **Notes** : politique `scoring` (ADR-0004) ; MVP = qualif seule.
+- **CA** : **deux presets** sélectionnables — *FFTA officiel* (60 flèches, 20 volées de 3, cumul) et *format club* (5 volées de 3, cumul) ; valeurs modifiables dans les deux cas.
+- **Notes** : politique `scoring` (ADR-0004) ; MVP = qualif seule. Les 15 flèches du CDC v0.2 sont le **format club**, pas la FFTA — cf. [référentiel §10.1](../docs/referentiel-ffta.md).
 - **Dépend de** : E01US001 · **Jalon** : J1
 
 ### E01US010 — Définir le tarif par départ
@@ -62,11 +63,32 @@
 
 ### E01US011 — Presets de barèmes multi-phases
 *En tant qu'*administrateur, *je veux* des presets pour chaque type de phase, *afin de* couvrir les formats riches.
-- **CA** : presets barrage (1 flèche), sets (4 pts), finales (6 pts), Big Shoot Off ; modifiables et réutilisables.
-- **Notes** : alimente les politiques `scoring` du moteur (EPIC-05).
+- **CA** : **deux jeux** de presets (*FFTA officiel* / *format club*), modifiables et réutilisables — barrage (1 flèche), sets (FFTA : 5 sets / 6 pts ; club : 4 pts), finales, Big Shoot Off ; un barème est **surchargeable par arme** (poulies au cumul, sans sets — FFTA A.7.5.2).
+- **Notes** : alimente les politiques `scoring` du moteur (EPIC-05) ; cf. EF-3.4 et `config.policies.scoring_par_arme` du [modèle de données](../docs/modele-de-donnees.md). ⚠️ Le **Big Shoot Off n'a pas de règle connue** (Q9 du CDC fonctionnel) — cette US est **bloquée** sur ce point tant que le club ne l'a pas fournie.
 - **Dépend de** : E01US009 · **Jalon** : J4
 
 ### E01US012 — Gérer plusieurs gabarits
 *En tant qu'*administrateur, *je veux* une bibliothèque de gabarits, *afin de* gérer plusieurs salles.
 - **CA** : créer/nommer/lister plusieurs gabarits ; en choisir un par tournoi.
 - **Dépend de** : E01US007 · **Jalon** : J4
+
+---
+
+> **US de correction — cadrage FFTA du 14/07/2026.** Les deux US ci-dessous corrigent des modèles
+> déjà mergés, à la suite de la confrontation du CDC au [référentiel FFTA](../docs/referentiel-ffta.md).
+> Elles sont **prioritaires sur EPIC-02+** : plus on inscrit d'archers et on saisit de scores, plus
+> la migration coûte.
+
+### E01US013 — Catégorie : éligibilité sur plusieurs tranches d'âge
+*En tant qu'*administrateur, *je veux* qu'une catégorie puisse couvrir **plusieurs** tranches d'âge, *afin de* représenter les regroupements FFTA (arc nu « U18 » = U15 + U18 ; « Scratch » = U21 + S1 + S2 + S3).
+- **Contexte** : E01US003 modélise l'âge par un `tranche_age` scalaire, et E01US004 encode le regroupement dans un **libellé** (`_AGES_NU = ("U18", "Scratch")`). Conséquence : `tranche_age = "U18"` signifie « U18 seulement » en classique et « U15 ou U18 » en arc nu — même valeur, deux sens — et « Scratch » n'est pas une tranche d'âge. Un archer n'est pas rattachable de façon fiable à sa catégorie.
+- **CA** : `Categorie.ages` remplace `tranche_age` et accepte une ou plusieurs tranches ; le pré-réglage FFTA (E01US004) encode les regroupements du [référentiel §3](../docs/referentiel-ffta.md) en éligibilités et non en libellés ; « Scratch » disparaît des tranches d'âge et devient un **libellé** de catégorie ; migration des catégories existantes ; API + front alignés ; un archer donné (arme, âge, sexe) n'est éligible qu'à **une seule** catégorie du tournoi.
+- **Notes** : CDC fonctionnel EF-1.2 ; [modèle de données](../docs/modele-de-donnees.md) `CATEGORIE.ages` (JSON). Corrige E01US003 + E01US004. Touche `backend/domain/categorie.py`, `backend/application/referentiel_ffta.py`, migration, `frontend/src/features/categories/`.
+- **Dépend de** : E01US003, E01US004 · **Jalon** : J1
+
+### E01US014 — Blason : valeurs de score admises
+*En tant que* scoreur, *je veux* que le pavé de saisie ne propose que les valeurs **réellement tirables sur mon blason**, *afin de* ne pas saisir un score impossible.
+- **Contexte** : E01US005 modélise le blason par `taille` + `capacite` seulement. Or un **triple 40 n'a pas les zones 5 → 1** (minimum = 6, [référentiel §4.4](../docs/referentiel-ffta.md)) et le « 10 intérieur » des poulies diffère du 10 classique (§4.3). Sans cette donnée, la saisie (EPIC-04) ne peut pas construire son pavé.
+- **CA** : `Blason.zones` porte les valeurs admises (ex. `["10","9","8","7","6","M"]`) ; valeur par défaut cohérente à la création ; modifiable comme le reste du blason (RG-8) ; migration des blasons existants ; exposé par l'API et éditable au front.
+- **Notes** : CDC fonctionnel EF-1.3b, consommé par EF-5.2. Corrige E01US005. **Ne traite pas** la hauteur du blason — c'est [DETTE-002](../docs/dette.md), résorbée en EPIC-03.
+- **Dépend de** : E01US005 · **Jalon** : J1
