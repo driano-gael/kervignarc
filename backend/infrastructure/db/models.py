@@ -60,6 +60,8 @@ class BlasonORM(Base):
     __tablename__ = "blason"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — la politique de suppression d'un
+    # tournoi non vide (cascade ou refus 409) n'est pas tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     nom: Mapped[str] = mapped_column(nullable=False)
     taille: Mapped[float] = mapped_column(nullable=False)
