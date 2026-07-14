@@ -25,6 +25,7 @@ from api.v1.blasons import router as blasons_router
 from api.v1.categories import router as categories_router
 from api.v1.competition import router as competition_router
 from api.v1.gabarits import router as gabarits_router
+from api.v1.grain_validation import router as grain_validation_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
 from application.auth import ServiceAuth
@@ -33,6 +34,7 @@ from application.blasons import ServiceBlasons
 from application.categories import ServiceCategories
 from application.classements import ServiceClassement
 from application.gabarits import ServiceGabarits
+from application.grain_validation import ServiceGrainValidation
 from application.tournois import ServiceTournois
 from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
 from infrastructure.db import (
@@ -135,6 +137,11 @@ def create_app(
     app.state.service_bareme_qualification = ServiceBaremeQualification(
         tournoi_repository, phase_repository
     )
+    # Grain de validation (E01US015, `D-11`) : deuxième politique de la même phase
+    # (`config.validation` à côté de `config.scoring`, sans changement de schéma — ADR-0011).
+    app.state.service_grain_validation = ServiceGrainValidation(
+        tournoi_repository, phase_repository
+    )
     app.state.service_archers = ServiceArchers(
         tournoi_repository, archer_repository, score_repository
     )
@@ -161,6 +168,7 @@ def create_app(
     app.include_router(blasons_router)
     app.include_router(gabarits_router)
     app.include_router(bareme_qualification_router)
+    app.include_router(grain_validation_router)
     app.include_router(competition_router)
 
     # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement

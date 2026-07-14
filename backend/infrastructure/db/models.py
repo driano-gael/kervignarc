@@ -128,9 +128,13 @@ class PhaseORM(Base):
     """Table `phase` — persistance de l'agrégat `Phase` (introduction minimale, E01US009/ADR-0011).
 
     `type` et `statut` stockent la **valeur** de leurs énumérations (`TypePhase`, `StatutPhase`).
-    Le barème de qualification est sérialisé dans `config` (JSON, `{"scoring": {...}}`) ; la
-    traduction JSON ↔ agrégat est faite par le repository. `ordre` et `statut` sont conformes au
-    modèle de données mais non exploités avant le moteur (EPIC-05).
+    Les **politiques** de la phase sont sérialisées dans `config` (JSON) : le barème de
+    qualification dans `config.scoring` (E01US009) et le grain de validation dans
+    `config.validation` (E01US015, `D-11`) ; la traduction JSON ↔ agrégat est faite par le
+    repository. C'est le `config` JSON qui permet d'ajouter une politique **sans migration**
+    (ADR-0011) : une ligne écrite avant E01US015 n'a pas de clé `validation`, et se relit avec le
+    preset de son type. `ordre` et `statut` sont conformes au modèle de données mais non exploités
+    avant le moteur (EPIC-05).
     """
 
     __tablename__ = "phase"

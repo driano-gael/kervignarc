@@ -9,6 +9,7 @@ ADR-0005) et traduit les lignes ORM en agrégats de domaine. Les pannes SQLAlche
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -20,7 +21,8 @@ from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId, SexeCategorie
 from domain.erreurs import DomainError
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
-from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
+from domain.grain_validation import GrainValidation, TypeGrain
+from domain.phase import Phase, PhaseId, StatutPhase, TypePhase, grain_par_defaut
 from domain.score import Score
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
 from infrastructure.db.models import (
@@ -85,45 +87,100 @@ def _config_gabarit(gabarit: GabaritSalle) -> str:
 
 
 def _vers_phase(ligne: PhaseORM) -> Phase:
-    """Traduit une ligne ORM en agrégat `Phase` (config JSON → barème de qualification).
+    """Traduit une ligne ORM en agrégat `Phase` (config JSON → barème + grain de validation).
 
     E01US009 : seules des phases `qualification` existent ; le barème est lu depuis
     `config.scoring`. Une `config` illisible **ou hors règle** (le repository en est le seul
     rédacteur et écrit toujours un barème valide) est une **incohérence technique** → on relit
     via `BaremeQualification.creer` pour que même une valeur hors plage remonte en
     `InfrastructureError` (ADR-0007), jamais en value object silencieusement invalide.
+
+    E01US015 : le grain vient de `config.validation`. **Son absence n'est pas une incohérence** —
+    c'est une phase écrite avant E01US015, quand la clé n'existait pas : on applique alors le
+    preset du type (`fin de série` pour la qualification, `D-11`), ce qui est précisément ce qui
+    permet d'ajouter la politique **sans migration** (ADR-0011). En revanche, une clé `validation`
+    **présente mais illisible** reste une incohérence technique.
     """
     try:
-        scoring = json.loads(ligne.config)["scoring"]
+        config = json.loads(ligne.config)
+        scoring = config["scoring"]
         bareme = BaremeQualification.creer(
             nb_volees=int(scoring["volees"]),
             nb_fleches_par_volee=int(scoring["fleches"]),
         )
-    except (json.JSONDecodeError, KeyError, TypeError, ValueError, DomainError) as exc:
+        type_phase = TypePhase(ligne.type)
+        validation = (
+            grain_par_defaut(type_phase)
+            if "validation" not in config
+            else _vers_grain(config["validation"])
+        )
+    except (
+        json.JSONDecodeError,
+        AttributeError,
+        KeyError,
+        TypeError,
+        ValueError,
+        DomainError,
+    ) as exc:
         raise InfrastructureError("Configuration de phase illisible.") from exc
-    return Phase(
-        tournoi_id=ligne.tournoi_id,
-        ordre=ligne.ordre,
-        type=TypePhase(ligne.type),
-        bareme=bareme,
-        statut=StatutPhase(ligne.statut),
-        id=ligne.id,
+    try:
+        return Phase(
+            tournoi_id=ligne.tournoi_id,
+            ordre=ligne.ordre,
+            type=type_phase,
+            bareme=bareme,
+            validation=validation,
+            statut=StatutPhase(ligne.statut),
+            id=ligne.id,
+        )
+    except DomainError as exc:
+        # Barème et grain sont individuellement valides mais incohérents entre eux : le repository
+        # n'écrit jamais ça (l'agrégat le refuse en amont) — donc la base a été altérée.
+        raise InfrastructureError("Configuration de phase illisible.") from exc
+
+
+def _vers_grain(validation: Any) -> GrainValidation:
+    """Relit le grain de validation depuis sa forme JSON (`config.validation`).
+
+    Passe par `GrainValidation.creer` pour qu'une valeur hors règle (cadence `< 1`, ou manquante
+    sur un grain qui l'exige) remonte en `DomainError`, convertie en `InfrastructureError` par
+    l'appelant — jamais en value object silencieusement invalide.
+
+    `validation` est typé `Any` parce qu'il sort de `json.loads` : rien ne garantit que ce soit un
+    objet. Une forme inattendue (scalaire, tableau) lève `AttributeError`/`TypeError`, que
+    l'appelant enveloppe comme le reste.
+    """
+    n_volees = validation.get("n_volees")
+    return GrainValidation.creer(
+        TypeGrain(validation["grain"]),
+        None if n_volees is None else int(n_volees),
     )
 
 
 def _config_phase(phase: Phase) -> str:
-    """Sérialise le barème d'une phase de qualification en JSON (`{"scoring": {...}}`).
+    """Sérialise les politiques d'une phase de qualification en JSON.
 
-    Le mode est explicitement `cumul` (seul mode de la qualification) ; les autres politiques du
+    Forme : `{"scoring": {...}, "validation": {...}}`. Le mode de `scoring` est explicitement
+    `cumul` (seul mode de la qualification) ; `validation` ne porte `n_volees` que pour le grain
+    « toutes les N volées » (les grains de fin n'ont pas de cadence). Les autres politiques du
     moteur (EPIC-05, ADR-0004) s'ajouteront à ce même objet `config` sans changer le schéma.
+
+    # DETTE-003 (docs/dette.md) : les politiques sont écrites **à plat** alors que le modèle cible
+    # (ADR-0004) les range sous `config.policies`, et `scoring` est ici un objet paramétré plutôt
+    # qu'un nom de preset. Forme posée par E01US009 ; E01US015 s'y aligne pour ne pas créer une 2ᵉ
+    # convention. C'est E05US004 qui tranche — ne pas introduire `policies` ici en attendant.
     """
+    validation: dict[str, object] = {"grain": phase.validation.type.value}
+    if phase.validation.n_volees is not None:
+        validation["n_volees"] = phase.validation.n_volees
     return json.dumps(
         {
             "scoring": {
                 "volees": phase.bareme.nb_volees,
                 "fleches": phase.bareme.nb_fleches_par_volee,
                 "mode": "cumul",
-            }
+            },
+            "validation": validation,
         }
     )
 

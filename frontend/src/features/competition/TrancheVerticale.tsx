@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { ConnexionAdmin } from '../admin/ConnexionAdmin'
 import { useDeconnexionAdmin } from '../admin/hooks'
 import { BaremeQualification } from '../bareme/BaremeQualification'
+import { GrainValidation } from '../grain-validation/GrainValidation'
 import { Blasons } from '../blasons/Blasons'
 import { Categories } from '../categories/Categories'
 import { Gabarits } from '../gabarits/Gabarits'
@@ -330,6 +331,10 @@ function Competition({ tournoi, onRetour }: { tournoi: Tournoi; onRetour: () => 
       {estAdmin && <Gabarits />}
 
       {estAdmin && <BaremeQualification tournoiId={tournoi.id} />}
+
+      {/* Juste après le barème : le grain se règle sur la même phase, et n'a de sens qu'une fois
+          le barème défini (E01US015). */}
+      {estAdmin && <GrainValidation tournoiId={tournoi.id} />}
 
       {estAdmin ? (
         <InscriptionArcher tournoiId={tournoi.id} />

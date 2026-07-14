@@ -8,6 +8,10 @@ Le barème de qualification d'un tournoi est porté par sa **phase** de type `qu
 (introduite minimalement, ADR-0011). `definir` fait un **upsert** : il crée la phase de
 qualification avec le barème si elle n'existe pas encore, sinon il met à jour son barème. Fait
 remonter des erreurs typées (`TournoiIntrouvable`).
+
+Depuis E01US015, la phase porte aussi un **grain de validation** (`config.validation`, `D-11`), et
+l'agrégat garantit leur cohérence : réduire le barème **sous la cadence** du grain en place est
+refusé (le grain ne validerait jamais). L'upsert n'est donc plus inconditionnel — cf. `definir`.
 """
 
 from __future__ import annotations
@@ -41,7 +45,9 @@ class ServiceBaremeQualification:
         """Définit (crée ou met à jour) le barème de qualification d'un tournoi.
 
         Lève `TournoiIntrouvable` si le tournoi n'existe pas, `DomainError` si une grandeur du
-        barème est invalide (`< 1`).
+        barème est invalide (`< 1`), et `CadenceValidationSuperieureAuBareme` (E01US015) si le
+        nouveau barème compte **moins de volées que la cadence** du grain de validation en place —
+        il faut alors élargir le grain d'abord.
         """
         self._tournoi_existant(tournoi_id)
         bareme = BaremeQualification.creer(nb_volees, nb_fleches_par_volee)

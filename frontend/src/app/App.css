@@ -272,6 +272,16 @@ button:disabled {
   color: var(--text);
 }
 
+/* Choix unique : la case précède son libellé **sur la même ligne** (ex. grain de validation,
+   E01US015). Le modificateur est nécessaire car `.formulaire__libelle` empile en colonne, ce qui
+   détacherait le rond de son texte. */
+.formulaire__libelle--choix {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
 /* Liste des blasons d'un tournoi (E01US005). */
 .liste-blasons {
   margin: 8px 0 0;

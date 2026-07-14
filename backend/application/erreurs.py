@@ -98,6 +98,15 @@ class GabaritDuTournoiAbsent(ApplicationError):
     code = "gabarit_du_tournoi_absent"
 
 
+class PhaseQualificationAbsente(ApplicationError):
+    """Grain de validation demandé alors que la qualification n'existe pas encore (E01US015) → 404.
+
+    La phase de qualification naît avec son **barème** (E01US009) : il faut d'abord le définir.
+    """
+
+    code = "phase_qualification_absente"
+
+
 class IdentifiantsInvalides(ApplicationError):
     """Login/mot de passe admin incorrects (E10US002). Traduite en 401 à la frontière."""
 

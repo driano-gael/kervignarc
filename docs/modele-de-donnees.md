@@ -143,6 +143,14 @@ erDiagram
 > (`{"volees": N, "fleches": M, "mode": "cumul"}`) — une seule phase `qualification` par tournoi.
 > `ordre` et `statut` sont conformes à ce schéma mais **non exploités** avant le moteur (EPIC-05,
 > ADR-0004), qui ajoutera les autres politiques dans `config` et les autres types/transitions.
+>
+> **Grain de validation (E01US015, `D-11`).** Deuxième politique de la même phase, dans
+> `config.validation` (`{"grain": …}`, + `"n_volees": N` pour `toutes_les_n_volees`) — **sans
+> migration**, comme l'annonçait l'ADR-0011. Une phase écrite avant E01US015 n'a pas cette clé :
+> elle se relit avec le **preset de son type** (`qualification` → `fin_de_serie`), et se complète à
+> la première écriture. Le grain doit être **admis par le type de phase** (pas de `fin_de_duel` sur
+> une qualification) et sa cadence **ne peut pas dépasser** `config.scoring.volees` — sinon aucune
+> validation n'aurait lieu ; les deux politiques sont donc **cohérentes par construction**.
 
 ### MATCH
 | id | INTEGER | PK |
@@ -224,11 +232,40 @@ Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Exempl
     "tiebreak": "10_puis_9",
     "depth":    "1_a_n"
   },
+  "policies": {
+    "routing":  "cascade",
+    "scoring":  "sets_4pts",
+    "scoring_par_arme": { "poulie": "cumul_volees" },
+    "validation": { "grain": "fin_de_duel" },
+    "seeding":  "serpent",
+    "byes":     "mieux_classes",
+    "tiebreak": "10_puis_9",
+    "depth":    "1_a_n"
+  },
   "params": { "taille_tableau": 128 },
   "blason_surcharge": { "*": "triple_vertical_40" }
 }
 ```
 
+> ⚠️ **Cible vs implémentation actuelle.** L'exemple ci-dessus est la forme **cible** (ADR-0004),
+> où toute politique vit sous `policies`. L'implémentation d'aujourd'hui (E01US009 puis E01US015,
+> périmètre ADR-0011 : **une seule phase, `qualification`**) écrit `scoring` et `validation`
+> **à plat à la racine** de `config`, et `scoring` y est un **objet** (`{"volees": N, "fleches": M,
+> "mode": "cumul"}`) et non un **nom de preset** (`"sets_4pts"`) — un barème de qualification est
+> paramétré, pas choisi dans un catalogue. E01US015 s'aligne sur cette forme effective plutôt que
+> d'introduire une 2ᵉ convention dans la même `config`. **C'est le moteur (EPIC-05) qui
+> réconciliera les deux**, quand les presets multi-phases (E01US011) et les autres politiques
+> arriveront ; d'ici là, lire les règles ci-dessous en substituant `config.scoring` à
+> `config.policies.scoring`.
+
+- `validation` porte le **grain de validation** de la phase (`D-11`) : **quand le scoreur valide**.
+  Valeurs : `fin_de_serie` (preset de la qualification) · `fin_de_duel` (preset de l'élimination
+  directe) · `toutes_les_n_volees` (+ `"n_volees": N`, qui ne peut pas dépasser le nombre de volées
+  du barème de la phase). C'est une **politique de phase**, pas un réglage global : la qualification
+  valide en fin de série quand l'élimination directe valide en fin de duel. Fondement : les feuilles
+  de marque sont signées « à la fin de la distance, ou de la compétition, **ou du duel** » — la
+  validation est un acte **de fin** ; l'article B.6.1.2 (« scores toutes les 2 volées ») porte sur le
+  **cumul**, que l'appli calcule seule, pas sur la validation par un tiers.
 - `scoring` est le barème **par défaut** de la phase ; `scoring_par_arme` le **surcharge par division**.
   Nécessaire dès le format FFTA : au même tour, classique et arc nu tirent en sets quand les poulies
   tirent au cumul (A.7.5.1 / A.7.5.2) — un barème unique par phase ne peut pas l'exprimer (EF-3.4).
@@ -250,6 +287,7 @@ Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Exempl
 | `statut_tournoi` | brouillon, en_cours, termine |
 | `type_phase` | qualification, barrage, tableau, placement, finale, big_shoot_off |
 | `routing` | elimination_seche, cascade, repechage |
+| `grain_validation` | fin_de_serie, fin_de_duel, toutes_les_n_volees |
 | `depth` | 1_a_n, top_n |
 | `statut_match` | a_jouer, en_cours, termine, bye, forfait |
 | `role` | admin, scoreur, public |

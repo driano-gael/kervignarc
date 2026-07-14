@@ -32,6 +32,7 @@ from application.erreurs import (
     GabaritIntrouvable,
     IdentifiantsInvalides,
     NonAuthentifie,
+    PhaseQualificationAbsente,
     TournoiIntrouvable,
 )
 from domain.erreurs import DomainError
@@ -63,7 +64,8 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | CategorieIntrouvable
         | BlasonIntrouvable
         | GabaritIntrouvable
-        | GabaritDuTournoiAbsent,
+        | GabaritDuTournoiAbsent
+        | PhaseQualificationAbsente,
     ):
         status = 404
     else:

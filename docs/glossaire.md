@@ -35,6 +35,8 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Tête de série** | `seed` | Rang d'un archer issu de la qualification, servant à l'ensemencement. |
 | **Seeding** | `seeding` | Placement des archers dans l'arbre (serpent). |
 | **Phase** | `Phase` | Étape du tournoi (qualif, barrage, tableau, placement, finale, BSO…). |
+| **Barème** | `BaremeQualification` | Comment se tire et se compte une phase. En qualification : N volées de M flèches, au cumul (`config.scoring`). |
+| **Grain de validation** | `GrainValidation` | **Quand le scoreur valide** une phase : *fin de série* · *fin de duel* · *toutes les N volées* (`config.validation`, `D-11`). Politique de phase, réglée à la configuration — pas un réglage global. |
 | **Séquence** | `Sequence` | Enchaînement ordonné de phases définissant un format. |
 | **Placement** | `Placement` | Affectation d'un archer à cible + position + départ. |
 | **Plan de cibles** | — | Vue « qui tire où » pour une phase/tour. |
@@ -57,7 +59,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 |---|---|
 | **Port / Adapter** | Interface du domaine (port) et son implémentation d'infrastructure (adapter) — architecture hexagonale (ADR-0003). |
 | **Composition root** | Point unique de câblage explicite des dépendances (`bootstrap/`). |
-| **Policy** | Stratégie injectable d'une phase : `routing`, `scoring`, `seeding`, `byes`, `tiebreak`, `depth` (ADR-0004). |
+| **Policy** | Stratégie injectable d'une phase : `routing`, `scoring`, `validation`, `seeding`, `byes`, `tiebreak`, `depth` (ADR-0004 ; `validation` = `D-11`). |
 | **Repository** | Port d'accès aux données d'un agrégat. |
 | **DTO** | Objet de transport à la frontière API (Pydantic), distinct du domaine. |
 | **File d'écriture (write queue)** | File des commandes d'écriture consommée par un **writer unique** (ADR-0005). |
