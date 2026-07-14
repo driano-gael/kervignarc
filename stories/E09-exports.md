@@ -39,3 +39,9 @@
 *En tant qu'*organisateur, *je veux* imprimer le déroulé, *afin de* le communiquer.
 - **CA** : PDF du déroulé (phases, tours, horaires) issu d'E03US010.
 - **Dépend de** : E09US001, E03US010 · **Jalon** : J4
+
+### E09US008 — Imprimer les QR de cible et les codes scoreurs
+*En tant qu'*organisateur, *je veux* imprimer **un QR par cible** et **un code par scoreur**, *afin de* monter la salle sans avoir **rien à configurer** le jour J.
+- **CA** : **un QR par cible**, à poser sur le pied — il encode l'**URL de rattachement** du poste (E04US001) et porte **le code lisible en clair** en dessous (recours si le QR est abîmé ou l'appareil photo capricieux) ; **un papier par scoreur** avec son code personnel (E10US008) ; **régénérable** ; **lié au tournoi** (un nouveau tournoi = de nouveaux QR, cf. `D-07`).
+- **Notes** : `D-07` et `P-6` (« tout ce qui s'identifie se prépare à l'avance ; le jour J on distribue, on ne configure pas »). **Le QR n'est pas un gadget, c'est un filet** : puisqu'il n'y a **pas de mode kiosque** (`D-05`) et que l'onglet **sera** fermé par accident sur 30 postes × 8 h, il faut que « l'écran est bizarre → **tu scannes le QR de ta cible → tu es revenu** » — plutôt que d'appeler l'admin à l'autre bout du gymnase. **Ne porte pas** le rattachement lui-même (c'est E04US001) : le QR n'encode qu'une URL. Nécessite une **lib QR** → inscrire au [registre des dépendances](../docs/dependances.md) (ADR-0009).
+- **Dépend de** : E09US001, E04US001, E10US008 · **Jalon** : J1

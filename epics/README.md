@@ -23,9 +23,20 @@ Découpage en grandes fonctionnalités (EPICs), **par capacité produit**. Strat
 | [EPIC-09](EPIC-09-exports.md) | Exports & documents | MVP → MVP+1 | 03, 06 |
 | [EPIC-10](EPIC-10-acces-roles.md) | Accès & rôles | MVP | 00 |
 | [EPIC-11](EPIC-11-exploitation.md) | Exploitation : sauvegarde, packaging, réseau | MVP | 00 |
+| [EPIC-12](EPIC-12-pilotage-jour-j.md) | **Pilotage du jour J** — supervision, complétude, bascule de tour | MVP | 03, 04, 05 |
+
+> 🎯 **EPIC-12 porte la valeur du produit** (créé le 14/07/2026). Les 12 EPICs ci-dessus couvraient tout le
+> cycle — configuration, inscriptions, placement, saisie, moteur, classements, affichage, paiements, exports,
+> rôles, exploitation — **sauf le moment où se joue la valeur** : faire partir le tour suivant **en 2 minutes
+> au lieu de 20**, pendant que 150 archers attendent. Le trou a été révélé par l'entretien de conception du
+> 14/07/2026 ([CDC UX §1](../cahier-des-charges-ux.md)).
 
 ## Ordre de construction conseillé
 `EPIC-00` (skeleton) → tranche verticale minimale traversant `01 → 02 → 03 → 10 → 04 → 05(simple) → 06(simple) → 11(packaging)`, puis enrichissement : `05/06 (placement intégral)`, `07`, `09 (PDF)`, `02 (import XLS)`.
 
+**`EPIC-12` se construit en deux temps**, adossés aux jalons : **J1** — supervision des postes, recherche
+globale, complétude, règle d'alerte (dès qu'il y a des postes à superviser, donc avec `04`) ; **J2** — bascule
+de tour (dès qu'il y a des duels à enchaîner, donc avec `05`).
+
 ## Références
-`cahier-des-charges.md` (fonctionnel), `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`, `docs/adr/`.
+`cahier-des-charges.md` (fonctionnel), `cahier-des-charges-technique.md`, **`cahier-des-charges-ux.md`** (architecture d'expérience, registre `D-nn`), **`cahier-des-charges-design.md`** (identité, registre `DV-nn`), `moteur-placement-lucky-loser.md`, `guide-architecture.md`, `docs/adr/`.
