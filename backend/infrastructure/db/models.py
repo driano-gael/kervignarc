@@ -42,6 +42,8 @@ class CategorieORM(Base):
     __tablename__ = "categorie"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — la politique de suppression d'un
+    # tournoi non vide (cascade ou refus 409) n'est pas tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     libelle: Mapped[str] = mapped_column(nullable=False)
     arme: Mapped[str | None] = mapped_column(nullable=True)
@@ -60,6 +62,8 @@ class BlasonORM(Base):
     __tablename__ = "blason"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — la politique de suppression d'un
+    # tournoi non vide (cascade ou refus 409) n'est pas tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     nom: Mapped[str] = mapped_column(nullable=False)
     taille: Mapped[float] = mapped_column(nullable=False)
@@ -72,6 +76,8 @@ class ArcherORM(Base):
     __tablename__ = "archer"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — la politique de suppression d'un
+    # tournoi non vide (cascade ou refus 409) n'est pas tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     nom: Mapped[str] = mapped_column(nullable=False)
     cible: Mapped[int | None] = mapped_column(nullable=True)
@@ -83,5 +89,8 @@ class ScoreORM(Base):
     __tablename__ = "score"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant indirect de `tournoi` via
+    # `archer`, donc concerné par la même politique de suppression, non tranchée ; ne pas
+    # contourner ici.
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     points: Mapped[int] = mapped_column(nullable=False)
