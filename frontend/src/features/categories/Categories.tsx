@@ -8,6 +8,8 @@
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
+import type { Blason } from '../blasons/api'
+import { useBlasons } from '../blasons/hooks'
 import type { Categorie, NouvelleCategorie, SexeCategorie } from './api'
 import {
   useCategories,
@@ -31,17 +33,26 @@ const LIBELLE_SEXE: Record<SexeCategorie, string> = {
 
 export function Categories({ tournoiId }: { tournoiId: number }) {
   const categories = useCategories(tournoiId)
+  // Les blasons du tournoi alimentent le sélecteur « blason par défaut » et l'affichage du nom
+  // sur chaque ligne (E01US006). Liste partagée pour éviter une requête par ligne.
+  const blasons = useBlasons(tournoiId)
+  const listeBlasons = blasons.data ?? []
 
   return (
     <section>
       <h3 className="carte__soustitre">Catégories</h3>
       <PrechargementFFTA tournoiId={tournoiId} />
-      <FormulaireCategorie tournoiId={tournoiId} />
+      <FormulaireCategorie tournoiId={tournoiId} blasons={listeBlasons} />
       {categories.isError && <MessageErreur erreur={categories.error} />}
       {categories.data && categories.data.length > 0 && (
         <ul className="liste-categories">
           {categories.data.map((categorie) => (
-            <LigneCategorie key={categorie.id} tournoiId={tournoiId} categorie={categorie} />
+            <LigneCategorie
+              key={categorie.id}
+              tournoiId={tournoiId}
+              categorie={categorie}
+              blasons={listeBlasons}
+            />
           ))}
         </ul>
       )}
@@ -81,7 +92,15 @@ function messageResultatFFTA(nombreAjoutees: number): string {
   return `${nombreAjoutees} catégories FFTA ajoutées.`
 }
 
-function LigneCategorie({ tournoiId, categorie }: { tournoiId: number; categorie: Categorie }) {
+function LigneCategorie({
+  tournoiId,
+  categorie,
+  blasons,
+}: {
+  tournoiId: number
+  categorie: Categorie
+  blasons: Blason[]
+}) {
   const [edition, setEdition] = useState(false)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const supprimer = useSupprimerCategorie(tournoiId)
@@ -92,6 +111,7 @@ function LigneCategorie({ tournoiId, categorie }: { tournoiId: number; categorie
         <FormulaireCategorie
           tournoiId={tournoiId}
           categorie={categorie}
+          blasons={blasons}
           onTermine={() => setEdition(false)}
         />
       </li>
@@ -102,7 +122,7 @@ function LigneCategorie({ tournoiId, categorie }: { tournoiId: number; categorie
     <li className="categorie">
       <div className="categorie__ligne">
         <span className="categorie__libelle">{categorie.libelle}</span>
-        <span className="categorie__attributs">{decrire(categorie)}</span>
+        <span className="categorie__attributs">{decrire(categorie, blasons)}</span>
         <span className="categorie__actions">
           <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
             Éditer
@@ -141,12 +161,14 @@ function LigneCategorie({ tournoiId, categorie }: { tournoiId: number; categorie
   )
 }
 
-// Concatène les attributs facultatifs d'une catégorie pour l'affichage (arme · âge · sexe).
-function decrire(categorie: Categorie): string {
+// Concatène les attributs facultatifs d'une catégorie pour l'affichage (arme · âge · sexe · blason).
+function decrire(categorie: Categorie, blasons: Blason[]): string {
+  const nomBlason = blasons.find((blason) => blason.id === categorie.blason_id)?.nom ?? null
   const parties = [
     categorie.arme,
     categorie.tranche_age,
     categorie.sexe ? LIBELLE_SEXE[categorie.sexe] : null,
+    nomBlason ? `blason ${nomBlason}` : null,
   ].filter((partie): partie is string => partie !== null)
   return parties.join(' · ')
 }
@@ -155,10 +177,12 @@ function decrire(categorie: Categorie): string {
 function FormulaireCategorie({
   tournoiId,
   categorie,
+  blasons,
   onTermine,
 }: {
   tournoiId: number
   categorie?: Categorie
+  blasons: Blason[]
   onTermine?: () => void
 }) {
   const enEdition = categorie !== undefined
@@ -166,6 +190,11 @@ function FormulaireCategorie({
   const [arme, setArme] = useState(categorie?.arme ?? '')
   const [trancheAge, setTrancheAge] = useState(categorie?.tranche_age ?? '')
   const [sexe, setSexe] = useState<SexeCategorie | ''>(categorie?.sexe ?? '')
+  // Blason par défaut (E01US006) : '' = aucun ; sinon l'identifiant du blason (chaîne dans le
+  // <select>, reconverti en nombre à la soumission).
+  const [blasonId, setBlasonId] = useState<string>(
+    categorie?.blason_id != null ? String(categorie.blason_id) : '',
+  )
 
   const creer = useCreerCategorie(tournoiId)
   const modifier = useModifierCategorie(tournoiId)
@@ -179,6 +208,7 @@ function FormulaireCategorie({
       arme: arme.trim() || null,
       tranche_age: trancheAge.trim() || null,
       sexe: sexe || null,
+      blason_id: blasonId === '' ? null : Number(blasonId),
     }
     if (enEdition) {
       modifier.mutate({ id: categorie.id, entree }, { onSuccess: onTermine })
@@ -190,6 +220,7 @@ function FormulaireCategorie({
           setArme('')
           setTrancheAge('')
           setSexe('')
+          setBlasonId('')
         },
       })
     }
@@ -230,6 +261,19 @@ function FormulaireCategorie({
           {OPTIONS_SEXE.map((option) => (
             <option key={option.valeur} value={option.valeur}>
               {option.libelle}
+            </option>
+          ))}
+        </select>
+        <select
+          className="formulaire__champ"
+          value={blasonId}
+          onChange={(e) => setBlasonId(e.target.value)}
+          aria-label="Blason par défaut de la catégorie"
+        >
+          <option value="">Blason par défaut (facultatif)</option>
+          {blasons.map((blason) => (
+            <option key={blason.id} value={String(blason.id)}>
+              {blason.nom}
             </option>
           ))}
         </select>

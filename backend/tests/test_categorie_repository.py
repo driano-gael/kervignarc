@@ -12,9 +12,11 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 
+from domain.blason import Blason
 from domain.categorie import Categorie, SexeCategorie
 from domain.tournoi import Tournoi
 from infrastructure.db import (
+    BlasonRepositorySQL,
     CategorieRepositorySQL,
     Database,
     TournoiRepositorySQL,
@@ -109,5 +111,41 @@ def test_supprimer_retire_la_ligne(tmp_path: Path) -> None:
         repository.supprimer(cree.id)
         assert repository.par_id(cree.id) is None
         assert repository.par_tournoi(tournoi_id) == []
+    finally:
+        db.engine.dispose()
+
+
+def test_blason_par_defaut_persiste_et_par_blason(tmp_path: Path) -> None:
+    """E01US006 : `blason_id` est persisté/relu ; `par_blason` liste les catégories liées."""
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        blason = BlasonRepositorySQL(db.session_factory).ajouter(
+            Blason.creer(tournoi_id, "Trispot 40", 0.5, 3)
+        )
+        assert blason.id is not None
+        repository = CategorieRepositorySQL(db.session_factory)
+        liee = repository.ajouter(Categorie.creer(tournoi_id, "Senior H", blason_id=blason.id))
+        repository.ajouter(Categorie.creer(tournoi_id, "Sans blason"))
+        assert liee.id is not None
+        assert repository.par_id(liee.id) == liee
+        assert liee.blason_id == blason.id
+        assert repository.par_blason(blason.id) == [liee]
+    finally:
+        db.engine.dispose()
+
+
+def test_enregistrer_detache_le_blason(tmp_path: Path) -> None:
+    """E01US006 : `enregistrer` peut retirer le blason par défaut (`blason_id` → None)."""
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        blason = BlasonRepositorySQL(db.session_factory).ajouter(
+            Blason.creer(tournoi_id, "Monospot", 1.0, 1)
+        )
+        assert blason.id is not None
+        repository = CategorieRepositorySQL(db.session_factory)
+        cree = repository.ajouter(Categorie.creer(tournoi_id, "Libre", blason_id=blason.id))
+        detachee = repository.enregistrer(cree.modifier("Libre", blason_id=None))
+        assert detachee.blason_id is None
+        assert repository.par_blason(blason.id) == []
     finally:
         db.engine.dispose()

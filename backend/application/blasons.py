@@ -2,24 +2,31 @@
 
 Orchestre le domaine derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni la file
 d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et pur
-d'infrastructure. Il vérifie l'existence des ressources amont (tournoi, blason) et fait
-remonter des erreurs typées (`TournoiIntrouvable`, `BlasonIntrouvable`).
+d'infrastructure. Il vérifie l'existence des ressources amont (tournoi, blason), refuse la
+suppression d'un blason encore utilisé comme blason par défaut d'une catégorie (E01US006), et
+fait remonter des erreurs typées (`TournoiIntrouvable`, `BlasonIntrouvable`, `BlasonReference`).
 """
 
 from __future__ import annotations
 
-from application.erreurs import BlasonIntrouvable, TournoiIntrouvable
+from application.erreurs import BlasonIntrouvable, BlasonReference, TournoiIntrouvable
 from domain.blason import Blason, BlasonId
-from domain.ports import BlasonRepository, TournoiRepository
+from domain.ports import BlasonRepository, CategorieRepository, TournoiRepository
 from domain.tournoi import TournoiId
 
 
 class ServiceBlasons:
     """Cas d'usage des blasons : créer, lister, éditer, supprimer."""
 
-    def __init__(self, tournois: TournoiRepository, blasons: BlasonRepository) -> None:
+    def __init__(
+        self,
+        tournois: TournoiRepository,
+        blasons: BlasonRepository,
+        categories: CategorieRepository,
+    ) -> None:
         self._tournois = tournois
         self._blasons = blasons
+        self._categories = categories
 
     def creer(self, tournoi_id: TournoiId, nom: str, taille: float, capacite: int) -> Blason:
         """Crée un blason rattaché à un tournoi.
@@ -49,8 +56,19 @@ class ServiceBlasons:
         return self._blasons.enregistrer(modifie)
 
     def supprimer(self, blason_id: BlasonId) -> None:
-        """Supprime un blason. Lève `BlasonIntrouvable` si l'identifiant est inconnu."""
+        """Supprime un blason.
+
+        Lève `BlasonIntrouvable` si l'identifiant est inconnu, `BlasonReference` si le blason est
+        encore le blason par défaut d'au moins une catégorie (il faut d'abord la/les réaffecter,
+        E01US006).
+        """
         self._blason_existant(blason_id)
+        references = self._categories.par_blason(blason_id)
+        if references:
+            raise BlasonReference(
+                f"Le blason {blason_id} est utilisé par {len(references)} catégorie(s) ; "
+                "réaffectez-les avant de le supprimer."
+            )
         self._blasons.supprimer(blason_id)
 
     def _blason_existant(self, blason_id: BlasonId) -> Blason:

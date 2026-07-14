@@ -2,25 +2,33 @@
 
 Orchestre le domaine derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni la file
 d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et pur
-d'infrastructure. Il vérifie l'existence des ressources amont (tournoi, catégorie) et fait
-remonter des erreurs typées (`TournoiIntrouvable`, `CategorieIntrouvable`).
+d'infrastructure. Il vérifie l'existence des ressources amont (tournoi, catégorie) et la
+cohérence du **blason par défaut** (règle inter-agrégats : même tournoi), et fait remonter des
+erreurs typées (`TournoiIntrouvable`, `CategorieIntrouvable`, `BlasonHorsTournoi`).
 """
 
 from __future__ import annotations
 
-from application.erreurs import CategorieIntrouvable, TournoiIntrouvable
+from application.erreurs import BlasonHorsTournoi, CategorieIntrouvable, TournoiIntrouvable
 from application.referentiel_ffta import categories_salle_18m
+from domain.blason import BlasonId
 from domain.categorie import Categorie, CategorieId, SexeCategorie
-from domain.ports import CategorieRepository, TournoiRepository
+from domain.ports import BlasonRepository, CategorieRepository, TournoiRepository
 from domain.tournoi import TournoiId
 
 
 class ServiceCategories:
     """Cas d'usage des catégories : créer, lister, éditer, supprimer."""
 
-    def __init__(self, tournois: TournoiRepository, categories: CategorieRepository) -> None:
+    def __init__(
+        self,
+        tournois: TournoiRepository,
+        categories: CategorieRepository,
+        blasons: BlasonRepository,
+    ) -> None:
         self._tournois = tournois
         self._categories = categories
+        self._blasons = blasons
 
     def creer(
         self,
@@ -29,14 +37,17 @@ class ServiceCategories:
         arme: str | None = None,
         tranche_age: str | None = None,
         sexe: SexeCategorie | None = None,
+        blason_id: BlasonId | None = None,
     ) -> Categorie:
         """Crée une catégorie rattachée à un tournoi.
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `DomainError` si le libellé est vide.
+        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `BlasonHorsTournoi` si le blason par
+        défaut n'appartient pas à ce tournoi, `DomainError` si le libellé est vide.
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        categorie = Categorie.creer(tournoi_id, libelle, arme, tranche_age, sexe)
+        self._verifier_blason_du_tournoi(tournoi_id, blason_id)
+        categorie = Categorie.creer(tournoi_id, libelle, arme, tranche_age, sexe, blason_id)
         return self._categories.ajouter(categorie)
 
     def lister(self, tournoi_id: TournoiId) -> list[Categorie]:
@@ -81,14 +92,17 @@ class ServiceCategories:
         arme: str | None = None,
         tranche_age: str | None = None,
         sexe: SexeCategorie | None = None,
+        blason_id: BlasonId | None = None,
     ) -> Categorie:
-        """Édite une catégorie (libellé, arme, âge, sexe).
+        """Édite une catégorie (libellé, arme, âge, sexe, blason par défaut).
 
-        Lève `CategorieIntrouvable` si l'identifiant est inconnu, `DomainError` si le libellé
-        est vide.
+        Lève `CategorieIntrouvable` si l'identifiant est inconnu, `BlasonHorsTournoi` si le blason
+        par défaut n'appartient pas au tournoi de la catégorie, `DomainError` si le libellé est
+        vide.
         """
         categorie = self._categorie_existante(categorie_id)
-        modifiee = categorie.modifier(libelle, arme, tranche_age, sexe)
+        self._verifier_blason_du_tournoi(categorie.tournoi_id, blason_id)
+        modifiee = categorie.modifier(libelle, arme, tranche_age, sexe, blason_id)
         return self._categories.enregistrer(modifiee)
 
     def supprimer(self, categorie_id: CategorieId) -> None:
@@ -101,3 +115,19 @@ class ServiceCategories:
         if categorie is None:
             raise CategorieIntrouvable(f"Aucune catégorie d'identifiant {categorie_id}.")
         return categorie
+
+    def _verifier_blason_du_tournoi(
+        self, tournoi_id: TournoiId, blason_id: BlasonId | None
+    ) -> None:
+        """Vérifie qu'un blason par défaut (facultatif) appartient bien au tournoi.
+
+        Sans blason (`None`), rien à vérifier. Sinon, le blason doit exister **et** être rattaché
+        au même tournoi, sans quoi le lien serait incohérent → `BlasonHorsTournoi`.
+        """
+        if blason_id is None:
+            return
+        blason = self._blasons.par_id(blason_id)
+        if blason is None or blason.tournoi_id != tournoi_id:
+            raise BlasonHorsTournoi(
+                f"Le blason {blason_id} n'appartient pas au tournoi {tournoi_id}."
+            )

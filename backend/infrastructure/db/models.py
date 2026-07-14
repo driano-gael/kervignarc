@@ -49,6 +49,11 @@ class CategorieORM(Base):
     arme: Mapped[str | None] = mapped_column(nullable=True)
     tranche_age: Mapped[str | None] = mapped_column(nullable=True)
     sexe: Mapped[str | None] = mapped_column(nullable=True)
+    # Blason par défaut, facultatif (E01US006). La suppression d'un blason référencé est refusée
+    # côté service (409, `BlasonReference`).
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — lien latéral au sein de la
+    # descendance du tournoi, à traiter dans la même politique de suppression, non tranchée.
+    blason_id: Mapped[int | None] = mapped_column(ForeignKey("blason.id"), nullable=True)
 
 
 class BlasonORM(Base):

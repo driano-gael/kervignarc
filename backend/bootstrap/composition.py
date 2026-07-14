@@ -110,8 +110,15 @@ def create_app(
     archer_repository = ArcherRepositorySQL(database.session_factory)
     score_repository = ScoreRepositorySQL(database.session_factory)
     app.state.service_tournois = ServiceTournois(tournoi_repository)
-    app.state.service_categories = ServiceCategories(tournoi_repository, categorie_repository)
-    app.state.service_blasons = ServiceBlasons(tournoi_repository, blason_repository)
+    # Catégories ↔ blasons se référencent mutuellement (E01US006) : la catégorie valide son
+    # blason par défaut, le blason refuse sa suppression s'il est référencé. Chaque service ne
+    # dépend que des **ports** repository (pas de l'autre service).
+    app.state.service_categories = ServiceCategories(
+        tournoi_repository, categorie_repository, blason_repository
+    )
+    app.state.service_blasons = ServiceBlasons(
+        tournoi_repository, blason_repository, categorie_repository
+    )
     app.state.service_archers = ServiceArchers(
         tournoi_repository, archer_repository, score_repository
     )

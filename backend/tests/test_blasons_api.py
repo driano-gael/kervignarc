@@ -125,6 +125,38 @@ def test_supprimer_un_blason(app_blasons: FastAPI, connecter_admin: ConnecterAdm
         assert client.get(f"/api/v1/tournois/{tournoi_id}/blasons").json() == []
 
 
+def test_supprimer_blason_reference_409(
+    app_blasons: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E01US006 : supprimer un blason utilisé par une catégorie → 409 typé (`blason_reference`).
+
+    Après réaffectation de la catégorie (blason retiré), la suppression réussit (204).
+    """
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        blason = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "Trispot 40", "taille": 0.5, "capacite": 3},
+        ).json()
+        categorie = client.post(
+            f"/api/v1/tournois/{tournoi_id}/categories",
+            json={"libelle": "Senior H", "blason_id": blason["id"]},
+        ).json()
+
+        refus = client.delete(f"/api/v1/blasons/{blason['id']}")
+        assert refus.status_code == 409
+        assert refus.json()["code"] == "blason_reference"
+        # Le blason est toujours présent tant qu'il est référencé.
+        assert len(client.get(f"/api/v1/tournois/{tournoi_id}/blasons").json()) == 1
+
+        client.put(
+            f"/api/v1/categories/{categorie['id']}",
+            json={"libelle": "Senior H", "blason_id": None},
+        )
+        assert client.delete(f"/api/v1/blasons/{blason['id']}").status_code == 204
+
+
 def test_creer_sans_jeton_401(app_blasons: FastAPI) -> None:
     """La création est une action admin : refusée sans session (401)."""
     with TestClient(app_blasons) as client:
