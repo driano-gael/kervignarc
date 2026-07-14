@@ -49,6 +49,23 @@ class CategorieORM(Base):
     sexe: Mapped[str | None] = mapped_column(nullable=True)
 
 
+class BlasonORM(Base):
+    """Table `blason` — persistance de l'agrégat `Blason` (E01US005).
+
+    `taille` stocke la fraction de place occupée sur une cible (réel dans `]0, 1]`) et
+    `capacite` le nombre d'archers admis (entier `>= 1`) ; la validation est portée par le
+    domaine (`Blason.creer` / `Blason.modifier`).
+    """
+
+    __tablename__ = "blason"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    nom: Mapped[str] = mapped_column(nullable=False)
+    taille: Mapped[float] = mapped_column(nullable=False)
+    capacite: Mapped[int] = mapped_column(nullable=False)
+
+
 class ArcherORM(Base):
     """Table `archer` — persistance de l'agrégat `Archer` (E00US011)."""
 

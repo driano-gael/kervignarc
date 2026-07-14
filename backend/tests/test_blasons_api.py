@@ -1,0 +1,206 @@
+"""Test bout-en-bout de l'API blasons (E01US005).
+
+Traverse toutes les couches — DTO Pydantic → file d'écriture → service → repository → DB,
+puis relecture/listing — et vérifie le **mapping des erreurs typées** à la frontière :
+- création (avec attributs) puis listing d'un blason ;
+- édition (PUT) et suppression (204) ;
+- blason/tournoi introuvable → 404 ; taille/capacité invalide → 422 ; corps invalide → 400 ;
+- action admin refusée sans session → 401.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+from alembic import command
+from alembic.config import Config
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from bootstrap.composition import create_app
+from tests.conftest import ConnecterAdmin
+
+_BACKEND_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _migrer(url: str) -> None:
+    cfg = Config(str(_BACKEND_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
+    cfg.set_main_option("sqlalchemy.url", url)
+    command.upgrade(cfg, "head")
+
+
+@pytest.fixture
+def app_blasons(tmp_path: Path) -> Iterator[FastAPI]:
+    """App câblée sur une base migrée jetable ; l'engine est libéré en fin de test."""
+    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
+    _migrer(url)
+    app = create_app(url, admin_env_path=tmp_path / ".env")
+    try:
+        yield app
+    finally:
+        app.state.database.engine.dispose()
+
+
+def _creer_tournoi(client: TestClient) -> int:
+    """Crée un tournoi et renvoie son identifiant (client déjà authentifié admin)."""
+    reponse = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"})
+    assert reponse.status_code == 201, reponse.text
+    return int(reponse.json()["id"])
+
+
+def test_creer_puis_lister_un_blason(app_blasons: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """POST crée le blason (via la file) ; GET le liste avec ses attributs."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        creation = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "Trispot 40", "taille": 0.5, "capacite": 3},
+        )
+        assert creation.status_code == 201, creation.text
+        cree = creation.json()
+        assert cree["nom"] == "Trispot 40"
+        assert cree["taille"] == 0.5
+        assert cree["capacite"] == 3
+        assert cree["tournoi_id"] == tournoi_id
+        assert isinstance(cree["id"], int)
+
+        liste = client.get(f"/api/v1/tournois/{tournoi_id}/blasons")
+        assert liste.status_code == 200
+        assert liste.json() == [cree]
+
+
+def test_lister_blasons_d_un_tournoi(app_blasons: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """GET liste les blasons du tournoi, dans l'ordre de création."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        assert client.get(f"/api/v1/tournois/{tournoi_id}/blasons").json() == []
+        client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "A", "taille": 0.5, "capacite": 1},
+        )
+        client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "B", "taille": 1.0, "capacite": 2},
+        )
+        noms = [b["nom"] for b in client.get(f"/api/v1/tournois/{tournoi_id}/blasons").json()]
+    assert noms == ["A", "B"]
+
+
+def test_modifier_un_blason(app_blasons: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """PUT édite les attributs ; la relecture reflète la modification."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        cree = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "Ancien", "taille": 0.25, "capacite": 4},
+        ).json()
+        modif = client.put(
+            f"/api/v1/blasons/{cree['id']}",
+            json={"nom": "Nouveau", "taille": 0.5, "capacite": 2},
+        )
+        assert modif.status_code == 200
+        corps = modif.json()
+        assert corps["nom"] == "Nouveau"
+        assert corps["taille"] == 0.5
+        assert corps["capacite"] == 2
+        assert client.get(f"/api/v1/tournois/{tournoi_id}/blasons").json() == [corps]
+
+
+def test_supprimer_un_blason(app_blasons: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """DELETE → 204 ; le blason disparaît de la liste du tournoi."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        cree = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "Monospot", "taille": 1.0, "capacite": 1},
+        ).json()
+        assert client.delete(f"/api/v1/blasons/{cree['id']}").status_code == 204
+        assert client.get(f"/api/v1/tournois/{tournoi_id}/blasons").json() == []
+
+
+def test_creer_sans_jeton_401(app_blasons: FastAPI) -> None:
+    """La création est une action admin : refusée sans session (401)."""
+    with TestClient(app_blasons) as client:
+        reponse = client.post(
+            "/api/v1/tournois/1/blasons",
+            json={"nom": "Blason", "taille": 0.5, "capacite": 1},
+        )
+    assert reponse.status_code == 401
+    assert reponse.json()["code"] == "non_authentifie"
+
+
+def test_creer_dans_tournoi_introuvable(
+    app_blasons: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Créer un blason dans un tournoi inconnu → 404 typé."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        reponse = client.post(
+            "/api/v1/tournois/999/blasons",
+            json={"nom": "Blason", "taille": 0.5, "capacite": 1},
+        )
+    assert reponse.status_code == 404
+    assert reponse.json()["code"] == "tournoi_introuvable"
+
+
+def test_modifier_blason_introuvable(app_blasons: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """PUT sur un blason inconnu → 404 typé."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        reponse = client.put("/api/v1/blasons/999", json={"nom": "X", "taille": 0.5, "capacite": 1})
+    assert reponse.status_code == 404
+    assert reponse.json()["code"] == "blason_introuvable"
+
+
+def test_creer_taille_invalide_erreur_domaine(
+    app_blasons: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Une taille hors de `]0, 1]` → 422 avec le code métier (règle du domaine)."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        reponse = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "Blason", "taille": 1.5, "capacite": 1},
+        )
+    assert reponse.status_code == 422
+    assert reponse.json()["code"] == "taille_blason_invalide"
+
+
+def test_creer_capacite_invalide_erreur_domaine(
+    app_blasons: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Une capacité inférieure à 1 → 422 avec le code métier (règle du domaine)."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        reponse = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "Blason", "taille": 0.5, "capacite": 0},
+        )
+    assert reponse.status_code == 422
+    assert reponse.json()["code"] == "capacite_blason_invalide"
+
+
+def test_creer_requete_invalide_erreur_400(
+    app_blasons: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un corps invalide (taille non numérique) → 400 avec le détail."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        reponse = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "Blason", "taille": "grand", "capacite": 1},
+        )
+    assert reponse.status_code == 400
+    corps = reponse.json()
+    assert corps["code"] == "requete_invalide"
+    assert "details" in corps

@@ -20,17 +20,20 @@ from api.health import router as health_router
 from api.realtime import router as realtime_router
 from api.spa import frontend_dist_dir, monter_spa
 from api.v1.auth import router as auth_router
+from api.v1.blasons import router as blasons_router
 from api.v1.categories import router as categories_router
 from api.v1.competition import router as competition_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
 from application.auth import ServiceAuth
+from application.blasons import ServiceBlasons
 from application.categories import ServiceCategories
 from application.classements import ServiceClassement
 from application.tournois import ServiceTournois
 from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
 from infrastructure.db import (
     ArcherRepositorySQL,
+    BlasonRepositorySQL,
     CategorieRepositorySQL,
     Database,
     ScoreRepositorySQL,
@@ -103,10 +106,12 @@ def create_app(
     # par la file d'écriture (routage assuré côté router API).
     tournoi_repository = TournoiRepositorySQL(database.session_factory)
     categorie_repository = CategorieRepositorySQL(database.session_factory)
+    blason_repository = BlasonRepositorySQL(database.session_factory)
     archer_repository = ArcherRepositorySQL(database.session_factory)
     score_repository = ScoreRepositorySQL(database.session_factory)
     app.state.service_tournois = ServiceTournois(tournoi_repository)
     app.state.service_categories = ServiceCategories(tournoi_repository, categorie_repository)
+    app.state.service_blasons = ServiceBlasons(tournoi_repository, blason_repository)
     app.state.service_archers = ServiceArchers(
         tournoi_repository, archer_repository, score_repository
     )
@@ -130,6 +135,7 @@ def create_app(
     app.include_router(auth_router)
     app.include_router(tournois_router)
     app.include_router(categories_router)
+    app.include_router(blasons_router)
     app.include_router(competition_router)
 
     # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement

@@ -35,6 +35,24 @@ class LibelleCategorieInvalide(DomainError):
     code = "libelle_categorie_invalide"
 
 
+class NomBlasonInvalide(DomainError):
+    """Le nom d'un blason est vide (après normalisation)."""
+
+    code = "nom_blason_invalide"
+
+
+class TailleBlasonInvalide(DomainError):
+    """La taille d'un blason sort de la plage autorisée (fraction de place `]0, 1]`)."""
+
+    code = "taille_blason_invalide"
+
+
+class CapaciteBlasonInvalide(DomainError):
+    """La capacité d'un blason est inférieure à 1."""
+
+    code = "capacite_blason_invalide"
+
+
 class CibleInvalide(DomainError):
     """Le numéro de cible d'un placement n'est pas un entier strictement positif."""
 
