@@ -60,9 +60,16 @@ def _vers_blason(ligne: BlasonORM) -> Blason:
 
 
 def _vers_gabarit(ligne: GabaritSalleORM) -> GabaritSalle:
-    """Traduit une ligne ORM en agrégat de domaine `GabaritSalle` (config JSON → tuple)."""
-    config = json.loads(ligne.config)
-    capacites = tuple(int(c) for c in config["capacites"])
+    """Traduit une ligne ORM en agrégat de domaine `GabaritSalle` (config JSON → tuple).
+
+    Une `config` illisible ou d'un format inattendu est une **incohérence technique** (le
+    repository est le seul rédacteur et écrit toujours un JSON valide) : elle est enveloppée en
+    `InfrastructureError` — jamais laissée fuir en traceback brut à la frontière (ADR-0007).
+    """
+    try:
+        capacites = tuple(int(c) for c in json.loads(ligne.config)["capacites"])
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise InfrastructureError("Configuration de gabarit de salle illisible.") from exc
     return GabaritSalle(nom=ligne.nom, capacites=capacites, id=ligne.id)
 
 

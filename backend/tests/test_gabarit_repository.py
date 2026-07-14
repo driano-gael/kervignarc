@@ -9,11 +9,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
 
 from domain.gabarit_salle import GabaritSalle
-from infrastructure.db import Database, GabaritSalleRepositorySQL
+from infrastructure.db import Database, GabaritSalleORM, GabaritSalleRepositorySQL
+from infrastructure.erreurs import InfrastructureError
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
@@ -93,5 +95,18 @@ def test_supprimer_retire_la_ligne(tmp_path: Path) -> None:
         repository.supprimer(cree.id)
         assert repository.par_id(cree.id) is None
         assert repository.lister() == []
+    finally:
+        db.engine.dispose()
+
+
+def test_config_corrompue_leve_infrastructure_error(tmp_path: Path) -> None:
+    """Une `config` illisible en base est enveloppée en `InfrastructureError` (pas de 500 brut)."""
+    db = _base(tmp_path)
+    try:
+        with db.session_factory() as session:
+            session.add(GabaritSalleORM(nom="Cassé", nb_cibles=1, config="pas du json"))
+            session.commit()
+        with pytest.raises(InfrastructureError):
+            GabaritSalleRepositorySQL(db.session_factory).lister()
     finally:
         db.engine.dispose()
