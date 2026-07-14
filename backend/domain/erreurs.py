@@ -89,6 +89,37 @@ class NombreFlechesParVoleeInvalide(DomainError):
     code = "nombre_fleches_par_volee_invalide"
 
 
+class NombreVoleesParValidationInvalide(DomainError):
+    """La cadence d'un grain « toutes les N volées » est inférieure à 1 (E01US015)."""
+
+    code = "nombre_volees_par_validation_invalide"
+
+
+class NombreVoleesParValidationManquant(DomainError):
+    """Un grain « toutes les N volées » a été demandé sans préciser N (E01US015)."""
+
+    code = "nombre_volees_par_validation_manquant"
+
+
+class CadenceValidationSuperieureAuBareme(DomainError):
+    """La cadence de validation dépasse le nombre de volées du barème de la phase (E01US015).
+
+    Valider « toutes les 30 volées » une qualification qui n'en compte que 20, c'est ne **jamais**
+    valider : le grain et le barème vivent sur la même phase, leur cohérence est une règle métier.
+    """
+
+    code = "cadence_validation_superieure_au_bareme"
+
+
+class GrainIncompatibleAvecTypePhase(DomainError):
+    """Le grain de validation n'a pas de sens pour ce type de phase (E01US015).
+
+    Ex. « fin de duel » sur une phase de `qualification`, qui ne comporte pas de duels.
+    """
+
+    code = "grain_incompatible_avec_type_phase"
+
+
 class ScoreInvalide(DomainError):
     """La valeur d'un score sort de la plage autorisée pour une flèche (0 à 10)."""
 
