@@ -123,11 +123,14 @@ class BlasonRepository(Protocol):
 class GabaritSalleRepository(Protocol):
     """Port de persistance des gabarits de salle (adapter fourni par l'infrastructure).
 
-    Les gabarits sont **autonomes** (non rattachés à un tournoi) et réutilisables (E01US007).
+    Deux natures cohabitent : les **modèles** de bibliothèque (`tournoi_id is None`),
+    réutilisables (E01US007), et les **instances** appliquées à un tournoi (E01US008), copies
+    ajustables. `lister` ne renvoie que les modèles ; `par_tournoi` récupère l'instance d'un
+    tournoi.
     """
 
     def ajouter(self, gabarit: GabaritSalle) -> GabaritSalle:
-        """Persiste un gabarit et le renvoie avec son identifiant attribué."""
+        """Persiste un gabarit (modèle ou instance) et le renvoie avec son identifiant attribué."""
         ...
 
     def par_id(self, gabarit_id: GabaritSalleId) -> GabaritSalle | None:
@@ -135,11 +138,18 @@ class GabaritSalleRepository(Protocol):
         ...
 
     def lister(self) -> list[GabaritSalle]:
-        """Renvoie tous les gabarits (liste éventuellement vide)."""
+        """Renvoie les gabarits **modèles** (bibliothèque, `tournoi_id is None`)."""
+        ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> GabaritSalle | None:
+        """Renvoie l'instance de gabarit appliquée à un tournoi, ou `None` s'il n'y en a pas.
+
+        Un tournoi porte **au plus une** instance (son plan de salle courant).
+        """
         ...
 
     def enregistrer(self, gabarit: GabaritSalle) -> GabaritSalle:
-        """Met à jour un gabarit déjà persisté (édition) et le renvoie."""
+        """Met à jour un gabarit déjà persisté (édition, ajustement) et le renvoie."""
         ...
 
     def supprimer(self, gabarit_id: GabaritSalleId) -> None:

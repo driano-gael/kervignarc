@@ -80,9 +80,22 @@ class BlasonReference(ApplicationError):
 
 
 class GabaritIntrouvable(ApplicationError):
-    """Aucun gabarit de salle ne correspond à l'identifiant demandé."""
+    """Aucun gabarit de salle ne correspond à l'identifiant demandé.
+
+    Couvre aussi l'application d'un identifiant qui n'est **pas un modèle** (une instance déjà
+    rattachée à un tournoi) : seul un modèle de bibliothèque est applicable (E01US008).
+    """
 
     code = "gabarit_introuvable"
+
+
+class GabaritDuTournoiAbsent(ApplicationError):
+    """Ajustement demandé alors qu'aucun gabarit n'est appliqué au tournoi (E01US008) → 404.
+
+    Il faut d'abord **appliquer** un gabarit modèle au tournoi.
+    """
+
+    code = "gabarit_du_tournoi_absent"
 
 
 class IdentifiantsInvalides(ApplicationError):

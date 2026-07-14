@@ -70,7 +70,9 @@ def _vers_gabarit(ligne: GabaritSalleORM) -> GabaritSalle:
         capacites = tuple(int(c) for c in json.loads(ligne.config)["capacites"])
     except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
         raise InfrastructureError("Configuration de gabarit de salle illisible.") from exc
-    return GabaritSalle(nom=ligne.nom, capacites=capacites, id=ligne.id)
+    return GabaritSalle(
+        nom=ligne.nom, capacites=capacites, id=ligne.id, tournoi_id=ligne.tournoi_id
+    )
 
 
 def _config_gabarit(gabarit: GabaritSalle) -> str:
@@ -396,19 +398,20 @@ class BlasonRepositorySQL:
 
 
 class GabaritSalleRepositorySQL:
-    """Adapter SQLite du port `GabaritSalleRepository` (E01US007)."""
+    """Adapter SQLite du port `GabaritSalleRepository` (E01US007, E01US008)."""
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
     def ajouter(self, gabarit: GabaritSalle) -> GabaritSalle:
-        """Persiste le gabarit et le renvoie avec son identifiant attribué."""
+        """Persiste le gabarit (modèle ou instance) et le renvoie avec son identifiant attribué."""
         try:
             with self._session_factory() as session:
                 ligne = GabaritSalleORM(
                     nom=gabarit.nom,
                     nb_cibles=gabarit.nb_cibles,
                     config=_config_gabarit(gabarit),
+                    tournoi_id=gabarit.tournoi_id,
                 )
                 session.add(ligne)
                 session.commit()
@@ -426,21 +429,49 @@ class GabaritSalleRepositorySQL:
             raise InfrastructureError("Échec de lecture du gabarit de salle.") from exc
 
     def lister(self) -> list[GabaritSalle]:
-        """Renvoie tous les gabarits, dans l'ordre de création (par identifiant)."""
+        """Renvoie les gabarits **modèles** (bibliothèque, `tournoi_id IS NULL`), par identifiant.
+
+        Les instances appliquées à un tournoi (E01US008) sont **exclues** : elles se lisent via
+        `par_tournoi`.
+        """
         try:
             with self._session_factory() as session:
                 lignes = session.execute(
-                    select(GabaritSalleORM).order_by(GabaritSalleORM.id)
+                    select(GabaritSalleORM)
+                    .where(GabaritSalleORM.tournoi_id.is_(None))
+                    .order_by(GabaritSalleORM.id)
                 ).scalars()
                 return [_vers_gabarit(ligne) for ligne in lignes]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des gabarits de salle.") from exc
 
+    def par_tournoi(self, tournoi_id: TournoiId) -> GabaritSalle | None:
+        """Renvoie l'instance de gabarit appliquée à un tournoi, ou `None` s'il n'y en a pas.
+
+        Un tournoi porte au plus une instance ; en cas de multiplicité (ne devrait pas survenir),
+        la plus récente (`id` le plus élevé) l'emporte.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = (
+                    session.execute(
+                        select(GabaritSalleORM)
+                        .where(GabaritSalleORM.tournoi_id == tournoi_id)
+                        .order_by(GabaritSalleORM.id.desc())
+                    )
+                    .scalars()
+                    .first()
+                )
+                return None if ligne is None else _vers_gabarit(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du gabarit du tournoi.") from exc
+
     def enregistrer(self, gabarit: GabaritSalle) -> GabaritSalle:
-        """Met à jour un gabarit déjà persisté (édition) et le renvoie.
+        """Met à jour un gabarit déjà persisté (édition, ajustement) et le renvoie.
 
         **Contrat** : l'appelant (le service) garantit l'existence (vérifiée en amont). La ligne
         absente est une **incohérence technique** (non un cas métier) → `InfrastructureError`.
+        Le rattachement `tournoi_id` d'un gabarit persisté ne change pas (édition sur place).
         """
         try:
             with self._session_factory() as session:

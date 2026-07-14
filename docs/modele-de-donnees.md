@@ -16,7 +16,7 @@ erDiagram
     TOURNOI ||--o{ ARCHER : "inscrit"
     TOURNOI ||--o{ CIBLE : "instancie"
     TOURNOI ||--o{ PHASE : "séquence"
-    TOURNOI }o--|| GABARIT_SALLE : "utilise"
+    TOURNOI ||--o| GABARIT_SALLE : "plan (copie)"
     CLUB ||--o{ ARCHER : "rattache"
     CATEGORIE }o--|| BLASON : "associe"
     ARCHER }o--|| CATEGORIE : "concourt en"
@@ -46,8 +46,11 @@ erDiagram
 | type_tournoi | TEXT | `officiel` \| `non_officiel` |
 | statut | TEXT | `brouillon` \| `en_cours` \| `termine` |
 | tarif_depart | REAL | ≥ 0 |
-| gabarit_salle_id | INTEGER | FK → GABARIT_SALLE |
 | created_at | TEXT (datetime) | |
+
+> Le plan de salle d'un tournoi n'est **pas** une FK sur `TOURNOI` : c'est une **copie** rangée
+> dans `GABARIT_SALLE` et pointant vers le tournoi (`GABARIT_SALLE.tournoi_id`), pour pouvoir
+> l'ajuster sans altérer le modèle réutilisable (E01US008). Un tournoi a au plus une telle copie.
 
 ### CLUB
 | id | INTEGER | PK |
@@ -91,6 +94,7 @@ erDiagram
 | nom | TEXT | NOT NULL |
 | nb_cibles | INTEGER | ≥ 1 |
 | config | TEXT (JSON) | capacités et positions par cible |
+| tournoi_id | INTEGER | FK → TOURNOI ; `NULL` = **modèle** réutilisable, renseigné = **copie** appliquée à un tournoi (E01US008) |
 
 ### CIBLE
 | id | INTEGER | PK |

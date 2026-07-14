@@ -7,8 +7,10 @@ Suit le patron de bout en bout (E00US009) :
 - **lecture** directe exécutée **hors boucle** (threadpool) ;
 - **erreurs typées** traduites à la frontière (`api/erreurs.py`).
 
-Ressource **autonome** (un gabarit n'appartient pas à un tournoi) : routes à plat sous
-`/gabarits` ; le rattachement d'un gabarit à un tournoi viendra en E01US008.
+Deux familles de routes :
+- **bibliothèque** de modèles réutilisables (E01US007), à plat sous `/gabarits` ;
+- **plan de salle d'un tournoi** (E01US008), sous `/tournois/{tournoi_id}/gabarit` : appliquer un
+  modèle (copie), lire et ajuster la copie (plafond cible par cible) sans altérer le modèle.
 """
 
 from __future__ import annotations
@@ -43,6 +45,22 @@ class ModifierGabaritRequete(BaseModel):
     capacite: int = CAPACITE_CIBLE_DEFAUT
 
 
+class AppliquerGabaritRequete(BaseModel):
+    """Corps d'application d'un modèle à un tournoi (E01US008) : l'identifiant du modèle."""
+
+    modele_id: int
+
+
+class AjusterGabaritRequete(BaseModel):
+    """Corps d'ajustement du gabarit d'un tournoi (E01US008) : nom + plafond **cible par cible**.
+
+    `capacites` porte une valeur par cible ; son nombre fixe le nombre de cibles.
+    """
+
+    nom: str
+    capacites: list[int]
+
+
 class CibleReponse(BaseModel):
     """Une cible du gabarit : rang, plafond d'archers et positions déduites."""
 
@@ -52,11 +70,16 @@ class CibleReponse(BaseModel):
 
 
 class GabaritReponse(BaseModel):
-    """Représentation d'un gabarit de salle renvoyée au client."""
+    """Représentation d'un gabarit de salle renvoyée au client.
+
+    `tournoi_id` vaut `None` pour un **modèle** de bibliothèque, l'identifiant du tournoi pour
+    une **instance** appliquée (E01US008).
+    """
 
     id: int
     nom: str
     nb_cibles: int
+    tournoi_id: int | None
     cibles: list[CibleReponse]
 
     @staticmethod
@@ -67,6 +90,7 @@ class GabaritReponse(BaseModel):
             id=gabarit.id,
             nom=gabarit.nom,
             nb_cibles=gabarit.nb_cibles,
+            tournoi_id=gabarit.tournoi_id,
             cibles=[
                 CibleReponse(
                     index=cible.index, capacite=cible.capacite, positions=list(cible.positions)
@@ -130,3 +154,59 @@ async def supprimer_gabarit(gabarit_id: int, request: Request) -> Response:
     write_queue: WriteQueue = request.app.state.write_queue
     await asyncio.wrap_future(write_queue.submit(lambda: service.supprimer(gabarit_id)))
     return Response(status_code=204)
+
+
+# --- Plan de salle d'un tournoi (E01US008) : appliquer / lire / ajuster la copie du tournoi. ---
+
+
+@router.get("/tournois/{tournoi_id}/gabarit", response_model=GabaritReponse | None)
+async def gabarit_du_tournoi(tournoi_id: int, request: Request) -> GabaritReponse | None:
+    """Renvoie le gabarit appliqué au tournoi, ou `null` s'il n'y en a pas (lecture publique).
+
+    Lève `TournoiIntrouvable` (404) si le tournoi n'existe pas.
+    """
+    service: ServiceGabarits = request.app.state.service_gabarits
+    gabarit = await run_in_threadpool(service.gabarit_du_tournoi, tournoi_id)
+    return None if gabarit is None else GabaritReponse.de_agregat(gabarit)
+
+
+@router.put(
+    "/tournois/{tournoi_id}/gabarit",
+    response_model=GabaritReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def appliquer_gabarit(
+    tournoi_id: int, requete: AppliquerGabaritRequete, request: Request
+) -> GabaritReponse:
+    """Applique un modèle au tournoi (**action admin**) : copie via la file (ADR-0005).
+
+    Remplace le gabarit courant du tournoi le cas échéant ; le modèle d'origine reste intact.
+    """
+    service: ServiceGabarits = request.app.state.service_gabarits
+    write_queue: WriteQueue = request.app.state.write_queue
+    gabarit = await asyncio.wrap_future(
+        write_queue.submit(lambda: service.appliquer(tournoi_id, requete.modele_id))
+    )
+    return GabaritReponse.de_agregat(gabarit)
+
+
+@router.patch(
+    "/tournois/{tournoi_id}/gabarit",
+    response_model=GabaritReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def ajuster_gabarit(
+    tournoi_id: int, requete: AjusterGabaritRequete, request: Request
+) -> GabaritReponse:
+    """Ajuste le gabarit du tournoi (**action admin**) : plafond cible par cible, via la file.
+
+    N'affecte que la copie du tournoi (le modèle reste intact).
+    """
+    service: ServiceGabarits = request.app.state.service_gabarits
+    write_queue: WriteQueue = request.app.state.write_queue
+    gabarit = await asyncio.wrap_future(
+        write_queue.submit(
+            lambda: service.ajuster(tournoi_id, requete.nom, tuple(requete.capacites))
+        )
+    )
+    return GabaritReponse.de_agregat(gabarit)

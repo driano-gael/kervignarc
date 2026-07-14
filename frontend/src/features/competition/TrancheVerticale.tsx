@@ -14,6 +14,7 @@ import { useDeconnexionAdmin } from '../admin/hooks'
 import { Blasons } from '../blasons/Blasons'
 import { Categories } from '../categories/Categories'
 import { Gabarits } from '../gabarits/Gabarits'
+import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { ErreurApi } from '../../shared/api/client'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import type { StatutTournoi, Tournoi, TypeTournoi } from './api'
@@ -322,6 +323,8 @@ function Competition({ tournoi, onRetour }: { tournoi: Tournoi; onRetour: () => 
       {estAdmin && <Categories tournoiId={tournoi.id} />}
 
       {estAdmin && <Blasons tournoiId={tournoi.id} />}
+
+      {estAdmin && <PlanDeSalle tournoiId={tournoi.id} />}
 
       {estAdmin && <Gabarits />}
 

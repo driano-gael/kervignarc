@@ -7,7 +7,11 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  type AjustementGabarit,
+  ajusterGabarit,
+  appliquerGabarit,
   creerGabarit,
+  getGabaritDuTournoi,
   getGabarits,
   type ModifierGabarit,
   modifierGabarit,
@@ -16,6 +20,7 @@ import {
 } from './api'
 
 const cleGabarits = ['gabarits'] as const
+const cleGabaritTournoi = (tournoiId: number) => ['gabarit-tournoi', tournoiId] as const
 
 export function useGabarits() {
   return useQuery({
@@ -46,5 +51,30 @@ export function useSupprimerGabarit() {
   return useMutation({
     mutationFn: (id: number) => supprimerGabarit(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: cleGabarits }),
+  })
+}
+
+// --- Plan de salle d'un tournoi (E01US008) ---
+
+export function useGabaritDuTournoi(tournoiId: number) {
+  return useQuery({
+    queryKey: cleGabaritTournoi(tournoiId),
+    queryFn: () => getGabaritDuTournoi(tournoiId),
+  })
+}
+
+export function useAppliquerGabarit(tournoiId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (modeleId: number) => appliquerGabarit(tournoiId, modeleId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: cleGabaritTournoi(tournoiId) }),
+  })
+}
+
+export function useAjusterGabarit(tournoiId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (entree: AjustementGabarit) => ajusterGabarit(tournoiId, entree),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: cleGabaritTournoi(tournoiId) }),
   })
 }

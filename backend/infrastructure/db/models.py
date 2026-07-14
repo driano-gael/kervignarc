@@ -76,12 +76,15 @@ class BlasonORM(Base):
 
 
 class GabaritSalleORM(Base):
-    """Table `gabarit_salle` — persistance de l'agrégat `GabaritSalle` (E01US007).
+    """Table `gabarit_salle` — persistance de l'agrégat `GabaritSalle` (E01US007, E01US008).
 
-    Gabarit **autonome** (aucune FK vers `tournoi` : réutilisable d'un tournoi à l'autre). Le
-    plafond d'archers de chaque cible est stocké dans `config` (JSON, `{"capacites": [...]}`) ;
+    Le plafond d'archers de chaque cible est stocké dans `config` (JSON, `{"capacites": [...]}`) ;
     `nb_cibles` est dénormalisé (= longueur de la liste) pour la lecture. La traduction JSON ↔
     agrégat est faite par le repository.
+
+    `tournoi_id` distingue un **modèle** de bibliothèque (`NULL`, réutilisable) d'une **instance**
+    appliquée à un tournoi (E01US008) : appliquer un modèle en crée une copie portant ce
+    `tournoi_id`, ajustable sans altérer le modèle. Un tournoi porte au plus une instance.
     """
 
     __tablename__ = "gabarit_salle"
@@ -90,6 +93,9 @@ class GabaritSalleORM(Base):
     nom: Mapped[str] = mapped_column(nullable=False)
     nb_cibles: Mapped[int] = mapped_column(nullable=False)
     config: Mapped[str] = mapped_column(nullable=False)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — l'instance appartient à la
+    # descendance du tournoi, à traiter dans la même politique de suppression, non tranchée.
+    tournoi_id: Mapped[int | None] = mapped_column(ForeignKey("tournoi.id"), nullable=True)
 
 
 class ArcherORM(Base):
