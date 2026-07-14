@@ -16,7 +16,8 @@
 
 ### E04US003 — Saisir les flèches d'une volée (pavé tactile)
 *En tant que* scoreur, *je veux* saisir chaque flèche via un pavé, *afin de* renseigner rapidement.
-- **CA** : pavé de valeurs (0-10, M, X) ; gros boutons ; correction avant validation.
+- **CA** : pavé de valeurs **déduit du blason tiré** (`Blason.zones`, E01US014) et non du barème de la phase — sur un triple 40 les touches 5→1 n'existent pas (FFTA §4.4) ; gros boutons ; correction avant validation.
+- **Dépend de** : E01US014
 - **Dépend de** : E04US002 · **Jalon** : J1
 
 ### E04US004 — Valider les valeurs autorisées
@@ -67,7 +68,7 @@
 
 ### E04US013 — Saisie en sets (duels)
 *En tant que* scoreur, *je veux* saisir un match au système de sets, *afin de* gérer les duels.
-- **CA** : points de set attribués selon le barème (ex. 4 pts gagnant) ; cumul des points de set du match.
+- **CA** : points de set attribués selon le barème (FFTA : premier à **6 pts** sur 5 sets ; format club : 4 pts) ; cumul des points de set du match ; **les arcs à poulies ne tirent pas en sets** mais au cumul (FFTA A.7.5.2) — le barème se résout par (phase, arme), cf. EF-3.4.
 - **Dépend de** : E01US011, E05US007 · **Jalon** : J2
 
 ### E04US014 — Désigner le vainqueur d'un match

@@ -9,11 +9,11 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Tournoi** | `Tournoi` | Événement complet : configuration, inscrits, phases, résultats. |
 | **Club** | `Club` | Structure d'appartenance d'un archer. |
 | **Archer** | `Archer` | Participant (ex-`Player` du prototype). |
-| **Catégorie** | `Categorie` | Classe de compétition (arme, âge, sexe) déterminant blason et cloisonnement. |
-| **Blason** | `Blason` | Cible en carton visée par l'archer. Porte une **taille** (fraction de place sur la cible) et une **capacité**. |
-| **Cible** | `Cible` | Support physique numéroté ; capacité 1/2/4 archers selon les blasons. |
+| **Catégorie** | `Categorie` | Classe de compétition **nommée**, définie par une règle d'éligibilité (arme, **une ou plusieurs** tranches d'âge, sexe), déterminant blason par défaut et cloisonnement. Pas un triplet : la FFTA regroupe des tranches (arc nu « U18 » = U15+U18). |
+| **Blason** | `Blason` | Cible en carton visée par l'archer. Porte une **taille** (fraction de place sur la cible), une **capacité** et ses **zones** (valeurs de score admises — un triple 40 n'a pas les zones 5→1). |
+| **Cible** | `Cible` | Support physique numéroté ; capacité **libre (≥ 1)** selon les blasons — usuellement 1, 2 ou 4, mais 3 existe (triples verticaux). |
 | **Position** | `position` | Emplacement sur une cible : A, B, C, D (ex-`lettre` du prototype). |
-| **Gabarit de salle** | `GabaritSalle` | Plan de cibles réutilisable : nombre de cibles et **plafond** d'archers par cible (1 à 4, défaut 4) d'où découlent les positions. |
+| **Gabarit de salle** | `GabaritSalle` | Plan de cibles réutilisable : nombre de cibles et **plafond** d'archers par cible (défaut 4) d'où découlent les positions. |
 | **Départ** | `Depart` | Une participation d'un archer ; un archer peut avoir plusieurs départs (base de la facturation). |
 | **Flèche** | `Fleche` | Un tir unique ; valeur 0-10, X (centre), M (manqué). |
 | **Volée** | `Volee` | Groupe de flèches tirées d'affilée (ex. 3 flèches). |

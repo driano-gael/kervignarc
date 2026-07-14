@@ -1,7 +1,7 @@
 # Référentiel FFTA — Tir à 18 m (salle)
 
-- **Version** : 1.0
-- **Date** : 2026-07-13
+- **Version** : 1.1
+- **Date** : 2026-07-14 *(v1.1 : §10 réécrit après confrontation au CDC — arbitrages du 14/07 ; §10.1 « formats club » ajouté ; contradictions internes du §3 et du §10 levées)*
 - **Source** : *Règlements sportifs et Arbitrage de la FFTA, édition décembre 2023* — chapitre **II.2 « Le Tir à 18 m »** et **Chapitre I « Les Règlements Généraux »**. Texte intégral archivé dans `docs/sources/ffta/reglement-sportif-ffta-2023_texte-integral.txt`.
 - **But** : source de vérité des règles (catégories, blasons, barèmes, départage, formats) qui alimentent la configuration des tournois (EPIC-01) et le moteur de phases/placement (EPIC-03, EPIC-05). Sert aussi de base documentaire générale sur la discipline.
 
@@ -79,7 +79,7 @@ Blasons uniques **ou** triples (verticaux ou triangulaires), au choix de l'organ
 | U18 (H/F) — regroupe U15, U18 | **60 cm** | ✅ FFTA (A.7.1.2 / A.7.1.3) |
 | Scratch (H/F) — U21, S1, S2, S3 | **40 cm** | ✅ FFTA (A.7.1.2 / A.7.1.3) |
 
-> **Épreuve de qualification (18 m)** : 60 flèches sur blason de 40 cm ou triple 40 cm pour toutes les catégories (art. A.7.3). Les catégories tirant plus gros (U11 → 80 cm, U13/U15 classique → 60 cm) utilisent le blason de leur ligne.
+> **Épreuve de qualification (18 m)** : **60 flèches** (art. A.7.3). Le **blason** est celui de la ligne de la catégorie dans les tableaux ci-dessus : 40 cm (ou triple 40) pour la majorité des catégories, mais **80 cm** en U11 classique, **60 cm** en U13/U15 classique et en U18 arc nu. La formule « 40 cm pour toutes les catégories », qu'on lit souvent, décrit le **cas adulte** et non une règle générale — elle ne prime pas sur le blason de la ligne.
 
 ---
 
@@ -219,19 +219,44 @@ En cas d'égalité de total : départage au **plus grand nombre de 10**, puis de
 
 > Ces notes relient le référentiel réglementaire aux besoins applicatifs (cf. [[projet-kervignarc-scope]]). Elles ne font pas partie du règlement FFTA.
 
-- **Catégories (EPIC-01 / E01US003-004)** : une catégorie = `division (arme) × catégorie d'âge × sexe`, avec un **blason associé** (§3) et la distance 18 m. Liste pré-chargeable et modifiable.
-- **Blasons & placement (EPIC-03)** : le paramètre qui pilote le placement n'est pas le nom commercial du blason mais la **fraction de cible** qu'il occupe (1 blason simple, paire, 4 blasons, ou triples verticaux par colonnes). Les hauteurs et espacements du §5 conditionnent la capacité d'une butte.
-- **Barèmes & moteur de phases (EPIC-05 / E01US011)** : les formats du §6-7 deviennent des **presets modifiables** — politique `scoring` (qualif au cumul ; duels en sets pour classique/nu, au cumul pour poulies) ; seuils de set (6 individuel / 5 équipe).
-- **Départage (EPIC-06 / E04US016, E06US002-003)** : politique `tiebreak` — qualif au nombre de 10 puis de 9 ; match nul → barrage 1 flèche (plus près du centre).
+> **Principe directeur (arbitré le 2026-07-14)** — Le règlement FFTA n'entre jamais dans l'application comme une **contrainte** : il y entre comme un **template**. Tout ce qui est pré-chargé depuis ce référentiel (catégories, blasons, barèmes) reste **modifiable et supprimable** par l'administrateur. Un tournoi conforme FFTA est donc un tournoi dont l'admin n'a pas touché aux templates — l'application ne le vérifie pas et ne l'impose pas.
+
+- **Catégories (EPIC-01 / E01US003-004)** : une catégorie **n'est pas** le triplet `division × âge × sexe`. C'est une **entité nommée** portant une **règle d'éligibilité** : une division, **une ou plusieurs** catégories d'âge, un sexe. Le §3 l'impose — l'arc nu regroupe U15+U18 dans une catégorie « U18 », et U21+S1+S2+S3 dans un « Scratch ». Un même libellé d'âge n'a donc pas le même sens d'une division à l'autre : « U18 » désigne une seule tranche en classique, **deux** en arc nu. Modéliser l'âge par une valeur unique rend ces deux cas indistinguables.
+- **Blason d'une catégorie (E01US006)** : la catégorie porte un **blason par défaut** (§3), qu'une **phase peut surcharger**. Le blason réel dépend en effet de trois facteurs : la catégorie, la **phase** (les finales des Championnats de France se tirent toutes sur triples verticaux — A.7.6, A.7.7), et le **choix de l'organisateur** entre blason unique et triple (A.7.1.3) — sauf en poulies, toujours sur triples.
+- **Blasons & saisie (EPIC-04)** : un blason ne se réduit pas à sa taille. Les **valeurs de score admises** en dépendent : un triple 40 n'a **pas les zones 5 → 1** (son minimum est 6, §4.4), et le « 10 intérieur » des poulies est un cercle plus petit que le 10 classique (§4.3). Le pavé de saisie de la tablette se déduit donc du **blason**, pas du barème de la phase.
+- **Blasons & placement (EPIC-03)** : le paramètre qui pilote le placement n'est pas le nom commercial du blason mais la **fraction de cible** qu'il occupe (1 blason simple, paire, 4 blasons, ou triples verticaux par colonnes). La capacité d'une butte n'est pas bornée à 1/2/4 : le §5 décrit aussi une configuration à **3 triples verticaux**. Les **hauteurs** du §5 sont une contrainte à part entière, non réductible à une fraction : un U11 tire à **110 cm** de centre contre **130 cm** pour les autres, il ne peut donc pas partager une butte avec eux.
+- **Barèmes & moteur de phases (EPIC-05 / E01US011)** : les formats du §6-7 deviennent des **presets modifiables**. Un barème ne se résout **pas** à partir de la seule phase : au même tour de duels, classique et arc nu tirent **en sets** (premier à 6) quand les poulies tirent **au cumul** (A.7.5.1 / A.7.5.2). La politique `scoring` se résout donc par le couple **(phase, division)**.
+- **Départage (EPIC-06 / E04US016, E06US002-003)** : politique `tiebreak` — qualif au nombre de 10 **puis** de 9 (§8.1). Match nul → barrage d'**1 flèche au plus haut score** ; ce n'est **que si l'égalité persiste** qu'on départage au plus près du centre (§8.2). Les deux critères sont séquentiels, pas fusionnés. Le barrage ne recompte pas les 10/9.
 - **Seeding / tableaux (ADR-0004, E05US006)** : effectif arrondi à la puissance de 2 (ex. 32/16 places pour les duels FFTA), placement selon le rang de qualification (« serpent »), exempts aux mieux classés — **décision projet** (`❓` côté FFTA, non normé dans ce chapitre).
+- **Épreuves par équipes (§6.3, §7)** : documentées ici, **hors périmètre** applicatif. La porte reste ouverte : le moteur devra pouvoir opposer des participants qui ne sont pas des archers individuels (`MATCH.participant_A/B` plutôt que `archer_a/archer_b`).
+
+---
+
+### 10.1 Formats club (hors FFTA)
+
+> ⚠️ Les valeurs pratiquées par le club (relevées dans `Tableaux.xlsx` et reprises telles quelles dans le CDC v0.2) **ne sont pas les valeurs FFTA**. Elles décrivent un format court non officiel, parfaitement légitime, mais qu'il ne faut pas présenter comme un « preset FFTA ».
+
+| Sujet | Format club (`Tableaux.xlsx`) | FFTA officiel (ce référentiel) |
+|---|---|---|
+| Qualification | 5 volées de 3 = **15 flèches** | **60 flèches**, 20 volées de 3 (A.7.3) |
+| Duel individuel | sets, premier à **4 pts** | sets, premier à **6 pts**, 5 sets (B.6.1.4.1) |
+| ½ finales / finales | 5 volées de 3, 6 pts | *(format normal du duel — la FFTA ne distingue pas un « barème de finale »)* |
+| Marquage | volée par volée | scores établis **toutes les 2 volées** de 3 (B.6.1.2) |
+| Grande finale | **Big Shoot Off** | *(n'existe pas — voir §11)* |
+| Structure | 120 archers, placement intégral 1→N | 32 à l'éliminatoire, 8 en finale (A.7.5) |
+
+**Décision (2026-07-14)** — L'application livre **deux jeux de presets** : *FFTA officiel* et *format club*. L'organisateur choisit à la création ; les deux restent surchargeables (principe directeur du §10).
 
 ---
 
 ## 11. Points restés `❓ à confirmer`
 
+- **Big Shoot Off** — 🔴 **bloquant**. Le CDC en fait le barème de la grande finale, mais le BSO **n'existe nulle part dans le règlement FFTA** : c'est un format club, et sa règle n'est écrite **dans aucun document du projet**. Impossible à implémenter en l'état. À obtenir auprès du club (nombre de flèches, départage, critère de victoire), puis à documenter en §10.1.
 - **Correspondance** catégories historiques (Poussin…Super Vétéran) ↔ U11…S3 : usage courant, non écrit dans le règlement 2023.
 - **Découpage exact des 60 flèches de qualification** en volées (20 × 3 retenu par usage + art. B.6.1.2) : à confirmer sur le mandat de l'organisateur.
 - **Règles de seeding/exempts** : non normées dans le chapitre 18 m → décision projet.
 - Un **fichier d'inscrits d'exemple** (format « inscript'arc ») reste à obtenir pour l'import.
+
+> **Points levés le 2026-07-14** (ils ne sont plus des questions ouvertes) : le **départage** de qualification (nombre de 10 puis de 9) et le **barrage** (1 flèche au plus haut score, puis au plus près du centre) répondent à la Q2 du CDC fonctionnel et à une partie de la QT7 du CDC technique.
 
 *Une fois ces points levés, le référentiel sert de source de vérité pour les presets de configuration.*

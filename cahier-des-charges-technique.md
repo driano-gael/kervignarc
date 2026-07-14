@@ -4,10 +4,10 @@
 
 | | |
 |---|---|
-| **Version** | 0.1 (technique) |
-| **Date** | 08/07/2026 |
+| **Version** | 0.2 (technique — cadrage FFTA) |
+| **Date** | 14/07/2026 |
 | **Statut** | À valider par le client |
-| **Documents liés** | `cahier-des-charges.md` (fonctionnel v0.2), `charge.md`, `Tableaux.xlsx` |
+| **Documents liés** | `cahier-des-charges.md` (fonctionnel v0.3), `charge.md`, `Tableaux.xlsx`, [`docs/referentiel-ffta.md`](docs/referentiel-ffta.md) |
 | **Périmètre** | Architecture technique découlant du CDC fonctionnel |
 
 ---
@@ -91,7 +91,7 @@ kervignarc/
 ├── domain/            # logique métier pure (réutilise/étend le prototype)
 │   ├── blason.py      # Blason{size, capacity, name}  (existant)
 │   ├── player.py      # Player/Archer{name, blason, lettre, idCible, scores…} (existant)
-│   ├── target.py      # Cible{capacité 1/2/4, positions A/B/C/D}
+│   ├── target.py      # Cible{capacité libre ≥ 1, positions A/B/C/D}
 │   ├── placement.py   # algo de placement (contraintes capacité/club/blason)
 │   ├── phase/         # MOTEUR DE PHASES
 │   │   ├── engine.py       # séquence de phases, orchestration
@@ -127,10 +127,10 @@ kervignarc/
 | Politique | Rôle | Variantes / décisions |
 |---|---|---|
 | **Routage** (`routing.py`) | `route(perdant, tour, contexte) → destination` : où va le perdant d'un match | **Cascade de placement** (défaut, personne éliminé, plage /2) OU **repêchage-réintégration** (World Archery) OU **élimination sèche** (sort du tournoi). *(Q1)* |
-| **Barème** (`scoring.py`) | Comment se calcule/gagne un match ou un cumul | Presets FFTA/WA **modifiables** : cumul de volées, sets 4 pts, finales 6 pts, shoot-off, Big Shoot Off. *(Q3)* |
+| **Barème** (`scoring.py`) | Comment se calcule/gagne un match ou un cumul | Résolu par le couple **(phase, arme)** — classique/nu en sets, poulies au cumul (FFTA A.7.5.1/A.7.5.2) : la phase porte un barème par défaut + des surcharges par arme. **Deux jeux de presets** livrés, tous deux modifiables : *FFTA officiel* (qualif 60 flèches, duel 5 sets / 6 pts) et *format club* (qualif 15 flèches, sets 4 pts). *(Q3 ; BSO non spécifié → Q9 fonctionnelle)* |
 | **Seeding** (`seeding.py`) | Composition de l'arbre | Arrondi à `2^k`, **seeding serpent** standard. |
 | **Byes** (`byes.py`) | Attribution des exempts quand l'effectif ≠ `2^k` | Défaut : **aux mieux classés** de la plage ; universel, calculé pour tout effectif. *(Q4, Q5)* |
-| **Départage** (`tiebreak.py`) | Résolution des égalités | Qualif : **nb de 10 puis de 9** ; match nul : **shoot-off 1 flèche, plus près du centre** ; barrage de tir pour places décisives. Modifiable. *(Q3)* |
+| **Départage** (`tiebreak.py`) | Résolution des égalités | Qualif : **nb de 10 puis de 9**. Match nul : **shoot-off 1 flèche au plus haut score**, **puis** au plus près du centre **seulement si l'égalité persiste** — deux critères **séquentiels**, pas un seul (FFTA B.6.5.2) ; les 10/9 ne sont pas recomptés au barrage. Modifiable. *(Q3 — fermée, cf. référentiel §8)* |
 | **Profondeur** (`depth.py`) | Jusqu'où classer | **1→N** (défaut) OU **top N + regroupement** du reliquat, par tournoi. *(Q2)* |
 
 - Une **phase de tableau** reçoit donc : `{sourcing, routing, scoring, seeding, byes, tiebreak, depth}`. Le format « placement intégral 120 » du classeur = `routing=cascade, depth=1→N, byes=mieux classés, seeding=serpent`.
@@ -148,14 +148,14 @@ Entités principales (schéma logique — détail des colonnes à préciser en c
 | `Tournament` | Le tournoi | nom, date, lieu, type officiel/non, statut |
 | `Club` | Référentiel clubs | nom |
 | `Archer` | Inscrit | nom, prénom, club_id, catégorie_id |
-| `Category` | Catégorie | libellé, blason par défaut |
-| `Blason` | Blason | name, size (fraction), capacity |
+| `Category` | Catégorie | libellé, **règle d'éligibilité** (arme, **une ou plusieurs** tranches d'âge, sexe), blason par défaut. ⚠️ **Pas** un triplet `arme × âge × sexe` : la FFTA regroupe des tranches (arc nu U18 = U15+U18) |
+| `Blason` | Blason | name, size (fraction), capacity, **zones** (valeurs de score admises — un triple 40 n'a pas les zones 5→1) |
 | `Departure` | Départ d'un archer | archer_id, n° départ, tarif, montant dû, payé (bool) |
 | `TargetTemplate` | Gabarit de salle | nb cibles, capacités, positions |
 | `Target` | Cible d'un tournoi | index, capacité, positions A/B/C/D |
 | `Placement` | Affectation | archer_id, target_id, position, phase_id/tour |
 | `Phase` | Phase de la séquence | tournament_id, ordre, type, config (JSON incl. **politiques** : routage/barème/seeding/byes/départage/profondeur — cf. §4.2) |
-| `Match` | Match/duel | phase_id, n° (M1…), archer_A, archer_B, tour |
+| `Match` | Match/duel | phase_id, n° (M1…), **participant_A, participant_B**, tour. Les épreuves par équipes sont hors périmètre (fonctionnel §2.2), mais un match oppose des **participants** — pas nécessairement des archers — pour que leur ajout ne soit pas une refonte |
 | `SetScore` / `Volley` | Volées/sets saisis | match_id ou qualif_id, valeurs, validé (bool), auteur, horodatage |
 | `Ranking` | Classement produit | phase_id, archer_id, rang, contexte (qualif/final 1→N) |
 | `User` / `Session` | Accès | rôle (admin/scoreur), code de cible(s), jeton |
@@ -285,7 +285,8 @@ Regroupée par domaines : `tournaments`, `archers`, `imports`, `phases`, `placem
 | QT4 | **Nom d'accès** : IP fixe vs mDNS `kervignarc.local` | Confort terrain |
 | QT5 | **OS cible du build** : Windows seul ou aussi macOS/Linux | Parc de l'organisateur |
 | QT6 | **Volumétrie plafond** au-delà de 120 archers | Dimensionnement / tests de charge |
-| QT7 | **Détail des règles** de barrage/départage et de peuplement Lucky Loser | Conception détaillée du moteur (R1) |
+| QT7 | **Détail des règles** de peuplement Lucky Loser | Conception détaillée du moteur (R1). *(Le volet **barrage/départage** est fermé depuis le 14/07/2026 — cf. [référentiel FFTA §8](docs/referentiel-ffta.md) et Q2 fonctionnelle.)* |
+| QT8 | 🔴 **Règle du Big Shoot Off** | Bloque l'implémentation du barème de grande finale — cf. **Q9** du CDC fonctionnel. |
 
 ---
 
