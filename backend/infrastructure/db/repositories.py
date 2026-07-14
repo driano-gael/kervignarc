@@ -15,9 +15,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from domain.archer import Archer, ArcherId
+from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId, SexeCategorie
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
+from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.score import Score
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
 from infrastructure.db.models import (
@@ -25,6 +27,7 @@ from infrastructure.db.models import (
     BlasonORM,
     CategorieORM,
     GabaritSalleORM,
+    PhaseORM,
     ScoreORM,
     TournoiORM,
 )
@@ -78,6 +81,48 @@ def _vers_gabarit(ligne: GabaritSalleORM) -> GabaritSalle:
 def _config_gabarit(gabarit: GabaritSalle) -> str:
     """Sérialise le plafond par cible d'un gabarit en JSON (`{"capacites": [...]}`)."""
     return json.dumps({"capacites": list(gabarit.capacites)})
+
+
+def _vers_phase(ligne: PhaseORM) -> Phase:
+    """Traduit une ligne ORM en agrégat `Phase` (config JSON → barème de qualification).
+
+    E01US009 : seules des phases `qualification` existent ; le barème est lu depuis
+    `config.scoring`. Une `config` illisible est une **incohérence technique** (le repository en
+    est le seul rédacteur) → `InfrastructureError` (ADR-0007), jamais un traceback brut.
+    """
+    try:
+        scoring = json.loads(ligne.config)["scoring"]
+        bareme = BaremeQualification(
+            nb_volees=int(scoring["volees"]),
+            nb_fleches_par_volee=int(scoring["fleches"]),
+        )
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise InfrastructureError("Configuration de phase illisible.") from exc
+    return Phase(
+        tournoi_id=ligne.tournoi_id,
+        ordre=ligne.ordre,
+        type=TypePhase(ligne.type),
+        bareme=bareme,
+        statut=StatutPhase(ligne.statut),
+        id=ligne.id,
+    )
+
+
+def _config_phase(phase: Phase) -> str:
+    """Sérialise le barème d'une phase de qualification en JSON (`{"scoring": {...}}`).
+
+    Le mode est explicitement `cumul` (seul mode de la qualification) ; les autres politiques du
+    moteur (EPIC-05, ADR-0004) s'ajouteront à ce même objet `config` sans changer le schéma.
+    """
+    return json.dumps(
+        {
+            "scoring": {
+                "volees": phase.bareme.nb_volees,
+                "fleches": phase.bareme.nb_fleches_par_volee,
+                "mode": "cumul",
+            }
+        }
+    )
 
 
 def _vers_categorie(ligne: CategorieORM) -> Categorie:
@@ -531,3 +576,80 @@ class ScoreRepositorySQL:
                 ]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des scores du tournoi.") from exc
+
+
+class PhaseRepositorySQL:
+    """Adapter SQLite du port `PhaseRepository` (introduction minimale, E01US009/ADR-0011)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def ajouter(self, phase: Phase) -> Phase:
+        """Persiste la phase et la renvoie avec son identifiant attribué."""
+        try:
+            with self._session_factory() as session:
+                ligne = PhaseORM(
+                    tournoi_id=phase.tournoi_id,
+                    ordre=phase.ordre,
+                    type=phase.type.value,
+                    config=_config_phase(phase),
+                    statut=phase.statut.value,
+                )
+                session.add(ligne)
+                session.commit()
+                return _vers_phase(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance de la phase.") from exc
+
+    def par_id(self, phase_id: PhaseId) -> Phase | None:
+        """Relit la phase d'identifiant donné, ou `None` si elle n'existe pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(PhaseORM, phase_id)
+                return None if ligne is None else _vers_phase(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture de la phase.") from exc
+
+    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
+        """Renvoie la phase d'un tournoi pour un type donné, ou `None` s'il n'y en a pas.
+
+        En cas de multiplicité (ne devrait pas survenir en E01US009), la plus récente (`id` le
+        plus élevé) l'emporte.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = (
+                    session.execute(
+                        select(PhaseORM)
+                        .where(
+                            PhaseORM.tournoi_id == tournoi_id,
+                            PhaseORM.type == type_phase.value,
+                        )
+                        .order_by(PhaseORM.id.desc())
+                    )
+                    .scalars()
+                    .first()
+                )
+                return None if ligne is None else _vers_phase(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture de la phase du tournoi.") from exc
+
+    def enregistrer(self, phase: Phase) -> Phase:
+        """Met à jour une phase déjà persistée (édition du barème) et la renvoie.
+
+        **Contrat** : l'appelant (le service) garantit l'existence. La ligne absente est une
+        **incohérence technique** (non un cas métier) → `InfrastructureError`.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(PhaseORM, phase.id)
+                if ligne is None:
+                    raise InfrastructureError("Phase à mettre à jour introuvable en base.")
+                ligne.ordre = phase.ordre
+                ligne.type = phase.type.value
+                ligne.config = _config_phase(phase)
+                ligne.statut = phase.statut.value
+                session.commit()
+                return _vers_phase(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour de la phase.") from exc

@@ -11,6 +11,7 @@
 import { useState } from 'react'
 import { ConnexionAdmin } from '../admin/ConnexionAdmin'
 import { useDeconnexionAdmin } from '../admin/hooks'
+import { BaremeQualification } from '../bareme/BaremeQualification'
 import { Blasons } from '../blasons/Blasons'
 import { Categories } from '../categories/Categories'
 import { Gabarits } from '../gabarits/Gabarits'
@@ -327,6 +328,8 @@ function Competition({ tournoi, onRetour }: { tournoi: Tournoi; onRetour: () => 
       {estAdmin && <PlanDeSalle tournoiId={tournoi.id} />}
 
       {estAdmin && <Gabarits />}
+
+      {estAdmin && <BaremeQualification tournoiId={tournoi.id} />}
 
       {estAdmin ? (
         <InscriptionArcher tournoiId={tournoi.id} />

@@ -14,6 +14,7 @@ from infrastructure.db.models import (
     BlasonORM,
     CategorieORM,
     GabaritSalleORM,
+    PhaseORM,
     ScoreORM,
     TournoiORM,
 )
@@ -22,6 +23,7 @@ from infrastructure.db.repositories import (
     BlasonRepositorySQL,
     CategorieRepositorySQL,
     GabaritSalleRepositorySQL,
+    PhaseRepositorySQL,
     ScoreRepositorySQL,
     TournoiRepositorySQL,
 )
@@ -44,6 +46,8 @@ __all__ = [
     "Database",
     "GabaritSalleORM",
     "GabaritSalleRepositorySQL",
+    "PhaseORM",
+    "PhaseRepositorySQL",
     "PostCommitListener",
     "ScoreORM",
     "ScoreRepositorySQL",

@@ -20,6 +20,7 @@ from api.health import router as health_router
 from api.realtime import router as realtime_router
 from api.spa import frontend_dist_dir, monter_spa
 from api.v1.auth import router as auth_router
+from api.v1.bareme_qualification import router as bareme_qualification_router
 from api.v1.blasons import router as blasons_router
 from api.v1.categories import router as categories_router
 from api.v1.competition import router as competition_router
@@ -27,6 +28,7 @@ from api.v1.gabarits import router as gabarits_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
 from application.auth import ServiceAuth
+from application.bareme_qualification import ServiceBaremeQualification
 from application.blasons import ServiceBlasons
 from application.categories import ServiceCategories
 from application.classements import ServiceClassement
@@ -39,6 +41,7 @@ from infrastructure.db import (
     CategorieRepositorySQL,
     Database,
     GabaritSalleRepositorySQL,
+    PhaseRepositorySQL,
     ScoreRepositorySQL,
     TournoiRepositorySQL,
     WriteQueue,
@@ -111,6 +114,7 @@ def create_app(
     categorie_repository = CategorieRepositorySQL(database.session_factory)
     blason_repository = BlasonRepositorySQL(database.session_factory)
     gabarit_repository = GabaritSalleRepositorySQL(database.session_factory)
+    phase_repository = PhaseRepositorySQL(database.session_factory)
     archer_repository = ArcherRepositorySQL(database.session_factory)
     score_repository = ScoreRepositorySQL(database.session_factory)
     app.state.service_tournois = ServiceTournois(tournoi_repository)
@@ -126,6 +130,11 @@ def create_app(
     # Gabarits de salle : bibliothèque de modèles (E01US007) + application à un tournoi (E01US008,
     # copie ajustable). Le service vérifie l'existence du tournoi (dépend du port tournoi).
     app.state.service_gabarits = ServiceGabarits(tournoi_repository, gabarit_repository)
+    # Barème de qualification (E01US009) : porté par la phase `qualification` du tournoi
+    # (introduction minimale de `Phase`, ADR-0011). Le service vérifie l'existence du tournoi.
+    app.state.service_bareme_qualification = ServiceBaremeQualification(
+        tournoi_repository, phase_repository
+    )
     app.state.service_archers = ServiceArchers(
         tournoi_repository, archer_repository, score_repository
     )
@@ -151,6 +160,7 @@ def create_app(
     app.include_router(categories_router)
     app.include_router(blasons_router)
     app.include_router(gabarits_router)
+    app.include_router(bareme_qualification_router)
     app.include_router(competition_router)
 
     # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement
