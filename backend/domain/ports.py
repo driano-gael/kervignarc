@@ -13,6 +13,7 @@ from domain.archer import Archer, ArcherId
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
+from domain.phase import Phase, PhaseId, TypePhase
 from domain.score import Score
 from domain.tournoi import Tournoi, TournoiId
 
@@ -166,4 +167,31 @@ class ScoreRepository(Protocol):
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Score]:
         """Renvoie tous les scores des archers d'un tournoi (liste éventuellement vide)."""
+        ...
+
+
+class PhaseRepository(Protocol):
+    """Port de persistance des phases (adapter fourni par l'infrastructure).
+
+    Introduction minimale (E01US009 / ADR-0011) : n'est exercé que pour la phase de
+    `qualification` d'un tournoi, qui porte le barème.
+    """
+
+    def ajouter(self, phase: Phase) -> Phase:
+        """Persiste une phase et la renvoie avec son identifiant attribué."""
+        ...
+
+    def par_id(self, phase_id: PhaseId) -> Phase | None:
+        """Renvoie la phase d'identifiant donné, ou `None` si elle n'existe pas."""
+        ...
+
+    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
+        """Renvoie la phase d'un tournoi pour un type donné, ou `None` s'il n'y en a pas.
+
+        En E01US009, un tournoi porte **au plus une** phase de `qualification`.
+        """
+        ...
+
+    def enregistrer(self, phase: Phase) -> Phase:
+        """Met à jour une phase déjà persistée (édition du barème) et la renvoie."""
         ...

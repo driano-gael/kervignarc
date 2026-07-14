@@ -21,6 +21,7 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0008](0008-outillage-npm-venv.md) | Outillage : npm + venv/pip au lieu de pnpm + uv | Accepté |
 | [0009](0009-gouvernance-dependances.md) | Gouvernance des dépendances externes (parcimonie, sécurité, doc) | Accepté |
 | [0010](0010-unite-de-travail-transactionnelle.md) | Unité de travail : la commande d'écriture est la frontière transactionnelle | Accepté |
+| [0011](0011-phase-qualification-anticipee.md) | Introduire une `Phase` minimale dès J1 pour héberger le barème de qualification | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.

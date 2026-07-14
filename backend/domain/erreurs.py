@@ -77,6 +77,18 @@ class CibleInvalide(DomainError):
     code = "cible_invalide"
 
 
+class NombreVoleesInvalide(DomainError):
+    """Le nombre de volées d'un barème de qualification est inférieur à 1."""
+
+    code = "nombre_volees_invalide"
+
+
+class NombreFlechesParVoleeInvalide(DomainError):
+    """Le nombre de flèches par volée d'un barème de qualification est inférieur à 1."""
+
+    code = "nombre_fleches_par_volee_invalide"
+
+
 class ScoreInvalide(DomainError):
     """La valeur d'un score sort de la plage autorisée pour une flèche (0 à 10)."""
 

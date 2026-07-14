@@ -33,7 +33,7 @@
 
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
-| [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason`, `gabarit_salle` (→ `tournoi.id`), enfant indirect `score` (→ `archer.id`) et lien latéral `categorie.blason_id` (→ `blason.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006, E01US008) | US dédiée — non planifiée |
+| [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason`, `gabarit_salle`, `phase` (→ `tournoi.id`), enfant indirect `score` (→ `archer.id`) et lien latéral `categorie.blason_id` (→ `blason.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006, E01US008, E01US009) | US dédiée — non planifiée |
 | [DETTE-002](#dette-002--hauteur-de-blason-non-modélisée) | conception | majeur | `backend/domain/blason.py`, `docs/modele-de-donnees.md` | `Blason` modélise l'occupation d'une cible par une `taille` (fraction) + `capacite`, mais **pas la hauteur du centre** — 110 cm pour le blason 80 cm des U11 contre 130 cm pour tous les autres (FFTA B.2.2.1.1, C.3.1.1) | Le placement automatique (EPIC-03) pourra composer une butte physiquement intirable : un U11 et des adultes sur la même cible passent le contrôle « somme des fractions ≤ capacité » alors que leurs blasons ne peuvent pas coexister | E01US005 (blasons) ; constatée au cadrage FFTA du 14/07/2026 | E03US001 (placement automatique) — **avant** d'écrire l'algorithme |
 
 ## Dette résorbée
@@ -49,9 +49,9 @@ modèle (`ForeignKey(...)` sans `ondelete`) ni côté migrations
 (`sa.ForeignKeyConstraint([...], [...])`), et le service de suppression ne purge pas les enfants.
 La descendance compte trois natures de liens :
 
-- **enfants directs** de `tournoi` — `categorie`, `archer`, `blason` (FK → `tournoi.id`), et
+- **enfants directs** de `tournoi` — `categorie`, `archer`, `blason` (FK → `tournoi.id`),
   `gabarit_salle` pour son **instance** appliquée à un tournoi (E01US008 ; les modèles de
-  bibliothèque, `tournoi_id NULL`, ne sont pas concernés) ;
+  bibliothèque, `tournoi_id NULL`, ne sont pas concernés) et `phase` (E01US009) ;
 - **enfant indirect** — `score` (FK → `archer.id`), donc bloquant pour la suppression d'un `archer`,
   elle-même requise par toute cascade partant du tournoi ;
 - **lien latéral** entre deux enfants du tournoi — `categorie.blason_id` (FK → `blason.id`,

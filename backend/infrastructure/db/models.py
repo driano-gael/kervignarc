@@ -122,3 +122,24 @@ class ScoreORM(Base):
     # contourner ici.
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     points: Mapped[int] = mapped_column(nullable=False)
+
+
+class PhaseORM(Base):
+    """Table `phase` — persistance de l'agrégat `Phase` (introduction minimale, E01US009/ADR-0011).
+
+    `type` et `statut` stockent la **valeur** de leurs énumérations (`TypePhase`, `StatutPhase`).
+    Le barème de qualification est sérialisé dans `config` (JSON, `{"scoring": {...}}`) ; la
+    traduction JSON ↔ agrégat est faite par le repository. `ordre` et `statut` sont conformes au
+    modèle de données mais non exploités avant le moteur (EPIC-05).
+    """
+
+    __tablename__ = "phase"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
+    # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    ordre: Mapped[int] = mapped_column(nullable=False)
+    type: Mapped[str] = mapped_column(nullable=False)
+    config: Mapped[str] = mapped_column(nullable=False)
+    statut: Mapped[str] = mapped_column(nullable=False)

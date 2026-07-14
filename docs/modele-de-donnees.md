@@ -138,6 +138,12 @@ erDiagram
 | config | TEXT (JSON) | **politiques** + paramètres (voir §Config phase) |
 | statut | TEXT | `a_venir`\|`en_cours`\|`terminee` |
 
+> **Introduction minimale (E01US009 / [ADR-0011](adr/0011-phase-qualification-anticipee.md)).** La
+> table est créée dès J1 pour héberger le **barème de qualification** dans `config.scoring`
+> (`{"volees": N, "fleches": M, "mode": "cumul"}`) — une seule phase `qualification` par tournoi.
+> `ordre` et `statut` sont conformes à ce schéma mais **non exploités** avant le moteur (EPIC-05,
+> ADR-0004), qui ajoutera les autres politiques dans `config` et les autres types/transitions.
+
 ### MATCH
 | id | INTEGER | PK |
 | phase_id | INTEGER | FK → PHASE, NOT NULL |
