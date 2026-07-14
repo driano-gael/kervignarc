@@ -1,9 +1,9 @@
 # Modèle de données détaillé — Kervignarc
 
-- **Version** : 0.1
-- **Date** : 2026-07-08
+- **Version** : 0.2
+- **Date** : 2026-07-14 *(v0.2 : cadrage FFTA — `CATEGORIE.ages`, `BLASON.zones`, capacité de cible non bornée, barème par arme, blason surchargé par phase)*
 - **Base** : SQLite (WAL), ORM SQLAlchemy, migrations Alembic (ADR-0002, ADR-0005)
-- **Source** : dérive du CDC technique §5 ; termes selon `glossaire.md`.
+- **Source** : dérive du CDC technique §5 ; termes selon `glossaire.md` ; règles métier selon [`referentiel-ffta.md`](referentiel-ffta.md).
 
 > Les entités du **domaine** restent pures ; ce schéma décrit la **persistance** (adapters). Les DTO d'API sont distincts (ADR-0007). Types indicatifs SQLite (`INTEGER`, `TEXT`, `REAL`, `BOOLEAN`, `TEXT`(ISO-8601) pour les dates, `TEXT`(JSON) pour les configs).
 
@@ -56,11 +56,19 @@ erDiagram
 ### CATEGORIE
 | id | INTEGER | PK |
 | tournoi_id | INTEGER | FK → TOURNOI, NOT NULL |
-| libelle | TEXT | NOT NULL |
+| libelle | TEXT | NOT NULL — ex. « Arc Nu U18 Homme » |
 | arme | TEXT | ex. `classique`/`poulie`/`nu` |
-| tranche_age | TEXT | |
+| ages | TEXT (JSON) | **une ou plusieurs** tranches — ex. `["U15","U18"]` |
 | sexe | TEXT | `H`\|`F`\|`mixte` |
 | blason_id | INTEGER | FK → BLASON (défaut) |
+
+> ⚠️ **Une catégorie n'est pas le triplet `arme × âge × sexe`** — c'est une **entité nommée** portant une
+> **règle d'éligibilité** (CDC fonctionnel EF-1.2). La FFTA regroupe des tranches d'âge : en arc nu,
+> la catégorie « U18 » couvre **U15 et U18**, et « Scratch » couvre **U21, S1, S2, S3**
+> ([référentiel §3](referentiel-ffta.md)). Une colonne `tranche_age` scalaire rend ces cas
+> indistinguables — le même libellé « U18 » désignerait une tranche en classique et deux en arc nu.
+> D'où `ages` (liste). Invariant à tenir : au sein d'un tournoi, un archer donné (arme, âge, sexe)
+> ne doit être éligible qu'à **une seule** catégorie.
 
 ### BLASON
 | id | INTEGER | PK |
@@ -68,6 +76,16 @@ erDiagram
 | nom | TEXT | NOT NULL |
 | taille | REAL | fraction de place (0 < taille ≤ 1) |
 | capacite | INTEGER | ≥ 1 |
+| zones | TEXT (JSON) | valeurs de score admises — ex. `["10","9","8","7","6","M"]` |
+
+> **`zones`** — Les valeurs tirables dépendent du **blason**, pas du barème de la phase : un
+> **triple 40 n'a pas les zones 5 → 1** (son minimum est le bleu clair = 6, [référentiel §4.4](referentiel-ffta.md)),
+> et le « 10 intérieur » des poulies est un cercle plus petit que le 10 classique (§4.3). C'est
+> `zones` qui pilote le pavé de saisie de la tablette (EF-5.2).
+>
+> **La hauteur du blason n'est pas modélisée** (110 cm pour le 80 cm des U11 contre 130 cm sinon,
+> §5) : elle interdit à un U11 de partager une butte avec des adultes et n'est **pas** réductible à
+> `taille`. Reportée à EPIC-03 — cf. [registre de dette](dette.md), DETTE-002.
 
 ### ARCHER
 | id | INTEGER | PK |
@@ -96,7 +114,7 @@ erDiagram
 | id | INTEGER | PK |
 | tournoi_id | INTEGER | FK → TOURNOI |
 | index_cible | INTEGER | n° de cible |
-| capacite | INTEGER | 1 / 2 / 4 |
+| capacite | INTEGER | ≥ 1 — usuellement 1 / 2 / 4, **non borné** (la FFTA décrit aussi 3 triples verticaux, §5) |
 
 ### PLACEMENT
 | id | INTEGER | PK |
@@ -127,6 +145,12 @@ erDiagram
 | archer_b_id | INTEGER | FK → ARCHER (résolu) |
 | vainqueur_id | INTEGER | FK → ARCHER |
 | statut | TEXT | `a_jouer`\|`en_cours`\|`termine`\|`bye`\|`forfait` |
+
+> **Équipes** — hors périmètre (CDC fonctionnel §2.2), mais la **porte reste ouverte** : un match
+> oppose conceptuellement des **participants**, pas nécessairement des archers individuels
+> ([référentiel §6.3](referentiel-ffta.md) : équipes de 3). Si les équipes entrent au périmètre,
+> `archer_a_id`/`archer_b_id` devront devenir `participant_a`/`participant_b` — à trancher **avant**
+> d'écrire le moteur (EPIC-05), pas après.
 
 ### VOLEE
 | id | INTEGER | PK |
@@ -184,17 +208,27 @@ Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Exempl
   "policies": {
     "routing":  "cascade",
     "scoring":  "sets_4pts",
+    "scoring_par_arme": { "poulie": "cumul_volees" },
     "seeding":  "serpent",
     "byes":     "mieux_classes",
-    "tiebreak": "shoot_off_centre",
+    "tiebreak": "10_puis_9",
     "depth":    "1_a_n"
   },
-  "params": { "taille_tableau": 128 }
+  "params": { "taille_tableau": 128 },
+  "blason_surcharge": { "*": "triple_vertical_40" }
 }
 ```
 
-Autres valeurs de `routing` : `elimination_seche` (MVP, podium), `repechage` (World Archery, J4).
-Autres `depth` : `top_n` (avec `params.n`).
+- `scoring` est le barème **par défaut** de la phase ; `scoring_par_arme` le **surcharge par division**.
+  Nécessaire dès le format FFTA : au même tour, classique et arc nu tirent en sets quand les poulies
+  tirent au cumul (A.7.5.1 / A.7.5.2) — un barème unique par phase ne peut pas l'exprimer (EF-3.4).
+- `blason_surcharge` permet à une phase d'imposer un blason par-dessus le blason par défaut de la
+  catégorie (`*` = toutes catégories), ex. « toutes les finales sur triples verticaux » (FFTA A.7.6/A.7.7).
+  Absent ⇒ on retient le `CATEGORIE.blason_id`.
+- Autres valeurs de `routing` : `elimination_seche` (MVP, podium), `repechage` (World Archery, J4).
+- Autres `depth` : `top_n` (avec `params.n`).
+- `tiebreak` : `10_puis_9` (qualif) ; en duel, `shoot_off` = 1 flèche au plus haut score **puis**, si
+  l'égalité persiste, au plus près du centre (deux critères séquentiels — FFTA B.6.5.2).
 
 ---
 
@@ -209,7 +243,9 @@ Autres `depth` : `top_n` (avec `params.n`).
 | `depth` | 1_a_n, top_n |
 | `statut_match` | a_jouer, en_cours, termine, bye, forfait |
 | `role` | admin, scoreur, public |
-| `valeur_fleche` | 0-10, X, M |
+| `valeur_fleche` | 0-10, X, M — **domaine réel restreint par `BLASON.zones`** (un triple 40 exclut 5→1) |
+| `tranche_age` | U11, U13, U15, U18, U21, S1, S2, S3 (+ `Scratch` en arc nu — libellé de regroupement, pas une tranche) |
+| `arme` | classique, poulie, nu (texte libre côté domaine) |
 
 ---
 

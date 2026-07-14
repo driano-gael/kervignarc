@@ -4,10 +4,11 @@
 
 | | |
 |---|---|
-| **Version** | 0.2 (fonctionnel — moteur de phases) |
-| **Date** | 08/07/2026 |
+| **Version** | 0.3 (fonctionnel — cadrage FFTA) |
+| **Date** | 14/07/2026 |
 | **Statut** | À valider par le client |
-| **Sources du besoin** | `charge.md` (recueil client), entretiens de cadrage du 08/07/2026, `Tableaux.xlsx` (exemple réel d'un tournoi à 120 participants) |
+| **Sources du besoin** | `charge.md` (recueil client), entretiens de cadrage du 08/07/2026, `Tableaux.xlsx` (exemple réel d'un tournoi à 120 participants), [`docs/referentiel-ffta.md`](docs/referentiel-ffta.md) (règlement FFTA déc. 2023) |
+| **Nouveautés v0.3** | Confrontation au référentiel FFTA : catégories (EF-1.2), blason par phase (EF-1.4), presets FFTA vs club (EF-1.5), barème par division (EF-3.4), capacité de cible (EF-4.3), pavé de saisie (EF-5.2), RG-2/RG-4/RG-8. Q2 fermée, Q9 ouverte. |
 | **Périmètre de ce document** | Fonctionnel uniquement. Le volet technique découlera de ce cahier des charges. |
 
 ---
@@ -42,9 +43,14 @@ Fournir une application permettant d'**organiser et de piloter de bout en bout u
 
 ### 2.2 Hors périmètre (à ce stade)
 - Autres disciplines / distances (extérieur, 3D, campagne).
+- **Épreuves par équipes** (matchs à 3 archers, équipes mixtes). Documentées au [référentiel FFTA](docs/referentiel-ffta.md) §6.3 et §7, mais non gérées par l'application. **Porte laissée ouverte** : le moteur de phases doit opposer des *participants* et non des *archers* (cf. CDC technique §5), pour que l'ajout ultérieur ne soit pas une refonte.
 - Paiement en ligne / transactions bancaires (seul le **suivi** est prévu).
 - Gestion multi-tournois simultanés sur un même serveur (à confirmer).
 - Application mobile native (la solution est une web app / PWA).
+
+### 2.3 Rapport au règlement FFTA
+
+> **Le règlement n'est jamais une contrainte, toujours un template.** L'application pré-charge des catégories, blasons et barèmes conformes à la FFTA, et **tout reste modifiable et supprimable** par l'administrateur. L'app ne vérifie pas la conformité d'un tournoi et ne l'impose pas : elle la rend *facile par défaut*. C'est la lecture opérationnelle du « sur-ensemble paramétrable des règles FFTA/WA salle » du §2.1 (cf. RG-8).
 
 ---
 
@@ -83,13 +89,16 @@ La solution s'articule autour de 9 modules :
 
 | ID | Exigence |
 |---|---|
-| EF-1.1 | Créer un tournoi : nom, date, lieu, type officiel/non officiel. |
-| EF-1.2 | Gérer les **catégories** (âge, arme, sexe…) avec **pré-réglages FFTA salle** modifiables. |
-| EF-1.3 | Gérer les **blasons** : chaque blason a une **taille** exprimée comme **fraction de place sur une cible** (ex. trispot). |
-| EF-1.4 | Associer catégorie ↔ blason (en officiel), pour le placement et la séparation par blason. |
-| EF-1.5 | Gérer des **presets de barèmes** réutilisables et **modifiables** par phase : qualification (ex. 5 volées de 3 flèches, cumul), barrage (1 flèche), sets (4 pts gagnant), finales (5 volées / 6 pts), Big Shoot Off. |
-| EF-1.6 | **Gabarits de salle réutilisables** : plan type (nb de cibles, capacité 1/2/4, positions A/B/C/D) réutilisable et ajustable d'un tournoi à l'autre. |
+| EF-1.1 | Créer un tournoi : nom, date, lieu, type officiel/non officiel. Le type est **informatif** (cf. RG-4). |
+| EF-1.2 | Gérer les **catégories**. Une catégorie est une **entité nommée** portant une **règle d'éligibilité** : une arme, **une ou plusieurs** tranches d'âge, un sexe. Elle n'est **pas** le triplet `arme × âge × sexe` : la FFTA regroupe (arc nu « U18 » = U15 + U18 ; arc nu « Scratch » = U21 + S1 + S2 + S3), et un même libellé d'âge n'a pas le même sens d'une arme à l'autre. Un archer doit tomber dans **une seule** catégorie du tournoi. |
+| EF-1.3 | Gérer les **blasons** : chaque blason a un **nom**, une **taille** exprimée comme **fraction de place sur une cible** (ex. trispot), une **capacité**, et les **valeurs de score admises** (cf. EF-1.3b). |
+| EF-1.3b | Un blason porte les **valeurs de score qu'il permet** : un triple 40 n'a pas les zones 5 → 1 (minimum = 6), et le « 10 intérieur » des poulies diffère du 10 classique. Ces valeurs pilotent le pavé de saisie (EF-5.2). |
+| EF-1.4 | Associer à une catégorie un **blason par défaut**, qu'une **phase peut surcharger** (ex. « toutes les finales sur triples verticaux »). Le blason réel dépend de la catégorie, de la phase et du choix de l'organisateur (unique vs triple) — un blason figé par catégorie ne suffit pas. Sert au placement et à la séparation par blason. |
+| EF-1.5 | Gérer des **presets de barèmes** réutilisables et **modifiables**, en **deux jeux** livrés : **FFTA officiel** (qualif 60 flèches / 20 volées de 3, cumul ; duel en 5 sets, premier à 6 pts ; poulies au cumul ; barrage 1 flèche) et **format club** (qualif 15 flèches ; sets à 4 pts ; finales 5 volées / 6 pts ; Big Shoot Off). L'organisateur choisit un jeu et le surcharge librement. Cf. [référentiel FFTA §10.1](docs/referentiel-ffta.md). |
+| EF-1.6 | **Gabarits de salle réutilisables** : plan type (nb de cibles, **capacité libre ≥ 1**, positions A/B/C/D) réutilisable et ajustable d'un tournoi à l'autre. |
 | EF-1.7 | Paramétrer le **tarif par départ** (pour le suivi de paiement). |
+
+> **Pré-réglages FFTA** — Les catégories, blasons et barèmes FFTA pré-chargés sont des **templates ordinaires** : une fois créés, ils se modifient et se suppriment comme n'importe quelle donnée saisie à la main (RG-8, §2.3).
 
 ### M2 — Inscriptions
 
@@ -110,7 +119,7 @@ La solution s'articule autour de 9 modules :
 | EF-3.1 | **Composer une séquence de phases** (ajouter / ordonner / supprimer), ex. : `qualification → barrage → tableau principal → repêchage (Lucky Loser) → tournoi des perdants → tableaux de placement → finale → Big Shoot Off → podium`. |
 | EF-3.2 | Choisir le **type** de chaque phase : *classement par cumul* (qualif), *barrage/shoot-off*, *tableau à élimination*, *repêchage*, *placement*, *finale*, *Big Shoot Off*. |
 | EF-3.3 | Définir la **source de participants** de chaque phase à partir des sorties des phases précédentes : *tous les inscrits*, *rangs N→M d'un classement*, *gagnants d'un tour*, *perdants d'un tour donné* (Lucky Loser), *exempts*. |
-| EF-3.4 | Associer à chaque phase un **preset de barème** (M1), surchargeable localement. |
+| EF-3.4 | Associer à chaque phase un **preset de barème** (M1), surchargeable localement **et par arme**. Le barème se résout par le couple **(phase, arme)** : au même tour de duels, arc classique et arc nu tirent en sets (premier à 6) quand les arcs à poulies tirent au **cumul**, sans sets. Une phase porte donc un barème par défaut + d'éventuelles surcharges par arme. |
 | EF-3.5 | Définir la **sortie** de chaque phase : classement produit et/ou flux « gagnants » / « perdants » réutilisables comme source d'une phase ultérieure. |
 | EF-3.6 | **Enregistrer une séquence comme modèle** réutilisable (ex. « Format 120 WA placement intégral ») et l'appliquer à un nouveau tournoi. |
 | EF-3.7 | Le moteur **calcule automatiquement** le nombre de tours, de matchs et l'enchaînement à partir de la séquence et de l'effectif. |
@@ -124,8 +133,9 @@ La solution s'articule autour de 9 modules :
 |---|---|
 | EF-4.1 | **Placement automatique** des archers sur les cibles selon les contraintes ci-dessous, à partir du **gabarit de salle** (M1). |
 | EF-4.2 | **Ajustement manuel** par glisser-déposer après placement automatique. |
-| EF-4.3 | Contrainte : **capacité cible** = 1, 2 ou 4 archers selon la taille des blasons. |
+| EF-4.3 | Contrainte : **capacité cible** = nombre d'archers admis, **libre (≥ 1)**, selon la taille des blasons. Les cas courants sont 1, 2 et 4, mais la FFTA décrit aussi une configuration à **3 triples verticaux** — la capacité n'est donc pas une énumération fermée. |
 | EF-4.4 | Contrainte : **fraction de place** — somme des blasons d'une cible ≤ capacité. |
+| EF-4.4b | Contrainte : **hauteur de blason**. Les blasons d'une même butte doivent être à une hauteur de centre compatible — la FFTA impose 130 cm en général, mais **110 cm** pour le 80 cm des U11 : un U11 ne peut donc pas partager une butte avec des adultes. Cette contrainte n'est **pas** réductible à la fraction de place. *(reportée — cf. registre de dette)* |
 | EF-4.5 | Contrainte : **au moins 2 clubs différents** par cible lorsque c'est possible. |
 | EF-4.6 | Contrainte (officiel) : **séparation par catégorie/blason** sur une même cible. |
 | EF-4.7 | Chaque archer se voit attribuer **cible + position (A/B/C/D) + départ**. |
@@ -140,7 +150,8 @@ La solution s'articule autour de 9 modules :
 | ID | Exigence |
 |---|---|
 | EF-5.1 | Saisie sur **tablettes/smartphones** (~30 appareils), chaque appareil rattaché à une cible. |
-| EF-5.2 | Saisie **en temps réel**, volée par volée, adaptée au **barème de la phase en cours** (cumul, sets, shoot-off, BSO). |
+| EF-5.2 | Saisie **en temps réel**, volée par volée, adaptée au **barème de la phase en cours** (cumul, sets, shoot-off, BSO) **et au blason tiré**. Les valeurs proposées au pavé de saisie viennent du **blason** (EF-1.3b), pas du barème : sur un triple 40, les touches 5 → 1 n'existent pas. |
+| EF-5.2b | Le **marquage** est configurable : le format club marque volée par volée, la FFTA établit les scores **toutes les 2 volées** de 3 flèches (art. B.6.1.2). |
 | EF-5.3 | Le **scoreur valide** les scores d'une volée/set ; verrouillage après validation. |
 | EF-5.4 | **Cumul / calcul automatique** selon le type de phase (total qualif, points de set, vainqueur du match). |
 | EF-5.5 | Fonctionnement **tolérant à la perte de réseau** (wifi local sans internet, PWA) ; synchronisation à la reconnexion. |
@@ -156,7 +167,7 @@ La solution s'articule autour de 9 modules :
 | EF-6.3 | **Progression automatique** : le gagnant d'un match avance ; le perdant est routé selon la règle de la phase (élimination, repêchage, placement). |
 | EF-6.4 | **Repêchage Lucky Loser** : reversement des perdants d'un tour donné dans un tableau de repêchage. |
 | EF-6.5 | **Tableaux de placement** : sous-tableaux classant les rangs intermédiaires (ex. 17-24, 25-32…) — cf. `TABLEAU 2 OK`. |
-| EF-6.6 | **Big Shoot Off** en grande finale (barème dédié). |
+| EF-6.6 | **Big Shoot Off** en grande finale (barème dédié). ⚠️ **Règle non spécifiée — cf. Q9** : format club sans équivalent FFTA, non implémentable tant que le club n'a pas fourni sa règle. |
 | EF-6.7 | Édition manuelle ponctuelle d'un tableau par l'organisateur (correction, forfait) avec recalcul de la progression. |
 
 ### M7 — Classement & affichage public
@@ -194,12 +205,13 @@ La solution s'articule autour de 9 modules :
 ## 6. Règles de gestion transverses
 
 - **RG-1** — Un tournoi = séquence ordonnée de phases ; chaque phase consomme des sorties des phases précédentes.
-- **RG-2** — Un blason occupe une **fraction** de la capacité d'une cible ; somme des fractions ≤ capacité.
+- **RG-2** — Un blason occupe une **fraction** de la capacité d'une cible ; somme des fractions ≤ capacité. La capacité est **libre (≥ 1)**, pas une énumération 1/2/4. La fraction ne dit **rien** de la hauteur du blason, qui est une contrainte distincte (EF-4.4b).
 - **RG-3** — Mixité club : minimum **2 clubs par cible** lorsque c'est possible.
-- **RG-4** — En officiel : cloisonnement par catégorie/blason ; en non-officiel : configuration libre.
+- **RG-4** — Le **cloisonnement par catégorie/blason** sur une cible est une **contrainte de placement activable**, indépendante du type de tournoi. Le drapeau officiel/non officiel ne verrouille rien : il oriente les templates proposés à la création et figure sur les exports (cf. §2.3, RG-8).
 - **RG-5** — Un score validé est verrouillé ; toute correction est tracée.
 - **RG-6** — Les barèmes proviennent de **presets modifiables** ; une surcharge locale à une phase n'altère pas le preset.
 - **RG-7** — Le classement final couvre **tous** les archers (1→N).
+- **RG-8** — **Tout pré-réglage FFTA est un template surchargeable.** Aucune donnée pré-chargée depuis le référentiel n'est en lecture seule ni protégée : une fois créée, elle se modifie et se supprime comme une donnée saisie à la main. L'application n'impose ni ne vérifie la conformité au règlement.
 
 ---
 
@@ -243,13 +255,14 @@ La solution s'articule autour de 9 modules :
 | # | Sujet | À obtenir |
 |---|---|---|
 | Q1 | **Format du fichier d'import** « inscript'arc » | Un exemple XLS + description des colonnes |
-| Q2 | **Règles de départage / barrage** | Critères FFTA (nb de 10, de 9…) et déclenchement |
+| ~~Q2~~ | ~~**Règles de départage / barrage**~~ | ✅ **Fermée le 14/07/2026** — qualif : plus grand nombre de **10**, puis de **9** (spécifique 18 m). Barrage : **1 flèche au plus haut score**, puis **au plus près du centre** si l'égalité persiste ; les 10/9 ne sont pas recomptés. Cf. [référentiel FFTA §8](docs/referentiel-ffta.md). |
 | Q3 | **Mécanique précise du Lucky Loser** et des tableaux de placement | 2-3 cas réels formalisés (quel tour reverse vers quel tableau) |
 | Q4 | **Génération des horaires** | Auto (durées × tours) ou saisie manuelle par l'organisateur ? |
 | Q5 | **Volumétrie max** | Plafond nb archers / cibles / départs au-delà de 120 |
 | Q6 | **Priorité des contraintes de placement** en cas de conflit (cf. M4) | Ordre de priorité souhaité |
 | Q7 | **Mode de saisie par défaut** sur tablette (scoreur vs archer, cf. H1) | Décision |
 | Q8 | **Récompenses / podiums** | Gestion de l'attribution par catégorie ? |
+| **Q9** | 🔴 **Règle du Big Shoot Off** — **bloquante** | Le BSO est cité comme barème de la grande finale (EF-1.5, EF-3.2, EF-5.2, M6) mais **n'existe pas au règlement FFTA** et n'est défini **dans aucun document du projet**. Il est donc **non implémentable en l'état**. À obtenir du club : nombre de flèches, critère de victoire, départage. |
 
 ---
 

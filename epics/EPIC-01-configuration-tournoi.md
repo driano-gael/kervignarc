@@ -12,10 +12,10 @@ Permettre à l'organisateur de définir le contexte d'un tournoi : catégories, 
 ## Périmètre
 ### Inclus
 - Création d'un tournoi (nom, date, lieu, type officiel/non officiel).
-- **Catégories** avec pré-réglages FFTA salle modifiables ; association catégorie ↔ blason.
-- **Blasons** : `taille` (fraction de place) + `capacité`.
-- **Gabarits de salle** réutilisables (nb de cibles, capacité 1/2/4, positions A/B/C/D).
-- **Presets de barèmes** modifiables par type de phase (qualif cumul, sets, finales, shoot-off, BSO).
+- **Catégories** avec pré-réglages FFTA salle modifiables ; règle d'éligibilité (arme, **une ou plusieurs** tranches d'âge, sexe) ; association catégorie ↔ blason **par défaut**.
+- **Blasons** : `taille` (fraction de place) + `capacité` + `zones` (valeurs de score admises).
+- **Gabarits de salle** réutilisables (nb de cibles, capacité **libre ≥ 1**, positions A/B/C/D).
+- **Presets de barèmes** modifiables par type de phase (qualif cumul, sets, finales, shoot-off, BSO), en **deux jeux** — *FFTA officiel* et *format club* — surchargeables **par arme**.
 - **Tarif par départ** (pour le suivi de paiement).
 
 ### Exclus

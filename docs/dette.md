@@ -34,6 +34,7 @@
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
 | [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason` (→ `tournoi.id`), enfant indirect `score` (→ `archer.id`) et lien latéral `categorie.blason_id` (→ `blason.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006) | US dédiée — non planifiée |
+| [DETTE-002](#dette-002--hauteur-de-blason-non-modélisée) | conception | majeur | `backend/domain/blason.py`, `docs/modele-de-donnees.md` | `Blason` modélise l'occupation d'une cible par une `taille` (fraction) + `capacite`, mais **pas la hauteur du centre** — 110 cm pour le blason 80 cm des U11 contre 130 cm pour tous les autres (FFTA B.2.2.1.1, C.3.1.1) | Le placement automatique (EPIC-03) pourra composer une butte physiquement intirable : un U11 et des adultes sur la même cible passent le contrôle « somme des fractions ≤ capacité » alors que leurs blasons ne peuvent pas coexister | E01US005 (blasons) ; constatée au cadrage FFTA du 14/07/2026 | E03US001 (placement automatique) — **avant** d'écrire l'algorithme |
 
 ## Dette résorbée
 
@@ -85,6 +86,37 @@ qui relève de cette même politique non arbitrée.
 homogène à **toute la descendance** — `score` et le lien `categorie → blason` compris — via une
 migration, (c) mappe l'erreur en `DomainError` → 409 si le refus est retenu, (d) couvre les deux
 cas (tournoi vide / non vide) en test d'intégration. Décision structurante ⇒ **ADR**.
+
+### DETTE-002 — hauteur de blason non modélisée
+
+**Constat.** `Blason` décrit l'occupation d'une cible par deux grandeurs — `taille` (fraction de
+place, `]0,1]`) et `capacite` (`≥ 1`) — et le placement en dérivera la règle « somme des fractions
+d'une cible ≤ capacité ». Le [référentiel FFTA](referentiel-ffta.md) §5 ajoute une grandeur
+absente du modèle : la **hauteur du centre de l'or**, mesurée du sol. Elle vaut **130 cm** pour un
+blason unique ou un triple vertical (art. B.2.2.1.1), **100 à 162 cm** pour une butte à 4 blasons
+(B.2.2.1.2) — et surtout **110 cm** pour le blason 80 cm des U11 (art. C.3.1.1).
+
+**Conséquence.** Deux blasons ne peuvent pas cohabiter sur une même butte si leurs hauteurs de
+centre diffèrent : le carton n'a qu'une position. Un **U11** (centre à 110 cm) ne peut donc pas
+partager une cible avec des archers tirant à 130 cm, **quelle que soit la place restante**. La
+règle « somme des fractions ≤ capacité » laisse pourtant passer cette combinaison : la hauteur
+n'est pas réductible à une fraction, et aucune donnée du modèle ne permet de la déduire. Le
+placement automatique (EPIC-03) produira donc des plans de cibles **physiquement intirables**, sans
+que rien ne le signale.
+
+**Pourquoi c'est en dette et pas corrigé.** Ajouter un champ `hauteur` au blason est trivial ; le
+concevoir correctement ne l'est pas. La hauteur n'est pas une propriété isolée : elle appelle une
+règle de **compatibilité entre blasons d'une même butte**, dont la forme (valeur unique ? plage
+haute/basse pour les buttes à 4 blasons ? contrainte dérivée de la catégorie plutôt que du blason ?)
+relève de la conception du **moteur de placement**, pas du CRUD de blasons. Trancher maintenant, au
+fil d'une US de configuration, reviendrait à figer l'abstraction du placement avant de l'avoir
+écrite — le reproche exact que l'on fait déjà au modèle actuel.
+
+**Résorption attendue.** L'US de placement automatique (E03US001) doit, **avant** d'écrire
+l'algorithme : (a) choisir où vit la hauteur (blason ? catégorie ? les deux ?), (b) l'ajouter au
+modèle et à la migration, (c) exprimer la compatibilité comme une **contrainte de placement à part
+entière**, au même rang que la capacité et la mixité club, (d) couvrir en test le cas « U11 +
+adultes sur une même butte → refusé ». Documenté au CDC fonctionnel en **EF-4.4b**.
 
 ## Procédure — inscrire une dette
 

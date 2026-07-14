@@ -100,13 +100,15 @@ Généralisation : à chaque niveau, la plage `[a..b]` se scinde en `[a..mid]` (
 
 ## 6. Barèmes par phase (presets modifiables — onglet PLAN)
 
-| Phase | Barème observé |
-|---|---|
-| Qualification | 5 volées de 3 flèches, **cumul** des points |
-| Barrage (égalités qualif) | 1 volée de **1 flèche** |
-| Tours (matchs individuels) | 3 volées de 3 flèches, **système de sets, 4 pts gagnant** |
-| ½ finales & finales de placement | **5 volées de 3 flèches, 6 pts gagnant** |
-| Grande Finale | **Big Shoot Off** |
+> ⚠️ **Ce sont les barèmes du club, pas ceux de la FFTA.** Le classeur encode un **format court non officiel**. Ne pas les livrer sous l'étiquette « preset FFTA » : l'application propose **deux jeux** (*FFTA officiel* et *format club*), cf. [référentiel FFTA §10.1](docs/referentiel-ffta.md).
+
+| Phase | Barème observé (**format club**) | Équivalent **FFTA officiel** |
+|---|---|---|
+| Qualification | 5 volées de 3 flèches (**15**), **cumul** des points | **60 flèches**, 20 volées de 3, cumul (A.7.3) |
+| Barrage (égalités qualif) | 1 volée de **1 flèche** | 1 flèche au plus haut score, **puis** au plus près du centre (B.6.5.2) |
+| Tours (matchs individuels) | 3 volées de 3 flèches, **système de sets, 4 pts gagnant** | **5 sets** de 3 flèches, premier à **6 pts** (B.6.1.4.1) — **sauf poulies : cumul, sans sets** (B.6.1.4.2) |
+| ½ finales & finales de placement | **5 volées de 3 flèches, 6 pts gagnant** | *(pas de barème de finale distinct — c'est le format normal du duel)* |
+| Grande Finale | **Big Shoot Off** | *(n'existe pas au règlement)* — 🔴 **règle non spécifiée, cf. Q9 du CDC fonctionnel** |
 
 ---
 
@@ -124,7 +126,7 @@ Généralisation : à chaque niveau, la plage `[a..b]` se scinde en `[a..mid]` (
 |---|---|---|
 | Q1 | Nature du « Lucky Loser » | **Configurable.** Le routage des perdants est une **règle générique paramétrable** : par défaut *tableau de classement en cascade* (observé), mais le moteur doit aussi supporter le *vrai repêchage* réintégrant le principal (World Archery). Les deux sont deux configurations d'un même mécanisme de routage. |
 | Q2 | Profondeur du classement | **Configurable par tournoi.** Par défaut placement intégral **1→N** ; l'organisateur peut choisir de s'arrêter à un top (classer finement le top N, regrouper le reste). |
-| Q3 | Départage / barrage | **Presets FFTA modifiables** : qualif départagée au **nb de 10 puis de 9** ; match nul en sets → **shoot-off 1 flèche, plus près du centre** ; **barrage de tir** pour les places décisives. Surchargeable par l'admin. |
+| Q3 | Départage / barrage | **Presets FFTA modifiables** : qualif départagée au **nb de 10 puis de 9** ; match nul en sets → **shoot-off 1 flèche au plus haut score**, puis au **plus près du centre** si l'égalité persiste (deux critères **séquentiels**, B.6.5.2 — la formulation initiale les fusionnait à tort) ; **barrage de tir** pour les places décisives. Surchargeable par l'admin. *(Confirmé par le référentiel §8 le 14/07/2026.)* |
 | Q4 | Byes dans plages non-2^k | **Aux mieux classés de la plage** (meilleur score qualif / progression). |
 | Q5 | Généralité de la règle /2 | **Universelle et calculée** : division par deux systématique quel que soit l'effectif, gestion automatique des byes. Une seule logique à implémenter et tester. |
 | Q6 | Autres formats | Le constructeur libre doit **aussi** couvrir des formats simples (élimination directe, top N, tableau unique) **en plus** du placement intégral. |
