@@ -92,7 +92,7 @@ function LigneBlason({ tournoiId, blason }: { tournoiId: number; blason: Blason 
 // Décrit les attributs d'un blason pour l'affichage (taille de place · capacité).
 function decrire(blason: Blason): string {
   const capacite = blason.capacite > 1 ? `${blason.capacite} archers` : '1 archer'
-  return `taille ${blason.taille} · ${capacite}`
+  return `taille ${blason.taille.toLocaleString('fr-FR')} · ${capacite}`
 }
 
 // Formulaire partagé création / édition : sans `blason` il crée, avec il édite.
@@ -114,13 +114,25 @@ function FormulaireBlason({
   const modifier = useModifierBlason(tournoiId)
   const mutation = enEdition ? modifier : creer
 
+  // Reprend les bornes du domaine (taille ]0, 1], capacité entière >= 1) pour éviter d'envoyer
+  // une requête vouée au 422 ; le serveur reste l'autorité (revalidation à la frontière).
+  const tailleNombre = Number(taille)
+  const capaciteNombre = Number(capacite)
+  const entreeValide =
+    nom.trim() !== '' &&
+    Number.isFinite(tailleNombre) &&
+    tailleNombre > 0 &&
+    tailleNombre <= 1 &&
+    Number.isInteger(capaciteNombre) &&
+    capaciteNombre >= 1
+
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
-    if (nom.trim() === '') return
+    if (!entreeValide) return
     const entree: NouveauBlason = {
       nom,
-      taille: Number(taille),
-      capacite: Number(capacite),
+      taille: tailleNombre,
+      capacite: capaciteNombre,
     }
     if (enEdition) {
       modifier.mutate({ id: blason.id, entree }, { onSuccess: onTermine })
@@ -173,7 +185,7 @@ function FormulaireBlason({
           />
         </label>
         <div className="formulaire__actions">
-          <button type="submit" disabled={mutation.isPending || nom.trim() === ''}>
+          <button type="submit" disabled={mutation.isPending || !entreeValide}>
             {enEdition ? 'Enregistrer' : 'Ajouter le blason'}
           </button>
           {enEdition && (
