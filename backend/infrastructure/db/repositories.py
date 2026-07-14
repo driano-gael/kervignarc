@@ -13,10 +13,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from domain.archer import Archer, ArcherId
+from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId, SexeCategorie
 from domain.score import Score
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
-from infrastructure.db.models import ArcherORM, CategorieORM, ScoreORM, TournoiORM
+from infrastructure.db.models import ArcherORM, BlasonORM, CategorieORM, ScoreORM, TournoiORM
 from infrastructure.erreurs import InfrastructureError
 
 
@@ -35,6 +36,17 @@ def _vers_tournoi(ligne: TournoiORM) -> Tournoi:
 def _vers_archer(ligne: ArcherORM) -> Archer:
     """Traduit une ligne ORM en agrégat de domaine `Archer`."""
     return Archer(nom=ligne.nom, tournoi_id=ligne.tournoi_id, cible=ligne.cible, id=ligne.id)
+
+
+def _vers_blason(ligne: BlasonORM) -> Blason:
+    """Traduit une ligne ORM en agrégat de domaine `Blason`."""
+    return Blason(
+        tournoi_id=ligne.tournoi_id,
+        nom=ligne.nom,
+        taille=ligne.taille,
+        capacite=ligne.capacite,
+        id=ligne.id,
+    )
 
 
 def _vers_categorie(ligne: CategorieORM) -> Categorie:
@@ -260,6 +272,82 @@ class CategorieRepositorySQL:
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de suppression de la catégorie.") from exc
+
+
+class BlasonRepositorySQL:
+    """Adapter SQLite du port `BlasonRepository` (E01US005)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def ajouter(self, blason: Blason) -> Blason:
+        """Persiste le blason et le renvoie avec son identifiant attribué."""
+        try:
+            with self._session_factory() as session:
+                ligne = BlasonORM(
+                    tournoi_id=blason.tournoi_id,
+                    nom=blason.nom,
+                    taille=blason.taille,
+                    capacite=blason.capacite,
+                )
+                session.add(ligne)
+                session.commit()
+                return _vers_blason(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance du blason.") from exc
+
+    def par_id(self, blason_id: BlasonId) -> Blason | None:
+        """Relit le blason d'identifiant donné, ou `None` s'il n'existe pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(BlasonORM, blason_id)
+                return None if ligne is None else _vers_blason(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du blason.") from exc
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Blason]:
+        """Renvoie tous les blasons d'un tournoi (liste éventuellement vide)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(BlasonORM)
+                    .where(BlasonORM.tournoi_id == tournoi_id)
+                    .order_by(BlasonORM.id)
+                ).scalars()
+                return [_vers_blason(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des blasons du tournoi.") from exc
+
+    def enregistrer(self, blason: Blason) -> Blason:
+        """Met à jour un blason déjà persisté (édition) et le renvoie.
+
+        **Contrat** : l'appelant (le service) garantit l'existence (vérifiée en amont). La ligne
+        absente est une **incohérence technique** (non un cas métier) → `InfrastructureError`.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(BlasonORM, blason.id)
+                if ligne is None:
+                    raise InfrastructureError("Blason à mettre à jour introuvable en base.")
+                ligne.nom = blason.nom
+                ligne.taille = blason.taille
+                ligne.capacite = blason.capacite
+                session.commit()
+                return _vers_blason(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour du blason.") from exc
+
+    def supprimer(self, blason_id: BlasonId) -> None:
+        """Supprime le blason d'identifiant donné (existence garantie par l'appelant)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(BlasonORM, blason_id)
+                if ligne is None:
+                    raise InfrastructureError("Blason à supprimer introuvable en base.")
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression du blason.") from exc
 
 
 class ScoreRepositorySQL:

@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from domain.archer import Archer, ArcherId
+from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.score import Score
 from domain.tournoi import Tournoi, TournoiId
@@ -84,6 +85,30 @@ class CategorieRepository(Protocol):
 
     def supprimer(self, categorie_id: CategorieId) -> None:
         """Supprime la catégorie d'identifiant donné (existence garantie par l'appelant)."""
+        ...
+
+
+class BlasonRepository(Protocol):
+    """Port de persistance des blasons (adapter fourni par l'infrastructure)."""
+
+    def ajouter(self, blason: Blason) -> Blason:
+        """Persiste un blason et le renvoie avec son identifiant attribué."""
+        ...
+
+    def par_id(self, blason_id: BlasonId) -> Blason | None:
+        """Renvoie le blason d'identifiant donné, ou `None` s'il n'existe pas."""
+        ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Blason]:
+        """Renvoie tous les blasons d'un tournoi (liste éventuellement vide)."""
+        ...
+
+    def enregistrer(self, blason: Blason) -> Blason:
+        """Met à jour un blason déjà persisté (édition) et le renvoie."""
+        ...
+
+    def supprimer(self, blason_id: BlasonId) -> None:
+        """Supprime le blason d'identifiant donné (existence garantie par l'appelant)."""
         ...
 
 

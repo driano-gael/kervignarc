@@ -53,6 +53,12 @@ class CategorieIntrouvable(ApplicationError):
     code = "categorie_introuvable"
 
 
+class BlasonIntrouvable(ApplicationError):
+    """Aucun blason ne correspond à l'identifiant demandé."""
+
+    code = "blason_introuvable"
+
+
 class IdentifiantsInvalides(ApplicationError):
     """Login/mot de passe admin incorrects (E10US002). Traduite en 401 à la frontière."""
 

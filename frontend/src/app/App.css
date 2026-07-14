@@ -263,6 +263,54 @@ button:disabled {
   font-size: 13px;
 }
 
+/* Champ avec libellé visible au-dessus (ex. blasons — champs numériques, E01US005). */
+.formulaire__libelle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* Liste des blasons d'un tournoi (E01US005). */
+.liste-blasons {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.blason__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.blason__nom {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.blason__attributs {
+  flex: 1 1 auto;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.blason__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.blason__actions button {
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
 /* Pastille de statut du cycle de vie. */
 .badge {
   display: inline-block;
