@@ -75,6 +75,23 @@ class BlasonORM(Base):
     capacite: Mapped[int] = mapped_column(nullable=False)
 
 
+class GabaritSalleORM(Base):
+    """Table `gabarit_salle` — persistance de l'agrégat `GabaritSalle` (E01US007).
+
+    Gabarit **autonome** (aucune FK vers `tournoi` : réutilisable d'un tournoi à l'autre). Le
+    plafond d'archers de chaque cible est stocké dans `config` (JSON, `{"capacites": [...]}`) ;
+    `nb_cibles` est dénormalisé (= longueur de la liste) pour la lecture. La traduction JSON ↔
+    agrégat est faite par le repository.
+    """
+
+    __tablename__ = "gabarit_salle"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nom: Mapped[str] = mapped_column(nullable=False)
+    nb_cibles: Mapped[int] = mapped_column(nullable=False)
+    config: Mapped[str] = mapped_column(nullable=False)
+
+
 class ArcherORM(Base):
     """Table `archer` — persistance de l'agrégat `Archer` (E00US011)."""
 

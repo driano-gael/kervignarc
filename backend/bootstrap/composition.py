@@ -23,12 +23,14 @@ from api.v1.auth import router as auth_router
 from api.v1.blasons import router as blasons_router
 from api.v1.categories import router as categories_router
 from api.v1.competition import router as competition_router
+from api.v1.gabarits import router as gabarits_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
 from application.auth import ServiceAuth
 from application.blasons import ServiceBlasons
 from application.categories import ServiceCategories
 from application.classements import ServiceClassement
+from application.gabarits import ServiceGabarits
 from application.tournois import ServiceTournois
 from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
 from infrastructure.db import (
@@ -36,6 +38,7 @@ from infrastructure.db import (
     BlasonRepositorySQL,
     CategorieRepositorySQL,
     Database,
+    GabaritSalleRepositorySQL,
     ScoreRepositorySQL,
     TournoiRepositorySQL,
     WriteQueue,
@@ -107,6 +110,7 @@ def create_app(
     tournoi_repository = TournoiRepositorySQL(database.session_factory)
     categorie_repository = CategorieRepositorySQL(database.session_factory)
     blason_repository = BlasonRepositorySQL(database.session_factory)
+    gabarit_repository = GabaritSalleRepositorySQL(database.session_factory)
     archer_repository = ArcherRepositorySQL(database.session_factory)
     score_repository = ScoreRepositorySQL(database.session_factory)
     app.state.service_tournois = ServiceTournois(tournoi_repository)
@@ -119,6 +123,8 @@ def create_app(
     app.state.service_blasons = ServiceBlasons(
         tournoi_repository, blason_repository, categorie_repository
     )
+    # Gabarits de salle (E01US007) : ressource autonome (aucune dépendance à un tournoi).
+    app.state.service_gabarits = ServiceGabarits(gabarit_repository)
     app.state.service_archers = ServiceArchers(
         tournoi_repository, archer_repository, score_repository
     )
@@ -143,6 +149,7 @@ def create_app(
     app.include_router(tournois_router)
     app.include_router(categories_router)
     app.include_router(blasons_router)
+    app.include_router(gabarits_router)
     app.include_router(competition_router)
 
     # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement

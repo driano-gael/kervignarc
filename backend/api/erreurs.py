@@ -28,6 +28,7 @@ from application.erreurs import (
     ArcherIntrouvable,
     BlasonIntrouvable,
     CategorieIntrouvable,
+    GabaritIntrouvable,
     IdentifiantsInvalides,
     NonAuthentifie,
     TournoiIntrouvable,
@@ -55,7 +56,12 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
     if isinstance(exc, IdentifiantsInvalides | NonAuthentifie):
         status = 401
     elif isinstance(
-        exc, TournoiIntrouvable | ArcherIntrouvable | CategorieIntrouvable | BlasonIntrouvable
+        exc,
+        TournoiIntrouvable
+        | ArcherIntrouvable
+        | CategorieIntrouvable
+        | BlasonIntrouvable
+        | GabaritIntrouvable,
     ):
         status = 404
     else:

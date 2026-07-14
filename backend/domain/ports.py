@@ -12,6 +12,7 @@ from typing import Protocol
 from domain.archer import Archer, ArcherId
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
+from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.score import Score
 from domain.tournoi import Tournoi, TournoiId
 
@@ -116,6 +117,33 @@ class BlasonRepository(Protocol):
 
     def supprimer(self, blason_id: BlasonId) -> None:
         """Supprime le blason d'identifiant donné (existence garantie par l'appelant)."""
+        ...
+
+
+class GabaritSalleRepository(Protocol):
+    """Port de persistance des gabarits de salle (adapter fourni par l'infrastructure).
+
+    Les gabarits sont **autonomes** (non rattachés à un tournoi) et réutilisables (E01US007).
+    """
+
+    def ajouter(self, gabarit: GabaritSalle) -> GabaritSalle:
+        """Persiste un gabarit et le renvoie avec son identifiant attribué."""
+        ...
+
+    def par_id(self, gabarit_id: GabaritSalleId) -> GabaritSalle | None:
+        """Renvoie le gabarit d'identifiant donné, ou `None` s'il n'existe pas."""
+        ...
+
+    def lister(self) -> list[GabaritSalle]:
+        """Renvoie tous les gabarits (liste éventuellement vide)."""
+        ...
+
+    def enregistrer(self, gabarit: GabaritSalle) -> GabaritSalle:
+        """Met à jour un gabarit déjà persisté (édition) et le renvoie."""
+        ...
+
+    def supprimer(self, gabarit_id: GabaritSalleId) -> None:
+        """Supprime le gabarit d'identifiant donné (existence garantie par l'appelant)."""
         ...
 
 
