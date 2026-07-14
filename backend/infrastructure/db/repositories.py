@@ -8,6 +8,8 @@ ADR-0005) et traduit les lignes ORM en agrégats de domaine. Les pannes SQLAlche
 
 from __future__ import annotations
 
+import json
+
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
@@ -15,9 +17,17 @@ from sqlalchemy.orm import Session, sessionmaker
 from domain.archer import Archer, ArcherId
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId, SexeCategorie
+from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.score import Score
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
-from infrastructure.db.models import ArcherORM, BlasonORM, CategorieORM, ScoreORM, TournoiORM
+from infrastructure.db.models import (
+    ArcherORM,
+    BlasonORM,
+    CategorieORM,
+    GabaritSalleORM,
+    ScoreORM,
+    TournoiORM,
+)
 from infrastructure.erreurs import InfrastructureError
 
 
@@ -47,6 +57,25 @@ def _vers_blason(ligne: BlasonORM) -> Blason:
         capacite=ligne.capacite,
         id=ligne.id,
     )
+
+
+def _vers_gabarit(ligne: GabaritSalleORM) -> GabaritSalle:
+    """Traduit une ligne ORM en agrégat de domaine `GabaritSalle` (config JSON → tuple).
+
+    Une `config` illisible ou d'un format inattendu est une **incohérence technique** (le
+    repository est le seul rédacteur et écrit toujours un JSON valide) : elle est enveloppée en
+    `InfrastructureError` — jamais laissée fuir en traceback brut à la frontière (ADR-0007).
+    """
+    try:
+        capacites = tuple(int(c) for c in json.loads(ligne.config)["capacites"])
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise InfrastructureError("Configuration de gabarit de salle illisible.") from exc
+    return GabaritSalle(nom=ligne.nom, capacites=capacites, id=ligne.id)
+
+
+def _config_gabarit(gabarit: GabaritSalle) -> str:
+    """Sérialise le plafond par cible d'un gabarit en JSON (`{"capacites": [...]}`)."""
+    return json.dumps({"capacites": list(gabarit.capacites)})
 
 
 def _vers_categorie(ligne: CategorieORM) -> Categorie:
@@ -364,6 +393,79 @@ class BlasonRepositorySQL:
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de suppression du blason.") from exc
+
+
+class GabaritSalleRepositorySQL:
+    """Adapter SQLite du port `GabaritSalleRepository` (E01US007)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def ajouter(self, gabarit: GabaritSalle) -> GabaritSalle:
+        """Persiste le gabarit et le renvoie avec son identifiant attribué."""
+        try:
+            with self._session_factory() as session:
+                ligne = GabaritSalleORM(
+                    nom=gabarit.nom,
+                    nb_cibles=gabarit.nb_cibles,
+                    config=_config_gabarit(gabarit),
+                )
+                session.add(ligne)
+                session.commit()
+                return _vers_gabarit(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance du gabarit de salle.") from exc
+
+    def par_id(self, gabarit_id: GabaritSalleId) -> GabaritSalle | None:
+        """Relit le gabarit d'identifiant donné, ou `None` s'il n'existe pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(GabaritSalleORM, gabarit_id)
+                return None if ligne is None else _vers_gabarit(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du gabarit de salle.") from exc
+
+    def lister(self) -> list[GabaritSalle]:
+        """Renvoie tous les gabarits, dans l'ordre de création (par identifiant)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(GabaritSalleORM).order_by(GabaritSalleORM.id)
+                ).scalars()
+                return [_vers_gabarit(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des gabarits de salle.") from exc
+
+    def enregistrer(self, gabarit: GabaritSalle) -> GabaritSalle:
+        """Met à jour un gabarit déjà persisté (édition) et le renvoie.
+
+        **Contrat** : l'appelant (le service) garantit l'existence (vérifiée en amont). La ligne
+        absente est une **incohérence technique** (non un cas métier) → `InfrastructureError`.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(GabaritSalleORM, gabarit.id)
+                if ligne is None:
+                    raise InfrastructureError("Gabarit à mettre à jour introuvable en base.")
+                ligne.nom = gabarit.nom
+                ligne.nb_cibles = gabarit.nb_cibles
+                ligne.config = _config_gabarit(gabarit)
+                session.commit()
+                return _vers_gabarit(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour du gabarit de salle.") from exc
+
+    def supprimer(self, gabarit_id: GabaritSalleId) -> None:
+        """Supprime le gabarit d'identifiant donné (existence garantie par l'appelant)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(GabaritSalleORM, gabarit_id)
+                if ligne is None:
+                    raise InfrastructureError("Gabarit à supprimer introuvable en base.")
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression du gabarit de salle.") from exc
 
 
 class ScoreRepositorySQL:

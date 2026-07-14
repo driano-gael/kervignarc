@@ -311,6 +311,45 @@ button:disabled {
   font-size: 13px;
 }
 
+/* Liste des gabarits de salle (E01US007). */
+.liste-gabarits {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gabarit__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.gabarit__nom {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.gabarit__attributs {
+  flex: 1 1 auto;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.gabarit__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gabarit__actions button {
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
 /* Pastille de statut du cycle de vie. */
 .badge {
   display: inline-block;

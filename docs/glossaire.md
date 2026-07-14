@@ -13,6 +13,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Blason** | `Blason` | Cible en carton visée par l'archer. Porte une **taille** (fraction de place sur la cible) et une **capacité**. |
 | **Cible** | `Cible` | Support physique numéroté ; capacité 1/2/4 archers selon les blasons. |
 | **Position** | `position` | Emplacement sur une cible : A, B, C, D (ex-`lettre` du prototype). |
+| **Gabarit de salle** | `GabaritSalle` | Plan de cibles réutilisable : nombre de cibles et **plafond** d'archers par cible (1 à 4, défaut 4) d'où découlent les positions. |
 | **Départ** | `Depart` | Une participation d'un archer ; un archer peut avoir plusieurs départs (base de la facturation). |
 | **Flèche** | `Fleche` | Un tir unique ; valeur 0-10, X (centre), M (manqué). |
 | **Volée** | `Volee` | Groupe de flèches tirées d'affilée (ex. 3 flèches). |

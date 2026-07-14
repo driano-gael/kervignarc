@@ -53,6 +53,24 @@ class CapaciteBlasonInvalide(DomainError):
     code = "capacite_blason_invalide"
 
 
+class NomGabaritInvalide(DomainError):
+    """Le nom d'un gabarit de salle est vide (après normalisation)."""
+
+    code = "nom_gabarit_invalide"
+
+
+class NombreCiblesInvalide(DomainError):
+    """Le nombre de cibles d'un gabarit de salle est inférieur à 1."""
+
+    code = "nombre_cibles_invalide"
+
+
+class CapaciteCibleInvalide(DomainError):
+    """Le plafond d'archers d'une cible sort de la plage autorisée (`[1, 4]`)."""
+
+    code = "capacite_cible_invalide"
+
+
 class CibleInvalide(DomainError):
     """Le numéro de cible d'un placement n'est pas un entier strictement positif."""
 

@@ -79,6 +79,12 @@ class BlasonReference(ApplicationError):
     code = "blason_reference"
 
 
+class GabaritIntrouvable(ApplicationError):
+    """Aucun gabarit de salle ne correspond à l'identifiant demandé."""
+
+    code = "gabarit_introuvable"
+
+
 class IdentifiantsInvalides(ApplicationError):
     """Login/mot de passe admin incorrects (E10US002). Traduite en 401 à la frontière."""
 
