@@ -24,6 +24,8 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0011](0011-phase-qualification-anticipee.md) | Introduire une `Phase` minimale dès J1 pour héberger le barème de qualification | Accepté |
 | [0012](0012-argent-en-centimes-entiers.md) | Compter l'argent en centimes entiers, jamais en flottants | Accepté |
 | [0013](0013-conduite-de-la-revue-d-us.md) | Conduite de la revue d'US : axes parallèles + porte mécanique | Accepté |
+| [0014](0014-club-inconnu-plutot-que-club-sentinelle.md) | Club d'un archer facultatif : `NULL` = *inconnu*, jamais un club sentinelle | Accepté |
+| [0015](0015-signaler-un-doublon-plutot-que-l-interdire.md) | Doublon d'archer : signaler (409) et laisser confirmer, plutôt qu'un `UNIQUE` qui rejetterait un homonyme réel | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.

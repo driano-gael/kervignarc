@@ -9,6 +9,8 @@ casserait deux endroits au lieu d'un.
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 
 from application.clubs import ServiceClubs
@@ -177,7 +179,7 @@ def test_supprimer_refuse_un_club_rattache_a_un_archer() -> None:
     """Le CA de l'US : un club **utilisé** n'est pas supprimable (`ClubReference` → 409)."""
     service, archers = _monter()
     club = service.creer("Arc Club Rennes")
-    archers.ajouter(Archer.creer("Robin", tournoi_id=1, club_id=club.id))
+    archers.ajouter(Archer.creer("Robin", "Jean", tournoi_id=1, categorie_id=1, club_id=club.id))
 
     with pytest.raises(ClubReference):
         service.supprimer(_id(club))
@@ -193,7 +195,7 @@ def test_supprimer_refuse_meme_si_l_archer_est_d_un_autre_tournoi() -> None:
     """
     service, archers = _monter()
     club = service.creer("Arc Club Rennes")
-    archers.ajouter(Archer.creer("Robin", tournoi_id=99, club_id=club.id))
+    archers.ajouter(Archer.creer("Robin", "Jean", tournoi_id=99, categorie_id=1, club_id=club.id))
 
     with pytest.raises(ClubReference):
         service.supprimer(_id(club))
@@ -204,7 +206,9 @@ def test_supprimer_ignore_les_archers_d_un_autre_club() -> None:
     service, archers = _monter()
     rennes = service.creer("Arc Club Rennes")
     fougeres = service.creer("Élan de Fougères")
-    archers.ajouter(Archer.creer("Robin", tournoi_id=1, club_id=fougeres.id))
+    archers.ajouter(
+        Archer.creer("Robin", "Jean", tournoi_id=1, categorie_id=1, club_id=fougeres.id)
+    )
 
     service.supprimer(_id(rennes))
 
@@ -215,8 +219,10 @@ def test_supprimer_possible_apres_desengagement_des_archers() -> None:
     """Un club redevient supprimable une fois ses archers réaffectés."""
     service, archers = _monter()
     club = service.creer("Arc Club Rennes")
-    archer = archers.ajouter(Archer.creer("Robin", tournoi_id=1, club_id=club.id))
-    archers.enregistrer(Archer(nom=archer.nom, tournoi_id=1, club_id=None, id=archer.id))
+    archer = archers.ajouter(
+        Archer.creer("Robin", "Jean", tournoi_id=1, categorie_id=1, club_id=club.id)
+    )
+    archers.enregistrer(dataclasses.replace(archer, club_id=None))
 
     service.supprimer(_id(club))
 

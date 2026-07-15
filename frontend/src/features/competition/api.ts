@@ -37,15 +37,23 @@ export interface Archer {
   id: number
   tournoi_id: number
   nom: string
+  prenom: string
+  categorie_id: number
   cible: number | null
   club_id: number | null
 }
 
-// Inscription d'un archer. `club_id` est **facultatif** (E02US001) : `null` = sans club.
-// E02US002 le rendra obligatoire, avec le prénom et la catégorie.
+// Inscription d'un archer (E02US002). `categorie_id` est **obligatoire** ; `club_id` reste
+// facultatif : `null` = club encore **inconnu**, jamais « aucun club » — en FFTA tout licencié en
+// a un (ADR-0014). L'archer s'inscrit quand même, et l'écran signale l'anomalie à compléter.
 export interface NouvelArcher {
   nom: string
+  prenom: string
+  categorie_id: number
   club_id: number | null
+  // Confirmation de l'admin après un refus `homonyme_archer` (409) : déclare que ce nouvel
+  // archer, malgré des nom/prénom/club identiques à un inscrit, est bien une autre personne.
+  autoriser_homonyme?: boolean
 }
 
 export interface Score {
@@ -58,7 +66,10 @@ export interface LigneClassement {
   rang: number
   archer_id: number
   nom: string
+  prenom: string
   cible: number | null
+  // `null` = club encore **inconnu** (ADR-0014) : l'écran le signale pour qu'il soit complété.
+  club_id: number | null
   total: number
 }
 

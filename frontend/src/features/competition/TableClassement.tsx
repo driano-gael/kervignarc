@@ -2,6 +2,10 @@
 // d'**action** (placer sur une cible, marquer une flèche) ne sont rendues que pour un **admin
 // connecté** (E10US001) ; en consultation publique, le tableau est purement en lecture. Il se
 // rafraîchit tout seul à chaque écriture (invalidation via le flux temps réel).
+//
+// C'est aussi, faute d'écran d'administration des archers (E02US003), **la seule surface où un
+// archer inscrit apparaît** — donc le seul endroit où signaler un club encore inconnu (E02US002,
+// ADR-0014). L'archer s'inscrit sans son club, mais l'oubli ne doit pas devenir invisible.
 
 import { useState } from 'react'
 import type { LigneClassement } from './api'
@@ -70,10 +74,25 @@ function LigneArcher({
     )
   }
 
+  // Nom **et** prénom : depuis E02US002, deux homonymes confirmés (un père et son fils) peuvent
+  // coexister — les distinguer à l'écran est le minimum vital.
+  const identite = `${ligne.nom} ${ligne.prenom}`
+
   return (
     <tr>
       <td>{ligne.rang}</td>
-      <td>{ligne.nom}</td>
+      <td>
+        {identite}
+        {ligne.club_id === null && (
+          <span
+            className="table__anomalie"
+            title="Renseignez son club pour compléter l'inscription"
+          >
+            {' '}
+            Club inconnu
+          </span>
+        )}
+      </td>
       <td>{ligne.cible ?? '—'}</td>
       <td className="table__total">{ligne.total}</td>
       {admin && (
@@ -85,7 +104,7 @@ function LigneArcher({
               min={1}
               value={cible}
               onChange={(e) => setCible(e.target.value)}
-              aria-label={`Cible de ${ligne.nom}`}
+              aria-label={`Cible de ${identite}`}
             />
             <button type="submit" disabled={placer.isPending || cible === ''}>
               OK
@@ -103,7 +122,7 @@ function LigneArcher({
               max={10}
               value={points}
               onChange={(e) => setPoints(e.target.value)}
-              aria-label={`Flèche de ${ligne.nom} (0 à 10)`}
+              aria-label={`Flèche de ${identite} (0 à 10)`}
             />
             <button type="submit" disabled={marquer.isPending || points === ''}>
               +

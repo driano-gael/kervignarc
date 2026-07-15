@@ -6,12 +6,19 @@ vers les routes admin (ex. création de tournoi) soient autorisés. Suppose que 
 de l'app pointe vers un chemin jetable (voir les fixtures d'app qui passent `admin_env_path`).
 
 **Doctrine des doublures** : un faux repository consommé par **≥ 2 modules** de test vit ici ;
-celui qui n'a qu'un consommateur reste dans son module (`FauxTournoiRepository`,
-`FauxScoreRepository` restent dans `test_service_archers`). Depuis E02US001, `FauxClubRepository`
-et `FauxArcherRepository` servent **à la fois** aux tests de `ServiceClubs` (qui refuse de
-supprimer un club utilisé) et à ceux de `ServiceArchers` (qui valide le club de rattachement) —
-les héberger dans l'un des deux modules ferait importer l'autre en retour, jusqu'au **cycle
-d'imports**.
+celui qui n'a qu'un consommateur reste dans son module (`FauxScoreRepository` reste dans
+`test_service_archers`). Depuis E02US001, `FauxClubRepository` et `FauxArcherRepository` servent
+**à la fois** aux tests de `ServiceClubs` (qui refuse de supprimer un club utilisé) et à ceux de
+`ServiceArchers` (qui valide le club de rattachement) — les héberger dans l'un des deux modules
+ferait importer l'autre en retour, jusqu'au **cycle d'imports**.
+
+`FauxCategorieRepository` a rejoint ce fichier en E02US002, qui en devenait le **3ᵉ** consommateur
+(`ServiceArchers` valide désormais la catégorie de l'archer) après `test_service_categories` et
+`test_service_blasons`, où deux copies identiques vivaient chacune de leur côté. C'est la preuve
+d'aujourd'hui que réclame le projet avant de factoriser, pas une évolution supposée.
+
+> `FauxTournoiRepository` est, lui, recopié dans trois modules. On le laisse : cette US n'en ajoute
+> pas d'usage, et on ne réécrit pas ce qu'on n'aggrave pas.
 
 Seules des dépendances **stdlib** sont ajoutées ici (`domain` est pur, règle 1) : ce conftest
 reste importable sans fastapi, comme l'exige le hook pre-commit `domain-isolation`, qui exécute
@@ -27,6 +34,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from domain.archer import Archer, ArcherId
+from domain.blason import BlasonId
+from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId, cle_nom
 from domain.tournoi import TournoiId
 
@@ -110,6 +119,40 @@ class FauxArcherRepository:
         assert archer.id is not None
         self._archers[archer.id] = archer
         return archer
+
+
+class FauxCategorieRepository:
+    """Repository en mémoire conforme au port `CategorieRepository`."""
+
+    def __init__(self) -> None:
+        self._categories: dict[int, Categorie] = {}
+        self._sequence = 0
+
+    def ajouter(self, categorie: Categorie) -> Categorie:
+        self._sequence += 1
+        persiste = dataclasses.replace(categorie, id=self._sequence)
+        self._categories[self._sequence] = persiste
+        return persiste
+
+    def par_id(self, categorie_id: CategorieId) -> Categorie | None:
+        return self._categories.get(categorie_id)
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Categorie]:
+        # Le filtre sur `tournoi_id` est ce qui rend testable le refus d'une catégorie
+        # **étrangère au tournoi** (`CategorieHorsTournoi`, E02US002) : un faux qui renverrait
+        # tout ferait passer au vert un service incapable de cloisonner les tournois.
+        return [c for c in self._categories.values() if c.tournoi_id == tournoi_id]
+
+    def par_blason(self, blason_id: BlasonId) -> list[Categorie]:
+        return [c for c in self._categories.values() if c.blason_id == blason_id]
+
+    def enregistrer(self, categorie: Categorie) -> Categorie:
+        assert categorie.id in self._categories
+        self._categories[categorie.id] = categorie
+        return categorie
+
+    def supprimer(self, categorie_id: CategorieId) -> None:
+        del self._categories[categorie_id]
 
 
 @pytest.fixture

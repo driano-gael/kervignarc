@@ -166,6 +166,19 @@ def _creer_tournoi(client: TestClient) -> int:
     return int(reponse.json()["id"])
 
 
+def _creer_categorie(client: TestClient, tournoi_id: int) -> int:
+    """Crée une catégorie du tournoi et renvoie son identifiant.
+
+    Depuis E02US002, la catégorie est **obligatoire** à l'inscription : plus aucun archer ne
+    s'inscrit sans qu'une catégorie de son tournoi n'existe.
+    """
+    reponse = client.post(
+        f"/api/v1/tournois/{tournoi_id}/categories", json={"libelle": "Senior 1 H"}
+    )
+    assert reponse.status_code == 201, reponse.text
+    return int(reponse.json()["id"])
+
+
 def test_supprimer_un_club_utilise_rend_409(
     app_clubs: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
@@ -174,8 +187,15 @@ def test_supprimer_un_club_utilise_rend_409(
         connecter_admin(client)
         club_id = _creer_club(client, "Arc Club Rennes")
         tournoi_id = _creer_tournoi(client)
+        categorie_id = _creer_categorie(client, tournoi_id)
         inscription = client.post(
-            f"/api/v1/tournois/{tournoi_id}/archers", json={"nom": "Robin", "club_id": club_id}
+            f"/api/v1/tournois/{tournoi_id}/archers",
+            json={
+                "nom": "Robin",
+                "prenom": "Jean",
+                "categorie_id": categorie_id,
+                "club_id": club_id,
+            },
         )
         assert inscription.status_code == 201, inscription.text
         assert inscription.json()["club_id"] == club_id
@@ -191,12 +211,16 @@ def test_supprimer_un_club_utilise_rend_409(
 def test_inscrire_un_archer_sans_club_reste_possible(
     app_clubs: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """Le club est **facultatif** en E02US001 : l'inscription sans club continue de marcher."""
+    """Le club reste **facultatif** (E02US002) : `NULL` = club encore inconnu (ADR-0014)."""
     with TestClient(app_clubs) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
+        categorie_id = _creer_categorie(client, tournoi_id)
 
-        inscription = client.post(f"/api/v1/tournois/{tournoi_id}/archers", json={"nom": "Robin"})
+        inscription = client.post(
+            f"/api/v1/tournois/{tournoi_id}/archers",
+            json={"nom": "Robin", "prenom": "Jean", "categorie_id": categorie_id},
+        )
 
         assert inscription.status_code == 201, inscription.text
         assert inscription.json()["club_id"] is None
@@ -209,9 +233,16 @@ def test_inscrire_un_archer_avec_un_club_inconnu_rend_404(
     with TestClient(app_clubs) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
+        categorie_id = _creer_categorie(client, tournoi_id)
 
         inscription = client.post(
-            f"/api/v1/tournois/{tournoi_id}/archers", json={"nom": "Robin", "club_id": 404}
+            f"/api/v1/tournois/{tournoi_id}/archers",
+            json={
+                "nom": "Robin",
+                "prenom": "Jean",
+                "categorie_id": categorie_id,
+                "club_id": 404,
+            },
         )
 
         assert inscription.status_code == 404, inscription.text
@@ -227,9 +258,19 @@ def test_supprimer_un_club_redevenu_libre(
         utilise = _creer_club(client, "Arc Club Rennes")
         libre = _creer_club(client, "Élan de Fougères")
         tournoi_id = _creer_tournoi(client)
-        client.post(
-            f"/api/v1/tournois/{tournoi_id}/archers", json={"nom": "Robin", "club_id": utilise}
+        categorie_id = _creer_categorie(client, tournoi_id)
+        inscription = client.post(
+            f"/api/v1/tournois/{tournoi_id}/archers",
+            json={
+                "nom": "Robin",
+                "prenom": "Jean",
+                "categorie_id": categorie_id,
+                "club_id": utilise,
+            },
         )
+        # Sans cette assertion, une inscription qui échoue laisserait le club libre et le test
+        # passerait au vert en n'ayant rien exercé : c'est ce qui s'est produit en E02US002.
+        assert inscription.status_code == 201, inscription.text
 
         assert client.delete(f"/api/v1/clubs/{libre}").status_code == 204
         assert client.delete(f"/api/v1/clubs/{utilise}").status_code == 409

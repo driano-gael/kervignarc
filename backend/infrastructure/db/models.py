@@ -124,7 +124,7 @@ class GabaritSalleORM(Base):
 
 
 class ArcherORM(Base):
-    """Table `archer` — persistance de l'agrégat `Archer` (E00US011, club en E02US001)."""
+    """Table `archer` — persistance de l'agrégat `Archer` (E00US011, inscription en E02US002)."""
 
     __tablename__ = "archer"
 
@@ -133,9 +133,16 @@ class ArcherORM(Base):
     # tournoi non vide (cascade ou refus 409) n'est pas tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     nom: Mapped[str] = mapped_column(nullable=False)
+    prenom: Mapped[str] = mapped_column(nullable=False)
     cible: Mapped[int | None] = mapped_column(nullable=True)
-    # Club de rattachement, facultatif (E02US001) ; E02US002 le rendra obligatoire. La suppression
-    # d'un club référencé est refusée côté service (409, `ClubReference`).
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — `categorie` appartient, elle, à la
+    # descendance du tournoi (contrairement à `club` ci-dessous), donc cette FK relève bien de la
+    # politique de suppression non tranchée. E02US002 élargit la ligne existante du registre.
+    categorie_id: Mapped[int] = mapped_column(ForeignKey("categorie.id"), nullable=False)
+    # Club de rattachement, **facultatif** : `NULL` = club encore *inconnu*, jamais « aucun club »
+    # (en FFTA tout licencié en a un — ADR-0014). L'anomalie est signalée à l'écran, pas comblée
+    # par un club sentinelle. La suppression d'un club référencé est refusée côté service
+    # (409, `ClubReference`).
     #
     # **Hors périmètre de DETTE-001**, à la différence des autres FK de ce fichier : elle pointe
     # vers `club`, qui n'est PAS dans la descendance de `tournoi`. Supprimer un tournoi (donc ses

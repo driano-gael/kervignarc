@@ -29,6 +29,12 @@ class NomArcherInvalide(DomainError):
     code = "nom_archer_invalide"
 
 
+class PrenomArcherInvalide(DomainError):
+    """Le prénom d'un archer est vide (après normalisation, E02US002)."""
+
+    code = "prenom_archer_invalide"
+
+
 class NomClubInvalide(DomainError):
     """Le nom d'un club est vide (après normalisation)."""
 

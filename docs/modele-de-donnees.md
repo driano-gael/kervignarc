@@ -1,7 +1,8 @@
 # Modèle de données détaillé — Kervignarc
 
-- **Version** : 0.2
-- **Date** : 2026-07-14 *(v0.2 : cadrage FFTA — `CATEGORIE.ages`, `BLASON.zones`, capacité de cible non bornée, barème par arme, blason surchargé par phase)*
+- **Version** : 0.3
+- **Date** : 2026-07-15 *(v0.3 : `ARCHER.club_id` **nullable** = club *inconnu* et index UNIQUE de dédoublonnage **abandonné** — [ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md), [ADR-0015](adr/0015-signaler-un-doublon-plutot-que-l-interdire.md) ; `ARCHER.categorie_id` NOT NULL)*
+- *v0.2 : 2026-07-14 — cadrage FFTA (`CATEGORIE.ages`, `BLASON.zones`, capacité de cible non bornée, barème par arme, blason surchargé par phase)*
 - **Base** : SQLite (WAL), ORM SQLAlchemy, migrations Alembic (ADR-0002, ADR-0005)
 - **Source** : dérive du CDC technique §5 ; termes selon `glossaire.md` ; règles métier selon [`referentiel-ffta.md`](referentiel-ffta.md).
 
@@ -17,7 +18,7 @@ erDiagram
     TOURNOI ||--o{ CIBLE : "instancie"
     TOURNOI ||--o{ PHASE : "séquence"
     TOURNOI ||--o| GABARIT_SALLE : "plan (copie)"
-    CLUB ||--o{ ARCHER : "rattache"
+    CLUB |o--o{ ARCHER : "rattache (club inconnu possible)"
     CATEGORIE }o--|| BLASON : "associe"
     ARCHER }o--|| CATEGORIE : "concourt en"
     ARCHER ||--o{ DEPART : "possède"
@@ -113,20 +114,36 @@ erDiagram
 | tournoi_id | INTEGER | FK → TOURNOI, NOT NULL |
 | nom | TEXT | NOT NULL |
 | prenom | TEXT | NOT NULL |
-| club_id | INTEGER | FK → CLUB, **nullable** tant que E02US002 n'a pas rendu le club obligatoire |
-| categorie_id | INTEGER | FK → CATEGORIE |
-| _index_ | | UNIQUE(tournoi_id, nom, prenom, club_id) pour dédoublonnage |
+| club_id | INTEGER | FK → CLUB, **nullable** — `NULL` = club *inconnu*, jamais « aucun club » ([ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md)) |
+| categorie_id | INTEGER | FK → CATEGORIE, **NOT NULL** |
 
-> **`club_id` posé par E02US001** (migration `0014`), facultatif à ce stade. Le rattachement est
-> arrivé avec le **référentiel** plutôt qu'avec l'inscription complète (E02US002) parce qu'il est ce
-> qui rend le CA « un club utilisé n'est pas supprimable » **exerçable** : sans lui, le refus
-> (`ClubReference` → 409) n'aurait été qu'un garde-fou qu'aucun chemin réel ne déclenche. E02US002
-> le rendra `NOT NULL`, en même temps qu'il ajoutera `prenom`, `categorie_id` et l'index ci-dessus.
+> **`club_id` posé par E02US001** (migration `0014`) ; `prenom` et `categorie_id` par E02US002
+> (migration `0015`). Le rattachement au club est arrivé avec le **référentiel** plutôt qu'avec
+> l'inscription complète parce qu'il est ce qui rend le CA « un club utilisé n'est pas supprimable »
+> **exerçable** : sans lui, le refus (`ClubReference` → 409) n'aurait été qu'un garde-fou qu'aucun
+> chemin réel ne déclenche.
 >
-> Cette FK est **hors du périmètre de [DETTE-001](dette.md)**, à la différence des autres FK
-> d'`ARCHER` : elle pointe vers `CLUB`, qui n'est pas dans la descendance de `TOURNOI`. Supprimer un
-> tournoi (donc ses archers) ne la viole jamais — c'est le sens inverse qu'elle contraint, et ce
-> cas-là est **tranché** par le service, comme l'est déjà `CATEGORIE.blason_id`.
+> **`club_id` reste nullable, `categorie_id` ne l'est pas** — asymétrie décidée en
+> [ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md) : le club est une donnée
+> administrative externe qu'on ignore parfois au guichet (mais que la FFTA impose : le `NULL` est
+> une **anomalie à résorber**, signalée à l'écran et comptée par E12US005), là où la catégorie se lit
+> sur l'archer présent et commande classement, placement et facturation. **Aucun club « Sans club »
+> ne doit être introduit** pour combler les `NULL` : deux archers y porteraient le même `club_id` et
+> le placement (E03US006, RG-3) les croirait du même club — voir l'ADR.
+>
+> **Pas d'index UNIQUE de dédoublonnage** (le modèle v0.2 prévoyait
+> `UNIQUE(tournoi_id, nom, prenom, club_id)`) : il rejetterait un père et son fils, homonymes du
+> même club. Le doublon probable est **signalé** par le service (409 `homonyme_archer`, au sens de
+> `domain.archer.cle_identite`) et l'admin confirme — [ADR-0015](adr/0015-signaler-un-doublon-plutot-que-l-interdire.md).
+> Le contrôle applicatif suffit : le **writer unique** sérialise les écritures, et le contrôle comme
+> l'insertion tiennent dans la même commande en file. La détection fine et la fusion sont à
+> **E02US005**.
+>
+> `club_id` est **hors du périmètre de [DETTE-001](dette.md)**, à la différence des autres FK
+> d'`ARCHER` (`tournoi_id`, `categorie_id`) : elle pointe vers `CLUB`, qui n'est pas dans la
+> descendance de `TOURNOI`. Supprimer un tournoi (donc ses archers) ne la viole jamais — c'est le
+> sens inverse qu'elle contraint, et ce cas-là est **tranché** par le service, comme l'est déjà
+> `CATEGORIE.blason_id`.
 
 ### DEPART
 | id | INTEGER | PK |

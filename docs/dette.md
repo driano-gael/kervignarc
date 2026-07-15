@@ -33,7 +33,7 @@
 
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
-| [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason`, `gabarit_salle`, `phase` (→ `tournoi.id`), enfant indirect `score` (→ `archer.id`) et lien latéral `categorie.blason_id` (→ `blason.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006, E01US008, E01US009) | US dédiée — non planifiée |
+| [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason`, `gabarit_salle`, `phase` (→ `tournoi.id`), enfant indirect `score` (→ `archer.id`) et liens latéraux `categorie.blason_id` (→ `blason.id`) et `archer.categorie_id` (→ `categorie.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006, E01US008, E01US009, E02US002) | US dédiée — non planifiée |
 | [DETTE-002](#dette-002--hauteur-de-blason-non-modélisée) | conception | majeur | `backend/domain/blason.py`, `docs/modele-de-donnees.md` | `Blason` modélise l'occupation d'une cible par une `taille` (fraction) + `capacite`, mais **pas la hauteur du centre** — 110 cm pour le blason 80 cm des U11 contre 130 cm pour tous les autres (FFTA B.2.2.1.1, C.3.1.1) | Le placement automatique (EPIC-03) pourra composer une butte physiquement intirable : un U11 et des adultes sur la même cible passent le contrôle « somme des fractions ≤ capacité » alors que leurs blasons ne peuvent pas coexister | E01US005 (blasons) ; constatée au cadrage FFTA du 14/07/2026 | E03US001 (placement automatique) — **avant** d'écrire l'algorithme |
 | [DETTE-003](#dette-003--config-de-phase-à-plat-au-lieu-de-configpolicies) | conception | majeur | `backend/infrastructure/db/repositories.py` (`_config_phase`, `_vers_phase`), `docs/modele-de-donnees.md` | La `config` d'une phase écrit ses politiques **à plat à la racine** (`config.scoring`, `config.validation`) alors que le modèle cible (ADR-0004) les range sous `config.policies` ; et `scoring` y est un **objet paramétré** au lieu d'un **nom de preset** | Deux conventions coexistent pour le même champ. Le moteur (EPIC-05) devra soit adopter la forme à plat — et renoncer au modèle cible — soit migrer les `config` déjà écrites : c'est une décision reportée, pas évitée | E01US009 (forme posée) ; suivie par E01US015 (`config.validation`), qui s'y aligne plutôt que d'introduire une 2ᵉ convention | E05US004 (assembler les politiques) — **avant** d'écrire le moteur |
 | [DETTE-005](#dette-005--conversion-euroscentimes-sans-aucun-test) | technique | majeur | `frontend/src/features/competition/format.ts` | La conversion **euros ↔ centimes** — seul convertisseur d'argent de l'application ([ADR-0012](adr/0012-argent-en-centimes-entiers.md)) — n'a **aucun test** : le front n'a pas de runner (`package.json` : ni `vitest`, ni script `test`) | Une régression silencieuse fausse **le montant dû** (EF-8.1) : inverser `padEnd`/`padStart` transforme 8,10 € en 8,01 € sans que rien ne bronche. Le code est juste aujourd'hui ; c'est sa **non-régression** qui n'est protégée par rien | E01US010 (1ʳᵉ logique pure du front) ; absence de runner préexistante (E00US002 n'outille que lint/format) | E00US014 (runner de test front) — **avant** E08US001, qui consommera le tarif |
@@ -57,11 +57,20 @@ La descendance compte trois natures de liens :
   bibliothèque, `tournoi_id NULL`, ne sont pas concernés) et `phase` (E01US009) ;
 - **enfant indirect** — `score` (FK → `archer.id`), donc bloquant pour la suppression d'un `archer`,
   elle-même requise par toute cascade partant du tournoi ;
-- **lien latéral** entre deux enfants du tournoi — `categorie.blason_id` (FK → `blason.id`,
-  E01US006) : dans une cascade, il impose de supprimer/dénouer la `categorie` **avant** son `blason`.
+- **liens latéraux** entre deux enfants du tournoi — `categorie.blason_id` (FK → `blason.id`,
+  E01US006) et `archer.categorie_id` (FK → `categorie.id`, E02US002) : dans une cascade, ils
+  imposent un **ordre** — dénouer/supprimer la `categorie` avant son `blason`, et l'`archer` avant
+  sa `categorie`.
 
-Une résorption qui ne traiterait que les FK vers `tournoi.id` laisserait `score` **et** le lien
-`categorie → blason` bloquer la cascade.
+Une résorption qui ne traiterait que les FK vers `tournoi.id` laisserait `score` **et** les liens
+latéraux bloquer la cascade.
+
+> **E02US002 élargit cette ligne plutôt que de contourner localement.** `archer.categorie_id` est
+> `NOT NULL` : contrairement à `categorie.blason_id` (nullable, qu'on peut dénouer), une cascade ne
+> pourra pas le mettre à `NULL` — elle devra supprimer l'archer, donc ses `score` d'abord. La chaîne
+> à respecter est désormais `score → archer → categorie → blason`. À noter : `archer.club_id`
+> **n'entre pas** dans cette dette (il pointe vers `club`, hors descendance du tournoi — cf.
+> [ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md)).
 
 **Conséquence.** La suppression d'un tournoi ne réussit que s'il est vide. Dès qu'une catégorie, un
 archer, un score ou un blason y est rattaché, la contrainte FK échoue et l'erreur remonte non
@@ -192,6 +201,14 @@ soit ambre** et que les couleurs sémantiques appartiennent au produit (`DV-03`)
 demandera neuf modifications identiques, et il suffit d'en manquer une pour qu'un écran mente sur la
 gravité de ce qu'il affiche. Or l'erreur est exactement ce que l'utilisateur regarde quand la
 journée déraille.
+
+> **E02US002 n'ajoute pas de 10ᵉ copie, mais ouvre un rendu d'erreur *hors* `MessageErreur`** :
+> le bloc de confirmation d'homonyme de `competition/TrancheVerticale.tsx` (`role="alert"`, avec un
+> bouton « Inscrire quand même ») est **actionnable** et volontairement **neutre** — un doublon
+> probable n'est pas une erreur, l'inscription reste possible —, d'où l'absence du modificateur
+> `--erreur`. **E00US013 ne le trouvera pas** en cherchant `MessageErreur` : il n'est pas une copie.
+> À traiter avec la même résorption (soit un `MessageErreur` acceptant des enfants, soit un
+> composant frère assumé), sans quoi le token ambre s'appliquera à neuf endroits sur dix.
 
 **Rythme d'aggravation.** Une copie par feature créée : c'est mécanique, et E02US001 le confirme
 (9ᵉ). Chaque US de configuration qui ouvre un écran en ajoutera une tant qu'E00US013 n'est pas
