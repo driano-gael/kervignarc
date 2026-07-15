@@ -15,6 +15,7 @@ import { BaremeQualification } from '../bareme/BaremeQualification'
 import { GrainValidation } from '../grain-validation/GrainValidation'
 import { Blasons } from '../blasons/Blasons'
 import { Categories } from '../categories/Categories'
+import { Clubs } from '../clubs/Clubs'
 import { Gabarits } from '../gabarits/Gabarits'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { ErreurApi } from '../../shared/api/client'
@@ -407,6 +408,10 @@ function Competition({ tournoi, onRetour }: { tournoi: Tournoi; onRetour: () => 
       {estAdmin && <PlanDeSalle tournoiId={tournoi.id} />}
 
       {estAdmin && <Gabarits />}
+
+      {/* Comme les gabarits modèles, le référentiel des clubs est **global** : il ne prend pas de
+          tournoi. Il servira à rattacher les archers sans ressaisie (E02US002). */}
+      {estAdmin && <Clubs />}
 
       {estAdmin && <BaremeQualification tournoiId={tournoi.id} />}
 

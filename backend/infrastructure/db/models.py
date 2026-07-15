@@ -36,6 +36,24 @@ class TournoiORM(Base):
     tarif_depart_centimes: Mapped[int | None] = mapped_column(nullable=True)
 
 
+class ClubORM(Base):
+    """Table `club` — persistance de l'agrégat `Club` (E02US001).
+
+    **Aucune FK vers `tournoi`** : le référentiel est global et réutilisé d'une compétition à
+    l'autre. La table n'appartient donc **pas** à la descendance de `tournoi` — supprimer un
+    tournoi ne doit pas toucher aux clubs, et DETTE-001 ne la concerne pas.
+
+    `nom` est `UNIQUE` : garde-fou d'intégrité. Le refus fonctionnel du doublon (message et 409)
+    est porté en amont par `ServiceClubs`, qui compare **sans tenir compte de la casse** — ce que
+    cette contrainte, elle, ne fait pas (elle n'attrape que les homonymes exacts).
+    """
+
+    __tablename__ = "club"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nom: Mapped[str] = mapped_column(nullable=False, unique=True)
+
+
 class CategorieORM(Base):
     """Table `categorie` — persistance de l'agrégat `Categorie` (E01US003).
 

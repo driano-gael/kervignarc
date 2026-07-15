@@ -37,7 +37,7 @@
 | [DETTE-002](#dette-002--hauteur-de-blason-non-modélisée) | conception | majeur | `backend/domain/blason.py`, `docs/modele-de-donnees.md` | `Blason` modélise l'occupation d'une cible par une `taille` (fraction) + `capacite`, mais **pas la hauteur du centre** — 110 cm pour le blason 80 cm des U11 contre 130 cm pour tous les autres (FFTA B.2.2.1.1, C.3.1.1) | Le placement automatique (EPIC-03) pourra composer une butte physiquement intirable : un U11 et des adultes sur la même cible passent le contrôle « somme des fractions ≤ capacité » alors que leurs blasons ne peuvent pas coexister | E01US005 (blasons) ; constatée au cadrage FFTA du 14/07/2026 | E03US001 (placement automatique) — **avant** d'écrire l'algorithme |
 | [DETTE-003](#dette-003--config-de-phase-à-plat-au-lieu-de-configpolicies) | conception | majeur | `backend/infrastructure/db/repositories.py` (`_config_phase`, `_vers_phase`), `docs/modele-de-donnees.md` | La `config` d'une phase écrit ses politiques **à plat à la racine** (`config.scoring`, `config.validation`) alors que le modèle cible (ADR-0004) les range sous `config.policies` ; et `scoring` y est un **objet paramétré** au lieu d'un **nom de preset** | Deux conventions coexistent pour le même champ. Le moteur (EPIC-05) devra soit adopter la forme à plat — et renoncer au modèle cible — soit migrer les `config` déjà écrites : c'est une décision reportée, pas évitée | E01US009 (forme posée) ; suivie par E01US015 (`config.validation`), qui s'y aligne plutôt que d'introduire une 2ᵉ convention | E05US004 (assembler les politiques) — **avant** d'écrire le moteur |
 | [DETTE-005](#dette-005--conversion-euroscentimes-sans-aucun-test) | technique | majeur | `frontend/src/features/competition/format.ts` | La conversion **euros ↔ centimes** — seul convertisseur d'argent de l'application ([ADR-0012](adr/0012-argent-en-centimes-entiers.md)) — n'a **aucun test** : le front n'a pas de runner (`package.json` : ni `vitest`, ni script `test`) | Une régression silencieuse fausse **le montant dû** (EF-8.1) : inverser `padEnd`/`padStart` transforme 8,10 € en 8,01 € sans que rien ne bronche. Le code est juste aujourd'hui ; c'est sa **non-régression** qui n'est protégée par rien | E01US010 (1ʳᵉ logique pure du front) ; absence de runner préexistante (E00US002 n'outille que lint/format) | E00US014 (runner de test front) — **avant** E08US001, qui consommera le tarif |
-| [DETTE-004](#dette-004--messageerreur-dupliqué-dans-chaque-feature-front) | conception | mineur | `frontend/src/features/*/` (8 occurrences) | Le composant `MessageErreur` est copié **à l'identique** dans chaque feature — même signature, même corps, mêmes classes — au lieu de vivre dans `shared/` | Tout changement du rendu d'erreur (ex. le token d'alerte **ambre** du CDC design, `DV-03`) se fait en 8 endroits, avec le risque d'en oublier un : les erreurs sont précisément ce que l'utilisateur voit quand ça va mal | E00US011 puis chaque feature (`admin`, `bareme`, `blasons`, `categories`, `competition`, `gabarits` ×2) ; **aggravée** par E01US015 (8ᵉ copie) | E00US013 (factoriser les briques d'UI partagées) |
+| [DETTE-004](#dette-004--messageerreur-dupliqué-dans-chaque-feature-front) | conception | mineur | `frontend/src/features/*/` (9 occurrences) | Le composant `MessageErreur` est copié **à l'identique** dans chaque feature — même signature, même corps, mêmes classes — au lieu de vivre dans `shared/` | Tout changement du rendu d'erreur (ex. le token d'alerte **ambre** du CDC design, `DV-03`) se fait en 9 endroits, avec le risque d'en oublier un : les erreurs sont précisément ce que l'utilisateur voit quand ça va mal | E00US011 puis chaque feature (`admin`, `bareme`, `blasons`, `categories`, `competition`, `gabarits` ×2) ; **aggravée** par E01US015 (8ᵉ copie) puis E02US001 (9ᵉ copie) | E00US013 (factoriser les briques d'UI partagées) |
 
 ## Dette résorbée
 
@@ -172,7 +172,7 @@ structurante ⇒ **ADR** (qui amendera ou remplacera l'ADR-0011).
 
 ### DETTE-004 — `MessageErreur` dupliqué dans chaque feature front
 
-**Constat.** Huit features déclarent chacune leur `MessageErreur`, copie conforme :
+**Constat.** Neuf features déclarent chacune leur `MessageErreur`, copie conforme :
 
 ```tsx
 function MessageErreur({ erreur }: { erreur: Error | null }) {
@@ -183,15 +183,21 @@ function MessageErreur({ erreur }: { erreur: Error | null }) {
 ```
 
 Occurrences : `admin/ConnexionAdmin.tsx`, `bareme/BaremeQualification.tsx`, `blasons/Blasons.tsx`,
-`categories/Categories.tsx`, `competition/TrancheVerticale.tsx`, `gabarits/Gabarits.tsx`,
-`gabarits/PlanDeSalle.tsx`, `grain-validation/GrainValidation.tsx`. Même signature, même corps,
-mêmes classes CSS, même `role="alert"`.
+`categories/Categories.tsx`, `clubs/Clubs.tsx`, `competition/TrancheVerticale.tsx`,
+`gabarits/Gabarits.tsx`, `gabarits/PlanDeSalle.tsx`, `grain-validation/GrainValidation.tsx`. Même
+signature, même corps, mêmes classes CSS, même `role="alert"`.
 
 **Conséquence.** Le rendu des erreurs n'a pas de point unique. Le CDC design impose que l'**alerte
 soit ambre** et que les couleurs sémantiques appartiennent au produit (`DV-03`) : appliquer ce token
-demandera huit modifications identiques, et il suffit d'en manquer une pour qu'un écran mente sur la
+demandera neuf modifications identiques, et il suffit d'en manquer une pour qu'un écran mente sur la
 gravité de ce qu'il affiche. Or l'erreur est exactement ce que l'utilisateur regarde quand la
 journée déraille.
+
+**Rythme d'aggravation.** Une copie par feature créée : c'est mécanique, et E02US001 le confirme
+(9ᵉ). Chaque US de configuration qui ouvre un écran en ajoutera une tant qu'E00US013 n'est pas
+faite — E02US002 (archers) est la suivante sur la trajectoire. Le coût de la résorption croît donc
+à chaque US, pendant que celui de la copie reste nul sur le moment : c'est exactement le profil
+d'une dette qu'on ne « trouve » jamais le temps de rembourser.
 
 **Pourquoi c'est en dette et pas corrigé.** La duplication est **préexistante** : E01US015 en hérite
 et en ajoute la 8ᵉ copie, mais ne la crée pas. La résorber ici toucherait sept features étrangères à
@@ -200,8 +206,8 @@ projet n'en a aucun). Le périmètre d'une US de configuration n'est pas le bon 
 « au passage » diluerait la revue de l'US dans un refactor transverse.
 
 **Résorption attendue.** E00US013 : extraire `MessageErreur` dans `frontend/src/shared/ui/`, le
-faire consommer par les 8 features, et supprimer les copies. Cheap et mécanique (~10 lignes ajoutées
-contre 7 suppressions), mais à faire **d'un bloc** pour que la revue porte sur l'équivalence du
+faire consommer par les 9 features, et supprimer les copies. Cheap et mécanique (~10 lignes ajoutées
+contre 8 suppressions), mais à faire **d'un bloc** pour que la revue porte sur l'équivalence du
 rendu. À enchaîner de préférence **avant** E01US016 (identité visuelle) et le thème sombre, qui
 consommeront les tokens de couleur.
 

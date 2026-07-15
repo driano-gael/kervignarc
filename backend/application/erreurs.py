@@ -47,6 +47,23 @@ class ArcherIntrouvable(ApplicationError):
     code = "archer_introuvable"
 
 
+class ClubIntrouvable(ApplicationError):
+    """Aucun club ne correspond à l'identifiant demandé."""
+
+    code = "club_introuvable"
+
+
+class NomClubDejaPris(ApplicationError):
+    """Création/renommage refusé : un autre club porte déjà ce nom (E02US001) → 409.
+
+    Règle d'ensemble (le domaine ne voit qu'un club à la fois) : le référentiel n'offre pas
+    deux entrées pour un même club, sans quoi les archers se répartiraient entre les doublons.
+    Comparaison **insensible à la casse** (cf. `ClubRepository.par_nom`).
+    """
+
+    code = "nom_club_deja_pris"
+
+
 class CategorieIntrouvable(ApplicationError):
     """Aucune catégorie ne correspond à l'identifiant demandé."""
 

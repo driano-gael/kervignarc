@@ -7,9 +7,11 @@
 ### E02US001 — Gérer le référentiel clubs
 *En tant qu'*administrateur, *je veux* gérer une liste de clubs, *afin de* rattacher les archers sans ressaisie.
 - **CA** : CRUD club (nom) ; réutilisable entre tournois ; un club utilisé n'est pas supprimable sans avertissement.
+- **Notes** : le CA « club utilisé non supprimable » est **porté par E02US002**, qui introduit `archer.club_id` — donc l'usage à protéger et le test qui l'exerce. À la réalisation d'E02US001, rien ne peut référencer un club : la règle n'y serait vérifiable que contre le vide (guide §16). Elle suivra le patron `ServiceBlasons.supprimer` / `BlasonReference` (E01US006). La FK naîtra **avec** sa politique de suppression — contrairement à celles de DETTE-001.
 - **Dépend de** : E00US009 · **Jalon** : J1
 
 ### E02US002 — Créer un archer
+> **Reprend un CA d'E02US001** : refuser la suppression d'un club **rattaché à des archers** (avertissement), une fois `archer.club_id` introduit ici. Patron : `ServiceBlasons.supprimer` / `BlasonReference` (E01US006).
 *En tant qu'*administrateur, *je veux* saisir un archer, *afin de* l'inscrire au tournoi.
 - **CA** : nom, prénom, club, catégorie obligatoires ; archer rattaché au tournoi ; persisté via la file.
 - **Notes** : entité `Archer` (FR, ADR-0006) — renommage du prototype `Player`.

@@ -12,6 +12,7 @@ from typing import Protocol
 from domain.archer import Archer, ArcherId
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
+from domain.club import Club, ClubId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.score import Score
@@ -63,6 +64,48 @@ class ArcherRepository(Protocol):
 
     def enregistrer(self, archer: Archer) -> Archer:
         """Met à jour un archer déjà persisté (ex. après placement) et le renvoie."""
+        ...
+
+
+class ClubRepository(Protocol):
+    """Port de persistance des clubs (adapter fourni par l'infrastructure).
+
+    Référentiel **global** : un club n'appartient à aucun tournoi (E02US001), d'où l'absence
+    de `par_tournoi` — `lister` renvoie tout le référentiel.
+    """
+
+    def ajouter(self, club: Club) -> Club:
+        """Persiste un club et le renvoie avec son identifiant attribué."""
+        ...
+
+    def par_id(self, club_id: ClubId) -> Club | None:
+        """Renvoie le club d'identifiant donné, ou `None` s'il n'existe pas."""
+        ...
+
+    def par_nom(self, nom: str) -> Club | None:
+        """Renvoie le club portant ce nom, ou `None` s'il n'y en a pas.
+
+        **Comparaison insensible à la casse** et aux espaces de bord : « Arc Club Rennes » et
+        « arc club rennes » désignent le même club. Sert à refuser un doublon à la création
+        comme au renommage — un référentiel dont l'intérêt est de ne pas ressaisir ne doit pas
+        offrir deux entrées pour un même club (E02US001).
+        """
+        ...
+
+    def lister(self) -> list[Club]:
+        """Renvoie tout le référentiel des clubs (liste éventuellement vide).
+
+        L'ordre n'est **pas** garanti par le port (détail de l'adapter) : un consommateur qui a
+        besoin d'un ordre précis doit le trier lui-même.
+        """
+        ...
+
+    def enregistrer(self, club: Club) -> Club:
+        """Met à jour un club déjà persisté (renommage) et le renvoie."""
+        ...
+
+    def supprimer(self, club_id: ClubId) -> None:
+        """Supprime le club d'identifiant donné (existence garantie par l'appelant)."""
         ...
 
 

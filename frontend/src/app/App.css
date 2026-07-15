@@ -321,6 +321,40 @@ button:disabled {
   font-size: 13px;
 }
 
+/* Référentiel des clubs (E02US001) — global, hors tournoi. */
+.liste-clubs {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.club__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.club__nom {
+  flex: 1 1 auto;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.club__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.club__actions button {
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
 /* Liste des gabarits de salle (E01US007). */
 .liste-gabarits {
   margin: 8px 0 0;
