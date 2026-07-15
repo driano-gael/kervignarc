@@ -137,11 +137,20 @@ est une réponse valide.
 - **Commits conventionnels** : `<type>(<scope>): <résumé>` (impératif, ≤ ~72 car., `scope` = ID d'US
   en minuscules) + corps expliquant le **quoi** et surtout le **pourquoi**, avec les références
   (`US: ExxUSyyy`, `ADR-XXXX`). Commits atomiques.
-- **Le message de commit est toujours rédigé et proposé** par l'assistant — mais **l'utilisateur
-  garde la main** sur l'exécution de `git commit` / `git push` : ne pas les lancer sans son aval.
+- **L'assistant déroule le cycle d'une US en autonomie** : branche, implémentation, message de
+  commit rédigé, `git commit`, `git push`. Il **ne rend pas la main** pour ces étapes. Restent
+  soumis à l'aval explicite de l'utilisateur : `git merge`, `git rebase`, et tout ajout de
+  dépendance (`pip install` / `npm install` — cf. règle 11, c'est un arbitrage, pas de la
+  plomberie).
 - Quand l'utilisateur dit **« lance la PR »**, exécuter [`/revue-us`](.claude/commands/revue-us.md) :
-  revue du diff par un agent dédié selon la grille projet, puis correction par l'agent auteur.
-  **C'est l'utilisateur qui ouvre et merge la PR**, puis dit « c'est mergé ».
+  revue du diff par un agent dédié selon la grille projet, puis correction par l'agent auteur,
+  re-commit et push — sans repasser par l'utilisateur. `gh` n'étant **pas installé**, l'assistant
+  livre le lien `pull/new/<branche>` + titre + corps prêts à coller : **c'est l'utilisateur qui
+  ouvre et merge la PR**, puis dit « c'est mergé ».
+- **L'utilisateur n'intervient que pour un arbitrage** : choix métier, CA ambigu ou insatisfaisable
+  en l'état, périmètre d'US, dépendance, décision structurante (ADR). Tout le reste se décide et
+  s'exécute sans lui — un doute purement technique se tranche, se documente et se signale **après
+  coup**, il n'interrompt pas.
 - Cycle : branche depuis `main` à jour → PR → revue + CI verte → merge → suppression de la branche.
 - **Décision structurante ⇒ ADR** dans `docs/adr/` (contexte / décision / conséquences).
 - Une US trop grosse pour une branche doit être **redécoupée** (maille INVEST).
