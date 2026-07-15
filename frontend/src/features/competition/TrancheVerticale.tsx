@@ -11,6 +11,7 @@
 import { useState } from 'react'
 import { ConnexionAdmin } from '../admin/ConnexionAdmin'
 import { useDeconnexionAdmin } from '../admin/hooks'
+import { Archers } from '../archers/Archers'
 import { BaremeQualification } from '../bareme/BaremeQualification'
 import { GrainValidation } from '../grain-validation/GrainValidation'
 import { Blasons } from '../blasons/Blasons'
@@ -428,6 +429,10 @@ function Competition({ tournoi, onRetour }: { tournoi: Tournoi; onRetour: () => 
           Consultation en lecture seule. Connectez-vous en admin pour saisir.
         </p>
       )}
+
+      {/* Juste après le formulaire d'inscription : on inscrit, puis on corrige — et c'est là que
+          le « club inconnu » signalé à la ligne du dessus devient réparable (E02US003). */}
+      {estAdmin && <Archers tournoiId={tournoi.id} />}
 
       <h3 className="carte__soustitre">Classement en direct</h3>
       {classement.isPending && <p className="carte__etat">Chargement…</p>}

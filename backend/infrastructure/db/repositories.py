@@ -295,7 +295,7 @@ class TournoiRepositorySQL:
 
 
 class ArcherRepositorySQL:
-    """Adapter SQLite du port `ArcherRepository` (E00US011)."""
+    """Adapter SQLite du port `ArcherRepository` (E00US011, E02US003)."""
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
@@ -374,6 +374,25 @@ class ArcherRepositorySQL:
                 return _vers_archer(ligne)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour de l'archer.") from exc
+
+    def supprimer(self, archer_id: ArcherId) -> None:
+        """Supprime l'archer d'identifiant donné (E02US003).
+
+        **Contrat** (même que `enregistrer`) : l'existence est garantie par le service ; une ligne
+        absente est une incohérence technique, pas un 404. Le service a également vérifié que
+        l'archer n'a pas de scores — sans quoi la FK `score.archer_id`, dépourvue d'`ON DELETE`
+        (DETTE-001), ferait échouer le `commit` et l'on rendrait un 500 là où le métier a un
+        refus à formuler (`ArcherEngage` → 409).
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(ArcherORM, archer_id)
+                if ligne is None:
+                    raise InfrastructureError("Archer à supprimer introuvable en base.")
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression de l'archer.") from exc
 
 
 class ClubRepositorySQL:
@@ -736,7 +755,7 @@ class GabaritSalleRepositorySQL:
 
 
 class ScoreRepositorySQL:
-    """Adapter SQLite du port `ScoreRepository` (E00US011)."""
+    """Adapter SQLite du port `ScoreRepository` (E00US011, E02US003)."""
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
@@ -767,6 +786,20 @@ class ScoreRepositorySQL:
                 ]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des scores du tournoi.") from exc
+
+    def par_archer(self, archer_id: ArcherId) -> list[Score]:
+        """Renvoie les scores d'un archer (liste éventuellement vide) — E02US003."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(ScoreORM).where(ScoreORM.archer_id == archer_id)
+                ).scalars()
+                return [
+                    Score(archer_id=ligne.archer_id, points=ligne.points, id=ligne.id)
+                    for ligne in lignes
+                ]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des scores de l'archer.") from exc
 
 
 class PhaseRepositorySQL:

@@ -1,4 +1,4 @@
-"""Tests des services applicatifs Archers et Classement (E00US011, E02US002) — factices.
+"""Tests des services applicatifs Archers et Classement (E00US011, E02US002, E02US003).
 
 Les services sont testés **en isolation** : de faux repositories en mémoire (conformes aux
 ports) suffisent — ni base ni serveur. `FauxArcherRepository`, `FauxClubRepository` et
@@ -17,12 +17,15 @@ import pytest
 from application.archers import ServiceArchers
 from application.classements import ServiceClassement
 from application.erreurs import (
+    ArcherEngage,
     ArcherIntrouvable,
     CategorieHorsTournoi,
+    ChangementCategorieArcherEngage,
     ClubIntrouvable,
     HomonymeArcher,
     TournoiIntrouvable,
 )
+from domain.archer import ArcherId
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club
 from domain.erreurs import (
@@ -90,6 +93,12 @@ class FauxScoreRepository:
         ids = {a.id for a in self._archers.par_tournoi(tournoi_id)}
         return [s for s in self._scores if s.archer_id in ids]
 
+    def par_archer(self, archer_id: ArcherId) -> list[Score]:
+        # Le filtre sur `archer_id` est ce qui rend testable le refus de supprimer **cet**
+        # archer-là : un faux qui renverrait tous les scores du tournoi ferait passer au vert un
+        # service qui rendrait indéboulonnable tout inscrit dès la première flèche tirée.
+        return [s for s in self._scores if s.archer_id == archer_id]
+
 
 class Montage(NamedTuple):
     """Attelage d'un test : les deux services et ce qu'il faut pour inscrire un archer.
@@ -101,6 +110,7 @@ class Montage(NamedTuple):
 
     archers: ServiceArchers
     classement: ServiceClassement
+    inscrits: FauxArcherRepository
     clubs: FauxClubRepository
     categories: FauxCategorieRepository
     tournois: FauxTournoiRepository
@@ -130,6 +140,7 @@ def _monter() -> Montage:
     return Montage(
         archers=ServiceArchers(tournois, archers, scores, clubs, categories),
         classement=ServiceClassement(tournois, archers, scores),
+        inscrits=archers,
         clubs=clubs,
         categories=categories,
         tournois=tournois,
@@ -337,6 +348,274 @@ def test_saisir_score_propage_l_erreur_de_domaine() -> None:
     assert archer.id is not None
     with pytest.raises(ScoreInvalide):
         m.archers.saisir_score(archer.id, 11)
+
+
+def test_modifier_archer_met_a_jour_les_quatre_champs() -> None:
+    """`modifier` édite le nom, le prénom, la catégorie et le club, et persiste (E02US003)."""
+    m = _monter()
+    rennes = m.clubs.ajouter(Club.creer("Arc Club Rennes"))
+    fougeres = m.clubs.ajouter(Club.creer("Élan de Fougères"))
+    autre_categorie = m.categories.ajouter(Categorie.creer(m.tournoi_id, "Senior 2 H"))
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id, rennes.id)
+    assert archer.id is not None and autre_categorie.id is not None
+
+    edite = m.archers.modifier(
+        archer.id, "Robin des Bois", "Jeanne", autre_categorie.id, fougeres.id
+    )
+    assert (edite.nom, edite.prenom) == ("Robin des Bois", "Jeanne")
+    assert (edite.categorie_id, edite.club_id) == (autre_categorie.id, fougeres.id)
+    assert m.inscrits.par_id(archer.id) == edite
+
+
+def test_modifier_archer_inconnu_leve() -> None:
+    """Éditer un archer inexistant lève `ArcherIntrouvable`."""
+    m = _monter()
+    with pytest.raises(ArcherIntrouvable):
+        m.archers.modifier(404, "Robin", "Jean", m.categorie_id)
+
+
+def test_modifier_archer_propage_l_erreur_de_domaine_sur_le_nom() -> None:
+    """L'édition rejoue les contrôles de l'inscription : un nom vide remonte du domaine."""
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    with pytest.raises(NomArcherInvalide):
+        m.archers.modifier(archer.id, "  ", "Jean", m.categorie_id)
+
+
+def test_modifier_archer_categorie_d_un_autre_tournoi_leve() -> None:
+    """La catégorie éditée doit rester **du tournoi de l'archer** (règle inter-agrégats)."""
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    _, categorie_etrangere = m.autre_tournoi()
+    with pytest.raises(CategorieHorsTournoi):
+        m.archers.modifier(archer.id, "Robin", "Jean", categorie_etrangere)
+
+
+def test_modifier_archer_club_inconnu_leve() -> None:
+    """Éditer vers un club inexistant lève `ClubIntrouvable` ; l'archer reste intact."""
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    with pytest.raises(ClubIntrouvable):
+        m.archers.modifier(archer.id, "Robin", "Jean", m.categorie_id, 404)
+    assert m.inscrits.par_id(archer.id) == archer
+
+
+def test_modifier_archer_renseigne_le_club_reste_inconnu() -> None:
+    """Le cas d'usage d'ADR-0014 : la licence retrouvée, l'admin corrige le club inconnu."""
+    m = _monter()
+    club = m.clubs.ajouter(Club.creer("Arc Club Rennes"))
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None and archer.club_id is None
+    assert (
+        m.archers.modifier(archer.id, "Robin", "Jean", m.categorie_id, club.id).club_id == club.id
+    )
+
+
+def test_modifier_archer_detache_le_club() -> None:
+    """Repasser à « club inconnu » est possible : `club_id=None` détache (ADR-0014)."""
+    m = _monter()
+    club = m.clubs.ajouter(Club.creer("Arc Club Rennes"))
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id, club.id)
+    assert archer.id is not None
+    assert m.archers.modifier(archer.id, "Robin", "Jean", m.categorie_id, None).club_id is None
+
+
+def test_modifier_archer_a_l_identique_est_accepte() -> None:
+    """Réenregistrer un archer sans rien changer ne se signale pas lui-même comme homonyme.
+
+    Sans le `sauf=archer_id` de `_signaler_homonyme`, l'archer serait son propre doublon et
+    toute édition deviendrait impossible (patron `ServiceClubs.modifier`, E02US001).
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    assert m.archers.modifier(archer.id, "Robin", "Jean", m.categorie_id) == archer
+
+
+def test_modifier_archer_signale_un_homonyme() -> None:
+    """Éditer un archer **vers** l'identité d'un autre inscrit est signalé (E02US003)."""
+    m = _monter()
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+    autre = m.archers.ajouter(m.tournoi_id, "Martin", "Alice", m.categorie_id)
+    assert autre.id is not None
+    with pytest.raises(HomonymeArcher):
+        m.archers.modifier(autre.id, "Dupont", "Jean", m.categorie_id)
+
+
+def test_modifier_archer_confirme_accepte_l_homonyme() -> None:
+    """`autoriser_homonyme=True` : l'admin confirme deux personnes distinctes, comme à l'ajout."""
+    m = _monter()
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+    autre = m.archers.ajouter(m.tournoi_id, "Martin", "Alice", m.categorie_id)
+    assert autre.id is not None
+    edite = m.archers.modifier(autre.id, "Dupont", "Jean", m.categorie_id, autoriser_homonyme=True)
+    assert (edite.nom, edite.prenom) == ("Dupont", "Jean")
+
+
+def test_modifier_archer_ne_resignale_pas_un_homonyme_deja_confirme() -> None:
+    """Éditer autre chose que l'identité d'un homonyme **déjà confirmé** ne redemande rien.
+
+    Le fils a été inscrit sur confirmation (même nom, prénom et club que son père) ; corriger sa
+    seule catégorie ne fait apparaître aucun doublon nouveau. Re-signaler ici rejouerait
+    l'arbitrage à chaque édition, jusqu'à ce que l'admin confirme sans lire.
+    """
+    m = _monter()
+    club = m.clubs.ajouter(Club.creer("Arc Club Rennes"))
+    autre_categorie = m.categories.ajouter(Categorie.creer(m.tournoi_id, "Senior 2 H"))
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, club.id)
+    fils = m.archers.ajouter(
+        m.tournoi_id, "Dupont", "Jean", m.categorie_id, club.id, autoriser_homonyme=True
+    )
+    assert fils.id is not None and autre_categorie.id is not None
+    edite = m.archers.modifier(fils.id, "Dupont", "Jean", autre_categorie.id, club.id)
+    assert edite.categorie_id == autre_categorie.id
+
+
+def test_modifier_archer_signale_le_changement_de_categorie_d_un_archer_engage() -> None:
+    """Changer la catégorie d'un archer **qui a déjà tiré** est signalé (CA E02US003)."""
+    m = _monter()
+    autre_categorie = m.categories.ajouter(Categorie.creer(m.tournoi_id, "Senior 2 H"))
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None and autre_categorie.id is not None
+    m.archers.saisir_score(archer.id, 9)
+    with pytest.raises(ChangementCategorieArcherEngage):
+        m.archers.modifier(archer.id, "Robin", "Jean", autre_categorie.id)
+
+
+def test_modifier_archer_confirme_accepte_le_changement_de_categorie() -> None:
+    """`autoriser_changement_categorie=True` : l'admin corrige une catégorie mal saisie."""
+    m = _monter()
+    autre_categorie = m.categories.ajouter(Categorie.creer(m.tournoi_id, "Senior 2 H"))
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None and autre_categorie.id is not None
+    m.archers.saisir_score(archer.id, 9)
+    edite = m.archers.modifier(
+        archer.id, "Robin", "Jean", autre_categorie.id, autoriser_changement_categorie=True
+    )
+    assert edite.categorie_id == autre_categorie.id
+
+
+def test_modifier_archer_engage_sans_toucher_a_la_categorie_ne_signale_rien() -> None:
+    """Le signalement porte sur le **changement** de catégorie, pas sur l'archer engagé.
+
+    Corriger l'orthographe du nom d'un archer qui a tiré n'a rien à confirmer : sa catégorie
+    est la même qu'avant.
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robain", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.archers.saisir_score(archer.id, 9)
+    assert m.archers.modifier(archer.id, "Robin", "Jean", m.categorie_id).nom == "Robin"
+
+
+def test_modifier_archer_non_engage_change_de_categorie_sans_confirmation() -> None:
+    """Sans score, la catégorie s'édite librement : il n'y a rien qui puisse être faussé."""
+    m = _monter()
+    autre_categorie = m.categories.ajouter(Categorie.creer(m.tournoi_id, "Senior 2 H"))
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None and autre_categorie.id is not None
+    edite = m.archers.modifier(archer.id, "Robin", "Jean", autre_categorie.id)
+    assert edite.categorie_id == autre_categorie.id
+
+
+def test_modifier_archer_preserve_le_placement() -> None:
+    """Corriger l'état civil d'un archer placé ne le retire pas de sa cible (E02US003)."""
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.archers.placer(archer.id, 4)
+    assert m.archers.modifier(archer.id, "Robin", "Jeanne", m.categorie_id).cible == 4
+
+
+def test_modifier_archer_saisie_invalide_leve_avant_les_conflits() -> None:
+    """Une entrée invalide rend le 422 du domaine, pas un conflit — même ordre qu'à l'ajout."""
+    m = _monter()
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+    autre = m.archers.ajouter(m.tournoi_id, "Martin", "Alice", m.categorie_id)
+    assert autre.id is not None
+    with pytest.raises(PrenomArcherInvalide):
+        m.archers.modifier(autre.id, "Dupont", "   ", m.categorie_id)
+
+
+def test_supprimer_archer_retire_l_inscription() -> None:
+    """`supprimer` retire un archer ni placé ni engagé (E02US003)."""
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.archers.supprimer(archer.id)
+    assert m.inscrits.par_id(archer.id) is None
+    assert m.classement.pour_tournoi(m.tournoi_id).lignes == ()
+
+
+def test_supprimer_archer_inconnu_leve() -> None:
+    """Supprimer un archer inexistant lève `ArcherIntrouvable`."""
+    m = _monter()
+    with pytest.raises(ArcherIntrouvable):
+        m.archers.supprimer(404)
+
+
+def test_supprimer_archer_place_leve() -> None:
+    """Refus **définitif** tant que l'archer occupe une cible (CA E02US003)."""
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.archers.placer(archer.id, 4)
+    with pytest.raises(ArcherEngage):
+        m.archers.supprimer(archer.id)
+    assert m.inscrits.par_id(archer.id) is not None
+
+
+def test_supprimer_archer_avec_scores_leve() -> None:
+    """Refus **définitif** dès la première flèche : on ne cascade pas sur des scores saisis."""
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.archers.saisir_score(archer.id, 9)
+    with pytest.raises(ArcherEngage):
+        m.archers.supprimer(archer.id)
+    assert m.inscrits.par_id(archer.id) is not None
+
+
+def test_supprimer_archer_ignore_les_scores_des_autres() -> None:
+    """Le refus se juge sur les scores **de cet archer**, pas sur ceux du tournoi.
+
+    Sans ce filtre, la première flèche du tournoi rendrait tous les inscrits indéboulonnables.
+    """
+    m = _monter()
+    tireur = m.archers.ajouter(m.tournoi_id, "Martin", "Alice", m.categorie_id)
+    absent = m.archers.ajouter(m.tournoi_id, "Durand", "Bob", m.categorie_id)
+    assert tireur.id is not None and absent.id is not None
+    m.archers.saisir_score(tireur.id, 9)
+    m.archers.supprimer(absent.id)
+    assert m.inscrits.par_id(absent.id) is None
+
+
+def test_lister_archers_du_tournoi_trie_par_nom_et_prenom() -> None:
+    """L'écran d'admin liste les inscrits **du tournoi**, dans l'ordre où on les cherche à l'œil.
+
+    « Élan » entre « Dupont » et « Zola » : c'est le repli des accents (`cle_nom`) qui le place là.
+    Un tri sur le nom brut le renverrait après « Zola », en fin de liste.
+    """
+    m = _monter()
+    m.archers.ajouter(m.tournoi_id, "Zola", "Émile", m.categorie_id)
+    m.archers.ajouter(m.tournoi_id, "Élan", "Bruno", m.categorie_id)
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Paul", m.categorie_id)
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Anne", m.categorie_id)
+    autre_tournoi_id, autre_categorie_id = m.autre_tournoi()
+    m.archers.ajouter(autre_tournoi_id, "Aaron", "Zoé", autre_categorie_id)
+
+    listes = [(a.nom, a.prenom) for a in m.archers.lister(m.tournoi_id)]
+    assert listes == [("Dupont", "Anne"), ("Dupont", "Paul"), ("Élan", "Bruno"), ("Zola", "Émile")]
+
+
+def test_lister_archers_tournoi_inconnu_leve() -> None:
+    """Lister les archers d'un tournoi inexistant lève `TournoiIntrouvable`."""
+    m = _monter()
+    with pytest.raises(TournoiIntrouvable):
+        m.archers.lister(404)
 
 
 def test_classement_reflete_les_scores_saisis() -> None:

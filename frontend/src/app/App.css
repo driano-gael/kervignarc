@@ -355,6 +355,45 @@ button:disabled {
   font-size: 13px;
 }
 
+/* Écran d'administration des archers (E02US003) — liste, édition, désinscription. */
+.liste-archers {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.archer__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.archer__identite {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.archer__details {
+  flex: 1 1 auto;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.archer__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.archer__actions button {
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
 /* Liste des gabarits de salle (E01US007). */
 .liste-gabarits {
   margin: 8px 0 0;

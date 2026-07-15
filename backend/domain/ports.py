@@ -72,7 +72,16 @@ class ArcherRepository(Protocol):
         ...
 
     def enregistrer(self, archer: Archer) -> Archer:
-        """Met à jour un archer déjà persisté (ex. après placement) et le renvoie."""
+        """Met à jour un archer déjà persisté (placement, édition E02US003) et le renvoie."""
+        ...
+
+    def supprimer(self, archer_id: ArcherId) -> None:
+        """Supprime l'archer d'identifiant donné (existence garantie par l'appelant).
+
+        L'appelant s'est **aussi** assuré que l'archer n'est ni placé ni engagé (E02US003) :
+        `score.archer_id` est une FK sans `ON DELETE` (DETTE-001), donc une suppression qui
+        laisserait des scores derrière elle échouerait en base, pas ici.
+        """
         ...
 
 
@@ -219,6 +228,16 @@ class ScoreRepository(Protocol):
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Score]:
         """Renvoie tous les scores des archers d'un tournoi (liste éventuellement vide)."""
+        ...
+
+    def par_archer(self, archer_id: ArcherId) -> list[Score]:
+        """Renvoie les scores d'un archer (liste éventuellement vide).
+
+        Sert à savoir si un archer est **engagé** — a-t-il déjà tiré ? (E02US003 : refus de
+        suppression, signalement d'un changement de catégorie). Un port dédié plutôt qu'un filtre
+        sur `par_tournoi` : la question porte sur un archer, et la balayer depuis le tournoi
+        chargerait toutes les flèches de la compétition pour répondre « oui » à la première.
+        """
         ...
 
 

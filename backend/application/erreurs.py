@@ -66,6 +66,43 @@ class HomonymeArcher(ApplicationError):
     code = "homonyme_archer"
 
 
+class ChangementCategorieArcherEngage(ApplicationError):
+    """Édition suspendue : on change la catégorie d'un archer qui a déjà tiré (E02US003) → 409.
+
+    **Un signalement, pas un refus** — même protocole qu'`HomonymeArcher` (ADR-0015), et pour la
+    même raison : la machine constate un fait troublant, elle ne sait pas ce qu'il signifie. Changer
+    de catégorie en cours d'épreuve déplace l'archer d'un classement à l'autre avec ses flèches
+    déjà tirées ; c'est le plus souvent une erreur, mais c'est parfois exactement la correction
+    attendue (catégorie mal saisie au guichet, découverte à la première volée). Figer la catégorie
+    à la première flèche rendrait cette erreur-là inrattrapable ; l'admin tranche via
+    `ServiceArchers.modifier(autoriser_changement_categorie=True)`.
+
+    Ne se déclenche que sur un **changement** de catégorie : éditer le nom d'un archer engagé ne
+    fausse aucun classement et n'a rien à confirmer.
+    """
+
+    code = "changement_categorie_archer_engage"
+
+
+class ArcherEngage(ApplicationError):
+    """Suppression refusée : l'archer est placé ou a déjà tiré (E02US003) → 409.
+
+    **Refus définitif**, qu'aucune confirmation ne lève — contrairement aux deux signalements
+    ci-dessus. Même parti que `ClubReference` / `BlasonReference` : on refuse plutôt que de cascader
+    silencieusement, ici sur un placement et des flèches saisies. Le CA offrait l'alternative
+    « confirmation + recalcul » ; elle a été écartée le 15/07/2026 (voir `stories/E02-inscriptions`)
+    faute d'avoir quoi que ce soit à recalculer avant E03.
+
+    # DETTE-006 : la porte de sortie que nomme le message — retirer le placement, effacer les
+    # scores — n'est **pas ouverte**. `placer` n'accepte qu'une cible ≥ 1 et aucun cas d'usage
+    # n'efface un score : ces gestes appartiennent à E03 (placement) et E04 (saisie). Un archer
+    # placé ou engagé est donc, aujourd'hui, définitivement non supprimable, et le message
+    # prescrit une action impossible. À reprendre quand chacune ouvrira sa moitié de la porte.
+    """
+
+    code = "archer_engage"
+
+
 class ClubIntrouvable(ApplicationError):
     """Aucun club ne correspond à l'identifiant demandé."""
 

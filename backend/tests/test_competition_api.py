@@ -251,3 +251,212 @@ def test_inscrire_un_homonyme_rend_409_puis_passe_sur_confirmation(
         )
         assert confirme.status_code == 201, confirme.text
         assert confirme.json()["id"] != premier.json()["id"]
+
+
+def _inscrire(client: TestClient, tournoi_id: int, categorie_id: int, nom: str, prenom: str) -> int:
+    """Inscrit un archer et renvoie son identifiant."""
+    reponse = client.post(
+        f"/api/v1/tournois/{tournoi_id}/archers",
+        json={"nom": nom, "prenom": prenom, "categorie_id": categorie_id},
+    )
+    assert reponse.status_code == 201, reponse.text
+    return int(reponse.json()["id"])
+
+
+def test_lister_archers_trie_et_reste_ouvert_en_lecture(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La liste des inscrits est triée par nom puis prénom, et lisible sans session (E02US003)."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        _inscrire(client, tournoi_id, categorie_id, "Zola", "Émile")
+        _inscrire(client, tournoi_id, categorie_id, "Élan", "Bruno")
+        _inscrire(client, tournoi_id, categorie_id, "Dupont", "Paul")
+        _inscrire(client, tournoi_id, categorie_id, "Dupont", "Anne")
+        del client.headers["Authorization"]
+
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/archers")
+
+    assert reponse.status_code == 200, reponse.text
+    assert [(a["nom"], a["prenom"]) for a in reponse.json()] == [
+        ("Dupont", "Anne"),
+        ("Dupont", "Paul"),
+        ("Élan", "Bruno"),
+        ("Zola", "Émile"),
+    ]
+
+
+def test_lister_archers_tournoi_inconnu_404(app_competition: FastAPI) -> None:
+    """Lister les archers d'un tournoi inexistant → 404, pas une liste vide."""
+    with TestClient(app_competition) as client:
+        reponse = client.get("/api/v1/tournois/999/archers")
+    assert reponse.status_code == 404
+    assert reponse.json()["code"] == "tournoi_introuvable"
+
+
+def test_modifier_archer_corrige_les_champs_et_diffuse(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """PUT remplace les quatre champs éditables et diffuse l'écriture aux abonnés (E02US003)."""
+    with TestClient(app_competition) as client, client.websocket_connect("/ws") as ws:
+        assert ws.receive_json()["type"] == "connected"
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        club = client.post("/api/v1/clubs", json={"nom": "Arc Club Rennes"}).json()
+        archer_id = _inscrire(client, tournoi_id, categorie_id, "Robain", "Jean")
+        # Quatre écritures ont précédé (tournoi, catégorie, club, inscription) : on consomme
+        # leurs quatre événements **nommément**. Un drainage « jusqu'au premier » en laisserait
+        # trois en file, et l'assertion d'après lirait l'événement du tournoi en croyant tenir
+        # celui du PUT — elle passerait au vert sans rien prouver.
+        for _ in range(4):
+            assert ws.receive_json()["type"] == "donnees_modifiees"
+
+        reponse = client.put(
+            f"/api/v1/archers/{archer_id}",
+            json={
+                "nom": "Robin",
+                "prenom": "Jeanne",
+                "categorie_id": categorie_id,
+                "club_id": club["id"],
+            },
+        )
+        assert ws.receive_json()["type"] == "donnees_modifiees"
+
+    assert reponse.status_code == 200, reponse.text
+    assert (reponse.json()["nom"], reponse.json()["prenom"]) == ("Robin", "Jeanne")
+    assert reponse.json()["club_id"] == club["id"]
+
+
+def test_modifier_archer_inconnu_404(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Éditer un archer inexistant → 404 avec le code applicatif typé."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        reponse = client.put(
+            "/api/v1/archers/999",
+            json={"nom": "Robin", "prenom": "Jean", "categorie_id": categorie_id},
+        )
+    assert reponse.status_code == 404
+    assert reponse.json()["code"] == "archer_introuvable"
+
+
+def test_modifier_archer_homonyme_409_puis_passe_sur_confirmation(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le protocole en deux temps d'ADR-0015 vaut aussi à l'édition (E02US003)."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        _inscrire(client, tournoi_id, categorie_id, "Dupont", "Jean")
+        autre_id = _inscrire(client, tournoi_id, categorie_id, "Martin", "Alice")
+        corps = {"nom": "Dupont", "prenom": "Jean", "categorie_id": categorie_id}
+
+        signale = client.put(f"/api/v1/archers/{autre_id}", json=corps)
+        assert signale.status_code == 409
+        assert signale.json()["code"] == "homonyme_archer"
+
+        confirme = client.put(
+            f"/api/v1/archers/{autre_id}", json={**corps, "autoriser_homonyme": True}
+        )
+
+    assert confirme.status_code == 200, confirme.text
+    assert confirme.json()["prenom"] == "Jean"
+
+
+def test_modifier_categorie_d_un_archer_engage_409_puis_passe_sur_confirmation(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Changer la catégorie d'un archer qui a tiré est signalé, puis accepté (CA E02US003)."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        autre_categorie = client.post(
+            f"/api/v1/tournois/{tournoi_id}/categories", json={"libelle": "Senior 2 H"}
+        ).json()
+        archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
+        client.post(f"/api/v1/archers/{archer_id}/scores", json={"points": 9})
+        corps = {"nom": "Robin", "prenom": "Jean", "categorie_id": autre_categorie["id"]}
+
+        signale = client.put(f"/api/v1/archers/{archer_id}", json=corps)
+        assert signale.status_code == 409
+        assert signale.json()["code"] == "changement_categorie_archer_engage"
+
+        confirme = client.put(
+            f"/api/v1/archers/{archer_id}",
+            json={**corps, "autoriser_changement_categorie": True},
+        )
+
+    assert confirme.status_code == 200, confirme.text
+    assert confirme.json()["categorie_id"] == autre_categorie["id"]
+
+
+def test_supprimer_archer_rend_204_et_le_retire_du_classement(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """DELETE désinscrit un archer ni placé ni engagé → 204, et il quitte le classement."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
+
+        reponse = client.delete(f"/api/v1/archers/{archer_id}")
+        restants = client.get(f"/api/v1/tournois/{tournoi_id}/archers").json()
+
+    assert reponse.status_code == 204, reponse.text
+    assert restants == []
+
+
+def test_supprimer_archer_place_rend_409(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Refus définitif tant que l'archer occupe une cible (CA E02US003)."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
+        client.post(f"/api/v1/archers/{archer_id}/placement", json={"cible": 3})
+
+        reponse = client.delete(f"/api/v1/archers/{archer_id}")
+
+    assert reponse.status_code == 409
+    assert reponse.json()["code"] == "archer_engage"
+
+
+def test_supprimer_archer_avec_scores_rend_409_pas_500(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le service refuse **avant** la base : la FK sans cascade (DETTE-001) rendrait un 500.
+
+    C'est l'intérêt du contrôle applicatif : sans lui, `session.delete` échouerait sur
+    `score.archer_id` et le bénévole recevrait « erreur interne » au lieu d'une consigne.
+    """
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
+        client.post(f"/api/v1/archers/{archer_id}/scores", json={"points": 9})
+
+        reponse = client.delete(f"/api/v1/archers/{archer_id}")
+
+    assert reponse.status_code == 409
+    assert reponse.json()["code"] == "archer_engage"
+
+
+@pytest.mark.parametrize(
+    ("methode", "chemin", "corps"),
+    [
+        ("put", "/api/v1/archers/1", {"nom": "Robin", "prenom": "Jean", "categorie_id": 1}),
+        ("delete", "/api/v1/archers/1", None),
+    ],
+)
+def test_action_admin_sur_archer_refusee_sans_session(
+    app_competition: FastAPI, methode: str, chemin: str, corps: dict[str, object] | None
+) -> None:
+    """Éditer et désinscrire sont des écritures : sans session admin → 401 (E10US001)."""
+    with TestClient(app_competition) as client:
+        reponse = client.request(methode.upper(), chemin, json=corps)
+    assert reponse.status_code == 401
+    assert reponse.json()["code"] == "non_authentifie"

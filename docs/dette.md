@@ -37,7 +37,8 @@
 | [DETTE-002](#dette-002--hauteur-de-blason-non-modélisée) | conception | majeur | `backend/domain/blason.py`, `docs/modele-de-donnees.md` | `Blason` modélise l'occupation d'une cible par une `taille` (fraction) + `capacite`, mais **pas la hauteur du centre** — 110 cm pour le blason 80 cm des U11 contre 130 cm pour tous les autres (FFTA B.2.2.1.1, C.3.1.1) | Le placement automatique (EPIC-03) pourra composer une butte physiquement intirable : un U11 et des adultes sur la même cible passent le contrôle « somme des fractions ≤ capacité » alors que leurs blasons ne peuvent pas coexister | E01US005 (blasons) ; constatée au cadrage FFTA du 14/07/2026 | E03US001 (placement automatique) — **avant** d'écrire l'algorithme |
 | [DETTE-003](#dette-003--config-de-phase-à-plat-au-lieu-de-configpolicies) | conception | majeur | `backend/infrastructure/db/repositories.py` (`_config_phase`, `_vers_phase`), `docs/modele-de-donnees.md` | La `config` d'une phase écrit ses politiques **à plat à la racine** (`config.scoring`, `config.validation`) alors que le modèle cible (ADR-0004) les range sous `config.policies` ; et `scoring` y est un **objet paramétré** au lieu d'un **nom de preset** | Deux conventions coexistent pour le même champ. Le moteur (EPIC-05) devra soit adopter la forme à plat — et renoncer au modèle cible — soit migrer les `config` déjà écrites : c'est une décision reportée, pas évitée | E01US009 (forme posée) ; suivie par E01US015 (`config.validation`), qui s'y aligne plutôt que d'introduire une 2ᵉ convention | E05US004 (assembler les politiques) — **avant** d'écrire le moteur |
 | [DETTE-005](#dette-005--conversion-euroscentimes-sans-aucun-test) | technique | majeur | `frontend/src/features/competition/format.ts` | La conversion **euros ↔ centimes** — seul convertisseur d'argent de l'application ([ADR-0012](adr/0012-argent-en-centimes-entiers.md)) — n'a **aucun test** : le front n'a pas de runner (`package.json` : ni `vitest`, ni script `test`) | Une régression silencieuse fausse **le montant dû** (EF-8.1) : inverser `padEnd`/`padStart` transforme 8,10 € en 8,01 € sans que rien ne bronche. Le code est juste aujourd'hui ; c'est sa **non-régression** qui n'est protégée par rien | E01US010 (1ʳᵉ logique pure du front) ; absence de runner préexistante (E00US002 n'outille que lint/format) | E00US014 (runner de test front) — **avant** E08US001, qui consommera le tarif |
-| [DETTE-004](#dette-004--messageerreur-dupliqué-dans-chaque-feature-front) | conception | mineur | `frontend/src/features/*/` (9 occurrences) | Le composant `MessageErreur` est copié **à l'identique** dans chaque feature — même signature, même corps, mêmes classes — au lieu de vivre dans `shared/` | Tout changement du rendu d'erreur (ex. le token d'alerte **ambre** du CDC design, `DV-03`) se fait en 9 endroits, avec le risque d'en oublier un : les erreurs sont précisément ce que l'utilisateur voit quand ça va mal | E00US011 puis chaque feature (`admin`, `bareme`, `blasons`, `categories`, `competition`, `gabarits` ×2) ; **aggravée** par E01US015 (8ᵉ copie) puis E02US001 (9ᵉ copie) | E00US013 (factoriser les briques d'UI partagées) |
+| [DETTE-004](#dette-004--messageerreur-dupliqué-dans-chaque-feature-front) | conception | mineur | `frontend/src/features/*/` (10 occurrences) | Le composant `MessageErreur` est copié **à l'identique** dans chaque feature — même signature, même corps, mêmes classes — au lieu de vivre dans `shared/` | Tout changement du rendu d'erreur (ex. le token d'alerte **ambre** du CDC design, `DV-03`) se fait en 10 endroits, avec le risque d'en oublier un : les erreurs sont précisément ce que l'utilisateur voit quand ça va mal | E00US011 puis chaque feature (`admin`, `bareme`, `blasons`, `categories`, `competition`, `gabarits` ×2) ; **aggravée** par E01US015 (8ᵉ copie), E02US001 (9ᵉ copie) puis E02US003 (10ᵉ copie, feature `archers`) | E00US013 (factoriser les briques d'UI partagées) |
+| [DETTE-006](#dette-006--un-archer-placé-ou-engagé-est-définitivement-non-supprimable) | conception | majeur | `backend/application/archers.py` (`ArcherEngage`), `backend/application/erreurs.py` | Le refus de supprimer un archer placé ou engagé (E02US003) nomme une porte de sortie — « retirez-le de son placement », « effacez ses scores » — qu'**aucun cas d'usage n'ouvre** : `placer` n'accepte qu'une cible ≥ 1 (pas de dé-placement) et rien n'efface un score | Un archer placé ou ayant tiré est **définitivement** indéboulonnable. Le message prescrit un geste que l'utilisateur ne peut pas accomplir : il lit une consigne, la cherche, ne la trouve pas | E02US003 (le refus naît avec l'US ; l'absence des deux gestes préexiste — walking skeleton E00US011) | E03 (retrait de placement) et E04 (correction/effacement de scores) — chacune ouvre **sa** moitié de la porte |
 
 ## Dette résorbée
 
@@ -181,7 +182,7 @@ structurante ⇒ **ADR** (qui amendera ou remplacera l'ADR-0011).
 
 ### DETTE-004 — `MessageErreur` dupliqué dans chaque feature front
 
-**Constat.** Neuf features déclarent chacune leur `MessageErreur`, copie conforme :
+**Constat.** Dix features déclarent chacune leur `MessageErreur`, copie conforme :
 
 ```tsx
 function MessageErreur({ erreur }: { erreur: Error | null }) {
@@ -191,24 +192,27 @@ function MessageErreur({ erreur }: { erreur: Error | null }) {
 }
 ```
 
-Occurrences : `admin/ConnexionAdmin.tsx`, `bareme/BaremeQualification.tsx`, `blasons/Blasons.tsx`,
-`categories/Categories.tsx`, `clubs/Clubs.tsx`, `competition/TrancheVerticale.tsx`,
-`gabarits/Gabarits.tsx`, `gabarits/PlanDeSalle.tsx`, `grain-validation/GrainValidation.tsx`. Même
-signature, même corps, mêmes classes CSS, même `role="alert"`.
+Occurrences : `admin/ConnexionAdmin.tsx`, `archers/Archers.tsx`, `bareme/BaremeQualification.tsx`,
+`blasons/Blasons.tsx`, `categories/Categories.tsx`, `clubs/Clubs.tsx`,
+`competition/TrancheVerticale.tsx`, `gabarits/Gabarits.tsx`, `gabarits/PlanDeSalle.tsx`,
+`grain-validation/GrainValidation.tsx`. Même signature, même corps, mêmes classes CSS, même
+`role="alert"`.
 
 **Conséquence.** Le rendu des erreurs n'a pas de point unique. Le CDC design impose que l'**alerte
 soit ambre** et que les couleurs sémantiques appartiennent au produit (`DV-03`) : appliquer ce token
-demandera neuf modifications identiques, et il suffit d'en manquer une pour qu'un écran mente sur la
+demandera dix modifications identiques, et il suffit d'en manquer une pour qu'un écran mente sur la
 gravité de ce qu'il affiche. Or l'erreur est exactement ce que l'utilisateur regarde quand la
 journée déraille.
 
-> **E02US002 n'ajoute pas de 10ᵉ copie, mais ouvre un rendu d'erreur *hors* `MessageErreur`** :
-> le bloc de confirmation d'homonyme de `competition/TrancheVerticale.tsx` (`role="alert"`, avec un
-> bouton « Inscrire quand même ») est **actionnable** et volontairement **neutre** — un doublon
-> probable n'est pas une erreur, l'inscription reste possible —, d'où l'absence du modificateur
-> `--erreur`. **E00US013 ne le trouvera pas** en cherchant `MessageErreur` : il n'est pas une copie.
-> À traiter avec la même résorption (soit un `MessageErreur` acceptant des enfants, soit un
-> composant frère assumé), sans quoi le token ambre s'appliquera à neuf endroits sur dix.
+> **Les blocs de confirmation *hors* `MessageErreur` sont le vrai piège de cette dette.** E02US002 en
+> a ouvert un : le bloc d'homonyme de `competition/TrancheVerticale.tsx` (`role="alert"` + bouton
+> « Inscrire quand même »), **actionnable** et volontairement **neutre** — un doublon probable n'est
+> pas une erreur —, d'où l'absence du modificateur `--erreur`. E02US003 en ajoute **deux** dans
+> `archers/Archers.tsx` (« Enregistrer quand même », « Changer quand même de catégorie »), de la même
+> famille. **E00US013 ne les trouvera pas** en cherchant `MessageErreur` : ce ne sont pas des copies.
+> Ils sont désormais **trois**, dans deux features, et se ressemblent assez pour mériter le même
+> traitement que les copies (soit un `MessageErreur` acceptant des enfants, soit un composant frère
+> assumé) — sans quoi le token ambre s'appliquera à dix endroits sur treize.
 
 **Rythme d'aggravation.** Une copie par feature créée : c'est mécanique, et E02US001 le confirme
 (9ᵉ). Chaque US de configuration qui ouvre un écran en ajoutera une tant qu'E00US013 n'est pas
@@ -263,6 +267,49 @@ l'ajouter à la CI bloquante (E00US003) et à [`dependances.md`](dependances.md)
 `format.ts` — `0`, `« 8 »`, `« 8,1 »`, `« 8,10 »`, `« 0,05 »`, point vs virgule, rejets (`8,105`,
 `-8`, `huit`, `8,`), et **stabilité de l'aller-retour**. À faire **avant E08US001**, qui consommera
 le tarif pour calculer les montants dus. Marqueur `DETTE-005` posé en tête de `format.ts`.
+
+### DETTE-006 — un archer placé ou engagé est définitivement non supprimable
+
+**Constat.** E02US003 refuse de désinscrire un archer **placé** (il occupe une cible) ou **engagé**
+(il a tiré) — `ArcherEngage` → 409, sur le patron constant du projet : on refuse plutôt que de
+cascader en silence sur un placement construit et des flèches saisies. Le refus est délibéré et le
+message dit quoi faire d'abord :
+
+> « Bob Durand » est placé sur la cible 3 ; **retirez-le de son placement** avant de le supprimer.
+> « Alice Martin » a déjà tiré ; **effacez ses scores** avant de le supprimer.
+
+Or **aucun de ces deux gestes n'existe**. `ServiceArchers.placer` n'accepte qu'une cible ≥ 1
+(`Archer.placer` lève `CibleInvalide` en deçà) : il n'y a pas de dé-placement. Et aucun cas d'usage
+n'efface un score — `ScoreRepository` n'expose que `ajouter`, `par_tournoi` et `par_archer`.
+
+**Conséquence.** Le message **prescrit une action impossible**. Un archer qui a reçu une cible ou
+une seule flèche ne peut plus jamais être retiré de la liste : le bénévole lit une consigne, la
+cherche à l'écran, ne la trouve nulle part. C'est l'anti-patron exact de l'erreur utile — dire quoi
+faire, puis ne pas le rendre faisable.
+
+**Pourquoi non corrigée dans l'US.** Les deux gestes manquants appartiennent à d'autres US, et les
+construire ici serait bâtir sur du sable :
+
+- le **placement** d'aujourd'hui est celui du walking skeleton (E00US011) — « un simple numéro », que
+  EPIC-03 remplacera par le vrai moteur (capacité 1/2/4, ≥ 2 clubs par cible, blason = fraction de
+  place). Un `retirer_placement` écrit maintenant viserait un modèle qui n'existera plus ;
+- **effacer un score** est le métier d'E04 (saisie, correction, validation), avec ses propres règles
+  — une flèche validée ne s'efface pas comme une flèche en cours de saisie. L'inventer ici, sans le
+  grain de validation, produirait une règle fausse.
+
+L'alternative aurait été de **cascader** (supprimer l'archer emporte son placement et ses scores) :
+écartée à l'arbitrage du 15/07/2026 (cf. [`stories/E02-inscriptions.md`](../../stories/E02-inscriptions.md),
+E02US003) — le CA proposait « confirmation + recalcul », mais il n'y a rien à recalculer avant E03,
+et `score.archer_id` étant une FK sans `ON DELETE` ([DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée)),
+la purge serait à écrire à la main.
+
+**Ce que la dette n'est pas.** Le refus lui-même est **juste** et vérifié (`ArcherEngage` → 409, et
+non le 500 qu'aurait rendu la FK). Ce qui manque n'est pas un garde-fou : c'est sa sortie.
+
+**Résorption.** E03 (retrait d'un placement) et E04 (correction/effacement d'un score) ouvrent chacune
+**sa** moitié de la porte ; la dette ne se solde qu'à la seconde. Chacune devra **reprendre le message**
+d'`ArcherEngage` pour qu'il désigne le geste réellement offert. Marqueur `DETTE-006` posé sur
+`ArcherEngage` (`backend/application/erreurs.py`) et sur `ServiceArchers.supprimer`.
 
 ## Procédure — inscrire une dette
 
