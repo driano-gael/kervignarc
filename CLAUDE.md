@@ -101,6 +101,19 @@ prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et s
 9. **Tests.** Unitaires en priorité sur le domaine (couverture élevée), intégration sur les adapters
    et endpoints, déterministes (pas d'horloge ni d'aléa non maîtrisé). **L'oracle 120** (rejeu du
    tournoi de `Tableaux.xlsx`) doit rester vert.
+   **Le test dérive du CA, jamais du code déjà écrit.** Ce qui empêche un test de consacrer un bug,
+   ce n'est pas l'identité de son auteur — le même agent implémente et teste — c'est la **source**
+   dont il dérive. Un test rédigé après coup en lisant l'implémentation ne fait que décrire
+   l'implémentation : si le CA a été mal compris, le test entérine le malentendu, et un relecteur
+   à qui l'on donnerait le même code en déduirait la même intention. D'où :
+   - **Domaine & service** (là où vit la règle métier) : tests écrits **depuis le CA**
+     (`stories/Exx-*.md`, [`docs/fonctionnel/`](docs/fonctionnel/)) **avant** d'implémenter.
+   - **API, repository, câblage** : tests après l'implémentation — il n'y a pas d'oracle en jeu.
+   - **Non-régression** : l'oracle *est* le comportement actuel ; l'implémenteur est le meilleur
+     auteur, il connaît les coutures. Aucune indépendance à aller chercher.
+   - **Ne pas réussir à écrire le test depuis le CA est le signal que le CA est ambigu** — pas une
+     invitation à deviner. C'est un arbitrage : questionner l'utilisateur **avant** d'implémenter
+     (cf. § Workflow). Le flou se voit en rédigeant le test, pas à mi-parcours du code.
 10. **Front React.** État serveur via React Query, état UI local via Zustand, organisation **par
     features** (pas par type technique). Ergonomie tactile prioritaire sur l'écran de saisie +
     indicateur de connexion visible.
