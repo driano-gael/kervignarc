@@ -15,6 +15,7 @@ import { BaremeQualification } from '../bareme/BaremeQualification'
 import { GrainValidation } from '../grain-validation/GrainValidation'
 import { Blasons } from '../blasons/Blasons'
 import { Categories } from '../categories/Categories'
+import { useCategories } from '../categories/hooks'
 import { Clubs } from '../clubs/Clubs'
 import { useClubs } from '../clubs/hooks'
 import { Gabarits } from '../gabarits/Gabarits'
@@ -474,25 +475,51 @@ function CycleDeVie({ tournoi }: { tournoi: Tournoi }) {
   )
 }
 
-// Le **club est facultatif** ici (E02US001) : E02US002 le rendra obligatoire, avec le prénom et la
-// catégorie. On le propose dès maintenant par une liste déroulante alimentée par le référentiel —
-// saisir le club en texte libre est précisément ce que l'US supprime (« sans ressaisie »), et c'est
-// ce rattachement qui rend exerçable le refus de supprimer un club utilisé.
+// Inscription d'un archer (E02US002). Deux asymétries à ne pas « corriger » par mégarde :
+//
+//  - la **catégorie est obligatoire** (sans elle, l'archer n'est ni classable ni plaçable) tandis
+//    que le **club ne l'est pas** : « Club inconnu » veut dire « pas encore su », jamais « aucun
+//    club » — en FFTA tout licencié en a un (ADR-0014). On inscrit quand même, et on le signale ;
+//  - un homonyme est **signalé, pas refusé** : le backend rend 409 `homonyme_archer`, l'admin
+//    tranche (père et fils portent les mêmes nom, prénom et club). Le second envoi porte la
+//    confirmation. C'est le serveur qui arbitre — un simple avertissement d'UI se contournerait.
 function InscriptionArcher({ tournoiId }: { tournoiId: number }) {
   const [nomArcher, setNomArcher] = useState('')
+  const [prenomArcher, setPrenomArcher] = useState('')
   const [clubId, setClubId] = useState('')
+  const [categorieId, setCategorieId] = useState('')
   const clubs = useClubs()
+  const categories = useCategories(tournoiId)
   const ajouter = useAjouterArcher(tournoiId)
+
+  const incomplet = nomArcher.trim() === '' || prenomArcher.trim() === '' || categorieId === ''
+  const homonymeSignale =
+    ajouter.error instanceof ErreurApi && ajouter.error.code === 'homonyme_archer'
+
+  const inscrire = (autoriserHomonyme: boolean) => {
+    ajouter.mutate(
+      {
+        nom: nomArcher,
+        prenom: prenomArcher,
+        categorie_id: Number(categorieId),
+        club_id: clubId === '' ? null : Number(clubId),
+        autoriser_homonyme: autoriserHomonyme,
+      },
+      // Ni le club ni la catégorie ne sont réinitialisés : on inscrit souvent plusieurs archers
+      // du même club et de la même catégorie à la suite, à la table d'inscription.
+      {
+        onSuccess: () => {
+          setNomArcher('')
+          setPrenomArcher('')
+        },
+      },
+    )
+  }
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
-    if (nomArcher.trim() === '') return
-    ajouter.mutate(
-      { nom: nomArcher, club_id: clubId === '' ? null : Number(clubId) },
-      // Le club **n'est pas** réinitialisé : on inscrit souvent plusieurs archers du même club
-      // à la suite, à la table d'inscription.
-      { onSuccess: () => setNomArcher('') },
-    )
+    if (incomplet) return
+    inscrire(false)
   }
 
   return (
@@ -505,24 +532,58 @@ function InscriptionArcher({ tournoiId }: { tournoiId: number }) {
           placeholder="Nom de l'archer"
           aria-label="Nom de l'archer"
         />
+        <input
+          className="formulaire__champ"
+          value={prenomArcher}
+          onChange={(e) => setPrenomArcher(e.target.value)}
+          placeholder="Prénom de l'archer"
+          aria-label="Prénom de l'archer"
+        />
+        <select
+          className="formulaire__champ"
+          value={categorieId}
+          onChange={(e) => setCategorieId(e.target.value)}
+          aria-label="Catégorie de l'archer"
+        >
+          <option value="">Choisir une catégorie…</option>
+          {(categories.data ?? []).map((categorie) => (
+            <option key={categorie.id} value={categorie.id}>
+              {categorie.libelle}
+            </option>
+          ))}
+        </select>
         <select
           className="formulaire__champ"
           value={clubId}
           onChange={(e) => setClubId(e.target.value)}
           aria-label="Club de l'archer"
         >
-          <option value="">Sans club</option>
+          <option value="">Club inconnu</option>
           {(clubs.data ?? []).map((club) => (
             <option key={club.id} value={club.id}>
               {club.nom}
             </option>
           ))}
         </select>
-        <button type="submit" disabled={ajouter.isPending || nomArcher.trim() === ''}>
+        <button type="submit" disabled={ajouter.isPending || incomplet}>
           Inscrire
         </button>
       </form>
-      <MessageErreur erreur={ajouter.error} />
+      {(categories.data ?? []).length === 0 && (
+        <p className="carte__etat">
+          Aucune catégorie dans ce tournoi : créez-en une avant d'inscrire un archer.
+        </p>
+      )}
+      {homonymeSignale ? (
+        <div className="carte__etat" role="alert">
+          <p>{ajouter.error?.message}</p>
+          <button type="button" onClick={() => inscrire(true)} disabled={ajouter.isPending}>
+            Inscrire quand même
+          </button>
+        </div>
+      ) : (
+        <MessageErreur erreur={ajouter.error} />
+      )}
     </>
   )
 }

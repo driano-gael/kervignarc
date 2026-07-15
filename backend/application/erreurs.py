@@ -47,6 +47,23 @@ class ArcherIntrouvable(ApplicationError):
     code = "archer_introuvable"
 
 
+class HomonymeArcher(ApplicationError):
+    """Inscription suspendue : un archer de même nom, prénom et club existe déjà (E02US002) → 409.
+
+    **Un signalement, pas un refus.** Deux archers réels peuvent porter les mêmes nom, prénom et
+    club (un père et son fils, cas courant en compétition de club) : les rejeter interdirait une
+    inscription légitime, le jour J, au guichet. L'admin trancher : réinscrire le même archer par
+    mégarde, ou confirmer l'homonyme via `ServiceArchers.ajouter(autoriser_homonyme=True)`.
+
+    D'où l'absence de contrainte `UNIQUE` correspondante en base : elle rejetterait le fils sans
+    recours. Le contrôle vit ici, et il suffit — le **writer unique** (règle 7, ADR-0005) sérialise
+    les écritures, donc aucune création concurrente ne peut se glisser entre ce test et l'insertion.
+    Comparaison au sens de `domain.archer.cle_identite` (casse et accents repliés).
+    """
+
+    code = "homonyme_archer"
+
+
 class ClubIntrouvable(ApplicationError):
     """Aucun club ne correspond à l'identifiant demandé."""
 
@@ -80,6 +97,19 @@ class CategorieIntrouvable(ApplicationError):
     """Aucune catégorie ne correspond à l'identifiant demandé."""
 
     code = "categorie_introuvable"
+
+
+class CategorieHorsTournoi(ApplicationError):
+    """Catégorie d'un archer incohérente : inexistante ou rattachée à un autre tournoi → 409.
+
+    Règle inter-agrégats (E02US002), calquée sur `BlasonHorsTournoi` : un archer ne peut tirer que
+    dans une catégorie **du tournoi où il est inscrit**. Comme pour le blason, l'inexistant et le
+    hors-tournoi rendent la **même** erreur : du point de vue de ce tournoi, une catégorie d'un
+    autre tournoi n'existe pas davantage qu'un identifiant inventé, et distinguer les deux
+    apprendrait au client ce qui vit dans les tournois voisins.
+    """
+
+    code = "categorie_hors_tournoi"
 
 
 class BlasonIntrouvable(ApplicationError):

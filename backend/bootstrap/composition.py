@@ -152,8 +152,15 @@ def create_app(
     app.state.service_grain_validation = ServiceGrainValidation(
         tournoi_repository, phase_repository
     )
+    # Inscription d'un archer (E02US002) : le service valide le tournoi, sa **catégorie** (qui doit
+    # être du même tournoi) et son club de rattachement s'il est fourni — d'où quatre ports pour un
+    # seul agrégat. Le club reste facultatif (`NULL` = inconnu, ADR-0014), la catégorie non.
     app.state.service_archers = ServiceArchers(
-        tournoi_repository, archer_repository, score_repository, club_repository
+        tournoi_repository,
+        archer_repository,
+        score_repository,
+        club_repository,
+        categorie_repository,
     )
     app.state.service_classement = ServiceClassement(
         tournoi_repository, archer_repository, score_repository

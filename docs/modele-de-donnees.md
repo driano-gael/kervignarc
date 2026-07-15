@@ -113,20 +113,34 @@ erDiagram
 | tournoi_id | INTEGER | FK → TOURNOI, NOT NULL |
 | nom | TEXT | NOT NULL |
 | prenom | TEXT | NOT NULL |
-| club_id | INTEGER | FK → CLUB, **nullable** tant que E02US002 n'a pas rendu le club obligatoire |
-| categorie_id | INTEGER | FK → CATEGORIE |
-| _index_ | | UNIQUE(tournoi_id, nom, prenom, club_id) pour dédoublonnage |
+| club_id | INTEGER | FK → CLUB, **nullable** — `NULL` = club *inconnu*, jamais « aucun club » ([ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md)) |
+| categorie_id | INTEGER | FK → CATEGORIE, **NOT NULL** |
 
-> **`club_id` posé par E02US001** (migration `0014`), facultatif à ce stade. Le rattachement est
-> arrivé avec le **référentiel** plutôt qu'avec l'inscription complète (E02US002) parce qu'il est ce
-> qui rend le CA « un club utilisé n'est pas supprimable » **exerçable** : sans lui, le refus
-> (`ClubReference` → 409) n'aurait été qu'un garde-fou qu'aucun chemin réel ne déclenche. E02US002
-> le rendra `NOT NULL`, en même temps qu'il ajoutera `prenom`, `categorie_id` et l'index ci-dessus.
+> **`club_id` posé par E02US001** (migration `0014`) ; `prenom` et `categorie_id` par E02US002
+> (migration `0015`). Le rattachement au club est arrivé avec le **référentiel** plutôt qu'avec
+> l'inscription complète parce qu'il est ce qui rend le CA « un club utilisé n'est pas supprimable »
+> **exerçable** : sans lui, le refus (`ClubReference` → 409) n'aurait été qu'un garde-fou qu'aucun
+> chemin réel ne déclenche.
 >
-> Cette FK est **hors du périmètre de [DETTE-001](dette.md)**, à la différence des autres FK
-> d'`ARCHER` : elle pointe vers `CLUB`, qui n'est pas dans la descendance de `TOURNOI`. Supprimer un
-> tournoi (donc ses archers) ne la viole jamais — c'est le sens inverse qu'elle contraint, et ce
-> cas-là est **tranché** par le service, comme l'est déjà `CATEGORIE.blason_id`.
+> **`club_id` reste nullable, `categorie_id` ne l'est pas** — asymétrie décidée en
+> [ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md) : le club est une donnée
+> administrative externe qu'on ignore parfois au guichet (mais que la FFTA impose : le `NULL` est
+> une **anomalie à résorber**, signalée à l'écran et comptée par E12US005), là où la catégorie se lit
+> sur l'archer présent et commande classement, placement et facturation. **Aucun club « Sans club »
+> ne doit être introduit** pour combler les `NULL` : deux archers y porteraient le même `club_id` et
+> le placement (E03US006, RG-3) les croirait du même club — voir l'ADR.
+>
+> **Pas d'index UNIQUE de dédoublonnage** (le modèle v0.1 prévoyait
+> `UNIQUE(tournoi_id, nom, prenom, club_id)`) : il rejetterait un père et son fils, homonymes du
+> même club. Le doublon probable est **signalé** par le service (409 `homonyme_archer`, au sens de
+> `domain.archer.cle_identite`) et l'admin confirme ; la détection fine et la fusion sont à
+> **E02US005**.
+>
+> `club_id` est **hors du périmètre de [DETTE-001](dette.md)**, à la différence des autres FK
+> d'`ARCHER` (`tournoi_id`, `categorie_id`) : elle pointe vers `CLUB`, qui n'est pas dans la
+> descendance de `TOURNOI`. Supprimer un tournoi (donc ses archers) ne la viole jamais — c'est le
+> sens inverse qu'elle contraint, et ce cas-là est **tranché** par le service, comme l'est déjà
+> `CATEGORIE.blason_id`.
 
 ### DEPART
 | id | INTEGER | PK |

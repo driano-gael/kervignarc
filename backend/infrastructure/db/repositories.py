@@ -56,7 +56,9 @@ def _vers_archer(ligne: ArcherORM) -> Archer:
     """Traduit une ligne ORM en agrégat de domaine `Archer`."""
     return Archer(
         nom=ligne.nom,
+        prenom=ligne.prenom,
         tournoi_id=ligne.tournoi_id,
+        categorie_id=ligne.categorie_id,
         cible=ligne.cible,
         club_id=ligne.club_id,
         id=ligne.id,
@@ -305,6 +307,8 @@ class ArcherRepositorySQL:
                 ligne = ArcherORM(
                     tournoi_id=archer.tournoi_id,
                     nom=archer.nom,
+                    prenom=archer.prenom,
+                    categorie_id=archer.categorie_id,
                     cible=archer.cible,
                     club_id=archer.club_id,
                 )
@@ -357,7 +361,13 @@ class ArcherRepositorySQL:
                 ligne = session.get(ArcherORM, archer.id)
                 if ligne is None:
                     raise InfrastructureError("Archer à mettre à jour introuvable en base.")
+                # Tous les champs mutables sont recopiés, y compris ceux qu'aucun cas d'usage
+                # actuel ne modifie (`prenom`, `categorie_id` — seul le placement passe ici) :
+                # un `enregistrer` partiel perdrait en silence l'édition d'E02US003, et c'est le
+                # genre d'oubli qui ne se voit qu'en base, longtemps après.
                 ligne.nom = archer.nom
+                ligne.prenom = archer.prenom
+                ligne.categorie_id = archer.categorie_id
                 ligne.cible = archer.cible
                 ligne.club_id = archer.club_id
                 session.commit()

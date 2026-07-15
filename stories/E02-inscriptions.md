@@ -12,8 +12,9 @@
 
 ### E02US002 — Créer un archer
 *En tant qu'*administrateur, *je veux* saisir un archer, *afin de* l'inscrire au tournoi.
-- **CA** : nom, prénom, club, catégorie obligatoires ; archer rattaché au tournoi ; persisté via la file.
-- **Notes** : entité `Archer` (FR, ADR-0006) — renommage du prototype `Player`. **Acquis d'E02US001** : `Archer.club_id` + FK + `ArcherRepository.par_club` + refus de suppression d'un club référencé existent déjà. Cette US **rend le club obligatoire** (`NOT NULL` + migration des archers sans club) et ajoute `prenom`, `categorie_id` et l'index UNIQUE de dédoublonnage.
+- **CA** : nom, prénom, **catégorie** (du tournoi) obligatoires ; **club facultatif** — non renseigné, il vaut *inconnu* et l'écran le signale ([ADR-0014](../docs/adr/0014-club-inconnu-plutot-que-club-sentinelle.md)) ; un archer de mêmes nom, prénom et club qu'un inscrit est **signalé** (409 `homonyme_archer`) mais **acceptable après confirmation** ; archer rattaché au tournoi ; persisté via la file.
+- **Notes** : entité `Archer` (FR, ADR-0006) — renommage du prototype `Player`. **Acquis d'E02US001** : `Archer.club_id` + FK + `ArcherRepository.par_club` + refus de suppression d'un club référencé existent déjà. Cette US ajoute `prenom` et `categorie_id` (`NOT NULL`, migration `0015` — qui **vide** `archer`, aucune ligne d'avant ne pouvant porter de catégorie), et la détection d'homonyme au sens de `domain.archer.cle_identite` (casse et accents repliés).
+  > **Deux CA v0.1 corrigés, sur arbitrage du 15/07/2026.** (1) « club obligatoire » décrivait la règle FFTA, pas ce que la base peut affirmer : il aurait interdit l'inscription au guichet quand la licence est restée dans la voiture → ADR-0014. (2) L'« index UNIQUE de dédoublonnage » `(tournoi_id, nom, prenom, club_id)` est **abandonné** : il rejetterait un père et son fils, homonymes du même club — cas réel en compétition de club. Le contrôle vit dans le service, qui **signale sans interdire** ; il suffit, le writer unique (règle 7) sérialisant déjà les écritures. La détection fine et la fusion restent à **E02US005**.
 - **Dépend de** : E01US003, E02US001 · **Jalon** : J1
 
 ### E02US003 — Éditer / supprimer un archer

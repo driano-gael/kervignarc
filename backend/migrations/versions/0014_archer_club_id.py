@@ -6,10 +6,15 @@ Create Date: 2026-07-15
 
 Ajoute `archer.club_id` (FK -> club.id) — le lien qui rattache un archer a son club (E02US001).
 
-**Nullable, et ce n'est pas provisoire par negligence.** Le club est facultatif a ce stade ;
-E02US002 le rendra obligatoire, en meme temps qu'il ajoutera `prenom` et `categorie_id`. Nullable
-est le seul choix possible ici : les archers deja inscrits n'ont pas de club a retro-remplir, et
-inventer un club « inconnu » polluerait le referentiel d'une valeur que personne n'a saisie.
+**Nullable, et ce n'est pas provisoire par negligence.** Les archers deja inscrits n'ont pas de
+club a retro-remplir, et inventer un club « inconnu » polluerait le referentiel d'une valeur que
+personne n'a saisie.
+
+> **Mise a jour E02US002 (ADR-0014)** : ce nullable est devenu **definitif**, contrairement a ce que
+> cette revision annoncait (« E02US002 le rendra obligatoire »). `NULL` signifie « club encore
+> *inconnu* » — la FFTA impose un club a tout licencie, mais on ne le connait pas toujours au
+> guichet. C'est le raisonnement ci-dessus, tenu jusqu'au bout : le club sentinelle refuse ici l'a
+> ete pour de bon. `prenom` et `categorie_id` (NOT NULL, eux) sont arrives en 0015.
 
 **Pourquoi ce lien nait avec le referentiel et non avec l'inscription complete.** Il est ce qui
 rend le CA « un club utilise n'est pas supprimable » exercable : sans lui, le refus serait un

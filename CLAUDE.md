@@ -124,8 +124,10 @@ prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et s
      **périmé** et l'US suivante en dérive ses tests : le garde-fou ci-dessus ne se déclenchera pas,
      puisqu'un CA périmé n'est pas *ambigu* — il s'écrit sans effort, et il est faux. Une divergence
      `stories/` ↔ `docs/fonctionnel/` est un **défaut à remonter**, jamais à arbitrer seul.
-     *(Cas réel ouvert : E02US001 — `stories/` dit « pas supprimable **sans avertissement** »,
-     `docs/fonctionnel/` dit « refus **définitif**, aucun moyen de forcer ». E02US002 en dépend.)*
+     *(Cas réel, tranché le 15/07/2026 en E02US002 : `stories/` disait « pas supprimable **sans
+     avertissement** », `docs/fonctionnel/` « refus **définitif** ». Arbitrage : le refus définitif
+     — `stories/` a été aligné, le code livré ne changeait pas. Cf. [ADR-0014](docs/adr/0014-club-inconnu-plutot-que-club-sentinelle.md),
+     qui a aussi corrigé deux CA faux d'E02US002 au passage.)*
 10. **Front React.** État serveur via React Query, état UI local via Zustand, organisation **par
     features** (pas par type technique). Ergonomie tactile prioritaire sur l'écran de saisie +
     indicateur de connexion visible.

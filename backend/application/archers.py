@@ -1,16 +1,29 @@
-"""Service applicatif Archers (tranche verticale E00US011) — inscrire, placer, marquer.
+"""Service applicatif Archers (E00US011, complété par E02US002) — inscrire, placer, marquer.
 
 Orchestre le domaine derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni la file
 d'écriture (sérialisation assurée en amont, côté API). Chaque cas d'usage vérifie l'existence
-des ressources amont (tournoi, archer) et fait remonter des erreurs typées.
+des ressources amont (tournoi, archer, club, catégorie) et fait remonter des erreurs typées.
 """
 
 from __future__ import annotations
 
-from application.erreurs import ArcherIntrouvable, ClubIntrouvable, TournoiIntrouvable
-from domain.archer import Archer, ArcherId
+from application.erreurs import (
+    ArcherIntrouvable,
+    CategorieHorsTournoi,
+    ClubIntrouvable,
+    HomonymeArcher,
+    TournoiIntrouvable,
+)
+from domain.archer import Archer, ArcherId, cle_identite
+from domain.categorie import CategorieId
 from domain.club import ClubId
-from domain.ports import ArcherRepository, ClubRepository, ScoreRepository, TournoiRepository
+from domain.ports import (
+    ArcherRepository,
+    CategorieRepository,
+    ClubRepository,
+    ScoreRepository,
+    TournoiRepository,
+)
 from domain.score import Score
 from domain.tournoi import TournoiId
 
@@ -24,24 +37,43 @@ class ServiceArchers:
         archers: ArcherRepository,
         scores: ScoreRepository,
         clubs: ClubRepository,
+        categories: CategorieRepository,
     ) -> None:
         self._tournois = tournois
         self._archers = archers
         self._scores = scores
         self._clubs = clubs
+        self._categories = categories
 
-    def ajouter(self, tournoi_id: TournoiId, nom: str, club_id: ClubId | None = None) -> Archer:
-        """Inscrit un archer à un tournoi, éventuellement rattaché à un club (E02US001).
+    def ajouter(
+        self,
+        tournoi_id: TournoiId,
+        nom: str,
+        prenom: str,
+        categorie_id: CategorieId,
+        club_id: ClubId | None = None,
+        autoriser_homonyme: bool = False,
+    ) -> Archer:
+        """Inscrit un archer à un tournoi (E02US002).
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `ClubIntrouvable` si un `club_id`
-        est fourni sans correspondre à un club du référentiel. Le club reste **facultatif** ici ;
-        E02US002 le rendra obligatoire.
+        La **catégorie est obligatoire** et doit appartenir au tournoi ; le **club est facultatif**
+        (`None` = club encore inconnu, cf. `domain.archer` et ADR-0014) mais doit exister s'il est
+        fourni.
+
+        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `CategorieHorsTournoi` si la catégorie
+        est inexistante ou étrangère au tournoi, `ClubIntrouvable` si un `club_id` est fourni sans
+        correspondre à un club du référentiel, et `HomonymeArcher` si un archer de même identité
+        (`domain.archer.cle_identite`) est déjà inscrit — sauf `autoriser_homonyme=True`, par lequel
+        l'admin confirme qu'il s'agit bien de deux personnes distinctes.
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+        self._verifier_categorie_du_tournoi(tournoi_id, categorie_id)
         if club_id is not None and self._clubs.par_id(club_id) is None:
             raise ClubIntrouvable(f"Aucun club d'identifiant {club_id}.")
-        return self._archers.ajouter(Archer.creer(nom, tournoi_id, club_id))
+        if not autoriser_homonyme:
+            self._signaler_homonyme(tournoi_id, nom, prenom, club_id)
+        return self._archers.ajouter(Archer.creer(nom, prenom, tournoi_id, categorie_id, club_id))
 
     def placer(self, archer_id: ArcherId, cible: int) -> Archer:
         """Place un archer sur une cible. Lève `ArcherIntrouvable` s'il n'existe pas."""
@@ -58,3 +90,31 @@ class ServiceArchers:
         if archer is None:
             raise ArcherIntrouvable(f"Aucun archer d'identifiant {archer_id}.")
         return archer
+
+    def _verifier_categorie_du_tournoi(
+        self, tournoi_id: TournoiId, categorie_id: CategorieId
+    ) -> None:
+        """Exige une catégorie **du tournoi** (patron `ServiceCategories._verifier_blason_...`)."""
+        categorie = self._categories.par_id(categorie_id)
+        if categorie is None or categorie.tournoi_id != tournoi_id:
+            raise CategorieHorsTournoi(
+                f"La catégorie {categorie_id} n'appartient pas au tournoi {tournoi_id}."
+            )
+
+    def _signaler_homonyme(
+        self, tournoi_id: TournoiId, nom: str, prenom: str, club_id: ClubId | None
+    ) -> None:
+        """Lève `HomonymeArcher` si un archer de même identité est déjà inscrit au tournoi.
+
+        Balayage linéaire des inscrits plutôt qu'un port de recherche dédié : quelques centaines
+        d'archers par tournoi, sur une inscription — la simplicité prime hors du domaine (règle 12),
+        et un index serait à maintenir cohérent avec `cle_identite` pour rien.
+        """
+        cle = cle_identite(nom, prenom, club_id)
+        for inscrit in self._archers.par_tournoi(tournoi_id):
+            if inscrit.cle_identite() == cle:
+                raise HomonymeArcher(
+                    f"« {inscrit.prenom} {inscrit.nom} » est déjà inscrit à ce tournoi. "
+                    "S'il s'agit d'un homonyme (un père et son fils, par exemple), confirmez "
+                    "l'inscription ; sinon, il s'agit d'un doublon."
+                )

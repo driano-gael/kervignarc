@@ -2,6 +2,8 @@
 
 Le service est testé **en isolation** : de faux repositories en mémoire (conformes aux ports
 `TournoiRepository` / `CategorieRepository`) suffisent — ni base ni serveur.
+`FauxCategorieRepository` vient de `conftest` : il est partagé avec `test_service_blasons` et,
+depuis E02US002, `test_service_archers` — un faux partagé se déclare une fois.
 """
 
 from __future__ import annotations
@@ -14,9 +16,10 @@ import pytest
 from application.categories import ServiceCategories
 from application.erreurs import BlasonHorsTournoi, CategorieIntrouvable, TournoiIntrouvable
 from domain.blason import Blason, BlasonId
-from domain.categorie import Categorie, CategorieId, SexeCategorie
+from domain.categorie import SexeCategorie
 from domain.erreurs import LibelleCategorieInvalide
 from domain.tournoi import Tournoi, TournoiId
+from tests.conftest import FauxCategorieRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -47,37 +50,6 @@ class FauxTournoiRepository:
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         del self._tournois[tournoi_id]
-
-
-class FauxCategorieRepository:
-    """Repository en mémoire conforme au port `CategorieRepository`."""
-
-    def __init__(self) -> None:
-        self._categories: dict[int, Categorie] = {}
-        self._sequence = 0
-
-    def ajouter(self, categorie: Categorie) -> Categorie:
-        self._sequence += 1
-        persiste = dataclasses.replace(categorie, id=self._sequence)
-        self._categories[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, categorie_id: CategorieId) -> Categorie | None:
-        return self._categories.get(categorie_id)
-
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Categorie]:
-        return [c for c in self._categories.values() if c.tournoi_id == tournoi_id]
-
-    def par_blason(self, blason_id: BlasonId) -> list[Categorie]:
-        return [c for c in self._categories.values() if c.blason_id == blason_id]
-
-    def enregistrer(self, categorie: Categorie) -> Categorie:
-        assert categorie.id in self._categories
-        self._categories[categorie.id] = categorie
-        return categorie
-
-    def supprimer(self, categorie_id: CategorieId) -> None:
-        del self._categories[categorie_id]
 
 
 class FauxBlasonRepository:

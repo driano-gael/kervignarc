@@ -8,7 +8,9 @@ from domain.score import Score
 
 
 def _archer(id_: int, nom: str, cible: int | None = None) -> Archer:
-    return Archer(nom=nom, tournoi_id=1, cible=cible, id=id_)
+    # `prenom` et `categorie_id` sont sans effet sur le classement (E00US011 classe au nom) ;
+    # ils sont obligatoires depuis E02US002, d'où des valeurs fixes qui ne disent rien de plus.
+    return Archer(nom=nom, prenom="Jean", tournoi_id=1, categorie_id=1, cible=cible, id=id_)
 
 
 def test_classement_vide_sans_archer() -> None:

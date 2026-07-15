@@ -29,14 +29,20 @@ router = APIRouter(prefix="/api/v1", tags=["competition"])
 
 
 class AjouterArcherRequete(BaseModel):
-    """Corps d'inscription d'un archer à un tournoi.
+    """Corps d'inscription d'un archer à un tournoi (E02US002).
 
-    `club_id` est **facultatif** (E02US001) : il référence un club du référentiel global.
-    E02US002 le rendra obligatoire, avec `prenom` et `categorie_id`.
+    `categorie_id` est **obligatoire** et doit désigner une catégorie du tournoi visé. `club_id`
+    reste **facultatif** : absent, il vaut « club encore inconnu » — jamais « aucun club »
+    (ADR-0014). `autoriser_homonyme` est la **confirmation** de l'admin après un premier refus
+    `homonyme_archer` (409) : il déclare que ce nouvel archer, malgré des nom, prénom et club
+    identiques à un inscrit, est bien une autre personne (un père et son fils, typiquement).
     """
 
     nom: str
+    prenom: str
+    categorie_id: int
     club_id: int | None = None
+    autoriser_homonyme: bool = False
 
 
 class PlacerArcherRequete(BaseModel):
@@ -57,6 +63,8 @@ class ArcherReponse(BaseModel):
     id: int
     tournoi_id: int
     nom: str
+    prenom: str
+    categorie_id: int
     cible: int | None
     club_id: int | None
 
@@ -68,6 +76,8 @@ class ArcherReponse(BaseModel):
             id=archer.id,
             tournoi_id=archer.tournoi_id,
             nom=archer.nom,
+            prenom=archer.prenom,
+            categorie_id=archer.categorie_id,
             cible=archer.cible,
             club_id=archer.club_id,
         )
@@ -130,11 +140,25 @@ class ClassementReponse(BaseModel):
 async def ajouter_archer(
     tournoi_id: int, requete: AjouterArcherRequete, request: Request
 ) -> ArcherReponse:
-    """Inscrit un archer à un tournoi (**écriture**, session requise — E10US001 ; ADR-0005)."""
+    """Inscrit un archer à un tournoi (**écriture**, session requise — E10US001 ; ADR-0005).
+
+    Renvoie `409 homonyme_archer` si un archer de mêmes nom, prénom et club est déjà inscrit :
+    c'est un **signalement**, que le client lève en rejouant l'appel avec `autoriser_homonyme`
+    (E02US002).
+    """
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue
     archer = await asyncio.wrap_future(
-        write_queue.submit(lambda: service.ajouter(tournoi_id, requete.nom, requete.club_id))
+        write_queue.submit(
+            lambda: service.ajouter(
+                tournoi_id,
+                requete.nom,
+                requete.prenom,
+                requete.categorie_id,
+                requete.club_id,
+                requete.autoriser_homonyme,
+            )
+        )
     )
     return ArcherReponse.de_agregat(archer)
 
