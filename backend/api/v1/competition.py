@@ -29,9 +29,14 @@ router = APIRouter(prefix="/api/v1", tags=["competition"])
 
 
 class AjouterArcherRequete(BaseModel):
-    """Corps d'inscription d'un archer à un tournoi."""
+    """Corps d'inscription d'un archer à un tournoi.
+
+    `club_id` est **facultatif** (E02US001) : il référence un club du référentiel global.
+    E02US002 le rendra obligatoire, avec `prenom` et `categorie_id`.
+    """
 
     nom: str
+    club_id: int | None = None
 
 
 class PlacerArcherRequete(BaseModel):
@@ -53,13 +58,18 @@ class ArcherReponse(BaseModel):
     tournoi_id: int
     nom: str
     cible: int | None
+    club_id: int | None
 
     @staticmethod
     def de_agregat(archer: Archer) -> ArcherReponse:
         """Traduit un agrégat de domaine (persisté) en DTO de réponse."""
         assert archer.id is not None, "Un archer persisté a toujours un identifiant."
         return ArcherReponse(
-            id=archer.id, tournoi_id=archer.tournoi_id, nom=archer.nom, cible=archer.cible
+            id=archer.id,
+            tournoi_id=archer.tournoi_id,
+            nom=archer.nom,
+            cible=archer.cible,
+            club_id=archer.club_id,
         )
 
 
@@ -124,7 +134,7 @@ async def ajouter_archer(
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue
     archer = await asyncio.wrap_future(
-        write_queue.submit(lambda: service.ajouter(tournoi_id, requete.nom))
+        write_queue.submit(lambda: service.ajouter(tournoi_id, requete.nom, requete.club_id))
     )
     return ArcherReponse.de_agregat(archer)
 

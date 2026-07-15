@@ -1,64 +1,32 @@
-"""Tests du service applicatif Clubs (E02US001) — repository factice.
+"""Tests du service applicatif Clubs (E02US001) — repositories factices.
 
-Le service est testé **en isolation** : un faux repository en mémoire, conforme au port
-`ClubRepository`, suffit — ni base ni serveur.
+Le service est testé **en isolation** : de faux repositories en mémoire (conformes aux ports)
+suffisent — ni base ni serveur. `FauxClubRepository` vit dans `conftest` (partagé avec les tests
+de `ServiceArchers`) ; `FauxArcherRepository` est réutilisé depuis `test_service_archers`, pour
+qu'une évolution de port casse **un** endroit et non deux.
 """
 
 from __future__ import annotations
 
-import dataclasses
-
 import pytest
 
 from application.clubs import ServiceClubs
-from application.erreurs import ClubIntrouvable, NomClubDejaPris
-from domain.club import Club, ClubId, cle_nom
+from application.erreurs import ClubIntrouvable, ClubReference, NomClubDejaPris
+from domain.archer import Archer
 from domain.erreurs import NomClubInvalide
-
-
-class FauxClubRepository:
-    """Repository en mémoire conforme au port `ClubRepository`.
-
-    `par_nom` applique `cle_nom`, **la fonction de production** — pas une réimplémentation : un
-    faux qui recoderait la règle de comparaison ferait passer les tests de service quoi qu'il
-    arrive à l'adapter réel.
-    """
-
-    def __init__(self) -> None:
-        self._clubs: dict[int, Club] = {}
-        self._sequence = 0
-
-    def ajouter(self, club: Club) -> Club:
-        self._sequence += 1
-        persiste = dataclasses.replace(club, id=self._sequence)
-        self._clubs[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, club_id: ClubId) -> Club | None:
-        return self._clubs.get(club_id)
-
-    def par_nom(self, nom: str) -> Club | None:
-        recherche = cle_nom(nom)
-        for club in self._clubs.values():
-            if cle_nom(club.nom) == recherche:
-                return club
-        return None
-
-    def lister(self) -> list[Club]:
-        return list(self._clubs.values())
-
-    def enregistrer(self, club: Club) -> Club:
-        assert club.id is not None
-        self._clubs[club.id] = club
-        return club
-
-    def supprimer(self, club_id: ClubId) -> None:
-        del self._clubs[club_id]
+from tests.conftest import FauxClubRepository
+from tests.test_service_archers import FauxArcherRepository
 
 
 @pytest.fixture
 def service() -> ServiceClubs:
-    return ServiceClubs(FauxClubRepository())
+    return ServiceClubs(FauxClubRepository(), FauxArcherRepository())
+
+
+def _service_et_archers() -> tuple[ServiceClubs, FauxArcherRepository]:
+    """Variante exposant le faux repository d'archers, pour exercer le refus de suppression."""
+    archers = FauxArcherRepository()
+    return ServiceClubs(FauxClubRepository(), archers), archers
 
 
 def test_creer_ajoute_un_club_au_referentiel(service: ServiceClubs) -> None:
@@ -187,3 +155,53 @@ def test_supprimer_libere_le_nom(service: ServiceClubs) -> None:
     recree = service.creer("Arc Club Rennes")
 
     assert recree.nom == "Arc Club Rennes"
+
+
+def test_supprimer_refuse_un_club_rattache_a_un_archer() -> None:
+    """Le CA de l'US : un club **utilisé** n'est pas supprimable (`ClubReference` → 409)."""
+    service, archers = _service_et_archers()
+    club = service.creer("Arc Club Rennes")
+    archers.ajouter(Archer.creer("Robin", tournoi_id=1, club_id=club.id))
+
+    with pytest.raises(ClubReference):
+        service.supprimer(club.id)  # type: ignore[arg-type]
+
+    assert service.lister() == [club]
+
+
+def test_supprimer_refuse_meme_si_l_archer_est_d_un_autre_tournoi() -> None:
+    """La référence se cherche **tous tournois confondus** : le référentiel est global.
+
+    Un club utilisé par une compétition passée est utilisé tout court ; le supprimer laisserait
+    une référence pendante dans l'historique.
+    """
+    service, archers = _service_et_archers()
+    club = service.creer("Arc Club Rennes")
+    archers.ajouter(Archer.creer("Robin", tournoi_id=99, club_id=club.id))
+
+    with pytest.raises(ClubReference):
+        service.supprimer(club.id)  # type: ignore[arg-type]
+
+
+def test_supprimer_ignore_les_archers_d_un_autre_club() -> None:
+    """Un club sans archer reste supprimable, même si d'autres clubs en ont."""
+    service, archers = _service_et_archers()
+    rennes = service.creer("Arc Club Rennes")
+    fougeres = service.creer("Élan de Fougères")
+    archers.ajouter(Archer.creer("Robin", tournoi_id=1, club_id=fougeres.id))
+
+    service.supprimer(rennes.id)  # type: ignore[arg-type]
+
+    assert service.lister() == [fougeres]
+
+
+def test_supprimer_possible_apres_desengagement_des_archers() -> None:
+    """Un club redevient supprimable une fois ses archers réaffectés."""
+    service, archers = _service_et_archers()
+    club = service.creer("Arc Club Rennes")
+    archer = archers.ajouter(Archer.creer("Robin", tournoi_id=1, club_id=club.id))
+    archers.enregistrer(Archer(nom=archer.nom, tournoi_id=1, club_id=None, id=archer.id))
+
+    service.supprimer(club.id)  # type: ignore[arg-type]
+
+    assert service.lister() == []

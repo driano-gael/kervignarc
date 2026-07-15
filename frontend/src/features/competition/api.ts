@@ -38,6 +38,14 @@ export interface Archer {
   tournoi_id: number
   nom: string
   cible: number | null
+  club_id: number | null
+}
+
+// Inscription d'un archer. `club_id` est **facultatif** (E02US001) : `null` = sans club.
+// E02US002 le rendra obligatoire, avec le prénom et la catégorie.
+export interface NouvelArcher {
+  nom: string
+  club_id: number | null
 }
 
 export interface Score {
@@ -89,10 +97,10 @@ export function supprimerTournoi(id: number): Promise<void> {
   return fetchJson<void>(`/api/v1/tournois/${id}`, { method: 'DELETE' })
 }
 
-export function ajouterArcher(tournoiId: number, nom: string): Promise<Archer> {
+export function ajouterArcher(tournoiId: number, entree: NouvelArcher): Promise<Archer> {
   return fetchJson<Archer>(`/api/v1/tournois/${tournoiId}/archers`, {
     method: 'POST',
-    body: JSON.stringify({ nom }),
+    body: JSON.stringify(entree),
   })
 }
 

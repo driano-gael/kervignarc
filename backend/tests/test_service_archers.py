@@ -12,11 +12,13 @@ import pytest
 
 from application.archers import ServiceArchers
 from application.classements import ServiceClassement
-from application.erreurs import ArcherIntrouvable, TournoiIntrouvable
+from application.erreurs import ArcherIntrouvable, ClubIntrouvable, TournoiIntrouvable
 from domain.archer import Archer, ArcherId
+from domain.club import Club, ClubId
 from domain.erreurs import CibleInvalide, NomArcherInvalide, ScoreInvalide
 from domain.score import Score
 from domain.tournoi import Tournoi, TournoiId
+from tests.conftest import FauxClubRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -64,8 +66,14 @@ class FauxArcherRepository:
 
     def ajouter(self, archer: Archer) -> Archer:
         self._sequence += 1
+        # `club_id` est **recopié** : un faux qui le laisserait tomber ferait passer au vert un
+        # service incapable de rattacher un archer à son club.
         persiste = Archer(
-            nom=archer.nom, tournoi_id=archer.tournoi_id, cible=archer.cible, id=self._sequence
+            nom=archer.nom,
+            tournoi_id=archer.tournoi_id,
+            cible=archer.cible,
+            club_id=archer.club_id,
+            id=self._sequence,
         )
         self._archers[self._sequence] = persiste
         return persiste
@@ -75,6 +83,10 @@ class FauxArcherRepository:
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Archer]:
         return [a for a in self._archers.values() if a.tournoi_id == tournoi_id]
+
+    def par_club(self, club_id: ClubId) -> list[Archer]:
+        # Sans filtre sur le tournoi : le référentiel des clubs est global (E02US001).
+        return [a for a in self._archers.values() if a.club_id == club_id]
 
     def enregistrer(self, archer: Archer) -> Archer:
         assert archer.id is not None
@@ -105,13 +117,25 @@ def _monter() -> tuple[ServiceArchers, ServiceClassement, TournoiId]:
     tournois = FauxTournoiRepository()
     archers = FauxArcherRepository()
     scores = FauxScoreRepository(archers)
+    clubs = FauxClubRepository()
     tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
     assert tournoi.id is not None
     return (
-        ServiceArchers(tournois, archers, scores),
+        ServiceArchers(tournois, archers, scores, clubs),
         ServiceClassement(tournois, archers, scores),
         tournoi.id,
     )
+
+
+def _monter_avec_club() -> tuple[ServiceArchers, FauxClubRepository, TournoiId]:
+    """Variante exposant le référentiel des clubs, pour le rattachement (E02US001)."""
+    tournois = FauxTournoiRepository()
+    archers = FauxArcherRepository()
+    scores = FauxScoreRepository(archers)
+    clubs = FauxClubRepository()
+    tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
+    assert tournoi.id is not None
+    return ServiceArchers(tournois, archers, scores, clubs), clubs, tournoi.id
 
 
 def test_ajouter_archer_persiste_et_attribue_un_id() -> None:
@@ -135,6 +159,28 @@ def test_ajouter_archer_propage_l_erreur_de_domaine() -> None:
     service, _, tournoi_id = _monter()
     with pytest.raises(NomArcherInvalide):
         service.ajouter(tournoi_id, "  ")
+
+
+def test_ajouter_archer_sans_club_laisse_le_rattachement_vide() -> None:
+    """Le club est **facultatif** en E02US001 : sans lui, `club_id` reste `None`."""
+    service, _, tournoi_id = _monter()
+    archer = service.ajouter(tournoi_id, "Robin")
+    assert archer.club_id is None
+
+
+def test_ajouter_archer_avec_club_le_rattache() -> None:
+    """Un `club_id` existant est porté par l'archer persisté (E02US001)."""
+    service, clubs, tournoi_id = _monter_avec_club()
+    club = clubs.ajouter(Club.creer("Arc Club Rennes"))
+    archer = service.ajouter(tournoi_id, "Robin", club.id)
+    assert archer.club_id == club.id
+
+
+def test_ajouter_archer_club_inconnu_leve() -> None:
+    """Inscrire avec un club inexistant lève `ClubIntrouvable` (rien n'est persisté)."""
+    service, _, tournoi_id = _monter_avec_club()
+    with pytest.raises(ClubIntrouvable):
+        service.ajouter(tournoi_id, "Robin", 404)
 
 
 def test_placer_archer_pose_la_cible() -> None:

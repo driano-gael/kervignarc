@@ -62,6 +62,15 @@ class ArcherRepository(Protocol):
         """Renvoie tous les archers d'un tournoi (liste éventuellement vide)."""
         ...
 
+    def par_club(self, club_id: ClubId) -> list[Archer]:
+        """Renvoie les archers rattachés à `club_id`, **tous tournois confondus** (E02US001).
+
+        Sert à refuser la suppression d'un club encore référencé (liste non vide). La portée
+        inter-tournois est délibérée : le référentiel des clubs est global, donc un club utilisé
+        par un tournoi passé est utilisé tout court.
+        """
+        ...
+
     def enregistrer(self, archer: Archer) -> Archer:
         """Met à jour un archer déjà persisté (ex. après placement) et le renvoie."""
         ...

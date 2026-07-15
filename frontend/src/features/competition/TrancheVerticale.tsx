@@ -16,6 +16,7 @@ import { GrainValidation } from '../grain-validation/GrainValidation'
 import { Blasons } from '../blasons/Blasons'
 import { Categories } from '../categories/Categories'
 import { Clubs } from '../clubs/Clubs'
+import { useClubs } from '../clubs/hooks'
 import { Gabarits } from '../gabarits/Gabarits'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { ErreurApi } from '../../shared/api/client'
@@ -473,14 +474,25 @@ function CycleDeVie({ tournoi }: { tournoi: Tournoi }) {
   )
 }
 
+// Le **club est facultatif** ici (E02US001) : E02US002 le rendra obligatoire, avec le prénom et la
+// catégorie. On le propose dès maintenant par une liste déroulante alimentée par le référentiel —
+// saisir le club en texte libre est précisément ce que l'US supprime (« sans ressaisie »), et c'est
+// ce rattachement qui rend exerçable le refus de supprimer un club utilisé.
 function InscriptionArcher({ tournoiId }: { tournoiId: number }) {
   const [nomArcher, setNomArcher] = useState('')
+  const [clubId, setClubId] = useState('')
+  const clubs = useClubs()
   const ajouter = useAjouterArcher(tournoiId)
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
     if (nomArcher.trim() === '') return
-    ajouter.mutate(nomArcher, { onSuccess: () => setNomArcher('') })
+    ajouter.mutate(
+      { nom: nomArcher, club_id: clubId === '' ? null : Number(clubId) },
+      // Le club **n'est pas** réinitialisé : on inscrit souvent plusieurs archers du même club
+      // à la suite, à la table d'inscription.
+      { onSuccess: () => setNomArcher('') },
+    )
   }
 
   return (
@@ -493,6 +505,19 @@ function InscriptionArcher({ tournoiId }: { tournoiId: number }) {
           placeholder="Nom de l'archer"
           aria-label="Nom de l'archer"
         />
+        <select
+          className="formulaire__champ"
+          value={clubId}
+          onChange={(e) => setClubId(e.target.value)}
+          aria-label="Club de l'archer"
+        >
+          <option value="">Sans club</option>
+          {(clubs.data ?? []).map((club) => (
+            <option key={club.id} value={club.id}>
+              {club.nom}
+            </option>
+          ))}
+        </select>
         <button type="submit" disabled={ajouter.isPending || nomArcher.trim() === ''}>
           Inscrire
         </button>

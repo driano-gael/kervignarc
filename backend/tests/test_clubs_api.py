@@ -159,6 +159,82 @@ def test_supprimer_un_club(app_clubs: FastAPI, connecter_admin: ConnecterAdmin) 
         assert client.get("/api/v1/clubs").json() == []
 
 
+def _creer_tournoi(client: TestClient) -> int:
+    """Crée un tournoi et renvoie son identifiant (client déjà authentifié admin)."""
+    reponse = client.post("/api/v1/tournois", json={"nom": "Salle 18m", "date": "2026-03-14"})
+    assert reponse.status_code == 201, reponse.text
+    return int(reponse.json()["id"])
+
+
+def test_supprimer_un_club_utilise_rend_409(
+    app_clubs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le CA de l'US, bout en bout : un club rattaché à un archer n'est pas supprimable."""
+    with TestClient(app_clubs) as client:
+        connecter_admin(client)
+        club_id = _creer_club(client, "Arc Club Rennes")
+        tournoi_id = _creer_tournoi(client)
+        inscription = client.post(
+            f"/api/v1/tournois/{tournoi_id}/archers", json={"nom": "Robin", "club_id": club_id}
+        )
+        assert inscription.status_code == 201, inscription.text
+        assert inscription.json()["club_id"] == club_id
+
+        suppression = client.delete(f"/api/v1/clubs/{club_id}")
+
+        assert suppression.status_code == 409, suppression.text
+        assert suppression.json()["code"] == "club_reference"
+        # Le club est toujours là : le refus n'a rien supprimé au passage.
+        assert [c["id"] for c in client.get("/api/v1/clubs").json()] == [club_id]
+
+
+def test_inscrire_un_archer_sans_club_reste_possible(
+    app_clubs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le club est **facultatif** en E02US001 : l'inscription sans club continue de marcher."""
+    with TestClient(app_clubs) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        inscription = client.post(f"/api/v1/tournois/{tournoi_id}/archers", json={"nom": "Robin"})
+
+        assert inscription.status_code == 201, inscription.text
+        assert inscription.json()["club_id"] is None
+
+
+def test_inscrire_un_archer_avec_un_club_inconnu_rend_404(
+    app_clubs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un `club_id` qui ne correspond à rien → 404 (l'archer n'est pas créé)."""
+    with TestClient(app_clubs) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        inscription = client.post(
+            f"/api/v1/tournois/{tournoi_id}/archers", json={"nom": "Robin", "club_id": 404}
+        )
+
+        assert inscription.status_code == 404, inscription.text
+        assert inscription.json()["code"] == "club_introuvable"
+
+
+def test_supprimer_un_club_redevenu_libre(
+    app_clubs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un club n'est bloqué que tant qu'il sert : les autres restent supprimables."""
+    with TestClient(app_clubs) as client:
+        connecter_admin(client)
+        utilise = _creer_club(client, "Arc Club Rennes")
+        libre = _creer_club(client, "Élan de Fougères")
+        tournoi_id = _creer_tournoi(client)
+        client.post(
+            f"/api/v1/tournois/{tournoi_id}/archers", json={"nom": "Robin", "club_id": utilise}
+        )
+
+        assert client.delete(f"/api/v1/clubs/{libre}").status_code == 204
+        assert client.delete(f"/api/v1/clubs/{utilise}").status_code == 409
+
+
 def test_creer_un_homonyme_rend_409(app_clubs: FastAPI, connecter_admin: ConnecterAdmin) -> None:
     """Conflit d'ensemble → 409 (`ApplicationError`), pas 422 : le nom pris est un état, pas
     une règle métier sur la valeur."""

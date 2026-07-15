@@ -14,24 +14,25 @@ s'entrelacer : toutes les écritures passent par la **file du writer unique** (A
 les sérialise — le classique problème de concurrence entre la vérification et l'écriture ne se
 pose donc pas ici.
 
-La suppression d'un club **utilisé** (rattaché à des archers) sera refusée en **E02US002**, qui
-introduit `archer.club_id` — donc l'usage à protéger, et le test qui l'exerce. Elle suivra le
-patron de `ServiceBlasons.supprimer` / `BlasonReference` (E01US006). Écrire la règle ici
-reviendrait à la vérifier contre le vide : aujourd'hui, rien ne peut référencer un club.
+**Suppression d'un club utilisé.** Refusée (`ClubReference` → 409), sur le patron de
+`ServiceBlasons.supprimer` / `BlasonReference` (E01US006) : on refuse plutôt que de cascader
+silencieusement sur des inscriptions. La règle est **exerçable** parce que la même US pose
+`archer.club_id` — sans ce lien, elle n'aurait pu se vérifier que contre le vide.
 """
 
 from __future__ import annotations
 
-from application.erreurs import ClubIntrouvable, NomClubDejaPris
+from application.erreurs import ClubIntrouvable, ClubReference, NomClubDejaPris
 from domain.club import Club, ClubId, cle_nom
-from domain.ports import ClubRepository
+from domain.ports import ArcherRepository, ClubRepository
 
 
 class ServiceClubs:
     """Cas d'usage du référentiel des clubs : créer, lister, renommer, supprimer."""
 
-    def __init__(self, clubs: ClubRepository) -> None:
+    def __init__(self, clubs: ClubRepository, archers: ArcherRepository) -> None:
         self._clubs = clubs
+        self._archers = archers
 
     def creer(self, nom: str) -> Club:
         """Ajoute un club au référentiel.
@@ -65,13 +66,20 @@ class ServiceClubs:
         return self._clubs.enregistrer(renomme)
 
     def supprimer(self, club_id: ClubId) -> None:
-        """Retire un club du référentiel. Lève `ClubIntrouvable` si l'identifiant est inconnu.
+        """Retire un club du référentiel.
 
-        Aucun club n'est « utilisé » tant qu'`archer.club_id` n'existe pas : le refus de
-        suppression d'un club rattaché à des archers arrive en E02US002 (cf. docstring du
-        module).
+        Lève `ClubIntrouvable` si l'identifiant est inconnu, `ClubReference` si au moins un
+        archer y est rattaché — **tous tournois confondus** : le référentiel étant global, un
+        club utilisé par une compétition passée est utilisé tout court, et le supprimer
+        laisserait une référence pendante dans l'historique.
         """
         self._club_existant(club_id)
+        references = self._archers.par_club(club_id)
+        if references:
+            raise ClubReference(
+                f"Le club {club_id} est utilisé par {len(references)} archer(s) ; "
+                "réaffectez-les avant de le supprimer."
+            )
         self._clubs.supprimer(club_id)
 
     def _club_existant(self, club_id: ClubId) -> Club:

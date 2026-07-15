@@ -134,8 +134,11 @@ def create_app(
         tournoi_repository, blason_repository, categorie_repository
     )
     # Référentiel des clubs (E02US001) : **global**, réutilisé d'une compétition à l'autre — seul
-    # service à ne dépendre d'aucun tournoi. Le rattachement des archers arrive en E02US002.
-    app.state.service_clubs = ServiceClubs(club_repository)
+    # service à ne dépendre d'aucun tournoi. Clubs ↔ archers se référencent mutuellement, comme
+    # catégories ↔ blasons : l'archer valide son club de rattachement, le club refuse sa
+    # suppression s'il est référencé. Chaque service ne dépend que des **ports** repository (jamais
+    # de l'autre service) — pas de cycle entre services.
+    app.state.service_clubs = ServiceClubs(club_repository, archer_repository)
     # Gabarits de salle : bibliothèque de modèles (E01US007) + application à un tournoi (E01US008,
     # copie ajustable). Le service vérifie l'existence du tournoi (dépend du port tournoi).
     app.state.service_gabarits = ServiceGabarits(tournoi_repository, gabarit_repository)
@@ -150,7 +153,7 @@ def create_app(
         tournoi_repository, phase_repository
     )
     app.state.service_archers = ServiceArchers(
-        tournoi_repository, archer_repository, score_repository
+        tournoi_repository, archer_repository, score_repository, club_repository
     )
     app.state.service_classement = ServiceClassement(
         tournoi_repository, archer_repository, score_repository

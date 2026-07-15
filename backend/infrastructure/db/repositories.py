@@ -54,7 +54,13 @@ def _vers_tournoi(ligne: TournoiORM) -> Tournoi:
 
 def _vers_archer(ligne: ArcherORM) -> Archer:
     """Traduit une ligne ORM en agrégat de domaine `Archer`."""
-    return Archer(nom=ligne.nom, tournoi_id=ligne.tournoi_id, cible=ligne.cible, id=ligne.id)
+    return Archer(
+        nom=ligne.nom,
+        tournoi_id=ligne.tournoi_id,
+        cible=ligne.cible,
+        club_id=ligne.club_id,
+        id=ligne.id,
+    )
 
 
 def _vers_club(ligne: ClubORM) -> Club:
@@ -296,7 +302,12 @@ class ArcherRepositorySQL:
         """Persiste l'archer et le renvoie avec son identifiant attribué."""
         try:
             with self._session_factory() as session:
-                ligne = ArcherORM(tournoi_id=archer.tournoi_id, nom=archer.nom, cible=archer.cible)
+                ligne = ArcherORM(
+                    tournoi_id=archer.tournoi_id,
+                    nom=archer.nom,
+                    cible=archer.cible,
+                    club_id=archer.club_id,
+                )
                 session.add(ligne)
                 session.commit()
                 return _vers_archer(ligne)
@@ -323,6 +334,17 @@ class ArcherRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des archers du tournoi.") from exc
 
+    def par_club(self, club_id: ClubId) -> list[Archer]:
+        """Renvoie les archers rattachés à un club, **tous tournois confondus** (E02US001)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(ArcherORM).where(ArcherORM.club_id == club_id).order_by(ArcherORM.id)
+                ).scalars()
+                return [_vers_archer(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des archers du club.") from exc
+
     def enregistrer(self, archer: Archer) -> Archer:
         """Met à jour un archer déjà persisté (ex. placement) et le renvoie.
 
@@ -337,6 +359,7 @@ class ArcherRepositorySQL:
                     raise InfrastructureError("Archer à mettre à jour introuvable en base.")
                 ligne.nom = archer.nom
                 ligne.cible = archer.cible
+                ligne.club_id = archer.club_id
                 session.commit()
                 return _vers_archer(ligne)
         except SQLAlchemyError as exc:
