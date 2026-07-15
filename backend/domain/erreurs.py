@@ -29,6 +29,12 @@ class NomArcherInvalide(DomainError):
     code = "nom_archer_invalide"
 
 
+class NomClubInvalide(DomainError):
+    """Le nom d'un club est vide (après normalisation)."""
+
+    code = "nom_club_invalide"
+
+
 class LibelleCategorieInvalide(DomainError):
     """Le libellé d'une catégorie est vide (après normalisation)."""
 

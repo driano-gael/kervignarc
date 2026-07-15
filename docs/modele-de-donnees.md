@@ -62,6 +62,18 @@ erDiagram
 | id | INTEGER | PK |
 | nom | TEXT | NOT NULL, UNIQUE |
 
+> **Référentiel global (E02US001).** Seule table **sans** `tournoi_id` : les clubs sont réutilisés
+> d'une compétition à l'autre. Elle n'appartient donc pas à la descendance de `TOURNOI` — supprimer
+> un tournoi ne touche pas aux clubs, et [DETTE-001](dette.md) ne la concerne pas.
+>
+> **`UNIQUE` = garde-fou d'intégrité, pas la règle fonctionnelle.** La contrainte SQL est **exacte**
+> (elle n'attrape que les homonymes au caractère près). Le refus présenté à l'utilisateur est plus
+> large : `ServiceClubs` compare les noms au sens de `domain.club.cle_nom` — espaces de bord, casse
+> **et accents** repliés, donc « Élan de Fougères » ≡ « elan de fougeres ». Un référentiel dont
+> l'intérêt est de ne pas ressaisir ne doit pas offrir deux entrées pour un même club : les archers
+> s'y répartiraient et les listes par club (EPIC-09) seraient fausses. `cle_nom` sert aussi de clé
+> de **tri** à l'écran (sans elle, un tri par code point classerait « Élan » après « Zénith »).
+
 ### CATEGORIE
 | id | INTEGER | PK |
 | tournoi_id | INTEGER | FK → TOURNOI, NOT NULL |
@@ -101,9 +113,20 @@ erDiagram
 | tournoi_id | INTEGER | FK → TOURNOI, NOT NULL |
 | nom | TEXT | NOT NULL |
 | prenom | TEXT | NOT NULL |
-| club_id | INTEGER | FK → CLUB |
+| club_id | INTEGER | FK → CLUB, **nullable** tant que E02US002 n'a pas rendu le club obligatoire |
 | categorie_id | INTEGER | FK → CATEGORIE |
 | _index_ | | UNIQUE(tournoi_id, nom, prenom, club_id) pour dédoublonnage |
+
+> **`club_id` posé par E02US001** (migration `0014`), facultatif à ce stade. Le rattachement est
+> arrivé avec le **référentiel** plutôt qu'avec l'inscription complète (E02US002) parce qu'il est ce
+> qui rend le CA « un club utilisé n'est pas supprimable » **exerçable** : sans lui, le refus
+> (`ClubReference` → 409) n'aurait été qu'un garde-fou qu'aucun chemin réel ne déclenche. E02US002
+> le rendra `NOT NULL`, en même temps qu'il ajoutera `prenom`, `categorie_id` et l'index ci-dessus.
+>
+> Cette FK est **hors du périmètre de [DETTE-001](dette.md)**, à la différence des autres FK
+> d'`ARCHER` : elle pointe vers `CLUB`, qui n'est pas dans la descendance de `TOURNOI`. Supprimer un
+> tournoi (donc ses archers) ne la viole jamais — c'est le sens inverse qu'elle contraint, et ce
+> cas-là est **tranché** par le service, comme l'est déjà `CATEGORIE.blason_id`.
 
 ### DEPART
 | id | INTEGER | PK |

@@ -15,6 +15,7 @@ import {
   getTournois,
   type ModifierTournoi,
   modifierTournoi,
+  type NouvelArcher,
   placerArcher,
   saisirScore,
   supprimerTournoi,
@@ -81,7 +82,7 @@ export function useSupprimerTournoi() {
 export function useAjouterArcher(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (nom: string) => ajouterArcher(tournoiId, nom),
+    mutationFn: (entree: NouvelArcher) => ajouterArcher(tournoiId, entree),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) }),
   })
 }

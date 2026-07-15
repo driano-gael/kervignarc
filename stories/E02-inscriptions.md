@@ -7,12 +7,13 @@
 ### E02US001 — Gérer le référentiel clubs
 *En tant qu'*administrateur, *je veux* gérer une liste de clubs, *afin de* rattacher les archers sans ressaisie.
 - **CA** : CRUD club (nom) ; réutilisable entre tournois ; un club utilisé n'est pas supprimable sans avertissement.
+- **Notes** : entité **globale** — pas de `tournoi_id`, routes `/api/v1/clubs` non imbriquées. Unicité du nom au sens de `domain.club.cle_nom` (casse **et** accents repliés), qui sert aussi au tri : sans quoi les sommes par club (E08US004/E09US004) se couperaient en deux. Pose aussi `Archer.club_id` (**facultatif**, migration `0014`) : c'est lui qui rend le CA « club utilisé non supprimable » **exerçable** — sans rattachement possible, le refus (`ClubReference` → 409, patron `BlasonReference` d'E01US006) serait un garde-fou qu'aucun chemin réel ne déclenche. La FK naît **avec** sa politique de suppression, contrairement à celles de DETTE-001 — et elle en sort du périmètre : elle pointe hors de la descendance de `tournoi`.
 - **Dépend de** : E00US009 · **Jalon** : J1
 
 ### E02US002 — Créer un archer
 *En tant qu'*administrateur, *je veux* saisir un archer, *afin de* l'inscrire au tournoi.
 - **CA** : nom, prénom, club, catégorie obligatoires ; archer rattaché au tournoi ; persisté via la file.
-- **Notes** : entité `Archer` (FR, ADR-0006) — renommage du prototype `Player`.
+- **Notes** : entité `Archer` (FR, ADR-0006) — renommage du prototype `Player`. **Acquis d'E02US001** : `Archer.club_id` + FK + `ArcherRepository.par_club` + refus de suppression d'un club référencé existent déjà. Cette US **rend le club obligatoire** (`NOT NULL` + migration des archers sans club) et ajoute `prenom`, `categorie_id` et l'index UNIQUE de dédoublonnage.
 - **Dépend de** : E01US003, E02US001 · **Jalon** : J1
 
 ### E02US003 — Éditer / supprimer un archer

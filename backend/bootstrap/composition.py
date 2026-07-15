@@ -23,6 +23,7 @@ from api.v1.auth import router as auth_router
 from api.v1.bareme_qualification import router as bareme_qualification_router
 from api.v1.blasons import router as blasons_router
 from api.v1.categories import router as categories_router
+from api.v1.clubs import router as clubs_router
 from api.v1.competition import router as competition_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
@@ -33,6 +34,7 @@ from application.bareme_qualification import ServiceBaremeQualification
 from application.blasons import ServiceBlasons
 from application.categories import ServiceCategories
 from application.classements import ServiceClassement
+from application.clubs import ServiceClubs
 from application.gabarits import ServiceGabarits
 from application.grain_validation import ServiceGrainValidation
 from application.tournois import ServiceTournois
@@ -41,6 +43,7 @@ from infrastructure.db import (
     ArcherRepositorySQL,
     BlasonRepositorySQL,
     CategorieRepositorySQL,
+    ClubRepositorySQL,
     Database,
     GabaritSalleRepositorySQL,
     PhaseRepositorySQL,
@@ -115,6 +118,7 @@ def create_app(
     tournoi_repository = TournoiRepositorySQL(database.session_factory)
     categorie_repository = CategorieRepositorySQL(database.session_factory)
     blason_repository = BlasonRepositorySQL(database.session_factory)
+    club_repository = ClubRepositorySQL(database.session_factory)
     gabarit_repository = GabaritSalleRepositorySQL(database.session_factory)
     phase_repository = PhaseRepositorySQL(database.session_factory)
     archer_repository = ArcherRepositorySQL(database.session_factory)
@@ -129,6 +133,12 @@ def create_app(
     app.state.service_blasons = ServiceBlasons(
         tournoi_repository, blason_repository, categorie_repository
     )
+    # Référentiel des clubs (E02US001) : **global**, réutilisé d'une compétition à l'autre — seul
+    # service à ne dépendre d'aucun tournoi. Clubs ↔ archers se référencent mutuellement, comme
+    # catégories ↔ blasons : l'archer valide son club de rattachement, le club refuse sa
+    # suppression s'il est référencé. Chaque service ne dépend que des **ports** repository (jamais
+    # de l'autre service) — pas de cycle entre services.
+    app.state.service_clubs = ServiceClubs(club_repository, archer_repository)
     # Gabarits de salle : bibliothèque de modèles (E01US007) + application à un tournoi (E01US008,
     # copie ajustable). Le service vérifie l'existence du tournoi (dépend du port tournoi).
     app.state.service_gabarits = ServiceGabarits(tournoi_repository, gabarit_repository)
@@ -143,7 +153,7 @@ def create_app(
         tournoi_repository, phase_repository
     )
     app.state.service_archers = ServiceArchers(
-        tournoi_repository, archer_repository, score_repository
+        tournoi_repository, archer_repository, score_repository, club_repository
     )
     app.state.service_classement = ServiceClassement(
         tournoi_repository, archer_repository, score_repository
@@ -166,6 +176,7 @@ def create_app(
     app.include_router(tournois_router)
     app.include_router(categories_router)
     app.include_router(blasons_router)
+    app.include_router(clubs_router)
     app.include_router(gabarits_router)
     app.include_router(bareme_qualification_router)
     app.include_router(grain_validation_router)

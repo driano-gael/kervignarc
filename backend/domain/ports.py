@@ -12,6 +12,7 @@ from typing import Protocol
 from domain.archer import Archer, ArcherId
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
+from domain.club import Club, ClubId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.score import Score
@@ -61,8 +62,59 @@ class ArcherRepository(Protocol):
         """Renvoie tous les archers d'un tournoi (liste éventuellement vide)."""
         ...
 
+    def par_club(self, club_id: ClubId) -> list[Archer]:
+        """Renvoie les archers rattachés à `club_id`, **tous tournois confondus** (E02US001).
+
+        Sert à refuser la suppression d'un club encore référencé (liste non vide). La portée
+        inter-tournois est délibérée : le référentiel des clubs est global, donc un club utilisé
+        par un tournoi passé est utilisé tout court.
+        """
+        ...
+
     def enregistrer(self, archer: Archer) -> Archer:
         """Met à jour un archer déjà persisté (ex. après placement) et le renvoie."""
+        ...
+
+
+class ClubRepository(Protocol):
+    """Port de persistance des clubs (adapter fourni par l'infrastructure).
+
+    Référentiel **global** : un club n'appartient à aucun tournoi (E02US001), d'où l'absence
+    de `par_tournoi` — `lister` renvoie tout le référentiel.
+    """
+
+    def ajouter(self, club: Club) -> Club:
+        """Persiste un club et le renvoie avec son identifiant attribué."""
+        ...
+
+    def par_id(self, club_id: ClubId) -> Club | None:
+        """Renvoie le club d'identifiant donné, ou `None` s'il n'existe pas."""
+        ...
+
+    def par_nom(self, nom: str) -> Club | None:
+        """Renvoie le club portant ce nom, ou `None` s'il n'y en a pas.
+
+        **Comparaison au sens de `domain.club.cle_nom`** : espaces de bord, casse et accents
+        repliés — « Arc Club Rennes », « arc club rennes » et « Elan » / « Élan » désignent le même
+        club. L'adapter n'invente pas sa propre règle : il applique `cle_nom`. Sert à refuser un
+        doublon à la création comme au renommage (E02US001).
+        """
+        ...
+
+    def lister(self) -> list[Club]:
+        """Renvoie tout le référentiel des clubs (liste éventuellement vide).
+
+        L'ordre n'est **pas** garanti par le port (détail de l'adapter) : un consommateur qui a
+        besoin d'un ordre précis doit le trier lui-même.
+        """
+        ...
+
+    def enregistrer(self, club: Club) -> Club:
+        """Met à jour un club déjà persisté (renommage) et le renvoie."""
+        ...
+
+    def supprimer(self, club_id: ClubId) -> None:
+        """Supprime le club d'identifiant donné (existence garantie par l'appelant)."""
         ...
 
 

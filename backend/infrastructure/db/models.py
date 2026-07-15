@@ -36,6 +36,27 @@ class TournoiORM(Base):
     tarif_depart_centimes: Mapped[int | None] = mapped_column(nullable=True)
 
 
+class ClubORM(Base):
+    """Table `club` — persistance de l'agrégat `Club` (E02US001).
+
+    **Aucune FK vers `tournoi`** : le référentiel est global et réutilisé d'une compétition à
+    l'autre. La table n'appartient donc **pas** à la descendance de `tournoi` — supprimer un
+    tournoi ne doit pas toucher aux clubs, et DETTE-001 ne la concerne pas.
+
+    `nom` est `UNIQUE` : garde-fou d'intégrité, **exact** — il n'attrape que les homonymes au
+    caractère près. Le refus fonctionnel du doublon (message et 409) est plus large et porté en
+    amont par `ServiceClubs`, qui compare au sens de `domain.club.cle_nom` : espaces de bord,
+    casse **et accents** repliés (« Élan de Fougères » ≡ « elan de fougeres »). Cet écart est
+    assumé — SQL ne sait pas replier les accents sans colonne dénormalisée, et le writer unique
+    (ADR-0005) garantit qu'aucune écriture ne contourne le service.
+    """
+
+    __tablename__ = "club"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nom: Mapped[str] = mapped_column(nullable=False, unique=True)
+
+
 class CategorieORM(Base):
     """Table `categorie` — persistance de l'agrégat `Categorie` (E01US003).
 
@@ -103,7 +124,7 @@ class GabaritSalleORM(Base):
 
 
 class ArcherORM(Base):
-    """Table `archer` — persistance de l'agrégat `Archer` (E00US011)."""
+    """Table `archer` — persistance de l'agrégat `Archer` (E00US011, club en E02US001)."""
 
     __tablename__ = "archer"
 
@@ -113,6 +134,14 @@ class ArcherORM(Base):
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     nom: Mapped[str] = mapped_column(nullable=False)
     cible: Mapped[int | None] = mapped_column(nullable=True)
+    # Club de rattachement, facultatif (E02US001) ; E02US002 le rendra obligatoire. La suppression
+    # d'un club référencé est refusée côté service (409, `ClubReference`).
+    #
+    # **Hors périmètre de DETTE-001**, à la différence des autres FK de ce fichier : elle pointe
+    # vers `club`, qui n'est PAS dans la descendance de `tournoi`. Supprimer un tournoi (donc ses
+    # archers) ne la viole jamais — c'est le sens inverse qu'elle contraint, et ce cas-là est
+    # tranché (refus 409), comme l'est déjà `categorie.blason_id`.
+    club_id: Mapped[int | None] = mapped_column(ForeignKey("club.id"), nullable=True)
 
 
 class ScoreORM(Base):

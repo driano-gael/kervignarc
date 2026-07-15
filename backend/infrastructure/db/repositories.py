@@ -19,6 +19,7 @@ from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId, SexeCategorie
+from domain.club import Club, ClubId, cle_nom
 from domain.erreurs import DomainError
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.grain_validation import GrainValidation, TypeGrain
@@ -29,6 +30,7 @@ from infrastructure.db.models import (
     ArcherORM,
     BlasonORM,
     CategorieORM,
+    ClubORM,
     GabaritSalleORM,
     PhaseORM,
     ScoreORM,
@@ -52,7 +54,18 @@ def _vers_tournoi(ligne: TournoiORM) -> Tournoi:
 
 def _vers_archer(ligne: ArcherORM) -> Archer:
     """Traduit une ligne ORM en agrégat de domaine `Archer`."""
-    return Archer(nom=ligne.nom, tournoi_id=ligne.tournoi_id, cible=ligne.cible, id=ligne.id)
+    return Archer(
+        nom=ligne.nom,
+        tournoi_id=ligne.tournoi_id,
+        cible=ligne.cible,
+        club_id=ligne.club_id,
+        id=ligne.id,
+    )
+
+
+def _vers_club(ligne: ClubORM) -> Club:
+    """Traduit une ligne ORM en agrégat de domaine `Club`."""
+    return Club(nom=ligne.nom, id=ligne.id)
 
 
 def _vers_blason(ligne: BlasonORM) -> Blason:
@@ -289,7 +302,12 @@ class ArcherRepositorySQL:
         """Persiste l'archer et le renvoie avec son identifiant attribué."""
         try:
             with self._session_factory() as session:
-                ligne = ArcherORM(tournoi_id=archer.tournoi_id, nom=archer.nom, cible=archer.cible)
+                ligne = ArcherORM(
+                    tournoi_id=archer.tournoi_id,
+                    nom=archer.nom,
+                    cible=archer.cible,
+                    club_id=archer.club_id,
+                )
                 session.add(ligne)
                 session.commit()
                 return _vers_archer(ligne)
@@ -316,6 +334,17 @@ class ArcherRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des archers du tournoi.") from exc
 
+    def par_club(self, club_id: ClubId) -> list[Archer]:
+        """Renvoie les archers rattachés à un club, **tous tournois confondus** (E02US001)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(ArcherORM).where(ArcherORM.club_id == club_id).order_by(ArcherORM.id)
+                ).scalars()
+                return [_vers_archer(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des archers du club.") from exc
+
     def enregistrer(self, archer: Archer) -> Archer:
         """Met à jour un archer déjà persisté (ex. placement) et le renvoie.
 
@@ -330,10 +359,99 @@ class ArcherRepositorySQL:
                     raise InfrastructureError("Archer à mettre à jour introuvable en base.")
                 ligne.nom = archer.nom
                 ligne.cible = archer.cible
+                ligne.club_id = archer.club_id
                 session.commit()
                 return _vers_archer(ligne)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour de l'archer.") from exc
+
+
+class ClubRepositorySQL:
+    """Adapter SQLite du port `ClubRepository` (E02US001)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def ajouter(self, club: Club) -> Club:
+        """Persiste le club et le renvoie avec son identifiant attribué."""
+        try:
+            with self._session_factory() as session:
+                ligne = ClubORM(nom=club.nom)
+                session.add(ligne)
+                session.commit()
+                return _vers_club(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance du club.") from exc
+
+    def par_id(self, club_id: ClubId) -> Club | None:
+        """Relit le club d'identifiant donné, ou `None` s'il n'existe pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(ClubORM, club_id)
+                return None if ligne is None else _vers_club(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du club.") from exc
+
+    def par_nom(self, nom: str) -> Club | None:
+        """Relit le club de même nom au sens de `domain.club.cle_nom`, ou `None` s'il n'y en a pas.
+
+        La comparaison est faite **côté Python**, via la clé du domaine, plutôt qu'en SQL : le
+        `COLLATE NOCASE` de SQLite ne replie que la casse **ASCII** — il laisserait passer « Élan »
+        / « élan » comme « Élan » / « Elan », alors que les noms de clubs sont accentués. L'adapter
+        n'invente donc aucune règle de comparaison : il applique celle du domaine.
+
+        Le référentiel compte quelques dizaines de lignes et cette lecture n'a lieu qu'à la
+        création/au renommage (donc dans la file d'écriture, jamais sur un chemin chaud) : les
+        parcourir est sans conséquence, et l'unique lecture reste courte.
+        """
+        try:
+            with self._session_factory() as session:
+                recherche = cle_nom(nom)
+                lignes = session.execute(select(ClubORM)).scalars()
+                for ligne in lignes:
+                    if cle_nom(ligne.nom) == recherche:
+                        return _vers_club(ligne)
+                return None
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du club par nom.") from exc
+
+    def lister(self) -> list[Club]:
+        """Renvoie tout le référentiel des clubs (liste éventuellement vide)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(select(ClubORM).order_by(ClubORM.id)).scalars()
+                return [_vers_club(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du référentiel des clubs.") from exc
+
+    def enregistrer(self, club: Club) -> Club:
+        """Met à jour un club déjà persisté (renommage) et le renvoie.
+
+        **Contrat** : l'appelant (le service) garantit l'existence (vérifiée en amont). La ligne
+        absente est une **incohérence technique** (non un cas métier) → `InfrastructureError`.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(ClubORM, club.id)
+                if ligne is None:
+                    raise InfrastructureError("Club à mettre à jour introuvable en base.")
+                ligne.nom = club.nom
+                session.commit()
+                return _vers_club(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour du club.") from exc
+
+    def supprimer(self, club_id: ClubId) -> None:
+        """Supprime le club d'identifiant donné (existence garantie par l'appelant)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(ClubORM, club_id)
+                if ligne is None:
+                    raise InfrastructureError("Club à supprimer introuvable en base.")
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression du club.") from exc
 
 
 class CategorieRepositorySQL:
