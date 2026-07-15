@@ -42,14 +42,14 @@ def cle_nom(nom: str) -> str:
     **classer les archers** d'un tournoi (`ServiceArchers.lister`, même raison que pour les clubs).
 
     Deux règles de repli qui divergeraient accepteraient un doublon ici et le refuseraient là : d'où
-    la réutilisation plutôt que la copie. Mais le compte y est désormais — les **deux** derniers
-    usages sont hors du concept « club », et cette docstring annonçait qu'au 2ᵉ, l'extraction se
-    justifierait. **Elle est donc due** : `cle_nom` n'est plus « une notion métier du référentiel
-    des clubs », c'est la règle de repli des noms propres du projet, et `domain/club.py` n'est plus
-    son domicile légitime. À extraire dans un `domain/texte.py` — **en US dédiée**, jamais en douce
-    dans une US courante : le déplacement touche `club.py`, `archer.py` et deux services, et il n'a
-    rien à faire dans une US qui parle d'éditer un archer. E02US003 s'est donc contentée d'ajouter
-    l'usage et de constater le déclenchement.
+    la réutilisation plutôt que la copie.
+
+    # DETTE-006 : les **deux** derniers usages sont hors du concept « club », soit le seuil que
+    # cette docstring s'était fixé en E02US002 pour justifier l'extraction dans un
+    # `domain/texte.py`. `cle_nom` n'est plus une notion métier du référentiel des clubs, c'est la
+    # règle de repli des noms propres du projet — voir `docs/dette.md` pour le constat et l'US de
+    # résorption. E02US003 a ajouté l'usage et constaté le déclenchement, rien de plus : un remède
+    # structurel se traite en US dédiée (règle 16), pas en douce.
 
     Implémentation : décomposition NFKD puis retrait des marques combinantes (l'accent devient un
     caractère distinct, qu'on jette), avant `casefold`. `casefold` seul ne suffirait pas : il

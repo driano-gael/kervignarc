@@ -252,15 +252,27 @@ async def modifier_archer(
     status_code=204,
     dependencies=[Depends(exiger_admin)],
 )
-async def supprimer_archer(archer_id: int, request: Request) -> Response:
+async def supprimer_archer(
+    archer_id: int, request: Request, autoriser_suppression_engage: bool = False
+) -> Response:
     """Désinscrit un archer (**écriture**, session requise — E10US001 ; E02US003).
 
-    Renvoie `409 archer_engage` si l'archer est placé ou a déjà tiré — un **refus**, celui-là :
-    aucun drapeau ne le lève.
+    Renvoie `409 archer_engage` si l'archer est placé ou a déjà tiré : un **signalement**, que le
+    client lève en rejouant l'appel avec `autoriser_suppression_engage`. La suppression confirmée
+    **efface ses scores et son placement**. Un archer qui abandonne relève du forfait (E12US004),
+    pas d'ici.
+
+    Le drapeau est en **paramètre de requête** et non dans le corps, contrairement à la forme
+    posée par ADR-0015 — qui prévoit ce cas (« soit justifier d'en diverger ») : un `DELETE` n'a
+    pas de corps par convention HTTP, et certains intermédiaires le suppriment. La substance
+    d'ADR-0015 est tenue : drapeau booléen explicite, à `False` par défaut, sur une route
+    réservée à l'admin.
     """
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue
-    await asyncio.wrap_future(write_queue.submit(lambda: service.supprimer(archer_id)))
+    await asyncio.wrap_future(
+        write_queue.submit(lambda: service.supprimer(archer_id, autoriser_suppression_engage))
+    )
     return Response(status_code=204)
 
 

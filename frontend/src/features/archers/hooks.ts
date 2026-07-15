@@ -42,7 +42,14 @@ export function useModifierArcher(tournoiId: number) {
 export function useSupprimerArcher(tournoiId: number) {
   const invalider = useInvaliderArchers(tournoiId)
   return useMutation({
-    mutationFn: (id: number) => supprimerArcher(id),
+    mutationFn: ({ id, autoriserSuppressionEngage = false }: SupprimerArcherVariables) =>
+      supprimerArcher(id, autoriserSuppressionEngage),
     onSuccess: invalider,
   })
+}
+
+interface SupprimerArcherVariables {
+  id: number
+  // Confirmation après un 409 `archer_engage` : efface aussi les scores et le placement.
+  autoriserSuppressionEngage?: boolean
 }

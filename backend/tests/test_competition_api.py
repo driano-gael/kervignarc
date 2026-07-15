@@ -409,40 +409,35 @@ def test_supprimer_archer_rend_204_et_le_retire_du_classement(
     assert restants == []
 
 
-def test_supprimer_archer_place_rend_409(
+def test_supprimer_archer_engage_409_puis_passe_sur_confirmation(
     app_competition: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """Refus définitif tant que l'archer occupe une cible (CA E02US003)."""
-    with TestClient(app_competition) as client:
-        connecter_admin(client)
-        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
-        archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
-        client.post(f"/api/v1/archers/{archer_id}/placement", json={"cible": 3})
+    """Le protocole en deux temps d'ADR-0015 vaut aussi pour la suppression (CA E02US003).
 
-        reponse = client.delete(f"/api/v1/archers/{archer_id}")
-
-    assert reponse.status_code == 409
-    assert reponse.json()["code"] == "archer_engage"
-
-
-def test_supprimer_archer_avec_scores_rend_409_pas_500(
-    app_competition: FastAPI, connecter_admin: ConnecterAdmin
-) -> None:
-    """Le service refuse **avant** la base : la FK sans cascade (DETTE-001) rendrait un 500.
-
-    C'est l'intérêt du contrôle applicatif : sans lui, `session.delete` échouerait sur
-    `score.archer_id` et le bénévole recevrait « erreur interne » au lieu d'une consigne.
+    Le drapeau est ici en **paramètre de requête** et non dans le corps (un `DELETE` n'en a pas) —
+    divergence de forme prévue par ADR-0015. La confirmation efface l'archer **et ses flèches** ;
+    un abandon, lui, relèvera du forfait (E12US004), qui les préserve.
     """
     with TestClient(app_competition) as client:
         connecter_admin(client)
         tournoi_id, categorie_id = _tournoi_avec_categorie(client)
         archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
+        client.post(f"/api/v1/archers/{archer_id}/placement", json={"cible": 3})
         client.post(f"/api/v1/archers/{archer_id}/scores", json={"points": 9})
 
-        reponse = client.delete(f"/api/v1/archers/{archer_id}")
+        signale = client.delete(f"/api/v1/archers/{archer_id}")
+        assert signale.status_code == 409
+        assert signale.json()["code"] == "archer_engage"
+        # Le message dit ce qui sera détruit, et nomme le forfait comme l'autre chemin.
+        assert "forfait" in signale.json()["message"]
 
-    assert reponse.status_code == 409
-    assert reponse.json()["code"] == "archer_engage"
+        confirme = client.delete(f"/api/v1/archers/{archer_id}?autoriser_suppression_engage=true")
+        restants = client.get(f"/api/v1/tournois/{tournoi_id}/archers").json()
+        classement = client.get(f"/api/v1/tournois/{tournoi_id}/classement").json()
+
+    assert confirme.status_code == 204, confirme.text
+    assert restants == []
+    assert classement["lignes"] == []
 
 
 @pytest.mark.parametrize(

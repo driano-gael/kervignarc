@@ -99,12 +99,18 @@ class ServiceArchers:
         même raison : un tri sur le nom brut classe par code point, donc « Élan » après « Zola » —
         les archers accentués s'entasseraient en fin de liste, dans l'écran même où le bénévole
         cherche un nom à l'œil. Le prénom départage les inscrits d'une même famille.
+
+        L'`id` départage en dernier ressort. Deux homonymes **confirmés** (le père et le fils,
+        que le projet soutient depuis E02US002) ont la même clé : sans ce 3ᵉ terme, leur ordre
+        serait celui que rend `par_tournoi`, c'est-à-dire un `SELECT` sans `ORDER BY` — que SQLite
+        ne garantit pas. Les deux lignes permuteraient d'un rafraîchissement à l'autre, sur l'écran
+        même où on doit les distinguer à l'œil.
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         return sorted(
             self._archers.par_tournoi(tournoi_id),
-            key=lambda archer: (cle_nom(archer.nom), cle_nom(archer.prenom)),
+            key=lambda archer: (cle_nom(archer.nom), cle_nom(archer.prenom), archer.id or 0),
         )
 
     def modifier(
@@ -148,27 +154,23 @@ class ServiceArchers:
             self._signaler_changement_categorie(archer_id, edite)
         return self._archers.enregistrer(edite)
 
-    def supprimer(self, archer_id: ArcherId) -> None:
+    def supprimer(self, archer_id: ArcherId, autoriser_suppression_engage: bool = False) -> None:
         """Désinscrit un archer (E02US003). Lève `ArcherIntrouvable` s'il n'existe pas.
 
-        Lève `ArcherEngage` — **refus définitif** — si l'archer est placé (il occupe une cible)
-        ou engagé (il a déjà tiré) : on ne fait pas disparaître en un clic un placement construit
-        et des flèches saisies. Voir `ArcherEngage` pour l'arbitrage.
+        La suppression **efface aussi ses scores et son placement** — c'est le contrat du port
+        (cf. `ArcherRepository.supprimer`), pas un effet de bord.
+
+        Lève `ArcherEngage` si l'archer est **placé** (il occupe une cible) ou **engagé** (il a
+        déjà tiré), sauf `autoriser_suppression_engage=True` : un **signalement**, pas un refus
+        (ADR-0015). On ne fait pas disparaître en un clic un placement construit et des flèches
+        saisies — mais l'admin, lui, peut savoir qu'il s'agit d'une erreur d'inscription.
+
+        **Un abandon ne passe pas par ici** : c'est un forfait tracé (E12US004), qui préserve les
+        flèches. Voir `ArcherEngage`.
         """
-        # DETTE-006 : les deux messages ci-dessous prescrivent un geste qui n'existe pas encore
-        # (retirer un placement → E03 ; effacer un score → E04). Le refus est juste ; c'est sa
-        # sortie qui manque. À reprendre avec ces US.
         archer = self._archer_existant(archer_id)
-        if archer.cible is not None:
-            raise ArcherEngage(
-                f"« {archer.prenom} {archer.nom} » est placé sur la cible {archer.cible} ; "
-                "retirez-le de son placement avant de le supprimer."
-            )
-        if self._scores.par_archer(archer_id):
-            raise ArcherEngage(
-                f"« {archer.prenom} {archer.nom} » a déjà tiré ; effacez ses scores avant de le "
-                "supprimer."
-            )
+        if not autoriser_suppression_engage:
+            self._signaler_engagement(archer)
         self._archers.supprimer(archer_id)
 
     def placer(self, archer_id: ArcherId, cible: int) -> Archer:
@@ -216,6 +218,33 @@ class ServiceArchers:
                     "S'il s'agit d'un homonyme (un père et son fils, par exemple), confirmez "
                     "l'inscription ; sinon, il s'agit d'un doublon."
                 )
+
+    def _signaler_engagement(self, archer: Archer) -> None:
+        """Lève `ArcherEngage` si l'archer est placé ou a déjà tiré (E02US003).
+
+        Le message **énumère ce qui sera détruit** plutôt que d'inviter à confirmer : c'est la
+        seule chose qui distingue, à l'écran, une suppression légitime (erreur de saisie) d'un
+        abandon mal enregistré — que le forfait d'E12US004 doit servir, en préservant les flèches.
+        Un message qui dirait « confirmez pour supprimer » ferait de la destruction le chemin par
+        défaut de l'archer qui s'en va.
+        """
+        assert archer.id is not None, "Un archer persisté a toujours un identifiant."
+        fleches = len(self._scores.par_archer(archer.id))
+        if archer.cible is None and fleches == 0:
+            return
+        motifs = []
+        if fleches:
+            # Accord au singulier plutôt qu'un « flèche(s) » : ce message est lu par un bénévole
+            # au moment où il s'apprête à détruire des données. Il doit se lire, pas se décoder.
+            motifs.append(f"{fleches} flèche déjà tirée" if fleches == 1 else f"{fleches} flèches")
+        if archer.cible is not None:
+            motifs.append(f"un placement sur la cible {archer.cible}")
+        raise ArcherEngage(
+            f"« {archer.prenom} {archer.nom} » a {' et '.join(motifs)}. Le supprimer effacera ces "
+            "données définitivement. S'il abandonne en cours d'épreuve, ne le supprimez pas : "
+            "c'est un forfait, qui conserve ses résultats. Confirmez seulement s'il n'aurait "
+            "jamais dû être inscrit."
+        )
 
     def _signaler_changement_categorie(self, archer_id: ArcherId, edite: Archer) -> None:
         """Lève `ChangementCategorieArcherEngage` si l'archer a déjà tiré (E02US003).

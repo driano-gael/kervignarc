@@ -76,11 +76,19 @@ class ArcherRepository(Protocol):
         ...
 
     def supprimer(self, archer_id: ArcherId) -> None:
-        """Supprime l'archer d'identifiant donné (existence garantie par l'appelant).
+        """Supprime l'archer d'identifiant donné **et ses scores** (E02US003).
 
-        L'appelant s'est **aussi** assuré que l'archer n'est ni placé ni engagé (E02US003) :
-        `score.archer_id` est une FK sans `ON DELETE` (DETTE-001), donc une suppression qui
-        laisserait des scores derrière elle échouerait en base, pas ici.
+        Existence garantie par l'appelant. La purge des scores fait partie du contrat : elle
+        n'est pas un effet de bord, c'est la seule façon de tenir la promesse « l'archer
+        disparaît » — `score.archer_id` est une FK **sans `ON DELETE`** (DETTE-001), donc une
+        suppression qui les laisserait derrière elle échouerait en base. Cascade **applicative
+        et maîtrisée**, à faire dans **une seule transaction** : deux transactions successives
+        laisseraient, en cas d'échec de la seconde, un archer dépouillé de ses flèches.
+
+        L'appelant a **déjà** obtenu la confirmation de l'admin si l'archer était placé ou
+        engagé (`ArcherEngage`) : à ce niveau, la décision est prise et les données sont
+        perdues volontairement. Un archer qui **abandonne** ne passe pas par ici — c'est un
+        forfait tracé (E12US004), qui préserve ses flèches.
         """
         ...
 

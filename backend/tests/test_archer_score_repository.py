@@ -283,22 +283,47 @@ def test_supprimer_un_archer_absent_est_une_incoherence_technique(tmp_path: Path
         db.engine.dispose()
 
 
-def test_supprimer_un_archer_avec_scores_est_bloque_par_la_fk(tmp_path: Path) -> None:
-    """Filet **sous** le service : `score.archer_id` n'a pas d'`ON DELETE` (DETTE-001).
+def test_supprimer_un_archer_emporte_ses_scores(tmp_path: Path) -> None:
+    """La purge est **dans la transaction** de l'adapter (E02US003), pas laissée à la FK.
 
-    Le service refuse déjà en amont (409, `ArcherEngage`) ; ce test dit pourquoi ce refus n'est
-    pas décoratif — sans lui, la suppression échouerait ici, en 500.
+    `score.archer_id` n'a pas d'`ON DELETE` (DETTE-001) : sans le `DELETE` explicite des scores,
+    ce `supprimer` échouerait en `InfrastructureError` → 500. C'est la cascade **applicative
+    maîtrisée** qui manque au reste de la descendance de `tournoi`.
     """
     db = _base(tmp_path)
     try:
         tournoi_id, categorie_id = _tournoi_et_categorie(db)
         archers = ArcherRepositorySQL(db.session_factory)
+        scores = ScoreRepositorySQL(db.session_factory)
         cree = archers.ajouter(Archer.creer("Robin", "Jean", tournoi_id, categorie_id))
         assert cree.id is not None
-        ScoreRepositorySQL(db.session_factory).ajouter(Score.creer(cree.id, 9))
+        scores.ajouter(Score.creer(cree.id, 9))
+        scores.ajouter(Score.creer(cree.id, 10))
 
-        with pytest.raises(InfrastructureError):
-            archers.supprimer(cree.id)
+        archers.supprimer(cree.id)
+        assert archers.par_id(cree.id) is None
+        assert scores.par_archer(cree.id) == []
+        assert scores.par_tournoi(tournoi_id) == []
+    finally:
+        db.engine.dispose()
+
+
+def test_supprimer_un_archer_ne_touche_pas_aux_scores_des_autres(tmp_path: Path) -> None:
+    """La purge est cloisonnée par `archer_id` — un `DELETE` trop large viderait le tournoi."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+        scores = ScoreRepositorySQL(db.session_factory)
+        partant = archers.ajouter(Archer.creer("Durand", "Bob", tournoi_id, categorie_id))
+        reste = archers.ajouter(Archer.creer("Martin", "Alice", tournoi_id, categorie_id))
+        assert partant.id is not None and reste.id is not None
+        scores.ajouter(Score.creer(partant.id, 9))
+        scores.ajouter(Score.creer(reste.id, 8))
+
+        archers.supprimer(partant.id)
+        assert [s.points for s in scores.par_archer(reste.id)] == [8]
+        assert archers.par_id(reste.id) is not None
     finally:
         db.engine.dispose()
 

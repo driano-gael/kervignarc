@@ -76,12 +76,22 @@ class FauxTournoiRepository:
 
 
 class FauxScoreRepository:
-    """Repository en mémoire conforme au port `ScoreRepository`."""
+    """Repository en mémoire conforme au port `ScoreRepository`.
+
+    S'abonne à `FauxArcherRepository` pour purger les scores d'un archer supprimé : côté
+    production, c'est `ArcherRepositorySQL.supprimer` qui le fait, dans la même transaction
+    (E02US003). Sans cette purge, le faux laisserait des scores orphelins que le vrai adapter
+    n'a jamais — et un classement testé après suppression mentirait au vert.
+    """
 
     def __init__(self, archers: FauxArcherRepository) -> None:
         self._archers = archers
         self._scores: list[Score] = []
         self._sequence = 0
+        archers.a_la_suppression(self._purger)
+
+    def _purger(self, archer_id: ArcherId) -> None:
+        self._scores = [s for s in self._scores if s.archer_id != archer_id]
 
     def ajouter(self, score: Score) -> Score:
         self._sequence += 1
@@ -498,6 +508,81 @@ def test_modifier_archer_confirme_accepte_le_changement_de_categorie() -> None:
     assert edite.categorie_id == autre_categorie.id
 
 
+def _archer_engage_et_homonyme_en_vue() -> tuple[Montage, ArcherId, CategorieId]:
+    """Monte le seul cas où les **deux** signalements sont vrais du même coup (E02US003).
+
+    Un archer qui a tiré, qu'on édite vers l'identité d'un inscrit **et** vers une autre
+    catégorie : c'est le cas d'usage nominal du CA (corriger une catégorie mal saisie) croisé
+    avec celui d'ADR-0014 (renseigner enfin le club) — donc tout sauf théorique.
+    """
+    m = _monter()
+    autre_categorie = m.categories.ajouter(Categorie.creer(m.tournoi_id, "Senior 2 H"))
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+    tireur = m.archers.ajouter(m.tournoi_id, "Martin", "Alice", m.categorie_id)
+    assert tireur.id is not None and autre_categorie.id is not None
+    m.archers.saisir_score(tireur.id, 9)
+    return m, tireur.id, autre_categorie.id
+
+
+def test_modifier_archer_autoriser_homonyme_ne_leve_pas_le_signalement_de_categorie() -> None:
+    """Un drapeau ne lève que **son** signalement : les deux sont indépendants (CA E02US003).
+
+    Sans quoi confirmer un homonyme emporterait en douce le déplacement des flèches d'un archer
+    vers un autre classement — que l'admin n'aurait jamais confirmé.
+    """
+    m, tireur_id, autre_categorie_id = _archer_engage_et_homonyme_en_vue()
+    with pytest.raises(ChangementCategorieArcherEngage):
+        m.archers.modifier(tireur_id, "Dupont", "Jean", autre_categorie_id, autoriser_homonyme=True)
+
+
+def test_modifier_archer_autoriser_changement_categorie_ne_leve_pas_l_homonyme() -> None:
+    """Pendant du test ci-dessus, dans l'autre sens : confirmer la catégorie ne dédouble pas."""
+    m, tireur_id, autre_categorie_id = _archer_engage_et_homonyme_en_vue()
+    with pytest.raises(HomonymeArcher):
+        m.archers.modifier(
+            tireur_id,
+            "Dupont",
+            "Jean",
+            autre_categorie_id,
+            autoriser_changement_categorie=True,
+        )
+
+
+def test_modifier_archer_les_deux_confirmations_ensemble_passent() -> None:
+    """Les deux drapeaux ensemble enregistrent : c'est la **sortie** du protocole en cascade.
+
+    Sans ce test, rien ne dit que la séquence a une fin — et le front peut boucler entre les deux
+    409 sans que la suite bronche (c'est arrivé : il n'accumulait pas les drapeaux).
+    """
+    m, tireur_id, autre_categorie_id = _archer_engage_et_homonyme_en_vue()
+    edite = m.archers.modifier(
+        tireur_id,
+        "Dupont",
+        "Jean",
+        autre_categorie_id,
+        autoriser_homonyme=True,
+        autoriser_changement_categorie=True,
+    )
+    assert (edite.nom, edite.prenom) == ("Dupont", "Jean")
+    assert edite.categorie_id == autre_categorie_id
+
+
+def test_modifier_categorie_d_un_archer_place_sans_score_ne_signale_rien() -> None:
+    """« Engagé » n'a pas le même sens dans les deux règles, et c'est voulu (CA E02US003).
+
+    `ArcherEngage` (suppression) = placé **ou** scores ; le signalement de catégorie = scores
+    **seuls**. Un placement ne fausse aucun classement : rien à confirmer. Sans ce test, élargir
+    le signalement à `cible is not None` passerait toute la suite au vert.
+    """
+    m = _monter()
+    autre_categorie = m.categories.ajouter(Categorie.creer(m.tournoi_id, "Senior 2 H"))
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None and autre_categorie.id is not None
+    m.archers.placer(archer.id, 3)
+    edite = m.archers.modifier(archer.id, "Robin", "Jean", autre_categorie.id)
+    assert (edite.categorie_id, edite.cible) == (autre_categorie.id, 3)
+
+
 def test_modifier_archer_engage_sans_toucher_a_la_categorie_ne_signale_rien() -> None:
     """Le signalement porte sur le **changement** de catégorie, pas sur l'archer engagé.
 
@@ -557,8 +642,8 @@ def test_supprimer_archer_inconnu_leve() -> None:
         m.archers.supprimer(404)
 
 
-def test_supprimer_archer_place_leve() -> None:
-    """Refus **définitif** tant que l'archer occupe une cible (CA E02US003)."""
+def test_supprimer_archer_place_signale() -> None:
+    """Occuper une cible suspend la suppression — un signalement, pas un refus (CA E02US003)."""
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None
@@ -568,8 +653,8 @@ def test_supprimer_archer_place_leve() -> None:
     assert m.inscrits.par_id(archer.id) is not None
 
 
-def test_supprimer_archer_avec_scores_leve() -> None:
-    """Refus **définitif** dès la première flèche : on ne cascade pas sur des scores saisis."""
+def test_supprimer_archer_avec_scores_signale() -> None:
+    """Dès la première flèche, la suppression se confirme : on ne l'efface pas d'un clic."""
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None
@@ -577,6 +662,83 @@ def test_supprimer_archer_avec_scores_leve() -> None:
     with pytest.raises(ArcherEngage):
         m.archers.supprimer(archer.id)
     assert m.inscrits.par_id(archer.id) is not None
+
+
+def test_signalement_d_engagement_dit_ce_qui_sera_detruit() -> None:
+    """Le message énumère les flèches **et** le placement (CA E02US003).
+
+    C'est la seule chose qui, à l'écran, distingue une suppression légitime (erreur de saisie)
+    d'un abandon mal enregistré — que le forfait d'E12US004 doit servir. Un message vague ferait
+    de la destruction le chemin par défaut de l'archer qui s'en va, et les flèches partiraient
+    avec.
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.archers.saisir_score(archer.id, 9)
+    m.archers.saisir_score(archer.id, 10)
+    m.archers.placer(archer.id, 4)
+    with pytest.raises(ArcherEngage) as leve:
+        m.archers.supprimer(archer.id)
+    assert "2 flèches" in leve.value.message
+    assert "cible 4" in leve.value.message
+    assert "forfait" in leve.value.message
+
+
+def test_signalement_d_engagement_accorde_au_singulier() -> None:
+    """Une seule flèche s'écrit « 1 flèche », pas « 1 flèche(s) » (E02US003).
+
+    Ce message est lu par un bénévole au moment où il s'apprête à détruire des données : il doit
+    se lire, pas se décoder.
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.archers.saisir_score(archer.id, 9)
+    with pytest.raises(ArcherEngage) as leve:
+        m.archers.supprimer(archer.id)
+    assert "1 flèche déjà tirée" in leve.value.message
+    assert "(s)" not in leve.value.message
+
+
+def test_supprimer_archer_engage_confirme_efface_l_archer_et_ses_scores() -> None:
+    """`autoriser_suppression_engage=True` : l'admin confirme une erreur d'inscription.
+
+    La suppression **emporte les scores** — c'est le contrat du port, et c'est le prix que le
+    message annonce. Un archer qui abandonne ne passe pas par là (forfait, E12US004).
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.archers.saisir_score(archer.id, 9)
+    m.archers.placer(archer.id, 4)
+
+    m.archers.supprimer(archer.id, autoriser_suppression_engage=True)
+    assert m.inscrits.par_id(archer.id) is None
+    assert m.classement.pour_tournoi(m.tournoi_id).lignes == ()
+
+
+def test_supprimer_archer_engage_confirme_ne_touche_pas_aux_autres() -> None:
+    """La purge est cloisonnée : les flèches des autres inscrits survivent (CA E02US003)."""
+    m = _monter()
+    partant = m.archers.ajouter(m.tournoi_id, "Durand", "Bob", m.categorie_id)
+    reste = m.archers.ajouter(m.tournoi_id, "Martin", "Alice", m.categorie_id)
+    assert partant.id is not None and reste.id is not None
+    m.archers.saisir_score(partant.id, 9)
+    m.archers.saisir_score(reste.id, 8)
+
+    m.archers.supprimer(partant.id, autoriser_suppression_engage=True)
+    lignes = m.classement.pour_tournoi(m.tournoi_id).lignes
+    assert [(ligne.nom, ligne.total) for ligne in lignes] == [("Martin", 8)]
+
+
+def test_supprimer_archer_libre_ne_demande_aucune_confirmation() -> None:
+    """Ni placé ni engagé : rien à détruire, donc rien à confirmer (CA E02US003)."""
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.archers.supprimer(archer.id)
+    assert m.inscrits.par_id(archer.id) is None
 
 
 def test_supprimer_archer_ignore_les_scores_des_autres() -> None:
@@ -609,6 +771,22 @@ def test_lister_archers_du_tournoi_trie_par_nom_et_prenom() -> None:
 
     listes = [(a.nom, a.prenom) for a in m.archers.lister(m.tournoi_id)]
     assert listes == [("Dupont", "Anne"), ("Dupont", "Paul"), ("Élan", "Bruno"), ("Zola", "Émile")]
+
+
+def test_lister_archers_ordonne_deux_homonymes_de_facon_stable() -> None:
+    """Deux homonymes confirmés ont la **même clé** de tri : l'`id` doit les départager.
+
+    Sans ce 3ᵉ terme, leur ordre serait celui du `SELECT` sans `ORDER BY` de `par_tournoi`, que
+    SQLite ne garantit pas — les deux lignes permuteraient d'un rafraîchissement à l'autre, sur
+    l'écran même où le bénévole doit les distinguer à l'œil.
+    """
+    m = _monter()
+    club = m.clubs.ajouter(Club.creer("Arc Club Rennes"))
+    pere = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, club.id)
+    fils = m.archers.ajouter(
+        m.tournoi_id, "Dupont", "Jean", m.categorie_id, club.id, autoriser_homonyme=True
+    )
+    assert [a.id for a in m.archers.lister(m.tournoi_id)] == [pere.id, fils.id]
 
 
 def test_lister_archers_tournoi_inconnu_leve() -> None:

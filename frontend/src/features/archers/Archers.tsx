@@ -4,14 +4,16 @@
 // désinscription à confirmation. C'est la surface où le **club inconnu** devient corrigeable :
 // jusqu'ici l'anomalie se voyait au classement (ADR-0014) sans qu'on puisse rien en faire.
 //
-// **Trois refus serveur, deux natures.** L'écran ne les traite pas pareil, et c'est le fond de
-// l'US :
-//   - `homonyme_archer` et `changement_categorie_archer_engage` sont des **signalements** — la
-//     machine constate un fait dont elle ignore le sens. Ton neutre, et un bouton pour passer
-//     outre qui rejoue l'appel avec le drapeau correspondant (ADR-0015).
-//   - `archer_engage` est un **refus** — aucun bouton ne le lève. Il s'affiche comme une erreur,
-//     parce que c'en est une : le geste demandé n'aura pas lieu.
-// Offrir un bouton « quand même » sur le troisième mentirait sur ce que fait le serveur.
+// **Trois signalements, même protocole (ADR-0015), une conséquence à part.** Chacun constate un
+// fait dont la machine ignore le sens, l'affiche en ton **neutre** (ce ne sont pas des erreurs)
+// et offre un bouton qui rejoue l'appel avec son drapeau :
+//   - `homonyme_archer` — l'édition fait entrer l'archer dans l'identité d'un inscrit ;
+//   - `changement_categorie_archer_engage` — sa catégorie change alors qu'il a déjà tiré ;
+//   - `archer_engage` — on le supprime alors qu'il est placé ou a tiré.
+// Le troisième est le seul dont la confirmation **détruit** (les flèches et le placement partent
+// avec) : bouton `--danger`, libellé qui nomme la perte. Les trois se ressemblent, leurs
+// conséquences non — et un archer qui **abandonne** ne se supprime pas : c'est un forfait tracé
+// (E12US004), qui conserve ses résultats. Le message du serveur le dit ; c'est lui qu'on lit.
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
@@ -49,6 +51,9 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
   const supprimer = useSupprimerArcher(tournoiId)
   const clubs = useClubs()
   const categories = useCategories(tournoiId)
+
+  const engagementSignale =
+    supprimer.error instanceof ErreurApi && supprimer.error.code === 'archer_engage'
 
   if (edition) {
     return (
@@ -100,14 +105,19 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
                 type="button"
                 className="bouton--danger"
                 disabled={supprimer.isPending}
-                onClick={() => supprimer.mutate(archer.id)}
+                onClick={() => supprimer.mutate({ id: archer.id })}
               >
                 Confirmer la suppression
               </button>
               <button
                 type="button"
                 className="bouton--discret"
-                onClick={() => setConfirmationSuppression(false)}
+                onClick={() => {
+                  // `reset()` : sans lui, le signalement resterait affiché sur une ligne où
+                  // l'admin vient justement de renoncer.
+                  supprimer.reset()
+                  setConfirmationSuppression(false)
+                }}
               >
                 Annuler
               </button>
@@ -123,9 +133,26 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
           )}
         </span>
       </div>
-      {/* `archer_engage` arrive ici : un refus, affiché comme tel. Le message du serveur dit quoi
-          faire d'abord (retirer le placement, effacer les scores). */}
-      <MessageErreur erreur={supprimer.error} />
+      {/* `archer_engage` : un signalement, comme les deux autres — mais le seul dont la
+          confirmation **détruit** (les flèches et le placement partent avec l'archer). D'où un
+          bouton `--danger` et non neutre : les trois blocs se ressemblent, leurs conséquences
+          non. Le message du serveur énumère ce qui sera effacé et rappelle qu'un abandon est un
+          forfait (E12US004), pas une suppression — le lire est le geste utile ici. */}
+      {engagementSignale ? (
+        <div className="carte__etat" role="alert">
+          <p>{supprimer.error?.message}</p>
+          <button
+            type="button"
+            className="bouton--danger"
+            disabled={supprimer.isPending}
+            onClick={() => supprimer.mutate({ id: archer.id, autoriserSuppressionEngage: true })}
+          >
+            Supprimer définitivement, avec ses résultats
+          </button>
+        </div>
+      ) : (
+        <MessageErreur erreur={supprimer.error} />
+      )}
     </li>
   )
 }
@@ -155,17 +182,28 @@ function FormulaireArcher({
   const homonymeSignale = code === 'homonyme_archer'
   const categorieSignalee = code === 'changement_categorie_archer_engage'
 
+  // Les confirmations **s'accumulent** : le serveur teste les deux signalements à chaque appel et
+  // n'en lève qu'un à la fois. Un bouton qui n'enverrait que *son* drapeau relancerait l'autre
+  // 409 indéfiniment — l'archer engagé dont on corrige à la fois l'identité et la catégorie ne
+  // serait alors jamais enregistrable. C'est le cas d'usage nominal du CA croisé avec celui
+  // d'ADR-0014 (renseigner le club change `cle_identite`), pas un cas tordu.
+  const [confirmations, setConfirmations] = useState<Partial<ModifierArcher>>({})
+
   // Un 409 porte sur **les valeurs exactes** envoyées. Dès qu'un champ change, le signalement ne
-  // s'y applique plus : on l'efface, sinon « Enregistrer quand même » confirmerait une saisie que
-  // le serveur n'a jamais examinée — et le doublon que l'US refuse passerait par le bouton même
-  // prévu pour l'autoriser. Même parti qu'à l'inscription (E02US002) : `reset()` plutôt que de
-  // comparer les clés, ce qui exigerait de réimplémenter `cle_nom` en TS.
+  // s'y applique plus : on l'efface — et avec lui les confirmations déjà données, qui portaient
+  // sur ces valeurs-là. Sinon « Enregistrer quand même » confirmerait une saisie que le serveur
+  // n'a jamais examinée, et le doublon que l'US refuse passerait par le bouton même prévu pour
+  // l'autoriser. Même parti qu'à l'inscription (E02US002) : `reset()` plutôt que de comparer les
+  // clés, ce qui exigerait de réimplémenter `cle_nom` en TS.
   const surChamp = (poser: (valeur: string) => void) => (valeur: string) => {
     if (modifier.error !== null) modifier.reset()
+    setConfirmations({})
     poser(valeur)
   }
 
-  const enregistrer = (confirmations: Partial<ModifierArcher>) => {
+  const enregistrer = (nouvelles: Partial<ModifierArcher>) => {
+    const cumul = { ...confirmations, ...nouvelles }
+    setConfirmations(cumul)
     modifier.mutate(
       {
         id: archer.id,
@@ -174,7 +212,7 @@ function FormulaireArcher({
           prenom,
           categorie_id: Number(categorieId),
           club_id: clubId === '' ? null : Number(clubId),
-          ...confirmations,
+          ...cumul,
         },
       },
       { onSuccess: onTermine },
@@ -241,9 +279,10 @@ function FormulaireArcher({
         </div>
       </form>
       {/* Ton **neutre** (pas de `--erreur`) et une action : ces deux-là ne sont pas des erreurs,
-          l'édition reste possible. Chaque bouton ne pose que **son** drapeau : si les deux faits
-          sont vrais, l'admin voit le second signalement après avoir levé le premier. Un bouton qui
-          poserait les deux d'un coup ferait confirmer un motif jamais affiché.
+          l'édition reste possible. Chaque bouton ne confirme que **son** motif — jamais les deux
+          d'un coup, ce qui ferait acquiescer à un motif jamais affiché — mais les confirmations
+          **s'ajoutent** (cf. `cumul` ci-dessus) : si les deux faits sont vrais, l'admin lève le
+          premier signalement, voit le second, le lève à son tour, et l'édition passe.
           À reprendre avec E00US013, qui factorisera les briques d'UI (DETTE-004). */}
       {homonymeSignale && (
         <div className="carte__etat" role="alert">

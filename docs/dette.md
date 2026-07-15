@@ -33,12 +33,12 @@
 
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
-| [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason`, `gabarit_salle`, `phase` (→ `tournoi.id`), enfant indirect `score` (→ `archer.id`) et liens latéraux `categorie.blason_id` (→ `blason.id`) et `archer.categorie_id` (→ `categorie.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006, E01US008, E01US009, E02US002) | US dédiée — non planifiée |
+| [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason`, `gabarit_salle`, `phase` (→ `tournoi.id`), enfant indirect `score` (→ `archer.id`) et liens latéraux `categorie.blason_id` (→ `blason.id`) et `archer.categorie_id` (→ `categorie.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006, E01US008, E01US009, E02US002) ; **`archer` → `score` résolu** par E02US003 (cascade applicative dans `ArcherRepositorySQL.supprimer`) | US dédiée — non planifiée. **⚠️ Ne pas poser `ON DELETE CASCADE` sur `score.archer_id` sans lire d'abord `ServiceArchers.supprimer`** : la purge y est déjà faite, applicative et **conditionnée à une confirmation** de l'admin (`ArcherEngage`). Une cascade en base la rendrait silencieuse et emporterait les flèches sans que personne ait confirmé — exactement ce que l'arbitrage E02US003 du 16/07/2026 a voulu éviter en distinguant suppression et forfait |
 | [DETTE-002](#dette-002--hauteur-de-blason-non-modélisée) | conception | majeur | `backend/domain/blason.py`, `docs/modele-de-donnees.md` | `Blason` modélise l'occupation d'une cible par une `taille` (fraction) + `capacite`, mais **pas la hauteur du centre** — 110 cm pour le blason 80 cm des U11 contre 130 cm pour tous les autres (FFTA B.2.2.1.1, C.3.1.1) | Le placement automatique (EPIC-03) pourra composer une butte physiquement intirable : un U11 et des adultes sur la même cible passent le contrôle « somme des fractions ≤ capacité » alors que leurs blasons ne peuvent pas coexister | E01US005 (blasons) ; constatée au cadrage FFTA du 14/07/2026 | E03US001 (placement automatique) — **avant** d'écrire l'algorithme |
 | [DETTE-003](#dette-003--config-de-phase-à-plat-au-lieu-de-configpolicies) | conception | majeur | `backend/infrastructure/db/repositories.py` (`_config_phase`, `_vers_phase`), `docs/modele-de-donnees.md` | La `config` d'une phase écrit ses politiques **à plat à la racine** (`config.scoring`, `config.validation`) alors que le modèle cible (ADR-0004) les range sous `config.policies` ; et `scoring` y est un **objet paramétré** au lieu d'un **nom de preset** | Deux conventions coexistent pour le même champ. Le moteur (EPIC-05) devra soit adopter la forme à plat — et renoncer au modèle cible — soit migrer les `config` déjà écrites : c'est une décision reportée, pas évitée | E01US009 (forme posée) ; suivie par E01US015 (`config.validation`), qui s'y aligne plutôt que d'introduire une 2ᵉ convention | E05US004 (assembler les politiques) — **avant** d'écrire le moteur |
 | [DETTE-005](#dette-005--conversion-euroscentimes-sans-aucun-test) | technique | majeur | `frontend/src/features/competition/format.ts` | La conversion **euros ↔ centimes** — seul convertisseur d'argent de l'application ([ADR-0012](adr/0012-argent-en-centimes-entiers.md)) — n'a **aucun test** : le front n'a pas de runner (`package.json` : ni `vitest`, ni script `test`) | Une régression silencieuse fausse **le montant dû** (EF-8.1) : inverser `padEnd`/`padStart` transforme 8,10 € en 8,01 € sans que rien ne bronche. Le code est juste aujourd'hui ; c'est sa **non-régression** qui n'est protégée par rien | E01US010 (1ʳᵉ logique pure du front) ; absence de runner préexistante (E00US002 n'outille que lint/format) | E00US014 (runner de test front) — **avant** E08US001, qui consommera le tarif |
 | [DETTE-004](#dette-004--messageerreur-dupliqué-dans-chaque-feature-front) | conception | mineur | `frontend/src/features/*/` (10 occurrences) | Le composant `MessageErreur` est copié **à l'identique** dans chaque feature — même signature, même corps, mêmes classes — au lieu de vivre dans `shared/` | Tout changement du rendu d'erreur (ex. le token d'alerte **ambre** du CDC design, `DV-03`) se fait en 10 endroits, avec le risque d'en oublier un : les erreurs sont précisément ce que l'utilisateur voit quand ça va mal | E00US011 puis chaque feature (`admin`, `bareme`, `blasons`, `categories`, `competition`, `gabarits` ×2) ; **aggravée** par E01US015 (8ᵉ copie), E02US001 (9ᵉ copie) puis E02US003 (10ᵉ copie, feature `archers`) | E00US013 (factoriser les briques d'UI partagées) |
-| [DETTE-006](#dette-006--un-archer-placé-ou-engagé-est-définitivement-non-supprimable) | conception | majeur | `backend/application/archers.py` (`ArcherEngage`), `backend/application/erreurs.py` | Le refus de supprimer un archer placé ou engagé (E02US003) nomme une porte de sortie — « retirez-le de son placement », « effacez ses scores » — qu'**aucun cas d'usage n'ouvre** : `placer` n'accepte qu'une cible ≥ 1 (pas de dé-placement) et rien n'efface un score | Un archer placé ou ayant tiré est **définitivement** indéboulonnable. Le message prescrit un geste que l'utilisateur ne peut pas accomplir : il lit une consigne, la cherche, ne la trouve pas | E02US003 (le refus naît avec l'US ; l'absence des deux gestes préexiste — walking skeleton E00US011) | E03 (retrait de placement) et E04 (correction/effacement de scores) — chacune ouvre **sa** moitié de la porte |
+| [DETTE-006](#dette-006--cle_nom-nest-plus-chez-elle-dans-domainclubpy) | conception | mineur | `backend/domain/club.py` (`cle_nom`), `backend/domain/archer.py`, `backend/application/archers.py`, `backend/application/clubs.py` | `cle_nom` — le repli casse/accents des noms propres — vit dans `domain/club.py`, mais sert désormais **4** usages dont **2 hors du concept « club »** : `archer.cle_identite` (E02US002) et le tri des archers (E02US003). Sa propre docstring avait posé le seuil : « si un 2ᵉ usage hors club apparaît, extraire dans un `domain/texte.py` en US dédiée » | La fonction est **juste** ; seul son domicile est faux. Un lecteur d'`archer.py` doit aller lire `club.py` pour comprendre comment se replient les noms d'archers, et le prochain usage hors club ira chercher la règle là où elle n'a plus de raison d'être | E02US002 (1ᵉʳ usage hors club) ; **seuil atteint** par E02US003 (2ᵉ) | US dédiée à créer (`refactor/…`) — déplacer dans `domain/texte.py`, 4 appelants, zéro changement de comportement |
 
 ## Dette résorbée
 
@@ -268,48 +268,50 @@ l'ajouter à la CI bloquante (E00US003) et à [`dependances.md`](dependances.md)
 `-8`, `huit`, `8,`), et **stabilité de l'aller-retour**. À faire **avant E08US001**, qui consommera
 le tarif pour calculer les montants dus. Marqueur `DETTE-005` posé en tête de `format.ts`.
 
-### DETTE-006 — un archer placé ou engagé est définitivement non supprimable
+### DETTE-006 — `cle_nom` n'est plus chez elle dans `domain/club.py`
 
-**Constat.** E02US003 refuse de désinscrire un archer **placé** (il occupe une cible) ou **engagé**
-(il a tiré) — `ArcherEngage` → 409, sur le patron constant du projet : on refuse plutôt que de
-cascader en silence sur un placement construit et des flèches saisies. Le refus est délibéré et le
-message dit quoi faire d'abord :
+**Constat.** `domain.club.cle_nom` replie les espaces de bord, la **casse** et les **accents** d'un
+nom. Elle est née pour le référentiel des clubs (E02US001) et y a deux usages légitimes : refuser
+un homonyme de club (`ClubRepository.par_nom`) et classer le référentiel à l'écran
+(`ServiceClubs.lister`). Elle en a désormais **deux autres, hors du concept « club »** :
 
-> « Bob Durand » est placé sur la cible 3 ; **retirez-le de son placement** avant de le supprimer.
-> « Alice Martin » a déjà tiré ; **effacez ses scores** avant de le supprimer.
+- `domain.archer.cle_identite` (E02US002) — replier **nom et prénom d'archer** ;
+- `ServiceArchers.lister` (E02US003) — **classer les archers** d'un tournoi.
 
-Or **aucun de ces deux gestes n'existe**. `ServiceArchers.placer` n'accepte qu'une cible ≥ 1
-(`Archer.placer` lève `CibleInvalide` en deçà) : il n'y a pas de dé-placement. Et aucun cas d'usage
-n'efface un score — `ScoreRepository` n'expose que `ajouter`, `par_tournoi` et `par_archer`.
+La réutilisation est le bon geste, et il est délibéré : deux règles de repli qui divergeraient
+accepteraient un doublon ici et le refuseraient là. Ce n'est pas elle qui est en cause — c'est le
+**domicile**. `cle_nom` n'est plus « une notion métier du référentiel des clubs » : c'est la règle
+de repli des noms propres du projet.
 
-**Conséquence.** Le message **prescrit une action impossible**. Un archer qui a reçu une cible ou
-une seule flèche ne peut plus jamais être retiré de la liste : le bénévole lit une consigne, la
-cherche à l'écran, ne la trouve nulle part. C'est l'anti-patron exact de l'erreur utile — dire quoi
-faire, puis ne pas le rendre faisable.
+Le seuil n'est pas inventé ici : la docstring de `cle_nom` l'avait **posé elle-même** en E02US002,
+en acceptant le 1ᵉʳ usage hors club — « *Si un 2ᵉ usage hors club apparaît, extraire dans un
+`domain/texte.py` en US dédiée.* » E02US003 est ce 2ᵉ usage. Le déclencheur est donc une **preuve
+dans le code d'aujourd'hui** (règle 16), pas un pronostic.
 
-**Pourquoi non corrigée dans l'US.** Les deux gestes manquants appartiennent à d'autres US, et les
-construire ici serait bâtir sur du sable :
+**Conséquence.** La fonction est juste : rien ne casse, aujourd'hui ni demain. Ce qui coûte, c'est
+la **lecture** — qui veut comprendre comment se replient les noms d'archers doit aller lire
+`club.py`, et `archer.py` importe `cle_nom` depuis un module dont le nom dit le contraire de ce
+qu'il fait. Le prochain usage hors club (E02US005, détection de doublons, est un candidat naturel)
+ira chercher la règle là où elle n'a plus de raison d'être. Sévérité **mineure** : inconfort local,
+aucun invariant en danger.
 
-- le **placement** d'aujourd'hui est celui du walking skeleton (E00US011) — « un simple numéro », que
-  EPIC-03 remplacera par le vrai moteur (capacité 1/2/4, ≥ 2 clubs par cible, blason = fraction de
-  place). Un `retirer_placement` écrit maintenant viserait un modèle qui n'existera plus ;
-- **effacer un score** est le métier d'E04 (saisie, correction, validation), avec ses propres règles
-  — une flèche validée ne s'efface pas comme une flèche en cours de saisie. L'inventer ici, sans le
-  grain de validation, produirait une règle fausse.
+**Pourquoi non corrigée dans l'US.** Règle 16 : un remède structurel « se traite en ADR + US
+dédiée, **jamais en douce dans l'US courante** ». Le déplacement touche `club.py`, `archer.py`,
+`ServiceClubs` et `ServiceArchers` — il n'a rien à faire dans une US qui parle d'éditer un archer,
+où il noierait le diff métier sous un refactor. E02US003 s'est donc contentée d'**ajouter l'usage
+et de constater le déclenchement**.
 
-L'alternative aurait été de **cascader** (supprimer l'archer emporte son placement et ses scores) :
-écartée à l'arbitrage du 15/07/2026 (cf. [`stories/E02-inscriptions.md`](../../stories/E02-inscriptions.md),
-E02US003) — le CA proposait « confirmation + recalcul », mais il n'y a rien à recalculer avant E03,
-et `score.archer_id` étant une FK sans `ON DELETE` ([DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée)),
-la purge serait à écrire à la main.
+**Résorption.** US dédiée à créer (`refactor/…`) : déplacer `cle_nom` dans un `domain/texte.py`, y
+rapatrier la docstring qui explique le repli (NFKD → retrait des combinantes → `casefold`), mettre
+à jour les 4 appelants. **Zéro changement de comportement** — les tests existants sont l'oracle, et
+c'est ce qui rend l'US sûre et courte. Marqueur `# DETTE-006` en tête de `cle_nom`.
 
-**Ce que la dette n'est pas.** Le refus lui-même est **juste** et vérifié (`ArcherEngage` → 409, et
-non le 500 qu'aurait rendu la FK). Ce qui manque n'est pas un garde-fou : c'est sa sortie.
-
-**Résorption.** E03 (retrait d'un placement) et E04 (correction/effacement d'un score) ouvrent chacune
-**sa** moitié de la porte ; la dette ne se solde qu'à la seconde. Chacune devra **reprendre le message**
-d'`ArcherEngage` pour qu'il désigne le geste réellement offert. Marqueur `DETTE-006` posé sur
-`ArcherEngage` (`backend/application/erreurs.py`) et sur `ServiceArchers.supprimer`.
+> **Pourquoi ce numéro a servi deux fois sur la branche `feat/e02us003-…`.** Le commit `621c9e1`
+> ouvrait un DETTE-006 « un archer placé ou engagé est définitivement non supprimable ». L'arbitrage
+> métier du 16/07/2026 l'a **dissous** : la suppression d'un archer engagé est devenue confirmable
+> (elle efface ses résultats), et un archer qui **abandonne** relève du forfait ([E12US004](../stories/E12-pilotage-jour-j.md)),
+> qui les conserve. Il n'y avait donc plus de dette — le refus sans issue qui la créait n'existe
+> plus. Le numéro, jamais parvenu à `main`, a été réattribué plutôt que laissé en trou.
 
 ## Procédure — inscrire une dette
 
