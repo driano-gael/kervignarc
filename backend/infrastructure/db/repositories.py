@@ -45,6 +45,7 @@ def _vers_tournoi(ligne: TournoiORM) -> Tournoi:
         lieu=ligne.lieu,
         type_tournoi=TypeTournoi(ligne.type_tournoi),
         statut=StatutTournoi(ligne.statut),
+        tarif_depart_centimes=ligne.tarif_depart_centimes,
         id=ligne.id,
     )
 
@@ -214,6 +215,7 @@ class TournoiRepositorySQL:
                     lieu=tournoi.lieu,
                     type_tournoi=tournoi.type_tournoi.value,
                     statut=tournoi.statut.value,
+                    tarif_depart_centimes=tournoi.tarif_depart_centimes,
                 )
                 session.add(ligne)
                 session.commit()
@@ -258,6 +260,7 @@ class TournoiRepositorySQL:
                 ligne.lieu = tournoi.lieu
                 ligne.type_tournoi = tournoi.type_tournoi.value
                 ligne.statut = tournoi.statut.value
+                ligne.tarif_depart_centimes = tournoi.tarif_depart_centimes
                 session.commit()
                 return _vers_tournoi(ligne)
         except SQLAlchemyError as exc:

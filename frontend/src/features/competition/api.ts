@@ -16,6 +16,10 @@ export interface Tournoi {
   lieu: string | null
   type_tournoi: TypeTournoi
   statut: StatutTournoi
+  // Prix d'un départ, en **centimes entiers** (E01US010) — l'unité est dans le nom, et l'argent ne
+  // transite jamais en flottant. `null` = tarif **non défini** ; `0` = **gratuit**. Deux états
+  // distincts : voir `format.ts` pour la mise en forme.
+  tarif_depart_centimes: number | null
 }
 
 export interface NouveauTournoi {
@@ -23,6 +27,7 @@ export interface NouveauTournoi {
   date: string
   lieu?: string | null
   type_tournoi?: TypeTournoi
+  tarif_depart_centimes?: number | null
 }
 
 // L'édition porte sur les métadonnées uniquement ; le statut évolue via démarrer/terminer.

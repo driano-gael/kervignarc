@@ -17,7 +17,7 @@ from application.erreurs import (
     TransitionStatutInvalide,
 )
 from application.tournois import ServiceTournois
-from domain.erreurs import NomTournoiInvalide
+from domain.erreurs import NomTournoiInvalide, TarifDepartInvalide
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
 
 _DATE = datetime.date(2026, 3, 14)
@@ -114,6 +114,47 @@ def test_modifier_leve_si_introuvable() -> None:
     service = ServiceTournois(FauxTournoiRepository())
     with pytest.raises(TournoiIntrouvable):
         service.modifier(404, "X", _DATE)
+
+
+# --- Tarif d'un départ (E01US010) ---
+
+
+def test_creer_persiste_le_tarif() -> None:
+    """`creer` transmet le tarif (en centimes) au domaine puis au repository."""
+    service = ServiceTournois(FauxTournoiRepository())
+
+    tournoi = service.creer("Salle 18m", _DATE, tarif_depart_centimes=810)
+
+    assert tournoi.tarif_depart_centimes == 810
+    assert tournoi.id is not None
+    assert service.consulter(tournoi.id).tarif_depart_centimes == 810
+
+
+def test_creer_sans_tarif_laisse_non_defini() -> None:
+    """Omettre le tarif ne le met pas à zéro : il reste **non défini**."""
+    service = ServiceTournois(FauxTournoiRepository())
+
+    assert service.creer("Salle 18m", _DATE).tarif_depart_centimes is None
+
+
+def test_creer_propage_l_erreur_de_tarif() -> None:
+    """Un tarif négatif fait remonter l'erreur du domaine (non persisté)."""
+    service = ServiceTournois(FauxTournoiRepository())
+
+    with pytest.raises(TarifDepartInvalide):
+        service.creer("Salle 18m", _DATE, tarif_depart_centimes=-1)
+    assert service.lister() == []
+
+
+def test_modifier_persiste_le_tarif() -> None:
+    service = ServiceTournois(FauxTournoiRepository())
+    cree = service.creer("Salle 18m", _DATE, tarif_depart_centimes=810)
+    assert cree.id is not None
+
+    modifie = service.modifier(cree.id, "Salle 18m", _DATE, tarif_depart_centimes=1250)
+
+    assert modifie.tarif_depart_centimes == 1250
+    assert service.consulter(cree.id).tarif_depart_centimes == 1250
 
 
 def test_modifier_propage_l_erreur_de_domaine() -> None:

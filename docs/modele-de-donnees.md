@@ -45,8 +45,14 @@ erDiagram
 | lieu | TEXT | |
 | type_tournoi | TEXT | `officiel` \| `non_officiel` |
 | statut | TEXT | `brouillon` \| `en_cours` \| `termine` |
-| tarif_depart | REAL | ≥ 0 |
+| tarif_depart_centimes | INTEGER | ≥ 0, NULL admis — **centimes** (E01US010) |
 | created_at | TEXT (datetime) | |
+
+> **L'argent se compte en centimes entiers, jamais en REAL** — règle de projet, arbitrée par
+> [ADR-0012](adr/0012-argent-en-centimes-entiers.md) (E01US010) : elle vaut pour **tout** montant du
+> modèle, `DEPART` compris. **Trois états**, tous distincts : `NULL` = tarif **non défini**
+> (l'organisateur ne l'a pas fixé), `0` = **gratuit**, `> 0` = payant — confondre les deux premiers
+> ferait annoncer « 0 € dû » à une compétition dont le tarif a été oublié.
 
 > Le plan de salle d'un tournoi n'est **pas** une FK sur `TOURNOI` : c'est une **copie** rangée
 > dans `GABARIT_SALLE` et pointant vers le tournoi (`GABARIT_SALLE.tournoi_id`), pour pouvoir
@@ -103,9 +109,13 @@ erDiagram
 | id | INTEGER | PK |
 | archer_id | INTEGER | FK → ARCHER, NOT NULL |
 | numero | INTEGER | n° de départ |
-| tarif | REAL | copie du tarif appliqué |
-| montant_du | REAL | = tarif |
+| tarif_centimes | INTEGER | copie du tarif appliqué (**centimes**) |
+| montant_du_centimes | INTEGER | = tarif_centimes |
 | paye | BOOLEAN | défaut `false` |
+
+> **Centimes ici aussi** ([ADR-0012](adr/0012-argent-en-centimes-entiers.md)) : c'est précisément
+> sur ces colonnes que porteront les **sommes** d'EPIC-08/09 (montant par archer, par club), là où
+> un REAL dériverait. Tables à créer en E02US004 / E08US001.
 
 ### GABARIT_SALLE
 | id | INTEGER | PK |

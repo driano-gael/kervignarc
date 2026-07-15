@@ -20,6 +20,9 @@ class TournoiORM(Base):
 
     `type_tournoi` et `statut` stockent la **valeur** de leurs énumérations respectives
     (`TypeTournoi`, `StatutTournoi`) ; la traduction chaîne ↔ enum est faite par le repository.
+
+    `tarif_depart_centimes` est un **INTEGER**, pas un REAL : l'argent se compte en centimes
+    entiers (E01US010). `NULL` signifie « tarif non défini », distinct de `0` (gratuit).
     """
 
     __tablename__ = "tournoi"
@@ -30,6 +33,7 @@ class TournoiORM(Base):
     lieu: Mapped[str | None] = mapped_column(nullable=True)
     type_tournoi: Mapped[str] = mapped_column(nullable=False)
     statut: Mapped[str] = mapped_column(nullable=False)
+    tarif_depart_centimes: Mapped[int | None] = mapped_column(nullable=True)
 
 
 class CategorieORM(Base):
