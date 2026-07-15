@@ -23,7 +23,7 @@ reviendrait à la vérifier contre le vide : aujourd'hui, rien ne peut référen
 from __future__ import annotations
 
 from application.erreurs import ClubIntrouvable, NomClubDejaPris
-from domain.club import Club, ClubId
+from domain.club import Club, ClubId, cle_nom
 from domain.ports import ClubRepository
 
 
@@ -44,8 +44,14 @@ class ServiceClubs:
         return self._clubs.ajouter(club)
 
     def lister(self) -> list[Club]:
-        """Renvoie tout le référentiel, trié par nom (ordre d'affichage attendu à l'écran)."""
-        return sorted(self._clubs.lister(), key=lambda club: club.nom.casefold())
+        """Renvoie tout le référentiel, trié par nom (ordre d'affichage attendu à l'écran).
+
+        Trie sur `cle_nom`, la clé qui sert aussi à refuser les homonymes : casse **et** accents
+        repliés. Un tri sur le nom brut classerait par code point, donc « Élan » après « Zénith »
+        — les clubs accentués s'entasseraient en fin de liste, dans l'écran même où l'utilisateur
+        cherche le sien à l'œil.
+        """
+        return sorted(self._clubs.lister(), key=lambda club: cle_nom(club.nom))
 
     def modifier(self, club_id: ClubId, nom: str) -> Club:
         """Renomme un club.

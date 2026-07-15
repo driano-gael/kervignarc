@@ -12,17 +12,40 @@ tournoi ; il n'appartient pas à sa descendance (cf. DETTE-001).
 
 L'unicité du nom n'est **pas** vérifiée ici : le domaine ne voit qu'un club à la fois, jamais
 la collection. C'est une règle d'ensemble, portée par le service applicatif et garantie par
-une contrainte `UNIQUE` en base (cf. `application/clubs.py`).
+une contrainte `UNIQUE` en base (cf. `application/clubs.py`). En revanche, **ce qui fait que
+deux noms désignent le même club** est une notion métier : elle vit ici, dans `cle_nom`.
 """
 
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass, replace
 
 from domain.erreurs import NomClubInvalide
 
 ClubId = int
 """Identifiant technique d'un club, attribué par la persistance."""
+
+
+def cle_nom(nom: str) -> str:
+    """Clé d'équivalence d'un nom de club : deux noms de **même clé** désignent le même club.
+
+    Replie les espaces de bord, la **casse** et les **accents** : « Élan de Fougères »,
+    « elan de fougeres » et « ÉLAN DE FOUGÈRES » ont la même clé. Un référentiel dont l'intérêt
+    est de ne pas ressaisir ne doit pas offrir deux entrées pour un même club — or saisir un nom
+    sans ses accents est le doublon le plus probable sur une tablette.
+
+    Sert à **deux** usages, qui doivent rester cohérents : refuser un homonyme (`ClubRepository.
+    par_nom`) et **classer** le référentiel à l'écran (`ServiceClubs.lister`) — sans le repli des
+    accents, un tri par code point renverrait « Élan » après « Zénith ».
+
+    Implémentation : décomposition NFKD puis retrait des marques combinantes (l'accent devient un
+    caractère distinct, qu'on jette), avant `casefold`. `casefold` seul ne suffirait pas : il
+    replie la casse **d'**une lettre accentuée (« É » → « é ») mais ne retire pas l'accent.
+    """
+    decompose = unicodedata.normalize("NFKD", nom.strip())
+    sans_accents = "".join(c for c in decompose if not unicodedata.combining(c))
+    return sans_accents.casefold()
 
 
 @dataclass(frozen=True)

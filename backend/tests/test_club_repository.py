@@ -61,12 +61,19 @@ def test_par_nom_ignore_les_espaces_de_bord(clubs: ClubRepositorySQL) -> None:
     assert clubs.par_nom("  Arc Club Rennes  ") == persiste
 
 
-def test_par_nom_replie_les_accents(clubs: ClubRepositorySQL) -> None:
-    """Contrat du port : `COLLATE NOCASE` ne suffirait pas (ASCII seul), d'où la comparaison
-    côté Python."""
+def test_par_nom_ignore_la_casse_des_lettres_accentuees(clubs: ClubRepositorySQL) -> None:
+    """Contrat du port : `COLLATE NOCASE` ne suffirait pas (casse ASCII seule), d'où la
+    comparaison côté Python via `cle_nom`."""
     persiste = clubs.ajouter(Club.creer("Élan de Fougères"))
 
     assert clubs.par_nom("élan de fougères") == persiste
+
+
+def test_par_nom_replie_les_accents(clubs: ClubRepositorySQL) -> None:
+    """L'adapter applique bien `cle_nom` (accents repliés), pas un simple `casefold`."""
+    persiste = clubs.ajouter(Club.creer("Élan de Fougères"))
+
+    assert clubs.par_nom("Elan de Fougeres") == persiste
 
 
 def test_par_nom_absent_renvoie_none(clubs: ClubRepositorySQL) -> None:

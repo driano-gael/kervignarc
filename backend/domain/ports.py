@@ -85,10 +85,10 @@ class ClubRepository(Protocol):
     def par_nom(self, nom: str) -> Club | None:
         """Renvoie le club portant ce nom, ou `None` s'il n'y en a pas.
 
-        **Comparaison insensible à la casse** et aux espaces de bord : « Arc Club Rennes » et
-        « arc club rennes » désignent le même club. Sert à refuser un doublon à la création
-        comme au renommage — un référentiel dont l'intérêt est de ne pas ressaisir ne doit pas
-        offrir deux entrées pour un même club (E02US001).
+        **Comparaison au sens de `domain.club.cle_nom`** : espaces de bord, casse et accents
+        repliés — « Arc Club Rennes », « arc club rennes » et « Elan » / « Élan » désignent le même
+        club. L'adapter n'invente pas sa propre règle : il applique `cle_nom`. Sert à refuser un
+        doublon à la création comme au renommage (E02US001).
         """
         ...
 

@@ -87,8 +87,10 @@ def test_lister_un_referentiel_vide(app_clubs: FastAPI) -> None:
 
 
 def test_lister_trie_par_nom(app_clubs: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """Casse et accents repliés : « Élan » se classe à sa place alphabétique, pas après « Z »."""
     with TestClient(app_clubs) as client:
         connecter_admin(client)
+        _creer_club(client, "Zénith Archerie")
         _creer_club(client, "Élan de Fougères")
         _creer_club(client, "arc club Rennes")
         _creer_club(client, "Bretagne Archerie")
@@ -99,6 +101,7 @@ def test_lister_trie_par_nom(app_clubs: FastAPI, connecter_admin: ConnecterAdmin
             "arc club Rennes",
             "Bretagne Archerie",
             "Élan de Fougères",
+            "Zénith Archerie",
         ]
 
 
@@ -164,6 +167,20 @@ def test_creer_un_homonyme_rend_409(app_clubs: FastAPI, connecter_admin: Connect
         _creer_club(client, "Arc Club Rennes")
 
         doublon = client.post("/api/v1/clubs", json={"nom": "  arc club RENNES  "})
+
+        assert doublon.status_code == 409, doublon.text
+        assert doublon.json()["code"] == "nom_club_deja_pris"
+
+
+def test_creer_un_homonyme_sans_accents_rend_409(
+    app_clubs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Bout en bout : le nom saisi sans ses accents est bien reconnu comme le même club."""
+    with TestClient(app_clubs) as client:
+        connecter_admin(client)
+        _creer_club(client, "Élan de Fougères")
+
+        doublon = client.post("/api/v1/clubs", json={"nom": "Elan de Fougeres"})
 
         assert doublon.status_code == 409, doublon.text
         assert doublon.json()["code"] == "nom_club_deja_pris"

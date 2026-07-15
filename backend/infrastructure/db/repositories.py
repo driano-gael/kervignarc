@@ -19,7 +19,7 @@ from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId, SexeCategorie
-from domain.club import Club, ClubId
+from domain.club import Club, ClubId, cle_nom
 from domain.erreurs import DomainError
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.grain_validation import GrainValidation, TypeGrain
@@ -370,20 +370,23 @@ class ClubRepositorySQL:
             raise InfrastructureError("Échec de lecture du club.") from exc
 
     def par_nom(self, nom: str) -> Club | None:
-        """Relit le club portant ce nom (casse ignorée), ou `None` s'il n'y en a pas.
+        """Relit le club de même nom au sens de `domain.club.cle_nom`, ou `None` s'il n'y en a pas.
 
-        La comparaison est faite **côté Python** (`casefold`) plutôt qu'en SQL : le `COLLATE
-        NOCASE` de SQLite ne replie que l'ASCII, or les noms de clubs sont accentués (« Élan »,
-        « Compagnie d'Arc de Fougères ») — il laisserait donc passer les doublons qui diffèrent
-        par une majuscule accentuée. Le référentiel compte quelques dizaines de lignes : les
+        La comparaison est faite **côté Python**, via la clé du domaine, plutôt qu'en SQL : le
+        `COLLATE NOCASE` de SQLite ne replie que la casse **ASCII** — il laisserait passer « Élan »
+        / « élan » comme « Élan » / « Elan », alors que les noms de clubs sont accentués. L'adapter
+        n'invente donc aucune règle de comparaison : il applique celle du domaine.
+
+        Le référentiel compte quelques dizaines de lignes et cette lecture n'a lieu qu'à la
+        création/au renommage (donc dans la file d'écriture, jamais sur un chemin chaud) : les
         parcourir est sans conséquence, et l'unique lecture reste courte.
         """
         try:
             with self._session_factory() as session:
-                recherche = nom.strip().casefold()
+                recherche = cle_nom(nom)
                 lignes = session.execute(select(ClubORM)).scalars()
                 for ligne in lignes:
-                    if ligne.nom.casefold() == recherche:
+                    if cle_nom(ligne.nom) == recherche:
                         return _vers_club(ligne)
                 return None
         except SQLAlchemyError as exc:

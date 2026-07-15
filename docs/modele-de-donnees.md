@@ -62,6 +62,18 @@ erDiagram
 | id | INTEGER | PK |
 | nom | TEXT | NOT NULL, UNIQUE |
 
+> **Référentiel global (E02US001).** Seule table **sans** `tournoi_id` : les clubs sont réutilisés
+> d'une compétition à l'autre. Elle n'appartient donc pas à la descendance de `TOURNOI` — supprimer
+> un tournoi ne touche pas aux clubs, et [DETTE-001](dette.md) ne la concerne pas.
+>
+> **`UNIQUE` = garde-fou d'intégrité, pas la règle fonctionnelle.** La contrainte SQL est **exacte**
+> (elle n'attrape que les homonymes au caractère près). Le refus présenté à l'utilisateur est plus
+> large : `ServiceClubs` compare les noms au sens de `domain.club.cle_nom` — espaces de bord, casse
+> **et accents** repliés, donc « Élan de Fougères » ≡ « elan de fougeres ». Un référentiel dont
+> l'intérêt est de ne pas ressaisir ne doit pas offrir deux entrées pour un même club : les archers
+> s'y répartiraient et les listes par club (EPIC-09) seraient fausses. `cle_nom` sert aussi de clé
+> de **tri** à l'écran (sans elle, un tri par code point classerait « Élan » après « Zénith »).
+
 ### CATEGORIE
 | id | INTEGER | PK |
 | tournoi_id | INTEGER | FK → TOURNOI, NOT NULL |

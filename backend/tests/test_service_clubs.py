@@ -12,12 +12,17 @@ import pytest
 
 from application.clubs import ServiceClubs
 from application.erreurs import ClubIntrouvable, NomClubDejaPris
-from domain.club import Club, ClubId
+from domain.club import Club, ClubId, cle_nom
 from domain.erreurs import NomClubInvalide
 
 
 class FauxClubRepository:
-    """Repository en mémoire conforme au port `ClubRepository`."""
+    """Repository en mémoire conforme au port `ClubRepository`.
+
+    `par_nom` applique `cle_nom`, **la fonction de production** — pas une réimplémentation : un
+    faux qui recoderait la règle de comparaison ferait passer les tests de service quoi qu'il
+    arrive à l'adapter réel.
+    """
 
     def __init__(self) -> None:
         self._clubs: dict[int, Club] = {}
@@ -33,9 +38,9 @@ class FauxClubRepository:
         return self._clubs.get(club_id)
 
     def par_nom(self, nom: str) -> Club | None:
-        recherche = nom.strip().casefold()
+        recherche = cle_nom(nom)
         for club in self._clubs.values():
-            if club.nom.casefold() == recherche:
+            if cle_nom(club.nom) == recherche:
                 return club
         return None
 
@@ -84,12 +89,20 @@ def test_creer_refuse_un_homonyme_a_la_casse_pres(service: ServiceClubs) -> None
         service.creer("  arc club RENNES  ")
 
 
-def test_creer_refuse_un_homonyme_accentue_a_la_casse_pres(service: ServiceClubs) -> None:
-    """`casefold` replie les accents, là où le `COLLATE NOCASE` de SQLite ne voit que l'ASCII."""
+def test_creer_refuse_un_homonyme_dont_la_casse_accentuee_differe(service: ServiceClubs) -> None:
+    """« É » / « é » : le `COLLATE NOCASE` de SQLite ne voit que l'ASCII et laisserait passer."""
     service.creer("Élan de Fougères")
 
     with pytest.raises(NomClubDejaPris):
         service.creer("élan de fougères")
+
+
+def test_creer_refuse_un_homonyme_saisi_sans_ses_accents(service: ServiceClubs) -> None:
+    """Le doublon le plus probable sur une tablette : le nom tapé sans accents."""
+    service.creer("Élan de Fougères")
+
+    with pytest.raises(NomClubDejaPris):
+        service.creer("Elan de Fougeres")
 
 
 def test_deux_clubs_de_noms_distincts_coexistent(service: ServiceClubs) -> None:
@@ -99,7 +112,13 @@ def test_deux_clubs_de_noms_distincts_coexistent(service: ServiceClubs) -> None:
     assert len(service.lister()) == 2
 
 
-def test_lister_trie_par_nom_sans_tenir_compte_de_la_casse(service: ServiceClubs) -> None:
+def test_lister_trie_par_nom_casse_et_accents_replies(service: ServiceClubs) -> None:
+    """Le jeu d'essai contient un accentué **et** un « Z » : un tri par code point y échouerait.
+
+    `casefold` seul classerait « Élan » (U+00C9) après « Zénith » — les clubs accentués
+    s'entasseraient en fin de liste.
+    """
+    service.creer("Zénith Archerie")
     service.creer("Élan de Fougères")
     service.creer("arc club Rennes")
     service.creer("Bretagne Archerie")
@@ -108,6 +127,7 @@ def test_lister_trie_par_nom_sans_tenir_compte_de_la_casse(service: ServiceClubs
         "arc club Rennes",
         "Bretagne Archerie",
         "Élan de Fougères",
+        "Zénith Archerie",
     ]
 
 

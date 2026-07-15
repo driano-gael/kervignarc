@@ -6,7 +6,7 @@ import dataclasses
 
 import pytest
 
-from domain.club import Club
+from domain.club import Club, cle_nom
 from domain.erreurs import NomClubInvalide
 
 
@@ -51,6 +51,45 @@ def test_modifier_refuse_un_nom_vide() -> None:
 
     with pytest.raises(NomClubInvalide):
         club.modifier("   ")
+
+
+@pytest.mark.parametrize(
+    ("gauche", "droite"),
+    [
+        ("Arc Club Rennes", "arc club rennes"),  # casse
+        ("Arc Club Rennes", "  Arc Club Rennes  "),  # espaces de bord
+        ("Élan de Fougères", "élan de fougères"),  # casse d'une lettre accentuée
+        ("Élan de Fougères", "Elan de Fougeres"),  # accents absents (saisie tablette)
+        ("Élan de Fougères", "ELAN DE FOUGERES"),  # les deux à la fois
+    ],
+)
+def test_cle_nom_replie_casse_accents_et_espaces(gauche: str, droite: str) -> None:
+    """Deux noms de même clé désignent le même club (E02US001)."""
+    assert cle_nom(gauche) == cle_nom(droite)
+
+
+@pytest.mark.parametrize(
+    ("gauche", "droite"),
+    [
+        ("Arc Club Rennes", "Arc Club Vitré"),
+        ("Élan de Fougères", "Éveil de Fougères"),
+        ("Arc Club Rennes", "ArcClubRennes"),  # les espaces internes restent significatifs
+    ],
+)
+def test_cle_nom_distingue_des_clubs_differents(gauche: str, droite: str) -> None:
+    assert cle_nom(gauche) != cle_nom(droite)
+
+
+def test_cle_nom_ordonne_les_accentues_a_leur_place_alphabetique() -> None:
+    """Un tri sur le nom brut classerait « Élan » (U+00C9) après « Zénith » : pas la clé."""
+    noms = ["Zénith Archerie", "Élan de Fougères", "Arc Club Rennes", "Bretagne Archerie"]
+
+    assert sorted(noms, key=cle_nom) == [
+        "Arc Club Rennes",
+        "Bretagne Archerie",
+        "Élan de Fougères",
+        "Zénith Archerie",
+    ]
 
 
 def test_un_club_n_appartient_a_aucun_tournoi() -> None:
