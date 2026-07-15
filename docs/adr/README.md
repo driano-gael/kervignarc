@@ -23,6 +23,7 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0010](0010-unite-de-travail-transactionnelle.md) | Unité de travail : la commande d'écriture est la frontière transactionnelle | Accepté |
 | [0011](0011-phase-qualification-anticipee.md) | Introduire une `Phase` minimale dès J1 pour héberger le barème de qualification | Accepté |
 | [0012](0012-argent-en-centimes-entiers.md) | Compter l'argent en centimes entiers, jamais en flottants | Accepté |
+| [0013](0013-conduite-de-la-revue-d-us.md) | Conduite de la revue d'US : axes parallèles + porte mécanique | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.

@@ -101,6 +101,31 @@ prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et s
 9. **Tests.** Unitaires en priorité sur le domaine (couverture élevée), intégration sur les adapters
    et endpoints, déterministes (pas d'horloge ni d'aléa non maîtrisé). **L'oracle 120** (rejeu du
    tournoi de `Tableaux.xlsx`) doit rester vert.
+   **Le test dérive du CA, jamais du code déjà écrit.** Ce qui empêche un test de consacrer un bug,
+   ce n'est pas l'identité de son auteur — le même agent implémente et teste — c'est la **source**
+   dont il dérive. Un test rédigé après coup en lisant l'implémentation ne fait que décrire
+   l'implémentation : si le CA a été mal compris, le test entérine le malentendu, et un relecteur
+   à qui l'on donnerait le même code en déduirait la même intention. D'où :
+   - **Domaine & service** (là où vit la règle métier) : tests écrits **depuis le CA**
+     (`stories/Exx-*.md`, puce « **CA** », complétée des « Notes ») **avant** d'implémenter.
+     [`docs/fonctionnel/`](docs/fonctionnel/) n'est **pas** une source de CA : c'est un **produit**
+     de l'US (scénario de recette rédigé pour un non-technicien, décrivant l'UI livrée). Il n'existe
+     pas encore quand le test s'écrit ; s'en servir comme oracle serait le piège de cette règle même,
+     un cran plus haut — dériver le test d'un artefact produit par l'implémentation. Il documente les
+     US **déjà livrées** et sert de référence de comportement existant (utile en non-régression).
+   - **API, repository, câblage** : tests après l'implémentation — il n'y a pas d'oracle en jeu.
+   - **Non-régression** : l'oracle *est* le comportement actuel ; l'implémenteur est le meilleur
+     auteur, il connaît les coutures. Aucune indépendance à aller chercher.
+   - **Ne pas réussir à écrire le test depuis le CA est le signal que le CA est ambigu** — pas une
+     invitation à deviner. C'est un arbitrage : questionner l'utilisateur **avant** d'implémenter
+     (cf. § Workflow). Le flou se voit en rédigeant le test, pas à mi-parcours du code.
+   - **Un arbitrage tranché en cours d'US est reversé dans `stories/`** (puce « CA » ou « Notes »)
+     **dans le même commit** — pas seulement dans `docs/fonctionnel/`. Sans quoi le CA reste
+     **périmé** et l'US suivante en dérive ses tests : le garde-fou ci-dessus ne se déclenchera pas,
+     puisqu'un CA périmé n'est pas *ambigu* — il s'écrit sans effort, et il est faux. Une divergence
+     `stories/` ↔ `docs/fonctionnel/` est un **défaut à remonter**, jamais à arbitrer seul.
+     *(Cas réel ouvert : E02US001 — `stories/` dit « pas supprimable **sans avertissement** »,
+     `docs/fonctionnel/` dit « refus **définitif**, aucun moyen de forcer ». E02US002 en dépend.)*
 10. **Front React.** État serveur via React Query, état UI local via Zustand, organisation **par
     features** (pas par type technique). Ergonomie tactile prioritaire sur l'écran de saisie +
     indicateur de connexion visible.
@@ -129,6 +154,29 @@ Un **remède structurel** (introduire un pattern) se propose sur **preuve dans l
 ADR + US dédiée, jamais en douce dans l'US courante. « Dupliquer une 2ᵉ fois et attendre le 3ᵉ cas »
 est une réponse valide.
 
+## Économie de contexte
+
+L'API est sans état : le contexte est **renvoyé en entier à chaque tour**. Une session à 150k tokens
+paie ~15k tokens d'input à chaque échange — cache compris — avant d'avoir produit une ligne, et ce
+qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le remplissent (~2 %), c'est la
+**sortie des outils**. D'où :
+
+- **Déléguer la lecture, garder le jugement.** La localisation (« où est le service qui… », « quel
+  pattern suit l'existant ») part à un sous-agent `Explore` : les fichiers atterrissent dans *son*
+  contexte, l'assistant ne reçoit que la conclusion. Un sous-agent qui **localise** peut tourner sur
+  un modèle moins cher ; un sous-agent qui **juge** — le relecteur de `/revue-us` — garde le modèle
+  fort : c'est une barrière qualité, elle ne s'optimise pas.
+- **Lire les gros documents par la section utile.** [`docs/dette.md`](docs/dette.md),
+  [`docs/referentiel-ffta.md`](docs/referentiel-ffta.md) et
+  [`docs/modele-de-donnees.md`](docs/modele-de-donnees.md) pèsent ~20 Ko chacun : `Grep`, ou `Read`
+  avec offset, sur la partie qui concerne l'US — pas le fichier entier. Le registre de dette se
+  consulte par sa **table** « Dette ouverte » (4 Ko) ; on ne déplie une section « Détail » (14 Ko à
+  elles toutes) que pour une dette réellement en jeu.
+- **Écrire avant de compacter.** Une décision qui ne vit que dans le contexte est perdue au premier
+  `/compact`. ADR, registre de dette, corps de commit, mémoire : c'est déjà la règle (§ Dette,
+  § Workflow) — c'en est aussi la raison économique. Le meilleur point de coupe est **« lance la
+  PR »** : le code est écrit, la trace d'exploration ne sert plus ; le signaler à l'utilisateur.
+
 ## Workflow
 
 - **Une branche par US**, jamais de travail direct sur `main`. Nommage
@@ -143,7 +191,9 @@ est une réponse valide.
   dépendance (`pip install` / `npm install` — cf. règle 11, c'est un arbitrage, pas de la
   plomberie).
 - Quand l'utilisateur dit **« lance la PR »**, exécuter [`/revue-us`](.claude/commands/revue-us.md) :
-  revue du diff par un agent dédié selon la grille projet, puis correction par l'agent auteur,
+  revue du diff par des **agents dédiés en parallèle** (quatre axes + porte mécanique, plus un
+  relecteur **adversarial** si le changement est structurel — [ADR-0013](docs/adr/0013-conduite-de-la-revue-d-us.md)),
+  puis synthèse et correction par l'agent auteur,
   re-commit et push — sans repasser par l'utilisateur. `gh` n'étant **pas installé**, l'assistant
   livre le lien `pull/new/<branche>` + titre + corps prêts à coller : **c'est l'utilisateur qui
   ouvre et merge la PR**, puis dit « c'est mergé ».
