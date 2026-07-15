@@ -43,9 +43,12 @@ class ClubORM(Base):
     l'autre. La table n'appartient donc **pas** à la descendance de `tournoi` — supprimer un
     tournoi ne doit pas toucher aux clubs, et DETTE-001 ne la concerne pas.
 
-    `nom` est `UNIQUE` : garde-fou d'intégrité. Le refus fonctionnel du doublon (message et 409)
-    est porté en amont par `ServiceClubs`, qui compare **sans tenir compte de la casse** — ce que
-    cette contrainte, elle, ne fait pas (elle n'attrape que les homonymes exacts).
+    `nom` est `UNIQUE` : garde-fou d'intégrité, **exact** — il n'attrape que les homonymes au
+    caractère près. Le refus fonctionnel du doublon (message et 409) est plus large et porté en
+    amont par `ServiceClubs`, qui compare au sens de `domain.club.cle_nom` : espaces de bord,
+    casse **et accents** repliés (« Élan de Fougères » ≡ « elan de fougeres »). Cet écart est
+    assumé — SQL ne sait pas replier les accents sans colonne dénormalisée, et le writer unique
+    (ADR-0005) garantit qu'aucune écriture ne contourne le service.
     """
 
     __tablename__ = "club"

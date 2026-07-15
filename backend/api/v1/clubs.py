@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/v1", tags=["clubs"])
 
 
 class CreerClubRequete(BaseModel):
-    """Corps de création d'un club (nom non vide, unique à la casse près)."""
+    """Corps de création d'un club (nom non vide, unique au sens de `domain.club.cle_nom`)."""
 
     nom: str
 

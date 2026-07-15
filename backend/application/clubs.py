@@ -38,7 +38,7 @@ class ServiceClubs:
         """Ajoute un club au référentiel.
 
         Lève `NomClubInvalide` (domaine) si le nom est vide, `NomClubDejaPris` si un club porte
-        déjà ce nom (à la casse près).
+        déjà ce nom au sens de `cle_nom` (espaces de bord, casse **et accents** repliés).
         """
         club = Club.creer(nom)
         self._exiger_nom_libre(club.nom)
@@ -73,11 +73,13 @@ class ServiceClubs:
         club utilisé par une compétition passée est utilisé tout court, et le supprimer
         laisserait une référence pendante dans l'historique.
         """
-        self._club_existant(club_id)
+        club = self._club_existant(club_id)
         references = self._archers.par_club(club_id)
         if references:
+            # Le **nom**, pas l'identifiant : ce message est lu par un bénévole, pas par un
+            # développeur — et `_exiger_nom_libre` nomme déjà le club dans son propre refus.
             raise ClubReference(
-                f"Le club {club_id} est utilisé par {len(references)} archer(s) ; "
+                f"Le club « {club.nom} » est utilisé par {len(references)} archer(s) ; "
                 "réaffectez-les avant de le supprimer."
             )
         self._clubs.supprimer(club_id)

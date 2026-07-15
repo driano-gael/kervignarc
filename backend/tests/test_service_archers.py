@@ -1,7 +1,10 @@
 """Tests des services applicatifs Archers et Classement (E00US011) — repositories factices.
 
 Les services sont testés **en isolation** : de faux repositories en mémoire (conformes aux
-ports) suffisent — ni base ni serveur.
+ports) suffisent — ni base ni serveur. `FauxArcherRepository` et `FauxClubRepository` vivent dans
+`conftest` : ils sont partagés avec `test_service_clubs`, et un faux partagé se déclare une fois.
+`FauxTournoiRepository` et `FauxScoreRepository` restent ici — ce module est leur seul
+consommateur.
 """
 
 from __future__ import annotations
@@ -13,12 +16,11 @@ import pytest
 from application.archers import ServiceArchers
 from application.classements import ServiceClassement
 from application.erreurs import ArcherIntrouvable, ClubIntrouvable, TournoiIntrouvable
-from domain.archer import Archer, ArcherId
-from domain.club import Club, ClubId
+from domain.club import Club
 from domain.erreurs import CibleInvalide, NomArcherInvalide, ScoreInvalide
 from domain.score import Score
 from domain.tournoi import Tournoi, TournoiId
-from tests.conftest import FauxClubRepository
+from tests.conftest import FauxArcherRepository, FauxClubRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -55,43 +57,6 @@ class FauxTournoiRepository:
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         del self._tournois[tournoi_id]
-
-
-class FauxArcherRepository:
-    """Repository en mémoire conforme au port `ArcherRepository`."""
-
-    def __init__(self) -> None:
-        self._archers: dict[int, Archer] = {}
-        self._sequence = 0
-
-    def ajouter(self, archer: Archer) -> Archer:
-        self._sequence += 1
-        # `club_id` est **recopié** : un faux qui le laisserait tomber ferait passer au vert un
-        # service incapable de rattacher un archer à son club.
-        persiste = Archer(
-            nom=archer.nom,
-            tournoi_id=archer.tournoi_id,
-            cible=archer.cible,
-            club_id=archer.club_id,
-            id=self._sequence,
-        )
-        self._archers[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, archer_id: ArcherId) -> Archer | None:
-        return self._archers.get(archer_id)
-
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Archer]:
-        return [a for a in self._archers.values() if a.tournoi_id == tournoi_id]
-
-    def par_club(self, club_id: ClubId) -> list[Archer]:
-        # Sans filtre sur le tournoi : le référentiel des clubs est global (E02US001).
-        return [a for a in self._archers.values() if a.club_id == club_id]
-
-    def enregistrer(self, archer: Archer) -> Archer:
-        assert archer.id is not None
-        self._archers[archer.id] = archer
-        return archer
 
 
 class FauxScoreRepository:

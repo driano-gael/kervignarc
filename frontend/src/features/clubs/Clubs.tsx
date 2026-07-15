@@ -5,7 +5,7 @@
 // qui évitera de ressaisir les clubs voisins à chaque tournoi, une fois les archers rattachés
 // (E02US002).
 //
-// L'unicité du nom (casse ignorée) est vérifiée côté serveur : un doublon rend un 409, affiché
+// L'unicité du nom (casse **et accents** repliés) est vérifiée côté serveur : un doublon rend un 409, affiché
 // tel quel — le message du serveur nomme le club déjà présent.
 
 import { useState } from 'react'
@@ -144,8 +144,9 @@ function FormulaireClub({ club, onTermine }: { club?: Club; onTermine?: () => vo
 
 // DETTE-004 (docs/dette.md) : 9ᵉ copie conforme de ce composant, un par feature. À extraire dans
 // `shared/` — E00US013. Non factorisée ici : le faire toucherait les 8 autres features, hors du
-// périmètre d'E02US001 ; l'importer depuis une feature voisine créerait un couplage pire que la
-// copie (guide §8 : les features s'ignorent).
+// périmètre d'E02US001. Et l'extraire pour la seule feature neuve donnerait « 8 copies + 1 brique
+// partagée » — deux conventions au lieu d'une, alors que E00US013 doit pouvoir relire un
+// remplacement homogène. Une brique d'UI partagée va dans `shared/`, pas chez la voisine.
 function MessageErreur({ erreur }: { erreur: Error | null }) {
   if (erreur === null) return null
   const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'

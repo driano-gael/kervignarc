@@ -11,8 +11,9 @@ Première table **hors descendance de `tournoi`** : aucune FK vers `tournoi`, ca
 est réutilisé d'une compétition à l'autre. Elle n'est donc pas concernée par DETTE-001
 (politique de suppression d'un tournoi non vide) — supprimer un tournoi ne touche pas aux clubs.
 
-L'unicité `UNIQUE` est **exacte** (garde-fou d'intégrité) ; le refus fonctionnel du doublon,
-**insensible à la casse**, est porté par `ServiceClubs`. Correspond au modèle ORM `ClubORM`.
+L'unicité `UNIQUE` est **exacte** (garde-fou d'intégrité) ; le refus fonctionnel du doublon est
+plus large — espaces de bord, casse **et accents** repliés, au sens de `domain.club.cle_nom` — et
+porté par `ServiceClubs`. Correspond au modèle ORM `ClubORM`.
 """
 
 from __future__ import annotations

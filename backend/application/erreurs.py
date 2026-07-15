@@ -69,7 +69,8 @@ class NomClubDejaPris(ApplicationError):
 
     Règle d'ensemble (le domaine ne voit qu'un club à la fois) : le référentiel n'offre pas
     deux entrées pour un même club, sans quoi les archers se répartiraient entre les doublons.
-    Comparaison **insensible à la casse** (cf. `ClubRepository.par_nom`).
+    Comparaison au sens de `domain.club.cle_nom` : espaces de bord, casse **et accents** repliés
+    (cf. `ClubRepository.par_nom`).
     """
 
     code = "nom_club_deja_pris"

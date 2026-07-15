@@ -32,8 +32,11 @@ def test_creer_refuse_un_nom_vide(nom_vide: str) -> None:
 def test_le_club_est_immuable() -> None:
     club = Club.creer("Arc Club Rennes")
 
+    # `setattr` plutôt qu'une affectation directe : mypy refuserait l'affectation sur une dataclass
+    # gelée, ce qui imposerait un `type: ignore` — le backend n'en compte aucun, gardons-le ainsi
+    # (même parti que `test_domain_grain_validation`).
     with pytest.raises(dataclasses.FrozenInstanceError):
-        club.nom = "Autre"  # type: ignore[misc]
+        setattr(club, "nom", "Autre")  # noqa: B010
 
 
 def test_modifier_renvoie_une_copie_renommee_en_preservant_l_identifiant() -> None:

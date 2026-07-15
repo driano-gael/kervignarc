@@ -5,12 +5,17 @@ de test et pose l'en-tête `Authorization: Bearer <jeton>` par défaut, pour que
 vers les routes admin (ex. création de tournoi) soient autorisés. Suppose que le fichier `.env`
 de l'app pointe vers un chemin jetable (voir les fixtures d'app qui passent `admin_env_path`).
 
-`FauxClubRepository` vit ici plutôt que dans un module de test : depuis E02US001, il sert **à la
-fois** aux tests de `ServiceClubs` et à ceux de `ServiceArchers` (qui valide le club de
-rattachement). L'héberger dans l'un des deux modules ferait importer l'autre en retour — un
-**cycle d'imports** entre modules de test. Seules des dépendances **stdlib** sont ajoutées ici
-(`domain` est pur, règle 1) : le conftest reste importable sans fastapi, comme l'exige le hook
-pre-commit `domain-isolation`, qui exécute pytest avec pytest pour seule dépendance.
+**Doctrine des doublures** : un faux repository consommé par **≥ 2 modules** de test vit ici ;
+celui qui n'a qu'un consommateur reste dans son module (`FauxTournoiRepository`,
+`FauxScoreRepository` restent dans `test_service_archers`). Depuis E02US001, `FauxClubRepository`
+et `FauxArcherRepository` servent **à la fois** aux tests de `ServiceClubs` (qui refuse de
+supprimer un club utilisé) et à ceux de `ServiceArchers` (qui valide le club de rattachement) —
+les héberger dans l'un des deux modules ferait importer l'autre en retour, jusqu'au **cycle
+d'imports**.
+
+Seules des dépendances **stdlib** sont ajoutées ici (`domain` est pur, règle 1) : ce conftest
+reste importable sans fastapi, comme l'exige le hook pre-commit `domain-isolation`, qui exécute
+pytest avec pytest pour seule dépendance — d'où aussi `fastapi` sous `TYPE_CHECKING` ci-dessous.
 """
 
 from __future__ import annotations
@@ -21,7 +26,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from domain.archer import Archer, ArcherId
 from domain.club import Club, ClubId, cle_nom
+from domain.tournoi import TournoiId
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -72,6 +79,37 @@ class FauxClubRepository:
 
     def supprimer(self, club_id: ClubId) -> None:
         del self._clubs[club_id]
+
+
+class FauxArcherRepository:
+    """Repository en mémoire conforme au port `ArcherRepository`."""
+
+    def __init__(self) -> None:
+        self._archers: dict[int, Archer] = {}
+        self._sequence = 0
+
+    def ajouter(self, archer: Archer) -> Archer:
+        self._sequence += 1
+        # `club_id` est **recopié** : un faux qui le laisserait tomber ferait passer au vert un
+        # service incapable de rattacher un archer à son club.
+        persiste = dataclasses.replace(archer, id=self._sequence)
+        self._archers[self._sequence] = persiste
+        return persiste
+
+    def par_id(self, archer_id: ArcherId) -> Archer | None:
+        return self._archers.get(archer_id)
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Archer]:
+        return [a for a in self._archers.values() if a.tournoi_id == tournoi_id]
+
+    def par_club(self, club_id: ClubId) -> list[Archer]:
+        # Sans filtre sur le tournoi : le référentiel des clubs est global (E02US001).
+        return [a for a in self._archers.values() if a.club_id == club_id]
+
+    def enregistrer(self, archer: Archer) -> Archer:
+        assert archer.id is not None
+        self._archers[archer.id] = archer
+        return archer
 
 
 @pytest.fixture

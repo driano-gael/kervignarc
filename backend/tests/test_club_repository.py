@@ -1,7 +1,7 @@
 """Tests d'intégration du repository SQL des clubs (E02US001).
 
 Exerce l'adapter sur une **vraie base** créée par les migrations (`alembic upgrade head`) :
-persistance, relecture, absence (None), recherche par nom insensible à la casse, listing,
+persistance, relecture, absence (None), recherche par nom au sens de `cle_nom`, listing,
 mise à jour, suppression, et contrainte d'unicité.
 """
 
@@ -132,8 +132,9 @@ def test_supprimer_une_ligne_absente_est_une_incoherence_technique(
 def test_la_contrainte_unique_garde_le_referentiel(clubs: ClubRepositorySQL) -> None:
     """Garde-fou d'intégrité en base, sous le refus fonctionnel porté par `ServiceClubs`.
 
-    La contrainte est **exacte** (elle n'attrape pas « arc club rennes ») : c'est le service
-    qui compare sans tenir compte de la casse. Ici on vérifie seulement que le filet existe.
+    La contrainte est **exacte** (elle n'attrape pas « arc club rennes ») : c'est le service qui
+    compare au sens de `cle_nom` — casse et accents repliés. Ici on vérifie seulement que le filet
+    existe.
     """
     clubs.ajouter(Club.creer("Arc Club Rennes"))
 

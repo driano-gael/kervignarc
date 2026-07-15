@@ -48,7 +48,10 @@ repos:
         language: python
         additional_dependencies: ["pytest==9.1.1"]
         pass_filenames: false
-        files: ^backend/(domain/.*|tests/test_domain_isolation)\.py$
+        # `tests/conftest` est dans la liste : ce hook s'exécute avec **pytest pour seule
+        # dépendance**, et pytest charge le conftest avant tout test. Un import de framework
+        # ajouté là casserait le garde-fou sans que la CI (environnement complet) ne le voie.
+        files: ^backend/(domain/.*|tests/(test_domain_isolation|conftest))\.py$
 
       - id: eslint
         name: eslint — frontend
