@@ -33,12 +33,14 @@
 
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
-| [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason`, `gabarit_salle`, `phase` (→ `tournoi.id`), enfant indirect `score` (→ `archer.id`) et liens latéraux `categorie.blason_id` (→ `blason.id`) et `archer.categorie_id` (→ `categorie.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006, E01US008, E01US009, E02US002) ; **`archer` → `score` résolu** par E02US003 (cascade applicative dans `ArcherRepositorySQL.supprimer`) | US dédiée — non planifiée. **⚠️ Ne pas poser `ON DELETE CASCADE` sur `score.archer_id` sans lire d'abord `ServiceArchers.supprimer`** : la purge y est déjà faite, applicative et **conditionnée à une confirmation** de l'admin (`ArcherEngage`). Une cascade en base la rendrait silencieuse et emporterait les flèches sans que personne ait confirmé — exactement ce que l'arbitrage E02US003 du 16/07/2026 a voulu éviter en distinguant suppression et forfait |
+| [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason`, `gabarit_salle`, `phase` (→ `tournoi.id`), enfant indirect `score` (→ `archer.id`, **sauf** par `ArcherRepositorySQL.supprimer` — voir Résorption) et liens latéraux `categorie.blason_id` (→ `blason.id`) et `archer.categorie_id` (→ `categorie.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006, E01US008, E01US009, E02US002) ; E02US003 y ouvre une **brèche partielle** (cascade applicative `archer` → `score`), qui ne vaut que pour le chemin `ArcherRepositorySQL.supprimer` | US dédiée — non planifiée. **⚠️ Deux pièges pour qui la résorbera.** (1) `archer` → `score` **n'est résolu que pour le chemin `ArcherRepositorySQL.supprimer`** (cascade applicative, E02US003) ; la branche **reste ouverte** pour toute suppression d'archer qui ne passe pas par cet adapter — dont la **cascade depuis `tournoi`**, précisément ce que cette dette vise. (2) **Ne pas poser `ON DELETE CASCADE` sur `score.archer_id`** : la confirmation vit **en amont**, dans `ServiceArchers.supprimer` (`ArcherEngage`), la purge dans l'adapter. Une cascade en base ne contourne pas la confirmation *sur ce chemin*, mais elle armerait une purge **silencieuse** sur **tout autre** chemin (cascade tournoi, import, script) — l'option écartée par [ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md) |
 | [DETTE-002](#dette-002--hauteur-de-blason-non-modélisée) | conception | majeur | `backend/domain/blason.py`, `docs/modele-de-donnees.md` | `Blason` modélise l'occupation d'une cible par une `taille` (fraction) + `capacite`, mais **pas la hauteur du centre** — 110 cm pour le blason 80 cm des U11 contre 130 cm pour tous les autres (FFTA B.2.2.1.1, C.3.1.1) | Le placement automatique (EPIC-03) pourra composer une butte physiquement intirable : un U11 et des adultes sur la même cible passent le contrôle « somme des fractions ≤ capacité » alors que leurs blasons ne peuvent pas coexister | E01US005 (blasons) ; constatée au cadrage FFTA du 14/07/2026 | E03US001 (placement automatique) — **avant** d'écrire l'algorithme |
 | [DETTE-003](#dette-003--config-de-phase-à-plat-au-lieu-de-configpolicies) | conception | majeur | `backend/infrastructure/db/repositories.py` (`_config_phase`, `_vers_phase`), `docs/modele-de-donnees.md` | La `config` d'une phase écrit ses politiques **à plat à la racine** (`config.scoring`, `config.validation`) alors que le modèle cible (ADR-0004) les range sous `config.policies` ; et `scoring` y est un **objet paramétré** au lieu d'un **nom de preset** | Deux conventions coexistent pour le même champ. Le moteur (EPIC-05) devra soit adopter la forme à plat — et renoncer au modèle cible — soit migrer les `config` déjà écrites : c'est une décision reportée, pas évitée | E01US009 (forme posée) ; suivie par E01US015 (`config.validation`), qui s'y aligne plutôt que d'introduire une 2ᵉ convention | E05US004 (assembler les politiques) — **avant** d'écrire le moteur |
 | [DETTE-005](#dette-005--conversion-euroscentimes-sans-aucun-test) | technique | majeur | `frontend/src/features/competition/format.ts` | La conversion **euros ↔ centimes** — seul convertisseur d'argent de l'application ([ADR-0012](adr/0012-argent-en-centimes-entiers.md)) — n'a **aucun test** : le front n'a pas de runner (`package.json` : ni `vitest`, ni script `test`) | Une régression silencieuse fausse **le montant dû** (EF-8.1) : inverser `padEnd`/`padStart` transforme 8,10 € en 8,01 € sans que rien ne bronche. Le code est juste aujourd'hui ; c'est sa **non-régression** qui n'est protégée par rien | E01US010 (1ʳᵉ logique pure du front) ; absence de runner préexistante (E00US002 n'outille que lint/format) | E00US014 (runner de test front) — **avant** E08US001, qui consommera le tarif |
 | [DETTE-004](#dette-004--messageerreur-dupliqué-dans-chaque-feature-front) | conception | mineur | `frontend/src/features/*/` (10 occurrences) | Le composant `MessageErreur` est copié **à l'identique** dans chaque feature — même signature, même corps, mêmes classes — au lieu de vivre dans `shared/` | Tout changement du rendu d'erreur (ex. le token d'alerte **ambre** du CDC design, `DV-03`) se fait en 10 endroits, avec le risque d'en oublier un : les erreurs sont précisément ce que l'utilisateur voit quand ça va mal | E00US011 puis chaque feature (`admin`, `bareme`, `blasons`, `categories`, `competition`, `gabarits` ×2) ; **aggravée** par E01US015 (8ᵉ copie), E02US001 (9ᵉ copie) puis E02US003 (10ᵉ copie, feature `archers`) | E00US013 (factoriser les briques d'UI partagées) |
 | [DETTE-006](#dette-006--cle_nom-nest-plus-chez-elle-dans-domainclubpy) | conception | mineur | `backend/domain/club.py` (`cle_nom`), `backend/domain/archer.py`, `backend/application/archers.py`, `backend/application/clubs.py` | `cle_nom` — le repli casse/accents des noms propres — vit dans `domain/club.py`, mais sert désormais **4** usages dont **2 hors du concept « club »** : `archer.cle_identite` (E02US002) et le tri des archers (E02US003). Sa propre docstring avait posé le seuil : « si un 2ᵉ usage hors club apparaît, extraire dans un `domain/texte.py` en US dédiée » | La fonction est **juste** ; seul son domicile est faux. Un lecteur d'`archer.py` doit aller lire `club.py` pour comprendre comment se replient les noms d'archers, et le prochain usage hors club ira chercher la règle là où elle n'a plus de raison d'être | E02US002 (1ᵉʳ usage hors club) ; **seuil atteint** par E02US003 (2ᵉ) | US dédiée à créer (`refactor/…`) — déplacer dans `domain/texte.py`, 4 appelants, zéro changement de comportement |
+
+| [DETTE-007](#dette-007--la-confirmation-dune-suppression-darcher-est-aveugle) | conception | majeur | `backend/application/archers.py` (`ServiceArchers.supprimer`), `backend/api/v1/competition.py`, `frontend/src/features/archers/api.ts` | La confirmation d'une suppression d'archer engagé ne **rappelle pas** au serveur le compte de flèches que le signalement (`ArcherEngage`) avait annoncé : `autoriser_suppression_engage=true` court-circuite entièrement le constat, sans le revérifier | Entre le 409 et le rejeu, d'autres tablettes saisissent (30 le jour J). Confirmer une suppression annoncée à « 1 flèche » peut en détruire sept — **sans retour possible**. Or [ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md) fait reposer toute la sûreté de ce cas d'usage sur ce message : « le message énumère ce qui sera détruit » plutôt que « confirmez pour supprimer ». Un message dont rien ne garantit la fraîcheur ne tient pas cette promesse | E02US003 (le chemin destructeur naît avec l'US ; la clause « le drapeau est cru sur parole » vient d'ADR-0015, raisonnée pour un protocole de **création** et reprise sans être rouverte pour une **destruction**) | US dédiée — confirmation **contractuelle** : le client renvoie le compte annoncé, le service re-signale s'il a changé. Exige de faire transiter le compte par le champ `details` de la réponse d'erreur (`{code, message, details?}`, règle 5) — **jamais peuplé à ce jour** : c'est cette plomberie, sur `ApplicationError`, qui fait le coût |
 
 ## Dette résorbée
 
@@ -207,12 +209,14 @@ journée déraille.
 > **Les blocs de confirmation *hors* `MessageErreur` sont le vrai piège de cette dette.** E02US002 en
 > a ouvert un : le bloc d'homonyme de `competition/TrancheVerticale.tsx` (`role="alert"` + bouton
 > « Inscrire quand même »), **actionnable** et volontairement **neutre** — un doublon probable n'est
-> pas une erreur —, d'où l'absence du modificateur `--erreur`. E02US003 en ajoute **deux** dans
-> `archers/Archers.tsx` (« Enregistrer quand même », « Changer quand même de catégorie »), de la même
-> famille. **E00US013 ne les trouvera pas** en cherchant `MessageErreur` : ce ne sont pas des copies.
-> Ils sont désormais **trois**, dans deux features, et se ressemblent assez pour mériter le même
-> traitement que les copies (soit un `MessageErreur` acceptant des enfants, soit un composant frère
-> assumé) — sans quoi le token ambre s'appliquera à dix endroits sur treize.
+> pas une erreur —, d'où l'absence du modificateur `--erreur`. E02US003 en ajoute **trois** dans
+> `archers/Archers.tsx` (« Enregistrer quand même », « Changer quand même de catégorie »,
+> « Supprimer définitivement, avec ses résultats »), de la même famille — le dernier en `--danger`,
+> parce que sa confirmation **détruit** ([ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)).
+> **E00US013 ne les trouvera pas** en cherchant `MessageErreur` : ce ne sont pas des copies. Ils sont
+> désormais **quatre**, dans deux features, et se ressemblent assez pour mériter le même traitement
+> que les copies (soit un `MessageErreur` acceptant des enfants, soit un composant frère assumé) —
+> sans quoi le token ambre s'appliquera à dix endroits sur quatorze.
 
 **Rythme d'aggravation.** Une copie par feature créée : c'est mécanique, et E02US001 le confirme
 (9ᵉ). Chaque US de configuration qui ouvre un écran en ajoutera une tant qu'E00US013 n'est pas
@@ -295,8 +299,10 @@ qu'il fait. Le prochain usage hors club (E02US005, détection de doublons, est u
 ira chercher la règle là où elle n'a plus de raison d'être. Sévérité **mineure** : inconfort local,
 aucun invariant en danger.
 
-**Pourquoi non corrigée dans l'US.** Règle 16 : un remède structurel « se traite en ADR + US
-dédiée, **jamais en douce dans l'US courante** ». Le déplacement touche `club.py`, `archer.py`,
+**Pourquoi non corrigée dans l'US.** [`CLAUDE.md`](../CLAUDE.md) § Dette : un remède structurel se
+propose **sur preuve dans le code d'aujourd'hui** — c'est le cas ici, le 2ᵉ usage existe — et « se
+traite en ADR + US dédiée, **jamais en douce dans l'US courante** ». Le déplacement touche
+`club.py`, `archer.py`,
 `ServiceClubs` et `ServiceArchers` — il n'a rien à faire dans une US qui parle d'éditer un archer,
 où il noierait le diff métier sous un refactor. E02US003 s'est donc contentée d'**ajouter l'usage
 et de constater le déclenchement**.
@@ -312,6 +318,62 @@ c'est ce qui rend l'US sûre et courte. Marqueur `# DETTE-006` en tête de `cle_
 > (elle efface ses résultats), et un archer qui **abandonne** relève du forfait ([E12US004](../stories/E12-pilotage-jour-j.md)),
 > qui les conserve. Il n'y avait donc plus de dette — le refus sans issue qui la créait n'existe
 > plus. Le numéro, jamais parvenu à `main`, a été réattribué plutôt que laissé en trou.
+
+### DETTE-007 — la confirmation d'une suppression d'archer est aveugle
+
+**Constat.** [ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md) fait reposer la
+sûreté de la suppression d'un archer engagé sur **un message** : le 409 énumère ce qui sera détruit
+(« a 2 flèches déjà tirées et un placement sur la cible 3 »), plutôt que d'inviter à confirmer. C'est
+un choix explicite — « un message qui dirait *confirmez pour supprimer* ferait de la destruction le
+chemin par défaut de l'archer qui s'en va ».
+
+Or le rejeu **ne revérifie rien** :
+
+```python
+archer = self._archer_existant(archer_id)
+if not autoriser_suppression_engage:      # ← le drapeau court-circuite tout le constat
+    self._signaler_engagement(archer, archer_id)
+self._archers.supprimer(archer_id)
+```
+
+Entre le 409 et le clic de confirmation, les **30 tablettes** du jour J saisissent. Confirmer une
+suppression annoncée à « 1 flèche » peut en détruire sept — sans retour, et sans journal
+(l'audit est E10US005).
+
+**Ce que la sérialisation ne couvre pas.** ADR-0015 §*Pourquoi le contrôle applicatif suffit ici*
+démontre qu'il n'y a pas de fenêtre **à l'intérieur** d'une commande soumise à la file. Vrai, et sans
+objet : la fenêtre est **entre deux requêtes HTTP**. Le writer unique ne l'a jamais fermée et n'a
+jamais prétendu le faire.
+
+**D'où vient le raccourci.** D'ADR-0015 : « *Le drapeau est cru sur parole. Un client peut poser
+`autoriser_homonyme: true` dès le premier appel […] C'est la forme normale d'un flux de confirmation
+[…] le garde-fou protège d'une **erreur**, pas d'une **volonté**.* » Raisonnement juste — pour un
+protocole de **création**, où poser le drapeau à l'aveugle ajoute une ligne. E02US003 l'a repris tel
+quel pour un protocole de **destruction**, sans le rouvrir. C'est là que la clause cesse d'être
+anodine.
+
+**Pourquoi non corrigée dans l'US.** Le remède propre est une **confirmation contractuelle** : le
+client renvoie le compte que le signalement lui a montré, le service re-signale s'il a changé — et le
+compte qui bouge est justement le signal que la prémisse de l'admin est fausse (un archer qui tire
+pendant qu'on le supprime *participe*, il n'est pas une erreur de saisie). Le service et la route
+prennent ce paramètre en ~10 lignes. **Le coût est ailleurs** : le front n'a **pas** le compte —
+le classement expose un *total de points*, pas un nombre de flèches. Le lui donner suppose de peupler
+le champ `details` de la réponse d'erreur (`{code, message, details?}`, règle 5) — **jamais utilisé
+depuis la création du projet** : `ApplicationError` ne le porte pas, `api/erreurs.py` ne le
+transmet pas. C'est une modification du **contrat d'erreur de toutes les couches**, pour une seule
+erreur. Elle mérite sa propre US et sa propre revue, pas un ajout tardif en fin de correctif de revue.
+
+**Sévérité : majeur, pas bloquant.** La fenêtre est de quelques secondes, ouverte par l'admin
+lui-même, et le geste demandé — détruire cet archer — reste celui qu'il obtient. Ce qui est faux,
+c'est le **compte annoncé**, pas la nature de l'acte. Rien ne casse un cas utilisateur réel
+aujourd'hui ; ce qui se perd, c'est l'exactitude d'un consentement éclairé.
+
+**Résorption.** US dédiée, à créer. Portée : `details` sur `ApplicationError` + `api/erreurs.py`
+(qui sait déjà le rendre — `_reponse(..., details)` existe et n'est jamais appelé avec) ; `ArcherEngage`
+porte `{fleches, cible}` ; le front lit `erreur.details` (le `ErreurApi` du client l'expose déjà) et
+le renvoie. **Elle bénéficierait à tout le projet** : le format `{code, message, details?}` est une
+règle non négociable dont la moitié n'a jamais servi. Marqueurs `DETTE-007` posés sur
+`ServiceArchers.supprimer` et `frontend/src/features/archers/api.ts`.
 
 ## Procédure — inscrire une dette
 

@@ -259,14 +259,14 @@ async def supprimer_archer(
 
     Renvoie `409 archer_engage` si l'archer est placé ou a déjà tiré : un **signalement**, que le
     client lève en rejouant l'appel avec `autoriser_suppression_engage`. La suppression confirmée
-    **efface ses scores et son placement**. Un archer qui abandonne relève du forfait (E12US004),
-    pas d'ici.
+    **efface ses scores et son placement**. Un archer qui abandonne relève du forfait (E04US015 en
+    qualification, E12US004 en duels), pas d'ici — voir ADR-0016.
 
-    Le drapeau est en **paramètre de requête** et non dans le corps, contrairement à la forme
-    posée par ADR-0015 — qui prévoit ce cas (« soit justifier d'en diverger ») : un `DELETE` n'a
-    pas de corps par convention HTTP, et certains intermédiaires le suppriment. La substance
-    d'ADR-0015 est tenue : drapeau booléen explicite, à `False` par défaut, sur une route
-    réservée à l'admin.
+    Le drapeau est en **paramètre de requête** et non dans le corps, contrairement à la forme posée
+    par ADR-0015 — qui prévoit ce cas (« soit justifier d'en diverger ») : un `DELETE` n'a pas de
+    corps par convention HTTP, et certains intermédiaires le suppriment. La substance d'ADR-0015 est
+    tenue : drapeau booléen explicite, à `False` par défaut, sur une route réservée à l'admin.
+    **ADR-0016 sanctionne cette variante** — ADR-0015 est immuable, il ne pouvait pas l'accueillir.
     """
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue

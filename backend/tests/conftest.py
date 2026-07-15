@@ -96,15 +96,6 @@ class FauxArcherRepository:
     def __init__(self) -> None:
         self._archers: dict[int, Archer] = {}
         self._sequence = 0
-        self._a_la_suppression: list[Callable[[ArcherId], None]] = []
-
-    def a_la_suppression(self, rappel: Callable[[ArcherId], None]) -> None:
-        """Abonne un rappel à `supprimer` — cf. `supprimer` pour le pourquoi.
-
-        Hors du port : c'est une couture **de test**, qui permet à un faux `ScoreRepository` de
-        reproduire la purge que le vrai adapter fait dans sa transaction.
-        """
-        self._a_la_suppression.append(rappel)
 
     def ajouter(self, archer: Archer) -> Archer:
         self._sequence += 1
@@ -130,12 +121,7 @@ class FauxArcherRepository:
         return archer
 
     def supprimer(self, archer_id: ArcherId) -> None:
-        # Le port exige que les **scores** partent avec l'archer (E02US003) : le vrai adapter le
-        # fait dans sa transaction. Un faux qui les laisserait derrière lui verdirait un service
-        # laissant des scores orphelins — d'où les rappels, que `FauxScoreRepository` branche.
         del self._archers[archer_id]
-        for rappel in self._a_la_suppression:
-            rappel(archer_id)
 
 
 class FauxCategorieRepository:

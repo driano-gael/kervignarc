@@ -162,15 +162,19 @@ class ServiceArchers:
 
         Lève `ArcherEngage` si l'archer est **placé** (il occupe une cible) ou **engagé** (il a
         déjà tiré), sauf `autoriser_suppression_engage=True` : un **signalement**, pas un refus
-        (ADR-0015). On ne fait pas disparaître en un clic un placement construit et des flèches
-        saisies — mais l'admin, lui, peut savoir qu'il s'agit d'une erreur d'inscription.
+        (ADR-0016, sur le protocole d'ADR-0015). On ne fait pas disparaître en un clic un placement
+        construit et des flèches saisies — mais l'admin, lui, peut savoir qu'il s'agit d'une erreur
+        d'inscription.
 
-        **Un abandon ne passe pas par ici** : c'est un forfait tracé (E12US004), qui préserve les
-        flèches. Voir `ArcherEngage`.
+        **Un abandon ne passe pas par ici** : c'est un forfait tracé (E04US015 en qualification,
+        E12US004 en duels), qui préserve les flèches. Voir `ArcherEngage`.
         """
         archer = self._archer_existant(archer_id)
+        # DETTE-007 : la confirmation est **aveugle**. Le compte de flèches annoncé par le
+        # signalement n'est pas revérifié — entre le 409 et le rejeu, d'autres tablettes peuvent
+        # avoir saisi, et l'on détruirait plus que le message n'a annoncé.
         if not autoriser_suppression_engage:
-            self._signaler_engagement(archer)
+            self._signaler_engagement(archer, archer_id)
         self._archers.supprimer(archer_id)
 
     def placer(self, archer_id: ArcherId, cible: int) -> Archer:
@@ -219,24 +223,29 @@ class ServiceArchers:
                     "l'inscription ; sinon, il s'agit d'un doublon."
                 )
 
-    def _signaler_engagement(self, archer: Archer) -> None:
+    def _signaler_engagement(self, archer: Archer, archer_id: ArcherId) -> None:
         """Lève `ArcherEngage` si l'archer est placé ou a déjà tiré (E02US003).
 
         Le message **énumère ce qui sera détruit** plutôt que d'inviter à confirmer : c'est la
         seule chose qui distingue, à l'écran, une suppression légitime (erreur de saisie) d'un
-        abandon mal enregistré — que le forfait d'E12US004 doit servir, en préservant les flèches.
-        Un message qui dirait « confirmez pour supprimer » ferait de la destruction le chemin par
-        défaut de l'archer qui s'en va.
+        abandon mal enregistré — que le forfait (E04US015, E12US004) doit servir en préservant les
+        flèches. Un message qui dirait « confirmez pour supprimer » ferait de la destruction le
+        chemin par défaut de l'archer qui s'en va.
+
+        `archer_id` est passé par l'appelant, qui le tient déjà, plutôt que lu dans `archer.id` :
+        cela évite un `assert` de narrowing — or un `assert` saute sous `python -O`, et celui-ci
+        aurait laissé `par_archer(None)` rendre `[]`, donc un archer engagé se supprimer **sans
+        aucun signalement**. Un garde-fou de destruction ne dépend pas d'un drapeau d'interpréteur.
         """
-        assert archer.id is not None, "Un archer persisté a toujours un identifiant."
-        fleches = len(self._scores.par_archer(archer.id))
+        fleches = len(self._scores.par_archer(archer_id))
         if archer.cible is None and fleches == 0:
             return
         motifs = []
         if fleches:
             # Accord au singulier plutôt qu'un « flèche(s) » : ce message est lu par un bénévole
             # au moment où il s'apprête à détruire des données. Il doit se lire, pas se décoder.
-            motifs.append(f"{fleches} flèche déjà tirée" if fleches == 1 else f"{fleches} flèches")
+            accord = "flèche déjà tirée" if fleches == 1 else "flèches déjà tirées"
+            motifs.append(f"{fleches} {accord}")
         if archer.cible is not None:
             motifs.append(f"un placement sur la cible {archer.cible}")
         raise ArcherEngage(

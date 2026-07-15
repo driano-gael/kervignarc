@@ -38,12 +38,14 @@ export function modifierArcher(id: number, entree: ModifierArcher): Promise<Arch
   })
 }
 
-// `autoriserSuppressionEngage` : confirmation de l'admin après un refus `archer_engage` (409).
+// `autoriserSuppressionEngage` : confirmation de l'admin après un signalement `archer_engage` (409).
 // Elle efface **aussi les scores et le placement** de l'archer. En **paramètre de requête** et non
-// dans le corps (un DELETE n'en a pas) — divergence de forme prévue par ADR-0015.
+// dans le corps (un DELETE n'en a pas) — divergence de forme sanctionnée par ADR-0016.
 //
 // Ne sert **pas** à enregistrer un abandon : un archer qui arrête en cours d'épreuve devient un
-// forfait tracé (E12US004), qui conserve ses résultats. Ici, on détruit.
+// forfait tracé (E04US015 en qualification, E12US004 en duels), qui conserve ses résultats. Ici, on
+// détruit. DETTE-007 : la confirmation est **aveugle** — elle ne rappelle pas au serveur le compte
+// de flèches que le signalement avait annoncé.
 export function supprimerArcher(id: number, autoriserSuppressionEngage = false): Promise<void> {
   const parametres = autoriserSuppressionEngage ? '?autoriser_suppression_engage=true' : ''
   return fetchJson<void>(`/api/v1/archers/${id}${parametres}`, { method: 'DELETE' })

@@ -55,6 +55,17 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
   const engagementSignale =
     supprimer.error instanceof ErreurApi && supprimer.error.code === 'archer_engage'
 
+  // Passer en édition **efface** le signalement de suppression en cours. Sans cela, il n'est que
+  // masqué par le formulaire : à la sortie d'édition, le bloc rouge et son « Supprimer
+  // définitivement » réapparaîtraient, armés, sur une ligne que l'admin vient de corriger — et
+  // portant sur des faits qui ont pu changer entre-temps. C'est le seul endroit de l'écran où un
+  // geste destructeur se proposerait sans qu'on l'ait demandé.
+  const ouvrirEdition = () => {
+    supprimer.reset()
+    setConfirmationSuppression(false)
+    setEdition(true)
+  }
+
   if (edition) {
     return (
       <li>
@@ -96,7 +107,7 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
           {archer.cible !== null && ` · cible ${archer.cible}`}
         </span>
         <span className="archer__actions">
-          <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
+          <button type="button" className="bouton--discret" onClick={ouvrirEdition}>
             Modifier
           </button>
           {confirmationSuppression ? (

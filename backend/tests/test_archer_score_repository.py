@@ -289,6 +289,13 @@ def test_supprimer_un_archer_emporte_ses_scores(tmp_path: Path) -> None:
     `score.archer_id` n'a pas d'`ON DELETE` (DETTE-001) : sans le `DELETE` explicite des scores,
     ce `supprimer` échouerait en `InfrastructureError` → 500. C'est la cascade **applicative
     maîtrisée** qui manque au reste de la descendance de `tournoi`.
+
+    **Ce test ne prouve pas l'atomicité**, que `ports.py` et l'adapter affirment (« une seule
+    transaction ; deux transactions laisseraient un archer dépouillé de ses flèches »). Elle tient
+    ici **par construction** — un seul `commit` dans un seul `with session` —, mais ce test
+    passerait à l'identique avec deux `commit()`. L'exercer demanderait d'injecter une
+    `session_factory` qui fasse échouer le second `DELETE` : un harnais dont le coût dépasse le
+    risque sur un SQLite mono-writer. Arbitrage assumé, signalé plutôt que tu.
     """
     db = _base(tmp_path)
     try:

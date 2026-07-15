@@ -78,20 +78,16 @@ class FauxTournoiRepository:
 class FauxScoreRepository:
     """Repository en mémoire conforme au port `ScoreRepository`.
 
-    S'abonne à `FauxArcherRepository` pour purger les scores d'un archer supprimé : côté
-    production, c'est `ArcherRepositorySQL.supprimer` qui le fait, dans la même transaction
-    (E02US003). Sans cette purge, le faux laisserait des scores orphelins que le vrai adapter
-    n'a jamais — et un classement testé après suppression mentirait au vert.
+    **Les scores d'un archer supprimé deviennent invisibles**, comme en production : le vrai
+    `ArcherRepositorySQL.supprimer` les efface dans sa transaction (E02US003). Le faux obtient la
+    même chose en filtrant sur les archers encore présents — équivalence observable, sans mécanique
+    d'abonnement. Un faux qui les laisserait apparaître verdirait un service à scores orphelins.
     """
 
     def __init__(self, archers: FauxArcherRepository) -> None:
         self._archers = archers
         self._scores: list[Score] = []
         self._sequence = 0
-        archers.a_la_suppression(self._purger)
-
-    def _purger(self, archer_id: ArcherId) -> None:
-        self._scores = [s for s in self._scores if s.archer_id != archer_id]
 
     def ajouter(self, score: Score) -> Score:
         self._sequence += 1
@@ -104,9 +100,12 @@ class FauxScoreRepository:
         return [s for s in self._scores if s.archer_id in ids]
 
     def par_archer(self, archer_id: ArcherId) -> list[Score]:
-        # Le filtre sur `archer_id` est ce qui rend testable le refus de supprimer **cet**
-        # archer-là : un faux qui renverrait tous les scores du tournoi ferait passer au vert un
-        # service qui rendrait indéboulonnable tout inscrit dès la première flèche tirée.
+        # Le filtre sur `archer_id` rend testable le signalement portant sur **cet** archer-là :
+        # un faux qui renverrait tous les scores du tournoi ferait passer au vert un service qui
+        # signalerait tout inscrit dès la première flèche tirée. Le garde d'existence, lui,
+        # reproduit la purge du vrai adapter (cf. docstring de la classe).
+        if self._archers.par_id(archer_id) is None:
+            return []
         return [s for s in self._scores if s.archer_id == archer_id]
 
 
@@ -664,6 +663,39 @@ def test_supprimer_archer_avec_scores_signale() -> None:
     assert m.inscrits.par_id(archer.id) is not None
 
 
+def test_supprimer_archer_signale_ne_detruit_rien() -> None:
+    """Le 409 est une **question**, pas un début d'exécution (CA E02US003).
+
+    L'invariant central de l'US : tant que l'admin n'a pas confirmé, l'archer, sa cible **et ses
+    flèches** sont intacts. Les tests de signalement ci-dessus n'assertent que la survie de
+    l'archer — une purge déplacée avant le contrôle les laisserait tous verts en détruisant les
+    scores sur le refus même.
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.archers.saisir_score(archer.id, 9)
+    m.archers.placer(archer.id, 4)
+
+    with pytest.raises(ArcherEngage):
+        m.archers.supprimer(archer.id)
+
+    intact = m.inscrits.par_id(archer.id)
+    assert intact is not None and intact.cible == 4
+    assert m.classement.pour_tournoi(m.tournoi_id).lignes[0].total == 9
+
+
+def test_supprimer_archer_inconnu_leve_meme_confirme() -> None:
+    """`autoriser_suppression_engage` lève un **signalement**, pas le contrôle d'existence.
+
+    Un drapeau de confirmation ne doit jamais avaler un 404 : l'ordre (`_archer_existant` avant
+    le signalement) est juste aujourd'hui, rien ne le pinnait.
+    """
+    m = _monter()
+    with pytest.raises(ArcherIntrouvable):
+        m.archers.supprimer(404, autoriser_suppression_engage=True)
+
+
 def test_signalement_d_engagement_dit_ce_qui_sera_detruit() -> None:
     """Le message énumère les flèches **et** le placement (CA E02US003).
 
@@ -680,16 +712,18 @@ def test_signalement_d_engagement_dit_ce_qui_sera_detruit() -> None:
     m.archers.placer(archer.id, 4)
     with pytest.raises(ArcherEngage) as leve:
         m.archers.supprimer(archer.id)
-    assert "2 flèches" in leve.value.message
+    assert "2 flèches déjà tirées" in leve.value.message
     assert "cible 4" in leve.value.message
     assert "forfait" in leve.value.message
 
 
 def test_signalement_d_engagement_accorde_au_singulier() -> None:
-    """Une seule flèche s'écrit « 1 flèche », pas « 1 flèche(s) » (E02US003).
+    """Une seule flèche s'écrit « 1 flèche », pas « 1 flèche(s) ».
 
-    Ce message est lu par un bénévole au moment où il s'apprête à détruire des données : il doit
-    se lire, pas se décoder.
+    **Non-régression, pas un CA** : le CA est muet sur la typographie du message, et l'oracle est
+    ici le rendu actuel. Il vaut quand même d'être figé — ce message est lu par un bénévole au
+    moment où il s'apprête à détruire des données : il doit se lire, pas se décoder. La faute
+    d'origine (« 1 flèche(s) ») n'a été vue qu'en lisant la vraie sortie à l'écran.
     """
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)

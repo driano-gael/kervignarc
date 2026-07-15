@@ -49,7 +49,8 @@ def cle_nom(nom: str) -> str:
     # `domain/texte.py`. `cle_nom` n'est plus une notion métier du référentiel des clubs, c'est la
     # règle de repli des noms propres du projet — voir `docs/dette.md` pour le constat et l'US de
     # résorption. E02US003 a ajouté l'usage et constaté le déclenchement, rien de plus : un remède
-    # structurel se traite en US dédiée (règle 16), pas en douce.
+    # structurel se traite en ADR + US dédiée, jamais en douce dans l'US courante
+    # (`CLAUDE.md` § Dette).
 
     Implémentation : décomposition NFKD puis retrait des marques combinantes (l'accent devient un
     caractère distinct, qu'on jette), avant `casefold`. `casefold` seul ne suffirait pas : il
