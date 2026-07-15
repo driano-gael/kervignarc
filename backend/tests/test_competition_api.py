@@ -75,6 +75,11 @@ def test_tranche_verticale_bout_en_bout(
         assert alice.status_code == 201, alice.text
         alice_id = alice.json()["id"]
         assert alice.json()["cible"] is None
+        # Le DTO restitue l'identité complète : sans cette assertion, un `de_agregat` qui
+        # confondrait `prenom` et `nom` passerait la suite entière au vert (les tests de
+        # repository couvrent l'ORM, pas la traduction en DTO).
+        assert (alice.json()["prenom"], alice.json()["categorie_id"]) == ("Alice", categorie_id)
+        assert alice.json()["club_id"] is None
         assert ws.receive_json()["type"] == "donnees_modifiees"
 
         bob_id = client.post(
@@ -104,6 +109,12 @@ def test_tranche_verticale_bout_en_bout(
         ] == [
             ("Martin", 1, 19, 3),
             ("Durand", 2, 8, None),
+        ]
+        # Le classement porte le signal « club inconnu » (E02US002, ADR-0014) : c'est la seule
+        # surface où un archer inscrit apparaît, donc le seul endroit où l'anomalie se voit.
+        assert [(ligne["prenom"], ligne["club_id"]) for ligne in corps["lignes"]] == [
+            ("Alice", None),
+            ("Bob", None),
         ]
 
 

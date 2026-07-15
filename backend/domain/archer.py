@@ -50,7 +50,8 @@ def cle_identite(nom: str, prenom: str, club_id: ClubId | None) -> CleIdentite:
     « LEFEVRE remi » sur une tablette est le doublon le plus probable, et c'est exactement le repli
     que le référentiel des clubs applique déjà (E02US001). On **réutilise** `domain.club.cle_nom`
     plutôt que de le recopier : deux règles de repli qui divergent, c'est un doublon accepté ici et
-    refusé là. C'est son 2ᵉ usage ; à un 3ᵉ, l'extraire dans un module de texte se justifiera.
+    refusé là. C'est son **1ᵉʳ usage hors du concept « club »** (le 3ᵉ en tout — cf. sa docstring) ;
+    à un 2ᵉ hors club, l'extraire dans un module de texte se justifiera, en US dédiée.
 
     `club_id` entre dans la clé **brut** : deux homonymes de clubs différents sont deux archers
     distincts. Et comme `None` signifie « club inconnu » (jamais « aucun club »), un archer sans

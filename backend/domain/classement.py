@@ -15,17 +15,31 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from domain.archer import Archer, ArcherId
+from domain.club import ClubId
 from domain.score import Score
 
 
 @dataclass(frozen=True)
 class LigneClassement:
-    """Une ligne de classement : rang, archer et total marqué."""
+    """Une ligne de classement : rang, archer et total marqué.
+
+    Porte `prenom` et `club_id` depuis E02US002, pour deux raisons distinctes : le classement
+    est la seule surface où un archer **inscrit** apparaît, donc (a) c'est ici que se **signale**
+    un club encore inconnu (`club_id is None`), l'anomalie que le CA impose de rendre visible
+    (ADR-0014) — sans quoi « on complétera plus tard » n'aurait aucun support ; et (b) deux
+    homonymes confirmés (un père et son fils) seraient indiscernables sur le seul patronyme,
+    alors que l'US vient précisément d'autoriser leur coexistence.
+
+    `club_id` et non le nom du club : le classement ne charge pas le référentiel — signaler une
+    absence ne demande pas de résoudre les présences.
+    """
 
     rang: int
     archer_id: ArcherId
     nom: str
+    prenom: str
     cible: int | None
+    club_id: ClubId | None
     total: int
 
 
@@ -67,7 +81,9 @@ def calculer_classement(archers: Iterable[Archer], scores: Iterable[Score]) -> C
                 rang=rang,
                 archer_id=archer_id,
                 nom=archer.nom,
+                prenom=archer.prenom,
                 cible=archer.cible,
+                club_id=archer.club_id,
                 total=total,
             )
         )

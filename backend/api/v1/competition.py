@@ -98,12 +98,19 @@ class ScoreReponse(BaseModel):
 
 
 class LigneClassementReponse(BaseModel):
-    """Une ligne de classement renvoyée au client."""
+    """Une ligne de classement renvoyée au client.
+
+    `club_id` à `null` = club encore **inconnu** : c'est le signal que l'écran affiche pour que
+    l'anomalie soit résorbée (E02US002, ADR-0014). Le nom du club n'est pas résolu ici — le
+    client dispose déjà du référentiel s'il veut l'afficher.
+    """
 
     rang: int
     archer_id: int
     nom: str
+    prenom: str
     cible: int | None
+    club_id: int | None
     total: int
 
 
@@ -123,7 +130,9 @@ class ClassementReponse(BaseModel):
                     rang=ligne.rang,
                     archer_id=ligne.archer_id,
                     nom=ligne.nom,
+                    prenom=ligne.prenom,
                     cible=ligne.cible,
+                    club_id=ligne.club_id,
                     total=ligne.total,
                 )
                 for ligne in classement.lignes

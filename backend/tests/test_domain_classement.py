@@ -7,10 +7,19 @@ from domain.classement import LigneClassement, calculer_classement
 from domain.score import Score
 
 
-def _archer(id_: int, nom: str, cible: int | None = None) -> Archer:
-    # `prenom` et `categorie_id` sont sans effet sur le classement (E00US011 classe au nom) ;
-    # ils sont obligatoires depuis E02US002, d'où des valeurs fixes qui ne disent rien de plus.
-    return Archer(nom=nom, prenom="Jean", tournoi_id=1, categorie_id=1, cible=cible, id=id_)
+def _archer(
+    id_: int,
+    nom: str,
+    cible: int | None = None,
+    prenom: str = "Jean",
+    club_id: int | None = 1,
+) -> Archer:
+    # `categorie_id` est sans effet sur le classement (E00US011 ordonne au total puis au nom) ;
+    # obligatoire depuis E02US002, d'où une valeur fixe qui ne dit rien de plus. `prenom` et
+    # `club_id`, eux, sont **restitués** par le classement — cf. les deux tests dédiés.
+    return Archer(
+        nom=nom, prenom=prenom, tournoi_id=1, categorie_id=1, cible=cible, club_id=club_id, id=id_
+    )
 
 
 def test_classement_vide_sans_archer() -> None:
@@ -25,8 +34,10 @@ def test_ordre_par_total_decroissant() -> None:
     scores = [Score(1, 9, id=1), Score(1, 10, id=2), Score(2, 8, id=3)]
     classement = calculer_classement(archers, scores)
     assert classement.lignes == (
-        LigneClassement(rang=1, archer_id=1, nom="Alice", cible=2, total=19),
-        LigneClassement(rang=2, archer_id=2, nom="Bob", cible=2, total=8),
+        LigneClassement(
+            rang=1, archer_id=1, nom="Alice", prenom="Jean", cible=2, club_id=1, total=19
+        ),
+        LigneClassement(rang=2, archer_id=2, nom="Bob", prenom="Jean", cible=2, club_id=1, total=8),
     )
 
 
@@ -34,8 +45,28 @@ def test_archer_sans_score_a_un_total_nul() -> None:
     """Un archer inscrit mais sans flèche apparaît avec un total de 0."""
     classement = calculer_classement([_archer(5, "Zoé")], [])
     assert classement.lignes == (
-        LigneClassement(rang=1, archer_id=5, nom="Zoé", cible=None, total=0),
+        LigneClassement(
+            rang=1, archer_id=5, nom="Zoé", prenom="Jean", cible=None, club_id=1, total=0
+        ),
     )
+
+
+def test_le_classement_restitue_le_prenom() -> None:
+    """Deux homonymes confirmés (E02US002) doivent rester distinguables : le prénom remonte."""
+    archers = [_archer(1, "Dupont", prenom="Jean"), _archer(2, "Dupont", prenom="Pierre")]
+    prenoms = {ligne.archer_id: ligne.prenom for ligne in calculer_classement(archers, []).lignes}
+    assert prenoms == {1: "Jean", 2: "Pierre"}
+
+
+def test_le_classement_signale_un_club_inconnu() -> None:
+    """`club_id` remonte tel quel : c'est le classement qui **signale** l'anomalie (ADR-0014).
+
+    Sans ce report, un archer inscrit sans club serait invisible — et « on complétera plus tard »
+    n'aurait aucun support à l'écran.
+    """
+    archers = [_archer(1, "Martin", club_id=None), _archer(2, "Durand", club_id=7)]
+    clubs = {ligne.archer_id: ligne.club_id for ligne in calculer_classement(archers, []).lignes}
+    assert clubs == {1: None, 2: 7}
 
 
 def test_egalite_de_total_partage_le_rang() -> None:

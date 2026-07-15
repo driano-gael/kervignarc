@@ -496,6 +496,20 @@ function InscriptionArcher({ tournoiId }: { tournoiId: number }) {
   const homonymeSignale =
     ajouter.error instanceof ErreurApi && ajouter.error.code === 'homonyme_archer'
 
+  // Le 409 porte sur **une identité précise** (nom, prénom, club). Dès que l'un des trois change,
+  // le signalement ne s'y applique plus : on l'efface, sinon « Inscrire quand même » confirmerait
+  // un archer que le serveur n'a jamais examiné — et le doublon que cette US refuse passerait
+  // justement par le bouton prévu pour l'autoriser.
+  //
+  // `reset()` plutôt que de comparer à la clé signalée : comparer exigerait de réimplémenter en TS
+  // le repli casse/accents de `domain.club.cle_nom`, soit une 2ᵉ implémentation d'une règle de
+  // domaine — précisément ce que `cle_identite` refuse côté backend en réutilisant `cle_nom`.
+  // Ici, savoir « est-ce que ça a changé » suffit ; nul besoin de savoir « est-ce la même clé ».
+  const surIdentite = (poser: (valeur: string) => void) => (valeur: string) => {
+    if (ajouter.error !== null) ajouter.reset()
+    poser(valeur)
+  }
+
   const inscrire = (autoriserHomonyme: boolean) => {
     ajouter.mutate(
       {
@@ -528,14 +542,14 @@ function InscriptionArcher({ tournoiId }: { tournoiId: number }) {
         <input
           className="formulaire__champ"
           value={nomArcher}
-          onChange={(e) => setNomArcher(e.target.value)}
+          onChange={(e) => surIdentite(setNomArcher)(e.target.value)}
           placeholder="Nom de l'archer"
           aria-label="Nom de l'archer"
         />
         <input
           className="formulaire__champ"
           value={prenomArcher}
-          onChange={(e) => setPrenomArcher(e.target.value)}
+          onChange={(e) => surIdentite(setPrenomArcher)(e.target.value)}
           placeholder="Prénom de l'archer"
           aria-label="Prénom de l'archer"
         />
@@ -555,7 +569,7 @@ function InscriptionArcher({ tournoiId }: { tournoiId: number }) {
         <select
           className="formulaire__champ"
           value={clubId}
-          onChange={(e) => setClubId(e.target.value)}
+          onChange={(e) => surIdentite(setClubId)(e.target.value)}
           aria-label="Club de l'archer"
         >
           <option value="">Club inconnu</option>
@@ -569,15 +583,26 @@ function InscriptionArcher({ tournoiId }: { tournoiId: number }) {
           Inscrire
         </button>
       </form>
-      {(categories.data ?? []).length === 0 && (
+      {/* `isSuccess` et non `data ?? []` : tant que la requête court, `data` est `undefined` et
+          le message s'afficherait à tort sur un tournoi qui a bel et bien des catégories. */}
+      {categories.isSuccess && categories.data.length === 0 && (
         <p className="carte__etat">
           Aucune catégorie dans ce tournoi : créez-en une avant d'inscrire un archer.
         </p>
       )}
+      {/* Rendu **hors** `MessageErreur`, délibérément : ce bloc porte une action et un ton neutre
+          (un doublon probable n'est pas une erreur — l'inscription reste possible). C'est pourquoi
+          il n'a pas le modificateur `--erreur`. À reprendre avec E00US013, qui factorisera les
+          briques d'UI ([DETTE-004](../../../../docs/dette.md)) : ce n'est pas une 10ᵉ copie de
+          `MessageErreur`, donc un grep sur ce nom ne le trouvera pas. */}
       {homonymeSignale ? (
         <div className="carte__etat" role="alert">
           <p>{ajouter.error?.message}</p>
-          <button type="button" onClick={() => inscrire(true)} disabled={ajouter.isPending}>
+          <button
+            type="button"
+            onClick={() => inscrire(true)}
+            disabled={ajouter.isPending || incomplet}
+          >
             Inscrire quand même
           </button>
         </div>

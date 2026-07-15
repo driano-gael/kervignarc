@@ -66,7 +66,10 @@ export interface LigneClassement {
   rang: number
   archer_id: number
   nom: string
+  prenom: string
   cible: number | null
+  // `null` = club encore **inconnu** (ADR-0014) : l'écran le signale pour qu'il soit complété.
+  club_id: number | null
   total: number
 }
 

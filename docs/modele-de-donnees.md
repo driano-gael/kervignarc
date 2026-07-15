@@ -1,7 +1,8 @@
 # Modèle de données détaillé — Kervignarc
 
-- **Version** : 0.2
-- **Date** : 2026-07-14 *(v0.2 : cadrage FFTA — `CATEGORIE.ages`, `BLASON.zones`, capacité de cible non bornée, barème par arme, blason surchargé par phase)*
+- **Version** : 0.3
+- **Date** : 2026-07-15 *(v0.3 : `ARCHER.club_id` **nullable** = club *inconnu* et index UNIQUE de dédoublonnage **abandonné** — [ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md), [ADR-0015](adr/0015-signaler-un-doublon-plutot-que-l-interdire.md) ; `ARCHER.categorie_id` NOT NULL)*
+- *v0.2 : 2026-07-14 — cadrage FFTA (`CATEGORIE.ages`, `BLASON.zones`, capacité de cible non bornée, barème par arme, blason surchargé par phase)*
 - **Base** : SQLite (WAL), ORM SQLAlchemy, migrations Alembic (ADR-0002, ADR-0005)
 - **Source** : dérive du CDC technique §5 ; termes selon `glossaire.md` ; règles métier selon [`referentiel-ffta.md`](referentiel-ffta.md).
 
@@ -17,7 +18,7 @@ erDiagram
     TOURNOI ||--o{ CIBLE : "instancie"
     TOURNOI ||--o{ PHASE : "séquence"
     TOURNOI ||--o| GABARIT_SALLE : "plan (copie)"
-    CLUB ||--o{ ARCHER : "rattache"
+    CLUB |o--o{ ARCHER : "rattache (club inconnu possible)"
     CATEGORIE }o--|| BLASON : "associe"
     ARCHER }o--|| CATEGORIE : "concourt en"
     ARCHER ||--o{ DEPART : "possède"
@@ -130,10 +131,12 @@ erDiagram
 > ne doit être introduit** pour combler les `NULL` : deux archers y porteraient le même `club_id` et
 > le placement (E03US006, RG-3) les croirait du même club — voir l'ADR.
 >
-> **Pas d'index UNIQUE de dédoublonnage** (le modèle v0.1 prévoyait
+> **Pas d'index UNIQUE de dédoublonnage** (le modèle v0.2 prévoyait
 > `UNIQUE(tournoi_id, nom, prenom, club_id)`) : il rejetterait un père et son fils, homonymes du
 > même club. Le doublon probable est **signalé** par le service (409 `homonyme_archer`, au sens de
-> `domain.archer.cle_identite`) et l'admin confirme ; la détection fine et la fusion sont à
+> `domain.archer.cle_identite`) et l'admin confirme — [ADR-0015](adr/0015-signaler-un-doublon-plutot-que-l-interdire.md).
+> Le contrôle applicatif suffit : le **writer unique** sérialise les écritures, et le contrôle comme
+> l'insertion tiennent dans la même commande en file. La détection fine et la fusion sont à
 > **E02US005**.
 >
 > `club_id` est **hors du périmètre de [DETTE-001](dette.md)**, à la différence des autres FK

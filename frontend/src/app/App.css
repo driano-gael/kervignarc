@@ -463,6 +463,15 @@ button:disabled {
   color: var(--text-h);
 }
 
+/* Donnée manquante à compléter (ex. « Club inconnu », E02US002) : une **alerte**, pas une erreur
+   — l'inscription est valide, c'est l'information qui est incomplète. D'où le token ambre
+   (`--warn`, `DV-03`) et non `--danger`. */
+.table__anomalie {
+  color: var(--warn);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .ligne-action {
   display: flex;
   gap: 4px;

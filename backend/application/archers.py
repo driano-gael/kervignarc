@@ -14,7 +14,7 @@ from application.erreurs import (
     HomonymeArcher,
     TournoiIntrouvable,
 )
-from domain.archer import Archer, ArcherId, cle_identite
+from domain.archer import Archer, ArcherId, CleIdentite
 from domain.categorie import CategorieId
 from domain.club import ClubId
 from domain.ports import (
@@ -71,9 +71,16 @@ class ServiceArchers:
         self._verifier_categorie_du_tournoi(tournoi_id, categorie_id)
         if club_id is not None and self._clubs.par_id(club_id) is None:
             raise ClubIntrouvable(f"Aucun club d'identifiant {club_id}.")
+        # L'agrégat est construit **avant** le contrôle d'homonymie : la clé dérive ainsi du nom
+        # réellement stocké (normalisé par `Archer.creer`) et non de l'entrée brute. Sans cela, la
+        # justesse reposerait sur une coïncidence entre deux normalisations indépendantes — celle
+        # de `cle_nom` et celle de `_texte_obligatoire` — qu'une évolution de l'une romprait en
+        # silence. Effet de bord voulu : une saisie invalide rend 422 avant 409, ce qui est l'ordre
+        # juste (une entrée invalide n'est pas un conflit).
+        archer = Archer.creer(nom, prenom, tournoi_id, categorie_id, club_id)
         if not autoriser_homonyme:
-            self._signaler_homonyme(tournoi_id, nom, prenom, club_id)
-        return self._archers.ajouter(Archer.creer(nom, prenom, tournoi_id, categorie_id, club_id))
+            self._signaler_homonyme(tournoi_id, archer.cle_identite())
+        return self._archers.ajouter(archer)
 
     def placer(self, archer_id: ArcherId, cible: int) -> Archer:
         """Place un archer sur une cible. Lève `ArcherIntrouvable` s'il n'existe pas."""
@@ -101,16 +108,13 @@ class ServiceArchers:
                 f"La catégorie {categorie_id} n'appartient pas au tournoi {tournoi_id}."
             )
 
-    def _signaler_homonyme(
-        self, tournoi_id: TournoiId, nom: str, prenom: str, club_id: ClubId | None
-    ) -> None:
+    def _signaler_homonyme(self, tournoi_id: TournoiId, cle: CleIdentite) -> None:
         """Lève `HomonymeArcher` si un archer de même identité est déjà inscrit au tournoi.
 
         Balayage linéaire des inscrits plutôt qu'un port de recherche dédié : quelques centaines
         d'archers par tournoi, sur une inscription — la simplicité prime hors du domaine (règle 12),
         et un index serait à maintenir cohérent avec `cle_identite` pour rien.
         """
-        cle = cle_identite(nom, prenom, club_id)
         for inscrit in self._archers.par_tournoi(tournoi_id):
             if inscrit.cle_identite() == cle:
                 raise HomonymeArcher(

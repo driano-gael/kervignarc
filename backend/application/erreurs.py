@@ -52,13 +52,15 @@ class HomonymeArcher(ApplicationError):
 
     **Un signalement, pas un refus.** Deux archers réels peuvent porter les mêmes nom, prénom et
     club (un père et son fils, cas courant en compétition de club) : les rejeter interdirait une
-    inscription légitime, le jour J, au guichet. L'admin trancher : réinscrire le même archer par
-    mégarde, ou confirmer l'homonyme via `ServiceArchers.ajouter(autoriser_homonyme=True)`.
+    inscription légitime, le jour J, au guichet. C'est donc l'**admin qui tranche** : renoncer
+    (il réinscrivait le même archer par mégarde) ou confirmer l'homonyme via
+    `ServiceArchers.ajouter(autoriser_homonyme=True)`.
 
     D'où l'absence de contrainte `UNIQUE` correspondante en base : elle rejetterait le fils sans
     recours. Le contrôle vit ici, et il suffit — le **writer unique** (règle 7, ADR-0005) sérialise
-    les écritures, donc aucune création concurrente ne peut se glisser entre ce test et l'insertion.
-    Comparaison au sens de `domain.archer.cle_identite` (casse et accents repliés).
+    les écritures, et le contrôle **et** l'insertion tiennent dans la même commande en file, donc
+    aucune création concurrente ne peut se glisser entre les deux. Comparaison au sens de
+    `domain.archer.cle_identite` (casse et accents repliés). Voir ADR-0015 pour le protocole.
     """
 
     code = "homonyme_archer"

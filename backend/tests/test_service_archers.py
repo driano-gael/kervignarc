@@ -175,6 +175,7 @@ def test_ajouter_archer_categorie_inconnue_leve() -> None:
     m = _monter()
     with pytest.raises(CategorieHorsTournoi):
         m.archers.ajouter(m.tournoi_id, "Robin", "Jean", 404)
+    assert m.classement.pour_tournoi(m.tournoi_id).lignes == ()
 
 
 def test_ajouter_archer_categorie_d_un_autre_tournoi_leve() -> None:
@@ -183,6 +184,7 @@ def test_ajouter_archer_categorie_d_un_autre_tournoi_leve() -> None:
     _, categorie_etrangere = m.autre_tournoi()
     with pytest.raises(CategorieHorsTournoi):
         m.archers.ajouter(m.tournoi_id, "Robin", "Jean", categorie_etrangere)
+    assert m.classement.pour_tournoi(m.tournoi_id).lignes == ()
 
 
 def test_ajouter_archer_sans_club_laisse_le_rattachement_vide() -> None:
@@ -205,6 +207,20 @@ def test_ajouter_archer_club_inconnu_leve() -> None:
     m = _monter()
     with pytest.raises(ClubIntrouvable):
         m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id, 404)
+    assert m.classement.pour_tournoi(m.tournoi_id).lignes == ()
+
+
+def test_ajouter_archer_saisie_invalide_leve_avant_l_homonymie() -> None:
+    """Une entrée invalide rend l'erreur du **domaine**, pas un conflit d'homonyme (E02US002).
+
+    Un prénom vide et un doublon peuvent être vrais en même temps ; c'est le 422 qui doit sortir —
+    une saisie invalide n'est pas un conflit. Verrouille l'ordre : `Archer.creer` avant
+    `_signaler_homonyme`, ce dont dépend aussi le fait que la clé porte sur le nom **normalisé**.
+    """
+    m = _monter()
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+    with pytest.raises(PrenomArcherInvalide):
+        m.archers.ajouter(m.tournoi_id, "Dupont", "   ", m.categorie_id)
 
 
 def test_ajouter_archer_signale_un_homonyme_du_meme_club() -> None:

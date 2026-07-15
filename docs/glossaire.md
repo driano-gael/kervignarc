@@ -7,8 +7,10 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | Terme | Identifiant code | Définition |
 |---|---|---|
 | **Tournoi** | `Tournoi` | Événement complet : configuration, inscrits, phases, résultats. |
-| **Club** | `Club` | Structure d'appartenance d'un archer. |
-| **Archer** | `Archer` | Participant (ex-`Player` du prototype). |
+| **Club** | `Club` | Structure d'appartenance d'un archer. Référentiel **global** (aucun `tournoi_id`), réutilisé d'une compétition à l'autre. En FFTA tout licencié a un club : `archer.club_id NULL` signifie donc **club inconnu** (pas encore saisi), **jamais** « aucun club ». Il n'existe et ne doit exister **aucun club sentinelle** (« Sans club ») — voir [ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md). |
+| **Club inconnu** | `club_id is None` | État d'un archer dont le club n'est **pas encore renseigné** : une **anomalie à résorber**, pas un état légitime. Signalée à l'écran (classement) et comptée par E12US005. Deux archers au club inconnu ne sont **pas** réputés du même club : le placement (RG-3) doit traiter le cas comme *indécidable*. |
+| **Archer** | `Archer` | Participant (ex-`Player` du prototype). Identifié par **nom + prénom + club** (E02US002) ; son **prénom** et sa **catégorie** sont obligatoires, son club non. |
+| **Homonyme** | `cle_identite` / `homonyme_archer` | Deux archers de mêmes **nom, prénom et club**, casse et accents repliés (`domain.club.cle_nom`). Doublon **probable, pas certain** : un père et son fils le sont réellement. D'où un **signalement** (409) que l'admin confirme, jamais un refus — et aucune contrainte `UNIQUE` en base, qui rejetterait le fils. Voir [ADR-0015](adr/0015-signaler-un-doublon-plutot-que-l-interdire.md). |
 | **Catégorie** | `Categorie` | Classe de compétition **nommée**, définie par une règle d'éligibilité (arme, **une ou plusieurs** tranches d'âge, sexe), déterminant blason par défaut et cloisonnement. Pas un triplet : la FFTA regroupe des tranches (arc nu « U18 » = U15+U18). |
 | **Blason** | `Blason` | Cible en carton visée par l'archer. Porte une **taille** (fraction de place sur la cible), une **capacité** et ses **zones** (valeurs de score admises — un triple 40 n'a pas les zones 5→1). |
 | **Cible** | `Cible` | Support physique numéroté ; capacité **libre (≥ 1)** selon les blasons — usuellement 1, 2 ou 4, mais 3 existe (triples verticaux). |

@@ -202,6 +202,14 @@ demandera neuf modifications identiques, et il suffit d'en manquer une pour qu'u
 gravité de ce qu'il affiche. Or l'erreur est exactement ce que l'utilisateur regarde quand la
 journée déraille.
 
+> **E02US002 n'ajoute pas de 10ᵉ copie, mais ouvre un rendu d'erreur *hors* `MessageErreur`** :
+> le bloc de confirmation d'homonyme de `competition/TrancheVerticale.tsx` (`role="alert"`, avec un
+> bouton « Inscrire quand même ») est **actionnable** et volontairement **neutre** — un doublon
+> probable n'est pas une erreur, l'inscription reste possible —, d'où l'absence du modificateur
+> `--erreur`. **E00US013 ne le trouvera pas** en cherchant `MessageErreur` : il n'est pas une copie.
+> À traiter avec la même résorption (soit un `MessageErreur` acceptant des enfants, soit un
+> composant frère assumé), sans quoi le token ambre s'appliquera à neuf endroits sur dix.
+
 **Rythme d'aggravation.** Une copie par feature créée : c'est mécanique, et E02US001 le confirme
 (9ᵉ). Chaque US de configuration qui ouvre un écran en ajoutera une tant qu'E00US013 n'est pas
 faite — E02US002 (archers) est la suivante sur la trajectoire. Le coût de la résorption croît donc
