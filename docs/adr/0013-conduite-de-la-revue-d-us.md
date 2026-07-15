@@ -39,8 +39,10 @@ et un CA découvert en cours de branche.
 **1. Porte mécanique avant la revue** (étape 0). Les vérifications outillées passent au vert *avant*
 de dépenser une passe. Elles **déchargent** les relecteurs de ce qu'elles prouvent : faire relire à
 l'œil ce que `test_domain_isolation.py` établit par AST est plus lent *et* plus faible qu'une preuve
-machine. La liste est **calquée sur `ci.yml`**, l'autorité bloquante ; toute divergence est un bug de
-la procédure.
+machine. Les commandes sont **identiques à celles de `ci.yml`**, l'autorité bloquante — options
+comprises : une commande approchante n'est pas la même mesure. La porte en est un **sous-ensemble
+volontaire** : **une seule** étape est sciemment omise (la synchro `requirements.txt`↔`pyproject.toml`) ;
+toute **autre** divergence est un bug de la procédure.
 
 **2. Quatre axes disjoints, relus en parallèle**, à modèle fort — A (architecture & config,
 règles 1-8), B (CA/tests/dépendances/front, 9-11 + volet front de 3 et 4), C1 (correction & cas
@@ -49,17 +51,30 @@ lieu de leur somme. Le découpage suit ce que chaque axe doit **lire**. C2 est l
 la règle 13 en a été sortie vers C1 pour le raccourcir.
 
 **3. Le périmètre est une aide à la lecture, jamais un déclencheur.** Les règles s'appliquent
-toujours. Le court-circuit est réservé aux règles qui détectent une **présence** (10 front,
-11 dépendances) et **interdit** à celles qui détectent une **absence** (9 tests, 12 traçabilité).
+toujours, et le seul discriminant est **« as-tu lu ? »** : un axe qui a lu et ne trouve pas de
+surface rend un rapport valide, à condition de dire ce qu'il a lu ; conclure sans lire est un raté de
+revue. Le court-circuit *sans lecture* est réservé aux règles qui détectent une **présence** (10
+front, 11 dépendances) et **interdit** à la règle 9 (tests), qui détecte une absence. Seule exception
+au principe : à l'étape 3, la sélection des axes rejoués sur un diff **déjà relu intégralement et
+inchangé** — bornée par l'obligation de rejouer l'axe B dès que les correctifs touchent du code de
+production.
 
-**4. La sécurité est la seule règle partagée par les quatre axes**, chacun sur son périmètre — le
+**4. La sécurité est la seule règle partagée par tous les axes**, chacun sur son périmètre — le
 doublon est voulu.
 
 **5. La décharge est suspendue si le diff touche la configuration des outils.** Une porte verte ne
-prouve rien si le diff a déplacé la porte.
+prouve rien si le diff a déplacé la porte. Énoncé comme un **principe** (« tout fichier qui définit
+ce que la porte exécute ou ce qu'elle vérifie »), pas comme une liste : la première version était une
+liste, et elle a oublié `[tool.pytest.ini_options]` et les `scripts` de `package.json`.
 
-**6. La règle 12 se vérifie à l'étape 0**, par l'auteur : elle porte sur la branche et le message de
-commit, pas sur un fichier — aucun périmètre de diff ne peut la contenir.
+**6. La règle 12 est scindée.** Le **format** (commit conventionnel, cohérence branche, corps
+quoi/pourquoi) se vérifie à l'étape 0 par l'auteur : c'est factuel. Le **jugement** « décision
+structurante ⇒ ADR » revient à un relecteur (axe C2, périmètre = le log de branche) : c'est la seule
+règle dont l'objet est de rattraper ce que l'auteur a escamoté, et la lui confier la neutralise. La
+première version la lui confiait entièrement, au motif qu'« un message de commit n'est pas un
+fichier » — motif vrai mais non concluant : un périmètre peut être un `git log`. Preuve que ce
+n'était pas théorique : `b47b25c` a été livré **sans ADR**, rattrapé par un relecteur tiers ; sous ce
+régime, le présent ADR n'existerait pas.
 
 ## Conséquences
 
@@ -70,8 +85,14 @@ commit, pas sur un fichier — aucun périmètre de diff ne peut la contenir.
 - **−** Coût en tokens **~2,5×** : chaque axe lit le diff, plus les préambules, les rapports et la
   passe de fusion. Arbitrage assumé : le temps mur vaut plus que les tokens sur ce projet. **Ne pas
   « optimiser » en refusionnant les axes sans relire cet ADR.**
-- **−** Le gain n'est **pas** 3× et ne peut pas l'être : C2 (jugement ouvert + registres) dimensionne
-  le chemin critique. Toute annonce supérieure est fausse.
+- **−** Le gain n'est **pas** 3×. Le chemin critique est `max(A, B, C1, C2, D)` et il **n'a pas été
+  mesuré** : C2 en est le candidat présumé, mais B (plus large ensemble de lecture) et C1 (jugement
+  ouvert sur le diff entier) le sont au moins autant. Le **~2× est une estimation à confirmer sur les
+  trois prochaines US**, pas un acquis — et la scission C1/C2 repose sur la même présomption non
+  mesurée.
+- **−** La règle 12 n'est plus vérifiée **en entier** par un tiers : l'auteur juge le format de son
+  propre message de commit (le jugement « ⇒ ADR » lui a été retiré, cf. décision 6). Perte
+  d'indépendance résiduelle assumée, à rouvrir si un défaut de traçabilité passe.
 - **−** La décharge est plus étroite que l'intitulé des règles. Résidus explicités, à ne jamais
   perdre de vue : la denylist `_FORBIDDEN_ROOTS` est aveugle aux imports tiers hors liste et au
   caractère synchrone du domaine (règle 1) ; mypy ne dit rien de l'immutabilité et **exclut
@@ -82,25 +103,46 @@ commit, pas sur un fichier — aucun périmètre de diff ne peut la contenir.
 - **−** Un défaut né de la **conjonction** de deux axes n'appartient à aucun des deux. C1 en est
   explicitement propriétaire, parce qu'il est le seul à voir le diff entier.
 
-## Retour d'expérience — la première version était cassée
+## Retour d'expérience — deux tours, et les deux ont trouvé des bloquants
 
-Le premier jet (commit `b47b25c`) a été soumis à sa propre procédure. Résultat : **2 bloquants**,
-conservés ici parce qu'ils documentent le mode de défaillance de ce genre de découpage.
+Cette procédure a été soumise **à elle-même**, deux fois. Le détail est conservé parce qu'il
+documente le mode de défaillance de ce genre de découpage — et parce qu'un ADR qui enjolive son
+propre passé fait croire à une méthode qui n'a pas eu lieu.
 
-- **Les axes découpés par thème de règle, les périmètres écrits par répertoire** — les deux
-  découpages ne coïncidaient pas, et tout ce qui échappait tombait dans cet écart : la sécurité
-  (règle transversale, axe scopé `backend/`), la traçabilité (règle sur la branche, axe scopé sur
-  des fichiers), les tests absents (règle qui détecte un vide, axe déclenché par un plein).
-- **Le court-circuit était aveugle au cas « pas de tests »** : une US sans un seul test ne touche pas
-  `backend/tests/`, l'axe B répondait « sans objet » sans lire — l'absence de test, c'est-à-dire
-  exactement ce que la règle 9 existe pour trouver, était lue comme « rien à faire ».
-- **La sécurité, nommée pour éviter le « chacun croit que l'autre le fait », avait été mise dans un
-  axe scopé `backend/`** — créant le trou qu'elle voulait fermer, alors que le jeton admin est
-  persisté en `localStorage` côté front.
+**Tour 1** — le premier jet (`b47b25c`, **trois** axes) : **2 bloquants**, 4 majeurs.
 
-Enseignement retenu et inscrit dans la procédure : **les quatre axes vérifient une conformité, ils ne
-cherchent pas à démolir.** Les deux bloquants ont été trouvés par un **agent adversarial** ajouté
-hors grille. Sur un changement structurel, cet agent est requis.
+- *Bloquant* — **le court-circuit était aveugle au cas « pas de tests »** : une US sans un seul test
+  ne touche pas `backend/tests/`, l'axe B répondait « sans objet » sans lire. L'absence de test,
+  c'est-à-dire exactement ce que la règle 9 existe pour trouver, était lue comme « rien à faire ».
+- *Bloquant* — **la décharge n'était pas suspendue quand le diff touchait la config des outils** :
+  un diff qui assouplit `pyproject.toml` fait passer mypy au vert parce que la porte a bougé. C'est
+  la cause de la décision 5, qui sans cela paraîtrait gratuite et coûteuse.
+- *Majeurs* — la sécurité, nommée pour éviter le « chacun croit que l'autre le fait », mise dans un
+  axe scopé `backend/` (créant le trou qu'elle voulait fermer, le jeton admin étant en `localStorage`
+  côté front) ; la traçabilité dans le périmètre de personne ; l'axe B jugeant un test sans voir
+  l'implémentation ; l'ADR manquant.
+
+Cause racine unique : **les axes découpés par thème de règle, les périmètres écrits par répertoire**
+— les deux découpages ne coïncident pas, et tout ce qui échappe tombe dans cet écart.
+
+**Tour 2** — la correction (`f7a346a`) : **3 bloquants** de plus, et le diagnostic qui les explique
+tous — *on corrige l'instance qu'on vous a montrée, pas la classe*. La porte `mypy` avait été fermée
+et la porte `pytest` laissée ouverte (`[tool.pytest.ini_options]`, un `addopts = "--ignore=…"` tue le
+garde-fou d'isolation sans rien faire rougir) ; le périmètre-déclencheur avait été interdit à
+l'étape 1 et réécrit à l'étape 3 ; la décharge, refaite pour ne plus sur-revendiquer, sur-revendiquait
+`pip-audit` comme preuve de la règle 11-c **licence comprise** — retirant de la revue un contrôle qui
+existait avant. D'où deux corrections de méthode, inscrites dans la procédure : la suspension de
+décharge est désormais un **principe** et non une liste (une liste oublie), et le discriminant d'un
+axe muet est **« as-tu lu ? »** et non « ton rapport est-il vide ? ».
+
+**L'enseignement, deux fois confirmé** : les axes vérifient une **conformité** — ils cochent des
+cases, ils ne cherchent pas à démolir. Sur les deux tours, **la totalité des bloquants a été trouvée
+par l'agent adversarial**, aucun par les axes de conformité. C'est le seul dispositif qui ait rien
+trouvé ici. D'où la décision 7 ci-dessous, et la consigne de la défendre la prochaine fois qu'on
+cherchera à raccourcir la revue.
+
+**7. Le relecteur adversarial est un axe à part entière** (axe D), lancé dans le même message que les
+autres, au même format, compté au verdict global — **requis** dès que le changement est structurel.
 
 ## Liens
 

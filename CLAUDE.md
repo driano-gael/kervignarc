@@ -119,6 +119,13 @@ prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et s
    - **Ne pas réussir à écrire le test depuis le CA est le signal que le CA est ambigu** — pas une
      invitation à deviner. C'est un arbitrage : questionner l'utilisateur **avant** d'implémenter
      (cf. § Workflow). Le flou se voit en rédigeant le test, pas à mi-parcours du code.
+   - **Un arbitrage tranché en cours d'US est reversé dans `stories/`** (puce « CA » ou « Notes »)
+     **dans le même commit** — pas seulement dans `docs/fonctionnel/`. Sans quoi le CA reste
+     **périmé** et l'US suivante en dérive ses tests : le garde-fou ci-dessus ne se déclenchera pas,
+     puisqu'un CA périmé n'est pas *ambigu* — il s'écrit sans effort, et il est faux. Une divergence
+     `stories/` ↔ `docs/fonctionnel/` est un **défaut à remonter**, jamais à arbitrer seul.
+     *(Cas réel ouvert : E02US001 — `stories/` dit « pas supprimable **sans avertissement** »,
+     `docs/fonctionnel/` dit « refus **définitif**, aucun moyen de forcer ». E02US002 en dépend.)*
 10. **Front React.** État serveur via React Query, état UI local via Zustand, organisation **par
     features** (pas par type technique). Ergonomie tactile prioritaire sur l'écran de saisie +
     indicateur de connexion visible.
@@ -184,7 +191,9 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   dépendance (`pip install` / `npm install` — cf. règle 11, c'est un arbitrage, pas de la
   plomberie).
 - Quand l'utilisateur dit **« lance la PR »**, exécuter [`/revue-us`](.claude/commands/revue-us.md) :
-  revue du diff par un agent dédié selon la grille projet, puis correction par l'agent auteur,
+  revue du diff par des **agents dédiés en parallèle** (quatre axes + porte mécanique, plus un
+  relecteur **adversarial** si le changement est structurel — [ADR-0013](docs/adr/0013-conduite-de-la-revue-d-us.md)),
+  puis synthèse et correction par l'agent auteur,
   re-commit et push — sans repasser par l'utilisateur. `gh` n'étant **pas installé**, l'assistant
   livre le lien `pull/new/<branche>` + titre + corps prêts à coller : **c'est l'utilisateur qui
   ouvre et merge la PR**, puis dit « c'est mergé ».
