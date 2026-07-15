@@ -142,6 +142,29 @@ Un **remède structurel** (introduire un pattern) se propose sur **preuve dans l
 ADR + US dédiée, jamais en douce dans l'US courante. « Dupliquer une 2ᵉ fois et attendre le 3ᵉ cas »
 est une réponse valide.
 
+## Économie de contexte
+
+L'API est sans état : le contexte est **renvoyé en entier à chaque tour**. Une session à 150k tokens
+paie ~15k tokens d'input à chaque échange — cache compris — avant d'avoir produit une ligne, et ce
+qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le remplissent (~2 %), c'est la
+**sortie des outils**. D'où :
+
+- **Déléguer la lecture, garder le jugement.** La localisation (« où est le service qui… », « quel
+  pattern suit l'existant ») part à un sous-agent `Explore` : les fichiers atterrissent dans *son*
+  contexte, l'assistant ne reçoit que la conclusion. Un sous-agent qui **localise** peut tourner sur
+  un modèle moins cher ; un sous-agent qui **juge** — le relecteur de `/revue-us` — garde le modèle
+  fort : c'est une barrière qualité, elle ne s'optimise pas.
+- **Lire les gros documents par la section utile.** [`docs/dette.md`](docs/dette.md),
+  [`docs/referentiel-ffta.md`](docs/referentiel-ffta.md) et
+  [`docs/modele-de-donnees.md`](docs/modele-de-donnees.md) pèsent ~20 Ko chacun : `Grep`, ou `Read`
+  avec offset, sur la partie qui concerne l'US — pas le fichier entier. Le registre de dette se
+  consulte par sa **table** « Dette ouverte » (4 Ko) ; on ne déplie une section « Détail » (14 Ko à
+  elles toutes) que pour une dette réellement en jeu.
+- **Écrire avant de compacter.** Une décision qui ne vit que dans le contexte est perdue au premier
+  `/compact`. ADR, registre de dette, corps de commit, mémoire : c'est déjà la règle (§ Dette,
+  § Workflow) — c'en est aussi la raison économique. Le meilleur point de coupe est **« lance la
+  PR »** : le code est écrit, la trace d'exploration ne sert plus ; le signaler à l'utilisateur.
+
 ## Workflow
 
 - **Une branche par US**, jamais de travail direct sur `main`. Nommage
