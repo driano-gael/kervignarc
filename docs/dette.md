@@ -36,6 +36,7 @@
 | [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason`, `gabarit_salle`, `phase` (→ `tournoi.id`), enfant indirect `score` (→ `archer.id`) et lien latéral `categorie.blason_id` (→ `blason.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006, E01US008, E01US009) | US dédiée — non planifiée |
 | [DETTE-002](#dette-002--hauteur-de-blason-non-modélisée) | conception | majeur | `backend/domain/blason.py`, `docs/modele-de-donnees.md` | `Blason` modélise l'occupation d'une cible par une `taille` (fraction) + `capacite`, mais **pas la hauteur du centre** — 110 cm pour le blason 80 cm des U11 contre 130 cm pour tous les autres (FFTA B.2.2.1.1, C.3.1.1) | Le placement automatique (EPIC-03) pourra composer une butte physiquement intirable : un U11 et des adultes sur la même cible passent le contrôle « somme des fractions ≤ capacité » alors que leurs blasons ne peuvent pas coexister | E01US005 (blasons) ; constatée au cadrage FFTA du 14/07/2026 | E03US001 (placement automatique) — **avant** d'écrire l'algorithme |
 | [DETTE-003](#dette-003--config-de-phase-à-plat-au-lieu-de-configpolicies) | conception | majeur | `backend/infrastructure/db/repositories.py` (`_config_phase`, `_vers_phase`), `docs/modele-de-donnees.md` | La `config` d'une phase écrit ses politiques **à plat à la racine** (`config.scoring`, `config.validation`) alors que le modèle cible (ADR-0004) les range sous `config.policies` ; et `scoring` y est un **objet paramétré** au lieu d'un **nom de preset** | Deux conventions coexistent pour le même champ. Le moteur (EPIC-05) devra soit adopter la forme à plat — et renoncer au modèle cible — soit migrer les `config` déjà écrites : c'est une décision reportée, pas évitée | E01US009 (forme posée) ; suivie par E01US015 (`config.validation`), qui s'y aligne plutôt que d'introduire une 2ᵉ convention | E05US004 (assembler les politiques) — **avant** d'écrire le moteur |
+| [DETTE-005](#dette-005--conversion-euroscentimes-sans-aucun-test) | technique | majeur | `frontend/src/features/competition/format.ts` | La conversion **euros ↔ centimes** — seul convertisseur d'argent de l'application ([ADR-0012](adr/0012-argent-en-centimes-entiers.md)) — n'a **aucun test** : le front n'a pas de runner (`package.json` : ni `vitest`, ni script `test`) | Une régression silencieuse fausse **le montant dû** (EF-8.1) : inverser `padEnd`/`padStart` transforme 8,10 € en 8,01 € sans que rien ne bronche. Le code est juste aujourd'hui ; c'est sa **non-régression** qui n'est protégée par rien | E01US010 (1ʳᵉ logique pure du front) ; absence de runner préexistante (E00US002 n'outille que lint/format) | E00US014 (runner de test front) — **avant** E08US001, qui consommera le tarif |
 | [DETTE-004](#dette-004--messageerreur-dupliqué-dans-chaque-feature-front) | conception | mineur | `frontend/src/features/*/` (8 occurrences) | Le composant `MessageErreur` est copié **à l'identique** dans chaque feature — même signature, même corps, mêmes classes — au lieu de vivre dans `shared/` | Tout changement du rendu d'erreur (ex. le token d'alerte **ambre** du CDC design, `DV-03`) se fait en 8 endroits, avec le risque d'en oublier un : les erreurs sont précisément ce que l'utilisateur voit quand ça va mal | E00US011 puis chaque feature (`admin`, `bareme`, `blasons`, `categories`, `competition`, `gabarits` ×2) ; **aggravée** par E01US015 (8ᵉ copie) | E00US013 (factoriser les briques d'UI partagées) |
 
 ## Dette résorbée
@@ -203,6 +204,42 @@ faire consommer par les 8 features, et supprimer les copies. Cheap et mécanique
 contre 7 suppressions), mais à faire **d'un bloc** pour que la revue porte sur l'équivalence du
 rendu. À enchaîner de préférence **avant** E01US016 (identité visuelle) et le thème sombre, qui
 consommeront les tokens de couleur.
+
+### DETTE-005 — conversion euros/centimes sans aucun test
+
+**Constat.** [ADR-0012](adr/0012-argent-en-centimes-entiers.md) pose que l'argent se compte en
+**centimes entiers** et que les euros n'existent qu'à l'affichage. La conversion vit donc en **un
+seul** endroit, `frontend/src/features/competition/format.ts` — et cet endroit n'a **aucun test**.
+Le front n'a pas de runner du tout : `frontend/package.json` ne déclare ni `vitest`, ni
+`testing-library`, ni script `test` ; les scripts s'arrêtent à `dev`, `build`, `typecheck`, `lint`,
+`format`.
+
+**Conséquence.** Jusqu'ici, l'absence de tests front était sans grande portée : le front n'hébergeait
+que du rendu, et `tsc` + ESLint suffisaient à en attraper l'essentiel. E01US010 y met pour la
+première fois de la **logique pure et arithmétique**, à cas limites non évidents :
+
+- `saisieEurosVersCentimes("8,1")` doit rendre **810**, pas 801 (`padEnd`, pas `padStart`) ;
+- `centimesVersSaisieEuros(5)` doit rendre **« 0,05 »**, pas « 0,5 » (`padStart` ici, l'inverse) ;
+- l'aller-retour doit être stable sur `0`, sinon éditer un tournoi gratuit l'efface.
+
+Ces trois lignes décident de **ce que paiera un archer** (EF-8.1). Une « simplification » d'un
+`padEnd` en `padStart` passerait `tsc`, ESLint et la revue, et transformerait 8,10 € en 8,01 € sur
+toutes les listes de club — sans qu'aucun signal ne se déclenche.
+
+**Pourquoi c'est en dette et pas corrigé.** Le correctif n'est pas « écrire un test » : c'est
+**outiller le front pour qu'il puisse en avoir un** — devDependency, script, câblage CI. Trois
+raisons de ne pas le faire au fil d'E01US010 : (1) la règle 11 du projet (ADR-0009) impose de
+déclarer, justifier et documenter toute dépendance ajoutée — un travail qui mérite sa revue propre,
+pas un passager clandestin dans une US de configuration ; (2) toucher `package-lock.json` a déjà
+cassé la CI front une fois (résolution `@emnapi`), et ce risque doit être isolé dans une US où il
+est **le** sujet ; (3) le premier runner de test du front est une décision d'outillage, du même
+rang qu'E00US002 (ruff, mypy, ESLint, Prettier) — elle appartient à EPIC-00.
+
+**Résorption attendue.** **E00US014** : installer un runner (vitest, déjà transitif via Vite),
+l'ajouter à la CI bloquante (E00US003) et à [`dependances.md`](dependances.md), puis couvrir
+`format.ts` — `0`, `« 8 »`, `« 8,1 »`, `« 8,10 »`, `« 0,05 »`, point vs virgule, rejets (`8,105`,
+`-8`, `huit`, `8,`), et **stabilité de l'aller-retour**. À faire **avant E08US001**, qui consommera
+le tarif pour calculer les montants dus. Marqueur `DETTE-005` posé en tête de `format.ts`.
 
 ## Procédure — inscrire une dette
 

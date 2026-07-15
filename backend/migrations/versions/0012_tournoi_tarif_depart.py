@@ -7,10 +7,8 @@ Create Date: 2026-07-15
 Ajoute `tarif_depart_centimes` à la table `tournoi` (E01US010) : prix d'un **départ**, qui
 alimentera le montant dû (tarif multiplié par le nombre de départs, EF-8.1 / E08US001).
 
-**INTEGER, pas REAL.** Le [modèle de données](../../../docs/modele-de-donnees.md) prévoyait
-`tarif_depart REAL` ; l'argent en flottant binaire ne représente pas 8,10 € exactement, et
-EPIC-08/09 **somment** ces montants par archer et par club (EF-9.6) — la dérive y serait visible.
-On compte donc en **centimes entiers**, et le suffixe `_centimes` porte l'unité dans le nom.
+**INTEGER, pas REAL** — l'argent se compte en centimes entiers (**ADR-0012**), ce qui corrige le
+`tarif_depart REAL` que prévoyait le modèle de données.
 
 **Nullable, sans défaut.** `NULL` = tarif **non défini** ; `0` = **gratuit**. Deux états distincts :
 rétro-remplir à `0` ferait passer les tournois existants pour gratuits alors qu'ils n'ont

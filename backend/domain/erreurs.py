@@ -90,7 +90,7 @@ class NombreFlechesParVoleeInvalide(DomainError):
 
 
 class TarifDepartInvalide(DomainError):
-    """Le tarif d'un départ est négatif (E01US010).
+    """Le tarif d'un départ sort de la plage autorisée (`[0, 1 000 €]`, E01US010).
 
     Un tarif **nul** est licite (tournoi gratuit) et se distingue d'un tarif **non défini**
     (`None`) : voir `Tournoi.tarif_depart_centimes`.

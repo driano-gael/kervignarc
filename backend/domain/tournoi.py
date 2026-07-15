@@ -7,10 +7,8 @@ création — **date**, **lieu** (facultatif), **type** officiel / non officiel 
 valident les valeurs, les transitions renvoient une copie. Les autres aspects de configuration
 (catégories, blasons, gabarit de salle, barème…) vivent dans leurs propres agrégats.
 
-**L'argent est compté en centimes entiers**, jamais en flottants — d'où le suffixe `_centimes`,
-qui met l'unité dans le nom plutôt que dans un commentaire qu'on ne lit pas. Un `float` ne
-représente pas 8,10 € exactement, et EPIC-08/09 **somment** ces montants (montant dû par archer,
-par club, EF-8.1 / EF-9.6) : la dérive y serait visible à l'euro près sur une liste de club.
+**L'argent est compté en centimes entiers** (ADR-0012), jamais en flottants — d'où le suffixe
+`_centimes`, qui met l'unité dans le nom.
 """
 
 from __future__ import annotations
@@ -23,6 +21,16 @@ from domain.erreurs import NomTournoiInvalide, TarifDepartInvalide
 
 TournoiId = int
 """Identifiant technique d'un tournoi, attribué par la persistance."""
+
+CENTIMES_PAR_EURO = 100
+"""Un euro vaut cent centimes — l'unité de tout montant du projet (ADR-0012)."""
+
+TARIF_DEPART_MAX_CENTIMES = 1000 * CENTIMES_PAR_EURO
+"""Plafond du tarif d'un départ : **1 000 €**.
+
+Règle métier, pas garde-fou technique : un départ coûte en pratique 8 à 15 € ; au-delà de mille
+euros, c'est une saisie erronée, et il vaut mieux la refuser avec un message qu'un enregistrer.
+"""
 
 
 class TypeTournoi(str, Enum):
@@ -142,13 +150,21 @@ def _lieu_normalise(lieu: str | None) -> str | None:
 
 
 def _tarif_valide(tarif_depart_centimes: int | None) -> int | None:
-    """Valide le tarif : `None` (non défini) ou un nombre de centimes `>= 0`.
+    """Valide le tarif : `None` (non défini) ou un nombre de centimes dans `[0, 1 000 €]`.
 
-    Lève `TarifDepartInvalide` s'il est négatif. Zéro est **admis** — un tournoi peut être gratuit,
-    et c'est un choix différent de « pas encore fixé ».
+    Lève `TarifDepartInvalide` hors de cette plage. Zéro est **admis** — un tournoi peut être
+    gratuit, et c'est un choix différent de « pas encore fixé ».
+
+    Le **plafond** est une règle métier, pas une parade technique : un départ à plus de 1 000 € est
+    une faute de frappe (l'ordre de grandeur réel est ~8 à 15 €). Il a accessoirement le mérite de
+    tenir le tarif loin de la capacité d'un entier SQLite, qu'un montant absurde ferait déborder en
+    erreur non typée plutôt qu'en 422.
     """
     if tarif_depart_centimes is None:
         return None
-    if tarif_depart_centimes < 0:
-        raise TarifDepartInvalide("Le tarif d'un départ ne peut pas être négatif.")
+    if not 0 <= tarif_depart_centimes <= TARIF_DEPART_MAX_CENTIMES:
+        raise TarifDepartInvalide(
+            "Le tarif d'un départ doit être compris entre 0 et "
+            f"{TARIF_DEPART_MAX_CENTIMES // CENTIMES_PAR_EURO} €."
+        )
     return tarif_depart_centimes

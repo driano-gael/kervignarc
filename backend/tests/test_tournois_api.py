@@ -129,6 +129,21 @@ def test_creer_tarif_negatif_erreur_domaine(
     assert reponse.json()["code"] == "tarif_depart_invalide"
 
 
+def test_creer_tarif_absurde_erreur_domaine(
+    app_tournois: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un montant gigantesque → **422 métier**, pas un 500 : le domaine le refuse avant SQLite,
+    qui déborderait en erreur non typée (hors contrat ADR-0007)."""
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        reponse = client.post(
+            "/api/v1/tournois",
+            json={"nom": "Salle 18m", "date": "2026-03-14", "tarif_depart_centimes": 10**20},
+        )
+    assert reponse.status_code == 422
+    assert reponse.json()["code"] == "tarif_depart_invalide"
+
+
 def test_creer_tarif_non_entier_erreur_400(
     app_tournois: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:

@@ -74,6 +74,13 @@
 - **Notes** : base d'EPIC-11 (packaging complet PyInstaller).
 - **Dépend de** : E00US011
 
+### E00US014 — Outiller les tests du front
+*En tant que* développeur, *je veux* pouvoir **tester la logique du front**, *afin qu'*une régression sur un calcul d'argent ne parte pas en production sans un signal.
+- **Contexte** : **[DETTE-005](../docs/dette.md)** — le front n'a **aucun runner** (`package.json` : ni `vitest`, ni script `test`) ; E00US002 n'a outillé que lint/format/types. Tant que le front ne faisait que du rendu, `tsc` + ESLint suffisaient. E01US010 y a introduit la **conversion euros ↔ centimes** ([ADR-0012](../docs/adr/0012-argent-en-centimes-entiers.md)), seule logique arithmétique du front — et elle décide de ce que paiera un archer (EF-8.1).
+- **CA** : un runner installé (**vitest**, déjà transitif via Vite) + script `npm test` ; **branché sur la CI bloquante** (E00US003) au même titre que lint/types ; dépendance déclarée dans `package.json` **et** documentée dans [`dependances.md`](../docs/dependances.md) (ADR-0009) ; `format.ts` couvert — `0`, `« 8 »`, `« 8,1 »` → 810, `« 0,05 »` → 5, point vs virgule, rejets (`8,105`, `-8`, `huit`, `8,`), **stabilité de l'aller-retour** ; marqueur `DETTE-005` retiré et ligne déplacée en « Dette résorbée ».
+- **Notes** : ⚠️ **à faire avant E08US001**, qui consommera le tarif pour calculer les montants dus. Le vrai risque de l'US est le **lockfile** : `npm ci` a déjà cassé la CI front sur une résolution `@emnapi` — revalider `npm ci` **localement** après l'ajout, et figer par `overrides` si besoin. Ne pas viser une couverture du rendu (pas de testing-library dans cette US) : le besoin prouvé est la **logique pure**.
+- **Dépend de** : E00US002, E00US003 · **Jalon** : J1 *(dette — avant E08US001)*
+
 ### E00US013 — Factoriser les briques d'UI partagées du front
 *En tant que* développeur, *je veux* que l'affichage d'une erreur ait **un seul point de vérité**, *afin qu'*un changement de rendu (couleur, ton, accessibilité) se fasse une fois et non huit.
 - **Contexte** : **[DETTE-004](../docs/dette.md)** — `MessageErreur` est copié **à l'identique** dans 8 features (`admin`, `bareme`, `blasons`, `categories`, `competition`, `gabarits` ×2, `grain-validation`) : même signature, même corps, mêmes classes, même `role="alert"`.

@@ -20,7 +20,12 @@ import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { ErreurApi } from '../../shared/api/client'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import type { StatutTournoi, Tournoi, TypeTournoi } from './api'
-import { centimesVersSaisieEuros, decrireTarif, saisieEurosVersCentimes } from './format'
+import {
+  centimesVersSaisieEuros,
+  decrireTarif,
+  decrireTarifParDepart,
+  saisieEurosVersCentimes,
+} from './format'
 import { TableClassement } from './TableClassement'
 import {
   useAjouterArcher,
@@ -270,9 +275,12 @@ function ChampTarif({ valeur, onChange }: { valeur: string; onChange: (v: string
           Montant en euros attendu, avec au plus 2 décimales (ex. 8,10).
         </span>
       ) : (
+        // L'astuce ne sert qu'au champ vide : une fois le tarif saisi, elle donnerait
+        // « Gratuit · saisir "0" pour un tournoi gratuit ».
         <span className="carte__etat">
-          {saisi ? decrireTarif(saisieEurosVersCentimes(valeur)) : 'Aucun tarif défini'} · saisir «
-          0 » pour un tournoi gratuit
+          {saisi
+            ? decrireTarif(saisieEurosVersCentimes(valeur))
+            : 'Aucun tarif défini · saisir « 0 » pour un tournoi gratuit'}
         </span>
       )}
     </label>
@@ -388,7 +396,7 @@ function Competition({ tournoi, onRetour }: { tournoi: Tournoi; onRetour: () => 
         {tournoi.nom} <BadgeStatut statut={tournoi.statut} />
       </h2>
       {/* Le tarif est une information publique : c'est ce que paiera l'archer (E01US010). */}
-      <p className="carte__etat">{decrireTarif(tournoi.tarif_depart_centimes)} par départ</p>
+      <p className="carte__etat">{decrireTarifParDepart(tournoi.tarif_depart_centimes)}</p>
 
       {estAdmin && <CycleDeVie tournoi={tournoi} />}
 

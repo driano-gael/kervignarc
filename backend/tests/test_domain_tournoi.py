@@ -7,7 +7,7 @@ import datetime
 import pytest
 
 from domain.erreurs import NomTournoiInvalide, TarifDepartInvalide
-from domain.tournoi import StatutTournoi, Tournoi, TypeTournoi
+from domain.tournoi import TARIF_DEPART_MAX_CENTIMES, StatutTournoi, Tournoi, TypeTournoi
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -114,6 +114,26 @@ def test_un_tarif_nul_est_admis_et_distinct_de_non_defini() -> None:
 def test_creer_refuse_un_tarif_negatif(tarif: int) -> None:
     with pytest.raises(TarifDepartInvalide):
         Tournoi.creer("Salle 18m", _DATE, tarif_depart_centimes=tarif)
+
+
+def test_creer_refuse_un_tarif_au_dela_du_plafond() -> None:
+    """Au-delà de 1 000 € le départ, c'est une faute de frappe — pas un tarif."""
+    with pytest.raises(TarifDepartInvalide):
+        Tournoi.creer("Salle 18m", _DATE, tarif_depart_centimes=TARIF_DEPART_MAX_CENTIMES + 1)
+
+
+def test_le_plafond_lui_meme_est_admis() -> None:
+    """Cas limite : le plafond est inclus."""
+    tournoi = Tournoi.creer("Salle 18m", _DATE, tarif_depart_centimes=TARIF_DEPART_MAX_CENTIMES)
+
+    assert tournoi.tarif_depart_centimes == TARIF_DEPART_MAX_CENTIMES
+
+
+def test_creer_refuse_un_tarif_absurde_plutot_que_de_deborder() -> None:
+    """Un entier gigantesque est refusé **par le domaine** (422), et n'atteint jamais SQLite —
+    qui déborderait en erreur non typée (500) au-delà de sa capacité."""
+    with pytest.raises(TarifDepartInvalide):
+        Tournoi.creer("Salle 18m", _DATE, tarif_depart_centimes=10**20)
 
 
 def test_modifier_met_a_jour_le_tarif() -> None:

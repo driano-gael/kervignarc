@@ -1,9 +1,12 @@
 // Formatage partagé de la feature « competition » — notamment l'**argent** (E01US010).
 //
-// Règle du projet : l'argent circule et se stocke en **centimes entiers**, jamais en flottants
-// (8,10 € ne se représente pas exactement en binaire, et EPIC-08/09 somment ces montants). Les
-// euros n'existent qu'ici, à la frontière de l'écran : ce module est le **seul** endroit où l'on
-// convertit, dans un sens comme dans l'autre.
+// Règle du projet (**ADR-0012**) : l'argent circule et se stocke en **centimes entiers**, jamais en
+// flottants. Les euros n'existent qu'ici, à la frontière de l'écran : ce module est le **seul**
+// endroit où l'on convertit, dans un sens comme dans l'autre.
+//
+// DETTE-005 (docs/dette.md) : ce convertisseur n'a **aucun test** — le front n'a pas de runner. Une
+// régression ici (inverser `padEnd`/`padStart`, p. ex.) fausserait silencieusement le montant dû
+// (EF-8.1) sans que rien ne bronche. Résorption : E00US014, **avant** E08US001.
 
 const CENTIMES_PAR_EURO = 100
 
@@ -36,4 +39,11 @@ export function decrireTarif(centimes: number | null): string {
   if (centimes === null) return 'Tarif non défini'
   if (centimes === 0) return 'Gratuit'
   return `${centimesVersSaisieEuros(centimes)} €`
+}
+
+// Idem, mais en phrase autonome pour l'en-tête d'un tournoi. Seul un **montant** se complète de
+// « par départ » : « Gratuit par départ » et « Tarif non défini par départ » ne se disent pas.
+export function decrireTarifParDepart(centimes: number | null): string {
+  if (centimes === null || centimes === 0) return decrireTarif(centimes)
+  return `${decrireTarif(centimes)} par départ`
 }

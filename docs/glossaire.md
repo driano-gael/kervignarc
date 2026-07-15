@@ -64,7 +64,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Repository** | Port d'accès aux données d'un agrégat. |
 | **DTO** | Objet de transport à la frontière API (Pydantic), distinct du domaine. |
 | **File d'écriture (write queue)** | File des commandes d'écriture consommée par un **writer unique** (ADR-0005). |
-| **Centimes** | Unité de **tout montant** du projet, en entier — jamais de flottant pour de l'argent (8,10 € n'est pas exact en binaire, et les montants se somment). Les champs portent le suffixe `_centimes` ; les euros n'existent qu'à l'affichage (E01US010). |
+| **Centimes** | Unité de **tout montant** du projet, en entier — jamais de flottant pour de l'argent ([ADR-0012](adr/0012-argent-en-centimes-entiers.md)). Les champs portent le suffixe `_centimes` ; les euros n'existent qu'à l'affichage. |
 | **WebSocket** | Canal de diffusion temps réel. |
 | **Migration** | Évolution de schéma versionnée (Alembic). |
 | **AuditLog** | Journal des actions sensibles (corrections, validations, forfaits). |
