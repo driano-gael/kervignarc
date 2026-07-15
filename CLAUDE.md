@@ -107,7 +107,12 @@ prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et s
    l'implémentation : si le CA a été mal compris, le test entérine le malentendu, et un relecteur
    à qui l'on donnerait le même code en déduirait la même intention. D'où :
    - **Domaine & service** (là où vit la règle métier) : tests écrits **depuis le CA**
-     (`stories/Exx-*.md`, [`docs/fonctionnel/`](docs/fonctionnel/)) **avant** d'implémenter.
+     (`stories/Exx-*.md`, puce « **CA** », complétée des « Notes ») **avant** d'implémenter.
+     [`docs/fonctionnel/`](docs/fonctionnel/) n'est **pas** une source de CA : c'est un **produit**
+     de l'US (scénario de recette rédigé pour un non-technicien, décrivant l'UI livrée). Il n'existe
+     pas encore quand le test s'écrit ; s'en servir comme oracle serait le piège de cette règle même,
+     un cran plus haut — dériver le test d'un artefact produit par l'implémentation. Il documente les
+     US **déjà livrées** et sert de référence de comportement existant (utile en non-régression).
    - **API, repository, câblage** : tests après l'implémentation — il n'y a pas d'oracle en jeu.
    - **Non-régression** : l'oracle *est* le comportement actuel ; l'implémenteur est le meilleur
      auteur, il connaît les coutures. Aucune indépendance à aller chercher.
