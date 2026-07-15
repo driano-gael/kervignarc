@@ -89,6 +89,16 @@ class NombreFlechesParVoleeInvalide(DomainError):
     code = "nombre_fleches_par_volee_invalide"
 
 
+class TarifDepartInvalide(DomainError):
+    """Le tarif d'un départ est négatif (E01US010).
+
+    Un tarif **nul** est licite (tournoi gratuit) et se distingue d'un tarif **non défini**
+    (`None`) : voir `Tournoi.tarif_depart_centimes`.
+    """
+
+    code = "tarif_depart_invalide"
+
+
 class NombreVoleesParValidationInvalide(DomainError):
     """La cadence d'un grain « toutes les N volées » est inférieure à 1 (E01US015)."""
 

@@ -1,4 +1,4 @@
-"""Tests unitaires de l'agrégat Tournoi (E00US009, E01US001, E01US002) — domaine pur, sans base."""
+"""Tests unitaires de l'agrégat Tournoi (E00US009, E01US001, E01US002, E01US010) — domaine pur."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import datetime
 
 import pytest
 
-from domain.erreurs import NomTournoiInvalide
+from domain.erreurs import NomTournoiInvalide, TarifDepartInvalide
 from domain.tournoi import StatutTournoi, Tournoi, TypeTournoi
 
 _DATE = datetime.date(2026, 3, 14)
@@ -21,6 +21,7 @@ def test_creer_un_tournoi_valide() -> None:
         lieu=None,
         type_tournoi=TypeTournoi.NON_OFFICIEL,
         statut=StatutTournoi.BROUILLON,
+        tarif_depart_centimes=None,
         id=None,
     )
 
@@ -71,6 +72,7 @@ def test_modifier_met_a_jour_et_preserve_id_et_statut() -> None:
         lieu="Quimper",
         type_tournoi=TypeTournoi.OFFICIEL,
         statut=StatutTournoi.EN_COURS,
+        tarif_depart_centimes=None,
         id=7,
     )
 
@@ -81,6 +83,71 @@ def test_modifier_normalise_et_valide_le_nom() -> None:
     assert tournoi.modifier("  Renommé  ", _DATE, "  ").nom == "Renommé"
     with pytest.raises(NomTournoiInvalide):
         tournoi.modifier("   ", _DATE)
+
+
+# --- Tarif d'un départ (E01US010) : centimes entiers, `None` ≠ `0` ---
+
+
+def test_un_tournoi_neuf_na_pas_de_tarif_defini() -> None:
+    """Un tournoi naît **sans tarif** (`None`), pas à zéro : il n'est pas encore fixé."""
+    assert Tournoi.creer("Salle 18m", _DATE).tarif_depart_centimes is None
+
+
+def test_creer_avec_un_tarif() -> None:
+    """Le tarif est stocké tel quel, en centimes (8,10 € = 810)."""
+    tournoi = Tournoi.creer("Salle 18m", _DATE, tarif_depart_centimes=810)
+
+    assert tournoi.tarif_depart_centimes == 810
+
+
+def test_un_tarif_nul_est_admis_et_distinct_de_non_defini() -> None:
+    """`0` = **gratuit**, un choix ; `None` = **non défini**, un oubli. Les deux coexistent."""
+    gratuit = Tournoi.creer("Découverte", _DATE, tarif_depart_centimes=0)
+    non_defini = Tournoi.creer("Salle 18m", _DATE)
+
+    assert gratuit.tarif_depart_centimes == 0
+    assert non_defini.tarif_depart_centimes is None
+    assert gratuit.tarif_depart_centimes != non_defini.tarif_depart_centimes
+
+
+@pytest.mark.parametrize("tarif", [-1, -810])
+def test_creer_refuse_un_tarif_negatif(tarif: int) -> None:
+    with pytest.raises(TarifDepartInvalide):
+        Tournoi.creer("Salle 18m", _DATE, tarif_depart_centimes=tarif)
+
+
+def test_modifier_met_a_jour_le_tarif() -> None:
+    tournoi = Tournoi.creer("Salle 18m", _DATE, tarif_depart_centimes=810)
+
+    modifie = tournoi.modifier("Salle 18m", _DATE, tarif_depart_centimes=1250)
+
+    assert modifie.tarif_depart_centimes == 1250
+    # L'agrégat est gelé : l'original n'est pas muté.
+    assert tournoi.tarif_depart_centimes == 810
+
+
+def test_modifier_remet_le_tarif_a_non_defini() -> None:
+    """`modifier` **remplace** : omettre le tarif le remet à « non défini » (pas de fusion)."""
+    tournoi = Tournoi.creer("Salle 18m", _DATE, tarif_depart_centimes=810)
+
+    assert tournoi.modifier("Salle 18m", _DATE).tarif_depart_centimes is None
+
+
+def test_modifier_refuse_un_tarif_negatif() -> None:
+    tournoi = Tournoi.creer("Salle 18m", _DATE)
+
+    with pytest.raises(TarifDepartInvalide):
+        tournoi.modifier("Salle 18m", _DATE, tarif_depart_centimes=-1)
+
+
+def test_le_tarif_reste_modifiable_tournoi_en_cours() -> None:
+    """Un tarif mal saisi se découvre à la table d'inscription : il reste corrigeable (`P-3`)."""
+    tournoi = Tournoi.creer("Salle 18m", _DATE, tarif_depart_centimes=810).demarrer()
+
+    modifie = tournoi.modifier("Salle 18m", _DATE, tarif_depart_centimes=900)
+
+    assert modifie.tarif_depart_centimes == 900
+    assert modifie.statut is StatutTournoi.EN_COURS
 
 
 # --- Cycle de vie (E01US002) : les transitions renvoient une copie ---

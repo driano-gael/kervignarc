@@ -30,25 +30,36 @@ router = APIRouter(prefix="/api/v1/tournois", tags=["tournois"])
 
 
 class CreerTournoiRequete(BaseModel):
-    """Corps de création d'un tournoi (nom et date requis ; lieu et type facultatifs)."""
+    """Corps de création d'un tournoi (nom et date requis ; lieu, type et tarif facultatifs)."""
 
     nom: str
     date: datetime.date
     lieu: str | None = None
     type_tournoi: TypeTournoi = TypeTournoi.NON_OFFICIEL
+    tarif_depart_centimes: int | None = None
 
 
 class ModifierTournoiRequete(BaseModel):
-    """Corps d'édition des métadonnées d'un tournoi (le statut n'est pas modifiable ici)."""
+    """Corps d'édition des métadonnées d'un tournoi (le statut n'est pas modifiable ici).
+
+    `tarif_depart_centimes` est **remplacé**, pas fusionné : l'omettre (ou l'envoyer à `null`) remet
+    le tarif à « non défini ». Le client réémet la valeur qu'il a lue.
+    """
 
     nom: str
     date: datetime.date
     lieu: str | None = None
     type_tournoi: TypeTournoi = TypeTournoi.NON_OFFICIEL
+    tarif_depart_centimes: int | None = None
 
 
 class TournoiReponse(BaseModel):
-    """Représentation d'un tournoi renvoyée au client."""
+    """Représentation d'un tournoi renvoyée au client.
+
+    `tarif_depart_centimes` est en **centimes entiers** (l'unité est dans le nom) : c'est le client
+    qui met en forme des euros. `null` = tarif **non défini**, `0` = **gratuit** — deux états
+    distincts, à ne pas confondre à l'affichage.
+    """
 
     id: int
     nom: str
@@ -56,6 +67,7 @@ class TournoiReponse(BaseModel):
     lieu: str | None
     type_tournoi: TypeTournoi
     statut: StatutTournoi
+    tarif_depart_centimes: int | None
 
     @staticmethod
     def de_agregat(tournoi: Tournoi) -> TournoiReponse:
@@ -68,6 +80,7 @@ class TournoiReponse(BaseModel):
             lieu=tournoi.lieu,
             type_tournoi=tournoi.type_tournoi,
             statut=tournoi.statut,
+            tarif_depart_centimes=tournoi.tarif_depart_centimes,
         )
 
 
@@ -83,7 +96,13 @@ async def creer_tournoi(requete: CreerTournoiRequete, request: Request) -> Tourn
     write_queue: WriteQueue = request.app.state.write_queue
     tournoi = await asyncio.wrap_future(
         write_queue.submit(
-            lambda: service.creer(requete.nom, requete.date, requete.lieu, requete.type_tournoi)
+            lambda: service.creer(
+                requete.nom,
+                requete.date,
+                requete.lieu,
+                requete.type_tournoi,
+                requete.tarif_depart_centimes,
+            )
         )
     )
     return TournoiReponse.de_agregat(tournoi)
@@ -119,7 +138,12 @@ async def modifier_tournoi(
     tournoi = await asyncio.wrap_future(
         write_queue.submit(
             lambda: service.modifier(
-                tournoi_id, requete.nom, requete.date, requete.lieu, requete.type_tournoi
+                tournoi_id,
+                requete.nom,
+                requete.date,
+                requete.lieu,
+                requete.type_tournoi,
+                requete.tarif_depart_centimes,
             )
         )
     )

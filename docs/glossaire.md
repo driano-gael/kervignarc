@@ -36,6 +36,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Seeding** | `seeding` | Placement des archers dans l'arbre (serpent). |
 | **Phase** | `Phase` | Étape du tournoi (qualif, barrage, tableau, placement, finale, BSO…). |
 | **Barème** | `BaremeQualification` | Comment se tire et se compte une phase. En qualification : N volées de M flèches, au cumul (`config.scoring`). |
+| **Tarif d'un départ** | `tarif_depart_centimes` | Prix d'**un départ**, en **centimes entiers** (E01US010) ; le montant dû en découle (tarif × nb de départs). `NULL` = non défini, `0` = gratuit — deux états distincts. |
 | **Grain de validation** | `GrainValidation` | **Quand le scoreur valide** une phase : *fin de série* · *fin de duel* · *toutes les N volées* (`config.validation`, `D-11`). Politique de phase, réglée à la configuration — pas un réglage global. |
 | **Séquence** | `Sequence` | Enchaînement ordonné de phases définissant un format. |
 | **Placement** | `Placement` | Affectation d'un archer à cible + position + départ. |
@@ -63,6 +64,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Repository** | Port d'accès aux données d'un agrégat. |
 | **DTO** | Objet de transport à la frontière API (Pydantic), distinct du domaine. |
 | **File d'écriture (write queue)** | File des commandes d'écriture consommée par un **writer unique** (ADR-0005). |
+| **Centimes** | Unité de **tout montant** du projet, en entier — jamais de flottant pour de l'argent (8,10 € n'est pas exact en binaire, et les montants se somment). Les champs portent le suffixe `_centimes` ; les euros n'existent qu'à l'affichage (E01US010). |
 | **WebSocket** | Canal de diffusion temps réel. |
 | **Migration** | Évolution de schéma versionnée (Alembic). |
 | **AuditLog** | Journal des actions sensibles (corrections, validations, forfaits). |
