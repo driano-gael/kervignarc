@@ -1,7 +1,8 @@
 # Modèle de données détaillé — Kervignarc
 
-- **Version** : 0.4
-- **Date** : 2026-07-16 *(v0.4 : `DEPART` devient un **créneau du tournoi** (`tournoi_id`, `horaire`, `tarif_centimes` obligatoire), le tarif **quitte** `TOURNOI` — [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md), E02US004 ; le lien archer↔départ + `paye` passent à E02US009)*
+- **Version** : 0.5
+- **Date** : 2026-07-16 *(v0.5 : table de liaison `INSCRIPTION` (archer ↔ départ, portant `paye`) — E02US009, [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md) ; montant dû **dérivé** du tarif du départ, non stocké)*
+- *v0.4 : 2026-07-16 — `DEPART` devient un **créneau du tournoi** (`tournoi_id`, `horaire`, `tarif_centimes` obligatoire), le tarif **quitte** `TOURNOI` — [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md), E02US004 ; le lien archer↔départ + `paye` passent à E02US009*
 - *v0.3 : 2026-07-15 — `ARCHER.club_id` **nullable** = club *inconnu* et index UNIQUE de dédoublonnage **abandonné** ([ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md), [ADR-0015](adr/0015-signaler-un-doublon-plutot-que-l-interdire.md)) ; `ARCHER.categorie_id` NOT NULL*
 - *v0.2 : 2026-07-14 — cadrage FFTA (`CATEGORIE.ages`, `BLASON.zones`, capacité de cible non bornée, barème par arme, blason surchargé par phase)*
 - **Base** : SQLite (WAL), ORM SQLAlchemy, migrations Alembic (ADR-0002, ADR-0005)
@@ -164,6 +165,29 @@ erDiagram
 > où un REAL dériverait. Le tarif est **obligatoire** : l'état « non défini » qu'avait le tarif du
 > tournoi disparaît (on ne crée pas un créneau sans prix) ; `0` = gratuit reste distinct. FK
 > `depart → tournoi` **sans `ON DELETE`** → [DETTE-001](dette.md).
+
+### INSCRIPTION
+| Champ | Type | Contraintes |
+|---|---|---|
+| id | INTEGER | PK |
+| archer_id | INTEGER | FK → ARCHER, NOT NULL |
+| depart_id | INTEGER | FK → DEPART, NOT NULL |
+| paye | BOOLEAN | NOT NULL, défaut `false` |
+
+> **Table de liaison archer ↔ départ** (E02US009, [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md)) :
+> l'inscription d'un archer sur un **créneau** du tournoi. `UNIQUE(archer_id, depart_id)` — un archer ne
+> s'inscrit **qu'une fois** sur un même départ (une seconde tentative est un `DejaInscrit`, 409, pas un
+> doublon toléré comme l'homonyme). L'invariant « archer et départ du **même tournoi** » est tenu par le
+> **service** (l'entité `Inscription` ne porte que les deux clés) : un départ d'un autre tournoi est
+> *introuvable* du point de vue de l'archer.
+> **Le montant dû n'est pas une colonne** : il se **dérive** du `tarif_centimes` du départ à la lecture
+> (rien à recopier, rien à resynchroniser). C'est l'erreur que la v0.3 faisait en posant
+> `montant_du_centimes`/`paye` sur `DEPART` ; seul `paye` — un **fait** propre à l'inscription, non
+> dérivable — vit ici. Les **sommes** d'EPIC-08 (montant par archer = somme des tarifs de ses départs)
+> se calculent par jointure `INSCRIPTION → DEPART`.
+> **Deux FK sans `ON DELETE`** (`archer_id`, `depart_id`) → [DETTE-001](dette.md) : la suppression
+> d'un archer (E02US003) **et** celle d'un départ (E02US009) purgent les inscriptions par **cascade
+> applicative** dans la transaction de l'adapter, jamais par `ON DELETE CASCADE` en base.
 
 ### GABARIT_SALLE
 | id | INTEGER | PK |

@@ -23,3 +23,9 @@
 *En tant qu'*administrateur, *je veux* une vue consolidée par club, *afin de* gérer les règlements groupés.
 - **CA** : totaux par club (dû, payé, reste) ; détail des archers du club.
 - **Dépend de** : E08US002 · **Jalon** : J1
+
+### E08US005 — Rembourser une inscription payée annulée
+*En tant qu'*administrateur, *je veux* tracer le remboursement d'une inscription **payée** qui disparaît (créneau supprimé ou archer désinscrit), *afin de* ne pas laisser une somme encaissée sans contrepartie.
+- **CA** : quand une inscription **marquée payée** est effacée — suppression d'un départ à inscriptions confirmée (E02US009, [ADR-0018](../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md)) ou désinscription — le montant encaissé devient un **remboursement à traiter** ; l'admin le marque **remboursé** (daté, tracé) ou **reporté** sur un autre créneau ; aucun encaissement en ligne (comme E08US002).
+- **Notes** : **déportée d'E02US009** ([ADR-0018](../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md)) : E02US009 ne fait que *décompter* les payées détruites dans le message de confirmation ; le remboursement est un **mouvement d'argent**, absent du modèle tant que `paye` reste un simple booléen. Cette US introduit la notion de transaction/remboursement (registre daté), pas E02US009. **Ouverte** : forme exacte du registre (avoir, report, remboursement effectif) à cadrer avec l'organisateur.
+- **Dépend de** : E02US009, E08US002 · **Jalon** : J2
