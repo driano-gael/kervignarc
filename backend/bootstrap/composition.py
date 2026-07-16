@@ -25,6 +25,7 @@ from api.v1.blasons import router as blasons_router
 from api.v1.categories import router as categories_router
 from api.v1.clubs import router as clubs_router
 from api.v1.competition import router as competition_router
+from api.v1.departs import router as departs_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
 from api.v1.tournois import router as tournois_router
@@ -35,6 +36,7 @@ from application.blasons import ServiceBlasons
 from application.categories import ServiceCategories
 from application.classements import ServiceClassement
 from application.clubs import ServiceClubs
+from application.departs import ServiceDeparts
 from application.gabarits import ServiceGabarits
 from application.grain_validation import ServiceGrainValidation
 from application.tournois import ServiceTournois
@@ -45,6 +47,7 @@ from infrastructure.db import (
     CategorieRepositorySQL,
     ClubRepositorySQL,
     Database,
+    DepartRepositorySQL,
     GabaritSalleRepositorySQL,
     PhaseRepositorySQL,
     ScoreRepositorySQL,
@@ -123,7 +126,12 @@ def create_app(
     phase_repository = PhaseRepositorySQL(database.session_factory)
     archer_repository = ArcherRepositorySQL(database.session_factory)
     score_repository = ScoreRepositorySQL(database.session_factory)
+    depart_repository = DepartRepositorySQL(database.session_factory)
     app.state.service_tournois = ServiceTournois(tournoi_repository)
+    # Départs (créneaux) d'un tournoi (E02US004, ADR-0017) : le service vérifie l'existence du
+    # tournoi (dépend du port tournoi) et attribue le numéro du créneau. Le lien archer↔départ
+    # (inscription) est E02US009.
+    app.state.service_departs = ServiceDeparts(depart_repository, tournoi_repository)
     # Catégories ↔ blasons se référencent mutuellement (E01US006) : la catégorie valide son
     # blason par défaut, le blason refuse sa suppression s'il est référencé. Chaque service ne
     # dépend que des **ports** repository (pas de l'autre service).
@@ -181,6 +189,7 @@ def create_app(
     app.include_router(realtime_router)
     app.include_router(auth_router)
     app.include_router(tournois_router)
+    app.include_router(departs_router)
     app.include_router(categories_router)
     app.include_router(blasons_router)
     app.include_router(clubs_router)

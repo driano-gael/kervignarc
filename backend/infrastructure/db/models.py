@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.db.base import Base
@@ -21,8 +21,7 @@ class TournoiORM(Base):
     `type_tournoi` et `statut` stockent la **valeur** de leurs énumérations respectives
     (`TypeTournoi`, `StatutTournoi`) ; la traduction chaîne ↔ enum est faite par le repository.
 
-    `tarif_depart_centimes` est un **INTEGER**, pas un REAL : l'argent se compte en centimes
-    entiers (E01US010). `NULL` signifie « tarif non défini », distinct de `0` (gratuit).
+    Le **tarif** n'est plus ici : depuis ADR-0017 (E02US004) il vit sur chaque `Depart` (créneau).
     """
 
     __tablename__ = "tournoi"
@@ -33,7 +32,33 @@ class TournoiORM(Base):
     lieu: Mapped[str | None] = mapped_column(nullable=True)
     type_tournoi: Mapped[str] = mapped_column(nullable=False)
     statut: Mapped[str] = mapped_column(nullable=False)
-    tarif_depart_centimes: Mapped[int | None] = mapped_column(nullable=True)
+
+
+class DepartORM(Base):
+    """Table `depart` — persistance de l'agrégat `Depart` (E02US004, ADR-0017).
+
+    Un départ est un **créneau du tournoi** (`tournoi_id`), pas une propriété d'un archer : le lien
+    archer↔départ (inscription, portant `paye`) est E02US009, table distincte à venir.
+    `tarif_centimes` est un **INTEGER**, pas un REAL : l'argent se compte en centimes entiers
+    (ADR-0012) ; il est **NOT NULL** (un créneau a toujours un prix, `0` = gratuit). `horaire`
+    est un libellé de créneau facultatif.
+    """
+
+    __tablename__ = "depart"
+    # Numéro **unique par tournoi** (le service attribue max+1). Déclaré ici, dans le
+    # `Base.metadata` cible de l'autogénération Alembic, et **nommé** comme dans la migration
+    # `0016` : sans cette ligne, un futur `alembic revision --autogenerate` émettrait un
+    # `drop_constraint` fantôme et retirerait le garde-fou en silence. Même convention que
+    # `ClubORM.nom` (`unique=True`).
+    __table_args__ = (UniqueConstraint("tournoi_id", "numero", name="uq_depart_tournoi_numero"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
+    # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    numero: Mapped[int] = mapped_column(nullable=False)
+    horaire: Mapped[str | None] = mapped_column(nullable=True)
+    tarif_centimes: Mapped[int] = mapped_column(nullable=False)
 
 
 class ClubORM(Base):

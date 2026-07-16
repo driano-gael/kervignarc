@@ -1,7 +1,8 @@
 # Modèle de données détaillé — Kervignarc
 
-- **Version** : 0.3
-- **Date** : 2026-07-15 *(v0.3 : `ARCHER.club_id` **nullable** = club *inconnu* et index UNIQUE de dédoublonnage **abandonné** — [ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md), [ADR-0015](adr/0015-signaler-un-doublon-plutot-que-l-interdire.md) ; `ARCHER.categorie_id` NOT NULL)*
+- **Version** : 0.4
+- **Date** : 2026-07-16 *(v0.4 : `DEPART` devient un **créneau du tournoi** (`tournoi_id`, `horaire`, `tarif_centimes` obligatoire), le tarif **quitte** `TOURNOI` — [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md), E02US004 ; le lien archer↔départ + `paye` passent à E02US009)*
+- *v0.3 : 2026-07-15 — `ARCHER.club_id` **nullable** = club *inconnu* et index UNIQUE de dédoublonnage **abandonné** ([ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md), [ADR-0015](adr/0015-signaler-un-doublon-plutot-que-l-interdire.md)) ; `ARCHER.categorie_id` NOT NULL*
 - *v0.2 : 2026-07-14 — cadrage FFTA (`CATEGORIE.ages`, `BLASON.zones`, capacité de cible non bornée, barème par arme, blason surchargé par phase)*
 - **Base** : SQLite (WAL), ORM SQLAlchemy, migrations Alembic (ADR-0002, ADR-0005)
 - **Source** : dérive du CDC technique §5 ; termes selon `glossaire.md` ; règles métier selon [`referentiel-ffta.md`](referentiel-ffta.md).
@@ -18,10 +19,11 @@ erDiagram
     TOURNOI ||--o{ CIBLE : "instancie"
     TOURNOI ||--o{ PHASE : "séquence"
     TOURNOI ||--o| GABARIT_SALLE : "plan (copie)"
+    TOURNOI ||--o{ DEPART : "planifie (créneaux)"
     CLUB |o--o{ ARCHER : "rattache (club inconnu possible)"
     CATEGORIE }o--|| BLASON : "associe"
     ARCHER }o--|| CATEGORIE : "concourt en"
-    ARCHER ||--o{ DEPART : "possède"
+    ARCHER }o--o{ DEPART : "inscrit sur (E02US009)"
     ARCHER ||--o{ PLACEMENT : "est placé"
     CIBLE ||--o{ PLACEMENT : "accueille"
     PHASE ||--o{ MATCH : "contient"
@@ -46,14 +48,11 @@ erDiagram
 | lieu | TEXT | |
 | type_tournoi | TEXT | `officiel` \| `non_officiel` |
 | statut | TEXT | `brouillon` \| `en_cours` \| `termine` |
-| tarif_depart_centimes | INTEGER | ≥ 0, NULL admis — **centimes** (E01US010) |
 | created_at | TEXT (datetime) | |
 
-> **L'argent se compte en centimes entiers, jamais en REAL** — règle de projet, arbitrée par
-> [ADR-0012](adr/0012-argent-en-centimes-entiers.md) (E01US010) : elle vaut pour **tout** montant du
-> modèle, `DEPART` compris. **Trois états**, tous distincts : `NULL` = tarif **non défini**
-> (l'organisateur ne l'a pas fixé), `0` = **gratuit**, `> 0` = payant — confondre les deux premiers
-> ferait annoncer « 0 € dû » à une compétition dont le tarif a été oublié.
+> **Le tarif n'est plus au tournoi** ([ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md),
+> E02US004) : `tarif_depart_centimes` a été **retiré** de `TOURNOI` (migration `0016`) et vit
+> désormais sur `DEPART` — un tournoi peut se jouer sur plusieurs créneaux à prix différents.
 
 > Le plan de salle d'un tournoi n'est **pas** une FK sur `TOURNOI` : c'est une **copie** rangée
 > dans `GABARIT_SALLE` et pointant vers le tournoi (`GABARIT_SALLE.tournoi_id`), pour pouvoir
@@ -147,16 +146,24 @@ erDiagram
 > `CATEGORIE.blason_id`.
 
 ### DEPART
+| Champ | Type | Contraintes |
+|---|---|---|
 | id | INTEGER | PK |
-| archer_id | INTEGER | FK → ARCHER, NOT NULL |
-| numero | INTEGER | n° de départ |
-| tarif_centimes | INTEGER | copie du tarif appliqué (**centimes**) |
-| montant_du_centimes | INTEGER | = tarif_centimes |
-| paye | BOOLEAN | défaut `false` |
+| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL |
+| numero | INTEGER | n° de créneau, **attribué par le système** ; `UNIQUE(tournoi_id, numero)` |
+| horaire | TEXT | libellé de créneau (ex. « 9h00 »), NULL admis |
+| tarif_centimes | INTEGER | **NOT NULL**, ≥ 0 — prix du créneau en **centimes** (`0` = gratuit) |
 
-> **Centimes ici aussi** ([ADR-0012](adr/0012-argent-en-centimes-entiers.md)) : c'est précisément
-> sur ces colonnes que porteront les **sommes** d'EPIC-08/09 (montant par archer, par club), là où
-> un REAL dériverait. Tables à créer en E02US004 / E08US001.
+> **Le départ est un créneau du tournoi** ([ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md),
+> E02US004), partagé par les archers qui s'y inscrivent — il n'appartient **pas** à un archer. Le lien
+> **archer ↔ départ** (inscription, portant `paye` ; montant dû **dérivé** du `tarif_centimes` du
+> départ) est la table de liaison d'**E02US009**, pas de cette US — c'est là que reviennent les
+> colonnes `montant_du`/`paye` que la v0.3 posait à tort ici.
+> **Centimes entiers** ([ADR-0012](adr/0012-argent-en-centimes-entiers.md)) : c'est sur `tarif_centimes`
+> que porteront les **sommes** d'EPIC-08/09 (montant par archer = somme des tarifs de ses départs), là
+> où un REAL dériverait. Le tarif est **obligatoire** : l'état « non défini » qu'avait le tarif du
+> tournoi disparaît (on ne crée pas un créneau sans prix) ; `0` = gratuit reste distinct. FK
+> `depart → tournoi` **sans `ON DELETE`** → [DETTE-001](dette.md).
 
 ### GABARIT_SALLE
 | id | INTEGER | PK |

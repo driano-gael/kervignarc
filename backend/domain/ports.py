@@ -13,6 +13,7 @@ from domain.archer import Archer, ArcherId
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId
+from domain.depart import Depart, DepartId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.score import Score
@@ -132,6 +133,35 @@ class ClubRepository(Protocol):
 
     def supprimer(self, club_id: ClubId) -> None:
         """Supprime le club d'identifiant donné (existence garantie par l'appelant)."""
+        ...
+
+
+class DepartRepository(Protocol):
+    """Port de persistance des départs — créneaux d'un tournoi (E02US004, ADR-0017)."""
+
+    def ajouter(self, depart: Depart) -> Depart:
+        """Persiste un départ et le renvoie avec son identifiant attribué."""
+        ...
+
+    def par_id(self, depart_id: DepartId) -> Depart | None:
+        """Renvoie le départ d'identifiant donné, ou `None` s'il n'existe pas."""
+        ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Depart]:
+        """Renvoie tous les départs d'un tournoi, **triés par numéro** (liste éventuellement vide).
+
+        L'ordre par numéro est garanti par ce port (au contraire de `lister` des autres
+        repositories) : le service s'en sert pour attribuer le prochain numéro (max + 1) et l'écran
+        pour afficher les créneaux dans l'ordre.
+        """
+        ...
+
+    def enregistrer(self, depart: Depart) -> Depart:
+        """Met à jour un départ déjà persisté (édition tarif/horaire) et le renvoie."""
+        ...
+
+    def supprimer(self, depart_id: DepartId) -> None:
+        """Supprime le départ d'identifiant donné (existence garantie par l'appelant)."""
         ...
 
 

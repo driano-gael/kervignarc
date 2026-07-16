@@ -1,4 +1,5 @@
-// Formatage partagé de la feature « competition » — notamment l'**argent** (E01US010).
+// Formatage partagé de l'**argent** — le tarif d'un départ (E02US004, ADR-0017), consommé par la
+// feature « departs ».
 //
 // Règle du projet (**ADR-0012**) : l'argent circule et se stocke en **centimes entiers**, jamais en
 // flottants. Les euros n'existent qu'ici, à la frontière de l'écran : ce module est le **seul**
@@ -33,17 +34,9 @@ export function saisieEurosVersCentimes(saisie: string): number | null {
   return Number(euros) * CENTIMES_PAR_EURO + Number(centimes)
 }
 
-// Centimes → libellé lisible. Les trois états du tarif (E01US010) sont **distincts à l'écran** :
-// ne pas avoir fixé son tarif n'est pas la même chose que d'avoir choisi la gratuité.
-export function decrireTarif(centimes: number | null): string {
-  if (centimes === null) return 'Tarif non défini'
+// Centimes → libellé lisible. Le tarif d'un créneau est **obligatoire** (ADR-0017) : il n'y a plus
+// d'état « non défini » ; seul `0` (gratuit) se distingue d'un montant.
+export function decrireTarif(centimes: number): string {
   if (centimes === 0) return 'Gratuit'
   return `${centimesVersSaisieEuros(centimes)} €`
-}
-
-// Idem, mais en phrase autonome pour l'en-tête d'un tournoi. Seul un **montant** se complète de
-// « par départ » : « Gratuit par départ » et « Tarif non défini par départ » ne se disent pas.
-export function decrireTarifParDepart(centimes: number | null): string {
-  if (centimes === null || centimes === 0) return decrireTarif(centimes)
-  return `${decrireTarif(centimes)} par départ`
 }

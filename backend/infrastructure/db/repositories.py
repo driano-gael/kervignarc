@@ -20,6 +20,7 @@ from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId, SexeCategorie
 from domain.club import Club, ClubId, cle_nom
+from domain.depart import Depart, DepartId
 from domain.erreurs import DomainError
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.grain_validation import GrainValidation, TypeGrain
@@ -31,6 +32,7 @@ from infrastructure.db.models import (
     BlasonORM,
     CategorieORM,
     ClubORM,
+    DepartORM,
     GabaritSalleORM,
     PhaseORM,
     ScoreORM,
@@ -47,7 +49,6 @@ def _vers_tournoi(ligne: TournoiORM) -> Tournoi:
         lieu=ligne.lieu,
         type_tournoi=TypeTournoi(ligne.type_tournoi),
         statut=StatutTournoi(ligne.statut),
-        tarif_depart_centimes=ligne.tarif_depart_centimes,
         id=ligne.id,
     )
 
@@ -68,6 +69,17 @@ def _vers_archer(ligne: ArcherORM) -> Archer:
 def _vers_club(ligne: ClubORM) -> Club:
     """Traduit une ligne ORM en agrégat de domaine `Club`."""
     return Club(nom=ligne.nom, id=ligne.id)
+
+
+def _vers_depart(ligne: DepartORM) -> Depart:
+    """Traduit une ligne ORM en agrégat de domaine `Depart` (E02US004)."""
+    return Depart(
+        tournoi_id=ligne.tournoi_id,
+        numero=ligne.numero,
+        tarif_centimes=ligne.tarif_centimes,
+        horaire=ligne.horaire,
+        id=ligne.id,
+    )
 
 
 def _vers_blason(ligne: BlasonORM) -> Blason:
@@ -230,7 +242,6 @@ class TournoiRepositorySQL:
                     lieu=tournoi.lieu,
                     type_tournoi=tournoi.type_tournoi.value,
                     statut=tournoi.statut.value,
-                    tarif_depart_centimes=tournoi.tarif_depart_centimes,
                 )
                 session.add(ligne)
                 session.commit()
@@ -275,7 +286,6 @@ class TournoiRepositorySQL:
                 ligne.lieu = tournoi.lieu
                 ligne.type_tournoi = tournoi.type_tournoi.value
                 ligne.statut = tournoi.statut.value
-                ligne.tarif_depart_centimes = tournoi.tarif_depart_centimes
                 session.commit()
                 return _vers_tournoi(ligne)
         except SQLAlchemyError as exc:
@@ -488,6 +498,86 @@ class ClubRepositorySQL:
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de suppression du club.") from exc
+
+
+class DepartRepositorySQL:
+    """Adapter SQLite du port `DepartRepository` (E02US004)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def ajouter(self, depart: Depart) -> Depart:
+        """Persiste le départ et le renvoie avec son identifiant attribué."""
+        try:
+            with self._session_factory() as session:
+                ligne = DepartORM(
+                    tournoi_id=depart.tournoi_id,
+                    numero=depart.numero,
+                    horaire=depart.horaire,
+                    tarif_centimes=depart.tarif_centimes,
+                )
+                session.add(ligne)
+                session.commit()
+                return _vers_depart(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance du départ.") from exc
+
+    def par_id(self, depart_id: DepartId) -> Depart | None:
+        """Relit le départ d'identifiant donné, ou `None` s'il n'existe pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(DepartORM, depart_id)
+                return None if ligne is None else _vers_depart(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du départ.") from exc
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Depart]:
+        """Renvoie tous les départs d'un tournoi, **triés par numéro** (liste éventuellement vide).
+
+        Le tri par numéro rend l'ordre d'affichage stable et sert au service à calculer le prochain
+        numéro (le plus grand + 1).
+        """
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(DepartORM)
+                    .where(DepartORM.tournoi_id == tournoi_id)
+                    .order_by(DepartORM.numero)
+                ).scalars()
+                return [_vers_depart(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des départs du tournoi.") from exc
+
+    def enregistrer(self, depart: Depart) -> Depart:
+        """Met à jour un départ déjà persisté (édition tarif/horaire) et le renvoie.
+
+        **Contrat** : l'appelant (le service) garantit l'existence (vérifiée en amont). La ligne
+        absente est une **incohérence technique** (non un cas métier) → `InfrastructureError`. Le
+        `numero` et le `tournoi_id` d'un départ persisté ne changent pas (édition sur place).
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(DepartORM, depart.id)
+                if ligne is None:
+                    raise InfrastructureError("Départ à mettre à jour introuvable en base.")
+                ligne.horaire = depart.horaire
+                ligne.tarif_centimes = depart.tarif_centimes
+                session.commit()
+                return _vers_depart(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour du départ.") from exc
+
+    def supprimer(self, depart_id: DepartId) -> None:
+        """Supprime le départ d'identifiant donné (existence garantie par l'appelant)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(DepartORM, depart_id)
+                if ligne is None:
+                    raise InfrastructureError("Départ à supprimer introuvable en base.")
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression du départ.") from exc
 
 
 class CategorieRepositorySQL:

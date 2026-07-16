@@ -35,11 +35,12 @@
   > Reste du v0.1 le mot « **recalcul** », dont on ne livre pas l'équivalent explicite : le classement se recalcule **à la lecture**, donc supprimer un archer suffit à l'en faire disparaître — il n'y a rien à recalculer aujourd'hui. Le recalcul redeviendra un geste réel avec E03 (un tableau construit ne se refait pas tout seul), et c'est cette US-là qui devra le porter.
 - **Dépend de** : E02US002 · **Jalon** : J1
 
-### E02US004 — Ajouter des départs multiples
-*En tant qu'*administrateur, *je veux* inscrire un archer sur plusieurs départs, *afin de* refléter sa participation réelle.
-- **CA** : un archer peut avoir N départs ; chaque départ porte un n° ; base du calcul de facturation.
-- **Notes** : entité `Depart` liée à l'archer.
-- **Dépend de** : E02US002 · **Jalon** : J1
+### E02US004 — Configurer les départs (créneaux) d'un tournoi
+*En tant qu'*administrateur, *je veux* définir les départs d'un tournoi — des créneaux horaires, chacun avec son prix, *afin de* refléter que le tournoi se joue plusieurs fois dans la journée et d'asseoir la facturation.
+- **CA** : un tournoi porte N départs ; chaque départ a un **numéro** (attribué par le système, unique dans le tournoi), un **horaire** (libellé de créneau, **facultatif**) et un **tarif** (**obligatoire**, en centimes, ≥ 0 — `0` = gratuit) ; CRUD des départs (créer, éditer horaire/tarif, supprimer) ; persisté via la file ; **écran de configuration des départs**.
+- **Notes** : entité `Depart` **enfant du tournoi** (`tournoi_id`), pas de l'archer — [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md). Le **tarif quitte le tournoi** : E01US010 posait `tournoi.tarif_depart_centimes` faute de départs modélisés ; il **migre** sur le départ (obligatoire par créneau) et le champ du tournoi est **retiré** (migration `0016`). L'inscription d'un archer sur des départs et le suivi `payé` sont **E02US009** (lien archer↔départ) — pas ici. Élargit [DETTE-001](../docs/dette.md) (nouvelle FK `depart → tournoi` sans `ON DELETE`).
+  > **CA v0.1 renversé le 16/07/2026** (arbitrage métier, [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md)). Le v0.1 disait « un archer peut avoir N départs ; chaque départ porte un n° ; base de facturation » — le départ y était une **participation de l'archer** (sens A). L'organisateur a tranché : un départ est un **créneau du tournoi** (le tournoi rejoué plusieurs fois dans la journée), partagé par les archers qui s'y inscrivent, avec des **prix possiblement différents** par créneau. D'où deux gestes distincts, **deux US** : *configurer* les créneaux (ici) et *y inscrire* un archer (E02US009). Le placement (EPIC-03) référençait déjà `depart_id` : il désigne maintenant un vrai créneau. Le **numéro** est attribué par le système (unique par tournoi, trous admis après suppression) : un créneau n'a pas de n° « métier » que l'admin choisirait. L'**horaire** est un libellé libre pour l'instant (la génération/format du déroulé horaire reste la question ouverte Q4 du CDC) ; supprimer un départ est libre tant qu'aucune inscription n'existe — le garde-fou « départ avec archers inscrits » naîtra **avec** E02US009 (patron E02US003).
+- **Dépend de** : E01US001 · **Jalon** : J1
 
 ### E02US005 — Détecter et fusionner les doublons
 *En tant qu'*administrateur, *je veux* repérer les doublons, *afin de* fiabiliser la liste.
@@ -62,3 +63,9 @@
 *En tant qu'*administrateur, *je veux* un compte-rendu d'import, *afin de* corriger les anomalies.
 - **CA** : lignes importées / rejetées (avec motif) / doublons détectés ; aucun import partiel silencieux.
 - **Dépend de** : E02US007 · **Jalon** : J4
+
+### E02US009 — Inscrire un archer sur des départs
+*En tant qu'*administrateur, *je veux* inscrire un archer sur un ou plusieurs départs (créneaux) du tournoi, *afin de* refléter sa participation réelle et asseoir sa facturation.
+- **CA** : un archer est inscriptible sur un ou plusieurs des départs configurés (E02US004) ; lien archer↔départ ; suivi `payé` par (archer, départ) ; le montant dû se **dérive** du tarif du départ ; un archer inscrit sur au moins un départ **élargit la notion d'« engagé »** (glossaire) — le supprimer efface ses inscriptions.
+- **Notes** : table de liaison archer↔départ (portant `paye`) — [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md). Reprend les colonnes `montant_du`/`paye` que le modèle v0.3 posait à tort sur `DEPART`. Alimente E08US001 (facturation = somme des tarifs des départs de l'archer). Fait naître le garde-fou « supprimer un départ qui porte des inscriptions » côté E02US004 (patron `ClubReference`/`ArcherEngage`).
+- **Dépend de** : E02US002, E02US004 · **Jalon** : J1

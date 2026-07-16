@@ -1,14 +1,14 @@
-"""Agrégat `Tournoi` — contexte d'un tournoi (E01US001, E01US002, E01US010).
+"""Agrégat `Tournoi` — contexte d'un tournoi (E01US001, E01US002).
 
 Enrichit la graine du walking skeleton (E00US009, nom seul) avec les métadonnées de
-création — **date**, **lieu** (facultatif), **type** officiel / non officiel (E01US001) —, son
-**cycle de vie** (`statut` : brouillon → en cours → terminé, E01US002) et le **tarif d'un départ**
-(E01US010). Agrégat de domaine **pur** (aucune dépendance framework, immuable) : `creer`/`modifier`
-valident les valeurs, les transitions renvoient une copie. Les autres aspects de configuration
-(catégories, blasons, gabarit de salle, barème…) vivent dans leurs propres agrégats.
+création — **date**, **lieu** (facultatif), **type** officiel / non officiel (E01US001) — et son
+**cycle de vie** (`statut` : brouillon → en cours → terminé, E01US002). Agrégat de domaine **pur**
+(aucune dépendance framework, immuable) : `creer`/`modifier` valident les valeurs, les transitions
+renvoient une copie. Les autres aspects de configuration (catégories, blasons, gabarit de salle,
+barème, **départs**…) vivent dans leurs propres agrégats.
 
-**L'argent est compté en centimes entiers** (ADR-0012), jamais en flottants — d'où le suffixe
-`_centimes`, qui met l'unité dans le nom.
+Le **tarif** n'est plus porté par le tournoi : depuis ADR-0017 (E02US004) il vit sur chaque
+`Depart` (créneau), le tournoi pouvant se jouer sur plusieurs créneaux à des prix différents.
 """
 
 from __future__ import annotations
@@ -17,20 +17,10 @@ import datetime
 from dataclasses import dataclass, replace
 from enum import Enum
 
-from domain.erreurs import NomTournoiInvalide, TarifDepartInvalide
+from domain.erreurs import NomTournoiInvalide
 
 TournoiId = int
 """Identifiant technique d'un tournoi, attribué par la persistance."""
-
-CENTIMES_PAR_EURO = 100
-"""Un euro vaut cent centimes — l'unité de tout montant du projet (ADR-0012)."""
-
-TARIF_DEPART_MAX_CENTIMES = 1000 * CENTIMES_PAR_EURO
-"""Plafond du tarif d'un départ : **1 000 €**.
-
-Règle métier, pas garde-fou technique : un départ coûte en pratique 8 à 15 € ; au-delà de mille
-euros, c'est une saisie erronée, et il vaut mieux la refuser avec un message qu'un enregistrer.
-"""
 
 
 class TypeTournoi(str, Enum):
@@ -56,22 +46,13 @@ class StatutTournoi(str, Enum):
 
 @dataclass(frozen=True)
 class Tournoi:
-    """Un tournoi. `id` vaut `None` tant que l'agrégat n'est pas persisté.
-
-    `tarif_depart_centimes` est le prix **d'un départ**, en **centimes** (E01US010) ; le montant dû
-    par un archer en découlera (tarif multiplié par le nombre de départs, EF-8.1 / E08US001). Trois
-    états, tous
-    distincts : `None` = **non défini** (l'organisateur ne l'a pas encore fixé), `0` = **gratuit**,
-    `> 0` = payant. Confondre les deux premiers ferait annoncer « 0 € dû » à toute une compétition
-    dont le tarif a simplement été oublié.
-    """
+    """Un tournoi. `id` vaut `None` tant que l'agrégat n'est pas persisté."""
 
     nom: str
     date: datetime.date
     lieu: str | None = None
     type_tournoi: TypeTournoi = TypeTournoi.NON_OFFICIEL
     statut: StatutTournoi = StatutTournoi.BROUILLON
-    tarif_depart_centimes: int | None = None
     id: TournoiId | None = None
 
     @staticmethod
@@ -80,15 +61,12 @@ class Tournoi:
         date: datetime.date,
         lieu: str | None = None,
         type_tournoi: TypeTournoi = TypeTournoi.NON_OFFICIEL,
-        tarif_depart_centimes: int | None = None,
     ) -> Tournoi:
         """Crée un tournoi valide (statut `brouillon`) ; lève `NomTournoiInvalide` si le nom
         est vide.
 
         Le nom et le lieu sont normalisés (espaces de bord retirés) ; un lieu vide devient
-        `None` (facultatif). La date et le type sont requis (garantis par la frontière API). Le
-        tarif est **facultatif** : un tournoi naît sans tarif défini (`None`), pas à zéro. Lève
-        `TarifDepartInvalide` s'il est négatif.
+        `None` (facultatif). La date et le type sont requis (garantis par la frontière API).
         """
         return Tournoi(
             nom=_nom_valide(nom),
@@ -96,7 +74,6 @@ class Tournoi:
             lieu=_lieu_normalise(lieu),
             type_tournoi=type_tournoi,
             statut=StatutTournoi.BROUILLON,
-            tarif_depart_centimes=_tarif_valide(tarif_depart_centimes),
         )
 
     def modifier(
@@ -105,15 +82,12 @@ class Tournoi:
         date: datetime.date,
         lieu: str | None = None,
         type_tournoi: TypeTournoi = TypeTournoi.NON_OFFICIEL,
-        tarif_depart_centimes: int | None = None,
     ) -> Tournoi:
         """Renvoie une copie aux métadonnées mises à jour (mêmes règles que `creer`).
 
         L'`id` et le `statut` sont **préservés** : l'édition des métadonnées (nom, date, lieu,
-        type, tarif) est autorisée quel que soit le cycle de vie — le tarif reste corrigeable
-        **tournoi en cours** (un tarif mal saisi se découvre à la table d'inscription, `P-3`) ;
-        seule la **suppression** dépend du statut. Lève `NomTournoiInvalide` si le nom est vide,
-        `TarifDepartInvalide` si le tarif est négatif.
+        type) est autorisée quel que soit le cycle de vie ; seule la **suppression** dépend du
+        statut. Lève `NomTournoiInvalide` si le nom est vide.
         """
         return replace(
             self,
@@ -121,7 +95,6 @@ class Tournoi:
             date=date,
             lieu=_lieu_normalise(lieu),
             type_tournoi=type_tournoi,
-            tarif_depart_centimes=_tarif_valide(tarif_depart_centimes),
         )
 
     def demarrer(self) -> Tournoi:
@@ -147,24 +120,3 @@ def _lieu_normalise(lieu: str | None) -> str | None:
         return None
     lieu_normalise = lieu.strip()
     return lieu_normalise or None
-
-
-def _tarif_valide(tarif_depart_centimes: int | None) -> int | None:
-    """Valide le tarif : `None` (non défini) ou un nombre de centimes dans `[0, 1 000 €]`.
-
-    Lève `TarifDepartInvalide` hors de cette plage. Zéro est **admis** — un tournoi peut être
-    gratuit, et c'est un choix différent de « pas encore fixé ».
-
-    Le **plafond** est une règle métier, pas une parade technique : un départ à plus de 1 000 € est
-    une faute de frappe (l'ordre de grandeur réel est ~8 à 15 €). Il a accessoirement le mérite de
-    tenir le tarif loin de la capacité d'un entier SQLite, qu'un montant absurde ferait déborder en
-    erreur non typée plutôt qu'en 422.
-    """
-    if tarif_depart_centimes is None:
-        return None
-    if not 0 <= tarif_depart_centimes <= TARIF_DEPART_MAX_CENTIMES:
-        raise TarifDepartInvalide(
-            "Le tarif d'un départ doit être compris entre 0 et "
-            f"{TARIF_DEPART_MAX_CENTIMES // CENTIMES_PAR_EURO} €."
-        )
-    return tarif_depart_centimes

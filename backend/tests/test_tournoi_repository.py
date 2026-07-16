@@ -1,8 +1,9 @@
-"""Tests d'intégration du repository SQL des tournois (E00US009, E01US001, E01US002, E01US010).
+"""Tests d'intégration du repository SQL des tournois (E00US009, E01US001, E01US002).
 
 Exerce l'adapter sur une **vraie base** créée par les migrations (`alembic upgrade head`) :
-persistance des métadonnées (date, lieu, type), du statut et du **tarif d'un départ** (E01US010),
-relecture, absence (None), listing, mise à jour (`enregistrer`) et suppression (`supprimer`).
+persistance des métadonnées (date, lieu, type) et du statut, relecture, absence (None), listing,
+mise à jour (`enregistrer`) et suppression (`supprimer`). Le tarif n'est plus au tournoi (E02US004,
+ADR-0017) — voir `test_depart_repository.py`.
 """
 
 from __future__ import annotations
@@ -10,10 +11,8 @@ from __future__ import annotations
 import datetime
 from pathlib import Path
 
-import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import text
 
 from domain.tournoi import StatutTournoi, Tournoi, TypeTournoi
 from infrastructure.db import Database, TournoiRepositorySQL
@@ -45,76 +44,6 @@ def test_ajouter_puis_relire(tmp_path: Path) -> None:
         assert cree.type_tournoi is TypeTournoi.OFFICIEL
         assert cree.statut is StatutTournoi.BROUILLON
         assert repository.par_id(cree.id) == cree
-    finally:
-        db.engine.dispose()
-
-
-@pytest.mark.parametrize(
-    "tarif", [None, 0, 810, 1250], ids=["non_defini", "gratuit", "8_10_euros", "12_50_euros"]
-)
-def test_le_tarif_fait_laller_retour_en_base(tmp_path: Path, tarif: int | None) -> None:
-    """Le tarif est persisté et relu à l'identique — `None` (non défini) comme `0` (gratuit)."""
-    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
-    _migrer(url)
-    db = Database(url)
-    try:
-        repository = TournoiRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Tournoi.creer("Salle 18m", _DATE, tarif_depart_centimes=tarif))
-        assert cree.id is not None
-        assert cree.tarif_depart_centimes == tarif
-
-        relu = repository.par_id(cree.id)
-        assert relu is not None
-        assert relu.tarif_depart_centimes == tarif
-    finally:
-        db.engine.dispose()
-
-
-def test_le_tarif_est_stocke_en_entier(tmp_path: Path) -> None:
-    """**Le cœur du choix « centimes »** : la colonne contient un INTEGER, pas un flottant.
-
-    8,10 € n'est pas représentable exactement en binaire ; stocké en REAL, il se relirait
-    `8.0999999999999996`. En centimes, la base contient `810` — exact, et sommable sans dérive
-    par EPIC-08/09 (montant dû par archer, par club — EF-8.1 / EF-9.6).
-    """
-    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
-    _migrer(url)
-    db = Database(url)
-    try:
-        repository = TournoiRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Tournoi.creer("Salle 18m", _DATE, tarif_depart_centimes=810))
-
-        with db.session_factory() as session:
-            valeur, type_sqlite = session.execute(
-                text(
-                    "SELECT tarif_depart_centimes, typeof(tarif_depart_centimes)"
-                    " FROM tournoi WHERE id = :id"
-                ),
-                {"id": cree.id},
-            ).one()
-        assert (valeur, type_sqlite) == (810, "integer")
-    finally:
-        db.engine.dispose()
-
-
-def test_enregistrer_met_a_jour_le_tarif(tmp_path: Path) -> None:
-    """`enregistrer` persiste l'édition du tarif, y compris le retour à « non défini »."""
-    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
-    _migrer(url)
-    db = Database(url)
-    try:
-        repository = TournoiRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Tournoi.creer("Salle 18m", _DATE, tarif_depart_centimes=810))
-        assert cree.id is not None
-
-        hausse = repository.enregistrer(
-            cree.modifier("Salle 18m", _DATE, tarif_depart_centimes=900)
-        )
-        assert hausse.tarif_depart_centimes == 900
-
-        efface = repository.enregistrer(cree.modifier("Salle 18m", _DATE))
-        assert efface.tarif_depart_centimes is None
-        assert repository.par_id(cree.id) == efface
     finally:
         db.engine.dispose()
 

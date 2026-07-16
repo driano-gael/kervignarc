@@ -6,8 +6,8 @@
 
 ### E08US001 — Calculer le montant dû
 *En tant qu'*administrateur, *je veux* le montant dû par archer, *afin de* facturer.
-- **CA** : montant = tarif (E01US010) × nombre de départs (E02US004) ; recalculé si les départs changent.
-- **Dépend de** : E01US010, E02US004 · **Jalon** : J1
+- **CA** : montant dû d'un archer = **somme des tarifs des départs** auxquels il est inscrit (E02US004 pose les tarifs des créneaux, E02US009 les inscriptions) ; recalculé si les inscriptions ou les tarifs changent. *(Révisé le 16/07/2026 — [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md) : les prix pouvant différer par créneau, c'est une **somme**, non plus `tarif × nb`.)*
+- **Dépend de** : E02US004, E02US009 · **Jalon** : J1
 
 ### E08US002 — Marquer payé / non payé
 *En tant qu'*administrateur, *je veux* suivre le statut de paiement, *afin de* savoir qui a réglé.

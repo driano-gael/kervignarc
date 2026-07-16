@@ -53,9 +53,12 @@ le domaine, la base, l'API et le front.
 - **La conversion passe par les chiffres du texte**, jamais par `parseFloat(x) * 100` — multiplier
   un flottant par 100 rouvre exactement le problème qu'on évite.
 - **`NULL` reste distinct de `0`** là où l'absence a un sens : `NULL` = montant **non défini**,
-  `0` = **gratuit**. Cf. `TOURNOI.tarif_depart_centimes` (E01US010).
-- **Portée** : `TOURNOI.tarif_depart_centimes` (livré, E01US010) ; `DEPART.tarif_centimes` et
-  `DEPART.montant_du_centimes` (modèle corrigé, tables à créer en E02US004 / E08US001) ; tout
+  `0` = **gratuit**. C'était le cas de l'ancien `TOURNOI.tarif_depart_centimes` (E01US010) ; sur
+  `DEPART.tarif_centimes` (E02US004) le tarif est en revanche **obligatoire**, l'état « non défini »
+  n'existant plus pour un créneau — voir [ADR-0017](0017-le-depart-est-un-creneau-du-tournoi.md).
+- **Portée** *(mise à jour par [ADR-0017](0017-le-depart-est-un-creneau-du-tournoi.md))* :
+  `DEPART.tarif_centimes` (E02US004 — le tarif a **quitté** `TOURNOI`, où E01US010 l'avait d'abord
+  posé) ; les montants dérivés par archer/club d'EPIC-08/09 (sommes des tarifs des départs) ; tout
   montant à venir.
 
 ## Conséquences
