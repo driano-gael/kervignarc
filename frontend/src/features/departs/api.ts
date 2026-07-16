@@ -45,6 +45,18 @@ export function modifierDepart(
   })
 }
 
-export function supprimerDepart(tournoiId: number, departId: number): Promise<void> {
-  return fetchJson<void>(`/api/v1/tournois/${tournoiId}/departs/${departId}`, { method: 'DELETE' })
+// `autoriserSuppressionInscrits` : confirmation de l'admin après un signalement
+// `depart_avec_inscriptions` (409, ADR-0018). Elle **efface les inscriptions** du créneau (les
+// sommes déjà payées seront à rembourser — E08US005). En **paramètre de requête** et non dans le
+// corps (un DELETE n'en a pas), comme la suppression d'archer. DETTE-007 : la confirmation est
+// **aveugle** — elle ne rappelle pas au serveur le décompte (inscriptions, dont payées) annoncé.
+export function supprimerDepart(
+  tournoiId: number,
+  departId: number,
+  autoriserSuppressionInscrits = false,
+): Promise<void> {
+  const parametres = autoriserSuppressionInscrits ? '?autoriser_suppression_inscrits=true' : ''
+  return fetchJson<void>(`/api/v1/tournois/${tournoiId}/departs/${departId}${parametres}`, {
+    method: 'DELETE',
+  })
 }

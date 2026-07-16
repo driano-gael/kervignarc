@@ -19,6 +19,7 @@ import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { useCategories } from '../categories/hooks'
 import { useClubs } from '../clubs/hooks'
+import { InscriptionsArcher } from '../inscriptions/InscriptionsArcher'
 import type { Archer, ModifierArcher } from './api'
 import { useArchers, useModifierArcher, useSupprimerArcher } from './hooks'
 
@@ -48,6 +49,7 @@ export function Archers({ tournoiId }: { tournoiId: number }) {
 function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number }) {
   const [edition, setEdition] = useState(false)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
+  const [inscriptionsOuvertes, setInscriptionsOuvertes] = useState(false)
   const supprimer = useSupprimerArcher(tournoiId)
   const clubs = useClubs()
   const categories = useCategories(tournoiId)
@@ -107,6 +109,14 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
           {archer.cible !== null && ` · cible ${archer.cible}`}
         </span>
         <span className="archer__actions">
+          <button
+            type="button"
+            className="bouton--discret"
+            aria-expanded={inscriptionsOuvertes}
+            onClick={() => setInscriptionsOuvertes((ouvert) => !ouvert)}
+          >
+            Départs
+          </button>
           <button type="button" className="bouton--discret" onClick={ouvrirEdition}>
             Modifier
           </button>
@@ -164,6 +174,7 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
       ) : (
         <MessageErreur erreur={supprimer.error} />
       )}
+      {inscriptionsOuvertes && <InscriptionsArcher archerId={archer.id} tournoiId={tournoiId} />}
     </li>
   )
 }

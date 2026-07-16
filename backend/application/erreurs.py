@@ -53,6 +53,25 @@ class DepartIntrouvable(ApplicationError):
     code = "depart_introuvable"
 
 
+class DepartAvecInscriptions(ApplicationError):
+    """Suppression suspendue : le départ porte des inscriptions (E02US009) → 409.
+
+    **Un signalement, pas un refus** — même famille qu'`ArcherEngage` (ADR-0016), tranchée en
+    [ADR-0018](../../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md). Un créneau
+    est une **configuration locale du tournoi**, comme un archer : un créneau annulé doit pouvoir
+    être retiré sans désinscrire à la main chaque archer. L'admin confirme via
+    `ServiceDeparts.supprimer(autoriser_suppression_inscrits=True)`, et la suppression **efface les
+    inscriptions** du créneau — définitivement.
+
+    Le message **décompte les inscriptions détruites, dont les payées** : l'effet de bord monétaire
+    (le remboursement, déporté en E08US005) est rendu visible au point de décision. Le refus dur
+    `ClubReference` a été **écarté** (ADR-0018) — le club est un référentiel *global* partagé entre
+    tournois, le départ non.
+    """
+
+    code = "depart_avec_inscriptions"
+
+
 class ArcherIntrouvable(ApplicationError):
     """Aucun archer ne correspond à l'identifiant demandé."""
 
@@ -118,6 +137,24 @@ class ArcherEngage(ApplicationError):
     """
 
     code = "archer_engage"
+
+
+class InscriptionIntrouvable(ApplicationError):
+    """Aucune inscription ne correspond à l'identifiant demandé (E02US009) → 404."""
+
+    code = "inscription_introuvable"
+
+
+class DejaInscrit(ApplicationError):
+    """Inscription refusée : l'archer est **déjà inscrit** sur ce départ (E02US009) → 409.
+
+    **Un refus, pas un signalement** — contrairement à l'homonyme (deux personnes distinctes peuvent
+    partager une identité), un second lien `(archer, départ)` n'a **aucun sens** : l'archer est déjà
+    sur ce créneau. Aucun drapeau ne le lève ; c'est aussi la contrainte `UNIQUE(archer_id,
+    depart_id)` en base. Pour changer d'avis, l'admin désinscrit puis réinscrit.
+    """
+
+    code = "deja_inscrit"
 
 
 class ClubIntrouvable(ApplicationError):

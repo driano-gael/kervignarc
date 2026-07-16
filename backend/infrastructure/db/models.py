@@ -189,6 +189,34 @@ class ScoreORM(Base):
     points: Mapped[int] = mapped_column(nullable=False)
 
 
+class InscriptionORM(Base):
+    """Table `inscription` — lien archer↔départ, portant `paye` (E02US009, ADR-0017).
+
+    Table de **liaison** : un archer s'inscrit sur un ou plusieurs départs (créneaux) de son
+    tournoi. `paye` est le **seul fait propre** à l'inscription (booléen, `0`/`1` en SQLite) ; le
+    montant dû n'est **pas** stocké — il se dérive du `tarif_centimes` du départ à la lecture
+    (ADR-0017). C'est là que reviennent les colonnes `paye`/`montant_du` que le modèle v0.3 posait à
+    tort sur `depart` (elles étaient par-archer).
+    """
+
+    __tablename__ = "inscription"
+    # UNIQUE(archer_id, depart_id) : un archer ne s'inscrit qu'une fois sur un même créneau. Nommée
+    # comme dans la migration `0017` — sans cette ligne dans `Base.metadata`, un futur
+    # `--autogenerate` émettrait un `drop_constraint` fantôme et retirerait le garde-fou en silence.
+    # Le refus fonctionnel (`DejaInscrit`, 409) est porté en amont par `ServiceInscriptions`.
+    __table_args__ = (
+        UniqueConstraint("archer_id", "depart_id", name="uq_inscription_archer_depart"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : **deux** FK sans ON DELETE CASCADE — enfant indirect du tournoi
+    # via `archer` **et** via `depart`. La purge en cascade est applicative et maîtrisée
+    # (`ArcherRepositorySQL.supprimer` et `DepartRepositorySQL.supprimer`) ; ne pas contourner ici.
+    archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
+    depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
+    paye: Mapped[bool] = mapped_column(nullable=False, default=False)
+
+
 class PhaseORM(Base):
     """Table `phase` — persistance de l'agrégat `Phase` (introduction minimale, E01US009/ADR-0011).
 

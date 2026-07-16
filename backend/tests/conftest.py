@@ -17,6 +17,16 @@ ferait importer l'autre en retour, jusqu'au **cycle d'imports**.
 `test_service_blasons`, où deux copies identiques vivaient chacune de leur côté. C'est la preuve
 d'aujourd'hui que réclame le projet avant de factoriser, pas une évolution supposée.
 
+`FauxDepartRepository` et `FauxInscriptionRepository` ont rejoint ce fichier en E02US009.
+`FauxInscriptionRepository` naît partagé — trois consommateurs du premier jour
+(`test_service_inscriptions`, `test_service_departs` pour le garde-fou « départ avec inscriptions »,
+`test_service_archers` pour l'« engagé » élargi). `FauxDepartRepository`, lui, vivait dans
+`test_service_departs` : `test_service_inscriptions` en devient le **2ᵉ** consommateur (il faut de
+vrais départs pour y inscrire un archer), d'où la migration. `FauxInscriptionRepository` est un
+simple magasin, **sans** couplage à l'archer (au contraire de `FauxScoreRepository`) :
+les tests de service ne vérifient pas la purge en cascade — c'est un contrat d'adapter, prouvé au
+niveau du repository (`test_inscription_repository`).
+
 > `FauxTournoiRepository` est, lui, recopié dans trois modules. On le laisse : cette US n'en ajoute
 > pas d'usage, et on ne réécrit pas ce qu'on n'aggrave pas.
 
@@ -37,6 +47,8 @@ from domain.archer import Archer, ArcherId
 from domain.blason import BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId, cle_nom
+from domain.depart import Depart, DepartId
+from domain.inscription import Inscription, InscriptionId
 from domain.tournoi import TournoiId
 
 if TYPE_CHECKING:
@@ -156,6 +168,79 @@ class FauxCategorieRepository:
 
     def supprimer(self, categorie_id: CategorieId) -> None:
         del self._categories[categorie_id]
+
+
+class FauxDepartRepository:
+    """Repository de départs en mémoire conforme au port `DepartRepository`."""
+
+    def __init__(self) -> None:
+        self._departs: dict[int, Depart] = {}
+        self._sequence = 0
+
+    def ajouter(self, depart: Depart) -> Depart:
+        self._sequence += 1
+        persiste = dataclasses.replace(depart, id=self._sequence)
+        self._departs[self._sequence] = persiste
+        return persiste
+
+    def par_id(self, depart_id: DepartId) -> Depart | None:
+        return self._departs.get(depart_id)
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Depart]:
+        departs = [d for d in self._departs.values() if d.tournoi_id == tournoi_id]
+        return sorted(departs, key=lambda d: d.numero)
+
+    def enregistrer(self, depart: Depart) -> Depart:
+        assert depart.id in self._departs, "Départ à mettre à jour absent."
+        self._departs[depart.id] = depart
+        return depart
+
+    def supprimer(self, depart_id: DepartId) -> None:
+        del self._departs[depart_id]
+
+
+class FauxInscriptionRepository:
+    """Repository d'inscriptions en mémoire conforme au port `InscriptionRepository`.
+
+    Magasin **simple** : pas de couplage à l'existence de l'archer ou du départ (au contraire de
+    `FauxScoreRepository`, qui filtre pour reproduire la purge). Les tests de service ne prouvent
+    pas la cascade de suppression — c'est un contrat d'adapter, prouvé au niveau du repository.
+    `par_archer_et_depart` applique la **règle d'unicité** (le premier lien du couple), ce qui rend
+    testable le refus `DejaInscrit` sans réimplémenter une contrainte.
+    """
+
+    def __init__(self) -> None:
+        self._inscriptions: dict[int, Inscription] = {}
+        self._sequence = 0
+
+    def ajouter(self, inscription: Inscription) -> Inscription:
+        self._sequence += 1
+        persiste = dataclasses.replace(inscription, id=self._sequence)
+        self._inscriptions[self._sequence] = persiste
+        return persiste
+
+    def par_id(self, inscription_id: InscriptionId) -> Inscription | None:
+        return self._inscriptions.get(inscription_id)
+
+    def par_archer(self, archer_id: ArcherId) -> list[Inscription]:
+        return [i for i in self._inscriptions.values() if i.archer_id == archer_id]
+
+    def par_depart(self, depart_id: DepartId) -> list[Inscription]:
+        return [i for i in self._inscriptions.values() if i.depart_id == depart_id]
+
+    def par_archer_et_depart(self, archer_id: ArcherId, depart_id: DepartId) -> Inscription | None:
+        for inscription in self._inscriptions.values():
+            if inscription.archer_id == archer_id and inscription.depart_id == depart_id:
+                return inscription
+        return None
+
+    def enregistrer(self, inscription: Inscription) -> Inscription:
+        assert inscription.id in self._inscriptions, "Inscription à mettre à jour absente."
+        self._inscriptions[inscription.id] = inscription
+        return inscription
+
+    def supprimer(self, inscription_id: InscriptionId) -> None:
+        del self._inscriptions[inscription_id]
 
 
 @pytest.fixture

@@ -119,9 +119,28 @@ async def modifier_depart(
     status_code=204,
     dependencies=[Depends(exiger_admin)],
 )
-async def supprimer_depart(tournoi_id: int, depart_id: int, request: Request) -> Response:
-    """Supprime un départ d'un tournoi (**action admin**) : écriture via la file, 204 si succès."""
+async def supprimer_depart(
+    tournoi_id: int,
+    depart_id: int,
+    request: Request,
+    autoriser_suppression_inscrits: bool = False,
+) -> Response:
+    """Supprime un départ d'un tournoi (**action admin**) : écriture via la file, 204 si succès.
+
+    Renvoie `409 depart_avec_inscriptions` si le créneau porte des inscriptions : un **signalement**
+    ([ADR-0018](../../../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md)), que le
+    client lève en rejouant l'appel avec `autoriser_suppression_inscrits`. La suppression confirmée
+    **efface les inscriptions** du créneau (les payées seront à rembourser — E08US005).
+
+    Le drapeau est en **paramètre de requête**, comme `autoriser_suppression_engage` de la
+    suppression d'archer : un `DELETE` n'a pas de corps par convention HTTP (même divergence assumée
+    qu'en E02US003, sanctionnée par ADR-0016).
+    """
     service: ServiceDeparts = request.app.state.service_departs
     write_queue: WriteQueue = request.app.state.write_queue
-    await asyncio.wrap_future(write_queue.submit(lambda: service.supprimer(tournoi_id, depart_id)))
+    await asyncio.wrap_future(
+        write_queue.submit(
+            lambda: service.supprimer(tournoi_id, depart_id, autoriser_suppression_inscrits)
+        )
+    )
     return Response(status_code=204)

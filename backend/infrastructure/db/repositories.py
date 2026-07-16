@@ -24,6 +24,7 @@ from domain.depart import Depart, DepartId
 from domain.erreurs import DomainError
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.grain_validation import GrainValidation, TypeGrain
+from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase, grain_par_defaut
 from domain.score import Score
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
@@ -34,6 +35,7 @@ from infrastructure.db.models import (
     ClubORM,
     DepartORM,
     GabaritSalleORM,
+    InscriptionORM,
     PhaseORM,
     ScoreORM,
     TournoiORM,
@@ -78,6 +80,16 @@ def _vers_depart(ligne: DepartORM) -> Depart:
         numero=ligne.numero,
         tarif_centimes=ligne.tarif_centimes,
         horaire=ligne.horaire,
+        id=ligne.id,
+    )
+
+
+def _vers_inscription(ligne: InscriptionORM) -> Inscription:
+    """Traduit une ligne ORM en agrégat de domaine `Inscription` (E02US009)."""
+    return Inscription(
+        archer_id=ligne.archer_id,
+        depart_id=ligne.depart_id,
+        paye=ligne.paye,
         id=ligne.id,
     )
 
@@ -387,18 +399,20 @@ class ArcherRepositorySQL:
             raise InfrastructureError("Échec de mise à jour de l'archer.") from exc
 
     def supprimer(self, archer_id: ArcherId) -> None:
-        """Supprime l'archer d'identifiant donné **et ses scores** (E02US003).
+        """Supprime l'archer d'identifiant donné, **ses scores et ses inscriptions** (E02US003,
+        E02US009).
 
         **Contrat** (même que `enregistrer`) : l'existence est garantie par le service ; une ligne
         absente est une incohérence technique, pas un 404. Le service a par ailleurs déjà obtenu
-        la confirmation de l'admin si l'archer était placé ou engagé (`ArcherEngage`) : ici, la
-        destruction est voulue.
+        la confirmation de l'admin si l'archer était placé, engagé ou inscrit (`ArcherEngage`) :
+        ici, la destruction est voulue.
 
-        **Une seule transaction** pour les deux `DELETE`, dans cet ordre : `score.archer_id` est
-        une FK **sans `ON DELETE`** (DETTE-001), donc supprimer l'archer d'abord échouerait. Deux
-        transactions successives laisseraient, si la seconde échouait, un archer dépouillé de ses
-        flèches — un état que personne n'a demandé. C'est la **cascade applicative maîtrisée** qui
-        manque au reste de la descendance de `tournoi` (cf. DETTE-001) : ici, elle existe.
+        **Une seule transaction** pour les trois `DELETE`, dans cet ordre : `score.archer_id` **et**
+        `inscription.archer_id` sont des FK **sans `ON DELETE`** (DETTE-001), donc supprimer
+        l'archer d'abord échouerait. Deux transactions successives laisseraient, si la seconde
+        échouait, un archer dépouillé de ses flèches — un état que personne n'a demandé. C'est la
+        **cascade applicative maîtrisée** qui manque au reste de la descendance de `tournoi`
+        (cf. DETTE-001) : ici, elle existe.
         """
         try:
             with self._session_factory() as session:
@@ -406,6 +420,7 @@ class ArcherRepositorySQL:
                 if ligne is None:
                     raise InfrastructureError("Archer à supprimer introuvable en base.")
                 session.execute(delete(ScoreORM).where(ScoreORM.archer_id == archer_id))
+                session.execute(delete(InscriptionORM).where(InscriptionORM.archer_id == archer_id))
                 session.delete(ligne)
                 session.commit()
         except SQLAlchemyError as exc:
@@ -568,16 +583,124 @@ class DepartRepositorySQL:
             raise InfrastructureError("Échec de mise à jour du départ.") from exc
 
     def supprimer(self, depart_id: DepartId) -> None:
-        """Supprime le départ d'identifiant donné (existence garantie par l'appelant)."""
+        """Supprime le départ d'identifiant donné **et ses inscriptions** (E02US004, E02US009).
+
+        **Contrat** : existence garantie par l'appelant, qui a déjà obtenu la confirmation de
+        l'admin si le départ portait des inscriptions (`DepartAvecInscriptions`). **Une seule
+        transaction** pour les deux `DELETE`, dans cet ordre : `inscription.depart_id` est une FK
+        **sans `ON DELETE`** (DETTE-001), donc supprimer le départ d'abord échouerait. Même patron
+        que `ArcherRepositorySQL.supprimer` avec les scores — cascade applicative maîtrisée.
+        """
         try:
             with self._session_factory() as session:
                 ligne = session.get(DepartORM, depart_id)
                 if ligne is None:
                     raise InfrastructureError("Départ à supprimer introuvable en base.")
+                session.execute(delete(InscriptionORM).where(InscriptionORM.depart_id == depart_id))
                 session.delete(ligne)
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de suppression du départ.") from exc
+
+
+class InscriptionRepositorySQL:
+    """Adapter SQLite du port `InscriptionRepository` — liens archer↔départ (E02US009)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def ajouter(self, inscription: Inscription) -> Inscription:
+        """Persiste l'inscription et la renvoie avec son identifiant attribué."""
+        try:
+            with self._session_factory() as session:
+                ligne = InscriptionORM(
+                    archer_id=inscription.archer_id,
+                    depart_id=inscription.depart_id,
+                    paye=inscription.paye,
+                )
+                session.add(ligne)
+                session.commit()
+                return _vers_inscription(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance de l'inscription.") from exc
+
+    def par_id(self, inscription_id: InscriptionId) -> Inscription | None:
+        """Relit l'inscription d'identifiant donné, ou `None` si elle n'existe pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(InscriptionORM, inscription_id)
+                return None if ligne is None else _vers_inscription(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture de l'inscription.") from exc
+
+    def par_archer(self, archer_id: ArcherId) -> list[Inscription]:
+        """Renvoie les inscriptions d'un archer, triées par départ (liste éventuellement vide)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(InscriptionORM)
+                    .where(InscriptionORM.archer_id == archer_id)
+                    .order_by(InscriptionORM.depart_id)
+                ).scalars()
+                return [_vers_inscription(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des inscriptions de l'archer.") from exc
+
+    def par_depart(self, depart_id: DepartId) -> list[Inscription]:
+        """Renvoie les inscriptions portant sur un départ (liste éventuellement vide)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(InscriptionORM)
+                    .where(InscriptionORM.depart_id == depart_id)
+                    .order_by(InscriptionORM.id)
+                ).scalars()
+                return [_vers_inscription(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des inscriptions du départ.") from exc
+
+    def par_archer_et_depart(self, archer_id: ArcherId, depart_id: DepartId) -> Inscription | None:
+        """Renvoie l'inscription du couple `(archer, départ)`, ou `None` (contrôle d'unicité)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.execute(
+                    select(InscriptionORM).where(
+                        InscriptionORM.archer_id == archer_id,
+                        InscriptionORM.depart_id == depart_id,
+                    )
+                ).scalar_one_or_none()
+                return None if ligne is None else _vers_inscription(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture de l'inscription du couple.") from exc
+
+    def enregistrer(self, inscription: Inscription) -> Inscription:
+        """Met à jour une inscription déjà persistée (bascule de `paye`) et la renvoie.
+
+        **Contrat** : l'appelant (le service) garantit l'existence. Le couple `(archer, départ)`
+        d'une inscription persistée ne change pas — seule `paye` évolue.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(InscriptionORM, inscription.id)
+                if ligne is None:
+                    raise InfrastructureError("Inscription à mettre à jour introuvable en base.")
+                ligne.paye = inscription.paye
+                session.commit()
+                return _vers_inscription(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour de l'inscription.") from exc
+
+    def supprimer(self, inscription_id: InscriptionId) -> None:
+        """Supprime l'inscription d'identifiant donné (désinscription ; existence garantie)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(InscriptionORM, inscription_id)
+                if ligne is None:
+                    raise InfrastructureError("Inscription à supprimer introuvable en base.")
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression de l'inscription.") from exc
 
 
 class CategorieRepositorySQL:

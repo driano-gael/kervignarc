@@ -10,14 +10,20 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+from typing import NamedTuple
 
 import pytest
 
 from application.departs import ServiceDeparts
-from application.erreurs import DepartIntrouvable, TournoiIntrouvable
-from domain.depart import Depart, DepartId
+from application.erreurs import (
+    DepartAvecInscriptions,
+    DepartIntrouvable,
+    TournoiIntrouvable,
+)
 from domain.erreurs import TarifDepartInvalide
+from domain.inscription import Inscription
 from domain.tournoi import Tournoi, TournoiId
+from tests.conftest import FauxDepartRepository, FauxInscriptionRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -50,42 +56,36 @@ class FauxTournoiRepository:
         del self._tournois[tournoi_id]
 
 
-class FauxDepartRepository:
-    """Repository de départs en mémoire conforme au port `DepartRepository`."""
+class Montage(NamedTuple):
+    """Attelage d'un test de départs : le service et les repos qu'on doit garnir à la main.
 
-    def __init__(self) -> None:
-        self._departs: dict[int, Depart] = {}
-        self._sequence = 0
+    Le garde-fou « départ avec inscriptions » (E02US009) suppose de poser des inscriptions dans le
+    repo avant de supprimer — d'où l'exposition des repos, invisible dans le n-uplet initial
+    `(service, tournoi_id)`.
+    """
 
-    def ajouter(self, depart: Depart) -> Depart:
-        self._sequence += 1
-        persiste = dataclasses.replace(depart, id=self._sequence)
-        self._departs[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, depart_id: DepartId) -> Depart | None:
-        return self._departs.get(depart_id)
-
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Depart]:
-        departs = [d for d in self._departs.values() if d.tournoi_id == tournoi_id]
-        return sorted(departs, key=lambda d: d.numero)
-
-    def enregistrer(self, depart: Depart) -> Depart:
-        assert depart.id in self._departs, "Départ à mettre à jour absent."
-        self._departs[depart.id] = depart
-        return depart
-
-    def supprimer(self, depart_id: DepartId) -> None:
-        del self._departs[depart_id]
+    service: ServiceDeparts
+    departs: FauxDepartRepository
+    inscriptions: FauxInscriptionRepository
+    tournoi_id: TournoiId
 
 
-def _service_avec_tournoi() -> tuple[ServiceDeparts, TournoiId]:
+def _monter() -> Montage:
     """Fabrique un service câblé sur des repos factices et un tournoi déjà créé."""
     tournois = FauxTournoiRepository()
     departs = FauxDepartRepository()
+    inscriptions = FauxInscriptionRepository()
     tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
     assert tournoi.id is not None
-    return ServiceDeparts(departs, tournois), tournoi.id
+    return Montage(
+        ServiceDeparts(departs, tournois, inscriptions), departs, inscriptions, tournoi.id
+    )
+
+
+def _service_avec_tournoi() -> tuple[ServiceDeparts, TournoiId]:
+    """Raccourci `(service, tournoi_id)` pour les tests qui ignorent les repos."""
+    montage = _monter()
+    return montage.service, montage.tournoi_id
 
 
 def test_creer_attribue_les_numeros_dans_l_ordre() -> None:
@@ -158,7 +158,7 @@ def test_lister_trie_par_numero_et_isole_le_tournoi() -> None:
     a = tournois.ajouter(Tournoi.creer("A", _DATE))
     b = tournois.ajouter(Tournoi.creer("B", _DATE))
     assert a.id is not None and b.id is not None
-    service = ServiceDeparts(departs, tournois)
+    service = ServiceDeparts(departs, tournois, FauxInscriptionRepository())
     service.creer(a.id, 810)
     service.creer(a.id, 810)
     service.creer(b.id, 810)
@@ -190,7 +190,7 @@ def test_modifier_leve_si_depart_d_un_autre_tournoi() -> None:
     a = tournois.ajouter(Tournoi.creer("A", _DATE))
     b = tournois.ajouter(Tournoi.creer("B", _DATE))
     assert a.id is not None and b.id is not None
-    service = ServiceDeparts(departs, tournois)
+    service = ServiceDeparts(departs, tournois, FauxInscriptionRepository())
     depart = service.creer(a.id, 810)
     assert depart.id is not None
 
@@ -218,7 +218,7 @@ def test_supprimer_leve_si_depart_d_un_autre_tournoi() -> None:
     a = tournois.ajouter(Tournoi.creer("A", _DATE))
     b = tournois.ajouter(Tournoi.creer("B", _DATE))
     assert a.id is not None and b.id is not None
-    service = ServiceDeparts(departs, tournois)
+    service = ServiceDeparts(departs, tournois, FauxInscriptionRepository())
     depart = service.creer(a.id, 810)
     assert depart.id is not None
 
@@ -230,3 +230,69 @@ def test_supprimer_leve_si_introuvable() -> None:
     service, tournoi_id = _service_avec_tournoi()
     with pytest.raises(DepartIntrouvable):
         service.supprimer(tournoi_id, 999)
+
+
+def test_supprimer_depart_avec_inscriptions_signale() -> None:
+    """Un créneau qui porte des inscriptions ne se supprime pas d'un clic (CA E02US009, ADR-0018).
+
+    Un **signalement** (`DepartAvecInscriptions`), pas un refus : l'admin peut confirmer. Tant qu'il
+    ne l'a pas fait, rien n'est détruit — le départ survit.
+    """
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810)
+    assert depart.id is not None
+    m.inscriptions.ajouter(Inscription.creer(archer_id=1, depart_id=depart.id))
+
+    with pytest.raises(DepartAvecInscriptions):
+        m.service.supprimer(m.tournoi_id, depart.id)
+    assert [d.id for d in m.service.lister(m.tournoi_id)] == [depart.id]
+
+
+def test_signalement_depart_decompte_les_inscriptions_dont_payees() -> None:
+    """Le message énumère le nombre d'inscriptions **et** de payées (CA E02US009, ADR-0018).
+
+    Les payées sont une somme encaissée qui deviendra un remboursement (E08US005) : l'admin doit la
+    voir avant de trancher. Un message vague ferait disparaître l'argent en silence.
+    """
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810)
+    assert depart.id is not None
+    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
+    m.inscriptions.ajouter(Inscription.creer(2, depart.id).marquer_paye(True))
+
+    with pytest.raises(DepartAvecInscriptions) as leve:
+        m.service.supprimer(m.tournoi_id, depart.id)
+    assert "2 inscriptions" in leve.value.message
+    assert "1 déjà payée" in leve.value.message
+
+
+def test_signalement_depart_accorde_au_singulier() -> None:
+    """Une seule inscription, aucune payée : « 1 inscription », sans mention de payée.
+
+    Non-régression de lisibilité (patron du message d'`ArcherEngage`) : un message lu au moment de
+    détruire des données se lit, il ne se décode pas.
+    """
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810)
+    assert depart.id is not None
+    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
+
+    with pytest.raises(DepartAvecInscriptions) as leve:
+        m.service.supprimer(m.tournoi_id, depart.id)
+    assert "1 inscription" in leve.value.message
+    # Aucune payée : ni décompte « dont N déjà payée », ni clause de remboursement — cette dernière
+    # ne s'affiche que si au moins une inscription était réglée (sinon elle évoquerait un
+    # remboursement fictif, corrigé en revue E02US009).
+    assert "dont" not in leve.value.message
+    assert "rembourser" not in leve.value.message
+
+
+def test_supprimer_depart_avec_inscriptions_confirme_efface() -> None:
+    """`autoriser_suppression_inscrits=True` : l'admin confirme, le créneau part (CA E02US009)."""
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810)
+    assert depart.id is not None
+    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
+
+    m.service.supprimer(m.tournoi_id, depart.id, autoriser_suppression_inscrits=True)
+    assert m.service.lister(m.tournoi_id) == []

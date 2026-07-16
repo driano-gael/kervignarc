@@ -28,6 +28,7 @@ from domain.ports import (
     ArcherRepository,
     CategorieRepository,
     ClubRepository,
+    InscriptionRepository,
     ScoreRepository,
     TournoiRepository,
 )
@@ -45,12 +46,14 @@ class ServiceArchers:
         scores: ScoreRepository,
         clubs: ClubRepository,
         categories: CategorieRepository,
+        inscriptions: InscriptionRepository,
     ) -> None:
         self._tournois = tournois
         self._archers = archers
         self._scores = scores
         self._clubs = clubs
         self._categories = categories
+        self._inscriptions = inscriptions
 
     def ajouter(
         self,
@@ -157,11 +160,13 @@ class ServiceArchers:
     def supprimer(self, archer_id: ArcherId, autoriser_suppression_engage: bool = False) -> None:
         """Désinscrit un archer (E02US003). Lève `ArcherIntrouvable` s'il n'existe pas.
 
-        La suppression **efface aussi ses scores et son placement** — c'est le contrat du port
-        (cf. `ArcherRepository.supprimer`), pas un effet de bord.
+        La suppression **efface aussi ses scores, son placement et ses inscriptions sur départs**
+        (E02US009) — c'est le contrat du port (cf. `ArcherRepository.supprimer`), pas un effet de
+        bord.
 
-        Lève `ArcherEngage` si l'archer est **placé** (il occupe une cible) ou **engagé** (il a
-        déjà tiré), sauf `autoriser_suppression_engage=True` : un **signalement**, pas un refus
+        Lève `ArcherEngage` si l'archer est **placé** (il occupe une cible), **engagé** (il a déjà
+        tiré) ou **inscrit** sur au moins un départ (E02US009), sauf
+        `autoriser_suppression_engage=True` : un **signalement**, pas un refus
         (ADR-0016, sur le protocole d'ADR-0015). On ne fait pas disparaître en un clic un placement
         construit et des flèches saisies — mais l'admin, lui, peut savoir qu'il s'agit d'une erreur
         d'inscription.
@@ -224,13 +229,15 @@ class ServiceArchers:
                 )
 
     def _signaler_engagement(self, archer: Archer, archer_id: ArcherId) -> None:
-        """Lève `ArcherEngage` si l'archer est placé ou a déjà tiré (E02US003).
+        """Lève `ArcherEngage` si l'archer est placé, a déjà tiré **ou est inscrit** (E02US003,
+        E02US009).
 
-        Le message **énumère ce qui sera détruit** plutôt que d'inviter à confirmer : c'est la
-        seule chose qui distingue, à l'écran, une suppression légitime (erreur de saisie) d'un
-        abandon mal enregistré — que le forfait (E04US015, E12US004) doit servir en préservant les
-        flèches. Un message qui dirait « confirmez pour supprimer » ferait de la destruction le
-        chemin par défaut de l'archer qui s'en va.
+        « Engagé » s'est élargi (glossaire, E02US009) : une inscription sur au moins un départ
+        suffit désormais, au même titre qu'un score ou un placement. Le message **énumère ce qui
+        sera détruit** plutôt que d'inviter à confirmer : c'est la seule chose qui distingue, à
+        l'écran, une suppression légitime (erreur de saisie) d'un abandon mal enregistré — que le
+        forfait (E04US015, E12US004) doit servir en préservant les flèches. Un message qui dirait
+        « confirmez pour supprimer » ferait de la destruction le chemin par défaut de l'archer.
 
         `archer_id` est passé par l'appelant, qui le tient déjà, plutôt que lu dans `archer.id` :
         cela évite un `assert` de narrowing — or un `assert` saute sous `python -O`, et celui-ci
@@ -238,7 +245,8 @@ class ServiceArchers:
         aucun signalement**. Un garde-fou de destruction ne dépend pas d'un drapeau d'interpréteur.
         """
         fleches = len(self._scores.par_archer(archer_id))
-        if archer.cible is None and fleches == 0:
+        inscriptions = len(self._inscriptions.par_archer(archer_id))
+        if archer.cible is None and fleches == 0 and inscriptions == 0:
             return
         motifs = []
         if fleches:
@@ -246,6 +254,11 @@ class ServiceArchers:
             # au moment où il s'apprête à détruire des données. Il doit se lire, pas se décoder.
             accord = "flèche déjà tirée" if fleches == 1 else "flèches déjà tirées"
             motifs.append(f"{fleches} {accord}")
+        if inscriptions:
+            accord = (
+                "inscription sur un départ" if inscriptions == 1 else "inscriptions sur des départs"
+            )
+            motifs.append(f"{inscriptions} {accord}")
         if archer.cible is not None:
             motifs.append(f"un placement sur la cible {archer.cible}")
         raise ArcherEngage(

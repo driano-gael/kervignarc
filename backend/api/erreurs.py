@@ -33,6 +33,7 @@ from application.erreurs import (
     GabaritDuTournoiAbsent,
     GabaritIntrouvable,
     IdentifiantsInvalides,
+    InscriptionIntrouvable,
     NonAuthentifie,
     PhaseQualificationAbsente,
     TournoiIntrouvable,
@@ -66,6 +67,7 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | CategorieIntrouvable
         | ClubIntrouvable
         | DepartIntrouvable
+        | InscriptionIntrouvable
         | BlasonIntrouvable
         | GabaritIntrouvable
         | GabaritDuTournoiAbsent

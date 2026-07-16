@@ -40,6 +40,13 @@ function LigneDepart({ tournoiId, depart }: { tournoiId: number; depart: Depart 
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const supprimer = useSupprimerDepart(tournoiId)
 
+  // `depart_avec_inscriptions` (ADR-0018) : un **signalement**, pas un refus — le créneau porte des
+  // inscriptions, mais l'admin peut confirmer. Le seul dont la confirmation **détruit** (les
+  // inscriptions partent, les payées seront à rembourser — E08US005) : d'où le bouton `--danger` et
+  // un libellé qui nomme la perte. Le message du serveur décompte les payées ; c'est lui qu'on lit.
+  const inscriptionsSignalees =
+    supprimer.error instanceof ErreurApi && supprimer.error.code === 'depart_avec_inscriptions'
+
   if (edition) {
     return (
       <li>
@@ -67,14 +74,19 @@ function LigneDepart({ tournoiId, depart }: { tournoiId: number; depart: Depart 
                 type="button"
                 className="bouton--danger"
                 disabled={supprimer.isPending}
-                onClick={() => supprimer.mutate(depart.id)}
+                onClick={() => supprimer.mutate({ departId: depart.id })}
               >
                 Confirmer la suppression
               </button>
               <button
                 type="button"
                 className="bouton--discret"
-                onClick={() => setConfirmationSuppression(false)}
+                onClick={() => {
+                  // `reset()` : sans lui, un signalement en cours resterait affiché sur une ligne
+                  // où l'admin vient justement de renoncer.
+                  supprimer.reset()
+                  setConfirmationSuppression(false)
+                }}
               >
                 Annuler
               </button>
@@ -90,7 +102,23 @@ function LigneDepart({ tournoiId, depart }: { tournoiId: number; depart: Depart 
           )}
         </span>
       </div>
-      <MessageErreur erreur={supprimer.error} />
+      {inscriptionsSignalees ? (
+        <div className="carte__etat" role="alert">
+          <p>{supprimer.error?.message}</p>
+          <button
+            type="button"
+            className="bouton--danger"
+            disabled={supprimer.isPending}
+            onClick={() =>
+              supprimer.mutate({ departId: depart.id, autoriserSuppressionInscrits: true })
+            }
+          >
+            Supprimer quand même, avec les inscriptions
+          </button>
+        </div>
+      ) : (
+        <MessageErreur erreur={supprimer.error} />
+      )}
     </li>
   )
 }
