@@ -99,7 +99,7 @@ jobs:
           pip-audit -r requirements.txt --strict
 
   frontend:
-    name: Frontend — lint, format, types, build
+    name: Frontend — lint, format, types, tests, build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -124,6 +124,9 @@ jobs:
 
       - name: Typecheck (TS strict)
         run: npm run typecheck
+
+      - name: Tests (vitest)
+        run: npm test
 
       - name: Build
         run: npm run build
