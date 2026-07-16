@@ -31,7 +31,8 @@ class CreerCategorieRequete(BaseModel):
     """Corps de création d'une catégorie (libellé requis ; arme/ages/sexe/blason facultatifs).
 
     `ages` accepte zéro, une ou plusieurs tranches (E01US013) ; chaque valeur doit appartenir aux
-    huit tranches FFTA (`TrancheAge`), sans quoi la requête est rejetée en 422 (règle 6).
+    huit tranches FFTA (`TrancheAge`), sans quoi la validation Pydantic rejette la requête en 400
+    (`requete_invalide`) à la frontière — avant que le domaine ne la voie (règle 5).
     """
 
     libelle: str
