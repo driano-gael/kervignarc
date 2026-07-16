@@ -48,6 +48,7 @@
 |---|---|---|---|---|
 | `vite` | ^8.1 | Build & serveur de dev | Outil de build acté ([ADR-0002](adr/0002-stack-et-topologie.md)) ; HMR rapide | MIT |
 | `@vitejs/plugin-react` | ^6.0 | Support React (Fast Refresh) pour Vite | Officiel Vite/React | MIT |
+| `vitest` | ^4.1 | Runner de tests unitaires (front) | Premier runner de test du front (E00US014) ; runner natif de Vite (réutilise `vite.config.ts`, zéro config) ; résorbe [DETTE-005](dette.md) en couvrant `format.ts` (conversion euros↔centimes, [ADR-0012](adr/0012-argent-en-centimes-entiers.md)) | MIT |
 | `typescript` | ~6.0 | Compilateur TypeScript (typage strict) | Exigence TS strict (guide §5) | Apache-2.0 |
 | `eslint` | ^10.6 | Linter JS/TS | Exigence ESLint (guide §5) | MIT |
 | `@eslint/js` | ^10.0 | Règles de base ESLint (flat config) | Recommandations officielles ESLint | MIT |

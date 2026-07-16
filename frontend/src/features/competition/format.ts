@@ -5,9 +5,9 @@
 // flottants. Les euros n'existent qu'ici, à la frontière de l'écran : ce module est le **seul**
 // endroit où l'on convertit, dans un sens comme dans l'autre.
 //
-// DETTE-005 (docs/dette.md) : ce convertisseur n'a **aucun test** — le front n'a pas de runner. Une
-// régression ici (inverser `padEnd`/`padStart`, p. ex.) fausserait silencieusement le montant dû
-// (EF-8.1) sans que rien ne bronche. Résorption : E00US014, **avant** E08US001.
+// Couvert par `format.test.ts` (E00US014, vitest) : l'aller-retour et le sens de complétion des
+// décimales (`padEnd` vs `padStart`) sont testés — une régression qui fausserait le montant dû
+// (EF-8.1) casse la CI au lieu de passer en silence.
 
 const CENTIMES_PAR_EURO = 100
 
