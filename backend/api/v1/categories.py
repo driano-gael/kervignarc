@@ -16,23 +16,27 @@ from __future__ import annotations
 import asyncio
 
 from fastapi import APIRouter, Depends, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.categories import ServiceCategories
-from domain.categorie import Categorie, SexeCategorie
+from domain.categorie import Categorie, SexeCategorie, TrancheAge
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["categories"])
 
 
 class CreerCategorieRequete(BaseModel):
-    """Corps de création d'une catégorie (libellé requis ; arme/âge/sexe/blason facultatifs)."""
+    """Corps de création d'une catégorie (libellé requis ; arme/ages/sexe/blason facultatifs).
+
+    `ages` accepte zéro, une ou plusieurs tranches (E01US013) ; chaque valeur doit appartenir aux
+    huit tranches FFTA (`TrancheAge`), sans quoi la requête est rejetée en 422 (règle 6).
+    """
 
     libelle: str
     arme: str | None = None
-    tranche_age: str | None = None
+    ages: list[TrancheAge] = Field(default_factory=list)
     sexe: SexeCategorie | None = None
     blason_id: int | None = None
 
@@ -42,19 +46,23 @@ class ModifierCategorieRequete(BaseModel):
 
     libelle: str
     arme: str | None = None
-    tranche_age: str | None = None
+    ages: list[TrancheAge] = Field(default_factory=list)
     sexe: SexeCategorie | None = None
     blason_id: int | None = None
 
 
 class CategorieReponse(BaseModel):
-    """Représentation d'une catégorie renvoyée au client."""
+    """Représentation d'une catégorie renvoyée au client.
+
+    `ages` est **toujours** une liste (éventuellement vide), sérialisée en codes de tranche
+    (ex. `["U15", "U18"]`) — jamais un scalaire, contrairement à l'ancien `tranche_age`.
+    """
 
     id: int
     tournoi_id: int
     libelle: str
     arme: str | None
-    tranche_age: str | None
+    ages: list[TrancheAge]
     sexe: SexeCategorie | None
     blason_id: int | None
 
@@ -67,7 +75,7 @@ class CategorieReponse(BaseModel):
             tournoi_id=categorie.tournoi_id,
             libelle=categorie.libelle,
             arme=categorie.arme,
-            tranche_age=categorie.tranche_age,
+            ages=list(categorie.ages),
             sexe=categorie.sexe,
             blason_id=categorie.blason_id,
         )
@@ -120,7 +128,7 @@ async def creer_categorie(
                 tournoi_id,
                 requete.libelle,
                 requete.arme,
-                requete.tranche_age,
+                requete.ages,
                 requete.sexe,
                 requete.blason_id,
             )
@@ -146,7 +154,7 @@ async def modifier_categorie(
                 categorie_id,
                 requete.libelle,
                 requete.arme,
-                requete.tranche_age,
+                requete.ages,
                 requete.sexe,
                 requete.blason_id,
             )

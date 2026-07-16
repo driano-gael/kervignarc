@@ -374,7 +374,7 @@ Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Exempl
 | `statut_match` | a_jouer, en_cours, termine, bye, forfait |
 | `role` | admin, scoreur, public |
 | `valeur_fleche` | 0-10, X, M — **domaine réel restreint par `BLASON.zones`** (un triple 40 exclut 5→1) |
-| `tranche_age` | U11, U13, U15, U18, U21, S1, S2, S3 (+ `Scratch` en arc nu — libellé de regroupement, pas une tranche) |
+| `ages` (tranches) | U11, U13, U15, U18, U21, S1, S2, S3 — `CATEGORIE.ages` en porte **une ou plusieurs** (E01US013). `Scratch` et le « U18 » arc nu sont des **libellés** de regroupement, pas des tranches |
 | `arme` | classique, poulie, nu (texte libre côté domaine) |
 
 ---

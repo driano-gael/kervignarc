@@ -97,7 +97,10 @@ class CategorieORM(Base):
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     libelle: Mapped[str] = mapped_column(nullable=False)
     arme: Mapped[str | None] = mapped_column(nullable=True)
-    tranche_age: Mapped[str | None] = mapped_column(nullable=True)
+    # Tranches d'âge éligibles, stockées en **tableau JSON** de codes (ex. `["U15","U18"]`,
+    # E01US013) : une catégorie couvre une ou plusieurs tranches, `"[]"` = aucune contrainte. La
+    # (dé)sérialisation est faite par le repository (patron de la `config` des gabarits/phases).
+    ages: Mapped[str] = mapped_column(nullable=False)
     sexe: Mapped[str | None] = mapped_column(nullable=True)
     # Blason par défaut, facultatif (E01US006). La suppression d'un blason référencé est refusée
     # côté service (409, `BlasonReference`).

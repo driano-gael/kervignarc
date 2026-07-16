@@ -13,7 +13,7 @@ from alembic import command
 from alembic.config import Config
 
 from domain.blason import Blason
-from domain.categorie import Categorie, SexeCategorie
+from domain.categorie import Categorie, SexeCategorie, TrancheAge
 from domain.tournoi import Tournoi
 from infrastructure.db import (
     BlasonRepositorySQL,
@@ -50,12 +50,18 @@ def test_ajouter_puis_relire(tmp_path: Path) -> None:
         repository = CategorieRepositorySQL(db.session_factory)
         cree = repository.ajouter(
             Categorie.creer(
-                tournoi_id, "Senior H Classique", "classique", "senior", SexeCategorie.HOMME
+                tournoi_id,
+                "Arc Nu U18 H",
+                "Arc Nu",
+                (TrancheAge.U18, TrancheAge.U15),
+                SexeCategorie.HOMME,
             )
         )
         assert cree.id is not None
         assert cree.tournoi_id == tournoi_id
-        assert cree.arme == "classique"
+        assert cree.arme == "Arc Nu"
+        # Le tableau JSON `ages` fait l'aller-retour base ↔ agrégat, dédoublonné et ordonné.
+        assert cree.ages == (TrancheAge.U15, TrancheAge.U18)
         assert cree.sexe is SexeCategorie.HOMME
         assert repository.par_id(cree.id) == cree
     finally:
@@ -91,10 +97,11 @@ def test_enregistrer_met_a_jour(tmp_path: Path) -> None:
         repository = CategorieRepositorySQL(db.session_factory)
         cree = repository.ajouter(Categorie.creer(tournoi_id, "Ancien"))
         assert cree.id is not None
-        modifiee = cree.modifier("Nouveau", "nu", "cadet", SexeCategorie.FEMME)
+        modifiee = cree.modifier("Nouveau", "nu", (TrancheAge.U18,), SexeCategorie.FEMME)
         enregistree = repository.enregistrer(modifiee)
         assert enregistree.libelle == "Nouveau"
         assert enregistree.arme == "nu"
+        assert enregistree.ages == (TrancheAge.U18,)
         assert enregistree.sexe is SexeCategorie.FEMME
         assert repository.par_id(cree.id) == enregistree
     finally:

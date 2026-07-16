@@ -72,7 +72,7 @@ def test_creer_puis_lister_une_categorie(
             json={
                 "libelle": "Senior H Classique",
                 "arme": "classique",
-                "tranche_age": "senior",
+                "ages": ["S1"],
                 "sexe": "H",
             },
         )
@@ -80,6 +80,7 @@ def test_creer_puis_lister_une_categorie(
         cree = creation.json()
         assert cree["libelle"] == "Senior H Classique"
         assert cree["arme"] == "classique"
+        assert cree["ages"] == ["S1"]
         assert cree["sexe"] == "H"
         assert cree["tournoi_id"] == tournoi_id
         assert isinstance(cree["id"], int)
@@ -89,10 +90,40 @@ def test_creer_puis_lister_une_categorie(
         assert liste.json() == [cree]
 
 
+def test_creer_avec_plusieurs_tranches_normalisees(
+    app_categories: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E01US013 : `ages` accepte plusieurs tranches ; la réponse est dédoublonnée et ordonnée."""
+    with TestClient(app_categories) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        cree = client.post(
+            f"/api/v1/tournois/{tournoi_id}/categories",
+            json={"libelle": "Arc Nu U18 H", "arme": "Arc Nu", "ages": ["U18", "U15", "U18"]},
+        )
+        assert cree.status_code == 201, cree.text
+        assert cree.json()["ages"] == ["U15", "U18"]
+
+
+def test_creer_tranche_hors_enum_400(
+    app_categories: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E01US013 : une tranche hors des huit valeurs FFTA est rejetée à la frontière (400)."""
+    with TestClient(app_categories) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        reponse = client.post(
+            f"/api/v1/tournois/{tournoi_id}/categories",
+            json={"libelle": "X", "ages": ["senior"]},
+        )
+    assert reponse.status_code == 400
+    assert reponse.json()["code"] == "requete_invalide"
+
+
 def test_creer_defauts_attributs_facultatifs(
     app_categories: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """Sans arme/âge/sexe/blason : champs à None."""
+    """Sans arme/ages/sexe/blason : arme/sexe/blason à None, `ages` liste vide (jamais null)."""
     with TestClient(app_categories) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
@@ -100,7 +131,7 @@ def test_creer_defauts_attributs_facultatifs(
             f"/api/v1/tournois/{tournoi_id}/categories", json={"libelle": "Libre"}
         ).json()
     assert cree["arme"] is None
-    assert cree["tranche_age"] is None
+    assert cree["ages"] == []
     assert cree["sexe"] is None
     assert cree["blason_id"] is None
 
@@ -187,12 +218,13 @@ def test_modifier_une_categorie(app_categories: FastAPI, connecter_admin: Connec
         ).json()
         modif = client.put(
             f"/api/v1/categories/{cree['id']}",
-            json={"libelle": "Nouveau", "arme": "poulie", "tranche_age": "vétéran", "sexe": "F"},
+            json={"libelle": "Nouveau", "arme": "poulie", "ages": ["S2", "S3"], "sexe": "F"},
         )
         assert modif.status_code == 200
         corps = modif.json()
         assert corps["libelle"] == "Nouveau"
         assert corps["arme"] == "poulie"
+        assert corps["ages"] == ["S2", "S3"]
         assert corps["sexe"] == "F"
         assert client.get(f"/api/v1/tournois/{tournoi_id}/categories").json() == [corps]
 
@@ -222,6 +254,10 @@ def test_precharger_ffta_puis_lister(
         assert len(creees) == 32
         assert all(c["tournoi_id"] == tournoi_id for c in creees)
         assert "Arc Classique U11 Homme" in {c["libelle"] for c in creees}
+        # E01US013 : les regroupements arc nu sont restitués par l'API en tranches multiples.
+        ages_par_libelle = {c["libelle"]: c["ages"] for c in creees}
+        assert ages_par_libelle["Arc Nu U18 Homme"] == ["U15", "U18"]
+        assert ages_par_libelle["Arc Nu Scratch Homme"] == ["U21", "S1", "S2", "S3"]
         liste = client.get(f"/api/v1/tournois/{tournoi_id}/categories").json()
         assert len(liste) == 32
 

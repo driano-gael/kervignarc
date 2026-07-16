@@ -5,12 +5,18 @@ import { fetchJson } from '../../shared/api/client'
 
 export type SexeCategorie = 'H' | 'F' | 'mixte'
 
+// Les huit tranches d'âge FFTA (E01US013) — vocabulaire **fermé**, miroir de l'enum `TrancheAge`
+// du backend. Une catégorie couvre une ou plusieurs de ces tranches (`ages`).
+export type TrancheAge = 'U11' | 'U13' | 'U15' | 'U18' | 'U21' | 'S1' | 'S2' | 'S3'
+
 export interface Categorie {
   id: number
   tournoi_id: number
   libelle: string
   arme: string | null
-  tranche_age: string | null
+  // Tranches d'âge éligibles (E01US013) : toujours un tableau (éventuellement vide), jamais un
+  // scalaire. Les regroupements arc nu s'y lisent en clair (« U18 » → ['U15', 'U18']).
+  ages: TrancheAge[]
   sexe: SexeCategorie | null
   // Blason par défaut (E01US006), facultatif : null = aucun.
   blason_id: number | null
@@ -19,7 +25,7 @@ export interface Categorie {
 export interface NouvelleCategorie {
   libelle: string
   arme?: string | null
-  tranche_age?: string | null
+  ages?: TrancheAge[]
   sexe?: SexeCategorie | null
   blason_id?: number | null
 }

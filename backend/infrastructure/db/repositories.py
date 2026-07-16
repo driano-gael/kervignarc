@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId
-from domain.categorie import Categorie, CategorieId, SexeCategorie
+from domain.categorie import Categorie, CategorieId, SexeCategorie, TrancheAge
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
 from domain.erreurs import DomainError
@@ -226,16 +226,31 @@ def _config_phase(phase: Phase) -> str:
 
 
 def _vers_categorie(ligne: CategorieORM) -> Categorie:
-    """Traduit une ligne ORM en agrégat de domaine `Categorie`."""
+    """Traduit une ligne ORM en agrégat de domaine `Categorie` (ages JSON → tuple de `TrancheAge`).
+
+    `ages` est écrit par le repository comme un tableau JSON de codes de tranche (E01US013). Un
+    contenu illisible ou une valeur hors des huit tranches FFTA est une **incohérence technique**
+    (le repository en est le seul rédacteur, il écrit toujours des codes valides) → enveloppée en
+    `InfrastructureError` (ADR-0007), jamais laissée fuir en value object silencieusement invalide.
+    """
+    try:
+        ages = tuple(TrancheAge(code) for code in json.loads(ligne.ages))
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        raise InfrastructureError("Tranches d'âge de catégorie illisibles.") from exc
     return Categorie(
         tournoi_id=ligne.tournoi_id,
         libelle=ligne.libelle,
         arme=ligne.arme,
-        tranche_age=ligne.tranche_age,
+        ages=ages,
         sexe=None if ligne.sexe is None else SexeCategorie(ligne.sexe),
         blason_id=ligne.blason_id,
         id=ligne.id,
     )
+
+
+def _ages_categorie(categorie: Categorie) -> str:
+    """Sérialise les tranches d'âge en tableau JSON de codes (ex. `["U15","U18"]`)."""
+    return json.dumps([tranche.value for tranche in categorie.ages])
 
 
 class TournoiRepositorySQL:
@@ -717,7 +732,7 @@ class CategorieRepositorySQL:
                     tournoi_id=categorie.tournoi_id,
                     libelle=categorie.libelle,
                     arme=categorie.arme,
-                    tranche_age=categorie.tranche_age,
+                    ages=_ages_categorie(categorie),
                     sexe=None if categorie.sexe is None else categorie.sexe.value,
                     blason_id=categorie.blason_id,
                 )
@@ -775,7 +790,7 @@ class CategorieRepositorySQL:
                     raise InfrastructureError("Catégorie à mettre à jour introuvable en base.")
                 ligne.libelle = categorie.libelle
                 ligne.arme = categorie.arme
-                ligne.tranche_age = categorie.tranche_age
+                ligne.ages = _ages_categorie(categorie)
                 ligne.sexe = None if categorie.sexe is None else categorie.sexe.value
                 ligne.blason_id = categorie.blason_id
                 session.commit()
