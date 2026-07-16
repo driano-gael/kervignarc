@@ -16,7 +16,7 @@ import pytest
 from application.categories import ServiceCategories
 from application.erreurs import BlasonHorsTournoi, CategorieIntrouvable, TournoiIntrouvable
 from domain.blason import Blason, BlasonId
-from domain.categorie import SexeCategorie
+from domain.categorie import SexeCategorie, TrancheAge
 from domain.erreurs import LibelleCategorieInvalide
 from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import FauxCategorieRepository
@@ -93,11 +93,12 @@ def test_creer_persiste_et_rattache_au_tournoi() -> None:
     """`creer` attribue un id et rattache la catégorie au tournoi."""
     service, tournoi_id, _ = _service_avec_tournoi()
     categorie = service.creer(
-        tournoi_id, "Senior H Classique", "classique", "senior", SexeCategorie.HOMME
+        tournoi_id, "Senior H Classique", "classique", (TrancheAge.S1,), SexeCategorie.HOMME
     )
     assert categorie.id == 1
     assert categorie.tournoi_id == tournoi_id
     assert categorie.libelle == "Senior H Classique"
+    assert categorie.ages == (TrancheAge.S1,)
     assert categorie.sexe is SexeCategorie.HOMME
 
 
@@ -219,10 +220,11 @@ def test_modifier_persiste_les_attributs() -> None:
     service, tournoi_id, _ = _service_avec_tournoi()
     cree = service.creer(tournoi_id, "Ancien")
     assert cree.id is not None
-    modifiee = service.modifier(cree.id, "Nouveau", "poulie", "vétéran", SexeCategorie.FEMME)
+    modifiee = service.modifier(cree.id, "Nouveau", "poulie", (TrancheAge.S2,), SexeCategorie.FEMME)
     assert modifiee.id == cree.id
     assert modifiee.libelle == "Nouveau"
     assert modifiee.arme == "poulie"
+    assert modifiee.ages == (TrancheAge.S2,)
     assert modifiee.sexe is SexeCategorie.FEMME
 
 

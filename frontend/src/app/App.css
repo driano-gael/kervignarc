@@ -114,6 +114,25 @@
   flex: 1;
 }
 
+/* Sélection multiple des tranches d'âge d'une catégorie (E01US013) : cases à cocher en ligne qui
+   s'enroulent, cibles tactiles espacées. */
+.formulaire__tranches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.formulaire__tranches legend {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.formulaire__tranche {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* Liste des tournois existants (boutons-liens). */
 .liste-tournois {
   margin: 0;

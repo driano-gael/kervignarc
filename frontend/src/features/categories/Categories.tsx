@@ -1,16 +1,17 @@
 // Gestion des catégories d'un tournoi (E01US003) — réservée à l'admin (montée sous `estAdmin`).
 //
-// Liste + création + édition des métadonnées (libellé, arme, tranche d'âge, sexe) + suppression
-// à confirmation. L'arme et la tranche d'âge sont en **texte libre** ; le sexe est un choix
-// facultatif (Homme / Femme / Mixte). Un bouton **pré-charge le jeu de catégories FFTA salle
-// (18 m)** officiel (E01US004) : les catégories ainsi ajoutées sont ordinaires (modifiables et
-// supprimables comme les autres).
+// Liste + création + édition des métadonnées (libellé, arme, tranches d'âge, sexe) + suppression
+// à confirmation. L'arme est en **texte libre** ; les **tranches d'âge** sont une **sélection
+// multiple** parmi les huit tranches FFTA (E01US013 — une catégorie peut en couvrir plusieurs, ex.
+// arc nu « U18 » = U15 + U18) ; le sexe est un choix facultatif (Homme / Femme / Mixte). Un bouton
+// **pré-charge le jeu de catégories FFTA salle (18 m)** officiel (E01US004) : les catégories ainsi
+// ajoutées sont ordinaires (modifiables et supprimables comme les autres).
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import type { Blason } from '../blasons/api'
 import { useBlasons } from '../blasons/hooks'
-import type { Categorie, NouvelleCategorie, SexeCategorie } from './api'
+import type { Categorie, NouvelleCategorie, SexeCategorie, TrancheAge } from './api'
 import {
   useCategories,
   useCreerCategorie,
@@ -24,6 +25,10 @@ const OPTIONS_SEXE: { valeur: SexeCategorie; libelle: string }[] = [
   { valeur: 'F', libelle: 'Femme' },
   { valeur: 'mixte', libelle: 'Mixte' },
 ]
+
+// Les huit tranches d'âge FFTA (E01US013), dans l'ordre d'âge croissant. « Scratch » n'y figure
+// pas : c'est un **libellé** de regroupement arc nu, pas une tranche.
+const TRANCHES_AGE: TrancheAge[] = ['U11', 'U13', 'U15', 'U18', 'U21', 'S1', 'S2', 'S3']
 
 const LIBELLE_SEXE: Record<SexeCategorie, string> = {
   H: 'Homme',
@@ -161,12 +166,12 @@ function LigneCategorie({
   )
 }
 
-// Concatène les attributs facultatifs d'une catégorie pour l'affichage (arme · âge · sexe · blason).
+// Concatène les attributs facultatifs d'une catégorie pour l'affichage (arme · âges · sexe · blason).
 function decrire(categorie: Categorie, blasons: Blason[]): string {
   const nomBlason = blasons.find((blason) => blason.id === categorie.blason_id)?.nom ?? null
   const parties = [
     categorie.arme,
-    categorie.tranche_age,
+    categorie.ages.length > 0 ? categorie.ages.join(', ') : null,
     categorie.sexe ? LIBELLE_SEXE[categorie.sexe] : null,
     nomBlason ? `blason ${nomBlason}` : null,
   ].filter((partie): partie is string => partie !== null)
@@ -188,8 +193,17 @@ function FormulaireCategorie({
   const enEdition = categorie !== undefined
   const [libelle, setLibelle] = useState(categorie?.libelle ?? '')
   const [arme, setArme] = useState(categorie?.arme ?? '')
-  const [trancheAge, setTrancheAge] = useState(categorie?.tranche_age ?? '')
+  const [ages, setAges] = useState<TrancheAge[]>(categorie?.ages ?? [])
   const [sexe, setSexe] = useState<SexeCategorie | ''>(categorie?.sexe ?? '')
+
+  // Coche / décoche une tranche ; l'ordre d'envoi est libre (le backend dédoublonne et remet en
+  // ordre d'âge canonique).
+  const basculerTranche = (tranche: TrancheAge) =>
+    setAges((actuelles) =>
+      actuelles.includes(tranche)
+        ? actuelles.filter((valeur) => valeur !== tranche)
+        : [...actuelles, tranche],
+    )
   // Blason par défaut (E01US006) : '' = aucun ; sinon l'identifiant du blason (chaîne dans le
   // <select>, reconverti en nombre à la soumission).
   const [blasonId, setBlasonId] = useState<string>(
@@ -206,7 +220,7 @@ function FormulaireCategorie({
     const entree: NouvelleCategorie = {
       libelle,
       arme: arme.trim() || null,
-      tranche_age: trancheAge.trim() || null,
+      ages,
       sexe: sexe || null,
       blason_id: blasonId === '' ? null : Number(blasonId),
     }
@@ -218,7 +232,7 @@ function FormulaireCategorie({
         onSuccess: () => {
           setLibelle('')
           setArme('')
-          setTrancheAge('')
+          setAges([])
           setSexe('')
           setBlasonId('')
         },
@@ -244,13 +258,19 @@ function FormulaireCategorie({
           placeholder="Arme (facultatif — ex. classique)"
           aria-label="Arme de la catégorie"
         />
-        <input
-          className="formulaire__champ"
-          value={trancheAge}
-          onChange={(e) => setTrancheAge(e.target.value)}
-          placeholder="Tranche d'âge (facultatif — ex. senior)"
-          aria-label="Tranche d'âge de la catégorie"
-        />
+        <fieldset className="formulaire__champ formulaire__tranches">
+          <legend>Tranches d'âge (facultatif — plusieurs possibles)</legend>
+          {TRANCHES_AGE.map((tranche) => (
+            <label key={tranche} className="formulaire__tranche">
+              <input
+                type="checkbox"
+                checked={ages.includes(tranche)}
+                onChange={() => basculerTranche(tranche)}
+              />
+              {tranche}
+            </label>
+          ))}
+        </fieldset>
         <select
           className="formulaire__champ"
           value={sexe}
