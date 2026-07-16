@@ -43,7 +43,13 @@ export function useModifierDepart(tournoiId: number) {
 export function useSupprimerDepart(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (departId: number) => supprimerDepart(tournoiId, departId),
+    mutationFn: ({
+      departId,
+      autoriserSuppressionInscrits,
+    }: {
+      departId: number
+      autoriserSuppressionInscrits?: boolean
+    }) => supprimerDepart(tournoiId, departId, autoriserSuppressionInscrits),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: cleDeparts(tournoiId) }),
   })
 }

@@ -394,6 +394,51 @@ button:disabled {
   font-size: 13px;
 }
 
+/* Panneau d'inscription d'un archer sur les départs (E02US009) — imbriqué sous la ligne d'archer,
+   décalé pour signaler qu'il en dépend. */
+.inscriptions {
+  margin: 6px 0 4px 12px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border, rgba(127, 127, 127, 0.3));
+}
+
+.liste-inscriptions {
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inscription {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.inscription__creneau {
+  flex: 1 1 auto;
+  color: var(--text-h);
+}
+
+.inscription__statut {
+  color: var(--text);
+}
+
+.inscription__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inscription__actions button {
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
 /* Liste des gabarits de salle (E01US007). */
 .liste-gabarits {
   margin: 8px 0 0;
