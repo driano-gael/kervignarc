@@ -19,17 +19,12 @@ import { Categories } from '../categories/Categories'
 import { useCategories } from '../categories/hooks'
 import { Clubs } from '../clubs/Clubs'
 import { useClubs } from '../clubs/hooks'
+import { Departs } from '../departs/Departs'
 import { Gabarits } from '../gabarits/Gabarits'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { ErreurApi } from '../../shared/api/client'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import type { StatutTournoi, Tournoi, TypeTournoi } from './api'
-import {
-  centimesVersSaisieEuros,
-  decrireTarif,
-  decrireTarifParDepart,
-  saisieEurosVersCentimes,
-} from './format'
 import { TableClassement } from './TableClassement'
 import {
   useAjouterArcher,
@@ -120,8 +115,7 @@ function LigneTournoi({
       <div className="tournoi__ligne">
         <button type="button" className="lien" onClick={() => onChoisi(tournoi)}>
           {tournoi.nom} — {tournoi.date}
-          {tournoi.lieu ? ` · ${tournoi.lieu}` : ''} · {tournoi.type_tournoi.replace('_', ' ')} ·{' '}
-          {decrireTarif(tournoi.tarif_depart_centimes)}
+          {tournoi.lieu ? ` · ${tournoi.lieu}` : ''} · {tournoi.type_tournoi.replace('_', ' ')}
         </button>
         <BadgeStatut statut={tournoi.statut} />
         {estAdmin && (
@@ -184,15 +178,12 @@ function FormulaireNouveauTournoi({ onChoisi }: { onChoisi: (t: Tournoi) => void
   const [date, setDate] = useState('')
   const [lieu, setLieu] = useState('')
   const [type, setType] = useState<TypeTournoi>('non_officiel')
-  const [tarif, setTarif] = useState('')
   const creer = useCreerTournoi()
   const deconnexion = useDeconnexionAdmin()
 
-  // Le tarif est **facultatif** : un champ vide crée un tournoi sans tarif défini (`null`), ce qui
-  // n'est pas « gratuit ». Une saisie présente doit en revanche être un montant valide.
-  const tarifCentimes = tarif.trim() === '' ? null : saisieEurosVersCentimes(tarif)
-  const tarifValide = tarif.trim() === '' || tarifCentimes !== null
-  const soumissionPossible = nom.trim() !== '' && date !== '' && tarifValide
+  // Le tarif ne se fixe plus à la création du tournoi : il vit sur chaque départ (créneau), qui se
+  // configure une fois le tournoi ouvert (E02US004, ADR-0017).
+  const soumissionPossible = nom.trim() !== '' && date !== ''
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -204,7 +195,6 @@ function FormulaireNouveauTournoi({ onChoisi }: { onChoisi: (t: Tournoi) => void
         date,
         lieu: lieu.trim() || null,
         type_tournoi: type,
-        tarif_depart_centimes: tarifCentimes,
       },
       { onSuccess: onChoisi },
     )
@@ -244,7 +234,6 @@ function FormulaireNouveauTournoi({ onChoisi }: { onChoisi: (t: Tournoi) => void
           <option value="non_officiel">Non officiel</option>
           <option value="officiel">Officiel</option>
         </select>
-        <ChampTarif valeur={tarif} onChange={setTarif} />
         <button type="submit" disabled={creer.isPending || !soumissionPossible}>
           Créer
         </button>
@@ -257,41 +246,7 @@ function FormulaireNouveauTournoi({ onChoisi }: { onChoisi: (t: Tournoi) => void
   )
 }
 
-// Le tarif d'un départ (E01US010) : saisi en **euros**, transmis en **centimes**. Le champ est
-// facultatif — vide = « pas de tarif défini », ce qui n'est pas « gratuit » (saisir 0 pour cela).
-function ChampTarif({ valeur, onChange }: { valeur: string; onChange: (v: string) => void }) {
-  const saisi = valeur.trim() !== ''
-  const invalide = saisi && saisieEurosVersCentimes(valeur) === null
-
-  return (
-    <label className="formulaire__libelle">
-      Tarif d'un départ (facultatif)
-      <input
-        className="formulaire__champ"
-        inputMode="decimal"
-        value={valeur}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="ex. 8,10 — laisser vide si non défini"
-        aria-label="Tarif d'un départ en euros"
-      />
-      {invalide ? (
-        <span className="carte__etat carte__etat--erreur" role="alert">
-          Montant en euros attendu, avec au plus 2 décimales (ex. 8,10).
-        </span>
-      ) : (
-        // L'astuce ne sert qu'au champ vide : une fois le tarif saisi, elle donnerait
-        // « Gratuit · saisir "0" pour un tournoi gratuit ».
-        <span className="carte__etat">
-          {saisi
-            ? decrireTarif(saisieEurosVersCentimes(valeur))
-            : 'Aucun tarif défini · saisir « 0 » pour un tournoi gratuit'}
-        </span>
-      )}
-    </label>
-  )
-}
-
-// Édition des métadonnées d'un tournoi (nom, date, lieu, type, tarif) — autorisée quel que soit le
+// Édition des métadonnées d'un tournoi (nom, date, lieu, type) — autorisée quel que soit le
 // statut ; le cycle de vie évolue par ailleurs via Démarrer/Terminer.
 function FormulaireEditionTournoi({
   tournoi,
@@ -304,18 +259,9 @@ function FormulaireEditionTournoi({
   const [date, setDate] = useState(tournoi.date)
   const [lieu, setLieu] = useState(tournoi.lieu ?? '')
   const [type, setType] = useState<TypeTournoi>(tournoi.type_tournoi)
-  // Semé avec la valeur serveur : l'édition **remplace** le tarif, donc un champ laissé tel quel
-  // doit être réémis à l'identique — sinon rouvrir le formulaire effacerait le tarif.
-  const [tarif, setTarif] = useState(
-    tournoi.tarif_depart_centimes === null
-      ? ''
-      : centimesVersSaisieEuros(tournoi.tarif_depart_centimes),
-  )
   const modifier = useModifierTournoi()
 
-  const tarifCentimes = tarif.trim() === '' ? null : saisieEurosVersCentimes(tarif)
-  const tarifValide = tarif.trim() === '' || tarifCentimes !== null
-  const soumissionPossible = nom.trim() !== '' && date !== '' && tarifValide
+  const soumissionPossible = nom.trim() !== '' && date !== ''
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -328,7 +274,6 @@ function FormulaireEditionTournoi({
           date,
           lieu: lieu.trim() || null,
           type_tournoi: type,
-          tarif_depart_centimes: tarifCentimes,
         },
       },
       { onSuccess: onTermine },
@@ -369,7 +314,6 @@ function FormulaireEditionTournoi({
           <option value="non_officiel">Non officiel</option>
           <option value="officiel">Officiel</option>
         </select>
-        <ChampTarif valeur={tarif} onChange={setTarif} />
         <div className="formulaire__actions">
           <button type="submit" disabled={modifier.isPending || !soumissionPossible}>
             Enregistrer
@@ -399,10 +343,12 @@ function Competition({ tournoi, onRetour }: { tournoi: Tournoi; onRetour: () => 
       <h2 className="carte__titre">
         {tournoi.nom} <BadgeStatut statut={tournoi.statut} />
       </h2>
-      {/* Le tarif est une information publique : c'est ce que paiera l'archer (E01US010). */}
-      <p className="carte__etat">{decrireTarifParDepart(tournoi.tarif_depart_centimes)}</p>
 
       {estAdmin && <CycleDeVie tournoi={tournoi} />}
+
+      {/* Les départs (créneaux) portent le tarif : leur configuration remplace l'ancien tarif au
+          niveau du tournoi (E02US004, ADR-0017). */}
+      {estAdmin && <Departs tournoiId={tournoi.id} />}
 
       {estAdmin && <Categories tournoiId={tournoi.id} />}
 

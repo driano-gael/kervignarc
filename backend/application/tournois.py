@@ -33,14 +33,13 @@ class ServiceTournois:
         date: datetime.date,
         lieu: str | None = None,
         type_tournoi: TypeTournoi = TypeTournoi.NON_OFFICIEL,
-        tarif_depart_centimes: int | None = None,
     ) -> Tournoi:
         """Crée et persiste un tournoi. Lève `DomainError` si les champs sont invalides.
 
-        Le tarif d'un départ (E01US010, en centimes) est facultatif : omis, le tournoi naît sans
-        tarif **défini** — ce qui n'est pas la même chose que gratuit.
+        Le tarif ne se fixe plus ici : il vit sur chaque départ (créneau), configuré par
+        `ServiceDeparts` (E02US004, ADR-0017).
         """
-        tournoi = Tournoi.creer(nom, date, lieu, type_tournoi, tarif_depart_centimes)
+        tournoi = Tournoi.creer(nom, date, lieu, type_tournoi)
         return self._repository.ajouter(tournoi)
 
     def consulter(self, tournoi_id: TournoiId) -> Tournoi:
@@ -61,19 +60,15 @@ class ServiceTournois:
         date: datetime.date,
         lieu: str | None = None,
         type_tournoi: TypeTournoi = TypeTournoi.NON_OFFICIEL,
-        tarif_depart_centimes: int | None = None,
     ) -> Tournoi:
-        """Édite les métadonnées d'un tournoi (nom, date, lieu, type, tarif), statut préservé.
+        """Édite les métadonnées d'un tournoi (nom, date, lieu, type), statut préservé.
 
         Lève `TournoiIntrouvable` si l'identifiant est inconnu, `DomainError` si le nom est
-        vide ou le tarif négatif. L'édition est autorisée quel que soit le statut.
-
-        **Remplacement, pas fusion** : comme les autres métadonnées, le tarif prend la valeur
-        reçue — `None` le remet donc à « non défini ». La frontière API renvoie la valeur courante
-        dans le formulaire d'édition, si bien qu'un champ laissé tel quel est réémis à l'identique.
+        vide. L'édition est autorisée quel que soit le statut. Le tarif ne fait plus partie des
+        métadonnées du tournoi (il vit sur chaque départ — E02US004).
         """
         tournoi = self.consulter(tournoi_id)
-        modifie = tournoi.modifier(nom, date, lieu, type_tournoi, tarif_depart_centimes)
+        modifie = tournoi.modifier(nom, date, lieu, type_tournoi)
         return self._repository.enregistrer(modifie)
 
     def demarrer(self, tournoi_id: TournoiId) -> Tournoi:

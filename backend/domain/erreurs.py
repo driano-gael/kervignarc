@@ -101,11 +101,18 @@ class NombreFlechesParVoleeInvalide(DomainError):
     code = "nombre_fleches_par_volee_invalide"
 
 
-class TarifDepartInvalide(DomainError):
-    """Le tarif d'un départ sort de la plage autorisée (`[0, 1 000 €]`, E01US010).
+class NumeroDepartInvalide(DomainError):
+    """Le numéro d'un départ (créneau) n'est pas un entier strictement positif (E02US004)."""
 
-    Un tarif **nul** est licite (tournoi gratuit) et se distingue d'un tarif **non défini**
-    (`None`) : voir `Tournoi.tarif_depart_centimes`.
+    code = "numero_depart_invalide"
+
+
+class TarifDepartInvalide(DomainError):
+    """Le tarif d'un départ sort de la plage autorisée (`[0, 1 000 €]`, E02US004 / ADR-0017).
+
+    Un tarif **nul** est licite (créneau gratuit). Contrairement à l'ancien tarif du tournoi, le
+    tarif d'un créneau est **obligatoire** — il n'y a plus d'état « non défini » : voir
+    `Depart.tarif_centimes`.
     """
 
     code = "tarif_depart_invalide"

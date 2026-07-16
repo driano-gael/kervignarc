@@ -41,6 +41,18 @@ class TournoiEnCoursNonSupprimable(ApplicationError):
     code = "tournoi_en_cours_non_supprimable"
 
 
+class DepartIntrouvable(ApplicationError):
+    """Aucun départ (créneau) ne correspond à l'identifiant dans ce tournoi (E02US004) → 404.
+
+    Couvre l'identifiant inconnu **et** le départ d'un **autre** tournoi : du point de vue du
+    tournoi de l'URL, un créneau qui ne lui appartient pas n'existe pas davantage qu'un identifiant
+    inventé — même parti que `CategorieHorsTournoi`, distinguer les deux apprendrait au client ce
+    qui vit dans les tournois voisins.
+    """
+
+    code = "depart_introuvable"
+
+
 class ArcherIntrouvable(ApplicationError):
     """Aucun archer ne correspond à l'identifiant demandé."""
 

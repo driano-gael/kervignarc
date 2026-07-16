@@ -30,36 +30,29 @@ router = APIRouter(prefix="/api/v1/tournois", tags=["tournois"])
 
 
 class CreerTournoiRequete(BaseModel):
-    """Corps de création d'un tournoi (nom et date requis ; lieu, type et tarif facultatifs)."""
+    """Corps de création d'un tournoi (nom et date requis ; lieu et type facultatifs).
+
+    Le tarif ne se fixe plus ici : il vit sur chaque départ (créneau), configuré à part
+    (E02US004, ADR-0017).
+    """
 
     nom: str
     date: datetime.date
     lieu: str | None = None
     type_tournoi: TypeTournoi = TypeTournoi.NON_OFFICIEL
-    tarif_depart_centimes: int | None = None
 
 
 class ModifierTournoiRequete(BaseModel):
-    """Corps d'édition des métadonnées d'un tournoi (le statut n'est pas modifiable ici).
-
-    `tarif_depart_centimes` est **remplacé**, pas fusionné : l'omettre (ou l'envoyer à `null`) remet
-    le tarif à « non défini ». Le client réémet la valeur qu'il a lue.
-    """
+    """Corps d'édition des métadonnées d'un tournoi (le statut n'est pas modifiable ici)."""
 
     nom: str
     date: datetime.date
     lieu: str | None = None
     type_tournoi: TypeTournoi = TypeTournoi.NON_OFFICIEL
-    tarif_depart_centimes: int | None = None
 
 
 class TournoiReponse(BaseModel):
-    """Représentation d'un tournoi renvoyée au client.
-
-    `tarif_depart_centimes` est en **centimes entiers** (l'unité est dans le nom) : c'est le client
-    qui met en forme des euros. `null` = tarif **non défini**, `0` = **gratuit** — deux états
-    distincts, à ne pas confondre à l'affichage.
-    """
+    """Représentation d'un tournoi renvoyée au client."""
 
     id: int
     nom: str
@@ -67,7 +60,6 @@ class TournoiReponse(BaseModel):
     lieu: str | None
     type_tournoi: TypeTournoi
     statut: StatutTournoi
-    tarif_depart_centimes: int | None
 
     @staticmethod
     def de_agregat(tournoi: Tournoi) -> TournoiReponse:
@@ -80,7 +72,6 @@ class TournoiReponse(BaseModel):
             lieu=tournoi.lieu,
             type_tournoi=tournoi.type_tournoi,
             statut=tournoi.statut,
-            tarif_depart_centimes=tournoi.tarif_depart_centimes,
         )
 
 
@@ -101,7 +92,6 @@ async def creer_tournoi(requete: CreerTournoiRequete, request: Request) -> Tourn
                 requete.date,
                 requete.lieu,
                 requete.type_tournoi,
-                requete.tarif_depart_centimes,
             )
         )
     )
@@ -143,7 +133,6 @@ async def modifier_tournoi(
                 requete.date,
                 requete.lieu,
                 requete.type_tournoi,
-                requete.tarif_depart_centimes,
             )
         )
     )

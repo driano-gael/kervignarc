@@ -58,8 +58,9 @@
 
 ### E01US010 — Définir le tarif par départ
 *En tant qu'*administrateur, *je veux* fixer le tarif d'un départ, *afin d'*alimenter le suivi de paiement.
-- **CA** : tarif paramétrable par tournoi ; utilisé par le calcul du montant dû (E08US001).
+- **CA** : ~~tarif paramétrable **par tournoi**~~ → le tarif est porté **par chaque départ** (E02US004) ; utilisé par le calcul du montant dû (E08US001).
 - **Dépend de** : E01US001 · **Jalon** : J1
+  > **Livrée puis révisée le 16/07/2026** ([ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md)). Cette US avait posé `tournoi.tarif_depart_centimes` — un tarif **unique au tournoi** — faute d'entité `Depart` à ce moment (les départs n'étaient pas modélisés). E02US004 modélise les départs comme des **créneaux du tournoi** ; le tarif **migre** sur le départ (obligatoire par créneau, prix possiblement différents) et le champ du tournoi est **retiré** (migration `0016`). Ce qui reste vrai d'E01US010 : la règle **centimes entiers** (ADR-0012) et le fait qu'un tarif de départ alimente la facturation (E08US001).
 
 ### E01US011 — Presets de barèmes multi-phases
 *En tant qu'*administrateur, *je veux* des presets pour chaque type de phase, *afin de* couvrir les formats riches.

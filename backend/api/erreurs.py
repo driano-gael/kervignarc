@@ -29,6 +29,7 @@ from application.erreurs import (
     BlasonIntrouvable,
     CategorieIntrouvable,
     ClubIntrouvable,
+    DepartIntrouvable,
     GabaritDuTournoiAbsent,
     GabaritIntrouvable,
     IdentifiantsInvalides,
@@ -64,6 +65,7 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | ArcherIntrouvable
         | CategorieIntrouvable
         | ClubIntrouvable
+        | DepartIntrouvable
         | BlasonIntrouvable
         | GabaritIntrouvable
         | GabaritDuTournoiAbsent
