@@ -69,6 +69,17 @@ class InscriptionReponse(BaseModel):
         )
 
 
+class MontantDuReponse(BaseModel):
+    """Montant total dû par un archer, en **centimes entiers** (ADR-0012 ; le client met en euros).
+
+    Somme **dérivée** des tarifs de ses créneaux (E08US001) — aucun champ stocké : le total change
+    dès qu'une inscription ou un tarif change.
+    """
+
+    archer_id: int
+    montant_du_centimes: int
+
+
 @router.post(
     "/archers/{archer_id}/inscriptions",
     status_code=201,
@@ -97,6 +108,17 @@ async def lister_inscriptions(archer_id: int, request: Request) -> list[Inscript
     service: ServiceInscriptions = request.app.state.service_inscriptions
     details = await run_in_threadpool(service.lister_par_archer, archer_id)
     return [InscriptionReponse.de_detail(detail) for detail in details]
+
+
+@router.get("/archers/{archer_id}/montant-du", response_model=MontantDuReponse)
+async def montant_du(archer_id: int, request: Request) -> MontantDuReponse:
+    """Montant total dû par un archer (somme dérivée des tarifs) : lecture directe hors boucle.
+
+    Renvoie `404 archer_introuvable` si l'archer n'existe pas — pas « 0 dû » pour un inconnu.
+    """
+    service: ServiceInscriptions = request.app.state.service_inscriptions
+    montant = await run_in_threadpool(service.montant_du_par_archer, archer_id)
+    return MontantDuReponse(archer_id=archer_id, montant_du_centimes=montant)
 
 
 @router.put(

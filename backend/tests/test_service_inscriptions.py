@@ -242,3 +242,109 @@ def test_desinscrire_inconnue_leve() -> None:
     service, _, _, _ = _monter()
     with pytest.raises(InscriptionIntrouvable):
         service.desinscrire(404)
+
+
+# --- Montant dû par archer (E08US001) --------------------------------------------------------
+
+
+def test_montant_du_est_la_somme_des_tarifs_des_departs_inscrits() -> None:
+    """Montant dû = **somme** des tarifs des créneaux inscrits (CA E08US001).
+
+    Une somme, pas un tarif unique multiplié par le nombre de créneaux : les prix diffèrent par
+    créneau (révision [ADR-0017] du 16/07/2026). On inscrit sur trois créneaux à tarifs distincts,
+    dont un **gratuit**, et on attend leur addition — pas un multiple d'un tarif unique.
+    """
+    service, archers, departs, _ = _monter()
+    archer_id = _archer(archers)
+    service.inscrire(archer_id, _depart(departs, tarif_centimes=810, numero=1))
+    service.inscrire(archer_id, _depart(departs, tarif_centimes=1000, numero=2))
+    service.inscrire(archer_id, _depart(departs, tarif_centimes=0, numero=3))  # créneau gratuit
+
+    assert service.montant_du_par_archer(archer_id) == 1810
+
+
+def test_montant_du_sans_inscription_est_zero() -> None:
+    """Un archer existant mais inscrit sur aucun créneau doit **0** (et non une erreur)."""
+    service, archers, _, _ = _monter()
+    archer_id = _archer(archers)
+    assert service.montant_du_par_archer(archer_id) == 0
+
+
+def test_montant_du_ne_compte_que_les_inscriptions_de_l_archer_vise() -> None:
+    """La somme ne mélange pas les archers : celle de l'un ignore les créneaux de l'autre.
+
+    Garde contre le piège de fixture `> 0` / `> 1` (revue du projet) : deux archers, chacun ses
+    créneaux, et l'on vérifie que le montant de l'un ne récupère pas les tarifs de l'autre.
+    """
+    service, archers, departs, _ = _monter()
+    un = _archer(archers)
+    autre = archers.ajouter(Archer.creer("Martin", "Alice", _TOURNOI, categorie_id=1))
+    assert autre.id is not None
+    service.inscrire(un, _depart(departs, tarif_centimes=810, numero=1))
+    service.inscrire(autre.id, _depart(departs, tarif_centimes=1000, numero=2))
+
+    assert service.montant_du_par_archer(un) == 810
+    assert service.montant_du_par_archer(autre.id) == 1000
+
+
+def test_montant_du_suit_les_tarifs_et_les_inscriptions_sans_etre_stocke() -> None:
+    """« Recalculé si les inscriptions ou les tarifs changent » (CA) : dérivé, jamais figé.
+
+    On change le tarif d'un créneau **après** l'inscription (la somme suit — preuve qu'elle n'est
+    pas recopiée au moment de l'inscription), puis on désinscrit d'un autre (la somme baisse).
+    """
+    service, archers, departs, _ = _monter()
+    archer_id = _archer(archers)
+    depart_a = _depart(departs, tarif_centimes=810, numero=1)
+    depart_b = _depart(departs, tarif_centimes=1000, numero=2)
+    service.inscrire(archer_id, depart_a)
+    inscription_b = service.inscrire(archer_id, depart_b).inscription
+    assert inscription_b.id is not None
+    assert service.montant_du_par_archer(archer_id) == 1810
+
+    depart = departs.par_id(depart_a)
+    assert depart is not None
+    departs.enregistrer(dataclasses.replace(depart, tarif_centimes=1250))
+    assert service.montant_du_par_archer(archer_id) == 2250  # 1250 + 1000
+
+    service.desinscrire(inscription_b.id)
+    assert service.montant_du_par_archer(archer_id) == 1250  # le créneau B ne compte plus
+
+
+def test_montant_du_compte_les_inscriptions_payees_et_non_payees() -> None:
+    """Le montant **dû** est la somme de **tous** les créneaux inscrits, payé ou non (CA E08US001).
+
+    Le « reste à payer » (dû moins encaissé) est une autre US (E08US003) : ici, marquer une
+    inscription payée ne retranche rien au dû total.
+    """
+    service, archers, departs, _ = _monter()
+    archer_id = _archer(archers)
+    payee = service.inscrire(archer_id, _depart(departs, tarif_centimes=810, numero=1)).inscription
+    service.inscrire(archer_id, _depart(departs, tarif_centimes=1000, numero=2))
+    assert payee.id is not None
+    service.marquer_paye(payee.id, True)
+
+    assert service.montant_du_par_archer(archer_id) == 1810
+
+
+def test_montant_du_ignore_un_depart_purge_en_cascade() -> None:
+    """La somme compte **les mêmes** inscriptions que `lister_par_archer` : un créneau purgé pendant
+    la lecture (course de suppression, revue E02US009) ne lève pas et ne gonfle pas le total.
+    """
+    service, archers, departs, _ = _monter()
+    archer_id = _archer(archers)
+    present = _depart(departs, tarif_centimes=810, numero=1)
+    disparu = _depart(departs, tarif_centimes=1000, numero=2)
+    service.inscrire(archer_id, present)
+    service.inscrire(archer_id, disparu)
+
+    departs.supprimer(disparu)  # course : le départ part, l'inscription reste orpheline
+
+    assert service.montant_du_par_archer(archer_id) == 810
+
+
+def test_montant_du_archer_inconnu_leve() -> None:
+    """Le montant dû d'un archer inexistant lève `ArcherIntrouvable` — il ne « doit » pas 0."""
+    service, _, _, _ = _monter()
+    with pytest.raises(ArcherIntrouvable):
+        service.montant_du_par_archer(404)
