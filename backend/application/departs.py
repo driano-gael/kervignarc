@@ -18,9 +18,13 @@ Le lien archer↔départ (inscription) et le suivi `payé` sont E02US009 : ce se
 
 from __future__ import annotations
 
-from application.erreurs import DepartIntrouvable, TournoiIntrouvable
+from application.erreurs import (
+    DepartAvecInscriptions,
+    DepartIntrouvable,
+    TournoiIntrouvable,
+)
 from domain.depart import Depart, DepartId
-from domain.ports import DepartRepository, TournoiRepository
+from domain.ports import DepartRepository, InscriptionRepository, TournoiRepository
 from domain.tournoi import TournoiId
 
 
@@ -31,9 +35,11 @@ class ServiceDeparts:
         self,
         depart_repository: DepartRepository,
         tournoi_repository: TournoiRepository,
+        inscription_repository: InscriptionRepository,
     ) -> None:
         self._departs = depart_repository
         self._tournois = tournoi_repository
+        self._inscriptions = inscription_repository
 
     def creer(
         self,
@@ -79,16 +85,54 @@ class ServiceDeparts:
         depart = self._depart_du_tournoi(tournoi_id, depart_id)
         return self._departs.enregistrer(depart.modifier(tarif_centimes, horaire))
 
-    def supprimer(self, tournoi_id: TournoiId, depart_id: DepartId) -> None:
-        """Supprime un départ d'un tournoi.
+    def supprimer(
+        self,
+        tournoi_id: TournoiId,
+        depart_id: DepartId,
+        autoriser_suppression_inscrits: bool = False,
+    ) -> None:
+        """Supprime un départ d'un tournoi (E02US004, garde-fou E02US009).
 
-        Lève `DepartIntrouvable` si le départ n'existe pas dans ce tournoi. La suppression est libre
-        tant qu'aucune inscription n'existe (E02US009 ajoutera le garde-fou « départ avec archers
-        inscrits », patron `ClubReference`).
+        Lève `DepartIntrouvable` si le départ n'existe pas dans ce tournoi. Si le créneau porte des
+        **inscriptions**, lève `DepartAvecInscriptions` — un **signalement**, pas un refus
+        ([ADR-0018](../../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md), famille
+        d'`ArcherEngage`) : l'admin confirme via `autoriser_suppression_inscrits=True`, et la
+        suppression **efface les inscriptions** du créneau (cascade applicative de l'adapter).
+
+        Le message **décompte les inscriptions, dont les payées**, pour rendre visible l'effet de
+        bord monétaire (remboursement déporté en E08US005).
         """
         depart = self._depart_du_tournoi(tournoi_id, depart_id)
         assert depart.id is not None, "Un départ relu est persisté."
+        # DETTE-007 : la confirmation est **aveugle**. Le décompte annoncé (inscriptions, dont
+        # payées) n'est pas revérifié au rejeu — entre le 409 et la confirmation, d'autres tablettes
+        # peuvent inscrire ou marquer payé, et l'on effacerait plus que le message n'a annoncé.
+        if not autoriser_suppression_inscrits:
+            self._signaler_inscriptions(depart)
         self._departs.supprimer(depart.id)
+
+    def _signaler_inscriptions(self, depart: Depart) -> None:
+        """Lève `DepartAvecInscriptions` si le créneau porte des inscriptions (E02US009).
+
+        Le message énumère ce qui sera détruit — nombre d'inscriptions **et** de payées — plutôt que
+        d'inviter à confirmer : les payées sont une somme encaissée qui deviendra un remboursement
+        (E08US005), l'admin doit le voir avant de trancher.
+        """
+        assert depart.id is not None, "Un départ relu est persisté."
+        inscriptions = self._inscriptions.par_depart(depart.id)
+        if not inscriptions:
+            return
+        nombre = len(inscriptions)
+        payees = sum(1 for inscription in inscriptions if inscription.paye)
+        accord = "inscription" if nombre == 1 else "inscriptions"
+        detail = f"{nombre} {accord}"
+        if payees:
+            detail += f", dont {payees} déjà payée" + ("s" if payees > 1 else "")
+        raise DepartAvecInscriptions(
+            f"Le départ n° {depart.numero} porte {detail}. Le supprimer les effacera "
+            "définitivement ; les sommes déjà payées seront à rembourser (E08US005). "
+            "Confirmez seulement si ce créneau est bien annulé."
+        )
 
     def _verifier_tournoi(self, tournoi_id: TournoiId) -> None:
         """Lève `TournoiIntrouvable` si le tournoi n'existe pas."""

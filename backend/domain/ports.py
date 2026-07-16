@@ -15,6 +15,7 @@ from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
+from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.score import Score
 from domain.tournoi import Tournoi, TournoiId
@@ -77,14 +78,16 @@ class ArcherRepository(Protocol):
         ...
 
     def supprimer(self, archer_id: ArcherId) -> None:
-        """Supprime l'archer d'identifiant donné **et ses scores** (E02US003).
+        """Supprime l'archer d'identifiant donné, **ses scores et ses inscriptions** (E02US003,
+        E02US009).
 
-        Existence garantie par l'appelant. La purge des scores fait partie du contrat : elle
-        n'est pas un effet de bord, c'est la seule façon de tenir la promesse « l'archer
-        disparaît » — `score.archer_id` est une FK **sans `ON DELETE`** (DETTE-001), donc une
-        suppression qui les laisserait derrière elle échouerait en base. Cascade **applicative
-        et maîtrisée**, à faire dans **une seule transaction** : deux transactions successives
-        laisseraient, en cas d'échec de la seconde, un archer dépouillé de ses flèches.
+        Existence garantie par l'appelant. La purge des scores **et des inscriptions sur départs**
+        (E02US009) fait partie du contrat : elle n'est pas un effet de bord, c'est la seule façon de
+        tenir la promesse « l'archer disparaît » — `score.archer_id` **et** `inscription.archer_id`
+        sont des FK **sans `ON DELETE`** (DETTE-001), donc une suppression qui les laisserait
+        derrière elle échouerait en base. Cascade **applicative et maîtrisée**, à faire dans **une
+        seule transaction** : deux transactions successives laisseraient, en cas d'échec de la
+        seconde, un archer dépouillé de ses flèches.
 
         L'appelant a **déjà** obtenu la confirmation de l'admin si l'archer était placé ou
         engagé (`ArcherEngage`) : à ce niveau, la décision est prise et les données sont
@@ -161,7 +164,59 @@ class DepartRepository(Protocol):
         ...
 
     def supprimer(self, depart_id: DepartId) -> None:
-        """Supprime le départ d'identifiant donné (existence garantie par l'appelant)."""
+        """Supprime le départ d'identifiant donné **et ses inscriptions** (E02US009).
+
+        Existence garantie par l'appelant, qui a **déjà** obtenu la confirmation de l'admin si le
+        départ portait des inscriptions (`DepartAvecInscriptions`). La purge des inscriptions fait
+        partie du contrat, dans **une seule transaction** : `inscription.depart_id` est une FK
+        **sans `ON DELETE`** (DETTE-001), donc une suppression qui les laisserait échouerait.
+        Même patron que `ArcherRepository.supprimer` avec les scores — cascade **applicative et
+        maîtrisée**.
+        """
+        ...
+
+
+class InscriptionRepository(Protocol):
+    """Port de persistance des inscriptions — liens archer ↔ départ (E02US009, ADR-0017)."""
+
+    def ajouter(self, inscription: Inscription) -> Inscription:
+        """Persiste une inscription et la renvoie avec son identifiant attribué."""
+        ...
+
+    def par_id(self, inscription_id: InscriptionId) -> Inscription | None:
+        """Renvoie l'inscription d'identifiant donné, ou `None` si elle n'existe pas."""
+        ...
+
+    def par_archer(self, archer_id: ArcherId) -> list[Inscription]:
+        """Renvoie les inscriptions d'un archer (liste éventuellement vide).
+
+        Sert à lister ses créneaux **et** à savoir s'il est « engagé » (une inscription suffit,
+        E02US009) au moment de le supprimer.
+        """
+        ...
+
+    def par_depart(self, depart_id: DepartId) -> list[Inscription]:
+        """Renvoie les inscriptions portant sur un départ (liste éventuellement vide).
+
+        Sert au garde-fou « supprimer un départ qui porte des inscriptions »
+        (`DepartAvecInscriptions`) et au décompte des payées affiché dans son message.
+        """
+        ...
+
+    def par_archer_et_depart(self, archer_id: ArcherId, depart_id: DepartId) -> Inscription | None:
+        """Renvoie l'inscription du couple `(archer, départ)`, ou `None`.
+
+        Sert à refuser une **seconde** inscription sur le même créneau (`DejaInscrit`) — le pendant
+        applicatif de la contrainte `UNIQUE(archer_id, depart_id)`.
+        """
+        ...
+
+    def enregistrer(self, inscription: Inscription) -> Inscription:
+        """Met à jour une inscription déjà persistée (bascule de `paye`) et la renvoie."""
+        ...
+
+    def supprimer(self, inscription_id: InscriptionId) -> None:
+        """Supprime l'inscription d'identifiant donné (désinscription ; existence garantie)."""
         ...
 
 

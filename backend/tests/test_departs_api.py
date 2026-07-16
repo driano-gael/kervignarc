@@ -172,3 +172,60 @@ def test_ecriture_sans_session_admin_401(app_departs: FastAPI) -> None:
     with TestClient(app_departs) as client:
         reponse = client.post("/api/v1/tournois/1/departs", json={"tarif_centimes": 810})
     assert reponse.status_code == 401
+
+
+def _inscrire_un_archer_sur(client: TestClient, tid: int, depart_id: int) -> int:
+    """Monte une catégorie + un archer et l'inscrit sur `depart_id` ; renvoie l'id d'inscription."""
+    categorie_id = client.post(
+        f"/api/v1/tournois/{tid}/categories", json={"libelle": "Senior 1 H"}
+    ).json()["id"]
+    archer_id = client.post(
+        f"/api/v1/tournois/{tid}/archers",
+        json={"nom": "Martin", "prenom": "Alice", "categorie_id": categorie_id},
+    ).json()["id"]
+    return int(
+        client.post(
+            f"/api/v1/archers/{archer_id}/inscriptions", json={"depart_id": depart_id}
+        ).json()["id"]
+    )
+
+
+def test_supprimer_depart_avec_inscriptions_409(
+    app_departs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Supprimer un créneau à inscriptions → 409 `depart_avec_inscriptions` (garde-fou E02US009)."""
+    with TestClient(app_departs) as client:
+        connecter_admin(client)
+        tid = _creer_tournoi(client)
+        depart_id = client.post(
+            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810}
+        ).json()["id"]
+        _inscrire_un_archer_sur(client, tid, depart_id)
+
+        rejet = client.delete(f"/api/v1/tournois/{tid}/departs/{depart_id}")
+        assert rejet.status_code == 409
+        assert rejet.json()["code"] == "depart_avec_inscriptions"
+        # Rien détruit : le créneau survit tant que l'admin n'a pas confirmé.
+        assert [d["id"] for d in client.get(f"/api/v1/tournois/{tid}/departs").json()] == [
+            depart_id
+        ]
+
+
+def test_supprimer_depart_avec_inscriptions_confirme_204(
+    app_departs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Avec `autoriser_suppression_inscrits=true`, l'admin confirme : 204, le créneau part."""
+    with TestClient(app_departs) as client:
+        connecter_admin(client)
+        tid = _creer_tournoi(client)
+        depart_id = client.post(
+            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810}
+        ).json()["id"]
+        _inscrire_un_archer_sur(client, tid, depart_id)
+
+        confirme = client.delete(
+            f"/api/v1/tournois/{tid}/departs/{depart_id}",
+            params={"autoriser_suppression_inscrits": True},
+        )
+        assert confirme.status_code == 204
+        assert client.get(f"/api/v1/tournois/{tid}/departs").json() == []

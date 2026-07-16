@@ -34,9 +34,15 @@ from domain.erreurs import (
     PrenomArcherInvalide,
     ScoreInvalide,
 )
+from domain.inscription import Inscription
 from domain.score import Score
 from domain.tournoi import Tournoi, TournoiId
-from tests.conftest import FauxArcherRepository, FauxCategorieRepository, FauxClubRepository
+from tests.conftest import (
+    FauxArcherRepository,
+    FauxCategorieRepository,
+    FauxClubRepository,
+    FauxInscriptionRepository,
+)
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -123,6 +129,7 @@ class Montage(NamedTuple):
     clubs: FauxClubRepository
     categories: FauxCategorieRepository
     tournois: FauxTournoiRepository
+    inscriptions: FauxInscriptionRepository
     tournoi_id: TournoiId
     categorie_id: CategorieId
 
@@ -142,17 +149,19 @@ def _monter() -> Montage:
     scores = FauxScoreRepository(archers)
     clubs = FauxClubRepository()
     categories = FauxCategorieRepository()
+    inscriptions = FauxInscriptionRepository()
     tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
     assert tournoi.id is not None
     categorie = categories.ajouter(Categorie.creer(tournoi.id, "Senior 1 H"))
     assert categorie.id is not None
     return Montage(
-        archers=ServiceArchers(tournois, archers, scores, clubs, categories),
+        archers=ServiceArchers(tournois, archers, scores, clubs, categories, inscriptions),
         classement=ServiceClassement(tournois, archers, scores),
         inscrits=archers,
         clubs=clubs,
         categories=categories,
         tournois=tournois,
+        inscriptions=inscriptions,
         tournoi_id=tournoi.id,
         categorie_id=categorie.id,
     )
@@ -733,6 +742,51 @@ def test_signalement_d_engagement_accorde_au_singulier() -> None:
         m.archers.supprimer(archer.id)
     assert "1 flèche déjà tirée" in leve.value.message
     assert "(s)" not in leve.value.message
+
+
+def test_supprimer_archer_inscrit_sur_un_depart_signale() -> None:
+    """Une inscription sur un départ suffit à rendre l'archer « engagé » (CA E02US009, glossaire).
+
+    Ni score ni placement — seulement une inscription : la suppression se signale quand même, car
+    la confirmer effacera cette inscription (et sa ligne de facturation).
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.inscriptions.ajouter(Inscription.creer(archer.id, depart_id=1))
+    with pytest.raises(ArcherEngage):
+        m.archers.supprimer(archer.id)
+    assert m.inscrits.par_id(archer.id) is not None
+
+
+def test_signalement_d_engagement_mentionne_les_inscriptions() -> None:
+    """Le message énumère les inscriptions au même titre que les flèches (CA E02US009).
+
+    Une seule inscription s'écrit « 1 inscription sur un départ » — même soin d'accord que pour les
+    flèches : le message est lu au moment de détruire des données.
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.inscriptions.ajouter(Inscription.creer(archer.id, 1))
+    m.inscriptions.ajouter(Inscription.creer(archer.id, 2))
+    with pytest.raises(ArcherEngage) as leve:
+        m.archers.supprimer(archer.id)
+    assert "2 inscriptions sur des départs" in leve.value.message
+
+
+def test_supprimer_archer_inscrit_confirme_efface_l_archer() -> None:
+    """`autoriser_suppression_engage=True` : l'admin confirme, l'archer (et ses liens) partent.
+
+    La purge des inscriptions elle-même est un contrat d'adapter (prouvé au niveau du repository) ;
+    ici on vérifie que la confirmation lève bien le signalement et retire l'archer.
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.inscriptions.ajouter(Inscription.creer(archer.id, 1))
+    m.archers.supprimer(archer.id, autoriser_suppression_engage=True)
+    assert m.inscrits.par_id(archer.id) is None
 
 
 def test_supprimer_archer_engage_confirme_efface_l_archer_et_ses_scores() -> None:

@@ -28,6 +28,7 @@ from api.v1.competition import router as competition_router
 from api.v1.departs import router as departs_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
+from api.v1.inscriptions import router as inscriptions_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
 from application.auth import ServiceAuth
@@ -39,6 +40,7 @@ from application.clubs import ServiceClubs
 from application.departs import ServiceDeparts
 from application.gabarits import ServiceGabarits
 from application.grain_validation import ServiceGrainValidation
+from application.inscriptions import ServiceInscriptions
 from application.tournois import ServiceTournois
 from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
 from infrastructure.db import (
@@ -49,6 +51,7 @@ from infrastructure.db import (
     Database,
     DepartRepositorySQL,
     GabaritSalleRepositorySQL,
+    InscriptionRepositorySQL,
     PhaseRepositorySQL,
     ScoreRepositorySQL,
     TournoiRepositorySQL,
@@ -127,11 +130,14 @@ def create_app(
     archer_repository = ArcherRepositorySQL(database.session_factory)
     score_repository = ScoreRepositorySQL(database.session_factory)
     depart_repository = DepartRepositorySQL(database.session_factory)
+    inscription_repository = InscriptionRepositorySQL(database.session_factory)
     app.state.service_tournois = ServiceTournois(tournoi_repository)
     # Départs (créneaux) d'un tournoi (E02US004, ADR-0017) : le service vérifie l'existence du
-    # tournoi (dépend du port tournoi) et attribue le numéro du créneau. Le lien archer↔départ
-    # (inscription) est E02US009.
-    app.state.service_departs = ServiceDeparts(depart_repository, tournoi_repository)
+    # tournoi (dépend du port tournoi) et attribue le numéro du créneau. Il dépend aussi du port
+    # inscription pour le garde-fou « supprimer un départ qui porte des inscriptions » (E02US009).
+    app.state.service_departs = ServiceDeparts(
+        depart_repository, tournoi_repository, inscription_repository
+    )
     # Catégories ↔ blasons se référencent mutuellement (E01US006) : la catégorie valide son
     # blason par défaut, le blason refuse sa suppression s'il est référencé. Chaque service ne
     # dépend que des **ports** repository (pas de l'autre service).
@@ -163,15 +169,23 @@ def create_app(
     # Inscription d'un archer (E02US002) : le service valide le tournoi, sa **catégorie** (qui doit
     # être du même tournoi) et son club de rattachement s'il est fourni — d'où quatre ports pour un
     # seul agrégat. Le club reste facultatif (`NULL` = inconnu, ADR-0014), la catégorie non.
+    # Le port inscription est injecté pour l'« engagé » élargi (E02US009) : un archer inscrit sur au
+    # moins un départ est engagé, sa suppression se signale et efface ses inscriptions.
     app.state.service_archers = ServiceArchers(
         tournoi_repository,
         archer_repository,
         score_repository,
         club_repository,
         categorie_repository,
+        inscription_repository,
     )
     app.state.service_classement = ServiceClassement(
         tournoi_repository, archer_repository, score_repository
+    )
+    # Inscriptions archer↔départ (E02US009, ADR-0017) : inscrire sur des créneaux du tournoi de
+    # l'archer (même tournoi, unicité), marquer payé, désinscrire ; le montant dû dérive du tarif.
+    app.state.service_inscriptions = ServiceInscriptions(
+        inscription_repository, archer_repository, depart_repository
     )
 
     # --- Accès administrateur (E10US002) : identifiants dans un fichier `.env` local + jetons
@@ -190,6 +204,7 @@ def create_app(
     app.include_router(auth_router)
     app.include_router(tournois_router)
     app.include_router(departs_router)
+    app.include_router(inscriptions_router)
     app.include_router(categories_router)
     app.include_router(blasons_router)
     app.include_router(clubs_router)
