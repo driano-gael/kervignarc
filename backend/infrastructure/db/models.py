@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.db.base import Base
@@ -45,6 +45,12 @@ class DepartORM(Base):
     """
 
     __tablename__ = "depart"
+    # Numéro **unique par tournoi** (le service attribue max+1). Déclaré ici, dans le
+    # `Base.metadata` cible de l'autogénération Alembic, et **nommé** comme dans la migration
+    # `0016` : sans cette ligne, un futur `alembic revision --autogenerate` émettrait un
+    # `drop_constraint` fantôme et retirerait le garde-fou en silence. Même convention que
+    # `ClubORM.nom` (`unique=True`).
+    __table_args__ = (UniqueConstraint("tournoi_id", "numero", name="uq_depart_tournoi_numero"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter

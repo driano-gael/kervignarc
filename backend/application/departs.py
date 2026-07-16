@@ -6,9 +6,11 @@ assurée en amont, côté API) ; il reste synchrone et pur d'infrastructure.
 
 Il arbitre l'**existence** — du tournoi (`TournoiIntrouvable`) et du départ dans ce tournoi
 (`DepartIntrouvable`) — et **attribue le numéro** d'un nouveau créneau : le domaine ne voit qu'un
-départ à la fois, il ne peut donc pas savoir quel numéro est libre. Le numéro est le plus grand
-existant + 1 (1 pour le premier) ; une suppression laisse un trou, jamais réattribué — un numéro est
-un repère stable, pas un rang recalculé.
+départ à la fois, il ne peut donc pas savoir quel numéro est libre. Le numéro est toujours **le plus
+grand existant + 1** (1 pour le premier) — jamais un rang recalculé. Supprimer un créneau
+**intermédiaire** laisse donc un trou définitif ; supprimer **le dernier** (le plus grand numéro)
+libère son numéro, que la création suivante reprendra (le max a baissé). Les inscriptions et le
+placement référencent l'`id` technique, pas le `numero`, donc cette réutilisation est sans effet.
 
 Le lien archer↔départ (inscription) et le suivi `payé` sont E02US009 : ce service ne gère que la
 **définition** des créneaux.

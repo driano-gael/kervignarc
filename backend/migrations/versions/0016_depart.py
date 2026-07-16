@@ -47,6 +47,7 @@ def upgrade() -> None:
         sa.Column("horaire", sa.String(), nullable=True),
         sa.Column("tarif_centimes", sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
+        # DETTE-001 (docs/dette.md) : FK sans ON DELETE — enfant de la descendance de `tournoi`.
         sa.ForeignKeyConstraint(["tournoi_id"], ["tournoi.id"], name="fk_depart_tournoi_id"),
         sa.UniqueConstraint("tournoi_id", "numero", name="uq_depart_tournoi_numero"),
     )

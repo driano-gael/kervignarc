@@ -118,10 +118,11 @@ def test_creer_propage_l_erreur_de_tarif() -> None:
     assert service.lister(tournoi_id) == []
 
 
-def test_le_numero_n_est_pas_reutilise_apres_suppression() -> None:
-    """Supprimer un créneau laisse un trou : le suivant prend max + 1, jamais le numéro libéré.
+def test_supprimer_un_creneau_intermediaire_laisse_un_trou_definitif() -> None:
+    """Supprimer un créneau **du milieu** laisse un trou : le suivant prend max + 1, pas le trou.
 
-    Un numéro est un repère stable (il pourra servir au placement, EPIC-03), pas un rang recalculé.
+    Le numéro est toujours max + 1 (pas un rang recalculé) : le n° 2 supprimé n'est pas réattribué,
+    le suivant prend 4.
     """
     service, tournoi_id = _service_avec_tournoi()
     service.creer(tournoi_id, 810)  # n° 1
@@ -132,6 +133,22 @@ def test_le_numero_n_est_pas_reutilise_apres_suppression() -> None:
 
     assert service.creer(tournoi_id, 810).numero == 4
     assert [d.numero for d in service.lister(tournoi_id)] == [1, 3, 4]
+
+
+def test_supprimer_le_dernier_creneau_libere_son_numero() -> None:
+    """Supprimer **le dernier** créneau (plus grand n°) libère son numéro : max + 1 le reprend.
+
+    Conséquence assumée de « toujours max + 1 » (pas un rang recalculé). Sans effet : inscriptions
+    et placement référencent l'`id` technique, pas le `numero`.
+    """
+    service, tournoi_id = _service_avec_tournoi()
+    service.creer(tournoi_id, 810)  # n° 1
+    dernier = service.creer(tournoi_id, 810)  # n° 2
+    assert dernier.id is not None
+    service.supprimer(tournoi_id, dernier.id)
+
+    assert service.creer(tournoi_id, 810).numero == 2
+    assert [d.numero for d in service.lister(tournoi_id)] == [1, 2]
 
 
 def test_lister_trie_par_numero_et_isole_le_tournoi() -> None:
