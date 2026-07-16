@@ -22,7 +22,11 @@ import {
   terminerTournoi,
 } from './api'
 
-const cleClassement = (tournoiId: number) => ['classement', tournoiId] as const
+// Exportée : la feature `archers` (E02US003) invalide le classement après une édition ou une
+// désinscription — un archer corrigé ou retiré doit quitter le tableau sans attendre. La clé se
+// déclare **une fois**, ici, où vit la requête ; deux littéraux `['classement', id]` finiraient
+// par diverger et l'invalidation raterait sa cible en silence.
+export const cleClassement = (tournoiId: number) => ['classement', tournoiId] as const
 const CLE_TOURNOIS = ['tournois'] as const
 
 export function useClassement(tournoiId: number) {

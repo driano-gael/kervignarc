@@ -66,6 +66,48 @@ class HomonymeArcher(ApplicationError):
     code = "homonyme_archer"
 
 
+class ChangementCategorieArcherEngage(ApplicationError):
+    """Édition suspendue : on change la catégorie d'un archer qui a déjà tiré (E02US003) → 409.
+
+    **Un signalement, pas un refus** — même protocole qu'`HomonymeArcher` (ADR-0015), et pour la
+    même raison : la machine constate un fait troublant, elle ne sait pas ce qu'il signifie. Changer
+    de catégorie en cours d'épreuve déplace l'archer d'un classement à l'autre avec ses flèches
+    déjà tirées ; c'est le plus souvent une erreur, mais c'est parfois exactement la correction
+    attendue (catégorie mal saisie au guichet, découverte à la première volée). Figer la catégorie
+    à la première flèche rendrait cette erreur-là inrattrapable ; l'admin tranche via
+    `ServiceArchers.modifier(autoriser_changement_categorie=True)`.
+
+    Ne se déclenche que sur un **changement** de catégorie : éditer le nom d'un archer engagé ne
+    fausse aucun classement et n'a rien à confirmer.
+    """
+
+    code = "changement_categorie_archer_engage"
+
+
+class ArcherEngage(ApplicationError):
+    """Suppression suspendue : l'archer est placé ou a déjà tiré (E02US003) → 409.
+
+    **Un signalement, pas un refus** — 3ᵉ de la famille, même protocole qu'`HomonymeArcher`
+    (ADR-0015) : la machine constate un fait lourd, elle ne sait pas ce qu'il signifie. L'admin
+    tranche via `ServiceArchers.supprimer(autoriser_suppression_engage=True)`, et la suppression
+    confirmée **efface les scores et le placement** — définitivement, sans journal (l'audit est
+    E10US005).
+
+    **Ce signalement n'est pas la façon d'enregistrer un abandon.** Un archer qui arrête en cours
+    d'épreuve n'est pas une donnée à effacer : c'est un **forfait tracé** (daté, attribué, motif,
+    réversible, audité) — E12US004, qui **préserve** ses flèches. La suppression, elle, ne sert
+    que l'**erreur de saisie** (cet archer n'aurait jamais dû être inscrit) et le **cas majeur**.
+    D'où le message, qui dit ce qui sera détruit plutôt que d'inviter à cliquer.
+
+    **Refus définitif d'abord retenu, renversé le 16/07/2026** (arbitrage métier). Il tenait la
+    place du forfait sans en être un : l'archer devenait indéboulonnable à vie et le message
+    prescrivait un geste — « retirez-le de son placement » — qu'aucun écran n'offrait. Le vrai
+    besoin était de **séparer** forfait et suppression, pas de refuser la seconde.
+    """
+
+    code = "archer_engage"
+
+
 class ClubIntrouvable(ApplicationError):
     """Aucun club ne correspond à l'identifiant demandé."""
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -295,7 +295,7 @@ class TournoiRepositorySQL:
 
 
 class ArcherRepositorySQL:
-    """Adapter SQLite du port `ArcherRepository` (E00US011)."""
+    """Adapter SQLite du port `ArcherRepository` (E00US011, E02US003)."""
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
@@ -350,7 +350,7 @@ class ArcherRepositorySQL:
             raise InfrastructureError("Échec de lecture des archers du club.") from exc
 
     def enregistrer(self, archer: Archer) -> Archer:
-        """Met à jour un archer déjà persisté (ex. placement) et le renvoie.
+        """Met à jour un archer déjà persisté (placement E00US011, édition E02US003).
 
         **Contrat** : l'appelant (le service applicatif) garantit l'existence de l'archer
         (vérifiée en amont). La ligne absente est donc une **incohérence technique**, non
@@ -361,10 +361,11 @@ class ArcherRepositorySQL:
                 ligne = session.get(ArcherORM, archer.id)
                 if ligne is None:
                     raise InfrastructureError("Archer à mettre à jour introuvable en base.")
-                # Tous les champs mutables sont recopiés, y compris ceux qu'aucun cas d'usage
-                # actuel ne modifie (`prenom`, `categorie_id` — seul le placement passe ici) :
-                # un `enregistrer` partiel perdrait en silence l'édition d'E02US003, et c'est le
-                # genre d'oubli qui ne se voit qu'en base, longtemps après.
+                # Tous les champs mutables sont recopiés, et ils ont désormais **deux** appelants
+                # aux besoins disjoints : `nom`/`prenom`/`categorie_id`/`club_id` sont ceux de
+                # l'édition (E02US003), `cible` celui du placement (E00US011). Un `enregistrer`
+                # partiel perdrait donc l'un ou l'autre en silence — le genre d'oubli qui ne se
+                # voit qu'en base, longtemps après.
                 ligne.nom = archer.nom
                 ligne.prenom = archer.prenom
                 ligne.categorie_id = archer.categorie_id
@@ -374,6 +375,31 @@ class ArcherRepositorySQL:
                 return _vers_archer(ligne)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour de l'archer.") from exc
+
+    def supprimer(self, archer_id: ArcherId) -> None:
+        """Supprime l'archer d'identifiant donné **et ses scores** (E02US003).
+
+        **Contrat** (même que `enregistrer`) : l'existence est garantie par le service ; une ligne
+        absente est une incohérence technique, pas un 404. Le service a par ailleurs déjà obtenu
+        la confirmation de l'admin si l'archer était placé ou engagé (`ArcherEngage`) : ici, la
+        destruction est voulue.
+
+        **Une seule transaction** pour les deux `DELETE`, dans cet ordre : `score.archer_id` est
+        une FK **sans `ON DELETE`** (DETTE-001), donc supprimer l'archer d'abord échouerait. Deux
+        transactions successives laisseraient, si la seconde échouait, un archer dépouillé de ses
+        flèches — un état que personne n'a demandé. C'est la **cascade applicative maîtrisée** qui
+        manque au reste de la descendance de `tournoi` (cf. DETTE-001) : ici, elle existe.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(ArcherORM, archer_id)
+                if ligne is None:
+                    raise InfrastructureError("Archer à supprimer introuvable en base.")
+                session.execute(delete(ScoreORM).where(ScoreORM.archer_id == archer_id))
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression de l'archer.") from exc
 
 
 class ClubRepositorySQL:
@@ -736,7 +762,7 @@ class GabaritSalleRepositorySQL:
 
 
 class ScoreRepositorySQL:
-    """Adapter SQLite du port `ScoreRepository` (E00US011)."""
+    """Adapter SQLite du port `ScoreRepository` (E00US011, E02US003)."""
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
@@ -767,6 +793,20 @@ class ScoreRepositorySQL:
                 ]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des scores du tournoi.") from exc
+
+    def par_archer(self, archer_id: ArcherId) -> list[Score]:
+        """Renvoie les scores d'un archer (liste éventuellement vide) — E02US003."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(ScoreORM).where(ScoreORM.archer_id == archer_id)
+                ).scalars()
+                return [
+                    Score(archer_id=ligne.archer_id, points=ligne.points, id=ligne.id)
+                    for ligne in lignes
+                ]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des scores de l'archer.") from exc
 
 
 class PhaseRepositorySQL:

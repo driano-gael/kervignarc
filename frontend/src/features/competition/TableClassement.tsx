@@ -3,9 +3,11 @@
 // connecté** (E10US001) ; en consultation publique, le tableau est purement en lecture. Il se
 // rafraîchit tout seul à chaque écriture (invalidation via le flux temps réel).
 //
-// C'est aussi, faute d'écran d'administration des archers (E02US003), **la seule surface où un
-// archer inscrit apparaît** — donc le seul endroit où signaler un club encore inconnu (E02US002,
-// ADR-0014). L'archer s'inscrit sans son club, mais l'oubli ne doit pas devenir invisible.
+// Le club encore inconnu y est signalé (E02US002, ADR-0014) : l'archer s'inscrit sans son club,
+// mais l'oubli ne doit pas devenir invisible. Depuis E02US003, l'écran d'administration des
+// archers porte le **même** signal (`table__anomalie`) et, lui, permet de le corriger. Le garder
+// ici n'est pas un doublon : le classement est la surface que l'on regarde toute la journée, et
+// c'est là que l'anomalie se remarque — l'écran d'admin est celui où l'on va la réparer.
 
 import { useState } from 'react'
 import type { LigneClassement } from './api'

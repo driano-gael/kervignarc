@@ -35,17 +35,22 @@ def cle_nom(nom: str) -> str:
     est de ne pas ressaisir ne doit pas offrir deux entrées pour un même club — or saisir un nom
     sans ses accents est le doublon le plus probable sur une tablette.
 
-    Sert à **trois** usages, qui doivent rester cohérents : refuser un homonyme de club
+    Sert à **quatre** usages, qui doivent rester cohérents : refuser un homonyme de club
     (`ClubRepository.par_nom`), **classer** le référentiel à l'écran (`ServiceClubs.lister`) — sans
-    le repli des accents, un tri par code point renverrait « Élan » après « Zénith » — et, depuis
-    E02US002, replier **nom et prénom d'archer** (`domain.archer.cle_identite`).
+    le repli des accents, un tri par code point renverrait « Élan » après « Zénith » — puis, depuis
+    E02US002, replier **nom et prénom d'archer** (`domain.archer.cle_identite`) et, depuis E02US003,
+    **classer les archers** d'un tournoi (`ServiceArchers.lister`, même raison que pour les clubs).
 
-    Ce 3ᵉ usage est le **premier hors du concept « club »**, et il est délibéré : deux règles de
-    repli qui divergeraient accepteraient un doublon ici et le refuseraient là. Il ne justifie pas
-    encore d'extraire la fonction dans un module de texte générique — l'indirection ferait perdre le
-    lien « ce repli est une notion métier du référentiel », et `archer.py` importe déjà `ClubId`
-    d'ici (aucune dépendance nouvelle). **Si un 2ᵉ usage hors club apparaît**, extraire dans un
-    `domain/texte.py` en US dédiée.
+    Deux règles de repli qui divergeraient accepteraient un doublon ici et le refuseraient là : d'où
+    la réutilisation plutôt que la copie.
+
+    # DETTE-006 : les **deux** derniers usages sont hors du concept « club », soit le seuil que
+    # cette docstring s'était fixé en E02US002 pour justifier l'extraction dans un
+    # `domain/texte.py`. `cle_nom` n'est plus une notion métier du référentiel des clubs, c'est la
+    # règle de repli des noms propres du projet — voir `docs/dette.md` pour le constat et l'US de
+    # résorption. E02US003 a ajouté l'usage et constaté le déclenchement, rien de plus : un remède
+    # structurel se traite en ADR + US dédiée, jamais en douce dans l'US courante
+    # (`CLAUDE.md` § Dette).
 
     Implémentation : décomposition NFKD puis retrait des marques combinantes (l'accent devient un
     caractère distinct, qu'on jette), avant `casefold`. `casefold` seul ne suffirait pas : il

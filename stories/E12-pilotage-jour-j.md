@@ -38,8 +38,8 @@
 
 ### E12US004 — Tracer un forfait
 *En tant qu'*organisateur, *je veux* déclarer un archer absent **sans bloquer le tour**, *afin que* la compétition continue et que l'absence reste documentée.
-- **CA** : l'archer absent **n'est pas un trou dans le tableau** : c'est une **donnée** — forfait **daté**, **attribué**, motif optionnel ; **l'adversaire passe** et le tableau reste cohérent (E05US008) ; **rien n'est jamais bloqué** (`P-3`) ; **trace d'audit** (E10US005) ; réversible tant que le tournoi n'est pas terminé (`D-15`).
-- **Notes** : `D-24` · [CDC UX §8.2](../cahier-des-charges-ux.md). **Élargit E04US015** (abandon / DSQ) : même famille — *rien ne bloque, tout se documente*. **Ouverte — `Q-UX5`** : **qui déclare le forfait** (l'admin, le marqueur sur la tablette, le scoreur) ? Les CA supposent **l'admin** par défaut ; à confirmer avant réalisation.
+- **CA** : l'archer absent **n'est pas un trou dans le tableau** : c'est une **donnée** — forfait **daté**, **attribué**, motif optionnel ; **les flèches déjà tirées sont préservées** (le forfait ne les efface jamais) ; **l'adversaire passe** et le tableau reste cohérent (E05US008) ; **rien n'est jamais bloqué** (`P-3`) ; **trace d'audit** (E10US005) ; réversible tant que le tournoi n'est pas terminé (`D-15`).
+- **Notes** : `D-24` · [CDC UX §8.2](../cahier-des-charges-ux.md). **Élargit E04US015** (abandon / DSQ, qui porte le cas **qualification**) : même famille — *rien ne bloque, tout se documente*. La **préservation des flèches** est la propriété sur laquelle repose [ADR-0016](../docs/adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md) : c'est **ce qui distingue** le forfait de la **suppression** d'archer (E02US003), laquelle les détruit. Un forfait qui effacerait les résultats rendrait cet ADR faux. **Ouverte — `Q-UX5`** : **qui déclare le forfait** (l'admin, le marqueur sur la tablette, le scoreur) ? Les CA supposent **l'admin** par défaut ; à confirmer avant réalisation.
 - **Dépend de** : E04US015, E05US008 · **Jalon** : J2
 
 ### E12US005 — Afficher la complétude du tournoi

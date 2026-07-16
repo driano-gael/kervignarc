@@ -116,6 +116,7 @@ erDiagram
 | prenom | TEXT | NOT NULL |
 | club_id | INTEGER | FK → CLUB, **nullable** — `NULL` = club *inconnu*, jamais « aucun club » ([ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md)) |
 | categorie_id | INTEGER | FK → CATEGORIE, **NOT NULL** |
+| cible | INTEGER | **nullable** — placement **provisoire** du walking skeleton (E00US011) : un simple numéro, sans capacité ni contrainte de blason. Remplacé par `PLACEMENT` en EPIC-03. `NOT NULL` ⇒ archer *placé*, ce qui suspend sa suppression ([ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)) |
 
 > **`club_id` posé par E02US001** (migration `0014`) ; `prenom` et `categorie_id` par E02US002
 > (migration `0015`). Le rattachement au club est arrivé avec le **référentiel** plutôt qu'avec

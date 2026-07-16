@@ -120,6 +120,9 @@ class FauxArcherRepository:
         self._archers[archer.id] = archer
         return archer
 
+    def supprimer(self, archer_id: ArcherId) -> None:
+        del self._archers[archer_id]
+
 
 class FauxCategorieRepository:
     """Repository en mémoire conforme au port `CategorieRepository`."""

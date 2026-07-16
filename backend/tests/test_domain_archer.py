@@ -1,4 +1,4 @@
-"""Tests unitaires des agrégats Archer et Score (E00US011, E02US002) — domaine pur, sans base."""
+"""Tests unitaires des agrégats Archer et Score (E00US011, E02US002, E02US003) — sans base."""
 
 from __future__ import annotations
 
@@ -61,6 +61,61 @@ def test_placer_refuse_une_cible_non_positive(cible: int) -> None:
     """Un numéro de cible non strictement positif lève une erreur de domaine typée."""
     with pytest.raises(CibleInvalide):
         Archer(nom="Robin", prenom="Jean", tournoi_id=1, categorie_id=5, id=7).placer(cible)
+
+
+def test_modifier_remplace_les_quatre_champs_sans_muter_l_original() -> None:
+    """`modifier` renvoie une copie éditée ; l'agrégat d'origine reste inchangé (immuable)."""
+    archer = Archer(nom="Robin", prenom="Jean", tournoi_id=1, categorie_id=5, club_id=3, id=7)
+    edite = archer.modifier(nom="Robin des Bois", prenom="Jeanne", categorie_id=6, club_id=4)
+    assert edite == Archer(
+        nom="Robin des Bois", prenom="Jeanne", tournoi_id=1, categorie_id=6, club_id=4, id=7
+    )
+    assert archer.nom == "Robin"
+
+
+def test_modifier_preserve_le_tournoi_l_identifiant_et_le_placement() -> None:
+    """Corriger l'état civil d'un archer ne le déplace pas et ne le sort pas de son tournoi.
+
+    E02US003 : les champs éditables sont le nom, le prénom, la catégorie et le club — `cible`,
+    `tournoi_id` et `id` n'en sont pas et doivent traverser l'édition intacts.
+    """
+    place = Archer(nom="Robin", prenom="Jean", tournoi_id=1, categorie_id=5, cible=3, id=7)
+    edite = place.modifier(nom="Robin", prenom="Jeanne", categorie_id=5, club_id=None)
+    assert (edite.cible, edite.tournoi_id, edite.id) == (3, 1, 7)
+
+
+def test_modifier_normalise_les_espaces() -> None:
+    """Le nom et le prénom édités sont normalisés, comme à la création."""
+    archer = Archer(nom="Robin", prenom="Jean", tournoi_id=1, categorie_id=5, id=7)
+    edite = archer.modifier(nom="  Marion  ", prenom="  Lise  ", categorie_id=5, club_id=None)
+    assert (edite.nom, edite.prenom) == ("Marion", "Lise")
+
+
+@pytest.mark.parametrize("nom", ["", "   ", "\t\n"])
+def test_modifier_refuse_un_nom_vide(nom: str) -> None:
+    """L'édition rejoue les contrôles de la création : un nom vide reste refusé (E02US003)."""
+    archer = Archer(nom="Robin", prenom="Jean", tournoi_id=1, categorie_id=5, id=7)
+    with pytest.raises(NomArcherInvalide):
+        archer.modifier(nom=nom, prenom="Jean", categorie_id=5, club_id=None)
+
+
+@pytest.mark.parametrize("prenom", ["", "   ", "\t\n"])
+def test_modifier_refuse_un_prenom_vide(prenom: str) -> None:
+    """L'édition rejoue les contrôles de la création : un prénom vide reste refusé (E02US003)."""
+    archer = Archer(nom="Robin", prenom="Jean", tournoi_id=1, categorie_id=5, id=7)
+    with pytest.raises(PrenomArcherInvalide):
+        archer.modifier(nom="Robin", prenom=prenom, categorie_id=5, club_id=None)
+
+
+def test_modifier_detache_le_club() -> None:
+    """`club_id=None` **détache** le club au lieu de le laisser en place (E02US003).
+
+    L'écran d'administration propose « Club inconnu » : le choisir doit ramener l'archer à
+    l'état « club pas encore su » (ADR-0014). Si `modifier` traitait `None` comme « ne change
+    rien », ce choix serait silencieusement sans effet.
+    """
+    archer = Archer(nom="Robin", prenom="Jean", tournoi_id=1, categorie_id=5, club_id=3, id=7)
+    assert archer.modifier(nom="Robin", prenom="Jean", categorie_id=5, club_id=None).club_id is None
 
 
 def test_cle_identite_replie_la_casse_et_les_accents() -> None:

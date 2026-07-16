@@ -1,8 +1,9 @@
-"""Tests d'intégration des repositories SQL Archer et Score (E00US011, E02US001, E02US002).
+"""Tests d'intégration des repositories SQL Archer et Score (E00US011, E02US001→E02US003).
 
 Exerce les adapters sur une **vraie base** créée par les migrations (`alembic upgrade head`) :
-persistance, relecture, mise à jour (placement), jointure score→archer→tournoi, rattachement au
-club (`archer.club_id`, `par_club`) et inscription complète (`prenom`, `categorie_id`).
+persistance, relecture, mise à jour (placement, édition), suppression, jointure
+score→archer→tournoi, rattachement au club (`archer.club_id`, `par_club`) et inscription complète
+(`prenom`, `categorie_id`).
 """
 
 from __future__ import annotations
@@ -210,6 +211,160 @@ def test_supprimer_un_club_reference_est_bloque_par_la_fk(tmp_path: Path) -> Non
 
         with pytest.raises(InfrastructureError):
             clubs.supprimer(club.id)
+    finally:
+        db.engine.dispose()
+
+
+def test_enregistrer_persiste_l_edition_complete(tmp_path: Path) -> None:
+    """`enregistrer` recopie **les quatre champs éditables** d'un coup (E02US003).
+
+    Le placement (E00US011) ne faisait bouger que `cible` : une recopie partielle serait passée
+    inaperçue jusqu'ici. C'est l'édition qui l'exerce vraiment.
+    """
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        autre_categorie = CategorieRepositorySQL(db.session_factory).ajouter(
+            Categorie.creer(tournoi_id, "Senior 2 H")
+        )
+        club = ClubRepositorySQL(db.session_factory).ajouter(Club.creer("Arc Club Rennes"))
+        archers = ArcherRepositorySQL(db.session_factory)
+        cree = archers.ajouter(Archer.creer("Robain", "Jean", tournoi_id, categorie_id))
+        assert cree.id is not None and autre_categorie.id is not None
+
+        edite = archers.enregistrer(cree.modifier("Robin", "Jeanne", autre_categorie.id, club.id))
+        assert (edite.nom, edite.prenom) == ("Robin", "Jeanne")
+        assert (edite.categorie_id, edite.club_id) == (autre_categorie.id, club.id)
+        assert archers.par_id(cree.id) == edite
+    finally:
+        db.engine.dispose()
+
+
+def test_enregistrer_detache_le_club_en_base(tmp_path: Path) -> None:
+    """Repasser à « club inconnu » écrit bien `NULL` (ADR-0014) — pas un no-op silencieux."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        club = ClubRepositorySQL(db.session_factory).ajouter(Club.creer("Arc Club Rennes"))
+        archers = ArcherRepositorySQL(db.session_factory)
+        cree = archers.ajouter(Archer.creer("Robin", "Jean", tournoi_id, categorie_id, club.id))
+        assert cree.id is not None
+
+        archers.enregistrer(cree.modifier("Robin", "Jean", categorie_id, None))
+        relu = archers.par_id(cree.id)
+        assert relu is not None and relu.club_id is None
+    finally:
+        db.engine.dispose()
+
+
+def test_supprimer_archer_retire_la_ligne(tmp_path: Path) -> None:
+    """`supprimer` retire l'archer de la base (E02US003)."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+        cree = archers.ajouter(Archer.creer("Robin", "Jean", tournoi_id, categorie_id))
+        assert cree.id is not None
+
+        archers.supprimer(cree.id)
+        assert archers.par_id(cree.id) is None
+        assert archers.par_tournoi(tournoi_id) == []
+    finally:
+        db.engine.dispose()
+
+
+def test_supprimer_un_archer_absent_est_une_incoherence_technique(tmp_path: Path) -> None:
+    """L'existence est garantie par le service : une ligne absente n'est pas un 404 métier."""
+    db = _base(tmp_path)
+    try:
+        with pytest.raises(InfrastructureError):
+            ArcherRepositorySQL(db.session_factory).supprimer(999)
+    finally:
+        db.engine.dispose()
+
+
+def test_supprimer_un_archer_emporte_ses_scores(tmp_path: Path) -> None:
+    """La purge est **dans la transaction** de l'adapter (E02US003), pas laissée à la FK.
+
+    `score.archer_id` n'a pas d'`ON DELETE` (DETTE-001) : sans le `DELETE` explicite des scores,
+    ce `supprimer` échouerait en `InfrastructureError` → 500. C'est la cascade **applicative
+    maîtrisée** qui manque au reste de la descendance de `tournoi`.
+
+    **Ce test ne prouve pas l'atomicité**, que `ports.py` et l'adapter affirment (« une seule
+    transaction ; deux transactions laisseraient un archer dépouillé de ses flèches »). Elle tient
+    ici **par construction** — un seul `commit` dans un seul `with session` —, mais ce test
+    passerait à l'identique avec deux `commit()`. L'exercer demanderait d'injecter une
+    `session_factory` qui fasse échouer le second `DELETE` : un harnais dont le coût dépasse le
+    risque sur un SQLite mono-writer. Arbitrage assumé, signalé plutôt que tu.
+    """
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+        scores = ScoreRepositorySQL(db.session_factory)
+        cree = archers.ajouter(Archer.creer("Robin", "Jean", tournoi_id, categorie_id))
+        assert cree.id is not None
+        scores.ajouter(Score.creer(cree.id, 9))
+        scores.ajouter(Score.creer(cree.id, 10))
+
+        archers.supprimer(cree.id)
+        assert archers.par_id(cree.id) is None
+        assert scores.par_archer(cree.id) == []
+        assert scores.par_tournoi(tournoi_id) == []
+    finally:
+        db.engine.dispose()
+
+
+def test_supprimer_un_archer_ne_touche_pas_aux_scores_des_autres(tmp_path: Path) -> None:
+    """La purge est cloisonnée par `archer_id` — un `DELETE` trop large viderait le tournoi."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+        scores = ScoreRepositorySQL(db.session_factory)
+        partant = archers.ajouter(Archer.creer("Durand", "Bob", tournoi_id, categorie_id))
+        reste = archers.ajouter(Archer.creer("Martin", "Alice", tournoi_id, categorie_id))
+        assert partant.id is not None and reste.id is not None
+        scores.ajouter(Score.creer(partant.id, 9))
+        scores.ajouter(Score.creer(reste.id, 8))
+
+        archers.supprimer(partant.id)
+        assert [s.points for s in scores.par_archer(reste.id)] == [8]
+        assert archers.par_id(reste.id) is not None
+    finally:
+        db.engine.dispose()
+
+
+def test_par_archer_ne_renvoie_que_les_scores_de_cet_archer(tmp_path: Path) -> None:
+    """`par_archer` cloisonne par archer (E02US003) — base du « a-t-il déjà tiré ? »."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+        scores = ScoreRepositorySQL(db.session_factory)
+        alice = archers.ajouter(Archer.creer("Martin", "Alice", tournoi_id, categorie_id))
+        bob = archers.ajouter(Archer.creer("Durand", "Bob", tournoi_id, categorie_id))
+        assert alice.id is not None and bob.id is not None
+        scores.ajouter(Score.creer(alice.id, 10))
+        scores.ajouter(Score.creer(alice.id, 9))
+        scores.ajouter(Score.creer(bob.id, 8))
+
+        assert sorted(s.points for s in scores.par_archer(alice.id)) == [9, 10]
+        assert [s.points for s in scores.par_archer(bob.id)] == [8]
+    finally:
+        db.engine.dispose()
+
+
+def test_par_archer_sans_score_renvoie_vide(tmp_path: Path) -> None:
+    """Un archer qui n'a pas tiré renvoie une liste vide — donc supprimable."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        cree = ArcherRepositorySQL(db.session_factory).ajouter(
+            Archer.creer("Robin", "Jean", tournoi_id, categorie_id)
+        )
+        assert cree.id is not None
+        assert ScoreRepositorySQL(db.session_factory).par_archer(cree.id) == []
     finally:
         db.engine.dispose()
 

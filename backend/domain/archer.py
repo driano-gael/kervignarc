@@ -99,6 +99,33 @@ class Archer:
             club_id=club_id,
         )
 
+    def modifier(
+        self,
+        nom: str,
+        prenom: str,
+        categorie_id: CategorieId,
+        club_id: ClubId | None,
+    ) -> Archer:
+        """Renvoie une copie éditée (E02US003) ; mêmes contrôles de saisie que `creer`.
+
+        **Remplacement total, pas mise à jour partielle** : les quatre champs éditables sont tous
+        exigés, `club_id` compris — sans valeur par défaut, délibérément. Un `club_id: ... = None`
+        confondrait « je détache le club » et « je n'y touche pas », et c'est le premier qui est
+        demandé : l'écran d'administration propose « Club inconnu », et le choisir doit ramener
+        l'archer à l'état « club pas encore su » (ADR-0014).
+
+        `tournoi_id`, `cible` et `id` ne sont **pas** éditables et traversent la copie intacts :
+        corriger l'état civil d'un archer ne le déplace pas et ne le change pas de tournoi
+        (changer de tournoi serait une désinscription suivie d'une inscription, pas une édition).
+        """
+        return replace(
+            self,
+            nom=_texte_obligatoire(nom, NomArcherInvalide, "Le nom de l'archer"),
+            prenom=_texte_obligatoire(prenom, PrenomArcherInvalide, "Le prénom de l'archer"),
+            categorie_id=categorie_id,
+            club_id=club_id,
+        )
+
     def placer(self, cible: int) -> Archer:
         """Renvoie une copie placée sur `cible` ; lève `CibleInvalide` si `cible < 1`."""
         if cible < 1:

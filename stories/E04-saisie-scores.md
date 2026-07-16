@@ -88,7 +88,8 @@
 
 ### E04US015 — Gérer abandon / disqualification
 *En tant que* scoreur, *je veux* enregistrer un abandon/DSQ, *afin de* refléter la réalité.
-- **CA** : statut spécial sur un archer/match ; impact correct sur la progression et le classement.
+- **CA** : statut spécial sur un archer/match ; impact correct sur la progression et le classement ; **les flèches déjà tirées sont préservées** — un archer qui abandonne reste dans les résultats avec son statut, il n'en disparaît pas.
+- **Notes** : c'est l'**alternative désignée à la suppression d'archer** (E02US003) pour l'abandon en **qualification** — le seul cas exerçable avant les duels ([ADR-0016](../docs/adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md), arbitrage métier du 16/07/2026). La préservation des flèches n'est pas un détail d'implémentation : c'est **ce qui distingue** l'abandon de la suppression, laquelle les détruit. Un abandon qui effacerait les résultats rendrait ADR-0016 faux. **E12US004 élargit** cette US aux duels (forfait daté, attribué, réversible, audité). Tant que cette US n'est pas livrée, un archer qui abandonne n'a **aucun** moyen propre d'être enregistré, et la suppression est à portée de clic pour faire exactement la mauvaise chose — d'où sa priorité.
 - **Dépend de** : E04US014 · **Jalon** : J2
 
 ### E04US016 — Déclencher un barrage/shoot-off (égalité)

@@ -1,5 +1,10 @@
 """Endpoints REST de la tranche verticale (`/api/v1`) — archers, placement, scores, classement.
 
+Les routes d'administration des archers (lister, éditer, désinscrire — E02US003) sont posées ici,
+auprès des routes archer déjà existantes, plutôt que dans un `api/v1/archers.py` neuf : elles
+partagent le même DTO de réponse et le même service. Un module dédié se justifiera quand la
+tranche verticale du walking skeleton sera démantelée (placement en E03, saisie en E04).
+
 Concrétise le fil rouge E00US011 : inscrire un archer → le placer sur une cible → saisir un
 score → consulter le classement (qui se met à jour en direct côté client via WebSocket, la
 diffusion post-commit étant câblée dans la composition root).
@@ -13,7 +18,7 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
@@ -43,6 +48,33 @@ class AjouterArcherRequete(BaseModel):
     categorie_id: int
     club_id: int | None = None
     autoriser_homonyme: bool = False
+
+
+class ModifierArcherRequete(BaseModel):
+    """Corps d'édition d'un archer inscrit (E02US003) — **remplacement total**.
+
+    DTO distinct d'`AjouterArcherRequete` bien qu'il en reprenne les champs : les deux corps
+    divergent déjà (`autoriser_changement_categorie` n'a pas de sens à l'inscription) et le
+    patron du projet est un DTO par cas d'usage, même quand ils coïncident (E02US001).
+
+    Les quatre champs éditables sont **tous** attendus : c'est un PUT, pas un patch. `club_id`
+    absent ou `null` **détache** le club (retour à « club inconnu », ADR-0014), il ne signifie
+    jamais « laisse en l'état ».
+
+    Les deux drapeaux sont des **confirmations** de l'admin après un premier 409, chacun pour son
+    propre signalement : `autoriser_homonyme` (l'édition fait entrer l'archer dans l'identité d'un
+    autre inscrit) et `autoriser_changement_categorie` (elle change la catégorie d'un archer qui a
+    déjà tiré). Ils sont indépendants : si les deux faits sont vrais, le client reçoit un 409 pour
+    l'un, puis pour l'autre — deux confirmations distinctes, plutôt qu'un blanc-seing sur un motif
+    que l'admin n'aurait pas lu.
+    """
+
+    nom: str
+    prenom: str
+    categorie_id: int
+    club_id: int | None = None
+    autoriser_homonyme: bool = False
+    autoriser_changement_categorie: bool = False
 
 
 class PlacerArcherRequete(BaseModel):
@@ -170,6 +202,78 @@ async def ajouter_archer(
         )
     )
     return ArcherReponse.de_agregat(archer)
+
+
+@router.get("/tournois/{tournoi_id}/archers", response_model=list[ArcherReponse])
+async def lister_archers(tournoi_id: int, request: Request) -> list[ArcherReponse]:
+    """Renvoie les inscrits d'un tournoi, triés par nom puis prénom (lecture hors boucle).
+
+    Alimente l'écran d'administration des archers (E02US003). Lecture **ouverte**, comme le
+    classement : la liste des inscrits est affichée publiquement le jour J.
+    """
+    service: ServiceArchers = request.app.state.service_archers
+    archers = await run_in_threadpool(service.lister, tournoi_id)
+    return [ArcherReponse.de_agregat(archer) for archer in archers]
+
+
+@router.put(
+    "/archers/{archer_id}",
+    response_model=ArcherReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def modifier_archer(
+    archer_id: int, requete: ModifierArcherRequete, request: Request
+) -> ArcherReponse:
+    """Corrige un archer inscrit (**écriture**, session requise — E10US001 ; E02US003).
+
+    Renvoie `409 homonyme_archer` ou `409 changement_categorie_archer_engage` — des
+    **signalements**, que le client lève en rejouant l'appel avec le drapeau correspondant.
+    """
+    service: ServiceArchers = request.app.state.service_archers
+    write_queue: WriteQueue = request.app.state.write_queue
+    archer = await asyncio.wrap_future(
+        write_queue.submit(
+            lambda: service.modifier(
+                archer_id,
+                requete.nom,
+                requete.prenom,
+                requete.categorie_id,
+                requete.club_id,
+                requete.autoriser_homonyme,
+                requete.autoriser_changement_categorie,
+            )
+        )
+    )
+    return ArcherReponse.de_agregat(archer)
+
+
+@router.delete(
+    "/archers/{archer_id}",
+    status_code=204,
+    dependencies=[Depends(exiger_admin)],
+)
+async def supprimer_archer(
+    archer_id: int, request: Request, autoriser_suppression_engage: bool = False
+) -> Response:
+    """Désinscrit un archer (**écriture**, session requise — E10US001 ; E02US003).
+
+    Renvoie `409 archer_engage` si l'archer est placé ou a déjà tiré : un **signalement**, que le
+    client lève en rejouant l'appel avec `autoriser_suppression_engage`. La suppression confirmée
+    **efface ses scores et son placement**. Un archer qui abandonne relève du forfait (E04US015 en
+    qualification, E12US004 en duels), pas d'ici — voir ADR-0016.
+
+    Le drapeau est en **paramètre de requête** et non dans le corps, contrairement à la forme posée
+    par ADR-0015 — qui prévoit ce cas (« soit justifier d'en diverger ») : un `DELETE` n'a pas de
+    corps par convention HTTP, et certains intermédiaires le suppriment. La substance d'ADR-0015 est
+    tenue : drapeau booléen explicite, à `False` par défaut, sur une route réservée à l'admin.
+    **ADR-0016 sanctionne cette variante** — ADR-0015 est immuable, il ne pouvait pas l'accueillir.
+    """
+    service: ServiceArchers = request.app.state.service_archers
+    write_queue: WriteQueue = request.app.state.write_queue
+    await asyncio.wrap_future(
+        write_queue.submit(lambda: service.supprimer(archer_id, autoriser_suppression_engage))
+    )
+    return Response(status_code=204)
 
 
 @router.post(
