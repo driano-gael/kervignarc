@@ -90,10 +90,18 @@ class ServiceInscriptions:
         inscription », il n'existe pas.
         """
         self._archer_existant(archer_id)
-        detaillees = [
-            InscriptionDetaillee(inscription, self._depart_lie(inscription))
-            for inscription in self._inscriptions.par_archer(archer_id)
-        ]
+        detaillees = []
+        for inscription in self._inscriptions.par_archer(archer_id):
+            depart = self._departs.par_id(inscription.depart_id)
+            # Lecture **hors file d'écriture**, en sessions séparées (règle 7) : entre le
+            # `par_archer` ci-dessus et ce `par_id`, une autre tablette peut avoir confirmé la
+            # suppression du départ, qui purge ses inscriptions en cascade. L'inscription lue est
+            # alors le vestige d'un instantané périmé — on l'**ignore** (un re-fetch rendra la liste
+            # cohérente, plus courte) au lieu d'asserter : un `assert` saute sous `python -O`, et
+            # l'on déréférencerait alors `None.tarif_centimes` → 500 (fuite non typée, règle 5).
+            if depart is None:
+                continue
+            detaillees.append(InscriptionDetaillee(inscription, depart))
         return sorted(detaillees, key=lambda d: d.depart.numero)
 
     def marquer_paye(self, inscription_id: InscriptionId, paye: bool) -> InscriptionDetaillee:
@@ -134,7 +142,11 @@ class ServiceInscriptions:
         return inscription
 
     def _depart_lie(self, inscription: Inscription) -> Depart:
-        """Relit le départ d'une inscription persistée — il existe forcément (FK garantie)."""
+        """Relit le départ d'une inscription qu'on vient de créer/modifier dans la **même**
+        exécution de la file d'écriture (`inscrire`, `marquer_paye`) : sérialisé contre la
+        suppression de départ, le départ existe forcément. L'`assert` est donc légitime ici — à la
+        différence de `lister_par_archer`, qui lit hors file et tolère le `None`.
+        """
         depart = self._departs.par_id(inscription.depart_id)
         assert depart is not None, "Une inscription pointe toujours vers un départ existant."
         return depart

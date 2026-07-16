@@ -163,6 +163,29 @@ def test_lister_par_archer_inconnu_leve() -> None:
         service.lister_par_archer(404)
 
 
+def test_lister_par_archer_ignore_une_inscription_dont_le_depart_a_disparu() -> None:
+    """Un départ purgé en cascade **pendant** la lecture ne provoque pas de 500 (revue E02US009).
+
+    `lister_par_archer` lit hors file d'écriture, en sessions séparées : entre le relevé des
+    inscriptions et la relecture d'un départ, une autre tablette peut confirmer la suppression du
+    créneau (qui purge ses inscriptions). L'inscription relue est alors un vestige d'un instantané
+    périmé — le service l'**ignore** au lieu d'asserter (sinon 500, et déréférencement de `None`
+    sous `python -O`). On simule la course en supprimant le départ dans son magasin tout en
+    laissant l'inscription orpheline (le faux magasin d'inscriptions ne cascade pas, à dessein).
+    """
+    service, archers, departs, inscriptions = _monter()
+    archer_id = _archer(archers)
+    present = _depart(departs, numero=1)
+    disparu = _depart(departs, numero=2)
+    service.inscrire(archer_id, present)
+    service.inscrire(archer_id, disparu)
+
+    departs.supprimer(disparu)  # course : le départ part, l'inscription reste orpheline
+
+    lignes = service.lister_par_archer(archer_id)
+    assert [d.depart.numero for d in lignes] == [1]  # l'orpheline est filtrée, pas de levée
+
+
 def test_montant_du_suit_le_tarif_du_depart_sans_etre_stocke() -> None:
     """Le montant se **dérive** : changer le tarif du départ change le montant lu (CA E02US009).
 

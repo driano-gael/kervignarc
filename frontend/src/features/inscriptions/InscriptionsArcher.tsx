@@ -42,14 +42,20 @@ export function InscriptionsArcher({
           ))}
         </ul>
       )}
-      <FormulaireInscription
-        archerId={archerId}
-        disponibles={disponibles.map((depart) => ({
-          id: depart.id,
-          libelle: libelleDepart(depart.numero, depart.horaire, depart.tarif_centimes),
-        }))}
-        aucunDepart={departs.isSuccess && departs.data.length === 0}
-      />
+      {departs.isError && <MessageErreur erreur={departs.error} />}
+      {/* Le formulaire ne s'affiche qu'une fois les départs **chargés** : sans ce garde, un échec de
+          chargement (`disponibles` alors vide, mais `isSuccess` faux) tomberait sur « tous inscrits »
+          — un état faux (les créneaux n'ont pas pu être lus, ils ne sont pas « tous pris »). */}
+      {departs.isSuccess && (
+        <FormulaireInscription
+          archerId={archerId}
+          disponibles={disponibles.map((depart) => ({
+            id: depart.id,
+            libelle: libelleDepart(depart.numero, depart.horaire, depart.tarif_centimes),
+          }))}
+          aucunDepart={departs.data.length === 0}
+        />
+      )}
     </div>
   )
 }

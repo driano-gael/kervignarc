@@ -280,9 +280,11 @@ def test_signalement_depart_accorde_au_singulier() -> None:
     with pytest.raises(DepartAvecInscriptions) as leve:
         m.service.supprimer(m.tournoi_id, depart.id)
     assert "1 inscription" in leve.value.message
-    # Le décompte n'ajoute pas de « dont N déjà payée » — aucune n'est payée. (La phrase fixe
-    # « sommes déjà payées seront à rembourser » contient « payées » : d'où la cible sur « dont ».)
+    # Aucune payée : ni décompte « dont N déjà payée », ni clause de remboursement — cette dernière
+    # ne s'affiche que si au moins une inscription était réglée (sinon elle évoquerait un
+    # remboursement fictif, corrigé en revue E02US009).
     assert "dont" not in leve.value.message
+    assert "rembourser" not in leve.value.message
 
 
 def test_supprimer_depart_avec_inscriptions_confirme_efface() -> None:

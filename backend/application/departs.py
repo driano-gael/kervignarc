@@ -128,11 +128,15 @@ class ServiceDeparts:
         detail = f"{nombre} {accord}"
         if payees:
             detail += f", dont {payees} déjà payée" + ("s" if payees > 1 else "")
-        raise DepartAvecInscriptions(
-            f"Le départ n° {depart.numero} porte {detail}. Le supprimer les effacera "
-            "définitivement ; les sommes déjà payées seront à rembourser (E08US005). "
-            "Confirmez seulement si ce créneau est bien annulé."
+        message = (
+            f"Le départ n° {depart.numero} porte {detail}. Le supprimer les effacera définitivement"
         )
+        # La clause de remboursement ne s'affiche **que** s'il y a des payées : sinon elle
+        # évoquerait un remboursement fictif (créneau gratuit ou aucune inscription réglée).
+        if payees:
+            message += " ; les sommes déjà payées seront à rembourser (E08US005)"
+        message += ". Confirmez seulement si ce créneau est bien annulé."
+        raise DepartAvecInscriptions(message)
 
     def _verifier_tournoi(self, tournoi_id: TournoiId) -> None:
         """Lève `TournoiIntrouvable` si le tournoi n'existe pas."""

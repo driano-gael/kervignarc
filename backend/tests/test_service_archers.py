@@ -775,6 +775,23 @@ def test_signalement_d_engagement_mentionne_les_inscriptions() -> None:
     assert "2 inscriptions sur des départs" in leve.value.message
 
 
+def test_signalement_d_engagement_inscription_accorde_au_singulier() -> None:
+    """Une seule inscription s'écrit « 1 inscription sur un départ » (CA E02US009).
+
+    **Non-régression de lisibilité**, symétrique de l'accord des flèches : le message est lu par un
+    bénévole au moment de détruire des données, il doit se lire, pas se décoder. Le pluriel est
+    couvert au-dessus ; on fige ici le singulier (« un départ », pas « des départs »).
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.inscriptions.ajouter(Inscription.creer(archer.id, 1))
+    with pytest.raises(ArcherEngage) as leve:
+        m.archers.supprimer(archer.id)
+    assert "1 inscription sur un départ" in leve.value.message
+    assert "inscriptions sur des départs" not in leve.value.message
+
+
 def test_supprimer_archer_inscrit_confirme_efface_l_archer() -> None:
     """`autoriser_suppression_engage=True` : l'admin confirme, l'archer (et ses liens) partent.
 
