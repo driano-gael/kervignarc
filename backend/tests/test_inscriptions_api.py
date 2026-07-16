@@ -180,3 +180,44 @@ def test_ecriture_sans_session_admin_401(app_inscriptions: FastAPI) -> None:
     with TestClient(app_inscriptions) as client:
         rejet = client.post("/api/v1/archers/1/inscriptions", json={"depart_id": 1})
     assert rejet.status_code == 401
+
+
+def test_montant_du_somme_les_tarifs_des_creneaux(
+    app_inscriptions: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """GET /montant-du renvoie la **somme** des tarifs des créneaux inscrits (E08US001)."""
+    with TestClient(app_inscriptions) as client:
+        connecter_admin(client)
+        tid, archer_id, depart_id = _preparer(client)  # 1er départ : tarif 810
+        client.post(f"/api/v1/archers/{archer_id}/inscriptions", json={"depart_id": depart_id})
+        autre = client.post(
+            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 1000}
+        ).json()["id"]
+        client.post(f"/api/v1/archers/{archer_id}/inscriptions", json={"depart_id": autre})
+
+        reponse = client.get(f"/api/v1/archers/{archer_id}/montant-du")
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.json() == {"archer_id": archer_id, "montant_du_centimes": 1810}
+
+
+def test_montant_du_sans_inscription_est_zero(
+    app_inscriptions: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un archer existant sans aucune inscription doit 0."""
+    with TestClient(app_inscriptions) as client:
+        connecter_admin(client)
+        _, archer_id, _ = _preparer(client)
+        reponse = client.get(f"/api/v1/archers/{archer_id}/montant-du")
+    assert reponse.status_code == 200
+    assert reponse.json()["montant_du_centimes"] == 0
+
+
+def test_montant_du_archer_inconnu_404(
+    app_inscriptions: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le montant dû d'un archer inexistant → 404 `archer_introuvable`."""
+    with TestClient(app_inscriptions) as client:
+        connecter_admin(client)
+        reponse = client.get("/api/v1/archers/999/montant-du")
+    assert reponse.status_code == 404
+    assert reponse.json()["code"] == "archer_introuvable"

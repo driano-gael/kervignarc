@@ -104,6 +104,19 @@ class ServiceInscriptions:
             detaillees.append(InscriptionDetaillee(inscription, depart))
         return sorted(detaillees, key=lambda d: d.depart.numero)
 
+    def montant_du_par_archer(self, archer_id: ArcherId) -> int:
+        """Montant total dû par un archer = **somme des tarifs** de ses créneaux (E08US001).
+
+        Dérivé à la lecture, jamais stocké (ADR-0017) : délègue à `lister_par_archer`, donc suit
+        tout changement de tarif **ou** d'inscription, et ignore de la même façon une inscription
+        dont le départ vient d'être purgé en cascade — le total compte **exactement** les créneaux
+        que la liste montre, jamais un de plus. C'est une **somme**, pas un tarif unique multiplié
+        par le nombre de créneaux : les prix diffèrent par créneau (ADR-0017). Lève
+        `ArcherIntrouvable` si l'archer n'existe pas — un archer inconnu ne « doit » rien, il
+        n'existe pas (patron `lister_par_archer`).
+        """
+        return sum(detail.montant_du_centimes for detail in self.lister_par_archer(archer_id))
+
     def marquer_paye(self, inscription_id: InscriptionId, paye: bool) -> InscriptionDetaillee:
         """Bascule le statut de paiement d'une inscription. Lève `InscriptionIntrouvable` sinon."""
         inscription = self._inscription_existante(inscription_id)
