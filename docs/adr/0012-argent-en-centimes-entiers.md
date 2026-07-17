@@ -11,7 +11,7 @@
 E01US010 demande un **tarif par départ** paramétrable (EF-1.7). Ce tarif n'est pas une donnée
 d'affichage : il **alimente des calculs et des sommes**, déjà spécifiés —
 
-- **EF-8.1 / E08US001** : montant dû = tarif × nombre de départs ;
+- **EF-8.1 / E08US001** : montant dû = **somme des tarifs** des départs de l'archer ([ADR-0017](0017-le-depart-est-un-creneau-du-tournoi.md), tarifs possiblement différents par créneau) ;
 - **EF-2.3** : un archer peut avoir plusieurs départs ;
 - **EF-9.6 / E08US002, E09US003** : listes **club & paiement** — donc des **totaux** sur ~120 archers.
 

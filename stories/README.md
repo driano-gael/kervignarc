@@ -1,6 +1,6 @@
 # Backlog — User Stories (ordonné par montée en valeur)
 
-Découpage fin des EPICs en user stories **à destination d'un développeur** (maille : un comportement testable, ~1-3 j, INVEST).
+Découpage des EPICs en user stories **à destination d'un développeur** (maille : une **capacité** cohérente, livrable et testable d'un bloc — plus grosse qu'un comportement isolé, assez petite pour tenir dans une branche revue en une passe ; INVEST). Voir [ADR-0021](../docs/adr/0021-maille-des-us-au-grain-capacite.md).
 
 ## Conventions
 - **ID** : `ExxUSyyy` — `Exx` = code epic, `USyyy` = n° dans l'epic. L'ID rattache la story à son epic ; il **ne dicte pas l'ordre de réalisation**.
@@ -61,7 +61,7 @@ Découpage fin des EPICs en user stories **à destination d'un développeur** (m
 | 28 | E02US001 | Gérer le référentiel clubs |
 | 29 | E02US002 | Créer un archer |
 | 30 | E02US003 | Éditer / supprimer un archer |
-| 31 | E02US004 | Ajouter des départs multiples |
+| 31 | E02US004 | Configurer les départs (créneaux) |
 | 32 | E02US009 | Inscrire un archer sur des départs |
 | 33 | **E00US014** | **Outiller les tests du front** *([DETTE-005](../docs/dette.md) — avant E08US001)* |
 | 34 | E08US001 | Calculer le montant dû |
