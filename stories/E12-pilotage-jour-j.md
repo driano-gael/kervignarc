@@ -16,6 +16,19 @@
 > est calculé par **EPIC-05** (routage, seeding, byes) et affiché aux archers par **EPIC-07** (E07US008) et
 > **EPIC-04** (E04US018). **Ici on lance ; là-bas on calcule et on affiche.**
 
+> ⚠️ **Maille révisée le 17/07/2026** — E12 était déjà largement au grain « capacité » : un **seul
+> regroupement** est fait ici (8 → 7 US), celui du feu vert et du lancement (ex-`E12US002` + ex-`E12US003`),
+> **indissociables** — les deux partagent le même invariant (`D-23` : l'unité lançable est l'événement, pas
+> le tour) et le geste de lancement ne se comprend pas sans l'affichage continu qui le précède. Les **6
+> autres capacités restent séparées** : chacune porte un **arbitrage distinct**, ancré à un ADR ou une
+> entrée propre du registre `D`/`Q` (`D-06`/`D-21` pour la supervision des postes, `D-17`/`D-18` pour la
+> complétude, `D-10`/`D-19` pour la recherche, `P-4`/`D-15`/`D-16` pour l'alerte transverse,
+> [ADR-0016](../docs/adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)/`D-24`/`Q-UX5` pour le
+> forfait, [ADR-0018](../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md) pour le cycle de
+> vie d'un départ) — les fondre les enterrerait sous un intitulé générique. **Aucun comportement n'est
+> perdu** (règle 9) : chaque ancien titre reste identifiable. Correspondance ancien → nouveau en fin de
+> fichier.
+
 ---
 
 ### E12US001 — Superviser les postes de saisie
@@ -24,17 +37,12 @@
 - **Notes** : `D-06`, `D-21` · [CDC UX §7.1](../cahier-des-charges-ux.md). **Ce n'est pas un graphique de progression : c'est une console de supervision.** *Un écran figé ne se plaint pas* — sans elle, l'admin confond « lent » et « mort », et envoie quelqu'un courir pour rien. **Forme de l'alerte** : un poste hors ligne est un **aplat ambre `#FFB000`** (9,22:1 sur le fond sombre), **jamais une pastille rouge** — sur l'anthracite de la charte, le rouge ne fait que 2,55:1 et **ne signale rien** ([CDC design §3.3](../cahier-des-charges-design.md), `DV-03`). Couleur **+ icône + texte**, jamais la couleur seule.
 - **Dépend de** : E04US001, E10US002 · **Jalon** : J1
 
-### E12US002 — Feu vert : voir ce qui manque avant de lancer
-*En tant qu'*organisateur, *je veux* voir **en permanence** ce qui manque pour lancer la suite, *afin de* ne pas le découvrir en appuyant sur le bouton.
-- **CA** : l'état de préparation est **affiché en continu**, pas calculé au moment du clic ; pour chaque événement (duel) à venir : **duel source validé ?** · **cible attribuée ?** · **participants connus ?** ; ce qui bloque est **nommé** (« en attente : 1/4 n°3 non validé »), pas seulement signalé ; **l'appli n'empêche rien** — elle montre (`P-3`).
-- **Notes** : `D-23` · [CDC UX §8.2](../cahier-des-charges-ux.md). **Ouverte — `Q-UX6`** : la **liste exacte des métriques** du feu vert reste à arrêter (poste en ligne ? scoreur disponible ? conflit de placement ?). Les CA ci-dessus sont le **socle minimal** ; l'US ne sera close qu'une fois `Q-UX6` tranchée.
-- **Dépend de** : E05US008, E03US009 · **Jalon** : J2
-
-### E12US003 — Lancer un tour ou un événement
-*En tant qu'*organisateur, *je veux* lancer le tour suivant **d'un geste**, *afin que* 150 archers sachent où aller **en moins de deux minutes**.
-- **CA** : **le bouton ne calcule rien** — au moment où le dernier duel est validé, le tour suivant est **déjà prêt, affiché, contrôlé** ; **le bouton chiffre ce qu'il déclenche** (`P-4`) : pas « Tour suivant » mais « **2 duels, cibles 4 et 7, 14h20 — 118 personnes vont être prévenues** » ; **l'unité lançable est l'événement (le duel), pas le tour** — deux duels prêts et un qui attend sa source ? **on fait partir les deux** (`D-23`) ; le **lancement global** reste disponible ; à l'appui, les **4 canaux** sont servis ensemble (`D-09`) : tablettes (E04US018), téléphones (E07US008), écran de salle (E07US004), table de l'organisation (E12US006).
-- **Notes** : `D-22`, `D-23`, `D-25` · [CDC UX §8.1](../cahier-des-charges-ux.md). **La journée a un maître de cérémonie, et ce n'est pas le logiciel** : l'appli prépare, contrôle, affiche — et **attend**. L'admin appuie quand l'arbitre est prêt. **Pourquoi tout doit être prêt avant** : sinon on a remplacé 20 minutes de recopie par 20 secondes de sablier, **et le doute revient**. Le **calcul** du tour suivant est **EPIC-05**, pas cette US.
-- **Dépend de** : E12US002, E05US008, E03US009 · **Jalon** : J2
+### E12US002 — Lancer un tour (feu vert + lancement)
+*En tant qu'*organisateur, *je veux* voir **en permanence** ce qui manque pour lancer la suite puis lancer le tour suivant **d'un geste**, *afin de* ne jamais découvrir un blocage en appuyant sur le bouton et que 150 archers sachent où aller **en moins de deux minutes**.
+- **CA — feu vert (ex-002)** : l'état de préparation est **affiché en continu**, pas calculé au moment du clic ; pour chaque événement (duel) à venir : **duel source validé ?** · **cible attribuée ?** · **participants connus ?** ; ce qui bloque est **nommé** (« en attente : 1/4 n°3 non validé »), pas seulement signalé ; **l'appli n'empêche rien** — elle montre (`P-3`).
+- **CA — lancement (ex-003)** : **le bouton ne calcule rien** — au moment où le dernier duel est validé, le tour suivant est **déjà prêt, affiché, contrôlé** ; **le bouton chiffre ce qu'il déclenche** (`P-4`) : pas « Tour suivant » mais « **2 duels, cibles 4 et 7, 14h20 — 118 personnes vont être prévenues** » ; **l'unité lançable est l'événement (le duel), pas le tour** — deux duels prêts et un qui attend sa source ? **on fait partir les deux** (`D-23`) ; le **lancement global** reste disponible ; à l'appui, les **4 canaux** sont servis ensemble (`D-09`) : tablettes (E04US018), téléphones (E07US008), écran de salle (E07US004), table de l'organisation (E12US006).
+- **Notes** : `D-22`, `D-23`, `D-25` · [CDC UX §8.1](../cahier-des-charges-ux.md), [§8.2](../cahier-des-charges-ux.md). **Ouverte — `Q-UX6`** : la **liste exacte des métriques** du feu vert reste à arrêter (poste en ligne ? scoreur disponible ? conflit de placement ?). Les CA « feu vert » ci-dessus sont le **socle minimal** ; l'US ne sera close qu'une fois `Q-UX6` tranchée. **La journée a un maître de cérémonie, et ce n'est pas le logiciel** : l'appli prépare, contrôle, affiche — et **attend**. L'admin appuie quand l'arbitre est prêt. **Pourquoi tout doit être prêt avant** : sinon on a remplacé 20 minutes de recopie par 20 secondes de sablier, **et le doute revient**. Le **calcul** du tour suivant est **EPIC-05**, pas cette US.
+- **Absorbe** : ex-E12US003. **Dépend de** : E05US008, E03US009 · **Jalon** : J2
 
 ### E12US004 — Tracer un forfait
 *En tant qu'*organisateur, *je veux* déclarer un archer absent **sans bloquer le tour**, *afin que* la compétition continue et que l'absence reste documentée.
@@ -65,3 +73,18 @@
 - **CA** : un départ porte un **état** (*ouvert* · *lancé* · *clos*) ; supprimer ou modifier un créneau **lancé/clos** est **contrôlé** (au moins signalé, cf. E12US007 « alerter par calcul d'impact ») là où un créneau *ouvert* reste librement éditable ; l'état est **dérivé** d'un fait réel (heure atteinte, premier score du créneau) et non saisi à la main.
 - **Notes** : **déportée d'E02US009** ([ADR-0018](../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md)). E02US009 n'a **rien** pour distinguer un créneau lancé : `Depart` n'a pas d'état de cycle de vie, `horaire` est un libellé libre, et le lien départ → scores (placement) n'existe pas avant EPIC-03. Poser ce garde-fou plus tôt aurait été un contrôle qu'aucun chemin réel ne déclenche. Rejoint la logique d'**E12US007** (alerter selon l'impact réel, pas selon un statut saisi d'avance). **Dépend** de la modélisation du placement/déroulé.
 - **Dépend de** : E02US009, E03US008, E12US007 · **Jalon** : J2
+
+---
+
+## Correspondance ancien → nouveau
+
+| Ancienne US | Titre d'origine | Devient |
+|---|---|---|
+| E12US001 | Superviser les postes de saisie | **E12US001** (inchangée) |
+| E12US002 | Feu vert : voir ce qui manque avant de lancer | **E12US002** — CA « feu vert » |
+| E12US003 | Lancer un tour ou un événement | **E12US002** — CA « lancement » |
+| E12US004 | Tracer un forfait | **E12US004** (inchangée) |
+| E12US005 | Afficher la complétude du tournoi | **E12US005** (inchangée) |
+| E12US006 | Rechercher un archer depuis n'importe où | **E12US006** (inchangée) |
+| E12US007 | Alerter par calcul d'impact | **E12US007** (inchangée) |
+| E12US008 | Cycle de vie d'un départ (créneau) | **E12US008** (inchangée) |
