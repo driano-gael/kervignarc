@@ -31,6 +31,7 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0018](0018-supprimer-un-depart-a-inscriptions-confirmable.md) | Supprimer un départ à inscriptions : confirmable, effets monétaires déportés | Accepté |
 | [0019](0019-categorie-eligibilite-multi-tranches.md) | La catégorie porte un **ensemble** de tranches d'âge, pas une tranche unique | Accepté |
 | [0020](0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md) | Le blason porte ses **valeurs de score admises** ; vocabulaire fermé, défaut = blason simple complet | Accepté |
+| [0021](0021-maille-des-us-au-grain-capacite.md) | Maille des US au grain **capacité** (regroupement du backlog non livré ; livré gelé) | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.

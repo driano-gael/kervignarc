@@ -33,7 +33,7 @@ Le mot **« départ »** portait **deux sens** dans le dépôt, jamais réconcil
   horaire et, éventuellement, **son propre prix**. Ce sens n'apparaissait qu'**une fois** dans tout le
   dépôt (une maquette parlant de « validations / départ (30 cibles) ») et n'était **modélisé nulle
   part** — mais `PLACEMENT.depart_id` et l'affichage « cible / position / **départ** » (EF-4.7,
-  E03US008, E07US004) le préparaient déjà techniquement.
+  E03US001, E07US004) le préparaient déjà techniquement.
 
 **Arbitrage métier (16/07/2026).** L'organisateur tranche pour le **sens B** : « un départ est un
 créneau horaire sur un tournoi, comme si le tournoi pouvait se jouer plusieurs fois dans la même

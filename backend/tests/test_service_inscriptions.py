@@ -314,7 +314,7 @@ def test_montant_du_suit_les_tarifs_et_les_inscriptions_sans_etre_stocke() -> No
 def test_montant_du_compte_les_inscriptions_payees_et_non_payees() -> None:
     """Le montant **dû** est la somme de **tous** les créneaux inscrits, payé ou non (CA E08US001).
 
-    Le « reste à payer » (dû moins encaissé) est une autre US (E08US003) : ici, marquer une
+    Le « reste à payer » (dû moins encaissé) est une autre US (E08US002) : ici, marquer une
     inscription payée ne retranche rien au dû total.
     """
     service, archers, departs, _ = _monter()

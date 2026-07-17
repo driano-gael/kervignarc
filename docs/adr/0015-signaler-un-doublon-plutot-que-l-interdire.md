@@ -80,7 +80,7 @@ déjà celle du projet entier ; elle n'est pas introduite ici.
   toujours raison de l'application.
 - **−** **E02US007 (import inscript'arc) devra trancher à nouveau.** Un import écrit des archers en
   masse, sans personne pour confirmer : poser le drapeau à `true` globalement désarmerait le
-  contrôle pour tout un fichier, et c'est exactement ce que le rapport d'import (E02US008) doit
+  contrôle pour tout un fichier, et c'est exactement ce que le rapport d'import (E02US007) doit
   éviter. La réponse attendue n'est ni l'un ni l'autre — c'est de **collecter** les homonymes et de
   les présenter en fin d'import. Noté dans la story.
 - **−** **L'unicité fonctionnelle n'a aucun garde-fou hors de `ServiceArchers.ajouter`.** Un futur
