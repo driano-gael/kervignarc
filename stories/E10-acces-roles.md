@@ -2,9 +2,12 @@
 
 > EPIC : [EPIC-10](../epics/EPIC-10-acces-roles.md) · Réfs : CDC technique §9, ADR-0007, **CDC UX §5 (`D-13`)**.
 
+> ⚠️ Maille révisée le 17/07/2026 — E10US001/002 (livrées) et E10US004 (caduque) inchangées ;
+> E10US003 absorbe E10US008. Correspondance ancien → nouveau en fin de fichier.
+
 > ⚠️ **Révisé le 14/07/2026** ([`cahier-des-charges-ux.md`](../cahier-des-charges-ux.md) §5, `D-13`). Le modèle
-> à **quatre rôles** (public / archer / scoreur / admin) est remplacé par **trois modes d'identité
-> proportionnés au risque**, dont **aucun n'est un compte utilisateur** — le jour J, personne n'a le temps
+> à **quatre rôles** (public / archer / scoreur / admin) est remplacé par **trois modes d'identité**
+> proportionnés au risque, dont **aucun n'est un compte utilisateur** — le jour J, personne n'a le temps
 > d'en créer :
 >
 > | Qui | Identifié par | Peut | Ne peut pas |
@@ -32,11 +35,12 @@
 - **Notes** : auth = concern **technique** (application + infrastructure), pas d'entité domaine. Identifiants stockés dans un fichier **`.env` à la racine** (`KERVIGNARC_ADMIN_LOGIN` / `KERVIGNARC_ADMIN_PASSWORD`) — compromis de sécurité **assumé** (appli mono-club LAN) ; ce fichier est aussi la **porte de secours** en cas d'oubli (édition sur la machine serveur → redemandé au prochain accès). Comparaison en temps constant (`hmac.compare_digest`), jeton opaque (`secrets`), lecture/écriture `.env` en **stdlib** (aucune dépendance ajoutée, ADR-0009). Jeton **sans expiration** (l'expiration relève d'E10US003). `.env` **hors versionnage** (`.gitignore`).
 - **Dépend de** : E00US009 · **Jalon** : J1
 
-### E10US003 — Session scoreur par code personnel
-*En tant que* scoreur, *je veux* ouvrir une session avec **mon** code, *afin de* **valider** les scores de n'importe quelle cible en laissant une trace de qui a validé.
-- **CA** : saisie du code personnel (E10US008) → **session nominative** ; jeton persistant côté navigateur (survit à la fermeture de l'onglet) ; le scoreur **voit toutes les cibles du tournoi** et peut valider n'importe laquelle — **aucun rattachement, aucune prise en charge** (`D-12`) ; **chaque validation enregistre le nom du scoreur** (alimente E10US005) ; deux scoreurs peuvent ouvrir la même cible : le **live** la retire de la file dès qu'elle est validée (`D-12`) ; élargit l'autorisation des endpoints de **validation** au-delà de l'admin (E10US001).
-- **Notes** : ~~« session par **code de cible** », v0.1~~ → **réécrite le 14/07/2026** ([CDC UX](../cahier-des-charges-ux.md) §5 et §7.3, `D-12`/`D-13`/`D-14`) : le scoreur est **itinérant**, il n'est pas rattaché à une cible — **le code de cible sert au *poste*** (E04US001), **pas à lui**. Il **valide** ; il ne saisit pas (la saisie est le geste du marqueur sur le poste de cible, E10US007). **Rend E10US004 caduque.** Même patron de jeton que `sessionAdminStore` (E10US002) → `sessionScoreurStore`. Cf. E04US007 (validation = scoreur seul) et le **grain de validation** = politique de phase (`config.validation`, `D-11`, ADR-0011).
-- **Dépend de** : E10US008, E10US002 · **Jalon** : J1
+### E10US003 — Scoreurs du tournoi : définition & session
+*En tant qu'*organisateur, *je veux* déclarer mes scoreurs et leur remettre un code, et *en tant que* scoreur, *je veux* ouvrir une session avec **mon** code, *afin de* **valider** les scores de n'importe quelle cible en laissant une trace nominative de qui a validé.
+- **CA — session (ex-US003)** : saisie du code personnel → **session nominative** ; jeton persistant côté navigateur (survit à la fermeture de l'onglet) ; le scoreur **voit toutes les cibles du tournoi** et peut valider n'importe laquelle — **aucun rattachement, aucune prise en charge** (`D-12`) ; **chaque validation enregistre le nom du scoreur** (alimente E10US005) ; deux scoreurs peuvent ouvrir la même cible : le **live** la retire de la file dès qu'elle est validée (`D-12`) ; élargit l'autorisation des endpoints de **validation** au-delà de l'admin (E10US001).
+- **CA — gestion des scoreurs (ex-US008)** : l'admin **crée/modifie/supprime** les scoreurs d'un tournoi (nom + **code court** généré) ; **redéfinissable à tout moment**, y compris tournoi **en cours** (`D-14`, `D-15`) — un scoreur qui ne vient pas, ça arrive ; les codes sont **imprimables** (un papier par scoreur, cf. EPIC-09) ; supprimer un scoreur **invalide sa session** mais **conserve la trace** de ses validations passées (E10US005).
+- **Notes** : ~~« session par **code de cible** », v0.1~~ → **réécrite le 14/07/2026** ([CDC UX](../cahier-des-charges-ux.md) §5 et §7.3, `D-11`/`D-12`/`D-13`/`D-14`/`D-15`) : le scoreur est **itinérant**, il n'est pas rattaché à une cible — **le code de cible sert au *poste*** (E04US001), **pas à lui**. Il **valide** ; il ne saisit pas (la saisie est le geste du marqueur sur le poste de cible, E10US007). **Rend E10US004 caduque.** Même patron de jeton que `sessionAdminStore` (E10US002) → `sessionScoreurStore`. Cf. E04US007 (validation = scoreur seul) et le **grain de validation** = politique de phase (`config.validation`, `D-11`, ADR-0011). Côté définition des scoreurs : **3 à 4 scoreurs pour ~30 cibles** — **3 ou 4 codes à distribuer, pas 30** (le poste de cible, lui, est ouvert : E10US007). Module de **préparation** (« tout ce qui s'identifie se prépare à l'avance », CDC UX `P-6`), mais **accessible en permanence** (`P-3`).
+- **Absorbe** : ex-E10US003, E10US008. **Dépend de** : E10US002, E01US001 · **Jalon** : J1
 
 ### E10US004 — ~~Habiliter un scoreur sur plusieurs cibles~~ · **caduque**
 > ⛔ **Caduque depuis le 14/07/2026** (`D-12`, CDC UX §7.3). **Ne pas réaliser.** L'US supposait un scoreur
@@ -62,8 +66,22 @@
 - **Notes** : ~~« **rôle archer** : saisir ses scores », v0.1~~ → **réécrite le 14/07/2026** ([CDC UX](../cahier-des-charges-ux.md) §5, `D-13`). **Il n'y a pas de rôle archer** : il y a **un poste ouvert**. Le « mécanisme d'accès à préciser » de la v0.1 **est tranché : aucun**. Justification : aucun pouvoir n'est engagé (on saisit, **rien n'est définitif** tant que le scoreur n'a pas validé) — l'identité est donc **le lieu**, pas la personne. **30 postes ouverts plutôt que 30 codes à distribuer et à expliquer à des bénévoles.** Le **marqueur** est **déclaré et tracé à la volée** (E04US017) : *déclaratif ≠ authentifié*. Distinction clé inchangée : **saisie** (poste de cible) vs **validation** (scoreur seul).
 - **Dépend de** : E04US001, E10US001 · **Jalon** : J1
 
-### E10US008 — Définir les scoreurs du tournoi
-*En tant qu'*organisateur, *je veux* déclarer mes scoreurs et leur remettre un code, *afin qu'*ils puissent valider en laissant une trace nominative.
-- **CA** : l'admin **crée/modifie/supprime** les scoreurs d'un tournoi (nom + **code court** généré) ; **redéfinissable à tout moment**, y compris tournoi **en cours** (`D-14`, `D-15`) — un scoreur qui ne vient pas, ça arrive ; les codes sont **imprimables** (un papier par scoreur, cf. EPIC-09) ; supprimer un scoreur **invalide sa session** mais **conserve la trace** de ses validations passées (E10US005).
-- **Notes** : **3 à 4 scoreurs pour ~30 cibles** — **3 ou 4 codes à distribuer, pas 30** (le poste de cible, lui, est ouvert : E10US007). Module de **préparation** (« tout ce qui s'identifie se prépare à l'avance », CDC UX `P-6`), mais **accessible en permanence** (`P-3`). Cf. `D-13`/`D-14`.
-- **Dépend de** : E10US002, E01US001 · **Jalon** : J1
+---
+
+## Correspondance ancien → nouveau (maille révisée du 17/07/2026)
+
+| Ancienne US | Titre d'origine | Devient |
+|---|---|---|
+| E10US001 | Consultation publique ouverte | **E10US001** (inchangée, livrée) |
+| E10US002 | Accès administrateur protégé | **E10US002** (inchangée, livrée) |
+| E10US003 | Session scoreur par code personnel | **E10US003** — CA « session » |
+| E10US004 | Habiliter un scoreur sur plusieurs cibles | **E10US004** (inchangée, caduque) |
+| E10US005 | Journal d'audit métier | **E10US005** (inchangée) |
+| E10US006 | Modifier le mot de passe admin | **E10US006** (inchangée) |
+| E10US007 | Poste de cible : saisir sans s'identifier | **E10US007** (inchangée) |
+| E10US008 | Définir les scoreurs du tournoi | **E10US003** — CA « gestion des scoreurs » |
+
+**Redirections de liens entrants à appliquer** (passe globale, hors périmètre de ce fichier) :
+`stories/E09-exports.md` (E09US008, « Dépend de … E10US008 ») `E10US008`→`E10US003` ; `stories/README.md`
+(table du backlog et note d'ordre contraint « `E10US008` … précède `E10US003` ») fusionner la ligne
+`E10US008` dans la ligne `E10US003` (elle ne précède plus une US distincte, elle en fait partie).
