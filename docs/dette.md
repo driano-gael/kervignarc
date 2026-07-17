@@ -39,6 +39,7 @@
 | [DETTE-004](#dette-004--messageerreur-dupliqué-dans-chaque-feature-front) | conception | mineur | `frontend/src/features/*/` (10 occurrences) | Le composant `MessageErreur` est copié **à l'identique** dans chaque feature — même signature, même corps, mêmes classes — au lieu de vivre dans `shared/` | Tout changement du rendu d'erreur (ex. le token d'alerte **ambre** du CDC design, `DV-03`) se fait en 10 endroits, avec le risque d'en oublier un : les erreurs sont précisément ce que l'utilisateur voit quand ça va mal | E00US011 puis chaque feature (`admin`, `bareme`, `blasons`, `categories`, `competition`, `gabarits` ×2) ; **aggravée** par E01US015 (8ᵉ copie), E02US001 (9ᵉ copie) puis E02US003 (10ᵉ copie, feature `archers`) | E00US013 (factoriser les briques d'UI partagées) |
 | [DETTE-006](#dette-006--cle_nom-nest-plus-chez-elle-dans-domainclubpy) | conception | mineur | `backend/domain/club.py` (`cle_nom`), `backend/domain/archer.py`, `backend/application/archers.py`, `backend/application/clubs.py` | `cle_nom` — le repli casse/accents des noms propres — vit dans `domain/club.py`, mais sert désormais **4** usages dont **2 hors du concept « club »** : `archer.cle_identite` (E02US002) et le tri des archers (E02US003). Sa propre docstring avait posé le seuil : « si un 2ᵉ usage hors club apparaît, extraire dans un `domain/texte.py` en US dédiée » | La fonction est **juste** ; seul son domicile est faux. Un lecteur d'`archer.py` doit aller lire `club.py` pour comprendre comment se replient les noms d'archers, et le prochain usage hors club ira chercher la règle là où elle n'a plus de raison d'être | E02US002 (1ᵉʳ usage hors club) ; **seuil atteint** par E02US003 (2ᵉ) | US dédiée à créer (`refactor/…`) — déplacer dans `domain/texte.py`, 4 appelants, zéro changement de comportement |
 
+| [DETTE-008](#dette-008--une-réponse-400-renvoie-lentrée-du-client-en-écho-non-borné) | technique | mineur | `backend/api/erreurs.py` (`_sur_erreur_validation`) | Une entrée rejetée par Pydantic revient **verbatim** au client : `details = jsonable_encoder(exc.errors())` embarque le champ `input` de chaque erreur, sans borne ni sur la taille d'une valeur, ni sur le nombre d'erreurs listées | **Amplification mesurée ×42,9** (50 Ko envoyés → 2,1 Mo reçus) sur un corps à 10 000 valeurs invalides. Le serveur travaille et répond ~43× le volume reçu, sur un réseau local le jour J où ~30 tablettes partagent la bande passante | E00US009 (patron de bout en bout, forme posée) ; **constatée** le 17/07/2026 à la revue d'E01US014 (axe adversarial), qui l'a mesurée sur `zones` (×42,9) **et** sur `ages` (×41,6) — le régime est **général à tous les DTO**, aucune US ne l'a introduit en propre | US dédiée (`fix/…`) — borner `input` dans `_sur_erreur_validation` (troncature de la valeur + plafond du nombre d'erreurs listées). ⚠️ **Ne pas retirer `details`** : le format `{code, message, details?}` est la règle 5, et [DETTE-007](#dette-007--la-confirmation-dune-suppression-darcher-est-aveugle) prévoit précisément de s'en servir |
 | [DETTE-007](#dette-007--la-confirmation-dune-suppression-darcher-est-aveugle) | conception | majeur | `backend/application/archers.py` (`ServiceArchers.supprimer`), `backend/application/departs.py` (`ServiceDeparts.supprimer`), `backend/api/v1/competition.py`, `backend/api/v1/departs.py`, `frontend/src/features/archers/api.ts`, `frontend/src/features/departs/api.ts` | La confirmation d'une suppression **destructrice-confirmable** ne **rappelle pas** au serveur le décompte que le signalement avait annoncé : `autoriser_suppression_engage=true` (archer engagé, `ArcherEngage`) **et** `autoriser_suppression_inscrits=true` (départ à inscriptions, `DepartAvecInscriptions`, E02US009) court-circuitent entièrement le constat, sans le revérifier | Entre le 409 et le rejeu, d'autres tablettes saisissent ou inscrivent (30 le jour J). Confirmer une suppression annoncée à « 1 flèche » (ou « 0 payée ») peut en détruire sept (ou effacer une inscription payée entre-temps) — **sans retour possible**. Or [ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)/[ADR-0018](adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md) font reposer la sûreté de ces cas sur ce message : « le message énumère ce qui sera détruit » plutôt que « confirmez pour supprimer ». Un message dont rien ne garantit la fraîcheur ne tient pas cette promesse | E02US003 (le chemin destructeur naît avec l'US ; la clause « le drapeau est cru sur parole » vient d'ADR-0015, raisonnée pour un protocole de **création** et reprise sans être rouverte pour une **destruction**) ; **aggravée par E02US009** (2ᵉ chemin destructeur-confirmable, `DepartAvecInscriptions`) | US dédiée — confirmation **contractuelle** : le client renvoie le décompte annoncé, le service re-signale s'il a changé. Exige de faire transiter le décompte par le champ `details` de la réponse d'erreur (`{code, message, details?}`, règle 5) — **jamais peuplé à ce jour** : c'est cette plomberie, sur `ApplicationError`, qui fait le coût |
 
 ## Dette résorbée
@@ -400,6 +401,52 @@ porte `{fleches, cible}`, `DepartAvecInscriptions` porte `{inscriptions, payees}
 le projet** : le format `{code, message, details?}` est une règle non négociable dont la moitié n'a
 jamais servi. Marqueurs `DETTE-007` posés sur `ServiceArchers.supprimer`, `ServiceDeparts.supprimer`,
 `frontend/src/features/archers/api.ts` et `frontend/src/features/departs/api.ts`.
+
+### DETTE-008 — une réponse 400 renvoie l'entrée du client en écho non borné
+
+**Constat.** `_sur_erreur_validation` (`backend/api/erreurs.py`) traduit un rejet Pydantic en
+`400 {code, message, details}`, où `details = jsonable_encoder(exc.errors())`. Chaque entrée de
+`exc.errors()` porte un champ **`input`** : la valeur fautive, **telle que le client l'a envoyée**.
+Rien ne borne ni la taille d'une valeur, ni le nombre d'erreurs listées.
+
+**Mesuré** le 17/07/2026 (exécution sur `TestClient`, app câblée sur base migrée) :
+
+| Requête | Envoyé | Reçu | Amplification |
+|---|---|---|---|
+| `POST /blasons` — `zones: ["a"] × 10 000` | 50 053 o | 2 148 960 o | **×42,9** |
+| `POST /categories` — `ages: ["a"] × 10 000` | 50 026 o | 2 078 960 o | **×41,6** |
+| idem, **sans authentification** | — | **79 o** | — (401, aucun écho) |
+
+**Conséquence.** Le serveur sérialise et renvoie ~43× le volume qu'il reçoit. Le jour J, ~30
+tablettes partagent un réseau local sans internet : un corps malformé de quelques dizaines de Ko
+suffit à produire plusieurs Mo de réponse, sur le processus qui porte aussi la file d'écriture.
+C'est un coût de robustesse, pas un vecteur d'attaque.
+
+**Pourquoi ce n'est pas un point de sécurité.** Le vecteur anonyme n'existe pas : `exiger_admin`
+s'exécute **avant** la validation de corps — vérifié, une requête non authentifiée reçoit **401 en
+79 octets, sans écho**. Il faut donc déjà être administrateur pour déclencher l'amplification, et un
+administrateur dispose de moyens plus directs. Aucune donnée interne ne fuit non plus : `input` est
+ce que l'appelant a lui-même envoyé.
+
+**Pourquoi non corrigée dans l'US où elle a été constatée.** E01US014 (blason : valeurs de score
+admises) l'a fait apparaître en fermant le vocabulaire des `zones` au DTO — mais elle ne l'a pas
+**introduite** : la mesure sur `ages` (×41,6), posé par [ADR-0019](adr/0019-categorie-eligibilite-multi-tranches.md)
+et hors de son périmètre, établit que le régime vaut pour **tous les DTO** du projet depuis le
+patron d'E00US009. La corriger reviendrait à changer le contrat d'erreur de **toute** la frontière
+API depuis une US de configuration de blason : c'est le débordement de périmètre que le § Dette
+proscrit. Le registre est ici à sa place — la dette est réelle, tracée, et n'appartient à personne.
+
+**Résorption attendue.** US dédiée (`fix/…`) sur `_sur_erreur_validation` seul : tronquer `input`
+(la **valeur**, pas son `repr` — cf. `domain.blason._extrait`, qui traite le même problème côté
+domaine) et plafonner le nombre d'erreurs listées, avec un test qui borne la réponse. Le travail
+est **local à un gestionnaire**, sans migration ni changement de code métier.
+
+⚠️ **Piège pour qui la résorbera** : **ne pas supprimer `details`**. Le format
+`{code, message, details?}` est la **règle 5**, et [DETTE-007](#dette-007--la-confirmation-dune-suppression-darcher-est-aveugle)
+prévoit explicitement de s'en servir pour faire transiter le décompte d'une confirmation
+destructrice — un champ jamais peuplé à ce jour. Il faut **borner** `details`, pas le retirer.
+
+Marqueur `DETTE-008` posé sur `_sur_erreur_validation` (`backend/api/erreurs.py`).
 
 ## Procédure — inscrire une dette
 

@@ -88,6 +88,11 @@ async def _sur_erreur_infrastructure(_: Request, exc: Exception) -> JSONResponse
 
 async def _sur_erreur_validation(_: Request, exc: Exception) -> JSONResponse:
     """Entrée invalide (Pydantic) → 400 avec le détail des champs fautifs."""
+    # DETTE-008 (docs/dette.md) : `exc.errors()` embarque le champ `input` — l'entrée du client,
+    # verbatim — sans borne de taille ni plafond du nombre d'erreurs listées. Amplification
+    # mesurée x42,9 (50 Ko envoyés -> 2,1 Mo reçus). **Ne pas retirer `details`** pour autant : le
+    # format `{code, message, details?}` est la règle 5, et DETTE-007 prévoit de s'en servir. Le
+    # correctif est de **borner**, en US dédiée.
     details = jsonable_encoder(exc.errors()) if isinstance(exc, RequestValidationError) else None
     return _reponse(400, "requete_invalide", "Requête invalide.", details)
 
