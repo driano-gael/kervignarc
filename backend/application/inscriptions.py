@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from application.erreurs import (
     ArcherIntrouvable,
     DejaInscrit,
+    DepartComplet,
     DepartIntrouvable,
     InscriptionIntrouvable,
 )
@@ -67,11 +68,13 @@ class ServiceInscriptions:
 
         Lève `ArcherIntrouvable` si l'archer n'existe pas, `DepartIntrouvable` si le départ n'existe
         pas **ou n'appartient pas au tournoi de l'archer**, `DejaInscrit` s'il est déjà inscrit sur
-        ce créneau.
+        ce créneau, `DepartComplet` si le créneau porte un quota déjà **atteint** (E02US006).
 
-        Contrôle d'unicité et insertion tiennent dans **une seule commande** en file (règle 7) :
-        aucune inscription concurrente ne peut se glisser entre les deux. La contrainte
-        `UNIQUE(archer_id, depart_id)` reste le garde-fou ultime.
+        Contrôle d'unicité, **contrôle de quota** et insertion tiennent dans **une seule commande**
+        en file (règle 7) : aucune inscription concurrente ne peut se glisser entre le comptage et
+        l'insertion, donc franchir la dernière place. La contrainte `UNIQUE(archer_id, depart_id)`
+        reste le garde-fou ultime de l'unicité — mais le quota, lui, n'a **aucun** filet en base
+        (rien ne l'exprime en SQL) : la sérialisation par le writer unique **est** ce garde-fou.
         """
         archer = self._archer_existant(archer_id)
         depart = self._depart_de_l_archer(archer, depart_id)
@@ -80,6 +83,18 @@ class ServiceInscriptions:
                 f"« {archer.prenom} {archer.nom} » est déjà inscrit sur le départ n° "
                 f"{depart.numero}."
             )
+        # `is not None` et non la vérité de `quota` : un quota de `0` ne peut pas exister (le
+        # domaine le refuse), mais l'idiome garde « défini » distinct de « absent » sans ambiguïté.
+        # On compte **toutes** les inscriptions du créneau (payées ou non — une place réservée dès
+        # l'inscription) ; l'archer courant n'y est pas (l'unicité vient d'être vérifiée), donc
+        # `len >= quota` bloque bien la place *quota + 1*, pas une de trop.
+        if depart.quota is not None:
+            inscrits = len(self._inscriptions.par_depart(depart_id))
+            if inscrits >= depart.quota:
+                raise DepartComplet(
+                    f"Le départ n° {depart.numero} est complet "
+                    f"({depart.quota} inscrit{'s' if depart.quota > 1 else ''} maximum)."
+                )
         inscription = self._inscriptions.ajouter(Inscription.creer(archer_id, depart_id))
         return InscriptionDetaillee(inscription, depart)
 

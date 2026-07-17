@@ -13,11 +13,17 @@ export interface Depart {
   // Prix du créneau, en **centimes entiers** (ADR-0012) — l'unité est dans le nom. Obligatoire ;
   // `0` = gratuit. Voir `../competition/format` pour la mise en forme.
   tarif_centimes: number
+  // Nombre maximal d'inscrits du créneau (E02US006), **facultatif** : `null` = pas de plafond. Une
+  // inscription au-delà est refusée par le serveur (409 `depart_complet`).
+  quota: number | null
 }
 
 export interface NouveauDepart {
   tarif_centimes: number
   horaire?: string | null
+  // Omis ou `null` = créneau sans plafond. L'édition est un **remplacement complet** : renvoyer le
+  // quota courant pour le conserver (sinon il est retiré côté serveur).
+  quota?: number | null
 }
 
 // L'édition porte sur les mêmes champs que la création (le numéro est fixe, attribué par le serveur).

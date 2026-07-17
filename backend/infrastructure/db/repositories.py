@@ -80,6 +80,7 @@ def _vers_depart(ligne: DepartORM) -> Depart:
         numero=ligne.numero,
         tarif_centimes=ligne.tarif_centimes,
         horaire=ligne.horaire,
+        quota=ligne.quota,
         id=ligne.id,
     )
 
@@ -562,6 +563,7 @@ class DepartRepositorySQL:
                     numero=depart.numero,
                     horaire=depart.horaire,
                     tarif_centimes=depart.tarif_centimes,
+                    quota=depart.quota,
                 )
                 session.add(ligne)
                 session.commit()
@@ -609,6 +611,7 @@ class DepartRepositorySQL:
                     raise InfrastructureError("Départ à mettre à jour introuvable en base.")
                 ligne.horaire = depart.horaire
                 ligne.tarif_centimes = depart.tarif_centimes
+                ligne.quota = depart.quota
                 session.commit()
                 return _vers_depart(ligne)
         except SQLAlchemyError as exc:

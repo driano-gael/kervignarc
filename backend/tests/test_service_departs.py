@@ -103,6 +103,13 @@ def test_creer_persiste_tarif_et_horaire() -> None:
     assert (depart.tarif_centimes, depart.horaire, depart.tournoi_id) == (810, "9h00", tournoi_id)
 
 
+def test_creer_persiste_le_quota() -> None:
+    """Le quota fourni est conservé ; absent, le départ n'a pas de plafond (E02US006)."""
+    service, tournoi_id = _service_avec_tournoi()
+    assert service.creer(tournoi_id, 810, "9h00", quota=20).quota == 20
+    assert service.creer(tournoi_id, 810).quota is None
+
+
 def test_creer_leve_si_tournoi_introuvable() -> None:
     """Créer un départ sur un tournoi inexistant lève `TournoiIntrouvable` (→ 404)."""
     service, _ = _service_avec_tournoi()
@@ -181,6 +188,17 @@ def test_modifier_change_tarif_et_horaire_garde_le_numero() -> None:
 
     modifie = service.modifier(tournoi_id, depart.id, 1250, "14h00")
     assert (modifie.numero, modifie.tarif_centimes, modifie.horaire) == (1, 1250, "14h00")
+
+
+def test_modifier_remplace_le_quota_et_l_omission_le_retire() -> None:
+    """Remplacement complet : `modifier` pose le quota fourni ; l'omettre **retire** le plafond
+    existant (CA E02US006, comme l'horaire)."""
+    service, tournoi_id = _service_avec_tournoi()
+    depart = service.creer(tournoi_id, 810, "9h00", quota=20)
+    assert depart.id is not None
+
+    assert service.modifier(tournoi_id, depart.id, 810, "9h00", quota=30).quota == 30
+    assert service.modifier(tournoi_id, depart.id, 810, "9h00").quota is None  # omis → retiré
 
 
 def test_modifier_leve_si_depart_d_un_autre_tournoi() -> None:

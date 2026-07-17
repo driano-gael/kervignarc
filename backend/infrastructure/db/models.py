@@ -59,6 +59,9 @@ class DepartORM(Base):
     numero: Mapped[int] = mapped_column(nullable=False)
     horaire: Mapped[str | None] = mapped_column(nullable=True)
     tarif_centimes: Mapped[int] = mapped_column(nullable=False)
+    # Quota d'inscrits **facultatif** (E02US006) : NULL = créneau sans plafond. Le contrôle du
+    # dépassement est applicatif (service), nulle contrainte SQL ne l'exprime (cf. `DepartComplet`).
+    quota: Mapped[int | None] = mapped_column(nullable=True)
 
 
 class ClubORM(Base):

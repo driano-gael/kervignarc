@@ -123,10 +123,22 @@ function LigneDepart({ tournoiId, depart }: { tournoiId: number; depart: Depart 
   )
 }
 
-// Décrit un départ pour l'affichage : horaire (si précisé) · tarif.
+// Décrit un départ pour l'affichage : horaire (si précisé) · tarif · quota (si plafonné).
 function decrire(depart: Depart): string {
   const horaire = depart.horaire ?? 'horaire non précisé'
-  return `${horaire} · ${decrireTarif(depart.tarif_centimes)}`
+  const base = `${horaire} · ${decrireTarif(depart.tarif_centimes)}`
+  return depart.quota === null ? base : `${base} · quota ${depart.quota}`
+}
+
+// Analyse la saisie du quota : vide = pas de plafond (null, valide) ; sinon un entier ≥ 1. Une
+// saisie non entière ou ≤ 0 renvoie `'invalide'` pour bloquer l'envoi (évite un 422 assuré) — le
+// serveur reste l'autorité (revalidation au domaine, mêmes bornes).
+function analyserQuota(saisie: string): number | null | 'invalide' {
+  const texte = saisie.trim()
+  if (texte === '') return null
+  if (!/^\d+$/.test(texte)) return 'invalide'
+  const valeur = Number(texte)
+  return valeur >= 1 ? valeur : 'invalide'
 }
 
 // Formulaire partagé création / édition : sans `depart` il crée, avec il édite. Le tarif est
@@ -144,6 +156,9 @@ function FormulaireDepart({
   const enEdition = depart !== undefined
   const [tarif, setTarif] = useState(depart ? centimesVersSaisieEuros(depart.tarif_centimes) : '')
   const [horaire, setHoraire] = useState(depart?.horaire ?? '')
+  // Pré-rempli en édition : le PUT est un **remplacement complet**, un quota laissé vide **retire**
+  // le plafond côté serveur. En repartir de la valeur courante évite de l'effacer par mégarde.
+  const [quota, setQuota] = useState(depart?.quota != null ? String(depart.quota) : '')
 
   const creer = useCreerDepart(tournoiId)
   const modifier = useModifierDepart(tournoiId)
@@ -153,14 +168,17 @@ function FormulaireDepart({
   // (évite un 422 assuré) ; le serveur reste l'autorité (revalidation à la frontière).
   const tarifCentimes = saisieEurosVersCentimes(tarif)
   const tarifSaisi = tarif.trim() !== ''
-  const entreeValide = tarifCentimes !== null
+  const quotaAnalyse = analyserQuota(quota)
+  const quotaInvalide = quotaAnalyse === 'invalide'
+  const entreeValide = tarifCentimes !== null && !quotaInvalide
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
-    if (tarifCentimes === null) return
+    if (tarifCentimes === null || quotaAnalyse === 'invalide') return
     const entree: NouveauDepart = {
       tarif_centimes: tarifCentimes,
       horaire: horaire.trim() || null,
+      quota: quotaAnalyse,
     }
     if (enEdition) {
       modifier.mutate({ departId: depart.id, entree }, { onSuccess: onTermine })
@@ -170,6 +188,7 @@ function FormulaireDepart({
         onSuccess: () => {
           setTarif('')
           setHoraire('')
+          setQuota('')
         },
       })
     }
@@ -208,6 +227,26 @@ function FormulaireDepart({
             placeholder="ex. 9h00"
             aria-label="Horaire du départ"
           />
+        </label>
+        <label className="formulaire__libelle">
+          Quota d'inscrits (facultatif)
+          <input
+            className="formulaire__champ"
+            inputMode="numeric"
+            value={quota}
+            onChange={(e) => setQuota(e.target.value)}
+            placeholder="ex. 20 — vide = sans plafond"
+            aria-label="Quota d'inscrits du départ"
+          />
+          {quotaInvalide ? (
+            <span className="carte__etat carte__etat--erreur" role="alert">
+              Nombre entier de places ≥ 1 attendu (ou vide pour aucun plafond).
+            </span>
+          ) : (
+            <span className="carte__etat">
+              {quotaAnalyse === null ? 'Aucun plafond' : `${quotaAnalyse} places maximum`}
+            </span>
+          )}
         </label>
         <div className="formulaire__actions">
           <button type="submit" disabled={mutation.isPending || !entreeValide}>

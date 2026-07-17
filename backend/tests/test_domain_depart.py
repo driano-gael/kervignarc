@@ -10,18 +10,19 @@ from __future__ import annotations
 
 import pytest
 
-from domain.depart import TARIF_DEPART_MAX_CENTIMES, Depart
-from domain.erreurs import NumeroDepartInvalide, TarifDepartInvalide
+from domain.depart import QUOTA_DEPART_MAX, TARIF_DEPART_MAX_CENTIMES, Depart
+from domain.erreurs import NumeroDepartInvalide, QuotaDepartInvalide, TarifDepartInvalide
 
 
 def test_creer_un_depart_valide() -> None:
-    """tournoi + numéro + tarif suffisent : horaire à None, id à None."""
+    """tournoi + numéro + tarif suffisent : horaire à None, quota à None, id à None."""
     depart = Depart.creer(tournoi_id=1, numero=1, tarif_centimes=810)
     assert depart == Depart(
         tournoi_id=1,
         numero=1,
         tarif_centimes=810,
         horaire=None,
+        quota=None,
         id=None,
     )
 
@@ -89,21 +90,78 @@ def test_creer_refuse_un_tarif_absurde_plutot_que_de_deborder() -> None:
         Depart.creer(tournoi_id=1, numero=1, tarif_centimes=10**20)
 
 
-# --- Édition (créer/éditer/supprimer, CA) : `modifier` remplace tarif et horaire ---
+# --- Quota du créneau (E02US006) : facultatif, entier ≥ 1, plafonné ; `None` = illimité ---
 
 
-def test_modifier_met_a_jour_tarif_et_horaire_et_preserve_l_identite() -> None:
-    """`modifier` change tarif/horaire mais conserve `id`, `tournoi_id` et surtout `numero`
+def test_creer_sans_quota_donne_un_creneau_sans_plafond() -> None:
+    """Le quota est **facultatif** : absent, le créneau n'a pas de plafond (`None`)."""
+    assert Depart.creer(tournoi_id=1, numero=1, tarif_centimes=810).quota is None
+
+
+def test_creer_avec_un_quota() -> None:
+    """Un quota défini est un entier de places, stocké tel quel."""
+    assert Depart.creer(tournoi_id=1, numero=1, tarif_centimes=810, quota=20).quota == 20
+
+
+def test_creer_refuse_un_quota_nul() -> None:
+    """`0` est refusé : un créneau plafonné à zéro serait fermé — on le supprime, on ne le crée pas.
+
+    C'est la distinction que `is not None` protège dans le service : `0` n'est pas « absent »."""
+    with pytest.raises(QuotaDepartInvalide):
+        Depart.creer(tournoi_id=1, numero=1, tarif_centimes=810, quota=0)
+
+
+@pytest.mark.parametrize("quota", [-1, -20])
+def test_creer_refuse_un_quota_negatif(quota: int) -> None:
+    with pytest.raises(QuotaDepartInvalide):
+        Depart.creer(tournoi_id=1, numero=1, tarif_centimes=810, quota=quota)
+
+
+def test_creer_refuse_un_quota_au_dela_du_plafond() -> None:
+    """Au-delà de 1 000 places sur un seul créneau, c'est une faute de frappe — pas un quota."""
+    with pytest.raises(QuotaDepartInvalide):
+        Depart.creer(tournoi_id=1, numero=1, tarif_centimes=810, quota=QUOTA_DEPART_MAX + 1)
+
+
+def test_les_bornes_du_quota_sont_admises() -> None:
+    """Cas limites : 1 (le plus petit quota sensé) et le plafond sont inclus."""
+    assert Depart.creer(tournoi_id=1, numero=1, tarif_centimes=810, quota=1).quota == 1
+    assert (
+        Depart.creer(tournoi_id=1, numero=1, tarif_centimes=810, quota=QUOTA_DEPART_MAX).quota
+        == QUOTA_DEPART_MAX
+    )
+
+
+# --- Édition (créer/éditer/supprimer, CA) : `modifier` remplace tarif, horaire et quota ---
+
+
+def test_modifier_met_a_jour_tarif_horaire_quota_et_preserve_l_identite() -> None:
+    """`modifier` change tarif/horaire/quota mais conserve `id`, `tournoi_id` et surtout `numero`
     (attribué par le système, non éditable)."""
-    depart = Depart(tournoi_id=3, numero=2, tarif_centimes=810, horaire="9h00", id=7)
-    modifie = depart.modifier(tarif_centimes=1250, horaire="14h00")
+    depart = Depart(tournoi_id=3, numero=2, tarif_centimes=810, horaire="9h00", quota=20, id=7)
+    modifie = depart.modifier(tarif_centimes=1250, horaire="14h00", quota=30)
     assert modifie == Depart(
         tournoi_id=3,
         numero=2,
         tarif_centimes=1250,
         horaire="14h00",
+        quota=30,
         id=7,
     )
+
+
+def test_modifier_sans_quota_retire_le_plafond() -> None:
+    """Remplacement complet : un `quota` omis efface le plafond existant (CA E02US006, comme
+    l'horaire). L'appelant renvoie la valeur courante s'il veut la conserver."""
+    depart = Depart(tournoi_id=3, numero=2, tarif_centimes=810, quota=20, id=7)
+    assert depart.modifier(tarif_centimes=810).quota is None
+
+
+def test_modifier_valide_le_quota() -> None:
+    """`modifier` applique les mêmes bornes que `creer` au quota."""
+    depart = Depart.creer(tournoi_id=1, numero=1, tarif_centimes=810, quota=20)
+    with pytest.raises(QuotaDepartInvalide):
+        depart.modifier(tarif_centimes=810, quota=0)
 
 
 def test_modifier_est_immuable() -> None:

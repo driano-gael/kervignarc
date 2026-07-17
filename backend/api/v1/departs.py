@@ -25,27 +25,36 @@ router = APIRouter(prefix="/api/v1/tournois/{tournoi_id}/departs", tags=["depart
 
 
 class CreerDepartRequete(BaseModel):
-    """Corps de création d'un départ : tarif requis (centimes), horaire facultatif.
+    """Corps de création d'un départ : tarif requis (centimes), horaire et quota facultatifs.
 
-    Le **numéro** n'est pas dans le corps : il est attribué par le serveur (le plus grand + 1).
+    Le **numéro** n'est pas dans le corps : il est attribué par le serveur (le plus grand + 1). Le
+    `quota` (nombre maximal d'inscrits) est **facultatif** — absent (`null`) = créneau sans plafond.
+    Sa **valeur** est validée par le domaine (`[1, 1 000]` → 422), comme le tarif : le DTO ne
+    contraint que le **type** (un quota non entier → 400).
     """
 
     tarif_centimes: int
     horaire: str | None = None
+    quota: int | None = None
 
 
 class ModifierDepartRequete(BaseModel):
-    """Corps d'édition d'un départ : tarif (centimes) et horaire ; le numéro est fixe."""
+    """Corps d'édition d'un départ : tarif (centimes), horaire, quota ; le numéro est fixe.
+
+    **Remplacement complet** : un `quota` absent du corps (`null`) **retire** le plafond. Le client
+    doit renvoyer le quota courant s'il veut le conserver (le formulaire est pré-rempli pour ça).
+    """
 
     tarif_centimes: int
     horaire: str | None = None
+    quota: int | None = None
 
 
 class DepartReponse(BaseModel):
     """Représentation d'un départ renvoyée au client.
 
     `tarif_centimes` est en **centimes entiers** (l'unité est dans le nom) : c'est le client qui met
-    en forme des euros. `0` = gratuit.
+    en forme des euros. `0` = gratuit. `quota` = nombre maximal d'inscrits, ou `null` (illimité).
     """
 
     id: int
@@ -53,6 +62,7 @@ class DepartReponse(BaseModel):
     numero: int
     horaire: str | None
     tarif_centimes: int
+    quota: int | None
 
     @staticmethod
     def de_agregat(depart: Depart) -> DepartReponse:
@@ -64,6 +74,7 @@ class DepartReponse(BaseModel):
             numero=depart.numero,
             horaire=depart.horaire,
             tarif_centimes=depart.tarif_centimes,
+            quota=depart.quota,
         )
 
 
@@ -81,7 +92,9 @@ async def creer_depart(
     write_queue: WriteQueue = request.app.state.write_queue
     depart = await asyncio.wrap_future(
         write_queue.submit(
-            lambda: service.creer(tournoi_id, requete.tarif_centimes, requete.horaire)
+            lambda: service.creer(
+                tournoi_id, requete.tarif_centimes, requete.horaire, requete.quota
+            )
         )
     )
     return DepartReponse.de_agregat(depart)
@@ -108,7 +121,9 @@ async def modifier_depart(
     write_queue: WriteQueue = request.app.state.write_queue
     depart = await asyncio.wrap_future(
         write_queue.submit(
-            lambda: service.modifier(tournoi_id, depart_id, requete.tarif_centimes, requete.horaire)
+            lambda: service.modifier(
+                tournoi_id, depart_id, requete.tarif_centimes, requete.horaire, requete.quota
+            )
         )
     )
     return DepartReponse.de_agregat(depart)

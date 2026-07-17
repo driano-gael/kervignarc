@@ -127,6 +127,19 @@ class TarifDepartInvalide(DomainError):
     code = "tarif_depart_invalide"
 
 
+class QuotaDepartInvalide(DomainError):
+    """Le quota d'un départ (créneau) est défini mais n'est pas un entier ≥ 1 (E02US006).
+
+    Le quota est **facultatif** : `None` = illimité, un état licite et distinct. Défini, il compte
+    des **places** — au moins une, sinon le créneau serait fermé à toute inscription (on le
+    supprimerait plutôt). Un plafond `QUOTA_DEPART_MAX` borne le haut, même raison que le tarif :
+    une valeur absurde est une faute de frappe, et on la refuse ici (422) plutôt que de la laisser
+    déborder la capacité d'un entier SQLite en erreur non typée (500).
+    """
+
+    code = "quota_depart_invalide"
+
+
 class NombreVoleesParValidationInvalide(DomainError):
     """La cadence d'un grain « toutes les N volées » est inférieure à 1 (E01US015)."""
 
