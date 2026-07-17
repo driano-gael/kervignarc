@@ -249,3 +249,36 @@ def test_supprimer_leve_si_introuvable() -> None:
     service, _, _ = _service_avec_tournoi()
     with pytest.raises(CategorieIntrouvable):
         service.supprimer(404)
+
+
+def test_modifier_sans_hauteur_preserve_la_valeur_existante() -> None:
+    """Régression DETTE-009 (E03US001) : un PUT qui omet `hauteur_cm` **conserve** la hauteur.
+
+    Sans cette préservation, éditer une catégorie U11 (110) — geste requis pour lui attribuer un
+    blason, donc pour la placer — la ramènerait à 130 et rouvrirait la contrainte de placement
+    « une butte, une hauteur » que le domaine ferme (ADR-0022).
+    """
+    service, tournoi_id, _ = _service_avec_tournoi()
+    u11 = service.creer(tournoi_id, "Arc Classique U11 H", ages=(TrancheAge.U11,), hauteur_cm=110)
+    assert u11.id is not None
+    # Édition qui n'envoie pas `hauteur_cm` (None) : la hauteur doit rester 110, pas retomber à 130.
+    modifiee = service.modifier(u11.id, "Arc Classique U11 H", ages=(TrancheAge.U11,))
+    assert modifiee.hauteur_cm == 110
+
+
+def test_modifier_avec_hauteur_explicite_la_remplace() -> None:
+    """Une hauteur explicite au PUT remplace la valeur (le « None = inchangée » ne fige pas)."""
+    service, tournoi_id, _ = _service_avec_tournoi()
+    cat = service.creer(tournoi_id, "Cat", hauteur_cm=130)
+    assert cat.id is not None
+    assert service.modifier(cat.id, "Cat", hauteur_cm=110).hauteur_cm == 110
+
+
+def test_precharger_ffta_regle_les_u11_a_110() -> None:
+    """Le préchargement FFTA persiste 110 pour les U11, 130 pour le reste (maillon `precharger`)."""
+    service, tournoi_id, _ = _service_avec_tournoi()
+    creees = service.precharger_ffta(tournoi_id)
+    u11 = [c for c in creees if TrancheAge.U11 in c.ages]
+    autres = [c for c in creees if TrancheAge.U11 not in c.ages]
+    assert u11 and all(c.hauteur_cm == 110 for c in u11)
+    assert all(c.hauteur_cm == 130 for c in autres)

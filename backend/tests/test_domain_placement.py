@@ -170,3 +170,42 @@ def test_placement_est_deterministe() -> None:
     archers = tuple(_archer(i, blason=(i % 2) + 1, taille=0.5) for i in range(1, 7))
     cibles = _cibles(4, 4, 4)
     assert placer(cibles, archers) == placer(cibles, tuple(reversed(archers)))
+
+
+def test_meme_blason_hauteurs_differentes_ne_partagent_pas() -> None:
+    """CA hauteur : deux archers du **même** blason mais de hauteurs différentes ne partagent pas.
+
+    La hauteur est vérifiée **avant** la mutualisation de carton : même si le carton pourrait les
+    accueillir tous les deux, la seconde hauteur bascule sur une cible neuve."""
+    plan = placer(
+        _cibles(4, 4),
+        (
+            _archer(1, blason=7, taille=1.0, capacite_blason=2, hauteur=130),
+            _archer(2, blason=7, taille=1.0, capacite_blason=2, hauteur=110),
+        ),
+    )
+    cible_de = {p.archer_id: c.index for c in plan.cibles for p in c.placements}
+    assert cible_de[1] != cible_de[2]
+
+
+def test_partage_de_carton_borne_par_le_plafond_de_positions() -> None:
+    """CA (budgets combinés) : la mutualisation d'un carton ne dépasse pas le plafond de positions.
+
+    Blason de capacité 3 sur une cible de capacité 2 → seuls 2 archers, le 3ᵉ bascule **malgré** la
+    place restante sur le carton. C'est l'ordre des gardes dans `accueille` qui le garantit."""
+    plan = placer(
+        _cibles(2, 4),
+        tuple(_archer(i, blason=5, taille=0.1, capacite_blason=3) for i in (1, 2, 3)),
+    )
+    assert _archers_de(plan.cibles[0]) == (1, 2)
+    assert _archers_de(plan.cibles[1]) == (3,)
+
+
+def test_sans_aucune_cible_tous_les_archers_sont_en_conflit() -> None:
+    """Fonction pure : sans aucune cible, tous les archers ressortent en conflit `NON_PLACE`."""
+    plan = placer((), (_archer(1), _archer(2)))
+    assert plan.cibles == ()
+    assert plan.conflits == (
+        Conflit(archer_id=1, raison=RaisonConflit.NON_PLACE),
+        Conflit(archer_id=2, raison=RaisonConflit.NON_PLACE),
+    )

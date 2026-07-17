@@ -223,6 +223,24 @@ def test_categorie_sans_blason_donne_un_conflit_sans_blason() -> None:
     assert plan.conflits[0].raison is RaisonConflit.SANS_BLASON
 
 
+def test_fusionne_conflits_sans_blason_et_non_place() -> None:
+    """Le rapport réunit les conflits « sans blason » (données) et « non placé » (faisabilité)."""
+    monde = _Monde(capacites=(1,))  # une seule cible, capacité 1
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=1.0)  # remplit la cible à elle seule
+    cat_sans = monde.categorie(avec_blason=False)
+    place = monde.inscrire(depart, cat)
+    surnombre = monde.inscrire(depart, cat)  # plus de place → NON_PLACE
+    sans = monde.inscrire(depart, cat_sans)  # pas de blason → SANS_BLASON
+
+    plan = monde.service.plan_de_cibles(monde.tournoi_id, depart)
+
+    raisons = {c.archer_id: c.raison for c in plan.conflits}
+    assert _archers_places(plan.cibles) == {place}
+    assert raisons[sans] is RaisonConflit.SANS_BLASON
+    assert raisons[surnombre] is RaisonConflit.NON_PLACE
+
+
 def test_ne_place_que_les_inscrits_du_depart_demande() -> None:
     """Le plan d'un départ ignore les inscrits d'un autre départ du même tournoi."""
     monde = _Monde(capacites=(4, 4))

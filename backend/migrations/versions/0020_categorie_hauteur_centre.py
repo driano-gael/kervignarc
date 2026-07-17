@@ -45,12 +45,16 @@ _categorie = sa.table(
 def _hauteur(ages_json: str | None) -> int:
     """Hauteur du centre à backfiller : 110 si `ages` contient `U11`, 130 sinon.
 
-    Un `ages` illisible (ne devrait pas exister, le repository en est le seul rédacteur) retombe
-    prudemment sur le défaut 130 plutôt que de faire échouer la migration."""
+    Un `ages` illisible **ou non-liste** (ne devrait pas exister, le repository sérialise toujours
+    une liste — mais un import ou une base corrompue le pourraient) retombe prudemment sur le défaut
+    130 plutôt que de faire échouer la migration. Le `isinstance(list)` est indispensable : un JSON
+    scalaire (`"null"`, `"5"`) décode sans lever, et `"U11" in None`/`in 5` lèverait un `TypeError`
+    **hors** du `try` — le filet ne couvrirait alors pas ce qu'il prétend absorber."""
     try:
-        tranches = json.loads(ages_json) if ages_json else []
+        decode = json.loads(ages_json) if ages_json else []
     except (json.JSONDecodeError, TypeError):
-        tranches = []
+        decode = []
+    tranches = decode if isinstance(decode, list) else []
     return _HAUTEUR_U11 if "U11" in tranches else _HAUTEUR_DEFAUT
 
 
