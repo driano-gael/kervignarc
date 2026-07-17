@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from domain.blason import ZONES_CANONIQUES, ZONES_DEFAUT, Blason, ZoneScore
+from domain.blason import ZONES_CANONIQUES, ZONES_DEFAUT, Blason, ZoneScore, valider_zones
 from domain.erreurs import (
     CapaciteBlasonInvalide,
     NomBlasonInvalide,
@@ -166,8 +166,14 @@ def test_modifier_valide_les_zones() -> None:
 
 
 def test_zones_defaut_n_est_pas_alias_du_vocabulaire() -> None:
-    """`ZONES_DEFAUT` est énuméré à part : ajouter une zone au vocabulaire (X, EPIC-06) ne doit
-    pas la faire entrer en silence dans le défaut de tous les blasons."""
+    """Fil-piège : `ZONES_DEFAUT` est énuméré à part du vocabulaire.
+
+    ⚠️ **Si vous ajoutez une zone à `ZoneScore`** (X, pour le départage FFTA d'EPIC-06), c'est
+    l'égalité ci-dessous qui doit **sauter** — et vous devez la corriger *ici*, pas « réparer »
+    `ZONES_DEFAUT` en le réalignant : une zone ajoutée au vocabulaire ne doit pas entrer en
+    silence dans le défaut de tous les blasons, ni se désaligner du littéral gelé de la migration
+    `0019`. C'est tout l'objet de la séparation.
+    """
     assert ZONES_DEFAUT == ZONES_CANONIQUES, "les deux coïncident aujourd'hui"
     assert ZONES_DEFAUT is not ZONES_CANONIQUES, "mais ne sont pas le même objet"
 
@@ -220,3 +226,25 @@ def test_le_message_borne_l_echo_de_l_entree() -> None:
     assert "A" * 20 in message
     assert "A" * 21 not in message
     assert "…" in message
+
+
+@pytest.mark.parametrize("zones", [None, 42, True, object()])
+def test_valider_zones_refuse_un_non_iterable_en_erreur_typee(zones: object) -> None:
+    """`valider_zones` est **publique** pour les appelants internes (import, script, relecture) :
+    elle leur doit une erreur de domaine typée (règle 5), pas un `TypeError` nu venu de ses
+    entrailles.
+
+    Appelée directement, et non via `creer` : là, `None` est la sentinelle « applique le défaut ».
+    """
+    with pytest.raises(ZonesBlasonInvalides):
+        valider_zones(zones)  # type: ignore[arg-type]
+
+
+def test_le_message_ne_leve_pas_sur_une_valeur_irrepresentable() -> None:
+    """Construire un message d'erreur ne doit jamais masquer l'erreur d'origine.
+
+    `repr()` d'un entier gigantesque lève `ValueError` (limite de conversion int → str) — et il
+    le lèverait **à l'intérieur** du `except` qui formate le message.
+    """
+    with pytest.raises(ZonesBlasonInvalides):
+        Blason.creer(1, "Blason", 0.5, 1, zones=[10**10_000, "M"])  # type: ignore[list-item]

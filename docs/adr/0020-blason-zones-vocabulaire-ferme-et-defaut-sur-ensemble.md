@@ -95,8 +95,10 @@ soit levée. Une colonne illisible **ou hors règle** est une incohérence techn
 ## Conséquences
 
 - **+** Le pavé de saisie d'EPIC-04 a enfin sa source de vérité, portée par le blason.
-- **+** Le vocabulaire fermé rend `Blason(zones=("foo",))` invisible à l'exécution *et* à mypy, et
-  aligne le contrat client sur celui des catégories (400 vocabulaire / 422 structure).
+- **+** Le vocabulaire fermé aligne le contrat client sur celui des catégories (400 vocabulaire /
+  422 structure) et fait détecter `Blason(zones=("foo",))` par **mypy**. Attention à ne pas
+  sur-lire cette garantie : une dataclass `frozen` ne valide **rien à l'exécution** — les portes
+  validantes sont `creer`, `modifier` et `_vers_blason`, pas le constructeur brut.
 - **−** **Un triple 40 laissé au défaut ouvre le pavé sur `5 → 1`, intirables — soit exactement ce
   que l'US veut empêcher.** C'est la contrepartie assumée de l'option (1), sur le cas majoritaire.
   L'admin doit décocher `5 → 1` à la création d'un triple.

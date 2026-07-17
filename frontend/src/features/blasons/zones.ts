@@ -20,6 +20,25 @@ export type Zone = (typeof ZONES_CANONIQUES)[number]
 
 export const ZONE_MANQUE: Zone = 'M'
 
+// Zones par défaut à la création : le jeu complet d'un **blason simple**. Miroir de `ZONES_DEFAUT`
+// du domaine, et **énuméré à part** de `ZONES_CANONIQUES` pour la même raison qu'au domaine : les
+// deux coïncident aujourd'hui, mais ce sont deux concepts (le *vocabulaire* et le *jeu par
+// défaut*). Réutiliser `ZONES_CANONIQUES` comme défaut ferait entrer en silence toute zone ajoutée
+// au vocabulaire — X, si EPIC-06 le réclame — dans le pré-cochage de tout nouveau blason.
+export const ZONES_DEFAUT: readonly Zone[] = [
+  '10',
+  '9',
+  '8',
+  '7',
+  '6',
+  '5',
+  '4',
+  '3',
+  '2',
+  '1',
+  'M',
+]
+
 /** Coche ou décoche `zone`, en renvoyant toujours le jeu dans l'ordre canonique (10 → 1, puis M).
  *
  * L'ordre de saisie ne porte aucune information : le serveur normalise de toute façon, on lui

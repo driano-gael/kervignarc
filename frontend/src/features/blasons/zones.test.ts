@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { aUneZoneMarquante, basculerZone, estVerrouillee, type Zone } from './zones'
+import {
+  ZONES_CANONIQUES,
+  ZONES_DEFAUT,
+  aUneZoneMarquante,
+  basculerZone,
+  estVerrouillee,
+  type Zone,
+} from './zones'
 
 // Le jeu complet, **codé en dur** plutôt qu'importé de `ZONES_CANONIQUES` : un test dont l'entrée
 // dérive de la constante que la fonction sous test utilise ne peut plus détecter un changement de
@@ -74,5 +81,19 @@ describe('aUneZoneMarquante', () => {
 
   it('est vrai dès qu’une valeur chiffrée subsiste', () => {
     expect(aUneZoneMarquante(['6', 'M'])).toBe(true)
+  })
+})
+
+describe('ZONES_DEFAUT', () => {
+  it('vaut le jeu complet d’un blason simple', () => {
+    expect([...ZONES_DEFAUT]).toEqual(ZONES_COMPLETES)
+  })
+
+  it('n’est pas un alias du vocabulaire', () => {
+    // Fil-piège, miroir de celui du domaine. Si vous ajoutez une zone à ZONES_CANONIQUES (X, pour
+    // le départage FFTA d'EPIC-06), c'est CETTE ligne qui doit sauter — pas ZONES_DEFAUT : une
+    // zone ajoutée au vocabulaire ne doit pas se pré-cocher en silence sur tout nouveau blason.
+    expect([...ZONES_DEFAUT]).toEqual([...ZONES_CANONIQUES])
+    expect(ZONES_DEFAUT).not.toBe(ZONES_CANONIQUES)
   })
 })

@@ -13,7 +13,7 @@ import { ErreurApi } from '../../shared/api/client'
 import type { Blason, NouveauBlason, Zone } from './api'
 import { ZONE_MANQUE, ZONES_CANONIQUES } from './api'
 import { useBlasons, useCreerBlason, useModifierBlason, useSupprimerBlason } from './hooks'
-import { aUneZoneMarquante, basculerZone, estVerrouillee } from './zones'
+import { ZONES_DEFAUT, aUneZoneMarquante, basculerZone, estVerrouillee } from './zones'
 
 export function Blasons({ tournoiId }: { tournoiId: number }) {
   const blasons = useBlasons(tournoiId)
@@ -114,9 +114,11 @@ function FormulaireBlason({
   const [nom, setNom] = useState(blason?.nom ?? '')
   const [taille, setTaille] = useState(blason ? String(blason.taille) : '1')
   const [capacite, setCapacite] = useState(blason ? String(blason.capacite) : '1')
-  // À la création, le défaut est le jeu complet d'un blason simple — le même que celui du
-  // domaine : c'est un sur-ensemble, à restreindre pour un triple 40.
-  const [zones, setZones] = useState<Zone[]>(blason ? blason.zones : [...ZONES_CANONIQUES])
+  // À la création, le défaut est le jeu complet d'un blason simple — miroir de `ZONES_DEFAUT`
+  // du domaine, et non de `ZONES_CANONIQUES` : c'est un sur-ensemble, à restreindre pour un
+  // triple 40. Le serveur appliquerait le même s'il était omis ; on l'affiche pour que l'admin
+  // voie ce qu'il enregistre.
+  const [zones, setZones] = useState<Zone[]>(blason ? blason.zones : [...ZONES_DEFAUT])
 
   const creer = useCreerBlason(tournoiId)
   const modifier = useModifierBlason(tournoiId)
@@ -154,7 +156,7 @@ function FormulaireBlason({
           setNom('')
           setTaille('1')
           setCapacite('1')
-          setZones([...ZONES_CANONIQUES])
+          setZones([...ZONES_DEFAUT])
         },
       })
     }

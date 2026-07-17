@@ -209,8 +209,19 @@ def valider_zones(zones: Iterable[ZoneScore | str]) -> tuple[ZoneScore, ...]:
             "Les zones d'un blason sont une liste de valeurs, pas une chaîne de caractères."
         )
 
+    # Un non-itérable (`None`, `42`) lèverait un `TypeError` **nu** : cette fonction est publique
+    # et promet une erreur de domaine typée (règle 5) — ses appelants internes ne doivent pas
+    # avoir à connaître ses entrailles pour la rattraper.
+    try:
+        brutes = list(zones)
+    except TypeError as exc:
+        raise ZonesBlasonInvalides(
+            f"Les zones d'un blason doivent être une liste de valeurs "
+            f"(reçu : {type(zones).__name__})."
+        ) from exc
+
     saisies: list[ZoneScore] = []
-    for zone in zones:
+    for zone in brutes:
         try:
             # `ZoneScore` hérite de `str`, donc ses propres membres passent aussi par `strip()` —
             # c'est sans effet (la valeur est déjà nette) et ça évite une branche morte.
@@ -242,10 +253,24 @@ def valider_zones(zones: Iterable[ZoneScore | str]) -> tuple[ZoneScore, ...]:
 def _extrait(valeur: object, taille_max: int = 20) -> str:
     """Rend `valeur` lisible dans un message d'erreur, **bornée** et proprement tronquée.
 
-    Le client choisit ce qu'il envoie, pas la taille du message qu'il récupère : une zone de 10 Mo
-    ne doit pas revenir en écho. Tronquer `repr()` couperait au milieu du littéral et laisserait un
-    guillemet orphelin — on tronque donc la **valeur**, puis on la représente.
+    **L'appelant visé n'est pas le client HTTP** : depuis que le DTO porte `list[ZoneScore]`,
+    Pydantic rejette une zone hors vocabulaire en 400 et cette fonction n'est jamais atteinte par
+    une requête. Elle sert les appelants **internes** que `valider_zones` est publique pour servir
+    — import, script, réhydratation d'une colonne corrompue — dont la sortie va au **log serveur**.
+    Un jeu de 10 Mo n'y a pas plus sa place que dans une réponse.
+    *(L'amplification de l'écho dans une **réponse 400** est un autre sujet : elle vient de
+    `jsonable_encoder(exc.errors())` à la frontière, vaut pour tous les DTO du projet — `ages`
+    compris — et ne se traite pas ici.)*
+
+    Ne lève **jamais** : elle construit un message d'erreur, échouer ici masquerait l'erreur
+    d'origine. `repr()` d'un entier gigantesque lève `ValueError` (limite de conversion), et un
+    `__repr__` maison peut lever n'importe quoi — d'où le filet large.
     """
-    if isinstance(valeur, str) and len(valeur) > taille_max:
-        return f"{valeur[:taille_max]!r}…"
-    return repr(valeur)
+    if isinstance(valeur, str):
+        return f"{valeur[:taille_max]!r}…" if len(valeur) > taille_max else repr(valeur)
+    try:
+        brut = repr(valeur)
+    # Filet volontairement large : cf. docstring, un formateur de message ne lève pas.
+    except Exception:
+        return f"<{type(valeur).__name__} irreprésentable>"
+    return f"{brut[:taille_max]}…" if len(brut) > taille_max else brut
