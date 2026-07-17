@@ -242,9 +242,11 @@ class GabaritIntrouvable(ApplicationError):
 
 
 class GabaritDuTournoiAbsent(ApplicationError):
-    """Ajustement demandé alors qu'aucun gabarit n'est appliqué au tournoi (E01US008) → 404.
+    """Ajustement (E01US008) ou placement (E03US001) demandé alors qu'aucun gabarit n'est appliqué
+    au tournoi → 404.
 
-    Il faut d'abord **appliquer** un gabarit modèle au tournoi.
+    Il faut d'abord **appliquer** un gabarit modèle au tournoi : sans cibles, il n'y a rien à
+    ajuster ni où placer les archers.
     """
 
     code = "gabarit_du_tournoi_absent"

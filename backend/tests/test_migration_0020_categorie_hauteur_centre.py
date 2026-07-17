@@ -64,6 +64,37 @@ def test_upgrade_backfille_la_hauteur(tmp_path: Path) -> None:
         engine.dispose()
 
 
+def test_upgrade_tolere_un_ages_non_liste(tmp_path: Path) -> None:
+    """Un `ages` JSON **scalaire** (base corrompue / import hors repository) retombe sur 130 sans
+    faire échouer la migration — `json.loads("null")` rend `None`, `"U11" in None` lèverait
+    sinon."""
+    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
+    cfg = _config(url)
+    command.upgrade(cfg, "0019_blason_zones")
+
+    engine = sa.create_engine(url)
+    try:
+        with engine.begin() as conn:
+            for identifiant, ages in enumerate(["null", "5", "true"], start=1):
+                conn.execute(
+                    sa.text(
+                        "INSERT INTO categorie (id, tournoi_id, libelle, arme, ages, sexe) "
+                        "VALUES (:id, 1, :libelle, NULL, :ages, NULL)"
+                    ),
+                    {"id": identifiant, "libelle": f"Cat {identifiant}", "ages": ages},
+                )
+
+        command.upgrade(cfg, "0020_categorie_hauteur_centre")  # ne doit pas lever
+
+        with engine.connect() as conn:
+            hauteurs = {
+                int(r[0]) for r in conn.execute(sa.text("SELECT hauteur_cm FROM categorie"))
+            }
+        assert hauteurs == {130}
+    finally:
+        engine.dispose()
+
+
 def test_downgrade_retire_la_colonne(tmp_path: Path) -> None:
     """Le downgrade retire `hauteur_cm` (rien ne la portait avant cette revision)."""
     url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"

@@ -53,12 +53,14 @@ class ModifierCategorieRequete(BaseModel):
     ages: list[TrancheAge] = Field(default_factory=list)
     sexe: SexeCategorie | None = None
     blason_id: int | None = None
-    # DETTE-009 : `hauteur_cm` est facultative et retombe à 130 si omise. Le front de gestion des
-    # catégories (E02US003) ne l'envoie pas encore → éditer une catégorie U11 depuis l'UI actuelle
-    # ramène sa hauteur de 110 à 130 (perte silencieuse, piège du PUT partiel — cf. ADR-0020). Hors
-    # périmètre d'E03US001 (domaine + lecture, pas de front) ; le champ d'édition viendra avec l'UI
-    # de placement (E03US004). Cf. docs/dette.md.
-    hauteur_cm: int = HAUTEUR_CENTRE_DEFAUT
+    # `hauteur_cm` omise = **inchangée** (le service relit et conserve la valeur existante), pas
+    # « remise à 130 ». Motif : le front de gestion des catégories (E02US003) envoie un PUT total
+    # sans ce champ (ajouté en E03US001). Sans ce « None = inchangée », attribuer un blason à une
+    # catégorie U11 — geste **requis** pour la rendre plaçable — ramènerait silencieusement sa
+    # hauteur 110 → 130 et rouvrirait par l'API la contrainte « une butte, une hauteur » que le
+    # domaine ferme (défait DETTE-002). Seul champ « partiel » d'un PUT par ailleurs total (tension
+    # avec ADR-0020 assumée), le temps que l'UI porte le champ — DETTE-009.
+    hauteur_cm: int | None = None
 
 
 class CategorieReponse(BaseModel):

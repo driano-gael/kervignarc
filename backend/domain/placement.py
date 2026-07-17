@@ -21,7 +21,9 @@ appelle `placer` ; ici on ne manipule que des valeurs.
 U11 (110 cm) ne partage donc jamais une cible avec un adulte (130 cm), quelle que soit la place
 restante.
 
-**Stratégie : glouton, cible par cible, sur une liste triée.** Les archers sont ordonnés par
+**Stratégie : glouton, cible par cible, sur une liste triée**
+([ADR-0023](../../docs/adr/0023-moteur-de-placement-glouton-deterministe.md)). Les archers sont
+ordonnés par
 `(hauteur, blason, id)`, ce qui rend contigus les tireurs d'une même hauteur puis d'un même blason ;
 on remplit la cible courante tant que les budgets tiennent, et l'on passe à la **suivante** dès
 qu'un archer n'entre plus (place, position ou hauteur). Un archer qui n'entre nulle part — plus

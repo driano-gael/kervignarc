@@ -35,7 +35,8 @@ disposer d'un plan exploitable sans saisie manuelle.
 - **CA — plan de cibles (ex-008)** : vue par cible listant archers + positions + départ ; source
   des exports (E09US003).
 - **Notes** : entité `Cible` ; `position` (ex-`lettre` du prototype) — ex-001. Algo de placement
-  dans `domain/placement`, pur et testable — ex-002. Le **plan de cibles** (ex-008) est la vue par
+  dans `domain/placement`, pur et testable — ex-002 ; glouton déterministe, contraintes câblées,
+  recalcul à la demande ([ADR-0023](../docs/adr/0023-moteur-de-placement-glouton-deterministe.md)). Le **plan de cibles** (ex-008) est la vue par
   cible produite par le placement — source des exports (E09US003) et de la vue publique (E07US001).
   **L'ex-E03US008 est absorbée ici** ; ses liens entrants (E04US001, E07, E09, E12) ont été
   **redirigés vers E03US001** dans la passe globale du 17/07/2026. La **mixité ≥ 2 clubs** (RG-3) et
