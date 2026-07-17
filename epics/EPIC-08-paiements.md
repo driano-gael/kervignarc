@@ -11,7 +11,7 @@ Suivre ce que chaque archer/club doit et a payé — sans transaction en ligne. 
 
 ## Périmètre
 ### Inclus
-- **Montant dû** = tarif × nombre de départs.
+- **Montant dû** = **somme des tarifs** des départs auxquels l'archer est inscrit (les tarifs pouvant différer par créneau — [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md)).
 - Statut **payé / non payé**.
 - Vues consolidées **par archer** et **par club**.
 
