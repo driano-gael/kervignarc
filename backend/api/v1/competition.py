@@ -305,7 +305,7 @@ async def saisir_score(
     """Enregistre une flèche marquée par un archer (**écriture**, session requise — E10US001).
 
     Ouverte à l'admin en intérim ; le rôle scoreur (E10US003) / archer (E10US007) élargiront
-    cette autorisation. La **validation** d'une série restera réservée au scoreur (E04US007).
+    cette autorisation. La **validation** d'une série restera réservée au scoreur (E04US002).
     """
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue

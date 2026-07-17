@@ -58,7 +58,7 @@ Une valeur hors vocabulaire est rejetée en **400** par Pydantic, avant que le d
 (règle 6) — comme `TrancheAge` pour `Categorie.ages`. Les règles **structurelles** restent au
 domaine et sortent en **422**. La **mouche (X)** n'est pas une zone : le §4.3 la donne comme un
 **diamètre** (le « 10 intérieur » des poulies), pas comme une valeur de score, et aucun consommateur
-ne la demande — E06US002 départage au nombre de 10 puis de 9. Si EPIC-06 la réclame, c'est là qu'elle
+ne la demande — E06US001 départage au nombre de 10 puis de 9. Si EPIC-06 la réclame, c'est là qu'elle
 naîtra.
 
 **2. Trois règles structurelles, et pas une de plus** : `M` toujours admis (un manqué est

@@ -1,7 +1,7 @@
 """depart : ajoute `quota` (nombre maximal d'inscrits d'un créneau, facultatif)
 
-Revision ID: 0020_depart_quota
-Revises: 0019_blason_zones
+Revision ID: 0021_depart_quota
+Revises: 0020_categorie_hauteur_centre
 Create Date: 2026-07-17
 
 E02US006. Un départ (créneau, ADR-0017) peut plafonner ses inscrits pour respecter la capacité de
@@ -19,8 +19,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0020_depart_quota"
-down_revision: str | None = "0019_blason_zones"
+revision: str = "0021_depart_quota"
+down_revision: str | None = "0020_categorie_hauteur_centre"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

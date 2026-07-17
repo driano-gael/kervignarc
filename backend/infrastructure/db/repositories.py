@@ -226,7 +226,7 @@ def _config_phase(phase: Phase) -> str:
     # DETTE-003 (docs/dette.md) : les politiques sont écrites **à plat** alors que le modèle cible
     # (ADR-0004) les range sous `config.policies`, et `scoring` est ici un objet paramétré plutôt
     # qu'un nom de preset. Forme posée par E01US009 ; E01US015 s'y aligne pour ne pas créer une 2ᵉ
-    # convention. C'est E05US004 qui tranche — ne pas introduire `policies` ici en attendant.
+    # convention. C'est E05US003 qui tranche — ne pas introduire `policies` ici en attendant.
     """
     validation: dict[str, object] = {"grain": phase.validation.type.value}
     if phase.validation.n_volees is not None:
@@ -262,6 +262,7 @@ def _vers_categorie(ligne: CategorieORM) -> Categorie:
         ages=ages,
         sexe=None if ligne.sexe is None else SexeCategorie(ligne.sexe),
         blason_id=ligne.blason_id,
+        hauteur_cm=ligne.hauteur_cm,
         id=ligne.id,
     )
 
@@ -755,6 +756,7 @@ class CategorieRepositorySQL:
                     ages=_ages_categorie(categorie),
                     sexe=None if categorie.sexe is None else categorie.sexe.value,
                     blason_id=categorie.blason_id,
+                    hauteur_cm=categorie.hauteur_cm,
                 )
                 session.add(ligne)
                 session.commit()
@@ -813,6 +815,7 @@ class CategorieRepositorySQL:
                 ligne.ages = _ages_categorie(categorie)
                 ligne.sexe = None if categorie.sexe is None else categorie.sexe.value
                 ligne.blason_id = categorie.blason_id
+                ligne.hauteur_cm = categorie.hauteur_cm
                 session.commit()
                 return _vers_categorie(ligne)
         except SQLAlchemyError as exc:

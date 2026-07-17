@@ -83,6 +83,7 @@ erDiagram
 | ages | TEXT (JSON) | **une ou plusieurs** tranches — ex. `["U15","U18"]` |
 | sexe | TEXT | `H`\|`F`\|`mixte` |
 | blason_id | INTEGER | FK → BLASON (défaut) |
+| hauteur_cm | INTEGER | NOT NULL — hauteur du centre de l'or, cm (130 défaut, 110 U11) |
 
 > ⚠️ **Une catégorie n'est pas le triplet `arme × âge × sexe`** — c'est une **entité nommée** portant une
 > **règle d'éligibilité** (CDC fonctionnel EF-1.2). La FFTA regroupe des tranches d'âge : en arc nu,
@@ -118,9 +119,12 @@ erDiagram
 > triple d'un blason simple. ⚠️ **Les triples antérieurs à `0019` sont à corriger à la main** —
 > EPIC-04 ne doit pas supposer `zones` fiable sur une donnée antérieure à cette migration.
 >
-> **La hauteur du blason n'est pas modélisée** (110 cm pour le 80 cm des U11 contre 130 cm sinon,
-> §5) : elle interdit à un U11 de partager une butte avec des adultes et n'est **pas** réductible à
-> `taille`. Reportée à EPIC-03 — cf. [registre de dette](dette.md), DETTE-002.
+> **La hauteur du centre vit sur `CATEGORIE`, pas sur le blason** (`CATEGORIE.hauteur_cm` : 110 cm
+> pour les U11, 130 cm sinon, §5). Elle interdit à un U11 de partager une butte avec des adultes et
+> n'est **pas** réductible à `taille` : le placement en fait une contrainte de 1er rang (une butte,
+> une hauteur). *Résorbe [DETTE-002](dette.md) en E03US001* ([ADR-0022](adr/0022-hauteur-de-centre-sur-la-categorie.md),
+> migration `0020`) — l'option « hauteur sur le blason » a été écartée : la hauteur suit la catégorie
+> d'âge de l'archer, pas le carton.
 
 ### ARCHER
 | id | INTEGER | PK |
@@ -395,7 +399,7 @@ Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Exempl
 
 ## Notes d'implémentation
 - **Écritures** exclusivement via la file (writer unique, ADR-0005) ; les colonnes `valide`/`vainqueur_id` ne changent que dans une transaction courte.
-- **Idempotence** : `VOLEE.saisie_uid` évite les doublons au rejeu (offline/reconnexion, E04US010).
+- **Idempotence** : `VOLEE.saisie_uid` évite les doublons au rejeu (offline/reconnexion, E04US009).
 - **Intégrité placement** : contrainte d'unicité `(phase_id, cible_id, position)`.
 - **Config en JSON** : souplesse du moteur configurable ; les données volumineuses (matchs, volées) restent relationnelles.
 - À valider en conception détaillée : indexation (FK, `tournoi_id`), stratégie de cascade de suppression, stockage des flèches (JSON vs table dédiée `FLECHE`).

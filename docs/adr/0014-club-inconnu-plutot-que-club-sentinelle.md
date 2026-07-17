@@ -5,8 +5,8 @@
 - **Décideurs** : Organisateur / Architecte
 - **Amende** : [`stories/E02-inscriptions.md`](../../stories/E02-inscriptions.md) (E02US002 : le CA
   disait « club obligatoire ») ; [`modele-de-donnees.md`](../modele-de-donnees.md) (`ARCHER`)
-- **Introduit par** : E02US002 (créer un archer) ; **lie** E03US006 (mixité club), E08US004 /
-  E09US004 (sommes par club), E12US005 (complétude), E02US005 (doublons)
+- **Introduit par** : E02US002 (créer un archer) ; **lie** E03US006 (mixité club), E08US002 /
+  E09US003 (sommes par club), E12US005 (complétude), E02US005 (doublons)
 
 ## Contexte et problème
 
@@ -72,7 +72,7 @@ jamais « aucun club », jamais un club.**
   ce qu'il est réellement, et le placement peut le signaler (« mixité non garantie ») au lieu de se
   tromper en silence. **Un sentinelle transforme une inconnue en affirmation fausse.**
 - **+** Le référentiel des clubs ne contient que de vrais clubs — donc les sommes par club
-  (E08US004, E09US004) restent lisibles, et les `NULL` s'agrègent naturellement en « club inconnu »
+  (E08US002, E09US003) restent lisibles, et les `NULL` s'agrègent naturellement en « club inconnu »
   au lieu de se cacher derrière un faux club.
 - **+** La migration `0015` n'a aucun club à rétro-remplir : la position de `0014` est tenue.
 - **−** Le CA d'E02US002 était **faux** et a été corrigé dans `stories/` : « club obligatoire »

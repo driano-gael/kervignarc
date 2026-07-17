@@ -135,7 +135,7 @@ La solution s'articule autour de 9 modules :
 | EF-4.2 | **Ajustement manuel** par glisser-déposer après placement automatique. |
 | EF-4.3 | Contrainte : **capacité cible** = nombre d'archers admis, **libre (≥ 1)**, selon la taille des blasons. Les cas courants sont 1, 2 et 4, mais la FFTA décrit aussi une configuration à **3 triples verticaux** — la capacité n'est donc pas une énumération fermée. |
 | EF-4.4 | Contrainte : **fraction de place** — somme des blasons d'une cible ≤ capacité. |
-| EF-4.4b | Contrainte : **hauteur de blason**. Les blasons d'une même butte doivent être à une hauteur de centre compatible — la FFTA impose 130 cm en général, mais **110 cm** pour le 80 cm des U11 : un U11 ne peut donc pas partager une butte avec des adultes. Cette contrainte n'est **pas** réductible à la fraction de place. *(reportée — cf. registre de dette)* |
+| EF-4.4b | Contrainte : **hauteur de centre**. Les archers d'une même butte doivent tirer à la même hauteur de centre — la FFTA impose 130 cm en général, mais **110 cm** pour le 80 cm des U11 : un U11 ne peut donc pas partager une butte avec des adultes. Cette contrainte n'est **pas** réductible à la fraction de place. *(livrée en E03US001 : la hauteur vit sur la catégorie — `CATEGORIE.hauteur_cm` —, [ADR-0022](docs/adr/0022-hauteur-de-centre-sur-la-categorie.md), contrainte de placement de 1er rang)* |
 | EF-4.5 | Contrainte : **au moins 2 clubs différents** par cible lorsque c'est possible. |
 | EF-4.6 | Contrainte (officiel) : **séparation par catégorie/blason** sur une même cible. |
 | EF-4.7 | Chaque archer se voit attribuer **cible + position (A/B/C/D) + départ**. |

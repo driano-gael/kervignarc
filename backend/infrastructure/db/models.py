@@ -110,6 +110,10 @@ class CategorieORM(Base):
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — lien latéral au sein de la
     # descendance du tournoi, à traiter dans la même politique de suppression, non tranchée.
     blason_id: Mapped[int | None] = mapped_column(ForeignKey("blason.id"), nullable=True)
+    # Hauteur du centre de l'or (sol → centre), en cm (E03US001, ADR-0022) : 130 par défaut, 110
+    # pour les U11. Pilote la contrainte de placement « une butte, une hauteur ». Renseignée pour
+    # les lignes antérieures par la migration `0020` (backfill 130, 110 si `ages` contient U11).
+    hauteur_cm: Mapped[int] = mapped_column(nullable=False)
 
 
 class BlasonORM(Base):

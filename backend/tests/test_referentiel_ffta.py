@@ -105,6 +105,16 @@ def test_eligibilite_unique_par_arme_et_sexe() -> None:
             deja_vues |= ensemble
 
 
+def test_hauteur_de_centre_u11_a_110_sinon_130() -> None:
+    """E03US001 (ADR-0022) : les U11 tirent à 110 cm (blason 80 cm, §5), les autres à 130 cm."""
+    for modele in categories_salle_18m():
+        attendue = 110 if TrancheAge.U11 in modele.ages else 130
+        assert modele.hauteur_cm == attendue, modele.libelle
+    # Contrôle explicite d'au moins un U11, sans quoi le test passerait sur un jeu sans U11.
+    hauteurs_u11 = {m.hauteur_cm for m in categories_salle_18m() if TrancheAge.U11 in m.ages}
+    assert hauteurs_u11 == {110}
+
+
 def test_exemples_de_libelles_attendus() -> None:
     """Quelques libellés de contrôle attestent la composition « arme âge/regroupement sexe »."""
     libelles = set(_libelles())

@@ -47,6 +47,16 @@ class LibelleCategorieInvalide(DomainError):
     code = "libelle_categorie_invalide"
 
 
+class HauteurCentreInvalide(DomainError):
+    """La hauteur du centre de l'or d'une catégorie n'est pas un entier strictement positif.
+
+    Hauteur du sol au centre de l'or, en cm (E03US001, ADR-0022). Pilote la contrainte de
+    placement « une butte, une hauteur » : 130 cm par défaut, 110 cm pour les U11 (référentiel §5).
+    """
+
+    code = "hauteur_centre_invalide"
+
+
 class NomBlasonInvalide(DomainError):
     """Le nom d'un blason est vide (après normalisation)."""
 

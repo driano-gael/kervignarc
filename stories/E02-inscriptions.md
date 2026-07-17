@@ -2,12 +2,15 @@
 
 > EPIC : [EPIC-02](../epics/EPIC-02-inscriptions.md) · Réfs : CDC fonctionnel M2.
 
+> ⚠️ Maille révisée le 17/07/2026 — seules les US non livrées sont regroupées (E02US007 absorbe
+> E02US008) ; E02US001–004 et E02US009, livrées, restent atomiques.
+
 ---
 
 ### E02US001 — Gérer le référentiel clubs
 *En tant qu'*administrateur, *je veux* gérer une liste de clubs, *afin de* rattacher les archers sans ressaisie.
 - **CA** : CRUD club (nom) ; réutilisable entre tournois ; un club utilisé n'est pas supprimable sans avertissement.
-- **Notes** : entité **globale** — pas de `tournoi_id`, routes `/api/v1/clubs` non imbriquées. Unicité du nom au sens de `domain.club.cle_nom` (casse **et** accents repliés), qui sert aussi au tri : sans quoi les sommes par club (E08US004/E09US004) se couperaient en deux. Pose aussi `Archer.club_id` (**facultatif**, migration `0014`) : c'est lui qui rend le CA « club utilisé non supprimable » **exerçable** — sans rattachement possible, le refus (`ClubReference` → 409, patron `BlasonReference` d'E01US006) serait un garde-fou qu'aucun chemin réel ne déclenche. La FK naît **avec** sa politique de suppression, contrairement à celles de DETTE-001 — et elle en sort du périmètre : elle pointe hors de la descendance de `tournoi`.
+- **Notes** : entité **globale** — pas de `tournoi_id`, routes `/api/v1/clubs` non imbriquées. Unicité du nom au sens de `domain.club.cle_nom` (casse **et** accents repliés), qui sert aussi au tri : sans quoi les sommes par club (E08US002/E09US003) se couperaient en deux. Pose aussi `Archer.club_id` (**facultatif**, migration `0014`) : c'est lui qui rend le CA « club utilisé non supprimable » **exerçable** — sans rattachement possible, le refus (`ClubReference` → 409, patron `BlasonReference` d'E01US006) serait un garde-fou qu'aucun chemin réel ne déclenche. La FK naît **avec** sa politique de suppression, contrairement à celles de DETTE-001 — et elle en sort du périmètre : elle pointe hors de la descendance de `tournoi`.
 - **Dépend de** : E00US009 · **Jalon** : J1
 
 ### E02US002 — Créer un archer
@@ -54,21 +57,33 @@
 - **Dépend de** : E02US004 · **Jalon** : J1
   > **Arbitrage tranché le 17/07/2026** (organisateur). Deux options ouvertes par le CA d'origine (« par tournoi / par départ ; blocage ou alerte ») : **portée** → *par départ uniquement* (la salle est une capacité de créneau ; un plafond tournoi distinct serait un second invariant sans besoin réel — une somme suffit) ; **dépassement** → *blocage dur* (un quota qui n'empêche rien n'est pas un quota ; le blocage dur évite tout état « en surnombre » à gérer en aval, notamment au placement — EPIC-03). Écartées : *alerte non bloquante* (reporte la contrainte sur chaque consommateur aval) et *plafond par tournoi* (invariant en double). Décision jugée **non structurante** (extension directe d'ADR-0017 : le départ porte déjà le tarif, il porte le quota) → pas d'ADR, arbitrage consigné ici.
 
-### E02US007 — Importer un fichier inscript'arc (parsing + mapping)
-*En tant qu'*administrateur, *je veux* importer les inscrits depuis un fichier, *afin d'*éviter la ressaisie.
-- **CA** : import XLS ; mapping des colonnes ; création des archers/clubs/départs.
+### E02US007 — Importer un fichier inscript'arc (parsing + rapport)
+*En tant qu'*administrateur, *je veux* importer les inscrits depuis un fichier et obtenir un compte-rendu de l'opération, *afin d'*éviter la ressaisie sans risquer une import partielle silencieuse.
+- **CA — parsing & mapping (ex-007)** : import XLS ; mapping des colonnes ; création des archers/clubs/départs.
+- **CA — rapport (ex-008)** : lignes importées / rejetées (avec motif) / doublons détectés ; aucun import partiel silencieux.
 - **Notes** : **bloqué** tant que le format exact (QT1) n'est pas fourni ; adapter d'infrastructure (openpyxl).
   > **Vigilance quota (E02US006).** Le **quota d'un départ** est un invariant **purement applicatif** — contrôlé dans `ServiceInscriptions.inscrire`, **sans aucune contrainte SQL** (le writer unique en est le seul garde-fou, règle 7 ; un `count < quota` n'est pas exprimable en contrainte SQLite). Un import en masse qui insérerait des inscriptions **sans repasser par `inscrire`** (chemin *bulk*, insertion directe au repository) **franchirait le plafond en silence**. L'import doit donc soit passer par `inscrire` archer par archer, soit **re-contrôler le quota** lui-même. Même vigilance pour tout futur placement (EPIC-03) qui inscrirait d'office. *(Point relevé par la revue adversariale d'E02US006.)*
-  > **Deux questions posées par E02US002, à trancher ici** ([ADR-0015](../docs/adr/0015-signaler-un-doublon-plutot-que-l-interdire.md)) : (1) un import écrit **en masse, sans personne pour confirmer** — poser `autoriser_homonyme=true` globalement désarmerait le signalement pour tout un fichier, ce que E02US008 (rapport d'import) doit justement éviter ; la réponse attendue est de **collecter** les homonymes et de les présenter, pas de choisir entre tout refuser et tout accepter. (2) Le fichier fédéral porte le **n° de licence** : c'est l'occasion de le modéliser et de rendre le doublon *décidable* — y compris **entre tournois**, ce qu'aucun contrôle actuel ne fait (alternative écartée en [ADR-0014](../docs/adr/0014-club-inconnu-plutot-que-club-sentinelle.md) et ADR-0015, faute d'usage réel avant cette US).
-- **Dépend de** : E02US002, E02US004 · **Jalon** : J4
-
-### E02US008 — Rapport d'import
-*En tant qu'*administrateur, *je veux* un compte-rendu d'import, *afin de* corriger les anomalies.
-- **CA** : lignes importées / rejetées (avec motif) / doublons détectés ; aucun import partiel silencieux.
-- **Dépend de** : E02US007 · **Jalon** : J4
+  > **Deux questions posées par E02US002, à trancher ici** ([ADR-0015](../docs/adr/0015-signaler-un-doublon-plutot-que-l-interdire.md)) : (1) un import écrit **en masse, sans personne pour confirmer** — poser `autoriser_homonyme=true` globalement désarmerait le signalement pour tout un fichier, ce que le rapport d'import (CA « rapport ») doit justement éviter ; la réponse attendue est de **collecter** les homonymes et de les présenter, pas de choisir entre tout refuser et tout accepter. (2) Le fichier fédéral porte le **n° de licence** : c'est l'occasion de le modéliser et de rendre le doublon *décidable* — y compris **entre tournois**, ce qu'aucun contrôle actuel ne fait (alternative écartée en [ADR-0014](../docs/adr/0014-club-inconnu-plutot-que-club-sentinelle.md) et ADR-0015, faute d'usage réel avant cette US).
+- **Absorbe** : ex-E02US007, E02US008. **Dépend de** : E02US002, E02US004 · **Jalon** : J4
 
 ### E02US009 — Inscrire un archer sur des départs
 *En tant qu'*administrateur, *je veux* inscrire un archer sur un ou plusieurs départs (créneaux) du tournoi, *afin de* refléter sa participation réelle et asseoir sa facturation.
 - **CA** : un archer est inscriptible sur un ou plusieurs des départs configurés (E02US004) — **un même créneau une seule fois** (une inscription est un couple *(archer, départ)*, `UNIQUE`) ; un archer ne peut s'inscrire que sur un départ **de son propre tournoi** ; lien archer↔départ portant `payé`, modifiable par (archer, départ) ; désinscription libre ; le montant dû d'une inscription se **dérive** du tarif du départ ; un archer inscrit sur au moins un départ **élargit la notion d'« engagé »** (glossaire) — le supprimer (déjà signalé/confirmable pour scores et placement, E02US003) efface aussi ses inscriptions. **Supprimer un départ qui porte des inscriptions** est **signalé** (409 `depart_avec_inscriptions`) et **acceptable après confirmation** ([ADR-0018](../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md), patron E02US003) : le message **décompte les inscriptions détruites, dont les déjà payées** ; la suppression confirmée les efface. Persisté via la file ; **écran d'inscription** (inscrire/désinscrire un archer sur des créneaux, marquer payé).
 - **Notes** : entité `Inscription` (agrégat mince FR) + table de liaison archer↔départ portant `paye` — [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md). Reprend les colonnes `montant_du`/`paye` que le modèle v0.3 posait à tort sur `DEPART` ; le `montant_du` n'est **pas stocké** (dérivé du `tarif_centimes` du départ à la lecture). Double inscription refusée (`DejaInscrit`, 409) ; un départ d'un autre tournoi est **introuvable** du point de vue de l'archer (`DepartIntrouvable`, 404), pas une erreur nouvelle. Purge des inscriptions dans la **transaction** de `ArcherRepositorySQL.supprimer` (patron `archer → score` d'E02US003) et de `DepartRepositorySQL.supprimer`. Alimente E08US001 (facturation = somme des tarifs des départs de l'archer). **Deux effets de bord déportés** ([ADR-0018](../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md)) : le **remboursement** des inscriptions payées effacées → **E08US005** (`paye` n'est qu'un booléen, aucun mouvement d'argent ici) ; le garde-fou « départ **déjà lancé** » → **E12US008** (le départ n'a aucun état de cycle de vie aujourd'hui). Élargit [DETTE-001](../docs/dette.md) (FK `inscription.archer_id`, `inscription.depart_id` sans `ON DELETE`) et [DETTE-007](../docs/dette.md) (la confirmation de suppression de départ est aveugle au même titre que celle de l'archer).
 - **Dépend de** : E02US002, E02US004 · **Jalon** : J1
+
+---
+
+## Correspondance ancien → nouveau (maille révisée du 17/07/2026)
+
+| Ancienne US | Titre d'origine | Devient |
+|---|---|---|
+| E02US001 | Gérer le référentiel clubs | **E02US001** (inchangée) |
+| E02US002 | Créer un archer | **E02US002** (inchangée) |
+| E02US003 | Éditer / supprimer un archer | **E02US003** (inchangée) |
+| E02US004 | Configurer les départs (créneaux) d'un tournoi | **E02US004** (inchangée) |
+| E02US005 | Détecter et fusionner les doublons | **E02US005** (inchangée) |
+| E02US006 | Contrôler les quotas | **E02US006** (inchangée) |
+| E02US007 | Importer un fichier inscript'arc (parsing + mapping) | **E02US007** — CA « parsing & mapping » |
+| E02US008 | Rapport d'import | **E02US007** — CA « rapport » |
+| E02US009 | Inscrire un archer sur des départs | **E02US009** (inchangée) |

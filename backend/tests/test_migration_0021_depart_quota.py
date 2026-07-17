@@ -1,13 +1,13 @@
-"""Migration 0020 — ajout de `quota` aux départs (E02US006).
+"""Migration 0021 — ajout de `quota` aux départs (E02US006).
 
 La suite d'API et celle du repository migrent toujours une base **vide** jusqu'à `head` : le chemin
 d'un départ **déjà présent** au moment de l'`upgrade` n'est exercé par aucun autre test.
 Contrairement à `0019`, il n'y a **pas de backfill** — un départ existant doit ressortir avec
 `quota = NULL` (illimité), défaut sémantiquement correct. On le vérifie ici, avec la réversibilité.
 
-On insère un départ à l'**ancien** schéma (sans `quota`) sur la révision `0019`, on applique `0020`,
-et on relit. Mêmes conditions que les migrations voisines : les clés étrangères sont désactivées
-côté Alembic, d'où le `tournoi_id` fictif sans tournoi parent matérialisé.
+On insère un départ à l'**ancien** schéma (sans `quota`) sur la révision `0019`, on applique `0021`
+(qui inclut `0020`), et on relit. Mêmes conditions que les migrations voisines : les clés étrangères
+sont désactivées côté Alembic, d'où le `tournoi_id` fictif sans tournoi parent matérialisé.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ def _config(url: str) -> Config:
 
 
 def test_upgrade_pose_quota_null_sur_les_departs_existants(tmp_path: Path) -> None:
-    """Après `0020`, un départ préexistant porte `quota = NULL` (sans plafond) — pas de backfill."""
+    """Après `0021`, un départ préexistant porte `quota = NULL` (sans plafond) — pas de backfill."""
     url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
     cfg = _config(url)
     command.upgrade(cfg, "0019_blason_zones")
@@ -44,7 +44,7 @@ def test_upgrade_pose_quota_null_sur_les_departs_existants(tmp_path: Path) -> No
                 )
             )
 
-        command.upgrade(cfg, "0020_depart_quota")
+        command.upgrade(cfg, "0021_depart_quota")
 
         with engine.connect() as conn:
             quota = conn.execute(sa.text("SELECT quota FROM depart WHERE id = 1")).scalar_one()
@@ -54,10 +54,10 @@ def test_upgrade_pose_quota_null_sur_les_departs_existants(tmp_path: Path) -> No
 
 
 def test_upgrade_sur_base_vide_pose_une_colonne_nullable(tmp_path: Path) -> None:
-    """La colonne `quota` existe après `0020` et reste **nullable** (un plafond absent est ok)."""
+    """La colonne `quota` existe après `0021` et reste **nullable** (un plafond absent est ok)."""
     url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
     cfg = _config(url)
-    command.upgrade(cfg, "0020_depart_quota")
+    command.upgrade(cfg, "0021_depart_quota")
 
     engine = sa.create_engine(url)
     try:
@@ -74,7 +74,7 @@ def test_downgrade_retire_la_colonne(tmp_path: Path) -> None:
     """Le downgrade retire `quota` sans toucher au reste du départ."""
     url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
     cfg = _config(url)
-    command.upgrade(cfg, "0020_depart_quota")
+    command.upgrade(cfg, "0021_depart_quota")
 
     engine = sa.create_engine(url)
     try:

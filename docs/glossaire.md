@@ -22,6 +22,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Cible** | `Cible` | Support physique numéroté ; capacité **libre (≥ 1)** selon les blasons — usuellement 1, 2 ou 4, mais 3 existe (triples verticaux). |
 | **Position** | `position` | Emplacement sur une cible : A, B, C, D (ex-`lettre` du prototype). |
 | **Gabarit de salle** | `GabaritSalle` | Plan de cibles réutilisable : nombre de cibles et **plafond** d'archers par cible (défaut 4) d'où découlent les positions. |
+| **Hauteur de centre** | `Categorie.hauteur_cm` | Hauteur du sol au **centre de l'or**, en cm : 130 en général, **110** pour le blason 80 cm des U11 ([référentiel §5](referentiel-ffta.md)). Portée par la **catégorie** (pas le blason — [ADR-0022](adr/0022-hauteur-de-centre-sur-la-categorie.md)). Contrainte de placement de 1er rang : **une butte, une seule hauteur** (un U11 ne partage pas une cible avec un adulte). |
 | **Départ** | `Depart` | Un **créneau** (session horaire) d'un tournoi, comme si le tournoi se jouait plusieurs fois dans la journée. Entité **du tournoi** (`tournoi_id`), **partagée** par les archers qui s'y inscrivent — pas une propriété de l'archer. Porte un numéro, un horaire (facultatif), son **tarif** (obligatoire) et son **quota** (facultatif). L'archer s'y inscrit (E02US009), base de la facturation (somme des tarifs de ses départs). Voir [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md). |
 | **Flèche** | `Fleche` | Un tir unique ; valeur 0-10, X (centre), M (manqué). |
 | **Volée** | `Volee` | Groupe de flèches tirées d'affilée (ex. 3 flèches). |
@@ -49,7 +50,8 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Grain de validation** | `GrainValidation` | **Quand le scoreur valide** une phase : *fin de série* · *fin de duel* · *toutes les N volées* (`config.validation`, `D-11`). Politique de phase, réglée à la configuration — pas un réglage global. |
 | **Séquence** | `Sequence` | Enchaînement ordonné de phases définissant un format. |
 | **Placement** | `Placement` | Affectation d'un archer à cible + position + départ. |
-| **Plan de cibles** | — | Vue « qui tire où » pour une phase/tour. |
+| **Plan de cibles** | `PlanDeCibles` | Vue « qui tire où » d'un **départ**, produite par le moteur de placement (E03US001, `domain/placement.py`) : cibles remplies (archers + positions) + **rapport de conflits**. Recalculée à la demande ; source des exports (E09) et de la vue publique (E07). |
+| **Conflit de placement** | `Conflit` | Un archer que le placement n'a **pas** pu poser, avec sa raison : `non_place` (plus de cible : place, positions ou hauteur épuisées) ou `sans_blason` (catégorie sans blason par défaut). Pas d'échec silencieux — CA « conflits » d'E03US001. |
 | **Déroulé** | — | Grille horaire de la journée. |
 | **Classement** | `Classement` | Ordre des archers ; peut être intégral (1→N) ou partiel. |
 | **Rang** | `rang` | Position finale d'un archer. |

@@ -21,7 +21,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.categories import ServiceCategories
-from domain.categorie import Categorie, SexeCategorie, TrancheAge
+from domain.categorie import HAUTEUR_CENTRE_DEFAUT, Categorie, SexeCategorie, TrancheAge
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["categories"])
@@ -40,6 +40,9 @@ class CreerCategorieRequete(BaseModel):
     ages: list[TrancheAge] = Field(default_factory=list)
     sexe: SexeCategorie | None = None
     blason_id: int | None = None
+    # Hauteur du centre de l'or, en cm (E03US001) — facultative : omise, vaut 130 (défaut FFTA).
+    # Le pré-chargement FFTA fixe 110 pour les U11 côté service, pas via ce DTO.
+    hauteur_cm: int = HAUTEUR_CENTRE_DEFAUT
 
 
 class ModifierCategorieRequete(BaseModel):
@@ -50,6 +53,12 @@ class ModifierCategorieRequete(BaseModel):
     ages: list[TrancheAge] = Field(default_factory=list)
     sexe: SexeCategorie | None = None
     blason_id: int | None = None
+    # DETTE-009 : `hauteur_cm` est facultative et retombe à 130 si omise. Le front de gestion des
+    # catégories (E02US003) ne l'envoie pas encore → éditer une catégorie U11 depuis l'UI actuelle
+    # ramène sa hauteur de 110 à 130 (perte silencieuse, piège du PUT partiel — cf. ADR-0020). Hors
+    # périmètre d'E03US001 (domaine + lecture, pas de front) ; le champ d'édition viendra avec l'UI
+    # de placement (E03US004). Cf. docs/dette.md.
+    hauteur_cm: int = HAUTEUR_CENTRE_DEFAUT
 
 
 class CategorieReponse(BaseModel):
@@ -66,6 +75,7 @@ class CategorieReponse(BaseModel):
     ages: list[TrancheAge]
     sexe: SexeCategorie | None
     blason_id: int | None
+    hauteur_cm: int
 
     @staticmethod
     def de_agregat(categorie: Categorie) -> CategorieReponse:
@@ -79,6 +89,7 @@ class CategorieReponse(BaseModel):
             ages=list(categorie.ages),
             sexe=categorie.sexe,
             blason_id=categorie.blason_id,
+            hauteur_cm=categorie.hauteur_cm,
         )
 
 
@@ -132,6 +143,7 @@ async def creer_categorie(
                 requete.ages,
                 requete.sexe,
                 requete.blason_id,
+                requete.hauteur_cm,
             )
         )
     )
@@ -158,6 +170,7 @@ async def modifier_categorie(
                 requete.ages,
                 requete.sexe,
                 requete.blason_id,
+                requete.hauteur_cm,
             )
         )
     )
