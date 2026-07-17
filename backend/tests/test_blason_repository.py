@@ -9,6 +9,7 @@ from __future__ import annotations
 import datetime
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
 
@@ -19,6 +20,8 @@ from infrastructure.db import (
     Database,
     TournoiRepositorySQL,
 )
+from infrastructure.db.models import BlasonORM
+from infrastructure.erreurs import InfrastructureError
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -149,5 +152,43 @@ def test_enregistrer_met_a_jour_les_zones(tmp_path: Path) -> None:
         assert cree.id is not None
         assert modifie.zones == ("10", "9", "8", "7", "6", "M")
         assert repository.par_id(cree.id) == modifie
+    finally:
+        db.engine.dispose()
+
+
+@pytest.mark.parametrize(
+    ("zones_en_base", "cas"),
+    [
+        ("pas du json", "JSON illisible"),
+        ('["10", "X", "M"]', "JSON valide mais zone hors vocabulaire"),
+        ('{"10": 1}', "objet JSON : sans coercition, réhydratait ('10',) en silence"),
+        ("null", "JSON valide mais non itérable"),
+    ],
+)
+def test_zones_corrompues_levent_infrastructure_error(
+    tmp_path: Path, zones_en_base: str, cas: str
+) -> None:
+    """Une colonne `zones` illisible est enveloppée en `InfrastructureError` (ADR-0007).
+
+    Le repository en est le seul rédacteur : une valeur aberrante est une **incohérence
+    technique**, jamais un cas métier. Sans la coercition `ZoneScore(...)`, les deux derniers cas
+    réhydrataient un `Blason` **silencieusement invalide** qui aurait piloté le pavé d'EPIC-04.
+    Même patron que `test_config_corrompue_leve_infrastructure_error` (gabarits).
+    """
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        with db.session_factory() as session:
+            session.add(
+                BlasonORM(
+                    tournoi_id=tournoi_id,
+                    nom="Cassé",
+                    taille=0.5,
+                    capacite=1,
+                    zones=zones_en_base,
+                )
+            )
+            session.commit()
+        with pytest.raises(InfrastructureError):
+            BlasonRepositorySQL(db.session_factory).par_tournoi(tournoi_id), cas
     finally:
         db.engine.dispose()

@@ -77,6 +77,21 @@ de l'US est de **restreindre la saisie**, pas de normer le carton.
 littéral sert de **backfill** à la migration `0019`, pour la raison qui interdit l'option (4) : rien
 en base ne reconnaît un triple.
 
+**5. L'édition est un remplacement complet.** `zones` est **obligatoire** au `PUT /blasons/{id}`,
+comme le nom, la taille et la capacité ; `None` n'a donc pas un second sens (« inchangé »). En faire
+le seul champ partiel d'un PUT par ailleurs total tendrait un piège de read-modify-write au prochain
+client (import, script) qui construirait son corps depuis un modèle incomplet : il effacerait les
+autres champs mais pas celui-là, et la cause serait invisible à la lecture de l'appelant. `None` ne
+garde qu'un sens, à la **création** : « applique le défaut ».
+
+**6. La relecture rejoue la validation du domaine.** `_vers_blason` repasse par `valider_zones` —
+comme `_vers_phase` repasse par `BaremeQualification.creer` — et non par une simple coercition
+`ZoneScore(...)`. Motif : la coercition ne voit que le **vocabulaire**, pas la **structure**. Une
+colonne contenant `'{"10": 1}'` réhydraterait `('10',)` (les clés d'un objet JSON, vocabulaire
+valide, mais sans `M`) : un blason hors invariant, qui piloterait le pavé sans qu'aucune erreur ne
+soit levée. Une colonne illisible **ou hors règle** est une incohérence technique →
+`InfrastructureError` (ADR-0007), jamais un agrégat silencieusement invalide.
+
 ## Conséquences
 
 - **+** Le pavé de saisie d'EPIC-04 a enfin sa source de vérité, portée par le blason.

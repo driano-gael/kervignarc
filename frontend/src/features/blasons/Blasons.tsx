@@ -13,7 +13,7 @@ import { ErreurApi } from '../../shared/api/client'
 import type { Blason, NouveauBlason, Zone } from './api'
 import { ZONE_MANQUE, ZONES_CANONIQUES } from './api'
 import { useBlasons, useCreerBlason, useModifierBlason, useSupprimerBlason } from './hooks'
-import { aUneZoneMarquante, basculerZone } from './zones'
+import { aUneZoneMarquante, basculerZone, estVerrouillee } from './zones'
 
 export function Blasons({ tournoiId }: { tournoiId: number }) {
   const blasons = useBlasons(tournoiId)
@@ -203,26 +203,18 @@ function FormulaireBlason({
             saisie ne proposera que ces valeurs.
           </p>
           <div className="zones__cases">
-            {ZONES_CANONIQUES.map((zone) => {
-              // Un manqué est toujours possible : le domaine l'impose, l'UI le verrouille plutôt
-              // que de laisser l'admin le décocher pour se faire refuser en 422. Le verrou ne
-              // mord que si l'invariant est **déjà** satisfait : un blason arrivé sans `M` (base
-              // éditée à la main) resterait sinon inéditable — case ni cochée ni cochable, PUT
-              // refusé en 422, et aucune action dans l'UI pour s'en sortir.
-              const verrouille = zone === ZONE_MANQUE && zones.includes(ZONE_MANQUE)
-              return (
-                <label key={zone} className="zones__case">
-                  <input
-                    type="checkbox"
-                    checked={zones.includes(zone)}
-                    disabled={verrouille}
-                    onChange={() => setZones((actuelles) => basculerZone(actuelles, zone))}
-                    aria-label={zone === ZONE_MANQUE ? 'Manqué (toujours admis)' : `Zone ${zone}`}
-                  />
-                  {zone}
-                </label>
-              )
-            })}
+            {ZONES_CANONIQUES.map((zone) => (
+              <label key={zone} className="zones__case">
+                <input
+                  type="checkbox"
+                  checked={zones.includes(zone)}
+                  disabled={estVerrouillee(zones, zone)}
+                  onChange={() => setZones((actuelles) => basculerZone(actuelles, zone))}
+                  aria-label={zone === ZONE_MANQUE ? 'Manqué (toujours admis)' : `Zone ${zone}`}
+                />
+                {zone}
+              </label>
+            ))}
           </div>
         </fieldset>
         <div className="formulaire__actions">

@@ -126,7 +126,7 @@ class Blason:
             nom=_nom_valide(nom),
             taille=_taille_valide(taille),
             capacite=_capacite_valide(capacite),
-            zones=ZONES_DEFAUT if zones is None else _zones_valides(zones),
+            zones=ZONES_DEFAUT if zones is None else valider_zones(zones),
         )
 
     def modifier(
@@ -149,7 +149,7 @@ class Blason:
             nom=_nom_valide(nom),
             taille=_taille_valide(taille),
             capacite=_capacite_valide(capacite),
-            zones=_zones_valides(zones),
+            zones=valider_zones(zones),
         )
 
 
@@ -178,8 +178,12 @@ def _capacite_valide(capacite: int) -> int:
     return capacite
 
 
-def _zones_valides(zones: Iterable[ZoneScore | str]) -> tuple[ZoneScore, ...]:
+def valider_zones(zones: Iterable[ZoneScore | str]) -> tuple[ZoneScore, ...]:
     """Valide et normalise les valeurs de score admises ; lève `ZonesBlasonInvalides`.
+
+    **Publique** à dessein : le repository la rejoue à la **relecture**, pour qu'une colonne
+    corrompue remonte en `InfrastructureError` plutôt qu'en agrégat silencieusement invalide
+    (même geste que `_vers_phase`, qui repasse par `BaremeQualification.creer` — ADR-0007).
 
     Trois règles seulement, et **aucune n'est un contrôle de conformité FFTA** : `M` est toujours
     admis (un manqué est physiquement possible sur tout blason, le scoreur doit pouvoir le saisir),
@@ -208,13 +212,15 @@ def _zones_valides(zones: Iterable[ZoneScore | str]) -> tuple[ZoneScore, ...]:
     saisies: list[ZoneScore] = []
     for zone in zones:
         try:
+            # `ZoneScore` hérite de `str`, donc ses propres membres passent aussi par `strip()` —
+            # c'est sans effet (la valeur est déjà nette) et ça évite une branche morte.
             saisies.append(ZoneScore(zone.strip() if isinstance(zone, str) else zone))
         except ValueError as exc:
-            # L'écho de l'entrée est borné : le client choisit ce qu'il envoie, pas la taille
-            # du message d'erreur qu'il récupère.
+            # Le **type** est dans le message, sinon `zones=[10, "M"]` (entiers JSON d'un script)
+            # donnerait « 10 est inconnue, valeurs admises : 10, 9… » — vrai mais illisible.
             raise ZonesBlasonInvalides(
-                f"Zone de score inconnue : {repr(zone)[:20]}. Valeurs admises : "
-                f"{', '.join(z.value for z in ZONES_CANONIQUES)}."
+                f"Zone de score inconnue : {_extrait(zone)} (type {type(zone).__name__}). "
+                f"Valeurs admises : {', '.join(z.value for z in ZONES_CANONIQUES)}."
             ) from exc
 
     if len(set(saisies)) != len(saisies):
@@ -231,3 +237,15 @@ def _zones_valides(zones: Iterable[ZoneScore | str]) -> tuple[ZoneScore, ...]:
 
     retenues = set(saisies)
     return tuple(zone for zone in ZONES_CANONIQUES if zone in retenues)
+
+
+def _extrait(valeur: object, taille_max: int = 20) -> str:
+    """Rend `valeur` lisible dans un message d'erreur, **bornée** et proprement tronquée.
+
+    Le client choisit ce qu'il envoie, pas la taille du message qu'il récupère : une zone de 10 Mo
+    ne doit pas revenir en écho. Tronquer `repr()` couperait au milieu du littéral et laisserait un
+    guillemet orphelin — on tronque donc la **valeur**, puis on la représente.
+    """
+    if isinstance(valeur, str) and len(valeur) > taille_max:
+        return f"{valeur[:taille_max]!r}…"
+    return repr(valeur)

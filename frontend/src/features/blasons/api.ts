@@ -2,16 +2,10 @@
 // Miroir des DTO exposés par `api/v1/blasons.py`.
 
 import { fetchJson } from '../../shared/api/client'
+import type { Zone } from './zones'
 
-// Vocabulaire des zones de score en salle, du centre vers l'extérieur (référentiel FFTA §4.2).
-// Miroir de l'énuméré `ZoneScore` du domaine ; sert aussi d'ordre d'affichage.
-export const ZONES_CANONIQUES = ['10', '9', '8', '7', '6', '5', '4', '3', '2', '1', 'M'] as const
-
-// Vocabulaire **fermé**, comme `TrancheAge` côté catégories : une valeur hors de cette liste est
-// une erreur de compilation ici, et un 400 à la frontière serveur.
-export type Zone = (typeof ZONES_CANONIQUES)[number]
-
-export const ZONE_MANQUE: Zone = 'M'
+// Le vocabulaire des zones vit dans `zones.ts` (module pur) ; réexporté ici par commodité.
+export { ZONE_MANQUE, ZONES_CANONIQUES, type Zone } from './zones'
 
 export interface Blason {
   id: number

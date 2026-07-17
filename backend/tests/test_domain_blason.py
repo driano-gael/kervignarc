@@ -196,3 +196,27 @@ def test_les_zones_sont_des_zones_de_score() -> None:
     assert all(isinstance(zone, ZoneScore) for zone in blason.zones)
     assert blason.zones[0] is ZoneScore.DIX
     assert blason.zones[-1] is ZoneScore.MANQUE
+
+
+def test_creer_refuse_des_zones_non_textuelles() -> None:
+    """Un script qui enverrait les entiers JSON `[10, 9]` est refusé, pas coercé en silence.
+
+    Le message nomme le **type** : sans lui, « 10 est inconnue, valeurs admises : 10, 9… » serait
+    vrai mais incompréhensible pour l'auteur du script.
+    """
+    with pytest.raises(ZonesBlasonInvalides, match="type int"):
+        Blason.creer(1, "Blason", 0.5, 1, zones=[10, 9, "M"])  # type: ignore[list-item]
+
+
+def test_le_message_borne_l_echo_de_l_entree() -> None:
+    """Le client choisit ce qu'il envoie, pas la taille du message qu'il récupère.
+
+    La troncature porte sur la **valeur** puis représente : tronquer `repr()` couperait au milieu
+    du littéral et laisserait un guillemet orphelin.
+    """
+    with pytest.raises(ZonesBlasonInvalides) as capture:
+        Blason.creer(1, "Blason", 0.5, 1, zones=["A" * 5_000, "M"])
+    message = str(capture.value)
+    assert "A" * 20 in message
+    assert "A" * 21 not in message
+    assert "…" in message

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { Zone } from './api'
-import { aUneZoneMarquante, basculerZone } from './zones'
+import { aUneZoneMarquante, basculerZone, estVerrouillee, type Zone } from './zones'
+
+// Le jeu complet, **codé en dur** plutôt qu'importé de `ZONES_CANONIQUES` : un test dont l'entrée
+// dérive de la constante que la fonction sous test utilise ne peut plus détecter un changement de
+// cette constante. C'est l'oracle du test, il doit rester indépendant du module.
+const ZONES_COMPLETES: Zone[] = ['10', '9', '8', '7', '6', '5', '4', '3', '2', '1', 'M']
 
 describe('basculerZone', () => {
   it('replace une zone cochée dans l’ordre canonique, quel que soit l’ordre d’arrivée', () => {
@@ -12,6 +16,11 @@ describe('basculerZone', () => {
   it('décoche sans dénormaliser l’ordre', () => {
     const actuelles: Zone[] = ['10', '9', '8', '7', '6', 'M']
     expect(basculerZone(actuelles, '8')).toEqual(['10', '9', '7', '6', 'M'])
+  })
+
+  it('renormalise AUSSI en décochant, depuis un état désordonné', () => {
+    // Le cas qui mord : partir d'un état déjà canonique ne prouve rien de la branche décoche.
+    expect(basculerZone(['M', '9', '10'], '9')).toEqual(['10', 'M'])
   })
 
   it('ne duplique pas une zone déjà cochée (bascule aller-retour)', () => {
@@ -34,6 +43,26 @@ describe('basculerZone', () => {
   })
 })
 
+describe('estVerrouillee', () => {
+  it('verrouille le manqué une fois coché : l’admin ne peut pas le retirer', () => {
+    expect(estVerrouillee(['10', '9', 'M'], 'M')).toBe(true)
+  })
+
+  it('ne verrouille pas un blason arrivé sans manqué — sinon il serait inéditable', () => {
+    // Le cas qui motive le correctif : case ni cochée ni cochable, PUT refusé en 422, et aucune
+    // action dans l'UI pour s'en sortir.
+    expect(estVerrouillee(['10', '9'], 'M')).toBe(false)
+  })
+
+  it('laisse le rattrapage produire un jeu que le domaine accepte', () => {
+    expect(basculerZone(['10', '9'], 'M')).toEqual(['10', '9', 'M'])
+  })
+
+  it('ne verrouille jamais une zone marquante', () => {
+    expect(estVerrouillee(['10', '9', 'M'], '10')).toBe(false)
+  })
+})
+
 describe('aUneZoneMarquante', () => {
   it('est faux quand il ne reste que le manqué', () => {
     expect(aUneZoneMarquante(['M'])).toBe(false)
@@ -47,5 +76,3 @@ describe('aUneZoneMarquante', () => {
     expect(aUneZoneMarquante(['6', 'M'])).toBe(true)
   })
 })
-
-const ZONES_COMPLETES: Zone[] = ['10', '9', '8', '7', '6', '5', '4', '3', '2', '1', 'M']
