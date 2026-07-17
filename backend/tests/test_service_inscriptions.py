@@ -171,8 +171,13 @@ def test_inscrire_au_dela_du_quota_leve_depart_complet() -> None:
     """
     service, archers, departs, _ = _monter()
     depart_id = _depart(departs, quota=2)
-    service.inscrire(_archer(archers), depart_id)
+    premiere = service.inscrire(_archer(archers), depart_id).inscription
+    assert premiere.id is not None
     service.inscrire(_second_archer(archers), depart_id)
+    # La première place est **payée** : elle compte tout autant dans le quota (une place est prise
+    # dès l'inscription, pas au paiement). Sans cette ligne, l'affirmation « payées ou non » du
+    # docstring ne serait pas exercée — un futur filtre `paye` sur le comptage passerait à tort.
+    service.marquer_paye(premiere.id, True)
     troisieme = archers.ajouter(Archer.creer("Durand", "Paul", _TOURNOI, categorie_id=1))
     assert troisieme.id is not None
     with pytest.raises(DepartComplet):

@@ -131,8 +131,11 @@ function decrire(depart: Depart): string {
 }
 
 // Analyse la saisie du quota : vide = pas de plafond (null, valide) ; sinon un entier ≥ 1. Une
-// saisie non entière ou ≤ 0 renvoie `'invalide'` pour bloquer l'envoi (évite un 422 assuré) — le
-// serveur reste l'autorité (revalidation au domaine, mêmes bornes).
+// saisie non entière ou ≤ 0 renvoie `'invalide'` pour bloquer l'envoi (évite un 422 assuré). On
+// n'applique ici que la **borne basse** (≥ 1) et l'intégrité entière ; le **plafond** (1 000,
+// `QUOTA_DEPART_MAX`) n'est vérifié que côté serveur — le serveur reste l'autorité, une valeur trop
+// grande passe ce pré-contrôle et récolte un 422 affiché (comme le tarif, dont le front n'enforce
+// pas non plus le plafond).
 function analyserQuota(saisie: string): number | null | 'invalide' {
   const texte = saisie.trim()
   if (texte === '') return null
@@ -168,8 +171,14 @@ function FormulaireDepart({
   // (évite un 422 assuré) ; le serveur reste l'autorité (revalidation à la frontière).
   const tarifCentimes = saisieEurosVersCentimes(tarif)
   const tarifSaisi = tarif.trim() !== ''
+  // Validité **propre au tarif** : pilote le message du champ tarif, indépendamment du quota. Sans
+  // cette séparation, un quota invalide ferait afficher l'erreur du tarif sur un tarif pourtant
+  // correct (le message pointerait le mauvais champ).
+  const tarifInvalide = tarifSaisi && tarifCentimes === null
   const quotaAnalyse = analyserQuota(quota)
   const quotaInvalide = quotaAnalyse === 'invalide'
+  // Validité **globale** du formulaire : ne sert qu'à (dés)activer l'envoi — l'affichage par champ
+  // s'appuie sur les validités propres (`tarifInvalide`, `quotaInvalide`).
   const entreeValide = tarifCentimes !== null && !quotaInvalide
 
   const soumettre = (evenement: React.FormEvent) => {
@@ -208,13 +217,15 @@ function FormulaireDepart({
             placeholder="ex. 8,10 — « 0 » pour gratuit"
             aria-label="Tarif du départ en euros"
           />
-          {tarifSaisi && !entreeValide ? (
+          {tarifInvalide ? (
             <span className="carte__etat carte__etat--erreur" role="alert">
               Montant en euros attendu, avec au plus 2 décimales (ex. 8,10).
             </span>
           ) : (
             <span className="carte__etat">
-              {entreeValide ? decrireTarif(tarifCentimes) : 'Prix obligatoire (« 0 » = gratuit)'}
+              {tarifCentimes !== null
+                ? decrireTarif(tarifCentimes)
+                : 'Prix obligatoire (« 0 » = gratuit)'}
             </span>
           )}
         </label>
