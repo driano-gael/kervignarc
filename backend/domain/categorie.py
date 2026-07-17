@@ -23,11 +23,19 @@ from dataclasses import dataclass, replace
 from enum import Enum
 
 from domain.blason import BlasonId
-from domain.erreurs import LibelleCategorieInvalide
+from domain.erreurs import HauteurCentreInvalide, LibelleCategorieInvalide
 from domain.tournoi import TournoiId
 
 CategorieId = int
 """Identifiant technique d'une catégorie, attribué par la persistance."""
+
+HAUTEUR_CENTRE_DEFAUT = 130
+"""Hauteur du centre de l'or (sol → centre), en cm — cas FFTA majoritaire (art. B.2.2.1.1).
+
+Les U11 tirent à **110 cm** (blason 80 cm, art. C.3.1.1) : cette valeur-là est portée par le
+**référentiel** (`application/referentiel_ffta.py`), pas ici — le domaine ne connaît que le défaut
+et sa validation (ADR-0022). C'est cette hauteur qui pilote la contrainte de placement « une butte,
+une seule hauteur » (E03US001, `docs/referentiel-ffta.md` §5)."""
 
 
 class TrancheAge(str, Enum):
@@ -72,6 +80,7 @@ class Categorie:
     ages: tuple[TrancheAge, ...] = ()
     sexe: SexeCategorie | None = None
     blason_id: BlasonId | None = None
+    hauteur_cm: int = HAUTEUR_CENTRE_DEFAUT
     id: CategorieId | None = None
 
     @staticmethod
@@ -82,6 +91,7 @@ class Categorie:
         ages: Iterable[TrancheAge] = (),
         sexe: SexeCategorie | None = None,
         blason_id: BlasonId | None = None,
+        hauteur_cm: int = HAUTEUR_CENTRE_DEFAUT,
     ) -> Categorie:
         """Crée une catégorie valide ; lève `LibelleCategorieInvalide` si le libellé est vide.
 
@@ -90,6 +100,8 @@ class Categorie:
         d'éventuels doublons — la valeur stockée est canonique (cf. `_ages_valides`). `blason_id`
         est le blason par défaut, facultatif : `None` = aucun. L'agrégat ne **vérifie pas**
         l'existence ni le rattachement du blason (règle inter-agrégats portée par le service).
+        `hauteur_cm` est la hauteur du centre de l'or (défaut 130, `> 0`), qui pilotera le placement
+        (E03US001) : lève `HauteurCentreInvalide` si elle n'est pas un entier strictement positif.
         """
         return Categorie(
             tournoi_id=tournoi_id,
@@ -98,6 +110,7 @@ class Categorie:
             ages=_ages_valides(ages),
             sexe=sexe,
             blason_id=blason_id,
+            hauteur_cm=_hauteur_valide(hauteur_cm),
         )
 
     def modifier(
@@ -107,12 +120,14 @@ class Categorie:
         ages: Iterable[TrancheAge] = (),
         sexe: SexeCategorie | None = None,
         blason_id: BlasonId | None = None,
+        hauteur_cm: int = HAUTEUR_CENTRE_DEFAUT,
     ) -> Categorie:
         """Renvoie une copie aux attributs mis à jour (mêmes règles que `creer`).
 
         L'`id` et le `tournoi_id` sont **préservés** (on ne déplace pas une catégorie d'un
-        tournoi à l'autre). `blason_id` remplace le blason par défaut (`None` le retire). Lève
-        `LibelleCategorieInvalide` si le libellé est vide.
+        tournoi à l'autre). `blason_id` remplace le blason par défaut (`None` le retire),
+        `hauteur_cm` la hauteur du centre. Lève `LibelleCategorieInvalide` si le libellé est vide,
+        `HauteurCentreInvalide` si la hauteur n'est pas un entier strictement positif.
         """
         return replace(
             self,
@@ -121,6 +136,7 @@ class Categorie:
             ages=_ages_valides(ages),
             sexe=sexe,
             blason_id=blason_id,
+            hauteur_cm=_hauteur_valide(hauteur_cm),
         )
 
 
@@ -130,6 +146,21 @@ def _libelle_valide(libelle: str) -> str:
     if not libelle_normalise:
         raise LibelleCategorieInvalide("Le libellé d'une catégorie ne peut pas être vide.")
     return libelle_normalise
+
+
+def _hauteur_valide(hauteur_cm: int) -> int:
+    """Vérifie que la hauteur du centre est un entier strictement positif ; lève sinon.
+
+    On ne borne **pas** par le haut (pas de « ≤ 300 ») : le référentiel ne fixe que deux valeurs
+    d'usage (110/130), toute borne serait arbitraire, et une hauteur farfelue est une erreur de
+    saisie visible, pas un invariant physique à défendre ici (règle 12). Le **type** (entier) est
+    garanti par la frontière (Pydantic, règle 6) comme pour `taille`/`capacite` — on ne le revérifie
+    pas ici."""
+    if hauteur_cm <= 0:
+        raise HauteurCentreInvalide(
+            "La hauteur du centre d'une catégorie doit être un entier strictement positif (cm)."
+        )
+    return hauteur_cm
 
 
 def _texte_facultatif(valeur: str | None) -> str | None:

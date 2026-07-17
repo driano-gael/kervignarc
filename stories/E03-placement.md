@@ -18,17 +18,32 @@ les conflits qu'il ne peut résoudre, et produise le plan de cibles de la qualif
 disposer d'un plan exploitable sans saisie manuelle.
 - **CA — cibles/positions (ex-001)** : à partir du gabarit (E01US007), génération des `Cible`
   (index, capacité) et positions A/B/C/D.
-- **CA — capacité & fraction (ex-002)** : somme des fractions de blasons d'une cible ≤ capacité ;
-  chaque archer reçoit cible + position + départ.
-- **CA — conflits (ex-003)** : si une contrainte ne peut être satisfaite, un rapport liste les
-  archers/cibles en conflit (pas d'échec silencieux).
+- **CA — capacité & fraction (ex-002)** : chaque archer reçoit cible + position + départ, sous
+  **trois budgets par cible** — la formule « somme des fractions ≤ capacité » recouvrait en fait
+  **deux** grandeurs distinctes (clarifié le 17/07/2026 depuis le prototype `cible.py`, réf. de
+  l'epic) :
+  - **espace** : la somme des `taille` (fractions) des cartons posés sur une cible ≤ **1,0** (une
+    cible = une face physique unitaire) ;
+  - **positions** : le nombre d'archers sur une cible ≤ `Cible.capacite` (les lettres A/B/C/D) ;
+  - **partage de carton** : le nombre d'archers sur un même blason ≤ `Blason.capacite`.
+- **CA — hauteur (ex-DETTE-002)** : tous les archers d'une cible tirent à la **même hauteur de
+  centre** (`Categorie.hauteur_cm` : 110 cm pour les U11, 130 sinon) — une butte n'a qu'une hauteur.
+  Contrainte de 1er rang, au même rang que capacité/espace ([ADR-0022](../docs/adr/0022-hauteur-de-centre-sur-la-categorie.md)).
+- **CA — conflits (ex-003)** : si une contrainte ne peut être satisfaite (plus de cible, hauteur
+  incompatible, catégorie sans blason par défaut…), un rapport liste les archers non placés (pas
+  d'échec silencieux).
 - **CA — plan de cibles (ex-008)** : vue par cible listant archers + positions + départ ; source
   des exports (E09US003).
 - **Notes** : entité `Cible` ; `position` (ex-`lettre` du prototype) — ex-001. Algo de placement
   dans `domain/placement`, pur et testable — ex-002. Le **plan de cibles** (ex-008) est la vue par
   cible produite par le placement — source des exports (E09US003) et de la vue publique (E07US001).
   **L'ex-E03US008 est absorbée ici** ; ses liens entrants (E04US001, E07, E09, E12) ont été
-  **redirigés vers E03US001** dans la passe globale du 17/07/2026.
+  **redirigés vers E03US001** dans la passe globale du 17/07/2026. La **mixité ≥ 2 clubs** (RG-3) et
+  la **séparation catégorie/blason** restent hors de cette US (E03US006 / E03US007). Périmètre
+  technique tranché le 17/07/2026 : **domaine + service + endpoint de lecture** (recalcul à la
+  demande) ; la **persistance** du plan et l'**ajustement** manuel sont E03US004 — d'où la hauteur
+  laissée **facultative** au PUT catégorie ([DETTE-009](../docs/dette.md), le front est hors
+  périmètre).
 - **Absorbe** : ex-E03US001 à 003, E03US008. **Dépend de** : E01US007, E02US004 · **Jalon** : J1
 
 ### E03US004 — Ajuster le placement (glisser-déposer)

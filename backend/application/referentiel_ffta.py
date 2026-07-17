@@ -24,12 +24,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from domain.categorie import SexeCategorie, TrancheAge
+from domain.categorie import HAUTEUR_CENTRE_DEFAUT, SexeCategorie, TrancheAge
 
 # Divisions (armes) reconnues à 18 m — §1 (art. A.6.2).
 _ARC_CLASSIQUE = "Arc Classique"
 _ARC_POULIES = "Arc à Poulies"
 _ARC_NU = "Arc Nu"
+
+# Hauteur du centre de l'or des U11 : 110 cm (blason 80 cm, art. C.3.1.1 ;
+# `docs/referentiel-ffta.md` §5), contre 130 cm pour toutes les autres catégories. C'est la seule
+# valeur non-défaut du référentiel ; elle vit ici (donnée FFTA) et non dans le domaine (ADR-0022).
+_HAUTEUR_CENTRE_U11 = 110
 
 # Un « groupe d'âge » d'une division = (libellé affiché, tranches couvertes). Hors arc nu, un groupe
 # est une tranche unique (libellé = code de la tranche). En arc nu, le classement regroupe plusieurs
@@ -79,13 +84,23 @@ class ModeleCategorieFFTA:
     """Gabarit d'une catégorie FFTA à pré-charger (sans rattachement à un tournoi).
 
     `ages` porte **au moins une** tranche (le regroupement arc nu en porte plusieurs), là où une
-    catégorie créée à la main peut n'en porter aucune.
+    catégorie créée à la main peut n'en porter aucune. `hauteur_cm` est la hauteur du centre de
+    l'or (110 pour les U11, 130 sinon — ADR-0022), déduite des `ages`.
     """
 
     libelle: str
     arme: str
     ages: tuple[TrancheAge, ...]
     sexe: SexeCategorie
+    hauteur_cm: int
+
+
+def _hauteur_du_groupe(ages: tuple[TrancheAge, ...]) -> int:
+    """Hauteur du centre d'un groupe d'âge : 110 cm si U11 en fait partie, 130 sinon (§5).
+
+    U11 est un groupe à tranche unique dans le référentiel (jamais mêlé à d'autres tranches), donc
+    la présence de `U11` détermine sans ambiguïté la hauteur du blason 80 cm."""
+    return _HAUTEUR_CENTRE_U11 if TrancheAge.U11 in ages else HAUTEUR_CENTRE_DEFAUT
 
 
 def _modeles_division(arme: str, groupes: tuple[GroupeAge, ...]) -> list[ModeleCategorieFFTA]:
@@ -96,6 +111,7 @@ def _modeles_division(arme: str, groupes: tuple[GroupeAge, ...]) -> list[ModeleC
             arme=arme,
             ages=ages,
             sexe=sexe,
+            hauteur_cm=_hauteur_du_groupe(ages),
         )
         for libelle_age, ages in groupes
         for sexe, libelle_sexe in _SEXES
