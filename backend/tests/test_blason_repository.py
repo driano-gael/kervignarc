@@ -9,16 +9,19 @@ from __future__ import annotations
 import datetime
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
 
-from domain.blason import Blason
+from domain.blason import ZONES_DEFAUT, Blason
 from domain.tournoi import Tournoi
 from infrastructure.db import (
     BlasonRepositorySQL,
     Database,
     TournoiRepositorySQL,
 )
+from infrastructure.db.models import BlasonORM
+from infrastructure.erreurs import InfrastructureError
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -85,7 +88,7 @@ def test_enregistrer_met_a_jour(tmp_path: Path) -> None:
         repository = BlasonRepositorySQL(db.session_factory)
         cree = repository.ajouter(Blason.creer(tournoi_id, "Ancien", 0.25, 4))
         assert cree.id is not None
-        modifie = cree.modifier("Nouveau", 0.5, 2)
+        modifie = cree.modifier("Nouveau", 0.5, 2, cree.zones)
         enregistre = repository.enregistrer(modifie)
         assert enregistre.nom == "Nouveau"
         assert enregistre.taille == 0.5
@@ -105,5 +108,87 @@ def test_supprimer_retire_la_ligne(tmp_path: Path) -> None:
         repository.supprimer(cree.id)
         assert repository.par_id(cree.id) is None
         assert repository.par_tournoi(tournoi_id) == []
+    finally:
+        db.engine.dispose()
+
+
+def test_les_zones_font_l_aller_retour_json(tmp_path: Path) -> None:
+    """Les zones (E01US014) survivent au tour ORM : stockées en JSON, relues en tuple."""
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        repository = BlasonRepositorySQL(db.session_factory)
+        cree = repository.ajouter(
+            Blason.creer(tournoi_id, "Trispot 40", 0.5, 3, zones=["10", "9", "8", "7", "6", "M"])
+        )
+        assert cree.id is not None
+        assert cree.zones == ("10", "9", "8", "7", "6", "M")
+        assert repository.par_id(cree.id) == cree
+    finally:
+        db.engine.dispose()
+
+
+def test_les_zones_par_defaut_sont_persistees(tmp_path: Path) -> None:
+    """Un blason créé sans zones persiste le défaut du domaine, pas une valeur vide."""
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        repository = BlasonRepositorySQL(db.session_factory)
+        cree = repository.ajouter(Blason.creer(tournoi_id, "Monospot 60", 1.0, 1))
+        assert cree.id is not None
+        assert repository.par_id(cree.id) == cree
+        assert cree.zones == ZONES_DEFAUT
+    finally:
+        db.engine.dispose()
+
+
+def test_enregistrer_met_a_jour_les_zones(tmp_path: Path) -> None:
+    """L'édition des zones est bien persistée (E01US014)."""
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        repository = BlasonRepositorySQL(db.session_factory)
+        cree = repository.ajouter(Blason.creer(tournoi_id, "Trispot 40", 0.5, 3))
+        modifie = repository.enregistrer(
+            cree.modifier("Trispot 40", 0.5, 3, zones=["10", "9", "8", "7", "6", "M"])
+        )
+        assert cree.id is not None
+        assert modifie.zones == ("10", "9", "8", "7", "6", "M")
+        assert repository.par_id(cree.id) == modifie
+    finally:
+        db.engine.dispose()
+
+
+@pytest.mark.parametrize(
+    ("zones_en_base", "cas"),
+    [
+        ("pas du json", "JSON illisible"),
+        ('["10", "X", "M"]', "JSON valide mais zone hors vocabulaire"),
+        ('{"10": 1}', "objet JSON : sans coercition, réhydratait ('10',) en silence"),
+        ("null", "JSON valide mais non itérable"),
+    ],
+)
+def test_zones_corrompues_levent_infrastructure_error(
+    tmp_path: Path, zones_en_base: str, cas: str
+) -> None:
+    """Une colonne `zones` illisible est enveloppée en `InfrastructureError` (ADR-0007).
+
+    Le repository en est le seul rédacteur : une valeur aberrante est une **incohérence
+    technique**, jamais un cas métier. Sans la coercition `ZoneScore(...)`, les deux derniers cas
+    réhydrataient un `Blason` **silencieusement invalide** qui aurait piloté le pavé d'EPIC-04.
+    Même patron que `test_config_corrompue_leve_infrastructure_error` (gabarits).
+    """
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        with db.session_factory() as session:
+            session.add(
+                BlasonORM(
+                    tournoi_id=tournoi_id,
+                    nom="Cassé",
+                    taille=0.5,
+                    capacite=1,
+                    zones=zones_en_base,
+                )
+            )
+            session.commit()
+        with pytest.raises(InfrastructureError):
+            BlasonRepositorySQL(db.session_factory).par_tournoi(tournoi_id), cas
     finally:
         db.engine.dispose()

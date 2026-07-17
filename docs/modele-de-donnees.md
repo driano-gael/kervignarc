@@ -105,6 +105,19 @@ erDiagram
 > et le « 10 intérieur » des poulies est un cercle plus petit que le 10 classique (§4.3). C'est
 > `zones` qui pilote le pavé de saisie de la tablette (EF-5.2).
 >
+> *Livré en E01US014* (migration `0019`, [ADR-0020](adr/0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md)).
+> Vocabulaire fermé à `10`→`1` et `M` (§4.2), porté par l'énuméré `ZoneScore` et validé **à la
+> frontière** (400), comme `TrancheAge` pour `ages` (ADR-0019). Les règles **structurelles** restent
+> au domaine (422) : `M` toujours présent, au moins une zone marquante, pas de doublon, ordre
+> canonique normalisé. Un jeu **non contigu** est admis — la contiguïté ne sert aucun consommateur,
+> et RG-8 interdit d'imposer le règlement. Le « 10 intérieur » **n'ajoute pas de valeur** (c'est une
+> géométrie, le score reste 10) et la **mouche (X)** n'est pas une zone.
+>
+> **Défaut = `["10",…,"1","M"]`** (blason simple complet), y compris pour le backfill des lignes
+> existantes : `taille` étant une *fraction de place* et non un diamètre, rien ne distingue un
+> triple d'un blason simple. ⚠️ **Les triples antérieurs à `0019` sont à corriger à la main** —
+> EPIC-04 ne doit pas supposer `zones` fiable sur une donnée antérieure à cette migration.
+>
 > **La hauteur du blason n'est pas modélisée** (110 cm pour le 80 cm des U11 contre 130 cm sinon,
 > §5) : elle interdit à un U11 de partager une butte avec des adultes et n'est **pas** réductible à
 > `taille`. Reportée à EPIC-03 — cf. [registre de dette](dette.md), DETTE-002.

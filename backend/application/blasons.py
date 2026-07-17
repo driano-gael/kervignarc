@@ -9,8 +9,10 @@ fait remonter des erreurs typées (`TournoiIntrouvable`, `BlasonIntrouvable`, `B
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from application.erreurs import BlasonIntrouvable, BlasonReference, TournoiIntrouvable
-from domain.blason import Blason, BlasonId
+from domain.blason import Blason, BlasonId, ZoneScore
 from domain.ports import BlasonRepository, CategorieRepository, TournoiRepository
 from domain.tournoi import TournoiId
 
@@ -28,15 +30,23 @@ class ServiceBlasons:
         self._blasons = blasons
         self._categories = categories
 
-    def creer(self, tournoi_id: TournoiId, nom: str, taille: float, capacite: int) -> Blason:
+    def creer(
+        self,
+        tournoi_id: TournoiId,
+        nom: str,
+        taille: float,
+        capacite: int,
+        zones: Iterable[ZoneScore] | None = None,
+    ) -> Blason:
         """Crée un blason rattaché à un tournoi.
 
+        `zones` omises : le domaine applique son défaut (blason simple complet, E01US014).
         Lève `TournoiIntrouvable` si le tournoi n'existe pas, `DomainError` si un attribut
-        (nom, taille, capacité) est invalide.
+        (nom, taille, capacité, zones) est invalide.
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        blason = Blason.creer(tournoi_id, nom, taille, capacite)
+        blason = Blason.creer(tournoi_id, nom, taille, capacite, zones)
         return self._blasons.ajouter(blason)
 
     def lister(self, tournoi_id: TournoiId) -> list[Blason]:
@@ -45,14 +55,23 @@ class ServiceBlasons:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         return self._blasons.par_tournoi(tournoi_id)
 
-    def modifier(self, blason_id: BlasonId, nom: str, taille: float, capacite: int) -> Blason:
-        """Édite un blason (nom, taille, capacité).
+    def modifier(
+        self,
+        blason_id: BlasonId,
+        nom: str,
+        taille: float,
+        capacite: int,
+        zones: Iterable[ZoneScore],
+    ) -> Blason:
+        """Édite un blason (nom, taille, capacité, zones).
 
+        L'édition est un **remplacement complet** : les `zones` sont obligatoires, comme le nom,
+        la taille et la capacité.
         Lève `BlasonIntrouvable` si l'identifiant est inconnu, `DomainError` si un attribut
         est invalide.
         """
         blason = self._blason_existant(blason_id)
-        modifie = blason.modifier(nom, taille, capacite)
+        modifie = blason.modifier(nom, taille, capacite, zones)
         return self._blasons.enregistrer(modifie)
 
     def supprimer(self, blason_id: BlasonId) -> None:

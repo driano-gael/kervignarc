@@ -340,6 +340,43 @@ button:disabled {
   font-size: 13px;
 }
 
+/* Valeurs de score admises d'un blason (E01US014). */
+.zones {
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.zones__aide {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.zones__cases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+/* Cible tactile ≥ 44 px : plancher AA du CDC design, valable aussi côté admin (la config se fait
+   sur tablette le jour J). Les 48 px ne sont exigés que sur l'écran de saisie. */
+.zones__case {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.zones__case input[disabled] {
+  cursor: default;
+}
+
 /* Référentiel des clubs (E02US001) — global, hors tournoi. */
 .liste-clubs {
   margin: 8px 0 0;
