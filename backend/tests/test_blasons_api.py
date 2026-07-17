@@ -102,7 +102,7 @@ def test_modifier_un_blason(app_blasons: FastAPI, connecter_admin: ConnecterAdmi
         ).json()
         modif = client.put(
             f"/api/v1/blasons/{cree['id']}",
-            json={"nom": "Nouveau", "taille": 0.5, "capacite": 2},
+            json={"nom": "Nouveau", "taille": 0.5, "capacite": 2, "zones": cree["zones"]},
         )
         assert modif.status_code == 200
         corps = modif.json()
@@ -186,7 +186,10 @@ def test_modifier_blason_introuvable(app_blasons: FastAPI, connecter_admin: Conn
     """PUT sur un blason inconnu → 404 typé."""
     with TestClient(app_blasons) as client:
         connecter_admin(client)
-        reponse = client.put("/api/v1/blasons/999", json={"nom": "X", "taille": 0.5, "capacite": 1})
+        reponse = client.put(
+            "/api/v1/blasons/999",
+            json={"nom": "X", "taille": 0.5, "capacite": 1, "zones": ["10", "M"]},
+        )
     assert reponse.status_code == 404
     assert reponse.json()["code"] == "blason_introuvable"
 
@@ -301,10 +304,15 @@ def test_modifier_les_zones(app_blasons: FastAPI, connecter_admin: ConnecterAdmi
     assert reponse.json()["zones"] == ["10", "9", "8", "7", "6", "M"]
 
 
-def test_modifier_sans_zones_les_laisse_inchangees(
+def test_modifier_sans_zones_erreur_400(
     app_blasons: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """`zones` omis à l'édition ne les efface pas — un PUT sur le nom seul les préserve."""
+    """L'édition est un **remplacement complet** : `zones` omis → 400, comme un nom omis.
+
+    `zones` n'est pas le seul champ partiel d'un PUT par ailleurs total : ce serait tendre un
+    piège de read-modify-write au prochain client construisant son corps depuis un modèle
+    incomplet.
+    """
     with TestClient(app_blasons) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
@@ -321,20 +329,39 @@ def test_modifier_sans_zones_les_laisse_inchangees(
             f"/api/v1/blasons/{cree['id']}",
             json={"nom": "Trispot 40 (rebaptisé)", "taille": 0.5, "capacite": 3},
         )
-    assert reponse.status_code == 200, reponse.text
-    assert reponse.json()["zones"] == ["10", "9", "8", "7", "6", "M"]
+    assert reponse.status_code == 400
+    assert reponse.json()["code"] == "requete_invalide"
 
 
-def test_creer_zones_invalides_erreur_domaine(
+def test_creer_zone_hors_vocabulaire_erreur_400(
     app_blasons: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """Une zone hors vocabulaire → 422 avec le code métier (règle du domaine, pas du DTO)."""
+    """Une zone hors vocabulaire → 400 à la frontière : le domaine ne la voit jamais.
+
+    Même régime qu'`ages` (ADR-0019, règle 6) : le vocabulaire est fermé par le DTO (`ZoneScore`),
+    les règles structurelles restent au domaine (cf. le test 422 ci-dessous).
+    """
     with TestClient(app_blasons) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         reponse = client.post(
             f"/api/v1/tournois/{tournoi_id}/blasons",
             json={"nom": "Blason", "taille": 0.5, "capacite": 1, "zones": ["10", "X", "M"]},
+        )
+    assert reponse.status_code == 400
+    assert reponse.json()["code"] == "requete_invalide"
+
+
+def test_creer_zones_sans_manque_erreur_domaine(
+    app_blasons: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Une règle **structurelle** (M obligatoire) reste au domaine → 422 avec le code métier."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        reponse = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "Blason", "taille": 0.5, "capacite": 1, "zones": ["10", "9"]},
         )
     assert reponse.status_code == 422
     assert reponse.json()["code"] == "zones_blason_invalides"

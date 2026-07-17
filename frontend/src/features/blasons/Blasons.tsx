@@ -10,9 +10,10 @@
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
-import type { Blason, NouveauBlason } from './api'
+import type { Blason, NouveauBlason, Zone } from './api'
 import { ZONE_MANQUE, ZONES_CANONIQUES } from './api'
 import { useBlasons, useCreerBlason, useModifierBlason, useSupprimerBlason } from './hooks'
+import { aUneZoneMarquante, basculerZone } from './zones'
 
 export function Blasons({ tournoiId }: { tournoiId: number }) {
   const blasons = useBlasons(tournoiId)
@@ -115,23 +116,15 @@ function FormulaireBlason({
   const [capacite, setCapacite] = useState(blason ? String(blason.capacite) : '1')
   // À la création, le défaut est le jeu complet d'un blason simple — le même que celui du
   // domaine : c'est un sur-ensemble, à restreindre pour un triple 40.
-  const [zones, setZones] = useState<string[]>(blason ? blason.zones : [...ZONES_CANONIQUES])
+  const [zones, setZones] = useState<Zone[]>(blason ? blason.zones : [...ZONES_CANONIQUES])
 
   const creer = useCreerBlason(tournoiId)
   const modifier = useModifierBlason(tournoiId)
   const mutation = enEdition ? modifier : creer
 
-  const basculerZone = (zone: string) =>
-    setZones((actuelles) =>
-      actuelles.includes(zone)
-        ? actuelles.filter((z) => z !== zone)
-        : // On réordonne selon l'ordre canonique : le serveur le fera de toute façon.
-          ZONES_CANONIQUES.filter((z) => z === zone || actuelles.includes(z)),
-    )
-
   // Reprend les bornes du domaine (taille ]0, 1], capacité entière >= 1, au moins une zone
   // marquante) pour éviter d'envoyer une requête vouée au 422 ; le serveur reste l'autorité
-  // (revalidation à la frontière). `M` est imposé par l'UI, il n'est donc pas revérifié ici.
+  // (revalidation à la frontière). Les règles de zones vivent dans `zones.ts` — pures, testées.
   const tailleNombre = Number(taille)
   const capaciteNombre = Number(capacite)
   const entreeValide =
@@ -141,7 +134,7 @@ function FormulaireBlason({
     tailleNombre <= 1 &&
     Number.isInteger(capaciteNombre) &&
     capaciteNombre >= 1 &&
-    zones.some((zone) => zone !== ZONE_MANQUE)
+    aUneZoneMarquante(zones)
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -211,17 +204,20 @@ function FormulaireBlason({
           </p>
           <div className="zones__cases">
             {ZONES_CANONIQUES.map((zone) => {
-              const manque = zone === ZONE_MANQUE
+              // Un manqué est toujours possible : le domaine l'impose, l'UI le verrouille plutôt
+              // que de laisser l'admin le décocher pour se faire refuser en 422. Le verrou ne
+              // mord que si l'invariant est **déjà** satisfait : un blason arrivé sans `M` (base
+              // éditée à la main) resterait sinon inéditable — case ni cochée ni cochable, PUT
+              // refusé en 422, et aucune action dans l'UI pour s'en sortir.
+              const verrouille = zone === ZONE_MANQUE && zones.includes(ZONE_MANQUE)
               return (
                 <label key={zone} className="zones__case">
                   <input
                     type="checkbox"
                     checked={zones.includes(zone)}
-                    // Un manqué est toujours possible : le domaine l'impose, l'UI le verrouille
-                    // plutôt que de laisser l'admin le décocher pour se faire refuser en 422.
-                    disabled={manque}
-                    onChange={() => basculerZone(zone)}
-                    aria-label={manque ? 'Manqué (toujours admis)' : `Zone ${zone}`}
+                    disabled={verrouille}
+                    onChange={() => setZones((actuelles) => basculerZone(actuelles, zone))}
+                    aria-label={zone === ZONE_MANQUE ? 'Manqué (toujours admis)' : `Zone ${zone}`}
                   />
                   {zone}
                 </label>

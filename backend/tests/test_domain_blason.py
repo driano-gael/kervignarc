@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from domain.blason import ZONES_DEFAUT, Blason
+from domain.blason import ZONES_CANONIQUES, ZONES_DEFAUT, Blason, ZoneScore
 from domain.erreurs import (
     CapaciteBlasonInvalide,
     NomBlasonInvalide,
@@ -16,7 +16,9 @@ from domain.erreurs import (
 def test_creer_un_blason_valide() -> None:
     """Nom, taille et capacité valides : id à None, rattaché au tournoi."""
     blason = Blason.creer(1, "Trispot 40", 0.5, 3)
-    assert blason == Blason(tournoi_id=1, nom="Trispot 40", taille=0.5, capacite=3, id=None)
+    assert blason == Blason(
+        tournoi_id=1, nom="Trispot 40", taille=0.5, capacite=3, zones=ZONES_DEFAUT, id=None
+    )
 
 
 def test_creer_normalise_le_nom() -> None:
@@ -53,20 +55,22 @@ def test_creer_refuse_une_capacite_inferieure_a_un(capacite: int) -> None:
 
 def test_modifier_met_a_jour_et_preserve_id_et_tournoi() -> None:
     """`modifier` change les attributs mais conserve `id` et `tournoi_id`."""
-    blason = Blason(tournoi_id=3, nom="Ancien", taille=0.25, capacite=4, id=9)
-    modifie = blason.modifier("Nouveau", 0.5, 2)
-    assert modifie == Blason(tournoi_id=3, nom="Nouveau", taille=0.5, capacite=2, id=9)
+    blason = Blason(tournoi_id=3, nom="Ancien", taille=0.25, capacite=4, zones=ZONES_DEFAUT, id=9)
+    modifie = blason.modifier("Nouveau", 0.5, 2, ZONES_DEFAUT)
+    assert modifie == Blason(
+        tournoi_id=3, nom="Nouveau", taille=0.5, capacite=2, zones=ZONES_DEFAUT, id=9
+    )
 
 
 def test_modifier_valide_les_attributs() -> None:
     """`modifier` applique les mêmes règles que `creer`."""
     blason = Blason.creer(1, "Blason", 0.5, 2)
     with pytest.raises(TailleBlasonInvalide):
-        blason.modifier("Blason", 0.0, 2)
+        blason.modifier("Blason", 0.0, 2, ZONES_DEFAUT)
     with pytest.raises(CapaciteBlasonInvalide):
-        blason.modifier("Blason", 0.5, 0)
+        blason.modifier("Blason", 0.5, 0, ZONES_DEFAUT)
     with pytest.raises(NomBlasonInvalide):
-        blason.modifier("   ", 0.5, 2)
+        blason.modifier("   ", 0.5, 2, ZONES_DEFAUT)
 
 
 # --- Zones : valeurs de score admises (E01US014) --------------------------------------------
@@ -159,3 +163,36 @@ def test_modifier_valide_les_zones() -> None:
     blason = Blason.creer(1, "Blason", 0.5, 2)
     with pytest.raises(ZonesBlasonInvalides):
         blason.modifier("Blason", 0.5, 2, zones=["10", "9"])
+
+
+def test_zones_defaut_n_est_pas_alias_du_vocabulaire() -> None:
+    """`ZONES_DEFAUT` est énuméré à part : ajouter une zone au vocabulaire (X, EPIC-06) ne doit
+    pas la faire entrer en silence dans le défaut de tous les blasons."""
+    assert ZONES_DEFAUT == ZONES_CANONIQUES, "les deux coïncident aujourd'hui"
+    assert ZONES_DEFAUT is not ZONES_CANONIQUES, "mais ne sont pas le même objet"
+
+
+def test_creer_refuse_une_chaine_en_guise_de_zones() -> None:
+    """`str` est un `Iterable[str]` : `zones="1M"` doit échouer, pas se lire ('1', 'M')."""
+    with pytest.raises(ZonesBlasonInvalides):
+        Blason.creer(1, "Blason", 0.5, 1, zones="1M")
+
+
+def test_creer_sans_zones_marquantes_le_dit() -> None:
+    """`zones=[]` parle de zone marquante, pas d'un « M » que l'admin n'a jamais retiré."""
+    with pytest.raises(ZonesBlasonInvalides, match="marquante"):
+        Blason.creer(1, "Blason", 0.5, 1, zones=[])
+
+
+def test_creer_sans_manque_le_dit() -> None:
+    """Retirer `M` d'un jeu par ailleurs valide donne bien le message sur le manqué."""
+    with pytest.raises(ZonesBlasonInvalides, match="manqué"):
+        Blason.creer(1, "Blason", 0.5, 1, zones=["10", "9"])
+
+
+def test_les_zones_sont_des_zones_de_score() -> None:
+    """Le domaine porte l'énuméré, pas des chaînes libres — une chaîne saisie est convertie."""
+    blason = Blason.creer(1, "Trispot 40", 0.5, 3, zones=["10", "9", "8", "7", "6", "M"])
+    assert all(isinstance(zone, ZoneScore) for zone in blason.zones)
+    assert blason.zones[0] is ZoneScore.DIX
+    assert blason.zones[-1] is ZoneScore.MANQUE

@@ -21,7 +21,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.blasons import ServiceBlasons
-from domain.blason import Blason
+from domain.blason import Blason, ZoneScore
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["blasons"])
@@ -31,25 +31,31 @@ class CreerBlasonRequete(BaseModel):
     """Corps de création d'un blason (nom, taille dans `]0, 1]`, capacité `>= 1`).
 
     `zones` (E01US014) est **facultatif** : omis, le domaine applique son défaut (le jeu complet
-    d'un blason simple). La validation des valeurs appartient au domaine, pas au DTO.
+    d'un blason simple). Le **vocabulaire** est fermé par `ZoneScore` : une valeur hors des onze
+    zones FFTA fait rejeter la requête en **400** à la frontière, avant que le domaine ne la voie
+    (règle 6) — même régime qu'`ages`, cf. ADR-0019.
+    Les règles **structurelles** (M obligatoire, au moins une zone marquante, pas de doublon)
+    restent au domaine et sortent en 422.
     """
 
     nom: str
     taille: float
     capacite: int
-    zones: list[str] | None = None
+    zones: list[ZoneScore] | None = None
 
 
 class ModifierBlasonRequete(BaseModel):
     """Corps d'édition d'un blason (mêmes champs que la création).
 
-    `zones` omis laisse les zones du blason **inchangées** (édition partielle du champ).
+    `zones` y est **obligatoire** : l'édition est un remplacement complet, comme pour les autres
+    champs. En faire le seul champ partiel d'un PUT total tendrait un piège de read-modify-write
+    au prochain client (import, script) qui construirait son corps depuis un modèle incomplet.
     """
 
     nom: str
     taille: float
     capacite: int
-    zones: list[str] | None = None
+    zones: list[ZoneScore]
 
 
 class BlasonReponse(BaseModel):
@@ -60,7 +66,7 @@ class BlasonReponse(BaseModel):
     nom: str
     taille: float
     capacite: int
-    zones: list[str]
+    zones: list[ZoneScore]
 
     @staticmethod
     def de_agregat(blason: Blason) -> BlasonReponse:

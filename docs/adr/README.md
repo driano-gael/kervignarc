@@ -27,6 +27,10 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0014](0014-club-inconnu-plutot-que-club-sentinelle.md) | Club d'un archer facultatif : `NULL` = *inconnu*, jamais un club sentinelle | Accepté |
 | [0015](0015-signaler-un-doublon-plutot-que-l-interdire.md) | Doublon d'archer : signaler (409) et laisser confirmer, plutôt qu'un `UNIQUE` qui rejetterait un homonyme réel | Accepté |
 | [0016](0016-supprimer-un-archer-engage-plutot-que-le-refuser.md) | Archer engagé : suppression **confirmable et destructrice**, plutôt qu'un refus sans issue — et à ne pas confondre avec le **forfait**, qui préserve les résultats | Accepté |
+| [0017](0017-le-depart-est-un-creneau-du-tournoi.md) | Le départ est un **créneau du tournoi**, pas une participation de l'archer | Accepté |
+| [0018](0018-supprimer-un-depart-a-inscriptions-confirmable.md) | Supprimer un départ à inscriptions : confirmable, effets monétaires déportés | Accepté |
+| [0019](0019-categorie-eligibilite-multi-tranches.md) | La catégorie porte un **ensemble** de tranches d'âge, pas une tranche unique | Accepté |
+| [0020](0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md) | Le blason porte ses **valeurs de score admises** ; vocabulaire fermé, défaut = blason simple complet | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.

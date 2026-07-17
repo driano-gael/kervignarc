@@ -4,10 +4,14 @@
 import { fetchJson } from '../../shared/api/client'
 
 // Vocabulaire des zones de score en salle, du centre vers l'extérieur (référentiel FFTA §4.2).
-// Miroir de `ZONES_CANONIQUES` du domaine ; sert aussi d'ordre d'affichage.
+// Miroir de l'énuméré `ZoneScore` du domaine ; sert aussi d'ordre d'affichage.
 export const ZONES_CANONIQUES = ['10', '9', '8', '7', '6', '5', '4', '3', '2', '1', 'M'] as const
 
-export const ZONE_MANQUE = 'M'
+// Vocabulaire **fermé**, comme `TrancheAge` côté catégories : une valeur hors de cette liste est
+// une erreur de compilation ici, et un 400 à la frontière serveur.
+export type Zone = (typeof ZONES_CANONIQUES)[number]
+
+export const ZONE_MANQUE: Zone = 'M'
 
 export interface Blason {
   id: number
@@ -16,14 +20,14 @@ export interface Blason {
   taille: number
   capacite: number
   // Valeurs de score admises (E01US014) : un triple 40 n'a pas les zones 5 → 1 (§4.4).
-  zones: string[]
+  zones: Zone[]
 }
 
 export interface NouveauBlason {
   nom: string
   taille: number
   capacite: number
-  zones: string[]
+  zones: Zone[]
 }
 
 // L'édition porte sur les mêmes champs que la création.

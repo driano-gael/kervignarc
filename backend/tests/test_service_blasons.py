@@ -15,7 +15,7 @@ import pytest
 
 from application.blasons import ServiceBlasons
 from application.erreurs import BlasonIntrouvable, BlasonReference, TournoiIntrouvable
-from domain.blason import Blason, BlasonId
+from domain.blason import ZONES_DEFAUT, Blason, BlasonId
 from domain.categorie import Categorie
 from domain.erreurs import TailleBlasonInvalide
 from domain.tournoi import Tournoi, TournoiId
@@ -132,7 +132,7 @@ def test_modifier_persiste_les_attributs() -> None:
     service, tournoi_id, _ = _service_avec_tournoi()
     cree = service.creer(tournoi_id, "Ancien", 0.25, 4)
     assert cree.id is not None
-    modifie = service.modifier(cree.id, "Nouveau", 0.5, 2)
+    modifie = service.modifier(cree.id, "Nouveau", 0.5, 2, cree.zones)
     assert modifie.id == cree.id
     assert modifie.nom == "Nouveau"
     assert modifie.taille == 0.5
@@ -143,7 +143,7 @@ def test_modifier_leve_si_introuvable() -> None:
     """`modifier` lève `BlasonIntrouvable` pour un identifiant inconnu."""
     service, _, _ = _service_avec_tournoi()
     with pytest.raises(BlasonIntrouvable):
-        service.modifier(404, "X", 0.5, 1)
+        service.modifier(404, "X", 0.5, 1, ZONES_DEFAUT)
 
 
 def test_supprimer_retire_le_blason() -> None:

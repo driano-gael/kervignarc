@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from application.erreurs import BlasonIntrouvable, BlasonReference, TournoiIntrouvable
-from domain.blason import Blason, BlasonId
+from domain.blason import Blason, BlasonId, ZoneScore
 from domain.ports import BlasonRepository, CategorieRepository, TournoiRepository
 from domain.tournoi import TournoiId
 
@@ -36,7 +36,7 @@ class ServiceBlasons:
         nom: str,
         taille: float,
         capacite: int,
-        zones: Iterable[str] | None = None,
+        zones: Iterable[ZoneScore] | None = None,
     ) -> Blason:
         """Crée un blason rattaché à un tournoi.
 
@@ -61,11 +61,12 @@ class ServiceBlasons:
         nom: str,
         taille: float,
         capacite: int,
-        zones: Iterable[str] | None = None,
+        zones: Iterable[ZoneScore],
     ) -> Blason:
         """Édite un blason (nom, taille, capacité, zones).
 
-        `zones` omises : celles du blason restent inchangées.
+        L'édition est un **remplacement complet** : les `zones` sont obligatoires, comme le nom,
+        la taille et la capacité.
         Lève `BlasonIntrouvable` si l'identifiant est inconnu, `DomainError` si un attribut
         est invalide.
         """

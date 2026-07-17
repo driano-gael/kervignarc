@@ -85,7 +85,7 @@ def test_enregistrer_met_a_jour(tmp_path: Path) -> None:
         repository = BlasonRepositorySQL(db.session_factory)
         cree = repository.ajouter(Blason.creer(tournoi_id, "Ancien", 0.25, 4))
         assert cree.id is not None
-        modifie = cree.modifier("Nouveau", 0.5, 2)
+        modifie = cree.modifier("Nouveau", 0.5, 2, cree.zones)
         enregistre = repository.enregistrer(modifie)
         assert enregistre.nom == "Nouveau"
         assert enregistre.taille == 0.5

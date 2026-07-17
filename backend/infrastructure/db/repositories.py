@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
-from domain.blason import Blason, BlasonId
+from domain.blason import Blason, BlasonId, ZoneScore
 from domain.categorie import Categorie, CategorieId, SexeCategorie, TrancheAge
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
@@ -97,16 +97,24 @@ def _vers_inscription(ligne: InscriptionORM) -> Inscription:
 def _vers_blason(ligne: BlasonORM) -> Blason:
     """Traduit une ligne ORM en agrégat de domaine `Blason`.
 
-    Les `zones` sont stockées en JSON (E01US014) : elles reviennent en tuple, l'agrégat étant
-    `frozen`. Comme pour les autres champs, la ligne relue est **tenue pour valide** (elle l'a
-    été à l'écriture) : on réhydrate sans repasser par `Blason.creer`.
+    `zones` est écrit par le repository comme un tableau JSON de valeurs de score (E01US014). Un
+    contenu illisible ou une valeur hors du vocabulaire `ZoneScore` est une **incohérence
+    technique** (le repository en est le seul rédacteur, il écrit toujours des valeurs valides) →
+    enveloppée en `InfrastructureError` (ADR-0007), jamais laissée fuir en agrégat silencieusement
+    invalide. Même patron que `_vers_categorie` pour `ages` : sans la coercition `ZoneScore(...)`,
+    un `'{"a": 1}'` réhydraterait `('a',)` sans broncher, et le trou n'apparaîtrait qu'en EPIC-04
+    au moment de sommer.
     """
+    try:
+        zones = tuple(ZoneScore(zone) for zone in json.loads(ligne.zones))
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        raise InfrastructureError("Zones de blason illisibles.") from exc
     return Blason(
         tournoi_id=ligne.tournoi_id,
         nom=ligne.nom,
         taille=ligne.taille,
         capacite=ligne.capacite,
-        zones=tuple(json.loads(ligne.zones)),
+        zones=zones,
         id=ligne.id,
     )
 
@@ -832,7 +840,7 @@ class BlasonRepositorySQL:
                     nom=blason.nom,
                     taille=blason.taille,
                     capacite=blason.capacite,
-                    zones=json.dumps(list(blason.zones)),
+                    zones=json.dumps([zone.value for zone in blason.zones]),
                 )
                 session.add(ligne)
                 session.commit()
@@ -876,7 +884,7 @@ class BlasonRepositorySQL:
                 ligne.nom = blason.nom
                 ligne.taille = blason.taille
                 ligne.capacite = blason.capacite
-                ligne.zones = json.dumps(list(blason.zones))
+                ligne.zones = json.dumps([zone.value for zone in blason.zones])
                 session.commit()
                 return _vers_blason(ligne)
         except SQLAlchemyError as exc:
