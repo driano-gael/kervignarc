@@ -62,117 +62,79 @@ Découpage fin des EPICs en user stories **à destination d'un développeur** (m
 | 29 | E02US002 | Créer un archer |
 | 30 | E02US003 | Éditer / supprimer un archer |
 | 31 | E02US004 | Ajouter des départs multiples |
-| 32 | **E00US014** | **Outiller les tests du front** *([DETTE-005](../docs/dette.md) — avant E08US001)* |
-| 33 | E08US001 | Calculer le montant dû |
-| 34 | E03US001 | Modéliser cibles/positions depuis le gabarit |
-| 35 | E03US002 | Placement auto : capacité + fraction de blason |
-| 36 | E03US003 | Placement auto : signaler les conflits |
-| 37 | E03US004 | Ajuster le placement en glisser-déposer |
-| 38 | E03US005 | Empêcher un déplacement invalide |
-| 39 | E03US008 | Générer le plan de cibles (qualif) |
-| 40 | **E10US008** | **Définir les scoreurs du tournoi** *(`D-14`)* |
-| 41 | **E10US003** | **Session scoreur par code personnel** — *réécrite (`D-12`, `D-13`)* |
-| 42 | **E09US008** | **Imprimer les QR de cible et les codes scoreurs** *(`D-07`)* |
-| 43 | **E04US001** | **Rattacher une tablette à sa cible (QR + jeton de poste)** — *réécrite (`D-06`, `D-07`)* |
-| 44 | **E10US007** | **Poste de cible : saisir sans s'identifier** — *réécrite (`D-13`)* |
-| 45 | E04US002 | Afficher la grille de saisie (4 archers) |
-| 46 | **E04US017** | **Désigner et tracer le marqueur** *(`D-04`, FFTA B.6.1.1)* |
-| 47 | E04US003 | Saisir les flèches d'une volée (pavé tactile) |
-| 48 | E04US004 | Valider les valeurs autorisées (0-10 / M / X) |
-| 49 | E04US005 | Enregistrer une volée via la file d'écriture |
-| 50 | E04US006 | Éditer une volée non validée |
-| 51 | E04US007 | Verrouiller une série validée |
-| 52 | E04US008 | Cumuler le score sur les volées |
-| 53 | E04US009 | Diffuser la mise à jour en live |
-| 54 | **E12US001** | **Superviser les postes de saisie** *(`D-06`, `D-21`)* |
-| 55 | E06US001 | Classement de qualification (cumul) |
-| 56 | E06US002 | Départage qualif (nb de 10 puis 9) |
-| 57 | E06US008 | Classement par catégorie |
-| 58 | E07US001 | Vue publique des classements |
-| 59 | **E07US006** | **« C'est moi » : ouvrir l'appli sur ma journée** *(`D-09`)* |
-| 60 | E07US002 | Live des vues publiques |
-| 61 | E04US010 | Mettre en file hors-ligne + rejouer |
-| 62 | E04US011 | Indicateur d'état de connexion |
-| 63 | E04US012 | Corriger une volée validée (tracé) |
-| 64 | E10US005 | Journal d'audit métier |
-| 65 | **E12US007** | **Alerter par calcul d'impact** *(`D-15`, `D-16`)* |
-| 66 | E08US002 | Marquer payé / non payé |
-| 67 | E08US003 | Vue paiement par archer |
-| 68 | E08US004 | Vue paiement par club |
-| 69 | **E12US005** | **Afficher la complétude du tournoi** *(`D-17`, `D-18`)* |
-| 70 | **E12US006** | **Rechercher un archer depuis n'importe où** *(`D-10`)* |
-| 71 | E02US005 | Détecter et fusionner les doublons |
-| 72 | E02US006 | Contrôler les quotas |
-| 73 | E07US003 | Vue publique des plans de cibles |
-| 74 | E09US001 | Intégrer la bibliothèque PDF |
-| 75 | E09US002 | Feuille de marque |
-| 76 | E09US003 | Liste de placement |
-| 77 | E09US004 | Liste club & paiement |
-| 78 | E11US001 | Build de release exécutable |
-| 79 | E11US002 | Création SQLite au 1er lancement |
-| 80 | E11US003 | Sauvegarde automatique périodique |
-| 81 | E11US004 | Export / archive en fin de tournoi |
-| 82 | E11US005 | Procédure & doc réseau (routeur dédié, mDNS) |
+| 32 | E02US009 | Inscrire un archer sur des départs |
+| 33 | **E00US014** | **Outiller les tests du front** *([DETTE-005](../docs/dette.md) — avant E08US001)* |
+| 34 | E08US001 | Calculer le montant dû |
+| 35 | E03US001 | Placement automatique & plan de cibles |
+| 36 | E03US004 | Ajuster le placement (glisser-déposer) |
+| 37 | **E10US003** | **Scoreurs du tournoi : définition & session** — *réécrite (`D-12`, `D-13`)* |
+| 38 | **E09US008** | **Imprimer les QR de cible et les codes scoreurs** *(`D-07`)* |
+| 39 | **E04US001** | **Rattacher une tablette à sa cible (QR + jeton de poste)** — *réécrite (`D-06`, `D-07`)* |
+| 40 | **E10US007** | **Poste de cible : saisir sans s'identifier** — *réécrite (`D-13`)* |
+| 41 | E04US002 | Saisie de qualification en temps réel |
+| 42 | E04US009 | Diffusion live & résilience réseau |
+| 43 | **E12US001** | **Superviser les postes de saisie** *(`D-06`, `D-21`)* |
+| 44 | E06US001 | Classement de qualification (cumul, départage, par catégorie) |
+| 45 | E07US001 | Vues publiques : classements, plans de cibles et live |
+| 46 | **E07US006** | **« C'est moi » : ouvrir l'appli sur ma journée** *(`D-09`)* |
+| 47 | E10US005 | Journal d'audit métier |
+| 48 | **E12US007** | **Alerter par calcul d'impact** *(`D-15`, `D-16`)* |
+| 49 | E08US002 | Suivi des paiements (marquer, vue par archer, vue par club) |
+| 50 | **E12US005** | **Afficher la complétude du tournoi** *(`D-17`, `D-18`)* |
+| 51 | **E12US006** | **Rechercher un archer depuis n'importe où** *(`D-10`)* |
+| 52 | E02US005 | Détecter et fusionner les doublons |
+| 53 | E02US006 | Contrôler les quotas |
+| 54 | E09US001 | Socle PDF & feuille de marque |
+| 55 | E09US003 | Listes imprimables (placement, club & paiement) |
+| 56 | E11US001 | Release, base et mise en réseau |
+| 57 | E11US003 | Sauvegarde & archive |
 
-> **Ordre contraint, pas cosmétique** : `E09US008` (les QR) précède `E04US001` (le rattachement qui les
-> scanne) ; `E10US008` (déclarer les scoreurs) précède `E10US003` (leur session) ; `E12US001` (supervision)
-> suit `E04US001` (il n'y a rien à superviser avant qu'un poste existe) ; `E00US014` (tests du front)
-> précède `E08US001` — c'est lui qui calcule **de l'argent** à partir d'une conversion que rien ne
+> **Ordre contraint, pas cosmétique** : `E02US004` (les départs) précède `E02US009` (l'inscription sur ces
+> départs) ; `E09US008` (les QR) précède `E04US001` (le rattachement qui les scanne) ; `E12US001`
+> (supervision) suit `E04US001` (il n'y a rien à superviser avant qu'un poste existe) ; `E00US014` (tests
+> du front) précède `E08US001` — c'est lui qui calcule **de l'argent** à partir d'une conversion que rien ne
 > couvre aujourd'hui ([DETTE-005](../docs/dette.md), [ADR-0012](../docs/adr/0012-argent-en-centimes-entiers.md)).
 
 ## J2 — Duels simples + **bascule de tour**
 | Seq | US | Titre |
 |---|---|---|
-| 83 | E05US001 | Définir le modèle de séquence de phases |
-| 84 | E05US002 | Éditer une séquence (ajouter/ordonner/typer) |
-| 85 | E05US003 | Interfaces de politiques injectables |
-| 86 | E05US004 | Assembler les politiques d'une phase (config JSON) |
-| 87 | E05US005 | Arrondi 2^k + seeding serpent |
-| 88 | E05US006 | Attribution des byes (aux mieux classés) |
-| 89 | E05US007 | Générer l'arbre d'élimination directe |
-| 90 | E05US008 | Progression : le gagnant avance |
-| 91 | E05US009 | Terminer sur un podium |
-| 92 | E05US017 | Contrôles de cohérence (phase mal alimentée) |
-| 93 | E03US006 | Contrainte ≥ 2 clubs par cible |
-| 94 | E03US009 | Placer les duellistes côte à côte *(cibles attribuées **aux matchs**, `D-08`)* |
-| 95 | E04US013 | Saisie en sets (duels) |
-| 96 | E04US014 | Désigner le vainqueur d'un match |
-| 97 | E04US015 | Gérer abandon / disqualification |
-| 98 | **E12US004** | **Tracer un forfait** *(`D-24`)* |
-| 99 | E04US016 | Déclencher un barrage/shoot-off (égalité) |
-| 100 | **E12US002** | **Feu vert : voir ce qui manque avant de lancer** *(`D-23`)* |
-| 101 | **E12US003** | **Lancer un tour ou un événement** — *le cœur du produit (`D-22`, `D-25`)* |
-| 102 | **E04US018** | **Afficher la prochaine cible après validation** *(`D-09`, canal 1)* |
-| 103 | **E07US008** | **Vue publique des affectations du prochain tour** *(`D-09`, canal 2)* |
-| 104 | E06US003 | Barrage de tir pour places décisives |
-| 105 | E06US004 | Podium issu des duels |
-| 106 | E06US005 | Agréger les rangs de tableau |
+| 58 | E05US001 | Séquence de phases (modèle, édition, cohérence) |
+| 59 | E05US003 | Politiques injectables & assemblage |
+| 60 | E05US005 | Arbre d'élimination directe |
+| 61 | E03US006 | Contrainte ≥ 2 clubs par cible |
+| 62 | E03US009 | Placer les duellistes côte à côte *(cibles attribuées **aux matchs**, `D-08`)* |
+| 63 | E04US013 | Saisie en duels |
+| 64 | E04US015 | Gérer abandon / disqualification |
+| 65 | **E12US004** | **Tracer un forfait** *(`D-24`)* |
+| 66 | E12US008 | Cycle de vie d'un départ (créneau) |
+| 67 | E08US005 | Rembourser une inscription payée annulée |
+| 68 | **E12US002** | **Lancer un tour (feu vert + lancement)** *(`D-22`, `D-23`, `D-25`)* |
+| 69 | **E04US018** | **Afficher la prochaine cible après validation** *(`D-09`, canal 1)* |
+| 70 | **E07US008** | **Vue publique des affectations du prochain tour** *(`D-09`, canal 2)* |
+| 71 | E06US003 | Barrage de tir pour places décisives |
+| 72 | E06US004 | Podium des duels & agrégation des rangs |
 
-> **C'est ici que le produit gagne ou perd.** `E12US003` n'a de sens que si `E03US009` l'a précédé (la cible
+> **C'est ici que le produit gagne ou perd.** `E12US002` n'a de sens que si `E03US009` l'a précédé (la cible
 > du match suivant est connue **d'avance**, `D-08`) et que `E04US018` / `E07US008` le suivent : **lancer sans
-> prévenir les 4 canaux, c'est le temps mort d'avant.**
+> prévenir les 4 canaux, c'est le temps mort d'avant.** `E12US008` (cycle de vie d'un départ) et `E08US005`
+> (remboursement) partagent le même déclencheur — la suppression d'un départ à inscriptions confirmée
+> ([ADR-0018](../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md)) — d'où leur position
+> côte à côte, près d'`E12US004` (même famille : un aléa qui ne bloque pas le tour, mais se documente).
 
 ## J3 — Placement intégral 1→N + écran de salle & identité
 | Seq | US | Titre |
 |---|---|---|
-| 107 | E05US010 | Peuplement : rangs N→M |
-| 108 | E05US011 | Peuplement : gagnants / perdants d'un tour |
-| 109 | E05US012 | Routing cascade (placement intégral) |
-| 110 | E05US013 | Division récursive des plages |
-| 111 | E05US014 | Affectation des rangs terminaux (gagnant/perdant) |
-| 112 | E05US015 | Big Shoot Off |
-| 113 | E05US018 | Oracle 120 (rejeu + comparaison) |
-| 114 | E06US006 | Classement intégral 1→N |
-| 115 | E06US007 | Profondeur de classement configurable |
-| 116 | E03US007 | Contrainte séparation catégorie/blason |
-| 117 | E09US005 | Classement PDF par catégorie |
-| 118 | E09US006 | Classement intégral 1→N (PDF) |
-| 119 | **E00US013** | **Factoriser les briques d'UI partagées du front** *([DETTE-004](../docs/dette.md))* |
-| 120 | **E01US016** | **Définir l'identité visuelle du tournoi** *(`D-27`, `D-28`, `DV-06`)* |
-| 121 | **E07US004** | **Écran de salle : poste rattaché à déroulé automatique** — *réécrite (`D-21`)* |
-| 122 | **E07US007** | **Piloter l'écran de salle depuis l'admin** *(`D-21`)* |
-| 123 | E07US005 | Vue tableaux/arbres live |
-| 124 | E05US019 | Enregistrer une séquence comme modèle |
+| 73 | E05US010 | Placement intégral 1→N |
+| 74 | E05US015 | Big Shoot Off |
+| 75 | E05US018 | Oracle 120 (rejeu + comparaison) |
+| 76 | E06US006 | Classement intégral 1→N & profondeur configurable |
+| 77 | E03US007 | Contrainte séparation catégorie/blason |
+| 78 | E09US005 | Classements PDF (par catégorie, intégral 1→N) |
+| 79 | **E00US013** | **Factoriser les briques d'UI partagées du front** *([DETTE-004](../docs/dette.md))* |
+| 80 | **E01US016** | **Définir l'identité visuelle du tournoi** *(`D-27`, `D-28`, `DV-06`)* |
+| 81 | **E07US004** | **Écran de salle : déroulé automatique et pilotage admin** — *réécrite (`D-21`)* |
+| 82 | E07US005 | Vue tableaux/arbres live |
+| 83 | E05US019 | Enregistrer une séquence comme modèle |
 
 > `E01US016` précède `E07US004` : **l'identité n'a pas de surface avant l'écran de salle** — c'est lui, avec
 > l'appli publique, qui la porte (`D-27`). L'admin et la saisie **restent l'outil**, neutres.
@@ -182,16 +144,14 @@ Découpage fin des EPICs en user stories **à destination d'un développeur** (m
 ## J4 — Confort, richesse & robustesse
 | Seq | US | Titre |
 |---|---|---|
-| 125 | E02US007 | Importer un fichier inscript'arc (parsing + mapping) |
-| 126 | E02US008 | Rapport d'import (rejets, doublons) |
-| 127 | E01US011 | Presets de barèmes multi-phases |
-| 128 | E01US012 | Gérer plusieurs gabarits |
-| 129 | E03US010 | Générer / éditer le déroulé horaire |
-| 130 | E09US007 | Déroulé horaire imprimable |
-| 131 | E05US016 | Routing repêchage-réintégration (WA) |
-| 132 | E11US006 | Restauration depuis une sauvegarde |
-| 133 | E11US007 | Drain de la file d'écriture à l'arrêt |
-| 134 | E10US006 | Modifier le mot de passe admin |
+| 84 | E02US007 | Importer un fichier inscript'arc (parsing + rapport) |
+| 85 | E01US011 | Presets de barèmes multi-phases |
+| 86 | E01US012 | Gérer plusieurs gabarits |
+| 87 | E03US010 | Générer / éditer le déroulé horaire |
+| 88 | E09US007 | Déroulé horaire imprimable |
+| 89 | E05US016 | Routing repêchage-réintégration (WA) |
+| 90 | E11US006 | Restauration & arrêt propre |
+| 91 | E10US006 | Modifier le mot de passe admin |
 
 ---
 
@@ -203,7 +163,10 @@ Découpage fin des EPICs en user stories **à destination d'un développeur** (m
 ---
 
 *Séquence indicative au sein d'un jalon (ajustable selon dépendances) ; les jalons se font dans l'ordre.*
-***Total : 134 US actives*** *(+ 1 caduque). Dernière révision : 15/07/2026 — entretien de conception
+***Total : 91 US actives*** *(+ 1 caduque). Dernière révision : 15/07/2026 — entretien de conception
 du 14/07 (CDC UX v0.2, CDC design v0.3), puis deux US de résorption issues des revues :
 `E00US013` ([DETTE-004](../docs/dette.md), revue d'E01US015) et `E00US014`
-([DETTE-005](../docs/dette.md), revue d'E01US010).*
+([DETTE-005](../docs/dette.md), revue d'E01US010). Maille révisée le 17/07/2026 (regroupement au grain
+capacité ÷~1,5, backlog non livré uniquement ; les US livrées et E10US004 caduque restent inchangées).
+Trois US manquantes depuis leur création du 16/07 (staleness préexistante à la maille) ont été
+réintégrées le 17/07 : `E02US009`, `E08US005`, `E12US008`.*
