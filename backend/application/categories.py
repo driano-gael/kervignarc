@@ -14,7 +14,13 @@ from collections.abc import Iterable
 from application.erreurs import BlasonHorsTournoi, CategorieIntrouvable, TournoiIntrouvable
 from application.referentiel_ffta import categories_salle_18m
 from domain.blason import BlasonId
-from domain.categorie import Categorie, CategorieId, SexeCategorie, TrancheAge
+from domain.categorie import (
+    HAUTEUR_CENTRE_DEFAUT,
+    Categorie,
+    CategorieId,
+    SexeCategorie,
+    TrancheAge,
+)
 from domain.ports import BlasonRepository, CategorieRepository, TournoiRepository
 from domain.tournoi import TournoiId
 
@@ -40,16 +46,18 @@ class ServiceCategories:
         ages: Iterable[TrancheAge] = (),
         sexe: SexeCategorie | None = None,
         blason_id: BlasonId | None = None,
+        hauteur_cm: int = HAUTEUR_CENTRE_DEFAUT,
     ) -> Categorie:
         """Crée une catégorie rattachée à un tournoi.
 
         Lève `TournoiIntrouvable` si le tournoi n'existe pas, `BlasonHorsTournoi` si le blason par
-        défaut n'appartient pas à ce tournoi, `DomainError` si le libellé est vide.
+        défaut n'appartient pas à ce tournoi, `DomainError` si le libellé est vide ou la hauteur du
+        centre n'est pas un entier strictement positif.
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         self._verifier_blason_du_tournoi(tournoi_id, blason_id)
-        categorie = Categorie.creer(tournoi_id, libelle, arme, ages, sexe, blason_id)
+        categorie = Categorie.creer(tournoi_id, libelle, arme, ages, sexe, blason_id, hauteur_cm)
         return self._categories.ajouter(categorie)
 
     def lister(self, tournoi_id: TournoiId) -> list[Categorie]:
@@ -81,7 +89,12 @@ class ServiceCategories:
             if cle in libelles_existants:
                 continue
             categorie = Categorie.creer(
-                tournoi_id, modele.libelle, modele.arme, modele.ages, modele.sexe
+                tournoi_id,
+                modele.libelle,
+                modele.arme,
+                modele.ages,
+                modele.sexe,
+                hauteur_cm=modele.hauteur_cm,
             )
             creees.append(self._categories.ajouter(categorie))
             libelles_existants.add(cle)
@@ -95,16 +108,17 @@ class ServiceCategories:
         ages: Iterable[TrancheAge] = (),
         sexe: SexeCategorie | None = None,
         blason_id: BlasonId | None = None,
+        hauteur_cm: int = HAUTEUR_CENTRE_DEFAUT,
     ) -> Categorie:
-        """Édite une catégorie (libellé, arme, tranches d'âge, sexe, blason par défaut).
+        """Édite une catégorie (libellé, arme, tranches d'âge, sexe, blason par défaut, hauteur).
 
         Lève `CategorieIntrouvable` si l'identifiant est inconnu, `BlasonHorsTournoi` si le blason
         par défaut n'appartient pas au tournoi de la catégorie, `DomainError` si le libellé est
-        vide.
+        vide ou la hauteur du centre n'est pas un entier strictement positif.
         """
         categorie = self._categorie_existante(categorie_id)
         self._verifier_blason_du_tournoi(categorie.tournoi_id, blason_id)
-        modifiee = categorie.modifier(libelle, arme, ages, sexe, blason_id)
+        modifiee = categorie.modifier(libelle, arme, ages, sexe, blason_id, hauteur_cm)
         return self._categories.enregistrer(modifiee)
 
     def supprimer(self, categorie_id: CategorieId) -> None:

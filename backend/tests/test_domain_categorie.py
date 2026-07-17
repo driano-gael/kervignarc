@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from domain.categorie import Categorie, SexeCategorie, TrancheAge
-from domain.erreurs import LibelleCategorieInvalide
+from domain.categorie import HAUTEUR_CENTRE_DEFAUT, Categorie, SexeCategorie, TrancheAge
+from domain.erreurs import HauteurCentreInvalide, LibelleCategorieInvalide
 
 
 def test_creer_une_categorie_valide() -> None:
@@ -113,3 +113,30 @@ def test_modifier_change_puis_retire_le_blason() -> None:
     categorie = Categorie.creer(1, "Senior H", blason_id=42)
     assert categorie.modifier("Senior H", blason_id=7).blason_id == 7
     assert categorie.modifier("Senior H").blason_id is None
+
+
+def test_creer_a_une_hauteur_de_centre_par_defaut() -> None:
+    """E03US001 (ADR-0022) : sans précision, la hauteur du centre vaut 130 cm (défaut FFTA)."""
+    assert Categorie.creer(1, "Senior H").hauteur_cm == HAUTEUR_CENTRE_DEFAUT
+    assert HAUTEUR_CENTRE_DEFAUT == 130
+
+
+def test_creer_avec_une_hauteur_explicite() -> None:
+    """E03US001 : la hauteur du centre est portée telle quelle (110 pour un U11)."""
+    categorie = Categorie.creer(1, "Arc Classique U11 H", ages=(TrancheAge.U11,), hauteur_cm=110)
+    assert categorie.hauteur_cm == 110
+
+
+@pytest.mark.parametrize("hauteur", [0, -1, -130])
+def test_creer_refuse_une_hauteur_non_positive(hauteur: int) -> None:
+    """E03US001 : une hauteur de centre ≤ 0 n'a pas de sens physique → erreur de domaine typée."""
+    with pytest.raises(HauteurCentreInvalide):
+        Categorie.creer(1, "Senior H", hauteur_cm=hauteur)
+
+
+def test_modifier_change_la_hauteur_et_la_valide() -> None:
+    """E03US001 : `modifier` remplace la hauteur (mêmes règles que `creer`)."""
+    categorie = Categorie.creer(1, "Senior H")
+    assert categorie.modifier("Senior H", hauteur_cm=110).hauteur_cm == 110
+    with pytest.raises(HauteurCentreInvalide):
+        categorie.modifier("Senior H", hauteur_cm=0)

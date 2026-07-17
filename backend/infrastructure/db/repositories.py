@@ -261,6 +261,7 @@ def _vers_categorie(ligne: CategorieORM) -> Categorie:
         ages=ages,
         sexe=None if ligne.sexe is None else SexeCategorie(ligne.sexe),
         blason_id=ligne.blason_id,
+        hauteur_cm=ligne.hauteur_cm,
         id=ligne.id,
     )
 
@@ -752,6 +753,7 @@ class CategorieRepositorySQL:
                     ages=_ages_categorie(categorie),
                     sexe=None if categorie.sexe is None else categorie.sexe.value,
                     blason_id=categorie.blason_id,
+                    hauteur_cm=categorie.hauteur_cm,
                 )
                 session.add(ligne)
                 session.commit()
@@ -810,6 +812,7 @@ class CategorieRepositorySQL:
                 ligne.ages = _ages_categorie(categorie)
                 ligne.sexe = None if categorie.sexe is None else categorie.sexe.value
                 ligne.blason_id = categorie.blason_id
+                ligne.hauteur_cm = categorie.hauteur_cm
                 session.commit()
                 return _vers_categorie(ligne)
         except SQLAlchemyError as exc:

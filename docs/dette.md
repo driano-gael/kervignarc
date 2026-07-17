@@ -34,7 +34,7 @@
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
 | [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason`, `gabarit_salle`, `phase`, `depart` (→ `tournoi.id`), enfants indirects `score` (→ `archer.id`, **sauf** par `ArcherRepositorySQL.supprimer` — voir Résorption) et `inscription` (→ `archer.id` **et** `depart.id`, **sauf** par `ArcherRepositorySQL.supprimer` et `DepartRepositorySQL.supprimer` — E02US009) et liens latéraux `categorie.blason_id` (→ `blason.id`) et `archer.categorie_id` (→ `categorie.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006, E01US008, E01US009, E02US002, E02US004, E02US009) ; E02US003 puis E02US009 y ouvrent des **brèches partielles** (cascades applicatives `archer` → `score`, `archer`/`depart` → `inscription`), qui ne valent que pour les chemins `ArcherRepositorySQL.supprimer` et `DepartRepositorySQL.supprimer` | US dédiée — non planifiée. **⚠️ Deux pièges pour qui la résorbera.** (1) `archer` → `score` **n'est résolu que pour le chemin `ArcherRepositorySQL.supprimer`** (cascade applicative, E02US003) ; la branche **reste ouverte** pour toute suppression d'archer qui ne passe pas par cet adapter — dont la **cascade depuis `tournoi`**, précisément ce que cette dette vise. (2) **Ne pas poser `ON DELETE CASCADE` sur `score.archer_id`** : la confirmation vit **en amont**, dans `ServiceArchers.supprimer` (`ArcherEngage`), la purge dans l'adapter. Une cascade en base ne contourne pas la confirmation *sur ce chemin*, mais elle armerait une purge **silencieuse** sur **tout autre** chemin (cascade tournoi, import, script) — l'option écartée par [ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md) |
-| [DETTE-002](#dette-002--hauteur-de-blason-non-modélisée) | conception | majeur | `backend/domain/blason.py`, `docs/modele-de-donnees.md` | `Blason` modélise l'occupation d'une cible par une `taille` (fraction) + `capacite`, mais **pas la hauteur du centre** — 110 cm pour le blason 80 cm des U11 contre 130 cm pour tous les autres (FFTA B.2.2.1.1, C.3.1.1) | Le placement automatique (EPIC-03) pourra composer une butte physiquement intirable : un U11 et des adultes sur la même cible passent le contrôle « somme des fractions ≤ capacité » alors que leurs blasons ne peuvent pas coexister | E01US005 (blasons) ; constatée au cadrage FFTA du 14/07/2026 | E03US001 (placement automatique) — **avant** d'écrire l'algorithme |
+| [DETTE-009](#dette-009--hauteur_cm-facultative-au-put-catégorie) | conception | mineur | `backend/api/v1/categories.py` (`ModifierCategorieRequete`) | `hauteur_cm` est **facultative** au `PUT /categories/{id}` et retombe à 130 si omise, mais le front de gestion des catégories (E02US003, `frontend/src/features/categories/api.ts`) ne l'envoie pas | Éditer une catégorie **U11** depuis l'UI actuelle ramène silencieusement sa hauteur de 110 à 130 — le piège du PUT partiel qu'[ADR-0020](adr/0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md) a écarté pour `zones`. Latent : sans conséquence tant qu'aucun écran n'édite la hauteur | E03US001 (hauteur ajoutée côté domaine + API ; le front est **hors périmètre** de l'US, cf. arbitrage) | E03US004 (UI de placement) — porter le champ hauteur au formulaire catégorie et l'envoyer au PUT, ou rendre `hauteur_cm` obligatoire |
 | [DETTE-003](#dette-003--config-de-phase-à-plat-au-lieu-de-configpolicies) | conception | majeur | `backend/infrastructure/db/repositories.py` (`_config_phase`, `_vers_phase`), `docs/modele-de-donnees.md` | La `config` d'une phase écrit ses politiques **à plat à la racine** (`config.scoring`, `config.validation`) alors que le modèle cible (ADR-0004) les range sous `config.policies` ; et `scoring` y est un **objet paramétré** au lieu d'un **nom de preset** | Deux conventions coexistent pour le même champ. Le moteur (EPIC-05) devra soit adopter la forme à plat — et renoncer au modèle cible — soit migrer les `config` déjà écrites : c'est une décision reportée, pas évitée | E01US009 (forme posée) ; suivie par E01US015 (`config.validation`), qui s'y aligne plutôt que d'introduire une 2ᵉ convention | E05US003 (assembler les politiques) — **avant** d'écrire le moteur |
 | [DETTE-004](#dette-004--messageerreur-dupliqué-dans-chaque-feature-front) | conception | mineur | `frontend/src/features/*/` (10 occurrences) | Le composant `MessageErreur` est copié **à l'identique** dans chaque feature — même signature, même corps, mêmes classes — au lieu de vivre dans `shared/` | Tout changement du rendu d'erreur (ex. le token d'alerte **ambre** du CDC design, `DV-03`) se fait en 10 endroits, avec le risque d'en oublier un : les erreurs sont précisément ce que l'utilisateur voit quand ça va mal | E00US011 puis chaque feature (`admin`, `bareme`, `blasons`, `categories`, `competition`, `gabarits` ×2) ; **aggravée** par E01US015 (8ᵉ copie), E02US001 (9ᵉ copie) puis E02US003 (10ᵉ copie, feature `archers`) | E00US013 (factoriser les briques d'UI partagées) |
 | [DETTE-006](#dette-006--cle_nom-nest-plus-chez-elle-dans-domainclubpy) | conception | mineur | `backend/domain/club.py` (`cle_nom`), `backend/domain/archer.py`, `backend/application/archers.py`, `backend/application/clubs.py` | `cle_nom` — le repli casse/accents des noms propres — vit dans `domain/club.py`, mais sert désormais **4** usages dont **2 hors du concept « club »** : `archer.cle_identite` (E02US002) et le tri des archers (E02US003). Sa propre docstring avait posé le seuil : « si un 2ᵉ usage hors club apparaît, extraire dans un `domain/texte.py` en US dédiée » | La fonction est **juste** ; seul son domicile est faux. Un lecteur d'`archer.py` doit aller lire `club.py` pour comprendre comment se replient les noms d'archers, et le prochain usage hors club ira chercher la règle là où elle n'a plus de raison d'être | E02US002 (1ᵉʳ usage hors club) ; **seuil atteint** par E02US003 (2ᵉ) | US dédiée à créer (`refactor/…`) — déplacer dans `domain/texte.py`, 4 appelants, zéro changement de comportement |
@@ -47,6 +47,7 @@
 | ID | Nature | Portée | Soldée par |
 |---|---|---|---|
 | [DETTE-005](#dette-005--conversion-euroscentimes-sans-aucun-test) | technique | `frontend/src/features/competition/format.ts` | **E00US014** : runner `vitest` installé + script `npm test`, câblé à la CI bloquante (E00US003) ; `format.test.ts` couvre la conversion euros↔centimes (aller-retour, sens de complétion `padEnd`/`padStart`, rejets). Marqueur `# DETTE-005` retiré du code. |
+| [DETTE-002](#dette-002--hauteur-de-blason-non-modélisée) | conception | `backend/domain/categorie.py`, `docs/modele-de-donnees.md` | **E03US001** ([ADR-0022](adr/0022-hauteur-de-centre-sur-la-categorie.md)) : la hauteur du centre de l'or vit sur `Categorie` (`hauteur_cm`, 130 par défaut, 110 pour les U11) ; le placement en fait une **contrainte de 1er rang** — une butte, une seule hauteur (test « U11 + adultes → séparés »). Migration `0020` (backfill 110 si `ages` contient U11). |
 
 ## Détail
 
@@ -148,6 +149,17 @@ l'algorithme : (a) choisir où vit la hauteur (blason ? catégorie ? les deux ?)
 modèle et à la migration, (c) exprimer la compatibilité comme une **contrainte de placement à part
 entière**, au même rang que la capacité et la mixité club, (d) couvrir en test le cas « U11 +
 adultes sur une même butte → refusé ». Documenté au CDC fonctionnel en **EF-4.4b**.
+
+**Résorption (E03US001, 17/07/2026 — [ADR-0022](adr/0022-hauteur-de-centre-sur-la-categorie.md)).**
+La hauteur vit sur **`Categorie`** (`hauteur_cm`, entier `> 0`, défaut 130), et non sur le blason
+(option (a) tranchée par arbitrage : la hauteur suit la catégorie d'âge de l'archer, pas le carton).
+Ajoutée au modèle et à la **migration `0020`** (backfill 110 pour les catégories dont les `ages`
+contiennent U11, 130 sinon) — point (b). Le moteur de placement en fait une **contrainte de 1er
+rang** : tous les archers d'une cible partagent la même hauteur, un archer d'une autre hauteur
+bascule sur une cible neuve, faute de quoi il ressort en **conflit** — point (c). Test « U11 (110) +
+adultes (130) → séparés / conflit » couvert dans `test_domain_placement.py` — point (d). **Hors
+résorption** : la **plage** de hauteur des buttes à 4 blasons (100–162 cm) reste hors modèle (le
+mono-club place au centre 130/110), à traiter en contrainte avancée si un cas réel l'exige.
 
 ### DETTE-003 — config de phase à plat au lieu de `config.policies`
 
@@ -447,6 +459,32 @@ prévoit explicitement de s'en servir pour faire transiter le décompte d'une co
 destructrice — un champ jamais peuplé à ce jour. Il faut **borner** `details`, pas le retirer.
 
 Marqueur `DETTE-008` posé sur `_sur_erreur_validation` (`backend/api/erreurs.py`).
+
+### DETTE-009 — `hauteur_cm` facultative au PUT catégorie
+
+**Constat.** E03US001 ajoute `hauteur_cm` à `Categorie` (hauteur du centre de l'or, 130 par défaut,
+110 pour les U11 — [ADR-0022](adr/0022-hauteur-de-centre-sur-la-categorie.md)). Le champ est
+**facultatif** au `POST`/`PUT /categories/{id}` et retombe à 130 s'il est omis. Or le front de
+gestion des catégories (E02US003, `frontend/src/features/categories/api.ts`) envoie un corps de PUT
+**total** qui ne connaît pas encore ce champ.
+
+**Conséquence.** Éditer une catégorie **U11** (hauteur 110) depuis l'UI actuelle renvoie un PUT sans
+`hauteur_cm`, qui la **ramène silencieusement à 130** — exactement le piège du PUT partiel
+qu'[ADR-0020](adr/0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md) avait écarté en
+rendant `zones` obligatoire. La perte est invisible à la lecture de l'appelant.
+
+**Pourquoi c'est en dette et pas corrigé.** Deux corrections propres existent — (1) rendre
+`hauteur_cm` **obligatoire** au PUT (comme `zones`), ou (2) **porter le champ au formulaire** du
+front — mais toutes deux touchent le **front**, explicitement **hors périmètre** d'E03US001
+(arbitrage : domaine + service + endpoint de lecture, pas d'UI). L'option (1) casserait de surcroît
+le front livré tant que celui-ci n'envoie pas le champ. Le raccourci — champ facultatif, défaut 130
+— est donc assumé, et **latent** : sans écran éditant la hauteur, aucune donnée réelle n'est en
+danger aujourd'hui (le pré-chargement FFTA écrit 110 pour les U11 côté service, pas via le DTO).
+
+**Résorption attendue.** E03US004 (UI de placement) porte le champ hauteur au formulaire catégorie
+et l'envoie au PUT ; à ce moment, rendre `hauteur_cm` **obligatoire** au DTO d'édition referme le
+piège pour de bon. Marqueur `# DETTE-009` posé sur `ModifierCategorieRequete`
+(`backend/api/v1/categories.py`).
 
 ## Procédure — inscrire une dette
 

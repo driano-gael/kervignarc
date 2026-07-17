@@ -29,6 +29,7 @@ from api.v1.departs import router as departs_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
 from api.v1.inscriptions import router as inscriptions_router
+from api.v1.placement import router as placement_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
 from application.auth import ServiceAuth
@@ -41,6 +42,7 @@ from application.departs import ServiceDeparts
 from application.gabarits import ServiceGabarits
 from application.grain_validation import ServiceGrainValidation
 from application.inscriptions import ServiceInscriptions
+from application.placement import ServicePlacement
 from application.tournois import ServiceTournois
 from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
 from infrastructure.db import (
@@ -187,6 +189,19 @@ def create_app(
     app.state.service_inscriptions = ServiceInscriptions(
         inscription_repository, archer_repository, depart_repository
     )
+    # Placement (E03US001) : lecture seule, recalcul à la demande du plan de cibles d'un départ. Le
+    # service joint archer → catégorie → blason par défaut pour nourrir le moteur pur
+    # (`domain/placement`) — d'où sept ports (tournoi/départ pour les gardes 404, gabarit pour les
+    # cibles, inscription/archer/catégorie/blason pour la jointure). Aucune écriture.
+    app.state.service_placement = ServicePlacement(
+        tournoi_repository,
+        depart_repository,
+        gabarit_repository,
+        inscription_repository,
+        archer_repository,
+        categorie_repository,
+        blason_repository,
+    )
 
     # --- Accès administrateur (E10US002) : identifiants dans un fichier `.env` local + jetons
     # de session en mémoire. Auth = concern technique (pas de domaine) ; la dépendance API
@@ -212,6 +227,7 @@ def create_app(
     app.include_router(bareme_qualification_router)
     app.include_router(grain_validation_router)
     app.include_router(competition_router)
+    app.include_router(placement_router)
 
     # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement
     # s'il existe, pour ne jamais masquer les routes API/WS/health ci-dessus. ---
