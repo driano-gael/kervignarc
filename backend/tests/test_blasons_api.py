@@ -236,3 +236,105 @@ def test_creer_requete_invalide_erreur_400(
     corps = reponse.json()
     assert corps["code"] == "requete_invalide"
     assert "details" in corps
+
+
+# --- Zones : valeurs de score admises (E01US014) --------------------------------------------
+
+
+def test_creer_expose_les_zones_par_defaut(
+    app_blasons: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`zones` omis : l'API renvoie le défaut du domaine (blason simple complet)."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        reponse = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "Monospot 60", "taille": 1.0, "capacite": 1},
+        )
+    assert reponse.status_code == 201, reponse.text
+    assert reponse.json()["zones"] == ["10", "9", "8", "7", "6", "5", "4", "3", "2", "1", "M"]
+
+
+def test_creer_avec_les_zones_d_un_triple_40(
+    app_blasons: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le cas de l'US : un triple 40 s'arrête à 6 ; les zones traversent jusqu'à la relecture."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        creation = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={
+                "nom": "Trispot 40",
+                "taille": 0.5,
+                "capacite": 3,
+                "zones": ["10", "9", "8", "7", "6", "M"],
+            },
+        )
+        assert creation.status_code == 201, creation.text
+        assert creation.json()["zones"] == ["10", "9", "8", "7", "6", "M"]
+
+        liste = client.get(f"/api/v1/tournois/{tournoi_id}/blasons")
+    assert liste.json() == [creation.json()]
+
+
+def test_modifier_les_zones(app_blasons: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """PUT édite les zones comme le reste du blason (CA « modifiable », RG-8)."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        cree = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "Trispot 40", "taille": 0.5, "capacite": 3},
+        ).json()
+        reponse = client.put(
+            f"/api/v1/blasons/{cree['id']}",
+            json={
+                "nom": "Trispot 40",
+                "taille": 0.5,
+                "capacite": 3,
+                "zones": ["10", "9", "8", "7", "6", "M"],
+            },
+        )
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.json()["zones"] == ["10", "9", "8", "7", "6", "M"]
+
+
+def test_modifier_sans_zones_les_laisse_inchangees(
+    app_blasons: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`zones` omis à l'édition ne les efface pas — un PUT sur le nom seul les préserve."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        cree = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={
+                "nom": "Trispot 40",
+                "taille": 0.5,
+                "capacite": 3,
+                "zones": ["10", "9", "8", "7", "6", "M"],
+            },
+        ).json()
+        reponse = client.put(
+            f"/api/v1/blasons/{cree['id']}",
+            json={"nom": "Trispot 40 (rebaptisé)", "taille": 0.5, "capacite": 3},
+        )
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.json()["zones"] == ["10", "9", "8", "7", "6", "M"]
+
+
+def test_creer_zones_invalides_erreur_domaine(
+    app_blasons: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Une zone hors vocabulaire → 422 avec le code métier (règle du domaine, pas du DTO)."""
+    with TestClient(app_blasons) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        reponse = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "Blason", "taille": 0.5, "capacite": 1, "zones": ["10", "X", "M"]},
+        )
+    assert reponse.status_code == 422
+    assert reponse.json()["code"] == "zones_blason_invalides"

@@ -110,11 +110,16 @@ class CategorieORM(Base):
 
 
 class BlasonORM(Base):
-    """Table `blason` — persistance de l'agrégat `Blason` (E01US005).
+    """Table `blason` — persistance de l'agrégat `Blason` (E01US005 ; `zones` : E01US014).
 
     `taille` stocke la fraction de place occupée sur une cible (réel dans `]0, 1]`) et
     `capacite` le nombre d'archers admis (entier `>= 1`) ; la validation est portée par le
     domaine (`Blason.creer` / `Blason.modifier`).
+
+    `zones` stocke les valeurs de score admises en **JSON** (`["10", "9", ..., "M"]`, même
+    procédé que `GabaritSalleORM.config`) ; la traduction JSON ↔ tuple est faite par le
+    repository. Une colonne dédiée par zone, ou une table fille, coûterait une jointure pour une
+    donnée toujours lue en bloc et jamais requêtée.
     """
 
     __tablename__ = "blason"
@@ -126,6 +131,7 @@ class BlasonORM(Base):
     nom: Mapped[str] = mapped_column(nullable=False)
     taille: Mapped[float] = mapped_column(nullable=False)
     capacite: Mapped[int] = mapped_column(nullable=False)
+    zones: Mapped[str] = mapped_column(nullable=False)
 
 
 class GabaritSalleORM(Base):

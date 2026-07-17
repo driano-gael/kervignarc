@@ -95,12 +95,18 @@ def _vers_inscription(ligne: InscriptionORM) -> Inscription:
 
 
 def _vers_blason(ligne: BlasonORM) -> Blason:
-    """Traduit une ligne ORM en agrégat de domaine `Blason`."""
+    """Traduit une ligne ORM en agrégat de domaine `Blason`.
+
+    Les `zones` sont stockées en JSON (E01US014) : elles reviennent en tuple, l'agrégat étant
+    `frozen`. Comme pour les autres champs, la ligne relue est **tenue pour valide** (elle l'a
+    été à l'écriture) : on réhydrate sans repasser par `Blason.creer`.
+    """
     return Blason(
         tournoi_id=ligne.tournoi_id,
         nom=ligne.nom,
         taille=ligne.taille,
         capacite=ligne.capacite,
+        zones=tuple(json.loads(ligne.zones)),
         id=ligne.id,
     )
 
@@ -826,6 +832,7 @@ class BlasonRepositorySQL:
                     nom=blason.nom,
                     taille=blason.taille,
                     capacite=blason.capacite,
+                    zones=json.dumps(list(blason.zones)),
                 )
                 session.add(ligne)
                 session.commit()
@@ -869,6 +876,7 @@ class BlasonRepositorySQL:
                 ligne.nom = blason.nom
                 ligne.taille = blason.taille
                 ligne.capacite = blason.capacite
+                ligne.zones = json.dumps(list(blason.zones))
                 session.commit()
                 return _vers_blason(ligne)
         except SQLAlchemyError as exc:

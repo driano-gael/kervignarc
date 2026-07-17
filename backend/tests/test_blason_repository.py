@@ -12,7 +12,7 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 
-from domain.blason import Blason
+from domain.blason import ZONES_DEFAUT, Blason
 from domain.tournoi import Tournoi
 from infrastructure.db import (
     BlasonRepositorySQL,
@@ -105,5 +105,49 @@ def test_supprimer_retire_la_ligne(tmp_path: Path) -> None:
         repository.supprimer(cree.id)
         assert repository.par_id(cree.id) is None
         assert repository.par_tournoi(tournoi_id) == []
+    finally:
+        db.engine.dispose()
+
+
+def test_les_zones_font_l_aller_retour_json(tmp_path: Path) -> None:
+    """Les zones (E01US014) survivent au tour ORM : stockées en JSON, relues en tuple."""
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        repository = BlasonRepositorySQL(db.session_factory)
+        cree = repository.ajouter(
+            Blason.creer(tournoi_id, "Trispot 40", 0.5, 3, zones=["10", "9", "8", "7", "6", "M"])
+        )
+        assert cree.id is not None
+        assert cree.zones == ("10", "9", "8", "7", "6", "M")
+        assert repository.par_id(cree.id) == cree
+    finally:
+        db.engine.dispose()
+
+
+def test_les_zones_par_defaut_sont_persistees(tmp_path: Path) -> None:
+    """Un blason créé sans zones persiste le défaut du domaine, pas une valeur vide."""
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        repository = BlasonRepositorySQL(db.session_factory)
+        cree = repository.ajouter(Blason.creer(tournoi_id, "Monospot 60", 1.0, 1))
+        assert cree.id is not None
+        assert repository.par_id(cree.id) == cree
+        assert cree.zones == ZONES_DEFAUT
+    finally:
+        db.engine.dispose()
+
+
+def test_enregistrer_met_a_jour_les_zones(tmp_path: Path) -> None:
+    """L'édition des zones est bien persistée (E01US014)."""
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        repository = BlasonRepositorySQL(db.session_factory)
+        cree = repository.ajouter(Blason.creer(tournoi_id, "Trispot 40", 0.5, 3))
+        modifie = repository.enregistrer(
+            cree.modifier("Trispot 40", 0.5, 3, zones=["10", "9", "8", "7", "6", "M"])
+        )
+        assert cree.id is not None
+        assert modifie.zones == ("10", "9", "8", "7", "6", "M")
+        assert repository.par_id(cree.id) == modifie
     finally:
         db.engine.dispose()

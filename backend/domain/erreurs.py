@@ -65,6 +65,15 @@ class CapaciteBlasonInvalide(DomainError):
     code = "capacite_blason_invalide"
 
 
+class ZonesBlasonInvalides(DomainError):
+    """Les valeurs de score admises d'un blason sont invalides (E01US014).
+
+    Hors vocabulaire du référentiel (§4.2), doublon, absence de `M`, ou aucune zone marquante.
+    """
+
+    code = "zones_blason_invalides"
+
+
 class NomGabaritInvalide(DomainError):
     """Le nom d'un gabarit de salle est vide (après normalisation)."""
 

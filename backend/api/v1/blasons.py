@@ -28,19 +28,28 @@ router = APIRouter(prefix="/api/v1", tags=["blasons"])
 
 
 class CreerBlasonRequete(BaseModel):
-    """Corps de création d'un blason (nom, taille dans `]0, 1]`, capacité `>= 1`)."""
+    """Corps de création d'un blason (nom, taille dans `]0, 1]`, capacité `>= 1`).
+
+    `zones` (E01US014) est **facultatif** : omis, le domaine applique son défaut (le jeu complet
+    d'un blason simple). La validation des valeurs appartient au domaine, pas au DTO.
+    """
 
     nom: str
     taille: float
     capacite: int
+    zones: list[str] | None = None
 
 
 class ModifierBlasonRequete(BaseModel):
-    """Corps d'édition d'un blason (mêmes champs que la création)."""
+    """Corps d'édition d'un blason (mêmes champs que la création).
+
+    `zones` omis laisse les zones du blason **inchangées** (édition partielle du champ).
+    """
 
     nom: str
     taille: float
     capacite: int
+    zones: list[str] | None = None
 
 
 class BlasonReponse(BaseModel):
@@ -51,6 +60,7 @@ class BlasonReponse(BaseModel):
     nom: str
     taille: float
     capacite: int
+    zones: list[str]
 
     @staticmethod
     def de_agregat(blason: Blason) -> BlasonReponse:
@@ -62,6 +72,7 @@ class BlasonReponse(BaseModel):
             nom=blason.nom,
             taille=blason.taille,
             capacite=blason.capacite,
+            zones=list(blason.zones),
         )
 
 
@@ -87,7 +98,9 @@ async def creer_blason(
     write_queue: WriteQueue = request.app.state.write_queue
     blason = await asyncio.wrap_future(
         write_queue.submit(
-            lambda: service.creer(tournoi_id, requete.nom, requete.taille, requete.capacite)
+            lambda: service.creer(
+                tournoi_id, requete.nom, requete.taille, requete.capacite, requete.zones
+            )
         )
     )
     return BlasonReponse.de_agregat(blason)
@@ -106,7 +119,9 @@ async def modifier_blason(
     write_queue: WriteQueue = request.app.state.write_queue
     blason = await asyncio.wrap_future(
         write_queue.submit(
-            lambda: service.modifier(blason_id, requete.nom, requete.taille, requete.capacite)
+            lambda: service.modifier(
+                blason_id, requete.nom, requete.taille, requete.capacite, requete.zones
+            )
         )
     )
     return BlasonReponse.de_agregat(blason)

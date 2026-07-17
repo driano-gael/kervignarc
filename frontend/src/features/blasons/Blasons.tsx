@@ -1,13 +1,17 @@
-// Gestion des blasons d'un tournoi (E01US005) — réservée à l'admin (montée sous `estAdmin`).
+// Gestion des blasons d'un tournoi (E01US005 ; zones : E01US014) — réservée à l'admin
+// (montée sous `estAdmin`).
 //
-// Liste + création + édition (nom, taille, capacité) + suppression à confirmation. Un blason
-// modélise l'occupation d'une cible : la **taille** est une fraction de place (]0, 1]) et la
-// **capacité** le nombre d'archers admis (≥ 1). Les bornes sont validées côté serveur (domaine) ;
-// un message d'erreur en rouge s'affiche si une valeur est refusée.
+// Liste + création + édition (nom, taille, capacité, zones) + suppression à confirmation. Un
+// blason modélise l'occupation d'une cible : la **taille** est une fraction de place (]0, 1]) et
+// la **capacité** le nombre d'archers admis (≥ 1). Les **zones** sont les valeurs de score
+// admises, qui pilotent le pavé de saisie (EPIC-04) : un triple 40 n'a pas les zones 5 → 1.
+// Les bornes sont validées côté serveur (domaine) ; un message d'erreur en rouge s'affiche si une
+// valeur est refusée.
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import type { Blason, NouveauBlason } from './api'
+import { ZONE_MANQUE, ZONES_CANONIQUES } from './api'
 import { useBlasons, useCreerBlason, useModifierBlason, useSupprimerBlason } from './hooks'
 
 export function Blasons({ tournoiId }: { tournoiId: number }) {
@@ -89,10 +93,10 @@ function LigneBlason({ tournoiId, blason }: { tournoiId: number; blason: Blason 
   )
 }
 
-// Décrit les attributs d'un blason pour l'affichage (taille de place · capacité).
+// Décrit les attributs d'un blason pour l'affichage (taille de place · capacité · zones).
 function decrire(blason: Blason): string {
   const capacite = blason.capacite > 1 ? `${blason.capacite} archers` : '1 archer'
-  return `taille ${blason.taille.toLocaleString('fr-FR')} · ${capacite}`
+  return `taille ${blason.taille.toLocaleString('fr-FR')} · ${capacite} · zones ${blason.zones.join(' ')}`
 }
 
 // Formulaire partagé création / édition : sans `blason` il crée, avec il édite.
@@ -109,13 +113,25 @@ function FormulaireBlason({
   const [nom, setNom] = useState(blason?.nom ?? '')
   const [taille, setTaille] = useState(blason ? String(blason.taille) : '1')
   const [capacite, setCapacite] = useState(blason ? String(blason.capacite) : '1')
+  // À la création, le défaut est le jeu complet d'un blason simple — le même que celui du
+  // domaine : c'est un sur-ensemble, à restreindre pour un triple 40.
+  const [zones, setZones] = useState<string[]>(blason ? blason.zones : [...ZONES_CANONIQUES])
 
   const creer = useCreerBlason(tournoiId)
   const modifier = useModifierBlason(tournoiId)
   const mutation = enEdition ? modifier : creer
 
-  // Reprend les bornes du domaine (taille ]0, 1], capacité entière >= 1) pour éviter d'envoyer
-  // une requête vouée au 422 ; le serveur reste l'autorité (revalidation à la frontière).
+  const basculerZone = (zone: string) =>
+    setZones((actuelles) =>
+      actuelles.includes(zone)
+        ? actuelles.filter((z) => z !== zone)
+        : // On réordonne selon l'ordre canonique : le serveur le fera de toute façon.
+          ZONES_CANONIQUES.filter((z) => z === zone || actuelles.includes(z)),
+    )
+
+  // Reprend les bornes du domaine (taille ]0, 1], capacité entière >= 1, au moins une zone
+  // marquante) pour éviter d'envoyer une requête vouée au 422 ; le serveur reste l'autorité
+  // (revalidation à la frontière). `M` est imposé par l'UI, il n'est donc pas revérifié ici.
   const tailleNombre = Number(taille)
   const capaciteNombre = Number(capacite)
   const entreeValide =
@@ -124,7 +140,8 @@ function FormulaireBlason({
     tailleNombre > 0 &&
     tailleNombre <= 1 &&
     Number.isInteger(capaciteNombre) &&
-    capaciteNombre >= 1
+    capaciteNombre >= 1 &&
+    zones.some((zone) => zone !== ZONE_MANQUE)
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -133,6 +150,7 @@ function FormulaireBlason({
       nom,
       taille: tailleNombre,
       capacite: capaciteNombre,
+      zones,
     }
     if (enEdition) {
       modifier.mutate({ id: blason.id, entree }, { onSuccess: onTermine })
@@ -143,6 +161,7 @@ function FormulaireBlason({
           setNom('')
           setTaille('1')
           setCapacite('1')
+          setZones([...ZONES_CANONIQUES])
         },
       })
     }
@@ -184,6 +203,32 @@ function FormulaireBlason({
             aria-label="Capacité du blason (nombre d'archers)"
           />
         </label>
+        <fieldset className="zones">
+          <legend className="formulaire__libelle">Valeurs de score admises</legend>
+          <p className="zones__aide">
+            Décochez ce qui n’est pas tirable sur ce blason — un triple 40 s’arrête à 6. Le pavé de
+            saisie ne proposera que ces valeurs.
+          </p>
+          <div className="zones__cases">
+            {ZONES_CANONIQUES.map((zone) => {
+              const manque = zone === ZONE_MANQUE
+              return (
+                <label key={zone} className="zones__case">
+                  <input
+                    type="checkbox"
+                    checked={zones.includes(zone)}
+                    // Un manqué est toujours possible : le domaine l'impose, l'UI le verrouille
+                    // plutôt que de laisser l'admin le décocher pour se faire refuser en 422.
+                    disabled={manque}
+                    onChange={() => basculerZone(zone)}
+                    aria-label={manque ? 'Manqué (toujours admis)' : `Zone ${zone}`}
+                  />
+                  {zone}
+                </label>
+              )
+            })}
+          </div>
+        </fieldset>
         <div className="formulaire__actions">
           <button type="submit" disabled={mutation.isPending || !entreeValide}>
             {enEdition ? 'Enregistrer' : 'Ajouter le blason'}

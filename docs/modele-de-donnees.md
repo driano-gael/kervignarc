@@ -105,6 +105,15 @@ erDiagram
 > et le « 10 intérieur » des poulies est un cercle plus petit que le 10 classique (§4.3). C'est
 > `zones` qui pilote le pavé de saisie de la tablette (EF-5.2).
 >
+> *Livré en E01US014* (migration `0019`). Vocabulaire fermé à `10`→`1` et `M` (§4.2) — contrainte
+> d'**intégrité aval** (EPIC-04 somme ces valeurs), non un contrôle de conformité : un jeu **non
+> contigu** est admis, RG-8 interdisant d'imposer le règlement. `M` toujours présent, au moins une
+> zone marquante, ordre canonique normalisé par le domaine. Le « 10 intérieur » **n'ajoute pas de
+> valeur** (c'est une géométrie, le score reste 10) et la **mouche (X)** n'est pas une zone.
+> **Défaut = `["10",…,"1","M"]`** (blason simple complet), y compris pour le backfill des lignes
+> existantes : `taille` étant une *fraction de place* et non un diamètre, rien ne distingue un
+> triple d'un blason simple — les triples déjà en base sont à corriger à la main.
+>
 > **La hauteur du blason n'est pas modélisée** (110 cm pour le 80 cm des U11 contre 130 cm sinon,
 > §5) : elle interdit à un U11 de partager une butte avec des adultes et n'est **pas** réductible à
 > `taille`. Reportée à EPIC-03 — cf. [registre de dette](dette.md), DETTE-002.
