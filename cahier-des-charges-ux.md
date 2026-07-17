@@ -758,7 +758,7 @@ Factuel, pour cadrer les US de refonte (§14) :
 | **Aucun routeur** (`react-router` absent) ; navigation = `useState` local | 3 applis, URL, deep-link, retour navigateur |
 | **Un seul écran**, `TrancheVerticale.tsx` (423 lignes) empilant 6 sections admin dans une carte `max-width: 560px` | Layout admin (sidebar §7.1) + features par écran |
 | `PlanDeSalle.tsx` : **un formulaire, pas un plan** | Plan de salle (`Q-UX8`) |
-| Saisie : **1 flèche par `input`** dans `TableClassement.tsx` | Pavé tactile (E04US003) |
+| Saisie : **1 flèche par `input`** dans `TableClassement.tsx` | Pavé tactile (E04US002) |
 | Déconnexion **cachée dans le formulaire de création de tournoi** | Sortie du fourre-tout |
 | `MessageErreur` **dupliqué dans 6 fichiers** ; CSS monolithique (`App.css`, 429 lignes) | Composants partagés |
 | Thème sombre par `prefers-color-scheme` **sans bascule manuelle** | Bascule manuelle (CDC design §7.1) |
@@ -823,7 +823,7 @@ viendront comme features dédiées ».
 | **Q-UX8** | **Plan de salle & glisser-déposer : non instruit à ce jour.** Densité, zoom, alternative clavier (a11y), visualisation des contraintes, impression | **Entretien dédié** — c'est l'écran signature de l'admin | E03US004/005/008 |
 | **Q-UX9** | ~~Multilingue et **personnalisation par tournoi**~~ → **la personnalisation est tranchée** (`D-27`, `D-28`, `DV-06`) : logo + 2 accents, sur le public et l'écran de salle. **Reste le multilingue** | Client — cf. `Q-D7` (CDC design) | — |
 | **Q-UX10** | **Qui fournit l'identité d'un tournoi ?** L'organisateur dépose un logo — mais le club a-t-il un **graphiste** qui produit l'affiche (comme celle du Challenge des Champions), ou l'organisateur bricole-t-il le jour même ? **Ça change tout** : un SVG propre et calibré, ou un JPEG de 4 Mo sorti d'un téléphone qu'il faudra recadrer, détourer et voiler | Client | `D-28` · E01US016 |
-| **Q-UX11** | **Que devient l'identité d'une édition passée ?** L'archive d'un tournoi terminé (`D-17`, E11US004) doit-elle **figer** son identité visuelle (le Challenge 2025 reste le Challenge 2025) ou reprendre celle du club ? Sans décision, rejouer une archive affichera **le mauvais logo** | Client / conception | `D-17`, `D-27` |
+| **Q-UX11** | **Que devient l'identité d'une édition passée ?** L'archive d'un tournoi terminé (`D-17`, E11US003) doit-elle **figer** son identité visuelle (le Challenge 2025 reste le Challenge 2025) ou reprendre celle du club ? Sans décision, rejouer une archive affichera **le mauvais logo** | Client / conception | `D-17`, `D-27` |
 
 ---
 

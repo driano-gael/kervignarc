@@ -13,7 +13,7 @@ d'affichage : il **alimente des calculs et des sommes**, déjà spécifiés —
 
 - **EF-8.1 / E08US001** : montant dû = tarif × nombre de départs ;
 - **EF-2.3** : un archer peut avoir plusieurs départs ;
-- **EF-9.6 / E08US004, E09US004** : listes **club & paiement** — donc des **totaux** sur ~120 archers.
+- **EF-9.6 / E08US002, E09US003** : listes **club & paiement** — donc des **totaux** sur ~120 archers.
 
 Le [modèle de données](../modele-de-donnees.md) prévoyait `TOURNOI.tarif_depart REAL`, et
 `DEPART.tarif` / `DEPART.montant_du` en `REAL` également.

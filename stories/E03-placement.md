@@ -25,11 +25,10 @@ disposer d'un plan exploitable sans saisie manuelle.
 - **CA — plan de cibles (ex-008)** : vue par cible listant archers + positions + départ ; source
   des exports (E09US003).
 - **Notes** : entité `Cible` ; `position` (ex-`lettre` du prototype) — ex-001. Algo de placement
-  dans `domain/placement`, pur et testable — ex-002. **L'ex-E03US008 est absorbée ici** : ses
-  nombreux liens entrants (E09US002/003, E07US003/006, E04US001, E12US001/US00x) référencent
-  aujourd'hui « E03US008 » et devront être redirigés vers **E03US001** — hors périmètre de ce
-  refactor de maille, qui ne touche que ce fichier (cf. contrat, point 7) ; à traiter dans une passe
-  globale dédiée.
+  dans `domain/placement`, pur et testable — ex-002. Le **plan de cibles** (ex-008) est la vue par
+  cible produite par le placement — source des exports (E09US003) et de la vue publique (E07US003).
+  **L'ex-E03US008 est absorbée ici** ; ses liens entrants (E04US001, E07, E09, E12) ont été
+  **redirigés vers E03US001** dans la passe globale du 17/07/2026.
 - **Absorbe** : ex-E03US001 à 003, E03US008. **Dépend de** : E01US007, E02US004 · **Jalon** : J1
 
 ### E03US004 — Ajuster le placement (glisser-déposer)
@@ -60,14 +59,14 @@ respecter les règles officielles.
 voisines, *afin de* faciliter les matchs.
 - **CA** : lors d'une phase de tableau, les 2 duellistes sont placés côte à côte dans la mesure du
   possible.
-- **Dépend de** : E03US001, E05US007 · **Jalon** : J2
+- **Dépend de** : E03US001, E05US005 · **Jalon** : J2
 
 ### E03US010 — Générer / éditer le déroulé horaire
 *En tant qu'*administrateur, *je veux* un déroulé horaire de la journée, *afin de* cadencer
 l'événement.
 - **CA** : grille horaire par phase/tour ; éditable manuellement (génération auto en option —
   question ouverte).
-- **Dépend de** : E05US002 · **Jalon** : J4
+- **Dépend de** : E05US001 · **Jalon** : J4
 
 ---
 
@@ -85,10 +84,3 @@ l'événement.
 | E03US008 | Générer le plan de cibles (qualif) | **E03US001** — CA « plan de cibles » |
 | E03US009 | Placer les duellistes côte à côte | **E03US009** (inchangée) |
 | E03US010 | Générer / éditer le déroulé horaire | **E03US010** (inchangée) |
-
-**Redirections de liens entrants à appliquer** (passe globale, hors périmètre de ce fichier) :
-`stories/E04-saisie-scores.md` (E04US001 dép `E03US008`→`E03US001`) ; `stories/E09-exports.md`
-(deux dép `E03US008`→`E03US001`) ; `stories/E07-affichage-public.md` (deux dép `E03US008`→
-`E03US001`) ; `stories/E12-pilotage-jour-j.md` (deux dép `E03US008`→`E03US001`) ;
-`stories/README.md` (index des US002/003/005/008 à mettre à jour) ; `docs/adr/0017-le-depart-est-
-un-creneau-du-tournoi.md` (mention `E03US008`→`E03US001`).

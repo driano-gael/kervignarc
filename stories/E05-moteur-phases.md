@@ -50,7 +50,7 @@ d'élimination directe jusqu'au podium, *afin de* dérouler un tableau équitabl
 - **CA — byes (ex-006)** : byes attribués **aux mieux classés** ; calcul universel pour tout effectif.
 - **CA — génération de l'arbre (ex-007)** : matchs numérotés, tours ordonnés ; chaque match relié à
   ses sources (seeds/byes).
-- **CA — progression (ex-008)** : à réception du vainqueur (E04US014), le match suivant est peuplé ;
+- **CA — progression (ex-008)** : à réception du vainqueur (E04US013), le match suivant est peuplé ;
   routing = élimination sèche pour le perdant.
 - **CA — podium (ex-009)** : finale → rangs 1-2 ; petite finale → rangs 3-4 ; alimente E06US004.
 - **Absorbe** : ex-E05US005 à E05US009. **Dépend de** : E05US003 · **Jalon** : J2
@@ -123,14 +123,3 @@ le format World Archery.
 | E05US017 | Contrôles de cohérence | **E05US001** — CA « cohérence » |
 | E05US018 | Oracle 120 (rejeu + comparaison) | **E05US018** (inchangée) |
 | E05US019 | Enregistrer une séquence comme modèle | **E05US019** (inchangée) |
-
-**Redirections de liens entrants à appliquer** (passe globale, hors périmètre de ce refactor de
-maille — ne pas les traiter ici) : `stories/README.md` lignes 83-92 et 107-113 (tableau récap, US
-83-92 → une ligne E05US001/E05US003/E05US005, US 107-111 → une ligne E05US010) ; `E12-pilotage-jour-j.md`
-dép/réf `E05US008`→`E05US005` ; `E07-affichage-public.md` dép `E05US007`→`E05US005` ;
-`E06-classements.md` réf+dép `E05US009`→`E05US005`, réf+dép `E05US008`→`E05US005`, réf+dép
-`E05US014`→`E05US010` ; `E03-placement.md` dép `E05US007`→`E05US005`, dép `E05US002`→`E05US001` ;
-`E04-saisie-scores.md` réf `E05US008` (CA « vainqueur ») → `E05US005` ; `docs/referentiel-ffta.md`
-réf `E05US006`→`E05US005` ;
-`docs/dette.md` réf `E05US004`→`E05US003` (résorption attendue de DETTE-003) ;
-`backend/infrastructure/db/repositories.py` commentaire `E05US004`→`E05US003`.

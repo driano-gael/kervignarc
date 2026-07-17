@@ -165,7 +165,7 @@ def _verifier_cadence_couverte(validation: GrainValidation, bareme: BaremeQualif
 
     Une cadence de 3 sur 20 volées donne 6 validations, la dernière à la volée 18 : les volées 19-20
     restent hors cadence. Ni les CA d'E01US015 ni le CDC n'exigent la divisibilité, et l'imposer
-    interdirait des réglages légitimes (7 volées sur 20). **C'est E04US007 qui devra décider** si ce
+    interdirait des réglages légitimes (7 volées sur 20). **C'est E04US002 qui devra décider** si ce
     reliquat déclenche une validation de fin — la validation étant réglementairement un acte *de
     fin* (CDC UX §7.3), c'est probable ; ce n'est pas à la configuration de le préempter.
     """

@@ -24,7 +24,7 @@ seuls en direct, *afin de* suivre le tournoi et m'orienter dans la salle sans au
 - **CA — classements (ex-001)** : accès sans authentification ; lecture seule ; par catégorie ; responsive mobile.
 - **CA — plans de cibles (ex-003)** : plan de cibles consultable (cible/position/départ) ; responsive.
 - **CA — live (ex-002)** : abonnement WebSocket ; mise à jour automatique après chaque validation.
-- **Absorbe** : ex-E07US002, E07US003. **Dépend de** : E06US001, E10US001, E04US009, E03US008 · **Jalon** : J1
+- **Absorbe** : ex-E07US002, E07US003. **Dépend de** : E06US001, E10US001, E04US009, E03US001 · **Jalon** : J1
 
 ### E07US004 — Écran de salle : déroulé automatique et pilotage admin
 *En tant qu'*organisateur, *je veux* rattacher un écran à la salle avec un déroulé automatique, et pouvoir
@@ -54,7 +54,7 @@ sans traverser le gymnase.
 ### E07US005 — Vue tableaux/arbres live
 *En tant que* spectateur, *je veux* voir les arbres de duels en direct, *afin de* suivre la progression.
 - **CA** : rendu de l'arbre (principal + placement) mis à jour en live.
-- **Dépend de** : E05US007, E07US001 · **Jalon** : J3
+- **Dépend de** : E05US005, E07US001 · **Jalon** : J3
 
 ### E07US006 — « C'est moi » : ouvrir l'appli sur ma journée
 *En tant qu'*archer, *je veux* que l'appli me reconnaisse, *afin de* voir ma cible **sans rien chercher**, à chaque ouverture.
@@ -68,12 +68,12 @@ sans traverser le gymnase.
   pourquoi il **n'y a pas de borne partagée** à la table de l'organisation (`D-10`), « retour auto à
   l'accueil » et « mémoriser c'est moi » se contrediraient. **La recherche devient l'exception, pas la
   règle.**
-- **Dépend de** : E07US001, E03US008 · **Jalon** : J1
+- **Dépend de** : E07US001, E03US001 · **Jalon** : J1
 
 ### E07US008 — Vue publique des affectations du prochain tour
 *En tant qu'*archer, *je veux* savoir **où je tire ensuite** dès que c'est décidé, *afin de* ne pas
 rater mon tour ni aller demander à l'organisation.
-- **CA** : après le lancement d'un tour (E12US003), chaque archer concerné voit **sa** prochaine
+- **CA** : après le lancement d'un tour (E12US002), chaque archer concerné voit **sa** prochaine
   affectation (**cible, position, heure, tour**) sur son téléphone (E07US006) ; l'archer **éliminé**
   voit son **rang final** ; l'archer **repêché** voit sa destination ; mise à jour **sans action de sa
   part** (WebSocket, E07US001) ; une **vue « toutes les affectations »** alimente l'écran de salle
@@ -82,7 +82,7 @@ rater mon tour ni aller demander à l'organisation.
   **aux matchs** (positions de tableau), pas aux archers — donc rien à calculer au moment du
   lancement. **L'archer part après avoir validé : l'info doit le suivre** — la tablette de cible
   (E04US018) ne couvre que celui qui est encore là. C'est le canal n°2 des **4 canaux de routage**.
-- **Dépend de** : E07US006, E03US009, E12US003 · **Jalon** : J2
+- **Dépend de** : E07US006, E03US009, E12US002 · **Jalon** : J2
 
 ---
 
@@ -98,9 +98,3 @@ rater mon tour ni aller demander à l'organisation.
 | E07US006 | « C'est moi » : ouvrir l'appli sur ma journée | **E07US006** (inchangée) |
 | E07US007 | Piloter l'écran de salle depuis l'admin | **E07US004** — CA « pilotage admin » |
 | E07US008 | Vue publique des affectations du prochain tour | **E07US008** (inchangée) |
-
-**Redirections de liens entrants à appliquer** (passe globale, hors périmètre de ce refactor) :
-`stories/E03-placement.md` (note sur les liens entrants de E09US008) `E07US003`→`E07US001` ;
-`stories/README.md` (table du backlog) lignes `E07US002`→`E07US001`, `E07US003`→`E07US001`,
-`E07US007`→`E07US004`. Les dépendances **internes** à E07 (`E07US002` visée depuis E07US004/005/006/008)
-sont déjà redirigées vers `E07US001` ci-dessus.

@@ -22,7 +22,7 @@
 *En tant qu'*organisateur (au montage), *je veux* rattacher une tablette à une cible **en un scan**, *afin que* le poste sache qui il sert toute la journée — **et le retrouve tout seul après une coupure**.
 - **CA** : **scan du QR de la cible** (E09US008) → le back émet un **jeton de poste** rangé dans le navigateur (`localStorage`) ; **code de secours saisi à la main** si le QR est abîmé ou l'appareil photo capricieux ; à **toute réouverture** (onglet fermé, navigateur planté, tablette redémarrée, veille de 3 h), le poste **retrouve sa cible sans rien demander à personne** ; le jeton est **lié au tournoi** et **révocable** → un **nouveau tournoi force le re-rattachement** ; le poste ne peut saisir que pour **sa** cible (E10US007) ; l'IP **n'est jamais l'identité** (diagnostic uniquement) ; **le jeton porte aussi les préférences du poste** — dont le **thème** choisi (`D-26`), qui **revient tout seul** à la réouverture.
 - **Notes** : ~~« saisie d'un code de cible → session **scoreur** rattachée », v0.1~~ → **réécrite le 14/07/2026** (`D-06`, `D-07`). **Ni IP, ni empreinte** : les baux DHCP expirent (une tablette en veille perd sa cible) et une IP réattribuée ferait **partir les scores sur la mauvaise cible, silencieusement** — *un score faux et silencieux est pire qu'une erreur visible* ; l'empreinte ne distingue pas **30 tablettes identiques**. Réutilise le patron de `sessionAdminStore` (Zustand + `persist`, jeton `Bearer`, purge sur 401) → **`sessionPosteStore`** : ni concept nouveau, ni configuration réseau. **Piège traité par les CA** : *le jeton survit trop bien* — au tournoi suivant, la tablette de la cible 12 posée sur la cible 5 croirait toujours être la 12. **Le jeton porte les préférences, pas seulement le rattachement** (`D-26`, [CDC UX §4.5](../cahier-des-charges-ux.md)) : *dans un gymnase, la lumière varie d'une cible à l'autre* — la tablette sous la baie vitrée passe en thème clair, les 29 autres ne bougent pas. Sans ça, `D-05` (pas de kiosque, l'onglet se ferme) obligerait le bénévole à rebasculer son thème **à chaque réouverture**.
-- **Dépend de** : E03US008, E01US001 · **Jalon** : J1
+- **Dépend de** : E03US001, E01US001 · **Jalon** : J1
 
 ### E04US002 — Saisie de qualification en temps réel
 *En tant que* **marqueur**, *je veux* saisir, valider, cumuler et corriger les flèches de qualification sur ma cible, *afin de* produire le score en temps réel — sans rien perdre ni laisser d'incorrigible.
@@ -48,10 +48,10 @@
 ### E04US013 — Saisie en duels
 *En tant que* scoreur, *je veux* saisir un duel au système de sets, en désigner le vainqueur et résoudre les égalités, *afin de* faire progresser le tableau.
 - **CA — sets (ex-013)** : points de set attribués selon le barème (FFTA : premier à **6 pts** sur 5 sets ; format club : 4 pts) ; cumul des points de set du match ; **les arcs à poulies ne tirent pas en sets** mais au cumul (FFTA A.7.5.2) — le barème se résout par (phase, arme), cf. EF-3.4.
-- **CA — vainqueur (ex-014)** : vainqueur calculé selon le barème de sets ; transmis au moteur (E05US008).
+- **CA — vainqueur (ex-014)** : vainqueur calculé selon le barème de sets ; transmis au moteur (E05US005).
 - **CA — barrage/shoot-off (ex-016)** : à égalité, saisie d'un **shoot-off** (1 flèche) ; plus près du centre départage ; vainqueur enregistré — politique `tiebreak` (ADR-0004), presets FFTA.
 - **Notes** : **incohérence corrigée le 17/07/2026** — l'ex-`E04US016` déclarait « Dépend de E06US003 » alors que `E06US003` (barrage de places au classement) dépend elle-même de l'ex-`E04US016` : cycle. La saisie du shoot-off est le **mécanisme**, le classement de barrage en est un **consommateur** ; la dépendance ne va que dans un sens (`E06US003` → cette US). La dépendance inverse est retirée.
-- **Absorbe** : ex-E04US013, E04US014, E04US016. **Dépend de** : E01US011, E05US007 · **Jalon** : J2
+- **Absorbe** : ex-E04US013, E04US014, E04US016. **Dépend de** : E01US011, E05US005 · **Jalon** : J2
 
 ### E04US015 — Gérer abandon / disqualification
 *En tant que* scoreur, *je veux* enregistrer un abandon/DSQ, *afin de* refléter la réalité.
@@ -90,5 +90,3 @@
 | E04US016 | Déclencher un barrage/shoot-off | **E04US013** — CA « barrage/shoot-off » |
 | E04US017 | Désigner et tracer le marqueur | **E04US002** — CA « marqueur » |
 | E04US018 | Afficher la prochaine cible après validation | **E04US018** (inchangée) |
-
-**Redirections de liens entrants à appliquer** (passe globale) : `E01US015` (CA + `docs/fonctionnel/E01US015.md`) `E04US007`→`E04US002`, `E04US002` inchangé ; `E06US001` dép `E04US008`→`E04US002` ; `E07US001` dép `E04US009`→`E04US009` (inchangé) ; `E05US008` réf `E04US014`→`E04US013` ; `E06US003` dép + `referentiel-ffta.md` `E04US016`→`E04US013` ; `cahier-des-charges-ux.md` `E04US003`→`E04US002`.

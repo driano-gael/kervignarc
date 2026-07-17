@@ -28,16 +28,16 @@
 
 ### E06US004 — Podium des duels & agrégation des rangs
 *En tant que* public, *je veux* voir le podium et un classement de duels cohérent, *afin de* connaître les vainqueurs et le rang de chacun.
-- **CA — podium (ex-004)** : rangs 1-4 issus de la finale/petite finale (E05US009) ; affiché et exportable.
+- **CA — podium (ex-004)** : rangs 1-4 issus de la finale/petite finale (E05US005) ; affiché et exportable.
 - **CA — agrégation (ex-005)** : rangs des différentes phases fusionnés en un classement cohérent par catégorie.
-- **Absorbe** : ex-E06US005. **Dépend de** : E05US009, E05US008 · **Jalon** : J2
+- **Absorbe** : ex-E06US005. **Dépend de** : E05US005 · **Jalon** : J2
 
 ### E06US006 — Classement intégral 1→N & profondeur configurable
 *En tant que* public/organisateur, *je veux* un classement complet dont je choisis la profondeur, *afin de* connaître le rang de chaque archer, adapté au tournoi.
-- **CA — rang unique (ex-006)** : chaque archer a un rang unique 1→N, alimenté par les matchs terminaux (E05US014).
+- **CA — rang unique (ex-006)** : chaque archer a un rang unique 1→N, alimenté par les matchs terminaux (E05US010).
 - **CA — profondeur configurable (ex-007)** : mode 1→N (défaut) OU top N + regroupement du reliquat ; politique `depth`.
 - **Notes** : cohérent avec l'oracle 120.
-- **Absorbe** : ex-E06US007. **Dépend de** : E05US014 · **Jalon** : J3
+- **Absorbe** : ex-E06US007. **Dépend de** : E05US010 · **Jalon** : J3
 
 ---
 
@@ -53,9 +53,3 @@
 | E06US006 | Classement intégral 1→N | **E06US006** — CA « rang unique » |
 | E06US007 | Profondeur de classement configurable | **E06US006** — CA « profondeur configurable » |
 | E06US008 | Classement par catégorie | **E06US001** — CA « catégorie » |
-
-**Redirections de liens entrants à appliquer** (passe globale, hors périmètre de ce fichier) :
-`stories/README.md` (index, lignes E06US002/005/007/008) ; `stories/E09-exports.md` dép `E06US008`→`E06US001`
-(la réf. `E06US006` reste inchangée) ; `stories/E07-affichage-public.md` dép `E06US001` (inchangé) ;
-`stories/E05-moteur-phases.md` réf `E06US004` (inchangé) ; `docs/adr/0020-…md` réf `E06US002`→`E06US001` ;
-`docs/referentiel-ffta.md` réf « E04US016, E06US002-003 » → « E04US013, E06US001, E06US003 ».

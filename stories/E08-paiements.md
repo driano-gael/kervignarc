@@ -45,8 +45,3 @@
 | E08US003 | Vue paiement par archer | **E08US002** — CA « vue par archer » |
 | E08US004 | Vue paiement par club | **E08US002** — CA « vue par club » |
 | E08US005 | Rembourser une inscription payée annulée | **E08US005** (inchangée) |
-
-**Redirections de liens entrants à appliquer** (passe globale, hors périmètre de ce fichier) :
-`stories/E09-exports.md` dép. `E08US003`→`E08US002` ; `stories/README.md` (backlog) fusionner les trois
-lignes `E08US002`/`E08US003`/`E08US004` en une seule ; `stories/E12-pilotage-jour-j.md` dép. `E08US002`
-reste **inchangée** (l'ID survit au regroupement, aucune redirection nécessaire).

@@ -225,7 +225,7 @@ def _config_phase(phase: Phase) -> str:
     # DETTE-003 (docs/dette.md) : les politiques sont écrites **à plat** alors que le modèle cible
     # (ADR-0004) les range sous `config.policies`, et `scoring` est ici un objet paramétré plutôt
     # qu'un nom de preset. Forme posée par E01US009 ; E01US015 s'y aligne pour ne pas créer une 2ᵉ
-    # convention. C'est E05US004 qui tranche — ne pas introduire `policies` ici en attendant.
+    # convention. C'est E05US003 qui tranche — ne pas introduire `policies` ici en attendant.
     """
     validation: dict[str, object] = {"grain": phase.validation.type.value}
     if phase.validation.n_volees is not None:
