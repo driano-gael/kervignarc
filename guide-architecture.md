@@ -152,6 +152,8 @@ Chaque couche définit sa propre famille d'exceptions ; le mapping vers une rép
 - **État serveur** : **React Query** (fetch, cache, invalidation, intégration temps réel via WebSocket).
 - **État UI local** : **Zustand** (léger).
 - **Organisation par features** (`features/placement`, `features/saisie`, `features/tableaux`, `features/classement`, `features/admin`…), pas par type technique.
+- **Une feature = un écran autonome.** Chaque fonction vit dans son dossier (`features/<domaine>/` : composant + `api.ts` + `hooks.ts`) et se suffit à elle-même. Une fonction ne s'implémente **jamais** enfouie dans le fichier d'une autre ; pas de composant « fourre-tout » empilant plusieurs domaines. Le mauvais réflexe à proscrire : ajouter une section à un gros conteneur au lieu de créer une feature — c'est ainsi qu'un écran devient monolithique et cesse d'être évolutif.
+- **Coquille de navigation.** L'assemblage des features passe par une **coquille** (ossature de navigation, [CDC UX §7.1](cahier-des-charges-ux.md)) qui affiche **une destination à la fois** ; brancher une nouvelle fonction = **une entrée** dans la coquille, pas une ligne de plus dans un écran empilé.
 - **Ergonomie tactile** prioritaire sur l'écran de saisie ; indicateur d'état de connexion visible.
 
 ---
