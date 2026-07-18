@@ -9,6 +9,7 @@ ADR-0005) et traduit les lignes ORM en agrégats de domaine. Les pannes SQLAlche
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import delete, select
@@ -26,6 +27,7 @@ from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase, grain_par_defaut
+from domain.placement import Affectation
 from domain.score import Score
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
 from infrastructure.db.models import (
@@ -37,6 +39,7 @@ from infrastructure.db.models import (
     GabaritSalleORM,
     InscriptionORM,
     PhaseORM,
+    PlacementORM,
     ScoreORM,
     TournoiORM,
 )
@@ -737,6 +740,87 @@ class InscriptionRepositorySQL:
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de suppression de l'inscription.") from exc
+
+
+def _vers_affectation(ligne: PlacementORM) -> Affectation:
+    """Traduit une ligne ORM `placement` en value object de domaine `Affectation`."""
+    return Affectation(
+        inscription_id=ligne.inscription_id,
+        cible_index=ligne.cible_index,
+        position=ligne.position,
+    )
+
+
+class PlacementRepositorySQL:
+    """Adapter SQLite du port `PlacementRepository` — plan de cibles matérialisé (E03US004)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def par_depart(self, depart_id: DepartId) -> list[Affectation]:
+        """Renvoie les affectations d'un départ, triées par cible puis position (ordre stable)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(PlacementORM)
+                    .where(PlacementORM.depart_id == depart_id)
+                    .order_by(PlacementORM.cible_index, PlacementORM.position)
+                ).scalars()
+                return [_vers_affectation(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du plan de cibles.") from exc
+
+    def definir_plan(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
+        """Purge le plan du départ puis insère les affectations données — **une** transaction."""
+        try:
+            with self._session_factory() as session:
+                session.execute(delete(PlacementORM).where(PlacementORM.depart_id == depart_id))
+                session.add_all(
+                    PlacementORM(
+                        inscription_id=affectation.inscription_id,
+                        depart_id=depart_id,
+                        cible_index=affectation.cible_index,
+                        position=affectation.position,
+                    )
+                    for affectation in affectations
+                )
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de définition du plan de cibles.") from exc
+
+    def poser_plusieurs(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
+        """Insère ou met à jour chaque affectation (clé = inscription) — **une** transaction."""
+        try:
+            with self._session_factory() as session:
+                for affectation in affectations:
+                    ligne = session.get(PlacementORM, affectation.inscription_id)
+                    if ligne is None:
+                        session.add(
+                            PlacementORM(
+                                inscription_id=affectation.inscription_id,
+                                depart_id=depart_id,
+                                cible_index=affectation.cible_index,
+                                position=affectation.position,
+                            )
+                        )
+                    else:
+                        ligne.depart_id = depart_id
+                        ligne.cible_index = affectation.cible_index
+                        ligne.position = affectation.position
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec d'écriture du plan de cibles.") from exc
+
+    def retirer(self, inscription_id: InscriptionId) -> None:
+        """Retire l'affectation d'un inscrit (mise en réserve) ; sans effet s'il n'en avait pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(PlacementORM, inscription_id)
+                if ligne is not None:
+                    session.delete(ligne)
+                    session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise en réserve.") from exc
 
 
 class CategorieRepositorySQL:

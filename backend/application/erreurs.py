@@ -171,6 +171,21 @@ class DepartComplet(ApplicationError):
     code = "depart_complet"
 
 
+class DeplacementInvalide(ApplicationError):
+    """Ajustement de placement refusé : le déplacement/échange violerait une contrainte (E03US004).
+
+    **Un refus, pas un signalement** (famille de `DejaInscrit`/`DepartComplet`) → 409. Couvre le
+    déplacement qui déborde un budget de cible (capacité, espace, partage de carton, **hauteur** —
+    ADR-0022/0024), l'échange dont l'un des deux tireurs ne tient pas à la place de l'autre (refus
+    **en bloc**, état inchangé), le dépôt depuis la réserve sur une case **occupée** (rien à
+    permuter en retour), une cible/position **inexistante**, ou un archer **sans blason** (fraction
+    inconnue, non plaçable). Aucun drapeau ne le lève : l'admin corrige son geste. Le message dit
+    **quelle** contrainte bloque, sans détail interne (règle 5).
+    """
+
+    code = "deplacement_invalide"
+
+
 class ClubIntrouvable(ApplicationError):
     """Aucun club ne correspond à l'identifiant demandé."""
 

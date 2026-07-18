@@ -7,6 +7,7 @@ domaine reste pur (aucune dépendance vers l'infrastructure).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Protocol
 
 from domain.archer import Archer, ArcherId
@@ -17,6 +18,7 @@ from domain.depart import Depart, DepartId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
+from domain.placement import Affectation
 from domain.score import Score
 from domain.tournoi import Tournoi, TournoiId
 
@@ -217,6 +219,40 @@ class InscriptionRepository(Protocol):
 
     def supprimer(self, inscription_id: InscriptionId) -> None:
         """Supprime l'inscription d'identifiant donné (désinscription ; existence garantie)."""
+        ...
+
+
+class PlacementRepository(Protocol):
+    """Port de persistance du plan de cibles **matérialisé** (E03US004, ADR-0024).
+
+    Le plan cesse d'être recalculé à la demande : il est stocké comme un ensemble d'`Affectation`
+    (une par inscription posée). Un inscrit **sans** affectation est en réserve — l'absence de ligne
+    *est* l'information, il n'y a rien à persister pour la réserve.
+    """
+
+    def par_depart(self, depart_id: DepartId) -> list[Affectation]:
+        """Renvoie les affectations d'un départ (liste éventuellement vide = tout en réserve)."""
+        ...
+
+    def definir_plan(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
+        """Remplace **intégralement** le plan d'un départ : purge les affectations puis insère.
+
+        Sert à **régénérer / annuler** (ADR-0024) : le placement auto réécrit tout le plan en une
+        transaction. Ce qui n'est pas dans `affectations` retombe en réserve.
+        """
+        ...
+
+    def poser_plusieurs(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
+        """Insère/met à jour plusieurs affectations d'un départ en **une** transaction (upsert).
+
+        Atomicité voulue par l'**échange** (deux poses indissociables) et par le déplacement
+        (une pose) : le service valide avant, la file sérialise, la transaction unique garantit le
+        tout-ou-rien.
+        """
+        ...
+
+    def retirer(self, inscription_id: InscriptionId) -> None:
+        """Retire l'affectation d'un inscrit — mise en réserve (sans effet s'il n'en avait pas)."""
         ...
 
 
