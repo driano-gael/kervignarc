@@ -165,6 +165,7 @@ Chaque couche définit sa propre famille d'exceptions ; le mapping vers une rép
 - **End-to-end** : quelques parcours front critiques (saisie → validation → classement live).
 - **Oracle de non-régression** : **rejeu du tournoi 120 de `Tableaux.xlsx`** — l'arbre généré, le routage des perdants et le classement 1→120 doivent correspondre exactement au classeur.
 - Tests **déterministes** (pas de dépendance à l'horloge/aléa non maîtrisé).
+- **Recette de l'app poste avec une seule tablette (ENF-7).** Le rattachement de poste vit dans `localStorage` — **par origine, donc partagé entre onglets** : sur une tablette, **un navigateur = un seul poste**. Pour exercer le **multi-poste** avec peu de matériel : **contextes de navigation séparés** (profils / fenêtres privées), ou le **PC de dev** (chaque onglet y est un poste). La **tablette** valide le *device-specific* (tactile, scan QR, Screen Wake Lock, indicateur de connexion) ; la **logique multi-poste** (diffusion live, supervision, contention) se valide avec **N contextes navigateur**. Un **harnais de dev** injectant N jetons de poste est la voie la plus reproductible.
 
 ---
 

@@ -227,6 +227,7 @@ La solution s'articule autour de 9 modules :
 | ENF-4 | **Volumétrie de référence** : tournoi à 120 archers / 30 cibles (exemple du classeur) ; plafond réel à confirmer. |
 | ENF-5 | **Ergonomie tactile** : saisie sur tablette rapide, gros boutons, peu de clics. |
 | ENF-6 | **Robustesse du moteur** : cohérence garantie de la progression même en cas de correction/forfait en cours d'épreuve. |
+| ENF-7 | **Recette avec parc réduit** : l'app **poste de cible** (saisie) doit être **vérifiable fonctionnellement avec une seule tablette physique**, alors qu'elle en vise ~30 en production. Le comportement **multi-poste** (rattachements distincts, diffusion live, supervision) doit être exerçable **sans 30 appareils**. *(Contrainte matérielle de dev/recette, ajoutée le 18/07/2026 — mise en œuvre : `guide-architecture.md` §9.)* |
 
 ---
 
