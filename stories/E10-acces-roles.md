@@ -41,7 +41,8 @@
 - **CA — gestion des scoreurs (ex-US008)** : l'admin **crée/modifie/supprime** les scoreurs d'un tournoi (nom + **code court** généré) ; **redéfinissable à tout moment**, y compris tournoi **en cours** (`D-14`, `D-15`) — un scoreur qui ne vient pas, ça arrive ; les codes sont **imprimables** (un papier par scoreur, cf. EPIC-09) ; supprimer un scoreur **invalide sa session** mais **conserve la trace** de ses validations passées (E10US005).
 - **Notes** : ~~« session par **code de cible** », v0.1~~ → **réécrite le 14/07/2026** ([CDC UX](../cahier-des-charges-ux.md) §5 et §7.3, `D-11`/`D-12`/`D-13`/`D-14`/`D-15`) : le scoreur est **itinérant**, il n'est pas rattaché à une cible — **le code de cible sert au *poste*** (E04US001), **pas à lui**. Il **valide** ; il ne saisit pas (la saisie est le geste du marqueur sur le poste de cible, E10US007). **Rend E10US004 caduque.** Même patron de jeton que `sessionAdminStore` (E10US002) → `sessionScoreurStore`. Cf. E04US002 (validation = scoreur seul) et le **grain de validation** = politique de phase (`config.validation`, `D-11`, ADR-0011). Côté définition des scoreurs : **3 à 4 scoreurs pour ~30 cibles** — **3 ou 4 codes à distribuer, pas 30** (le poste de cible, lui, est ouvert : E10US007). Module de **préparation** (« tout ce qui s'identifie se prépare à l'avance », CDC UX `P-6`), mais **accessible en permanence** (`P-3`).
 - **Arbitrages tranchés le 18/07/2026** (reversés ici — règle 9 ; pour qu'E04US002/E10US005 n'en
-  dérivent pas des tests faux) :
+  dérivent pas des tests faux), **formalisés dans
+  [ADR-0025](../docs/adr/0025-mode-d-identite-scoreur-par-code-individuel.md)** :
   - **`Scoreur` = entité domaine** tournoi-scoped (donnée métier persistée, patron `Depart`) — pas un
     concern technique comme l'admin (un secret en `.env`). Table `scoreur`, migration `0023`.
   - **Code généré serveur, unique dans toute la base** (pas seulement par tournoi) : le login est

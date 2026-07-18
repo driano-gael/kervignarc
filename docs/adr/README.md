@@ -32,6 +32,10 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0019](0019-categorie-eligibilite-multi-tranches.md) | La catégorie porte un **ensemble** de tranches d'âge, pas une tranche unique | Accepté |
 | [0020](0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md) | Le blason porte ses **valeurs de score admises** ; vocabulaire fermé, défaut = blason simple complet | Accepté |
 | [0021](0021-maille-des-us-au-grain-capacite.md) | Maille des US au grain **capacité** (regroupement du backlog non livré ; livré gelé) | Accepté |
+| [0022](0022-hauteur-de-centre-sur-la-categorie.md) | La **hauteur du centre de l'or** vit sur la catégorie ; contrainte de placement de 1er rang | Accepté |
+| [0023](0023-moteur-de-placement-glouton-deterministe.md) | Moteur de placement : **glouton déterministe**, contraintes câblées, recalcul à la demande | Accepté |
+| [0024](0024-plan-de-cibles-materialise-ajustable.md) | Plan de cibles **matérialisé et ajustable** : persistance, modèle transactionnel, réserve | Accepté |
+| [0025](0025-mode-d-identite-scoreur-par-code-individuel.md) | Mode d'identité **scoreur** : entité de domaine, code individuel généré, session nominative en mémoire | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.

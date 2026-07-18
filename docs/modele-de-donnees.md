@@ -311,13 +311,35 @@ inscrit **sans** ligne est en **réserve**.
 | rang | INTEGER | position |
 | contexte | TEXT | `qualification`\|`phase`\|`final_1_n` |
 
-### UTILISATEUR / SESSION
+### SCOREUR (E10US003)
 | id | INTEGER | PK |
-| role | TEXT | `admin`\|`scoreur`\|`public` |
-| secret | TEXT | hash mot de passe (admin) |
-| cibles | TEXT (JSON) | cibles habilitées (scoreur, multi-cibles) |
-| jeton | TEXT | jeton de session |
-| expire_at | TEXT (datetime) | |
+| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) |
+| nom | TEXT | NOT NULL |
+| code | TEXT | NOT NULL, **UNIQUE global** (login par code seul) |
+
+> Table **livrée** par E10US003. Le scoreur est une **personne** du tournoi, identifiée par un
+> **code individuel** ; il est **itinérant** (aucune cible rattachée) et **valide** les scores
+> (`D-12`/`D-13`). Voir [ADR-0025](adr/0025-mode-d-identite-scoreur-par-code-individuel.md).
+
+### ~~UTILISATEUR / SESSION~~ — **modèle prospectif abandonné** (E10US002/E10US003)
+> ⚠️ Ce modèle unifié à trois rôles (`admin`/`scoreur`/`public`) et sessions persistées **n'a pas
+> été retenu** — la refonte `D-13` (14/07/2026) a remplacé les rôles par **trois modes d'identité
+> proportionnés au risque**, dont aucun n'est un compte utilisateur :
+> - **admin** : login + mot de passe dans un fichier `.env` (aucune entité, aucune table — ADR-0009) ;
+> - **scoreur** : table `scoreur` ci-dessus + **session en mémoire** (jeton opaque nominatif,
+>   `ScoreurSessionStore`, **sans expiration** ni `expire_at`, non persistée — ADR-0025) ;
+> - **poste de cible** : identité = le **lieu**, jeton de poste, **sans compte** (E10US007).
+>
+> Il n'y a donc **ni table `UTILISATEUR`, ni table `SESSION`, ni colonne `cibles`/`expire_at`** : le
+> `role`, le `secret`, les cibles habilitées et l'expiration décrits ici sont caducs. Bloc conservé
+> comme trace de conception (cf. la même mise en garde « cible vs implémentation » que DETTE-003).
+
+| id | INTEGER | ~~PK~~ (caduc) |
+| role | TEXT | ~~`admin`\|`scoreur`\|`public`~~ (caduc — trois modes d'identité, `D-13`) |
+| secret | TEXT | ~~hash mot de passe (admin)~~ (admin = `.env`, ADR-0009) |
+| cibles | TEXT (JSON) | ~~cibles habilitées~~ (caduc — scoreur **itinérant**, `D-12`) |
+| jeton | TEXT | ~~jeton de session~~ (en **mémoire**, non persisté) |
+| expire_at | TEXT (datetime) | ~~expiration~~ (caduc — **sans expiration**, ADR-0025) |
 
 ### AUDIT_LOG
 | id | INTEGER | PK |
