@@ -62,8 +62,13 @@ de* monter la salle sans avoir **rien à configurer** le jour J.
   **pas de mode kiosque** (`D-05`) et que l'onglet **sera** fermé par accident sur 30 postes × 8 h, il
   faut que « l'écran est bizarre → **tu scannes le QR de ta cible → tu es revenu** » — plutôt que
   d'appeler l'admin à l'autre bout du gymnase. **Ne porte pas** le rattachement lui-même (c'est
-  E04US001) : le QR n'encode qu'une URL. Nécessite une **lib QR** → inscrire au [registre des
-  dépendances](../docs/dependances.md) (ADR-0009).
+  E04US001) : le QR n'encode qu'une URL. ~~Nécessite une **lib QR** → inscrire au registre des
+  dépendances.~~ **Tranché en réalisation (E09US008)** : ReportLab (déjà présent, socle E09US001)
+  génère le QR nativement (`reportlab.graphics.barcode.qr.QrCodeWidget`) — **aucune dépendance
+  ajoutée** (règle 11 « en cas de doute, on n'ajoute pas » ; règle 12). L'URL de rattachement est
+  **absolue**, bâtie sur l'origine de la requête admin (`request.base_url`) : générer depuis
+  `localhost` produit des QR inutilisables sur les tablettes du réseau local — limite assumée
+  ([DETTE-012](../docs/dette.md)), une base URL configurable relèvera d'E11US001.
 - **Dépend de** : E09US001, E04US001, E10US003 · **Jalon** : J1
 
 ---
