@@ -65,7 +65,7 @@ def test_alphabet_code_exclut_les_confondables() -> None:
     """
     assert set(ALPHABET_CODE).isdisjoint({"I", "O", "0", "1"})
     assert ALPHABET_CODE.isupper()
-    assert LONGUEUR_CODE >= 4
+    assert LONGUEUR_CODE == 6
 
 
 def test_creer_scoreur_genere_un_code(
