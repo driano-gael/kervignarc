@@ -19,10 +19,13 @@ from fastapi import Request
 
 from application.auth import ServiceAuth
 from application.erreurs import NonAuthentifie
+from application.postes import ServicePostes
 from application.scoreurs import ServiceScoreurs
+from domain.poste import Poste
 
 _PREFIXE_BEARER = "Bearer "
 _ENTETE_JETON_SCOREUR = "X-Jeton-Scoreur"
+_ENTETE_JETON_POSTE = "X-Jeton-Poste"
 
 
 def extraire_jeton(request: Request) -> str | None:
@@ -41,6 +44,14 @@ def extraire_jeton_scoreur(request: Request) -> str | None:
     return entete.strip() or None
 
 
+def extraire_jeton_poste(request: Request) -> str | None:
+    """Jeton de session de poste, porté par l'en-tête dédié `X-Jeton-Poste`, ou `None`."""
+    entete = request.headers.get(_ENTETE_JETON_POSTE)
+    if entete is None:
+        return None
+    return entete.strip() or None
+
+
 async def exiger_admin(request: Request) -> None:
     """Exige une session admin valide ; lève `NonAuthentifie` (→ 401) sinon."""
     service: ServiceAuth = request.app.state.service_auth
@@ -53,3 +64,20 @@ async def exiger_scoreur(request: Request) -> None:
     service: ServiceScoreurs = request.app.state.service_scoreurs
     if not service.session_valide(extraire_jeton_scoreur(request)):
         raise NonAuthentifie("Session scoreur requise.")
+
+
+def exiger_poste(request: Request) -> Poste:
+    """Exige une session de poste **encore valide** et renvoie sa cible ; lève `NonAuthentifie`
+    (→ 401) sinon.
+
+    **Synchrone** (à dessein) : la validité d'un poste dépend du **statut de son tournoi**
+    (révocation « tournoi terminé », ADR-0029), donc `resoudre_session` relit la base — FastAPI
+    exécute une dépendance synchrone dans le threadpool, sans bloquer la boucle événementielle
+    (au contraire d'`exiger_admin`/`exiger_scoreur`, purement en mémoire). Renvoie le `Poste` pour
+    que l'appelant sache **quelle cible** est servie sans le redemander (E10US007, E04US002).
+    """
+    service: ServicePostes = request.app.state.service_postes
+    poste = service.resoudre_session(extraire_jeton_poste(request))
+    if poste is None:
+        raise NonAuthentifie("Session de poste requise.")
+    return poste

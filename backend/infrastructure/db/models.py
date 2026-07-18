@@ -305,3 +305,24 @@ class ScoreurORM(Base):
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     nom: Mapped[str] = mapped_column(nullable=False)
     code: Mapped[str] = mapped_column(nullable=False, unique=True)
+
+
+class PosteORM(Base):
+    """Table `poste` — persistance de l'agrégat `Poste` (E04US001, ADR-0029).
+
+    Credential d'une **cible** d'un tournoi : le couple `(tournoi_id, cible_index)` — `UNIQUE`, une
+    seule cible N par tournoi — plus le `code` imprimé sous le QR. `code` est `UNIQUE` **global**
+    (pas par tournoi) : le rattachement se fait par le seul code, qui doit désigner une cible sans
+    ambiguïté d'un tournoi à l'autre. Le service stocke le code déjà canonique (`normaliser_code`).
+    """
+
+    __tablename__ = "poste"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
+    # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    cible_index: Mapped[int] = mapped_column(nullable=False)
+    code: Mapped[str] = mapped_column(nullable=False, unique=True)
+
+    __table_args__ = (UniqueConstraint("tournoi_id", "cible_index", name="uq_poste_tournoi_cible"),)

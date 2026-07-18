@@ -19,6 +19,7 @@ from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
+from domain.poste import Poste, PosteId
 from domain.score import Score
 from domain.scoreur import Scoreur, ScoreurId
 from domain.tournoi import Tournoi, TournoiId
@@ -441,5 +442,40 @@ class ScoreurRepository(Protocol):
 
         **Feuille** : un scoreur n'a pas d'enfant en base (les validations tracées d'E10US005
         porteront son **nom**, pas une FK — la trace survit à sa suppression). Aucune cascade.
+        """
+        ...
+
+
+class PosteRepository(Protocol):
+    """Port de persistance des postes de cible — credential d'une cible (E04US001, ADR-0029).
+
+    Entité **du tournoi** (`par_tournoi` énumère les postes d'un plan), mais le `code` de cible est
+    **unique dans toute la base** (`par_code` n'a pas de `tournoi_id`) : le rattachement se fait par
+    le seul code (scan/saisie), qui doit désigner une cible sans ambiguïté d'un tournoi à l'autre.
+    E04US001 n'expose ni `enregistrer` ni `supprimer` : la régénération d'un code relève d'E09US008.
+    """
+
+    def ajouter(self, poste: Poste) -> Poste:
+        """Persiste un poste et le renvoie avec son identifiant attribué."""
+        ...
+
+    def par_id(self, poste_id: PosteId) -> Poste | None:
+        """Renvoie le poste d'identifiant donné, ou `None` s'il n'existe pas."""
+        ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Poste]:
+        """Renvoie tous les postes d'un tournoi (liste éventuellement vide).
+
+        Sert à la **préparation idempotente** des codes (quelles cibles ont déjà un poste). L'ordre
+        n'est pas garanti par le port ; le service trie par numéro de cible.
+        """
+        ...
+
+    def par_code(self, code: str) -> Poste | None:
+        """Renvoie le poste portant ce `code` (au sens de `domain.poste.normaliser_code`), ou
+        `None` — **tous tournois confondus**.
+
+        Sert à rattacher (par code) et à refuser un code déjà attribué à la génération. Recherche
+        **globale** : le code est unique dans toute la base.
         """
         ...
