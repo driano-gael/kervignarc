@@ -11,8 +11,8 @@ dependencies = [
     # Persistance (E00US006) : accès SQLite synchrone + migrations (guide §7, ADR-0005).
     "sqlalchemy==2.0.51",
     "alembic==1.18.5",
-    # Génération PDF (E09US001) : socle des documents imprimables — wheels autoportantes,
-    # aucune dépendance native, embarquable dans PyInstaller (QT3 tranchée, ADR-0031).
+    # Génération PDF (E09US001) : socle des documents imprimables — wheels autoportantes, aucune
+    # biblio native de niveau système à installer à part, embarquable dans PyInstaller (QT3, ADR-0031).
     "reportlab==5.0.0",
 ]
 
@@ -66,9 +66,11 @@ show_error_codes = true
 warn_unreachable = true
 
 # ReportLab (E09US001, ADR-0031) ne publie ni marqueur `py.typed` ni stubs : mypy strict refuserait
-# l'import non typé. On tolère l'absence de types **pour cette lib tierce uniquement** — la rigueur
-# sur notre propre code (dont l'adapter `infrastructure/pdf/`) reste entière. Pas de paquet de stubs
-# ajouté (règle 11) : `types-reportlab` n'est pas officiel, l'`ignore_missing_imports` ciblé suffit.
+# l'import non typé. On tolère l'absence de types **pour cette lib tierce uniquement**. Portée exacte :
+# les symboles ReportLab deviennent `Any`, donc les *appels* à ReportLab dans `infrastructure/pdf/`
+# ne sont pas type-vérifiés ; la logique **maison** de l'adapter (boucles, f-strings, `_echapper`,
+# dimensions de grille) l'est, elle. Un `from domain.typo import X` cassé resterait signalé (override
+# ciblé sur `reportlab.*`). Pas de paquet de stubs (règle 11) : `types-reportlab` n'est pas officiel.
 [[tool.mypy.overrides]]
 module = ["reportlab.*"]
 ignore_missing_imports = true

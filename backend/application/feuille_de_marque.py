@@ -15,6 +15,8 @@ plus sûr pour une qualification 18 m (référentiel §6.1, cf. `domain.bareme`)
 
 from __future__ import annotations
 
+import logging
+
 from application.erreurs import DepartIntrouvable, TournoiIntrouvable
 from domain.bareme import BaremeQualification
 from domain.depart import DepartId
@@ -33,6 +35,8 @@ from domain.ports import (
     TournoiRepository,
 )
 from domain.tournoi import TournoiId
+
+_logger = logging.getLogger(__name__)
 
 
 class ServiceFeuilleDeMarque:
@@ -101,16 +105,35 @@ class ServiceFeuilleDeMarque:
     def _ligne(self, affectation: Affectation) -> LigneArcher | None:
         """Reconstitue la ligne d'un archer placé, ou `None` si la chaîne de jointure est rompue.
 
-        `None` ne devrait pas arriver pour un archer **placé** (le placement exige déjà un blason) :
-        c'est une garde défensive contre une incohérence de données, pas un cas nominal. Les
-        libellés absents (catégorie/blason) retombent sur `""` pour ne jamais **perdre** la feuille
-        d'un archer réellement sur une cible.
+        **Deux niveaux, à ne pas confondre.** Un **libellé** manquant (catégorie ou blason) retombe
+        sur `""` : la feuille de l'archer part quand même, un intitulé vide n'est pas un motif de la
+        lui retirer. Mais si l'**identité** manque — l'affectation pointe vers une inscription ou un
+        archer introuvable — on ne peut rien imprimer d'utile : la ligne est **omise**, et le fait
+        est **journalisé** (jamais un retrait muet — plan incohérent, pas un cas nominal).
+
+        Cette omission ne devrait **pas** se produire pour un archer réellement placé : la FK
+        `placement.inscription_id` est en `ON DELETE CASCADE` (pas de placement orphelin) et
+        `ServiceArchers.supprimer` refuse (`ArcherEngage`) ou purge le placement. La garde reste
+        défensive : le jour où l'un de ces invariants saute, l'anomalie se voit dans les logs plutôt
+        que de faire disparaître un archer de sa feuille en silence.
         """
         inscription = self._inscriptions.par_id(affectation.inscription_id)
         if inscription is None:
+            _logger.warning(
+                "Feuille de marque — plan incohérent : affectation (cible %s, pos %s) vers "
+                "inscription %s introuvable ; archer omis.",
+                affectation.cible_index,
+                affectation.position,
+                affectation.inscription_id,
+            )
             return None
         archer = self._archers.par_id(inscription.archer_id)
         if archer is None:
+            _logger.warning(
+                "Feuille de marque — plan incohérent : inscription %s sans archer %s ; omis.",
+                inscription.id,
+                inscription.archer_id,
+            )
             return None
         categorie = self._categories.par_id(archer.categorie_id)
         blason = (

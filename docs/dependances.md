@@ -23,7 +23,7 @@
 | `uvicorn[standard]` | 0.51.0 | Serveur ASGI exécutant FastAPI | Serveur de référence pour FastAPI ; `[standard]` = websockets + boucle performante | BSD-3-Clause |
 | `sqlalchemy` | 2.0.51 | ORM / Core SQL **synchrone** (accès SQLite, WAL) | Accès DB sync acté ([ADR-0005](adr/0005-async-et-sqlite.md)) ; Core+ORM typés, repositories derrière les ports (E00US006/009) | MIT |
 | `alembic` | 1.18.5 | Migrations de schéma versionnées | Schéma versionné et testé (guide §7) ; standard de fait pour SQLAlchemy | MIT |
-| `reportlab` | 5.0.0 | Génération PDF (documents imprimables) | Socle PDF acté ([ADR-0031](adr/0031-bibliotheque-pdf-reportlab.md)) : wheels autoportantes, **aucune dépendance native**, embarquable dans PyInstaller (R4) — retenu contre WeasyPrint sur ce seul critère (E09US001). Tire `pillow` et `charset-normalizer` (transitifs, figés par le lockfile) | BSD |
+| `reportlab` | 5.0.0 | Génération PDF (documents imprimables) | Socle PDF acté ([ADR-0031](adr/0031-bibliotheque-pdf-reportlab.md)) : wheels autoportantes, **aucune bibliothèque native de niveau système à installer à part** (le code compilé de `pillow`/`reportlab` voyage dans les wheels), embarquable dans PyInstaller (R4) — retenu contre WeasyPrint sur ce seul critère (E09US001). Tire `pillow` et `charset-normalizer` (transitifs, figés par le lockfile) | BSD |
 
 ## Backend — développement (`backend/pyproject.toml` › `optional-dependencies.dev`)
 
