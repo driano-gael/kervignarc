@@ -17,12 +17,44 @@
 *En tant qu'*administrateur, *je veux* composer et éditer la séquence de phases d'un tournoi avec des
 garde-fous de cohérence, *afin de* définir le format sans risque de blocage plus tard.
 - **CA — modèle (ex-001)** : entités `Phase` (ordre, type, config JSON) rattachées au tournoi ;
-  sorties d'une phase réutilisables.
+  sorties d'une phase réutilisables ; **statuts** `a_venir / en_cours / en_pause / terminee` —
+  `en_pause` **gèle la phase** (aucune validation de score acceptée) jusqu'à reprise, **distinct** du
+  `en_pause` du **tournoi** ([ADR-0026](../docs/adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md) §3 :
+  deux niveaux de gel, même intention).
 - **CA — édition (ex-002)** : ajouter/ordonner/supprimer/typer des phases ; validation d'ordre
   cohérent.
 - **CA — cohérence (ex-017)** : détection source vide / rangs inexistants / effectif incompatible ;
   message explicite.
 - **Absorbe** : ex-E05US001, E05US002, E05US017. **Dépend de** : E01US001 · **Jalon** : J2
+
+#### Catalogue des formats de phase (cibles du moteur) — 18/07/2026
+> **Un format est de la configuration, pas du code** (règle 2, [ADR-0004](../docs/adr/0004-moteur-de-phases-politiques.md)) :
+> le moteur (E05US003) doit composer **n'importe quel** format via ses politiques injectables
+> (`routing/scoring/seeding/byes/tiebreak/depth`). Ce catalogue liste les formats **cibles** de l'appli ;
+> chacun devient une US implémentable **quand sa règle est écrite** — **même *gate* que le Big Shoot Off**,
+> aujourd'hui bloqué faute de règle ([référentiel §11](../docs/referentiel-ffta.md), Q9). Un format sans
+> règle écrite n'a **pas d'oracle** (règle 9) : il reste *cible documentée*, **non planifié**. Catalogue
+> **ouvert** — d'autres formats s'ajoutent en fournissant leur règle.
+
+| Format | Règle | US / note |
+|---|---|---|
+| Qualification (cumul) | ✅ écrite | livré (barème) |
+| Élimination directe (tableau) | ✅ écrite | E05US005 |
+| Duel **par sets** (1ᵉ à 6, FFTA) | ✅ écrite | politique `scoring` (E05US003) |
+| Barrage / shoot-off (1 flèche) | ✅ écrite | référentiel §8.2 |
+| Placement intégral 1→N | ✅ écrite | E05US010 |
+| Repêchage-réintégration (WA) | ✅ écrite | E05US016 |
+| Big Shoot Off | 🔴 à fournir | bloqué (Q9) |
+| **Poules / round-robin** | ⏳ à fournir | cible |
+| **Handicap** (score ajusté au niveau) | ⏳ à fournir | cible |
+| **Système suisse** (appariement par score) | ⏳ à fournir | cible |
+| **King of the hill** (le vainqueur reste) | ⏳ à fournir | cible (original) |
+| **Montante-descendante (ladder)** | ⏳ à fournir | cible (original) |
+| **Finale spectacle** (tir alterné, public) | ⏳ à fournir | cible |
+| **Contre-la-montre / découverte** (temps limité) | ⏳ à fournir | cible (original) |
+
+> Les formats **par équipes** relèvent d'un périmètre distinct (le moteur oppose des *participants*,
+> pas des archers) — **[EPIC-13](../epics/EPIC-13-equipes.md)**, [ADR-0028](../docs/adr/0028-epreuves-par-equipes-participant.md).
 
 ### E05US003 — Politiques injectables & assemblage
 *En tant que* développeur, *je veux* des interfaces de politiques `routing/scoring/seeding/byes/

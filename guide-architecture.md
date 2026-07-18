@@ -152,6 +152,8 @@ Chaque couche définit sa propre famille d'exceptions ; le mapping vers une rép
 - **État serveur** : **React Query** (fetch, cache, invalidation, intégration temps réel via WebSocket).
 - **État UI local** : **Zustand** (léger).
 - **Organisation par features** (`features/placement`, `features/saisie`, `features/tableaux`, `features/classement`, `features/admin`…), pas par type technique.
+- **Une feature = un écran autonome.** Chaque fonction vit dans son dossier (`features/<domaine>/` : composant + `api.ts` + `hooks.ts`) et se suffit à elle-même. Une fonction ne s'implémente **jamais** enfouie dans le fichier d'une autre ; pas de composant « fourre-tout » empilant plusieurs domaines. Le mauvais réflexe à proscrire : ajouter une section à un gros conteneur au lieu de créer une feature — c'est ainsi qu'un écran devient monolithique et cesse d'être évolutif.
+- **Coquille de navigation.** L'assemblage des features passe par une **coquille** (ossature de navigation, [CDC UX §7.1](cahier-des-charges-ux.md)) qui affiche **une destination à la fois** ; brancher une nouvelle fonction = **une entrée** dans la coquille, pas une ligne de plus dans un écran empilé.
 - **Ergonomie tactile** prioritaire sur l'écran de saisie ; indicateur d'état de connexion visible.
 
 ---
@@ -163,6 +165,7 @@ Chaque couche définit sa propre famille d'exceptions ; le mapping vers une rép
 - **End-to-end** : quelques parcours front critiques (saisie → validation → classement live).
 - **Oracle de non-régression** : **rejeu du tournoi 120 de `Tableaux.xlsx`** — l'arbre généré, le routage des perdants et le classement 1→120 doivent correspondre exactement au classeur.
 - Tests **déterministes** (pas de dépendance à l'horloge/aléa non maîtrisé).
+- **Recette de l'app poste avec une seule tablette (ENF-7).** Le rattachement de poste vit dans `localStorage` — **par origine, donc partagé entre onglets** : sur une tablette, **un navigateur = un seul poste**. Pour exercer le **multi-poste** avec peu de matériel : **contextes de navigation séparés** (profils / fenêtres privées), ou le **PC de dev** (chaque onglet y est un poste). La **tablette** valide le *device-specific* (tactile, scan QR, Screen Wake Lock, indicateur de connexion) ; la **logique multi-poste** (diffusion live, supervision, contention) se valide avec **N contextes navigateur**. Un **harnais de dev** injectant N jetons de poste est la voie la plus reproductible.
 
 ---
 

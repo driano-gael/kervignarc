@@ -40,6 +40,7 @@
 
 | [DETTE-008](#dette-008--une-réponse-400-renvoie-lentrée-du-client-en-écho-non-borné) | technique | mineur | `backend/api/erreurs.py` (`_sur_erreur_validation`) | Une entrée rejetée par Pydantic revient **verbatim** au client : `details = jsonable_encoder(exc.errors())` embarque le champ `input` de chaque erreur, sans borne ni sur la taille d'une valeur, ni sur le nombre d'erreurs listées | **Amplification mesurée ×42,9** (50 Ko envoyés → 2,1 Mo reçus) sur un corps à 10 000 valeurs invalides. Le serveur travaille et répond ~43× le volume reçu, sur un réseau local le jour J où ~30 tablettes partagent la bande passante | E00US009 (patron de bout en bout, forme posée) ; **constatée** le 17/07/2026 à la revue d'E01US014 (axe adversarial), qui l'a mesurée sur `zones` (×42,9) **et** sur `ages` (×41,6) — le régime est **général à tous les DTO**, aucune US ne l'a introduit en propre | US dédiée (`fix/…`) — borner `input` dans `_sur_erreur_validation` (troncature de la valeur + plafond du nombre d'erreurs listées). ⚠️ **Ne pas retirer `details`** : le format `{code, message, details?}` est la règle 5, et [DETTE-007](#dette-007--la-confirmation-dune-suppression-darcher-est-aveugle) prévoit précisément de s'en servir |
 | [DETTE-007](#dette-007--la-confirmation-dune-suppression-darcher-est-aveugle) | conception | majeur | `backend/application/archers.py` (`ServiceArchers.supprimer`), `backend/application/departs.py` (`ServiceDeparts.supprimer`), `backend/api/v1/competition.py`, `backend/api/v1/departs.py`, `frontend/src/features/archers/api.ts`, `frontend/src/features/departs/api.ts` | La confirmation d'une suppression **destructrice-confirmable** ne **rappelle pas** au serveur le décompte que le signalement avait annoncé : `autoriser_suppression_engage=true` (archer engagé, `ArcherEngage`) **et** `autoriser_suppression_inscrits=true` (départ à inscriptions, `DepartAvecInscriptions`, E02US009) court-circuitent entièrement le constat, sans le revérifier | Entre le 409 et le rejeu, d'autres tablettes saisissent ou inscrivent (30 le jour J). Confirmer une suppression annoncée à « 1 flèche » (ou « 0 payée ») peut en détruire sept (ou effacer une inscription payée entre-temps) — **sans retour possible**. Or [ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)/[ADR-0018](adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md) font reposer la sûreté de ces cas sur ce message : « le message énumère ce qui sera détruit » plutôt que « confirmez pour supprimer ». Un message dont rien ne garantit la fraîcheur ne tient pas cette promesse | E02US003 (le chemin destructeur naît avec l'US ; la clause « le drapeau est cru sur parole » vient d'ADR-0015, raisonnée pour un protocole de **création** et reprise sans être rouverte pour une **destruction**) ; **aggravée par E02US009** (2ᵉ chemin destructeur-confirmable, `DepartAvecInscriptions`) | US dédiée — confirmation **contractuelle** : le client renvoie le décompte annoncé, le service re-signale s'il a changé. Exige de faire transiter le décompte par le champ `details` de la réponse d'erreur (`{code, message, details?}`, règle 5) — **jamais peuplé à ce jour** : c'est cette plomberie, sur `ApplicationError`, qui fait le coût |
+| [DETTE-010](#dette-010--capacité-de-cible-plafonnée-à-4-en-dur) | technique | majeur | `backend/domain/gabarit_salle.py` (`CAPACITE_CIBLE_MAX`, `POSITIONS`) | Le gabarit **borne la capacité d'une cible à [1,4]** (`CAPACITE_CIBLE_MAX = len(POSITIONS)`, `POSITIONS = ("A","B","C","D")` en dur) alors que le **modèle** (`modele-de-donnees.md`, `CIBLE.capacite`) **et** le **référentiel** (§5, EF-4.3) la veulent **non bornée** — la FFTA décrit une configuration à **3 triples verticaux** (> 4 postes) | Impossible de configurer une cible de plus de 4 postes ; **divergence code ↔ modèle ↔ référentiel** : la connaissance du projet dit « non borné », le code refuse | E01US007 (gabarit de salle) ; **constatée le 18/07/2026** (entretien de conception) | **E01US019** — délester le plafond, positions au-delà de `D` (`E`, `F`…), le placement (E03) suit |
 
 ## Dette résorbée
 
@@ -480,6 +481,26 @@ prévoit explicitement de s'en servir pour faire transiter le décompte d'une co
 destructrice — un champ jamais peuplé à ce jour. Il faut **borner** `details`, pas le retirer.
 
 Marqueur `DETTE-008` posé sur `_sur_erreur_validation` (`backend/api/erreurs.py`).
+
+### DETTE-010 — capacité de cible plafonnée à 4 en dur
+
+**Constat.** `backend/domain/gabarit_salle.py` fixe `POSITIONS = ("A", "B", "C", "D")` et
+`CAPACITE_CIBLE_MAX = len(POSITIONS)` (= 4) ; `_capacite_valide` refuse toute capacité hors `[1, 4]`.
+Or le **modèle de données** (`modele-de-donnees.md`, `CIBLE.capacite` : « ≥ 1, non borné ») et le
+**référentiel** (§5, §10 ; CDC `EF-4.3`) posent une capacité **non bornée** — la FFTA décrit une
+configuration à **3 triples verticaux**, soit une butte de plus de 4 postes.
+
+**Conséquence.** Un admin ne peut pas déclarer une cible à plus de 4 postes via le gabarit : la
+configuration à 3 triples verticaux, pourtant documentée, est **irréalisable**. Divergence entre trois
+sources qui devraient s'accorder (code, modèle, référentiel), la connaissance faisant foi (« non
+borné ») et le code étant en retard.
+
+**Pourquoi tracée ici et non corrigée dans l'entretien.** L'entretien de conception ne touche pas au
+code (docs uniquement) ; délester le plafond impacte les **positions** (lettres au-delà de `D`) et le
+**moteur de placement** (E03), qui suppose 4 positions — c'est une US, pas une retouche.
+
+**Résorption attendue.** **E01US019** : capacité non bornée, positions au-delà de `D` (`E`, `F`…),
+placement adapté. Marqueur `DETTE-010` à poser sur `gabarit_salle.py` à cette occasion.
 
 ## Procédure — inscrire une dette
 

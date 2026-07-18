@@ -24,6 +24,7 @@ Découpage en grandes fonctionnalités (EPICs), **par capacité produit**. Strat
 | [EPIC-10](EPIC-10-acces-roles.md) | Accès & rôles | MVP | 00 |
 | [EPIC-11](EPIC-11-exploitation.md) | Exploitation : sauvegarde, packaging, réseau | MVP | 00 |
 | [EPIC-12](EPIC-12-pilotage-jour-j.md) | **Pilotage du jour J** — supervision, complétude, bascule de tour | MVP | 03, 04, 05 |
+| [EPIC-13](EPIC-13-equipes.md) | **Épreuves par équipes** — abstraction *participant* | MVP | 02, 03, 04, 05, 06 |
 
 > 🎯 **EPIC-12 porte la valeur du produit** (créé le 14/07/2026). Les 12 EPICs ci-dessus couvraient tout le
 > cycle — configuration, inscriptions, placement, saisie, moteur, classements, affichage, paiements, exports,
