@@ -28,6 +28,8 @@ from domain.grain_validation import GrainValidation, TypeGrain
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase, grain_par_defaut
 from domain.placement import Affectation
+from domain.poste import Poste, PosteId
+from domain.poste import normaliser_code as normaliser_code_poste
 from domain.score import Score
 from domain.scoreur import Scoreur, ScoreurId, normaliser_code
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
@@ -41,6 +43,7 @@ from infrastructure.db.models import (
     InscriptionORM,
     PhaseORM,
     PlacementORM,
+    PosteORM,
     ScoreORM,
     ScoreurORM,
     TournoiORM,
@@ -95,6 +98,16 @@ def _vers_scoreur(ligne: ScoreurORM) -> Scoreur:
     return Scoreur(
         tournoi_id=ligne.tournoi_id,
         nom=ligne.nom,
+        code=ligne.code,
+        id=ligne.id,
+    )
+
+
+def _vers_poste(ligne: PosteORM) -> Poste:
+    """Traduit une ligne ORM en agrégat de domaine `Poste` (E04US001)."""
+    return Poste(
+        tournoi_id=ligne.tournoi_id,
+        cible_index=ligne.cible_index,
         code=ligne.code,
         id=ligne.id,
     )
@@ -748,6 +761,66 @@ class ScoreurRepositorySQL:
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de suppression du scoreur.") from exc
+
+
+class PosteRepositorySQL:
+    """Adapter SQLite du port `PosteRepository` — credential d'une cible (E04US001)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def ajouter(self, poste: Poste) -> Poste:
+        """Persiste le poste et le renvoie avec son identifiant attribué."""
+        try:
+            with self._session_factory() as session:
+                ligne = PosteORM(
+                    tournoi_id=poste.tournoi_id,
+                    cible_index=poste.cible_index,
+                    code=poste.code,
+                )
+                session.add(ligne)
+                session.commit()
+                return _vers_poste(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance du poste.") from exc
+
+    def par_id(self, poste_id: PosteId) -> Poste | None:
+        """Relit le poste d'identifiant donné, ou `None` s'il n'existe pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(PosteORM, poste_id)
+                return None if ligne is None else _vers_poste(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du poste.") from exc
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Poste]:
+        """Renvoie tous les postes d'un tournoi (ordonnés par numéro de cible)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(PosteORM)
+                    .where(PosteORM.tournoi_id == tournoi_id)
+                    .order_by(PosteORM.cible_index)
+                ).scalars()
+                return [_vers_poste(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des postes du tournoi.") from exc
+
+    def par_code(self, code: str) -> Poste | None:
+        """Relit le poste portant ce `code`, **tous tournois confondus**, ou `None`.
+
+        Comparaison **exacte** sur la forme canonique (`domain.poste.normaliser_code`) : le code
+        est stocké déjà normalisé (majuscules), la requête normalise la saisie — un `WHERE` indexé
+        par la contrainte `UNIQUE` suffit.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.execute(
+                    select(PosteORM).where(PosteORM.code == normaliser_code_poste(code))
+                ).scalar_one_or_none()
+                return None if ligne is None else _vers_poste(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du poste par code.") from exc
 
 
 class InscriptionRepositorySQL:

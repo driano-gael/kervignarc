@@ -29,6 +29,7 @@ from application.erreurs import (
     BlasonIntrouvable,
     CategorieIntrouvable,
     ClubIntrouvable,
+    CodePosteInconnu,
     CodeScoreurInconnu,
     DepartIntrouvable,
     GabaritDuTournoiAbsent,
@@ -60,7 +61,9 @@ async def _sur_erreur_domaine(_: Request, exc: Exception) -> JSONResponse:
 
 async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
     """Cas d'usage impossible → 401 (auth), 404 (introuvable) ou 409 (conflit d'état)."""
-    if isinstance(exc, IdentifiantsInvalides | NonAuthentifie | CodeScoreurInconnu):
+    if isinstance(
+        exc, IdentifiantsInvalides | NonAuthentifie | CodeScoreurInconnu | CodePosteInconnu
+    ):
         status = 401
     elif isinstance(
         exc,

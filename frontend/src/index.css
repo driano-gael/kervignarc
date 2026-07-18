@@ -38,6 +38,34 @@
   }
 }
 
+/* Choix **explicite** d'un poste (D-26, E04US001) : `data-theme` posé sur <html> par
+   `shared/theme.ts` surcharge la préférence système, dans les deux sens (une tablette peut forcer le
+   clair sous une baie vitrée alors que le système est en sombre, et inversement). Valeurs en miroir
+   des deux blocs ci-dessus. */
+:root[data-theme='light'] {
+  --text: #4b5563;
+  --text-h: #08060d;
+  --bg: #ffffff;
+  --surface: #f7f7f8;
+  --border: #e5e4e7;
+  --accent: #aa3bff;
+  --ok: #157f3b;
+  --warn: #9a6700;
+  --danger: #b42318;
+}
+
+:root[data-theme='dark'] {
+  --text: #9ca3af;
+  --text-h: #f3f4f6;
+  --bg: #16171d;
+  --surface: #1f2028;
+  --border: #2e303a;
+  --accent: #c084fc;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --danger: #f87171;
+}
+
 * {
   box-sizing: border-box;
 }

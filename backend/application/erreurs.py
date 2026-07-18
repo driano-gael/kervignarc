@@ -334,3 +334,25 @@ class CodeScoreurInconnu(ApplicationError):
     """
 
     code = "code_scoreur_inconnu"
+
+
+class CodePosteInconnu(ApplicationError):
+    """Rattachement refusé : aucun poste ne porte ce code de cible (E04US001). Traduite en 401.
+
+    Même statut que `CodeScoreurInconnu` : le poste est identifié par **le lieu** (le code de sa
+    cible) ; un code qui ne correspond à rien est un défaut de rattachement, pas un conflit d'état.
+    Le front purge alors le jeton local et redemande un rattachement (re-scan).
+    """
+
+    code = "code_poste_inconnu"
+
+
+class RattachementTournoiTermine(ApplicationError):
+    """Rattachement (ou session) d'un poste dont le tournoi est **terminé** (E04US001). → 409.
+
+    C'est l'ancrage de la révocation « nouveau tournoi force le re-rattachement » (ADR-0029) :
+    terminer un tournoi rend caducs tous ses jetons de poste. Conflit d'**état** (le tournoi n'est
+    plus en mesure d'accueillir un poste), d'où 409 — le statut par défaut d'`ApplicationError`.
+    """
+
+    code = "rattachement_tournoi_termine"

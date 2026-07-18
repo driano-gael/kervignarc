@@ -65,6 +65,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 |---|---|---|
 | **Administrateur** | `admin` | Accès total : configuration, moteur, exports, corrections. |
 | **Scoreur** | `scoreur` | S'identifie par un **code individuel** ; **itinérant** (rattaché à aucune cible), il **valide** les scores de la cible de son choix — il ne saisit pas (la saisie est le geste du poste de cible). Défini au tournoi, redéfinissable à tout moment (E10US003, `D-12`/`D-13`/`D-14`). |
+| **Poste de cible** | `poste` (`Poste`) | La **tablette** posée sur une cible : identité = le **lieu** (`D-13`), **sans compte ni identification personnelle**. Elle se **rattache** à sa cible par un **code** (imprimé sous le QR de la cible) et reçoit un **jeton de poste** ; c'est le **marqueur** (un archer de la cible) qui y **saisit** les scores. Préparé au tournoi (E04US001, ADR-0029). |
 | **Public** | `public` | Consultation en lecture seule. |
 
 ## Termes techniques (anglais)

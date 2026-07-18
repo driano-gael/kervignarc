@@ -30,15 +30,17 @@ _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 _METHODES_ECRITURE = {"POST", "PUT", "PATCH", "DELETE"}
 
-# Écritures **délibérément publiques** : amorçage de l'accès admin (définition au 1ᵉʳ usage) et
-# connexion (login), plus la **connexion scoreur** par code (E10US003) — l'acte d'authentification
-# lui-même ne peut pas exiger une session préalable, exactement comme `/api/v1/auth/connexion`. La
-# **déconnexion** scoreur, elle, n'est PAS ici : elle exige le jeton scoreur (`exiger_scoreur`) et
-# doit donc bien répondre 401 sans lui. Toute autre écriture doit 401.
+# Écritures **délibérément publiques** : amorçage de l'accès admin (définition au 1ᵉʳ usage),
+# connexion admin (login), **connexion scoreur** par code (E10US003) et **rattachement de poste**
+# par code (E04US001). L'acte d'authentification lui-même ne peut pas exiger une session préalable,
+# comme `/api/v1/auth/connexion`. Les **déconnexions** scoreur et poste, elles, ne sont PAS ici :
+# elles exigent leur jeton (`exiger_scoreur` / `exiger_poste`) et doivent donc répondre 401 sans
+# lui. Toute autre écriture doit 401.
 _ECRITURES_PUBLIQUES = {
     "/api/v1/auth/configurer",
     "/api/v1/auth/connexion",
     "/api/v1/scoreurs/session",
+    "/api/v1/postes/session",
 }
 
 # Endpoints de LECTURE — doivent répondre sans authentification (jamais 401).

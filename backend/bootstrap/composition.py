@@ -30,6 +30,8 @@ from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
 from api.v1.inscriptions import router as inscriptions_router
 from api.v1.placement import router as placement_router
+from api.v1.postes import router as postes_router
+from api.v1.postes import session_router as poste_session_router
 from api.v1.scoreurs import router as scoreurs_router
 from api.v1.scoreurs import session_router as scoreur_session_router
 from api.v1.tournois import router as tournois_router
@@ -45,6 +47,7 @@ from application.gabarits import ServiceGabarits
 from application.grain_validation import ServiceGrainValidation
 from application.inscriptions import ServiceInscriptions
 from application.placement import ServicePlacement
+from application.postes import ServicePostes
 from application.scoreurs import ServiceScoreurs
 from application.tournois import ServiceTournois
 from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
@@ -59,12 +62,14 @@ from infrastructure.db import (
     InscriptionRepositorySQL,
     PhaseRepositorySQL,
     PlacementRepositorySQL,
+    PosteRepositorySQL,
     ScoreRepositorySQL,
     ScoreurRepositorySQL,
     TournoiRepositorySQL,
     WriteQueue,
     default_database_url,
 )
+from infrastructure.postes import PosteSessionStore, generer_code_poste
 from infrastructure.realtime import Broadcaster, LiveEvent
 from infrastructure.scoreurs import ScoreurSessionStore, generer_code_scoreur
 
@@ -141,6 +146,7 @@ def create_app(
     inscription_repository = InscriptionRepositorySQL(database.session_factory)
     placement_repository = PlacementRepositorySQL(database.session_factory)
     scoreur_repository = ScoreurRepositorySQL(database.session_factory)
+    poste_repository = PosteRepositorySQL(database.session_factory)
     app.state.service_tournois = ServiceTournois(tournoi_repository)
     # Départs (créneaux) d'un tournoi (E02US004, ADR-0017) : le service vérifie l'existence du
     # tournoi (dépend du port tournoi) et attribue le numéro du créneau. Il dépend aussi du port
@@ -230,6 +236,22 @@ def create_app(
         scoreur_repository, tournoi_repository, scoreur_session_store, generer_code_scoreur
     )
 
+    # --- Postes de cible (E04US001, ADR-0029) : préparation des codes (admin) + session de poste
+    # (rattacher une tablette à sa cible). Troisième mode d'identité (`D-13`, le **lieu**), à côté
+    # du scoreur (la personne) et de l'admin (un secret). Store de sessions en mémoire (jeton →
+    # poste)
+    # et générateur de code injecté (déterminisme des tests, règle 9) ; le service lit le plan de
+    # salle (gabarit) pour émettre un code par cible. La dépendance API `exiger_poste` protégera la
+    # saisie (E04US002) et gardera « le poste ne saisit que pour SA cible » (E10US007). ---
+    poste_session_store = PosteSessionStore()
+    app.state.service_postes = ServicePostes(
+        poste_repository,
+        tournoi_repository,
+        gabarit_repository,
+        poste_session_store,
+        generer_code_poste,
+    )
+
     # --- Frontière API : traduction des erreurs typées en réponses HTTP (ADR-0007). ---
     enregistrer_gestionnaires_erreurs(app)
 
@@ -239,6 +261,8 @@ def create_app(
     app.include_router(auth_router)
     app.include_router(scoreurs_router)
     app.include_router(scoreur_session_router)
+    app.include_router(postes_router)
+    app.include_router(poste_session_router)
     app.include_router(tournois_router)
     app.include_router(departs_router)
     app.include_router(inscriptions_router)

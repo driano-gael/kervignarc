@@ -201,3 +201,14 @@ class CodeScoreurInvalide(DomainError):
     """
 
     code = "code_scoreur_invalide"
+
+
+class CodePosteInvalide(DomainError):
+    """Le code d'un poste de cible est vide (après normalisation, E04US001).
+
+    Le code est **attribué par le service** (généré, jamais saisi à la création) : cette erreur
+    protège l'invariant à la construction de l'agrégat, elle n'est pas un cas d'entrée utilisateur.
+    Le numéro de cible invalide réutilise, lui, `CibleInvalide` (déjà défini pour le placement).
+    """
+
+    code = "code_poste_invalide"

@@ -23,6 +23,7 @@ import { Departs } from '../departs/Departs'
 import { Gabarits } from '../gabarits/Gabarits'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { Placement } from '../placement/Placement'
+import { Postes } from '../postes/Postes'
 import { EspaceScoreur } from '../scoreur-session/EspaceScoreur'
 import { Scoreurs } from '../scoreurs/Scoreurs'
 import { ErreurApi } from '../../shared/api/client'
@@ -56,6 +57,14 @@ export function TrancheVerticale() {
         {/* L'entrée du scoreur, à côté de la liste des tournois : il ouvre l'app sur son téléphone
             et tape son code, sans passer par l'admin (E10US003). */}
         <EspaceScoreur />
+        {/* Entrée « poste de cible » (E04US001) : normalement on arrive par le QR de sa cible
+            (`?poste=<code>`, E09US008) ; ce lien de secours ouvre l'écran de poste sans QR — une
+            fois la tablette rattachée, l'app y va d'elle-même (App.tsx), ce lien ne resert plus. */}
+        <p className="carte__etat">
+          <a className="lien" href="?poste">
+            Cette tablette est un poste de cible ›
+          </a>
+        </p>
       </>
     )
   }
@@ -381,6 +390,10 @@ function Competition({ tournoi, onRetour }: { tournoi: Tournoi; onRetour: () => 
       {/* Scoreurs (E10US003) : module de préparation, on déclare les 3-4 valideurs et leurs codes.
           Redéfinissable même tournoi en cours (D-14). */}
       {estAdmin && <Scoreurs tournoiId={tournoi.id} />}
+
+      {/* Postes de cible (E04US001) : on prépare un code par cible du plan, à coller dessus (avec
+          son QR, E09US008) ; la tablette de la cible s'y rattache par ce code. */}
+      {estAdmin && <Postes tournoiId={tournoi.id} />}
 
       {estAdmin ? (
         <InscriptionArcher tournoiId={tournoi.id} />
