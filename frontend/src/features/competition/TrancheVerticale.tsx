@@ -23,6 +23,8 @@ import { Departs } from '../departs/Departs'
 import { Gabarits } from '../gabarits/Gabarits'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { Placement } from '../placement/Placement'
+import { EspaceScoreur } from '../scoreur-session/EspaceScoreur'
+import { Scoreurs } from '../scoreurs/Scoreurs'
 import { ErreurApi } from '../../shared/api/client'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import type { StatutTournoi, Tournoi, TypeTournoi } from './api'
@@ -48,7 +50,14 @@ export function TrancheVerticale() {
     selection === null ? null : (tournois.data?.find((t) => t.id === selection.id) ?? selection)
 
   if (selectionne === null) {
-    return <GestionTournois tournois={tournois.data ?? []} onChoisi={setSelection} />
+    return (
+      <>
+        <GestionTournois tournois={tournois.data ?? []} onChoisi={setSelection} />
+        {/* L'entrée du scoreur, à côté de la liste des tournois : il ouvre l'app sur son téléphone
+            et tape son code, sans passer par l'admin (E10US003). */}
+        <EspaceScoreur />
+      </>
+    )
   }
   return <Competition tournoi={selectionne} onRetour={() => setSelection(null)} />
 }
@@ -368,6 +377,10 @@ function Competition({ tournoi, onRetour }: { tournoi: Tournoi; onRetour: () => 
       {/* Juste après le barème : le grain se règle sur la même phase, et n'a de sens qu'une fois
           le barème défini (E01US015). */}
       {estAdmin && <GrainValidation tournoiId={tournoi.id} />}
+
+      {/* Scoreurs (E10US003) : module de préparation, on déclare les 3-4 valideurs et leurs codes.
+          Redéfinissable même tournoi en cours (D-14). */}
+      {estAdmin && <Scoreurs tournoiId={tournoi.id} />}
 
       {estAdmin ? (
         <InscriptionArcher tournoiId={tournoi.id} />

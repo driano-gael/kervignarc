@@ -43,18 +43,41 @@ export function enregistrerSurNonAutorise(rappel: () => void): void {
   surNonAutorise = rappel
 }
 
+// Jeton de session scoreur (E10US003) : joint en en-tête **dédié** `X-Jeton-Scoreur`, distinct du
+// Bearer admin — les deux modes d'identité sont **orthogonaux** (D-13). Un scoreur (sur son
+// téléphone) et l'admin (sur le PC) peuvent donc coexister sans que l'un masque l'autre. Même
+// inversion de dépendance : le store de session scoreur s'enregistre ici.
+let lireJetonScoreur: () => string | null = () => null
+
+export function enregistrerJetonScoreur(fournisseur: () => string | null): void {
+  lireJetonScoreur = fournisseur
+}
+
+let surNonAutoriseScoreur: () => void = () => {}
+
+export function enregistrerSurNonAutoriseScoreur(rappel: () => void): void {
+  surNonAutoriseScoreur = rappel
+}
+
 export async function fetchJson<T>(chemin: string, options?: RequestInit): Promise<T> {
-  const jeton = lireJetonAdmin()
-  const enteteAuth: Record<string, string> = jeton ? { Authorization: `Bearer ${jeton}` } : {}
+  const jetonAdmin = lireJetonAdmin()
+  const jetonScoreur = lireJetonScoreur()
+  const entetes: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (jetonAdmin) entetes.Authorization = `Bearer ${jetonAdmin}`
+  if (jetonScoreur) entetes['X-Jeton-Scoreur'] = jetonScoreur
   const reponse = await fetch(chemin, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...enteteAuth, ...options?.headers },
+    headers: { ...entetes, ...options?.headers },
   })
 
   if (!reponse.ok) {
-    // 401 alors qu'un jeton était joint → session expirée/invalide : on purge. Un 401 sans jeton
-    // (ex. login refusé) n'est pas une expiration de session : on n'y touche pas.
-    if (reponse.status === 401 && jeton) surNonAutorise()
+    // 401 alors qu'un jeton était joint → session expirée/invalide (ex. serveur redémarré, ou
+    // scoreur supprimé côté admin) : on purge la session concernée. Un 401 sans jeton (ex. login
+    // refusé) n'est pas une expiration : on n'y touche pas. Les deux jetons sont indépendants.
+    if (reponse.status === 401) {
+      if (jetonAdmin) surNonAutorise()
+      if (jetonScoreur) surNonAutoriseScoreur()
+    }
     const corps = (await reponse.json().catch(() => null)) as CorpsErreur | null
     throw new ErreurApi(
       reponse.status,
