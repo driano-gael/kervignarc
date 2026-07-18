@@ -137,3 +137,12 @@
 - **CA — migration** : vocabulaire par tournoi (colonne/JSON), **backfill FFTA** ; comportement observable **inchangé** pour un tournoi laissé au défaut.
 - **Notes** : révise E01US014 / ADR-0020 (pt 1). Tests domaine/service **depuis ce CA** (règle 9) — la validation du vocabulaire est une règle métier. La **mouche (X)** reste hors vocabulaire.
 - **Dépend de** : E01US014 · **Jalon** : J1 · **ADR** : [ADR-0027](../docs/adr/0027-vocabulaire-de-score-injectable-defaut-ffta.md)
+
+### E01US019 — Capacité de cible non bornée (positions au-delà de D)
+*En tant qu'*organisateur, *je veux* déclarer une cible de plus de 4 postes, *afin de* configurer une butte à **3 triples verticaux** comme le prévoit la FFTA.
+- **Contexte** : le gabarit (E01US007, livré) **plafonne la capacité à [1,4]** (`POSITIONS = A..D` en dur, `CAPACITE_CIBLE_MAX`) alors que le modèle et le référentiel (§5, EF-4.3) la veulent **non bornée** — [DETTE-010](../docs/dette.md). Divergence code ↔ modèle ↔ référentiel constatée le 18/07/2026.
+- **CA — capacité non bornée** : la capacité d'une cible est **≥ 1**, **sans plafond** (le défaut usuel reste 4) ; le gabarit accepte une capacité > 4.
+- **CA — positions au-delà de D** : les positions continuent l'**alphabet** (`A, B, C, D, E, F`…) au-delà de 4.
+- **CA — placement** : le moteur de placement (E03) **suit** — il pose des archers sur les positions au-delà de `D` sans supposer un maximum de 4.
+- **Notes** : retire le plafond de `gabarit_salle.py` et généralise `POSITIONS`. ⚠️ **Le placement (E03US001) suppose aujourd'hui 4 positions** — vérifier `_prochaine_lettre` et la génération des lettres. Marqueur `DETTE-010` retiré à la résorption. Tests domaine (gabarit + placement) depuis ce CA.
+- **Dépend de** : E01US007, E03US001 · **Jalon** : J1 → J3 *(le placement doit suivre)*

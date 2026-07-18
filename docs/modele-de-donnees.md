@@ -229,7 +229,7 @@ inscrit **sans** ligne est en **réserve**.
 | inscription_id | INTEGER | **PK**, FK → INSCRIPTION, **ON DELETE CASCADE** |
 | depart_id | INTEGER | FK → DEPART, **ON DELETE CASCADE** ; dénormalisé (lit/réécrit le plan d'un départ sans jointure) |
 | cible_index | INTEGER | rang de la cible dans le gabarit (1-based) |
-| position | TEXT | `A`\|`B`\|`C`\|`D`\|`E`… — lettres, **non bornées à D** (capacité de cible non bornée, cf. `CIBLE` ; le **code** plafonne encore à 4 → [DETTE-009](dette.md), résorption E01US019) |
+| position | TEXT | `A`\|`B`\|`C`\|`D`\|`E`… — lettres, **non bornées à D** (capacité de cible non bornée, cf. `CIBLE` ; le **code** plafonne encore à 4 → [DETTE-010](dette.md), résorption E01US019) |
 
 > **`ON DELETE CASCADE` assumé** (à rebours de DETTE-001) : donnée **dérivée, reconstructible et
 > feuille** — l'auto la régénère, sa disparition suit celle de l'inscription/du départ (ADR-0024).
