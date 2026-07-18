@@ -212,6 +212,26 @@ def test_assurer_codes_est_idempotent() -> None:
     assert second == premier
 
 
+def test_assurer_codes_complete_les_cibles_ajoutees() -> None:
+    """Plan agrandi (2 → 3 cibles) : les codes déjà émis sont **préservés**, la nouvelle en a un.
+
+    Cas réel du bouton « Compléter les codes manquants » : rejouer la préparation après avoir ajouté
+    une cible au plan ne doit pas régénérer les QR déjà imprimés.
+    """
+    m = Montage("C1", "C2", "C3", nb_cibles=2)
+    initial = m.service.assurer_codes(m.tournoi_id)
+    assert [p.cible_index for p in initial] == [1, 2]
+
+    m.gabarits.definir_pour(m.tournoi_id, 3)  # une cible ajoutée au plan
+    complete = m.service.assurer_codes(m.tournoi_id)
+
+    assert [p.cible_index for p in complete] == [1, 2, 3]
+    # Les deux premiers postes (id + code) sont inchangés — pas de régénération.
+    assert complete[0] == initial[0]
+    assert complete[1] == initial[1]
+    assert complete[2].code == "C3"
+
+
 def test_assurer_codes_sans_plan_ne_cree_rien() -> None:
     """Un tournoi sans plan de salle (aucun gabarit) n'a pas de cible : rien à préparer."""
     m = Montage("C1", nb_cibles=2)
