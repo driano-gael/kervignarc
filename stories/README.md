@@ -155,6 +155,27 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 
 ---
 
+## Ajouts — entretien de conception du 18/07/2026
+
+> 10 US + 1 EPIC issus de l'entretien du 18/07/2026. **Non renumérotés** dans les jalons ci-dessus (la séquence y est *indicative*) : à insérer au bon rang à la planification. Arbitrages : [ADR-0026](../docs/adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md), [ADR-0027](../docs/adr/0027-vocabulaire-de-score-injectable-defaut-ffta.md), [ADR-0028](../docs/adr/0028-epreuves-par-equipes-participant.md), [DETTE-010](../docs/dette.md), ENF-7.
+
+| US | Titre | Jalon | Réf |
+|---|---|---|---|
+| **E00US015** | Ossature de navigation de l'appli admin (coquille) | J3 | `D-19`/`D-20` — « US suivante » |
+| **E00US016** | Écrans admin : liste/fiche & référentiels en déroulante | J3 | remontées UX |
+| **E01US017** | Cycle de vie enrichi du tournoi (7 statuts) | J1 | ADR-0026 |
+| **E01US018** | Vocabulaire de score configurable (défaut FFTA) | J1 | ADR-0027 |
+| **E01US019** | Capacité de cible non bornée (positions > D) | J1→J3 | DETTE-010 |
+| **E02US010** | Horaire de départ HH:MM obligatoire & ≥ 1 départ | J1 | remontée « 9hzc » |
+| **E13US001** | Abstraction participant (le match oppose des participants) | J2 | ADR-0028 (avant E05US005) |
+| **E13US002** | Composer les équipes d'un tournoi | J2 | EPIC-13 |
+| **E13US003** | Scoring d'équipe (politique injectable) | J2 | EPIC-13 |
+| **E13US004** | Placement, saisie & classement par équipe | J2→J3 | EPIC-13 |
+
+> **[EPIC-13](../epics/EPIC-13-equipes.md)** créé — épreuves par équipes, **in-scope MVP** (renverse le « hors périmètre » du 14/07, ADR-0028).
+
+---
+
 ## US caduques (hors séquence)
 | US | Titre | Motif |
 |---|---|---|
@@ -163,7 +184,10 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 ---
 
 *Séquence indicative au sein d'un jalon (ajustable selon dépendances) ; les jalons se font dans l'ordre.*
-***Total : 91 US actives*** *(+ 1 caduque). Dernière révision : 15/07/2026 — entretien de conception
+***Total : 101 US actives*** *(+ 1 caduque). Dernière révision : **18/07/2026 — entretien de conception**
+(coquille admin, cycle de vie à 7 statuts, scoring injectable, horaires de départ, capacité de cible,
+**équipes en MVP**, contrainte de recette ENF-7) : **10 US + EPIC-13** ajoutés — cf. section « Ajouts »
+ci-dessus. Révision précédente : 15/07/2026 — entretien de conception
 du 14/07 (CDC UX v0.2, CDC design v0.3), puis deux US de résorption issues des revues :
 `E00US013` ([DETTE-004](../docs/dette.md), revue d'E01US015) et `E00US014`
 ([DETTE-005](../docs/dette.md), revue d'E01US010). Maille révisée le 17/07/2026 (regroupement au grain
