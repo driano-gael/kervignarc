@@ -106,6 +106,11 @@ E12US001) mais ne détermine **jamais** à quelle cible un score est rattaché �
   propriété du modèle « le lieu », pas un défaut.
 - **−** Sessions **en mémoire** : un redémarrage serveur force le re-rattachement (re-scan). Volontaire,
   cohérent ADR-0025, pas une perte de données (le code imprimé reste valide, on rescanne).
+- **−** **Poste orphelin si le plan de salle rétrécit** : `assurer_codes` ne crée que les codes
+  manquants (idempotent) mais ne **supprime pas** le poste d'une cible retirée du gabarit après
+  préparation — son code reste listé et rattachable. Sans conséquence tant que la **saisie** n'existe
+  pas (E04US002) ; la réconciliation poste ↔ plan (suppression/régénération) relève de **E09US008**
+  (« régénérable »), qui possède déjà la gestion des codes. Édge connu, non silencieux.
 - **−** FK `poste.tournoi_id` **sans `ON DELETE`** (DETTE-001, purge non tranchée) : élargit la dette
   existante d'une table, sans contournement local.
 - **⚠ Dépendance en avant — cycle de vie à 7 statuts** : la garde de révocation s'appuie sur le seul

@@ -321,6 +321,19 @@ inscrit **sans** ligne est en **réserve**.
 > **code individuel** ; il est **itinérant** (aucune cible rattachée) et **valide** les scores
 > (`D-12`/`D-13`). Voir [ADR-0025](adr/0025-mode-d-identite-scoreur-par-code-individuel.md).
 
+### POSTE (E04US001)
+| id | INTEGER | PK |
+| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) |
+| cible_index | INTEGER | NOT NULL (rang 1-based de la cible dans le plan de salle) |
+| code | TEXT | NOT NULL, **UNIQUE global** (rattachement par code seul) |
+
+> `UNIQUE(tournoi_id, cible_index)` : **une seule cible N par tournoi**. Table **livrée** par
+> E04US001. Le poste est le **credential d'une cible** — identité = le **lieu** (`D-13`, 3ᵉ mode
+> après le scoreur) : une tablette s'y **rattache** par le code (imprimé sous le QR de la cible,
+> E09US008), et reçoit un **jeton de poste** opaque en **mémoire** (`PosteSessionStore`, sans
+> expiration, persisté côté client), **lié au tournoi** et invalidé à sa clôture. La régénération des
+> codes est E09US008. Voir [ADR-0029](adr/0029-mode-d-identite-poste-de-cible-et-jeton-de-poste.md).
+
 ### ~~UTILISATEUR / SESSION~~ — **modèle prospectif abandonné** (E10US002/E10US003)
 > ⚠️ Ce modèle unifié à trois rôles (`admin`/`scoreur`/`public`) et sessions persistées **n'a pas
 > été retenu** — la refonte `D-13` (14/07/2026) a remplacé les rôles par **trois modes d'identité
@@ -328,7 +341,9 @@ inscrit **sans** ligne est en **réserve**.
 > - **admin** : login + mot de passe dans un fichier `.env` (aucune entité, aucune table — ADR-0009) ;
 > - **scoreur** : table `scoreur` ci-dessus + **session en mémoire** (jeton opaque nominatif,
 >   `ScoreurSessionStore`, **sans expiration** ni `expire_at`, non persistée — ADR-0025) ;
-> - **poste de cible** : identité = le **lieu**, jeton de poste, **sans compte** (E10US007).
+> - **poste de cible** : identité = le **lieu** ; table `poste` ci-dessus + **session en mémoire**
+>   (jeton de poste opaque, `PosteSessionStore`, lié au tournoi, non persistée côté serveur —
+>   E04US001, ADR-0029). La garde « le poste ne saisit que pour SA cible » est E10US007.
 >
 > Il n'y a donc **ni table `UTILISATEUR`, ni table `SESSION`, ni colonne `cibles`/`expire_at`** : le
 > `role`, le `secret`, les cibles habilitées et l'expiration décrits ici sont caducs. Bloc conservé
