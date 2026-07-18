@@ -13,6 +13,7 @@ remplace les deux clés visées et **préserve** le reste du fichier (autres cl�
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from application.auth import IdentifiantsAdmin
@@ -106,7 +107,24 @@ class AdminCredentialsStore:
                 sortie.append(ligne)
         sortie.extend(f"{cle}={_formater_valeur(valeur)}" for cle, valeur in restantes.items())
         contenu = "\n".join(sortie) + "\n"
+        self._ecrire_atomiquement(contenu)
+
+    def _ecrire_atomiquement(self, contenu: str) -> None:
+        """Remplace `.env` de façon **atomique** : écrire un fichier temporaire voisin puis
+        `os.replace`.
+
+        `.env` est la **porte de secours** de l'accès admin (docstring du module) : un
+        `write_text` direct tronque d'abord puis réécrit, si bien qu'un crash entre les deux —
+        ou deux écritures concurrentes — laisserait un `.env` **tronqué**, verrouillant l'admin
+        hors de sa propre appli. `os.replace` d'un fichier complet est atomique sur le même volume
+        (POSIX **et** Windows, où il écrase la cible existante) : le lecteur ne voit jamais qu'un
+        `.env` entier — l'ancien ou le nouveau, jamais un moitié-écrit. Le temporaire est un voisin
+        (même dossier ⇒ même système de fichiers, condition de l'atomicité de `os.replace`).
+        """
+        temporaire = self._env_path.with_name(self._env_path.name + ".tmp")
         try:
-            self._env_path.write_text(contenu, encoding="utf-8")
+            temporaire.write_text(contenu, encoding="utf-8")
+            os.replace(temporaire, self._env_path)
         except OSError as exc:
+            temporaire.unlink(missing_ok=True)  # ne pas laisser un résidu après un échec
             raise InfrastructureError(f"Écriture de {self._env_path} impossible.") from exc

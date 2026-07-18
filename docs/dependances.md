@@ -10,9 +10,10 @@
 > manifestes (`backend/pyproject.toml`, `frontend/package.json`). Licences toutes **permissives**.
 >
 > **Audits de sécurité** (bloquants en CI, cf. `.github/workflows/ci.yml`, E00US003) — dernier contrôle
-> 2026-07-10 : `pip-audit -r requirements.txt --strict` = **aucune vulnérabilité** ; `npm audit
-> --audit-level=high` = **0 vulnérabilité**. Outils d'audit eux-mêmes : `pip-audit` est installé
-> **ad hoc dans la CI** (non embarqué dans les manifestes applicatifs) ; `npm audit` est intégré à npm.
+> 2026-07-18 (revalidé après l'ajout de `vitest`, E00US014) : `pip-audit -r requirements.txt --strict`
+> = **aucune vulnérabilité** ; `npm audit --audit-level=high` = **0 vulnérabilité**. Outils d'audit
+> eux-mêmes : `pip-audit` est installé **ad hoc dans la CI** (non embarqué dans les manifestes
+> applicatifs) ; `npm audit` est intégré à npm.
 
 ## Backend — runtime (`backend/pyproject.toml` › `dependencies`)
 

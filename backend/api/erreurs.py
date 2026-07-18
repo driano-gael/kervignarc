@@ -97,6 +97,21 @@ async def _sur_erreur_infrastructure(_: Request, exc: Exception) -> JSONResponse
     return _reponse(500, code, "Erreur interne du serveur.")
 
 
+async def _sur_erreur_inattendue(_: Request, exc: Exception) -> JSONResponse:
+    """Dernier filet : toute exception **non typée** → 500 au format uniforme `{code, message}`.
+
+    Sans ce gestionnaire, une exception qui échappe aux familles typées (un `AssertionError` d'un
+    invariant « un persisté a un id », un bug de programmation) retombe sur le 500 **texte brut** de
+    Starlette : hors du contrat `{code, message}` (règle 5), et surtout **la trace complète fuirait
+    au client** si l'app tournait un jour avec `debug=True`. On journalise le détail côté serveur
+    (`_logger.exception`) et on ne rend qu'un message générique. Enregistré pour `Exception`, il
+    n'attrape que le résidu des gestionnaires plus spécifiques (domaine / application / infra /
+    validation) — Starlette route vers le handler le plus précis de la MRO.
+    """
+    _logger.exception("Exception non gérée à la frontière API.", exc_info=exc)
+    return _reponse(500, "erreur_interne", "Erreur interne du serveur.")
+
+
 async def _sur_erreur_validation(_: Request, exc: Exception) -> JSONResponse:
     """Entrée invalide (Pydantic) → 400 avec le détail des champs fautifs."""
     # DETTE-008 (docs/dette.md) : `exc.errors()` embarque le champ `input` — l'entrée du client,
@@ -114,3 +129,7 @@ def enregistrer_gestionnaires_erreurs(app: FastAPI) -> None:
     app.add_exception_handler(ApplicationError, _sur_erreur_application)
     app.add_exception_handler(InfrastructureError, _sur_erreur_infrastructure)
     app.add_exception_handler(RequestValidationError, _sur_erreur_validation)
+    # Filet catch-all EN DERNIER (le plus général) : toute exception non typée qui a échappé aux
+    # gestionnaires ci-dessus. Starlette route vers le handler le plus précis, celui-ci ne prend
+    # donc que le résidu — mais garantit qu'aucune réponse ne sort hors du format `{code, message}`.
+    app.add_exception_handler(Exception, _sur_erreur_inattendue)

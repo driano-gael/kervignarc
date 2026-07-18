@@ -78,6 +78,28 @@ def test_egalite_de_total_partage_le_rang() -> None:
     assert rangs == [("Carl", 1, 10), ("Anna", 2, 5), ("Bruno", 2, 5)]
 
 
+def test_deux_homonymes_a_total_egal_sont_ordonnes_de_facon_stable() -> None:
+    """Deux homonymes (E02US002) à total égal ont un ordre **déterministe**, quel que soit
+    l'ordre d'entrée.
+
+    Sans départage au-delà du nom, l'ordre retombait sur celui de `par_tournoi` (un `SELECT`
+    sans `ORDER BY`) : les deux lignes permutaient d'une lecture à l'autre, sur l'écran même où
+    on doit les distinguer. Le rang reste partagé (même total) ; c'est **l'ordre des lignes** qui
+    doit être stable. On le prouve en inversant l'ordre d'entrée : le classement doit rendre la
+    même séquence d'`archer_id`.
+    """
+    pere = _archer(1, "Dupont", prenom="Jean")
+    fils = _archer(2, "Dupont", prenom="Jean")
+    scores = [Score(1, 5, id=1), Score(2, 5, id=2)]
+    ordre_a = [ligne.archer_id for ligne in calculer_classement([pere, fils], scores).lignes]
+    ordre_b = [ligne.archer_id for ligne in calculer_classement([fils, pere], scores).lignes]
+    assert ordre_a == ordre_b == [1, 2]
+    rangs = {
+        ligne.archer_id: ligne.rang for ligne in calculer_classement([pere, fils], scores).lignes
+    }
+    assert rangs == {1: 1, 2: 1}  # même total ⇒ même rang partagé
+
+
 def test_scores_d_archers_inconnus_sont_ignores() -> None:
     """Un score dont l'archer n'est pas dans le lot n'affecte pas le classement."""
     classement = calculer_classement([_archer(1, "Alice")], [Score(999, 10, id=1)])

@@ -36,6 +36,10 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0023](0023-moteur-de-placement-glouton-deterministe.md) | Moteur de placement : **glouton déterministe**, contraintes câblées, recalcul à la demande | Accepté |
 | [0024](0024-plan-de-cibles-materialise-ajustable.md) | Plan de cibles **matérialisé et ajustable** : persistance, modèle transactionnel, réserve | Accepté |
 | [0025](0025-mode-d-identite-scoreur-par-code-individuel.md) | Mode d'identité **scoreur** : entité de domaine, code individuel généré, session nominative en mémoire | Accepté |
+| [0026](0026-cycle-de-vie-du-tournoi-sept-statuts.md) | Cycle de vie du tournoi : sept statuts explicites | Accepté |
+| [0027](0027-vocabulaire-de-score-injectable-defaut-ffta.md) | Le vocabulaire de score est injectable par tournoi ; défaut FFTA | Accepté |
+| [0028](0028-epreuves-par-equipes-participant.md) | Épreuves par équipes dans le périmètre : le match oppose des *participants* | Accepté |
+| [0029](0029-mode-d-identite-poste-de-cible-et-jeton-de-poste.md) | Mode d'identité « poste de cible » : code de cible régénérable, jeton lié au tournoi | Accepté |
 | [0030](0030-saisie-autorisee-au-poste-de-cible-403-hors-cible.md) | Saisie de score autorisée au **poste de cible**, bornée par le lieu (403 hors-cible) | Accepté |
 
 ## Sources

@@ -3,7 +3,12 @@
 `calculer_classement` agrège les scores par archer (somme des flèches) et ordonne du
 meilleur total au moins bon. Deux archers à égalité de total partagent le même rang
 (classement « à égalités », ex. 1-2-2-4). Le vrai départage FFTA (nombre de 10 puis de 9,
-barrages) relève d'E06 : ici, à total égal, on ordonne par nom pour un rendu déterministe.
+barrages) relève d'E06 : ici, à total égal, on ordonne par **nom, puis prénom, puis
+identifiant** — un départage **total** pour un rendu déterministe. Le prénom et l'identifiant
+ne sont pas décoratifs : depuis E02US002 deux homonymes (un père et son fils, mêmes nom **et**
+prénom) coexistent ; sur le seul nom, leurs deux lignes à total égal permuteraient au gré de
+l'ordre rendu par `ArcherRepository.par_tournoi` (un `SELECT` sans `ORDER BY`), sur l'écran même
+où on doit les distinguer. Même départage que `ServiceArchers.lister`.
 
 Fonction pure sur des agrégats : testable sans base ni serveur, réutilisable par les US de
 classement à venir.
@@ -66,7 +71,7 @@ def calculer_classement(archers: Iterable[Archer], scores: Iterable[Score]) -> C
         if score.archer_id in totaux:
             totaux[score.archer_id] += score.points
 
-    ordonnees = sorted(entrees, key=lambda e: (-totaux[e[1]], e[0].nom))
+    ordonnees = sorted(entrees, key=lambda e: (-totaux[e[1]], e[0].nom, e[0].prenom, e[1]))
 
     lignes: list[LigneClassement] = []
     rang = 0
