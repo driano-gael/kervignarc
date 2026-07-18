@@ -8,7 +8,7 @@ générique, le détail étant journalisé côté serveur.
 | Famille                | HTTP           |
 |------------------------|----------------|
 | `DomainError`          | 422            |
-| `ApplicationError`     | 401 (auth) / 404 / 409 |
+| `ApplicationError`     | 401 (auth) / 403 (interdit) / 404 / 409 |
 | `InfrastructureError`  | 500 (générique)|
 | `RequestValidationError` (entrée) | 400 |
 """
@@ -38,6 +38,7 @@ from application.erreurs import (
     InscriptionIntrouvable,
     NonAuthentifie,
     PhaseQualificationAbsente,
+    SaisieHorsCible,
     ScoreurIntrouvable,
     TournoiIntrouvable,
 )
@@ -60,11 +61,15 @@ async def _sur_erreur_domaine(_: Request, exc: Exception) -> JSONResponse:
 
 
 async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
-    """Cas d'usage impossible → 401 (auth), 404 (introuvable) ou 409 (conflit d'état)."""
+    """Cas d'usage impossible → 401 (auth), 403 (interdit), 404 (introuvable) ou 409 (conflit)."""
     if isinstance(
         exc, IdentifiantsInvalides | NonAuthentifie | CodeScoreurInconnu | CodePosteInconnu
     ):
         status = 401
+    elif isinstance(exc, SaisieHorsCible):
+        # 403 : l'identité est établie (jeton de poste valide) mais elle n'autorise pas **cette**
+        # cible (E10US007). À distinguer du 401 (aucune session) et du 409 (conflit d'état).
+        status = 403
     elif isinstance(
         exc,
         TournoiIntrouvable

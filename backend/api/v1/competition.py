@@ -17,16 +17,18 @@ hors boucle (threadpool) ; erreurs typées traduites à la frontière (`api/erre
 from __future__ import annotations
 
 import asyncio
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from api.dependances import exiger_admin
+from api.dependances import autoriser_saisie, exiger_admin
 from application.archers import ServiceArchers
 from application.classements import ServiceClassement
 from domain.archer import Archer
 from domain.classement import Classement
+from domain.poste import Poste
 from domain.score import Score
 from infrastructure.db import WriteQueue
 
@@ -297,20 +299,28 @@ async def placer_archer(
     "/archers/{archer_id}/scores",
     status_code=201,
     response_model=ScoreReponse,
-    dependencies=[Depends(exiger_admin)],
 )
 async def saisir_score(
-    archer_id: int, requete: SaisirScoreRequete, request: Request
+    archer_id: int,
+    requete: SaisirScoreRequete,
+    request: Request,
+    poste_autorise: Annotated[Poste | None, Depends(autoriser_saisie)],
 ) -> ScoreReponse:
-    """Enregistre une flèche marquée par un archer (**écriture**, session requise — E10US001).
+    """Enregistre une flèche marquée par un archer (**écriture** — E10US001, E10US007).
 
-    Ouverte à l'admin en intérim ; le rôle scoreur (E10US003) / archer (E10US007) élargiront
-    cette autorisation. La **validation** d'une série restera réservée au scoreur (E04US002).
+    Autorisée à l'**admin** (sans contrainte) **ou** au **poste de cible** (E04US001), qui ne peut
+    marquer que pour **sa** cible — `autoriser_saisie` renvoie le `Poste` correspondant, transmis au
+    service qui fait respecter cet invariant (403 sinon). La **validation** d'une série reste
+    réservée au scoreur (E04US002) : un poste saisit, il ne valide pas.
+
+    `Annotated[..., Depends(...)]` plutôt qu'un défaut `= Depends(...)` : c'est le premier endpoint
+    qui exploite la **valeur** rendue par sa dépendance (les autres passent par `dependencies=[...]`
+    dans le décorateur), et cette forme évite le faux positif B008 sans `noqa`.
     """
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue
     score = await asyncio.wrap_future(
-        write_queue.submit(lambda: service.saisir_score(archer_id, requete.points))
+        write_queue.submit(lambda: service.saisir_score(archer_id, requete.points, poste_autorise))
     )
     return ScoreReponse.de_agregat(score)
 

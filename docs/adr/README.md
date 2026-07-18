@@ -36,6 +36,7 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0023](0023-moteur-de-placement-glouton-deterministe.md) | Moteur de placement : **glouton déterministe**, contraintes câblées, recalcul à la demande | Accepté |
 | [0024](0024-plan-de-cibles-materialise-ajustable.md) | Plan de cibles **matérialisé et ajustable** : persistance, modèle transactionnel, réserve | Accepté |
 | [0025](0025-mode-d-identite-scoreur-par-code-individuel.md) | Mode d'identité **scoreur** : entité de domaine, code individuel généré, session nominative en mémoire | Accepté |
+| [0030](0030-saisie-autorisee-au-poste-de-cible-403-hors-cible.md) | Saisie de score autorisée au **poste de cible**, bornée par le lieu (403 hors-cible) | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.

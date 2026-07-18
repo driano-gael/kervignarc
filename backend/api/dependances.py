@@ -81,3 +81,29 @@ def exiger_poste(request: Request) -> Poste:
     if poste is None:
         raise NonAuthentifie("Session de poste requise.")
     return poste
+
+
+def autoriser_saisie(request: Request) -> Poste | None:
+    """Autorise la **saisie** de score : admin **ou** poste de cible (E10US007).
+
+    Élargit l'autorisation d'écriture au-delà de l'admin (E10US001) au **jeton de poste**
+    (E04US001), sans jamais rouvrir la saisie au public. Renvoie :
+
+    - `None` si une session **admin** valide est présente — l'admin saisit sans contrainte ;
+    - le `Poste` si un **jeton de poste** valide est présent — l'appelant (le service) restreindra
+      alors la saisie à **sa** cible (« un poste ne saisit que pour SA cible ») ;
+    - sinon `NonAuthentifie` (→ 401), comme toute écriture sans session (garde-fou
+      `test_acces_public`).
+
+    L'admin est essayé **en premier** : c'est le mode le plus large, et purement en mémoire, alors
+    que la résolution d'un poste relit la base (statut du tournoi, ADR-0029). **Synchrone** pour la
+    même raison qu'`exiger_poste` — FastAPI exécute une dépendance synchrone dans le threadpool.
+    """
+    service_auth: ServiceAuth = request.app.state.service_auth
+    if service_auth.session_valide(extraire_jeton(request)):
+        return None
+    service_postes: ServicePostes = request.app.state.service_postes
+    poste = service_postes.resoudre_session(extraire_jeton_poste(request))
+    if poste is None:
+        raise NonAuthentifie("Session requise pour saisir un score (admin ou poste de cible).")
+    return poste

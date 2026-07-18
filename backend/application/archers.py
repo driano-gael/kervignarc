@@ -19,6 +19,7 @@ from application.erreurs import (
     ChangementCategorieArcherEngage,
     ClubIntrouvable,
     HomonymeArcher,
+    SaisieHorsCible,
     TournoiIntrouvable,
 )
 from domain.archer import Archer, ArcherId, CleIdentite
@@ -32,6 +33,7 @@ from domain.ports import (
     ScoreRepository,
     TournoiRepository,
 )
+from domain.poste import Poste
 from domain.score import Score
 from domain.tournoi import TournoiId
 
@@ -187,10 +189,42 @@ class ServiceArchers:
         archer = self._archer_existant(archer_id)
         return self._archers.enregistrer(archer.placer(cible))
 
-    def saisir_score(self, archer_id: ArcherId, points: int) -> Score:
-        """Enregistre une flèche d'un archer. Lève `ArcherIntrouvable` s'il n'existe pas."""
-        self._archer_existant(archer_id)
+    def saisir_score(
+        self, archer_id: ArcherId, points: int, poste_autorise: Poste | None = None
+    ) -> Score:
+        """Enregistre une flèche d'un archer. Lève `ArcherIntrouvable` s'il n'existe pas.
+
+        `poste_autorise` porte le **mode d'identité** de l'appelant (E10US007) :
+
+        - `None` — la saisie vient de l'**admin** (E10US001), sans contrainte de cible ;
+        - un `Poste` — la saisie vient d'un **poste de cible**, qui ne peut marquer que pour **sa**
+          cible : `SaisieHorsCible` (→ 403) si l'archer visé n'est pas placé sur
+          `(poste.tournoi_id, poste.cible_index)`.
+
+        Le contrôle vit **ici**, dans la même opération que l'écriture (donc dans la même commande
+        de la file du writer unique, règle 7) : lire la cible de l'archer puis écrire sans barrière
+        entre les deux fermerait une fenêtre de course (l'archer replacé entre-temps). L'existence
+        de l'archer se vérifie **avant** sa cible — un archer inconnu rend 404, pas 403.
+        """
+        archer = self._archer_existant(archer_id)
+        if poste_autorise is not None:
+            self._verifier_poste_sert_l_archer(poste_autorise, archer)
         return self._scores.ajouter(Score.creer(archer_id, points))
+
+    @staticmethod
+    def _verifier_poste_sert_l_archer(poste: Poste, archer: Archer) -> None:
+        """Lève `SaisieHorsCible` si l'archer n'est pas sur la cible servie par le poste (E10US007).
+
+        « SA cible » = même **tournoi** *et* même **index de cible**. Le tournoi compte : plusieurs
+        tournois tournent en concurrence (intérieur + extérieur) et les numéros de cible se
+        répètent, donc comparer le seul `cible_index` laisserait le poste d'un tournoi voisin saisir
+        ici. Un archer non placé (`cible is None`) n'est sur aucune cible : `None != cible_index` le
+        refuse naturellement.
+        """
+        if archer.tournoi_id != poste.tournoi_id or archer.cible != poste.cible_index:
+            raise SaisieHorsCible(
+                "Ce poste ne peut saisir que pour les archers de sa propre cible."
+            )
 
     def _archer_existant(self, archer_id: ArcherId) -> Archer:
         archer = self._archers.par_id(archer_id)
