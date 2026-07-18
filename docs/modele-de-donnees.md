@@ -48,7 +48,7 @@ erDiagram
 | date | TEXT (date) | NOT NULL |
 | lieu | TEXT | |
 | type_tournoi | TEXT | `officiel` \| `non_officiel` |
-| statut | TEXT | `brouillon` \| `en_cours` \| `termine` |
+| statut | TEXT | `brouillon` \| `prêt` \| `en_cours` \| `en_pause` \| `termine` \| `archive` \| `annule` — **7 statuts** ([ADR-0026](adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md), E01US017) |
 | created_at | TEXT (datetime) | |
 
 > **Le tarif n'est plus au tournoi** ([ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md),
@@ -229,7 +229,7 @@ inscrit **sans** ligne est en **réserve**.
 | inscription_id | INTEGER | **PK**, FK → INSCRIPTION, **ON DELETE CASCADE** |
 | depart_id | INTEGER | FK → DEPART, **ON DELETE CASCADE** ; dénormalisé (lit/réécrit le plan d'un départ sans jointure) |
 | cible_index | INTEGER | rang de la cible dans le gabarit (1-based) |
-| position | TEXT | `A`\|`B`\|`C`\|`D` |
+| position | TEXT | `A`\|`B`\|`C`\|`D`\|`E`… — lettres, **non bornées à D** (capacité de cible non bornée, cf. `CIBLE` ; le **code** plafonne encore à 4 → [DETTE-009](dette.md), résorption E01US019) |
 
 > **`ON DELETE CASCADE` assumé** (à rebours de DETTE-001) : donnée **dérivée, reconstructible et
 > feuille** — l'auto la régénère, sa disparition suit celle de l'inscription/du départ (ADR-0024).
@@ -250,7 +250,7 @@ inscrit **sans** ligne est en **réserve**.
 | ordre | INTEGER | position dans la séquence |
 | type | TEXT | `qualification`\|`barrage`\|`tableau`\|`placement`\|`finale`\|`big_shoot_off` |
 | config | TEXT (JSON) | **politiques** + paramètres (voir §Config phase) |
-| statut | TEXT | `a_venir`\|`en_cours`\|`terminee` |
+| statut | TEXT | `a_venir`\|`en_cours`\|`en_pause`\|`terminee` — `en_pause` **gèle la phase** ([ADR-0026](adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md) §3, distinct du `en_pause` du tournoi) |
 
 > **Introduction minimale (E01US009 / [ADR-0011](adr/0011-phase-qualification-anticipee.md)).** La
 > table est créée dès J1 pour héberger le **barème de qualification** dans `config.scoring`
@@ -415,19 +415,28 @@ Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Exempl
 
 ---
 
+### ÉQUIPE / MEMBRE_EQUIPE — modèle cible (E13US001, [ADR-0028](adr/0028-epreuves-par-equipes-participant.md))
+> **Non encore matérialisé** (comme la table `CIBLE`). Les épreuves par équipes entrant au MVP (ADR-0028), le modèle s'étendra ainsi :
+> - `EQUIPE` (`id`, `tournoi_id` FK, `nom`) — entité **enfant du tournoi**.
+> - `MEMBRE_EQUIPE` (`equipe_id` FK, `archer_id` FK) — composition ; contrainte **configurable**, défaut FFTA §6.3/§7 (3 archers, ou mixte 2 H/F).
+> - `MATCH` opposera des **participants** (`participant_A/B` = archer **ou** équipe), pas des archers en dur (CDC technique §5). Un tournoi individuel est le cas où chaque participant **est** un archer.
+>
+> Élargit [DETTE-001](dette.md) (FK `equipe.tournoi_id`, `membre_equipe.*` sans `ON DELETE`).
+
 ## Enums de référence
 
 | Enum | Valeurs |
 |---|---|
 | `type_tournoi` | officiel, non_officiel |
-| `statut_tournoi` | brouillon, en_cours, termine |
-| `type_phase` | qualification, barrage, tableau, placement, finale, big_shoot_off |
+| `statut_tournoi` | brouillon, prêt, en_cours, en_pause, termine, archive, annule — [ADR-0026](adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md) |
+| `statut_phase` | a_venir, en_cours, en_pause, terminee — [ADR-0026](adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md) §3 |
+| `type_phase` | qualification, barrage, tableau, placement, finale, big_shoot_off — **catalogue ouvert** (format = config, [ADR-0004](adr/0004-moteur-de-phases-politiques.md) ; cf. catalogue E05) |
 | `routing` | elimination_seche, cascade, repechage |
 | `grain_validation` | fin_de_serie, fin_de_duel, toutes_les_n_volees |
 | `depth` | 1_a_n, top_n |
 | `statut_match` | a_jouer, en_cours, termine, bye, forfait |
 | `role` | admin, scoreur, public |
-| `valeur_fleche` | 0-10, X, M — **domaine réel restreint par `BLASON.zones`** (un triple 40 exclut 5→1) |
+| `valeur_fleche` | 0-10, X, M — **vocabulaire par tournoi, défaut FFTA** ([ADR-0027](adr/0027-vocabulaire-de-score-injectable-defaut-ffta.md)) ; restreint par `BLASON.zones` (un triple 40 exclut 5→1). L'enum figé et `VALEUR_FLECHE_MAX` sont abandonnés |
 | `ages` (tranches) | U11, U13, U15, U18, U21, S1, S2, S3 — `CATEGORIE.ages` en porte **une ou plusieurs** (E01US013). `Scratch` et le « U18 » arc nu sont des **libellés** de regroupement, pas des tranches |
 | `arme` | classique, poulie, nu (texte libre côté domaine) |
 
