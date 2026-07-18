@@ -16,6 +16,7 @@ import pytest
 from application.erreurs import (
     ArcherIntrouvable,
     DejaInscrit,
+    DepartComplet,
     DepartIntrouvable,
     InscriptionIntrouvable,
 )
@@ -56,9 +57,10 @@ def _depart(
     tarif_centimes: int = 810,
     numero: int = 1,
     tournoi_id: TournoiId = _TOURNOI,
+    quota: int | None = None,
 ) -> DepartId:
-    """Persiste un départ ; renvoie son id."""
-    depart = departs.ajouter(Depart.creer(tournoi_id, numero, tarif_centimes))
+    """Persiste un départ (quota facultatif) ; renvoie son id."""
+    depart = departs.ajouter(Depart.creer(tournoi_id, numero, tarif_centimes, quota=quota))
     assert depart.id is not None
     return depart.id
 
@@ -140,6 +142,98 @@ def test_inscrire_deux_archers_sur_le_meme_depart_passe() -> None:
     service.inscrire(autre.id, depart_id)
     assert len(service.lister_par_archer(un)) == 1
     assert len(service.lister_par_archer(autre.id)) == 1
+
+
+# --- Quota du créneau (E02US006) : blocage dur à la place *quota + 1* -------------------------
+
+
+def _second_archer(archers: FauxArcherRepository) -> ArcherId:
+    """Persiste un second archer du même tournoi ; renvoie son id (pour remplir un créneau)."""
+    autre = archers.ajouter(Archer.creer("Martin", "Alice", _TOURNOI, categorie_id=1))
+    assert autre.id is not None
+    return autre.id
+
+
+def test_inscrire_dans_le_quota_passe() -> None:
+    """Tant que le créneau n'est pas plein, l'inscription passe (CA E02US006)."""
+    service, archers, departs, _ = _monter()
+    depart_id = _depart(departs, quota=2)
+    service.inscrire(_archer(archers), depart_id)
+    detail = service.inscrire(_second_archer(archers), depart_id)  # 2e place, quota atteint pile
+    assert detail.inscription.depart_id == depart_id
+
+
+def test_inscrire_au_dela_du_quota_leve_depart_complet() -> None:
+    """La place *quota + 1* est **refusée** — blocage dur, pas alerte (CA E02US006).
+
+    Le blocage compte **toutes** les inscriptions du créneau (une place est prise dès l'inscription,
+    payée ou non) : deux archars remplissent un quota de 2, le troisième est rejeté.
+    """
+    service, archers, departs, _ = _monter()
+    depart_id = _depart(departs, quota=2)
+    premiere = service.inscrire(_archer(archers), depart_id).inscription
+    assert premiere.id is not None
+    service.inscrire(_second_archer(archers), depart_id)
+    # La première place est **payée** : elle compte tout autant dans le quota (une place est prise
+    # dès l'inscription, pas au paiement). Sans cette ligne, l'affirmation « payées ou non » du
+    # docstring ne serait pas exercée — un futur filtre `paye` sur le comptage passerait à tort.
+    service.marquer_paye(premiere.id, True)
+    troisieme = archers.ajouter(Archer.creer("Durand", "Paul", _TOURNOI, categorie_id=1))
+    assert troisieme.id is not None
+    with pytest.raises(DepartComplet):
+        service.inscrire(troisieme.id, depart_id)
+
+
+def test_un_creneau_sans_quota_n_est_jamais_complet() -> None:
+    """Sans quota (`None` = illimité), aucune inscription n'est refusée pour cause de plafond."""
+    service, archers, departs, _ = _monter()
+    depart_id = _depart(departs, quota=None)
+    for prenom in ("Jean", "Alice", "Paul", "Marie", "Luc"):
+        archer = archers.ajouter(Archer.creer("Nom", prenom, _TOURNOI, categorie_id=1))
+        assert archer.id is not None
+        service.inscrire(archer.id, depart_id)  # aucune levée, quel que soit le nombre
+    assert len(departs.par_tournoi(_TOURNOI)) == 1
+
+
+def test_desinscrire_libere_une_place_du_quota() -> None:
+    """Le comptage est **dérivé** : désinscrire rouvre une place, une nouvelle inscription repasse.
+
+    Preuve qu'aucun compteur n'est stocké — la capacité restante se recompte à chaque inscription.
+    """
+    service, archers, departs, _ = _monter()
+    depart_id = _depart(departs, quota=1)
+    premier = service.inscrire(_archer(archers), depart_id).inscription
+    assert premier.id is not None
+    autre = _second_archer(archers)
+    with pytest.raises(DepartComplet):  # plein
+        service.inscrire(autre, depart_id)
+
+    service.desinscrire(premier.id)  # une place se libère
+    detail = service.inscrire(autre, depart_id)  # repasse
+    assert detail.inscription.archer_id == autre
+
+
+def test_abaisser_le_quota_sous_les_inscrits_n_ejecte_personne_mais_bloque_les_nouveaux() -> None:
+    """Abaisser un quota sous le nombre d'inscrits est permis : les présents restent, le suivant est
+    refusé (CA E02US006 — le blocage ne joue qu'aux **nouvelles** inscriptions).
+
+    On simule l'abaissement en réenregistrant le départ à un quota plus bas (l'édition passe par
+    `ServiceDeparts`, testé ailleurs) : ici on prouve le comportement **côté inscription**.
+    """
+    service, archers, departs, inscriptions = _monter()
+    depart_id = _depart(departs, quota=2)
+    service.inscrire(_archer(archers), depart_id)
+    service.inscrire(_second_archer(archers), depart_id)
+
+    plein = departs.par_id(depart_id)
+    assert plein is not None
+    departs.enregistrer(dataclasses.replace(plein, quota=1))  # 2 inscrits, quota abaissé à 1
+
+    assert len(inscriptions.par_depart(depart_id)) == 2  # personne n'est éjecté
+    troisieme = archers.ajouter(Archer.creer("Durand", "Paul", _TOURNOI, categorie_id=1))
+    assert troisieme.id is not None
+    with pytest.raises(DepartComplet):  # mais plus aucune nouvelle place
+        service.inscrire(troisieme.id, depart_id)
 
 
 def test_lister_par_archer_trie_par_numero_de_depart() -> None:

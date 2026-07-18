@@ -157,6 +157,20 @@ class DejaInscrit(ApplicationError):
     code = "deja_inscrit"
 
 
+class DepartComplet(ApplicationError):
+    """Inscription refusée : le départ a **atteint son quota** de places (E02US006) → 409.
+
+    **Un refus, pas un signalement** — famille de `DejaInscrit` : le créneau est plein, il n'y a
+    aucun sens à passer outre (le quota *est* la capacité de la salle). Aucun drapeau ne le lève ;
+    pour faire de la place, l'admin désinscrit quelqu'un ou relève le quota du départ. Contrairement
+    à l'unicité, **aucune contrainte SQL** ne garantit le plafond : c'est la sérialisation par le
+    writer unique (règle 7) qui empêche deux inscriptions concurrentes de franchir la dernière
+    place.
+    """
+
+    code = "depart_complet"
+
+
 class ClubIntrouvable(ApplicationError):
     """Aucun club ne correspond à l'identifiant demandé."""
 

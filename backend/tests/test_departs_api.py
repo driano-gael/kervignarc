@@ -82,6 +82,76 @@ def test_creer_puis_lister_les_departs(
         assert [d["numero"] for d in liste] == [1, 2]
 
 
+def test_creer_avec_quota_puis_le_restituer(
+    app_departs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le quota fourni traverse toutes les couches et revient dans la réponse ; absent = `null`."""
+    with TestClient(app_departs) as client:
+        connecter_admin(client)
+        tid = _creer_tournoi(client)
+
+        avec = client.post(
+            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810, "quota": 20}
+        )
+        assert avec.status_code == 201
+        assert avec.json()["quota"] == 20
+
+        sans = client.post(f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810})
+        assert sans.json()["quota"] is None
+
+
+def test_creer_quota_nul_erreur_domaine(
+    app_departs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un quota ≤ 0 est une valeur invalide → 422 métier (validé au domaine, comme le tarif)."""
+    with TestClient(app_departs) as client:
+        connecter_admin(client)
+        tid = _creer_tournoi(client)
+        reponse = client.post(
+            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810, "quota": 0}
+        )
+    assert reponse.status_code == 422
+    assert reponse.json()["code"] == "quota_depart_invalide"
+
+
+def test_creer_quota_non_entier_erreur_400(
+    app_departs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un quota décimal est rejeté par le DTO (le type) avant le domaine → 400."""
+    with TestClient(app_departs) as client:
+        connecter_admin(client)
+        tid = _creer_tournoi(client)
+        reponse = client.post(
+            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810, "quota": 2.5}
+        )
+    assert reponse.status_code == 400
+    assert reponse.json()["code"] == "requete_invalide"
+
+
+def test_modifier_remplace_le_quota_et_l_omission_le_retire(
+    app_departs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """PUT remplace le quota ; un corps qui l'omet le **retire** (remplacement complet, CA)."""
+    with TestClient(app_departs) as client:
+        connecter_admin(client)
+        tid = _creer_tournoi(client)
+        cree = client.post(
+            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810, "quota": 20}
+        ).json()
+
+        pose = client.put(
+            f"/api/v1/tournois/{tid}/departs/{cree['id']}",
+            json={"tarif_centimes": 810, "quota": 30},
+        )
+        assert pose.json()["quota"] == 30
+
+        # Corps sans `quota` : remplacement complet → le plafond est retiré (revient à null).
+        retire = client.put(
+            f"/api/v1/tournois/{tid}/departs/{cree['id']}", json={"tarif_centimes": 810}
+        )
+        assert retire.json()["quota"] is None
+
+
 def test_creer_tarif_negatif_erreur_domaine(
     app_departs: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:

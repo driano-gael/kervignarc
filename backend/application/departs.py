@@ -46,11 +46,13 @@ class ServiceDeparts:
         tournoi_id: TournoiId,
         tarif_centimes: int,
         horaire: str | None = None,
+        quota: int | None = None,
     ) -> Depart:
         """Crée et persiste un départ dans un tournoi, avec un numéro attribué automatiquement.
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `DomainError` si le tarif est hors
-        plage. Le numéro est le plus grand existant + 1 (1 pour le premier créneau).
+        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `DomainError` si le tarif ou le quota
+        sont hors plage. Le numéro est le plus grand existant + 1 (1 pour le premier créneau) ; le
+        `quota` est facultatif (`None` = créneau sans plafond, E02US006).
 
         Lecture (`par_tournoi`) puis écriture (`ajouter`) tiennent dans **une seule commande** en
         file (règle 7, ADR-0005) : aucune création concurrente ne peut se glisser entre le calcul du
@@ -59,7 +61,7 @@ class ServiceDeparts:
         self._verifier_tournoi(tournoi_id)
         existants = self._departs.par_tournoi(tournoi_id)
         numero = existants[-1].numero + 1 if existants else 1
-        depart = Depart.creer(tournoi_id, numero, tarif_centimes, horaire)
+        depart = Depart.creer(tournoi_id, numero, tarif_centimes, horaire, quota)
         return self._departs.ajouter(depart)
 
     def lister(self, tournoi_id: TournoiId) -> list[Depart]:
@@ -76,14 +78,16 @@ class ServiceDeparts:
         depart_id: DepartId,
         tarif_centimes: int,
         horaire: str | None = None,
+        quota: int | None = None,
     ) -> Depart:
-        """Édite le tarif et l'horaire d'un départ (le numéro est fixe).
+        """Édite le tarif, l'horaire et le quota d'un départ (le numéro est fixe).
 
-        Lève `DepartIntrouvable` si le départ n'existe pas dans ce tournoi, `DomainError` si le
-        tarif est hors plage.
+        **Remplacement complet** : tarif, horaire et quota sont réécrits ; un `quota` omis (`None`)
+        **retire** le plafond (E02US006, comme l'horaire). Lève `DepartIntrouvable` si le départ
+        n'existe pas dans ce tournoi, `DomainError` si le tarif ou le quota sont hors plage.
         """
         depart = self._depart_du_tournoi(tournoi_id, depart_id)
-        return self._departs.enregistrer(depart.modifier(tarif_centimes, horaire))
+        return self._departs.enregistrer(depart.modifier(tarif_centimes, horaire, quota))
 
     def supprimer(
         self,

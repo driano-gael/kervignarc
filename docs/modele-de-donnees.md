@@ -171,6 +171,7 @@ erDiagram
 | numero | INTEGER | n° de créneau, **attribué par le système** ; `UNIQUE(tournoi_id, numero)` |
 | horaire | TEXT | libellé de créneau (ex. « 9h00 »), NULL admis |
 | tarif_centimes | INTEGER | **NOT NULL**, ≥ 0 — prix du créneau en **centimes** (`0` = gratuit) |
+| quota | INTEGER | **NULL admis** = sans plafond ; sinon nombre max d'inscrits, `1 ≤ quota ≤ 1 000` (E02US006). Invariant **applicatif** (`DepartComplet`, règle 7) : aucune contrainte SQL ne l'exprime — le dépassement est refusé par le service, sérialisé par le writer unique |
 
 > **Le départ est un créneau du tournoi** ([ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md),
 > E02US004), partagé par les archers qui s'y inscrivent — il n'appartient **pas** à un archer. Le lien

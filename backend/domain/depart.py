@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from domain.erreurs import NumeroDepartInvalide, TarifDepartInvalide
+from domain.erreurs import NumeroDepartInvalide, QuotaDepartInvalide, TarifDepartInvalide
 from domain.tournoi import TournoiId
 
 DepartId = int
@@ -38,6 +38,15 @@ accessoirement le mérite de tenir le tarif loin de la capacité d'un entier SQL
 absurde ferait déborder en erreur non typée plutôt qu'en 422.
 """
 
+QUOTA_DEPART_MAX = 1000
+"""Plafond du quota d'un départ : **1 000 places**.
+
+Règle métier doublée d'un garde-fou, comme `TARIF_DEPART_MAX_CENTIMES` : une salle de tir en
+salle plafonne à quelques dizaines de cibles par créneau ; au-delà de mille inscrits sur un seul
+départ, c'est une saisie erronée. Le borner ici (422) évite aussi qu'un entier absurde n'atteigne
+SQLite et n'y déborde en erreur non typée (500). Un quota **absent** (`None`) reste illimité.
+"""
+
 
 @dataclass(frozen=True)
 class Depart:
@@ -45,12 +54,16 @@ class Depart:
 
     `numero` est attribué par le service (unique dans le tournoi) ; `horaire` est un libellé de
     créneau facultatif (ex. « 9h00 ») ; `tarif_centimes` est le prix **de ce créneau**, obligatoire.
+    `quota` est le nombre maximal d'inscrits **de ce créneau** (E02US006), **facultatif** : `None`
+    = pas de plafond. L'agrégat ne connaît que la **valeur** du quota ; le contrôle « inscrits <
+    quota » vit dans le service (il voit les inscriptions, pas l'agrégat).
     """
 
     tournoi_id: TournoiId
     numero: int
     tarif_centimes: int
     horaire: str | None = None
+    quota: int | None = None
     id: DepartId | None = None
 
     @staticmethod
@@ -59,32 +72,43 @@ class Depart:
         numero: int,
         tarif_centimes: int,
         horaire: str | None = None,
+        quota: int | None = None,
     ) -> Depart:
         """Crée un départ valide.
 
         Lève `NumeroDepartInvalide` si le numéro n'est pas un entier ≥ 1, `TarifDepartInvalide`
-        si le tarif sort de `[0, 1 000 €]`. L'horaire est normalisé (espaces de bord retirés) ; un
-        horaire vide devient `None` (facultatif).
+        si le tarif sort de `[0, 1 000 €]`, `QuotaDepartInvalide` si un quota est défini hors de
+        `[1, 1 000]`. L'horaire est normalisé (espaces de bord retirés) ; un horaire vide devient
+        `None` (facultatif). Un `quota` à `None` = créneau sans plafond.
         """
         return Depart(
             tournoi_id=tournoi_id,
             numero=_numero_valide(numero),
             tarif_centimes=_tarif_valide(tarif_centimes),
             horaire=_horaire_normalise(horaire),
+            quota=_quota_valide(quota),
         )
 
-    def modifier(self, tarif_centimes: int, horaire: str | None = None) -> Depart:
-        """Renvoie une copie au tarif et à l'horaire mis à jour (mêmes règles que `creer`).
+    def modifier(
+        self, tarif_centimes: int, horaire: str | None = None, quota: int | None = None
+    ) -> Depart:
+        """Renvoie une copie au tarif, à l'horaire et au quota mis à jour (règles de `creer`).
 
         L'`id`, le `tournoi_id` et surtout le `numero` sont **préservés** : le numéro est attribué
         par le système, il n'est pas une donnée que l'admin corrige (au contraire du nom d'un club).
-        Seuls le tarif et l'horaire d'un créneau s'éditent. Lève `TarifDepartInvalide` si le tarif
-        est hors plage.
+        L'édition est un **remplacement complet** : un `quota` omis (`None`) **retire** le plafond,
+        comme un horaire omis l'efface — l'appelant renvoie les valeurs courantes qu'il veut garder.
+        Lève `TarifDepartInvalide` / `QuotaDepartInvalide` si tarif ou quota sont hors plage.
+
+        Abaisser le quota **sous** le nombre d'inscrits déjà en place est accepté ici : l'agrégat ne
+        voit pas les inscriptions, et le blocage ne joue qu'aux **nouvelles** inscriptions (le
+        service ne rejette qu'au moment d'inscrire, jamais les inscrits déjà présents — E02US006).
         """
         return replace(
             self,
             tarif_centimes=_tarif_valide(tarif_centimes),
             horaire=_horaire_normalise(horaire),
+            quota=_quota_valide(quota),
         )
 
 
@@ -115,3 +139,21 @@ def _tarif_valide(tarif_centimes: int) -> int:
             f"{TARIF_DEPART_MAX_CENTIMES // CENTIMES_PAR_EURO} €."
         )
     return tarif_centimes
+
+
+def _quota_valide(quota: int | None) -> int | None:
+    """Valide le quota : `None` (illimité) ou un entier de places dans `[1, QUOTA_DEPART_MAX]`.
+
+    Lève `QuotaDepartInvalide` hors de cette plage. `None` est **admis** — un créneau sans plafond.
+    `0` est **refusé** : un quota nul fermerait le créneau à toute inscription, ce qui se dit en
+    supprimant le départ, pas en le plafonnant à zéro (le test doit être `is not None`, pas la
+    vérité de `quota`, pour ne pas confondre `0` et « absent »).
+    """
+    if quota is None:
+        return None
+    if not 1 <= quota <= QUOTA_DEPART_MAX:
+        raise QuotaDepartInvalide(
+            f"Le quota d'un départ doit être compris entre 1 et {QUOTA_DEPART_MAX} places "
+            "(ou absent pour un créneau sans plafond)."
+        )
+    return quota

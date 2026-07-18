@@ -92,7 +92,8 @@ async def inscrire(
     """Inscrit un archer sur un départ de son tournoi (**action admin**) : écriture via la file.
 
     Renvoie `404` si l'archer ou le départ n'existe pas (ou n'est pas du tournoi de l'archer),
-    `409 deja_inscrit` si l'archer est déjà inscrit sur ce créneau.
+    `409 deja_inscrit` si l'archer est déjà inscrit sur ce créneau, `409 depart_complet` si le
+    créneau porte un quota déjà atteint (E02US006).
     """
     service: ServiceInscriptions = request.app.state.service_inscriptions
     write_queue: WriteQueue = request.app.state.write_queue

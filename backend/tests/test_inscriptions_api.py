@@ -100,6 +100,35 @@ def test_inscrire_deux_fois_le_meme_couple_409(
     assert rejet.json()["code"] == "deja_inscrit"
 
 
+def test_inscrire_sur_un_creneau_complet_409(
+    app_inscriptions: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un créneau à quota atteint refuse la place suivante → 409 `depart_complet` (E02US006)."""
+    with TestClient(app_inscriptions) as client:
+        connecter_admin(client)
+        tid, premier_archer, _ = _preparer(client)
+        depart_quota_1 = client.post(
+            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810, "quota": 1}
+        ).json()["id"]
+        # Première (et seule) place : elle passe.
+        ok = client.post(
+            f"/api/v1/archers/{premier_archer}/inscriptions", json={"depart_id": depart_quota_1}
+        )
+        assert ok.status_code == 201, ok.text
+
+        # Un second archer du même tournoi : le créneau est plein, la place *quota + 1* est refusée.
+        categorie_id = client.get(f"/api/v1/tournois/{tid}/categories").json()[0]["id"]
+        second_archer = client.post(
+            f"/api/v1/tournois/{tid}/archers",
+            json={"nom": "Durand", "prenom": "Paul", "categorie_id": categorie_id},
+        ).json()["id"]
+        rejet = client.post(
+            f"/api/v1/archers/{second_archer}/inscriptions", json={"depart_id": depart_quota_1}
+        )
+    assert rejet.status_code == 409
+    assert rejet.json()["code"] == "depart_complet"
+
+
 def test_inscrire_archer_inconnu_404(
     app_inscriptions: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
