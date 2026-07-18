@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import logging
 from collections.abc import Sequence
 
 import pytest
@@ -168,6 +169,22 @@ class FauxGenerateur:
         return self.SENTINELLE
 
 
+class _CaptureWarnings(logging.Handler):
+    """Capte les messages d'un logger via un handler **attaché directement** dessus.
+
+    Volontairement **pas** `caplog` : `caplog` capte par propagation vers le logger racine, et
+    d'autres tests (via `create_app`) reconfigurent le logging global, ce qui neutralise cette
+    propagation. Un handler posé sur le logger lui-même reçoit ses enregistrements quel que soit
+    l'état global (à condition de forcer `level`/`disabled`, cf. le test)."""
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.WARNING)
+        self.messages: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.messages.append(record.getMessage())
+
+
 # --- Décor -------------------------------------------------------------------------------------
 
 # Barème par défaut **non-FFTA** (4 volées de 6) : prouve que la grille suit le barème du tournoi,
@@ -182,13 +199,24 @@ class _Monde:
     archers: FauxArcherRepository
     inscriptions: FauxInscriptionRepository
     placements: FauxPlacementRepository
+    categories: FauxCategorieRepository
     tournoi_id: int
     depart_id: int
     categorie_id: int
 
-    def placer(self, nom: str, prenom: str, cible_index: int, position: str) -> None:
+    def placer(
+        self,
+        nom: str,
+        prenom: str,
+        cible_index: int,
+        position: str,
+        *,
+        categorie_id: int | None = None,
+    ) -> None:
         """Inscrit un archer sur le départ **et** le pose sur le plan (cible/position)."""
-        archer = self.archers.ajouter(Archer.creer(nom, prenom, self.tournoi_id, self.categorie_id))
+        archer = self.archers.ajouter(
+            Archer.creer(nom, prenom, self.tournoi_id, categorie_id or self.categorie_id)
+        )
         assert archer.id is not None
         inscription = self.inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
         assert inscription.id is not None
@@ -206,6 +234,19 @@ class _Monde:
         archer = self.archers.ajouter(Archer.creer(nom, prenom, self.tournoi_id, self.categorie_id))
         assert archer.id is not None
         self.inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
+
+    def categorie_sans_blason(self) -> int:
+        """Crée une catégorie **sans blason par défaut** et renvoie son id."""
+        categorie = self.categories.ajouter(Categorie.creer(self.tournoi_id, "Sans blason"))
+        assert categorie.id is not None
+        return categorie.id
+
+    def poser_affectation_orpheline(self, cible_index: int, position: str) -> None:
+        """Pose une affectation vers une inscription **inexistante** (plan incohérent)."""
+        self.placements.poser_plusieurs(
+            self.depart_id,
+            [Affectation(inscription_id=999_999, cible_index=cible_index, position=position)],
+        )
 
 
 def _monde(*, avec_bareme: BaremeQualification | None = _BAREME_DEFAUT) -> _Monde:
@@ -253,6 +294,7 @@ def _monde(*, avec_bareme: BaremeQualification | None = _BAREME_DEFAUT) -> _Mond
         archers=archers,
         inscriptions=inscriptions,
         placements=placements,
+        categories=categories,
         tournoi_id=tournoi.id,
         depart_id=depart.id,
         categorie_id=categorie.id,
@@ -334,3 +376,48 @@ def test_depart_d_un_autre_tournoi_leve_depart_introuvable() -> None:
     monde = _monde()
     with pytest.raises(DepartIntrouvable):
         monde.service.generer(monde.tournoi_id, 9999)
+
+
+def test_libelle_manquant_conserve_l_archer() -> None:
+    """Un archer placé dont la catégorie n'a **pas** de blason garde sa feuille : blason en `""`,
+    identité intacte. Un intitulé vide ne retire jamais la feuille d'un archer sur cible."""
+    monde = _monde()
+    monde.placer(
+        "Durand", "Marie", cible_index=1, position="A", categorie_id=monde.categorie_sans_blason()
+    )
+
+    monde.service.generer(monde.tournoi_id, monde.depart_id)
+
+    feuille = monde.generateur.derniere
+    assert feuille is not None
+    assert len(feuille.archers) == 1
+    ligne = feuille.archers[0]
+    assert (ligne.nom, ligne.categorie, ligne.blason) == ("Durand", "Sans blason", "")
+
+
+def test_affectation_orpheline_est_omise_et_journalisee() -> None:
+    """Une affectation vers une inscription inexistante (plan incohérent, improbable) est
+    **omise** de la feuille — mais **jamais en silence** : l'anomalie part en log `warning`, pour
+    qu'un futur invariant cassé se voie au lieu de faire disparaître un archer sans trace."""
+    monde = _monde()
+    monde.placer("Durand", "Marie", cible_index=1, position="A")
+    monde.poser_affectation_orpheline(cible_index=2, position="A")
+
+    logger = logging.getLogger("application.feuille_de_marque")
+    capture = _CaptureWarnings()
+    niveau, desactive = logger.level, logger.disabled
+    logger.addHandler(capture)
+    logger.setLevel(logging.WARNING)
+    logger.disabled = False
+    try:
+        monde.service.generer(monde.tournoi_id, monde.depart_id)
+    finally:
+        logger.removeHandler(capture)
+        logger.setLevel(niveau)
+        logger.disabled = desactive
+
+    feuille = monde.generateur.derniere
+    assert feuille is not None
+    assert [a.nom for a in feuille.archers] == ["Durand"]  # l'orpheline est écartée
+    assert any("plan incohérent" in message for message in capture.messages)
+    assert any("999999" in message for message in capture.messages)

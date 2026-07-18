@@ -43,17 +43,21 @@ quasiment pas, et son point fort (tables, grilles) sert directement.
 Aucun build PyInstaller n'existe encore (E00US012 ne produit qu'un exécutable de **dev** qui sert le
 front statique ; le packaging complet est EPIC-11). E09US001 **choisit la lib et génère le PDF dans
 l'application qui tourne** ; la preuve dans le binaire est un jalon d'EPIC-11. Ce choix de ReportLab
-**rend cette validation quasi acquise** (aucune dépendance native à embarquer) — le report est donc à
+**rend cette validation quasi acquise** (aucune bibliothèque native **de niveau système** à installer
+à part — `pillow` et `reportlab` embarquent bien du code compilé, mais dans leurs *wheels*, ce que
+PyInstaller sait reprendre, au contraire du runtime GTK de WeasyPrint) — le report est donc à
 **faible risque résiduel**. Ce n'est pas une **dette** (aucun raccourci dans le code d'aujourd'hui,
 qui fonctionne) mais un **volet du risque R4** suivi contre EPIC-11 ; l'arbitrage de périmètre est
 reversé dans `stories/E09-exports.md` (E09US001).
 
 ## Conséquences
 
-- **+** R4 est largement **désamorcé** : plus de bibliothèque native à faire entrer dans le binaire.
+- **+** R4 est largement **désamorcé** : plus de bibliothèque native **de niveau système** à installer
+  hors du binaire.
   Le report de la validation PyInstaller à EPIC-11 devient un contrôle de confirmation, pas un pari.
-- **+** Une seule dépendance runtime ajoutée (`reportlab`), licence permissive (BSD), sans chaîne
-  native — cohérent avec la sobriété du socle (règle 11, [ADR-0009](0009-gouvernance-dependances.md)).
+- **+** Une seule dépendance runtime ajoutée (`reportlab`), licence permissive (BSD), sans runtime
+  système à installer à part — cohérent avec la sobriété du socle (règle 11,
+  [ADR-0009](0009-gouvernance-dependances.md)).
 - **−** La mise en page est du **code Python impératif** : chaque document se construit à la main
   (positions, tables, styles). Acceptable pour des documents tabulaires ; à surveiller si un futur
   document réclame une maquette vraiment libre (on ne reviendra pas sur QT3 pour autant sans preuve).
