@@ -185,3 +185,19 @@ class ScoreInvalide(DomainError):
     """La valeur d'un score sort de la plage autorisée pour une flèche (0 à 10)."""
 
     code = "score_invalide"
+
+
+class NomScoreurInvalide(DomainError):
+    """Le nom d'un scoreur est vide (après normalisation, E10US003)."""
+
+    code = "nom_scoreur_invalide"
+
+
+class CodeScoreurInvalide(DomainError):
+    """Le code individuel d'un scoreur est vide (après normalisation, E10US003).
+
+    Le code est **attribué par le service** (généré, jamais saisi à la création) : cette erreur
+    protège l'invariant à la construction de l'agrégat, elle n'est pas un cas d'entrée utilisateur.
+    """
+
+    code = "code_scoreur_invalide"

@@ -284,3 +284,24 @@ class PhaseORM(Base):
     type: Mapped[str] = mapped_column(nullable=False)
     config: Mapped[str] = mapped_column(nullable=False)
     statut: Mapped[str] = mapped_column(nullable=False)
+
+
+class ScoreurORM(Base):
+    """Table `scoreur` — persistance de l'agrégat `Scoreur` (E10US003).
+
+    Scoreur **du tournoi** (`tournoi_id`), comme `depart` : défini à la configuration,
+    redéfinissable à tout moment (`D-14`). `code` est le code individuel remis au scoreur, `UNIQUE`
+    **global** (pas par tournoi) : le scoreur ouvre sa session par son seul code, qui doit donc
+    désigner un scoreur sans ambiguïté d'un tournoi à l'autre. L'unicité `UNIQUE` est **exacte** ;
+    contrairement au nom de club, aucun repli d'accents n'est nécessaire — le service stocke déjà le
+    code sous forme canonique (`normaliser_code` : majuscules), et le code n'a pas d'accent.
+    """
+
+    __tablename__ = "scoreur"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
+    # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    nom: Mapped[str] = mapped_column(nullable=False)
+    code: Mapped[str] = mapped_column(nullable=False, unique=True)

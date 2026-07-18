@@ -29,6 +29,7 @@ from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase, grain_par_defaut
 from domain.placement import Affectation
 from domain.score import Score
+from domain.scoreur import Scoreur, ScoreurId, normaliser_code
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
 from infrastructure.db.models import (
     ArcherORM,
@@ -41,6 +42,7 @@ from infrastructure.db.models import (
     PhaseORM,
     PlacementORM,
     ScoreORM,
+    ScoreurORM,
     TournoiORM,
 )
 from infrastructure.erreurs import InfrastructureError
@@ -84,6 +86,16 @@ def _vers_depart(ligne: DepartORM) -> Depart:
         tarif_centimes=ligne.tarif_centimes,
         horaire=ligne.horaire,
         quota=ligne.quota,
+        id=ligne.id,
+    )
+
+
+def _vers_scoreur(ligne: ScoreurORM) -> Scoreur:
+    """Traduit une ligne ORM en agrégat de domaine `Scoreur` (E10US003)."""
+    return Scoreur(
+        tournoi_id=ligne.tournoi_id,
+        nom=ligne.nom,
+        code=ligne.code,
         id=ligne.id,
     )
 
@@ -640,6 +652,102 @@ class DepartRepositorySQL:
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de suppression du départ.") from exc
+
+
+class ScoreurRepositorySQL:
+    """Adapter SQLite du port `ScoreurRepository` (E10US003)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def ajouter(self, scoreur: Scoreur) -> Scoreur:
+        """Persiste le scoreur et le renvoie avec son identifiant attribué."""
+        try:
+            with self._session_factory() as session:
+                ligne = ScoreurORM(
+                    tournoi_id=scoreur.tournoi_id, nom=scoreur.nom, code=scoreur.code
+                )
+                session.add(ligne)
+                session.commit()
+                return _vers_scoreur(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance du scoreur.") from exc
+
+    def par_id(self, scoreur_id: ScoreurId) -> Scoreur | None:
+        """Relit le scoreur d'identifiant donné, ou `None` s'il n'existe pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(ScoreurORM, scoreur_id)
+                return None if ligne is None else _vers_scoreur(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du scoreur.") from exc
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Scoreur]:
+        """Renvoie tous les scoreurs d'un tournoi (liste éventuellement vide).
+
+        L'ordre d'affichage (par nom) est appliqué par le service ; l'adapter renvoie par `id`.
+        """
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(ScoreurORM)
+                    .where(ScoreurORM.tournoi_id == tournoi_id)
+                    .order_by(ScoreurORM.id)
+                ).scalars()
+                return [_vers_scoreur(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des scoreurs du tournoi.") from exc
+
+    def par_code(self, code: str) -> Scoreur | None:
+        """Relit le scoreur portant ce `code`, **tous tournois confondus**, ou `None`.
+
+        Comparaison **exacte** sur la forme canonique (`domain.scoreur.normaliser_code`) : le code
+        est stocké déjà normalisé (majuscules), la requête normalise la saisie — un simple `WHERE`
+        indexé par la contrainte `UNIQUE` suffit (nul besoin du balayage Python de
+        `ClubRepositorySQL`, qui, lui, replie des accents que SQL ne sait pas comparer).
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.execute(
+                    select(ScoreurORM).where(ScoreurORM.code == normaliser_code(code))
+                ).scalar_one_or_none()
+                return None if ligne is None else _vers_scoreur(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du scoreur par code.") from exc
+
+    def enregistrer(self, scoreur: Scoreur) -> Scoreur:
+        """Met à jour un scoreur déjà persisté (renommage) et le renvoie.
+
+        **Contrat** : existence garantie par l'appelant (le service). La ligne absente est une
+        **incohérence technique** → `InfrastructureError`. Le `code` et le `tournoi_id` d'un scoreur
+        persisté ne changent pas (édition sur place, comme `DepartRepositorySQL`).
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(ScoreurORM, scoreur.id)
+                if ligne is None:
+                    raise InfrastructureError("Scoreur à mettre à jour introuvable en base.")
+                ligne.nom = scoreur.nom
+                session.commit()
+                return _vers_scoreur(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour du scoreur.") from exc
+
+    def supprimer(self, scoreur_id: ScoreurId) -> None:
+        """Supprime le scoreur d'identifiant donné (existence garantie par l'appelant).
+
+        **Feuille** : aucun enfant en base (les validations tracées d'E10US005 porteront le **nom**,
+        pas une FK), donc pas de cascade — au contraire de `DepartRepositorySQL.supprimer`.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(ScoreurORM, scoreur_id)
+                if ligne is None:
+                    raise InfrastructureError("Scoreur à supprimer introuvable en base.")
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression du scoreur.") from exc
 
 
 class InscriptionRepositorySQL:

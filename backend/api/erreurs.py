@@ -29,6 +29,7 @@ from application.erreurs import (
     BlasonIntrouvable,
     CategorieIntrouvable,
     ClubIntrouvable,
+    CodeScoreurInconnu,
     DepartIntrouvable,
     GabaritDuTournoiAbsent,
     GabaritIntrouvable,
@@ -36,6 +37,7 @@ from application.erreurs import (
     InscriptionIntrouvable,
     NonAuthentifie,
     PhaseQualificationAbsente,
+    ScoreurIntrouvable,
     TournoiIntrouvable,
 )
 from domain.erreurs import DomainError
@@ -58,7 +60,7 @@ async def _sur_erreur_domaine(_: Request, exc: Exception) -> JSONResponse:
 
 async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
     """Cas d'usage impossible → 401 (auth), 404 (introuvable) ou 409 (conflit d'état)."""
-    if isinstance(exc, IdentifiantsInvalides | NonAuthentifie):
+    if isinstance(exc, IdentifiantsInvalides | NonAuthentifie | CodeScoreurInconnu):
         status = 401
     elif isinstance(
         exc,
@@ -71,7 +73,8 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | BlasonIntrouvable
         | GabaritIntrouvable
         | GabaritDuTournoiAbsent
-        | PhaseQualificationAbsente,
+        | PhaseQualificationAbsente
+        | ScoreurIntrouvable,
     ):
         status = 404
     else:

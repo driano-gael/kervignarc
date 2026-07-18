@@ -20,6 +20,7 @@ from infrastructure.db.models import (
     PhaseORM,
     PlacementORM,
     ScoreORM,
+    ScoreurORM,
     TournoiORM,
 )
 from infrastructure.db.repositories import (
@@ -33,6 +34,7 @@ from infrastructure.db.repositories import (
     PhaseRepositorySQL,
     PlacementRepositorySQL,
     ScoreRepositorySQL,
+    ScoreurRepositorySQL,
     TournoiRepositorySQL,
 )
 from infrastructure.db.write_queue import (
@@ -67,6 +69,8 @@ __all__ = [
     "PostCommitListener",
     "ScoreORM",
     "ScoreRepositorySQL",
+    "ScoreurORM",
+    "ScoreurRepositorySQL",
     "TournoiORM",
     "TournoiRepositorySQL",
     "WriteCommand",
