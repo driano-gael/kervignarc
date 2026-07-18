@@ -23,6 +23,7 @@ from application.erreurs import (
     ChangementCategorieArcherEngage,
     ClubIntrouvable,
     HomonymeArcher,
+    SaisieHorsCible,
     TournoiIntrouvable,
 )
 from domain.archer import ArcherId
@@ -35,6 +36,7 @@ from domain.erreurs import (
     ScoreInvalide,
 )
 from domain.inscription import Inscription
+from domain.poste import Poste
 from domain.score import Score
 from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import (
@@ -366,6 +368,97 @@ def test_saisir_score_propage_l_erreur_de_domaine() -> None:
     assert archer.id is not None
     with pytest.raises(ScoreInvalide):
         m.archers.saisir_score(archer.id, 11)
+
+
+def _poste(tournoi_id: TournoiId, cible_index: int) -> Poste:
+    """Un poste (credential de cible) prêt à contraindre une saisie (E10US007).
+
+    Le `code` importe peu ici — le service compare `(tournoi_id, cible_index)`, pas le code — mais
+    l'agrégat exige un code non vide : « CIBLE » fait l'affaire.
+    """
+    return Poste.creer(tournoi_id, cible_index, "CIBLE")
+
+
+def test_saisir_score_par_un_poste_de_sa_cible_persiste() -> None:
+    """Un poste saisit pour un archer placé sur **sa** cible (CA E10US007).
+
+    C'est le geste nominal : la tablette fixée à la cible 4 marque une flèche d'un archer placé sur
+    la cible 4 — aucune authentification d'utilisateur, l'identité est **le lieu**.
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.archers.placer(archer.id, 4)
+    score = m.archers.saisir_score(archer.id, 9, _poste(m.tournoi_id, 4))
+    assert (score.archer_id, score.points) == (archer.id, 9)
+
+
+def test_saisir_score_par_un_poste_d_une_autre_cible_leve() -> None:
+    """Un poste ne peut **pas** saisir pour un archer d'une autre cible (CA E10US007).
+
+    Le cœur de l'US : « un poste ne saisit que pour SA cible ». Le poste de la cible 5 qui vise un
+    archer placé sur la cible 4 est refusé — 403 à la frontière (authentifié, mais pas pour cette
+    cible), pas 401.
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.archers.placer(archer.id, 4)
+    with pytest.raises(SaisieHorsCible):
+        m.archers.saisir_score(archer.id, 9, _poste(m.tournoi_id, 5))
+
+
+def test_saisir_score_par_un_poste_d_un_autre_tournoi_leve() -> None:
+    """« SA cible » se juge aussi sur le **tournoi**, pas seulement l'index (CA E10US007).
+
+    Plusieurs tournois tournent en concurrence (intérieur + extérieur) et les numéros de cible se
+    répètent : sans le contrôle du `tournoi_id`, le poste « cible 4 » du tournoi voisin saisirait
+    pour la cible 4 de celui-ci. Même index, autre tournoi ⇒ refus.
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.archers.placer(archer.id, 4)
+    autre_tournoi_id, _ = m.autre_tournoi()
+    with pytest.raises(SaisieHorsCible):
+        m.archers.saisir_score(archer.id, 9, _poste(autre_tournoi_id, 4))
+
+
+def test_saisir_score_par_un_poste_pour_un_archer_non_place_leve() -> None:
+    """Un poste ne saisit pas pour un archer **sans cible** (CA E10US007).
+
+    Un archer non placé n'est sur aucune cible, donc sur aucune cible d'un poste : la saisie par le
+    lieu n'a pas d'ancrage. Seul l'admin peut saisir hors placement (démo du walking skeleton).
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    with pytest.raises(SaisieHorsCible):
+        m.archers.saisir_score(archer.id, 9, _poste(m.tournoi_id, 4))
+
+
+def test_saisir_score_admin_ne_subit_aucune_contrainte_de_cible() -> None:
+    """Sans poste (`poste_autorise=None`), la saisie n'est **pas** contrainte à une cible.
+
+    L'admin (E10US001) reste autorisé partout, y compris pour un archer non placé : le paramètre par
+    défaut `None` préserve exactement le comportement d'avant E10US007 (« l'admin reste autorisé »).
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    score = m.archers.saisir_score(archer.id, 9)
+    assert (score.archer_id, score.points) == (archer.id, 9)
+
+
+def test_saisir_score_archer_inconnu_leve_meme_avec_un_poste() -> None:
+    """L'existence de l'archer se contrôle **avant** sa cible, même via un poste (CA E10US007).
+
+    Un archer inexistant n'a pas de cible à confronter au poste : l'ordre (`_archer_existant` avant
+    le contrôle de cible) rend un 404, pas un 403 — rien ne le pinnait sans ce test.
+    """
+    m = _monter()
+    with pytest.raises(ArcherIntrouvable):
+        m.archers.saisir_score(404, 9, _poste(m.tournoi_id, 4))
 
 
 def test_modifier_archer_met_a_jour_les_quatre_champs() -> None:

@@ -19,6 +19,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
+from domain.gabarit_salle import GabaritSalle
+from infrastructure.db import Database, GabaritSalleRepositorySQL
 from tests.conftest import ConnecterAdmin
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -454,4 +456,104 @@ def test_action_admin_sur_archer_refusee_sans_session(
     with TestClient(app_competition) as client:
         reponse = client.request(methode.upper(), chemin, json=corps)
     assert reponse.status_code == 401
+    assert reponse.json()["code"] == "non_authentifie"
+
+
+# --- E10US007 : la saisie de score est autorisée au poste de cible, borné à SA cible ----------
+
+
+def _semer_plan(app: FastAPI, tournoi_id: int, nb_cibles: int) -> None:
+    """Applique au tournoi un plan de `nb_cibles` cibles (via le repository, cf. test_poste_api)."""
+    database: Database = app.state.database
+    modele = GabaritSalle.creer("Plan", nb_cibles=nb_cibles)
+    GabaritSalleRepositorySQL(database.session_factory).ajouter(modele.pour_tournoi(tournoi_id))
+
+
+def _jeton_du_poste(client: TestClient, postes: list[dict[str, object]], cible_index: int) -> str:
+    """Rattache le poste de la cible `cible_index` par son code et renvoie son jeton de session."""
+    code = next(str(p["code"]) for p in postes if p["cible_index"] == cible_index)
+    reponse = client.post("/api/v1/postes/session", json={"code": code})
+    assert reponse.status_code == 200, reponse.text
+    return str(reponse.json()["jeton"])
+
+
+def _archer_place_et_postes(
+    client: TestClient, app: FastAPI, connecter_admin: ConnecterAdmin, cible: int
+) -> tuple[int, list[dict[str, object]]]:
+    """Prépare, en admin : tournoi + plan 3 cibles + archer placé sur `cible` + codes de poste.
+
+    Rend (archer_id, postes) puis **retire l'auth admin** — la suite doit s'appuyer sur le seul
+    jeton de poste, pour prouver que c'est bien lui (et non un reste d'admin) qui autorise.
+    """
+    connecter_admin(client)
+    tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+    _semer_plan(app, tournoi_id, 3)
+    archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
+    assert (
+        client.post(f"/api/v1/archers/{archer_id}/placement", json={"cible": cible}).status_code
+        == 200
+    )
+    postes: list[dict[str, object]] = client.post(f"/api/v1/tournois/{tournoi_id}/postes").json()
+    del client.headers["Authorization"]
+    return archer_id, postes
+
+
+def test_saisir_score_par_le_poste_de_sa_cible_201(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le poste de la cible 2 marque une flèche d'un archer placé sur la cible 2 → 201 (E10US007).
+
+    Aucune session admin, aucun compte : l'identité est **le lieu** (jeton de poste, en-tête dédié
+    `X-Jeton-Poste`). C'est l'élargissement de l'autorisation de saisie au-delà de l'admin.
+    """
+    with TestClient(app_competition) as client:
+        archer_id, postes = _archer_place_et_postes(client, app_competition, connecter_admin, 2)
+        jeton = _jeton_du_poste(client, postes, 2)
+
+        reponse = client.post(
+            f"/api/v1/archers/{archer_id}/scores",
+            json={"points": 9},
+            headers={"X-Jeton-Poste": jeton},
+        )
+
+    assert reponse.status_code == 201, reponse.text
+    assert reponse.json()["points"] == 9
+
+
+def test_saisir_score_par_un_poste_d_une_autre_cible_403(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le poste de la cible 1 vise un archer de la cible 2 → 403 `saisie_hors_cible` (E10US007).
+
+    Le jeton est valide (401 serait faux) mais il n'autorise que **sa** cible : « un poste ne saisit
+    que pour SA cible ». C'est le premier 403 du projet — authentifié, mais interdit ici.
+    """
+    with TestClient(app_competition) as client:
+        archer_id, postes = _archer_place_et_postes(client, app_competition, connecter_admin, 2)
+        jeton = _jeton_du_poste(client, postes, 1)
+
+        reponse = client.post(
+            f"/api/v1/archers/{archer_id}/scores",
+            json={"points": 9},
+            headers={"X-Jeton-Poste": jeton},
+        )
+
+    assert reponse.status_code == 403, reponse.text
+    assert reponse.json()["code"] == "saisie_hors_cible"
+
+
+def test_saisir_score_sans_aucune_session_reste_401(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Élargir au poste ne rouvre pas la saisie au public : sans jeton → 401 (E10US001).
+
+    Le garde-fou `test_acces_public` le vérifie dynamiquement pour toute écriture ; on l'épingle ici
+    **nommément** sur la saisie de score, l'endroit même où l'autorisation vient d'être élargie.
+    """
+    with TestClient(app_competition) as client:
+        archer_id, _postes = _archer_place_et_postes(client, app_competition, connecter_admin, 2)
+
+        reponse = client.post(f"/api/v1/archers/{archer_id}/scores", json={"points": 9})
+
+    assert reponse.status_code == 401, reponse.text
     assert reponse.json()["code"] == "non_authentifie"

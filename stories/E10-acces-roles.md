@@ -85,6 +85,26 @@
 *En tant que* **marqueur** (un archer de la cible, désigné selon FFTA B.6.1.1), *je veux* saisir les scores **sans code ni compte**, *afin de* marquer immédiatement, sans rien avoir à apprendre ni à retenir.
 - **CA** : les endpoints de **saisie** sont autorisés par le **jeton de poste** (E04US001) — **aucune authentification d'utilisateur** ; **le contrôle d'accès est physique** : la tablette est fixée à la cible, **qui tape dessus est légitime par construction** ; un poste ne peut saisir que pour **sa** cible (jeton) ; le poste **ne peut pas valider/verrouiller** une série (**scoreur seul**, E04US002 / E10US003) ni configurer ; élargit l'autorisation des endpoints de **saisie** au-delà de l'admin (E10US001).
 - **Notes** : ~~« **rôle archer** : saisir ses scores », v0.1~~ → **réécrite le 14/07/2026** ([CDC UX](../cahier-des-charges-ux.md) §5, `D-13`). **Il n'y a pas de rôle archer** : il y a **un poste ouvert**. Le « mécanisme d'accès à préciser » de la v0.1 **est tranché : aucun**. Justification : aucun pouvoir n'est engagé (on saisit, **rien n'est définitif** tant que le scoreur n'a pas validé) — l'identité est donc **le lieu**, pas la personne. **30 postes ouverts plutôt que 30 codes à distribuer et à expliquer à des bénévoles.** Le **marqueur** est **déclaré et tracé à la volée** (E04US002) : *déclaratif ≠ authentifié*. Distinction clé inchangée : **saisie** (poste de cible) vs **validation** (scoreur seul).
+- **Arbitrages tranchés le 18/07/2026** (reversés ici — règle 9 ; pour qu'E04US002 n'en dérive pas
+  de tests faux), **formalisés dans
+  [ADR-0030](../docs/adr/0030-saisie-autorisee-au-poste-de-cible-403-hors-cible.md)** :
+  - **« SA cible » = même tournoi *et* même index de cible** — pas l'index seul. Plusieurs tournois
+    tournent **en concurrence** (intérieur + extérieur, ADR-0029) et les numéros de cible **se
+    répètent** : sans le contrôle du `tournoi_id`, le poste « cible 4 » d'un tournoi voisin saisirait
+    pour la cible 4 de celui-ci. Un archer **non placé** n'est sur aucune cible → refusé au poste
+    (seul l'admin saisit hors placement).
+  - **Poste valide sur la mauvaise cible ⇒ 403, pas 401** : le jeton est établi (identité par le
+    *lieu*) mais n'autorise que **sa** cible — « authentifié mais interdit ». C'est le **premier 403**
+    du projet (erreur `SaisieHorsCible`). À distinguer du 401 (aucune session) et du 409 (conflit
+    d'état). Côté front (E04US002), 401 = re-rattacher le poste ; 403 = ce n'est pas ta cible.
+  - **Autorisation « admin OU poste » par une dépendance combinée `autoriser_saisie`**, qui **élargit**
+    l'endpoint de saisie existant (l'admin reste autorisé, sans contrainte de cible) — pas de route
+    parallèle (patron ADR-0025). L'invariant « SA cible » est vérifié **dans le service** (opération
+    atomique de la write-queue, règle 7), non à l'API, pour fermer la fenêtre de course lecture→écriture.
+  - **Périmètre : autorisation sans surface front.** La grille de saisie est E04US002 ; ici, un seul
+    endpoint (`POST /archers/{id}/scores`, la démo E00US011) est élargi. Pas de `docs/fonctionnel/`
+    livré (aucune UI à décrire). La garde « on ne saisit que sur un tournoi **en cours** » relève aussi
+    d'E04US002 (`exiger_poste` refuse déjà un tournoi **terminé**, ADR-0029).
 - **Dépend de** : E04US001, E10US001 · **Jalon** : J1
 
 ---

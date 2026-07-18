@@ -356,3 +356,18 @@ class RattachementTournoiTermine(ApplicationError):
     """
 
     code = "rattachement_tournoi_termine"
+
+
+class SaisieHorsCible(ApplicationError):
+    """Un poste tente de saisir pour un archer qui n'est pas sur **sa** cible (E10US007). → 403.
+
+    **Refus, pas signalement, et surtout pas 401** : le jeton de poste est valide (l'identité par
+    le *lieu* est établie, `D-13`, ADR-0030), mais il n'autorise la saisie que pour la cible qu'il
+    sert. Un poste sur une **autre** cible — ou d'un **autre tournoi**, les numéros de cible se
+    répètent d'un tournoi à l'autre — ou visant un archer **non placé** (sur aucune cible) est
+    éconduit. C'est le **premier 403** du projet : « authentifié mais interdit pour cette
+    ressource » n'est ni un défaut d'authentification (401) ni un conflit d'état (409). L'admin,
+    lui, n'a aucune contrainte de cible (E10US001) : ce refus ne vise que l'identité *poste*.
+    """
+
+    code = "saisie_hors_cible"
