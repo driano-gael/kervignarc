@@ -291,6 +291,21 @@ def test_une_carte_par_scoreur_triee_par_nom() -> None:
     assert [(c.nom, c.code) for c in document.cartes] == [("Alice", "AAA222"), ("Zoé", "ZZZ111")]
 
 
+def test_cartes_regenerables_a_l_identique() -> None:
+    """« Régénérable » vaut aussi pour les cartes : deux générations donnent le même document
+    (codes persistés, stables) — même exigence que pour les étiquettes."""
+    monde = _monde()
+    monde.definir_scoreur("Alice", "AAA222")
+    monde.definir_scoreur("Bob", "BBB333")
+
+    monde.service.cartes_scoreurs(monde.tournoi_id)
+    premier = monde.generateur.dernieres_cartes
+    monde.service.cartes_scoreurs(monde.tournoi_id)
+    second = monde.generateur.dernieres_cartes
+
+    assert premier == second
+
+
 def test_cartes_liees_au_tournoi() -> None:
     """« Lié au tournoi » : seuls les scoreurs de ce tournoi figurent."""
     monde = _monde()

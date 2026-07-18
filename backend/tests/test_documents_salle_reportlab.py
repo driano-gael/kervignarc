@@ -9,8 +9,12 @@ d'exception ReportLab brute. Le QR est produit nativement par ReportLab (aucune 
 
 from __future__ import annotations
 
-import pytest
+from typing import Any
 
+import pytest
+from reportlab.graphics.barcode.qr import QrCodeWidget
+
+import infrastructure.pdf.documents_salle as adapter_module
 from domain.documents_salle import CarteScoreur, CartesScoreurs, EtiquetteCible, EtiquettesCibles
 from infrastructure.erreurs import InfrastructureError
 from infrastructure.pdf import GenerateurDocumentsSallePdf
@@ -71,6 +75,27 @@ def test_cartes_sans_scoreur_reste_un_pdf_valide() -> None:
     octets = GenerateurDocumentsSallePdf().cartes_scoreurs(CartesScoreurs("Tournoi Test", ()))
 
     assert octets.startswith(b"%PDF")
+
+
+def test_le_qr_encode_l_url_de_chaque_etiquette(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Chaque QR encode bien l'`url` de son étiquette : on espionne `QrCodeWidget` pour capturer
+    les URL réellement passées. Sans ça, seul `%PDF` est prouvé — un QR encodant la mauvaise valeur
+    passerait inaperçu (le contenu du QR n'est pas relu dans le PDF)."""
+    urls_encodees: list[str] = []
+
+    def espion(url: str, *args: Any, **kwargs: Any) -> object:
+        urls_encodees.append(url)
+        return QrCodeWidget(url, *args, **kwargs)
+
+    monkeypatch.setattr(adapter_module, "QrCodeWidget", espion)
+    document = EtiquettesCibles("Tournoi Test", (_etiquette(1, "AAA111"), _etiquette(2, "BBB222")))
+
+    GenerateurDocumentsSallePdf().etiquettes_cibles(document)
+
+    assert urls_encodees == [
+        "http://192.168.1.10:8000/?poste=AAA111",
+        "http://192.168.1.10:8000/?poste=BBB222",
+    ]
 
 
 def test_echec_de_rendu_enveloppe_en_infrastructure_error() -> None:
