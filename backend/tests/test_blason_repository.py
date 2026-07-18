@@ -157,17 +157,17 @@ def test_enregistrer_met_a_jour_les_zones(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("zones_en_base", "cas"),
+    "zones_en_base",
     [
-        ("pas du json", "JSON illisible"),
-        ('["10", "X", "M"]', "JSON valide mais zone hors vocabulaire"),
-        ('{"10": 1}', "objet JSON : sans coercition, réhydratait ('10',) en silence"),
-        ("null", "JSON valide mais non itérable"),
+        pytest.param("pas du json", id="JSON illisible"),
+        pytest.param('["10", "X", "M"]', id="JSON valide mais zone hors vocabulaire"),
+        pytest.param(
+            '{"10": 1}', id="objet JSON : sans coercition, rehydratait ('10',) en silence"
+        ),
+        pytest.param("null", id="JSON valide mais non iterable"),
     ],
 )
-def test_zones_corrompues_levent_infrastructure_error(
-    tmp_path: Path, zones_en_base: str, cas: str
-) -> None:
+def test_zones_corrompues_levent_infrastructure_error(tmp_path: Path, zones_en_base: str) -> None:
     """Une colonne `zones` illisible est enveloppée en `InfrastructureError` (ADR-0007).
 
     Le repository en est le seul rédacteur : une valeur aberrante est une **incohérence
@@ -189,6 +189,6 @@ def test_zones_corrompues_levent_infrastructure_error(
             )
             session.commit()
         with pytest.raises(InfrastructureError):
-            BlasonRepositorySQL(db.session_factory).par_tournoi(tournoi_id), cas
+            BlasonRepositorySQL(db.session_factory).par_tournoi(tournoi_id)
     finally:
         db.engine.dispose()
