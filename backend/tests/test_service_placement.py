@@ -356,6 +356,10 @@ def test_sans_gabarit_applique_leve_gabarit_du_tournoi_absent() -> None:
 
 
 # --- Plan matérialisé et ajustable (E03US004, ADR-0024) ------------------------------------------
+# Nuance vs l'en-tête de fichier (« tests après impl », qui vise l'orchestration E03US001) : les
+# tests ci-dessous portent des **règles métier de service** (échange atomique, refus en bloc, dépôt
+# réserve→occupée refusé, réserve motivée) et dérivent donc du **CA** d'E03US004 (`stories/`, puce
+# CA + Notes) **avant** implémentation — règle 9.
 
 
 def _cible_de(plan: object) -> dict[int, int]:
@@ -509,3 +513,42 @@ def test_regenerer_ecrase_les_ajustements_manuels() -> None:
     cible_de = _cible_de(plan)
     assert cible_de[a1] == 1
     assert cible_de[a2] == 1  # l'auto les remet ensemble sur la cible 1
+
+
+def test_echange_sur_la_meme_cible_permute_les_positions() -> None:
+    """CA échange : permuter deux archers d'une **même** cible échange leurs positions."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1, a2 = monde.inscrire(depart, cat), monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)  # a1 en A, a2 en B (tri déterministe par id)
+
+    # a1 déposé sur la case de a2 (B) → permutation des positions sur la même cible.
+    plan = service.deplacer(monde.tournoi_id, depart, monde.inscription(a1), 1, "B")
+
+    positions = {p.archer_id: p.position for cible in plan.cibles for p in cible.placements}
+    assert positions[a1] == "B"
+    assert positions[a2] == "A"
+
+
+def test_cible_disparue_du_gabarit_retombe_en_reserve() -> None:
+    """Revue C1/D « archers fantômes » : réduire le gabarit après matérialisation renvoie l'archer
+    d'une cible disparue **en réserve**, jamais perdu (ligne rouge « aucun archer perdu »)."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1, a2 = monde.inscrire(depart, cat), monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    service.deplacer(monde.tournoi_id, depart, monde.inscription(a2), 2, "A")  # a2 sur la cible 2
+    # La salle est reconfigurée à 1 cible : la cible 2 disparaît du gabarit courant.
+    monde.gabarits.ajouter(GabaritSalle(nom="Salle", capacites=(4,), tournoi_id=monde.tournoi_id))
+
+    plan = service.plan_de_cibles(monde.tournoi_id, depart)
+
+    places = _archers_places(plan.cibles)
+    reserve = {conflit.archer_id for conflit in plan.conflits}
+    assert a1 in places
+    assert a2 not in places
+    assert a2 in reserve  # retombé en réserve, pas disparu en silence

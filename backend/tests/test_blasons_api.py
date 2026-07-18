@@ -152,7 +152,7 @@ def test_supprimer_blason_reference_409(
 
         client.put(
             f"/api/v1/categories/{categorie['id']}",
-            json={"libelle": "Senior H", "blason_id": None},
+            json={"libelle": "Senior H", "blason_id": None, "hauteur_cm": 130},
         )
         assert client.delete(f"/api/v1/blasons/{blason['id']}").status_code == 204
 

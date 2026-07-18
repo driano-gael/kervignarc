@@ -13,11 +13,14 @@ import { fetchJson } from '../../shared/api/client'
 // Vocabulaire **fermé**, miroir de l'enum `RaisonConflit` du domaine.
 export type RaisonConflit = 'sans_blason' | 'non_place' | 'en_reserve'
 
-// Un archer posé sur une cible : sa position (lettre « A »…« D ») et le blason sur lequel il tire.
+// Un archer posé sur une cible : sa position (lettre « A »…« D »), le blason sur lequel il tire, et
+// son `inscription_id` — la cible du `PUT` de déplacement (l'archer sur *ce* départ). Le serveur
+// l'expose directement pour éviter au client de reconstituer la correspondance archer → inscription.
 export interface Placement {
   position: string
   archer_id: number
   blason_id: number
+  inscription_id: number
 }
 
 // Une cible du plan : son rang (`index`), son plafond d'archers (`capacite`) et les archers posés
@@ -28,10 +31,12 @@ export interface CiblePlacee {
   placements: Placement[]
 }
 
-// Un archer que le placement n'a pas pu poser (il est **dans la réserve**), et pourquoi.
+// Un archer que le placement n'a pas pu poser (il est **dans la réserve**), et pourquoi. Porte aussi
+// son `inscription_id` : pour le reposer par glisser-déposer depuis la réserve.
 export interface Conflit {
   archer_id: number
   raison: RaisonConflit
+  inscription_id: number
 }
 
 export interface PlanDeCibles {

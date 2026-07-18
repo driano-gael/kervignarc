@@ -31,9 +31,9 @@ export interface NouvelleCategorie {
   ages?: TrancheAge[]
   sexe?: SexeCategorie | null
   blason_id?: number | null
-  // Le front l'envoie **toujours** (DETTE-009) : le PUT d'édition omettant ce champ laisserait le
-  // serveur conserver la valeur existante, mais on la transmet explicitement pour lever la dette et
-  // éviter toute dérive silencieuse (cf. commentaire du DTO backend `ModifierCategorieRequete`).
+  // Le front l'envoie **toujours** : à l'édition, `hauteur_cm` est désormais **obligatoire**
+  // (DETTE-009 résorbée — le serveur répond 400 si omis) ; à la création, il a un défaut serveur
+  // (130) mais on le transmet aussi, par cohérence. `?` car le type est partagé création/édition.
   hauteur_cm?: number
 }
 

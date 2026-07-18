@@ -12,13 +12,7 @@ import { useArchers } from '../archers/hooks'
 import type { Archer } from '../competition/api'
 import { useDeparts } from '../departs/hooks'
 import type { CiblePlacee, Conflit, Destination, PlanDeCibles, RaisonConflit } from './api'
-import {
-  useDeplacer,
-  useInscriptionParArcher,
-  usePlacerRestants,
-  usePlanDeCibles,
-  useRegenerer,
-} from './hooks'
+import { useDeplacer, usePlacerRestants, usePlanDeCibles, useRegenerer } from './hooks'
 
 // Les positions d'une cible sont des lettres ; une cible de capacité N expose les N premières.
 const POSITIONS = ['A', 'B', 'C', 'D']
@@ -101,17 +95,9 @@ function PlanCharge({
   departId: number
   plan: PlanDeCibles
 }) {
-  // Noms des archers (une requête, partagée) ; la correspondance archer → inscription se
-  // reconstitue par archer présent dans le plan (faute d'endpoint par départ — cf. rapport d'US).
+  // Noms des archers (une requête, partagée). L'`inscription_id` — cible du déplacement — vient
+  // directement du plan (chaque placement et chaque conflit le porte), rien à reconstituer.
   const archers = useArchers(tournoiId)
-  const archerIds = useMemo(() => {
-    const ids = new Set<number>()
-    for (const cible of plan.cibles) for (const p of cible.placements) ids.add(p.archer_id)
-    for (const conflit of plan.conflits) ids.add(conflit.archer_id)
-    return [...ids]
-  }, [plan])
-  const inscriptionParArcher = useInscriptionParArcher(departId, archerIds)
-
   const nomParArcher = useMemo(() => {
     const map = new Map<number, string>()
     for (const archer of archers.data ?? []) map.set(archer.id, nomComplet(archer))
@@ -135,15 +121,19 @@ function PlanCharge({
     setInscriptionGlissee(null)
   }
 
-  // « Vide » = aucune cible remplie : le plan n'a jamais été généré (E03US004 : la lecture ne
-  // génère pas). On propose alors « Générer », sinon « Annuler les modifications » (même endpoint,
+  // « Vide » = aucune cible remplie. On l'interprète comme « plan jamais généré » (la lecture ne
+  // génère pas, E03US004) → bouton « Générer » ; sinon « Annuler les modifications » (même endpoint,
   // mais l'annulation **écrase** les ajustements → confirmation).
+  // Limite connue (revue D) : un plan **vidé à la main** (tous les archers en réserve) est
+  // indiscernable d'un plan jamais généré (aucune affectation persistée dans les deux cas), donc
+  // « Générer » y régénère sans confirmation. Effet **borné et réversible** (auto déterministe), on
+  // l'assume plutôt que de persister un drapeau « généré ».
   const planVide = plan.cibles.every((cible) => cible.placements.length === 0)
   const planPret = plan.conflits.length === 0 && !planVide
 
-  const jeton = (archerId: number) => ({
+  const jeton = (archerId: number, inscriptionId: number): Jeton => ({
     nom: nomParArcher.get(archerId) ?? `Archer #${archerId}`,
-    inscriptionId: inscriptionParArcher.get(archerId),
+    inscriptionId,
   })
 
   return (
@@ -234,7 +224,7 @@ function PlanCharge({
   )
 }
 
-type Jeton = { nom: string; inscriptionId: number | undefined }
+type Jeton = { nom: string; inscriptionId: number }
 
 function Cible({
   cible,
@@ -245,7 +235,7 @@ function Cible({
   onDeposer,
 }: {
   cible: CiblePlacee
-  jeton: (archerId: number) => Jeton
+  jeton: (archerId: number, inscriptionId: number) => Jeton
   survol: string | null
   setSurvol: (cle: string | null) => void
   onGlisser: (inscriptionId: number) => void
@@ -269,7 +259,10 @@ function Cible({
               onDeposer={() => onDeposer({ cible_index: cible.index, position })}
             >
               {place ? (
-                <JetonArcher jeton={jeton(place.archer_id)} onGlisser={onGlisser} />
+                <JetonArcher
+                  jeton={jeton(place.archer_id, place.inscription_id)}
+                  onGlisser={onGlisser}
+                />
               ) : (
                 <span className="case__libre">{position}</span>
               )}
@@ -322,19 +315,12 @@ function JetonArcher({
   jeton: Jeton
   onGlisser: (inscriptionId: number) => void
 }) {
-  // Sans inscription connue (correspondance encore en chargement), le jeton n'est pas déplaçable :
-  // le PUT porte l'`inscription_id`, on ne devine pas.
-  const deplacable = jeton.inscriptionId !== undefined
   return (
     <span
-      className={`jeton${deplacable ? '' : ' jeton--fige'}`}
-      draggable={deplacable}
-      title={deplacable ? 'Glisser pour déplacer' : 'Inscription introuvable — non déplaçable'}
+      className="jeton"
+      draggable
+      title="Glisser pour déplacer"
       onDragStart={(e) => {
-        if (jeton.inscriptionId === undefined) {
-          e.preventDefault()
-          return
-        }
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('text/plain', String(jeton.inscriptionId))
         onGlisser(jeton.inscriptionId)
@@ -354,7 +340,7 @@ function Reserve({
   onDeposer,
 }: {
   conflits: Conflit[]
-  jeton: (archerId: number) => Jeton
+  jeton: (archerId: number, inscriptionId: number) => Jeton
   survole: boolean
   setSurvol: (cle: string | null) => void
   onGlisser: (inscriptionId: number) => void
@@ -381,7 +367,10 @@ function Reserve({
         <ul className="reserve__liste">
           {conflits.map((conflit) => (
             <li key={conflit.archer_id} className="reserve__item">
-              <JetonArcher jeton={jeton(conflit.archer_id)} onGlisser={onGlisser} />
+              <JetonArcher
+                jeton={jeton(conflit.archer_id, conflit.inscription_id)}
+                onGlisser={onGlisser}
+              />
               <span
                 className={`reserve__raison${RAISON_ANOMALIE[conflit.raison] ? ' reserve__raison--anomalie' : ''}`}
               >

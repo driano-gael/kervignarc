@@ -142,14 +142,14 @@ def test_avant_generation_les_inscrits_sont_en_reserve(
         _appliquer_gabarit(client, tournoi_id, nb_cibles=2)
         categorie_id = _creer_categorie(client, tournoi_id)
         depart_id = _creer_depart(client, tournoi_id)
-        a1, _ = _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Guillaume")
+        a1, i1 = _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Guillaume")
 
         reponse = client.get(f"/api/v1/tournois/{tournoi_id}/departs/{depart_id}/plan-de-cibles")
 
     assert reponse.status_code == 200, reponse.text
     plan = reponse.json()
     assert all(cible["placements"] == [] for cible in plan["cibles"])
-    assert plan["conflits"] == [{"archer_id": a1, "raison": "en_reserve"}]
+    assert plan["conflits"] == [{"archer_id": a1, "raison": "en_reserve", "inscription_id": i1}]
 
 
 def test_plan_de_cibles_expose_les_conflits(
@@ -164,12 +164,12 @@ def test_plan_de_cibles_expose_les_conflits(
         depart_id = _creer_depart(client, tournoi_id)
         _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Guillaume")
         _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Walter")
-        a3, _ = _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Wilhelm")
+        a3, i3 = _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Wilhelm")
 
         plan = _regenerer(client, tournoi_id, depart_id)
 
     conflits = plan["conflits"]
-    assert conflits == [{"archer_id": a3, "raison": "non_place"}]
+    assert conflits == [{"archer_id": a3, "raison": "non_place", "inscription_id": i3}]
 
 
 def test_deplacer_un_archer_vers_une_case_libre(
@@ -222,7 +222,7 @@ def test_mettre_en_reserve_via_cible_null(
     assert reponse.status_code == 200, reponse.text
     plan = reponse.json()
     assert all(cible["placements"] == [] for cible in plan["cibles"])
-    assert plan["conflits"] == [{"archer_id": a1, "raison": "en_reserve"}]
+    assert plan["conflits"] == [{"archer_id": a1, "raison": "en_reserve", "inscription_id": i1}]
 
 
 def test_deplacement_invalide_renvoie_409(

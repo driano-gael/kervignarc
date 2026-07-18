@@ -716,11 +716,6 @@ button:disabled {
   cursor: grabbing;
 }
 
-.jeton--fige {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
 /* Réserve (banc) : zone de dépôt pour mettre un archer à l'écart. */
 .reserve {
   margin-top: 8px;

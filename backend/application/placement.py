@@ -317,12 +317,23 @@ class ServicePlacement:
     def _construire_plan(
         self, contexte: _Contexte, affectations: list[Affectation]
     ) -> PlanDeCibles:
-        """Assemble le `PlanDeCibles` depuis les affectations : cibles peuplées + réserve."""
+        """Assemble le `PlanDeCibles` depuis les affectations : cibles peuplées + réserve.
+
+        Une affectation dont la cible **ou la position** n'est plus dans le gabarit courant (salle
+        réduite après matérialisation — le `ON DELETE CASCADE` ne couvre pas ce cas) retombe en
+        **réserve** au lieu de disparaître : elle n'est ni marquée `placees` ni rendue, donc
+        `_reserve` la reprend. Sans ce garde, l'archer serait perdu en silence (ni cible ni réserve)
+        et la bannière « Plan prêt » mentirait — ligne rouge du CA « aucun archer perdu ».
+        """
+        cibles_par_index = {cible.index: cible for cible in contexte.gabarit.cibles}
         placements_par_cible: dict[int, list[Placement]] = {}
         placees: set[InscriptionId] = set()
         for affectation in affectations:
             if not contexte.est_placable(affectation.inscription_id):
                 continue  # affectation orpheline / archer devenu non plaçable → réserve
+            cible = cibles_par_index.get(affectation.cible_index)
+            if cible is None or affectation.position not in cible.positions:
+                continue  # cible/position disparue du gabarit → réserve (jamais perdu en silence)
             archer_id = contexte.archer_par_inscription[affectation.inscription_id]
             placees.add(affectation.inscription_id)
             placements_par_cible.setdefault(affectation.cible_index, []).append(
@@ -330,6 +341,7 @@ class ServicePlacement:
                     position=affectation.position,
                     archer_id=archer_id,
                     blason_id=contexte.donnees[archer_id].blason_id,
+                    inscription_id=affectation.inscription_id,
                 )
             )
         cibles = tuple(
@@ -364,7 +376,13 @@ class ServicePlacement:
                 continue
             archer_id = inscription.archer_id
             if inscription.id in contexte.sans_blason:
-                conflits.append(Conflit(archer_id=archer_id, raison=RaisonConflit.SANS_BLASON))
+                conflits.append(
+                    Conflit(
+                        archer_id=archer_id,
+                        raison=RaisonConflit.SANS_BLASON,
+                        inscription_id=inscription.id,
+                    )
+                )
                 continue
             candidat = contexte.donnees[archer_id]
             placable = any(
@@ -372,7 +390,9 @@ class ServicePlacement:
                 for index, occupants in occupants_par_index.items()
             )
             raison = RaisonConflit.EN_RESERVE if placable else RaisonConflit.NON_PLACE
-            conflits.append(Conflit(archer_id=archer_id, raison=raison))
+            conflits.append(
+                Conflit(archer_id=archer_id, raison=raison, inscription_id=inscription.id)
+            )
         return tuple(conflits)
 
     def _charger(self, tournoi_id: TournoiId, depart_id: DepartId) -> _Contexte:

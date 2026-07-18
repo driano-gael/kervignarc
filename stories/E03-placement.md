@@ -44,7 +44,8 @@ disposer d'un plan exploitable sans saisie manuelle.
   technique tranché le 17/07/2026 : **domaine + service + endpoint de lecture** (recalcul à la
   demande) ; la **persistance** du plan et l'**ajustement** manuel sont E03US004 — d'où la hauteur
   laissée **facultative** au PUT catégorie ([DETTE-009](../docs/dette.md), le front est hors
-  périmètre).
+  périmètre). *(DETTE-009 **résorbée** par E03US004 : la hauteur est désormais **obligatoire** au PUT
+  — ne pas dériver de cette phrase un CA périmé.)*
 - **Absorbe** : ex-E03US001 à 003, E03US008. **Dépend de** : E01US007, E02US004 · **Jalon** : J1
 
 ### E03US004 — Ajuster le placement (glisser-déposer)

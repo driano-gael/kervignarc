@@ -24,12 +24,26 @@ from infrastructure.db import WriteQueue
 router = APIRouter(prefix="/api/v1", tags=["placement"])
 
 
+def _inscription(inscription_id: int | None) -> int:
+    """Garantit l'inscription d'un placement/conflit **exposé** : le service la renseigne toujours.
+
+    Le moteur pur laisse `inscription_id` à `None` (il ignore l'inscription) ; un plan atteint
+    l'API **uniquement** via le service, qui la fixe (E03US004). L'assertion documente cet invariant
+    et satisfait le typage strict."""
+    assert inscription_id is not None, "Un placement exposé porte toujours son inscription."
+    return inscription_id
+
+
 class PlacementReponse(BaseModel):
-    """Un archer posé sur une cible : sa position (lettre) et le blason sur lequel il tire."""
+    """Un archer posé sur une cible : position, blason, et son **inscription** (cible d'ajustement).
+
+    `inscription_id` évite au client de reconstituer la correspondance archer → inscription : c'est
+    lui qu'il renvoie au `PUT .../inscriptions/{id}` pour déplacer l'archer."""
 
     position: str
     archer_id: int
     blason_id: int
+    inscription_id: int
 
 
 class CiblePlaceeReponse(BaseModel):
@@ -45,21 +59,34 @@ class CiblePlaceeReponse(BaseModel):
             index=cible.index,
             capacite=cible.capacite,
             placements=[
-                PlacementReponse(position=p.position, archer_id=p.archer_id, blason_id=p.blason_id)
+                PlacementReponse(
+                    position=p.position,
+                    archer_id=p.archer_id,
+                    blason_id=p.blason_id,
+                    inscription_id=_inscription(p.inscription_id),
+                )
                 for p in cible.placements
             ],
         )
 
 
 class ConflitReponse(BaseModel):
-    """Un archer que le placement n'a pas pu poser, et pourquoi (`non_place` / `sans_blason`)."""
+    """Un archer **en réserve** (non posé), et pourquoi : `non_place`/`sans_blason`/`en_reserve`.
+
+    `inscription_id` : pour reposer l'archer depuis la réserve (drag) sans reconstituer la
+    correspondance archer → inscription côté client."""
 
     archer_id: int
     raison: RaisonConflit
+    inscription_id: int
 
     @staticmethod
     def de_conflit(conflit: Conflit) -> ConflitReponse:
-        return ConflitReponse(archer_id=conflit.archer_id, raison=conflit.raison)
+        return ConflitReponse(
+            archer_id=conflit.archer_id,
+            raison=conflit.raison,
+            inscription_id=_inscription(conflit.inscription_id),
+        )
 
 
 class PlanDeCiblesReponse(BaseModel):

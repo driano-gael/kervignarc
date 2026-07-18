@@ -47,6 +47,7 @@
 |---|---|---|---|
 | [DETTE-005](#dette-005--conversion-euroscentimes-sans-aucun-test) | technique | `frontend/src/features/competition/format.ts` | **E00US014** : runner `vitest` installé + script `npm test`, câblé à la CI bloquante (E00US003) ; `format.test.ts` couvre la conversion euros↔centimes (aller-retour, sens de complétion `padEnd`/`padStart`, rejets). Marqueur `# DETTE-005` retiré du code. |
 | [DETTE-002](#dette-002--hauteur-de-blason-non-modélisée) | conception | `backend/domain/categorie.py`, `docs/modele-de-donnees.md` | **E03US001** ([ADR-0022](adr/0022-hauteur-de-centre-sur-la-categorie.md)) : la hauteur du centre de l'or vit sur `Categorie` (`hauteur_cm`, 130 par défaut, 110 pour les U11) ; le placement en fait une **contrainte de 1er rang** — une butte, une seule hauteur (test « U11 + adultes → séparés »). Migration `0020` (backfill 110 si `ages` contient U11). |
+| DETTE-009 | conception | `backend/api/v1/categories.py` (`ModifierCategorieRequete`) | **E03US004** : le formulaire catégorie porte la hauteur du centre (UI de placement), donc `hauteur_cm` est rendue **obligatoire** au PUT (DTO + `ServiceCategories.modifier` en keyword-only) ; le PUT redevient **intégralement total** ([ADR-0020](adr/0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md)), l'entorse « champ partiel » disparaît. Test de non-régression HTTP **inversé** (omission → 400). |
 
 ## Détail
 
@@ -112,6 +113,12 @@ E01US006 ajoute la FK latérale `categorie.blason_id`. À noter : la suppression
 encore référencé par une catégorie **n'est pas** de la dette — elle est **tranchée** et traitée par
 le service (`BlasonReference` → 409). Seule reste ouverte la suppression du **tournoi** englobant,
 qui relève de cette même politique non arbitrée.
+
+E03US004 ajoute la table `placement` avec **deux FK en `ON DELETE CASCADE`** (`inscription_id`,
+`depart_id`) : **hors** de cette dette. C'est de la donnée **dérivée, reconstructible et feuille**, et
+sa disparition en cascade est **assumée et argumentée**
+([ADR-0024](adr/0024-plan-de-cibles-materialise-ajustable.md)), pas un raccourci non tranché — le
+futur résolveur de DETTE-001 n'a **rien à faire** sur `placement`, elle s'auto-cascade déjà.
 
 **Résorption attendue.** Une US dédiée qui (a) tranche le comportement, (b) l'applique de façon
 homogène à **toute la descendance** — `score` et le lien `categorie → blason` compris — via une
@@ -227,7 +234,7 @@ mêmes classes CSS, même `role="alert"`.
 
 **Conséquence.** Le rendu des erreurs n'a pas de point unique. Le CDC design impose que l'**alerte
 soit ambre** et que les couleurs sémantiques appartiennent au produit (`DV-03`) : appliquer ce token
-demandera dix modifications identiques, et il suffit d'en manquer une pour qu'un écran mente sur la
+demandera onze modifications identiques, et il suffit d'en manquer une pour qu'un écran mente sur la
 gravité de ce qu'il affiche. Or l'erreur est exactement ce que l'utilisateur regarde quand la
 journée déraille.
 
@@ -238,10 +245,12 @@ journée déraille.
 > `archers/Archers.tsx` (« Enregistrer quand même », « Changer quand même de catégorie »,
 > « Supprimer définitivement, avec ses résultats »), de la même famille — le dernier en `--danger`,
 > parce que sa confirmation **détruit** ([ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)).
+> E03US004 en ajoute un **cinquième** : l'alerte de refus de déplacement `placement__alerte`
+> (`placement/Placement.tsx`, `role="alert"` en `var(--warn)`, refus `409` non bloquant).
 > **E00US013 ne les trouvera pas** en cherchant `MessageErreur` : ce ne sont pas des copies. Ils sont
-> désormais **quatre**, dans deux features, et se ressemblent assez pour mériter le même traitement
+> désormais **cinq**, dans trois features, et se ressemblent assez pour mériter le même traitement
 > que les copies (soit un `MessageErreur` acceptant des enfants, soit un composant frère assumé) —
-> sans quoi le token ambre s'appliquera à dix endroits sur quatorze.
+> sans quoi le token ambre s'appliquera à onze endroits sur seize.
 
 **Rythme d'aggravation.** Une copie par feature créée : c'est mécanique, et E02US001 le confirme
 (9ᵉ). Chaque US de configuration qui ouvre un écran en ajoutera une tant qu'E00US013 n'est pas

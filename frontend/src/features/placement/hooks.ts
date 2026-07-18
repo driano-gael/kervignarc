@@ -2,14 +2,11 @@
 //
 // Le plan de cibles d'un départ est de l'état **serveur** (lecture) ; régénérer, déplacer et placer
 // les restants sont des **mutations** qui invalident ce plan (rafraîchissement immédiat, en plus de
-// la diffusion temps réel post-commit côté serveur, qui invalide tout le cache).
-//
-// Particularité de cette US : le drag cible une **inscription**, mais le plan ne porte que des
-// `archer_id`. Le backend n'expose pas la liste des inscriptions d'un départ ; on la reconstitue en
-// interrogeant, pour chaque archer présent dans le plan, ses inscriptions (`useInscriptionParArcher`).
+// la diffusion temps réel post-commit côté serveur, qui invalide tout le cache). Le drag cible une
+// **inscription** : le plan porte directement l'`inscription_id` de chaque archer (posé ou en
+// réserve), aucune correspondance à reconstituer côté client.
 
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getInscriptions } from '../inscriptions/api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   type Destination,
   deplacerInscription,
@@ -59,29 +56,4 @@ export function usePlacerRestants(tournoiId: number, departId: number) {
     mutationFn: () => placerRestants(tournoiId, departId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: clePlan(tournoiId, departId) }),
   })
-}
-
-// Reconstitue la correspondance `archer_id → inscription_id` **pour ce départ**. Faute d'endpoint
-// listant les inscriptions d'un départ (manque backend, cf. rapport d'US), on interroge en
-// parallèle les inscriptions de chaque archer du plan, puis on retient celle du départ courant. La
-// clé de requête est partagée avec la feature « inscriptions » (cache mutualisé, invalidé de même).
-export function useInscriptionParArcher(
-  departId: number,
-  archerIds: number[],
-): Map<number, number> {
-  const resultats = useQueries({
-    queries: archerIds.map((archerId) => ({
-      queryKey: ['inscriptions', archerId] as const,
-      queryFn: () => getInscriptions(archerId),
-    })),
-  })
-
-  const map = new Map<number, number>()
-  resultats.forEach((resultat, i) => {
-    const archerId = archerIds[i]
-    if (archerId === undefined) return
-    const inscription = resultat.data?.find((ins) => ins.depart_id === departId)
-    if (inscription) map.set(archerId, inscription.id)
-  })
-  return map
 }

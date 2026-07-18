@@ -97,11 +97,18 @@ class RaisonConflit(str, Enum):
 
 @dataclass(frozen=True)
 class Placement:
-    """Un archer posé sur une cible : sa position (lettre) et le blason sur lequel il tire."""
+    """Un archer posé sur une cible : sa position (lettre) et le blason sur lequel il tire.
+
+    `inscription_id` accompagne l'archer pour que la couche API expose **l'inscription** (l'archer
+    sur *ce* départ), cible d'un ajustement (`PUT .../inscriptions/{id}`), sans que le client ait à
+    reconstituer la correspondance archer → inscription. Le moteur pur (`placer`/`placer_restants`)
+    ne connaît pas les inscriptions : il laisse `None` ; c'est le **service** qui la renseigne en
+    construisant le plan persisté (E03US004)."""
 
     position: str  # "A".."D"
     archer_id: ArcherId
     blason_id: BlasonId
+    inscription_id: InscriptionId | None = None
 
 
 @dataclass(frozen=True)
@@ -118,10 +125,15 @@ class CiblePlacee:
 
 @dataclass(frozen=True)
 class Conflit:
-    """Un archer que le placement n'a pas pu poser, et pourquoi."""
+    """Un archer que le placement n'a pas pu poser (il est **en réserve**), et pourquoi.
+
+    `inscription_id` : même rôle que sur `Placement` — l'API expose l'inscription pour que le client
+    puisse reposer l'archer (drag depuis la réserve) sans reconstituer la correspondance. Le moteur
+    pur laisse `None` ; le service la renseigne."""
 
     archer_id: ArcherId
     raison: RaisonConflit
+    inscription_id: InscriptionId | None = None
 
 
 @dataclass(frozen=True)
