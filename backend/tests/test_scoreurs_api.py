@@ -56,6 +56,18 @@ def _creer_scoreur(client: TestClient, tournoi_id: int, nom: str) -> dict[str, o
     return resultat
 
 
+def test_alphabet_code_exclut_les_confondables() -> None:
+    """CA : un code lisible sur papier — l'alphabet **exclut** les caractères confondables.
+
+    Assertion dérivée du **CA**, pas de la constante : elle attraperait une régression qui
+    réintroduirait `0`/`O`/`1`/`I` dans `ALPHABET_CODE` (le test d'appartenance `caractère in
+    ALPHABET_CODE`, lui, resterait vert). 6 caractères, alphabet en majuscules.
+    """
+    assert set(ALPHABET_CODE).isdisjoint({"I", "O", "0", "1"})
+    assert ALPHABET_CODE.isupper()
+    assert LONGUEUR_CODE >= 4
+
+
 def test_creer_scoreur_genere_un_code(
     app_scoreurs: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:

@@ -68,6 +68,25 @@ class ConnexionScoreurRequete(BaseModel):
     code: str = Field(min_length=1)
 
 
+class ScoreurConnecteReponse(BaseModel):
+    """Identité renvoyée à la connexion : de quoi saluer le scoreur et savoir de quel tournoi.
+
+    **Sans le `code`**, à la différence de `ScoreurReponse` (réservé à l'admin) : la connexion est
+    un endpoint **public** ; ré-émettre le code — même celui que l'appelant vient de fournir —
+    l'exposerait sans raison. Le front n'en a pas besoin (il ne lit que nom/tournoi).
+    """
+
+    id: int
+    tournoi_id: int
+    nom: str
+
+    @staticmethod
+    def de_agregat(scoreur: Scoreur) -> ScoreurConnecteReponse:
+        """Traduit un agrégat de domaine (persisté) en DTO de session, **code omis**."""
+        assert scoreur.id is not None, "Un scoreur persisté a toujours un identifiant."
+        return ScoreurConnecteReponse(id=scoreur.id, tournoi_id=scoreur.tournoi_id, nom=scoreur.nom)
+
+
 class SessionScoreurReponse(BaseModel):
     """Réponse de connexion : le **jeton** de session et le scoreur identifié (nom, tournoi).
 
@@ -76,7 +95,7 @@ class SessionScoreurReponse(BaseModel):
     """
 
     jeton: str
-    scoreur: ScoreurReponse
+    scoreur: ScoreurConnecteReponse
 
 
 # --- Définition (admin), imbriquée sous le tournoi ---
@@ -142,7 +161,7 @@ async def connexion_scoreur(
     service: ServiceScoreurs = request.app.state.service_scoreurs
     connexion = await run_in_threadpool(service.connexion, requete.code)
     return SessionScoreurReponse(
-        jeton=connexion.jeton, scoreur=ScoreurReponse.de_agregat(connexion.scoreur)
+        jeton=connexion.jeton, scoreur=ScoreurConnecteReponse.de_agregat(connexion.scoreur)
     )
 
 

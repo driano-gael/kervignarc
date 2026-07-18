@@ -71,6 +71,9 @@ def test_connexion_par_code_ouvre_une_session(
         assert isinstance(corps["jeton"], str) and corps["jeton"]
         assert corps["scoreur"]["nom"] == "Camille Dubois"
         assert corps["scoreur"]["tournoi_id"] == scoreur["tournoi_id"]
+        # La connexion est publique : elle ne ré-émet **pas** le code (secret), même celui que
+        # l'appelant vient de fournir (moindre exposition — ADR-0025).
+        assert "code" not in corps["scoreur"]
 
 
 def test_connexion_normalise_la_saisie(

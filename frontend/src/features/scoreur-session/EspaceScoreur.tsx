@@ -83,6 +83,8 @@ function SessionOuverte({ scoreur }: { scoreur: ScoreurConnecte }) {
   )
 }
 
+// DETTE-004 (docs/dette.md) : énième copie conforme de ce composant, un par feature. À extraire dans
+// `shared/` — E00US013. Non factorisée ici : le faire toucherait les autres features, hors périmètre.
 function MessageErreur({ erreur }: { erreur: Error | null }) {
   if (erreur === null) return null
   const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'

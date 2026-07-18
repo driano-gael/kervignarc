@@ -12,12 +12,18 @@ export interface SessionScoreur {
 }
 
 export function connexionScoreur(code: string): Promise<SessionScoreur> {
-  return fetchJson<SessionScoreur>('/api/v1/scoreurs/session', {
-    method: 'POST',
-    body: JSON.stringify({ code }),
-  })
+  // Portée `'aucune'` : la connexion par code est un login — aucun jeton joint (surtout pas le
+  // Bearer admin, qui, si un admin est connecté dans le même navigateur, se ferait purger par un
+  // code scoreur erroné), et un refus (401 `code_scoreur_inconnu`) n'expire aucune session.
+  return fetchJson<SessionScoreur>(
+    '/api/v1/scoreurs/session',
+    { method: 'POST', body: JSON.stringify({ code }) },
+    'aucune',
+  )
 }
 
 export function deconnexionScoreur(): Promise<void> {
-  return fetchJson<void>('/api/v1/scoreurs/session/deconnexion', { method: 'POST' })
+  // Portée `'scoreur'` : action du scoreur (en-tête `X-Jeton-Scoreur`). Un 401 ne purge que la
+  // session scoreur, jamais celle de l'admin.
+  return fetchJson<void>('/api/v1/scoreurs/session/deconnexion', { method: 'POST' }, 'scoreur')
 }
