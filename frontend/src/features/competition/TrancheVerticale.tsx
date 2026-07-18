@@ -22,6 +22,7 @@ import { useClubs } from '../clubs/hooks'
 import { Departs } from '../departs/Departs'
 import { Gabarits } from '../gabarits/Gabarits'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
+import { Placement } from '../placement/Placement'
 import { ErreurApi } from '../../shared/api/client'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import type { StatutTournoi, Tournoi, TypeTournoi } from './api'
@@ -379,6 +380,10 @@ function Competition({ tournoi, onRetour }: { tournoi: Tournoi; onRetour: () => 
       {/* Juste après le formulaire d'inscription : on inscrit, puis on corrige — et c'est là que
           le « club inconnu » signalé à la ligne du dessus devient réparable (E02US003). */}
       {estAdmin && <Archers tournoiId={tournoi.id} />}
+
+      {/* Placement sur les cibles (E03US004) : une fois les archers inscrits sur des départs, on
+          ajuste le plan de cibles créneau par créneau, au glisser-déposer. */}
+      {estAdmin && <Placement tournoiId={tournoi.id} />}
 
       <h3 className="carte__soustitre">Classement en direct</h3>
       {classement.isPending && <p className="carte__etat">Chargement…</p>}
