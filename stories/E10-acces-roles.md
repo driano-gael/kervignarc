@@ -40,6 +40,26 @@
 - **CA — session (ex-US003)** : saisie du code personnel → **session nominative** ; jeton persistant côté navigateur (survit à la fermeture de l'onglet) ; le scoreur **voit toutes les cibles du tournoi** et peut valider n'importe laquelle — **aucun rattachement, aucune prise en charge** (`D-12`) ; **chaque validation enregistre le nom du scoreur** (alimente E10US005) ; deux scoreurs peuvent ouvrir la même cible : le **live** la retire de la file dès qu'elle est validée (`D-12`) ; élargit l'autorisation des endpoints de **validation** au-delà de l'admin (E10US001).
 - **CA — gestion des scoreurs (ex-US008)** : l'admin **crée/modifie/supprime** les scoreurs d'un tournoi (nom + **code court** généré) ; **redéfinissable à tout moment**, y compris tournoi **en cours** (`D-14`, `D-15`) — un scoreur qui ne vient pas, ça arrive ; les codes sont **imprimables** (un papier par scoreur, cf. EPIC-09) ; supprimer un scoreur **invalide sa session** mais **conserve la trace** de ses validations passées (E10US005).
 - **Notes** : ~~« session par **code de cible** », v0.1~~ → **réécrite le 14/07/2026** ([CDC UX](../cahier-des-charges-ux.md) §5 et §7.3, `D-11`/`D-12`/`D-13`/`D-14`/`D-15`) : le scoreur est **itinérant**, il n'est pas rattaché à une cible — **le code de cible sert au *poste*** (E04US001), **pas à lui**. Il **valide** ; il ne saisit pas (la saisie est le geste du marqueur sur le poste de cible, E10US007). **Rend E10US004 caduque.** Même patron de jeton que `sessionAdminStore` (E10US002) → `sessionScoreurStore`. Cf. E04US002 (validation = scoreur seul) et le **grain de validation** = politique de phase (`config.validation`, `D-11`, ADR-0011). Côté définition des scoreurs : **3 à 4 scoreurs pour ~30 cibles** — **3 ou 4 codes à distribuer, pas 30** (le poste de cible, lui, est ouvert : E10US007). Module de **préparation** (« tout ce qui s'identifie se prépare à l'avance », CDC UX `P-6`), mais **accessible en permanence** (`P-3`).
+- **Arbitrages tranchés le 18/07/2026** (reversés ici — règle 9 ; pour qu'E04US002/E10US005 n'en
+  dérivent pas des tests faux) :
+  - **`Scoreur` = entité domaine** tournoi-scoped (donnée métier persistée, patron `Depart`) — pas un
+    concern technique comme l'admin (un secret en `.env`). Table `scoreur`, migration `0023`.
+  - **Code généré serveur, unique dans toute la base** (pas seulement par tournoi) : le login est
+    `POST /api/v1/scoreurs/session {code}` **sans contexte tournoi**, le code doit donc désigner un
+    scoreur sans ambiguïté. Alphabet **sans caractères confondables** (ni `I O 0 1`), 6 caractères,
+    comparaison sur forme canonique (majuscules, `domain.scoreur.normaliser_code`). L'édition **fige**
+    le code (comme `Depart.numero`).
+  - **Session sans expiration** — le CA veut un jeton qui « survit à la fermeture de l'onglet » le
+    temps d'une journée, et l'admin (plus puissant) n'expire pas ; la note d'E10US002 (« l'expiration
+    relève d'E10US003 ») disait *où* on l'ajouterait, pas qu'on doit. Jeton **nominatif** en mémoire
+    (jeton → scoreur), persisté `localStorage` côté navigateur.
+  - **En-tête dédié `X-Jeton-Scoreur`**, orthogonal au `Authorization: Bearer` admin (deux modes
+    d'identité indépendants). La dépendance `exiger_scoreur` est prête ; **E04US002** protégera les
+    endpoints de **validation** en acceptant l'admin **ou** le scoreur (rien à élargir tant qu'ils
+    n'existent pas — d'où le CA « session » qui, ici, n'a **pas** encore de surface de validation).
+  - **Front, volet session : minimal** — login par code + confirmation nominative + déconnexion. La
+    surface de **validation** (voir/valider les cibles, file triée par ancienneté) est **E04US002 /
+    E12US001**, pas cette US. La **liste** des scoreurs (avec codes) est réservée à l'**admin**.
 - **Absorbe** : ex-E10US003, E10US008. **Dépend de** : E10US002, E01US001 · **Jalon** : J1
 
 ### E10US004 — ~~Habiliter un scoreur sur plusieurs cibles~~ · **caduque**
