@@ -19,6 +19,10 @@ POINTS_MIN = 0
 POINTS_MAX = 10
 
 
+# DETTE-011 : cet agrégat modélise **une flèche**, mais porte le nom `Score` (idem `ScoreId`,
+# `ScoreRepository`, `ScoreInvalide`). Le glossaire réserve pourtant `Fleche` au tir unique et
+# `score` au **total** de points — divergence code↔glossaire assumée du walking skeleton, à renommer
+# en `Fleche` **avant** que le vrai scoring d'E04/E05 (volées, cumul) ne réclame le nom `Score`.
 @dataclass(frozen=True)
 class Score:
     """Une flèche marquée par un archer. `id` vaut `None` tant qu'il n'est pas persisté."""
