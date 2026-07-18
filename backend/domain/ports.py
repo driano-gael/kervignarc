@@ -20,6 +20,7 @@ from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
 from domain.score import Score
+from domain.scoreur import Scoreur, ScoreurId
 from domain.tournoi import Tournoi, TournoiId
 
 
@@ -394,4 +395,51 @@ class PhaseRepository(Protocol):
 
     def enregistrer(self, phase: Phase) -> Phase:
         """Met à jour une phase déjà persistée (édition du barème) et la renvoie."""
+        ...
+
+
+class ScoreurRepository(Protocol):
+    """Port de persistance des scoreurs — personnes habilitées à valider (E10US003).
+
+    Entité **du tournoi** (comme `Depart`), d'où `par_tournoi`. Mais le `code` individuel est
+    **unique dans toute la base** (`par_code` n'a pas de `tournoi_id`) : un scoreur ouvre sa session
+    en tapant son seul code, sans désigner de tournoi — le code doit donc résoudre un scoreur sans
+    ambiguïté d'un tournoi à l'autre.
+    """
+
+    def ajouter(self, scoreur: Scoreur) -> Scoreur:
+        """Persiste un scoreur et le renvoie avec son identifiant attribué."""
+        ...
+
+    def par_id(self, scoreur_id: ScoreurId) -> Scoreur | None:
+        """Renvoie le scoreur d'identifiant donné, ou `None` s'il n'existe pas."""
+        ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Scoreur]:
+        """Renvoie tous les scoreurs d'un tournoi (liste éventuellement vide).
+
+        L'ordre n'est **pas** garanti par le port (détail de l'adapter) : un consommateur qui a
+        besoin d'un ordre précis le trie lui-même (`ServiceScoreurs.lister` classe par nom).
+        """
+        ...
+
+    def par_code(self, code: str) -> Scoreur | None:
+        """Renvoie le scoreur portant ce `code` (au sens de `domain.scoreur.normaliser_code`), ou
+        `None` — **tous tournois confondus**.
+
+        Sert à ouvrir une session (connexion par code) et à refuser un code déjà attribué à la
+        génération. La recherche est **globale** : le code est unique dans toute la base.
+        """
+        ...
+
+    def enregistrer(self, scoreur: Scoreur) -> Scoreur:
+        """Met à jour un scoreur déjà persisté (renommage ; le code est fixe) et le renvoie."""
+        ...
+
+    def supprimer(self, scoreur_id: ScoreurId) -> None:
+        """Supprime le scoreur d'identifiant donné (existence garantie par l'appelant).
+
+        **Feuille** : un scoreur n'a pas d'enfant en base (les validations tracées d'E10US005
+        porteront son **nom**, pas une FK — la trace survit à sa suppression). Aucune cascade.
+        """
         ...

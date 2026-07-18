@@ -22,17 +22,21 @@ export function getEtatAuth(): Promise<EtatAuth> {
 }
 
 export function configurerAdmin(identifiants: Identifiants): Promise<Jeton> {
-  return fetchJson<Jeton>('/api/v1/auth/configurer', {
-    method: 'POST',
-    body: JSON.stringify(identifiants),
-  })
+  // Portée `'aucune'` : un login ne joint aucun jeton de session existant et un refus (401) n'expire
+  // aucune session (il n'y en a pas encore) — il ne doit rien purger.
+  return fetchJson<Jeton>(
+    '/api/v1/auth/configurer',
+    { method: 'POST', body: JSON.stringify(identifiants) },
+    'aucune',
+  )
 }
 
 export function connexionAdmin(identifiants: Identifiants): Promise<Jeton> {
-  return fetchJson<Jeton>('/api/v1/auth/connexion', {
-    method: 'POST',
-    body: JSON.stringify(identifiants),
-  })
+  return fetchJson<Jeton>(
+    '/api/v1/auth/connexion',
+    { method: 'POST', body: JSON.stringify(identifiants) },
+    'aucune',
+  )
 }
 
 export function deconnexionAdmin(): Promise<void> {

@@ -411,6 +411,52 @@ button:disabled {
   font-size: 13px;
 }
 
+/* Définition des scoreurs (E10US003) — nom + code à distribuer. */
+.liste-scoreurs {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scoreur__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.scoreur__nom {
+  flex: 1 1 auto;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+/* Le code, en évidence : monospace et espacé pour être recopié sans erreur sur le papier. */
+.scoreur__code {
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
+  font-size: 15px;
+  letter-spacing: 0.15em;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-h);
+}
+
+.scoreur__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.scoreur__actions button {
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
 /* Écran d'administration des archers (E02US003) — liste, édition, désinscription. */
 .liste-archers {
   margin: 8px 0 0;

@@ -312,3 +312,25 @@ class AccesNonConfigure(ApplicationError):
     """Connexion demandée alors qu'aucun accès admin n'est encore défini (E10US002) → 409."""
 
     code = "acces_non_configure"
+
+
+class ScoreurIntrouvable(ApplicationError):
+    """Aucun scoreur ne correspond à l'identifiant dans ce tournoi (E10US003) → 404.
+
+    Couvre l'identifiant inconnu **et** le scoreur d'un **autre** tournoi : du point de vue du
+    tournoi de l'URL, un scoreur qui ne lui appartient pas n'existe pas davantage qu'un identifiant
+    inventé — même parti que `DepartIntrouvable`.
+    """
+
+    code = "scoreur_introuvable"
+
+
+class CodeScoreurInconnu(ApplicationError):
+    """Connexion scoreur refusée : aucun scoreur ne porte ce code (E10US003). Traduite en 401.
+
+    Même statut que `IdentifiantsInvalides` (un secret présenté ne correspond à rien) : le scoreur
+    est identifié par **la personne** (son code), l'échec est un défaut d'authentification, pas un
+    conflit d'état.
+    """
+
+    code = "code_scoreur_inconnu"

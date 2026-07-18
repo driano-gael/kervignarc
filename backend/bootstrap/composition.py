@@ -30,6 +30,8 @@ from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
 from api.v1.inscriptions import router as inscriptions_router
 from api.v1.placement import router as placement_router
+from api.v1.scoreurs import router as scoreurs_router
+from api.v1.scoreurs import session_router as scoreur_session_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
 from application.auth import ServiceAuth
@@ -43,6 +45,7 @@ from application.gabarits import ServiceGabarits
 from application.grain_validation import ServiceGrainValidation
 from application.inscriptions import ServiceInscriptions
 from application.placement import ServicePlacement
+from application.scoreurs import ServiceScoreurs
 from application.tournois import ServiceTournois
 from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
 from infrastructure.db import (
@@ -57,11 +60,13 @@ from infrastructure.db import (
     PhaseRepositorySQL,
     PlacementRepositorySQL,
     ScoreRepositorySQL,
+    ScoreurRepositorySQL,
     TournoiRepositorySQL,
     WriteQueue,
     default_database_url,
 )
 from infrastructure.realtime import Broadcaster, LiveEvent
+from infrastructure.scoreurs import ScoreurSessionStore, generer_code_scoreur
 
 
 def create_app(
@@ -135,6 +140,7 @@ def create_app(
     depart_repository = DepartRepositorySQL(database.session_factory)
     inscription_repository = InscriptionRepositorySQL(database.session_factory)
     placement_repository = PlacementRepositorySQL(database.session_factory)
+    scoreur_repository = ScoreurRepositorySQL(database.session_factory)
     app.state.service_tournois = ServiceTournois(tournoi_repository)
     # Départs (créneaux) d'un tournoi (E02US004, ADR-0017) : le service vérifie l'existence du
     # tournoi (dépend du port tournoi) et attribue le numéro du créneau. Il dépend aussi du port
@@ -214,6 +220,16 @@ def create_app(
     session_store = SessionStore()
     app.state.service_auth = ServiceAuth(credentials_store, session_store)
 
+    # --- Scoreurs (E10US003) : définition (admin) + session (scoreur). Le scoreur est identifié par
+    # **la personne** (un code généré), à côté de l'admin (un secret) et du poste de cible (le lieu,
+    # E10US007). Store de sessions **nominatif** en mémoire (jeton → scoreur, pour tracer qui
+    # valide, E10US005) et générateur de code injecté (déterminisme des tests, règle 9). La
+    # dépendance API `exiger_scoreur` protégera les endpoints de validation (E04US002). ---
+    scoreur_session_store = ScoreurSessionStore()
+    app.state.service_scoreurs = ServiceScoreurs(
+        scoreur_repository, tournoi_repository, scoreur_session_store, generer_code_scoreur
+    )
+
     # --- Frontière API : traduction des erreurs typées en réponses HTTP (ADR-0007). ---
     enregistrer_gestionnaires_erreurs(app)
 
@@ -221,6 +237,8 @@ def create_app(
     app.include_router(health_router)
     app.include_router(realtime_router)
     app.include_router(auth_router)
+    app.include_router(scoreurs_router)
+    app.include_router(scoreur_session_router)
     app.include_router(tournois_router)
     app.include_router(departs_router)
     app.include_router(inscriptions_router)

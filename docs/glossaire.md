@@ -64,7 +64,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | Rôle | Identifiant | Définition |
 |---|---|---|
 | **Administrateur** | `admin` | Accès total : configuration, moteur, exports, corrections. |
-| **Scoreur** | `scoreur` | Saisit et valide les scores ; rattaché à une ou plusieurs cibles par code. |
+| **Scoreur** | `scoreur` | S'identifie par un **code individuel** ; **itinérant** (rattaché à aucune cible), il **valide** les scores de la cible de son choix — il ne saisit pas (la saisie est le geste du poste de cible). Défini au tournoi, redéfinissable à tout moment (E10US003, `D-12`/`D-13`/`D-14`). |
 | **Public** | `public` | Consultation en lecture seule. |
 
 ## Termes techniques (anglais)

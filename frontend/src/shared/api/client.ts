@@ -43,18 +43,53 @@ export function enregistrerSurNonAutorise(rappel: () => void): void {
   surNonAutorise = rappel
 }
 
-export async function fetchJson<T>(chemin: string, options?: RequestInit): Promise<T> {
-  const jeton = lireJetonAdmin()
-  const enteteAuth: Record<string, string> = jeton ? { Authorization: `Bearer ${jeton}` } : {}
+// Jeton de session scoreur (E10US003) : joint en en-tête **dédié** `X-Jeton-Scoreur`, distinct du
+// Bearer admin — les deux modes d'identité sont **orthogonaux** (D-13). Un scoreur (sur son
+// téléphone) et l'admin (sur le PC) peuvent donc coexister sans que l'un masque l'autre. Même
+// inversion de dépendance : le store de session scoreur s'enregistre ici.
+let lireJetonScoreur: () => string | null = () => null
+
+export function enregistrerJetonScoreur(fournisseur: () => string | null): void {
+  lireJetonScoreur = fournisseur
+}
+
+let surNonAutoriseScoreur: () => void = () => {}
+
+export function enregistrerSurNonAutoriseScoreur(rappel: () => void): void {
+  surNonAutoriseScoreur = rappel
+}
+
+// Portée d'identité d'une requête : **une seule** à la fois, jamais les deux. C'est ce qui empêche
+// qu'un 401 sur un mode purge la session de l'**autre** — le piège quand admin et scoreur cohabitent
+// dans le même navigateur (l'écran d'accueil expose les deux). `'aucune'` = appel d'authentification
+// (login) : aucun jeton joint, et un refus de login n'expire aucune session existante.
+export type PorteeAuth = 'admin' | 'scoreur' | 'aucune'
+
+export async function fetchJson<T>(
+  chemin: string,
+  options?: RequestInit,
+  portee: PorteeAuth = 'admin',
+): Promise<T> {
+  // Seul le jeton du mode demandé est joint (les autres restent `null`) : une requête n'engage
+  // qu'une identité, donc un 401 ne peut invalider que celle-là.
+  const jetonAdmin = portee === 'admin' ? lireJetonAdmin() : null
+  const jetonScoreur = portee === 'scoreur' ? lireJetonScoreur() : null
+  const entetes: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (jetonAdmin) entetes.Authorization = `Bearer ${jetonAdmin}`
+  if (jetonScoreur) entetes['X-Jeton-Scoreur'] = jetonScoreur
   const reponse = await fetch(chemin, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...enteteAuth, ...options?.headers },
+    headers: { ...entetes, ...options?.headers },
   })
 
   if (!reponse.ok) {
-    // 401 alors qu'un jeton était joint → session expirée/invalide : on purge. Un 401 sans jeton
-    // (ex. login refusé) n'est pas une expiration de session : on n'y touche pas.
-    if (reponse.status === 401 && jeton) surNonAutorise()
+    // 401 alors que le jeton de la portée était joint → session expirée/invalide (serveur
+    // redémarré, ou scoreur supprimé côté admin) : on purge **cette seule** session. Un login
+    // (`portee: 'aucune'`) ne joint aucun jeton, donc un refus n'expire rien — on n'y touche pas.
+    if (reponse.status === 401) {
+      if (jetonAdmin) surNonAutorise()
+      if (jetonScoreur) surNonAutoriseScoreur()
+    }
     const corps = (await reponse.json().catch(() => null)) as CorpsErreur | null
     throw new ErreurApi(
       reponse.status,
