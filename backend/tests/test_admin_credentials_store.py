@@ -64,6 +64,22 @@ def test_upsert_remplace_sans_dupliquer(tmp_path: Path) -> None:
     assert store.lire() == IdentifiantsAdmin(login="orga", mot_de_passe="v2")
 
 
+def test_ecriture_atomique_ne_laisse_aucun_temporaire(tmp_path: Path) -> None:
+    """L'écriture atomique (`.tmp` voisin puis `os.replace`) ne laisse **aucun résidu** au succès.
+
+    `.env` est la porte de secours de l'accès admin : on l'écrit atomiquement pour qu'un crash ne
+    le tronque jamais. Mais le temporaire ne doit pas subsister — ni polluer le dossier, ni laisser
+    croire à une écriture en cours. On vérifie qu'aucun `*.tmp` ne reste et que le `.env` final est
+    bien relu.
+    """
+    env = tmp_path / ".env"
+    AdminCredentialsStore(env).ecrire(IdentifiantsAdmin(login="orga", mot_de_passe="secret"))
+    assert list(tmp_path.glob("*.tmp")) == []
+    assert AdminCredentialsStore(env).lire() == IdentifiantsAdmin(
+        login="orga", mot_de_passe="secret"
+    )
+
+
 @pytest.mark.parametrize(
     "mot_de_passe",
     ["  espaces autour  ", '"déjà entre guillemets"', "avec = et # dedans", "simple"],
