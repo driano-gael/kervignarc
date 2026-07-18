@@ -15,6 +15,7 @@ from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
+from domain.feuille_marque import FeuilleDeMarque
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
@@ -478,4 +479,17 @@ class PosteRepository(Protocol):
         Sert à rattacher (par code) et à refuser un code déjà attribué à la génération. Recherche
         **globale** : le code est unique dans toute la base.
         """
+        ...
+
+
+class GenerateurFeuilleDeMarque(Protocol):
+    """Port de génération du **PDF de feuille de marque** (adapter fourni par l'infrastructure).
+
+    Le domaine décrit le **contenu** (`FeuilleDeMarque`) ; l'adapter (ReportLab, ADR-0031) le rend
+    en octets PDF. Le retour est un simple `bytes` : le domaine ne connaît ni ReportLab ni HTTP
+    (règle 1). Un échec de rendu remonte en `InfrastructureError`, traduit en 500 à la frontière.
+    """
+
+    def generer(self, feuille: FeuilleDeMarque) -> bytes:
+        """Rend la feuille de marque d'un départ en un document PDF (une page par archer placé)."""
         ...

@@ -26,6 +26,7 @@ from api.v1.categories import router as categories_router
 from api.v1.clubs import router as clubs_router
 from api.v1.competition import router as competition_router
 from api.v1.departs import router as departs_router
+from api.v1.feuille_de_marque import router as feuille_de_marque_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
 from api.v1.inscriptions import router as inscriptions_router
@@ -43,6 +44,7 @@ from application.categories import ServiceCategories
 from application.classements import ServiceClassement
 from application.clubs import ServiceClubs
 from application.departs import ServiceDeparts
+from application.feuille_de_marque import ServiceFeuilleDeMarque
 from application.gabarits import ServiceGabarits
 from application.grain_validation import ServiceGrainValidation
 from application.inscriptions import ServiceInscriptions
@@ -69,6 +71,7 @@ from infrastructure.db import (
     WriteQueue,
     default_database_url,
 )
+from infrastructure.pdf import GenerateurFeuilleDeMarquePdf
 from infrastructure.postes import PosteSessionStore, generer_code_poste
 from infrastructure.realtime import Broadcaster, LiveEvent
 from infrastructure.scoreurs import ScoreurSessionStore, generer_code_scoreur
@@ -218,6 +221,21 @@ def create_app(
         blason_repository,
         placement_repository,
     )
+    # Feuille de marque (E09US001) : premier document du socle PDF (ReportLab, ADR-0031). Le service
+    # lit le plan persisté et joint archer → catégorie → blason (ports seuls, pas de
+    # service→service), récupère la grille depuis le barème, puis délègue le rendu à l'adapter
+    # ReportLab. Lecture pure (aucune écriture) : l'endpoint l'exécute via `run_in_threadpool`.
+    app.state.service_feuille_de_marque = ServiceFeuilleDeMarque(
+        tournoi_repository,
+        depart_repository,
+        placement_repository,
+        inscription_repository,
+        archer_repository,
+        categorie_repository,
+        blason_repository,
+        phase_repository,
+        GenerateurFeuilleDeMarquePdf(),
+    )
 
     # --- Accès administrateur (E10US002) : identifiants dans un fichier `.env` local + jetons
     # de session en mémoire. Auth = concern technique (pas de domaine) ; la dépendance API
@@ -274,6 +292,7 @@ def create_app(
     app.include_router(grain_validation_router)
     app.include_router(competition_router)
     app.include_router(placement_router)
+    app.include_router(feuille_de_marque_router)
 
     # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement
     # s'il existe, pour ne jamais masquer les routes API/WS/health ci-dessus. ---
