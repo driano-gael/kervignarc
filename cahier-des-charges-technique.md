@@ -269,7 +269,7 @@ Regroupée par domaines : `tournaments`, `archers`, `imports`, `phases`, `placem
 | R1 | **Complexité du moteur de phases** (Lucky Loser, placement 1→N) — cœur du produit | Formaliser 2-3 flux réels depuis `Tableaux.xlsx` avant dev ; tests de non-régression sur ces cas |
 | R2 | **Fiabilité wifi** pour 30 clients | Routeur dédié dimensionné ; file d'attente + reconnexion côté front |
 | R3 | **Limites PWA iOS/Safari** (BYOD) | Tolérance coupures volontairement minimale ; tests multi-navigateurs |
-| R4 | **Packaging exécutable** (PyInstaller + front + PDF) | Prototype de build tôt ; valider WeasyPrint/dépendances natives dans le binaire |
+| R4 | **Packaging exécutable** (PyInstaller + front + PDF) | Prototype de build tôt. **Volet PDF largement désamorcé** : ReportLab retenu (QT3, [ADR-0031](docs/adr/0031-bibliotheque-pdf-reportlab.md)) — wheels autoportantes, aucune dépendance native à embarquer. Reste à confirmer au 1ᵉʳ build EPIC-11 (dette ouverte) |
 | R5 | **Panne du portable-serveur** | Sauvegarde auto périodique + procédure de restauration |
 | R6 | **Format d'import inscript'arc** inconnu | Obtenir un fichier d'exemple avant de figer le parseur |
 
@@ -281,7 +281,7 @@ Regroupée par domaines : `tournaments`, `archers`, `imports`, `phases`, `placem
 |---|---|---|
 | QT1 | **Format exact du fichier inscript'arc** | Exemple XLS + colonnes (bloque le parseur d'import) |
 | QT2 | **HTTPS local** (certificat auto-signé) ou HTTP simple | Selon exigence navigateurs / confort |
-| QT3 | **Bibliothèque PDF** (WeasyPrint vs ReportLab) | Selon rendu attendu des documents |
+| ~~QT3~~ | ~~**Bibliothèque PDF** (WeasyPrint vs ReportLab)~~ | **Tranchée : ReportLab** ([ADR-0031](docs/adr/0031-bibliotheque-pdf-reportlab.md), E09US001) — embarquabilité PyInstaller (R4) prime sur le rendu riche |
 | QT4 | **Nom d'accès** : IP fixe vs mDNS `kervignarc.local` | Confort terrain |
 | QT5 | **OS cible du build** : Windows seul ou aussi macOS/Linux | Parc de l'organisateur |
 | QT6 | **Volumétrie plafond** au-delà de 120 archers | Dimensionnement / tests de charge |

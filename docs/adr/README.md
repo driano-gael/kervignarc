@@ -41,6 +41,7 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0028](0028-epreuves-par-equipes-participant.md) | Épreuves par équipes dans le périmètre : le match oppose des *participants* | Accepté |
 | [0029](0029-mode-d-identite-poste-de-cible-et-jeton-de-poste.md) | Mode d'identité « poste de cible » : code de cible régénérable, jeton lié au tournoi | Accepté |
 | [0030](0030-saisie-autorisee-au-poste-de-cible-403-hors-cible.md) | Saisie de score autorisée au **poste de cible**, bornée par le lieu (403 hors-cible) | Accepté |
+| [0031](0031-bibliotheque-pdf-reportlab.md) | Bibliothèque PDF : **ReportLab** (QT3 tranchée) — embarquabilité PyInstaller > rendu riche | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.

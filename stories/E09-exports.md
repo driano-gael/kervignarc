@@ -14,11 +14,19 @@
 *En tant que* développeur (le socle) et organisateur (le document), *je veux* un socle de génération
 PDF qui fonctionne dans l'exécutable packagé et produise la feuille de marque, *afin de* disposer du
 premier document imprimable pour la saisie/l'archivage papier.
-- **CA — socle PDF (ex-001)** : lib PDF choisie (WeasyPrint vs ReportLab — QT3) intégrée ; un
-  document de test se génère ; fonctionne dans l'exécutable packagé.
+- **CA — socle PDF (ex-001)** : lib PDF choisie (**ReportLab** — QT3 tranchée, [ADR-0031](../docs/adr/0031-bibliotheque-pdf-reportlab.md))
+  intégrée ; un document de test se génère ; ~~fonctionne dans l'exécutable packagé~~ → **volet
+  packaging déféré à EPIC-11** (voir Notes).
 - **CA — feuille de marque (ex-002)** : feuille par cible/archer avec zones de scores ; conforme aux
   données.
-- **Notes** : valider l'embarquement dans PyInstaller (risque R4).
+- **Notes** : **QT3 tranchée en ReportLab** ([ADR-0031](../docs/adr/0031-bibliotheque-pdf-reportlab.md)) —
+  wheels autoportantes, aucune dépendance native, embarquable dans PyInstaller. **Arbitrage de
+  périmètre (18/07/2026)** : aucun build PyInstaller n'existe encore (E00US012 = exécutable de *dev*
+  seul ; le packaging complet est EPIC-11), donc la clause « fonctionne packagé » est **déférée à
+  EPIC-11** — E09US001 choisit la lib et génère le PDF dans l'app qui tourne. Risque **R4** résiduel
+  (validation dans le binaire) suivi dans la table des risques, à confirmer au 1ᵉʳ build d'EPIC-11 —
+  **pas** au registre de dette (pas de raccourci dans le code livré ; « le registre n'est pas une
+  liste de tâches »).
 - **Absorbe** : ex-E09US001, E09US002. **Dépend de** : E00US012, E03US001 · **Jalon** : J1
 
 ### E09US003 — Listes imprimables (placement, club & paiement)
