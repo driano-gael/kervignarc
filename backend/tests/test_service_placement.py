@@ -552,3 +552,22 @@ def test_cible_disparue_du_gabarit_retombe_en_reserve() -> None:
     assert a1 in places
     assert a2 not in places
     assert a2 in reserve  # retombé en réserve, pas disparu en silence
+
+
+def test_placer_les_restants_repose_un_archer_de_cible_disparue() -> None:
+    """Revue D (F1) : après réduction du gabarit, « placer les restants » **repose** l'archer
+    retombé en réserve dans une cible restante — le bouton n'est pas inopérant pour lui."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1, a2 = monde.inscrire(depart, cat), monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    service.deplacer(monde.tournoi_id, depart, monde.inscription(a2), 2, "A")  # a2 sur la cible 2
+    monde.gabarits.ajouter(GabaritSalle(nom="Salle", capacites=(4,), tournoi_id=monde.tournoi_id))
+    # a2 est retombé en réserve (cible 2 disparue) ; « placer les restants » doit le reposer.
+
+    plan = service.placer_les_restants(monde.tournoi_id, depart)
+
+    assert _archers_places(plan.cibles) == {a1, a2}
+    assert plan.conflits == ()

@@ -204,8 +204,14 @@ class ServicePlacement:
         contexte = self._charger(tournoi_id, depart_id)
         affectations = self._placements.par_depart(depart_id)
         plan_actuel = self._construire_plan(contexte, affectations).cibles
+        # « Placées » = ce que le plan **rend réellement** (après le garde de `_construire_plan`),
+        # pas les affectations brutes : un archer dont la cible a disparu du gabarit est retombé en
+        # réserve — il doit entrer dans `a_placer` pour être reposé, pas être compté comme placé.
         placees = {
-            a.inscription_id for a in affectations if contexte.est_placable(a.inscription_id)
+            pose.inscription_id
+            for cible in plan_actuel
+            for pose in cible.placements
+            if pose.inscription_id is not None
         }
         a_placer = tuple(
             contexte.donnees[contexte.archer_par_inscription[inscription.id]]
