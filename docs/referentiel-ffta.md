@@ -228,7 +228,7 @@ En cas d'égalité de total : départage au **plus grand nombre de 10**, puis de
 - **Barèmes & moteur de phases (EPIC-05 / E01US011)** : les formats du §6-7 deviennent des **presets modifiables**. Un barème ne se résout **pas** à partir de la seule phase : au même tour de duels, classique et arc nu tirent **en sets** (premier à 6) quand les poulies tirent **au cumul** (A.7.5.1 / A.7.5.2). La politique `scoring` se résout donc par le couple **(phase, division)**.
 - **Départage (EPIC-06 / E04US013, E06US001/003)** : politique `tiebreak` — qualif au nombre de 10 **puis** de 9 (§8.1). Match nul → barrage d'**1 flèche au plus haut score** ; ce n'est **que si l'égalité persiste** qu'on départage au plus près du centre (§8.2). Les deux critères sont séquentiels, pas fusionnés. Le barrage ne recompte pas les 10/9.
 - **Seeding / tableaux (ADR-0004, E05US005)** : effectif arrondi à la puissance de 2 (ex. 32/16 places pour les duels FFTA), placement selon le rang de qualification (« serpent »), exempts aux mieux classés — **décision projet** (`❓` côté FFTA, non normé dans ce chapitre).
-- **Épreuves par équipes (§6.3, §7)** : documentées ici, **hors périmètre** applicatif. La porte reste ouverte : le moteur devra pouvoir opposer des participants qui ne sont pas des archers individuels (`MATCH.participant_A/B` plutôt que `archer_a/archer_b`).
+- **Épreuves par équipes (§6.3, §7)** : **entrées au périmètre MVP le 18/07/2026** ([ADR-0028](adr/0028-epreuves-par-equipes-participant.md), [EPIC-13](../epics/EPIC-13-equipes.md)). La précaution du cadrage **paie** : le moteur oppose des participants qui ne sont pas des archers individuels (`MATCH.participant_A/B` plutôt que `archer_a/archer_b`), donc l'ajout est une **réalisation**, pas une refonte.
 
 ---
 
