@@ -165,26 +165,25 @@ def test_modifier_attache_puis_detache_le_blason(
         ).json()
         attachee = client.put(
             f"/api/v1/categories/{cree['id']}",
-            json={"libelle": "Libre", "blason_id": blason_id},
+            json={"libelle": "Libre", "blason_id": blason_id, "hauteur_cm": 130},
         )
         assert attachee.status_code == 200
         assert attachee.json()["blason_id"] == blason_id
         detachee = client.put(
-            f"/api/v1/categories/{cree['id']}", json={"libelle": "Libre", "blason_id": None}
+            f"/api/v1/categories/{cree['id']}",
+            json={"libelle": "Libre", "blason_id": None, "hauteur_cm": 130},
         )
         assert detachee.json()["blason_id"] is None
 
 
-def test_put_sans_hauteur_preserve_la_hauteur_existante(
+def test_put_hauteur_est_obligatoire(
     app_categories: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """Régression DETTE-009 (E03US001) — **au niveau HTTP** : un PUT qui omet `hauteur_cm`
-    conserve la valeur, il ne la remet pas à 130.
+    """DETTE-009 **résorbée** : `hauteur_cm` est obligatoire au PUT — le champ n'est plus partiel.
 
-    Le bug d'origine vivait à la **frontière** (le défaut du DTO changeait un champ omis en 130) :
-    ce test traverse donc le DTO, contrairement au test service. Scénario réel : une catégorie U11
-    à 110 à laquelle on **attribue un blason** (geste requis pour la placer) via un PUT qui, comme
-    le front actuel, ne porte pas `hauteur_cm`. Si le défaut du DTO revenait à 130, ce test rougit.
+    Le formulaire catégorie porte la hauteur depuis E03US004 (UI de placement). Un PUT qui l'omet
+    est rejeté à la frontière (`requete_invalide`, 400) ; un PUT qui la fournit l'applique. Le PUT
+    redevient **intégralement total** (ADR-0020) — plus d'entorse « champ partiel ».
     """
     with TestClient(app_categories) as client:
         connecter_admin(client)
@@ -195,15 +194,27 @@ def test_put_sans_hauteur_preserve_la_hauteur_existante(
             json={"libelle": "Arc Classique U11 H", "ages": ["U11"], "hauteur_cm": 110},
         )
         assert u11.status_code == 201, u11.text
-        assert u11.json()["hauteur_cm"] == 110
-        # PUT sans `hauteur_cm` (on attache le blason) : la hauteur doit rester 110.
-        modifiee = client.put(
-            f"/api/v1/categories/{u11.json()['id']}",
+        categorie_id = u11.json()["id"]
+        # PUT sans `hauteur_cm` : rejeté à la frontière (champ désormais obligatoire).
+        sans = client.put(
+            f"/api/v1/categories/{categorie_id}",
             json={"libelle": "Arc Classique U11 H", "ages": ["U11"], "blason_id": blason_id},
         )
-    assert modifiee.status_code == 200, modifiee.text
-    assert modifiee.json()["hauteur_cm"] == 110
-    assert modifiee.json()["blason_id"] == blason_id
+        assert sans.status_code == 400, sans.text
+        assert sans.json()["code"] == "requete_invalide"
+        # PUT avec `hauteur_cm` : appliqué (PUT total).
+        avec = client.put(
+            f"/api/v1/categories/{categorie_id}",
+            json={
+                "libelle": "Arc Classique U11 H",
+                "ages": ["U11"],
+                "blason_id": blason_id,
+                "hauteur_cm": 110,
+            },
+        )
+    assert avec.status_code == 200, avec.text
+    assert avec.json()["hauteur_cm"] == 110
+    assert avec.json()["blason_id"] == blason_id
 
 
 def test_creer_avec_blason_d_un_autre_tournoi_409(
@@ -249,7 +260,13 @@ def test_modifier_une_categorie(app_categories: FastAPI, connecter_admin: Connec
         ).json()
         modif = client.put(
             f"/api/v1/categories/{cree['id']}",
-            json={"libelle": "Nouveau", "arme": "poulie", "ages": ["S2", "S3"], "sexe": "F"},
+            json={
+                "libelle": "Nouveau",
+                "arme": "poulie",
+                "ages": ["S2", "S3"],
+                "sexe": "F",
+                "hauteur_cm": 130,
+            },
         )
         assert modif.status_code == 200
         corps = modif.json()
@@ -316,7 +333,8 @@ def test_precharger_ffta_categorie_modifiable_et_supprimable(
         tournoi_id = _creer_tournoi(client)
         creees = client.post(f"/api/v1/tournois/{tournoi_id}/categories/precharger-ffta").json()
         modif = client.put(
-            f"/api/v1/categories/{creees[0]['id']}", json={"libelle": "Ma catégorie"}
+            f"/api/v1/categories/{creees[0]['id']}",
+            json={"libelle": "Ma catégorie", "hauteur_cm": 130},
         )
         assert modif.status_code == 200
         assert modif.json()["libelle"] == "Ma catégorie"
@@ -360,7 +378,7 @@ def test_modifier_categorie_introuvable(
     """PUT sur une catégorie inconnue → 404 typé."""
     with TestClient(app_categories) as client:
         connecter_admin(client)
-        reponse = client.put("/api/v1/categories/999", json={"libelle": "X"})
+        reponse = client.put("/api/v1/categories/999", json={"libelle": "X", "hauteur_cm": 130})
     assert reponse.status_code == 404
     assert reponse.json()["code"] == "categorie_introuvable"
 

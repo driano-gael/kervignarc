@@ -46,21 +46,19 @@ class CreerCategorieRequete(BaseModel):
 
 
 class ModifierCategorieRequete(BaseModel):
-    """Corps d'édition d'une catégorie (mêmes champs que la création)."""
+    """Corps d'édition d'une catégorie (mêmes champs que la création).
+
+    `hauteur_cm` est **obligatoire** : le PUT est **total** (ADR-0020). Le formulaire catégorie
+    porte ce champ depuis E03US004 (UI de placement), ce qui résorbe DETTE-009 — l'entorse « champ
+    partiel » qui l'avait rendu facultatif le temps que l'UI le porte a disparu.
+    """
 
     libelle: str
     arme: str | None = None
     ages: list[TrancheAge] = Field(default_factory=list)
     sexe: SexeCategorie | None = None
     blason_id: int | None = None
-    # `hauteur_cm` omise = **inchangée** (le service relit et conserve la valeur existante), pas
-    # « remise à 130 ». Motif : le front de gestion des catégories (E02US003) envoie un PUT total
-    # sans ce champ (ajouté en E03US001). Sans ce « None = inchangée », attribuer un blason à une
-    # catégorie U11 — geste **requis** pour la rendre plaçable — ramènerait silencieusement sa
-    # hauteur 110 → 130 et rouvrirait par l'API la contrainte « une butte, une hauteur » que le
-    # domaine ferme (défait DETTE-002). Seul champ « partiel » d'un PUT par ailleurs total (tension
-    # avec ADR-0020 assumée), le temps que l'UI porte le champ — DETTE-009.
-    hauteur_cm: int | None = None
+    hauteur_cm: int
 
 
 class CategorieReponse(BaseModel):
@@ -172,7 +170,7 @@ async def modifier_categorie(
                 requete.ages,
                 requete.sexe,
                 requete.blason_id,
-                requete.hauteur_cm,
+                hauteur_cm=requete.hauteur_cm,
             )
         )
     )

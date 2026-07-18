@@ -20,6 +20,9 @@ export interface Categorie {
   sexe: SexeCategorie | null
   // Blason par défaut (E01US006), facultatif : null = aucun.
   blason_id: number | null
+  // Hauteur du centre de l'or, en cm (E03US001, ADR-0022) : pilote la contrainte de placement
+  // « une butte, une seule hauteur ». Défaut FFTA 130 ; 110 pour les U11.
+  hauteur_cm: number
 }
 
 export interface NouvelleCategorie {
@@ -28,6 +31,10 @@ export interface NouvelleCategorie {
   ages?: TrancheAge[]
   sexe?: SexeCategorie | null
   blason_id?: number | null
+  // Le front l'envoie **toujours** (DETTE-009) : le PUT d'édition omettant ce champ laisserait le
+  // serveur conserver la valeur existante, mais on la transmet explicitement pour lever la dette et
+  // éviter toute dérive silencieuse (cf. commentaire du DTO backend `ModifierCategorieRequete`).
+  hauteur_cm?: number
 }
 
 // L'édition porte sur les mêmes champs que la création.

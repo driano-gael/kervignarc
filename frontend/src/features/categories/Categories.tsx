@@ -30,6 +30,19 @@ const OPTIONS_SEXE: { valeur: SexeCategorie; libelle: string }[] = [
 // pas : c'est un **libellé** de regroupement arc nu, pas une tranche.
 const TRANCHES_AGE: TrancheAge[] = ['U11', 'U13', 'U15', 'U18', 'U21', 'S1', 'S2', 'S3']
 
+// Hauteur du centre par défaut (FFTA salle 18 m) — miroir de `HAUTEUR_CENTRE_DEFAUT` du domaine.
+const HAUTEUR_CENTRE_DEFAUT = 130
+
+// Analyse la saisie de la hauteur : un entier strictement positif (cm). Une valeur vide, non
+// entière ou ≤ 0 renvoie `'invalide'` pour bloquer l'envoi (évite un 400 assuré). Le domaine reste
+// l'autorité (revalidation à la frontière) ; on ne borne pas par le haut (pas de plafond métier).
+function analyserHauteur(saisie: string): number | 'invalide' {
+  const texte = saisie.trim()
+  if (!/^\d+$/.test(texte)) return 'invalide'
+  const valeur = Number(texte)
+  return valeur >= 1 ? valeur : 'invalide'
+}
+
 const LIBELLE_SEXE: Record<SexeCategorie, string> = {
   H: 'Homme',
   F: 'Femme',
@@ -174,6 +187,7 @@ function decrire(categorie: Categorie, blasons: Blason[]): string {
     categorie.ages.length > 0 ? categorie.ages.join(', ') : null,
     categorie.sexe ? LIBELLE_SEXE[categorie.sexe] : null,
     nomBlason ? `blason ${nomBlason}` : null,
+    `centre ${categorie.hauteur_cm} cm`,
   ].filter((partie): partie is string => partie !== null)
   return parties.join(' · ')
 }
@@ -195,6 +209,9 @@ function FormulaireCategorie({
   const [arme, setArme] = useState(categorie?.arme ?? '')
   const [ages, setAges] = useState<TrancheAge[]>(categorie?.ages ?? [])
   const [sexe, setSexe] = useState<SexeCategorie | ''>(categorie?.sexe ?? '')
+  // Hauteur du centre (E03US001, DETTE-009) : pré-remplie à la valeur courante en édition, sinon au
+  // défaut FFTA (130). Toujours envoyée pour lever la dette (cf. `NouvelleCategorie.hauteur_cm`).
+  const [hauteur, setHauteur] = useState(String(categorie?.hauteur_cm ?? HAUTEUR_CENTRE_DEFAUT))
 
   // Coche / décoche une tranche ; l'ordre d'envoi est libre (le backend dédoublonne et remet en
   // ordre d'âge canonique).
@@ -214,15 +231,20 @@ function FormulaireCategorie({
   const modifier = useModifierCategorie(tournoiId)
   const mutation = enEdition ? modifier : creer
 
+  const hauteurAnalysee = analyserHauteur(hauteur)
+  const hauteurInvalide = hauteurAnalysee === 'invalide'
+  const soumissionPossible = libelle.trim() !== '' && !hauteurInvalide
+
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
-    if (libelle.trim() === '') return
+    if (libelle.trim() === '' || hauteurAnalysee === 'invalide') return
     const entree: NouvelleCategorie = {
       libelle,
       arme: arme.trim() || null,
       ages,
       sexe: sexe || null,
       blason_id: blasonId === '' ? null : Number(blasonId),
+      hauteur_cm: hauteurAnalysee,
     }
     if (enEdition) {
       modifier.mutate({ id: categorie.id, entree }, { onSuccess: onTermine })
@@ -235,6 +257,7 @@ function FormulaireCategorie({
           setAges([])
           setSexe('')
           setBlasonId('')
+          setHauteur(String(HAUTEUR_CENTRE_DEFAUT))
         },
       })
     }
@@ -297,8 +320,28 @@ function FormulaireCategorie({
             </option>
           ))}
         </select>
+        <label className="formulaire__libelle">
+          Hauteur du centre (cm)
+          <input
+            className="formulaire__champ"
+            inputMode="numeric"
+            value={hauteur}
+            onChange={(e) => setHauteur(e.target.value)}
+            placeholder="ex. 130 — 110 pour les U11"
+            aria-label="Hauteur du centre de la cible en centimètres"
+          />
+          {hauteurInvalide ? (
+            <span className="carte__etat carte__etat--erreur" role="alert">
+              Hauteur en centimètres attendue : un entier ≥ 1 (ex. 130).
+            </span>
+          ) : (
+            <span className="carte__etat">
+              Pilote la contrainte « une butte, une seule hauteur » au placement.
+            </span>
+          )}
+        </label>
         <div className="formulaire__actions">
-          <button type="submit" disabled={mutation.isPending || libelle.trim() === ''}>
+          <button type="submit" disabled={mutation.isPending || !soumissionPossible}>
             {enEdition ? 'Enregistrer' : 'Ajouter la catégorie'}
           </button>
           {enEdition && (

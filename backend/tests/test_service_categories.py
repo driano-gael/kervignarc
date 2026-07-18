@@ -163,7 +163,7 @@ def test_precharger_ffta_categories_modifiables_et_supprimables() -> None:
     creees = service.precharger_ffta(tournoi_id)
     premiere, deuxieme = creees[0], creees[1]
     assert premiere.id is not None and deuxieme.id is not None
-    modifiee = service.modifier(premiere.id, "Libellé personnalisé")
+    modifiee = service.modifier(premiere.id, "Libellé personnalisé", hauteur_cm=130)
     assert modifiee.libelle == "Libellé personnalisé"
     service.supprimer(deuxieme.id)
     assert len(service.lister(tournoi_id)) == 31
@@ -199,9 +199,9 @@ def test_modifier_attache_puis_detache_le_blason() -> None:
     blason = blasons.ajouter(Blason.creer(tournoi_id, "Monospot", 1.0, 1))
     cree = service.creer(tournoi_id, "Libre")
     assert cree.id is not None
-    attachee = service.modifier(cree.id, "Libre", blason_id=blason.id)
+    attachee = service.modifier(cree.id, "Libre", blason_id=blason.id, hauteur_cm=130)
     assert attachee.blason_id == blason.id
-    detachee = service.modifier(cree.id, "Libre", blason_id=None)
+    detachee = service.modifier(cree.id, "Libre", blason_id=None, hauteur_cm=130)
     assert detachee.blason_id is None
 
 
@@ -212,7 +212,7 @@ def test_modifier_avec_blason_d_un_autre_tournoi_leve() -> None:
     cree = service.creer(tournoi_id, "Libre")
     assert cree.id is not None
     with pytest.raises(BlasonHorsTournoi):
-        service.modifier(cree.id, "Libre", blason_id=blason_autre.id)
+        service.modifier(cree.id, "Libre", blason_id=blason_autre.id, hauteur_cm=130)
 
 
 def test_modifier_persiste_les_attributs() -> None:
@@ -220,7 +220,9 @@ def test_modifier_persiste_les_attributs() -> None:
     service, tournoi_id, _ = _service_avec_tournoi()
     cree = service.creer(tournoi_id, "Ancien")
     assert cree.id is not None
-    modifiee = service.modifier(cree.id, "Nouveau", "poulie", (TrancheAge.S2,), SexeCategorie.FEMME)
+    modifiee = service.modifier(
+        cree.id, "Nouveau", "poulie", (TrancheAge.S2,), SexeCategorie.FEMME, hauteur_cm=130
+    )
     assert modifiee.id == cree.id
     assert modifiee.libelle == "Nouveau"
     assert modifiee.arme == "poulie"
@@ -232,7 +234,7 @@ def test_modifier_leve_si_introuvable() -> None:
     """`modifier` lève `CategorieIntrouvable` pour un identifiant inconnu."""
     service, _, _ = _service_avec_tournoi()
     with pytest.raises(CategorieIntrouvable):
-        service.modifier(404, "X")
+        service.modifier(404, "X", hauteur_cm=130)
 
 
 def test_supprimer_retire_la_categorie() -> None:
@@ -251,23 +253,8 @@ def test_supprimer_leve_si_introuvable() -> None:
         service.supprimer(404)
 
 
-def test_modifier_sans_hauteur_preserve_la_valeur_existante() -> None:
-    """Régression DETTE-009 (E03US001) : un PUT qui omet `hauteur_cm` **conserve** la hauteur.
-
-    Sans cette préservation, éditer une catégorie U11 (110) — geste requis pour lui attribuer un
-    blason, donc pour la placer — la ramènerait à 130 et rouvrirait la contrainte de placement
-    « une butte, une hauteur » que le domaine ferme (ADR-0022).
-    """
-    service, tournoi_id, _ = _service_avec_tournoi()
-    u11 = service.creer(tournoi_id, "Arc Classique U11 H", ages=(TrancheAge.U11,), hauteur_cm=110)
-    assert u11.id is not None
-    # Édition qui n'envoie pas `hauteur_cm` (None) : la hauteur doit rester 110, pas retomber à 130.
-    modifiee = service.modifier(u11.id, "Arc Classique U11 H", ages=(TrancheAge.U11,))
-    assert modifiee.hauteur_cm == 110
-
-
-def test_modifier_avec_hauteur_explicite_la_remplace() -> None:
-    """Une hauteur explicite au PUT remplace la valeur (le « None = inchangée » ne fige pas)."""
+def test_modifier_applique_la_hauteur_fournie() -> None:
+    """DETTE-009 résorbée : `hauteur_cm` est **requis** au PUT (keyword-only), et est appliqué."""
     service, tournoi_id, _ = _service_avec_tournoi()
     cat = service.creer(tournoi_id, "Cat", hauteur_cm=130)
     assert cat.id is not None

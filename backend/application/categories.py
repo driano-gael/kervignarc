@@ -108,15 +108,14 @@ class ServiceCategories:
         ages: Iterable[TrancheAge] = (),
         sexe: SexeCategorie | None = None,
         blason_id: BlasonId | None = None,
-        hauteur_cm: int | None = None,
+        *,
+        hauteur_cm: int,
     ) -> Categorie:
         """Édite une catégorie (libellé, arme, tranches d'âge, sexe, blason par défaut, hauteur).
 
-        `hauteur_cm=None` signifie **inchangée** : on conserve la valeur existante plutôt que de la
-        réinitialiser au défaut. Le PUT catégorie est par ailleurs **total**, mais le front n'envoie
-        pas encore ce champ (ajouté en E03US001) ; sans cette préservation, toute édition d'une
-        catégorie U11 ramènerait sa hauteur 110 → 130 en silence et rouvrirait la contrainte de
-        placement fermée par le domaine (DETTE-009, cf. `ModifierCategorieRequete`).
+        Le PUT catégorie est **total** (ADR-0020) : `hauteur_cm` est **obligatoire** — le formulaire
+        catégorie le porte depuis E03US004, ce qui résorbe DETTE-009. Paramètre **keyword-only**
+        pour rester requis derrière les champs facultatifs.
 
         Lève `CategorieIntrouvable` si l'identifiant est inconnu, `BlasonHorsTournoi` si le blason
         par défaut n'appartient pas au tournoi de la catégorie, `DomainError` si le libellé est
@@ -124,8 +123,7 @@ class ServiceCategories:
         """
         categorie = self._categorie_existante(categorie_id)
         self._verifier_blason_du_tournoi(categorie.tournoi_id, blason_id)
-        hauteur = categorie.hauteur_cm if hauteur_cm is None else hauteur_cm
-        modifiee = categorie.modifier(libelle, arme, ages, sexe, blason_id, hauteur)
+        modifiee = categorie.modifier(libelle, arme, ages, sexe, blason_id, hauteur_cm)
         return self._categories.enregistrer(modifiee)
 
     def supprimer(self, categorie_id: CategorieId) -> None:
