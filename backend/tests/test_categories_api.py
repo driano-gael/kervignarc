@@ -175,6 +175,37 @@ def test_modifier_attache_puis_detache_le_blason(
         assert detachee.json()["blason_id"] is None
 
 
+def test_put_sans_hauteur_preserve_la_hauteur_existante(
+    app_categories: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Régression DETTE-009 (E03US001) — **au niveau HTTP** : un PUT qui omet `hauteur_cm`
+    conserve la valeur, il ne la remet pas à 130.
+
+    Le bug d'origine vivait à la **frontière** (le défaut du DTO changeait un champ omis en 130) :
+    ce test traverse donc le DTO, contrairement au test service. Scénario réel : une catégorie U11
+    à 110 à laquelle on **attribue un blason** (geste requis pour la placer) via un PUT qui, comme
+    le front actuel, ne porte pas `hauteur_cm`. Si le défaut du DTO revenait à 130, ce test rougit.
+    """
+    with TestClient(app_categories) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        blason_id = _creer_blason(client, tournoi_id)
+        u11 = client.post(
+            f"/api/v1/tournois/{tournoi_id}/categories",
+            json={"libelle": "Arc Classique U11 H", "ages": ["U11"], "hauteur_cm": 110},
+        )
+        assert u11.status_code == 201, u11.text
+        assert u11.json()["hauteur_cm"] == 110
+        # PUT sans `hauteur_cm` (on attache le blason) : la hauteur doit rester 110.
+        modifiee = client.put(
+            f"/api/v1/categories/{u11.json()['id']}",
+            json={"libelle": "Arc Classique U11 H", "ages": ["U11"], "blason_id": blason_id},
+        )
+    assert modifiee.status_code == 200, modifiee.text
+    assert modifiee.json()["hauteur_cm"] == 110
+    assert modifiee.json()["blason_id"] == blason_id
+
+
 def test_creer_avec_blason_d_un_autre_tournoi_409(
     app_categories: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
