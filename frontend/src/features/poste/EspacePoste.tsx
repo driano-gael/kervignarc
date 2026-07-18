@@ -11,6 +11,7 @@ import { ErreurApi } from '../../shared/api/client'
 import { type CiblePoste, useSessionPosteStore } from '../../shared/stores/sessionPosteStore'
 import type { Theme } from '../../shared/theme'
 import { useDeconnexionPoste, useRattacherPoste, useVerifierPoste } from './hooks'
+import { oublierCodePosteUrl } from './url'
 
 export function EspacePoste({ codeInitial }: { codeInitial: string | null }) {
   const jeton = useSessionPosteStore((s) => s.jeton)
@@ -79,18 +80,20 @@ function FormulaireRattachement({ codeInitial }: { codeInitial: string | null })
 function PosteRattache({ poste }: { poste: CiblePoste }) {
   const deconnexion = useDeconnexionPoste()
 
+  const detacher = () => {
+    // Retirer `?poste=…` de l'URL **avant** de détacher : sinon `codePoste` resterait non nul et l'app
+    // réafficherait l'écran de poste (voire le re-rattacherait automatiquement) juste après.
+    oublierCodePosteUrl()
+    deconnexion.mutate()
+  }
+
   return (
     <div>
       <p className="carte__etat">
         Tablette rattachée à la <strong>cible {poste.cible_index}</strong>. La saisie des scores
         depuis ce poste arrivera avec E04US002.
       </p>
-      <button
-        type="button"
-        className="lien"
-        disabled={deconnexion.isPending}
-        onClick={() => deconnexion.mutate()}
-      >
+      <button type="button" className="lien" disabled={deconnexion.isPending} onClick={detacher}>
         Détacher cette tablette
       </button>
       <MessageErreur erreur={deconnexion.error} />

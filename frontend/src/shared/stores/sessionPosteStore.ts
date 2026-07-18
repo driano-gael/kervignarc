@@ -27,8 +27,19 @@ interface SessionPosteState {
   jeton: string | null
   poste: CiblePoste | null
   theme: Theme | null
+  // « Ce navigateur est un poste de cible » — intention **persistante**, distincte de la présence
+  // d'un jeton. Sans elle, une session révoquée (jeton perdu) renverrait la tablette vers l'écran
+  // admin ; avec elle, on retombe sur le **formulaire de rattachement** (re-scan), conforme à D-13.
+  estPoste: boolean
+  // Rattachement réussi : pose le jeton + la cible **et** marque le navigateur comme poste.
   definir: (session: { jeton: string; poste: CiblePoste }) => void
+  // Session perdue (révocation « tournoi terminé », redémarrage serveur) : efface jeton + cible mais
+  // **reste un poste** (et garde le thème) → l'UI réaffiche le formulaire de rattachement.
   effacer: () => void
+  // Détachement **explicite** (bouton « Détacher ») : quitte le mode poste → retour à l'app normale.
+  detacher: () => void
+  // Arrivée par le QR (`?poste=…`) : marque le navigateur comme poste avant même le rattachement.
+  entrerModePoste: () => void
   definirTheme: (theme: Theme | null) => void
 }
 
@@ -38,10 +49,11 @@ export const useSessionPosteStore = create<SessionPosteState>()(
       jeton: null,
       poste: null,
       theme: null,
-      definir: ({ jeton, poste }) => set({ jeton, poste }),
-      // La déconnexion (ou un 401) efface le rattachement, **pas** le thème : la tablette garde sa
-      // préférence lumineuse pour le prochain rattachement (elle ne bouge pas de sa cible).
+      estPoste: false,
+      definir: ({ jeton, poste }) => set({ jeton, poste, estPoste: true }),
       effacer: () => set({ jeton: null, poste: null }),
+      detacher: () => set({ jeton: null, poste: null, estPoste: false }),
+      entrerModePoste: () => set({ estPoste: true }),
       definirTheme: (theme) => {
         appliquerTheme(theme)
         set({ theme })

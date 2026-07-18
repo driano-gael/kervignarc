@@ -17,12 +17,13 @@ export function useRattacherPoste() {
 }
 
 export function useDeconnexionPoste() {
-  const effacer = useSessionPosteStore((s) => s.effacer)
+  const detacher = useSessionPosteStore((s) => s.detacher)
   return useMutation({
     mutationFn: deconnexionPoste,
-    // Purge locale quoi qu'il arrive : même si l'appel serveur échoue, la tablette est détachée côté
-    // client (on revient au formulaire de code).
-    onSettled: () => effacer(),
+    // Détachement **explicite** quoi qu'il arrive : même si l'appel serveur échoue, la tablette quitte
+    // le mode poste côté client (`detacher`, pas `effacer`) → retour à l'app normale, pas au
+    // formulaire de rattachement. Le nettoyage du `?poste=` de l'URL est fait par l'appelant.
+    onSettled: () => detacher(),
   })
 }
 

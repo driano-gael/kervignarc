@@ -9,6 +9,9 @@
 export type Theme = 'clair' | 'sombre'
 
 export function appliquerTheme(theme: Theme | null): void {
+  // Garde SSR / test (environnement node sans DOM), cohérente avec le `typeof window` d'`url.ts` :
+  // hors navigateur il n'y a pas de `<html>` à styler, on ne fait rien.
+  if (typeof document === 'undefined') return
   const racine = document.documentElement
   if (theme === null) {
     delete racine.dataset.theme

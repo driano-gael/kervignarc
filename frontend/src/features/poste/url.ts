@@ -9,3 +9,11 @@ export function codePosteDepuisUrl(): string | null {
   if (typeof window === 'undefined') return null
   return new URLSearchParams(window.location.search).get('poste')
 }
+
+// Retire `?poste=…` de l'URL **sans recharger** (pas de routeur : `history.replaceState`). Appelé au
+// **détachement** : sans ça, le paramètre survivrait et l'app réafficherait l'écran de poste (voire
+// re-rattacherait automatiquement) alors que le bénévole vient de détacher la tablette.
+export function oublierCodePosteUrl(): void {
+  if (typeof window === 'undefined') return
+  window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+}
