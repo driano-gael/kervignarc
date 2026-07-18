@@ -9,8 +9,10 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest'
 import {
   enregistrerJetonAdmin,
+  enregistrerJetonPoste,
   enregistrerJetonScoreur,
   enregistrerSurNonAutorise,
+  enregistrerSurNonAutorisePoste,
   enregistrerSurNonAutoriseScoreur,
   fetchJson,
 } from './client'
@@ -25,6 +27,7 @@ function reponse(statut: number, corps: unknown): Response {
 
 let purgeAdmin: Mock<() => void>
 let purgeScoreur: Mock<() => void>
+let purgePoste: Mock<() => void>
 let fetchMock: ReturnType<typeof vi.fn>
 
 function entetesEnvoyees(): Record<string, string> {
@@ -35,10 +38,13 @@ function entetesEnvoyees(): Record<string, string> {
 beforeEach(() => {
   enregistrerJetonAdmin(() => 'JETON-ADMIN')
   enregistrerJetonScoreur(() => 'JETON-SCOREUR')
+  enregistrerJetonPoste(() => 'JETON-POSTE')
   purgeAdmin = vi.fn<() => void>()
   purgeScoreur = vi.fn<() => void>()
+  purgePoste = vi.fn<() => void>()
   enregistrerSurNonAutorise(purgeAdmin)
   enregistrerSurNonAutoriseScoreur(purgeScoreur)
+  enregistrerSurNonAutorisePoste(purgePoste)
   fetchMock = vi.fn()
   vi.stubGlobal('fetch', fetchMock)
 })
@@ -64,12 +70,22 @@ describe('fetchJson — jeton joint selon la portée', () => {
     expect(entetes.Authorization).toBeUndefined()
   })
 
+  it("portée 'poste' joint l'en-tête poste, ni le Bearer admin ni l'en-tête scoreur", async () => {
+    fetchMock.mockResolvedValue(reponse(200, { tournoi_id: 1, cible_index: 3 }))
+    await fetchJson('/api/v1/postes/session', undefined, 'poste')
+    const entetes = entetesEnvoyees()
+    expect(entetes['X-Jeton-Poste']).toBe('JETON-POSTE')
+    expect(entetes.Authorization).toBeUndefined()
+    expect(entetes['X-Jeton-Scoreur']).toBeUndefined()
+  })
+
   it("portée 'aucune' (login) ne joint aucun jeton de session", async () => {
     fetchMock.mockResolvedValue(reponse(200, { jeton: 'x' }))
     await fetchJson('/api/v1/scoreurs/session', { method: 'POST' }, 'aucune')
     const entetes = entetesEnvoyees()
     expect(entetes.Authorization).toBeUndefined()
     expect(entetes['X-Jeton-Scoreur']).toBeUndefined()
+    expect(entetes['X-Jeton-Poste']).toBeUndefined()
   })
 })
 
@@ -98,6 +114,16 @@ describe('fetchJson — un 401 ne purge que la session de la portée', () => {
       statut: 401,
     })
     expect(purgeAdmin).toHaveBeenCalledTimes(1)
+    expect(purgeScoreur).not.toHaveBeenCalled()
+  })
+
+  it('401 poste (tournoi terminé) purge la session poste, ni admin ni scoreur', async () => {
+    fetchMock.mockResolvedValue(reponse(401, { code: 'non_authentifie', message: 'x' }))
+    await expect(fetchJson('/api/v1/postes/session', undefined, 'poste')).rejects.toMatchObject({
+      statut: 401,
+    })
+    expect(purgePoste).toHaveBeenCalledTimes(1)
+    expect(purgeAdmin).not.toHaveBeenCalled()
     expect(purgeScoreur).not.toHaveBeenCalled()
   })
 })
