@@ -44,7 +44,8 @@ disposer d'un plan exploitable sans saisie manuelle.
   technique tranché le 17/07/2026 : **domaine + service + endpoint de lecture** (recalcul à la
   demande) ; la **persistance** du plan et l'**ajustement** manuel sont E03US004 — d'où la hauteur
   laissée **facultative** au PUT catégorie ([DETTE-009](../docs/dette.md), le front est hors
-  périmètre).
+  périmètre). *(DETTE-009 **résorbée** par E03US004 : la hauteur est désormais **obligatoire** au PUT
+  — ne pas dériver de cette phrase un CA périmé.)*
 - **Absorbe** : ex-E03US001 à 003, E03US008. **Dépend de** : E01US007, E02US004 · **Jalon** : J1
 
 ### E03US004 — Ajuster le placement (glisser-déposer)
@@ -54,7 +55,27 @@ déplacement viole les règles, *afin d'*affiner le placement auto sans le casse
   persistance via la file ; mise à jour live.
 - **CA — déplacement invalide (ex-005)** : un déplacement violant capacité/fraction est refusé
   avec message ; état inchangé.
-- **Notes** : front feature `placement`.
+- **CA — réserve** : une zone **réserve** (banc, sans capacité) reçoit les archers non posés. Le
+  placement auto y range ceux qu'il **ne peut pas** placer, avec une **raison explicite** (pas de
+  blason, plus de cible compatible) — jamais d'archer perdu en silence. L'admin peut y mettre un
+  archer de côté et l'en reposer sur une case libre. **Plan final = réserve vide** + contraintes
+  respectées.
+- **CA — échange atomique** : déposer un archer sur une case **occupée** permute les deux ; la
+  permutation est validée **en bloc** (chacun doit tenir dans la cible de l'autre) et refusée
+  entièrement sinon (état inchangé). Déposer depuis la réserve sur une case occupée est refusé
+  (rien à permuter en retour).
+- **CA — placer les restants** : un bouton complète la réserve **automatiquement** dans les trous
+  du plan **sans déplacer** les archers déjà posés ; ce qu'aucune cible ne prend reste en réserve.
+- **CA — annuler** : un bouton « annuler les modifications » **régénère** le placement auto
+  (déterministe) et écrase les ajustements manuels (avec confirmation). C'est la même opération que
+  « générer le plan » — cf. [ADR-0024](../docs/adr/0024-plan-de-cibles-materialise-ajustable.md).
+- **Notes** : front feature `placement`, **écran dédié admin sur PC** (drag **HTML5 natif**, sans
+  dépendance — la règle 10 « tactile prioritaire » vise les tablettes de saisie, pas cet écran).
+  Persistance **matérialisée** (table `placement`, une affectation par inscription ; sans ligne =
+  réserve) et modèle **live / serveur autoritaire** : chaque geste écrit via la file et diffuse — 
+  [ADR-0024](../docs/adr/0024-plan-de-cibles-materialise-ajustable.md). Résorbe **DETTE-009** :
+  porte la hauteur de centre au formulaire catégorie et rend `hauteur_cm` obligatoire au PUT.
+  *(Arbitrages tranchés le 18/07/2026, reversés ici — règle 9.)*
 - **Absorbe** : ex-E03US004, E03US005. **Dépend de** : E03US001 · **Jalon** : J1
 
 ### E03US006 — Contrainte ≥ 2 clubs par cible

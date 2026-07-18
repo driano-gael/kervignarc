@@ -14,9 +14,13 @@ from domain.placement import (
     ArcherAPlacer,
     CiblePlacee,
     Conflit,
+    Placement,
     PlanDeCibles,
+    PoseCalculee,
     RaisonConflit,
+    cible_accepte,
     placer,
+    placer_restants,
 )
 
 
@@ -209,3 +213,103 @@ def test_sans_aucune_cible_tous_les_archers_sont_en_conflit() -> None:
         Conflit(archer_id=1, raison=RaisonConflit.NON_PLACE),
         Conflit(archer_id=2, raison=RaisonConflit.NON_PLACE),
     )
+
+
+# --- Validation d'un déplacement manuel (E03US004, CA « déplacement invalide ») ------------------
+# `cible_accepte` répond « ce candidat tiendrait-il sur cette cible déjà peuplée ? » — les quatre
+# budgets d'ADR-0023 relus en lecture seule. Un déplacement/échange s'en compose côté service.
+
+
+def test_cible_accepte_une_place_disponible() -> None:
+    """CA : un déplacement sur une cible qui a la place (espace, position, hauteur) est autorisé."""
+    (cible,) = _cibles(4)
+    occupants = (_archer(1, blason=1, taille=0.5),)
+    assert cible_accepte(cible, occupants, _archer(2, blason=2, taille=0.5)) is True
+
+
+def test_cible_refuse_quand_les_positions_sont_pleines() -> None:
+    """CA (budget positions) : une cible pleine en nombre refuse, même s'il reste de l'espace."""
+    (cible,) = _cibles(2)
+    occupants = (_archer(1, blason=1, taille=0.1), _archer(2, blason=2, taille=0.1))
+    assert cible_accepte(cible, occupants, _archer(3, blason=3, taille=0.1)) is False
+
+
+def test_cible_refuse_une_hauteur_incompatible() -> None:
+    """CA (hauteur, ADR-0022) : déplacer un U11 (110) sur une butte d'adultes (130) est refusé."""
+    (cible,) = _cibles(4)
+    occupants = (_archer(1, blason=1, taille=0.25, hauteur=130),)
+    assert cible_accepte(cible, occupants, _archer(2, blason=2, taille=0.25, hauteur=110)) is False
+
+
+def test_cible_refuse_quand_l_espace_manque() -> None:
+    """CA (espace) : un carton neuf qui déborde l'espace restant (0,6 + 0,6 > 1) est refusé."""
+    (cible,) = _cibles(4)
+    occupants = (_archer(1, blason=1, taille=0.6),)
+    assert cible_accepte(cible, occupants, _archer(2, blason=2, taille=0.6)) is False
+
+
+def test_cible_accepte_le_partage_de_carton_sans_espace_neuf() -> None:
+    """CA (budget partage) : un archer rejoint un carton du même blason sans coût d'espace.
+
+    Le carton occupe toute la cible (1,0) mais sa capacité (2) laisse une place : le 2ᵉ du même
+    blason est accepté alors même qu'aucun carton neuf ne tiendrait."""
+    (cible,) = _cibles(4)
+    occupants = (_archer(1, blason=7, taille=1.0, capacite_blason=2),)
+    candidat = _archer(2, blason=7, taille=1.0, capacite_blason=2)
+    assert cible_accepte(cible, occupants, candidat) is True
+
+
+def test_cible_refuse_un_carton_plein_sans_espace() -> None:
+    """CA (budgets) : carton du blason saturé **et** plus d'espace → refus d'un autre blason."""
+    (cible,) = _cibles(4)
+    occupants = (_archer(1, blason=7, taille=1.0, capacite_blason=1),)
+    assert cible_accepte(cible, occupants, _archer(2, blason=8, taille=0.5)) is False
+
+
+# --- Placement automatique des restants (E03US004, CA « placer les restants ») -------------------
+# `placer_restants` comble les trous du plan avec la réserve, sans déplacer les archers en place.
+
+
+def test_placer_restants_comble_un_trou_sans_bouger_les_places() -> None:
+    """CA : la réserve prend la première case libre ; l'archer déjà placé ne bouge pas."""
+    cibles = _cibles(4)
+    plan = (CiblePlacee(index=1, capacite=4, placements=(Placement("A", 1, 1),)),)
+    donnees = {1: _archer(1, blason=1, taille=0.25), 2: _archer(2, blason=2, taille=0.25)}
+    poses, conflits = placer_restants(cibles, plan, donnees, (donnees[2],))
+    assert poses == (PoseCalculee(archer_id=2, cible_index=1, position="B"),)
+    assert conflits == ()
+
+
+def test_placer_restants_preserve_une_position_creuse() -> None:
+    """CA : un occupant en position B est **préservé** ; la réserve prend A (1ʳᵉ lettre libre)."""
+    cibles = _cibles(4)
+    plan = (CiblePlacee(index=1, capacite=4, placements=(Placement("B", 1, 1),)),)
+    donnees = {1: _archer(1, blason=1, taille=0.25), 2: _archer(2, blason=2, taille=0.25)}
+    poses, _ = placer_restants(cibles, plan, donnees, (donnees[2],))
+    assert poses == (PoseCalculee(archer_id=2, cible_index=1, position="A"),)
+
+
+def test_placer_restants_respecte_la_hauteur_de_la_cible() -> None:
+    """CA (hauteur) : un U11 de la réserve évite la butte d'adultes montée, va sur une libre."""
+    cibles = _cibles(4, 4)
+    plan = (
+        CiblePlacee(index=1, capacite=4, placements=(Placement("A", 1, 1),)),
+        CiblePlacee(index=2, capacite=4, placements=()),
+    )
+    donnees = {
+        1: _archer(1, blason=1, taille=0.25, hauteur=130),
+        2: _archer(2, blason=2, taille=0.25, hauteur=110),
+    }
+    poses, conflits = placer_restants(cibles, plan, donnees, (donnees[2],))
+    assert poses == (PoseCalculee(archer_id=2, cible_index=2, position="A"),)
+    assert conflits == ()
+
+
+def test_placer_restants_signale_les_irreductibles() -> None:
+    """CA : ce qu'aucune cible ne peut prendre reste en réserve, signalé `NON_PLACE`, pas perdu."""
+    cibles = _cibles(1)
+    plan = (CiblePlacee(index=1, capacite=1, placements=(Placement("A", 1, 1),)),)
+    donnees = {1: _archer(1, blason=1, taille=1.0), 2: _archer(2, blason=2, taille=1.0)}
+    poses, conflits = placer_restants(cibles, plan, donnees, (donnees[2],))
+    assert poses == ()
+    assert conflits == (Conflit(archer_id=2, raison=RaisonConflit.NON_PLACE),)

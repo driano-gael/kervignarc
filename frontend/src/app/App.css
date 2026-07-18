@@ -620,3 +620,145 @@ button:disabled {
 .ligne-action__champ {
   width: 4.5em;
 }
+
+/* Écran d'ajustement du placement (E03US004) : grille de cibles + réserve, glisser-déposer natif. */
+.placement {
+  margin-top: 8px;
+}
+
+.placement__barre {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+/* Refus de déplacement (409) : une **alerte** ambre (DV-03, `--warn`), pas une erreur rouge — le
+   geste était légitime, seulement pas applicable ici. */
+.placement__alerte {
+  margin: 4px 0;
+  color: var(--warn);
+  font-size: 13px;
+}
+
+.placement__pret {
+  margin: 4px 0;
+  color: var(--ok);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.placement__cibles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.cible {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 8px;
+}
+
+.cible__titre {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.cible__cases {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Case = zone de dépôt. Hauteur ≥ 44 px (cible tactile AA, la config se fait aussi sur tablette). */
+.case {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 2px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.case--survol {
+  border-color: var(--accent);
+  border-style: solid;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.case__libre {
+  padding-left: 8px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+/* Jeton d'archer déplaçable. `grab`/`grabbing` signalent l'affordance de drag à la souris (PC). */
+.jeton {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: grab;
+  user-select: none;
+}
+
+.jeton:active {
+  cursor: grabbing;
+}
+
+/* Réserve (banc) : zone de dépôt pour mettre un archer à l'écart. */
+.reserve {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+}
+
+.reserve--survol {
+  border-color: var(--accent);
+  border-style: solid;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.reserve__titre {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.reserve__liste {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.reserve__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reserve__raison {
+  font-size: 12px;
+  color: var(--text);
+}
+
+/* Anomalie à traiter (sans blason / aucune cible possible) : ambre (DV-03), jamais rouge. */
+.reserve__raison--anomalie {
+  color: var(--warn);
+}

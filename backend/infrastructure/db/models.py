@@ -233,6 +233,34 @@ class InscriptionORM(Base):
     paye: Mapped[bool] = mapped_column(nullable=False, default=False)
 
 
+class PlacementORM(Base):
+    """Table `placement` — affectation matérialisée d'un inscrit sur une case (E03US004, ADR-0024).
+
+    Une ligne = un inscrit **posé** ; `inscription_id` en **clé primaire** (au plus une case par
+    inscription). Un inscrit **sans** ligne est *en réserve* — l'absence de ligne *est*
+    l'information, on ne persiste pas la réserve. `depart_id` est **dénormalisé** (dérivable de
+    l'inscription) pour lire et réécrire le plan d'un départ sans jointure ; `position` porte la
+    lettre A..D.
+
+    **`ON DELETE CASCADE`**, à rebours de la convention DETTE-001 (« FK sans `ON DELETE`, purge
+    applicative ») : `placement` est de la donnée **dérivée, reconstructible et feuille** (l'auto la
+    régénère), pas de la donnée saisie remontant l'arbre du tournoi. Sa disparition suit
+    automatiquement celle de l'inscription (désinscription, suppression d'archer/de départ) — cf.
+    ADR-0024. Les FK sont **enforced** (`PRAGMA foreign_keys=ON`, `engine.py`).
+    """
+
+    __tablename__ = "placement"
+
+    inscription_id: Mapped[int] = mapped_column(
+        ForeignKey("inscription.id", ondelete="CASCADE"), primary_key=True
+    )
+    depart_id: Mapped[int] = mapped_column(
+        ForeignKey("depart.id", ondelete="CASCADE"), nullable=False
+    )
+    cible_index: Mapped[int] = mapped_column(nullable=False)
+    position: Mapped[str] = mapped_column(nullable=False)
+
+
 class PhaseORM(Base):
     """Table `phase` — persistance de l'agrégat `Phase` (introduction minimale, E01US009/ADR-0011).
 

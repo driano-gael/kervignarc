@@ -15,18 +15,24 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+from collections.abc import Sequence
 
 import pytest
 
-from application.erreurs import DepartIntrouvable, GabaritDuTournoiAbsent, TournoiIntrouvable
+from application.erreurs import (
+    DepartIntrouvable,
+    DeplacementInvalide,
+    GabaritDuTournoiAbsent,
+    TournoiIntrouvable,
+)
 from application.placement import ServicePlacement
 from domain.archer import Archer
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie
-from domain.depart import Depart
+from domain.depart import Depart, DepartId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
-from domain.inscription import Inscription
-from domain.placement import CiblePlacee, RaisonConflit
+from domain.inscription import Inscription, InscriptionId
+from domain.placement import Affectation, CiblePlacee, PlanDeCibles, RaisonConflit
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from tests.conftest import (
     FauxArcherRepository,
@@ -126,6 +132,36 @@ class FauxBlasonRepository:
         del self._blasons[blason_id]
 
 
+class FauxPlacementRepository:
+    """Repository en mémoire conforme au port `PlacementRepository` (E03US004).
+
+    Stocke une affectation par inscription, avec son départ, pour rejouer `par_depart`,
+    `definir_plan` (purge + réécriture), `poser_plusieurs` (upsert) et `retirer`."""
+
+    def __init__(self) -> None:
+        self._affectation: dict[int, Affectation] = {}
+        self._depart: dict[int, int] = {}
+
+    def par_depart(self, depart_id: DepartId) -> list[Affectation]:
+        affectations = [a for i, a in self._affectation.items() if self._depart[i] == depart_id]
+        return sorted(affectations, key=lambda a: (a.cible_index, a.position))
+
+    def definir_plan(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
+        for inscription_id in [i for i, d in self._depart.items() if d == depart_id]:
+            self._affectation.pop(inscription_id, None)
+            self._depart.pop(inscription_id, None)
+        self.poser_plusieurs(depart_id, affectations)
+
+    def poser_plusieurs(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
+        for affectation in affectations:
+            self._affectation[affectation.inscription_id] = affectation
+            self._depart[affectation.inscription_id] = depart_id
+
+    def retirer(self, inscription_id: InscriptionId) -> None:
+        self._affectation.pop(inscription_id, None)
+        self._depart.pop(inscription_id, None)
+
+
 class _Monde:
     """Petit décor : les fakes câblés + un tournoi et un gabarit appliqué, prêts à peupler."""
 
@@ -137,6 +173,8 @@ class _Monde:
         self.archers = FauxArcherRepository()
         self.categories = FauxCategorieRepository()
         self.blasons = FauxBlasonRepository()
+        self.placements = FauxPlacementRepository()
+        self.inscription_par_archer: dict[int, int] = {}
         tournoi = self.tournois.ajouter(
             Tournoi(nom="Kervignarc", date=_DATE, lieu=None, type_tournoi=TypeTournoi.NON_OFFICIEL)
         )
@@ -157,6 +195,7 @@ class _Monde:
             self.archers,
             self.categories,
             self.blasons,
+            self.placements,
         )
 
     def depart(self, numero: int) -> int:
@@ -186,8 +225,16 @@ class _Monde:
             Archer(nom="N", prenom="P", tournoi_id=self.tournoi_id, categorie_id=categorie_id)
         )
         assert archer.id is not None
-        self.inscriptions.ajouter(Inscription(archer_id=archer.id, depart_id=depart_id))
+        inscription = self.inscriptions.ajouter(
+            Inscription(archer_id=archer.id, depart_id=depart_id)
+        )
+        assert inscription.id is not None
+        self.inscription_par_archer[archer.id] = inscription.id
         return archer.id
+
+    def inscription(self, archer_id: int) -> int:
+        """Identifiant d'inscription d'un archer (pour cibler un déplacement, E03US004)."""
+        return self.inscription_par_archer[archer_id]
 
 
 def _archers_places(plan_cibles: tuple[CiblePlacee, ...]) -> set[int]:
@@ -195,14 +242,14 @@ def _archers_places(plan_cibles: tuple[CiblePlacee, ...]) -> set[int]:
 
 
 def test_place_les_archers_inscrits_au_depart() -> None:
-    """Les inscrits d'un départ sont placés sur les cibles du gabarit, chacun avec une position."""
+    """La régénération place les inscrits sur les cibles du gabarit, chacun avec une position."""
     monde = _Monde(capacites=(4,))
     depart = monde.depart(1)
     cat = monde.categorie(taille=0.5)
     a1 = monde.inscrire(depart, cat)
     a2 = monde.inscrire(depart, cat)
 
-    plan = monde.service.plan_de_cibles(monde.tournoi_id, depart)
+    plan = monde.service.regenerer(monde.tournoi_id, depart)
 
     assert _archers_places(plan.cibles) == {a1, a2}
     assert tuple(p.position for p in plan.cibles[0].placements) == ("A", "B")
@@ -216,7 +263,7 @@ def test_categorie_sans_blason_donne_un_conflit_sans_blason() -> None:
     cat = monde.categorie(avec_blason=False)
     archer = monde.inscrire(depart, cat)
 
-    plan = monde.service.plan_de_cibles(monde.tournoi_id, depart)
+    plan = monde.service.regenerer(monde.tournoi_id, depart)
 
     assert _archers_places(plan.cibles) == set()
     assert plan.conflits[0].archer_id == archer
@@ -233,7 +280,7 @@ def test_fusionne_conflits_sans_blason_et_non_place() -> None:
     surnombre = monde.inscrire(depart, cat)  # plus de place → NON_PLACE
     sans = monde.inscrire(depart, cat_sans)  # pas de blason → SANS_BLASON
 
-    plan = monde.service.plan_de_cibles(monde.tournoi_id, depart)
+    plan = monde.service.regenerer(monde.tournoi_id, depart)
 
     raisons = {c.archer_id: c.raison for c in plan.conflits}
     assert _archers_places(plan.cibles) == {place}
@@ -249,7 +296,7 @@ def test_ne_place_que_les_inscrits_du_depart_demande() -> None:
     a1 = monde.inscrire(depart1, cat)
     monde.inscrire(depart2, cat)
 
-    plan1 = monde.service.plan_de_cibles(monde.tournoi_id, depart1)
+    plan1 = monde.service.regenerer(monde.tournoi_id, depart1)
     assert _archers_places(plan1.cibles) == {a1}
 
 
@@ -262,7 +309,7 @@ def test_u11_et_adultes_sont_separes_sur_deux_cibles() -> None:
     u11 = monde.inscrire(depart, cat_u11)
     adulte = monde.inscrire(depart, cat_adulte)
 
-    plan = monde.service.plan_de_cibles(monde.tournoi_id, depart)
+    plan = monde.service.regenerer(monde.tournoi_id, depart)
 
     cible_de = {p.archer_id: cible.index for cible in plan.cibles for p in cible.placements}
     assert cible_de[u11] != cible_de[adulte]
@@ -306,3 +353,221 @@ def test_sans_gabarit_applique_leve_gabarit_du_tournoi_absent() -> None:
     depart = monde.depart(1)
     with pytest.raises(GabaritDuTournoiAbsent):
         monde.service.plan_de_cibles(monde.tournoi_id, depart)
+
+
+# --- Plan matérialisé et ajustable (E03US004, ADR-0024) ------------------------------------------
+# Nuance vs l'en-tête de fichier (« tests après impl », qui vise l'orchestration E03US001) : les
+# tests ci-dessous portent des **règles métier de service** (échange atomique, refus en bloc, dépôt
+# réserve→occupée refusé, réserve motivée) et dérivent donc du **CA** d'E03US004 (`stories/`, puce
+# CA + Notes) **avant** implémentation — règle 9.
+
+
+def _cible_de(plan: object) -> dict[int, int]:
+    """archer_id → index de cible où il est posé, pour les assertions de placement."""
+    assert isinstance(plan, PlanDeCibles)
+    return {p.archer_id: cible.index for cible in plan.cibles for p in cible.placements}
+
+
+def test_lecture_avant_generation_met_tout_en_reserve() -> None:
+    """ADR-0024 : la lecture ne recalcule plus ; sans génération, les inscrits sont en réserve."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1 = monde.inscrire(depart, cat)
+
+    plan = monde.service.plan_de_cibles(monde.tournoi_id, depart)
+
+    assert _archers_places(plan.cibles) == set()
+    assert {c.archer_id: c.raison for c in plan.conflits} == {a1: RaisonConflit.EN_RESERVE}
+
+
+def test_deplacer_vers_une_case_libre() -> None:
+    """CA glisser-déposer : l'archer va sur la case libre visée, l'autre ne bouge pas."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1, a2 = monde.inscrire(depart, cat), monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+
+    plan = service.deplacer(monde.tournoi_id, depart, monde.inscription(a2), 2, "A")
+
+    cible_de = _cible_de(plan)
+    assert cible_de[a1] == 1
+    assert cible_de[a2] == 2
+
+
+def test_deplacement_invalide_est_refuse_etat_inchange() -> None:
+    """CA invalide : poser un adulte sur une butte de U11 est refusé ; rien ne change."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    u11 = monde.inscrire(depart, monde.categorie(taille=0.25, hauteur=110))
+    adulte = monde.inscrire(depart, monde.categorie(taille=0.25, hauteur=130))
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    avant = _cible_de(service.plan_de_cibles(monde.tournoi_id, depart))
+
+    with pytest.raises(DeplacementInvalide):
+        service.deplacer(monde.tournoi_id, depart, monde.inscription(adulte), avant[u11], "B")
+
+    assert _cible_de(service.plan_de_cibles(monde.tournoi_id, depart)) == avant
+
+
+def test_mettre_en_reserve_libere_la_case() -> None:
+    """CA réserve : mettre un archer en réserve (sans cible) le retire du plan (EN_RESERVE)."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1 = monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+
+    plan = service.deplacer(monde.tournoi_id, depart, monde.inscription(a1), None, None)
+
+    assert _archers_places(plan.cibles) == set()
+    assert {c.archer_id: c.raison for c in plan.conflits} == {a1: RaisonConflit.EN_RESERVE}
+
+
+def test_echange_atomique_permute_deux_archers() -> None:
+    """CA échange : déposer un archer sur une case occupée permute les deux."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1, a2 = monde.inscrire(depart, cat), monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    service.deplacer(monde.tournoi_id, depart, monde.inscription(a2), 2, "A")  # a2 → cible 2
+
+    plan = service.deplacer(monde.tournoi_id, depart, monde.inscription(a1), 2, "A")  # sur a2
+
+    cible_de = _cible_de(plan)
+    assert cible_de[a1] == 2
+    assert cible_de[a2] == 1
+
+
+def test_echange_refuse_en_bloc_si_un_ne_tient_pas() -> None:
+    """CA échange : refus **en bloc** si l'un ne tient pas chez l'autre ; état inchangé.
+
+    Deux U11 sur la cible 1, un adulte seul sur la cible 2 : échanger un U11 avec l'adulte
+    mettrait l'adulte sur une butte de U11 (hauteur incompatible) → refus total."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat_u11 = monde.categorie(taille=0.25, hauteur=110)
+    cat_adulte = monde.categorie(taille=0.25, hauteur=130)
+    u11a, u11b = monde.inscrire(depart, cat_u11), monde.inscrire(depart, cat_u11)
+    adulte = monde.inscrire(depart, cat_adulte)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    avant = _cible_de(service.plan_de_cibles(monde.tournoi_id, depart))
+
+    with pytest.raises(DeplacementInvalide):
+        service.deplacer(monde.tournoi_id, depart, monde.inscription(u11a), avant[adulte], "A")
+
+    assert _cible_de(service.plan_de_cibles(monde.tournoi_id, depart)) == avant
+    assert {u11a, u11b, adulte} == set(avant)
+
+
+def test_deposer_depuis_la_reserve_sur_une_case_occupee_est_refuse() -> None:
+    """CA échange : depuis la réserve, on ne peut pas prendre une case occupée (rien à permuter)."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1, a2 = monde.inscrire(depart, cat), monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    place = _cible_de(service.plan_de_cibles(monde.tournoi_id, depart))
+    service.deplacer(monde.tournoi_id, depart, monde.inscription(a2), None, None)  # a2 en réserve
+
+    with pytest.raises(DeplacementInvalide):
+        service.deplacer(monde.tournoi_id, depart, monde.inscription(a2), place[a1], "A")
+
+
+def test_placer_les_restants_comble_la_reserve_sans_bouger_les_places() -> None:
+    """CA placer les restants : la réserve est reposée dans les trous, les placés ne bougent pas."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1, a2 = monde.inscrire(depart, cat), monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    service.deplacer(monde.tournoi_id, depart, monde.inscription(a2), None, None)  # a2 réserve
+
+    plan = service.placer_les_restants(monde.tournoi_id, depart)
+
+    assert _archers_places(plan.cibles) == {a1, a2}
+    assert plan.conflits == ()
+
+
+def test_regenerer_ecrase_les_ajustements_manuels() -> None:
+    """CA annuler : régénérer repart de l'auto déterministe et efface les déplacements manuels."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1, a2 = monde.inscrire(depart, cat), monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    service.deplacer(monde.tournoi_id, depart, monde.inscription(a2), 2, "A")  # ajustement manuel
+
+    plan = service.regenerer(monde.tournoi_id, depart)  # « annuler les modifications »
+
+    cible_de = _cible_de(plan)
+    assert cible_de[a1] == 1
+    assert cible_de[a2] == 1  # l'auto les remet ensemble sur la cible 1
+
+
+def test_echange_sur_la_meme_cible_permute_les_positions() -> None:
+    """CA échange : permuter deux archers d'une **même** cible échange leurs positions."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1, a2 = monde.inscrire(depart, cat), monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)  # a1 en A, a2 en B (tri déterministe par id)
+
+    # a1 déposé sur la case de a2 (B) → permutation des positions sur la même cible.
+    plan = service.deplacer(monde.tournoi_id, depart, monde.inscription(a1), 1, "B")
+
+    positions = {p.archer_id: p.position for cible in plan.cibles for p in cible.placements}
+    assert positions[a1] == "B"
+    assert positions[a2] == "A"
+
+
+def test_cible_disparue_du_gabarit_retombe_en_reserve() -> None:
+    """Revue C1/D « archers fantômes » : réduire le gabarit après matérialisation renvoie l'archer
+    d'une cible disparue **en réserve**, jamais perdu (ligne rouge « aucun archer perdu »)."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1, a2 = monde.inscrire(depart, cat), monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    service.deplacer(monde.tournoi_id, depart, monde.inscription(a2), 2, "A")  # a2 sur la cible 2
+    # La salle est reconfigurée à 1 cible : la cible 2 disparaît du gabarit courant.
+    monde.gabarits.ajouter(GabaritSalle(nom="Salle", capacites=(4,), tournoi_id=monde.tournoi_id))
+
+    plan = service.plan_de_cibles(monde.tournoi_id, depart)
+
+    places = _archers_places(plan.cibles)
+    reserve = {conflit.archer_id for conflit in plan.conflits}
+    assert a1 in places
+    assert a2 not in places
+    assert a2 in reserve  # retombé en réserve, pas disparu en silence
+
+
+def test_placer_les_restants_repose_un_archer_de_cible_disparue() -> None:
+    """Revue D (F1) : après réduction du gabarit, « placer les restants » **repose** l'archer
+    retombé en réserve dans une cible restante — le bouton n'est pas inopérant pour lui."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1, a2 = monde.inscrire(depart, cat), monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    service.deplacer(monde.tournoi_id, depart, monde.inscription(a2), 2, "A")  # a2 sur la cible 2
+    monde.gabarits.ajouter(GabaritSalle(nom="Salle", capacites=(4,), tournoi_id=monde.tournoi_id))
+    # a2 est retombé en réserve (cible 2 disparue) ; « placer les restants » doit le reposer.
+
+    plan = service.placer_les_restants(monde.tournoi_id, depart)
+
+    assert _archers_places(plan.cibles) == {a1, a2}
+    assert plan.conflits == ()

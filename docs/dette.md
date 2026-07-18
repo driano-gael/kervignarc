@@ -34,9 +34,8 @@
 | ID | Nature | Sévérité | Portée | Description | Impact | Introduite par | Résorption |
 |---|---|---|---|---|---|---|---|
 | [DETTE-001](#dette-001--suppression-de-tournoi-non-cascadée) | technique | majeur | `backend/infrastructure/db/models.py`, `backend/migrations/versions/` | Aucune FK de la descendance de `tournoi` n'a d'`ON DELETE CASCADE`, ni de suppression applicative équivalente : enfants directs `categorie`, `archer`, `blason`, `gabarit_salle`, `phase`, `depart` (→ `tournoi.id`), enfants indirects `score` (→ `archer.id`, **sauf** par `ArcherRepositorySQL.supprimer` — voir Résorption) et `inscription` (→ `archer.id` **et** `depart.id`, **sauf** par `ArcherRepositorySQL.supprimer` et `DepartRepositorySQL.supprimer` — E02US009) et liens latéraux `categorie.blason_id` (→ `blason.id`) et `archer.categorie_id` (→ `categorie.id`) | Supprimer un tournoi non vide lève une `IntegrityError` → **500** au lieu d'un 409 ou d'une cascade maîtrisée | E01US002 (cycle de vie du tournoi) ; aggravée à chaque nouvelle table/FK de la descendance (E01US004, E01US005, E01US006, E01US008, E01US009, E02US002, E02US004, E02US009) ; E02US003 puis E02US009 y ouvrent des **brèches partielles** (cascades applicatives `archer` → `score`, `archer`/`depart` → `inscription`), qui ne valent que pour les chemins `ArcherRepositorySQL.supprimer` et `DepartRepositorySQL.supprimer` | US dédiée — non planifiée. **⚠️ Deux pièges pour qui la résorbera.** (1) `archer` → `score` **n'est résolu que pour le chemin `ArcherRepositorySQL.supprimer`** (cascade applicative, E02US003) ; la branche **reste ouverte** pour toute suppression d'archer qui ne passe pas par cet adapter — dont la **cascade depuis `tournoi`**, précisément ce que cette dette vise. (2) **Ne pas poser `ON DELETE CASCADE` sur `score.archer_id`** : la confirmation vit **en amont**, dans `ServiceArchers.supprimer` (`ArcherEngage`), la purge dans l'adapter. Une cascade en base ne contourne pas la confirmation *sur ce chemin*, mais elle armerait une purge **silencieuse** sur **tout autre** chemin (cascade tournoi, import, script) — l'option écartée par [ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md) |
-| [DETTE-009](#dette-009--hauteur_cm-en-champ-partiel-du-put-catégorie) | conception | mineur | `backend/api/v1/categories.py` (`ModifierCategorieRequete`) | Au `PUT /categories/{id}`, `hauteur_cm` est le **seul champ partiel** (omis = inchangé) d'un PUT par ailleurs **total** : le front (E02US003) ne porte pas encore le champ, et le rendre obligatoire casserait ce front en 400 | Entorse assumée à [ADR-0020](adr/0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md) (qui a rendu `zones` obligatoire pour éviter ce piège de read-modify-write). **Pas de corruption** : la variante initiale (défaut 130) qui écrasait une U11 110→130 sur le chemin d'attribution d'un blason a été corrigée à la revue | E03US001 (hauteur ajoutée côté domaine + API ; front hors périmètre) | US front qui porte le champ au formulaire catégorie (fléchée E03US004) — le PUT redevient total, `hauteur_cm` obligatoire |
 | [DETTE-003](#dette-003--config-de-phase-à-plat-au-lieu-de-configpolicies) | conception | majeur | `backend/infrastructure/db/repositories.py` (`_config_phase`, `_vers_phase`), `docs/modele-de-donnees.md` | La `config` d'une phase écrit ses politiques **à plat à la racine** (`config.scoring`, `config.validation`) alors que le modèle cible (ADR-0004) les range sous `config.policies` ; et `scoring` y est un **objet paramétré** au lieu d'un **nom de preset** | Deux conventions coexistent pour le même champ. Le moteur (EPIC-05) devra soit adopter la forme à plat — et renoncer au modèle cible — soit migrer les `config` déjà écrites : c'est une décision reportée, pas évitée | E01US009 (forme posée) ; suivie par E01US015 (`config.validation`), qui s'y aligne plutôt que d'introduire une 2ᵉ convention | E05US003 (assembler les politiques) — **avant** d'écrire le moteur |
-| [DETTE-004](#dette-004--messageerreur-dupliqué-dans-chaque-feature-front) | conception | mineur | `frontend/src/features/*/` (10 occurrences) | Le composant `MessageErreur` est copié **à l'identique** dans chaque feature — même signature, même corps, mêmes classes — au lieu de vivre dans `shared/` | Tout changement du rendu d'erreur (ex. le token d'alerte **ambre** du CDC design, `DV-03`) se fait en 10 endroits, avec le risque d'en oublier un : les erreurs sont précisément ce que l'utilisateur voit quand ça va mal | E00US011 puis chaque feature (`admin`, `bareme`, `blasons`, `categories`, `competition`, `gabarits` ×2) ; **aggravée** par E01US015 (8ᵉ copie), E02US001 (9ᵉ copie) puis E02US003 (10ᵉ copie, feature `archers`) | E00US013 (factoriser les briques d'UI partagées) |
+| [DETTE-004](#dette-004--messageerreur-dupliqué-dans-chaque-feature-front) | conception | mineur | `frontend/src/features/*/` (11 occurrences) | Le composant `MessageErreur` est copié **à l'identique** dans chaque feature — même signature, même corps, mêmes classes — au lieu de vivre dans `shared/` | Tout changement du rendu d'erreur (ex. le token d'alerte **ambre** du CDC design, `DV-03`) se fait en 10 endroits, avec le risque d'en oublier un : les erreurs sont précisément ce que l'utilisateur voit quand ça va mal | E00US011 puis chaque feature (`admin`, `bareme`, `blasons`, `categories`, `competition`, `gabarits` ×2) ; **aggravée** par E01US015 (8ᵉ copie), E02US001 (9ᵉ copie), E02US003 (10ᵉ copie, feature `archers`) puis E03US004 (11ᵉ copie, feature `placement`) | E00US013 (factoriser les briques d'UI partagées) |
 | [DETTE-006](#dette-006--cle_nom-nest-plus-chez-elle-dans-domainclubpy) | conception | mineur | `backend/domain/club.py` (`cle_nom`), `backend/domain/archer.py`, `backend/application/archers.py`, `backend/application/clubs.py` | `cle_nom` — le repli casse/accents des noms propres — vit dans `domain/club.py`, mais sert désormais **4** usages dont **2 hors du concept « club »** : `archer.cle_identite` (E02US002) et le tri des archers (E02US003). Sa propre docstring avait posé le seuil : « si un 2ᵉ usage hors club apparaît, extraire dans un `domain/texte.py` en US dédiée » | La fonction est **juste** ; seul son domicile est faux. Un lecteur d'`archer.py` doit aller lire `club.py` pour comprendre comment se replient les noms d'archers, et le prochain usage hors club ira chercher la règle là où elle n'a plus de raison d'être | E02US002 (1ᵉʳ usage hors club) ; **seuil atteint** par E02US003 (2ᵉ) | US dédiée à créer (`refactor/…`) — déplacer dans `domain/texte.py`, 4 appelants, zéro changement de comportement |
 
 | [DETTE-008](#dette-008--une-réponse-400-renvoie-lentrée-du-client-en-écho-non-borné) | technique | mineur | `backend/api/erreurs.py` (`_sur_erreur_validation`) | Une entrée rejetée par Pydantic revient **verbatim** au client : `details = jsonable_encoder(exc.errors())` embarque le champ `input` de chaque erreur, sans borne ni sur la taille d'une valeur, ni sur le nombre d'erreurs listées | **Amplification mesurée ×42,9** (50 Ko envoyés → 2,1 Mo reçus) sur un corps à 10 000 valeurs invalides. Le serveur travaille et répond ~43× le volume reçu, sur un réseau local le jour J où ~30 tablettes partagent la bande passante | E00US009 (patron de bout en bout, forme posée) ; **constatée** le 17/07/2026 à la revue d'E01US014 (axe adversarial), qui l'a mesurée sur `zones` (×42,9) **et** sur `ages` (×41,6) — le régime est **général à tous les DTO**, aucune US ne l'a introduit en propre | US dédiée (`fix/…`) — borner `input` dans `_sur_erreur_validation` (troncature de la valeur + plafond du nombre d'erreurs listées). ⚠️ **Ne pas retirer `details`** : le format `{code, message, details?}` est la règle 5, et [DETTE-007](#dette-007--la-confirmation-dune-suppression-darcher-est-aveugle) prévoit précisément de s'en servir |
@@ -48,6 +47,7 @@
 |---|---|---|---|
 | [DETTE-005](#dette-005--conversion-euroscentimes-sans-aucun-test) | technique | `frontend/src/features/competition/format.ts` | **E00US014** : runner `vitest` installé + script `npm test`, câblé à la CI bloquante (E00US003) ; `format.test.ts` couvre la conversion euros↔centimes (aller-retour, sens de complétion `padEnd`/`padStart`, rejets). Marqueur `# DETTE-005` retiré du code. |
 | [DETTE-002](#dette-002--hauteur-de-blason-non-modélisée) | conception | `backend/domain/categorie.py`, `docs/modele-de-donnees.md` | **E03US001** ([ADR-0022](adr/0022-hauteur-de-centre-sur-la-categorie.md)) : la hauteur du centre de l'or vit sur `Categorie` (`hauteur_cm`, 130 par défaut, 110 pour les U11) ; le placement en fait une **contrainte de 1er rang** — une butte, une seule hauteur (test « U11 + adultes → séparés »). Migration `0020` (backfill 110 si `ages` contient U11). |
+| DETTE-009 | conception | `backend/api/v1/categories.py` (`ModifierCategorieRequete`) | **E03US004** : le formulaire catégorie porte la hauteur du centre (UI de placement), donc `hauteur_cm` est rendue **obligatoire** au PUT (DTO + `ServiceCategories.modifier` en keyword-only) ; le PUT redevient **intégralement total** ([ADR-0020](adr/0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md)), l'entorse « champ partiel » disparaît. Test de non-régression HTTP **inversé** (omission → 400). |
 
 ## Détail
 
@@ -113,6 +113,12 @@ E01US006 ajoute la FK latérale `categorie.blason_id`. À noter : la suppression
 encore référencé par une catégorie **n'est pas** de la dette — elle est **tranchée** et traitée par
 le service (`BlasonReference` → 409). Seule reste ouverte la suppression du **tournoi** englobant,
 qui relève de cette même politique non arbitrée.
+
+E03US004 ajoute la table `placement` avec **deux FK en `ON DELETE CASCADE`** (`inscription_id`,
+`depart_id`) : **hors** de cette dette. C'est de la donnée **dérivée, reconstructible et feuille**, et
+sa disparition en cascade est **assumée et argumentée**
+([ADR-0024](adr/0024-plan-de-cibles-materialise-ajustable.md)), pas un raccourci non tranché — le
+futur résolveur de DETTE-001 n'a **rien à faire** sur `placement`, elle s'auto-cascade déjà.
 
 **Résorption attendue.** Une US dédiée qui (a) tranche le comportement, (b) l'applique de façon
 homogène à **toute la descendance** — `score` et le lien `categorie → blason` compris — via une
@@ -210,7 +216,7 @@ structurante ⇒ **ADR** (qui amendera ou remplacera l'ADR-0011).
 
 ### DETTE-004 — `MessageErreur` dupliqué dans chaque feature front
 
-**Constat.** Dix features déclarent chacune leur `MessageErreur`, copie conforme :
+**Constat.** Onze features déclarent chacune leur `MessageErreur`, copie conforme :
 
 ```tsx
 function MessageErreur({ erreur }: { erreur: Error | null }) {
@@ -223,12 +229,12 @@ function MessageErreur({ erreur }: { erreur: Error | null }) {
 Occurrences : `admin/ConnexionAdmin.tsx`, `archers/Archers.tsx`, `bareme/BaremeQualification.tsx`,
 `blasons/Blasons.tsx`, `categories/Categories.tsx`, `clubs/Clubs.tsx`,
 `competition/TrancheVerticale.tsx`, `gabarits/Gabarits.tsx`, `gabarits/PlanDeSalle.tsx`,
-`grain-validation/GrainValidation.tsx`. Même signature, même corps, mêmes classes CSS, même
-`role="alert"`.
+`grain-validation/GrainValidation.tsx`, `placement/Placement.tsx`. Même signature, même corps,
+mêmes classes CSS, même `role="alert"`.
 
 **Conséquence.** Le rendu des erreurs n'a pas de point unique. Le CDC design impose que l'**alerte
 soit ambre** et que les couleurs sémantiques appartiennent au produit (`DV-03`) : appliquer ce token
-demandera dix modifications identiques, et il suffit d'en manquer une pour qu'un écran mente sur la
+demandera onze modifications identiques, et il suffit d'en manquer une pour qu'un écran mente sur la
 gravité de ce qu'il affiche. Or l'erreur est exactement ce que l'utilisateur regarde quand la
 journée déraille.
 
@@ -239,10 +245,12 @@ journée déraille.
 > `archers/Archers.tsx` (« Enregistrer quand même », « Changer quand même de catégorie »,
 > « Supprimer définitivement, avec ses résultats »), de la même famille — le dernier en `--danger`,
 > parce que sa confirmation **détruit** ([ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)).
+> E03US004 en ajoute un **cinquième** : l'alerte de refus de déplacement `placement__alerte`
+> (`placement/Placement.tsx`, `role="alert"` en `var(--warn)`, refus `409` non bloquant).
 > **E00US013 ne les trouvera pas** en cherchant `MessageErreur` : ce ne sont pas des copies. Ils sont
-> désormais **quatre**, dans deux features, et se ressemblent assez pour mériter le même traitement
+> désormais **cinq**, dans trois features, et se ressemblent assez pour mériter le même traitement
 > que les copies (soit un `MessageErreur` acceptant des enfants, soit un composant frère assumé) —
-> sans quoi le token ambre s'appliquera à dix endroits sur quatorze.
+> sans quoi le token ambre s'appliquera à onze endroits sur seize.
 
 **Rythme d'aggravation.** Une copie par feature créée : c'est mécanique, et E02US001 le confirme
 (9ᵉ). Chaque US de configuration qui ouvre un écran en ajoutera une tant qu'E00US013 n'est pas
@@ -459,34 +467,6 @@ prévoit explicitement de s'en servir pour faire transiter le décompte d'une co
 destructrice — un champ jamais peuplé à ce jour. Il faut **borner** `details`, pas le retirer.
 
 Marqueur `DETTE-008` posé sur `_sur_erreur_validation` (`backend/api/erreurs.py`).
-
-### DETTE-009 — `hauteur_cm` en champ partiel du PUT catégorie
-
-**Constat.** E03US001 ajoute `hauteur_cm` à `Categorie` (hauteur du centre de l'or, 130 par défaut,
-110 pour les U11 — [ADR-0022](adr/0022-hauteur-de-centre-sur-la-categorie.md)). Le front de gestion
-des catégories (E02US003, `frontend/src/features/categories/api.ts`) envoie un `PUT` **total** qui ne
-porte pas encore ce champ. Pour ne pas **écraser** la hauteur à chaque édition, `hauteur_cm` est
-traitée en **champ partiel** : omise, elle vaut « inchangée » (le service relit et conserve la valeur
-existante), et non « remise à 130 ».
-
-**Pourquoi c'est de la dette.** C'est le **seul champ partiel** d'un `PUT` par ailleurs **total** —
-exactement l'entorse qu'[ADR-0020](adr/0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md)
-avait écartée pour `zones` (un futur client qui reconstruit son corps depuis un modèle incomplet
-n'écrase pas ce champ-là, mais bien les autres, sans que la cause soit visible). L'entorse est
-**assumée** ici, non par confort mais par **contrainte** : rendre `hauteur_cm` obligatoire — la voie
-propre d'ADR-0020 — casserait en 400 le front livré tant qu'il n'envoie pas le champ, et porter le
-champ au formulaire est du **front**, hors périmètre d'E03US001 (domaine + service + lecture).
-
-**Ce que ce n'est PAS (corrigé dans l'US).** Le PUT ne **corrompt** plus la donnée : la variante
-initiale (défaut 130 à l'omission) ramenait silencieusement une U11 de 110 à 130 sur le chemin
-**obligatoire** d'attribution d'un blason — un bug actif, corrigé à la revue (option « None =
-inchangée »). Ne subsiste que l'entorse structurelle ci-dessus et l'**impossibilité d'éditer** la
-hauteur depuis l'UI (seul le pré-chargement FFTA règle les U11 à 110).
-
-**Résorption attendue.** L'US qui porte le champ hauteur au formulaire catégorie (fléchée E03US004,
-UI de placement) rend alors `hauteur_cm` **obligatoire** au DTO d'édition : le PUT redevient
-intégralement total, l'entorse à ADR-0020 disparaît. Marqueur `# DETTE-009` sur
-`ModifierCategorieRequete` (`backend/api/v1/categories.py`).
 
 ## Procédure — inscrire une dette
 

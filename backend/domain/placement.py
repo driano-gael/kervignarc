@@ -38,12 +38,14 @@ appliquées ici : ce sont des US ultérieures.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 
 from domain.archer import ArcherId
 from domain.blason import BlasonId
 from domain.gabarit_salle import Cible
+from domain.inscription import InscriptionId
 
 # La comparaison d'espace se fait à une tolérance près : `taille` est un flottant (1/3 → 0.333…),
 # et trois tiers doivent tenir sur une cible malgré l'arrondi binaire. On accepte donc un carton
@@ -79,6 +81,13 @@ class RaisonConflit(str, Enum):
     NON_PLACE = "non_place"
     """Plus aucune cible ne peut l'accueillir (place, positions ou hauteur épuisées)."""
 
+    EN_RESERVE = "en_reserve"
+    """Mis de côté / en attente de placement, mais **plaçable** — au moins une cible l'accepterait.
+
+    Distingue, en réserve (E03US004), l'archer que l'admin a écarté ou pas encore posé de celui
+    qu'aucune cible ne peut plus prendre (`NON_PLACE`). Raison **dérivée à la lecture**, jamais
+    persistée (ADR-0024)."""
+
     SANS_BLASON = "sans_blason"
     """Sa catégorie n'a pas de blason par défaut : impossible de connaître sa fraction de place.
 
@@ -88,11 +97,18 @@ class RaisonConflit(str, Enum):
 
 @dataclass(frozen=True)
 class Placement:
-    """Un archer posé sur une cible : sa position (lettre) et le blason sur lequel il tire."""
+    """Un archer posé sur une cible : sa position (lettre) et le blason sur lequel il tire.
+
+    `inscription_id` accompagne l'archer pour que la couche API expose **l'inscription** (l'archer
+    sur *ce* départ), cible d'un ajustement (`PUT .../inscriptions/{id}`), sans que le client ait à
+    reconstituer la correspondance archer → inscription. Le moteur pur (`placer`/`placer_restants`)
+    ne connaît pas les inscriptions : il laisse `None` ; c'est le **service** qui la renseigne en
+    construisant le plan persisté (E03US004)."""
 
     position: str  # "A".."D"
     archer_id: ArcherId
     blason_id: BlasonId
+    inscription_id: InscriptionId | None = None
 
 
 @dataclass(frozen=True)
@@ -109,10 +125,15 @@ class CiblePlacee:
 
 @dataclass(frozen=True)
 class Conflit:
-    """Un archer que le placement n'a pas pu poser, et pourquoi."""
+    """Un archer que le placement n'a pas pu poser (il est **en réserve**), et pourquoi.
+
+    `inscription_id` : même rôle que sur `Placement` — l'API expose l'inscription pour que le client
+    puisse reposer l'archer (drag depuis la réserve) sans reconstituer la correspondance. Le moteur
+    pur laisse `None` ; le service la renseigne."""
 
     archer_id: ArcherId
     raison: RaisonConflit
+    inscription_id: InscriptionId | None = None
 
 
 @dataclass(frozen=True)
@@ -139,8 +160,46 @@ class _CibleEnCours:
         return self.cible.capacite - len(self.positions)
 
     def _prochaine_lettre(self) -> str:
-        """Lettre de la prochaine position libre (A, puis B, …), dans l'ordre de remplissage."""
-        return self.cible.positions[len(self.positions)]
+        """Première position **libre** de la cible (A, puis B, …), en sautant les trous.
+
+        Sur une cible remplie à partir de zéro (cas de `placer`), c'est la position suivante par
+        décompte — comportement identique à avant. Après `reprendre` (reconstruction depuis un plan
+        persisté où des lettres peuvent manquer, E03US004), c'est la première lettre non occupée."""
+        occupees = {p.position for p in self.positions}
+        for lettre in self.cible.positions:
+            if lettre not in occupees:
+                return lettre
+        raise AssertionError("Aucune position libre : appelée alors que la cible est pleine.")
+
+    def peut_accueillir(self, archer: ArcherAPlacer) -> bool:
+        """Dit si `archer` **pourrait** être posé, sans muter l'état — même règle qu'`accueille`.
+
+        Sert à valider un déplacement manuel (E03US004) avant de l'appliquer : on ne veut pas
+        modifier la cible pour tester, seulement répondre oui/non aux quatre budgets."""
+        if self.positions_restantes == 0:
+            return False
+        if self.hauteur is not None and self.hauteur != archer.hauteur_cm:
+            return False
+        if self.cartons.get(archer.blason_id, 0) > 0:
+            return True
+        return archer.taille <= self.espace_restant + _EPSILON
+
+    def reprendre(self, archer: ArcherAPlacer, position: str) -> None:
+        """Réintègre un occupant **déjà placé** à sa position exacte (reconstruction, E03US004).
+
+        Consomme les budgets comme `accueille` (partage de carton, sinon carton neuf : espace,
+        carton, hauteur) mais **impose** `position` au lieu d'en prendre une neuve : on reconstruit
+        une cible depuis le plan persisté avant d'y poser la réserve. L'appelant garantit que
+        l'occupant tient (état persisté déjà valide)."""
+        if self.cartons.get(archer.blason_id, 0) > 0:
+            self.cartons[archer.blason_id] -= 1
+        else:
+            self.espace_restant -= archer.taille
+            self.cartons[archer.blason_id] = archer.capacite_blason - 1
+            self.hauteur = archer.hauteur_cm
+        self.positions.append(
+            Placement(position=position, archer_id=archer.archer_id, blason_id=archer.blason_id)
+        )
 
     def accueille(self, archer: ArcherAPlacer) -> bool:
         """Tente de poser `archer` sur cette cible ; renvoie `True` si posé, `False` sinon.
@@ -216,3 +275,83 @@ def placer(cibles: tuple[Cible, ...], archers: tuple[ArcherAPlacer, ...]) -> Pla
             figees.append(CiblePlacee(index=cible.index, capacite=cible.capacite))
 
     return PlanDeCibles(cibles=tuple(figees), conflits=tuple(conflits))
+
+
+@dataclass(frozen=True)
+class Affectation:
+    """Affectation **persistée** d'un inscrit sur une case (E03US004, ADR-0024).
+
+    Là où E03US001 recalculait le plan à chaque lecture, E03US004 le **matérialise** : une
+    affectation par **inscription** (l'archer sur *ce* départ). `cible_index` reprend l'index
+    1-based du gabarit, `position` la lettre (A..D). Un inscrit **sans** affectation = réserve —
+    l'absence de ligne *est* l'information, on ne persiste pas la réserve."""
+
+    inscription_id: InscriptionId
+    cible_index: int
+    position: str
+
+
+@dataclass(frozen=True)
+class PoseCalculee:
+    """Une pose **décidée** par le placement des restants : archer → (cible, position) (E03US004).
+
+    Distincte d'`Affectation` (clé archer, pas inscription) : le moteur pur raisonne en `archer_id`,
+    le service traduit ensuite en inscription pour persister."""
+
+    archer_id: ArcherId
+    cible_index: int
+    position: str
+
+
+def cible_accepte(
+    cible: Cible, occupants: tuple[ArcherAPlacer, ...], candidat: ArcherAPlacer
+) -> bool:
+    """Dit si `candidat` peut rejoindre `cible` déjà peuplée par `occupants` (E03US004, ADR-0024).
+
+    Cœur de la règle « déplacement invalide » du CA : on rejoue les occupants pour reconstituer les
+    quatre budgets de la cible (espace, positions, partage de carton, hauteur), puis on teste le
+    candidat **sans muter**. Un ajout qui violerait un budget est refusé. Les positions exactes des
+    occupants n'importent pas pour cette question (seul leur décompte joue), on les rejoue donc
+    densément via `accueille`. Un **échange** A↔B se compose de deux appels : A accepté par la cible
+    de B *privée de B*, et B accepté par la cible de A *privée de A*."""
+    en_cours = _CibleEnCours(cible, _ESPACE_CIBLE)
+    for occupant in occupants:
+        en_cours.accueille(occupant)
+    return en_cours.peut_accueillir(candidat)
+
+
+def placer_restants(
+    cibles: tuple[Cible, ...],
+    plan_actuel: tuple[CiblePlacee, ...],
+    donnees: Mapping[ArcherId, ArcherAPlacer],
+    a_placer: tuple[ArcherAPlacer, ...],
+) -> tuple[tuple[PoseCalculee, ...], tuple[Conflit, ...]]:
+    """Pose la réserve (`a_placer`) dans les trous du plan **sans déplacer les placés** (E03US004).
+
+    Reconstruit chaque cible depuis `plan_actuel` (occupants à **leur** position, budgets
+    consommés via `donnees`), puis pose chaque archer de la réserve sur la **première** cible qui
+    l'accepte (premier-trouvé, ordre déterministe `(hauteur, blason, id)` comme `placer`). Un nouvel
+    archer prend la 1ʳᵉ lettre libre ; les positions déjà prises sont préservées. Ce
+    qu'aucune cible ne peut accueillir ressort en conflit `NON_PLACE` (reste en réserve). Ne renvoie
+    que les **nouvelles** poses : les archers déjà placés ne bougent pas."""
+    par_index = {cible.index: _CibleEnCours(cible, _ESPACE_CIBLE) for cible in cibles}
+    placee_par_index = {cible_placee.index: cible_placee for cible_placee in plan_actuel}
+    for cible in cibles:
+        en_cours = par_index[cible.index]
+        placee = placee_par_index.get(cible.index)
+        if placee is not None:
+            for pose in placee.placements:
+                en_cours.reprendre(donnees[pose.archer_id], pose.position)
+
+    poses: list[PoseCalculee] = []
+    conflits: list[Conflit] = []
+    for archer in sorted(a_placer, key=lambda a: (a.hauteur_cm, a.blason_id, a.archer_id)):
+        for cible in cibles:
+            en_cours = par_index[cible.index]
+            if en_cours.accueille(archer):
+                lettre = en_cours.positions[-1].position
+                poses.append(PoseCalculee(archer.archer_id, cible.index, lettre))
+                break
+        else:
+            conflits.append(Conflit(archer_id=archer.archer_id, raison=RaisonConflit.NON_PLACE))
+    return tuple(poses), tuple(conflits)

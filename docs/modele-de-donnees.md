@@ -221,14 +221,28 @@ erDiagram
 | capacite | INTEGER | ≥ 1 — usuellement 1 / 2 / 4, **non borné** (la FFTA décrit aussi 3 triples verticaux, §5) |
 
 ### PLACEMENT
-| id | INTEGER | PK |
-| tournoi_id | INTEGER | FK → TOURNOI |
-| phase_id | INTEGER | FK → PHASE (null = qualif générale) |
-| archer_id | INTEGER | FK → ARCHER |
-| depart_id | INTEGER | FK → DEPART |
-| cible_id | INTEGER | FK → CIBLE |
+Table du **plan de cibles matérialisé** livrée par E03US004
+([ADR-0024](adr/0024-plan-de-cibles-materialise-ajustable.md)) — une **affectation par inscription**
+(VO domaine `Affectation`) : l'unité persistée du plan d'un départ, ajustable au glisser-déposer. Un
+inscrit **sans** ligne est en **réserve**.
+
+| inscription_id | INTEGER | **PK**, FK → INSCRIPTION, **ON DELETE CASCADE** |
+| depart_id | INTEGER | FK → DEPART, **ON DELETE CASCADE** ; dénormalisé (lit/réécrit le plan d'un départ sans jointure) |
+| cible_index | INTEGER | rang de la cible dans le gabarit (1-based) |
 | position | TEXT | `A`\|`B`\|`C`\|`D` |
-| _contrainte_ | | UNIQUE(phase_id, cible_id, position) |
+
+> **`ON DELETE CASCADE` assumé** (à rebours de DETTE-001) : donnée **dérivée, reconstructible et
+> feuille** — l'auto la régénère, sa disparition suit celle de l'inscription/du départ (ADR-0024).
+>
+> **Cible par `cible_index`, pas FK → CIBLE** : le gabarit (E01US008) porte ses cibles/capacités en
+> JSON (la table `CIBLE` ci-dessus reste un **modèle non encore matérialisé**) ; l'index 1-based du
+> gabarit suffit à désigner la butte.
+>
+> **Généralisation phase (EPIC-05, future).** Quand le **placement** deviendra une **phase**
+> (ADR-0004), cette table s'étendra vers le modèle générique d'origine : `phase_id` (`null` = qualif),
+> clé par archer, `cible_id` FK → CIBLE, `UNIQUE(phase_id, cible_id, position)`. E03US004 en livre la
+> **première incarnation** (qualification, clé inscription) ; l'évolution **enrichit la même table**
+> plutôt que d'en créer une seconde homonyme.
 
 ### PHASE
 | id | INTEGER | PK |

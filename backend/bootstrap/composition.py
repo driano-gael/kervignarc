@@ -55,6 +55,7 @@ from infrastructure.db import (
     GabaritSalleRepositorySQL,
     InscriptionRepositorySQL,
     PhaseRepositorySQL,
+    PlacementRepositorySQL,
     ScoreRepositorySQL,
     TournoiRepositorySQL,
     WriteQueue,
@@ -133,6 +134,7 @@ def create_app(
     score_repository = ScoreRepositorySQL(database.session_factory)
     depart_repository = DepartRepositorySQL(database.session_factory)
     inscription_repository = InscriptionRepositorySQL(database.session_factory)
+    placement_repository = PlacementRepositorySQL(database.session_factory)
     app.state.service_tournois = ServiceTournois(tournoi_repository)
     # Départs (créneaux) d'un tournoi (E02US004, ADR-0017) : le service vérifie l'existence du
     # tournoi (dépend du port tournoi) et attribue le numéro du créneau. Il dépend aussi du port
@@ -189,10 +191,11 @@ def create_app(
     app.state.service_inscriptions = ServiceInscriptions(
         inscription_repository, archer_repository, depart_repository
     )
-    # Placement (E03US001) : lecture seule, recalcul à la demande du plan de cibles d'un départ. Le
-    # service joint archer → catégorie → blason par défaut pour nourrir le moteur pur
-    # (`domain/placement`) — d'où sept ports (tournoi/départ pour les gardes 404, gabarit pour les
-    # cibles, inscription/archer/catégorie/blason pour la jointure). Aucune écriture.
+    # Placement (E03US001 lecture ; E03US004 matérialisation + ajustement, ADR-0024). Le service
+    # joint archer → catégorie → blason par défaut pour nourrir le moteur pur (`domain/placement`),
+    # d'où sept ports de jointure/gardes, **plus** le port `placement` qui persiste le plan
+    # (matérialisé, ajustable au glisser-déposer). Les écritures (régénérer/déplacer/échanger/placer
+    # les restants) passent par la file (routage API).
     app.state.service_placement = ServicePlacement(
         tournoi_repository,
         depart_repository,
@@ -201,6 +204,7 @@ def create_app(
         archer_repository,
         categorie_repository,
         blason_repository,
+        placement_repository,
     )
 
     # --- Accès administrateur (E10US002) : identifiants dans un fichier `.env` local + jetons
