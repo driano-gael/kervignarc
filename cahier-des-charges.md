@@ -43,7 +43,7 @@ Fournir une application permettant d'**organiser et de piloter de bout en bout u
 
 ### 2.2 Hors périmètre (à ce stade)
 - Autres disciplines / distances (extérieur, 3D, campagne).
-- **Épreuves par équipes** (matchs à 3 archers, équipes mixtes). Documentées au [référentiel FFTA](docs/referentiel-ffta.md) §6.3 et §7, mais non gérées par l'application. **Porte laissée ouverte** : le moteur de phases doit opposer des *participants* et non des *archers* (cf. CDC technique §5), pour que l'ajout ultérieur ne soit pas une refonte.
+- ~~**Épreuves par équipes** (matchs à 3 archers, équipes mixtes) — non gérées par l'application~~ → **entrées au périmètre MVP le 18/07/2026** ([ADR-0028](docs/adr/0028-epreuves-par-equipes-participant.md), [EPIC-13](epics/EPIC-13-equipes.md)). Documentées au [référentiel FFTA](docs/referentiel-ffta.md) §6.3/§7. La précaution du cadrage **paie** : le moteur oppose des *participants* (archer **ou** équipe, `MATCH.participant_A/B`, cf. CDC technique §5), donc l'ajout est une **réalisation**, pas une refonte.
 - Paiement en ligne / transactions bancaires (seul le **suivi** est prévu).
 - Gestion multi-tournois simultanés sur un même serveur (à confirmer).
 - Application mobile native (la solution est une web app / PWA).
@@ -117,7 +117,7 @@ La solution s'articule autour de 9 modules :
 | ID | Exigence |
 |---|---|
 | EF-3.1 | **Composer une séquence de phases** (ajouter / ordonner / supprimer), ex. : `qualification → barrage → tableau principal → repêchage (Lucky Loser) → tournoi des perdants → tableaux de placement → finale → Big Shoot Off → podium`. |
-| EF-3.2 | Choisir le **type** de chaque phase : *classement par cumul* (qualif), *barrage/shoot-off*, *tableau à élimination*, *repêchage*, *placement*, *finale*, *Big Shoot Off*. |
+| EF-3.2 | Choisir le **type** de chaque phase : *classement par cumul* (qualif), *barrage/shoot-off*, *tableau à élimination*, *repêchage*, *placement*, *finale*, *Big Shoot Off*. **Catalogue ouvert** — un type de phase est un **assemblage de politiques** (règle 2), pas une valeur figée ; d'autres formats (poules, handicap, suisse, king of the hill, ladder, finale spectacle…) sont des **cibles** livrables dès que leur règle est écrite (cf. [stories/E05](stories/E05-moteur-phases.md) — catalogue des formats). |
 | EF-3.3 | Définir la **source de participants** de chaque phase à partir des sorties des phases précédentes : *tous les inscrits*, *rangs N→M d'un classement*, *gagnants d'un tour*, *perdants d'un tour donné* (Lucky Loser), *exempts*. |
 | EF-3.4 | Associer à chaque phase un **preset de barème** (M1), surchargeable localement **et par arme**. Le barème se résout par le couple **(phase, arme)** : au même tour de duels, arc classique et arc nu tirent en sets (premier à 6) quand les arcs à poulies tirent au **cumul**, sans sets. Une phase porte donc un barème par défaut + d'éventuelles surcharges par arme. |
 | EF-3.5 | Définir la **sortie** de chaque phase : classement produit et/ou flux « gagnants » / « perdants » réutilisables comme source d'une phase ultérieure. |
@@ -227,6 +227,7 @@ La solution s'articule autour de 9 modules :
 | ENF-4 | **Volumétrie de référence** : tournoi à 120 archers / 30 cibles (exemple du classeur) ; plafond réel à confirmer. |
 | ENF-5 | **Ergonomie tactile** : saisie sur tablette rapide, gros boutons, peu de clics. |
 | ENF-6 | **Robustesse du moteur** : cohérence garantie de la progression même en cas de correction/forfait en cours d'épreuve. |
+| ENF-7 | **Recette avec parc réduit** : l'app **poste de cible** (saisie) doit être **vérifiable fonctionnellement avec une seule tablette physique**, alors qu'elle en vise ~30 en production. Le comportement **multi-poste** (rattachements distincts, diffusion live, supervision) doit être exerçable **sans 30 appareils**. *(Contrainte matérielle de dev/recette, ajoutée le 18/07/2026 — mise en œuvre : `guide-architecture.md` §9.)* |
 
 ---
 

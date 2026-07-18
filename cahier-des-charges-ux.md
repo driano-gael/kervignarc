@@ -427,11 +427,15 @@ Deux exigences la distinguent d'un simple formulaire :
 sidebar est un **squelette stable** ; ce qui change avec le statut du tournoi, c'est **l'accueil** et les
 **états portés par les entrées** (`3!`, `62%`, `HORS LIGNE`) :
 
-| Statut (E01US002, livré) | Accueil | Registre |
+| Statut (**7 statuts** — [ADR-0026](../docs/adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md), E01US017) | Accueil | Registre |
 |---|---|---|
 | **Brouillon** | La préparation | Dense, formulaires, on a le temps |
+| **Prêt** | La préparation, **feu vert** de démarrage | Complétude satisfaite, « Démarrer » actif |
 | **En cours** | **La console de supervision** | Gros, alertes, **zéro formulaire au premier plan** |
-| **Terminé** | Résultats & exports | Lecture, export |
+| **En pause** | La supervision, **bandeau « gelé »** | Saisie figée jusqu'à reprise |
+| **Terminé** | Résultats & exports | Lecture, export ; complétude hors-sportif encore consultable (`D-18`) |
+| **Archivé** | Résultats & exports, **lecture seule** | Verrou total (EPIC-11) |
+| **Annulé** | Page d'état « annulé » | Trace conservée, aucune action |
 
 **Ce n'est pas une restriction** (`P-3`) : les 15 destinations restent à un clic. C'est une priorité
 d'affichage — **l'avancement décide de ce que l'admin voit en premier.**
