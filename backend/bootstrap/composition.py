@@ -162,7 +162,10 @@ def create_app(
     # La série de saisie co-écrit son entrée d'audit dans **une seule transaction** (ADR-0035) :
     # l'adapter reçoit l'`audit_repository` (concret) pour appeler `consigner_dans` sur la session
     # partagée. Couplage **infra → infra** assumé — le port domaine `SerieRepository` l'ignore.
-    serie_repository = SerieRepositorySQL(database.session_factory, audit_repository)
+    # L'`Horloge` date le `created_at` des volées (métadonnée de persistance, le « quand » ex-017).
+    serie_repository = SerieRepositorySQL(
+        database.session_factory, audit_repository, HorlogeSysteme()
+    )
     app.state.service_tournois = ServiceTournois(tournoi_repository)
     # Départs (créneaux) d'un tournoi (E02US004, ADR-0017) : le service vérifie l'existence du
     # tournoi (dépend du port tournoi) et attribue le numéro du créneau. Il dépend aussi du port

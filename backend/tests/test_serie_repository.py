@@ -24,6 +24,7 @@ from domain.archer import Archer
 from domain.blason import ZoneScore
 from domain.categorie import Categorie
 from domain.entree_audit import ActionAuditee, EntreeAudit
+from domain.ports import Horloge
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi
 from infrastructure.db import (
@@ -35,10 +36,29 @@ from infrastructure.db import (
     TournoiRepositorySQL,
 )
 from infrastructure.erreurs import InfrastructureError
+from infrastructure.horloge import HorlogeSysteme
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
 _QUAND = datetime.datetime(2026, 3, 14, 10, 42, tzinfo=datetime.UTC)
+_PLUS_TARD = datetime.datetime(2026, 3, 14, 11, 15, tzinfo=datetime.UTC)
+
+
+class HorlogeReglable:
+    """Horloge de test conforme au port `Horloge` : renvoie un instant **réglable** à la main.
+
+    Sert à observer le `created_at` des volées : on fige l'instant d'une saisie, on l'avance, puis
+    on ré-enregistre pour prouver que le « quand » d'une volée déjà saisie **ne bouge pas**.
+    """
+
+    def __init__(self, instant: datetime.datetime) -> None:
+        self._instant = instant
+
+    def maintenant(self) -> datetime.datetime:
+        return self._instant
+
+    def avancer_a(self, instant: datetime.datetime) -> None:
+        self._instant = instant
 
 
 def _migrer(url: str) -> None:
@@ -87,8 +107,12 @@ def _serie(tournoi_id: int, archer_id: int, *, validee: str | None = None) -> Se
     )
 
 
-def _repo(db: Database) -> SerieRepositorySQL:
-    return SerieRepositorySQL(db.session_factory, AuditRepositorySQL(db.session_factory))
+def _repo(db: Database, horloge: Horloge | None = None) -> SerieRepositorySQL:
+    return SerieRepositorySQL(
+        db.session_factory,
+        AuditRepositorySQL(db.session_factory),
+        horloge or HorlogeSysteme(),
+    )
 
 
 def test_enregistrer_puis_par_archer(tmp_path: Path) -> None:
@@ -166,7 +190,7 @@ def test_enregistrer_avec_trace_ecrit_serie_et_audit(tmp_path: Path) -> None:
     db, tournoi_id, archer_id = _contexte(tmp_path)
     try:
         audit = AuditRepositorySQL(db.session_factory)
-        repo = SerieRepositorySQL(db.session_factory, audit)
+        repo = SerieRepositorySQL(db.session_factory, audit, HorlogeSysteme())
         entree = EntreeAudit.creer(
             tournoi_id=tournoi_id,
             action=ActionAuditee.VALIDATION,
@@ -195,7 +219,7 @@ def test_enregistrer_avec_trace_atomique_tout_ou_rien(tmp_path: Path) -> None:
     db, tournoi_id, archer_id = _contexte(tmp_path)
     try:
         audit = AuditRepositorySQL(db.session_factory)
-        repo = SerieRepositorySQL(db.session_factory, audit)
+        repo = SerieRepositorySQL(db.session_factory, audit, HorlogeSysteme())
         entree_impossible = EntreeAudit.creer(
             tournoi_id=tournoi_id + 999_999,  # aucun tournoi : la FK cassera au commit
             action=ActionAuditee.VALIDATION,
@@ -334,5 +358,77 @@ def test_enregistrer_ignore_un_id_incoherent(tmp_path: Path) -> None:
         volee_b = relue_b.volee(1)
         assert volee_b is not None
         assert volee_b.valeurs == (ZoneScore("5"), ZoneScore("5"), ZoneScore("5"))
+    finally:
+        db.engine.dispose()
+
+
+def test_horodatages_vide_sans_serie(tmp_path: Path) -> None:
+    """Sans série saisie, aucun « quand » à consulter : `horodatages` rend un dictionnaire vide."""
+    db, tournoi_id, archer_id = _contexte(tmp_path)
+    try:
+        assert _repo(db).horodatages(tournoi_id, archer_id) == {}
+    finally:
+        db.engine.dispose()
+
+
+def test_created_at_pose_a_la_saisie_et_relu_aware(tmp_path: Path) -> None:
+    """Chaque volée est datée de l'instant de saisie (`Horloge`), relu en UTC *aware* (ex-017)."""
+    db, tournoi_id, archer_id = _contexte(tmp_path)
+    try:
+        repo = _repo(db, HorlogeReglable(_QUAND))
+        repo.enregistrer(_serie(tournoi_id, archer_id))
+
+        horodatages = repo.horodatages(tournoi_id, archer_id)
+        assert horodatages == {1: _QUAND, 2: _QUAND}
+        assert horodatages[1].tzinfo is not None  # relu *aware*, comme l'horodatage d'audit
+    finally:
+        db.engine.dispose()
+
+
+def test_created_at_preserve_au_reenregistrement(tmp_path: Path) -> None:
+    """Le « quand » d'une volée déjà saisie **ne bouge pas** quand on ré-enregistre la série.
+
+    C'est l'invariant d'identité que le CA a renvoyé à cette tranche : le purge + réinsertion ne
+    doit pas réinitialiser `created_at`. On valide la série plus tard (horloge avancée) : les deux
+    volées gardent leur horodatage initial.
+    """
+    db, tournoi_id, archer_id = _contexte(tmp_path)
+    try:
+        horloge = HorlogeReglable(_QUAND)
+        repo = _repo(db, horloge)
+        repo.enregistrer(_serie(tournoi_id, archer_id))
+
+        horloge.avancer_a(_PLUS_TARD)
+        repo.enregistrer(_serie(tournoi_id, archer_id, validee="ROUX Sophie"))
+
+        # Malgré la réécriture (purge + réinsertion) à un instant postérieur, le « quand » tient.
+        assert repo.horodatages(tournoi_id, archer_id) == {1: _QUAND, 2: _QUAND}
+    finally:
+        db.engine.dispose()
+
+
+def test_created_at_d_une_volee_nouvelle_recoit_l_instant_courant(tmp_path: Path) -> None:
+    """Une volée **ajoutée** à une série existante est datée de l'instant courant, pas de l'ancien.
+
+    Le contrepoint de la préservation : seules les volées de numéro **déjà présent** conservent leur
+    horodatage ; une volée neuve reçoit l'instant de sa saisie.
+    """
+    db, tournoi_id, archer_id = _contexte(tmp_path)
+    try:
+        horloge = HorlogeReglable(_QUAND)
+        repo = _repo(db, horloge)
+        # 1re saisie : la seule volée 1, à T1.
+        premiere = Serie(
+            tournoi_id=tournoi_id,
+            archer_id=archer_id,
+            volees=(Volee(numero=1, valeurs=(ZoneScore("10"), ZoneScore("9"), ZoneScore("8"))),),
+        )
+        repo.enregistrer(premiere)
+
+        horloge.avancer_a(_PLUS_TARD)
+        # 2e saisie : volées 1 ET 2, à T2 → la 1 conserve T1, la 2 (neuve) prend T2.
+        repo.enregistrer(_serie(tournoi_id, archer_id))
+
+        assert repo.horodatages(tournoi_id, archer_id) == {1: _QUAND, 2: _PLUS_TARD}
     finally:
         db.engine.dispose()
