@@ -26,6 +26,7 @@ from api.v1.categories import router as categories_router
 from api.v1.clubs import router as clubs_router
 from api.v1.competition import router as competition_router
 from api.v1.departs import router as departs_router
+from api.v1.documents_salle import router as documents_salle_router
 from api.v1.feuille_de_marque import router as feuille_de_marque_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
@@ -44,6 +45,7 @@ from application.categories import ServiceCategories
 from application.classements import ServiceClassement
 from application.clubs import ServiceClubs
 from application.departs import ServiceDeparts
+from application.documents_salle import ServiceDocumentsSalle
 from application.feuille_de_marque import ServiceFeuilleDeMarque
 from application.gabarits import ServiceGabarits
 from application.grain_validation import ServiceGrainValidation
@@ -71,7 +73,7 @@ from infrastructure.db import (
     WriteQueue,
     default_database_url,
 )
-from infrastructure.pdf import GenerateurFeuilleDeMarquePdf
+from infrastructure.pdf import GenerateurDocumentsSallePdf, GenerateurFeuilleDeMarquePdf
 from infrastructure.postes import PosteSessionStore, generer_code_poste
 from infrastructure.realtime import Broadcaster, LiveEvent
 from infrastructure.scoreurs import ScoreurSessionStore, generer_code_scoreur
@@ -236,6 +238,15 @@ def create_app(
         phase_repository,
         GenerateurFeuilleDeMarquePdf(),
     )
+    # Documents de salle (E09US008) : étiquettes de cible (QR de rattachement + code) et cartes de
+    # scoreur (code personnel). Lecture pure comme la feuille de marque ; ports seuls (postes,
+    # scoreurs, tournois). L'URL du QR est bâtie à la frontière API à partir de `request.base_url`.
+    app.state.service_documents_salle = ServiceDocumentsSalle(
+        tournoi_repository,
+        poste_repository,
+        scoreur_repository,
+        GenerateurDocumentsSallePdf(),
+    )
 
     # --- Accès administrateur (E10US002) : identifiants dans un fichier `.env` local + jetons
     # de session en mémoire. Auth = concern technique (pas de domaine) ; la dépendance API
@@ -293,6 +304,7 @@ def create_app(
     app.include_router(competition_router)
     app.include_router(placement_router)
     app.include_router(feuille_de_marque_router)
+    app.include_router(documents_salle_router)
 
     # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement
     # s'il existe, pour ne jamais masquer les routes API/WS/health ci-dessus. ---

@@ -15,6 +15,7 @@ from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
+from domain.documents_salle import CartesScoreurs, EtiquettesCibles
 from domain.feuille_marque import FeuilleDeMarque
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
@@ -492,4 +493,23 @@ class GenerateurFeuilleDeMarque(Protocol):
 
     def generer(self, feuille: FeuilleDeMarque) -> bytes:
         """Rend la feuille de marque d'un départ en un document PDF (une page par archer placé)."""
+        ...
+
+
+class GenerateurDocumentsSalle(Protocol):
+    """Port de génération des **PDF de préparation de salle** (E09US008 ; adapter d'infrastructure).
+
+    Le domaine décrit le **contenu** (`EtiquettesCibles`, `CartesScoreurs`) ; l'adapter (ReportLab,
+    ADR-0031) le rend en octets PDF, QR compris. Deux documents, deux méthodes : les étiquettes de
+    cible (un QR par cible) et les cartes de scoreur (un papier par code). Le retour est un simple
+    `bytes` : le domaine ne connaît ni ReportLab ni HTTP (règle 1). Un échec de rendu remonte en
+    `InfrastructureError`, traduit en 500 à la frontière.
+    """
+
+    def etiquettes_cibles(self, document: EtiquettesCibles) -> bytes:
+        """Rend les étiquettes de cible en un PDF (une page par cible : QR + code en clair)."""
+        ...
+
+    def cartes_scoreurs(self, document: CartesScoreurs) -> bytes:
+        """Rend les cartes de scoreur en un PDF (un papier par scoreur : nom + code personnel)."""
         ...

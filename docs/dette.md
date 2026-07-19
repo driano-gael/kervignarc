@@ -42,6 +42,7 @@
 | [DETTE-007](#dette-007--la-confirmation-dune-suppression-darcher-est-aveugle) | conception | majeur | `backend/application/archers.py` (`ServiceArchers.supprimer`), `backend/application/departs.py` (`ServiceDeparts.supprimer`), `backend/api/v1/competition.py`, `backend/api/v1/departs.py`, `frontend/src/features/archers/api.ts`, `frontend/src/features/departs/api.ts` | La confirmation d'une suppression **destructrice-confirmable** ne **rappelle pas** au serveur le décompte que le signalement avait annoncé : `autoriser_suppression_engage=true` (archer engagé, `ArcherEngage`) **et** `autoriser_suppression_inscrits=true` (départ à inscriptions, `DepartAvecInscriptions`, E02US009) court-circuitent entièrement le constat, sans le revérifier | Entre le 409 et le rejeu, d'autres tablettes saisissent ou inscrivent (30 le jour J). Confirmer une suppression annoncée à « 1 flèche » (ou « 0 payée ») peut en détruire sept (ou effacer une inscription payée entre-temps) — **sans retour possible**. Or [ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)/[ADR-0018](adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md) font reposer la sûreté de ces cas sur ce message : « le message énumère ce qui sera détruit » plutôt que « confirmez pour supprimer ». Un message dont rien ne garantit la fraîcheur ne tient pas cette promesse | E02US003 (le chemin destructeur naît avec l'US ; la clause « le drapeau est cru sur parole » vient d'ADR-0015, raisonnée pour un protocole de **création** et reprise sans être rouverte pour une **destruction**) ; **aggravée par E02US009** (2ᵉ chemin destructeur-confirmable, `DepartAvecInscriptions`) | US dédiée — confirmation **contractuelle** : le client renvoie le décompte annoncé, le service re-signale s'il a changé. Exige de faire transiter le décompte par le champ `details` de la réponse d'erreur (`{code, message, details?}`, règle 5) — **jamais peuplé à ce jour** : c'est cette plomberie, sur `ApplicationError`, qui fait le coût |
 | [DETTE-010](#dette-010--capacité-de-cible-plafonnée-à-4-en-dur) | technique | majeur | `backend/domain/gabarit_salle.py` (`CAPACITE_CIBLE_MAX`, `POSITIONS`) | Le gabarit **borne la capacité d'une cible à [1,4]** (`CAPACITE_CIBLE_MAX = len(POSITIONS)`, `POSITIONS = ("A","B","C","D")` en dur) alors que le **modèle** (`modele-de-donnees.md`, `CIBLE.capacite`) **et** le **référentiel** (§5, EF-4.3) la veulent **non bornée** — la FFTA décrit une configuration à **3 triples verticaux** (> 4 postes) | Impossible de configurer une cible de plus de 4 postes ; **divergence code ↔ modèle ↔ référentiel** : la connaissance du projet dit « non borné », le code refuse | E01US007 (gabarit de salle) ; **constatée le 18/07/2026** (entretien de conception) | **E01US019** — délester le plafond, positions au-delà de `D` (`E`, `F`…), le placement (E03) suit |
 | [DETTE-011](#dette-011--lagrégat-mono-flèche-sappelle-score-pas-fleche) | conception | mineur | `backend/domain/score.py` (`Score`, `ScoreId`), `backend/domain/ports.py` (`ScoreRepository`), `backend/domain/erreurs.py` (`ScoreInvalide`) | L'agrégat mono-flèche s'appelle `Score`, mais le [glossaire](glossaire.md) réserve `Fleche` au **tir unique** et `score` au **total** de points | Au vrai scoring (E04/E05 : volées, cumul), le nom `Score` sera pris par le **mauvais** concept → renommage subi ou ambiguïté durable dans le domaine et l'API | E00US011 (walking skeleton) ; **constatée le 18/07/2026** (audit de revue complète de `main`) | US dédiée (`refactor/…`) — renommer `Score`→`Fleche` (+ `ScoreId`/`ScoreRepository`/`ScoreInvalide`) **avant** E04 ; zéro changement de comportement |
+| [DETTE-012](#dette-012--lurl-du-qr-de-cible-est-lorigine-de-la-requête-admin) | technique | mineur | `backend/application/documents_salle.py` (`_url_rattachement`) | L'URL encodée dans le QR de cible est **absolue**, bâtie sur l'**origine de la requête admin** (`request.base_url`, passée par l'API) : il n'existe pas de base URL publique configurée côté serveur. Générer les étiquettes depuis `localhost` (console du serveur) produit donc des QR pointant sur `http://localhost:8000/?poste=…`, inutilisables depuis une tablette | Un QR généré depuis `localhost` renvoie la tablette **sur elle-même** : le « filet » de re-rattachement (scanner le QR pour revenir sur sa cible) ne fonctionne pas. **Sans effet dans le flux nominal** : le jour J, l'admin atteint le serveur par son **IP réseau** (les 30 tablettes aussi), donc `base_url` = l'IP LAN et le QR est correct | E09US008 (impression des QR) ; **choix tranché en réalisation** (règle 11/12 : pas de config réseau introduite en douce ici) | E11US001 (release & mise en réseau) — **base URL publique configurable**, source unique pour tous les liens absolus (QR, éventuels partages) |
 
 ## Dette résorbée
 
@@ -527,6 +528,35 @@ Le faire « en douce » ici mêlerait un renommage transverse à des correctifs 
 (la table `score` peut suivre ou rester, à trancher dans l'US) — **zéro changement de comportement**,
 la valeur reste la même, seul le vocabulaire s'aligne sur le glossaire. Marqueur `DETTE-011` posé
 sur la classe `Score`.
+
+### DETTE-012 — l'URL du QR de cible est l'origine de la requête admin
+
+**Constat.** Le QR de rattachement d'une cible (E09US008) encode une URL **absolue**
+`{origine}/?poste=<code>`, où `origine` est l'**origine de la requête admin** qui génère le PDF
+(`request.base_url`, passée au service `ServiceDocumentsSalle.etiquettes_cibles`). Le backend ne
+connaît **aucune base URL publique** configurée (seules variables d'env : `KERVIGNARC_DATABASE_URL`,
+`KERVIGNARC_ENV_FILE`, `KERVIGNARC_FRONTEND_DIST`). L'origine du QR est donc, mécaniquement, l'adresse
+par laquelle l'admin a ouvert l'appli au moment d'imprimer.
+
+**Conséquence.** Le QR n'est scannable **utilement** que si cette origine est joignable depuis les
+tablettes. Dans le flux nominal, elle l'est : le jour J, l'admin — comme les ~30 tablettes — atteint
+le serveur par son **IP réseau local**, donc `base_url` vaut cette IP et le QR est correct. Le piège
+est l'admin qui imprime **depuis la console du serveur** via `http://localhost:8000` : les QR
+pointent alors sur `localhost`, et une tablette qui les scanne revient **sur elle-même** — le
+« filet » de re-rattachement (`D-07`, le cœur de l'US) tombe. C'est une **limite de déploiement**,
+pas un bug du flux nominal ; d'où la sévérité mineure.
+
+**Pourquoi non corrigée maintenant.** La corriger proprement, c'est introduire une **base URL
+publique configurable** (variable d'env ou réglage) — une décision de **mise en réseau** qui
+appartient à E11US001 (« Release, base et mise en réseau »), pas à une US d'export. L'amorcer ici
+(un demi-réglage que E11US001 réécrirait) serait le contournement local que la règle de dette
+proscrit. `request.base_url` est le meilleur défaut **sans config**, et il est correct dans le flux
+réel.
+
+**Résorption attendue.** E11US001 : exposer une base URL publique configurée une fois (l'IP/port du
+serveur sur le réseau du gymnase), et la faire consommer par le service à la place de
+`request.base_url` — source unique pour tous les liens absolus. Marqueur `DETTE-012` posé sur
+`_url_rattachement` dans `application/documents_salle.py`.
 
 ## Procédure — inscrire une dette
 
