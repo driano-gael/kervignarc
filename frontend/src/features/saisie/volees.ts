@@ -54,15 +54,25 @@ export function nouvelIdentifiant(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
-// L'heure locale d'une saisie (« 10:42 ») depuis son horodatage ISO UTC, pour la consultation
-// « volée N saisie par X à HH:MM » (CA « marqueur »). Chaîne vide si l'horodatage manque ou est illisible.
+// Le marqueur à envoyer avec une volée. Nouvelle volée : le marqueur actif la **signe**. Ré-édition
+// d'une volée déjà saisie (`existante`) : `null`, pour que le domaine **préserve** le marqueur
+// d'origine (`Serie.saisir_volee`, chemin « saisie_par is None ») — une correction ne réattribue pas
+// la signature (CA « marqueur » : équivalent numérique de la signature FFTA).
+export function quelSaisiePar(existante: Volee | null, marqueur: string | null): string | null {
+  return existante !== null ? null : marqueur
+}
+
+// L'heure **locale** d'une saisie (« 10h42 ») depuis son horodatage ISO UTC, pour la consultation
+// « volée N saisie par X à HHhMM » (CA « marqueur »). L'horodatage part du serveur en UTC
+// (`HorlogeSysteme`) et s'affiche à l'heure murale de la salle (décalage TZ appliqué par `Date`).
+// Chaîne vide si l'horodatage manque ou est illisible.
 export function heureSaisie(iso: string | null): string {
   if (iso === null) return ''
   const instant = new Date(iso)
   if (Number.isNaN(instant.getTime())) return ''
   const hh = instant.getHours().toString().padStart(2, '0')
   const mm = instant.getMinutes().toString().padStart(2, '0')
-  return `${hh}:${mm}`
+  return `${hh}h${mm}`
 }
 
 // Libellé du grain de validation affiché au marqueur (D-11) : il dit **quand** le scoreur viendra.

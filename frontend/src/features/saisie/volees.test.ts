@@ -6,6 +6,7 @@ import {
   nouvelIdentifiant,
   pointsZone,
   prochaineASaisir,
+  quelSaisiePar,
   totalVolee,
   voleeExistante,
 } from './volees'
@@ -102,9 +103,11 @@ describe('libelleGrain', () => {
 })
 
 describe('heureSaisie', () => {
-  it('formate l’heure locale en HH:MM', () => {
-    // Sans décalage explicite, l'ISO est interprété en heure locale → valeur déterministe.
-    expect(heureSaisie('2026-07-19T09:05:00')).toBe('09:05')
+  it('formate l’heure locale en HHhMM', () => {
+    // Entrée ISO **sans** offset → JS l'interprète en heure locale, donc `getHours()` est
+    // déterministe quelle que soit la TZ du runner. En production, `saisie_le` est UTC (offset `Z`)
+    // et s'affiche à l'heure murale de la salle ; ce test valide le **format**, pas la conversion TZ.
+    expect(heureSaisie('2026-07-19T09:05:00')).toBe('09h05')
   })
 
   it('horodatage absent → chaîne vide', () => {
@@ -113,6 +116,24 @@ describe('heureSaisie', () => {
 
   it('horodatage illisible → chaîne vide', () => {
     expect(heureSaisie('pas une date')).toBe('')
+  })
+})
+
+describe('quelSaisiePar', () => {
+  it('nouvelle volée → le marqueur actif signe', () => {
+    expect(quelSaisiePar(null, 'DURAND')).toBe('DURAND')
+  })
+
+  it('ré-édition d’une volée existante → null (le domaine préserve le marqueur d’origine)', () => {
+    const existante: Volee = {
+      numero: 1,
+      valeurs: ['10', '9', '8'],
+      saisie_par: 'DURAND',
+      validee_par: null,
+      verrouillee: false,
+      saisie_le: null,
+    }
+    expect(quelSaisiePar(existante, 'MARTIN')).toBeNull()
   })
 })
 

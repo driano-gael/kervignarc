@@ -27,6 +27,7 @@ import {
   libelleGrain,
   nouvelIdentifiant,
   prochaineASaisir,
+  quelSaisiePar,
   totalVolee,
   voleeExistante,
 } from './volees'
@@ -311,10 +312,8 @@ function PaveArcher({
         archer_id: ligne.archer_id,
         numero: numeroActif,
         valeurs: buffer,
-        // Nouvelle volée : le marqueur actif la signe. Ré-édition d'une volée déjà saisie : `null`,
-        // pour que le domaine **préserve** le marqueur d'origine (une correction ne réattribue pas
-        // la signature — cf. `Serie.saisir_volee`, chemin « saisie_par is None »).
-        saisie_par: existante !== null ? null : marqueur,
+        // Nouvelle volée → marqueur actif ; ré-édition → `null` (le domaine préserve l'original).
+        saisie_par: quelSaisiePar(existante, marqueur),
         identifiant_saisie: nouvelIdentifiant(),
       },
       // De retour en mode « prochaine à saisir » : après avoir enregistré la volée visée, on avance.
