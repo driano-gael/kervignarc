@@ -27,11 +27,11 @@
 
 ### E04US002 — Saisie de qualification en temps réel
 *En tant que* **marqueur**, *je veux* saisir, valider, cumuler et corriger les flèches de qualification sur ma cible, *afin de* produire le score en temps réel — sans rien perdre ni laisser d'incorrigible.
-- **CA — grille (ex-002)** : archers/positions de la cible **déduits du jeton de poste** (E04US001 — rien à choisir) ; volée courante mise en évidence ; **grain de validation actif indiqué** (« validation à la fin de la série », `D-11`, E01US015) ; adapté au tactile — **cibles ≥ 48 px**, plancher **768 px** (`D-02`).
+- **CA — grille (ex-002)** : archers/positions de la cible **déduits du poste et de son départ courant** (le poste choisit son départ — [ADR-0034](../docs/adr/0034-poste-selectionne-son-depart-courant.md) — puis les archers viennent des affectations `(cible, départ)` — [ADR-0033](../docs/adr/0033-source-de-saisie-affectations-cible-depart.md), *pas* de `Archer.cible`) ; volée courante mise en évidence ; **grain de validation actif indiqué** (« validation à la fin de la série », `D-11`, E01US015) ; adapté au tactile — **cibles ≥ 48 px**, plancher **768 px** (`D-02`).
 - **CA — marqueur (ex-017)** : au début du départ, **désignation du ou des marqueurs** parmi les archers de la cible (**plusieurs possibles**) ; **marqueur actif affiché discrètement et changé en un geste** (pas de sélecteur permanent qui vole l'espace du pavé) ; **chaque volée enregistre qui l'a saisie**, consultable (« volée 7 saisie par DURAND, 10h42 ») ; **déclaratif, pas authentifié** (E10US007 : le poste reste ouvert) ; alimente **E10US005** (`D-04`).
 - **CA — pavé (ex-003)** : pavé de valeurs **déduit du blason tiré** (`Blason.zones`, E01US014) et **non** du barème de la phase — sur un triple 40 les touches 5→1 n'existent pas (FFTA §4.4) ; gros boutons ; correction possible avant validation.
 - **CA — valeurs légales (ex-004)** : refus d'une valeur hors barème ; nombre de flèches par volée conforme au barème (E01US009).
-- **CA — enregistrement (ex-005)** : volée persistée par la **file d'écriture** (writer unique) ; accusé de réception au client ; **idempotence par identifiant de saisie** (ADR-0005).
+- **CA — enregistrement (ex-005)** : volée persistée par la **file d'écriture** (writer unique) ; accusé de réception au client ; **idempotence par identifiant de saisie** (mécanisme **introduit ici** — cf. « Arbitrages » ; ⚠️ la mention initiale « ADR-0005 » était fausse : ADR-0005 ne couvre que la **sérialisation** single-writer, pas l'idempotence de la saisie).
 - **CA — édition avant validation (ex-006)** : volée modifiable tant que la série n'est pas validée ; historique non requis à ce stade.
 - **CA — validation & verrou (ex-007)** : après validation, la série est **verrouillée** (non éditable hors correction habilitée, cf. CA suivant) ; **la validation porte le nom du scoreur** (E10US003, alimente E10US005) ; **grain de validation lu dans la phase** (`config.validation`, E01US015 : fin de série / fin de duel / toutes les N volées).
 - **CA — cumul (ex-008)** : total mis à jour à chaque validation, conforme au barème.
@@ -39,27 +39,52 @@
 - **Notes** : **la validation est un acte *de fin*** — FFTA : les feuilles de marque sont signées « à la fin de la distance, de la compétition **ou du duel** ». L'art. B.6.1.2 (« établissement des scores toutes les 2 volées ») porte sur le **cumul** (calculé par l'appli), **pas** sur la validation par un tiers : valider toutes les 2 volées ferait **~180 passages par départ** (intenable à 3 scoreurs). La validation du scoreur **tient lieu de seconde marque** (`D-03`, FFTA B.6.1.1) — **`Q-UX3` : à confirmer par un arbitre du club**. Le **marqueur** (`D-04`) : *il change rarement, donc l'interface ne s'organise pas autour de ce changement* (**pas de sélecteur permanent** au-dessus de la grille) ; la trace est l'**équivalent numérique de la signature** de la feuille de marque (FFTA B.6.1.1), seul argument sérieux face à un arbitre contestant la dématérialisation. La **correction tracée** (ex-012) est le seul chemin d'écriture sur une série verrouillée.
 - **Arbitrages tranchés le 19/07/2026** (reversés ici — règle 9 ; pour que l'implémentation d'E04US002
   n'en dérive pas des tests faux) :
+  - **Redécoupage : tranche backend d'abord, front en 2ᵉ tranche.** L'US absorbe 9 ex-US et traverse
+    toutes les couches : trop grosse pour une branche revue en une passe (ADR-0021). Cette branche
+    (`feat/e04us002-saisie-backend`) livre le **socle backend** — domaine (`Serie`/`Volee`), service
+    (saisie, validation, verrou, cumul, correction tracée), repository + file d'écriture, endpoints ;
+    la **grille tactile** (cibles ≥ 48 px, pavé, sélecteur de marqueur, panneau de routage) part en
+    **2ᵉ tranche** front. Pas de scénario `docs/fonctionnel/` livré par cette tranche (pas d'UI à
+    décrire) — comportement garanti par les tests service (depuis le CA) et API.
+  - **Le poste sélectionne son départ courant — [ADR-0034](../docs/adr/0034-poste-selectionne-son-depart-courant.md).**
+    Le CA « archers déduits du jeton de poste » était **insatisfiable en l'état** : le `Poste` ne
+    connaît que `(tournoi_id, cible_index)`, mais les `Affectation` sont **par départ** et une cible
+    sert plusieurs départs. Résolution (arbitrée avec l'utilisateur) : le poste, une fois rattaché à
+    sa cible, se met « en mode départ X » (**geste manuel**, état de session) ; les archers A–D
+    viennent alors des affectations `(cible, départ)`. Le cas courant est **mono-départ** (présélection
+    côté front), mais le modèle **supporte N départs** (chevauchement). **L'automatisation** (« lancer
+    un tour » bascule tous les postes d'un coup) est **différée à E12US002** : même geste, orchestré —
+    hors périmètre ici, acté pour que ce soit un **choix**, pas un oubli.
+  - **Source des archers = affectations `(cible, départ)`, pas `Archer.cible` — [ADR-0033](../docs/adr/0033-source-de-saisie-affectations-cible-depart.md).**
+    Le champ walking-skeleton `Archer.cible` n'est plus source de saisie ; on reconstitue via
+    `PlacementRepository.par_depart` filtré sur `cible_index` → position A–D. Le contrôle « SA cible »
+    (ADR-0030) s'étend au **triplet** `(tournoi, cible, départ)`. La démo `saisir_score` (mono-point,
+    sur `Archer.cible`) est **retirée** au profit de la nouvelle surface volée-par-volée.
+  - **Atomicité acte↔trace : couture de session partagée — [ADR-0035](../docs/adr/0035-atomicite-acte-trace-session-partagee.md).**
+    Décision (arbitrée avec l'utilisateur) parmi les trois options remontées par la revue
+    adversariale d'E10US005 : **co-localiser** l'écriture du score et la consignation d'audit dans
+    **une seule session, un seul commit** (tout ou rien), sur le patron `ArcherRepositorySQL.supprimer`.
+    `AuditRepository.consigner` gagne un mode « session fournie » (`consigner_dans(session, entree)`,
+    sans commit) ; le chemin autonome d'E10US005 est préservé. Fini la fenêtre « validation non tracée /
+    trace fantôme ».
+  - **Idempotence par identifiant de saisie : mécanisme introduit ici** (⚠️ la mention « ADR-0005 »
+    du CA était **fausse** — ADR-0005 ne traite que la sérialisation single-writer). Le client fournit
+    un **identifiant de saisie** ; la commande de la file **dédoublonne** (un rejeu réseau ne crée pas
+    une volée en double). Marqueur `# E04US002 : idempotence` à l'endroit de la déduplication.
+  - **DETTE-011 (`Score`→`Fleche`) n'est PAS résorbée ici.** Le vrai scoring modélise la flèche comme
+    **valeur** (`ZoneScore`) dans une `Volee`, pas comme entité : `Serie`/`Volee` **remplacent** `Score`
+    pour la **saisie**, mais l'agrégat `Score` **survit** comme modèle de lecture du **classement de
+    démo** (`calculer_classement`) jusqu'à son rebasage sur les volées en **E06US001**. Le nom-clash
+    que DETTE-011 redoutait est **évité** (le total s'appelle `cumul`, pas `Score`) ; le renommage
+    reste un nettoyage à part, à l'ère E06. Le classement de démo devient un **stub sans données**
+    après cette tranche (aucun `Score` n'est plus écrit) — régression d'un démonstrateur, pas d'un cas
+    utilisateur réel ; E06US001 le corrige.
   - **Dépendance E10US005 satisfaite en amont** : elle était insatisfiable (l'US 005, seq 47, vient
     *après* cette US, seq 41, et n'existait pas). Son **socle** (agrégat `EntreeAudit`, port
-    `AuditRepository`, `ServiceAudit.consigner`, port `Horloge`) a été **livré d'abord** — cf. entrée
-    E10US005 « Livré (socle backend) ». La **correction tracée** (ex-012) appellera
-    `ServiceAudit.consigner(action=CORRECTION_SCORE, avant, apres, auteur=nom du rôle habilité)` **dans
-    la même commande de file** que la ré-écriture (règle 7) ; la validation appellera de même
-    (`action=VALIDATION`, auteur = nom du scoreur — `exiger_scoreur` devra **résoudre le `Scoreur`**,
-    aujourd'hui il ne fait que valider).
-  - **Source des archers-par-cible = modèle `Affectation` (E03US004, ADR-0024)**, *pas* le champ
-    walking-skeleton `Archer.cible` (qu'utilise encore la démo `saisir_score`). Le poste connaît
-    `(tournoi_id, cible_index)` ; on reconstitue cible → départ → inscriptions → archers avec leur
-    **position A–D** via `PlacementRepository`. **Un ADR actera l'abandon d'`Archer.cible` comme source
-    de saisie** (à écrire dans la branche E04US002, pas ici).
-  - **Atomicité acte↔trace à trancher (remontée de la revue adversariale d'E10US005)** : le socle
-    d'audit expose `ServiceAudit.consigner`, qui commit dans **sa propre session** ; être « dans la
-    même commande de file » (règle 7) n'est **pas** être dans la même **transaction**. Une écriture
-    déchirée (le score validé commit, la trace échoue — ou l'inverse) laisserait une validation **non
-    tracée** ou une **trace fantôme**. E04US002 doit **choisir consciemment** : ordonner consign
-    avant/après le commit du score, assumer et documenter la fenêtre, ou introduire une couture de
-    **session partagée** (co-localiser les deux écritures dans une seule méthode de repository, cf.
-    `ArcherRepositorySQL.supprimer`) — cette couture **n'existe pas** dans le socle.
+    `AuditRepository`, `ServiceAudit.consigner`, port `Horloge`) a été **livré d'abord**. La validation
+    consigne `action=VALIDATION` (auteur = **nom du scoreur** — `exiger_scoreur` devra **résoudre le
+    `Scoreur`**, aujourd'hui il ne fait que valider) ; la correction tracée consigne
+    `action=CORRECTION_SCORE, avant, apres, auteur=nom du rôle habilité`.
   - **`avant`/`apres` : passer `None`, jamais `""`** — le socle les conserve **verbatim** (pas de
     normalisation) : `""` est distinct de `NULL` en base et à la relecture. Une `CORRECTION_SCORE`
     **porte** avant/après ; une validation les laisse à `None` (un `""` afficherait un « avant » vide).

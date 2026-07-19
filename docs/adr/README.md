@@ -43,6 +43,9 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0030](0030-saisie-autorisee-au-poste-de-cible-403-hors-cible.md) | Saisie de score autorisée au **poste de cible**, bornée par le lieu (403 hors-cible) | Accepté |
 | [0031](0031-bibliotheque-pdf-reportlab.md) | Bibliothèque PDF : **ReportLab** (QT3 tranchée) — embarquabilité PyInstaller > rendu riche | Accepté |
 | [0032](0032-navigation-admin-par-etat-local.md) | Navigation de l'appli admin par **état local** (`useState`), pas de `react-router` — parcimonie (règle 11) | Accepté |
+| [0033](0033-source-de-saisie-affectations-cible-depart.md) | Source des archers d'un poste : les **affectations `(cible, départ)`**, pas `Archer.cible` | Accepté |
+| [0034](0034-poste-selectionne-son-depart-courant.md) | Le poste sélectionne son **départ courant** (geste manuel ; automatisation différée à E12US002) | Accepté |
+| [0035](0035-atomicite-acte-trace-session-partagee.md) | Atomicité **acte↔trace** : co-écriture score + audit dans une **session partagée** (un seul commit) | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.

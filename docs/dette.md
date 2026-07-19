@@ -553,6 +553,16 @@ Le faire « en douce » ici mêlerait un renommage transverse à des correctifs 
 la valeur reste la même, seul le vocabulaire s'aligne sur le glossaire. Marqueur `DETTE-011` posé
 sur la classe `Score`.
 
+**Mise à jour 19/07/2026 (E04US002) — non résorbée, et le sera autrement que prévu.** E04US002 (vrai
+scoring) modélise la flèche comme **valeur** (`ZoneScore`) *dans* une `Volee`, pas comme entité :
+`Serie`/`Volee` **remplacent** `Score` pour la **saisie**. Contre l'attente « renommer `Score`→`Fleche`
+avant E04 », l'agrégat `Score` n'est **pas** renommé mais **conservé** comme modèle de lecture du
+**classement de démo** (`calculer_classement`), jusqu'à son rebasage sur les volées en **E06US001** —
+le renommer maintenant démolirait ce classement (périmètre E06). Le nom-clash redouté est **désamorcé
+autrement** : le total du scoring s'appelle `cumul`, jamais `Score`. La dette **reste ouverte** (le nom
+`Score` désigne toujours une flèche), mais son échéance de résorption glisse à **l'ère E06** (rebasage
+du classement), où `Score` perdra son dernier usage et pourra être supprimé plutôt que renommé.
+
 ### DETTE-012 — l'URL du QR de cible est l'origine de la requête admin
 
 **Constat.** Le QR de rattachement d'une cible (E09US008) encode une URL **absolue**
