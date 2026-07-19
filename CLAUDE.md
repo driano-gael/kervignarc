@@ -207,6 +207,26 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
 - **Décision structurante ⇒ ADR** dans `docs/adr/` (contexte / décision / conséquences).
 - Une US trop grosse pour une branche doit être **redécoupée** (maille INVEST).
 
+## Journal d'avancement
+
+Chaque session qui **livre quelque chose** dépose un fichier dans
+[`journal-d-avancement/`](journal-d-avancement/) — un compte rendu **vulgarisé, orienté
+non-technicien**, de ce qui a été construit. C'est un **livrable de la session**, au même titre que le
+code et le message de commit, pas une option.
+
+- **Un fichier par session, jamais écrasé** : le dossier est un journal chronologique. Nom
+  `AAAA-MM-JJ-HHhMM-titre-court.md` (l'horodatage trie le dossier tout seul). Récupérer la date-heure
+  réelle (`date`), ne pas l'inventer.
+- **Public : un membre du club, pas un développeur.** On répond à « qu'est-ce que le logiciel sait
+  faire de plus, et pourquoi c'est utile ? » — **sans** noms de fichiers/classes, **sans** jargon
+  (`port`, `adapter`, `migration`…) non traduit, **sans** diff ni numéro de commit. La convention
+  détaillée est dans [`journal-d-avancement/README.md`](journal-d-avancement/README.md).
+- **Ce n'est pas** `docs/fonctionnel/` (scénario de recette d'**une** US, écran par écran) ni un ADR :
+  le journal prend de la hauteur et raconte l'**avancement du produit** dans le temps.
+- Le fichier part dans le **commit/PR de la session** qu'il décrit (ou sa propre PR `docs` si le
+  travail de la session est lui-même documentaire). Le premier fichier `…-etat-des-lieux.md` est le
+  point de départ, dressé depuis le code existant.
+
 ## Documents de référence
 
 | Document | Contenu |
@@ -219,6 +239,7 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
 | [`docs/glossaire.md`](docs/glossaire.md) · [`docs/modele-de-donnees.md`](docs/modele-de-donnees.md) · [`docs/referentiel-ffta.md`](docs/referentiel-ffta.md) | Vocabulaire, modèle, règles FFTA |
 | [`docs/dette.md`](docs/dette.md) · [`docs/dependances.md`](docs/dependances.md) · [`docs/adr/`](docs/adr/) | Registres et décisions |
 | [`epics/`](epics/) · [`stories/`](stories/) | Backlog produit (jalons J0→J4) |
+| [`journal-d-avancement/`](journal-d-avancement/) | Compte rendu vulgarisé de l'avancement, une entrée par session |
 
 `prototype/` est un prototype Python de déc. 2024 : **référence de lecture uniquement**, non exécuté,
 au vocabulaire hétérogène (`Player.lettre`, `idCible`) — ne pas s'en inspirer pour le nommage.
