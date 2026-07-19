@@ -358,6 +358,19 @@ class RattachementTournoiTermine(ApplicationError):
     code = "rattachement_tournoi_termine"
 
 
+class DepartCourantNonDefini(ApplicationError):
+    """Un poste tente de saisir (ou lister ses archers) sans avoir fixé son départ courant. → 409.
+
+    ADR-0034 §1 : tant qu'aucun départ n'est fixé, le poste connaît son lieu mais **ne sait pas qui
+    afficher** — refus **explicite**, jamais un affichage vide ambigu. Conflit d'**état** (le poste
+    n'est pas en état de saisir), d'où 409 : le front doit d'abord fixer le départ (« mode départ »)
+    avant d'afficher la grille. Distinct de `SaisieHorsCible` (403 : le départ *est* fixé, mais
+    l'archer visé n'y est pas).
+    """
+
+    code = "depart_courant_non_defini"
+
+
 class SaisieHorsCible(ApplicationError):
     """Un poste tente de saisir pour un archer qui n'est pas sur **sa** cible (E10US007). → 403.
 

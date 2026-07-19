@@ -35,6 +35,7 @@ from api.v1.inscriptions import router as inscriptions_router
 from api.v1.placement import router as placement_router
 from api.v1.postes import router as postes_router
 from api.v1.postes import session_router as poste_session_router
+from api.v1.saisie import router as saisie_router
 from api.v1.scoreurs import router as scoreurs_router
 from api.v1.scoreurs import session_router as scoreur_session_router
 from api.v1.tournois import router as tournois_router
@@ -79,6 +80,7 @@ from infrastructure.db import (
     default_database_url,
 )
 from infrastructure.horloge import HorlogeSysteme
+from infrastructure.idempotence import RegistreIdempotence
 from infrastructure.pdf import GenerateurDocumentsSallePdf, GenerateurFeuilleDeMarquePdf
 from infrastructure.postes import PosteSessionStore, generer_code_poste
 from infrastructure.realtime import Broadcaster, LiveEvent
@@ -320,6 +322,10 @@ def create_app(
         inscription_repository,
         HorlogeSysteme(),
     )
+    # Idempotence de la saisie (ADR-0036) : registre en mémoire consulté **dans** la commande de la
+    # file (writer unique) par l'endpoint de saisie, pour qu'un rejeu réseau ne double ni une volée
+    # ni une trace. Exposé sur l'app comme la `write_queue`.
+    app.state.registre_idempotence = RegistreIdempotence()
 
     # --- Frontière API : traduction des erreurs typées en réponses HTTP (ADR-0007). ---
     enregistrer_gestionnaires_erreurs(app)
@@ -343,6 +349,7 @@ def create_app(
     app.include_router(bareme_qualification_router)
     app.include_router(grain_validation_router)
     app.include_router(competition_router)
+    app.include_router(saisie_router)
     app.include_router(placement_router)
     app.include_router(feuille_de_marque_router)
     app.include_router(documents_salle_router)

@@ -21,6 +21,7 @@ Frontières (cf. `stories/E04-saisie-scores.md`) :
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import dataclass
 
 from application.erreurs import (
@@ -72,6 +73,18 @@ class ArcherPositionne:
 
     position: str
     archer: Archer
+
+
+@dataclass(frozen=True)
+class EtatSerie:
+    """État persisté d'une série, en **lecture** : l'agrégat `Serie` et le « quand » de ses volées.
+
+    Le `created_at` de chaque volée (ex-017) vit **hors** du domaine `Volee` (arbitrage de revue) :
+    il accompagne la série ici, par numéro, pour la consultation « volée N saisie par … à HH:MM ».
+    """
+
+    serie: Serie
+    horodatages: dict[int, datetime.datetime]
 
 
 def _valeurs_lisibles(serie: Serie, numero: int) -> str | None:
@@ -127,6 +140,18 @@ class ServiceSaisie:
             grille.append(ArcherPositionne(position=affectation.position, archer=archer))
         grille.sort(key=lambda ligne: ligne.position)
         return grille
+
+    def etat_serie(self, tournoi_id: TournoiId, archer_id: ArcherId) -> EtatSerie | None:
+        """L'état persisté de la série de l'archer (volées + « quand »), ou `None` si rien de saisi.
+
+        Chemin de lecture de la grille : la série (valeurs, marqueurs, verrou, cumul) **et** le
+        `created_at` de chaque volée (ex-017), joints par numéro. Ne cloisonne pas à la cible : une
+        lecture, l'appelant (API) a déjà établi le droit d'accès du poste.
+        """
+        serie = self._series.par_archer(tournoi_id, archer_id)
+        if serie is None:
+            return None
+        return EtatSerie(serie=serie, horodatages=self._series.horodatages(tournoi_id, archer_id))
 
     def saisir_volee(
         self,

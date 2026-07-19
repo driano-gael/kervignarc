@@ -75,6 +75,13 @@ class FauxSerieRepository:
     def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
         return self._series.get((tournoi_id, archer_id))
 
+    def horodatages(
+        self, tournoi_id: TournoiId, archer_id: ArcherId
+    ) -> dict[int, datetime.datetime]:
+        # Le « quand » (created_at) est une métadonnée de persistance prouvée au niveau du
+        # repository (test_serie_repository) ; ce faux de service ne la modélise pas.
+        return {}
+
     def enregistrer(self, serie: Serie) -> Serie:
         if serie.id is None:
             self._sequence += 1
