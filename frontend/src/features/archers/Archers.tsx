@@ -335,11 +335,13 @@ function FormulaireArcher({
   )
 }
 
-// DETTE-004 (docs/dette.md) : 10ᵉ copie conforme de ce composant, une par feature. À extraire dans
+// DETTE-004 (docs/dette.md) : copie conforme de ce composant, une par feature. À extraire dans
 // `shared/` — E00US013. Non factorisée ici, pour la même raison qu'en E02US001 : l'extraire pour la
 // seule feature neuve donnerait « 9 copies + 1 brique partagée », soit deux conventions au lieu
 // d'une, alors que E00US013 doit pouvoir relire un remplacement homogène.
-function MessageErreur({ erreur }: { erreur: Error | null }) {
+// Exportée pour `NouvelArcher.tsx` (même feature, E00US015) : réutilisation **intra-feature**, pas
+// une extraction vers `shared/` — la feature « archers » garde bien **une seule** copie.
+export function MessageErreur({ erreur }: { erreur: Error | null }) {
   if (erreur === null) return null
   const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
   return (
