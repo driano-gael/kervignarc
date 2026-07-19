@@ -61,9 +61,12 @@
       côté **poste** (fixer départ, grille, saisir volée, relire série) et côté **scoreur** (valider,
       corriger). **Le retrait de la démo `saisir_score` est différé** — cf. arbitrage ci-dessous.
 
-    La **grille tactile** (cibles ≥ 48 px, pavé, sélecteur de marqueur, panneau de routage) part en
-    **dernière tranche** front. Pas de scénario `docs/fonctionnel/` avant elle (aucune UI à décrire) —
-    comportement garanti par les tests service (depuis le CA) puis repository et API.
+    La **grille tactile** part en **dernière tranche** front (`feat/e04us002-saisie-grille`,
+    **livrée** 2026-07-19) : cibles ≥ 48 px, pavé déduit du blason, sélecteur de départ courant,
+    marqueur discret, navigateur de volées, grain affiché. Le **panneau de routage** post-validation
+    n'y est **pas** — c'est E04US018 (bloquée, dépend d'E03US009) ; la surface **scoreur**
+    (validation/correction, §7.3) et la **file hors-ligne / diffusion live** (E04US009) non plus. La
+    doc `docs/fonctionnel/E04US002.md` accompagne cette tranche (première UI à décrire).
   - **Rectification règle 1 sur la couture d'audit (PR2a).** ADR-0035 §1 posait que « le port
     `AuditRepository` gagne `consigner_dans(session, …)` ». Impossible : le port vit dans le domaine,
     un paramètre `Session` (SQLAlchemy) y violerait la règle 1 (garde-fou AST). `consigner_dans` est
@@ -157,6 +160,27 @@
       chantier à isoler, pas à bâcler dans la PR d'exposition. La démo **coexiste** sans conflit avec
       la nouvelle surface (tables `score` vs `serie`/`volee` distinctes) — pas de régression ;
       le classement de démo reste alimenté jusqu'au nettoyage, puis stub jusqu'à E06US001.
+  - **Arbitrages de la tranche grille (front, 2026-07-19) :**
+    - **Le pavé est exposé *dans la grille*, par archer — pas re-dérivé côté front.** Le CA « pavé »
+      veut les touches illégales **absentes** (triple 40 → pas de 5→1). La grille exposée en PR2b
+      (`ArcherGrilleReponse`) ne portait que `{position, archer_id, nom, prénom}` — ni `zones`, ni
+      même `categorie_id`. Reconstituer `archer → catégorie → blason → zones` côté front, c'était 2–3
+      appels fragiles **et** re-dériver une règle de scoring dont **le serveur est l'autorité**. Choix
+      (additif, pas de migration) : `ArcherGrilleReponse` gagne `zones: list[str]` (le service dérive
+      déjà, `_zones_du_blason`), dans l'ordre canonique. La grille est **tolérante** (`[]` si le
+      blason est indéterminable, robustesse jour J) ; le chemin d'**écriture** reste strict
+      (`BlasonIntrouvable`, 404 — erreur **visible**, pas de score faux silencieux).
+    - **La « volée courante » avance dès qu'une volée est *saisie*, pas *validée*.** Piège corrigé en
+      cours d'implémentation : la validation (le verrou) est l'acte du **scoreur**, plus tard — rien
+      ne se verrouille pendant la saisie. Une « prochaine à saisir = plus petite non verrouillée »
+      aurait **bloqué le marqueur sur la volée 1**. Retenu : prochaine = plus petite **non saisie** ;
+      l'édition d'une volée déjà saisie (tant que non validée — CA « édition avant validation ») passe
+      par un **navigateur de volées** explicite.
+    - **Périmètre de la tranche : poste de cible (marqueur) seul.** Exclus, chacun sa surface/US : la
+      **validation & correction** (scoreur, §7.3), le **panneau de routage** (E04US018, bloquée), la
+      **file hors-ligne + diffusion live** (E04US009). Conséquence assumée : sans surface scoreur, le
+      **cumul officiel reste à 0** (il ne compte que le validé) — la saisie se teste de bout en bout
+      via l'API scoreur (livrée en PR2b), l'UI scoreur viendra ensuite.
 - **Absorbe** : ex-E04US002 à 008, E04US012, E04US017. **Dépend de** : E04US001, E01US009, E01US014, E01US015, E00US007, E10US003, E10US005, E10US007 · **Jalon** : J1
 
 ### E04US009 — Diffusion live & résilience réseau

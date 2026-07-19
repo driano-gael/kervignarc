@@ -183,7 +183,14 @@ def test_fixer_depart_courant_puis_lister_les_archers(
         grille = client.get("/api/v1/saisie/archers", headers=_entete(s.jeton))
         assert grille.status_code == 200, grille.text
         assert grille.json() == [
-            {"position": "A", "archer_id": s.archer_id, "nom": "CIBLE1A", "prenom": "Alice"}
+            {
+                "position": "A",
+                "archer_id": s.archer_id,
+                "nom": "CIBLE1A",
+                "prenom": "Alice",
+                # CA « pavé » : les zones du blason de l'archer, ordre canonique centre→extérieur.
+                "zones": [z.value for z in ZoneScore],
+            }
         ]
 
 

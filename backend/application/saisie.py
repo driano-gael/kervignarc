@@ -66,13 +66,18 @@ class ContexteSaisie:
 
 @dataclass(frozen=True)
 class ArcherPositionne:
-    """Un archer et sa **position** (A..D) sur une cible — une ligne de la grille de saisie.
+    """Un archer, sa **position** (A..D) et son **pavé** — une ligne de la grille de saisie.
 
     Reconstitué depuis les `Affectation` du placement réel (ADR-0033), pas depuis `Archer.cible`.
+    `zones` est le pavé légal de l'archer (les valeurs de son `Blason`, touches illégales absentes —
+    CA « pavé ») : le serveur est l'autorité du barème, le front n'a pas à re-dériver la chaîne
+    `catégorie → blason → zones`. `()` si le blason est indéterminable (cf.
+    `_zones_du_blason_grille`).
     """
 
     position: str
     archer: Archer
+    zones: tuple[ZoneScore, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -137,7 +142,13 @@ class ServiceSaisie:
             archer = self._archers.par_id(inscription.archer_id)
             if archer is None or archer.tournoi_id != tournoi_id:
                 continue
-            grille.append(ArcherPositionne(position=affectation.position, archer=archer))
+            grille.append(
+                ArcherPositionne(
+                    position=affectation.position,
+                    archer=archer,
+                    zones=self._zones_du_blason_grille(archer),
+                )
+            )
         grille.sort(key=lambda ligne: ligne.position)
         return grille
 
@@ -325,3 +336,17 @@ class ServiceSaisie:
         if blason is None:
             raise BlasonIntrouvable(f"Blason {categorie.blason_id} introuvable.")
         return blason.zones
+
+    def _zones_du_blason_grille(self, archer: Archer) -> tuple[ZoneScore, ...]:
+        """Le pavé de l'archer pour la **grille** (lecture), ou `()` s'il est indéterminable.
+
+        Contrairement au chemin d'**écriture** (`_zones_du_blason`, qui lève), la grille est une
+        lecture : un archer dont la catégorie n'a pas de blason par défaut ne doit pas faire échouer
+        **toute** la cible (robustesse jour J). Son pavé remonte vide — le front le signale (« pavé
+        indisponible ») ; sa **saisie**, elle, échouera en `BlasonIntrouvable` (404) : erreur
+        visible.
+        """
+        try:
+            return self._zones_du_blason(archer)
+        except (CategorieIntrouvable, BlasonIntrouvable):
+            return ()

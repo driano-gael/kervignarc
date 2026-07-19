@@ -394,6 +394,31 @@ def test_archers_du_poste_vide_sans_affectation() -> None:
     assert m.service.archers_du_poste(m.tournoi_id, cible_index=1, depart_id=_DEPART) == []
 
 
+def test_la_grille_expose_le_pave_du_blason_de_chaque_archer() -> None:
+    """CA « pavé » : chaque ligne porte les zones du blason de l'archer (le pavé de saisie)."""
+    m = Montage(zones=ZONES_TRIPLE)
+    a = m.nouvel_archer("ALPHA")
+    m.placer(a, _DEPART, cible_index=1, position="A")
+
+    grille = m.service.archers_du_poste(m.tournoi_id, cible_index=1, depart_id=_DEPART)
+
+    assert [ligne.zones for ligne in grille] == [ZONES_TRIPLE]
+
+
+def test_la_grille_remonte_un_pave_vide_si_le_blason_est_indeterminable() -> None:
+    """Robustesse jour J : un archer sans blason par défaut n'efface pas la cible — pavé `()`.
+
+    Le chemin d'**écriture** (`saisir_volee`), lui, refuse cet archer en `BlasonIntrouvable` (404) :
+    la lecture tolère pour afficher, l'écriture reste stricte (erreur visible, pas silencieuse)."""
+    m = Montage(avec_blason=False)  # catégorie sans blason par défaut
+    a = m.nouvel_archer("SANSBLASON")
+    m.placer(a, _DEPART, cible_index=1, position="A")
+
+    grille = m.service.archers_du_poste(m.tournoi_id, cible_index=1, depart_id=_DEPART)
+
+    assert [ligne.zones for ligne in grille] == [()]
+
+
 def test_saisir_pour_un_archer_de_sa_cible_est_autorise() -> None:
     """ADR-0033 §3 : le poste saisit pour un archer affecté à SA cible / SON départ."""
     m = Montage()
