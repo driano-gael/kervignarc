@@ -13,6 +13,7 @@ import pytest
 from domain.blason import ZoneScore
 from domain.erreurs import (
     NombreFlechesVoleeInvalide,
+    NomIntervenantInvalide,
     NumeroVoleeInvalide,
     RienAValider,
     SerieIncomplete,
@@ -46,7 +47,11 @@ def _serie_pleine(nb_volees: int, valeurs: tuple[ZoneScore, ...]) -> Serie:
     serie = Serie.vide(tournoi_id=1, archer_id=7)
     for numero in range(1, nb_volees + 1):
         serie = serie.saisir_volee(
-            numero, valeurs, zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=len(valeurs)
+            numero,
+            valeurs,
+            zones_admises=ZONES_SIMPLE,
+            nb_fleches_par_volee=len(valeurs),
+            nb_volees_bareme=nb_volees,
         )
     return serie
 
@@ -61,6 +66,7 @@ def test_saisir_une_volee_enregistre_valeurs_et_marqueur() -> None:
         _v("10", "9", "8"),
         zones_admises=ZONES_SIMPLE,
         nb_fleches_par_volee=3,
+        nb_volees_bareme=3,
         saisie_par="DURAND",
     )
     volee = serie.volee(1)
@@ -73,7 +79,11 @@ def test_saisir_une_volee_enregistre_valeurs_et_marqueur() -> None:
 def test_points_d_une_volee_somme_les_zones_le_manque_vaut_zero() -> None:
     """ex-008 : le total d'une volée somme les zones ; `M` (manqué) vaut 0."""
     serie = Serie.vide(tournoi_id=1, archer_id=7).saisir_volee(
-        1, _v("10", "M", "7"), zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+        1,
+        _v("10", "M", "7"),
+        zones_admises=ZONES_SIMPLE,
+        nb_fleches_par_volee=3,
+        nb_volees_bareme=3,
     )
     assert serie.volee(1).points == 17  # type: ignore[union-attr]
 
@@ -83,7 +93,11 @@ def test_pave_deduit_du_blason_refuse_une_valeur_hors_zones() -> None:
     serie = Serie.vide(tournoi_id=1, archer_id=7)
     with pytest.raises(ValeurHorsBlason):
         serie.saisir_volee(
-            1, _v("10", "9", "5"), zones_admises=ZONES_TRIPLE, nb_fleches_par_volee=3
+            1,
+            _v("10", "9", "5"),
+            zones_admises=ZONES_TRIPLE,
+            nb_fleches_par_volee=3,
+            nb_volees_bareme=3,
         )
 
 
@@ -91,7 +105,13 @@ def test_valeurs_legales_refuse_un_mauvais_nombre_de_fleches() -> None:
     """ex-004 : le nombre de flèches d'une volée doit être conforme au barème."""
     serie = Serie.vide(tournoi_id=1, archer_id=7)
     with pytest.raises(NombreFlechesVoleeInvalide):
-        serie.saisir_volee(1, _v("10", "9"), zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3)
+        serie.saisir_volee(
+            1,
+            _v("10", "9"),
+            zones_admises=ZONES_SIMPLE,
+            nb_fleches_par_volee=3,
+            nb_volees_bareme=3,
+        )
 
 
 @pytest.mark.parametrize("numero", [0, -1])
@@ -100,7 +120,11 @@ def test_numero_de_volee_doit_etre_positif(numero: int) -> None:
     serie = Serie.vide(tournoi_id=1, archer_id=7)
     with pytest.raises(NumeroVoleeInvalide):
         serie.saisir_volee(
-            numero, _v("10", "9", "8"), zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+            numero,
+            _v("10", "9", "8"),
+            zones_admises=ZONES_SIMPLE,
+            nb_fleches_par_volee=3,
+            nb_volees_bareme=3,
         )
 
 
@@ -110,10 +134,14 @@ def test_numero_de_volee_doit_etre_positif(numero: int) -> None:
 def test_editer_une_volee_non_validee_remplace_ses_valeurs() -> None:
     """ex-006 : une volée est modifiable tant qu'elle n'est pas validée."""
     serie = Serie.vide(tournoi_id=1, archer_id=7).saisir_volee(
-        1, _v("10", "9", "8"), zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+        1,
+        _v("10", "9", "8"),
+        zones_admises=ZONES_SIMPLE,
+        nb_fleches_par_volee=3,
+        nb_volees_bareme=3,
     )
     serie = serie.saisir_volee(
-        1, _v("9", "9", "9"), zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+        1, _v("9", "9", "9"), zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3, nb_volees_bareme=3
     )
     assert serie.volee(1).valeurs == _v("9", "9", "9")  # type: ignore[union-attr]
     assert len(serie.volees) == 1  # remplacement, pas ajout
@@ -125,7 +153,13 @@ def test_editer_une_volee_verrouillee_par_saisie_est_refuse() -> None:
         "MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=1
     )
     with pytest.raises(VoleeVerrouillee):
-        serie.saisir_volee(1, _v("9", "9", "9"), zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3)
+        serie.saisir_volee(
+            1,
+            _v("9", "9", "9"),
+            zones_admises=ZONES_SIMPLE,
+            nb_fleches_par_volee=3,
+            nb_volees_bareme=1,
+        )
 
 
 # --- Validation, verrou, grain (ex-007) & cumul (ex-008) -----------------------------------
@@ -187,17 +221,21 @@ def test_valider_sans_lot_complet_ni_reliquat_ne_valide_rien() -> None:
 
 
 def test_corriger_une_volee_verrouillee_remplace_les_valeurs_et_recalcule_le_cumul() -> None:
-    """ex-012 : une volée verrouillée se corrige (rôle habilité) ; le cumul est recalculé."""
-    serie = _serie_pleine(1, _v("10", "9", "8")).valider(
-        "MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=1
+    """ex-012 : corriger une volée verrouillée recalcule le cumul — prouvé sur une somme DIFFÉRENTE.
+
+    Série de 2 volées à 27 (cumul 54) ; corriger la 1ʳᵉ de 27 à 15 (5,5,5) : le cumul doit passer
+    à 42 (15 + 27), ce qui échoue si la correction ne réécrit pas les valeurs *et* le cumul.
+    """
+    serie = _serie_pleine(2, _v("10", "9", "8")).valider(
+        "MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=2
     )
-    assert serie.cumul == 27
+    assert serie.cumul == 54
     serie = serie.corriger_volee(
-        1, _v("9", "9", "9"), par="ARBITRE", zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+        1, _v("5", "5", "5"), par="ARBITRE", zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
     )
-    assert serie.volee(1).valeurs == _v("9", "9", "9")  # type: ignore[union-attr]
+    assert serie.volee(1).valeurs == _v("5", "5", "5")  # type: ignore[union-attr]
     assert serie.volee(1).verrouillee  # type: ignore[union-attr]
-    assert serie.cumul == 27  # 27 → 27 ici, mais recalculé sur les nouvelles valeurs
+    assert serie.cumul == 42  # 15 (volée 1 corrigée) + 27 (volée 2 intacte)
 
 
 def test_corriger_une_volee_non_verrouillee_est_refuse() -> None:
@@ -217,4 +255,42 @@ def test_corriger_une_volee_inexistante_est_refuse() -> None:
     with pytest.raises(VoleeIntrouvable):
         serie.corriger_volee(
             9, _v("9", "9", "9"), par="ARBITRE", zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+        )
+
+
+# --- Garde-fous du serveur autoritaire (durcissement de revue) -------------------------------
+
+
+def test_saisir_une_volee_au_dela_du_bareme_est_refuse() -> None:
+    """Serveur autoritaire : un rang de volée au-delà du barème est refusé — sinon cumul gonflable.
+
+    Symétrique de la garde sur le nombre de flèches (ex-004) : sans borne haute, saisir la volée 3
+    d'un barème à 2 volées entrerait dans le cumul à la validation.
+    """
+    serie = Serie.vide(tournoi_id=1, archer_id=7)
+    with pytest.raises(NumeroVoleeInvalide):
+        serie.saisir_volee(
+            3,
+            _v("10", "9", "8"),
+            zones_admises=ZONES_SIMPLE,
+            nb_fleches_par_volee=3,
+            nb_volees_bareme=2,
+        )
+
+
+def test_valider_refuse_un_validateur_vide() -> None:
+    """Un verrou nomme son validateur : un nom vide (ou en blancs) est refusé au domaine."""
+    serie = _serie_pleine(1, _v("10", "9", "8"))
+    with pytest.raises(NomIntervenantInvalide):
+        serie.valider("   ", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=1)
+
+
+def test_corriger_refuse_un_correcteur_vide() -> None:
+    """La correction aussi nomme son auteur : un correcteur vide est refusé au domaine."""
+    serie = _serie_pleine(1, _v("10", "9", "8")).valider(
+        "MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=1
+    )
+    with pytest.raises(NomIntervenantInvalide):
+        serie.corriger_volee(
+            1, _v("9", "9", "9"), par="", zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
         )

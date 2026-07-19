@@ -89,6 +89,7 @@ class ServiceSaisie:
             valeurs,
             zones_admises=zones,
             nb_fleches_par_volee=phase.bareme.nb_fleches_par_volee,
+            nb_volees_bareme=phase.bareme.nb_volees,
             saisie_par=saisie_par,
         )
         return self._series.enregistrer(serie)
@@ -152,7 +153,15 @@ class ServiceSaisie:
         return self._series.enregistrer_avec_trace(serie, entree)
 
     def _charger_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Archer:
-        """L'archer du tournoi ; `ArcherIntrouvable` s'il est inconnu ou d'un autre tournoi."""
+        """L'archer du tournoi ; `ArcherIntrouvable` s'il est inconnu ou d'un autre tournoi.
+
+        Le seul cloisonnement présent en PR1 est le tournoi. La garde **« SA cible / SON départ »**
+        (`SaisieHorsCible`, ADR-0033 §3) doit vivre **au service** — pas dans un `Depends` d'API,
+        qu'un appelant hors HTTP (writer WS E04US009, orchestrateur E12US002) contournerait. En PR2,
+        les méthodes de saisie recevront le contexte poste `(cible_index, depart_id)` et vérifieront
+        l'appartenance de l'archer avant d'écrire.
+        """
+        # E04US002 (PR2) : cloisonner au triplet (tournoi, cible, départ) -> SaisieHorsCible.
         archer = self._archers.par_id(archer_id)
         if archer is None or archer.tournoi_id != tournoi_id:
             raise ArcherIntrouvable(f"Aucun archer d'identifiant {archer_id} dans ce tournoi.")

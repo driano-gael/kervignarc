@@ -252,6 +252,17 @@ class RienAValider(DomainError):
     code = "rien_a_valider"
 
 
+class NomIntervenantInvalide(DomainError):
+    """Le nom de qui valide ou corrige une volée est vide (après normalisation, E04US002).
+
+    Une volée verrouillée **nomme** son validateur (l'équivalent numérique de la signature, FFTA
+    B.6.1.1) : un verrou sans nom serait une signature blanche. Le domaine défend cet invariant
+    lui-même, sans l'emprunter à la couche audit.
+    """
+
+    code = "nom_intervenant_invalide"
+
+
 class NomScoreurInvalide(DomainError):
     """Le nom d'un scoreur est vide (après normalisation, E10US003)."""
 

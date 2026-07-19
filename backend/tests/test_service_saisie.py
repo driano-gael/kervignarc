@@ -24,7 +24,7 @@ from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId, ZoneScore
 from domain.categorie import Categorie
 from domain.entree_audit import ActionAuditee, EntreeAudit
-from domain.erreurs import ValeurHorsBlason
+from domain.erreurs import NumeroVoleeInvalide, ValeurHorsBlason
 from domain.grain_validation import GrainValidation
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.serie import Serie
@@ -268,3 +268,10 @@ def test_saisir_pour_un_archer_sans_blason_est_refuse() -> None:
     m = Montage(avec_blason=False)
     with pytest.raises(BlasonIntrouvable):
         m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
+
+
+def test_le_service_borne_le_rang_de_volee_par_le_bareme_de_la_phase() -> None:
+    """Le service passe `nb_volees` de la phase au domaine : un rang hors barème est refusé."""
+    m = Montage()  # barème de la phase : 2 volées de 3 flèches
+    with pytest.raises(NumeroVoleeInvalide):
+        m.service.saisir_volee(m.tournoi_id, m.archer_id, 3, _v("10", "9", "8"))

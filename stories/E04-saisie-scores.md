@@ -72,13 +72,14 @@
     un **identifiant de saisie** ; la commande de la file **dédoublonne** (un rejeu réseau ne crée pas
     une volée en double). Marqueur `# E04US002 : idempotence` à l'endroit de la déduplication.
   - **DETTE-011 (`Score`→`Fleche`) n'est PAS résorbée ici.** Le vrai scoring modélise la flèche comme
-    **valeur** (`ZoneScore`) dans une `Volee`, pas comme entité : `Serie`/`Volee` **remplacent** `Score`
-    pour la **saisie**, mais l'agrégat `Score` **survit** comme modèle de lecture du **classement de
-    démo** (`calculer_classement`) jusqu'à son rebasage sur les volées en **E06US001**. Le nom-clash
-    que DETTE-011 redoutait est **évité** (le total s'appelle `cumul`, pas `Score`) ; le renommage
-    reste un nettoyage à part, à l'ère E06. Le classement de démo devient un **stub sans données**
-    après cette tranche (aucun `Score` n'est plus écrit) — régression d'un démonstrateur, pas d'un cas
-    utilisateur réel ; E06US001 le corrige.
+    **valeur** (`ZoneScore`) dans une `Volee`, pas comme entité : `Serie`/`Volee` **remplaceront**
+    `Score` pour la **saisie** — dès la **plomberie PR2** (la PR1 « moteur métier » n'écrit encore
+    rien) —, mais l'agrégat `Score` **survit** comme modèle de lecture du **classement de démo**
+    (`calculer_classement`) jusqu'à son rebasage sur les volées en **E06US001**. Le nom-clash que
+    DETTE-011 redoutait est **évité** (le total s'appelle `cumul`, pas `Score`) ; le renommage reste un
+    nettoyage à part, à l'ère E06. Le classement de démo deviendra un **stub sans données** une fois
+    la plomberie PR2 livrée (la démo `saisir_score` retirée, plus aucun `Score` écrit) — régression
+    d'un démonstrateur, pas d'un cas utilisateur réel ; E06US001 le corrige.
   - **Dépendance E10US005 satisfaite en amont** : elle était insatisfiable (l'US 005, seq 47, vient
     *après* cette US, seq 41, et n'existait pas). Son **socle** (agrégat `EntreeAudit`, port
     `AuditRepository`, `ServiceAudit.consigner`, port `Horloge`) a été **livré d'abord**. La validation
@@ -88,6 +89,20 @@
   - **`avant`/`apres` : passer `None`, jamais `""`** — le socle les conserve **verbatim** (pas de
     normalisation) : `""` est distinct de `NULL` en base et à la relecture. Une `CORRECTION_SCORE`
     **porte** avant/après ; une validation les laisse à `None` (un `""` afficherait un « avant » vide).
+  - **Le « quand » d'une saisie (ex-017, « …10h42 »)** est porté par le **`created_at` de la ligne
+    volée** en PR2 (métadonnée de persistance, comme l'`id`), *pas* un champ du domaine — consultable
+    via le chemin de lecture PR2. *(Arbitrage de revue du 19/07 : réversible/additif si un besoin
+    domaine émergeait.)*
+  - **Garde « SA cible / SON départ » au service, pas à l'API (ADR-0033 §3, remontée de la revue
+    adversariale).** En PR2, la signature de `ServiceSaisie` recevra le **contexte poste**
+    `(cible_index, depart_id)` et vérifiera l'appartenance de l'archer avant d'écrire — pas dans un
+    `Depends` d'API, qu'un appelant hors HTTP (writer WS E04US009, orchestrateur E12US002)
+    contournerait. Marqueur `# E04US002 (PR2)` posé dans `ServiceSaisie._charger_archer`.
+  - **Durcissements du serveur autoritaire (revue du 19/07).** Le domaine borne le **rang de volée**
+    par le barème (`1 <= numero <= nb_volees`), symétrique de la garde flèches (ex-004) : sans quoi
+    une volée hors barème gonflerait le cumul (ex-008). La complétude d'une série est jugée sur
+    l'**ensemble** exact `{1..N}`, pas un décompte. Une volée verrouillée **nomme** son validateur :
+    un nom vide est refusé au domaine (`NomIntervenantInvalide`), sans l'emprunter à la couche audit.
 - **Absorbe** : ex-E04US002 à 008, E04US012, E04US017. **Dépend de** : E04US001, E01US009, E01US014, E01US015, E00US007, E10US003, E10US005, E10US007 · **Jalon** : J1
 
 ### E04US009 — Diffusion live & résilience réseau

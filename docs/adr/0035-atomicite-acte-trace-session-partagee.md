@@ -41,14 +41,19 @@ d'écrire dans une session **existante** au lieu d'en ouvrir une : soit un param
 comportement historique (session propre + commit) est préservé — les appels existants d'E10US005 ne
 changent pas.
 
-**2. L'écriture de score co-localise l'audit.** Le repository de saisie expose une méthode qui, dans
-un unique `with session_factory() as session:` : (i) écrit/verrouille la volée ou réécrit le score
-corrigé, (ii) construit l'`EntreeAudit` (via le socle, horodatée par la `Horloge`), (iii) l'écrit
-dans **la même** session, (iv) fait **un seul** `session.commit()`. C'est le patron
-`ArcherRepositorySQL.supprimer` (plusieurs écritures, un commit) étendu à **deux préoccupations**
-(score + audit) au lieu d'une cascade intra-table.
+**2. La face applicative est `SerieRepository.enregistrer_avec_trace(serie, entree)`.** L'entrée
+d'audit est **construite et datée par le service applicatif** (`ServiceSaisie`, via le port `Horloge`
+— comme `ServiceAudit` le fait en E10US005, jamais par le domaine ni la base) : elle arrive **déjà
+prête** au port. Le repository de saisie ne **construit ni ne date** rien ; dans un unique
+`with session_factory() as session:` il (i) écrit/verrouille la volée ou réécrit le score corrigé,
+(ii) écrit l'`EntreeAudit` reçue dans **la même** session (via `AuditRepository.consigner_dans`, §1),
+(iii) fait **un seul** `session.commit()`. C'est le patron `ArcherRepositorySQL.supprimer` (plusieurs
+écritures, un commit) étendu à **deux préoccupations** (score + audit) au lieu d'une cascade
+intra-table. *(La construction/datation reste ainsi au service — un adapter qui relirait la `Horloge`
+serait une double lecture d'horloge.)*
 
-**3. La trace reste datée par la `Horloge`, jamais par le domaine ni la base.** `avant`/`apres`
+**3. La trace est datée par la `Horloge` au niveau du service, jamais par le domaine ni la base.**
+`avant`/`apres`
 valent `None` pour une `VALIDATION` (elle ne porte pas d'avant/après) et portent les valeurs
 verbatim pour une `CORRECTION_SCORE` — **`None`, jamais `""`** (le socle conserve verbatim ; `""` est
 distinct de `NULL` à la relecture).
