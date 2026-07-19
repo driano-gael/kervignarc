@@ -91,6 +91,12 @@
   de la dépendance, puis E04US002 s'y branche. Le port `Horloge` n'est **pas** un remède structurel
   spéculatif (règle « 3ᵉ occurrence ») : c'est l'application directe de la règle 2 (effet de bord —
   ici l'heure — derrière un port) au **premier** besoin réel de temps, imposé par le CA « quand ».
+  `EntreeAudit.creer` **garde** l'invariant « horodatage UTC *aware* » (`HorodatageAuditInvalide`) :
+  la persistance réattachant UTC en aveugle à la relecture, un instant naïf ou non-UTC ferait mentir
+  le journal en silence — on ferme ce chemin au bord de l'agrégat (revue adversariale).
+- **Limite connue (atomicité)** : `consigner` commit dans **sa propre session** — le socle n'offre
+  **pas** l'atomicité transactionnelle acte↔trace. C'est aux **producteurs** (E04US002/E12US004) de
+  la trancher (cf. Notes d'E04US002) ; le socle, sans appelant, ne régresse rien.
 - **Dépend de** : E10US002 · **Jalon** : J1
 
 ### E10US006 — Modifier le mot de passe admin

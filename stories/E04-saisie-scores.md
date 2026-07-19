@@ -52,6 +52,17 @@
     `(tournoi_id, cible_index)` ; on reconstitue cible → départ → inscriptions → archers avec leur
     **position A–D** via `PlacementRepository`. **Un ADR actera l'abandon d'`Archer.cible` comme source
     de saisie** (à écrire dans la branche E04US002, pas ici).
+  - **Atomicité acte↔trace à trancher (remontée de la revue adversariale d'E10US005)** : le socle
+    d'audit expose `ServiceAudit.consigner`, qui commit dans **sa propre session** ; être « dans la
+    même commande de file » (règle 7) n'est **pas** être dans la même **transaction**. Une écriture
+    déchirée (le score validé commit, la trace échoue — ou l'inverse) laisserait une validation **non
+    tracée** ou une **trace fantôme**. E04US002 doit **choisir consciemment** : ordonner consign
+    avant/après le commit du score, assumer et documenter la fenêtre, ou introduire une couture de
+    **session partagée** (co-localiser les deux écritures dans une seule méthode de repository, cf.
+    `ArcherRepositorySQL.supprimer`) — cette couture **n'existe pas** dans le socle.
+  - **`avant`/`apres` : passer `None`, jamais `""`** — le socle les conserve **verbatim** (pas de
+    normalisation) : `""` est distinct de `NULL` en base et à la relecture. Une `CORRECTION_SCORE`
+    **porte** avant/après ; une validation les laisse à `None` (un `""` afficherait un « avant » vide).
 - **Absorbe** : ex-E04US002 à 008, E04US012, E04US017. **Dépend de** : E04US001, E01US009, E01US014, E01US015, E00US007, E10US003, E10US005, E10US007 · **Jalon** : J1
 
 ### E04US009 — Diffusion live & résilience réseau
