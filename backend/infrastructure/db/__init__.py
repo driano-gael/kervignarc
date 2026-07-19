@@ -15,6 +15,7 @@ from infrastructure.db.models import (
     CategorieORM,
     ClubORM,
     DepartORM,
+    EntreeAuditORM,
     GabaritSalleORM,
     InscriptionORM,
     PhaseORM,
@@ -26,6 +27,7 @@ from infrastructure.db.models import (
 )
 from infrastructure.db.repositories import (
     ArcherRepositorySQL,
+    AuditRepositorySQL,
     BlasonRepositorySQL,
     CategorieRepositorySQL,
     ClubRepositorySQL,
@@ -50,6 +52,7 @@ __all__ = [
     "DEFAULT_DATABASE_URL",
     "ArcherORM",
     "ArcherRepositorySQL",
+    "AuditRepositorySQL",
     "Base",
     "BlasonORM",
     "BlasonRepositorySQL",
@@ -60,6 +63,7 @@ __all__ = [
     "Database",
     "DepartORM",
     "DepartRepositorySQL",
+    "EntreeAuditORM",
     "GabaritSalleORM",
     "GabaritSalleRepositorySQL",
     "InscriptionORM",

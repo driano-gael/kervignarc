@@ -19,6 +19,7 @@ from api.erreurs import enregistrer_gestionnaires_erreurs
 from api.health import router as health_router
 from api.realtime import router as realtime_router
 from api.spa import frontend_dist_dir, monter_spa
+from api.v1.audit import router as audit_router
 from api.v1.auth import router as auth_router
 from api.v1.bareme_qualification import router as bareme_qualification_router
 from api.v1.blasons import router as blasons_router
@@ -38,6 +39,7 @@ from api.v1.scoreurs import router as scoreurs_router
 from api.v1.scoreurs import session_router as scoreur_session_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
+from application.audit import ServiceAudit
 from application.auth import ServiceAuth
 from application.bareme_qualification import ServiceBaremeQualification
 from application.blasons import ServiceBlasons
@@ -57,6 +59,7 @@ from application.tournois import ServiceTournois
 from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
 from infrastructure.db import (
     ArcherRepositorySQL,
+    AuditRepositorySQL,
     BlasonRepositorySQL,
     CategorieRepositorySQL,
     ClubRepositorySQL,
@@ -73,6 +76,7 @@ from infrastructure.db import (
     WriteQueue,
     default_database_url,
 )
+from infrastructure.horloge import HorlogeSysteme
 from infrastructure.pdf import GenerateurDocumentsSallePdf, GenerateurFeuilleDeMarquePdf
 from infrastructure.postes import PosteSessionStore, generer_code_poste
 from infrastructure.realtime import Broadcaster, LiveEvent
@@ -152,6 +156,7 @@ def create_app(
     placement_repository = PlacementRepositorySQL(database.session_factory)
     scoreur_repository = ScoreurRepositorySQL(database.session_factory)
     poste_repository = PosteRepositorySQL(database.session_factory)
+    audit_repository = AuditRepositorySQL(database.session_factory)
     app.state.service_tournois = ServiceTournois(tournoi_repository)
     # Départs (créneaux) d'un tournoi (E02US004, ADR-0017) : le service vérifie l'existence du
     # tournoi (dépend du port tournoi) et attribue le numéro du créneau. Il dépend aussi du port
@@ -281,6 +286,13 @@ def create_app(
         generer_code_poste,
     )
 
+    # --- Journal d'audit métier (E10US005, socle) : trace les actes sensibles (qui/quand/
+    # avant-après) pour gérer les litiges. `consigner` est la primitive d'écriture qu'appelleront
+    # les producteurs — validation/correction (E04US002), forfait (E12US004) — depuis leur
+    # commande de file ; la consultation admin (`GET .../audit`) est livrée. L'horodatage passe
+    # par le port `Horloge` (adapter système UTC), injecté pour des cas d'usage déterministes. ---
+    app.state.service_audit = ServiceAudit(audit_repository, tournoi_repository, HorlogeSysteme())
+
     # --- Frontière API : traduction des erreurs typées en réponses HTTP (ADR-0007). ---
     enregistrer_gestionnaires_erreurs(app)
 
@@ -288,6 +300,7 @@ def create_app(
     app.include_router(health_router)
     app.include_router(realtime_router)
     app.include_router(auth_router)
+    app.include_router(audit_router)
     app.include_router(scoreurs_router)
     app.include_router(scoreur_session_router)
     app.include_router(postes_router)

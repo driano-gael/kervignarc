@@ -212,3 +212,23 @@ class CodePosteInvalide(DomainError):
     """
 
     code = "code_poste_invalide"
+
+
+class AuteurAuditInvalide(DomainError):
+    """L'auteur d'une entrée du journal d'audit est vide (après normalisation, E10US005).
+
+    L'auteur est le **nom** de qui a agi (scoreur, admin) — le premier des « qui / quand /
+    avant-après ». Une entrée sans auteur ne dit pas *qui* : elle manque sa raison d'être en litige.
+    """
+
+    code = "auteur_audit_invalide"
+
+
+class ObjetAuditInvalide(DomainError):
+    """L'objet d'une entrée du journal d'audit est vide (après normalisation, E10US005).
+
+    L'objet décrit *ce sur quoi* porte l'action (quelle série, quelle cible, quel archer). Sans lui,
+    une **validation** — qui n'a ni avant ni après — ne serait plus rattachable à rien.
+    """
+
+    code = "objet_audit_invalide"
