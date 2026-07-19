@@ -49,7 +49,7 @@ describe('rejouer', () => {
     expect(envoyer).toHaveBeenCalledTimes(2) // on n’a même pas tenté la 3
   })
 
-  it('retire une saisie refusée définitivement par le serveur (ErreurApi) et poursuit', async () => {
+  it('retire une saisie refusée DÉFINITIVEMENT par le serveur (4xx métier) et poursuit', async () => {
     const envoyer = vi.fn((c: VoleeEnFile) => {
       if (c.numero === 2) {
         return Promise.reject(new ErreurApi(404, 'blason_introuvable', 'Blason introuvable'))
@@ -61,6 +61,53 @@ describe('rejouer', () => {
 
     expect(res.traitees.map((c) => c.numero)).toEqual([1, 2, 3]) // les 3 retirées de la file
     expect(res.refusees.map((c) => c.numero)).toEqual([2]) // la 2 est un refus à journaliser
+    expect(res.interrompu).toBe(false)
+  })
+
+  it('GARDE en file un refus TRANSITOIRE (5xx, serveur saturé) — ne rien perdre', async () => {
+    // Cas « troupeau tonitruant » : 30 tablettes rejouent, le writer unique renvoie un 503.
+    const envoyer = vi.fn((c: VoleeEnFile) => {
+      if (c.numero === 2) {
+        return Promise.reject(new ErreurApi(503, 'indisponible', 'Service indisponible'))
+      }
+      return Promise.resolve()
+    })
+
+    const res = await rejouer([corps(1), corps(2), corps(3)], envoyer)
+
+    expect(res.traitees.map((c) => c.numero)).toEqual([1]) // seule la 1 est passée
+    expect(res.refusees).toEqual([]) // la 2 n'est PAS un refus définitif : rien à journaliser
+    expect(res.interrompu).toBe(true) // on s'arrête → 2 et 3 restent en file pour un rejeu ultérieur
+    expect(envoyer).toHaveBeenCalledTimes(2) // on n'a pas tenté la 3
+  })
+
+  it('GARDE en file un 401 (serveur redémarré, jeton de poste perdu) — rejeu après re-rattachement', async () => {
+    const envoyer = vi.fn(() =>
+      Promise.reject(new ErreurApi(401, 'non_authentifie', 'Non authentifié')),
+    )
+
+    const res = await rejouer([corps(1), corps(2)], envoyer)
+
+    expect(res.traitees).toEqual([]) // rien retiré : les scores ne sont pas perdus
+    expect(res.refusees).toEqual([])
+    expect(res.interrompu).toBe(true)
+    expect(envoyer).toHaveBeenCalledTimes(1) // arrêt dès le premier 401
+  })
+
+  it('SAUTE une volée superseded (retirée de la file par une saisie en ligne pendant le rejeu)', async () => {
+    const envoyees: number[] = []
+    const envoyer = vi.fn((c: VoleeEnFile) => {
+      envoyees.push(c.numero)
+      return Promise.resolve()
+    })
+    // La volée 2 a été retirée entre-temps (corrigée en ligne) → ne doit PAS être renvoyée : son vieux
+    // corps écraserait la valeur neuve côté serveur (dernier-écrit-gagne par numéro).
+    const estEncoreEnFile = (c: VoleeEnFile) => c.numero !== 2
+
+    const res = await rejouer([corps(1), corps(2), corps(3)], envoyer, estEncoreEnFile)
+
+    expect(envoyees).toEqual([1, 3]) // la 2 sautée
+    expect(res.traitees.map((c) => c.numero)).toEqual([1, 3]) // la 2 n'est pas « traitée »
     expect(res.interrompu).toBe(false)
   })
 })

@@ -8,6 +8,7 @@
 
 import { ErreurApi } from '../../shared/api/client'
 import type { VoleeEnFile } from '../../shared/stores/fileHorsLigneStore'
+import { estRefusDefinitif } from './horsLigne'
 
 export interface ResultatRejeu {
   // À retirer de la file : renvoyées avec succès **ou** refusées définitivement par le serveur.
@@ -23,16 +24,31 @@ export interface ResultatRejeu {
 export async function rejouer(
   file: readonly VoleeEnFile[],
   envoyer: (corps: VoleeEnFile) => Promise<unknown>,
+  // Appartenance **vivante** à la file, relue avant chaque envoi. La liste `file` est un instantané ;
+  // une saisie **en ligne** concurrente (ou une ré-édition hors-ligne) a pu, entre-temps, retirer une
+  // volée de la file (elle fait désormais autorité). On la **saute** alors : sans quoi le vieux corps
+  // de l'instantané réécraserait la valeur neuve côté serveur (perte silencieuse). Défaut : toujours
+  // présente (rejeu d'un instantané figé, comportement des tests purs).
+  estEncoreEnFile: (corps: VoleeEnFile) => boolean = () => true,
 ): Promise<ResultatRejeu> {
   const traitees: VoleeEnFile[] = []
   const refusees: VoleeEnFile[] = []
   for (const corps of file) {
+    if (!estEncoreEnFile(corps)) continue // superseded entre-temps → ni envoyée, ni « traitée »
     try {
       await envoyer(corps)
       traitees.push(corps)
     } catch (erreur) {
-      // `ErreurApi` = le serveur a **répondu** un refus (hors-cible, blason introuvable…) : rejouer
-      // n'y changera rien → on retire pour ne pas bloquer la file indéfiniment sur cette saisie.
+      // `ErreurApi` = le serveur a **répondu**. Deux cas très différents (le mélange des deux serait
+      // une perte de score silencieuse, cf. ADR-0037) :
+      //  - **refus définitif** (4xx métier : hors-cible, blason introuvable…) → rejouer n'y changera
+      //    rien : on retire de la file et on journalise.
+      //  - **transitoire** (401 serveur redémarré / jeton perdu, 409 départ perdu, 429, **5xx**
+      //    saturation à la reconnexion de masse) → un rejeu ultérieur peut réussir : on **garde** en
+      //    file et on s'arrête, exactement comme une panne réseau.
+      if (erreur instanceof ErreurApi && !estRefusDefinitif(erreur.statut)) {
+        return { traitees, refusees, interrompu: true }
+      }
       if (erreur instanceof ErreurApi) {
         traitees.push(corps)
         refusees.push(corps)

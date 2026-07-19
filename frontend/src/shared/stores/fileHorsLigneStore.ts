@@ -50,6 +50,12 @@ interface FileHorsLigneState {
   mettreEnFile: (corps: VoleeEnFile) => void
   // Une saisie a été rejouée avec succès (ou refusée définitivement par le serveur) : on la retire.
   confirmer: (identifiantSaisie: string) => void
+  // Une saisie **en ligne** a réussi pour cette volée : elle fait autorité et supersède une éventuelle
+  // attente hors-ligne pour le **même** emplacement. Retire l'attente de la file ; un rejeu déjà **en
+  // vol** (qui en tient un instantané) ne réécrase pas pour autant la valeur neuve : il relit
+  // l'appartenance vivante avant chaque envoi (`rejouer(..., estEncoreEnFile)`) et saute ce qui a été
+  // retiré ici. Les deux ensemble ferment la fenêtre d'écrasement (cf. ADR-0037).
+  retirerVolee: (tournoiId: number, archerId: number, numero: number) => void
   demarrerSync: () => void
   terminerSync: () => void
 }
@@ -64,6 +70,12 @@ export const useFileHorsLigneStore = create<FileHorsLigneState>()(
       confirmer: (identifiantSaisie) =>
         set((etat) => ({
           enAttente: etat.enAttente.filter((c) => c.identifiant_saisie !== identifiantSaisie),
+        })),
+      retirerVolee: (tournoiId, archerId, numero) =>
+        set((etat) => ({
+          enAttente: etat.enAttente.filter(
+            (c) => !(c.tournoi_id === tournoiId && c.archer_id === archerId && c.numero === numero),
+          ),
         })),
       demarrerSync: () => set({ synchronisation: true }),
       terminerSync: () => set({ synchronisation: false }),

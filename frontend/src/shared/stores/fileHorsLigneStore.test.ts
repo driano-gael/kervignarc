@@ -54,6 +54,17 @@ describe('fileHorsLigneStore', () => {
     expect(reste.map((c) => c.identifiant_saisie)).toEqual(['b'])
   })
 
+  it('retirerVolee supprime l’attente du même emplacement (saisie en ligne qui supersède)', () => {
+    useFileHorsLigneStore.getState().mettreEnFile(corps(1, 'a', 7))
+    useFileHorsLigneStore.getState().mettreEnFile(corps(2, 'b', 7))
+    useFileHorsLigneStore.getState().mettreEnFile(corps(1, 'c', 8)) // autre archer, même numéro
+
+    useFileHorsLigneStore.getState().retirerVolee(1, 7, 1) // archer 7, volée 1
+
+    const reste = useFileHorsLigneStore.getState().enAttente
+    expect(reste.map((c) => c.identifiant_saisie)).toEqual(['b', 'c']) // 'a' retirée, 'c' (archer 8) intacte
+  })
+
   it('demarrerSync / terminerSync bascule le drapeau de synchronisation', () => {
     useFileHorsLigneStore.getState().demarrerSync()
     expect(useFileHorsLigneStore.getState().synchronisation).toBe(true)
