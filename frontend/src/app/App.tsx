@@ -1,12 +1,11 @@
-// Shell de l'application (E00US010) : charpente minimale qui charge et se connecte.
-// Les écrans métier (placement, saisie, tableaux, classement, admin) viendront comme
-// features dédiées (guide §8) ; ici, le squelette + preuve de connexion bout-en-bout.
+// Shell de l'application : charpente minimale (en-tête + indicateur de connexion) qui aiguille vers
+// l'écran de poste (tablette rattachée) ou l'appli d'organisation (coquille admin + consultation
+// publique, E00US015).
 
 import { useEffect } from 'react'
-import { TrancheVerticale } from '../features/competition/TrancheVerticale'
+import { CoquilleAdmin } from '../features/admin/CoquilleAdmin'
 import { EspacePoste } from '../features/poste/EspacePoste'
 import { codePosteDepuisUrl } from '../features/poste/url'
-import { EtatBackend } from '../features/systeme/EtatBackend'
 import { IndicateurConnexion } from '../shared/realtime/IndicateurConnexion'
 import { useSessionPosteStore } from '../shared/stores/sessionPosteStore'
 import './App.css'
@@ -30,17 +29,12 @@ export function App() {
     <div className="app">
       <header className="app__entete">
         <h1 className="app__titre">Kervignarc</h1>
+        {/* L'état de connexion reste porté par cette **pastille** permanente (E00US015 a retiré
+            l'écran de diagnostic redondant `systeme/EtatBackend`) — un voyant, pas une destination. */}
         <IndicateurConnexion />
       </header>
-      <main className="app__contenu app__contenu--colonnes">
-        {afficherPoste ? (
-          <EspacePoste codeInitial={codePoste} />
-        ) : (
-          <>
-            <TrancheVerticale />
-            <EtatBackend />
-          </>
-        )}
+      <main className="app__contenu">
+        {afficherPoste ? <EspacePoste codeInitial={codePoste} /> : <CoquilleAdmin />}
       </main>
     </div>
   )

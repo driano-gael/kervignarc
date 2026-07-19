@@ -60,6 +60,126 @@
   color: var(--danger);
 }
 
+/* Coquille de navigation admin (E00US015, CDC UX §7.1 — D-19/D-20) : sidebar à gauche, une seule
+   destination à la fois dans la zone principale. Sur écran étroit, la sidebar passe au-dessus. */
+.coquille {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.coquille__nav {
+  flex: 0 0 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: sticky;
+  top: 24px;
+}
+
+/* Le sélecteur de tournoi coiffe la navigation : tout ce qui suit lui appartient. */
+.coquille__selecteur {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.coquille__groupe {
+  display: flex;
+  flex-direction: column;
+}
+
+/* En-tête de groupe (temps du tournoi) : cliquable pour déplier/replier — replié ≠ interdit.
+   Cible tactile ≥ 44 px comme les destinations (la config se fait sur tablette le jour J). */
+.coquille__entete-groupe {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--text-h);
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.coquille__entete-groupe:hover {
+  background: var(--surface);
+}
+
+.coquille__liens {
+  margin: 2px 0 8px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Une destination : bouton pleine largeur, aligné à gauche, cible tactile ≥ 44 px (config sur
+   tablette le jour J). L'entrée active est marquée par un aplat d'accent. */
+.coquille__lien {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  font: inherit;
+  text-align: left;
+  color: var(--text-h);
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.coquille__lien:hover {
+  background: var(--surface);
+}
+
+.coquille__lien--actif {
+  color: var(--bg);
+  background: var(--accent);
+  font-weight: 600;
+}
+
+.coquille__contenu {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Repli en colonne sous 720 px : la sidebar devient un bandeau au-dessus du contenu. */
+@media (max-width: 720px) {
+  .coquille {
+    flex-direction: column;
+  }
+
+  .coquille__nav {
+    flex-basis: auto;
+    position: static;
+    width: 100%;
+  }
+}
+
+/* Panneau du tournoi courant (cycle de vie), en tête de la destination « Tournoi ». */
+.tournoi-courant {
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Tournoi mis en évidence dans la liste (celui qui est courant dans la coquille). */
+.tournoi--selectionne {
+  border-left: 3px solid var(--accent);
+  padding-left: 8px;
+}
+
 /* Carte générique. */
 .carte {
   border: 1px solid var(--border);
