@@ -228,3 +228,111 @@ def test_supprimer_archer_efface_serie_et_volees(tmp_path: Path) -> None:
         assert nb_volees == 0  # les volées ont suivi la série (ON DELETE CASCADE)
     finally:
         db.engine.dispose()
+
+
+def test_reenregistrer_reecrit_les_valeurs_d_une_volee(tmp_path: Path) -> None:
+    """Ré-enregistrer avec des valeurs de volée différentes : la relecture reflète les nouvelles.
+
+    Prouve que le purge + réinsertion réécrit fidèlement une volée corrigée (et fait disparaître
+    une volée absente de la nouvelle série), au-delà du seul cas `validee_par` de l'upsert simple.
+    """
+    db, tournoi_id, archer_id = _contexte(tmp_path)
+    try:
+        repo = _repo(db)
+        repo.enregistrer(_serie(tournoi_id, archer_id))  # volée 1 = 10/9/8, volée 2 présente
+        modifiee = Serie(
+            tournoi_id=tournoi_id,
+            archer_id=archer_id,
+            volees=(
+                Volee(
+                    numero=1,
+                    valeurs=(ZoneScore("7"), ZoneScore("7"), ZoneScore("7")),
+                    saisie_par="DURAND Jean",
+                ),
+            ),
+        )
+        repo.enregistrer(modifiee)
+
+        relue = repo.par_archer(tournoi_id, archer_id)
+        assert relue is not None
+        volee_1 = relue.volee(1)
+        assert volee_1 is not None
+        assert volee_1.valeurs == (ZoneScore("7"), ZoneScore("7"), ZoneScore("7"))
+        assert relue.volee(2) is None  # la volée 2 de la 1ʳᵉ série a été purgée
+    finally:
+        db.engine.dispose()
+
+
+def test_valeurs_illisibles_levent_infrastructure_error(tmp_path: Path) -> None:
+    """Une ligne `volee.valeurs` corrompue en base ne fuit pas : `InfrastructureError` (non-fuite).
+
+    Le repository est normalement le **seul rédacteur** de `valeurs` et n'écrit que des zones
+    valides ; une valeur hors `ZoneScore` relue est une incohérence technique enveloppée (ADR-0007),
+    jamais laissée fuir en value object silencieusement invalide. On corrompt directement la base
+    (`["99"]` : JSON lisible, mais `99` n'est pas une zone) pour exercer cette garde.
+    """
+    db, tournoi_id, archer_id = _contexte(tmp_path)
+    try:
+        repo = _repo(db)
+        repo.enregistrer(_serie(tournoi_id, archer_id))
+        with db.session_factory() as session:
+            session.execute(
+                sa.text("UPDATE volee SET valeurs = :v WHERE numero = 1"), {"v": '["99"]'}
+            )
+            session.commit()
+
+        with pytest.raises(InfrastructureError):
+            repo.par_archer(tournoi_id, archer_id)
+    finally:
+        db.engine.dispose()
+
+
+def test_enregistrer_ignore_un_id_incoherent(tmp_path: Path) -> None:
+    """Un `id` de série incohérent avec la clé métier est **ignoré** : `(tournoi, archer)` gagne.
+
+    Garde-fou anti-régression de `_ligne_serie` : ré-introduire un lookup par `serie.id` rouvrirait
+    la surface de corruption (réécrire les volées sur la **mauvaise** série). On fabrique une série
+    portant la clé métier de l'archer B **mais** l'`id` de la série de l'archer A ; l'écriture doit
+    atterrir sur la série de B et laisser celle de A **intacte**.
+    """
+    db, tournoi_id, archer_id = _contexte(tmp_path)
+    try:
+        repo = _repo(db)
+        categorie_b = CategorieRepositorySQL(db.session_factory).ajouter(
+            Categorie.creer(tournoi_id, "Senior 2 H")
+        )
+        assert categorie_b.id is not None
+        archer_b = ArcherRepositorySQL(db.session_factory).ajouter(
+            Archer.creer("Durand", "Bob", tournoi_id, categorie_b.id)
+        )
+        assert archer_b.id is not None
+
+        serie_a = repo.enregistrer(_serie(tournoi_id, archer_id))  # volée 1 = 10/9/8
+        repo.enregistrer(_serie(tournoi_id, archer_b.id))
+        piege = Serie(
+            tournoi_id=tournoi_id,
+            archer_id=archer_b.id,
+            id=serie_a.id,  # id de la série de A, clé métier de B → incohérent
+            volees=(
+                Volee(
+                    numero=1,
+                    valeurs=(ZoneScore("5"), ZoneScore("5"), ZoneScore("5")),
+                    saisie_par="DURAND Bob",
+                ),
+            ),
+        )
+        repo.enregistrer(piege)
+
+        relue_a = repo.par_archer(tournoi_id, archer_id)
+        assert relue_a is not None
+        volee_a = relue_a.volee(1)
+        assert volee_a is not None
+        # La série de A n'a PAS été réécrite par les volées du piège :
+        assert volee_a.valeurs == (ZoneScore("10"), ZoneScore("9"), ZoneScore("8"))
+        relue_b = repo.par_archer(tournoi_id, archer_b.id)
+        assert relue_b is not None
+        volee_b = relue_b.volee(1)
+        assert volee_b is not None
+        assert volee_b.valeurs == (ZoneScore("5"), ZoneScore("5"), ZoneScore("5"))
+    finally:
+        db.engine.dispose()

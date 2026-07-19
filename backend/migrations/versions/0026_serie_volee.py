@@ -36,6 +36,8 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("tournoi_id", sa.Integer(), nullable=False),
         sa.Column("archer_id", sa.Integer(), nullable=False),
+        # DETTE-001 (docs/dette.md) : FK sans ON DELETE — descendance du tournoi (tournoi direct,
+        # archer indirect via `archer`) ; cascade `archer -> serie` applicative, non tranchée ici.
         sa.ForeignKeyConstraint(["tournoi_id"], ["tournoi.id"]),
         sa.ForeignKeyConstraint(["archer_id"], ["archer.id"]),
         sa.PrimaryKeyConstraint("id"),

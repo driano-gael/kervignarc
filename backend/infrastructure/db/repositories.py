@@ -1637,17 +1637,22 @@ class SerieRepositorySQL:
         return ligne
 
     def _ligne_serie(self, session: Session, serie: Serie) -> SerieORM:
-        """Retrouve la ligne parente (par id, sinon par clé métier), ou la crée (`flush` → id)."""
-        ligne: SerieORM | None = None
-        if serie.id is not None:
-            ligne = session.get(SerieORM, serie.id)
-        if ligne is None:
-            ligne = session.execute(
-                select(SerieORM).where(
-                    SerieORM.tournoi_id == serie.tournoi_id,
-                    SerieORM.archer_id == serie.archer_id,
-                )
-            ).scalar_one_or_none()
+        """Retrouve la ligne parente **par sa clé métier** `(tournoi_id, archer_id)`, ou la crée.
+
+        L'identité d'une série **est** son couple `(tournoi, archer)` — « une série par archer »
+        (port `SerieRepository`, garanti par `uq_serie_tournoi_archer`). On ne cherche donc **pas**
+        par `serie.id` : ce lookup PK n'était qu'une micro-optimisation, ouvrant une surface de
+        corruption silencieuse (un `id` incohérent avec la clé métier — venu d'un futur appelant —
+        aurait fait réécrire les volées sur la **mauvaise** série). La clé métier est la requête
+        d'identité canonique (celle de `par_archer`). `flush` attribue l'id d'une série nouvelle
+        avant qu'on lui rattache ses volées.
+        """
+        ligne = session.execute(
+            select(SerieORM).where(
+                SerieORM.tournoi_id == serie.tournoi_id,
+                SerieORM.archer_id == serie.archer_id,
+            )
+        ).scalar_one_or_none()
         if ligne is None:
             ligne = SerieORM(tournoi_id=serie.tournoi_id, archer_id=serie.archer_id)
             session.add(ligne)
