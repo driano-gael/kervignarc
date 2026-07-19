@@ -83,8 +83,9 @@ def exiger_poste(request: Request) -> Poste:
     **Synchrone** (à dessein) : la validité d'un poste dépend du **statut de son tournoi**
     (révocation « tournoi terminé », ADR-0029), donc `resoudre_session` relit la base — FastAPI
     exécute une dépendance synchrone dans le threadpool, sans bloquer la boucle événementielle
-    (au contraire d'`exiger_admin`/`exiger_scoreur`, purement en mémoire). Renvoie le `Poste` pour
-    que l'appelant sache **quelle cible** est servie sans le redemander (E10US007, E04US002).
+    (au contraire d'`exiger_admin`, purement en mémoire ; `exiger_scoreur` relit aussi la base
+    depuis E04US002). Renvoie le `Poste` pour que l'appelant sache **quelle cible** est servie sans
+    le redemander (E10US007, E04US002).
     """
     service: ServicePostes = request.app.state.service_postes
     poste = service.resoudre_session(extraire_jeton_poste(request))

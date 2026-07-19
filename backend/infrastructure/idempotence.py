@@ -26,9 +26,12 @@ from typing import TypeVar, cast
 _T = TypeVar("_T")
 
 _BORNE_DEFAUT = 2048
-"""Nombre maximal d'identifiants retenus (LRU). ~30 tablettes et quelques centaines de volées par
-jour tiennent largement sous cette borne ; elle n'est qu'un garde-fou contre une croissance non
-bornée de la mémoire, pas une limite fonctionnelle atteinte en exploitation."""
+"""Nombre maximal d'identifiants retenus (LRU) — garde-fou contre une croissance non bornée de la
+mémoire. La borne **peut** être franchie sur une grosse journée (30 tablettes, qualif + duels),
+mais **sans conséquence** : un identifiant encore susceptible d'être rejoué vient d'être utilisé,
+il est donc **MRU** ; il faudrait 2048 écritures *plus récentes* pour l'évincer — soit des heures
+après que le client a cessé de rejouer. L'éviction ne touche que des identifiants hors de toute
+fenêtre de rejeu réaliste."""
 
 
 class RegistreIdempotence:

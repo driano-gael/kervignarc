@@ -40,6 +40,7 @@ from domain.blason import ZoneScore
 from domain.depart import Depart
 from domain.poste import Poste
 from domain.scoreur import Scoreur
+from domain.serie import Serie
 from infrastructure.db import WriteQueue
 from infrastructure.idempotence import RegistreIdempotence
 
@@ -140,11 +141,12 @@ class SerieReponse(BaseModel):
     volees: list[VoleeReponse]
 
     @staticmethod
-    def de_etat(etat: EtatSerie) -> SerieReponse:
+    def de_serie(serie: Serie, horodatages: dict[int, datetime.datetime]) -> SerieReponse:
+        """Bâtit la réponse depuis la `Serie` (renvoyée par l'acte d'écriture) + le « quand »."""
         return SerieReponse(
-            tournoi_id=etat.serie.tournoi_id,
-            archer_id=etat.serie.archer_id,
-            cumul=etat.serie.cumul,
+            tournoi_id=serie.tournoi_id,
+            archer_id=serie.archer_id,
+            cumul=serie.cumul,
             volees=[
                 VoleeReponse(
                     numero=volee.numero,
@@ -152,11 +154,15 @@ class SerieReponse(BaseModel):
                     saisie_par=volee.saisie_par,
                     validee_par=volee.validee_par,
                     verrouillee=volee.verrouillee,
-                    saisie_le=etat.horodatages.get(volee.numero),
+                    saisie_le=horodatages.get(volee.numero),
                 )
-                for volee in etat.serie.volees
+                for volee in serie.volees
             ],
         )
+
+    @staticmethod
+    def de_etat(etat: EtatSerie) -> SerieReponse:
+        return SerieReponse.de_serie(etat.serie, etat.horodatages)
 
     @staticmethod
     def vide(tournoi_id: int, archer_id: int) -> SerieReponse:
@@ -165,6 +171,19 @@ class SerieReponse(BaseModel):
 
 
 # --- Endpoints ---
+
+
+def _cle_idempotence(operation: str, identifiant: str | None, *portee: int) -> str | None:
+    """Clé d'idempotence **scopée** (opération + cible), ou `None` si le client n'en fournit pas.
+
+    Scoper la clé serveur-side ferme la **perte d'écriture silencieuse** (revue A/B/C1) : un
+    `identifiant_saisie` réutilisé par erreur sur un autre acte, un autre archer ou une autre volée
+    ne dédoublonne **plus à tort** — le client n'a qu'à rendre son identifiant unique **par geste**,
+    pas globalement. Sans identifiant, pas de déduplication (`None` → exécution simple, ADR-0036).
+    """
+    if not identifiant:
+        return None
+    return ":".join([operation, *(str(p) for p in portee), identifiant])
 
 
 @router.post("/depart-courant", response_model=DepartCourantReponse)
@@ -234,9 +253,12 @@ async def saisir_volee(
         contexte = ContexteSaisie(cible_index=poste.cible_index, depart_id=depart_id)
 
     valeurs = tuple(requete.valeurs)
+    cle = _cle_idempotence(
+        "volee", requete.identifiant_saisie, requete.tournoi_id, requete.archer_id, requete.numero
+    )
 
-    def acte() -> EtatSerie | None:
-        service_saisie.saisir_volee(
+    def ecrire() -> Serie:
+        return service_saisie.saisir_volee(
             requete.tournoi_id,
             requete.archer_id,
             requete.numero,
@@ -244,13 +266,14 @@ async def saisir_volee(
             requete.saisie_par,
             contexte,
         )
-        return service_saisie.etat_serie(requete.tournoi_id, requete.archer_id)
 
-    etat = await asyncio.wrap_future(
-        write_queue.submit(lambda: registre.executer(requete.identifiant_saisie, acte))
+    # L'écriture SEULE est dédoublonnée (unité mémorisée) ; le « quand » se lit **après**, hors de
+    # l'unité idempotente : un échec de cette lecture ne fait pas ré-exécuter l'écriture au rejeu.
+    serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
+    horodatages = await run_in_threadpool(
+        service_saisie.horodatages, requete.tournoi_id, requete.archer_id
     )
-    assert etat is not None, "Une volée vient d'être saisie : l'état de la série existe."
-    return SerieReponse.de_etat(etat)
+    return SerieReponse.de_serie(serie, horodatages)
 
 
 @router.get("/series/{tournoi_id}/{archer_id}", response_model=SerieReponse)
@@ -297,16 +320,18 @@ async def valider_serie(
     write_queue: WriteQueue = request.app.state.write_queue
     registre: RegistreIdempotence = request.app.state.registre_idempotence
     _exiger_meme_tournoi(scoreur, requete.tournoi_id)
-
-    def acte() -> EtatSerie | None:
-        service_saisie.valider(requete.tournoi_id, requete.archer_id, scoreur.nom)
-        return service_saisie.etat_serie(requete.tournoi_id, requete.archer_id)
-
-    etat = await asyncio.wrap_future(
-        write_queue.submit(lambda: registre.executer(requete.identifiant_saisie, acte))
+    cle = _cle_idempotence(
+        "validation", requete.identifiant_saisie, requete.tournoi_id, requete.archer_id
     )
-    assert etat is not None, "Une série vient d'être validée : son état existe."
-    return SerieReponse.de_etat(etat)
+
+    def ecrire() -> Serie:
+        return service_saisie.valider(requete.tournoi_id, requete.archer_id, scoreur.nom)
+
+    serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
+    horodatages = await run_in_threadpool(
+        service_saisie.horodatages, requete.tournoi_id, requete.archer_id
+    )
+    return SerieReponse.de_serie(serie, horodatages)
 
 
 @router.post("/corrections", response_model=SerieReponse)
@@ -326,15 +351,21 @@ async def corriger_volee(
     registre: RegistreIdempotence = request.app.state.registre_idempotence
     _exiger_meme_tournoi(scoreur, requete.tournoi_id)
     valeurs = tuple(requete.valeurs)
+    cle = _cle_idempotence(
+        "correction",
+        requete.identifiant_saisie,
+        requete.tournoi_id,
+        requete.archer_id,
+        requete.numero,
+    )
 
-    def acte() -> EtatSerie | None:
-        service_saisie.corriger_volee(
+    def ecrire() -> Serie:
+        return service_saisie.corriger_volee(
             requete.tournoi_id, requete.archer_id, requete.numero, valeurs, scoreur.nom
         )
-        return service_saisie.etat_serie(requete.tournoi_id, requete.archer_id)
 
-    etat = await asyncio.wrap_future(
-        write_queue.submit(lambda: registre.executer(requete.identifiant_saisie, acte))
+    serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
+    horodatages = await run_in_threadpool(
+        service_saisie.horodatages, requete.tournoi_id, requete.archer_id
     )
-    assert etat is not None, "Une série vient d'être corrigée : son état existe."
-    return SerieReponse.de_etat(etat)
+    return SerieReponse.de_serie(serie, horodatages)

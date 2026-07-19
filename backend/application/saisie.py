@@ -153,6 +153,17 @@ class ServiceSaisie:
             return None
         return EtatSerie(serie=serie, horodatages=self._series.horodatages(tournoi_id, archer_id))
 
+    def horodatages(
+        self, tournoi_id: TournoiId, archer_id: ArcherId
+    ) -> dict[int, datetime.datetime]:
+        """Le « quand » (`created_at`) de chaque volée de l'archer, par numéro (`{}` sans série).
+
+        Chemin de lecture **léger** pour bâtir la réponse d'un acte d'écriture depuis la `Serie`
+        qu'il renvoie déjà, sans re-lire la série entière (`etat_serie`) : l'API dédoublonne
+        l'**écriture** seule, puis lit ce « quand » **hors** de l'unité idempotente (ADR-0036).
+        """
+        return self._series.horodatages(tournoi_id, archer_id)
+
     def saisir_volee(
         self,
         tournoi_id: TournoiId,
@@ -194,6 +205,12 @@ class ServiceSaisie:
         Verrouille les volées concernées (fin de série ou lot de N, cf. `Serie.valider`) et laisse
         une **trace** `VALIDATION` (sans avant/après) dans la même transaction que l'écriture.
         `contexte` cloisonne au poste (ADR-0033 §3) — la garde vaut pour **tout** chemin d'écriture.
+
+        ⚠️ Le `scoreur` est un **nom** (pour l'audit) : ce service **ne peut pas** vérifier que le
+        scoreur officie dans **ce** tournoi. Cette garde (`ScoreurHorsTournoi`, 403) vit **à l'API**
+        (`exiger_scoreur` résout le `Scoreur` + `_exiger_meme_tournoi`) — asymétrique avec la garde
+        poste, descendue ici. Aucun appelant hors HTTP ne valide aujourd'hui ; **E04US009 (writer
+        WS) devra la répliquer** — ou passer le tournoi du scoreur — s'il ouvre un tel chemin.
         """
         self._charger_archer(tournoi_id, archer_id, contexte)
         phase = self._phase_qualification(tournoi_id)

@@ -30,6 +30,7 @@ from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.depart import Depart
+from domain.entree_audit import ActionAuditee
 from domain.gabarit_salle import GabaritSalle
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
@@ -38,6 +39,7 @@ from domain.placement import Affectation
 from domain.tournoi import Tournoi
 from infrastructure.db import (
     ArcherRepositorySQL,
+    AuditRepositorySQL,
     BlasonRepositorySQL,
     CategorieRepositorySQL,
     Database,
@@ -464,6 +466,7 @@ def test_valider_verrouille_la_serie_au_nom_du_scoreur(
         corps = reponse.json()
         assert all(v["verrouillee"] for v in corps["volees"])
         assert all(v["validee_par"] == "ROUX" for v in corps["volees"])
+        assert all(v["saisie_le"] is not None for v in corps["volees"])  # le « quand » remonte
         assert corps["cumul"] == 54  # (10+9+8) + (9+9+9)
 
 
@@ -540,3 +543,117 @@ def test_corriger_une_volee_verrouillee_recalcule_le_cumul(
         volee_1 = next(v for v in corps["volees"] if v["numero"] == 1)
         assert volee_1["valeurs"] == ["10", "10", "10"]
         assert corps["cumul"] == 57  # (10+10+10) + (9+9+9)
+
+
+def _traces(app: FastAPI, tournoi_id: int, action: ActionAuditee) -> int:
+    """Nombre d'entrées d'audit d'une action donnée pour un tournoi (tests d'idempotence)."""
+    audit = AuditRepositorySQL(app.state.database.session_factory)
+    return sum(1 for e in audit.par_tournoi(tournoi_id) if e.action is action)
+
+
+def test_valider_deux_fois_le_meme_identifiant_ne_double_pas_la_trace(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Idempotence sur le seul acte qui compte : un rejeu de **validation** n'empile pas 2 traces.
+
+    La saisie est déjà idempotente par upsert ; c'est la validation (trace d'audit en ajout seul)
+    que le mécanisme (ADR-0036) doit dédoublonner. Sans dédup : 2 traces VALIDATION ; avec : 1.
+    """
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        corps = {
+            "tournoi_id": s.tournoi_id,
+            "archer_id": s.archer_id,
+            "identifiant_saisie": "val-1",
+        }
+
+        premier = client.post("/api/v1/saisie/validations", json=corps, headers=entete)
+        rejeu = client.post("/api/v1/saisie/validations", json=corps, headers=entete)
+
+        assert premier.status_code == 200 and rejeu.status_code == 200
+        assert premier.json() == rejeu.json()
+        assert _traces(app_saisie, s.tournoi_id, ActionAuditee.VALIDATION) == 1
+
+
+def test_corriger_deux_fois_le_meme_identifiant_ne_double_pas_la_trace(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un rejeu de **correction** (acte non idempotent par nature) n'empile pas 2 traces."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        client.post(
+            "/api/v1/saisie/validations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id},
+            headers=entete,
+        )
+        corps = {
+            "tournoi_id": s.tournoi_id,
+            "archer_id": s.archer_id,
+            "numero": 1,
+            "valeurs": ["10", "10", "10"],
+            "identifiant_saisie": "corr-1",
+        }
+
+        premier = client.post("/api/v1/saisie/corrections", json=corps, headers=entete)
+        rejeu = client.post("/api/v1/saisie/corrections", json=corps, headers=entete)
+
+        assert premier.status_code == 200 and rejeu.status_code == 200
+        assert premier.json() == rejeu.json()
+        assert _traces(app_saisie, s.tournoi_id, ActionAuditee.CORRECTION_SCORE) == 1
+
+
+def test_meme_identifiant_deux_archers_ecrit_les_deux(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Clé scopée (ADR-0036 §4) : le même identifiant réutilisé sur deux archers écrit les DEUX.
+
+    Avec une clé **globale** (avant correctif), la 2ᵉ saisie ferait cache-hit sur la 1ʳᵉ et
+    renverrait la série de l'archer 1 — l'écriture de l'archer 2 **perdue en silence**. Ce test
+    échoue si la clé n'est plus scopée par archer.
+    """
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)  # admin connecté : contexte=None
+        db: Database = app_saisie.state.database
+        cat = CategorieRepositorySQL(db.session_factory).par_tournoi(s.tournoi_id)[0].id
+        assert cat is not None
+        archer_b = _placer_archer(db, s.tournoi_id, s.depart_id, cat, cible_index=2, position="A")
+        base = {
+            "tournoi_id": s.tournoi_id,
+            "numero": 1,
+            "valeurs": ["10", "9", "8"],
+            "identifiant_saisie": "collision",
+        }
+
+        r1 = client.post("/api/v1/saisie/volees", json={**base, "archer_id": s.archer_id})
+        r2 = client.post("/api/v1/saisie/volees", json={**base, "archer_id": archer_b})
+
+        assert r1.status_code == 200 and r2.status_code == 200
+        assert r1.json()["archer_id"] == s.archer_id
+        assert r2.json()["archer_id"] == archer_b  # PAS le cache de l'archer 1 → clé scopée
+
+
+def test_meme_identifiant_deux_numeros_ecrit_les_deux(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Clé scopée par **numéro** : même identifiant sur les volées 1 puis 2 → deux volées écrites.
+
+    Sans le `:numero:` dans la clé, la volée 2 ferait cache-hit sur la 1 et ne s'écrirait jamais.
+    """
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)  # admin : contexte=None
+        base = {
+            "tournoi_id": s.tournoi_id,
+            "archer_id": s.archer_id,
+            "valeurs": ["10", "9", "8"],
+            "identifiant_saisie": "meme-id",
+        }
+
+        client.post("/api/v1/saisie/volees", json={**base, "numero": 1})
+        r2 = client.post("/api/v1/saisie/volees", json={**base, "numero": 2})
+
+        assert r2.status_code == 200, r2.text
+        assert {v["numero"] for v in r2.json()["volees"]} == {1, 2}  # la volée 2 n'a pas été sautée

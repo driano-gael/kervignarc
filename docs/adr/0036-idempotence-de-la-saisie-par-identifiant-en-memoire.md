@@ -49,6 +49,20 @@ tient dans une exécution. Ce choix **aligne** l'idempotence sur le reste du mod
 projet : le jeton de poste (ADR-0029) et le départ courant (ADR-0034) sont eux aussi en mémoire et
 volatils. Simplicité assumée hors domaine (règle 12) : mono-club, réseau local.
 
+**4. La clé est scopée serveur-side (`opération:tournoi:archer[:numéro]:identifiant`).** Le registre
+étant partagé par les trois actes (saisir/valider/corriger) et renvoyant le même type, un
+`identifiant` réutilisé par mégarde sur un autre acte ou un autre archer, indexé **globalement**,
+rendrait le résultat d'un **autre** archer et **perdrait l'écriture en silence** — pire qu'une erreur
+visible (remontée de revue A/B/C1). Le serveur autoritaire **préfixe** donc la clé par l'identité de
+l'opération : le client n'a qu'à rendre son identifiant unique **par geste**, jamais globalement. Le
+contrat client (**UUID par geste**) reste recommandé, mais n'est plus une hypothèse de sûreté.
+
+**5. L'unité mémorisée est l'écriture seule.** L'endpoint dédoublonne l'**acte d'écriture** (qui
+renvoie déjà la `Serie`) et lit le « quand » (`created_at`) **hors** de cette unité. Sans quoi, un
+échec de la lecture *après* un commit réussi laisserait l'écriture non mémorisée, et un rejeu la
+**ré-exécuterait** — doublant la trace d'audit d'une correction (la seule non neutralisée par le
+domaine ; une validation rejouée bute sur `RienAValider`). Remontée de revue (adversarial / C1).
+
 ## Alternatives écartées
 
 - **Table de déduplication persistée** (identifiant → résultat en base). Survivrait au redémarrage,
@@ -72,3 +86,9 @@ volatils. Simplicité assumée hors domaine (règle 12) : mono-club, réseau loc
   **signalé**, pas contourné ; réversible vers une table si un besoin réel émergeait (E04US009).
 - **−** Le registre garde en mémoire une référence au résultat de chaque saisie récente (borné LRU) :
   la borne est le garde-fou, dimensionnée bien au-dessus du volume d'un tournoi.
+- **⚠ Piège latent à surveiller** : un rejeu qui fait *cache-hit* renvoie le résultat mémorisé **sans
+  ré-écrire**, mais la commande de la file **retourne** quand même — donc les *listeners post-commit*
+  de la `WriteQueue` se déclenchent (aujourd'hui : une re-diffusion WebSocket d'un instantané, idempotente
+  côté client — inoffensif). Si une future US **déplaçait la consignation d'audit sur ce chemin
+  post-commit**, un rejeu **doublerait la trace** malgré le cache d'idempotence. À garder en tête
+  (remontée de revue adversariale) : l'audit doit rester **dans** la commande, pas dans un listener.
