@@ -30,9 +30,10 @@ erDiagram
     PHASE ||--o{ MATCH : "contient"
     PHASE ||--o{ PLACEMENT : "concerne"
     PHASE ||--o{ CLASSEMENT : "produit"
-    MATCH ||--o{ VOLEE : "reçoit"
+    TOURNOI ||--o{ SERIE : "saisie qualif"
+    ARCHER ||--o{ SERIE : "saisit"
+    SERIE ||--o{ VOLEE : "regroupe"
     MATCH ||--o{ SET_SCORE : "score en sets"
-    ARCHER ||--o{ VOLEE : "tire"
     ARCHER ||--o{ CLASSEMENT : "classé"
 ```
 
@@ -284,18 +285,36 @@ inscrit **sans** ligne est en **réserve**.
 > `archer_a_id`/`archer_b_id` devront devenir `participant_a`/`participant_b` — à trancher **avant**
 > d'écrire le moteur (EPIC-05), pas après.
 
-### VOLEE
+### SERIE (E04US002)
 | id | INTEGER | PK |
-| match_id | INTEGER | FK → MATCH (null si qualif) |
-| phase_id | INTEGER | FK → PHASE |
-| archer_id | INTEGER | FK → ARCHER, NOT NULL |
-| index_volee | INTEGER | n° de volée |
-| fleches | TEXT (JSON) | ex. `["10","9","M"]` |
-| total | INTEGER | somme calculée |
-| valide | BOOLEAN | verrou après validation |
-| auteur | TEXT | scoreur (session) |
-| horodatage | TEXT (datetime) | |
-| saisie_uid | TEXT | idempotence (rejeu file/offline) |
+| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) |
+| archer_id | INTEGER | FK → ARCHER, NOT NULL (DETTE-001) |
+| — | — | **UNIQUE(tournoi_id, archer_id)** — une série de qualification par archer |
+
+> Racine de l'agrégat de **saisie de qualification** (`Serie`, tranche persistance PR2a — la couture
+> d'atomicité acte↔trace est [ADR-0035](adr/0035-atomicite-acte-trace-session-partagee.md)) : la
+> grille d'un archer. Le **cumul n'est pas stocké** — il se recalcule des volées validées
+> (`Serie.cumul`) ; seul l'état saisi est persisté. Les volées vivent dans la table enfant `VOLEE`
+> (`serie_id`). Deux FK **sans `ON DELETE`** = **DETTE-001** (donnée saisie de la descendance du
+> tournoi ; la cascade `archer → serie` est **applicative**, `ArcherRepositorySQL.supprimer`).
+
+### VOLEE (E04US002)
+| id | INTEGER | PK |
+| serie_id | INTEGER | FK → SERIE, NOT NULL, **ON DELETE CASCADE** |
+| numero | INTEGER | rang de la volée dans le barème (`1..N`) |
+| valeurs | TEXT (JSON) | zones de score, ex. `["10","9","M"]` |
+| saisie_par | TEXT | marqueur déclaratif de saisie, nullable |
+| validee_par | TEXT | scoreur ; **non NULL = verrou** (volée validée), nullable |
+| — | — | **UNIQUE(serie_id, numero)** — un seul rang N par série |
+
+> Table **enfant** de `SERIE` (composant strict de l'agrégat). Le verrou n'est **pas** une colonne
+> dédiée : `validee_par` non NULL **est** le verrou. Le total n'est pas stocké (cumul recalculé).
+> `serie_id` en **`ON DELETE CASCADE`** — **hors** DETTE-001, comme `PLACEMENT` (feuille auto-cascadée).
+>
+> **Colonnes des tranches suivantes** (non encore livrées) : `horodatage` (le « quand » d'une
+> saisie, métadonnée du chemin de lecture — PR2b) ; `saisie_uid` (idempotence au rejeu offline —
+> E04US009). La **saisie en duels** (rattachement à un `MATCH`) sera modélisée avec **E04US013** ;
+> aujourd'hui `VOLEE` ne couvre que la **qualification** (via `SERIE`).
 
 ### SET_SCORE (duels)
 | id | INTEGER | PK |
