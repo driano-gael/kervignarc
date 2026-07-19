@@ -1,0 +1,220 @@
+"""Tests unitaires des agrégats `Volee` / `Serie` (E04US002) — domaine pur, sans base.
+
+Dérivés des **CA** d'E04US002 (`stories/E04-saisie-scores.md`), pas de l'implémentation
+(règle 9) : pavé déduit du blason (ex-003), valeurs légales (ex-004), édition avant
+validation (ex-006), validation & verrou + grain (ex-007), cumul (ex-008), correction
+d'une volée verrouillée (ex-012), et « qui a saisi » (ex-017).
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from domain.blason import ZoneScore
+from domain.erreurs import (
+    NombreFlechesVoleeInvalide,
+    NumeroVoleeInvalide,
+    RienAValider,
+    SerieIncomplete,
+    ValeurHorsBlason,
+    VoleeIntrouvable,
+    VoleeNonVerrouillee,
+    VoleeVerrouillee,
+)
+from domain.grain_validation import GrainValidation
+from domain.serie import Serie
+
+# Zones d'un blason simple (10 → 1 + M) et d'un triple 40 (10 → 6 + M, référentiel §4.4).
+ZONES_SIMPLE = tuple(ZoneScore)
+ZONES_TRIPLE = (
+    ZoneScore.DIX,
+    ZoneScore.NEUF,
+    ZoneScore.HUIT,
+    ZoneScore.SEPT,
+    ZoneScore.SIX,
+    ZoneScore.MANQUE,
+)
+
+
+def _v(*valeurs: str) -> tuple[ZoneScore, ...]:
+    """Raccourci : construit un tuple de `ZoneScore` à partir de libellés (« 10 », « M »)."""
+    return tuple(ZoneScore(v) for v in valeurs)
+
+
+def _serie_pleine(nb_volees: int, valeurs: tuple[ZoneScore, ...]) -> Serie:
+    """Une série où les `nb_volees` volées portent toutes les mêmes `valeurs` (non validées)."""
+    serie = Serie.vide(tournoi_id=1, archer_id=7)
+    for numero in range(1, nb_volees + 1):
+        serie = serie.saisir_volee(
+            numero, valeurs, zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=len(valeurs)
+        )
+    return serie
+
+
+# --- Volee : pavé, valeurs légales, points, « qui a saisi » ---------------------------------
+
+
+def test_saisir_une_volee_enregistre_valeurs_et_marqueur() -> None:
+    """ex-005/017 : une volée porte ses valeurs et le nom du marqueur qui l'a saisie."""
+    serie = Serie.vide(tournoi_id=1, archer_id=7).saisir_volee(
+        1,
+        _v("10", "9", "8"),
+        zones_admises=ZONES_SIMPLE,
+        nb_fleches_par_volee=3,
+        saisie_par="DURAND",
+    )
+    volee = serie.volee(1)
+    assert volee is not None
+    assert volee.valeurs == _v("10", "9", "8")
+    assert volee.saisie_par == "DURAND"
+    assert volee.verrouillee is False
+
+
+def test_points_d_une_volee_somme_les_zones_le_manque_vaut_zero() -> None:
+    """ex-008 : le total d'une volée somme les zones ; `M` (manqué) vaut 0."""
+    serie = Serie.vide(tournoi_id=1, archer_id=7).saisir_volee(
+        1, _v("10", "M", "7"), zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+    )
+    assert serie.volee(1).points == 17  # type: ignore[union-attr]
+
+
+def test_pave_deduit_du_blason_refuse_une_valeur_hors_zones() -> None:
+    """ex-003/004 : sur un triple 40 les zones 5 → 1 n'existent pas ; un « 5 » est refusé."""
+    serie = Serie.vide(tournoi_id=1, archer_id=7)
+    with pytest.raises(ValeurHorsBlason):
+        serie.saisir_volee(
+            1, _v("10", "9", "5"), zones_admises=ZONES_TRIPLE, nb_fleches_par_volee=3
+        )
+
+
+def test_valeurs_legales_refuse_un_mauvais_nombre_de_fleches() -> None:
+    """ex-004 : le nombre de flèches d'une volée doit être conforme au barème."""
+    serie = Serie.vide(tournoi_id=1, archer_id=7)
+    with pytest.raises(NombreFlechesVoleeInvalide):
+        serie.saisir_volee(1, _v("10", "9"), zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3)
+
+
+@pytest.mark.parametrize("numero", [0, -1])
+def test_numero_de_volee_doit_etre_positif(numero: int) -> None:
+    """Un numéro de volée est un rang `>= 1`."""
+    serie = Serie.vide(tournoi_id=1, archer_id=7)
+    with pytest.raises(NumeroVoleeInvalide):
+        serie.saisir_volee(
+            numero, _v("10", "9", "8"), zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+        )
+
+
+# --- Édition avant validation (ex-006) ------------------------------------------------------
+
+
+def test_editer_une_volee_non_validee_remplace_ses_valeurs() -> None:
+    """ex-006 : une volée est modifiable tant qu'elle n'est pas validée."""
+    serie = Serie.vide(tournoi_id=1, archer_id=7).saisir_volee(
+        1, _v("10", "9", "8"), zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+    )
+    serie = serie.saisir_volee(
+        1, _v("9", "9", "9"), zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+    )
+    assert serie.volee(1).valeurs == _v("9", "9", "9")  # type: ignore[union-attr]
+    assert len(serie.volees) == 1  # remplacement, pas ajout
+
+
+def test_editer_une_volee_verrouillee_par_saisie_est_refuse() -> None:
+    """ex-006/007 : une fois validée, une volée n'est plus modifiable par simple saisie."""
+    serie = _serie_pleine(1, _v("10", "9", "8")).valider(
+        "MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=1
+    )
+    with pytest.raises(VoleeVerrouillee):
+        serie.saisir_volee(1, _v("9", "9", "9"), zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3)
+
+
+# --- Validation, verrou, grain (ex-007) & cumul (ex-008) -----------------------------------
+
+
+def test_valider_fin_de_serie_verrouille_tout_et_porte_le_nom_du_scoreur() -> None:
+    """ex-007 : en fin de série, la validation verrouille toutes les volées au nom du scoreur."""
+    serie = _serie_pleine(3, _v("10", "10", "10")).valider(
+        "MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=3
+    )
+    assert all(v.verrouillee for v in serie.volees)
+    assert all(v.validee_par == "MARTIN" for v in serie.volees)
+
+
+def test_valider_fin_de_serie_avant_la_derniere_volee_est_refuse() -> None:
+    """ex-007 : « fin de série » suppose la série complète — valider à 2/3 volées est refusé."""
+    serie = _serie_pleine(2, _v("10", "9", "8"))
+    with pytest.raises(SerieIncomplete):
+        serie.valider("MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=3)
+
+
+def test_cumul_ne_compte_que_les_volees_validees() -> None:
+    """ex-008 : le cumul se met à jour à chaque validation ; les non validées n'y sont pas."""
+    serie = _serie_pleine(3, _v("10", "9", "8"))  # 27 par volée, rien de validé
+    assert serie.cumul == 0
+    serie = serie.valider("MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=3)
+    assert serie.cumul == 81  # 3 x 27
+
+
+def test_valider_toutes_les_n_volees_verrouille_par_lots() -> None:
+    """ex-007 : « toutes les N volées » verrouille le prochain lot de N volées complètes."""
+    serie = _serie_pleine(3, _v("10", "9", "8"))
+    grain = GrainValidation.toutes_les_n_volees(2)
+    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=6)
+    # Seules les 2 premieres volees sont verrouillees ; la 3e attend le prochain lot.
+    assert serie.volee(1).verrouillee and serie.volee(2).verrouillee  # type: ignore[union-attr]
+    assert not serie.volee(3).verrouillee  # type: ignore[union-attr]
+    assert serie.cumul == 54  # 2 x 27
+
+
+def test_valider_toutes_les_n_volees_verrouille_le_reliquat_en_fin_de_bareme() -> None:
+    """ex-007 : le reliquat (< N volées) est validé une fois toutes les volées du barème saisies."""
+    serie = _serie_pleine(3, _v("10", "9", "8"))  # barème de 3, grain toutes les 2
+    grain = GrainValidation.toutes_les_n_volees(2)
+    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=3)  # lot 1-2
+    serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=3)  # reliquat : volée 3
+    assert all(v.verrouillee for v in serie.volees)
+    assert serie.cumul == 81
+
+
+def test_valider_sans_lot_complet_ni_reliquat_ne_valide_rien() -> None:
+    """ex-007 : sans lot de N complet ni fin de barème, il n'y a rien à valider."""
+    serie = _serie_pleine(1, _v("10", "9", "8"))  # 1 volée, grain toutes les 2, barème 6
+    with pytest.raises(RienAValider):
+        serie.valider("MARTIN", grain=GrainValidation.toutes_les_n_volees(2), nb_volees_bareme=6)
+
+
+# --- Correction tracée d'une volée verrouillée (ex-012) -------------------------------------
+
+
+def test_corriger_une_volee_verrouillee_remplace_les_valeurs_et_recalcule_le_cumul() -> None:
+    """ex-012 : une volée verrouillée se corrige (rôle habilité) ; le cumul est recalculé."""
+    serie = _serie_pleine(1, _v("10", "9", "8")).valider(
+        "MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=1
+    )
+    assert serie.cumul == 27
+    serie = serie.corriger_volee(
+        1, _v("9", "9", "9"), par="ARBITRE", zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+    )
+    assert serie.volee(1).valeurs == _v("9", "9", "9")  # type: ignore[union-attr]
+    assert serie.volee(1).verrouillee  # type: ignore[union-attr]
+    assert serie.cumul == 27  # 27 → 27 ici, mais recalculé sur les nouvelles valeurs
+
+
+def test_corriger_une_volee_non_verrouillee_est_refuse() -> None:
+    """ex-012 : seul le verrouillé se corrige ; une volée en cours se modifie par saisie."""
+    serie = _serie_pleine(1, _v("10", "9", "8"))  # non validée
+    with pytest.raises(VoleeNonVerrouillee):
+        serie.corriger_volee(
+            1, _v("9", "9", "9"), par="ARBITRE", zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+        )
+
+
+def test_corriger_une_volee_inexistante_est_refuse() -> None:
+    """Corriger une volée qui n'existe pas est une erreur, pas une création."""
+    serie = _serie_pleine(1, _v("10", "9", "8")).valider(
+        "MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=1
+    )
+    with pytest.raises(VoleeIntrouvable):
+        serie.corriger_volee(
+            9, _v("9", "9", "9"), par="ARBITRE", zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
+        )

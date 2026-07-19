@@ -187,6 +187,71 @@ class ScoreInvalide(DomainError):
     code = "score_invalide"
 
 
+class NumeroVoleeInvalide(DomainError):
+    """Le numéro (rang) d'une volée n'est pas un entier `>= 1` (E04US002)."""
+
+    code = "numero_volee_invalide"
+
+
+class NombreFlechesVoleeInvalide(DomainError):
+    """Le nombre de flèches d'une volée ne correspond pas au barème de la phase (E04US002).
+
+    Le barème (E01US009) fixe combien de flèches compte une volée ; une volée d'un autre compte est
+    refusée à la saisie — distinct de `NombreFlechesParVoleeInvalide`, qui protège le **barème**,
+    quand celle-ci protège une **volée saisie** contre ce barème.
+    """
+
+    code = "nombre_fleches_volee_invalide"
+
+
+class ValeurHorsBlason(DomainError):
+    """Une valeur saisie n'est pas une zone admise du blason tiré (E04US002, `Blason.zones`).
+
+    Le pavé de saisie se déduit du **blason** et non du barème : sur un triple 40 les valeurs 5 → 1
+    n'existent pas (référentiel §4.4). Une valeur hors des `zones_admises` est donc refusée.
+    """
+
+    code = "valeur_hors_blason"
+
+
+class VoleeVerrouillee(DomainError):
+    """Tentative de modifier par simple saisie une volée déjà validée (E04US002).
+
+    Après validation, une volée est verrouillée : le seul chemin d'écriture est la **correction
+    tracée** (rôle habilité, `Serie.corriger_volee`), pas la ré-saisie.
+    """
+
+    code = "volee_verrouillee"
+
+
+class VoleeNonVerrouillee(DomainError):
+    """Tentative de corriger une volée qui n'est pas verrouillée (E04US002).
+
+    La correction tracée ne vise que le **verrouillé** ; une volée en cours se modifie par saisie
+    ordinaire (`Serie.saisir_volee`), sans trace d'audit.
+    """
+
+    code = "volee_non_verrouillee"
+
+
+class VoleeIntrouvable(DomainError):
+    """Aucune volée de ce numéro dans la série (E04US002) — corriger n'est pas créer."""
+
+    code = "volee_introuvable"
+
+
+class SerieIncomplete(DomainError):
+    """Validation « fin de série » demandée avant que toutes les volées du barème soient saisies."""
+
+    code = "serie_incomplete"
+
+
+class RienAValider(DomainError):
+    """Aucune volée à valider : ni lot complet du grain, ni reliquat de fin de barème (E04US002)."""
+
+    code = "rien_a_valider"
+
+
 class NomScoreurInvalide(DomainError):
     """Le nom d'un scoreur est vide (après normalisation, E10US003)."""
 
