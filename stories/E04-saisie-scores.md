@@ -52,10 +52,14 @@
       l'adapter audit **concret** — cf. rectification règle 1 ci-dessous), **câblage** de
       `ServiceSaisie`. Le moteur PR1 **persiste** désormais ; aucun endpoint (le service reste
       appelable en interne, testé sur vraie base).
-    - **PR2b « exposition & contexte poste »** (à venir) : **départ courant du poste** (extension
-      E04US001), **source des archers** = affectations `(cible, départ)`, **garde « SA cible / SON
-      départ » au service**, **idempotence par identifiant de saisie**, **endpoints API** + DTOs,
-      **retrait de la démo `saisir_score`**.
+    - **PR2b « exposition & contexte poste »** (`feat/e04us002-saisie-exposition`, **livrée**) :
+      **départ courant du poste** (extension E04US001, [ADR-0034](../docs/adr/0034-poste-selectionne-son-depart-courant.md)),
+      **source des archers** = affectations `(cible, départ)` ([ADR-0033](../docs/adr/0033-source-de-saisie-affectations-cible-depart.md)),
+      **garde « SA cible / SON départ » au service**, **idempotence par identifiant de saisie**
+      ([ADR-0036](../docs/adr/0036-idempotence-de-la-saisie-par-identifiant-en-memoire.md)),
+      **`created_at` de volée** (le « quand », préservé par numéro), **endpoints API** + DTOs :
+      côté **poste** (fixer départ, grille, saisir volée, relire série) et côté **scoreur** (valider,
+      corriger). **Le retrait de la démo `saisir_score` est différé** — cf. arbitrage ci-dessous.
 
     La **grille tactile** (cibles ≥ 48 px, pavé, sélecteur de marqueur, panneau de routage) part en
     **dernière tranche** front. Pas de scénario `docs/fonctionnel/` avant elle (aucune UI à décrire) —
@@ -127,6 +131,32 @@
     une volée hors barème gonflerait le cumul (ex-008). La complétude d'une série est jugée sur
     l'**ensemble** exact `{1..N}`, pas un décompte. Une volée verrouillée **nomme** son validateur :
     un nom vide est refusé au domaine (`NomIntervenantInvalide`), sans l'emprunter à la couche audit.
+  - **Arbitrages de la tranche exposition (PR2b, 2026-07-19) :**
+    - **Le « rôle habilité » à corriger (ex-012) est le scoreur.** Le CA ne le nommait pas ; lu
+      comme le **scoreur**, cohérent avec « validation = scoreur seul » (le correcteur d'un score
+      verrouillé est la même autorité de marque que le validateur). L'admin, lui, peut tout
+      (E10US001). Réversible si un rôle distinct (« arbitre ») émergeait — c'est un guard d'endpoint.
+    - **Le scoreur est itinérant *dans son tournoi*.** `ScoreurHorsTournoi` (403) refuse un scoreur
+      qui validerait/corrigerait dans un tournoi voisin — la faille se rouvrirait en concurrence de
+      tournois. Même famille que `SaisieHorsCible`. Garde à l'endpoint (il tient le `Scoreur` résolu ;
+      `exiger_scoreur` **résout désormais le scoreur**, non plus un simple booléen).
+    - **Sans départ courant, le poste ne saisit pas** (`DepartCourantNonDefini`, 409) — refus
+      explicite d'ADR-0034 §1, distinct du 403 « hors cible » (le départ *est* fixé mais l'archer
+      n'y est pas).
+    - **Idempotence : registre en mémoire, borné, volatil ([ADR-0036](../docs/adr/0036-idempotence-de-la-saisie-par-identifiant-en-memoire.md)).**
+      Consulté **dans** la commande de la file (writer unique) ; aligné sur le modèle de session
+      (jeton de poste ADR-0029, départ courant ADR-0034, eux aussi volatils). Corrige la mention
+      « ADR-0005 » du CA, qui était fausse.
+    - **`created_at` de volée hors du domaine `Volee`** (métadonnée de persistance, comme l'`id`) :
+      posé par le repository via `Horloge`, **préservé par numéro** au travers du purge + réinsertion,
+      exposé par un port `SerieRepository.horodatages` que le service joint à la série (`etat_serie`).
+    - **Retrait de la démo `saisir_score` différé en US de nettoyage dédiée.** ADR-0033 le prévoyait
+      « dans cette US » ; mais `/scores` (walking skeleton E00US011) est le **véhicule de test** du
+      fil rouge — l'E2E `test_tranche_verticale`, les tests « archer engagé » (catégorie/suppression),
+      la diffusion temps réel **sèment tous via `/scores`**. Son retrait casse/réécrit ~10 tests : un
+      chantier à isoler, pas à bâcler dans la PR d'exposition. La démo **coexiste** sans conflit avec
+      la nouvelle surface (tables `score` vs `serie`/`volee` distinctes) — pas de régression ;
+      le classement de démo reste alimenté jusqu'au nettoyage, puis stub jusqu'à E06US001.
 - **Absorbe** : ex-E04US002 à 008, E04US012, E04US017. **Dépend de** : E04US001, E01US009, E01US014, E01US015, E00US007, E10US003, E10US005, E10US007 · **Jalon** : J1
 
 ### E04US009 — Diffusion live & résilience réseau

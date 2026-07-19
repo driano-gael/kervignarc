@@ -305,16 +305,21 @@ inscrit **sans** ligne est en **réserve**.
 | valeurs | TEXT (JSON) | zones de score, ex. `["10","9","M"]` |
 | saisie_par | TEXT | marqueur déclaratif de saisie, nullable |
 | validee_par | TEXT | scoreur ; **non NULL = verrou** (volée validée), nullable |
+| created_at | TEXT (datetime) | le « quand » de la saisie (ex-017), NOT NULL |
 | — | — | **UNIQUE(serie_id, numero)** — un seul rang N par série |
 
 > Table **enfant** de `SERIE` (composant strict de l'agrégat). Le verrou n'est **pas** une colonne
 > dédiée : `validee_par` non NULL **est** le verrou. Le total n'est pas stocké (cumul recalculé).
 > `serie_id` en **`ON DELETE CASCADE`** — **hors** DETTE-001, comme `PLACEMENT` (feuille auto-cascadée).
+> `created_at` est une **métadonnée de persistance** (comme l'`id`), **hors** de l'agrégat domaine
+> `Volee` : posée par le repository via le port `Horloge` (UTC) et **préservée par numéro** au
+> travers du purge + réinsertion (réécrire une série ne réinitialise pas le « quand »). Défaut SQL
+> `CURRENT_TIMESTAMP` (filet à l'`ADD COLUMN NOT NULL`) ; relue, elle redevient *aware* (UTC).
 >
-> **Colonnes des tranches suivantes** (non encore livrées) : `horodatage` (le « quand » d'une
-> saisie, métadonnée du chemin de lecture — PR2b) ; `saisie_uid` (idempotence au rejeu offline —
-> E04US009). La **saisie en duels** (rattachement à un `MATCH`) sera modélisée avec **E04US013** ;
-> aujourd'hui `VOLEE` ne couvre que la **qualification** (via `SERIE`).
+> **Colonnes des tranches suivantes** (non encore livrées) : `saisie_uid` (idempotence **persistée**
+> au rejeu offline — E04US009 ; l'idempotence de PR2b est **en mémoire**, ADR-0036, non une colonne).
+> La **saisie en duels** (rattachement à un `MATCH`) sera modélisée avec **E04US013** ; aujourd'hui
+> `VOLEE` ne couvre que la **qualification** (via `SERIE`).
 
 ### SET_SCORE (duels)
 | id | INTEGER | PK |
