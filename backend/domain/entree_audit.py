@@ -28,7 +28,7 @@ import datetime
 from dataclasses import dataclass
 from enum import Enum
 
-from domain.erreurs import AuteurAuditInvalide, ObjetAuditInvalide
+from domain.erreurs import AuteurAuditInvalide, HorodatageAuditInvalide, ObjetAuditInvalide
 from domain.tournoi import TournoiId
 
 EntreeAuditId = int
@@ -84,13 +84,15 @@ class EntreeAudit:
         `auteur` et `objet` sont normalisés (espaces de bord retirés) et ne peuvent être vides
         (`AuteurAuditInvalide`, `ObjetAuditInvalide`) — sans eux, la trace ne dit pas *qui* ni *sur
         quoi*. `horodatage` (« quand ») est fourni par l'appelant via le port `Horloge` (jamais lu
-        ici : le domaine reste pur et déterministe). `avant`/`apres` sont conservés **verbatim**.
+        ici : le domaine reste pur et déterministe) et doit être un instant **UTC** *aware*
+        (`HorodatageAuditInvalide` sinon) : la persistance réattache UTC en aveugle à la relecture,
+        ce qui n'est fidèle que si l'écrit était déjà UTC. `avant`/`apres` restent **verbatim**.
         """
         return EntreeAudit(
             tournoi_id=tournoi_id,
             action=action,
             auteur=_auteur_valide(auteur),
-            horodatage=horodatage,
+            horodatage=_horodatage_valide(horodatage),
             objet=_objet_valide(objet),
             avant=avant,
             apres=apres,
@@ -111,3 +113,18 @@ def _objet_valide(objet: str) -> str:
     if not objet_normalise:
         raise ObjetAuditInvalide("L'objet d'une entrée d'audit ne peut pas être vide.")
     return objet_normalise
+
+
+def _horodatage_valide(horodatage: datetime.datetime) -> datetime.datetime:
+    """Vérifie que l'horodatage est un instant UTC *aware* ; lève `HorodatageAuditInvalide` sinon.
+
+    `utcoffset()` vaut `None` pour un datetime **naïf** et un `timedelta` non nul pour un fuseau
+    **non-UTC** : un unique test `!= timedelta(0)` couvre les deux cas fautifs. On ne convertit pas
+    en UTC en douce — un horodatage mal fuseauté est un **bug de l'appelant** (une horloge non
+    conforme au contrat du port `Horloge`), pas une entrée à corriger silencieusement.
+    """
+    if horodatage.utcoffset() != datetime.timedelta(0):
+        raise HorodatageAuditInvalide(
+            "L'horodatage d'une entrée d'audit doit être un instant UTC (datetime aware)."
+        )
+    return horodatage

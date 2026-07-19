@@ -17,7 +17,7 @@ import datetime
 import pytest
 
 from domain.entree_audit import ActionAuditee, EntreeAudit
-from domain.erreurs import AuteurAuditInvalide, ObjetAuditInvalide
+from domain.erreurs import AuteurAuditInvalide, HorodatageAuditInvalide, ObjetAuditInvalide
 
 _QUAND = datetime.datetime(2026, 3, 14, 10, 42, tzinfo=datetime.UTC)
 
@@ -102,6 +102,56 @@ def test_creer_refuse_un_objet_vide(objet: str) -> None:
             horodatage=_QUAND,
             objet=objet,
         )
+
+
+def test_creer_refuse_un_horodatage_naif() -> None:
+    """Un datetime **naïf** (sans fuseau) serait stocké puis relu comme de l'UTC — refus."""
+    naif = datetime.datetime(2026, 3, 14, 10, 42)  # cas fautif volontairement testé (datetime naïf)
+    with pytest.raises(HorodatageAuditInvalide):
+        EntreeAudit.creer(
+            tournoi_id=1,
+            action=ActionAuditee.VALIDATION,
+            auteur="DURAND Jean",
+            horodatage=naif,
+            objet="Série 3",
+        )
+
+
+def test_creer_refuse_un_horodatage_aware_non_utc() -> None:
+    """Un instant aware dans un **autre fuseau** ferait mentir le journal de 2 h (murale ≠ UTC)."""
+    paris = datetime.datetime(
+        2026, 3, 14, 12, 42, tzinfo=datetime.timezone(datetime.timedelta(hours=2))
+    )
+    with pytest.raises(HorodatageAuditInvalide):
+        EntreeAudit.creer(
+            tournoi_id=1,
+            action=ActionAuditee.VALIDATION,
+            auteur="DURAND Jean",
+            horodatage=paris,
+            objet="Série 3",
+        )
+
+
+def test_creer_accepte_un_offset_zero_non_singleton_utc() -> None:
+    """Le contrat est « **offset nul** », pas « la tzinfo est le singleton `datetime.UTC` ».
+
+    Une zone à offset 0 **distincte** du singleton (ici `timezone(timedelta(0), name="UTC")`, pour
+    laquelle `is datetime.UTC` vaut False) reste un instant UTC valide. Ce test verrouille
+    l'intention contre un futur refactor de la garde en `tzinfo is datetime.UTC`, qui rejetterait à
+    tort une horloge renvoyant une telle zone tout en passant les autres tests.
+    """
+    utc_bis = datetime.datetime(
+        2026, 3, 14, 10, 42, tzinfo=datetime.timezone(datetime.timedelta(0), name="UTC")
+    )
+    entree = EntreeAudit.creer(
+        tournoi_id=1,
+        action=ActionAuditee.VALIDATION,
+        auteur="DURAND Jean",
+        horodatage=utc_bis,
+        objet="Série 3",
+    )
+
+    assert entree.horodatage == utc_bis
 
 
 def test_entree_est_immuable() -> None:
