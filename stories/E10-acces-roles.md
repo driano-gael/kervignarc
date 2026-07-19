@@ -73,6 +73,30 @@
 ### E10US005 — Journal d'audit métier
 *En tant qu'*organisateur, *je veux* tracer les actions sensibles, *afin de* gérer les litiges.
 - **CA** : `AuditLog` des corrections de score, validations, forfaits (qui/quand/avant-après) ; consultable par l'admin.
+- **Livré (socle backend, 19/07/2026)** : agrégat `EntreeAudit` (immuable, en **ajout seul**) —
+  `action` (`validation` / `correction_score` / `forfait`), `auteur` (le **nom**, pas une FK : la
+  trace survit à la suppression du scoreur), `horodatage`, `objet`, `avant`/`apres` (optionnels) ;
+  port `AuditRepository` (`consigner` / `par_tournoi` chronologique) + adapter SQLite + table
+  `entree_audit` (migration `0025`) ; port **`Horloge`** (première brique du projet à horodater) +
+  adapter `HorlogeSysteme` UTC, injecté pour le déterminisme (règle 9) ; `ServiceAudit.consigner`
+  (primitive d'écriture) et `lister` ; endpoint **`GET /api/v1/tournois/{id}/audit`** réservé à
+  l'admin (« consultable par l'admin »).
+- **Reste** : les **producteurs** de traces — `consigner` n'a pas encore d'appelant : la validation
+  et la correction de score l'appelleront depuis **E04US002**, le forfait depuis **E12US004** ; la
+  **surface front** de consultation admin (l'endpoint existe, l'écran non).
+- **Notes** : **socle avancé hors séquence le 19/07/2026** (arbitrage utilisateur). Motif :
+  **E04US002** (seq 41) « Dépend de E10US005 » (seq 47) pour son CA « correction tracée » — une
+  dépendance vers une US **postérieure**, insatisfiable en l'état (l'`AuditLog` n'existait pas). Plutôt
+  qu'inverser la dépendance (créer l'audit *dans* E04US002), on livre d'abord ce socle **à l'endroit**
+  de la dépendance, puis E04US002 s'y branche. Le port `Horloge` n'est **pas** un remède structurel
+  spéculatif (règle « 3ᵉ occurrence ») : c'est l'application directe de la règle 2 (effet de bord —
+  ici l'heure — derrière un port) au **premier** besoin réel de temps, imposé par le CA « quand ».
+  `EntreeAudit.creer` **garde** l'invariant « horodatage UTC *aware* » (`HorodatageAuditInvalide`) :
+  la persistance réattachant UTC en aveugle à la relecture, un instant naïf ou non-UTC ferait mentir
+  le journal en silence — on ferme ce chemin au bord de l'agrégat (revue adversariale).
+- **Limite connue (atomicité)** : `consigner` commit dans **sa propre session** — le socle n'offre
+  **pas** l'atomicité transactionnelle acte↔trace. C'est aux **producteurs** (E04US002/E12US004) de
+  la trancher (cf. Notes d'E04US002) ; le socle, sans appelant, ne régresse rien.
 - **Dépend de** : E10US002 · **Jalon** : J1
 
 ### E10US006 — Modifier le mot de passe admin

@@ -356,14 +356,23 @@ inscrit **sans** ligne est en **réserve**.
 | jeton | TEXT | ~~jeton de session~~ (en **mémoire**, non persisté) |
 | expire_at | TEXT (datetime) | ~~expiration~~ (caduc — **sans expiration**, ADR-0025) |
 
-### AUDIT_LOG
+### AUDIT_LOG (E10US005) — table `entree_audit`
 | id | INTEGER | PK |
-| acteur | TEXT | rôle / session |
-| action | TEXT | ex. `correction_score`, `validation`, `forfait` |
-| entite | TEXT | ex. `Volee#123` |
-| avant | TEXT (JSON) | état précédent |
-| apres | TEXT (JSON) | nouvel état |
-| horodatage | TEXT (datetime) | |
+| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) |
+| action | TEXT | NOT NULL — `validation`\|`correction_score`\|`forfait` (`ActionAuditee`) |
+| auteur | TEXT | NOT NULL — le **nom** de qui a agi (pas une FK vers `scoreur`) |
+| horodatage | DATETIME | NOT NULL — instant de l'acte, en **UTC** (aware, garanti par le domaine) |
+| objet | TEXT | NOT NULL — ce sur quoi porte l'action (ex. « Série 3 — cible 4A — MARTIN Claire ») |
+| avant | TEXT | nullable — état précédent, **verbatim** (absent pour une validation) |
+| apres | TEXT | nullable — nouvel état, **verbatim** (absent pour une validation) |
+
+> **Socle livré** par E10US005 (migration `0025`). Journal **en ajout seul** (le repository n'expose
+> ni `UPDATE` ni `DELETE`) : c'est un artefact de preuve pour les litiges. `auteur` est figé au
+> **nom** — et non une FK — pour que la trace **survive à la suppression du scoreur** (E10US003).
+> `avant`/`apres` sont du **texte verbatim** laissé au producteur : le socle ne présume **pas** d'un
+> format JSON (à rebours du modèle prospectif ci-dessus, qui les typait JSON). Les **producteurs** de
+> traces viendront : validations/corrections avec E04US002, forfaits avec E12US004. Consultable par
+> l'admin (`GET /api/v1/tournois/{id}/audit`). Voir le glossaire (`AuditLog`, `Horloge`).
 
 ---
 

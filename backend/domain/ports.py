@@ -7,6 +7,7 @@ domaine reste pur (aucune dépendance vers l'infrastructure).
 
 from __future__ import annotations
 
+import datetime
 from collections.abc import Sequence
 from typing import Protocol
 
@@ -16,6 +17,7 @@ from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
 from domain.documents_salle import CartesScoreurs, EtiquettesCibles
+from domain.entree_audit import EntreeAudit
 from domain.feuille_marque import FeuilleDeMarque
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
@@ -512,4 +514,43 @@ class GenerateurDocumentsSalle(Protocol):
 
     def cartes_scoreurs(self, document: CartesScoreurs) -> bytes:
         """Rend les cartes de scoreur en un PDF (un papier par scoreur : nom + code personnel)."""
+        ...
+
+
+class Horloge(Protocol):
+    """Port : la **source de temps** de l'application (règle 2 — un effet de bord derrière un port).
+
+    Lire l'heure est un effet de bord : appeler `datetime.now()` directement dans un service le
+    rendrait **non déterministe** en test (règle 9 : « pas d'horloge non maîtrisée »). Le journal
+    d'audit horodate chaque entrée (« quand », E10US005) — première brique du projet à avoir besoin
+    de l'heure —, d'où ce port, injecté dans `ServiceAudit`. L'adapter `HorlogeSysteme` lit
+    l'horloge système ; un test injecte une horloge **figée**, et l'horodatage devient reproduit.
+    """
+
+    def maintenant(self) -> datetime.datetime:
+        """Renvoie l'instant courant, en **UTC** (datetime *aware*)."""
+        ...
+
+
+class AuditRepository(Protocol):
+    """Port de persistance du **journal d'audit métier** (E10US005).
+
+    Journal **en ajout seul** : une trace ne se modifie ni ne se supprime — c'est l'équivalent
+    numérique d'une signature de feuille de marque (FFTA B.6.1.1), la retoucher la viderait de sa
+    valeur de preuve. D'où deux seules opérations : `consigner` (ajouter) et `par_tournoi`
+    (consulter). Aucune FK d'auteur : l'entrée fige le **nom** de qui a agi (cf. `EntreeAudit`), la
+    trace survit donc à la suppression du scoreur (E10US003).
+    """
+
+    def consigner(self, entree: EntreeAudit) -> EntreeAudit:
+        """Persiste une entrée d'audit et la renvoie avec son identifiant attribué."""
+        ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[EntreeAudit]:
+        """Renvoie les entrées d'audit d'un tournoi, en **ordre chronologique** (id croissant).
+
+        Liste éventuellement vide. L'ordre chronologique est **garanti par le port** (à rebours des
+        autres `par_tournoi`, qui laissent le tri au service) : un journal se lit dans le sens du
+        temps, c'est une propriété de l'audit, pas une préférence d'affichage.
+        """
         ...

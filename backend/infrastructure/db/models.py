@@ -326,3 +326,30 @@ class PosteORM(Base):
     code: Mapped[str] = mapped_column(nullable=False, unique=True)
 
     __table_args__ = (UniqueConstraint("tournoi_id", "cible_index", name="uq_poste_tournoi_cible"),)
+
+
+class EntreeAuditORM(Base):
+    """Table `entree_audit` — persistance de l'agrégat `EntreeAudit` (journal d'audit, E10US005).
+
+    Journal **du tournoi** (`tournoi_id`), en **ajout seul** : ni `enregistrer` ni `supprimer` côté
+    repository (une trace ne se retouche pas). `action` stocke la **valeur** de l'énumération
+    `ActionAuditee` (`validation` / `correction_score` / `forfait`) ; la traduction chaîne ↔ enum
+    est faite par le repository, comme `statut`/`StatutTournoi`.
+
+    `auteur` est le **nom** de qui a agi (pas une FK vers `scoreur`) : la trace survit à la
+    suppression du scoreur (E10US003). `horodatage` porte le « quand » ; `avant`/`apres` sont
+    **nullables** (une validation n'a pas d'état antérieur, une correction si).
+    """
+
+    __tablename__ = "entree_audit"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
+    # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    action: Mapped[str] = mapped_column(nullable=False)
+    auteur: Mapped[str] = mapped_column(nullable=False)
+    horodatage: Mapped[datetime.datetime] = mapped_column(nullable=False)
+    objet: Mapped[str] = mapped_column(nullable=False)
+    avant: Mapped[str | None] = mapped_column(nullable=True)
+    apres: Mapped[str | None] = mapped_column(nullable=True)

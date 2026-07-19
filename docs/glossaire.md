@@ -81,6 +81,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Centimes** | Unité de **tout montant** du projet, en entier — jamais de flottant pour de l'argent ([ADR-0012](adr/0012-argent-en-centimes-entiers.md)). Les champs portent le suffixe `_centimes` ; les euros n'existent qu'à l'affichage. |
 | **WebSocket** | Canal de diffusion temps réel. |
 | **Migration** | Évolution de schéma versionnée (Alembic). |
-| **AuditLog** | Journal des actions sensibles (corrections, validations, forfaits). |
+| **AuditLog** | Journal des actions sensibles (corrections, validations, forfaits). En **ajout seul** ; une trace (`EntreeAudit`) fige *qui / quand / avant-après*, l'auteur par son **nom** (pas une FK : la trace survit à la suppression du scoreur). Port `AuditRepository`, `ServiceAudit`, consultable par l'admin (E10US005). |
+| **Horloge** | Port de la **source de temps** (`domain.ports.Horloge`, adapter `HorlogeSysteme` UTC). Injectée plutôt que `datetime.now()` en dur, pour des cas d'usage **déterministes** en test (règle 9). Introduite pour horodater l'audit (E10US005). |
 
 > Toute nouvelle notion métier doit être ajoutée ici avant d'apparaître dans le code, l'API ou l'UI.

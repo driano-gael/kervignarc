@@ -212,3 +212,38 @@ class CodePosteInvalide(DomainError):
     """
 
     code = "code_poste_invalide"
+
+
+class AuteurAuditInvalide(DomainError):
+    """L'auteur d'une entrée du journal d'audit est vide (après normalisation, E10US005).
+
+    L'auteur est le **nom** de qui a agi (scoreur, admin) — le premier des « qui / quand /
+    avant-après ». Une entrée sans auteur ne dit pas *qui* : elle manque sa raison d'être en litige.
+    """
+
+    code = "auteur_audit_invalide"
+
+
+class ObjetAuditInvalide(DomainError):
+    """L'objet d'une entrée du journal d'audit est vide (après normalisation, E10US005).
+
+    L'objet décrit *ce sur quoi* porte l'action (quelle série, quelle cible, quel archer). Sans lui,
+    une **validation** — qui n'a ni avant ni après — ne serait plus rattachable à rien.
+    """
+
+    code = "objet_audit_invalide"
+
+
+class HorodatageAuditInvalide(DomainError):
+    """L'horodatage d'une entrée d'audit n'est pas un instant **UTC** *aware* (E10US005).
+
+    Le « quand » d'une trace de litige doit être comparable **sans ambiguïté de fuseau**. La
+    persistance stocke un `DateTime` **sans fuseau** et l'adapter réattache UTC à la relecture :
+    cette réattache n'est fidèle **que si** l'instant écrit était déjà UTC. Un `datetime` **naïf**
+    (aucun fuseau) ou **aware non-UTC** (ex. `Europe/Paris`) ferait donc **mentir le journal en
+    silence** — la valeur murale serait stockée puis relue comme de l'UTC. On ferme ce chemin **à la
+    construction**, comme les autres invariants de l'entrée, plutôt que laisser une horloge fautive
+    corrompre la preuve.
+    """
+
+    code = "horodatage_audit_invalide"

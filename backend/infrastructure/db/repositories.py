@@ -8,6 +8,7 @@ ADR-0005) et traduit les lignes ORM en agrégats de domaine. Les pannes SQLAlche
 
 from __future__ import annotations
 
+import datetime
 import json
 from collections.abc import Sequence
 from typing import Any
@@ -22,6 +23,7 @@ from domain.blason import Blason, BlasonId, valider_zones
 from domain.categorie import Categorie, CategorieId, SexeCategorie, TrancheAge
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
+from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import DomainError
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.grain_validation import GrainValidation, TypeGrain
@@ -39,6 +41,7 @@ from infrastructure.db.models import (
     CategorieORM,
     ClubORM,
     DepartORM,
+    EntreeAuditORM,
     GabaritSalleORM,
     InscriptionORM,
     PhaseORM,
@@ -109,6 +112,28 @@ def _vers_poste(ligne: PosteORM) -> Poste:
         tournoi_id=ligne.tournoi_id,
         cible_index=ligne.cible_index,
         code=ligne.code,
+        id=ligne.id,
+    )
+
+
+def _vers_entree_audit(ligne: EntreeAuditORM) -> EntreeAudit:
+    """Traduit une ligne ORM en agrégat de domaine `EntreeAudit` (E10US005).
+
+    SQLite stocke un `DateTime` **sans fuseau** : la valeur relue est *naive*. On lui **réattache
+    UTC**, car le service n'écrit jamais que de l'UTC (port `Horloge`) — l'entrée relue redevient
+    ainsi *aware*, comme celle qui a été consignée (round-trip fidèle à l'instant).
+    """
+    horodatage = ligne.horodatage
+    if horodatage.tzinfo is None:
+        horodatage = horodatage.replace(tzinfo=datetime.UTC)
+    return EntreeAudit(
+        tournoi_id=ligne.tournoi_id,
+        action=ActionAuditee(ligne.action),
+        auteur=ligne.auteur,
+        horodatage=horodatage,
+        objet=ligne.objet,
+        avant=ligne.avant,
+        apres=ligne.apres,
         id=ligne.id,
     )
 
@@ -1402,3 +1427,47 @@ class PhaseRepositorySQL:
                 return _vers_phase(ligne)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour de la phase.") from exc
+
+
+class AuditRepositorySQL:
+    """Adapter SQLite du port `AuditRepository` (E10US005) — journal en **ajout seul**.
+
+    Ni `enregistrer` ni `supprimer` : une trace ne se retouche pas (valeur de preuve). `consigner`
+    insère ; `par_tournoi` relit en **ordre chronologique** (`ORDER BY id`), l'id croissant
+    coïncidant avec l'ordre d'insertion.
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def consigner(self, entree: EntreeAudit) -> EntreeAudit:
+        """Persiste une entrée d'audit et la renvoie avec son identifiant attribué."""
+        try:
+            with self._session_factory() as session:
+                ligne = EntreeAuditORM(
+                    tournoi_id=entree.tournoi_id,
+                    action=entree.action.value,
+                    auteur=entree.auteur,
+                    horodatage=entree.horodatage,
+                    objet=entree.objet,
+                    avant=entree.avant,
+                    apres=entree.apres,
+                )
+                session.add(ligne)
+                session.commit()
+                return _vers_entree_audit(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance de l'entrée d'audit.") from exc
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[EntreeAudit]:
+        """Renvoie les entrées d'audit d'un tournoi, en ordre chronologique (id croissant)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(EntreeAuditORM)
+                    .where(EntreeAuditORM.tournoi_id == tournoi_id)
+                    .order_by(EntreeAuditORM.id)
+                ).scalars()
+                return [_vers_entree_audit(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du journal d'audit.") from exc
