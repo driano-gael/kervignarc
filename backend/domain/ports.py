@@ -26,6 +26,7 @@ from domain.placement import Affectation
 from domain.poste import Poste, PosteId
 from domain.score import Score
 from domain.scoreur import Scoreur, ScoreurId
+from domain.serie import Serie
 from domain.tournoi import Tournoi, TournoiId
 
 
@@ -552,5 +553,32 @@ class AuditRepository(Protocol):
         Liste éventuellement vide. L'ordre chronologique est **garanti par le port** (à rebours des
         autres `par_tournoi`, qui laissent le tri au service) : un journal se lit dans le sens du
         temps, c'est une propriété de l'audit, pas une préférence d'affichage.
+        """
+        ...
+
+
+class SerieRepository(Protocol):
+    """Port de persistance des séries de saisie de qualification (E04US002).
+
+    Une série par archer. `enregistrer` sert la **saisie** ordinaire (sans trace) ;
+    `enregistrer_avec_trace` co-écrit la série **et** son entrée d'audit dans **une seule
+    transaction** (atomicité acte↔trace, ADR-0035) — la validation et la correction, qui laissent
+    une trace. L'atomicité est réalisée par l'adapter (session partagée) ; au niveau du port, c'est
+    une seule opération « la série ET sa trace, ou ni l'une ni l'autre ».
+    """
+
+    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
+        """Renvoie la série de qualification de l'archer, ou `None` si aucune n'existe encore."""
+        ...
+
+    def enregistrer(self, serie: Serie) -> Serie:
+        """Persiste une série (saisie sans trace) et la renvoie avec son identifiant attribué."""
+        ...
+
+    def enregistrer_avec_trace(self, serie: Serie, entree: EntreeAudit) -> Serie:
+        """Persiste une série **et** son entrée d'audit dans **une seule transaction** (ADR-0035).
+
+        Tout ou rien : jamais de validation/correction non tracée, jamais de trace fantôme. La
+        série est renvoyée avec son identifiant attribué.
         """
         ...
