@@ -80,7 +80,7 @@ class ArcherGrilleReponse(BaseModel):
     archer_id: int
     nom: str
     prenom: str
-    zones: list[str]
+    zones: list[ZoneScore]
 
     @staticmethod
     def de_ligne(ligne: ArcherPositionne) -> ArcherGrilleReponse:
@@ -90,7 +90,7 @@ class ArcherGrilleReponse(BaseModel):
             archer_id=ligne.archer.id,
             nom=ligne.archer.nom,
             prenom=ligne.archer.prenom,
-            zones=[zone.value for zone in ligne.zones],
+            zones=list(ligne.zones),
         )
 
 

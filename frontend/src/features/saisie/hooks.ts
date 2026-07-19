@@ -35,15 +35,28 @@ export function useSerie(tournoiId: number, archerId: number) {
   return useQuery({
     queryKey: cleSerie(tournoiId, archerId),
     queryFn: () => getSerie(tournoiId, archerId),
+    // `retry: false` : un 403 (hors cible) est déterministe, inutile de réessayer. Pas de refetch au
+    // focus fenêtre : il écraserait un tampon en cours de frappe si un autre acteur touchait la même
+    // série (co-saisie). Le rafraîchissement se fait sur invalidation après la propre écriture du poste.
+    retry: false,
+    refetchOnWindowFocus: false,
   })
 }
 
 export function useBareme(tournoiId: number) {
-  return useQuery({ queryKey: cleBareme(tournoiId), queryFn: () => getBareme(tournoiId) })
+  return useQuery({
+    queryKey: cleBareme(tournoiId),
+    queryFn: () => getBareme(tournoiId),
+    retry: false,
+  })
 }
 
 export function useGrain(tournoiId: number) {
-  return useQuery({ queryKey: cleGrain(tournoiId), queryFn: () => getGrain(tournoiId) })
+  return useQuery({
+    queryKey: cleGrain(tournoiId),
+    queryFn: () => getGrain(tournoiId),
+    retry: false,
+  })
 }
 
 export function useDeparts(tournoiId: number) {

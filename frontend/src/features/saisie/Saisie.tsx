@@ -22,7 +22,14 @@ import {
   useSaisirVolee,
   useSerie,
 } from './hooks'
-import { libelleGrain, prochaineASaisir, totalVolee, voleeExistante } from './volees'
+import {
+  heureSaisie,
+  libelleGrain,
+  nouvelIdentifiant,
+  prochaineASaisir,
+  totalVolee,
+  voleeExistante,
+} from './volees'
 
 export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleIndex: number }) {
   const grille = useGrille()
@@ -288,9 +295,13 @@ function PaveArcher({
     )
   }
 
+  // Tant que la série n'est pas chargée, `volees` est vide et `numeroActif` pointerait la volée 1
+  // par défaut : on désactive la frappe pour ne pas saisir « à l'aveugle » puis voir le tampon se
+  // réinitialiser à l'arrivée des données (perte silencieuse). Fenêtre courte en LAN, verrou franc.
+  const chargee = serie.isSuccess
   const complet = buffer.length >= bareme.nb_fleches_par_volee
   const ajouter = (valeur: string) => {
-    if (!complet && !verrouillee) setBuffer((actuel) => [...actuel, valeur])
+    if (chargee && !complet && !verrouillee) setBuffer((actuel) => [...actuel, valeur])
   }
   const effacer = () => setBuffer((actuel) => actuel.slice(0, -1))
   const enregistrer = () => {
@@ -300,8 +311,11 @@ function PaveArcher({
         archer_id: ligne.archer_id,
         numero: numeroActif,
         valeurs: buffer,
-        saisie_par: marqueur,
-        identifiant_saisie: crypto.randomUUID(),
+        // Nouvelle volée : le marqueur actif la signe. Ré-édition d'une volée déjà saisie : `null`,
+        // pour que le domaine **préserve** le marqueur d'origine (une correction ne réattribue pas
+        // la signature — cf. `Serie.saisir_volee`, chemin « saisie_par is None »).
+        saisie_par: existante !== null ? null : marqueur,
+        identifiant_saisie: nouvelIdentifiant(),
       },
       // De retour en mode « prochaine à saisir » : après avoir enregistré la volée visée, on avance.
       { onSuccess: () => setNumeroChoisi(null) },
@@ -326,6 +340,14 @@ function PaveArcher({
         </span>
       </div>
 
+      {existante !== null && (
+        <p className="saisie__meta">
+          Saisie par <strong>{existante.saisie_par ?? '—'}</strong>
+          {existante.saisie_le !== null ? ` à ${heureSaisie(existante.saisie_le)}` : ''}
+          {existante.validee_par !== null ? ` · validée par ${existante.validee_par}` : ''}
+        </p>
+      )}
+
       {verrouillee && (
         <p className="saisie__vide" role="status">
           Volée validée par {existante?.validee_par ?? 'le scoreur'} — sa correction relève du
@@ -347,7 +369,7 @@ function PaveArcher({
             key={zone}
             type="button"
             className="saisie__zone"
-            disabled={complet || verrouillee || saisir.isPending}
+            disabled={!chargee || complet || verrouillee || saisir.isPending}
             onClick={() => ajouter(zone)}
           >
             {zone}
@@ -366,7 +388,7 @@ function PaveArcher({
         </button>
         <button
           type="button"
-          disabled={!complet || verrouillee || saisir.isPending}
+          disabled={!chargee || !complet || verrouillee || saisir.isPending}
           onClick={enregistrer}
         >
           {saisir.isPending ? 'Enregistrement…' : 'Enregistrer la volée'}

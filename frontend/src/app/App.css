@@ -1078,8 +1078,8 @@ button:disabled {
 }
 
 .saisie__nav-volee {
-  min-width: 36px;
-  min-height: 36px;
+  min-width: 48px;
+  min-height: 48px;
   padding: 0;
   font-family: var(--mono);
   color: var(--text);
@@ -1144,6 +1144,20 @@ button:disabled {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 12px;
+}
+
+/* Cibles tactiles ≥ 48 px sur l'écran de saisie, y compris les actions et le choix de départ (le
+   CA « saisie » ne distingue pas les cibles primaires des secondaires). */
+.saisie__actions button,
+.saisie__departs-liste button {
+  min-height: 48px;
+}
+
+/* Consultation d'une volée saisie : « Saisie par DURAND à 10:42 » (CA « marqueur »). */
+.saisie__meta {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text);
 }
 
 /* « Détacher » relégué en pied de l'écran de saisie : action rare, ne doit pas voler l'attention. */

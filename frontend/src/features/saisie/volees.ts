@@ -38,6 +38,33 @@ export function voleeExistante(volees: readonly Volee[], numero: number): Volee 
   return volees.find((v) => v.numero === numero) ?? null
 }
 
+// Identifiant de saisie unique (idempotence ADR-0036), robuste **hors contexte sécurisé**.
+// `crypto.randomUUID()` est réservé aux contextes sécurisés (HTTPS / `localhost`) ; or le
+// déploiement jour J est un **LAN en http** (`http://<ip>` / `kervignarc.local`, cf.
+// cahier-des-charges-technique §), où `randomUUID` est **absent** sur les tablettes — la saisie
+// casserait alors silencieusement. `crypto.getRandomValues`, lui, est disponible partout : on bâtit
+// un UUID v4 à la main dessus en repli. (Masqué en dev par `localhost`, d'où le repli explicite.)
+export function nouvelIdentifiant(): string {
+  const c = globalThis.crypto
+  if (typeof c.randomUUID === 'function') return c.randomUUID()
+  const octets = c.getRandomValues(new Uint8Array(16))
+  octets[6] = ((octets[6] ?? 0) & 0x0f) | 0x40 // version 4
+  octets[8] = ((octets[8] ?? 0) & 0x3f) | 0x80 // variante RFC 4122
+  const hex = Array.from(octets, (o) => o.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
+// L'heure locale d'une saisie (« 10:42 ») depuis son horodatage ISO UTC, pour la consultation
+// « volée N saisie par X à HH:MM » (CA « marqueur »). Chaîne vide si l'horodatage manque ou est illisible.
+export function heureSaisie(iso: string | null): string {
+  if (iso === null) return ''
+  const instant = new Date(iso)
+  if (Number.isNaN(instant.getTime())) return ''
+  const hh = instant.getHours().toString().padStart(2, '0')
+  const mm = instant.getMinutes().toString().padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
 // Libellé du grain de validation affiché au marqueur (D-11) : il dit **quand** le scoreur viendra.
 export function libelleGrain(grain: Grain | null): string {
   if (grain === null) return 'Grain de validation non défini'

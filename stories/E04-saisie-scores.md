@@ -63,7 +63,8 @@
 
     La **grille tactile** part en **dernière tranche** front (`feat/e04us002-saisie-grille`,
     **livrée** 2026-07-19) : cibles ≥ 48 px, pavé déduit du blason, sélecteur de départ courant,
-    marqueur discret, navigateur de volées, grain affiché. Le **panneau de routage** post-validation
+    marqueur discret, navigateur de volées, grain affiché, **consultation « saisie par X à HH:MM »**
+    d'une volée (le « quand »/« qui », CA marqueur). Le **panneau de routage** post-validation
     n'y est **pas** — c'est E04US018 (bloquée, dépend d'E03US009) ; la surface **scoreur**
     (validation/correction, §7.3) et la **file hors-ligne / diffusion live** (E04US009) non plus. La
     doc `docs/fonctionnel/E04US002.md` accompagne cette tranche (première UI à décrire).

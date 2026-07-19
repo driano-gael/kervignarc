@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { Grain, Volee } from './api'
-import { libelleGrain, pointsZone, prochaineASaisir, totalVolee, voleeExistante } from './volees'
+import {
+  heureSaisie,
+  libelleGrain,
+  nouvelIdentifiant,
+  pointsZone,
+  prochaineASaisir,
+  totalVolee,
+  voleeExistante,
+} from './volees'
 
 function volee(numero: number, valeurs: string[], verrouillee = false): Volee {
   return {
@@ -77,6 +85,12 @@ describe('libelleGrain', () => {
     )
   })
 
+  it('fin de duel', () => {
+    expect(libelleGrain({ grain: 'fin_de_duel', n_volees: null })).toBe(
+      'Validation à la fin du duel',
+    )
+  })
+
   it('toutes les N volées reprend le N', () => {
     const grain: Grain = { grain: 'toutes_les_n_volees', n_volees: 2 }
     expect(libelleGrain(grain)).toBe('Validation toutes les 2 volées')
@@ -84,5 +98,43 @@ describe('libelleGrain', () => {
 
   it('grain absent → mention explicite', () => {
     expect(libelleGrain(null)).toBe('Grain de validation non défini')
+  })
+})
+
+describe('heureSaisie', () => {
+  it('formate l’heure locale en HH:MM', () => {
+    // Sans décalage explicite, l'ISO est interprété en heure locale → valeur déterministe.
+    expect(heureSaisie('2026-07-19T09:05:00')).toBe('09:05')
+  })
+
+  it('horodatage absent → chaîne vide', () => {
+    expect(heureSaisie(null)).toBe('')
+  })
+
+  it('horodatage illisible → chaîne vide', () => {
+    expect(heureSaisie('pas une date')).toBe('')
+  })
+})
+
+describe('nouvelIdentifiant', () => {
+  it('produit un UUID quand crypto.randomUUID est disponible (contexte sécurisé)', () => {
+    expect(nouvelIdentifiant()).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    )
+  })
+
+  it('retombe sur getRandomValues quand randomUUID est absent (LAN http, hors contexte sécurisé)', () => {
+    const original = globalThis.crypto.randomUUID
+    // Simule un contexte non sécurisé : `randomUUID` y est absent de l'objet `crypto`.
+    // @ts-expect-error — on retire volontairement la méthode pour exercer le repli.
+    globalThis.crypto.randomUUID = undefined
+    try {
+      const id = nouvelIdentifiant()
+      // UUID v4 : 13ᵉ nibble = 4, 17ᵉ ∈ {8,9,a,b}.
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+      expect(id).not.toBe(nouvelIdentifiant())
+    } finally {
+      globalThis.crypto.randomUUID = original
+    }
   })
 })
