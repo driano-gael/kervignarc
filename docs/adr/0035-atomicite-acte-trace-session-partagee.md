@@ -35,11 +35,22 @@ deux écritures dans **une seule transaction**.
 **Option (c) : une couture de session partagée.** L'écriture de l'acte de score et la consignation de
 sa trace se font dans **une seule session, un seul `commit`** — donc **tout ou rien**.
 
-**1. Le port d'audit accepte une session fournie.** `AuditRepository.consigner` gagne la capacité
-d'écrire dans une session **existante** au lieu d'en ouvrir une : soit un paramètre optionnel
-`session`, soit une méthode dédiée `consigner_dans(session, entree)`. Sans session fournie, le
-comportement historique (session propre + commit) est préservé — les appels existants d'E10US005 ne
-changent pas.
+**1. L'écriture d'audit accepte une session fournie.** Une méthode `consigner_dans(session, entree)`
+écrit dans une session **existante** au lieu d'en ouvrir une, **sans commit**. Le `consigner`
+historique (session propre + commit) est préservé — les appels autonomes d'E10US005 ne changent pas.
+
+> **Rectification (tranche persistance PR2a, 2026-07-19).** La rédaction initiale disait « **le port**
+> `AuditRepository` gagne la capacité… soit un paramètre `session`, soit `consigner_dans` ». C'est
+> **impossible en l'état** : le port `AuditRepository` vit dans le **domaine** (`domain/ports.py`), et
+> un paramètre `session: Session` y importerait SQLAlchemy — violation de la **règle 1**, que le
+> garde-fou AST (`test_domain_isolation.py`) bloque mécaniquement. `consigner_dans` est donc une
+> méthode de l'**adapter concret** `AuditRepositorySQL` (infrastructure), **pas** du port. Le port du
+> domaine reste `consigner` / `par_tournoi`, inchangé. La couture de session partagée est une
+> collaboration **infra → infra** : `SerieRepositorySQL` reçoit l'`AuditRepositorySQL` concret à la
+> construction (composition root) et l'invoque sur sa session. Le port `SerieRepository`, lui, expose
+> `enregistrer_avec_trace(serie, entree)` **sans** aucune session — l'atomicité reste invisible au
+> domaine, ce que visait bien la décision. Correction de forme (où vit la méthode), pas de fond
+> (l'option (c) tient) ; reversée dans `stories/E04-saisie-scores.md` au même commit.
 
 **2. La face applicative est `SerieRepository.enregistrer_avec_trace(serie, entree)`.** L'entrée
 d'audit est **construite et datée par le service applicatif** (`ServiceSaisie`, via le port `Horloge`

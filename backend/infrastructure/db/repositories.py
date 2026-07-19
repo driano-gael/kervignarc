@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
-from domain.blason import Blason, BlasonId, valider_zones
+from domain.blason import Blason, BlasonId, ZoneScore, valider_zones
 from domain.categorie import Categorie, CategorieId, SexeCategorie, TrancheAge
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
@@ -34,6 +34,7 @@ from domain.poste import Poste, PosteId
 from domain.poste import normaliser_code as normaliser_code_poste
 from domain.score import Score
 from domain.scoreur import Scoreur, ScoreurId, normaliser_code
+from domain.serie import Serie, SerieId, Volee
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
 from infrastructure.db.models import (
     ArcherORM,
@@ -49,7 +50,9 @@ from infrastructure.db.models import (
     PosteORM,
     ScoreORM,
     ScoreurORM,
+    SerieORM,
     TournoiORM,
+    VoleeORM,
 )
 from infrastructure.erreurs import InfrastructureError
 
@@ -136,6 +139,47 @@ def _vers_entree_audit(ligne: EntreeAuditORM) -> EntreeAudit:
         apres=ligne.apres,
         id=ligne.id,
     )
+
+
+def _vers_volee(ligne: VoleeORM) -> Volee:
+    """Traduit une ligne ORM en value object de domaine `Volee` (E04US002).
+
+    `valeurs` est écrit par le repository comme un tableau JSON de codes de zone (« ["10","9"] »,
+    même procédé que `BlasonORM.zones`). Un contenu illisible **ou** un code hors `ZoneScore` est
+    une **incohérence technique** (le repository en est le seul rédacteur et n'écrit que des zones
+    valides) → enveloppée en `InfrastructureError` (ADR-0007), jamais laissée fuir en value object
+    silencieusement invalide. Le verrou n'est pas une colonne : `validee_par` non `NULL` **est** le
+    verrou (cf. `domain.serie.Volee.verrouillee`).
+    """
+    try:
+        valeurs = tuple(ZoneScore(v) for v in json.loads(ligne.valeurs))
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        raise InfrastructureError("Valeurs de volée illisibles.") from exc
+    return Volee(
+        numero=ligne.numero,
+        valeurs=valeurs,
+        saisie_par=ligne.saisie_par,
+        validee_par=ligne.validee_par,
+    )
+
+
+def _vers_serie(ligne: SerieORM, volees: Sequence[VoleeORM]) -> Serie:
+    """Traduit une ligne ORM `serie` et ses volées enfants en agrégat de domaine `Serie`.
+
+    Les `volees` sont supposées **déjà triées par numéro** par l'appelant (le repository les relit
+    `ORDER BY numero`) : l'agrégat conserve l'ordre du barème.
+    """
+    return Serie(
+        tournoi_id=ligne.tournoi_id,
+        archer_id=ligne.archer_id,
+        volees=tuple(_vers_volee(v) for v in volees),
+        id=ligne.id,
+    )
+
+
+def _valeurs_json(volee: Volee) -> str:
+    """Sérialise les zones d'une volée en tableau JSON de codes (procédé de `BlasonORM.zones`)."""
+    return json.dumps([zone.value for zone in volee.valeurs])
 
 
 def _vers_inscription(ligne: InscriptionORM) -> Inscription:
@@ -486,20 +530,23 @@ class ArcherRepositorySQL:
             raise InfrastructureError("Échec de mise à jour de l'archer.") from exc
 
     def supprimer(self, archer_id: ArcherId) -> None:
-        """Supprime l'archer d'identifiant donné, **ses scores et ses inscriptions** (E02US003,
-        E02US009).
+        """Supprime l'archer, **ses scores, ses inscriptions et sa série de saisie** (E02US003,
+        E02US009, E04US002).
 
         **Contrat** (même que `enregistrer`) : l'existence est garantie par le service ; une ligne
         absente est une incohérence technique, pas un 404. Le service a par ailleurs déjà obtenu
         la confirmation de l'admin si l'archer était placé, engagé ou inscrit (`ArcherEngage`) :
         ici, la destruction est voulue.
 
-        **Une seule transaction** pour les trois `DELETE`, dans cet ordre : `score.archer_id` **et**
-        `inscription.archer_id` sont des FK **sans `ON DELETE`** (DETTE-001), donc supprimer
-        l'archer d'abord échouerait. Deux transactions successives laisseraient, si la seconde
-        échouait, un archer dépouillé de ses flèches — un état que personne n'a demandé. C'est la
-        **cascade applicative maîtrisée** qui manque au reste de la descendance de `tournoi`
-        (cf. DETTE-001) : ici, elle existe.
+        **Une seule transaction** pour tous les `DELETE`, dans cet ordre : `score.archer_id`,
+        `inscription.archer_id` **et** `serie.archer_id` sont des FK **sans `ON DELETE`**
+        (DETTE-001), donc supprimer l'archer d'abord échouerait. La série est un enfant de plus,
+        apparu en E04US002 : la retirer ici étend la **cascade applicative maîtrisée** (qui manque
+        au reste de la descendance de `tournoi` — DETTE-001). Les **volées** de la série suivent
+        automatiquement (`volee.serie_id` est `ON DELETE CASCADE` — composant strict de l'agrégat) :
+        le `DELETE` de la série déclenche la cascade SQLite (`PRAGMA foreign_keys=ON`). Deux
+        transactions successives laisseraient, si la seconde échouait, un archer à demi dépouillé —
+        un état que personne n'a demandé.
         """
         try:
             with self._session_factory() as session:
@@ -508,6 +555,9 @@ class ArcherRepositorySQL:
                     raise InfrastructureError("Archer à supprimer introuvable en base.")
                 session.execute(delete(ScoreORM).where(ScoreORM.archer_id == archer_id))
                 session.execute(delete(InscriptionORM).where(InscriptionORM.archer_id == archer_id))
+                # `serie` (E04US002) : `DELETE` SQL, donc la cascade `volee` (ON DELETE CASCADE)
+                # s'applique au niveau base — contrairement à un `session.delete` ORM.
+                session.execute(delete(SerieORM).where(SerieORM.archer_id == archer_id))
                 session.delete(ligne)
                 session.commit()
         except SQLAlchemyError as exc:
@@ -1459,6 +1509,29 @@ class AuditRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de persistance de l'entrée d'audit.") from exc
 
+    def consigner_dans(self, session: Session, entree: EntreeAudit) -> None:
+        """Ajoute une entrée d'audit dans une session **fournie**, **sans commit** (ADR-0035).
+
+        Face « session partagée » de `consigner`, réservée à la **co-écriture atomique**
+        acte↔trace : l'appelant (un repository de co-écriture,
+        `SerieRepositorySQL.enregistrer_avec_trace`) tient la transaction et fait le **commit
+        unique** — score et trace tiennent dans un seul « tout ou rien ». Cette méthode **ne commit
+        pas** : hors d'une telle couture, l'entrée ne serait jamais persistée. C'est délibérément
+        une méthode de l'**adapter concret**, pas du port `AuditRepository` (domaine) : un paramètre
+        `Session` (SQLAlchemy) ne peut franchir la frontière du domaine (règle 1, garde-fou AST).
+        Le couplage reste **infra → infra**, entre adapters d'une même couche.
+        """
+        ligne = EntreeAuditORM(
+            tournoi_id=entree.tournoi_id,
+            action=entree.action.value,
+            auteur=entree.auteur,
+            horodatage=entree.horodatage,
+            objet=entree.objet,
+            avant=entree.avant,
+            apres=entree.apres,
+        )
+        session.add(ligne)
+
     def par_tournoi(self, tournoi_id: TournoiId) -> list[EntreeAudit]:
         """Renvoie les entrées d'audit d'un tournoi, en ordre chronologique (id croissant)."""
         try:
@@ -1471,3 +1544,127 @@ class AuditRepositorySQL:
                 return [_vers_entree_audit(ligne) for ligne in lignes]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture du journal d'audit.") from exc
+
+
+class SerieRepositorySQL:
+    """Adapter SQLite du port `SerieRepository` (E04US002) — série + volées enfants.
+
+    Une série est un agrégat parent (`serie`) + ses volées (`volee`, table enfant). La saisie
+    réécrit **toute** la série à chaque opération : le service charge l'agrégat, le mute (une volée
+    ajoutée/validée/corrigée) et le repasse en entier — comme `PlacementRepositorySQL.definir_plan`,
+    l'écriture est un **purge + réinsertion** des volées, la série étant la source de vérité (les
+    volées sont des value objects sans identité propre côté domaine).
+
+    `enregistrer_avec_trace` réalise la **couture de session partagée** (ADR-0035) : la série **et**
+    son entrée d'audit s'écrivent dans **une seule session, un seul `commit`** (tout ou rien). D'où
+    l'`AuditRepositorySQL` injecté au constructeur — collaboration **infra → infra** (le port du
+    domaine `SerieRepository` ignore cette couture ; `enregistrer_avec_trace(serie, entree)` ne
+    mentionne aucune session). L'entrée arrive **déjà construite et datée** par le service (via
+    `Horloge`) : le repository ne construit ni ne date rien.
+    """
+
+    def __init__(
+        self,
+        session_factory: sessionmaker[Session],
+        audit_repository: AuditRepositorySQL,
+    ) -> None:
+        self._session_factory = session_factory
+        self._audit = audit_repository
+
+    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
+        """Relit la série de qualification de l'archer (volées triées par numéro), ou `None`."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.execute(
+                    select(SerieORM).where(
+                        SerieORM.tournoi_id == tournoi_id,
+                        SerieORM.archer_id == archer_id,
+                    )
+                ).scalar_one_or_none()
+                if ligne is None:
+                    return None
+                return _vers_serie(ligne, self._volees(session, ligne.id))
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture de la série.") from exc
+
+    def enregistrer(self, serie: Serie) -> Serie:
+        """Persiste une série (saisie sans trace) — **une** transaction (parent + volées)."""
+        try:
+            with self._session_factory() as session:
+                ligne = self._poser_serie(session, serie)
+                session.commit()
+                return _vers_serie(ligne, self._volees(session, ligne.id))
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance de la série.") from exc
+
+    def enregistrer_avec_trace(self, serie: Serie, entree: EntreeAudit) -> Serie:
+        """Persiste la série **et** son entrée d'audit dans **une seule transaction** (ADR-0035).
+
+        Tout ou rien : la série est réécrite, la trace est ajoutée dans **la même** session (via
+        `AuditRepositorySQL.consigner_dans`, qui ne commit pas), puis un **unique** `commit` scelle
+        les deux. Un échec avant le commit ne laisse ni validation/correction non tracée, ni trace
+        fantôme (testé sur injection d'échec).
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = self._poser_serie(session, serie)
+                self._audit.consigner_dans(session, entree)
+                session.commit()
+                return _vers_serie(ligne, self._volees(session, ligne.id))
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance de la série et de sa trace.") from exc
+
+    def _poser_serie(self, session: Session, serie: Serie) -> SerieORM:
+        """Upsert le parent `serie` (clé métier `tournoi_id, archer_id`) et réécrit ses volées.
+
+        Ne commit pas — l'appelant tient la transaction (une seule, éventuellement partagée avec
+        l'audit). Renvoie la ligne parente (id attribué). Les volées sont **purgées puis
+        réinsérées** (la série passée est la source de vérité) ; `flush` attribue l'id d'une série
+        nouvelle avant de rattacher ses volées.
+        """
+        ligne = self._ligne_serie(session, serie)
+        session.execute(delete(VoleeORM).where(VoleeORM.serie_id == ligne.id))
+        session.add_all(
+            VoleeORM(
+                serie_id=ligne.id,
+                numero=volee.numero,
+                valeurs=_valeurs_json(volee),
+                saisie_par=volee.saisie_par,
+                validee_par=volee.validee_par,
+            )
+            for volee in serie.volees
+        )
+        return ligne
+
+    def _ligne_serie(self, session: Session, serie: Serie) -> SerieORM:
+        """Retrouve la ligne parente **par sa clé métier** `(tournoi_id, archer_id)`, ou la crée.
+
+        L'identité d'une série **est** son couple `(tournoi, archer)` — « une série par archer »
+        (port `SerieRepository`, garanti par `uq_serie_tournoi_archer`). On ne cherche donc **pas**
+        par `serie.id` : ce lookup PK n'était qu'une micro-optimisation, ouvrant une surface de
+        corruption silencieuse (un `id` incohérent avec la clé métier — venu d'un futur appelant —
+        aurait fait réécrire les volées sur la **mauvaise** série). La clé métier est la requête
+        d'identité canonique (celle de `par_archer`). `flush` attribue l'id d'une série nouvelle
+        avant qu'on lui rattache ses volées.
+        """
+        ligne = session.execute(
+            select(SerieORM).where(
+                SerieORM.tournoi_id == serie.tournoi_id,
+                SerieORM.archer_id == serie.archer_id,
+            )
+        ).scalar_one_or_none()
+        if ligne is None:
+            ligne = SerieORM(tournoi_id=serie.tournoi_id, archer_id=serie.archer_id)
+            session.add(ligne)
+            session.flush()
+        return ligne
+
+    def _volees(self, session: Session, serie_id: SerieId) -> Sequence[VoleeORM]:
+        """Les volées d'une série, triées par numéro (ordre du barème)."""
+        return (
+            session.execute(
+                select(VoleeORM).where(VoleeORM.serie_id == serie_id).order_by(VoleeORM.numero)
+            )
+            .scalars()
+            .all()
+        )

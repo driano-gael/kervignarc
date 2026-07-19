@@ -54,6 +54,7 @@ from application.grain_validation import ServiceGrainValidation
 from application.inscriptions import ServiceInscriptions
 from application.placement import ServicePlacement
 from application.postes import ServicePostes
+from application.saisie import ServiceSaisie
 from application.scoreurs import ServiceScoreurs
 from application.tournois import ServiceTournois
 from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
@@ -72,6 +73,7 @@ from infrastructure.db import (
     PosteRepositorySQL,
     ScoreRepositorySQL,
     ScoreurRepositorySQL,
+    SerieRepositorySQL,
     TournoiRepositorySQL,
     WriteQueue,
     default_database_url,
@@ -157,6 +159,10 @@ def create_app(
     scoreur_repository = ScoreurRepositorySQL(database.session_factory)
     poste_repository = PosteRepositorySQL(database.session_factory)
     audit_repository = AuditRepositorySQL(database.session_factory)
+    # La série de saisie co-écrit son entrée d'audit dans **une seule transaction** (ADR-0035) :
+    # l'adapter reçoit l'`audit_repository` (concret) pour appeler `consigner_dans` sur la session
+    # partagée. Couplage **infra → infra** assumé — le port domaine `SerieRepository` l'ignore.
+    serie_repository = SerieRepositorySQL(database.session_factory, audit_repository)
     app.state.service_tournois = ServiceTournois(tournoi_repository)
     # Départs (créneaux) d'un tournoi (E02US004, ADR-0017) : le service vérifie l'existence du
     # tournoi (dépend du port tournoi) et attribue le numéro du créneau. Il dépend aussi du port
@@ -292,6 +298,21 @@ def create_app(
     # commande de file ; la consultation admin (`GET .../audit`) est livrée. L'horodatage passe
     # par le port `Horloge` (adapter système UTC), injecté pour des cas d'usage déterministes. ---
     app.state.service_audit = ServiceAudit(audit_repository, tournoi_repository, HorlogeSysteme())
+
+    # --- Saisie de qualification (E04US002, tranche persistance PR2a) : moteur métier `Serie`/
+    # `Volee` désormais **persisté**. Le service résout la config (blason → pavé, phase → barème/
+    # grain), pilote l'agrégat, et date les entrées d'audit (validation/correction) via `Horloge` ;
+    # l'adapter `SerieRepositorySQL` co-écrit série + trace atomiquement (ADR-0035). L'**exposition
+    # API**, le **départ courant du poste** et la **garde « SA cible »** au service viennent en
+    # PR2b : ici, aucun router n'est branché, le service reste testé sur vraie base. ---
+    app.state.service_saisie = ServiceSaisie(
+        serie_repository,
+        phase_repository,
+        archer_repository,
+        categorie_repository,
+        blason_repository,
+        HorlogeSysteme(),
+    )
 
     # --- Frontière API : traduction des erreurs typées en réponses HTTP (ADR-0007). ---
     enregistrer_gestionnaires_erreurs(app)

@@ -23,7 +23,9 @@ from infrastructure.db.models import (
     PosteORM,
     ScoreORM,
     ScoreurORM,
+    SerieORM,
     TournoiORM,
+    VoleeORM,
 )
 from infrastructure.db.repositories import (
     ArcherRepositorySQL,
@@ -39,6 +41,7 @@ from infrastructure.db.repositories import (
     PosteRepositorySQL,
     ScoreRepositorySQL,
     ScoreurRepositorySQL,
+    SerieRepositorySQL,
     TournoiRepositorySQL,
 )
 from infrastructure.db.write_queue import (
@@ -79,8 +82,11 @@ __all__ = [
     "ScoreRepositorySQL",
     "ScoreurORM",
     "ScoreurRepositorySQL",
+    "SerieORM",
+    "SerieRepositorySQL",
     "TournoiORM",
     "TournoiRepositorySQL",
+    "VoleeORM",
     "WriteCommand",
     "WriteQueue",
     "WriteQueueClosedError",

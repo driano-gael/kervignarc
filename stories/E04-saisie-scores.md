@@ -39,13 +39,37 @@
 - **Notes** : **la validation est un acte *de fin*** — FFTA : les feuilles de marque sont signées « à la fin de la distance, de la compétition **ou du duel** ». L'art. B.6.1.2 (« établissement des scores toutes les 2 volées ») porte sur le **cumul** (calculé par l'appli), **pas** sur la validation par un tiers : valider toutes les 2 volées ferait **~180 passages par départ** (intenable à 3 scoreurs). La validation du scoreur **tient lieu de seconde marque** (`D-03`, FFTA B.6.1.1) — **`Q-UX3` : à confirmer par un arbitre du club**. Le **marqueur** (`D-04`) : *il change rarement, donc l'interface ne s'organise pas autour de ce changement* (**pas de sélecteur permanent** au-dessus de la grille) ; la trace est l'**équivalent numérique de la signature** de la feuille de marque (FFTA B.6.1.1), seul argument sérieux face à un arbitre contestant la dématérialisation. La **correction tracée** (ex-012) est le seul chemin d'écriture sur une série verrouillée.
 - **Arbitrages tranchés le 19/07/2026** (reversés ici — règle 9 ; pour que l'implémentation d'E04US002
   n'en dérive pas des tests faux) :
-  - **Redécoupage : tranche backend d'abord, front en 2ᵉ tranche.** L'US absorbe 9 ex-US et traverse
-    toutes les couches : trop grosse pour une branche revue en une passe (ADR-0021). Cette branche
-    (`feat/e04us002-saisie-backend`) livre le **socle backend** — domaine (`Serie`/`Volee`), service
-    (saisie, validation, verrou, cumul, correction tracée), repository + file d'écriture, endpoints ;
-    la **grille tactile** (cibles ≥ 48 px, pavé, sélecteur de marqueur, panneau de routage) part en
-    **2ᵉ tranche** front. Pas de scénario `docs/fonctionnel/` livré par cette tranche (pas d'UI à
-    décrire) — comportement garanti par les tests service (depuis le CA) et API.
+  - **Redécoupage : backend d'abord (en trois tranches), front en dernier.** L'US absorbe 9 ex-US et
+    traverse toutes les couches : trop grosse pour une branche revue en une passe (ADR-0021). Le
+    backend est livré en **trois PR** de maille « capacité », dans cet ordre :
+    - **PR1 « moteur métier »** (`feat/e04us002-saisie-backend`, **mergée**) : **domaine** `Serie`/
+      `Volee` (saisie, validation par grain, verrou, cumul, correction tracée) + **service**
+      `ServiceSaisie` (résolution config, pilotage, entrées d'audit) + les **ports** (`SerieRepository`,
+      `AuditRepository`). **Aucune persistance** : le moteur n'écrit encore rien.
+    - **PR2a « persistance & atomicité »** (`feat/e04us002-saisie-persistance`, **cette branche**) :
+      ORM `SerieORM`/`VoleeORM` + **migration** `0026` (DETTE-001), adapter `SerieRepositorySQL`
+      réalisant l'**atomicité acte↔trace** (session partagée, ADR-0035 ; `consigner_dans` sur
+      l'adapter audit **concret** — cf. rectification règle 1 ci-dessous), **câblage** de
+      `ServiceSaisie`. Le moteur PR1 **persiste** désormais ; aucun endpoint (le service reste
+      appelable en interne, testé sur vraie base).
+    - **PR2b « exposition & contexte poste »** (à venir) : **départ courant du poste** (extension
+      E04US001), **source des archers** = affectations `(cible, départ)`, **garde « SA cible / SON
+      départ » au service**, **idempotence par identifiant de saisie**, **endpoints API** + DTOs,
+      **retrait de la démo `saisir_score`**.
+
+    La **grille tactile** (cibles ≥ 48 px, pavé, sélecteur de marqueur, panneau de routage) part en
+    **dernière tranche** front. Pas de scénario `docs/fonctionnel/` avant elle (aucune UI à décrire) —
+    comportement garanti par les tests service (depuis le CA) puis repository et API.
+  - **Rectification règle 1 sur la couture d'audit (PR2a).** ADR-0035 §1 posait que « le port
+    `AuditRepository` gagne `consigner_dans(session, …)` ». Impossible : le port vit dans le domaine,
+    un paramètre `Session` (SQLAlchemy) y violerait la règle 1 (garde-fou AST). `consigner_dans` est
+    donc sur l'**adapter concret** `AuditRepositorySQL` (infra→infra) ; le port domaine reste
+    `consigner`/`par_tournoi`. ADR-0035 §1 amendé au même commit. Correction de **forme**, pas de fond.
+  - **Le `created_at` d'une volée (le « quand », ex-017) reste PR2b.** PR2a persiste l'état **saisi**
+    de l'agrégat (numéro, valeurs, marqueurs, verrou) ; l'horodatage de ligne — métadonnée du chemin
+    de **lecture/consultation** (« volée 7 saisie par DURAND, 10h42 ») — arrive avec la surface qui le
+    montre. Le persister à vide en PR2a serait spéculatif (et l'upsert par purge+réinsertion en
+    réinitialiserait la valeur à chaque sauvegarde : la question d'identité des volées se traite en PR2b).
   - **Le poste sélectionne son départ courant — [ADR-0034](../docs/adr/0034-poste-selectionne-son-depart-courant.md).**
     Le CA « archers déduits du jeton de poste » était **insatisfiable en l'état** : le `Poste` ne
     connaît que `(tournoi_id, cible_index)`, mais les `Affectation` sont **par départ** et une cible

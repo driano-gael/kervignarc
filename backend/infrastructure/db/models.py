@@ -328,6 +328,68 @@ class PosteORM(Base):
     __table_args__ = (UniqueConstraint("tournoi_id", "cible_index", name="uq_poste_tournoi_cible"),)
 
 
+class SerieORM(Base):
+    """Table `serie` — racine de persistance de l'agrégat `Serie` (saisie de qualif, E04US002).
+
+    **Une série par archer** (`UNIQUE(tournoi_id, archer_id)`, cf. port `SerieRepository`) : la
+    grille de saisie d'un archer sur la phase de qualification. La série ne porte pas ses volées en
+    colonne — elles vivent dans la table enfant `volee` (une ligne par volée), reliée par
+    `serie_id`. Le **cumul** n'est pas stocké : il se recalcule des volées validées (`Serie.cumul`),
+    seul l'état saisi est persisté.
+
+    Deux FK **sans `ON DELETE`** = DETTE-001 : la série est de la donnée **saisie** (les scores),
+    dans la descendance du tournoi via `archer` **et** `tournoi` — sa purge relève de la politique
+    de suppression du tournoi, non tranchée. La cascade `archer` → `serie` est réalisée
+    **applicativement** par `ArcherRepositorySQL.supprimer` (cascade maîtrisée, cf. `score`).
+    """
+
+    __tablename__ = "serie"
+    # UNIQUE(tournoi_id, archer_id) : une seule série de qualification par archer. Nommée comme dans
+    # la migration `0026` — présente ici, dans le `Base.metadata` cible de l'autogénération, sinon
+    # un futur `--autogenerate` émettrait un `drop_constraint` fantôme et retirerait le garde-fou.
+    __table_args__ = (UniqueConstraint("tournoi_id", "archer_id", name="uq_serie_tournoi_archer"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
+    # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant indirect du tournoi via
+    # `archer`. La cascade est **applicative et maîtrisée** (`ArcherRepositorySQL.supprimer`), à
+    # l'image de `score.archer_id`/`inscription.archer_id` ; ne pas contourner ici.
+    archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
+
+
+class VoleeORM(Base):
+    """Table `volee` — une volée d'une série (E04US002), table **enfant** de `serie`.
+
+    Une ligne = une volée saisie : son `numero` (rang dans le barème), ses `valeurs` (les zones de
+    score, stockées en **JSON** comme `BlasonORM.zones` — même procédé : petite liste toujours lue
+    en bloc, jamais requêtée), et les marqueurs déclaratifs `saisie_par` / `validee_par`
+    (`NULL` = non renseigné ; `validee_par` non `NULL` **est** le verrou, cf. `domain.serie.Volee`).
+
+    **`ON DELETE CASCADE`** sur `serie_id`, à rebours de la convention DETTE-001 : une volée est un
+    **composant strict** de l'agrégat `Serie` (value object interne), son cycle de vie est
+    entièrement lié à sa série — pas de la donnée qui remonte l'arbre du tournoi de façon autonome.
+    Sa disparition suit celle de la série (cf. `PlacementORM`, même exception assumée) ; les FK sont
+    **enforced** (`PRAGMA foreign_keys=ON`, `engine.py`). En fonctionnement normal, le repository
+    réécrit les volées d'une série par purge + réinsertion (patron `PlacementRepositorySQL`).
+    """
+
+    __tablename__ = "volee"
+    # UNIQUE(serie_id, numero) : un seul rang N par série. Le domaine borne déjà `1..N` (barème) ;
+    # cette contrainte est le garde-fou d'intégrité côté base. Nommée comme dans la migration 0026.
+    __table_args__ = (UniqueConstraint("serie_id", "numero", name="uq_volee_serie_numero"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    serie_id: Mapped[int] = mapped_column(
+        ForeignKey("serie.id", ondelete="CASCADE"), nullable=False
+    )
+    numero: Mapped[int] = mapped_column(nullable=False)
+    valeurs: Mapped[str] = mapped_column(nullable=False)
+    saisie_par: Mapped[str | None] = mapped_column(nullable=True)
+    validee_par: Mapped[str | None] = mapped_column(nullable=True)
+
+
 class EntreeAuditORM(Base):
     """Table `entree_audit` — persistance de l'agrégat `EntreeAudit` (journal d'audit, E10US005).
 
