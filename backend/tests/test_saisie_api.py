@@ -74,13 +74,17 @@ def app_saisie(tmp_path: Path) -> Iterator[FastAPI]:
 
 @dataclass
 class Scenario:
-    """Poignées d'un tournoi jouable : le poste (jeton, cible), son départ, l'archer placé."""
+    """Poignées d'un tournoi jouable : le poste (jeton, cible), son départ, l'archer placé.
+
+    `scoreur_code` permet de connecter un scoreur du tournoi pour valider/corriger.
+    """
 
     tournoi_id: int
     depart_id: int
     archer_id: int
     cible_index: int
     jeton: str
+    scoreur_code: str
 
 
 def _placer_archer(
@@ -140,12 +144,15 @@ def _semer(
     postes = client.post(f"/api/v1/tournois/{tournoi.id}/postes").json()
     code_cible_1 = next(p["code"] for p in postes if p["cible_index"] == 1)
     jeton = client.post("/api/v1/postes/session", json={"code": code_cible_1}).json()["jeton"]
+    # Un scoreur du tournoi (admin), pour valider/corriger.
+    scoreur = client.post(f"/api/v1/tournois/{tournoi.id}/scoreurs", json={"nom": "ROUX"}).json()
     return Scenario(
         tournoi_id=tournoi.id,
         depart_id=depart.id,
         archer_id=archer_id,
         cible_index=1,
         jeton=jeton,
+        scoreur_code=scoreur["code"],
     )
 
 
@@ -411,3 +418,125 @@ def test_lire_serie_apres_saisie_porte_le_quand(
         (volee,) = reponse.json()["volees"]
         assert volee["saisie_par"] == "DURAND"
         assert volee["saisie_le"] is not None
+
+
+# --- Validation & correction (scoreur) ---
+
+
+def _connecter_scoreur(client: TestClient, code: str) -> dict[str, str]:
+    """Ouvre une session scoreur par code et renvoie l'en-tête `X-Jeton-Scoreur`."""
+    jeton = client.post("/api/v1/scoreurs/session", json={"code": code}).json()["jeton"]
+    return {"X-Jeton-Scoreur": jeton}
+
+
+def _saisir_serie_complete(client: TestClient, s: Scenario) -> None:
+    """Saisit les 2 volées du barème (chemin admin, seeding) : préalable à une validation."""
+    for numero, valeurs in ((1, ["10", "9", "8"]), (2, ["9", "9", "9"])):
+        reponse = client.post(
+            "/api/v1/saisie/volees",
+            json={
+                "tournoi_id": s.tournoi_id,
+                "archer_id": s.archer_id,
+                "numero": numero,
+                "valeurs": valeurs,
+                "saisie_par": "DURAND",
+            },
+        )
+        assert reponse.status_code == 200, reponse.text
+
+
+def test_valider_verrouille_la_serie_au_nom_du_scoreur(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le scoreur valide : les volées se verrouillent à son nom, le cumul est arrêté (ex-007/8)."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+
+        reponse = client.post(
+            "/api/v1/saisie/validations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id},
+            headers=entete,
+        )
+
+        assert reponse.status_code == 200, reponse.text
+        corps = reponse.json()
+        assert all(v["verrouillee"] for v in corps["volees"])
+        assert all(v["validee_par"] == "ROUX" for v in corps["volees"])
+        assert corps["cumul"] == 54  # (10+9+8) + (9+9+9)
+
+
+def test_valider_par_un_scoreur_d_un_autre_tournoi_rend_403(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le scoreur est itinérant **dans son tournoi** : valider ailleurs → 403 (hors tournoi)."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        # Un scoreur d'un AUTRE tournoi (créé en admin).
+        autre = TournoiRepositorySQL(app_saisie.state.database.session_factory).ajouter(
+            Tournoi.creer("Extérieur", _DATE)
+        )
+        assert autre.id is not None
+        code_autre = client.post(
+            f"/api/v1/tournois/{autre.id}/scoreurs", json={"nom": "PICARD"}
+        ).json()["code"]
+        entete = _connecter_scoreur(client, code_autre)
+
+        reponse = client.post(
+            "/api/v1/saisie/validations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id},
+            headers=entete,
+        )
+
+        assert reponse.status_code == 403, reponse.text
+        assert reponse.json()["code"] == "scoreur_hors_tournoi"
+
+
+def test_valider_sans_session_scoreur_rend_401(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La validation est réservée au scoreur : sans jeton scoreur → 401 (même avec l'admin)."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+
+        reponse = client.post(
+            "/api/v1/saisie/validations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id},
+        )
+
+        assert reponse.status_code == 401, reponse.text
+
+
+def test_corriger_une_volee_verrouillee_recalcule_le_cumul(
+    app_saisie: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Après validation, le scoreur corrige une volée verrouillée : valeurs et cumul suivent."""
+    with TestClient(app_saisie) as client:
+        s = _semer(app_saisie, client, connecter_admin)
+        _saisir_serie_complete(client, s)
+        entete = _connecter_scoreur(client, s.scoreur_code)
+        client.post(
+            "/api/v1/saisie/validations",
+            json={"tournoi_id": s.tournoi_id, "archer_id": s.archer_id},
+            headers=entete,
+        )
+
+        reponse = client.post(
+            "/api/v1/saisie/corrections",
+            json={
+                "tournoi_id": s.tournoi_id,
+                "archer_id": s.archer_id,
+                "numero": 1,
+                "valeurs": ["10", "10", "10"],
+            },
+            headers=entete,
+        )
+
+        assert reponse.status_code == 200, reponse.text
+        corps = reponse.json()
+        volee_1 = next(v for v in corps["volees"] if v["numero"] == 1)
+        assert volee_1["valeurs"] == ["10", "10", "10"]
+        assert corps["cumul"] == 57  # (10+10+10) + (9+9+9)

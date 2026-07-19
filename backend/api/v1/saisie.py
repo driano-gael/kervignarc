@@ -27,13 +27,19 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from api.dependances import autoriser_saisie, exiger_poste, extraire_jeton_poste
-from application.erreurs import DepartCourantNonDefini, SaisieHorsCible
+from api.dependances import (
+    autoriser_saisie,
+    exiger_poste,
+    exiger_scoreur,
+    extraire_jeton_poste,
+)
+from application.erreurs import DepartCourantNonDefini, SaisieHorsCible, ScoreurHorsTournoi
 from application.postes import ServicePostes
 from application.saisie import ArcherPositionne, ContexteSaisie, EtatSerie, ServiceSaisie
 from domain.blason import ZoneScore
 from domain.depart import Depart
 from domain.poste import Poste
+from domain.scoreur import Scoreur
 from infrastructure.db import WriteQueue
 from infrastructure.idempotence import RegistreIdempotence
 
@@ -91,6 +97,26 @@ class SaisirVoleeRequete(BaseModel):
     numero: int = Field(ge=1)
     valeurs: list[ZoneScore] = Field(min_length=1)
     saisie_par: str | None = None
+    identifiant_saisie: str | None = None
+
+
+class ValiderRequete(BaseModel):
+    """Corps de validation d'une série (acte du scoreur). `identifiant_saisie` rend l'acte
+    **idempotent** : un rejeu ne consigne pas une seconde trace d'audit (ADR-0036)."""
+
+    tournoi_id: int
+    archer_id: int
+    identifiant_saisie: str | None = None
+
+
+class CorrigerRequete(BaseModel):
+    """Corps de correction d'une volée verrouillée (rôle habilité = le scoreur). Idempotent par
+    `identifiant_saisie`. `valeurs` validé contre `ZoneScore` (hors énum → 400)."""
+
+    tournoi_id: int
+    archer_id: int
+    numero: int = Field(ge=1)
+    valeurs: list[ZoneScore] = Field(min_length=1)
     identifiant_saisie: str | None = None
 
 
@@ -245,4 +271,70 @@ async def lire_serie(
     etat = await run_in_threadpool(service_saisie.etat_serie, tournoi_id, archer_id)
     if etat is None:
         return SerieReponse.vide(tournoi_id, archer_id)
+    return SerieReponse.de_etat(etat)
+
+
+def _exiger_meme_tournoi(scoreur: Scoreur, tournoi_id: int) -> None:
+    """Refuse (`403 scoreur_hors_tournoi`) un scoreur agissant hors de **son** tournoi."""
+    if scoreur.tournoi_id != tournoi_id:
+        raise ScoreurHorsTournoi("Ce scoreur n'officie pas dans ce tournoi.")
+
+
+@router.post("/validations", response_model=SerieReponse)
+async def valider_serie(
+    requete: ValiderRequete,
+    request: Request,
+    scoreur: Annotated[Scoreur, Depends(exiger_scoreur)],
+) -> SerieReponse:
+    """Valide la série d'un archer, **au nom du scoreur** (E04US002 : validation = scoreur seul).
+
+    Le scoreur, itinérant, valide **son** tournoi seulement (`403 scoreur_hors_tournoi` sinon) ; sa
+    validation tient lieu de seconde marque (`D-03`) et **trace** qui/quand (E10US005). Verrou selon
+    le grain de la phase. Écriture via la **file**, **dédoublonnée** par identifiant (ADR-0036) : un
+    rejeu ne consigne pas une seconde trace. Renvoie l'état de la série.
+    """
+    service_saisie: ServiceSaisie = request.app.state.service_saisie
+    write_queue: WriteQueue = request.app.state.write_queue
+    registre: RegistreIdempotence = request.app.state.registre_idempotence
+    _exiger_meme_tournoi(scoreur, requete.tournoi_id)
+
+    def acte() -> EtatSerie | None:
+        service_saisie.valider(requete.tournoi_id, requete.archer_id, scoreur.nom)
+        return service_saisie.etat_serie(requete.tournoi_id, requete.archer_id)
+
+    etat = await asyncio.wrap_future(
+        write_queue.submit(lambda: registre.executer(requete.identifiant_saisie, acte))
+    )
+    assert etat is not None, "Une série vient d'être validée : son état existe."
+    return SerieReponse.de_etat(etat)
+
+
+@router.post("/corrections", response_model=SerieReponse)
+async def corriger_volee(
+    requete: CorrigerRequete,
+    request: Request,
+    scoreur: Annotated[Scoreur, Depends(exiger_scoreur)],
+) -> SerieReponse:
+    """Corrige une volée **verrouillée**, au nom du scoreur (le « rôle habilité » du CA ex-012).
+
+    Seul chemin d'écriture sur une série verrouillée ; **trace** l'avant/après (E10US005) et
+    recalcule le cumul. Scoreur borné à **son** tournoi (`403` sinon). Via la **file**,
+    **dédoublonnée** par identifiant (ADR-0036). Renvoie l'état de la série.
+    """
+    service_saisie: ServiceSaisie = request.app.state.service_saisie
+    write_queue: WriteQueue = request.app.state.write_queue
+    registre: RegistreIdempotence = request.app.state.registre_idempotence
+    _exiger_meme_tournoi(scoreur, requete.tournoi_id)
+    valeurs = tuple(requete.valeurs)
+
+    def acte() -> EtatSerie | None:
+        service_saisie.corriger_volee(
+            requete.tournoi_id, requete.archer_id, requete.numero, valeurs, scoreur.nom
+        )
+        return service_saisie.etat_serie(requete.tournoi_id, requete.archer_id)
+
+    etat = await asyncio.wrap_future(
+        write_queue.submit(lambda: registre.executer(requete.identifiant_saisie, acte))
+    )
+    assert etat is not None, "Une série vient d'être corrigée : son état existe."
     return SerieReponse.de_etat(etat)

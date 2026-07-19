@@ -358,6 +358,19 @@ class RattachementTournoiTermine(ApplicationError):
     code = "rattachement_tournoi_termine"
 
 
+class ScoreurHorsTournoi(ApplicationError):
+    """Un scoreur agit (valide/corrige) sur une série d'un **autre tournoi** que le sien. → 403.
+
+    Le scoreur est **itinérant dans son tournoi** (`D-12`) : il valide n'importe quelle cible, mais
+    de **son** tournoi seulement. Sa session est valide (identité établie), mais elle n'autorise pas
+    à agir dans un tournoi voisin — la faille se rouvrirait en concurrence de tournois (intérieur +
+    extérieur). **Refus, pas défaut d'authentification** : 403, comme `SaisieHorsCible` (le poste
+    hors cible). L'admin, lui, n'a pas cette borne (E10US001).
+    """
+
+    code = "scoreur_hors_tournoi"
+
+
 class DepartCourantNonDefini(ApplicationError):
     """Un poste tente de saisir (ou lister ses archers) sans avoir fixé son départ courant. → 409.
 

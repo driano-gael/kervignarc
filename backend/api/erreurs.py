@@ -39,6 +39,7 @@ from application.erreurs import (
     NonAuthentifie,
     PhaseQualificationAbsente,
     SaisieHorsCible,
+    ScoreurHorsTournoi,
     ScoreurIntrouvable,
     TournoiIntrouvable,
 )
@@ -66,9 +67,10 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         exc, IdentifiantsInvalides | NonAuthentifie | CodeScoreurInconnu | CodePosteInconnu
     ):
         status = 401
-    elif isinstance(exc, SaisieHorsCible):
-        # 403 : l'identité est établie (jeton de poste valide) mais elle n'autorise pas **cette**
-        # cible (E10US007). À distinguer du 401 (aucune session) et du 409 (conflit d'état).
+    elif isinstance(exc, SaisieHorsCible | ScoreurHorsTournoi):
+        # 403 : l'identité est établie (jeton de poste/scoreur valide) mais elle n'autorise pas
+        # **cette** ressource — la cible (poste, E10US007) ou le tournoi (scoreur, E04US002). À
+        # distinguer du 401 (aucune session) et du 409 (conflit d'état).
         status = 403
     elif isinstance(
         exc,
