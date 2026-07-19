@@ -92,12 +92,21 @@ export function useSaisirVolee(tournoiId: number, archerId: number) {
     // lieu de rester bloqué. Un refus **serveur** (`ErreurApi` : hors-cible, blason introuvable…) est
     // au contraire une vraie erreur, propagée : on ne met pas en file ce que le serveur a refusé.
     mutationFn: async (corps) => {
+      const enFile = () => {
+        mettreEnFile(corps)
+        return serieOptimiste(queryClient.getQueryData<Serie>(cleSerie(tournoiId, archerId)), corps)
+      }
+      // Court-circuit : si le lien WebSocket est **déjà** tombé, on se sait hors-ligne — on met en
+      // file **sans tenter** le POST, qui pendrait sinon jusqu'à son délai d'expiration (pas de
+      // timeout sur `fetch`) et bloquerait le bouton « Enregistrement… » de longues secondes.
+      if (useConnexionStore.getState().statut === 'deconnecte') return enFile()
       try {
         return await saisirVolee(corps)
       } catch (erreur) {
+        // Refus **serveur** (le serveur a répondu) → vraie erreur. Panne réseau (le `fetch` rejette,
+        // lien encore cru « connecté » sur un hoquet bref) → mise en file.
         if (erreur instanceof ErreurApi) throw erreur
-        mettreEnFile(corps)
-        return serieOptimiste(queryClient.getQueryData<Serie>(cleSerie(tournoiId, archerId)), corps)
+        return enFile()
       }
     },
     // On pose la série (réelle ou optimiste) dans le cache. On **n'invalide que si la saisie a
