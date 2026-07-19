@@ -19,6 +19,7 @@ import {
   useFixerDepart,
   useGrain,
   useGrille,
+  useRejeuFileHorsLigne,
   useSaisirVolee,
   useSerie,
 } from './hooks'
@@ -33,6 +34,10 @@ import {
 } from './volees'
 
 export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleIndex: number }) {
+  // Rejeu de la file hors-ligne à la reconnexion (E04US009) : monté ici, sur l'écran du poste, seul
+  // endroit où l'on saisit — inutile de le faire tourner sur les écrans admin/public.
+  useRejeuFileHorsLigne()
+
   const grille = useGrille()
   const bareme = useBareme(tournoiId)
   const grain = useGrain(tournoiId)
@@ -344,6 +349,7 @@ function PaveArcher({
           Saisie par <strong>{existante.saisie_par ?? '—'}</strong>
           {existante.saisie_le !== null ? ` à ${heureSaisie(existante.saisie_le)}` : ''}
           {existante.validee_par !== null ? ` · validée par ${existante.validee_par}` : ''}
+          {existante.en_attente === true ? ' · en attente d’envoi' : ''}
         </p>
       )}
 

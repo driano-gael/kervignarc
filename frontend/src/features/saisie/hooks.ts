@@ -6,6 +6,10 @@
 // ce qu'elle change (changer de départ change les archers ; saisir change la série de l'archer).
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { ErreurApi } from '../../shared/api/client'
+import { useConnexionStore } from '../../shared/stores/connexionStore'
+import { useFileHorsLigneStore } from '../../shared/stores/fileHorsLigneStore'
 import {
   fixerDepartCourant,
   getBareme,
@@ -17,6 +21,8 @@ import {
   type SaisirVolee,
   type Serie,
 } from './api'
+import { rejouer } from './rejeu'
+import { serieOptimiste } from './volees'
 
 const cleGrille = () => ['saisie-grille'] as const
 const cleSerie = (tournoiId: number, archerId: number) =>
@@ -78,13 +84,71 @@ export function useFixerDepart() {
 
 export function useSaisirVolee(tournoiId: number, archerId: number) {
   const queryClient = useQueryClient()
+  const mettreEnFile = useFileHorsLigneStore((state) => state.mettreEnFile)
   return useMutation<Serie, Error, SaisirVolee>({
-    mutationFn: (corps) => saisirVolee(corps),
-    // L'accusé de réception (la série renvoyée) rafraîchit directement le cache de l'archer, puis on
-    // invalide pour réconcilier le « quand » relu hors de l'unité idempotente côté serveur.
-    onSuccess: (serie) => {
+    // Chemin nominal : POST direct, l'accusé (la série renvoyée) rafraîchit le cache. En cas de
+    // **panne réseau** (le `fetch` rejette, pas une `ErreurApi` : le serveur n'a pas répondu), on met
+    // la saisie **en file** (E04US009) et on renvoie une série **optimiste** — le marqueur avance au
+    // lieu de rester bloqué. Un refus **serveur** (`ErreurApi` : hors-cible, blason introuvable…) est
+    // au contraire une vraie erreur, propagée : on ne met pas en file ce que le serveur a refusé.
+    mutationFn: async (corps) => {
+      try {
+        return await saisirVolee(corps)
+      } catch (erreur) {
+        if (erreur instanceof ErreurApi) throw erreur
+        mettreEnFile(corps)
+        return serieOptimiste(queryClient.getQueryData<Serie>(cleSerie(tournoiId, archerId)), corps)
+      }
+    },
+    // On pose la série (réelle ou optimiste) dans le cache. On **n'invalide que si la saisie a
+    // atteint le serveur** : hors-ligne, un `invalidateQueries` déclencherait une relecture qui
+    // échoue et ferait retomber la série en erreur (grille bloquée) — la vérité serveur reviendra à
+    // la reconnexion, quand le rejeu invalidera lui-même la série.
+    onSuccess: (serie, corps) => {
       queryClient.setQueryData(cleSerie(tournoiId, archerId), serie)
-      void queryClient.invalidateQueries({ queryKey: cleSerie(tournoiId, archerId) })
+      const enFile = useFileHorsLigneStore
+        .getState()
+        .enAttente.some((c) => c.identifiant_saisie === corps.identifiant_saisie)
+      if (!enFile) void queryClient.invalidateQueries({ queryKey: cleSerie(tournoiId, archerId) })
     },
   })
+}
+
+// Rejeu de la file hors-ligne à la reconnexion (E04US009, ADR-0037). Monté sur l'écran de saisie du
+// poste. Se déclenche quand le lien WebSocket **revient** (`connecte`) : sur un LAN, la restauration
+// du réseau coïncide avec la réouverture du WebSocket (reconnexion auto ~1 s). Il renvoie la file
+// dans l'ordre, retire les saisies traitées et **relit** les séries concernées (vérité serveur).
+export function useRejeuFileHorsLigne(): void {
+  const queryClient = useQueryClient()
+  const statut = useConnexionStore((state) => state.statut)
+
+  useEffect(() => {
+    if (statut !== 'connecte') return
+    const store = useFileHorsLigneStore.getState()
+    if (store.enAttente.length === 0 || store.synchronisation) return
+
+    store.demarrerSync()
+    void (async () => {
+      try {
+        const { traitees, refusees } = await rejouer(store.enAttente, (corps) => saisirVolee(corps))
+        const { confirmer } = useFileHorsLigneStore.getState()
+        for (const corps of traitees) {
+          confirmer(corps.identifiant_saisie)
+          void queryClient.invalidateQueries({
+            queryKey: cleSerie(corps.tournoi_id, corps.archer_id),
+          })
+        }
+        for (const corps of refusees) {
+          // Perte **visible** (la relecture ci-dessus retire la volée optimiste de la grille) : on la
+          // journalise côté client. Cas assumé, cf. ADR-0037.
+          console.error('Saisie hors-ligne refusée au rejeu, retirée de la file', corps)
+        }
+      } finally {
+        useFileHorsLigneStore.getState().terminerSync()
+      }
+    })()
+    // Dépend du seul `statut` : le déclencheur est la **reconnexion**. Ne pas ajouter la longueur de
+    // file en dépendance (un rejeu interrompu par une panne rouvrirait aussitôt une boucle chaude tant
+    // que le lien semble « connecté ») — la prochaine transition de lien relancera le rejeu.
+  }, [statut, queryClient])
 }

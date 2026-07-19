@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Grain, Volee } from './api'
+import type { Grain, SaisirVolee, Serie, Volee } from './api'
 import {
   heureSaisie,
   libelleGrain,
@@ -7,6 +7,7 @@ import {
   pointsZone,
   prochaineASaisir,
   quelSaisiePar,
+  serieOptimiste,
   totalVolee,
   voleeExistante,
 } from './volees'
@@ -134,6 +135,67 @@ describe('quelSaisiePar', () => {
       saisie_le: null,
     }
     expect(quelSaisiePar(existante, 'MARTIN')).toBeNull()
+  })
+})
+
+describe('serieOptimiste', () => {
+  const corps = (numero: number, valeurs: string[]): SaisirVolee => ({
+    tournoi_id: 1,
+    archer_id: 7,
+    numero,
+    valeurs,
+    saisie_par: 'DURAND',
+    identifiant_saisie: `id-${numero}`,
+  })
+
+  it('injecte la volée en attente dans une série vide (le marqueur peut avancer)', () => {
+    const serie = serieOptimiste(undefined, corps(1, ['10', '9', '9']))
+    expect(serie.tournoi_id).toBe(1)
+    expect(serie.archer_id).toBe(7)
+    expect(serie.cumul).toBe(0)
+    expect(serie.volees).toMatchObject([
+      {
+        numero: 1,
+        valeurs: ['10', '9', '9'],
+        saisie_par: 'DURAND',
+        verrouillee: false,
+        en_attente: true,
+      },
+    ])
+  })
+
+  it('la prochaine volée avance sur une série optimiste (comme sur une vraie saisie)', () => {
+    const serie = serieOptimiste(undefined, corps(1, ['9', '9', '9']))
+    expect(prochaineASaisir(serie.volees, 20)).toBe(2)
+  })
+
+  it('ajoute la volée sans toucher aux précédentes ni au cumul officiel', () => {
+    const base: Serie = {
+      tournoi_id: 1,
+      archer_id: 7,
+      cumul: 55,
+      volees: [
+        {
+          numero: 1,
+          valeurs: ['10', '9', '8'],
+          saisie_par: 'DURAND',
+          validee_par: 'ROUX',
+          verrouillee: true,
+          saisie_le: '2026-07-19T09:00:00Z',
+        },
+      ],
+    }
+    const serie = serieOptimiste(base, corps(2, ['9', '9', '9']))
+    expect(serie.cumul).toBe(55) // inchangé : le cumul ne compte que les volées validées
+    expect(serie.volees.map((v) => v.numero)).toEqual([1, 2])
+    // la volée validée n'est pas altérée
+    expect(serie.volees.find((v) => v.numero === 1)?.verrouillee).toBe(true)
+  })
+
+  it('remplace la volée du même numéro (ré-édition hors-ligne), sans doublon', () => {
+    const premiere = serieOptimiste(undefined, corps(1, ['5', '5', '5']))
+    const corrigee = serieOptimiste(premiere, corps(1, ['10', '10', '10']))
+    expect(corrigee.volees).toMatchObject([{ numero: 1, valeurs: ['10', '10', '10'] }])
   })
 })
 

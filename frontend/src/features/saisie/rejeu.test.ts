@@ -1,0 +1,66 @@
+// Tests de `rejouer` (E04US009, ADR-0037) — rejeu de la file hors-ligne. On stube l'envoi (comme
+// `client.test` stube `fetch`) : succès, panne réseau (le `fetch` rejette), refus serveur
+// (`ErreurApi`). Le zéro-doublon lui-même est garanti côté serveur (idempotence, ADR-0036) ; ici on
+// vérifie l'**ordre**, l'**arrêt** sur panne, et le **retrait** des refus définitifs.
+
+import { describe, expect, it, vi } from 'vitest'
+import { ErreurApi } from '../../shared/api/client'
+import type { VoleeEnFile } from '../../shared/stores/fileHorsLigneStore'
+import { rejouer } from './rejeu'
+
+function corps(numero: number): VoleeEnFile {
+  return {
+    tournoi_id: 1,
+    archer_id: 7,
+    numero,
+    valeurs: ['10', '9', '9'],
+    saisie_par: 'DURAND',
+    identifiant_saisie: `id-${numero}`,
+  }
+}
+
+describe('rejouer', () => {
+  it('renvoie toutes les saisies dans l’ordre, une seule fois chacune', async () => {
+    const envoyees: number[] = []
+    const envoyer = vi.fn((c: VoleeEnFile) => {
+      envoyees.push(c.numero)
+      return Promise.resolve()
+    })
+
+    const res = await rejouer([corps(1), corps(2), corps(3)], envoyer)
+
+    expect(envoyees).toEqual([1, 2, 3]) // ordre FIFO préservé
+    expect(envoyer).toHaveBeenCalledTimes(3) // pas de renvoi en double
+    expect(res.traitees.map((c) => c.numero)).toEqual([1, 2, 3])
+    expect(res.refusees).toEqual([])
+    expect(res.interrompu).toBe(false)
+  })
+
+  it('s’arrête à la première panne réseau et garde le reste en file', async () => {
+    const envoyer = vi.fn((c: VoleeEnFile) => {
+      if (c.numero === 2) return Promise.reject(new TypeError('Failed to fetch'))
+      return Promise.resolve()
+    })
+
+    const res = await rejouer([corps(1), corps(2), corps(3)], envoyer)
+
+    expect(res.traitees.map((c) => c.numero)).toEqual([1]) // seule la 1 est passée
+    expect(res.interrompu).toBe(true)
+    expect(envoyer).toHaveBeenCalledTimes(2) // on n’a même pas tenté la 3
+  })
+
+  it('retire une saisie refusée définitivement par le serveur (ErreurApi) et poursuit', async () => {
+    const envoyer = vi.fn((c: VoleeEnFile) => {
+      if (c.numero === 2) {
+        return Promise.reject(new ErreurApi(404, 'blason_introuvable', 'Blason introuvable'))
+      }
+      return Promise.resolve()
+    })
+
+    const res = await rejouer([corps(1), corps(2), corps(3)], envoyer)
+
+    expect(res.traitees.map((c) => c.numero)).toEqual([1, 2, 3]) // les 3 retirées de la file
+    expect(res.refusees.map((c) => c.numero)).toEqual([2]) // la 2 est un refus à journaliser
+    expect(res.interrompu).toBe(false)
+  })
+})

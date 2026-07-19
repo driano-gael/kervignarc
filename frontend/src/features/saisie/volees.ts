@@ -4,7 +4,7 @@
 // serveur reste l'**autorité** (barème, zones, cumul officiel) : ces fonctions ne servent qu'à
 // piloter l'affichage — total provisoire d'une volée en cours, quelle volée saisir, etc.
 
-import type { Grain, Volee } from './api'
+import type { Grain, SaisirVolee, Serie, Volee } from './api'
 
 // Points d'une valeur de zone. `M` (manqué) = 0 ; les autres sont numériques (« 10 » → 10). Pas de
 // « X » dans le vocabulaire FFTA retenu (cf. `domain/blason.ZoneScore`). Une valeur inattendue → 0
@@ -36,6 +36,34 @@ export function prochaineASaisir(volees: readonly Volee[], nbVolees: number): nu
 // La volée déjà saisie portant ce numéro (pour pré-remplir le pavé lors d'une réédition), ou `null`.
 export function voleeExistante(volees: readonly Volee[], numero: number): Volee | null {
   return volees.find((v) => v.numero === numero) ?? null
+}
+
+// Série mise à jour **optimiste** après une saisie mise en file hors-ligne (E04US009) : faute
+// d'accusé serveur, on injecte la volée localement (`en_attente`) pour que le marqueur **continue**
+// (la grille avance, `prochaineASaisir` passe à la suivante) au lieu de rester bloqué sur un écran
+// d'erreur. La volée remplace celle du même numéro si elle existait. Le **cumul officiel** ne bouge
+// pas : il ne compte que les volées **validées** (par le scoreur), et une volée en file ne l'est pas.
+// À la reconnexion, la relecture serveur (`invalidateQueries`) remplace cet état par la vérité.
+export function serieOptimiste(serie: Serie | undefined, corps: SaisirVolee): Serie {
+  const base: Serie = serie ?? {
+    tournoi_id: corps.tournoi_id,
+    archer_id: corps.archer_id,
+    cumul: 0,
+    volees: [],
+  }
+  const voleeEnAttente: Volee = {
+    numero: corps.numero,
+    valeurs: corps.valeurs,
+    saisie_par: corps.saisie_par,
+    validee_par: null,
+    verrouillee: false,
+    saisie_le: null,
+    en_attente: true,
+  }
+  const volees = [...base.volees.filter((v) => v.numero !== corps.numero), voleeEnAttente].sort(
+    (a, b) => a.numero - b.numero,
+  )
+  return { ...base, volees }
 }
 
 // Identifiant de saisie unique (idempotence ADR-0036), robuste **hors contexte sécurisé**.

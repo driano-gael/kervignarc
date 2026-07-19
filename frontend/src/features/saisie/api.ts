@@ -30,6 +30,10 @@ export interface Volee {
   validee_par: string | null
   verrouillee: boolean
   saisie_le: string | null
+  // Purement **local** (E04US009) : la volée est en file hors-ligne, pas encore renvoyée au serveur.
+  // Le serveur ne renvoie jamais ce champ ; une volée relue le laisse à `undefined` (donc non en
+  // attente). Il alimente l'affichage optimiste (le marqueur avance) et l'annotation « en attente ».
+  en_attente?: boolean
 }
 
 // L'état d'une série : le cumul (des volées **validées** seulement) et ses volées.
