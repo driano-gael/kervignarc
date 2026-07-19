@@ -288,6 +288,7 @@ def create_app(
         poste_repository,
         tournoi_repository,
         gabarit_repository,
+        depart_repository,
         poste_session_store,
         generer_code_poste,
     )

@@ -26,10 +26,18 @@ from typing import Protocol
 
 from application.erreurs import (
     CodePosteInconnu,
+    DepartIntrouvable,
+    NonAuthentifie,
     RattachementTournoiTermine,
     TournoiIntrouvable,
 )
-from domain.ports import GabaritSalleRepository, PosteRepository, TournoiRepository
+from domain.depart import Depart, DepartId
+from domain.ports import (
+    DepartRepository,
+    GabaritSalleRepository,
+    PosteRepository,
+    TournoiRepository,
+)
 from domain.poste import Poste, PosteId, normaliser_code
 from domain.tournoi import StatutTournoi, TournoiId
 
@@ -56,6 +64,12 @@ class StoreSessionsPoste(Protocol):
     def poste_de(self, jeton: str | None) -> PosteId | None:
         """Identifiant du poste derrière un jeton valide, ou `None`."""
 
+    def fixer_depart(self, jeton: str, depart_id: DepartId) -> None:
+        """Fixe (ou change) le départ courant d'une session (ADR-0034) ; no-op si jeton inconnu."""
+
+    def depart_de(self, jeton: str | None) -> DepartId | None:
+        """Départ courant derrière un jeton valide, ou `None` (jeton inconnu ou départ non fixé)."""
+
     def fermer(self, jeton: str) -> None:
         """Ferme la session (déconnexion) ; sans effet si le jeton est inconnu."""
 
@@ -80,12 +94,14 @@ class ServicePostes:
         poste_repository: PosteRepository,
         tournoi_repository: TournoiRepository,
         gabarit_repository: GabaritSalleRepository,
+        depart_repository: DepartRepository,
         sessions: StoreSessionsPoste,
         generer_code: Callable[[], str],
     ) -> None:
         self._postes = poste_repository
         self._tournois = tournoi_repository
         self._gabarits = gabarit_repository
+        self._departs = depart_repository
         self._sessions = sessions
         self._generer_code = generer_code
 
@@ -157,6 +173,40 @@ class ServicePostes:
     def session_valide(self, jeton: str | None) -> bool:
         """Vrai si le jeton correspond à une session de poste encore valide (`exiger_poste`)."""
         return self.resoudre_session(jeton) is not None
+
+    def fixer_depart_courant(self, jeton: str | None, depart_id: DepartId) -> Depart:
+        """Met le poste « en mode départ X » : fixe son départ courant (geste manuel, ADR-0034).
+
+        Primitive **un poste, un départ** qu'E12US002 (« lancer un tour ») orchestrera pour *tous*
+        les postes d'un coup — même point d'entrée, réutilisé. Auto-gardée pour rester correcte hors
+        HTTP (l'orchestrateur l'appellera sans passer par `exiger_poste`) :
+
+        - `NonAuthentifie` (→ 401) si le jeton ne résout **aucune** session de poste valide ;
+        - `DepartIntrouvable` (→ 404) si le départ n'existe pas **ou** relève d'un autre tournoi que
+          celui du poste (ADR-0034 §4 : le lien est *posé*, jamais deviné ; même parti que partout,
+          un départ d'un tournoi voisin n'existe pas plus qu'un identifiant inventé).
+
+        La légalité **fine** de la saisie (l'archer est-il affecté à `(cible, départ)` ?) n'est
+        pas vérifiée ici : elle reste au service de saisie (ADR-0033 §3). Renvoie le départ fixé
+        pour que le poste confirme *quel* créneau il sert.
+        """
+        poste = self.resoudre_session(jeton)
+        if poste is None:
+            raise NonAuthentifie("Session de poste requise.")
+        depart = self._departs.par_id(depart_id)
+        if depart is None or depart.tournoi_id != poste.tournoi_id:
+            raise DepartIntrouvable(f"Aucun départ d'identifiant {depart_id} dans ce tournoi.")
+        assert jeton is not None  # resoudre_session n'aurait pas rendu de poste sinon
+        self._sessions.fixer_depart(jeton, depart_id)
+        return depart
+
+    def depart_courant(self, jeton: str | None) -> DepartId | None:
+        """Départ courant du poste derrière ce jeton, ou `None` s'il n'en a pas encore fixé.
+
+        `None` **interdit la saisie** (le poste ne sait pas qui afficher) — refus explicite porté
+        par le service de saisie, jamais un affichage vide ambigu (ADR-0034 §1).
+        """
+        return self._sessions.depart_de(jeton)
 
     def deconnexion(self, jeton: str) -> None:
         """Ferme la session associée au jeton."""

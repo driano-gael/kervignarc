@@ -21,10 +21,13 @@ import pytest
 
 from application.erreurs import (
     CodePosteInconnu,
+    DepartIntrouvable,
+    NonAuthentifie,
     RattachementTournoiTermine,
     TournoiIntrouvable,
 )
 from application.postes import ServicePostes
+from domain.depart import Depart, DepartId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.poste import Poste, PosteId, normaliser_code
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
@@ -63,23 +66,34 @@ class FauxPosteRepository:
 
 
 class FauxStoreSessionsPoste:
-    """Store de sessions de poste en mémoire conforme au port `StoreSessionsPoste`."""
+    """Store de sessions de poste en mémoire conforme au port `StoreSessionsPoste`.
+
+    Chaque session porte l'`id` du poste **et** son départ courant (ADR-0034), initialement absent.
+    """
 
     def __init__(self) -> None:
-        self._sessions: dict[str, PosteId] = {}
+        self._postes: dict[str, PosteId] = {}
+        self._departs: dict[str, DepartId] = {}
         self._sequence = 0
 
     def ouvrir(self, poste_id: PosteId) -> str:
         self._sequence += 1
         jeton = f"sess-{self._sequence}"
-        self._sessions[jeton] = poste_id
+        self._postes[jeton] = poste_id
         return jeton
 
     def poste_de(self, jeton: str | None) -> PosteId | None:
-        return None if jeton is None else self._sessions.get(jeton)
+        return None if jeton is None else self._postes.get(jeton)
+
+    def fixer_depart(self, jeton: str, depart_id: DepartId) -> None:
+        self._departs[jeton] = depart_id
+
+    def depart_de(self, jeton: str | None) -> DepartId | None:
+        return None if jeton is None else self._departs.get(jeton)
 
     def fermer(self, jeton: str) -> None:
-        self._sessions.pop(jeton, None)
+        self._postes.pop(jeton, None)
+        self._departs.pop(jeton, None)
 
 
 class FauxTournoiRepository:
@@ -146,6 +160,41 @@ class FauxGabaritRepository:
         return None
 
 
+class FauxDepartRepository:
+    """Repository de départs en mémoire conforme au port `DepartRepository`.
+
+    Le service Postes ne consomme que `par_id` (garde de cohérence du départ courant, ADR-0034 §4) ;
+    les autres méthodes du port sont fournies pour la conformité structurelle (Protocol).
+    """
+
+    def __init__(self) -> None:
+        self._departs: dict[int, Depart] = {}
+        self._sequence = 0
+
+    def ajouter(self, depart: Depart) -> Depart:
+        self._sequence += 1
+        persiste = dataclasses.replace(depart, id=self._sequence)
+        self._departs[self._sequence] = persiste
+        return persiste
+
+    def par_id(self, depart_id: DepartId) -> Depart | None:
+        return self._departs.get(depart_id)
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Depart]:
+        return sorted(
+            (d for d in self._departs.values() if d.tournoi_id == tournoi_id),
+            key=lambda depart: depart.numero,
+        )
+
+    def enregistrer(self, depart: Depart) -> Depart:
+        assert depart.id in self._departs, "Départ à mettre à jour absent."
+        self._departs[depart.id] = depart
+        return depart
+
+    def supprimer(self, depart_id: DepartId) -> None:
+        self._departs.pop(depart_id, None)
+
+
 def _generateur(*codes: str) -> Callable[[], str]:
     """Générateur déterministe : renvoie les `codes` dans l'ordre, puis le dernier indéfiniment."""
     file = list(codes)
@@ -166,14 +215,31 @@ class Montage:
         self.tournois = FauxTournoiRepository()
         self.postes = FauxPosteRepository()
         self.gabarits = FauxGabaritRepository()
+        self.departs = FauxDepartRepository()
         self.sessions = FauxStoreSessionsPoste()
         tournoi = self.tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
         assert tournoi.id is not None
         self.tournoi_id: TournoiId = tournoi.id
         self.gabarits.definir_pour(self.tournoi_id, nb_cibles)
         self.service = ServicePostes(
-            self.postes, self.tournois, self.gabarits, self.sessions, _generateur(*codes)
+            self.postes,
+            self.tournois,
+            self.gabarits,
+            self.departs,
+            self.sessions,
+            _generateur(*codes),
         )
+
+    def ajouter_depart(self, tournoi_id: TournoiId | None = None) -> DepartId:
+        """Ajoute un créneau au tournoi (le principal par défaut) et renvoie son `id`.
+
+        Sert à alimenter le départ courant d'un poste (ADR-0034) : `numero` = suivant du tournoi.
+        """
+        cible = self.tournoi_id if tournoi_id is None else tournoi_id
+        numero = len(self.departs.par_tournoi(cible)) + 1
+        depart = self.departs.ajouter(Depart.creer(cible, numero, tarif_centimes=1000))
+        assert depart.id is not None
+        return depart.id
 
     def statut(self, tournoi_id: TournoiId, statut: StatutTournoi) -> None:
         """Force le statut d'un tournoi (pour les tests de révocation/montage)."""
@@ -394,3 +460,105 @@ def test_deux_tournois_non_termines_coexistent() -> None:
     assert m.service.session_valide(exterieur_poste.jeton) is True
     assert interieur_poste.poste.tournoi_id == m.tournoi_id
     assert exterieur_poste.poste.tournoi_id == exterieur
+
+
+# --- Départ courant du poste (ADR-0034) ---
+
+
+def test_fixer_depart_courant_puis_le_lire() -> None:
+    """Geste explicite « mode départ X » : le poste fixe son départ courant, qui se relit."""
+    m = Montage("C1", "C2", nb_cibles=2)
+    m.service.assurer_codes(m.tournoi_id)
+    connexion = m.service.rattacher("C1")
+    depart_id = m.ajouter_depart()
+
+    depart = m.service.fixer_depart_courant(connexion.jeton, depart_id)
+
+    assert depart.id == depart_id
+    assert m.service.depart_courant(connexion.jeton) == depart_id
+
+
+def test_depart_courant_absent_apres_rattachement() -> None:
+    """CA/ADR-0034 §1 : rattaché à sa cible mais aucun départ fixé → départ courant `None`.
+
+    C'est ce qui interdira la saisie tant que le poste ne sait pas *qui* afficher (garde au service
+    de saisie) : ici on constate simplement que rien n'est fixé par défaut, aucun départ deviné.
+    """
+    m = Montage("C1", "C2", nb_cibles=2)
+    m.service.assurer_codes(m.tournoi_id)
+    connexion = m.service.rattacher("C1")
+
+    assert m.service.depart_courant(connexion.jeton) is None
+
+
+def test_fixer_un_depart_d_un_autre_tournoi_est_refuse() -> None:
+    """CA/ADR-0034 §4 : le départ courant doit appartenir au **tournoi du poste** (sinon 404)."""
+    m = Montage("A1", "A2", "B1", "B2", nb_cibles=2)
+    exterieur = m.autre_tournoi(nb_cibles=2)
+    m.service.assurer_codes(m.tournoi_id)
+    connexion = m.service.rattacher("A1")
+    depart_exterieur = m.ajouter_depart(exterieur)
+
+    with pytest.raises(DepartIntrouvable):
+        m.service.fixer_depart_courant(connexion.jeton, depart_exterieur)
+    assert m.service.depart_courant(connexion.jeton) is None
+
+
+def test_fixer_un_depart_inexistant_est_refuse() -> None:
+    m = Montage("C1", "C2", nb_cibles=2)
+    m.service.assurer_codes(m.tournoi_id)
+    connexion = m.service.rattacher("C1")
+
+    with pytest.raises(DepartIntrouvable):
+        m.service.fixer_depart_courant(connexion.jeton, 404)
+
+
+def test_fixer_depart_courant_sans_session_valide_est_refuse() -> None:
+    """Un jeton inconnu ne peut pas fixer de départ (auto-garde du service → `NonAuthentifie`)."""
+    m = Montage("C1", nb_cibles=2)
+    depart_id = m.ajouter_depart()
+
+    with pytest.raises(NonAuthentifie):
+        m.service.fixer_depart_courant("jeton-bidon", depart_id)
+
+
+def test_fixer_depart_courant_ecrase_le_precedent() -> None:
+    """Le poste change de départ en un geste : le nouveau remplace l'ancien."""
+    m = Montage("C1", "C2", nb_cibles=2)
+    m.service.assurer_codes(m.tournoi_id)
+    connexion = m.service.rattacher("C1")
+    premier = m.ajouter_depart()
+    second = m.ajouter_depart()
+
+    m.service.fixer_depart_courant(connexion.jeton, premier)
+    m.service.fixer_depart_courant(connexion.jeton, second)
+
+    assert m.service.depart_courant(connexion.jeton) == second
+
+
+def test_deux_postes_ont_des_departs_courants_independants() -> None:
+    """CA/ADR-0034 §3 : le départ courant est propre au poste — aucun « départ actif global »."""
+    m = Montage("C1", "C2", nb_cibles=2)
+    m.service.assurer_codes(m.tournoi_id)
+    poste1 = m.service.rattacher("C1")
+    poste2 = m.service.rattacher("C2")
+    premier = m.ajouter_depart()
+    second = m.ajouter_depart()
+
+    m.service.fixer_depart_courant(poste1.jeton, premier)
+    m.service.fixer_depart_courant(poste2.jeton, second)
+
+    assert m.service.depart_courant(poste1.jeton) == premier
+    assert m.service.depart_courant(poste2.jeton) == second
+
+
+def test_deconnexion_efface_le_depart_courant() -> None:
+    """La session partie, son départ courant l'est aussi (état de session volatil, ADR-0034)."""
+    m = Montage("C1", "C2", nb_cibles=2)
+    m.service.assurer_codes(m.tournoi_id)
+    connexion = m.service.rattacher("C1")
+    m.service.fixer_depart_courant(connexion.jeton, m.ajouter_depart())
+
+    m.service.deconnexion(connexion.jeton)
+
+    assert m.service.depart_courant(connexion.jeton) is None
