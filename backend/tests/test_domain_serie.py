@@ -42,8 +42,15 @@ def _v(*valeurs: str) -> tuple[ZoneScore, ...]:
     return tuple(ZoneScore(v) for v in valeurs)
 
 
-def _serie_pleine(nb_volees: int, valeurs: tuple[ZoneScore, ...]) -> Serie:
-    """Une série où les `nb_volees` volées portent toutes les mêmes `valeurs` (non validées)."""
+def _serie_pleine(
+    nb_volees: int, valeurs: tuple[ZoneScore, ...], *, nb_volees_bareme: int | None = None
+) -> Serie:
+    """Une série de `nb_volees` volées identiques (non validées).
+
+    `nb_volees_bareme` (défaut : `nb_volees`) permet une série **incomplète** — k volées sur N — en
+    gardant un **seul** barème cohérent entre saisie et validation (une phase n'a qu'un barème).
+    """
+    bareme = nb_volees_bareme if nb_volees_bareme is not None else nb_volees
     serie = Serie.vide(tournoi_id=1, archer_id=7)
     for numero in range(1, nb_volees + 1):
         serie = serie.saisir_volee(
@@ -51,7 +58,7 @@ def _serie_pleine(nb_volees: int, valeurs: tuple[ZoneScore, ...]) -> Serie:
             valeurs,
             zones_admises=ZONES_SIMPLE,
             nb_fleches_par_volee=len(valeurs),
-            nb_volees_bareme=nb_volees,
+            nb_volees_bareme=bareme,
         )
     return serie
 
@@ -176,7 +183,23 @@ def test_valider_fin_de_serie_verrouille_tout_et_porte_le_nom_du_scoreur() -> No
 
 def test_valider_fin_de_serie_avant_la_derniere_volee_est_refuse() -> None:
     """ex-007 : « fin de série » suppose la série complète — valider à 2/3 volées est refusé."""
-    serie = _serie_pleine(2, _v("10", "9", "8"))
+    serie = _serie_pleine(2, _v("10", "9", "8"), nb_volees_bareme=3)
+    with pytest.raises(SerieIncomplete):
+        serie.valider("MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=3)
+
+
+def test_valider_fin_de_serie_avec_un_trou_au_milieu_est_refuse() -> None:
+    """Complétude sur l'ensemble `{1..N}`, pas un décompte : une série **trouée** (volées 1 et 3,
+    barème 3) est refusée en fin de série — comme une série courte, alors que `len` vaudrait 2."""
+    serie = Serie.vide(tournoi_id=1, archer_id=7)
+    for numero in (1, 3):  # volée 2 absente : trou au milieu, pas en queue
+        serie = serie.saisir_volee(
+            numero,
+            _v("10", "9", "8"),
+            zones_admises=ZONES_SIMPLE,
+            nb_fleches_par_volee=3,
+            nb_volees_bareme=3,
+        )
     with pytest.raises(SerieIncomplete):
         serie.valider("MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=3)
 
@@ -191,7 +214,7 @@ def test_cumul_ne_compte_que_les_volees_validees() -> None:
 
 def test_valider_toutes_les_n_volees_verrouille_par_lots() -> None:
     """ex-007 : « toutes les N volées » verrouille le prochain lot de N volées complètes."""
-    serie = _serie_pleine(3, _v("10", "9", "8"))
+    serie = _serie_pleine(3, _v("10", "9", "8"), nb_volees_bareme=6)
     grain = GrainValidation.toutes_les_n_volees(2)
     serie = serie.valider("MARTIN", grain=grain, nb_volees_bareme=6)
     # Seules les 2 premieres volees sont verrouillees ; la 3e attend le prochain lot.
@@ -212,7 +235,7 @@ def test_valider_toutes_les_n_volees_verrouille_le_reliquat_en_fin_de_bareme() -
 
 def test_valider_sans_lot_complet_ni_reliquat_ne_valide_rien() -> None:
     """ex-007 : sans lot de N complet ni fin de barème, il n'y a rien à valider."""
-    serie = _serie_pleine(1, _v("10", "9", "8"))  # 1 volée, grain toutes les 2, barème 6
+    serie = _serie_pleine(1, _v("10", "9", "8"), nb_volees_bareme=6)  # 1 volée sur 6, grain « 2 »
     with pytest.raises(RienAValider):
         serie.valider("MARTIN", grain=GrainValidation.toutes_les_n_volees(2), nb_volees_bareme=6)
 
