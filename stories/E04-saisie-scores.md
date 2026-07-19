@@ -37,6 +37,21 @@
 - **CA — cumul (ex-008)** : total mis à jour à chaque validation, conforme au barème.
 - **CA — correction tracée (ex-012)** : un score **verrouillé** n'est corrigeable que par un **rôle habilité** ; toute correction écrit une entrée d'**AuditLog** (qui / quand / avant-après, E10US005) et **recalcule le cumul**.
 - **Notes** : **la validation est un acte *de fin*** — FFTA : les feuilles de marque sont signées « à la fin de la distance, de la compétition **ou du duel** ». L'art. B.6.1.2 (« établissement des scores toutes les 2 volées ») porte sur le **cumul** (calculé par l'appli), **pas** sur la validation par un tiers : valider toutes les 2 volées ferait **~180 passages par départ** (intenable à 3 scoreurs). La validation du scoreur **tient lieu de seconde marque** (`D-03`, FFTA B.6.1.1) — **`Q-UX3` : à confirmer par un arbitre du club**. Le **marqueur** (`D-04`) : *il change rarement, donc l'interface ne s'organise pas autour de ce changement* (**pas de sélecteur permanent** au-dessus de la grille) ; la trace est l'**équivalent numérique de la signature** de la feuille de marque (FFTA B.6.1.1), seul argument sérieux face à un arbitre contestant la dématérialisation. La **correction tracée** (ex-012) est le seul chemin d'écriture sur une série verrouillée.
+- **Arbitrages tranchés le 19/07/2026** (reversés ici — règle 9 ; pour que l'implémentation d'E04US002
+  n'en dérive pas des tests faux) :
+  - **Dépendance E10US005 satisfaite en amont** : elle était insatisfiable (l'US 005, seq 47, vient
+    *après* cette US, seq 41, et n'existait pas). Son **socle** (agrégat `EntreeAudit`, port
+    `AuditRepository`, `ServiceAudit.consigner`, port `Horloge`) a été **livré d'abord** — cf. entrée
+    E10US005 « Livré (socle backend) ». La **correction tracée** (ex-012) appellera
+    `ServiceAudit.consigner(action=CORRECTION_SCORE, avant, apres, auteur=nom du rôle habilité)` **dans
+    la même commande de file** que la ré-écriture (règle 7) ; la validation appellera de même
+    (`action=VALIDATION`, auteur = nom du scoreur — `exiger_scoreur` devra **résoudre le `Scoreur`**,
+    aujourd'hui il ne fait que valider).
+  - **Source des archers-par-cible = modèle `Affectation` (E03US004, ADR-0024)**, *pas* le champ
+    walking-skeleton `Archer.cible` (qu'utilise encore la démo `saisir_score`). Le poste connaît
+    `(tournoi_id, cible_index)` ; on reconstitue cible → départ → inscriptions → archers avec leur
+    **position A–D** via `PlacementRepository`. **Un ADR actera l'abandon d'`Archer.cible` comme source
+    de saisie** (à écrire dans la branche E04US002, pas ici).
 - **Absorbe** : ex-E04US002 à 008, E04US012, E04US017. **Dépend de** : E04US001, E01US009, E01US014, E01US015, E00US007, E10US003, E10US005, E10US007 · **Jalon** : J1
 
 ### E04US009 — Diffusion live & résilience réseau
