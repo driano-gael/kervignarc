@@ -69,12 +69,18 @@ class DepartCourantReponse(BaseModel):
 
 
 class ArcherGrilleReponse(BaseModel):
-    """Une ligne de la grille : la position A..D et l'archer qui l'occupe (pour la saisie)."""
+    """Une ligne de la grille : position A..D, archer, et son **pavé** (zones légales du blason).
+
+    `zones` porte le pavé de saisie **déduit du blason tiré** (CA « pavé ») dans l'ordre canonique
+    centre→extérieur : sur un triple 40 les touches basses en sont **absentes**. Le front l'affiche
+    tel quel — le serveur reste l'autorité du barème. `[]` = blason indéterminable (pavé indispo.).
+    """
 
     position: str
     archer_id: int
     nom: str
     prenom: str
+    zones: list[ZoneScore]
 
     @staticmethod
     def de_ligne(ligne: ArcherPositionne) -> ArcherGrilleReponse:
@@ -84,6 +90,7 @@ class ArcherGrilleReponse(BaseModel):
             archer_id=ligne.archer.id,
             nom=ligne.archer.nom,
             prenom=ligne.archer.prenom,
+            zones=list(ligne.zones),
         )
 
 

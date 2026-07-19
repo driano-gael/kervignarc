@@ -7,6 +7,7 @@
 // toute seule. La **saisie** des scores relève d'E04US002 ; ici, on rattache et on détache.
 
 import { useEffect, useRef, useState } from 'react'
+import { Saisie } from '../saisie/Saisie'
 import { ErreurApi } from '../../shared/api/client'
 import { type CiblePoste, useSessionPosteStore } from '../../shared/stores/sessionPosteStore'
 import type { Theme } from '../../shared/theme'
@@ -89,11 +90,13 @@ function PosteRattache({ poste }: { poste: CiblePoste }) {
 
   return (
     <div>
-      <p className="carte__etat">
-        Tablette rattachée à la <strong>cible {poste.cible_index}</strong>. La saisie des scores
-        depuis ce poste arrivera avec E04US002.
-      </p>
-      <button type="button" className="lien" disabled={deconnexion.isPending} onClick={detacher}>
+      <Saisie tournoiId={poste.tournoi_id} cibleIndex={poste.cible_index} />
+      <button
+        type="button"
+        className="lien saisie__detacher"
+        disabled={deconnexion.isPending}
+        onClick={detacher}
+      >
         Détacher cette tablette
       </button>
       <MessageErreur erreur={deconnexion.error} />

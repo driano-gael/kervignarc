@@ -928,3 +928,240 @@ button:disabled {
 .reserve__raison--anomalie {
   color: var(--warn);
 }
+
+/* ------------------------------------------------------------------------- */
+/* Saisie de qualification — poste de cible (E04US002).                      */
+/* Écran de saisie : cibles tactiles ≥ 48 px (plancher renforcé du CDC       */
+/* design pour la saisie), tokens de thème uniquement, ambre pour les états  */
+/* d'attente légitimes (pas de départ, pavé indisponible), jamais rouge.     */
+/* ------------------------------------------------------------------------- */
+.saisie {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.saisie__entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Le marqueur (D-04) : discret par défaut, la liste se déplie au besoin. */
+.saisie__marqueur {
+  position: relative;
+}
+
+.saisie__marqueur-libelle {
+  font-size: 14px;
+}
+
+.saisie__marqueur-choix {
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+/* État d'attente légitime (pas d'erreur) : ambre, discret. */
+.saisie__vide {
+  margin: 0;
+  color: var(--warn);
+}
+
+.saisie__grain {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.saisie__departs-liste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* La grille des 3–4 archers. Chaque ligne est tapable pour devenir l'archer actif. */
+.saisie__grille {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.saisie__ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 10px;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+}
+
+.saisie__ligne--actif {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.saisie__position {
+  flex: 0 0 auto;
+  width: 1.4em;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.saisie__nom {
+  flex: 1 1 auto;
+}
+
+.saisie__prenom {
+  color: var(--text);
+  font-weight: 400;
+}
+
+.saisie__avancement {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.saisie__cumul {
+  flex: 0 0 auto;
+  min-width: 2.5em;
+  text-align: right;
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+/* Le pavé : gros boutons de zone (≥ 48 px), volée en cours, correction, enregistrement. */
+.saisie__pave {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.saisie__pave-entete {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.saisie__total {
+  font-family: var(--mono);
+  color: var(--text);
+}
+
+/* Navigateur de volées : une pastille par volée. Défile horizontalement si le barème est long. */
+.saisie__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.saisie__nav-volee {
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  font-family: var(--mono);
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+/* Volée déjà saisie : pleine. */
+.saisie__nav-volee--saisie {
+  color: var(--bg);
+  background: var(--text);
+}
+
+/* Volée verrouillée par le scoreur : accent (validée). */
+.saisie__nav-volee--verrou {
+  color: var(--bg);
+  background: var(--ok);
+}
+
+/* Volée visée par le pavé : surlignée. */
+.saisie__nav-volee--actif {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.saisie__buffer {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.saisie__fleche {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 6px;
+  font-family: var(--mono);
+  font-size: 18px;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.saisie__zones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.saisie__zone {
+  min-width: 48px;
+  min-height: 48px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.saisie__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Cibles tactiles ≥ 48 px sur l'écran de saisie, y compris les actions et le choix de départ (le
+   CA « saisie » ne distingue pas les cibles primaires des secondaires). */
+.saisie__actions button,
+.saisie__departs-liste button {
+  min-height: 48px;
+}
+
+/* Consultation d'une volée saisie : « Saisie par DURAND à 10:42 » (CA « marqueur »). */
+.saisie__meta {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* « Détacher » relégué en pied de l'écran de saisie : action rare, ne doit pas voler l'attention. */
+.saisie__detacher {
+  margin-top: 16px;
+  font-size: 13px;
+}
