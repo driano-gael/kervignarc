@@ -300,18 +300,21 @@ def create_app(
     # par le port `Horloge` (adapter système UTC), injecté pour des cas d'usage déterministes. ---
     app.state.service_audit = ServiceAudit(audit_repository, tournoi_repository, HorlogeSysteme())
 
-    # --- Saisie de qualification (E04US002, tranche persistance PR2a) : moteur métier `Serie`/
-    # `Volee` désormais **persisté**. Le service résout la config (blason → pavé, phase → barème/
-    # grain), pilote l'agrégat, et date les entrées d'audit (validation/correction) via `Horloge` ;
-    # l'adapter `SerieRepositorySQL` co-écrit série + trace atomiquement (ADR-0035). L'**exposition
-    # API**, le **départ courant du poste** et la **garde « SA cible »** au service viennent en
-    # PR2b : ici, aucun router n'est branché, le service reste testé sur vraie base. ---
+    # --- Saisie de qualification (E04US002) : moteur métier `Serie`/`Volee` persisté. Le service
+    # résout la config (blason → pavé, phase → barème/grain), pilote l'agrégat, date les entrées
+    # d'audit (validation/correction) via `Horloge` ; l'adapter `SerieRepositorySQL` co-écrit série
+    # + trace atomiquement (ADR-0035). Il **cloisonne** la saisie au triplet (tournoi, cible,
+    # départ) du poste — via placement + inscriptions (ADR-0033 §3) — et reconstitue la grille des
+    # affectations réelles. La garde vit **ici**, pas dans un `Depends`, pour tenir aussi face aux
+    # appelants hors HTTP (writer WS E04US009, orchestrateur E12US002). ---
     app.state.service_saisie = ServiceSaisie(
         serie_repository,
         phase_repository,
         archer_repository,
         categorie_repository,
         blason_repository,
+        placement_repository,
+        inscription_repository,
         HorlogeSysteme(),
     )
 

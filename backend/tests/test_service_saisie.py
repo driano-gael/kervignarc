@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+from collections.abc import Sequence
 
 import pytest
 
@@ -17,19 +18,31 @@ from application.erreurs import (
     ArcherIntrouvable,
     BlasonIntrouvable,
     PhaseQualificationAbsente,
+    SaisieHorsCible,
 )
-from application.saisie import ServiceSaisie
+from application.saisie import ArcherPositionne, ContexteSaisie, ServiceSaisie
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId, ZoneScore
-from domain.categorie import Categorie
+from domain.categorie import Categorie, CategorieId
+from domain.depart import DepartId
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import NumeroVoleeInvalide, ValeurHorsBlason
 from domain.grain_validation import GrainValidation
+from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
+from domain.placement import Affectation
 from domain.serie import Serie
 from domain.tournoi import TournoiId
-from tests.conftest import FauxArcherRepository, FauxCategorieRepository
+from tests.conftest import (
+    FauxArcherRepository,
+    FauxCategorieRepository,
+    FauxInscriptionRepository,
+)
+
+_DEPART: DepartId = 7
+"""Départ courant du poste dans les tests : un simple identifiant, aucun agrégat `Depart` requis
+(le service de saisie reçoit un `depart_id`, déjà validé en amont par `ServicePostes`)."""
 
 _QUAND = datetime.datetime(2026, 7, 19, 10, 42, tzinfo=datetime.UTC)
 ZONES_SIMPLE = tuple(ZoneScore)
@@ -134,6 +147,33 @@ class FauxBlasonRepository:
         del self._blasons[blason_id]
 
 
+class FauxPlacementRepository:
+    """Repository de placement en mémoire conforme au port `PlacementRepository`.
+
+    Le service de saisie ne consomme que `par_depart` (reconstituer les archers d'une cible depuis
+    le placement réel, ADR-0033) ; les écritures du port sont fournies pour la conformité. Fake
+    **local** : `test_service_placement` et `test_service_feuille_de_marque` en ont chacun une copie
+    — non factorisées ici, même parti que `FauxTournoiRepository` (on ne réécrit pas ce que cette US
+    n'aggrave pas ; cf. doctrine des doublures, `conftest.py`).
+    """
+
+    def __init__(self) -> None:
+        self._par_depart: dict[int, list[Affectation]] = {}
+
+    def par_depart(self, depart_id: DepartId) -> list[Affectation]:
+        return list(self._par_depart.get(depart_id, []))
+
+    def definir_plan(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
+        self._par_depart[depart_id] = list(affectations)
+
+    def poser_plusieurs(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
+        self._par_depart.setdefault(depart_id, []).extend(affectations)
+
+    def retirer(self, inscription_id: InscriptionId) -> None:
+        for affectations in self._par_depart.values():
+            affectations[:] = [a for a in affectations if a.inscription_id != inscription_id]
+
+
 class HorlogeFigee:
     """Horloge déterministe conforme au port `Horloge` : renvoie toujours le même instant."""
 
@@ -159,6 +199,8 @@ class Montage:
         self.archers = FauxArcherRepository()
         self.categories = FauxCategorieRepository()
         self.blasons = FauxBlasonRepository()
+        self.placements = FauxPlacementRepository()
+        self.inscriptions = FauxInscriptionRepository()
         self.horloge = HorlogeFigee(_QUAND)
         self.tournoi_id: TournoiId = 1
         blason_id: BlasonId | None = None
@@ -171,6 +213,7 @@ class Montage:
             Categorie(tournoi_id=1, libelle="Senior Homme", blason_id=blason_id)
         )
         assert categorie.id is not None
+        self.categorie_id: CategorieId = categorie.id
         archer = self.archers.ajouter(
             Archer(nom="DUPONT", prenom="Jean", tournoi_id=1, categorie_id=categorie.id)
         )
@@ -185,13 +228,42 @@ class Montage:
                 )
             )
         self.service = ServiceSaisie(
-            self.series, self.phases, self.archers, self.categories, self.blasons, self.horloge
+            self.series,
+            self.phases,
+            self.archers,
+            self.categories,
+            self.blasons,
+            self.placements,
+            self.inscriptions,
+            self.horloge,
         )
 
     def saisir_serie_complete(self) -> None:
         """Saisit les deux volées du barème (préalable à une validation de fin de série)."""
         self.service.saisir_volee(self.tournoi_id, self.archer_id, 1, _v("10", "9", "8"), "DURAND")
         self.service.saisir_volee(self.tournoi_id, self.archer_id, 2, _v("9", "9", "9"), "DURAND")
+
+    def nouvel_archer(self, nom: str) -> ArcherId:
+        """Ajoute un second archer (même catégorie/blason) et renvoie son id (grille à N)."""
+        archer = self.archers.ajouter(
+            Archer(nom=nom, prenom="Paul", tournoi_id=1, categorie_id=self.categorie_id)
+        )
+        assert archer.id is not None
+        return archer.id
+
+    def placer(
+        self, archer_id: ArcherId, depart_id: DepartId, cible_index: int, position: str
+    ) -> None:
+        """Inscrit l'archer sur `depart_id` puis le place sur `(cible, position)` — cf. ADR-0033.
+
+        Reproduit le placement réel (ADR-0033) : une inscription `(archer, départ)` et son
+        affectation `(cible, position)`. Sans appel à `placer`, l'archer est en **réserve**.
+        """
+        inscription = self.inscriptions.ajouter(Inscription.creer(archer_id, depart_id))
+        assert inscription.id is not None
+        self.placements.poser_plusieurs(
+            depart_id, [Affectation(inscription.id, cible_index, position)]
+        )
 
 
 def test_saisir_volee_persiste_avec_le_marqueur() -> None:
@@ -275,3 +347,117 @@ def test_le_service_borne_le_rang_de_volee_par_le_bareme_de_la_phase() -> None:
     m = Montage()  # barème de la phase : 2 volées de 3 flèches
     with pytest.raises(NumeroVoleeInvalide):
         m.service.saisir_volee(m.tournoi_id, m.archer_id, 3, _v("10", "9", "8"))
+
+
+# --- Source des archers & garde « SA cible / SON départ » (ADR-0033) ---
+
+
+def test_archers_du_poste_viennent_des_affectations_cible_depart() -> None:
+    """CA « grille » : la grille = archers **placés** sur (cible, départ), positions A..D, triés."""
+    m = Montage()
+    a = m.nouvel_archer("ALPHA")
+    b = m.nouvel_archer("BRAVO")
+    autre_cible = m.nouvel_archer("CHARLIE")
+    m.placer(b, _DEPART, cible_index=1, position="B")
+    m.placer(a, _DEPART, cible_index=1, position="A")
+    m.placer(autre_cible, _DEPART, cible_index=2, position="A")  # autre cible : hors grille
+
+    grille = m.service.archers_du_poste(m.tournoi_id, cible_index=1, depart_id=_DEPART)
+
+    assert [(ligne.position, ligne.archer.id) for ligne in grille] == [("A", a), ("B", b)]
+    assert all(isinstance(ligne, ArcherPositionne) for ligne in grille)
+
+
+def test_archers_du_poste_excluent_un_autre_depart() -> None:
+    """Une cible sert plusieurs départs : seule la grille du **départ courant** remonte (0033)."""
+    m = Montage()
+    matin = m.nouvel_archer("MATIN")
+    apres_midi = m.nouvel_archer("APREM")
+    m.placer(matin, _DEPART, cible_index=1, position="A")
+    m.placer(apres_midi, 99, cible_index=1, position="A")  # même cible, autre départ
+
+    grille = m.service.archers_du_poste(m.tournoi_id, cible_index=1, depart_id=_DEPART)
+
+    assert [ligne.archer.id for ligne in grille] == [matin]
+
+
+def test_archers_du_poste_vide_sans_affectation() -> None:
+    """Aucun archer placé sur (cible, départ) → grille vide (tout en réserve)."""
+    m = Montage()
+    assert m.service.archers_du_poste(m.tournoi_id, cible_index=1, depart_id=_DEPART) == []
+
+
+def test_saisir_pour_un_archer_de_sa_cible_est_autorise() -> None:
+    """ADR-0033 §3 : le poste saisit pour un archer affecté à SA cible / SON départ."""
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), contexte=contexte)
+
+    serie = m.series.par_archer(m.tournoi_id, m.archer_id)
+    assert serie is not None and serie.volee(1) is not None
+
+
+def test_saisir_pour_un_archer_d_une_autre_cible_est_refuse() -> None:
+    """ADR-0033 §3 : un archer placé sur une **autre cible** → `SaisieHorsCible` (403)."""
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, cible_index=2, position="A")
+    contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
+
+    with pytest.raises(SaisieHorsCible):
+        m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), contexte=contexte)
+
+
+def test_saisir_pour_un_archer_d_un_autre_depart_est_refuse() -> None:
+    """Triplet (tournoi, cible, départ) : même cible mais **autre départ** courant → hors cible."""
+    m = Montage()
+    m.placer(m.archer_id, 99, cible_index=1, position="A")  # placé sur un autre départ
+    contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
+
+    with pytest.raises(SaisieHorsCible):
+        m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), contexte=contexte)
+
+
+def test_saisir_pour_un_archer_en_reserve_est_refuse() -> None:
+    """Un archer **inscrit mais non placé** (réserve) n'est sur aucune cible → `SaisieHorsCible`."""
+    m = Montage()
+    m.inscriptions.ajouter(Inscription.creer(m.archer_id, _DEPART))  # inscrit, jamais placé
+    contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
+
+    with pytest.raises(SaisieHorsCible):
+        m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), contexte=contexte)
+
+
+def test_saisir_sans_contexte_reste_ouvert_a_l_admin() -> None:
+    """`contexte=None` = saisie **admin**, sans contrainte de cible (E10US001) : sans placement."""
+    m = Montage()  # archer ni inscrit ni placé
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))  # contexte par défaut
+
+    assert m.series.par_archer(m.tournoi_id, m.archer_id) is not None
+
+
+def test_valider_est_aussi_cloisonnee_au_poste() -> None:
+    """La garde vaut pour **tout** chemin d'écriture, pas seulement `saisir_volee` (ADR-0033 §3)."""
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, cible_index=2, position="A")  # archer sur une autre cible
+    m.saisir_serie_complete()  # rempli en admin (sans contexte)
+    contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
+
+    with pytest.raises(SaisieHorsCible):
+        m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN", contexte=contexte)
+
+
+def test_corriger_est_aussi_cloisonnee_au_poste() -> None:
+    """Idem pour la correction tracée : un poste ne corrige que pour SA cible (ADR-0033 §3)."""
+    m = Montage()
+    m.placer(m.archer_id, _DEPART, cible_index=2, position="A")
+    m.saisir_serie_complete()
+    m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")  # admin
+    contexte = ContexteSaisie(cible_index=1, depart_id=_DEPART)
+
+    with pytest.raises(SaisieHorsCible):
+        m.service.corriger_volee(
+            m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="ARBITRE", contexte=contexte
+        )

@@ -5,29 +5,34 @@ blason (le pavé se déduit du blason tiré — `Blason.zones` — pas du barèm
 **bâtit les entrées d'audit** de validation et de correction (« qui / quand / avant-après »,
 E10US005). Le « quand » est lu via le port `Horloge` (jamais dans le domaine, resté déterministe).
 
-Frontières de cette tranche (**moteur métier**, cf. `stories/E04-saisie-scores.md`) :
+Frontières (cf. `stories/E04-saisie-scores.md`) :
 
-- L'**autorisation par le poste** (le poste ne saisit que pour sa cible, `SaisieHorsCible`) et la
-  résolution des archers via le **départ courant** (ADR-0030/0033/0034) vivent avec l'API et le
-  départ de poste — **tranche plomberie (PR2)**. Ici, l'archer visé est déjà connu ; le service
-  résout *sa* configuration de saisie et agit sur *sa* série.
+- L'**autorisation par le poste** vit **ici**, pas dans un `Depends` d'API : les méthodes d'écriture
+  reçoivent un `ContexteSaisie | None` (cible + départ courant) et cloisonnent la saisie au triplet
+  `(tournoi, cible, départ)` — `SaisieHorsCible` sinon (ADR-0033 §3). Au service car un appelant
+  **hors HTTP** (writer WS E04US009, orchestrateur E12US002) contournerait une garde d'API. Les
+  archers de la grille se reconstituent depuis les `Affectation` (`archers_du_poste`), pas depuis le
+  champ hérité `Archer.cible` (ADR-0033 §1). `contexte=None` = saisie **admin**, sans contrainte.
 - Le **nom** de qui agit (scoreur en validation, rôle habilité en correction) est **fourni** au
-  service (résolu par `exiger_scoreur` côté API, PR2) : le service reste pur, sans jeton ni session.
+  service (résolu par `exiger_scoreur` côté API) : le service reste pur, sans jeton ni session.
 - L'**atomicité acte↔trace** (validation/correction) passe par le port
-  `SerieRepository.enregistrer_avec_trace` (série + audit en une transaction, ADR-0035) ; la couture
-  réelle est dans l'adapter (PR2).
+  `SerieRepository.enregistrer_avec_trace` (série + audit en une transaction, ADR-0035).
 """
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 from application.erreurs import (
     ArcherIntrouvable,
     BlasonIntrouvable,
     CategorieIntrouvable,
     PhaseQualificationAbsente,
+    SaisieHorsCible,
 )
 from domain.archer import Archer, ArcherId
 from domain.blason import ZoneScore
+from domain.depart import DepartId
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.phase import Phase, TypePhase
 from domain.ports import (
@@ -35,11 +40,38 @@ from domain.ports import (
     BlasonRepository,
     CategorieRepository,
     Horloge,
+    InscriptionRepository,
     PhaseRepository,
+    PlacementRepository,
     SerieRepository,
 )
 from domain.serie import Serie
 from domain.tournoi import TournoiId
+
+
+@dataclass(frozen=True)
+class ContexteSaisie:
+    """Contexte d'autorisation d'une saisie **par un poste** : sa cible et son départ courant.
+
+    Passé aux méthodes d'écriture pour cloisonner la saisie au **triplet** `(tournoi, cible,
+    départ)` (ADR-0033 §3) : un poste ne saisit que pour un archer affecté à `(cible, départ)`.
+    `None` (contexte absent) = saisie **admin**, sans contrainte de cible (E10US001) — l'admin, lui,
+    n'est pas rattaché à un lieu.
+    """
+
+    cible_index: int
+    depart_id: DepartId
+
+
+@dataclass(frozen=True)
+class ArcherPositionne:
+    """Un archer et sa **position** (A..D) sur une cible — une ligne de la grille de saisie.
+
+    Reconstitué depuis les `Affectation` du placement réel (ADR-0033), pas depuis `Archer.cible`.
+    """
+
+    position: str
+    archer: Archer
 
 
 def _valeurs_lisibles(serie: Serie, numero: int) -> str | None:
@@ -58,6 +90,8 @@ class ServiceSaisie:
         archers: ArcherRepository,
         categories: CategorieRepository,
         blasons: BlasonRepository,
+        placements: PlacementRepository,
+        inscriptions: InscriptionRepository,
         horloge: Horloge,
     ) -> None:
         self._series = series
@@ -65,7 +99,34 @@ class ServiceSaisie:
         self._archers = archers
         self._categories = categories
         self._blasons = blasons
+        self._placements = placements
+        self._inscriptions = inscriptions
         self._horloge = horloge
+
+    def archers_du_poste(
+        self, tournoi_id: TournoiId, cible_index: int, depart_id: DepartId
+    ) -> list[ArcherPositionne]:
+        """Les archers **placés** sur `(cible, départ)`, avec leur position A..D, triés.
+
+        La source de la grille de saisie (CA « grille ») : reconstituée depuis les `Affectation` du
+        placement **réel** et ajustable (ADR-0033), donc un glisser-déposer d'archer (E03US004)
+        déplace aussi *où il saisit*, sans code ici. Un archer en **réserve** (aucune affectation)
+        n'apparaît pas. L'appelant fournit le départ courant du poste (déjà validé, ADR-0034).
+        """
+        inscriptions = {i.id: i for i in self._inscriptions.par_depart(depart_id)}
+        grille: list[ArcherPositionne] = []
+        for affectation in self._placements.par_depart(depart_id):
+            if affectation.cible_index != cible_index:
+                continue
+            inscription = inscriptions.get(affectation.inscription_id)
+            if inscription is None:
+                continue  # défensif : affectation sans inscription correspondante
+            archer = self._archers.par_id(inscription.archer_id)
+            if archer is None or archer.tournoi_id != tournoi_id:
+                continue
+            grille.append(ArcherPositionne(position=affectation.position, archer=archer))
+        grille.sort(key=lambda ligne: ligne.position)
+        return grille
 
     def saisir_volee(
         self,
@@ -74,13 +135,15 @@ class ServiceSaisie:
         numero: int,
         valeurs: tuple[ZoneScore, ...],
         saisie_par: str | None = None,
+        contexte: ContexteSaisie | None = None,
     ) -> Serie:
         """Saisit ou réédite (avant validation) la volée `numero` de l'archer.
 
         Le pavé (zones admises) se déduit du **blason** de l'archer, le nombre de flèches du
         **barème** de la phase. Persiste sans trace (une saisie ordinaire n'est pas un acte de fin).
+        `contexte` cloisonne la saisie à la cible/départ du poste (ADR-0033 §3) ; `None` = admin.
         """
-        archer = self._charger_archer(tournoi_id, archer_id)
+        archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
         phase = self._phase_qualification(tournoi_id)
         serie = self._series.par_archer(tournoi_id, archer_id) or Serie.vide(tournoi_id, archer_id)
@@ -94,13 +157,20 @@ class ServiceSaisie:
         )
         return self._series.enregistrer(serie)
 
-    def valider(self, tournoi_id: TournoiId, archer_id: ArcherId, scoreur: str) -> Serie:
+    def valider(
+        self,
+        tournoi_id: TournoiId,
+        archer_id: ArcherId,
+        scoreur: str,
+        contexte: ContexteSaisie | None = None,
+    ) -> Serie:
         """Valide la série de l'archer selon le grain de la phase, au nom du `scoreur`.
 
         Verrouille les volées concernées (fin de série ou lot de N, cf. `Serie.valider`) et laisse
         une **trace** `VALIDATION` (sans avant/après) dans la même transaction que l'écriture.
+        `contexte` cloisonne au poste (ADR-0033 §3) — la garde vaut pour **tout** chemin d'écriture.
         """
-        self._charger_archer(tournoi_id, archer_id)
+        self._charger_archer(tournoi_id, archer_id, contexte)
         phase = self._phase_qualification(tournoi_id)
         serie = self._series.par_archer(tournoi_id, archer_id) or Serie.vide(tournoi_id, archer_id)
         serie = serie.valider(
@@ -122,14 +192,15 @@ class ServiceSaisie:
         numero: int,
         nouvelles_valeurs: tuple[ZoneScore, ...],
         auteur: str,
+        contexte: ContexteSaisie | None = None,
     ) -> Serie:
         """Corrige une volée **verrouillée** de l'archer, au nom de l'`auteur` (rôle habilité).
 
         Chemin d'écriture unique sur une volée validée. Laisse une trace `CORRECTION_SCORE` portant
         l'**avant** et l'**après**, dans la même transaction que la réécriture (ADR-0035). Le cumul
-        se recalcule mécaniquement.
+        se recalcule mécaniquement. `contexte` cloisonne au poste (ADR-0033 §3) ; `None` = admin.
         """
-        archer = self._charger_archer(tournoi_id, archer_id)
+        archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
         phase = self._phase_qualification(tournoi_id)
         serie = self._series.par_archer(tournoi_id, archer_id) or Serie.vide(tournoi_id, archer_id)
@@ -152,20 +223,39 @@ class ServiceSaisie:
         )
         return self._series.enregistrer_avec_trace(serie, entree)
 
-    def _charger_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Archer:
+    def _charger_archer(
+        self, tournoi_id: TournoiId, archer_id: ArcherId, contexte: ContexteSaisie | None
+    ) -> Archer:
         """L'archer du tournoi ; `ArcherIntrouvable` s'il est inconnu ou d'un autre tournoi.
 
-        Le seul cloisonnement présent en PR1 est le tournoi. La garde **« SA cible / SON départ »**
-        (`SaisieHorsCible`, ADR-0033 §3) doit vivre **au service** — pas dans un `Depends` d'API,
-        qu'un appelant hors HTTP (writer WS E04US009, orchestrateur E12US002) contournerait. En PR2,
-        les méthodes de saisie recevront le contexte poste `(cible_index, depart_id)` et vérifieront
-        l'appartenance de l'archer avant d'écrire.
+        Si un `contexte` de poste est fourni, cloisonne en plus au triplet `(tournoi, cible,
+        départ)` (ADR-0033 §3) : l'archer doit être **affecté** à cette cible sur ce départ, sinon
+        `SaisieHorsCible` (403). `contexte=None` (admin) laisse la saisie ouverte, sans contrainte.
         """
-        # E04US002 (PR2) : cloisonner au triplet (tournoi, cible, départ) -> SaisieHorsCible.
         archer = self._archers.par_id(archer_id)
         if archer is None or archer.tournoi_id != tournoi_id:
             raise ArcherIntrouvable(f"Aucun archer d'identifiant {archer_id} dans ce tournoi.")
+        if contexte is not None:
+            self._verifier_archer_sur_poste(archer_id, contexte)
         return archer
+
+    def _verifier_archer_sur_poste(self, archer_id: ArcherId, contexte: ContexteSaisie) -> None:
+        """Refuse (`SaisieHorsCible`) un archer non affecté à la cible/départ courant du poste.
+
+        Reconstitue l'appartenance depuis le placement réel (ADR-0033) : l'archer doit être inscrit
+        **sur ce départ** et son affectation porter **cette cible**. Non inscrit, en réserve, ou
+        placé ailleurs → éconduit. Numéros de cible répétés d'un tournoi à l'autre : le départ (donc
+        le tournoi) et la cible ferment la faille (ADR-0033 §3, triplet).
+        """
+        inscription = self._inscriptions.par_archer_et_depart(archer_id, contexte.depart_id)
+        if inscription is not None and inscription.id is not None:
+            for affectation in self._placements.par_depart(contexte.depart_id):
+                if (
+                    affectation.inscription_id == inscription.id
+                    and affectation.cible_index == contexte.cible_index
+                ):
+                    return
+        raise SaisieHorsCible(f"Ce poste ne sert pas l'archer {archer_id} sur cette cible.")
 
     def _phase_qualification(self, tournoi_id: TournoiId) -> Phase:
         """La phase de qualification ; `PhaseQualificationAbsente` si elle n'existe pas."""
