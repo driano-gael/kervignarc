@@ -358,6 +358,32 @@ class RattachementTournoiTermine(ApplicationError):
     code = "rattachement_tournoi_termine"
 
 
+class ScoreurHorsTournoi(ApplicationError):
+    """Un scoreur agit (valide/corrige) sur une série d'un **autre tournoi** que le sien. → 403.
+
+    Le scoreur est **itinérant dans son tournoi** (`D-12`) : il valide n'importe quelle cible, mais
+    de **son** tournoi seulement. Sa session est valide (identité établie), mais elle n'autorise pas
+    à agir dans un tournoi voisin — la faille se rouvrirait en concurrence de tournois (intérieur +
+    extérieur). **Refus, pas défaut d'authentification** : 403, comme `SaisieHorsCible` (le poste
+    hors cible). L'admin, lui, n'a pas cette borne (E10US001).
+    """
+
+    code = "scoreur_hors_tournoi"
+
+
+class DepartCourantNonDefini(ApplicationError):
+    """Un poste tente de saisir (ou lister ses archers) sans avoir fixé son départ courant. → 409.
+
+    ADR-0034 §1 : tant qu'aucun départ n'est fixé, le poste connaît son lieu mais **ne sait pas qui
+    afficher** — refus **explicite**, jamais un affichage vide ambigu. Conflit d'**état** (le poste
+    n'est pas en état de saisir), d'où 409 : le front doit d'abord fixer le départ (« mode départ »)
+    avant d'afficher la grille. Distinct de `SaisieHorsCible` (403 : le départ *est* fixé, mais
+    l'archer visé n'y est pas).
+    """
+
+    code = "depart_courant_non_defini"
+
+
 class SaisieHorsCible(ApplicationError):
     """Un poste tente de saisir pour un archer qui n'est pas sur **sa** cible (E10US007). → 403.
 

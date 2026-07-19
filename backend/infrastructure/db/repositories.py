@@ -30,6 +30,7 @@ from domain.grain_validation import GrainValidation, TypeGrain
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase, grain_par_defaut
 from domain.placement import Affectation
+from domain.ports import Horloge
 from domain.poste import Poste, PosteId
 from domain.poste import normaliser_code as normaliser_code_poste
 from domain.score import Score
@@ -1560,16 +1561,24 @@ class SerieRepositorySQL:
     l'`AuditRepositorySQL` injecté au constructeur — collaboration **infra → infra** (le port du
     domaine `SerieRepository` ignore cette couture ; `enregistrer_avec_trace(serie, entree)` ne
     mentionne aucune session). L'entrée arrive **déjà construite et datée** par le service (via
-    `Horloge`) : le repository ne construit ni ne date rien.
+    `Horloge`) : le repository ne construit ni ne date **le contenu** (série, trace).
+
+    Il date en revanche une **métadonnée de persistance** : le `created_at` d'une volée (le
+    « quand » de la saisie, ex-017), posé via le port `Horloge` — comme il attribue l'`id`. Il est
+    **préservé par numéro** au travers du purge + réinsertion : réécrire une série (upsert) ne
+    réinitialise pas l'horodatage de ses volées déjà saisies, seules les volées **nouvelles** sont
+    datées de l'instant courant.
     """
 
     def __init__(
         self,
         session_factory: sessionmaker[Session],
         audit_repository: AuditRepositorySQL,
+        horloge: Horloge,
     ) -> None:
         self._session_factory = session_factory
         self._audit = audit_repository
+        self._horloge = horloge
 
     def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
         """Relit la série de qualification de l'archer (volées triées par numéro), ou `None`."""
@@ -1586,6 +1595,38 @@ class SerieRepositorySQL:
                 return _vers_serie(ligne, self._volees(session, ligne.id))
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture de la série.") from exc
+
+    def horodatages(
+        self, tournoi_id: TournoiId, archer_id: ArcherId
+    ) -> dict[int, datetime.datetime]:
+        """Le « quand » (`created_at`, UTC-aware) de chaque volée de l'archer, par **numéro** — `{}`
+        s'il n'a pas de série.
+
+        Chemin de lecture/consultation du « quand » (ex-017), tenu **à l'écart du domaine** `Volee`
+        (métadonnée de persistance, arbitrage de revue) : l'API le joint à la série par numéro pour
+        afficher « volée N saisie par … à HH:MM ». UTC réattaché comme l'`horodatage` d'audit
+        (SQLite stocke sans fuseau, l'application n'écrit que de l'UTC).
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.execute(
+                    select(SerieORM).where(
+                        SerieORM.tournoi_id == tournoi_id,
+                        SerieORM.archer_id == archer_id,
+                    )
+                ).scalar_one_or_none()
+                if ligne is None:
+                    return {}
+                return {
+                    volee.numero: (
+                        volee.created_at
+                        if volee.created_at.tzinfo is not None
+                        else volee.created_at.replace(tzinfo=datetime.UTC)
+                    )
+                    for volee in self._volees(session, ligne.id)
+                }
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des horodatages de volées.") from exc
 
     def enregistrer(self, serie: Serie) -> Serie:
         """Persiste une série (saisie sans trace) — **une** transaction (parent + volées)."""
@@ -1621,8 +1662,15 @@ class SerieRepositorySQL:
         l'audit). Renvoie la ligne parente (id attribué). Les volées sont **purgées puis
         réinsérées** (la série passée est la source de vérité) ; `flush` attribue l'id d'une série
         nouvelle avant de rattacher ses volées.
+
+        Le `created_at` de chaque volée est **préservé par numéro** : on relit les horodatages
+        existants **avant** la purge et on les réapplique aux volées de même numéro ; une volée
+        **nouvelle** (numéro absent) est datée de l'instant courant (`Horloge`). Sans quoi le purge
+        + réinsertion réinitialiserait le « quand » à chaque sauvegarde (ex-017).
         """
         ligne = self._ligne_serie(session, serie)
+        horodatages = {v.numero: v.created_at for v in self._volees(session, ligne.id)}
+        maintenant = self._horloge.maintenant()
         session.execute(delete(VoleeORM).where(VoleeORM.serie_id == ligne.id))
         session.add_all(
             VoleeORM(
@@ -1631,6 +1679,7 @@ class SerieRepositorySQL:
                 valeurs=_valeurs_json(volee),
                 saisie_par=volee.saisie_par,
                 validee_par=volee.validee_par,
+                created_at=horodatages.get(volee.numero, maintenant),
             )
             for volee in serie.volees
         )

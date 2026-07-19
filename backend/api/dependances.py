@@ -22,6 +22,7 @@ from application.erreurs import NonAuthentifie
 from application.postes import ServicePostes
 from application.scoreurs import ServiceScoreurs
 from domain.poste import Poste
+from domain.scoreur import Scoreur
 
 _PREFIXE_BEARER = "Bearer "
 _ENTETE_JETON_SCOREUR = "X-Jeton-Scoreur"
@@ -59,11 +60,20 @@ async def exiger_admin(request: Request) -> None:
         raise NonAuthentifie("Authentification administrateur requise.")
 
 
-async def exiger_scoreur(request: Request) -> None:
-    """Exige une session scoreur valide ; lève `NonAuthentifie` (→ 401) sinon."""
+def exiger_scoreur(request: Request) -> Scoreur:
+    """Exige une session scoreur valide et **renvoie le scoreur** ; lève `NonAuthentifie` (→ 401).
+
+    Rend le `Scoreur` (nom, tournoi) pour tracer « qui a validé » (E10US005, E04US002) et borner son
+    action à **son** tournoi — au-delà du simple booléen. **Synchrone** (comme `exiger_poste`) : la
+    résolution relit la base (`par_id`), FastAPI l'exécute dans le threadpool. Les gardes sans
+    (`dependencies=[Depends(exiger_scoreur)]`, ex. déconnexion) ignorent le retour ; seul le 401
+    importe pour elles.
+    """
     service: ServiceScoreurs = request.app.state.service_scoreurs
-    if not service.session_valide(extraire_jeton_scoreur(request)):
+    scoreur = service.resoudre_session(extraire_jeton_scoreur(request))
+    if scoreur is None:
         raise NonAuthentifie("Session scoreur requise.")
+    return scoreur
 
 
 def exiger_poste(request: Request) -> Poste:
@@ -73,8 +83,9 @@ def exiger_poste(request: Request) -> Poste:
     **Synchrone** (à dessein) : la validité d'un poste dépend du **statut de son tournoi**
     (révocation « tournoi terminé », ADR-0029), donc `resoudre_session` relit la base — FastAPI
     exécute une dépendance synchrone dans le threadpool, sans bloquer la boucle événementielle
-    (au contraire d'`exiger_admin`/`exiger_scoreur`, purement en mémoire). Renvoie le `Poste` pour
-    que l'appelant sache **quelle cible** est servie sans le redemander (E10US007, E04US002).
+    (au contraire d'`exiger_admin`, purement en mémoire ; `exiger_scoreur` relit aussi la base
+    depuis E04US002). Renvoie le `Poste` pour que l'appelant sache **quelle cible** est servie sans
+    le redemander (E10US007, E04US002).
     """
     service: ServicePostes = request.app.state.service_postes
     poste = service.resoudre_session(extraire_jeton_poste(request))

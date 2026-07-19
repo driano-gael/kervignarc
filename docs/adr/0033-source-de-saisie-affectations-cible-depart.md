@@ -34,9 +34,13 @@ aucun chemin `(tournoi_id, cible_index) → archers` : il manque la dimension **
 **1. La source des archers d'une saisie est le modèle `Affectation`, pas `Archer.cible`.** Un poste
 reconstitue ses archers par `Affectation` filtrées sur `cible_index`, avec leur `position` A–D. Le
 champ `Archer.cible` **n'est plus une source de saisie** : il reste, pour l'instant, la donnée du
-seul chemin de démo `saisir_score` (walking skeleton), retiré par ailleurs dans cette US au profit de
-la nouvelle surface volée-par-volée. `Archer.cible` deviendra mort une fois le classement de démo
-rebasé sur les volées (E06US001) ; sa suppression est un nettoyage ultérieur, pas cette US.
+seul chemin de démo `saisir_score` (walking skeleton), remplacé par la nouvelle surface
+volée-par-volée. **Son retrait a été différé** (arbitrage tranché en tranche exposition PR2b,
+reversé dans [`stories/E04-saisie-scores.md`](../../stories/E04-saisie-scores.md)) : `/scores` est le
+véhicule de test du walking skeleton (E2E, « engagé », diffusion) et son retrait casse ~10 tests —
+c'est une **US de nettoyage dédiée**. La démo coexiste sans conflit (tables `score` vs `serie`/`volee`
+disjointes), sans régression. `Archer.cible` deviendra mort une fois le classement de démo rebasé sur
+les volées (E06US001) ; sa suppression est un nettoyage ultérieur, pas cette US.
 
 **2. La dimension manquante — « quel départ » — est portée par le poste, explicitement.** Le poste
 gagne un **départ courant** (cf. [ADR-0034](0034-poste-selectionne-son-depart-courant.md)). La chaîne

@@ -35,6 +35,7 @@ from api.v1.inscriptions import router as inscriptions_router
 from api.v1.placement import router as placement_router
 from api.v1.postes import router as postes_router
 from api.v1.postes import session_router as poste_session_router
+from api.v1.saisie import router as saisie_router
 from api.v1.scoreurs import router as scoreurs_router
 from api.v1.scoreurs import session_router as scoreur_session_router
 from api.v1.tournois import router as tournois_router
@@ -79,6 +80,7 @@ from infrastructure.db import (
     default_database_url,
 )
 from infrastructure.horloge import HorlogeSysteme
+from infrastructure.idempotence import RegistreIdempotence
 from infrastructure.pdf import GenerateurDocumentsSallePdf, GenerateurFeuilleDeMarquePdf
 from infrastructure.postes import PosteSessionStore, generer_code_poste
 from infrastructure.realtime import Broadcaster, LiveEvent
@@ -162,7 +164,10 @@ def create_app(
     # La série de saisie co-écrit son entrée d'audit dans **une seule transaction** (ADR-0035) :
     # l'adapter reçoit l'`audit_repository` (concret) pour appeler `consigner_dans` sur la session
     # partagée. Couplage **infra → infra** assumé — le port domaine `SerieRepository` l'ignore.
-    serie_repository = SerieRepositorySQL(database.session_factory, audit_repository)
+    # L'`Horloge` date le `created_at` des volées (métadonnée de persistance, le « quand » ex-017).
+    serie_repository = SerieRepositorySQL(
+        database.session_factory, audit_repository, HorlogeSysteme()
+    )
     app.state.service_tournois = ServiceTournois(tournoi_repository)
     # Départs (créneaux) d'un tournoi (E02US004, ADR-0017) : le service vérifie l'existence du
     # tournoi (dépend du port tournoi) et attribue le numéro du créneau. Il dépend aussi du port
@@ -288,6 +293,7 @@ def create_app(
         poste_repository,
         tournoi_repository,
         gabarit_repository,
+        depart_repository,
         poste_session_store,
         generer_code_poste,
     )
@@ -299,20 +305,27 @@ def create_app(
     # par le port `Horloge` (adapter système UTC), injecté pour des cas d'usage déterministes. ---
     app.state.service_audit = ServiceAudit(audit_repository, tournoi_repository, HorlogeSysteme())
 
-    # --- Saisie de qualification (E04US002, tranche persistance PR2a) : moteur métier `Serie`/
-    # `Volee` désormais **persisté**. Le service résout la config (blason → pavé, phase → barème/
-    # grain), pilote l'agrégat, et date les entrées d'audit (validation/correction) via `Horloge` ;
-    # l'adapter `SerieRepositorySQL` co-écrit série + trace atomiquement (ADR-0035). L'**exposition
-    # API**, le **départ courant du poste** et la **garde « SA cible »** au service viennent en
-    # PR2b : ici, aucun router n'est branché, le service reste testé sur vraie base. ---
+    # --- Saisie de qualification (E04US002) : moteur métier `Serie`/`Volee` persisté. Le service
+    # résout la config (blason → pavé, phase → barème/grain), pilote l'agrégat, date les entrées
+    # d'audit (validation/correction) via `Horloge` ; l'adapter `SerieRepositorySQL` co-écrit série
+    # + trace atomiquement (ADR-0035). Il **cloisonne** la saisie au triplet (tournoi, cible,
+    # départ) du poste — via placement + inscriptions (ADR-0033 §3) — et reconstitue la grille des
+    # affectations réelles. La garde vit **ici**, pas dans un `Depends`, pour tenir aussi face aux
+    # appelants hors HTTP (writer WS E04US009, orchestrateur E12US002). ---
     app.state.service_saisie = ServiceSaisie(
         serie_repository,
         phase_repository,
         archer_repository,
         categorie_repository,
         blason_repository,
+        placement_repository,
+        inscription_repository,
         HorlogeSysteme(),
     )
+    # Idempotence de la saisie (ADR-0036) : registre en mémoire consulté **dans** la commande de la
+    # file (writer unique) par l'endpoint de saisie, pour qu'un rejeu réseau ne double ni une volée
+    # ni une trace. Exposé sur l'app comme la `write_queue`.
+    app.state.registre_idempotence = RegistreIdempotence()
 
     # --- Frontière API : traduction des erreurs typées en réponses HTTP (ADR-0007). ---
     enregistrer_gestionnaires_erreurs(app)
@@ -336,6 +349,7 @@ def create_app(
     app.include_router(bareme_qualification_router)
     app.include_router(grain_validation_router)
     app.include_router(competition_router)
+    app.include_router(saisie_router)
     app.include_router(placement_router)
     app.include_router(feuille_de_marque_router)
     app.include_router(documents_salle_router)

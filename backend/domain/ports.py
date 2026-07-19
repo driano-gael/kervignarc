@@ -571,6 +571,17 @@ class SerieRepository(Protocol):
         """Renvoie la série de qualification de l'archer, ou `None` si aucune n'existe encore."""
         ...
 
+    def horodatages(
+        self, tournoi_id: TournoiId, archer_id: ArcherId
+    ) -> dict[int, datetime.datetime]:
+        """Le « quand » de chaque volée de l'archer, par **numéro** (`{}` s'il n'a pas de série).
+
+        Le `created_at` d'une volée est une **métadonnée de persistance**, hors de l'agrégat `Volee`
+        (arbitrage de revue E04US002) : ce port l'expose donc **à part** de `par_archer`, pour le
+        chemin de lecture/consultation (« volée N saisie par … à HH:MM », ex-017). Instants **UTC**.
+        """
+        ...
+
     def enregistrer(self, serie: Serie) -> Serie:
         """Persiste une série (saisie sans trace) et la renvoie avec son identifiant attribué."""
         ...

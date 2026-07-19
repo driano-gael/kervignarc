@@ -159,8 +159,21 @@ class ServiceScoreurs:
         self._sessions.fermer(jeton)
 
     def session_valide(self, jeton: str | None) -> bool:
-        """Vrai si le jeton correspond à une session scoreur ouverte (`exiger_scoreur`)."""
+        """Vrai si le jeton correspond à une session scoreur ouverte."""
         return self._sessions.scoreur_de(jeton) is not None
+
+    def resoudre_session(self, jeton: str | None) -> Scoreur | None:
+        """Le **scoreur** derrière un jeton de session valide, ou `None` (`exiger_scoreur`).
+
+        Va au-delà de `session_valide` : rend l'**identité** (nom, tournoi) — nécessaire pour tracer
+        « qui a validé » (E10US005) et pour borner l'action du scoreur à **son** tournoi. Le store
+        purge les jetons d'un scoreur supprimé (`invalider_scoreur`), donc un jeton valide résout
+        toujours un scoreur existant ; par prudence, un `id` orphelin rend `None`.
+        """
+        scoreur_id = self._sessions.scoreur_de(jeton)
+        if scoreur_id is None:
+            return None
+        return self._scoreurs.par_id(scoreur_id)
 
     # --- Gardes internes ---
 

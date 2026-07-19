@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.db.base import Base
@@ -367,6 +367,14 @@ class VoleeORM(Base):
     en bloc, jamais requêtée), et les marqueurs déclaratifs `saisie_par` / `validee_par`
     (`NULL` = non renseigné ; `validee_par` non `NULL` **est** le verrou, cf. `domain.serie.Volee`).
 
+    `created_at` porte le **« quand »** de la saisie (ex-017, « volée 7 saisie par DURAND, 10h42 »):
+    **métadonnée de persistance, hors du domaine `Volee`** (arbitrage de revue — réversible si un
+    besoin domaine émergeait), comme l'`id`. Posé par le repository (port `Horloge`, UTC), et
+    **préservé par numéro** à travers le purge + réinsertion : réécrire une série ne réinitialise
+    pas le « quand » de ses volées déjà saisies. Le `server_default CURRENT_TIMESTAMP` n'est qu'un
+    filet (SQLite exige un défaut pour un `NOT NULL` ajouté ; l'application le renseigne toujours) —
+    relu, il redevient *aware* comme l'`horodatage` d'audit (SQLite stocke sans fuseau).
+
     **`ON DELETE CASCADE`** sur `serie_id`, à rebours de la convention DETTE-001 : une volée est un
     **composant strict** de l'agrégat `Serie` (value object interne), son cycle de vie est
     entièrement lié à sa série — pas de la donnée qui remonte l'arbre du tournoi de façon autonome.
@@ -388,6 +396,9 @@ class VoleeORM(Base):
     valeurs: Mapped[str] = mapped_column(nullable=False)
     saisie_par: Mapped[str | None] = mapped_column(nullable=True)
     validee_par: Mapped[str | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
 
 
 class EntreeAuditORM(Base):
