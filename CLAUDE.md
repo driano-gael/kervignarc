@@ -229,6 +229,19 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   - un fichier daté `AAAA-MM-JJ-HHhMM-<slug>.md` **uniquement pour un fait marquant** (jalon franchi,
     capacité nouvelle qui change la donne) — épisodique, pas un par US. La plupart des US ne rajoutent
     qu'une ligne au résumé.
+- **Cadrage d'intention en tête d'une US visible.** Avant de brancher / explorer / coder une US qui
+  **livre une capacité vue par l'utilisateur**, reformuler en une ou deux lignes ce qu'elle délivre et
+  **demander si c'est bien tout le périmètre voulu — ou s'il en existe une version plus riche** —
+  surtout si le CA est ancien, mince ou purement front. Le besoin **émerge par le dialogue** (esprit
+  agile) : ne pas exiger de l'utilisateur qu'il ait tout anticipé dans la fiche, ni implémenter le CA
+  au pied de la lettre s'il sous-représente l'intention. Ce contrôle **complète** le garde-fou « CA
+  ambigu » (règle 9), qui ne détecte que l'**ambiguïté** : un CA **clair mais trop étroit** s'écrit
+  sans effort et passe au travers — c'est précisément ce cas qui gaspille de l'implémentation. Le
+  cadrage est **rapide** (une question, pas une cérémonie) et ne s'applique pas aux petites US
+  mécaniques sans surface utilisateur. *(Cas réel, E07US006 le 20/07/2026 : CA « c'est moi », un
+  archer, front-only ; l'intention réelle était « suivre plusieurs archers avec le déroulé du tour en
+  direct » — backend + ADR. Redécoupé en deux tranches ; le cadrage aurait évité de brancher et
+  d'explorer la version étroite d'abord.)*
 - **Décision structurante ⇒ ADR** dans `docs/adr/` (contexte / décision / conséquences).
 - Une US trop grosse pour une branche doit être **redécoupée** (maille INVEST).
 
