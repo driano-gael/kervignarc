@@ -115,12 +115,15 @@ describe('construireJournee — la journée d’un archer (départs + plans, pas
   })
 
   it('archer posé sur deux départs → deux lignes triées par numéro de départ', () => {
+    // Départs passés **dans le désordre** (n° 2 avant n° 1) pour que le test exerce vraiment le tri :
+    // retirer le `.sort()` de `construireJournee` doit le faire échouer (retour de revue B1).
+    const departsDesordre = [depart(20, 2, '14h00'), depart(10, 1, '9h00')]
     const plans = new Map([
       [20, planAvec(20, [{ index: 5, position: 'A', archerId: 7 }])],
       [10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])],
     ])
 
-    expect(construireJournee(7, departs, plans).map((l) => l.numeroDepart)).toEqual([1, 2])
+    expect(construireJournee(7, departsDesordre, plans).map((l) => l.numeroDepart)).toEqual([1, 2])
   })
 
   it('archer posé sur aucun plan → journée vide', () => {

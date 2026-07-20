@@ -62,7 +62,10 @@ retrouver leur cible **sans rien chercher**, à chaque ouverture.
 - **CA** : recherche par nom → l'utilisateur coche **« suivre »** ; les archers suivis forment une
   **liste mémorisée localement** (même principe que le jeton de poste : `localStorage`, **aucun compte,
   aucun mot de passe**) ; aux ouvertures suivantes, l'appli affiche **directement sa journée** — une
-  **carte par archer suivi** avec **cible, position, départ** ; **retirer un suivi** est possible
+  **carte par archer suivi** avec **cible, position, départ** (le **départ n'apparaît qu'une fois
+  l'archer placé** — avant, « pas encore placé » : la journée se lit sur le **plan de cibles**, pas sur
+  les inscriptions, dont le DTO porte des données de paiement à ne pas exposer au public, règle 6 —
+  arbitrage de revue reversé ici) ; **retirer un suivi** est possible
   (« ne plus suivre ») ; la **recherche reste accessible** mais **n'est plus la porte d'entrée** ;
   **live** (E07US001). *Hors de cette tranche : le **déroulé du tour en direct** (scores, statut
   attente/validé) est **E07US009** ; l'**à-venir** (prochaine phase/cible) est **E07US008**.*

@@ -6,7 +6,7 @@
 // directement sur eux. Aucun compte, aucune authentification — la lecture publique est anonyme.
 //
 // **Source des données** : la journée d'un archer se reconstruit depuis **la liste des départs**
-// (`useDeparts`, numéro/horaire) et **les plans de cibles** (`usePlanDeCibles`/`useQueries`, la place).
+// (`useDeparts`, numéro/horaire) et **les plans de cibles** (`getPlanDeCibles`/`useQueries`, la place).
 // On n'utilise **pas** l'endpoint des inscriptions : son DTO porte `paye`/`montant_du_centimes` — des
 // données financières nominatives qui ne doivent pas atteindre le navigateur d'un spectateur anonyme
 // (règle 6 ; correctif de revue B/C1). Les départs et les plans, eux, sont des surfaces publiques sans
@@ -76,6 +76,7 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
 
       <RechercheArcher
         archers={archers}
+        enChargement={archersQuery.isLoading}
         enErreur={archersQuery.isError}
         tournoiId={tournoiId}
         suivis={suivisIci}
@@ -88,10 +89,14 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
               key={s.archerId}
               archerId={s.archerId}
               archer={archersParId.get(s.archerId) ?? null}
-              archersCharges={!archersQuery.isLoading}
+              // « a réussi à charger », pas « ne charge plus » : sur erreur, `isLoading` est aussi
+              // faux — confondre les deux ferait passer une coupure réseau pour un archer disparu
+              // (correctif de revue C1/adversarial).
+              archersReussi={archersQuery.isSuccess}
+              archersEnErreur={archersQuery.isError}
               departs={departs}
               plansParDepart={plansParDepart}
-              chargement={chargementPlans}
+              chargement={archersQuery.isLoading || chargementPlans}
               erreur={erreurPlans}
             />
           ))}
@@ -106,11 +111,13 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
 // comme tel plutôt que proposé une 2ᵉ fois ; au-delà de MAX_RESULTATS, on invite à préciser.
 function RechercheArcher({
   archers,
+  enChargement,
   enErreur,
   tournoiId,
   suivis,
 }: {
   archers: Archer[]
+  enChargement: boolean
   enErreur: boolean
   tournoiId: number
   suivis: ArcherSuivi[]
@@ -135,15 +142,13 @@ function RechercheArcher({
       />
 
       {!requeteVide &&
+        // On ne présente jamais une erreur ni un chargement comme un « aucun archer » (fait négatif) :
+        // erreur d'abord, puis résultats, puis chargement, et seulement en dernier « aucun » (revue C1).
         (enErreur ? (
-          // Liste des archers en échec de chargement : on ne prétend pas « aucun archer », on dit la
-          // vérité (correctif de revue C1 — ne pas présenter une erreur réseau comme un fait négatif).
           <p className="carte__etat carte__etat--erreur">
             Liste momentanément indisponible — connexion perdue.
           </p>
-        ) : resultats.length === 0 ? (
-          <p className="carte__etat">Aucun archer à ce nom.</p>
-        ) : (
+        ) : resultats.length > 0 ? (
           <>
             <ul className="recherche-resultats">
               {resultats.map((a) => (
@@ -169,6 +174,10 @@ function RechercheArcher({
             </ul>
             {tropDeResultats && <p className="carte__etat">Trop de résultats — précisez le nom.</p>}
           </>
+        ) : enChargement ? (
+          <p className="carte__etat">Chargement…</p>
+        ) : (
+          <p className="carte__etat">Aucun archer à ce nom.</p>
         ))}
     </div>
   )
@@ -176,11 +185,13 @@ function RechercheArcher({
 
 // La carte d'un archer suivi : son nom, le bouton « ne plus suivre », et sa journée (une ligne par
 // départ où il est posé). `archer` peut être `null` un court instant (liste pas encore chargée) → repli
-// `Archer #id` ; s'il reste `null` **après** chargement, c'est qu'il a été retiré du tournoi → on le dit.
+// `Archer #id` ; s'il reste `null` alors que la liste a **réussi** à charger, c'est qu'il a été retiré
+// du tournoi → on le dit (mais une **erreur** de chargement n'est pas une disparition — revue C1).
 function CarteArcherSuivi({
   archerId,
   archer,
-  archersCharges,
+  archersReussi,
+  archersEnErreur,
   departs,
   plansParDepart,
   chargement,
@@ -188,7 +199,8 @@ function CarteArcherSuivi({
 }: {
   archerId: number
   archer: Archer | null
-  archersCharges: boolean
+  archersReussi: boolean
+  archersEnErreur: boolean
   departs: Depart[]
   plansParDepart: Map<number, PlanDeCibles>
   chargement: boolean
@@ -197,7 +209,7 @@ function CarteArcherSuivi({
   const nePlusSuivre = useSessionSuivisStore((s) => s.nePlusSuivre)
   const journee = construireJournee(archerId, departs, plansParDepart)
   const nom = archer ? `${archer.prenom} ${archer.nom}` : `Archer #${archerId}`
-  const archerDisparu = archer === null && archersCharges
+  const archerDisparu = archer === null && archersReussi
 
   return (
     <li className="carte carte-suivi">
@@ -208,13 +220,10 @@ function CarteArcherSuivi({
         </button>
       </div>
 
-      {archerDisparu ? (
-        <p className="carte__etat">Cet archer n’est plus dans le tournoi.</p>
-      ) : erreur ? (
-        <p className="carte__etat">
-          Connexion momentanément perdue — mise à jour au retour du réseau.
-        </p>
-      ) : journee.length > 0 ? (
+      {/* On montre d'abord la journée qu'on CONNAÎT : l'échec d'un seul plan ne doit pas masquer la
+          place déjà chargée sur un autre départ (revue C1, F2). L'erreur ne s'affiche que faute de
+          mieux. */}
+      {journee.length > 0 ? (
         <ul className="suivi-departs">
           {journee.map((l) => (
             <li key={l.departId} className="suivi-depart">
@@ -228,8 +237,16 @@ function CarteArcherSuivi({
             </li>
           ))}
         </ul>
+      ) : archerDisparu ? (
+        <p className="carte__etat">Cet archer n’est plus dans le tournoi.</p>
+      ) : archersEnErreur || erreur ? (
+        <p className="carte__etat">
+          Connexion momentanément perdue — mise à jour au retour du réseau.
+        </p>
+      ) : chargement ? (
+        <p className="carte__etat">Chargement…</p>
       ) : (
-        <p className="carte__etat">{chargement ? 'Chargement…' : 'Pas encore placé.'}</p>
+        <p className="carte__etat">Pas encore placé.</p>
       )}
     </li>
   )
