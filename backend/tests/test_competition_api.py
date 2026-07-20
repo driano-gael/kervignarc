@@ -471,7 +471,9 @@ def test_modifier_categorie_d_un_archer_engage_409_puis_passe_sur_confirmation(
             f"/api/v1/tournois/{tournoi_id}/categories", json={"libelle": "Senior 2 H"}
         ).json()
         archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
-        client.post(f"/api/v1/archers/{archer_id}/scores", json={"points": 9})
+        # « A tiré » = au moins une volée **validée** (E04US002), plus l'agrégat `Score` que plus
+        # aucun flux n'écrit (DETTE-013). On sème la volée validée directement, comme le classement.
+        _semer_serie(app_competition, tournoi_id, archer_id, (ZoneScore.NEUF,) * 3)
         corps = {"nom": "Robin", "prenom": "Jean", "categorie_id": autre_categorie["id"]}
 
         signale = client.put(f"/api/v1/archers/{archer_id}", json=corps)
@@ -517,7 +519,8 @@ def test_supprimer_archer_engage_409_puis_passe_sur_confirmation(
         tournoi_id, categorie_id = _tournoi_avec_categorie(client)
         archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
         client.post(f"/api/v1/archers/{archer_id}/placement", json={"cible": 3})
-        client.post(f"/api/v1/archers/{archer_id}/scores", json={"points": 9})
+        # « A tiré » = volées **validées** (E04US002), plus l'agrégat `Score` mort (DETTE-013).
+        _semer_serie(app_competition, tournoi_id, archer_id, (ZoneScore.NEUF,) * 3)
 
         signale = client.delete(f"/api/v1/archers/{archer_id}")
         assert signale.status_code == 409

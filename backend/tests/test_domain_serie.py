@@ -212,6 +212,19 @@ def test_cumul_ne_compte_que_les_volees_validees() -> None:
     assert serie.cumul == 81  # 3 x 27
 
 
+def test_nb_fleches_validees_ne_compte_que_les_volees_validees() -> None:
+    """« A tiré » (E02US003, gardes d'engagement) = flèches des volées **validées**.
+
+    Arbitrage du 20/07/2026 (`stories/E02-inscriptions.md`) : miroir de `cumul` — tant que le
+    scoreur n'a pas validé, la volée est un état intermédiaire, elle ne compte pas comme un tir.
+    Le manqué (`M`) est **compté** : une flèche manquée reste une flèche tirée (le total l'ignore).
+    """
+    serie = _serie_pleine(2, _v("10", "9", "M"))  # 2 volées de 3 flèches, rien de validé
+    assert serie.nb_fleches_validees == 0
+    serie = serie.valider("MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=2)
+    assert serie.nb_fleches_validees == 6  # 2 x 3 flèches, le M compris
+
+
 def test_valider_toutes_les_n_volees_verrouille_par_lots() -> None:
     """ex-007 : « toutes les N volées » verrouille le prochain lot de N volées complètes."""
     serie = _serie_pleine(3, _v("10", "9", "8"), nb_volees_bareme=6)
