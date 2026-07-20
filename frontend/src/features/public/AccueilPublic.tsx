@@ -7,23 +7,27 @@
 // Navigation par **état local** (`useState`), pas de `react-router` : cohérent avec l'arbitrage de la
 // coquille admin (18/07/2026) — périmètre réseau local, pas de deep-link/URL partagée, la dépendance
 // ne se justifie pas (règle 11). Les CA d'E07US001 (classements/plans/live) ne réclament pas d'URL
-// partageable ; « ouvrir l'appli sur ma journée » (mémorisation, deep-link) relève d'E07US006/008.
+// partageable. « Suivre des archers » (E07US006) mémorise le choix côté client (`localStorage`), pas
+// dans l'URL : c'est un onglet de plus, sélectionné d'entrée si l'on suit déjà quelqu'un.
 //
 // Extrait de `admin/CoquilleAdmin.tsx` en E07US001 : la zone publique est une surface à part entière,
 // pas un repli enfoui dans le module d'administration.
 
 import { useState } from 'react'
+import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import type { Tournoi } from '../competition/api'
 import { VueClassement } from '../competition/VueClassement'
 import { PlanCiblesPublic } from '../placement/PlanCiblesPublic'
 import { EspaceScoreur } from '../scoreur-session/EspaceScoreur'
+import { VueSuivi } from '../suivi/VueSuivi'
 import { BadgeStatut, GestionTournois } from '../tournois/Tournois'
 
-// Les deux vues publiques d'un tournoi. Fermé (pas d'ouverture prévue en E07US001) : les tableaux de
-// duels (E07US005) et l'écran de salle (E07US004) sont d'autres US, pas des onglets à réserver ici.
-type Vue = 'classement' | 'plan'
+// Les vues publiques d'un tournoi. Fermé (pas d'ouverture prévue ici) : les tableaux de duels
+// (E07US005) et l'écran de salle (E07US004) sont d'autres US, pas des onglets à réserver.
+type Vue = 'suivi' | 'classement' | 'plan'
 
 const VUES: { id: Vue; libelle: string }[] = [
+  { id: 'suivi', libelle: 'Suivi' },
   { id: 'classement', libelle: 'Classement' },
   { id: 'plan', libelle: 'Plan de cibles' },
 ]
@@ -63,7 +67,10 @@ export function AccueilPublic() {
 }
 
 function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () => void }) {
-  const [vue, setVue] = useState<Vue>('classement')
+  // Si l'on suit déjà quelqu'un sur ce tournoi, on ouvre directement sur « Suivi » — l'appli tombe sur
+  // ses archers sans détour (D-09). Sinon, le classement reste la vue d'accueil par défaut.
+  const aDesSuivis = useSessionSuivisStore((s) => s.suivis.some((x) => x.tournoiId === tournoi.id))
+  const [vue, setVue] = useState<Vue>(aDesSuivis ? 'suivi' : 'classement')
 
   return (
     <section className="carte carte--large">
@@ -88,7 +95,9 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
         ))}
       </nav>
 
-      {vue === 'classement' ? (
+      {vue === 'suivi' ? (
+        <VueSuivi tournoiId={tournoi.id} />
+      ) : vue === 'classement' ? (
         <VueClassement tournoiId={tournoi.id} admin={false} />
       ) : (
         <PlanCiblesPublic tournoiId={tournoi.id} />
