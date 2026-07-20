@@ -15,9 +15,11 @@ que le contexte est petit et local.
 ## L'état en une phrase
 
 **Les fondations techniques sont complètes, la configuration d'un tournoi et les inscriptions
-fonctionnent, le placement des archers sur les cibles existe, et la saisie des scores de qualification
-tourne en temps réel — y compris quand le wifi saute.** Il reste à construire le classement de
-qualification, l'affichage public, les duels (phases finales), et le pilotage du jour J.
+fonctionnent, le placement des archers sur les cibles existe, la saisie des scores de qualification
+tourne en temps réel — y compris quand le wifi saute — et un tournoi de qualification se suit
+désormais de bout en bout : les postes de saisie se supervisent, le classement se calcule, et le
+public le consulte en direct sans compte.** Il reste à finir ce jalon (« ma journée » personnalisée,
+suivi des paiements), puis à construire les duels (phases finales) et le pilotage du jour J.
 
 ---
 
@@ -103,14 +105,35 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
 - L'**ossature de navigation** de l'application admin (la coquille dans laquelle les écrans viennent
   se loger).
 
+### 9. Suivre la qualification et l'afficher au public — *en place*
+
+Ce qui transforme la saisie brute en tournoi qu'on suit en direct, dernier bloc construit :
+
+- **Superviser les postes de saisie** : l'organisateur voit, sur un seul écran, l'état de chaque
+  cible (rattachée, en ligne, en retard, à valider) — *un poste figé ne se plaint pas, seule la
+  supervision le révèle*.
+- **Le classement de qualification** : à partir des scores validés, le classement se calcule et se
+  met à jour tout seul, par catégorie.
+- **Les vues publiques** : n'importe qui sur le réseau consulte, sans authentification et depuis son
+  téléphone, les **classements**, le **plan de cibles** (qui tire où), le tout **en direct** — chaque
+  validation met les écrans à jour sans rien rafraîchir.
+- **Suivre des archers** : on cherche un archer par son nom, on le **suit**, et l'application mémorise
+  ce choix sur l'appareil (sans compte) — à la réouverture, elle affiche directement **sa cible / sa
+  position / son départ**, à jour en direct. On peut en suivre plusieurs.
+
+*Reste à venir sur ce jalon : le **déroulé du tour en direct** dans le suivi (chaque score, « en
+attente de validation » puis « validé »), les affectations du prochain tour, et le suivi des
+paiements.*
+
 ---
 
 ## Ce qui n'existe pas encore (les grands chantiers restants)
 
 Dans l'ordre de valeur prévu par le backlog :
 
-1. **Finir le tournoi de qualification** : superviser les postes de saisie, le **classement de
-   qualification**, les vues publiques (classements, plans, live), le suivi des paiements.
+1. **Finir le tournoi de qualification** : l'appli publique ouverte directement sur **« ma journée »**
+   (« c'est moi » mémorisé), la **complétude** du tournoi, la recherche globale d'un archer, et le
+   **suivi des paiements**. *(Supervision des postes, classement et vues publiques : faits — cf. bloc 9.)*
 2. **Les duels** (phases finales) : arbre d'élimination directe, saisie en duels, abandon /
    disqualification, barrages, podium — **et surtout la bascule de tour**, qui est le moment où le
    produit gagne ou perd sa valeur.
@@ -127,8 +150,11 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **46 US livrées** sur `main` (mergées, revues, CI verte) à la date du 20/07/2026.
-- Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : bien avancé**,
-  il reste le classement, l'affichage public et le pilotage.
-- Dernière US livrée : **E04US009** (diffusion live & résilience réseau).
-- Prochaine US prévue : **E12US001** (superviser les postes de saisie) — cf. [`SUIVI-US.md`](SUIVI-US.md).
+- **50 US livrées** sur `main` (mergées, revues, CI verte) à la date du 20/07/2026 — dont E07US006,
+  optimiste d'un cran sur la branche jusqu'à son merge.
+- Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : bien avancé
+  (37/46)** — supervision, classement, vues publiques et suivi d'archers faits ; restent le déroulé
+  du tour en direct, la complétude, les paiements et quelques imprimables.
+- Dernière US livrée : **E07US006** (suivre des archers : ma journée).
+- Prochaine US prévue : **E07US009** (suivre le déroulé du tour en direct — backend + ADR) — cf.
+  [`SUIVI-US.md`](SUIVI-US.md).

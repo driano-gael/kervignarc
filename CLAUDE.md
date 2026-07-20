@@ -178,6 +178,16 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   `/compact`. ADR, registre de dette, corps de commit, mémoire : c'est déjà la règle (§ Dette,
   § Workflow) — c'en est aussi la raison économique. Le meilleur point de coupe est **« lance la
   PR »** : le code est écrit, la trace d'exploration ne sert plus ; le signaler à l'utilisateur.
+- **Ce qui cadre le projet va dans le dépôt, pas en mémoire locale.** L'utilisateur développe sur
+  **plusieurs postes** et son point de suivi est **GitHub** : la mémoire locale de l'assistant
+  (`~/.claude/…`) est **par machine** et **ne voyage pas**. Donc toute règle, décision ou arbitrage
+  qui **cadre le projet** s'écrit dans un fichier **versionné** — `CLAUDE.md`, [`docs/adr/`](docs/adr/),
+  [`docs/dette.md`](docs/dette.md), [`stories/`](stories/), [`journal-d-avancement/`](journal-d-avancement/) —
+  pour **partir sur GitHub et se retrouver sur chaque poste**. La mémoire n'est qu'un **aide-mémoire
+  personnel du poste courant**, **jamais la source de vérité** d'une décision projet ; si un fait
+  mémorisé cadre le projet, son **exemplaire versionné dans le dépôt fait foi**. *(Cela **précise** le
+  point précédent : la mémoire reste un lieu d'écriture utile — elle **double** le dépôt pour ce poste
+  — mais pour ce qui cadre le projet, elle ne le **remplace** pas.)*
 
 ## Workflow
 
@@ -216,6 +226,35 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   besoin par `git log main --first-parent` / `git branch -r` (une US peut avoir été livrée par une
   session parallèle). Un tracker périmé fait repartir « reprend les US » sur une base fausse : sa mise
   à jour n'est pas cosmétique, elle conditionne la reprise.
+- **Le journal d'avancement ([`journal-d-avancement/`](journal-d-avancement/)) est un livrable, pas des
+  notes internes** — c'est la photo d'ensemble rendue au commanditaire (« qu'est-ce qui marche
+  aujourd'hui »), en français non technique. Il se tient à jour **au même titre et par le même
+  mécanisme que `SUIVI-US.md`** : la mise à jour **voyage avec le diff de l'US**, dans son dernier
+  commit, donc sur `main` le journal reste **toujours vrai**. Concrètement, une US qui livre une
+  **fonctionnalité visible** met à jour, dans son propre commit :
+  - [`00-resume-projet.md`](journal-d-avancement/00-resume-projet.md) — le résumé « où on en est » :
+    la ou les fonctionnalités livrées, l'« état en une phrase », et les **chiffres repères**. Un résumé
+    qui liste moins de fonctionnalités que le tracker n'affiche de ✅ est **périmé** — défaut à
+    corriger, pas cosmétique. **`SUIVI-US.md` fait autorité sur le compte exact** (nombre d'US livrées,
+    dernière, prochaine) ; le résumé le **reflète** sans le contredire. Ne pas maintenir deux comptes
+    divergents — le doublon est lui-même une source de dérive : les deux fichiers se réconcilient
+    **dans le même commit**.
+  - un fichier daté `AAAA-MM-JJ-HHhMM-<slug>.md` **uniquement pour un fait marquant** (jalon franchi,
+    capacité nouvelle qui change la donne) — épisodique, pas un par US. La plupart des US ne rajoutent
+    qu'une ligne au résumé.
+- **Cadrage d'intention en tête d'une US visible.** Avant de brancher / explorer / coder une US qui
+  **livre une capacité vue par l'utilisateur**, reformuler en une ou deux lignes ce qu'elle délivre et
+  **demander si c'est bien tout le périmètre voulu — ou s'il en existe une version plus riche** —
+  surtout si le CA est ancien, mince ou purement front. Le besoin **émerge par le dialogue** (esprit
+  agile) : ne pas exiger de l'utilisateur qu'il ait tout anticipé dans la fiche, ni implémenter le CA
+  au pied de la lettre s'il sous-représente l'intention. Ce contrôle **complète** le garde-fou « CA
+  ambigu » (règle 9), qui ne détecte que l'**ambiguïté** : un CA **clair mais trop étroit** s'écrit
+  sans effort et passe au travers — c'est précisément ce cas qui gaspille de l'implémentation. Le
+  cadrage est **rapide** (une question, pas une cérémonie) et ne s'applique pas aux petites US
+  mécaniques sans surface utilisateur. *(Cas réel, E07US006 le 20/07/2026 : CA « c'est moi », un
+  archer, front-only ; l'intention réelle était « suivre plusieurs archers avec le déroulé du tour en
+  direct » — backend + ADR. Redécoupé en deux tranches ; le cadrage aurait évité de brancher et
+  d'explorer la version étroite d'abord.)*
 - **Décision structurante ⇒ ADR** dans `docs/adr/` (contexte / décision / conséquences).
 - Une US trop grosse pour une branche doit être **redécoupée** (maille INVEST).
 
@@ -231,6 +270,7 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
 | [`docs/glossaire.md`](docs/glossaire.md) · [`docs/modele-de-donnees.md`](docs/modele-de-donnees.md) · [`docs/referentiel-ffta.md`](docs/referentiel-ffta.md) | Vocabulaire, modèle, règles FFTA |
 | [`docs/dette.md`](docs/dette.md) · [`docs/dependances.md`](docs/dependances.md) · [`docs/adr/`](docs/adr/) | Registres et décisions |
 | [`epics/`](epics/) · [`stories/`](stories/) | Backlog produit (jalons J0→J4) |
+| [`journal-d-avancement/`](journal-d-avancement/) | **Livrable de suivi** : `SUIVI-US.md` (point de reprise) + `00-resume-projet.md` (photo d'ensemble) + faits marquants datés |
 
 `prototype/` est un prototype Python de déc. 2024 : **référence de lecture uniquement**, non exécuté,
 au vocabulaire hétérogène (`Player.lettre`, `idCible`) — ne pas s'en inspirer pour le nommage.

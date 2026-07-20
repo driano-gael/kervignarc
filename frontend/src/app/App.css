@@ -1350,6 +1350,98 @@ button:disabled {
   color: var(--text-h);
 }
 
+/* Vue « suivi » (E07US006) — recherche d'archers + cartes des archers suivis. */
+.recherche-suivi {
+  margin: 8px 0 12px;
+}
+
+.recherche-resultats {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recherche-resultat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px; /* cible tactile confortable (règle 10) */
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.recherche-resultat__nom {
+  flex: 1 1 auto;
+  color: var(--text-h);
+}
+
+.recherche-resultat__suivi {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* Les cartes des archers suivis : empilées, pleine largeur (une par archer). */
+.suivis {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.carte-suivi__entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.carte-suivi__nom {
+  font-size: 16px;
+  color: var(--text-h);
+}
+
+.suivi-departs {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.suivi-depart {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.suivi-depart__creneau {
+  flex: 1 1 auto;
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* La place (cible + position) est l'information qu'on vient chercher : mise en avant. */
+.suivi-depart__place {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.suivi-depart__attente {
+  font-size: 14px;
+  color: var(--text);
+}
+
 /* Consultation sur téléphone : marges réduites et cartes pleine largeur. Le conteneur
    `.app__contenu--colonnes` (flex `flex-wrap: wrap`) empile déjà ses colonnes ; on relâche seulement
    les largeurs max des cartes qui les bornaient sur desktop. */
