@@ -165,6 +165,15 @@
 | E13US003 | Scoring d'équipe (politique injectable) | J2 | ⬜ |
 | E13US004 | Placement, saisie & classement par équipe | J2→J3 | ⬜ |
 
+## Ajout du 20/07/2026 — ⬜ **à planifier (0/1)**
+
+> Issu de l'échange sur le modèle d'entrée de l'appli (une seule SPA, trois expériences). Cf.
+> [`stories/E00-socle.md`](../stories/E00-socle.md) § E00US017.
+
+| US | Titre | Jalon | État |
+|---|---|---|---|
+| E00US017 | Écran d'accueil : choisir son appareil / rôle | J3 | ⬜ *(définie en `stories/`, non implémentée — ADR à l'implémentation)* |
+
 ## US caduque
 
 | US | Titre | Motif |
