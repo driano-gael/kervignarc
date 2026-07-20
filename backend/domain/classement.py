@@ -14,8 +14,8 @@ Chaque ligne porte **deux rangs** (arbitrage produit du 20/07/2026, reversé dan
 
 - `rang_scratch` : le classement **global**, toutes catégories confondues ;
 - `rang_categorie` : le classement **au sein de la catégorie** de l'archer, **repartant de 1** par
-  catégorie (ex æquo partagés avec sauts — même règle que le scratch, §8.1 ; ce n'est **pas** un rang
-  « dense » sans trou : deux ex æquo en 2ᵉ place sont suivis d'un 4ᵉ, pas d'un 3ᵉ).
+  catégorie (ex æquo partagés avec sauts — même règle que le scratch, §8.1 ; ce n'est **pas**
+  un rang « dense » sans trou : deux ex æquo en 2ᵉ place sont suivis d'un 4ᵉ, pas d'un 3ᵉ).
 
 Les deux se calculent avec le **même** ordre ; ils ne diffèrent que par la numérotation (le scratch
 saute les places prises par les autres catégories, la catégorie repart de 1). Le décompte de 10 et
@@ -172,9 +172,9 @@ def calculer_classement(
     ordre_scratch = sorted(entrees, key=lambda e: _cle_tri(e[0], e[1]))
     rangs_scratch = _ranger(ordre_scratch)
 
-    # Rangs par catégorie : même comparateur, appliqué au sous-ensemble de chaque catégorie. L'ordre
-    # relatif y est **identique** à l'ordre scratch (mêmes archers, même clé) — seule la
-    # numérotation diffère (repart de 1 par catégorie). On regroupe donc depuis l'ordre scratch trié.
+    # Rangs par catégorie : même comparateur, appliqué au sous-ensemble de chaque catégorie.
+    # L'ordre relatif y est **identique** à l'ordre scratch (mêmes archers, même clé) — seule la
+    # numérotation diffère (repart de 1 par catégorie). On regroupe depuis l'ordre scratch trié.
     rangs_categorie: dict[ArcherId, int] = {}
     par_categorie: dict[CategorieId, list[tuple[Archer, _Decompte]]] = {}
     for archer, decompte in ordre_scratch:
@@ -182,9 +182,10 @@ def calculer_classement(
     for groupe in par_categorie.values():
         rangs_categorie.update(_ranger(groupe))
 
-    # `categorie_libelle` retombe sur "" si la catégorie de l'archer manque au lot passé — ne devrait
-    # pas arriver (FK obligatoire depuis E02US002). Contrairement au `club_id` inconnu qu'on **signale**
-    # (ADR-0014), un libellé vide ne trompe personne et ne mérite pas de rendre l'anomalie visible ici.
+    # `categorie_libelle` retombe sur "" si la catégorie de l'archer manque au lot passé — ne
+    # devrait pas arriver (FK obligatoire depuis E02US002). Contrairement au `club_id` inconnu
+    # qu'on **signale** (ADR-0014), un libellé vide ne trompe personne et ne mérite pas de rendre
+    # l'anomalie visible ici.
     lignes: list[LigneClassement] = []
     for archer, decompte in ordre_scratch:
         assert archer.id is not None

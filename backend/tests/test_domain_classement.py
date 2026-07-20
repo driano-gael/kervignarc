@@ -7,10 +7,10 @@ Dérivés du **CA** de `stories/E06-classements.md` (et non de l'implémentation
 - **départage** FFTA (`docs/referentiel-ffta.md` §8.1, art. C.3) : à total égal, on départage au
   **plus grand nombre de 10**, puis de **9** — deux critères **séquentiels**, jamais fusionnés, et
   qui ne jouent **qu'à** total égal ;
-- **catégorie** : deux rangs coexistent — un rang **scratch** (global, toutes catégories) et un rang
-  **par catégorie** (repartant de 1 par catégorie, ex æquo partagés avec sauts — pas un rang « dense »
-  sans trou). Arbitrage produit du 20/07/2026 (reversé dans `stories/`) : « les deux », pas l'un ou
-  l'autre ;
+- **catégorie** : deux rangs coexistent — un rang **scratch** (global, toutes catégories) et un
+  rang **par catégorie** (repartant de 1 par catégorie, ex æquo partagés avec sauts — pas un rang
+  « dense » sans trou). Arbitrage produit du 20/07/2026 (reversé dans `stories/`) : « les deux »,
+  pas l'un ou l'autre ;
 - **traçable** : le nombre de 10 et de 9 remonte dans chaque ligne, pour que le départage se
   **vérifie à l'œil**.
 
