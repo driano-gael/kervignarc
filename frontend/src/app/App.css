@@ -1350,8 +1350,9 @@ button:disabled {
   color: var(--text-h);
 }
 
-/* Consultation sur téléphone : marges réduites et cartes pleine largeur. Le layout en colonnes
-   s'enroule déjà (`flex-wrap`), on relâche seulement les largeurs max qui bornaient le desktop. */
+/* Consultation sur téléphone : marges réduites et cartes pleine largeur. Le conteneur
+   `.app__contenu--colonnes` (flex `flex-wrap: wrap`) empile déjà ses colonnes ; on relâche seulement
+   les largeurs max des cartes qui les bornaient sur desktop. */
 @media (max-width: 600px) {
   .app {
     padding: 16px;

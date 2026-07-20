@@ -34,9 +34,15 @@ function libelleDepart(depart: { numero: number; horaire: string | null }): stri
 export function PlanCiblesPublic({ tournoiId }: { tournoiId: number }) {
   const departs = useDeparts(tournoiId)
   // Départ affiché. `null` tant qu'on n'a pas choisi ; on retombe sur le **premier** départ dès que
-  // la liste est connue (un plan sans départ choisi n'aurait rien à montrer).
+  // la liste est connue (un plan sans départ choisi n'aurait rien à montrer). On revalide le choix
+  // contre la liste **courante** : si le départ choisi disparaît (supprimé en direct), on ne reste
+  // pas figé sur un id fantôme (`<select>` sans option, plan 404) — on retombe sur le premier.
   const [departChoisi, setDepartChoisi] = useState<number | null>(null)
-  const departId = departChoisi ?? departs.data?.[0]?.id ?? null
+  const departsData = departs.data
+  const departId =
+    departsData?.some((d) => d.id === departChoisi) === true
+      ? departChoisi
+      : (departsData?.[0]?.id ?? null)
 
   if (departs.isPending) {
     return <p className="carte__etat">Chargement…</p>

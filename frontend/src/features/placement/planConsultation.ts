@@ -15,10 +15,11 @@ export interface PlaceConsultation {
   nom: string
 }
 
-// Une cible du plan en lecture : son rang, son plafond, et les archers posés (triés par position).
+// Une cible du plan en lecture : son rang et les archers posés (triés par position). On ne porte
+// **pas** la capacité : la vue publique n'affiche que « qui tire où » (numéro + occupants), pas le
+// taux de remplissage — un champ non rendu n'a pas à traverser le modèle de lecture.
 export interface CibleConsultation {
   index: number
-  capacite: number
   places: PlaceConsultation[]
 }
 
@@ -34,7 +35,6 @@ export function construirePlanConsultation(
     .sort((a, b) => a.index - b.index)
     .map((cible) => ({
       index: cible.index,
-      capacite: cible.capacite,
       places: [...cible.placements]
         .sort((a, b) => a.position.localeCompare(b.position))
         .map((placement) => ({

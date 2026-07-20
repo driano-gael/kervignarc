@@ -36,7 +36,14 @@ export function AccueilPublic() {
       {/* En public, `GestionTournois` présente l'écran de connexion + la liste en lecture seule. */}
       <GestionTournois selectionneId={selection?.id ?? null} onChoisi={setSelection} />
 
-      {selection && <VuesPubliques tournoi={selection} onFermer={() => setSelection(null)} />}
+      {/* `key={selection.id}` : changer directement de tournoi (la liste reste cliquable au-dessus)
+          **remonte** le sous-arbre au lieu de le réconcilier en place — sinon le filtre catégorie et
+          le départ choisis pour le tournoi précédent survivraient et interrogeraient le nouveau
+          (classement vide trompeur). Les tournois concurrents sont une capacité voulue, le cas est
+          réel. */}
+      {selection && (
+        <VuesPubliques key={selection.id} tournoi={selection} onFermer={() => setSelection(null)} />
+      )}
 
       <aside className="carte">
         {/* L'entrée du scoreur : il ouvre l'app sur son téléphone et tape son code, sans passer par

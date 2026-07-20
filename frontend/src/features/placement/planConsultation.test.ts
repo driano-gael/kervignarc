@@ -37,9 +37,7 @@ describe('construirePlanConsultation', () => {
       plan([{ index: 1, capacite: 4, places: [{ position: 'A', archer_id: 1 }] }]),
       noms,
     )
-    expect(resultat).toEqual([
-      { index: 1, capacite: 4, places: [{ position: 'A', nom: 'Marie Dupont' }] },
-    ])
+    expect(resultat).toEqual([{ index: 1, places: [{ position: 'A', nom: 'Marie Dupont' }] }])
   })
 
   it('trie les cibles par index (ordre de la salle), pas l’ordre reçu', () => {
@@ -91,6 +89,6 @@ describe('construirePlanConsultation', () => {
       plan([{ index: 5, capacite: 3, places: [] }]),
       new Map(),
     )
-    expect(resultat).toEqual([{ index: 5, capacite: 3, places: [] }])
+    expect(resultat).toEqual([{ index: 5, places: [] }])
   })
 })
