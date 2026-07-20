@@ -793,6 +793,60 @@ button:disabled {
   white-space: nowrap;
 }
 
+/* Console de supervision des postes (E12US001, ADR-0038). */
+.supervision__compteur {
+  font-size: 15px;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+
+.supervision__table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* État d'un poste : **couleur + pastille + texte**, jamais la couleur seule (DV-03). La pastille
+   réutilise `.indicateur__pastille` ; seule la teinte change par modificateur. */
+.supervision__etat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.supervision__etat--en_ligne {
+  color: var(--ok);
+}
+
+/* Hors ligne = **ambre** (`--warn`), jamais rouge : sur l'anthracite de la charte le rouge ne
+   contraste pas assez et ne signale rien (`DV-03`, arbitrage E12US001 / ADR-0038). */
+.supervision__etat--hors_ligne {
+  color: var(--warn);
+}
+
+.supervision__etat--non_rattache {
+  color: var(--text);
+}
+
+.supervision__ip {
+  font-family: ui-monospace, monospace;
+  color: var(--text);
+  font-size: 13px;
+}
+
+/* Libellé réservé aux lecteurs d'écran (en-tête de la colonne d'action, sans texte visible). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .ligne-action {
   display: flex;
   gap: 4px;

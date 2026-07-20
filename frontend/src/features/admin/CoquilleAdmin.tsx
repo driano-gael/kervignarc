@@ -15,12 +15,12 @@
 // (règle 11) ; à réévaluer si un vrai besoin d'URL apparaît.
 //
 // Périmètre borné aux **fonctions livrées** (CA « non-régression ») : les destinations que le §7.1
-// prévoit mais qui n'existent pas encore (Identité, Supervision, Complétude, Validation, Podiums,
-// Paiements, Exports, Archive, Audit, recherche) ne sont **pas** matérialisées par des entrées vides
-// — elles arriveront avec leur US. De même, les 7 statuts d'ADR-0026 (E01US017) ne sont pas encore
-// livrés : l'accueil contextualisé s'appuie sur les **3 statuts actuels** (brouillon / en_cours /
-// termine). « Supervision » et « Résultats » n'ayant pas encore d'écran dédié, ils retombent sur le
-// **classement en direct** — seul écran de suivi livré à ce jour.
+// prévoit mais qui n'existent pas encore (Identité, Complétude, Validation, Podiums, Paiements,
+// Exports, Archive, Audit, recherche) ne sont **pas** matérialisées par des entrées vides — elles
+// arriveront avec leur US. De même, les 7 statuts d'ADR-0026 (E01US017) ne sont pas encore livrés :
+// l'accueil contextualisé s'appuie sur les **3 statuts actuels** (brouillon / en_cours / termine).
+// « Supervision » (E12US001) est livrée et l'accueil d'un tournoi *en cours* pointe dessus ;
+// « Résultats » n'ayant pas encore d'écran dédié, un tournoi *terminé* retombe sur le classement.
 
 import { useState, type ReactNode } from 'react'
 import { Archers } from '../archers/Archers'
@@ -40,6 +40,7 @@ import { Placement } from '../placement/Placement'
 import { Postes } from '../postes/Postes'
 import { EspaceScoreur } from '../scoreur-session/EspaceScoreur'
 import { Scoreurs } from '../scoreurs/Scoreurs'
+import { Supervision } from '../supervision/Supervision'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { BadgeStatut, GestionTournois } from '../tournois/Tournois'
 
@@ -62,13 +63,15 @@ const GROUPES: { temps: Temps; libelle: string }[] = [
   { temps: 'jourj', libelle: 'Jour J' },
 ]
 
-// Destination par défaut selon le statut (`D-20`). « Supervision » (en_cours) et « Résultats »
-// (termine) n'ayant pas encore d'écran propre, ils retombent sur le classement en direct.
+// Destination par défaut selon le statut (`D-20`). Un tournoi *en cours* ouvre sur la **supervision**
+// (E12US001) — l'écran du jour J. « Résultats » (termine) n'ayant pas encore d'écran propre, un
+// tournoi *terminé* retombe sur le classement en direct.
 function destinationParDefaut(statut: StatutTournoi): { id: string; groupe: Temps } {
   switch (statut) {
     case 'brouillon':
       return { id: 'tournoi', groupe: 'preparation' }
     case 'en_cours':
+      return { id: 'supervision', groupe: 'jourj' }
     case 'termine':
       return { id: 'classement', groupe: 'jourj' }
   }
@@ -207,6 +210,13 @@ function Coquille() {
       groupe: 'preparation',
       besoinTournoi: true,
       rendu: () => courant && <Postes tournoiId={courant.id} />,
+    },
+    {
+      id: 'supervision',
+      libelle: 'Supervision',
+      groupe: 'jourj',
+      besoinTournoi: true,
+      rendu: () => courant && <Supervision tournoiId={courant.id} />,
     },
     {
       id: 'classement',

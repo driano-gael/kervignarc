@@ -95,6 +95,17 @@ class FauxStoreSessionsPoste:
         self._postes.pop(jeton, None)
         self._departs.pop(jeton, None)
 
+    def postes_rattaches(self) -> set[PosteId]:
+        return set(self._postes.values())
+
+    def depart_courant_par_poste(self) -> dict[PosteId, DepartId]:
+        return {self._postes[jeton]: depart for jeton, depart in self._departs.items()}
+
+    def invalider_poste(self, poste_id: PosteId) -> None:
+        for jeton in [j for j, pid in self._postes.items() if pid == poste_id]:
+            self._postes.pop(jeton, None)
+            self._departs.pop(jeton, None)
+
 
 class FauxTournoiRepository:
     """Repository de tournois en mémoire conforme au port `TournoiRepository`."""

@@ -71,6 +71,11 @@ class FauxSerieRepository:
         self._series: dict[tuple[int, int], Serie] = {}
         self.traces: list[EntreeAudit] = []
         self._sequence = 0
+        # Le « quand » (created_at) est une métadonnée de persistance prouvée au repository
+        # (test_serie_repository). Ce faux ne l'attribue pas seul, mais un test peut le **forcer**
+        # (clé `(tournoi, archer)` → `{numéro: instant}`) pour couvrir la « dernière saisie » de la
+        # supervision (E12US001, `avancement_cible`), qui lit ce « quand ».
+        self.horodatages_forces: dict[tuple[int, int], dict[int, datetime.datetime]] = {}
 
     def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
         return self._series.get((tournoi_id, archer_id))
@@ -78,9 +83,7 @@ class FauxSerieRepository:
     def horodatages(
         self, tournoi_id: TournoiId, archer_id: ArcherId
     ) -> dict[int, datetime.datetime]:
-        # Le « quand » (created_at) est une métadonnée de persistance prouvée au niveau du
-        # repository (test_serie_repository) ; ce faux de service ne la modélise pas.
-        return {}
+        return self.horodatages_forces.get((tournoi_id, archer_id), {})
 
     def enregistrer(self, serie: Serie) -> Serie:
         if serie.id is None:
@@ -200,6 +203,7 @@ class Montage:
         zones: tuple[ZoneScore, ...] = ZONES_SIMPLE,
         avec_phase: bool = True,
         avec_blason: bool = True,
+        nb_volees: int = 2,
     ) -> None:
         self.series = FauxSerieRepository()
         self.phases = FauxPhaseRepository()
@@ -230,7 +234,7 @@ class Montage:
             self.phases.ajouter(
                 Phase.qualification(
                     tournoi_id=1,
-                    bareme=BaremeQualification.creer(2, 3),
+                    bareme=BaremeQualification.creer(nb_volees, 3),
                     validation=GrainValidation.fin_de_serie(),
                 )
             )
@@ -493,3 +497,98 @@ def test_corriger_est_aussi_cloisonnee_au_poste() -> None:
         m.service.corriger_volee(
             m.tournoi_id, m.archer_id, 1, _v("9", "9", "9"), auteur="ARBITRE", contexte=contexte
         )
+
+
+# --- Avancement d'une cible (E12US001, ADR-0038 §2) : lu par la console de supervision ---
+#
+# Règle métier arbitrée dans la story (E12US001) : « volée courante = celle du **plus lent** des
+# archers de la cible » et « dernière activité = dernier tir (max `created_at`), pas le heartbeat ».
+# C'est le cœur du CA (« sinon la lenteur serait invisible »). Testé **ici, depuis le CA**, sur le
+# vrai `ServiceSaisie` — le `FauxLecteurAvancement` du test de supervision isole *ce* service et ne
+# prouve donc rien de ce calcul (règle 9 : la logique de service se teste depuis le CA).
+
+
+def _saisir_volees(m: Montage, archer_id: ArcherId, combien: int) -> None:
+    """Saisit `combien` volées pleines (numéros 1..combien) pour un archer — chacune complète."""
+    for numero in range(1, combien + 1):
+        m.service.saisir_volee(m.tournoi_id, archer_id, numero, _v("10", "9", "8"), "DURAND")
+
+
+def test_avancement_cible_volee_courante_est_celle_du_plus_lent() -> None:
+    """Deux archers d'une cible à 3 et 5 volées → la cible est sur la volée du plus lent (min+1)."""
+    m = Montage(nb_volees=12)
+    autre = m.nouvel_archer("MARTIN")
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    m.placer(autre, _DEPART, cible_index=1, position="B")
+    _saisir_volees(m, m.archer_id, 3)
+    _saisir_volees(m, autre, 5)
+
+    avancement = m.service.avancement_cible(m.tournoi_id, cible_index=1, depart_id=_DEPART)
+
+    assert (avancement.volee_courante, avancement.nb_volees) == (4, 12)  # min(3, 5) + 1
+
+
+def test_avancement_cible_un_retardataire_sans_serie_tient_la_cible() -> None:
+    """Un archer placé qui n'a **rien** saisi maintient la cible à la volée 1 (le min compte 0)."""
+    m = Montage(nb_volees=12)
+    autre = m.nouvel_archer("MARTIN")
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    m.placer(autre, _DEPART, cible_index=1, position="B")
+    _saisir_volees(m, m.archer_id, 4)  # `autre` n'a aucune série
+
+    avancement = m.service.avancement_cible(m.tournoi_id, cible_index=1, depart_id=_DEPART)
+
+    assert avancement.volee_courante == 1  # min(4, 0) + 1
+
+
+def test_avancement_cible_est_cape_a_nb_volees_quand_tout_est_saisi() -> None:
+    """Toutes les volées saisies → « volée N/N » (le min+1 est capé, pas N+1)."""
+    m = Montage(nb_volees=2)
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    _saisir_volees(m, m.archer_id, 2)  # les deux volées du barème
+
+    avancement = m.service.avancement_cible(m.tournoi_id, cible_index=1, depart_id=_DEPART)
+
+    assert (avancement.volee_courante, avancement.nb_volees) == (2, 2)  # 3 capé à 2
+
+
+def test_avancement_cible_derniere_saisie_est_le_dernier_tir_tous_archers_confondus() -> None:
+    """« Dernière activité » = max des `created_at`, pas le dernier archer parcouru (ADR-0038)."""
+    m = Montage(nb_volees=12)
+    autre = m.nouvel_archer("MARTIN")
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    m.placer(autre, _DEPART, cible_index=1, position="B")
+    _saisir_volees(m, m.archer_id, 2)
+    _saisir_volees(m, autre, 1)
+    tot = datetime.datetime(2026, 7, 19, 10, 40, tzinfo=datetime.UTC)
+    dernier = datetime.datetime(2026, 7, 19, 10, 45, tzinfo=datetime.UTC)
+    entre_deux = datetime.datetime(2026, 7, 19, 10, 43, tzinfo=datetime.UTC)
+    m.series.horodatages_forces[(m.tournoi_id, m.archer_id)] = {1: tot, 2: dernier}
+    m.series.horodatages_forces[(m.tournoi_id, autre)] = {1: entre_deux}
+
+    avancement = m.service.avancement_cible(m.tournoi_id, cible_index=1, depart_id=_DEPART)
+
+    assert avancement.derniere_saisie == dernier
+
+
+def test_avancement_cible_sans_phase_de_qualification_ne_leve_pas() -> None:
+    """La supervision ne doit jamais échouer sur une qualif non configurée : `nb_volees` vaut 0."""
+    m = Montage(avec_phase=False)
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+
+    avancement = m.service.avancement_cible(m.tournoi_id, cible_index=1, depart_id=_DEPART)
+
+    assert avancement.nb_volees == 0  # aucune `PhaseQualificationAbsente` levée
+
+
+def test_avancement_cible_sans_archer_place_est_a_zero() -> None:
+    """Cible sans archer placé sur ce départ : volée 0, aucune dernière saisie (console tirete)."""
+    m = Montage(nb_volees=12)
+
+    avancement = m.service.avancement_cible(m.tournoi_id, cible_index=1, depart_id=_DEPART)
+
+    assert (avancement.volee_courante, avancement.nb_volees, avancement.derniere_saisie) == (
+        0,
+        12,
+        None,
+    )

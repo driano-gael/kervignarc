@@ -92,6 +92,24 @@ class EtatSerie:
     horodatages: dict[int, datetime.datetime]
 
 
+@dataclass(frozen=True)
+class AvancementCible:
+    """Avancement de saisie d'une cible, pour la supervision (E12US001, ADR-0038 §2).
+
+    `volee_courante` : la volée en cours (1-based) au rythme du **plus lent** des archers de la
+    cible — **0** si **aucun archer** n'est placé sur la cible (grille vide) ; des archers placés
+    mais qui n'ont rien saisi donnent **1** (le retardataire tient la cible). `nb_volees` : total
+    attendu (barème de qualification),
+    **0** si la qualification n'est pas configurée (la supervision n'échoue pas là-dessus, elle
+    affiche « — »). `derniere_saisie` : « quand » de la dernière volée saisie sur la cible, tous
+    archers confondus, ou `None` — c'est l'**activité** affichée, jamais le heartbeat (ADR-0038 §2).
+    """
+
+    volee_courante: int
+    nb_volees: int
+    derniere_saisie: datetime.datetime | None
+
+
 def _valeurs_lisibles(serie: Serie, numero: int) -> str | None:
     """Rend les valeurs d'une volée sous forme lisible (« 10, 9, 8 ») pour l'audit, ou `None`."""
     volee = serie.volee(numero)
@@ -151,6 +169,42 @@ class ServiceSaisie:
             )
         grille.sort(key=lambda ligne: ligne.position)
         return grille
+
+    def avancement_cible(
+        self, tournoi_id: TournoiId, cible_index: int, depart_id: DepartId
+    ) -> AvancementCible:
+        """Compose l'avancement d'une cible pour la console de supervision (E12US001, ADR-0038 §2).
+
+        Lecture seule. Le total de volées vient du barème de qualification (**0** si elle n'est pas
+        configurée : la supervision **ne lève pas** `PhaseQualificationAbsente`, affiche « — »).
+        Le rythme se lit sur les séries des archers **placés** sur la cible ; « volée courante »
+        = celle du **plus lent** (les archers d'une cible tirent ensemble, avance en bloc).
+        La « dernière saisie » (dernier `created_at`) alimente la colonne *dernière activité* — le
+        dernier **tir**, jamais le dernier heartbeat.
+        """
+        phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        nb_volees = phase.bareme.nb_volees if phase is not None else 0
+        completes: list[int] = []
+        derniere: datetime.datetime | None = None
+        for ligne in self.archers_du_poste(tournoi_id, cible_index, depart_id):
+            if ligne.archer.id is None:
+                continue  # défensif : un archer non persisté n'a pas de série
+            etat = self.etat_serie(tournoi_id, ligne.archer.id)
+            if etat is None:
+                completes.append(0)
+                continue
+            completes.append(len(etat.serie.volees))
+            for instant in etat.horodatages.values():
+                if derniere is None or instant > derniere:
+                    derniere = instant
+        if not completes:
+            return AvancementCible(volee_courante=0, nb_volees=nb_volees, derniere_saisie=derniere)
+        volee_courante = min(completes) + 1
+        if nb_volees and volee_courante > nb_volees:
+            volee_courante = nb_volees  # toutes les volées saisies : la cible a fini
+        return AvancementCible(
+            volee_courante=volee_courante, nb_volees=nb_volees, derniere_saisie=derniere
+        )
 
     def etat_serie(self, tournoi_id: TournoiId, archer_id: ArcherId) -> EtatSerie | None:
         """L'état persisté de la série de l'archer (volées + « quand »), ou `None` si rien de saisi.

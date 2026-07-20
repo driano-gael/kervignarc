@@ -73,6 +73,29 @@ class StoreSessionsPoste(Protocol):
     def fermer(self, jeton: str) -> None:
         """Ferme la session (déconnexion) ; sans effet si le jeton est inconnu."""
 
+    def postes_rattaches(self) -> set[PosteId]:
+        """Identifiants des postes ayant **au moins une** session ouverte (E12US001).
+
+        Sert à la supervision : un poste sans session est *non rattaché* (code préparé, aucune
+        tablette dessus). Deux tablettes sur la même cible ne comptent qu'une fois (un `set`).
+        """
+
+    def depart_courant_par_poste(self) -> dict[PosteId, DepartId]:
+        """Départ courant **représentatif** de chaque poste rattaché qui en a fixé un (E12US001).
+
+        Sert à la supervision pour situer l'avancement d'une cible. Un poste sans départ fixé est
+        absent de la table. Si deux tablettes d'une même cible ont fixé des départs différents (cas
+        de bord, `depart_courant` est par jeton, ADR-0034), un seul est retenu — l'avancement reste
+        un indicateur de diagnostic, pas une donnée d'autorité.
+        """
+
+    def invalider_poste(self, poste_id: PosteId) -> None:
+        """Ferme **toutes** les sessions d'un poste (révocation admin, E12US001, `D-07`).
+
+        Modelé sur `invalider_scoreur` : la tablette repasse *non rattachée* et retombe, à la
+        prochaine résolution, sur l'écran de rattachement. Sans effet si pas de session.
+        """
+
 
 @dataclass(frozen=True)
 class ConnexionPoste:

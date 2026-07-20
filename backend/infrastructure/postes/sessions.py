@@ -85,3 +85,28 @@ class PosteSessionStore:
         """Ferme la session (cible **et** départ courant) ; sans effet si le jeton est inconnu."""
         with self._verrou:
             self._sessions.pop(jeton, None)
+
+    def postes_rattaches(self) -> set[PosteId]:
+        """Identifiants des postes ayant au moins une session ouverte (E12US001, supervision)."""
+        with self._verrou:
+            return {etat.poste_id for etat in self._sessions.values()}
+
+    def depart_courant_par_poste(self) -> dict[PosteId, DepartId]:
+        """Départ courant représentatif de chaque poste rattaché qui en a fixé un (E12US001).
+
+        Le départ est porté **par jeton** (ADR-0034) : on projette sur le poste. En cas de deux
+        tablettes d'une même cible aux départs différents, la dernière rencontrée l'emporte — sans
+        conséquence (l'avancement est un diagnostic, pas une autorité).
+        """
+        with self._verrou:
+            return {
+                etat.poste_id: etat.depart_id
+                for etat in self._sessions.values()
+                if etat.depart_id is not None
+            }
+
+    def invalider_poste(self, poste_id: PosteId) -> None:
+        """Ferme **toutes** les sessions d'un poste (révocation admin) ; cf. `invalider_scoreur`."""
+        with self._verrou:
+            for jeton in [j for j, etat in self._sessions.items() if etat.poste_id == poste_id]:
+                del self._sessions[jeton]

@@ -27,6 +27,7 @@ from domain.poste import Poste, PosteId
 from domain.score import Score
 from domain.scoreur import Scoreur, ScoreurId
 from domain.serie import Serie
+from domain.supervision import ActivitePoste
 from domain.tournoi import Tournoi, TournoiId
 
 
@@ -483,6 +484,30 @@ class PosteRepository(Protocol):
         Sert à rattacher (par code) et à refuser un code déjà attribué à la génération. Recherche
         **globale** : le code est unique dans toute la base.
         """
+        ...
+
+
+class RegistrePresence(Protocol):
+    """Port : **présence des postes** par heartbeat (E12US001, ADR-0038) — état volatil en mémoire.
+
+    Le poste signale sa présence périodiquement (heartbeat) ; le registre mémorise, par poste,
+    **quand** il a été vu pour la dernière fois et **depuis quelle IP**. Sert à dériver l'état
+    *en ligne / hors ligne* (le service compare « maintenant » — port `Horloge` — au dernier
+    heartbeat). Aucune persistance : effacé au redémarrage serveur, comme le jeton de poste
+    (ADR-0029) et le départ courant (ADR-0034). **Ce n'est pas** l'activité de saisie : « depuis
+    combien de temps ça n'a pas *tiré* » se lit sur les séries, pas ici (ADR-0038 §2).
+    """
+
+    def enregistrer(self, poste_id: PosteId, instant: datetime.datetime, ip: str | None) -> None:
+        """Mémorise le heartbeat d'un poste (dernière vue + IP), en écrasant le précédent."""
+        ...
+
+    def derniere_activite(self, poste_id: PosteId) -> ActivitePoste | None:
+        """Dernière présence signalée par ce poste, ou `None` s'il n'a jamais pingé."""
+        ...
+
+    def oublier(self, poste_id: PosteId) -> None:
+        """Oublie la présence d'un poste (à sa révocation) ; sans effet s'il est absent."""
         ...
 
 
