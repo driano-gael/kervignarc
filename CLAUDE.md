@@ -206,10 +206,16 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
 - Cycle : branche depuis `main` à jour → PR → revue + CI verte → merge → suppression de la branche.
 - **Le suivi des US ([`journal-d-avancement/SUIVI-US.md`](journal-d-avancement/SUIVI-US.md)) est tenu
   à jour dès que nécessaire** : c'est le **point de reprise** de « reprend les US » (état de chaque US,
-  prochaine à prendre). Une US passe à ✅ **quand elle est mergée sur `main`** — pas à l'ouverture de
-  la branche. Idéalement dans le dernier commit de l'US ; à défaut, en passe rapide sur l'historique
-  de merge (`git log main --first-parent`). Un tracker périmé fait repartir « reprend les US » sur une
-  base fausse : sa mise à jour n'est pas cosmétique, elle conditionne la reprise.
+  prochaine à prendre). Une US passe à ✅ **dans son propre dernier commit, une fois la revue
+  (`/revue-us`) faite et poussée** — l'assistant n'attend pas la confirmation « c'est mergé ». Le
+  procédé reste sûr parce que la mise à jour **voyage avec le diff de l'US** : elle n'atteint `main`
+  qu'**au merge de la PR**, donc `main` affiche le ✅ exactement quand l'US y arrive — jamais avant.
+  Sur la branche, le tracker est optimiste d'un cran (c'est le livrable) ; sur `main`, il reste
+  toujours vrai. Le même commit **pointe la 🎯 suivante** et ajuste les compteurs, de sorte qu'après un
+  `/clear` + « lance l'US suivante », l'assistant lise directement l'état sur `main` — recoupé au
+  besoin par `git log main --first-parent` / `git branch -r` (une US peut avoir été livrée par une
+  session parallèle). Un tracker périmé fait repartir « reprend les US » sur une base fausse : sa mise
+  à jour n'est pas cosmétique, elle conditionne la reprise.
 - **Décision structurante ⇒ ADR** dans `docs/adr/` (contexte / décision / conséquences).
 - Une US trop grosse pour une branche doit être **redécoupée** (maille INVEST).
 

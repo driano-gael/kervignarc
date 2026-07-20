@@ -5,23 +5,26 @@
 > prendre. La séquence de référence est celle de [`stories/README.md`](../stories/README.md) (jalons
 > de valeur J0→J4). Le détail de chaque US est dans `stories/Exx-*.md`.
 >
-> **Règle de mise à jour** : une US passe à ✅ **quand elle est mergée sur `main`** (revue faite, CI
-> verte), pas quand la branche est ouverte. À tenir à jour à chaque merge — l'assistant le fait dans
-> le fil de l'US si on le lui rappelle, sinon c'est une passe manuelle rapide sur l'historique de
-> merge (`git log main --first-parent`).
+> **Règle de mise à jour** : une US passe à ✅ **dans son propre dernier commit, la revue
+> (`/revue-us`) faite et poussée** — sans attendre la confirmation « c'est mergé ». C'est sûr parce
+> que cette mise à jour **voyage avec le diff de l'US** : elle n'atteint `main` qu'**au merge de la
+> PR**. Donc sur `main` ce tableau reste **toujours vrai** (le ✅ y apparaît pile au merge) ; sur la
+> branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
+> cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 20/07/2026** · **48 US livrées** · dernière : `E06US001`.
+**Dernière mise à jour : 20/07/2026** · **49 US livrées** · dernière : `E07US001`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E07US001` — Vues publiques : classements, plans de cibles et live** *(J1)*
+> **`E07US006` — « C'est moi » : ouvrir l'appli sur ma journée** *(J1)*
 >
-> `E06US001` (classement de qualification) est mergée (PR #72, 20/07). La prochaine dans la séquence J1
-> est `E07US001` : les vues publiques sans authentification (classements par catégorie, plan de cibles,
-> mise à jour live par WebSocket). Elle consomme directement E06US001 (le classement) et E04US009 (le
-> live). Détail : [`stories/E07-affichage-public.md`](../stories/E07-affichage-public.md).
+> `E07US001` (vues publiques : classements, plan de cibles, live) est terminée et poussée (revue faite).
+> La prochaine dans la séquence J1 est `E07US006` : à la 1ʳᵉ ouverture, l'archer se cherche par nom et
+> coche « c'est moi » (mémorisé en `localStorage`, aucun compte) ; aux ouvertures suivantes, l'appli
+> affiche directement sa journée. Elle s'appuie sur E07US001 (live) et E03US001 (placement). Détail :
+> [`stories/E07-affichage-public.md`](../stories/E07-affichage-public.md).
 
 ---
 
@@ -42,7 +45,7 @@
 | E00US011 | Tranche verticale démontrable | ✅ |
 | E00US012 | Exécutable de dev (FastAPI sert le front) | ✅ |
 
-## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (35/45)**
+## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (36/45)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -78,8 +81,8 @@
 | 42 | E04US009 | Diffusion live & résilience réseau | ✅ |
 | 43 | E12US001 | Superviser les postes de saisie | ✅ |
 | 44 | E06US001 | Classement de qualification | ✅ |
-| **45** | **E07US001** | **Vues publiques : classements, plans, live** | 🎯 **suivante** |
-| 46 | E07US006 | « C'est moi » : ouvrir l'appli sur ma journée | ⬜ |
+| 45 | E07US001 | Vues publiques : classements, plans, live | ✅ |
+| **46** | **E07US006** | **« C'est moi » : ouvrir l'appli sur ma journée** | 🎯 **suivante** |
 | 47 | E10US005 | Journal d'audit métier | ✅ *(fait en avance)* |
 | 48 | E12US007 | Alerter par calcul d'impact | ⬜ |
 | 49 | E08US002 | Suivi des paiements | ⬜ |
