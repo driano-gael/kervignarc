@@ -60,6 +60,21 @@
   color: var(--danger);
 }
 
+/* Rejeu de la file hors-ligne en cours (E04US009) : ambre + pastille pulsée pour signaler l'activité. */
+.indicateur--synchronisation {
+  color: var(--warn);
+}
+
+.indicateur--synchronisation .indicateur__pastille {
+  animation: indicateur-pulse 1s ease-in-out infinite;
+}
+
+@keyframes indicateur-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
 /* Coquille de navigation admin (E00US015, CDC UX §7.1 — D-19/D-20) : sidebar à gauche, une seule
    destination à la fois dans la zone principale. Sur écran étroit, la sidebar passe au-dessus. */
 .coquille {
