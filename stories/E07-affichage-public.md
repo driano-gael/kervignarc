@@ -56,19 +56,51 @@ sans traverser le gymnase.
 - **CA** : rendu de l'arbre (principal + placement) mis à jour en live.
 - **Dépend de** : E05US005, E07US001 · **Jalon** : J3
 
-### E07US006 — « C'est moi » : ouvrir l'appli sur ma journée
-*En tant qu'*archer, *je veux* que l'appli me reconnaisse, *afin de* voir ma cible **sans rien chercher**, à chaque ouverture.
-- **CA** : à la 1ʳᵉ ouverture, recherche par nom → l'archer coche **« c'est moi »** ; le choix est
-  **mémorisé localement** (même principe que le jeton de poste : `localStorage`, **aucun compte, aucun
-  mot de passe**) ; aux ouvertures suivantes, l'appli affiche **directement sa journée** : **maintenant**
-  (cible, position, départ, volée en cours) et **ensuite** (prochaine affectation, E07US008) ; la
-  **recherche reste accessible** (voir un autre archer) mais **n'est plus la porte d'entrée** ; « ce
-  n'est pas moi » réinitialise ; **live** (E07US001).
+### E07US006 — Suivre des archers : ma journée
+*En tant qu'*archer/accompagnateur, *je veux* désigner un ou plusieurs archers à **suivre**, *afin de*
+retrouver leur cible **sans rien chercher**, à chaque ouverture.
+- **CA** : recherche par nom → l'utilisateur coche **« suivre »** ; les archers suivis forment une
+  **liste mémorisée localement** (même principe que le jeton de poste : `localStorage`, **aucun compte,
+  aucun mot de passe**) ; aux ouvertures suivantes, l'appli affiche **directement sa journée** — une
+  **carte par archer suivi** avec **cible, position, départ** ; **retirer un suivi** est possible
+  (« ne plus suivre ») ; la **recherche reste accessible** mais **n'est plus la porte d'entrée** ;
+  **live** (E07US001). *Hors de cette tranche : le **déroulé du tour en direct** (scores, statut
+  attente/validé) est **E07US009** ; l'**à-venir** (prochaine phase/cible) est **E07US008**.*
 - **Notes** : `D-09` (CDC UX §6.3). Sans risque : l'appareil est **personnel** — c'est précisément
   pourquoi il **n'y a pas de borne partagée** à la table de l'organisation (`D-10`), « retour auto à
-  l'accueil » et « mémoriser c'est moi » se contrediraient. **La recherche devient l'exception, pas la
+  l'accueil » et « mémoriser mes suivis » se contrediraient. **La recherche devient l'exception, pas la
   règle.**
-- **Dépend de** : E07US001, E03US001 · **Jalon** : J1
+  > **CA élargi le 20/07/2026** (arbitrage métier, § Cadrage d'intention du workflow). Le v0.1 disait
+  > « **c'est moi** » — **un** archer, sa propre journée, **front-only**. L'organisateur a demandé la
+  > capacité **« suivre »**, généralisable à **plusieurs** archers (accompagnateur, coach), et le
+  > **déroulé du tour en direct** (chaque score saisi, badge « en attente de validation » puis
+  > « validé »). Cette dernière partie **n'est pas réalisable en front seul** : l'en-cours de saisie
+  > (scores non validés, statut par volée) n'est exposé sur **aucun canal public** — seuls le validé
+  > (classement) et le placement le sont. D'où le **redécoupage** : E07US006 = la **liste de suivis +
+  > cible/position/départ** (front, ici) ; **E07US009** (nouvelle) = le **déroulé live** (backend +
+  > ADR). L'à-venir reste **E07US008** (dépend de J2, phases/duels). « ce n'est pas moi » du v0.1
+  > devient **« ne plus suivre »** par archer.
+- **Dépend de** : E07US001, E03US001, E02US009 · **Jalon** : J1
+
+### E07US009 — Suivre le déroulé du tour en direct
+*En tant que* personne qui suit un archer, *je veux* voir sa feuille de marque se remplir **en direct**,
+*afin de* suivre son tour sans être à côté de la cible.
+- **CA** : pour un archer suivi (E07US006), l'appli publique affiche son **déroulé du tour** — la
+  **volée en cours flèche par flèche** et l'**historique du jour** (volées déjà tirées) — mis à jour en
+  temps réel ; chaque volée porte un **statut explicite** : **« en attente de validation »** (saisie
+  par un scoreur, pas encore verrouillée) puis **« validé »** (grain de validation passé, E01US015) ;
+  la donnée passe par un **endpoint public de suivi** dédié, avec un **DTO restreint** (règle 6 : ne
+  fuiter ni le code de cible, ni l'IP, ni l'identité du scoreur) ; mise à jour poussée (WebSocket,
+  E07US001/E04US009).
+- **Notes** : **décision structurante ⇒ ADR** — cette US **expose au public des scores provisoires
+  non validés** (le spectateur voit des chiffres avant confirmation du scoreur, donc parfois des
+  corrections en direct). Choix **demandé et assumé** par l'organisateur (20/07/2026), mais à écrire
+  en ADR (frontière de rôle/confidentialité) plutôt qu'à glisser dans le code. Terrain déjà en place :
+  statut porté par `Volee.validee_par` (`None` = en attente), avancement incluant le non-validé dans
+  `ServiceSaisie.avancement_cible` ; il « manque » un **endpoint public de projection** et un
+  **événement WebSocket typé** (le point de diffusion post-commit existe déjà,
+  `composition._diffuser_apres_ecriture`).
+- **Dépend de** : E07US006, E04US002, E01US015 · **Jalon** : J1
 
 ### E07US008 — Vue publique des affectations du prochain tour
 *En tant qu'*archer, *je veux* savoir **où je tire ensuite** dès que c'est décidé, *afin de* ne pas
@@ -95,6 +127,6 @@ rater mon tour ni aller demander à l'organisation.
 | E07US003 | Vue publique des plans de cibles | **E07US001** — CA « plans de cibles » |
 | E07US004 | Écran de salle : poste rattaché à déroulé automatique | **E07US004** — CA « poste rattaché & déroulé » |
 | E07US005 | Vue tableaux/arbres live | **E07US005** (inchangée) |
-| E07US006 | « C'est moi » : ouvrir l'appli sur ma journée | **E07US006** (inchangée) |
+| E07US006 | « C'est moi » : ouvrir l'appli sur ma journée | **E07US006** « Suivre des archers » (élargie 20/07 : liste de suivis) + **E07US009** (déroulé live, scindée) |
 | E07US007 | Piloter l'écran de salle depuis l'admin | **E07US004** — CA « pilotage admin » |
 | E07US008 | Vue publique des affectations du prochain tour | **E07US008** (inchangée) |

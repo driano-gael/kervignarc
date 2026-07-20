@@ -18,13 +18,15 @@
 
 ## 🎯 Prochaine US
 
-> **`E07US006` — « C'est moi » : ouvrir l'appli sur ma journée** *(J1)*
+> **`E07US006` — Suivre des archers : ma journée** *(J1, tranche 1 front — en cours)*
 >
 > `E07US001` (vues publiques : classements, plan de cibles, live) est terminée et poussée (revue faite).
-> La prochaine dans la séquence J1 est `E07US006` : à la 1ʳᵉ ouverture, l'archer se cherche par nom et
-> coche « c'est moi » (mémorisé en `localStorage`, aucun compte) ; aux ouvertures suivantes, l'appli
-> affiche directement sa journée. Elle s'appuie sur E07US001 (live) et E03US001 (placement). Détail :
-> [`stories/E07-affichage-public.md`](../stories/E07-affichage-public.md).
+> `E07US006` a été **élargie et redécoupée le 20/07** (arbitrage métier) : le CA v0.1 « c'est moi » (un
+> archer, front-only) devient la capacité **« suivre »** — recherche par nom → liste d'archers suivis
+> mémorisée en `localStorage`, une carte par archer avec **cible/position/départ**, live. Le **déroulé
+> du tour en direct** (scores, attente/validé) n'était pas réalisable en front seul (donnée non
+> publique) : il est **scindé en `E07US009`** (backend + ADR). L'à-venir reste `E07US008` (dépend J2).
+> Détail : [`stories/E07-affichage-public.md`](../stories/E07-affichage-public.md).
 
 ---
 
