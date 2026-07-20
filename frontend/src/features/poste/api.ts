@@ -32,3 +32,10 @@ export function deconnexionPoste(): Promise<void> {
   // Portée `'poste'` : détache la tablette (en-tête `X-Jeton-Poste`).
   return fetchJson<void>('/api/v1/postes/session/deconnexion', { method: 'POST' }, 'poste')
 }
+
+export function heartbeatPoste(): Promise<void> {
+  // Signe de vie périodique (E12US001, ADR-0038) : c'est ce qui fait apparaître le poste « en ligne »
+  // dans la console de supervision. Portée `'poste'` — un 401 (session révoquée) purge la session et
+  // renvoie la tablette au rattachement, exactement comme la vérification de cible.
+  return fetchJson<void>('/api/v1/postes/session/heartbeat', { method: 'POST' }, 'poste')
+}

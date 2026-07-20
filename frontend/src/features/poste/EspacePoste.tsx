@@ -11,7 +11,12 @@ import { Saisie } from '../saisie/Saisie'
 import { ErreurApi } from '../../shared/api/client'
 import { type CiblePoste, useSessionPosteStore } from '../../shared/stores/sessionPosteStore'
 import type { Theme } from '../../shared/theme'
-import { useDeconnexionPoste, useRattacherPoste, useVerifierPoste } from './hooks'
+import {
+  useDeconnexionPoste,
+  useHeartbeatPoste,
+  useRattacherPoste,
+  useVerifierPoste,
+} from './hooks'
 import { oublierCodePosteUrl } from './url'
 
 export function EspacePoste({ codeInitial }: { codeInitial: string | null }) {
@@ -19,6 +24,8 @@ export function EspacePoste({ codeInitial }: { codeInitial: string | null }) {
   const poste = useSessionPosteStore((s) => s.poste)
   // Réouverture : dès qu'un jeton est présent, on vérifie qu'il vaut toujours (révocation → purge).
   useVerifierPoste(jeton !== null)
+  // Signe de vie périodique tant que la session est active → « en ligne » dans la supervision.
+  useHeartbeatPoste(jeton !== null)
 
   return (
     <section className="carte carte--large">

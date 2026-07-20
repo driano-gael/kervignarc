@@ -38,6 +38,8 @@ from api.v1.postes import session_router as poste_session_router
 from api.v1.saisie import router as saisie_router
 from api.v1.scoreurs import router as scoreurs_router
 from api.v1.scoreurs import session_router as scoreur_session_router
+from api.v1.supervision import heartbeat_router as poste_heartbeat_router
+from api.v1.supervision import router as supervision_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
 from application.audit import ServiceAudit
@@ -57,6 +59,7 @@ from application.placement import ServicePlacement
 from application.postes import ServicePostes
 from application.saisie import ServiceSaisie
 from application.scoreurs import ServiceScoreurs
+from application.supervision import ServiceSupervision
 from application.tournois import ServiceTournois
 from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
 from infrastructure.db import (
@@ -82,9 +85,21 @@ from infrastructure.db import (
 from infrastructure.horloge import HorlogeSysteme
 from infrastructure.idempotence import RegistreIdempotence
 from infrastructure.pdf import GenerateurDocumentsSallePdf, GenerateurFeuilleDeMarquePdf
-from infrastructure.postes import PosteSessionStore, generer_code_poste
+from infrastructure.postes import (
+    PosteSessionStore,
+    RegistrePresenceMemoire,
+    generer_code_poste,
+)
 from infrastructure.realtime import Broadcaster, LiveEvent
 from infrastructure.scoreurs import ScoreurSessionStore, generer_code_scoreur
+
+_SEUIL_POSTE_HORS_LIGNE_S = 30.0
+"""Un poste sans heartbeat depuis plus de ce délai est réputé **hors ligne** (E12US001, ADR-0038).
+
+Doit rester **strictement supérieur** à l'intervalle de heartbeat du front (~10 s), avec de la marge
+pour absorber un ping manqué — sinon les postes clignoteraient (faux hors-ligne). Les deux valeurs
+sont liées : les changer, c'est les changer ensemble (front + serveur).
+"""
 
 
 def create_app(
@@ -312,7 +327,7 @@ def create_app(
     # départ) du poste — via placement + inscriptions (ADR-0033 §3) — et reconstitue la grille des
     # affectations réelles. La garde vit **ici**, pas dans un `Depends`, pour tenir aussi face aux
     # appelants hors HTTP (writer WS E04US009, orchestrateur E12US002). ---
-    app.state.service_saisie = ServiceSaisie(
+    service_saisie = ServiceSaisie(
         serie_repository,
         phase_repository,
         archer_repository,
@@ -322,6 +337,25 @@ def create_app(
         inscription_repository,
         HorlogeSysteme(),
     )
+    app.state.service_saisie = service_saisie
+
+    # --- Supervision des postes (E12US001, ADR-0038) : console du jour J. La présence par
+    # **heartbeat** (registre en mémoire, volatil comme les sessions) donne l'état en ligne/hors
+    # ligne ; l'**avancement** est lu sur `ServiceSaisie` (barème + séries, sans dupliquer grille,
+    # ADR-0033), la « dernière saisie » sur les séries — jamais le heartbeat (ADR-0038 §2). Seuil
+    # hors ligne injecté (30 s > l'intervalle de heartbeat ~10 s côté front). L'`Horloge` système
+    # date/mesure la présence (déterminisme en test via injection). Révocation admin (`D-07`). ---
+    poste_presence = RegistrePresenceMemoire()
+    app.state.service_supervision = ServiceSupervision(
+        poste_repository,
+        tournoi_repository,
+        poste_session_store,
+        poste_presence,
+        service_saisie,
+        HorlogeSysteme(),
+        _SEUIL_POSTE_HORS_LIGNE_S,
+    )
+
     # Idempotence de la saisie (ADR-0036) : registre en mémoire consulté **dans** la commande de la
     # file (writer unique) par l'endpoint de saisie, pour qu'un rejeu réseau ne double ni une volée
     # ni une trace. Exposé sur l'app comme la `write_queue`.
@@ -339,6 +373,8 @@ def create_app(
     app.include_router(scoreur_session_router)
     app.include_router(postes_router)
     app.include_router(poste_session_router)
+    app.include_router(supervision_router)
+    app.include_router(poste_heartbeat_router)
     app.include_router(tournois_router)
     app.include_router(departs_router)
     app.include_router(inscriptions_router)

@@ -347,6 +347,18 @@ class CodePosteInconnu(ApplicationError):
     code = "code_poste_inconnu"
 
 
+class PosteIntrouvable(ApplicationError):
+    """Aucun poste ne correspond à l'identifiant dans ce tournoi (E12US001) → 404.
+
+    Couvre l'identifiant inconnu **et** le poste d'un **autre** tournoi : du point de vue du tournoi
+    de l'URL, un poste qui ne lui appartient pas n'existe pas davantage qu'un identifiant inventé —
+    même parti que `DepartIntrouvable` / `ScoreurIntrouvable`. Levée à la **révocation** admin d'un
+    poste depuis la console de supervision.
+    """
+
+    code = "poste_introuvable"
+
+
 class RattachementTournoiTermine(ApplicationError):
     """Rattachement (ou session) d'un poste dont le tournoi est **terminé** (E04US001). → 409.
 
