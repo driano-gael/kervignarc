@@ -41,8 +41,9 @@
 | [DETTE-008](#dette-008--une-réponse-400-renvoie-lentrée-du-client-en-écho-non-borné) | technique | mineur | `backend/api/erreurs.py` (`_sur_erreur_validation`) | Une entrée rejetée par Pydantic revient **verbatim** au client : `details = jsonable_encoder(exc.errors())` embarque le champ `input` de chaque erreur, sans borne ni sur la taille d'une valeur, ni sur le nombre d'erreurs listées | **Amplification mesurée ×42,9** (50 Ko envoyés → 2,1 Mo reçus) sur un corps à 10 000 valeurs invalides. Le serveur travaille et répond ~43× le volume reçu, sur un réseau local le jour J où ~30 tablettes partagent la bande passante | E00US009 (patron de bout en bout, forme posée) ; **constatée** le 17/07/2026 à la revue d'E01US014 (axe adversarial), qui l'a mesurée sur `zones` (×42,9) **et** sur `ages` (×41,6) — le régime est **général à tous les DTO**, aucune US ne l'a introduit en propre | US dédiée (`fix/…`) — borner `input` dans `_sur_erreur_validation` (troncature de la valeur + plafond du nombre d'erreurs listées). ⚠️ **Ne pas retirer `details`** : le format `{code, message, details?}` est la règle 5, et [DETTE-007](#dette-007--la-confirmation-dune-suppression-darcher-est-aveugle) prévoit précisément de s'en servir |
 | [DETTE-007](#dette-007--la-confirmation-dune-suppression-darcher-est-aveugle) | conception | majeur | `backend/application/archers.py` (`ServiceArchers.supprimer`), `backend/application/departs.py` (`ServiceDeparts.supprimer`), `backend/api/v1/competition.py`, `backend/api/v1/departs.py`, `frontend/src/features/archers/api.ts`, `frontend/src/features/departs/api.ts` | La confirmation d'une suppression **destructrice-confirmable** ne **rappelle pas** au serveur le décompte que le signalement avait annoncé : `autoriser_suppression_engage=true` (archer engagé, `ArcherEngage`) **et** `autoriser_suppression_inscrits=true` (départ à inscriptions, `DepartAvecInscriptions`, E02US009) court-circuitent entièrement le constat, sans le revérifier | Entre le 409 et le rejeu, d'autres tablettes saisissent ou inscrivent (30 le jour J). Confirmer une suppression annoncée à « 1 flèche » (ou « 0 payée ») peut en détruire sept (ou effacer une inscription payée entre-temps) — **sans retour possible**. Or [ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)/[ADR-0018](adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md) font reposer la sûreté de ces cas sur ce message : « le message énumère ce qui sera détruit » plutôt que « confirmez pour supprimer ». Un message dont rien ne garantit la fraîcheur ne tient pas cette promesse | E02US003 (le chemin destructeur naît avec l'US ; la clause « le drapeau est cru sur parole » vient d'ADR-0015, raisonnée pour un protocole de **création** et reprise sans être rouverte pour une **destruction**) ; **aggravée par E02US009** (2ᵉ chemin destructeur-confirmable, `DepartAvecInscriptions`) | US dédiée — confirmation **contractuelle** : le client renvoie le décompte annoncé, le service re-signale s'il a changé. Exige de faire transiter le décompte par le champ `details` de la réponse d'erreur (`{code, message, details?}`, règle 5) — **jamais peuplé à ce jour** : c'est cette plomberie, sur `ApplicationError`, qui fait le coût |
 | [DETTE-010](#dette-010--capacité-de-cible-plafonnée-à-4-en-dur) | technique | majeur | `backend/domain/gabarit_salle.py` (`CAPACITE_CIBLE_MAX`, `POSITIONS`) | Le gabarit **borne la capacité d'une cible à [1,4]** (`CAPACITE_CIBLE_MAX = len(POSITIONS)`, `POSITIONS = ("A","B","C","D")` en dur) alors que le **modèle** (`modele-de-donnees.md`, `CIBLE.capacite`) **et** le **référentiel** (§5, EF-4.3) la veulent **non bornée** — la FFTA décrit une configuration à **3 triples verticaux** (> 4 postes) | Impossible de configurer une cible de plus de 4 postes ; **divergence code ↔ modèle ↔ référentiel** : la connaissance du projet dit « non borné », le code refuse | E01US007 (gabarit de salle) ; **constatée le 18/07/2026** (entretien de conception) | **E01US019** — délester le plafond, positions au-delà de `D` (`E`, `F`…), le placement (E03) suit |
-| [DETTE-011](#dette-011--lagrégat-mono-flèche-sappelle-score-pas-fleche) | conception | mineur | `backend/domain/score.py` (`Score`, `ScoreId`), `backend/domain/ports.py` (`ScoreRepository`), `backend/domain/erreurs.py` (`ScoreInvalide`) | L'agrégat mono-flèche s'appelle `Score`, mais le [glossaire](glossaire.md) réserve `Fleche` au **tir unique** et `score` au **total** de points | Au vrai scoring (E04/E05 : volées, cumul), le nom `Score` sera pris par le **mauvais** concept → renommage subi ou ambiguïté durable dans le domaine et l'API | E00US011 (walking skeleton) ; **constatée le 18/07/2026** (audit de revue complète de `main`) | **Révisée 19/07/2026 (E04US002)** : le vrai scoring modélise la flèche comme **valeur** dans `Volee` (agrégats `Serie`/`Volee`), sans renommer `Score` — qui **survit** comme modèle de lecture du classement de démo. Le nom-clash est désamorcé (le total s'appelle `cumul`). Résorption **à l'ère E06US001** (rebasage du classement) par **suppression** de `Score`, plus « renommage avant E04 » ; voir détail |
+| [DETTE-011](#dette-011--lagrégat-mono-flèche-sappelle-score-pas-fleche) | conception | mineur | `backend/domain/score.py` (`Score`, `ScoreId`), `backend/domain/ports.py` (`ScoreRepository`), `backend/domain/erreurs.py` (`ScoreInvalide`) | L'agrégat mono-flèche s'appelle `Score`, mais le [glossaire](glossaire.md) réserve `Fleche` au **tir unique** et `score` au **total** de points | Au vrai scoring (E04/E05 : volées, cumul), le nom `Score` sera pris par le **mauvais** concept → renommage subi ou ambiguïté durable dans le domaine et l'API | E00US011 (walking skeleton) ; **constatée le 18/07/2026** (audit de revue complète de `main`) | **Révisée 19/07/2026 (E04US002)** : le vrai scoring modélise la flèche comme **valeur** dans `Volee` (agrégats `Serie`/`Volee`), sans renommer `Score` — qui **survit** comme modèle de lecture du classement de démo. Le nom-clash est désamorcé (le total s'appelle `cumul`). **Révisée 20/07/2026 (E06US001)** : le classement est bien rebasé sur `Serie`, mais `Score` est **conservé** (les gardes d'engagement de `ServiceArchers` le lisent encore — cf. DETTE-013) — sa suppression glisse à une US `fix/` dédiée, elle n'a **pas** lieu ici ; voir détail |
 | [DETTE-012](#dette-012--lurl-du-qr-de-cible-est-lorigine-de-la-requête-admin) | technique | mineur | `backend/application/documents_salle.py` (`_url_rattachement`) | L'URL encodée dans le QR de cible est **absolue**, bâtie sur l'**origine de la requête admin** (`request.base_url`, passée par l'API) : il n'existe pas de base URL publique configurée côté serveur. Générer les étiquettes depuis `localhost` (console du serveur) produit donc des QR pointant sur `http://localhost:8000/?poste=…`, inutilisables depuis une tablette | Un QR généré depuis `localhost` renvoie la tablette **sur elle-même** : le « filet » de re-rattachement (scanner le QR pour revenir sur sa cible) ne fonctionne pas. **Sans effet dans le flux nominal** : le jour J, l'admin atteint le serveur par son **IP réseau** (les 30 tablettes aussi), donc `base_url` = l'IP LAN et le QR est correct | E09US008 (impression des QR) ; **choix tranché en réalisation** (règle 11/12 : pas de config réseau introduite en douce ici) | E11US001 (release & mise en réseau) — **base URL publique configurable**, source unique pour tous les liens absolus (QR, éventuels partages) |
+| [DETTE-013](#dette-013--les-gardes-dengagement-lisent-un-score-que-plus-rien-nécrit) | conception | majeur | `backend/application/archers.py` (`_signaler_engagement`, `_signaler_changement_categorie`) | Les gardes « l'archer a-t-il déjà tiré ? » lisent l'agrégat `Score`, que **plus aucun flux produit n'écrit** depuis E06US001 (retrait du bouton « Marquer ») ; la saisie réelle (E04US002) écrit `Serie`/`Volee`, jamais `Score` | Un archer aux volées validées mais ni placé ni inscrit peut être **supprimé sans avertissement** (sa feuille de marque part en cascade `serie`→`volee`) ; un changement de catégorie du même archer ne déclenche aucun `ChangementCategorieArcherEngage` | Racine **préexistante à E04US002** (gardes branchées sur `Score`) ; **figée et rendue imputable** par E06US001 (dernier écrivain de `Score` retiré, corps de commit qui l'affirmait à tort) | US `fix/` dédiée : repointer les gardes sur `Serie` (« a tiré » = ≥ 1 volée validée), tests dérivés du CA E02US003/E02US009 ; puis suppression de `Score` (reprend l'échéance de DETTE-011) ; coordonner avec DETTE-007 |
 
 ## Dette résorbée
 
@@ -576,6 +577,17 @@ autrement** : le total du scoring s'appelle `cumul`, jamais `Score`. La dette **
 `Score` désigne toujours une flèche), mais son échéance de résorption glisse à **l'ère E06** (rebasage
 du classement), où `Score` perdra son dernier usage et pourra être supprimé plutôt que renommé.
 
+**Mise à jour 20/07/2026 (E06US001) — la prémisse « dernier usage » était fausse.** E06US001 a bien
+rebasé le **classement** sur `Serie`/`Volee` : `Score` n'est plus lu par `calculer_classement`. Mais
+il n'a **pas** perdu son dernier usage — les **gardes d'engagement** de `ServiceArchers`
+(`_signaler_engagement`, `_signaler_changement_categorie`) décident « l'archer a-t-il déjà tiré ? » en
+lisant encore `Score` (`ScoreRepository.par_archer`). `Score` **survit donc** comme substrat de ces
+gardes, et sa suppression ne peut pas avoir lieu tant qu'elles ne sont pas repointées sur `Serie`. Ce
+repointage (et le fait que les gardes lisent désormais un `Score` que **plus aucun flux produit
+n'écrit**) est une dette à part entière, inscrite en **[DETTE-013](#dette-013--les-gardes-dengagement-lisent-un-score-que-plus-rien-nécrit)** : c'est **elle** qui porte
+désormais l'échéance de suppression de `Score`, dans une US `fix/` dédiée. DETTE-011 reste ouverte sur
+son objet propre (le **nom** `Score` désigne une flèche), découplé de cette suppression.
+
 ### DETTE-012 — l'URL du QR de cible est l'origine de la requête admin
 
 **Constat.** Le QR de rattachement d'une cible (E09US008) encode une URL **absolue**
@@ -604,6 +616,39 @@ réel.
 serveur sur le réseau du gymnase), et la faire consommer par le service à la place de
 `request.base_url` — source unique pour tous les liens absolus. Marqueur `DETTE-012` posé sur
 `_url_rattachement` dans `application/documents_salle.py`.
+
+### DETTE-013 — les gardes d'engagement lisent un `Score` que plus rien n'écrit
+
+**Constat.** Les deux gardes de sûreté de `ServiceArchers` — `_signaler_engagement` (suppression
+d'archer) et `_signaler_changement_categorie` (édition) — décident « l'archer a-t-il déjà tiré ? » en
+comptant `ScoreRepository.par_archer(...)`, c.-à-d. l'agrégat **`Score`** du walking skeleton. Or
+E06US001 retire le bouton « Marquer », **dernier écrivain de `Score`** : plus aucun flux produit ne
+l'alimente (l'endpoint `POST /scores` survit mais n'a plus d'appelant). La **vraie** saisie (E04US002)
+écrit des `Serie`/`Volee`, jamais `Score`. En production, `fleches` vaut donc **toujours 0**.
+
+**Conséquence.** Le motif « flèches déjà tirées » de ces gardes est mort :
+- suppression : un archer aux volées validées mais **ni placé ni inscrit** (chemin de saisie **admin**,
+  `contexte=None`) passe les trois motifs à zéro → il est supprimé **sans aucun avertissement**, et sa
+  feuille de marque part en **cascade** (`ArcherRepositorySQL.supprimer` fait un `DELETE` sur `serie`,
+  puis `volee` en `ON DELETE CASCADE`). Même quand l'archer est inscrit sur un départ, le message
+  **sous-estime** ce qui est détruit (« inscription sur un départ » au lieu d'une série complète) ;
+- changement de catégorie : `_signaler_changement_categorie` ne lit **que** `Score` → il ne se
+  déclenche jamais pour un archer aux volées réelles, dont les flèches basculent silencieusement vers
+  un autre classement.
+
+**Nature / imputation.** La **racine préexiste à E04US002** (les gardes ont toujours lu `Score`
+pendant que la saisie réelle écrivait `Serie`). E06US001 ne modifie pas leur code, mais (a) supprime
+le dernier écrivain de `Score`, figeant le motif « flèches » à zéro pour **tous** les archers, et (b)
+l'a **rejustifié à tort** dans son corps de commit (« l'endpoint `/scores` reste — contrôle « archer
+engagé » »). C'est ce qui la rend imputable ici. Classée **majeur** (perte de données possible), pas
+bloquant : le comportement de **production** n'est pas régressé par cette US (le motif était déjà mort
+depuis E04US002), et le chemin nominal de suppression reste couvert par « placé »/« inscrit ».
+
+**Résorption attendue.** US `fix/…` dédiée : repointer les deux gardes sur `SerieRepository` — « a
+tiré » = **au moins une volée validée** — et faire refléter au message le vrai décompte de flèches ;
+tests **dérivés du CA** d'E02US003/E02US009 (règle 9). Cette US reprend l'échéance de **suppression de
+`Score`** que DETTE-011 lui délègue, et se coordonne avec **DETTE-007** (confirmation de suppression
+aveugle). Marqueur `DETTE-013` posé sur les deux gardes dans `application/archers.py`.
 
 ## Procédure — inscrire une dette
 

@@ -278,6 +278,9 @@ class ServiceArchers:
         aurait laissé `par_archer(None)` rendre `[]`, donc un archer engagé se supprimer **sans
         aucun signalement**. Un garde-fou de destruction ne dépend pas d'un drapeau d'interpréteur.
         """
+        # DETTE-013 : `_scores` (agrégat `Score`) n'est plus alimenté par aucun flux produit depuis
+        # E06US001 — « a déjà tiré » devrait dériver des volées validées (`Serie`). Tant que ce
+        # repointage n'est pas fait (US `fix/` dédiée), ce motif vaut toujours 0 en production.
         fleches = len(self._scores.par_archer(archer_id))
         inscriptions = len(self._inscriptions.par_archer(archer_id))
         if archer.cible is None and fleches == 0 and inscriptions == 0:
@@ -308,6 +311,8 @@ class ServiceArchers:
         Appelé seulement quand la catégorie change réellement : c'est le déplacement des flèches
         déjà tirées d'un classement à l'autre qui se confirme, pas l'édition en elle-même.
         """
+        # DETTE-013 : lit `Score`, que plus rien n'écrit depuis E06US001 — aveugle aux volées réelles
+        # (`Serie`). À repointer sur `SerieRepository` dans l'US `fix/` dédiée.
         if self._scores.par_archer(archer_id):
             raise ChangementCategorieArcherEngage(
                 f"« {edite.prenom} {edite.nom} » a déjà tiré dans sa catégorie actuelle. Changer "

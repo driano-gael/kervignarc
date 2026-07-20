@@ -126,7 +126,7 @@ def test_sans_filtre_le_classement_couvre_toutes_les_categories() -> None:
 
 def test_filtre_par_categorie_ne_garde_que_ses_archers_sans_recalculer_les_rangs() -> None:
     """CA catégorie : filtrer à la catégorie 1 ne garde qu'Alice et Chloé, mais leurs rangs restent
-    ceux du classement complet — scratch **global** (2 et 3), catégorie **dense** (1 et 2)."""
+    ceux du classement complet — scratch **global** (2 et 3), catégorie **repart de 1** (1 et 2)."""
     lignes = _service().pour_tournoi(1, categorie_id=1).lignes
     assert [(ligne.nom, ligne.rang_scratch, ligne.rang_categorie) for ligne in lignes] == [
         ("Martin", 2, 1),

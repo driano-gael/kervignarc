@@ -252,7 +252,7 @@ def test_classement_filtre_par_categorie(
             f"/api/v1/tournois/{tournoi['id']}/classement", params={"categorie_id": cat_a}
         ).json()
     # Filtré à la catégorie A : seulement Alice et Chloé ; rang scratch **global** (2, 3), rang de
-    # catégorie **dense** (1, 2) ; le libellé remonte pour l'affichage.
+    # catégorie **repartant de 1** (1, 2) ; le libellé remonte pour l'affichage.
     assert [
         (ligne["nom"], ligne["rang_scratch"], ligne["rang_categorie"], ligne["categorie_libelle"])
         for ligne in filtre["lignes"]

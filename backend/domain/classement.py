@@ -4,15 +4,18 @@
 leurs volées **validées**, cf. `Serie.cumul`), puis applique le **départage FFTA** à total égal :
 plus grand nombre de **10**, puis de **9** (`docs/referentiel-ffta.md` §8.1, art. C.3 — spécifique
 au tir à 18 m). Les deux critères sont **séquentiels** (le nombre de 9 ne départage que si les 10
-sont à égalité) et ne jouent **qu'à** total égal. Si l'égalité subsiste après les 10 et les 9, la
-qualification laisse l'**ex æquo** : les deux archers partagent le rang (le barrage de tir, §8.2, ne
-concerne que les duels, pas ce classement). Le X (mouche) n'est pas un score distinct (ADR-0020) :
-on départage sur les 10, pas sur les X.
+sont à égalité) et ne jouent **qu'à** total égal. Si l'égalité subsiste après les 10 et les 9,
+E06US001 laisse l'**ex æquo** par défaut : les deux archers partagent le rang. Départager les places
+à enjeu par un **barrage** de tir (§8.2) reste une **option configurable** (E06US003 ; politique
+`tiebreak` d'ADR-0004) — les deux résolutions restent ouvertes, seul le défaut est fixé ici. Le X
+(mouche) n'est pas un score distinct (ADR-0020) : on départage sur les 10, pas sur les X.
 
 Chaque ligne porte **deux rangs** (arbitrage produit du 20/07/2026, reversé dans `stories/`) :
 
 - `rang_scratch` : le classement **global**, toutes catégories confondues ;
-- `rang_categorie` : le classement **au sein de la catégorie** de l'archer, dense (1..N).
+- `rang_categorie` : le classement **au sein de la catégorie** de l'archer, **repartant de 1** par
+  catégorie (ex æquo partagés avec sauts — même règle que le scratch, §8.1 ; ce n'est **pas** un rang
+  « dense » sans trou : deux ex æquo en 2ᵉ place sont suivis d'un 4ᵉ, pas d'un 3ᵉ).
 
 Les deux se calculent avec le **même** ordre ; ils ne diffèrent que par la numérotation (le scratch
 saute les places prises par les autres catégories, la catégorie repart de 1). Le décompte de 10 et
@@ -156,7 +159,8 @@ def calculer_classement(
     - `categories` sert à libeller la catégorie de chaque ligne (jointure par `categorie_id`).
 
     Renvoie les lignes ordonnées par **rang scratch**. Chaque ligne porte aussi son rang **dans sa
-    catégorie** (dense), calculé sur le même ordre restreint aux archers de la catégorie.
+    catégorie** (repartant de 1 par catégorie, ex æquo partagés avec sauts), calculé sur le même
+    ordre restreint aux archers de la catégorie.
     """
     entrees: list[tuple[Archer, _Decompte]] = []
     serie_par_archer = {s.archer_id: s for s in series}
@@ -170,7 +174,7 @@ def calculer_classement(
 
     # Rangs par catégorie : même comparateur, appliqué au sous-ensemble de chaque catégorie. L'ordre
     # relatif y est **identique** à l'ordre scratch (mêmes archers, même clé) — seule la
-    # numérotation diffère (dense). On regroupe donc à partir de l'ordre scratch déjà trié.
+    # numérotation diffère (repart de 1 par catégorie). On regroupe donc depuis l'ordre scratch trié.
     rangs_categorie: dict[ArcherId, int] = {}
     par_categorie: dict[CategorieId, list[tuple[Archer, _Decompte]]] = {}
     for archer, decompte in ordre_scratch:
@@ -178,6 +182,9 @@ def calculer_classement(
     for groupe in par_categorie.values():
         rangs_categorie.update(_ranger(groupe))
 
+    # `categorie_libelle` retombe sur "" si la catégorie de l'archer manque au lot passé — ne devrait
+    # pas arriver (FK obligatoire depuis E02US002). Contrairement au `club_id` inconnu qu'on **signale**
+    # (ADR-0014), un libellé vide ne trompe personne et ne mérite pas de rendre l'anomalie visible ici.
     lignes: list[LigneClassement] = []
     for archer, decompte in ordre_scratch:
         assert archer.id is not None

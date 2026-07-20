@@ -8,8 +8,9 @@ Dérivés du **CA** de `stories/E06-classements.md` (et non de l'implémentation
   **plus grand nombre de 10**, puis de **9** — deux critères **séquentiels**, jamais fusionnés, et
   qui ne jouent **qu'à** total égal ;
 - **catégorie** : deux rangs coexistent — un rang **scratch** (global, toutes catégories) et un rang
-  **par catégorie** (dense 1..N dans la catégorie de l'archer). Arbitrage produit du 20/07/2026
-  (reversé dans `stories/`) : « les deux », pas l'un ou l'autre ;
+  **par catégorie** (repartant de 1 par catégorie, ex æquo partagés avec sauts — pas un rang « dense »
+  sans trou). Arbitrage produit du 20/07/2026 (reversé dans `stories/`) : « les deux », pas l'un ou
+  l'autre ;
 - **traçable** : le nombre de 10 et de 9 remonte dans chaque ligne, pour que le départage se
   **vérifie à l'œil**.
 
@@ -190,8 +191,8 @@ def test_rang_scratch_est_global_toutes_categories() -> None:
     assert {ligne.nom: ligne.rang_scratch for ligne in lignes} == {"Bob": 1, "Alice": 2}
 
 
-def test_rang_categorie_est_dense_et_independant_par_categorie() -> None:
-    """CA catégorie : au sein de chaque catégorie, les rangs repartent de 1 (dense 1..N).
+def test_rang_categorie_repart_de_un_et_independant_par_categorie() -> None:
+    """CA catégorie : au sein de chaque catégorie, les rangs repartent de 1.
 
     Alice (cat 1) est 2ᵉ au scratch mais **1ʳᵉ de sa catégorie** ; Bob (cat 2) est 1ᵉ partout.
     """
@@ -211,6 +212,34 @@ def test_rang_categorie_est_dense_et_independant_par_categorie() -> None:
     assert (par_nom["Alice"].rang_scratch, par_nom["Alice"].rang_categorie) == (2, 1)
     assert (par_nom["Chloé"].rang_scratch, par_nom["Chloé"].rang_categorie) == (3, 2)
     assert par_nom["Alice"].categorie_libelle == "Senior Homme"
+
+
+def test_ex_aequo_intra_categorie_partage_le_rang_avec_saut() -> None:
+    """Rang catégorie : deux ex æquo parfaits partagent le rang, et le suivant **saute** (1-2-2-4).
+
+    C'est le cas qui sépare un classement de compétition (avec saut) d'un rang « dense » sans trou
+    (1-2-2-3). Le CA veut le premier — même règle que le scratch (§8.1). Bob et Chloé ont le même
+    total (18), le même nombre de 10 (1) et de 9 (0) : départage épuisé, rang **partagé** ; Dora,
+    juste derrière, est **4ᵉ**, pas 3ᵉ. Tous en catégorie 1 : rang catégorie et scratch coïncident,
+    ce qui prouve que la **catégorie** saute elle aussi (sinon Dora serait 3ᵉ de catégorie).
+    """
+    archers = [
+        _archer(1, "Alice", categorie_id=1),
+        _archer(2, "Bob", categorie_id=1),
+        _archer(3, "Chloé", categorie_id=1),
+        _archer(4, "Dora", categorie_id=1),
+    ]
+    series = [
+        _serie(1, [_volee_validee(1, [DIX, DIX])]),  # 20 — 2 dix
+        _serie(2, [_volee_validee(1, [DIX, HUIT])]),  # 18 — 1 dix, 0 neuf
+        _serie(3, [_volee_validee(1, [DIX, HUIT])]),  # 18 — 1 dix, 0 neuf (ex æquo parfait de Bob)
+        _serie(4, [_volee_validee(1, [HUIT, HUIT])]),  # 16
+    ]
+    par_nom = {ligne.nom: ligne for ligne in calculer_classement(archers, series, [_cat(1)]).lignes}
+    rangs_categorie = {nom: ligne.rang_categorie for nom, ligne in par_nom.items()}
+    rangs_scratch = {nom: ligne.rang_scratch for nom, ligne in par_nom.items()}
+    assert rangs_categorie == {"Alice": 1, "Bob": 2, "Chloé": 2, "Dora": 4}
+    assert rangs_scratch == {"Alice": 1, "Bob": 2, "Chloé": 2, "Dora": 4}
 
 
 def test_le_classement_restitue_le_prenom() -> None:
