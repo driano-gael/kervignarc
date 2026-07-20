@@ -88,21 +88,28 @@ retrouver leur cible **sans rien chercher**, à chaque ouverture.
 ### E07US009 — Suivre le déroulé du tour en direct
 *En tant que* personne qui suit un archer, *je veux* voir sa feuille de marque se remplir **en direct**,
 *afin de* suivre son tour sans être à côté de la cible.
-- **CA** : pour un archer suivi (E07US006), l'appli publique affiche son **déroulé du tour** — la
-  **volée en cours flèche par flèche** et l'**historique du jour** (volées déjà tirées) — mis à jour en
+- **CA** : pour un archer suivi (E07US006), l'appli publique affiche son **déroulé du tour** — les
+  **volées du jour** (déjà tirées) et la **volée en cours**, chacune avec ses valeurs — mise à jour en
   temps réel ; chaque volée porte un **statut explicite** : **« en attente de validation »** (saisie
   par un scoreur, pas encore verrouillée) puis **« validé »** (grain de validation passé, E01US015) ;
   la donnée passe par un **endpoint public de suivi** dédié, avec un **DTO restreint** (règle 6 : ne
   fuiter ni le code de cible, ni l'IP, ni l'identité du scoreur) ; mise à jour poussée (WebSocket,
   E07US001/E04US009).
-- **Notes** : **décision structurante ⇒ ADR** — cette US **expose au public des scores provisoires
-  non validés** (le spectateur voit des chiffres avant confirmation du scoreur, donc parfois des
-  corrections en direct). Choix **demandé et assumé** par l'organisateur (20/07/2026), mais à écrire
-  en ADR (frontière de rôle/confidentialité) plutôt qu'à glisser dans le code. Terrain déjà en place :
-  statut porté par `Volee.validee_par` (`None` = en attente), avancement incluant le non-validé dans
-  `ServiceSaisie.avancement_cible` ; il « manque » un **endpoint public de projection** et un
-  **événement WebSocket typé** (le point de diffusion post-commit existe déjà,
-  `composition._diffuser_apres_ecriture`).
+  > **CA aligné au grain volée le 21/07/2026** (arbitrage tranché, [ADR-0039](../docs/adr/0039-exposition-publique-du-deroule-scores-provisoires.md)).
+  > Le v0.1 disait « la **volée en cours flèche par flèche** ». Or la saisie (E04US002) est
+  > **volée par volée** : une `Volee` porte le tuple complet de ses N valeurs, il n'existe **aucune
+  > entité `Fleche`** ni saisie unitaire — le serveur ne voit jamais une volée à moitié remplie. Le
+  > « flèche par flèche » temps réel n'est donc **pas réalisable** sans refondre la saisie (autre US).
+  > Grain retenu : **la volée** — elle apparaît d'un bloc dès qu'elle est consignée, valeurs affichées
+  > une à une. Choix confirmé par l'organisateur (grain volée suffisant), cf. § Cadrage d'intention.
+- **Notes** : **décision structurante ⇒ ADR** ([ADR-0039](../docs/adr/0039-exposition-publique-du-deroule-scores-provisoires.md)) —
+  cette US **expose au public des scores provisoires non validés** (le spectateur voit des chiffres
+  avant confirmation du scoreur, donc parfois des corrections en direct). Choix **demandé et assumé**
+  par l'organisateur (20/07/2026). Terrain déjà en place : statut porté par `Volee.validee_par`
+  (`None` = en attente), lecture par `ServiceSaisie.etat_serie` ; l'US ajoute un **endpoint public de
+  projection** + un **DTO restreint**. La diffusion réutilise l'événement générique post-commit
+  (`donnees_modifiees`, `composition._diffuser_apres_ecriture`) ; un **événement WebSocket typé**
+  ciblé est un raffinement **différé** (le live marche déjà via l'invalidation de cache).
 - **Dépend de** : E07US006, E04US002, E01US015 · **Jalon** : J1
 
 ### E07US008 — Vue publique des affectations du prochain tour
