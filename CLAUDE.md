@@ -188,10 +188,10 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   en minuscules) + corps expliquant le **quoi** et surtout le **pourquoi**, avec les références
   (`US: ExxUSyyy`, `ADR-XXXX`). Commits atomiques.
 - **L'assistant déroule le cycle d'une US en autonomie** : branche, implémentation, message de
-  commit rédigé, `git commit`, `git push`. Il **ne rend pas la main** pour ces étapes. Restent
-  soumis à l'aval explicite de l'utilisateur : `git merge`, `git rebase`, et tout ajout de
+  commit rédigé, `git commit`, `git push`. Il **ne rend pas la main** pour ces étapes. Restent hors
+  de cette autonomie : `git rebase` (réécrit l'historique — zone critique) et tout ajout de
   dépendance (`pip install` / `npm install` — cf. règle 11, c'est un arbitrage, pas de la
-  plomberie).
+  plomberie). `git merge` est l'étape physique de l'utilisateur (cf. bullet « ne rend la main que »).
 - Quand l'utilisateur dit **« lance la PR »**, exécuter [`/revue-us`](.claude/commands/revue-us.md) :
   revue du diff par des **agents dédiés en parallèle** (quatre axes + porte mécanique, plus un
   relecteur **adversarial** si le changement est structurel — [ADR-0013](docs/adr/0013-conduite-de-la-revue-d-us.md)),
@@ -199,10 +199,16 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   re-commit et push — sans repasser par l'utilisateur. `gh` n'étant **pas installé**, l'assistant
   livre le lien `pull/new/<branche>` + titre + corps prêts à coller : **c'est l'utilisateur qui
   ouvre et merge la PR**, puis dit « c'est mergé ».
-- **L'utilisateur n'intervient que pour un arbitrage** : choix métier, CA ambigu ou insatisfaisable
-  en l'état, périmètre d'US, dépendance, décision structurante (ADR). Tout le reste se décide et
-  s'exécute sans lui — un doute purement technique se tranche, se documente et se signale **après
-  coup**, il n'interrompt pas.
+- **Autonomie par défaut, main rendue sur trois cas seulement.** L'assistant fait avancer le code de
+  bout en bout ; il ne **rend la main que** (1) sur une **zone critique** — action difficilement
+  réversible ou à fort impact ; (2) quand il faut **trancher** — choix métier, CA ambigu ou
+  insatisfaisable en l'état, périmètre d'US, ajout de dépendance (règle 11) ; (3) sur une
+  **divergence de conception** — décision structurante (candidate à un ADR) ou écart au
+  `guide-architecture.md`. Hors de ces trois cas, tout se décide et s'exécute sans lui : un doute
+  purement technique se tranche, se documente (dette, corps de commit, ADR si structurant) et se
+  signale **après coup**, il n'interrompt pas. `git merge` reste l'action **physique** de
+  l'utilisateur (`gh` non installé, cf. « lance la PR ») — ce n'est pas un point d'arbitrage mais une
+  étape qui lui revient de fait.
 - Cycle : branche depuis `main` à jour → PR → revue + CI verte → merge → suppression de la branche.
 - **Le suivi des US ([`journal-d-avancement/SUIVI-US.md`](journal-d-avancement/SUIVI-US.md)) est tenu
   à jour dès que nécessaire** : c'est le **point de reprise** de « reprend les US » (état de chaque US,
