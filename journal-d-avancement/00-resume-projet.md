@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 20 juillet 2026
+# Résumé du projet — où on en est au 21 juillet 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -18,8 +18,9 @@ que le contexte est petit et local.
 fonctionnent, le placement des archers sur les cibles existe, la saisie des scores de qualification
 tourne en temps réel — y compris quand le wifi saute — et un tournoi de qualification se suit
 désormais de bout en bout : les postes de saisie se supervisent, le classement se calcule, et le
-public le consulte en direct sans compte.** Il reste à finir ce jalon (« ma journée » personnalisée,
-suivi des paiements), puis à construire les duels (phases finales) et le pilotage du jour J.
+public le consulte en direct sans compte — jusqu'à suivre un archer et voir sa feuille de marque se
+remplir volée par volée.** Il reste à finir ce jalon (complétude du tournoi, suivi des paiements),
+puis à construire les duels (phases finales) et le pilotage du jour J.
 
 ---
 
@@ -120,10 +121,14 @@ Ce qui transforme la saisie brute en tournoi qu'on suit en direct, dernier bloc 
 - **Suivre des archers** : on cherche un archer par son nom, on le **suit**, et l'application mémorise
   ce choix sur l'appareil (sans compte) — à la réouverture, elle affiche directement **sa cible / sa
   position / son départ**, à jour en direct. On peut en suivre plusieurs.
+- **Le déroulé du tour en direct** : sous la place de l'archer suivi, sa **feuille de marque se remplit
+  toute seule** — chaque volée avec ses flèches et son total, marquée **« en attente »** (en ambre,
+  score provisoire) tant que le scoreur ne l'a pas confirmée, puis **« validé »** (en vert). Le public
+  voit donc le tour se dérouler **avant** validation (choix assumé) ; le total « officiel » reste celui
+  du classement, et la vue ne révèle jamais qui a saisi.
 
-*Reste à venir sur ce jalon : le **déroulé du tour en direct** dans le suivi (chaque score, « en
-attente de validation » puis « validé »), les affectations du prochain tour, et le suivi des
-paiements.*
+*Reste à venir sur ce jalon : les **affectations du prochain tour** (phases finales), la **complétude**
+du tournoi, et le **suivi des paiements**.*
 
 ---
 
@@ -150,11 +155,11 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **50 US livrées** sur `main` (mergées, revues, CI verte) à la date du 20/07/2026 — dont E07US006,
+- **51 US livrées** sur `main` (mergées, revues, CI verte) à la date du 21/07/2026 — dont E07US009,
   optimiste d'un cran sur la branche jusqu'à son merge.
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : bien avancé
-  (37/46)** — supervision, classement, vues publiques et suivi d'archers faits ; restent le déroulé
-  du tour en direct, la complétude, les paiements et quelques imprimables.
-- Dernière US livrée : **E07US006** (suivre des archers : ma journée).
-- Prochaine US prévue : **E07US009** (suivre le déroulé du tour en direct — backend + ADR) — cf.
-  [`SUIVI-US.md`](SUIVI-US.md).
+  (38/46)** — supervision, classement, vues publiques, suivi d'archers et déroulé du tour en direct
+  faits ; restent la complétude, les paiements et quelques imprimables.
+- Dernière US livrée : **E07US009** (suivre le déroulé du tour en direct).
+- Prochaine US prévue : **E12US007** (alerter par calcul d'impact — règle transverse aux écritures) —
+  cf. [`SUIVI-US.md`](SUIVI-US.md).
