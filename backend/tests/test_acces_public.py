@@ -44,6 +44,9 @@ _ECRITURES_PUBLIQUES = {
 }
 
 # Endpoints de LECTURE — doivent répondre sans authentification (jamais 401).
+# Les départs et les archers d'un tournoi y figurent depuis E07US001 : la **vue publique du plan de
+# cibles** en dépend (choix du départ + résolution des noms d'archers). Sans ce verrou, protéger
+# l'un de ces GET par mégarde casserait la consultation publique sans faire échouer aucun test.
 _LECTURES = [
     "/health",
     "/api/v1/auth/etat",
@@ -51,6 +54,8 @@ _LECTURES = [
     "/api/v1/tournois/1",
     "/api/v1/tournois/1/classement",
     "/api/v1/tournois/1/categories",
+    "/api/v1/tournois/1/departs",
+    "/api/v1/tournois/1/archers",
 ]
 
 
