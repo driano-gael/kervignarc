@@ -44,6 +44,11 @@ _ECRITURES_PUBLIQUES = {
 }
 
 # Endpoints de LECTURE — doivent répondre sans authentification (jamais 401).
+# Le plan de cibles, les départs et les archers d'un tournoi y figurent depuis E07US001 : la **vue
+# publique du plan de cibles** en dépend. Le GET `plan-de-cibles` en est la **donnée centrale** (qui
+# tire où) ; `departs` (choix du créneau) et `archers` (résolution des noms) l'habillent. Sans ce
+# verrou, protéger l'un de ces GET par mégarde — le plan surtout, dont toutes les routes voisines
+# portent `exiger_admin` — casserait la consultation publique sans faire échouer aucun test.
 _LECTURES = [
     "/health",
     "/api/v1/auth/etat",
@@ -51,6 +56,9 @@ _LECTURES = [
     "/api/v1/tournois/1",
     "/api/v1/tournois/1/classement",
     "/api/v1/tournois/1/categories",
+    "/api/v1/tournois/1/departs",
+    "/api/v1/tournois/1/departs/1/plan-de-cibles",
+    "/api/v1/tournois/1/archers",
 ]
 
 

@@ -28,18 +28,17 @@ import { NouvelArcher } from '../archers/NouvelArcher'
 import { BaremeQualification } from '../bareme/BaremeQualification'
 import { Blasons } from '../blasons/Blasons'
 import { Categories } from '../categories/Categories'
-import { useCategories } from '../categories/hooks'
 import { Clubs } from '../clubs/Clubs'
 import type { StatutTournoi, Tournoi } from '../competition/api'
-import { useClassement, useTournois } from '../competition/hooks'
-import { TableClassement } from '../competition/TableClassement'
+import { useTournois } from '../competition/hooks'
+import { VueClassement } from '../competition/VueClassement'
 import { Departs } from '../departs/Departs'
 import { Gabarits } from '../gabarits/Gabarits'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { GrainValidation } from '../grain-validation/GrainValidation'
 import { Placement } from '../placement/Placement'
 import { Postes } from '../postes/Postes'
-import { EspaceScoreur } from '../scoreur-session/EspaceScoreur'
+import { AccueilPublic } from '../public/AccueilPublic'
 import { Scoreurs } from '../scoreurs/Scoreurs'
 import { Supervision } from '../supervision/Supervision'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
@@ -310,88 +309,5 @@ function Coquille() {
 
       <div className="coquille__contenu">{contenu}</div>
     </div>
-  )
-}
-
-// ————————————————————————————————————————————————————————————————————————————————————————————————
-// Consultation publique (E10US001) : sans session admin, la lecture reste ouverte.
-// ————————————————————————————————————————————————————————————————————————————————————————————————
-
-function AccueilPublic() {
-  const [selection, setSelection] = useState<Tournoi | null>(null)
-
-  return (
-    <div className="app__contenu--colonnes">
-      {/* En public, `GestionTournois` présente l'écran de connexion + la liste en lecture seule. */}
-      <GestionTournois selectionneId={selection?.id ?? null} onChoisi={setSelection} />
-
-      {selection && (
-        <section className="carte carte--large">
-          <button type="button" className="lien" onClick={() => setSelection(null)}>
-            ← Tous les tournois
-          </button>
-          <h2 className="carte__titre">
-            {selection.nom} <BadgeStatut statut={selection.statut} />
-          </h2>
-          <VueClassement tournoiId={selection.id} admin={false} />
-        </section>
-      )}
-
-      <aside className="carte">
-        {/* L'entrée du scoreur : il ouvre l'app sur son téléphone et tape son code, sans passer par
-            l'admin (E10US003). */}
-        <EspaceScoreur />
-        {/* Entrée « poste de cible » (E04US001) : normalement on arrive par le QR de sa cible
-            (`?poste=<code>`, E09US008) ; ce lien de secours ouvre l'écran de poste sans QR — une
-            fois la tablette rattachée, l'app y va d'elle-même (App.tsx), ce lien ne resert plus. */}
-        <p className="carte__etat">
-          <a className="lien" href="?poste">
-            Cette tablette est un poste de cible ›
-          </a>
-        </p>
-      </aside>
-    </div>
-  )
-}
-
-// Classement de qualification en direct — public (lecture seule) ou admin (colonne « Placer »).
-// Partagé par la destination « Classement » de la coquille et la consultation publique. Un filtre
-// par catégorie (E06US001) restreint l'affichage à une catégorie sans changer les rangs : le rang
-// scratch (global) reste celui du classement complet — on **voit** une catégorie sans perdre la
-// position d'ensemble.
-function VueClassement({ tournoiId, admin }: { tournoiId: number; admin: boolean }) {
-  const [categorieId, setCategorieId] = useState<number | undefined>(undefined)
-  const categories = useCategories(tournoiId)
-  const classement = useClassement(tournoiId, categorieId)
-
-  return (
-    <>
-      <h3 className="carte__soustitre">Classement en direct</h3>
-      <label className="classement-filtre">
-        Catégorie{' '}
-        <select
-          value={categorieId ?? ''}
-          onChange={(e) =>
-            setCategorieId(e.target.value === '' ? undefined : Number(e.target.value))
-          }
-        >
-          <option value="">Toutes catégories</option>
-          {(categories.data ?? []).map((categorie) => (
-            <option key={categorie.id} value={categorie.id}>
-              {categorie.libelle}
-            </option>
-          ))}
-        </select>
-      </label>
-      {classement.isPending && <p className="carte__etat">Chargement…</p>}
-      {classement.isError && (
-        <p className="carte__etat carte__etat--erreur" role="alert">
-          Classement injoignable — {classement.error.message}
-        </p>
-      )}
-      {classement.data && (
-        <TableClassement tournoiId={tournoiId} lignes={classement.data.lignes} admin={admin} />
-      )}
-    </>
   )
 }

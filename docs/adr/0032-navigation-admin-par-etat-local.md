@@ -39,6 +39,16 @@ Ce choix vaut pour l'**appli admin**. Il ne préjuge pas de l'app **poste de cib
 par le marqueur `?poste=<code>` en query-string, E04US001) ni d'une éventuelle **vitrine publique**,
 qui répondent à d'autres besoins.
 
+**Mise à jour E07US001 (2026-07-20).** La vitrine publique (vues classement + plan de cibles) a été
+livrée et a **adopté le même mécanisme** — navigation par `useState` (choix du tournoi, onglets),
+`package.json` toujours inchangé. Une nuance vaut d'être notée : côté **public**, l'URL adressable a
+une valeur **réelle** que l'admin n'a pas — un spectateur voudrait partager « le classement du
+tournoi X » ou « le plan du départ Y », et E07US006 (« ouvrir l'appli sur ma journée ») pourrait
+réclamer un deep-link mémorisable. Le déclencheur de réouverture de cet ADR (« à rouvrir si un vrai
+besoin d'URL apparaît », cf. Conséquences) est donc **plus susceptible de se produire sur la vitrine
+publique que sur l'admin**. Les CA d'E07US001 (classements/plans/live) ne l'exigeant pas, le choix
+sans routeur tient pour l'instant, zone publique comprise.
+
 ## Conséquences
 
 - **+** Aucune dépendance ajoutée : la coquille tient en quelques `useState` et un tableau de
