@@ -9,7 +9,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getSupervision, revoquerPoste } from './api'
 
-const INTERVALLE_POLL_MS = 3000
+// ~5 s (ADR-0038 §4) : assez court pour un écran live, assez espacé pour ne pas multiplier les
+// lectures d'avancement (l'instantané relit les séries des cibles rattachées à chaque tick). Le
+// seuil hors-ligne serveur (30 s) laisse largement le temps de voir une bascule.
+const INTERVALLE_POLL_MS = 5000
 
 const cleSupervision = (tournoiId: number) => ['supervision', tournoiId] as const
 

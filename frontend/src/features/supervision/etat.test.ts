@@ -33,4 +33,8 @@ describe('avancementLibelle', () => {
   it('qualification pas configurée (nb_volees 0) → tiret, pas « volée 0/0 »', () => {
     expect(avancementLibelle({ volee_courante: 0, nb_volees: 0 })).toBe('—')
   })
+
+  it('cible sans aucun archer placé (volee_courante 0) → tiret, pas « volée 0/12 »', () => {
+    expect(avancementLibelle({ volee_courante: 0, nb_volees: 12 })).toBe('—')
+  })
 })

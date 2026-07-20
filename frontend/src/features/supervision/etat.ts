@@ -25,11 +25,13 @@ export function afficheEtat(etat: EtatPoste): AfficheEtat {
 }
 
 // Libellé d'avancement (« volée 8/12 »), ou tiret quand il n'a pas de sens : poste sans grille (non
-// rattaché, ou rattaché sans départ courant → `avancement` nul côté serveur), ou qualification pas
-// encore configurée (`nb_volees === 0`) — on n'affiche pas « volée 0/0 ».
+// rattaché, ou rattaché sans départ courant → `avancement` nul côté serveur), qualification pas
+// encore configurée (`nb_volees === 0`), ou cible sans **aucun** archer placé (`volee_courante === 0`,
+// le serveur ne peut situer aucun rythme) — on n'affiche ni « volée 0/0 » ni « volée 0/12 ».
 export function avancementLibelle(
   avancement: { volee_courante: number; nb_volees: number } | null,
 ): string {
-  if (avancement === null || avancement.nb_volees === 0) return '—'
+  if (avancement === null || avancement.nb_volees === 0 || avancement.volee_courante === 0)
+    return '—'
   return `volée ${avancement.volee_courante}/${avancement.nb_volees}`
 }

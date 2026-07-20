@@ -82,6 +82,17 @@ diffusion — un ping toutes les 10 s × 30 postes ne doit rien coûter en base.
 globale existante (`donnees_modifiees`) continue de rafraîchir la console sur les **saisies**, en
 complément du poll.
 
+**Le coût réel du poll n'est pas le heartbeat, c'est l'instantané.** À chaque tick, calculer
+l'avancement relit, **par cible rattachée**, la grille du placement (`archers_du_poste`) puis la
+série de chaque archer — soit, à ~30 cibles × ~4 archers, quelques centaines de **lectures SQLite**
+toutes les ~5 s. Ces lectures sont **hors file** (threadpool, WAL, transactions courtes — règle 7)
+et absorbées par la maille mono-club/local (règle 12) : un seul écran admin ouvert à la fois, coût
+de l'ordre de quelques pour-cent d'un cœur. Ce n'est **pas** gratuit pour autant, et c'est un
+motif **N+1** (une relecture de `par_depart` par cible d'un même départ, une série par archer). Le
+remède, si le poll se resserrait ou l'échelle grandissait, est un **chemin de lecture agrégé** (une
+requête par départ plutôt que par archer), à traiter en **US dédiée** — pas ici : à ~30 postes, la
+version simple suffit, et l'anticiper serait de la sur-ingénierie (règle 12).
+
 ### 5. Révoquer / réinitialiser un poste = fermer sa session + oublier sa présence
 
 L'admin peut **révoquer** un poste (`D-07`) : on invalide **toutes** ses sessions

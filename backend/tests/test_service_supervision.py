@@ -5,8 +5,9 @@ Source : `stories/E12-pilotage-jour-j.md`, E12US001, puce « CA » (états *en l
 l'arbitrage heartbeat (ADR-0038). On isole le service : **vrais** store de sessions et registre de
 présence (en mémoire, déterministes) — ce qui couvre aussi les nouvelles méthodes du store —, faux
 repositories, **horloge réglable** (le temps qui passe rend un poste hors ligne sans qu'aucun
-événement ne survienne), et **faux lecteur d'avancement** (l'agrégation volée-par-volée est prouvée
-côté `ServiceSaisie`).
+événement ne survienne), et **faux lecteur d'avancement** : ce faux isole *ce* service ; la vraie
+agrégation volée-par-volée (« plus lent », dernière saisie = max) est prouvée sur le vrai
+`ServiceSaisie.avancement_cible` dans `test_service_saisie.py` (section « Avancement d'une cible »).
 """
 
 from __future__ import annotations

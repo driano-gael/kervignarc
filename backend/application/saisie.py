@@ -97,7 +97,9 @@ class AvancementCible:
     """Avancement de saisie d'une cible, pour la supervision (E12US001, ADR-0038 §2).
 
     `volee_courante` : la volée en cours (1-based) au rythme du **plus lent** des archers de la
-    cible — 0 si personne n'a encore saisi. `nb_volees` : total attendu (barème de qualification),
+    cible — **0** si **aucun archer** n'est placé sur la cible (grille vide) ; des archers placés
+    mais qui n'ont rien saisi donnent **1** (le retardataire tient la cible). `nb_volees` : total
+    attendu (barème de qualification),
     **0** si la qualification n'est pas configurée (la supervision n'échoue pas là-dessus, elle
     affiche « — »). `derniere_saisie` : « quand » de la dernière volée saisie sur la cible, tous
     archers confondus, ou `None` — c'est l'**activité** affichée, jamais le heartbeat (ADR-0038 §2).
