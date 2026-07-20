@@ -178,6 +178,14 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   `/compact`. ADR, registre de dette, corps de commit, mémoire : c'est déjà la règle (§ Dette,
   § Workflow) — c'en est aussi la raison économique. Le meilleur point de coupe est **« lance la
   PR »** : le code est écrit, la trace d'exploration ne sert plus ; le signaler à l'utilisateur.
+- **Ce qui cadre le projet va dans le dépôt, pas en mémoire locale.** L'utilisateur développe sur
+  **plusieurs postes** et son point de suivi est **GitHub** : la mémoire locale de l'assistant
+  (`~/.claude/…`) est **par machine** et **ne voyage pas**. Donc toute règle, décision ou arbitrage
+  qui **cadre le projet** s'écrit dans un fichier **versionné** — `CLAUDE.md`, [`docs/adr/`](docs/adr/),
+  [`docs/dette.md`](docs/dette.md), [`stories/`](stories/), [`journal-d-avancement/`](journal-d-avancement/) —
+  pour **partir sur GitHub et se retrouver sur chaque poste**. La mémoire n'est qu'un **aide-mémoire
+  personnel du poste courant**, **jamais la source de vérité** d'une décision projet ; si un fait
+  mémorisé cadre le projet, son **exemplaire versionné dans le dépôt fait foi**.
 
 ## Workflow
 
