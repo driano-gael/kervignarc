@@ -204,6 +204,12 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   s'exécute sans lui — un doute purement technique se tranche, se documente et se signale **après
   coup**, il n'interrompt pas.
 - Cycle : branche depuis `main` à jour → PR → revue + CI verte → merge → suppression de la branche.
+- **Le suivi des US ([`journal-d-avancement/SUIVI-US.md`](journal-d-avancement/SUIVI-US.md)) est tenu
+  à jour dès que nécessaire** : c'est le **point de reprise** de « reprend les US » (état de chaque US,
+  prochaine à prendre). Une US passe à ✅ **quand elle est mergée sur `main`** — pas à l'ouverture de
+  la branche. Idéalement dans le dernier commit de l'US ; à défaut, en passe rapide sur l'historique
+  de merge (`git log main --first-parent`). Un tracker périmé fait repartir « reprend les US » sur une
+  base fausse : sa mise à jour n'est pas cosmétique, elle conditionne la reprise.
 - **Décision structurante ⇒ ADR** dans `docs/adr/` (contexte / décision / conséquences).
 - Une US trop grosse pour une branche doit être **redécoupée** (maille INVEST).
 
