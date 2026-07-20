@@ -1234,3 +1234,131 @@ button:disabled {
   margin-top: 16px;
   font-size: 13px;
 }
+
+/* ------------------------------------------------------------------------- */
+/* Vues publiques (E07US001) : classement + plan de cibles, sans auth,        */
+/* responsive mobile. Onglets de bascule, plan en lecture seule, et un        */
+/* conteneur défilant pour les larges tables sur petit écran.                 */
+/* ------------------------------------------------------------------------- */
+
+/* Filtre catégorie / sélecteur de départ : libellé + menu déroulant en ligne. */
+.classement-filtre {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+/* Onglets de bascule entre vues publiques d'un tournoi (Classement / Plan de cibles). Cibles
+   tactiles ≥ 44 px (consultation depuis un téléphone). L'onglet actif porte l'aplat d'accent, comme
+   les destinations de la coquille admin — même grammaire visuelle. */
+.onglets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.onglet {
+  min-height: 44px;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: 500;
+  color: var(--text-h);
+  background: none;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+}
+
+.onglet:hover {
+  background: var(--surface);
+}
+
+.onglet--actif {
+  color: var(--bg);
+  background: var(--accent);
+  font-weight: 600;
+}
+
+/* Conteneur défilant : à 8 colonnes, le classement déborde d'un écran de téléphone. On le laisse
+   défiler horizontalement plutôt que d'écraser les colonnes (CA « responsive mobile »). */
+.table-defilement {
+  overflow-x: auto;
+}
+
+/* Plan de cibles en **lecture seule** (public) : une grille de cartes-cibles, sans glisser-déposer
+   ni case de dépôt (contrairement à `.placement__cibles` de l'admin). Auto-fill : s'adapte de 1 à N
+   colonnes selon la largeur, donc responsive par construction. */
+.plan-public {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.plan-public__cible {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 8px 10px;
+}
+
+.plan-public__titre {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+/* Cible sans archer posé : état neutre, discret (pas une anomalie). */
+.plan-public__vide {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.plan-public__places {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plan-public__place {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.plan-public__position {
+  flex: 0 0 auto;
+  width: 1.4em;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.plan-public__nom {
+  color: var(--text-h);
+}
+
+/* Consultation sur téléphone : marges réduites et cartes pleine largeur. Le layout en colonnes
+   s'enroule déjà (`flex-wrap`), on relâche seulement les largeurs max qui bornaient le desktop. */
+@media (max-width: 600px) {
+  .app {
+    padding: 16px;
+  }
+
+  .carte,
+  .carte--large {
+    max-width: none;
+  }
+}
