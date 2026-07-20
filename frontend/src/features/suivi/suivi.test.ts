@@ -3,8 +3,9 @@
 
 import { describe, expect, it } from 'vitest'
 import type { Archer } from '../competition/api'
+import type { Depart } from '../departs/api'
 import type { PlanDeCibles } from '../placement/api'
-import { filtrerArchers, placeDansPlan } from './suivi'
+import { construireJournee, filtrerArchers, placeDansPlan } from './suivi'
 
 const archer = (id: number, nom: string, prenom: string): Archer => ({
   id,
@@ -14,6 +15,28 @@ const archer = (id: number, nom: string, prenom: string): Archer => ({
   categorie_id: 1,
   cible: null,
   club_id: null,
+})
+
+const depart = (id: number, numero: number, horaire: string | null): Depart => ({
+  id,
+  tournoi_id: 1,
+  numero,
+  horaire,
+  tarif_centimes: 0,
+  quota: null,
+})
+
+const planAvec = (
+  departId: number,
+  placements: { index: number; position: string; archerId: number }[],
+): PlanDeCibles => ({
+  depart_id: departId,
+  cibles: placements.map((p) => ({
+    index: p.index,
+    capacite: 4,
+    placements: [{ position: p.position, archer_id: p.archerId, blason_id: 1, inscription_id: 1 }],
+  })),
+  conflits: [],
 })
 
 describe('filtrerArchers — recherche par nom', () => {
@@ -34,6 +57,10 @@ describe('filtrerArchers — recherche par nom', () => {
 
   it('matche aussi sur le prénom', () => {
     expect(filtrerArchers(archers, 'sophie').map((a) => a.id)).toEqual([3])
+  })
+
+  it('matche sur une sous-chaîne au milieu du nom (pas seulement le préfixe)', () => {
+    expect(filtrerArchers(archers, 'arti').map((a) => a.id)).toEqual([1, 3])
   })
 
   it('tolère les accents (« remy » retrouve « Rémy »)', () => {
@@ -73,5 +100,39 @@ describe('placeDansPlan — place d’un archer sur un départ', () => {
 
   it('plan sans cible → null', () => {
     expect(placeDansPlan({ depart_id: 10, cibles: [], conflits: [] }, 1)).toBeNull()
+  })
+})
+
+describe('construireJournee — la journée d’un archer (départs + plans, pas les inscriptions)', () => {
+  const departs = [depart(10, 1, '9h00'), depart(20, 2, '14h00')]
+
+  it('archer posé sur un départ → une ligne créneau + place', () => {
+    const plans = new Map([[10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])]])
+
+    expect(construireJournee(7, departs, plans)).toEqual([
+      { departId: 10, numeroDepart: 1, horaire: '9h00', cible: 3, position: 'B' },
+    ])
+  })
+
+  it('archer posé sur deux départs → deux lignes triées par numéro de départ', () => {
+    const plans = new Map([
+      [20, planAvec(20, [{ index: 5, position: 'A', archerId: 7 }])],
+      [10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])],
+    ])
+
+    expect(construireJournee(7, departs, plans).map((l) => l.numeroDepart)).toEqual([1, 2])
+  })
+
+  it('archer posé sur aucun plan → journée vide', () => {
+    const plans = new Map([[10, planAvec(10, [{ index: 3, position: 'B', archerId: 99 }])]])
+
+    expect(construireJournee(7, departs, plans)).toEqual([])
+  })
+
+  it('départ dont le plan n’est pas (encore) chargé → départ ignoré, pas de crash', () => {
+    // Seul le plan du départ 10 est présent dans la Map ; le départ 20 est sauté.
+    const plans = new Map([[10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])]])
+
+    expect(construireJournee(7, departs, plans).map((l) => l.departId)).toEqual([10])
   })
 })

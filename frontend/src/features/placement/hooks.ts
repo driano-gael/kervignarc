@@ -15,7 +15,10 @@ import {
   regenererPlan,
 } from './api'
 
-const clePlan = (tournoiId: number, departId: number) =>
+// Exportée : la feature « suivi » (E07US006) rejoue ces plans via `useQueries` et doit partager
+// EXACTEMENT la même clé, sinon le cache diverge (le plan public et le suivi refetcheraient chacun
+// de leur côté au lieu de partager la donnée déjà chargée).
+export const clePlan = (tournoiId: number, departId: number) =>
   ['plan-de-cibles', tournoiId, departId] as const
 
 export function usePlanDeCibles(tournoiId: number, departId: number) {

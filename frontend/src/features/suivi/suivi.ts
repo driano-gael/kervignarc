@@ -3,6 +3,7 @@
 // la recherche, et retrouver la place (cible + position) d'un archer dans le plan d'un départ.
 
 import type { Archer } from '../competition/api'
+import type { Depart } from '../departs/api'
 import type { PlanDeCibles } from '../placement/api'
 
 // Normalise pour une comparaison tolérante aux accents et à la casse : « Rémy » se retrouve avec
@@ -36,4 +37,42 @@ export function placeDansPlan(plan: PlanDeCibles, archerId: number): PlaceArcher
     if (place) return { cible: cible.index, position: place.position }
   }
   return null
+}
+
+// Une ligne de la journée d'un archer : le créneau (départ + horaire) et sa place (cible + position).
+export interface LigneJournee {
+  departId: number
+  numeroDepart: number
+  horaire: string | null
+  cible: number
+  position: string
+}
+
+// Construit la journée d'un archer : pour chaque départ où il est **posé**, son créneau et sa place,
+// triés par numéro de départ. On lit **les plans** (autorité du placement, ADR-0033) et **la liste des
+// départs** (numéro/horaire) — deux surfaces publiques **sans donnée personnelle**. On n'utilise
+// **pas** l'endpoint des inscriptions : son DTO porte `paye`/`montant_du_centimes`, qui ne doivent pas
+// atteindre le navigateur d'un spectateur anonyme (règle 6, correctif de revue B/C1). Conséquence
+// assumée : un archer inscrit mais **pas encore placé** n'apparaît sur aucune ligne — on ne connaît sa
+// journée qu'une fois posé (avant, « pas encore placé »).
+export function construireJournee(
+  archerId: number,
+  departs: Depart[],
+  plansParDepart: Map<number, PlanDeCibles>,
+): LigneJournee[] {
+  const journee: LigneJournee[] = []
+  for (const depart of [...departs].sort((a, b) => a.numero - b.numero)) {
+    const plan = plansParDepart.get(depart.id)
+    if (!plan) continue
+    const place = placeDansPlan(plan, archerId)
+    if (!place) continue
+    journee.push({
+      departId: depart.id,
+      numeroDepart: depart.numero,
+      horaire: depart.horaire,
+      cible: place.cible,
+      position: place.position,
+    })
+  }
+  return journee
 }
