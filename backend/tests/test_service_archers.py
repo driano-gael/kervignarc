@@ -26,9 +26,11 @@ from application.erreurs import (
     SaisieHorsCible,
     TournoiIntrouvable,
 )
-from domain.archer import ArcherId
+from domain.archer import Archer, ArcherId
+from domain.blason import ZoneScore
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club
+from domain.entree_audit import EntreeAudit
 from domain.erreurs import (
     CibleInvalide,
     NomArcherInvalide,
@@ -38,6 +40,7 @@ from domain.erreurs import (
 from domain.inscription import Inscription
 from domain.poste import Poste
 from domain.score import Score
+from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
@@ -117,6 +120,51 @@ class FauxScoreRepository:
         return [s for s in self._scores if s.archer_id == archer_id]
 
 
+class FauxSerieRepository:
+    """Repository en mémoire conforme au port `SerieRepository`, réduit à ce que lisent ces tests.
+
+    Deux lecteurs ici : le **classement** (`ServiceClassement.par_tournoi`) et la garde « l'archer
+    a-t-il tiré ? » d'`ServiceArchers` (`par_archer`, DETTE-013 — le classement **et** l'engagement
+    dérivent désormais des **séries** de saisie (E04US002), plus de l'agrégat `Score` du walking
+    skeleton). Comme `FauxScoreRepository`, **la série d'un archer supprimé devient invisible** : le
+    vrai `ArcherRepositorySQL.supprimer` l'efface dans sa transaction (cascade `serie`→`volee`), et
+    un faux qui la laisserait apparaître verdirait un service à série orpheline. Les méthodes de
+    trace et d'horodatage ne sont pas sollicitées (couvertes par `test_service_saisie` et
+    `test_saisie_api`) : elles ne servent qu'à **conformer** le port.
+    """
+
+    def __init__(self, archers: FauxArcherRepository) -> None:
+        self._archers = archers
+        self._series: dict[tuple[TournoiId, ArcherId], Serie] = {}
+
+    def enregistrer(self, serie: Serie) -> Serie:
+        self._series[(serie.tournoi_id, serie.archer_id)] = serie
+        return serie
+
+    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
+        # Le garde d'existence reproduit la purge du vrai adapter : la série d'un archer effacé ne
+        # doit plus compter comme « a tiré » (sinon le fantôme rendrait l'archer indéboulonnable).
+        if self._archers.par_id(archer_id) is None:
+            return None
+        return self._series.get((tournoi_id, archer_id))
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
+        presents = {a.id for a in self._archers.par_tournoi(tournoi_id)}
+        return [
+            serie
+            for (t_id, a_id), serie in self._series.items()
+            if t_id == tournoi_id and a_id in presents
+        ]
+
+    def horodatages(
+        self, tournoi_id: TournoiId, archer_id: ArcherId
+    ) -> dict[int, datetime.datetime]:
+        raise NotImplementedError
+
+    def enregistrer_avec_trace(self, serie: Serie, entree: EntreeAudit) -> Serie:
+        raise NotImplementedError
+
+
 class Montage(NamedTuple):
     """Attelage d'un test : les deux services et ce qu'il faut pour inscrire un archer.
 
@@ -128,6 +176,8 @@ class Montage(NamedTuple):
     archers: ServiceArchers
     classement: ServiceClassement
     inscrits: FauxArcherRepository
+    scores: FauxScoreRepository
+    series: FauxSerieRepository
     clubs: FauxClubRepository
     categories: FauxCategorieRepository
     tournois: FauxTournoiRepository
@@ -143,12 +193,40 @@ class Montage(NamedTuple):
         assert categorie.id is not None
         return tournoi.id, categorie.id
 
+    def faire_tirer(self, archer: Archer, *, fleches: int = 1) -> None:
+        """Donne à l'archer une **volée validée** de `fleches` flèches : il « a tiré » (E02US003).
+
+        Monte l'engagement au sens des gardes **depuis la définition tranchée le 20/07/2026** — au
+        moins une volée *validée* —, et non via `saisir_score`, qui n'écrit que l'agrégat `Score`
+        (mort, plus lu par les gardes depuis DETTE-013). Une volée verrouillée (`validee_par`
+        renseigné) est la seule qui compte comme un tir.
+        """
+        assert archer.id is not None
+        volee = Volee(numero=1, valeurs=(ZoneScore.NEUF,) * fleches, validee_par="Scoreur")
+        self.series.enregistrer(
+            Serie(tournoi_id=archer.tournoi_id, archer_id=archer.id, volees=(volee,))
+        )
+
+    def saisir_sans_valider(self, archer: Archer) -> None:
+        """Saisit une volée **non validée** (état intermédiaire) : l'archer n'a **pas** « tiré ».
+
+        Prouve la limite de la définition (arbitrage du 20/07/2026) : une volée sans validateur
+        (`validee_par=None`, donc non verrouillée) ne compte pas dans `nb_fleches_validees`, donc ne
+        rend l'archer ni engagé (suppression) ni bloqué (changement de catégorie).
+        """
+        assert archer.id is not None
+        volee = Volee(numero=1, valeurs=(ZoneScore.NEUF, ZoneScore.NEUF, ZoneScore.NEUF))
+        self.series.enregistrer(
+            Serie(tournoi_id=archer.tournoi_id, archer_id=archer.id, volees=(volee,))
+        )
+
 
 def _monter() -> Montage:
     """Monte les deux services sur un tournoi persisté portant une catégorie « Senior 1 H »."""
     tournois = FauxTournoiRepository()
     archers = FauxArcherRepository()
     scores = FauxScoreRepository(archers)
+    series = FauxSerieRepository(archers)
     clubs = FauxClubRepository()
     categories = FauxCategorieRepository()
     inscriptions = FauxInscriptionRepository()
@@ -157,9 +235,11 @@ def _monter() -> Montage:
     categorie = categories.ajouter(Categorie.creer(tournoi.id, "Senior 1 H"))
     assert categorie.id is not None
     return Montage(
-        archers=ServiceArchers(tournois, archers, scores, clubs, categories, inscriptions),
-        classement=ServiceClassement(tournois, archers, scores),
+        archers=ServiceArchers(tournois, archers, scores, clubs, categories, inscriptions, series),
+        classement=ServiceClassement(tournois, archers, series, categories),
         inscrits=archers,
+        scores=scores,
+        series=series,
         clubs=clubs,
         categories=categories,
         tournois=tournois,
@@ -591,9 +671,26 @@ def test_modifier_archer_signale_le_changement_de_categorie_d_un_archer_engage()
     autre_categorie = m.categories.ajouter(Categorie.creer(m.tournoi_id, "Senior 2 H"))
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None and autre_categorie.id is not None
-    m.archers.saisir_score(archer.id, 9)
+    m.faire_tirer(archer)
     with pytest.raises(ChangementCategorieArcherEngage):
         m.archers.modifier(archer.id, "Robin", "Jean", autre_categorie.id)
+
+
+def test_modifier_categorie_d_un_archer_dont_la_volee_n_est_pas_validee_ne_signale_rien() -> None:
+    """Une volée **saisie mais non validée** n'est pas « a tiré » : la catégorie s'édite librement.
+
+    Arbitrage du 20/07/2026 (reversé dans `stories/E02-inscriptions.md`) : tant que le scoreur n'a
+    pas validé, la volée n'est qu'un état intermédiaire — elle n'est dans aucun classement, rien ne
+    « bascule » vers une autre catégorie. Sans ce test, définir « a tiré » sur *toute* volée saisie
+    (au lieu des seules validées) passerait au vert.
+    """
+    m = _monter()
+    autre_categorie = m.categories.ajouter(Categorie.creer(m.tournoi_id, "Senior 2 H"))
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None and autre_categorie.id is not None
+    m.saisir_sans_valider(archer)
+    edite = m.archers.modifier(archer.id, "Robin", "Jean", autre_categorie.id)
+    assert edite.categorie_id == autre_categorie.id
 
 
 def test_modifier_archer_confirme_accepte_le_changement_de_categorie() -> None:
@@ -602,7 +699,7 @@ def test_modifier_archer_confirme_accepte_le_changement_de_categorie() -> None:
     autre_categorie = m.categories.ajouter(Categorie.creer(m.tournoi_id, "Senior 2 H"))
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None and autre_categorie.id is not None
-    m.archers.saisir_score(archer.id, 9)
+    m.faire_tirer(archer)
     edite = m.archers.modifier(
         archer.id, "Robin", "Jean", autre_categorie.id, autoriser_changement_categorie=True
     )
@@ -621,7 +718,7 @@ def _archer_engage_et_homonyme_en_vue() -> tuple[Montage, ArcherId, CategorieId]
     m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
     tireur = m.archers.ajouter(m.tournoi_id, "Martin", "Alice", m.categorie_id)
     assert tireur.id is not None and autre_categorie.id is not None
-    m.archers.saisir_score(tireur.id, 9)
+    m.faire_tirer(tireur)
     return m, tireur.id, autre_categorie.id
 
 
@@ -668,12 +765,12 @@ def test_modifier_archer_les_deux_confirmations_ensemble_passent() -> None:
     assert edite.categorie_id == autre_categorie_id
 
 
-def test_modifier_categorie_d_un_archer_place_sans_score_ne_signale_rien() -> None:
+def test_modifier_categorie_d_un_archer_place_sans_avoir_tire_ne_signale_rien() -> None:
     """« Engagé » n'a pas le même sens dans les deux règles, et c'est voulu (CA E02US003).
 
-    `ArcherEngage` (suppression) = placé **ou** scores ; le signalement de catégorie = scores
-    **seuls**. Un placement ne fausse aucun classement : rien à confirmer. Sans ce test, élargir
-    le signalement à `cible is not None` passerait toute la suite au vert.
+    `ArcherEngage` (suppression) = placé **ou** a tiré ; le signalement de catégorie = **a tiré**
+    seul (au moins une volée validée). Un placement ne fausse aucun classement : rien à confirmer.
+    Sans ce test, élargir le signalement à `cible is not None` passerait toute la suite au vert.
     """
     m = _monter()
     autre_categorie = m.categories.ajouter(Categorie.creer(m.tournoi_id, "Senior 2 H"))
@@ -693,12 +790,12 @@ def test_modifier_archer_engage_sans_toucher_a_la_categorie_ne_signale_rien() ->
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robain", "Jean", m.categorie_id)
     assert archer.id is not None
-    m.archers.saisir_score(archer.id, 9)
+    m.faire_tirer(archer)
     assert m.archers.modifier(archer.id, "Robin", "Jean", m.categorie_id).nom == "Robin"
 
 
 def test_modifier_archer_non_engage_change_de_categorie_sans_confirmation() -> None:
-    """Sans score, la catégorie s'édite librement : il n'y a rien qui puisse être faussé."""
+    """Sans avoir tiré, la catégorie s'édite librement : il n'y a rien qui puisse être faussé."""
     m = _monter()
     autre_categorie = m.categories.ajouter(Categorie.creer(m.tournoi_id, "Senior 2 H"))
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
@@ -754,15 +851,36 @@ def test_supprimer_archer_place_signale() -> None:
     assert m.inscrits.par_id(archer.id) is not None
 
 
-def test_supprimer_archer_avec_scores_signale() -> None:
-    """Dès la première flèche, la suppression se confirme : on ne l'efface pas d'un clic."""
+def test_supprimer_archer_qui_a_tire_signale() -> None:
+    """Dès la première volée **validée**, la suppression se confirme : on ne l'efface pas d'un clic.
+
+    « A tiré » = au moins une volée validée (arbitrage du 20/07/2026) : c'est la feuille de marque
+    réelle (E04US002) qui suspend la suppression, plus l'agrégat `Score` que plus rien n'écrit
+    (DETTE-013).
+    """
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None
-    m.archers.saisir_score(archer.id, 9)
+    m.faire_tirer(archer)
     with pytest.raises(ArcherEngage):
         m.archers.supprimer(archer.id)
     assert m.inscrits.par_id(archer.id) is not None
+
+
+def test_supprimer_archer_dont_la_volee_n_est_pas_validee_ne_signale_rien() -> None:
+    """Une volée **saisie mais non validée** ne rend pas l'archer « engagé » (arbitrage 20/07/2026).
+
+    Miroir du test de catégorie : « a tiré » = au moins une volée *validée*. Un archer dont le
+    scoreur a commencé la saisie sans valider — et qui n'est ni placé ni inscrit — se supprime sans
+    signalement. (L'idée d'une alerte douce « attends-tu la validation ? » est une US à part, hors
+    de cette garde.)
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.saisir_sans_valider(archer)
+    m.archers.supprimer(archer.id)
+    assert m.inscrits.par_id(archer.id) is None
 
 
 def test_supprimer_archer_signale_ne_detruit_rien() -> None:
@@ -776,7 +894,7 @@ def test_supprimer_archer_signale_ne_detruit_rien() -> None:
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None
-    m.archers.saisir_score(archer.id, 9)
+    m.faire_tirer(archer)
     m.archers.placer(archer.id, 4)
 
     with pytest.raises(ArcherEngage):
@@ -784,7 +902,10 @@ def test_supprimer_archer_signale_ne_detruit_rien() -> None:
 
     intact = m.inscrits.par_id(archer.id)
     assert intact is not None and intact.cible == 4
-    assert m.classement.pour_tournoi(m.tournoi_id).lignes[0].total == 9
+    # Les flèches survivent au refus : la série de saisie (E04US002) est intacte — c'est elle que la
+    # garde « a tiré » lit désormais (DETTE-013), plus l'agrégat `Score` du walking skeleton.
+    serie = m.series.par_archer(m.tournoi_id, archer.id)
+    assert serie is not None and serie.nb_fleches_validees == 1
 
 
 def test_supprimer_archer_inconnu_leve_meme_confirme() -> None:
@@ -809,8 +930,7 @@ def test_signalement_d_engagement_dit_ce_qui_sera_detruit() -> None:
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None
-    m.archers.saisir_score(archer.id, 9)
-    m.archers.saisir_score(archer.id, 10)
+    m.faire_tirer(archer, fleches=2)
     m.archers.placer(archer.id, 4)
     with pytest.raises(ArcherEngage) as leve:
         m.archers.supprimer(archer.id)
@@ -830,7 +950,7 @@ def test_signalement_d_engagement_accorde_au_singulier() -> None:
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None
-    m.archers.saisir_score(archer.id, 9)
+    m.faire_tirer(archer)
     with pytest.raises(ArcherEngage) as leve:
         m.archers.supprimer(archer.id)
     assert "1 flèche déjà tirée" in leve.value.message
@@ -899,20 +1019,22 @@ def test_supprimer_archer_inscrit_confirme_efface_l_archer() -> None:
     assert m.inscrits.par_id(archer.id) is None
 
 
-def test_supprimer_archer_engage_confirme_efface_l_archer_et_ses_scores() -> None:
+def test_supprimer_archer_engage_confirme_efface_l_archer_et_ses_fleches() -> None:
     """`autoriser_suppression_engage=True` : l'admin confirme une erreur d'inscription.
 
-    La suppression **emporte les scores** — c'est le contrat du port, et c'est le prix que le
-    message annonce. Un archer qui abandonne ne passe pas par là (forfait, E12US004).
+    La suppression **emporte les flèches** (la série de saisie part en cascade) — c'est le contrat
+    du port, et c'est le prix que le message annonce. Un archer qui abandonne ne passe pas par là
+    (forfait, E12US004).
     """
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
     assert archer.id is not None
-    m.archers.saisir_score(archer.id, 9)
+    m.faire_tirer(archer)
     m.archers.placer(archer.id, 4)
 
     m.archers.supprimer(archer.id, autoriser_suppression_engage=True)
     assert m.inscrits.par_id(archer.id) is None
+    assert m.series.par_archer(m.tournoi_id, archer.id) is None
     assert m.classement.pour_tournoi(m.tournoi_id).lignes == ()
 
 
@@ -922,12 +1044,14 @@ def test_supprimer_archer_engage_confirme_ne_touche_pas_aux_autres() -> None:
     partant = m.archers.ajouter(m.tournoi_id, "Durand", "Bob", m.categorie_id)
     reste = m.archers.ajouter(m.tournoi_id, "Martin", "Alice", m.categorie_id)
     assert partant.id is not None and reste.id is not None
-    m.archers.saisir_score(partant.id, 9)
-    m.archers.saisir_score(reste.id, 8)
+    m.faire_tirer(partant)
+    m.faire_tirer(reste)
 
     m.archers.supprimer(partant.id, autoriser_suppression_engage=True)
-    lignes = m.classement.pour_tournoi(m.tournoi_id).lignes
-    assert [(ligne.nom, ligne.total) for ligne in lignes] == [("Martin", 8)]
+    # La purge est cloisonnée : la série de l'archer resté (Alice) survit, celle du partant a
+    # disparu — la garde « a tiré » lit la série (E04US002), plus l'agrégat `Score` (DETTE-013).
+    assert m.series.par_archer(m.tournoi_id, reste.id) is not None
+    assert m.series.par_archer(m.tournoi_id, partant.id) is None
 
 
 def test_supprimer_archer_libre_ne_demande_aucune_confirmation() -> None:
@@ -939,16 +1063,16 @@ def test_supprimer_archer_libre_ne_demande_aucune_confirmation() -> None:
     assert m.inscrits.par_id(archer.id) is None
 
 
-def test_supprimer_archer_ignore_les_scores_des_autres() -> None:
-    """Le refus se juge sur les scores **de cet archer**, pas sur ceux du tournoi.
+def test_supprimer_archer_juge_le_tir_de_cet_archer_seul() -> None:
+    """Le refus se juge sur les flèches **de cet archer**, pas sur celles du tournoi.
 
-    Sans ce filtre, la première flèche du tournoi rendrait tous les inscrits indéboulonnables.
+    Sans ce filtre, la première volée validée rendrait tous les inscrits indéboulonnables.
     """
     m = _monter()
     tireur = m.archers.ajouter(m.tournoi_id, "Martin", "Alice", m.categorie_id)
     absent = m.archers.ajouter(m.tournoi_id, "Durand", "Bob", m.categorie_id)
     assert tireur.id is not None and absent.id is not None
-    m.archers.saisir_score(tireur.id, 9)
+    m.faire_tirer(tireur)
     m.archers.supprimer(absent.id)
     assert m.inscrits.par_id(absent.id) is None
 
@@ -994,25 +1118,6 @@ def test_lister_archers_tournoi_inconnu_leve() -> None:
         m.archers.lister(404)
 
 
-def test_classement_reflete_les_scores_saisis() -> None:
-    """Le service de classement agrège les scores des archers du tournoi."""
-    m = _monter()
-    alice = m.archers.ajouter(m.tournoi_id, "Martin", "Alice", m.categorie_id)
-    bob = m.archers.ajouter(m.tournoi_id, "Durand", "Bob", m.categorie_id)
-    assert alice.id is not None and bob.id is not None
-    m.archers.saisir_score(alice.id, 10)
-    m.archers.saisir_score(alice.id, 9)
-    m.archers.saisir_score(bob.id, 8)
-
-    lignes = m.classement.pour_tournoi(m.tournoi_id).lignes
-    assert [(ligne.nom, ligne.rang, ligne.total) for ligne in lignes] == [
-        ("Martin", 1, 19),
-        ("Durand", 2, 8),
-    ]
-
-
-def test_classement_tournoi_inconnu_leve() -> None:
-    """Consulter le classement d'un tournoi inexistant lève `TournoiIntrouvable`."""
-    m = _monter()
-    with pytest.raises(TournoiIntrouvable):
-        m.classement.pour_tournoi(404)
+# Le contenu du classement (cumul, départage, catégories) et son refus de tournoi inconnu sont
+# désormais couverts par `test_service_classement` et `test_domain_classement` : depuis E06US001, le
+# classement dérive des séries de saisie (E04US002), pas de l'agrégat `Score` que pilote ce service.

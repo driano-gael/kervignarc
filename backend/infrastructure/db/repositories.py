@@ -1596,6 +1596,38 @@ class SerieRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture de la série.") from exc
 
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
+        """Relit toutes les séries d'un tournoi (volées triées par numéro), pour le classement.
+
+        Deux requêtes (les séries, puis **toutes** leurs volées d'un bloc regroupées par série) —
+        pas de N+1 par archer. L'ordre des séries n'est pas garanti (le classement trie) ; les
+        volées de chacune le sont, par numéro (même contrat que `par_archer`).
+        """
+        try:
+            with self._session_factory() as session:
+                series = (
+                    session.execute(select(SerieORM).where(SerieORM.tournoi_id == tournoi_id))
+                    .scalars()
+                    .all()
+                )
+                if not series:
+                    return []
+                volees_par_serie: dict[SerieId, list[VoleeORM]] = {}
+                lignes_volees = (
+                    session.execute(
+                        select(VoleeORM)
+                        .where(VoleeORM.serie_id.in_([s.id for s in series]))
+                        .order_by(VoleeORM.serie_id, VoleeORM.numero)
+                    )
+                    .scalars()
+                    .all()
+                )
+                for volee in lignes_volees:
+                    volees_par_serie.setdefault(volee.serie_id, []).append(volee)
+                return [_vers_serie(s, volees_par_serie.get(s.id, [])) for s in series]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des séries du tournoi.") from exc
+
     def horodatages(
         self, tournoi_id: TournoiId, archer_id: ArcherId
     ) -> dict[int, datetime.datetime]:

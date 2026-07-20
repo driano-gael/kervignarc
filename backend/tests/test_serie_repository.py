@@ -143,6 +143,43 @@ def test_par_archer_aucune_serie(tmp_path: Path) -> None:
         db.engine.dispose()
 
 
+def test_par_tournoi_vide_rend_liste_vide(tmp_path: Path) -> None:
+    """Sans aucune série, `par_tournoi` rend une liste vide (support du classement, E06US001)."""
+    db, tournoi_id, _ = _contexte(tmp_path)
+    try:
+        assert _repo(db).par_tournoi(tournoi_id) == []
+    finally:
+        db.engine.dispose()
+
+
+def test_par_tournoi_rend_toutes_les_series_volees_ordonnees(tmp_path: Path) -> None:
+    """`par_tournoi` rend la série de chaque archer, volées triées par numéro (E06US001).
+
+    Deux archers, une série chacun : on relit l'ensemble d'un bloc (pas archer par archer), chaque
+    série portant ses volées dans l'ordre du barème — ce dont le classement a besoin pour le cumul
+    et le décompte de 10/9.
+    """
+    db, tournoi_id, alice_id = _contexte(tmp_path)
+    try:
+        categorie_id = CategorieRepositorySQL(db.session_factory).par_tournoi(tournoi_id)[0].id
+        assert categorie_id is not None
+        bob = ArcherRepositorySQL(db.session_factory).ajouter(
+            Archer.creer("Durand", "Bob", tournoi_id, categorie_id)
+        )
+        assert bob.id is not None
+        repo = _repo(db)
+        repo.enregistrer(_serie(tournoi_id, alice_id, validee="ROUX Sophie"))
+        repo.enregistrer(_serie(tournoi_id, bob.id, validee="ROUX Sophie"))
+
+        series = repo.par_tournoi(tournoi_id)
+        assert {s.archer_id for s in series} == {alice_id, bob.id}
+        for s in series:
+            assert [v.numero for v in s.volees] == [1, 2]
+            assert s.cumul == 13  # seule la volée 2 (7+6+0) est validée
+    finally:
+        db.engine.dispose()
+
+
 def test_verrou_et_cumul_round_trip(tmp_path: Path) -> None:
     """Une volée validée revient **verrouillée** ; le cumul ne compte que les volées validées."""
     db, tournoi_id, archer_id = _contexte(tmp_path)

@@ -19,8 +19,16 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
+from domain.blason import ZoneScore
 from domain.gabarit_salle import GabaritSalle
-from infrastructure.db import Database, GabaritSalleRepositorySQL
+from domain.serie import Serie, Volee
+from infrastructure.db import (
+    AuditRepositorySQL,
+    Database,
+    GabaritSalleRepositorySQL,
+    SerieRepositorySQL,
+)
+from infrastructure.horloge import HorlogeSysteme
 from tests.conftest import ConnecterAdmin
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +39,27 @@ def _migrer(url: str) -> None:
     cfg.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
     cfg.set_main_option("sqlalchemy.url", url)
     command.upgrade(cfg, "head")
+
+
+def _semer_serie(
+    app: FastAPI, tournoi_id: int, archer_id: int, valeurs: tuple[ZoneScore, ...]
+) -> None:
+    """Sème une série **validée** d'une volée pour un archer — le vrai support du classement.
+
+    Depuis E06US001, le classement dérive des séries de saisie (E04US002). Ce test-là veut un
+    classement lisible sans dérouler toute la choré HTTP de saisie (phase, blason, session de
+    poste) — déjà couverte par `test_saisie_api` : on écrit donc la série directement par
+    l'adapter, comme le fait le scaffolding de `test_saisie_api`.
+    """
+    factory = app.state.database.session_factory
+    repo = SerieRepositorySQL(factory, AuditRepositorySQL(factory), HorlogeSysteme())
+    repo.enregistrer(
+        Serie(
+            tournoi_id=tournoi_id,
+            archer_id=archer_id,
+            volees=(Volee(numero=1, valeurs=valeurs, validee_par="Scoreur"),),
+        )
+    )
 
 
 @pytest.fixture
@@ -57,7 +86,7 @@ def _creer_categorie(client: TestClient, tournoi_id: int) -> int:
 def test_tranche_verticale_bout_en_bout(
     app_competition: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """Tournoi → archer → placement → scores → classement, avec diffusion temps réel."""
+    """Tournoi → archer → placement → saisie → classement, avec diffusion temps réel."""
     with TestClient(app_competition) as client, client.websocket_connect("/ws") as ws:
         assert ws.receive_json()["type"] == "connected"
         connecter_admin(client)  # accès admin requis pour créer le tournoi (E10US002)
@@ -95,22 +124,29 @@ def test_tranche_verticale_bout_en_bout(
         assert place.json()["cible"] == 3
         assert ws.receive_json()["type"] == "donnees_modifiees"
 
-        # Scores : Alice 10 + 9 = 19, Bob 8 → Alice devant.
-        for archer_id, points in [(alice_id, 10), (alice_id, 9), (bob_id, 8)]:
-            reponse = client.post(f"/api/v1/archers/{archer_id}/scores", json={"points": points})
-            assert reponse.status_code == 201
-            assert ws.receive_json()["type"] == "donnees_modifiees"
+        # Saisie (E04US002) : le classement en dérive (E06US001). Alice 10+9 = 19 (un 10, un 9),
+        # Bob 8+8 = 16 (aucun) → Alice devant, et son avance se **lit** au décompte de 10/9.
+        _semer_serie(app_competition, tournoi["id"], alice_id, (ZoneScore.DIX, ZoneScore.NEUF))
+        _semer_serie(app_competition, tournoi["id"], bob_id, (ZoneScore.HUIT, ZoneScore.HUIT))
 
         classement = client.get(f"/api/v1/tournois/{tournoi['id']}/classement")
         assert classement.status_code == 200
         corps = classement.json()
         assert corps["tournoi_id"] == tournoi["id"]
         assert [
-            (ligne["nom"], ligne["rang"], ligne["total"], ligne["cible"])
+            (
+                ligne["nom"],
+                ligne["rang_scratch"],
+                ligne["rang_categorie"],
+                ligne["total"],
+                ligne["nb_dix"],
+                ligne["nb_neuf"],
+                ligne["cible"],
+            )
             for ligne in corps["lignes"]
         ] == [
-            ("Martin", 1, 19, 3),
-            ("Durand", 2, 8, None),
+            ("Martin", 1, 1, 19, 1, 1, 3),
+            ("Durand", 2, 2, 16, 0, 0, None),
         ]
         # Le classement porte le signal « club inconnu » (E02US002, ADR-0014) : c'est la seule
         # surface où un archer inscrit apparaît, donc le seul endroit où l'anomalie se voit.
@@ -168,6 +204,62 @@ def test_classement_tournoi_inconnu_404(app_competition: FastAPI) -> None:
         reponse = client.get("/api/v1/tournois/999/classement")
     assert reponse.status_code == 404
     assert reponse.json()["code"] == "tournoi_introuvable"
+
+
+def test_classement_filtre_par_categorie(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`?categorie_id=` filtre l'affichage à une catégorie, sans réécrire les rangs (E06US001).
+
+    Deux catégories, un archer de plus fort total dans la seconde : filtrer la première ne garde que
+    ses archers, mais leur rang **scratch** reste global (2 et 3, pas 1 et 2) — c'est le CA « voir
+    une catégorie sans perdre la position d'ensemble ».
+    """
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi = client.post(
+            "/api/v1/tournois", json={"nom": "Salle 18m", "date": "2026-03-14"}
+        ).json()
+        cat_a = _creer_categorie(client, tournoi["id"])
+        cat_b = int(
+            client.post(
+                f"/api/v1/tournois/{tournoi['id']}/categories", json={"libelle": "Cadet H"}
+            ).json()["id"]
+        )
+
+        def _inscrire(nom: str, prenom: str, categorie_id: int) -> int:
+            reponse = client.post(
+                f"/api/v1/tournois/{tournoi['id']}/archers",
+                json={"nom": nom, "prenom": prenom, "categorie_id": categorie_id},
+            )
+            return int(reponse.json()["id"])
+
+        alice = _inscrire("Martin", "Alice", cat_a)  # 18
+        bob = _inscrire("Durand", "Bob", cat_b)  # 20 → 1er scratch
+        chloe = _inscrire("Petit", "Chloé", cat_a)  # 16
+        _semer_serie(app_competition, tournoi["id"], alice, (ZoneScore.NEUF, ZoneScore.NEUF))
+        _semer_serie(app_competition, tournoi["id"], bob, (ZoneScore.DIX, ZoneScore.DIX))
+        _semer_serie(app_competition, tournoi["id"], chloe, (ZoneScore.HUIT, ZoneScore.HUIT))
+
+        complet = client.get(f"/api/v1/tournois/{tournoi['id']}/classement").json()
+        assert [(ligne["nom"], ligne["rang_scratch"]) for ligne in complet["lignes"]] == [
+            ("Durand", 1),
+            ("Martin", 2),
+            ("Petit", 3),
+        ]
+
+        filtre = client.get(
+            f"/api/v1/tournois/{tournoi['id']}/classement", params={"categorie_id": cat_a}
+        ).json()
+    # Filtré à la catégorie A : seulement Alice et Chloé ; rang scratch **global** (2, 3), rang de
+    # catégorie **repartant de 1** (1, 2) ; le libellé remonte pour l'affichage.
+    assert [
+        (ligne["nom"], ligne["rang_scratch"], ligne["rang_categorie"], ligne["categorie_libelle"])
+        for ligne in filtre["lignes"]
+    ] == [
+        ("Martin", 2, 1, "Senior 1 H"),
+        ("Petit", 3, 2, "Senior 1 H"),
+    ]
 
 
 def _tournoi_avec_categorie(client: TestClient, nom: str = "Salle 18m") -> tuple[int, int]:
@@ -379,7 +471,9 @@ def test_modifier_categorie_d_un_archer_engage_409_puis_passe_sur_confirmation(
             f"/api/v1/tournois/{tournoi_id}/categories", json={"libelle": "Senior 2 H"}
         ).json()
         archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
-        client.post(f"/api/v1/archers/{archer_id}/scores", json={"points": 9})
+        # « A tiré » = au moins une volée **validée** (E04US002), plus l'agrégat `Score` que plus
+        # aucun flux n'écrit (DETTE-013). On sème la volée validée directement, comme le classement.
+        _semer_serie(app_competition, tournoi_id, archer_id, (ZoneScore.NEUF,) * 3)
         corps = {"nom": "Robin", "prenom": "Jean", "categorie_id": autre_categorie["id"]}
 
         signale = client.put(f"/api/v1/archers/{archer_id}", json=corps)
@@ -425,7 +519,8 @@ def test_supprimer_archer_engage_409_puis_passe_sur_confirmation(
         tournoi_id, categorie_id = _tournoi_avec_categorie(client)
         archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
         client.post(f"/api/v1/archers/{archer_id}/placement", json={"cible": 3})
-        client.post(f"/api/v1/archers/{archer_id}/scores", json={"points": 9})
+        # « A tiré » = volées **validées** (E04US002), plus l'agrégat `Score` mort (DETTE-013).
+        _semer_serie(app_competition, tournoi_id, archer_id, (ZoneScore.NEUF,) * 3)
 
         signale = client.delete(f"/api/v1/archers/{archer_id}")
         assert signale.status_code == 409

@@ -53,21 +53,23 @@ export interface NouvelArcher {
   autoriser_homonyme?: boolean
 }
 
-export interface Score {
-  id: number
-  archer_id: number
-  points: number
-}
-
+// Classement de qualification (E06US001). Deux rangs : `rang_scratch` (global, toutes catégories)
+// et `rang_categorie` (au sein de la catégorie de l'archer). `nb_dix`/`nb_neuf` rendent le départage
+// FFTA **traçable** (à total égal, plus de 10 puis de 9 — `docs/referentiel-ffta.md` §8.1).
 export interface LigneClassement {
-  rang: number
+  rang_scratch: number
+  rang_categorie: number
   archer_id: number
   nom: string
   prenom: string
+  categorie_id: number
+  categorie_libelle: string
   cible: number | null
   // `null` = club encore **inconnu** (ADR-0014) : l'écran le signale pour qu'il soit complété.
   club_id: number | null
   total: number
+  nb_dix: number
+  nb_neuf: number
 }
 
 export interface Classement {
@@ -119,13 +121,13 @@ export function placerArcher(archerId: number, cible: number): Promise<Archer> {
   })
 }
 
-export function saisirScore(archerId: number, points: number): Promise<Score> {
-  return fetchJson<Score>(`/api/v1/archers/${archerId}/scores`, {
-    method: 'POST',
-    body: JSON.stringify({ points }),
-  })
-}
+// Le classement dérive des séries de saisie (E04US002) depuis E06US001 ; l'ancienne écriture de
+// score isolé (`saisirScore` du walking skeleton) n'y contribuait plus et a été retirée du front.
 
-export function getClassement(tournoiId: number): Promise<Classement> {
-  return fetchJson<Classement>(`/api/v1/tournois/${tournoiId}/classement`)
+// `categorieId` optionnel : filtre l'affichage à une catégorie. Les rangs (scratch **et** catégorie)
+// restent ceux du classement complet — filtrer ne réordonne pas le reste (E06US001).
+export function getClassement(tournoiId: number, categorieId?: number): Promise<Classement> {
+  const requete =
+    categorieId === undefined ? '' : `?categorie_id=${encodeURIComponent(categorieId)}`
+  return fetchJson<Classement>(`/api/v1/tournois/${tournoiId}/classement${requete}`)
 }

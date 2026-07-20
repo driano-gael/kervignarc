@@ -130,6 +130,30 @@ class Serie:
         """Total des points des volées **validées** (mis à jour à chaque validation, ex-008)."""
         return sum(v.points for v in self.volees if v.verrouillee)
 
+    def compter(self, zone: ZoneScore) -> int:
+        """Nombre de flèches d'une zone donnée, sur les volées **validées** seulement.
+
+        Sert au **départage** du classement de qualification (E06US001) : à total égal, on compte
+        les 10 puis les 9 (`docs/referentiel-ffta.md` §8.1). On ne compte que les volées validées,
+        pour rester cohérent avec `cumul` — le score qu'on départage — : une flèche non validée ne
+        pèse ni sur le total ni sur son départage.
+        """
+        return sum(v.valeurs.count(zone) for v in self.volees if v.verrouillee)
+
+    @property
+    def nb_fleches_validees(self) -> int:
+        """Nombre de flèches des volées **validées** — la mesure de « l'archer a déjà tiré ».
+
+        Sert aux gardes d'engagement d'`ServiceArchers` (E02US003) : supprimer ou changer la
+        catégorie d'un archer **qui a tiré** se signale. « A tiré » = **au moins une volée validée**
+        (arbitrage produit du 20/07/2026, reversé dans `stories/E02-inscriptions.md`), cohérent avec
+        `cumul` et le classement, qui ne comptent déjà que le validé : une volée **saisie mais pas
+        encore validée** n'est qu'un état intermédiaire, elle ne rend pas l'archer « engagé ». On
+        compte les **flèches** (pas les volées) car le message énumère « N flèches déjà tirées » —
+        le manqué (`M`) en fait partie : une flèche manquée reste une flèche tirée.
+        """
+        return sum(len(v.valeurs) for v in self.volees if v.verrouillee)
+
     def saisir_volee(
         self,
         numero: int,

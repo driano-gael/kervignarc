@@ -31,6 +31,7 @@ from domain.ports import (
     ClubRepository,
     InscriptionRepository,
     ScoreRepository,
+    SerieRepository,
     TournoiRepository,
 )
 from domain.poste import Poste
@@ -49,6 +50,7 @@ class ServiceArchers:
         clubs: ClubRepository,
         categories: CategorieRepository,
         inscriptions: InscriptionRepository,
+        series: SerieRepository,
     ) -> None:
         self._tournois = tournois
         self._archers = archers
@@ -56,6 +58,10 @@ class ServiceArchers:
         self._clubs = clubs
         self._categories = categories
         self._inscriptions = inscriptions
+        # `_series` porte « l'archer a-t-il tiré ? » depuis E06US001 (DETTE-013 résorbée) : la
+        # saisie réelle (E04US002) écrit des `Serie`/`Volee`, jamais `Score`. `_scores` ne sert
+        # plus qu'au `saisir_score` du walking skeleton (endpoint sans appelant — DETTE-011).
+        self._series = series
 
     def ajouter(
         self,
@@ -162,12 +168,12 @@ class ServiceArchers:
     def supprimer(self, archer_id: ArcherId, autoriser_suppression_engage: bool = False) -> None:
         """Désinscrit un archer (E02US003). Lève `ArcherIntrouvable` s'il n'existe pas.
 
-        La suppression **efface aussi ses scores, son placement et ses inscriptions sur départs**
-        (E02US009) — c'est le contrat du port (cf. `ArcherRepository.supprimer`), pas un effet de
-        bord.
+        La suppression **efface aussi sa série de saisie (ses flèches), son placement et ses
+        inscriptions sur départs** (E02US009) — c'est le contrat du port
+        (cf. `ArcherRepository.supprimer`), pas un effet de bord.
 
         Lève `ArcherEngage` si l'archer est **placé** (il occupe une cible), **engagé** (il a déjà
-        tiré) ou **inscrit** sur au moins un départ (E02US009), sauf
+        tiré — au moins une volée **validée**) ou **inscrit** sur au moins un départ, sauf
         `autoriser_suppression_engage=True` : un **signalement**, pas un refus
         (ADR-0016, sur le protocole d'ADR-0015). On ne fait pas disparaître en un clic un placement
         construit et des flèches saisies — mais l'admin, lui, peut savoir qu'il s'agit d'une erreur
@@ -267,18 +273,24 @@ class ServiceArchers:
         E02US009).
 
         « Engagé » s'est élargi (glossaire, E02US009) : une inscription sur au moins un départ
-        suffit désormais, au même titre qu'un score ou un placement. Le message **énumère ce qui
-        sera détruit** plutôt que d'inviter à confirmer : c'est la seule chose qui distingue, à
+        suffit désormais, au même titre qu'une **volée validée** ou un placement. Le message
+        **énumère ce qui sera détruit** plutôt que d'inviter à confirmer : c'est la seule chose qui
+        distingue, à
         l'écran, une suppression légitime (erreur de saisie) d'un abandon mal enregistré — que le
         forfait (E04US015, E12US004) doit servir en préservant les flèches. Un message qui dirait
         « confirmez pour supprimer » ferait de la destruction le chemin par défaut de l'archer.
 
         `archer_id` est passé par l'appelant, qui le tient déjà, plutôt que lu dans `archer.id` :
         cela évite un `assert` de narrowing — or un `assert` saute sous `python -O`, et celui-ci
-        aurait laissé `par_archer(None)` rendre `[]`, donc un archer engagé se supprimer **sans
-        aucun signalement**. Un garde-fou de destruction ne dépend pas d'un drapeau d'interpréteur.
+        aurait laissé `par_archer(…, None)` ne trouver aucune série (`fleches = 0`), et un archer
+        engagé se supprimer **sans aucun signalement**. Un garde-fou ne dépend pas de `-O`.
         """
-        fleches = len(self._scores.par_archer(archer_id))
+        # « A tiré » dérive des **volées validées** (`Serie`, E04US002), pas de l'agrégat `Score`
+        # que plus aucun flux n'alimente (DETTE-013 résorbée). Une volée saisie mais non validée
+        # n'est qu'un état intermédiaire : elle ne rend pas l'archer engagé (arbitrage 20/07,
+        # `stories/E02-inscriptions.md`). `par_archer` exige le tournoi — porté par l'agrégat.
+        serie = self._series.par_archer(archer.tournoi_id, archer_id)
+        fleches = serie.nb_fleches_validees if serie is not None else 0
         inscriptions = len(self._inscriptions.par_archer(archer_id))
         if archer.cible is None and fleches == 0 and inscriptions == 0:
             return
@@ -308,7 +320,12 @@ class ServiceArchers:
         Appelé seulement quand la catégorie change réellement : c'est le déplacement des flèches
         déjà tirées d'un classement à l'autre qui se confirme, pas l'édition en elle-même.
         """
-        if self._scores.par_archer(archer_id):
+        # « A déjà tiré » = au moins une volée **validée** (`Serie`, E04US002 — plus l'agrégat
+        # `Score`, DETTE-013 résorbée) : ce sont les flèches **qui comptent** qui basculeraient vers
+        # un autre classement. Une volée saisie non validée n'est encore dans aucun classement, rien
+        # ne bascule — elle ne déclenche pas ce signalement (arbitrage du 20/07/2026).
+        serie = self._series.par_archer(edite.tournoi_id, archer_id)
+        if serie is not None and serie.nb_fleches_validees > 0:
             raise ChangementCategorieArcherEngage(
                 f"« {edite.prenom} {edite.nom} » a déjà tiré dans sa catégorie actuelle. Changer "
                 "de catégorie emporte ses flèches vers un autre classement ; confirmez s'il "

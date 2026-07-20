@@ -596,6 +596,15 @@ class SerieRepository(Protocol):
         """Renvoie la série de qualification de l'archer, ou `None` si aucune n'existe encore."""
         ...
 
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
+        """Renvoie toutes les séries d'un tournoi (liste éventuellement vide).
+
+        Sert au **classement** (E06US001) : cumul et départage se calculent sur l'ensemble des
+        séries du tournoi. L'ordre n'est pas garanti par le port (le classement trie lui-même) ;
+        les volées de chaque série sont, elles, ordonnées par numéro (contrat de `par_archer`).
+        """
+        ...
+
     def horodatages(
         self, tournoi_id: TournoiId, archer_id: ArcherId
     ) -> dict[int, datetime.datetime]:

@@ -223,6 +223,10 @@ def create_app(
     # seul agrégat. Le club reste facultatif (`NULL` = inconnu, ADR-0014), la catégorie non.
     # Le port inscription est injecté pour l'« engagé » élargi (E02US009) : un archer inscrit sur au
     # moins un départ est engagé, sa suppression se signale et efface ses inscriptions.
+    # `serie_repository` porte « l'archer a-t-il tiré ? » (DETTE-013) : les gardes d'engagement
+    # (suppression, changement de catégorie) dérivent de la vraie saisie (`Serie`, E04US002), plus
+    # de l'agrégat `Score` que plus aucun flux produit n'alimente. `score_repository` ne sert plus
+    # qu'au `saisir_score` du walking skeleton (endpoint sans appelant produit — DETTE-011).
     app.state.service_archers = ServiceArchers(
         tournoi_repository,
         archer_repository,
@@ -230,9 +234,13 @@ def create_app(
         club_repository,
         categorie_repository,
         inscription_repository,
+        serie_repository,
     )
+    # Classement de qualification (E06US001) : lit les **séries** de saisie (E04US002), plus les
+    # catégories pour libeller/segmenter — le walking skeleton `Score` ne portait pas le détail
+    # flèche par flèche qu'exige le départage FFTA (nombre de 10 puis de 9).
     app.state.service_classement = ServiceClassement(
-        tournoi_repository, archer_repository, score_repository
+        tournoi_repository, archer_repository, serie_repository, categorie_repository
     )
     # Inscriptions archer↔départ (E02US009, ADR-0017) : inscrire sur des créneaux du tournoi de
     # l'archer (même tournoi, unicité), marquer payé, désinscrire ; le montant dû dérive du tarif.
