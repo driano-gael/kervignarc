@@ -185,7 +185,9 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   [`docs/dette.md`](docs/dette.md), [`stories/`](stories/), [`journal-d-avancement/`](journal-d-avancement/) —
   pour **partir sur GitHub et se retrouver sur chaque poste**. La mémoire n'est qu'un **aide-mémoire
   personnel du poste courant**, **jamais la source de vérité** d'une décision projet ; si un fait
-  mémorisé cadre le projet, son **exemplaire versionné dans le dépôt fait foi**.
+  mémorisé cadre le projet, son **exemplaire versionné dans le dépôt fait foi**. *(Cela **précise** le
+  point précédent : la mémoire reste un lieu d'écriture utile — elle **double** le dépôt pour ce poste
+  — mais pour ce qui cadre le projet, elle ne le **remplace** pas.)*
 
 ## Workflow
 
@@ -231,9 +233,12 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   commit, donc sur `main` le journal reste **toujours vrai**. Concrètement, une US qui livre une
   **fonctionnalité visible** met à jour, dans son propre commit :
   - [`00-resume-projet.md`](journal-d-avancement/00-resume-projet.md) — le résumé « où on en est » :
-    la ou les fonctionnalités livrées, l'« état en une phrase », et les **chiffres repères** (nombre
-    d'US livrées, dernière US, prochaine US). Un résumé qui liste moins de fonctionnalités que le
-    tracker n'affiche de ✅ est **périmé** — défaut à corriger, pas cosmétique.
+    la ou les fonctionnalités livrées, l'« état en une phrase », et les **chiffres repères**. Un résumé
+    qui liste moins de fonctionnalités que le tracker n'affiche de ✅ est **périmé** — défaut à
+    corriger, pas cosmétique. **`SUIVI-US.md` fait autorité sur le compte exact** (nombre d'US livrées,
+    dernière, prochaine) ; le résumé le **reflète** sans le contredire. Ne pas maintenir deux comptes
+    divergents — le doublon est lui-même une source de dérive : les deux fichiers se réconcilient
+    **dans le même commit**.
   - un fichier daté `AAAA-MM-JJ-HHhMM-<slug>.md` **uniquement pour un fait marquant** (jalon franchi,
     capacité nouvelle qui change la donne) — épisodique, pas un par US. La plupart des US ne rajoutent
     qu'une ligne au résumé.
