@@ -12,21 +12,21 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 20/07/2026** · **49 US livrées** · dernière : `E07US001`.
+**Dernière mise à jour : 20/07/2026** · **50 US livrées** · dernière : `E07US006`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E07US006` — Suivre des archers : ma journée** *(J1, tranche 1 front — en cours)*
+> **`E07US009` — Suivre le déroulé du tour en direct** *(J1, tranche 2 — backend + ADR)*
 >
-> `E07US001` (vues publiques : classements, plan de cibles, live) est terminée et poussée (revue faite).
-> `E07US006` a été **élargie et redécoupée le 20/07** (arbitrage métier) : le CA v0.1 « c'est moi » (un
-> archer, front-only) devient la capacité **« suivre »** — recherche par nom → liste d'archers suivis
-> mémorisée en `localStorage`, une carte par archer avec **cible/position/départ**, live. Le **déroulé
-> du tour en direct** (scores, attente/validé) n'était pas réalisable en front seul (donnée non
-> publique) : il est **scindé en `E07US009`** (backend + ADR). L'à-venir reste `E07US008` (dépend J2).
-> Détail : [`stories/E07-affichage-public.md`](../stories/E07-affichage-public.md).
+> `E07US006` (tranche 1 : suivre des archers — recherche, liste mémorisée en `localStorage`, carte
+> cible/position/départ, live) est **terminée et poussée** (revue faite). La suite directe est
+> `E07US009`, la **tranche 2** : exposer publiquement le **déroulé du tour** — un endpoint public de
+> suivi + DTO restreint (volées, valeurs, statut **en attente / validé**, E01US015) + événement
+> WebSocket typé, et l'affichage de la feuille de marque live dans la carte. **Décision structurante ⇒
+> ADR** (elle expose au public des scores provisoires non validés). Dépend d'E07US006, E04US002,
+> E01US015. Détail : [`stories/E07-affichage-public.md`](../stories/E07-affichage-public.md).
 
 ---
 
@@ -47,7 +47,7 @@
 | E00US011 | Tranche verticale démontrable | ✅ |
 | E00US012 | Exécutable de dev (FastAPI sert le front) | ✅ |
 
-## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (36/45)**
+## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (37/46)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -84,7 +84,8 @@
 | 43 | E12US001 | Superviser les postes de saisie | ✅ |
 | 44 | E06US001 | Classement de qualification | ✅ |
 | 45 | E07US001 | Vues publiques : classements, plans, live | ✅ |
-| **46** | **E07US006** | **« C'est moi » : ouvrir l'appli sur ma journée** | 🎯 **suivante** |
+| 46 | E07US006 | Suivre des archers : ma journée *(tranche 1, front)* | ✅ |
+| **46b** | **E07US009** | **Suivre le déroulé du tour en direct** *(tranche 2, backend + ADR)* | 🎯 **suivante** |
 | 47 | E10US005 | Journal d'audit métier | ✅ *(fait en avance)* |
 | 48 | E12US007 | Alerter par calcul d'impact | ⬜ |
 | 49 | E08US002 | Suivi des paiements | ⬜ |
