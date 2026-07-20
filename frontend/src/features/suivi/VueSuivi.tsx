@@ -16,8 +16,9 @@
 // diffusion temps réel post-commit (E04US009) ; un **déplacement de placement** (admin) ou un
 // **rattachement** rafraîchit la carte sans action de l'utilisateur.
 //
-// Cette tranche couvre le « où il tire » (cible/position/départ). Le **déroulé du tour en direct**
-// (scores, statut attente/validé) est E07US009 (backend + ADR), l'**à-venir** est E07US008.
+// La carte couvre le « où il tire » (cible/position/départ) **et** le **déroulé du tour en direct**
+// (E07US009, ADR-0039) : les volées du jour, chacune avec son statut « en attente de validation » /
+// « validé ». L'**à-venir** (prochaine phase/cible) reste E07US008.
 
 import { useState } from 'react'
 import { useQueries } from '@tanstack/react-query'
@@ -28,6 +29,7 @@ import { useDeparts } from '../departs/hooks'
 import { getPlanDeCibles, type PlanDeCibles } from '../placement/api'
 import { clePlan } from '../placement/hooks'
 import { type ArcherSuivi, useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
+import { useDeroule } from './deroule'
 import { construireJournee, filtrerArchers } from './suivi'
 
 // Borne l'affichage des résultats de recherche : au-delà, on invite à préciser plutôt que de dérouler
@@ -87,6 +89,7 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
           {suivisIci.map((s) => (
             <CarteArcherSuivi
               key={s.archerId}
+              tournoiId={tournoiId}
               archerId={s.archerId}
               archer={archersParId.get(s.archerId) ?? null}
               // « a réussi à charger », pas « ne charge plus » : sur erreur, `isLoading` est aussi
@@ -188,6 +191,7 @@ function RechercheArcher({
 // `Archer #id` ; s'il reste `null` alors que la liste a **réussi** à charger, c'est qu'il a été retiré
 // du tournoi → on le dit (mais une **erreur** de chargement n'est pas une disparition — revue C1).
 function CarteArcherSuivi({
+  tournoiId,
   archerId,
   archer,
   archersReussi,
@@ -197,6 +201,7 @@ function CarteArcherSuivi({
   chargement,
   erreur,
 }: {
+  tournoiId: number
   archerId: number
   archer: Archer | null
   archersReussi: boolean
@@ -210,6 +215,12 @@ function CarteArcherSuivi({
   const journee = construireJournee(archerId, departs, plansParDepart)
   const nom = archer ? `${archer.prenom} ${archer.nom}` : `Archer #${archerId}`
   const archerDisparu = archer === null && archersReussi
+
+  // Le déroulé du tour (E07US009) : de l'état serveur, invalidé en live par le temps réel. On ne
+  // montre le bloc que s'il y a des volées — sans saisie, l'endpoint rend un déroulé vide (pas une
+  // erreur), et la carte reste sur « où il tire » sans afficher de section creuse.
+  const deroule = useDeroule(tournoiId, archerId).data
+  const volees = deroule?.volees ?? []
 
   return (
     <li className="carte carte-suivi">
@@ -247,6 +258,34 @@ function CarteArcherSuivi({
         <p className="carte__etat">Chargement…</p>
       ) : (
         <p className="carte__etat">Pas encore placé.</p>
+      )}
+
+      {volees.length > 0 && (
+        <div className="suivi-deroule">
+          <ul className="suivi-deroule__volees">
+            {volees.map((v) => (
+              <li key={v.numero} className="suivi-volee">
+                <span className="suivi-volee__num">V{v.numero}</span>
+                <span className="suivi-volee__valeurs">{v.valeurs.join(' ')}</span>
+                <span className="suivi-volee__points">{v.points}</span>
+                {/* Statut : « en attente » = alerte ambre (état légitime, DV-03), pas une erreur ;
+                    les scores non validés sont provisoires (ADR-0039). « validé » est neutre. */}
+                <span
+                  className={
+                    v.statut === 'valide'
+                      ? 'suivi-volee__statut suivi-volee__statut--valide'
+                      : 'suivi-volee__statut suivi-volee__statut--attente'
+                  }
+                >
+                  {v.statut === 'valide' ? 'validé' : 'en attente'}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="suivi-deroule__cumul">
+            Total validé <strong>{deroule?.cumul ?? 0}</strong>
+          </p>
+        </div>
       )}
     </li>
   )
