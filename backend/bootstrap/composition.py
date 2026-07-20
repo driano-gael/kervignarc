@@ -27,6 +27,7 @@ from api.v1.categories import router as categories_router
 from api.v1.clubs import router as clubs_router
 from api.v1.competition import router as competition_router
 from api.v1.departs import router as departs_router
+from api.v1.deroule import router as deroule_router
 from api.v1.documents_salle import router as documents_salle_router
 from api.v1.feuille_de_marque import router as feuille_de_marque_router
 from api.v1.gabarits import router as gabarits_router
@@ -394,6 +395,7 @@ def create_app(
     app.include_router(grain_validation_router)
     app.include_router(competition_router)
     app.include_router(saisie_router)
+    app.include_router(deroule_router)
     app.include_router(placement_router)
     app.include_router(feuille_de_marque_router)
     app.include_router(documents_salle_router)
