@@ -10,17 +10,18 @@
 > le fil de l'US si on le lui rappelle, sinon c'est une passe manuelle rapide sur l'historique de
 > merge (`git log main --first-parent`).
 
-**Dernière mise à jour : 20/07/2026** · **47 US livrées** · dernière : `E12US001`.
+**Dernière mise à jour : 20/07/2026** · **48 US livrées** · dernière : `E06US001`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E06US001` — Classement de qualification** *(J1, cumul / départage / catégorie)*
+> **`E07US001` — Vues publiques : classements, plans de cibles et live** *(J1)*
 >
-> `E12US001` (superviser les postes) est mergée (PR #71, 20/07). La prochaine dans la séquence J1 est
-> `E06US001` : le classement de qualification (cumul live, départage FFTA nb de 10 puis de 9, filtrage
-> par catégorie). Détail : [`stories/E06-classements.md`](../stories/E06-classements.md).
+> `E06US001` (classement de qualification) est mergée (PR #72, 20/07). La prochaine dans la séquence J1
+> est `E07US001` : les vues publiques sans authentification (classements par catégorie, plan de cibles,
+> mise à jour live par WebSocket). Elle consomme directement E06US001 (le classement) et E04US009 (le
+> live). Détail : [`stories/E07-affichage-public.md`](../stories/E07-affichage-public.md).
 
 ---
 
@@ -41,7 +42,7 @@
 | E00US011 | Tranche verticale démontrable | ✅ |
 | E00US012 | Exécutable de dev (FastAPI sert le front) | ✅ |
 
-## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (34/45)**
+## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (35/45)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -76,8 +77,8 @@
 | 41 | E04US002 | Saisie de qualification en temps réel | ✅ |
 | 42 | E04US009 | Diffusion live & résilience réseau | ✅ |
 | 43 | E12US001 | Superviser les postes de saisie | ✅ |
-| **44** | **E06US001** | **Classement de qualification** | 🎯 **suivante** |
-| 45 | E07US001 | Vues publiques : classements, plans, live | ⬜ |
+| 44 | E06US001 | Classement de qualification | ✅ |
+| **45** | **E07US001** | **Vues publiques : classements, plans, live** | 🎯 **suivante** |
 | 46 | E07US006 | « C'est moi » : ouvrir l'appli sur ma journée | ⬜ |
 | 47 | E10US005 | Journal d'audit métier | ✅ *(fait en avance)* |
 | 48 | E12US007 | Alerter par calcul d'impact | ⬜ |
