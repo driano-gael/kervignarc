@@ -117,9 +117,13 @@ Ce qui transforme la saisie brute en tournoi qu'on suit en direct, dernier bloc 
 - **Les vues publiques** : n'importe qui sur le réseau consulte, sans authentification et depuis son
   téléphone, les **classements**, le **plan de cibles** (qui tire où), le tout **en direct** — chaque
   validation met les écrans à jour sans rien rafraîchir.
+- **Suivre des archers** : on cherche un archer par son nom, on le **suit**, et l'application mémorise
+  ce choix sur l'appareil (sans compte) — à la réouverture, elle affiche directement **sa cible / sa
+  position / son départ**, à jour en direct. On peut en suivre plusieurs.
 
-*Reste à venir sur ce jalon : l'appli qui s'ouvre directement sur « ma journée » (« c'est moi »
-mémorisé), les affectations du prochain tour, et le suivi des paiements.*
+*Reste à venir sur ce jalon : le **déroulé du tour en direct** dans le suivi (chaque score, « en
+attente de validation » puis « validé »), les affectations du prochain tour, et le suivi des
+paiements.*
 
 ---
 
@@ -146,10 +150,11 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **49 US livrées** sur `main` (mergées, revues, CI verte) à la date du 20/07/2026.
+- **50 US livrées** sur `main` (mergées, revues, CI verte) à la date du 20/07/2026 — dont E07US006,
+  optimiste d'un cran sur la branche jusqu'à son merge.
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : bien avancé
-  (36/45)** — supervision, classement et vues publiques faits ; restent « ma journée », complétude,
-  paiements et quelques imprimables.
-- Dernière US livrée : **E07US001** (vues publiques : classements, plans de cibles, live).
-- Prochaine US prévue : **E07US006** (« c'est moi » : ouvrir l'appli sur ma journée) — cf.
+  (37/46)** — supervision, classement, vues publiques et suivi d'archers faits ; restent le déroulé
+  du tour en direct, la complétude, les paiements et quelques imprimables.
+- Dernière US livrée : **E07US006** (suivre des archers : ma journée).
+- Prochaine US prévue : **E07US009** (suivre le déroulé du tour en direct — backend + ADR) — cf.
   [`SUIVI-US.md`](SUIVI-US.md).
