@@ -1,17 +1,19 @@
-// Tableau de classement live (E00US011) : une ligne par archer (rang, cible, total). Les colonnes
-// d'**action** (placer sur une cible, marquer une flèche) ne sont rendues que pour un **admin
-// connecté** (E10US001) ; en consultation publique, le tableau est purement en lecture. Il se
-// rafraîchit tout seul à chaque écriture (invalidation via le flux temps réel).
+// Tableau du classement de qualification (E06US001). Une ligne par archer : rang **de catégorie** et
+// rang **scratch** (global), identité, catégorie, cible, total, et le décompte de **10** et de **9**
+// qui rend le départage FFTA lisible (à total égal, plus de 10 puis de 9 — `referentiel-ffta` §8.1).
+// Il se rafraîchit tout seul à chaque saisie (invalidation via le flux temps réel).
 //
-// Le club encore inconnu y est signalé (E02US002, ADR-0014) : l'archer s'inscrit sans son club,
-// mais l'oubli ne doit pas devenir invisible. Depuis E02US003, l'écran d'administration des
-// archers porte le **même** signal (`table__anomalie`) et, lui, permet de le corriger. Le garder
-// ici n'est pas un doublon : le classement est la surface que l'on regarde toute la journée, et
-// c'est là que l'anomalie se remarque — l'écran d'admin est celui où l'on va la réparer.
+// Surface de **lecture** : le classement sert à connaître les positions. Le placement inline reste
+// offert à l'admin (colonne « Placer ») ; la saisie des scores, elle, se fait sur l'écran de saisie
+// dédié (E04US002) — l'ancien bouton « Marquer » du walking skeleton écrivait un score que le
+// classement ne lit plus (il dérive des séries de saisie), il a donc été retiré.
+//
+// Le club encore inconnu y est signalé (E02US002, ADR-0014) : le classement est la surface qu'on
+// regarde toute la journée, c'est là que l'anomalie se remarque ; l'écran d'admin la répare.
 
 import { useState } from 'react'
 import type { LigneClassement } from './api'
-import { usePlacerArcher, useSaisirScore } from './hooks'
+import { usePlacerArcher } from './hooks'
 
 interface TableClassementProps {
   tournoiId: number
@@ -28,12 +30,19 @@ export function TableClassement({ tournoiId, lignes, admin }: TableClassementPro
     <table className="table">
       <thead>
         <tr>
-          <th scope="col">Rang</th>
+          <th scope="col">Rang cat.</th>
+          <th scope="col">Scratch</th>
           <th scope="col">Archer</th>
+          <th scope="col">Catégorie</th>
           <th scope="col">Cible</th>
           <th scope="col">Total</th>
+          <th scope="col" title="Nombre de 10 (départage FFTA)">
+            10
+          </th>
+          <th scope="col" title="Nombre de 9 (départage FFTA)">
+            9
+          </th>
           {admin && <th scope="col">Placer</th>}
-          {admin && <th scope="col">Marquer</th>}
         </tr>
       </thead>
       <tbody>
@@ -55,9 +64,7 @@ function LigneArcher({
   admin: boolean
 }) {
   const [cible, setCible] = useState('')
-  const [points, setPoints] = useState('')
   const placer = usePlacerArcher(tournoiId)
-  const marquer = useSaisirScore(tournoiId)
 
   const soumettrePlacement = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -66,23 +73,14 @@ function LigneArcher({
     placer.mutate({ archerId: ligne.archer_id, cible: valeur }, { onSuccess: () => setCible('') })
   }
 
-  const soumettreScore = (evenement: React.FormEvent) => {
-    evenement.preventDefault()
-    const valeur = Number(points)
-    if (!Number.isInteger(valeur) || valeur < 0 || valeur > 10) return
-    marquer.mutate(
-      { archerId: ligne.archer_id, points: valeur },
-      { onSuccess: () => setPoints('') },
-    )
-  }
-
   // Nom **et** prénom : depuis E02US002, deux homonymes confirmés (un père et son fils) peuvent
   // coexister — les distinguer à l'écran est le minimum vital.
   const identite = `${ligne.nom} ${ligne.prenom}`
 
   return (
     <tr>
-      <td>{ligne.rang}</td>
+      <td>{ligne.rang_categorie}</td>
+      <td className="table__scratch">{ligne.rang_scratch}</td>
       <td>
         {identite}
         {ligne.club_id === null && (
@@ -95,8 +93,11 @@ function LigneArcher({
           </span>
         )}
       </td>
+      <td>{ligne.categorie_libelle}</td>
       <td>{ligne.cible ?? '—'}</td>
       <td className="table__total">{ligne.total}</td>
+      <td>{ligne.nb_dix}</td>
+      <td>{ligne.nb_neuf}</td>
       {admin && (
         <td>
           <form className="ligne-action" onSubmit={soumettrePlacement}>
@@ -110,24 +111,6 @@ function LigneArcher({
             />
             <button type="submit" disabled={placer.isPending || cible === ''}>
               OK
-            </button>
-          </form>
-        </td>
-      )}
-      {admin && (
-        <td>
-          <form className="ligne-action" onSubmit={soumettreScore}>
-            <input
-              className="ligne-action__champ"
-              type="number"
-              min={0}
-              max={10}
-              value={points}
-              onChange={(e) => setPoints(e.target.value)}
-              aria-label={`Flèche de ${identite} (0 à 10)`}
-            />
-            <button type="submit" disabled={marquer.isPending || points === ''}>
-              +
             </button>
           </form>
         </td>

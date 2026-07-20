@@ -29,6 +29,7 @@ from application.erreurs import (
 from domain.archer import ArcherId
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club
+from domain.entree_audit import EntreeAudit
 from domain.erreurs import (
     CibleInvalide,
     NomArcherInvalide,
@@ -38,6 +39,7 @@ from domain.erreurs import (
 from domain.inscription import Inscription
 from domain.poste import Poste
 from domain.score import Score
+from domain.serie import Serie
 from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
@@ -117,6 +119,34 @@ class FauxScoreRepository:
         return [s for s in self._scores if s.archer_id == archer_id]
 
 
+class FauxSerieRepository:
+    """Repository en mémoire conforme au port `SerieRepository`, réduit à ce que lit le classement.
+
+    Depuis E06US001 le classement dérive des **séries** de saisie (E04US002), plus de l'agrégat
+    `Score` du walking skeleton. Ces tests-là (service **archers**) n'ouvrent aucune série : le
+    double renvoie une liste vide, et les méthodes d'écriture/lecture de saisie ne sont pas
+    sollicitées ici — elles ne servent qu'à **conformer** le port (couvertes par `test_saisie_api`
+    et `test_service_saisie`).
+    """
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
+        return []
+
+    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
+        raise NotImplementedError
+
+    def horodatages(
+        self, tournoi_id: TournoiId, archer_id: ArcherId
+    ) -> dict[int, datetime.datetime]:
+        raise NotImplementedError
+
+    def enregistrer(self, serie: Serie) -> Serie:
+        raise NotImplementedError
+
+    def enregistrer_avec_trace(self, serie: Serie, entree: EntreeAudit) -> Serie:
+        raise NotImplementedError
+
+
 class Montage(NamedTuple):
     """Attelage d'un test : les deux services et ce qu'il faut pour inscrire un archer.
 
@@ -128,6 +158,7 @@ class Montage(NamedTuple):
     archers: ServiceArchers
     classement: ServiceClassement
     inscrits: FauxArcherRepository
+    scores: FauxScoreRepository
     clubs: FauxClubRepository
     categories: FauxCategorieRepository
     tournois: FauxTournoiRepository
@@ -149,6 +180,7 @@ def _monter() -> Montage:
     tournois = FauxTournoiRepository()
     archers = FauxArcherRepository()
     scores = FauxScoreRepository(archers)
+    series = FauxSerieRepository()
     clubs = FauxClubRepository()
     categories = FauxCategorieRepository()
     inscriptions = FauxInscriptionRepository()
@@ -158,8 +190,9 @@ def _monter() -> Montage:
     assert categorie.id is not None
     return Montage(
         archers=ServiceArchers(tournois, archers, scores, clubs, categories, inscriptions),
-        classement=ServiceClassement(tournois, archers, scores),
+        classement=ServiceClassement(tournois, archers, series, categories),
         inscrits=archers,
+        scores=scores,
         clubs=clubs,
         categories=categories,
         tournois=tournois,
@@ -784,7 +817,9 @@ def test_supprimer_archer_signale_ne_detruit_rien() -> None:
 
     intact = m.inscrits.par_id(archer.id)
     assert intact is not None and intact.cible == 4
-    assert m.classement.pour_tournoi(m.tournoi_id).lignes[0].total == 9
+    # Les flèches survivent au refus : on l'observe sur le repository de scores (le classement, lui,
+    # dérive désormais des séries de saisie E04US002, pas de l'agrégat `Score` — E06US001).
+    assert [s.points for s in m.scores.par_archer(archer.id)] == [9]
 
 
 def test_supprimer_archer_inconnu_leve_meme_confirme() -> None:
@@ -926,8 +961,11 @@ def test_supprimer_archer_engage_confirme_ne_touche_pas_aux_autres() -> None:
     m.archers.saisir_score(reste.id, 8)
 
     m.archers.supprimer(partant.id, autoriser_suppression_engage=True)
-    lignes = m.classement.pour_tournoi(m.tournoi_id).lignes
-    assert [(ligne.nom, ligne.total) for ligne in lignes] == [("Martin", 8)]
+    # La purge est cloisonnée : les flèches de l'archer resté (Alice) survivent, celles du partant
+    # ont disparu. On l'observe sur le repo de scores (le classement ne reflète plus l'agrégat
+    # `Score` depuis E06US001).
+    assert [s.points for s in m.scores.par_archer(reste.id)] == [8]
+    assert m.scores.par_archer(partant.id) == []
 
 
 def test_supprimer_archer_libre_ne_demande_aucune_confirmation() -> None:
@@ -994,25 +1032,6 @@ def test_lister_archers_tournoi_inconnu_leve() -> None:
         m.archers.lister(404)
 
 
-def test_classement_reflete_les_scores_saisis() -> None:
-    """Le service de classement agrège les scores des archers du tournoi."""
-    m = _monter()
-    alice = m.archers.ajouter(m.tournoi_id, "Martin", "Alice", m.categorie_id)
-    bob = m.archers.ajouter(m.tournoi_id, "Durand", "Bob", m.categorie_id)
-    assert alice.id is not None and bob.id is not None
-    m.archers.saisir_score(alice.id, 10)
-    m.archers.saisir_score(alice.id, 9)
-    m.archers.saisir_score(bob.id, 8)
-
-    lignes = m.classement.pour_tournoi(m.tournoi_id).lignes
-    assert [(ligne.nom, ligne.rang, ligne.total) for ligne in lignes] == [
-        ("Martin", 1, 19),
-        ("Durand", 2, 8),
-    ]
-
-
-def test_classement_tournoi_inconnu_leve() -> None:
-    """Consulter le classement d'un tournoi inexistant lève `TournoiIntrouvable`."""
-    m = _monter()
-    with pytest.raises(TournoiIntrouvable):
-        m.classement.pour_tournoi(404)
+# Le contenu du classement (cumul, départage, catégories) et son refus de tournoi inconnu sont
+# désormais couverts par `test_service_classement` et `test_domain_classement` : depuis E06US001, le
+# classement dérive des séries de saisie (E04US002), pas de l'agrégat `Score` que pilote ce service.

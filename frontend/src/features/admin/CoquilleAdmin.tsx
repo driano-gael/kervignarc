@@ -28,6 +28,7 @@ import { NouvelArcher } from '../archers/NouvelArcher'
 import { BaremeQualification } from '../bareme/BaremeQualification'
 import { Blasons } from '../blasons/Blasons'
 import { Categories } from '../categories/Categories'
+import { useCategories } from '../categories/hooks'
 import { Clubs } from '../clubs/Clubs'
 import type { StatutTournoi, Tournoi } from '../competition/api'
 import { useClassement, useTournois } from '../competition/hooks'
@@ -353,14 +354,35 @@ function AccueilPublic() {
   )
 }
 
-// Classement en direct — public (lecture seule) ou admin (colonnes d'action). Partagé par la
-// destination « Classement » de la coquille et la consultation publique.
+// Classement de qualification en direct — public (lecture seule) ou admin (colonne « Placer »).
+// Partagé par la destination « Classement » de la coquille et la consultation publique. Un filtre
+// par catégorie (E06US001) restreint l'affichage à une catégorie sans changer les rangs : le rang
+// scratch (global) reste celui du classement complet — on **voit** une catégorie sans perdre la
+// position d'ensemble.
 function VueClassement({ tournoiId, admin }: { tournoiId: number; admin: boolean }) {
-  const classement = useClassement(tournoiId)
+  const [categorieId, setCategorieId] = useState<number | undefined>(undefined)
+  const categories = useCategories(tournoiId)
+  const classement = useClassement(tournoiId, categorieId)
 
   return (
     <>
       <h3 className="carte__soustitre">Classement en direct</h3>
+      <label className="classement-filtre">
+        Catégorie{' '}
+        <select
+          value={categorieId ?? ''}
+          onChange={(e) =>
+            setCategorieId(e.target.value === '' ? undefined : Number(e.target.value))
+          }
+        >
+          <option value="">Toutes catégories</option>
+          {(categories.data ?? []).map((categorie) => (
+            <option key={categorie.id} value={categorie.id}>
+              {categorie.libelle}
+            </option>
+          ))}
+        </select>
+      </label>
       {classement.isPending && <p className="carte__etat">Chargement…</p>}
       {classement.isError && (
         <p className="carte__etat carte__etat--erreur" role="alert">

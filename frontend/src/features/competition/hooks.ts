@@ -17,7 +17,6 @@ import {
   modifierTournoi,
   type NouvelArcher,
   placerArcher,
-  saisirScore,
   supprimerTournoi,
   terminerTournoi,
 } from './api'
@@ -25,14 +24,19 @@ import {
 // Exportée : la feature `archers` (E02US003) invalide le classement après une édition ou une
 // désinscription — un archer corrigé ou retiré doit quitter le tableau sans attendre. La clé se
 // déclare **une fois**, ici, où vit la requête ; deux littéraux `['classement', id]` finiraient
-// par diverger et l'invalidation raterait sa cible en silence.
-export const cleClassement = (tournoiId: number) => ['classement', tournoiId] as const
+// par diverger et l'invalidation raterait sa cible en silence. Elle **préfixe** la clé filtrée par
+// catégorie (E06US001) : invalider `['classement', id]` couvre toutes les vues filtrées du tournoi.
+export const cleClassement = (tournoiId: number, categorieId?: number) =>
+  categorieId === undefined
+    ? (['classement', tournoiId] as const)
+    : (['classement', tournoiId, categorieId] as const)
 const CLE_TOURNOIS = ['tournois'] as const
 
-export function useClassement(tournoiId: number) {
+// `categorieId` optionnel : filtre le classement à une catégorie (les rangs restent globaux).
+export function useClassement(tournoiId: number, categorieId?: number) {
   return useQuery({
-    queryKey: cleClassement(tournoiId),
-    queryFn: () => getClassement(tournoiId),
+    queryKey: cleClassement(tournoiId, categorieId),
+    queryFn: () => getClassement(tournoiId, categorieId),
   })
 }
 
@@ -96,15 +100,6 @@ export function usePlacerArcher(tournoiId: number) {
   return useMutation({
     mutationFn: ({ archerId, cible }: { archerId: number; cible: number }) =>
       placerArcher(archerId, cible),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) }),
-  })
-}
-
-export function useSaisirScore(tournoiId: number) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ archerId, points }: { archerId: number; points: number }) =>
-      saisirScore(archerId, points),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) }),
   })
 }

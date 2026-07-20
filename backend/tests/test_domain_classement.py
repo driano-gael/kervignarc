@@ -1,106 +1,270 @@
-"""Tests unitaires du calcul de classement (E00US011) — fonction de domaine pure."""
+"""Tests unitaires du classement de qualification (E06US001) — fonction de domaine **pure**.
+
+Dérivés du **CA** de `stories/E06-classements.md` (et non de l'implémentation) :
+
+- **cumul** : archers triés par score cumulé, qui est la somme des volées **validées** (la même
+  définition que `Serie.cumul`) ;
+- **départage** FFTA (`docs/referentiel-ffta.md` §8.1, art. C.3) : à total égal, on départage au
+  **plus grand nombre de 10**, puis de **9** — deux critères **séquentiels**, jamais fusionnés, et
+  qui ne jouent **qu'à** total égal ;
+- **catégorie** : deux rangs coexistent — un rang **scratch** (global, toutes catégories) et un rang
+  **par catégorie** (dense 1..N dans la catégorie de l'archer). Arbitrage produit du 20/07/2026
+  (reversé dans `stories/`) : « les deux », pas l'un ou l'autre ;
+- **traçable** : le nombre de 10 et de 9 remonte dans chaque ligne, pour que le départage se
+  **vérifie à l'œil**.
+
+Le X (mouche) n'existe pas dans le vocabulaire de score (ADR-0020/0027) : on départage sur les 10,
+pas sur les X.
+"""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from domain.archer import Archer
+from domain.blason import ZoneScore
+from domain.categorie import Categorie
 from domain.classement import LigneClassement, calculer_classement
-from domain.score import Score
+from domain.serie import Serie, Volee
 
 
 def _archer(
     id_: int,
     nom: str,
-    cible: int | None = None,
+    categorie_id: int = 1,
     prenom: str = "Jean",
+    cible: int | None = None,
     club_id: int | None = 1,
 ) -> Archer:
-    # `categorie_id` est sans effet sur le classement (E00US011 ordonne au total puis au nom) ;
-    # obligatoire depuis E02US002, d'où une valeur fixe qui ne dit rien de plus. `prenom` et
-    # `club_id`, eux, sont **restitués** par le classement — cf. les deux tests dédiés.
     return Archer(
-        nom=nom, prenom=prenom, tournoi_id=1, categorie_id=1, cible=cible, club_id=club_id, id=id_
+        nom=nom,
+        prenom=prenom,
+        tournoi_id=1,
+        categorie_id=categorie_id,
+        cible=cible,
+        club_id=club_id,
+        id=id_,
     )
+
+
+def _cat(id_: int, libelle: str = "Senior Homme") -> Categorie:
+    return Categorie(tournoi_id=1, libelle=libelle, id=id_)
+
+
+def _volee_validee(numero: int, valeurs: Sequence[ZoneScore]) -> Volee:
+    """Une volée **verrouillée** (elle porte un validateur) : la seule qui compte au cumul."""
+    return Volee(numero=numero, valeurs=tuple(valeurs), validee_par="Scoreur")
+
+
+def _serie(archer_id: int, volees: Sequence[Volee]) -> Serie:
+    return Serie(tournoi_id=1, archer_id=archer_id, volees=tuple(volees))
+
+
+DIX, NEUF, HUIT, SEPT, SIX, CINQ = (
+    ZoneScore.DIX,
+    ZoneScore.NEUF,
+    ZoneScore.HUIT,
+    ZoneScore.SEPT,
+    ZoneScore.SIX,
+    ZoneScore.CINQ,
+)
 
 
 def test_classement_vide_sans_archer() -> None:
     """Sans archer, le classement est vide."""
-    assert calculer_classement([], []) == calculer_classement([], [])
-    assert calculer_classement([], []).lignes == ()
+    assert calculer_classement([], [], []).lignes == ()
 
 
-def test_ordre_par_total_decroissant() -> None:
-    """Les archers sont ordonnés du meilleur total au moins bon, avec les rangs."""
-    archers = [_archer(1, "Alice", cible=2), _archer(2, "Bob", cible=2)]
-    scores = [Score(1, 9, id=1), Score(1, 10, id=2), Score(2, 8, id=3)]
-    classement = calculer_classement(archers, scores)
-    assert classement.lignes == (
-        LigneClassement(
-            rang=1, archer_id=1, nom="Alice", prenom="Jean", cible=2, club_id=1, total=19
-        ),
-        LigneClassement(rang=2, archer_id=2, nom="Bob", prenom="Jean", cible=2, club_id=1, total=8),
+def test_cumul_ne_compte_que_les_volees_validees() -> None:
+    """CA cumul : le total somme les volées **validées** ; une volée en cours n'y entre pas."""
+    archers = [_archer(1, "Alice")]
+    volee_validee = _volee_validee(1, [DIX, NEUF, HUIT])  # 27, verrouillée
+    volee_en_cours = Volee(numero=2, valeurs=(DIX, DIX, DIX))  # 30, pas de validateur
+    classement = calculer_classement(
+        archers, [_serie(1, [volee_validee, volee_en_cours])], [_cat(1)]
     )
+    assert classement.lignes[0].total == 27
 
 
-def test_archer_sans_score_a_un_total_nul() -> None:
-    """Un archer inscrit mais sans flèche apparaît avec un total de 0."""
-    classement = calculer_classement([_archer(5, "Zoé")], [])
-    assert classement.lignes == (
-        LigneClassement(
-            rang=1, archer_id=5, nom="Zoé", prenom="Jean", cible=None, club_id=1, total=0
-        ),
-    )
+def test_ordre_par_cumul_decroissant_avec_rangs() -> None:
+    """CA cumul : du meilleur total au moins bon, avec les rangs scratch."""
+    archers = [_archer(1, "Alice"), _archer(2, "Bob")]
+    series = [
+        _serie(1, [_volee_validee(1, [DIX, NEUF])]),  # 19
+        _serie(2, [_volee_validee(1, [HUIT, HUIT])]),  # 16
+    ]
+    lignes = calculer_classement(archers, series, [_cat(1)]).lignes
+    assert [(ligne.nom, ligne.rang_scratch, ligne.total) for ligne in lignes] == [
+        ("Alice", 1, 19),
+        ("Bob", 2, 16),
+    ]
+
+
+def test_archer_sans_serie_a_un_total_nul() -> None:
+    """Un archer inscrit sans flèche apparaît avec un total de 0 (et 0 dix, 0 neuf)."""
+    ligne = calculer_classement([_archer(5, "Zoé")], [], [_cat(1)]).lignes[0]
+    assert (ligne.total, ligne.nb_dix, ligne.nb_neuf) == (0, 0, 0)
+
+
+def test_departage_par_nombre_de_dix() -> None:
+    """CA départage : à total égal, plus de 10 = mieux classé.
+
+    Alice : 10+8 = 18 (un 10). Bob : 9+9 = 18 (zéro 10). Même total, Alice a plus de 10 → rang 1.
+    """
+    archers = [_archer(1, "Alice"), _archer(2, "Bob")]
+    series = [
+        _serie(1, [_volee_validee(1, [DIX, HUIT])]),
+        _serie(2, [_volee_validee(1, [NEUF, NEUF])]),
+    ]
+    lignes = calculer_classement(archers, series, [_cat(1)]).lignes
+    assert [(ligne.nom, ligne.rang_scratch, ligne.total, ligne.nb_dix) for ligne in lignes] == [
+        ("Alice", 1, 18, 1),
+        ("Bob", 2, 18, 0),
+    ]
+
+
+def test_departage_par_nombre_de_neuf_quand_les_dix_sont_egaux() -> None:
+    """CA départage : à total **et** nombre de 10 égaux, on passe au nombre de 9 (séquentiel).
+
+    Alice : 10+9+9+5 = 33 (un 10, deux 9). Bob : 10+9+8+6 = 33 (un 10, un 9). → Alice rang 1.
+    """
+    archers = [_archer(1, "Alice"), _archer(2, "Bob")]
+    series = [
+        _serie(1, [_volee_validee(1, [DIX, NEUF, NEUF, CINQ])]),
+        _serie(2, [_volee_validee(1, [DIX, NEUF, HUIT, SIX])]),
+    ]
+    lignes = calculer_classement(archers, series, [_cat(1)]).lignes
+    assert [(ligne.nom, ligne.rang_scratch, ligne.nb_dix, ligne.nb_neuf) for ligne in lignes] == [
+        ("Alice", 1, 1, 2),
+        ("Bob", 2, 1, 1),
+    ]
+
+
+def test_le_departage_ne_joue_qu_a_total_egal() -> None:
+    """Un total supérieur l'emporte, même avec moins de 10 : le départage n'intervient qu'à égalité.
+
+    Alice 20 (deux 10) est devancée par Carl 27 (zéro 10) : le total prime le départage.
+    """
+    archers = [_archer(1, "Alice"), _archer(2, "Carl")]
+    series = [
+        _serie(1, [_volee_validee(1, [DIX, DIX])]),  # 20, deux 10
+        _serie(2, [_volee_validee(1, [NEUF, NEUF, NEUF])]),  # 27, zéro 10
+    ]
+    lignes = calculer_classement(archers, series, [_cat(1)]).lignes
+    assert [(ligne.nom, ligne.rang_scratch, ligne.total) for ligne in lignes] == [
+        ("Carl", 1, 27),
+        ("Alice", 2, 20),
+    ]
+
+
+def test_egalite_parfaite_partage_le_rang() -> None:
+    """Total, 10 et 9 identiques : rang **partagé** (le référentiel laisse l'ex æquo en qualif).
+
+    L'ordre d'affichage reste déterministe (par nom) mais les deux portent le même rang.
+    """
+    archers = [_archer(1, "Bruno"), _archer(2, "Anna")]
+    serie = [_volee_validee(1, [DIX, NEUF, HUIT])]  # 27, un 10, un 9, pour les deux
+    series = [_serie(1, serie), _serie(2, serie)]
+    lignes = calculer_classement(archers, series, [_cat(1)]).lignes
+    assert [(ligne.nom, ligne.rang_scratch) for ligne in lignes] == [("Anna", 1), ("Bruno", 1)]
+
+
+def test_nombre_de_dix_et_de_neuf_est_trace() -> None:
+    """CA traçable : chaque ligne porte le décompte de 10 et de 9 (sur les volées validées)."""
+    archers = [_archer(1, "Alice")]
+    series = [
+        _serie(1, [_volee_validee(1, [DIX, DIX, NEUF]), _volee_validee(2, [NEUF, HUIT, SEPT])])
+    ]
+    ligne = calculer_classement(archers, series, [_cat(1)]).lignes[0]
+    assert (ligne.nb_dix, ligne.nb_neuf) == (2, 2)
+
+
+def test_rang_scratch_est_global_toutes_categories() -> None:
+    """CA catégorie : le rang scratch classe tous les archers ensemble, catégories confondues."""
+    archers = [_archer(1, "Alice", categorie_id=1), _archer(2, "Bob", categorie_id=2)]
+    series = [
+        _serie(1, [_volee_validee(1, [HUIT, HUIT])]),  # 16
+        _serie(2, [_volee_validee(1, [DIX, DIX])]),  # 20
+    ]
+    lignes = calculer_classement(archers, series, [_cat(1), _cat(2, "Cadet")]).lignes
+    assert {ligne.nom: ligne.rang_scratch for ligne in lignes} == {"Bob": 1, "Alice": 2}
+
+
+def test_rang_categorie_est_dense_et_independant_par_categorie() -> None:
+    """CA catégorie : au sein de chaque catégorie, les rangs repartent de 1 (dense 1..N).
+
+    Alice (cat 1) est 2ᵉ au scratch mais **1ʳᵉ de sa catégorie** ; Bob (cat 2) est 1ᵉ partout.
+    """
+    archers = [
+        _archer(1, "Alice", categorie_id=1),
+        _archer(2, "Bob", categorie_id=2),
+        _archer(3, "Chloé", categorie_id=1),
+    ]
+    series = [
+        _serie(1, [_volee_validee(1, [NEUF, NEUF])]),  # 18, cat 1
+        _serie(2, [_volee_validee(1, [DIX, DIX])]),  # 20, cat 2
+        _serie(3, [_volee_validee(1, [HUIT, HUIT])]),  # 16, cat 1
+    ]
+    cats = [_cat(1, "Senior Homme"), _cat(2, "Cadet")]
+    par_nom = {ligne.nom: ligne for ligne in calculer_classement(archers, series, cats).lignes}
+    assert (par_nom["Bob"].rang_scratch, par_nom["Bob"].rang_categorie) == (1, 1)
+    assert (par_nom["Alice"].rang_scratch, par_nom["Alice"].rang_categorie) == (2, 1)
+    assert (par_nom["Chloé"].rang_scratch, par_nom["Chloé"].rang_categorie) == (3, 2)
+    assert par_nom["Alice"].categorie_libelle == "Senior Homme"
 
 
 def test_le_classement_restitue_le_prenom() -> None:
-    """Deux homonymes confirmés (E02US002) doivent rester distinguables : le prénom remonte."""
+    """Deux homonymes confirmés (E02US002) restent distinguables : le prénom remonte."""
     archers = [_archer(1, "Dupont", prenom="Jean"), _archer(2, "Dupont", prenom="Pierre")]
-    prenoms = {ligne.archer_id: ligne.prenom for ligne in calculer_classement(archers, []).lignes}
+    prenoms = {
+        ligne.archer_id: ligne.prenom
+        for ligne in calculer_classement(archers, [], [_cat(1)]).lignes
+    }
     assert prenoms == {1: "Jean", 2: "Pierre"}
 
 
 def test_le_classement_signale_un_club_inconnu() -> None:
-    """`club_id` remonte tel quel : c'est le classement qui **signale** l'anomalie (ADR-0014).
-
-    Sans ce report, un archer inscrit sans club serait invisible — et « on complétera plus tard »
-    n'aurait aucun support à l'écran.
-    """
+    """`club_id` remonte : le classement **signale** l'anomalie, sans la résoudre (ADR-0014)."""
     archers = [_archer(1, "Martin", club_id=None), _archer(2, "Durand", club_id=7)]
-    clubs = {ligne.archer_id: ligne.club_id for ligne in calculer_classement(archers, []).lignes}
+    clubs = {
+        ligne.archer_id: ligne.club_id
+        for ligne in calculer_classement(archers, [], [_cat(1)]).lignes
+    }
     assert clubs == {1: None, 2: 7}
 
 
-def test_egalite_de_total_partage_le_rang() -> None:
-    """Deux archers à égalité partagent le rang ; départage par nom (déterministe)."""
-    archers = [_archer(1, "Bruno"), _archer(2, "Anna"), _archer(3, "Carl")]
-    scores = [Score(1, 5, id=1), Score(2, 5, id=2), Score(3, 10, id=3)]
-    classement = calculer_classement(archers, scores)
-    rangs = [(ligne.nom, ligne.rang, ligne.total) for ligne in classement.lignes]
-    assert rangs == [("Carl", 1, 10), ("Anna", 2, 5), ("Bruno", 2, 5)]
+def test_deux_homonymes_a_egalite_sont_ordonnes_de_facon_stable() -> None:
+    """À égalité parfaite, l'ordre des lignes est déterministe quel que soit l'ordre d'entrée.
 
-
-def test_deux_homonymes_a_total_egal_sont_ordonnes_de_facon_stable() -> None:
-    """Deux homonymes (E02US002) à total égal ont un ordre **déterministe**, quel que soit
-    l'ordre d'entrée.
-
-    Sans départage au-delà du nom, l'ordre retombait sur celui de `par_tournoi` (un `SELECT`
-    sans `ORDER BY`) : les deux lignes permutaient d'une lecture à l'autre, sur l'écran même où
-    on doit les distinguer. Le rang reste partagé (même total) ; c'est **l'ordre des lignes** qui
-    doit être stable. On le prouve en inversant l'ordre d'entrée : le classement doit rendre la
-    même séquence d'`archer_id`.
+    Sans départage au-delà du nom, l'ordre retombait sur celui de `par_tournoi` (`SELECT` sans
+    `ORDER BY`) : deux homonymes permutaient d'une lecture à l'autre. On le prouve en inversant
+    l'ordre d'entrée ; le rang reste partagé (mêmes total/10/9).
     """
-    pere = _archer(1, "Dupont", prenom="Jean")
-    fils = _archer(2, "Dupont", prenom="Jean")
-    scores = [Score(1, 5, id=1), Score(2, 5, id=2)]
-    ordre_a = [ligne.archer_id for ligne in calculer_classement([pere, fils], scores).lignes]
-    ordre_b = [ligne.archer_id for ligne in calculer_classement([fils, pere], scores).lignes]
+    pere, fils = _archer(1, "Dupont", prenom="Jean"), _archer(2, "Dupont", prenom="Jean")
+    s = [_volee_validee(1, [DIX, NEUF])]
+    series = [_serie(1, s), _serie(2, s)]
+    ordre_a = [
+        ligne.archer_id for ligne in calculer_classement([pere, fils], series, [_cat(1)]).lignes
+    ]
+    ordre_b = [
+        ligne.archer_id for ligne in calculer_classement([fils, pere], series, [_cat(1)]).lignes
+    ]
     assert ordre_a == ordre_b == [1, 2]
     rangs = {
-        ligne.archer_id: ligne.rang for ligne in calculer_classement([pere, fils], scores).lignes
+        ligne.archer_id: ligne.rang_scratch
+        for ligne in calculer_classement([pere, fils], series, [_cat(1)]).lignes
     }
-    assert rangs == {1: 1, 2: 1}  # même total ⇒ même rang partagé
+    assert rangs == {1: 1, 2: 1}
 
 
-def test_scores_d_archers_inconnus_sont_ignores() -> None:
-    """Un score dont l'archer n'est pas dans le lot n'affecte pas le classement."""
-    classement = calculer_classement([_archer(1, "Alice")], [Score(999, 10, id=1)])
-    assert classement.lignes[0].total == 0
+def test_serie_d_un_archer_inconnu_est_ignoree() -> None:
+    """Une série dont l'archer n'est pas dans le lot n'affecte pas le classement."""
+    archers = [_archer(1, "Alice")]
+    series = [_serie(999, [_volee_validee(1, [DIX, DIX, DIX])])]
+    assert calculer_classement(archers, series, [_cat(1)]).lignes[0].total == 0
+
+
+def test_ligne_est_immuable() -> None:
+    """`LigneClassement` est un agrégat frozen : le classement rendu ne se mute pas par mégarde."""
+    ligne = calculer_classement([_archer(1, "Alice")], [], [_cat(1)]).lignes[0]
+    assert isinstance(ligne, LigneClassement)

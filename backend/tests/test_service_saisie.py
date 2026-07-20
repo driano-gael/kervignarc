@@ -80,6 +80,9 @@ class FauxSerieRepository:
     def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
         return self._series.get((tournoi_id, archer_id))
 
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
+        return [s for (t, _), s in self._series.items() if t == tournoi_id]
+
     def horodatages(
         self, tournoi_id: TournoiId, archer_id: ArcherId
     ) -> dict[int, datetime.datetime]:

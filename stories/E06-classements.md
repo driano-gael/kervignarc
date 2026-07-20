@@ -12,10 +12,21 @@
 
 ### E06US001 — Classement de qualification (cumul, départage, par catégorie)
 *En tant que* public/organisateur, *je veux* le classement de qualification trié, départagé et disponible par catégorie, *afin de* connaître les positions sans ambiguïté.
-- **CA — cumul (ex-001)** : archers triés par score cumulé ; mis à jour en live ; par tournoi.
-- **CA — départage (ex-002)** : à score égal, tri par nombre de 10 puis de 9 ; départage déterministe et traçable.
-- **CA — catégorie (ex-008)** : filtrage/segmentation par catégorie ; applicable qualif et duels.
-- **Notes** : politique `tiebreak` (ADR-0004) pour le départage, preset FFTA modifiable.
+- **CA — cumul (ex-001)** : archers triés par score cumulé (somme des volées **validées**, cf.
+  `Serie.cumul`) ; mis à jour en live ; par tournoi.
+- **CA — départage (ex-002)** : à score égal, tri par nombre de 10 puis de 9 ; départage déterministe
+  et **traçable** — le nombre de 10 et de 9 est **restitué** dans chaque ligne, vérifiable à l'œil.
+  Les deux critères sont séquentiels (`referentiel-ffta` §8.1) ; si l'égalité subsiste, **ex æquo**
+  (rangs partagés) — le barrage §8.2 ne vaut qu'en duel.
+- **CA — catégorie (ex-008)** : **deux rangs** coexistent (arbitrage produit du 20/07/2026) — un rang
+  **scratch** (global, toutes catégories) et un rang **par catégorie** (dense 1..N au sein de la
+  catégorie de l'archer) ; un **filtre** d'affichage restreint à une catégorie sans changer les rangs.
+  Applicable qualif et duels.
+- **Notes** : politique `tiebreak` (ADR-0004) pour le départage, preset FFTA modifiable. En E06US001
+  la règle FFTA est implémentée comme **clé de tri isolée et nommée** dans le domaine (couture
+  d'injection future) ; la machinerie `Phase.config.tiebreak` **n'est pas** introduite ici — son
+  moteur relève d'EPIC-05, qu'ADR-0004 scope lui-même là-bas (règle 12). Le classement dérive des
+  **séries** de saisie (E04US002), pas de l'agrégat `Score` du walking skeleton (repointé en E06US001).
 - **Absorbe** : ex-E06US002, E06US008. **Dépend de** : E04US002 · **Jalon** : J1
 
 ### E06US003 — Barrage de tir pour places décisives

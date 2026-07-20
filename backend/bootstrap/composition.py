@@ -231,8 +231,11 @@ def create_app(
         categorie_repository,
         inscription_repository,
     )
+    # Classement de qualification (E06US001) : lit les **séries** de saisie (E04US002), plus les
+    # catégories pour libeller/segmenter — le walking skeleton `Score` ne portait pas le détail
+    # flèche par flèche qu'exige le départage FFTA (nombre de 10 puis de 9).
     app.state.service_classement = ServiceClassement(
-        tournoi_repository, archer_repository, score_repository
+        tournoi_repository, archer_repository, serie_repository, categorie_repository
     )
     # Inscriptions archer↔départ (E02US009, ADR-0017) : inscrire sur des créneaux du tournoi de
     # l'archer (même tournoi, unicité), marquer payé, désinscrire ; le montant dû dérive du tarif.

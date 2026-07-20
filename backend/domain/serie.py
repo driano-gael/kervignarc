@@ -130,6 +130,16 @@ class Serie:
         """Total des points des volées **validées** (mis à jour à chaque validation, ex-008)."""
         return sum(v.points for v in self.volees if v.verrouillee)
 
+    def compter(self, zone: ZoneScore) -> int:
+        """Nombre de flèches d'une zone donnée, sur les volées **validées** seulement.
+
+        Sert au **départage** du classement de qualification (E06US001) : à total égal, on compte
+        les 10 puis les 9 (`docs/referentiel-ffta.md` §8.1). On ne compte que les volées validées,
+        pour rester cohérent avec `cumul` — le score qu'on départage — : une flèche non validée ne
+        pèse ni sur le total ni sur son départage.
+        """
+        return sum(v.valeurs.count(zone) for v in self.volees if v.verrouillee)
+
     def saisir_volee(
         self,
         numero: int,

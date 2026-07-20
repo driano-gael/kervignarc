@@ -132,20 +132,29 @@ class ScoreReponse(BaseModel):
 
 
 class LigneClassementReponse(BaseModel):
-    """Une ligne de classement renvoyée au client.
+    """Une ligne de classement renvoyée au client (E06US001).
+
+    Deux rangs : `rang_scratch` (global, toutes catégories) et `rang_categorie` (au sein de la
+    catégorie de l'archer). `nb_dix`/`nb_neuf` rendent le **départage traçable** (à total égal, plus
+    de 10 puis de 9) : le client peut afficher *pourquoi* deux archers sont ainsi ordonnés.
 
     `club_id` à `null` = club encore **inconnu** : c'est le signal que l'écran affiche pour que
     l'anomalie soit résorbée (E02US002, ADR-0014). Le nom du club n'est pas résolu ici — le
     client dispose déjà du référentiel s'il veut l'afficher.
     """
 
-    rang: int
+    rang_scratch: int
+    rang_categorie: int
     archer_id: int
     nom: str
     prenom: str
+    categorie_id: int
+    categorie_libelle: str
     cible: int | None
     club_id: int | None
     total: int
+    nb_dix: int
+    nb_neuf: int
 
 
 class ClassementReponse(BaseModel):
@@ -161,13 +170,18 @@ class ClassementReponse(BaseModel):
             tournoi_id=tournoi_id,
             lignes=[
                 LigneClassementReponse(
-                    rang=ligne.rang,
+                    rang_scratch=ligne.rang_scratch,
+                    rang_categorie=ligne.rang_categorie,
                     archer_id=ligne.archer_id,
                     nom=ligne.nom,
                     prenom=ligne.prenom,
+                    categorie_id=ligne.categorie_id,
+                    categorie_libelle=ligne.categorie_libelle,
                     cible=ligne.cible,
                     club_id=ligne.club_id,
                     total=ligne.total,
+                    nb_dix=ligne.nb_dix,
+                    nb_neuf=ligne.nb_neuf,
                 )
                 for ligne in classement.lignes
             ],
@@ -326,8 +340,14 @@ async def saisir_score(
 
 
 @router.get("/tournois/{tournoi_id}/classement", response_model=ClassementReponse)
-async def consulter_classement(tournoi_id: int, request: Request) -> ClassementReponse:
-    """Renvoie le classement courant d'un tournoi (lecture directe hors boucle)."""
+async def consulter_classement(
+    tournoi_id: int, request: Request, categorie_id: int | None = None
+) -> ClassementReponse:
+    """Renvoie le classement de qualification d'un tournoi (lecture directe hors boucle).
+
+    `categorie_id` (optionnel) **filtre** l'affichage à une catégorie ; les rangs (scratch et
+    catégorie) restent ceux du classement complet — filtrer une catégorie ne réordonne pas le reste.
+    """
     service: ServiceClassement = request.app.state.service_classement
-    classement = await run_in_threadpool(service.pour_tournoi, tournoi_id)
+    classement = await run_in_threadpool(service.pour_tournoi, tournoi_id, categorie_id)
     return ClassementReponse.de_agregat(tournoi_id, classement)
