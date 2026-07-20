@@ -216,6 +216,19 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   besoin par `git log main --first-parent` / `git branch -r` (une US peut avoir été livrée par une
   session parallèle). Un tracker périmé fait repartir « reprend les US » sur une base fausse : sa mise
   à jour n'est pas cosmétique, elle conditionne la reprise.
+- **Le journal d'avancement ([`journal-d-avancement/`](journal-d-avancement/)) est un livrable, pas des
+  notes internes** — c'est la photo d'ensemble rendue au commanditaire (« qu'est-ce qui marche
+  aujourd'hui »), en français non technique. Il se tient à jour **au même titre et par le même
+  mécanisme que `SUIVI-US.md`** : la mise à jour **voyage avec le diff de l'US**, dans son dernier
+  commit, donc sur `main` le journal reste **toujours vrai**. Concrètement, une US qui livre une
+  **fonctionnalité visible** met à jour, dans son propre commit :
+  - [`00-resume-projet.md`](journal-d-avancement/00-resume-projet.md) — le résumé « où on en est » :
+    la ou les fonctionnalités livrées, l'« état en une phrase », et les **chiffres repères** (nombre
+    d'US livrées, dernière US, prochaine US). Un résumé qui liste moins de fonctionnalités que le
+    tracker n'affiche de ✅ est **périmé** — défaut à corriger, pas cosmétique.
+  - un fichier daté `AAAA-MM-JJ-HHhMM-<slug>.md` **uniquement pour un fait marquant** (jalon franchi,
+    capacité nouvelle qui change la donne) — épisodique, pas un par US. La plupart des US ne rajoutent
+    qu'une ligne au résumé.
 - **Décision structurante ⇒ ADR** dans `docs/adr/` (contexte / décision / conséquences).
 - Une US trop grosse pour une branche doit être **redécoupée** (maille INVEST).
 
@@ -231,6 +244,7 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
 | [`docs/glossaire.md`](docs/glossaire.md) · [`docs/modele-de-donnees.md`](docs/modele-de-donnees.md) · [`docs/referentiel-ffta.md`](docs/referentiel-ffta.md) | Vocabulaire, modèle, règles FFTA |
 | [`docs/dette.md`](docs/dette.md) · [`docs/dependances.md`](docs/dependances.md) · [`docs/adr/`](docs/adr/) | Registres et décisions |
 | [`epics/`](epics/) · [`stories/`](stories/) | Backlog produit (jalons J0→J4) |
+| [`journal-d-avancement/`](journal-d-avancement/) | **Livrable de suivi** : `SUIVI-US.md` (point de reprise) + `00-resume-projet.md` (photo d'ensemble) + faits marquants datés |
 
 `prototype/` est un prototype Python de déc. 2024 : **référence de lecture uniquement**, non exécuté,
 au vocabulaire hétérogène (`Player.lettre`, `idCible`) — ne pas s'en inspirer pour le nommage.
