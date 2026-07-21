@@ -6,7 +6,7 @@
 // un autre remplace le précédent. Ce plan sera la base du placement (EPIC-03).
 
 import { useState } from 'react'
-import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Gabarit } from './api'
 import { decrire } from './format'
 import { useAjusterGabarit, useAppliquerGabarit, useGabaritDuTournoi, useGabarits } from './hooks'
@@ -234,15 +234,5 @@ function FormulaireAjustement({ tournoiId, gabarit }: { tournoiId: number; gabar
       </div>
       <MessageErreur erreur={ajuster.error} />
     </form>
-  )
-}
-
-function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {message}
-    </p>
   )
 }

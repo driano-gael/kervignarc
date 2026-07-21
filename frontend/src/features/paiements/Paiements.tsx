@@ -7,7 +7,7 @@
 // sur le panneau d'inscription de l'archer (feature « inscriptions »).
 
 import { useState } from 'react'
-import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { decrireTarif } from '../competition/format'
 import type { LignePaiementArcher, RecapClub, RecapPaiement } from './api'
 import { useMarquerArcher, useMarquerClub, usePaiementsArchers, usePaiementsClubs } from './hooks'
@@ -261,19 +261,6 @@ function TotalGeneral({ recaps }: { recaps: RecapPaiement[] }) {
     <p className="paiements__total">
       Total tournoi — Dû {decrireTarif(du)} · Payé {decrireTarif(paye)} · Reste{' '}
       {decrireTarif(du - paye)}
-    </p>
-  )
-}
-
-// DETTE-004 (docs/dette.md) : 18ᵉ copie conforme de ce composant, une par feature. À extraire dans
-// `shared/ui/` avec les briques voisines (E00US013, remontée en tête de file justement à cause de
-// cette accumulation). Copiée telle quelle ici pour ne pas introduire une 2ᵉ convention en attendant.
-function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {message}
     </p>
   )
 }

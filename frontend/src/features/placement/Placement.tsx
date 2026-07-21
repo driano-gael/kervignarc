@@ -8,6 +8,7 @@
 
 import { useMemo, useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { ConfirmationChiffree } from '../../shared/confirmation/ConfirmationChiffree'
 import { useArchers } from '../archers/hooks'
 import type { Archer } from '../competition/api'
@@ -468,13 +469,4 @@ function MessageImpact({ impact }: { impact: ImpactRegeneration }) {
 
 function messageErreur(erreur: Error): string {
   return erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-}
-
-function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {messageErreur(erreur)}
-    </p>
-  )
 }

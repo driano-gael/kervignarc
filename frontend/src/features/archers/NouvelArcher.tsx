@@ -19,7 +19,7 @@ import { useCategories } from '../categories/hooks'
 import { useClubs } from '../clubs/hooks'
 import { ErreurApi } from '../../shared/api/client'
 import { useAjouterArcher } from '../competition/hooks'
-import { MessageErreur } from './Archers'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 
 export function NouvelArcher({ tournoiId }: { tournoiId: number }) {
   const [nomArcher, setNomArcher] = useState('')
@@ -130,8 +130,8 @@ export function NouvelArcher({ tournoiId }: { tournoiId: number }) {
       )}
       {/* Rendu **hors** `MessageErreur`, délibérément : ce bloc porte une action et un ton neutre
           (un doublon probable n'est pas une erreur — l'inscription reste possible). C'est pourquoi
-          il n'a pas le modificateur `--erreur`. À reprendre avec E00US013, qui factorisera les
-          briques d'UI ([DETTE-004](../../../../docs/dette.md)). */}
+          il n'a pas le modificateur `--erreur`. Examiné en E00US013 (factorisation de `MessageErreur`)
+          et laissé tel quel : une confirmation à action n'est pas un affichage d'erreur. */}
       {homonymeSignale ? (
         <div className="carte__etat" role="alert">
           <p>{ajouter.error?.message}</p>

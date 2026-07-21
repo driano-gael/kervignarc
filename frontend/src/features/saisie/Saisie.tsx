@@ -12,6 +12,7 @@
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Bareme, LigneGrille } from './api'
 import {
   useBareme,
@@ -445,17 +446,5 @@ function NavigateurVolees({
         )
       })}
     </div>
-  )
-}
-
-// DETTE-004 (docs/dette.md) : copie conforme du composant d'erreur, une par feature (extraction en
-// E00US013). Non factorisée ici — toucherait les autres features, hors périmètre de cette US.
-function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {message}
-    </p>
   )
 }

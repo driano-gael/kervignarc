@@ -8,7 +8,7 @@
 // ajoutées sont ordinaires (modifiables et supprimables comme les autres).
 
 import { useState } from 'react'
-import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Blason } from '../blasons/api'
 import { useBlasons } from '../blasons/hooks'
 import type { Categorie, NouvelleCategorie, SexeCategorie, TrancheAge } from './api'
@@ -353,15 +353,5 @@ function FormulaireCategorie({
       </form>
       <MessageErreur erreur={mutation.error} />
     </div>
-  )
-}
-
-function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {message}
-    </p>
   )
 }

@@ -17,6 +17,7 @@
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useCategories } from '../categories/hooks'
 import { useClubs } from '../clubs/hooks'
 import { InscriptionsArcher } from '../inscriptions/InscriptionsArcher'
@@ -305,7 +306,9 @@ function FormulaireArcher({
           d'un coup, ce qui ferait acquiescer à un motif jamais affiché — mais les confirmations
           **s'ajoutent** (cf. `cumul` ci-dessus) : si les deux faits sont vrais, l'admin lève le
           premier signalement, voit le second, le lève à son tour, et l'édition passe.
-          À reprendre avec E00US013, qui factorisera les briques d'UI (DETTE-004). */}
+          Examiné en E00US013 : laissé tel quel — c'est une confirmation à action, pas un
+          affichage d'erreur, donc hors du `MessageErreur` partagé (le token `--erreur` ne s'y
+          applique pas). */}
       {homonymeSignale && (
         <div className="carte__etat" role="alert">
           <p>{modifier.error?.message}</p>
@@ -332,21 +335,5 @@ function FormulaireArcher({
       )}
       {!homonymeSignale && !categorieSignalee && <MessageErreur erreur={modifier.error} />}
     </div>
-  )
-}
-
-// DETTE-004 (docs/dette.md) : copie conforme de ce composant, une par feature. À extraire dans
-// `shared/` — E00US013. Non factorisée ici, pour la même raison qu'en E02US001 : l'extraire pour la
-// seule feature neuve donnerait « 9 copies + 1 brique partagée », soit deux conventions au lieu
-// d'une, alors que E00US013 doit pouvoir relire un remplacement homogène.
-// Exportée pour `NouvelArcher.tsx` (même feature, E00US015) : réutilisation **intra-feature**, pas
-// une extraction vers `shared/` — la feature « archers » garde bien **une seule** copie.
-export function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {message}
-    </p>
   )
 }

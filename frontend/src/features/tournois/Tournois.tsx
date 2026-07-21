@@ -14,7 +14,7 @@
 import { useState } from 'react'
 import { ConnexionAdmin } from '../admin/ConnexionAdmin'
 import { useDeconnexionAdmin } from '../admin/hooks'
-import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import type { StatutTournoi, Tournoi, TypeTournoi } from '../competition/api'
 import {
@@ -365,18 +365,5 @@ function CycleDeVie({ tournoi }: { tournoi: Tournoi }) {
       {tournoi.statut === 'termine' && <p className="carte__etat">Ce tournoi est terminé.</p>}
       <MessageErreur erreur={demarrer.error ?? terminer.error} />
     </div>
-  )
-}
-
-// DETTE-004 (docs/dette.md) : copie conforme de ce composant, une par feature. La coquille (E00US015)
-// a **relocalisé** ici la copie de l'ancien `TrancheVerticale.tsx` (le décompte global est inchangé).
-// À extraire dans `shared/` — E00US013, quand toutes les copies seront remplacées d'un bloc.
-function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {message}
-    </p>
   )
 }

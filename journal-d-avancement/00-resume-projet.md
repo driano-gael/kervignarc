@@ -164,12 +164,13 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **53 US livrées** sur `main` (mergées, revues, CI verte) à la date du 21/07/2026 — dont E08US002,
-  optimiste d'un cran sur la branche jusqu'à son merge.
+- **54 US livrées** sur `main` (mergées, revues, CI verte) à la date du 21/07/2026 — dont E08US002 et
+  E00US013, optimistes d'un cran sur la branche jusqu'à leur merge.
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : bien avancé
   (40/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact et suivi des paiements faits ; restent la complétude et quelques imprimables.
-- Dernière US livrée : **E08US002** (suivi des paiements — vues par archer / par club, règlements
-  groupés audités).
-- Prochaine US prévue : **E00US013** (factoriser les briques d'UI partagées — remontée de J3 pour
-  résorber la duplication constatée en revue), puis reprise J1 à **E12US005** — cf. [`SUIVI-US.md`](SUIVI-US.md).
+- Dernière US livrée : **E00US013** (factoriser les briques d'UI partagées — refactor mécanique, rendu
+  inchangé, DETTE-004 résorbée). Dernière à **surface visible** : **E08US002** (suivi des paiements —
+  vues par archer / par club, règlements groupés audités).
+- Prochaine US prévue : **E12US005** (afficher la complétude du tournoi — reprise de la séquence J1)
+  — cf. [`SUIVI-US.md`](SUIVI-US.md).

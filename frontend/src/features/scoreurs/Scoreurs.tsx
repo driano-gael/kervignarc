@@ -10,7 +10,7 @@
 // secret d'usage (pas un mot de passe), destiné à être imprimé et remis en main propre.
 
 import { useState } from 'react'
-import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Scoreur } from './api'
 import { useCreerScoreur, useModifierScoreur, useScoreurs, useSupprimerScoreur } from './hooks'
 
@@ -163,17 +163,5 @@ function FormulaireScoreur({
       </form>
       <MessageErreur erreur={mutation.error} />
     </div>
-  )
-}
-
-// DETTE-004 (docs/dette.md) : énième copie conforme de ce composant, un par feature. À extraire dans
-// `shared/` — E00US013. Non factorisée ici : le faire toucherait les autres features, hors périmètre.
-function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {message}
-    </p>
   )
 }

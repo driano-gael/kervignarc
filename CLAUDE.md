@@ -239,15 +239,23 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
     dernière, prochaine) ; le résumé le **reflète** sans le contredire. Ne pas maintenir deux comptes
     divergents — le doublon est lui-même une source de dérive : les deux fichiers se réconcilient
     **dans le même commit**.
-  - un fichier daté `AAAA-MM-JJ-HHhMM-<slug>.md` **uniquement pour un fait marquant** (jalon franchi,
-    capacité nouvelle qui change la donne) — épisodique, pas un par US. La plupart des US ne rajoutent
-    qu'une ligne au résumé.
+  - un fichier daté `AAAA-MM-JJ-HHhMM-<slug>.md` décrivant **ce que cette US livre**, en français non
+    technique — **un par US à surface visible**. Les US purement mécaniques **sans surface utilisateur**
+    (API, repository, câblage, refactor à rendu inchangé) **n'en produisent pas** : elles ne touchent que
+    les chiffres repères du résumé. Le fichier daté **raconte l'US** (ce qui est nouveau, pour qui, ce
+    que ça change pour l'organisateur ou le public) ; le résumé garde la **photo d'ensemble**. Le garder
+    **court** (quelques lignes) : c'est un récit d'US, pas un rapport — la concision remplace l'ancien
+    filtre « épisodique » pour éviter le fouillis. L'horodatage `HHhMM` se lit sur l'horloge système
+    (`date`), jamais inventé. *(Règle resserrée le 21/07/2026 à la demande du commanditaire : passage
+    d'un fichier daté réservé aux jalons à **un par US visible** — le suivi gagne un récit par US, au
+    prix d'un fichier de plus à maintenir. Pas de rattrapage rétroactif : appliquée aux US suivantes.)*
 
   **Porte de revue (bloquant).** La mise à jour du journal d'un US à surface visible est **vérifiée à
   `/revue-us`** au même titre que `SUIVI-US.md` : une US visible dont le diff **ne touche pas**
-  `00-resume-projet.md` est un **manquement à corriger avant la PR**, pas un oubli tolérable — le
-  livrable de suivi n'est un livrable que s'il est **toujours** rendu. Le réflexe : avant de lancer la
-  revue, se demander « ai-je mis à jour le journal ET le tracker ? » — les deux voyagent avec le diff,
+  `00-resume-projet.md` **ou n'ajoute pas son fichier daté** est un **manquement à corriger avant la
+  PR**, pas un oubli tolérable — le livrable de suivi n'est un livrable que s'il est **toujours** rendu.
+  Le réflexe : avant de lancer la revue, se demander « ai-je mis à jour le résumé, ajouté le fichier
+  daté de l'US ET pointé le tracker ? » — les trois voyagent avec le diff,
   jamais dans un commit séparé « docs » d'après-coup. *(Manqué sur E12US007 le 21/07/2026 : le résumé
   n'a pas été mis à jour dans le commit de l'US — d'où cette porte explicite.)*
 - **Cadrage d'intention en tête d'une US visible.** Avant de brancher / explorer / coder une US qui
