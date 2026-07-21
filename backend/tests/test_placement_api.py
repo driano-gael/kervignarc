@@ -20,9 +20,36 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
+from domain.blason import ZoneScore
+from domain.serie import Serie, Volee
+from infrastructure.db import AuditRepositorySQL, SerieRepositorySQL
+from infrastructure.horloge import HorlogeSysteme
 from tests.conftest import ConnecterAdmin
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _semer_score(app: FastAPI, tournoi_id: int, archer_id: int) -> None:
+    """Insère une série (une volée saisie) pour un archer — il « a des scores » (impact E12US007).
+
+    Directement par le repository (comme test_saisie_api sème un placement) : passer par la saisie
+    HTTP exigerait barème, grain, session scoreur/poste — hors sujet pour tester le **câblage** de
+    l'alerte d'impact."""
+    sf = app.state.database.session_factory
+    # Volée **validée** (`validee_par`) : « a des scores » au sens du CA = tir validé, pas une
+    # simple saisie provisoire (cf. `Serie.nb_fleches_validees`, arbitrage daté).
+    serie = Serie(
+        tournoi_id=tournoi_id,
+        archer_id=archer_id,
+        volees=(
+            Volee(
+                numero=1,
+                valeurs=(ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX),
+                validee_par="Scoreur",
+            ),
+        ),
+    )
+    SerieRepositorySQL(sf, AuditRepositorySQL(sf), HorlogeSysteme()).enregistrer(serie)
 
 
 def _migrer(url: str) -> None:
@@ -298,6 +325,102 @@ def test_regenerer_exige_l_admin(app_placement: FastAPI) -> None:
     """La régénération est une écriture réservée à l'admin : 401 sans session."""
     with TestClient(app_placement) as client:
         reponse = client.post("/api/v1/tournois/1/departs/1/plan-de-cibles/regenerer")
+    assert reponse.status_code == 401, reponse.text
+
+
+# --- Alerte par calcul d'impact (E12US007, ADR-0040) — câblage de la route -----------------------
+
+
+def _base_plan(tournoi_id: int, depart_id: int) -> str:
+    return f"/api/v1/tournois/{tournoi_id}/departs/{depart_id}/plan-de-cibles"
+
+
+def test_impact_regeneration_chiffre_selon_les_scores(
+    app_placement: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """GET impact : `confirmation` (placés, sans score) puis `massif` dès qu'un score existe."""
+    with TestClient(app_placement) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        _appliquer_gabarit(client, tournoi_id, nb_cibles=1)
+        categorie_id = _creer_categorie(client, tournoi_id)
+        depart_id = _creer_depart(client, tournoi_id)
+        a1, _ = _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Guillaume")
+        _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Walter")
+        _regenerer(client, tournoi_id, depart_id)
+
+        sans_score = client.get(f"{_base_plan(tournoi_id, depart_id)}/impact-regeneration")
+        _semer_score(app_placement, tournoi_id, a1)
+        avec_score = client.get(f"{_base_plan(tournoi_id, depart_id)}/impact-regeneration")
+
+    assert sans_score.status_code == 200, sans_score.text
+    assert sans_score.json() == {
+        "niveau": "confirmation",
+        "archers_deplaces": 2,
+        "cibles_avec_scores": 0,
+    }
+    assert avec_score.json() == {
+        "niveau": "massif",
+        "archers_deplaces": 2,
+        "cibles_avec_scores": 1,
+    }
+
+
+def test_regenerer_massif_sans_confirmation_renvoie_409_chiffre(
+    app_placement: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """POST regenerer d'un plan massif **sans** `confirme` → 409 `replacement_non_confirme`,
+    chiffré.
+
+    Le décompte voyage dans `details` (première utilisation du canal `{code, message,
+    details?}`)."""
+    with TestClient(app_placement) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        _appliquer_gabarit(client, tournoi_id, nb_cibles=1)
+        categorie_id = _creer_categorie(client, tournoi_id)
+        depart_id = _creer_depart(client, tournoi_id)
+        a1, _ = _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Guillaume")
+        _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Walter")
+        _regenerer(client, tournoi_id, depart_id)
+        _semer_score(app_placement, tournoi_id, a1)
+
+        reponse = client.post(f"{_base_plan(tournoi_id, depart_id)}/regenerer")
+
+    assert reponse.status_code == 409, reponse.text
+    corps = reponse.json()
+    assert corps["code"] == "replacement_non_confirme"
+    assert corps["details"] == {"archers_deplaces": 2, "cibles_avec_scores": 1}
+
+
+def test_regenerer_massif_confirme_ecrase_le_plan(
+    app_placement: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """POST regenerer `{confirme:true}` sur un plan massif → 200, le plan est régénéré."""
+    with TestClient(app_placement) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        _appliquer_gabarit(client, tournoi_id, nb_cibles=1)
+        categorie_id = _creer_categorie(client, tournoi_id)
+        depart_id = _creer_depart(client, tournoi_id)
+        a1, _ = _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Guillaume")
+        a2, _ = _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Walter")
+        _regenerer(client, tournoi_id, depart_id)
+        _semer_score(app_placement, tournoi_id, a1)
+
+        reponse = client.post(
+            f"{_base_plan(tournoi_id, depart_id)}/regenerer", json={"confirme": True}
+        )
+
+    assert reponse.status_code == 200, reponse.text
+    places = {p["archer_id"] for cible in reponse.json()["cibles"] for p in cible["placements"]}
+    assert places == {a1, a2}
+
+
+def test_impact_regeneration_exige_l_admin(app_placement: FastAPI) -> None:
+    """La prévisualisation d'impact est réservée à l'admin : 401 sans session."""
+    with TestClient(app_placement) as client:
+        reponse = client.get("/api/v1/tournois/1/departs/1/plan-de-cibles/impact-regeneration")
     assert reponse.status_code == 401, reponse.text
 
 

@@ -23,16 +23,20 @@ from application.erreurs import (
     DepartIntrouvable,
     DeplacementInvalide,
     GabaritDuTournoiAbsent,
+    ReplacementNonConfirme,
     TournoiIntrouvable,
 )
 from application.placement import ServicePlacement
-from domain.archer import Archer
-from domain.blason import Blason, BlasonId
+from domain.archer import Archer, ArcherId
+from domain.blason import Blason, BlasonId, ZoneScore
 from domain.categorie import Categorie
 from domain.depart import Depart, DepartId
+from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
+from domain.impact import NiveauImpact
 from domain.inscription import Inscription, InscriptionId
 from domain.placement import Affectation, CiblePlacee, PlanDeCibles, RaisonConflit
+from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from tests.conftest import (
     FauxArcherRepository,
@@ -42,6 +46,7 @@ from tests.conftest import (
 )
 
 _DATE = datetime.date(2026, 3, 14)
+_QUAND = datetime.datetime(2026, 3, 14, 10, 42, tzinfo=datetime.UTC)
 
 
 class FauxTournoiRepository:
@@ -133,14 +138,18 @@ class FauxBlasonRepository:
 
 
 class FauxPlacementRepository:
-    """Repository en mémoire conforme au port `PlacementRepository` (E03US004).
+    """Repository en mémoire conforme au port `PlacementRepository` (E03US004, E12US007).
 
     Stocke une affectation par inscription, avec son départ, pour rejouer `par_depart`,
-    `definir_plan` (purge + réécriture), `poser_plusieurs` (upsert) et `retirer`."""
+    `definir_plan` (purge + réécriture), `definir_plan_avec_trace` (purge + réécriture **+** trace),
+    `poser_plusieurs` (upsert) et `retirer`. `traces` **retient** l'entrée d'audit reçue — c'est ce
+    que les tests inspectent pour vérifier qu'une régénération massive laisse sa trace, dans la même
+    opération que l'écriture (patron de `FauxSerieRepository`, test_service_saisie)."""
 
     def __init__(self) -> None:
         self._affectation: dict[int, Affectation] = {}
         self._depart: dict[int, int] = {}
+        self.traces: list[EntreeAudit] = []
 
     def par_depart(self, depart_id: DepartId) -> list[Affectation]:
         affectations = [a for i, a in self._affectation.items() if self._depart[i] == depart_id]
@@ -152,6 +161,12 @@ class FauxPlacementRepository:
             self._depart.pop(inscription_id, None)
         self.poser_plusieurs(depart_id, affectations)
 
+    def definir_plan_avec_trace(
+        self, depart_id: DepartId, affectations: Sequence[Affectation], entree: EntreeAudit
+    ) -> None:
+        self.definir_plan(depart_id, affectations)
+        self.traces.append(entree)
+
     def poser_plusieurs(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
         for affectation in affectations:
             self._affectation[affectation.inscription_id] = affectation
@@ -160,6 +175,63 @@ class FauxPlacementRepository:
     def retirer(self, inscription_id: InscriptionId) -> None:
         self._affectation.pop(inscription_id, None)
         self._depart.pop(inscription_id, None)
+
+
+class FauxSerieRepository:
+    """Repository de séries en mémoire (port `SerieRepository`) — seul `par_tournoi` sert au calcul
+    d'impact (E12US007). On y **sème** des scores pour marquer qu'une cible « a des données
+    réelles ».
+
+    Les autres méthodes du port ne sont pas exercées par `ServicePlacement` : elles restent des
+    stubs
+    conformes à la signature (le port est structurel, mypy exige leur présence)."""
+
+    def __init__(self) -> None:
+        self._series: list[Serie] = []
+
+    def semer_score(self, tournoi_id: int, archer_id: ArcherId) -> None:
+        """Donne à un archer une série avec **une volée validée** — il « a des scores » (impact).
+
+        Validée (`validee_par`), pas seulement saisie : « données réelles produites » = tir
+        **validé** (arbitrage daté, cf. `Serie.nb_fleches_validees`) ; une volée provisoire ne
+        rendrait pas l'impact massif."""
+        volee = Volee(
+            numero=1,
+            valeurs=(ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX),
+            validee_par="Scoreur",
+        )
+        self._series.append(Serie(tournoi_id=tournoi_id, archer_id=archer_id, volees=(volee,)))
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
+        return [s for s in self._series if s.tournoi_id == tournoi_id]
+
+    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
+        return next(
+            (s for s in self._series if s.tournoi_id == tournoi_id and s.archer_id == archer_id),
+            None,
+        )
+
+    def horodatages(
+        self, tournoi_id: TournoiId, archer_id: ArcherId
+    ) -> dict[int, datetime.datetime]:
+        return {}
+
+    def enregistrer(self, serie: Serie) -> Serie:
+        self._series.append(serie)
+        return serie
+
+    def enregistrer_avec_trace(self, serie: Serie, entree: EntreeAudit) -> Serie:
+        raise NotImplementedError("Non exercé par ServicePlacement.")
+
+
+class HorlogeFigee:
+    """Horloge déterministe conforme au port `Horloge` (règle 9) : toujours le même instant."""
+
+    def __init__(self, instant: datetime.datetime) -> None:
+        self._instant = instant
+
+    def maintenant(self) -> datetime.datetime:
+        return self._instant
 
 
 class _Monde:
@@ -174,6 +246,8 @@ class _Monde:
         self.categories = FauxCategorieRepository()
         self.blasons = FauxBlasonRepository()
         self.placements = FauxPlacementRepository()
+        self.series = FauxSerieRepository()
+        self.horloge = HorlogeFigee(_QUAND)
         self.inscription_par_archer: dict[int, int] = {}
         tournoi = self.tournois.ajouter(
             Tournoi(nom="Kervignarc", date=_DATE, lieu=None, type_tournoi=TypeTournoi.NON_OFFICIEL)
@@ -196,7 +270,13 @@ class _Monde:
             self.categories,
             self.blasons,
             self.placements,
+            self.series,
+            self.horloge,
         )
+
+    def semer_score(self, archer_id: int) -> None:
+        """Donne un score (une volée **validée**) à un archer inscrit — pour les tests d'impact."""
+        self.series.semer_score(self.tournoi_id, archer_id)
 
     def depart(self, numero: int) -> int:
         depart = self.departs.ajouter(
@@ -571,3 +651,165 @@ def test_placer_les_restants_repose_un_archer_de_cible_disparue() -> None:
 
     assert _archers_places(plan.cibles) == {a1, a2}
     assert plan.conflits == ()
+
+
+# --- Alerte par calcul d'impact (E12US007, ADR-0040) ---------------------------------------------
+# Tests dérivés du **CA** (`stories/E12-pilotage-jour-j.md`, E12US007 + section « Arbitrages »)
+# **avant**
+# implémentation (règle 9) : l'échelle d'impact et le geste délibéré sur la régénération massive
+# sont
+# des règles métier. L'endpoint/DTO se testent après (test_placement_api).
+
+
+def test_impact_sans_placement_est_aucun() -> None:
+    """Plan jamais généré : impact nul (aucune affectation) → aucune alerte, première génération."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    monde.inscrire(depart, monde.categorie(taille=0.25))
+
+    impact = monde.service.impact_regeneration(monde.tournoi_id, depart)
+
+    assert impact.niveau is NiveauImpact.AUCUN
+    assert impact.archers_deplaces == 0
+
+
+def test_impact_apres_placement_sans_score_est_confirmation() -> None:
+    """Des archers placés mais **aucun score** : niveau confirmation, cibles avec scores = 0."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    monde.inscrire(depart, cat)
+    monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+
+    impact = service.impact_regeneration(monde.tournoi_id, depart)
+
+    assert impact.niveau is NiveauImpact.CONFIRMATION
+    assert impact.archers_deplaces == 2
+    assert impact.cibles_avec_scores == 0
+
+
+def test_impact_compte_les_cibles_avec_scores_sans_doublon() -> None:
+    """Un score rend l'impact **massif** ; deux archers scorés d'**une même cible** comptent pour 1.
+
+    Prouve que `cibles_avec_scores` dédoublonne par cible (pas par archer) — c'est bien « M cibles
+    ont des scores » du CDC, pas « M archers »."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1 = monde.inscrire(depart, cat)
+    a2 = monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)  # a1 et a2 sur la même cible 1
+    monde.semer_score(a1)
+    monde.semer_score(a2)
+
+    impact = service.impact_regeneration(monde.tournoi_id, depart)
+
+    assert impact.niveau is NiveauImpact.MASSIF
+    assert impact.archers_deplaces == 2
+    assert impact.cibles_avec_scores == 1  # une seule cible, malgré deux archers scorés
+
+
+def test_impact_compte_les_cibles_scorees_de_maniere_additive() -> None:
+    """Le chiffre-titre « M cibles » s'additionne sur des cibles **distinctes** (U11 et adulte
+    séparés par la hauteur, ADR-0022) : deux cibles scorées → 2, pas 1."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    u11 = monde.inscrire(depart, monde.categorie(taille=0.25, hauteur=110))
+    adulte = monde.inscrire(depart, monde.categorie(taille=0.25, hauteur=130))
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)  # u11 et adulte sur deux cibles distinctes
+    monde.semer_score(u11)
+    monde.semer_score(adulte)
+
+    impact = service.impact_regeneration(monde.tournoi_id, depart)
+
+    assert impact.niveau is NiveauImpact.MASSIF
+    assert impact.cibles_avec_scores == 2
+
+
+def test_impact_exclut_une_cible_sans_score() -> None:
+    """Parmi plusieurs cibles, seules celles avec **au moins un archer scoré** comptent : la cible
+    sans donnée réelle est exclue (une scorée sur deux → 1)."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    u11 = monde.inscrire(depart, monde.categorie(taille=0.25, hauteur=110))
+    monde.inscrire(depart, monde.categorie(taille=0.25, hauteur=130))  # adulte, non scoré
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    monde.semer_score(u11)  # seule la cible de l'U11 a un score
+
+    impact = service.impact_regeneration(monde.tournoi_id, depart)
+
+    assert impact.niveau is NiveauImpact.MASSIF
+    assert impact.cibles_avec_scores == 1
+
+
+def test_regenerer_massif_sans_confirmation_est_refuse_et_chiffre() -> None:
+    """CA : une régénération massive **non confirmée** est refusée (409 chiffré) ; rien ne change.
+
+    Le décompte est porté par `details` (première utilisation du canal `{code, message,
+    details?}`) —
+    et **recalculé** ici, pas cru sur parole (ce qui distingue de DETTE-007)."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1 = monde.inscrire(depart, cat)
+    monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    monde.semer_score(a1)
+    avant = _cible_de(service.plan_de_cibles(monde.tournoi_id, depart))
+
+    with pytest.raises(ReplacementNonConfirme) as exc:
+        service.regenerer(monde.tournoi_id, depart)
+
+    assert exc.value.details == {"archers_deplaces": 2, "cibles_avec_scores": 1}
+    assert _cible_de(service.plan_de_cibles(monde.tournoi_id, depart)) == avant  # état inchangé
+    assert monde.placements.traces == []  # rien écrit → rien tracé
+
+
+def test_regenerer_massif_confirme_ecrase_et_laisse_une_trace() -> None:
+    """CA : confirmée, la régénération massive écrase le plan **et** laisse une trace d'audit datée.
+
+    La trace co-écrite (ADR-0035) porte l'action `REPLACEMENT`, l'objet (le départ), l'horodatage de
+    l'**horloge injectée** (déterminisme) et le décompte chiffré en `avant` — la valeur de
+    preuve."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    a1 = monde.inscrire(depart, cat)
+    a2 = monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    monde.semer_score(a1)
+
+    plan = service.regenerer(monde.tournoi_id, depart, confirme=True)
+
+    assert _archers_places(plan.cibles) == {a1, a2}  # plan bien régénéré
+    assert len(monde.placements.traces) == 1
+    trace = monde.placements.traces[0]
+    assert trace.action is ActionAuditee.REPLACEMENT
+    assert trace.tournoi_id == monde.tournoi_id
+    assert str(depart) in trace.objet
+    assert trace.horodatage == _QUAND
+    assert "2 archer" in (trace.avant or "")
+
+
+def test_regenerer_sans_score_ne_demande_ni_confirmation_ni_trace() -> None:
+    """CA « pas d'impact → aucune alerte » : régénérer un plan **sans score** passe sans confirmer
+    ni tracer — même en cours de tournoi, tant qu'aucune donnée réelle n'a été produite."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.25)
+    monde.inscrire(depart, cat)
+    monde.inscrire(depart, cat)
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+
+    plan = service.regenerer(monde.tournoi_id, depart)  # aucun score → pas de garde
+
+    assert len(plan.cibles) == 1
+    assert monde.placements.traces == []

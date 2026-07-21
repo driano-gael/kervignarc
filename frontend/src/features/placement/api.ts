@@ -45,6 +45,20 @@ export interface PlanDeCibles {
   conflits: Conflit[]
 }
 
+// Gravité d'une régénération (E12US007, ADR-0040), miroir de `NiveauImpact` du domaine : `aucun`
+// (rien de placé → pas d'alerte), `confirmation` (placés, sans score → confirmation simple),
+// `massif` (des scores existent → taper un mot).
+export type NiveauImpact = 'aucun' | 'confirmation' | 'massif'
+
+// Impact chiffré de régénérer le plan d'un départ, prévisualisé **avant** d'agir. `cibles_avec_scores`
+// = cibles dont un archer a déjà des scores (ils seront **conservés**, mais leur présence rend
+// l'action massive).
+export interface ImpactRegeneration {
+  niveau: NiveauImpact
+  archers_deplaces: number
+  cibles_avec_scores: number
+}
+
 // Destination d'un déplacement : une case (`cible_index` + `position`) ou la **réserve**
 // (`cible_index: null`). Une case libre déplace ; une case occupée échange atomiquement.
 export interface Destination {
@@ -59,10 +73,27 @@ export function getPlanDeCibles(tournoiId: number, departId: number): Promise<Pl
   return fetchJson<PlanDeCibles>(basePlan(tournoiId, departId))
 }
 
+// Prévisualise l'impact de régénérer le plan (E12US007) : lecture pure, sans rien écrire. Le front
+// s'en sert pour afficher l'alerte chiffrée **avant** d'agir.
+export function getImpactRegeneration(
+  tournoiId: number,
+  departId: number,
+): Promise<ImpactRegeneration> {
+  return fetchJson<ImpactRegeneration>(`${basePlan(tournoiId, departId)}/impact-regeneration`)
+}
+
 // Régénère le plan auto (déterministe). Sert **aussi** à « annuler les modifications » : l'auto
-// écrase les ajustements manuels (ADR-0024). Confirmation demandée côté UI avant l'appel.
-export function regenererPlan(tournoiId: number, departId: number): Promise<PlanDeCibles> {
-  return fetchJson<PlanDeCibles>(`${basePlan(tournoiId, departId)}/regenerer`, { method: 'POST' })
+// écrase les ajustements manuels (ADR-0024). `confirme` autorise l'écrasement d'un plan **massif**
+// (des scores existent, E12US007) ; sans lui, un plan massif renvoie 409 `replacement_non_confirme`.
+export function regenererPlan(
+  tournoiId: number,
+  departId: number,
+  confirme = false,
+): Promise<PlanDeCibles> {
+  return fetchJson<PlanDeCibles>(`${basePlan(tournoiId, departId)}/regenerer`, {
+    method: 'POST',
+    body: JSON.stringify({ confirme }),
+  })
 }
 
 // Déplace / échange / met en réserve un inscrit. `409 deplacement_invalide` si le geste viole une

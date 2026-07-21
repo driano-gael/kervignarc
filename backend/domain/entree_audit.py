@@ -39,13 +39,17 @@ class ActionAuditee(str, Enum):
     """Nature de l'acte sensible tracé — l'ensemble **fermé** des actions du CA E10US005.
 
     `(str, Enum)` : la valeur est un slug stable, stocké tel quel en base (comme `StatutTournoi`).
-    Les producteurs viendront plus tard : `VALIDATION`/`CORRECTION_SCORE` avec E04US002, `FORFAIT`
-    avec E12US004. Les nommer ici n'anticipe pas leur code : c'est le **vocabulaire** du CA.
+    Producteurs : `VALIDATION`/`CORRECTION_SCORE` (E04US002), `FORFAIT` (E12US004, à venir),
+    `REPLACEMENT` (E12US007 — régénération **massive** du plan de cibles, quand des scores existent
+    déjà, [ADR-0040]). Les nommer ici n'anticipe pas leur code : c'est le **vocabulaire** du CA.
+
+    [ADR-0040]: ../../docs/adr/0040-alerte-par-calcul-d-impact.md
     """
 
     VALIDATION = "validation"
     CORRECTION_SCORE = "correction_score"
     FORFAIT = "forfait"
+    REPLACEMENT = "replacement"
 
 
 @dataclass(frozen=True)

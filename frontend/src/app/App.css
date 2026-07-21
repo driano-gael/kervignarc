@@ -883,6 +883,44 @@ button:disabled {
   font-size: 14px;
 }
 
+/* Confirmation par calcul d'impact (E12US007, ADR-0040) : panneau chiffré, ambre (`--warn`) — une
+   alerte à lire, pas une erreur rouge ; le mot à taper arme le bouton pour l'action massive. */
+.confirmation {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--warn);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.confirmation__titre {
+  margin: 0 0 4px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.confirmation__corps {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.confirmation__mot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.confirmation__mot .formulaire__champ {
+  max-width: 220px;
+}
+
+.confirmation__actions {
+  display: flex;
+  gap: 8px;
+}
+
 .placement__cibles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));

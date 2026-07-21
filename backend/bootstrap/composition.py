@@ -173,10 +173,13 @@ def create_app(
     score_repository = ScoreRepositorySQL(database.session_factory)
     depart_repository = DepartRepositorySQL(database.session_factory)
     inscription_repository = InscriptionRepositorySQL(database.session_factory)
-    placement_repository = PlacementRepositorySQL(database.session_factory)
     scoreur_repository = ScoreurRepositorySQL(database.session_factory)
     poste_repository = PosteRepositorySQL(database.session_factory)
     audit_repository = AuditRepositorySQL(database.session_factory)
+    # Le plan de cibles co-écrit sa trace d'audit d'une régénération **massive** dans une seule
+    # transaction (E12US007, ADR-0035, ADR-0040) : l'adapter reçoit l'`audit_repository` (concret)
+    # pour `consigner_dans` sur la session partagée — couplage **infra → infra**, comme la saisie.
+    placement_repository = PlacementRepositorySQL(database.session_factory, audit_repository)
     # La série de saisie co-écrit son entrée d'audit dans **une seule transaction** (ADR-0035) :
     # l'adapter reçoit l'`audit_repository` (concret) pour appeler `consigner_dans` sur la session
     # partagée. Couplage **infra → infra** assumé — le port domaine `SerieRepository` l'ignore.
@@ -253,6 +256,8 @@ def create_app(
     # d'où sept ports de jointure/gardes, **plus** le port `placement` qui persiste le plan
     # (matérialisé, ajustable au glisser-déposer). Les écritures (régénérer/déplacer/échanger/placer
     # les restants) passent par la file (routage API).
+    # E12US007 (ADR-0040) : `serie_repository` alimente le **calcul d'impact** (« quelles cibles ont
+    # des scores ») et `HorlogeSysteme` **date** la trace d'audit d'une régénération massive.
     app.state.service_placement = ServicePlacement(
         tournoi_repository,
         depart_repository,
@@ -262,6 +267,8 @@ def create_app(
         categorie_repository,
         blason_repository,
         placement_repository,
+        serie_repository,
+        HorlogeSysteme(),
     )
     # Feuille de marque (E09US001) : premier document du socle PDF (ReportLab, ADR-0031). Le service
     # lit le plan persisté et joint archer → catégorie → blason (ports seuls, pas de

@@ -48,6 +48,9 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0035](0035-atomicite-acte-trace-session-partagee.md) | Atomicité **acte↔trace** : co-écriture score + audit dans une **session partagée** (un seul commit) | Accepté |
 | [0036](0036-idempotence-de-la-saisie-par-identifiant-en-memoire.md) | Idempotence de la saisie par **identifiant de saisie** (registre en mémoire, borné) | Accepté |
 | [0037](0037-file-de-saisie-hors-ligne-et-rejeu.md) | **File de saisie hors-ligne** côté front : mise en file sur panne, **rejeu à la reconnexion** (dédup serveur) | Accepté |
+| [0038](0038-presence-des-postes-par-heartbeat.md) | Présence des postes par **heartbeat** (horloge injectée, hors ligne si silence > 30 s) | Accepté |
+| [0039](0039-exposition-publique-du-deroule-scores-provisoires.md) | Exposition publique du déroulé du tour, **scores provisoires** inclus (grain volée) | Accepté |
+| [0040](0040-alerte-par-calcul-d-impact.md) | Alerter par **calcul d'impact** : prévisualisation, échelle à trois niveaux, geste délibéré | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.

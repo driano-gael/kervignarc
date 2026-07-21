@@ -22,9 +22,19 @@ from domain.erreurs import AuteurAuditInvalide, HorodatageAuditInvalide, ObjetAu
 _QUAND = datetime.datetime(2026, 3, 14, 10, 42, tzinfo=datetime.UTC)
 
 
-def test_actions_auditees_sont_les_trois_du_ca() -> None:
-    """Le CA énumère un ensemble **fermé** : corrections de score, validations, forfaits."""
-    assert {a.value for a in ActionAuditee} == {"validation", "correction_score", "forfait"}
+def test_actions_auditees_sont_l_ensemble_ferme_trace() -> None:
+    """Ensemble **fermé** des actes tracés : les trois d'E10US005 + `replacement` (E12US007,
+    ADR-0040).
+
+    L'enum est étendue par chaque US qui trace un nouvel acte sensible ; ce test **est** l'oracle du
+    vocabulaire courant (non-régression) : validation/correction/forfait (E10US005), replacement
+    (régénération massive du plan de cibles)."""
+    assert {a.value for a in ActionAuditee} == {
+        "validation",
+        "correction_score",
+        "forfait",
+        "replacement",
+    }
 
 
 def test_creer_une_validation_sans_avant_apres() -> None:

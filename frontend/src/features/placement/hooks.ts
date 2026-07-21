@@ -9,7 +9,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   type Destination,
+  type PlanDeCibles,
   deplacerInscription,
+  getImpactRegeneration,
   getPlanDeCibles,
   placerRestants,
   regenererPlan,
@@ -28,11 +30,33 @@ export function usePlanDeCibles(tournoiId: number, departId: number) {
   })
 }
 
+// Clé de la prévisualisation d'impact (E12US007) : distincte du plan, pour l'invalider après une
+// régénération (l'impact change) sans refetch inutile tant que le panneau de confirmation est fermé.
+export const cleImpact = (tournoiId: number, departId: number) =>
+  ['impact-regeneration', tournoiId, departId] as const
+
+// N'interroge le serveur que lorsque `actif` (le panneau de confirmation est ouvert) : inutile de
+// calculer l'impact tant que l'admin ne demande pas à régénérer.
+export function useImpactRegeneration(tournoiId: number, departId: number, actif: boolean) {
+  return useQuery({
+    queryKey: cleImpact(tournoiId, departId),
+    queryFn: () => getImpactRegeneration(tournoiId, departId),
+    enabled: actif,
+  })
+}
+
 export function useRegenerer(tournoiId: number, departId: number) {
   const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => regenererPlan(tournoiId, departId),
+  // `confirme` (variable de mutation, typée explicitement) autorise l'écrasement d'un plan massif
+  // (E12US007) ; les appelants passent `false` (première génération / plan sans score) ou `true`.
+  return useMutation<PlanDeCibles, Error, boolean>({
+    mutationFn: (confirme) => regenererPlan(tournoiId, departId, confirme),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: clePlan(tournoiId, departId) }),
+    // `onSettled` (succès **et** échec) : après un succès l'impact change ; après un 409
+    // `replacement_non_confirme` — course confirmation→massif, un score validé pendant que le
+    // panneau était ouvert — le refetch fait **rebasculer** le panneau en niveau massif, qui
+    // réclame alors le mot REPLACER. Sans ça, l'admin resterait sur un dialogue périmé.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: cleImpact(tournoiId, departId) }),
   })
 }
 

@@ -25,11 +25,14 @@ from application.erreurs import (
     DeplacementInvalide,
     GabaritDuTournoiAbsent,
     InscriptionIntrouvable,
+    ReplacementNonConfirme,
     TournoiIntrouvable,
 )
 from domain.archer import ArcherId
 from domain.depart import DepartId
+from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.gabarit_salle import Cible, GabaritSalle
+from domain.impact import ImpactRegeneration, NiveauImpact
 from domain.inscription import Inscription, InscriptionId
 from domain.placement import (
     Affectation,
@@ -49,11 +52,19 @@ from domain.ports import (
     CategorieRepository,
     DepartRepository,
     GabaritSalleRepository,
+    Horloge,
     InscriptionRepository,
     PlacementRepository,
+    SerieRepository,
     TournoiRepository,
 )
 from domain.tournoi import TournoiId
+
+# Auteur de la trace d'audit d'une régénération massive : l'action est **admin**, et l'admin est un
+# **secret**, pas une personne nommée (E10US002, `D-13`) — on fige donc le rôle, pas un nom.
+# Cohérent
+# avec l'agrégat `EntreeAudit` qui exige un auteur non vide (« qui a agi »).
+_AUTEUR_ADMIN = "Administrateur"
 
 
 @dataclass
@@ -89,6 +100,8 @@ class ServicePlacement:
         categories: CategorieRepository,
         blasons: BlasonRepository,
         placements: PlacementRepository,
+        series: SerieRepository,
+        horloge: Horloge,
     ) -> None:
         self._tournois = tournois
         self._departs = departs
@@ -98,6 +111,10 @@ class ServicePlacement:
         self._categories = categories
         self._blasons = blasons
         self._placements = placements
+        # E12US007 : `series` sert au **calcul d'impact** (« quelles cibles ont déjà des scores ») ;
+        # `horloge` **date** la trace d'audit d'une régénération massive (le domaine reste pur).
+        self._series = series
+        self._horloge = horloge
 
     # --- Lecture -------------------------------------------------------------------------------
 
@@ -111,15 +128,44 @@ class ServicePlacement:
         contexte = self._charger(tournoi_id, depart_id)
         return self._construire_plan(contexte, self._placements.par_depart(depart_id))
 
+    def impact_regeneration(self, tournoi_id: TournoiId, depart_id: DepartId) -> ImpactRegeneration:
+        """Calcule l'impact **réel** de régénérer le plan d'un départ (E12US007, ADR-0040).
+
+        Lecture pure (aucune écriture) : c'est la **prévisualisation** que le front interroge avant
+        d'agir, pour afficher l'alerte chiffrée — « N archers replacés ; M cibles ont des scores ».
+        Mêmes gardes 404 que la lecture du plan (`_charger`).
+        """
+        contexte = self._charger(tournoi_id, depart_id)
+        return self._impact(contexte, tournoi_id, depart_id)
+
     # --- Écritures (via la file, ADR-0005) -----------------------------------------------------
 
-    def regenerer(self, tournoi_id: TournoiId, depart_id: DepartId) -> PlanDeCibles:
+    def regenerer(
+        self, tournoi_id: TournoiId, depart_id: DepartId, *, confirme: bool = False
+    ) -> PlanDeCibles:
         """(Re)génère le plan auto et **écrase** l'existant — sert aussi d'« annuler ».
 
         Déterministe (ADR-0023) : « annuler les modifications » n'a pas besoin d'instantané, c'est
         cette même régénération (ADR-0024). Les archers que l'auto ne place pas restent en réserve.
+
+        **Alerte par calcul d'impact (E12US007, ADR-0040)** : l'impact est **recalculé ici**, dans
+        la file (jamais cru sur parole — c'est ce qui évite le défaut de DETTE-007). Si le niveau
+        est `MASSIF` (des archers placés **et** des scores existent) et que l'admin n'a pas
+        `confirme`, on lève `ReplacementNonConfirme` (409 chiffré, état inchangé). Une régénération
+        massive laisse une **trace d'audit** co-écrite atomiquement avec le plan (ADR-0035) ; les
+        niveaux `AUCUN` (première génération) et `CONFIRMATION` (placement sans score, réversible)
+        passent directement, sans trace.
         """
         contexte = self._charger(tournoi_id, depart_id)
+        impact = self._impact(contexte, tournoi_id, depart_id)
+        if impact.niveau is NiveauImpact.MASSIF and not confirme:
+            raise ReplacementNonConfirme(
+                f"Régénérer ce plan replacera {impact.archers_deplaces} archer(s) ; "
+                f"{impact.cibles_avec_scores} cible(s) ont déjà des scores (conservés). "
+                "Confirmez pour écraser le placement.",
+                archers_deplaces=impact.archers_deplaces,
+                cibles_avec_scores=impact.cibles_avec_scores,
+            )
         plan = placer(contexte.gabarit.cibles, tuple(contexte.donnees.values()))
         affectations = [
             Affectation(
@@ -130,8 +176,66 @@ class ServicePlacement:
             for cible in plan.cibles
             for pose in cible.placements
         ]
-        self._placements.definir_plan(depart_id, affectations)
+        if impact.niveau is NiveauImpact.MASSIF:
+            self._placements.definir_plan_avec_trace(
+                depart_id, affectations, self._trace_replacement(tournoi_id, depart_id, impact)
+            )
+        else:
+            self._placements.definir_plan(depart_id, affectations)
         return self._construire_plan(contexte, affectations)
+
+    def _impact(
+        self, contexte: _Contexte, tournoi_id: TournoiId, depart_id: DepartId
+    ) -> ImpactRegeneration:
+        """Chiffre l'impact d'une régénération : archers actuellement placés + cibles avec scores.
+
+        `archers_deplaces` = toutes les affectations actuelles (le glouton déterministe re-brasse
+        tout). `cibles_avec_scores` = cibles distinctes du plan **actuel** dont un archer a **au
+        moins une volée validée** — la marque de « données réelles produites » (la ligne de partage
+        du CA). « A tiré » = **volée validée**, jamais une simple saisie provisoire : c'est
+        l'arbitrage daté du 20/07/2026 (reversé dans `stories/E02-inscriptions.md`, cf.
+        `Serie.nb_fleches_validees`), cohérent avec `cumul`, le classement et les gardes
+        d'engagement — une volée saisie non validée est un état réversible, pas une donnée réelle.
+        Une seule requête `par_tournoi` (pas de N+1) fournit l'ensemble des archers ayant tiré.
+        """
+        affectations = self._placements.par_depart(depart_id)
+        archers_avec_scores = {
+            serie.archer_id
+            for serie in self._series.par_tournoi(tournoi_id)
+            if serie.nb_fleches_validees > 0
+        }
+        cibles_avec_scores = {
+            affectation.cible_index
+            for affectation in affectations
+            if contexte.archer_par_inscription.get(affectation.inscription_id)
+            in archers_avec_scores
+        }
+        return ImpactRegeneration(
+            archers_deplaces=len(affectations),
+            cibles_avec_scores=len(cibles_avec_scores),
+        )
+
+    def _trace_replacement(
+        self, tournoi_id: TournoiId, depart_id: DepartId, impact: ImpactRegeneration
+    ) -> EntreeAudit:
+        """Construit la trace d'audit d'une régénération massive (datée par le port `Horloge`).
+
+        L'agrégat reste pur : le service **date** (via `Horloge`), le domaine ne lit jamais
+        l'horloge. `avant`/`apres` gardent le décompte chiffré au moment de l'acte — la valeur de
+        preuve du CA.
+        """
+        return EntreeAudit.creer(
+            tournoi_id=tournoi_id,
+            action=ActionAuditee.REPLACEMENT,
+            auteur=_AUTEUR_ADMIN,
+            horodatage=self._horloge.maintenant(),
+            objet=f"Plan de cibles du départ {depart_id}",
+            avant=(
+                f"{impact.archers_deplaces} archer(s) placé(s), "
+                f"{impact.cibles_avec_scores} cible(s) avec scores"
+            ),
+            apres="plan régénéré",
+        )
 
     def deplacer(
         self,

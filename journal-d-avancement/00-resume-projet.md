@@ -78,6 +78,10 @@ Tout ce qu'il faut pour préparer un tournoi avant le jour J :
 
 - **Placement automatique** des archers sur le plan de cibles.
 - **Ajustement manuel** par glisser-déposer.
+- **Alerte par calcul d'impact** avant de régénérer un plan : l'appli **ne prévient que quand ça
+  compte** — silence tant qu'aucun score n'existe, et **alerte chiffrée** (« 156 archers vont être
+  replacés ; 4 cibles ont déjà des scores, conservés ») quand la partie est engagée, où il faut alors
+  **taper un mot** pour confirmer. Chaque replacement de ce type laisse une **trace** dans le journal.
 
 *Restent à venir : contraintes (≥ 2 clubs par cible, séparation catégorie/blason), placement des
 duellistes côte à côte, et le placement intégral 1→N du grand format.*
@@ -155,11 +159,11 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **51 US livrées** sur `main` (mergées, revues, CI verte) à la date du 21/07/2026 — dont E07US009,
+- **52 US livrées** sur `main` (mergées, revues, CI verte) à la date du 21/07/2026 — dont E12US007,
   optimiste d'un cran sur la branche jusqu'à son merge.
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : bien avancé
-  (38/46)** — supervision, classement, vues publiques, suivi d'archers et déroulé du tour en direct
-  faits ; restent la complétude, les paiements et quelques imprimables.
-- Dernière US livrée : **E07US009** (suivre le déroulé du tour en direct).
-- Prochaine US prévue : **E12US007** (alerter par calcul d'impact — règle transverse aux écritures) —
-  cf. [`SUIVI-US.md`](SUIVI-US.md).
+  (39/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct et
+  alerte par calcul d'impact faits ; restent la complétude, les paiements et quelques imprimables.
+- Dernière US livrée : **E12US007** (alerter par calcul d'impact — règle transverse posée sur la
+  régénération du plan de cibles).
+- Prochaine US prévue : **E08US002** (suivi des paiements) — cf. [`SUIVI-US.md`](SUIVI-US.md).

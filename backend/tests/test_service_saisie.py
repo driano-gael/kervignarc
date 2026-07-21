@@ -179,6 +179,11 @@ class FauxPlacementRepository:
     def definir_plan(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
         self._par_depart[depart_id] = list(affectations)
 
+    def definir_plan_avec_trace(
+        self, depart_id: DepartId, affectations: Sequence[Affectation], entree: EntreeAudit
+    ) -> None:
+        raise NotImplementedError("Non exercé par ServiceSaisie.")
+
     def poser_plusieurs(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
         self._par_depart.setdefault(depart_id, []).extend(affectations)
 
