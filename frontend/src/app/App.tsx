@@ -45,9 +45,15 @@ export function App() {
     aJetonScoreur,
   })
 
-  // La tablette n'a pas d'échappatoire d'en-tête (D-13 : verrou physique) — sa sortie est le geste
-  // « Détacher » dans l'écran de poste. L'écran de choix (role === null) n'en a pas non plus.
-  const changementPossible = role !== null && role !== 'tablette'
+  // Échappatoire d'en-tête « Changer de rôle ». Le verrou D-13 (pas d'échappatoire) ne vaut que pour
+  // une **vraie** tablette — poste rattaché (`estPoste`) ou arrivée par QR (`codePoste`) : contrôle
+  // d'accès physique. Une tablette **seulement choisie au menu** (marqueur `roleChoisi='tablette'`,
+  // pas encore rattachée) reste réversible : sans ça, un mauvais tap sur « Tablette » piège
+  // l'utilisateur sur le rattachement, sans « Détacher » (qui n'existe qu'une fois rattaché) ni
+  // moyen de revenir au choix (correctif de revue adversariale E00US017). L'écran de choix
+  // (role === null) n'a pas d'échappatoire non plus.
+  const tabletteVerrouillee = role === 'tablette' && (estPoste || codePoste !== null)
+  const changementPossible = role !== null && !tabletteVerrouillee
 
   return (
     <div className="app">

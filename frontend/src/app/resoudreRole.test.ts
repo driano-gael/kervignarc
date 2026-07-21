@@ -58,4 +58,16 @@ describe('resoudreRole — précédence de l’aiguillage d’entrée', () => {
   it('admin prime sur scoreur quand les deux jetons traînent sans choix', () => {
     expect(resoudreRole({ ...vierge, aJetonAdmin: true, aJetonScoreur: true })).toBe('admin')
   })
+
+  it('le choix explicite prime AUSSI sur un jeton scoreur hérité (symétrie du cas admin)', () => {
+    expect(resoudreRole({ ...vierge, roleChoisi: 'public', aJetonScoreur: true })).toBe('public')
+  })
+
+  it('le verrou poste prime sur un jeton admin résiduel (ex-admin sur tablette rattachée → tablette)', () => {
+    expect(resoudreRole({ ...vierge, estPoste: true, aJetonAdmin: true })).toBe('tablette')
+  })
+
+  it('une arrivée par QR prime sur un choix admin mémorisé (le QR est le choix, D-13)', () => {
+    expect(resoudreRole({ ...vierge, codePosteUrl: true, roleChoisi: 'admin' })).toBe('tablette')
+  })
 })

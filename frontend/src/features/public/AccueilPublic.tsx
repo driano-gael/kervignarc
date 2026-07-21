@@ -36,14 +36,10 @@ export function AccueilPublic() {
 
   return (
     <div className="app__contenu--colonnes">
-      {/* Porte **Public** (E00US017, ADR-0042) : liste en lecture seule **sans** login admin
-          (`montrerConnexion={false}`) — le public ne peut pas escalader. Le scoreur et la tablette
-          ont désormais leurs propres portes à l'écran d'accueil ; on ne les propose plus ici. */}
-      <GestionTournois
-        selectionneId={selection?.id ?? null}
-        onChoisi={setSelection}
-        montrerConnexion={false}
-      />
+      {/* Porte **Public** (E00US017, ADR-0042) : liste en lecture seule. `GestionTournois` ne porte
+          plus le login admin (parti dans `CoquilleAdmin`, porte Admin) — le public ne peut pas
+          escalader. Le scoreur et la tablette ont désormais leurs propres portes ; plus proposés ici. */}
+      <GestionTournois selectionneId={selection?.id ?? null} onChoisi={setSelection} />
 
       {/* `key={selection.id}` : changer directement de tournoi (la liste reste cliquable au-dessus)
           **remonte** le sous-arbre au lieu de le réconcilier en place — sinon le filtre catégorie et
