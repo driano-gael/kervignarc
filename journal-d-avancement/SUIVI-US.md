@@ -18,20 +18,24 @@
 
 ## 🎯 Prochaine US
 
-> **`E12US005` — Afficher la complétude du tournoi** *(reprise de la séquence J1)*
+> **`E00US017` — Écran d'accueil : choisir son appareil / rôle** *(placée en tête le 21/07 à la demande
+> du commanditaire)*
 >
-> `E00US013` (factoriser les briques d'UI) est **terminée et poussée** (revue faite) : `MessageErreur`
-> vit désormais dans `frontend/src/shared/ui/` — **point de vérité unique** ; **19 rendus** dupliqués
-> (18 définitions + le rendu inline de `postes`) ralliés, **rendu inchangé**, DETTE-004 **résorbée**.
-> Le décompte réel (grep terrain) était **18 copies / 17 features + 1 inline**, pas les « 16 » du
-> narratif — la baseline sous-numérotait. Les autres `role="alert"` (blocs de confirmation, refus 409
-> ambre de placement) ont été **examinés et laissés** à dessein. Refactor mécanique, sans ADR ni
-> changement de CSS : l'ambre `DV-03` reste à E01US016, qui trouvera un point d'application unique.
+> **Pourquoi en tête, hors sa séquence J3 d'origine** : au lancement sur PC, l'app tombe sur la
+> consultation publique/tablette faute d'accueil admin — l'aiguillage par appareil est aujourd'hui
+> **implicite** (`frontend/src/app/App.tsx`). E00US017 pose l'**écran de choix** (Tablette / Téléphone /
+> Admin PC), persisté en `localStorage`, qui va droit au bon rôle aux ouvertures suivantes. **Toutes ses
+> dépendances sont livrées** (E00US015, E04US001, E10US002, E07US006) → actionnable immédiatement.
+> **Décision structurante ⇒ ADR à écrire à l'implémentation.** Détail :
+> [`stories/E00-socle.md`](../stories/E00-socle.md) § E00US017. *(Cadrage d'intention en tête d'US visible
+> **requis** avant de coder — CLAUDE.md § Workflow.)*
 >
-> **`E12US005` reprend la séquence J1** (Jalon 1, tournoi de qualification de bout en bout) : afficher
-> la **complétude** du tournoi (ce qui est prêt / manquant avant de lancer). Détail :
-> [`stories/E12-pilotage-jour-j.md`](../stories/E12-pilotage-jour-j.md). *(Cadrage d'intention en tête d'US
-> visible recommandé avant de coder — CLAUDE.md § Workflow.)*
+> **Puis `E12US005` — Afficher la complétude du tournoi** reprend la séquence J1 (ce qui est prêt /
+> manquant avant de lancer). Détail : [`stories/E12-pilotage-jour-j.md`](../stories/E12-pilotage-jour-j.md).
+>
+> *Fait juste avant :* `E00US013` (factoriser les briques d'UI) — terminée et poussée, revue faite :
+> `MessageErreur` centralisé dans `frontend/src/shared/ui/`, 19 rendus dupliqués ralliés, rendu inchangé,
+> DETTE-004 résorbée.
 
 ---
 
@@ -94,7 +98,7 @@
 | 47 | E10US005 | Journal d'audit métier | ✅ *(fait en avance)* |
 | 48 | E12US007 | Alerter par calcul d'impact | ✅ |
 | 49 | E08US002 | Suivi des paiements | ✅ |
-| 50 | E12US005 | Afficher la complétude du tournoi | 🎯 **suivante** *(reprise J1)* |
+| 50 | E12US005 | Afficher la complétude du tournoi | ⬜ *(reprise J1, après E00US017)* |
 | 51 | E12US006 | Rechercher un archer depuis n'importe où | ⬜ |
 | 52 | E02US005 | Détecter et fusionner les doublons | ⬜ |
 | 53 | E02US006 | Contrôler les quotas | ✅ *(fait en avance)* |
@@ -171,14 +175,16 @@
 | E13US003 | Scoring d'équipe (politique injectable) | J2 | ⬜ |
 | E13US004 | Placement, saisie & classement par équipe | J2→J3 | ⬜ |
 
-## Ajout du 20/07/2026 — ⬜ **à planifier (0/1)**
+## Ajout du 20/07/2026 — 🎯 **planifiée en tête (0/1)**
 
 > Issu de l'échange sur le modèle d'entrée de l'appli (une seule SPA, trois expériences). Cf.
-> [`stories/E00-socle.md`](../stories/E00-socle.md) § E00US017.
+> [`stories/E00-socle.md`](../stories/E00-socle.md) § E00US017. **Placée en 🎯 prochaine le 21/07**
+> (devant E12US005) : dépendances toutes livrées, corrige l'atterrissage sur le mauvais écran au
+> lancement sur PC.
 
 | US | Titre | Jalon | État |
 |---|---|---|---|
-| E00US017 | Écran d'accueil : choisir son appareil / rôle | J3 | ⬜ *(définie en `stories/`, non implémentée — ADR à l'implémentation)* |
+| E00US017 | Écran d'accueil : choisir son appareil / rôle | J3 | 🎯 **prochaine** *(placée en tête le 21/07 ; ADR à l'implémentation)* |
 
 ## Ajout du 21/07/2026 — ⬜ **à planifier (0/2)**
 
