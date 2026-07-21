@@ -51,7 +51,12 @@ class InscriptionDetaillee:
 
 
 class ServiceInscriptions:
-    """Cas d'usage des inscriptions : inscrire, lister, marquer payé, désinscrire."""
+    """Cas d'usage des inscriptions : inscrire, lister (avec montant dû dérivé), désinscrire.
+
+    Le **marquage du paiement** (`paye`) ne vit plus ici : il a migré vers `application.paiements`
+    (E08US002), où il est **audité** et complété du marquage groupé (par archer, par club). Ce
+    service ne fait plus que le lien archer↔départ et la dérivation du montant dû (E08US001).
+    """
 
     def __init__(
         self,
@@ -132,12 +137,6 @@ class ServiceInscriptions:
         """
         return sum(detail.montant_du_centimes for detail in self.lister_par_archer(archer_id))
 
-    def marquer_paye(self, inscription_id: InscriptionId, paye: bool) -> InscriptionDetaillee:
-        """Bascule le statut de paiement d'une inscription. Lève `InscriptionIntrouvable` sinon."""
-        inscription = self._inscription_existante(inscription_id)
-        maj = self._inscriptions.enregistrer(inscription.marquer_paye(paye))
-        return InscriptionDetaillee(maj, self._depart_lie(maj))
-
     def desinscrire(self, inscription_id: InscriptionId) -> None:
         """Désinscrit un archer d'un départ (libre). Lève `InscriptionIntrouvable` sinon."""
         inscription = self._inscription_existante(inscription_id)
@@ -168,13 +167,3 @@ class ServiceInscriptions:
         if inscription is None:
             raise InscriptionIntrouvable(f"Aucune inscription d'identifiant {inscription_id}.")
         return inscription
-
-    def _depart_lie(self, inscription: Inscription) -> Depart:
-        """Relit le départ d'une inscription qu'on vient de créer/modifier dans la **même**
-        exécution de la file d'écriture (`inscrire`, `marquer_paye`) : sérialisé contre la
-        suppression de départ, le départ existe forcément. L'`assert` est donc légitime ici — à la
-        différence de `lister_par_archer`, qui lit hors file et tolère le `None`.
-        """
-        depart = self._departs.par_id(inscription.depart_id)
-        assert depart is not None, "Une inscription pointe toujours vers un départ existant."
-        return depart

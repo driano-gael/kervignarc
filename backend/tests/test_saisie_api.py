@@ -104,7 +104,9 @@ def _placer_archer(
         Archer.creer(f"CIBLE{suffixe}", "Alice", tournoi_id, categorie_id)
     )
     assert archer.id is not None
-    inscription = InscriptionRepositorySQL(sf).ajouter(Inscription.creer(archer.id, depart_id))
+    inscription = InscriptionRepositorySQL(sf, AuditRepositorySQL(sf)).ajouter(
+        Inscription.creer(archer.id, depart_id)
+    )
     assert inscription.id is not None
     PlacementRepositorySQL(sf, AuditRepositorySQL(sf)).poser_plusieurs(
         depart_id, [Affectation(inscription.id, cible_index, position)]

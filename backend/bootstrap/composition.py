@@ -33,6 +33,7 @@ from api.v1.feuille_de_marque import router as feuille_de_marque_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
 from api.v1.inscriptions import router as inscriptions_router
+from api.v1.paiements import router as paiements_router
 from api.v1.placement import router as placement_router
 from api.v1.postes import router as postes_router
 from api.v1.postes import session_router as poste_session_router
@@ -56,6 +57,7 @@ from application.feuille_de_marque import ServiceFeuilleDeMarque
 from application.gabarits import ServiceGabarits
 from application.grain_validation import ServiceGrainValidation
 from application.inscriptions import ServiceInscriptions
+from application.paiements import ServicePaiements
 from application.placement import ServicePlacement
 from application.postes import ServicePostes
 from application.saisie import ServiceSaisie
@@ -172,10 +174,13 @@ def create_app(
     archer_repository = ArcherRepositorySQL(database.session_factory)
     score_repository = ScoreRepositorySQL(database.session_factory)
     depart_repository = DepartRepositorySQL(database.session_factory)
-    inscription_repository = InscriptionRepositorySQL(database.session_factory)
     scoreur_repository = ScoreurRepositorySQL(database.session_factory)
     poste_repository = PosteRepositorySQL(database.session_factory)
     audit_repository = AuditRepositorySQL(database.session_factory)
+    # L'inscription co-écrit sa trace de **paiement** (E08US002) dans une seule transaction
+    # (ADR-0035) : l'adapter reçoit l'`audit_repository` (concret) pour `consigner_dans` sur la
+    # session partagée — couplage **infra → infra**, comme la saisie et le placement.
+    inscription_repository = InscriptionRepositorySQL(database.session_factory, audit_repository)
     # Le plan de cibles co-écrit sa trace d'audit d'une régénération **massive** dans une seule
     # transaction (E12US007, ADR-0035, ADR-0040) : l'adapter reçoit l'`audit_repository` (concret)
     # pour `consigner_dans` sur la session partagée — couplage **infra → infra**, comme la saisie.
@@ -250,6 +255,20 @@ def create_app(
     # l'archer (même tournoi, unicité), marquer payé, désinscrire ; le montant dû dérive du tarif.
     app.state.service_inscriptions = ServiceInscriptions(
         inscription_repository, archer_repository, depart_repository
+    )
+    # Suivi des paiements (E08US002) : consulter (par archer, par club) et **marquer** le statut
+    # (simple, par archer, par club — tout audité). Dérive dû/payé/reste du booléen `paye` par
+    # inscription et des tarifs (E08US001, ADR-0017) ; le club sert les totaux et le bucket « sans
+    # club » (ADR-0014). `HorlogeSysteme` date la trace `PAIEMENT` ; l'atomicité acte↔trace est dans
+    # l'adapter d'inscription (ADR-0035). Le marquage a **quitté** `ServiceInscriptions` : une seule
+    # voie d'écriture du paiement, toute tracée.
+    app.state.service_paiements = ServicePaiements(
+        tournoi_repository,
+        archer_repository,
+        depart_repository,
+        inscription_repository,
+        club_repository,
+        HorlogeSysteme(),
     )
     # Placement (E03US001 lecture ; E03US004 matérialisation + ajustement, ADR-0024). Le service
     # joint archer → catégorie → blason par défaut pour nourrir le moteur pur (`domain/placement`),
@@ -394,6 +413,7 @@ def create_app(
     app.include_router(tournois_router)
     app.include_router(departs_router)
     app.include_router(inscriptions_router)
+    app.include_router(paiements_router)
     app.include_router(categories_router)
     app.include_router(blasons_router)
     app.include_router(clubs_router)

@@ -41,7 +41,9 @@ class ActionAuditee(str, Enum):
     `(str, Enum)` : la valeur est un slug stable, stocké tel quel en base (comme `StatutTournoi`).
     Producteurs : `VALIDATION`/`CORRECTION_SCORE` (E04US002), `FORFAIT` (E12US004, à venir),
     `REPLACEMENT` (E12US007 — régénération **massive** du plan de cibles, quand des scores existent
-    déjà, [ADR-0040]). Les nommer ici n'anticipe pas leur code : c'est le **vocabulaire** du CA.
+    déjà, [ADR-0040]), `PAIEMENT` (E08US002 — marquage d'un statut de paiement, simple ou groupé :
+    un mouvement d'argent se trace). Les nommer ici n'anticipe pas leur code : c'est le
+    **vocabulaire** du CA.
 
     [ADR-0040]: ../../docs/adr/0040-alerte-par-calcul-d-impact.md
     """
@@ -50,6 +52,7 @@ class ActionAuditee(str, Enum):
     CORRECTION_SCORE = "correction_score"
     FORFAIT = "forfait"
     REPLACEMENT = "replacement"
+    PAIEMENT = "paiement"
 
 
 @dataclass(frozen=True)
