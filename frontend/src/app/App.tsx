@@ -1,40 +1,76 @@
-// Shell de l'application : charpente minimale (en-tête + indicateur de connexion) qui aiguille vers
-// l'écran de poste (tablette rattachée) ou l'appli d'organisation (coquille admin + consultation
-// publique, E00US015).
+// Shell de l'application (E00US017, ADR-0042) : charpente minimale (en-tête + « changer de rôle » +
+// indicateur de connexion) qui aiguille vers **le monde du rôle choisi**.
+//
+// Au 1ᵉʳ lancement, l'app présente un **écran de choix** à quatre portes (Tablette / Public / Scoreur
+// / Admin) ; le choix est mémorisé et l'app y va **droit** ensuite. Le rôle **effectif** est résolu
+// par `resoudreRole` (fonction pure testée) : une **session en cours prime** sur le choix, pour qu'un
+// rechargement ne renvoie jamais sur l'écran de choix (résilience jour J). Arriver par le QR d'une
+// cible (`?poste=<code>`) force le rôle tablette (verrou physique D-13).
 
 import { useEffect } from 'react'
 import { CoquilleAdmin } from '../features/admin/CoquilleAdmin'
 import { EspacePoste } from '../features/poste/EspacePoste'
 import { codePosteDepuisUrl } from '../features/poste/url'
+import { AccueilPublic } from '../features/public/AccueilPublic'
+import { EspaceScoreur } from '../features/scoreur-session/EspaceScoreur'
 import { IndicateurConnexion } from '../shared/realtime/IndicateurConnexion'
+import { useSessionAdminStore } from '../shared/stores/sessionAdminStore'
 import { useSessionPosteStore } from '../shared/stores/sessionPosteStore'
+import { useSessionRoleStore } from '../shared/stores/sessionRoleStore'
+import { useSessionScoreurStore } from '../shared/stores/sessionScoreurStore'
+import { ChangerDeRole } from './ChangerDeRole'
+import { EcranAccueil } from './EcranAccueil'
+import { resoudreRole } from './resoudreRole'
 import './App.css'
 
 export function App() {
-  // Une tablette qui **est un poste** (marqueur persistant, posé au rattachement ou à l'arrivée par
-  // le QR de sa cible `?poste=<code>`) ouvre directement l'écran de poste — elle ne voit jamais
-  // l'admin (D-13), et une session révoquée la laisse sur le rattachement, pas sur l'admin. Elle ne
-  // rebascule sur l'app normale qu'au **détachement explicite**. Sinon, l'app normale.
+  const roleChoisi = useSessionRoleStore((s) => s.role)
   const estPoste = useSessionPosteStore((s) => s.estPoste)
   const entrerModePoste = useSessionPosteStore((s) => s.entrerModePoste)
+  const aJetonAdmin = useSessionAdminStore((s) => s.jeton) !== null
+  const aJetonScoreur = useSessionScoreurStore((s) => s.jeton) !== null
   const codePoste = codePosteDepuisUrl()
 
+  // Arriver par le QR de sa cible marque d'emblée le navigateur comme poste (avant même le
+  // rattachement) : le rôle tablette est alors verrouillé et l'écran de choix sauté.
   useEffect(() => {
     if (codePoste !== null && !estPoste) entrerModePoste()
   }, [codePoste, estPoste, entrerModePoste])
 
-  const afficherPoste = estPoste || codePoste !== null
+  const role = resoudreRole({
+    roleChoisi,
+    estPoste,
+    codePosteUrl: codePoste !== null,
+    aJetonAdmin,
+    aJetonScoreur,
+  })
+
+  // La tablette n'a pas d'échappatoire d'en-tête (D-13 : verrou physique) — sa sortie est le geste
+  // « Détacher » dans l'écran de poste. L'écran de choix (role === null) n'en a pas non plus.
+  const changementPossible = role !== null && role !== 'tablette'
 
   return (
     <div className="app">
       <header className="app__entete">
         <h1 className="app__titre">Kervignarc</h1>
-        {/* L'état de connexion reste porté par cette **pastille** permanente (E00US015 a retiré
-            l'écran de diagnostic redondant `systeme/EtatBackend`) — un voyant, pas une destination. */}
-        <IndicateurConnexion />
+        <div className="app__actions">
+          {changementPossible && <ChangerDeRole />}
+          {/* Voyant de connexion permanent — un état, pas une destination. */}
+          <IndicateurConnexion />
+        </div>
       </header>
       <main className="app__contenu">
-        {afficherPoste ? <EspacePoste codeInitial={codePoste} /> : <CoquilleAdmin />}
+        {role === 'tablette' ? (
+          <EspacePoste codeInitial={codePoste} />
+        ) : role === 'public' ? (
+          <AccueilPublic />
+        ) : role === 'scoreur' ? (
+          <EspaceScoreur />
+        ) : role === 'admin' ? (
+          <CoquilleAdmin />
+        ) : (
+          <EcranAccueil />
+        )}
       </main>
     </div>
   )

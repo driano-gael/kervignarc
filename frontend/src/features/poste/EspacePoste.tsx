@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Saisie } from '../saisie/Saisie'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { type CiblePoste, useSessionPosteStore } from '../../shared/stores/sessionPosteStore'
+import { useSessionRoleStore } from '../../shared/stores/sessionRoleStore'
 import type { Theme } from '../../shared/theme'
 import {
   useDeconnexionPoste,
@@ -87,11 +88,15 @@ function FormulaireRattachement({ codeInitial }: { codeInitial: string | null })
 
 function PosteRattache({ poste }: { poste: CiblePoste }) {
   const deconnexion = useDeconnexionPoste()
+  const reinitialiserRole = useSessionRoleStore((s) => s.reinitialiser)
 
   const detacher = () => {
     // Retirer `?poste=…` de l'URL **avant** de détacher : sinon `codePoste` resterait non nul et l'app
     // réafficherait l'écran de poste (voire le re-rattacherait automatiquement) juste après.
     oublierCodePosteUrl()
+    // Oublier aussi le marqueur de rôle (E00US017, ADR-0042) : sans quoi `resoudreRole` renverrait
+    // encore « tablette » (le choix persiste) → retour au rattachement au lieu de l'écran de choix.
+    reinitialiserRole()
     deconnexion.mutate()
   }
 

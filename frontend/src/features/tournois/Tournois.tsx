@@ -32,9 +32,13 @@ import {
 export function GestionTournois({
   selectionneId,
   onChoisi,
+  // La porte **Public** (E00US017) monte cette liste **sans** le login admin : le public ne peut pas
+  // escalader (ADR-0042). Par défaut le login reste offert (usage historique / autres appelants).
+  montrerConnexion = true,
 }: {
   selectionneId: number | null
   onChoisi: (t: Tournoi) => void
+  montrerConnexion?: boolean
 }) {
   const estAdmin = useSessionAdminStore((s) => s.jeton) !== null
   const tournois = useTournois()
@@ -67,7 +71,11 @@ export function GestionTournois({
         </div>
       )}
 
-      {estAdmin ? <FormulaireNouveauTournoi onChoisi={onChoisi} /> : <ConnexionAdmin />}
+      {estAdmin ? (
+        <FormulaireNouveauTournoi onChoisi={onChoisi} />
+      ) : montrerConnexion ? (
+        <ConnexionAdmin />
+      ) : null}
 
       {(tournois.data ?? []).length > 0 && (
         <>

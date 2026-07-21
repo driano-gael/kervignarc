@@ -21,6 +21,19 @@
   letter-spacing: -0.5px;
 }
 
+/* Actions d'en-tête à droite (E00US017) : « Changer de rôle » discret + voyant de connexion. */
+.app__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* « Changer de rôle » : échappatoire discrète, ton neutre (pas l'accent — c'est une action rare). */
+.app__changer-role {
+  color: var(--text);
+  font-size: 14px;
+}
+
 .app__contenu {
   padding-top: 24px;
 }

@@ -1,0 +1,71 @@
+/* Écran d'accueil (E00US017) : quatre portes tactiles. Habillage neutre réutilisant les jetons de
+   thème (`index.css`) — pas de palette inventée. Cibles larges (ergonomie tactile prioritaire,
+   règle 10) : chaque porte fait au moins 128 px de haut, en grille responsive. */
+
+.accueil {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.accueil__intro {
+  color: var(--text);
+  text-align: center;
+  margin: 0.5rem 0 1.5rem;
+}
+
+.accueil__portes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.accueil__porte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 8rem;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition:
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.accueil__porte:hover {
+  border-color: var(--accent);
+}
+
+.accueil__porte:active {
+  transform: scale(0.99);
+}
+
+.accueil__porte:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.accueil__icone {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.accueil__titre {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.accueil__description {
+  color: var(--text);
+  font-size: 0.9rem;
+}

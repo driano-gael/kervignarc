@@ -114,6 +114,11 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
 
 - L'**ossature de navigation** de l'application admin (la coquille dans laquelle les écrans viennent
   se loger).
+- Un **écran d'accueil qui demande le rôle de l'appareil** au premier lancement — **Tablette**,
+  **Téléphone (public)**, **Scoreur** ou **Administration** — puis **s'en souvient** et va droit au bon
+  écran ensuite. Le spectateur ne peut plus accéder par mégarde au mot de passe admin ou au code
+  scoreur ; on change de rôle par un lien discret. Détail dans
+  [`2026-07-21-22h10-choisir-son-role-au-lancement.md`](2026-07-21-22h10-choisir-son-role-au-lancement.md).
 
 ### 9. Suivre la qualification et l'afficher au public — *en place*
 
@@ -164,13 +169,13 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **54 US livrées** sur `main` (mergées, revues, CI verte) à la date du 21/07/2026 — dont E08US002 et
-  E00US013, optimistes d'un cran sur la branche jusqu'à leur merge.
+- **55 US livrées** sur `main` (mergées, revues, CI verte) à la date du 21/07/2026 — dont E08US002,
+  E00US013 et E00US017, optimistes d'un cran sur la branche jusqu'à leur merge.
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : bien avancé
   (40/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact et suivi des paiements faits ; restent la complétude et quelques imprimables.
-- Dernière US livrée : **E00US013** (factoriser les briques d'UI partagées — refactor mécanique, rendu
-  inchangé, DETTE-004 résorbée). Dernière à **surface visible** : **E08US002** (suivi des paiements —
-  vues par archer / par club, règlements groupés audités).
+- Dernière US livrée : **E00US017** (écran d'accueil : choisir son appareil / rôle au 1ᵉʳ lancement,
+  puis mémorisé — front seul + ADR-0042 sur le modèle d'entrée). Elle est aussi la dernière à **surface
+  visible**.
 - Prochaine US prévue : **E12US005** (afficher la complétude du tournoi — reprise de la séquence J1)
   — cf. [`SUIVI-US.md`](SUIVI-US.md).
