@@ -39,7 +39,11 @@ export function ConfirmationChiffree({
   return (
     <div className="confirmation" role="group" aria-label={titre}>
       <p className="confirmation__titre">{titre}</p>
-      <div className="confirmation__corps">{children}</div>
+      {/* `role="alert"` : l'alerte chiffrée est **annoncée** aux lecteurs d'écran dès qu'elle
+          apparaît — c'est le contenu qui décide, il ne doit pas passer inaperçu. */}
+      <div className="confirmation__corps" role="alert">
+        {children}
+      </div>
       {motRequis !== undefined && (
         <p className="confirmation__mot">
           <label htmlFor={champId}>

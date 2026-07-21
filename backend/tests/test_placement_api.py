@@ -36,10 +36,18 @@ def _semer_score(app: FastAPI, tournoi_id: int, archer_id: int) -> None:
     HTTP exigerait barème, grain, session scoreur/poste — hors sujet pour tester le **câblage** de
     l'alerte d'impact."""
     sf = app.state.database.session_factory
+    # Volée **validée** (`validee_par`) : « a des scores » au sens du CA = tir validé, pas une
+    # simple saisie provisoire (cf. `Serie.nb_fleches_validees`, arbitrage daté).
     serie = Serie(
         tournoi_id=tournoi_id,
         archer_id=archer_id,
-        volees=(Volee(numero=1, valeurs=(ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX)),),
+        volees=(
+            Volee(
+                numero=1,
+                valeurs=(ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX),
+                validee_par="Scoreur",
+            ),
+        ),
     )
     SerieRepositorySQL(sf, AuditRepositorySQL(sf), HorlogeSysteme()).enregistrer(serie)
 

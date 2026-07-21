@@ -37,6 +37,12 @@ def test_archers_places_sans_score_demande_une_confirmation() -> None:
     assert impact.niveau is NiveauImpact.CONFIRMATION
 
 
+def test_un_seul_archer_place_bascule_de_aucun_a_confirmation() -> None:
+    """Borne stricte `AUCUN → CONFIRMATION` : dès **un** archer placé (sans score), on confirme."""
+    impact = ImpactRegeneration(archers_deplaces=1, cibles_avec_scores=0)
+    assert impact.niveau is NiveauImpact.CONFIRMATION
+
+
 def test_un_score_existant_rend_l_action_massive() -> None:
     """Au moins une cible a des scores : données réelles en jeu → action **massive** (mot à taper).
 

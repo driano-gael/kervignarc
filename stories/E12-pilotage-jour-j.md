@@ -85,7 +85,8 @@
   - **Échelle à trois niveaux** (`NiveauImpact`, domaine pur) : **aucun** (aucune affectation → pas
     d'alerte), **confirmation** (des archers placés, **aucun score** → chiffrée, bouton), **massif**
     (placés **+ au moins un score** → chiffrée + **taper `REPLACER`** + **trace d'audit**). La ligne
-    de partage « données réelles produites » = **des scores existent** (niveau massif). Le serveur ne
+    de partage « données réelles produites » = **au moins une volée validée** existe (pas une simple
+    saisie provisoire — arbitrage daté du 20/07, cf. `Serie.nb_fleches_validees`), niveau massif. Le serveur ne
     bloque et ne trace **que** le niveau massif ; la confirmation du niveau *confirmation* est une
     friction **front** (config réversible, pas un acte à auditer).
   - **Geste délibéré = friction front** : le mot `REPLACER` vit au front ; le serveur n'exige qu'un

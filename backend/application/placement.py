@@ -191,13 +191,18 @@ class ServicePlacement:
 
         `archers_deplaces` = toutes les affectations actuelles (le glouton déterministe re-brasse
         tout). `cibles_avec_scores` = cibles distinctes du plan **actuel** dont un archer a **au
-        moins une volée saisie** — la marque de « données réelles produites » (la ligne de partage
-        du CA). Une série sans volée (jamais saisie) ne compte pas. Une seule requête `par_tournoi`
-        (pas de N+1) fournit l'ensemble des archers ayant tiré.
+        moins une volée validée** — la marque de « données réelles produites » (la ligne de partage
+        du CA). « A tiré » = **volée validée**, jamais une simple saisie provisoire : c'est
+        l'arbitrage daté du 20/07/2026 (reversé dans `stories/E02-inscriptions.md`, cf.
+        `Serie.nb_fleches_validees`), cohérent avec `cumul`, le classement et les gardes
+        d'engagement — une volée saisie non validée est un état réversible, pas une donnée réelle.
+        Une seule requête `par_tournoi` (pas de N+1) fournit l'ensemble des archers ayant tiré.
         """
         affectations = self._placements.par_depart(depart_id)
         archers_avec_scores = {
-            serie.archer_id for serie in self._series.par_tournoi(tournoi_id) if serie.volees
+            serie.archer_id
+            for serie in self._series.par_tournoi(tournoi_id)
+            if serie.nb_fleches_validees > 0
         }
         cibles_avec_scores = {
             affectation.cible_index

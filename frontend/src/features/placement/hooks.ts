@@ -51,10 +51,12 @@ export function useRegenerer(tournoiId: number, departId: number) {
   // (E12US007) ; les appelants passent `false` (première génération / plan sans score) ou `true`.
   return useMutation<PlanDeCibles, Error, boolean>({
     mutationFn: (confirme) => regenererPlan(tournoiId, departId, confirme),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: clePlan(tournoiId, departId) })
-      queryClient.invalidateQueries({ queryKey: cleImpact(tournoiId, departId) })
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: clePlan(tournoiId, departId) }),
+    // `onSettled` (succès **et** échec) : après un succès l'impact change ; après un 409
+    // `replacement_non_confirme` — course confirmation→massif, un score validé pendant que le
+    // panneau était ouvert — le refetch fait **rebasculer** le panneau en niveau massif, qui
+    // réclame alors le mot REPLACER. Sans ça, l'admin resterait sur un dialogue périmé.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: cleImpact(tournoiId, departId) }),
   })
 }
 

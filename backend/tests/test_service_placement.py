@@ -190,8 +190,16 @@ class FauxSerieRepository:
         self._series: list[Serie] = []
 
     def semer_score(self, tournoi_id: int, archer_id: ArcherId) -> None:
-        """Donne à un archer une série avec **une volée saisie** — il « a des scores » (impact)."""
-        volee = Volee(numero=1, valeurs=(ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX))
+        """Donne à un archer une série avec **une volée validée** — il « a des scores » (impact).
+
+        Validée (`validee_par`), pas seulement saisie : « données réelles produites » = tir
+        **validé** (arbitrage daté, cf. `Serie.nb_fleches_validees`) ; une volée provisoire ne
+        rendrait pas l'impact massif."""
+        volee = Volee(
+            numero=1,
+            valeurs=(ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX),
+            validee_par="Scoreur",
+        )
         self._series.append(Serie(tournoi_id=tournoi_id, archer_id=archer_id, volees=(volee,)))
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
@@ -267,7 +275,7 @@ class _Monde:
         )
 
     def semer_score(self, archer_id: int) -> None:
-        """Donne un score (une volée saisie) à un archer déjà inscrit — pour les tests d'impact."""
+        """Donne un score (une volée **validée**) à un archer inscrit — pour les tests d'impact."""
         self.series.semer_score(self.tournoi_id, archer_id)
 
     def depart(self, numero: int) -> int:
@@ -702,6 +710,41 @@ def test_impact_compte_les_cibles_avec_scores_sans_doublon() -> None:
     assert impact.niveau is NiveauImpact.MASSIF
     assert impact.archers_deplaces == 2
     assert impact.cibles_avec_scores == 1  # une seule cible, malgré deux archers scorés
+
+
+def test_impact_compte_les_cibles_scorees_de_maniere_additive() -> None:
+    """Le chiffre-titre « M cibles » s'additionne sur des cibles **distinctes** (U11 et adulte
+    séparés par la hauteur, ADR-0022) : deux cibles scorées → 2, pas 1."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    u11 = monde.inscrire(depart, monde.categorie(taille=0.25, hauteur=110))
+    adulte = monde.inscrire(depart, monde.categorie(taille=0.25, hauteur=130))
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)  # u11 et adulte sur deux cibles distinctes
+    monde.semer_score(u11)
+    monde.semer_score(adulte)
+
+    impact = service.impact_regeneration(monde.tournoi_id, depart)
+
+    assert impact.niveau is NiveauImpact.MASSIF
+    assert impact.cibles_avec_scores == 2
+
+
+def test_impact_exclut_une_cible_sans_score() -> None:
+    """Parmi plusieurs cibles, seules celles avec **au moins un archer scoré** comptent : la cible
+    sans donnée réelle est exclue (une scorée sur deux → 1)."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    u11 = monde.inscrire(depart, monde.categorie(taille=0.25, hauteur=110))
+    monde.inscrire(depart, monde.categorie(taille=0.25, hauteur=130))  # adulte, non scoré
+    service = monde.service
+    service.regenerer(monde.tournoi_id, depart)
+    monde.semer_score(u11)  # seule la cible de l'U11 a un score
+
+    impact = service.impact_regeneration(monde.tournoi_id, depart)
+
+    assert impact.niveau is NiveauImpact.MASSIF
+    assert impact.cibles_avec_scores == 1
 
 
 def test_regenerer_massif_sans_confirmation_est_refuse_et_chiffre() -> None:

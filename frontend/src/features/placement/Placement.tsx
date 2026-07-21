@@ -186,12 +186,27 @@ function PlanCharge({
       </div>
 
       {/* Confirmation par calcul d'impact (E12US007, ADR-0040) : l'alerte est **chiffrée** et, si des
-          scores existent déjà (niveau massif), exige de taper REPLACER. */}
+          scores existent déjà (niveau massif), exige de taper REPLACER. Un bouton « Annuler » ferme
+          le panneau **dans tous les états** (calcul en cours ou en échec compris), sinon un GET
+          d'impact en échec — plausible sur le LAN — piégerait l'admin sans issue. */}
       {confirmationAnnulation &&
-        (impact.isPending ? (
-          <p className="carte__etat">Calcul de l'impact…</p>
-        ) : impact.isError ? (
-          <MessageErreur erreur={impact.error} />
+        (impact.isPending || impact.isError ? (
+          <div className="confirmation" role="group" aria-label="Régénérer le plan de cibles">
+            {impact.isError ? (
+              <MessageErreur erreur={impact.error} />
+            ) : (
+              <p className="carte__etat">Calcul de l'impact…</p>
+            )}
+            <div className="confirmation__actions">
+              <button
+                type="button"
+                className="bouton--discret"
+                onClick={() => setConfirmationAnnulation(false)}
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
         ) : impact.data ? (
           <ConfirmationChiffree
             titre="Régénérer le plan de cibles"
@@ -202,8 +217,16 @@ function PlanCharge({
                 : 'Confirmer — écraser les ajustements'
             }
             enCours={regenerer.isPending}
+            // On n'envoie `confirme=true` que pour le niveau **massif** (que le front vient de
+            // montrer avec le mot REPLACER). Si un score est validé pendant que le panneau est
+            // ouvert (course confirmation→massif), le front envoie encore `false` : le serveur
+            // recalcule massif, refuse (409), et le panneau rebascule pour réclamer REPLACER — le
+            // geste délibéré redevient **impossible par réflexe** (CA), sans coupler le serveur à
+            // la copie d'UI (ADR-0040 §4).
             onConfirmer={() =>
-              regenerer.mutate(true, { onSuccess: () => setConfirmationAnnulation(false) })
+              regenerer.mutate(impact.data.niveau === 'massif', {
+                onSuccess: () => setConfirmationAnnulation(false),
+              })
             }
             onAnnuler={() => setConfirmationAnnulation(false)}
           >
@@ -421,18 +444,25 @@ function nomComplet(archer: Archer): string {
 // vous sûr ? » creux. Le niveau massif rappelle que les scores sont **conservés** (la régénération ne
 // réécrit que le placement) — l'archer bouge de cible, ses flèches le suivent.
 function MessageImpact({ impact }: { impact: ImpactRegeneration }) {
-  const archers = `${impact.archers_deplaces} archer${impact.archers_deplaces > 1 ? 's' : ''}`
+  // Accord au nombre : `massif` peut valoir exactement 1 archer / 1 cible (un seul placé, scoré) —
+  // « 1 archer va » / « 1 cible a », jamais le pluriel systématique.
+  const plurielArchers = impact.archers_deplaces > 1
+  const archers = `${impact.archers_deplaces} archer${plurielArchers ? 's' : ''}`
+  const replaces = `${plurielArchers ? 'vont' : 'va'} être replacé${plurielArchers ? 's' : ''}`
   if (impact.niveau === 'massif') {
-    const cibles = `${impact.cibles_avec_scores} cible${impact.cibles_avec_scores > 1 ? 's' : ''}`
+    const plurielCibles = impact.cibles_avec_scores > 1
+    const cibles = `${impact.cibles_avec_scores} cible${plurielCibles ? 's' : ''}`
     return (
       <p>
-        {archers} vont être replacés. {cibles} ont déjà des scores : ils seront{' '}
+        {archers} {replaces}. {cibles} {plurielCibles ? 'ont' : 'a'} déjà des scores : ils seront{' '}
         <strong>conservés</strong>.
       </p>
     )
   }
   return (
-    <p>{archers} vont être replacés (aucun score enregistré ; vos ajustements seront écrasés).</p>
+    <p>
+      {archers} {replaces} (aucun score enregistré ; vos ajustements seront écrasés).
+    </p>
   )
 }
 
