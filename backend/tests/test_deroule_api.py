@@ -49,10 +49,14 @@ def _migrer(url: str) -> None:
 
 
 def _serie(tournoi_id: int, archer_id: int) -> Serie:
-    """Deux volées : la 1ʳᵉ saisie mais **non validée** (en attente), la 2ᵉ **validée**.
+    """État d'en-cours **réaliste** : la volée 1 est **validée**, la volée 2 vient d'être saisie et
+    reste **en attente**.
 
-    Chaque volée porte `saisie_par`/`validee_par` = le nom du scoreur : c'est précisément ce que la
-    projection publique doit **taire** (règle 6).
+    La validation avance dans l'ordre (grain de validation, E01US015) : à mi-tour, les premières
+    volées sont verrouillées et la dernière saisie attend encore le scoreur — jamais l'inverse. On
+    sème donc V1 validée / V2 en attente (et non V2 validée sur V1 non validée, un état que le
+    domaine ne produit pas). Chaque volée porte `saisie_par`/`validee_par` = le nom du scoreur :
+    c'est précisément ce que la projection publique doit **taire** (règle 6).
     """
     return Serie(
         tournoi_id=tournoi_id,
@@ -62,12 +66,12 @@ def _serie(tournoi_id: int, archer_id: int) -> Serie:
                 numero=1,
                 valeurs=(ZoneScore("10"), ZoneScore("9"), ZoneScore("8")),
                 saisie_par=_SCOREUR,
+                validee_par=_SCOREUR,
             ),
             Volee(
                 numero=2,
                 valeurs=(ZoneScore("7"), ZoneScore("6"), ZoneScore("M")),
                 saisie_par=_SCOREUR,
-                validee_par=_SCOREUR,
             ),
         ),
     )
@@ -117,19 +121,24 @@ def test_deroule_expose_volees_et_statut_par_volee(
     assert [v["numero"] for v in volees] == [1, 2]
     assert volees[0]["valeurs"] == ["10", "9", "8"]
     assert volees[0]["points"] == 27
-    assert volees[0]["statut"] == "en_attente"  # saisie, pas encore validée
+    assert volees[0]["statut"] == "valide"  # verrouillée par le scoreur
     assert volees[1]["valeurs"] == ["7", "6", "M"]
     assert volees[1]["points"] == 13  # le manqué vaut 0
-    assert volees[1]["statut"] == "valide"
+    assert volees[1]["statut"] == "en_attente"  # saisie, pas encore validée
 
 
 def test_deroule_cumul_ne_compte_que_le_valide(app_deroule: tuple[FastAPI, int, int]) -> None:
-    """Le cumul du déroulé public ne somme que les volées **validées** (invariant de `Serie`)."""
+    """Le cumul ne somme que le **validé**, alors que le déroulé, lui, montre aussi le provisoire.
+
+    Volées non vides (V1 validée, V2 en attente) : le cumul vaut les seuls points de V1 (27), pas
+    27 + 13. C'est ce qui distingue « total 0 car rien de saisi » de « total partiel car tout n'est
+    pas validé » — le nerf du statut provisoire (ADR-0039)."""
     app, tournoi_id, archer_id = app_deroule
     with TestClient(app) as client:
         corps = client.get(f"/api/v1/tournois/{tournoi_id}/archers/{archer_id}/deroule").json()
-    # Seule la volée 2 (validée) compte : 7 + 6 + 0 = 13 ; la volée 1 (en attente, 27) est exclue.
-    assert corps["cumul"] == 13
+    # Seule la volée 1 (validée) compte : 10 + 9 + 8 = 27 ; la volée 2 (en attente, 13) est exclue.
+    assert corps["cumul"] == 27
+    assert corps["volees"], "le cumul est jugé avec des volées présentes, pas sur un déroulé vide"
 
 
 def test_deroule_ne_fuite_pas_l_identite_du_scoreur(
@@ -141,9 +150,12 @@ def test_deroule_ne_fuite_pas_l_identite_du_scoreur(
         reponse = client.get(f"/api/v1/tournois/{tournoi_id}/archers/{archer_id}/deroule")
 
     assert _SCOREUR not in reponse.text  # le nom du scoreur n'apparaît nulle part
+    # Liste blanche des clés exposées : la garantie ne repose pas sur l'omission constatée de deux
+    # champs (fragile — un futur ajout passerait) mais sur l'ensemble **exact** du DTO. Ajouter
+    # demain un champ sensible (code de cible, IP, marqueur de scoreur) fera échouer ce test.
+    champs_publics = {"numero", "valeurs", "points", "statut", "horodatage"}
     for volee in reponse.json()["volees"]:
-        assert "saisie_par" not in volee
-        assert "validee_par" not in volee
+        assert set(volee.keys()) == champs_publics
 
 
 def test_deroule_archer_sans_saisie_rend_vide_pas_404(

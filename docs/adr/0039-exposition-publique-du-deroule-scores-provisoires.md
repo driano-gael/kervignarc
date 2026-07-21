@@ -41,7 +41,9 @@ Deux obstacles se posent, tous deux relevant d'un **arbitrage** (pas d'un choix 
 `GET /api/v1/tournois/{tournoi_id}/archers/{archer_id}/deroule`, **sans authentification** (comme
 toute lecture publique, E10US001), lecture seule exécutée **hors boucle** (`run_in_threadpool`). Il
 réutilise le service de lecture existant `ServiceSaisie.etat_serie` — pas de nouveau modèle ni de
-nouveau chemin de lecture.
+nouveau chemin de lecture. Un archer sans rien de saisi (ou un couple `(tournoi, archer)` inconnu)
+renvoie un **déroulé vide en 200**, jamais un 404 : corollaire de la frontière de confidentialité —
+l'endpoint public ne **révèle pas** l'existence d'un couple, l'énumération ne distingue rien.
 
 **2. Le déroulé inclut les volées NON validées.** Chaque volée porte un **statut explicite**
 `en_attente` (= `not Volee.verrouillee`) ou `valide`. Le public voit donc des scores **provisoires**,
