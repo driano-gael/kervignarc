@@ -26,6 +26,7 @@ from api.v1.blasons import router as blasons_router
 from api.v1.categories import router as categories_router
 from api.v1.clubs import router as clubs_router
 from api.v1.competition import router as competition_router
+from api.v1.completude import router as completude_router
 from api.v1.departs import router as departs_router
 from api.v1.deroule import router as deroule_router
 from api.v1.documents_salle import router as documents_salle_router
@@ -51,6 +52,7 @@ from application.blasons import ServiceBlasons
 from application.categories import ServiceCategories
 from application.classements import ServiceClassement
 from application.clubs import ServiceClubs
+from application.completude import ServiceCompletude
 from application.departs import ServiceDeparts
 from application.documents_salle import ServiceDocumentsSalle
 from application.feuille_de_marque import ServiceFeuilleDeMarque
@@ -391,6 +393,22 @@ def create_app(
         _SEUIL_POSTE_HORS_LIGNE_S,
     )
 
+    # --- Complétude du tournoi (E12US005) : « qu'est-ce qui manque pour finir ? », sportif et hors
+    # sportif comptés **séparément** (`D-17`). Lecture pure : agrège les cibles de qualification
+    # terminées (plan matérialisé + inscriptions + séries validées) et les archers réglés (port
+    # étroit sur `ServicePaiements`, qui porte déjà la règle dû/payé/reste, E08US002), puis confie
+    # le jugement à `domain.completude`. Les **phases éliminatoires** sont séquencées (EPIC-05 non
+    # livré) : ligne « à venir » qui ne bloque pas. Le front poll (live) comme la supervision. ---
+    app.state.service_completude = ServiceCompletude(
+        tournoi_repository,
+        depart_repository,
+        placement_repository,
+        inscription_repository,
+        serie_repository,
+        phase_repository,
+        app.state.service_paiements,
+    )
+
     # Idempotence de la saisie (ADR-0036) : registre en mémoire consulté **dans** la commande de la
     # file (writer unique) par l'endpoint de saisie, pour qu'un rejeu réseau ne double ni une volée
     # ni une trace. Exposé sur l'app comme la `write_queue`.
@@ -421,6 +439,7 @@ def create_app(
     app.include_router(bareme_qualification_router)
     app.include_router(grain_validation_router)
     app.include_router(competition_router)
+    app.include_router(completude_router)
     app.include_router(saisie_router)
     app.include_router(deroule_router)
     app.include_router(placement_router)

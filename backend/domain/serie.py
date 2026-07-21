@@ -154,6 +154,24 @@ class Serie:
         """
         return sum(len(v.valeurs) for v in self.volees if v.verrouillee)
 
+    def est_complete(self, nb_volees_bareme: int) -> bool:
+        """La série a-t-elle **toutes** les volées du barème, **validées** (E12US005) ?
+
+        « Complète » au sens de la qualification *terminée* : les volées 1..N sont présentes **et
+        verrouillées** — pas seulement saisies. On s'aligne sur `cumul` / `nb_fleches_validees` /
+        le classement, qui ne comptent déjà que le validé : une volée saisie mais non validée est un
+        état intermédiaire, la qualification de l'archer n'est pas *close* tant que le scoreur ne
+        l'a pas validée. Sert à la **complétude du tournoi** (E12US005) : une cible est *terminée*
+        quand toutes ses séries le sont, et le classement *prêt* quand toutes les séries le sont.
+
+        `nb_volees_bareme <= 0` (barème non configuré) → jamais complète : on ne peut pas déclarer
+        « terminé » ce dont on ignore l'attendu (l'appelant, lui, affiche « en attente »).
+        """
+        if nb_volees_bareme <= 0:
+            return False
+        valides = {v.numero for v in self.volees if v.verrouillee}
+        return valides == set(range(1, nb_volees_bareme + 1))
+
     def saisir_volee(
         self,
         numero: int,
