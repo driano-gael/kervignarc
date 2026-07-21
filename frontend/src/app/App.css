@@ -1442,6 +1442,71 @@ button:disabled {
   color: var(--text);
 }
 
+/* Déroulé du tour (E07US009) : la feuille de marque live sous la place. Une ligne par volée —
+   valeurs, total, et statut. */
+.suivi-deroule {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.suivi-deroule__volees {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.suivi-volee {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.suivi-volee__num {
+  flex: 0 0 auto;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.suivi-volee__valeurs {
+  flex: 1 1 auto;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.suivi-volee__points {
+  flex: 0 0 auto;
+  font-weight: 600;
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Statut d'une volée : « en attente de validation » = score provisoire (ADR-0039) → **alerte ambre**
+   (DV-03, `--warn`), jamais rouge — c'est un état légitime, pas une erreur ; « validé » = **vert**
+   (`--ok`, verrouillé, confirmé). La paire ambre/vert lit le provisoire vs l'acquis d'un coup d'œil. */
+.suivi-volee__statut {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.suivi-volee__statut--attente {
+  color: var(--warn);
+}
+
+.suivi-volee__statut--valide {
+  color: var(--ok);
+}
+
+.suivi-deroule__cumul {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
 /* Consultation sur téléphone : marges réduites et cartes pleine largeur. Le conteneur
    `.app__contenu--colonnes` (flex `flex-wrap: wrap`) empile déjà ses colonnes ; on relâche seulement
    les largeurs max des cartes qui les bornaient sur desktop. */

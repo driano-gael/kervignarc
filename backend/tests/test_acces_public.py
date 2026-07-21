@@ -59,6 +59,7 @@ _LECTURES = [
     "/api/v1/tournois/1/departs",
     "/api/v1/tournois/1/departs/1/plan-de-cibles",
     "/api/v1/tournois/1/archers",
+    "/api/v1/tournois/1/archers/1/deroule",
 ]
 
 
