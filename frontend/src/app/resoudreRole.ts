@@ -33,3 +33,19 @@ export function resoudreRole(etat: EtatEntree): Role | null {
   if (etat.aJetonScoreur) return 'scoreur'
   return null
 }
+
+// L'écran affiche-t-il l'échappatoire « Changer de rôle » ? Prédicat **pur** (même nature que
+// `resoudreRole`, isolé pour être testé sans rendu). Le verrou D-13 — pas d'échappatoire d'en-tête —
+// ne vaut que pour une **vraie** tablette : poste rattaché (`estPoste`) ou arrivée par QR
+// (`codePosteUrl`), contrôle d'accès physique. Une tablette **seulement choisie au menu** (marqueur,
+// pas encore rattachée) reste réversible — sans quoi un mauvais tap sur « Tablette » piège
+// l'utilisateur sur le rattachement, sans « Détacher » (absent avant rattachement) ni retour au choix
+// (correctif de revue adversariale E00US017). L'écran de choix (`role === null`) n'en a pas non plus.
+export function peutChangerDeRole(
+  role: Role | null,
+  estPoste: boolean,
+  codePosteUrl: boolean,
+): boolean {
+  const tabletteVerrouillee = role === 'tablette' && (estPoste || codePosteUrl)
+  return role !== null && !tabletteVerrouillee
+}

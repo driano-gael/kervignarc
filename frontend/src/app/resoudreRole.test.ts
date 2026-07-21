@@ -6,7 +6,7 @@
 // préexistante — jamais à contredire un choix explicite. Chaque cas dérive de la table de l'ADR.
 
 import { describe, expect, it } from 'vitest'
-import { resoudreRole, type EtatEntree } from './resoudreRole'
+import { peutChangerDeRole, resoudreRole, type EtatEntree } from './resoudreRole'
 
 // Appareil neuf : aucun jeton, aucun choix.
 const vierge: EtatEntree = {
@@ -69,5 +69,30 @@ describe('resoudreRole — précédence de l’aiguillage d’entrée', () => {
 
   it('une arrivée par QR prime sur un choix admin mémorisé (le QR est le choix, D-13)', () => {
     expect(resoudreRole({ ...vierge, codePosteUrl: true, roleChoisi: 'admin' })).toBe('tablette')
+  })
+})
+
+describe('peutChangerDeRole — échappatoire « Changer de rôle »', () => {
+  it('pas d’échappatoire sur l’écran de choix (role null)', () => {
+    expect(peutChangerDeRole(null, false, false)).toBe(false)
+  })
+
+  it('public / scoreur / admin ont l’échappatoire', () => {
+    expect(peutChangerDeRole('public', false, false)).toBe(true)
+    expect(peutChangerDeRole('scoreur', false, false)).toBe(true)
+    expect(peutChangerDeRole('admin', false, false)).toBe(true)
+  })
+
+  it('une vraie tablette rattachée est verrouillée (D-13, sortie = Détacher)', () => {
+    expect(peutChangerDeRole('tablette', true, false)).toBe(false)
+  })
+
+  it('une tablette arrivée par QR est verrouillée (D-13)', () => {
+    expect(peutChangerDeRole('tablette', false, true)).toBe(false)
+  })
+
+  it('une tablette seulement choisie au menu (pas rattachée) garde l’échappatoire', () => {
+    // Cœur du correctif adversarial : un mauvais tap sur « Tablette » ne piège plus l'utilisateur.
+    expect(peutChangerDeRole('tablette', false, false)).toBe(true)
   })
 })

@@ -20,7 +20,7 @@ import { useSessionRoleStore } from '../shared/stores/sessionRoleStore'
 import { useSessionScoreurStore } from '../shared/stores/sessionScoreurStore'
 import { ChangerDeRole } from './ChangerDeRole'
 import { EcranAccueil } from './EcranAccueil'
-import { resoudreRole } from './resoudreRole'
+import { peutChangerDeRole, resoudreRole } from './resoudreRole'
 import './App.css'
 
 export function App() {
@@ -45,15 +45,10 @@ export function App() {
     aJetonScoreur,
   })
 
-  // Échappatoire d'en-tête « Changer de rôle ». Le verrou D-13 (pas d'échappatoire) ne vaut que pour
-  // une **vraie** tablette — poste rattaché (`estPoste`) ou arrivée par QR (`codePoste`) : contrôle
-  // d'accès physique. Une tablette **seulement choisie au menu** (marqueur `roleChoisi='tablette'`,
-  // pas encore rattachée) reste réversible : sans ça, un mauvais tap sur « Tablette » piège
-  // l'utilisateur sur le rattachement, sans « Détacher » (qui n'existe qu'une fois rattaché) ni
-  // moyen de revenir au choix (correctif de revue adversariale E00US017). L'écran de choix
-  // (role === null) n'a pas d'échappatoire non plus.
-  const tabletteVerrouillee = role === 'tablette' && (estPoste || codePoste !== null)
-  const changementPossible = role !== null && !tabletteVerrouillee
+  // Échappatoire d'en-tête « Changer de rôle » : prédicat pur testé (`peutChangerDeRole`), qui garde
+  // le verrou D-13 pour une vraie tablette (rattachée / arrivée QR) mais laisse réversible une tablette
+  // seulement choisie au menu (cf. `resoudreRole.ts` pour le raisonnement).
+  const changementPossible = peutChangerDeRole(role, estPoste, codePoste !== null)
 
   return (
     <div className="app">

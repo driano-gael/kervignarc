@@ -75,6 +75,17 @@ de choix ne réapparaîtrait jamais. La **tablette** n'a **pas** ce contrôle d'
 physique) — sa sortie reste le geste délibéré **« Détacher cette tablette »** déjà en place, auquel on
 ajoute la réinitialisation du marqueur pour revenir au choix.
 
+**Exception — la tablette *seulement choisie au menu*, pas encore rattachée.** Le verrou `D-13` vaut
+pour une **vraie** tablette : un poste **rattaché** (`estPoste`) ou une **arrivée par QR** (`?poste=`),
+là où le contrôle d'accès est *physique*. Un simple **choix de menu non encore honoré**
+(`roleChoisi='tablette'`, ni rattaché ni QR) n'est pas encore un poste : le priver d'échappatoire
+**piégerait** l'utilisateur ayant tapé « Tablette » par erreur sur le formulaire de rattachement —
+sans « Détacher » (qui n'existe qu'une fois rattaché) ni retour au choix. Cette tablette-là **garde**
+donc l'échappatoire d'en-tête ; elle ne se verrouille qu'au **rattachement effectif** (ou à l'arrivée
+par QR). La condition est un prédicat pur testé (`peutChangerDeRole`). *(Distinction ajoutée après la
+revue adversariale de l'US : « tablette » recouvrait trois états — choisie, arrivée par QR, rattachée
+— dont seuls les deux derniers justifient le verrou.)*
+
 ## Conséquences
 
 - **Front seul.** Aucun schéma, aucune migration : on **réorganise l'aiguillage** et on **réemploie**
