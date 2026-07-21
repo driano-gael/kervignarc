@@ -6,7 +6,7 @@
 // donc déjà réservé à l'admin.
 
 import { useState } from 'react'
-import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { decrireTarif } from '../competition/format'
 import { useDeparts } from '../departs/hooks'
 import type { Inscription } from './api'
@@ -160,14 +160,4 @@ function FormulaireInscription({
 function libelleDepart(numero: number, horaire: string | null, montantOuTarif: number): string {
   const quand = horaire ?? 'horaire non précisé'
   return `Départ ${numero} · ${quand} · ${decrireTarif(montantOuTarif)}`
-}
-
-function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {message}
-    </p>
-  )
 }

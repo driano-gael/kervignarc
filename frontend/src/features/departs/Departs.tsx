@@ -8,6 +8,7 @@
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import {
   centimesVersSaisieEuros,
   decrireTarif,
@@ -272,15 +273,5 @@ function FormulaireDepart({
       </form>
       <MessageErreur erreur={mutation.error} />
     </div>
-  )
-}
-
-function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {message}
-    </p>
   )
 }

@@ -6,7 +6,7 @@
 // (principe « le règlement est un template »).
 
 import { useState } from 'react'
-import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useBaremeQualification, useDefinirBareme } from './hooks'
 
 // Preset FFTA 18 m (référentiel §6.1) : 20 volées de 3 flèches (60 flèches).
@@ -117,15 +117,5 @@ function FormulaireBareme({
       </form>
       <MessageErreur erreur={definir.error} />
     </div>
-  )
-}
-
-function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {message}
-    </p>
   )
 }

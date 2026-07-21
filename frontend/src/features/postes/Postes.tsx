@@ -4,11 +4,8 @@
 // imprimé sous le QR de sa cible (E09US008) et collé dessus. La tablette posée sur la cible s'y
 // rattache en scannant le QR, ou en tapant ce code (E04US001, écran de poste). La préparation est
 // **idempotente** : la relancer complète les cibles manquantes sans changer les codes déjà émis.
-//
-// L'affichage d'erreur est **inliné** ici plutôt que via le composant `MessageErreur` dupliqué
-// (DETTE-004) : inutile d'en ajouter une occurrence de plus avant sa factorisation (E00US013).
 
-import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { usePostes, usePreparerPostes } from './hooks'
 
 export function Postes({ tournoiId }: { tournoiId: number }) {
@@ -28,11 +25,7 @@ export function Postes({ tournoiId }: { tournoiId: number }) {
         {liste.length === 0 ? 'Préparer les codes de cible' : 'Compléter les codes manquants'}
       </button>
 
-      {erreur !== null && (
-        <p className="carte__etat carte__etat--erreur" role="alert">
-          {erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'}
-        </p>
-      )}
+      <MessageErreur erreur={erreur} />
 
       {liste.length > 0 ? (
         <ul className="liste-postes">

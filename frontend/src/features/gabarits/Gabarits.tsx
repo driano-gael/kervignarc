@@ -7,7 +7,7 @@
 // plafond côté serveur.
 
 import { useState } from 'react'
-import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Gabarit, NouveauGabarit } from './api'
 import { decrire } from './format'
 import { useCreerGabarit, useGabarits, useModifierGabarit, useSupprimerGabarit } from './hooks'
@@ -167,15 +167,5 @@ function FormulaireGabarit({ gabarit, onTermine }: { gabarit?: Gabarit; onTermin
       </form>
       <MessageErreur erreur={mutation.error} />
     </div>
-  )
-}
-
-function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {message}
-    </p>
   )
 }

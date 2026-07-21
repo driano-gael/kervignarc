@@ -9,7 +9,7 @@
 // tel quel — le message du serveur nomme le club déjà présent.
 
 import { useState } from 'react'
-import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Club, NouveauClub } from './api'
 import { useClubs, useCreerClub, useModifierClub, useSupprimerClub } from './hooks'
 
@@ -139,20 +139,5 @@ function FormulaireClub({ club, onTermine }: { club?: Club; onTermine?: () => vo
       </form>
       <MessageErreur erreur={mutation.error} />
     </div>
-  )
-}
-
-// DETTE-004 (docs/dette.md) : 9ᵉ copie conforme de ce composant, un par feature. À extraire dans
-// `shared/` — E00US013. Non factorisée ici : le faire toucherait les 8 autres features, hors du
-// périmètre d'E02US001. Et l'extraire pour la seule feature neuve donnerait « 8 copies + 1 brique
-// partagée » — deux conventions au lieu d'une, alors que E00US013 doit pouvoir relire un
-// remplacement homogène. Une brique d'UI partagée va dans `shared/`, pas chez la voisine.
-function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {message}
-    </p>
   )
 }

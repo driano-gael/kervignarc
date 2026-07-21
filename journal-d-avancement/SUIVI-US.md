@@ -12,33 +12,26 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 21/07/2026** · **53 US livrées** · dernière : `E08US002`.
+**Dernière mise à jour : 21/07/2026** · **54 US livrées** · dernière : `E00US013`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E00US013` — Factoriser les briques d'UI partagées** *(remontée de J3, décidé le 21/07/2026)*
+> **`E12US005` — Afficher la complétude du tournoi** *(reprise de la séquence J1)*
 >
-> `E08US002` (suivi des paiements) est **terminée et poussée** (revue faite) : destination admin
-> **« Paiements »** avec vue **par archer** (dû / payé / reste, filtrable) et **par club** (totaux +
-> détail, bucket « Sans club » pour les non-rattachés, [ADR-0014]). **Règlement groupé** d'un archer
-> ou d'un club en un geste ; le marquage simple par inscription a **migré** d'E02US009 vers cette
-> capacité — une **seule voie d'écriture** du paiement, **toute auditée** (action `paiement`,
-> co-écriture atomique acte↔trace, [ADR-0035]). Granularité tranchée **par départ** ; « reste »
-> dérivé (dû − payé), jamais stocké.
+> `E00US013` (factoriser les briques d'UI) est **terminée et poussée** (revue faite) : `MessageErreur`
+> vit désormais dans `frontend/src/shared/ui/` — **point de vérité unique** ; **19 rendus** dupliqués
+> (18 définitions + le rendu inline de `postes`) ralliés, **rendu inchangé**, DETTE-004 **résorbée**.
+> Le décompte réel (grep terrain) était **18 copies / 17 features + 1 inline**, pas les « 16 » du
+> narratif — la baseline sous-numérotait. Les autres `role="alert"` (blocs de confirmation, refus 409
+> ambre de placement) ont été **examinés et laissés** à dessein. Refactor mécanique, sans ADR ni
+> changement de CSS : l'ambre `DV-03` reste à E01US016, qui trouvera un point d'application unique.
 >
-> **`E00US013` est remontée de J3 en tête de file** : la revue d'E08US002 a constaté que le composant
-> `MessageErreur` est désormais **dupliqué 16 fois** (DETTE-004) — la 3ᵉ occurrence était le seuil, on
-> est très au-delà, la dette est **mûre**. US `refactor` (pas d'ADR — factorisation, pas de décision
-> structurante) : sortir `MessageErreur` (et les briques récurrentes voisines : pastille de statut,
-> état « Chargement… », en-tête de carte) dans `shared/ui/`, puis remplacer les copies. Ensuite,
-> reprendre la séquence J1 à `E12US005` (complétude du tournoi). Détail :
-> [`stories/E00-socle.md`](../stories/E00-socle.md).
-
-[ADR-0040]: ../docs/adr/0040-alerte-par-calcul-d-impact.md
-[ADR-0035]: ../docs/adr/0035-atomicite-acte-trace-session-partagee.md
-[ADR-0014]: ../docs/adr/0014-club-inconnu-plutot-que-club-sentinelle.md
+> **`E12US005` reprend la séquence J1** (Jalon 1, tournoi de qualification de bout en bout) : afficher
+> la **complétude** du tournoi (ce qui est prêt / manquant avant de lancer). Détail :
+> [`stories/E12-pilotage-jour-j.md`](../stories/E12-pilotage-jour-j.md). *(Cadrage d'intention en tête d'US
+> visible recommandé avant de coder — CLAUDE.md § Workflow.)*
 
 ---
 
@@ -101,7 +94,7 @@
 | 47 | E10US005 | Journal d'audit métier | ✅ *(fait en avance)* |
 | 48 | E12US007 | Alerter par calcul d'impact | ✅ |
 | 49 | E08US002 | Suivi des paiements | ✅ |
-| 50 | E12US005 | Afficher la complétude du tournoi | ⬜ *(reprise J1 après E00US013)* |
+| 50 | E12US005 | Afficher la complétude du tournoi | 🎯 **suivante** *(reprise J1)* |
 | 51 | E12US006 | Rechercher un archer depuis n'importe où | ⬜ |
 | 52 | E02US005 | Détecter et fusionner les doublons | ⬜ |
 | 53 | E02US006 | Contrôler les quotas | ✅ *(fait en avance)* |
@@ -130,7 +123,7 @@
 | 71 | E06US003 | Barrage de tir pour places décisives | ⬜ |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ⬜ |
 
-## J3 — Placement intégral 1→N + écran de salle — ⬜ **non commencé (1/11)**
+## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (2/11)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -140,7 +133,7 @@
 | 76 | E06US006 | Classement intégral 1→N & profondeur | ⬜ |
 | 77 | E03US007 | Contrainte séparation catégorie/blason | ⬜ |
 | 78 | E09US005 | Classements PDF | ⬜ |
-| 79 | E00US013 | Factoriser les briques d'UI partagées | 🎯 **suivante** *(remontée de J3, DETTE-004)* |
+| 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |
 | 80 | E01US016 | Définir l'identité visuelle du tournoi | ⬜ |
 | 81 | E07US004 | Écran de salle : déroulé auto & pilotage | ⬜ |
 | 82 | E07US005 | Vue tableaux/arbres live | ⬜ |

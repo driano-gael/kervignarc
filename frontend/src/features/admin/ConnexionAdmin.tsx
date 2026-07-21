@@ -8,7 +8,7 @@
 // fonctions admin. La lecture publique n'a jamais besoin de cet écran.
 
 import { useState } from 'react'
-import { ErreurApi } from '../../shared/api/client'
+import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useConfigurerAdmin, useConnexionAdmin, useEtatAuth } from './hooks'
 
 export function ConnexionAdmin() {
@@ -127,15 +127,5 @@ function FormulaireConnexion() {
       </form>
       <MessageErreur erreur={connexion.error} />
     </div>
-  )
-}
-
-function MessageErreur({ erreur }: { erreur: Error | null }) {
-  if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
-  return (
-    <p className="carte__etat carte__etat--erreur" role="alert">
-      {message}
-    </p>
   )
 }
