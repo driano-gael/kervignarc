@@ -61,6 +61,7 @@
 *En tant qu'*administrateur, *je veux* fixer le tarif d'un départ, *afin d'*alimenter le suivi de paiement.
 - **CA** : ~~tarif paramétrable **par tournoi**~~ → le tarif est porté **par chaque départ** (E02US004) ; utilisé par le calcul du montant dû (E08US001).
 - **Dépend de** : E01US001 · **Jalon** : J1
+  > **Évolution — 21/07/2026** ([ADR-0041](../docs/adr/0041-tarification-configuration-du-tournoi.md)) : le tarif porté par le départ, sommé sur les départs d'un archer, n'est plus « la » règle mais la **stratégie de tarification par défaut** (et la seule codée). Le montant dû devient à terme le résultat d'une **politique injectable** choisie par tournoi (sujet archer|club, dégressif). Cf. E01US020/E01US021 ci-dessous — non implémentées.
   > **Livrée puis révisée le 16/07/2026** ([ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md)). Cette US avait posé `tournoi.tarif_depart_centimes` — un tarif **unique au tournoi** — faute d'entité `Depart` à ce moment (les départs n'étaient pas modélisés). E02US004 modélise les départs comme des **créneaux du tournoi** ; le tarif **migre** sur le départ (obligatoire par créneau, prix possiblement différents) et le champ du tournoi est **retiré** (migration `0016`). Ce qui reste vrai d'E01US010 : la règle **centimes entiers** (ADR-0012) et le fait qu'un tarif de départ alimente la facturation (E08US001).
 
 ### E01US011 — Presets de barèmes multi-phases
@@ -73,6 +74,28 @@
 *En tant qu'*administrateur, *je veux* une bibliothèque de gabarits, *afin de* gérer plusieurs salles.
 - **CA** : créer/nommer/lister plusieurs gabarits ; en choisir un par tournoi.
 - **Dépend de** : E01US007 · **Jalon** : J4
+
+---
+
+> **US d'évolution — tarification riche.** Nées du cadrage d'E08US002 le 21/07/2026
+> ([ADR-0041](../docs/adr/0041-tarification-configuration-du-tournoi.md)). L'organisateur a demandé que
+> le calcul du montant dû **reste ouvert** : facturation par archer *ou* par club, dégressif possible.
+> **Aucune n'est implémentée** : la seule stratégie codée reste « somme des tarifs des départs de
+> l'archer » (E08US001). On n'implémente une de ces US **que quand un tournoi réel la demande**
+> (règle 9 — pas de moteur spéculatif). **À rediscuter avec l'organisateur** avant de prendre l'une
+> d'elles : ni le catalogue exact des modèles ni les formules de dégressif ne sont figés.
+
+### E01US020 — Modèle de tarification injectable & sujet de facturation
+*En tant qu'*administrateur, *je veux* choisir, à la configuration d'un tournoi, **qui** est facturé (archer ou club) et **selon quel modèle**, *afin de* couvrir les formats de tournoi où le prix ne se réduit pas à « somme des créneaux d'un archer ».
+- **CA (à cadrer)** : la tarification devient une **politique injectable** (règle 2, [ADR-0004](../docs/adr/0004-moteur-de-phases-politiques.md)) portée par le tournoi ; un **sujet de facturation** `archer | club` est choisi à la configuration ; le **forfait club** (montant fixe indépendant du nombre d'archers) et le **prix club = cumul des prix archers** sont deux stratégies possibles ; le suivi des paiements (E08US002) lit le dû produit, sans le recalculer.
+- **Notes** : le sujet `club` **dépend de l'abstraction participant** ([E13US001](E13-equipes.md), [ADR-0028](../docs/adr/0028-epreuves-par-equipes-participant.md)) — archer et club sont deux sujets d'un même dû ; ne peut pas précéder E13US001. Le rework d'E08US001/E08US002 est **assumé** (ADR-0041, « dupliquer une 2ᵉ fois, attendre le 3ᵉ cas »).
+- **Dépend de** : E01US010, E08US001, E13US001 (pour le sujet `club`) · **Jalon** : à planifier · **ADR** : [ADR-0041](../docs/adr/0041-tarification-configuration-du-tournoi.md) · **État** : définie, non implémentée
+
+### E01US021 — Tarification dégressive
+*En tant qu'*administrateur, *je veux* activer un tarif dégressif à la configuration du tournoi, *afin de* récompenser les inscriptions multiples (plusieurs départs, ou un club nombreux).
+- **CA (à cadrer)** : **option cochable** à la configuration ; réduction exprimée en **pourcentage** *ou* en **montant** saisi ; appliquée **par départ** (sujet archer : le 2ᵉ départ, etc.) ou **par palier de nombre d'archers** (sujet club) — la forme exacte de la formule reste **à préciser avec l'organisateur**.
+- **Notes** : c'est une **stratégie de tarification** de plus (E01US020), pas une branche dans le service. Suppose E01US020 posée (politique injectable + sujet de facturation).
+- **Dépend de** : E01US020 · **Jalon** : à planifier · **ADR** : [ADR-0041](../docs/adr/0041-tarification-configuration-du-tournoi.md) · **État** : définie, non implémentée
 
 ---
 

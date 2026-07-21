@@ -14,13 +14,15 @@
 ### E08US001 — Calculer le montant dû
 *En tant qu'*administrateur, *je veux* le montant dû par archer, *afin de* facturer.
 - **CA** : montant dû d'un archer = **somme des tarifs des départs** auxquels il est inscrit (E02US004 pose les tarifs des créneaux, E02US009 les inscriptions) ; recalculé si les inscriptions ou les tarifs changent. *(Révisé le 16/07/2026 — [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md) : les prix pouvant différer par créneau, c'est une **somme**, non plus `tarif × nb`.)*
+- **Notes — 21/07/2026** ([ADR-0041](../docs/adr/0041-tarification-configuration-du-tournoi.md)) : cette formule est désormais la **stratégie de tarification par défaut** (sujet `archer`, sans dégressif), et la **seule implémentée**. Le montant dû est un dû **lu** par E08US002, pas figé : quand un tournoi réel demandera un forfait club ou un dégressif, une politique injectable le produira (E01US020/E01US021). Le CA d'E08US001 **ne change pas** ; sa portée est simplement reconnue comme « un cas ».
 - **Dépend de** : E02US004, E02US009 · **Jalon** : J1
 
 ### E08US002 — Suivi des paiements (marquer, vue par archer, vue par club)
 *En tant qu'*administrateur, *je veux* marquer le statut de paiement et le consulter par archer et par club, *afin de* savoir qui a réglé et de gérer les règlements groupés.
-- **CA — statut (ex-002)** : statut payé/non payé par archer (ou par départ) ; modifiable ; pas de transaction en ligne.
-- **CA — vue par archer (ex-003)** : liste des archers avec dû / payé / reste ; filtrable.
-- **CA — vue par club (ex-004)** : totaux par club (dû, payé, reste) ; détail des archers du club.
+- **CA — statut (ex-002)** : règlement suivi **par inscription** (archer × départ) ; on enregistre un **montant réglé** par inscription, **partiel possible** (0 ≤ réglé ≤ tarif du créneau), d'où un statut dérivé non réglé / partiel / réglé ; « cocher réglé » = solder l'inscription ; modifiable ; pas de transaction en ligne.
+- **CA — vue par archer (ex-003)** : liste des archers avec **dû / réglé / reste** ; filtrable.
+- **CA — vue par club (ex-004)** : totaux par club (dû, réglé, reste) ; détail des archers du club ; sert le **règlement groupé** (un club solde plusieurs de ses archers).
+- **Notes — cadrage du 21/07/2026** : maille du statut tranchée **par départ** (le « ou par départ » du CA d'origine) ; « payé/non payé » **enrichi en montant réglé avec partiel** (l'organisateur facture avant le départ, un archer ou un club peut n'avoir réglé qu'une partie). **Découplée du calcul du dû** ([ADR-0041](../docs/adr/0041-tarification-configuration-du-tournoi.md)) : l'US **lit** le montant dû (E08US001), ne le recalcule pas — le sujet de facturation `club` et le dégressif relèvent d'E01US020/E01US021, non implémentées. Périmètre livré : **backend + vue admin** des deux tableaux (archer, club). Le **remboursement** d'une inscription payée annulée reste à E08US005.
 - **Notes** : les trois anciennes US décrivaient une seule capacité vue sous trois angles (marquer, puis
   consulter individuellement, puis consulter par club) — aucune ne pouvait être livrée utilement sans les
   deux autres (une vue sans statut à afficher, un statut sans vue pour le lire). Le regroupement ne change

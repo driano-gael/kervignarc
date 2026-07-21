@@ -177,6 +177,17 @@
 |---|---|---|---|
 | E00US017 | Écran d'accueil : choisir son appareil / rôle | J3 | ⬜ *(définie en `stories/`, non implémentée — ADR à l'implémentation)* |
 
+## Ajout du 21/07/2026 — ⬜ **à planifier (0/2)**
+
+> Issus du cadrage d'E08US002 : la tarification devient une **configuration du tournoi**
+> ([ADR-0041](../docs/adr/0041-tarification-configuration-du-tournoi.md)). Ouverture **décidée**, pas
+> codée — seule « somme des tarifs de l'archer » est implémentée. Cf. [`stories/E01-configuration.md`](../stories/E01-configuration.md).
+
+| US | Titre | Jalon | État |
+|---|---|---|---|
+| E01US020 | Modèle de tarification injectable & sujet de facturation (archer/club) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; sujet `club` dépend d'E13US001)* |
+| E01US021 | Tarification dégressive (option config, %/montant) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; dépend d'E01US020)* |
+
 ## US caduque
 
 | US | Titre | Motif |

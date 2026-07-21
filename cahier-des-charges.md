@@ -185,9 +185,9 @@ La solution s'articule autour de 9 modules :
 
 | ID | Exigence |
 |---|---|
-| EF-8.1 | Calcul du **montant dû** = tarif × nombre de départs. |
-| EF-8.2 | Suivi du statut **payé / non payé** (pas de transaction en ligne). |
-| EF-8.3 | Vue consolidée **par archer** et **par club**. |
+| EF-8.1 | Calcul du **montant dû** = résultat d'une **politique de tarification** configurée par tournoi ([ADR-0041](docs/adr/0041-tarification-configuration-du-tournoi.md)) : sujet facturé **archer** ou **club**, dégressif éventuel. *Stratégie par défaut et seule implémentée : somme des tarifs des départs d'un archer ([ADR-0017](docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md)).* |
+| EF-8.2 | Suivi du **règlement** : montant réglé (**partiel** possible → reste dû), donc statut non réglé / partiel / réglé (pas de transaction en ligne). |
+| EF-8.3 | Vue consolidée **par archer** et **par club** (dû / réglé / reste), règlement groupé par club. |
 
 ### M9 — Exports & documents
 
