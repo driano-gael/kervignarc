@@ -24,16 +24,17 @@ _QUAND = datetime.datetime(2026, 3, 14, 10, 42, tzinfo=datetime.UTC)
 
 def test_actions_auditees_sont_l_ensemble_ferme_trace() -> None:
     """Ensemble **fermé** des actes tracés : les trois d'E10US005 + `replacement` (E12US007,
-    ADR-0040).
+    ADR-0040) + `paiement` (E08US002).
 
     L'enum est étendue par chaque US qui trace un nouvel acte sensible ; ce test **est** l'oracle du
     vocabulaire courant (non-régression) : validation/correction/forfait (E10US005), replacement
-    (régénération massive du plan de cibles)."""
+    (régénération massive du plan), paiement (marquage d'un règlement, simple ou groupé)."""
     assert {a.value for a in ActionAuditee} == {
         "validation",
         "correction_score",
         "forfait",
         "replacement",
+        "paiement",
     }
 
 

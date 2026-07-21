@@ -15,8 +15,8 @@
 // (règle 11) ; à réévaluer si un vrai besoin d'URL apparaît.
 //
 // Périmètre borné aux **fonctions livrées** (CA « non-régression ») : les destinations que le §7.1
-// prévoit mais qui n'existent pas encore (Identité, Complétude, Validation, Podiums, Paiements,
-// Exports, Archive, Audit, recherche) ne sont **pas** matérialisées par des entrées vides — elles
+// prévoit mais qui n'existent pas encore (Identité, Complétude, Validation, Podiums, Exports,
+// Archive, Audit, recherche) ne sont **pas** matérialisées par des entrées vides — elles
 // arriveront avec leur US. De même, les 7 statuts d'ADR-0026 (E01US017) ne sont pas encore livrés :
 // l'accueil contextualisé s'appuie sur les **3 statuts actuels** (brouillon / en_cours / termine).
 // « Supervision » (E12US001) est livrée et l'accueil d'un tournoi *en cours* pointe dessus ;
@@ -36,6 +36,7 @@ import { Departs } from '../departs/Departs'
 import { Gabarits } from '../gabarits/Gabarits'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { GrainValidation } from '../grain-validation/GrainValidation'
+import { Paiements } from '../paiements/Paiements'
 import { Placement } from '../placement/Placement'
 import { Postes } from '../postes/Postes'
 import { AccueilPublic } from '../public/AccueilPublic'
@@ -203,6 +204,13 @@ function Coquille() {
       groupe: 'preparation',
       besoinTournoi: true,
       rendu: () => courant && <Placement tournoiId={courant.id} />,
+    },
+    {
+      id: 'paiements',
+      libelle: 'Paiements',
+      groupe: 'preparation',
+      besoinTournoi: true,
+      rendu: () => courant && <Paiements tournoiId={courant.id} />,
     },
     {
       id: 'postes',

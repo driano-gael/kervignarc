@@ -900,10 +900,20 @@ class PosteRepositorySQL:
 
 
 class InscriptionRepositorySQL:
-    """Adapter SQLite du port `InscriptionRepository` — liens archer↔départ (E02US009)."""
+    """Adapter SQLite du port `InscriptionRepository` — liens archer↔départ (E02US009, E08US002).
 
-    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+    `definir_paye_avec_trace` réalise la **couture de session partagée** (ADR-0035), comme
+    `SerieRepositorySQL.enregistrer_avec_trace` : le nouveau statut de paiement **et** son entrée
+    d'audit s'écrivent dans **une seule session, un seul `commit`**. D'où l'`AuditRepositorySQL`
+    injecté — couplage **infra → infra** (le port `InscriptionRepository` ignore cette couture ; sa
+    signature ne cite aucune session).
+    """
+
+    def __init__(
+        self, session_factory: sessionmaker[Session], audit_repository: AuditRepositorySQL
+    ) -> None:
         self._session_factory = session_factory
+        self._audit = audit_repository
 
     def ajouter(self, inscription: Inscription) -> Inscription:
         """Persiste l'inscription et la renvoie avec son identifiant attribué."""
@@ -985,6 +995,33 @@ class InscriptionRepositorySQL:
                 return _vers_inscription(ligne)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour de l'inscription.") from exc
+
+    def definir_paye_avec_trace(
+        self, inscription_ids: Sequence[InscriptionId], paye: bool, entree: EntreeAudit
+    ) -> list[Inscription]:
+        """Bascule `paye` sur plusieurs inscriptions **et** co-écrit sa trace — une transaction.
+
+        Tout ou rien (ADR-0035) : les inscriptions visées passent à `paye`, la trace est ajoutée
+        dans **la même** session (via `AuditRepositorySQL.consigner_dans`, qui ne commit pas), puis
+        un **unique** `commit` scelle l'ensemble. Un échec avant le commit ne laisse ni marquage non
+        tracé, ni trace fantôme. Une ligne absente est une **incohérence technique** (l'appelant
+        garantit l'existence) → `InfrastructureError`. Les inscriptions mises à jour sont renvoyées
+        dans l'ordre des identifiants fournis.
+        """
+        try:
+            with self._session_factory() as session:
+                maj: list[InscriptionORM] = []
+                for inscription_id in inscription_ids:
+                    ligne = session.get(InscriptionORM, inscription_id)
+                    if ligne is None:
+                        raise InfrastructureError("Inscription à marquer introuvable en base.")
+                    ligne.paye = paye
+                    maj.append(ligne)
+                self._audit.consigner_dans(session, entree)
+                session.commit()
+                return [_vers_inscription(ligne) for ligne in maj]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de marquage du paiement et de sa trace.") from exc
 
     def supprimer(self, inscription_id: InscriptionId) -> None:
         """Supprime l'inscription d'identifiant donné (désinscription ; existence garantie)."""

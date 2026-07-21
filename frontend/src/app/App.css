@@ -1558,3 +1558,63 @@ button:disabled {
     max-width: none;
   }
 }
+
+/* ————————————————————————————————————————————————————————————————————————————————————————————
+   Suivi des paiements (E08US002) — vues par archer / par club, règlements groupés.
+   Réutilise `.table` / `.table-defilement` (défilement horizontal sur mobile) ; n'ajoute que les
+   ornements propres : montants en chiffres tabulaires, blocs de club, pastilles de statut.
+   ———————————————————————————————————————————————————————————————————————————————————————————— */
+.paiements__table {
+  font-variant-numeric: tabular-nums;
+}
+
+.paiements__total {
+  margin: 8px 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Un club = un bloc : en-tête (nom + total + bouton de règlement groupé) puis le détail des archers. */
+.bloc-club {
+  margin: 16px 0 0;
+}
+
+.bloc-club__entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+}
+
+.bloc-club__total {
+  font-size: 13px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Statut de paiement : **texte + couleur** (jamais la couleur seule — DV-03). Réglé au vert d'appui
+   (`--ok`), partiel à l'ambre d'alerte (`--warn`), à régler au rouge d'action (`--danger`), rien à
+   payer au gris neutre. */
+.statut {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.statut--regle {
+  color: var(--ok);
+}
+
+.statut--partiel {
+  color: var(--warn);
+}
+
+.statut--du {
+  color: var(--danger);
+}
+
+.statut--neutre {
+  color: var(--text);
+}

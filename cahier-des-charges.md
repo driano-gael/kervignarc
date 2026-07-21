@@ -106,7 +106,7 @@ La solution s'articule autour de 9 modules :
 |---|---|
 | EF-2.1 | Saisie **manuelle** d'un archer : nom, prénom, club, catégorie, nombre de départs. |
 | EF-2.2 | **Import** d'inscrits (export « inscript'arc » / XLS ou redirection URL). *(format exact à fournir — Q ouverte)* |
-| EF-2.3 | Un archer peut avoir **plusieurs départs** ; facturation = tarif × nb départs. |
+| EF-2.3 | Un archer peut avoir **plusieurs départs** ; facturation = **somme des tarifs** de ses départs ([ADR-0017](docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md) — les créneaux pouvant différer de prix, ce n'est plus `tarif × nb`). |
 | EF-2.4 | Quota configurable : nombre **maximum** de participants par inscription / départ. |
 | EF-2.5 | Modifier, supprimer, dédoublonner les inscrits ; référentiel des **clubs** réutilisable. |
 
@@ -185,9 +185,9 @@ La solution s'articule autour de 9 modules :
 
 | ID | Exigence |
 |---|---|
-| EF-8.1 | Calcul du **montant dû** = tarif × nombre de départs. |
-| EF-8.2 | Suivi du statut **payé / non payé** (pas de transaction en ligne). |
-| EF-8.3 | Vue consolidée **par archer** et **par club**. |
+| EF-8.1 | Calcul du **montant dû** = résultat d'une **politique de tarification** configurée par tournoi ([ADR-0041](docs/adr/0041-tarification-configuration-du-tournoi.md)) : sujet facturé **archer** ou **club**, dégressif éventuel. *Stratégie par défaut et seule implémentée : somme des tarifs des départs d'un archer ([ADR-0017](docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md)).* |
+| EF-8.2 | Suivi du paiement : marquage **payé / non payé par créneau** (booléen, **pas de montant fractionnaire saisi**) ; le statut **partiel** émerge au niveau archer/club quand une **partie des créneaux** est réglée ; reste = dû − payé ; pas de transaction en ligne. *(Le partiel fractionnaire d'un créneau est différé, E01US021.)* |
+| EF-8.3 | Vue consolidée **par archer** et **par club** (dû / payé / reste) ; **règlement groupé** d'un **archer** ou d'un **club** en un geste. |
 
 ### M9 — Exports & documents
 

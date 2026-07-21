@@ -14,18 +14,24 @@
 ### E08US001 — Calculer le montant dû
 *En tant qu'*administrateur, *je veux* le montant dû par archer, *afin de* facturer.
 - **CA** : montant dû d'un archer = **somme des tarifs des départs** auxquels il est inscrit (E02US004 pose les tarifs des créneaux, E02US009 les inscriptions) ; recalculé si les inscriptions ou les tarifs changent. *(Révisé le 16/07/2026 — [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md) : les prix pouvant différer par créneau, c'est une **somme**, non plus `tarif × nb`.)*
+- **Notes — 21/07/2026** ([ADR-0041](../docs/adr/0041-tarification-configuration-du-tournoi.md)) : cette formule est désormais la **stratégie de tarification par défaut** (sujet `archer`, sans dégressif), et la **seule implémentée**. E08US002 **re-dérive** ce même calcul (`recapituler`, 2ᵉ occurrence admise règle 9) plutôt que d'appeler `montant_du_par_archer` : il y a donc **deux** sites de calcul du dû, à rediriger ensemble quand une politique injectable produira le dû (forfait club, dégressif — E01US020/E01US021). Le CA d'E08US001 **ne change pas** ; sa portée est simplement reconnue comme « un cas ».
 - **Dépend de** : E02US004, E02US009 · **Jalon** : J1
 
 ### E08US002 — Suivi des paiements (marquer, vue par archer, vue par club)
 *En tant qu'*administrateur, *je veux* marquer le statut de paiement et le consulter par archer et par club, *afin de* savoir qui a réglé et de gérer les règlements groupés.
-- **CA — statut (ex-002)** : statut payé/non payé par archer (ou par départ) ; modifiable ; pas de transaction en ligne.
-- **CA — vue par archer (ex-003)** : liste des archers avec dû / payé / reste ; filtrable.
-- **CA — vue par club (ex-004)** : totaux par club (dû, payé, reste) ; détail des archers du club.
+- **CA — statut (ex-002)** : statut payé/non payé **par départ** (le booléen `paye` porté par l'inscription, E02US009) ; modifiable ; pas de transaction en ligne. *(Le CA disait « par archer (ou par départ) » ; tranché **par départ** le 21/07/2026 — c'est déjà la granularité du modèle, cohérente avec E08US005 qui présuppose une inscription « marquée payée ». Le « par archer » se dérive : réglé ⇔ toutes ses inscriptions payées.)*
+- **CA — vue par archer (ex-003)** : liste des archers avec dû / payé / reste ; filtrable. (`reste = dû − payé` ; `dû` = somme des tarifs des créneaux inscrits, E08US001 ; `payé` = somme des tarifs des créneaux marqués payés.)
+- **CA — vue par club (ex-004)** : totaux par club (dû, payé, reste) ; détail des archers du club. Les archers **sans club** (`club_id` `NULL`, [ADR-0014](../docs/adr/0014-club-inconnu-plutot-que-club-sentinelle.md)) forment un regroupement « Sans club » à part (placé en dernier) — sans quoi la somme des clubs ne retomberait pas sur le total du tournoi.
+- **CA — règlement groupé** : marquer d'un geste **tout un archer** ou **tout un club** (les inscriptions de ses archers présents dans ce tournoi), pas seulement inscription par inscription. *(Arbitrage du 21/07/2026, dérivé du but « gérer les règlements groupés ». Le marquage simple par inscription — jusque-là dans E02US009 — migre dans cette capacité : **une seule voie d'écriture** du paiement, donc **toute tracée**.)*
+- **CA — trace** : chaque marquage (simple ou groupé) laisse une entrée au **journal d'audit** (E10US005, action `paiement`). *(Arbitrage du 21/07/2026 : un paiement est un **mouvement d'argent**, il se trace comme la validation d'un score. Atomicité acte↔trace via le repository, [ADR-0035](../docs/adr/0035-atomicite-acte-trace-session-partagee.md) — jamais un paiement basculé sans trace.)*
+- **CA — dû re-dérivé, tarification différée** ([ADR-0041](../docs/adr/0041-tarification-configuration-du-tournoi.md), 21/07/2026) : le suivi **re-dérive** le montant dû (somme des tarifs, `recapituler` — **2ᵉ occurrence**, il n'appelle pas `montant_du_par_archer`) : il n'est **pas** découplé de la stratégie par défaut, il l'**incarne**. Le payé est **binaire par créneau** (booléen `paye`) ; le partiel *au niveau archer/club* existe par **dérivation** (une partie des créneaux réglés), jamais comme montant saisi. **Différés** en tarification configurable (E01US020/E01US021 — le sujet `club` sur `club_id`/[ADR-0014](../docs/adr/0014-club-inconnu-plutot-que-club-sentinelle.md), pas via les équipes) : le **partiel fractionnaire** d'un créneau, le **sujet de facturation `club`** (unité facturée) et le **dégressif**.
 - **Notes** : les trois anciennes US décrivaient une seule capacité vue sous trois angles (marquer, puis
   consulter individuellement, puis consulter par club) — aucune ne pouvait être livrée utilement sans les
   deux autres (une vue sans statut à afficher, un statut sans vue pour le lire). Le regroupement ne change
   aucun CA, il supprime seulement la dépendance séquentielle artificielle (003 et 004 dépendaient toutes
-  deux de 002 sans dépendre l'une de l'autre).
+  deux de 002 sans dépendre l'une de l'autre). **Pas de transaction en ligne** (comme E08US005) : le
+  paiement est un simple **statut**, pas un encaissement ; le « reste à payer » est **dérivé** (dû −
+  encaissé), jamais stocké. La destination admin **« Paiements »** du CDC §7.1 est matérialisée par cette US.
 - **Absorbe** : ex-E08US002, E08US003, E08US004. **Dépend de** : E08US001 · **Jalon** : J1
 
 ### E08US005 — Rembourser une inscription payée annulée

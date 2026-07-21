@@ -242,6 +242,14 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   - un fichier daté `AAAA-MM-JJ-HHhMM-<slug>.md` **uniquement pour un fait marquant** (jalon franchi,
     capacité nouvelle qui change la donne) — épisodique, pas un par US. La plupart des US ne rajoutent
     qu'une ligne au résumé.
+
+  **Porte de revue (bloquant).** La mise à jour du journal d'un US à surface visible est **vérifiée à
+  `/revue-us`** au même titre que `SUIVI-US.md` : une US visible dont le diff **ne touche pas**
+  `00-resume-projet.md` est un **manquement à corriger avant la PR**, pas un oubli tolérable — le
+  livrable de suivi n'est un livrable que s'il est **toujours** rendu. Le réflexe : avant de lancer la
+  revue, se demander « ai-je mis à jour le journal ET le tracker ? » — les deux voyagent avec le diff,
+  jamais dans un commit séparé « docs » d'après-coup. *(Manqué sur E12US007 le 21/07/2026 : le résumé
+  n'a pas été mis à jour dans le commit de l'US — d'où cette porte explicite.)*
 - **Cadrage d'intention en tête d'une US visible.** Avant de brancher / explorer / coder une US qui
   **livre une capacité vue par l'utilisateur**, reformuler en une ou deux lignes ce qu'elle délivre et
   **demander si c'est bien tout le périmètre voulu — ou s'il en existe une version plus riche** —

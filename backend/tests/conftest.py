@@ -38,7 +38,7 @@ pytest avec pytest pour seule dépendance — d'où aussi `fastapi` sous `TYPE_C
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -48,6 +48,7 @@ from domain.blason import BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
+from domain.entree_audit import EntreeAudit
 from domain.inscription import Inscription, InscriptionId
 from domain.tournoi import TournoiId
 
@@ -212,6 +213,10 @@ class FauxInscriptionRepository:
     def __init__(self) -> None:
         self._inscriptions: dict[int, Inscription] = {}
         self._sequence = 0
+        # Entrées d'audit capturées par `definir_paye_avec_trace` : le test de service y lit
+        # *quelle* trace le service a construite (auteur, action, avant/après). L'**atomicité**
+        # acte↔trace, elle, est un contrat d'adapter, prouvé au niveau du repository.
+        self.traces: list[EntreeAudit] = []
 
     def ajouter(self, inscription: Inscription) -> Inscription:
         self._sequence += 1
@@ -238,6 +243,19 @@ class FauxInscriptionRepository:
         assert inscription.id in self._inscriptions, "Inscription à mettre à jour absente."
         self._inscriptions[inscription.id] = inscription
         return inscription
+
+    def definir_paye_avec_trace(
+        self, inscription_ids: Sequence[InscriptionId], paye: bool, entree: EntreeAudit
+    ) -> list[Inscription]:
+        # Bascule `paye` et **capture** la trace (la vraie co-écriture atomique est un contrat
+        # d'adapter, hors des tests de service). Les inscriptions doivent exister (contrat du port).
+        maj = []
+        for inscription_id in inscription_ids:
+            inscription = dataclasses.replace(self._inscriptions[inscription_id], paye=paye)
+            self._inscriptions[inscription_id] = inscription
+            maj.append(inscription)
+        self.traces.append(entree)
+        return maj
 
     def supprimer(self, inscription_id: InscriptionId) -> None:
         del self._inscriptions[inscription_id]
