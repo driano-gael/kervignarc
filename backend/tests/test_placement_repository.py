@@ -83,9 +83,9 @@ class _Decor:
             Archer(nom="N", prenom="P", tournoi_id=self.tournoi_id, categorie_id=self.categorie_id)
         )
         assert archer.id is not None
-        inscription = InscriptionRepositorySQL(self.db.session_factory).ajouter(
-            Inscription(archer_id=archer.id, depart_id=self.depart_id)
-        )
+        inscription = InscriptionRepositorySQL(
+            self.db.session_factory, AuditRepositorySQL(self.db.session_factory)
+        ).ajouter(Inscription(archer_id=archer.id, depart_id=self.depart_id))
         assert inscription.id is not None
         return inscription.id
 
@@ -172,7 +172,9 @@ def test_supprimer_l_inscription_efface_l_affectation(tmp_path: Path) -> None:
         decor.placements.poser_plusieurs(
             decor.depart_id, [Affectation(inscription_id=i1, cible_index=1, position="A")]
         )
-        InscriptionRepositorySQL(decor.db.session_factory).supprimer(i1)
+        InscriptionRepositorySQL(
+            decor.db.session_factory, AuditRepositorySQL(decor.db.session_factory)
+        ).supprimer(i1)
         assert decor.placements.par_depart(decor.depart_id) == []
     finally:
         decor.db.engine.dispose()

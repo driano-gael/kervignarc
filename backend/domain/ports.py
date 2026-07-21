@@ -187,7 +187,13 @@ class DepartRepository(Protocol):
 
 
 class InscriptionRepository(Protocol):
-    """Port de persistance des inscriptions — liens archer ↔ départ (E02US009, ADR-0017)."""
+    """Port de persistance des inscriptions — liens archer ↔ départ (E02US009, ADR-0017).
+
+    `enregistrer` bascule `paye` **sans trace** (usages internes) ; `definir_paye_avec_trace`
+    co-écrit le nouveau statut **et** une entrée d'audit dans **une seule transaction** (atomicité
+    acte↔trace, ADR-0035) — c'est la voie du suivi des paiements (E08US002), simple ou groupé.
+    L'atomicité est réalisée par l'adapter (session partagée) ; au niveau du port, c'est une seule
+    opération « les inscriptions ET leur trace, ou ni l'une ni l'autre »."""
 
     def ajouter(self, inscription: Inscription) -> Inscription:
         """Persiste une inscription et la renvoie avec son identifiant attribué."""
@@ -222,7 +228,21 @@ class InscriptionRepository(Protocol):
         ...
 
     def enregistrer(self, inscription: Inscription) -> Inscription:
-        """Met à jour une inscription déjà persistée (bascule de `paye`) et la renvoie."""
+        """Met à jour une inscription déjà persistée (bascule de `paye`, sans trace) et la
+        renvoie."""
+        ...
+
+    def definir_paye_avec_trace(
+        self, inscription_ids: Sequence[InscriptionId], paye: bool, entree: EntreeAudit
+    ) -> list[Inscription]:
+        """Bascule `paye` sur plusieurs inscriptions **et** co-écrit une entrée d'audit (E08US002).
+
+        Une seule transaction (ADR-0035, comme `SerieRepository.enregistrer_avec_trace`) : le
+        marquage — simple (une inscription) ou groupé (plusieurs) — et sa trace `PAIEMENT` tiennent
+        dans un « tout ou rien ». Jamais un paiement basculé sans trace, jamais de trace fantôme.
+        L'entrée arrive **déjà construite et datée** par le service (port `Horloge`). Renvoie les
+        inscriptions mises à jour. L'existence des inscriptions est garantie par l'appelant.
+        """
         ...
 
     def supprimer(self, inscription_id: InscriptionId) -> None:

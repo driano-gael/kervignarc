@@ -20,6 +20,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.inscriptions import InscriptionDetaillee, ServiceInscriptions
+from application.paiements import ServicePaiements
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["inscriptions"])
@@ -130,11 +131,16 @@ async def montant_du(archer_id: int, request: Request) -> MontantDuReponse:
 async def marquer_paye(
     inscription_id: int, requete: MarquerPayeRequete, request: Request
 ) -> InscriptionReponse:
-    """Marque une inscription payée / non payée (**action admin**) : écriture via la file."""
-    service: ServiceInscriptions = request.app.state.service_inscriptions
+    """Marque une inscription payée / non payée (**action admin**) : écriture via la file.
+
+    Le marquage a migré vers `ServicePaiements` (E08US002) — même voie que les règlements groupés,
+    donc **audité** (trace `PAIEMENT`). L'endpoint reste sur la ressource inscription (le front de
+    saisie l'appelle par inscription) ; seul le service change.
+    """
+    service: ServicePaiements = request.app.state.service_paiements
     write_queue: WriteQueue = request.app.state.write_queue
     detail = await asyncio.wrap_future(
-        write_queue.submit(lambda: service.marquer_paye(inscription_id, requete.paye))
+        write_queue.submit(lambda: service.marquer_inscription(inscription_id, requete.paye))
     )
     return InscriptionReponse.de_detail(detail)
 

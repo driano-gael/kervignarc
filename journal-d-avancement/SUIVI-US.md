@@ -12,23 +12,27 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 21/07/2026** · **52 US livrées** · dernière : `E12US007`.
+**Dernière mise à jour : 21/07/2026** · **53 US livrées** · dernière : `E08US002`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E08US002` — Suivi des paiements** *(J1)*
+> **`E12US005` — Afficher la complétude du tournoi** *(J1)*
 >
-> `E12US007` (alerter par calcul d'impact) est **terminée et poussée** (revue faite) : mécanisme
-> transverse posé sur la **régénération du plan de cibles** (le cas « REPLACER »), scope A — endpoint de
-> **prévisualisation** d'impact + re-calcul au commit, échelle à trois niveaux (`aucun`/`confirmation`/
-> `massif`), geste délibéré (taper `REPLACER`) et **trace d'audit** atomique quand des scores existent
-> ([ADR-0040]). Les autres écritures s'y grefferont dans leurs US. La suite de séquence est `E08US002` :
-> **suivre les paiements** (dû/réglé par archer et agrégats). Dépend d'E08US001 (fait). Détail :
-> [`stories/E08-paiements.md`](../stories/E08-paiements.md).
+> `E08US002` (suivi des paiements) est **terminée et poussée** (revue faite) : destination admin
+> **« Paiements »** avec vue **par archer** (dû / payé / reste, filtrable) et **par club** (totaux +
+> détail, bucket « Sans club » pour les non-rattachés, [ADR-0014]). **Règlement groupé** d'un archer
+> ou d'un club en un geste ; le marquage simple par inscription a **migré** d'E02US009 vers cette
+> capacité — une **seule voie d'écriture** du paiement, **toute auditée** (action `paiement`,
+> co-écriture atomique acte↔trace, [ADR-0035]). Granularité tranchée **par départ** ; « reste »
+> dérivé (dû − payé), jamais stocké. La suite de séquence est `E12US005` : **complétude du tournoi**
+> (indicateurs « prêt / manquant » avant le jour J). Détail :
+> [`stories/E12-jour-j.md`](../stories/E12-jour-j.md).
 
 [ADR-0040]: ../docs/adr/0040-alerte-par-calcul-d-impact.md
+[ADR-0035]: ../docs/adr/0035-atomicite-acte-trace-session-partagee.md
+[ADR-0014]: ../docs/adr/0014-club-inconnu-plutot-que-club-sentinelle.md
 
 ---
 
@@ -49,7 +53,7 @@
 | E00US011 | Tranche verticale démontrable | ✅ |
 | E00US012 | Exécutable de dev (FastAPI sert le front) | ✅ |
 
-## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (39/46)**
+## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (40/46)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -90,8 +94,8 @@
 | **46b** | **E07US009** | **Suivre le déroulé du tour en direct** *(tranche 2, backend + ADR)* | ✅ |
 | 47 | E10US005 | Journal d'audit métier | ✅ *(fait en avance)* |
 | 48 | E12US007 | Alerter par calcul d'impact | ✅ |
-| 49 | E08US002 | Suivi des paiements | 🎯 **suivante** |
-| 50 | E12US005 | Afficher la complétude du tournoi | ⬜ |
+| 49 | E08US002 | Suivi des paiements | ✅ |
+| 50 | E12US005 | Afficher la complétude du tournoi | 🎯 **suivante** |
 | 51 | E12US006 | Rechercher un archer depuis n'importe où | ⬜ |
 | 52 | E02US005 | Détecter et fusionner les doublons | ⬜ |
 | 53 | E02US006 | Contrôler les quotas | ✅ *(fait en avance)* |

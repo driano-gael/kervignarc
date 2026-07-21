@@ -3,7 +3,11 @@
 Le service est testé **en isolation** : de faux repositories en mémoire (conformes aux ports)
 suffisent. On y vérifie ce qui lui est propre — les règles inter-agrégats que l'entité `Inscription`
 (mince) ne peut pas porter : inscrire sur un départ **du tournoi de l'archer**, refuser un
-**doublon** de couple, **dériver** le montant du tarif du départ, basculer `payé`, désinscrire.
+**doublon** de couple, **dériver** le montant du tarif du départ, désinscrire.
+
+Le **marquage du paiement** a migré vers `ServicePaiements` (E08US002, où il est audité) : les tests
+qui posent le fait « payée » le font désormais **directement** dans le magasin d'inscriptions, et le
+marquage lui-même est prouvé dans `test_service_paiements`.
 """
 
 from __future__ import annotations
@@ -169,7 +173,7 @@ def test_inscrire_au_dela_du_quota_leve_depart_complet() -> None:
     Le blocage compte **toutes** les inscriptions du créneau (une place est prise dès l'inscription,
     payée ou non) : deux archars remplissent un quota de 2, le troisième est rejeté.
     """
-    service, archers, departs, _ = _monter()
+    service, archers, departs, inscriptions = _monter()
     depart_id = _depart(departs, quota=2)
     premiere = service.inscrire(_archer(archers), depart_id).inscription
     assert premiere.id is not None
@@ -177,7 +181,9 @@ def test_inscrire_au_dela_du_quota_leve_depart_complet() -> None:
     # La première place est **payée** : elle compte tout autant dans le quota (une place est prise
     # dès l'inscription, pas au paiement). Sans cette ligne, l'affirmation « payées ou non » du
     # docstring ne serait pas exercée — un futur filtre `paye` sur le comptage passerait à tort.
-    service.marquer_paye(premiere.id, True)
+    # Le marquage a migré vers `ServicePaiements` (E08US002) ; ici on n'a besoin que du **fait**
+    # « payée », posé directement dans le magasin — le service testé ne marque plus.
+    inscriptions.enregistrer(dataclasses.replace(premiere, paye=True))
     troisieme = archers.ajouter(Archer.creer("Durand", "Paul", _TOURNOI, categorie_id=1))
     assert troisieme.id is not None
     with pytest.raises(DepartComplet):
@@ -298,27 +304,6 @@ def test_montant_du_suit_le_tarif_du_depart_sans_etre_stocke() -> None:
     assert service.lister_par_archer(archer_id)[0].montant_du_centimes == 1250
 
 
-def test_marquer_paye_bascule_le_statut_sans_changer_le_montant() -> None:
-    """`marquer_paye` bascule `payé` ; le montant dû (dérivé du tarif) ne bouge pas."""
-    service, archers, departs, _ = _monter()
-    archer_id = _archer(archers)
-    depart_id = _depart(departs, tarif_centimes=810)
-    inscription = service.inscrire(archer_id, depart_id).inscription
-    assert inscription.id is not None
-
-    detail = service.marquer_paye(inscription.id, True)
-    assert detail.inscription.paye is True
-    assert detail.montant_du_centimes == 810
-    assert service.marquer_paye(inscription.id, False).inscription.paye is False
-
-
-def test_marquer_paye_inscription_inconnue_leve() -> None:
-    """Marquer payé une inscription inexistante lève `InscriptionIntrouvable`."""
-    service, _, _, _ = _monter()
-    with pytest.raises(InscriptionIntrouvable):
-        service.marquer_paye(404, True)
-
-
 def test_desinscrire_retire_le_lien() -> None:
     """Désinscrire est **libre** (inverse de l'inscription) : le lien disparaît."""
     service, archers, departs, _ = _monter()
@@ -411,12 +396,14 @@ def test_montant_du_compte_les_inscriptions_payees_et_non_payees() -> None:
     Le « reste à payer » (dû moins encaissé) est une autre US (E08US002) : ici, marquer une
     inscription payée ne retranche rien au dû total.
     """
-    service, archers, departs, _ = _monter()
+    service, archers, departs, inscriptions = _monter()
     archer_id = _archer(archers)
     payee = service.inscrire(archer_id, _depart(departs, tarif_centimes=810, numero=1)).inscription
     service.inscrire(archer_id, _depart(departs, tarif_centimes=1000, numero=2))
     assert payee.id is not None
-    service.marquer_paye(payee.id, True)
+    # Marquage posé directement (il a migré vers `ServicePaiements`, E08US002) : ce qui compte ici,
+    # c'est que le montant **dû** ignore le statut de paiement.
+    inscriptions.enregistrer(dataclasses.replace(payee, paye=True))
 
     assert service.montant_du_par_archer(archer_id) == 1810
 

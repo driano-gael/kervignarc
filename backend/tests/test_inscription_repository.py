@@ -16,14 +16,18 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from domain.archer import Archer
 from domain.categorie import Categorie
 from domain.depart import Depart
+from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.inscription import Inscription
 from domain.tournoi import Tournoi
 from infrastructure.db import (
     ArcherRepositorySQL,
+    AuditRepositorySQL,
     CategorieRepositorySQL,
     Database,
     DepartRepositorySQL,
@@ -31,6 +35,22 @@ from infrastructure.db import (
     TournoiRepositorySQL,
 )
 from infrastructure.erreurs import InfrastructureError
+
+_QUAND = datetime.datetime(2026, 7, 21, 9, 30, tzinfo=datetime.UTC)
+
+
+def _trace_paiement(tournoi_id: int) -> EntreeAudit:
+    """Construit une entrée d'audit `PAIEMENT` valide (datée) pour les tests de co-écriture."""
+    return EntreeAudit.creer(
+        tournoi_id=tournoi_id,
+        action=ActionAuditee.PAIEMENT,
+        auteur="Administrateur",
+        horodatage=_QUAND,
+        objet="Paiement — Jean Robin, départ n°1",
+        avant="non payé",
+        apres="payé",
+    )
+
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -66,7 +86,9 @@ def test_ajouter_puis_relire(tmp_path: Path) -> None:
     """`ajouter` attribue un id ; `par_id` relit l'agrégat avec `paye` à False."""
     db, archer_id, depart_id = _base_avec_archer_et_depart(tmp_path)
     try:
-        repository = InscriptionRepositorySQL(db.session_factory)
+        repository = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
         cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
         assert cree.id is not None
         assert (cree.archer_id, cree.depart_id) == (archer_id, depart_id)
@@ -80,7 +102,9 @@ def test_enregistrer_bascule_paye(tmp_path: Path) -> None:
     """`enregistrer` persiste la bascule de `paye` ; le couple ne change pas."""
     db, archer_id, depart_id = _base_avec_archer_et_depart(tmp_path)
     try:
-        repository = InscriptionRepositorySQL(db.session_factory)
+        repository = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
         cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
         assert cree.id is not None
 
@@ -96,7 +120,9 @@ def test_par_archer_et_par_depart(tmp_path: Path) -> None:
     """`par_archer` et `par_depart` renvoient les inscriptions de leur côté du lien."""
     db, archer_id, depart_id = _base_avec_archer_et_depart(tmp_path)
     try:
-        repository = InscriptionRepositorySQL(db.session_factory)
+        repository = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
         cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
         assert [i.id for i in repository.par_archer(archer_id)] == [cree.id]
         assert [i.id for i in repository.par_depart(depart_id)] == [cree.id]
@@ -108,7 +134,9 @@ def test_par_archer_et_depart_trouve_ou_none(tmp_path: Path) -> None:
     """`par_archer_et_depart` trouve le couple existant, renvoie None sinon (contrôle d'unicité)."""
     db, archer_id, depart_id = _base_avec_archer_et_depart(tmp_path)
     try:
-        repository = InscriptionRepositorySQL(db.session_factory)
+        repository = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
         assert repository.par_archer_et_depart(archer_id, depart_id) is None
         cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
         trouve = repository.par_archer_et_depart(archer_id, depart_id)
@@ -125,7 +153,9 @@ def test_unicite_du_couple_archer_depart(tmp_path: Path) -> None:
     """
     db, archer_id, depart_id = _base_avec_archer_et_depart(tmp_path)
     try:
-        repository = InscriptionRepositorySQL(db.session_factory)
+        repository = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
         repository.ajouter(Inscription.creer(archer_id, depart_id))
         with pytest.raises(InfrastructureError):
             repository.ajouter(Inscription.creer(archer_id, depart_id))
@@ -137,7 +167,9 @@ def test_supprimer_retire_l_inscription(tmp_path: Path) -> None:
     """`supprimer` retire la ligne ; `par_id` renvoie ensuite None."""
     db, archer_id, depart_id = _base_avec_archer_et_depart(tmp_path)
     try:
-        repository = InscriptionRepositorySQL(db.session_factory)
+        repository = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
         cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
         assert cree.id is not None
         repository.supprimer(cree.id)
@@ -154,7 +186,9 @@ def test_supprimer_l_archer_purge_ses_inscriptions(tmp_path: Path) -> None:
     """
     db, archer_id, depart_id = _base_avec_archer_et_depart(tmp_path)
     try:
-        inscriptions = InscriptionRepositorySQL(db.session_factory)
+        inscriptions = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
         inscriptions.ajouter(Inscription.creer(archer_id, depart_id))
 
         ArcherRepositorySQL(db.session_factory).supprimer(archer_id)
@@ -171,7 +205,9 @@ def test_supprimer_le_depart_purge_ses_inscriptions(tmp_path: Path) -> None:
     """
     db, archer_id, depart_id = _base_avec_archer_et_depart(tmp_path)
     try:
-        inscriptions = InscriptionRepositorySQL(db.session_factory)
+        inscriptions = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
         inscriptions.ajouter(Inscription.creer(archer_id, depart_id))
 
         DepartRepositorySQL(db.session_factory).supprimer(depart_id)
@@ -184,6 +220,66 @@ def test_par_id_inexistant_renvoie_none(tmp_path: Path) -> None:
     """`par_id` renvoie None pour un identifiant absent (pas d'exception)."""
     db, _, _ = _base_avec_archer_et_depart(tmp_path)
     try:
-        assert InscriptionRepositorySQL(db.session_factory).par_id(999) is None
+        repository = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
+        assert repository.par_id(999) is None
+    finally:
+        db.engine.dispose()
+
+
+def test_definir_paye_avec_trace_bascule_et_consigne(tmp_path: Path) -> None:
+    """`definir_paye_avec_trace` bascule `paye` **et** persiste la trace, en une transaction.
+
+    Face « atomique » d'`enregistrer` : le marquage et son entrée d'audit `PAIEMENT` sont scellés
+    par un unique commit (ADR-0035). On vérifie les deux effets présents après l'appel.
+    """
+    db, archer_id, depart_id = _base_avec_archer_et_depart(tmp_path)
+    try:
+        audit = AuditRepositorySQL(db.session_factory)
+        repository = InscriptionRepositorySQL(db.session_factory, audit)
+        cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
+        assert cree.id is not None
+        tournoi_id = TournoiRepositorySQL(db.session_factory).lister()[0].id
+        assert tournoi_id is not None
+
+        (maj,) = repository.definir_paye_avec_trace([cree.id], True, _trace_paiement(tournoi_id))
+
+        assert maj.paye is True
+        relu = repository.par_id(cree.id)
+        assert relu is not None and relu.paye is True
+        traces = audit.par_tournoi(tournoi_id)
+        assert len(traces) == 1 and traces[0].action is ActionAuditee.PAIEMENT
+    finally:
+        db.engine.dispose()
+
+
+def test_definir_paye_avec_trace_est_atomique_si_la_trace_echoue(tmp_path: Path) -> None:
+    """Si la co-écriture de la trace échoue, **rien** n'est persisté (ni marquage, ni trace).
+
+    On injecte un audit dont `consigner_dans` lève : le service ne doit laisser ni paiement basculé
+    sans trace, ni trace fantôme. L'échec remonte enveloppé en `InfrastructureError` (ADR-0007), et
+    `paye` reste à sa valeur d'avant — preuve que le commit unique a bien tout annulé.
+    """
+
+    class _AuditQuiEchoue(AuditRepositorySQL):
+        def consigner_dans(self, session: Session, entree: EntreeAudit) -> None:
+            raise SQLAlchemyError("échec simulé de la trace")
+
+    db, archer_id, depart_id = _base_avec_archer_et_depart(tmp_path)
+    try:
+        repository = InscriptionRepositorySQL(
+            db.session_factory, _AuditQuiEchoue(db.session_factory)
+        )
+        cree = repository.ajouter(Inscription.creer(archer_id, depart_id))
+        assert cree.id is not None
+        tournoi_id = TournoiRepositorySQL(db.session_factory).lister()[0].id
+        assert tournoi_id is not None
+
+        with pytest.raises(InfrastructureError):
+            repository.definir_paye_avec_trace([cree.id], True, _trace_paiement(tournoi_id))
+
+        relu = repository.par_id(cree.id)
+        assert relu is not None and relu.paye is False  # rollback : rien n'a été marqué
     finally:
         db.engine.dispose()

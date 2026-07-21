@@ -19,8 +19,9 @@ fonctionnent, le placement des archers sur les cibles existe, la saisie des scor
 tourne en temps réel — y compris quand le wifi saute — et un tournoi de qualification se suit
 désormais de bout en bout : les postes de saisie se supervisent, le classement se calcule, et le
 public le consulte en direct sans compte — jusqu'à suivre un archer et voir sa feuille de marque se
-remplir volée par volée.** Il reste à finir ce jalon (complétude du tournoi, suivi des paiements),
-puis à construire les duels (phases finales) et le pilotage du jour J.
+remplir volée par volée. Côté organisateur, le **suivi des paiements** (qui a réglé, combien reste-t-il
+dû, par archer et par club) est en place.** Il reste à finir ce jalon (complétude du tournoi), puis à
+construire les duels (phases finales) et le pilotage du jour J.
 
 ---
 
@@ -62,6 +63,10 @@ Tout ce qu'il faut pour préparer un tournoi avant le jour J :
 - Configurer les **départs** (les créneaux de tir) et **inscrire un archer** sur des départs.
 - **Contrôler les quotas** (fait en avance de phase).
 - Le **calcul du montant dû** par un archer.
+- Le **suivi des paiements** : un écran « Paiements » montre, **par archer** (dû / payé / reste,
+  filtrable) et **par club** (mêmes totaux + détail), qui a réglé. On marque un paiement à la ligne,
+  ou d'un geste **tout un archer** ou **tout un club** (règlement groupé) ; chaque marquage laisse une
+  **trace** dans le journal d'audit (c'est de l'argent). Pas d'encaissement en ligne : c'est un statut.
 
 *Restent à venir : import de fichiers d'inscription, détection de doublons.*
 
@@ -131,8 +136,8 @@ Ce qui transforme la saisie brute en tournoi qu'on suit en direct, dernier bloc 
   voit donc le tour se dérouler **avant** validation (choix assumé) ; le total « officiel » reste celui
   du classement, et la vue ne révèle jamais qui a saisi.
 
-*Reste à venir sur ce jalon : les **affectations du prochain tour** (phases finales), la **complétude**
-du tournoi, et le **suivi des paiements**.*
+*Reste à venir sur ce jalon : les **affectations du prochain tour** (phases finales) et la
+**complétude** du tournoi.*
 
 ---
 
@@ -141,8 +146,8 @@ du tournoi, et le **suivi des paiements**.*
 Dans l'ordre de valeur prévu par le backlog :
 
 1. **Finir le tournoi de qualification** : l'appli publique ouverte directement sur **« ma journée »**
-   (« c'est moi » mémorisé), la **complétude** du tournoi, la recherche globale d'un archer, et le
-   **suivi des paiements**. *(Supervision des postes, classement et vues publiques : faits — cf. bloc 9.)*
+   (« c'est moi » mémorisé), la **complétude** du tournoi et la recherche globale d'un archer.
+   *(Supervision des postes, classement, vues publiques et suivi des paiements : faits — cf. blocs 3 et 9.)*
 2. **Les duels** (phases finales) : arbre d'élimination directe, saisie en duels, abandon /
    disqualification, barrages, podium — **et surtout la bascule de tour**, qui est le moment où le
    produit gagne ou perd sa valeur.
@@ -159,11 +164,11 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **52 US livrées** sur `main` (mergées, revues, CI verte) à la date du 21/07/2026 — dont E12US007,
+- **53 US livrées** sur `main` (mergées, revues, CI verte) à la date du 21/07/2026 — dont E08US002,
   optimiste d'un cran sur la branche jusqu'à son merge.
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : bien avancé
-  (39/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct et
-  alerte par calcul d'impact faits ; restent la complétude, les paiements et quelques imprimables.
-- Dernière US livrée : **E12US007** (alerter par calcul d'impact — règle transverse posée sur la
-  régénération du plan de cibles).
-- Prochaine US prévue : **E08US002** (suivi des paiements) — cf. [`SUIVI-US.md`](SUIVI-US.md).
+  (40/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
+  alerte par calcul d'impact et suivi des paiements faits ; restent la complétude et quelques imprimables.
+- Dernière US livrée : **E08US002** (suivi des paiements — vues par archer / par club, règlements
+  groupés audités).
+- Prochaine US prévue : **E12US005** (afficher la complétude du tournoi) — cf. [`SUIVI-US.md`](SUIVI-US.md).
