@@ -1009,10 +1009,20 @@ def _vers_affectation(ligne: PlacementORM) -> Affectation:
 
 
 class PlacementRepositorySQL:
-    """Adapter SQLite du port `PlacementRepository` — plan de cibles matérialisé (E03US004)."""
+    """Adapter SQLite du port `PlacementRepository` — plan de cibles matérialisé (E03US004).
 
-    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+    `definir_plan_avec_trace` (E12US007) réalise la **couture de session partagée** (ADR-0035),
+    comme `SerieRepositorySQL.enregistrer_avec_trace` : le plan **et** son entrée d'audit s'écrivent
+    dans **une seule session, un seul `commit`**. D'où l'`AuditRepositorySQL` injecté — couplage
+    **infra → infra** (le port `PlacementRepository` ignore cette couture ; sa signature ne cite
+    aucune session).
+    """
+
+    def __init__(
+        self, session_factory: sessionmaker[Session], audit_repository: AuditRepositorySQL
+    ) -> None:
         self._session_factory = session_factory
+        self._audit = audit_repository
 
     def par_depart(self, depart_id: DepartId) -> list[Affectation]:
         """Renvoie les affectations d'un départ, triées par cible puis position (ordre stable)."""
@@ -1044,6 +1054,35 @@ class PlacementRepositorySQL:
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de définition du plan de cibles.") from exc
+
+    def definir_plan_avec_trace(
+        self, depart_id: DepartId, affectations: Sequence[Affectation], entree: EntreeAudit
+    ) -> None:
+        """Remplace le plan **et** co-écrit sa trace d'audit en une transaction (E12US007).
+
+        Tout ou rien : purge + réinsertion du plan, puis la trace via
+        `AuditRepositorySQL.consigner_dans` (qui ne commit pas), puis un **unique** `commit` scelle
+        les deux (ADR-0035). Un échec avant le commit ne laisse ni replacement massif non tracé, ni
+        trace fantôme.
+        """
+        try:
+            with self._session_factory() as session:
+                session.execute(delete(PlacementORM).where(PlacementORM.depart_id == depart_id))
+                session.add_all(
+                    PlacementORM(
+                        inscription_id=affectation.inscription_id,
+                        depart_id=depart_id,
+                        cible_index=affectation.cible_index,
+                        position=affectation.position,
+                    )
+                    for affectation in affectations
+                )
+                self._audit.consigner_dans(session, entree)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError(
+                "Échec de définition du plan de cibles et de sa trace."
+            ) from exc
 
     def poser_plusieurs(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
         """Insère ou met à jour chaque affectation (clé = inscription) — **une** transaction."""

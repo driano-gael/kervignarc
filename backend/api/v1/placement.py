@@ -18,6 +18,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.placement import ServicePlacement
+from domain.impact import ImpactRegeneration, NiveauImpact
 from domain.placement import CiblePlacee, Conflit, PlanDeCibles, RaisonConflit
 from infrastructure.db import WriteQueue
 
@@ -105,6 +106,36 @@ class PlanDeCiblesReponse(BaseModel):
         )
 
 
+class ImpactRegenerationReponse(BaseModel):
+    """Impact chiffré de régénérer le plan (E12US007, ADR-0040) : prévisualisation avant le geste.
+
+    `niveau` (`aucun`/`confirmation`/`massif`) dicte l'UI : rien à afficher, confirmation simple, ou
+    **taper `REPLACER`**. Les chiffres nourrissent l'alerte (« N archers replacés ; M cibles ont des
+    scores, conservés »). DTO **distinct** du value object domaine (règle 6)."""
+
+    niveau: NiveauImpact
+    archers_deplaces: int
+    cibles_avec_scores: int
+
+    @staticmethod
+    def de_impact(impact: ImpactRegeneration) -> ImpactRegenerationReponse:
+        return ImpactRegenerationReponse(
+            niveau=impact.niveau,
+            archers_deplaces=impact.archers_deplaces,
+            cibles_avec_scores=impact.cibles_avec_scores,
+        )
+
+
+class RegenererRequete(BaseModel):
+    """Corps de la régénération : `confirme` autorise l'écrasement d'un plan **massif** (E12US007).
+
+    Le serveur n'exige qu'un **booléen** (contrat `autoriser_*`) : le mot à taper (`REPLACER`) est
+    une friction **front**, le serveur ignore la copie d'UI (ADR-0040 §4). `confirme=false` par
+    défaut : régénérer sans prévisualiser reçoit le 409 chiffré si l'action est massive."""
+
+    confirme: bool = False
+
+
 class DeplacerRequete(BaseModel):
     """Destination d'un inscrit : `cible_index` + `position`, ou `cible_index` **null** = réserve.
 
@@ -131,18 +162,44 @@ async def plan_de_cibles(tournoi_id: int, depart_id: int, request: Request) -> P
     return PlanDeCiblesReponse.de_plan(depart_id, plan)
 
 
+@router.get(
+    "/tournois/{tournoi_id}/departs/{depart_id}/plan-de-cibles/impact-regeneration",
+    response_model=ImpactRegenerationReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def impact_regeneration(
+    tournoi_id: int, depart_id: int, request: Request
+) -> ImpactRegenerationReponse:
+    """Prévisualise l'impact de régénérer le plan (**action admin**, E12US007, ADR-0040).
+
+    Lecture pure (aucune écriture) → directe hors boucle (`run_in_threadpool`, règle 7). Le front
+    l'interroge **avant** d'agir pour afficher l'alerte chiffrée ; l'action réelle (`regenerer`)
+    recalcule l'impact au commit (jamais cru sur parole)."""
+    service: ServicePlacement = request.app.state.service_placement
+    impact = await run_in_threadpool(service.impact_regeneration, tournoi_id, depart_id)
+    return ImpactRegenerationReponse.de_impact(impact)
+
+
 @router.post(
     "/tournois/{tournoi_id}/departs/{depart_id}/plan-de-cibles/regenerer",
     response_model=PlanDeCiblesReponse,
     dependencies=[Depends(exiger_admin)],
 )
-async def regenerer_plan(tournoi_id: int, depart_id: int, request: Request) -> PlanDeCiblesReponse:
+async def regenerer_plan(
+    tournoi_id: int, depart_id: int, request: Request, requete: RegenererRequete | None = None
+) -> PlanDeCiblesReponse:
     """(Re)génère le plan auto d'un départ (**action admin**) — c'est aussi « annuler les
-    modifications » (ADR-0024, auto déterministe). Écriture via la file."""
+    modifications » (ADR-0024, auto déterministe). Écriture via la file.
+
+    **409 `replacement_non_confirme`** (chiffré, dans `details`) si le plan est **massif** (des
+    scores
+    existent) et que `confirme` n'est pas vrai (E12US007, ADR-0040). Corps optionnel : une
+    régénération non massive (première génération, plan sans score) n'a rien à confirmer."""
     service: ServicePlacement = request.app.state.service_placement
     write_queue: WriteQueue = request.app.state.write_queue
+    confirme = requete.confirme if requete is not None else False
     plan = await asyncio.wrap_future(
-        write_queue.submit(lambda: service.regenerer(tournoi_id, depart_id))
+        write_queue.submit(lambda: service.regenerer(tournoi_id, depart_id, confirme=confirme))
     )
     return PlanDeCiblesReponse.de_plan(depart_id, plan)
 

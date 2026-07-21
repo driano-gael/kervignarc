@@ -106,7 +106,7 @@ def _placer_archer(
     assert archer.id is not None
     inscription = InscriptionRepositorySQL(sf).ajouter(Inscription.creer(archer.id, depart_id))
     assert inscription.id is not None
-    PlacementRepositorySQL(sf).poser_plusieurs(
+    PlacementRepositorySQL(sf, AuditRepositorySQL(sf)).poser_plusieurs(
         depart_id, [Affectation(inscription.id, cible_index, position)]
     )
     return archer.id

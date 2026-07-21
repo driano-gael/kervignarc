@@ -91,7 +91,12 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         status = 404
     else:
         status = 409
-    return _reponse(status, getattr(exc, "code", ApplicationError.code), str(exc))
+    # `details` optionnel : une erreur applicative peut porter un impact chiffré (E12US007,
+    # `ReplacementNonConfirme`) — première utilisation du canal `details` du format `{code, message,
+    # details?}` (règle 5, longtemps « jamais peuplé », cf. DETTE-007). Absent → réponse à deux
+    # clés.
+    details = getattr(exc, "details", None)
+    return _reponse(status, getattr(exc, "code", ApplicationError.code), str(exc), details)
 
 
 async def _sur_erreur_infrastructure(_: Request, exc: Exception) -> JSONResponse:

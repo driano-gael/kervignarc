@@ -71,6 +71,27 @@
 *En tant qu'*organisateur, *je veux* que l'appli ne me demande confirmation **que quand ça compte**, *afin de* ne pas apprendre à cliquer « oui » sans lire.
 - **CA** : **règle transverse** à toutes les écritures ; l'appli **calcule l'impact réel au moment où on agit** — elle **ne classe pas les actions d'avance** ; **pas d'impact → aucune alerte** (changer le gabarit avant tout placement ; modifier une phase non jouée **même tournoi en cours** ; inscrire un retardataire pendant la qualification) ; **impact → alerte chiffrée** : « **156 archers perdront leur place ; 4 cibles ont déjà des scores, ils seront conservés** » ; les **actions massives** exigent un **geste délibéré** (taper un mot, ex. `REPLACER`) — impossible par réflexe ; **trace d'audit** (E10US005) ; **aucune action n'est refusée** tant que le tournoi n'est pas *terminé* (`D-15`).
 - **Notes** : `P-4`, `D-15`, `D-16` · [CDC UX §9.1](../cahier-des-charges-ux.md). **Une alerte qui ne chiffre pas son impact est un clic de plus, pas une protection.** Si l'appli demande confirmation pour tout, l'admin apprend à cliquer « oui » sans lire — **et le jour où ça compte, il clique « oui » sans lire**. **La ligne de partage n'est ni *brouillon / en cours*, ni *sportif / tiers*, mais : *est-ce que ça a déjà produit des données réelles ?*** S'applique aussi au **contrôle de contraste** d'E01US016 (`DV-05` : avertir en chiffrant, ne pas refuser).
+- **Arbitrages (tranchés le 21/07/2026 à la réalisation)** — cf. [ADR-0040](../docs/adr/0040-alerte-par-calcul-d-impact.md) :
+  - **Périmètre : mécanisme réutilisable + la seule action `régénérer le plan de cibles`** (le cas
+    « REPLACER » du CDC, mot pour mot). Les autres écritures destructrices (gabarit, barème/phase,
+    catégorie/blason) gardent leur comportement actuel et se grefferont quand leur propre US les
+    touchera. « Toutes les écritures » reste l'horizon, **séquencé** — pas rogné (règle 9), comme
+    l'écran de salle d'E12US001. Le CA clair mais **non borné** est l'arbitrage : on pose le mécanisme
+    sur un cas réel du code d'aujourd'hui, on ne l'étale pas par anticipation.
+  - **Fork « où vivent les chiffres » : endpoint de prévisualisation** (`GET …/impact-regeneration`,
+    lecture pure) **+ re-calcul au commit**, plutôt qu'un 409-avec-impact. Fidèle au CA (« calcule au
+    moment où on agit ») et sûr au rejeu — le serveur ne croit pas le front sur parole, ce qui **évite**
+    le défaut de DETTE-007 (le re-placement ne rejoint pas les confirmations aveugles).
+  - **Échelle à trois niveaux** (`NiveauImpact`, domaine pur) : **aucun** (aucune affectation → pas
+    d'alerte), **confirmation** (des archers placés, **aucun score** → chiffrée, bouton), **massif**
+    (placés **+ au moins un score** → chiffrée + **taper `REPLACER`** + **trace d'audit**). La ligne
+    de partage « données réelles produites » = **des scores existent** (niveau massif). Le serveur ne
+    bloque et ne trace **que** le niveau massif ; la confirmation du niveau *confirmation* est une
+    friction **front** (config réversible, pas un acte à auditer).
+  - **Geste délibéré = friction front** : le mot `REPLACER` vit au front ; le serveur n'exige qu'un
+    booléen `confirme` explicite (contrat `autoriser_*` d'ADR-0015/0016/0018), jamais la chaîne magique.
+  - **Trace atomique** (ADR-0035) : la régénération massive co-écrit plan + `EntreeAudit`
+    (`ActionAuditee.REPLACEMENT`, auteur `« Administrateur »`) en une transaction.
 - **Dépend de** : E10US005 · **Jalon** : J1
 
 ### E12US008 — Cycle de vie d'un départ (créneau)

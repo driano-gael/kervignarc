@@ -250,6 +250,18 @@ class PlacementRepository(Protocol):
         """
         ...
 
+    def definir_plan_avec_trace(
+        self, depart_id: DepartId, affectations: Sequence[Affectation], entree: EntreeAudit
+    ) -> None:
+        """Remplace le plan **et** co-écrit son entrée d'audit en une transaction (E12US007).
+
+        Face « trace atomique » de `definir_plan` (ADR-0035, comme `SerieRepository`) : la
+        régénération **massive** du plan (des scores existent déjà) et sa trace `REPLACEMENT`
+        tiennent dans un seul « tout ou rien » — jamais de replacement massif non tracé, jamais de
+        trace fantôme. L'entrée arrive **déjà construite et datée** par le service (port `Horloge`).
+        """
+        ...
+
     def poser_plusieurs(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
         """Insère/met à jour plusieurs affectations d'un départ en **une** transaction (upsert).
 

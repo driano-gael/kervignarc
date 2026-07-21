@@ -12,25 +12,23 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 21/07/2026** · **51 US livrées** · dernière : `E07US009`.
+**Dernière mise à jour : 21/07/2026** · **52 US livrées** · dernière : `E12US007`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E12US007` — Alerter par calcul d'impact** *(J1, règle transverse à toutes les écritures)*
+> **`E08US002` — Suivi des paiements** *(J1)*
 >
-> `E07US009` (déroulé du tour en direct : endpoint public + DTO restreint volées/valeurs/statut
-> **en attente / validé**, affichage live dans la carte de suivi, [ADR-0039]) est **terminée et
-> poussée** (revue faite). La suite de séquence est `E12US007` : l'appli **ne demande confirmation que
-> quand ça compte** — elle **calcule l'impact réel au moment où on agit** (elle ne classe pas les
-> actions d'avance) ; **pas d'impact → aucune alerte** ; **impact → alerte chiffrée** (« 156 archers
-> perdront leur place ; 4 cibles ont déjà des scores, ils seront conservés ») ; une **action massive**
-> exige un **geste délibéré** (taper un mot, ex. `REPLACER`) ; **trace d'audit** (E10US005) ; aucune
-> action refusée tant que le tournoi n'est pas *terminé* (`D-15`). Dépend d'E10US005 (fait). Détail :
-> [`stories/E12-pilotage-jour-j.md`](../stories/E12-pilotage-jour-j.md).
+> `E12US007` (alerter par calcul d'impact) est **terminée et poussée** (revue faite) : mécanisme
+> transverse posé sur la **régénération du plan de cibles** (le cas « REPLACER »), scope A — endpoint de
+> **prévisualisation** d'impact + re-calcul au commit, échelle à trois niveaux (`aucun`/`confirmation`/
+> `massif`), geste délibéré (taper `REPLACER`) et **trace d'audit** atomique quand des scores existent
+> ([ADR-0040]). Les autres écritures s'y grefferont dans leurs US. La suite de séquence est `E08US002` :
+> **suivre les paiements** (dû/réglé par archer et agrégats). Dépend d'E08US001 (fait). Détail :
+> [`stories/E08-paiements.md`](../stories/E08-paiements.md).
 
-[ADR-0039]: ../docs/adr/0039-exposition-publique-du-deroule-scores-provisoires.md
+[ADR-0040]: ../docs/adr/0040-alerte-par-calcul-d-impact.md
 
 ---
 
@@ -51,7 +49,7 @@
 | E00US011 | Tranche verticale démontrable | ✅ |
 | E00US012 | Exécutable de dev (FastAPI sert le front) | ✅ |
 
-## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (38/46)**
+## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (39/46)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -91,8 +89,8 @@
 | 46 | E07US006 | Suivre des archers : ma journée *(tranche 1, front)* | ✅ |
 | **46b** | **E07US009** | **Suivre le déroulé du tour en direct** *(tranche 2, backend + ADR)* | ✅ |
 | 47 | E10US005 | Journal d'audit métier | ✅ *(fait en avance)* |
-| 48 | E12US007 | Alerter par calcul d'impact | 🎯 **suivante** |
-| 49 | E08US002 | Suivi des paiements | ⬜ |
+| 48 | E12US007 | Alerter par calcul d'impact | ✅ |
+| 49 | E08US002 | Suivi des paiements | 🎯 **suivante** |
 | 50 | E12US005 | Afficher la complétude du tournoi | ⬜ |
 | 51 | E12US006 | Rechercher un archer depuis n'importe où | ⬜ |
 | 52 | E02US005 | Détecter et fusionner les doublons | ⬜ |

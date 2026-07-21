@@ -114,6 +114,11 @@ class FauxPlacementRepository:
     def definir_plan(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
         self.poser_plusieurs(depart_id, affectations)
 
+    def definir_plan_avec_trace(
+        self, depart_id: DepartId, affectations: Sequence[Affectation], entree: object
+    ) -> None:
+        raise NotImplementedError("Non exercé par ServiceFeuilleDeMarque.")
+
     def poser_plusieurs(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
         for affectation in affectations:
             self._affectation[affectation.inscription_id] = affectation

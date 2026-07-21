@@ -186,6 +186,34 @@ class DeplacementInvalide(ApplicationError):
     code = "deplacement_invalide"
 
 
+class ReplacementNonConfirme(ApplicationError):
+    """Régénération **massive** du plan non confirmée (E12US007, [ADR-0040]) → 409.
+
+    **Un signalement chiffré, pas un refus** — famille d'`ArcherEngage`/`DepartAvecInscriptions`
+    (ADR-0016/0018) : régénérer le plan écrase le placement de tous les archers, et **des scores
+    existent déjà** (niveau `MASSIF`). Le geste demande donc une confirmation explicite
+    (`regenerer(..., confirme=True)`) ; côté UI, il faut **taper un mot** (`REPLACER`) — friction
+    humaine impossible par réflexe. Ici, à la frontière API, le serveur n'exige que le booléen : il
+    ne connaît pas la copie d'UI (couplage évité, ADR-0040 §4).
+
+    À la **différence** des confirmations aveugles de la famille (DETTE-007), le décompte est
+    **recalculé au commit**, jamais cru sur parole : `details` porte les chiffres frais
+    (`archers_deplaces`, `cibles_avec_scores`) — première utilisation du canal `details` du format
+    `{code, message, details?}` (règle 5). L'action ne rejoint donc pas DETTE-007.
+    """
+
+    code = "replacement_non_confirme"
+
+    def __init__(self, message: str, *, archers_deplaces: int, cibles_avec_scores: int) -> None:
+        super().__init__(message)
+        # `details` est lu tel quel par le gestionnaire `_sur_erreur_application` (frontière API) et
+        # sérialisé dans la réponse — le client y retrouve l'impact chiffré sans le reconstituer.
+        self.details = {
+            "archers_deplaces": archers_deplaces,
+            "cibles_avec_scores": cibles_avec_scores,
+        }
+
+
 class ClubIntrouvable(ApplicationError):
     """Aucun club ne correspond à l'identifiant demandé."""
 

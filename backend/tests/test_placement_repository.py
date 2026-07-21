@@ -19,11 +19,13 @@ from alembic.config import Config
 from domain.archer import Archer
 from domain.categorie import Categorie
 from domain.depart import Depart
+from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.inscription import Inscription
 from domain.placement import Affectation
 from domain.tournoi import Tournoi
 from infrastructure.db import (
     ArcherRepositorySQL,
+    AuditRepositorySQL,
     CategorieRepositorySQL,
     Database,
     DepartRepositorySQL,
@@ -67,8 +69,13 @@ class _Decor:
         self.depart_id = depart.id
 
     @property
+    def audit(self) -> AuditRepositorySQL:
+        return AuditRepositorySQL(self.db.session_factory)
+
+    @property
     def placements(self) -> PlacementRepositorySQL:
-        return PlacementRepositorySQL(self.db.session_factory)
+        # L'adapter co-écrit la trace d'une régénération massive (E12US007) via l'audit concret.
+        return PlacementRepositorySQL(self.db.session_factory, self.audit)
 
     def inscrire(self) -> int:
         """Crée un archer et son inscription au départ ; renvoie l'id d'inscription."""
@@ -167,5 +174,36 @@ def test_supprimer_l_inscription_efface_l_affectation(tmp_path: Path) -> None:
         )
         InscriptionRepositorySQL(decor.db.session_factory).supprimer(i1)
         assert decor.placements.par_depart(decor.depart_id) == []
+    finally:
+        decor.db.engine.dispose()
+
+
+def test_definir_plan_avec_trace_co_ecrit_le_plan_et_la_trace(tmp_path: Path) -> None:
+    """E12US007 : `definir_plan_avec_trace` matérialise le plan **et** consigne son entrée d'audit.
+
+    Co-écriture atomique (ADR-0035, même mécanisme `consigner_dans` que la saisie) : après l'appel,
+    le plan est en base **et** la trace `REPLACEMENT` est lisible par l'audit du tournoi."""
+    decor = _Decor(tmp_path)
+    i1 = decor.inscrire()
+    entree = EntreeAudit.creer(
+        tournoi_id=decor.tournoi_id,
+        action=ActionAuditee.REPLACEMENT,
+        auteur="Administrateur",
+        horodatage=datetime.datetime(2026, 3, 14, 10, 42, tzinfo=datetime.UTC),
+        objet=f"Plan de cibles du départ {decor.depart_id}",
+        avant="1 archer(s) placé(s), 1 cible(s) avec scores",
+        apres="plan régénéré",
+    )
+    try:
+        decor.placements.definir_plan_avec_trace(
+            decor.depart_id, [Affectation(inscription_id=i1, cible_index=2, position="C")], entree
+        )
+        assert decor.placements.par_depart(decor.depart_id) == [
+            Affectation(inscription_id=i1, cible_index=2, position="C")
+        ]
+        traces = decor.audit.par_tournoi(decor.tournoi_id)
+        assert len(traces) == 1
+        assert traces[0].action is ActionAuditee.REPLACEMENT
+        assert traces[0].apres == "plan régénéré"
     finally:
         decor.db.engine.dispose()

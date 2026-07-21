@@ -8,11 +8,25 @@
 
 import { useMemo, useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
+import { ConfirmationChiffree } from '../../shared/confirmation/ConfirmationChiffree'
 import { useArchers } from '../archers/hooks'
 import type { Archer } from '../competition/api'
 import { useDeparts } from '../departs/hooks'
-import type { CiblePlacee, Conflit, Destination, PlanDeCibles, RaisonConflit } from './api'
-import { useDeplacer, usePlacerRestants, usePlanDeCibles, useRegenerer } from './hooks'
+import type {
+  CiblePlacee,
+  Conflit,
+  Destination,
+  ImpactRegeneration,
+  PlanDeCibles,
+  RaisonConflit,
+} from './api'
+import {
+  useDeplacer,
+  useImpactRegeneration,
+  usePlacerRestants,
+  usePlanDeCibles,
+  useRegenerer,
+} from './hooks'
 
 // Les positions d'une cible sont des lettres ; une cible de capacité N expose les N premières.
 const POSITIONS = ['A', 'B', 'C', 'D']
@@ -113,6 +127,9 @@ function PlanCharge({
   const [inscriptionGlissee, setInscriptionGlissee] = useState<number | null>(null)
   const [survol, setSurvol] = useState<string | null>(null)
   const [confirmationAnnulation, setConfirmationAnnulation] = useState(false)
+  // L'impact n'est calculé (serveur) qu'à l'ouverture du panneau de confirmation (E12US007) : il
+  // chiffre l'alerte et dit si un mot est à taper (niveau massif = des scores existent déjà).
+  const impact = useImpactRegeneration(tournoiId, departId, confirmationAnnulation)
 
   const deposer = (destination: Destination) => {
     setSurvol(null)
@@ -140,37 +157,23 @@ function PlanCharge({
     <div className="placement">
       <div className="placement__barre">
         {planVide ? (
-          <button type="button" disabled={regenerer.isPending} onClick={() => regenerer.mutate()}>
+          <button
+            type="button"
+            disabled={regenerer.isPending}
+            onClick={() => regenerer.mutate(false)}
+          >
             Générer le plan
           </button>
-        ) : confirmationAnnulation ? (
-          <>
-            <button
-              type="button"
-              className="bouton--danger"
-              disabled={regenerer.isPending}
-              onClick={() =>
-                regenerer.mutate(undefined, { onSuccess: () => setConfirmationAnnulation(false) })
-              }
-            >
-              Confirmer — écraser les ajustements
-            </button>
+        ) : (
+          !confirmationAnnulation && (
             <button
               type="button"
               className="bouton--discret"
-              onClick={() => setConfirmationAnnulation(false)}
+              onClick={() => setConfirmationAnnulation(true)}
             >
-              Annuler
+              Annuler les modifications
             </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="bouton--discret"
-            onClick={() => setConfirmationAnnulation(true)}
-          >
-            Annuler les modifications
-          </button>
+          )
         )}
         <button
           type="button"
@@ -181,6 +184,32 @@ function PlanCharge({
           Placer les restants
         </button>
       </div>
+
+      {/* Confirmation par calcul d'impact (E12US007, ADR-0040) : l'alerte est **chiffrée** et, si des
+          scores existent déjà (niveau massif), exige de taper REPLACER. */}
+      {confirmationAnnulation &&
+        (impact.isPending ? (
+          <p className="carte__etat">Calcul de l'impact…</p>
+        ) : impact.isError ? (
+          <MessageErreur erreur={impact.error} />
+        ) : impact.data ? (
+          <ConfirmationChiffree
+            titre="Régénérer le plan de cibles"
+            motRequis={impact.data.niveau === 'massif' ? 'REPLACER' : undefined}
+            libelleConfirmer={
+              impact.data.niveau === 'massif'
+                ? 'Régénérer le plan'
+                : 'Confirmer — écraser les ajustements'
+            }
+            enCours={regenerer.isPending}
+            onConfirmer={() =>
+              regenerer.mutate(true, { onSuccess: () => setConfirmationAnnulation(false) })
+            }
+            onAnnuler={() => setConfirmationAnnulation(false)}
+          >
+            <MessageImpact impact={impact.data} />
+          </ConfirmationChiffree>
+        ) : null)}
 
       {/* Un refus de déplacement (`409`) est non bloquant : ton **ambre**, pas rouge — le geste
           était légitime, il n'était juste pas applicable ici. Le plan reste la vérité serveur. */}
@@ -386,6 +415,25 @@ function Reserve({
 
 function nomComplet(archer: Archer): string {
   return `${archer.prenom} ${archer.nom}`.trim()
+}
+
+// Corps chiffré de l'alerte de régénération (E12US007) : dit **ce qui est en jeu**, jamais un « Êtes-
+// vous sûr ? » creux. Le niveau massif rappelle que les scores sont **conservés** (la régénération ne
+// réécrit que le placement) — l'archer bouge de cible, ses flèches le suivent.
+function MessageImpact({ impact }: { impact: ImpactRegeneration }) {
+  const archers = `${impact.archers_deplaces} archer${impact.archers_deplaces > 1 ? 's' : ''}`
+  if (impact.niveau === 'massif') {
+    const cibles = `${impact.cibles_avec_scores} cible${impact.cibles_avec_scores > 1 ? 's' : ''}`
+    return (
+      <p>
+        {archers} vont être replacés. {cibles} ont déjà des scores : ils seront{' '}
+        <strong>conservés</strong>.
+      </p>
+    )
+  }
+  return (
+    <p>{archers} vont être replacés (aucun score enregistré ; vos ajustements seront écrasés).</p>
+  )
 }
 
 function messageErreur(erreur: Error): string {
