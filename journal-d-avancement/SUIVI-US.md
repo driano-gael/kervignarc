@@ -18,7 +18,7 @@
 
 ## 🎯 Prochaine US
 
-> **`E12US005` — Afficher la complétude du tournoi** *(J1)*
+> **`E00US013` — Factoriser les briques d'UI partagées** *(remontée de J3, décidé le 21/07/2026)*
 >
 > `E08US002` (suivi des paiements) est **terminée et poussée** (revue faite) : destination admin
 > **« Paiements »** avec vue **par archer** (dû / payé / reste, filtrable) et **par club** (totaux +
@@ -26,9 +26,15 @@
 > ou d'un club en un geste ; le marquage simple par inscription a **migré** d'E02US009 vers cette
 > capacité — une **seule voie d'écriture** du paiement, **toute auditée** (action `paiement`,
 > co-écriture atomique acte↔trace, [ADR-0035]). Granularité tranchée **par départ** ; « reste »
-> dérivé (dû − payé), jamais stocké. La suite de séquence est `E12US005` : **complétude du tournoi**
-> (indicateurs « prêt / manquant » avant le jour J). Détail :
-> [`stories/E12-jour-j.md`](../stories/E12-jour-j.md).
+> dérivé (dû − payé), jamais stocké.
+>
+> **`E00US013` est remontée de J3 en tête de file** : la revue d'E08US002 a constaté que le composant
+> `MessageErreur` est désormais **dupliqué 16 fois** (DETTE-004) — la 3ᵉ occurrence était le seuil, on
+> est très au-delà, la dette est **mûre**. US `refactor` (pas d'ADR — factorisation, pas de décision
+> structurante) : sortir `MessageErreur` (et les briques récurrentes voisines : pastille de statut,
+> état « Chargement… », en-tête de carte) dans `shared/ui/`, puis remplacer les copies. Ensuite,
+> reprendre la séquence J1 à `E12US005` (complétude du tournoi). Détail :
+> [`stories/E00-socle.md`](../stories/E00-socle.md).
 
 [ADR-0040]: ../docs/adr/0040-alerte-par-calcul-d-impact.md
 [ADR-0035]: ../docs/adr/0035-atomicite-acte-trace-session-partagee.md
@@ -95,7 +101,7 @@
 | 47 | E10US005 | Journal d'audit métier | ✅ *(fait en avance)* |
 | 48 | E12US007 | Alerter par calcul d'impact | ✅ |
 | 49 | E08US002 | Suivi des paiements | ✅ |
-| 50 | E12US005 | Afficher la complétude du tournoi | 🎯 **suivante** |
+| 50 | E12US005 | Afficher la complétude du tournoi | ⬜ *(reprise J1 après E00US013)* |
 | 51 | E12US006 | Rechercher un archer depuis n'importe où | ⬜ |
 | 52 | E02US005 | Détecter et fusionner les doublons | ⬜ |
 | 53 | E02US006 | Contrôler les quotas | ✅ *(fait en avance)* |
@@ -134,7 +140,7 @@
 | 76 | E06US006 | Classement intégral 1→N & profondeur | ⬜ |
 | 77 | E03US007 | Contrainte séparation catégorie/blason | ⬜ |
 | 78 | E09US005 | Classements PDF | ⬜ |
-| 79 | E00US013 | Factoriser les briques d'UI partagées | ⬜ |
+| 79 | E00US013 | Factoriser les briques d'UI partagées | 🎯 **suivante** *(remontée de J3, DETTE-004)* |
 | 80 | E01US016 | Définir l'identité visuelle du tournoi | ⬜ |
 | 81 | E07US004 | Écran de salle : déroulé auto & pilotage | ⬜ |
 | 82 | E07US005 | Vue tableaux/arbres live | ⬜ |

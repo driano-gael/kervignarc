@@ -171,4 +171,5 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
   alerte par calcul d'impact et suivi des paiements faits ; restent la complétude et quelques imprimables.
 - Dernière US livrée : **E08US002** (suivi des paiements — vues par archer / par club, règlements
   groupés audités).
-- Prochaine US prévue : **E12US005** (afficher la complétude du tournoi) — cf. [`SUIVI-US.md`](SUIVI-US.md).
+- Prochaine US prévue : **E00US013** (factoriser les briques d'UI partagées — remontée de J3 pour
+  résorber la duplication constatée en revue), puis reprise J1 à **E12US005** — cf. [`SUIVI-US.md`](SUIVI-US.md).

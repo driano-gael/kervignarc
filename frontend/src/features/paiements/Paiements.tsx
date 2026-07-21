@@ -11,6 +11,7 @@ import { ErreurApi } from '../../shared/api/client'
 import { decrireTarif } from '../competition/format'
 import type { LignePaiementArcher, RecapClub, RecapPaiement } from './api'
 import { useMarquerArcher, useMarquerClub, usePaiementsArchers, usePaiementsClubs } from './hooks'
+import { actionMarquage, statutPaiement, type StatutPaiement } from './statut'
 
 type Onglet = 'archers' | 'clubs'
 
@@ -215,16 +216,21 @@ function CellulesMontants({ recap }: { recap: RecapPaiement }) {
   )
 }
 
-// Statut dérivé du récapitulatif : rien à payer (dû 0), réglé (reste 0), partiel (payé entamé) ou dû.
+// Libellé + classe de chaque statut (la règle de dérivation, elle, vit dans `statut.ts`, testée).
+const LIBELLE_STATUT: Record<StatutPaiement, string> = {
+  neutre: '—',
+  regle: 'Réglé',
+  partiel: 'Partiel',
+  du: 'À régler',
+}
+
 function StatutPaiement({ recap }: { recap: RecapPaiement }) {
-  if (recap.du_centimes === 0) return <span className="statut statut--neutre">—</span>
-  if (recap.reste_centimes === 0) return <span className="statut statut--regle">Réglé</span>
-  if (recap.paye_centimes > 0) return <span className="statut statut--partiel">Partiel</span>
-  return <span className="statut statut--du">À régler</span>
+  const statut = statutPaiement(recap)
+  return <span className={`statut statut--${statut}`}>{LIBELLE_STATUT[statut]}</span>
 }
 
 // Bouton de règlement groupé : propose de tout marquer réglé s'il reste à payer, ou de tout annuler
-// s'il y a du payé. Rien à faire quand le périmètre ne doit rien (dû 0).
+// s'il y a du payé. Rien à faire quand le périmètre ne doit rien (dû 0) — `actionMarquage` renvoie `null`.
 function BoutonMarquer({
   recap,
   enCours,
@@ -234,26 +240,16 @@ function BoutonMarquer({
   enCours: boolean
   onMarquer: (paye: boolean) => void
 }) {
-  if (recap.du_centimes === 0) return null
-  if (recap.reste_centimes > 0)
-    return (
-      <button
-        type="button"
-        className="bouton--discret"
-        disabled={enCours}
-        onClick={() => onMarquer(true)}
-      >
-        Marquer réglé
-      </button>
-    )
+  const action = actionMarquage(recap)
+  if (action === null) return null
   return (
     <button
       type="button"
       className="bouton--discret"
       disabled={enCours}
-      onClick={() => onMarquer(false)}
+      onClick={() => onMarquer(action === 'regler')}
     >
-      Marquer non réglé
+      {action === 'regler' ? 'Marquer réglé' : 'Marquer non réglé'}
     </button>
   )
 }
@@ -269,6 +265,9 @@ function TotalGeneral({ recaps }: { recaps: RecapPaiement[] }) {
   )
 }
 
+// DETTE-004 (docs/dette.md) : 18ᵉ copie conforme de ce composant, une par feature. À extraire dans
+// `shared/ui/` avec les briques voisines (E00US013, remontée en tête de file justement à cause de
+// cette accumulation). Copiée telle quelle ici pour ne pas introduire une 2ᵉ convention en attendant.
 function MessageErreur({ erreur }: { erreur: Error | null }) {
   if (erreur === null) return null
   const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'

@@ -189,7 +189,8 @@ class DepartRepository(Protocol):
 class InscriptionRepository(Protocol):
     """Port de persistance des inscriptions — liens archer ↔ départ (E02US009, ADR-0017).
 
-    `enregistrer` bascule `paye` **sans trace** (usages internes) ; `definir_paye_avec_trace`
+    `enregistrer` met à jour une inscription **sans trace** (opération générique du port ; depuis
+    E08US002 le marquage du paiement ne passe plus par là) ; `definir_paye_avec_trace`
     co-écrit le nouveau statut **et** une entrée d'audit dans **une seule transaction** (atomicité
     acte↔trace, ADR-0035) — c'est la voie du suivi des paiements (E08US002), simple ou groupé.
     L'atomicité est réalisée par l'adapter (session partagée) ; au niveau du port, c'est une seule

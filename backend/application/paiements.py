@@ -146,7 +146,11 @@ class ServicePaiements:
         recaps = [
             RecapClub(
                 club_id=club_id,
-                nom=noms_clubs.get(club_id, LIBELLE_SANS_CLUB) if club_id else LIBELLE_SANS_CLUB,
+                nom=(
+                    LIBELLE_SANS_CLUB
+                    if club_id is None
+                    else noms_clubs.get(club_id, LIBELLE_SANS_CLUB)
+                ),
                 recap=total(ligne.recap for ligne in archers),
                 archers=archers,
             )

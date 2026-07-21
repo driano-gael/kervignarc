@@ -281,5 +281,7 @@ def test_definir_paye_avec_trace_est_atomique_si_la_trace_echoue(tmp_path: Path)
 
         relu = repository.par_id(cree.id)
         assert relu is not None and relu.paye is False  # rollback : rien n'a été marqué
+        # ...et aucune trace fantôme : le rollback a aussi annulé la moindre écriture d'audit.
+        assert AuditRepositorySQL(db.session_factory).par_tournoi(tournoi_id) == []
     finally:
         db.engine.dispose()
