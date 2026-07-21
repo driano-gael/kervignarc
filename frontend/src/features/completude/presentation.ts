@@ -5,6 +5,12 @@
 
 import type { Completude, EtatSection, LigneCompletude } from './api'
 
+// Ce que « terminer » fige (`D-17`) — **source unique** de la phrase, réutilisée par l'écran
+// Complétude (rendu à l'écran) et par le message de confirmation (`window.confirm`). Texte simple,
+// sans emphase : le `confirm` natif n'affiche pas de gras.
+export const IMPLICATION_TERMINER =
+  'Terminer figera le sportif (qualification, classement). Les paiements resteront modifiables.'
+
 export interface AfficheEtat {
   classe: EtatSection // token CSS ; l'alerte se rend en **ambre**, jamais en rouge (charte, DV-03)
   libelle: string
@@ -48,22 +54,25 @@ function manques(completude: Completude): string[] {
       )
     } else if (ligne.cle === 'paiements') {
       if (reste !== null && reste > 0) messages.push(`${reste} archer(s) n’ont pas réglé`)
-    } else if (ligne.cle === 'classement') {
-      messages.push('le classement n’est pas définitif')
     }
+    // Le classement n'est **jamais** listé : son état dérive mécaniquement de la qualification (en
+    // attente ssi la qualif n'est pas OK), il n'est pas un manque actionnable en propre — le lister
+    // ne ferait qu'allonger le message d'une conséquence déjà couverte par la ligne qualification.
   }
   return messages
 }
 
-// Message de confirmation avant de terminer (`D-17`, CDC UX §8.3). Toujours l'**implication** (ce que
-// « terminer » fige), précédée du **chiffrage** de ce qui reste quand le sportif n'est pas complet —
-// « Terminer quand même ? ». Sportif complet : pas d'alarme, juste l'implication + la question.
+// Message de confirmation avant de terminer (`D-17`, CDC UX §8.3). On **chiffre toujours ce qui
+// reste** dès qu'il reste quelque chose — y compris des **impayés alors que le sportif est complet**
+// (le CA impose « chiffrer ce qui reste » et cite « 12 archers n'ont pas payé » : les impayés *sont*
+// ce qui reste). `sportif_complet` ne pilote que le **libellé de la question** : un manque purement
+// financier reste modifiable après *terminé* (`D-17`) → « Terminer le tournoi ? » ; un manque
+// **sportif**, lui, va être figé → « Terminer quand même ? ».
 export function messageConfirmationTerminer(completude: Completude): string {
-  const implication =
-    'Terminer figera le sportif (qualification, classement). Les paiements resteront modifiables.'
   const restes = manques(completude)
-  if (completude.sportif_complet || restes.length === 0) {
-    return `${implication}\n\nTerminer le tournoi ?`
+  if (restes.length === 0) {
+    return `${IMPLICATION_TERMINER}\n\nTerminer le tournoi ?`
   }
-  return `${restes.join(' ; ')}.\n\n${implication}\n\nTerminer quand même ?`
+  const question = completude.sportif_complet ? 'Terminer le tournoi ?' : 'Terminer quand même ?'
+  return `${restes.join(' ; ')}.\n\n${IMPLICATION_TERMINER}\n\n${question}`
 }

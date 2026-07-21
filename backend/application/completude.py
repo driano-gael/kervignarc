@@ -94,11 +94,15 @@ class ServiceCompletude:
         """`(cibles_terminees, cibles_total)` sur l'ensemble des couples `(départ, cible)` placés.
 
         Une cible est *terminée* quand tous ses archers placés ont une série complète (barème
-        validé). Barème lu sur la phase de qualification (**0** si non configurée : aucune cible
-        n'est alors complète, la ligne remontera en alerte/attente — on n'échoue pas là-dessus).
+        validé). **Barème non configuré** (phase de qualification absente) → on renvoie `(0, 0)` :
+        rien n'est encore *scorable* (aucune série ne peut se valider sans barème), donc la ligne
+        remonte en **« en attente »** — pas un « 0/N à finir » trompeur qui laisserait croire la
+        saisie en cours. On n'échoue pas là-dessus (robustesse jour J).
         """
         phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
         nb_volees = phase.bareme.nb_volees if phase is not None else 0
+        if nb_volees <= 0:
+            return 0, 0
         series: dict[ArcherId, Serie] = {
             s.archer_id: s for s in self._series.par_tournoi(tournoi_id)
         }
@@ -124,7 +128,14 @@ class ServiceCompletude:
 
     @staticmethod
     def _serie_complete(serie: Serie | None, nb_volees: int) -> bool:
-        """Une série existante et complète (barème validé) ; `None` (rien saisi) → incomplète."""
+        """Une série existante et complète (barème validé) ; `None` (rien saisi) → incomplète.
+
+        # DETTE-014 : cette définition **ignore le forfait** (E12US004, non livrée). Un archer qui
+        # abandonne garde ses volées partielles (le CA d'E12US004 préserve les flèches tirées) : sa
+        # série ne sera **jamais** complète, donc sa cible resterait « à finir » à jamais et la
+        # complétude mentirait dès qu'un forfait existe. À la livraison d'E12US004, y traiter un
+        # archer forfait comme « série close par forfait » (cf. docs/dette.md).
+        """
         return serie is not None and serie.est_complete(nb_volees)
 
     def _compter_paiements(self, tournoi_id: TournoiId) -> tuple[int, int]:

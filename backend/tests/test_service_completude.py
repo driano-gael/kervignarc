@@ -345,6 +345,21 @@ def test_aucun_placement_qualification_en_attente() -> None:
     assert qualif.etat is EtatSection.EN_ATTENTE
 
 
+def test_bareme_non_configure_qualification_en_attente_meme_avec_placements() -> None:
+    """Barème de qualification absent : rien n'est *scorable* → « en attente », pas « 0/N à finir ».
+
+    Même avec des cibles placées : sans barème, aucune série ne peut se valider, l'écran ne doit pas
+    laisser croire la saisie en cours. Le service renvoie (0, 0) → le domaine remonte EN_ATTENTE.
+    """
+    m = Montage(nb_volees_bareme=0)  # aucune phase de qualification définie
+    depart = m.creer_depart()
+    m.placer(depart, cible_index=1, archer_id=10, position="A")
+
+    qualif = m.service.pour_tournoi(m.tournoi_id).sportif[0]
+    assert (qualif.fait, qualif.total) == (0, 0)
+    assert qualif.etat is EtatSection.EN_ATTENTE
+
+
 # --- Paiements : archers réglés / total ------------------------------------------------------
 
 

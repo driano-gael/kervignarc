@@ -10,7 +10,12 @@
 import type { StatutTournoi } from '../competition/api'
 import type { LigneCompletude } from './api'
 import { useCompletude, useTerminerDepuisCompletude } from './hooks'
-import { afficheEtat, detailLigne, messageConfirmationTerminer } from './presentation'
+import {
+  afficheEtat,
+  detailLigne,
+  IMPLICATION_TERMINER,
+  messageConfirmationTerminer,
+} from './presentation'
 
 export function Completude({ tournoiId, statut }: { tournoiId: number; statut: StatutTournoi }) {
   const completude = useCompletude(tournoiId)
@@ -45,11 +50,9 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
           />
           <SectionCompletude titre="Hors sportif" lignes={completude.data.hors_sportif} />
 
-          {/* Ce que « terminer » implique (`D-17`) : le sportif se fige, les paiements restent ouverts. */}
-          <p className="completude__implication">
-            Terminer <strong>figera le sportif</strong> (qualification, classement). Les{' '}
-            <strong>paiements resteront modifiables</strong>.
-          </p>
+          {/* Ce que « terminer » implique (`D-17`) : source unique `IMPLICATION_TERMINER`, partagée
+              avec le message de confirmation — les deux ne peuvent plus diverger. */}
+          <p className="completude__implication">{IMPLICATION_TERMINER}</p>
 
           {statut === 'en_cours' && (
             <div className="completude__actions">

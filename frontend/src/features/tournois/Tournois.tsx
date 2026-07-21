@@ -355,12 +355,24 @@ function CycleDeVie({ tournoi }: { tournoi: Tournoi }) {
   // est la seule action irréversible (E01US002), elle ne se fait jamais en aveugle — pas de porte
   // dérobée non gardée. On lit la complétude **à la demande** (au clic, sans poll) et on chiffre ce
   // qui reste (`P-4`) via la même fonction pure que l'écran Complétude (une seule logique d'alerte).
+  //
+  // La complétude est un **confort, pas une garde bloquante** (`D-15`/`P-3` : rien n'est jamais
+  // refusé). Si sa lecture échoue (endpoint injoignable, hoquet réseau du jour J), on ne laisse
+  // **pas** le bouton muet : on retombe sur une confirmation dégradée qui **laisse passer** — sinon
+  // on bloquerait silencieusement la seule action irréversible sur un incident transitoire.
   const demanderTerminer = async () => {
-    const completude = await queryClient.fetchQuery({
-      queryKey: ['completude', tournoi.id],
-      queryFn: () => getCompletude(tournoi.id),
-    })
-    if (window.confirm(messageConfirmationTerminer(completude))) terminer.mutate(tournoi.id)
+    let message: string
+    try {
+      const completude = await queryClient.fetchQuery({
+        queryKey: ['completude', tournoi.id],
+        queryFn: () => getCompletude(tournoi.id),
+      })
+      message = messageConfirmationTerminer(completude)
+    } catch {
+      message =
+        'Impossible de vérifier ce qui reste (complétude injoignable). Terminer quand même ?'
+    }
+    if (window.confirm(message)) terminer.mutate(tournoi.id)
   }
 
   return (

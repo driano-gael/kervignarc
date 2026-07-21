@@ -80,6 +80,38 @@ describe('messageConfirmationTerminer', () => {
     expect(message).toContain('Terminer quand même ?')
   })
 
+  it('sportif complet mais des impayés → chiffre les impayés (le CA impose « chiffrer ce qui reste »)', () => {
+    // Borne qui décide le comportement : fin de journée, tous les tirs finis, 12 archers n'ont pas
+    // réglé. Les impayés restent modifiables après *terminé* (D-17), d'où « Terminer le tournoi ? »
+    // (pas « quand même »), mais ils DOIVENT être chiffrés — c'est « ce qui reste ».
+    const message = messageConfirmationTerminer(
+      completude({
+        hors_sportif: [ligne({ cle: 'paiements', etat: 'alerte', fait: 144, total: 156 })],
+        sportif_complet: true,
+      }),
+    )
+    expect(message).toContain('12 archer(s) n’ont pas réglé')
+    expect(message).toContain('Terminer le tournoi ?')
+    expect(message).not.toContain('quand même')
+  })
+
+  it('le classement n’est jamais listé comme un manque (il dérive de la qualification)', () => {
+    const message = messageConfirmationTerminer(
+      completude({
+        sportif: [
+          ligne({ cle: 'qualification', etat: 'alerte', fait: 28, total: 30 }),
+          ligne({ cle: 'phases_eliminatoires', etat: 'a_venir' }),
+          ligne({ cle: 'classement', etat: 'en_attente' }),
+        ],
+        sportif_complet: false,
+      }),
+    )
+    expect(message).toContain('2 cible(s) de qualification ne sont pas terminées')
+    // « classement » figure dans la phrase d'implication (« qualification, classement ») ; ce qu'on
+    // vérifie, c'est qu'il n'est pas listé comme un **manque** à part (l'ancienne phrase retirée).
+    expect(message).not.toContain('le classement n’est pas définitif')
+  })
+
   it('les phases éliminatoires « à venir » ne sont jamais listées comme un manque', () => {
     const message = messageConfirmationTerminer(
       completude({
