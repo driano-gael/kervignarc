@@ -39,18 +39,25 @@ import { GrainValidation } from '../grain-validation/GrainValidation'
 import { Paiements } from '../paiements/Paiements'
 import { Placement } from '../placement/Placement'
 import { Postes } from '../postes/Postes'
-import { AccueilPublic } from '../public/AccueilPublic'
 import { Scoreurs } from '../scoreurs/Scoreurs'
 import { Supervision } from '../supervision/Supervision'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
+import { ConnexionAdmin } from './ConnexionAdmin'
 import { BadgeStatut, GestionTournois } from '../tournois/Tournois'
 
-// L'appli admin (coquille) n'est présentée qu'à un admin connecté. Sans session, on reste sur la
-// **consultation publique** (E10US001) — liste des tournois en lecture seule, classement public, et
-// les entrées de rôle (scoreur, poste) pour les autres tablettes.
+// L'appli admin (coquille) n'est présentée qu'à un admin connecté. Elle n'est atteinte que par la
+// **porte Admin** de l'écran d'accueil (E00US017, ADR-0042) : sans session, on affiche donc le
+// **login** (E10US002) — plus la consultation publique, désormais sa propre porte. La lecture
+// publique passe par la porte « Téléphone », le scoreur et la tablette par les leurs.
 export function CoquilleAdmin() {
   const estAdmin = useSessionAdminStore((s) => s.jeton) !== null
-  return estAdmin ? <Coquille /> : <AccueilPublic />
+  if (estAdmin) return <Coquille />
+  return (
+    <section className="carte carte--large">
+      <h2 className="carte__titre">Administration</h2>
+      <ConnexionAdmin />
+    </section>
+  )
 }
 
 // ————————————————————————————————————————————————————————————————————————————————————————————————

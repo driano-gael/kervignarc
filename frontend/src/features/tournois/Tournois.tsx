@@ -12,7 +12,6 @@
 // (archers, placement en dépendent aussi), qu'on ne déplace pas au titre de cette US.
 
 import { useState } from 'react'
-import { ConnexionAdmin } from '../admin/ConnexionAdmin'
 import { useDeconnexionAdmin } from '../admin/hooks'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
@@ -36,6 +35,12 @@ export function GestionTournois({
   selectionneId: number | null
   onChoisi: (t: Tournoi) => void
 }) {
+  // `estAdmin` gouverne **l'affichage** des contrôles d'écriture (création, cycle de vie, édition,
+  // suppression). Le **login** n'est plus ici : il vit dans `CoquilleAdmin` (porte Admin, E00US017).
+  // Invariant qui garde le public : sous la porte **Public** (`AccueilPublic`), aucun jeton admin ne
+  // peut exister — on n'atteint l'écran de choix que si `resoudreRole === null`, donc `!aJetonAdmin`,
+  // et le public n'a aucun moyen de se logger (pas de `ConnexionAdmin` monté). `estAdmin` y est donc
+  // toujours faux, ces contrôles restent masqués. Le serveur reste l'autorité en dernier ressort.
   const estAdmin = useSessionAdminStore((s) => s.jeton) !== null
   const tournois = useTournois()
 
@@ -67,7 +72,7 @@ export function GestionTournois({
         </div>
       )}
 
-      {estAdmin ? <FormulaireNouveauTournoi onChoisi={onChoisi} /> : <ConnexionAdmin />}
+      {estAdmin && <FormulaireNouveauTournoi onChoisi={onChoisi} />}
 
       {(tournois.data ?? []).length > 0 && (
         <>

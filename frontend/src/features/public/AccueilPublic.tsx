@@ -18,7 +18,6 @@ import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import type { Tournoi } from '../competition/api'
 import { VueClassement } from '../competition/VueClassement'
 import { PlanCiblesPublic } from '../placement/PlanCiblesPublic'
-import { EspaceScoreur } from '../scoreur-session/EspaceScoreur'
 import { VueSuivi } from '../suivi/VueSuivi'
 import { BadgeStatut, GestionTournois } from '../tournois/Tournois'
 
@@ -37,7 +36,9 @@ export function AccueilPublic() {
 
   return (
     <div className="app__contenu--colonnes">
-      {/* En public, `GestionTournois` présente l'écran de connexion + la liste en lecture seule. */}
+      {/* Porte **Public** (E00US017, ADR-0042) : liste en lecture seule. `GestionTournois` ne porte
+          plus le login admin (parti dans `CoquilleAdmin`, porte Admin) — le public ne peut pas
+          escalader. Le scoreur et la tablette ont désormais leurs propres portes ; plus proposés ici. */}
       <GestionTournois selectionneId={selection?.id ?? null} onChoisi={setSelection} />
 
       {/* `key={selection.id}` : changer directement de tournoi (la liste reste cliquable au-dessus)
@@ -48,20 +49,6 @@ export function AccueilPublic() {
       {selection && (
         <VuesPubliques key={selection.id} tournoi={selection} onFermer={() => setSelection(null)} />
       )}
-
-      <aside className="carte">
-        {/* L'entrée du scoreur : il ouvre l'app sur son téléphone et tape son code, sans passer par
-            l'admin (E10US003). */}
-        <EspaceScoreur />
-        {/* Entrée « poste de cible » (E04US001) : normalement on arrive par le QR de sa cible
-            (`?poste=<code>`, E09US008) ; ce lien de secours ouvre l'écran de poste sans QR — une
-            fois la tablette rattachée, l'app y va d'elle-même (App.tsx), ce lien ne resert plus. */}
-        <p className="carte__etat">
-          <a className="lien" href="?poste">
-            Cette tablette est un poste de cible ›
-          </a>
-        </p>
-      </aside>
     </div>
   )
 }

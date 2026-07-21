@@ -12,30 +12,20 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 21/07/2026** · **54 US livrées** · dernière : `E00US013`.
+**Dernière mise à jour : 21/07/2026** · **55 US livrées** · dernière : `E00US017`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E00US017` — Écran d'accueil : choisir son appareil / rôle** *(placée en tête le 21/07 à la demande
-> du commanditaire)*
->
-> **Pourquoi en tête, hors sa séquence J3 d'origine** : au lancement sur PC, l'app tombe sur la
-> consultation publique/tablette faute d'accueil admin — l'aiguillage par appareil est aujourd'hui
-> **implicite** (`frontend/src/app/App.tsx`). E00US017 pose l'**écran de choix** (Tablette / Téléphone /
-> Admin PC), persisté en `localStorage`, qui va droit au bon rôle aux ouvertures suivantes. **Toutes ses
-> dépendances sont livrées** (E00US015, E04US001, E10US002, E07US006) → actionnable immédiatement.
-> **Décision structurante ⇒ ADR à écrire à l'implémentation.** Détail :
-> [`stories/E00-socle.md`](../stories/E00-socle.md) § E00US017. *(Cadrage d'intention en tête d'US visible
-> **requis** avant de coder — CLAUDE.md § Workflow.)*
->
-> **Puis `E12US005` — Afficher la complétude du tournoi** reprend la séquence J1 (ce qui est prêt /
+> **`E12US005` — Afficher la complétude du tournoi** reprend la séquence J1 (ce qui est prêt /
 > manquant avant de lancer). Détail : [`stories/E12-pilotage-jour-j.md`](../stories/E12-pilotage-jour-j.md).
 >
-> *Fait juste avant :* `E00US013` (factoriser les briques d'UI) — terminée et poussée, revue faite :
-> `MessageErreur` centralisé dans `frontend/src/shared/ui/`, 19 rendus dupliqués ralliés, rendu inchangé,
-> DETTE-004 résorbée.
+> *Fait juste avant :* `E00US017` (écran d'accueil : choisir son appareil / rôle) — terminée et poussée,
+> revue faite : écran de choix **4 portes** (Tablette / Public / Scoreur / Admin) au 1ᵉʳ lancement,
+> persisté en `localStorage`, va droit au bon rôle ensuite ; le public ne peut plus escalader ;
+> échappatoire « Changer de rôle » discrète (détachement pour la tablette). Front seul + **ADR-0042**
+> (modèle d'entrée). L'aiguillage risqué est isolé dans `resoudreRole` (fonction pure testée).
 
 ---
 
@@ -175,16 +165,16 @@
 | E13US003 | Scoring d'équipe (politique injectable) | J2 | ⬜ |
 | E13US004 | Placement, saisie & classement par équipe | J2→J3 | ⬜ |
 
-## Ajout du 20/07/2026 — 🎯 **planifiée en tête (0/1)**
+## Ajout du 20/07/2026 — ✅ **livrée (1/1)**
 
-> Issu de l'échange sur le modèle d'entrée de l'appli (une seule SPA, trois expériences). Cf.
-> [`stories/E00-socle.md`](../stories/E00-socle.md) § E00US017. **Placée en 🎯 prochaine le 21/07**
-> (devant E12US005) : dépendances toutes livrées, corrige l'atterrissage sur le mauvais écran au
-> lancement sur PC.
+> Issu de l'échange sur le modèle d'entrée de l'appli (une seule SPA, désormais **quatre** expériences).
+> Cf. [`stories/E00-socle.md`](../stories/E00-socle.md) § E00US017 et [ADR-0042](../docs/adr/0042-modele-d-entree-choix-de-role-explicite.md).
+> Livrée le 21/07 : écran de choix 4 portes (Tablette / Public / Scoreur / Admin), choix persistant,
+> le public ne peut pas escalader, échappatoire « Changer de rôle » ; front seul.
 
 | US | Titre | Jalon | État |
 |---|---|---|---|
-| E00US017 | Écran d'accueil : choisir son appareil / rôle | J3 | 🎯 **prochaine** *(placée en tête le 21/07 ; ADR à l'implémentation)* |
+| E00US017 | Écran d'accueil : choisir son appareil / rôle | J3 | ✅ |
 
 ## Ajout du 21/07/2026 — ⬜ **à planifier (0/2)**
 
