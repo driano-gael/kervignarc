@@ -82,13 +82,14 @@ export function RechercheArcher({ tournoiId }: { tournoiId: number | null }) {
       <label className="formulaire__libelle" htmlFor="recherche-archer">
         Rechercher un archer
       </label>
+      {/* Le nom accessible vient du <label> associé (htmlFor) — pas d'aria-label, qui l'écraserait
+          en doublon. */}
       <input
         id="recherche-archer"
         className="formulaire__champ"
         value={requete}
         onChange={(e) => setRequete(e.target.value)}
         placeholder="Nom de l’archer…"
-        aria-label="Rechercher un archer par son nom"
         autoComplete="off"
       />
 
@@ -106,7 +107,7 @@ export function RechercheArcher({ tournoiId }: { tournoiId: number | null }) {
                   <span className="recherche-resultat__nom">
                     {a.prenom} {a.nom}
                   </span>
-                  <PlaceArcher
+                  <PlaceTrouvee
                     journee={construireJournee(a.id, departs, plansParDepart)}
                     enChargement={placesEnChargement}
                     enErreur={placesEnErreur}
@@ -116,19 +117,23 @@ export function RechercheArcher({ tournoiId }: { tournoiId: number | null }) {
             </ul>
             {tropDeResultats && <p className="carte__etat">Trop de résultats — précisez le nom.</p>}
           </>
-        ) : archersQuery.isLoading ? (
-          <p className="carte__etat">Chargement…</p>
-        ) : (
+        ) : archersQuery.isSuccess ? (
+          // « Aucun » seulement si la liste a *réellement* abouti : sans ce garde, un fetch en cours
+          // (le flip enabled false→true au 1ᵉʳ caractère) s'afficherait comme un fait négatif faux
+          // (leçon de revue de VueSuivi). Sinon, on est en chargement.
           <p className="carte__etat">Aucun archer à ce nom.</p>
+        ) : (
+          <p className="carte__etat">Chargement…</p>
         ))}
     </div>
   )
 }
 
 // La place d'un archer trouvé : une ligne par créneau où il est posé (départ + horaire → cible /
-// position). Vide + plans en cours → « Chargement… » ; vide + plan en erreur → indisponible ; vide
-// sinon → réellement « pas encore placé ». On ne confond jamais « pas chargé » et « pas placé ».
-function PlaceArcher({
+// position). Ce qu'on CONNAÎT d'abord (la journée), puis erreur, puis chargement, et « pas encore
+// placé » (le fait négatif) toujours en dernier — jamais présenté à la place d'un plan qui charge ou
+// échoue (ordre de VueSuivi : on ne confond jamais « pas chargé » et « pas placé »).
+function PlaceTrouvee({
   journee,
   enChargement,
   enErreur,
@@ -149,9 +154,9 @@ function PlaceArcher({
       </ul>
     )
   }
-  if (enChargement)
-    return <span className="recherche-place recherche-place--attente">Chargement…</span>
   if (enErreur)
     return <span className="recherche-place recherche-place--attente">Place indisponible.</span>
+  if (enChargement)
+    return <span className="recherche-place recherche-place--attente">Chargement…</span>
   return <span className="recherche-place recherche-place--vide">Pas encore placé.</span>
 }
