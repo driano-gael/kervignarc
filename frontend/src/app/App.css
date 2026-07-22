@@ -847,6 +847,94 @@ button:disabled {
   font-size: 13px;
 }
 
+/* Complétude du tournoi (E12US005) : deux sections (sportif / hors sportif), chacune une liste
+   d'états. Comme la supervision : **couleur + pastille + texte**, jamais la couleur seule (DV-03).
+   L'alerte = **ambre** (`--warn`), jamais rouge sur l'anthracite de la charte. */
+.completude__intro {
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.completude__section {
+  margin-top: 16px;
+}
+
+.completude__titre {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.completude__resume--ok {
+  color: var(--ok);
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.completude__resume--alerte {
+  color: var(--warn);
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.completude__liste {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.completude__ligne {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.completude__etat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.completude__etat--ok {
+  color: var(--ok);
+}
+
+.completude__etat--alerte {
+  color: var(--warn);
+}
+
+.completude__etat--en_attente,
+.completude__etat--a_venir {
+  color: var(--text);
+}
+
+/* Le libellé d'état à droite du décompte (« 28/30 cibles  À finir ») : discret, il double la
+   pastille pour qui ne distingue pas les teintes. */
+.completude__mention {
+  color: var(--text);
+  font-weight: 400;
+  font-size: 13px;
+}
+
+.completude__implication {
+  margin-top: 16px;
+  color: var(--text);
+}
+
+.completude__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
 /* Libellé réservé aux lecteurs d'écran (en-tête de la colonne d'action, sans texte visible). */
 .sr-only {
   position: absolute;

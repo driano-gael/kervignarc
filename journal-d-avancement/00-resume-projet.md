@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 21 juillet 2026
+# Résumé du projet — où on en est au 22 juillet 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -20,8 +20,9 @@ tourne en temps réel — y compris quand le wifi saute — et un tournoi de qua
 désormais de bout en bout : les postes de saisie se supervisent, le classement se calcule, et le
 public le consulte en direct sans compte — jusqu'à suivre un archer et voir sa feuille de marque se
 remplir volée par volée. Côté organisateur, le **suivi des paiements** (qui a réglé, combien reste-t-il
-dû, par archer et par club) est en place.** Il reste à finir ce jalon (complétude du tournoi), puis à
-construire les duels (phases finales) et le pilotage du jour J.
+dû, par archer et par club) est en place, et un écran de **complétude** dit d'un coup d'œil ce qui
+manque avant de terminer le tournoi.** Il reste à construire les duels (phases finales) et le pilotage
+du jour J.
 
 ---
 
@@ -140,9 +141,16 @@ Ce qui transforme la saisie brute en tournoi qu'on suit en direct, dernier bloc 
   score provisoire) tant que le scoreur ne l'a pas confirmée, puis **« validé »** (en vert). Le public
   voit donc le tour se dérouler **avant** validation (choix assumé) ; le total « officiel » reste celui
   du classement, et la vue ne révèle jamais qui a saisi.
+- **La complétude du tournoi** : un écran répond à « **qu'est-ce qui manque pour finir ?** » — le
+  **sportif** (qualification cible par cible, classement) et le **hors sportif** (paiements) comptés
+  **séparément**, chacun avec son état (terminé / à finir / en attente). L'écran dit **ce que
+  « terminer » va figer** (le sportif ; les paiements restent modifiables) et, au moment de terminer —
+  la seule action irréversible —, **chiffre ce qui reste** avant de laisser confirmer. Détail dans
+  [`2026-07-22-00h40-completude-du-tournoi.md`](2026-07-22-00h40-completude-du-tournoi.md).
 
-*Reste à venir sur ce jalon : les **affectations du prochain tour** (phases finales) et la
-**complétude** du tournoi.*
+*Reste à venir sur ce jalon : les **affectations du prochain tour** (phases finales) et la **recherche
+globale** d'un archer. Les **duels** eux-mêmes (1/8, 1/4…) apparaissent « à venir » dans la complétude
+tant que leur moteur (EPIC-05) n'est pas construit.*
 
 ---
 
@@ -151,8 +159,9 @@ Ce qui transforme la saisie brute en tournoi qu'on suit en direct, dernier bloc 
 Dans l'ordre de valeur prévu par le backlog :
 
 1. **Finir le tournoi de qualification** : l'appli publique ouverte directement sur **« ma journée »**
-   (« c'est moi » mémorisé), la **complétude** du tournoi et la recherche globale d'un archer.
-   *(Supervision des postes, classement, vues publiques et suivi des paiements : faits — cf. blocs 3 et 9.)*
+   (« c'est moi » mémorisé) et la recherche globale d'un archer.
+   *(Supervision des postes, classement, vues publiques, suivi des paiements et complétude du tournoi :
+   faits — cf. blocs 3 et 9.)*
 2. **Les duels** (phases finales) : arbre d'élimination directe, saisie en duels, abandon /
    disqualification, barrages, podium — **et surtout la bascule de tour**, qui est le moment où le
    produit gagne ou perd sa valeur.
@@ -169,13 +178,13 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **55 US livrées** sur `main` (mergées, revues, CI verte) à la date du 21/07/2026 — dont E08US002,
-  E00US013 et E00US017, optimistes d'un cran sur la branche jusqu'à leur merge.
+- **56 US livrées** sur `main` (mergées, revues, CI verte) à la date du 22/07/2026 — E12US005
+  optimiste d'un cran sur la branche jusqu'à son merge. **`SUIVI-US.md` fait foi sur le compte exact.**
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : bien avancé
-  (40/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
-  alerte par calcul d'impact et suivi des paiements faits ; restent la complétude et quelques imprimables.
-- Dernière US livrée : **E00US017** (écran d'accueil : choisir son appareil / rôle au 1ᵉʳ lancement,
-  puis mémorisé — front seul + ADR-0042 sur le modèle d'entrée). Elle est aussi la dernière à **surface
-  visible**.
-- Prochaine US prévue : **E12US005** (afficher la complétude du tournoi — reprise de la séquence J1)
-  — cf. [`SUIVI-US.md`](SUIVI-US.md).
+  (41/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
+  alerte par calcul d'impact, suivi des paiements et **complétude du tournoi** faits ; restent « ma
+  journée » (« c'est moi »), la recherche globale d'un archer et quelques imprimables.
+- Dernière US livrée : **E12US005** (afficher la complétude du tournoi — qu'est-ce qui manque pour
+  finir, sportif / hors sportif séparés, contrôle avant de terminer ; les duels par phase séquencés
+  vers EPIC-05). Elle est aussi la dernière à **surface visible**.
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) (reprise de la séquence J1).

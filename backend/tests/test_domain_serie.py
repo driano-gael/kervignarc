@@ -330,3 +330,44 @@ def test_corriger_refuse_un_correcteur_vide() -> None:
         serie.corriger_volee(
             1, _v("9", "9", "9"), par="", zones_admises=ZONES_SIMPLE, nb_fleches_par_volee=3
         )
+
+
+# --- « Série complète » pour la complétude du tournoi (E12US005) ------------------------------
+
+
+def test_serie_complete_quand_toutes_les_volees_du_bareme_sont_validees() -> None:
+    """E12US005 : une série est complète quand ses N volées sont saisies **et** validées."""
+    serie = _serie_pleine(3, _v("10", "10", "10")).valider(
+        "MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=3
+    )
+    assert serie.est_complete(3) is True
+
+
+def test_serie_saisie_mais_non_validee_n_est_pas_complete() -> None:
+    """La qualification n'est *close* qu'une fois validée : tout saisi non verrouillé ≠ complet.
+
+    Cohérent avec `cumul` / `nb_fleches_validees` / le classement, qui ne comptent que le validé.
+    """
+    serie = _serie_pleine(3, _v("10", "10", "10"))  # toutes saisies, aucune validée
+    assert serie.est_complete(3) is False
+
+
+def test_serie_partielle_n_est_pas_complete() -> None:
+    """Deux volées validées sur un barème de trois : incomplète (il manque la 3ᵉ)."""
+    serie = _serie_pleine(2, _v("10", "9", "8"), nb_volees_bareme=3).valider(
+        "MARTIN", grain=GrainValidation.toutes_les_n_volees(2), nb_volees_bareme=3
+    )
+    assert serie.est_complete(3) is False
+
+
+def test_serie_vide_n_est_pas_complete() -> None:
+    """Aucune volée : rien n'est complet."""
+    assert Serie.vide(tournoi_id=1, archer_id=7).est_complete(3) is False
+
+
+def test_serie_jamais_complete_si_bareme_non_configure() -> None:
+    """Barème inconnu (`<= 0`) : on ne déclare pas *terminé* ce dont l'attendu est ignoré."""
+    serie = _serie_pleine(1, _v("10", "9", "8")).valider(
+        "MARTIN", grain=GrainValidation.fin_de_serie(), nb_volees_bareme=1
+    )
+    assert serie.est_complete(0) is False

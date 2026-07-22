@@ -42,6 +42,7 @@
 | [DETTE-010](#dette-010--capacité-de-cible-plafonnée-à-4-en-dur) | technique | majeur | `backend/domain/gabarit_salle.py` (`CAPACITE_CIBLE_MAX`, `POSITIONS`) | Le gabarit **borne la capacité d'une cible à [1,4]** (`CAPACITE_CIBLE_MAX = len(POSITIONS)`, `POSITIONS = ("A","B","C","D")` en dur) alors que le **modèle** (`modele-de-donnees.md`, `CIBLE.capacite`) **et** le **référentiel** (§5, EF-4.3) la veulent **non bornée** — la FFTA décrit une configuration à **3 triples verticaux** (> 4 postes) | Impossible de configurer une cible de plus de 4 postes ; **divergence code ↔ modèle ↔ référentiel** : la connaissance du projet dit « non borné », le code refuse | E01US007 (gabarit de salle) ; **constatée le 18/07/2026** (entretien de conception) | **E01US019** — délester le plafond, positions au-delà de `D` (`E`, `F`…), le placement (E03) suit |
 | [DETTE-011](#dette-011--lagrégat-mono-flèche-sappelle-score-pas-fleche) | conception | mineur | `backend/domain/score.py` (`Score`, `ScoreId`), `backend/domain/ports.py` (`ScoreRepository`), `backend/domain/erreurs.py` (`ScoreInvalide`) | L'agrégat mono-flèche s'appelle `Score`, mais le [glossaire](glossaire.md) réserve `Fleche` au **tir unique** et `score` au **total** de points | Au vrai scoring (E04/E05 : volées, cumul), le nom `Score` sera pris par le **mauvais** concept → renommage subi ou ambiguïté durable dans le domaine et l'API | E00US011 (walking skeleton) ; **constatée le 18/07/2026** (audit de revue complète de `main`) | **Révisée 19/07/2026 (E04US002)** : le vrai scoring modélise la flèche comme **valeur** dans `Volee` (agrégats `Serie`/`Volee`), sans renommer `Score` — qui **survit** comme modèle de lecture du classement de démo. Le nom-clash est désamorcé (le total s'appelle `cumul`). **Révisée 20/07/2026 (E06US001, correctif DETTE-013)** : les gardes d'engagement sont repointées sur `Serie` — `Score` n'a désormais **plus aucun lecteur**, seul le `saisir_score` mort (`POST /scores`, sans appelant produit) l'écrit encore. Sa suppression (endpoint + agrégat + table `score`) redevient l'objet propre de cette dette, sans dépendance de lecture, dans une US `fix/`/`refactor/` dédiée ; voir détail |
 | [DETTE-012](#dette-012--lurl-du-qr-de-cible-est-lorigine-de-la-requête-admin) | technique | mineur | `backend/application/documents_salle.py` (`_url_rattachement`) | L'URL encodée dans le QR de cible est **absolue**, bâtie sur l'**origine de la requête admin** (`request.base_url`, passée par l'API) : il n'existe pas de base URL publique configurée côté serveur. Générer les étiquettes depuis `localhost` (console du serveur) produit donc des QR pointant sur `http://localhost:8000/?poste=…`, inutilisables depuis une tablette | Un QR généré depuis `localhost` renvoie la tablette **sur elle-même** : le « filet » de re-rattachement (scanner le QR pour revenir sur sa cible) ne fonctionne pas. **Sans effet dans le flux nominal** : le jour J, l'admin atteint le serveur par son **IP réseau** (les 30 tablettes aussi), donc `base_url` = l'IP LAN et le QR est correct | E09US008 (impression des QR) ; **choix tranché en réalisation** (règle 11/12 : pas de config réseau introduite en douce ici) | E11US001 (release & mise en réseau) — **base URL publique configurable**, source unique pour tous les liens absolus (QR, éventuels partages) |
+| [DETTE-014](#dette-014--la-complétude-ignore-le-forfait) | conception | majeur | `backend/application/completude.py` (`_serie_complete`) | La complétude (E12US005) définit une cible *terminée* comme « **toutes les séries validées** » (`Serie.est_complete`), **sans notion de forfait**. Or E12US004 (« tracer un forfait », ⬜ non livrée) impose de **préserver les flèches déjà tirées** : un archer forfait garde sa série partielle, jamais les N volées verrouillées | **Nul aujourd'hui** (aucun forfait n'existe encore). **Dès qu'E12US004 est livrée** : une cible portant un archer forfait ne sera **jamais** « terminée » → qualification bloquée en `ALERTE`, `sportif_complet` **faux à jamais**, l'avertissement de clôture « X cibles ne sont pas terminées » se déclenche alors que le tournoi est sportivement fini — la complétude **ment** | E12US005 (la complétude naît sans notion de forfait, E12US004 n'étant pas encore livrée) | **E12US004** — y traiter un archer forfait comme **« série close par forfait »** dans `_serie_complete` (le forfait *termine* la participation de l'archer). Marqueur `# DETTE-014` posé sur `_serie_complete` |
 
 ## Dette résorbée
 
@@ -687,6 +688,35 @@ au moment de supprimer/forfaiter ; ce n'est pas la garde « archer engagé », c
 **Reste ouvert.** La **suppression** de `Score` (agrégat + endpoint mort `POST /scores` + table)
 revient à **DETTE-011**, désormais **sans dépendance de lecture** (plus aucune garde ne lit `Score`).
 La confirmation aveugle de suppression reste **DETTE-007**. Marqueur `DETTE-013` retiré des deux gardes.
+
+### DETTE-014 — la complétude ignore le forfait
+
+**Constat.** La complétude du tournoi (E12US005) décide qu'une cible `(départ, cible)` est *terminée*
+quand **tous** ses archers placés ont une série **complète** — au sens de `Serie.est_complete` :
+toutes les volées du barème **validées**. Cette définition n'a **aucune notion de forfait**. Or
+E12US004 (« Tracer un forfait », ⬜ non livrée) pose que l'archer absent **n'est pas un trou** mais une
+**donnée**, et que **les flèches déjà tirées sont préservées** : un forfait garde donc sa série
+partielle (k volées sur N), jamais les N volées verrouillées.
+
+**Conséquence.** Tant qu'E12US004 n'existe pas, l'impact est **nul** (aucun forfait ne peut être
+tracé). Mais **dès sa livraison**, un archer qui abandonne après quelques volées maintient sa cible en
+état incomplet : `_serie_complete` renvoie `False` pour lui à jamais → la cible n'est **jamais**
+comptée terminée → la qualification reste `ALERTE`, `sportif_complet` est **faux à jamais**, et
+l'avertissement de clôture « X cibles ne sont pas terminées » se déclenche à chaque tentative de
+terminer alors que le tournoi est **sportivement fini**. La complétude **ment** : elle compte comme
+« reste à tirer » ce qu'une décision d'arbitrage a clos. Le garde-fou du CA d'E12US004 (« l'adversaire
+passe, le tableau reste cohérent ») n'a aucun écho côté complétude.
+
+**Pourquoi non corrigée maintenant.** Le modèle de forfait n'existe pas encore (`Serie`/`Volee` n'ont
+pas de statut d'abandon, E12US004 non livrée) : il n'y a **rien à interroger**. Poser aujourd'hui une
+branche « ou forfait » serait du code mort branché sur une donnée absente. La dette est donc **inscrite
+et marquée** (`# DETTE-014` sur `_serie_complete`) plutôt que résorbée, pour que l'US qui livrera le
+forfait ne l'oublie pas — c'est un **angle mort silencieux** (rien à l'écran ne signale qu'un forfait
+figerait la cible), au contraire du séquencement des phases éliminatoires, lui **visible** (« à venir »).
+
+**Résorption attendue.** **E12US004** : à la livraison du forfait, traiter un archer forfait comme
+**« série close par forfait »** dans `_serie_complete` (le forfait *termine* la participation de
+l'archer au sens de la complétude, même série partielle). Retirer alors le marqueur `# DETTE-014`.
 
 ## Procédure — inscrire une dette
 

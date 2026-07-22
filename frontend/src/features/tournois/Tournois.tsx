@@ -12,9 +12,12 @@
 // (archers, placement en dépendent aussi), qu'on ne déplace pas au titre de cette US.
 
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useDeconnexionAdmin } from '../admin/hooks'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
+import { getCompletude } from '../completude/api'
+import { messageConfirmationTerminer } from '../completude/presentation'
 import type { StatutTournoi, Tournoi, TypeTournoi } from '../competition/api'
 import {
   useCreerTournoi,
@@ -346,6 +349,31 @@ function FormulaireEditionTournoi({
 function CycleDeVie({ tournoi }: { tournoi: Tournoi }) {
   const demarrer = useDemarrerTournoi()
   const terminer = useTerminerTournoi()
+  const queryClient = useQueryClient()
+
+  // Contrôle en amont du passage à *terminé* (E12US005), **même depuis la préparation** : terminer
+  // est la seule action irréversible (E01US002), elle ne se fait jamais en aveugle — pas de porte
+  // dérobée non gardée. On lit la complétude **à la demande** (au clic, sans poll) et on chiffre ce
+  // qui reste (`P-4`) via la même fonction pure que l'écran Complétude (une seule logique d'alerte).
+  //
+  // La complétude est un **confort, pas une garde bloquante** (`D-15`/`P-3` : rien n'est jamais
+  // refusé). Si sa lecture échoue (endpoint injoignable, hoquet réseau du jour J), on ne laisse
+  // **pas** le bouton muet : on retombe sur une confirmation dégradée qui **laisse passer** — sinon
+  // on bloquerait silencieusement la seule action irréversible sur un incident transitoire.
+  const demanderTerminer = async () => {
+    let message: string
+    try {
+      const completude = await queryClient.fetchQuery({
+        queryKey: ['completude', tournoi.id],
+        queryFn: () => getCompletude(tournoi.id),
+      })
+      message = messageConfirmationTerminer(completude)
+    } catch {
+      message =
+        'Impossible de vérifier ce qui reste (complétude injoignable). Terminer quand même ?'
+    }
+    if (window.confirm(message)) terminer.mutate(tournoi.id)
+  }
 
   return (
     <div className="cycle-de-vie">
@@ -359,11 +387,7 @@ function CycleDeVie({ tournoi }: { tournoi: Tournoi }) {
         </button>
       )}
       {tournoi.statut === 'en_cours' && (
-        <button
-          type="button"
-          disabled={terminer.isPending}
-          onClick={() => terminer.mutate(tournoi.id)}
-        >
+        <button type="button" disabled={terminer.isPending} onClick={demanderTerminer}>
           Terminer le tournoi
         </button>
       )}

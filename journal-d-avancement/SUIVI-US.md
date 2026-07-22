@@ -12,20 +12,24 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 21/07/2026** · **55 US livrées** · dernière : `E00US017`.
+**Dernière mise à jour : 22/07/2026** · **56 US livrées** · dernière : `E12US005`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E12US005` — Afficher la complétude du tournoi** reprend la séquence J1 (ce qui est prêt /
-> manquant avant de lancer). Détail : [`stories/E12-pilotage-jour-j.md`](../stories/E12-pilotage-jour-j.md).
+> **`E12US006` — Rechercher un archer depuis n'importe où** poursuit la séquence J1 (le 4ᵉ canal de
+> routage : la table de l'organisation cherche un archer dans l'appli admin). Détail :
+> [`stories/E12-pilotage-jour-j.md`](../stories/E12-pilotage-jour-j.md).
 >
-> *Fait juste avant :* `E00US017` (écran d'accueil : choisir son appareil / rôle) — terminée et poussée,
-> revue faite : écran de choix **4 portes** (Tablette / Public / Scoreur / Admin) au 1ᵉʳ lancement,
-> persisté en `localStorage`, va droit au bon rôle ensuite ; le public ne peut plus escalader ;
-> échappatoire « Changer de rôle » discrète (détachement pour la tablette). Front seul + **ADR-0042**
-> (modèle d'entrée). L'aiguillage risqué est isolé dans `resoudreRole` (fonction pure testée).
+> *Fait juste avant :* `E12US005` (afficher la complétude du tournoi) — terminée et poussée, revue
+> faite : écran **« Complétude »** (groupe Jour J) répondant à « qu'est-ce qui manque ? », **sportif**
+> (qualification en cibles, classement) et **hors sportif** (paiements) comptés **séparément** (`D-17`) ;
+> l'écran dit ce que « terminer » fige et **contrôle en amont** (confirmation chiffrée) le passage à
+> *terminé* — **sur les deux portes** (Complétude *et* préparation). Backend (domaine `completude` pur
+> + service d'agrégation + endpoint admin) + front. Les **duels par phase** (1/8, 1/4) sont **séquencés
+> vers EPIC-05** (moteur de phases non livré) : ligne « à venir » qui ne bloque pas — arbitrage reversé
+> dans `stories/` (règle 9). Logique de jugement isolée dans `evaluer_completude` (fonction pure testée).
 
 ---
 
@@ -46,7 +50,7 @@
 | E00US011 | Tranche verticale démontrable | ✅ |
 | E00US012 | Exécutable de dev (FastAPI sert le front) | ✅ |
 
-## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (40/46)**
+## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (41/46)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -88,8 +92,8 @@
 | 47 | E10US005 | Journal d'audit métier | ✅ *(fait en avance)* |
 | 48 | E12US007 | Alerter par calcul d'impact | ✅ |
 | 49 | E08US002 | Suivi des paiements | ✅ |
-| 50 | E12US005 | Afficher la complétude du tournoi | ⬜ *(reprise J1, après E00US017)* |
-| 51 | E12US006 | Rechercher un archer depuis n'importe où | ⬜ |
+| 50 | E12US005 | Afficher la complétude du tournoi | ✅ |
+| 51 | E12US006 | Rechercher un archer depuis n'importe où | 🎯 *(reprise J1)* |
 | 52 | E02US005 | Détecter et fusionner les doublons | ⬜ |
 | 53 | E02US006 | Contrôler les quotas | ✅ *(fait en avance)* |
 | 54 | E09US001 | Socle PDF & feuille de marque | ✅ *(fait en avance)* |

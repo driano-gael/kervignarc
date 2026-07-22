@@ -15,9 +15,9 @@
 // (règle 11) ; à réévaluer si un vrai besoin d'URL apparaît.
 //
 // Périmètre borné aux **fonctions livrées** (CA « non-régression ») : les destinations que le §7.1
-// prévoit mais qui n'existent pas encore (Identité, Complétude, Validation, Podiums, Exports,
-// Archive, Audit, recherche) ne sont **pas** matérialisées par des entrées vides — elles
-// arriveront avec leur US. De même, les 7 statuts d'ADR-0026 (E01US017) ne sont pas encore livrés :
+// prévoit mais qui n'existent pas encore (Identité, Validation, Podiums, Exports, Archive, Audit,
+// recherche) ne sont **pas** matérialisées par des entrées vides — elles arriveront avec leur US.
+// « Complétude » (E12US005) est désormais livrée, dans le groupe Jour J. De même, les 7 statuts d'ADR-0026 (E01US017) ne sont pas encore livrés :
 // l'accueil contextualisé s'appuie sur les **3 statuts actuels** (brouillon / en_cours / termine).
 // « Supervision » (E12US001) est livrée et l'accueil d'un tournoi *en cours* pointe dessus ;
 // « Résultats » n'ayant pas encore d'écran dédié, un tournoi *terminé* retombe sur le classement.
@@ -29,6 +29,7 @@ import { BaremeQualification } from '../bareme/BaremeQualification'
 import { Blasons } from '../blasons/Blasons'
 import { Categories } from '../categories/Categories'
 import { Clubs } from '../clubs/Clubs'
+import { Completude } from '../completude/Completude'
 import type { StatutTournoi, Tournoi } from '../competition/api'
 import { useTournois } from '../competition/hooks'
 import { VueClassement } from '../competition/VueClassement'
@@ -232,6 +233,15 @@ function Coquille() {
       groupe: 'jourj',
       besoinTournoi: true,
       rendu: () => courant && <Supervision tournoiId={courant.id} />,
+    },
+    {
+      id: 'completude',
+      libelle: 'Complétude',
+      groupe: 'jourj',
+      besoinTournoi: true,
+      // « Qu'est-ce qui manque pour finir ? » (E12US005) + contrôle avant de terminer. Le statut
+      // pilote l'apparition du bouton « Terminer » (uniquement *en cours*).
+      rendu: () => courant && <Completude tournoiId={courant.id} statut={courant.statut} />,
     },
     {
       id: 'classement',
