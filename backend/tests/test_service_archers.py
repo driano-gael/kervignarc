@@ -22,6 +22,8 @@ from application.erreurs import (
     CategorieHorsTournoi,
     ChangementCategorieArcherEngage,
     ClubIntrouvable,
+    FusionArchersEngages,
+    FusionImpossible,
     HomonymeArcher,
     SaisieHorsCible,
     TournoiIntrouvable,
@@ -30,6 +32,7 @@ from domain.archer import Archer, ArcherId
 from domain.blason import ZoneScore
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club
+from domain.doublons import NiveauDoublon
 from domain.entree_audit import EntreeAudit
 from domain.erreurs import (
     CibleInvalide,
@@ -1116,6 +1119,144 @@ def test_lister_archers_tournoi_inconnu_leve() -> None:
     m = _monter()
     with pytest.raises(TournoiIntrouvable):
         m.archers.lister(404)
+
+
+# --- Détection de doublons (E02US005) -----------------------------------------------------------
+
+
+def test_detecter_doublons_rapproche_deux_fiches_identiques() -> None:
+    """`detecter_doublons` rapproche deux inscrits de mêmes nom, prénom et club (CA E02US005).
+
+    Le service ne fait que fournir les inscrits **du tournoi** au domaine ; on vérifie ici qu'il les
+    passe bien (une paire probable sort) — le classement fin est couvert par `test_domain_doublons`.
+    """
+    m = _monter()
+    club = m.clubs.ajouter(Club.creer("Arc Club Rennes"))
+    a = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id, club.id)
+    b = m.archers.ajouter(
+        m.tournoi_id, "Dupont", "Jean", m.categorie_id, club.id, autoriser_homonyme=True
+    )
+    paires = m.archers.detecter_doublons(m.tournoi_id)
+    assert [(p.a.id, p.b.id, p.niveau) for p in paires] == [(a.id, b.id, NiveauDoublon.PROBABLE)]
+
+
+def test_detecter_doublons_ne_traverse_pas_les_tournois() -> None:
+    """La détection est **par tournoi** : deux fiches identiques de tournois distincts, séparées.
+
+    L'homonymie se juge dans le tournoi (E02US002) : le même archer revenu sur un autre tournoi
+    n'est pas un doublon à fusionner.
+    """
+    m = _monter()
+    m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+    autre_tournoi_id, autre_categorie_id = m.autre_tournoi()
+    m.archers.ajouter(autre_tournoi_id, "Dupont", "Jean", autre_categorie_id)
+    assert m.archers.detecter_doublons(m.tournoi_id) == []
+
+
+def test_detecter_doublons_tournoi_inconnu_leve() -> None:
+    """Détecter les doublons d'un tournoi inexistant lève `TournoiIntrouvable` (comme `lister`)."""
+    m = _monter()
+    with pytest.raises(TournoiIntrouvable):
+        m.archers.detecter_doublons(404)
+
+
+# --- Fusion de doublons (E02US005) --------------------------------------------------------------
+
+
+def _doublon(m: Montage) -> tuple[ArcherId, ArcherId]:
+    """Inscrit deux fiches homonymes (le doublon accidentel) ; renvoie (gagnant, perdant)."""
+    gagnant = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+    perdant = m.archers.ajouter(
+        m.tournoi_id, "Dupont", "Jean", m.categorie_id, autoriser_homonyme=True
+    )
+    assert gagnant.id is not None and perdant.id is not None
+    return gagnant.id, perdant.id
+
+
+def test_fusionner_supprime_le_perdant_et_conserve_le_gagnant() -> None:
+    """La fusion fait disparaître la fiche absorbée et garde la maître (CA E02US005).
+
+    Le transfert des inscriptions/scores est un contrat d'adapter (prouvé au repository) ; au niveau
+    service, l'effet observable est : le perdant n'existe plus, le gagnant est renvoyé intact.
+    """
+    m = _monter()
+    gagnant_id, perdant_id = _doublon(m)
+    renvoye = m.archers.fusionner(gagnant_id, perdant_id)
+    assert renvoye.id == gagnant_id
+    assert m.inscrits.par_id(perdant_id) is None
+    assert m.inscrits.par_id(gagnant_id) is not None
+
+
+def test_fusionner_gagnant_inconnu_leve() -> None:
+    """Fusionner vers une fiche maître inexistante lève `ArcherIntrouvable`."""
+    m = _monter()
+    perdant = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+    assert perdant.id is not None
+    with pytest.raises(ArcherIntrouvable):
+        m.archers.fusionner(404, perdant.id)
+
+
+def test_fusionner_perdant_inconnu_leve() -> None:
+    """Fusionner une fiche absorbée inexistante lève `ArcherIntrouvable`."""
+    m = _monter()
+    gagnant = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+    assert gagnant.id is not None
+    with pytest.raises(ArcherIntrouvable):
+        m.archers.fusionner(gagnant.id, 404)
+
+
+def test_fusionner_une_fiche_avec_elle_meme_leve() -> None:
+    """Fusionner une fiche avec elle-même n'a pas de sens → `FusionImpossible` (CA E02US005)."""
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+    assert archer.id is not None
+    with pytest.raises(FusionImpossible):
+        m.archers.fusionner(archer.id, archer.id)
+
+
+def test_fusionner_deux_tournois_differents_leve() -> None:
+    """Deux fiches de tournois distincts ≠ un doublon → `FusionImpossible` (CA E02US005)."""
+    m = _monter()
+    ici = m.archers.ajouter(m.tournoi_id, "Dupont", "Jean", m.categorie_id)
+    autre_tournoi_id, autre_categorie_id = m.autre_tournoi()
+    ailleurs = m.archers.ajouter(autre_tournoi_id, "Dupont", "Jean", autre_categorie_id)
+    assert ici.id is not None and ailleurs.id is not None
+    with pytest.raises(FusionImpossible):
+        m.archers.fusionner(ici.id, ailleurs.id)
+    assert m.inscrits.par_id(ailleurs.id) is not None
+
+
+def test_fusionner_les_deux_fiches_ont_tire_leve() -> None:
+    """Si les **deux** fiches ont une saisie, la fusion est refusée (CA E02US005).
+
+    Fusionner mêlerait deux séries de volées (ambigu, et `UNIQUE(tournoi_id, archer_id)`). Le
+    doublon se règle avant que le tournoi tire ; les deux fiches restent intactes.
+    """
+    m = _monter()
+    gagnant_id, perdant_id = _doublon(m)
+    gagnant = m.inscrits.par_id(gagnant_id)
+    perdant = m.inscrits.par_id(perdant_id)
+    assert gagnant is not None and perdant is not None
+    m.faire_tirer(gagnant)
+    m.faire_tirer(perdant)
+    with pytest.raises(FusionArchersEngages):
+        m.archers.fusionner(gagnant_id, perdant_id)
+    assert m.inscrits.par_id(perdant_id) is not None
+
+
+def test_fusionner_passe_si_une_seule_fiche_a_tire() -> None:
+    """Une seule fiche ayant tiré, la fusion passe : la série est réassignée sans collision (CA).
+
+    C'est le cas courant du doublon repéré tard : l'une des deux a commencé à être saisie, l'autre
+    non. Fusionner est légitime — pas de mélange de volées.
+    """
+    m = _monter()
+    gagnant_id, perdant_id = _doublon(m)
+    perdant = m.inscrits.par_id(perdant_id)
+    assert perdant is not None
+    m.faire_tirer(perdant)
+    m.archers.fusionner(gagnant_id, perdant_id)
+    assert m.inscrits.par_id(perdant_id) is None
 
 
 # Le contenu du classement (cumul, départage, catégories) et son refus de tournoi inconnu sont

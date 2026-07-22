@@ -16,19 +16,28 @@ from alembic import command
 from alembic.config import Config
 
 from domain.archer import Archer
+from domain.blason import ZoneScore
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club
+from domain.depart import Depart
+from domain.inscription import Inscription
 from domain.score import Score
+from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
 from infrastructure.db import (
     ArcherRepositorySQL,
+    AuditRepositorySQL,
     CategorieRepositorySQL,
     ClubRepositorySQL,
     Database,
+    DepartRepositorySQL,
+    InscriptionRepositorySQL,
     ScoreRepositorySQL,
+    SerieRepositorySQL,
     TournoiRepositorySQL,
 )
 from infrastructure.erreurs import InfrastructureError
+from infrastructure.horloge import HorlogeSysteme
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -365,6 +374,163 @@ def test_par_archer_sans_score_renvoie_vide(tmp_path: Path) -> None:
         )
         assert cree.id is not None
         assert ScoreRepositorySQL(db.session_factory).par_archer(cree.id) == []
+    finally:
+        db.engine.dispose()
+
+
+def _serie_tiree(tournoi_id: TournoiId, archer_id: int) -> Serie:
+    """Une série d'une volée validée (l'archer « a tiré ») — comme `faire_tirer` côté service."""
+    volee = Volee(
+        numero=1, valeurs=(ZoneScore.NEUF, ZoneScore.NEUF, ZoneScore.NEUF), validee_par="S"
+    )
+    return Serie(tournoi_id=tournoi_id, archer_id=archer_id, volees=(volee,))
+
+
+def test_fusionner_reassigne_inscriptions_et_scores_puis_supprime_le_perdant(
+    tmp_path: Path,
+) -> None:
+    """La fusion **réattribue** au gagnant la descendance du perdant, qui disparaît (E02US005).
+
+    Miroir de `supprimer` : là où la suppression purge, la fusion réassigne — dans une transaction.
+    Ici, aucune collision : le perdant a une inscription et un score que le gagnant n'a pas.
+    """
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+        scores = ScoreRepositorySQL(db.session_factory)
+        departs = DepartRepositorySQL(db.session_factory)
+        inscriptions = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
+
+        gagnant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
+        perdant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
+        assert gagnant.id is not None and perdant.id is not None
+        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500))
+        assert depart.id is not None
+        inscriptions.ajouter(Inscription.creer(perdant.id, depart.id))
+        scores.ajouter(Score.creer(perdant.id, 9))
+
+        archers.fusionner(gagnant.id, perdant.id)
+
+        assert archers.par_id(perdant.id) is None
+        assert archers.par_id(gagnant.id) is not None
+        assert [i.depart_id for i in inscriptions.par_archer(gagnant.id)] == [depart.id]
+        assert inscriptions.par_archer(perdant.id) == []
+        assert [s.points for s in scores.par_archer(gagnant.id)] == [9]
+    finally:
+        db.engine.dispose()
+
+
+def test_fusionner_collision_inscription_garde_une_ligne_et_reporte_le_paiement(
+    tmp_path: Path,
+) -> None:
+    """Sur un départ où **les deux** sont inscrits (UNIQUE(archer, départ)), une seule ligne reste.
+
+    Le paiement est **reporté** : si l'une des deux inscriptions était payée, celle qui reste l'est
+    (OU logique). On ne crée pas de doublon d'inscription (violerait l'unicité) et on ne perd pas
+    « a payé ».
+    """
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+        departs = DepartRepositorySQL(db.session_factory)
+        inscriptions = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
+
+        gagnant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
+        perdant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
+        assert gagnant.id is not None and perdant.id is not None
+        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500))
+        assert depart.id is not None
+        # Le gagnant est inscrit **non payé** ; le perdant **payé** sur le même créneau.
+        inscriptions.ajouter(Inscription.creer(gagnant.id, depart.id))
+        inscrit_perdant = inscriptions.ajouter(Inscription.creer(perdant.id, depart.id))
+        inscriptions.enregistrer(inscrit_perdant.marquer_paye(True))
+
+        archers.fusionner(gagnant.id, perdant.id)
+
+        restantes = inscriptions.par_archer(gagnant.id)
+        assert [(i.depart_id, i.paye) for i in restantes] == [(depart.id, True)]
+        assert inscriptions.par_archer(perdant.id) == []
+    finally:
+        db.engine.dispose()
+
+
+def test_fusionner_collision_ne_deprecie_pas_un_paiement_du_gagnant(tmp_path: Path) -> None:
+    """Le report de paiement est un **OU** : un gagnant déjà payé le reste (perdant non payé).
+
+    Sans ce test, un report qui recopierait bêtement le `paye` du perdant (au lieu d'un OU)
+    dépaierait le gagnant — une régression silencieuse sur l'argent.
+    """
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+        departs = DepartRepositorySQL(db.session_factory)
+        inscriptions = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
+
+        gagnant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
+        perdant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
+        assert gagnant.id is not None and perdant.id is not None
+        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500))
+        assert depart.id is not None
+        inscrit_gagnant = inscriptions.ajouter(Inscription.creer(gagnant.id, depart.id))
+        inscriptions.enregistrer(inscrit_gagnant.marquer_paye(True))
+        inscriptions.ajouter(Inscription.creer(perdant.id, depart.id))
+
+        archers.fusionner(gagnant.id, perdant.id)
+
+        assert [(i.depart_id, i.paye) for i in inscriptions.par_archer(gagnant.id)] == [
+            (depart.id, True)
+        ]
+    finally:
+        db.engine.dispose()
+
+
+def test_fusionner_reassigne_la_serie_du_perdant(tmp_path: Path) -> None:
+    """La série de saisie du perdant (une seule des deux a tiré) passe au gagnant (E02US005).
+
+    Le service refuse la fusion si les **deux** ont une série ; ici seul le perdant en a une, donc
+    pas de collision sur `UNIQUE(tournoi_id, archer_id)` : la série est réassignée, ses volées avec.
+    """
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+        series = SerieRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory), HorlogeSysteme()
+        )
+
+        gagnant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
+        perdant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
+        assert gagnant.id is not None and perdant.id is not None
+        series.enregistrer(_serie_tiree(tournoi_id, perdant.id))
+
+        archers.fusionner(gagnant.id, perdant.id)
+
+        assert series.par_archer(tournoi_id, perdant.id) is None
+        serie_gagnant = series.par_archer(tournoi_id, gagnant.id)
+        assert serie_gagnant is not None and serie_gagnant.nb_fleches_validees == 3
+    finally:
+        db.engine.dispose()
+
+
+def test_fusionner_un_archer_absent_est_une_incoherence_technique(tmp_path: Path) -> None:
+    """L'existence est garantie par le service : une fiche absente est un `InfrastructureError`."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+        gagnant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
+        assert gagnant.id is not None
+        with pytest.raises(InfrastructureError):
+            archers.fusionner(gagnant.id, 999)
     finally:
         db.engine.dispose()
 

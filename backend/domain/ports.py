@@ -106,6 +106,33 @@ class ArcherRepository(Protocol):
         """
         ...
 
+    def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> None:
+        """Fusionne deux fiches d'un doublon : **réassigne** au gagnant les inscriptions, scores et
+        séries du perdant, puis **supprime** le perdant (E02US005).
+
+        Miroir de `supprimer` : là où la suppression **purge** la descendance de l'archer, la fusion
+        la **réattribue** — dans **une seule transaction** (mêmes FK sans `ON DELETE`, DETTE-001).
+
+        **Contrat garanti par l'appelant** (le service, dans une commande de la file du writer
+        unique) : les deux archers existent, sont **distincts**, appartiennent au **même tournoi**,
+        et ils n'ont **pas tous les deux** une série de saisie (sinon la réassignation violerait
+        `UNIQUE(tournoi_id, archer_id)` — le service lève `FusionArchersEngages` avant d'appeler).
+
+        Deux collisions d'unicité à résoudre au niveau de l'adapter (elles ne remontent pas au
+        service) :
+
+        - `inscription` — `UNIQUE(archer_id, depart_id)` : si le gagnant est **déjà** inscrit sur un
+          départ où le perdant l'est aussi, on **ne réassigne pas** cette inscription (on la
+          supprime) et on **reporte le paiement** sur celle du gagnant (`paye` vrai si l'une
+          des deux était payée) — pas de doublon d'inscription, pas de perte de « a payé ».
+        - `serie` — `UNIQUE(tournoi_id, archer_id)` : le contrat (« pas les deux ») garantit qu'au
+          plus une série existe, donc la réassignation est sans collision.
+
+        Les **volées** suivent leur série (réassignée avec elle). Le **placement** (E03US004) suit
+        l'inscription : réassigné avec l'inscription gardée, cascadé avec l'inscription supprimée.
+        """
+        ...
+
 
 class ClubRepository(Protocol):
     """Port de persistance des clubs (adapter fourni par l'infrastructure).

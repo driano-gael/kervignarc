@@ -18,6 +18,8 @@ from application.erreurs import (
     CategorieHorsTournoi,
     ChangementCategorieArcherEngage,
     ClubIntrouvable,
+    FusionArchersEngages,
+    FusionImpossible,
     HomonymeArcher,
     SaisieHorsCible,
     TournoiIntrouvable,
@@ -25,6 +27,7 @@ from application.erreurs import (
 from domain.archer import Archer, ArcherId, CleIdentite
 from domain.categorie import CategorieId
 from domain.club import ClubId, cle_nom
+from domain.doublons import PaireDoublon, detecter_doublons
 from domain.ports import (
     ArcherRepository,
     CategorieRepository,
@@ -123,6 +126,62 @@ class ServiceArchers:
             self._archers.par_tournoi(tournoi_id),
             key=lambda archer: (cle_nom(archer.nom), cle_nom(archer.prenom), archer.id or 0),
         )
+
+    def detecter_doublons(self, tournoi_id: TournoiId) -> list[PaireDoublon]:
+        """Rapproche les paires d'inscrits vraisemblablement en double (E02US005).
+
+        Lève `TournoiIntrouvable` si le tournoi n'existe pas — comme `lister`, un tournoi inconnu
+        n'a pas « zéro doublon », il n'a pas d'inscrits du tout.
+
+        Toute la logique de rapprochement vit dans le **domaine** (`domain.doublons`, pur et testé
+        depuis le CA) : le service ne fait que fournir les inscrits du tournoi et propager le refus
+        de tournoi inconnu. La détection est **sans état** — recalculée à chaque appel, aucune paire
+        écartée n'est mémorisée (cf. story).
+        """
+        if self._tournois.par_id(tournoi_id) is None:
+            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+        return detecter_doublons(self._archers.par_tournoi(tournoi_id))
+
+    def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> Archer:
+        """Fusionne un doublon : le **gagnant** absorbe les inscriptions et scores du **perdant**,
+        qui disparaît (E02US005). Renvoie le gagnant.
+
+        L'admin a **choisi** quelle fiche survit (le gagnant) ; la machine ne fusionne jamais
+        d'office (le rapprochement est heuristique, ADR-0015). Le transfert lui-même — inscriptions,
+        scores, série, en une transaction — est le contrat du port (`ArcherRepository.fusionner`),
+        prouvé au niveau du repository ; ici on tient les **gardes** :
+
+        - `ArcherIntrouvable` si l'une des fiches n'existe pas (contrôlé **avant** tout le reste) ;
+        - `FusionImpossible` si c'est la **même** fiche (rien à fusionner) ou deux fiches de
+          **tournois différents** (deux inscriptions distinctes, pas un doublon — l'homonymie
+          se juge dans le tournoi, E02US002) ;
+        - `FusionArchersEngages` si les **deux** fiches ont déjà une série de saisie : les fusionner
+          mêlerait des volées (et violerait `UNIQUE(tournoi_id, archer_id)`). Le doublon se règle
+          avant que le tournoi tire (arbitrage du 22/07/2026) ; si **une seule** a tiré, la fusion
+          passe (série réassignée sans collision).
+
+        Comme `ajouter`/`supprimer`, les lectures de garde **et** l'écriture tiennent dans la même
+        commande soumise à la file du writer unique (règle 7) : aucune saisie concurrente ne peut se
+        glisser entre le contrôle « les deux ont-ils tiré ? » et la fusion.
+        """
+        gagnant = self._archer_existant(gagnant_id)
+        perdant = self._archer_existant(perdant_id)
+        if gagnant_id == perdant_id:
+            raise FusionImpossible("Une fiche ne peut pas être fusionnée avec elle-même.")
+        if gagnant.tournoi_id != perdant.tournoi_id:
+            raise FusionImpossible(
+                "Ces deux archers appartiennent à des tournois différents : pas un doublon."
+            )
+        gagnant_a_tire = self._series.par_archer(gagnant.tournoi_id, gagnant_id) is not None
+        perdant_a_tire = self._series.par_archer(perdant.tournoi_id, perdant_id) is not None
+        if gagnant_a_tire and perdant_a_tire:
+            raise FusionArchersEngages(
+                f"« {gagnant.prenom} {gagnant.nom} » et « {perdant.prenom} {perdant.nom} » ont "
+                "chacun une saisie enregistrée : les fusionner mêlerait leurs volées. Corrigez la "
+                "saisie avant de fusionner (le doublon se règle avant que le tournoi tire)."
+            )
+        self._archers.fusionner(gagnant_id, perdant_id)
+        return self._archer_existant(gagnant_id)
 
     def modifier(
         self,

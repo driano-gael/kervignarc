@@ -652,3 +652,102 @@ def test_saisir_score_sans_aucune_session_reste_401(
 
     assert reponse.status_code == 401, reponse.text
     assert reponse.json()["code"] == "non_authentifie"
+
+
+# --- E02US005 : détecter et fusionner les doublons --------------------------------------------
+
+
+def _inscrire_homonyme(
+    client: TestClient, tournoi_id: int, categorie_id: int, nom: str, prenom: str
+) -> int:
+    """Inscrit un archer en **confirmant l'homonyme** (2ᵉ fiche du doublon volontaire)."""
+    reponse = client.post(
+        f"/api/v1/tournois/{tournoi_id}/archers",
+        json={
+            "nom": nom,
+            "prenom": prenom,
+            "categorie_id": categorie_id,
+            "autoriser_homonyme": True,
+        },
+    )
+    assert reponse.status_code == 201, reponse.text
+    return int(reponse.json()["id"])
+
+
+def test_detecter_doublons_liste_les_paires(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """L'écran admin obtient les paires de doublons du tournoi, avec leur niveau (E02US005)."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        a = _inscrire(client, tournoi_id, categorie_id, "Dupont", "Jean")
+        b = _inscrire_homonyme(client, tournoi_id, categorie_id, "Dupont", "Jean")
+
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/doublons")
+
+    assert reponse.status_code == 200, reponse.text
+    paires = reponse.json()
+    assert len(paires) == 1
+    assert paires[0]["niveau"] == "probable"
+    assert {paires[0]["a"]["id"], paires[0]["b"]["id"]} == {a, b}
+
+
+def test_detecter_doublons_refuse_sans_session(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La détection de doublons est un outil admin : sans session → 401 (E10US001)."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _tournoi_avec_categorie(client)
+        del client.headers["Authorization"]
+
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/doublons")
+
+    assert reponse.status_code == 401
+    assert reponse.json()["code"] == "non_authentifie"
+
+
+def test_fusionner_absorbe_le_perdant_et_le_retire(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La fusion renvoie la fiche maître (200) et retire l'absorbée de la liste (E02US005)."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        gagnant = _inscrire(client, tournoi_id, categorie_id, "Dupont", "Jean")
+        perdant = _inscrire_homonyme(client, tournoi_id, categorie_id, "Dupont", "Jean")
+
+        reponse = client.post(f"/api/v1/archers/{gagnant}/fusionner", json={"perdant_id": perdant})
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.json()["id"] == gagnant
+
+        del client.headers["Authorization"]
+        restants = [a["id"] for a in client.get(f"/api/v1/tournois/{tournoi_id}/archers").json()]
+
+    assert restants == [gagnant]
+
+
+def test_fusionner_deux_tournois_differents_409(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Fusionner des fiches de tournois distincts → 409 `fusion_impossible` (CA E02US005)."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_a, categorie_a = _tournoi_avec_categorie(client, "Salle A")
+        tournoi_b, categorie_b = _tournoi_avec_categorie(client, "Salle B")
+        ici = _inscrire(client, tournoi_a, categorie_a, "Dupont", "Jean")
+        ailleurs = _inscrire(client, tournoi_b, categorie_b, "Dupont", "Jean")
+
+        reponse = client.post(f"/api/v1/archers/{ici}/fusionner", json={"perdant_id": ailleurs})
+
+    assert reponse.status_code == 409, reponse.text
+    assert reponse.json()["code"] == "fusion_impossible"
+
+
+def test_fusionner_refuse_sans_session(app_competition: FastAPI) -> None:
+    """Fusionner est une écriture admin : sans session → 401 (E10US001)."""
+    with TestClient(app_competition) as client:
+        reponse = client.post("/api/v1/archers/1/fusionner", json={"perdant_id": 2})
+    assert reponse.status_code == 401
+    assert reponse.json()["code"] == "non_authentifie"

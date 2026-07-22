@@ -136,6 +136,13 @@ class FauxArcherRepository:
     def supprimer(self, archer_id: ArcherId) -> None:
         del self._archers[archer_id]
 
+    def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> None:
+        # Effet observable **au niveau archer** : le perdant disparaît, le gagnant reste. La
+        # réassignation des inscriptions/scores/séries est un contrat d'adapter (prouvé au niveau du
+        # repository, `test_archer_score_repository`), invisible ici — comme `supprimer` ne purge
+        # pas la descendance dans ce faux. Un faux qui la simulerait recoderait la règle.
+        del self._archers[perdant_id]
+
 
 class FauxCategorieRepository:
     """Repository en mémoire conforme au port `CategorieRepository`."""

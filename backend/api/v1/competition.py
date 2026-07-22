@@ -28,6 +28,7 @@ from application.archers import ServiceArchers
 from application.classements import ServiceClassement
 from domain.archer import Archer
 from domain.classement import Classement
+from domain.doublons import PaireDoublon
 from domain.poste import Poste
 from domain.score import Score
 from infrastructure.db import WriteQueue
@@ -114,6 +115,39 @@ class ArcherReponse(BaseModel):
             categorie_id=archer.categorie_id,
             cible=archer.cible,
             club_id=archer.club_id,
+        )
+
+
+class FusionnerArcherRequete(BaseModel):
+    """Corps de fusion d'un doublon (E02US005).
+
+    L'`{gagnant_id}` de l'URL est la fiche **maître** (celle qui survit) ; `perdant_id` est la fiche
+    **absorbée**. C'est l'admin qui choisit ce sens : la machine ne fusionne jamais d'office (le
+    rapprochement est heuristique, ADR-0015).
+    """
+
+    perdant_id: int
+
+
+class PaireDoublonReponse(BaseModel):
+    """Une paire de fiches rapprochées et son niveau de certitude (E02US005).
+
+    `niveau` vaut `"probable"` (doublon très vraisemblable) ou `"a_verifier"` (rapprochement
+    approximatif à confirmer). Les deux fiches sont ordonnées par identifiant croissant
+    (déterminisme d'affichage) ; l'écran laisse l'admin désigner la maître avant de fusionner.
+    """
+
+    niveau: str
+    a: ArcherReponse
+    b: ArcherReponse
+
+    @staticmethod
+    def de_paire(paire: PaireDoublon) -> PaireDoublonReponse:
+        """Traduit une paire de domaine en DTO de réponse."""
+        return PaireDoublonReponse(
+            niveau=paire.niveau.value,
+            a=ArcherReponse.de_agregat(paire.a),
+            b=ArcherReponse.de_agregat(paire.b),
         )
 
 
@@ -290,6 +324,45 @@ async def supprimer_archer(
         write_queue.submit(lambda: service.supprimer(archer_id, autoriser_suppression_engage))
     )
     return Response(status_code=204)
+
+
+@router.get(
+    "/tournois/{tournoi_id}/doublons",
+    response_model=list[PaireDoublonReponse],
+    dependencies=[Depends(exiger_admin)],
+)
+async def detecter_doublons(tournoi_id: int, request: Request) -> list[PaireDoublonReponse]:
+    """Liste les paires d'inscrits vraisemblablement en double (lecture hors boucle — E02US005).
+
+    Réservée à l'**admin** : c'est un outil de nettoyage de la liste, pas une vue publique. Le
+    rapprochement (nom/prénom/club, exact et approximatif) est **heuristique** : chaque paire porte
+    un niveau (`probable` / `a_verifier`) et l'admin tranche par la fusion.
+    """
+    service: ServiceArchers = request.app.state.service_archers
+    paires = await run_in_threadpool(service.detecter_doublons, tournoi_id)
+    return [PaireDoublonReponse.de_paire(paire) for paire in paires]
+
+
+@router.post(
+    "/archers/{gagnant_id}/fusionner",
+    response_model=ArcherReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def fusionner_archer(
+    gagnant_id: int, requete: FusionnerArcherRequete, request: Request
+) -> ArcherReponse:
+    """Fusionne un doublon : la fiche `{gagnant_id}` absorbe `perdant_id` (**écriture** — E02US005).
+
+    Renvoie `409 fusion_impossible` (même fiche, ou deux tournois) ou `409 fusion_archers_engages`
+    (les deux fiches ont déjà tiré) ; `404 archer_introuvable` si une fiche n'existe pas. En cas de
+    succès, la fiche maître est renvoyée et l'absorbée a disparu, ses inscriptions et scores repris.
+    """
+    service: ServiceArchers = request.app.state.service_archers
+    write_queue: WriteQueue = request.app.state.write_queue
+    archer = await asyncio.wrap_future(
+        write_queue.submit(lambda: service.fusionner(gagnant_id, requete.perdant_id))
+    )
+    return ArcherReponse.de_agregat(archer)
 
 
 @router.post(

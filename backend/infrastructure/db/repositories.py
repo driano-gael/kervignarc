@@ -13,7 +13,7 @@ import json
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -563,6 +563,80 @@ class ArcherRepositorySQL:
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de suppression de l'archer.") from exc
+
+    def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> None:
+        """Réassigne la descendance du perdant au gagnant, puis supprime le perdant (E02US005).
+
+        **Miroir de `supprimer`** : mêmes FK sans `ON DELETE` (DETTE-001), même transaction unique,
+        mais on **réattribue** au lieu de purger. Tout en instructions **Core** (`update`/`delete`),
+        comme `supprimer` : une collision d'inscription est effacée par un `DELETE` SQL, qui
+        déclenche la cascade base `placement.inscription_id` (`ON DELETE CASCADE`) — un
+        `session.delete` ORM
+        laisserait SQLAlchemy deviner la descendance (cf. `supprimer`, la série et ses volées).
+
+        Contrat (garanti par le service) : deux archers distincts, même tournoi, **pas tous les
+        deux** une série (sinon `UNIQUE(tournoi_id, archer_id)` sauterait). Les collisions d'unicité
+        d'inscription, elles, sont résolues **ici** (le service ne les voit pas) : voir
+        `ArcherRepository.fusionner`.
+        """
+        try:
+            with self._session_factory() as session:
+                if session.get(ArcherORM, gagnant_id) is None or (
+                    session.get(ArcherORM, perdant_id) is None
+                ):
+                    raise InfrastructureError("Archer(s) à fusionner introuvable(s) en base.")
+                # Inscriptions : réassigner celles du perdant, sauf collision sur un départ où le
+                # gagnant est déjà inscrit (UNIQUE(archer_id, depart_id)) — on garde alors celle du
+                # gagnant, en y **reportant le paiement** (paye vrai si l'une des deux l'était),
+                # et on supprime celle du perdant (son placement éventuel cascade).
+                gagnant_par_depart = {
+                    depart_id: (inscription_id, paye)
+                    for inscription_id, depart_id, paye in session.execute(
+                        select(
+                            InscriptionORM.id, InscriptionORM.depart_id, InscriptionORM.paye
+                        ).where(InscriptionORM.archer_id == gagnant_id)
+                    ).all()
+                }
+                for inscription_id, depart_id, paye in session.execute(
+                    select(InscriptionORM.id, InscriptionORM.depart_id, InscriptionORM.paye).where(
+                        InscriptionORM.archer_id == perdant_id
+                    )
+                ).all():
+                    collision = gagnant_par_depart.get(depart_id)
+                    if collision is None:
+                        session.execute(
+                            update(InscriptionORM)
+                            .where(InscriptionORM.id == inscription_id)
+                            .values(archer_id=gagnant_id)
+                        )
+                        continue
+                    gagnant_inscription_id, gagnant_paye = collision
+                    if paye and not gagnant_paye:
+                        session.execute(
+                            update(InscriptionORM)
+                            .where(InscriptionORM.id == gagnant_inscription_id)
+                            .values(paye=True)
+                        )
+                    session.execute(
+                        delete(InscriptionORM).where(InscriptionORM.id == inscription_id)
+                    )
+                # Scores (agrégat legacy, DETTE-011) : aucune unicité, réassignation nue.
+                session.execute(
+                    update(ScoreORM)
+                    .where(ScoreORM.archer_id == perdant_id)
+                    .values(archer_id=gagnant_id)
+                )
+                # Série : au plus une côté perdant (contrat « pas les deux »), donc pas de collision
+                # sur UNIQUE(tournoi_id, archer_id) — ses volées la suivent (via serie_id).
+                session.execute(
+                    update(SerieORM)
+                    .where(SerieORM.archer_id == perdant_id)
+                    .values(archer_id=gagnant_id)
+                )
+                session.execute(delete(ArcherORM).where(ArcherORM.id == perdant_id))
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de la fusion des archers.") from exc
 
 
 class ClubRepositorySQL:
