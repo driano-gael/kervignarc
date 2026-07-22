@@ -15,8 +15,10 @@
 // (règle 11) ; à réévaluer si un vrai besoin d'URL apparaît.
 //
 // Périmètre borné aux **fonctions livrées** (CA « non-régression ») : les destinations que le §7.1
-// prévoit mais qui n'existent pas encore (Identité, Validation, Podiums, Exports, Archive, Audit,
-// recherche) ne sont **pas** matérialisées par des entrées vides — elles arriveront avec leur US.
+// prévoit mais qui n'existent pas encore (Identité, Validation, Podiums, Exports, Archive, Audit)
+// ne sont **pas** matérialisées par des entrées vides — elles arriveront avec leur US. La
+// **recherche d'archer** (E12US006, `D-19`) est désormais livrée : champ permanent en tête de la
+// sidebar, hors du système de destinations (elle coiffe, elle ne s'ouvre pas dans la zone principale).
 // « Complétude » (E12US005) est désormais livrée, dans le groupe Jour J. De même, les 7 statuts d'ADR-0026 (E01US017) ne sont pas encore livrés :
 // l'accueil contextualisé s'appuie sur les **3 statuts actuels** (brouillon / en_cours / termine).
 // « Supervision » (E12US001) est livrée et l'accueil d'un tournoi *en cours* pointe dessus ;
@@ -42,6 +44,7 @@ import { Placement } from '../placement/Placement'
 import { Postes } from '../postes/Postes'
 import { Scoreurs } from '../scoreurs/Scoreurs'
 import { Supervision } from '../supervision/Supervision'
+import { RechercheArcher } from '../recherche/RechercheArcher'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { ConnexionAdmin } from './ConnexionAdmin'
 import { BadgeStatut, GestionTournois } from '../tournois/Tournois'
@@ -268,6 +271,11 @@ function Coquille() {
   return (
     <div className="coquille">
       <nav className="coquille__nav" aria-label="Navigation d'administration">
+        {/* La recherche d'archer coiffe la sidebar (E12US006, `D-19`) : présente en permanence, quel
+            que soit l'écran, elle répond à « je tire où ? » sans quitter la page courante. Scopée au
+            tournoi courant, elle reste inerte tant qu'aucun n'est choisi. */}
+        <RechercheArcher tournoiId={tournoiId} />
+
         {/* Le sélecteur de tournoi est **au-dessus de tout** : tout ce qui suit lui appartient. */}
         <div className="coquille__selecteur">
           <label className="formulaire__libelle" htmlFor="coquille-tournoi">

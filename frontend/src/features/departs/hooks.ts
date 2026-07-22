@@ -16,10 +16,14 @@ import {
 
 const cleDeparts = (tournoiId: number) => ['departs', tournoiId] as const
 
-export function useDeparts(tournoiId: number) {
+// `enabled` (défaut `true`) : la recherche de la sidebar admin (E12US006), montée sur tout écran, ne
+// charge les départs que lorsqu'on cherche — les écrans existants ne passent rien et gardent leur
+// comportement.
+export function useDeparts(tournoiId: number, enabled = true) {
   return useQuery({
     queryKey: cleDeparts(tournoiId),
     queryFn: () => getDeparts(tournoiId),
+    enabled,
   })
 }
 
