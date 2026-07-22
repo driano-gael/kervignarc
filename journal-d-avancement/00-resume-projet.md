@@ -21,8 +21,9 @@ désormais de bout en bout : les postes de saisie se supervisent, le classement 
 public le consulte en direct sans compte — jusqu'à suivre un archer et voir sa feuille de marque se
 remplir volée par volée. Côté organisateur, le **suivi des paiements** (qui a réglé, combien reste-t-il
 dû, par archer et par club) est en place, un écran de **complétude** dit d'un coup d'œil ce qui
-manque avant de terminer le tournoi, et une **recherche d'archer** permanente répond à « je tire
-où ? » depuis n'importe quel écran admin.** Il reste à construire les duels (phases finales) et le
+manque avant de terminer le tournoi, une **recherche d'archer** permanente répond à « je tire
+où ? » depuis n'importe quel écran admin, et un écran **« Doublons »** repère les fiches en double
+et les **fusionne** sans rien perdre.** Il reste à construire les duels (phases finales) et le
 pilotage du jour J.
 
 ---
@@ -69,8 +70,13 @@ Tout ce qu'il faut pour préparer un tournoi avant le jour J :
   filtrable) et **par club** (mêmes totaux + détail), qui a réglé. On marque un paiement à la ligne,
   ou d'un geste **tout un archer** ou **tout un club** (règlement groupé) ; chaque marquage laisse une
   **trace** dans le journal d'audit (c'est de l'argent). Pas d'encaissement en ligne : c'est un statut.
+- **Détecter et fusionner les doublons** : un écran « Doublons » repère les fiches qui désignent
+  probablement le même archer saisi deux fois — mêmes nom/prénom/club, ou rapprochement approximatif
+  (faute de frappe, prénom abrégé) classé « à vérifier ». L'organisateur choisit la fiche à **garder** ;
+  l'autre y est **fusionnée** (ses inscriptions et scores sont repris) puis supprimée. Rien n'est perdu,
+  et le geste demande une confirmation explicite.
 
-*Restent à venir : import de fichiers d'inscription, détection de doublons.*
+*Restent à venir : import de fichiers d'inscription.*
 
 ### 4. Les rôles et l'accès — *socle en place*
 
@@ -185,13 +191,14 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **57 US livrées** sur `main` (mergées, revues, CI verte) à la date du 22/07/2026 — E12US006
+- **58 US livrées** sur `main` (mergées, revues, CI verte) à la date du 22/07/2026 — E02US005
   optimiste d'un cran sur la branche jusqu'à son merge. **`SUIVI-US.md` fait foi sur le compte exact.**
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : bien avancé
-  (42/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
-  alerte par calcul d'impact, suivi des paiements, **complétude du tournoi** et **recherche d'un
-  archer** faits ; restent « ma journée » (« c'est moi ») et quelques imprimables.
-- Dernière US livrée : **E12US006** (rechercher un archer depuis n'importe où — champ permanent en tête
-  de la sidebar admin, nom → départ/cible/position ; front pur réutilisant la logique d'E07US006, la
-  « prochaine affectation » séquencée vers EPIC-05). Elle est aussi la dernière à **surface visible**.
+  (43/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
+  alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer et
+  **détection/fusion des doublons** faits ; restent « ma journée » (« c'est moi ») et quelques
+  imprimables.
+- Dernière US livrée : **E02US005** (détecter et fusionner les doublons d'archers — écran « Doublons »
+  admin : rapprochement heuristique à deux niveaux, fusion conservant inscriptions et scores).
+  Elle est aussi la dernière à **surface visible**.
 - Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) (reprise de la séquence J1).

@@ -26,6 +26,7 @@
 
 import { useState, type ReactNode } from 'react'
 import { Archers } from '../archers/Archers'
+import { Doublons } from '../archers/Doublons'
 import { NouvelArcher } from '../archers/NouvelArcher'
 import { BaremeQualification } from '../bareme/BaremeQualification'
 import { Blasons } from '../blasons/Blasons'
@@ -208,6 +209,15 @@ function Coquille() {
             <Archers tournoiId={courant.id} />
           </>
         ),
+    },
+    {
+      id: 'doublons',
+      libelle: 'Doublons',
+      groupe: 'preparation',
+      // Nettoyage de la liste des inscrits (E02US005) : repérer les fiches en double et fusionner.
+      // Juste après « Inscriptions » — c'est la suite naturelle du travail sur la liste.
+      besoinTournoi: true,
+      rendu: () => courant && <Doublons tournoiId={courant.id} />,
     },
     {
       id: 'placement',
