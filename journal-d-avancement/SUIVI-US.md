@@ -12,24 +12,24 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 22/07/2026** · **56 US livrées** · dernière : `E12US005`.
+**Dernière mise à jour : 22/07/2026** · **57 US livrées** · dernière : `E12US006`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E12US006` — Rechercher un archer depuis n'importe où** poursuit la séquence J1 (le 4ᵉ canal de
-> routage : la table de l'organisation cherche un archer dans l'appli admin). Détail :
-> [`stories/E12-pilotage-jour-j.md`](../stories/E12-pilotage-jour-j.md).
+> **`E02US005` — Détecter et fusionner les doublons** poursuit la séquence J1 (deux fiches archer pour
+> la même personne : les repérer et les réunir sans perdre inscriptions ni scores). Détail :
+> [`stories/E02-inscriptions.md`](../stories/E02-inscriptions.md).
 >
-> *Fait juste avant :* `E12US005` (afficher la complétude du tournoi) — terminée et poussée, revue
-> faite : écran **« Complétude »** (groupe Jour J) répondant à « qu'est-ce qui manque ? », **sportif**
-> (qualification en cibles, classement) et **hors sportif** (paiements) comptés **séparément** (`D-17`) ;
-> l'écran dit ce que « terminer » fige et **contrôle en amont** (confirmation chiffrée) le passage à
-> *terminé* — **sur les deux portes** (Complétude *et* préparation). Backend (domaine `completude` pur
-> + service d'agrégation + endpoint admin) + front. Les **duels par phase** (1/8, 1/4) sont **séquencés
-> vers EPIC-05** (moteur de phases non livré) : ligne « à venir » qui ne bloque pas — arbitrage reversé
-> dans `stories/` (règle 9). Logique de jugement isolée dans `evaluer_completude` (fonction pure testée).
+> *Fait juste avant :* `E12US006` (rechercher un archer depuis n'importe où) — terminée et poussée,
+> revue faite : **champ de recherche permanent en tête de la sidebar admin** (le 4ᵉ canal de routage,
+> `D-19`), qui répond à « je tire où ? » sans quitter l'écran courant — nom (tolérant casse/accents,
+> accessible clavier) → **départ · horaire · cible · position** pour chaque créneau où l'archer est
+> posé. **Front pur** : réutilise la logique déjà testée d'E07US006 (`filtrerArchers` /
+> `construireJournee`) sur les endpoints de lecture existants, zéro backend nouveau. Chargement
+> paresseux (ne fetche qu'à la frappe). La **« prochaine affectation »** (tour/duel suivant) est
+> **séquencée vers EPIC-05** — moteur de phases non livré, arbitrage reversé dans `stories/` (règle 9).
 
 ---
 
@@ -50,7 +50,7 @@
 | E00US011 | Tranche verticale démontrable | ✅ |
 | E00US012 | Exécutable de dev (FastAPI sert le front) | ✅ |
 
-## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (41/46)**
+## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (42/46)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -93,8 +93,8 @@
 | 48 | E12US007 | Alerter par calcul d'impact | ✅ |
 | 49 | E08US002 | Suivi des paiements | ✅ |
 | 50 | E12US005 | Afficher la complétude du tournoi | ✅ |
-| 51 | E12US006 | Rechercher un archer depuis n'importe où | 🎯 *(reprise J1)* |
-| 52 | E02US005 | Détecter et fusionner les doublons | ⬜ |
+| 51 | E12US006 | Rechercher un archer depuis n'importe où | ✅ |
+| 52 | E02US005 | Détecter et fusionner les doublons | 🎯 *(reprise J1)* |
 | 53 | E02US006 | Contrôler les quotas | ✅ *(fait en avance)* |
 | 54 | E09US001 | Socle PDF & feuille de marque | ✅ *(fait en avance)* |
 | 55 | E09US003 | Listes imprimables (placement, club, paiement) | ⬜ |

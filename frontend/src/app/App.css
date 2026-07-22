@@ -114,6 +114,36 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* Recherche d'archer en tête de sidebar (E12US006) : séparée du reste par un filet, comme le
+   sélecteur. Les résultats s'affichent en dessous, dans la sidebar, sans quitter l'écran courant. */
+.coquille__recherche {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.recherche-places {
+  flex: 1 1 100%;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recherche-place {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.recherche-place--vide,
+.recherche-place--attente {
+  font-style: italic;
+}
+
 .coquille__groupe {
   display: flex;
   flex-direction: column;

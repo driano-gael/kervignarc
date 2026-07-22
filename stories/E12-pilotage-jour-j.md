@@ -71,6 +71,19 @@
 *En tant que* bénévole de la table d'organisation, *je veux* retrouver un archer **depuis n'importe quel écran**, *afin de* répondre à celui qui vient demander « je tire où ? ».
 - **CA** : champ de recherche **dans la sidebar, en haut, présent en permanence** (`D-19`) — quel que soit l'écran affiché ; recherche **par nom** (tolérante à la casse et aux accents) ; le résultat donne **immédiatement** ce qu'on vient demander : **cible, position, départ**, et **la prochaine affectation** si elle existe (`D-09`) ; accessible au **clavier**.
 - **Notes** : `D-10`, `D-19` · [CDC UX §7.1](../cahier-des-charges-ux.md). **La table de l'organisation est un humain, pas une borne** (`D-10`) : c'est pourquoi cette recherche est **dans l'appli admin** et qu'il n'y a **pas de borne partagée** en libre-service — « retour automatique à l'accueil » et « mémoriser c'est moi » (E07US006) se contrediraient. **C'est le 4ᵉ canal de routage.**
+  - **Arbitrages de périmètre tranchés à l'implémentation (22/07/2026), reversés ici (règle 9)** :
+    - **« Prochaine affectation » séquencée vers EPIC-05.** Le moteur de phases (duels) n'est pas
+      livré (aucun agrégat `Duel`) : la « prochaine affectation » du CA — le tour/duel suivant — est
+      **insatisfaisable en l'état**. Aujourd'hui un archer n'a que ses **créneaux de qualification**,
+      et le résultat de recherche les affiche **tous** (départ · horaire → cible · position). La ligne
+      « prochaine affectation » s'ajoutera quand EPIC-05 livrera les phases — même séquencement que la
+      complétude des duels d'E12US005, ou les écrans de salle d'E12US001. Aucun comportement perdu.
+    - **Portée : archers du tournoi courant.** La recherche filtre les archers **inscrits au tournoi
+      sélectionné** dans la sidebar (le cas d'usage « je tire où ? » à la table d'organisation), pas
+      tout le référentiel d'archers. Inerte tant qu'aucun tournoi n'est choisi.
+    - **Réalisation front pure.** Réutilise la logique déjà testée d'E07US006 (`filtrerArchers` /
+      `construireJournee`) — même geste nom → place — sur les endpoints de lecture existants (archers,
+      départs, plans de cibles). Aucun endpoint backend nouveau.
 - **Dépend de** : E02US002, E03US001 · **Jalon** : J1
 
 ### E12US007 — Alerter par calcul d'impact

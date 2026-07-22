@@ -15,10 +15,14 @@ import { getArchers, type ModifierArcher, modifierArcher, supprimerArcher } from
 
 const cleArchers = (tournoiId: number) => ['archers', tournoiId] as const
 
-export function useArchers(tournoiId: number) {
+// `enabled` (défaut `true`) permet à un appelant monté en permanence — la recherche de la sidebar
+// admin (E12US006) — de ne déclencher le fetch qu'une fois l'utilisateur en demande, sans changer le
+// comportement des écrans existants. Même idiome que `useImpactRegeneration(..., actif)`.
+export function useArchers(tournoiId: number, enabled = true) {
   return useQuery({
     queryKey: cleArchers(tournoiId),
     queryFn: () => getArchers(tournoiId),
+    enabled,
   })
 }
 

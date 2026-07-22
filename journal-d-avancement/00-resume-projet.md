@@ -20,9 +20,10 @@ tourne en temps réel — y compris quand le wifi saute — et un tournoi de qua
 désormais de bout en bout : les postes de saisie se supervisent, le classement se calcule, et le
 public le consulte en direct sans compte — jusqu'à suivre un archer et voir sa feuille de marque se
 remplir volée par volée. Côté organisateur, le **suivi des paiements** (qui a réglé, combien reste-t-il
-dû, par archer et par club) est en place, et un écran de **complétude** dit d'un coup d'œil ce qui
-manque avant de terminer le tournoi.** Il reste à construire les duels (phases finales) et le pilotage
-du jour J.
+dû, par archer et par club) est en place, un écran de **complétude** dit d'un coup d'œil ce qui
+manque avant de terminer le tournoi, et une **recherche d'archer** permanente répond à « je tire
+où ? » depuis n'importe quel écran admin.** Il reste à construire les duels (phases finales) et le
+pilotage du jour J.
 
 ---
 
@@ -147,10 +148,16 @@ Ce qui transforme la saisie brute en tournoi qu'on suit en direct, dernier bloc 
   « terminer » va figer** (le sportif ; les paiements restent modifiables) et, au moment de terminer —
   la seule action irréversible —, **chiffre ce qui reste** avant de laisser confirmer. Détail dans
   [`2026-07-22-00h40-completude-du-tournoi.md`](2026-07-22-00h40-completude-du-tournoi.md).
+- **Rechercher un archer depuis n'importe où** : un champ de recherche **toujours présent en haut de
+  la barre de navigation admin** — quel que soit l'écran affiché, le bénévole de la table
+  d'organisation tape un nom et voit **immédiatement où l'archer tire** (départ, horaire, cible,
+  position, pour chaque créneau), sans quitter sa page. C'est le **4ᵉ canal** pour répondre à « je tire
+  où ? » (après les tablettes, les téléphones du public et « ma journée »). Détail dans
+  [`2026-07-22-14h39-rechercher-un-archer.md`](2026-07-22-14h39-rechercher-un-archer.md).
 
-*Reste à venir sur ce jalon : les **affectations du prochain tour** (phases finales) et la **recherche
-globale** d'un archer. Les **duels** eux-mêmes (1/8, 1/4…) apparaissent « à venir » dans la complétude
-tant que leur moteur (EPIC-05) n'est pas construit.*
+*Reste à venir sur ce jalon : les **affectations du prochain tour** (phases finales). Les **duels**
+eux-mêmes (1/8, 1/4…) apparaissent « à venir » dans la complétude — et la « prochaine affectation » de
+la recherche restera vide — tant que leur moteur (EPIC-05) n'est pas construit.*
 
 ---
 
@@ -159,9 +166,9 @@ tant que leur moteur (EPIC-05) n'est pas construit.*
 Dans l'ordre de valeur prévu par le backlog :
 
 1. **Finir le tournoi de qualification** : l'appli publique ouverte directement sur **« ma journée »**
-   (« c'est moi » mémorisé) et la recherche globale d'un archer.
-   *(Supervision des postes, classement, vues publiques, suivi des paiements et complétude du tournoi :
-   faits — cf. blocs 3 et 9.)*
+   (« c'est moi » mémorisé) et quelques listes imprimables.
+   *(Supervision des postes, classement, vues publiques, suivi des paiements, complétude du tournoi et
+   recherche d'un archer : faits — cf. blocs 3 et 9.)*
 2. **Les duels** (phases finales) : arbre d'élimination directe, saisie en duels, abandon /
    disqualification, barrages, podium — **et surtout la bascule de tour**, qui est le moment où le
    produit gagne ou perd sa valeur.
@@ -178,13 +185,13 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **56 US livrées** sur `main` (mergées, revues, CI verte) à la date du 22/07/2026 — E12US005
+- **57 US livrées** sur `main` (mergées, revues, CI verte) à la date du 22/07/2026 — E12US006
   optimiste d'un cran sur la branche jusqu'à son merge. **`SUIVI-US.md` fait foi sur le compte exact.**
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : bien avancé
-  (41/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
-  alerte par calcul d'impact, suivi des paiements et **complétude du tournoi** faits ; restent « ma
-  journée » (« c'est moi »), la recherche globale d'un archer et quelques imprimables.
-- Dernière US livrée : **E12US005** (afficher la complétude du tournoi — qu'est-ce qui manque pour
-  finir, sportif / hors sportif séparés, contrôle avant de terminer ; les duels par phase séquencés
-  vers EPIC-05). Elle est aussi la dernière à **surface visible**.
+  (42/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
+  alerte par calcul d'impact, suivi des paiements, **complétude du tournoi** et **recherche d'un
+  archer** faits ; restent « ma journée » (« c'est moi ») et quelques imprimables.
+- Dernière US livrée : **E12US006** (rechercher un archer depuis n'importe où — champ permanent en tête
+  de la sidebar admin, nom → départ/cible/position ; front pur réutilisant la logique d'E07US006, la
+  « prochaine affectation » séquencée vers EPIC-05). Elle est aussi la dernière à **surface visible**.
 - Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) (reprise de la séquence J1).
