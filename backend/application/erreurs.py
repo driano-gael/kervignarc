@@ -139,6 +139,35 @@ class ArcherEngage(ApplicationError):
     code = "archer_engage"
 
 
+class FusionImpossible(ApplicationError):
+    """Fusion de doublons **structurellement** impossible (E02US005) → 409.
+
+    **Un refus, pas un signalement** (famille de `DejaInscrit`) : aucun drapeau ne le lève, la
+    demande n'a pas de sens. Deux causes, toutes deux constatées avant d'écrire :
+
+    - fusionner une fiche **avec elle-même** (gagnant = perdant) — il n'y a rien à fusionner ;
+    - fusionner deux fiches de **tournois différents** — ce sont deux inscriptions distinctes,
+      pas un doublon (l'homonymie se juge dans le tournoi, comme à l'inscription, E02US002).
+      Réassigner inscriptions et séries d'un tournoi à l'autre romprait leur cloisonnement.
+    """
+
+    code = "fusion_impossible"
+
+
+class FusionArchersEngages(ApplicationError):
+    """Fusion refusée : les **deux** fiches ont déjà une saisie (série) au tournoi (E02US005) → 409.
+
+    **Un signalement, pas un début d'exécution** (esprit ADR-0015) : fusionner mêlerait deux séries
+    de volées sur le même `(tournoi, archer)` — la contrainte `UNIQUE(tournoi_id, archer_id)` d'une
+    part, l'ambiguïté « quelles volées garder ? » d'autre part. Le doublon se règle **à
+    l'inscription, avant que le tournoi tire** (arbitrage du 22/07/2026) ; ce cas n'est donc pas
+    nominal. Aucun drapeau ne le lève : mêler des scores en silence détruirait des flèches. Si une
+    seule des deux fiches a tiré, la fusion passe (la série est réassignée sans collision).
+    """
+
+    code = "fusion_archers_engages"
+
+
 class InscriptionIntrouvable(ApplicationError):
     """Aucune inscription ne correspond à l'identifiant demandé (E02US009) → 404."""
 

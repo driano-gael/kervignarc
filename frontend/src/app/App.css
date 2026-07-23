@@ -674,6 +674,16 @@ button:disabled {
   font-size: 13px;
 }
 
+/* Une paire de doublons (E02US005) — les deux fiches rapprochées, encadrées pour se lire d'un bloc. */
+.doublon {
+  padding: 8px 10px;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.3));
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 /* Panneau d'inscription d'un archer sur les départs (E02US009) — imbriqué sous la ligne d'archer,
    décalé pour signaler qu'il en dépend. */
 .inscriptions {

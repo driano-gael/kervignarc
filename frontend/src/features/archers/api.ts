@@ -31,6 +31,30 @@ export function getArchers(tournoiId: number): Promise<Archer[]> {
   return fetchJson<Archer[]>(`/api/v1/tournois/${tournoiId}/archers`)
 }
 
+// Une paire de fiches rapprochées par la détection de doublons (E02US005). `niveau` vaut
+// `'probable'` (doublon très vraisemblable) ou `'a_verifier'` (rapprochement approximatif à
+// confirmer) ; `a` et `b` sont ordonnées par identifiant croissant (déterminisme d'affichage).
+export interface Doublon {
+  niveau: string
+  a: Archer
+  b: Archer
+}
+
+export function getDoublons(tournoiId: number): Promise<Doublon[]> {
+  return fetchJson<Doublon[]>(`/api/v1/tournois/${tournoiId}/doublons`)
+}
+
+// Fusionne un doublon : la fiche `gagnantId` (maître) absorbe `perdantId` (inscriptions et scores
+// repris, la fiche absorbée disparaît). Renvoie la fiche maître. Le serveur refuse (409) si les deux
+// fiches ont déjà tiré (`fusion_archers_engages`) ou si la fusion est structurellement impossible
+// (`fusion_impossible` : même fiche, tournois différents) — ce sont des refus fermes, sans drapeau.
+export function fusionnerArchers(gagnantId: number, perdantId: number): Promise<Archer> {
+  return fetchJson<Archer>(`/api/v1/archers/${gagnantId}/fusionner`, {
+    method: 'POST',
+    body: JSON.stringify({ perdant_id: perdantId }),
+  })
+}
+
 export function modifierArcher(id: number, entree: ModifierArcher): Promise<Archer> {
   return fetchJson<Archer>(`/api/v1/archers/${id}`, {
     method: 'PUT',

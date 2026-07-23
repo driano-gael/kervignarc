@@ -50,8 +50,51 @@
 
 ### E02US005 — Détecter et fusionner les doublons
 *En tant qu'*administrateur, *je veux* repérer les doublons, *afin de* fiabiliser la liste.
-- **CA** : détection par nom/prénom/club ; proposition de fusion conservant départs et scores.
+- **CA — détection à deux niveaux** (par tournoi) : l'écran d'admin liste les paires d'inscrits qui
+  se ressemblent, classées par **certitude**.
+  - **Doublon probable** : mêmes nom et prénom (casse **et** accents repliés, `domain.club.cle_nom`)
+    **et** clubs compatibles — club identique **ou** l'un des deux « club inconnu » (`club_id is
+    None`). Ce dernier cas (le **pont** avec/sans club) est celui que la détection à l'inscription
+    exclut délibérément (`domain.archer.cle_identite`, qui renvoie explicitement à cette US).
+  - **À vérifier** (rapprochement **approximatif**) : faute de frappe (distance d'édition ≤ 2 sur
+    nom + prénom), **prénom abrégé** (« J » / « Jean »), ou mêmes nom et prénom mais **clubs connus
+    différents**. Ces rapprochements sont **signalés pour confirmation**, jamais tenus pour acquis.
+- **CA — fusion** : l'admin choisit la fiche **maître** (gagnante) et la fiche **absorbée**
+  (perdante) ; la fusion **réassigne** à la maître les inscriptions sur départs **et** les scores de
+  l'absorbée, puis **supprime** l'absorbée. « Conservant départs et scores » : rien n'est perdu.
+  - Collision d'**inscription** (les deux fiches sur le **même départ**, contrainte `UNIQUE(archer_id,
+    depart_id)`) : on **garde une seule** inscription sur ce créneau et on **fusionne le paiement**
+    (`paye` vrai si l'une des deux était payée) — pas de doublon d'inscription, pas de perte de « a
+    payé ».
+  - **Refus si les deux fiches ont déjà une saisie** (chacune une `Serie`, contrainte
+    `UNIQUE(tournoi_id, archer_id)`) : fusionner mêlerait des volées, ce qui est **ambigu** → **409
+    `fusion_archers_engages`** (signalement, esprit ADR-0015), pas de destruction silencieuse. Le
+    doublon se règle **à l'inscription, avant que le tournoi tire** (arbitrage ci-dessous) ; ce cas
+    n'est donc pas nominal.
+  - **Fusion impossible** (structurellement) → **409 `fusion_impossible`** : fusionner une fiche avec
+    **elle-même**, ou deux fiches de **tournois différents** (ce seraient deux inscriptions
+    distinctes, pas un doublon).
+- **Notes** : détection = fonction **pure** du domaine (`domain/doublons.py`) ; distance d'édition
+  (Levenshtein) **maison** — quelques lignes, pas de lib de fuzzy-matching (règle 11). Pas de n° de
+  licence (repoussé à E02US007, [ADR-0015](../docs/adr/0015-signaler-un-doublon-plutot-que-l-interdire.md)),
+  donc détection **heuristique**, jamais décidable. Fusion = nouvelle méthode de port
+  `ArcherRepository.fusionner`, **une seule transaction** (patron `supprimer` — réassignation au lieu
+  de purge). La détection est **sans état** : elle est recalculée à chaque ouverture de l'écran, on
+  **ne persiste pas** les paires écartées (« ce n'est pas un doublon ») — un père et son fils
+  reparaîtront dans la liste à chaque fois ; les mémoriser demanderait une table de « non-doublons »
+  qu'aucun besoin réel ne réclame encore (règle 12, simplicité hors domaine). Le **placement**
+  (E03US004) n'est pas dans le périmètre : la fusion réassigne les inscriptions, et un éventuel
+  double placement (rare, pré-lancement) se résout à l'écran de placement.
 - **Dépend de** : E02US002 · **Jalon** : J1
+  > **Cadrage tranché le 22/07/2026** (organisateur), CA d'origine (« détection par nom/prénom/club ;
+  > proposition de fusion conservant départs et scores ») trop mince pour la surface. **Périmètre** :
+  > détection **+** fusion en une US. **Détection** : deux niveaux — homonymes exacts + pont
+  > club/sans-club (**doublon probable**), **plus** rapprochements approximatifs signalés pour
+  > confirmation (**à vérifier**). **Scores des deux côtés** : ce n'est **pas** un cas à fusionner —
+  > le doublon se signale **à l'inscription, avant lancement du tournoi**, donc avant les scores ; si
+  > les deux fiches ont pourtant tiré, la fusion est **refusée** (`fusion_archers_engages`) plutôt que
+  > de mêler des volées. Écarté : fusion automatique (toujours confirmée par l'admin), fusion par
+  > union de scores (destruction possible de volées).
 
 ### E02US006 — Contrôler les quotas
 *En tant qu'*administrateur, *je veux* plafonner le nombre d'inscrits, *afin de* respecter la capacité.

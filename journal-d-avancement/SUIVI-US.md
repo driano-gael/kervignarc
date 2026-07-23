@@ -12,24 +12,27 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 22/07/2026** · **57 US livrées** · dernière : `E12US006`.
+**Dernière mise à jour : 22/07/2026** · **58 US livrées** · dernière : `E02US005`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E02US005` — Détecter et fusionner les doublons** poursuit la séquence J1 (deux fiches archer pour
-> la même personne : les repérer et les réunir sans perdre inscriptions ni scores). Détail :
-> [`stories/E02-inscriptions.md`](../stories/E02-inscriptions.md).
+> **`E09US003` — Listes imprimables (placement, club, paiement)** poursuit la séquence J1 : sortir sur
+> papier les listes utiles le jour J, sur le socle PDF déjà livré (E09US001). Détail :
+> [`stories/E09-exports.md`](../stories/E09-exports.md).
 >
-> *Fait juste avant :* `E12US006` (rechercher un archer depuis n'importe où) — terminée et poussée,
-> revue faite : **champ de recherche permanent en tête de la sidebar admin** (le 4ᵉ canal de routage,
-> `D-19`), qui répond à « je tire où ? » sans quitter l'écran courant — nom (tolérant casse/accents,
-> accessible clavier) → **départ · horaire · cible · position** pour chaque créneau où l'archer est
-> posé. **Front pur** : réutilise la logique déjà testée d'E07US006 (`filtrerArchers` /
-> `construireJournee`) sur les endpoints de lecture existants, zéro backend nouveau. Chargement
-> paresseux (ne fetche qu'à la frappe). La **« prochaine affectation »** (tour/duel suivant) est
-> **séquencée vers EPIC-05** — moteur de phases non livré, arbitrage reversé dans `stories/` (règle 9).
+> *Fait juste avant :* `E02US005` (détecter et fusionner les doublons) — terminée et poussée, revue
+> faite : **écran « Doublons » admin** qui rapproche les fiches désignant probablement le même archer
+> saisi deux fois. **Détection heuristique à deux niveaux** (par tournoi, domaine pur) : *doublon
+> probable* (mêmes nom/prénom, casse/accents repliés, clubs compatibles — dont le **pont** avec/sans
+> club que l'inscription refuse) ; *à vérifier* (rapprochement approximatif — distance d'édition
+> Levenshtein **maison**, prénom abrégé, clubs connus différents). **Fusion** : l'admin choisit la
+> maître, l'autre est absorbée (inscriptions et scores repris, collision d'inscription dédoublonnée +
+> paiement reporté) en **une transaction** (miroir de `supprimer`) ; refus si les deux fiches ont tiré
+> (`fusion_archers_engages`) ou fusion structurelle impossible (`fusion_impossible`). Faute de n° de
+> licence (repoussé à E02US007, ADR-0015), la détection reste heuristique ; les paires écartées ne sont
+> pas mémorisées (sans état). Cadrage tranché avec l'organisateur le 22/07, reversé dans `stories/`.
 
 ---
 
@@ -50,7 +53,7 @@
 | E00US011 | Tranche verticale démontrable | ✅ |
 | E00US012 | Exécutable de dev (FastAPI sert le front) | ✅ |
 
-## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (42/46)**
+## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (43/46)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -94,10 +97,10 @@
 | 49 | E08US002 | Suivi des paiements | ✅ |
 | 50 | E12US005 | Afficher la complétude du tournoi | ✅ |
 | 51 | E12US006 | Rechercher un archer depuis n'importe où | ✅ |
-| 52 | E02US005 | Détecter et fusionner les doublons | 🎯 *(reprise J1)* |
+| 52 | E02US005 | Détecter et fusionner les doublons | ✅ |
 | 53 | E02US006 | Contrôler les quotas | ✅ *(fait en avance)* |
 | 54 | E09US001 | Socle PDF & feuille de marque | ✅ *(fait en avance)* |
-| 55 | E09US003 | Listes imprimables (placement, club, paiement) | ⬜ |
+| 55 | E09US003 | Listes imprimables (placement, club, paiement) | 🎯 *(reprise J1)* |
 | 56 | E11US001 | Release, base et mise en réseau | ⬜ |
 | 57 | E11US003 | Sauvegarde & archive | ⬜ |
 
