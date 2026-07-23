@@ -46,8 +46,10 @@ function useInvaliderArchers(tournoiId: number) {
   }
 }
 
-// La détection est de l'état **serveur** monté à la demande (l'écran « Doublons ») : `enabled` la
-// laisse au repos tant que l'écran n'est pas ouvert, comme `useArchers` pour la recherche (E12US006).
+// La détection est de l'état **serveur**. L'écran « Doublons » n'est monté que lorsqu'on ouvre sa
+// destination (`courant && <Doublons/>`), donc la requête ne part pas tant qu'il est fermé — la
+// paresse vient de là, pas du fetch. `enabled` reste offert par symétrie avec `useArchers` (E12US006),
+// pour un futur appelant monté en permanence qui voudrait, lui, différer le fetch.
 export function useDoublons(tournoiId: number, enabled = true) {
   return useQuery({
     queryKey: cleDoublons(tournoiId),

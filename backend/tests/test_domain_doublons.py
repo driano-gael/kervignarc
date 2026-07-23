@@ -107,8 +107,19 @@ def test_deux_archers_differents_ne_sont_pas_rapproches() -> None:
     assert detecter_doublons([_archer(1, "Dupont", "Jean"), _archer(2, "Martin", "Alice")]) == []
 
 
-def test_distance_trop_grande_n_est_pas_rapprochee() -> None:
-    """Au-delà du seuil (ici 3 substitutions), les fiches ne sont pas rapprochées."""
+def test_distance_juste_au_dessus_du_seuil_n_est_pas_rapprochee() -> None:
+    """À distance **3** (seuil + 1), les fiches ne sont **pas** rapprochées : borne haute fermée.
+
+    « Dupont » → « Dupilx » = 3 substitutions (o→i, n→l, t→x), prénom identique : distance cumulée
+    3, un cran au-dessus de `_SEUIL_DISTANCE = 2`. Sans ce cas, élargir le seuil à `<= 3` passerait
+    la suite au vert — c'est exactement la borne à épingler (le plancher, distance 2, l'est déjà par
+    `test_deux_fautes_reparties_restent_dans_le_seuil`).
+    """
+    assert detecter_doublons([_archer(1, "Dupont", "Jean"), _archer(2, "Dupilx", "Jean")]) == []
+
+
+def test_distance_franchement_grande_n_est_pas_rapprochee() -> None:
+    """Bien au-delà du seuil (ici 4 substitutions), les fiches ne sont pas rapprochées."""
     assert detecter_doublons([_archer(1, "Dupont", "Jean"), _archer(2, "Duravd", "Jean")]) == []
 
 

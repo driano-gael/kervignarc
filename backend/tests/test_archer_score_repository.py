@@ -21,6 +21,7 @@ from domain.categorie import Categorie, CategorieId
 from domain.club import Club
 from domain.depart import Depart
 from domain.inscription import Inscription
+from domain.placement import Affectation
 from domain.score import Score
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
@@ -32,6 +33,7 @@ from infrastructure.db import (
     Database,
     DepartRepositorySQL,
     InscriptionRepositorySQL,
+    PlacementRepositorySQL,
     ScoreRepositorySQL,
     SerieRepositorySQL,
     TournoiRepositorySQL,
@@ -489,6 +491,84 @@ def test_fusionner_collision_ne_deprecie_pas_un_paiement_du_gagnant(tmp_path: Pa
         assert [(i.depart_id, i.paye) for i in inscriptions.par_archer(gagnant.id)] == [
             (depart.id, True)
         ]
+    finally:
+        db.engine.dispose()
+
+
+def test_fusionner_collision_les_deux_non_payes_reste_non_paye(tmp_path: Path) -> None:
+    """Collision où **aucune** des deux inscriptions n'est payée : la ligne gardée reste non payée.
+
+    Complète la table de vérité du report (OU) : perdant-payé et gagnant-payé sont couverts
+    ailleurs ; ici les deux `False` → résultat `False` (le OU ne fabrique pas un paiement).
+    """
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+        departs = DepartRepositorySQL(db.session_factory)
+        inscriptions = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
+
+        gagnant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
+        perdant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
+        assert gagnant.id is not None and perdant.id is not None
+        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500))
+        assert depart.id is not None
+        inscriptions.ajouter(Inscription.creer(gagnant.id, depart.id))
+        inscriptions.ajouter(Inscription.creer(perdant.id, depart.id))
+
+        archers.fusionner(gagnant.id, perdant.id)
+
+        assert [(i.depart_id, i.paye) for i in inscriptions.par_archer(gagnant.id)] == [
+            (depart.id, False)
+        ]
+    finally:
+        db.engine.dispose()
+
+
+def test_fusionner_collision_cascade_le_placement_de_l_inscription_supprimee(
+    tmp_path: Path,
+) -> None:
+    """Sur collision, l'inscription du perdant supprimée, son **placement cascade** (E02US005).
+
+    La suppression Core de l'inscription en collision déclenche la cascade base
+    `placement.inscription_id` (`ON DELETE CASCADE`). Ce test **verrouille** ce comportement contre
+    une régression (ex. passage à un `session.delete` ORM) : sans lui, seul le schéma le garantit,
+    pas la transaction de fusion. Le placement de l'inscription **gardée** (le gagnant) demeure.
+    """
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+        departs = DepartRepositorySQL(db.session_factory)
+        inscriptions = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
+        placements = PlacementRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
+
+        gagnant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
+        perdant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
+        assert gagnant.id is not None and perdant.id is not None
+        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500))
+        assert depart.id is not None
+        insc_gagnant = inscriptions.ajouter(Inscription.creer(gagnant.id, depart.id))
+        insc_perdant = inscriptions.ajouter(Inscription.creer(perdant.id, depart.id))
+        assert insc_gagnant.id is not None and insc_perdant.id is not None
+        placements.poser_plusieurs(
+            depart.id,
+            [
+                Affectation(inscription_id=insc_gagnant.id, cible_index=1, position="A"),
+                Affectation(inscription_id=insc_perdant.id, cible_index=1, position="B"),
+            ],
+        )
+
+        archers.fusionner(gagnant.id, perdant.id)
+
+        # Le placement du perdant (via l'inscription supprimée) a cascadé ; celui du gagnant reste.
+        assert [a.inscription_id for a in placements.par_depart(depart.id)] == [insc_gagnant.id]
     finally:
         db.engine.dispose()
 
