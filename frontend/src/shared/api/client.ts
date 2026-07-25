@@ -80,45 +80,102 @@ export function enregistrerSurNonAutorisePoste(rappel: () => void): void {
 // et un refus n'expire aucune session existante.
 export type PorteeAuth = 'admin' | 'scoreur' | 'poste' | 'aucune'
 
+// Jetons de la portée demandée : seul le mode engagé est joint (les autres restent `null`), si
+// bien qu'un 401 ne peut invalider que **cette** identité. Regroupés pour être partagés entre
+// `fetchJson` (JSON) et `fetchBlob` (téléchargement PDF, E09US003) sans dupliquer la logique.
+interface JetonsPortee {
+  admin: string | null
+  scoreur: string | null
+  poste: string | null
+}
+
+function jetonsPourPortee(portee: PorteeAuth): JetonsPortee {
+  return {
+    admin: portee === 'admin' ? lireJetonAdmin() : null,
+    scoreur: portee === 'scoreur' ? lireJetonScoreur() : null,
+    poste: portee === 'poste' ? lireJetonPoste() : null,
+  }
+}
+
+function entetesAuth(jetons: JetonsPortee): Record<string, string> {
+  const entetes: Record<string, string> = {}
+  if (jetons.admin) entetes.Authorization = `Bearer ${jetons.admin}`
+  if (jetons.scoreur) entetes['X-Jeton-Scoreur'] = jetons.scoreur
+  if (jetons.poste) entetes['X-Jeton-Poste'] = jetons.poste
+  return entetes
+}
+
+// 401 alors que le jeton de la portée était joint → session expirée/invalide (serveur redémarré,
+// ou scoreur supprimé côté admin) : on purge **cette seule** session. Un login (`portee: 'aucune'`)
+// ne joint aucun jeton, donc un refus n'expire rien — on n'y touche pas.
+function purgerSessionSiNonAutorise(statut: number, jetons: JetonsPortee): void {
+  if (statut !== 401) return
+  if (jetons.admin) surNonAutorise()
+  if (jetons.scoreur) surNonAutoriseScoreur()
+  if (jetons.poste) surNonAutorisePoste()
+}
+
+async function lancerErreurApi(reponse: Response): Promise<never> {
+  const corps = (await reponse.json().catch(() => null)) as CorpsErreur | null
+  throw new ErreurApi(
+    reponse.status,
+    corps?.code ?? 'erreur_inconnue',
+    corps?.message ?? reponse.statusText,
+    corps?.details,
+  )
+}
+
 export async function fetchJson<T>(
   chemin: string,
   options?: RequestInit,
   portee: PorteeAuth = 'admin',
 ): Promise<T> {
-  // Seul le jeton du mode demandé est joint (les autres restent `null`) : une requête n'engage
-  // qu'une identité, donc un 401 ne peut invalider que celle-là.
-  const jetonAdmin = portee === 'admin' ? lireJetonAdmin() : null
-  const jetonScoreur = portee === 'scoreur' ? lireJetonScoreur() : null
-  const jetonPoste = portee === 'poste' ? lireJetonPoste() : null
-  const entetes: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (jetonAdmin) entetes.Authorization = `Bearer ${jetonAdmin}`
-  if (jetonScoreur) entetes['X-Jeton-Scoreur'] = jetonScoreur
-  if (jetonPoste) entetes['X-Jeton-Poste'] = jetonPoste
+  const jetons = jetonsPourPortee(portee)
+  const entetes = { 'Content-Type': 'application/json', ...entetesAuth(jetons) }
   const reponse = await fetch(chemin, {
     ...options,
     headers: { ...entetes, ...options?.headers },
   })
 
   if (!reponse.ok) {
-    // 401 alors que le jeton de la portée était joint → session expirée/invalide (serveur
-    // redémarré, ou scoreur supprimé côté admin) : on purge **cette seule** session. Un login
-    // (`portee: 'aucune'`) ne joint aucun jeton, donc un refus n'expire rien — on n'y touche pas.
-    if (reponse.status === 401) {
-      if (jetonAdmin) surNonAutorise()
-      if (jetonScoreur) surNonAutoriseScoreur()
-      if (jetonPoste) surNonAutorisePoste()
-    }
-    const corps = (await reponse.json().catch(() => null)) as CorpsErreur | null
-    throw new ErreurApi(
-      reponse.status,
-      corps?.code ?? 'erreur_inconnue',
-      corps?.message ?? reponse.statusText,
-      corps?.details,
-    )
+    purgerSessionSiNonAutorise(reponse.status, jetons)
+    return lancerErreurApi(reponse)
   }
 
   // 204 No Content (ex. déconnexion) : pas de corps à décoder.
   if (reponse.status === 204) return undefined as T
 
   return (await reponse.json()) as T
+}
+
+// Télécharge une réponse **binaire** (PDF, E09US003) sous forme de `Blob`, avec la même gestion
+// d'identité et de 401 que `fetchJson` — mais sans `Content-Type: application/json` (requête GET
+// sans corps) ni décodage JSON. Les erreurs suivent le même format `{ code, message }` (le serveur
+// renvoie du JSON même sur les routes PDF en cas d'échec).
+export async function fetchBlob(chemin: string, portee: PorteeAuth = 'admin'): Promise<Blob> {
+  const jetons = jetonsPourPortee(portee)
+  const reponse = await fetch(chemin, { headers: entetesAuth(jetons) })
+
+  if (!reponse.ok) {
+    purgerSessionSiNonAutorise(reponse.status, jetons)
+    return lancerErreurApi(reponse)
+  }
+
+  return reponse.blob()
+}
+
+// Déclenche l'enregistrement d'un `Blob` sous `nomFichier` via un lien `<a download>` synthétique.
+// Le Bearer admin est en JS (pas un cookie) : un simple `<a href>` vers la route PDF n'emporterait
+// pas le jeton — d'où le passage par `fetchBlob` puis ce téléchargement programmatique. L'URL objet
+// est révoquée après le clic (délai court : certains navigateurs annulent un téléchargement dont
+// l'URL est révoquée dans le même tick).
+export function telechargerFichier(blob: Blob, nomFichier: string): void {
+  const url = URL.createObjectURL(blob)
+  const lien = document.createElement('a')
+  lien.href = url
+  lien.download = nomFichier
+  document.body.appendChild(lien)
+  lien.click()
+  lien.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }
