@@ -7,6 +7,10 @@ sans laisser fuir d'exception ReportLab brute.
 
 from __future__ import annotations
 
+import base64
+import re
+import zlib
+
 import pytest
 
 from domain.listes_impression import (
@@ -19,6 +23,35 @@ from domain.listes_impression import (
 )
 from infrastructure.erreurs import InfrastructureError
 from infrastructure.pdf import GenerateurListesImpressionPdf
+from infrastructure.pdf.listes_impression import _euros
+
+
+def test_euros_formate_les_centimes() -> None:
+    """Centimes entiers → euros « x,xx € » (virgule décimale) : zéro, unité, gros montant."""
+    assert _euros(0) == "0,00 €"
+    assert _euros(800) == "8,00 €"
+    assert _euros(810) == "8,10 €"
+    assert _euros(1_234_567) == "12345,67 €"
+
+
+def _texte_pdf(octets: bytes) -> str:
+    """Texte réellement dessiné dans un PDF ReportLab (flux de page décompressés).
+
+    ReportLab encode les flux de page en **ASCII85 puis Flate** (chaîne de filtres par défaut) : on
+    les décode pour inspecter le texte tel qu'il sera imprimé — sans dépendance externe (`base64` et
+    `zlib` sont stdlib). Sert à prouver qu'une cellule de `Table` n'est **pas** doublement échappée
+    (« &amp; » au lieu de « & »). Si l'encodage ReportLab changeait, l'extraction retournerait vide
+    et l'assertion « texte présent » du test échouerait franchement — jamais un faux vert muet."""
+    morceaux: list[bytes] = []
+    for bloc in re.findall(rb"stream\r?\n(.*?)endstream", octets, re.DOTALL):
+        donnees = bloc.strip(b"\r\n \t")
+        try:
+            if donnees.endswith(b"~>"):  # flux ASCII85 (défaut ReportLab), puis Flate
+                donnees = base64.a85decode(donnees[:-2])
+            morceaux.append(zlib.decompress(donnees))
+        except (zlib.error, ValueError):
+            morceaux.append(bloc)
+    return b"\n".join(morceaux).decode("latin-1", errors="replace")
 
 
 def _ligne_placement(nom: str = "Durand", categorie: str = "Sénior Homme") -> LignePlacement:
@@ -51,37 +84,38 @@ def test_placement_vide_reste_un_pdf_valide() -> None:
     assert octets.startswith(b"%PDF")
 
 
-def test_placement_caracteres_speciaux_ne_cassent_pas_le_rendu() -> None:
-    """`&`, `<`, `>` dans une donnée ne doivent pas casser le balisage des `Paragraph`."""
+def test_placement_caracteres_speciaux_rendus_litteralement() -> None:
+    """`&`, `<`, `>` dans une donnée s'impriment **tels quels**, ni cassés ni doublement échappés.
+
+    Les cellules de `Table` sont dessinées brutes (pas de mini-HTML) : un nom « Dupont & Cie » doit
+    apparaître littéralement, jamais « Dupont &amp; Cie ». Ce test verrouille le correctif de revue
+    (axe C1) — l'ancienne version échappait à tort les cellules."""
     liste = ListePlacement(
-        tournoi="Tournoi & <cie>",
+        tournoi="Tournoi Test",
         depart_numero=None,
         tri=TriPlacement.CIBLE,
-        lignes=(_ligne_placement(nom="Dupont & <fils>", categorie="Cat <U18>"),),
+        lignes=(_ligne_placement(nom="Dupont & Cie", categorie="Cat <U18>"),),
     )
 
     octets = GenerateurListesImpressionPdf().placement(liste)
 
     assert octets.startswith(b"%PDF")
+    texte = _texte_pdf(octets)
+    assert (
+        "Dupont" in texte
+    ), "extraction du texte PDF opérante (sinon l'assertion suivante est vide)"
+    assert "&amp;" not in texte  # pas de double échappement en cellule
+    assert "&lt;" not in texte
 
 
 def test_placement_echec_de_rendu_enveloppe_en_infrastructure_error() -> None:
     """Une donnée qui fait échouer le rendu remonte en `InfrastructureError`, pas en exception
-    brute : une `position` non textuelle casse l'échappement du mini-HTML."""
+    brute : un nom de tournoi non textuel casse l'échappement du titre (`Paragraph`)."""
     liste = ListePlacement(
-        tournoi="T",
+        tournoi=None,  # type: ignore[arg-type]
         depart_numero=None,
         tri=TriPlacement.CIBLE,
-        lignes=(
-            LignePlacement(
-                nom="Durand",
-                prenom="Marie",
-                categorie="Cat",
-                depart_numero=1,
-                cible_index=2,
-                position=None,  # type: ignore[arg-type]
-            ),
-        ),
+        lignes=(_ligne_placement(),),
     )
     with pytest.raises(InfrastructureError):
         GenerateurListesImpressionPdf().placement(liste)

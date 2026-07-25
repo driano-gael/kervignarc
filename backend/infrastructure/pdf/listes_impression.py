@@ -102,14 +102,18 @@ class GenerateurListesImpressionPdf:
             elements.append(Paragraph("Aucun archer placé.", self._info))
             return elements
         entete = ["Départ", "Cible", "Pos.", "Nom", "Prénom", "Catégorie"]
+        # Cellules de `Table` : chaînes **brutes** — ReportLab les dessine telles quelles
+        # (`drawString`), sans passer par le parseur mini-HTML des `Paragraph`. Les échapper y
+        # afficherait « Dupont &amp; Cie » au lieu de « Dupont & Cie » (le mini-HTML ne vaut que
+        # pour les `Paragraph`, cf. titres ci-dessus et en-têtes de club).
         corps = [
             [
                 str(ligne.depart_numero),
                 str(ligne.cible_index),
-                _echapper(ligne.position),
-                _echapper(ligne.nom),
-                _echapper(ligne.prenom),
-                _echapper(ligne.categorie),
+                ligne.position,
+                ligne.nom,
+                ligne.prenom,
+                ligne.categorie,
             ]
             for ligne in liste.lignes
         ]
@@ -144,10 +148,11 @@ class GenerateurListesImpressionPdf:
 
     def _table_club(self, groupe: GroupePaiementClub) -> Table:
         entete = ["Nom", "Prénom", "Départs", "Nb", "Dû", "Payé", "Réglé"]
+        # Chaînes brutes en cellules de `Table` (pas d'échappement — cf. `_corps_placement`).
         corps = [
             [
-                _echapper(ligne.nom),
-                _echapper(ligne.prenom),
+                ligne.nom,
+                ligne.prenom,
                 ", ".join(str(numero) for numero in ligne.departs) or "—",
                 str(ligne.nb_departs),
                 _euros(ligne.du_centimes),

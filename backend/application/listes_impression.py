@@ -23,8 +23,11 @@ placement ; `recap_par_club` porte déjà `TournoiIntrouvable` pour la vue club 
 
 from __future__ import annotations
 
+from typing import Protocol
+
 from application.erreurs import DepartIntrouvable, TournoiIntrouvable
-from application.paiements import ServicePaiements
+from application.paiements import RecapClub
+from domain.archer import ArcherId
 from domain.depart import Depart, DepartId
 from domain.listes_impression import (
     GroupePaiementClub,
@@ -47,6 +50,20 @@ from domain.ports import (
 from domain.tournoi import TournoiId
 
 
+class LecteurRecapClub(Protocol):
+    """Port étroit : lire le récap de paiement **par club** (réalisé par `ServicePaiements`).
+
+    La liste club & paiement ne dépend pas de tout `ServicePaiements` (marquages compris) : juste de
+    son agrégation dû/payé/reste par club, avec bucket « Sans club » (ADR-0014). Même discipline de
+    ségrégation d'interface que `LecteurPaiements` (`application.completude`) : un faux lecteur
+    suffit en test, et le service n'écrit aucun paiement.
+    """
+
+    def recap_par_club(self, tournoi_id: TournoiId) -> list[RecapClub]:
+        """Totaux de paiement par club, avec le détail des archers ; lève `TournoiIntrouvable`."""
+        ...
+
+
 class ServiceListesImpression:
     """Cas d'usage : composer et rendre les listes imprimables (placement, club & paiement)."""
 
@@ -58,7 +75,7 @@ class ServiceListesImpression:
         inscriptions: InscriptionRepository,
         archers: ArcherRepository,
         categories: CategorieRepository,
-        paiements: ServicePaiements,
+        paiements: LecteurRecapClub,
         generateur: GenerateurListesImpression,
     ) -> None:
         self._tournois = tournois
@@ -195,7 +212,9 @@ class ServiceListesImpression:
         liste = ListeClubPaiement(tournoi=tournoi.nom, groupes=tuple(groupes))
         return self._generateur.club_paiement(liste)
 
-    def _departs_de_l_archer(self, archer_id: int, numeros: dict[DepartId, int]) -> tuple[int, ...]:
+    def _departs_de_l_archer(
+        self, archer_id: ArcherId, numeros: dict[DepartId, int]
+    ) -> tuple[int, ...]:
         """Numéros (triés) des départs inscrits par un archer, pour l'affichage n° / nb départs.
 
         Une inscription dont le créneau est absent de `numeros` (instantané périmé) est ignorée —

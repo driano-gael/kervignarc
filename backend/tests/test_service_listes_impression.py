@@ -403,6 +403,25 @@ def test_club_paiement_statut_de_reglement() -> None:
     }
 
 
+def test_club_paiement_paiement_partiel_reste_du() -> None:
+    """Un archer réglé sur un seul de ses deux départs reste « dû » (reste non nul) ; le payé de la
+    ligne ne compte que le départ réglé."""
+    monde = _monde(numeros_departs=(1, 2), tarif_centimes=800)
+    club = monde.creer_club("Club")
+    archer_id, _ = monde.inscrire("Partiel", "Paul", numero_depart=1, paye=True, club_id=club)
+    autre = monde.inscriptions.ajouter(Inscription.creer(archer_id, monde.departs_par_numero[2]))
+    assert autre.id is not None
+
+    monde.service.generer_club_paiement(monde.tournoi_id)
+
+    liste = monde.generateur.club_capture
+    assert liste is not None
+    ligne = liste.groupes[0].lignes[0]
+    assert ligne.du_centimes == 1600  # 2 départs à 800
+    assert ligne.paye_centimes == 800  # un seul réglé
+    assert ligne.statut is StatutPaiement.DU
+
+
 def test_club_paiement_sans_club_en_dernier() -> None:
     """Les archers sans club (ADR-0014) forment un bucket « Sans club » placé en dernier."""
     monde = _monde()
