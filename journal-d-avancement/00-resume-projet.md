@@ -224,20 +224,23 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **63 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/07/2026 — E05US003
-  optimiste d'un cran sur la branche jusqu'à son merge. **`SUIVI-US.md` fait foi sur le compte exact.**
+- **65 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/07/2026 — E13US001 et
+  E05US005 optimistes d'un cran sur la branche jusqu'à leur merge. **`SUIVI-US.md` fait foi sur le
+  compte exact.**
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
   et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (2/15)**
-  avec la **composition de la séquence de phases** (E05US001) puis les **politiques injectables du
-  moteur** (E05US003).
-- Dernière US livrée : **E05US003** (politiques injectables & assemblage) — US de **fondation** sans
-  surface utilisateur : les stratégies du moteur (routage, scoring, ensemencement, byes, départage,
-  profondeur) deviennent des briques assemblables par configuration, et la forme de config d'une phase
-  est fixée (ADR-0046). La dernière US à **surface visible** reste **E05US001** (écran de séquence de
-  phases).
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E05US005** (arbre d'élimination directe :
-  le premier tableau de duels, qui consomme les politiques d'E05US003).
+  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (3/15)**
+  avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003) puis le
+  **tableau d'élimination directe** (E05US005) — ce dernier posé sur l'**abstraction Participant**
+  (E13US001, du chantier équipes).
+- Dernière US livrée : **E05US005** (arbre d'élimination directe) — US de **fondation** sans surface
+  utilisateur : un **moteur de domaine pur** (`backend/domain/tableau.py`) dimensionne le tableau,
+  ensemence, pose les byes, fait avancer le vainqueur et produit le podium, en **opposant des
+  `Participant`** (archer ou équipe, ADR-0028). Livrée avec **E13US001** (abstraction `Participant`),
+  posée **avant** le moteur pour respecter l'ordonnancement d'ADR-0028. La dernière US à **surface
+  visible** reste **E05US001** (écran de séquence de phases).
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E03US006** (contrainte « au moins deux
+  clubs par cible » au placement). Le fil **équipes** est débloqué (E13US002+).
