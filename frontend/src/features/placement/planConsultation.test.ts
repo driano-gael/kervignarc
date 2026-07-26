@@ -17,6 +17,7 @@ function plan(
     cibles: cibles.map((c) => ({
       index: c.index,
       capacite: c.capacite,
+      mixite_non_garantie: false,
       placements: c.places.map((p) => ({
         position: p.position,
         archer_id: p.archer_id,
