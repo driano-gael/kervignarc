@@ -274,16 +274,21 @@ inscrit **sans** ligne est en **réserve**.
 | tour | INTEGER | n° de tour |
 | source_a | TEXT (JSON) | origine participant A (seed / gagnant M / perdant M / rang) |
 | source_b | TEXT (JSON) | origine participant B |
-| archer_a_id | INTEGER | FK → ARCHER (résolu) |
-| archer_b_id | INTEGER | FK → ARCHER (résolu) |
-| vainqueur_id | INTEGER | FK → ARCHER |
+| participant_a | TEXT (JSON) | participant A résolu `{genre, ref_id}` (archer **ou** équipe) |
+| participant_b | TEXT (JSON) | participant B résolu |
+| vainqueur | TEXT (JSON) | participant vainqueur `{genre, ref_id}` |
 | statut | TEXT | `a_jouer`\|`en_cours`\|`termine`\|`bye`\|`forfait` |
 
-> **Équipes** — hors périmètre (CDC fonctionnel §2.2), mais la **porte reste ouverte** : un match
-> oppose conceptuellement des **participants**, pas nécessairement des archers individuels
-> ([référentiel §6.3](referentiel-ffta.md) : équipes de 3). Si les équipes entrent au périmètre,
-> `archer_a_id`/`archer_b_id` devront devenir `participant_a`/`participant_b` — à trancher **avant**
-> d'écrire le moteur (EPIC-05), pas après.
+> **Participants (ADR-0028, tranché E13US001)** — un match oppose des **participants**, pas des
+> archers en dur : chaque participant est **soit** un archer individuel **soit** une équipe
+> ([référentiel §6.3](referentiel-ffta.md) : équipes de 3). Le domaine l'exprime par le value object
+> `Participant {genre, ref_id}` ([`backend/domain/participant.py`](../backend/domain/participant.py)),
+> **opaque** au moteur (aucune branche `if équipe`, ADR-0028 décision n°3). La note « équipes hors
+> périmètre » du cadrage du 14/07 est **caduque** depuis ADR-0028 (18/07). C'est pourquoi le match ne
+> porte pas `archer_a_id`/`archer_b_id` mais `participant_a`/`participant_b` — le « à trancher **avant**
+> d'écrire le moteur » l'est désormais : le moteur (E05US005) oppose des `Participant`. La persistance
+> du match (colonnes ci-dessus) relève d'E04US013 ; l'entité `EQUIPE`/`MEMBRE_EQUIPE` et la
+> composition, d'E13US002.
 
 ### SERIE (E04US002)
 | id | INTEGER | PK |

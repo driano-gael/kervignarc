@@ -79,3 +79,14 @@ traiter un participant qui n'est pas un individu — d'où la **coordination par
 - **Hors périmètre de cet ADR** : le **détail** des règles de composition et de tir alterné (porté par
   les US d'EPIC-13, dérivé du référentiel §6.3/§7) ; le classement mixte individuel + équipes d'un même
   tournoi (si besoin, EPIC-06).
+
+## Suivi de réalisation
+
+- **26/07/2026 — décision n°1 réalisée, ordonnancement honoré.** E13US001 pose l'abstraction
+  `Participant` (value object `{genre, ref_id}`, `backend/domain/participant.py`) **avant** le moteur
+  de duels, comme la conséquence ci-dessus l'exigeait. Le moteur d'élimination directe (E05US005)
+  oppose des `Participant` — pas des archers en dur, pas de branche `if équipe` — de sorte que la
+  précaution « le moteur ne se fige pas sur des archers » est tenue. `docs/modele-de-donnees.md`
+  (entité MATCH) est aligné : `participant_a`/`participant_b` remplacent `archer_a_id`/`archer_b_id`.
+  Restent à venir : l'entité `Equipe`/`MEMBRE_EQUIPE` et la composition (E13US002), le scoring
+  d'équipe (E13US003), le placement/saisie/classement par équipe (E13US004).
