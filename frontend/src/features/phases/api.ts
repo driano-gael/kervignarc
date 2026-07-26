@@ -1,0 +1,84 @@
+// Accès API de la feature « séquence de phases » (E05US001) : composer/éditer/ordonner/supprimer
+// les phases d'un tournoi et faire vivre leur cycle de vie. Miroir des DTO de `api/v1/phases.py`.
+
+import { fetchJson } from '../../shared/api/client'
+
+// Types de phase déclarables (ADR-0045 §2). D'autres viendront avec l'US qui les implémente.
+export type TypePhase = 'qualification' | 'elimination_directe' | 'placement'
+
+// Cycle de vie d'une phase (ADR-0045 §1) : `en_pause` gèle la phase, distinct du tournoi.
+export type StatutPhase = 'a_venir' | 'en_cours' | 'en_pause' | 'terminee'
+
+// Transitions du cycle de vie, miroir de l'enum `TransitionPhase` du backend.
+export type TransitionPhase = 'demarrer' | 'mettre_en_pause' | 'reprendre' | 'terminer'
+
+// Peuplement minimal (DETTE-015) : la phase prend les rangs [rang_debut..rang_fin] du classement
+// de la phase d'ordre `ordre_source`.
+export interface SourcePhase {
+  ordre_source: number
+  rang_debut: number
+  rang_fin: number
+}
+
+export interface Phase {
+  id: number
+  tournoi_id: number
+  ordre: number
+  type: TypePhase
+  statut: StatutPhase
+  // null = première de la séquence (alimentée par les inscriptions).
+  source: SourcePhase | null
+  // null = effectif non déclaré (borne les rangs prélevables et le contrôle « effectif incompatible »).
+  effectif: number | null
+}
+
+// Config de séquence envoyée au serveur (ajout et édition totale partagent la même forme).
+export interface ConfigPhase {
+  type: TypePhase
+  source?: SourcePhase | null
+  effectif?: number | null
+}
+
+export function getPhases(tournoiId: number): Promise<Phase[]> {
+  return fetchJson<Phase[]>(`/api/v1/tournois/${tournoiId}/phases`)
+}
+
+export function ajouterPhase(tournoiId: number, config: ConfigPhase): Promise<Phase> {
+  return fetchJson<Phase>(`/api/v1/tournois/${tournoiId}/phases`, {
+    method: 'POST',
+    body: JSON.stringify(config),
+  })
+}
+
+export function modifierPhase(
+  tournoiId: number,
+  phaseId: number,
+  config: ConfigPhase,
+): Promise<Phase> {
+  return fetchJson<Phase>(`/api/v1/tournois/${tournoiId}/phases/${phaseId}`, {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  })
+}
+
+export function reordonnerPhases(tournoiId: number, phases: number[]): Promise<Phase[]> {
+  return fetchJson<Phase[]>(`/api/v1/tournois/${tournoiId}/phases/reordonner`, {
+    method: 'POST',
+    body: JSON.stringify({ phases }),
+  })
+}
+
+export function supprimerPhase(tournoiId: number, phaseId: number): Promise<void> {
+  return fetchJson<void>(`/api/v1/tournois/${tournoiId}/phases/${phaseId}`, { method: 'DELETE' })
+}
+
+export function changerStatutPhase(
+  tournoiId: number,
+  phaseId: number,
+  transition: TransitionPhase,
+): Promise<Phase> {
+  return fetchJson<Phase>(`/api/v1/tournois/${tournoiId}/phases/${phaseId}/statut`, {
+    method: 'POST',
+    body: JSON.stringify({ transition }),
+  })
+}

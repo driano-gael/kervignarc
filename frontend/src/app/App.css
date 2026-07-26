@@ -812,6 +812,81 @@ button:disabled {
   color: var(--ok);
 }
 
+/* Statuts de phase (E05US001) — même code couleur que le tournoi : à venir neutre, en cours/pause
+   ambre (alerte non bloquante), terminée verte. */
+.badge--a-venir {
+  color: var(--text);
+}
+
+.badge--en-pause {
+  color: var(--warn);
+}
+
+.badge--terminee {
+  color: var(--ok);
+}
+
+/* Séquence de phases (E05US001). Liste ordonnée : chaque phase porte son rang, son type, son
+   statut et sa source ; les actions (ordre, cycle de vie, édition) suivent en dessous. */
+.liste-phases {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.phase {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.phase__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.phase__ordre {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface-2, var(--border));
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.phase__type {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.phase__details {
+  flex: 1 1 auto;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.phase__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.phase__actions button {
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
 /* Tableau de classement. */
 .table {
   width: 100%;
