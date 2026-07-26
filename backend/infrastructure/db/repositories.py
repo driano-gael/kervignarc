@@ -48,6 +48,7 @@ from infrastructure.db.models import (
     InscriptionORM,
     PhaseORM,
     PlacementORM,
+    PlacementTableauORM,
     PosteORM,
     ScoreORM,
     ScoreurORM,
@@ -1281,6 +1282,94 @@ class PlacementRepositorySQL:
         try:
             with self._session_factory() as session:
                 ligne = session.get(PlacementORM, inscription_id)
+                if ligne is not None:
+                    session.delete(ligne)
+                    session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise en réserve.") from exc
+
+
+def _vers_affectation_tableau(ligne: PlacementTableauORM) -> Affectation:
+    """Traduit une ligne ORM `placement_tableau` en value object de domaine `Affectation`."""
+    return Affectation(
+        inscription_id=ligne.inscription_id,
+        cible_index=ligne.cible_index,
+        position=ligne.position,
+    )
+
+
+class PlacementTableauRepositorySQL:
+    """Adapter SQLite du port `PlacementTableauRepository` — plan de duels matérialisé (E03US009).
+
+    Jumeau de `PlacementRepositorySQL`, scoppé par **phase** au lieu du départ, clé composite
+    `(phase_id, inscription_id)`. Pas de couture d'audit ici : au moment de placer les duellistes
+    (tour 1), aucun score de duel n'existe encore — la régénération n'est jamais « massive » au sens
+    d'E12US007 (ADR-0048), donc pas de `definir_plan_avec_trace`.
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def par_phase(self, phase_id: PhaseId) -> list[Affectation]:
+        """Renvoie les affectations d'une phase, triées par cible puis position (ordre stable)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(PlacementTableauORM)
+                    .where(PlacementTableauORM.phase_id == phase_id)
+                    .order_by(PlacementTableauORM.cible_index, PlacementTableauORM.position)
+                ).scalars()
+                return [_vers_affectation_tableau(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du plan de duels.") from exc
+
+    def definir_plan(self, phase_id: PhaseId, affectations: Sequence[Affectation]) -> None:
+        """Purge le plan de duels de la phase puis insère les affectations — **une** transaction."""
+        try:
+            with self._session_factory() as session:
+                session.execute(
+                    delete(PlacementTableauORM).where(PlacementTableauORM.phase_id == phase_id)
+                )
+                session.add_all(
+                    PlacementTableauORM(
+                        phase_id=phase_id,
+                        inscription_id=affectation.inscription_id,
+                        cible_index=affectation.cible_index,
+                        position=affectation.position,
+                    )
+                    for affectation in affectations
+                )
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de définition du plan de duels.") from exc
+
+    def poser_plusieurs(self, phase_id: PhaseId, affectations: Sequence[Affectation]) -> None:
+        """Insère/met à jour chaque affectation (clé phase + inscription), **une** transaction."""
+        try:
+            with self._session_factory() as session:
+                for affectation in affectations:
+                    ligne = session.get(PlacementTableauORM, (phase_id, affectation.inscription_id))
+                    if ligne is None:
+                        session.add(
+                            PlacementTableauORM(
+                                phase_id=phase_id,
+                                inscription_id=affectation.inscription_id,
+                                cible_index=affectation.cible_index,
+                                position=affectation.position,
+                            )
+                        )
+                    else:
+                        ligne.cible_index = affectation.cible_index
+                        ligne.position = affectation.position
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec d'écriture du plan de duels.") from exc
+
+    def retirer(self, phase_id: PhaseId, inscription_id: InscriptionId) -> None:
+        """Retire l'affectation d'un inscrit dans cette phase ; sans effet s'il n'en avait pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(PlacementTableauORM, (phase_id, inscription_id))
                 if ligne is not None:
                     session.delete(ligne)
                     session.commit()
