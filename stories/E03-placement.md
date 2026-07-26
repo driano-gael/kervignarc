@@ -106,7 +106,26 @@ respecter les règles officielles.
 *En tant qu'*administrateur, *je veux* que les adversaires d'un duel soient sur des positions
 voisines, *afin de* faciliter les matchs.
 - **CA** : lors d'une phase de tableau, les 2 duellistes sont placés côte à côte dans la mesure du
-  possible.
+  possible ; signalé si impossible.
+- **Notes (arbitrages tranchés le 26/07/2026 — [ADR-0048](../docs/adr/0048-cote-a-cote-des-duellistes-par-reordonnancement.md))** :
+  - **« Côte à côte » = positions adjacentes de la *même* cible** (lettres consécutives A-B, B-C, C-D ;
+    A-C non). Contrainte **molle, priorité la plus basse**, jamais bloquante — jumeau exact de la mixité
+    (E03US006/ADR-0047) : obtenue en **ré-ordonnant l'entrée** du glouton (les deux duellistes émis
+    consécutivement dans leur groupe `hauteur/blason`), le moteur restant inchangé.
+  - **« Signalé si impossible »** = propriété **dérivée** (jamais persistée) : un duel dont les deux
+    membres ne sont pas sur la même cible à des positions adjacentes est listé (`duels_non_cote_a_cote`),
+    et les cibles concernées portent un **badge ambre** `adjacence_non_garantie` + une **bannière**
+    récapitulative sur l'écran d'ajustement.
+  - **Périmètre matérialisé & ajustable** (choix commanditaire) : le plan de duels est **matérialisé**
+    (table `placement_tableau`, scoppée par **phase**) et **ajustable au glisser-déposer**, calqué sur
+    la qualification (E03US004/ADR-0024). L'**appariement** (qui affronte qui) est **recalculé** depuis
+    le classement (déterministe, ADR-0023) ; seule la **pose** est persistée.
+  - **MVP volontairement étroit** : **ensemencement scratch** (au `rang_scratch`, ce que
+    `construire_tableau` sait déjà faire — il ignore les catégories, ADR-0028) ; **tour 1 uniquement**
+    (seuls duels aux adversaires connus à la construction) ; **réutilise le gabarit** du tournoi. Les
+    tableaux **par catégorie**, les **tours ≥ 2** et un agencement de finale dédié sont downstream
+    (E05US010/E06US006) — hors de cette tranche. Les `Participant` de genre **équipe** sont ignorés
+    proprement (pas d'entité `Equipe` avant E13US002).
 - **Dépend de** : E03US001, E05US005 · **Jalon** : J2
 
 ### E03US010 — Générer / éditer le déroulé horaire
