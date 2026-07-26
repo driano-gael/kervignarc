@@ -107,7 +107,7 @@ que ce retravail reste peu coûteux. Inscrit à ce titre en **dette de conceptio
   service = enchaînement) : aucune mécanique nouvelle à inventer ni à tester à part.
 - **+** Les trois contrôles de cohérence du CA sont **décidables** dès maintenant, sans attendre le
   moteur de peuplement complet.
-- **−** Un **modèle de source provisoire** (DETTE-011) qu'E05US010 devra élargir/retravailler —
+- **−** Un **modèle de source provisoire** (DETTE-015) qu'E05US010 devra élargir/retravailler —
   assumé et borné pour en limiter le coût.
 - **−** `TypePhase` s'ouvre à des types **sans moteur** : on peut déclarer une phase
   `elimination_directe` qu'aucun code ne sait encore dérouler. C'est voulu (modéliser la séquence

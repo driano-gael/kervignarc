@@ -36,7 +36,7 @@ garde-fous de cohérence, *afin de* définir le format sans risque de blocage pl
   (`SourcePhase(ordre_source, rang_debut, rang_fin)` + `effectif` facultatif par phase), suffisant
   pour rendre les trois contrôles décidables — cohérence pure dans l'agrégat `SequencePhases`
   (→ `DomainError`/422). C'est une **amorce assumée provisoire** (une source « par rangs », pas de
-  routing/gagnants-perdants) qu'E05US010 remplacera par le peuplement complet (DETTE-011, ADR-0045 §3).
+  routing/gagnants-perdants) qu'E05US010 remplacera par le peuplement complet (DETTE-015, ADR-0045 §3).
 - **Livraison — full-stack** : domaine + service + repository + API **et écran admin** d'édition de
   la séquence (rattaché à la coquille E00US015). *Arbitrages tranchés le 26/07/2026 avec le
   commanditaire : (a) livrer jusqu'à l'écran (pas backend seul) ; (b) amorcer un modèle de source
