@@ -358,6 +358,18 @@ class PhaseIntrouvable(ApplicationError):
     code = "phase_introuvable"
 
 
+class PhasePasUnTableau(ApplicationError):
+    """La phase existe mais n'est **pas** une élimination directe (E03US009) → 409.
+
+    Le plan de duels (placer les duellistes côte à côte) n'a de sens que pour une phase de
+    **tableau** (`TypePhase.ELIMINATION_DIRECTE`) : la demander sur une qualification ou un barrage
+    est un conflit d'état, pas un 404 (la phase existe bien) — même famille que
+    `TransitionStatutInvalide`.
+    """
+
+    code = "phase_pas_un_tableau"
+
+
 class PhaseSourceReferencee(ApplicationError):
     """Suppression refusée : la phase est la **source** d'une autre phase (E05US001) → 409.
 
