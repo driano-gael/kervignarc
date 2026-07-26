@@ -12,31 +12,31 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 26/07/2026** · **66 US livrées** · dernière : `E03US006`.
+**Dernière mise à jour : 26/07/2026** · **67 US livrées** · dernière : `E03US009`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E03US009` — Placer les duellistes côte à côte** poursuit le jalon **J2** : lors d'une phase de
-> tableau, placer les **deux adversaires d'un duel** sur des positions **voisines** (dans la mesure du
-> possible) pour faciliter la conduite des matchs. S'appuie sur le moteur de placement
-> (E03US001/E03US004/E03US006) **et** sur l'arbre d'élimination directe (`E05US005`, livré). Détail :
-> [`stories/E03-placement.md`](../stories/E03-placement.md).
+> **`E04US013` — Saisie en duels** poursuit le jalon **J2** : saisir les scores d'un **match** (sets,
+> points de set) une fois les duellistes placés. S'appuie sur l'arbre d'élimination (`E05US005`) et le
+> plan de duels (`E03US009`, livré). Détail : [`stories/E04-saisie.md`](../stories/E04-saisie.md).
 > *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
 > moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *J1 est **terminé** (46/46) ; le confort « ma journée » et les classements imprimables restent hors
 > décompte du jalon.*
 >
 > *Fait juste avant :*
-> - `E03US006` (contrainte ≥ 2 clubs par cible) — US à **surface visible**. Le placement auto
->   **favorise** désormais ≥ 2 clubs sur chaque cible, sans jamais bloquer ni enfreindre les
->   contraintes de rang supérieur : la mixité est obtenue en **ré-ordonnant l'entrée** du glouton
->   (round-robin des clubs par groupe hauteur/blason — le moteur reste inchangé, ADR-0047), pas par une
->   nouvelle règle. Les cibles où la mixité **n'est pas garantie** (un seul club, ou clubs inconnus —
->   `club_id NULL` *indécidable*, ADR-0014) sont **signalées** : propriété dérivée `mixite_non_garantie`
->   recalculée à la lecture, exposée à l'API, affichée en **badge ambre** par cible + **bannière**
->   récapitulative sur l'écran de placement admin.
+> - `E03US009` (placer les duellistes côte à côte) — US à **surface visible**. Le placement d'une phase
+>   de tableau met désormais les **deux adversaires d'un duel** du 1er tour **côte à côte** (même cible,
+>   positions voisines) « dans la mesure du possible », par le **même mécanisme** que la mixité
+>   (ré-ordonnancement de l'entrée du glouton — moteur inchangé, ADR-0048). Les duels non rapprochés
+>   sont **signalés** (dérivé `adjacence_non_garantie`, badge ambre + bannière). Périmètre **ajustable**
+>   (choix commanditaire) : plan **matérialisé par phase** (table `placement_tableau`, migration 0029),
+>   **ajustable au glisser-déposer** ; l'**appariement** est recalculé du classement (déterministe),
+>   seule la **pose** est persistée. MVP : ensemencement scratch, tour 1, gabarit du tournoi ; équipes
+>   hors périmètre. Vertical complet (domaine → moteur → persistance → service → API → écran admin
+>   « Plan de duels »). Recette : [`docs/fonctionnel/E03US009.md`](../docs/fonctionnel/E03US009.md).
 
 ---
 
@@ -108,7 +108,7 @@
 | 56 | E11US001 | Release, base et mise en réseau | ✅ |
 | 57 | E11US003 | Sauvegarde & archive | ✅ |
 
-## J2 — Duels simples + bascule de tour — 🔶 **en cours (4/15)**
+## J2 — Duels simples + bascule de tour — 🔶 **en cours (5/15)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -116,7 +116,7 @@
 | 59 | E05US003 | Politiques injectables & assemblage | ✅ |
 | 60 | E05US005 | Arbre d'élimination directe *(moteur sur `Participant`)* | ✅ |
 | 61 | E03US006 | Contrainte ≥ 2 clubs par cible | ✅ |
-| 62 | E03US009 | Placer les duellistes côte à côte | ⬜ |
+| 62 | E03US009 | Placer les duellistes côte à côte | ✅ |
 | 63 | E04US013 | Saisie en duels | ⬜ |
 | 64 | E04US015 | Gérer abandon / disqualification | ⬜ |
 | 65 | E12US004 | Tracer un forfait | ⬜ |
