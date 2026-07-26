@@ -15,9 +15,9 @@
 // (règle 11) ; à réévaluer si un vrai besoin d'URL apparaît.
 //
 // Périmètre borné aux **fonctions livrées** (CA « non-régression ») : les destinations que le §7.1
-// prévoit mais qui n'existent pas encore (Identité, Validation, Podiums, Archive, Audit)
+// prévoit mais qui n'existent pas encore (Identité, Validation, Podiums, Audit)
 // ne sont **pas** matérialisées par des entrées vides — elles arriveront avec leur US. « Exports »
-// (E09US003) est désormais livrée, dans le groupe Jour J. La
+// (E09US003) et « Archive » (E11US003) sont désormais livrées, dans le groupe Jour J. La
 // **recherche d'archer** (E12US006, `D-19`) est désormais livrée : champ permanent en tête de la
 // sidebar, hors du système de destinations (elle coiffe, elle ne s'ouvre pas dans la zone principale).
 // « Complétude » (E12US005) est désormais livrée, dans le groupe Jour J. De même, les 7 statuts d'ADR-0026 (E01US017) ne sont pas encore livrés :
@@ -27,6 +27,7 @@
 
 import { useState, type ReactNode } from 'react'
 import { Archers } from '../archers/Archers'
+import { Archive } from '../archive/Archive'
 import { Doublons } from '../archers/Doublons'
 import { NouvelArcher } from '../archers/NouvelArcher'
 import { BaremeQualification } from '../bareme/BaremeQualification'
@@ -273,6 +274,15 @@ function Coquille() {
       // Destination prévue au §7.1, désormais matérialisée sur le socle PDF (E09US001).
       besoinTournoi: true,
       rendu: () => courant && <Exports tournoiId={courant.id} />,
+    },
+    {
+      id: 'archive',
+      libelle: 'Archive',
+      groupe: 'jourj',
+      // Paquet ZIP de fin de tournoi (E11US003) : instantané SQLite + CSV + PDF régénérés + manifeste,
+      // au choix (cases à cocher). Destination prévue au §7.1, désormais matérialisée.
+      besoinTournoi: true,
+      rendu: () => courant && <Archive tournoiId={courant.id} />,
     },
   ]
 
