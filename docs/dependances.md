@@ -7,10 +7,15 @@
 >
 > Seules les dépendances **directes** (choisies explicitement) sont listées ; les transitives sont
 > figées par les lockfiles (`requirements.txt`, `package-lock.json`). Versions de référence :
-> manifestes (`backend/pyproject.toml`, `frontend/package.json`). Licences toutes **permissives**.
+> manifestes (`backend/pyproject.toml`, `frontend/package.json`). Licences **permissives**, à une
+> exception documentée : **`zeroconf` est en LGPL-2.1** (copyleft faible). C'est **sans conséquence**
+> ici — Kervignarc est un outil **interne mono-club, jamais distribué publiquement** ; la LGPL ne
+> contraint qu'en cas de **distribution** d'un binaire liant la lib en refusant le re-link, ce qui
+> n'arrive pas. Aucune modification de `zeroconf` n'est faite (simple import). À réévaluer **si** un
+> jour le binaire était diffusé hors du club (E11US001).
 >
 > **Audits de sécurité** (bloquants en CI, cf. `.github/workflows/ci.yml`, E00US003) — dernier contrôle
-> 2026-07-18 (revalidé après l'ajout de `reportlab`, E09US001) : `pip-audit -r requirements.txt --strict`
+> 2026-07-26 (revalidé après l'ajout de `zeroconf` et `pyinstaller`, E11US001) : `pip-audit`
 > = **aucune vulnérabilité** ; `npm audit --audit-level=high` = **0 vulnérabilité**. Outils d'audit
 > eux-mêmes : `pip-audit` est installé **ad hoc dans la CI** (non embarqué dans les manifestes
 > applicatifs) ; `npm audit` est intégré à npm.
@@ -24,6 +29,7 @@
 | `sqlalchemy` | 2.0.51 | ORM / Core SQL **synchrone** (accès SQLite, WAL) | Accès DB sync acté ([ADR-0005](adr/0005-async-et-sqlite.md)) ; Core+ORM typés, repositories derrière les ports (E00US006/009) | MIT |
 | `alembic` | 1.18.5 | Migrations de schéma versionnées | Schéma versionné et testé (guide §7) ; standard de fait pour SQLAlchemy | MIT |
 | `reportlab` | 5.0.0 | Génération PDF (documents imprimables) | Socle PDF acté ([ADR-0031](adr/0031-bibliotheque-pdf-reportlab.md)) : wheels autoportantes, **aucune dépendance native**, embarquable dans PyInstaller (R4) — retenu contre WeasyPrint sur ce seul critère (E09US001). Tire `pillow` et `charset-normalizer` (transitifs, figés par le lockfile) | BSD |
+| `zeroconf` | 0.150.0 | Annonce mDNS `kervignarc.local` sur le réseau local | Mise en réseau du jour J (E11US001) : le binaire se publie lui-même, les tablettes accèdent au **nom** sans configurer le routeur. Alternative « quelques lignes maison » écartée (mDNS = multicast + encodage DNS non triviaux) ; wheels binaires cp313 embarquables PyInstaller ; expose `py.typed` (mypy strict). Publication **best-effort** — l'accès par IP reste le filet. Tire `ifaddr` (transitif) | LGPL-2.1 |
 
 ## Backend — développement (`backend/pyproject.toml` › `optional-dependencies.dev`)
 
@@ -34,6 +40,7 @@
 | `pytest` | 9.1.1 | Framework de tests | Standard de fait ; stratégie de tests (guide §9) | MIT |
 | `httpx` | 0.28.1 | Client HTTP (tests) | Requis par `fastapi.testclient` pour tester l'API | BSD-3-Clause |
 | `pre-commit` | 4.0.1 | Orchestration des hooks git | Rend la qualité bloquante avant commit (guide §5) | MIT |
+| `pyinstaller` | 6.21.0 | Fabrique le binaire de release auto-contenu | Packaging du jour J (E11US001) : produit un exécutable unique embarquant front + migrations + PDF (`build_release.py`, `kervignarc.spec`). **Outil de build uniquement**, jamais importé au runtime. Standard de fait du packaging Python autonome | GPL-2.0-with-exception (l'exception autorise les binaires produits sous toute licence) |
 
 ## Frontend — runtime (`frontend/package.json` › `dependencies`)
 
