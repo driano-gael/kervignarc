@@ -143,6 +143,17 @@ Logique de présentation **pure** dans `presentation.ts`, jumelle de la mixité.
 - **−** Côte à côte **best-effort par groupe de blason** (comme la mixité) : le glouton mono-passe peut
   séparer une paire qu'un réagencement global aurait rapprochée. Contrepartie assumée (ADR-0023) — le
   signal l'expose, l'admin ajuste au glisser-déposer.
-- **−** Une deuxième jointure `archer → ArcherAPlacer` apparaît (service de duels) à côté de celle de
-  `ServicePlacement`. **2ᵉ occurrence** : on l'assume en l'état (règle 12) ; l'extraction d'un helper
-  partagé attendra la **3ᵉ** (seuil de remède structurel), pour ne pas introduire un pattern prématuré.
+- **−** Une **duplication structurelle** apparaît : `ServicePlacementDuels` recopie, scoppée par
+  phase, non seulement la jointure `archer → ArcherAPlacer` mais **toute l'orchestration d'ajustement**
+  de `ServicePlacement` (déplacer / échanger / valider / réserve / construire le plan). **2ᵉ
+  occurrence** : on l'assume en l'état (règle 12) — scopes et tables distincts, un socle partagé
+  coupleraient deux features ; l'extraction attendra la **3ᵉ** (seuil de remède structurel, règle 16),
+  pour ne pas introduire un pattern prématuré. La duplication est **signalée, non masquée** (docstrings
+  + ce point).
+- **−** Le découpage « appariement **recalculé** / pose **persistée** » laisse des **poses orphelines** :
+  une pose dont l'inscription n'est plus duelliste du 1er tour (le classement a changé entre deux
+  régénérations). Choix (arbitrage de revue, reversé dans `stories/`) : **masquée en lecture** (le plan
+  rendu l'écarte via `est_placable`), **purgée à la première écriture** (`_poses_a_jour` sur les chemins
+  d'ajustement, qui tournent dans la file ; la régénération réécrit tout de toute façon). Sans ce
+  traitement, la détection d'occupant d'un déplacement tombait sur une ligne fantôme → 500. Le plan de
+  duels fait donc autorité **après régénération** ; entre-temps l'orpheline est inerte.

@@ -126,6 +126,13 @@ voisines, *afin de* faciliter les matchs.
     tableaux **par catégorie**, les **tours ≥ 2** et un agencement de finale dédié sont downstream
     (E05US010/E06US006) — hors de cette tranche. Les `Participant` de genre **équipe** sont ignorés
     proprement (pas d'entité `Equipe` avant E13US002).
+  - **Pose orpheline** (arbitrage tranché à la revue, 26/07) : l'appariement étant **recalculé** mais
+    la pose **persistée**, une pose dont l'inscription n'est **plus** duelliste du 1er tour (le
+    classement a changé — un archer classé plus tard décale l'arbre, l'ancien duelliste passe en bye)
+    est **orpheline**. Choix retenu : elle est **masquée en lecture** et **purgée à la première
+    écriture** (ajustement ou régénération) ; le plan de duels fait autorité **après régénération**.
+    C'est ce qui évite un 500 quand l'admin déplace un jeton sur une case « visiblement vide » portant
+    encore une pose orpheline.
 - **Dépend de** : E03US001, E05US005 · **Jalon** : J2
 
 ### E03US010 — Générer / éditer le déroulé horaire
