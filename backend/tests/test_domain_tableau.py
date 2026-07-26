@@ -336,6 +336,33 @@ def test_podium_de_trois_avec_bye_pas_de_rang_quatre() -> None:
     assert tableau.podium() == (Place(1, p(1)), Place(2, p(2)), Place(3, p(3)))
 
 
+def test_podium_suit_le_vainqueur_reel_pas_la_tete_de_serie() -> None:
+    # « Finale → rangs 1-2 » désigne les finalistes par leur **résultat**, pas les meilleures têtes.
+    # sur un upset (une tête plus faible gagne), le podium doit suivre le vainqueur réel du match.
+    tableau = construire(4)
+    for num in [m.numero for m in tableau.matchs if m.tour == 1]:  # demi-finales (1v4), (2v3)
+        tableau = jouer_gagne_mieux_classe(tableau, num)  # → finale 1 vs 2, petite finale 4 vs 3
+    petite = tableau.petite_finale
+    assert petite is not None
+    tableau = tableau.jouer(tableau.finale.numero, p(2))  # upset : la tête 2 bat la tête 1
+    tableau = tableau.jouer(petite.numero, p(3))  # 3 bat 4 en petite finale
+    assert tableau.podium() == (Place(1, p(2)), Place(2, p(1)), Place(3, p(3)), Place(4, p(4)))
+
+
+def test_le_moteur_traite_les_equipes_comme_les_archers() -> None:
+    # Opacité (ADR-0028) : un tableau d'**équipes** se déroule à l'identique — le moteur ne branche
+    # jamais sur le genre du participant, il n'en lit que l'identité.
+    equipes = [Participant.equipe(i) for i in range(1, 5)]
+    tableau = _derouler_gagne_mieux_classe(construire_tableau(equipes, SEEDING, BYES, ROUTING))
+    assert tableau.est_termine
+    assert tableau.podium() == (
+        Place(1, Participant.equipe(1)),
+        Place(2, Participant.equipe(2)),
+        Place(3, Participant.equipe(3)),
+        Place(4, Participant.equipe(4)),
+    )
+
+
 def test_podium_incomplet_avant_la_fin() -> None:
     tableau = construire(8)
     assert not tableau.est_termine
