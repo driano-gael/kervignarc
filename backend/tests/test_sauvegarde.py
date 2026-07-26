@@ -86,9 +86,10 @@ def test_config_defauts_et_surcharges(monkeypatch: pytest.MonkeyPatch, tmp_path:
     for var in ("KERVIGNARC_BACKUP_INTERVAL_SECONDS", "KERVIGNARC_BACKUP_RETENTION"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.delenv("KERVIGNARC_BACKUP_DIR", raising=False)
-    # Défauts.
+    # Défauts (dossier : `backups/` sous le dossier de données, aucune variable définie).
     assert config.intervalle_secondes() == config.INTERVALLE_DEFAUT_SECONDES
     assert config.retention() == config.RETENTION_DEFAUT
+    assert config.dossier_sauvegardes().name == "backups"
     # Surcharges valides.
     monkeypatch.setenv("KERVIGNARC_BACKUP_INTERVAL_SECONDS", "60")
     monkeypatch.setenv("KERVIGNARC_BACKUP_RETENTION", "5")
@@ -96,11 +97,14 @@ def test_config_defauts_et_surcharges(monkeypatch: pytest.MonkeyPatch, tmp_path:
     assert config.intervalle_secondes() == 60
     assert config.retention() == 5
     assert config.dossier_sauvegardes() == tmp_path / "bak"
-    # « 0 désactive » (intervalle) et rétention plancher à 1.
+    # « 0 (ou négatif) désactive » (intervalle) et rétention plancher à 1.
     monkeypatch.setenv("KERVIGNARC_BACKUP_INTERVAL_SECONDS", "0")
     monkeypatch.setenv("KERVIGNARC_BACKUP_RETENTION", "0")
     assert config.intervalle_secondes() == 0
     assert config.retention() == 1
+    # Intervalle négatif : renvoyé tel quel (le consommateur le traite comme « désactivé »).
+    monkeypatch.setenv("KERVIGNARC_BACKUP_INTERVAL_SECONDS", "-5")
+    assert config.intervalle_secondes() == -5
     # Valeurs invalides : repli sur le défaut.
     monkeypatch.setenv("KERVIGNARC_BACKUP_INTERVAL_SECONDS", "abc")
     monkeypatch.setenv("KERVIGNARC_BACKUP_RETENTION", "xyz")
