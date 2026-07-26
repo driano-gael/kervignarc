@@ -12,30 +12,32 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 26/07/2026** · **61 US livrées** · dernière : `E11US003`.
+**Dernière mise à jour : 26/07/2026** · **62 US livrées** · dernière : `E05US001`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E05US001` — Séquence de phases** ouvre le jalon **J2** (les duels) : structurer l'enchaînement
-> des phases d'un tournoi (qualification → éliminations directes), socle du moteur d'élimination.
-> Détail : [`stories/E05-moteur-phases.md`](../stories/E05-moteur-phases.md).
-> *J1 est **terminé** (46/46) ; le confort « ma journée » ouverte sur « c'est moi » et les classements
-> imprimables restent hors décompte du jalon.*
+> **`E05US003` — Politiques injectables & assemblage** poursuit le jalon **J2** (les duels) : définir
+> les interfaces de politiques (`routing/scoring/seeding/byes/tiebreak/depth`) assemblables par la
+> config JSON d'une phase, et **trancher DETTE-003** (config à plat *vs* `config.policies`) — arbitrage
+> structurant (ADR) à mener **avant** d'écrire le moteur. Détail :
+> [`stories/E05-moteur-phases.md`](../stories/E05-moteur-phases.md).
+> *J1 est **terminé** (46/46) ; le confort « ma journée » et les classements imprimables restent hors
+> décompte du jalon.*
 >
-> *Fait juste avant :* `E11US003` (sauvegarde & archive) — terminée et poussée, revue faite :
-> **sauvegarde périodique silencieuse** (tâche de fond dans le `lifespan`, copie horodatée cohérente
-> via l'API `sqlite3.backup` — une **lecture**, donc **hors** file d'écriture, règle 7 —, rétention par
-> nom, config `KERVIGNARC_BACKUP_*`). **Écran « Archive »** (Admin → Jour J) : endpoint admin renvoyant
-> un **ZIP** (`zipfile`/`csv`/`sqlite3` stdlib, **zéro dépendance** — règle 11) réunissant, **au choix
-> (cases à cocher)** : instantané SQLite complet, dump CSV de toutes les tables (`sqlite_master`, fidèle
-> au schéma), PDF régénérés du tournoi (feuilles de marque par départ + listes, **best-effort**, les
-> omissions tracées au manifeste), et un `manifeste.json` toujours présent. Port `ConstructeurArchive`
-> **au niveau applicatif** (une archive est un concern d'exploitation, pas du domaine — règles 2/12).
-> QR de salle exclus (URL vivante). Backup = **lecture** hors file d'écriture + 1ʳᵉ tâche périodique du
-> `lifespan` : [ADR-0044](../docs/adr/0044-sauvegarde-lecture-concurrente-et-tache-periodique.md).
-> Cadré avec le commanditaire (CA « SQLite + éventuels documents » élargi à un paquet riche configurable).
+> *Fait juste avant :* `E05US001` (séquence de phases) — terminée et poussée, revue faite. **Ouvre J2** :
+> l'agrégat `Phase` (jusqu'ici passif) devient **actif** — cycle de vie à 4 statuts
+> (`a_venir → en_cours ⇄ en_pause → terminee`, transitions pures + garde 409 au patron `ServiceTournois`),
+> **typage** ouvert (`elimination_directe`, `placement` aux côtés de `qualification`, barème/grain rendus
+> facultatifs), et **amorce d'un modèle de source** de peuplement (`SourcePhase` « rangs [a..b] de la
+> phase d'ordre k » + `effectif`) porté par l'agrégat pur `SequencePhases`, gardien des trois contrôles
+> de cohérence du CA (source vide / rangs inexistants / effectif incompatible). **Écran admin « Phases
+> (format) »** : composer/typer/ordonner/supprimer la séquence, déclarer source et effectif, piloter le
+> cycle de vie. Livré **full-stack** (domaine + service + repository + API + écran) et le modèle de source
+> est une **amorce assumée minimale** (DETTE-015, à élargir en E05US010).
+> [ADR-0045](../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md). Cadré avec le
+> commanditaire (livraison jusqu'à l'écran + amorce source plutôt que report à E05US010).
 
 ---
 
@@ -107,11 +109,11 @@
 | 56 | E11US001 | Release, base et mise en réseau | ✅ |
 | 57 | E11US003 | Sauvegarde & archive | ✅ |
 
-## J2 — Duels simples + bascule de tour — ⬜ **non commencé (0/15)**
+## J2 — Duels simples + bascule de tour — 🔶 **en cours (1/15)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
-| 58 | E05US001 | Séquence de phases | ⬜ |
+| 58 | E05US001 | Séquence de phases | ✅ |
 | 59 | E05US003 | Politiques injectables & assemblage | ⬜ |
 | 60 | E05US005 | Arbre d'élimination directe | ⬜ |
 | 61 | E03US006 | Contrainte ≥ 2 clubs par cible | ⬜ |

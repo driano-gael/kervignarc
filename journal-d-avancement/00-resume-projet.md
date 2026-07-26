@@ -27,7 +27,9 @@ et les **fusionne** sans rien perdre. Et l'application se **déploie désormais 
 exécutable qui crée sa base au premier lancement, s'ouvre sur le réseau local, **se sauvegarde toute
 seule** et sait produire une **archive complète** du tournoi — prêt pour le jour J, sans installation
 ni internet.** Le jalon « qualification de bout en bout » est ainsi **terminé** (à un reliquat de
-confort près) ; il reste à construire les duels (phases finales) et le pilotage du jour J.
+confort près), et le chantier suivant — les **duels** — est **amorcé** : l'organisateur **compose
+désormais le format** de son tournoi (la séquence des phases après la qualification). Restent à
+construire le déroulé effectif des duels et le pilotage du jour J.
 
 ---
 
@@ -206,7 +208,9 @@ Dans l'ordre de valeur prévu par le backlog :
    faits — cf. blocs 3, 7, 9 et 10.)*
 2. **Les duels** (phases finales) : arbre d'élimination directe, saisie en duels, abandon /
    disqualification, barrages, podium — **et surtout la bascule de tour**, qui est le moment où le
-   produit gagne ou perd sa valeur.
+   produit gagne ou perd sa valeur. *Le socle est amorcé : l'organisateur **compose déjà la séquence
+   de phases** de son tournoi (E05US001) — reste à assembler les politiques du moteur, tirer les
+   tableaux et faire jouer les duels.*
 3. **Le placement intégral 1→N** (le grand format du classeur 120) et l'**écran de salle** avec
    l'identité visuelle du tournoi.
 4. **Confort et robustesse** : import inscript'arc, presets de barèmes, déroulé horaire, sauvegarde
@@ -220,16 +224,17 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **61 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/07/2026 — E11US003
+- **62 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/07/2026 — E05US001
   optimiste d'un cran sur la branche jusqu'à son merge. **`SUIVI-US.md` fait foi sur le compte exact.**
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
   et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)*
-- Dernière US livrée : **E11US003** (sauvegarde & archive — sauvegardes automatiques périodiques en
-  fond + écran d'export d'un paquet ZIP de fin de tournoi, contenu au choix). Elle est aussi la
-  dernière à **surface visible**.
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E05US001** (séquence de phases, début du
-  jalon J2 : les duels).
+  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (1/15)**
+  avec la **composition de la séquence de phases** (E05US001).
+- Dernière US livrée : **E05US001** (séquence de phases — écran admin pour composer/typer/ordonner les
+  phases après la qualification, cycle de vie par phase et amorce d'un modèle de source de peuplement).
+  Elle est aussi la dernière à **surface visible**, et ouvre le jalon J2.
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E05US003** (politiques injectables &
+  assemblage : les stratégies du moteur, et l'arbitrage DETTE-003 avant d'écrire le moteur).

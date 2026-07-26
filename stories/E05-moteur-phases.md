@@ -13,18 +13,35 @@
 
 ---
 
-### E05US001 — Séquence de phases (modèle, édition, cohérence)
+### E05US001 — Séquence de phases (modèle, édition, cohérence) — ✅ livrée 26/07/2026
 *En tant qu'*administrateur, *je veux* composer et éditer la séquence de phases d'un tournoi avec des
 garde-fous de cohérence, *afin de* définir le format sans risque de blocage plus tard.
 - **CA — modèle (ex-001)** : entités `Phase` (ordre, type, config JSON) rattachées au tournoi ;
   sorties d'une phase réutilisables ; **statuts** `a_venir / en_cours / en_pause / terminee` —
   `en_pause` **gèle la phase** (aucune validation de score acceptée) jusqu'à reprise, **distinct** du
   `en_pause` du **tournoi** ([ADR-0026](../docs/adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md) §3 :
-  deux niveaux de gel, même intention).
-- **CA — édition (ex-002)** : ajouter/ordonner/supprimer/typer des phases ; validation d'ordre
-  cohérent.
-- **CA — cohérence (ex-017)** : détection source vide / rangs inexistants / effectif incompatible ;
-  message explicite.
+  deux niveaux de gel, même intention). Transitions **pures** sur l'agrégat, garde d'enchaînement
+  dans le service (`TransitionStatutInvalide` → 409), au patron `ServiceTournois`
+  ([ADR-0045](../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md) §1). *Le branchement
+  effectif du gel sur le chemin de saisie relève d'E04US013 (duels) : la qualification n'a qu'une
+  phase, jamais gelée isolément — noté à l'ADR-0045 §1.*
+- **CA — édition (ex-002)** : ajouter/ordonner/supprimer/**typer** des phases ; validation d'ordre
+  cohérent (ordres contigus 1..N). **Types déclarables** : `qualification`, `elimination_directe`,
+  `placement` — ceux dont la règle est écrite ; déclarer un type **ne présuppose pas** son moteur
+  (les barèmes/politiques propres viennent en E05US003), les autres types s'ajoutent avec l'US qui
+  les implémente (ADR-0045 §2). `bareme`/`validation` deviennent **facultatifs** sur `Phase` (requis
+  pour `qualification` seulement).
+- **CA — cohérence (ex-017)** : détection **source vide / rangs inexistants / effectif incompatible**
+  ; message explicite. **Portée E05US001** : un **modèle de source minimal** est amorcé
+  (`SourcePhase(ordre_source, rang_debut, rang_fin)` + `effectif` facultatif par phase), suffisant
+  pour rendre les trois contrôles décidables — cohérence pure dans l'agrégat `SequencePhases`
+  (→ `DomainError`/422). C'est une **amorce assumée provisoire** (une source « par rangs », pas de
+  routing/gagnants-perdants) qu'E05US010 remplacera par le peuplement complet (DETTE-011, ADR-0045 §3).
+- **Livraison — full-stack** : domaine + service + repository + API **et écran admin** d'édition de
+  la séquence (rattaché à la coquille E00US015). *Arbitrages tranchés le 26/07/2026 avec le
+  commanditaire : (a) livrer jusqu'à l'écran (pas backend seul) ; (b) amorcer un modèle de source
+  minimal plutôt que reporter tout contrôle de source à E05US010. Reversés ici au titre de la
+  règle 9.*
 - **Absorbe** : ex-E05US001, E05US002, E05US017. **Dépend de** : E01US001 · **Jalon** : J2
 
 #### Catalogue des formats de phase (cibles du moteur) — 18/07/2026
