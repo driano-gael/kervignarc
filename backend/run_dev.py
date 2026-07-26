@@ -19,8 +19,8 @@ import sys
 from pathlib import Path
 
 import uvicorn
-from alembic import command
-from alembic.config import Config
+
+from infrastructure.db.migrate import appliquer_migrations
 
 _BACKEND_ROOT = Path(__file__).resolve().parent
 _FRONTEND_ROOT = _BACKEND_ROOT.parent / "frontend"
@@ -51,9 +51,10 @@ def construire_front() -> None:
 def migrer() -> None:
     """Applique les migrations jusqu'à la dernière révision (`alembic upgrade head`)."""
     print("-> Migrations de la base (alembic upgrade head)...")
-    config = Config(str(_BACKEND_ROOT / "alembic.ini"))
-    config.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
-    command.upgrade(config, "head")
+    appliquer_migrations(
+        _BACKEND_ROOT / "migrations",
+        alembic_ini=_BACKEND_ROOT / "alembic.ini",
+    )
 
 
 def main() -> None:

@@ -39,6 +39,7 @@ repos:
           - "pytest==9.1.1"
           - "sqlalchemy==2.0.51"
           - "alembic==1.18.5"
+          - "zeroconf==0.150.0"
         pass_filenames: false
         files: ^backend/.*\.py$
 
