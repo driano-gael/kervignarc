@@ -155,7 +155,7 @@ Entités principales (schéma logique — détail des colonnes à préciser en c
 | `Target` | Cible d'un tournoi | index, capacité, positions A/B/C/D |
 | `Placement` | Affectation | archer_id, target_id, position, phase_id/tour |
 | `Phase` | Phase de la séquence | tournament_id, ordre, type, config (JSON incl. **politiques** : routage/barème/seeding/byes/départage/profondeur — cf. §4.2) |
-| `Match` | Match/duel | phase_id, n° (M1…), **participant_A, participant_B**, tour. Les épreuves par équipes sont hors périmètre (fonctionnel §2.2), mais un match oppose des **participants** — pas nécessairement des archers — pour que leur ajout ne soit pas une refonte |
+| `Match` | Match/duel | phase_id, n° (M1…), **participant_A, participant_B**, tour. Un match oppose des **participants** (archer **ou** équipe) — les épreuves par équipes sont **au périmètre MVP** depuis ADR-0028 (18/07), réalisées via l'abstraction `Participant` (E13US001) |
 | `SetScore` / `Volley` | Volées/sets saisis | match_id ou qualif_id, valeurs, validé (bool), auteur, horodatage |
 | `Ranking` | Classement produit | phase_id, archer_id, rang, contexte (qualif/final 1→N) |
 | `User` / `Session` | Accès | rôle (admin/scoreur), code de cible(s), jeton |

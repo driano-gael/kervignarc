@@ -241,6 +241,12 @@ def construire_tableau(
     Consomme les **trois politiques** injectées : `seeding` (l'ordre des positions), `byes`
     (autorité sur les dispensés — un garde-fou refuse une paire seeding/byes incohérente via
     `FormatTableauIncoherent`) et `routing` (porté par le `Tableau`, consommé à la progression).
+
+    **Préconditions à la charge de l'appelant** (non défendues ici : le moteur ne lit aucune
+    identité, il ne peut donc pas les vérifier) : `participants` est **trié par rang** de
+    qualification et **sans doublon**. Un ordre faux produirait un ensemencement silencieusement
+    erroné ; un même participant présent deux fois briserait l'appariement. Le premier consommateur
+    (le classement source, via E04US013 / E05US010) garantit ces invariants.
     """
     effectif = len(participants)
     if effectif < 2:
