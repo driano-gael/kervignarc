@@ -1,13 +1,19 @@
-"""Tests d'intégration du repository SQL des phases (E01US009 / ADR-0011, E01US015).
+"""Tests d'intégration du repository SQL des phases (E01US009 / ADR-0011, E01US015, E05US003).
 
 Exerce l'adapter sur une **vraie base** créée par les migrations (`alembic upgrade head`) :
-persistance du barème (sérialisation JSON `config.scoring`) et du grain de validation
-(`config.validation`), relecture par tournoi + type, mise à jour, et enveloppe d'une `config`
-illisible. Une phase requiert un tournoi (FK `tournoi_id`).
+persistance du barème (sérialisation JSON `config.policies.scoring`, forme cible ADR-0046) et du
+grain de validation (`config.validation`, hors `policies`), relecture par tournoi + type, mise à
+jour, et enveloppe d'une `config` illisible. Une phase requiert un tournoi (FK `tournoi_id`).
 
 E01US015 n'ajoute **aucune migration** : la politique s'ajoute dans le JSON existant. Les tests
 `…_sans_cle_validation_…` verrouillent la contrepartie de ce choix — une ligne écrite avant
 E01US015 doit se relire avec le preset de son type, pas exploser.
+
+E05US003/ADR-0046 fait basculer `scoring` de la racine vers `config.policies` (résorbe DETTE-003).
+Les lignes brutes en **ancienne forme à plat** (`'{"scoring": {…, "mode": "cumul"}}'`) écrites par
+les helpers de test ci-dessous continuent de se relire (repli de `_lire_scoring`) : elles couvrent
+donc, en plus de leur intention d'origine, la **compatibilité ascendante**. La bascule d'écriture
+et la migration de données (`0028`) ont leurs tests dédiés en fin de fichier.
 """
 
 from __future__ import annotations
@@ -512,5 +518,83 @@ def test_une_source_illisible_leve_infrastructure_error(tmp_path: Path) -> None:
             session.commit()
         with pytest.raises(InfrastructureError):
             PhaseRepositorySQL(db.session_factory).par_tournoi(tournoi_id)
+    finally:
+        db.engine.dispose()
+
+
+# --- E05US003 / ADR-0046 : bascule config.policies + compatibilité ascendante ------------------
+
+
+def test_le_scoring_est_persiste_sous_policies(tmp_path: Path) -> None:
+    """Forme cible (ADR-0046) : le barème s'écrit sous `config.policies.scoring`, nommé « cumul »
+    et paramétré (volées x flèches), **pas** à la racine. C'est la résorption de DETTE-003."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id = _tournoi(db)
+        repository = PhaseRepositorySQL(db.session_factory)
+        cree = repository.ajouter(Phase.qualification(tournoi_id, BaremeQualification.creer(20, 3)))
+        assert cree.id is not None
+
+        with db.session_factory() as session:
+            ligne = session.get(PhaseORM, cree.id)
+            assert ligne is not None
+            config = json.loads(ligne.config)
+        assert "scoring" not in config  # plus à la racine
+        assert config["policies"]["scoring"] == {"nom": "cumul", "volees": 20, "fleches": 3}
+    finally:
+        db.engine.dispose()
+
+
+def test_ancienne_forme_a_plat_du_scoring_se_relit(tmp_path: Path) -> None:
+    """Compatibilité ascendante (DETTE-003 c) : une ligne écrite avant E05US003 (scoring à la
+    racine, clé `mode`) se relit sans erreur — filet pour une base restaurée d'une sauvegarde
+    antérieure à la migration `0028`. Le barème est intact ; `mode`/`nom` n'entre pas en jeu."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id = _tournoi(db)
+        _phase_brute(db, tournoi_id, '{"scoring": {"volees": 15, "fleches": 6, "mode": "cumul"}}')
+
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi_et_type(
+            tournoi_id, TypePhase.QUALIFICATION
+        )
+        assert relue is not None
+        assert relue.bareme is not None
+        assert relue.bareme.nb_volees == 15
+        assert relue.bareme.nb_fleches_par_volee == 6
+    finally:
+        db.engine.dispose()
+
+
+def test_migration_0028_deplace_le_scoring_sous_policies(tmp_path: Path) -> None:
+    """La migration de données `0028` réécrit une `config` héritée (scoring à la racine) en forme
+    `policies`. On monte jusqu'à `0027`, insère une ligne à plat, puis on migre jusqu'au head."""
+    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
+    cfg = Config(str(_BACKEND_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
+    cfg.set_main_option("sqlalchemy.url", url)
+    command.upgrade(cfg, "0027_volee_created_at")
+
+    db = Database(url)
+    try:
+        tournoi_id = _tournoi(db)
+        _phase_brute(
+            db,
+            tournoi_id,
+            '{"scoring": {"volees": 20, "fleches": 3, "mode": "cumul"},'
+            ' "validation": {"grain": "fin_de_serie"}}',
+        )
+    finally:
+        db.engine.dispose()
+
+    command.upgrade(cfg, "head")
+
+    db = Database(url)
+    try:
+        with db.session_factory() as session:
+            ligne = session.query(PhaseORM).one()
+            config = json.loads(ligne.config)
+        assert "scoring" not in config  # déplacé
+        assert config["policies"]["scoring"] == {"nom": "cumul", "volees": 20, "fleches": 3}
+        assert config["validation"] == {"grain": "fin_de_serie"}  # resté à la racine
     finally:
         db.engine.dispose()

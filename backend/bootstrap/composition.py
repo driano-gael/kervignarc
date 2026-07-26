@@ -74,6 +74,7 @@ from application.saisie import ServiceSaisie
 from application.scoreurs import ServiceScoreurs
 from application.supervision import ServiceSupervision
 from application.tournois import ServiceTournois
+from domain.politiques import registre_par_defaut
 from infrastructure.archive.constructeur import ConstructeurArchiveZip
 from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
 from infrastructure.backup.config import (
@@ -287,6 +288,13 @@ def create_app(
     # les conflits d'état ; la cohérence de la séquence (source, ordres) est une règle du domaine
     # (`SequencePhases`). Même port `phase_repository` que le barème/grain (une table `phase`).
     app.state.service_phases = ServicePhases(tournoi_repository, phase_repository)
+    # Registre des politiques injectables (E05US003, ADR-0004/ADR-0046) : le catalogue
+    # nom → implémentation par famille (routing/scoring/seeding/byes/tiebreak/depth), peuplé **ici**
+    # (règle 2 : le domaine définit les stratégies, la composition root les assemble). C'est le
+    # socle qu'`assembler_politiques` consomme pour résoudre la `config.policies` d'une phase ; le
+    # **moteur** qui l'exploite (dimensionnement/génération d'arbre) arrive en E05US005/E05US010.
+    # On pourrait enregistrer ici des implémentations supplémentaires sans toucher au domaine.
+    app.state.registre_politiques = registre_par_defaut()
     # Inscription d'un archer (E02US002) : le service valide le tournoi, sa **catégorie** (qui doit
     # être du même tournoi) et son club de rattachement s'il est fourni — d'où quatre ports pour un
     # seul agrégat. Le club reste facultatif (`NULL` = inconnu, ADR-0014), la catégorie non.
