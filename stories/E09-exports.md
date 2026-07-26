@@ -35,6 +35,25 @@ de* afficher l'accueil des archers et gérer l'administratif.
 - **CA — placement (ex-003)** : liste archer → cible/position/départ ; triable par cible ou par nom.
 - **CA — club & paiement (ex-004)** : par club/archer : nom/prénom, n° départ, nb départs, dû,
   payé/non ; totaux par club.
+- **Notes (arbitrages tranchés en réalisation, 25/07/2026 — reversés ici, règle 9)** :
+  - **Deux PDF, réservés admin**, sur le socle E09US001 (ReportLab, ADR-0031) : `GET
+    /api/v1/tournois/{id}/listes/placement` (params `tri` = `cible` par défaut ou `nom`, `depart_id`
+    optionnel) et `GET /api/v1/tournois/{id}/listes/club-paiement`. « Triable » se réalise
+    **côté serveur** (un PDF n'est pas interactif) : le tri est un **paramètre** de la route.
+  - **Filtre par départ = placement seulement.** Cadrage avec l'organisateur : le filtre optionnel
+    par départ n'a de sens que pour le **placement** (physique, par créneau — « n'imprimer que le
+    départ du matin »). La liste **club & paiement porte sur tout le tournoi** : le dû d'un archer
+    additionne ses départs, un filtre par créneau y serait trompeur.
+  - **« payé/non » → trois états.** Le paiement est par inscription ; au niveau archer on affiche
+    **Oui** (reste nul avec un dû réel), **Non** (reste dû) et **—** (rien à régler : aucun dû) —
+    afficher « payé » pour un archer qui ne doit rien serait faux. Le dû et le payé (montants)
+    figurent en clair à côté du statut.
+  - **Front : écran « Exports » dédié** (groupe Jour J de la coquille admin, destination prévue au
+    CDC UX §7.1), avec sélecteur de tri, filtre de départ et deux boutons de téléchargement.
+    **Premier téléchargement binaire du front** : `fetchBlob` + `<a download>` synthétique dans le
+    client HTTP partagé (le Bearer admin est en JS, pas un cookie — un `<a href>` ne l'emporterait
+    pas). Les 3 PDF déjà exposés (feuille de marque E09US001, QR/codes E09US008) restent, eux, sans
+    bouton front à ce jour — hors périmètre de cette US.
 - **Absorbe** : ex-E09US003, E09US004. **Dépend de** : E09US001, E03US001, E08US002 · **Jalon** : J1
 
 ### E09US005 — Classements PDF (par catégorie, intégral 1→N)

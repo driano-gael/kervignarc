@@ -34,6 +34,7 @@ from api.v1.feuille_de_marque import router as feuille_de_marque_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
 from api.v1.inscriptions import router as inscriptions_router
+from api.v1.listes_impression import router as listes_impression_router
 from api.v1.paiements import router as paiements_router
 from api.v1.placement import router as placement_router
 from api.v1.postes import router as postes_router
@@ -59,6 +60,7 @@ from application.feuille_de_marque import ServiceFeuilleDeMarque
 from application.gabarits import ServiceGabarits
 from application.grain_validation import ServiceGrainValidation
 from application.inscriptions import ServiceInscriptions
+from application.listes_impression import ServiceListesImpression
 from application.paiements import ServicePaiements
 from application.placement import ServicePlacement
 from application.postes import ServicePostes
@@ -89,7 +91,11 @@ from infrastructure.db import (
 )
 from infrastructure.horloge import HorlogeSysteme
 from infrastructure.idempotence import RegistreIdempotence
-from infrastructure.pdf import GenerateurDocumentsSallePdf, GenerateurFeuilleDeMarquePdf
+from infrastructure.pdf import (
+    GenerateurDocumentsSallePdf,
+    GenerateurFeuilleDeMarquePdf,
+    GenerateurListesImpressionPdf,
+)
 from infrastructure.postes import (
     PosteSessionStore,
     RegistrePresenceMemoire,
@@ -315,6 +321,21 @@ def create_app(
         scoreur_repository,
         GenerateurDocumentsSallePdf(),
     )
+    # Listes imprimables (E09US003) : liste de placement (accueil) et liste club & paiement
+    # (administratif). Le placement se reconstitue par ports seuls (comme la feuille de marque) ; la
+    # vue club & paiement **réutilise `service_paiements`** (précédent `ServiceCompletude`) pour ne
+    # pas dupliquer l'agrégation dû/payé ni le bucket « Sans club » (ADR-0014). Lecture pure comme
+    # les autres documents ; l'endpoint l'exécute via `run_in_threadpool`.
+    app.state.service_listes_impression = ServiceListesImpression(
+        tournoi_repository,
+        depart_repository,
+        placement_repository,
+        inscription_repository,
+        archer_repository,
+        categorie_repository,
+        app.state.service_paiements,
+        GenerateurListesImpressionPdf(),
+    )
 
     # --- Accès administrateur (E10US002) : identifiants dans un fichier `.env` local + jetons
     # de session en mémoire. Auth = concern technique (pas de domaine) ; la dépendance API
@@ -445,6 +466,7 @@ def create_app(
     app.include_router(placement_router)
     app.include_router(feuille_de_marque_router)
     app.include_router(documents_salle_router)
+    app.include_router(listes_impression_router)
 
     # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement
     # s'il existe, pour ne jamais masquer les routes API/WS/health ci-dessus. ---

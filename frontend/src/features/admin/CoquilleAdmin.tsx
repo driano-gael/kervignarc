@@ -15,8 +15,9 @@
 // (règle 11) ; à réévaluer si un vrai besoin d'URL apparaît.
 //
 // Périmètre borné aux **fonctions livrées** (CA « non-régression ») : les destinations que le §7.1
-// prévoit mais qui n'existent pas encore (Identité, Validation, Podiums, Exports, Archive, Audit)
-// ne sont **pas** matérialisées par des entrées vides — elles arriveront avec leur US. La
+// prévoit mais qui n'existent pas encore (Identité, Validation, Podiums, Archive, Audit)
+// ne sont **pas** matérialisées par des entrées vides — elles arriveront avec leur US. « Exports »
+// (E09US003) est désormais livrée, dans le groupe Jour J. La
 // **recherche d'archer** (E12US006, `D-19`) est désormais livrée : champ permanent en tête de la
 // sidebar, hors du système de destinations (elle coiffe, elle ne s'ouvre pas dans la zone principale).
 // « Complétude » (E12US005) est désormais livrée, dans le groupe Jour J. De même, les 7 statuts d'ADR-0026 (E01US017) ne sont pas encore livrés :
@@ -37,6 +38,7 @@ import type { StatutTournoi, Tournoi } from '../competition/api'
 import { useTournois } from '../competition/hooks'
 import { VueClassement } from '../competition/VueClassement'
 import { Departs } from '../departs/Departs'
+import { Exports } from '../exports/Exports'
 import { Gabarits } from '../gabarits/Gabarits'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { GrainValidation } from '../grain-validation/GrainValidation'
@@ -262,6 +264,15 @@ function Coquille() {
       groupe: 'jourj',
       besoinTournoi: true,
       rendu: () => courant && <VueClassement tournoiId={courant.id} admin />,
+    },
+    {
+      id: 'exports',
+      libelle: 'Exports',
+      groupe: 'jourj',
+      // Listes imprimables du jour J (E09US003) : placement (accueil) et club & paiement (admin).
+      // Destination prévue au §7.1, désormais matérialisée sur le socle PDF (E09US001).
+      besoinTournoi: true,
+      rendu: () => courant && <Exports tournoiId={courant.id} />,
     },
   ]
 

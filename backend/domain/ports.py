@@ -21,6 +21,7 @@ from domain.entree_audit import EntreeAudit
 from domain.feuille_marque import FeuilleDeMarque
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
+from domain.listes_impression import ListeClubPaiement, ListePlacement
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
 from domain.poste import Poste, PosteId
@@ -600,6 +601,25 @@ class GenerateurDocumentsSalle(Protocol):
 
     def cartes_scoreurs(self, document: CartesScoreurs) -> bytes:
         """Rend les cartes de scoreur en un PDF (un papier par scoreur : nom + code personnel)."""
+        ...
+
+
+class GenerateurListesImpression(Protocol):
+    """Port de génération des **listes imprimables** d'organisation (E09US003 ; adapter infra).
+
+    Le domaine décrit le **contenu** (`ListePlacement`, `ListeClubPaiement`) ; l'adapter (ReportLab,
+    ADR-0031) le rend en octets PDF. Deux documents, deux méthodes : la liste de placement (accueil
+    des archers) et la liste club & paiement (administratif). Le retour est un simple `bytes` : le
+    domaine ne connaît ni ReportLab ni HTTP (règle 1). Un échec de rendu remonte en
+    `InfrastructureError`, traduit en 500 à la frontière.
+    """
+
+    def placement(self, liste: ListePlacement) -> bytes:
+        """Rend la liste de placement en un PDF (une ligne par archer placé)."""
+        ...
+
+    def club_paiement(self, liste: ListeClubPaiement) -> bytes:
+        """Rend la liste club & paiement en un PDF (un bloc par club, avec totaux)."""
         ...
 
 

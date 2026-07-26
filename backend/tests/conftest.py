@@ -50,6 +50,7 @@ from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
 from domain.entree_audit import EntreeAudit
 from domain.inscription import Inscription, InscriptionId
+from domain.placement import Affectation
 from domain.tournoi import TournoiId
 
 if TYPE_CHECKING:
@@ -266,6 +267,40 @@ class FauxInscriptionRepository:
 
     def supprimer(self, inscription_id: InscriptionId) -> None:
         del self._inscriptions[inscription_id]
+
+
+class FauxPlacementRepository:
+    """Repository de placement en mémoire conforme au port `PlacementRepository`.
+
+    Magasin **simple** clé par `inscription_id` (une affectation par inscription) : les appelants
+    lisent `par_depart`, volontairement **non trié** (c'est au service d'ordonner). Migré ici en
+    E09US003, 2ᵉ consommateur (`test_service_feuille_de_marque` et `test_service_listes_impression`)
+    — jusque-là local à la feuille de marque.
+    """
+
+    def __init__(self) -> None:
+        self._affectation: dict[int, Affectation] = {}
+        self._depart: dict[int, int] = {}
+
+    def par_depart(self, depart_id: DepartId) -> list[Affectation]:
+        return [a for i, a in self._affectation.items() if self._depart[i] == depart_id]
+
+    def definir_plan(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
+        self.poser_plusieurs(depart_id, affectations)
+
+    def definir_plan_avec_trace(
+        self, depart_id: DepartId, affectations: Sequence[Affectation], entree: object
+    ) -> None:
+        raise NotImplementedError("Non exercé par les tests de service qui consomment ce faux.")
+
+    def poser_plusieurs(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
+        for affectation in affectations:
+            self._affectation[affectation.inscription_id] = affectation
+            self._depart[affectation.inscription_id] = depart_id
+
+    def retirer(self, inscription_id: int) -> None:
+        self._affectation.pop(inscription_id, None)
+        self._depart.pop(inscription_id, None)
 
 
 @pytest.fixture

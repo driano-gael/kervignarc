@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 22 juillet 2026
+# Résumé du projet — où on en est au 25 juillet 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -113,10 +113,15 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
   sans doublon, et un **voyant de connexion** indique en permanence l'état. Détail dans
   [`2026-07-20-00h35-saisie-resiste-aux-coupures.md`](2026-07-20-00h35-saisie-resiste-aux-coupures.md).
 
-### 7. Les documents imprimables — *socle en place*
+### 7. Les documents imprimables — *les premières listes du jour J*
 
 - Le **socle PDF** et la **feuille de marque**.
 - L'**impression des QR de cible et des codes scoreurs** (branché sur la saisie ci-dessus).
+- Un écran **« Exports »** avec les **deux premières listes à imprimer** (dernier fait marquant,
+  25/07) : la **liste de placement** (qui tire où — triable par cible ou par nom, et filtrable sur un
+  seul départ) et la **liste club & paiement** (par club : départs, dû, réglé ou non, totaux). Détail
+  dans [`2026-07-25-20h08-listes-imprimables.md`](2026-07-25-20h08-listes-imprimables.md).
+  *Restent à venir : les classements et le déroulé horaire imprimables.*
 
 ### 8. L'interface d'administration — *coquille posée*
 
@@ -172,9 +177,11 @@ la recherche restera vide — tant que leur moteur (EPIC-05) n'est pas construit
 Dans l'ordre de valeur prévu par le backlog :
 
 1. **Finir le tournoi de qualification** : l'appli publique ouverte directement sur **« ma journée »**
-   (« c'est moi » mémorisé) et quelques listes imprimables.
-   *(Supervision des postes, classement, vues publiques, suivi des paiements, complétude du tournoi et
-   recherche d'un archer : faits — cf. blocs 3 et 9.)*
+   (« c'est moi » mémorisé), la **mise en réseau / sauvegarde** (E11), et les **classements
+   imprimables**.
+   *(Supervision des postes, classement, vues publiques, suivi des paiements, complétude du tournoi,
+   recherche d'un archer et **premières listes imprimables** (placement, club & paiement) : faits —
+   cf. blocs 3, 7 et 9.)*
 2. **Les duels** (phases finales) : arbre d'élimination directe, saisie en duels, abandon /
    disqualification, barrages, podium — **et surtout la bascule de tour**, qui est le moment où le
    produit gagne ou perd sa valeur.
@@ -191,14 +198,14 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **58 US livrées** sur `main` (mergées, revues, CI verte) à la date du 22/07/2026 — E02US005
+- **59 US livrées** sur `main` (mergées, revues, CI verte) à la date du 25/07/2026 — E09US003
   optimiste d'un cran sur la branche jusqu'à son merge. **`SUIVI-US.md` fait foi sur le compte exact.**
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : bien avancé
-  (43/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
-  alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer et
-  **détection/fusion des doublons** faits ; restent « ma journée » (« c'est moi ») et quelques
-  imprimables.
-- Dernière US livrée : **E02US005** (détecter et fusionner les doublons d'archers — écran « Doublons »
-  admin : rapprochement heuristique à deux niveaux, fusion conservant inscriptions et scores).
+  (44/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
+  alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
+  détection/fusion des doublons et **premières listes imprimables** faits ; restent « ma journée »
+  (« c'est moi ») et la mise en réseau / sauvegarde (E11).
+- Dernière US livrée : **E09US003** (listes imprimables — écran « Exports » admin : liste de placement
+  triable/filtrable et liste club & paiement, en PDF sur le socle E09US001).
   Elle est aussi la dernière à **surface visible**.
 - Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) (reprise de la séquence J1).

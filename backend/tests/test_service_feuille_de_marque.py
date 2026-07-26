@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
-from collections.abc import Sequence
 
 import pytest
 
@@ -28,7 +27,7 @@ from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie
-from domain.depart import Depart, DepartId
+from domain.depart import Depart
 from domain.feuille_marque import FeuilleDeMarque
 from domain.inscription import Inscription
 from domain.phase import Phase, PhaseId, TypePhase
@@ -39,6 +38,7 @@ from tests.conftest import (
     FauxCategorieRepository,
     FauxDepartRepository,
     FauxInscriptionRepository,
+    FauxPlacementRepository,
 )
 
 # --- Fakes locaux (patron des autres tests de service) -----------------------------------------
@@ -98,35 +98,6 @@ class FauxBlasonRepository:
 
     def supprimer(self, blason_id: BlasonId) -> None:
         del self._blasons[blason_id]
-
-
-class FauxPlacementRepository:
-    """Repository de placement en mémoire (le service ne lit que `par_depart`)."""
-
-    def __init__(self) -> None:
-        self._affectation: dict[int, Affectation] = {}
-        self._depart: dict[int, int] = {}
-
-    def par_depart(self, depart_id: DepartId) -> list[Affectation]:
-        # Volontairement **non trié** : c'est le service qui doit ordonner (cible, position).
-        return [a for i, a in self._affectation.items() if self._depart[i] == depart_id]
-
-    def definir_plan(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
-        self.poser_plusieurs(depart_id, affectations)
-
-    def definir_plan_avec_trace(
-        self, depart_id: DepartId, affectations: Sequence[Affectation], entree: object
-    ) -> None:
-        raise NotImplementedError("Non exercé par ServiceFeuilleDeMarque.")
-
-    def poser_plusieurs(self, depart_id: DepartId, affectations: Sequence[Affectation]) -> None:
-        for affectation in affectations:
-            self._affectation[affectation.inscription_id] = affectation
-            self._depart[affectation.inscription_id] = depart_id
-
-    def retirer(self, inscription_id: int) -> None:
-        self._affectation.pop(inscription_id, None)
-        self._depart.pop(inscription_id, None)
 
 
 class FauxPhaseRepository:

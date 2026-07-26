@@ -12,27 +12,26 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 22/07/2026** · **58 US livrées** · dernière : `E02US005`.
+**Dernière mise à jour : 25/07/2026** · **59 US livrées** · dernière : `E09US003`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E09US003` — Listes imprimables (placement, club, paiement)** poursuit la séquence J1 : sortir sur
-> papier les listes utiles le jour J, sur le socle PDF déjà livré (E09US001). Détail :
-> [`stories/E09-exports.md`](../stories/E09-exports.md).
+> **`E11US001` — Release, base et mise en réseau** poursuit la séquence J1 : préparer le déploiement
+> du jour J (packaging, base de données, adresse réseau accessible aux tablettes). Détail :
+> [`stories/E11-exploitation.md`](../stories/E11-exploitation.md).
 >
-> *Fait juste avant :* `E02US005` (détecter et fusionner les doublons) — terminée et poussée, revue
-> faite : **écran « Doublons » admin** qui rapproche les fiches désignant probablement le même archer
-> saisi deux fois. **Détection heuristique à deux niveaux** (par tournoi, domaine pur) : *doublon
-> probable* (mêmes nom/prénom, casse/accents repliés, clubs compatibles — dont le **pont** avec/sans
-> club que l'inscription refuse) ; *à vérifier* (rapprochement approximatif — distance d'édition
-> Levenshtein **maison**, prénom abrégé, clubs connus différents). **Fusion** : l'admin choisit la
-> maître, l'autre est absorbée (inscriptions et scores repris, collision d'inscription dédoublonnée +
-> paiement reporté) en **une transaction** (miroir de `supprimer`) ; refus si les deux fiches ont tiré
-> (`fusion_archers_engages`) ou fusion structurelle impossible (`fusion_impossible`). Faute de n° de
-> licence (repoussé à E02US007, ADR-0015), la détection reste heuristique ; les paires écartées ne sont
-> pas mémorisées (sans état). Cadrage tranché avec l'organisateur le 22/07, reversé dans `stories/`.
+> *Fait juste avant :* `E09US003` (listes imprimables) — terminée et poussée, revue faite : **écran
+> « Exports » admin** (groupe Jour J) avec les **deux premières listes PDF** du jour J, sur le socle
+> ReportLab (E09US001, ADR-0031). **Liste de placement** (archer → départ/cible/position) triable
+> **par cible ou par nom** (paramètre serveur) et **filtrable sur un départ** (optionnel) ; **liste
+> club & paiement** regroupée par club (départs, dû, payé, statut **Oui/Non/—**, totaux par club,
+> bucket « Sans club » en dernier — ADR-0014). La vue club & paiement **réutilise
+> `ServicePaiements.recap_par_club`** (pas de duplication de l'agrégation) et porte sur **tout le
+> tournoi** (le filtre départ n'a de sens que pour le placement). Côté front, **premier téléchargement
+> binaire** : `fetchBlob` + `<a download>` dans le client HTTP partagé (le Bearer admin est en JS, pas
+> un cookie). Arbitrages tranchés en réalisation le 25/07, reversés dans `stories/`.
 
 ---
 
@@ -53,7 +52,7 @@
 | E00US011 | Tranche verticale démontrable | ✅ |
 | E00US012 | Exécutable de dev (FastAPI sert le front) | ✅ |
 
-## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (43/46)**
+## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (44/46)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -100,8 +99,8 @@
 | 52 | E02US005 | Détecter et fusionner les doublons | ✅ |
 | 53 | E02US006 | Contrôler les quotas | ✅ *(fait en avance)* |
 | 54 | E09US001 | Socle PDF & feuille de marque | ✅ *(fait en avance)* |
-| 55 | E09US003 | Listes imprimables (placement, club, paiement) | 🎯 *(reprise J1)* |
-| 56 | E11US001 | Release, base et mise en réseau | ⬜ |
+| 55 | E09US003 | Listes imprimables (placement, club, paiement) | ✅ |
+| 56 | E11US001 | Release, base et mise en réseau | 🎯 *(reprise J1)* |
 | 57 | E11US003 | Sauvegarde & archive | ⬜ |
 
 ## J2 — Duels simples + bascule de tour — ⬜ **non commencé (0/15)**
