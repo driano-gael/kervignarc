@@ -51,6 +51,9 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0038](0038-presence-des-postes-par-heartbeat.md) | Présence des postes par **heartbeat** (horloge injectée, hors ligne si silence > 30 s) | Accepté |
 | [0039](0039-exposition-publique-du-deroule-scores-provisoires.md) | Exposition publique du déroulé du tour, **scores provisoires** inclus (grain volée) | Accepté |
 | [0040](0040-alerte-par-calcul-d-impact.md) | Alerter par **calcul d'impact** : prévisualisation, échelle à trois niveaux, geste délibéré | Accepté |
+| [0041](0041-tarification-configuration-du-tournoi.md) | La **tarification** est une **configuration** du tournoi, pas du code | Accepté |
+| [0042](0042-modele-d-entree-choix-de-role-explicite.md) | Modèle d'entrée de l'appli : **choix de rôle explicite** au 1ᵉʳ lancement | Accepté |
+| [0043](0043-acceptation-dependance-copyleft-lgpl.md) | Acceptation d'une dépendance **copyleft (LGPL)** : `zeroconf`, cadrée (outil interne non distribué) | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.

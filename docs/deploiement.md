@@ -57,6 +57,14 @@ Le jour J, **pas d'internet** : on isole un réseau local dédié.
 2. **Machine serveur.** Lancer `kervignarc.exe` dessus. Noter l'**IP locale** affichée
    (ex. `192.168.1.10`). Idéalement, réserver cette IP dans le routeur (bail DHCP fixe) pour
    qu'elle ne change pas d'un jour à l'autre.
+
+   > ⚠️ **Une seule connexion réseau active sur la machine serveur.** Le serveur détecte son
+   > IP via l'**interface de la route par défaut**. Si la machine a, en plus du routeur dédié,
+   > une **autre** connexion active (Wi-Fi maison, partage 4G, VPN), l'IP affichée — et le nom
+   > `kervignarc.local` annoncé — peut pointer vers la **mauvaise** interface, injoignable par les
+   > tablettes. **Désactiver le Wi-Fi et tout VPN** sur la machine serveur si elle est branchée en
+   > filaire au routeur dédié. En cas de doute, vérifier que l'IP affichée est bien dans la plage
+   > du routeur (ex. `192.168.1.x`).
 3. **Tablettes.** Ouvrir le navigateur et saisir **l'une** des deux adresses :
    - par IP : `http://192.168.1.10:8000` — **toujours** fonctionnel ;
    - par nom : `http://kervignarc.local:8000` — plus simple à dicter, publié par le serveur en

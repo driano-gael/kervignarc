@@ -12,7 +12,8 @@
 > ici — Kervignarc est un outil **interne mono-club, jamais distribué publiquement** ; la LGPL ne
 > contraint qu'en cas de **distribution** d'un binaire liant la lib en refusant le re-link, ce qui
 > n'arrive pas. Aucune modification de `zeroconf` n'est faite (simple import). À réévaluer **si** un
-> jour le binaire était diffusé hors du club (E11US001).
+> jour le binaire était diffusé hors du club (E11US001, précédent tranché en
+> [ADR-0043](adr/0043-acceptation-dependance-copyleft-lgpl.md)).
 >
 > **Audits de sécurité** (bloquants en CI, cf. `.github/workflows/ci.yml`, E00US003) — dernier contrôle
 > 2026-07-26 (revalidé après l'ajout de `zeroconf` et `pyinstaller`, E11US001) : `pip-audit`
