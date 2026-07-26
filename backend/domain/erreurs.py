@@ -280,6 +280,31 @@ class EffectifIncompatible(DomainError):
     code = "effectif_incompatible"
 
 
+class PolitiqueInconnue(DomainError):
+    """Une politique de phase désigne une implémentation non enregistrée (E05US003, ADR-0004).
+
+    La `config.policies` d'une phase nomme une implémentation par famille
+    (`{"scoring": {"nom": "cumul", …}}`) ; le registre — peuplé par la composition root — la
+    résout. Un `nom` absent du catalogue de sa famille remonte ici, **explicitement**, plutôt qu'en
+    `KeyError` que la relecture diagnostiquerait « configuration illisible ». Signale une config
+    écrite pour un moteur qui ne connaît pas (encore) ce format.
+    """
+
+    code = "politique_inconnue"
+
+
+class PolitiqueMalFormee(DomainError):
+    """La `config.policies` d'une phase n'a pas la forme attendue (E05US003, ADR-0004).
+
+    Chaque politique est un objet `{"nom": <implémentation>, …paramètres}` sous une **famille du
+    catalogue ADR-0004** (`routing/scoring/seeding/byes/tiebreak/depth`). Une clé hors catalogue
+    (le grain de `validation` n'en est **pas** une : il vit hors `policies`, ADR-0046) ou un objet
+    sans `nom` est une config mal formée — l'assemblage refuse de deviner l'implémentation.
+    """
+
+    code = "politique_malformee"
+
+
 class ScoreInvalide(DomainError):
     """La valeur d'un score sort de la plage autorisée pour une flèche (0 à 10)."""
 

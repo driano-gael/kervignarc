@@ -12,32 +12,31 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 26/07/2026** · **62 US livrées** · dernière : `E05US001`.
+**Dernière mise à jour : 26/07/2026** · **63 US livrées** · dernière : `E05US003`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E05US003` — Politiques injectables & assemblage** poursuit le jalon **J2** (les duels) : définir
-> les interfaces de politiques (`routing/scoring/seeding/byes/tiebreak/depth`) assemblables par la
-> config JSON d'une phase, et **trancher DETTE-003** (config à plat *vs* `config.policies`) — arbitrage
-> structurant (ADR) à mener **avant** d'écrire le moteur. Détail :
+> **`E05US005` — Arbre d'élimination directe** poursuit le jalon **J2** (les duels) : dimensionner
+> (arrondi 2^k), ensemencer (seeding serpent), attribuer les byes, générer l'arbre, le faire
+> progresser (le gagnant avance) et le terminer sur un podium. **Consomme les politiques d'E05US003**
+> (les stratégies pures `SeedingSerpent`/`ByesAuxMieuxClasses`/`EliminationSeche` existent déjà et
+> sont testées) : cette US construit le **tableau** qui les orchestre. Détail :
 > [`stories/E05-moteur-phases.md`](../stories/E05-moteur-phases.md).
 > *J1 est **terminé** (46/46) ; le confort « ma journée » et les classements imprimables restent hors
 > décompte du jalon.*
 >
-> *Fait juste avant :* `E05US001` (séquence de phases) — terminée et poussée, revue faite. **Ouvre J2** :
-> l'agrégat `Phase` (jusqu'ici passif) devient **actif** — cycle de vie à 4 statuts
-> (`a_venir → en_cours ⇄ en_pause → terminee`, transitions pures + garde 409 au patron `ServiceTournois`),
-> **typage** ouvert (`elimination_directe`, `placement` aux côtés de `qualification`, barème/grain rendus
-> facultatifs), et **amorce d'un modèle de source** de peuplement (`SourcePhase` « rangs [a..b] de la
-> phase d'ordre k » + `effectif`) porté par l'agrégat pur `SequencePhases`, gardien des trois contrôles
-> de cohérence du CA (source vide / rangs inexistants / effectif incompatible). **Écran admin « Phases
-> (format) »** : composer/typer/ordonner/supprimer la séquence, déclarer source et effectif, piloter le
-> cycle de vie. Livré **full-stack** (domaine + service + repository + API + écran) et le modèle de source
-> est une **amorce assumée minimale** (DETTE-015, à élargir en E05US010).
-> [ADR-0045](../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md). Cadré avec le
-> commanditaire (livraison jusqu'à l'écran + amorce source plutôt que report à E05US010).
+> *Fait juste avant :* `E05US003` (politiques injectables & assemblage) — terminée et poussée, revue
+> faite. US de **fondation** (pas de surface utilisateur) : les six familles de politiques d'ADR-0004
+> (`routing/scoring/seeding/byes/tiebreak/depth`) deviennent des **interfaces du domaine** (`Protocol`)
+> avec une implémentation pure et testée chacune (`backend/domain/politiques.py`), assemblables depuis
+> `config.policies` via un `RegistrePolitiques` peuplé par la composition root. A **tranché DETTE-003**
+> ([ADR-0046](../docs/adr/0046-config-policies-politiques-nommees-parametrees.md), amende l'ADR-0011) :
+> politiques sous `config.policies`, chacune `{"nom": …, …paramètres}` ; grain de `validation` hors
+> `policies` ; migration de données `0028` + relecture tolérante de l'ancienne forme à plat ;
+> `modele-de-donnees.md` et ADR-0004 réconciliés. Arbitrage structurant mené **avec le commanditaire
+> avant** d'écrire le moteur.
 
 ---
 
@@ -109,12 +108,12 @@
 | 56 | E11US001 | Release, base et mise en réseau | ✅ |
 | 57 | E11US003 | Sauvegarde & archive | ✅ |
 
-## J2 — Duels simples + bascule de tour — 🔶 **en cours (1/15)**
+## J2 — Duels simples + bascule de tour — 🔶 **en cours (2/15)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
 | 58 | E05US001 | Séquence de phases | ✅ |
-| 59 | E05US003 | Politiques injectables & assemblage | ⬜ |
+| 59 | E05US003 | Politiques injectables & assemblage | ✅ |
 | 60 | E05US005 | Arbre d'élimination directe | ⬜ |
 | 61 | E03US006 | Contrainte ≥ 2 clubs par cible | ⬜ |
 | 62 | E03US009 | Placer les duellistes côte à côte | ⬜ |

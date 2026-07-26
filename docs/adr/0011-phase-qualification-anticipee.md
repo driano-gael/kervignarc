@@ -1,9 +1,17 @@
 # ADR-0011 — Introduire une `Phase` minimale dès J1 pour héberger le barème de qualification
 
-- **Statut** : Accepté
+- **Statut** : Accepté (forme de `config` **amendée** par [ADR-0046](0046-config-policies-politiques-nommees-parametrees.md), E05US003)
 - **Date** : 2026-07-14
 - **Décideurs** : Organisateur / Architecte
 - **Précise / anticipe** : ADR-0004 (moteur de phases à politiques injectables, prévu EPIC-05)
+
+> **Note (2026-07-26, ADR-0046).** Cet ADR posait le barème sous `config.scoring` **à la racine**
+> (`{"scoring": {"volees": N, "fleches": M, "mode": "cumul"}}`), forme minimale pour une unique phase
+> de qualification. E05US003 a fait basculer les politiques sous **`config.policies`**, chacune
+> `{"nom": …, …paramètres}` — le `scoring` de qualification devient
+> `config.policies.scoring = {"nom": "cumul", "volees": N, "fleches": M}`. La décision de fond de cet
+> ADR (héberger le barème sur une `Phase` conforme au modèle cible, pas sur le tournoi) **reste
+> valide** ; seule la forme du JSON a changé, avec migration `0028`.
 
 ## Contexte et problème
 

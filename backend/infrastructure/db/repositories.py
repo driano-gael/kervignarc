@@ -245,19 +245,25 @@ def _config_gabarit(gabarit: GabaritSalle) -> str:
 def _vers_phase(ligne: PhaseORM) -> Phase:
     """Traduit une ligne ORM en agrégat `Phase` (config JSON → barème, grain, source, effectif).
 
-    **Qualification** (E01US009/E01US015) : le barème est lu depuis `config.scoring`, le grain
-    depuis `config.validation`. Une `config` illisible **ou hors règle** (le repository en est le
-    seul rédacteur et écrit toujours des valeurs valides) est une **incohérence technique** → on
-    relit via les fabriques du domaine pour que même une valeur hors plage remonte en
-    `InfrastructureError` (ADR-0007), jamais en value object silencieusement invalide. L'**absence**
-    de `validation` n'est pas une incohérence — phase écrite avant E01US015 → preset du type
-    (mécanisme « politique sans migration », ADR-0011).
+    **Qualification** (E01US009/E01US015) : le barème est lu depuis `config.policies.scoring`
+    (forme cible, ADR-0046), le grain depuis `config.validation`. Une `config` illisible **ou hors
+    règle** (le repository en est le seul rédacteur et écrit toujours des valeurs valides) est une
+    **incohérence technique** → on relit via les fabriques du domaine pour que même une valeur hors
+    plage remonte en `InfrastructureError` (ADR-0007), jamais en value object silencieusement
+    invalide. L'**absence** de `validation` n'est pas une incohérence — phase écrite avant E01US015
+    → preset du type (mécanisme « politique sans migration », ADR-0011).
+
+    **Compatibilité ascendante (ADR-0046).** E05US003 a fait basculer le `scoring` de la racine
+    (`config.scoring`) vers `config.policies.scoring`. La migration Alembic `0028` réécrit les
+    lignes existantes, mais `_lire_scoring` relit **aussi** l'ancienne forme à plat — au cas d'une
+    base restaurée d'une sauvegarde antérieure — sans jamais dépendre du champ `nom`/`mode` (seuls
+    `volees`/`fleches` alimentent le barème). Même patron « politique sans migration » que le grain.
 
     **Autres types** (E05US001/ADR-0045) : `bareme`/`validation` sont **absents** (`None`) — une
     phase d'élimination n'a pas de barème de qualification. La **source** de peuplement
     (`config.source`) et l'**effectif** (`config.effectif`) sont facultatifs, présents pour tout
     type. Leur absence est licite (première phase, effectif non déclaré) ; présents mais illisibles,
-    ils restent une incohérence technique. La forme reste **à plat** (DETTE-003 → E05US003).
+    ils restent une incohérence technique.
     """
     try:
         config = json.loads(ligne.config)
@@ -266,7 +272,7 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
         bareme = None
         validation = None
         if type_phase is TypePhase.QUALIFICATION:
-            scoring = config["scoring"]
+            scoring = _lire_scoring(config)
             bareme = BaremeQualification.creer(
                 nb_volees=int(scoring["volees"]),
                 nb_fleches_par_volee=int(scoring["fleches"]),
@@ -306,6 +312,21 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
         raise InfrastructureError("Configuration de phase illisible.") from exc
 
 
+def _lire_scoring(config: Any) -> Any:
+    """Extrait l'objet `scoring` d'une `config` de phase, forme cible **ou** ancienne (ADR-0046).
+
+    Cible (E05US003) : `config.policies.scoring`. Ancienne (E01US009, base non migrée / restaurée) :
+    `config.scoring` à la racine. On préfère la cible ; on retombe sur la racine sinon. Le champ
+    `nom`/`mode` n'est pas exploité (seuls `volees`/`fleches` alimentent le barème) — les deux
+    formes sont donc relues à l'identique. Une forme inattendue (ni l'une ni l'autre) lève
+    `KeyError`/`TypeError`, que `_vers_phase` enveloppe en `InfrastructureError`.
+    """
+    policies = config.get("policies")
+    if isinstance(policies, dict) and "scoring" in policies:
+        return policies["scoring"]
+    return config["scoring"]
+
+
 def _vers_source(source: Any) -> SourcePhase:
     """Relit la source de peuplement depuis sa forme JSON (`config.source`).
 
@@ -340,26 +361,27 @@ def _vers_grain(validation: Any) -> GrainValidation:
 
 
 def _config_phase(phase: Phase) -> str:
-    """Sérialise les politiques et le peuplement d'une phase en JSON.
+    """Sérialise les politiques et le peuplement d'une phase en JSON (forme cible, ADR-0046).
 
-    Forme : `{"scoring"?: {...}, "validation"?: {...}, "source"?: {...}, "effectif"?: int}`. Le
-    barème/grain (`scoring`/`validation`) ne sont écrits que pour une phase de **qualification**
-    (les seules à en porter, E05US001/ADR-0045). Le mode de `scoring` est explicitement `cumul`
-    (seul mode de la qualification) ; `validation` ne porte `n_volees` que pour le grain « toutes
-    les N volées ». La **source** (peuplement) et l'**effectif** sont écrits s'ils sont déclarés,
-    quel que soit le type.
-
-    # DETTE-003 (docs/dette.md) : les politiques sont écrites **à plat** alors que le modèle cible
-    # (ADR-0004) les range sous `config.policies`, et `scoring` est ici un objet paramétré plutôt
-    # qu'un nom de preset. Forme posée par E01US009 ; E01US015/E05US001 s'y alignent pour ne pas
-    # créer une 2ᵉ convention. E05US003 tranche — ne pas introduire `policies` en attendant.
+    Forme : `{"policies"?: {...}, "validation"?: {...}, "source"?: {...}, "effectif"?: int}`. Les
+    **politiques du moteur** (ADR-0004) vivent sous `config.policies`, chacune un objet
+    `{"nom": <implémentation>, …paramètres}` — E05US003 a tranché DETTE-003 (`config.policies` +
+    nom+paramètres). Ici seul `scoring` est écrit, et seulement pour une **qualification** :
+    `{"nom": "cumul", "volees": N, "fleches": M}` (le `nom` désigne le classement au cumul, les
+    paramètres portent le barème). Le grain de `validation` **n'est pas** une politique de moteur —
+    il reste **hors** `policies`, à la racine (ADR-0046), et ne porte `n_volees` que pour le grain
+    « toutes les N volées ». La **source** (peuplement) et l'**effectif** sont écrits s'ils sont
+    déclarés, quel que soit le type. La relecture (`_vers_phase`) reste tolérante à l'ancienne forme
+    à plat pour une base non migrée.
     """
     config: dict[str, object] = {}
     if phase.bareme is not None:
-        config["scoring"] = {
-            "volees": phase.bareme.nb_volees,
-            "fleches": phase.bareme.nb_fleches_par_volee,
-            "mode": "cumul",
+        config["policies"] = {
+            "scoring": {
+                "nom": "cumul",
+                "volees": phase.bareme.nb_volees,
+                "fleches": phase.bareme.nb_fleches_par_volee,
+            }
         }
     if phase.validation is not None:
         validation: dict[str, object] = {"grain": phase.validation.type.value}

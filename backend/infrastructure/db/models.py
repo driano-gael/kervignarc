@@ -265,13 +265,15 @@ class PhaseORM(Base):
     """Table `phase` — persistance de l'agrégat `Phase` (introduction minimale, E01US009/ADR-0011).
 
     `type` et `statut` stockent la **valeur** de leurs énumérations (`TypePhase`, `StatutPhase`).
-    Les **politiques** de la phase sont sérialisées dans `config` (JSON) : le barème de
-    qualification dans `config.scoring` (E01US009) et le grain de validation dans
-    `config.validation` (E01US015, `D-11`) ; la traduction JSON ↔ agrégat est faite par le
-    repository. C'est le `config` JSON qui permet d'ajouter une politique **sans migration**
-    (ADR-0011) : une ligne écrite avant E01US015 n'a pas de clé `validation`, et se relit avec le
-    preset de son type. `ordre` et `statut` sont conformes au modèle de données mais non exploités
-    avant le moteur (EPIC-05).
+    Les **politiques** de la phase sont sérialisées dans `config` (JSON) : depuis E05US003/ADR-0046,
+    le barème de qualification dans `config.policies.scoring` (nommé « cumul » + paramètres), le
+    grain de validation restant à la racine dans `config.validation` (E01US015, `D-11`, ce n'est pas
+    une politique de moteur) ; la traduction JSON ↔ agrégat est faite par le repository. C'est le
+    `config` JSON qui permet d'ajouter une politique **sans migration de schéma** (ADR-0011) : une
+    ligne écrite avant E01US015 n'a pas de clé `validation` et se relit avec le preset de son type,
+    et la relecture reste tolérante à l'ancienne forme à plat de `scoring` (repli `_lire_scoring`,
+    la migration `0028` réécrivant les lignes existantes). `ordre` et `statut` sont conformes au
+    modèle de données mais non exploités avant le moteur (EPIC-05).
     """
 
     __tablename__ = "phase"

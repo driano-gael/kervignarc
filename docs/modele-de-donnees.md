@@ -402,45 +402,42 @@ inscrit **sans** ligne est en **réserve**.
 
 ## Config d'une PHASE (champ `config` JSON)
 
-Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Exemple pour un tableau à placement intégral :
+Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Depuis E05US003
+([ADR-0046](adr/0046-config-policies-politiques-nommees-parametrees.md)), chaque politique est un
+objet **`{"nom": <implémentation>, …paramètres}`** — un **nom** (l'implémentation, résolue par le
+registre) **et** ses paramètres (le barème se paramètre, il ne se choisit pas dans un catalogue
+fermé). Seules les **six familles d'ADR-0004** (`routing/scoring/seeding/byes/tiebreak/depth`) vivent
+sous `policies` ; le grain de `validation`, la `source` de peuplement et l'`effectif` restent **à la
+racine** (ce ne sont pas des politiques de moteur). Exemples :
 
-```json
+```jsonc
+// Qualification (E01US009+, forme livrée)
 {
-  "sourcing": { "type": "tous_inscrits" },
+  "policies": { "scoring": { "nom": "cumul", "volees": 20, "fleches": 3 } },
+  "validation": { "grain": "fin_de_serie" }
+}
+
+// Tableau à placement intégral (forme cible du moteur, E05US005/E05US010)
+{
   "policies": {
-    "routing":  "cascade",
-    "scoring":  "sets_4pts",
-    "scoring_par_arme": { "poulie": "cumul_volees" },
-    "seeding":  "serpent",
-    "byes":     "mieux_classes",
-    "tiebreak": "10_puis_9",
-    "depth":    "1_a_n"
+    "routing":  { "nom": "cascade" },
+    "scoring":  { "nom": "sets", "points_victoire": 6 },
+    "seeding":  { "nom": "serpent" },
+    "byes":     { "nom": "mieux_classes" },
+    "tiebreak": { "nom": "ffta_defaut" },
+    "depth":    { "nom": "un_vers_n" }
   },
-  "policies": {
-    "routing":  "cascade",
-    "scoring":  "sets_4pts",
-    "scoring_par_arme": { "poulie": "cumul_volees" },
-    "validation": { "grain": "fin_de_duel" },
-    "seeding":  "serpent",
-    "byes":     "mieux_classes",
-    "tiebreak": "10_puis_9",
-    "depth":    "1_a_n"
-  },
-  "params": { "taille_tableau": 128 },
-  "blason_surcharge": { "*": "triple_vertical_40" }
+  "validation": { "grain": "fin_de_duel" },
+  "source": { "ordre_source": 1, "rang_debut": 1, "rang_fin": 128 },
+  "effectif": 128
 }
 ```
 
-> ⚠️ **Cible vs implémentation actuelle.** L'exemple ci-dessus est la forme **cible** (ADR-0004),
-> où toute politique vit sous `policies`. L'implémentation d'aujourd'hui (E01US009 puis E01US015,
-> périmètre ADR-0011 : **une seule phase, `qualification`**) écrit `scoring` et `validation`
-> **à plat à la racine** de `config`, et `scoring` y est un **objet** (`{"volees": N, "fleches": M,
-> "mode": "cumul"}`) et non un **nom de preset** (`"sets_4pts"`) — un barème de qualification est
-> paramétré, pas choisi dans un catalogue. E01US015 s'aligne sur cette forme effective plutôt que
-> d'introduire une 2ᵉ convention dans la même `config`. **C'est le moteur (EPIC-05) qui
-> réconciliera les deux**, quand les presets multi-phases (E01US011) et les autres politiques
-> arriveront ; d'ici là, lire les règles ci-dessous en substituant `config.scoring` à
-> `config.policies.scoring`.
+> **Historique (résorbé).** Avant E05US003, l'implémentation écrivait `scoring` **à plat à la racine**
+> (`config.scoring`, forme d'E01US009 sous le périmètre ADR-0011 : une seule phase `qualification`).
+> DETTE-003 en gardait la trace ; ADR-0046 l'a tranché — bascule sous `policies`, `mode` → `nom`,
+> migration `0028` des lignes existantes + relecture tolérante de l'ancienne forme. Ce doc décrit
+> désormais la **forme livrée**, plus une forme cible à réconcilier.
 
 - `validation` porte le **grain de validation** de la phase (`D-11`) : **quand le scoreur valide**.
   Valeurs : `fin_de_serie` (preset de la qualification) · `fin_de_duel` (preset de l'élimination

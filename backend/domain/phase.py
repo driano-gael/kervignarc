@@ -20,9 +20,10 @@ n'exploitait. E01US015 a ajouté la 2ᵉ politique de qualification (le grain de
   trois contrôles de cohérence du CA (source vide / rangs inexistants / effectif incompatible),
   portés par l'agrégat pur `SequencePhases`.
 
-La forme de `config` reste **à plat** (`config.scoring`, `config.validation`) : la bascule vers
-`config.policies` est assignée à E05US003 (DETTE-003), pas ici. Agrégats de domaine **purs**
-(immuables, sans dépendance framework).
+La **forme JSON** de la config est une préoccupation du **repository** (l'agrégat pur ci-dessous ne
+sérialise rien) : depuis E05US003/ADR-0046, les politiques du moteur y vivent sous `config.policies`
+(le barème sous `config.policies.scoring`), le grain de `validation` restant à la racine. Agrégats
+de domaine **purs** (immuables, sans dépendance framework).
 
 [ADR-0045]: ../../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md
 """

@@ -73,22 +73,31 @@ garde-fous de cohérence, *afin de* définir le format sans risque de blocage pl
 > Les formats **par équipes** relèvent d'un périmètre distinct (le moteur oppose des *participants*,
 > pas des archers) — **[EPIC-13](../epics/EPIC-13-equipes.md)**, [ADR-0028](../docs/adr/0028-epreuves-par-equipes-participant.md).
 
-### E05US003 — Politiques injectables & assemblage
+### E05US003 — Politiques injectables & assemblage — ✅ livrée 26/07/2026
 *En tant que* développeur, *je veux* des interfaces de politiques `routing/scoring/seeding/byes/
 tiebreak/depth` assemblables par la config JSON d'une phase, *afin d'*assembler des formats sans code
 dédié.
 - **CA — interfaces (ex-003)** : chaque politique (`routing/scoring/seeding/byes/tiebreak/depth`) est
-  une interface du domaine avec au moins une implémentation ; unitairement testable.
+  une interface du domaine (`Protocol`) avec au moins une implémentation ; unitairement testable.
+  Livré : `EliminationSeche`, `ScoreCumul`, `SeedingSerpent`, `ByesAuxMieuxClasses`,
+  `TiebreakFftaDefaut`, `ProfondeurUnVersN` dans `backend/domain/politiques.py`.
 - **CA — assemblage (ex-004)** : la config JSON d'une phase référence les politiques ; assemblage
-  résolu par la composition root. **Tranche [DETTE-003](../docs/dette.md)** : politiques **à la
-  racine** (forme écrite par E01US009/E01US015) *vs* sous **`config.policies`** (modèle cible
-  ADR-0004), et **objet paramétré** *vs* **nom de preset** pour `scoring` ; met `modele-de-donnees.md`
-  **et** l'ADR-0004 en accord avec la décision ; si `policies` l'emporte, fournit la migration des
-  `config` existantes + un test de relecture de l'ancienne forme.
-- **Notes** : le socle des interfaces (ex-003) est le cœur de l'**ADR-0004**. **⚠️ Arbitrage à
-  trancher avant d'écrire le moteur** (ex-004) — deux conventions coexistent aujourd'hui pour le même
-  champ (politiques à la racine *vs* `config.policies`, cf. DETTE-003). Décision structurante ⇒ ADR
-  (amende ou remplace l'**ADR-0011**).
+  résolu par la composition root (`RegistrePolitiques` + `assembler_politiques`, registre peuplé dans
+  `bootstrap/composition.py`). **A tranché [DETTE-003](../docs/dette.md)** via
+  [ADR-0046](../docs/adr/0046-config-policies-politiques-nommees-parametrees.md) : politiques sous
+  **`config.policies`**, chacune **`{"nom": …, …paramètres}`** (nom + paramètres, ni objet anonyme ni
+  preset fermé) ; grain de `validation` **hors** `policies` ; `modele-de-donnees.md` et ADR-0004
+  réconciliés ; migration de données `0028` + test de relecture de l'ancienne forme à plat.
+- **Notes** : le socle des interfaces (ex-003) est le cœur de l'**ADR-0004**. Arbitrage tranché avec
+  le commanditaire avant d'écrire le moteur (ADR-0046, amende l'**ADR-0011**).
+  **Périmètre vs E05US005/E05US010** : cette US livre les **politiques** (stratégies pures) — dont le
+  seeding serpent et les byes « aux mieux classés », fonctions pures unitairement testées. Le
+  **tableau** qui les orchestre (dimensionnement 2^k, génération, progression, podium) reste
+  **E05US005** ; le routing en cascade et le peuplement gagnants/perdants restent **E05US010**. Les
+  stratégies couplées à la structure d'arbre (routing, scoring par sets) exposent ici leur **méthode
+  fondatrice** ; les US consommatrices la **ressigneront** (ADR-0004 vise `route(perdant, tour,
+  contexte)`) — **rupture de contrat assumée**, bon marché tant qu'il n'y a qu'un implémenteur et
+  aucun consommateur (ADR-0046, § Conséquences).
 - **Absorbe** : ex-E05US003, E05US004. **Dépend de** : E05US001 · **Jalon** : J2
 
 ### E05US005 — Arbre d'élimination directe
