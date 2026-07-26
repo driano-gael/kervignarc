@@ -18,8 +18,11 @@ from domain.placement import (
     PlanDeCibles,
     PoseCalculee,
     RaisonConflit,
+    _ordonner_pour_adjacence,
     cible_accepte,
     cible_mixite_non_garantie,
+    cibles_avec_duel_separe,
+    duels_non_cote_a_cote,
     placer,
     placer_restants,
 )
@@ -462,3 +465,76 @@ def test_sans_club_le_placement_est_inchange() -> None:
     plan = placer(_cibles(4), archers)
     assert _archers_de(plan.cibles[0]) == (1, 2, 3)
     assert plan.cibles[0].mixite_non_garantie is True  # tous inconnus → non garantie
+
+
+# --- CA E03US009 « duellistes côte à côte » (positions adjacentes de la même cible) -------------
+# Dérivés du CA reversé (stories/E03-placement.md, ADR-0048) **avant** l'implémentation : côte à
+# côte = même cible, positions adjacentes ; contrainte molle (jamais un échec) obtenue par
+# ré-ordonnancement de l'entrée ; un duel qu'on ne peut pas rapprocher est **signalé**, pas bloqué.
+
+
+def _placer_duels(
+    cibles: tuple[Cible, ...],
+    archers: tuple[ArcherAPlacer, ...],
+    paires: list[tuple[int, int]],
+) -> PlanDeCibles:
+    """Place `archers` en favorisant le côte à côte des `paires` (stratégie d'ordre injectée)."""
+    partenaire: dict[int, int] = {}
+    for a, b in paires:
+        partenaire[a] = b
+        partenaire[b] = a
+    return placer(cibles, archers, ordonner=lambda ar: _ordonner_pour_adjacence(ar, partenaire))
+
+
+def test_duellistes_places_cote_a_cote_quand_la_cible_a_la_place() -> None:
+    # 4 archers d'un même groupe (blason/hauteur) tiennent sur une cible de capacité 4 ; deux duels
+    # croisés (1-3, 2-4). Le ré-ordonnancement les rend consécutifs → positions adjacentes.
+    archers = tuple(_archer(i, blason=1, taille=0.25) for i in (1, 2, 3, 4))
+    paires = [(1, 3), (2, 4)]
+    plan = _placer_duels(_cibles(4), archers, paires)
+    assert duels_non_cote_a_cote(plan, paires) == ()
+    assert cibles_avec_duel_separe(plan, paires) == frozenset()
+    # aucun archer perdu : les quatre sont posés
+    poses = tuple(sorted(a for cible in plan.cibles for a in _archers_de(cible)))
+    assert poses == (1, 2, 3, 4)
+
+
+def test_ordre_adjacence_ne_change_pas_les_budgets() -> None:
+    # Non-régression : le ré-ordonnancement ne fait que changer QUI occupe QUELLE position, jamais
+    # COMBIEN tiennent. Un duel (1,4) est rapproché sans perdre 2 et 3 (émis en place).
+    archers = tuple(_archer(i, blason=1, taille=0.25) for i in (1, 2, 3, 4))
+    plan = _placer_duels(_cibles(4), archers, [(1, 4)])
+    poses = tuple(sorted(a for cible in plan.cibles for a in _archers_de(cible)))
+    assert poses == (1, 2, 3, 4)
+    assert plan.conflits == ()
+    assert duels_non_cote_a_cote(plan, [(1, 4)]) == ()
+
+
+def test_duel_signale_quand_les_cibles_ne_prennent_qu_un_archer() -> None:
+    # Cibles de capacité 1 : deux duellistes ne peuvent structurellement PAS être côte à côte
+    # (chacun seul sur sa butte). Le placement ne bloque pas — il place et **signale**.
+    archers = (_archer(1, taille=1.0), _archer(2, taille=1.0))
+    paires = [(1, 2)]
+    plan = _placer_duels(_cibles(1, 1), archers, paires)
+    assert plan.conflits == ()  # les deux sont bien placés
+    assert duels_non_cote_a_cote(plan, paires) == ((1, 2),)
+    assert cibles_avec_duel_separe(plan, paires) == frozenset({1, 2})
+
+
+def test_duel_dont_un_membre_reste_en_reserve_est_signale() -> None:
+    # Une seule place pour deux : l'un est placé, l'autre en conflit (réserve). Un duel dont un
+    # membre n'est pas posé n'est pas côte à côte → signalé (jamais un mensonge « côte à côte »).
+    archers = (_archer(1, taille=1.0), _archer(2, taille=1.0))
+    paires = [(1, 2)]
+    plan = _placer_duels(_cibles(1), archers, paires)
+    assert any(c.archer_id == 2 for c in plan.conflits)
+    assert duels_non_cote_a_cote(plan, paires) == ((1, 2),)
+
+
+def test_duellistes_de_hauteurs_differentes_ne_sont_pas_cote_a_cote() -> None:
+    # Deux duellistes de hauteurs incompatibles (110 vs 130) ne partagent jamais une cible (une
+    # butte, une hauteur — ADR-0022) : « dans la mesure du possible » n'y peut rien → signalé.
+    archers = (_archer(1, taille=1.0, hauteur=110), _archer(2, taille=1.0, hauteur=130))
+    paires = [(1, 2)]
+    plan = _placer_duels(_cibles(1, 1), archers, paires)
+    assert duels_non_cote_a_cote(plan, paires) == ((1, 2),)

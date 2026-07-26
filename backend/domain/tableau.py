@@ -327,6 +327,21 @@ def construire_tableau(
     return Tableau(effectif=effectif, taille=taille, matchs=tuple(resolus), routing=routing)
 
 
+def paires_du_premier_tour(tableau: Tableau) -> tuple[tuple[Participant, Participant], ...]:
+    """Les duels **effectivement disputés** au premier tour : (haut, bas) de chaque match jouable.
+
+    Sert le placement des duellistes côte à côte (E03US009) : seuls les matchs du **tour 1** ont
+    leurs deux occupants connus dès la construction (les tours ≥ 2 restent `None` jusqu'à la
+    progression). On exclut les **byes** (un seul occupant, `est_jouable` faux) : un exempté n'a pas
+    d'adversaire à placer à côté de lui. Fonction **pure**, ordre = celui des matchs (donc de
+    l'ensemencement)."""
+    return tuple(
+        (m.haut, m.bas)
+        for m in tableau.matchs
+        if m.tour == 1 and m.est_jouable and m.haut is not None and m.bas is not None
+    )
+
+
 # --- rouages internes de progression -----------------------------------------------------------
 
 

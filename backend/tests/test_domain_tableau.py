@@ -38,6 +38,7 @@ from domain.tableau import (
     TeteDeSerie,
     VainqueurDe,
     construire_tableau,
+    paires_du_premier_tour,
 )
 
 SEEDING = SeedingSerpent()
@@ -109,6 +110,26 @@ def test_effectif_inferieur_a_deux_refuse() -> None:
     # Un tableau oppose au moins deux tireurs : à un seul, il n'y a pas de duel à disputer.
     with pytest.raises(EffectifTableauInvalide):
         construire(1)
+
+
+# --- CA E03US009 « paires du premier tour » (source des duels à placer côte à côte) -------------
+
+
+def test_paires_du_premier_tour_donne_les_duels_disputes() -> None:
+    # Effectif = puissance de 2 : tous les matchs du 1er tour sont disputés (aucun exempt).
+    # Le serpent oppose r et 2^k+1-r (cf. test_premier_tour_suit_l_ordre_serpent) : (1,4) et (2,3).
+    paires = paires_du_premier_tour(construire(4))
+    assert {frozenset((a.ref_id, b.ref_id)) for a, b in paires} == {
+        frozenset((1, 4)),
+        frozenset((2, 3)),
+    }
+
+
+def test_paires_du_premier_tour_exclut_les_exempts() -> None:
+    # 5 archers dans un tableau de 8 : les têtes 1, 2, 3 sont exemptées (byes), seul 4 vs 5 se joue.
+    # Un exempté n'a pas d'adversaire à placer à côté de lui : le bye est exclu des paires.
+    paires = paires_du_premier_tour(construire(5))
+    assert {frozenset((a.ref_id, b.ref_id)) for a, b in paires} == {frozenset((4, 5))}
 
 
 # --- CA « byes » -------------------------------------------------------------------------------
