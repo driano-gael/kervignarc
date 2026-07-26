@@ -12,31 +12,36 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 26/07/2026** · **63 US livrées** · dernière : `E05US003`.
+**Dernière mise à jour : 26/07/2026** · **65 US livrées** · dernière : `E05US005`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E05US005` — Arbre d'élimination directe** poursuit le jalon **J2** (les duels) : dimensionner
-> (arrondi 2^k), ensemencer (seeding serpent), attribuer les byes, générer l'arbre, le faire
-> progresser (le gagnant avance) et le terminer sur un podium. **Consomme les politiques d'E05US003**
-> (les stratégies pures `SeedingSerpent`/`ByesAuxMieuxClasses`/`EliminationSeche` existent déjà et
-> sont testées) : cette US construit le **tableau** qui les orchestre. Détail :
-> [`stories/E05-moteur-phases.md`](../stories/E05-moteur-phases.md).
+> **`E03US006` — Contrainte ≥ 2 clubs par cible** poursuit le jalon **J2** : au placement, garantir
+> qu'une cible réunit **au moins deux clubs** différents (équité — éviter qu'un même club « occupe »
+> une cible entière). Contrainte à ajouter au moteur de placement livré en E03US001/E03US004. Détail :
+> [`stories/E03-placement.md`](../stories/E03-placement.md).
+> *Note : le **fil équipes** est désormais **débloqué** — `E13US002` (composer les équipes) peut être
+> pris à tout moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *J1 est **terminé** (46/46) ; le confort « ma journée » et les classements imprimables restent hors
 > décompte du jalon.*
 >
-> *Fait juste avant :* `E05US003` (politiques injectables & assemblage) — terminée et poussée, revue
-> faite. US de **fondation** (pas de surface utilisateur) : les six familles de politiques d'ADR-0004
-> (`routing/scoring/seeding/byes/tiebreak/depth`) deviennent des **interfaces du domaine** (`Protocol`)
-> avec une implémentation pure et testée chacune (`backend/domain/politiques.py`), assemblables depuis
-> `config.policies` via un `RegistrePolitiques` peuplé par la composition root. A **tranché DETTE-003**
-> ([ADR-0046](../docs/adr/0046-config-policies-politiques-nommees-parametrees.md), amende l'ADR-0011) :
-> politiques sous `config.policies`, chacune `{"nom": …, …paramètres}` ; grain de `validation` hors
-> `policies` ; migration de données `0028` + relecture tolérante de l'ancienne forme à plat ;
-> `modele-de-donnees.md` et ADR-0004 réconciliés. Arbitrage structurant mené **avec le commanditaire
-> avant** d'écrire le moteur.
+> *Fait juste avant (un lot, une PR, deux commits) :*
+> - `E13US001` (abstraction Participant) — US de **fondation** sans surface utilisateur. Pose le value
+>   object `Participant {genre, ref_id}` (`backend/domain/participant.py`) : un match oppose des
+>   **participants** (archer **ou** équipe), jamais des archers en dur, et le moteur les manipule de
+>   façon **opaque** (aucune branche `if équipe`, ADR-0028 décision n°3). Réconcilie
+>   `modele-de-donnees.md` (MATCH → `participant_a/b`) et ADR-0028 (note de suivi). Livrée **avant**
+>   E05US005 pour **respecter l'ordonnancement d'ADR-0028** (arbitrage tranché avec le commanditaire).
+> - `E05US005` (arbre d'élimination directe) — US de **fondation** : le **tableau**
+>   (`backend/domain/tableau.py`) qui **orchestre** les politiques d'E05US003. Dimensionne à la
+>   puissance de 2, ensemence en **serpent**, attribue les **byes** aux mieux classés, génère les
+>   **matchs numérotés** reliés à leurs sources, fait **avancer** le vainqueur (le perdant est
+>   **éliminé** — routing sèche) et produit le **podium** (finale → 1-2, petite finale → 3-4). Le
+>   `Match` **oppose des `Participant`** ; le **rang** de qualif ne sert qu'à l'ensemencement. Les
+>   trois politiques (`seeding`/`byes`/`routing`) sont **injectées et consommées** (garde-fou de
+>   cohérence seeding↔byes). L'exposition service/API viendra avec la **saisie en duels E04US013**.
 
 ---
 
@@ -108,13 +113,13 @@
 | 56 | E11US001 | Release, base et mise en réseau | ✅ |
 | 57 | E11US003 | Sauvegarde & archive | ✅ |
 
-## J2 — Duels simples + bascule de tour — 🔶 **en cours (2/15)**
+## J2 — Duels simples + bascule de tour — 🔶 **en cours (3/15)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
 | 58 | E05US001 | Séquence de phases | ✅ |
 | 59 | E05US003 | Politiques injectables & assemblage | ✅ |
-| 60 | E05US005 | Arbre d'élimination directe | ⬜ |
+| 60 | E05US005 | Arbre d'élimination directe *(moteur sur `Participant`)* | ✅ |
 | 61 | E03US006 | Contrainte ≥ 2 clubs par cible | ⬜ |
 | 62 | E03US009 | Placer les duellistes côte à côte | ⬜ |
 | 63 | E04US013 | Saisie en duels | ⬜ |
@@ -158,7 +163,7 @@
 | 90 | E11US006 | Restauration & arrêt propre | ⬜ |
 | 91 | E10US006 | Modifier le mot de passe admin | ⬜ |
 
-## Ajouts de l'entretien du 18/07/2026 — ⬜ **à planifier (1/10)**
+## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (2/10)**
 
 > Non renumérotés dans les jalons ci-dessus (séquence indicative, à insérer au bon rang). Cf.
 > [`stories/README.md`](../stories/README.md) § « Ajouts » et ADR-0026/0027/0028.
@@ -171,7 +176,7 @@
 | E01US018 | Vocabulaire de score configurable | J1 | ⬜ *(idem)* |
 | E01US019 | Capacité de cible non bornée | J1→J3 | ⬜ *(idem)* |
 | E02US010 | Horaire de départ HH:MM obligatoire | J1 | ⬜ *(idem)* |
-| E13US001 | Abstraction participant | J2 | ⬜ |
+| E13US001 | Abstraction participant | J2 | ✅ *(livrée avant E05US005, ADR-0028)* |
 | E13US002 | Composer les équipes d'un tournoi | J2 | ⬜ |
 | E13US003 | Scoring d'équipe (politique injectable) | J2 | ⬜ |
 | E13US004 | Placement, saisie & classement par équipe | J2→J3 | ⬜ |

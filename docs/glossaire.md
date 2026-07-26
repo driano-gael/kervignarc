@@ -32,7 +32,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Barème** | `Bareme` | Règle de calcul/victoire d'une phase (cumul, sets, shoot-off, BSO). |
 | **Qualification** | phase type `qualification` | Phase de classement par cumul de volées. |
 | **Barrage** | phase type `barrage` | Tir de départage (souvent 1 flèche) pour les égalités décisives. |
-| **Duel / Match** | `Match` | Affrontement individuel entre deux archers. |
+| **Duel / Match** | `Match` | Affrontement entre deux **participants** (archer en individuel, équipe en épreuve par équipes — ADR-0028). |
 | **Set** | `Set` | Manche d'un duel ; le vainqueur marque des points de set. |
 | **Shoot-off** | — | Tir de barrage (1 flèche) ; départage au plus près du centre. |
 | **Big Shoot Off (BSO)** | phase type `big_shoot_off` | Grande finale au format tir décisif. |
@@ -41,8 +41,8 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Tableau de placement** | — | Sous-arbre classant une plage de rangs (ex. 17-24). |
 | **Lucky Loser** | — | Dans ce projet : **tableau de classement/consolation** (pas un repêchage par défaut — cf. `moteur-placement-lucky-loser.md`). |
 | **Repêchage** | routing `repechage` | Réintégration de perdants dans le principal (mode World Archery, optionnel). |
-| **Exempt / Bye** | `bye` | Archer qualifié d'office pour un tour (sans adversaire). |
-| **Tête de série** | `seed` | Rang d'un archer issu de la qualification, servant à l'ensemencement. |
+| **Exempt / Bye** | `Exempt` (`bye`) | Participant qualifié d'office pour un tour (sans adversaire). |
+| **Tête de série** | `TeteDeSerie` (`seed`) | Rang (position) issu de la qualification, servant à l'ensemencement. |
 | **Seeding** | `seeding` | Placement des archers dans l'arbre (serpent). |
 | **Phase** | `Phase` | Étape du tournoi (qualif, barrage, élimination directe, placement, finale, BSO…). Valeur d'enum : `elimination_directe` (E05US001). |
 | **Barème** | `BaremeQualification` | Comment se tire et se compte une phase. En qualification : N volées de M flèches, au cumul (`config.scoring`). |

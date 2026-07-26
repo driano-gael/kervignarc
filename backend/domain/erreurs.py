@@ -305,6 +305,69 @@ class PolitiqueMalFormee(DomainError):
     code = "politique_malformee"
 
 
+class EffectifTableauInvalide(DomainError):
+    """L'effectif d'un tableau d'élimination directe est inférieur à 2 (E05US005).
+
+    Un tableau **oppose** des tireurs : il en faut au moins deux pour disputer un match. À un seul
+    participant il n'y a pas d'arbre à construire (champion d'office) — cas traité hors moteur.
+    """
+
+    code = "effectif_tableau_invalide"
+
+
+class FormatTableauIncoherent(DomainError):
+    """Les politiques `seeding` et `byes` injectées se contredisent sur les exempts (E05US005).
+
+    Un format de tableau est un **assemblage** de stratégies (règle 2) : le `seeding` place les
+    seeds dans les slots, le `byes` désigne les dispensés du premier tour. Ces deux choix doivent
+    **concorder** — les seeds que `byes` dispense doivent être exactement ceux que la structure du
+    seeding laisse sans adversaire réel. Une paire incohérente (ex. seeding serpent + byes « aux
+    plus mauvais classés ») produirait un arbre où un seed dispensé aurait pourtant un adversaire,
+    ou l'inverse : le moteur la **refuse** à la construction plutôt que de trancher en douce.
+    """
+
+    code = "format_tableau_incoherent"
+
+
+class MatchIntrouvable(DomainError):
+    """Aucun match de ce numéro dans le tableau (E05US005) — progression d'un match inexistant."""
+
+    code = "match_introuvable"
+
+
+class MatchNonJouable(DomainError):
+    """Le match visé ne peut pas recevoir de vainqueur en l'état (E05US005).
+
+    Trois cas : c'est un **bye** (déjà gagné d'office par le seed exempté), ses deux occupants ne
+    sont **pas encore connus** (un match amont n'a pas livré son vainqueur), ou il est déjà joué.
+    La progression n'écrit que sur un match aux deux places remplies et sans vainqueur.
+    """
+
+    code = "match_non_jouable"
+
+
+class VainqueurHorsMatch(DomainError):
+    """Le vainqueur déclaré ne dispute pas ce match (E05US005).
+
+    On ne peut désigner vainqueur que l'un des deux occupants effectifs du match — pas un tireur
+    d'un autre match ni un seed déjà éliminé.
+    """
+
+    code = "vainqueur_hors_match"
+
+
+class RoutingNonSupporte(DomainError):
+    """Le moteur d'élimination directe ne route le perdant que par élimination sèche (E05US005).
+
+    E05US005 n'implémente que le format « le perdant quitte le tournoi » (`EliminationSeche`). Une
+    destination de **cascade** (placement intégral) ou de **repêchage** (WA) suppose un sous-tableau
+    d'accueil que ce moteur ne construit pas — c'est le périmètre d'E05US010 / E05US016, qui
+    ressigneront le routing (ADR-0004, `route(perdant, tour, contexte)`).
+    """
+
+    code = "routing_non_supporte"
+
+
 class ScoreInvalide(DomainError):
     """La valeur d'un score sort de la plage autorisée pour une flèche (0 à 10)."""
 
