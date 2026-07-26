@@ -1252,6 +1252,22 @@ button:disabled {
   color: var(--warn);
 }
 
+/* Mixité de club non garantie (E03US006, RG-3) : avertissement d'équité **ambre** (DV-03, `--warn`),
+   jamais rouge — l'objectif « ≥ 2 clubs par cible » n'est pas atteignable ici (un seul club, ou club
+   inconnu). Signal, pas erreur bloquante : l'admin peut ajuster à la main. Badge par cible + bannière
+   récapitulative dans le même registre. */
+.cible__mixite {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--warn);
+}
+
+.placement__mixite {
+  color: var(--warn);
+  font-size: 13px;
+}
+
 /* ------------------------------------------------------------------------- */
 /* Saisie de qualification — poste de cible (E04US002).                      */
 /* Écran de saisie : cibles tactiles ≥ 48 px (plancher renforcé du CDC       */

@@ -25,10 +25,16 @@ export interface Placement {
 
 // Une cible du plan : son rang (`index`), son plafond d'archers (`capacite`) et les archers posés
 // (`placements`, vide si la cible est libre).
+//
+// `mixite_non_garantie` (RG-3, E03US006) : `true` quand la cible porte ≥ 2 archers sans qu'on puisse
+// affirmer ≥ 2 clubs distincts (un seul club, ou clubs inconnus — le serveur traite `NULL` comme
+// *indécidable*). L'admin le voit pour ajuster à la main s'il le souhaite ; ce n'est **pas** une
+// erreur, juste un objectif d'équité non atteint. Recalculé serveur à chaque lecture (jamais persisté).
 export interface CiblePlacee {
   index: number
   capacite: number
   placements: Placement[]
+  mixite_non_garantie: boolean
 }
 
 // Un archer que le placement n'a pas pu poser (il est **dans la réserve**), et pourquoi. Porte aussi

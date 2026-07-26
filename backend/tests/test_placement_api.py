@@ -457,3 +457,29 @@ def test_plan_de_cibles_sans_gabarit_404(
         reponse = client.get(f"/api/v1/tournois/{tournoi_id}/departs/{depart_id}/plan-de-cibles")
     assert reponse.status_code == 404, reponse.text
     assert reponse.json()["code"] == "gabarit_du_tournoi_absent"
+
+
+def test_plan_de_cibles_expose_le_drapeau_de_mixite(
+    app_placement: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E03US006 : chaque cible du DTO porte `mixite_non_garantie` (bool).
+
+    Câblage de bout en bout : deux archers **sans club renseigné** (`club_id NULL`) sur une même
+    cible ⇒ mixité *indécidable* (ADR-0014) → le drapeau remonte `true` dans la réponse JSON. Prouve
+    l'exposition du champ **et** que le service l'a bien recalculé à la lecture (ADR-0047)."""
+    with TestClient(app_placement) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        _appliquer_gabarit(client, tournoi_id, nb_cibles=1)
+        categorie_id = _creer_categorie(client, tournoi_id)
+        depart_id = _creer_depart(client, tournoi_id)
+        _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Guillaume")
+        _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom="Walter")
+
+        _regenerer(client, tournoi_id, depart_id)
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/departs/{depart_id}/plan-de-cibles")
+
+    assert reponse.status_code == 200, reponse.text
+    cible = reponse.json()["cibles"][0]
+    assert len(cible["placements"]) == 2
+    assert cible["mixite_non_garantie"] is True  # deux clubs inconnus → non garantie

@@ -28,6 +28,7 @@ import {
   usePlanDeCibles,
   useRegenerer,
 } from './hooks'
+import { resumeMixiteNonGarantie } from './presentation'
 
 // Les positions d'une cible sont des lettres ; une cible de capacité N expose les N premières.
 const POSITIONS = ['A', 'B', 'C', 'D']
@@ -148,6 +149,9 @@ function PlanCharge({
   // l'assume plutôt que de persister un drapeau « généré ».
   const planVide = plan.cibles.every((cible) => cible.placements.length === 0)
   const planPret = plan.conflits.length === 0 && !planVide
+  // Avertissement d'équité (E03US006, RG-3) : cibles où la mixité ≥ 2 clubs n'est pas garantie.
+  // `null` si tout est mixé → aucune bannière. C'est un signal, pas un blocage (l'admin ajuste).
+  const resumeMixite = resumeMixiteNonGarantie(plan.cibles)
 
   const jeton = (archerId: number, inscriptionId: number): Jeton => ({
     nom: nomParArcher.get(archerId) ?? `Archer #${archerId}`,
@@ -251,6 +255,15 @@ function PlanCharge({
         </p>
       )}
 
+      {/* Mixité de club non garantie (E03US006, RG-3) : bannière **ambre** (DV-03), jamais rouge —
+          l'objectif « ≥ 2 clubs par cible » n'est pas atteignable partout (un seul club, ou club
+          inconnu). Signal, pas erreur : l'admin peut ajuster à la main. */}
+      {resumeMixite && (
+        <p className="placement__mixite" role="status">
+          {resumeMixite}
+        </p>
+      )}
+
       <div className="placement__cibles">
         {plan.cibles.map((cible) => (
           <Cible
@@ -299,6 +312,11 @@ function Cible({
   return (
     <div className="cible">
       <span className="cible__titre">Cible {cible.index}</span>
+      {/* Objectif de mixité ≥ 2 clubs non atteint sur cette cible (E03US006) : badge ambre discret,
+          l'admin décide s'il ajuste. Pas de badge quand la mixité est garantie ou sans objet. */}
+      {cible.mixite_non_garantie && (
+        <span className="cible__mixite">mixité de club non garantie</span>
+      )}
       <div className="cible__cases">
         {positions.map((position) => {
           const place = cible.placements.find((p) => p.position === position)

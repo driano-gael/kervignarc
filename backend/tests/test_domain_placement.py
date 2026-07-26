@@ -19,6 +19,7 @@ from domain.placement import (
     PoseCalculee,
     RaisonConflit,
     cible_accepte,
+    cible_mixite_non_garantie,
     placer,
     placer_restants,
 )
@@ -31,6 +32,7 @@ def _archer(
     taille: float = 0.5,
     capacite_blason: int = 1,
     hauteur: int = 130,
+    club: int | None = None,
 ) -> ArcherAPlacer:
     return ArcherAPlacer(
         archer_id=archer_id,
@@ -38,6 +40,7 @@ def _archer(
         taille=taille,
         capacite_blason=capacite_blason,
         hauteur_cm=hauteur,
+        club_id=club,
     )
 
 
@@ -313,3 +316,149 @@ def test_placer_restants_signale_les_irreductibles() -> None:
     poses, conflits = placer_restants(cibles, plan, donnees, (donnees[2],))
     assert poses == ()
     assert conflits == (Conflit(archer_id=2, raison=RaisonConflit.NON_PLACE),)
+
+
+# --- E03US006 : mixité ≥ 2 clubs par cible ----------------------------------------------------
+#
+# Tests dérivés du CA (« le placement auto **favorise** ≥ 2 clubs/cible ; **signalé si
+# impossible** »), complété de la doc versionnée qui le cadre : contrainte **molle**, priorité la
+# plus basse (EPIC-03), et `club_id NULL` = **indécidable**, jamais « même club » (ADR-0014). On
+# vérifie l'invariant — mixité obtenue quand elle est possible **sans** violer les budgets, et
+# signalée sinon — pas une trace d'algorithme. La forme du signal (`mixite_non_garantie` sur la
+# cible) et le round-robin déterministe sont les choix d'ADR-0047.
+
+
+def _prédicat_cas() -> list[tuple[tuple[int | None, ...], bool]]:
+    """Matrice du prédicat pur : (clubs des archers d'une cible) → « mixité non garantie ? »."""
+    return [
+        ((), False),  # cible vide : sans objet
+        (
+            (1,),
+            False,
+        ),  # un seul archer : structurellement impossible de mêler 2 clubs → pas de bruit
+        ((None,), False),  # un seul archer, club inconnu : sans objet
+        ((1, 2), False),  # deux clubs connus distincts → garantie
+        ((1, 1), True),  # deux fois le même club connu → mono-club, signalé
+        ((None, None), True),  # deux inconnus : indécidable, jamais réputés du même club (ADR-0014)
+        ((1, None), True),  # un connu + un inconnu : on ne peut pas affirmer 2 clubs → signalé
+        ((1, 2, 1), False),  # trois archers, deux clubs connus distincts → garantie
+        ((1, 1, None), True),  # un seul club connu parmi trois → signalé
+    ]
+
+
+def test_predicat_mixite_non_garantie() -> None:
+    """Le prédicat pur : ≥ 2 archers mais < 2 clubs **connus** distincts ⇒ « non garantie »."""
+    for clubs, attendu in _prédicat_cas():
+        assert cible_mixite_non_garantie(clubs) is attendu, clubs
+
+
+def test_mixite_favorisee_deux_clubs_repartis_sur_les_cibles() -> None:
+    """CA : le placement **favorise** ≥ 2 clubs par cible quand c'est possible.
+
+    Quatre archers, deux clubs (1 & 2), un blason plein de capacité 2 : chaque cible tient 2 archers
+    sur un carton. Rangés naïvement par `archer_id` (1,2 puis 3,4), chaque cible serait mono-club.
+    En favorisant la mixité, chaque cible réunit **les deux** clubs → aucune n'est signalée."""
+    archers = (
+        _archer(1, blason=1, taille=1.0, capacite_blason=2, club=1),
+        _archer(2, blason=1, taille=1.0, capacite_blason=2, club=1),
+        _archer(3, blason=1, taille=1.0, capacite_blason=2, club=2),
+        _archer(4, blason=1, taille=1.0, capacite_blason=2, club=2),
+    )
+    plan = placer(_cibles(2, 2), archers)
+    # Round-robin déterministe des clubs (ADR-0047) : club 1 = [1,2], club 2 = [3,4] → 1,3,2,4.
+    assert _archers_de(plan.cibles[0]) == (1, 3)
+    assert _archers_de(plan.cibles[1]) == (2, 4)
+    assert plan.cibles[0].mixite_non_garantie is False
+    assert plan.cibles[1].mixite_non_garantie is False
+    assert plan.conflits == ()
+
+
+def test_mixite_impossible_un_seul_club_est_signalee_sans_echec() -> None:
+    """CA : « signalé si impossible » — un seul club disponible ⇒ cible signalée, jamais un échec.
+
+    La mixité est une contrainte **molle** (best-effort) : elle ne met personne en conflit, elle
+    pose le drapeau `mixite_non_garantie` sur la cible mono-club."""
+    archers = (
+        _archer(1, blason=1, taille=1.0, capacite_blason=2, club=7),
+        _archer(2, blason=1, taille=1.0, capacite_blason=2, club=7),
+    )
+    plan = placer(_cibles(2), archers)
+    assert _archers_de(plan.cibles[0]) == (1, 2)
+    assert plan.cibles[0].mixite_non_garantie is True
+    assert plan.conflits == ()
+
+
+def test_deux_clubs_inconnus_ne_sont_pas_reputes_du_meme_club() -> None:
+    """ADR-0014 : deux `club_id` inconnus sont **indécidables**, jamais « même club ».
+
+    Le placement ne peut pas affirmer la mixité → il la signale « non garantie », sans supposer que
+    les deux inconnus s'opposent (ni qu'ils se confondent)."""
+    archers = (
+        _archer(1, blason=1, taille=1.0, capacite_blason=2, club=None),
+        _archer(2, blason=1, taille=1.0, capacite_blason=2, club=None),
+    )
+    plan = placer(_cibles(2), archers)
+    assert plan.cibles[0].mixite_non_garantie is True
+
+
+def test_un_club_connu_avec_un_inconnu_reste_non_garantie() -> None:
+    """ADR-0014 : un club connu + un inconnu ne permet pas d'**affirmer** 2 clubs → signalé."""
+    archers = (
+        _archer(1, blason=1, taille=1.0, capacite_blason=2, club=5),
+        _archer(2, blason=1, taille=1.0, capacite_blason=2, club=None),
+    )
+    plan = placer(_cibles(2), archers)
+    assert plan.cibles[0].mixite_non_garantie is True
+
+
+def test_cible_dun_seul_archer_nest_pas_signalee() -> None:
+    """« Sans objet » : une cible à 0 ou 1 archer ne peut structurellement pas mêler 2 clubs.
+
+    La signaler serait du bruit : le drapeau reste `False` (rien à corriger pour l'admin)."""
+    plan = placer(_cibles(4, 4), (_archer(1, blason=1, taille=1.0, club=3),))
+    assert _archers_de(plan.cibles[0]) == (1,)
+    assert plan.cibles[0].mixite_non_garantie is False  # un seul archer
+    assert plan.cibles[1].mixite_non_garantie is False  # cible vide
+
+
+def test_mixite_ne_prime_jamais_sur_la_hauteur() -> None:
+    """Priorité la plus basse (EPIC-03) : mêler les clubs ne peut pas violer une contrainte de rang.
+
+    Un archer d'un autre club mais d'une **autre hauteur** (110 vs 130) ne sera pas tiré sur une
+    cible pour la « mixer » : la hauteur (1er rang, ADR-0022) l'emporte, il part sur sa propre
+    cible. La cible mono-hauteur reste mono-club et **signalée**, sans jamais mélanger 110/130."""
+    archers = (
+        _archer(1, blason=1, taille=1.0, capacite_blason=2, hauteur=130, club=1),
+        _archer(2, blason=1, taille=1.0, capacite_blason=2, hauteur=130, club=1),
+        _archer(3, blason=1, taille=1.0, capacite_blason=2, hauteur=110, club=2),
+    )
+    plan = placer(_cibles(2, 2), archers)
+    # 110 trie avant 130 : l'archer 110 (club 2) ouvre la 1re cible, **seul** ; les deux 130 (club
+    # 1) ne peuvent pas l'y rejoindre (hauteur incompatible) et vont sur la 2e. Jamais on ne
+    # tire le 110 sur la cible des 130 pour « mixer » : la hauteur (ADR-0022) prime sur la mixité.
+    assert _archers_de(plan.cibles[0]) == (3,)  # le 110 seul (sans objet)
+    assert plan.cibles[0].mixite_non_garantie is False
+    assert _archers_de(plan.cibles[1]) == (1, 2)  # les deux 130 ensemble
+    assert plan.cibles[1].mixite_non_garantie is True  # mono-club 1, signalé
+
+
+def test_placement_avec_clubs_reste_deterministe() -> None:
+    """Règle 9 : le ré-ordonnancement par club reste **déterministe** (round-robin à ordre fixe)."""
+    archers = tuple(
+        _archer(i, blason=1, taille=1.0, capacite_blason=2, club=(i % 3)) for i in range(1, 7)
+    )
+    premier = placer(_cibles(2, 2, 2), archers)
+    second = placer(_cibles(2, 2, 2), archers)
+    assert premier == second
+
+
+def test_sans_club_le_placement_est_inchange() -> None:
+    """Non-régression : sans club connu, l'ordre retombe sur `archer_id` (comportement d'E03US001).
+
+    Aucun club renseigné → un seul « paquet » d'inconnus, trié par `archer_id` : le round-robin est
+    l'identité. C'est ce qui garantit que les tests d'E03US001 (tous sans club) restent verts —
+    on donne ici les archers **dans le désordre** pour montrer que le tri les remet par `id`."""
+    archers = tuple(_archer(i, blason=1, taille=1.0, capacite_blason=3) for i in (3, 1, 2))
+    plan = placer(_cibles(4), archers)
+    assert _archers_de(plan.cibles[0]) == (1, 2, 3)
+    assert plan.cibles[0].mixite_non_garantie is True  # tous inconnus → non garantie

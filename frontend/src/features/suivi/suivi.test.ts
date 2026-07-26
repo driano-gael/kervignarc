@@ -34,6 +34,7 @@ const planAvec = (
   cibles: placements.map((p) => ({
     index: p.index,
     capacite: 4,
+    mixite_non_garantie: false,
     placements: [{ position: p.position, archer_id: p.archerId, blason_id: 1, inscription_id: 1 }],
   })),
   conflits: [],
@@ -79,11 +80,13 @@ describe('placeDansPlan — place d’un archer sur un départ', () => {
       {
         index: 1,
         capacite: 4,
+        mixite_non_garantie: false,
         placements: [{ position: 'A', archer_id: 1, blason_id: 1, inscription_id: 100 }],
       },
       {
         index: 2,
         capacite: 4,
+        mixite_non_garantie: false,
         placements: [{ position: 'C', archer_id: 2, blason_id: 1, inscription_id: 101 }],
       },
     ],
