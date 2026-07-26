@@ -39,6 +39,7 @@ import type { StatutTournoi, Tournoi } from '../competition/api'
 import { useTournois } from '../competition/hooks'
 import { VueClassement } from '../competition/VueClassement'
 import { Departs } from '../departs/Departs'
+import { Duels } from '../duels/Duels'
 import { Exports } from '../exports/Exports'
 import { Gabarits } from '../gabarits/Gabarits'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
@@ -239,6 +240,16 @@ function Coquille() {
       groupe: 'preparation',
       besoinTournoi: true,
       rendu: () => courant && <Placement tournoiId={courant.id} />,
+    },
+    {
+      id: 'duels',
+      libelle: 'Plan de duels',
+      groupe: 'preparation',
+      besoinTournoi: true,
+      // Ajustement du placement des duellistes d'une phase de tableau (E03US009, ADR-0048). L'écran
+      // choisit lui-même la **phase** (comme « Placement » choisit le départ) : la navigation reste
+      // par `useState` local, sans react-router (arbitrage du 18/07/2026 — cf. en-tête de fichier).
+      rendu: () => courant && <Duels tournoiId={courant.id} />,
     },
     {
       id: 'paiements',
