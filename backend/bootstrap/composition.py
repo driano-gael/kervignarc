@@ -9,16 +9,19 @@ global, pas de magie DI) ; les erreurs typées sont traduites à la frontière A
 """
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI
+from starlette.concurrency import run_in_threadpool
 
 from api.erreurs import enregistrer_gestionnaires_erreurs
 from api.health import router as health_router
 from api.realtime import router as realtime_router
 from api.spa import frontend_dist_dir, monter_spa
+from api.v1.archive import router as archive_router
 from api.v1.audit import router as audit_router
 from api.v1.auth import router as auth_router
 from api.v1.bareme_qualification import router as bareme_qualification_router
@@ -46,6 +49,7 @@ from api.v1.supervision import heartbeat_router as poste_heartbeat_router
 from api.v1.supervision import router as supervision_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
+from application.archive import ServiceArchive
 from application.audit import ServiceAudit
 from application.auth import ServiceAuth
 from application.bareme_qualification import ServiceBaremeQualification
@@ -68,7 +72,14 @@ from application.saisie import ServiceSaisie
 from application.scoreurs import ServiceScoreurs
 from application.supervision import ServiceSupervision
 from application.tournois import ServiceTournois
+from infrastructure.archive.constructeur import ConstructeurArchiveZip
 from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
+from infrastructure.backup.config import (
+    dossier_sauvegardes,
+    intervalle_secondes,
+    retention,
+)
+from infrastructure.backup.sauvegarde import SauvegardeSQLite
 from infrastructure.db import (
     ArcherRepositorySQL,
     AuditRepositorySQL,
@@ -103,6 +114,8 @@ from infrastructure.postes import (
 )
 from infrastructure.realtime import Broadcaster, LiveEvent
 from infrastructure.scoreurs import ScoreurSessionStore, generer_code_scoreur
+
+_logger = logging.getLogger(__name__)
 
 _SEUIL_POSTE_HORS_LIGNE_S = 30.0
 """Un poste sans heartbeat depuis plus de ce délai est réputé **hors ligne** (E12US001, ADR-0038).
@@ -154,14 +167,46 @@ def create_app(
 
     write_queue.add_post_commit_listener(_diffuser_apres_ecriture)
 
+    # Sauvegarde périodique (E11US003) : dépose une copie horodatée cohérente de la base dans un
+    # dossier local, avec rétention simple. Une sauvegarde est une **lecture** (API sqlite3
+    # backup) : elle ne passe donc **pas** par la file d'écriture (règle 7 — seules les écritures y
+    # transitent) et s'exécute hors boucle dans un threadpool. Le paramétrage (intervalle,
+    # rétention, dossier) vient de variables d'environnement (`infrastructure/backup/config.py`).
+    intervalle_backup = intervalle_secondes()
+    sauvegarde = SauvegardeSQLite(
+        Path(database.engine.url.database or ""),
+        dossier_sauvegardes(),
+        retention(),
+        HorlogeSysteme(),
+    )
+
+    async def _boucle_sauvegarde() -> None:
+        # Première copie **après** un intervalle (jamais au démarrage) : ainsi une app montée le
+        # temps d'un test — qui vit bien moins que l'intervalle — n'écrit aucune sauvegarde.
+        # Best-effort : un échec est journalisé et la boucle continue.
+        while True:
+            await asyncio.sleep(intervalle_backup)
+            try:
+                await run_in_threadpool(sauvegarde.sauvegarder)
+            except Exception:
+                _logger.exception("Sauvegarde périodique en échec (la boucle continue).")
+
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        """Cycle de vie : lie la boucle au broadcaster, ouvre puis draine le worker."""
+        """Cycle de vie : broadcaster + worker + tâche de sauvegarde périodique."""
         broadcaster.bind_loop(asyncio.get_running_loop())
         write_queue.start()
+        # `intervalle <= 0` désactive la sauvegarde (aucune tâche lancée).
+        tache_sauvegarde = (
+            asyncio.create_task(_boucle_sauvegarde()) if intervalle_backup > 0 else None
+        )
         try:
             yield
         finally:
+            if tache_sauvegarde is not None:
+                tache_sauvegarde.cancel()
+                with suppress(asyncio.CancelledError):
+                    await tache_sauvegarde
             write_queue.stop()
             broadcaster.unbind_loop()
 
@@ -336,6 +381,20 @@ def create_app(
         app.state.service_paiements,
         GenerateurListesImpressionPdf(),
     )
+    # Archive de fin de tournoi (E11US003) : paquet ZIP réunissant l'instantané SQLite complet, un
+    # dump CSV de toute la base, les PDF régénérés du tournoi (feuilles de marque par départ,
+    # listes) et un manifeste — selon les parties cochées côté UI. L'assemblage mécanique délégué à
+    # `ConstructeurArchiveZip` (infra) derrière le port `ConstructeurArchive` défini **au niveau
+    # applicatif** : une archive est un concern d'exploitation, pas du domaine (règle 12). Lecture
+    # pure comme les documents PDF ; l'endpoint l'exécute via `run_in_threadpool`.
+    app.state.service_archive = ServiceArchive(
+        tournoi_repository,
+        depart_repository,
+        app.state.service_feuille_de_marque,
+        app.state.service_listes_impression,
+        ConstructeurArchiveZip(Path(database.engine.url.database or "")),
+        HorlogeSysteme(),
+    )
 
     # --- Accès administrateur (E10US002) : identifiants dans un fichier `.env` local + jetons
     # de session en mémoire. Auth = concern technique (pas de domaine) ; la dépendance API
@@ -467,6 +526,7 @@ def create_app(
     app.include_router(feuille_de_marque_router)
     app.include_router(documents_salle_router)
     app.include_router(listes_impression_router)
+    app.include_router(archive_router)
 
     # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement
     # s'il existe, pour ne jamais masquer les routes API/WS/health ci-dessus. ---

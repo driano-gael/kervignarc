@@ -1,0 +1,51 @@
+"""Adapter de sauvegarde périodique de la base SQLite (E11US003, CA « sauvegarde périodique »).
+
+`SauvegardeSQLite.sauvegarder()` dépose une **copie horodatée cohérente** de la base dans un
+dossier local (API `sqlite3.backup`, cf. `infrastructure/db/snapshot.py`) puis applique une
+**rétention simple** : ne garder que les N sauvegardes les plus récentes. Le nom encode
+l'instant (`kervignarc-AAAAMMJJ-HHMMSS.db`) ; comme ce format est **croissant dans l'ordre
+lexicographique**, le tri par nom suffit à ordonner du plus ancien au plus récent — pas besoin
+de lire les `mtime` (peu fiables et non déterministes en test).
+
+L'instant vient du port `Horloge` (règle 2/9 : le temps est un effet de bord derrière un port,
+injecté figé en test) — jamais `datetime.now()` en direct.
+"""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+from domain.ports import Horloge
+from infrastructure.db.snapshot import copier_base_coherente
+
+_logger = logging.getLogger(__name__)
+
+_MOTIF = "kervignarc-*.db"
+
+
+class SauvegardeSQLite:
+    """Sauvegarde horodatée de la base avec rétention des N copies les plus récentes."""
+
+    def __init__(self, source: Path, dossier: Path, retention: int, horloge: Horloge) -> None:
+        self._source = source
+        self._dossier = dossier
+        self._retention = max(1, retention)
+        self._horloge = horloge
+
+    def sauvegarder(self) -> Path:
+        """Dépose une copie horodatée, purge les plus anciennes, renvoie le chemin créé."""
+        self._dossier.mkdir(parents=True, exist_ok=True)
+        horodatage = self._horloge.maintenant().strftime("%Y%m%d-%H%M%S")
+        cible = self._dossier / f"kervignarc-{horodatage}.db"
+        copier_base_coherente(self._source, cible)
+        self._appliquer_retention()
+        _logger.info("Sauvegarde de la base : %s", cible.name)
+        return cible
+
+    def _appliquer_retention(self) -> None:
+        """Supprime les sauvegardes au-delà des `retention` plus récentes (tri par nom)."""
+        sauvegardes = sorted(self._dossier.glob(_MOTIF))
+        surplus = sauvegardes[: -self._retention] if self._retention else sauvegardes
+        for ancienne in surplus:
+            ancienne.unlink(missing_ok=True)
