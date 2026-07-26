@@ -12,6 +12,12 @@ règle 11) réunissant, au choix de l'appelant :
 - `manifeste.json` : les métadonnées métier fournies par l'appelant, **complétées** ici des faits
   tirés de la base (version du schéma Alembic, tables et nombre de lignes).
 
+**Cohérence interne.** Un **unique instantané** de la base vive est pris au début, et **toutes** les
+parties tirées de la base (fichier `.db`, CSV, comptes et version du manifeste) sont lues depuis
+**cet** instantané figé — jamais de la base vive à des instants différents. Ainsi le `.db`, les CSV
+et le manifeste décrivent le **même** état, même si des saisies ont lieu pendant la composition.
+Seuls les PDF, régénérés en amont par le service, reflètent leur propre instant de lecture.
+
 Ce module est purement mécanique : il ne connaît ni tournoi ni règle métier (règle 12 — l'infra
 d'export reste simple). L'orchestration (quel tournoi, quels PDF) est dans `ServiceArchive`.
 """
@@ -45,40 +51,36 @@ class ConstructeurArchiveZip:
         metadonnees: Mapping[str, object],
     ) -> bytes:
         """Renvoie les octets du ZIP (snapshot + CSV + PDF + manifeste), selon les inclusions."""
-        tampon = io.BytesIO()
-        with zipfile.ZipFile(tampon, "w", zipfile.ZIP_DEFLATED) as paquet:
-            if inclure_base:
-                paquet.writestr("kervignarc.db", self._instantane_base())
-            tables = self._tables_et_comptes()
-            if inclure_csv:
-                for table in tables:
-                    paquet.writestr(f"donnees/{table}.csv", self._table_en_csv(table))
-            for nom, octets in documents.items():
-                paquet.writestr(f"documents/{nom}", octets)
-            manifeste = {
-                **metadonnees,
-                "version_schema": self._version_schema(),
-                "tables": tables,
-            }
-            paquet.writestr(
-                "manifeste.json",
-                json.dumps(manifeste, ensure_ascii=False, indent=2, sort_keys=True),
-            )
-        return tampon.getvalue()
-
-    def _instantane_base(self) -> bytes:
-        """Instantané cohérent de la base, lu en octets (via un fichier temporaire)."""
         with tempfile.TemporaryDirectory() as dossier_tmp:
-            cible = Path(dossier_tmp) / "snapshot.db"
-            copier_base_coherente(self._chemin_base, cible)
-            return cible.read_bytes()
+            # Instantané cohérent unique : source de toutes les parties tirées de la base.
+            snapshot = Path(dossier_tmp) / "snapshot.db"
+            copier_base_coherente(self._chemin_base, snapshot)
+            tables = self._tables_et_comptes(snapshot)
 
-    def _connexion(self) -> sqlite3.Connection:
-        return sqlite3.connect(str(self._chemin_base))
+            tampon = io.BytesIO()
+            with zipfile.ZipFile(tampon, "w", zipfile.ZIP_DEFLATED) as paquet:
+                if inclure_base:
+                    paquet.writestr("kervignarc.db", snapshot.read_bytes())
+                if inclure_csv:
+                    for table in tables:
+                        paquet.writestr(f"donnees/{table}.csv", self._table_en_csv(snapshot, table))
+                for nom, octets in documents.items():
+                    paquet.writestr(f"documents/{nom}", octets)
+                manifeste = {
+                    **metadonnees,
+                    "version_schema": self._version_schema(snapshot),
+                    "tables": tables,
+                }
+                paquet.writestr(
+                    "manifeste.json",
+                    json.dumps(manifeste, ensure_ascii=False, indent=2, sort_keys=True),
+                )
+            return tampon.getvalue()
 
-    def _tables_et_comptes(self) -> dict[str, int]:
+    @staticmethod
+    def _tables_et_comptes(chemin: Path) -> dict[str, int]:
         """Nom → nombre de lignes de chaque table de la base (ordre alphabétique stable)."""
-        connexion = self._connexion()
+        connexion = sqlite3.connect(str(chemin))
         try:
             noms = [
                 str(ligne[0])
@@ -97,9 +99,10 @@ class ConstructeurArchiveZip:
         finally:
             connexion.close()
 
-    def _table_en_csv(self, table: str) -> str:
+    @staticmethod
+    def _table_en_csv(chemin: Path, table: str) -> str:
         """Dump CSV d'une table : ligne d'en-tête = colonnes, puis toutes les lignes."""
-        connexion = self._connexion()
+        connexion = sqlite3.connect(str(chemin))
         try:
             curseur = connexion.execute(f'SELECT * FROM "{table}"')
             colonnes = [description[0] for description in curseur.description]
@@ -111,9 +114,10 @@ class ConstructeurArchiveZip:
         finally:
             connexion.close()
 
-    def _version_schema(self) -> str | None:
+    @staticmethod
+    def _version_schema(chemin: Path) -> str | None:
         """Révision Alembic courante (`alembic_version`), ou `None` si absente."""
-        connexion = self._connexion()
+        connexion = sqlite3.connect(str(chemin))
         try:
             ligne = connexion.execute("SELECT version_num FROM alembic_version").fetchone()
             return str(ligne[0]) if ligne is not None else None

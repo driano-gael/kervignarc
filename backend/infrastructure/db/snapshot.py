@@ -27,6 +27,10 @@ def copier_base_coherente(source: Path, cible: Path) -> None:
     """
     connexion_source = sqlite3.connect(str(source))
     try:
+        # `source` est la base **vive** : sous contention rare (checkpoint WAL, opération
+        # exclusive) un `database is locked` avorterait la copie. On laisse SQLite patienter
+        # brièvement plutôt qu'échouer sec (busy_timeout) — la copie WAL reste cohérente.
+        connexion_source.execute("PRAGMA busy_timeout = 5000")
         connexion_cible = sqlite3.connect(str(cible))
         try:
             connexion_source.backup(connexion_cible)

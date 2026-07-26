@@ -98,7 +98,7 @@ class ServiceArchive:
         if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
 
-        documents = self._rassembler_documents(tournoi_id, options)
+        documents, omis = self._rassembler_documents(tournoi_id, options)
         maintenant = self._horloge.maintenant()
         metadonnees: dict[str, object] = {
             "genere_le": maintenant.isoformat(),
@@ -113,6 +113,9 @@ class ServiceArchive:
                 "base_sqlite": options.base,
                 "donnees_csv": options.donnees_csv,
                 "documents": sorted(documents),
+                # Documents demandés mais **non générés** (best-effort) : listés ici pour que
+                # l'omission soit **découvrable** à l'ouverture du ZIP, jamais silencieuse.
+                "documents_omis": sorted(omis),
             },
         }
         contenu = self._constructeur.construire(
@@ -126,36 +129,43 @@ class ServiceArchive:
 
     def _rassembler_documents(
         self, tournoi_id: TournoiId, options: OptionsArchive
-    ) -> dict[str, bytes]:
-        """Régénère les PDF sélectionnés du tournoi (best-effort, échec par document toléré)."""
+    ) -> tuple[dict[str, bytes], list[str]]:
+        """Régénère les PDF sélectionnés (best-effort) ; renvoie (produits, omis en échec)."""
         documents: dict[str, bytes] = {}
+        omis: list[str] = []
         if options.feuilles_de_marque:
             for depart in self._departs.par_tournoi(tournoi_id):
                 if depart.id is None:
                     continue
                 self._ajouter(
                     documents,
+                    omis,
                     f"feuille-de-marque-depart-{depart.numero}.pdf",
                     partial(self._feuilles.generer, tournoi_id, depart.id),
                 )
         if options.liste_placement:
             self._ajouter(
                 documents,
+                omis,
                 "placement.pdf",
                 partial(self._listes.generer_placement, tournoi_id, None, TriPlacement.CIBLE),
             )
         if options.liste_club_paiement:
             self._ajouter(
                 documents,
+                omis,
                 "club-paiement.pdf",
                 partial(self._listes.generer_club_paiement, tournoi_id),
             )
-        return documents
+        return documents, omis
 
     @staticmethod
-    def _ajouter(documents: dict[str, bytes], nom: str, generer: Callable[[], bytes]) -> None:
-        """Ajoute un document régénéré ; en cas d'échec, l'omet et journalise (best-effort)."""
+    def _ajouter(
+        documents: dict[str, bytes], omis: list[str], nom: str, generer: Callable[[], bytes]
+    ) -> None:
+        """Ajoute un document régénéré ; en cas d'échec, l'omet (tracé) et journalise."""
         try:
             documents[nom] = generer()
         except Exception:  # best-effort : un document manquant ne casse pas l'archive
+            omis.append(nom)
             _logger.warning("Document d'archive « %s » non généré (omis).", nom, exc_info=True)

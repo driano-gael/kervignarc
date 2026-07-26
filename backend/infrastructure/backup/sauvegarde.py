@@ -45,7 +45,8 @@ class SauvegardeSQLite:
 
     def _appliquer_retention(self) -> None:
         """Supprime les sauvegardes au-delà des `retention` plus récentes (tri par nom)."""
+        # `_retention >= 1` (clampé au constructeur), donc `[:-retention]` est toujours correct :
+        # ≤ retention fichiers ⇒ tranche vide (on garde tout) ; au-delà ⇒ purge des plus anciens.
         sauvegardes = sorted(self._dossier.glob(_MOTIF))
-        surplus = sauvegardes[: -self._retention] if self._retention else sauvegardes
-        for ancienne in surplus:
+        for ancienne in sauvegardes[: -self._retention]:
             ancienne.unlink(missing_ok=True)

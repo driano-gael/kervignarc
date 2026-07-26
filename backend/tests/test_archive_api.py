@@ -167,6 +167,38 @@ def test_selection_ne_met_que_les_parties_cochees(
     assert noms == {"manifeste.json"}
 
 
+def test_document_en_echec_est_omis_sans_casser_l_archive(
+    app_archive: FastAPI, connecter_admin: ConnecterAdmin, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Best-effort (CA) : un PDF qui échoue est **omis** (et tracé au manifeste), l'archive tient.
+
+    On force `service_feuille_de_marque.generer` à lever : la feuille de marque est absente du ZIP,
+    listée dans `parties_incluses.documents_omis`, et le reste (base, CSV, autres PDF) est présent —
+    la génération renvoie bien 200, pas une erreur.
+    """
+
+    def _echouer(*_args: object, **_kwargs: object) -> bytes:
+        raise RuntimeError("échec simulé de la feuille de marque")
+
+    with TestClient(app_archive) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer_tournoi(client)
+        monkeypatch.setattr(app_archive.state.service_feuille_de_marque, "generer", _echouer)
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/archive")
+
+    assert reponse.status_code == 200, reponse.text
+    with _ouvrir_zip(reponse.content) as paquet:
+        noms = set(paquet.namelist())
+        manifeste = json.loads(paquet.read("manifeste.json"))
+    # Aucune feuille de marque dans le ZIP…
+    assert not any(n.startswith("documents/feuille-de-marque-depart-") for n in noms)
+    # …mais l'omission est **découvrable** dans le manifeste, et le reste est bien là.
+    omis = manifeste["parties_incluses"]["documents_omis"]
+    assert any(n.startswith("feuille-de-marque-depart-") for n in omis)
+    assert "documents/placement.pdf" in noms
+    assert "kervignarc.db" in noms
+
+
 def test_archive_sans_admin_refuse(app_archive: FastAPI) -> None:
     """Route réservée à l'admin (E10US001) : sans session, 401."""
     with TestClient(app_archive) as client:

@@ -167,8 +167,8 @@ def create_app(
 
     write_queue.add_post_commit_listener(_diffuser_apres_ecriture)
 
-    # Sauvegarde périodique (E11US003) : dépose une copie horodatée cohérente de la base dans un
-    # dossier local, avec rétention simple. Une sauvegarde est une **lecture** (API sqlite3
+    # Sauvegarde périodique (E11US003, ADR-0044) : dépose une copie horodatée cohérente de la base
+    # dans un dossier local, avec rétention simple. Une sauvegarde est une **lecture** (API sqlite3
     # backup) : elle ne passe donc **pas** par la file d'écriture (règle 7 — seules les écritures y
     # transitent) et s'exécute hors boucle dans un threadpool. Le paramétrage (intervalle,
     # rétention, dossier) vient de variables d'environnement (`infrastructure/backup/config.py`).

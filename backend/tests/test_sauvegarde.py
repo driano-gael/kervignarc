@@ -12,6 +12,9 @@ import datetime
 import sqlite3
 from pathlib import Path
 
+import pytest
+
+from infrastructure.backup import config
 from infrastructure.backup.sauvegarde import SauvegardeSQLite
 
 
@@ -76,3 +79,30 @@ def test_retention_ne_garde_que_les_plus_recentes(tmp_path: Path) -> None:
     assert len(restantes) == 3
     # Les trois dernières créées (horodatages croissants) sont celles conservées.
     assert restantes == sorted(p.name for p in creees[-3:])
+
+
+def test_config_defauts_et_surcharges(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Les lecteurs de config appliquent les défauts, les surcharges env, et « 0 désactive »."""
+    for var in ("KERVIGNARC_BACKUP_INTERVAL_SECONDS", "KERVIGNARC_BACKUP_RETENTION"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.delenv("KERVIGNARC_BACKUP_DIR", raising=False)
+    # Défauts.
+    assert config.intervalle_secondes() == config.INTERVALLE_DEFAUT_SECONDES
+    assert config.retention() == config.RETENTION_DEFAUT
+    # Surcharges valides.
+    monkeypatch.setenv("KERVIGNARC_BACKUP_INTERVAL_SECONDS", "60")
+    monkeypatch.setenv("KERVIGNARC_BACKUP_RETENTION", "5")
+    monkeypatch.setenv("KERVIGNARC_BACKUP_DIR", str(tmp_path / "bak"))
+    assert config.intervalle_secondes() == 60
+    assert config.retention() == 5
+    assert config.dossier_sauvegardes() == tmp_path / "bak"
+    # « 0 désactive » (intervalle) et rétention plancher à 1.
+    monkeypatch.setenv("KERVIGNARC_BACKUP_INTERVAL_SECONDS", "0")
+    monkeypatch.setenv("KERVIGNARC_BACKUP_RETENTION", "0")
+    assert config.intervalle_secondes() == 0
+    assert config.retention() == 1
+    # Valeurs invalides : repli sur le défaut.
+    monkeypatch.setenv("KERVIGNARC_BACKUP_INTERVAL_SECONDS", "abc")
+    monkeypatch.setenv("KERVIGNARC_BACKUP_RETENTION", "xyz")
+    assert config.intervalle_secondes() == config.INTERVALLE_DEFAUT_SECONDES
+    assert config.retention() == config.RETENTION_DEFAUT
