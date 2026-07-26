@@ -12,36 +12,31 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 26/07/2026** · **65 US livrées** · dernière : `E05US005`.
+**Dernière mise à jour : 26/07/2026** · **66 US livrées** · dernière : `E03US006`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E03US006` — Contrainte ≥ 2 clubs par cible** poursuit le jalon **J2** : au placement, garantir
-> qu'une cible réunit **au moins deux clubs** différents (équité — éviter qu'un même club « occupe »
-> une cible entière). Contrainte à ajouter au moteur de placement livré en E03US001/E03US004. Détail :
+> **`E03US009` — Placer les duellistes côte à côte** poursuit le jalon **J2** : lors d'une phase de
+> tableau, placer les **deux adversaires d'un duel** sur des positions **voisines** (dans la mesure du
+> possible) pour faciliter la conduite des matchs. S'appuie sur le moteur de placement
+> (E03US001/E03US004/E03US006) **et** sur l'arbre d'élimination directe (`E05US005`, livré). Détail :
 > [`stories/E03-placement.md`](../stories/E03-placement.md).
-> *Note : le **fil équipes** est désormais **débloqué** — `E13US002` (composer les équipes) peut être
-> pris à tout moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
+> *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
+> moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *J1 est **terminé** (46/46) ; le confort « ma journée » et les classements imprimables restent hors
 > décompte du jalon.*
 >
-> *Fait juste avant (un lot, une PR, deux commits) :*
-> - `E13US001` (abstraction Participant) — US de **fondation** sans surface utilisateur. Pose le value
->   object `Participant {genre, ref_id}` (`backend/domain/participant.py`) : un match oppose des
->   **participants** (archer **ou** équipe), jamais des archers en dur, et le moteur les manipule de
->   façon **opaque** (aucune branche `if équipe`, ADR-0028 décision n°3). Réconcilie
->   `modele-de-donnees.md` (MATCH → `participant_a/b`) et ADR-0028 (note de suivi). Livrée **avant**
->   E05US005 pour **respecter l'ordonnancement d'ADR-0028** (arbitrage tranché avec le commanditaire).
-> - `E05US005` (arbre d'élimination directe) — US de **fondation** : le **tableau**
->   (`backend/domain/tableau.py`) qui **orchestre** les politiques d'E05US003. Dimensionne à la
->   puissance de 2, ensemence en **serpent**, attribue les **byes** aux mieux classés, génère les
->   **matchs numérotés** reliés à leurs sources, fait **avancer** le vainqueur (le perdant est
->   **éliminé** — routing sèche) et produit le **podium** (finale → 1-2, petite finale → 3-4). Le
->   `Match` **oppose des `Participant`** ; le **rang** de qualif ne sert qu'à l'ensemencement. Les
->   trois politiques (`seeding`/`byes`/`routing`) sont **injectées et consommées** (garde-fou de
->   cohérence seeding↔byes). L'exposition service/API viendra avec la **saisie en duels E04US013**.
+> *Fait juste avant :*
+> - `E03US006` (contrainte ≥ 2 clubs par cible) — US à **surface visible**. Le placement auto
+>   **favorise** désormais ≥ 2 clubs sur chaque cible, sans jamais bloquer ni enfreindre les
+>   contraintes de rang supérieur : la mixité est obtenue en **ré-ordonnant l'entrée** du glouton
+>   (round-robin des clubs par groupe hauteur/blason — le moteur reste inchangé, ADR-0047), pas par une
+>   nouvelle règle. Les cibles où la mixité **n'est pas garantie** (un seul club, ou clubs inconnus —
+>   `club_id NULL` *indécidable*, ADR-0014) sont **signalées** : propriété dérivée `mixite_non_garantie`
+>   recalculée à la lecture, exposée à l'API, affichée en **badge ambre** par cible + **bannière**
+>   récapitulative sur l'écran de placement admin.
 
 ---
 
@@ -113,14 +108,14 @@
 | 56 | E11US001 | Release, base et mise en réseau | ✅ |
 | 57 | E11US003 | Sauvegarde & archive | ✅ |
 
-## J2 — Duels simples + bascule de tour — 🔶 **en cours (3/15)**
+## J2 — Duels simples + bascule de tour — 🔶 **en cours (4/15)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
 | 58 | E05US001 | Séquence de phases | ✅ |
 | 59 | E05US003 | Politiques injectables & assemblage | ✅ |
 | 60 | E05US005 | Arbre d'élimination directe *(moteur sur `Participant`)* | ✅ |
-| 61 | E03US006 | Contrainte ≥ 2 clubs par cible | ⬜ |
+| 61 | E03US006 | Contrainte ≥ 2 clubs par cible | ✅ |
 | 62 | E03US009 | Placer les duellistes côte à côte | ⬜ |
 | 63 | E04US013 | Saisie en duels | ⬜ |
 | 64 | E04US015 | Gérer abandon / disqualification | ⬜ |

@@ -100,9 +100,15 @@ Tout ce qu'il faut pour préparer un tournoi avant le jour J :
   compte** — silence tant qu'aucun score n'existe, et **alerte chiffrée** (« 156 archers vont être
   replacés ; 4 cibles ont déjà des scores, conservés ») quand la partie est engagée, où il faut alors
   **taper un mot** pour confirmer. Chaque replacement de ce type laisse une **trace** dans le journal.
+- **Mixité des clubs (≥ 2 clubs par cible)** : le placement automatique **cherche à mêler les clubs**
+  sur chaque cible (équité — éviter qu'un seul club occupe une cible entière), sans jamais bloquer ni
+  passer avant l'essentiel (place, hauteur de butte). Quand il **ne peut pas** garantir deux clubs
+  (un seul club présent, ou club **inconnu** — jamais deviné), la cible est **signalée** par un
+  **badge ambre** et une **bannière** récapitulative sur l'écran de placement : à l'organisateur de
+  décider s'il ajuste à la main.
 
-*Restent à venir : contraintes (≥ 2 clubs par cible, séparation catégorie/blason), placement des
-duellistes côte à côte, et le placement intégral 1→N du grand format.*
+*Restent à venir : la séparation catégorie/blason, le placement des duellistes côte à côte, et le
+placement intégral 1→N du grand format.*
 
 ### 6. La saisie des scores de qualification — *terminé, et robuste*
 
@@ -224,23 +230,22 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **65 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/07/2026 — E13US001 et
-  E05US005 optimistes d'un cran sur la branche jusqu'à leur merge. **`SUIVI-US.md` fait foi sur le
-  compte exact.**
+- **66 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/07/2026 — E03US006
+  optimiste d'un cran sur la branche jusqu'à son merge. **`SUIVI-US.md` fait foi sur le compte
+  exact.**
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
   et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (3/15)**
-  avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003) puis le
-  **tableau d'élimination directe** (E05US005) — ce dernier posé sur l'**abstraction Participant**
-  (E13US001, du chantier équipes).
-- Dernière US livrée : **E05US005** (arbre d'élimination directe) — US de **fondation** sans surface
-  utilisateur : un **moteur de domaine pur** (`backend/domain/tableau.py`) dimensionne le tableau,
-  ensemence, pose les byes, fait avancer le vainqueur et produit le podium, en **opposant des
-  `Participant`** (archer ou équipe, ADR-0028). Livrée avec **E13US001** (abstraction `Participant`),
-  posée **avant** le moteur pour respecter l'ordonnancement d'ADR-0028. La dernière US à **surface
-  visible** reste **E05US001** (écran de séquence de phases).
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E03US006** (contrainte « au moins deux
-  clubs par cible » au placement). Le fil **équipes** est débloqué (E13US002+).
+  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (4/15)**
+  avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003), le **tableau
+  d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001) puis la
+  **mixité des clubs au placement** (E03US006).
+- Dernière US livrée : **E03US006** (contrainte ≥ 2 clubs par cible) — US à **surface visible** : le
+  placement automatique **favorise la mixité des clubs** sur chaque cible (obtenue en ré-ordonnant
+  l'entrée du moteur, qui reste inchangé — ADR-0047) et **signale**, par un badge et une bannière sur
+  l'écran de placement, les cibles où elle n'est pas garantie (un seul club, ou club inconnu — jamais
+  deviné, ADR-0014).
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E03US009** (placer les duellistes côte à
+  côte). Le fil **équipes** est débloqué (E13US002+).

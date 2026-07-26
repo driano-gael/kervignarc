@@ -78,10 +78,21 @@ déplacement viole les règles, *afin d'*affiner le placement auto sans le casse
   *(Arbitrages tranchés le 18/07/2026, reversés ici — règle 9.)*
 - **Absorbe** : ex-E03US004, E03US005. **Dépend de** : E03US001 · **Jalon** : J1
 
-### E03US006 — Contrainte ≥ 2 clubs par cible
+### E03US006 — Contrainte ≥ 2 clubs par cible ✅
 *En tant qu'*administrateur, *je veux* au moins 2 clubs par cible quand c'est possible, *afin d'*
 assurer la mixité.
 - **CA** : le placement auto favorise ≥ 2 clubs/cible ; signalé si impossible.
+- **Notes (livré, 26/07/2026 — [ADR-0047](../docs/adr/0047-mixite-clubs-par-reordonnancement-et-signal-derive.md))** :
+  contrainte **molle**, **priorité la plus basse** (EPIC-03 : `capacité > catégorie/hauteur > mixité
+  club`) — jamais bloquante, jamais au détriment d'une contrainte de rang supérieur. La mixité est
+  obtenue en **ré-ordonnant l'entrée** du glouton (round-robin des clubs par groupe hauteur/blason),
+  le moteur restant inchangé. « Signalé si impossible » = propriété **dérivée** `mixite_non_garantie`
+  au niveau **cible** (≥ 2 archers, < 2 clubs **connus** distincts), recalculée à la lecture (jamais
+  persistée, comme la raison de réserve d'ADR-0024). `club_id NULL` = **indécidable** (ADR-0014) :
+  deux inconnus ne sont **pas** réputés du même club → signalé. **Surface livrée** : moteur + service
+  + API, **et** un **badge ambre** par cible + une **bannière** récapitulative sur l'écran de placement
+  admin (arbitrage de périmètre tranché au cadrage). Une cible à 0/1 archer est **sans objet** (pas de
+  signal). Recette : [`docs/fonctionnel/E03US006.md`](../docs/fonctionnel/E03US006.md).
 - **Dépend de** : E03US001 · **Jalon** : J2
 
 ### E03US007 — Contrainte séparation catégorie/blason
