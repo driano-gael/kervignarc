@@ -184,7 +184,9 @@ class ServicePlacementDuels:
 
         `cible_index is None` → **mise en réserve** (toujours possible). Sinon dépôt : case libre →
         déplacement simple ; case occupée → **échange atomique** (tout ou rien). Toute violation
-        lève `DeplacementInvalide` (409) **sans** rien écrire (état inchangé).
+        lève `DeplacementInvalide` (409) sans rien écrire d'**observable** (l'état inchangé) : la
+        purge des poses orphelines (`_poses_a_jour`) peut précéder un refus 409, mais elle ne retire
+        que des lignes déjà **invisibles** en lecture — l'état rendu, lui, ne bouge pas.
         """
         contexte = self._charger(tournoi_id, phase_id)
         if inscription_id not in contexte.archer_par_inscription:
@@ -210,7 +212,7 @@ class ServicePlacementDuels:
                 "Ce duelliste n'a pas de blason : sa place ne peut pas être déterminée."
             )
 
-        affectations = self._placements.par_phase(phase_id)
+        affectations = self._poses_a_jour(phase_id, contexte)
         source = next((a for a in affectations if a.inscription_id == inscription_id), None)
         occupant = next(
             (
@@ -240,7 +242,7 @@ class ServicePlacementDuels:
         l'adjacence (un duel encore entier tombe côte à côte quand la place le permet).
         """
         contexte = self._charger(tournoi_id, phase_id)
-        affectations = self._placements.par_phase(phase_id)
+        affectations = self._poses_a_jour(phase_id, contexte)
         plan_actuel = self._plan_de_cibles(contexte, affectations)
         placees = {
             pose.inscription_id
@@ -272,6 +274,28 @@ class ServicePlacementDuels:
         ]
         self._placements.poser_plusieurs(phase_id, nouvelles)
         return self._construire_plan(contexte, self._placements.par_phase(phase_id))
+
+    def _poses_a_jour(self, phase_id: PhaseId, contexte: _Contexte) -> list[Affectation]:
+        """Lit les poses de la phase après avoir **purgé** celles devenues orphelines (ADR-0048).
+
+        L'appariement est **recalculé** à chaque opération (le classement décide qui est duelliste
+        du 1er tour), mais la pose est **persistée**. Une pose dont l'inscription n'est **plus**
+        duelliste — un archer classé plus tard décale l'arbre (byes), l'ancien duelliste en sort —
+        est **orpheline** : déjà masquée en lecture (`est_placable` l'écarte du plan rendu), elle
+        est ici, sur un **chemin d'écriture** (dans la file), **retirée pour de bon**. Sans quoi la
+        détection d'occupant d'un déplacement tomberait sur une ligne « fantôme » (case visiblement
+        vide mais présente en base) — 500 sur `_echanger`, ou double pose via `placer_les_restants`.
+        Le plan de duels fait autorité **après régénération** (qui réécrit tout) ; entre-temps,
+        l'orpheline est inerte puis purgée au premier ajustement. Arbitrage tranché à la revue
+        d'E03US009 (reversé dans `stories/`).
+        """
+        a_jour: list[Affectation] = []
+        for affectation in self._placements.par_phase(phase_id):
+            if affectation.inscription_id in contexte.archer_par_inscription:
+                a_jour.append(affectation)
+            else:
+                self._placements.retirer(phase_id, affectation.inscription_id)
+        return a_jour
 
     # --- Interne : validation d'un déplacement (calqué sur ServicePlacement, ADR-0048) ---------
 

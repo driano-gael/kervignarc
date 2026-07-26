@@ -19,7 +19,7 @@ from collections.abc import Sequence
 import pytest
 
 from application.classements import ServiceClassement
-from application.erreurs import PhasePasUnTableau
+from application.erreurs import DeplacementInvalide, PhasePasUnTableau
 from application.placement_duels import PlanDeDuels, ServicePlacementDuels
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
@@ -374,3 +374,128 @@ def test_phase_qui_n_est_pas_un_tableau_est_refusee() -> None:
     assert qualif.id is not None
     with pytest.raises(PhasePasUnTableau):
         monde.service.plan_de_duels(monde.tournoi_id, qualif.id)
+
+
+# --- Surface d'ajustement (glisser-déposer) — CA E03US009, ADR-0048 ------------------------------
+
+
+def test_deplacer_case_libre_puis_refus_position_invalide() -> None:
+    """Déplacement sur une case libre ; une position inexistante est refusée (409), sans écrire."""
+    monde = _Monde(capacites=(4, 4))
+    r1, _r2, _r3, _r4 = _quatre_archers(monde)
+    monde.service.regenerer(monde.tournoi_id, monde.phase_id)
+    insc_r1 = monde.inscription_par_archer[r1]
+
+    # Case libre (cible 2, position A) → déplacement accepté.
+    plan = monde.service.deplacer(monde.tournoi_id, monde.phase_id, insc_r1, 2, "A")
+    assert _positions(monde, plan, r1) == (2, "A")
+
+    # Position inexistante → refus 409, état inchangé.
+    with pytest.raises(DeplacementInvalide):
+        monde.service.deplacer(monde.tournoi_id, monde.phase_id, insc_r1, 1, "Z")
+    apres = monde.service.plan_de_duels(monde.tournoi_id, monde.phase_id)
+    assert _positions(monde, apres, r1) == (2, "A")  # rien n'a bougé
+
+
+def test_echange_atomique_de_deux_duellistes() -> None:
+    """Déposer un duelliste sur une case occupée **permute** les deux (tout ou rien)."""
+    monde = _Monde(capacites=(4,))
+    r1, r2, r3, r4 = _quatre_archers(monde)
+    plan = monde.service.regenerer(monde.tournoi_id, monde.phase_id)
+    pos_r1, pos_r4 = _positions(monde, plan, r1), _positions(monde, plan, r4)
+    assert pos_r1 is not None and pos_r4 is not None
+
+    # Déposer r1 sur la case de r4 → ils échangent leurs positions.
+    echange = monde.service.deplacer(
+        monde.tournoi_id, monde.phase_id, monde.inscription_par_archer[r1], pos_r4[0], pos_r4[1]
+    )
+    assert _positions(monde, echange, r1) == pos_r4
+    assert _positions(monde, echange, r4) == pos_r1
+    # Personne perdu, personne en réserve.
+    places = {p.archer_id for cible in echange.cibles for p in cible.placements}
+    assert places == {r1, r2, r3, r4}
+    assert echange.conflits == ()
+
+
+def test_placer_les_restants_rapproche_un_duel() -> None:
+    """« Placer les restants » repose une paire mise en réserve, côte à côte (ordre d'adjacence)."""
+    monde = _Monde(capacites=(4,))
+    r1, _r2, _r3, r4 = _quatre_archers(monde)
+    monde.service.regenerer(monde.tournoi_id, monde.phase_id)
+    # r1 et r4 sont adversaires (serpent : rang 1 vs rang 4). On les met tous deux en réserve.
+    for archer in (r1, r4):
+        monde.service.deplacer(
+            monde.tournoi_id, monde.phase_id, monde.inscription_par_archer[archer], None, None
+        )
+    plan = monde.service.placer_les_restants(monde.tournoi_id, monde.phase_id)
+    # Ils reviennent posés, et côte à côte (leur duel n'est pas signalé séparé).
+    pr1, pr4 = _positions(monde, plan, r1), _positions(monde, plan, r4)
+    assert pr1 is not None and pr4 is not None
+    assert pr1[0] == pr4[0] and abs(ord(pr1[1]) - ord(pr4[1])) == 1
+    assert frozenset((r1, r4)) not in {frozenset(p) for p in plan.duels_separes}
+
+
+def test_effectif_inferieur_a_deux_donne_un_plan_vide() -> None:
+    """Un seul archer classé : pas de tableau possible → plan vide, sans duel, sans erreur 500."""
+    monde = _Monde(capacites=(4,))
+    monde.inscrire_classe((ZoneScore.DIX, ZoneScore.DIX))
+    plan = monde.service.regenerer(monde.tournoi_id, monde.phase_id)
+    assert all(cible.placements == () for cible in plan.cibles)
+    assert plan.conflits == ()
+    assert plan.duels_separes == ()
+
+
+def _monde_avec_orphelines() -> tuple[_Monde, list[int], tuple[int, str]]:
+    """Décor où r1/r2/r3 ont des poses **orphelines**, et renvoie (monde, [r1..r5], case de r1).
+
+    On régénère à 4 archers (les 4 posés), puis on inscrit un 5ᵉ moins bien classé : l'arbre passe à
+    8, les rangs 1-3 sont exemptés (byes), seul le duel (rang 4, rang 5) subsiste au 1er tour. Les
+    duellistes courants sont donc {r4, r5} ; les poses de r1/r2/r3 sont **orphelines** (masquées en
+    lecture). C'est le scénario exact du bloquant trouvé à la revue (axe D).
+    """
+    monde = _Monde(capacites=(4,))
+    r1, r2, r3, r4 = _quatre_archers(monde)
+    plan = monde.service.regenerer(monde.tournoi_id, monde.phase_id)
+    case_r1 = _positions(monde, plan, r1)
+    assert case_r1 is not None
+    r5 = monde.inscrire_classe((ZoneScore.UN, ZoneScore.UN))  # moins bien classé → décale l'arbre
+    lecture = monde.service.plan_de_duels(monde.tournoi_id, monde.phase_id)
+    assert _positions(monde, lecture, r1) is None  # pose de r1 masquée (orpheline)
+    return monde, [r1, r2, r3, r4, r5], case_r1
+
+
+def test_deplacer_un_place_sur_une_case_orpheline_ne_provoque_pas_500() -> None:
+    """Régression (revue E03US009, axe D) : déplacer un duelliste **déjà placé** sur une case
+    portant une pose **orpheline** ne lève plus de KeyError/500.
+
+    C'est le chemin exact du bloquant : `deplacer` détectait l'orpheline comme **occupant**, puis
+    `_echanger` indexait `archer_par_inscription[orpheline]` → `KeyError` → 500. La purge
+    (`_poses_a_jour`) retire l'orpheline avant : la case est alors libre, le déplacement passe.
+    """
+    monde, (r1, _r2, _r3, r4, _r5), case_r1 = _monde_avec_orphelines()
+    apres = monde.service.deplacer(
+        monde.tournoi_id, monde.phase_id, monde.inscription_par_archer[r4], case_r1[0], case_r1[1]
+    )
+    assert _positions(monde, apres, r4) == case_r1  # r4 posé sur l'ancienne case de r1, sans 500
+    assert _positions(monde, apres, r1) is None  # l'orpheline est purgée, jamais réapparue
+
+
+def test_deposer_sur_une_case_orpheline_visiblement_vide_est_traite_comme_libre() -> None:
+    """Une case portant une orpheline **paraît vide** : y déposer un duelliste en réserve doit poser
+    (case libre après purge), pas refuser « case occupée » (409, garde `source is None`)."""
+    monde, (_r1, _r2, _r3, _r4, r5), case_r1 = _monde_avec_orphelines()
+    apres = monde.service.deplacer(
+        monde.tournoi_id, monde.phase_id, monde.inscription_par_archer[r5], case_r1[0], case_r1[1]
+    )
+    assert _positions(monde, apres, r5) == case_r1  # r5 (réserve) posé, pas de faux « occupé »
+
+
+def test_placer_les_restants_ignore_les_poses_orphelines() -> None:
+    """`placer_les_restants` purge les orphelines : jamais deux archers sur une même case (variante
+    « double pose » du bloquant, axe D)."""
+    monde, (_r1, _r2, _r3, _r4, r5), _case = _monde_avec_orphelines()
+    plan = monde.service.placer_les_restants(monde.tournoi_id, monde.phase_id)
+    cases = [(cible.index, pose.position) for cible in plan.cibles for pose in cible.placements]
+    assert len(cases) == len(set(cases))  # aucune case doublement occupée (orpheline purgée)
+    places = {pose.archer_id for cible in plan.cibles for pose in cible.placements}
+    assert r5 in places  # le seul restant plaçable est bien reposé
