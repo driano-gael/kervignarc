@@ -180,3 +180,35 @@ def test_definir_apres_composition_place_la_qualification_en_tete() -> None:
     assert placement.source == SourcePhase(ordre_source=2, rang_debut=1, rang_fin=16)
     # Et la composition peut se poursuivre (aucun blocage 422 sur la séquence).
     assert service.bareme_du_tournoi(tournoi.id) is not None
+
+
+def test_redefinir_le_bareme_ne_decale_pas_les_phases_deja_composees() -> None:
+    """L'autre versant de la coordination : une **redéfinition** (la qualification existe déjà) est
+    un simple update, **sans** second décalage des phases suivantes ni remap de leurs sources."""
+    tournois = FauxTournoiRepository()
+    tournoi = tournois.ajouter(
+        Tournoi(nom="Kervignarc", date=_DATE, lieu=None, type_tournoi=TypeTournoi.NON_OFFICIEL)
+    )
+    assert tournoi.id is not None
+    phases = FauxPhaseRepository()
+    service = ServiceBaremeQualification(tournois, phases)
+    service.definir(tournoi.id, 20, 3)  # qualification créée en ordre 1
+    phases.ajouter(
+        Phase.creer(
+            tournoi.id,
+            ordre=2,
+            type=TypePhase.ELIMINATION_DIRECTE,
+            source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),
+            effectif=16,
+        )
+    )
+
+    service.definir(tournoi.id, 10, 6)  # redéfinition
+
+    apres = phases.par_tournoi(tournoi.id)
+    assert [(p.ordre, p.type) for p in apres] == [
+        (1, TypePhase.QUALIFICATION),
+        (2, TypePhase.ELIMINATION_DIRECTE),
+    ]
+    # La source de l'élim reste sur l'ordre 1 (la qualification) : aucun second décalage.
+    assert apres[1].source == SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16)
