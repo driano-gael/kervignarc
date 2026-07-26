@@ -24,7 +24,9 @@ hiddenimports = []
 
 # --- Données embarquées (lecture seule, dépaquetées sous _MEIPASS au lancement) ----------
 # Migrations Alembic : env.py + versions/*.py, chargés par chemin → invisibles à l'analyse.
-datas += [("migrations", "migrations"), ("alembic.ini", ".")]
+# (Pas d'`alembic.ini` : le point d'entrée release migre via un `Config()` nu — env.py résout
+# l'URL par l'environnement et saute `fileConfig` sans fichier ; l'ini ne serait jamais lu.)
+datas += [("migrations", "migrations")]
 # Front React déjà buildé : servi en statique par FastAPI (KERVIGNARC_FRONTEND_DIST).
 datas += [("../frontend/dist", "frontend/dist")]
 

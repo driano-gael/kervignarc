@@ -49,11 +49,20 @@ def main() -> None:
     from bootstrap.composition import create_app
 
     ip = reseau.adresse_lan()
-    print(
-        f"-> Serveur prêt sur http://{ip}:{PORT}  "
-        f"et  http://{reseau.NOM_HOTE}.local:{PORT}  (API + WebSocket + SPA)"
-    )
-    with reseau.PublicationMdns(PORT, ip=ip):
+    with reseau.PublicationMdns(PORT, ip=ip) as publication:
+        # On n'annonce `kervignarc.local` que s'il a **vraiment** été publié : sinon (mDNS
+        # indisponible) l'afficher induirait l'exploitant en erreur — seul l'accès par IP marche.
+        acces = f"http://{ip}:{PORT}"
+        if publication.actif:
+            acces += f"  et  http://{reseau.NOM_HOTE}.local:{PORT}"
+        print(f"-> Serveur prêt sur {acces}  (API + WebSocket + SPA)")
+        if not publication.actif:
+            # Indice de diagnostic : sans ce message, une publication mDNS avalée (best-effort)
+            # laisserait l'exploitant sans explication du « pourquoi » — l'accès par IP reste sûr.
+            print(
+                f"   (nom {reseau.NOM_HOTE}.local non publié — mDNS indisponible sur ce réseau ; "
+                f"utiliser l'adresse IP ci-dessus)"
+            )
         uvicorn.run(create_app(), host=HOST, port=PORT)
 
 

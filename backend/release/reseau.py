@@ -47,8 +47,9 @@ class PublicationMdns:
 
     Gestionnaire de contexte : `with PublicationMdns(port): uvicorn.run(...)`. La
     publication est tentée à l'entrée et retirée proprement à la sortie. Toute défaillance
-    (pas de pile mDNS, port occupé, pare-feu) est **avalée** : le serveur tourne quand même,
-    accessible par IP.
+    (pas de pile mDNS, port occupé, pare-feu, **collision du nom `kervignarc.local`**) est
+    **avalée** : le serveur tourne quand même, accessible par IP. `actif` dit si le nom a
+    effectivement été publié.
     """
 
     def __init__(self, port: int, ip: str | None = None) -> None:
@@ -56,9 +57,17 @@ class PublicationMdns:
         self._ip = ip or adresse_lan()
         self._zc: Zeroconf | None = None
 
+    @property
+    def actif(self) -> bool:
+        """Vrai si le service mDNS est effectivement publié (sinon : replié sur l'accès par IP)."""
+        return self._zc is not None
+
     def __enter__(self) -> PublicationMdns:
         try:
-            zc = Zeroconf()
+            # `self._zc` est assigné **avant** `register_service` : si l'enregistrement échoue,
+            # `_fermer()` doit pouvoir refermer la pile déjà construite (threads + sockets
+            # multicast), sinon elle fuite jusqu'à la fin du processus.
+            self._zc = Zeroconf()
             info = ServiceInfo(
                 _TYPE_SERVICE,
                 _NOM_SERVICE,
@@ -66,10 +75,14 @@ class PublicationMdns:
                 port=self._port,
                 server=f"{NOM_HOTE}.local.",
             )
-            zc.register_service(info)
-            self._zc = zc
-        except OSError:
-            # Best-effort : l'accès par IP reste disponible, on n'interrompt pas le démarrage.
+            self._zc.register_service(info)
+        except Exception:
+            # Best-effort **littéral** : aucune défaillance mDNS ne doit empêcher le serveur de
+            # démarrer le jour J. Capture volontairement large — au-delà d'`OSError` (pas de pile
+            # mDNS, port pris, pare-feu), zeroconf lève ses propres `zeroconf.Error` qui n'en
+            # dérivent pas : collision du nom `kervignarc.local` (double-lancement, redémarrage
+            # rapide) ou boucle d'événements bloquée (Wi-Fi saturé). L'accès par IP reste le filet.
+            # `KeyboardInterrupt`/`SystemExit` (BaseException) ne sont pas avalés.
             self._fermer()
         return self
 
