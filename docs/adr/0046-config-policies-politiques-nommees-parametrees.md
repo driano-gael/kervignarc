@@ -100,10 +100,15 @@ d'injection concret d'ADR-0004 — « un format est de la **configuration**, pas
   d'assemblage unique ; ajouter un format n'ajoute pas de code moteur.
 - **+** La documentation (`modele-de-donnees.md`, ADR-0004) est réconciliée avec le code.
 - **−** Les implémentations de ce socle sont volontairement **minimales** : les stratégies couplées à
-  la structure d'arbre (`routing` en cascade, `scoring` par sets) exposent leur méthode **fondatrice**
-  et seront **enrichies** par les US consommatrices (extension du contrat, pas rupture). C'est le
-  risque que DETTE-003 signalait — sur-geler la forme du `scoring` avant le moteur : on l'assume en
-  gardant les interfaces étroites et honnêtes, plutôt qu'en inventant des signatures spéculatives.
+  la structure d'arbre exposent leur méthode **fondatrice** (celle dont la règle est écrite
+  aujourd'hui), que les US consommatrices devront **ressigner** — et non simplement étendre. ADR-0004
+  décrit déjà `route(perdant, tour, contexte)` là où ce socle n'expose que
+  `destination_du_perdant()`, et le `scoring` par sets renverra un nombre de sets, pas un total : ce
+  sont des **ruptures de contrat**. On les assume **bon marché** parce qu'il n'y a, par famille,
+  **qu'un seul implémenteur et aucun consommateur** (situation d'aujourd'hui) : le coût du reshape
+  est quasi nul tant qu'E05US005/E05US010 n'ont pas commencé. C'est exactement le sur-gel prématuré
+  que DETTE-003 mettait en garde d'éviter — singulièrement pour le `scoring` : on livre étroit et
+  honnête plutôt que d'inventer une signature spéculative qu'il faudrait défaire.
 - **−** `PolitiquesPhase` n'est pas encore **consommé** par un moteur (E05US005 le fera) : le socle
   est livré testé et câblé, mais sa valeur d'usage n'apparaît qu'à l'US suivante. Assumé : c'est une
   US de **fondation** (ex-E05US003 « interfaces » = cœur d'ADR-0004).

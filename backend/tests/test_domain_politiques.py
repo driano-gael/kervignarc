@@ -66,6 +66,22 @@ def test_seeding_serpent_tableau_minimal() -> None:
     assert SeedingSerpent().ordre_des_tetes(2) == (1, 2)
 
 
+def test_seeding_serpent_grand_tableau_conserve_la_regle() -> None:
+    """À plus grande échelle (16), la règle tient : chaque paire adjacente somme à `2^k+1` = 17,
+    et la tête 2 tombe dans la **seconde moitié** du tableau — elle ne croise la tête 1 qu'en
+    finale (propriété du serpent, pas seulement l'appariement d'un tableau de 8)."""
+    ordre = SeedingSerpent().ordre_des_tetes(16)
+    assert sorted(ordre) == list(range(1, 17))  # permutation de 1..16, sans trou ni doublon
+    for i in range(0, len(ordre), 2):
+        assert ordre[i] + ordre[i + 1] == 17
+    assert ordre.index(2) >= len(ordre) // 2
+
+
+def test_seeding_serpent_effectif_unitaire() -> None:
+    """Cas dégénéré : un seul archer tombe dans le tableau minimal de 2 (tête 2 = exempt)."""
+    assert SeedingSerpent().ordre_des_tetes(1) == (1, 2)
+
+
 # --- byes : aux mieux classés, universel pour tout effectif (ADR-0004) --------------------------
 
 
@@ -82,6 +98,11 @@ def test_byes_attribues_aux_mieux_classes() -> None:
 def test_byes_calcul_universel() -> None:
     """La règle vaut pour tout effectif : 6 dans 8 → byes aux têtes 1 et 2."""
     assert ByesAuxMieuxClasses().porteurs_de_bye(6) == frozenset({1, 2})
+
+
+def test_byes_effectif_unitaire() -> None:
+    """Cas dégénéré : un seul archer dans un tableau de 2 → un bye pour la tête 1."""
+    assert ByesAuxMieuxClasses().porteurs_de_bye(1) == frozenset({1})
 
 
 # --- tiebreak : départage FFTA « 10 puis 9 », séquentiel (§8.1) ---------------------------------
@@ -203,6 +224,13 @@ def test_assemblage_sans_nom_est_malforme() -> None:
     """Une politique sans clé `nom` ne désigne aucune implémentation (décision « nom + params »)."""
     with pytest.raises(PolitiqueMalFormee):
         assembler_politiques({"scoring": {"volees": 20}}, registre_par_defaut())
+
+
+def test_assemblage_nom_non_chaine_est_malforme() -> None:
+    """Le `nom` doit être une **chaîne** : un `nom` numérique (base altérée) est mal formé, pas une
+    implémentation à résoudre — on ne cherche pas `42` dans le catalogue."""
+    with pytest.raises(PolitiqueMalFormee):
+        assembler_politiques({"scoring": {"nom": 42}}, registre_par_defaut())
 
 
 def test_assemblage_nom_inconnu_remonte_politique_inconnue() -> None:

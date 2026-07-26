@@ -95,8 +95,9 @@ dédié.
   **tableau** qui les orchestre (dimensionnement 2^k, génération, progression, podium) reste
   **E05US005** ; le routing en cascade et le peuplement gagnants/perdants restent **E05US010**. Les
   stratégies couplées à la structure d'arbre (routing, scoring par sets) exposent ici leur **méthode
-  fondatrice** et seront enrichies (extension, pas rupture) par les US consommatrices — assumé
-  (ADR-0046, § Conséquences), pas deviné.
+  fondatrice** ; les US consommatrices la **ressigneront** (ADR-0004 vise `route(perdant, tour,
+  contexte)`) — **rupture de contrat assumée**, bon marché tant qu'il n'y a qu'un implémenteur et
+  aucun consommateur (ADR-0046, § Conséquences).
 - **Absorbe** : ex-E05US003, E05US004. **Dépend de** : E05US001 · **Jalon** : J2
 
 ### E05US005 — Arbre d'élimination directe

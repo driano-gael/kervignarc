@@ -20,9 +20,13 @@ par famille, et l'**assemblage** d'une `config.policies` en un jeu résolu (`Pol
 orchestre ces stratégies (dimensionnement 2^k, génération, progression, podium) est **E05US005**
 (élimination directe) et **E05US010** (placement intégral, routing en cascade) : ils **consomment**
 ces politiques déjà éprouvées. Les stratégies couplées à la structure d'arbre exposent donc ici leur
-méthode **fondatrice** (celle dont la règle est écrite) ; les US consommatrices *enrichiront* le
-contrat au fil de leurs besoins (extension, pas rupture) — assumé et signalé, pas deviné (DETTE-003
-mettait en garde contre le sur-gel prématuré de la forme, singulièrement du `scoring`).
+méthode **fondatrice** (celle dont la règle est écrite) ; les US consommatrices la **ressigneront**
+au fil de leurs besoins — ADR-0004 décrit déjà `route(perdant, tour, contexte)` là où ce socle
+n'expose que `destination_du_perdant()`, et le barème par sets renverra un nombre de sets, pas un
+total : ce sont des **ruptures de contrat**, bon marché tant qu'il n'y a **qu'un implémenteur et
+aucun consommateur** par famille (la situation d'aujourd'hui). C'est le sur-gel prématuré que
+DETTE-003 mettait en garde d'éviter — singulièrement pour le `scoring` : on livre étroit et honnête
+plutôt que de figer une signature spéculative.
 
 **Forme de la config (ADR-0046, résorbe DETTE-003).** Chaque politique vit sous `config.policies`,
 désignée par un objet `{"nom": <implémentation>, …paramètres}` — un **nom** (l'implémentation
@@ -40,7 +44,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol
+from typing import Protocol, cast
 
 from domain.erreurs import PolitiqueInconnue, PolitiqueMalFormee
 
@@ -71,7 +75,8 @@ class DestinationPerdant(str, Enum):
 
 class Routing(Protocol):
     """Décide de la destination du perdant d'un match (ADR-0004). Méthode fondatrice : l'issue en
-    élimination sèche. Les routings à cascade/repêchage l'enrichiront (perdant → sous-tableau)."""
+    élimination sèche. ADR-0004 vise `route(perdant, tour, contexte)` : cascade/repêchage
+    (E05US010/E05US016) **ressigneront** cette méthode (rupture bon marché, un implémenteur)."""
 
     def destination_du_perdant(self) -> DestinationPerdant: ...
 
@@ -88,9 +93,9 @@ class EliminationSeche:
 
 
 class Scoring(Protocol):
-    """Calcule le score d'un tireur à partir des points de ses volées (ADR-0004). Méthode fondatrice
-    : le **cumul** de qualification. Le barème par sets (duels, E04US013) enrichira le contrat — son
-    résultat n'est pas un total mais un nombre de sets — sans casser celui du cumul."""
+    """Calcule le score d'un tireur à partir des points de ses volées (ADR-0004). Méthode
+    fondatrice : le **cumul** de qualification. Le barème par sets (duels, E04US013) renverra un
+    nombre de sets, pas un total : il **ressignera** cette méthode (rupture bon marché)."""
 
     def total(self, points_par_volee: Iterable[int]) -> int: ...
 
@@ -133,6 +138,11 @@ class SeedingSerpent:
     complément (`taille+1-tête`) après chaque tête du demi-tableau — d'où les paires adjacentes
     `(1,8), (4,5), (2,7), (3,6)` pour un tableau de 8, chacune de somme `2^k+1`. Les têtes de rang
     supérieur à l'effectif réel sont des **places d'exempt** (byes, cf. `ByesAuxMieuxClasses`).
+
+    ⚠️ E05US005/oracle 120 : cet ordre plat donne les **appariements** (et donc la structure
+    d'arbre), **pas** la numérotation des matchs de `moteur-placement-lucky-loser.md` — l'ordre
+    linéaire des matchs peut différer du doc à structure identique. Ne pas comparer des *numéros* de
+    match sans table de correspondance.
     """
 
     def ordre_des_tetes(self, effectif: int) -> tuple[int, ...]:
@@ -336,11 +346,14 @@ def assembler_politiques(
             )
         params = {clef: valeur for clef, valeur in spec.items() if clef != "nom"}
         resolues[famille] = registre.resoudre(famille, nom, params)
+    # `cast` plutôt que `type: ignore` : le registre renvoie `object` (types hétérogènes par
+    # famille), la cohérence famille→type est garantie par l'enregistrement (`registre_par_defaut`),
+    # pas statiquement. Le `cast` **exprime** cette intention là où l'`ignore` la masquait.
     return PolitiquesPhase(
-        routing=resolues.get(FamillePolitique.ROUTING),  # type: ignore[arg-type]
-        scoring=resolues.get(FamillePolitique.SCORING),  # type: ignore[arg-type]
-        seeding=resolues.get(FamillePolitique.SEEDING),  # type: ignore[arg-type]
-        byes=resolues.get(FamillePolitique.BYES),  # type: ignore[arg-type]
-        tiebreak=resolues.get(FamillePolitique.TIEBREAK),  # type: ignore[arg-type]
-        depth=resolues.get(FamillePolitique.DEPTH),  # type: ignore[arg-type]
+        routing=cast("Routing | None", resolues.get(FamillePolitique.ROUTING)),
+        scoring=cast("Scoring | None", resolues.get(FamillePolitique.SCORING)),
+        seeding=cast("Seeding | None", resolues.get(FamillePolitique.SEEDING)),
+        byes=cast("Byes | None", resolues.get(FamillePolitique.BYES)),
+        tiebreak=cast("Tiebreak | None", resolues.get(FamillePolitique.TIEBREAK)),
+        depth=cast("Depth | None", resolues.get(FamillePolitique.DEPTH)),
     )

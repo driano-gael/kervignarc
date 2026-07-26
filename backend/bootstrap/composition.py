@@ -278,8 +278,9 @@ def create_app(
     app.state.service_bareme_qualification = ServiceBaremeQualification(
         tournoi_repository, phase_repository
     )
-    # Grain de validation (E01US015, `D-11`) : deuxième politique de la même phase
-    # (`config.validation` à côté de `config.scoring`, sans changement de schéma — ADR-0011).
+    # Grain de validation (E01US015, `D-11`) : porté par la même phase, à la racine de `config`
+    # (`config.validation`) — ce n'est pas une politique de moteur, il reste hors `config.policies`
+    # où E05US003 a rangé le barème (ADR-0046), sans changement de schéma.
     app.state.service_grain_validation = ServiceGrainValidation(
         tournoi_repository, phase_repository
     )
