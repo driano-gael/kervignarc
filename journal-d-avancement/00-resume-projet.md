@@ -224,17 +224,20 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **62 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/07/2026 — E05US001
+- **63 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/07/2026 — E05US003
   optimiste d'un cran sur la branche jusqu'à son merge. **`SUIVI-US.md` fait foi sur le compte exact.**
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
   et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (1/15)**
-  avec la **composition de la séquence de phases** (E05US001).
-- Dernière US livrée : **E05US001** (séquence de phases — écran admin pour composer/typer/ordonner les
-  phases après la qualification, cycle de vie par phase et amorce d'un modèle de source de peuplement).
-  Elle est aussi la dernière à **surface visible**, et ouvre le jalon J2.
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E05US003** (politiques injectables &
-  assemblage : les stratégies du moteur, et l'arbitrage DETTE-003 avant d'écrire le moteur).
+  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (2/15)**
+  avec la **composition de la séquence de phases** (E05US001) puis les **politiques injectables du
+  moteur** (E05US003).
+- Dernière US livrée : **E05US003** (politiques injectables & assemblage) — US de **fondation** sans
+  surface utilisateur : les stratégies du moteur (routage, scoring, ensemencement, byes, départage,
+  profondeur) deviennent des briques assemblables par configuration, et la forme de config d'une phase
+  est fixée (ADR-0046). La dernière US à **surface visible** reste **E05US001** (écran de séquence de
+  phases).
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E05US005** (arbre d'élimination directe :
+  le premier tableau de duels, qui consomme les politiques d'E05US003).
