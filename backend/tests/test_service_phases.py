@@ -318,6 +318,32 @@ def test_supprimer_leve_si_phase_inconnue() -> None:
         service.supprimer(tournoi_id, 999)
 
 
+def test_supprimer_la_qualification_est_refuse() -> None:
+    """Garde en profondeur (revue axe D) : la qualification se gère via le barème, pas ici — la
+    retirer par cet écran l'orphelinerait (barème sans phase porteuse)."""
+    from application.erreurs import PhaseQualificationNonSupprimable
+    from domain.bareme import BaremeQualification
+
+    tournois = FauxTournoiRepository()
+    tournoi = tournois.ajouter(
+        Tournoi(nom="Kervignarc", date=_DATE, lieu=None, type_tournoi=TypeTournoi.NON_OFFICIEL)
+    )
+    assert tournoi.id is not None
+    phases = FauxPhaseRepository()
+    service = ServicePhases(tournois, phases)
+    qualif = phases.ajouter(Phase.qualification(tournoi.id, BaremeQualification.preset_ffta_18m()))
+    assert qualif.id is not None
+
+    with pytest.raises(PhaseQualificationNonSupprimable):
+        service.supprimer(tournoi.id, qualif.id)
+
+
+def test_reordonner_leve_si_tournoi_inconnu() -> None:
+    service, _ = _service()
+    with pytest.raises(TournoiIntrouvable):
+        service.reordonner(404, [1, 2])
+
+
 # --- Cycle de vie ------------------------------------------------------------------------------
 
 

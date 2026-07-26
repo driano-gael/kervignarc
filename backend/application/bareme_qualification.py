@@ -16,9 +16,11 @@ refusé (le grain ne validerait jamais). L'upsert n'est donc plus inconditionnel
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from application.erreurs import TournoiIntrouvable
 from domain.bareme import BaremeQualification
-from domain.phase import Phase, TypePhase
+from domain.phase import Phase, SequencePhases, TypePhase
 from domain.ports import PhaseRepository, TournoiRepository
 from domain.tournoi import TournoiId
 
@@ -52,15 +54,36 @@ class ServiceBaremeQualification:
         self._tournoi_existant(tournoi_id)
         bareme = BaremeQualification.creer(nb_volees, nb_fleches_par_volee)
         phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
-        if phase is None:
-            self._phases.ajouter(Phase.qualification(tournoi_id, bareme))
-        else:
+        if phase is not None:
             self._phases.enregistrer(phase.avec_bareme(bareme))
-        # Le barème persisté est celui qu'on vient d'écrire (l'aller-retour ne le transforme pas) ;
-        # le renvoyer directement évite d'avoir à re-narrower `phase.bareme` (optionnel depuis
-        # E05US001, mais toujours présent sur une qualification — ADR-0045 §2).
+            # Le barème persisté est celui qu'on vient d'écrire (l'aller-retour ne le transforme
+            # pas) ; le renvoyer directement évite de re-narrower `phase.bareme` (optionnel depuis
+            # E05US001, mais toujours présent sur une qualification — ADR-0045 §2).
+            return bareme
+        # Création. La qualification est la **première** phase de la séquence (ordre 1, E05US001).
+        # Si des phases ont déjà été composées (l'écran « Phases » n'impose pas de définir le barème
+        # d'abord), on les **décale d'un cran** pour lui faire place en tête : la qualification et
+        # la composition de séquence sont **deux écrivains** de la même table `phase`, et celui-ci
+        # ne doit pas contourner l'invariant `SequencePhases` — sans ce décalage, deux « ordre 1 »
+        # coexisteraient et bloqueraient toute composition ultérieure (revue E05US001, axe D).
+        qualification = Phase.qualification(tournoi_id, bareme)
+        decalees = [_decaler_dun_cran(p) for p in self._phases.par_tournoi(tournoi_id)]
+        SequencePhases(phases=(qualification, *decalees))  # valide l'ensemble avant d'écrire
+        self._phases.ajouter(qualification)
+        for phase_decalee in decalees:
+            self._phases.enregistrer(phase_decalee)
         return bareme
 
     def _tournoi_existant(self, tournoi_id: TournoiId) -> None:
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+
+
+def _decaler_dun_cran(phase: Phase) -> Phase:
+    """Décale une phase d'un cran vers le bas (ordre +1) pour faire place à la qualification en
+    tête. La source **suit** : son ancre `ordre_source` est incrémentée d'autant, toutes les phases
+    se décalant du même cran, donc les références restent valides (E05US001)."""
+    decalee = phase.avec_ordre(phase.ordre + 1)
+    if phase.source is None:
+        return decalee
+    return decalee.avec_source(replace(phase.source, ordre_source=phase.source.ordre_source + 1))

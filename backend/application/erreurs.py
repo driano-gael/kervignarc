@@ -370,6 +370,18 @@ class PhaseSourceReferencee(ApplicationError):
     code = "phase_source_referencee"
 
 
+class PhaseQualificationNonSupprimable(ApplicationError):
+    """Suppression refusée : la phase de qualification se gère via le barème (E05US001) → 409.
+
+    La qualification naît et vit avec le **barème** (ADR-0011) ; la retirer par l'écran des phases
+    l'**orphelinerait** (le barème n'aurait plus de phase porteuse) et casserait la saisie. Garde en
+    profondeur : le front masque déjà l'action (`gereeAilleurs`), mais l'API ne doit pas l'ouvrir
+    par une route directe (revue E05US001, axe D).
+    """
+
+    code = "phase_qualification_non_supprimable"
+
+
 class ReordonnancementPhasesInvalide(ApplicationError):
     """Réordonnancement refusé : la liste fournie ne recouvre pas exactement les phases du tournoi
     (E05US001) → 409.

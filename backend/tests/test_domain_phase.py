@@ -372,6 +372,22 @@ def test_un_effectif_consommateur_incompatible_avec_la_source_est_refuse() -> No
         SequencePhases(phases=(qualif, elim))
 
 
+def test_prelever_plus_que_l_effectif_declare_est_aussi_refuse() -> None:
+    """« effectif incompatible » dans l'**autre** sens : la source prélève 20 (rangs 1..20, dans les
+    40 de la source, donc rangs valides) pour une phase qui n'en attend que 16."""
+    qualif = _qualification(effectif=40)
+    elim = Phase.creer(
+        tournoi_id=7,
+        ordre=2,
+        type=TypePhase.ELIMINATION_DIRECTE,
+        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=20),
+        effectif=16,
+    )
+
+    with pytest.raises(EffectifIncompatible):
+        SequencePhases(phases=(qualif, elim))
+
+
 def test_sans_effectif_declare_la_source_ne_declenche_pas_de_controle_d_effectif() -> None:
     """Les contrôles d'effectif sont silencieux quand l'effectif n'est pas déclaré (ADR-0045 §3)."""
     qualif = _qualification()  # pas d'effectif

@@ -235,6 +235,55 @@ def test_modifier_phase_inconnue_404(app_phases: FastAPI, connecter_admin: Conne
     assert reponse.json()["code"] == "phase_introuvable"
 
 
+def test_definir_bareme_apres_ajout_place_la_qualification_en_tete(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Régression bout-en-bout (revue axe D) : ajouter une phase **avant** de définir le barème ne
+    crée pas deux « ordre 1 » — la qualification s'insère en tête, l'élimination descend en 2, et la
+    composition se poursuit sans blocage 422."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        elim = client.post(base, json={"type": "elimination_directe"})
+        assert elim.status_code == 201 and elim.json()["ordre"] == 1
+
+        # Définir le barème crée la phase de qualification (via l'écran « Barème & validation »).
+        definir = client.put(
+            f"/api/v1/tournois/{tournoi_id}/bareme-qualification",
+            json={"nb_volees": 20, "nb_fleches_par_volee": 3},
+        )
+        assert definir.status_code == 200, definir.text
+
+        phases = client.get(base).json()
+        assert [(p["ordre"], p["type"]) for p in phases] == [
+            (1, "qualification"),
+            (2, "elimination_directe"),
+        ]
+        # La composition n'est pas bloquée : on peut ajouter une phase de plus.
+        suite = client.post(base, json={"type": "placement"})
+        assert suite.status_code == 201 and suite.json()["ordre"] == 3
+
+
+def test_supprimer_la_qualification_409(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La qualification se gère via le barème : la supprimer par l'API des phases → 409."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/bareme-qualification",
+            json={"nb_volees": 20, "nb_fleches_par_volee": 3},
+        )
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        qualif = next(p for p in client.get(base).json() if p["type"] == "qualification")
+
+        reponse = client.delete(f"{base}/{qualif['id']}")
+        assert reponse.status_code == 409
+        assert reponse.json()["code"] == "phase_qualification_non_supprimable"
+
+
 def test_type_inconnu_400(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> None:
     """Un type hors énumération est rejeté par Pydantic → 400 (corps invalide)."""
     with TestClient(app_phases) as client:

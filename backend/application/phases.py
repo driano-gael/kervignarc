@@ -29,6 +29,7 @@ from dataclasses import replace
 
 from application.erreurs import (
     PhaseIntrouvable,
+    PhaseQualificationNonSupprimable,
     PhaseSourceReferencee,
     ReordonnancementPhasesInvalide,
     TournoiIntrouvable,
@@ -116,9 +117,9 @@ class ServicePhases:
         du tournoi, et une `DomainError` (→ 422) si l'ordre demandé rend la séquence incohérente
         (ex. une source se retrouve **après** la phase qu'elle alimente).
         """
+        self._exiger_tournoi(tournoi_id)
         actuelles = self._phases.par_tournoi(tournoi_id)
         if not actuelles and not phases_ordonnees:
-            self._exiger_tournoi(tournoi_id)
             return []
         par_id: dict[int, Phase] = {}
         for phase in actuelles:
@@ -149,6 +150,10 @@ class ServicePhases:
         Les références de source des phases restantes sont remappées après recompactage.
         """
         cible = self._exiger_phase(tournoi_id, phase_id)
+        if cible.type is TypePhase.QUALIFICATION:
+            raise PhaseQualificationNonSupprimable(
+                "La phase de qualification se gère via le barème ; elle ne se supprime pas ici."
+            )
         restantes = [p for p in self._phases.par_tournoi(tournoi_id) if p.id != phase_id]
         if any(p.source is not None and p.source.ordre_source == cible.ordre for p in restantes):
             raise PhaseSourceReferencee(

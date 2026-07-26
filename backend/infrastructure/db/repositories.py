@@ -262,6 +262,7 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
     try:
         config = json.loads(ligne.config)
         type_phase = TypePhase(ligne.type)
+        statut = StatutPhase(ligne.statut)
         bareme = None
         validation = None
         if type_phase is TypePhase.QUALIFICATION:
@@ -296,7 +297,7 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
             validation=validation,
             source=source,
             effectif=effectif,
-            statut=StatutPhase(ligne.statut),
+            statut=statut,
             id=ligne.id,
         )
     except DomainError as exc:

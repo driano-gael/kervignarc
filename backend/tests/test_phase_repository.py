@@ -470,6 +470,29 @@ def test_le_statut_en_pause_fait_l_aller_retour(tmp_path: Path) -> None:
         db.engine.dispose()
 
 
+def test_un_statut_illisible_leve_infrastructure_error(tmp_path: Path) -> None:
+    """Un `statut` hors énumération (base altérée) remonte en `InfrastructureError`, pas en 500 :
+    le cast est dans le bloc qui enveloppe (revue axe C1)."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id = _tournoi(db)
+        with db.session_factory() as session:
+            session.add(
+                PhaseORM(
+                    tournoi_id=tournoi_id,
+                    ordre=1,
+                    type="elimination_directe",
+                    config="{}",
+                    statut="en_vacances",
+                )
+            )
+            session.commit()
+        with pytest.raises(InfrastructureError):
+            PhaseRepositorySQL(db.session_factory).par_tournoi(tournoi_id)
+    finally:
+        db.engine.dispose()
+
+
 def test_une_source_illisible_leve_infrastructure_error(tmp_path: Path) -> None:
     """Une `config.source` bien formée mais hors règle (plage vide) est une base altérée : le
     repository relit via `SourcePhase`, donc jamais un value object silencieusement invalide."""

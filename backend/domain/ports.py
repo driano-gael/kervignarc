@@ -442,8 +442,9 @@ class ScoreRepository(Protocol):
 class PhaseRepository(Protocol):
     """Port de persistance des phases (adapter fourni par l'infrastructure).
 
-    Introduction minimale (E01US009 / ADR-0011) : n'est exercé que pour la phase de
-    `qualification` d'un tournoi, qui porte le barème.
+    Introduit minimalement pour la qualification (E01US009 / ADR-0011), **étendu par E05US001** à
+    toute la séquence : `par_tournoi` (liste ordonnée) et `supprimer` servent la composition et le
+    cycle de vie des phases du moteur (ADR-0045).
     """
 
     def ajouter(self, phase: Phase) -> Phase:
