@@ -12,26 +12,26 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 25/07/2026** · **59 US livrées** · dernière : `E09US003`.
+**Dernière mise à jour : 26/07/2026** · **60 US livrées** · dernière : `E11US001`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E11US001` — Release, base et mise en réseau** poursuit la séquence J1 : préparer le déploiement
-> du jour J (packaging, base de données, adresse réseau accessible aux tablettes). Détail :
-> [`stories/E11-exploitation.md`](../stories/E11-exploitation.md).
+> **`E11US003` — Sauvegarde & archive** poursuit la séquence J1 : sauvegardes automatiques
+> périodiques du fichier SQLite pendant le tournoi + export d'un paquet d'archive en fin d'événement.
+> Dépend d'E11US001 (livrée). Détail : [`stories/E11-exploitation.md`](../stories/E11-exploitation.md).
 >
-> *Fait juste avant :* `E09US003` (listes imprimables) — terminée et poussée, revue faite : **écran
-> « Exports » admin** (groupe Jour J) avec les **deux premières listes PDF** du jour J, sur le socle
-> ReportLab (E09US001, ADR-0031). **Liste de placement** (archer → départ/cible/position) triable
-> **par cible ou par nom** (paramètre serveur) et **filtrable sur un départ** (optionnel) ; **liste
-> club & paiement** regroupée par club (départs, dû, payé, statut **Oui/Non/—**, totaux par club,
-> bucket « Sans club » en dernier — ADR-0014). La vue club & paiement **réutilise
-> `ServicePaiements.recap_par_club`** (pas de duplication de l'agrégation) et porte sur **tout le
-> tournoi** (le filtre départ n'a de sens que pour le placement). Côté front, **premier téléchargement
-> binaire** : `fetchBlob` + `<a download>` dans le client HTTP partagé (le Bearer admin est en JS, pas
-> un cookie). Arbitrages tranchés en réalisation le 25/07, reversés dans `stories/`.
+> *Fait juste avant :* `E11US001` (release, base & mise en réseau) — terminée et poussée, revue faite :
+> **binaire auto-contenu** fabriqué par PyInstaller (`build_release.py` + `kervignarc.spec`, onefile)
+> embarquant front + migrations + PDF ; point d'entrée `run.py` **conscient du gel** (ressources sous
+> `_MEIPASS`, **base persistante à côté de l'exe**). **Base créée au 1er lancement** (`alembic upgrade
+> head` sur fichier absent — helper `infrastructure/db/migrate.py` factorisé, réutilisé par
+> `run_dev.py`). Écoute **`0.0.0.0`** (les tablettes doivent joindre le serveur) sur le **port fixe
+> 8000**, et **annonce mDNS `kervignarc.local`** via `zeroconf` (best-effort, l'accès par IP reste le
+> filet). Deux dépendances ajoutées (aval utilisateur) : `zeroconf` (runtime, **LGPL-2.1** — sans
+> conséquence pour un outil interne non distribué, documenté) et `pyinstaller` (dev). Procédure réseau
+> complète dans [`docs/deploiement.md`](../docs/deploiement.md).
 
 ---
 
@@ -52,7 +52,7 @@
 | E00US011 | Tranche verticale démontrable | ✅ |
 | E00US012 | Exécutable de dev (FastAPI sert le front) | ✅ |
 
-## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (44/46)**
+## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (45/46)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -100,8 +100,8 @@
 | 53 | E02US006 | Contrôler les quotas | ✅ *(fait en avance)* |
 | 54 | E09US001 | Socle PDF & feuille de marque | ✅ *(fait en avance)* |
 | 55 | E09US003 | Listes imprimables (placement, club, paiement) | ✅ |
-| 56 | E11US001 | Release, base et mise en réseau | 🎯 *(reprise J1)* |
-| 57 | E11US003 | Sauvegarde & archive | ⬜ |
+| 56 | E11US001 | Release, base et mise en réseau | ✅ |
+| 57 | E11US003 | Sauvegarde & archive | 🎯 *(reprise J1)* |
 
 ## J2 — Duels simples + bascule de tour — ⬜ **non commencé (0/15)**
 

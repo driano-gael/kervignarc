@@ -14,6 +14,10 @@ dependencies = [
     # Génération PDF (E09US001) : socle des documents imprimables — wheels autoportantes,
     # aucune dépendance native, embarquable dans PyInstaller (QT3 tranchée, ADR-0031).
     "reportlab==5.0.0",
+    # Annonce mDNS `kervignarc.local` (E11US001) : le binaire de release se publie lui-même
+    # sur le réseau local, les tablettes accèdent au nom sans configurer le routeur. Wheels
+    # binaires (cp313), embarquables PyInstaller ; expose py.typed (mypy strict OK).
+    "zeroconf==0.150.0",
 ]
 
 [project.optional-dependencies]
@@ -25,6 +29,9 @@ dev = [
     "pytest==9.1.1",
     "httpx==0.28.1",
     "pre-commit==4.0.1",
+    # Packaging du binaire de release (E11US001) : fabrique l'exécutable auto-contenu
+    # (front + migrations + PDF embarqués). Outil de build uniquement, jamais importé au runtime.
+    "pyinstaller==6.21.0",
 ]
 
 [build-system]
@@ -32,7 +39,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["domain*", "application*", "infrastructure*", "api*", "bootstrap*"]
+include = ["domain*", "application*", "infrastructure*", "api*", "bootstrap*", "release*"]
 
 # ---------------------------------------------------------------------------
 # Qualité (E00US002) — cf. guide-architecture.md §5
