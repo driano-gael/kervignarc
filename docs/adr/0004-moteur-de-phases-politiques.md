@@ -41,3 +41,8 @@ Un **format** est donc un assemblage : ex. « placement intégral 120 » = `rout
 
 ## Liens
 `moteur-placement-lucky-loser.md` (règles + décisions §7) ; `cahier-des-charges-technique.md` §4.2 ; ADR-0003.
+
+**Précisé par [ADR-0046](0046-config-policies-politiques-nommees-parametrees.md)** (E05US003) : la
+forme concrète de la `config` — politiques sous `config.policies`, chacune `{"nom": …, …paramètres}`,
+le grain de `validation` restant hors `policies` — et l'assemblage via un registre peuplé par la
+composition root. C'est la résorption de DETTE-003.
