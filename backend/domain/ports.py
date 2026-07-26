@@ -461,8 +461,20 @@ class PhaseRepository(Protocol):
         """
         ...
 
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
+        """Renvoie **toutes** les phases d'un tournoi, **ordonnées par `ordre`** (E05US001).
+
+        La séquence de phases (`ServicePhases`) se compose et se valide sur cette liste ; l'ordre
+        y est significatif (1..N sans trou), d'où le tri à la source.
+        """
+        ...
+
     def enregistrer(self, phase: Phase) -> Phase:
-        """Met à jour une phase déjà persistée (édition du barème) et la renvoie."""
+        """Met à jour une phase déjà persistée (édition du barème, du type, de la source…)."""
+        ...
+
+    def supprimer(self, phase_id: PhaseId) -> None:
+        """Supprime une phase persistée (retrait d'une phase de la séquence, E05US001)."""
         ...
 
 

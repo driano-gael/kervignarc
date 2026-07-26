@@ -131,6 +131,13 @@ class FauxPhaseRepository:
         self._phases[phase.id] = phase
         return phase
 
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
+        phases = [p for p in self._phases.values() if p.tournoi_id == tournoi_id]
+        return sorted(phases, key=lambda p: p.ordre)
+
+    def supprimer(self, phase_id: PhaseId) -> None:
+        del self._phases[phase_id]
+
 
 class FauxBlasonRepository:
     """Repository de blasons en mémoire conforme au port `BlasonRepository`."""

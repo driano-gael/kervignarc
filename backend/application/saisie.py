@@ -183,7 +183,9 @@ class ServiceSaisie:
         dernier **tir**, jamais le dernier heartbeat.
         """
         phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
-        nb_volees = phase.bareme.nb_volees if phase is not None else 0
+        # `bareme` optionnel depuis E05US001 (ADR-0045 §2), présent sur une qualification ; absent
+        # (ou phase non configurée) → 0, la supervision affiche « — » sans lever d'erreur.
+        nb_volees = phase.bareme.nb_volees if phase is not None and phase.bareme is not None else 0
         completes: list[int] = []
         derniere: datetime.datetime | None = None
         for ligne in self.archers_du_poste(tournoi_id, cible_index, depart_id):
@@ -247,6 +249,7 @@ class ServiceSaisie:
         archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
         phase = self._phase_qualification(tournoi_id)
+        assert phase.bareme is not None, "Une qualification porte toujours un barème (ADR-0045 §2)."
         serie = self._series.par_archer(tournoi_id, archer_id) or Serie.vide(tournoi_id, archer_id)
         serie = serie.saisir_volee(
             numero,
@@ -279,6 +282,9 @@ class ServiceSaisie:
         """
         self._charger_archer(tournoi_id, archer_id, contexte)
         phase = self._phase_qualification(tournoi_id)
+        assert (
+            phase.bareme is not None and phase.validation is not None
+        ), "Une qualification porte toujours barème et grain (ADR-0045 §2)."
         serie = self._series.par_archer(tournoi_id, archer_id) or Serie.vide(tournoi_id, archer_id)
         serie = serie.valider(
             scoreur, grain=phase.validation, nb_volees_bareme=phase.bareme.nb_volees
@@ -310,6 +316,7 @@ class ServiceSaisie:
         archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
         phase = self._phase_qualification(tournoi_id)
+        assert phase.bareme is not None, "Une qualification porte toujours un barème (ADR-0045 §2)."
         serie = self._series.par_archer(tournoi_id, archer_id) or Serie.vide(tournoi_id, archer_id)
         avant = _valeurs_lisibles(serie, numero)
         serie = serie.corriger_volee(

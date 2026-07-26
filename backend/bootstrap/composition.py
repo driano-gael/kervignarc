@@ -39,6 +39,7 @@ from api.v1.grain_validation import router as grain_validation_router
 from api.v1.inscriptions import router as inscriptions_router
 from api.v1.listes_impression import router as listes_impression_router
 from api.v1.paiements import router as paiements_router
+from api.v1.phases import router as phases_router
 from api.v1.placement import router as placement_router
 from api.v1.postes import router as postes_router
 from api.v1.postes import session_router as poste_session_router
@@ -66,6 +67,7 @@ from application.grain_validation import ServiceGrainValidation
 from application.inscriptions import ServiceInscriptions
 from application.listes_impression import ServiceListesImpression
 from application.paiements import ServicePaiements
+from application.phases import ServicePhases
 from application.placement import ServicePlacement
 from application.postes import ServicePostes
 from application.saisie import ServiceSaisie
@@ -280,6 +282,11 @@ def create_app(
     app.state.service_grain_validation = ServiceGrainValidation(
         tournoi_repository, phase_repository
     )
+    # Séquence de phases (E05US001, ADR-0045) : composer/éditer/ordonner/supprimer les phases d'un
+    # tournoi et faire vivre leur cycle de vie. Le service vérifie l'existence du tournoi et arbitre
+    # les conflits d'état ; la cohérence de la séquence (source, ordres) est une règle du domaine
+    # (`SequencePhases`). Même port `phase_repository` que le barème/grain (une table `phase`).
+    app.state.service_phases = ServicePhases(tournoi_repository, phase_repository)
     # Inscription d'un archer (E02US002) : le service valide le tournoi, sa **catégorie** (qui doit
     # être du même tournoi) et son club de rattachement s'il est fourni — d'où quatre ports pour un
     # seul agrégat. Le club reste facultatif (`NULL` = inconnu, ADR-0014), la catégorie non.
@@ -518,6 +525,7 @@ def create_app(
     app.include_router(gabarits_router)
     app.include_router(bareme_qualification_router)
     app.include_router(grain_validation_router)
+    app.include_router(phases_router)
     app.include_router(competition_router)
     app.include_router(completude_router)
     app.include_router(saisie_router)

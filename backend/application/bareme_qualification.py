@@ -53,10 +53,13 @@ class ServiceBaremeQualification:
         bareme = BaremeQualification.creer(nb_volees, nb_fleches_par_volee)
         phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
         if phase is None:
-            cree = self._phases.ajouter(Phase.qualification(tournoi_id, bareme))
-            return cree.bareme
-        modifiee = self._phases.enregistrer(phase.avec_bareme(bareme))
-        return modifiee.bareme
+            self._phases.ajouter(Phase.qualification(tournoi_id, bareme))
+        else:
+            self._phases.enregistrer(phase.avec_bareme(bareme))
+        # Le barème persisté est celui qu'on vient d'écrire (l'aller-retour ne le transforme pas) ;
+        # le renvoyer directement évite d'avoir à re-narrower `phase.bareme` (optionnel depuis
+        # E05US001, mais toujours présent sur une qualification — ADR-0045 §2).
+        return bareme
 
     def _tournoi_existant(self, tournoi_id: TournoiId) -> None:
         if self._tournois.par_id(tournoi_id) is None:
