@@ -12,26 +12,28 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 26/07/2026** · **60 US livrées** · dernière : `E11US001`.
+**Dernière mise à jour : 26/07/2026** · **61 US livrées** · dernière : `E11US003`.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E11US003` — Sauvegarde & archive** poursuit la séquence J1 : sauvegardes automatiques
-> périodiques du fichier SQLite pendant le tournoi + export d'un paquet d'archive en fin d'événement.
-> Dépend d'E11US001 (livrée). Détail : [`stories/E11-exploitation.md`](../stories/E11-exploitation.md).
+> **`E05US001` — Séquence de phases** ouvre le jalon **J2** (les duels) : structurer l'enchaînement
+> des phases d'un tournoi (qualification → éliminations directes), socle du moteur d'élimination.
+> Détail : [`stories/E05-moteur-phases.md`](../stories/E05-moteur-phases.md).
+> *J1 est **terminé** (46/46) ; le confort « ma journée » ouverte sur « c'est moi » et les classements
+> imprimables restent hors décompte du jalon.*
 >
-> *Fait juste avant :* `E11US001` (release, base & mise en réseau) — terminée et poussée, revue faite :
-> **binaire auto-contenu** fabriqué par PyInstaller (`build_release.py` + `kervignarc.spec`, onefile)
-> embarquant front + migrations + PDF ; point d'entrée `run.py` **conscient du gel** (ressources sous
-> `_MEIPASS`, **base persistante à côté de l'exe**). **Base créée au 1er lancement** (`alembic upgrade
-> head` sur fichier absent — helper `infrastructure/db/migrate.py` factorisé, réutilisé par
-> `run_dev.py`). Écoute **`0.0.0.0`** (les tablettes doivent joindre le serveur) sur le **port fixe
-> 8000**, et **annonce mDNS `kervignarc.local`** via `zeroconf` (best-effort, l'accès par IP reste le
-> filet). Deux dépendances ajoutées (aval utilisateur) : `zeroconf` (runtime, **LGPL-2.1** — sans
-> conséquence pour un outil interne non distribué, documenté) et `pyinstaller` (dev). Procédure réseau
-> complète dans [`docs/deploiement.md`](../docs/deploiement.md).
+> *Fait juste avant :* `E11US003` (sauvegarde & archive) — terminée et poussée, revue faite :
+> **sauvegarde périodique silencieuse** (tâche de fond dans le `lifespan`, copie horodatée cohérente
+> via l'API `sqlite3.backup` — une **lecture**, donc **hors** file d'écriture, règle 7 —, rétention par
+> nom, config `KERVIGNARC_BACKUP_*`). **Écran « Archive »** (Admin → Jour J) : endpoint admin renvoyant
+> un **ZIP** (`zipfile`/`csv`/`sqlite3` stdlib, **zéro dépendance** — règle 11) réunissant, **au choix
+> (cases à cocher)** : instantané SQLite complet, dump CSV de toutes les tables (`sqlite_master`, fidèle
+> au schéma), PDF régénérés du tournoi (feuilles de marque par départ + listes, **best-effort**), et un
+> `manifeste.json` toujours présent. Port `ConstructeurArchive` **au niveau applicatif** (une archive
+> est un concern d'exploitation, pas du domaine — règles 2/12). QR de salle exclus (URL vivante). Cadré
+> avec le commanditaire (CA « SQLite + éventuels documents » élargi à un paquet riche configurable).
 
 ---
 
@@ -52,7 +54,7 @@
 | E00US011 | Tranche verticale démontrable | ✅ |
 | E00US012 | Exécutable de dev (FastAPI sert le front) | ✅ |
 
-## J1 — Tournoi de qualification de bout en bout — 🔶 **en cours (45/46)**
+## J1 — Tournoi de qualification de bout en bout — ✅ **terminé (46/46)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -101,7 +103,7 @@
 | 54 | E09US001 | Socle PDF & feuille de marque | ✅ *(fait en avance)* |
 | 55 | E09US003 | Listes imprimables (placement, club, paiement) | ✅ |
 | 56 | E11US001 | Release, base et mise en réseau | ✅ |
-| 57 | E11US003 | Sauvegarde & archive | 🎯 *(reprise J1)* |
+| 57 | E11US003 | Sauvegarde & archive | ✅ |
 
 ## J2 — Duels simples + bascule de tour — ⬜ **non commencé (0/15)**
 

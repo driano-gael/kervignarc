@@ -24,9 +24,10 @@ dû, par archer et par club) est en place, un écran de **complétude** dit d'un
 manque avant de terminer le tournoi, une **recherche d'archer** permanente répond à « je tire
 où ? » depuis n'importe quel écran admin, et un écran **« Doublons »** repère les fiches en double
 et les **fusionne** sans rien perdre. Et l'application se **déploie désormais en un seul fichier**
-exécutable qui crée sa base au premier lancement et s'ouvre sur le réseau local — prêt pour le jour
-J, sans installation ni internet.** Il reste à construire les duels (phases finales) et le pilotage
-du jour J.
+exécutable qui crée sa base au premier lancement, s'ouvre sur le réseau local, **se sauvegarde toute
+seule** et sait produire une **archive complète** du tournoi — prêt pour le jour J, sans installation
+ni internet.** Le jalon « qualification de bout en bout » est ainsi **terminé** (à un reliquat de
+confort près) ; il reste à construire les duels (phases finales) et le pilotage du jour J.
 
 ---
 
@@ -135,7 +136,13 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
 - La **procédure complète** (fabriquer le fichier, brancher le routeur, connecter les tablettes,
   pièges à éviter) est écrite dans [`docs/deploiement.md`](../docs/deploiement.md). Détail dans
   [`2026-07-26-12h26-deploiement-jour-j.md`](2026-07-26-12h26-deploiement-jour-j.md).
-  *Restent à venir sur ce volet : les **sauvegardes automatiques** et l'**archive** de fin de tournoi.*
+- **Sauvegardes automatiques & archive** (dernier fait marquant, 26/07) : pendant que l'appli tourne,
+  elle dépose **toute seule**, à intervalle régulier, une **copie horodatée** de sa base dans un dossier
+  `backups/` (protection de fond, sans écran, avec purge des plus anciennes). Et un écran **« Archive »**
+  produit à la demande un **paquet ZIP** de fin de tournoi — l'organisateur **coche** ce qu'il emporte :
+  base complète, données en **CSV** (tableur), et documents **PDF** (feuilles de marque, listes), avec
+  un manifeste. Détail dans
+  [`2026-07-26-13h55-sauvegarde-et-archive.md`](2026-07-26-13h55-sauvegarde-et-archive.md).
 
 ### 8. L'interface d'administration — *coquille posée*
 
@@ -191,11 +198,12 @@ la recherche restera vide — tant que leur moteur (EPIC-05) n'est pas construit
 Dans l'ordre de valeur prévu par le backlog :
 
 1. **Finir le tournoi de qualification** : l'appli publique ouverte directement sur **« ma journée »**
-   (« c'est moi » mémorisé), les **sauvegardes / archive** de tournoi (E11US003), et les **classements
-   imprimables**.
+   (« c'est moi » mémorisé) et les **classements imprimables**. C'est **le dernier reliquat** de J1 :
+   le jalon est sinon **terminé**.
    *(Supervision des postes, classement, vues publiques, suivi des paiements, complétude du tournoi,
-   recherche d'un archer, **premières listes imprimables** (placement, club & paiement) et la **mise en
-   réseau / déploiement en un fichier** (E11US001) : faits — cf. blocs 3, 7, 9 et 10.)*
+   recherche d'un archer, **premières listes imprimables** (placement, club & paiement), la **mise en
+   réseau / déploiement en un fichier** (E11US001) et les **sauvegardes / archive** (E11US003) :
+   faits — cf. blocs 3, 7, 9 et 10.)*
 2. **Les duels** (phases finales) : arbre d'élimination directe, saisie en duels, abandon /
    disqualification, barrages, podium — **et surtout la bascule de tour**, qui est le moment où le
    produit gagne ou perd sa valeur.
@@ -212,14 +220,16 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **60 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/07/2026 — E11US001
+- **61 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/07/2026 — E11US003
   optimiste d'un cran sur la branche jusqu'à son merge. **`SUIVI-US.md` fait foi sur le compte exact.**
-- Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : bien avancé
-  (45/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
+- Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
+  (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
-  détection/fusion des doublons, **premières listes imprimables** et le **déploiement en un fichier /
-  mise en réseau** faits ; restent « ma journée » (« c'est moi ») et les sauvegardes (E11US003).
-- Dernière US livrée : **E11US001** (release, base & mise en réseau — un exécutable auto-contenu qui
-  crée sa base au 1er lancement, écoute sur le réseau local et s'annonce en `kervignarc.local`).
-  Elle est aussi la dernière à **surface visible**.
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E11US003** (sauvegarde & archive).
+  détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
+  et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
+  classements imprimables restent, hors décompte du jalon.)*
+- Dernière US livrée : **E11US003** (sauvegarde & archive — sauvegardes automatiques périodiques en
+  fond + écran d'export d'un paquet ZIP de fin de tournoi, contenu au choix). Elle est aussi la
+  dernière à **surface visible**.
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E05US001** (séquence de phases, début du
+  jalon J2 : les duels).

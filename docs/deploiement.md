@@ -93,3 +93,24 @@ plupart des tablettes le résolvent donc sans réglage.
   `kervignarc.exe` : **accepter** (réseaux privés), sinon les tablettes ne joignent pas le serveur.
 - **Dossier en lecture seule.** Si l'exe est dans un dossier non inscriptible, la création de
   `kervignarc.db` échoue au démarrage — le placer dans un dossier inscriptible (cf. §2).
+
+## 5. Sauvegardes automatiques (E11US003)
+
+Pendant que le serveur tourne, une **copie horodatée** de la base est déposée **périodiquement**
+dans le sous-dossier **`backups/`** (à côté de l'exe), sous la forme `kervignarc-AAAAMMJJ-HHMMSS.db`.
+La copie est **cohérente** même si des saisies ont lieu (elle utilise le mécanisme de sauvegarde en
+ligne de SQLite — ce n'est pas une simple copie de fichier). C'est le filet en cas de plantage :
+fermer l'appli, remplacer `kervignarc.db` par une sauvegarde, relancer.
+
+Rien à configurer par défaut. Pour ajuster (facultatif), définir des **variables d'environnement**
+avant de lancer l'exe :
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `KERVIGNARC_BACKUP_INTERVAL_SECONDS` | `900` (15 min) | Délai entre deux sauvegardes. `0` **désactive**. |
+| `KERVIGNARC_BACKUP_RETENTION` | `48` | Nombre de sauvegardes conservées (les plus anciennes sont purgées). |
+| `KERVIGNARC_BACKUP_DIR` | `backups/` (près de l'exe) | Dossier de dépôt des sauvegardes. |
+
+> **Archive de fin d'événement.** En complément des sauvegardes automatiques, l'écran **Admin →
+> Archive** produit à la demande un **paquet ZIP** du tournoi (instantané complet de la base,
+> données en CSV, documents PDF, manifeste) — à conserver après la compétition.
