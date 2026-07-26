@@ -300,9 +300,15 @@ class _Monde:
         assert categorie.id is not None
         return categorie.id
 
-    def inscrire(self, depart_id: int, categorie_id: int) -> int:
+    def inscrire(self, depart_id: int, categorie_id: int, *, club: int | None = None) -> int:
         archer = self.archers.ajouter(
-            Archer(nom="N", prenom="P", tournoi_id=self.tournoi_id, categorie_id=categorie_id)
+            Archer(
+                nom="N",
+                prenom="P",
+                tournoi_id=self.tournoi_id,
+                categorie_id=categorie_id,
+                club_id=club,
+            )
         )
         assert archer.id is not None
         inscription = self.inscriptions.ajouter(
@@ -813,3 +819,53 @@ def test_regenerer_sans_score_ne_demande_ni_confirmation_ni_trace() -> None:
 
     assert len(plan.cibles) == 1
     assert monde.placements.traces == []
+
+
+# --- E03US006 : signal de mixité recalculé à la lecture (le club n'est pas persisté) ----------
+
+
+def test_mixite_deux_clubs_distincts_non_signalee_a_la_lecture() -> None:
+    """E03US006 : deux clubs distincts sur une cible ⇒ mixité garantie, drapeau `False`.
+
+    On lit via `plan_de_cibles` (pas la valeur retournée par `regenerer`) : le plan est matérialisé
+    et le club **n'est pas persisté** (ADR-0024), donc un `False` correct ici prouve que le service
+    **recalcule** le drapeau depuis la jointure archer → club (ADR-0047), pas d'une colonne."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.5)
+    monde.inscrire(depart, cat, club=1)
+    monde.inscrire(depart, cat, club=2)
+    monde.service.regenerer(monde.tournoi_id, depart)
+
+    plan = monde.service.plan_de_cibles(monde.tournoi_id, depart)
+
+    assert len(plan.cibles[0].placements) == 2
+    assert plan.cibles[0].mixite_non_garantie is False
+
+
+def test_mixite_un_seul_club_signalee_a_la_lecture() -> None:
+    """E03US006 : une cible mono-club (≥ 2 archers, 1 club) est signalée `True` à la lecture."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.5)
+    monde.inscrire(depart, cat, club=7)
+    monde.inscrire(depart, cat, club=7)
+    monde.service.regenerer(monde.tournoi_id, depart)
+
+    plan = monde.service.plan_de_cibles(monde.tournoi_id, depart)
+
+    assert plan.cibles[0].mixite_non_garantie is True
+
+
+def test_mixite_club_inconnu_ne_peut_etre_affirmee_donc_signalee() -> None:
+    """ADR-0014 : un club connu + un club **inconnu** ne permet pas d'affirmer 2 clubs → signalé."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=0.5)
+    monde.inscrire(depart, cat, club=3)
+    monde.inscrire(depart, cat, club=None)
+    monde.service.regenerer(monde.tournoi_id, depart)
+
+    plan = monde.service.plan_de_cibles(monde.tournoi_id, depart)
+
+    assert plan.cibles[0].mixite_non_garantie is True

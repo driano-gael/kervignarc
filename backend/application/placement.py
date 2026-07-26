@@ -43,6 +43,7 @@ from domain.placement import (
     PlanDeCibles,
     RaisonConflit,
     cible_accepte,
+    cible_mixite_non_garantie,
     placer,
     placer_restants,
 )
@@ -454,16 +455,22 @@ class ServicePlacement:
                     inscription_id=affectation.inscription_id,
                 )
             )
-        cibles = tuple(
-            CiblePlacee(
+
+        def _figer(cible: Cible) -> CiblePlacee:
+            # Le plan est **matérialisé** (ADR-0024) : la table `placement` ne stocke pas le club,
+            # on **recalcule** `mixite_non_garantie` à la lecture depuis la jointure archer → club
+            # déjà chargée (`contexte.donnees`), avec le prédicat pur du domaine (ADR-0047). Même
+            # régime que la raison de réserve : dérivé, jamais persisté.
+            poses = sorted(placements_par_cible.get(cible.index, []), key=lambda p: p.position)
+            clubs = [contexte.donnees[pose.archer_id].club_id for pose in poses]
+            return CiblePlacee(
                 index=cible.index,
                 capacite=cible.capacite,
-                placements=tuple(
-                    sorted(placements_par_cible.get(cible.index, []), key=lambda p: p.position)
-                ),
+                placements=tuple(poses),
+                mixite_non_garantie=cible_mixite_non_garantie(clubs),
             )
-            for cible in contexte.gabarit.cibles
-        )
+
+        cibles = tuple(_figer(cible) for cible in contexte.gabarit.cibles)
         return PlanDeCibles(cibles=cibles, conflits=self._reserve(contexte, cibles, placees))
 
     def _reserve(
@@ -566,4 +573,7 @@ class ServicePlacement:
             taille=blason.taille,
             capacite_blason=blason.capacite,
             hauteur_cm=categorie.hauteur_cm,
+            # Club propagé pour la mixité ≥ 2 clubs/cible (E03US006). `None` (club inconnu,
+            # ADR-0014) traverse tel quel : le moteur le traite comme indécidable, jamais même club.
+            club_id=archer.club_id,
         )

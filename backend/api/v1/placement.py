@@ -48,11 +48,18 @@ class PlacementReponse(BaseModel):
 
 
 class CiblePlaceeReponse(BaseModel):
-    """Une cible du plan : rang, plafond d'archers, et les archers posés (vide si cible libre)."""
+    """Une cible du plan : rang, plafond d'archers, les archers posés (vide si cible libre), et le
+    drapeau de mixité.
+
+    `mixite_non_garantie` (RG-3, E03US006) : `true` quand la cible porte ≥ 2 archers sans qu'on
+    puisse affirmer ≥ 2 clubs distincts (un seul club, ou clubs inconnus). Le front en fait un
+    indicateur discret ; l'admin peut alors ajuster à la main (E03US004). Recalculé à la lecture,
+    jamais persisté (ADR-0047)."""
 
     index: int
     capacite: int
     placements: list[PlacementReponse]
+    mixite_non_garantie: bool
 
     @staticmethod
     def de_cible(cible: CiblePlacee) -> CiblePlaceeReponse:
@@ -68,6 +75,7 @@ class CiblePlaceeReponse(BaseModel):
                 )
                 for p in cible.placements
             ],
+            mixite_non_garantie=cible.mixite_non_garantie,
         )
 
 

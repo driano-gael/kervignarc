@@ -32,18 +32,29 @@ aucune cible libre — ressort en **conflit** (`RaisonConflit.NON_PLACE`), jamai
 (règle 9). Ce glouton peut laisser de l'espace perdu sur une cible plutôt que de revenir en
 arrière : c'est un compromis assumé du MVP, l'ajustement manuel (E03US004) rattrape les cas limites.
 
-La **mixité ≥ 2 clubs** (E03US006) et la **séparation catégorie/blason** (E03US007) ne sont **pas**
-appliquées ici : ce sont des US ultérieures.
+**Mixité ≥ 2 clubs** (E03US006, RG-3,
+[ADR-0047](../../docs/adr/0047-mixite-clubs-par-reordonnancement-et-signal-derive.md)) : contrainte
+**molle**, priorité la plus basse. Elle n'est **pas** câblée dans le glouton — celui-ci reste
+inchangé — mais obtenue en **ré-ordonnant l'entrée** : à l'intérieur de chaque groupe
+`(hauteur, blason)`, où tous les archers sont interchangeables pour les budgets (même fraction, même
+carton, même hauteur), les clubs sont **entrelacés en round-robin** (`_ordonner_pour_mixite`). Une
+cible qui puise dans ce groupe reçoit des clubs variés quand ils existent, sans menacer un budget.
+Quand la mixité **ne peut pas** être garantie (un seul club, ou clubs inconnus —
+`club_id NULL`, *indécidable*, ADR-0014), la cible est **signalée** via `mixite_non_garantie`
+(propriété dérivée du prédicat pur `cible_mixite_non_garantie`), jamais un échec. La **séparation
+catégorie/blason** (E03US007) reste, elle, une US ultérieure.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
+from itertools import groupby
 
 from domain.archer import ArcherId
 from domain.blason import BlasonId
+from domain.club import ClubId
 from domain.gabarit_salle import Cible
 from domain.inscription import InscriptionId
 
@@ -73,6 +84,11 @@ class ArcherAPlacer:
     taille: float  # fraction de place occupée par un carton de ce blason, ]0, 1]
     capacite_blason: int  # nombre d'archers admis sur un même carton, >= 1
     hauteur_cm: int  # hauteur du centre de l'or (via la catégorie), > 0
+    # Club de l'archer, pour favoriser la mixité ≥ 2 clubs/cible (E03US006, RG-3). `None` = club
+    # **inconnu / indécidable** (ADR-0014), jamais « même club » : deux `None` ne sont pas du même
+    # club. Facultatif (défaut `None`) : les entrées qui l'ignorent restent sur l'ordre d'origine
+    # (`archer_id`), d'où la non-régression d'E03US001. Ne pilote que l'ordre, jamais un budget.
+    club_id: ClubId | None = None
 
 
 class RaisonConflit(str, Enum):
@@ -116,11 +132,17 @@ class CiblePlacee:
     """Une cible du plan : son rang (1-based, repris du gabarit) et les archers posés dessus.
 
     `placements` est vide pour une cible restée libre — le plan liste **toutes** les cibles du
-    gabarit, pour donner la vue complète de la salle."""
+    gabarit, pour donner la vue complète de la salle.
+
+    `mixite_non_garantie` signale (RG-3, E03US006) une cible portant ≥ 2 archers **sans** qu'on
+    puisse affirmer ≥ 2 clubs connus distincts (un seul club, ou clubs inconnus — ADR-0014). C'est
+    une **propriété dérivée** (`cible_mixite_non_garantie`), jamais persistée : recalculée au moteur
+    et à la lecture du plan matérialisé (ADR-0047), comme la raison de réserve (ADR-0024)."""
 
     index: int
     capacite: int
     placements: tuple[Placement, ...] = ()
+    mixite_non_garantie: bool = False
 
 
 @dataclass(frozen=True)
@@ -144,6 +166,21 @@ class PlanDeCibles:
     conflits: tuple[Conflit, ...] = ()
 
 
+def cible_mixite_non_garantie(clubs: Sequence[ClubId | None]) -> bool:
+    """Dit si une cible est « mixité non garantie » (RG-3, E03US006) d'après les clubs posés dessus.
+
+    Vrai quand la cible a **≥ 2 archers** mais **< 2 clubs connus distincts** — donc impossible
+    d'**affirmer** la mixité. `None` = club inconnu, *indécidable* (ADR-0014) : il ne compte jamais
+    comme un club (deux `None` ⇒ non garantie ; un connu + un `None` ⇒ non garantie). Une cible à 0
+    ou 1 archer est **sans objet** (elle ne peut structurellement pas mêler deux clubs) : on ne la
+    signale pas, pour ne pas noyer l'admin sous du bruit. Prédicat **pur** : la même vérité sert le
+    moteur (tests domaine) et la lecture du plan matérialisé (ADR-0047)."""
+    if len(clubs) < 2:
+        return False
+    clubs_connus = {club for club in clubs if club is not None}
+    return len(clubs_connus) < 2
+
+
 @dataclass
 class _CibleEnCours:
     """État mutable de la cible en cours de remplissage (interne au glouton)."""
@@ -154,6 +191,9 @@ class _CibleEnCours:
     hauteur: int | None = None
     # blason_id → capacité de carton restante (nombre d'archers encore admissibles sur ce carton).
     cartons: dict[BlasonId, int] = field(default_factory=dict)
+    # Clubs des archers posés, dans l'ordre — pour dériver `mixite_non_garantie` au moment de figer
+    # (E03US006). `Placement` ne porte pas le club (il n'en a pas besoin) : on le suit ici.
+    clubs_poses: list[ClubId | None] = field(default_factory=list)
 
     @property
     def positions_restantes(self) -> int:
@@ -200,6 +240,7 @@ class _CibleEnCours:
         self.positions.append(
             Placement(position=position, archer_id=archer.archer_id, blason_id=archer.blason_id)
         )
+        self.clubs_poses.append(archer.club_id)
 
     def accueille(self, archer: ArcherAPlacer) -> bool:
         """Tente de poser `archer` sur cette cible ; renvoie `True` si posé, `False` sinon.
@@ -232,22 +273,66 @@ class _CibleEnCours:
                 blason_id=archer.blason_id,
             )
         )
+        self.clubs_poses.append(archer.club_id)
 
     def figer(self) -> CiblePlacee:
-        """Fige la cible en valeur immuable pour le plan."""
+        """Fige la cible en valeur immuable pour le plan, drapeau de mixité compris (E03US006)."""
         return CiblePlacee(
-            index=self.cible.index, capacite=self.cible.capacite, placements=tuple(self.positions)
+            index=self.cible.index,
+            capacite=self.cible.capacite,
+            placements=tuple(self.positions),
+            mixite_non_garantie=cible_mixite_non_garantie(self.clubs_poses),
         )
+
+
+def _entrelacer_clubs(groupe: list[ArcherAPlacer]) -> list[ArcherAPlacer]:
+    """Entrelace les clubs d'un groupe `(hauteur, blason)` déjà trié par `archer_id` (E03US006).
+
+    Round-robin **déterministe** : on répartit les archers en files par club (clubs connus d'abord,
+    par `id` croissant, puis le paquet des inconnus `None` en dernier), puis on tire tour à tour une
+    tête de chaque file non vide. Résultat : dans le groupe, deux archers consécutifs tendent à
+    venir de clubs différents — la cible les prenant est mixée. Avec un seul club (ou que `None`)
+    il n'y a qu'une file : le round-robin est l'**identité**, l'ordre reste celui d'`archer_id`
+    (non-régression d'E03US001). Ne réordonne qu'à l'intérieur du groupe, où tous les archers sont
+    interchangeables pour les budgets (même fraction, carton, hauteur) — les contraintes de rang
+    supérieur sont donc intactes (ADR-0047)."""
+    files: dict[ClubId | None, list[ArcherAPlacer]] = {}
+    for archer in groupe:
+        files.setdefault(archer.club_id, []).append(archer)
+    connus = sorted(club for club in files if club is not None)
+    # Clubs connus d'abord (par id croissant), puis le paquet des inconnus (`None`) en dernier.
+    ordre: list[ClubId | None] = [*connus, None] if None in files else [*connus]
+    restants = [files[club] for club in ordre]
+    entrelaces: list[ArcherAPlacer] = []
+    while any(restants):
+        for file in restants:
+            if file:
+                entrelaces.append(file.pop(0))
+    return entrelaces
+
+
+def _ordonner_pour_mixite(archers: tuple[ArcherAPlacer, ...]) -> list[ArcherAPlacer]:
+    """Ordre d'entrée du glouton, mixité comprise (E03US006, ADR-0047).
+
+    Tri de base identique à E03US001 — `(hauteur, blason, id)`, qui fixe les **groupes** contigus —
+    puis entrelacement des clubs **à l'intérieur** de chaque groupe `(hauteur, blason)`. Le glouton
+    lui-même n'est pas touché : il consomme simplement une liste dont l'ordre favorise la mixité."""
+    base = sorted(archers, key=lambda a: (a.hauteur_cm, a.blason_id, a.archer_id))
+    ordonnes: list[ArcherAPlacer] = []
+    for _, groupe in groupby(base, key=lambda a: (a.hauteur_cm, a.blason_id)):
+        ordonnes.extend(_entrelacer_clubs(list(groupe)))
+    return ordonnes
 
 
 def placer(cibles: tuple[Cible, ...], archers: tuple[ArcherAPlacer, ...]) -> PlanDeCibles:
     """Place les archers sur les cibles et renvoie le plan de cibles + les conflits.
 
-    Glouton déterministe : archers triés par `(hauteur, blason, id)`, remplissage cible par cible.
+    Glouton déterministe : archers ordonnés par `(hauteur, blason, id)` puis **entrelacés par club**
+    dans chaque groupe pour favoriser la mixité (E03US006, ADR-0047) ; remplissage cible par cible.
     Un archer qui n'entre sur aucune cible restante ressort en conflit `NON_PLACE`. Le plan liste
     **toutes** les cibles du gabarit, y compris celles restées libres.
     """
-    ordonnes = sorted(archers, key=lambda a: (a.hauteur_cm, a.blason_id, a.archer_id))
+    ordonnes = _ordonner_pour_mixite(archers)
     figees: list[CiblePlacee] = []
     conflits: list[Conflit] = []
 
@@ -345,7 +430,7 @@ def placer_restants(
 
     poses: list[PoseCalculee] = []
     conflits: list[Conflit] = []
-    for archer in sorted(a_placer, key=lambda a: (a.hauteur_cm, a.blason_id, a.archer_id)):
+    for archer in _ordonner_pour_mixite(a_placer):
         for cible in cibles:
             en_cours = par_index[cible.index]
             if en_cours.accueille(archer):
