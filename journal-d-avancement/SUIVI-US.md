@@ -30,10 +30,12 @@
 > nom, config `KERVIGNARC_BACKUP_*`). **Écran « Archive »** (Admin → Jour J) : endpoint admin renvoyant
 > un **ZIP** (`zipfile`/`csv`/`sqlite3` stdlib, **zéro dépendance** — règle 11) réunissant, **au choix
 > (cases à cocher)** : instantané SQLite complet, dump CSV de toutes les tables (`sqlite_master`, fidèle
-> au schéma), PDF régénérés du tournoi (feuilles de marque par départ + listes, **best-effort**), et un
-> `manifeste.json` toujours présent. Port `ConstructeurArchive` **au niveau applicatif** (une archive
-> est un concern d'exploitation, pas du domaine — règles 2/12). QR de salle exclus (URL vivante). Cadré
-> avec le commanditaire (CA « SQLite + éventuels documents » élargi à un paquet riche configurable).
+> au schéma), PDF régénérés du tournoi (feuilles de marque par départ + listes, **best-effort**, les
+> omissions tracées au manifeste), et un `manifeste.json` toujours présent. Port `ConstructeurArchive`
+> **au niveau applicatif** (une archive est un concern d'exploitation, pas du domaine — règles 2/12).
+> QR de salle exclus (URL vivante). Backup = **lecture** hors file d'écriture + 1ʳᵉ tâche périodique du
+> `lifespan` : [ADR-0044](../docs/adr/0044-sauvegarde-lecture-concurrente-et-tache-periodique.md).
+> Cadré avec le commanditaire (CA « SQLite + éventuels documents » élargi à un paquet riche configurable).
 
 ---
 

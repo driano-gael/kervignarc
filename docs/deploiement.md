@@ -114,3 +114,9 @@ avant de lancer l'exe :
 > **Archive de fin d'événement.** En complément des sauvegardes automatiques, l'écran **Admin →
 > Archive** produit à la demande un **paquet ZIP** du tournoi (instantané complet de la base,
 > données en CSV, documents PDF, manifeste) — à conserver après la compétition.
+>
+> ⚠️ **Le ZIP d'archive (comme les sauvegardes) est un artefact sensible** : étant une copie fidèle
+> de la base, il contient **tout**, y compris les **codes de connexion** des scoreurs et des postes
+> (tables `scoreur`/`poste`, en clair — ces codes sont réutilisables). Le conserver dans un endroit
+> **de confiance** ; ne pas le diffuser largement (mail, cloud public). Ces codes sont de toute façon
+> connus de l'administrateur (il les imprime) — l'archive ne crée pas de secret, elle le transporte.
