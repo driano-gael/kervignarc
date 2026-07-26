@@ -5,9 +5,28 @@ from __future__ import annotations
 import pytest
 
 from domain.bareme import BaremeQualification
-from domain.erreurs import CadenceValidationSuperieureAuBareme, GrainIncompatibleAvecTypePhase
+from domain.erreurs import (
+    CadenceValidationSuperieureAuBareme,
+    EffectifIncompatible,
+    EffectifPhaseInvalide,
+    GrainIncompatibleAvecTypePhase,
+    PhaseQualificationIncomplete,
+    PlageSourceVide,
+    RangSourceInvalide,
+    RangsSourceInexistants,
+    SequenceOrdreInvalide,
+    SourceApresPhase,
+    SourceIntrouvable,
+)
 from domain.grain_validation import GrainValidation, TypeGrain
-from domain.phase import Phase, StatutPhase, TypePhase, grain_par_defaut
+from domain.phase import (
+    Phase,
+    SequencePhases,
+    SourcePhase,
+    StatutPhase,
+    TypePhase,
+    grain_par_defaut,
+)
 
 
 def _phase(
@@ -69,9 +88,9 @@ def test_avec_bareme_remplace_le_bareme_et_preserve_le_reste() -> None:
     assert modifiee.type is TypePhase.QUALIFICATION
     assert modifiee.statut is StatutPhase.A_VENIR
     assert modifiee.validation == GrainValidation.fin_de_serie()
-    assert modifiee.bareme.nb_volees == 10
+    assert modifiee.bareme is not None and modifiee.bareme.nb_volees == 10
     # L'agrégat est gelé : l'original n'est pas muté.
-    assert phase.bareme.nb_volees == 20
+    assert phase.bareme is not None and phase.bareme.nb_volees == 20
 
 
 def test_avec_validation_remplace_le_grain_et_preserve_le_reste() -> None:
@@ -121,7 +140,7 @@ def test_une_cadence_egale_au_bareme_est_admise() -> None:
         validation=GrainValidation.toutes_les_n_volees(20),
     )
 
-    assert phase.validation.n_volees == 20
+    assert phase.validation is not None and phase.validation.n_volees == 20
 
 
 def test_reduire_le_bareme_sous_la_cadence_en_place_est_refuse() -> None:
@@ -148,10 +167,235 @@ def test_reduire_le_bareme_sous_un_grain_de_fin_reste_possible() -> None:
 
     modifiee = phase.avec_bareme(BaremeQualification.creer(5, 3))
 
-    assert modifiee.bareme.nb_volees == 5
+    assert modifiee.bareme is not None and modifiee.bareme.nb_volees == 5
 
 
 def test_le_grain_fin_de_duel_reste_declare_pour_le_moteur() -> None:
     """`FIN_DE_DUEL` existe dans le domaine (choix cible, `D-11`) même si aucune phase actuelle ne
     l'accepte : EPIC-05 introduira les phases à duels, dont il sera le preset."""
     assert TypeGrain.FIN_DE_DUEL.value == "fin_de_duel"
+
+
+# --- E05US001 : typage, phase générique, effectif (ADR-0045 §2) --------------------------------
+
+
+def test_creer_une_phase_generique_sans_bareme() -> None:
+    """Une phase d'élimination directe n'a **pas** de barème de qualification (ADR-0045 §2)."""
+    phase = Phase.creer(tournoi_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
+
+    assert phase.type is TypePhase.ELIMINATION_DIRECTE
+    assert phase.ordre == 2
+    assert phase.statut is StatutPhase.A_VENIR
+    assert phase.bareme is None
+    assert phase.validation is None
+    assert phase.source is None
+    assert phase.id is None
+
+
+def test_les_types_placement_et_elimination_directe_existent() -> None:
+    assert TypePhase.ELIMINATION_DIRECTE.value == "elimination_directe"
+    assert TypePhase.PLACEMENT.value == "placement"
+
+
+def test_une_qualification_sans_bareme_est_refusee() -> None:
+    """L'invariant « qualification ⇒ barème + grain » ferme le seul cas dangereux du barème
+    facultatif (ADR-0045 §2)."""
+    with pytest.raises(PhaseQualificationIncomplete):
+        Phase(tournoi_id=7, ordre=1, type=TypePhase.QUALIFICATION)
+
+
+def test_un_effectif_nul_ou_negatif_est_refuse() -> None:
+    with pytest.raises(EffectifPhaseInvalide):
+        Phase.creer(tournoi_id=7, ordre=2, type=TypePhase.PLACEMENT, effectif=0)
+
+
+def test_un_effectif_declare_est_conserve() -> None:
+    phase = Phase.creer(tournoi_id=7, ordre=2, type=TypePhase.PLACEMENT, effectif=16)
+
+    assert phase.effectif == 16
+
+
+# --- E05US001 : cycle de vie d'une phase (ADR-0045 §1) -----------------------------------------
+
+
+def test_transitions_de_statut_enchainent_a_venir_en_cours_terminee() -> None:
+    """Les transitions sont **pures** : chacune renvoie une copie au nouveau statut."""
+    phase = Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.PLACEMENT)
+
+    en_cours = phase.demarrer()
+    assert en_cours.statut is StatutPhase.EN_COURS
+    assert phase.statut is StatutPhase.A_VENIR  # l'original n'est pas muté (gelé)
+
+    assert en_cours.terminer().statut is StatutPhase.TERMINEE
+
+
+def test_mettre_en_pause_puis_reprendre_est_reversible() -> None:
+    """`en_pause` gèle la phase (ADR-0045 §1) ; `reprendre` la ramène `en_cours`, sans perte."""
+    en_cours = Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.PLACEMENT).demarrer()
+
+    en_pause = en_cours.mettre_en_pause()
+    assert en_pause.statut is StatutPhase.EN_PAUSE
+
+    assert en_pause.reprendre().statut is StatutPhase.EN_COURS
+
+
+def test_le_statut_en_pause_de_phase_existe() -> None:
+    assert StatutPhase.EN_PAUSE.value == "en_pause"
+
+
+# --- E05US001 : source de peuplement — value object (ADR-0045 §3) ------------------------------
+
+
+def test_une_source_prelève_une_plage_de_rangs() -> None:
+    source = SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16)
+
+    assert source.effectif_selectionne == 16
+
+
+def test_une_plage_de_rangs_vide_est_refusee() -> None:
+    """« source vide » du CA : des rangs 8 à 4 ne prélèvent personne."""
+    with pytest.raises(PlageSourceVide):
+        SourcePhase(ordre_source=1, rang_debut=8, rang_fin=4)
+
+
+def test_un_rang_de_debut_inferieur_a_un_est_refuse() -> None:
+    """« rangs inexistants » (volet indépendant de la séquence) : le premier rang est 1."""
+    with pytest.raises(RangSourceInvalide):
+        SourcePhase(ordre_source=1, rang_debut=0, rang_fin=16)
+
+
+# --- E05US001 : cohérence de la séquence (ADR-0045 §3) -----------------------------------------
+
+
+def _qualification(effectif: int | None = None) -> Phase:
+    """Une qualification (ordre 1) éventuellement dotée d'un effectif déclaré."""
+    return Phase(
+        tournoi_id=7,
+        ordre=1,
+        type=TypePhase.QUALIFICATION,
+        bareme=BaremeQualification.preset_ffta_18m(),
+        validation=GrainValidation.fin_de_serie(),
+        effectif=effectif,
+    )
+
+
+def test_une_sequence_vide_est_valide() -> None:
+    """Un tournoi peut n'avoir encore composé aucune phase."""
+    assert SequencePhases(phases=()).phases == ()
+
+
+def test_une_sequence_ordonnee_et_bien_sourcee_est_valide() -> None:
+    """Qualification (40) → élimination directe (16) alimentée par les 16 premiers : cohérent."""
+    qualif = _qualification(effectif=40)
+    elim = Phase.creer(
+        tournoi_id=7,
+        ordre=2,
+        type=TypePhase.ELIMINATION_DIRECTE,
+        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),
+        effectif=16,
+    )
+
+    sequence = SequencePhases(phases=(qualif, elim))
+
+    assert len(sequence.phases) == 2
+
+
+def test_un_trou_dans_les_ordres_est_refuse() -> None:
+    qualif = _qualification()
+    elim = Phase.creer(tournoi_id=7, ordre=3, type=TypePhase.ELIMINATION_DIRECTE)
+
+    with pytest.raises(SequenceOrdreInvalide):
+        SequencePhases(phases=(qualif, elim))
+
+
+def test_un_doublon_dans_les_ordres_est_refuse() -> None:
+    qualif = _qualification()
+    autre = Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.PLACEMENT)
+
+    with pytest.raises(SequenceOrdreInvalide):
+        SequencePhases(phases=(qualif, autre))
+
+
+def test_une_source_vers_une_phase_inexistante_est_refusee() -> None:
+    qualif = _qualification()
+    elim = Phase.creer(
+        tournoi_id=7,
+        ordre=2,
+        type=TypePhase.ELIMINATION_DIRECTE,
+        source=SourcePhase(ordre_source=5, rang_debut=1, rang_fin=8),
+    )
+
+    with pytest.raises(SourceIntrouvable):
+        SequencePhases(phases=(qualif, elim))
+
+
+def test_une_source_vers_une_phase_non_anterieure_est_refusee() -> None:
+    """Une phase ne peut se nourrir que d'une phase d'ordre strictement inférieur."""
+    qualif = _qualification()
+    elim = Phase.creer(
+        tournoi_id=7,
+        ordre=2,
+        type=TypePhase.ELIMINATION_DIRECTE,
+        source=SourcePhase(ordre_source=2, rang_debut=1, rang_fin=8),
+    )
+
+    with pytest.raises(SourceApresPhase):
+        SequencePhases(phases=(qualif, elim))
+
+
+def test_prelever_au_dela_de_l_effectif_de_la_source_est_refuse() -> None:
+    """« rangs inexistants » (volet séquence) : prendre 40 rangs d'une phase qui en classe 32."""
+    qualif = _qualification(effectif=32)
+    elim = Phase.creer(
+        tournoi_id=7,
+        ordre=2,
+        type=TypePhase.ELIMINATION_DIRECTE,
+        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=40),
+    )
+
+    with pytest.raises(RangsSourceInexistants):
+        SequencePhases(phases=(qualif, elim))
+
+
+def test_un_effectif_consommateur_incompatible_avec_la_source_est_refuse() -> None:
+    """« effectif incompatible » : une phase déclarée pour 16 mais dont la source prélève 8."""
+    qualif = _qualification(effectif=40)
+    elim = Phase.creer(
+        tournoi_id=7,
+        ordre=2,
+        type=TypePhase.ELIMINATION_DIRECTE,
+        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),
+        effectif=16,
+    )
+
+    with pytest.raises(EffectifIncompatible):
+        SequencePhases(phases=(qualif, elim))
+
+
+def test_prelever_plus_que_l_effectif_declare_est_aussi_refuse() -> None:
+    """« effectif incompatible » dans l'**autre** sens : la source prélève 20 (rangs 1..20, dans les
+    40 de la source, donc rangs valides) pour une phase qui n'en attend que 16."""
+    qualif = _qualification(effectif=40)
+    elim = Phase.creer(
+        tournoi_id=7,
+        ordre=2,
+        type=TypePhase.ELIMINATION_DIRECTE,
+        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=20),
+        effectif=16,
+    )
+
+    with pytest.raises(EffectifIncompatible):
+        SequencePhases(phases=(qualif, elim))
+
+
+def test_sans_effectif_declare_la_source_ne_declenche_pas_de_controle_d_effectif() -> None:
+    """Les contrôles d'effectif sont silencieux quand l'effectif n'est pas déclaré (ADR-0045 §3)."""
+    qualif = _qualification()  # pas d'effectif
+    elim = Phase.creer(
+        tournoi_id=7,
+        ordre=2,
+        type=TypePhase.ELIMINATION_DIRECTE,
+        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=999),
+    )
+
+    assert len(SequencePhases(phases=(qualif, elim)).phases) == 2

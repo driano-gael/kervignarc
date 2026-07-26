@@ -100,7 +100,9 @@ class ServiceCompletude:
         saisie en cours. On n'échoue pas là-dessus (robustesse jour J).
         """
         phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
-        nb_volees = phase.bareme.nb_volees if phase is not None else 0
+        # `bareme` est optionnel depuis E05US001 (ADR-0045 §2) mais présent sur une qualification ;
+        # absent (données incohérentes) → même issue « rien de scorable » que barème non configuré.
+        nb_volees = phase.bareme.nb_volees if phase is not None and phase.bareme is not None else 0
         if nb_volees <= 0:
             return 0, 0
         series: dict[ArcherId, Serie] = {

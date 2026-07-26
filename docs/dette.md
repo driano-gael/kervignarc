@@ -43,6 +43,7 @@
 | [DETTE-011](#dette-011--lagrégat-mono-flèche-sappelle-score-pas-fleche) | conception | mineur | `backend/domain/score.py` (`Score`, `ScoreId`), `backend/domain/ports.py` (`ScoreRepository`), `backend/domain/erreurs.py` (`ScoreInvalide`) | L'agrégat mono-flèche s'appelle `Score`, mais le [glossaire](glossaire.md) réserve `Fleche` au **tir unique** et `score` au **total** de points | Au vrai scoring (E04/E05 : volées, cumul), le nom `Score` sera pris par le **mauvais** concept → renommage subi ou ambiguïté durable dans le domaine et l'API | E00US011 (walking skeleton) ; **constatée le 18/07/2026** (audit de revue complète de `main`) | **Révisée 19/07/2026 (E04US002)** : le vrai scoring modélise la flèche comme **valeur** dans `Volee` (agrégats `Serie`/`Volee`), sans renommer `Score` — qui **survit** comme modèle de lecture du classement de démo. Le nom-clash est désamorcé (le total s'appelle `cumul`). **Révisée 20/07/2026 (E06US001, correctif DETTE-013)** : les gardes d'engagement sont repointées sur `Serie` — `Score` n'a désormais **plus aucun lecteur**, seul le `saisir_score` mort (`POST /scores`, sans appelant produit) l'écrit encore. Sa suppression (endpoint + agrégat + table `score`) redevient l'objet propre de cette dette, sans dépendance de lecture, dans une US `fix/`/`refactor/` dédiée ; voir détail |
 | [DETTE-012](#dette-012--lurl-du-qr-de-cible-est-lorigine-de-la-requête-admin) | technique | mineur | `backend/application/documents_salle.py` (`_url_rattachement`) | L'URL encodée dans le QR de cible est **absolue**, bâtie sur l'**origine de la requête admin** (`request.base_url`, passée par l'API) : il n'existe pas de base URL publique configurée côté serveur. Générer les étiquettes depuis `localhost` (console du serveur) produit donc des QR pointant sur `http://localhost:8000/?poste=…`, inutilisables depuis une tablette | Un QR généré depuis `localhost` renvoie la tablette **sur elle-même** : le « filet » de re-rattachement (scanner le QR pour revenir sur sa cible) ne fonctionne pas. **Sans effet dans le flux nominal** : le jour J, l'admin atteint le serveur par son **IP réseau** (les 30 tablettes aussi), donc `base_url` = l'IP LAN et le QR est correct | E09US008 (impression des QR) ; **choix tranché en réalisation** (règle 11/12 : pas de config réseau introduite en douce ici) | **À replanifier** — E11US001 (livrée le 26/07/2026) apporte l'*enabler* (nom public stable `kervignarc.local` annoncé en mDNS) mais **ne câble pas** la base URL : `_url_rattachement` encode toujours `request.base_url`. Reste à faire dans une US dédiée (base URL publique configurable, source unique des liens absolus). **Design** : encoder `kervignarc.local` suppose le mDNS résolu côté tablette (best-effort) → l'IP LAN reste le défaut sûr |
 | [DETTE-014](#dette-014--la-complétude-ignore-le-forfait) | conception | majeur | `backend/application/completude.py` (`_serie_complete`) | La complétude (E12US005) définit une cible *terminée* comme « **toutes les séries validées** » (`Serie.est_complete`), **sans notion de forfait**. Or E12US004 (« tracer un forfait », ⬜ non livrée) impose de **préserver les flèches déjà tirées** : un archer forfait garde sa série partielle, jamais les N volées verrouillées | **Nul aujourd'hui** (aucun forfait n'existe encore). **Dès qu'E12US004 est livrée** : une cible portant un archer forfait ne sera **jamais** « terminée » → qualification bloquée en `ALERTE`, `sportif_complet` **faux à jamais**, l'avertissement de clôture « X cibles ne sont pas terminées » se déclenche alors que le tournoi est sportivement fini — la complétude **ment** | E12US005 (la complétude naît sans notion de forfait, E12US004 n'étant pas encore livrée) | **E12US004** — y traiter un archer forfait comme **« série close par forfait »** dans `_serie_complete` (le forfait *termine* la participation de l'archer). Marqueur `# DETTE-014` posé sur `_serie_complete` |
+| [DETTE-015](#dette-015--modèle-de-source-de-phase-minimal-et-provisoire) | conception | mineur | `backend/domain/phase.py` (`SourcePhase`, `SequencePhases`) | E05US001 amorce le **peuplement d'une phase par une autre** avec un modèle **volontairement minimal** : **une** source par phase, « rangs `[début..fin]` de la phase d'ordre *k* » (`SourcePhase(ordre_source, rang_debut, rang_fin)` + `effectif` facultatif). Le modèle **cible** (ADR-0004, E05US010) veut des **sources multiples** (gagnants **et** perdants d'un tour), le **routing en cascade** et la **division récursive** des plages | **Nul tant qu'E05US010 n'est pas prise** : la source unique « par rangs » suffit à composer qualif → élim directe / placement et à décider les trois contrôles de cohérence du CA (source vide / rangs inexistants / effectif incompatible). **À E05US010** : le modèle devra être **élargi** (sources multiples, routing) — les phases déjà saisies avec une source unique restent un sous-cas valide, mais l'API/DTO et le front de peuplement évolueront | E05US001 (amorce assumée, [ADR-0045](adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md) §3) ; **arbitrée avec le commanditaire le 26/07/2026** (amorcer plutôt que reporter tout contrôle de source) | **E05US010** (placement intégral 1→N) — élargir `SourcePhase`/`SequencePhases` au peuplement complet. Marqueur `# DETTE-015` posé sur `SourcePhase` |
 
 ## Dette résorbée
 
@@ -724,6 +725,41 @@ figerait la cible), au contraire du séquencement des phases éliminatoires, lui
 **Résorption attendue.** **E12US004** : à la livraison du forfait, traiter un archer forfait comme
 **« série close par forfait »** dans `_serie_complete` (le forfait *termine* la participation de
 l'archer au sens de la complétude, même série partielle). Retirer alors le marqueur `# DETTE-014`.
+
+### DETTE-015 — modèle de source de phase minimal et provisoire
+
+**Constat.** E05US001 rend la **séquence de phases** active et introduit, avec elle, le **peuplement
+d'une phase par une autre** (« la phase d'élimination prend les 16 premiers de la qualification »).
+Le modèle cible (ADR-0004, formalisé dans `moteur-placement-lucky-loser.md`) est riche : une phase
+peut être alimentée par **plusieurs** sources (les **gagnants** *et* les **perdants** d'un tour), le
+perdant d'un match est **routé en cascade** vers un sous-tableau de placement, et les plages de rangs
+se **divisent récursivement** jusqu'au rang terminal. Tout cela est le cœur d'**E05US010** (jalon J3).
+
+E05US001 n'en livre qu'une **amorce délibérément minimale** : **une seule** source par phase, de la
+forme « rangs `[rang_debut..rang_fin]` de la phase d'ordre `ordre_source` » (`SourcePhase`), plus un
+`effectif` facultatif par phase. Ce sous-ensemble suffit à (a) composer les séquences proches
+(qualif → élimination directe / placement) et (b) rendre **décidables** les trois contrôles de
+cohérence exigés par le CA — *source vide*, *rangs inexistants*, *effectif incompatible* — portés par
+l'agrégat pur `SequencePhases`.
+
+**Conséquence.** **Nulle tant qu'E05US010 n'est pas prise.** La source unique « par rangs » est un
+**sous-cas valide** du modèle complet : une phase saisie aujourd'hui avec une source restera lisible.
+Mais E05US010 devra **élargir** le modèle (sources multiples gagnants/perdants, routing, division
+récursive), ce qui touchera `SourcePhase`/`SequencePhases`, le DTO/API de peuplement et l'écran
+d'édition. C'est une dette de **conception assumée**, pas un bug : rien ne casse, un modèle
+provisoire attend son remplaçant.
+
+**Pourquoi assumée maintenant.** Deux options se présentaient à E05US001 : (1) ne poser **aucun**
+contrôle de source et reporter les trois contrôles du CA à E05US010, ou (2) amorcer un modèle minimal
+pour honorer le CA dès maintenant. L'**arbitrage du commanditaire (26/07/2026)** a retenu (2) — le CA
+d'E05US001 promet ces contrôles, les livrer vides aurait été un CA périmé. Le modèle est **borné**
+(une source, un intervalle de rangs, **pas** de routing ni de gagnants/perdants) précisément pour que
+son retravail par E05US010 reste **peu coûteux**. Voir [ADR-0045](adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md) §3.
+
+**Résorption attendue.** **E05US010** (placement intégral 1→N) : élargir `SourcePhase`/`SequencePhases`
+au peuplement complet (multi-sources, routing en cascade, division récursive), migrer/relire les
+sources uniques existantes comme sous-cas. Retirer alors le marqueur `# DETTE-015` posé sur
+`SourcePhase`.
 
 ## Procédure — inscrire une dette
 

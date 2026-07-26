@@ -44,6 +44,7 @@ import { Gabarits } from '../gabarits/Gabarits'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { GrainValidation } from '../grain-validation/GrainValidation'
 import { Paiements } from '../paiements/Paiements'
+import { Phases } from '../phases/Phases'
 import { Placement } from '../placement/Placement'
 import { Postes } from '../postes/Postes'
 import { Scoreurs } from '../scoreurs/Scoreurs'
@@ -175,6 +176,16 @@ function Coquille() {
             <GrainValidation tournoiId={courant.id} />
           </>
         ),
+    },
+    {
+      id: 'phases',
+      libelle: 'Phases (format)',
+      groupe: 'preparation',
+      besoinTournoi: true,
+      // Séquence des phases du moteur (E05US001, ADR-0045) : élimination directe / placement après
+      // la qualification. Juste après « Barème & validation » — c'est la suite de la définition du
+      // format (la qualification, elle, se règle sur cet écran-là).
+      rendu: () => courant && <Phases tournoiId={courant.id} />,
     },
     {
       id: 'departs',

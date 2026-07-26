@@ -249,7 +249,7 @@ inscrit **sans** ligne est en **réserve**.
 | id | INTEGER | PK |
 | tournoi_id | INTEGER | FK → TOURNOI, NOT NULL |
 | ordre | INTEGER | position dans la séquence |
-| type | TEXT | `qualification`\|`barrage`\|`tableau`\|`placement`\|`finale`\|`big_shoot_off` |
+| type | TEXT | `qualification`\|`barrage`\|`elimination_directe`\|`placement`\|`finale`\|`big_shoot_off` |
 | config | TEXT (JSON) | **politiques** + paramètres (voir §Config phase) |
 | statut | TEXT | `a_venir`\|`en_cours`\|`en_pause`\|`terminee` — `en_pause` **gèle la phase** ([ADR-0026](adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md) §3, distinct du `en_pause` du tournoi) |
 
@@ -478,7 +478,7 @@ Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Exempl
 | `type_tournoi` | officiel, non_officiel |
 | `statut_tournoi` | brouillon, prêt, en_cours, en_pause, termine, archive, annule — [ADR-0026](adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md) |
 | `statut_phase` | a_venir, en_cours, en_pause, terminee — [ADR-0026](adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md) §3 |
-| `type_phase` | qualification, barrage, tableau, placement, finale, big_shoot_off — **catalogue ouvert** (format = config, [ADR-0004](adr/0004-moteur-de-phases-politiques.md) ; cf. catalogue E05) |
+| `type_phase` | qualification, barrage, elimination_directe, placement, finale, big_shoot_off — **catalogue ouvert** (format = config, [ADR-0004](adr/0004-moteur-de-phases-politiques.md) ; cf. catalogue E05). *Valeurs livrées (E05US001) : `qualification`, `elimination_directe`, `placement` ; les autres restent des cibles.* |
 | `routing` | elimination_seche, cascade, repechage |
 | `grain_validation` | fin_de_serie, fin_de_duel, toutes_les_n_volees |
 | `depth` | 1_a_n, top_n |

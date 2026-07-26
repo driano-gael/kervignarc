@@ -28,7 +28,7 @@ from domain.erreurs import DomainError
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.inscription import Inscription, InscriptionId
-from domain.phase import Phase, PhaseId, StatutPhase, TypePhase, grain_par_defaut
+from domain.phase import Phase, PhaseId, SourcePhase, StatutPhase, TypePhase, grain_par_defaut
 from domain.placement import Affectation
 from domain.ports import Horloge
 from domain.poste import Poste, PosteId
@@ -243,33 +243,42 @@ def _config_gabarit(gabarit: GabaritSalle) -> str:
 
 
 def _vers_phase(ligne: PhaseORM) -> Phase:
-    """Traduit une ligne ORM en agrégat `Phase` (config JSON → barème + grain de validation).
+    """Traduit une ligne ORM en agrégat `Phase` (config JSON → barème, grain, source, effectif).
 
-    E01US009 : seules des phases `qualification` existent ; le barème est lu depuis
-    `config.scoring`. Une `config` illisible **ou hors règle** (le repository en est le seul
-    rédacteur et écrit toujours un barème valide) est une **incohérence technique** → on relit
-    via `BaremeQualification.creer` pour que même une valeur hors plage remonte en
-    `InfrastructureError` (ADR-0007), jamais en value object silencieusement invalide.
+    **Qualification** (E01US009/E01US015) : le barème est lu depuis `config.scoring`, le grain
+    depuis `config.validation`. Une `config` illisible **ou hors règle** (le repository en est le
+    seul rédacteur et écrit toujours des valeurs valides) est une **incohérence technique** → on
+    relit via les fabriques du domaine pour que même une valeur hors plage remonte en
+    `InfrastructureError` (ADR-0007), jamais en value object silencieusement invalide. L'**absence**
+    de `validation` n'est pas une incohérence — phase écrite avant E01US015 → preset du type
+    (mécanisme « politique sans migration », ADR-0011).
 
-    E01US015 : le grain vient de `config.validation`. **Son absence n'est pas une incohérence** —
-    c'est une phase écrite avant E01US015, quand la clé n'existait pas : on applique alors le
-    preset du type (`fin de série` pour la qualification, `D-11`), ce qui est précisément ce qui
-    permet d'ajouter la politique **sans migration** (ADR-0011). En revanche, une clé `validation`
-    **présente mais illisible** reste une incohérence technique.
+    **Autres types** (E05US001/ADR-0045) : `bareme`/`validation` sont **absents** (`None`) — une
+    phase d'élimination n'a pas de barème de qualification. La **source** de peuplement
+    (`config.source`) et l'**effectif** (`config.effectif`) sont facultatifs, présents pour tout
+    type. Leur absence est licite (première phase, effectif non déclaré) ; présents mais illisibles,
+    ils restent une incohérence technique. La forme reste **à plat** (DETTE-003 → E05US003).
     """
     try:
         config = json.loads(ligne.config)
-        scoring = config["scoring"]
-        bareme = BaremeQualification.creer(
-            nb_volees=int(scoring["volees"]),
-            nb_fleches_par_volee=int(scoring["fleches"]),
-        )
         type_phase = TypePhase(ligne.type)
-        validation = (
-            grain_par_defaut(type_phase)
-            if "validation" not in config
-            else _vers_grain(config["validation"])
-        )
+        statut = StatutPhase(ligne.statut)
+        bareme = None
+        validation = None
+        if type_phase is TypePhase.QUALIFICATION:
+            scoring = config["scoring"]
+            bareme = BaremeQualification.creer(
+                nb_volees=int(scoring["volees"]),
+                nb_fleches_par_volee=int(scoring["fleches"]),
+            )
+            validation = (
+                grain_par_defaut(type_phase)
+                if "validation" not in config
+                else _vers_grain(config["validation"])
+            )
+        source = None if "source" not in config else _vers_source(config["source"])
+        effectif = config.get("effectif")
+        effectif = None if effectif is None else int(effectif)
     except (
         json.JSONDecodeError,
         AttributeError,
@@ -286,13 +295,30 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
             type=type_phase,
             bareme=bareme,
             validation=validation,
-            statut=StatutPhase(ligne.statut),
+            source=source,
+            effectif=effectif,
+            statut=statut,
             id=ligne.id,
         )
     except DomainError as exc:
-        # Barème et grain sont individuellement valides mais incohérents entre eux : le repository
+        # Les politiques sont individuellement valides mais incohérentes entre elles : le repository
         # n'écrit jamais ça (l'agrégat le refuse en amont) — donc la base a été altérée.
         raise InfrastructureError("Configuration de phase illisible.") from exc
+
+
+def _vers_source(source: Any) -> SourcePhase:
+    """Relit la source de peuplement depuis sa forme JSON (`config.source`).
+
+    Passe par le constructeur de `SourcePhase` pour qu'une plage hors règle (vide, rang `< 1`)
+    remonte en `DomainError`, enveloppée en `InfrastructureError` par l'appelant. `source` est typé
+    `Any` (issu de `json.loads`) : une forme inattendue lève `AttributeError`/`TypeError`, gérée de
+    même.
+    """
+    return SourcePhase(
+        ordre_source=int(source["ordre_source"]),
+        rang_debut=int(source["rang_debut"]),
+        rang_fin=int(source["rang_fin"]),
+    )
 
 
 def _vers_grain(validation: Any) -> GrainValidation:
@@ -314,31 +340,41 @@ def _vers_grain(validation: Any) -> GrainValidation:
 
 
 def _config_phase(phase: Phase) -> str:
-    """Sérialise les politiques d'une phase de qualification en JSON.
+    """Sérialise les politiques et le peuplement d'une phase en JSON.
 
-    Forme : `{"scoring": {...}, "validation": {...}}`. Le mode de `scoring` est explicitement
-    `cumul` (seul mode de la qualification) ; `validation` ne porte `n_volees` que pour le grain
-    « toutes les N volées » (les grains de fin n'ont pas de cadence). Les autres politiques du
-    moteur (EPIC-05, ADR-0004) s'ajouteront à ce même objet `config` sans changer le schéma.
+    Forme : `{"scoring"?: {...}, "validation"?: {...}, "source"?: {...}, "effectif"?: int}`. Le
+    barème/grain (`scoring`/`validation`) ne sont écrits que pour une phase de **qualification**
+    (les seules à en porter, E05US001/ADR-0045). Le mode de `scoring` est explicitement `cumul`
+    (seul mode de la qualification) ; `validation` ne porte `n_volees` que pour le grain « toutes
+    les N volées ». La **source** (peuplement) et l'**effectif** sont écrits s'ils sont déclarés,
+    quel que soit le type.
 
     # DETTE-003 (docs/dette.md) : les politiques sont écrites **à plat** alors que le modèle cible
     # (ADR-0004) les range sous `config.policies`, et `scoring` est ici un objet paramétré plutôt
-    # qu'un nom de preset. Forme posée par E01US009 ; E01US015 s'y aligne pour ne pas créer une 2ᵉ
-    # convention. C'est E05US003 qui tranche — ne pas introduire `policies` ici en attendant.
+    # qu'un nom de preset. Forme posée par E01US009 ; E01US015/E05US001 s'y alignent pour ne pas
+    # créer une 2ᵉ convention. E05US003 tranche — ne pas introduire `policies` en attendant.
     """
-    validation: dict[str, object] = {"grain": phase.validation.type.value}
-    if phase.validation.n_volees is not None:
-        validation["n_volees"] = phase.validation.n_volees
-    return json.dumps(
-        {
-            "scoring": {
-                "volees": phase.bareme.nb_volees,
-                "fleches": phase.bareme.nb_fleches_par_volee,
-                "mode": "cumul",
-            },
-            "validation": validation,
+    config: dict[str, object] = {}
+    if phase.bareme is not None:
+        config["scoring"] = {
+            "volees": phase.bareme.nb_volees,
+            "fleches": phase.bareme.nb_fleches_par_volee,
+            "mode": "cumul",
         }
-    )
+    if phase.validation is not None:
+        validation: dict[str, object] = {"grain": phase.validation.type.value}
+        if phase.validation.n_volees is not None:
+            validation["n_volees"] = phase.validation.n_volees
+        config["validation"] = validation
+    if phase.source is not None:
+        config["source"] = {
+            "ordre_source": phase.source.ordre_source,
+            "rang_debut": phase.source.rang_debut,
+            "rang_fin": phase.source.rang_fin,
+        }
+    if phase.effectif is not None:
+        config["effectif"] = phase.effectif
+    return json.dumps(config)
 
 
 def _vers_categorie(ligne: CategorieORM) -> Categorie:
@@ -1609,8 +1645,29 @@ class PhaseRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture de la phase du tournoi.") from exc
 
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
+        """Renvoie toutes les phases d'un tournoi, **ordonnées par `ordre`** (E05US001).
+
+        Le tri à la source garantit l'invariant de séquence exploité par `ServicePhases` (les
+        phases se lisent, se composent et se valident dans leur ordre).
+        """
+        try:
+            with self._session_factory() as session:
+                lignes = (
+                    session.execute(
+                        select(PhaseORM)
+                        .where(PhaseORM.tournoi_id == tournoi_id)
+                        .order_by(PhaseORM.ordre)
+                    )
+                    .scalars()
+                    .all()
+                )
+                return [_vers_phase(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des phases du tournoi.") from exc
+
     def enregistrer(self, phase: Phase) -> Phase:
-        """Met à jour une phase déjà persistée (édition du barème) et la renvoie.
+        """Met à jour une phase déjà persistée (barème, type, source, effectif, statut, ordre).
 
         **Contrat** : l'appelant (le service) garantit l'existence. La ligne absente est une
         **incohérence technique** (non un cas métier) → `InfrastructureError`.
@@ -1628,6 +1685,23 @@ class PhaseRepositorySQL:
                 return _vers_phase(ligne)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour de la phase.") from exc
+
+    def supprimer(self, phase_id: PhaseId) -> None:
+        """Supprime une phase persistée (retrait d'une phase de la séquence, E05US001).
+
+        **Contrat** : l'appelant (le service) garantit l'existence et l'absence de référence
+        (`PhaseSourceReferencee` est arbitré en amont). La ligne absente est une incohérence
+        technique → `InfrastructureError`.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(PhaseORM, phase_id)
+                if ligne is None:
+                    raise InfrastructureError("Phase à supprimer introuvable en base.")
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression de la phase.") from exc
 
 
 class AuditRepositorySQL:

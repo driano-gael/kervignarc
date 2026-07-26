@@ -1,20 +1,30 @@
-"""Agrégat `Phase` — une étape d'un tournoi (introduction **minimale**, E01US009 / ADR-0011).
+"""Agrégat `Phase` et `SequencePhases` — les étapes d'un tournoi et leur enchaînement.
 
-Le modèle cible (ADR-0004) fait de la phase le porteur des **politiques injectables** du moteur
-(routage, barème, seeding, byes, départage, profondeur), stockées dans sa `config`. Ce moteur
-relève d'EPIC-05 ; E01US009 n'introduit que ce qu'il faut pour héberger le **barème de
-qualification** là où le modèle de données l'attend : une phase de type `qualification` par
-tournoi, portant un `BaremeQualification` (sérialisé dans `config.scoring`).
+**Historique.** E01US009/ADR-0011 a introduit la `Phase` de façon **minimale et passive** : un seul
+type (`qualification`), un `ordre` et un `statut` conformes au modèle de données mais qu'aucun code
+n'exploitait. E01US015 a ajouté la 2ᵉ politique de qualification (le grain de validation).
 
-E01US015 ajoute la deuxième politique annoncée par l'ADR-0011 (« les autres politiques y viendront
-sans changement de schéma ») : le **grain de validation** (`GrainValidation`, sérialisé dans
-`config.validation`, `D-11`). La phase porte donc désormais **deux** politiques, et devient le
-gardien de leur **cohérence** : une cadence « toutes les N volées » qui dépasse le barème ne
-validerait jamais.
+**E05US001 / [ADR-0045] rend la séquence active** — c'est le socle du moteur de phases (jalon J2) :
 
-Périmètre volontairement réduit (cf. ADR-0011) : `ordre` et `statut` sont conformes au modèle de
-données mais **passifs** (aucune transition, aucune séquence) — le moteur les exploitera. Agrégat
-de domaine **pur** (immuable, sans dépendance framework).
+- **Cycle de vie** : quatre statuts `a_venir → en_cours → terminee`, avec `en_cours ⇄ en_pause`
+  réversible. `en_pause` **gèle une phase** pendant que le reste du tournoi vit (distinct du
+  `en_pause` **de tournoi**, ADR-0026 §3). L'agrégat porte la **valeur** et des transitions
+  **pures** ; le service arbitre l'enchaînement (patron `ServiceTournois`).
+- **Typage ouvert** : `elimination_directe` et `placement` rejoignent `qualification`. Déclarer un
+  type ne présuppose pas son moteur ; leurs politiques propres viendront en E05US003. En
+  conséquence, `bareme`/`validation` deviennent **facultatifs** (obligatoires pour `qualification`
+  seulement).
+- **Peuplement minimal** : une phase peut être alimentée par une `SourcePhase` (« rangs [a..b] de la
+  phase d'ordre k »). Amorce **provisoire** (une source, une plage — pas de routing ni de
+  gagnants/perdants ; modèle complet = E05US010) inscrite en DETTE-015. Elle suffit à décider les
+  trois contrôles de cohérence du CA (source vide / rangs inexistants / effectif incompatible),
+  portés par l'agrégat pur `SequencePhases`.
+
+La forme de `config` reste **à plat** (`config.scoring`, `config.validation`) : la bascule vers
+`config.policies` est assignée à E05US003 (DETTE-003), pas ici. Agrégats de domaine **purs**
+(immuables, sans dépendance framework).
+
+[ADR-0045]: ../../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md
 """
 
 from __future__ import annotations
@@ -23,7 +33,19 @@ from dataclasses import dataclass, replace
 from enum import Enum
 
 from domain.bareme import BaremeQualification
-from domain.erreurs import CadenceValidationSuperieureAuBareme, GrainIncompatibleAvecTypePhase
+from domain.erreurs import (
+    CadenceValidationSuperieureAuBareme,
+    EffectifIncompatible,
+    EffectifPhaseInvalide,
+    GrainIncompatibleAvecTypePhase,
+    PhaseQualificationIncomplete,
+    PlageSourceVide,
+    RangSourceInvalide,
+    RangsSourceInexistants,
+    SequenceOrdreInvalide,
+    SourceApresPhase,
+    SourceIntrouvable,
+)
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.tournoi import TournoiId
 
@@ -32,24 +54,35 @@ PhaseId = int
 
 
 class TypePhase(str, Enum):
-    """Type d'une phase. E01US009 n'utilise que `qualification` ; le moteur (EPIC-05) ajoutera
-    les autres (barrage, tableau, placement, finale, big_shoot_off)."""
+    """Type d'une phase. E05US001 ouvre le typage aux formats dont la **règle est écrite** ; les
+    autres (barrage, finale, big_shoot_off, poules…) s'ajouteront avec l'US qui les implémente —
+    on n'offre pas en façade un type qu'aucun moteur ne sait dérouler (ADR-0045 §2)."""
 
     QUALIFICATION = "qualification"
+    ELIMINATION_DIRECTE = "elimination_directe"
+    PLACEMENT = "placement"
 
 
 class StatutPhase(str, Enum):
-    """Cycle de vie d'une phase (modèle de données). Passif en E01US009 : aucune transition n'est
-    encore définie (elles viendront avec le moteur, EPIC-05)."""
+    """Cycle de vie d'une phase (E05US001, ADR-0045 §1).
+
+    `a_venir` → **démarrer** → `en_cours` → **terminer** → `terminee`, avec
+    `en_cours` ⇄ `en_pause` réversible (**mettre en pause** / **reprendre**). `en_pause` **gèle**
+    la phase (aucune validation de score) — distinct du `en_pause` du **tournoi** (ADR-0026 §3),
+    même intention à une autre maille. Comme le tournoi, l'agrégat ne porte que la **valeur** :
+    l'enchaînement (qui passe de quoi à quoi) est arbitré par le service (409 si illégal).
+    """
 
     A_VENIR = "a_venir"
     EN_COURS = "en_cours"
+    EN_PAUSE = "en_pause"
     TERMINEE = "terminee"
 
 
 # Grains admis par type de phase (`D-11`). La qualification se tire en séries et ne comporte
-# **pas** de duels : « fin de duel » n'y a pas de sens. Le moteur (EPIC-05) étendra cette table
-# aux phases à duels, dont le preset sera `FIN_DE_DUEL`.
+# **pas** de duels : « fin de duel » n'y a pas de sens. Les phases à duels (elimination_directe…)
+# n'ont pas encore de grain déclaré ici : leur politique de scoring vient en E05US003 (leur
+# `validation` reste `None` en E05US001).
 _GRAINS_ADMIS: dict[TypePhase, frozenset[TypeGrain]] = {
     TypePhase.QUALIFICATION: frozenset({TypeGrain.FIN_DE_SERIE, TypeGrain.TOUTES_LES_N_VOLEES}),
 }
@@ -66,10 +99,9 @@ def grain_par_defaut(type_phase: TypePhase) -> GrainValidation:
     Sert à la création d'une phase **et** à la relecture d'une phase antérieure à E01US015, dont la
     `config` ne porte pas encore de clé `validation` (cf. `repositories._vers_phase`).
 
-    Lève `GrainIncompatibleAvecTypePhase` si le type n'a pas encore de preset déclaré. Injoignable
-    tant que `TypePhase` n'a qu'une valeur, mais explicite pour EPIC-05 : sans ce garde-fou, un type
-    ajouté sans preset lèverait un `KeyError` que `_vers_phase` diagnostiquerait « configuration
-    illisible » — on chercherait une base corrompue au lieu d'une table incomplète.
+    Lève `GrainIncompatibleAvecTypePhase` si le type n'a pas de preset déclaré (les types à duels,
+    dont le preset viendra avec E05US003) : explicite plutôt qu'un `KeyError` que `_vers_phase`
+    diagnostiquerait « configuration illisible ».
     """
     preset = _GRAIN_PAR_DEFAUT.get(type_phase)
     if preset is None:
@@ -81,35 +113,83 @@ def grain_par_defaut(type_phase: TypePhase) -> GrainValidation:
 
 
 @dataclass(frozen=True)
+class SourcePhase:
+    """Peuplement d'une phase par une autre — **amorce minimale** (E05US001, ADR-0045 §3).
+
+    Une phase est alimentée par « les rangs `[rang_debut..rang_fin]` du classement de la phase
+    d'ordre `ordre_source` ». C'est un value object **pur**, validé à la construction sur ce qui ne
+    dépend **pas** de la séquence (rang de début ≥ 1, plage non vide) ; les contrôles inter-phases
+    (la source existe, est antérieure, tient dans son effectif) vivent dans `SequencePhases`.
+
+    # DETTE-015 — modèle **provisoire** : une seule source, une plage de rangs, **pas** de routing
+    ni de distinction gagnants/perdants. Le modèle complet (sources multiples, cascade, division
+    récursive) est le cœur d'E05US010 ; celui-ci en est le sous-cas le plus simple.
+    """
+
+    ordre_source: int
+    rang_debut: int
+    rang_fin: int
+
+    def __post_init__(self) -> None:
+        if self.rang_debut < 1:
+            raise RangSourceInvalide(
+                f"Une source prélève à partir du rang 1 : « {self.rang_debut} » n'existe pas."
+            )
+        if self.rang_fin < self.rang_debut:
+            raise PlageSourceVide(
+                f"La plage de rangs [{self.rang_debut}..{self.rang_fin}] est vide : "
+                "elle ne prélève aucun participant."
+            )
+
+    @property
+    def effectif_selectionne(self) -> int:
+        """Nombre de participants que la plage prélève (bornes incluses)."""
+        return self.rang_fin - self.rang_debut + 1
+
+
+@dataclass(frozen=True)
 class Phase:
     """Une phase d'un tournoi. `id` vaut `None` tant qu'elle n'est pas persistée.
 
-    En E01US009/E01US015, seules des phases `qualification` existent ; `bareme` porte alors le
-    barème de qualification et `validation` le grain de validation (`D-11`). `ordre` (position dans
-    la future séquence) et `statut` sont conformes au modèle cible mais non encore exploités
-    (ADR-0011).
+    `bareme` et `validation` ne concernent que la **qualification** (barème de cumul + grain,
+    `D-11`) : ils sont `None` pour les autres types, dont les politiques propres viendront en
+    E05US003 (ADR-0045 §2). `source` décrit d'où la phase tire ses participants (`None` = première
+    de la séquence, alimentée par les inscriptions). `effectif` (facultatif) déclare combien de
+    participants la phase classe/produit — il borne les rangs prélevables et sert au contrôle
+    « effectif incompatible ».
 
-    **Invariants** (vérifiés à chaque construction) : le grain doit être admis par le type de phase,
-    et sa cadence — s'il en a une — ne peut pas dépasser le nombre de volées du barème.
+    **Invariants** (vérifiés à chaque construction, `replace()` compris) : effectif ≥ 1 s'il est
+    déclaré ; une phase de `qualification` porte barème **et** grain ; le grain — s'il y en a un —
+    est admis par le type et sa cadence ne dépasse pas le barème.
     """
 
     tournoi_id: TournoiId
     ordre: int
     type: TypePhase
-    bareme: BaremeQualification
-    validation: GrainValidation
+    bareme: BaremeQualification | None = None
+    validation: GrainValidation | None = None
+    source: SourcePhase | None = None
+    effectif: int | None = None
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None
 
     def __post_init__(self) -> None:
-        """Fait respecter la cohérence (type, grain, barème) — quelle que soit la porte d'entrée.
-
-        Placé ici plutôt que dans les fabriques : `replace()` reconstruit l'agrégat et repasse donc
-        par cette vérification, ce qui garantit qu'`avec_bareme` comme `avec_validation` ne peuvent
-        pas créer une phase incohérente.
-        """
-        _verifier_grain_admis(self.type, self.validation)
-        _verifier_cadence_couverte(self.validation, self.bareme)
+        """Fait respecter la cohérence quelle que soit la porte d'entrée (fabriques **et**
+        `replace()`, qui repasse par ici)."""
+        if self.effectif is not None and self.effectif < 1:
+            raise EffectifPhaseInvalide(
+                "L'effectif d'une phase, s'il est déclaré, compte au moins un participant."
+            )
+        if self.type is TypePhase.QUALIFICATION and (
+            self.bareme is None or self.validation is None
+        ):
+            raise PhaseQualificationIncomplete(
+                "Une phase de qualification porte un barème et un grain de validation."
+            )
+        if self.validation is not None:
+            _verifier_grain_admis(self.type, self.validation)
+            if self.bareme is not None:
+                _verifier_cadence_couverte(self.validation, self.bareme)
 
     @staticmethod
     def qualification(
@@ -119,8 +199,8 @@ class Phase:
     ) -> Phase:
         """Crée la phase de **qualification** d'un tournoi (première de la séquence, `ordre=1`).
 
-        Sans grain explicite, applique le preset du type (`fin de série`, `D-11`) : une phase existe
-        toujours **avec** un grain, jamais sans.
+        Sans grain explicite, applique le preset du type (`fin de série`, `D-11`) : une phase de
+        qualification existe toujours **avec** un grain, jamais sans.
         """
         return Phase(
             tournoi_id=tournoi_id,
@@ -131,9 +211,30 @@ class Phase:
             statut=StatutPhase.A_VENIR,
         )
 
+    @staticmethod
+    def creer(
+        tournoi_id: TournoiId,
+        ordre: int,
+        type: TypePhase,
+        source: SourcePhase | None = None,
+        effectif: int | None = None,
+    ) -> Phase:
+        """Crée une phase **générique** (E05US001) à un rang donné de la séquence, statut `a venir`.
+
+        Pour une phase de `qualification`, préférer `Phase.qualification` (qui exige le barème) —
+        appelée ici, elle lèverait `PhaseQualificationIncomplete` faute de barème.
+        """
+        return Phase(
+            tournoi_id=tournoi_id,
+            ordre=ordre,
+            type=type,
+            source=source,
+            effectif=effectif,
+            statut=StatutPhase.A_VENIR,
+        )
+
     def avec_bareme(self, bareme: BaremeQualification) -> Phase:
-        """Renvoie une copie au barème mis à jour ; `id`, `tournoi_id`, `ordre` et `statut` sont
-        préservés.
+        """Renvoie une copie au barème mis à jour ; le reste est préservé.
 
         Lève `CadenceValidationSuperieureAuBareme` si le nouveau barème compte moins de volées que
         la cadence du grain en place : il faut alors ajuster le grain d'abord.
@@ -148,10 +249,66 @@ class Phase:
         """
         return replace(self, validation=validation)
 
+    def avec_ordre(self, ordre: int) -> Phase:
+        """Renvoie une copie à un nouveau rang dans la séquence (réordonnancement)."""
+        return replace(self, ordre=ordre)
+
+    def avec_type(self, type: TypePhase) -> Phase:
+        """Renvoie une copie d'un autre type. La cohérence type/grain/barème est revérifiée.
+
+        Retyper une qualification en un type à duels sans purger barème/grain lèverait
+        `GrainIncompatibleAvecTypePhase` : le service décide quoi faire du barème (le retyper
+        en profondeur relève de l'édition métier, hors amorce E05US001).
+        """
+        return replace(self, type=type)
+
+    def avec_source(self, source: SourcePhase | None) -> Phase:
+        """Renvoie une copie à la source (peuplement) mise à jour ; `None` = alimentée par les
+        inscriptions (première de la séquence)."""
+        return replace(self, source=source)
+
+    def avec_effectif(self, effectif: int | None) -> Phase:
+        """Renvoie une copie à l'effectif déclaré mis à jour ; `None` = non déclaré."""
+        return replace(self, effectif=effectif)
+
+    def demarrer(self) -> Phase:
+        """Copie passée `en_cours` (précondition `a_venir` garantie par le service)."""
+        return replace(self, statut=StatutPhase.EN_COURS)
+
+    def mettre_en_pause(self) -> Phase:
+        """Copie passée `en_pause` (précondition `en_cours` garantie par le service)."""
+        return replace(self, statut=StatutPhase.EN_PAUSE)
+
+    def reprendre(self) -> Phase:
+        """Copie repassée `en_cours` (précondition `en_pause` garantie par le service)."""
+        return replace(self, statut=StatutPhase.EN_COURS)
+
+    def terminer(self) -> Phase:
+        """Copie passée `terminee` (précondition `en_cours` garantie par le service)."""
+        return replace(self, statut=StatutPhase.TERMINEE)
+
+
+@dataclass(frozen=True)
+class SequencePhases:
+    """La séquence **ordonnée** des phases d'un tournoi, gardienne de sa cohérence (E05US001).
+
+    Value object pur validé à la construction : les ordres forment la suite contiguë 1..N, et
+    chaque source désigne une phase **antérieure** existante dont l'effectif couvre les rangs
+    prélevés, avec un compte compatible (ADR-0045 §3). Le service assemble les phases relues du
+    dépôt en `SequencePhases` — dont la construction **rejette** une séquence incohérente — avant
+    de persister une édition. Une séquence **vide** est licite (tournoi sans phase composée).
+    """
+
+    phases: tuple[Phase, ...]
+
+    def __post_init__(self) -> None:
+        _verifier_ordres(self.phases)
+        _verifier_sources(self.phases)
+
 
 def _verifier_grain_admis(type_phase: TypePhase, validation: GrainValidation) -> None:
     # `.get` plutôt qu'une indexation : un type sans entrée n'admet aucun grain, ce qui donne un
-    # `GrainIncompatibleAvecTypePhase` au message exact — pas un `KeyError` nu (cf. EPIC-05).
+    # `GrainIncompatibleAvecTypePhase` au message exact — pas un `KeyError` nu.
     admis = _GRAINS_ADMIS.get(type_phase, frozenset())
     if validation.type not in admis:
         raise GrainIncompatibleAvecTypePhase(
@@ -176,3 +333,44 @@ def _verifier_cadence_couverte(validation: GrainValidation, bareme: BaremeQualif
             f"Valider toutes les {validation.n_volees} volées est impossible sur un barème qui "
             f"n'en compte que {bareme.nb_volees} : aucune validation n'aurait lieu."
         )
+
+
+def _verifier_ordres(phases: tuple[Phase, ...]) -> None:
+    """Les ordres doivent former la suite contiguë 1..N (ni trou, ni doublon, ni départ décalé)."""
+    ordres = sorted(phase.ordre for phase in phases)
+    if ordres != list(range(1, len(phases) + 1)):
+        raise SequenceOrdreInvalide(
+            "Les phases d'une séquence sont numérotées 1, 2, 3… sans trou ni doublon : "
+            f"ordres reçus {ordres}."
+        )
+
+
+def _verifier_sources(phases: tuple[Phase, ...]) -> None:
+    """Chaque source désigne une phase antérieure existante, dont l'effectif couvre les rangs
+    prélevés, avec un compte compatible avec l'effectif de la phase consommatrice."""
+    par_ordre = {phase.ordre: phase for phase in phases}
+    for phase in phases:
+        source = phase.source
+        if source is None:
+            continue
+        phase_source = par_ordre.get(source.ordre_source)
+        if phase_source is None:
+            raise SourceIntrouvable(
+                f"La phase {phase.ordre} est alimentée par une phase d'ordre "
+                f"{source.ordre_source}, qui n'existe pas dans la séquence."
+            )
+        if source.ordre_source >= phase.ordre:
+            raise SourceApresPhase(
+                f"La phase {phase.ordre} ne peut être alimentée que par une phase antérieure ; "
+                f"l'ordre {source.ordre_source} lui est égal ou postérieur."
+            )
+        if phase_source.effectif is not None and source.rang_fin > phase_source.effectif:
+            raise RangsSourceInexistants(
+                f"La source prélève jusqu'au rang {source.rang_fin}, mais la phase "
+                f"{source.ordre_source} n'en classe que {phase_source.effectif}."
+            )
+        if phase.effectif is not None and source.effectif_selectionne != phase.effectif:
+            raise EffectifIncompatible(
+                f"La phase {phase.ordre} attend {phase.effectif} participants, mais sa source en "
+                f"prélève {source.effectif_selectionne}."
+            )

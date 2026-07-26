@@ -181,6 +181,105 @@ class GrainIncompatibleAvecTypePhase(DomainError):
     code = "grain_incompatible_avec_type_phase"
 
 
+class EffectifPhaseInvalide(DomainError):
+    """L'effectif déclaré d'une phase n'est pas un entier `>= 1` (E05US001).
+
+    L'effectif est **facultatif** (`None` = non déclaré, licite) ; défini, il compte des
+    **participants** — au moins un. Il borne les rangs qu'une source peut prélever et sert au
+    contrôle de cohérence « effectif incompatible » (ADR-0045 §3).
+    """
+
+    code = "effectif_phase_invalide"
+
+
+class PhaseQualificationIncomplete(DomainError):
+    """Une phase de `qualification` a été construite sans barème ou sans grain (E05US001).
+
+    Depuis E05US001, `bareme`/`validation` sont **facultatifs** sur `Phase` (une phase
+    d'élimination n'a pas de barème de qualification) — mais une phase de **qualification** les
+    exige toujours (ADR-0045 §2). Cette erreur protège l'invariant à la construction ; les fabriques
+    (`Phase.qualification`, relecture du dépôt) le garantissent, ce n'est pas un cas d'entrée
+    utilisateur.
+    """
+
+    code = "phase_qualification_incomplete"
+
+
+class RangSourceInvalide(DomainError):
+    """Le rang de début d'une source de phase est inférieur à 1 (E05US001).
+
+    Une source prélève « les rangs `[début..fin]` » d'un classement : le premier rang est 1. Un
+    `rang_debut < 1` vise des rangs **inexistants** — la moitié « rangs inexistants » du contrôle de
+    cohérence détectable sans connaître la phase source (ADR-0045 §3).
+    """
+
+    code = "rang_source_invalide"
+
+
+class PlageSourceVide(DomainError):
+    """La plage de rangs d'une source de phase est vide : `rang_fin < rang_debut` (E05US001).
+
+    C'est le contrôle « **source vide** » du CA : sélectionner « des rangs 8 à 4 » ne prélève
+    personne. Vérifié sur le value object `SourcePhase` lui-même (indépendant de la séquence).
+    """
+
+    code = "plage_source_vide"
+
+
+class SequenceOrdreInvalide(DomainError):
+    """Les ordres d'une séquence de phases ne forment pas la suite contiguë 1..N (E05US001).
+
+    Trou (1, 2, 4), doublon (1, 2, 2) ou départ hors de 1 : une séquence est une suite **ordonnée
+    sans trou**. Le service réattribue les ordres à chaque édition ; cette erreur garde l'invariant
+    à la construction de `SequencePhases` (ADR-0045 §3).
+    """
+
+    code = "sequence_ordre_invalide"
+
+
+class SourceIntrouvable(DomainError):
+    """Une phase est alimentée par une phase d'ordre inexistant dans la séquence (E05US001).
+
+    La source désigne « la phase d'ordre *k* » ; si aucune phase de la séquence ne porte cet ordre,
+    le peuplement n'a pas de source réelle (ADR-0045 §3).
+    """
+
+    code = "source_phase_introuvable"
+
+
+class SourceApresPhase(DomainError):
+    """Une phase est alimentée par une phase de rang **égal ou postérieur** (E05US001).
+
+    Une phase ne peut prélever que dans le classement d'une phase **antérieure** (ordre strictement
+    inférieur) : se nourrir de soi-même ou d'une phase à venir n'a pas de sens (ADR-0045 §3).
+    """
+
+    code = "source_apres_phase"
+
+
+class RangsSourceInexistants(DomainError):
+    """Une source prélève au-delà de l'effectif déclaré de sa phase source (E05US001).
+
+    Prendre « les rangs 1 à 40 » d'une phase qui n'en classe que 32 vise des **rangs inexistants** —
+    seconde moitié du contrôle de cohérence, celle qui met en jeu l'effectif de la source
+    (ADR-0045 §3). Silencieux si la phase source ne déclare pas d'effectif (rien à quoi comparer).
+    """
+
+    code = "rangs_source_inexistants"
+
+
+class EffectifIncompatible(DomainError):
+    """Le nombre de participants prélevés par une source ne correspond pas à l'effectif de la phase
+    consommatrice (E05US001).
+
+    Contrôle « **effectif incompatible** » du CA : une phase déclarée pour 16 archers doit recevoir
+    exactement 16 rangs de sa source. Silencieux si la phase consommatrice ne déclare pas d'effectif
+    (ADR-0045 §3).
+    """
+
+    code = "effectif_incompatible"
+
+
 class ScoreInvalide(DomainError):
     """La valeur d'un score sort de la plage autorisée pour une flèche (0 à 10)."""
 

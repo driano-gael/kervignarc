@@ -83,6 +83,13 @@ class FauxPhaseRepository:
         self._phases[phase.id] = phase
         return phase
 
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
+        phases = [p for p in self._phases.values() if p.tournoi_id == tournoi_id]
+        return sorted(phases, key=lambda p: p.ordre)
+
+    def supprimer(self, phase_id: PhaseId) -> None:
+        del self._phases[phase_id]
+
 
 def _contexte() -> tuple[ServiceGrainValidation, FauxPhaseRepository, int]:
     """Un tournoi persisté, et les deux services qui partagent le même repository de phases."""
@@ -151,7 +158,7 @@ def test_definir_preserve_le_bareme() -> None:
     service.definir(tournoi_id, TypeGrain.TOUTES_LES_N_VOLEES, 3)
 
     phase = phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
-    assert phase is not None
+    assert phase is not None and phase.bareme is not None
     assert (phase.bareme.nb_volees, phase.bareme.nb_fleches_par_volee) == (12, 6)
 
 

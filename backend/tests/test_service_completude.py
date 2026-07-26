@@ -146,7 +146,13 @@ class FauxPhaseRepository:
     def par_id(self, phase_id: PhaseId) -> Phase | None:
         raise NotImplementedError
 
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
+        raise NotImplementedError
+
     def enregistrer(self, phase: Phase) -> Phase:
+        raise NotImplementedError
+
+    def supprimer(self, phase_id: PhaseId) -> None:
         raise NotImplementedError
 
 

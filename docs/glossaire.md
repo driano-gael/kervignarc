@@ -44,7 +44,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Exempt / Bye** | `bye` | Archer qualifié d'office pour un tour (sans adversaire). |
 | **Tête de série** | `seed` | Rang d'un archer issu de la qualification, servant à l'ensemencement. |
 | **Seeding** | `seeding` | Placement des archers dans l'arbre (serpent). |
-| **Phase** | `Phase` | Étape du tournoi (qualif, barrage, tableau, placement, finale, BSO…). |
+| **Phase** | `Phase` | Étape du tournoi (qualif, barrage, élimination directe, placement, finale, BSO…). Valeur d'enum : `elimination_directe` (E05US001). |
 | **Barème** | `BaremeQualification` | Comment se tire et se compte une phase. En qualification : N volées de M flèches, au cumul (`config.scoring`). |
 | **Tarif d'un départ** | `Depart.tarif_centimes` | Prix d'**un créneau**, en **centimes entiers** (ADR-0012), porté par le `Depart` (E02US004 — plus par le tournoi, [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md)). **Obligatoire** (`0` = gratuit, état distinct) ; les créneaux d'un même tournoi peuvent avoir des prix différents. Le montant dû d'un archer = **somme** des tarifs des départs où il est inscrit (E08US001). |
 | **Sujet de facturation** | — *(différé)* | **Qui doit l'argent** d'un tournoi : l'**archer** (seul cas implémenté — E08US001) ou le **club** (unité facturée, sur `club_id`/[ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md) — **pas** l'abstraction participant d'ADR-0028). Concept **décidé, non codé** ([ADR-0041](adr/0041-tarification-configuration-du-tournoi.md), E01US020). À ne pas confondre avec le **participant** (qui *tire* dans un match) ni le **payeur groupé** (un club règle pour ses archers, déjà livré en E08US002). |

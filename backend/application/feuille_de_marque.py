@@ -96,7 +96,11 @@ class ServiceFeuilleDeMarque:
     def _bareme_du_tournoi(self, tournoi_id: TournoiId) -> BaremeQualification:
         """Le barème de qualification du tournoi, ou le preset FFTA 18 m s'il n'est pas défini."""
         phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
-        return phase.bareme if phase is not None else BaremeQualification.preset_ffta_18m()
+        # `bareme` est optionnel depuis E05US001 (ADR-0045 §2) mais toujours présent sur une
+        # qualification ; à défaut (données incohérentes), on retombe sur le preset FFTA.
+        if phase is None or phase.bareme is None:
+            return BaremeQualification.preset_ffta_18m()
+        return phase.bareme
 
     def _ligne(self, affectation: Affectation) -> LigneArcher | None:
         """Reconstitue la ligne d'un archer placé, ou `None` si la chaîne de jointure est rompue.

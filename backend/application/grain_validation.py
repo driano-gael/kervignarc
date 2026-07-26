@@ -49,8 +49,11 @@ class ServiceGrainValidation:
         self._tournoi_existant(tournoi_id)
         grain = GrainValidation.creer(type_grain, n_volees)
         phase = self._phase_de_qualification(tournoi_id)
-        modifiee = self._phases.enregistrer(phase.avec_validation(grain))
-        return modifiee.validation
+        self._phases.enregistrer(phase.avec_validation(grain))
+        # Le grain persisté est celui qu'on vient d'écrire ; le renvoyer directement évite de
+        # re-narrower `validation` (optionnel depuis E05US001, toujours présent sur une
+        # qualification — ADR-0045 §2).
+        return grain
 
     def _tournoi_existant(self, tournoi_id: TournoiId) -> None:
         if self._tournois.par_id(tournoi_id) is None:

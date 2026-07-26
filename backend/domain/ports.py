@@ -442,8 +442,9 @@ class ScoreRepository(Protocol):
 class PhaseRepository(Protocol):
     """Port de persistance des phases (adapter fourni par l'infrastructure).
 
-    Introduction minimale (E01US009 / ADR-0011) : n'est exercé que pour la phase de
-    `qualification` d'un tournoi, qui porte le barème.
+    Introduit minimalement pour la qualification (E01US009 / ADR-0011), **étendu par E05US001** à
+    toute la séquence : `par_tournoi` (liste ordonnée) et `supprimer` servent la composition et le
+    cycle de vie des phases du moteur (ADR-0045).
     """
 
     def ajouter(self, phase: Phase) -> Phase:
@@ -461,8 +462,20 @@ class PhaseRepository(Protocol):
         """
         ...
 
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
+        """Renvoie **toutes** les phases d'un tournoi, **ordonnées par `ordre`** (E05US001).
+
+        La séquence de phases (`ServicePhases`) se compose et se valide sur cette liste ; l'ordre
+        y est significatif (1..N sans trou), d'où le tri à la source.
+        """
+        ...
+
     def enregistrer(self, phase: Phase) -> Phase:
-        """Met à jour une phase déjà persistée (édition du barème) et la renvoie."""
+        """Met à jour une phase déjà persistée (édition du barème, du type, de la source…)."""
+        ...
+
+    def supprimer(self, phase_id: PhaseId) -> None:
+        """Supprime une phase persistée (retrait d'une phase de la séquence, E05US001)."""
         ...
 
 

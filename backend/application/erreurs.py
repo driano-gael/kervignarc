@@ -347,6 +347,53 @@ class PhaseQualificationAbsente(ApplicationError):
     code = "phase_qualification_absente"
 
 
+class PhaseIntrouvable(ApplicationError):
+    """Aucune phase ne correspond à l'identifiant dans ce tournoi (E05US001) → 404.
+
+    Couvre l'identifiant inconnu **et** la phase d'un **autre** tournoi : du point de vue du tournoi
+    de l'URL, une phase qui ne lui appartient pas n'existe pas davantage qu'un identifiant inventé —
+    même parti que `DepartIntrouvable` / `ScoreurIntrouvable`.
+    """
+
+    code = "phase_introuvable"
+
+
+class PhaseSourceReferencee(ApplicationError):
+    """Suppression refusée : la phase est la **source** d'une autre phase (E05US001) → 409.
+
+    **Un refus, pas un signalement** (famille de `ClubReference`/`BlasonReference`) : retirer une
+    phase dont une autre tire ses participants romprait le peuplement de cette dernière. Il faut
+    d'abord réaffecter ou retirer la phase consommatrice. Se distingue de la cohérence de séquence
+    (levée en 422 à la construction) : ici, c'est un **conflit d'état** entre phases existantes.
+    """
+
+    code = "phase_source_referencee"
+
+
+class PhaseQualificationNonSupprimable(ApplicationError):
+    """Suppression refusée : la phase de qualification se gère via le barème (E05US001) → 409.
+
+    La qualification naît et vit avec le **barème** (ADR-0011) ; la retirer par l'écran des phases
+    l'**orphelinerait** (le barème n'aurait plus de phase porteuse) et casserait la saisie. Garde en
+    profondeur : le front masque déjà l'action (`gereeAilleurs`), mais l'API ne doit pas l'ouvrir
+    par une route directe (revue E05US001, axe D).
+    """
+
+    code = "phase_qualification_non_supprimable"
+
+
+class ReordonnancementPhasesInvalide(ApplicationError):
+    """Réordonnancement refusé : la liste fournie ne recouvre pas exactement les phases du tournoi
+    (E05US001) → 409.
+
+    Réordonner, c'est **permuter l'ensemble** des phases : la liste d'identifiants doit contenir
+    chaque phase du tournoi une et une seule fois. Un identifiant manquant, en trop, en double ou
+    étranger au tournoi rend l'opération ambiguë — refus net plutôt qu'un ordre partiel deviné.
+    """
+
+    code = "reordonnancement_phases_invalide"
+
+
 class IdentifiantsInvalides(ApplicationError):
     """Login/mot de passe admin incorrects (E10US002). Traduite en 401 à la frontière."""
 

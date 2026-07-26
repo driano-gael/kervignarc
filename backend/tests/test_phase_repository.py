@@ -22,7 +22,7 @@ from alembic.config import Config
 
 from domain.bareme import BaremeQualification
 from domain.grain_validation import GrainValidation
-from domain.phase import Phase, TypePhase
+from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from infrastructure.db import Database, PhaseORM, PhaseRepositorySQL, TournoiRepositorySQL
 from infrastructure.erreurs import InfrastructureError
@@ -69,8 +69,8 @@ def test_ajouter_puis_relire_par_tournoi_et_type(tmp_path: Path) -> None:
             Phase.qualification(tournoi_id, BaremeQualification.preset_ffta_18m())
         )
         assert cree.id is not None
-        assert cree.bareme.nb_volees == 20
-        assert cree.bareme.nb_fleches_par_volee == 3
+        assert cree.bareme is not None and cree.bareme.nb_volees == 20
+        assert cree.bareme is not None and cree.bareme.nb_fleches_par_volee == 3
 
         relue = repository.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
         assert relue == cree
@@ -89,8 +89,8 @@ def test_enregistrer_met_a_jour_le_bareme(tmp_path: Path) -> None:
 
         enregistre = repository.enregistrer(cree.avec_bareme(BaremeQualification.creer(10, 6)))
         assert enregistre.id == cree.id
-        assert enregistre.bareme.nb_volees == 10
-        assert enregistre.bareme.nb_fleches_par_volee == 6
+        assert enregistre.bareme is not None and enregistre.bareme.nb_volees == 10
+        assert enregistre.bareme is not None and enregistre.bareme.nb_fleches_par_volee == 6
         assert repository.par_id(cree.id) == enregistre
     finally:
         db.engine.dispose()
@@ -251,7 +251,7 @@ def test_une_phase_sans_cle_validation_se_relit_avec_le_preset_du_type(tmp_path:
         )
         assert relue is not None
         assert relue.validation == GrainValidation.fin_de_serie()
-        assert relue.bareme.nb_volees == 20
+        assert relue.bareme is not None and relue.bareme.nb_volees == 20
     finally:
         db.engine.dispose()
 
@@ -360,5 +360,157 @@ def test_un_grain_incoherent_avec_le_bareme_leve_infrastructure_error(tmp_path: 
             PhaseRepositorySQL(db.session_factory).par_tournoi_et_type(
                 tournoi_id, TypePhase.QUALIFICATION
             )
+    finally:
+        db.engine.dispose()
+
+
+# --- E05US001 : phase générique, source/effectif, séquence, suppression ------------------------
+
+
+def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> None:
+    """Une phase d'élimination directe se persiste **sans** scoring/validation ; source et effectif
+    y font l'aller-retour (config JSON à plat, ADR-0045)."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id = _tournoi(db)
+        repository = PhaseRepositorySQL(db.session_factory)
+        repository.ajouter(Phase.qualification(tournoi_id, BaremeQualification.creer(20, 3)))
+
+        elim = repository.ajouter(
+            Phase.creer(
+                tournoi_id,
+                ordre=2,
+                type=TypePhase.ELIMINATION_DIRECTE,
+                source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),
+                effectif=16,
+            )
+        )
+        assert elim.id is not None
+
+        relue = repository.par_id(elim.id)
+        assert relue == elim
+        assert relue is not None
+        assert relue.bareme is None
+        assert relue.validation is None
+        assert relue.source == SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16)
+        assert relue.effectif == 16
+
+        # Le JSON ne porte ni scoring ni validation pour une phase non-qualification.
+        with db.session_factory() as session:
+            ligne = session.get(PhaseORM, elim.id)
+            assert ligne is not None
+            config = json.loads(ligne.config)
+        assert "scoring" not in config and "validation" not in config
+        assert config["source"] == {"ordre_source": 1, "rang_debut": 1, "rang_fin": 16}
+    finally:
+        db.engine.dispose()
+
+
+def test_par_tournoi_renvoie_les_phases_ordonnees(tmp_path: Path) -> None:
+    """`par_tournoi` trie par `ordre` et isole le tournoi demandé."""
+    db = _base(tmp_path)
+    try:
+        premier = _tournoi(db)
+        second = _tournoi(db)
+        repository = PhaseRepositorySQL(db.session_factory)
+        repository.ajouter(Phase.qualification(premier, BaremeQualification.creer(20, 3)))
+        repository.ajouter(Phase.creer(premier, ordre=2, type=TypePhase.ELIMINATION_DIRECTE))
+        repository.ajouter(Phase.creer(premier, ordre=3, type=TypePhase.PLACEMENT))
+        repository.ajouter(Phase.qualification(second, BaremeQualification.creer(10, 3)))
+
+        phases = repository.par_tournoi(premier)
+        assert [p.ordre for p in phases] == [1, 2, 3]
+        assert [p.type for p in phases] == [
+            TypePhase.QUALIFICATION,
+            TypePhase.ELIMINATION_DIRECTE,
+            TypePhase.PLACEMENT,
+        ]
+        assert repository.par_tournoi(second) == [
+            repository.par_tournoi_et_type(second, TypePhase.QUALIFICATION)
+        ]
+    finally:
+        db.engine.dispose()
+
+
+def test_supprimer_retire_la_phase(tmp_path: Path) -> None:
+    db = _base(tmp_path)
+    try:
+        tournoi_id = _tournoi(db)
+        repository = PhaseRepositorySQL(db.session_factory)
+        phase = repository.ajouter(
+            Phase.creer(tournoi_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE)
+        )
+        assert phase.id is not None
+
+        repository.supprimer(phase.id)
+
+        assert repository.par_id(phase.id) is None
+        assert repository.par_tournoi(tournoi_id) == []
+    finally:
+        db.engine.dispose()
+
+
+def test_le_statut_en_pause_fait_l_aller_retour(tmp_path: Path) -> None:
+    """`en_pause` (E05US001) se persiste et se relit comme les autres statuts."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id = _tournoi(db)
+        repository = PhaseRepositorySQL(db.session_factory)
+        phase = repository.ajouter(
+            Phase.creer(tournoi_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE)
+        )
+        assert phase.id is not None
+
+        repository.enregistrer(phase.demarrer().mettre_en_pause())
+
+        relue = repository.par_id(phase.id)
+        assert relue is not None
+        assert relue.statut is StatutPhase.EN_PAUSE
+    finally:
+        db.engine.dispose()
+
+
+def test_un_statut_illisible_leve_infrastructure_error(tmp_path: Path) -> None:
+    """Un `statut` hors énumération (base altérée) remonte en `InfrastructureError`, pas en 500 :
+    le cast est dans le bloc qui enveloppe (revue axe C1)."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id = _tournoi(db)
+        with db.session_factory() as session:
+            session.add(
+                PhaseORM(
+                    tournoi_id=tournoi_id,
+                    ordre=1,
+                    type="elimination_directe",
+                    config="{}",
+                    statut="en_vacances",
+                )
+            )
+            session.commit()
+        with pytest.raises(InfrastructureError):
+            PhaseRepositorySQL(db.session_factory).par_tournoi(tournoi_id)
+    finally:
+        db.engine.dispose()
+
+
+def test_une_source_illisible_leve_infrastructure_error(tmp_path: Path) -> None:
+    """Une `config.source` bien formée mais hors règle (plage vide) est une base altérée : le
+    repository relit via `SourcePhase`, donc jamais un value object silencieusement invalide."""
+    db = _base(tmp_path)
+    try:
+        tournoi_id = _tournoi(db)
+        with db.session_factory() as session:
+            session.add(
+                PhaseORM(
+                    tournoi_id=tournoi_id,
+                    ordre=2,
+                    type="elimination_directe",
+                    config='{"source": {"ordre_source": 1, "rang_debut": 8, "rang_fin": 4}}',
+                    statut="a_venir",
+                )
+            )
+            session.commit()
+        with pytest.raises(InfrastructureError):
+            PhaseRepositorySQL(db.session_factory).par_tournoi(tournoi_id)
     finally:
         db.engine.dispose()
