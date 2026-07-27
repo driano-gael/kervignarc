@@ -11,6 +11,7 @@
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { useDeclarerForfaitDuel } from '../forfaits/hooks'
 import type { Cote, Duel, Tableau } from './api'
 import {
   estJouable,
@@ -324,6 +325,17 @@ function DuelCharge({
         />
       )}
 
+      {!verrou && duel.haut !== null && duel.bas !== null && (
+        <ForfaitDuel
+          tournoiId={tournoiId}
+          phaseId={phaseId}
+          hautId={duel.haut.archer_id}
+          hautNom={haut}
+          basId={duel.bas.archer_id}
+          basNom={bas}
+        />
+      )}
+
       {resultat?.barrage_requis === true && !verrou && (
         <SaisieBarrage
           tournoiId={tournoiId}
@@ -334,6 +346,52 @@ function DuelCharge({
       )}
 
       <Validation tournoiId={tournoiId} phaseId={phaseId} matchNumero={matchNumero} duel={duel} />
+    </div>
+  )
+}
+
+// Forfait d'un duelliste (E04US015, ADR-0050) : abandon en cours de tableau. L'adversaire passe
+// d'office (walkover côté serveur) et le tableau se reconstruit ; le scoreur revient à la liste où le
+// match apparaît tranché. Réversible depuis le panneau de qualification ou par re-régénération.
+function ForfaitDuel({
+  tournoiId,
+  phaseId,
+  hautId,
+  hautNom,
+  basId,
+  basNom,
+}: {
+  tournoiId: number
+  phaseId: number
+  hautId: number
+  hautNom: string
+  basId: number
+  basNom: string
+}) {
+  const declarer = useDeclarerForfaitDuel(tournoiId, phaseId)
+
+  return (
+    <div className="duel__forfaits">
+      <p className="duel__forfaits-titre">Forfait / abandon — l'adversaire passe</p>
+      <div className="duel__forfaits-actions">
+        <button
+          type="button"
+          className="lien"
+          disabled={declarer.isPending}
+          onClick={() => declarer.mutate({ archerId: hautId, nature: 'abandon' })}
+        >
+          {hautNom} abandonne
+        </button>
+        <button
+          type="button"
+          className="lien"
+          disabled={declarer.isPending}
+          onClick={() => declarer.mutate({ archerId: basId, nature: 'abandon' })}
+        >
+          {basNom} abandonne
+        </button>
+      </div>
+      <MessageErreur erreur={declarer.error} />
     </div>
   )
 }

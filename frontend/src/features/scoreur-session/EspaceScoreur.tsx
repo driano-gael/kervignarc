@@ -13,6 +13,7 @@ import {
   useSessionScoreurStore,
 } from '../../shared/stores/sessionScoreurStore'
 import { SaisieDuels } from '../saisie-duels/SaisieDuels'
+import { PanneauForfaitsQualif } from '../forfaits/PanneauForfaitsQualif'
 import { useConnexionScoreur, useDeconnexionScoreur } from './hooks'
 
 export function EspaceScoreur() {
@@ -81,6 +82,9 @@ function SessionOuverte({ scoreur }: { scoreur: ScoreurConnecte }) {
         </button>
       </div>
       <MessageErreur erreur={deconnexion.error} />
+      {/* Forfaits de qualification (E04US015) : déclarer / annuler un abandon ou une DSQ. Placé
+          au-dessus des duels — un abandon en qualif se prononce avant l'entrée en tableau. */}
+      <PanneauForfaitsQualif tournoiId={scoreur.tournoi_id} />
       {/* Saisie en duels (E04US013) : le scoreur choisit une phase de tableau, ouvre un duel et le
           score. Monté ici, une fois la session ouverte — comme le poste monte la grille de qualif. */}
       <SaisieDuels tournoiId={scoreur.tournoi_id} />
