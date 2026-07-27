@@ -1,7 +1,8 @@
 # Modèle de données détaillé — Kervignarc
 
-- **Version** : 0.5
-- **Date** : 2026-07-16 *(v0.5 : table de liaison `INSCRIPTION` (archer ↔ départ, portant `paye`) — E02US009, [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md) ; montant dû **dérivé** du tarif du départ, non stocké)*
+- **Version** : 0.6
+- **Date** : 2026-07-27 *(v0.6 : `DEPART.horaire` devient un horaire du jour `HH:MM` **NOT NULL** (abandon du libellé libre facultatif) — E02US010, migration 0032)*
+- *v0.5 : 2026-07-16 — table de liaison `INSCRIPTION` (archer ↔ départ, portant `paye`) — E02US009, [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md) ; montant dû **dérivé** du tarif du départ, non stocké*
 - *v0.4 : 2026-07-16 — `DEPART` devient un **créneau du tournoi** (`tournoi_id`, `horaire`, `tarif_centimes` obligatoire), le tarif **quitte** `TOURNOI` — [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md), E02US004 ; le lien archer↔départ + `paye` passent à E02US009*
 - *v0.3 : 2026-07-15 — `ARCHER.club_id` **nullable** = club *inconnu* et index UNIQUE de dédoublonnage **abandonné** ([ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md), [ADR-0015](adr/0015-signaler-un-doublon-plutot-que-l-interdire.md)) ; `ARCHER.categorie_id` NOT NULL*
 - *v0.2 : 2026-07-14 — cadrage FFTA (`CATEGORIE.ages`, `BLASON.zones`, capacité de cible non bornée, barème par arme, blason surchargé par phase)*
@@ -172,7 +173,7 @@ erDiagram
 | id | INTEGER | PK |
 | tournoi_id | INTEGER | FK → TOURNOI, NOT NULL |
 | numero | INTEGER | n° de créneau, **attribué par le système** ; `UNIQUE(tournoi_id, numero)` |
-| horaire | TEXT | libellé de créneau (ex. « 9h00 »), NULL admis |
+| horaire | TEXT | horaire du jour `HH:MM` (24 h, ex. « 09:00 »), **NOT NULL** (E02US010) |
 | tarif_centimes | INTEGER | **NOT NULL**, ≥ 0 — prix du créneau en **centimes** (`0` = gratuit) |
 | quota | INTEGER | **NULL admis** = sans plafond ; sinon nombre max d'inscrits, `1 ≤ quota ≤ 1 000` (E02US006). Invariant **applicatif** (`DepartComplet`, règle 7) : aucune contrainte SQL ne l'exprime — le dépassement est refusé par le service, sérialisé par le writer unique |
 
