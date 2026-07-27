@@ -32,6 +32,7 @@ from application.erreurs import (
     CodePosteInconnu,
     CodeScoreurInconnu,
     DepartIntrouvable,
+    ForfaitIntrouvable,
     GabaritDuTournoiAbsent,
     GabaritIntrouvable,
     IdentifiantsInvalides,
@@ -88,7 +89,8 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | PhaseQualificationAbsente
         | PhaseIntrouvable
         | PosteIntrouvable
-        | ScoreurIntrouvable,
+        | ScoreurIntrouvable
+        | ForfaitIntrouvable,
     ):
         status = 404
     else:

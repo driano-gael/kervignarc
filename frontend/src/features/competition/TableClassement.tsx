@@ -77,12 +77,24 @@ function LigneArcher({
   // coexister — les distinguer à l'écran est le minimum vital.
   const identite = `${ligne.nom} ${ligne.prenom}`
 
+  // Statut forfait (E04US015, ADR-0050) : un abandon est relégué (rang affiché), une DSQ est sortie
+  // du classement (rang `null` → « — »). Le badge rend le statut visible ; le score reste affiché
+  // (les flèches sont préservées).
+  const badgeStatut =
+    ligne.statut === 'abandon' ? 'Abandon' : ligne.statut === 'disqualifie' ? 'Disqualifié' : null
+
   return (
-    <tr>
-      <td>{ligne.rang_categorie}</td>
-      <td className="table__scratch">{ligne.rang_scratch}</td>
+    <tr className={ligne.statut !== 'en_lice' ? 'table__ligne--forfait' : undefined}>
+      <td>{ligne.rang_categorie ?? '—'}</td>
+      <td className="table__scratch">{ligne.rang_scratch ?? '—'}</td>
       <td>
         {identite}
+        {badgeStatut && (
+          <span className="table__badge-forfait" title="Statut de participation">
+            {' '}
+            {badgeStatut}
+          </span>
+        )}
         {ligne.club_id === null && (
           <span
             className="table__anomalie"

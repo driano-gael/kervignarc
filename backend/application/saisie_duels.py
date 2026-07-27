@@ -29,7 +29,7 @@ from application.erreurs import (
     TournoiIntrouvable,
 )
 from domain.blason import ZoneScore
-from domain.classement import LigneClassement
+from domain.classement import LigneClassement, StatutClassement
 from domain.duel import BaremeDuel, Cote, Duel, ResolveurBaremeDuel
 from domain.erreurs import MatchNonJouable
 from domain.participant import GenreParticipant, Participant
@@ -39,6 +39,7 @@ from domain.ports import (
     BlasonRepository,
     CategorieRepository,
     DuelRepository,
+    ForfaitRepository,
     PhaseRepository,
     TournoiRepository,
 )
@@ -102,6 +103,7 @@ class ServiceSaisieDuels:
         categories: CategorieRepository,
         blasons: BlasonRepository,
         duels: DuelRepository,
+        forfaits: ForfaitRepository,
         classements: ServiceClassement,
         resolveur: ResolveurBaremeDuel,
         seeding: Seeding,
@@ -113,6 +115,7 @@ class ServiceSaisieDuels:
         self._categories = categories
         self._blasons = blasons
         self._duels = duels
+        self._forfaits = forfaits
         self._classements = classements
         self._resolveur = resolveur
         # Politiques du tableau (E05US003) : le format est de la configuration (règle 2). MVP =
@@ -223,12 +226,53 @@ class ServiceSaisieDuels:
             )
         classement = self._classements.pour_tournoi(tournoi_id)
         lignes = {ligne.archer_id: ligne for ligne in classement.lignes}
+        # Ensemencement : **seuls les archers en lice** entrent dans le tableau. Un forfait déclaré
+        # en **qualification** (abandon relégué / DSQ exclu, `statut != EN_LICE`) n'accède pas aux
+        # duels ; son rang scratch peut d'ailleurs être `None` (DSQ). Le classement complet reste
+        # dans `lignes` pour résoudre les noms.
+        en_lice = [ligne for ligne in classement.lignes if ligne.statut is StatutClassement.EN_LICE]
         participants = [
             Participant.individuel(ligne.archer_id)
-            for ligne in sorted(classement.lignes, key=lambda ligne: ligne.rang_scratch)
+            for ligne in sorted(en_lice, key=lambda ligne: ligne.rang_scratch or 0)
         ]
         tableau = construire_tableau(participants, self._seeding, self._byes, self._routing)
-        return self._rejouer(tableau, phase_id, lignes), lignes
+        tableau = self._rejouer(tableau, phase_id, lignes)
+        return self._appliquer_forfaits(tableau, phase_id), lignes
+
+    def _appliquer_forfaits(self, tableau: Tableau, phase_id: PhaseId) -> Tableau:
+        """Fait **passer l'adversaire** de tout duelliste déclaré forfait **dans cette phase de
+        tableau** (E04US015 / ADR-0050, ex-E12US004).
+
+        Un forfait en duels est un **walkover** : l'archer garde ses duels déjà validés (rejoués
+        avant), mais tout match **jouable et non encore tranché** où il figure est gagné d'office
+        par son adversaire — analogue à la résolution d'un bye. On traite par **tour croissant**
+        (un tour ≥ 2 n'a ses occupants qu'après propagation amont). L'annulation du forfait fait
+        **disparaître** le walkover à la reconstruction suivante (réversibilité, `D-15`). Deux
+        forfaits face à face (rare) : le camp **haut** avance par convention — lui-même walkover
+        en aval s'il reste forfait. Les forfaits de **qualification** ne passent pas ici : leurs
+        archers ne sont pas dans le tableau (exclus à l'ensemencement).
+        """
+        forfaits = {f.archer_id for f in self._forfaits.par_phase(phase_id)}
+        if not forfaits:
+            return tableau
+        for numero in sorted(
+            (m.numero for m in tableau.matchs), key=lambda n: tableau.match(n).tour
+        ):
+            match = tableau.match(numero)
+            if (
+                match.est_bye
+                or match.haut is None
+                or match.bas is None
+                or match.vainqueur is not None
+            ):
+                continue
+            haut_forfait = match.haut.ref_id in forfaits
+            bas_forfait = match.bas.ref_id in forfaits
+            if haut_forfait and not bas_forfait:
+                tableau = tableau.jouer(numero, match.bas)
+            elif (bas_forfait and not haut_forfait) or (haut_forfait and bas_forfait):
+                tableau = tableau.jouer(numero, match.haut)
+        return tableau
 
     def _rejouer(
         self, tableau: Tableau, phase_id: PhaseId, lignes: dict[int, LigneClassement]

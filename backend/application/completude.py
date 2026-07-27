@@ -34,6 +34,7 @@ from domain.completude import Completude, evaluer_completude
 from domain.phase import TypePhase
 from domain.ports import (
     DepartRepository,
+    ForfaitRepository,
     InscriptionRepository,
     PhaseRepository,
     PlacementRepository,
@@ -68,6 +69,7 @@ class ServiceCompletude:
         inscription_repository: InscriptionRepository,
         serie_repository: SerieRepository,
         phase_repository: PhaseRepository,
+        forfait_repository: ForfaitRepository,
         paiements: LecteurPaiements,
     ) -> None:
         self._tournois = tournoi_repository
@@ -76,6 +78,7 @@ class ServiceCompletude:
         self._inscriptions = inscription_repository
         self._series = serie_repository
         self._phases = phase_repository
+        self._forfaits = forfait_repository
         self._paiements = paiements
 
     def pour_tournoi(self, tournoi_id: TournoiId) -> Completude:
@@ -103,11 +106,20 @@ class ServiceCompletude:
         # `bareme` est optionnel depuis E05US001 (ADR-0045 §2) mais présent sur une qualification ;
         # absent (données incohérentes) → même issue « rien de scorable » que barème non configuré.
         nb_volees = phase.bareme.nb_volees if phase is not None and phase.bareme is not None else 0
-        if nb_volees <= 0:
+        if nb_volees <= 0 or phase is None:
             return 0, 0
         series: dict[ArcherId, Serie] = {
             s.archer_id: s for s in self._series.par_tournoi(tournoi_id)
         }
+        # DETTE-014 résorbée (E04US015, ADR-0050) : un archer déclaré **forfait en qualification**
+        # a sa série **close par forfait** — sa cible ne reste plus « à finir » à jamais malgré ses
+        # volées partielles préservées. On lit les forfaits de la phase de qualif (dès qu'elle
+        # est persistée : sans id, aucun forfait n'a pu s'y rattacher).
+        forfaits_qualif: set[ArcherId] = (
+            {f.archer_id for f in self._forfaits.par_phase(phase.id)}
+            if phase.id is not None
+            else set()
+        )
         total = 0
         terminees = 0
         for depart in self._departs.par_tournoi(tournoi_id):
@@ -124,21 +136,24 @@ class ServiceCompletude:
                 )
             for archer_ids in archers_par_cible.values():
                 total += 1
-                if all(self._serie_complete(series.get(aid), nb_volees) for aid in archer_ids):
+                if all(
+                    self._serie_close(series.get(aid), nb_volees, aid in forfaits_qualif)
+                    for aid in archer_ids
+                ):
                     terminees += 1
         return terminees, total
 
     @staticmethod
-    def _serie_complete(serie: Serie | None, nb_volees: int) -> bool:
-        """Une série existante et complète (barème validé) ; `None` (rien saisi) → incomplète.
+    def _serie_close(serie: Serie | None, nb_volees: int, est_forfait: bool) -> bool:
+        """La saisie de l'archer est **close** : soit sa série est complète (barème validé), soit il
+        est **forfait** (E04US015, ADR-0050).
 
-        # DETTE-014 : cette définition **ignore le forfait** (E12US004, non livrée). Un archer qui
-        # abandonne garde ses volées partielles (le CA d'E12US004 préserve les flèches tirées) : sa
-        # série ne sera **jamais** complète, donc sa cible resterait « à finir » à jamais et la
-        # complétude mentirait dès qu'un forfait existe. À la livraison d'E12US004, y traiter un
-        # archer forfait comme « série close par forfait » (cf. docs/dette.md).
+        Un archer forfait garde ses volées partielles (les flèches sont préservées, ADR-0016), donc
+        sa série n'est **jamais** complète ; le compter comme clos évite qu'une cible reste « à
+        finir » à jamais — c'était DETTE-014 (désormais résorbée). `None` (rien saisi) et non
+        forfait → incomplète.
         """
-        return serie is not None and serie.est_complete(nb_volees)
+        return est_forfait or (serie is not None and serie.est_complete(nb_volees))
 
     def _compter_paiements(self, tournoi_id: TournoiId) -> tuple[int, int]:
         """`(archers_regles, archers_total)` — réglé = plus rien à payer (`reste_centimes == 0`)."""

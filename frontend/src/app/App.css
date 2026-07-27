@@ -2180,3 +2180,58 @@ button:disabled {
 .duel__validation button {
   min-height: 48px;
 }
+
+/* Forfaits — abandon / disqualification (E04US015, ADR-0050). Badge de statut au classement, ligne
+   atténuée, et contrôles du scoreur (panneau qualif + action forfait en duels). */
+.table__badge-forfait {
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table__ligne--forfait {
+  opacity: 0.7;
+}
+
+.forfaits-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.forfaits-liste__ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.forfaits-liste__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.duel__forfaits {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+
+.duel__forfaits-titre {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.duel__forfaits-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}

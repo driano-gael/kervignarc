@@ -34,6 +34,7 @@ from api.v1.departs import router as departs_router
 from api.v1.deroule import router as deroule_router
 from api.v1.documents_salle import router as documents_salle_router
 from api.v1.feuille_de_marque import router as feuille_de_marque_router
+from api.v1.forfaits import router as forfaits_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
 from api.v1.inscriptions import router as inscriptions_router
@@ -64,6 +65,7 @@ from application.completude import ServiceCompletude
 from application.departs import ServiceDeparts
 from application.documents_salle import ServiceDocumentsSalle
 from application.feuille_de_marque import ServiceFeuilleDeMarque
+from application.forfaits import ServiceForfait
 from application.gabarits import ServiceGabarits
 from application.grain_validation import ServiceGrainValidation
 from application.inscriptions import ServiceInscriptions
@@ -102,6 +104,7 @@ from infrastructure.db import (
     Database,
     DepartRepositorySQL,
     DuelRepositorySQL,
+    ForfaitRepositorySQL,
     GabaritSalleRepositorySQL,
     InscriptionRepositorySQL,
     PhaseRepositorySQL,
@@ -255,6 +258,10 @@ def create_app(
     placement_repository = PlacementRepositorySQL(database.session_factory, audit_repository)
     placement_tableau_repository = PlacementTableauRepositorySQL(database.session_factory)
     duel_repository = DuelRepositorySQL(database.session_factory)
+    # Forfaits — abandon / DSQ (E04US015, ADR-0050) : co-écrivent leur trace d'audit `FORFAIT` dans
+    # une seule transaction (ADR-0035), d'où l'`audit_repository` (concret) injecté — couplage
+    # infra → infra, comme la série, l'inscription et le placement.
+    forfait_repository = ForfaitRepositorySQL(database.session_factory, audit_repository)
     # La série de saisie co-écrit son entrée d'audit dans **une seule transaction** (ADR-0035) :
     # l'adapter reçoit l'`audit_repository` (concret) pour appeler `consigner_dans` sur la session
     # partagée. Couplage **infra → infra** assumé — le port domaine `SerieRepository` l'ignore.
@@ -331,8 +338,16 @@ def create_app(
     # Classement de qualification (E06US001) : lit les **séries** de saisie (E04US002), plus les
     # catégories pour libeller/segmenter — le walking skeleton `Score` ne portait pas le détail
     # flèche par flèche qu'exige le départage FFTA (nombre de 10 puis de 9).
+    # E04US015 (ADR-0050) : le classement lit les forfaits **de la phase de qualification** — un
+    # abandon y est **relégué**, une DSQ **exclue** (rang `None`), leurs flèches préservées. D'où le
+    # port `phase` (résoudre la phase de qualif) et le port `forfait`.
     app.state.service_classement = ServiceClassement(
-        tournoi_repository, archer_repository, serie_repository, categorie_repository
+        tournoi_repository,
+        archer_repository,
+        serie_repository,
+        categorie_repository,
+        phase_repository,
+        forfait_repository,
     )
     # Inscriptions archer↔départ (E02US009, ADR-0017) : inscrire sur des créneaux du tournoi de
     # l'archer (même tournoi, unicité), marquer payé, désinscrire ; le montant dû dérive du tarif.
@@ -395,12 +410,16 @@ def create_app(
     # **rejoue** les duels validés pour la progression. Le barème est résolu par arme via le
     # résolveur FFTA par défaut (cumul en poulies, sets sinon) — E01US011 le remplacera par un
     # résolveur configuré au même point d'injection (règle 2). Mêmes politiques de tableau (MVP).
+    # E04US015 (ADR-0050) : le port `forfait` fait **passer l'adversaire** d'un duelliste déclaré
+    # forfait dans la phase de tableau (walkover à la reconstruction) ; les forfaits de qualif sont,
+    # eux, exclus à l'ensemencement (via le classement).
     app.state.service_saisie_duels = ServiceSaisieDuels(
         tournoi_repository,
         phase_repository,
         categorie_repository,
         blason_repository,
         duel_repository,
+        forfait_repository,
         app.state.service_classement,
         ResolveurBaremeDuelFfta(),
         SeedingSerpent(),
@@ -551,7 +570,20 @@ def create_app(
         inscription_repository,
         serie_repository,
         phase_repository,
+        forfait_repository,
         app.state.service_paiements,
+    )
+
+    # --- Forfaits — abandon / disqualification (E04US015, ADR-0050) : le scoreur déclare/annule un
+    # forfait en qualification (relégation/exclusion au classement) ou en duels (adversaire passe).
+    # Réversible tant que le tournoi n'est pas terminé (`D-15`) ; chaque acte trace `FORFAIT` via
+    # `Horloge` + co-écriture atomique (ADR-0035). La garde « scoreur de CE tournoi » est à l'API.
+    app.state.service_forfait = ServiceForfait(
+        forfait_repository,
+        tournoi_repository,
+        archer_repository,
+        phase_repository,
+        HorlogeSysteme(),
     )
 
     # Idempotence de la saisie (ADR-0036) : registre en mémoire consulté **dans** la commande de la
@@ -591,6 +623,7 @@ def create_app(
     app.include_router(placement_router)
     app.include_router(placement_duels_router)
     app.include_router(saisie_duels_router)
+    app.include_router(forfaits_router)
     app.include_router(feuille_de_marque_router)
     app.include_router(documents_salle_router)
     app.include_router(listes_impression_router)

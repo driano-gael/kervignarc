@@ -578,3 +578,26 @@ class HorodatageAuditInvalide(DomainError):
     """
 
     code = "horodatage_audit_invalide"
+
+
+class DeclarantForfaitInvalide(DomainError):
+    """Le déclarant d'un forfait est vide (après normalisation, E04US015).
+
+    Le forfait est **attribué** (comme l'audit a un auteur) : le nom de qui l'a prononcé — scoreur
+    ou admin — fige *qui* décide qu'un archer ne concourt plus. Sans lui, la déclaration ne se
+    rattache à personne et l'annulation, réversible, perd sa trace.
+    """
+
+    code = "declarant_forfait_invalide"
+
+
+class HorodatageForfaitInvalide(DomainError):
+    """L'horodatage d'un forfait n'est pas un instant **UTC** *aware* (E04US015).
+
+    Même invariant que l'audit (`HorodatageAuditInvalide`) : un `datetime` **naïf** ou **aware
+    non-UTC** serait stocké sans fuseau puis relu comme de l'UTC, faisant **mentir** la date du
+    forfait. On ferme ce chemin **à la construction** plutôt que laisser une horloge fautive
+    corrompre le « quand » d'un acte réversible.
+    """
+
+    code = "horodatage_forfait_invalide"

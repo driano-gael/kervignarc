@@ -20,12 +20,14 @@ pas sur les X.
 
 from __future__ import annotations
 
+import datetime
 from collections.abc import Sequence
 
 from domain.archer import Archer
 from domain.blason import ZoneScore
 from domain.categorie import Categorie
-from domain.classement import LigneClassement, calculer_classement
+from domain.classement import LigneClassement, StatutClassement, calculer_classement
+from domain.forfait import Forfait, NatureForfait
 from domain.serie import Serie, Volee
 
 
@@ -297,3 +299,104 @@ def test_ligne_est_immuable() -> None:
     """`LigneClassement` est un agrégat frozen : le classement rendu ne se mute pas par mégarde."""
     ligne = calculer_classement([_archer(1, "Alice")], [], [_cat(1)]).lignes[0]
     assert isinstance(ligne, LigneClassement)
+
+
+# --- Forfait : abandon / disqualification (E04US015, ADR-0050) ---------------------------------
+
+
+def _forfait(archer_id: int, nature: NatureForfait) -> Forfait:
+    return Forfait.creer(
+        tournoi_id=1,
+        archer_id=archer_id,
+        phase_id=7,
+        nature=nature,
+        declare_par="Scoreur",
+        declare_le=datetime.datetime(2026, 7, 27, 9, 0, tzinfo=datetime.UTC),
+    )
+
+
+def test_sans_forfait_tous_en_lice() -> None:
+    """En l'absence de forfait, chaque ligne est `EN_LICE` (rétro-compatibilité du défaut)."""
+    lignes = calculer_classement([_archer(1, "Alice")], [], [_cat(1)]).lignes
+    assert lignes[0].statut is StatutClassement.EN_LICE
+
+
+def test_abandon_est_relegue_en_fin_malgre_un_meilleur_score() -> None:
+    """CA Q2 : un archer qui abandonne est **relégué en fin**, derrière ceux qui ont fini, même
+    avec un meilleur score — mais il **reste classé** (rang non nul) et son **score est affiché**.
+
+    Alice abandonne avec 30 (le meilleur total) ; Bob (en lice) n'a que 16. Bob passe **1er**,
+    Alice **2ᵉ** (reléguée), statut `ABANDON`, son total 30 préservé.
+    """
+    archers = [_archer(1, "Alice"), _archer(2, "Bob")]
+    series = [
+        _serie(1, [_volee_validee(1, [DIX, DIX, DIX])]),  # 30, mais abandon
+        _serie(2, [_volee_validee(1, [HUIT, HUIT])]),  # 16, en lice
+    ]
+    forfaits = [_forfait(1, NatureForfait.ABANDON)]
+    par_nom = {
+        ligne.nom: ligne
+        for ligne in calculer_classement(archers, series, [_cat(1)], forfaits).lignes
+    }
+    assert (par_nom["Bob"].rang_scratch, par_nom["Bob"].statut) == (1, StatutClassement.EN_LICE)
+    assert par_nom["Alice"].rang_scratch == 2
+    assert par_nom["Alice"].statut is StatutClassement.ABANDON
+    assert par_nom["Alice"].total == 30  # flèches préservées, score affiché
+
+
+def test_disqualification_sort_du_classement_mais_conserve_les_fleches() -> None:
+    """CA Q3 : un archer disqualifié est **sorti** du classement (rang `None`) tout en **restant
+    listé** avec son statut et son score — ses flèches ne sont pas détruites.
+    """
+    archers = [_archer(1, "Alice"), _archer(2, "Bob")]
+    series = [
+        _serie(1, [_volee_validee(1, [DIX, DIX, DIX])]),  # 30, mais DSQ
+        _serie(2, [_volee_validee(1, [HUIT, HUIT])]),  # 16
+    ]
+    forfaits = [_forfait(1, NatureForfait.DISQUALIFICATION)]
+    lignes = calculer_classement(archers, series, [_cat(1)], forfaits).lignes
+    par_nom = {ligne.nom: ligne for ligne in lignes}
+    assert par_nom["Bob"].rang_scratch == 1
+    assert par_nom["Alice"].rang_scratch is None
+    assert par_nom["Alice"].rang_categorie is None
+    assert par_nom["Alice"].statut is StatutClassement.DISQUALIFIE
+    assert par_nom["Alice"].total == 30  # flèches conservées
+    assert lignes[-1].nom == "Alice"  # DSQ listé en dernier
+
+
+def test_abandon_est_relegue_dans_sa_categorie_aussi() -> None:
+    """La relégation vaut aussi pour le **rang de catégorie** : un abandon passe derrière les
+    en-lice de sa catégorie."""
+    archers = [
+        _archer(1, "Alice", categorie_id=1),
+        _archer(2, "Chloé", categorie_id=1),
+    ]
+    series = [
+        _serie(1, [_volee_validee(1, [DIX, DIX, DIX])]),  # 30, abandon
+        _serie(2, [_volee_validee(1, [HUIT, HUIT])]),  # 16, en lice
+    ]
+    forfaits = [_forfait(1, NatureForfait.ABANDON)]
+    par_nom = {
+        ligne.nom: ligne
+        for ligne in calculer_classement(archers, series, [_cat(1)], forfaits).lignes
+    }
+    assert par_nom["Chloé"].rang_categorie == 1
+    assert par_nom["Alice"].rang_categorie == 2
+
+
+def test_deux_abandons_sont_classes_entre_eux() -> None:
+    """Reléguées ensemble, deux personnes ayant abandonné se départagent entre elles au score."""
+    archers = [_archer(1, "Alice"), _archer(2, "Bob"), _archer(3, "Carl")]
+    series = [
+        _serie(1, [_volee_validee(1, [HUIT, HUIT])]),  # 16, en lice
+        _serie(2, [_volee_validee(1, [DIX, DIX, DIX])]),  # 30, abandon
+        _serie(3, [_volee_validee(1, [NEUF, NEUF])]),  # 18, abandon
+    ]
+    forfaits = [_forfait(2, NatureForfait.ABANDON), _forfait(3, NatureForfait.ABANDON)]
+    par_nom = {
+        ligne.nom: ligne
+        for ligne in calculer_classement(archers, series, [_cat(1)], forfaits).lignes
+    }
+    assert par_nom["Alice"].rang_scratch == 1  # seule en lice
+    assert par_nom["Bob"].rang_scratch == 2  # abandon, meilleur score des relégués
+    assert par_nom["Carl"].rang_scratch == 3  # abandon

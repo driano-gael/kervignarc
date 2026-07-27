@@ -26,6 +26,7 @@ from domain.depart import Depart, DepartId
 from domain.duel import BaremeDuel, Barrage, Cote, Duel, MancheDuel
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import DomainError
+from domain.forfait import Forfait, NatureForfait
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.inscription import Inscription, InscriptionId
@@ -47,6 +48,7 @@ from infrastructure.db.models import (
     DepartORM,
     DuelORM,
     EntreeAuditORM,
+    ForfaitORM,
     GabaritSalleORM,
     InscriptionORM,
     PhaseORM,
@@ -668,8 +670,8 @@ class ArcherRepositorySQL:
             raise InfrastructureError("Échec de mise à jour de l'archer.") from exc
 
     def supprimer(self, archer_id: ArcherId) -> None:
-        """Supprime l'archer, **ses scores, ses inscriptions et sa série de saisie** (E02US003,
-        E02US009, E04US002).
+        """Supprime l'archer, **ses scores, ses inscriptions, sa série de saisie et ses forfaits**
+        (E02US003, E02US009, E04US002, E04US015).
 
         **Contrat** (même que `enregistrer`) : l'existence est garantie par le service ; une ligne
         absente est une incohérence technique, pas un 404. Le service a par ailleurs déjà obtenu
@@ -677,14 +679,17 @@ class ArcherRepositorySQL:
         ici, la destruction est voulue.
 
         **Une seule transaction** pour tous les `DELETE`, dans cet ordre : `score.archer_id`,
-        `inscription.archer_id` **et** `serie.archer_id` sont des FK **sans `ON DELETE`**
-        (DETTE-001), donc supprimer l'archer d'abord échouerait. La série est un enfant de plus,
-        apparu en E04US002 : la retirer ici étend la **cascade applicative maîtrisée** (qui manque
-        au reste de la descendance de `tournoi` — DETTE-001). Les **volées** de la série suivent
+        `inscription.archer_id`, `serie.archer_id` **et** `forfait.archer_id` sont des FK **sans
+        `ON DELETE`** (DETTE-001), donc supprimer l'archer d'abord échouerait. `serie` (E04US002) et
+        `forfait` (E04US015) sont des enfants de plus : les retirer ici étend la **cascade
+        applicative maîtrisée** (qui manque au reste de la descendance de `tournoi` — DETTE-001). Le
+        `forfait` **doit** être purgé ici, pas seulement « assumé en dette » : sa FK est *enforced*
+        (`PRAGMA foreign_keys=ON`), une ligne orpheline ferait échouer la suppression (500, archer
+        indéracinable — trouvé en revue adversariale). Les **volées** de la série suivent
         automatiquement (`volee.serie_id` est `ON DELETE CASCADE` — composant strict de l'agrégat) :
-        le `DELETE` de la série déclenche la cascade SQLite (`PRAGMA foreign_keys=ON`). Deux
-        transactions successives laisseraient, si la seconde échouait, un archer à demi dépouillé —
-        un état que personne n'a demandé.
+        le `DELETE` de la série déclenche la cascade SQLite. Deux transactions successives
+        laisseraient, si la seconde échouait, un archer à demi dépouillé — un état que personne n'a
+        demandé.
         """
         try:
             with self._session_factory() as session:
@@ -696,6 +701,9 @@ class ArcherRepositorySQL:
                 # `serie` (E04US002) : `DELETE` SQL, donc la cascade `volee` (ON DELETE CASCADE)
                 # s'applique au niveau base — contrairement à un `session.delete` ORM.
                 session.execute(delete(SerieORM).where(SerieORM.archer_id == archer_id))
+                # `forfait` (E04US015) : même cascade applicative que `serie` — FK enforced, sinon
+                # une ligne orpheline bloque la suppression (revue adversariale E04US015).
+                session.execute(delete(ForfaitORM).where(ForfaitORM.archer_id == archer_id))
                 session.delete(ligne)
                 session.commit()
         except SQLAlchemyError as exc:
@@ -713,8 +721,8 @@ class ArcherRepositorySQL:
 
         Contrat (garanti par le service) : deux archers distincts, même tournoi, **pas tous les
         deux** une série (sinon `UNIQUE(tournoi_id, archer_id)` sauterait). Les collisions d'unicité
-        d'inscription, elles, sont résolues **ici** (le service ne les voit pas) : voir
-        `ArcherRepository.fusionner`.
+        d'**inscription** (par départ) **et de forfait** (par phase, E04US015) sont résolues **ici**
+        (le service ne les voit pas) : voir `ArcherRepository.fusionner`.
         """
         try:
             with self._session_factory() as session:
@@ -770,6 +778,30 @@ class ArcherRepositorySQL:
                     .where(SerieORM.archer_id == perdant_id)
                     .values(archer_id=gagnant_id)
                 )
+                # Forfaits (E04US015) : réassigner ceux du perdant, sauf collision sur une phase où
+                # le gagnant est déjà forfait (UNIQUE(tournoi_id, archer_id, phase_id)) — on garde
+                # alors celui du gagnant et on supprime celui du perdant. Sans ce nettoyage, la FK
+                # `forfait.archer_id` (enforced) ferait échouer le `DELETE` du perdant (revue
+                # adversariale E04US015). Même tournoi (contrat), la clé de collision est la phase.
+                gagnant_phases = {
+                    phase_id
+                    for (phase_id,) in session.execute(
+                        select(ForfaitORM.phase_id).where(ForfaitORM.archer_id == gagnant_id)
+                    ).all()
+                }
+                for forfait_id, phase_id in session.execute(
+                    select(ForfaitORM.id, ForfaitORM.phase_id).where(
+                        ForfaitORM.archer_id == perdant_id
+                    )
+                ).all():
+                    if phase_id in gagnant_phases:
+                        session.execute(delete(ForfaitORM).where(ForfaitORM.id == forfait_id))
+                    else:
+                        session.execute(
+                            update(ForfaitORM)
+                            .where(ForfaitORM.id == forfait_id)
+                            .values(archer_id=gagnant_id)
+                        )
                 session.execute(delete(ArcherORM).where(ArcherORM.id == perdant_id))
                 session.commit()
         except SQLAlchemyError as exc:
@@ -2229,3 +2261,113 @@ class DuelRepositorySQL:
                 return duel
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de persistance d'un duel.") from exc
+
+
+def _vers_forfait(ligne: ForfaitORM) -> Forfait:
+    """Traduit une ligne ORM en agrégat de domaine `Forfait` (E04US015, ADR-0050).
+
+    `nature` : la valeur relue redevient l'énumération `NatureForfait`. `declare_le` : SQLite stocke
+    un `DateTime` **sans fuseau** ; on lui **réattache UTC** (le service n'écrit que de l'UTC via
+    `Horloge`), round-trip fidèle comme l'horodatage d'audit.
+    """
+    declare_le = ligne.declare_le
+    if declare_le.tzinfo is None:
+        declare_le = declare_le.replace(tzinfo=datetime.UTC)
+    return Forfait(
+        tournoi_id=ligne.tournoi_id,
+        archer_id=ligne.archer_id,
+        phase_id=ligne.phase_id,
+        nature=NatureForfait(ligne.nature),
+        declare_par=ligne.declare_par,
+        declare_le=declare_le,
+        motif=ligne.motif,
+        id=ligne.id,
+    )
+
+
+class ForfaitRepositorySQL:
+    """Adapter SQLite du port `ForfaitRepository` (E04US015, ADR-0050) — forfait + trace atomiques.
+
+    `declarer_avec_trace` / `annuler_avec_trace` co-écrivent le forfait (ajout / suppression) **et**
+    son entrée d'audit dans **une seule session, un seul `commit`** (ADR-0035, comme
+    `SerieRepositorySQL`) — d'où l'`AuditRepositorySQL` injecté (collaboration infra → infra ; le
+    port du domaine ignore la couture de session). L'entrée arrive **déjà construite et datée** par
+    le service (via `Horloge`) ; le forfait porte lui aussi sa propre date de déclaration.
+    """
+
+    def __init__(
+        self,
+        session_factory: sessionmaker[Session],
+        audit_repository: AuditRepositorySQL,
+    ) -> None:
+        self._session_factory = session_factory
+        self._audit = audit_repository
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Forfait]:
+        """Tous les forfaits d'un tournoi (ordre non garanti)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(ForfaitORM).where(ForfaitORM.tournoi_id == tournoi_id)
+                ).scalars()
+                return [_vers_forfait(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des forfaits du tournoi.") from exc
+
+    def par_phase(self, phase_id: PhaseId) -> list[Forfait]:
+        """Les forfaits déclarés dans une phase (qualif → classement ; tableau → walkover duels)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(ForfaitORM).where(ForfaitORM.phase_id == phase_id)
+                ).scalars()
+                return [_vers_forfait(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des forfaits de la phase.") from exc
+
+    def par_archer_et_phase(
+        self, tournoi_id: TournoiId, archer_id: ArcherId, phase_id: PhaseId
+    ) -> Forfait | None:
+        """Le forfait de cet archer dans cette phase, ou `None` (garde de doublon / annulation)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.execute(
+                    select(ForfaitORM).where(
+                        ForfaitORM.tournoi_id == tournoi_id,
+                        ForfaitORM.archer_id == archer_id,
+                        ForfaitORM.phase_id == phase_id,
+                    )
+                ).scalar_one_or_none()
+                return None if ligne is None else _vers_forfait(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du forfait.") from exc
+
+    def declarer_avec_trace(self, forfait: Forfait, entree: EntreeAudit) -> Forfait:
+        """Insère le forfait **et** sa trace dans **une seule transaction** (tout ou rien)."""
+        try:
+            with self._session_factory() as session:
+                ligne = ForfaitORM(
+                    tournoi_id=forfait.tournoi_id,
+                    archer_id=forfait.archer_id,
+                    phase_id=forfait.phase_id,
+                    nature=forfait.nature.value,
+                    declare_par=forfait.declare_par,
+                    declare_le=forfait.declare_le,
+                    motif=forfait.motif,
+                )
+                session.add(ligne)
+                self._audit.consigner_dans(session, entree)
+                session.commit()
+                return _vers_forfait(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance du forfait et de sa trace.") from exc
+
+    def annuler_avec_trace(self, forfait: Forfait, entree: EntreeAudit) -> None:
+        """Supprime le forfait (`forfait.id`) et consigne sa trace d'annulation, atomiquement."""
+        try:
+            with self._session_factory() as session:
+                session.execute(delete(ForfaitORM).where(ForfaitORM.id == forfait.id))
+                self._audit.consigner_dans(session, entree)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de l'annulation du forfait et de sa trace.") from exc

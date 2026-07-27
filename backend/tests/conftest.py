@@ -49,7 +49,9 @@ from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
 from domain.entree_audit import EntreeAudit
+from domain.forfait import Forfait
 from domain.inscription import Inscription, InscriptionId
+from domain.phase import PhaseId
 from domain.placement import Affectation
 from domain.tournoi import TournoiId
 
@@ -301,6 +303,52 @@ class FauxPlacementRepository:
     def retirer(self, inscription_id: int) -> None:
         self._affectation.pop(inscription_id, None)
         self._depart.pop(inscription_id, None)
+
+
+class FauxForfaitRepository:
+    """Double de `ForfaitRepository` (E04US015) : liste en mémoire, **vide par défaut**.
+
+    `semer` ajoute des forfaits pour les tests qui en veulent (relégation au classement, walkover en
+    duels) ; les tests qui n'en veulent pas obtiennent un repository conforme mais inerte.
+    `declarer_avec_trace` / `annuler_avec_trace` ignorent la trace d'audit (co-écriture non
+    pertinente hors intégration) et mutent la liste, pour couvrir un cycle déclarer → annuler.
+    """
+
+    def __init__(self, forfaits: list[Forfait] | None = None) -> None:
+        self._forfaits: list[Forfait] = list(forfaits or [])
+        self._sequence = 0
+
+    def semer(self, forfait: Forfait) -> Forfait:
+        self._sequence += 1
+        persiste = dataclasses.replace(forfait, id=self._sequence)
+        self._forfaits.append(persiste)
+        return persiste
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Forfait]:
+        return [f for f in self._forfaits if f.tournoi_id == tournoi_id]
+
+    def par_phase(self, phase_id: PhaseId) -> list[Forfait]:
+        return [f for f in self._forfaits if f.phase_id == phase_id]
+
+    def par_archer_et_phase(
+        self, tournoi_id: TournoiId, archer_id: ArcherId, phase_id: PhaseId
+    ) -> Forfait | None:
+        return next(
+            (
+                f
+                for f in self._forfaits
+                if f.tournoi_id == tournoi_id
+                and f.archer_id == archer_id
+                and f.phase_id == phase_id
+            ),
+            None,
+        )
+
+    def declarer_avec_trace(self, forfait: Forfait, entree: EntreeAudit) -> Forfait:
+        return self.semer(forfait)
+
+    def annuler_avec_trace(self, forfait: Forfait, entree: EntreeAudit) -> None:
+        self._forfaits = [f for f in self._forfaits if f.id != forfait.id]
 
 
 @pytest.fixture

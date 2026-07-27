@@ -53,12 +53,17 @@ export interface NouvelArcher {
   autoriser_homonyme?: boolean
 }
 
+// Statut d'un archer dans le classement (E04US015, ADR-0050) : `en_lice` (concourt), `abandon`
+// (relégué en fin, rangé) ou `disqualifie` (sorti du classement — rangs `null`, score conservé).
+export type StatutClassement = 'en_lice' | 'abandon' | 'disqualifie'
+
 // Classement de qualification (E06US001). Deux rangs : `rang_scratch` (global, toutes catégories)
 // et `rang_categorie` (au sein de la catégorie de l'archer). `nb_dix`/`nb_neuf` rendent le départage
-// FFTA **traçable** (à total égal, plus de 10 puis de 9 — `docs/referentiel-ffta.md` §8.1).
+// FFTA **traçable** (à total égal, plus de 10 puis de 9 — `docs/referentiel-ffta.md` §8.1). Les
+// rangs sont **nullables** : `null` = archer disqualifié (E04US015), hors classement mais listé.
 export interface LigneClassement {
-  rang_scratch: number
-  rang_categorie: number
+  rang_scratch: number | null
+  rang_categorie: number | null
   archer_id: number
   nom: string
   prenom: string
@@ -70,6 +75,7 @@ export interface LigneClassement {
   total: number
   nb_dix: number
   nb_neuf: number
+  statut: StatutClassement
 }
 
 export interface Classement {

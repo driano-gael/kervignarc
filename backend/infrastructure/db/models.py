@@ -491,3 +491,46 @@ class EntreeAuditORM(Base):
     objet: Mapped[str] = mapped_column(nullable=False)
     avant: Mapped[str | None] = mapped_column(nullable=True)
     apres: Mapped[str | None] = mapped_column(nullable=True)
+
+
+class ForfaitORM(Base):
+    """Table `forfait` — persistance de l'agrégat `Forfait` (abandon / DSQ, E04US015, ADR-0050).
+
+    Un forfait par **`(tournoi, archer, phase)`** (`UNIQUE`) : un archer ne se déclare qu'une fois
+    forfait dans une phase donnée. `nature` stocke la **valeur** de l'énumération `NatureForfait`
+    (`abandon` / `disqualification`) ; la traduction chaîne ↔ enum est faite par le repository,
+    comme `action`/`ActionAuditee`. `declare_par` est le **nom** du déclarant (pas une FK) : la
+    déclaration survit à la suppression du scoreur (E10US003), comme l'auteur d'audit. `motif` est
+    **nullable** (facultatif). L'annulation (réversibilité, `D-15`) **supprime** la ligne — les
+    flèches (`serie`/`volee`) ne sont jamais touchées.
+
+    **`ON DELETE CASCADE`** sur `phase_id` (donnée dérivée d'une phase, feuille — même exception que
+    `duel`/`placement_tableau`) : le forfait disparaît avec sa phase. Les FK `tournoi_id`/`archer`
+    restent **sans `ON DELETE`** (DETTE-001, comme `serie`) : `tournoi_id` est stocké pour la
+    lecture `par_tournoi` sans jointure. `archer_id` est purgé/réassigné par la **cascade
+    applicative** de `ArcherRepositorySQL.supprimer`/`fusionner` — **exactement comme `serie`** (la
+    FK est *enforced*, l'oublier bloque la suppression d'un archer forfaitaire ; revue adversariale
+    E04US015). La purge liée au **tournoi** relève de la politique de suppression du tournoi, non
+    tranchée.
+    """
+
+    __tablename__ = "forfait"
+    __table_args__ = (
+        UniqueConstraint(
+            "tournoi_id", "archer_id", "phase_id", name="uq_forfait_tournoi_archer_phase"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi (dénormalisé
+    # pour `par_tournoi`), à traiter à la suppression du tournoi ; ne pas contourner.
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    # DETTE-001 : FK sans ON DELETE CASCADE — enfant indirect via `archer` (cf. `serie.archer_id`).
+    archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
+    phase_id: Mapped[int] = mapped_column(
+        ForeignKey("phase.id", ondelete="CASCADE"), nullable=False
+    )
+    nature: Mapped[str] = mapped_column(nullable=False)
+    declare_par: Mapped[str] = mapped_column(nullable=False)
+    declare_le: Mapped[datetime.datetime] = mapped_column(nullable=False)
+    motif: Mapped[str | None] = mapped_column(nullable=True)

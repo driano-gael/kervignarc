@@ -12,6 +12,7 @@ séries semées) pour un ensemencement réaliste et déterministe. On réutilise
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import replace
 
 import pytest
@@ -22,11 +23,18 @@ from application.saisie_duels import EtatDuel, ServiceSaisieDuels
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
+from domain.classement import StatutClassement
 from domain.duel import BaremeDuel, Duel, ModeDuel, ResolveurBaremeDuelFfta
+from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import MatchNonJouable
+from domain.forfait import Forfait, NatureForfait
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.politiques import ByesAuxMieuxClasses, EliminationSeche, SeedingSerpent
-from tests.conftest import FauxArcherRepository, FauxCategorieRepository
+from tests.conftest import (
+    FauxArcherRepository,
+    FauxCategorieRepository,
+    FauxForfaitRepository,
+)
 from tests.test_service_placement_duels import (
     FauxBlasonRepository,
     FauxPhaseRepository,
@@ -81,6 +89,7 @@ class _Monde:
         self.blasons = FauxBlasonRepository()
         self.series = FauxSerieRepository()
         self.duels = FauxDuelRepository()
+        self.forfaits = FauxForfaitRepository()
         blason_id: int | None = None
         if avec_blason:
             blason = self.blasons.ajouter(
@@ -98,6 +107,13 @@ class _Monde:
         phase = self.phases.ajouter(Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE))
         assert phase.id is not None
         self.phase_id = phase.id
+        # Phase de qualification (pour les tests de scope de phase du forfait, E04US015) : le
+        # classement lit ses forfaits, le tableau lit les siens — les deux ne se mélangent pas.
+        qualif = self.phases.ajouter(
+            Phase.qualification(self.tournoi_id, BaremeQualification.creer(1, 3))
+        )
+        assert qualif.id is not None
+        self.qualif_id = qualif.id
 
     def inscrire_classe(self, valeurs: tuple[str, ...]) -> int:
         from domain.archer import Archer
@@ -110,13 +126,16 @@ class _Monde:
         return archer.id
 
     def service(self) -> ServiceSaisieDuels:
-        classement = ServiceClassement(self.tournois, self.archers, self.series, self.categories)
+        classement = ServiceClassement(
+            self.tournois, self.archers, self.series, self.categories, self.phases, self.forfaits
+        )
         return ServiceSaisieDuels(
             self.tournois,
             self.phases,
             self.categories,
             self.blasons,
             self.duels,
+            self.forfaits,
             classement,
             ResolveurBaremeDuelFfta(),
             SeedingSerpent(),
@@ -306,3 +325,127 @@ def test_phase_de_qualification_refusee() -> None:
     service = monde.service()
     with pytest.raises(PhasePasUnTableau):
         service.etat_tableau(monde.tournoi_id, quali.id)
+
+
+def _forfait_duel(monde: _Monde, archer_id: int) -> Forfait:
+    """Un forfait d'abandon de l'archer dans la phase de tableau du monde (E04US015, ADR-0050)."""
+    return Forfait.creer(
+        tournoi_id=monde.tournoi_id,
+        archer_id=archer_id,
+        phase_id=monde.phase_id,
+        nature=NatureForfait.ABANDON,
+        declare_par="Scoreur",
+        declare_le=datetime.datetime(2026, 3, 14, 10, 0, tzinfo=datetime.UTC),
+    )
+
+
+def test_forfait_en_duel_fait_passer_l_adversaire() -> None:
+    """CA E04US015 (ex-E12US004) : un duelliste forfait dans une phase de tableau **cède** son match
+    — l'adversaire passe d'office (walkover), le tableau reste cohérent.
+
+    Deux archers → un unique match (la finale). L'archer classé 2ᵉ abandonne : le 1ᵉ gagne d'office,
+    le tableau est terminé et le podium le couronne, **sans qu'aucun tir n'ait été saisi**.
+    """
+    monde = _Monde()
+    gagnant = monde.inscrire_classe(("10", "10"))  # rang 1
+    forfaitaire = monde.inscrire_classe(("8", "8"))  # rang 2
+    monde.forfaits.semer(_forfait_duel(monde, forfaitaire))
+    etat = monde.service().etat_tableau(monde.tournoi_id, monde.phase_id)
+    assert etat.est_termine
+    assert etat.podium[0][0] == 1
+    assert etat.podium[0][1].archer_id == gagnant
+
+
+def test_annuler_le_forfait_de_duel_retire_le_walkover() -> None:
+    """La réversibilité (`D-15`) : sans forfait enregistré, le match redevient à jouer."""
+    monde = _Monde()
+    monde.inscrire_classe(("10", "10"))
+    perdant = monde.inscrire_classe(("8", "8"))
+    forfait = monde.forfaits.semer(_forfait_duel(monde, perdant))
+    trace = EntreeAudit.creer(
+        tournoi_id=monde.tournoi_id,
+        action=ActionAuditee.FORFAIT,
+        auteur="Scoreur",
+        horodatage=datetime.datetime(2026, 3, 14, 11, 0, tzinfo=datetime.UTC),
+        objet="annulation",
+    )
+    monde.forfaits.annuler_avec_trace(forfait, trace)
+    etat = monde.service().etat_tableau(monde.tournoi_id, monde.phase_id)
+    assert not etat.est_termine
+    assert etat.podium == ()
+
+
+def _forfait(monde: _Monde, archer_id: int, phase_id: int) -> Forfait:
+    return Forfait.creer(
+        tournoi_id=monde.tournoi_id,
+        archer_id=archer_id,
+        phase_id=phase_id,
+        nature=NatureForfait.ABANDON,
+        declare_par="Scoreur",
+        declare_le=datetime.datetime(2026, 3, 14, 10, 0, tzinfo=datetime.UTC),
+    )
+
+
+def _classement_du(monde: _Monde) -> ServiceClassement:
+    return ServiceClassement(
+        monde.tournois, monde.archers, monde.series, monde.categories, monde.phases, monde.forfaits
+    )
+
+
+def test_forfait_de_duel_ne_relegue_pas_le_rang_de_qualif() -> None:
+    """CA/ADR-0050 (scope de phase) : un forfait déclaré en **phase de tableau** ne touche PAS le
+    classement de qualification — l'archer avait qualifié, il garde son rang et reste en lice."""
+    monde = _Monde()
+    fort = monde.inscrire_classe(("10", "10", "10"))  # rang 1
+    monde.inscrire_classe(("8", "8"))  # rang 2
+    monde.forfaits.semer(_forfait(monde, fort, monde.phase_id))  # forfait EN DUELS
+    classement = _classement_du(monde).pour_tournoi(monde.tournoi_id)
+    lignes = {ligne.archer_id: ligne for ligne in classement.lignes}
+    assert lignes[fort].rang_scratch == 1  # rang de qualif intact
+    assert lignes[fort].statut is StatutClassement.EN_LICE
+
+
+def test_forfait_de_qualif_est_exclu_du_bracket() -> None:
+    """CA/ADR-0050 (scope de phase) : un abandon déclaré en **qualification** exclut l'archer de
+    l'ensemencement du tableau — il n'apparaît dans aucun duel."""
+    monde = _Monde()
+    forfaitaire = monde.inscrire_classe(("10", "10", "10"))  # rang 1, mais abandon en qualif
+    b = monde.inscrire_classe(("9", "9"))
+    c = monde.inscrire_classe(("8", "8"))
+    monde.forfaits.semer(_forfait(monde, forfaitaire, monde.qualif_id))  # forfait EN QUALIF
+    etat = monde.service().etat_tableau(monde.tournoi_id, monde.phase_id)
+    dans_tableau = {d.archer_id for m in etat.duels for d in (m.haut, m.bas) if d is not None}
+    assert forfaitaire not in dans_tableau  # exclu du bracket
+    assert dans_tableau == {b, c}  # seuls les deux en-lice s'affrontent
+
+
+def test_walkover_se_propage_au_tour_suivant() -> None:
+    """CA « impact correct sur la progression » : un forfait au tour 1 fait avancer l'adversaire
+    jusqu'au tour 2 (walkover propagé, pas seulement une finale à deux)."""
+    monde = _Monde()
+    a = monde.inscrire_classe(("10", "10", "10"))  # rang 1 (affronte le rang 4 au tour 1)
+    b = monde.inscrire_classe(("10", "10", "9"))  # rang 2
+    c = monde.inscrire_classe(("10", "9", "9"))  # rang 3
+    d = monde.inscrire_classe(("9", "9", "9"))  # rang 4
+    monde.forfaits.semer(_forfait(monde, d, monde.phase_id))  # d abandonne → a passe d'office
+    etat = monde.service().etat_tableau(monde.tournoi_id, monde.phase_id)
+    finale = next(m for m in etat.duels if m.place_en_jeu == (1, 2))
+    occupants = {m.archer_id for m in (finale.haut, finale.bas) if m is not None}
+    assert a in occupants  # a a avancé au tour 2 par walkover
+    _ = (b, c)
+
+
+def test_double_forfait_le_camp_haut_avance() -> None:
+    """Convention ADR-0050 : deux forfaits face à face → le camp **haut** (mieux classé) avance."""
+    monde = _Monde()
+    a = monde.inscrire_classe(("10", "10", "10"))  # rang 1 (haut du match 1v4)
+    monde.inscrire_classe(("10", "10", "9"))  # rang 2
+    monde.inscrire_classe(("10", "9", "9"))  # rang 3
+    d = monde.inscrire_classe(("9", "9", "9"))  # rang 4 (bas du match 1v4)
+    monde.forfaits.semer(_forfait(monde, a, monde.phase_id))
+    monde.forfaits.semer(_forfait(monde, d, monde.phase_id))
+    etat = monde.service().etat_tableau(monde.tournoi_id, monde.phase_id)
+    finale = next(m for m in etat.duels if m.place_en_jeu == (1, 2))
+    occupants = {m.archer_id for m in (finale.haut, finale.bas) if m is not None}
+    assert a in occupants  # le haut (rang 1) avance malgré son forfait
+    assert d not in occupants
