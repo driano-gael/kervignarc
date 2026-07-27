@@ -326,7 +326,7 @@ function FormulaireDepart({
           <button
             type="button"
             className="bouton--danger"
-            disabled={modifier.isPending}
+            disabled={modifier.isPending || !entreeValide}
             onClick={confirmerEdition}
           >
             Enregistrer quand même (session de tir)

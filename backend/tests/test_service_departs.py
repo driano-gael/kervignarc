@@ -466,6 +466,43 @@ def test_supprimer_creneau_lance_exige_la_confirmation_de_cycle() -> None:
     assert [d.id for d in m.service.lister(m.tournoi_id)] == [depart.id]
 
 
+def test_lister_avec_etat_expose_l_etat_derive_par_creneau() -> None:
+    """`lister_avec_etat` propage l'état dérivé de chaque créneau — c'est le badge du CA.
+
+    La dérivation LANCE/CLOS est prouvée au domaine (`AvancementDepart.etat`) ; ici on verrouille
+    la **propagation** service → liste (le livrable visible), qui repose sur le port d'avancement.
+    """
+    m = _monter()
+    ouvert = m.service.creer(m.tournoi_id, 810)
+    lance = m.service.creer(m.tournoi_id, 810)
+    assert ouvert.id is not None and lance.id is not None
+    m.avancements.poser(lance.id, _lance())
+
+    etats = {depart.id: etat for depart, etat in m.service.lister_avec_etat(m.tournoi_id)}
+    assert etats[ouvert.id] is EtatDepart.OUVERT
+    assert etats[lance.id] is EtatDepart.LANCE
+    # L'accès unitaire (utilisé après édition) donne le même verdict.
+    assert m.service.etat(m.tournoi_id, lance.id) is EtatDepart.LANCE
+
+
+def test_supprimer_creneau_lance_ne_se_contourne_pas_par_inscriptions() -> None:
+    """`autoriser_suppression_inscrits` **seul** ne contourne pas le garde-fou de cycle (E12US008).
+
+    Verrouille l'**ordre des gardes** : sur un créneau lancé, la confirmation de cycle passe avant
+    le signalement d'inscriptions. Un refactor qui inverserait l'ordre supprimerait en silence une
+    session de tir — ce test l'attrape.
+    """
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810)
+    assert depart.id is not None
+    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
+    m.avancements.poser(depart.id, _lance())
+
+    with pytest.raises(DepartEnCoursNonConfirme):
+        m.service.supprimer(m.tournoi_id, depart.id, autoriser_suppression_inscrits=True)
+    assert [d.id for d in m.service.lister(m.tournoi_id)] == [depart.id]
+
+
 def test_supprimer_creneau_lance_confirme_subsume_les_inscriptions() -> None:
     """`confirme_cycle=True` **subsume** le garde-fou d'inscriptions : le créneau part sans exiger,
     en plus, `autoriser_suppression_inscrits`.
