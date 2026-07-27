@@ -18,6 +18,13 @@
 
 ## 🎯 Prochaine US
 
+> **⚡ Priorité immédiate — retours de la démo du 27/07/2026.** Avant de reprendre la séquence J2,
+> traiter le **lot démo** (bugs & petits ajouts), puis les épics **EPIC-14** (accueil admin) et
+> **EPIC-15** (jeu d'essai & simulation) — détail en section « Ajouts de la démo du 27/07/2026 » plus
+> bas. Ordre des bugs : **E02US010** (horaire `HH:MM`, ♻️ existe), **E01US017** (7 statuts, ♻️ existe —
+> prérequis du dashboard), **E11US008** (LAN + QR), **E03US011** (placement), **E01US022** (blason FFTA).
+> La séquence J2 ci-dessous reprend ensuite à `E12US002`.
+>
 > **`E12US002` — lancer un tour (feu vert + lancement)** : la **clé du J2** — voir ce qui manque avant
 > de lancer, puis faire partir le tour (les 4 canaux prévenus ensemble). *(Prochaine du J2 en
 > séquence.)*
@@ -231,6 +238,27 @@
 |---|---|---|---|
 | E01US020 | Modèle de tarification injectable & sujet de facturation (archer/club) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; sujet `club` sur `club_id`/ADR-0014, **pas** via E13)* |
 | E01US021 | Tarification dégressive (option config, %/montant) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; dépend d'E01US020)* |
+
+## Ajouts de la démo du 27/07/2026 — ⚡ **priorité immédiate (0/10)**
+
+> Retours de la présentation au client final **et** du développeur (27/07/2026). Cadrage par le
+> dialogue (esprit agile). Deux US **déjà spécifiées** remontent en priorité (♻️, pas de doublon) ;
+> les autres sont **neuves** (🆕). **Bugs d'abord**, puis EPIC-14 (accueil admin) et EPIC-15 (jeu
+> d'essai & simulation). Détail des US : `stories/Exx-*.md`. Épics :
+> [`EPIC-14`](../epics/EPIC-14-lisibilite-admin.md), [`EPIC-15`](../epics/EPIC-15-jeu-d-essai-simulation.md).
+
+| US | Titre | Épic | État |
+|---|---|---|---|
+| E02US010 | Horaire de départ `HH:MM` (corrige « 8h00 → 18h00 » : n° collé à l'horaire) | E02 ♻️ | ⬜ |
+| E01US017 | Cycle de vie enrichi (7 statuts) — **prérequis** du dashboard | E01 ♻️ | ⬜ |
+| E11US008 | Accès LAN (poste organisateur) + QR de rattachement à l'écran | E11 🆕 | ⬜ |
+| E03US011 | Placement : retour visuel de génération + position A..D côté admin | E03 🆕 | ⬜ |
+| E01US022 | Blason FFTA par défaut par catégorie + affichage hérité | E01 🆕 | ⬜ |
+| E14US001 | Accueil-tableau de bord contextualisé (`D-20`) | E14 🆕 | ⬜ |
+| E14US002 | Aide contextuelle « ce qui est saisissable & pourquoi » | E14 🆕 | ⬜ |
+| E15US001 | Jeu d'essai : générer des inscrits + scénarios rejouables | E15 🆕 | ⬜ |
+| E15US002 | Moteur de simulation éphémère + garde-fou (non-persistance) | E15 🆕 | ⬜ |
+| E15US003 | Bot pilote auto pausable + cockpit interactif multi-vues | E15 🆕 | ⬜ |
 
 ## US caduque
 
