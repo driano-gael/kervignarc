@@ -24,7 +24,7 @@ import datetime
 import pytest
 
 from application.documents_salle import ServiceDocumentsSalle
-from application.erreurs import TournoiIntrouvable
+from application.erreurs import PosteIntrouvable, TournoiIntrouvable
 from domain.documents_salle import CartesScoreurs, EtiquettesCibles
 from domain.poste import Poste, PosteId, normaliser_code
 from domain.scoreur import Scoreur, ScoreurId
@@ -129,10 +129,12 @@ class FauxGenerateur:
 
     SENTINELLE_CIBLES = b"%PDF-etiquettes"
     SENTINELLE_SCOREURS = b"%PDF-cartes"
+    SENTINELLE_QR = b"<svg>qr</svg>"
 
     def __init__(self) -> None:
         self.dernieres_cibles: EtiquettesCibles | None = None
         self.dernieres_cartes: CartesScoreurs | None = None
+        self.derniere_url_qr: str | None = None
 
     def etiquettes_cibles(self, document: EtiquettesCibles) -> bytes:
         self.dernieres_cibles = document
@@ -141,6 +143,10 @@ class FauxGenerateur:
     def cartes_scoreurs(self, document: CartesScoreurs) -> bytes:
         self.dernieres_cartes = document
         return self.SENTINELLE_SCOREURS
+
+    def qr_rattachement(self, url: str) -> bytes:
+        self.derniere_url_qr = url
+        return self.SENTINELLE_QR
 
 
 # --- Décor -------------------------------------------------------------------------------------
@@ -271,6 +277,36 @@ def test_etiquettes_tournoi_inconnu_leve_tournoi_introuvable() -> None:
     monde = _monde()
     with pytest.raises(TournoiIntrouvable):
         monde.service.etiquettes_cibles(9999, _ORIGINE)
+
+
+# --- QR de rattachement à l'écran (E11US008) ---------------------------------------------------
+
+
+def test_qr_rattachement_compose_l_url_de_la_cible() -> None:
+    """Le QR écran d'une cible encode la **même** URL `…/?poste=<code>` que son étiquette PDF, et
+    délègue au générateur (on ne prouve ici que l'URL reçue — le rendu SVG est testé à part)."""
+    monde = _monde()
+    monde.preparer_cible(1, "AAA111")
+    monde.preparer_cible(2, "BBB222")
+
+    octets = monde.service.qr_rattachement(monde.tournoi_id, 2, _ORIGINE)
+
+    assert octets == FauxGenerateur.SENTINELLE_QR
+    assert monde.generateur.derniere_url_qr == "http://192.168.1.10:8000/?poste=BBB222"
+
+
+def test_qr_rattachement_tournoi_inconnu_leve_tournoi_introuvable() -> None:
+    monde = _monde()
+    with pytest.raises(TournoiIntrouvable):
+        monde.service.qr_rattachement(9999, 1, _ORIGINE)
+
+
+def test_qr_rattachement_cible_inconnue_leve_poste_introuvable() -> None:
+    """Un numéro de cible absent du tournoi n'existe pas de son point de vue → PosteIntrouvable."""
+    monde = _monde()
+    monde.preparer_cible(1, "AAA111")
+    with pytest.raises(PosteIntrouvable):
+        monde.service.qr_rattachement(monde.tournoi_id, 99, _ORIGINE)
 
 
 # --- Cartes de scoreur -------------------------------------------------------------------------

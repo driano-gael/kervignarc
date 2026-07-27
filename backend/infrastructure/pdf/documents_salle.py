@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from io import BytesIO
 
+from reportlab.graphics import renderSVG
 from reportlab.graphics.barcode.qr import QrCodeWidget
 from reportlab.graphics.shapes import Drawing
 from reportlab.lib.pagesizes import A4
@@ -33,6 +34,9 @@ from infrastructure.erreurs import InfrastructureError
 
 _MARGE = 15 * mm
 _COTE_QR = 90 * mm
+# Côté du QR **écran** (E11US008), en points : ne fixe que les dimensions intrinsèques du SVG —
+# vectoriel, il est ensuite mis à l'échelle par le CSS (vignette puis plein écran pour le scan).
+_COTE_QR_ECRAN = 320.0
 
 
 class GenerateurDocumentsSallePdf:
@@ -134,6 +138,25 @@ class GenerateurDocumentsSallePdf:
                 ]
             )
         return pages
+
+    # --- QR de rattachement à l'écran (E11US008) ---
+
+    def qr_rattachement(self, url: str) -> bytes:
+        """Rend le QR de rattachement d'une cible en **SVG** (octets UTF-8). Écran, pas impression.
+
+        Réutilise `_dessin_qr` (le même widget QR natif que l'étiquette PDF) mais le sérialise via
+        le backend **SVG** de ReportLab (`renderSVG`, pur Python — aucune dépendance ajoutée,
+        contrairement au backend raster `renderPM` qui exigerait `rlPyCairo`). Enveloppe tout échec
+        de rendu en `InfrastructureError` (ADR-0007), comme les deux méthodes PDF.
+        """
+        try:
+            # `renderSVG.drawToString` renvoie du texte SVG (typé `Any` faute de stubs ReportLab) :
+            # `str(...)` fige le type, `.encode` donne les octets attendus par la frontière.
+            return str(renderSVG.drawToString(_dessin_qr(url, _COTE_QR_ECRAN))).encode("utf-8")
+        except InfrastructureError:
+            raise
+        except Exception as exc:
+            raise InfrastructureError("Échec de génération du QR de rattachement.") from exc
 
     # --- Rendu commun ---
 

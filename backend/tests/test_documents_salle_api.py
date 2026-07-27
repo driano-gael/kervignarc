@@ -132,3 +132,46 @@ def test_cartes_scoreurs_tournoi_inconnu_404(
         reponse = client.get("/api/v1/tournois/9999/scoreurs/cartes-codes")
 
     assert reponse.status_code == 404, reponse.text
+
+
+# --- QR de rattachement à l'écran (E11US008) ---
+
+
+def test_qr_cible_renvoie_une_image_svg(
+    app_salle: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La route renvoie l'image SVG du QR d'une cible (`image/svg+xml`), affichée à l'écran."""
+    with TestClient(app_salle) as client:
+        connecter_admin(client)
+        tournoi_id = _preparer_tournoi_avec_cibles_et_scoreurs(client)
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/postes/1/qr")
+
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.headers["content-type"] == "image/svg+xml"
+    assert b"<svg" in reponse.content
+
+
+def test_qr_cible_sans_admin_refuse(app_salle: FastAPI) -> None:
+    """Route réservée à l'admin (le QR encode le code, secret d'usage) : sans session, 401."""
+    with TestClient(app_salle) as client:
+        reponse = client.get("/api/v1/tournois/1/postes/1/qr")
+
+    assert reponse.status_code == 401, reponse.text
+
+
+def test_qr_cible_tournoi_inconnu_404(app_salle: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    with TestClient(app_salle) as client:
+        connecter_admin(client)
+        reponse = client.get("/api/v1/tournois/9999/postes/1/qr")
+
+    assert reponse.status_code == 404, reponse.text
+
+
+def test_qr_cible_cible_inconnue_404(app_salle: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """Un numéro de cible absent du tournoi (2 cibles préparées, on demande la 99) → 404."""
+    with TestClient(app_salle) as client:
+        connecter_admin(client)
+        tournoi_id = _preparer_tournoi_avec_cibles_et_scoreurs(client)
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/postes/99/qr")
+
+    assert reponse.status_code == 404, reponse.text
