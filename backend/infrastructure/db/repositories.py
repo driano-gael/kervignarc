@@ -670,8 +670,8 @@ class ArcherRepositorySQL:
             raise InfrastructureError("Échec de mise à jour de l'archer.") from exc
 
     def supprimer(self, archer_id: ArcherId) -> None:
-        """Supprime l'archer, **ses scores, ses inscriptions et sa série de saisie** (E02US003,
-        E02US009, E04US002).
+        """Supprime l'archer, **ses scores, ses inscriptions, sa série de saisie et ses forfaits**
+        (E02US003, E02US009, E04US002, E04US015).
 
         **Contrat** (même que `enregistrer`) : l'existence est garantie par le service ; une ligne
         absente est une incohérence technique, pas un 404. Le service a par ailleurs déjà obtenu
@@ -679,14 +679,17 @@ class ArcherRepositorySQL:
         ici, la destruction est voulue.
 
         **Une seule transaction** pour tous les `DELETE`, dans cet ordre : `score.archer_id`,
-        `inscription.archer_id` **et** `serie.archer_id` sont des FK **sans `ON DELETE`**
-        (DETTE-001), donc supprimer l'archer d'abord échouerait. La série est un enfant de plus,
-        apparu en E04US002 : la retirer ici étend la **cascade applicative maîtrisée** (qui manque
-        au reste de la descendance de `tournoi` — DETTE-001). Les **volées** de la série suivent
+        `inscription.archer_id`, `serie.archer_id` **et** `forfait.archer_id` sont des FK **sans
+        `ON DELETE`** (DETTE-001), donc supprimer l'archer d'abord échouerait. `serie` (E04US002) et
+        `forfait` (E04US015) sont des enfants de plus : les retirer ici étend la **cascade
+        applicative maîtrisée** (qui manque au reste de la descendance de `tournoi` — DETTE-001). Le
+        `forfait` **doit** être purgé ici, pas seulement « assumé en dette » : sa FK est *enforced*
+        (`PRAGMA foreign_keys=ON`), une ligne orpheline ferait échouer la suppression (500, archer
+        indéracinable — trouvé en revue adversariale). Les **volées** de la série suivent
         automatiquement (`volee.serie_id` est `ON DELETE CASCADE` — composant strict de l'agrégat) :
-        le `DELETE` de la série déclenche la cascade SQLite (`PRAGMA foreign_keys=ON`). Deux
-        transactions successives laisseraient, si la seconde échouait, un archer à demi dépouillé —
-        un état que personne n'a demandé.
+        le `DELETE` de la série déclenche la cascade SQLite. Deux transactions successives
+        laisseraient, si la seconde échouait, un archer à demi dépouillé — un état que personne n'a
+        demandé.
         """
         try:
             with self._session_factory() as session:
@@ -698,6 +701,9 @@ class ArcherRepositorySQL:
                 # `serie` (E04US002) : `DELETE` SQL, donc la cascade `volee` (ON DELETE CASCADE)
                 # s'applique au niveau base — contrairement à un `session.delete` ORM.
                 session.execute(delete(SerieORM).where(SerieORM.archer_id == archer_id))
+                # `forfait` (E04US015) : même cascade applicative que `serie` — FK enforced, sinon
+                # une ligne orpheline bloque la suppression (revue adversariale E04US015).
+                session.execute(delete(ForfaitORM).where(ForfaitORM.archer_id == archer_id))
                 session.delete(ligne)
                 session.commit()
         except SQLAlchemyError as exc:
@@ -715,8 +721,8 @@ class ArcherRepositorySQL:
 
         Contrat (garanti par le service) : deux archers distincts, même tournoi, **pas tous les
         deux** une série (sinon `UNIQUE(tournoi_id, archer_id)` sauterait). Les collisions d'unicité
-        d'inscription, elles, sont résolues **ici** (le service ne les voit pas) : voir
-        `ArcherRepository.fusionner`.
+        d'**inscription** (par départ) **et de forfait** (par phase, E04US015) sont résolues **ici**
+        (le service ne les voit pas) : voir `ArcherRepository.fusionner`.
         """
         try:
             with self._session_factory() as session:
@@ -772,6 +778,30 @@ class ArcherRepositorySQL:
                     .where(SerieORM.archer_id == perdant_id)
                     .values(archer_id=gagnant_id)
                 )
+                # Forfaits (E04US015) : réassigner ceux du perdant, sauf collision sur une phase où
+                # le gagnant est déjà forfait (UNIQUE(tournoi_id, archer_id, phase_id)) — on garde
+                # alors celui du gagnant et on supprime celui du perdant. Sans ce nettoyage, la FK
+                # `forfait.archer_id` (enforced) ferait échouer le `DELETE` du perdant (revue
+                # adversariale E04US015). Même tournoi (contrat), la clé de collision est la phase.
+                gagnant_phases = {
+                    phase_id
+                    for (phase_id,) in session.execute(
+                        select(ForfaitORM.phase_id).where(ForfaitORM.archer_id == gagnant_id)
+                    ).all()
+                }
+                for forfait_id, phase_id in session.execute(
+                    select(ForfaitORM.id, ForfaitORM.phase_id).where(
+                        ForfaitORM.archer_id == perdant_id
+                    )
+                ).all():
+                    if phase_id in gagnant_phases:
+                        session.execute(delete(ForfaitORM).where(ForfaitORM.id == forfait_id))
+                    else:
+                        session.execute(
+                            update(ForfaitORM)
+                            .where(ForfaitORM.id == forfait_id)
+                            .values(archer_id=gagnant_id)
+                        )
                 session.execute(delete(ArcherORM).where(ArcherORM.id == perdant_id))
                 session.commit()
         except SQLAlchemyError as exc:

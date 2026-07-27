@@ -506,9 +506,12 @@ class ForfaitORM(Base):
 
     **`ON DELETE CASCADE`** sur `phase_id` (donnée dérivée d'une phase, feuille — même exception que
     `duel`/`placement_tableau`) : le forfait disparaît avec sa phase. Les FK `tournoi_id`/`archer`
-    restent **sans `ON DELETE`** (DETTE-001, comme `serie`/`entree_audit`) : `tournoi_id` est stocké
-    pour la lecture `par_tournoi` sans jointure ; leur purge relève de la politique de suppression
-    du tournoi/archer, non tranchée.
+    restent **sans `ON DELETE`** (DETTE-001, comme `serie`) : `tournoi_id` est stocké pour la
+    lecture `par_tournoi` sans jointure. `archer_id` est purgé/réassigné par la **cascade
+    applicative** de `ArcherRepositorySQL.supprimer`/`fusionner` — **exactement comme `serie`** (la
+    FK est *enforced*, l'oublier bloque la suppression d'un archer forfaitaire ; revue adversariale
+    E04US015). La purge liée au **tournoi** relève de la politique de suppression du tournoi, non
+    tranchée.
     """
 
     __tablename__ = "forfait"

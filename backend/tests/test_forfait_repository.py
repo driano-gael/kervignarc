@@ -62,9 +62,9 @@ class _Contexte:
             Categorie.creer(tournoi.id, "Senior 1 H")
         )
         assert categorie.id is not None
-        archer = ArcherRepositorySQL(self.db.session_factory).ajouter(
-            Archer.creer("DURAND", "Jean", tournoi.id, categorie.id)
-        )
+        self.categorie_id = categorie.id
+        self.archers = ArcherRepositorySQL(self.db.session_factory)
+        archer = self.archers.ajouter(Archer.creer("DURAND", "Jean", tournoi.id, categorie.id))
         assert archer.id is not None
         self.archer_id = archer.id
         phase = PhaseRepositorySQL(self.db.session_factory).ajouter(
@@ -99,6 +99,36 @@ class _Contexte:
             objet=f"forfait de l'archer {self.archer_id}",
             avant=avant,
             apres=apres,
+        )
+
+    def autre_archer(self) -> int:
+        """Un second archer du même tournoi (pour la fusion de doublons)."""
+        archer = self.archers.ajouter(
+            Archer.creer("MARTIN", "Paul", self.tournoi_id, self.categorie_id)
+        )
+        assert archer.id is not None
+        return archer.id
+
+    def autre_phase(self) -> int:
+        """Une seconde phase d'élimination (pour la fusion mixte multi-phases)."""
+        phase = PhaseRepositorySQL(self.db.session_factory).ajouter(
+            Phase.creer(self.tournoi_id, 3, TypePhase.ELIMINATION_DIRECTE)
+        )
+        assert phase.id is not None
+        return phase.id
+
+    def declarer_pour(self, archer_id: int, phase_id: int | None = None) -> None:
+        """Déclare un forfait d'abandon pour un archer, dans la phase du contexte (ou fournie)."""
+        self.repository.declarer_avec_trace(
+            Forfait.creer(
+                tournoi_id=self.tournoi_id,
+                archer_id=archer_id,
+                phase_id=phase_id if phase_id is not None else self.phase_id,
+                nature=NatureForfait.ABANDON,
+                declare_par="ROUX Sophie",
+                declare_le=_QUAND,
+            ),
+            self.trace(),
         )
 
 
@@ -150,5 +180,70 @@ def test_annuler_supprime_le_forfait_et_trace(tmp_path: Path) -> None:
         assert ctx.repository.par_phase(ctx.phase_id) == []
         # Deux traces : la déclaration puis l'annulation (le journal est en ajout seul).
         assert len(ctx.audit.par_tournoi(ctx.tournoi_id)) == 2
+    finally:
+        ctx.db.engine.dispose()
+
+
+# --- Cascade de suppression / fusion d'archer (revue adversariale E04US015) -----------------------
+
+
+def test_supprimer_un_archer_forfaitaire_purge_ses_forfaits(tmp_path: Path) -> None:
+    """Régression : supprimer un archer porteur d'un forfait ne doit PAS échouer sur la FK
+    `forfait.archer_id` (enforced) — la cascade applicative purge le forfait (comme la série)."""
+    ctx = _Contexte(tmp_path)
+    try:
+        ctx.declarer_pour(ctx.archer_id)
+        ctx.archers.supprimer(ctx.archer_id)  # ne lève pas (sinon 500, archer indéracinable)
+        assert ctx.repository.par_phase(ctx.phase_id) == []
+    finally:
+        ctx.db.engine.dispose()
+
+
+def test_fusionner_reassigne_le_forfait_du_perdant(tmp_path: Path) -> None:
+    """Fusionner un doublon forfaitaire réassigne son forfait au gagnant (pas de FK orpheline)."""
+    ctx = _Contexte(tmp_path)
+    try:
+        gagnant = ctx.autre_archer()
+        ctx.declarer_pour(ctx.archer_id)  # forfait sur le perdant
+        ctx.archers.fusionner(gagnant, ctx.archer_id)  # ne lève pas
+        relus = ctx.repository.par_phase(ctx.phase_id)
+        assert len(relus) == 1
+        assert relus[0].archer_id == gagnant  # réassigné au gagnant
+    finally:
+        ctx.db.engine.dispose()
+
+
+def test_fusionner_avec_collision_de_forfait_garde_celui_du_gagnant(tmp_path: Path) -> None:
+    """Les deux fiches sont forfait dans la même phase : on garde celle du gagnant, on supprime
+    celle du perdant (unicité `(tournoi, archer, phase)` préservée)."""
+    ctx = _Contexte(tmp_path)
+    try:
+        gagnant = ctx.autre_archer()
+        ctx.declarer_pour(ctx.archer_id)  # forfait perdant
+        ctx.declarer_pour(gagnant)  # forfait gagnant, même phase → collision
+        ctx.archers.fusionner(gagnant, ctx.archer_id)  # ne lève pas (collision gérée)
+        relus = ctx.repository.par_phase(ctx.phase_id)
+        assert len(relus) == 1
+        assert relus[0].archer_id == gagnant
+    finally:
+        ctx.db.engine.dispose()
+
+
+def test_fusionner_mixte_collision_sur_une_phase_reassignation_sur_l_autre(tmp_path: Path) -> None:
+    """Fusion mixte : le perdant est forfait dans DEUX phases, le gagnant dans UNE (collision).
+    La phase en collision garde le forfait du gagnant ; l'autre est réassignée au gagnant."""
+    ctx = _Contexte(tmp_path)
+    try:
+        gagnant = ctx.autre_archer()
+        phase2 = ctx.autre_phase()
+        ctx.declarer_pour(ctx.archer_id, ctx.phase_id)  # perdant, phase 1
+        ctx.declarer_pour(ctx.archer_id, phase2)  # perdant, phase 2
+        ctx.declarer_pour(gagnant, ctx.phase_id)  # gagnant, phase 1 (→ collision)
+        ctx.archers.fusionner(gagnant, ctx.archer_id)  # ne lève pas
+        # Phase 1 : un seul forfait, celui du gagnant (collision résolue). Phase 2 : réassigné.
+        (p1,) = ctx.repository.par_phase(ctx.phase_id)
+        assert p1.archer_id == gagnant
+        (p2,) = ctx.repository.par_phase(phase2)
+        assert p2.archer_id == gagnant
     finally:
         ctx.db.engine.dispose()

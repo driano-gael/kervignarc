@@ -377,6 +377,28 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 > en **JSON** (procédé de `VOLEE.valeurs`). Pas de trace d'audit à cette US (différé, comme le plan de
 > duels).
 
+### FORFAIT (E04US015) — abandon / disqualification
+| id | INTEGER | PK |
+| tournoi_id | INTEGER | FK → TOURNOI (DETTE-001 ; dénormalisé pour `par_tournoi`) |
+| archer_id | INTEGER | FK → ARCHER (DETTE-001 ; purgé/réassigné par cascade applicative) |
+| phase_id | INTEGER | FK → PHASE, **ON DELETE CASCADE** |
+| nature | TEXT | `abandon`\|`disqualification` (`NatureForfait`) |
+| declare_par | TEXT | NOT NULL — le **nom** du déclarant (pas une FK) |
+| declare_le | DATETIME | NOT NULL — instant, en **UTC** (aware, garanti par le domaine) |
+| motif | TEXT | nullable |
+
+> Table **livrée** par E04US015 (migration `0031`), qui **fusionne** l'abandon en qualification et le
+> forfait en duels ([ADR-0050](adr/0050-forfait-abandon-et-disqualification.md), absorbe E12US004).
+> **`UNIQUE(tournoi_id, archer_id, phase_id)`** : un forfait par archer et par phase. **Scopé à la
+> phase** : lu par le classement (forfaits de qualif → abandon **relégué** / DSQ **exclue**, rangs
+> nullables), par la reconstruction du tableau (forfaits de la phase de tableau → **l'adversaire
+> passe**, walkover) et par la complétude (série **close par forfait**, résorbe DETTE-014). Les
+> **flèches sont préservées** (≠ suppression, [ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)) :
+> l'annulation (réversibilité `D-15`) **supprime** la ligne, jamais les résultats. Co-écrit sa trace
+> d'audit `FORFAIT` en une transaction (ADR-0035). `ON DELETE CASCADE` sur `phase_id` (feuille, comme
+> `DUEL`) ; FK `tournoi_id`/`archer_id` sans `ON DELETE` (DETTE-001, `archer_id` couvert par la cascade
+> applicative de `ArcherRepositorySQL.supprimer`/`fusionner`, comme `serie`).
+
 ### CLASSEMENT
 | id | INTEGER | PK |
 | phase_id | INTEGER | FK → PHASE |
@@ -444,7 +466,7 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 > **nom** — et non une FK — pour que la trace **survive à la suppression du scoreur** (E10US003).
 > `avant`/`apres` sont du **texte verbatim** laissé au producteur : le socle ne présume **pas** d'un
 > format JSON (à rebours du modèle prospectif ci-dessus, qui les typait JSON). Les **producteurs** de
-> traces viendront : validations/corrections avec E04US002, forfaits avec E12US004. Consultable par
+> traces viendront : validations/corrections avec E04US002, forfaits avec E04US015. Consultable par
 > l'admin (`GET /api/v1/tournois/{id}/audit`). Voir le glossaire (`AuditLog`, `Horloge`).
 
 ---
