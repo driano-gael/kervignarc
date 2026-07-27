@@ -18,17 +18,23 @@ from application.erreurs import (
     TournoiArchiveNonModifiable,
     TournoiEnCoursNonSupprimable,
     TournoiIntrouvable,
+    TournoiSansDepart,
     TransitionStatutInvalide,
 )
-from domain.ports import TournoiRepository
+from domain.ports import DepartRepository, TournoiRepository
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
 
 
 class ServiceTournois:
     """Cas d'usage des tournois : créer, consulter, lister, éditer, cycle de vie, supprimer."""
 
-    def __init__(self, repository: TournoiRepository) -> None:
+    def __init__(self, repository: TournoiRepository, depart_repository: DepartRepository) -> None:
         self._repository = repository
+        # E02US010 : le passage à `prêt` exige **au moins un départ**. `ServiceTournois` lit donc
+        # les créneaux (port `DepartRepository`, un port de domaine — pas l'autre service, pas
+        # d'infra), comme il lit les tournois. Couplage minimal : une seule lecture (`par_tournoi`),
+        # dont on ne prend que le compte.
+        self._departs = depart_repository
 
     def creer(
         self,
@@ -88,13 +94,18 @@ class ServiceTournois:
         """Passe un tournoi `brouillon` à `prêt` (feu vert au démarrage).
 
         Lève `TournoiIntrouvable` si inconnu, `TransitionStatutInvalide` (→ 409) s'il n'est pas
-        `brouillon`. La **garde de complétude de préparation** (catégories, blasons associés,
-        gabarit, barème, ≥ 1 départ — [ADR-0026] §2) est ajoutée par la tranche suivante ; ici,
-        seule la légalité de l'arête est vérifiée.
+        `brouillon`, `TournoiSansDepart` (→ 409) s'il n'a **aucun départ** (E02US010). Cette garde
+        « ≥ 1 départ » est la **première brique** de la garde de complétude de préparation
+        (catégories, blasons associés, gabarit, barème — [ADR-0026] §2) : le reste est ajouté par
+        une tranche ultérieure.
         """
         tournoi = self.consulter(tournoi_id)
         if tournoi.statut is not StatutTournoi.BROUILLON:
             raise TransitionStatutInvalide("Seul un tournoi en brouillon peut passer prêt.")
+        if not self._departs.par_tournoi(tournoi_id):
+            raise TournoiSansDepart(
+                "Ce tournoi n'a aucun départ ; ajoutez au moins un créneau avant de le passer prêt."
+            )
         return self._repository.enregistrer(tournoi.vers_pret())
 
     def revenir_brouillon(self, tournoi_id: TournoiId) -> Tournoi:

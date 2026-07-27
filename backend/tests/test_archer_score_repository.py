@@ -409,7 +409,7 @@ def test_fusionner_reassigne_inscriptions_et_scores_puis_supprime_le_perdant(
         gagnant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
         perdant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
         assert gagnant.id is not None and perdant.id is not None
-        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500))
+        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500, "09:00"))
         assert depart.id is not None
         inscriptions.ajouter(Inscription.creer(perdant.id, depart.id))
         scores.ajouter(Score.creer(perdant.id, 9))
@@ -446,7 +446,7 @@ def test_fusionner_collision_inscription_garde_une_ligne_et_reporte_le_paiement(
         gagnant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
         perdant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
         assert gagnant.id is not None and perdant.id is not None
-        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500))
+        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500, "09:00"))
         assert depart.id is not None
         # Le gagnant est inscrit **non payé** ; le perdant **payé** sur le même créneau.
         inscriptions.ajouter(Inscription.creer(gagnant.id, depart.id))
@@ -480,7 +480,7 @@ def test_fusionner_collision_ne_deprecie_pas_un_paiement_du_gagnant(tmp_path: Pa
         gagnant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
         perdant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
         assert gagnant.id is not None and perdant.id is not None
-        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500))
+        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500, "09:00"))
         assert depart.id is not None
         inscrit_gagnant = inscriptions.ajouter(Inscription.creer(gagnant.id, depart.id))
         inscriptions.enregistrer(inscrit_gagnant.marquer_paye(True))
@@ -513,7 +513,7 @@ def test_fusionner_collision_les_deux_non_payes_reste_non_paye(tmp_path: Path) -
         gagnant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
         perdant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
         assert gagnant.id is not None and perdant.id is not None
-        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500))
+        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500, "09:00"))
         assert depart.id is not None
         inscriptions.ajouter(Inscription.creer(gagnant.id, depart.id))
         inscriptions.ajouter(Inscription.creer(perdant.id, depart.id))
@@ -552,7 +552,7 @@ def test_fusionner_collision_cascade_le_placement_de_l_inscription_supprimee(
         gagnant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
         perdant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
         assert gagnant.id is not None and perdant.id is not None
-        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500))
+        depart = departs.ajouter(Depart.creer(tournoi_id, 1, 1500, "09:00"))
         assert depart.id is not None
         insc_gagnant = inscriptions.ajouter(Inscription.creer(gagnant.id, depart.id))
         insc_perdant = inscriptions.ajouter(Inscription.creer(perdant.id, depart.id))

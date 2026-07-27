@@ -126,6 +126,18 @@ class NumeroDepartInvalide(DomainError):
     code = "numero_depart_invalide"
 
 
+class HoraireDepartInvalide(DomainError):
+    """L'horaire d'un départ n'est pas un horaire du jour `HH:MM` valide (E02US010).
+
+    Depuis E02US010, l'horaire d'un créneau est une **vraie donnée temporelle obligatoire**
+    (24 h, `00:00`-`23:59`), et non plus le libellé libre d'E02US004 : « 9hzc », « matin » ou un
+    horaire absent sont refusés **au domaine** (422). Le front pose un masque `HH:MM` en
+    prévention, mais l'autorité reste ici — le serveur ne fait pas confiance à la saisie cliente.
+    """
+
+    code = "horaire_depart_invalide"
+
+
 class TarifDepartInvalide(DomainError):
     """Le tarif d'un départ sort de la plage autorisée (`[0, 1 000 €]`, E02US004 / ADR-0017).
 

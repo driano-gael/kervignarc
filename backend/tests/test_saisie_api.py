@@ -134,7 +134,9 @@ def _semer(
         Categorie.creer(tournoi.id, "Senior H", blason_id=blason.id)
     )
     assert categorie.id is not None
-    depart = DepartRepositorySQL(sf).ajouter(Depart.creer(tournoi.id, 1, tarif_centimes=1000))
+    depart = DepartRepositorySQL(sf).ajouter(
+        Depart.creer(tournoi.id, 1, tarif_centimes=1000, horaire="09:00")
+    )
     assert depart.id is not None
     PhaseRepositorySQL(sf).ajouter(
         Phase.qualification(
@@ -230,7 +232,7 @@ def test_fixer_un_depart_d_un_autre_tournoi_rend_404(
         autre = TournoiRepositorySQL(db.session_factory).ajouter(Tournoi.creer("Extérieur", _DATE))
         assert autre.id is not None
         depart_autre = DepartRepositorySQL(db.session_factory).ajouter(
-            Depart.creer(autre.id, 1, tarif_centimes=1000)
+            Depart.creer(autre.id, 1, tarif_centimes=1000, horaire="09:00")
         )
         assert depart_autre.id is not None
 

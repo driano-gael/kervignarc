@@ -35,6 +35,21 @@ class TransitionStatutInvalide(ApplicationError):
     code = "transition_statut_invalide"
 
 
+class TournoiSansDepart(ApplicationError):
+    """Passage à `prêt` refusé : le tournoi n'a **aucun départ** (créneau) (E02US010) → 409.
+
+    **Un refus, pas un signalement** (famille de `TransitionStatutInvalide`) : un tournoi se joue
+    sur des créneaux ; sans au moins un départ, il n'y a **rien à lancer** ni personne à placer. La
+    garde vit sur `vers_pret` (l'entrée de la zone « préparé ») ; l'invariant tient ensuite parce
+    qu'on ne peut plus retirer le **dernier** départ d'un tournoi non-brouillon
+    (`DernierDepartNonSupprimable`). C'est une **première brique** de la garde de complétude de
+    préparation ([ADR-0026] §2) — catégories, blasons, gabarit, barème restent à ajouter par une
+    tranche ultérieure. Conflit d'**état**, d'où 409.
+    """
+
+    code = "tournoi_sans_depart"
+
+
 class TournoiEnCoursNonSupprimable(ApplicationError):
     """Suppression refusée : le tournoi est `en_cours` ou `en_pause` (E01US002, E01US017) → 409.
 
@@ -86,6 +101,22 @@ class DepartAvecInscriptions(ApplicationError):
     """
 
     code = "depart_avec_inscriptions"
+
+
+class DernierDepartNonSupprimable(ApplicationError):
+    """Suppression refusée : c'est le **dernier** départ d'un tournoi **non-brouillon** (E02US010)
+    → 409.
+
+    **Un refus, pas un signalement** : un tournoi `prêt`, `en_cours`, `en_pause` ou `terminé` a été
+    validé comme ayant au moins un créneau (garde `TournoiSansDepart` sur `vers_pret`). Lui retirer
+    son dernier départ le laisserait sans rien à jouer tout en restant hors brouillon — un état
+    incohérent que l'invariant « ≥ 1 départ dès qu'on quitte le brouillon » interdit. Pour repartir
+    de zéro, l'admin **revient d'abord en brouillon** (`revenir_brouillon`), où les créneaux
+    redeviennent librement supprimables. Sur un `brouillon`, supprimer le dernier départ reste
+    permis (le tournoi n'est pas encore engagé). Conflit d'**état**, d'où 409.
+    """
+
+    code = "dernier_depart_non_supprimable"
 
 
 class DepartEnCoursNonConfirme(ApplicationError):

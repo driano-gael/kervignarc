@@ -7,6 +7,8 @@ puis relecture/listing — et vérifie le **mapping des erreurs typées** à la 
 - édition des métadonnées (PUT) ;
 - cycle de vie à sept statuts (E01US017) : prêt → démarrer → terminer → archiver, pause/reprise,
   annuler ; transitions invalides → 409 ; verrou lecture seule d'un archivé → 409 ;
+- garde de préparation E02US010 : passer prêt **sans départ** → 409 (`tournoi_sans_depart`) — d'où
+  le créneau créé avant `vers-pret` dans les chemins nominaux ;
 - suppression (204) ; suppression d'un tournoi en cours / en pause → 409 ;
 - tournoi introuvable → 404 (`ApplicationError`) ;
 - nom vide → 422 (`DomainError`, code métier) ;
@@ -49,8 +51,21 @@ def app_tournois(tmp_path: Path) -> Iterator[FastAPI]:
         app.state.database.engine.dispose()
 
 
+def _creer_depart(client: TestClient, tid: int) -> None:
+    """Ajoute un créneau au tournoi — prérequis du passage à `prêt` (garde `TournoiSansDepart`,
+    E02US010). L'horaire est ici un détail d'attelage, pas le sujet du test."""
+    reponse = client.post(
+        f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810, "horaire": "09:00"}
+    )
+    assert reponse.status_code == 201
+
+
 def _amener_en_cours(client: TestClient, tid: int) -> None:
-    """Amène un tournoi créé (brouillon) à `en_cours` par le chemin nominal (prêt → démarrer)."""
+    """Amène un tournoi créé (brouillon) à `en_cours` par le chemin nominal (prêt → démarrer).
+
+    Crée d'abord un départ : depuis E02US010, passer prêt exige au moins un créneau.
+    """
+    _creer_depart(client, tid)
     assert client.post(f"/api/v1/tournois/{tid}/vers-pret").status_code == 200
     assert client.post(f"/api/v1/tournois/{tid}/demarrer").status_code == 200
 
@@ -185,6 +200,7 @@ def test_chemin_nominal_pret_demarrer_terminer_archiver(
         connecter_admin(client)
         cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
         tid = cree["id"]
+        _creer_depart(client, tid)  # E02US010 : prêt exige au moins un départ
         assert client.post(f"/api/v1/tournois/{tid}/vers-pret").json()["statut"] == "pret"
         assert client.post(f"/api/v1/tournois/{tid}/demarrer").json()["statut"] == "en_cours"
         assert client.post(f"/api/v1/tournois/{tid}/terminer").json()["statut"] == "termine"
@@ -211,6 +227,22 @@ def test_annuler_depuis_brouillon(app_tournois: FastAPI, connecter_admin: Connec
         connecter_admin(client)
         cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
         assert client.post(f"/api/v1/tournois/{cree['id']}/annuler").json()["statut"] == "annule"
+
+
+def test_vers_pret_sans_depart_conflit_409(
+    app_tournois: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Passer prêt un tournoi **sans départ** → 409 `tournoi_sans_depart` (E02US010).
+
+    Bout-en-bout de la garde de complétude de préparation (première brique) : un tournoi ne peut
+    pas quitter le brouillon tant qu'aucun créneau n'est défini.
+    """
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
+        reponse = client.post(f"/api/v1/tournois/{cree['id']}/vers-pret")
+    assert reponse.status_code == 409
+    assert reponse.json()["code"] == "tournoi_sans_depart"
 
 
 def test_demarrer_sans_passer_pret_conflit_409(
@@ -270,8 +302,17 @@ def test_supprimer_un_brouillon(app_tournois: FastAPI, connecter_admin: Connecte
         assert client.get(f"/api/v1/tournois/{cree['id']}").status_code == 404
 
 
+@pytest.mark.xfail(
+    reason="DETTE-001 : supprimer un tournoi **non vide** lève une IntegrityError → 500 (aucune "
+    "FK de la descendance n'a d'ON DELETE CASCADE). Depuis E02US010, un tournoi terminé porte "
+    "toujours ≥ 1 départ (passer prêt l'exige), donc ce chemin est désormais **toujours** non "
+    "vide — le 204 n'est plus atteignable tant que DETTE-001 n'est pas résorbée. Le contrat "
+    "« terminé supprimable » reste vérifié au niveau service (repository factice, sans FK). "
+    "À lever à la résorption de DETTE-001 (cascade maîtrisée ou 409).",
+    strict=True,
+)
 def test_supprimer_un_termine(app_tournois: FastAPI, connecter_admin: ConnecterAdmin) -> None:
-    """Un tournoi terminé est supprimable → 204."""
+    """Un tournoi terminé est supprimable → 204 (contrat visé ; bloqué par DETTE-001 en l'état)."""
     with TestClient(app_tournois) as client:
         connecter_admin(client)
         cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()

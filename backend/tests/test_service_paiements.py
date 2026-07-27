@@ -109,7 +109,9 @@ class Montage:
         return archer.id
 
     def depart(self, numero: int, tarif_centimes: int) -> DepartId:
-        depart = self.departs.ajouter(Depart.creer(_TOURNOI, numero, tarif_centimes))
+        depart = self.departs.ajouter(
+            Depart.creer(_TOURNOI, numero, tarif_centimes, horaire="09:00")
+        )
         assert depart.id is not None
         return depart.id
 

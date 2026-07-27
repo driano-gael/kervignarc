@@ -41,7 +41,8 @@ class DepartORM(Base):
     archer↔départ (inscription, portant `paye`) est E02US009, table distincte à venir.
     `tarif_centimes` est un **INTEGER**, pas un REAL : l'argent se compte en centimes entiers
     (ADR-0012) ; il est **NOT NULL** (un créneau a toujours un prix, `0` = gratuit). `horaire`
-    est un libellé de créneau facultatif.
+    est l'horaire du créneau `HH:MM` (E02US010), **NOT NULL** : un créneau a toujours une heure
+    depuis E02US010 (le libellé libre facultatif d'E02US004 est abandonné).
     """
 
     __tablename__ = "depart"
@@ -57,7 +58,7 @@ class DepartORM(Base):
     # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     numero: Mapped[int] = mapped_column(nullable=False)
-    horaire: Mapped[str | None] = mapped_column(nullable=True)
+    horaire: Mapped[str] = mapped_column(nullable=False)
     tarif_centimes: Mapped[int] = mapped_column(nullable=False)
     # Quota d'inscrits **facultatif** (E02US006) : NULL = créneau sans plafond. Le contrôle du
     # dépassement est applicatif (service), nulle contrainte SQL ne l'exprime (cf. `DepartComplet`).

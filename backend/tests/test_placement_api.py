@@ -101,7 +101,9 @@ def _creer_categorie(client: TestClient, tournoi_id: int) -> int:
 
 
 def _creer_depart(client: TestClient, tournoi_id: int) -> int:
-    reponse = client.post(f"/api/v1/tournois/{tournoi_id}/departs", json={"tarif_centimes": 0})
+    reponse = client.post(
+        f"/api/v1/tournois/{tournoi_id}/departs", json={"tarif_centimes": 0, "horaire": "09:00"}
+    )
     assert reponse.status_code == 201, reponse.text
     return int(reponse.json()["id"])
 

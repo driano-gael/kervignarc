@@ -47,27 +47,13 @@ def test_ajouter_puis_relire(tmp_path: Path) -> None:
     db, tournoi_id = _base_avec_tournoi(tmp_path)
     try:
         repository = DepartRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Depart.creer(tournoi_id, 1, 810, "9h00"))
+        cree = repository.ajouter(Depart.creer(tournoi_id, 1, 810, "09:00"))
         assert cree.id is not None
         assert cree.tournoi_id == tournoi_id
         assert cree.numero == 1
-        assert cree.horaire == "9h00"
+        assert cree.horaire == "09:00"
         assert cree.tarif_centimes == 810
         assert repository.par_id(cree.id) == cree
-    finally:
-        db.engine.dispose()
-
-
-def test_horaire_absent_fait_laller_retour(tmp_path: Path) -> None:
-    """Un créneau sans horaire se persiste et se relit avec `horaire` à None."""
-    db, tournoi_id = _base_avec_tournoi(tmp_path)
-    try:
-        repository = DepartRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Depart.creer(tournoi_id, 1, 810))
-        assert cree.id is not None
-        relu = repository.par_id(cree.id)
-        assert relu is not None
-        assert relu.horaire is None
     finally:
         db.engine.dispose()
 
@@ -82,7 +68,7 @@ def test_le_tarif_est_stocke_en_entier(tmp_path: Path) -> None:
     db, tournoi_id = _base_avec_tournoi(tmp_path)
     try:
         repository = DepartRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Depart.creer(tournoi_id, 1, 810))
+        cree = repository.ajouter(Depart.creer(tournoi_id, 1, 810, "09:00"))
 
         with db.session_factory() as session:
             valeur, type_sqlite = session.execute(
@@ -99,8 +85,8 @@ def test_par_tournoi_trie_par_numero(tmp_path: Path) -> None:
     db, tournoi_id = _base_avec_tournoi(tmp_path)
     try:
         repository = DepartRepositorySQL(db.session_factory)
-        repository.ajouter(Depart.creer(tournoi_id, 2, 810, "14h00"))
-        repository.ajouter(Depart.creer(tournoi_id, 1, 900, "9h00"))
+        repository.ajouter(Depart.creer(tournoi_id, 2, 810, "14:00"))
+        repository.ajouter(Depart.creer(tournoi_id, 1, 900, "09:00"))
         assert [d.numero for d in repository.par_tournoi(tournoi_id)] == [1, 2]
     finally:
         db.engine.dispose()
@@ -120,11 +106,11 @@ def test_enregistrer_met_a_jour_tarif_et_horaire(tmp_path: Path) -> None:
     db, tournoi_id = _base_avec_tournoi(tmp_path)
     try:
         repository = DepartRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Depart.creer(tournoi_id, 1, 810, "9h00"))
+        cree = repository.ajouter(Depart.creer(tournoi_id, 1, 810, "09:00"))
         assert cree.id is not None
 
-        modifie = repository.enregistrer(cree.modifier(1250, "14h00"))
-        assert (modifie.numero, modifie.tarif_centimes, modifie.horaire) == (1, 1250, "14h00")
+        modifie = repository.enregistrer(cree.modifier(1250, "14:00"))
+        assert (modifie.numero, modifie.tarif_centimes, modifie.horaire) == (1, 1250, "14:00")
         assert repository.par_id(cree.id) == modifie
     finally:
         db.engine.dispose()
@@ -135,7 +121,7 @@ def test_supprimer_retire_le_depart(tmp_path: Path) -> None:
     db, tournoi_id = _base_avec_tournoi(tmp_path)
     try:
         repository = DepartRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Depart.creer(tournoi_id, 1, 810))
+        cree = repository.ajouter(Depart.creer(tournoi_id, 1, 810, "09:00"))
         assert cree.id is not None
         repository.supprimer(cree.id)
         assert repository.par_id(cree.id) is None
@@ -153,8 +139,8 @@ def test_numero_unique_par_tournoi(tmp_path: Path) -> None:
     db, tournoi_id = _base_avec_tournoi(tmp_path)
     try:
         repository = DepartRepositorySQL(db.session_factory)
-        repository.ajouter(Depart.creer(tournoi_id, 1, 810))
+        repository.ajouter(Depart.creer(tournoi_id, 1, 810, "09:00"))
         with pytest.raises(InfrastructureError):
-            repository.ajouter(Depart.creer(tournoi_id, 1, 900))
+            repository.ajouter(Depart.creer(tournoi_id, 1, 900, "09:00"))
     finally:
         db.engine.dispose()
