@@ -17,7 +17,7 @@ const archer = (id: number, nom: string, prenom: string): Archer => ({
   club_id: null,
 })
 
-const depart = (id: number, numero: number, horaire: string | null): Depart => ({
+const depart = (id: number, numero: number, horaire: string): Depart => ({
   id,
   tournoi_id: 1,
   numero,
@@ -108,20 +108,20 @@ describe('placeDansPlan — place d’un archer sur un départ', () => {
 })
 
 describe('construireJournee — la journée d’un archer (départs + plans, pas les inscriptions)', () => {
-  const departs = [depart(10, 1, '9h00'), depart(20, 2, '14h00')]
+  const departs = [depart(10, 1, '09:00'), depart(20, 2, '14:00')]
 
   it('archer posé sur un départ → une ligne créneau + place', () => {
     const plans = new Map([[10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])]])
 
     expect(construireJournee(7, departs, plans)).toEqual([
-      { departId: 10, numeroDepart: 1, horaire: '9h00', cible: 3, position: 'B' },
+      { departId: 10, numeroDepart: 1, horaire: '09:00', cible: 3, position: 'B' },
     ])
   })
 
   it('archer posé sur deux départs → deux lignes triées par numéro de départ', () => {
     // Départs passés **dans le désordre** (n° 2 avant n° 1) pour que le test exerce vraiment le tri :
     // retirer le `.sort()` de `construireJournee` doit le faire échouer (retour de revue B1).
-    const departsDesordre = [depart(20, 2, '14h00'), depart(10, 1, '9h00')]
+    const departsDesordre = [depart(20, 2, '14:00'), depart(10, 1, '09:00')]
     const plans = new Map([
       [20, planAvec(20, [{ index: 5, position: 'A', archerId: 7 }])],
       [10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])],

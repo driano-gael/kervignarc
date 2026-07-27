@@ -24,6 +24,20 @@ const LIBELLE_ETAT: Record<EtatDepart, string> = {
   clos: 'Clos',
 }
 
+// Horaire du jour `HH:MM` (24 h), **obligatoire** depuis E02US010 : miroir de la règle serveur
+// (`domain.depart`). Le front ne fait que **prévenir** (masque + garde d'envoi) ; le serveur reste
+// l'autorité (422 si le format ne convient pas).
+const HORAIRE_HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
+
+// Masque de saisie : ne garde que les chiffres (max 4) et insère le `:` après l'heure — « 0900 »
+// comme « 09:00 » aboutissent à « 09:00 ». Prévention de confort ; la validité finale reste jugée
+// par `HORAIRE_HHMM` (et par le serveur).
+function masquerHoraire(saisie: string): string {
+  const chiffres = saisie.replace(/\D/g, '').slice(0, 4)
+  if (chiffres.length <= 2) return chiffres
+  return `${chiffres.slice(0, 2)}:${chiffres.slice(2)}`
+}
+
 export function Departs({ tournoiId }: { tournoiId: number }) {
   const departs = useDeparts(tournoiId)
 
@@ -152,10 +166,12 @@ function LigneDepart({ tournoiId, depart }: { tournoiId: number; depart: Depart 
   )
 }
 
-// Décrit un départ pour l'affichage : horaire (si précisé) · tarif · quota (si plafonné).
+// Décrit un départ pour l'affichage : horaire (HH:MM, toujours présent) · tarif · quota (si
+// plafonné). Le ` · ` sépare nettement l'horaire du numéro affiché à côté (bug démo « n° collé à
+// l'horaire » : « Départ 1 » suivi de « 8h00 » se lisait « 18h00 » — le vrai HH:MM « 08:00 » et le
+// séparateur lèvent l'ambiguïté).
 function decrire(depart: Depart): string {
-  const horaire = depart.horaire ?? 'horaire non précisé'
-  const base = `${horaire} · ${decrireTarif(depart.tarif_centimes)}`
+  const base = `${depart.horaire} · ${decrireTarif(depart.tarif_centimes)}`
   return depart.quota === null ? base : `${base} · quota ${depart.quota}`
 }
 
@@ -204,19 +220,23 @@ function FormulaireDepart({
   // cette séparation, un quota invalide ferait afficher l'erreur du tarif sur un tarif pourtant
   // correct (le message pointerait le mauvais champ).
   const tarifInvalide = tarifSaisi && tarifCentimes === null
+  // Horaire **obligatoire** (E02US010) : `HH:MM` valide requis. On n'affiche l'erreur qu'une fois
+  // quelque chose saisi (comme le tarif) ; un champ vide bloque simplement l'envoi.
+  const horaireValide = HORAIRE_HHMM.test(horaire)
+  const horaireInvalide = horaire.trim() !== '' && !horaireValide
   const quotaAnalyse = analyserQuota(quota)
   const quotaInvalide = quotaAnalyse === 'invalide'
   // Validité **globale** du formulaire : ne sert qu'à (dés)activer l'envoi — l'affichage par champ
-  // s'appuie sur les validités propres (`tarifInvalide`, `quotaInvalide`).
-  const entreeValide = tarifCentimes !== null && !quotaInvalide
+  // s'appuie sur les validités propres (`tarifInvalide`, `horaireInvalide`, `quotaInvalide`).
+  const entreeValide = tarifCentimes !== null && horaireValide && !quotaInvalide
 
   // Construit l'entrée depuis l'état courant du formulaire, ou `null` si une saisie est invalide
   // (le garde d'envoi l'empêche déjà ; ce garde-ci rend la fonction sûre à réutiliser).
   const construireEntree = (): NouveauDepart | null => {
-    if (tarifCentimes === null || quotaAnalyse === 'invalide') return null
+    if (tarifCentimes === null || quotaAnalyse === 'invalide' || !horaireValide) return null
     return {
       tarif_centimes: tarifCentimes,
-      horaire: horaire.trim() || null,
+      horaire,
       quota: quotaAnalyse,
     }
   }
@@ -280,14 +300,25 @@ function FormulaireDepart({
           )}
         </label>
         <label className="formulaire__libelle">
-          Horaire (facultatif)
+          Horaire (HH:MM)
           <input
             className="formulaire__champ"
+            inputMode="numeric"
+            maxLength={5}
             value={horaire}
-            onChange={(e) => setHoraire(e.target.value)}
-            placeholder="ex. 9h00"
-            aria-label="Horaire du départ"
+            onChange={(e) => setHoraire(masquerHoraire(e.target.value))}
+            placeholder="ex. 09:00"
+            aria-label="Horaire du départ, au format HH:MM"
           />
+          {horaireInvalide ? (
+            <span className="carte__etat carte__etat--erreur" role="alert">
+              Horaire du jour attendu, au format HH:MM (ex. 09:00, entre 00:00 et 23:59).
+            </span>
+          ) : (
+            <span className="carte__etat">
+              {horaireValide ? `Départ à ${horaire}` : 'Horaire obligatoire (ex. 09:00)'}
+            </span>
+          )}
         </label>
         <label className="formulaire__libelle">
           Quota d'inscrits (facultatif)
