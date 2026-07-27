@@ -45,6 +45,7 @@ from api.v1.placement_duels import router as placement_duels_router
 from api.v1.postes import router as postes_router
 from api.v1.postes import session_router as poste_session_router
 from api.v1.saisie import router as saisie_router
+from api.v1.saisie_duels import router as saisie_duels_router
 from api.v1.scoreurs import router as scoreurs_router
 from api.v1.scoreurs import session_router as scoreur_session_router
 from api.v1.supervision import heartbeat_router as poste_heartbeat_router
@@ -73,9 +74,11 @@ from application.placement import ServicePlacement
 from application.placement_duels import ServicePlacementDuels
 from application.postes import ServicePostes
 from application.saisie import ServiceSaisie
+from application.saisie_duels import ServiceSaisieDuels
 from application.scoreurs import ServiceScoreurs
 from application.supervision import ServiceSupervision
 from application.tournois import ServiceTournois
+from domain.duel import ResolveurBaremeDuelFfta
 from domain.politiques import (
     ByesAuxMieuxClasses,
     EliminationSeche,
@@ -98,6 +101,7 @@ from infrastructure.db import (
     ClubRepositorySQL,
     Database,
     DepartRepositorySQL,
+    DuelRepositorySQL,
     GabaritSalleRepositorySQL,
     InscriptionRepositorySQL,
     PhaseRepositorySQL,
@@ -250,6 +254,7 @@ def create_app(
     # pour `consigner_dans` sur la session partagée — couplage **infra → infra**, comme la saisie.
     placement_repository = PlacementRepositorySQL(database.session_factory, audit_repository)
     placement_tableau_repository = PlacementTableauRepositorySQL(database.session_factory)
+    duel_repository = DuelRepositorySQL(database.session_factory)
     # La série de saisie co-écrit son entrée d'audit dans **une seule transaction** (ADR-0035) :
     # l'adapter reçoit l'`audit_repository` (concret) pour appeler `consigner_dans` sur la session
     # partagée. Couplage **infra → infra** assumé — le port domaine `SerieRepository` l'ignore.
@@ -382,6 +387,22 @@ def create_app(
         blason_repository,
         placement_tableau_repository,
         app.state.service_classement,
+        SeedingSerpent(),
+        ByesAuxMieuxClasses(),
+        EliminationSeche(),
+    )
+    # Saisie en duels (E04US013, ADR-0049) : reconstruit le même arbre (classement → tableau) et
+    # **rejoue** les duels validés pour la progression. Le barème est résolu par arme via le
+    # résolveur FFTA par défaut (cumul en poulies, sets sinon) — E01US011 le remplacera par un
+    # résolveur configuré au même point d'injection (règle 2). Mêmes politiques de tableau (MVP).
+    app.state.service_saisie_duels = ServiceSaisieDuels(
+        tournoi_repository,
+        phase_repository,
+        categorie_repository,
+        blason_repository,
+        duel_repository,
+        app.state.service_classement,
+        ResolveurBaremeDuelFfta(),
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
         EliminationSeche(),
@@ -569,6 +590,7 @@ def create_app(
     app.include_router(deroule_router)
     app.include_router(placement_router)
     app.include_router(placement_duels_router)
+    app.include_router(saisie_duels_router)
     app.include_router(feuille_de_marque_router)
     app.include_router(documents_salle_router)
     app.include_router(listes_impression_router)
