@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 27/07/2026** · **73 US livrées** · dernière : `E11US008` *(accès réseau LAN + QR de rattachement à l'écran)*.
+**Dernière mise à jour : 27/07/2026** · **74 US livrées** · dernière : `E03US011` *(placement : retour visuel de génération + position A..D côté admin)*.
 
 ---
 
@@ -22,13 +22,11 @@
 > traiter le **lot démo** (bugs & petits ajouts), puis les épics **EPIC-14** (accueil admin) et
 > **EPIC-15** (jeu d'essai & simulation) — détail en section « Ajouts de la démo du 27/07/2026 » plus
 > bas. Ordre des bugs : ~~E02US010~~ ✅ (horaire `HH:MM`), ~~E01US017~~ ✅ (7 statuts),
-> ~~E11US008~~ ✅ (LAN + QR), puis **E03US011** (placement), **E01US022** (blason FFTA).
+> ~~E11US008~~ ✅ (LAN + QR), ~~E03US011~~ ✅ (placement), puis **E01US022** (blason FFTA).
 > La séquence J2 ci-dessous reprend ensuite à `E12US002`.
 >
-> **`E03US011` — placement : retour visuel de génération + position A..D côté admin** : la
-> **prochaine à prendre**. Donner un retour visible à la génération du plan et afficher la position
-> (A..D) de chaque archer sur sa cible, côté admin. *(Bug/ajout démo, `E03` 🆕.)*
-> *Ensuite dans le lot démo* : `E01US022` (blason FFTA par défaut par catégorie + affichage hérité).
+> **`E01US022` — blason FFTA par défaut par catégorie + affichage hérité** : la **prochaine à
+> prendre** (dernier bug du lot démo). *(Bug/ajout démo, `E01` 🆕.)*
 > *Puis la séquence J2 reprend à* **`E12US002`** — lancer un tour (feu vert + lancement), la **clé du
 > J2** : voir ce qui manque avant de lancer, puis faire partir le tour (les 4 canaux prévenus
 > ensemble). *Ensuite* : remboursement `E08US005`, prochaine cible `E04US018`.
@@ -39,6 +37,14 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E03US011` **placement : retour visuel de génération + position A..D côté admin** — US à
+>   **surface visible**, correctif **front** (présentation, domaine inchangé). Le bouton
+>   **« Générer le plan »** affiche « Génération… » pendant l'appel puis **confirme le résultat**
+>   (« Plan prêt » si tous placés ; « Plan généré : N placés, M en réserve » sinon ; « aucun archer à
+>   placer » si le départ est vide) — l'échec silencieux diagnostiqué était **muet-mais-ok** (le POST
+>   `/regenerer` réussit, seul le retour manquait). Et chaque archer posé affiche sa **position**
+>   (lettre A..D, badge accent) sur sa cible **côté admin**, comme côté public — la lettre
+>   n'apparaissait que sur les cases **libres**. Recette : [`docs/fonctionnel/E03US011.md`](../docs/fonctionnel/E03US011.md).
 > - `E11US008` **accès réseau LAN + QR de rattachement à l'écran** — US à **surface visible**. Le
 >   lancement de dev (`run_dev.py`) écoute désormais sur **`0.0.0.0`** comme la release (`--host` pour
 >   restreindre), et **affiche l'IP LAN** joignable par les tablettes (réutilise `release.reseau.adresse_lan`).
@@ -263,7 +269,7 @@
 | E01US020 | Modèle de tarification injectable & sujet de facturation (archer/club) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; sujet `club` sur `club_id`/ADR-0014, **pas** via E13)* |
 | E01US021 | Tarification dégressive (option config, %/montant) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; dépend d'E01US020)* |
 
-## Ajouts de la démo du 27/07/2026 — ⚡ **priorité immédiate (3/10)**
+## Ajouts de la démo du 27/07/2026 — ⚡ **priorité immédiate (4/10)**
 
 > Retours de la présentation au client final **et** du développeur (27/07/2026). Cadrage par le
 > dialogue (esprit agile). Deux US **déjà spécifiées** remontent en priorité (♻️, pas de doublon) ;
@@ -276,8 +282,8 @@
 | E02US010 | Horaire de départ `HH:MM` (corrige « 8h00 → 18h00 » : n° collé à l'horaire) | E02 ♻️ | ✅ |
 | E01US017 | Cycle de vie enrichi (7 statuts) — **prérequis** du dashboard | E01 ♻️ | ✅ |
 | E11US008 | Accès LAN (poste organisateur) + QR de rattachement à l'écran | E11 🆕 | ✅ |
-| E03US011 | Placement : retour visuel de génération + position A..D côté admin | E03 🆕 | 🎯 |
-| E01US022 | Blason FFTA par défaut par catégorie + affichage hérité | E01 🆕 | ⬜ |
+| E03US011 | Placement : retour visuel de génération + position A..D côté admin | E03 🆕 | ✅ |
+| E01US022 | Blason FFTA par défaut par catégorie + affichage hérité | E01 🆕 | 🎯 |
 | E14US001 | Accueil-tableau de bord contextualisé (`D-20`) | E14 🆕 | ⬜ |
 | E14US002 | Aide contextuelle « ce qui est saisissable & pourquoi » | E14 🆕 | ⬜ |
 | E15US001 | Jeu d'essai : générer des inscrits + scénarios rejouables | E15 🆕 | ⬜ |

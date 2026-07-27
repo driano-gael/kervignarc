@@ -129,6 +129,14 @@ Tout ce qu'il faut pour préparer un tournoi avant le jour J :
   bannière). *(MVP : premier tour, ensemencement au classement scratch, gabarit du tournoi ; les duels
   d'équipes viendront plus tard.)*
 
+- **Retour de génération lisible & position visible** (dernier fait marquant, 27/07) : sur l'écran de
+  placement, le bouton **« Générer le plan »** ne *paraît plus muet* — il affiche « Génération… »
+  pendant qu'il travaille puis **confirme ce qu'il a produit** (tous placés, ou le nombre en réserve,
+  ou « aucun archer à placer » si le départ est vide) ; en cas d'échec, un message lisible s'affiche.
+  Et la **position** de chaque archer (A, B, C, D…) est maintenant **affichée côté organisateur**,
+  comme côté public — elle n'apparaissait que sur les cases vides. Détail dans
+  [`2026-07-27-23h16-retour-generation-et-position-au-placement.md`](2026-07-27-23h16-retour-generation-et-position-au-placement.md).
+
 *Restent à venir : la séparation catégorie/blason et le placement intégral 1→N du grand format.*
 
 ### 6. La saisie des scores de qualification — *terminé, et robuste*
@@ -282,12 +290,12 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **73 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026. **`SUIVI-US.md`
+- **74 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
-  livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Les trois
-  dernières livrées sont des **retours de la démo du 27/07** : le **cycle de vie à 7 statuts**
-  (E01US017), l'**horaire `HH:MM` obligatoire** (E02US010) et l'**accès réseau LAN + QR de cible à
-  l'écran** (E11US008).
+  livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Les
+  quatre dernières livrées sont des **retours de la démo du 27/07** : le **cycle de vie à 7 statuts**
+  (E01US017), l'**horaire `HH:MM` obligatoire** (E02US010), l'**accès réseau LAN + QR de cible à
+  l'écran** (E11US008) et le **retour visuel de génération + position A..D au placement** (E03US011).
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
@@ -299,12 +307,13 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
   (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**), l'**abandon /
   disqualification** (E04US015 — qualif *et* duels) puis le **cycle de vie d'un départ** (E12US008).
-- Dernière US livrée : **E11US008** (accès réseau LAN + QR de rattachement à l'écran) — US à
-  **surface visible**, retour de la démo du 27/07. Le lancement de développement écoute désormais
-  **sur le réseau** (comme le fichier exécutable) et **affiche l'adresse à ouvrir depuis une
-  tablette** ; l'écran **Postes de cible** montre, pour chaque cible, son **QR de rattachement**
-  (agrandissable pour le scan) en plus du code — sans passer par le PDF. *(Livrée juste avant :
-  **E02US010**, l'horaire `HH:MM` obligatoire, et **E01US017**, le cycle de vie à 7 statuts.)*
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — la fin du **lot démo** (**E03US011**
-  retour visuel de placement + position A..D, puis E01US022 blason FFTA par défaut), puis la séquence
-  J2 reprend à la **bascule de tour** (E12US002). Le fil **équipes** est débloqué (E13US002+).
+- Dernière US livrée : **E03US011** (placement : retour visuel de génération + position A..D côté
+  admin) — US à **surface visible**, correctif **front** (retour de la démo du 27/07). Le bouton
+  **« Générer le plan »** montre qu'il travaille (« Génération… ») puis **confirme le résultat**
+  (« Plan prêt » si tous placés, sinon le compte de placés / en réserve, ou « aucun archer à placer »
+  si le départ est vide) — fini le bouton qui *paraissait muet*. Et chaque archer posé affiche sa
+  **position** (A, B, C, D…) sur sa cible **côté organisateur**, comme sur l'écran public. *(Livrée
+  juste avant : **E11US008**, l'accès réseau LAN + QR de cible à l'écran.)*
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — la fin du **lot démo** (**E01US022** blason
+  FFTA par défaut par catégorie), puis la séquence J2 reprend à la **bascule de tour** (E12US002). Le
+  fil **équipes** est débloqué (E13US002+).
