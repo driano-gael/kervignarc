@@ -142,6 +142,14 @@ l'événement.
   question ouverte).
 - **Dépend de** : E05US001 · **Jalon** : J4
 
+### E03US011 — Placement : retour visuel de génération + position (A..D) visible
+*En tant qu'*administrateur, *je veux* voir que « Générer le plan » travaille et aboutit, et voir la **position** (A, B, C, D…) de chaque archer sur sa cible après placement, *afin de* comprendre ce qui se passe et vérifier le placement.
+- **Contexte** : retours de la démo du 27/07/2026. (1) Le bouton « Générer le plan » (`Placement.tsx`) déclenche un PUT `/plan-de-cibles` **sans aucun retour visuel** (ni chargement, ni succès, ni erreur) → il **paraît muet** ; à trancher : muet-mais-ok ou muet-en-échec. (2) La position (lettre `A..D`) n'est **pas** affichée sur l'écran admin de placement, alors qu'elle l'est côté public (`PlanCiblesPublic.tsx`).
+- **CA — retour de génération** : cliquer « Générer le plan » montre un état **en cours** (bouton occupé), puis un **succès** (le plan mis à jour s'affiche) ou une **erreur lisible** en cas d'échec ; l'échec silencieux éventuel est diagnostiqué et corrigé.
+- **CA — position visible** : chaque archer placé affiche sa **position** (A, B, C, D…, cf. E01US019 au-delà de D) sur sa cible **côté admin**, comme côté public.
+- **Notes** : correctifs **front** (présentation) ; pas de changement de domaine attendu. ⚠️ Front sans tests de rendu → vérifier **à l'écran**. US à **surface visible** → doc fonctionnelle + journal d'avancement.
+- **Dépend de** : E03US001, E03US004 · **Jalon** : J1 · **Origine** : démo 27/07/2026
+
 ---
 
 ## Correspondance ancien → nouveau (maille du 17/07/2026)

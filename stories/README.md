@@ -12,6 +12,13 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 > **3 US réécrites** (E04US001, E10US003, E10US007 — leur intitulé v0.1 était contredit), **1 caduque**
 > (E10US004), **12 créées** dont l'**EPIC-12** (pilotage du jour J), qui **porte la valeur du produit** et
 > qu'aucun EPIC ne couvrait. Détail des impacts : [CDC UX §14](../cahier-des-charges-ux.md).
+>
+> ⚠️ **Ajouts de la démo du 27/07/2026** — retours du client final + du développeur. **Bugs & ajouts**
+> réutilisent des US déjà spécifiées (E02US010 horaire, E01US017 7 statuts) ou en créent de neuves
+> (E11US008 LAN+QR, E03US011 placement, E01US022 blason FFTA). **Deux nouveaux épics** :
+> [`E14`](E14-lisibilite-admin.md) (accueil & lisibilité admin) et
+> [`E15`](E15-jeu-d-essai-simulation.md) (jeu d'essai & simulation). Priorité et suivi :
+> [`SUIVI-US.md`](../journal-d-avancement/SUIVI-US.md) § « Ajouts de la démo du 27/07/2026 ».
 
 ## Jalons de valeur
 | Jalon | Valeur livrée |
