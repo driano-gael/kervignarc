@@ -12,6 +12,7 @@ import datetime
 import pytest
 
 from application.erreurs import (
+    TournoiArchiveNonModifiable,
     TournoiEnCoursNonSupprimable,
     TournoiIntrouvable,
     TransitionStatutInvalide,
@@ -125,70 +126,194 @@ def test_modifier_propage_l_erreur_de_domaine() -> None:
         service.modifier(cree.id, "   ", _DATE)
 
 
-# --- Cycle de vie : démarrer / terminer (E01US002) ---
+# --- Cycle de vie enrichi (E01US017, ADR-0026 §2) : graphe des transitions ---
+# La garde de complétude du passage `brouillon → prêt` (E12US005 à froid) arrive avec la tranche
+# suivante ; ici `vers_pret` n'est gardé que par la légalité de l'arête — un brouillon quelconque
+# atteint `prêt` dans ces tests de graphe.
 
 
-def test_demarrer_puis_terminer() -> None:
-    """`demarrer` fait passer en cours ; `terminer` fait passer à terminé."""
-    service = ServiceTournois(FauxTournoiRepository())
-    cree = service.creer("Trophée", _DATE)
+def _id_cree(service: ServiceTournois, nom: str = "Trophée") -> int:
+    cree = service.creer(nom, _DATE)
     assert cree.id is not None
-    assert cree.statut is StatutTournoi.BROUILLON
-    assert service.demarrer(cree.id).statut is StatutTournoi.EN_COURS
-    assert service.terminer(cree.id).statut is StatutTournoi.TERMINE
+    return cree.id
 
 
-def test_demarrer_refuse_si_deja_demarre() -> None:
-    """Démarrer un tournoi non brouillon lève `TransitionStatutInvalide` (→ 409)."""
+def _amener(service: ServiceTournois, tid: int, statut: StatutTournoi) -> None:
+    """Amène un tournoi neuf (brouillon) au statut voulu par le chemin nominal du graphe."""
+    if statut is StatutTournoi.BROUILLON:
+        return
+    service.vers_pret(tid)
+    if statut is StatutTournoi.PRET:
+        return
+    service.demarrer(tid)  # en_cours
+    if statut is StatutTournoi.EN_COURS:
+        return
+    if statut is StatutTournoi.EN_PAUSE:
+        service.mettre_en_pause(tid)
+        return
+    service.terminer(tid)  # termine
+    if statut is StatutTournoi.TERMINE:
+        return
+    if statut is StatutTournoi.ARCHIVE:
+        service.archiver(tid)
+        return
+    raise AssertionError(f"Chemin non couvert pour {statut}.")
+
+
+def test_chemin_nominal_brouillon_pret_en_cours_termine_archive() -> None:
+    """Le chemin de vie complet enchaîne les cinq statuts nominaux dans l'ordre."""
     service = ServiceTournois(FauxTournoiRepository())
-    cree = service.creer("Trophée", _DATE)
-    assert cree.id is not None
-    service.demarrer(cree.id)
+    tid = _id_cree(service)
+    assert service.consulter(tid).statut is StatutTournoi.BROUILLON
+    assert service.vers_pret(tid).statut is StatutTournoi.PRET
+    assert service.demarrer(tid).statut is StatutTournoi.EN_COURS
+    assert service.terminer(tid).statut is StatutTournoi.TERMINE
+    assert service.archiver(tid).statut is StatutTournoi.ARCHIVE
+
+
+def test_pret_peut_revenir_brouillon() -> None:
+    """`brouillon ⇄ prêt` : un tournoi prêt peut revenir en brouillon pour rééditer."""
+    service = ServiceTournois(FauxTournoiRepository())
+    tid = _id_cree(service)
+    service.vers_pret(tid)
+    assert service.revenir_brouillon(tid).statut is StatutTournoi.BROUILLON
+
+
+def test_pause_puis_reprise() -> None:
+    """`en_cours ⇄ en_pause` : mise en pause réversible sans terminer."""
+    service = ServiceTournois(FauxTournoiRepository())
+    tid = _id_cree(service)
+    _amener(service, tid, StatutTournoi.EN_COURS)
+    assert service.mettre_en_pause(tid).statut is StatutTournoi.EN_PAUSE
+    assert service.reprendre(tid).statut is StatutTournoi.EN_COURS
+
+
+@pytest.mark.parametrize("depuis", [StatutTournoi.BROUILLON, StatutTournoi.EN_COURS])
+def test_vers_pret_refuse_hors_brouillon(depuis: StatutTournoi) -> None:
+    """`vers_pret` n'est légal que depuis `brouillon` (en cours → 409)."""
+    if depuis is StatutTournoi.BROUILLON:
+        return  # cas légal, couvert ailleurs
+    service = ServiceTournois(FauxTournoiRepository())
+    tid = _id_cree(service)
+    _amener(service, tid, depuis)
     with pytest.raises(TransitionStatutInvalide):
-        service.demarrer(cree.id)
+        service.vers_pret(tid)
+
+
+def test_demarrer_refuse_si_pas_pret() -> None:
+    """Démarrer passe désormais par `prêt` : depuis un brouillon → 409."""
+    service = ServiceTournois(FauxTournoiRepository())
+    tid = _id_cree(service)
+    with pytest.raises(TransitionStatutInvalide):
+        service.demarrer(tid)  # encore brouillon, pas prêt
+
+
+def test_reprendre_refuse_si_pas_en_pause() -> None:
+    """Reprendre un tournoi qui n'est pas en pause lève `TransitionStatutInvalide`."""
+    service = ServiceTournois(FauxTournoiRepository())
+    tid = _id_cree(service)
+    _amener(service, tid, StatutTournoi.EN_COURS)
+    with pytest.raises(TransitionStatutInvalide):
+        service.reprendre(tid)
 
 
 def test_terminer_refuse_si_pas_en_cours() -> None:
     """Terminer un tournoi non démarré lève `TransitionStatutInvalide` (→ 409)."""
     service = ServiceTournois(FauxTournoiRepository())
-    cree = service.creer("Trophée", _DATE)
-    assert cree.id is not None
+    tid = _id_cree(service)
     with pytest.raises(TransitionStatutInvalide):
-        service.terminer(cree.id)
+        service.terminer(tid)
 
 
-# --- Suppression (E01US002) ---
-
-
-def test_supprimer_un_brouillon() -> None:
-    """Un tournoi brouillon est supprimable."""
+def test_archiver_refuse_si_pas_termine() -> None:
+    """Archiver un tournoi non terminé lève `TransitionStatutInvalide` (→ 409)."""
     service = ServiceTournois(FauxTournoiRepository())
-    cree = service.creer("Trophée", _DATE)
-    assert cree.id is not None
-    service.supprimer(cree.id)
+    tid = _id_cree(service)
+    _amener(service, tid, StatutTournoi.EN_COURS)
+    with pytest.raises(TransitionStatutInvalide):
+        service.archiver(tid)
+
+
+@pytest.mark.parametrize(
+    "depuis",
+    [
+        StatutTournoi.BROUILLON,
+        StatutTournoi.PRET,
+        StatutTournoi.EN_COURS,
+        StatutTournoi.EN_PAUSE,
+    ],
+)
+def test_annuler_depuis_les_etats_vivants(depuis: StatutTournoi) -> None:
+    """`annuler` part de brouillon/prêt/en_cours/en_pause et mène à `annulé` (terminal)."""
+    service = ServiceTournois(FauxTournoiRepository())
+    tid = _id_cree(service)
+    _amener(service, tid, depuis)
+    assert service.annuler(tid).statut is StatutTournoi.ANNULE
+
+
+@pytest.mark.parametrize("depuis", [StatutTournoi.TERMINE, StatutTournoi.ARCHIVE])
+def test_annuler_refuse_depuis_termine_ou_archive(depuis: StatutTournoi) -> None:
+    """On n'annule pas un tournoi joué jusqu'au bout (terminé) ni archivé (→ 409)."""
+    service = ServiceTournois(FauxTournoiRepository())
+    tid = _id_cree(service)
+    _amener(service, tid, depuis)
+    with pytest.raises(TransitionStatutInvalide):
+        service.annuler(tid)
+
+
+def test_modifier_refuse_si_archive() -> None:
+    """Un tournoi archivé est en lecture seule → `TournoiArchiveNonModifiable` (409)."""
+    service = ServiceTournois(FauxTournoiRepository())
+    tid = _id_cree(service)
+    _amener(service, tid, StatutTournoi.ARCHIVE)
+    with pytest.raises(TournoiArchiveNonModifiable):
+        service.modifier(tid, "Renommé", _DATE)
+
+
+# --- Suppression (E01US002, permissions élargies E01US017) ---
+
+
+@pytest.mark.parametrize(
+    "depuis",
+    [StatutTournoi.BROUILLON, StatutTournoi.PRET, StatutTournoi.TERMINE],
+)
+def test_supprimer_autorise_hors_etats_vivants(depuis: StatutTournoi) -> None:
+    """Un tournoi brouillon, prêt ou terminé est supprimable."""
+    service = ServiceTournois(FauxTournoiRepository())
+    tid = _id_cree(service)
+    _amener(service, tid, depuis)
+    service.supprimer(tid)
     assert service.lister() == []
 
 
-def test_supprimer_un_termine() -> None:
-    """Un tournoi terminé est supprimable."""
+def test_supprimer_un_annule() -> None:
+    """Un tournoi annulé (trace) reste supprimable si on veut vraiment l'effacer."""
     service = ServiceTournois(FauxTournoiRepository())
-    cree = service.creer("Trophée", _DATE)
-    assert cree.id is not None
-    service.demarrer(cree.id)
-    service.terminer(cree.id)
-    service.supprimer(cree.id)
+    tid = _id_cree(service)
+    service.annuler(tid)
+    service.supprimer(tid)
     assert service.lister() == []
 
 
-def test_supprimer_refuse_si_en_cours() -> None:
-    """Un tournoi en cours n'est pas supprimable → `TournoiEnCoursNonSupprimable` (409)."""
+@pytest.mark.parametrize("depuis", [StatutTournoi.EN_COURS, StatutTournoi.EN_PAUSE])
+def test_supprimer_refuse_si_vivant(depuis: StatutTournoi) -> None:
+    """Un tournoi en cours ou en pause n'est pas supprimable → `TournoiEnCoursNonSupprimable`."""
     service = ServiceTournois(FauxTournoiRepository())
-    cree = service.creer("Trophée", _DATE)
-    assert cree.id is not None
-    service.demarrer(cree.id)
+    tid = _id_cree(service)
+    _amener(service, tid, depuis)
     with pytest.raises(TournoiEnCoursNonSupprimable):
-        service.supprimer(cree.id)
-    assert service.consulter(cree.id).statut is StatutTournoi.EN_COURS
+        service.supprimer(tid)
+    assert service.consulter(tid).statut is depuis
+
+
+def test_supprimer_refuse_si_archive() -> None:
+    """Un tournoi archivé est en lecture seule → `TournoiArchiveNonModifiable` (409)."""
+    service = ServiceTournois(FauxTournoiRepository())
+    tid = _id_cree(service)
+    _amener(service, tid, StatutTournoi.ARCHIVE)
+    with pytest.raises(TournoiArchiveNonModifiable):
+        service.supprimer(tid)
+    assert service.consulter(tid).statut is StatutTournoi.ARCHIVE
 
 
 def test_supprimer_leve_si_introuvable() -> None:

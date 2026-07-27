@@ -100,5 +100,56 @@ def test_demarrer_passe_en_cours() -> None:
 
 def test_terminer_passe_termine() -> None:
     """`terminer` renvoie une copie au statut `termine`."""
-    tournoi = Tournoi.creer("Trophée", _DATE).demarrer()
+    tournoi = Tournoi.creer("Trophée", _DATE).vers_pret().demarrer()
     assert tournoi.terminer().statut is StatutTournoi.TERMINE
+
+
+# --- Cycle de vie enrichi (E01US017, ADR-0026 §4) : transitions pures ---
+# Chaque transition ne fait que porter la nouvelle valeur (l'enchaînement légal et les gardes
+# vivent dans le service — ADR-0007/0026 §4). On vérifie ici la cible de chaque arête du graphe.
+
+
+def test_vers_pret_passe_pret_et_preserve_le_reste() -> None:
+    """`vers_pret` renvoie une copie au statut `prêt`, le reste inchangé (immuabilité)."""
+    tournoi = Tournoi.creer("Trophée", _DATE, "Quimper", TypeTournoi.OFFICIEL)
+    pret = tournoi.vers_pret()
+    assert pret.statut is StatutTournoi.PRET
+    assert (pret.nom, pret.date, pret.lieu, pret.type_tournoi) == (
+        tournoi.nom,
+        tournoi.date,
+        tournoi.lieu,
+        tournoi.type_tournoi,
+    )
+    assert tournoi.statut is StatutTournoi.BROUILLON  # l'original n'est pas muté
+
+
+def test_revenir_brouillon_repasse_brouillon() -> None:
+    """`revenir_brouillon` rétrograde un `prêt` en `brouillon`."""
+    pret = Tournoi.creer("Trophée", _DATE).vers_pret()
+    assert pret.revenir_brouillon().statut is StatutTournoi.BROUILLON
+
+
+def test_demarrer_passe_de_pret_a_en_cours() -> None:
+    """`demarrer` renvoie une copie `en_cours` (depuis `prêt` — ADR-0026)."""
+    pret = Tournoi.creer("Trophée", _DATE).vers_pret()
+    assert pret.demarrer().statut is StatutTournoi.EN_COURS
+
+
+def test_mettre_en_pause_puis_reprendre() -> None:
+    """`mettre_en_pause` gèle en `en_pause` ; `reprendre` revient à `en_cours` (réversible)."""
+    en_cours = Tournoi.creer("Trophée", _DATE).vers_pret().demarrer()
+    en_pause = en_cours.mettre_en_pause()
+    assert en_pause.statut is StatutTournoi.EN_PAUSE
+    assert en_pause.reprendre().statut is StatutTournoi.EN_COURS
+
+
+def test_archiver_passe_archive() -> None:
+    """`archiver` verrouille un `terminé` en `archivé`."""
+    termine = Tournoi.creer("Trophée", _DATE).vers_pret().demarrer().terminer()
+    assert termine.archiver().statut is StatutTournoi.ARCHIVE
+
+
+def test_annuler_passe_annule() -> None:
+    """`annuler` renvoie une copie au statut terminal `annulé` (conserve la trace)."""
+    tournoi = Tournoi.creer("Trophée", _DATE)
+    assert tournoi.annuler().statut is StatutTournoi.ANNULE

@@ -2,7 +2,7 @@
 
 Enrichit la graine du walking skeleton (E00US009, nom seul) avec les métadonnées de
 création — **date**, **lieu** (facultatif), **type** officiel / non officiel (E01US001) — et son
-**cycle de vie** (`statut` : brouillon → en cours → terminé, E01US002). Agrégat de domaine **pur**
+**cycle de vie** (`statut`, sept statuts — E01US002 puis E01US017/[ADR-0026]). Agrégat **pur**
 (aucune dépendance framework, immuable) : `creer`/`modifier` valident les valeurs, les transitions
 renvoient une copie. Les autres aspects de configuration (catégories, blasons, gabarit de salle,
 barème, **départs**…) vivent dans leurs propres agrégats.
@@ -31,17 +31,36 @@ class TypeTournoi(str, Enum):
 
 
 class StatutTournoi(str, Enum):
-    """Cycle de vie d'un tournoi (E01US002).
+    """Cycle de vie d'un tournoi à **sept statuts** (E01US017, [ADR-0026]).
 
-    `brouillon` → **démarrer** → `en_cours` → **terminer** → `terminé`. Un tournoi `en_cours`
-    n'est pas supprimable (il faut d'abord le terminer). L'**enchaînement** de ces états (qui
-    peut passer de quoi à quoi) est un **conflit d'état** arbitré par le service applicatif
-    (ADR-0007), au même titre que l'existence : l'agrégat, lui, ne porte que la valeur.
+    Enrichit le cycle à trois statuts d'E01US002 (`brouillon → en_cours → terminé`) : chaque
+    statut porte un comportement distinct (règle « un statut n'existe que s'il change un
+    comportement »).
+
+    ```
+    brouillon ⇄ prêt ─(démarrer)→ en_cours ─(terminer)→ terminé ─(archiver)→ archivé
+        │        │                  ⇅ (mettre en pause / reprendre)
+        │        │                en_pause
+        └────────┴──────────────────┴──(annuler)──→ annulé   (terminal)
+    ```
+
+    - `prêt` : config **complète et validée** (feu vert au démarrage) ; suppression encore libre.
+    - `en_pause` : **gèle la saisie** de tout le tournoi sans le terminer ; reprend en `en_cours`.
+    - `archivé` : **verrou total**, lecture seule définitive (après export, EPIC-11).
+    - `annulé` : tournoi abandonné, **conserve la trace** (≠ suppression) ; terminal.
+
+    L'**enchaînement** (qui peut passer de quoi à quoi) et les **gardes** sont arbitrés par le
+    service applicatif (ADR-0007/0026 §4) : l'agrégat, lui, ne porte que la valeur et des
+    transitions **pures** (précondition garantie en amont).
     """
 
     BROUILLON = "brouillon"
+    PRET = "pret"
     EN_COURS = "en_cours"
+    EN_PAUSE = "en_pause"
     TERMINE = "termine"
+    ARCHIVE = "archive"
+    ANNULE = "annule"
 
 
 @dataclass(frozen=True)
@@ -97,13 +116,40 @@ class Tournoi:
             type_tournoi=type_tournoi,
         )
 
+    def vers_pret(self) -> Tournoi:
+        """Renvoie une copie passée `prêt` (précondition `brouillon` + complétude garantie en
+        amont)."""
+        return replace(self, statut=StatutTournoi.PRET)
+
+    def revenir_brouillon(self) -> Tournoi:
+        """Renvoie une copie repassée `brouillon` (rétrogradation d'un `prêt` dont la config n'est
+        plus complète, ou renoncement au feu vert — précondition `prêt` garantie en amont)."""
+        return replace(self, statut=StatutTournoi.BROUILLON)
+
     def demarrer(self) -> Tournoi:
-        """Renvoie une copie passée `en_cours` (précondition `brouillon` garantie en amont)."""
+        """Renvoie une copie passée `en_cours` (précondition `prêt` garantie en amont)."""
+        return replace(self, statut=StatutTournoi.EN_COURS)
+
+    def mettre_en_pause(self) -> Tournoi:
+        """Renvoie une copie passée `en_pause` (précondition `en_cours` garantie en amont)."""
+        return replace(self, statut=StatutTournoi.EN_PAUSE)
+
+    def reprendre(self) -> Tournoi:
+        """Renvoie une copie repassée `en_cours` (précondition `en_pause` garantie en amont)."""
         return replace(self, statut=StatutTournoi.EN_COURS)
 
     def terminer(self) -> Tournoi:
         """Renvoie une copie passée `terminé` (précondition `en_cours` garantie en amont)."""
         return replace(self, statut=StatutTournoi.TERMINE)
+
+    def archiver(self) -> Tournoi:
+        """Renvoie une copie passée `archivé` (verrou total ; précondition `terminé` en amont)."""
+        return replace(self, statut=StatutTournoi.ARCHIVE)
+
+    def annuler(self) -> Tournoi:
+        """Renvoie une copie passée `annulé` — terminal, conserve la trace (précondition : non
+        `terminé`/`archivé`/`annulé`, garantie en amont)."""
+        return replace(self, statut=StatutTournoi.ANNULE)
 
 
 def _nom_valide(nom: str) -> str:
