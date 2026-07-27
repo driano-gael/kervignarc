@@ -30,11 +30,13 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Série** | `Serie` | Ensemble de volées validé d'un bloc. |
 | **Score** | `score` | Total de points (cumul en qualif, points de set en duel). |
 | **Barème** | `Bareme` | Règle de calcul/victoire d'une phase (cumul, sets, shoot-off, BSO). |
+| **Barème de duel** | `BaremeDuel` | Format d'un **duel** (E04US013) : `mode` (sets / cumul), nombre de manches, flèches par volée, seuil de points de set. Presets FFTA classique (1er à **6**), poulies (**cumul**, A.7.5.2), club (1er à **4**). Résolu par **arme** (résolveur injecté, défaut FFTA — configurable en E01US011). Distinct du `BaremeQualification` (volées × flèches, cumul). |
 | **Qualification** | phase type `qualification` | Phase de classement par cumul de volées. |
-| **Barrage** | phase type `barrage` | Tir de départage (souvent 1 flèche) pour les égalités décisives. |
-| **Duel / Match** | `Match` | Affrontement entre deux **participants** (archer en individuel, équipe en épreuve par équipes — ADR-0028). |
-| **Set** | `Set` | Manche d'un duel ; le vainqueur marque des points de set. |
-| **Shoot-off** | — | Tir de barrage (1 flèche) ; départage au plus près du centre. |
+| **Barrage** | phase type `barrage` | Tir de départage d'un **classement** (places décisives, §8.1, E06US003). À **ne pas confondre** avec le **tir de barrage d'un duel** (le *shoot-off*, ci-dessous, `domain.duel.Barrage`) : deux mécanismes distincts (le classement départage aux 10/9 ; le duel à la flèche puis au plus près du centre). |
+| **Duel / Match** | `Match` | Affrontement entre deux **participants** (archer en individuel, équipe en épreuve par équipes — ADR-0028). Son **scoring** (E04US013) est l'agrégat `Duel` (`domain/duel.py`), distinct du `Match` de structure d'arbre (`domain/tableau.py`). |
+| **Set / Manche** | `MancheDuel` | Une **manche** d'un duel : deux **volées** opposées (E04US013). Codée `MancheDuel` — `set` est réservé en Python. |
+| **Point de set** | — | Points d'une manche (§7) : **2** au vainqueur de la manche, **1-1** à égalité, **0** au perdant ; premier à `points_pour_gagner` (6 FFTA / 4 club) gagne le duel. |
+| **Shoot-off** | `domain.duel.Barrage` | **Tir de barrage d'un duel** (§8.2, E04US013) : à égalité de sets (ou de cumul), **1 flèche** par camp, plus haut score ; à flèches égales, le scoreur **désigne** le plus près du centre (l'appli ne mesure pas la distance). |
 | **Big Shoot Off (BSO)** | phase type `big_shoot_off` | Grande finale au format tir décisif. |
 | **Tableau** | `Tableau` | Arbre de matchs à élimination. |
 | **Tableau principal** | — | Arbre menant au titre. |

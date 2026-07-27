@@ -35,7 +35,7 @@ erDiagram
     TOURNOI ||--o{ SERIE : "saisie qualif"
     ARCHER ||--o{ SERIE : "saisit"
     SERIE ||--o{ VOLEE : "regroupe"
-    MATCH ||--o{ SET_SCORE : "score en sets"
+    PHASE ||--o{ DUEL : "tir des duels (E04US013)"
     ARCHER ||--o{ CLASSEMENT : "classé"
 ```
 
@@ -314,9 +314,13 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 > **opaque** au moteur (aucune branche `if équipe`, ADR-0028 décision n°3). La note « équipes hors
 > périmètre » du cadrage du 14/07 est **caduque** depuis ADR-0028 (18/07). C'est pourquoi le match ne
 > porte pas `archer_a_id`/`archer_b_id` mais `participant_a`/`participant_b` — le « à trancher **avant**
-> d'écrire le moteur » l'est désormais : le moteur (E05US005) oppose des `Participant`. La persistance
-> du match (colonnes ci-dessus) relève d'E04US013 ; l'entité `EQUIPE`/`MEMBRE_EQUIPE` et la
-> composition, d'E13US002.
+> d'écrire le moteur » l'est désormais : le moteur (E05US005) oppose des `Participant`.
+>
+> ⚠️ **`MATCH` n'est pas persisté** (E04US013, [ADR-0049](adr/0049-saisie-et-scoring-des-duels.md)) :
+> les colonnes ci-dessus restent un **modèle prospectif** (une future US pourrait figer l'arbre). Fidèle
+> à ADR-0048, l'arbre est **recalculé** du classement à la demande ; E04US013 ne persiste que le **tir**
+> d'un match (table `DUEL` ci-dessous), keyé par `(phase_id, match_numero)` — pas de table `MATCH`.
+> L'entité `EQUIPE`/`MEMBRE_EQUIPE` et la composition relèvent d'E13US002.
 
 ### SERIE (E04US002)
 | id | INTEGER | PK |
@@ -351,15 +355,27 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 >
 > **Colonnes des tranches suivantes** (non encore livrées) : `saisie_uid` (idempotence **persistée**
 > au rejeu offline — E04US009 ; l'idempotence de PR2b est **en mémoire**, ADR-0036, non une colonne).
-> La **saisie en duels** (rattachement à un `MATCH`) sera modélisée avec **E04US013** ; aujourd'hui
-> `VOLEE` ne couvre que la **qualification** (via `SERIE`).
+> `VOLEE` ne couvre que la **qualification** (via `SERIE`) ; la **saisie en duels** est livrée
+> (E04US013) dans la table `DUEL` (ci-dessus), qui porte les volées de duel en **JSON** (elle ne
+> réutilise pas `VOLEE`, agrégat de qualification distinct — [ADR-0049](adr/0049-saisie-et-scoring-des-duels.md)).
 
-### SET_SCORE (duels)
-| id | INTEGER | PK |
-| match_id | INTEGER | FK → MATCH, NOT NULL |
-| archer_id | INTEGER | FK → ARCHER |
-| index_set | INTEGER | n° de set |
-| points_set | INTEGER | points de set attribués |
+### DUEL (E04US013) — le **tir** d'un match
+| phase_id | INTEGER | PK, FK → PHASE, **ON DELETE CASCADE** |
+| match_numero | INTEGER | PK (position dans l'arbre reconstruit ; **pas** une FK — `MATCH` n'est pas persisté) |
+| haut_genre / haut_ref | TEXT / INTEGER | identité du duelliste haut `{genre, ref_id}` (archer en MVP) |
+| bas_genre / bas_ref | TEXT / INTEGER | identité du duelliste bas |
+| manches | TEXT (JSON) | liste des sets : `[{numero, haut:[…zones…], bas:[…]}]` |
+| barrage | TEXT (JSON) | shoot-off, nullable : `{haut, bas, gagnant}` |
+| validee_par | TEXT | scoreur ; **NULL = non validé** |
+
+> Le **résultat** d'un match du tableau, keyé `(phase_id, match_numero)`, `ON DELETE CASCADE` sur la
+> phase (feuille, comme `PLACEMENT_TABLEAU`). Le **barème** n'est pas stocké (re-résolu de l'arme à la
+> lecture). L'**identité des duellistes est persistée** ([ADR-0049](adr/0049-saisie-et-scoring-des-duels.md)
+> §4) : elle n'est pas l'appariement *plan* (recalculé, ADR-0048) mais le fait « qui a tiré », qui
+> **ancre** le tir contre une identité stable — une divergence après re-classement est **détectée**
+> (`DuelDesynchronise`, 409), jamais un score ré-attribué en silence. Les flèches sont des `ZoneScore`
+> en **JSON** (procédé de `VOLEE.valeurs`). Pas de trace d'audit à cette US (différé, comme le plan de
+> duels).
 
 ### CLASSEMENT
 | id | INTEGER | PK |

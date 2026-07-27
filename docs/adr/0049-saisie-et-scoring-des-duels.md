@@ -12,8 +12,7 @@
   injectables, ressignature assumée « un implémenteur, aucun consommateur ») · [ADR-0028](0028-participant-abstraction-du-competiteur.md)
   (le moteur oppose des `Participant`) · [ADR-0023](0023-moteur-de-placement-glouton-deterministe.md)
   /[ADR-0048](0048-cote-a-cote-des-duellistes-par-reordonnancement.md) (le tableau est **recalculé**,
-  jamais persisté ; seul le tir/la pose se matérialise) · [ADR-0035](0035-atomicite-acte-trace-session-partagee.md)
-  (atomicité acte↔trace, réutilisée pour la saisie de duel).
+  jamais persisté ; seul le tir/la pose se matérialise).
 
 ## Contexte et problème
 
@@ -106,20 +105,38 @@ autre mécanisme que le départage de classement ».
 
 ### 4. Le vainqueur est **transmis** à `Tableau.jouer` ; on persiste le **tir**, on **reconstruit** le tableau
 
-Fidèle à ADR-0023/0048 : le tableau **n'est pas persisté**. On persiste les **résultats de duel** (le
-tir : les manches et le barrage, par `(phase_id, match_numero, camp)`), et on **reconstruit** le
-tableau à la demande — `classement → construire_tableau → rejeu` des duels **terminés** dans l'ordre
-des tours (`Tableau.jouer(numero, vainqueur)`). C'est le **pendant** de ce que `ServicePlacementDuels`
-fait déjà pour le tour 1 ; le rejeu peuple les tours ≥ 2 (occupants `VainqueurDe`).
+Fidèle à ADR-0023/0048 : le tableau **n'est pas persisté**. On persiste le **tir** de chaque match et
+on **reconstruit** le tableau à la demande — `classement → construire_tableau → rejeu` des duels
+**validés** dans l'ordre des tours (`Tableau.jouer(numero, vainqueur)`). C'est le **pendant** de ce que
+`ServicePlacementDuels` fait déjà pour le tour 1 ; le rejeu peuple les tours ≥ 2 (occupants
+`VainqueurDe`).
 
-- **Table dédiée `resultat_duel`** (une ligne par volée de duel : `phase_id, match_numero, camp,
-  manche_numero, valeurs`) + le barrage (`manche_numero = 0` conventionnel, une flèche par camp, et le
-  `gagnant_designe`). Scope **phase** (`ELIMINATION_DIRECTE`), `ON DELETE CASCADE` sur `phase_id`.
-  Migration Alembic `0030`.
-- **Aucun `Match`/`Tableau` en base** : les participants d'un match (donc l'arme, donc le barème) sont
-  **dérivés** de la reconstruction — déterministe (ADR-0023).
-- La saisie réutilise l'**atomicité acte↔trace** d'ADR-0035 (la validation d'un duel consigne un
-  `AuditLog`, même session/commit).
+- **Table dédiée `duel`** (migration `0030`), **une ligne par match**, clé primaire composite
+  `(phase_id, match_numero)`, `ON DELETE CASCADE` sur `phase_id` (feuille dérivée d'une phase, comme
+  `placement_tableau`). Colonnes : `manches` **JSON** (la liste des sets — deux volées de `ZoneScore`
+  par manche, procédé de `VoleeORM`/`BlasonORM.zones`), `barrage` **JSON** nullable (une flèche par
+  camp + `gagnant_designe`), `validee_par` (le scoreur ; `NULL` = non validé). Le **barème** n'est
+  **pas** stocké : il est re-résolu de l'arme à la lecture (à duellistes identiques, même arme, même
+  barème). **Aucun `Match`/`Tableau` en base** : la structure de l'arbre est **dérivée** de la
+  reconstruction — déterministe (ADR-0023).
+- **L'identité des deux duellistes est persistée** (`haut_genre`/`haut_ref`, `bas_genre`/`bas_ref`) —
+  et c'est un **correctif de fond** (revue adversariale). Ce n'est **pas** l'appariement *plan*
+  (recalculé du classement, ADR-0048) : c'est le fait « **qui** a tiré ce résultat ». Sans lui, le tir
+  n'était keyé que sur la **position** `match_numero`, une identité **volatile** : une correction de
+  score de qualification ré-ordonne l'ensemencement, un autre couple occupe alors ce numéro, et
+  `Tableau.jouer` — dont la garde `VainqueurHorsMatch` ne se déclenche pas (le vainqueur était
+  re-dérivé des occupants courants) — **faisait avancer le mauvais archer en silence** (« un score faux
+  et silencieux est pire qu'une erreur visible »). Désormais, à la reconstruction, si les occupants
+  recalculés **divergent** des duellistes enregistrés, le tir est **ignoré** (rejeu) et toute écriture
+  dessus **refusée** (`DuelDesynchronise`, 409) — jamais ré-attribué. Le **gel** du classement pendant
+  la phase de tableau (garde de cycle de vie) reste downstream (E01US017/E12US002) ; l'ancrage par
+  identité en fait, entre-temps, une **erreur visible** et non une corruption.
+- **Pas de trace d'audit à cette US.** La validation d'un duel enregistre son **validateur**
+  (`validee_par`) mais **ne consigne pas** d'`AuditLog` (pas d'atomicité acte↔trace ADR-0035) — même
+  choix que le **jumeau** `ServicePlacementDuels` (aucune couture d'audit). C'est un **différé assumé**,
+  additif et réversible : parité avec la validation de série (auditée, E10US005) si un besoin émerge,
+  au même point (le service reçoit alors un port d'audit). Ne pas le décrire comme livré tant qu'il ne
+  l'est pas.
 
 ### 5. Le grain `FIN_DE_DUEL` est **ouvert** pour `ELIMINATION_DIRECTE`
 
@@ -134,8 +151,10 @@ de duel** (la feuille de marque se signe « à la fin du duel », FFTA B.6.1.1).
 - **+** `Volee`/`ZoneScore` sont **mutualisés** sans coupler les racines ; le moteur reste **opaque**
   aux `Participant` (ADR-0028) et **inchangé** (E04US013 ne touche pas `tableau.py`).
 - **+** Fidélité au régime de persistance d'ADR-0023/0048 : **rien de l'arbre** n'est figé, une seule
-  table nouvelle (le **tir**), la progression **reconstruite** et donc toujours cohérente avec le
-  classement.
+  table nouvelle (le **tir**), la progression **reconstruite**. La reconstruction suit le classement
+  **courant** — un tir reste cependant **ancré** sur l'identité des duellistes qui l'ont produit, si
+  bien qu'un classement modifié après coup produit une **divergence détectée** (erreur visible), jamais
+  une ré-attribution silencieuse (cf. §4).
 - **−** Le **Big Shoot Off** (grande finale, format club) reste **hors périmètre** : sa règle n'existe
   dans aucun document (bloque E01US011). Un duel de grande finale se score comme un duel normal en
   attendant.
