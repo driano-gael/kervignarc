@@ -33,7 +33,10 @@ score désormais un duel de bout en bout** sur son appareil — manche par manch
 validation du vainqueur qui fait avancer le tableau jusqu'au podium. Le scoreur peut aussi désormais
 **déclarer un abandon ou une disqualification** — en qualification (l'archer est relégué ou sorti du
 classement, ses flèches conservées) comme en duels (l'adversaire passe d'office) —, un geste
-**réversible** qui remplace la suppression. Reste le **pilotage de la bascule de tour** le jour J.
+**réversible** qui remplace la suppression. Et un **créneau de tir affiche désormais son état**
+(ouvert / lancé / clos, déduit du tir réel) et **se protège** d'une modification ou d'une suppression
+accidentelle une fois qu'une session de tir y a commencé. Reste le **pilotage de la bascule de tour**
+le jour J.
 
 ---
 
@@ -72,7 +75,12 @@ Tout ce qu'il faut pour préparer un tournoi avant le jour J :
 
 - Le **référentiel des clubs**.
 - **Créer, éditer, supprimer un archer**.
-- Configurer les **départs** (les créneaux de tir) et **inscrire un archer** sur des départs.
+- Configurer les **départs** (les créneaux de tir) et **inscrire un archer** sur des départs. Un
+  créneau porte un **état de cycle de vie** (ouvert / lancé / clos), affiché par un **badge** et
+  **déduit tout seul** du tir réel : tant que personne n'a tiré il reste **ouvert** (librement
+  éditable) ; dès qu'une flèche est validée il passe **lancé**, puis **clos** quand tout le monde a
+  fini. Modifier ou supprimer un créneau **lancé/clos** demande alors une **confirmation chiffrée**
+  (« ce créneau est lancé, N archers ont tiré ») — on ne détruit plus une session de tir par mégarde.
 - **Contrôler les quotas** (fait en avance de phase).
 - Le **calcul du montant dû** par un archer.
 - Le **suivi des paiements** : un écran « Paiements » montre, **par archer** (dû / payé / reste,
@@ -265,7 +273,7 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **69 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026. **`SUIVI-US.md`
+- **70 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US).
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
@@ -273,18 +281,19 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
   et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (7/14)**
+  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (8/14)**
   avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003), le **tableau
   d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001), la
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
-  (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**) puis l'**abandon /
-  disqualification** (E04US015 — qualif *et* duels).
-- Dernière US livrée : **E04US015** (gérer abandon / disqualification) — US à **surface visible**. Un
-  acte **scoreur** « déclarer abandon / DSQ » **en qualification comme en duels** ([ADR-0050](../docs/adr/0050-forfait-abandon-et-disqualification.md),
-  qui **fusionne E04US015 + E12US004**). Concept unique `Forfait` **scopé à la phase** : en qualif un
-  **abandon** est relégué en fin de classement (rangé, score affiché), une **DSQ** en est sortie (rang
-  vide) ; en duels le forfaitaire **cède** son match. **Flèches préservées** (≠ suppression), acte
-  **réversible** (`D-15`), **tracé** (`FORFAIT`). **DETTE-014 résorbée** (la complétude compte un
-  forfaitaire comme « série close »). Badges au classement (« Abandon » / « Disqualifié »).
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E12US008** (cycle de vie d'un départ),
-  puis la **bascule de tour** (E12US002). Le fil **équipes** est débloqué (E13US002+).
+  (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**), l'**abandon /
+  disqualification** (E04US015 — qualif *et* duels) puis le **cycle de vie d'un départ** (E12US008).
+- Dernière US livrée : **E12US008** (cycle de vie d'un départ) — US à **surface visible**. Un créneau
+  porte un **état dérivé** (jamais saisi) : **ouvert** (aucun score) → **lancé** (au moins une flèche
+  validée) → **clos** (toutes les séries closes). Modifier/supprimer un créneau **lancé/clos** est
+  **signalé et confirmable** (alerte chiffrée, même famille qu'E12US007) ; un créneau **ouvert** reste
+  librement éditable (E02US009 inchangé). État **non stocké** : calculé en réutilisant
+  `ServiceCompletude` via un **port étroit** (comme `LecteurPaiements`). À la suppression, la
+  confirmation de cycle **subsume** celle des inscriptions. Badge d'état + confirmation côté front.
+  ([ADR-0051](../docs/adr/0051-cycle-de-vie-d-un-depart.md).)
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — la **bascule de tour** (E12US002, clé du
+  J2), puis le **remboursement** (E08US005). Le fil **équipes** est débloqué (E13US002+).

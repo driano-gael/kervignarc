@@ -24,6 +24,7 @@ const depart = (id: number, numero: number, horaire: string | null): Depart => (
   horaire,
   tarif_centimes: 0,
   quota: null,
+  etat: 'ouvert',
 })
 
 const planAvec = (

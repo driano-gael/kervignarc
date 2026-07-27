@@ -72,6 +72,37 @@ class DepartAvecInscriptions(ApplicationError):
     code = "depart_avec_inscriptions"
 
 
+class DepartEnCoursNonConfirme(ApplicationError):
+    """Édition/suppression d'un départ **lancé ou clos** non confirmée (E12US008) → 409.
+
+    **Un signalement chiffré, pas un refus** — même famille que `ReplacementNonConfirme`
+    (ADR-0040) : un créneau *ouvert* (aucun score consigné) se modifie et se supprime librement,
+    mais dès qu'une **flèche y a été tirée** (état *lancé*), et *a fortiori* quand toutes ses séries
+    sont closes (*clos*), le toucher risque de détruire une **session de tir en cours ou finie**.
+    Le geste demande donc une confirmation explicite (`modifier(..., confirme_cycle=True)` /
+    `supprimer(..., confirme_cycle=True)`).
+
+    À la différence des confirmations aveugles de la famille `DepartAvecInscriptions` (DETTE-007),
+    l'état est **dérivé au moment d'agir** d'un fait réel (scores présents, séries closes), jamais
+    saisi ni cru sur parole : `details` porte l'**état** et le **nombre d'archers ayant tiré** —
+    canal `details` du format `{code, message, details?}` (règle 5), comme `ReplacementNonConfirme`.
+
+    Sur **suppression**, la confirmation de cycle **subsume** `DepartAvecInscriptions`
+    (un créneau lancé porte forcément des inscriptions) : confirmer qu'on détruit une session de tir
+    couvre *a fortiori* les inscriptions. Un créneau *ouvert* garde exactement le comportement
+    E02US009 (seul `DepartAvecInscriptions` s'y applique) — non-régression.
+    """
+
+    code = "depart_en_cours_non_confirme"
+
+    def __init__(self, message: str, *, etat: str, archers_ayant_tire: int) -> None:
+        super().__init__(message)
+        # `details` est lu tel quel par `_sur_erreur_application` (frontière API) et sérialisé dans
+        # la réponse — le front y retrouve l'état chiffré (lancé/clos, combien ont tiré) sans le
+        # reconstituer.
+        self.details = {"etat": etat, "archers_ayant_tire": archers_ayant_tire}
+
+
 class ArcherIntrouvable(ApplicationError):
     """Aucun archer ne correspond à l'identifiant demandé."""
 

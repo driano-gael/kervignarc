@@ -38,8 +38,17 @@ export function useCreerDepart(tournoiId: number) {
 export function useModifierDepart(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ departId, entree }: { departId: number; entree: ModifierDepart }) =>
-      modifierDepart(tournoiId, departId, entree),
+    // `confirmeCycle` : rejoue l'édition d'un créneau lancé/clos après le signalement
+    // `depart_en_cours_non_confirme` (E12US008).
+    mutationFn: ({
+      departId,
+      entree,
+      confirmeCycle,
+    }: {
+      departId: number
+      entree: ModifierDepart
+      confirmeCycle?: boolean
+    }) => modifierDepart(tournoiId, departId, entree, confirmeCycle),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: cleDeparts(tournoiId) }),
   })
 }
@@ -47,13 +56,17 @@ export function useModifierDepart(tournoiId: number) {
 export function useSupprimerDepart(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
+    // `confirmeCycle` (créneau lancé/clos, E12US008) et `autoriserSuppressionInscrits` (créneau
+    // ouvert à inscriptions, ADR-0018) lèvent chacun leur signalement respectif.
     mutationFn: ({
       departId,
       autoriserSuppressionInscrits,
+      confirmeCycle,
     }: {
       departId: number
       autoriserSuppressionInscrits?: boolean
-    }) => supprimerDepart(tournoiId, departId, autoriserSuppressionInscrits),
+      confirmeCycle?: boolean
+    }) => supprimerDepart(tournoiId, departId, autoriserSuppressionInscrits, confirmeCycle),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: cleDeparts(tournoiId) }),
   })
 }

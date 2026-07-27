@@ -118,9 +118,13 @@
 
 ### E12US008 — Cycle de vie d'un départ (créneau)
 *En tant qu'*organisateur, *je veux* qu'un départ **déjà lancé ou clos** ne se modifie ni ne se supprime comme un créneau encore ouvert, *afin de* ne pas détruire une session en cours de tir.
-- **CA** : un départ porte un **état** (*ouvert* · *lancé* · *clos*) ; supprimer ou modifier un créneau **lancé/clos** est **contrôlé** (au moins signalé, cf. E12US007 « alerter par calcul d'impact ») là où un créneau *ouvert* reste librement éditable ; l'état est **dérivé** d'un fait réel (heure atteinte, premier score du créneau) et non saisi à la main.
-- **Notes** : **déportée d'E02US009** ([ADR-0018](../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md)). E02US009 n'a **rien** pour distinguer un créneau lancé : `Depart` n'a pas d'état de cycle de vie, `horaire` est un libellé libre, et le lien départ → scores (placement) n'existe pas avant EPIC-03. Poser ce garde-fou plus tôt aurait été un contrôle qu'aucun chemin réel ne déclenche. Rejoint la logique d'**E12US007** (alerter selon l'impact réel, pas selon un statut saisi d'avance). **Dépend** de la modélisation du placement/déroulé.
-- **Dépend de** : E02US009, E03US001, E12US007 · **Jalon** : J2
+- **CA** : un départ porte un **état** (*ouvert* · *lancé* · *clos*) **dérivé** d'un fait réel — jamais saisi. *Ouvert* = aucun score encore consigné dans le créneau (librement éditable, comportement E02US009 inchangé) ; *lancé* = au moins une **flèche validée** dans le créneau ; *clos* = **toutes** les séries des archers placés sont **closes** (barème validé **ou** forfait). Modifier ou supprimer un créneau **lancé/clos** est **signalé et confirmable** — même mécanisme d'alerte chiffrée qu'E12US007 (le message dit combien d'archers ont tiré), l'admin peut forcer ; un créneau *ouvert* reste librement éditable.
+- **Notes** : **déportée d'E02US009** ([ADR-0018](../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md)). Tranché en [ADR-0051](../docs/adr/0051-cycle-de-vie-d-un-depart.md) :
+  - **« lancé » se dérive de la présence d'un score**, *pas* de « heure atteinte » : `Depart.horaire` est un **libellé libre** (« 9h00 »), pas une heure comparable — le dériver imposerait de re-modéliser l'horaire, hors périmètre. Le seul fait réel disponible est le tir.
+  - **L'échelle s'appuie sur un tir réel** : un créneau dont la seule « activité » serait un **forfait sans aucune flèche** reste *ouvert* (rien à protéger) — l'échelle demeure monotone (jamais *ouvert → clos* sans passer par *lancé*).
+  - **« contrôlé » = confirmable, pas bloquant** (le CA disait « au moins signalé ») : on réutilise le mécanisme d'alerte chiffrée d'E12US007. À la **suppression**, cette confirmation de cycle **subsume** le garde-fou « inscriptions » d'E02US009 (un créneau lancé porte forcément des inscriptions) — pas de double dialogue.
+  - **État dérivé, jamais stocké** : `Depart` reste un agrégat figé sans colonne de statut ; le calcul réutilise `ServiceCompletude` (mêmes placements × séries × forfaits × barème) via un **port étroit**, comme `LecteurPaiements`.
+- **Dépend de** : E02US009, E03US001, E12US005, E12US007 · **Jalon** : J2
 
 ---
 

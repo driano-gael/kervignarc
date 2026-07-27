@@ -18,6 +18,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.departs import ServiceDeparts
+from domain.cycle_depart import EtatDepart
 from domain.depart import Depart
 from infrastructure.db import WriteQueue
 
@@ -55,6 +56,12 @@ class DepartReponse(BaseModel):
 
     `tarif_centimes` est en **centimes entiers** (l'unité est dans le nom) : c'est le client qui met
     en forme des euros. `0` = gratuit. `quota` = nombre maximal d'inscrits, ou `null` (illimité).
+
+    `etat` est l'**état de cycle de vie** du créneau (E12US008), une chaîne `ouvert` / `lance` /
+    `clos` **dérivée** (jamais stockée) : `ouvert` = aucun score encore consigné (librement
+    éditable) ; `lance` = une session de tir est en cours ; `clos` = toutes les séries sont closes.
+    Le front en fait un badge et sait qu'éditer/supprimer un créneau non *ouvert* demandera une
+    confirmation.
     """
 
     id: int
@@ -63,10 +70,11 @@ class DepartReponse(BaseModel):
     horaire: str | None
     tarif_centimes: int
     quota: int | None
+    etat: str
 
     @staticmethod
-    def de_agregat(depart: Depart) -> DepartReponse:
-        """Traduit un agrégat de domaine (persisté) en DTO de réponse."""
+    def de_agregat(depart: Depart, etat: EtatDepart) -> DepartReponse:
+        """Traduit un agrégat de domaine (persisté) et son état de cycle en DTO de réponse."""
         assert depart.id is not None, "Un départ persisté a toujours un identifiant."
         return DepartReponse(
             id=depart.id,
@@ -75,6 +83,7 @@ class DepartReponse(BaseModel):
             horaire=depart.horaire,
             tarif_centimes=depart.tarif_centimes,
             quota=depart.quota,
+            etat=etat.value,
         )
 
 
@@ -97,15 +106,21 @@ async def creer_depart(
             )
         )
     )
-    return DepartReponse.de_agregat(depart)
+    # Un créneau qui vient de naître n'a ni placement ni score : il est **ouvert** par construction
+    # (E12US008). Inutile de relire l'avancement pour l'apprendre.
+    return DepartReponse.de_agregat(depart, EtatDepart.OUVERT)
 
 
 @router.get("", response_model=list[DepartReponse])
 async def lister_departs(tournoi_id: int, request: Request) -> list[DepartReponse]:
-    """Liste les départs d'un tournoi (triés par numéro) : lecture directe hors boucle."""
+    """Liste les départs d'un tournoi (triés par numéro), **avec leur état de cycle** (E12US008).
+
+    Lecture directe hors boucle. L'état (ouvert / lancé / clos) est dérivé au vol par le service
+    (placements · séries · forfaits) — le front en fait un badge par créneau.
+    """
     service: ServiceDeparts = request.app.state.service_departs
-    departs = await run_in_threadpool(service.lister, tournoi_id)
-    return [DepartReponse.de_agregat(depart) for depart in departs]
+    departs = await run_in_threadpool(service.lister_avec_etat, tournoi_id)
+    return [DepartReponse.de_agregat(depart, etat) for depart, etat in departs]
 
 
 @router.put(
@@ -114,19 +129,38 @@ async def lister_departs(tournoi_id: int, request: Request) -> list[DepartRepons
     dependencies=[Depends(exiger_admin)],
 )
 async def modifier_depart(
-    tournoi_id: int, depart_id: int, requete: ModifierDepartRequete, request: Request
+    tournoi_id: int,
+    depart_id: int,
+    requete: ModifierDepartRequete,
+    request: Request,
+    confirme_cycle: bool = False,
 ) -> DepartReponse:
-    """Édite le tarif et l'horaire d'un départ (**action admin**) : écriture via la file."""
+    """Édite le tarif et l'horaire d'un départ (**action admin**) : écriture via la file.
+
+    Renvoie `409 depart_en_cours_non_confirme` si le créneau est *lancé* ou *clos* (E12US008) : un
+    **signalement chiffré** (`details` : état + archers ayant tiré), que le client lève en rejouant
+    l'appel avec `confirme_cycle=true`. Le drapeau est en **paramètre de requête** (le corps porte
+    déjà les valeurs éditées), comme `autoriser_suppression_inscrits` de la suppression.
+    """
     service: ServiceDeparts = request.app.state.service_departs
     write_queue: WriteQueue = request.app.state.write_queue
-    depart = await asyncio.wrap_future(
-        write_queue.submit(
-            lambda: service.modifier(
-                tournoi_id, depart_id, requete.tarif_centimes, requete.horaire, requete.quota
-            )
+
+    def _modifier_et_lire_etat() -> tuple[Depart, EtatDepart]:
+        # Édition puis relecture de l'état dans **le même passage du writer** (règle 7) : l'état
+        # renvoyé reflète l'écriture qu'on vient d'appliquer, sans course avec une autre tablette.
+        depart = service.modifier(
+            tournoi_id,
+            depart_id,
+            requete.tarif_centimes,
+            requete.horaire,
+            requete.quota,
+            confirme_cycle=confirme_cycle,
         )
-    )
-    return DepartReponse.de_agregat(depart)
+        assert depart.id is not None
+        return depart, service.etat(tournoi_id, depart.id)
+
+    depart, etat = await asyncio.wrap_future(write_queue.submit(_modifier_et_lire_etat))
+    return DepartReponse.de_agregat(depart, etat)
 
 
 @router.delete(
@@ -139,15 +173,22 @@ async def supprimer_depart(
     depart_id: int,
     request: Request,
     autoriser_suppression_inscrits: bool = False,
+    confirme_cycle: bool = False,
 ) -> Response:
     """Supprime un départ d'un tournoi (**action admin**) : écriture via la file, 204 si succès.
 
-    Renvoie `409 depart_avec_inscriptions` si le créneau porte des inscriptions : un **signalement**
-    ([ADR-0018](../../../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md)), que le
-    client lève en rejouant l'appel avec `autoriser_suppression_inscrits`. La suppression confirmée
-    **efface les inscriptions** du créneau (les payées seront à rembourser — E08US005).
+    Deux signalements possibles, selon l'**état de cycle** du créneau (E12US008) :
 
-    Le drapeau est en **paramètre de requête**, comme `autoriser_suppression_engage` de la
+    - `409 depart_en_cours_non_confirme` si le créneau est *lancé* ou *clos* (une session de tir y a
+      eu lieu) : `details` chiffre l'état et les archers ayant tiré. Le client lève en rejouant avec
+      `confirme_cycle=true` — elle **subsume** le signalement d'inscriptions ci-dessous (pas de
+      double dialogue) ;
+    - `409 depart_avec_inscriptions` si le créneau est *ouvert* mais porte des inscriptions
+      ([ADR-0018](../../../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md)), levé
+      par `autoriser_suppression_inscrits=true` ; efface les inscriptions (payées à rembourser —
+      E08US005).
+
+    Les drapeaux sont en **paramètres de requête**, comme `autoriser_suppression_engage` de la
     suppression d'archer : un `DELETE` n'a pas de corps par convention HTTP (même divergence assumée
     qu'en E02US003, sanctionnée par ADR-0016).
     """
@@ -155,7 +196,12 @@ async def supprimer_depart(
     write_queue: WriteQueue = request.app.state.write_queue
     await asyncio.wrap_future(
         write_queue.submit(
-            lambda: service.supprimer(tournoi_id, depart_id, autoriser_suppression_inscrits)
+            lambda: service.supprimer(
+                tournoi_id,
+                depart_id,
+                autoriser_suppression_inscrits=autoriser_suppression_inscrits,
+                confirme_cycle=confirme_cycle,
+            )
         )
     )
     return Response(status_code=204)

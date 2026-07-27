@@ -18,10 +18,10 @@
 
 ## 🎯 Prochaine US
 
-> **`E12US008` — cycle de vie d'un départ** : faire vivre l'état d'un créneau de tir (ouvert, en
-> cours, clos…) pour piloter le déroulé du jour J. *(Prochaine du J2 en séquence ; à cadrer.)*
-> *Ensuite* : **bascule de tour** `E12US002` (lancer un tour, feu vert + lancement — clé du J2),
-> remboursement `E08US005`, prochaine cible `E04US018`.
+> **`E12US002` — lancer un tour (feu vert + lancement)** : la **clé du J2** — voir ce qui manque avant
+> de lancer, puis faire partir le tour (les 4 canaux prévenus ensemble). *(Prochaine du J2 en
+> séquence.)*
+> *Ensuite* : remboursement `E08US005`, prochaine cible `E04US018`.
 > *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
 > moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *`E12US004` (tracer un forfait) est **absorbée** par `E04US015` — voir ci-dessous.*
@@ -29,6 +29,15 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E12US008` **cycle de vie d'un départ** — US à **surface visible**. Un créneau porte un **état
+>   dérivé** (jamais saisi) : **ouvert** (aucun score) → **lancé** (au moins une flèche validée) →
+>   **clos** (toutes les séries closes, barème validé ou forfait). Modifier/supprimer un créneau
+>   **lancé/clos** est **signalé et confirmable** (alerte chiffrée, même famille qu'E12US007) ; un
+>   créneau **ouvert** reste librement éditable (E02US009 inchangé). État **non stocké** : calculé en
+>   réutilisant `ServiceCompletude` via un **port étroit** (comme `LecteurPaiements`). À la
+>   suppression, la confirmation de cycle **subsume** celle des inscriptions. Badge d'état + confirmation
+>   côté front. Décisions : [ADR-0051](../docs/adr/0051-cycle-de-vie-d-un-depart.md). Recette :
+>   [`docs/fonctionnel/E12US008.md`](../docs/fonctionnel/E12US008.md).
 > - `E04US015` **gérer abandon / disqualification** — US à **surface visible**. Un acte **scoreur**
 >   « déclarer abandon / DSQ », **en qualification comme en duels** ([ADR-0050](../docs/adr/0050-forfait-abandon-et-disqualification.md),
 >   qui **fusionne E04US015 + E12US004**). Concept unique `Forfait` **scopé à la phase** : en qualif
@@ -133,7 +142,7 @@
 | 56 | E11US001 | Release, base et mise en réseau | ✅ |
 | 57 | E11US003 | Sauvegarde & archive | ✅ |
 
-## J2 — Duels simples + bascule de tour — 🔶 **en cours (7/14)**
+## J2 — Duels simples + bascule de tour — 🔶 **en cours (8/14)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -145,9 +154,9 @@
 | 63 | E04US013 | Saisie en duels | ✅ *(backend + API + écran scoreur)* |
 | 64 | E04US015 | Gérer abandon / disqualification | ✅ *(qualif + duels, ADR-0050)* |
 | 65 | E12US004 | ~~Tracer un forfait~~ | ⛔ *(absorbée par E04US015)* |
-| 66 | E12US008 | Cycle de vie d'un départ | 🎯 |
+| 66 | E12US008 | Cycle de vie d'un départ | ✅ *(état dérivé + garde-fou confirmable, ADR-0051)* |
 | 67 | E08US005 | Rembourser une inscription payée annulée | ⬜ |
-| 68 | E12US002 | Lancer un tour (feu vert + lancement) | ⬜ |
+| 68 | E12US002 | Lancer un tour (feu vert + lancement) | 🎯 |
 | 69 | E04US018 | Afficher la prochaine cible après validation | ⬜ |
 | 70 | E07US008 | Vue publique des affectations du prochain tour | ⬜ |
 | 71 | E06US003 | Barrage de tir pour places décisives | ⬜ |
