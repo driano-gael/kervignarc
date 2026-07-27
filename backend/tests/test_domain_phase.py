@@ -78,6 +78,25 @@ def test_grain_par_defaut_de_la_qualification_est_fin_de_serie() -> None:
     assert grain_par_defaut(TypePhase.QUALIFICATION) == GrainValidation.fin_de_serie()
 
 
+def test_grain_par_defaut_de_l_elimination_directe_est_fin_de_duel() -> None:
+    """E04US013/ADR-0049 §5 : une phase à duels se valide **en fin de duel** (FFTA B.6.1.1)."""
+    assert grain_par_defaut(TypePhase.ELIMINATION_DIRECTE) == GrainValidation.fin_de_duel()
+
+
+def test_elimination_directe_accepte_le_grain_fin_de_duel() -> None:
+    """Le grain `fin de duel` est **admis** pour l'élimination directe (E04US013)."""
+    phase = Phase.creer(tournoi_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
+    modifiee = phase.avec_validation(GrainValidation.fin_de_duel())
+    assert modifiee.validation == GrainValidation.fin_de_duel()
+
+
+def test_elimination_directe_refuse_un_grain_de_serie() -> None:
+    """« Fin de série » n'a pas de sens pour un duel : seul `fin de duel` est admis (E04US013)."""
+    phase = Phase.creer(tournoi_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
+    with pytest.raises(GrainIncompatibleAvecTypePhase):
+        phase.avec_validation(GrainValidation.fin_de_serie())
+
+
 def test_avec_bareme_remplace_le_bareme_et_preserve_le_reste() -> None:
     """`avec_bareme` met à jour le barème et conserve id/tournoi/ordre/statut/type/grain."""
     phase = _phase(bareme=BaremeQualification.creer(20, 3))

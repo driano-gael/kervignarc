@@ -17,6 +17,7 @@ from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
 from domain.documents_salle import CartesScoreurs, EtiquettesCibles
+from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
 from domain.feuille_marque import FeuilleDeMarque
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
@@ -361,6 +362,42 @@ class PlacementTableauRepository(Protocol):
 
         La clé est **composite** `(phase_id, inscription_id)` : retirer un duelliste ne touche pas
         sa pose de qualification (autre table), d'où le `phase_id` requis ici.
+        """
+        ...
+
+
+class DuelRepository(Protocol):
+    """Port de persistance du **tir** d'un match du tableau (saisie en duels, E04US013, ADR-0049).
+
+    On persiste le **tir** (manches, barrage, validateur) **et l'identité des duellistes**, keyés
+    `(phase_id, match_numero)`. Cette identité n'est pas l'appariement *plan* (recalculé du
+    classement, ADR-0048) : c'est le fait « qui a tiré », qui **ancre** le résultat pour que
+    l'appelant **détecte** une divergence (classement changé) au lieu d'un score à l'aveugle
+    (ADR-0049 §4). Seul le **barème** (dérivé de l'arme) est réinjecté à la lecture — à duellistes
+    identiques, même arme, même barème.
+    """
+
+    def numeros_enregistres(self, phase_id: PhaseId) -> frozenset[int]:
+        """Les `match_numero` d'une phase qui portent un tir enregistré (`frozenset` vide sinon).
+
+        Sert la **reconstruction** de l'arbre (rejouer les duels validés) sans une requête par
+        match : on repère d'abord les matchs porteurs d'un tir, puis on `charger` ceux-là.
+        """
+        ...
+
+    def charger(self, phase_id: PhaseId, match_numero: int, *, bareme: BaremeDuel) -> Duel | None:
+        """Réhydrate le `Duel` d'un match (duellistes **stockés** + `bareme` fourni), ou `None`.
+
+        Les duellistes viennent de la base — l'appelant compare l'identité réhydratée aux occupants
+        recalculés pour détecter une divergence. Le `bareme` est re-résolu de l'arme (ADR-0049).
+        """
+        ...
+
+    def enregistrer(self, phase_id: PhaseId, match_numero: int, duel: Duel) -> Duel:
+        """Persiste le **tir et l'identité des duellistes** du match, et renvoie le duel.
+
+        Écriture idempotente par `(phase_id, match_numero)`. Le barème n'est pas stocké (re-résolu
+        l'arme à la lecture) ; les duellistes le sont (ancrage anti-ré-attribution, ADR-0049 §4).
         """
         ...
 

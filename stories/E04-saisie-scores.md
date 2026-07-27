@@ -204,7 +204,29 @@
 - **CA — vainqueur (ex-014)** : vainqueur calculé selon le barème de sets ; transmis au moteur (E05US005).
 - **CA — barrage/shoot-off (ex-016)** : à égalité, saisie d'un **shoot-off** (1 flèche) ; plus près du centre départage ; vainqueur enregistré — politique `tiebreak` (ADR-0004), presets FFTA.
 - **Notes** : **incohérence corrigée le 17/07/2026** — l'ex-`E04US016` déclarait « Dépend de E06US003 » alors que `E06US003` (barrage de places au classement) dépend elle-même de l'ex-`E04US016` : cycle. La saisie du shoot-off est le **mécanisme**, le classement de barrage en est un **consommateur** ; la dépendance ne va que dans un sens (`E06US003` → cette US). La dépendance inverse est retirée.
-- **Absorbe** : ex-E04US013, E04US014, E04US016. **Dépend de** : E01US011, E05US005 · **Jalon** : J2
+- **Arbitrages tranchés le 27/07/2026** (reversés ici — règle 9 ; livrés ; [ADR-0049](../docs/adr/0049-saisie-et-scoring-des-duels.md)) :
+  - **Dépendance E01US011 sur-affirmée, retirée.** Cette US a besoin du **mécanisme** de scoring (politique
+    de barème de duel), pas du **catalogue configurable** FFTA/club d'E01US011 (bloquée sur le Big Shoot
+    Off). Livré avec un **résolveur injecté à défaut FFTA** (`ResolveurBaremeDuel` : cumul en poulies,
+    sets sinon) ; E01US011 **configurera** au même point d'injection (règle 2) ce que cette US livre en
+    dur FFTA. Même classe d'erreur que la « dépendance ADR-0005 » et le cycle E04US016 déjà corrigés
+    ci-dessus. Le barème est résolu **par duel** depuis l'arme des participants (bracket tournoi-large du
+    MVP ; tableaux par catégorie = downstream E05US010/E06US006).
+  - **Le barrage vit dans l'agrégat `Duel`, pas dans la politique `tiebreak` d'ADR-0004.** L'interface
+    `Tiebreak.departager(DecompteDepartage)` compare les **10/9 du classement** (§8.1) — structurellement
+    autre que le shoot-off de duel (§8.2 : valeur de flèche, puis désignation du plus près du centre, que
+    l'appli **ne mesure pas**). E06US003 reste le consommateur `tiebreak` prévu (barrage de **places**).
+    Le CA « politique `tiebreak` » est donc réalisé **dans l'agrégat** (arbitrage documenté, ADR-0049 §3).
+  - **Le vainqueur est transmis à `Tableau.jouer` ; le tableau n'est pas persisté.** On persiste le
+    **tir** (manches, barrage, validateur, table `duel`) et on **reconstruit** l'arbre du classement en
+    **rejouant** les duels validés (fidèle à ADR-0023/0048). Un duel validé fait avancer le tableau à la
+    reconstruction suivante.
+  - **Grain `FIN_DE_DUEL` ouvert pour l'élimination directe** (un duel se valide en fin de duel, FFTA
+    B.6.1.1). **Big Shoot Off hors périmètre** (règle inconnue, bloque E01US011).
+- **Périmètre livré : backend** (domaine → moteur → politiques → persistance → service → **API scoreur**).
+  L'**écran tactile scoreur** (grille de saisie de duel) est une **tranche front dédiée**, à suivre — comme
+  la grille d'E04US002 avait suivi son backend. Choix de cadrage du 27/07/2026.
+- **Absorbe** : ex-E04US013, E04US014, E04US016. **Dépend de** : E05US005 *(E01US011 retirée — voir arbitrage ci-dessus)* · **Jalon** : J2
 
 ### E04US015 — Gérer abandon / disqualification
 *En tant que* scoreur, *je veux* enregistrer un abandon/DSQ, *afin de* refléter la réalité.

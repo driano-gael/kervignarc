@@ -237,19 +237,20 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **67 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/07/2026 — E03US009
-  optimiste d'un cran sur la branche jusqu'à son merge. **`SUIVI-US.md` fait foi sur le compte
-  exact.**
+- **68 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026 — la dernière
+  (E04US013) optimiste d'un cran sur la branche jusqu'à son merge. **`SUIVI-US.md` fait foi sur le
+  compte exact.**
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
   et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (5/15)**
+  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (6/15)**
   avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003), le **tableau
   d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001), la
-  **mixité des clubs au placement** (E03US006) puis le **placement des duellistes côte à côte**
-  (E03US009).
+  **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
+  (E03US009) puis le **backend de la saisie en duels** (E04US013 — scoring sets/cumul, barrage,
+  progression du tableau ; l'écran scoreur suit en tranche front).
 - Dernière US livrée : **E03US009** (placer les duellistes côte à côte) — US à **surface visible** : le
   placement d'une **phase de tableau** met les **deux adversaires d'un duel** du 1er tour **côte à côte**
   (même cible, positions voisines) « dans la mesure du possible », par le **même mécanisme** que la
