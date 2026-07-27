@@ -164,5 +164,15 @@ de duel** (la feuille de marque se signe « à la fin du duel », FFTA B.6.1.1).
 - **−** L'arme est un **champ texte libre** de `Categorie` (pas d'énuméré) : le résolveur normalise et
   reconnaît « poulies/compound ». Fragile par nature — **centralisé** dans le résolveur (point unique
   de correction quand E01US018/E01US011 formalisera l'arme). Dans le **bracket mixte-armes** du MVP
-  (un seul tableau tournoi-large, ADR-0048), le barème est résolu **par duel** depuis l'arme de ses
-  participants ; le tableau **par catégorie/division** reste downstream (E05US010/E06US006).
+  (un seul tableau tournoi-large, ADR-0048), le barème est résolu **par duel** depuis l'arme du camp
+  **haut** ; le tableau **par catégorie/division** reste downstream (E05US010/E06US006).
+- **−** **L'ancrage par identité couvre la position, pas la mutation d'arme.** La garde de divergence
+  compare l'**identité** des duellistes (`{genre, ref_id}`), non leur **catégorie** ; le barème, lui,
+  est re-dérivé **en direct** de la catégorie courante à chaque lecture/rejeu. Cas résiduel (edge,
+  exige une action admin **en cours** de tableau, revue adversariale) : un archer dont on change la
+  catégorie « classique »→« poulies » après avoir tiré ses manches verrait son tir **validé**
+  réinterprété du mode **sets** au mode **cumul**, faisant potentiellement basculer le vainqueur en
+  silence. **Même classe** que le re-classement de qualification : les deux sont refermés par le
+  **gel du classement/état pendant la phase de tableau** (garde de cycle de vie, E01US017/E12US002).
+  Assumé et documenté ici, non traité dans cette US ; le tir enregistre déjà l'identité (position
+  ancrée), le mode reste tributaire du gel à venir.

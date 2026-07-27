@@ -217,6 +217,14 @@ def test_barrage_re_editable_tant_que_non_valide() -> None:
     assert duel.resultat.vainqueur is Cote.BAS
 
 
+def test_barrage_refuse_apres_validation() -> None:
+    """Un duel validé est verrouillé : même son barrage ne se réécrit plus (`DuelVerrouille`)."""
+    duel = _mener_a_egalite_cinq_partout(_duel_sets())
+    duel = duel.saisir_barrage(ZoneScore.DIX, ZoneScore.NEUF, zones_admises=ZONES).valider("DURAND")
+    with pytest.raises(DuelVerrouille):
+        duel.saisir_barrage(ZoneScore.NEUF, ZoneScore.DIX, zones_admises=ZONES)
+
+
 def test_barrage_refuse_si_non_requis() -> None:
     """Pas de barrage tant que le duel n'est pas à égalité de sets."""
     duel = _saisir(_duel_sets(), 1, ("10", "10", "10"), ("9", "9", "9"))

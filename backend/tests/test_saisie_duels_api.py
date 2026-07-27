@@ -178,6 +178,44 @@ def test_saisir_valider_un_duel_fait_avancer_le_tableau(
         assert podium[1] == vainqueur_attendu
 
 
+def test_code_de_zone_ou_camp_invalide_refuse(
+    app_duels: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """DTO typés `ZoneScore`/`Cote` : un code inconnu est rejeté par Pydantic (400), pas 500.
+
+    Cohérence de frontière avec E04US002 : `RequestValidationError → 400 requete_invalide`.
+    """
+    with TestClient(app_duels) as client:
+        scn = Scenario(app_duels)
+        entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        manche = client.post(
+            "/api/v1/duels/manches",
+            json={
+                "tournoi_id": scn.tournoi_id,
+                "phase_id": scn.phase_id,
+                "match_numero": 1,
+                "numero": 1,
+                "valeurs_haut": ["42", "10", "10"],  # 42 n'est pas une ZoneScore
+                "valeurs_bas": ["9", "9", "9"],
+            },
+            headers=entete,
+        )
+        assert manche.status_code == 400, manche.text
+        barrage = client.post(
+            "/api/v1/duels/barrages",
+            json={
+                "tournoi_id": scn.tournoi_id,
+                "phase_id": scn.phase_id,
+                "match_numero": 1,
+                "fleche_haut": "10",
+                "fleche_bas": "10",
+                "gagnant_designe": "milieu",  # n'est pas une Cote (haut/bas)
+            },
+            headers=entete,
+        )
+        assert barrage.status_code == 400, barrage.text
+
+
 def test_saisie_sans_session_scoreur_refusee(app_duels: FastAPI) -> None:
     """Sans en-tête scoreur, la saisie est refusée (401)."""
     with TestClient(app_duels) as client:
