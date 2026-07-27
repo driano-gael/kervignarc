@@ -23,9 +23,9 @@ export function usePreparerPostes(tournoiId: number) {
   })
 }
 
-// QR de rattachement d'une cible (E11US008) : l'**image** (blob SVG) est de l'état **serveur**, donc
-// mise en cache par React Query (règle 10). Le composant `QrCible` en dérive un `objectURL` — au
-// cycle de vie **local** (à révoquer), ce que le cache de React Query ne gère pas — dans son effet.
+// QR de rattachement d'une cible (E11US008) : l'**image** (SVG) est de l'état **serveur**, mise en
+// cache par React Query (règle 10). `getQrCible` renvoie une **data URL** autoporteuse (aucun
+// objectURL à révoquer) : le composant `QrCible` l'affiche directement, sans cycle de vie local.
 export function useQrCible(tournoiId: number, cibleIndex: number) {
   return useQuery({
     queryKey: ['qr-cible', tournoiId, cibleIndex] as const,

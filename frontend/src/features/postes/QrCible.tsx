@@ -1,27 +1,18 @@
 // Vignette du QR de rattachement d'une cible (E11US008), **agrandissable** pour le scan.
 //
-// Le QR est de l'état **serveur** (image SVG chargée via React Query, en blob authentifié —
-// `useQrCible`). L'`objectURL` qui l'affiche a, lui, un cycle de vie **local** (il faut le révoquer
-// pour ne pas fuiter de mémoire) : on le crée/détruit ici par effet, à partir du blob mis en cache.
-// Un `<img>` sur un blob SVG s'affiche et se met à l'échelle proprement (vectoriel → net une fois
+// Le QR est de l'état **serveur** : image SVG chargée via React Query en blob authentifié, puis
+// exposée en **data URL** autoporteuse (`useQrCible` → `getQrCible`). Aucun objectURL à révoquer,
+// donc pas de cycle de vie local ni de piège StrictMode — le composant se contente d'un `<img
+// src>`. Un `<img>` sur un SVG s'affiche et se met à l'échelle proprement (vectoriel → net une fois
 // agrandi). La route est admin (le QR encode le code, secret d'usage) : cet écran l'est déjà.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { useQrCible } from './hooks'
 
 export function QrCible({ tournoiId, cibleIndex }: { tournoiId: number; cibleIndex: number }) {
-  const { data: blob, isError } = useQrCible(tournoiId, cibleIndex)
+  const { data: src, isError } = useQrCible(tournoiId, cibleIndex)
   const [agrandi, setAgrandi] = useState(false)
-
-  // L'`objectURL` se **dérive** du blob (pas d'état à synchroniser dans un effet — cf. règle lint
-  // `set-state-in-effect`) ; l'effet ci-dessous ne porte que sa **révocation** (nettoyage mémoire),
-  // rejouée à chaque changement d'URL et au démontage.
-  const url = useMemo(() => (blob ? URL.createObjectURL(blob) : null), [blob])
-  useEffect(() => {
-    if (!url) return
-    return () => URL.revokeObjectURL(url)
-  }, [url])
 
   // Fermeture au clavier (Échap) pendant l'agrandissement : le vecteur tactile reste le clic sur
   // le fond, mais un dialogue doit rester pilotable au clavier (accessibilité).
@@ -35,7 +26,7 @@ export function QrCible({ tournoiId, cibleIndex }: { tournoiId: number; cibleInd
   }, [agrandi])
 
   if (isError) return <span className="qr-cible__indispo">QR indisponible</span>
-  if (!url) return <span className="qr-cible__attente" aria-hidden="true" />
+  if (!src) return <span className="qr-cible__attente" aria-hidden="true" />
 
   const alt = `QR de rattachement de la cible ${cibleIndex}`
   return (
@@ -46,7 +37,7 @@ export function QrCible({ tournoiId, cibleIndex }: { tournoiId: number; cibleInd
         onClick={() => setAgrandi(true)}
         aria-label={`Agrandir le ${alt}`}
       >
-        <img src={url} alt={alt} width={72} height={72} />
+        <img src={src} alt={alt} width={72} height={72} />
       </button>
       {agrandi && (
         <div
@@ -56,7 +47,7 @@ export function QrCible({ tournoiId, cibleIndex }: { tournoiId: number; cibleInd
           aria-label={alt}
           onClick={() => setAgrandi(false)}
         >
-          <img src={url} alt={alt} className="qr-cible__grand" />
+          <img src={src} alt={alt} className="qr-cible__grand" />
           <p className="qr-cible__aide">Touchez l'écran pour fermer</p>
         </div>
       )}
