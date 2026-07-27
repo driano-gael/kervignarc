@@ -661,6 +661,16 @@ base URL publique configurable (défaut sûr = l'**IP LAN**, pas `kervignarc.loc
 résolu côté tablette — best-effort) et la faire consommer par le service. Marqueur `DETTE-012` posé
 sur `_url_rattachement` dans `application/documents_salle.py`.
 
+**E11US008 (27/07/2026) — parade rendue opérationnelle, dette toujours ouverte.** Cette US (1) fait
+écouter le **lancement de dev** (`run_dev.py`) sur `0.0.0.0` comme la release, et (2) expose le QR
+**à l'écran** (Admin → Postes de cible) en plus du PDF. Elle **n'introduit pas** la base URL
+configurable : le nouvel endpoint `GET …/postes/{cible_index}/qr` réutilise `_url_rattachement`, donc
+encode lui aussi `request.base_url` — c'est un **2ᵉ consommateur** de la dette (même marqueur
+`DETTE-012`). La dette reste **ouverte** ; ce que change E11US008, c'est que la parade — « ouvrir
+l'admin par l'IP LAN pour que le QR soit scannable » — est désormais **atteignable en dev** et
+**documentée** (`docs/deploiement.md` §6). La résorption réelle (base URL publique configurable)
+bénéficierait alors aux **deux** consommateurs d'un coup.
+
 ### DETTE-013 — les gardes d'engagement lisent un `Score` que plus rien n'écrit
 
 **Constat.** Les deux gardes de sûreté de `ServiceArchers` — `_signaler_engagement` (suppression

@@ -23,7 +23,7 @@ serveur par son IP réseau ; une base URL configurable relèvera de la mise en r
 
 from __future__ import annotations
 
-from application.erreurs import TournoiIntrouvable
+from application.erreurs import PosteIntrouvable, TournoiIntrouvable
 from domain.documents_salle import CarteScoreur, CartesScoreurs, EtiquetteCible, EtiquettesCibles
 from domain.ports import (
     GenerateurDocumentsSalle,
@@ -70,6 +70,28 @@ class ServiceDocumentsSalle:
         return self._generateur.etiquettes_cibles(
             EtiquettesCibles(nom_tournoi=tournoi.nom, etiquettes=etiquettes)
         )
+
+    def qr_rattachement(self, tournoi_id: TournoiId, cible_index: int, origine: str) -> bytes:
+        """Rend en **SVG** le seul QR de rattachement de la cible `cible_index` (E11US008).
+
+        Pendant **à l'écran** de l'étiquette imprimée : même URL encodée (`{origine}/?poste=<code>`)
+        que `etiquettes_cibles`, pour rattacher une tablette sans passer par le PDF (admin « Postes
+        de cible »). Lève `TournoiIntrouvable` si le tournoi n'existe pas, `PosteIntrouvable` si
+        aucune cible ne porte ce numéro dans ce tournoi (même parti « hors-tournoi = inexistant »
+        que les autres gardes 404).
+        """
+        self._verifier_tournoi(tournoi_id)
+        poste = next(
+            (p for p in self._postes.par_tournoi(tournoi_id) if p.cible_index == cible_index),
+            None,
+        )
+        if poste is None:
+            raise PosteIntrouvable(
+                f"Aucune cible {cible_index} préparée dans le tournoi {tournoi_id}."
+            )
+        # Même # DETTE-012 que l'étiquette PDF : `origine` = origine de la requête admin, faute de
+        # base URL publique configurée — d'où l'intérêt d'ouvrir l'admin par l'IP LAN (E11US008).
+        return self._generateur.qr_rattachement(_url_rattachement(origine, poste.code))
 
     def cartes_scoreurs(self, tournoi_id: TournoiId) -> bytes:
         """Rend en PDF les cartes de scoreur (un papier par scoreur : nom + code personnel).

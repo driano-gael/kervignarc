@@ -1,14 +1,23 @@
-"""Frontière API — documents de préparation de salle en PDF (E09US008).
+"""Frontière API — documents de préparation de salle (E09US008, E11US008).
 
-Deux endpoints de **lecture** (aucune écriture DB : ils composent à la demande à partir des codes
-déjà préparés) → exécutés hors boucle événementielle (`run_in_threadpool`, règle 7). Réservés à
-l'admin (`exiger_admin`, E10US001) : les codes sont des secrets d'usage à imprimer, ils n'ont pas à
-fuiter au public. Renvoient un **binaire** `application/pdf` avec `Content-Disposition: attachment`.
+Endpoints de **lecture** (aucune écriture DB : ils composent à la demande à partir des codes déjà
+préparés) → exécutés hors boucle événementielle (`run_in_threadpool`, règle 7). Réservés à l'admin
+(`exiger_admin`, E10US001) : les codes sont des secrets d'usage, ils n'ont pas à fuiter au public.
 
-Les étiquettes de cible encodent une URL de rattachement : elle est bâtie sur l'**origine de la
+Deux formes de sortie :
+
+- les deux **PDF à imprimer** (étiquettes de cible, cartes de scoreur) : binaire `application/pdf`
+  avec `Content-Disposition: attachment` ;
+- le **QR d'une cible à l'écran** (E11US008) : image `image/svg+xml`, affichée dans l'admin
+  « Postes de cible » pour rattacher une tablette sans repasser par le PDF. SVG (vectoriel) pour
+  rester net une fois agrandi ; chargé côté front par **blob authentifié** (le Bearer admin est en
+  JS, un `<img src>` direct n'emporterait pas le jeton).
+
+Les QR de cible (PDF **et** écran) encodent une URL de rattachement bâtie sur l'**origine de la
 requête** (`request.base_url`), passée au service — le seul endroit qui connaisse l'adresse par
-laquelle l'admin (donc, le jour J, les tablettes) atteint le serveur. La garde 404
-(`TournoiIntrouvable`) remonte du service et est traduite à la frontière (`api/erreurs.py`).
+laquelle l'admin (donc, le jour J, les tablettes) atteint le serveur (# DETTE-012). Les gardes 404
+(`TournoiIntrouvable`, `PosteIntrouvable`) remontent du service, traduites à la frontière
+(`api/erreurs.py`).
 """
 
 from __future__ import annotations
@@ -27,6 +36,10 @@ _PDF: dict[int | str, dict[str, Any]] = {
     200: {"content": {"application/pdf": {}}, "description": "Document PDF"}
 }
 
+_SVG: dict[int | str, dict[str, Any]] = {
+    200: {"content": {"image/svg+xml": {}}, "description": "Image SVG (QR de rattachement)"}
+}
+
 
 @router.get(
     "/tournois/{tournoi_id}/postes/etiquettes-qr",
@@ -43,6 +56,20 @@ async def etiquettes_qr(tournoi_id: int, request: Request) -> Response:
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{nom_fichier}"'},
     )
+
+
+@router.get(
+    "/tournois/{tournoi_id}/postes/{cible_index}/qr",
+    dependencies=[Depends(exiger_admin)],
+    responses=_SVG,
+)
+async def qr_cible(tournoi_id: int, cible_index: int, request: Request) -> Response:
+    """Renvoie l'image **SVG** du QR de rattachement d'une cible (affiché à l'écran, E11US008)."""
+    service: ServiceDocumentsSalle = request.app.state.service_documents_salle
+    svg = await run_in_threadpool(
+        service.qr_rattachement, tournoi_id, cible_index, str(request.base_url)
+    )
+    return Response(content=svg, media_type="image/svg+xml")
 
 
 @router.get(

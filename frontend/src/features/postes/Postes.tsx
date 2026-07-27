@@ -6,6 +6,7 @@
 // **idempotente** : la relancer complète les cibles manquantes sans changer les codes déjà émis.
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { QrCible } from './QrCible'
 import { usePostes, usePreparerPostes } from './hooks'
 
 export function Postes({ tournoiId }: { tournoiId: number }) {
@@ -18,8 +19,9 @@ export function Postes({ tournoiId }: { tournoiId: number }) {
     <section className="carte">
       <h3 className="carte__titre">Postes de cible</h3>
       <p className="carte__etat">
-        Chaque cible reçoit un <strong>code</strong> à coller dessus (avec son QR, à venir) : la
-        tablette posée sur la cible s'y rattache en scannant le QR, ou en tapant ce code.
+        Chaque cible reçoit un <strong>code</strong> et son <strong>QR</strong> : la tablette posée
+        sur la cible s'y rattache en scannant le QR affiché (touchez-le pour l'agrandir), ou en
+        tapant ce code.
       </p>
       <button type="button" disabled={preparer.isPending} onClick={() => preparer.mutate()}>
         {liste.length === 0 ? 'Préparer les codes de cible' : 'Compléter les codes manquants'}
@@ -30,8 +32,11 @@ export function Postes({ tournoiId }: { tournoiId: number }) {
       {liste.length > 0 ? (
         <ul className="liste-postes">
           {liste.map((poste) => (
-            <li key={poste.id}>
-              Cible {poste.cible_index} — <code>{poste.code}</code>
+            <li key={poste.id} className="poste-item">
+              <span className="poste-item__ligne">
+                Cible {poste.cible_index} — <code>{poste.code}</code>
+              </span>
+              <QrCible tournoiId={tournoiId} cibleIndex={poste.cible_index} />
             </li>
           ))}
         </ul>

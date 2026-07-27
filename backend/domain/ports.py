@@ -694,6 +694,18 @@ class GenerateurDocumentsSalle(Protocol):
         """Rend les cartes de scoreur en un PDF (un papier par scoreur : nom + code personnel)."""
         ...
 
+    def qr_rattachement(self, url: str) -> bytes:
+        """Rend le seul QR de rattachement d'une cible en **image SVG** (octets UTF-8) (E11US008).
+
+        Distinct des deux PDF ci-dessus : ce QR-là s'affiche **à l'écran** (admin « Postes de
+        cible »), il n'est pas imprimé. **SVG** (vectoriel) pour rester net une fois **agrandi**
+        pour le scan, et **sans dépendance ajoutée** (même rendu natif ReportLab que le QR PDF —
+        règle 11). `url` est l'URL de rattachement **déjà composée** (`{origine}/?poste=<code>`) :
+        le domaine ne sait pas la bâtir (règle 1), c'est le service qui la lui passe. Un échec de
+        rendu remonte en `InfrastructureError`, traduit en 500 à la frontière.
+        """
+        ...
+
 
 class GenerateurListesImpression(Protocol):
     """Port de génération des **listes imprimables** d'organisation (E09US003 ; adapter infra).

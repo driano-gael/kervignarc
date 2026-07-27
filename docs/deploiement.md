@@ -120,3 +120,35 @@ avant de lancer l'exe :
 > (tables `scoreur`/`poste`, en clair — ces codes sont réutilisables). Le conserver dans un endroit
 > **de confiance** ; ne pas le diffuser largement (mail, cloud public). Ces codes sont de toute façon
 > connus de l'administrateur (il les imprime) — l'archive ne crée pas de secret, elle le transporte.
+
+## 6. Accès réseau en développement (`run_dev.py`) — E11US008
+
+Hors binaire de release, on lance l'appli en développement depuis `backend/` :
+
+```bash
+python run_dev.py             # écoute sur TOUTES les interfaces (0.0.0.0) — joignable en LAN
+python run_dev.py --no-build  # idem, sans reconstruire le front
+python run_dev.py --host 127.0.0.1  # RESTREINT au loopback (démo isolée, aucun accès réseau)
+```
+
+Comme le binaire de release, `run_dev.py` écoute **par défaut sur `0.0.0.0`** : une tablette du
+réseau local peut donc atteindre le serveur. La console affiche l'**IP LAN** réellement joignable :
+
+```
+-> Serveur unique sur http://0.0.0.0:8000  (API + WebSocket + SPA)
+   Depuis une tablette du réseau : http://192.168.1.10:8000
+```
+
+C'est cette **IP LAN** qu'on ouvre depuis une tablette (l'adresse `0.0.0.0` n'est pas « ouvrable »
+telle quelle). Pour tester sur une seule machine sans exposer le poste, passer `--host 127.0.0.1`.
+
+> ⚠️ **Pare-feu Windows.** Au premier lancement en écoute réseau, Windows peut demander d'autoriser
+> l'accès de `python.exe` (l'interpréteur, pas `kervignarc.exe` ici) : **accepter** (réseaux privés),
+> sinon les tablettes ne joignent pas le serveur. Les rappels du §3 valent aussi en dev (une seule
+> interface active, vérifier que l'IP affichée est dans la plage du routeur).
+
+> **Pourquoi ça compte pour le rattachement des postes.** Le QR d'une cible (imprimé, **et** affiché
+> à l'écran via **Admin → Postes de cible**, E11US008) encode l'**origine de la requête** admin
+> (# DETTE-012). Ouvert par `localhost`, il renverrait la tablette sur elle-même ; ouvert par l'**IP
+> LAN**, il devient scannable. D'où : le jour J (comme pour tester le rattachement en dev), ouvrir
+> l'admin **par l'IP LAN**, pas par `localhost`.

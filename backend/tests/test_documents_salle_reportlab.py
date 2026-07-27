@@ -105,3 +105,41 @@ def test_echec_de_rendu_enveloppe_en_infrastructure_error() -> None:
 
     with pytest.raises(InfrastructureError):
         GenerateurDocumentsSallePdf().etiquettes_cibles(document)
+
+
+# --- QR de rattachement à l'écran (E11US008) ---
+
+
+def test_qr_rattachement_genere_un_svg_valide() -> None:
+    """Le QR écran est une **image SVG** (octets UTF-8), pas un PDF : rendu via `renderSVG`
+    (pur Python, aucune dépendance — `renderPM`/PNG exigerait `rlPyCairo`)."""
+    url = "http://192.168.1.10:8000/?poste=AAA111"
+    octets = GenerateurDocumentsSallePdf().qr_rattachement(url)
+
+    assert octets.startswith(b"<?xml")
+    assert b"<svg" in octets
+    # Un QR réellement dessiné (des dizaines de modules), pas un stub vide.
+    assert len(octets) > 1000
+
+
+def test_qr_rattachement_encode_l_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Le QR écran encode bien l'URL passée : on espionne `QrCodeWidget` (le SVG ne relit pas le
+    contenu du QR, comme pour le PDF)."""
+    urls_encodees: list[str] = []
+
+    def espion(url: str, *args: Any, **kwargs: Any) -> object:
+        urls_encodees.append(url)
+        return QrCodeWidget(url, *args, **kwargs)
+
+    monkeypatch.setattr(adapter_module, "QrCodeWidget", espion)
+
+    GenerateurDocumentsSallePdf().qr_rattachement("http://192.168.1.10:8000/?poste=AAA111")
+
+    assert urls_encodees == ["http://192.168.1.10:8000/?poste=AAA111"]
+
+
+def test_qr_rattachement_echec_enveloppe_en_infrastructure_error() -> None:
+    """Une URL mal typée fait échouer le rendu SVG : il remonte en `InfrastructureError`, pas en
+    exception ReportLab brute (même garde que les PDF)."""
+    with pytest.raises(InfrastructureError):
+        GenerateurDocumentsSallePdf().qr_rattachement(None)  # type: ignore[arg-type]
