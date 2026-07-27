@@ -6,6 +6,7 @@ import type { Duel, SaisirBarrage, SaisirManche } from './api'
 import {
   injecterBarrage,
   injecterManche,
+  libelleMode,
   libelleTour,
   mancheExistante,
   prochaineMancheASaisir,
@@ -33,6 +34,14 @@ function duel(over: Partial<Duel> = {}): Duel {
     ...over,
   }
 }
+
+describe('libelleMode', () => {
+  it('distingue sets, cumul (poulies) et absence de mode', () => {
+    expect(libelleMode('sets')).toBe('Système de sets')
+    expect(libelleMode('cumul')).toBe('Cumul (arc à poulies)')
+    expect(libelleMode(null)).toBe('')
+  })
+})
 
 describe('libelleTour', () => {
   it('nomme le tour par distance à la finale', () => {

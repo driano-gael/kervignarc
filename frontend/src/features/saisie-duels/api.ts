@@ -30,7 +30,9 @@ export interface Manche {
 export interface Barrage {
   haut: string
   bas: string
-  gagnant_designe: string | null
+  // Le backend n'émet que `'haut'`/`'bas'` (valeur de l'énuméré `Cote`) ou `null` : on resserre le
+  // miroir sur `Cote | null` plutôt que `string | null`, pour éviter un cast au point d'usage.
+  gagnant_designe: Cote | null
 }
 
 // Le camp d'un duelliste (occupants du match, ADR-0028) — l'énuméré `Cote` côté backend.
@@ -71,6 +73,10 @@ export interface Duel {
   // Purement **local** (E04US009) : un acte de ce duel est en file hors-ligne, pas encore renvoyé.
   // Le serveur ne renvoie jamais ce champ ; il alimente l'annotation « en attente d'envoi ».
   en_attente?: boolean
+  // Purement **local** : une **validation** de ce duel est en file hors-ligne. Verrouille l'écran
+  // comme le ferait le serveur en ligne (`DuelVerrouille`), pour interdire une réédition de manche
+  // postérieure qui serait perdue au rejeu (revue adversariale E04US013). Réconcilié à la relecture.
+  validation_en_attente?: boolean
 }
 
 // Une place de podium acquise (rang + duelliste).

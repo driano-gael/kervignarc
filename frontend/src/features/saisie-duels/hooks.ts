@@ -165,9 +165,11 @@ export function useValiderDuel(tournoiId: number, phaseId: number, matchNumero: 
     matchNumero,
     validerDuel,
     (corps) => ({ type: 'validation', ...corps }),
-    // La validation n'a pas d'état optimiste propre (elle scelle un duel **déjà tranché** côté
-    // serveur) : hors-ligne, on garde l'affichage courant en marquant l'attente d'envoi.
-    (base) => ({ ...base, en_attente: true }),
+    // Hors-ligne, la validation **verrouille l'écran localement** (`validation_en_attente`) — comme le
+    // ferait le serveur en ligne (`DuelVerrouille`). Sinon le scoreur pourrait rééditer une manche
+    // APRÈS avoir validé : au rejeu FIFO la validation scellerait le résultat d'avant correction, et la
+    // manche corrigée rebondirait en 422 (perte silencieuse, revue adversariale). Réconcilié au rejeu.
+    (base) => ({ ...base, en_attente: true, validation_en_attente: true }),
   )
 }
 

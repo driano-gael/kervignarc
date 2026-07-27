@@ -13,6 +13,7 @@ import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Cote, Duel, Tableau } from './api'
 import {
+  estJouable,
   libelleMode,
   libelleTour,
   mancheExistante,
@@ -135,8 +136,17 @@ function TableauScoreur({ tournoiId, phaseId }: { tournoiId: number; phaseId: nu
   return <ListeDuels tableau={tableau.data} onOuvrir={setMatchOuvert} />
 }
 
-// La liste des duels **groupés par tour** (finale en tête). Un duel jouable est tapable pour l'ouvrir ;
-// un bye ou un duel sans adversaires connus est affiché mais non ouvrable.
+// Petite finale (place 3-4) en dernier de son tour : elle **partage le dernier tour** avec la finale
+// (côté domaine), donc un tri par tour seul les mélangerait sous un même en-tête.
+function estPetiteFinale(duel: Pick<Duel, 'place_en_jeu'>): boolean {
+  const place = duel.place_en_jeu
+  return place !== null && place[0] === 3 && place[1] === 4
+}
+
+// La liste des duels **groupés par libellé de tour** (finale en tête). On regroupe par le **libellé**
+// (`libelleTour`) et non par le `tour` brut : sans quoi la **petite finale** (place 3-4), qui partage
+// le dernier tour avec la finale, se rangerait sous l'en-tête « Finale ». Un duel jouable est tapable
+// pour l'ouvrir ; un bye ou un duel sans adversaires connus est affiché mais non ouvrable.
 function ListeDuels({
   tableau,
   onOuvrir,
@@ -144,26 +154,33 @@ function ListeDuels({
   tableau: Tableau
   onOuvrir: (matchNumero: number) => void
 }) {
-  // Tours décroissants : la finale (tour le plus élevé) en haut, comme on lit un tableau.
-  const tours = [...new Set(tableau.duels.map((d) => d.tour))].sort((a, b) => b - a)
+  // Ordre de lecture d'un tableau : tour décroissant (finale en tête) ; à tour égal, la finale avant
+  // la petite finale. Le regroupement par libellé fusionne ensuite les duels consécutifs de même titre
+  // (les deux demi-finales → une section « Demi-finales »).
+  const duelsOrdonnes = [...tableau.duels].sort(
+    (a, b) => b.tour - a.tour || Number(estPetiteFinale(a)) - Number(estPetiteFinale(b)),
+  )
+  const groupes: { titre: string; duels: Duel[] }[] = []
+  for (const duel of duelsOrdonnes) {
+    const titre = libelleTour(duel, tableau.nb_tours)
+    const dernier = groupes[groupes.length - 1]
+    if (dernier !== undefined && dernier.titre === titre) dernier.duels.push(duel)
+    else groupes.push({ titre, duels: [duel] })
+  }
 
   return (
     <div className="duels-liste">
       {tableau.est_termine && tableau.podium.length > 0 && <Podium tableau={tableau} />}
-      {tours.map((tour) => {
-        const duelsDuTour = tableau.duels.filter((d) => d.tour === tour)
-        const titre = libelleTour(duelsDuTour[0] ?? { tour, place_en_jeu: null }, tableau.nb_tours)
-        return (
-          <section key={tour} className="duels-liste__tour">
-            <h4 className="duels-liste__titre">{titre}</h4>
-            <ul className="duels-liste__matchs">
-              {duelsDuTour.map((duel) => (
-                <LigneDuel key={duel.numero} duel={duel} onOuvrir={onOuvrir} />
-              ))}
-            </ul>
-          </section>
-        )
-      })}
+      {groupes.map((groupe) => (
+        <section key={groupe.titre} className="duels-liste__tour">
+          <h4 className="duels-liste__titre">{groupe.titre}</h4>
+          <ul className="duels-liste__matchs">
+            {groupe.duels.map((duel) => (
+              <LigneDuel key={duel.numero} duel={duel} onOuvrir={onOuvrir} />
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   )
 }
@@ -265,11 +282,14 @@ function DuelCharge({
 }) {
   const haut = duel.haut ? `${duel.haut.nom} ${duel.haut.prenom}` : '—'
   const bas = duel.bas ? `${duel.bas.nom} ${duel.bas.prenom}` : '—'
-  const verrou = duel.validee_par !== null
-  const jouable =
-    duel.nb_manches !== null && duel.nb_fleches_par_volee !== null && duel.zones.length > 0
+  // Verrou : duel validé (autorité serveur) OU **validation en file hors-ligne** — dans ce dernier cas
+  // on ferme la saisie **localement**, comme le ferait le serveur en ligne (`DuelVerrouille`). Sans ce
+  // verrou optimiste, le scoreur pourrait rééditer une manche APRÈS avoir validé hors-ligne : au rejeu
+  // FIFO, la validation scellerait le résultat d'avant correction, et la manche corrigée rebondirait en
+  // 422 (perte silencieuse). Se réconcilie à la relecture serveur post-rejeu (revue adversariale).
+  const verrou = duel.validee_par !== null || duel.validation_en_attente === true
 
-  if (!jouable) {
+  if (!estJouable(duel)) {
     return (
       <div>
         <p className="duel__entete">
@@ -306,7 +326,13 @@ function DuelCharge({
 
       {verrou ? (
         <p className="duel__verrou" role="status">
-          Duel validé par <strong>{duel.validee_par}</strong> — la saisie est close.
+          {duel.validee_par !== null ? (
+            <>
+              Duel validé par <strong>{duel.validee_par}</strong> — la saisie est close.
+            </>
+          ) : (
+            <>Validation en attente d’envoi — la saisie est close jusqu’à la reconnexion.</>
+          )}
         </p>
       ) : (
         <SaisieManche
@@ -556,9 +582,19 @@ function SaisieBarrage({
   const saisir = useSaisirBarrage(tournoiId, phaseId, matchNumero)
   const [flecheHaut, setFlecheHaut] = useState<string | null>(duel.barrage?.haut ?? null)
   const [flecheBas, setFlecheBas] = useState<string | null>(duel.barrage?.bas ?? null)
-  const [designe, setDesigne] = useState<Cote | null>(
-    (duel.barrage?.gagnant_designe as Cote | null) ?? null,
-  )
+  const [designe, setDesigne] = useState<Cote | null>(duel.barrage?.gagnant_designe ?? null)
+
+  // Resynchronisation **au rendu** si le barrage serveur change (rejeu / relecture) pendant que le
+  // formulaire reste monté — même pattern que la grille de manche. Sans quoi la sélection resterait
+  // figée sur les valeurs du montage.
+  const signatureBarrage = `${duel.barrage?.haut ?? ''}:${duel.barrage?.bas ?? ''}:${duel.barrage?.gagnant_designe ?? ''}`
+  const [ancreBarrage, setAncreBarrage] = useState(signatureBarrage)
+  if (ancreBarrage !== signatureBarrage) {
+    setAncreBarrage(signatureBarrage)
+    setFlecheHaut(duel.barrage?.haut ?? null)
+    setFlecheBas(duel.barrage?.bas ?? null)
+    setDesigne(duel.barrage?.gagnant_designe ?? null)
+  }
 
   // La désignation n'est requise (et proposée) que si les deux flèches sont saisies **et égales**.
   const egales = flecheHaut !== null && flecheBas !== null && flecheHaut === flecheBas
@@ -675,7 +711,9 @@ function Validation({
   duel: Duel
 }) {
   const valider = useValiderDuel(tournoiId, phaseId, matchNumero)
-  if (duel.validee_par !== null) return null // déjà validé (le verrou est affiché plus haut)
+  // Déjà validé, OU validation déjà en file hors-ligne : rien à proposer (le verrou est affiché plus
+  // haut). Masquer sur `validation_en_attente` évite de ré-enfiler des validations à chaque tap.
+  if (duel.validee_par !== null || duel.validation_en_attente === true) return null
 
   const resultat = duel.resultat
   const termine = resultat?.termine === true
