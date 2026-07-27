@@ -2,7 +2,7 @@
 // (montée sous `estAdmin`).
 //
 // Un départ est un créneau du tournoi (le tournoi rejoué plusieurs fois dans la journée) : il porte
-// un **numéro** (attribué par le serveur), un **horaire** facultatif et un **tarif** obligatoire, en
+// un **numéro** (attribué par le serveur), un **horaire** `HH:MM` obligatoire et un **tarif** obligatoire, en
 // euros à l'écran mais transmis en **centimes** (ADR-0012). L'inscription d'un archer sur des départs
 // est une autre US (E02US009) : ici on ne fait que **définir** les créneaux et leur prix.
 
@@ -191,7 +191,7 @@ function analyserQuota(saisie: string): number | null | 'invalide' {
 
 // Formulaire partagé création / édition : sans `depart` il crée, avec il édite. Le tarif est
 // **obligatoire** (un créneau a toujours un prix — saisir « 0 » pour un créneau gratuit) ; l'horaire
-// est facultatif.
+// est **obligatoire** au format HH:MM (E02US010).
 function FormulaireDepart({
   tournoiId,
   depart,
