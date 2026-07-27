@@ -14,8 +14,15 @@ import {
   decrireTarif,
   saisieEurosVersCentimes,
 } from '../competition/format'
-import type { Depart, NouveauDepart } from './api'
+import type { Depart, EtatDepart, NouveauDepart } from './api'
 import { useCreerDepart, useDeparts, useModifierDepart, useSupprimerDepart } from './hooks'
+
+// Libellé humain de l'état de cycle d'un créneau (E12US008), pour le badge.
+const LIBELLE_ETAT: Record<EtatDepart, string> = {
+  ouvert: 'Ouvert',
+  lance: 'Lancé',
+  clos: 'Clos',
+}
 
 export function Departs({ tournoiId }: { tournoiId: number }) {
   const departs = useDeparts(tournoiId)
@@ -47,6 +54,12 @@ function LigneDepart({ tournoiId, depart }: { tournoiId: number; depart: Depart 
   // un libellé qui nomme la perte. Le message du serveur décompte les payées ; c'est lui qu'on lit.
   const inscriptionsSignalees =
     supprimer.error instanceof ErreurApi && supprimer.error.code === 'depart_avec_inscriptions'
+  // `depart_en_cours_non_confirme` (E12US008) : le créneau est *lancé* ou *clos* — une session de
+  // tir a eu lieu. Signalement chiffré (le message serveur dit combien d'archers ont tiré) ;
+  // confirmer **subsume** le garde-fou d'inscriptions (inutile d'envoyer les deux). Exclusif du
+  // précédent : un créneau lancé lève celui-ci, un créneau ouvert à inscriptions lève l'autre.
+  const cycleSignale =
+    supprimer.error instanceof ErreurApi && supprimer.error.code === 'depart_en_cours_non_confirme'
 
   if (edition) {
     return (
@@ -64,6 +77,9 @@ function LigneDepart({ tournoiId, depart }: { tournoiId: number; depart: Depart 
     <li className="depart">
       <div className="depart__ligne">
         <span className="depart__numero">Départ {depart.numero}</span>
+        <span className={`badge badge--${depart.etat}`} title="État du créneau">
+          {LIBELLE_ETAT[depart.etat]}
+        </span>
         <span className="depart__attributs">{decrire(depart)}</span>
         <span className="depart__actions">
           <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
@@ -103,7 +119,19 @@ function LigneDepart({ tournoiId, depart }: { tournoiId: number; depart: Depart 
           )}
         </span>
       </div>
-      {inscriptionsSignalees ? (
+      {cycleSignale ? (
+        <div className="carte__etat" role="alert">
+          <p>{supprimer.error?.message}</p>
+          <button
+            type="button"
+            className="bouton--danger"
+            disabled={supprimer.isPending}
+            onClick={() => supprimer.mutate({ departId: depart.id, confirmeCycle: true })}
+          >
+            Supprimer quand même (session de tir)
+          </button>
+        </div>
+      ) : inscriptionsSignalees ? (
         <div className="carte__etat" role="alert">
           <p>{supprimer.error?.message}</p>
           <button
@@ -182,14 +210,21 @@ function FormulaireDepart({
   // s'appuie sur les validités propres (`tarifInvalide`, `quotaInvalide`).
   const entreeValide = tarifCentimes !== null && !quotaInvalide
 
-  const soumettre = (evenement: React.FormEvent) => {
-    evenement.preventDefault()
-    if (tarifCentimes === null || quotaAnalyse === 'invalide') return
-    const entree: NouveauDepart = {
+  // Construit l'entrée depuis l'état courant du formulaire, ou `null` si une saisie est invalide
+  // (le garde d'envoi l'empêche déjà ; ce garde-ci rend la fonction sûre à réutiliser).
+  const construireEntree = (): NouveauDepart | null => {
+    if (tarifCentimes === null || quotaAnalyse === 'invalide') return null
+    return {
       tarif_centimes: tarifCentimes,
       horaire: horaire.trim() || null,
       quota: quotaAnalyse,
     }
+  }
+
+  const soumettre = (evenement: React.FormEvent) => {
+    evenement.preventDefault()
+    const entree = construireEntree()
+    if (entree === null) return
     if (enEdition) {
       modifier.mutate({ departId: depart.id, entree }, { onSuccess: onTermine })
     } else {
@@ -202,6 +237,20 @@ function FormulaireDepart({
         },
       })
     }
+  }
+
+  // `depart_en_cours_non_confirme` (E12US008) : éditer un créneau *lancé*/*clos* est signalé (le
+  // message serveur chiffre l'état et les tireurs). L'admin confirme, et l'on rejoue l'édition avec
+  // `confirmeCycle` — mêmes valeurs de formulaire.
+  const cycleSignale =
+    enEdition &&
+    modifier.error instanceof ErreurApi &&
+    modifier.error.code === 'depart_en_cours_non_confirme'
+
+  const confirmerEdition = () => {
+    const entree = construireEntree()
+    if (entree === null || depart === undefined) return
+    modifier.mutate({ departId: depart.id, entree, confirmeCycle: true }, { onSuccess: onTermine })
   }
 
   return (
@@ -271,7 +320,21 @@ function FormulaireDepart({
           )}
         </div>
       </form>
-      <MessageErreur erreur={mutation.error} />
+      {cycleSignale ? (
+        <div className="carte__etat" role="alert">
+          <p>{modifier.error?.message}</p>
+          <button
+            type="button"
+            className="bouton--danger"
+            disabled={modifier.isPending}
+            onClick={confirmerEdition}
+          >
+            Enregistrer quand même (session de tir)
+          </button>
+        </div>
+      ) : (
+        <MessageErreur erreur={mutation.error} />
+      )}
     </div>
   )
 }

@@ -812,6 +812,20 @@ button:disabled {
   color: var(--ok);
 }
 
+/* États d'un départ / créneau (E12US008) — même code couleur que le tournoi et les phases :
+   ouvert neutre, lancé ambre (session de tir en cours, alerte non bloquante), clos vert. */
+.badge--ouvert {
+  color: var(--text);
+}
+
+.badge--lance {
+  color: var(--warn);
+}
+
+.badge--clos {
+  color: var(--ok);
+}
+
 /* Statuts de phase (E05US001) — même code couleur que le tournoi : à venir neutre, en cours/pause
    ambre (alerte non bloquante), terminée verte. */
 .badge--a-venir {
