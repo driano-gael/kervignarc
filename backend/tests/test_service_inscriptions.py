@@ -64,7 +64,9 @@ def _depart(
     quota: int | None = None,
 ) -> DepartId:
     """Persiste un départ (quota facultatif) ; renvoie son id."""
-    depart = departs.ajouter(Depart.creer(tournoi_id, numero, tarif_centimes, quota=quota))
+    depart = departs.ajouter(
+        Depart.creer(tournoi_id, numero, tarif_centimes, horaire="09:00", quota=quota)
+    )
     assert depart.id is not None
     return depart.id
 

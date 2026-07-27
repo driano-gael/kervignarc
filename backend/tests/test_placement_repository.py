@@ -63,7 +63,7 @@ class _Decor:
         assert categorie.id is not None
         self.categorie_id = categorie.id
         depart = DepartRepositorySQL(self.db.session_factory).ajouter(
-            Depart.creer(self.tournoi_id, 1, 0)
+            Depart.creer(self.tournoi_id, 1, 0, "09:00")
         )
         assert depart.id is not None
         self.depart_id = depart.id

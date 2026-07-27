@@ -248,7 +248,9 @@ class Montage:
         """
         cible = self.tournoi_id if tournoi_id is None else tournoi_id
         numero = len(self.departs.par_tournoi(cible)) + 1
-        depart = self.departs.ajouter(Depart.creer(cible, numero, tarif_centimes=1000))
+        depart = self.departs.ajouter(
+            Depart.creer(cible, numero, tarif_centimes=1000, horaire="09:00")
+        )
         assert depart.id is not None
         return depart.id
 

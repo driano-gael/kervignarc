@@ -16,8 +16,9 @@ export interface Depart {
   id: number
   tournoi_id: number
   numero: number
-  // Libellé de créneau (ex. « 9h00 »), facultatif : `null` s'il n'a pas été précisé.
-  horaire: string | null
+  // Horaire du créneau au format `HH:MM` (24 h), **obligatoire** (E02US010). Une vraie donnée
+  // temporelle, plus un libellé libre : le serveur en refuse toute autre forme (422).
+  horaire: string
   // Prix du créneau, en **centimes entiers** (ADR-0012) — l'unité est dans le nom. Obligatoire ;
   // `0` = gratuit. Voir `../competition/format` pour la mise en forme.
   tarif_centimes: number
@@ -31,7 +32,9 @@ export interface Depart {
 
 export interface NouveauDepart {
   tarif_centimes: number
-  horaire?: string | null
+  // Horaire `HH:MM` **obligatoire** (E02US010) : le front n'envoie que du `HH:MM` (masque + garde
+  // d'envoi), le serveur reste l'autorité (422 si le format ne convient pas).
+  horaire: string
   // Omis ou `null` = créneau sans plafond. L'édition est un **remplacement complet** : renvoyer le
   // quota courant pour le conserver (sinon il est retiré côté serveur).
   quota?: number | null

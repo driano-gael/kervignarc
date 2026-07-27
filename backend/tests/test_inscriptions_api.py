@@ -58,7 +58,7 @@ def _preparer(client: TestClient) -> tuple[int, int, int]:
         json={"nom": "Martin", "prenom": "Alice", "categorie_id": categorie_id},
     ).json()["id"]
     depart_id = client.post(
-        f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810, "horaire": "9h00"}
+        f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810, "horaire": "09:00"}
     ).json()["id"]
     return tid, archer_id, depart_id
 
@@ -76,7 +76,7 @@ def test_inscrire_puis_lister(app_inscriptions: FastAPI, connecter_admin: Connec
         corps = cree.json()
         assert corps["depart_id"] == depart_id
         assert corps["numero_depart"] == 1
-        assert corps["horaire"] == "9h00"
+        assert corps["horaire"] == "09:00"
         assert corps["paye"] is False
         assert corps["montant_du_centimes"] == 810
         assert isinstance(corps["id"], int)
@@ -108,7 +108,8 @@ def test_inscrire_sur_un_creneau_complet_409(
         connecter_admin(client)
         tid, premier_archer, _ = _preparer(client)
         depart_quota_1 = client.post(
-            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810, "quota": 1}
+            f"/api/v1/tournois/{tid}/departs",
+            json={"tarif_centimes": 810, "horaire": "09:00", "quota": 1},
         ).json()["id"]
         # Première (et seule) place : elle passe.
         ok = client.post(
@@ -152,7 +153,7 @@ def test_inscrire_depart_d_un_autre_tournoi_404(
             "id"
         ]
         depart_etranger = client.post(
-            f"/api/v1/tournois/{autre}/departs", json={"tarif_centimes": 500}
+            f"/api/v1/tournois/{autre}/departs", json={"tarif_centimes": 500, "horaire": "09:00"}
         ).json()["id"]
 
         rejet = client.post(
@@ -220,7 +221,7 @@ def test_montant_du_somme_les_tarifs_des_creneaux(
         tid, archer_id, depart_id = _preparer(client)  # 1er départ : tarif 810
         client.post(f"/api/v1/archers/{archer_id}/inscriptions", json={"depart_id": depart_id})
         autre = client.post(
-            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 1000}
+            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 1000, "horaire": "09:00"}
         ).json()["id"]
         client.post(f"/api/v1/archers/{archer_id}/inscriptions", json={"depart_id": autre})
 

@@ -69,7 +69,9 @@ def _preparer_depart_avec_plan(client: TestClient) -> tuple[int, int]:
     assert categorie.status_code == 201, categorie.text
     categorie_id = int(categorie.json()["id"])
 
-    depart = client.post(f"/api/v1/tournois/{tournoi_id}/departs", json={"tarif_centimes": 0})
+    depart = client.post(
+        f"/api/v1/tournois/{tournoi_id}/departs", json={"tarif_centimes": 0, "horaire": "09:00"}
+    )
     assert depart.status_code == 201, depart.text
     depart_id = int(depart.json()["id"])
 

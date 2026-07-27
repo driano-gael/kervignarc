@@ -73,7 +73,9 @@ def _preparer_tournoi(client: TestClient) -> tuple[int, int]:
     assert categorie.status_code == 201, categorie.text
     categorie_id = int(categorie.json()["id"])
 
-    depart = client.post(f"/api/v1/tournois/{tournoi_id}/departs", json={"tarif_centimes": 800})
+    depart = client.post(
+        f"/api/v1/tournois/{tournoi_id}/departs", json={"tarif_centimes": 800, "horaire": "09:00"}
+    )
     assert depart.status_code == 201, depart.text
     depart_id = int(depart.json()["id"])
 

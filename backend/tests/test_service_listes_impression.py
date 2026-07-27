@@ -193,7 +193,7 @@ def _monde(*, numeros_departs: tuple[int, ...] = (1,), tarif_centimes: int = 800
     departs_par_numero: dict[int, int] = {}
     for numero in numeros_departs:
         depart = departs.ajouter(
-            Depart.creer(tournoi.id, numero=numero, tarif_centimes=tarif_centimes)
+            Depart.creer(tournoi.id, numero=numero, tarif_centimes=tarif_centimes, horaire="09:00")
         )
         assert depart.id is not None
         departs_par_numero[numero] = depart.id

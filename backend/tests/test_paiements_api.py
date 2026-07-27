@@ -68,10 +68,12 @@ def _preparer(client: TestClient) -> dict[str, int]:
         f"/api/v1/tournois/{tid}/archers",
         json={"nom": "Deux", "prenom": "Bob", "categorie_id": categorie_id},
     ).json()["id"]
-    dep1 = client.post(f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810}).json()["id"]
-    dep2 = client.post(f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 1000}).json()[
-        "id"
-    ]
+    dep1 = client.post(
+        f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810, "horaire": "09:00"}
+    ).json()["id"]
+    dep2 = client.post(
+        f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 1000, "horaire": "09:00"}
+    ).json()["id"]
     ins_a1 = client.post(
         f"/api/v1/archers/{archer_a}/inscriptions", json={"depart_id": dep1}
     ).json()["id"]

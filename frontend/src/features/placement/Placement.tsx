@@ -72,7 +72,7 @@ export function Placement({ tournoiId }: { tournoiId: number }) {
           {liste.map((depart) => (
             <option key={depart.id} value={depart.id}>
               Départ {depart.numero}
-              {depart.horaire ? ` — ${depart.horaire}` : ''}
+              {` — ${depart.horaire}`}
             </option>
           ))}
         </select>

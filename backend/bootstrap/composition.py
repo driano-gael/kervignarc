@@ -269,7 +269,9 @@ def create_app(
     serie_repository = SerieRepositorySQL(
         database.session_factory, audit_repository, HorlogeSysteme()
     )
-    app.state.service_tournois = ServiceTournois(tournoi_repository)
+    # `ServiceTournois` lit aussi les **départs** (port `depart_repository`) : le passage à `prêt`
+    # exige au moins un créneau (garde `TournoiSansDepart`, E02US010).
+    app.state.service_tournois = ServiceTournois(tournoi_repository, depart_repository)
     # `service_departs` est câblé **plus bas**, après `service_completude` : son garde-fou de cycle
     # (E12US008) dépend du port étroit `LecteurAvancementDepart`, que réalise `ServiceCompletude`.
     # Catégories ↔ blasons se référencent mutuellement (E01US006) : la catégorie valide son

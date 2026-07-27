@@ -211,7 +211,9 @@ def _monde(*, avec_bareme: BaremeQualification | None = _BAREME_DEFAUT) -> _Mond
     assert tournoi.id is not None
     if avec_bareme is not None:
         phases.ajouter(Phase.qualification(tournoi.id, avec_bareme))
-    depart = departs.ajouter(Depart.creer(tournoi.id, numero=1, tarif_centimes=800))
+    depart = departs.ajouter(
+        Depart.creer(tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+    )
     assert depart.id is not None
     blason = blasons.ajouter(
         Blason.creer(tournoi.id, "Blason 40", taille=1.0, capacite=1, zones=None)

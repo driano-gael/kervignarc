@@ -26,28 +26,31 @@ router = APIRouter(prefix="/api/v1/tournois/{tournoi_id}/departs", tags=["depart
 
 
 class CreerDepartRequete(BaseModel):
-    """Corps de création d'un départ : tarif requis (centimes), horaire et quota facultatifs.
+    """Corps de création d'un départ : tarif et horaire requis, quota facultatif.
 
-    Le **numéro** n'est pas dans le corps : il est attribué par le serveur (le plus grand + 1). Le
-    `quota` (nombre maximal d'inscrits) est **facultatif** — absent (`null`) = créneau sans plafond.
-    Sa **valeur** est validée par le domaine (`[1, 1 000]` → 422), comme le tarif : le DTO ne
-    contraint que le **type** (un quota non entier → 400).
+    Le **numéro** n'est pas dans le corps : il est attribué par le serveur (le plus grand + 1).
+    L'`horaire` est **obligatoire** (E02US010) : le DTO ne contraint que le **type** (`str`) — un
+    horaire **manquant** ou d'un mauvais type est une requête malformée (→ 400) ; le **format**
+    `HH:MM` (24 h) est, lui, validé par le domaine (`HoraireDepartInvalide` → 422), comme la valeur
+    du tarif ou du quota. Le `quota` reste **facultatif** — absent (`null`) = créneau sans plafond.
     """
 
     tarif_centimes: int
-    horaire: str | None = None
+    horaire: str
     quota: int | None = None
 
 
 class ModifierDepartRequete(BaseModel):
-    """Corps d'édition d'un départ : tarif (centimes), horaire, quota ; le numéro est fixe.
+    """Corps d'édition d'un départ : tarif, horaire (`HH:MM`), quota ; le numéro est fixe.
 
-    **Remplacement complet** : un `quota` absent du corps (`null`) **retire** le plafond. Le client
-    doit renvoyer le quota courant s'il veut le conserver (le formulaire est pré-rempli pour ça).
+    **Remplacement complet** : un `quota` absent (`null`) **retire** le plafond ; l'horaire est
+    **obligatoire** (E02US010) — le client renvoie l'horaire courant s'il veut le conserver (le
+    formulaire est pré-rempli pour ça). Mêmes règles de validation qu'à la création (type → 400,
+    format `HH:MM` → 422).
     """
 
     tarif_centimes: int
-    horaire: str | None = None
+    horaire: str
     quota: int | None = None
 
 
@@ -67,7 +70,7 @@ class DepartReponse(BaseModel):
     id: int
     tournoi_id: int
     numero: int
-    horaire: str | None
+    horaire: str
     tarif_centimes: int
     quota: int | None
     etat: str

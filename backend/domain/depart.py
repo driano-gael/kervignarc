@@ -18,10 +18,23 @@ un départ sans prix, donc l'état « non défini » (`None`) n'existe plus ici 
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, replace
 
-from domain.erreurs import NumeroDepartInvalide, QuotaDepartInvalide, TarifDepartInvalide
+from domain.erreurs import (
+    HoraireDepartInvalide,
+    NumeroDepartInvalide,
+    QuotaDepartInvalide,
+    TarifDepartInvalide,
+)
 from domain.tournoi import TournoiId
+
+_FORMAT_HORAIRE = re.compile(r"([01][0-9]|2[0-3]):[0-5][0-9]")
+"""Un horaire du jour `HH:MM` en 24 h : heures `00`-`23`, minutes `00`-`59` (E02US010).
+
+Exactement deux chiffres de chaque côté du `:` (« 08:00 », pas « 8:00 ») — le format **canonique**
+que le front produit par son masque. On refuse ici tout le reste, y compris l'ancien libellé libre
+(« 9h00 », « matin ») : depuis E02US010 l'horaire est une donnée temporelle, plus un texte."""
 
 DepartId = int
 """Identifiant technique d'un départ, attribué par la persistance."""
@@ -52,17 +65,18 @@ SQLite et n'y déborde en erreur non typée (500). Un quota **absent** (`None`) 
 class Depart:
     """Un créneau de tir d'un tournoi. `id` vaut `None` tant que l'agrégat n'est pas persisté.
 
-    `numero` est attribué par le service (unique dans le tournoi) ; `horaire` est un libellé de
-    créneau facultatif (ex. « 9h00 ») ; `tarif_centimes` est le prix **de ce créneau**, obligatoire.
-    `quota` est le nombre maximal d'inscrits **de ce créneau** (E02US006), **facultatif** : `None`
-    = pas de plafond. L'agrégat ne connaît que la **valeur** du quota ; le contrôle « inscrits <
-    quota » vit dans le service (il voit les inscriptions, pas l'agrégat).
+    `numero` est attribué par le service (unique dans le tournoi) ; `horaire` est l'horaire du
+    créneau `HH:MM` (24 h), **obligatoire** depuis E02US010 (plus un libellé libre) ;
+    `tarif_centimes` est le prix **de ce créneau**, obligatoire. `quota` est le nombre maximal
+    d'inscrits **de ce créneau** (E02US006), **facultatif** : `None` = pas de plafond. L'agrégat ne
+    connaît que la **valeur** du quota ; le contrôle « inscrits < quota » vit dans le service (il
+    voit les inscriptions, pas l'agrégat).
     """
 
     tournoi_id: TournoiId
     numero: int
     tarif_centimes: int
-    horaire: str | None = None
+    horaire: str
     quota: int | None = None
     id: DepartId | None = None
 
@@ -71,34 +85,33 @@ class Depart:
         tournoi_id: TournoiId,
         numero: int,
         tarif_centimes: int,
-        horaire: str | None = None,
+        horaire: str,
         quota: int | None = None,
     ) -> Depart:
         """Crée un départ valide.
 
         Lève `NumeroDepartInvalide` si le numéro n'est pas un entier ≥ 1, `TarifDepartInvalide`
-        si le tarif sort de `[0, 1 000 €]`, `QuotaDepartInvalide` si un quota est défini hors de
-        `[1, 1 000]`. L'horaire est normalisé (espaces de bord retirés) ; un horaire vide devient
-        `None` (facultatif). Un `quota` à `None` = créneau sans plafond.
+        si le tarif sort de `[0, 1 000 €]`, `HoraireDepartInvalide` si l'horaire n'est pas un
+        `HH:MM` valide (24 h, **obligatoire**, E02US010), `QuotaDepartInvalide` si un quota est
+        défini hors de `[1, 1 000]`. Un `quota` à `None` = créneau sans plafond.
         """
         return Depart(
             tournoi_id=tournoi_id,
             numero=_numero_valide(numero),
             tarif_centimes=_tarif_valide(tarif_centimes),
-            horaire=_horaire_normalise(horaire),
+            horaire=_horaire_valide(horaire),
             quota=_quota_valide(quota),
         )
 
-    def modifier(
-        self, tarif_centimes: int, horaire: str | None = None, quota: int | None = None
-    ) -> Depart:
+    def modifier(self, tarif_centimes: int, horaire: str, quota: int | None = None) -> Depart:
         """Renvoie une copie au tarif, à l'horaire et au quota mis à jour (règles de `creer`).
 
         L'`id`, le `tournoi_id` et surtout le `numero` sont **préservés** : le numéro est attribué
         par le système, il n'est pas une donnée que l'admin corrige (au contraire du nom d'un club).
-        L'édition est un **remplacement complet** : un `quota` omis (`None`) **retire** le plafond,
-        comme un horaire omis l'efface — l'appelant renvoie les valeurs courantes qu'il veut garder.
-        Lève `TarifDepartInvalide` / `QuotaDepartInvalide` si tarif ou quota sont hors plage.
+        L'édition est un **remplacement complet** : un `quota` omis (`None`) **retire** le plafond ;
+        l'horaire, lui, est **obligatoire** (E02US010) — l'appelant renvoie l'horaire courant s'il
+        veut le garder. Lève `TarifDepartInvalide` / `HoraireDepartInvalide` / `QuotaDepartInvalide`
+        si tarif, horaire ou quota sont invalides.
 
         Abaisser le quota **sous** le nombre d'inscrits déjà en place est accepté ici : l'agrégat ne
         voit pas les inscriptions, et le blocage ne joue qu'aux **nouvelles** inscriptions (le
@@ -107,7 +120,7 @@ class Depart:
         return replace(
             self,
             tarif_centimes=_tarif_valide(tarif_centimes),
-            horaire=_horaire_normalise(horaire),
+            horaire=_horaire_valide(horaire),
             quota=_quota_valide(quota),
         )
 
@@ -119,12 +132,22 @@ def _numero_valide(numero: int) -> int:
     return numero
 
 
-def _horaire_normalise(horaire: str | None) -> str | None:
-    """Normalise l'horaire ; un horaire vide ou absent devient `None` (facultatif)."""
-    if horaire is None:
-        return None
-    horaire_normalise = horaire.strip()
-    return horaire_normalise or None
+def _horaire_valide(horaire: str) -> str:
+    """Valide et renvoie l'horaire d'un créneau : un `HH:MM` du jour (24 h), **obligatoire**.
+
+    Lève `HoraireDepartInvalide` si, après retrait des espaces de bord, l'horaire n'est pas un
+    `HH:MM` valide (`00:00`-`23:59`) : horaire vide, ancien libellé libre (« 9h00 », « matin »),
+    heure `24:00`, minute `:60`… Contrairement à la normalisation d'E02US004 (qui laissait passer
+    n'importe quel texte et rendait `None` sur vide), un horaire est désormais une **donnée
+    temporelle** : la règle vit au domaine (règle 2), le front n'en est que la prévention.
+    """
+    normalise = horaire.strip()
+    if not _FORMAT_HORAIRE.fullmatch(normalise):
+        raise HoraireDepartInvalide(
+            "L'horaire d'un départ doit être un horaire du jour au format HH:MM "
+            "(par exemple 09:00, entre 00:00 et 23:59)."
+        )
+    return normalise
 
 
 def _tarif_valide(tarif_centimes: int) -> int:

@@ -24,12 +24,13 @@ from application.erreurs import (
     DepartAvecInscriptions,
     DepartEnCoursNonConfirme,
     DepartIntrouvable,
+    DernierDepartNonSupprimable,
     TournoiIntrouvable,
 )
 from domain.cycle_depart import AvancementDepart, EtatDepart
 from domain.depart import Depart, DepartId
 from domain.ports import DepartRepository, InscriptionRepository, TournoiRepository
-from domain.tournoi import TournoiId
+from domain.tournoi import StatutTournoi, TournoiId
 
 _LIBELLE_ETAT = {EtatDepart.LANCE: "lancé", EtatDepart.CLOS: "clos"}
 """Libellé humain de l'état protégé, pour le message de signalement (jamais *ouvert* : il ne lève
@@ -69,14 +70,15 @@ class ServiceDeparts:
         self,
         tournoi_id: TournoiId,
         tarif_centimes: int,
-        horaire: str | None = None,
+        horaire: str,
         quota: int | None = None,
     ) -> Depart:
         """Crée et persiste un départ dans un tournoi, avec un numéro attribué automatiquement.
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `DomainError` si le tarif ou le quota
-        sont hors plage. Le numéro est le plus grand existant + 1 (1 pour le premier créneau) ; le
-        `quota` est facultatif (`None` = créneau sans plafond, E02US006).
+        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `DomainError` si le tarif, l'horaire
+        (`HH:MM` obligatoire, E02US010) ou le quota sont invalides. Le numéro est le plus grand
+        existant + 1 (1 pour le premier créneau) ; le `quota` est facultatif (`None` = créneau sans
+        plafond, E02US006).
 
         Lecture (`par_tournoi`) puis écriture (`ajouter`) tiennent dans **une seule commande** en
         file (règle 7, ADR-0005) : aucune création concurrente ne peut se glisser entre le calcul du
@@ -113,15 +115,16 @@ class ServiceDeparts:
         tournoi_id: TournoiId,
         depart_id: DepartId,
         tarif_centimes: int,
-        horaire: str | None = None,
+        horaire: str,
         quota: int | None = None,
         confirme_cycle: bool = False,
     ) -> Depart:
         """Édite le tarif, l'horaire et le quota d'un départ (le numéro est fixe).
 
         **Remplacement complet** : tarif, horaire et quota sont réécrits ; un `quota` omis (`None`)
-        **retire** le plafond (E02US006, comme l'horaire). Lève `DepartIntrouvable` si le départ
-        n'existe pas dans ce tournoi, `DomainError` si le tarif ou le quota sont hors plage.
+        **retire** le plafond (E02US006). L'horaire reste **obligatoire** (`HH:MM`, E02US010). Lève
+        `DepartIntrouvable` si le départ n'existe pas dans ce tournoi, `DomainError` si le tarif,
+        l'horaire ou le quota sont invalides.
 
         **Garde-fou de cycle (E12US008)** : si le créneau est *lancé* ou *clos* (une session de tir
         y a eu lieu), lève `DepartEnCoursNonConfirme` tant que `confirme_cycle` n'est pas vrai — on
@@ -140,8 +143,15 @@ class ServiceDeparts:
     ) -> None:
         """Supprime un départ d'un tournoi (E02US004, garde-fous E02US009 + E12US008).
 
-        Lève `DepartIntrouvable` si le départ n'existe pas dans ce tournoi. Deux garde-fous, selon
-        l'**état de cycle** du créneau :
+        Lève `DepartIntrouvable` si le départ n'existe pas dans ce tournoi. Trois garde-fous.
+
+        D'abord, un **refus dur** : c'est le **dernier** départ d'un tournoi **non-brouillon**
+        (`DernierDepartNonSupprimable`, E02US010). Aucun drapeau ne le lève — un tournoi engagé a
+        été validé avec ≥ 1 créneau ; pour repartir de zéro, l'admin **revient en brouillon**. Ce
+        refus **précède** les deux confirmations ci-dessous : les proposer n'aurait pas de sens
+        puisque la suppression est de toute façon interdite.
+
+        Ensuite, deux garde-fous selon l'**état de cycle** du créneau :
 
         - *lancé* / *clos* (une session de tir a eu lieu) : lève `DepartEnCoursNonConfirme` tant que
           `confirme_cycle` n'est pas vrai. Cette confirmation **subsume** le signalement
@@ -157,6 +167,7 @@ class ServiceDeparts:
         """
         depart = self._depart_du_tournoi(tournoi_id, depart_id)
         assert depart.id is not None, "Un départ relu est persisté."
+        self._refuser_suppression_du_dernier_depart(tournoi_id)
         etat = self._exiger_confirmation_cycle(depart, confirme_cycle)
         # DETTE-007 : la confirmation d'inscriptions est **aveugle**. Le décompte annoncé n'est pas
         # revérifié au rejeu — entre le 409 et la confirmation, d'autres tablettes peuvent inscrire
@@ -165,6 +176,29 @@ class ServiceDeparts:
         if etat is EtatDepart.OUVERT and not autoriser_suppression_inscrits:
             self._signaler_inscriptions(depart)
         self._departs.supprimer(depart.id)
+
+    def _refuser_suppression_du_dernier_depart(self, tournoi_id: TournoiId) -> None:
+        """Lève `DernierDepartNonSupprimable` si retirer ce départ laisserait un tournoi engagé sans
+        aucun créneau (E02US010).
+
+        « Engagé » = tout statut **hors brouillon** : dès `prêt`, la garde `TournoiSansDepart`
+        (`ServiceTournois.vers_pret`) a exigé ≥ 1 départ ; cette garde-ci **maintient** l'invariant
+        en aval. Le compte (`par_tournoi`) inclut le départ qu'on s'apprête à retirer, d'où le test
+        « ≤ 1 » : s'il n'en reste qu'un, c'est celui-là. Sur un `brouillon`, aucune borne — le
+        tournoi n'est pas encore engagé. La lecture du tournoi et celle des départs tiennent dans la
+        même commande de file que la suppression (règle 7) : pas de course avec un autre créneau.
+        """
+        tournoi = self._tournois.par_id(tournoi_id)
+        if tournoi is None:
+            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+        if tournoi.statut is StatutTournoi.BROUILLON:
+            return
+        if len(self._departs.par_tournoi(tournoi_id)) <= 1:
+            raise DernierDepartNonSupprimable(
+                "C'est le dernier départ de ce tournoi, qui n'est plus en brouillon : un tournoi "
+                "engagé doit garder au moins un créneau, son dernier départ ne peut pas être "
+                "supprimé."
+            )
 
     def _exiger_confirmation_cycle(self, depart: Depart, confirme_cycle: bool) -> EtatDepart:
         """Renvoie l'`EtatDepart` du créneau, ou lève `DepartEnCoursNonConfirme` si nécessaire.

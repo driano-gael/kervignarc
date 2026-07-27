@@ -280,7 +280,7 @@ class _Monde:
 
     def depart(self, numero: int) -> int:
         depart = self.departs.ajouter(
-            Depart(tournoi_id=self.tournoi_id, numero=numero, tarif_centimes=0)
+            Depart(tournoi_id=self.tournoi_id, numero=numero, tarif_centimes=0, horaire="09:00")
         )
         assert depart.id is not None
         return depart.id
@@ -427,7 +427,9 @@ def test_depart_dun_autre_tournoi_leve_depart_introuvable() -> None:
         Tournoi(nom="Autre", date=_DATE, lieu=None, type_tournoi=TypeTournoi.NON_OFFICIEL)
     )
     assert autre.id is not None
-    depart_autre = monde.departs.ajouter(Depart(tournoi_id=autre.id, numero=1, tarif_centimes=0))
+    depart_autre = monde.departs.ajouter(
+        Depart(tournoi_id=autre.id, numero=1, tarif_centimes=0, horaire="09:00")
+    )
     assert depart_autre.id is not None
     with pytest.raises(DepartIntrouvable):
         monde.service.plan_de_cibles(monde.tournoi_id, depart_autre.id)

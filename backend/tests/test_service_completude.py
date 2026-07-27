@@ -245,7 +245,7 @@ class Montage:
     def creer_depart(self) -> DepartId:
         self._numero += 1
         depart = self.departs.ajouter(
-            Depart.creer(self.tournoi_id, numero=self._numero, tarif_centimes=1000)
+            Depart.creer(self.tournoi_id, numero=self._numero, tarif_centimes=1000, horaire="09:00")
         )
         assert depart.id is not None
         return depart.id

@@ -77,7 +77,9 @@ def _base_avec_archer_et_depart(tmp_path: Path) -> tuple[Database, int, int]:
     archer = ArcherRepositorySQL(db.session_factory).ajouter(
         Archer.creer("Robin", "Jean", tournoi.id, categorie.id)
     )
-    depart = DepartRepositorySQL(db.session_factory).ajouter(Depart.creer(tournoi.id, 1, 810))
+    depart = DepartRepositorySQL(db.session_factory).ajouter(
+        Depart.creer(tournoi.id, 1, 810, "09:00")
+    )
     assert archer.id is not None and depart.id is not None
     return db, archer.id, depart.id
 
