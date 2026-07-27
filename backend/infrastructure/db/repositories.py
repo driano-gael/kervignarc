@@ -29,7 +29,7 @@ from domain.erreurs import DomainError
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.inscription import Inscription, InscriptionId
-from domain.participant import Participant
+from domain.participant import GenreParticipant, Participant
 from domain.phase import Phase, PhaseId, SourcePhase, StatutPhase, TypePhase, grain_par_defaut
 from domain.placement import Affectation
 from domain.ports import Horloge
@@ -215,20 +215,17 @@ def _barrage_json(duel: Duel) -> str | None:
     )
 
 
-def _vers_duel(
-    ligne: DuelORM,
-    *,
-    bareme: BaremeDuel,
-    participant_haut: Participant,
-    participant_bas: Participant,
-) -> Duel:
-    """Réhydrate un `Duel` d'une ligne ORM, complété du barème et des participants (ADR-0049).
+def _vers_duel(ligne: DuelORM, *, bareme: BaremeDuel) -> Duel:
+    """Réhydrate un `Duel` d'une ligne ORM, complété du seul **barème** (ADR-0049).
 
-    Le tir (manches, barrage, validateur) vient de la base ; le **barème** et les **participants**
-    (l'appariement, non persisté — ADR-0048) sont **fournis** par l'appelant. Un contenu JSON
-    illisible est une incohérence technique (`InfrastructureError`), le repository en étant le seul
-    rédacteur.
+    Le tir (manches, barrage, validateur) **et l'identité des duellistes** viennent de la base ; le
+    **barème** (dérivé de l'arme, re-résolu à la lecture) est **fourni** par l'appelant. Les
+    duellistes stockés **ancrent** le tir : l'appelant compare l'identité réhydratée aux occupants
+    recalculés pour détecter une divergence (ADR-0049 §4). Un contenu JSON illisible est une
+    incohérence technique (`InfrastructureError`), le repository en étant le seul rédacteur.
     """
+    participant_haut = Participant(genre=GenreParticipant(ligne.haut_genre), ref_id=ligne.haut_ref)
+    participant_bas = Participant(genre=GenreParticipant(ligne.bas_genre), ref_id=ligne.bas_ref)
     try:
         manches = tuple(
             MancheDuel(
@@ -2190,32 +2187,19 @@ class DuelRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des duels d'une phase.") from exc
 
-    def charger(
-        self,
-        phase_id: PhaseId,
-        match_numero: int,
-        *,
-        bareme: BaremeDuel,
-        participant_haut: Participant,
-        participant_bas: Participant,
-    ) -> Duel | None:
-        """Réhydrate le duel d'un match, ou `None` si aucun tir n'y est enregistré."""
+    def charger(self, phase_id: PhaseId, match_numero: int, *, bareme: BaremeDuel) -> Duel | None:
+        """Réhydrate le duel d'un match (duellistes stockés + barème), ou `None` si absent."""
         try:
             with self._session_factory() as session:
                 ligne = session.get(DuelORM, (phase_id, match_numero))
                 if ligne is None:
                     return None
-                return _vers_duel(
-                    ligne,
-                    bareme=bareme,
-                    participant_haut=participant_haut,
-                    participant_bas=participant_bas,
-                )
+                return _vers_duel(ligne, bareme=bareme)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture d'un duel.") from exc
 
     def enregistrer(self, phase_id: PhaseId, match_numero: int, duel: Duel) -> Duel:
-        """Persiste le tir d'un match (upsert sur `(phase_id, match_numero)`) et renvoie le duel."""
+        """Persiste le tir **et l'identité des duellistes** (upsert sur `(phase, match)`)."""
         try:
             with self._session_factory() as session:
                 ligne = session.get(DuelORM, (phase_id, match_numero))
@@ -2224,12 +2208,20 @@ class DuelRepositorySQL:
                         DuelORM(
                             phase_id=phase_id,
                             match_numero=match_numero,
+                            haut_genre=duel.participant_haut.genre.value,
+                            haut_ref=duel.participant_haut.ref_id,
+                            bas_genre=duel.participant_bas.genre.value,
+                            bas_ref=duel.participant_bas.ref_id,
                             manches=_manches_json(duel),
                             barrage=_barrage_json(duel),
                             validee_par=duel.validee_par,
                         )
                     )
                 else:
+                    ligne.haut_genre = duel.participant_haut.genre.value
+                    ligne.haut_ref = duel.participant_haut.ref_id
+                    ligne.bas_genre = duel.participant_bas.genre.value
+                    ligne.bas_ref = duel.participant_bas.ref_id
                     ligne.manches = _manches_json(duel)
                     ligne.barrage = _barrage_json(duel)
                     ligne.validee_par = duel.validee_par

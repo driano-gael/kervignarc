@@ -8,10 +8,12 @@ est persisté (`DuelRepository`). Le vainqueur d'un duel validé fait donc **ava
 reconstruction suivante — c'est le sens de « transmis au moteur E05US005 ».
 
 MVP (ADR-0049) : **ensemencement scratch**, tableau **tournoi-large** (les tableaux par catégorie
-sont downstream). Le barème est résolu **par duel** depuis l'arme de ses participants (le résolveur
-FFTA par défaut : cumul en poulies, sets sinon) ; E01US011 branchera les catalogues configurables au
-même point d'injection. Les `Participant` de genre **équipe** sont ignorés (pas d'entité avant
-E13US002). Le pont `Participant → archer` (nom, catégorie, blason) vit ici (couche haute, ADR-0028).
+sont downstream). Le barème (et les zones du pavé) est résolu **par duel** depuis l'arme du **camp
+haut** — en tableau par division les deux duellistes partagent la catégorie, donc la même arme ;
+le bracket mixte-armes du MVP prend celle du haut (hypothèse d'homogénéité assumée). Résolveur FFTA
+par défaut (cumul en poulies, sets sinon) ; E01US011 branchera les catalogues configurables au même
+point d'injection. Les `Participant` de genre **équipe** sont ignorés (pas d'entité avant E13US002).
+Le pont `Participant → archer` (nom, catégorie, blason) vit ici (couche haute, ADR-0028).
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from dataclasses import dataclass
 from application.classements import ServiceClassement
 from application.erreurs import (
     BlasonIntrouvable,
+    DuelDesynchronise,
     PhaseIntrouvable,
     PhasePasUnTableau,
     TournoiIntrouvable,
@@ -227,23 +230,22 @@ class ServiceSaisieDuels:
         Un tour ≥ 2 ne connaît ses occupants qu'une fois les vainqueurs amont propagés : on traite
         donc les matchs **par tour croissant**. On ne rejoue qu'un duel **validé** (officiel) et
         tranché — un tir non validé n'avance pas le tableau (comme le cumul de qualif ne compte que
-        le validé).
+        le validé). Un tir dont les **duellistes enregistrés divergent** des occupants (le
+        classement a changé depuis) est **ignoré**, jamais rejoué pour d'autres archers (ADR-0049
+        §4) ; un `match_numero` **hors tableau** (effectif rétréci) est écarté avant tout accès.
         """
         numeros = self._duels.numeros_enregistres(phase_id)
-        for numero in sorted(numeros, key=lambda n: tableau.match(n).tour):
+        valides = {m.numero for m in tableau.matchs}
+        for numero in sorted(numeros & valides, key=lambda n: tableau.match(n).tour):
             match = tableau.match(numero)
             if match.est_bye or match.haut is None or match.bas is None:
                 continue
             bareme = self._bareme_du(match.haut, lignes)
-            duel = self._duels.charger(
-                phase_id,
-                numero,
-                bareme=bareme,
-                participant_haut=match.haut,
-                participant_bas=match.bas,
-            )
+            duel = self._duels.charger(phase_id, numero, bareme=bareme)
             if duel is None or duel.validee_par is None:
                 continue
+            if (duel.participant_haut, duel.participant_bas) != (match.haut, match.bas):
+                continue  # divergence : le tir oppose d'autres duellistes, on ne le rejoue pas
             vainqueur = duel.vainqueur
             if vainqueur is not None:
                 tableau = tableau.jouer(numero, vainqueur)
@@ -276,11 +278,22 @@ class ServiceSaisieDuels:
         haut: Participant,
         bas: Participant,
     ) -> Duel:
-        """Le duel persisté du match, ou un duel vierge au barème résolu (première saisie)."""
-        duel = self._duels.charger(
-            phase_id, match_numero, bareme=bareme, participant_haut=haut, participant_bas=bas
-        )
-        return duel if duel is not None else Duel.vide(bareme, haut, bas)
+        """Le duel persisté du match, ou un duel vierge (première saisie).
+
+        **Refuse** (`DuelDesynchronise`, 409) un tir qui oppose d'**autres** duellistes que
+        `(haut, bas)` recalculés : le classement a changé depuis, on n'écrit pas un score sur le
+        mauvais couple (ADR-0049 §4). À première saisie (aucun tir), le duel vierge porte les
+        occupants courants, qui seront enregistrés.
+        """
+        duel = self._duels.charger(phase_id, match_numero, bareme=bareme)
+        if duel is None:
+            return Duel.vide(bareme, haut, bas)
+        if (duel.participant_haut, duel.participant_bas) != (haut, bas):
+            raise DuelDesynchronise(
+                f"Le tir du match {match_numero} oppose d'autres duellistes : le classement a "
+                "changé depuis. Régénérez ou rétablissez le classement avant de saisir."
+            )
+        return duel
 
     # --- Interne : résolution barème / zones / duelliste ---------------------------------------
 
@@ -334,17 +347,22 @@ class ServiceSaisieDuels:
         *,
         duel: Duel | None = None,
     ) -> EtatDuel:
-        """Assemble l'`EtatDuel` d'un match ; charge son tir au besoin (si le match a un duel)."""
+        """Assemble l'`EtatDuel` d'un match ; charge son tir au besoin (si le match a un duel).
+
+        Un tir dont les duellistes enregistrés **divergent** des occupants recalculés (classement
+        changé) est **masqué** (`duel=None`) : le match s'affiche non joué plutôt que de prêter un
+        score au mauvais couple (ADR-0049 §4).
+        """
         haut, bas = match.haut, match.bas
         if duel is None and haut is not None and bas is not None and not match.est_bye:
             bareme = self._bareme_du(haut, lignes)
-            duel = self._duels.charger(
-                phase_id,
-                match.numero,
-                bareme=bareme,
-                participant_haut=haut,
-                participant_bas=bas,
-            )
+            charge = self._duels.charger(phase_id, match.numero, bareme=bareme)
+            occupants = (haut, bas)
+            if (
+                charge is not None
+                and (charge.participant_haut, charge.participant_bas) == occupants
+            ):
+                duel = charge
         return EtatDuel(
             numero=match.numero,
             tour=match.tour,

@@ -24,7 +24,6 @@ from application.erreurs import ScoreurHorsTournoi
 from application.saisie_duels import Duelliste, EtatDuel, EtatTableau, ServiceSaisieDuels
 from domain.blason import ZoneScore
 from domain.duel import Cote
-from domain.erreurs import ValeurHorsBlason
 from domain.scoreur import Scoreur
 from infrastructure.db import WriteQueue
 from infrastructure.idempotence import RegistreIdempotence
@@ -175,14 +174,18 @@ class TableauReponse(BaseModel):
 
 
 class SaisirMancheRequete(BaseModel):
-    """Corps de la saisie d'une manche : le match, le rang de manche, les deux volées (codes)."""
+    """Corps de la saisie d'une manche : le match, le rang de manche, les deux volées.
+
+    `valeurs_*` sont des `ZoneScore` : Pydantic valide l'appartenance à l'énuméré (422 sur code
+    inconnu), comme la saisie de qualification (E04US002) — cohérence de la frontière API.
+    """
 
     tournoi_id: int
     phase_id: int
     match_numero: int
     numero: int
-    valeurs_haut: list[str]
-    valeurs_bas: list[str]
+    valeurs_haut: list[ZoneScore]
+    valeurs_bas: list[ZoneScore]
     identifiant_saisie: str | None = None
 
 
@@ -192,9 +195,9 @@ class SaisirBarrageRequete(BaseModel):
     tournoi_id: int
     phase_id: int
     match_numero: int
-    fleche_haut: str
-    fleche_bas: str
-    gagnant_designe: str | None = None
+    fleche_haut: ZoneScore
+    fleche_bas: ZoneScore
+    gagnant_designe: Cote | None = None
     identifiant_saisie: str | None = None
 
 
@@ -205,25 +208,6 @@ class ValiderDuelRequete(BaseModel):
     phase_id: int
     match_numero: int
     identifiant_saisie: str | None = None
-
-
-# --- Conversions sûres (codes → valeurs de domaine) ---
-
-
-def _zone(code: str) -> ZoneScore:
-    """Convertit un code en `ZoneScore`, `422 valeur_hors_blason` si le code n'existe pas."""
-    try:
-        return ZoneScore(code)
-    except ValueError as exc:
-        raise ValeurHorsBlason(f"« {code} » n'est pas une valeur de score connue.") from exc
-
-
-def _cote(valeur: str) -> Cote:
-    """Convertit un code en `Cote` (`haut`/`bas`), `422` si invalide."""
-    try:
-        return Cote(valeur)
-    except ValueError as exc:
-        raise ValeurHorsBlason(f"« {valeur} » n'est pas un camp valide (haut/bas).") from exc
 
 
 def _exiger_meme_tournoi(scoreur: Scoreur, tournoi_id: int) -> None:
@@ -264,7 +248,7 @@ async def lire_duel(
     request: Request,
     scoreur: Annotated[Scoreur, Depends(exiger_scoreur)],
 ) -> DuelReponse:
-    """L'état d'un match précis. `404 match_introuvable` si le rang n'existe pas. Scoreur."""
+    """L'état d'un match précis. `422 match_introuvable` si le rang n'existe pas. Scoreur."""
     service: ServiceSaisieDuels = request.app.state.service_saisie_duels
     _exiger_meme_tournoi(scoreur, tournoi_id)
     etat = await run_in_threadpool(service.etat_duel, tournoi_id, phase_id, match_numero)
@@ -285,8 +269,8 @@ async def saisir_manche(
     write_queue: WriteQueue = request.app.state.write_queue
     registre: RegistreIdempotence = request.app.state.registre_idempotence
     _exiger_meme_tournoi(scoreur, requete.tournoi_id)
-    valeurs_haut = tuple(_zone(code) for code in requete.valeurs_haut)
-    valeurs_bas = tuple(_zone(code) for code in requete.valeurs_bas)
+    valeurs_haut = tuple(requete.valeurs_haut)
+    valeurs_bas = tuple(requete.valeurs_bas)
     cle = _cle_idempotence(
         "manche",
         requete.identifiant_saisie,
@@ -321,9 +305,9 @@ async def saisir_barrage(
     write_queue: WriteQueue = request.app.state.write_queue
     registre: RegistreIdempotence = request.app.state.registre_idempotence
     _exiger_meme_tournoi(scoreur, requete.tournoi_id)
-    fleche_haut = _zone(requete.fleche_haut)
-    fleche_bas = _zone(requete.fleche_bas)
-    designe = None if requete.gagnant_designe is None else _cote(requete.gagnant_designe)
+    fleche_haut = requete.fleche_haut
+    fleche_bas = requete.fleche_bas
+    designe = requete.gagnant_designe
     cle = _cle_idempotence(
         "barrage",
         requete.identifiant_saisie,

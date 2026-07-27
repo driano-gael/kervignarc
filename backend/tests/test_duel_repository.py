@@ -1,10 +1,10 @@
 """Tests d'intégration du repository SQL du tir de duel (E04US013, ADR-0049).
 
 Exerce l'adapter sur une **vraie base** migrée (`alembic upgrade head`) : aller-retour du tir d'un
-match (manches + barrage + validateur), réhydratation avec le barème et les participants **fournis**
-(l'appariement n'est pas persisté — ADR-0048), upsert sur la clé composite `(phase, match)`, et le
-repérage des matchs porteurs d'un tir. Tests **après** l'implémentation (adapter, pas d'oracle
-métier — règle 9).
+match (manches + barrage + validateur) **et de l'identité des duellistes** (ancrage
+anti-ré-attribution, ADR-0049 §4), réhydratation avec le seul barème réinjecté, upsert sur `(phase,
+match)`, et le repérage des matchs porteurs d'un tir. Tests **après** l'implémentation (adapter, pas
+d'oracle métier — règle 9).
 """
 
 from __future__ import annotations
@@ -70,13 +70,7 @@ def _saisir(duel: Duel, numero: int, haut: tuple[str, ...], bas: tuple[str, ...]
 
 
 def _charger(decor: _Decor, numero: int) -> Duel | None:
-    return decor.duels.charger(
-        decor.phase_id,
-        numero,
-        bareme=BaremeDuel.preset_ffta_classique(),
-        participant_haut=HAUT,
-        participant_bas=BAS,
-    )
+    return decor.duels.charger(decor.phase_id, numero, bareme=BaremeDuel.preset_ffta_classique())
 
 
 def test_enregistrer_puis_charger_un_duel_valide(tmp_path: Path) -> None:

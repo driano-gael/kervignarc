@@ -335,11 +335,15 @@ class Duel:
 
         Refuse si le barrage n'est pas requis (`BarrageNonRequis`), sur un duel validé
         (`DuelVerrouille`), une flèche hors blason (`ValeurHorsBlason`), ou une égalité de flèche
-        sans désignation du plus près du centre (`BarrageIndecis`).
+        sans désignation du plus près du centre (`BarrageIndecis`). Un barrage **déjà saisi** reste
+        **ré-éditable** tant que le duel n'est pas validé — la garde se fonde sur l'égalité des
+        **manches seules** (pas sur `resultat.barrage_requis`, qui devient faux dès qu'un barrage
+        décisif est posé) : sans quoi une flèche de barrage erronée ne se corrigerait plus et
+        forcerait à valider un vainqueur faux.
         """
         if self.verrouille:
             raise DuelVerrouille("Ce duel est validé : plus aucune saisie n'est possible.")
-        if not self.resultat.barrage_requis:
+        if not replace(self, barrage=None).resultat.barrage_requis:
             raise BarrageNonRequis("Le duel n'est pas à égalité : aucun barrage à tirer.")
         for fleche in (fleche_haut, fleche_bas):
             if fleche not in zones_admises:
@@ -353,9 +357,12 @@ class Duel:
     def valider(self, par: str) -> Duel:
         """Verrouille le duel **tranché** au nom du scoreur `par` (grain fin de duel).
 
-        Refuse un duel non tranché (`DuelIncomplet`) ou un nom vide (`NomIntervenantInvalide`). Le
+        Refuse un duel **déjà validé** (`DuelVerrouille` — ne pas écraser la signature du
+        validateur), non tranché (`DuelIncomplet`) ou un nom vide (`NomIntervenantInvalide`). Le
         vainqueur est ensuite transmis au moteur `Tableau.jouer` par le service (ADR-0049 §4).
         """
+        if self.verrouille:
+            raise DuelVerrouille("Ce duel est déjà validé : sa validation ne se réécrit pas.")
         par = _intervenant_valide(par)
         if not self.resultat.termine:
             raise DuelIncomplet(

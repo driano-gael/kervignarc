@@ -434,16 +434,22 @@ class DuelORM(Base):
     """Table `duel` — le **tir** d'un match du tableau (saisie en duels, E04US013, ADR-0049).
 
     Une ligne = le résultat d'un match, keyé **`(phase_id, match_numero)`** (clé primaire composite,
-    comme `placement_tableau`). On ne persiste que le **tir** : `manches` (JSON, la liste des sets —
-    deux volées de `ZoneScore` par manche), l'éventuel `barrage` (JSON, une flèche par camp + le
-    gagnant désigné au plus près du centre), et `validee_par` (le scoreur ; `NULL` = duel non
-    validé). Le **barème** (résolu par arme) et les **participants** (l'appariement) ne sont **pas**
-    stockés : fidèle à ADR-0048, l'appariement est **recalculé** du classement à la reconstruction,
-    et le barème réinjecté par le résolveur — le repository réhydrate le `Duel` avec ce contexte.
+    comme `placement_tableau`). On persiste le **tir** — `manches` (JSON, la liste des sets, deux
+    volées de `ZoneScore` par manche), l'éventuel `barrage` (JSON, une flèche par camp + le gagnant
+    désigné au plus près du centre), `validee_par` (le scoreur ; `NULL` = non validé) — **et
+    l'identité des deux duellistes** (`haut_genre`/`haut_ref`, `bas_genre`/`bas_ref`). Elle
+    n'est **pas** l'appariement *plan* (qui reste recalculé du classement, ADR-0048) : c'est le fait
+    historique « **qui** a tiré ce résultat ». Elle **ancre** le tir contre une identité stable au
+    lieu de la seule **position** `match_numero` : à la reconstruction, si les occupants recalculés
+    du match divergent des duellistes enregistrés (le classement a changé après le tir), la
+    divergence est **détectée** — jamais un score ré-attribué en silence à d'autres (ADR-0049
+    §4). Le **barème** reste dérivé de l'arme (re-résolu à la lecture) : à participants identiques,
+    même arme, même barème.
 
     **`ON DELETE CASCADE`** sur `phase_id` (donnée dérivée d'une phase, feuille — même exception que
     `placement_tableau`) : le tir disparaît avec la phase. Le `match_numero` n'est pas une FK (le
-    tableau n'est pas persisté — il n'y a pas de table `match`)."""
+    tableau n'est pas persisté — il n'y a pas de table `match`) ; `*_ref` non plus (l'archer peut
+    précéder ou non selon le genre, ADR-0028 — MVP : toujours un `archer_id`)."""
 
     __tablename__ = "duel"
 
@@ -451,6 +457,10 @@ class DuelORM(Base):
         ForeignKey("phase.id", ondelete="CASCADE"), primary_key=True
     )
     match_numero: Mapped[int] = mapped_column(primary_key=True)
+    haut_genre: Mapped[str] = mapped_column(nullable=False)
+    haut_ref: Mapped[int] = mapped_column(nullable=False)
+    bas_genre: Mapped[str] = mapped_column(nullable=False)
+    bas_ref: Mapped[int] = mapped_column(nullable=False)
     manches: Mapped[str] = mapped_column(nullable=False)
     barrage: Mapped[str | None] = mapped_column(nullable=True)
     validee_par: Mapped[str | None] = mapped_column(nullable=True)

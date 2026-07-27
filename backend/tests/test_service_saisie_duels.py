@@ -17,14 +17,13 @@ from dataclasses import replace
 import pytest
 
 from application.classements import ServiceClassement
-from application.erreurs import PhasePasUnTableau
+from application.erreurs import DuelDesynchronise, PhasePasUnTableau
 from application.saisie_duels import EtatDuel, ServiceSaisieDuels
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.duel import BaremeDuel, Duel, ModeDuel, ResolveurBaremeDuelFfta
 from domain.erreurs import MatchNonJouable
-from domain.participant import Participant
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.politiques import ByesAuxMieuxClasses, EliminationSeche, SeedingSerpent
 from tests.conftest import FauxArcherRepository, FauxCategorieRepository
@@ -54,25 +53,13 @@ class FauxDuelRepository:
     def numeros_enregistres(self, phase_id: PhaseId) -> frozenset[int]:
         return frozenset(numero for (phase, numero) in self._tirs if phase == phase_id)
 
-    def charger(
-        self,
-        phase_id: PhaseId,
-        match_numero: int,
-        *,
-        bareme: BaremeDuel,
-        participant_haut: Participant,
-        participant_bas: Participant,
-    ) -> Duel | None:
+    def charger(self, phase_id: PhaseId, match_numero: int, *, bareme: BaremeDuel) -> Duel | None:
         duel = self._tirs.get((phase_id, match_numero))
         if duel is None:
             return None
-        # Mime « seul le tir est persisté » : barème et participants sont réinjectés (ADR-0048).
-        return replace(
-            duel,
-            bareme=bareme,
-            participant_haut=participant_haut,
-            participant_bas=participant_bas,
-        )
+        # Mime « le tir + l'identité des duellistes sont persistés » : seul le barème est réinjecté
+        # (dérivé de l'arme, ADR-0049). Les participants **stockés** sont conservés.
+        return replace(duel, bareme=bareme)
 
     def enregistrer(self, phase_id: PhaseId, match_numero: int, duel: Duel) -> Duel:
         self._tirs[(phase_id, match_numero)] = duel
@@ -204,6 +191,49 @@ def test_finale_pas_saisissable_avant_les_demies() -> None:
     with pytest.raises(MatchNonJouable):
         service.saisir_manche(
             1, monde.phase_id, finale.numero, 1, (ZoneScore.DIX,) * 3, (ZoneScore.NEUF,) * 3
+        )
+
+
+def test_duel_desynchronise_quand_le_classement_change() -> None:
+    """ADR-0049 §4 : un tir validé n'est **jamais** ré-attribué au mauvais couple après re-seed.
+
+    On score et valide la finale (a bat b), puis une correction de qualif fait passer b devant a :
+    la finale oppose désormais b (haut) vs a (bas). Le tir enregistré (a vs b) **diverge** — il est
+    masqué (pas de vainqueur avancé en silence) et toute écriture dessus est refusée (409).
+    """
+    monde = _Monde()
+    a = monde.inscrire_classe(("10", "10", "10"))  # rang 1
+    b = monde.inscrire_classe(("9", "9", "9"))  # rang 2
+    service = monde.service()
+    numero = next(m.numero for m in service.etat_tableau(1, monde.phase_id).duels if m.tour == 1)
+    _gagner_manches(service, monde, numero, "haut")  # a (haut) gagne et valide
+
+    # Correction de qualification : b passe devant a.
+    monde.series._series = []
+    monde.series.semer(1, b, tuple(ZoneScore(v) for v in ("10", "10", "10")))
+    monde.series.semer(1, a, tuple(ZoneScore(v) for v in ("9", "9", "9")))
+
+    apres = service.etat_tableau(1, monde.phase_id)
+    finale = next(m for m in apres.duels if m.place_en_jeu == (1, 2))
+    assert finale.haut is not None and finale.haut.archer_id == b  # b est désormais tête n°1
+    assert finale.duel is None  # tir divergent masqué
+    assert apres.est_termine is False  # aucun vainqueur avancé en silence
+    with pytest.raises(DuelDesynchronise):
+        service.saisir_manche(
+            1, monde.phase_id, numero, 1, (ZoneScore.DIX,) * 3, (ZoneScore.NEUF,) * 3
+        )
+
+
+def test_match_bye_pas_saisissable() -> None:
+    """Un match gagné d'office (bye, effectif impair) n'a pas de duel (`MatchNonJouable`)."""
+    monde = _Monde()
+    for valeurs in (("10", "10", "10"), ("9", "9", "9"), ("8", "8", "8")):  # 3 archers → 1 bye
+        monde.inscrire_classe(valeurs)
+    service = monde.service()
+    bye = next(m for m in service.etat_tableau(1, monde.phase_id).duels if m.est_bye)
+    with pytest.raises(MatchNonJouable):
+        service.saisir_manche(
+            1, monde.phase_id, bye.numero, 1, (ZoneScore.DIX,) * 3, (ZoneScore.NEUF,) * 3
         )
 
 

@@ -370,6 +370,21 @@ class PhasePasUnTableau(ApplicationError):
     code = "phase_pas_un_tableau"
 
 
+class DuelDesynchronise(ApplicationError):
+    """Le tir enregistré oppose d'**autres** duellistes que ceux recalculés (E04US013) → 409.
+
+    Le tableau est reconstruit du classement à chaque opération (ADR-0048) ; le tir, lui, est
+    **ancré** sur l'identité des duellistes qui l'ont produit (ADR-0049 §4). Si le classement bouge
+    depuis le tir (correction de qualification…), les occupants recalculés du match divergent des
+    enregistrés : on **refuse** d'écrire dessus plutôt que d'attribuer le score en silence
+    à d'autres archers (« un score faux et silencieux est pire qu'une erreur visible »). Conflit
+    d'état, pas un 404 : le tir existe, mais il ne correspond plus à ce match. Le gel du classement
+    pendant la phase de tableau relève du cycle de vie (E01US017/E12US002).
+    """
+
+    code = "duel_desynchronise"
+
+
 class PhaseSourceReferencee(ApplicationError):
     """Suppression refusée : la phase est la **source** d'une autre phase (E05US001) → 409.
 

@@ -208,6 +208,15 @@ def test_barrage_egalite_de_fleche_tranche_par_designation() -> None:
     assert duel.vainqueur == BAS
 
 
+def test_barrage_re_editable_tant_que_non_valide() -> None:
+    """Un barrage erroné se corrige avant validation (comme une manche) — pas de faux figé."""
+    duel = _mener_a_egalite_cinq_partout(_duel_sets())
+    duel = duel.saisir_barrage(ZoneScore.DIX, ZoneScore.NEUF, zones_admises=ZONES)  # haut gagne
+    assert duel.resultat.vainqueur is Cote.HAUT
+    duel = duel.saisir_barrage(ZoneScore.NEUF, ZoneScore.DIX, zones_admises=ZONES)  # correction
+    assert duel.resultat.vainqueur is Cote.BAS
+
+
 def test_barrage_refuse_si_non_requis() -> None:
     """Pas de barrage tant que le duel n'est pas à égalité de sets."""
     duel = _saisir(_duel_sets(), 1, ("10", "10", "10"), ("9", "9", "9"))
@@ -290,6 +299,16 @@ def test_valider_verrouille_le_duel_et_nomme_le_scoreur() -> None:
     assert duel.verrouille is True
     with pytest.raises(DuelVerrouille):
         _saisir(duel, 1, ("6", "6", "6"), ("9", "9", "9"))
+
+
+def test_valider_un_duel_deja_valide_refuse() -> None:
+    """La validation ne se réécrit pas : re-valider un duel scellé n'écrase pas le validateur."""
+    duel = _duel_sets()
+    for numero in (1, 2, 3):
+        duel = _saisir(duel, numero, ("10", "10", "10"), ("9", "9", "9"))
+    duel = duel.valider("DURAND")
+    with pytest.raises(DuelVerrouille):
+        duel.valider("MARTIN")
 
 
 def test_valider_refuse_un_nom_vide() -> None:
