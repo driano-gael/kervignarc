@@ -5,8 +5,9 @@ puis relecture/listing — et vérifie le **mapping des erreurs typées** à la 
 - création (avec métadonnées, statut brouillon) puis relecture d'un tournoi (aller-retour) ;
 - listing des tournois créés ;
 - édition des métadonnées (PUT) ;
-- cycle de vie : démarrer → terminer, transitions invalides → 409 ;
-- suppression (204) ; suppression d'un tournoi en cours → 409 ;
+- cycle de vie à sept statuts (E01US017) : prêt → démarrer → terminer → archiver, pause/reprise,
+  annuler ; transitions invalides → 409 ; verrou lecture seule d'un archivé → 409 ;
+- suppression (204) ; suppression d'un tournoi en cours / en pause → 409 ;
 - tournoi introuvable → 404 (`ApplicationError`) ;
 - nom vide → 422 (`DomainError`, code métier) ;
 - champ obligatoire manquant (date) → 400 (validation d'entrée).
@@ -46,6 +47,12 @@ def app_tournois(tmp_path: Path) -> Iterator[FastAPI]:
         yield app
     finally:
         app.state.database.engine.dispose()
+
+
+def _amener_en_cours(client: TestClient, tid: int) -> None:
+    """Amène un tournoi créé (brouillon) à `en_cours` par le chemin nominal (prêt → démarrer)."""
+    assert client.post(f"/api/v1/tournois/{tid}/vers-pret").status_code == 200
+    assert client.post(f"/api/v1/tournois/{tid}/demarrer").status_code == 200
 
 
 def test_creer_puis_consulter_un_tournoi(
@@ -167,31 +174,52 @@ def test_modifier_tournoi_introuvable(
     assert reponse.json()["code"] == "tournoi_introuvable"
 
 
-# --- Cycle de vie : démarrer / terminer (E01US002) ---
+# --- Cycle de vie enrichi : sept statuts (E01US017, ADR-0026) ---
 
 
-def test_demarrer_puis_terminer(app_tournois: FastAPI, connecter_admin: ConnecterAdmin) -> None:
-    """Démarrer fait passer en cours, terminer fait passer à terminé (relecture cohérente)."""
-    with TestClient(app_tournois) as client:
-        connecter_admin(client)
-        cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
-        demarre = client.post(f"/api/v1/tournois/{cree['id']}/demarrer")
-        assert demarre.status_code == 200
-        assert demarre.json()["statut"] == "en_cours"
-        termine = client.post(f"/api/v1/tournois/{cree['id']}/terminer")
-        assert termine.status_code == 200
-        assert termine.json()["statut"] == "termine"
-        assert client.get(f"/api/v1/tournois/{cree['id']}").json()["statut"] == "termine"
-
-
-def test_demarrer_deux_fois_conflit_409(
+def test_chemin_nominal_pret_demarrer_terminer_archiver(
     app_tournois: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """Démarrer un tournoi déjà démarré → 409 (conflit d'état)."""
+    """Le chemin nominal enchaîne prêt → en_cours → terminé → archivé (relecture cohérente)."""
     with TestClient(app_tournois) as client:
         connecter_admin(client)
         cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
-        client.post(f"/api/v1/tournois/{cree['id']}/demarrer")
+        tid = cree["id"]
+        assert client.post(f"/api/v1/tournois/{tid}/vers-pret").json()["statut"] == "pret"
+        assert client.post(f"/api/v1/tournois/{tid}/demarrer").json()["statut"] == "en_cours"
+        assert client.post(f"/api/v1/tournois/{tid}/terminer").json()["statut"] == "termine"
+        archive = client.post(f"/api/v1/tournois/{tid}/archiver")
+        assert archive.status_code == 200
+        assert archive.json()["statut"] == "archive"
+        assert client.get(f"/api/v1/tournois/{tid}").json()["statut"] == "archive"
+
+
+def test_pause_et_reprise(app_tournois: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """Un tournoi en cours se met en pause puis reprend (en_cours ⇄ en_pause)."""
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
+        tid = cree["id"]
+        _amener_en_cours(client, tid)
+        assert client.post(f"/api/v1/tournois/{tid}/mettre-en-pause").json()["statut"] == "en_pause"
+        assert client.post(f"/api/v1/tournois/{tid}/reprendre").json()["statut"] == "en_cours"
+
+
+def test_annuler_depuis_brouillon(app_tournois: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """Annuler un tournoi (ici depuis brouillon) mène au statut terminal `annulé`."""
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
+        assert client.post(f"/api/v1/tournois/{cree['id']}/annuler").json()["statut"] == "annule"
+
+
+def test_demarrer_sans_passer_pret_conflit_409(
+    app_tournois: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Démarrer un brouillon directement (sans passer prêt) → 409 (conflit d'état)."""
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
         reponse = client.post(f"/api/v1/tournois/{cree['id']}/demarrer")
     assert reponse.status_code == 409
     assert reponse.json()["code"] == "transition_statut_invalide"
@@ -207,6 +235,25 @@ def test_terminer_non_demarre_conflit_409(
         reponse = client.post(f"/api/v1/tournois/{cree['id']}/terminer")
     assert reponse.status_code == 409
     assert reponse.json()["code"] == "transition_statut_invalide"
+
+
+def test_editer_ou_supprimer_un_archive_conflit_409(
+    app_tournois: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un tournoi archivé est en lecture seule : PUT et DELETE → 409 typé."""
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
+        tid = cree["id"]
+        _amener_en_cours(client, tid)
+        client.post(f"/api/v1/tournois/{tid}/terminer")
+        client.post(f"/api/v1/tournois/{tid}/archiver")
+        edition = client.put(f"/api/v1/tournois/{tid}", json={"nom": "X", "date": "2026-03-14"})
+        assert edition.status_code == 409
+        assert edition.json()["code"] == "tournoi_archive_non_modifiable"
+        suppression = client.delete(f"/api/v1/tournois/{tid}")
+        assert suppression.status_code == 409
+        assert suppression.json()["code"] == "tournoi_archive_non_modifiable"
 
 
 # --- Suppression (E01US002) ---
@@ -228,7 +275,7 @@ def test_supprimer_un_termine(app_tournois: FastAPI, connecter_admin: ConnecterA
     with TestClient(app_tournois) as client:
         connecter_admin(client)
         cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
-        client.post(f"/api/v1/tournois/{cree['id']}/demarrer")
+        _amener_en_cours(client, cree["id"])
         client.post(f"/api/v1/tournois/{cree['id']}/terminer")
         assert client.delete(f"/api/v1/tournois/{cree['id']}").status_code == 204
 
@@ -240,7 +287,7 @@ def test_supprimer_en_cours_conflit_409(
     with TestClient(app_tournois) as client:
         connecter_admin(client)
         cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
-        client.post(f"/api/v1/tournois/{cree['id']}/demarrer")
+        _amener_en_cours(client, cree["id"])
         reponse = client.delete(f"/api/v1/tournois/{cree['id']}")
         assert reponse.status_code == 409
         assert reponse.json()["code"] == "tournoi_en_cours_non_supprimable"

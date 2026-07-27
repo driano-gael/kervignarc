@@ -1,7 +1,9 @@
 """Endpoints REST des tournois (`/api/v1/tournois`).
 
 - créer, consulter, lister (E01US001) ;
-- éditer, démarrer, terminer, supprimer (E01US002).
+- éditer, supprimer (E01US002) ;
+- piloter le **cycle de vie à sept statuts** (E01US017, [ADR-0026]) : passer prêt, revenir
+  brouillon, démarrer, mettre en pause, reprendre, terminer, archiver, annuler.
 
 Suit le patron de bout en bout (E00US009) :
 - **DTO Pydantic** distincts des agrégats de domaine (aucune entité domaine exposée) ;
@@ -16,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
@@ -139,17 +142,71 @@ async def modifier_tournoi(
     return TournoiReponse.de_agregat(tournoi)
 
 
+async def _transition_tournoi(
+    request: Request,
+    appliquer: Callable[[ServiceTournois, int], Tournoi],
+    tournoi_id: int,
+) -> TournoiReponse:
+    """Applique une transition de cycle de vie (E01US017) : écriture via la file (writer unique).
+
+    `appliquer` est la méthode de service non liée (`ServiceTournois.demarrer`, …) ; la garde de
+    légalité et les conflits (`TransitionStatutInvalide` → 409) vivent dans le service — l'API ne
+    fait que router l'écriture et traduire l'erreur (`api/erreurs.py`).
+    """
+    service: ServiceTournois = request.app.state.service_tournois
+    write_queue: WriteQueue = request.app.state.write_queue
+    tournoi = await asyncio.wrap_future(write_queue.submit(lambda: appliquer(service, tournoi_id)))
+    return TournoiReponse.de_agregat(tournoi)
+
+
+@router.post(
+    "/{tournoi_id}/vers-pret",
+    response_model=TournoiReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def passer_pret_tournoi(tournoi_id: int, request: Request) -> TournoiReponse:
+    """Passe un tournoi `brouillon` à `prêt` — feu vert au démarrage (**action admin**)."""
+    return await _transition_tournoi(request, ServiceTournois.vers_pret, tournoi_id)
+
+
+@router.post(
+    "/{tournoi_id}/revenir-brouillon",
+    response_model=TournoiReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def revenir_brouillon_tournoi(tournoi_id: int, request: Request) -> TournoiReponse:
+    """Repasse un tournoi `prêt` en `brouillon` pour rééditer (**action admin**)."""
+    return await _transition_tournoi(request, ServiceTournois.revenir_brouillon, tournoi_id)
+
+
 @router.post(
     "/{tournoi_id}/demarrer",
     response_model=TournoiReponse,
     dependencies=[Depends(exiger_admin)],
 )
 async def demarrer_tournoi(tournoi_id: int, request: Request) -> TournoiReponse:
-    """Démarre un tournoi (`brouillon` → `en_cours`, **action admin**) : écriture via la file."""
-    service: ServiceTournois = request.app.state.service_tournois
-    write_queue: WriteQueue = request.app.state.write_queue
-    tournoi = await asyncio.wrap_future(write_queue.submit(lambda: service.demarrer(tournoi_id)))
-    return TournoiReponse.de_agregat(tournoi)
+    """Démarre un tournoi (`prêt` → `en_cours`, **action admin**) : écriture via la file."""
+    return await _transition_tournoi(request, ServiceTournois.demarrer, tournoi_id)
+
+
+@router.post(
+    "/{tournoi_id}/mettre-en-pause",
+    response_model=TournoiReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def mettre_en_pause_tournoi(tournoi_id: int, request: Request) -> TournoiReponse:
+    """Gèle un tournoi `en_cours` en `en_pause` (**action admin**)."""
+    return await _transition_tournoi(request, ServiceTournois.mettre_en_pause, tournoi_id)
+
+
+@router.post(
+    "/{tournoi_id}/reprendre",
+    response_model=TournoiReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def reprendre_tournoi(tournoi_id: int, request: Request) -> TournoiReponse:
+    """Reprend un tournoi `en_pause` en `en_cours` (**action admin**)."""
+    return await _transition_tournoi(request, ServiceTournois.reprendre, tournoi_id)
 
 
 @router.post(
@@ -159,10 +216,27 @@ async def demarrer_tournoi(tournoi_id: int, request: Request) -> TournoiReponse:
 )
 async def terminer_tournoi(tournoi_id: int, request: Request) -> TournoiReponse:
     """Termine un tournoi (`en_cours` → `termine`, **action admin**) : écriture via la file."""
-    service: ServiceTournois = request.app.state.service_tournois
-    write_queue: WriteQueue = request.app.state.write_queue
-    tournoi = await asyncio.wrap_future(write_queue.submit(lambda: service.terminer(tournoi_id)))
-    return TournoiReponse.de_agregat(tournoi)
+    return await _transition_tournoi(request, ServiceTournois.terminer, tournoi_id)
+
+
+@router.post(
+    "/{tournoi_id}/archiver",
+    response_model=TournoiReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def archiver_tournoi(tournoi_id: int, request: Request) -> TournoiReponse:
+    """Archive un tournoi `terminé` — verrou total, lecture seule (**action admin**)."""
+    return await _transition_tournoi(request, ServiceTournois.archiver, tournoi_id)
+
+
+@router.post(
+    "/{tournoi_id}/annuler",
+    response_model=TournoiReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def annuler_tournoi(tournoi_id: int, request: Request) -> TournoiReponse:
+    """Annule un tournoi abandonné — terminal, conserve la trace (**action admin**)."""
+    return await _transition_tournoi(request, ServiceTournois.annuler, tournoi_id)
 
 
 @router.delete(

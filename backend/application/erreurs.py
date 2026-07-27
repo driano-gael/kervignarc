@@ -24,21 +24,37 @@ class TournoiIntrouvable(ApplicationError):
 
 
 class TransitionStatutInvalide(ApplicationError):
-    """Transition de cycle de vie impossible depuis l'état courant (E01US002) → 409.
+    """Transition de cycle de vie impossible depuis l'état courant (E01US002, E01US017) → 409.
 
-    Ex. démarrer un tournoi déjà démarré ou terminé, terminer un tournoi non démarré.
+    Le graphe des sept statuts ([ADR-0026] §2) n'autorise qu'un sous-ensemble d'arêtes : passer
+    `prêt` un tournoi déjà démarré, reprendre un tournoi qui n'est pas en pause, archiver un
+    tournoi non terminé, annuler un tournoi terminé… — tout le reste est refusé ici. L'agrégat ne
+    porte que la valeur ; c'est le service qui arbitre l'enchaînement (ADR-0007/0026 §4).
     """
 
     code = "transition_statut_invalide"
 
 
 class TournoiEnCoursNonSupprimable(ApplicationError):
-    """Suppression refusée : le tournoi est en cours (E01US002) → 409.
+    """Suppression refusée : le tournoi est `en_cours` ou `en_pause` (E01US002, E01US017) → 409.
 
-    Il faut d'abord le **terminer** ; un tournoi `brouillon` ou `terminé` reste supprimable.
+    Il faut d'abord le **terminer** (ou l'**annuler** s'il est abandonné) ; un tournoi `brouillon`,
+    `prêt`, `terminé` ou `annulé` reste supprimable. La suppression d'un `archivé` relève, elle, du
+    verrou de lecture seule (`TournoiArchiveNonModifiable`) — [ADR-0026] §1.
     """
 
     code = "tournoi_en_cours_non_supprimable"
+
+
+class TournoiArchiveNonModifiable(ApplicationError):
+    """Écriture refusée sur un tournoi `archivé` — lecture seule définitive (E01US017) → 409.
+
+    `archivé` est le **verrou total** ([ADR-0026] §1) : ni édition des métadonnées, ni suppression,
+    ni transition (c'est un état terminal atteint depuis `terminé`). On ne dé-archive pas — la
+    réouverture reste différée. Conflit d'**état**, d'où 409.
+    """
+
+    code = "tournoi_archive_non_modifiable"
 
 
 class DepartIntrouvable(ApplicationError):
