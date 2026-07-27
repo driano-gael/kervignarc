@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 27/07/2026** · **72 US livrées** · dernière : `E02US010` *(horaire `HH:MM` obligatoire & ≥ 1 départ)*.
+**Dernière mise à jour : 27/07/2026** · **73 US livrées** · dernière : `E11US008` *(accès réseau LAN + QR de rattachement à l'écran)*.
 
 ---
 
@@ -21,15 +21,14 @@
 > **⚡ Priorité immédiate — retours de la démo du 27/07/2026.** Avant de reprendre la séquence J2,
 > traiter le **lot démo** (bugs & petits ajouts), puis les épics **EPIC-14** (accueil admin) et
 > **EPIC-15** (jeu d'essai & simulation) — détail en section « Ajouts de la démo du 27/07/2026 » plus
-> bas. Ordre des bugs : ~~E02US010~~ ✅ (horaire `HH:MM`), ~~E01US017~~ ✅ (7 statuts), puis
-> **E11US008** (LAN + QR), **E03US011** (placement), **E01US022** (blason FFTA).
+> bas. Ordre des bugs : ~~E02US010~~ ✅ (horaire `HH:MM`), ~~E01US017~~ ✅ (7 statuts),
+> ~~E11US008~~ ✅ (LAN + QR), puis **E03US011** (placement), **E01US022** (blason FFTA).
 > La séquence J2 ci-dessous reprend ensuite à `E12US002`.
 >
-> **`E11US008` — accès LAN (poste organisateur) + QR de rattachement à l'écran** : la **prochaine à
-> prendre**. Rendre l'appli joignable sur le réseau local (le jour J, sans internet) et afficher à
-> l'écran un QR de rattachement des tablettes. *(Bug/ajout démo, `E11` 🆕.)*
-> *Ensuite dans le lot démo* : `E03US011` (retour visuel de placement + position A..D), `E01US022`
-> (blason FFTA par défaut par catégorie).
+> **`E03US011` — placement : retour visuel de génération + position A..D côté admin** : la
+> **prochaine à prendre**. Donner un retour visible à la génération du plan et afficher la position
+> (A..D) de chaque archer sur sa cible, côté admin. *(Bug/ajout démo, `E03` 🆕.)*
+> *Ensuite dans le lot démo* : `E01US022` (blason FFTA par défaut par catégorie + affichage hérité).
 > *Puis la séquence J2 reprend à* **`E12US002`** — lancer un tour (feu vert + lancement), la **clé du
 > J2** : voir ce qui manque avant de lancer, puis faire partir le tour (les 4 canaux prévenus
 > ensemble). *Ensuite* : remboursement `E08US005`, prochaine cible `E04US018`.
@@ -40,6 +39,17 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E11US008` **accès réseau LAN + QR de rattachement à l'écran** — US à **surface visible**. Le
+>   lancement de dev (`run_dev.py`) écoute désormais sur **`0.0.0.0`** comme la release (`--host` pour
+>   restreindre), et **affiche l'IP LAN** joignable par les tablettes (réutilise `release.reseau.adresse_lan`).
+>   L'écran **Postes de cible** affiche, par cible, son **QR de rattachement** en **image SVG**
+>   (vectorielle, agrandissable pour le scan) via un endpoint `GET …/postes/{cible_index}/qr` — rendu
+>   `renderSVG` **pur Python**, aucune dépendance ajoutée (PNG/`renderPM` écarté : `rlPyCairo` absent).
+>   Endpoint **admin** (le QR encode le code) ; le front le charge en **blob authentifié** (le Bearer
+>   admin est en JS, un `<img src>` direct n'emporterait pas le jeton). **DETTE-012** gagne un **2ᵉ
+>   consommateur** (même marqueur) et reste **ouverte** ; sa parade — ouvrir l'admin par l'IP LAN —
+>   est désormais **atteignable en dev** et **documentée** (`docs/deploiement.md` §6). Recette :
+>   [`docs/fonctionnel/E11US008.md`](../docs/fonctionnel/E11US008.md).
 > - `E02US010` **horaire de départ `HH:MM` obligatoire & ≥ 1 départ** — US à **surface visible**.
 >   L'horaire d'un créneau devient une **vraie donnée temporelle `HH:MM`** (24 h), **obligatoire**,
 >   validée **au domaine** (422 ; 400 si le champ manque à la frontière) — le libellé libre
@@ -253,7 +263,7 @@
 | E01US020 | Modèle de tarification injectable & sujet de facturation (archer/club) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; sujet `club` sur `club_id`/ADR-0014, **pas** via E13)* |
 | E01US021 | Tarification dégressive (option config, %/montant) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; dépend d'E01US020)* |
 
-## Ajouts de la démo du 27/07/2026 — ⚡ **priorité immédiate (2/10)**
+## Ajouts de la démo du 27/07/2026 — ⚡ **priorité immédiate (3/10)**
 
 > Retours de la présentation au client final **et** du développeur (27/07/2026). Cadrage par le
 > dialogue (esprit agile). Deux US **déjà spécifiées** remontent en priorité (♻️, pas de doublon) ;
@@ -265,8 +275,8 @@
 |---|---|---|---|
 | E02US010 | Horaire de départ `HH:MM` (corrige « 8h00 → 18h00 » : n° collé à l'horaire) | E02 ♻️ | ✅ |
 | E01US017 | Cycle de vie enrichi (7 statuts) — **prérequis** du dashboard | E01 ♻️ | ✅ |
-| E11US008 | Accès LAN (poste organisateur) + QR de rattachement à l'écran | E11 🆕 | 🎯 |
-| E03US011 | Placement : retour visuel de génération + position A..D côté admin | E03 🆕 | ⬜ |
+| E11US008 | Accès LAN (poste organisateur) + QR de rattachement à l'écran | E11 🆕 | ✅ |
+| E03US011 | Placement : retour visuel de génération + position A..D côté admin | E03 🆕 | 🎯 |
 | E01US022 | Blason FFTA par défaut par catégorie + affichage hérité | E01 🆕 | ⬜ |
 | E14US001 | Accueil-tableau de bord contextualisé (`D-20`) | E14 🆕 | ⬜ |
 | E14US002 | Aide contextuelle « ce qui est saisissable & pourquoi » | E14 🆕 | ⬜ |

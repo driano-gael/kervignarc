@@ -165,13 +165,20 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
 - La **procédure complète** (fabriquer le fichier, brancher le routeur, connecter les tablettes,
   pièges à éviter) est écrite dans [`docs/deploiement.md`](../docs/deploiement.md). Détail dans
   [`2026-07-26-12h26-deploiement-jour-j.md`](2026-07-26-12h26-deploiement-jour-j.md).
-- **Sauvegardes automatiques & archive** (dernier fait marquant, 26/07) : pendant que l'appli tourne,
-  elle dépose **toute seule**, à intervalle régulier, une **copie horodatée** de sa base dans un dossier
-  `backups/` (protection de fond, sans écran, avec purge des plus anciennes). Et un écran **« Archive »**
-  produit à la demande un **paquet ZIP** de fin de tournoi — l'organisateur **coche** ce qu'il emporte :
-  base complète, données en **CSV** (tableur), et documents **PDF** (feuilles de marque, listes), avec
-  un manifeste. Détail dans
+- **Sauvegardes automatiques & archive** (26/07) : pendant que l'appli tourne, elle dépose **toute
+  seule**, à intervalle régulier, une **copie horodatée** de sa base dans un dossier `backups/`
+  (protection de fond, sans écran, avec purge des plus anciennes). Et un écran **« Archive »** produit
+  à la demande un **paquet ZIP** de fin de tournoi — l'organisateur **coche** ce qu'il emporte : base
+  complète, données en **CSV** (tableur), et documents **PDF** (feuilles de marque, listes), avec un
+  manifeste. Détail dans
   [`2026-07-26-13h55-sauvegarde-et-archive.md`](2026-07-26-13h55-sauvegarde-et-archive.md).
+- **Accès réseau en développement + QR de cible à l'écran** (dernier fait marquant, 27/07) : le
+  lancement de développement s'ouvre lui aussi **sur le réseau local** (comme le fichier exécutable),
+  et affiche au démarrage l'**adresse à taper depuis une tablette** — on peut donc tester le jour J
+  depuis un vrai appareil. Et l'écran **Postes de cible** montre désormais, pour chaque cible, son
+  **QR de rattachement à l'écran** (agrandissable pour être scané), en plus du code : plus besoin
+  d'imprimer pour rattacher une tablette. Détail dans
+  [`2026-07-27-21h01-acces-reseau-et-qr-a-l-ecran.md`](2026-07-27-21h01-acces-reseau-et-qr-a-l-ecran.md).
 
 ### 8. L'interface d'administration — *coquille posée*
 
@@ -275,11 +282,12 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **72 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026. **`SUIVI-US.md`
+- **73 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
-  livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Les deux
+  livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Les trois
   dernières livrées sont des **retours de la démo du 27/07** : le **cycle de vie à 7 statuts**
-  (E01US017) et l'**horaire `HH:MM` obligatoire** (E02US010).
+  (E01US017), l'**horaire `HH:MM` obligatoire** (E02US010) et l'**accès réseau LAN + QR de cible à
+  l'écran** (E11US008).
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
@@ -291,12 +299,12 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
   (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**), l'**abandon /
   disqualification** (E04US015 — qualif *et* duels) puis le **cycle de vie d'un départ** (E12US008).
-- Dernière US livrée : **E02US010** (horaire `HH:MM` obligatoire & ≥ 1 départ) — US à **surface
-  visible**, retour de la démo du 27/07. L'horaire d'un créneau devient une **vraie heure `HH:MM`**
-  (24 h), **obligatoire** et validée au serveur (fini le « 8h00 » lu « 18h00 ») ; le formulaire pose
-  un **masque de saisie**. Deux gardes de cohérence du cycle de vie : passer un tournoi **« prêt »**
-  exige **au moins un départ**, et supprimer le **dernier** départ d'un tournoi déjà lancé est
-  **refusé**. *(Livrée juste avant : **E01US017**, le cycle de vie à 7 statuts.)*
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — la fin du **lot démo** (**E11US008** accès
-  LAN + QR, puis E03US011, E01US022), puis la séquence J2 reprend à la **bascule de tour** (E12US002).
-  Le fil **équipes** est débloqué (E13US002+).
+- Dernière US livrée : **E11US008** (accès réseau LAN + QR de rattachement à l'écran) — US à
+  **surface visible**, retour de la démo du 27/07. Le lancement de développement écoute désormais
+  **sur le réseau** (comme le fichier exécutable) et **affiche l'adresse à ouvrir depuis une
+  tablette** ; l'écran **Postes de cible** montre, pour chaque cible, son **QR de rattachement**
+  (agrandissable pour le scan) en plus du code — sans passer par le PDF. *(Livrée juste avant :
+  **E02US010**, l'horaire `HH:MM` obligatoire, et **E01US017**, le cycle de vie à 7 statuts.)*
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — la fin du **lot démo** (**E03US011**
+  retour visuel de placement + position A..D, puis E01US022 blason FFTA par défaut), puis la séquence
+  J2 reprend à la **bascule de tour** (E12US002). Le fil **équipes** est débloqué (E13US002+).
