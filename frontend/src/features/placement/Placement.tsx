@@ -259,9 +259,13 @@ function PlanCharge({
           paraît muette. Le cas « tous placés » est déjà couvert par `planPret` ci-dessous : on ne
           double pas la ligne verte (`!planPret`). `isSuccess` couvre aussi « annuler les
           modifications » (même mutation). Erreur et « en cours » sont pris ailleurs (MessageErreur,
-          libellé du bouton). */}
+          libellé du bouton).
+          Ton **neutre** (`carte__etat`), pas vert `placement__pret` : le vert « succès » reste
+          réservé à « tous placés ». Un reliquat en réserve peut cacher de **vraies anomalies**
+          (`sans_blason` / `non_place`, ambre DV-03) — l'annoncer en vert serait trompeur ; l'ambre
+          des anomalies est déjà porté par la réserve et sa bannière en dessous. */}
       {regenerer.isSuccess && !planPret && (
-        <p className="placement__pret" role="status">
+        <p className="carte__etat" role="status">
           {nbPlaces === 0 && nbReserve === 0
             ? 'Plan généré : aucun archer à placer sur ce départ.'
             : `Plan généré : ${nbPlaces} placé${nbPlaces > 1 ? 's' : ''}${
