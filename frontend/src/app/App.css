@@ -1861,3 +1861,322 @@ button:disabled {
 .statut--neutre {
   color: var(--text);
 }
+
+/* ------------------------------------------------------------------------- */
+/* Saisie en duels (E04US013) — surface scoreur : liste des duels par tour    */
+/* puis grille d'un duel (manches sets/cumul, barrage, validation). Réutilise  */
+/* le pavé de la qualif (`saisie__zone/__nav/__fleche`) ; ajoute la mise en    */
+/* regard des deux camps. Ergonomie tactile ≥ 48 px, thème sombre.            */
+/* ------------------------------------------------------------------------- */
+
+.duels-saisie {
+  margin-top: 16px;
+}
+
+.duels-saisie__entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Actes en attente d'envoi (hors-ligne) : **ambre** (`--warn`, DV-03), jamais rouge — un score
+   gardé n'est pas une erreur, il part à la reconnexion. */
+.duels-saisie__attente {
+  font-size: 13px;
+  color: var(--warn);
+}
+
+/* La barre « session ouverte / fermer » de l'espace scoreur, au-dessus de la saisie. */
+.scoreur__barre {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Liste des duels groupés par tour. */
+.duels-liste {
+  margin-top: 12px;
+}
+
+.duels-liste__tour {
+  margin-bottom: 16px;
+}
+
+.duels-liste__titre {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.duels-liste__matchs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Une ligne de duel : les deux duellistes + un statut. Tapable (bouton) si ouvrable. */
+.duels-liste__match {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  text-align: left;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.duels-liste__match--ouvrable {
+  cursor: pointer;
+}
+
+.duels-liste__match--ouvrable:hover {
+  border-color: var(--accent);
+}
+
+/* Bye / adversaires inconnus : présent mais non ouvrable, en retrait. */
+.duels-liste__match--inerte {
+  opacity: 0.6;
+}
+
+.duels-liste__duellistes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.duels-liste__contre {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.duels-liste__statut {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* À valider : accent (une action attend le scoreur) ; validé : vert ; en attente d'adversaires : ambre. */
+.duels-liste__statut--a_valider {
+  color: var(--accent);
+}
+
+.duels-liste__statut--valide {
+  color: var(--ok);
+}
+
+.duels-liste__statut--attente_adversaires,
+.duels-liste__statut--bye {
+  color: var(--text);
+}
+
+/* Podium (tableau terminé). */
+.duels-podium {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.duels-podium__places {
+  margin: 0;
+  padding-left: 20px;
+}
+
+/* La grille d'un duel. */
+.duel {
+  margin-top: 12px;
+}
+
+.duel__retour {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.duel__entete {
+  margin-bottom: 12px;
+}
+
+.duel__camps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 16px;
+}
+
+.duel__camp {
+  font-weight: 600;
+  color: var(--text-h);
+  flex: 1;
+}
+
+.duel__camp:last-child {
+  text-align: right;
+}
+
+/* Le score courant (points de set ou cumul) au centre — l'autorité serveur, pas un calcul local. */
+.duel__vs {
+  font-family: var(--mono);
+  font-size: 18px;
+  color: var(--accent);
+  padding: 0 8px;
+}
+
+.duel__meta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* Duel validé : verrou franc (comme la volée verrouillée de la qualif). */
+.duel__verrou {
+  padding: 10px 12px;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.duel__manche {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.duel__manche-titre {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+/* Les deux volées opposées d'une manche, l'une au-dessus de l'autre. */
+.duel__volees {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* Une volée de camp : nom | flèches | total. Tapable pour devenir le camp actif (que le pavé remplit). */
+.duel__volee {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  padding: 6px 10px;
+  text-align: left;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* Camp actif : le pavé écrit ici — surligné à l'accent. */
+.duel__volee--actif {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.duel__volee-nom {
+  flex: 1;
+  font-weight: 600;
+}
+
+.duel__volee-fleches {
+  display: flex;
+  gap: 6px;
+}
+
+.duel__volee-total {
+  min-width: 32px;
+  text-align: right;
+  font-family: var(--mono);
+}
+
+.duel__zones {
+  justify-content: flex-start;
+}
+
+/* Barrage (shoot-off) : une flèche par camp, puis désignation si égalité. Registre ambre discret —
+   un barrage est un cas particulier attendu, pas une erreur. */
+.duel__barrage {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--warn);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.duel__barrage-titre {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: var(--warn);
+}
+
+.duel__barrage-camps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.duel__barrage-camp {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.duel__designation {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.duel__designation-choix {
+  display: flex;
+  gap: 8px;
+}
+
+.duel__designation-choix button {
+  min-height: 48px;
+  flex: 1;
+}
+
+.duel__barrage button {
+  min-height: 48px;
+  margin-top: 12px;
+}
+
+/* Validation du duel tranché : l'action décisive, mise en avant. */
+.duel__validation {
+  margin-top: 12px;
+}
+
+.duel__validation-etat {
+  margin: 0 0 8px;
+  color: var(--text-h);
+}
+
+.duel__validation button {
+  min-height: 48px;
+}
