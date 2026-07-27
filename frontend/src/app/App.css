@@ -275,6 +275,87 @@
   color: var(--danger);
 }
 
+/* Postes de cible : code + QR de rattachement à l'écran (E11US008). */
+.liste-postes {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.poste-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.poste-item__ligne {
+  min-width: 0;
+}
+
+/* Le QR (SVG) doit rester sur **fond blanc** pour être scannable, quel que soit le thème. */
+.qr-cible__vignette {
+  flex: none;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.qr-cible__vignette img {
+  display: block;
+}
+
+.qr-cible__attente,
+.qr-cible__indispo {
+  flex: none;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  text-align: center;
+  color: var(--text-h);
+}
+
+/* Agrandissement plein écran pour présenter le QR à une tablette et le scanner. */
+.qr-cible__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.85);
+  cursor: pointer;
+}
+
+.qr-cible__grand {
+  width: min(80vmin, 520px);
+  height: min(80vmin, 520px);
+  padding: 16px;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.qr-cible__aide {
+  margin: 0;
+  color: #fff;
+  font-size: 14px;
+}
+
 /* Formulaires (nom de tournoi / d'archer). */
 .formulaire {
   display: flex;
