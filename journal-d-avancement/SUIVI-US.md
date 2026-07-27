@@ -12,26 +12,32 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 27/07/2026** · **68 US livrées** · dernière : `E04US013` *(backend + écran scoreur)*.
+**Dernière mise à jour : 27/07/2026** · **69 US livrées** · dernière : `E04US015` *(abandon / DSQ — qualif + duels)*.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E04US015` — gérer abandon / disqualification** : enregistrer un abandon/DSQ (statut spécial sur un
-> archer/match), avec impact correct sur la progression et le classement, **les flèches déjà tirées
-> préservées** — c'est ce qui distingue l'abandon de la suppression ([ADR-0016](../docs/adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)).
-> Alternative désignée à la suppression d'archer pour l'abandon en **qualification** ; **E12US004
-> l'élargira aux duels**. *(Incohérence latente à arbitrer, cf. story : jalon J2 + dépendance duels vs
-> « abandon en qualification ».)*
-> *Ensuite* : la suite du J2 (forfait E12US004, cycle de vie d'un départ E12US008, **bascule de tour**
-> E12US002…).
+> **`E12US008` — cycle de vie d'un départ** : faire vivre l'état d'un créneau de tir (ouvert, en
+> cours, clos…) pour piloter le déroulé du jour J. *(Prochaine du J2 en séquence ; à cadrer.)*
+> *Ensuite* : **bascule de tour** `E12US002` (lancer un tour, feu vert + lancement — clé du J2),
+> remboursement `E08US005`, prochaine cible `E04US018`.
 > *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
 > moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
+> *`E12US004` (tracer un forfait) est **absorbée** par `E04US015` — voir ci-dessous.*
 > *J1 est **terminé** (46/46) ; le confort « ma journée » et les classements imprimables restent hors
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E04US015` **gérer abandon / disqualification** — US à **surface visible**. Un acte **scoreur**
+>   « déclarer abandon / DSQ », **en qualification comme en duels** ([ADR-0050](../docs/adr/0050-forfait-abandon-et-disqualification.md),
+>   qui **fusionne E04US015 + E12US004**). Concept unique `Forfait` **scopé à la phase** : en qualif
+>   un **abandon** est relégué en fin de classement (rangé, score affiché), une **DSQ** en est sortie
+>   (rang vide, score conservé) ; en duels le forfaitaire **cède** son match (l'adversaire passe). Les
+>   **flèches sont préservées** (≠ suppression, ADR-0016) ; l'acte est **daté, attribué, motivé,
+>   réversible** (`D-15`) et **audité** (`FORFAIT`). **DETTE-014 résorbée** (la complétude compte un
+>   forfaitaire comme « série close »). `Q-UX5` fermée sur le **scoreur**. Recette :
+>   [`docs/fonctionnel/E04US015.md`](../docs/fonctionnel/E04US015.md).
 > - `E04US013` **écran scoreur (tranche front)** — US à **surface visible**, sous la **même US** que le
 >   backend (le compte d'US ne bouge pas). Le scoreur choisit une **phase de tableau**, voit la **liste
 >   des duels par tour**, ouvre un duel et le score : **grille de manches** (sets ou cumul selon `mode`,
@@ -127,7 +133,7 @@
 | 56 | E11US001 | Release, base et mise en réseau | ✅ |
 | 57 | E11US003 | Sauvegarde & archive | ✅ |
 
-## J2 — Duels simples + bascule de tour — 🔶 **en cours (6/15)**
+## J2 — Duels simples + bascule de tour — 🔶 **en cours (7/14)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -137,9 +143,9 @@
 | 61 | E03US006 | Contrainte ≥ 2 clubs par cible | ✅ |
 | 62 | E03US009 | Placer les duellistes côte à côte | ✅ |
 | 63 | E04US013 | Saisie en duels | ✅ *(backend + API + écran scoreur)* |
-| 64 | E04US015 | Gérer abandon / disqualification | 🎯 |
-| 65 | E12US004 | Tracer un forfait | ⬜ |
-| 66 | E12US008 | Cycle de vie d'un départ | ⬜ |
+| 64 | E04US015 | Gérer abandon / disqualification | ✅ *(qualif + duels, ADR-0050)* |
+| 65 | E12US004 | ~~Tracer un forfait~~ | ⛔ *(absorbée par E04US015)* |
+| 66 | E12US008 | Cycle de vie d'un départ | 🎯 |
 | 67 | E08US005 | Rembourser une inscription payée annulée | ⬜ |
 | 68 | E12US002 | Lancer un tour (feu vert + lancement) | ⬜ |
 | 69 | E04US018 | Afficher la prochaine cible après validation | ⬜ |

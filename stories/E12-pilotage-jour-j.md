@@ -49,12 +49,14 @@
 - **Notes** : `D-22`, `D-23`, `D-25` · [CDC UX §8.1](../cahier-des-charges-ux.md), [§8.2](../cahier-des-charges-ux.md). **Ouverte — `Q-UX6`** : la **liste exacte des métriques** du feu vert reste à arrêter (poste en ligne ? scoreur disponible ? conflit de placement ?). Les CA « feu vert » ci-dessus sont le **socle minimal** ; l'US ne sera close qu'une fois `Q-UX6` tranchée. **La journée a un maître de cérémonie, et ce n'est pas le logiciel** : l'appli prépare, contrôle, affiche — et **attend**. L'admin appuie quand l'arbitre est prêt. **Pourquoi tout doit être prêt avant** : sinon on a remplacé 20 minutes de recopie par 20 secondes de sablier, **et le doute revient**. Le **calcul** du tour suivant est **EPIC-05**, pas cette US.
 - **Absorbe** : ex-E12US003. **Dépend de** : E05US005, E03US009 · **Jalon** : J2
 
-### E12US004 — Tracer un forfait
-*En tant qu'*organisateur, *je veux* déclarer un archer absent **sans bloquer le tour**, *afin que* la compétition continue et que l'absence reste documentée.
-- **CA** : l'archer absent **n'est pas un trou dans le tableau** : c'est une **donnée** — forfait **daté**, **attribué**, motif optionnel ; **les flèches déjà tirées sont préservées** (le forfait ne les efface jamais) ; **l'adversaire passe** et le tableau reste cohérent (E05US005) ; **rien n'est jamais bloqué** (`P-3`) ; **trace d'audit** (E10US005) ; réversible tant que le tournoi n'est pas terminé (`D-15`).
-- **Notes** : `D-24` · [CDC UX §8.2](../cahier-des-charges-ux.md). **Élargit E04US015** (abandon / DSQ, qui porte le cas **qualification**) : même famille — *rien ne bloque, tout se documente*. La **préservation des flèches** est la propriété sur laquelle repose [ADR-0016](../docs/adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md) : c'est **ce qui distingue** le forfait de la **suppression** d'archer (E02US003), laquelle les détruit. Un forfait qui effacerait les résultats rendrait cet ADR faux. **Ouverte — `Q-UX5`** : **qui déclare le forfait** (l'admin, le marqueur sur la tablette, le scoreur) ? Les CA supposent **l'admin** par défaut ; à confirmer avant réalisation.
-- **À résorber à la livraison — [DETTE-014](../docs/dette.md#dette-014--la-complétude-ignore-le-forfait)** : la **complétude** (E12US005) compte une cible « terminée » quand toutes ses séries sont *validées* — elle **ignore le forfait**. Un archer forfait gardant une série partielle, sa cible resterait « à finir » **à jamais** et la complétude mentirait. À la livraison de cette US, traiter un archer forfait comme **« série close par forfait »** dans `application/completude.py:_serie_complete` (marqueur `# DETTE-014` posé là).
-- **Dépend de** : E04US015, E05US005 · **Jalon** : J2
+### E12US004 — Tracer un forfait — ⛔ **absorbée par E04US015** (27/07/2026, [ADR-0050](../docs/adr/0050-forfait-abandon-et-disqualification.md))
+> **Caduque.** Le cadrage d'E04US015 a tranché de traiter **qualification ET duels** dans une seule
+> US (le même concept `Forfait`, scopé à la phase, sert les deux). Le forfait en duels — l'archer
+> absent n'est pas un trou, **l'adversaire passe**, flèches préservées, réversible, audité — est donc
+> **livré par E04US015**, avec `Q-UX5` fermée sur **le scoreur**. DETTE-014 y est résorbée. Cette
+> fiche est conservée comme trace du besoin d'origine (`D-24`, [CDC UX §8.2](../cahier-des-charges-ux.md)).
+- **CA (livré via E04US015)** : l'archer absent **n'est pas un trou dans le tableau** : c'est une **donnée** — forfait **daté**, **attribué**, motif optionnel ; **les flèches déjà tirées sont préservées** ; **l'adversaire passe** et le tableau reste cohérent (E05US005) ; **rien n'est jamais bloqué** (`P-3`) ; **trace d'audit** (E10US005) ; réversible tant que le tournoi n'est pas terminé (`D-15`).
+- **Dépend de** : E04US015, E05US005 · **Jalon** : J2 · **Statut** : absorbée (voir E04US015)
 
 ### E12US005 — Afficher la complétude du tournoi
 *En tant qu'*organisateur, *je veux* savoir **ce qui manque pour que ce tournoi soit fini**, *afin de* ne pas le terminer en laissant des trous.

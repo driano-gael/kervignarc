@@ -30,8 +30,10 @@ ni internet.** Le jalon « qualification de bout en bout » est ainsi **terminé
 confort près), et le chantier suivant — les **duels** — est **bien avancé** : l'organisateur **compose
 le format** de son tournoi (la séquence des phases) et place les duellistes côte à côte. Et le **scoreur
 score désormais un duel de bout en bout** sur son appareil — manche par manche, barrage à l'égalité,
-validation du vainqueur qui fait avancer le tableau jusqu'au podium. Restent l'abandon /
-disqualification et le **pilotage de la bascule de tour** le jour J.
+validation du vainqueur qui fait avancer le tableau jusqu'au podium. Le scoreur peut aussi désormais
+**déclarer un abandon ou une disqualification** — en qualification (l'archer est relégué ou sorti du
+classement, ses flèches conservées) comme en duels (l'adversaire passe d'office) —, un geste
+**réversible** qui remplace la suppression. Reste le **pilotage de la bascule de tour** le jour J.
 
 ---
 
@@ -222,6 +224,15 @@ la recherche restera vide — tant que leur moteur (EPIC-05) n'est pas construit
   d'écrire sur un duel dont les adversaires auraient changé. Détail dans
   [`2026-07-27-11h44-scorer-un-duel.md`](2026-07-27-11h44-scorer-un-duel.md). *(Le moteur — tableau,
   scoring, progression — avait été livré juste avant, sans écran.)*
+- **Abandon / disqualification** : depuis son espace, le scoreur peut **déclarer** qu'un archer
+  **abandonne** ou est **disqualifié**, **en qualification comme en duels**. En qualification, un
+  **abandon** relègue l'archer en fin de classement (il reste rangé, son score s'affiche, badgé
+  « Abandon ») et une **disqualification** l'en **sort** (plus de rang, score conservé) ; en duels,
+  le forfaitaire **cède** son match et l'adversaire passe. Contrairement à la **suppression** (qui
+  efface tout), le forfait **préserve les flèches déjà tirées** — c'est ce qui les distingue. Le
+  geste est **réversible** (« Annuler ») tant que le tournoi n'est pas terminé, et **tracé** au
+  journal d'audit. Détail dans
+  [`2026-07-27-13h33-abandon-et-disqualification.md`](2026-07-27-13h33-abandon-et-disqualification.md).
 
 ---
 
@@ -236,11 +247,11 @@ Dans l'ordre de valeur prévu par le backlog :
    recherche d'un archer, **premières listes imprimables** (placement, club & paiement), la **mise en
    réseau / déploiement en un fichier** (E11US001) et les **sauvegardes / archive** (E11US003) :
    faits — cf. blocs 3, 7, 9 et 10.)*
-2. **Les duels** (phases finales) : arbre d'élimination directe, saisie en duels, abandon /
-   disqualification, barrages, podium — **et surtout la bascule de tour**, qui est le moment où le
-   produit gagne ou perd sa valeur. *Le socle est amorcé : l'organisateur **compose déjà la séquence
-   de phases** de son tournoi (E05US001) — reste à assembler les politiques du moteur, tirer les
-   tableaux et faire jouer les duels.*
+2. **Les duels** (phases finales) : l'arbre d'élimination directe, la saisie en duels (sets/cumul,
+   barrage, podium) et l'**abandon / disqualification** sont **faits** ; reste **surtout la bascule de
+   tour**, qui est le moment où le produit gagne ou perd sa valeur, et les affectations du prochain
+   tour. *L'organisateur **compose déjà la séquence de phases** de son tournoi (E05US001), place les
+   duellistes et le scoreur score les duels — reste à orchestrer le **lancement des tours**.*
 3. **Le placement intégral 1→N** (le grand format du classeur 120) et l'**écran de salle** avec
    l'identité visuelle du tournoi.
 4. **Confort et robustesse** : import inscript'arc, presets de barèmes, déroulé horaire, sauvegarde
@@ -254,27 +265,26 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **68 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026. La saisie en duels
-  (E04US013) a été livrée en **deux tranches** — backend puis **écran scoreur** — sous **une même US**
-  (le compte ne bouge donc pas ; la tranche front est optimiste d'un cran sur la branche jusqu'à son
-  merge). **`SUIVI-US.md` fait foi sur le compte exact.**
+- **69 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026. **`SUIVI-US.md`
+  fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
+  livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US).
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
   et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (6/15)**
+  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (7/14)**
   avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003), le **tableau
   d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001), la
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
-  (E03US009) puis la **saisie en duels** (E04US013 — backend *et* **écran scoreur** : le scoreur score
-  un duel de bout en bout, sets/cumul, barrage, validation, progression du tableau, podium).
-- Dernière US livrée : **E04US013** (saisie en duels) — US à **surface visible** (tranche front, après
-  le backend) : l'**écran scoreur** de saisie d'un duel — liste des duels par tour, grille de manches
-  (sets ou cumul, résolu par arme côté serveur), **barrage** avec désignation du plus près du centre,
-  **validation** qui verrouille et fait avancer le tableau jusqu'au **podium**. **Résiste aux coupures**
-  (file hors-ligne + rejeu) et refuse d'écrire sur un duel **désynchronisé**. Le contrat de lecture des
-  duels a été **enrichi** au passage (le pavé — zones du blason, nb de manches/flèches — est exposé
-  dès la lecture, comme la grille de qualif). Écran monté dans l'**Espace scoreur**.
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E04US015** (gérer abandon /
-  disqualification). Le fil **équipes** est débloqué (E13US002+).
+  (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**) puis l'**abandon /
+  disqualification** (E04US015 — qualif *et* duels).
+- Dernière US livrée : **E04US015** (gérer abandon / disqualification) — US à **surface visible**. Un
+  acte **scoreur** « déclarer abandon / DSQ » **en qualification comme en duels** ([ADR-0050](../docs/adr/0050-forfait-abandon-et-disqualification.md),
+  qui **fusionne E04US015 + E12US004**). Concept unique `Forfait` **scopé à la phase** : en qualif un
+  **abandon** est relégué en fin de classement (rangé, score affiché), une **DSQ** en est sortie (rang
+  vide) ; en duels le forfaitaire **cède** son match. **Flèches préservées** (≠ suppression), acte
+  **réversible** (`D-15`), **tracé** (`FORFAIT`). **DETTE-014 résorbée** (la complétude compte un
+  forfaitaire comme « série close »). Badges au classement (« Abandon » / « Disqualifié »).
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E12US008** (cycle de vie d'un départ),
+  puis la **bascule de tour** (E12US002). Le fil **équipes** est débloqué (E13US002+).
