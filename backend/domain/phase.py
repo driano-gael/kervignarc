@@ -80,17 +80,20 @@ class StatutPhase(str, Enum):
     TERMINEE = "terminee"
 
 
-# Grains admis par type de phase (`D-11`). La qualification se tire en séries et ne comporte
-# **pas** de duels : « fin de duel » n'y a pas de sens. Les phases à duels (elimination_directe…)
-# n'ont pas encore de grain déclaré ici : leur politique de scoring vient en E05US003 (leur
-# `validation` reste `None` en E05US001).
+# Grains admis par type de phase (`D-11`). La qualification se tire en séries (fin de série / toutes
+# les N volées) et ne comporte **pas** de duels. L'élimination directe, elle, se valide **en fin de
+# duel** (la feuille de marque se signe « à la fin du duel », FFTA B.6.1.1) : E04US013 ouvre
+# `FIN_DE_DUEL` pour ce type (ADR-0049 §5). L'agrégat `Duel` valide toujours d'un bloc en fin de
+# duel ; ce grain rend le **modèle de phase** cohérent (une phase à duels peut le déclarer).
 _GRAINS_ADMIS: dict[TypePhase, frozenset[TypeGrain]] = {
     TypePhase.QUALIFICATION: frozenset({TypeGrain.FIN_DE_SERIE, TypeGrain.TOUTES_LES_N_VOLEES}),
+    TypePhase.ELIMINATION_DIRECTE: frozenset({TypeGrain.FIN_DE_DUEL}),
 }
 
 # Grain par défaut de chaque type de phase (« presets cohérents par type de phase », `D-11`).
 _GRAIN_PAR_DEFAUT: dict[TypePhase, GrainValidation] = {
     TypePhase.QUALIFICATION: GrainValidation.fin_de_serie(),
+    TypePhase.ELIMINATION_DIRECTE: GrainValidation.fin_de_duel(),
 }
 
 

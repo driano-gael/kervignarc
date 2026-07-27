@@ -368,6 +368,74 @@ class RoutingNonSupporte(DomainError):
     code = "routing_non_supporte"
 
 
+# --- duels : saisie et scoring (E04US013, ADR-0049) --------------------------------------------
+
+
+class BaremeDuelInvalide(DomainError):
+    """Le barème d'un duel est incohérent (E04US013) : nombre de manches / flèches < 1, ou un
+    seuil de points de set inatteignable (`> 2 x nb_manches`). Un barème est une **structure**
+    paramétrée (ADR-0049) — on refuse une structure impossible à disputer."""
+
+    code = "bareme_duel_invalide"
+
+
+class NumeroMancheInvalide(DomainError):
+    """Le rang d'une manche de duel sort du barème (`1 <= numero <= nb_manches`, E04US013).
+
+    Symétrique de `NumeroVoleeInvalide` pour la qualification : le serveur est autoritaire, une
+    manche hors barème fausserait le décompte des points de set (§7)."""
+
+    code = "numero_manche_invalide"
+
+
+class DuelDejaTranche(DomainError):
+    """On ajoute une manche à un duel **déjà gagné** (E04US013).
+
+    Le système de sets s'arrête dès qu'un camp atteint le seuil (6 pts FFTA) : tirer une manche de
+    plus n'a pas de sens (§6.2). La ré-édition d'une manche **déjà saisie** reste permise tant que
+    le duel n'est pas validé — c'est l'**ajout** d'une manche superflue qui est refusé."""
+
+    code = "duel_deja_tranche"
+
+
+class BarrageNonRequis(DomainError):
+    """Un barrage est saisi alors que le duel n'est **pas** à égalité de sets (E04US013, §8.2).
+
+    Le tir de barrage ne se dispute qu'à égalité (5-5 en individuel) ; le proposer autrement
+    court-circuiterait le résultat des manches."""
+
+    code = "barrage_non_requis"
+
+
+class BarrageIndecis(DomainError):
+    """Le barrage reste à égalité de flèche **sans** désignation du plus près du centre (E04US013).
+
+    §8.2 : à score de flèche égal, on départage « au plus près du centre » — un jugement que
+    l'application **ne mesure pas**. Le scoreur doit **désigner** le vainqueur ; sans quoi le duel
+    resterait indécidable."""
+
+    code = "barrage_indecis"
+
+
+class DuelIncomplet(DomainError):
+    """On valide un duel dont le vainqueur n'est **pas encore** connu (E04US013).
+
+    La validation (grain fin de duel) suppose le duel **tranché** : toutes les manches nécessaires
+    saisies, et l'éventuel barrage résolu. Un duel en cours ne se valide pas."""
+
+    code = "duel_incomplet"
+
+
+class DuelVerrouille(DomainError):
+    """Tentative d'écrire sur un duel **validé** (E04US013).
+
+    Après validation (au nom du scoreur), le duel est verrouillé — son vainqueur est transmis au
+    tableau. Toute nouvelle saisie de manche ou de barrage est refusée (pas de correction tracée à
+    ce stade, hors périmètre de cette US)."""
+
+    code = "duel_verrouille"
+
+
 class ScoreInvalide(DomainError):
     """La valeur d'un score sort de la plage autorisée pour une flèche (0 à 10)."""
 
