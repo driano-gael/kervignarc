@@ -6,7 +6,15 @@ routes imbriquées `/api/v1/tournois/{id}/departs`, et vérifie le mapping des e
 - édition (PUT) du tarif et de l'horaire ; suppression (204) ;
 - tarif hors plage → 422 (`DomainError`) ; tarif non entier → 400 (validation) ;
 - tournoi inconnu → 404 ; départ d'un autre tournoi → 404 ;
-- garde admin : écriture sans session → 401.
+- garde admin : écriture sans session → 401 ;
+- cycle de vie (E12US008) : le DTO expose `etat`, `ouvert` sur un créneau sans score, et les
+  paramètres `confirme_cycle` sont acceptés (non-régression sur un créneau ouvert).
+
+Le garde-fou de cycle **lancé/clos** (409 `depart_en_cours_non_confirme` + `details`) est couvert au
+niveau **service** (`test_service_departs.py`, faux lecteur d'avancement) : l'exercer ici imposerait
+d'amorcer un tir réel (gabarit + barème + placement + saisie + validation de toutes les volées), un
+montage disproportionné pour ce que le service teste déjà — le mapping générique
+`ApplicationError → 409 + details` est, lui, prouvé par `ReplacementNonConfirme` (E12US007).
 """
 
 from __future__ import annotations
@@ -150,6 +158,54 @@ def test_modifier_remplace_le_quota_et_l_omission_le_retire(
             f"/api/v1/tournois/{tid}/departs/{cree['id']}", json={"tarif_centimes": 810}
         )
         assert retire.json()["quota"] is None
+
+
+def test_le_depart_expose_son_etat_ouvert(
+    app_departs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un créneau sans aucun score est **ouvert** (E12US008) — à la création comme à la liste.
+
+    L'état est dérivé (jamais stocké) : un créneau qui vient de naître, sans placement ni série, est
+    ouvert par construction ; il le reste dans la liste tant que personne n'a tiré.
+    """
+    with TestClient(app_departs) as client:
+        connecter_admin(client)
+        tid = _creer_tournoi(client)
+
+        cree = client.post(f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810})
+        assert cree.json()["etat"] == "ouvert"
+
+        liste = client.get(f"/api/v1/tournois/{tid}/departs").json()
+        assert [d["etat"] for d in liste] == ["ouvert"]
+
+
+def test_editer_et_supprimer_un_creneau_ouvert_ignorent_confirme_cycle(
+    app_departs: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Sur un créneau **ouvert** (aucun tir), `confirme_cycle` est sans objet : PUT/DELETE passent.
+
+    Non-régression : le garde-fou de cycle ne se déclenche que sur un créneau lancé/clos. Le
+    paramètre est accepté (câblé) mais inopérant ici — l'édition et la suppression restent libres.
+    """
+    with TestClient(app_departs) as client:
+        connecter_admin(client)
+        tid = _creer_tournoi(client)
+        depart_id = client.post(
+            f"/api/v1/tournois/{tid}/departs", json={"tarif_centimes": 810}
+        ).json()["id"]
+
+        modif = client.put(
+            f"/api/v1/tournois/{tid}/departs/{depart_id}",
+            json={"tarif_centimes": 1250},
+        )
+        assert modif.status_code == 200
+        assert modif.json()["etat"] == "ouvert"
+
+        suppr = client.delete(
+            f"/api/v1/tournois/{tid}/departs/{depart_id}",
+            params={"confirme_cycle": True},
+        )
+        assert suppr.status_code == 204
 
 
 def test_creer_tarif_negatif_erreur_domaine(

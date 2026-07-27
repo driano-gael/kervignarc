@@ -17,15 +17,41 @@ import pytest
 from application.departs import ServiceDeparts
 from application.erreurs import (
     DepartAvecInscriptions,
+    DepartEnCoursNonConfirme,
     DepartIntrouvable,
     TournoiIntrouvable,
 )
+from domain.cycle_depart import AvancementDepart, EtatDepart
+from domain.depart import DepartId
 from domain.erreurs import TarifDepartInvalide
 from domain.inscription import Inscription
 from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import FauxDepartRepository, FauxInscriptionRepository
 
 _DATE = datetime.date(2026, 3, 14)
+
+# Avancement par défaut d'un créneau : aucun tir → **ouvert**. Les tests de cycle (E12US008)
+# posent explicitement un avancement lancé/clos ; tous les autres (E02US004/E02US009) restent
+# ouverts, donc librement éditables — leur comportement est inchangé.
+_OUVERT = AvancementDepart(nb_places=0, nb_ayant_tire=0, nb_series_closes=0)
+
+
+class FauxLecteurAvancement:
+    """Faux `LecteurAvancementDepart` : renvoie l'avancement qu'on lui pose, ouvert par défaut.
+
+    Le vrai lecteur est `ServiceCompletude` (il agrège placements/séries/forfaits) ; ici on injecte
+    directement l'état voulu, le service des départs n'ayant à connaître que le **verdict**, pas la
+    façon de le calculer (port étroit, comme `LecteurPaiements`).
+    """
+
+    def __init__(self) -> None:
+        self._par_depart: dict[DepartId, AvancementDepart] = {}
+
+    def poser(self, depart_id: DepartId, avancement: AvancementDepart) -> None:
+        self._par_depart[depart_id] = avancement
+
+    def avancement_depart(self, tournoi_id: TournoiId, depart_id: DepartId) -> AvancementDepart:
+        return self._par_depart.get(depart_id, _OUVERT)
 
 
 class FauxTournoiRepository:
@@ -67,6 +93,7 @@ class Montage(NamedTuple):
     service: ServiceDeparts
     departs: FauxDepartRepository
     inscriptions: FauxInscriptionRepository
+    avancements: FauxLecteurAvancement
     tournoi_id: TournoiId
 
 
@@ -75,10 +102,15 @@ def _monter() -> Montage:
     tournois = FauxTournoiRepository()
     departs = FauxDepartRepository()
     inscriptions = FauxInscriptionRepository()
+    avancements = FauxLecteurAvancement()
     tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
     assert tournoi.id is not None
     return Montage(
-        ServiceDeparts(departs, tournois, inscriptions), departs, inscriptions, tournoi.id
+        ServiceDeparts(departs, tournois, inscriptions, avancements),
+        departs,
+        inscriptions,
+        avancements,
+        tournoi.id,
     )
 
 
@@ -165,7 +197,9 @@ def test_lister_trie_par_numero_et_isole_le_tournoi() -> None:
     a = tournois.ajouter(Tournoi.creer("A", _DATE))
     b = tournois.ajouter(Tournoi.creer("B", _DATE))
     assert a.id is not None and b.id is not None
-    service = ServiceDeparts(departs, tournois, FauxInscriptionRepository())
+    service = ServiceDeparts(
+        departs, tournois, FauxInscriptionRepository(), FauxLecteurAvancement()
+    )
     service.creer(a.id, 810)
     service.creer(a.id, 810)
     service.creer(b.id, 810)
@@ -208,7 +242,9 @@ def test_modifier_leve_si_depart_d_un_autre_tournoi() -> None:
     a = tournois.ajouter(Tournoi.creer("A", _DATE))
     b = tournois.ajouter(Tournoi.creer("B", _DATE))
     assert a.id is not None and b.id is not None
-    service = ServiceDeparts(departs, tournois, FauxInscriptionRepository())
+    service = ServiceDeparts(
+        departs, tournois, FauxInscriptionRepository(), FauxLecteurAvancement()
+    )
     depart = service.creer(a.id, 810)
     assert depart.id is not None
 
@@ -236,7 +272,9 @@ def test_supprimer_leve_si_depart_d_un_autre_tournoi() -> None:
     a = tournois.ajouter(Tournoi.creer("A", _DATE))
     b = tournois.ajouter(Tournoi.creer("B", _DATE))
     assert a.id is not None and b.id is not None
-    service = ServiceDeparts(departs, tournois, FauxInscriptionRepository())
+    service = ServiceDeparts(
+        departs, tournois, FauxInscriptionRepository(), FauxLecteurAvancement()
+    )
     depart = service.creer(a.id, 810)
     assert depart.id is not None
 
@@ -313,4 +351,133 @@ def test_supprimer_depart_avec_inscriptions_confirme_efface() -> None:
     m.inscriptions.ajouter(Inscription.creer(1, depart.id))
 
     m.service.supprimer(m.tournoi_id, depart.id, autoriser_suppression_inscrits=True)
+    assert m.service.lister(m.tournoi_id) == []
+
+
+# --- Cycle de vie du créneau (E12US008) --------------------------------------------------------
+# CA : un créneau *ouvert* (aucun score) reste librement éditable ; *lancé* (au moins une flèche) ou
+# *clos* (toutes séries closes), le modifier ou le supprimer est **contrôlé** — signalé et
+# confirmable (réutilise le mécanisme d'alerte chiffrée d'E12US007). L'état est **dérivé** d'un fait
+# réel, jamais saisi.
+
+
+def _lance(nb_tireurs: int = 8) -> AvancementDepart:
+    """Un créneau lancé : des archers ont tiré, aucune série close."""
+    return AvancementDepart(nb_places=12, nb_ayant_tire=nb_tireurs, nb_series_closes=0)
+
+
+def _clos() -> AvancementDepart:
+    """Un créneau clos : toutes les séries des archers placés sont closes."""
+    return AvancementDepart(nb_places=12, nb_ayant_tire=12, nb_series_closes=12)
+
+
+def test_modifier_creneau_ouvert_reste_libre() -> None:
+    """Aucun score consigné : éditer le créneau ne demande **aucune** confirmation (E02US009)."""
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810, "9h00")
+    assert depart.id is not None
+    # avancement ouvert par défaut
+    modifie = m.service.modifier(m.tournoi_id, depart.id, 1250, "14h00")
+    assert modifie.tarif_centimes == 1250
+
+
+def test_modifier_creneau_lance_exige_confirmation() -> None:
+    """Un créneau **lancé** ne se modifie pas d'un clic : `DepartEnCoursNonConfirme` (→ 409).
+
+    Signalement chiffré, pas un refus : l'admin peut forcer avec `confirme_cycle=True`. Tant qu'il
+    ne l'a pas fait, rien n'est écrit — le tarif d'origine survit.
+    """
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810, "9h00")
+    assert depart.id is not None
+    m.avancements.poser(depart.id, _lance())
+
+    with pytest.raises(DepartEnCoursNonConfirme):
+        m.service.modifier(m.tournoi_id, depart.id, 1250, "14h00")
+    assert m.service.lister(m.tournoi_id)[0].tarif_centimes == 810
+
+
+def test_modifier_creneau_lance_confirme_passe() -> None:
+    """Avec `confirme_cycle=True`, l'admin assume et la modification s'applique (E12US008)."""
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810, "9h00")
+    assert depart.id is not None
+    m.avancements.poser(depart.id, _lance())
+
+    modifie = m.service.modifier(m.tournoi_id, depart.id, 1250, "14h00", confirme_cycle=True)
+    assert modifie.tarif_centimes == 1250
+
+
+def test_modifier_creneau_clos_exige_aussi_confirmation() -> None:
+    """Un créneau **clos** (session finie) est protégé comme un lancé : confirmation requise."""
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810, "9h00")
+    assert depart.id is not None
+    m.avancements.poser(depart.id, _clos())
+
+    with pytest.raises(DepartEnCoursNonConfirme):
+        m.service.modifier(m.tournoi_id, depart.id, 1250, "14h00")
+
+
+def test_details_du_signalement_cycle_chiffrent_etat_et_tireurs() -> None:
+    """Le signalement porte l'**état** et le **nombre d'archers ayant tiré** (canal `details`).
+
+    Comme `ReplacementNonConfirme` (E12US007), l'alerte est **chiffrée au moment d'agir** — le front
+    dit « ce créneau est lancé, 8 archers ont déjà tiré » sans reconstituer l'impact lui-même.
+    """
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810, "9h00")
+    assert depart.id is not None
+    m.avancements.poser(depart.id, _lance(nb_tireurs=8))
+
+    with pytest.raises(DepartEnCoursNonConfirme) as leve:
+        m.service.modifier(m.tournoi_id, depart.id, 1250)
+    assert leve.value.details == {"etat": EtatDepart.LANCE.value, "archers_ayant_tire": 8}
+
+
+def test_supprimer_creneau_ouvert_garde_le_comportement_e02us009() -> None:
+    """Non-régression : un créneau **ouvert** avec inscriptions signale toujours l'inscription.
+
+    Le garde-fou de cycle ne s'ajoute qu'aux créneaux lancés/clos ; sur un ouvert, seul le
+    signalement d'inscriptions (E02US009) joue — comportement strictement inchangé.
+    """
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810)
+    assert depart.id is not None
+    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
+
+    with pytest.raises(DepartAvecInscriptions):
+        m.service.supprimer(m.tournoi_id, depart.id)
+
+
+def test_supprimer_creneau_lance_exige_la_confirmation_de_cycle() -> None:
+    """Supprimer un créneau **lancé** lève `DepartEnCoursNonConfirme`, pas le signalement
+    d'inscriptions : le fait dominant est qu'on va détruire une **session de tir**, pas juste des
+    inscriptions.
+    """
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810)
+    assert depart.id is not None
+    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
+    m.avancements.poser(depart.id, _lance())
+
+    with pytest.raises(DepartEnCoursNonConfirme):
+        m.service.supprimer(m.tournoi_id, depart.id)
+    assert [d.id for d in m.service.lister(m.tournoi_id)] == [depart.id]
+
+
+def test_supprimer_creneau_lance_confirme_subsume_les_inscriptions() -> None:
+    """`confirme_cycle=True` **subsume** le garde-fou d'inscriptions : le créneau part sans exiger,
+    en plus, `autoriser_suppression_inscrits`.
+
+    Confirmer qu'on détruit une session de tir en cours couvre *a fortiori* ses inscriptions —
+    exiger une seconde confirmation serait un double dialogue (arbitrage E12US008).
+    """
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810)
+    assert depart.id is not None
+    m.inscriptions.ajouter(Inscription.creer(1, depart.id))
+    m.avancements.poser(depart.id, _lance())
+
+    m.service.supprimer(m.tournoi_id, depart.id, confirme_cycle=True)
     assert m.service.lister(m.tournoi_id) == []

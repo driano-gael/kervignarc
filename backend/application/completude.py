@@ -31,6 +31,8 @@ from application.erreurs import TournoiIntrouvable
 from application.paiements import LignePaiementArcher
 from domain.archer import ArcherId
 from domain.completude import Completude, evaluer_completude
+from domain.cycle_depart import AvancementDepart
+from domain.depart import DepartId
 from domain.phase import TypePhase
 from domain.ports import (
     DepartRepository,
@@ -92,6 +94,52 @@ class ServiceCompletude:
         qualif = self._compter_cibles(tournoi_id)
         paiements = self._compter_paiements(tournoi_id)
         return evaluer_completude(qualif=qualif, paiements=paiements)
+
+    def avancement_depart(self, tournoi_id: TournoiId, depart_id: DepartId) -> AvancementDepart:
+        """Avancement d'un créneau (E12US008) : archers placés, ayant tiré, séries closes.
+
+        Réalise le port `LecteurAvancementDepart` consommé par `ServiceDeparts` (garde-fou cycle).
+        On réutilise la même notion de série **close** que la complétude — `_serie_close` : barème
+        validé **ou** forfait (DETTE-014, ADR-0050) — d'où la place naturelle de ce calcul ici. « A
+        tiré » = **au moins une flèche validée** (`Serie.nb_fleches_validees > 0`), le fait réel qui
+        fait basculer un créneau *ouvert → lancé* (le CA E12US008).
+
+        **Barème non configuré** (phase de qualification absente) → aucune série n'est *scorable* ni
+        validable : `nb_ayant_tire` et `nb_series_closes` tombent à 0 (hors forfaits), le créneau
+        reste donc **ouvert** — librement éditable, robustesse jour J (même parti que
+        `_compter_cibles`). La résolution barème + forfaits est **dupliquée** de `_compter_cibles`
+        (2ᵉ occurrence, règle 12 : on extraira au 3ᵉ cas, pas avant).
+        """
+        phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        nb_volees = phase.bareme.nb_volees if phase is not None and phase.bareme is not None else 0
+        forfaits_qualif: set[ArcherId] = (
+            {f.archer_id for f in self._forfaits.par_phase(phase.id)}
+            if phase is not None and phase.id is not None
+            else set()
+        )
+        series: dict[ArcherId, Serie] = {
+            s.archer_id: s for s in self._series.par_tournoi(tournoi_id)
+        }
+        inscriptions = {i.id: i for i in self._inscriptions.par_depart(depart_id)}
+        nb_places = 0
+        nb_ayant_tire = 0
+        nb_series_closes = 0
+        for affectation in self._placements.par_depart(depart_id):
+            inscription = inscriptions.get(affectation.inscription_id)
+            if inscription is None:
+                continue  # défensif : affectation sans inscription correspondante
+            archer_id = inscription.archer_id
+            nb_places += 1
+            serie = series.get(archer_id)
+            if serie is not None and serie.nb_fleches_validees > 0:
+                nb_ayant_tire += 1
+            if self._serie_close(serie, nb_volees, archer_id in forfaits_qualif):
+                nb_series_closes += 1
+        return AvancementDepart(
+            nb_places=nb_places,
+            nb_ayant_tire=nb_ayant_tire,
+            nb_series_closes=nb_series_closes,
+        )
 
     def _compter_cibles(self, tournoi_id: TournoiId) -> tuple[int, int]:
         """`(cibles_terminees, cibles_total)` sur l'ensemble des couples `(départ, cible)` placés.

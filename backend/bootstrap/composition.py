@@ -270,12 +270,8 @@ def create_app(
         database.session_factory, audit_repository, HorlogeSysteme()
     )
     app.state.service_tournois = ServiceTournois(tournoi_repository)
-    # Départs (créneaux) d'un tournoi (E02US004, ADR-0017) : le service vérifie l'existence du
-    # tournoi (dépend du port tournoi) et attribue le numéro du créneau. Il dépend aussi du port
-    # inscription pour le garde-fou « supprimer un départ qui porte des inscriptions » (E02US009).
-    app.state.service_departs = ServiceDeparts(
-        depart_repository, tournoi_repository, inscription_repository
-    )
+    # `service_departs` est câblé **plus bas**, après `service_completude` : son garde-fou de cycle
+    # (E12US008) dépend du port étroit `LecteurAvancementDepart`, que réalise `ServiceCompletude`.
     # Catégories ↔ blasons se référencent mutuellement (E01US006) : la catégorie valide son
     # blason par défaut, le blason refuse sa suppression s'il est référencé. Chaque service ne
     # dépend que des **ports** repository (pas de l'autre service).
@@ -572,6 +568,18 @@ def create_app(
         phase_repository,
         forfait_repository,
         app.state.service_paiements,
+    )
+
+    # Départs (créneaux) d'un tournoi (E02US004, ADR-0017) : le service vérifie l'existence du
+    # tournoi (port tournoi), attribue le numéro du créneau, et dépend du port inscription pour le
+    # garde-fou « supprimer un départ qui porte des inscriptions » (E02US009). Câblé **ici**, après
+    # `service_completude` : son garde-fou de cycle de vie (E12US008) lit l'état du créneau via le
+    # port étroit `LecteurAvancementDepart`, que `ServiceCompletude` réalise (`avancement_depart`).
+    app.state.service_departs = ServiceDeparts(
+        depart_repository,
+        tournoi_repository,
+        inscription_repository,
+        app.state.service_completude,
     )
 
     # --- Forfaits — abandon / disqualification (E04US015, ADR-0050) : le scoreur déclare/annule un
