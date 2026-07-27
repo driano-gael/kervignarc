@@ -12,22 +12,36 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 27/07/2026** · **68 US livrées** · dernière : `E04US013` *(backend)*.
+**Dernière mise à jour : 27/07/2026** · **68 US livrées** · dernière : `E04US013` *(backend + écran scoreur)*.
 
 ---
 
 ## 🎯 Prochaine US
 
-> **`E04US013` — écran scoreur (tranche front)** : le **backend** de la saisie en duels est **livré**
-> (voir ci-dessous) ; reste l'**écran tactile scoreur** de saisie de duel (grille sets/cumul, barrage,
-> validation), sur le modèle de la grille d'E04US002. À prendre en tranche front dédiée.
-> *Ensuite* : **`E04US015`** (gérer abandon / disqualification), puis la suite du J2.
+> **`E04US015` — gérer abandon / disqualification** : enregistrer un abandon/DSQ (statut spécial sur un
+> archer/match), avec impact correct sur la progression et le classement, **les flèches déjà tirées
+> préservées** — c'est ce qui distingue l'abandon de la suppression ([ADR-0016](../docs/adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)).
+> Alternative désignée à la suppression d'archer pour l'abandon en **qualification** ; **E12US004
+> l'élargira aux duels**. *(Incohérence latente à arbitrer, cf. story : jalon J2 + dépendance duels vs
+> « abandon en qualification ».)*
+> *Ensuite* : la suite du J2 (forfait E12US004, cycle de vie d'un départ E12US008, **bascule de tour**
+> E12US002…).
 > *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
 > moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *J1 est **terminé** (46/46) ; le confort « ma journée » et les classements imprimables restent hors
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E04US013` **écran scoreur (tranche front)** — US à **surface visible**, sous la **même US** que le
+>   backend (le compte d'US ne bouge pas). Le scoreur choisit une **phase de tableau**, voit la **liste
+>   des duels par tour**, ouvre un duel et le score : **grille de manches** (sets ou cumul selon `mode`,
+>   résolu par arme côté serveur — le front n'en décide pas), **barrage** conditionnel (§8.2, désignation
+>   manuelle du plus près du centre), **validation** qui verrouille et fait avancer le tableau jusqu'au
+>   **podium**. **File hors-ligne + rejeu** dédiée aux actes de duel (2ᵉ occurrence du motif de
+>   résilience, **dupliquée** — pas extraite, règle 12). Le **contrat de lecture** des duels a été
+>   **enrichi** (pavé exposé dès la lecture : zones du blason, nb de manches/flèches, seuil), analogue à
+>   la grille de qualif. Écran monté dans l'**Espace scoreur**. Recette :
+>   [`docs/fonctionnel/E04US013.md`](../docs/fonctionnel/E04US013.md).
 > - `E04US013` **backend** (saisie en duels) — **sans surface visible** (domaine → moteur → politiques →
 >   persistance → service → **API scoreur**). Un **duel** se score au **système de sets** (points de set
 >   2/1-1/0, premier à 6 — FFTA ; club 4) ou **au cumul** en arc à poulies (A.7.5.2) ; à égalité, un
@@ -35,8 +49,8 @@
 >   Le **vainqueur validé** est transmis au moteur `Tableau.jouer` : le tableau, **non persisté**, est
 >   **reconstruit** du classement et **rejoué** des duels validés (seul le **tir** est persisté, table
 >   `duel`, migration 0030). Le barème est **résolu par arme** via un **résolveur injecté à défaut FFTA**
->   (E01US011 le configurera — **dépendance sur-affirmée retirée**). L'**écran scoreur** suit en tranche
->   front. Décisions : [ADR-0049](../docs/adr/0049-saisie-et-scoring-des-duels.md).
+>   (E01US011 le configurera — **dépendance sur-affirmée retirée**). Décisions :
+>   [ADR-0049](../docs/adr/0049-saisie-et-scoring-des-duels.md).
 > - `E03US009` (placer les duellistes côte à côte) — US à **surface visible**. Le placement d'une phase
 >   de tableau met les **deux adversaires d'un duel** du 1er tour **côte à côte** « dans la mesure du
 >   possible », par ré-ordonnancement de l'entrée du glouton (moteur inchangé, ADR-0048) ; les duels non
@@ -122,8 +136,8 @@
 | 60 | E05US005 | Arbre d'élimination directe *(moteur sur `Participant`)* | ✅ |
 | 61 | E03US006 | Contrainte ≥ 2 clubs par cible | ✅ |
 | 62 | E03US009 | Placer les duellistes côte à côte | ✅ |
-| 63 | E04US013 | Saisie en duels | ✅ *(backend + API ; écran scoreur en tranche front à suivre)* |
-| 64 | E04US015 | Gérer abandon / disqualification | ⬜ |
+| 63 | E04US013 | Saisie en duels | ✅ *(backend + API + écran scoreur)* |
+| 64 | E04US015 | Gérer abandon / disqualification | 🎯 |
 | 65 | E12US004 | Tracer un forfait | ⬜ |
 | 66 | E12US008 | Cycle de vie d'un départ | ⬜ |
 | 67 | E08US005 | Rembourser une inscription payée annulée | ⬜ |

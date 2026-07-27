@@ -12,6 +12,7 @@ import {
   type ScoreurConnecte,
   useSessionScoreurStore,
 } from '../../shared/stores/sessionScoreurStore'
+import { SaisieDuels } from '../saisie-duels/SaisieDuels'
 import { useConnexionScoreur, useDeconnexionScoreur } from './hooks'
 
 export function EspaceScoreur() {
@@ -66,19 +67,23 @@ function SessionOuverte({ scoreur }: { scoreur: ScoreurConnecte }) {
 
   return (
     <div>
-      <p className="carte__etat">
-        Session ouverte — <strong>{scoreur.nom}</strong>. La validation des scores depuis cet
-        appareil arrivera avec la saisie (à venir).
-      </p>
-      <button
-        type="button"
-        className="lien"
-        disabled={deconnexion.isPending}
-        onClick={() => deconnexion.mutate()}
-      >
-        Fermer ma session
-      </button>
+      <div className="scoreur__barre">
+        <p className="carte__etat">
+          Session ouverte — <strong>{scoreur.nom}</strong>.
+        </p>
+        <button
+          type="button"
+          className="lien"
+          disabled={deconnexion.isPending}
+          onClick={() => deconnexion.mutate()}
+        >
+          Fermer ma session
+        </button>
+      </div>
       <MessageErreur erreur={deconnexion.error} />
+      {/* Saisie en duels (E04US013) : le scoreur choisit une phase de tableau, ouvre un duel et le
+          score. Monté ici, une fois la session ouverte — comme le poste monte la grille de qualif. */}
+      <SaisieDuels tournoiId={scoreur.tournoi_id} />
     </div>
   )
 }

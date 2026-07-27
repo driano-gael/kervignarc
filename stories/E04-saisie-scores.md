@@ -223,9 +223,23 @@
     reconstruction suivante.
   - **Grain `FIN_DE_DUEL` ouvert pour l'élimination directe** (un duel se valide en fin de duel, FFTA
     B.6.1.1). **Big Shoot Off hors périmètre** (règle inconnue, bloque E01US011).
-- **Périmètre livré : backend** (domaine → moteur → politiques → persistance → service → **API scoreur**).
-  L'**écran tactile scoreur** (grille de saisie de duel) est une **tranche front dédiée**, à suivre — comme
-  la grille d'E04US002 avait suivi son backend. Choix de cadrage du 27/07/2026.
+- **Livré en deux tranches sous une même US** (le compte d'US ne double pas) : **backend** (domaine →
+  moteur → politiques → persistance → service → **API scoreur**), puis **écran tactile scoreur** (grille
+  de saisie de duel), comme la grille d'E04US002 avait suivi son backend. Choix de cadrage du 27/07/2026.
+  - **Tranche front livrée le 27/07/2026** : écran monté dans l'**Espace scoreur** — choix d'une phase de
+    tableau, **liste des duels par tour**, grille de manches (sets/cumul selon `mode` renvoyé par le
+    serveur), **barrage** conditionnel avec **désignation** manuelle du plus près du centre, **validation**
+    verrouillante, **podium**. **File hors-ligne + rejeu** dédiée aux actes de duel (2ᵉ occurrence du motif
+    de résilience E04US009 — **dupliquée**, pas extraite : règle 12, l'extraction en `shared/` attend un
+    3ᵉ cas). Recette : [`docs/fonctionnel/E04US013.md`](../docs/fonctionnel/E04US013.md).
+  - **Décision technique (reversée) — contrat de lecture enrichi.** Le pavé fidèle au blason exige côté
+    front les **zones légales**, le **nombre de flèches par volée** et le **nombre de manches**, que le
+    backend calculait sans les exposer. `DuelReponse` (et `EtatDuel`) les portent désormais, résolus dès
+    qu'un match est **jouable**, **avant tout tir** — analogue de ce que la grille + le barème de
+    qualification livrent au poste (E04US002). Les **zones** sont résolues **best-effort en lecture**
+    (vides si blason indéterminable, comme la grille de qualif) alors que le chemin d'**écriture** reste
+    strict (`BlasonIntrouvable`, 404). Aucune autre modification backend : la liste des **phases** est une
+    lecture **déjà publique** (E10US001), donc le scoreur navigue sans ouverture de route.
 - **Absorbe** : ex-E04US013, E04US014, E04US016. **Dépend de** : E05US005 *(E01US011 retirée — voir arbitrage ci-dessus)* · **Jalon** : J2
 
 ### E04US015 — Gérer abandon / disqualification

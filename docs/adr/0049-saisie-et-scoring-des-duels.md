@@ -176,3 +176,34 @@ de duel** (la feuille de marque se signe « à la fin du duel », FFTA B.6.1.1).
   **gel du classement/état pendant la phase de tableau** (garde de cycle de vie, E01US017/E12US002).
   Assumé et documenté ici, non traité dans cette US ; le tir enregistre déjà l'identité (position
   ancrée), le mode reste tributaire du gel à venir.
+
+## Tranche front (27/07/2026) — écran scoreur
+
+Le backend ci-dessus a été livré **sans surface**. L'**écran tactile scoreur** (grille de saisie d'un
+duel) l'a suivi en tranche front dédiée (`frontend/src/features/saisie-duels/`), monté dans l'**Espace
+scoreur** : choix d'une phase de tableau, **liste des duels par tour**, grille de manches (sets/cumul),
+**barrage** conditionnel avec désignation manuelle, **validation** verrouillante, **podium**. Deux
+décisions techniques, tranchées et reversées ici (règle 9) :
+
+- **Le contrat de lecture est enrichi du « pavé ».** `DuelReponse`/`EtatDuel` exposent désormais, dès
+  qu'un match est **jouable** et **avant tout tir**, les **zones** du blason tiré, le **nombre de
+  flèches par volée**, le **nombre de manches** et le seuil (`points_pour_gagner`) — ce que le service
+  calculait déjà mais gardait pour l'écriture. Sans quoi le front ne pourrait pas bâtir un pavé fidèle
+  au blason (« touches illégales absentes », principe d'E04US002). Les **zones** sont résolues
+  **best-effort en lecture** (`_zones_best_effort` : vides si blason indéterminable, l'écran affiche
+  « pavé indisponible » sur ce match) tandis que le chemin d'**écriture** reste **strict**
+  (`BlasonIntrouvable`, 404) — même asymétrie que la grille de qualification. Le `mode` (sets/cumul)
+  est lui aussi déplacé sur le **barème du match** (connu avant la 1ʳᵉ manche), non plus sur le tir.
+- **Aucune autre modification backend.** La navigation du scoreur suppose de lister les phases ; or
+  `GET /tournois/{id}/phases` est une lecture **déjà publique** (E10US001) — le scoreur l'appelle sans
+  jeton (portée `'aucune'`), aucune route à ouvrir. Le « manque » initialement pressenti n'en était pas
+  un ; vérifié avant de coder.
+
+Côté résilience, la saisie de duel **résiste aux coupures** comme la qualif (E04US009) : une **file
+hors-ligne dédiée aux actes de duel** (manche / barrage / validation) + rejeu idempotent. C'est la
+**2ᵉ occurrence** du motif de résilience — **dupliquée**, pas extraite en socle générique (règle 12 ;
+l'extraction en `shared/` attend un 3ᵉ cas). Divergence assumée avec la file de qualif : **FIFO strict
+sans dédup à l'enfilage**, car l'ordre des actes (manches → barrage → validation) porte du sens au
+rejeu (valider suppose les manches déjà passées). Le front **ne recompute jamais** l'issue d'un duel :
+`termine`/`vainqueur`/`barrage_requis` restent l'autorité serveur ; hors-ligne, la grille avance en
+affichant les actes « en attente » sans en déduire le résultat.

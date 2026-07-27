@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 26 juillet 2026
+# Résumé du projet — où on en est au 27 juillet 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -27,9 +27,11 @@ et les **fusionne** sans rien perdre. Et l'application se **déploie désormais 
 exécutable qui crée sa base au premier lancement, s'ouvre sur le réseau local, **se sauvegarde toute
 seule** et sait produire une **archive complète** du tournoi — prêt pour le jour J, sans installation
 ni internet.** Le jalon « qualification de bout en bout » est ainsi **terminé** (à un reliquat de
-confort près), et le chantier suivant — les **duels** — est **amorcé** : l'organisateur **compose
-désormais le format** de son tournoi (la séquence des phases après la qualification). Restent à
-construire le déroulé effectif des duels et le pilotage du jour J.
+confort près), et le chantier suivant — les **duels** — est **bien avancé** : l'organisateur **compose
+le format** de son tournoi (la séquence des phases) et place les duellistes côte à côte. Et le **scoreur
+score désormais un duel de bout en bout** sur son appareil — manche par manche, barrage à l'égalité,
+validation du vainqueur qui fait avancer le tableau jusqu'au podium. Restent l'abandon /
+disqualification et le **pilotage de la bascule de tour** le jour J.
 
 ---
 
@@ -206,6 +208,21 @@ Ce qui transforme la saisie brute en tournoi qu'on suit en direct, dernier bloc 
 eux-mêmes (1/8, 1/4…) apparaissent « à venir » dans la complétude — et la « prochaine affectation » de
 la recherche restera vide — tant que leur moteur (EPIC-05) n'est pas construit.*
 
+### 11. Scorer les duels — *premier écran du chantier duels*
+
+- **Saisie en duels (écran scoreur)** : une fois sa session ouverte, le scoreur choisit une **phase de
+  tableau**, voit la **liste des duels groupés par tour** (finale en tête, chacun avec son état : à
+  saisir / en cours / à valider / validé), en ouvre un et le score **manche par manche** sur un pavé
+  tactile qui ne propose que les valeurs autorisées du blason. Le **format** est décidé par le serveur
+  (système de **sets**, ou **cumul** pour l'arc à poulies) et l'écran s'y adapte ; le **score courant**
+  s'affiche à chaque manche. À égalité, un **barrage** (une flèche chacun) départage — avec
+  **désignation manuelle** du plus près du centre si les flèches valent pareil. La **validation** du
+  vainqueur **verrouille** le duel et le fait **avancer au tour suivant**, jusqu'au **podium**. Comme
+  la qualification, la saisie **résiste aux coupures réseau** (file + renvoi automatique) et refuse
+  d'écrire sur un duel dont les adversaires auraient changé. Détail dans
+  [`2026-07-27-11h44-scorer-un-duel.md`](2026-07-27-11h44-scorer-un-duel.md). *(Le moteur — tableau,
+  scoring, progression — avait été livré juste avant, sans écran.)*
+
 ---
 
 ## Ce qui n'existe pas encore (les grands chantiers restants)
@@ -237,9 +254,10 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **68 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026 — la dernière
-  (E04US013) optimiste d'un cran sur la branche jusqu'à son merge. **`SUIVI-US.md` fait foi sur le
-  compte exact.**
+- **68 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026. La saisie en duels
+  (E04US013) a été livrée en **deux tranches** — backend puis **écran scoreur** — sous **une même US**
+  (le compte ne bouge donc pas ; la tranche front est optimiste d'un cran sur la branche jusqu'à son
+  merge). **`SUIVI-US.md` fait foi sur le compte exact.**
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
@@ -249,14 +267,14 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
   avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003), le **tableau
   d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001), la
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
-  (E03US009) puis le **backend de la saisie en duels** (E04US013 — scoring sets/cumul, barrage,
-  progression du tableau ; l'écran scoreur suit en tranche front).
-- Dernière US livrée : **E03US009** (placer les duellistes côte à côte) — US à **surface visible** : le
-  placement d'une **phase de tableau** met les **deux adversaires d'un duel** du 1er tour **côte à côte**
-  (même cible, positions voisines) « dans la mesure du possible », par le **même mécanisme** que la
-  mixité (ré-ordonnancement de l'entrée du moteur, inchangé — ADR-0048), et **signale** les duels non
-  rapprochés (badge + bannière). Vertical **ajustable** (choix commanditaire) : plan **matérialisé par
-  phase** et **glisser-déposer**, l'appariement recalculé du classement, la pose persistée. Écran admin
-  **« Plan de duels »**.
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E04US013** (saisie en duels). Le fil
-  **équipes** est débloqué (E13US002+).
+  (E03US009) puis la **saisie en duels** (E04US013 — backend *et* **écran scoreur** : le scoreur score
+  un duel de bout en bout, sets/cumul, barrage, validation, progression du tableau, podium).
+- Dernière US livrée : **E04US013** (saisie en duels) — US à **surface visible** (tranche front, après
+  le backend) : l'**écran scoreur** de saisie d'un duel — liste des duels par tour, grille de manches
+  (sets ou cumul, résolu par arme côté serveur), **barrage** avec désignation du plus près du centre,
+  **validation** qui verrouille et fait avancer le tableau jusqu'au **podium**. **Résiste aux coupures**
+  (file hors-ligne + rejeu) et refuse d'écrire sur un duel **désynchronisé**. Le contrat de lecture des
+  duels a été **enrichi** au passage (le pavé — zones du blason, nb de manches/flèches — est exposé
+  dès la lecture, comme la grille de qualif). Écran monté dans l'**Espace scoreur**.
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E04US015** (gérer abandon /
+  disqualification). Le fil **équipes** est débloqué (E13US002+).
