@@ -23,11 +23,13 @@ from domain.blason import Blason, BlasonId, ZoneScore, valider_zones
 from domain.categorie import Categorie, CategorieId, SexeCategorie, TrancheAge
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
+from domain.duel import BaremeDuel, Barrage, Cote, Duel, MancheDuel
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import DomainError
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.inscription import Inscription, InscriptionId
+from domain.participant import Participant
 from domain.phase import Phase, PhaseId, SourcePhase, StatutPhase, TypePhase, grain_par_defaut
 from domain.placement import Affectation
 from domain.ports import Horloge
@@ -43,6 +45,7 @@ from infrastructure.db.models import (
     CategorieORM,
     ClubORM,
     DepartORM,
+    DuelORM,
     EntreeAuditORM,
     GabaritSalleORM,
     InscriptionORM,
@@ -182,6 +185,84 @@ def _vers_serie(ligne: SerieORM, volees: Sequence[VoleeORM]) -> Serie:
 def _valeurs_json(volee: Volee) -> str:
     """Sérialise les zones d'une volée en tableau JSON de codes (procédé de `BlasonORM.zones`)."""
     return json.dumps([zone.value for zone in volee.valeurs])
+
+
+def _manches_json(duel: Duel) -> str:
+    """Sérialise les manches d'un duel en JSON (E04US013) : `[{numero, haut:[…], bas:[…]}]`."""
+    return json.dumps(
+        [
+            {
+                "numero": manche.numero,
+                "haut": [zone.value for zone in manche.volee_haut.valeurs],
+                "bas": [zone.value for zone in manche.volee_bas.valeurs],
+            }
+            for manche in duel.manches
+        ]
+    )
+
+
+def _barrage_json(duel: Duel) -> str | None:
+    """Sérialise le barrage d'un duel en JSON (`None` si aucun) : `{haut, bas, gagnant}`."""
+    if duel.barrage is None:
+        return None
+    designe = duel.barrage.gagnant_designe
+    return json.dumps(
+        {
+            "haut": duel.barrage.fleche_haut.value,
+            "bas": duel.barrage.fleche_bas.value,
+            "gagnant": None if designe is None else designe.value,
+        }
+    )
+
+
+def _vers_duel(
+    ligne: DuelORM,
+    *,
+    bareme: BaremeDuel,
+    participant_haut: Participant,
+    participant_bas: Participant,
+) -> Duel:
+    """Réhydrate un `Duel` d'une ligne ORM, complété du barème et des participants (ADR-0049).
+
+    Le tir (manches, barrage, validateur) vient de la base ; le **barème** et les **participants**
+    (l'appariement, non persisté — ADR-0048) sont **fournis** par l'appelant. Un contenu JSON
+    illisible est une incohérence technique (`InfrastructureError`), le repository en étant le seul
+    rédacteur.
+    """
+    try:
+        manches = tuple(
+            MancheDuel(
+                numero=int(brute["numero"]),
+                volee_haut=Volee(
+                    numero=int(brute["numero"]),
+                    valeurs=tuple(ZoneScore(v) for v in brute["haut"]),
+                ),
+                volee_bas=Volee(
+                    numero=int(brute["numero"]),
+                    valeurs=tuple(ZoneScore(v) for v in brute["bas"]),
+                ),
+            )
+            for brute in json.loads(ligne.manches)
+        )
+        barrage = None
+        if ligne.barrage is not None:
+            brut = json.loads(ligne.barrage)
+            gagnant = brut["gagnant"]
+            barrage = Barrage(
+                fleche_haut=ZoneScore(brut["haut"]),
+                fleche_bas=ZoneScore(brut["bas"]),
+                gagnant_designe=None if gagnant is None else Cote(gagnant),
+            )
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise InfrastructureError("Tir de duel illisible.") from exc
+    return Duel(
+        bareme=bareme,
+        participant_haut=participant_haut,
+        participant_bas=participant_bas,
+        manches=manches,
+        barrage=barrage,
+        validee_par=ligne.validee_par,
+    )
 
 
 def _vers_inscription(ligne: InscriptionORM) -> Inscription:
@@ -2084,3 +2165,75 @@ class SerieRepositorySQL:
             .scalars()
             .all()
         )
+
+
+class DuelRepositorySQL:
+    """Adapter SQLite du port `DuelRepository` — le tir d'un match du tableau (E04US013, ADR-0049).
+
+    On ne persiste que le **tir** (manches, barrage, validateur), keyé `(phase_id, match_numero)` :
+    ni barème ni participants (l'appariement, recalculé du classement — ADR-0048). `charger`
+    réhydrate donc un `Duel` en **recevant** ce contexte du service. Écriture idempotente par upsert
+    sur la clé composite (patron `PlacementTableauRepositorySQL`).
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def numeros_enregistres(self, phase_id: PhaseId) -> frozenset[int]:
+        """Les `match_numero` de la phase porteurs d'un tir (pour ne charger que ceux-là)."""
+        try:
+            with self._session_factory() as session:
+                numeros = session.execute(
+                    select(DuelORM.match_numero).where(DuelORM.phase_id == phase_id)
+                ).scalars()
+                return frozenset(numeros)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des duels d'une phase.") from exc
+
+    def charger(
+        self,
+        phase_id: PhaseId,
+        match_numero: int,
+        *,
+        bareme: BaremeDuel,
+        participant_haut: Participant,
+        participant_bas: Participant,
+    ) -> Duel | None:
+        """Réhydrate le duel d'un match, ou `None` si aucun tir n'y est enregistré."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(DuelORM, (phase_id, match_numero))
+                if ligne is None:
+                    return None
+                return _vers_duel(
+                    ligne,
+                    bareme=bareme,
+                    participant_haut=participant_haut,
+                    participant_bas=participant_bas,
+                )
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture d'un duel.") from exc
+
+    def enregistrer(self, phase_id: PhaseId, match_numero: int, duel: Duel) -> Duel:
+        """Persiste le tir d'un match (upsert sur `(phase_id, match_numero)`) et renvoie le duel."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(DuelORM, (phase_id, match_numero))
+                if ligne is None:
+                    session.add(
+                        DuelORM(
+                            phase_id=phase_id,
+                            match_numero=match_numero,
+                            manches=_manches_json(duel),
+                            barrage=_barrage_json(duel),
+                            validee_par=duel.validee_par,
+                        )
+                    )
+                else:
+                    ligne.manches = _manches_json(duel)
+                    ligne.barrage = _barrage_json(duel)
+                    ligne.validee_par = duel.validee_par
+                session.commit()
+                return duel
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance d'un duel.") from exc

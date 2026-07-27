@@ -17,11 +17,13 @@ from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
 from domain.documents_salle import CartesScoreurs, EtiquettesCibles
+from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
 from domain.feuille_marque import FeuilleDeMarque
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.listes_impression import ListeClubPaiement, ListePlacement
+from domain.participant import Participant
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
 from domain.poste import Poste, PosteId
@@ -361,6 +363,48 @@ class PlacementTableauRepository(Protocol):
 
         La clé est **composite** `(phase_id, inscription_id)` : retirer un duelliste ne touche pas
         sa pose de qualification (autre table), d'où le `phase_id` requis ici.
+        """
+        ...
+
+
+class DuelRepository(Protocol):
+    """Port de persistance du **tir** d'un match du tableau (saisie en duels, E04US013, ADR-0049).
+
+    On ne persiste que le **tir** (manches, barrage, validateur), keyé `(phase_id, match_numero)` ;
+    le **barème** (résolu par arme) et les **participants** (l'appariement) ne le sont pas — fidèle
+    à ADR-0048, ils sont **recalculés/réinjectés** à la reconstruction. `charger` réhydrate donc un
+    `Duel` complet en **recevant** ce contexte de l'appelant (le service, qui reconstruit l'arbre).
+    """
+
+    def numeros_enregistres(self, phase_id: PhaseId) -> frozenset[int]:
+        """Les `match_numero` d'une phase qui portent un tir enregistré (`frozenset` vide sinon).
+
+        Sert la **reconstruction** de l'arbre (rejouer les duels validés) sans une requête par
+        match : on repère d'abord les matchs porteurs d'un tir, puis on `charger` ceux-là.
+        """
+        ...
+
+    def charger(
+        self,
+        phase_id: PhaseId,
+        match_numero: int,
+        *,
+        bareme: BaremeDuel,
+        participant_haut: Participant,
+        participant_bas: Participant,
+    ) -> Duel | None:
+        """Réhydrate le `Duel` d'un match, ou `None` si aucun tir n'y est encore enregistré.
+
+        Le tir persisté (manches, barrage, validateur) est **complété** par le `bareme` et les
+        `participant_*` que l'appelant a reconstruits (ADR-0048 : l'appariement n'est pas en base).
+        """
+        ...
+
+    def enregistrer(self, phase_id: PhaseId, match_numero: int, duel: Duel) -> Duel:
+        """Persiste le **tir** d'un match (manches, barrage, validateur) et renvoie le duel.
+
+        Ne stocke ni le barème ni les participants du `duel` (contexte réinjecté à la lecture,
+        ADR-0048) — seulement son tir. Écriture idempotente par `(phase_id, match_numero)`.
         """
         ...
 
