@@ -149,6 +149,11 @@ function PlanCharge({
   // l'assume plutôt que de persister un drapeau « généré ».
   const planVide = plan.cibles.every((cible) => cible.placements.length === 0)
   const planPret = plan.conflits.length === 0 && !planVide
+  // Compteurs pour le retour de génération (E03US011) : combien d'archers posés, combien en réserve.
+  // Ils alimentent la confirmation qui suit un clic sur « Générer » — sans quoi une génération qui
+  // aboutit à un plan vide (aucun inscrit) ou à des archers en réserve **paraît muette**.
+  const nbPlaces = plan.cibles.reduce((n, cible) => n + cible.placements.length, 0)
+  const nbReserve = plan.conflits.length
   // Avertissement d'équité (E03US006, RG-3) : cibles où la mixité ≥ 2 clubs n'est pas garantie.
   // `null` si tout est mixé → aucune bannière. C'est un signal, pas un blocage (l'admin ajuste).
   const resumeMixite = resumeMixiteNonGarantie(plan.cibles)
@@ -167,7 +172,7 @@ function PlanCharge({
             disabled={regenerer.isPending}
             onClick={() => regenerer.mutate(false)}
           >
-            Générer le plan
+            {regenerer.isPending ? 'Génération…' : 'Générer le plan'}
           </button>
         ) : (
           !confirmationAnnulation && (
@@ -248,6 +253,22 @@ function PlanCharge({
       )}
       <MessageErreur erreur={regenerer.error} />
       <MessageErreur erreur={placerRestants.error} />
+
+      {/* Retour de génération (E03US011) : après un « Générer » réussi, on **confirme** le résultat —
+          sinon une génération qui n'aboutit à rien (plan vide) ou laisse des archers en réserve
+          paraît muette. Le cas « tous placés » est déjà couvert par `planPret` ci-dessous : on ne
+          double pas la ligne verte (`!planPret`). `isSuccess` couvre aussi « annuler les
+          modifications » (même mutation). Erreur et « en cours » sont pris ailleurs (MessageErreur,
+          libellé du bouton). */}
+      {regenerer.isSuccess && !planPret && (
+        <p className="placement__pret" role="status">
+          {nbPlaces === 0 && nbReserve === 0
+            ? 'Plan généré : aucun archer à placer sur ce départ.'
+            : `Plan généré : ${nbPlaces} placé${nbPlaces > 1 ? 's' : ''}${
+                nbReserve > 0 ? `, ${nbReserve} en réserve` : ''
+              }.`}
+        </p>
+      )}
 
       {planPret && (
         <p className="placement__pret" role="status">
@@ -330,10 +351,16 @@ function Cible({
               onDeposer={() => onDeposer({ cible_index: cible.index, position })}
             >
               {place ? (
-                <JetonArcher
-                  jeton={jeton(place.archer_id, place.inscription_id)}
-                  onGlisser={onGlisser}
-                />
+                <>
+                  {/* Position (A..D) visible côté admin (E03US011), comme côté public : la lettre
+                      n'apparaissait que sur les cases **libres** — un archer posé masquait la
+                      sienne. Badge accent, même parti pris que `plan-public__position`. */}
+                  <span className="case__position">{position}</span>
+                  <JetonArcher
+                    jeton={jeton(place.archer_id, place.inscription_id)}
+                    onGlisser={onGlisser}
+                  />
+                </>
               ) : (
                 <span className="case__libre">{position}</span>
               )}
