@@ -556,10 +556,10 @@ def test_supprimer_creneau_lance_ne_se_contourne_pas_par_inscriptions() -> None:
 
     Verrouille l'**ordre des gardes** : sur un créneau lancé, la confirmation de cycle passe avant
     le signalement d'inscriptions. Un refactor qui inverserait l'ordre supprimerait en silence une
-    session de tir — ce test l'attrape. (Deux départs, sinon « dernier départ » primerait.)
+    session de tir — ce test l'attrape. (Le tournoi reste en brouillon : le refus « dernier départ »
+    d'E02US010 ne s'y applique pas, seul le garde-fou de cycle est en jeu.)
     """
     m = _monter()
-    m.service.creer(m.tournoi_id, 810, "08:00")  # un autre créneau, pour ne pas heurter E02US010
     depart = m.service.creer(m.tournoi_id, 810, "09:00")
     assert depart.id is not None
     m.inscriptions.ajouter(Inscription.creer(1, depart.id))
@@ -567,7 +567,7 @@ def test_supprimer_creneau_lance_ne_se_contourne_pas_par_inscriptions() -> None:
 
     with pytest.raises(DepartEnCoursNonConfirme):
         m.service.supprimer(m.tournoi_id, depart.id, autoriser_suppression_inscrits=True)
-    assert depart.id in [d.id for d in m.service.lister(m.tournoi_id)]
+    assert [d.id for d in m.service.lister(m.tournoi_id)] == [depart.id]
 
 
 def test_supprimer_creneau_lance_confirme_subsume_les_inscriptions() -> None:

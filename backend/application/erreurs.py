@@ -111,9 +111,11 @@ class DernierDepartNonSupprimable(ApplicationError):
     validé comme ayant au moins un créneau (garde `TournoiSansDepart` sur `vers_pret`). Lui retirer
     son dernier départ le laisserait sans rien à jouer tout en restant hors brouillon — un état
     incohérent que l'invariant « ≥ 1 départ dès qu'on quitte le brouillon » interdit. Pour repartir
-    de zéro, l'admin **revient d'abord en brouillon** (`revenir_brouillon`), où les créneaux
-    redeviennent librement supprimables. Sur un `brouillon`, supprimer le dernier départ reste
-    permis (le tournoi n'est pas encore engagé). Conflit d'**état**, d'où 409.
+    de zéro depuis `prêt`, l'admin **revient en brouillon** (`revenir_brouillon`), où les créneaux
+    redeviennent librement supprimables ; depuis un statut terminal (`terminé`/`annulé`/`archivé`)
+    la configuration est figée, le dernier départ y reste définitivement en place. Sur un
+    `brouillon`, supprimer le dernier départ reste permis (le tournoi n'est pas encore engagé).
+    Conflit d'**état**, d'où 409.
     """
 
     code = "dernier_depart_non_supprimable"

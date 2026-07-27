@@ -195,8 +195,9 @@ class ServiceDeparts:
             return
         if len(self._departs.par_tournoi(tournoi_id)) <= 1:
             raise DernierDepartNonSupprimable(
-                "C'est le dernier départ de ce tournoi, qui n'est plus en brouillon ; ramenez-le "
-                "en brouillon pour supprimer son dernier créneau."
+                "C'est le dernier départ de ce tournoi, qui n'est plus en brouillon : un tournoi "
+                "engagé doit garder au moins un créneau, son dernier départ ne peut pas être "
+                "supprimé."
             )
 
     def _exiger_confirmation_cycle(self, depart: Depart, confirme_cycle: bool) -> EtatDepart:
