@@ -41,6 +41,7 @@ from api.v1.listes_impression import router as listes_impression_router
 from api.v1.paiements import router as paiements_router
 from api.v1.phases import router as phases_router
 from api.v1.placement import router as placement_router
+from api.v1.placement_duels import router as placement_duels_router
 from api.v1.postes import router as postes_router
 from api.v1.postes import session_router as poste_session_router
 from api.v1.saisie import router as saisie_router
@@ -69,12 +70,18 @@ from application.listes_impression import ServiceListesImpression
 from application.paiements import ServicePaiements
 from application.phases import ServicePhases
 from application.placement import ServicePlacement
+from application.placement_duels import ServicePlacementDuels
 from application.postes import ServicePostes
 from application.saisie import ServiceSaisie
 from application.scoreurs import ServiceScoreurs
 from application.supervision import ServiceSupervision
 from application.tournois import ServiceTournois
-from domain.politiques import registre_par_defaut
+from domain.politiques import (
+    ByesAuxMieuxClasses,
+    EliminationSeche,
+    SeedingSerpent,
+    registre_par_defaut,
+)
 from infrastructure.archive.constructeur import ConstructeurArchiveZip
 from infrastructure.auth import AdminCredentialsStore, SessionStore, default_env_path
 from infrastructure.backup.config import (
@@ -95,6 +102,7 @@ from infrastructure.db import (
     InscriptionRepositorySQL,
     PhaseRepositorySQL,
     PlacementRepositorySQL,
+    PlacementTableauRepositorySQL,
     PosteRepositorySQL,
     ScoreRepositorySQL,
     ScoreurRepositorySQL,
@@ -241,6 +249,7 @@ def create_app(
     # transaction (E12US007, ADR-0035, ADR-0040) : l'adapter reçoit l'`audit_repository` (concret)
     # pour `consigner_dans` sur la session partagée — couplage **infra → infra**, comme la saisie.
     placement_repository = PlacementRepositorySQL(database.session_factory, audit_repository)
+    placement_tableau_repository = PlacementTableauRepositorySQL(database.session_factory)
     # La série de saisie co-écrit son entrée d'audit dans **une seule transaction** (ADR-0035) :
     # l'adapter reçoit l'`audit_repository` (concret) pour appeler `consigner_dans` sur la session
     # partagée. Couplage **infra → infra** assumé — le port domaine `SerieRepository` l'ignore.
@@ -357,6 +366,25 @@ def create_app(
         placement_repository,
         serie_repository,
         HorlogeSysteme(),
+    )
+    # Plan de duels (E03US009, ADR-0048) : placer les duellistes d'une phase de tableau côte à côte,
+    # matérialisé par phase et ajustable au glisser-déposer. Assemble le classement (recalculé) →
+    # l'arbre (`construire_tableau`, politiques par défaut : serpent / byes aux mieux classés /
+    # élimination sèche, MVP) → les paires du 1er tour → le placement réordonné pour l'adjacence.
+    # Réutilise `service_classement` (source d'ensemencement) ; scoppé par **phase** (≠ départ).
+    app.state.service_placement_duels = ServicePlacementDuels(
+        tournoi_repository,
+        phase_repository,
+        gabarit_repository,
+        inscription_repository,
+        archer_repository,
+        categorie_repository,
+        blason_repository,
+        placement_tableau_repository,
+        app.state.service_classement,
+        SeedingSerpent(),
+        ByesAuxMieuxClasses(),
+        EliminationSeche(),
     )
     # Feuille de marque (E09US001) : premier document du socle PDF (ReportLab, ADR-0031). Le service
     # lit le plan persisté et joint archer → catégorie → blason (ports seuls, pas de
@@ -540,6 +568,7 @@ def create_app(
     app.include_router(saisie_router)
     app.include_router(deroule_router)
     app.include_router(placement_router)
+    app.include_router(placement_duels_router)
     app.include_router(feuille_de_marque_router)
     app.include_router(documents_salle_router)
     app.include_router(listes_impression_router)

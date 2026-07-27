@@ -29,6 +29,8 @@ erDiagram
     CIBLE ||--o{ PLACEMENT : "accueille"
     PHASE ||--o{ MATCH : "contient"
     PHASE ||--o{ PLACEMENT : "concerne"
+    PHASE ||--o{ PLACEMENT_TABLEAU : "place les duellistes (E03US009)"
+    CIBLE ||--o{ PLACEMENT_TABLEAU : "accueille"
     PHASE ||--o{ CLASSEMENT : "produit"
     TOURNOI ||--o{ SERIE : "saisie qualif"
     ARCHER ||--o{ SERIE : "saisit"
@@ -239,11 +241,37 @@ inscrit **sans** ligne est en **réserve**.
 > JSON (la table `CIBLE` ci-dessus reste un **modèle non encore matérialisé**) ; l'index 1-based du
 > gabarit suffit à désigner la butte.
 >
-> **Généralisation phase (EPIC-05, future).** Quand le **placement** deviendra une **phase**
-> (ADR-0004), cette table s'étendra vers le modèle générique d'origine : `phase_id` (`null` = qualif),
-> clé par archer, `cible_id` FK → CIBLE, `UNIQUE(phase_id, cible_id, position)`. E03US004 en livre la
-> **première incarnation** (qualification, clé inscription) ; l'évolution **enrichit la même table**
-> plutôt que d'en créer une seconde homonyme.
+> **Placement par phase — table dédiée, pas d'extension de celle-ci** (révisé E03US009,
+> [ADR-0048](adr/0048-cote-a-cote-des-duellistes-par-reordonnancement.md)). L'intuition initiale
+> était d'**étendre** cette table (`phase_id` nullable, clé par archer) le jour où le placement
+> deviendrait une phase. ADR-0048 §2 a **écarté** cette voie : ajouter un discriminant de phase
+> aurait changé la PK `inscription_id` et touché tout le `PlacementRepository`/`ON DELETE CASCADE`
+> existants, pour un besoin **orthogonal** (un archer a une pose en **qualif** *et* une en **tableau**,
+> logiquement disjointes). Le plan de duels vit donc dans une **seconde table dédiée**,
+> `PLACEMENT_TABLEAU` (ci-dessous) — `PLACEMENT` reste la table du **plan de cibles de qualification**,
+> inchangée.
+
+### PLACEMENT_TABLEAU
+Table du **plan de duels matérialisé** livrée par E03US009
+([ADR-0048](adr/0048-cote-a-cote-des-duellistes-par-reordonnancement.md)) : le placement des
+**duellistes** d'une **phase de tableau** (élimination directe), scoppé par **phase** (≠ départ pour
+la qualif). Une **affectation par inscription et par phase** (VO domaine `Affectation`), ajustable au
+glisser-déposer. L'**appariement** (qui affronte qui) n'est **pas** persisté : il est **recalculé** du
+classement à chaque régénération (déterministe, [ADR-0023](adr/0023-moteur-de-placement-glouton-deterministe.md)) ;
+seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
+
+| phase_id | INTEGER | **PK** (composite), FK → PHASE, **ON DELETE CASCADE** |
+| inscription_id | INTEGER | **PK** (composite), FK → INSCRIPTION, **ON DELETE CASCADE** |
+| cible_index | INTEGER | rang de la cible dans le gabarit (1-based) |
+| position | TEXT | `A`\|`B`\|`C`\|`D`… — lettres (même plafond code que `PLACEMENT`, DETTE-010) |
+
+> **PK composite `(phase_id, inscription_id)`** : un archer a **au plus une** case par phase, mais une
+> pose en qualif *et* une en tableau (deux tables). Aucune contrainte d'unicité sur
+> `(phase_id, cible_index, position)` — la non-double-occupation est tenue par le **service** (comme
+> `PLACEMENT`) ; une pose devenue **orpheline** (inscription qui n'est plus duelliste du 1er tour après
+> un recalcul du classement) est **masquée en lecture** et **purgée à l'écriture** (ADR-0048, arbitrage
+> de revue). **`ON DELETE CASCADE` assumé** (exception DETTE-001, comme `PLACEMENT`) : donnée dérivée,
+> reconstructible, feuille — elle suit la phase ou l'inscription.
 
 ### PHASE
 | id | INTEGER | PK |

@@ -1268,6 +1268,17 @@ button:disabled {
   font-size: 13px;
 }
 
+/* Adjacence de duel non garantie (E03US009, ADR-0048) : même registre **ambre** (DV-03, `--warn`)
+   que la mixité de club, jamais rouge — au moins un duel n'est pas placé côte à côte (adversaires
+   séparés). Signal d'organisation, pas erreur bloquante : l'admin peut ajuster à la main. Badge par
+   cible, dans le même style discret que `.cible__mixite`. */
+.cible__adjacence {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--warn);
+}
+
 /* ------------------------------------------------------------------------- */
 /* Saisie de qualification — poste de cible (E04US002).                      */
 /* Écran de saisie : cibles tactiles ≥ 48 px (plancher renforcé du CDC       */

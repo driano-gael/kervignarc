@@ -47,7 +47,7 @@ catégorie/blason** (E03US007) reste, elle, une US ultérieure.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from itertools import groupby
@@ -179,6 +179,59 @@ def cible_mixite_non_garantie(clubs: Sequence[ClubId | None]) -> bool:
         return False
     clubs_connus = {club for club in clubs if club is not None}
     return len(clubs_connus) < 2
+
+
+def _positions_adjacentes(a: str, b: str) -> bool:
+    """Deux positions sont **voisines** si leurs lettres sont consécutives (A-B, B-C, C-D).
+
+    Les positions d'une cible sont des lettres contiguës A, B, C, D dans l'ordre physique : deux
+    tireurs côte à côte occupent donc deux lettres qui se suivent (`abs(ord) == 1`). A et C ne sont
+    pas voisins (B les sépare). Définition de « côte à côte » d'E03US009 (ADR-0048)."""
+    return abs(ord(a) - ord(b)) == 1
+
+
+def duels_non_cote_a_cote(
+    plan: PlanDeCibles, paires: Sequence[tuple[ArcherId, ArcherId]]
+) -> tuple[tuple[ArcherId, ArcherId], ...]:
+    """Les duels dont les deux membres ne sont **pas** côte à côte dans `plan` (E03US009, ADR-0048).
+
+    Un duel est côte à côte quand ses deux archers sont posés sur la **même** cible à des positions
+    **adjacentes**. Sinon — cibles différentes, positions non adjacentes, ou l'un au moins **non
+    placé** (réserve) — le duel est **signalé** (jamais un échec : le placement n'échoue pas, il
+    avoue). Propriété **pure et dérivée** du plan + des paires, calculée en post-passe : le glouton
+    générique ignore les paires (ADR-0048 §4). Ordre déterministe = celui de `paires`."""
+    localisation = {
+        pose.archer_id: (cible.index, pose.position)
+        for cible in plan.cibles
+        for pose in cible.placements
+    }
+    separes: list[tuple[ArcherId, ArcherId]] = []
+    for a, b in paires:
+        la = localisation.get(a)
+        lb = localisation.get(b)
+        if la is None or lb is None or la[0] != lb[0] or not _positions_adjacentes(la[1], lb[1]):
+            separes.append((a, b))
+    return tuple(separes)
+
+
+def cibles_avec_duel_separe(
+    plan: PlanDeCibles, paires: Sequence[tuple[ArcherId, ArcherId]]
+) -> frozenset[int]:
+    """Indices des cibles portant un duelliste dont l'adversaire n'est **pas** côte à côte (badge).
+
+    Dérivé de `duels_non_cote_a_cote` : toute cible qui héberge au moins un membre d'un duel séparé
+    est **signalée** (`adjacence_non_garantie` côté service/API). Une cible sans duel séparé n'est
+    pas signalée — pas de bruit (E03US009, ADR-0048)."""
+    localisation = {
+        pose.archer_id: cible.index for cible in plan.cibles for pose in cible.placements
+    }
+    indices: set[int] = set()
+    for a, b in duels_non_cote_a_cote(plan, paires):
+        for archer_id in (a, b):
+            index = localisation.get(archer_id)
+            if index is not None:
+                indices.add(index)
+    return frozenset(indices)
 
 
 @dataclass
@@ -324,15 +377,70 @@ def _ordonner_pour_mixite(archers: tuple[ArcherAPlacer, ...]) -> list[ArcherAPla
     return ordonnes
 
 
-def placer(cibles: tuple[Cible, ...], archers: tuple[ArcherAPlacer, ...]) -> PlanDeCibles:
+def _grouper_paires(
+    groupe: list[ArcherAPlacer], partenaire: Mapping[ArcherId, ArcherId]
+) -> list[ArcherAPlacer]:
+    """Émet les deux membres d'un duel **consécutivement** dans un groupe trié par `archer_id`.
+
+    Le groupe est déjà trié par `archer_id`. On le parcourt dans cet ordre ; dès qu'un archer non
+    encore émis a son **partenaire** dans le même groupe et pas encore émis, on émet les deux à la
+    suite. Résultat : chaque paire est clusterisée à la tête de son membre de plus petit
+    `archer_id`, ses deux archers adjacents — le glouton les posera alors sur deux positions
+    voisines de la cible courante. Déterministe (parcours par `archer_id`, aucune ambiguïté). Un
+    archer sans partenaire dans le groupe (bye, effectif impair, adversaire d'un autre groupe) reste
+    **en place**."""
+    par_id = {a.archer_id: a for a in groupe}
+    emis: set[ArcherId] = set()
+    resultat: list[ArcherAPlacer] = []
+    for archer in groupe:
+        if archer.archer_id in emis:
+            continue
+        resultat.append(archer)
+        emis.add(archer.archer_id)
+        conjoint = partenaire.get(archer.archer_id)
+        if conjoint is not None and conjoint in par_id and conjoint not in emis:
+            resultat.append(par_id[conjoint])
+            emis.add(conjoint)
+    return resultat
+
+
+def _ordonner_pour_adjacence(
+    archers: tuple[ArcherAPlacer, ...], partenaire: Mapping[ArcherId, ArcherId]
+) -> list[ArcherAPlacer]:
+    """Ordre d'entrée du glouton favorisant le côte à côte des duellistes (E03US009, ADR-0048).
+
+    Tri de base identique à E03US001 — `(hauteur, blason, id)`, qui fixe les **groupes** contigus —
+    puis regroupement des paires **à l'intérieur** de chaque groupe `(hauteur, blason)`. Deux
+    duellistes partagent la catégorie → même blason/hauteur → **même groupe**, donc le clustering
+    est naturel. Le glouton n'est pas touché (ADR-0048 §4) : il consomme une liste dont l'ordre
+    favorise l'adjacence. `partenaire` associe chaque archer à son adversaire (relation
+    symétrique)."""
+    base = sorted(archers, key=lambda a: (a.hauteur_cm, a.blason_id, a.archer_id))
+    ordonnes: list[ArcherAPlacer] = []
+    for _, groupe in groupby(base, key=lambda a: (a.hauteur_cm, a.blason_id)):
+        ordonnes.extend(_grouper_paires(list(groupe), partenaire))
+    return ordonnes
+
+
+def placer(
+    cibles: tuple[Cible, ...],
+    archers: tuple[ArcherAPlacer, ...],
+    *,
+    ordonner: Callable[[tuple[ArcherAPlacer, ...]], list[ArcherAPlacer]] = _ordonner_pour_mixite,
+) -> PlanDeCibles:
     """Place les archers sur les cibles et renvoie le plan de cibles + les conflits.
 
-    Glouton déterministe : archers ordonnés par `(hauteur, blason, id)` puis **entrelacés par club**
-    dans chaque groupe pour favoriser la mixité (E03US006, ADR-0047) ; remplissage cible par cible.
-    Un archer qui n'entre sur aucune cible restante ressort en conflit `NON_PLACE`. Le plan liste
-    **toutes** les cibles du gabarit, y compris celles restées libres.
+    Glouton déterministe : archers ordonnés par la stratégie `ordonner` (défaut : tri
+    `(hauteur, blason, id)` **entrelacé par club** pour la mixité, E03US006/ADR-0047) ; remplissage
+    cible par cible. Un archer qui n'entre sur aucune cible restante ressort en conflit `NON_PLACE`.
+    Le plan liste **toutes** les cibles du gabarit, y compris celles restées libres.
+
+    `ordonner` est le **point d'injection** des contraintes molles portées par l'ordre d'entrée : la
+    mixité (défaut) pour la qualification, l'adjacence des duellistes (`_ordonner_pour_adjacence`)
+    pour un plan de duels (E03US009, ADR-0048). Le glouton reste inchangé quel que soit l'ordre —
+    seule change l'identité de qui occupe quelle position, jamais les budgets (ADR-0047 §1).
     """
-    ordonnes = _ordonner_pour_mixite(archers)
+    ordonnes = ordonner(archers)
     figees: list[CiblePlacee] = []
     conflits: list[Conflit] = []
 
@@ -410,6 +518,8 @@ def placer_restants(
     plan_actuel: tuple[CiblePlacee, ...],
     donnees: Mapping[ArcherId, ArcherAPlacer],
     a_placer: tuple[ArcherAPlacer, ...],
+    *,
+    ordonner: Callable[[tuple[ArcherAPlacer, ...]], list[ArcherAPlacer]] = _ordonner_pour_mixite,
 ) -> tuple[tuple[PoseCalculee, ...], tuple[Conflit, ...]]:
     """Pose la réserve (`a_placer`) dans les trous du plan **sans déplacer les placés** (E03US004).
 
@@ -430,7 +540,7 @@ def placer_restants(
 
     poses: list[PoseCalculee] = []
     conflits: list[Conflit] = []
-    for archer in _ordonner_pour_mixite(a_placer):
+    for archer in ordonner(a_placer):
         for cible in cibles:
             en_cours = par_index[cible.index]
             if en_cours.accueille(archer):

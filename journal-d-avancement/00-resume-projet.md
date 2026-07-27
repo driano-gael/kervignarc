@@ -106,9 +106,16 @@ Tout ce qu'il faut pour préparer un tournoi avant le jour J :
   (un seul club présent, ou club **inconnu** — jamais deviné), la cible est **signalée** par un
   **badge ambre** et une **bannière** récapitulative sur l'écran de placement : à l'organisateur de
   décider s'il ajuste à la main.
+- **Placer les duellistes côte à côte** : pour une **phase de duels** (élimination directe), un écran
+  **« Plan de duels »** place les **deux adversaires d'un match** (du 1er tour) **l'un à côté de
+  l'autre** — même cible, positions voisines — pour faciliter la conduite des tirs. C'est le classement
+  qui décide qui affronte qui (recalculé, déterministe) ; seule la **pose** est enregistrée et
+  **ajustable au glisser-déposer**. Même logique que la mixité (une **préférence**, jamais un blocage) :
+  les duels qu'on n'a pas pu rapprocher sont **signalés** (badge ambre « duel non côte à côte » +
+  bannière). *(MVP : premier tour, ensemencement au classement scratch, gabarit du tournoi ; les duels
+  d'équipes viendront plus tard.)*
 
-*Restent à venir : la séparation catégorie/blason, le placement des duellistes côte à côte, et le
-placement intégral 1→N du grand format.*
+*Restent à venir : la séparation catégorie/blason et le placement intégral 1→N du grand format.*
 
 ### 6. La saisie des scores de qualification — *terminé, et robuste*
 
@@ -230,7 +237,7 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
 
 ## Chiffres repères
 
-- **66 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/07/2026 — E03US006
+- **67 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/07/2026 — E03US009
   optimiste d'un cran sur la branche jusqu'à son merge. **`SUIVI-US.md` fait foi sur le compte
   exact.**
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
@@ -238,14 +245,17 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
   et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (4/15)**
+  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (5/15)**
   avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003), le **tableau
-  d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001) puis la
-  **mixité des clubs au placement** (E03US006).
-- Dernière US livrée : **E03US006** (contrainte ≥ 2 clubs par cible) — US à **surface visible** : le
-  placement automatique **favorise la mixité des clubs** sur chaque cible (obtenue en ré-ordonnant
-  l'entrée du moteur, qui reste inchangé — ADR-0047) et **signale**, par un badge et une bannière sur
-  l'écran de placement, les cibles où elle n'est pas garantie (un seul club, ou club inconnu — jamais
-  deviné, ADR-0014).
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E03US009** (placer les duellistes côte à
-  côte). Le fil **équipes** est débloqué (E13US002+).
+  d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001), la
+  **mixité des clubs au placement** (E03US006) puis le **placement des duellistes côte à côte**
+  (E03US009).
+- Dernière US livrée : **E03US009** (placer les duellistes côte à côte) — US à **surface visible** : le
+  placement d'une **phase de tableau** met les **deux adversaires d'un duel** du 1er tour **côte à côte**
+  (même cible, positions voisines) « dans la mesure du possible », par le **même mécanisme** que la
+  mixité (ré-ordonnancement de l'entrée du moteur, inchangé — ADR-0048), et **signale** les duels non
+  rapprochés (badge + bannière). Vertical **ajustable** (choix commanditaire) : plan **matérialisé par
+  phase** et **glisser-déposer**, l'appariement recalculé du classement, la pose persistée. Écran admin
+  **« Plan de duels »**.
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E04US013** (saisie en duels). Le fil
+  **équipes** est débloqué (E13US002+).

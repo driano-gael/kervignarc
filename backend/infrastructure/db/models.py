@@ -261,6 +261,33 @@ class PlacementORM(Base):
     position: Mapped[str] = mapped_column(nullable=False)
 
 
+class PlacementTableauORM(Base):
+    """Table `placement_tableau` — pose matérialisée d'un duelliste, par phase (E03US009, ADR-0048).
+
+    Le **plan de duels**, distinct du plan de cibles de qualification (`placement`, par départ) :
+    scoppé par **phase** de tableau. Une ligne = un duelliste **posé** sur une case ;
+    **clé primaire composite** `(phase_id, inscription_id)` — au plus une case par inscription **et
+    par phase** (un archer a une pose en qualif *et* une pose en tableau, dans deux tables). Un
+    inscrit **sans** ligne est en réserve — l'absence *est* l'information (comme ADR-0024).
+
+    L'**appariement** (qui affronte qui) n'est **pas** persisté : il est recalculé du classement à
+    chaque régénération (déterministe, ADR-0023/0048). Seule la **pose** l'est, pour l'ajustement au
+    glisser-déposer. **`ON DELETE CASCADE`** (donnée dérivée, feuille — exception DETTE-001,
+    ADR-0024) sur `phase_id` **et** `inscription_id` : la pose disparaît avec la phase ou
+    l'inscription."""
+
+    __tablename__ = "placement_tableau"
+
+    phase_id: Mapped[int] = mapped_column(
+        ForeignKey("phase.id", ondelete="CASCADE"), primary_key=True
+    )
+    inscription_id: Mapped[int] = mapped_column(
+        ForeignKey("inscription.id", ondelete="CASCADE"), primary_key=True
+    )
+    cible_index: Mapped[int] = mapped_column(nullable=False)
+    position: Mapped[str] = mapped_column(nullable=False)
+
+
 class PhaseORM(Base):
     """Table `phase` — persistance de l'agrégat `Phase` (introduction minimale, E01US009/ADR-0011).
 
