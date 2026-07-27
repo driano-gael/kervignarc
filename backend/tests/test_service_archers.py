@@ -49,8 +49,10 @@ from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
     FauxClubRepository,
+    FauxForfaitRepository,
     FauxInscriptionRepository,
 )
+from tests.test_service_placement_duels import FauxPhaseRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -239,7 +241,9 @@ def _monter() -> Montage:
     assert categorie.id is not None
     return Montage(
         archers=ServiceArchers(tournois, archers, scores, clubs, categories, inscriptions, series),
-        classement=ServiceClassement(tournois, archers, series, categories),
+        classement=ServiceClassement(
+            tournois, archers, series, categories, FauxPhaseRepository(), FauxForfaitRepository()
+        ),
         inscrits=archers,
         scores=scores,
         series=series,

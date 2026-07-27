@@ -12,6 +12,7 @@ séries semées) pour un ensemencement réaliste et déterministe. On réutilise
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import replace
 
 import pytest
@@ -23,10 +24,16 @@ from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.duel import BaremeDuel, Duel, ModeDuel, ResolveurBaremeDuelFfta
+from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import MatchNonJouable
+from domain.forfait import Forfait, NatureForfait
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.politiques import ByesAuxMieuxClasses, EliminationSeche, SeedingSerpent
-from tests.conftest import FauxArcherRepository, FauxCategorieRepository
+from tests.conftest import (
+    FauxArcherRepository,
+    FauxCategorieRepository,
+    FauxForfaitRepository,
+)
 from tests.test_service_placement_duels import (
     FauxBlasonRepository,
     FauxPhaseRepository,
@@ -81,6 +88,7 @@ class _Monde:
         self.blasons = FauxBlasonRepository()
         self.series = FauxSerieRepository()
         self.duels = FauxDuelRepository()
+        self.forfaits = FauxForfaitRepository()
         blason_id: int | None = None
         if avec_blason:
             blason = self.blasons.ajouter(
@@ -110,13 +118,16 @@ class _Monde:
         return archer.id
 
     def service(self) -> ServiceSaisieDuels:
-        classement = ServiceClassement(self.tournois, self.archers, self.series, self.categories)
+        classement = ServiceClassement(
+            self.tournois, self.archers, self.series, self.categories, self.phases, self.forfaits
+        )
         return ServiceSaisieDuels(
             self.tournois,
             self.phases,
             self.categories,
             self.blasons,
             self.duels,
+            self.forfaits,
             classement,
             ResolveurBaremeDuelFfta(),
             SeedingSerpent(),
@@ -306,3 +317,51 @@ def test_phase_de_qualification_refusee() -> None:
     service = monde.service()
     with pytest.raises(PhasePasUnTableau):
         service.etat_tableau(monde.tournoi_id, quali.id)
+
+
+def _forfait_duel(monde: _Monde, archer_id: int) -> Forfait:
+    """Un forfait d'abandon de l'archer dans la phase de tableau du monde (E04US015, ADR-0050)."""
+    return Forfait.creer(
+        tournoi_id=monde.tournoi_id,
+        archer_id=archer_id,
+        phase_id=monde.phase_id,
+        nature=NatureForfait.ABANDON,
+        declare_par="Scoreur",
+        declare_le=datetime.datetime(2026, 3, 14, 10, 0, tzinfo=datetime.UTC),
+    )
+
+
+def test_forfait_en_duel_fait_passer_l_adversaire() -> None:
+    """CA E04US015 (ex-E12US004) : un duelliste forfait dans une phase de tableau **cède** son match
+    — l'adversaire passe d'office (walkover), le tableau reste cohérent.
+
+    Deux archers → un unique match (la finale). L'archer classé 2ᵉ abandonne : le 1ᵉ gagne d'office,
+    le tableau est terminé et le podium le couronne, **sans qu'aucun tir n'ait été saisi**.
+    """
+    monde = _Monde()
+    gagnant = monde.inscrire_classe(("10", "10"))  # rang 1
+    forfaitaire = monde.inscrire_classe(("8", "8"))  # rang 2
+    monde.forfaits.semer(_forfait_duel(monde, forfaitaire))
+    etat = monde.service().etat_tableau(monde.tournoi_id, monde.phase_id)
+    assert etat.est_termine
+    assert etat.podium[0][0] == 1
+    assert etat.podium[0][1].archer_id == gagnant
+
+
+def test_annuler_le_forfait_de_duel_retire_le_walkover() -> None:
+    """La réversibilité (`D-15`) : sans forfait enregistré, le match redevient à jouer."""
+    monde = _Monde()
+    monde.inscrire_classe(("10", "10"))
+    perdant = monde.inscrire_classe(("8", "8"))
+    forfait = monde.forfaits.semer(_forfait_duel(monde, perdant))
+    trace = EntreeAudit.creer(
+        tournoi_id=monde.tournoi_id,
+        action=ActionAuditee.FORFAIT,
+        auteur="Scoreur",
+        horodatage=datetime.datetime(2026, 3, 14, 11, 0, tzinfo=datetime.UTC),
+        objet="annulation",
+    )
+    monde.forfaits.annuler_avec_trace(forfait, trace)
+    etat = monde.service().etat_tableau(monde.tournoi_id, monde.phase_id)
+    assert not etat.est_termine
+    assert etat.podium == ()

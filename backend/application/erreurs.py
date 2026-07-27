@@ -540,3 +540,36 @@ class SaisieHorsCible(ApplicationError):
     """
 
     code = "saisie_hors_cible"
+
+
+class ForfaitDejaDeclare(ApplicationError):
+    """L'archer est **déjà** déclaré forfait dans cette phase (E04US015, ADR-0050). → 409.
+
+    **Un refus, pas un signalement** : un forfait par `(tournoi, archer, phase)` (unicité en base).
+    Re-déclarer n'a pas de sens tant que le premier tient — pour **changer** la nature (abandon ↔
+    DSQ), on **annule** puis on re-déclare (chemin réversible, `D-15`), ce qui laisse deux traces
+    d'audit distinctes plutôt qu'une mutation silencieuse.
+    """
+
+    code = "forfait_deja_declare"
+
+
+class ForfaitIntrouvable(ApplicationError):
+    """Aucun forfait de cet archer dans cette phase à annuler (E04US015, ADR-0050). → 404.
+
+    L'annulation (réversibilité, `D-15`) suppose une déclaration existante ; sans elle, il n'y a
+    rien à défaire.
+    """
+
+    code = "forfait_introuvable"
+
+
+class ForfaitTournoiTermine(ApplicationError):
+    """Déclarer ou annuler un forfait sur un tournoi **terminé** est refusé (`D-15`). → 409.
+
+    Le forfait est réversible **tant que le tournoi n'est pas terminé** : une fois clos, les
+    résultats sont figés — on ne rouvre pas un abandon ni une DSQ. Ce n'est pas un signalement (rien
+    à confirmer) mais un **conflit d'état**, comme la suppression d'un tournoi en cours.
+    """
+
+    code = "forfait_tournoi_termine"

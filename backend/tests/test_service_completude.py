@@ -33,13 +33,18 @@ from domain.completude import (
 )
 from domain.depart import Depart, DepartId
 from domain.entree_audit import EntreeAudit
+from domain.forfait import Forfait, NatureForfait
 from domain.inscription import Inscription, InscriptionId
 from domain.paiement import RecapPaiement
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
-from tests.conftest import FauxDepartRepository, FauxInscriptionRepository
+from tests.conftest import (
+    FauxDepartRepository,
+    FauxForfaitRepository,
+    FauxInscriptionRepository,
+)
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -207,14 +212,23 @@ class Montage:
         self.inscriptions = FauxInscriptionRepository()
         self.series = FauxSerieRepository()
         self.phases = FauxPhaseRepository()
+        self.forfaits = FauxForfaitRepository()
         self.paiements = FauxLecteurPaiements()
         tournoi = self.tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
         assert tournoi.id is not None
         self.tournoi_id: TournoiId = tournoi.id
         self.nb_volees_bareme = nb_volees_bareme
+        self.qualif_phase_id = 1
         if nb_volees_bareme > 0:
+            import dataclasses
+
             self.phases.definir(
-                Phase.qualification(self.tournoi_id, BaremeQualification.creer(nb_volees_bareme, 3))
+                dataclasses.replace(
+                    Phase.qualification(
+                        self.tournoi_id, BaremeQualification.creer(nb_volees_bareme, 3)
+                    ),
+                    id=self.qualif_phase_id,
+                )
             )
         self._numero = 0
         self.service = ServiceCompletude(
@@ -224,6 +238,7 @@ class Montage:
             self.inscriptions,
             self.series,
             self.phases,
+            self.forfaits,
             self.paiements,
         )
 
@@ -279,6 +294,31 @@ def test_une_cible_dont_tous_les_archers_ont_fini_est_terminee() -> None:
     assert qualif.cle == CLE_QUALIFICATION
     assert (qualif.fait, qualif.total) == (1, 1)
     assert qualif.etat is EtatSection.OK
+
+
+def test_un_archer_forfait_ne_bloque_pas_la_completude_de_sa_cible() -> None:
+    """DETTE-014 résorbée (E04US015, ADR-0050) : un archer **forfait** en qualification a sa série
+    **close par forfait** malgré ses volées partielles — sa cible n'est plus « à finir » à jamais.
+    """
+    m = Montage(nb_volees_bareme=3)
+    depart = m.creer_depart()
+    m.placer(depart, cible_index=1, archer_id=10, position="A")
+    m.placer(depart, cible_index=1, archer_id=11, position="B")
+    m.series.poser(_serie(10, volees_validees=3))  # fini
+    m.series.poser(_serie(11, volees_validees=1, nb_saisies=1))  # abandon : partiel
+    m.forfaits.semer(
+        Forfait.creer(
+            tournoi_id=m.tournoi_id,
+            archer_id=11,
+            phase_id=m.qualif_phase_id,
+            nature=NatureForfait.ABANDON,
+            declare_par="Scoreur",
+            declare_le=datetime.datetime(2026, 3, 14, 10, 0, tzinfo=datetime.UTC),
+        )
+    )
+
+    qualif = m.service.pour_tournoi(m.tournoi_id).sportif[0]
+    assert (qualif.fait, qualif.total) == (1, 1)  # cible terminée : forfait = clos
 
 
 def test_une_cible_avec_un_archer_pas_fini_n_est_pas_terminee() -> None:

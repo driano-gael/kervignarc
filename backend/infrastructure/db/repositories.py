@@ -26,6 +26,7 @@ from domain.depart import Depart, DepartId
 from domain.duel import BaremeDuel, Barrage, Cote, Duel, MancheDuel
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import DomainError
+from domain.forfait import Forfait, NatureForfait
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.inscription import Inscription, InscriptionId
@@ -47,6 +48,7 @@ from infrastructure.db.models import (
     DepartORM,
     DuelORM,
     EntreeAuditORM,
+    ForfaitORM,
     GabaritSalleORM,
     InscriptionORM,
     PhaseORM,
@@ -2229,3 +2231,113 @@ class DuelRepositorySQL:
                 return duel
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de persistance d'un duel.") from exc
+
+
+def _vers_forfait(ligne: ForfaitORM) -> Forfait:
+    """Traduit une ligne ORM en agrégat de domaine `Forfait` (E04US015, ADR-0050).
+
+    `nature` : la valeur relue redevient l'énumération `NatureForfait`. `declare_le` : SQLite stocke
+    un `DateTime` **sans fuseau** ; on lui **réattache UTC** (le service n'écrit que de l'UTC via
+    `Horloge`), round-trip fidèle comme l'horodatage d'audit.
+    """
+    declare_le = ligne.declare_le
+    if declare_le.tzinfo is None:
+        declare_le = declare_le.replace(tzinfo=datetime.UTC)
+    return Forfait(
+        tournoi_id=ligne.tournoi_id,
+        archer_id=ligne.archer_id,
+        phase_id=ligne.phase_id,
+        nature=NatureForfait(ligne.nature),
+        declare_par=ligne.declare_par,
+        declare_le=declare_le,
+        motif=ligne.motif,
+        id=ligne.id,
+    )
+
+
+class ForfaitRepositorySQL:
+    """Adapter SQLite du port `ForfaitRepository` (E04US015, ADR-0050) — forfait + trace atomiques.
+
+    `declarer_avec_trace` / `annuler_avec_trace` co-écrivent le forfait (ajout / suppression) **et**
+    son entrée d'audit dans **une seule session, un seul `commit`** (ADR-0035, comme
+    `SerieRepositorySQL`) — d'où l'`AuditRepositorySQL` injecté (collaboration infra → infra ; le
+    port du domaine ignore la couture de session). L'entrée arrive **déjà construite et datée** par
+    le service (via `Horloge`) ; le forfait porte lui aussi sa propre date de déclaration.
+    """
+
+    def __init__(
+        self,
+        session_factory: sessionmaker[Session],
+        audit_repository: AuditRepositorySQL,
+    ) -> None:
+        self._session_factory = session_factory
+        self._audit = audit_repository
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Forfait]:
+        """Tous les forfaits d'un tournoi (ordre non garanti)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(ForfaitORM).where(ForfaitORM.tournoi_id == tournoi_id)
+                ).scalars()
+                return [_vers_forfait(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des forfaits du tournoi.") from exc
+
+    def par_phase(self, phase_id: PhaseId) -> list[Forfait]:
+        """Les forfaits déclarés dans une phase (qualif → classement ; tableau → walkover duels)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(ForfaitORM).where(ForfaitORM.phase_id == phase_id)
+                ).scalars()
+                return [_vers_forfait(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des forfaits de la phase.") from exc
+
+    def par_archer_et_phase(
+        self, tournoi_id: TournoiId, archer_id: ArcherId, phase_id: PhaseId
+    ) -> Forfait | None:
+        """Le forfait de cet archer dans cette phase, ou `None` (garde de doublon / annulation)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.execute(
+                    select(ForfaitORM).where(
+                        ForfaitORM.tournoi_id == tournoi_id,
+                        ForfaitORM.archer_id == archer_id,
+                        ForfaitORM.phase_id == phase_id,
+                    )
+                ).scalar_one_or_none()
+                return None if ligne is None else _vers_forfait(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du forfait.") from exc
+
+    def declarer_avec_trace(self, forfait: Forfait, entree: EntreeAudit) -> Forfait:
+        """Insère le forfait **et** sa trace dans **une seule transaction** (tout ou rien)."""
+        try:
+            with self._session_factory() as session:
+                ligne = ForfaitORM(
+                    tournoi_id=forfait.tournoi_id,
+                    archer_id=forfait.archer_id,
+                    phase_id=forfait.phase_id,
+                    nature=forfait.nature.value,
+                    declare_par=forfait.declare_par,
+                    declare_le=forfait.declare_le,
+                    motif=forfait.motif,
+                )
+                session.add(ligne)
+                self._audit.consigner_dans(session, entree)
+                session.commit()
+                return _vers_forfait(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance du forfait et de sa trace.") from exc
+
+    def annuler_avec_trace(self, forfait: Forfait, entree: EntreeAudit) -> None:
+        """Supprime le forfait (`forfait.id`) et consigne sa trace d'annulation, atomiquement."""
+        try:
+            with self._session_factory() as session:
+                session.execute(delete(ForfaitORM).where(ForfaitORM.id == forfait.id))
+                self._audit.consigner_dans(session, entree)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de l'annulation du forfait et de sa trace.") from exc

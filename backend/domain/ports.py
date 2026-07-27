@@ -20,6 +20,7 @@ from domain.documents_salle import CartesScoreurs, EtiquettesCibles
 from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
 from domain.feuille_marque import FeuilleDeMarque
+from domain.forfait import Forfait
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.listes_impression import ListeClubPaiement, ListePlacement
@@ -795,5 +796,53 @@ class SerieRepository(Protocol):
 
         Tout ou rien : jamais de validation/correction non tracée, jamais de trace fantôme. La
         série est renvoyée avec son identifiant attribué.
+        """
+        ...
+
+
+class ForfaitRepository(Protocol):
+    """Port de persistance des **forfaits** — abandon / disqualification (E04US015, ADR-0050).
+
+    Un forfait par `(tournoi, archer, phase)`. Comme la série, les écritures **co-écrivent une trace
+    d'audit** en **une seule transaction** (atomicité acte↔trace, ADR-0035) : `declarer_avec_trace`
+    (ajout) et `annuler_avec_trace` (suppression — réversibilité, `D-15`). L'atomicité est réalisée
+    par l'adapter (session partagée) ; au niveau du port, c'est « le forfait ET sa trace, ou ni l'un
+    ni l'autre ». Les lectures servent le **classement** (forfaits de la phase de qualif) et le
+    **rejeu des duels** (forfaits de la phase de tableau → l'adversaire passe).
+    """
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Forfait]:
+        """Renvoie tous les forfaits d'un tournoi (liste éventuellement vide, ordre non garanti)."""
+        ...
+
+    def par_phase(self, phase_id: PhaseId) -> list[Forfait]:
+        """Renvoie les forfaits déclarés **dans une phase** (qualif ou tableau) — vide si aucun.
+
+        Chemin de lecture des deux effets : le classement lit les forfaits de la **qualification**
+        (relégation/exclusion), le rejeu des duels ceux de la **phase de tableau** (walkover).
+        """
+        ...
+
+    def par_archer_et_phase(
+        self, tournoi_id: TournoiId, archer_id: ArcherId, phase_id: PhaseId
+    ) -> Forfait | None:
+        """Le forfait de cet archer dans cette phase, ou `None` — pour la garde de doublon et
+        l'annulation (retrouver la déclaration à supprimer)."""
+        ...
+
+    def declarer_avec_trace(self, forfait: Forfait, entree: EntreeAudit) -> Forfait:
+        """Persiste un forfait **et** sa trace d'audit dans **une seule transaction** (ADR-0035).
+
+        Tout ou rien : jamais de forfait non tracé, jamais de trace fantôme. Renvoie le forfait avec
+        son identifiant attribué.
+        """
+        ...
+
+    def annuler_avec_trace(self, forfait: Forfait, entree: EntreeAudit) -> None:
+        """Supprime un forfait **et** consigne sa trace d'annulation dans **une seule transaction**.
+
+        La réversibilité est une **suppression** de la déclaration (les flèches n'ont jamais été
+        touchées), pas un drapeau. `forfait` porte l'`id` à supprimer (résolu par
+        `par_archer_et_phase`). Tout ou rien : jamais d'annulation non tracée.
         """
         ...

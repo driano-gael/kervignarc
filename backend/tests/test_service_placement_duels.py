@@ -36,6 +36,7 @@ from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
+    FauxForfaitRepository,
     FauxInscriptionRepository,
 )
 
@@ -91,7 +92,16 @@ class FauxPhaseRepository:
         return self._phases.get(phase_id)
 
     def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
-        raise NotImplementedError
+        # `ServiceClassement` interroge la phase de qualif (forfaits, ADR-0050) : ces tests de
+        # tableau n'en configurent pas, d'où `None` (aucun forfait de qualif appliqué).
+        return next(
+            (
+                p
+                for p in self._phases.values()
+                if p.tournoi_id == tournoi_id and p.type is type_phase
+            ),
+            None,
+        )
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
         raise NotImplementedError
@@ -239,6 +249,7 @@ class _Monde:
         self.categories = FauxCategorieRepository()
         self.blasons = FauxBlasonRepository()
         self.series = FauxSerieRepository()
+        self.forfaits = FauxForfaitRepository()
         self.placements = FauxPlacementTableauRepository()
         self.gabarits.ajouter(
             GabaritSalle(nom="Salle", capacites=capacites, tournoi_id=self.tournoi_id)
@@ -281,7 +292,14 @@ class _Monde:
             self.categories,
             self.blasons,
             self.placements,
-            ServiceClassement(self.tournois, self.archers, self.series, self.categories),
+            ServiceClassement(
+                self.tournois,
+                self.archers,
+                self.series,
+                self.categories,
+                self.phases,
+                self.forfaits,
+            ),
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
             EliminationSeche(),

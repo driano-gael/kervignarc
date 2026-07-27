@@ -175,10 +175,15 @@ class LigneClassementReponse(BaseModel):
     `club_id` à `null` = club encore **inconnu** : c'est le signal que l'écran affiche pour que
     l'anomalie soit résorbée (E02US002, ADR-0014). Le nom du club n'est pas résolu ici — le
     client dispose déjà du référentiel s'il veut l'afficher.
+
+    `statut` (E04US015, ADR-0050) : `en_lice` (concourt), `abandon` (relégué en fin, rangé) ou
+    `disqualifie` (**sorti** du classement — `rang_scratch`/`rang_categorie` valent alors `null`).
+    Les deux rangs sont donc **nullables** : `null` = archer disqualifié, hors classement, dont le
+    score reste néanmoins affiché (les flèches sont préservées).
     """
 
-    rang_scratch: int
-    rang_categorie: int
+    rang_scratch: int | None
+    rang_categorie: int | None
     archer_id: int
     nom: str
     prenom: str
@@ -189,6 +194,7 @@ class LigneClassementReponse(BaseModel):
     total: int
     nb_dix: int
     nb_neuf: int
+    statut: str
 
 
 class ClassementReponse(BaseModel):
@@ -216,6 +222,7 @@ class ClassementReponse(BaseModel):
                     total=ligne.total,
                     nb_dix=ligne.nb_dix,
                     nb_neuf=ligne.nb_neuf,
+                    statut=ligne.statut.value,
                 )
                 for ligne in classement.lignes
             ],

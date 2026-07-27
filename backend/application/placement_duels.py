@@ -28,6 +28,7 @@ from application.erreurs import (
     TournoiIntrouvable,
 )
 from domain.archer import ArcherId
+from domain.classement import StatutClassement
 from domain.gabarit_salle import Cible, GabaritSalle
 from domain.inscription import Inscription, InscriptionId
 from domain.participant import GenreParticipant, Participant
@@ -467,9 +468,13 @@ class ServicePlacementDuels:
 
         contexte = _Contexte(phase_id=phase_id, gabarit=gabarit)
         classement = self._classements.pour_tournoi(tournoi_id)
+        # Seuls les archers **en lice** entrent au tableau : un forfait de qualification (abandon
+        # relégué / DSQ, `statut != EN_LICE`) n'y accède pas (ADR-0050), et son rang scratch peut
+        # valoir `None` (DSQ). Même exclusion qu'à la reconstruction (`ServiceSaisieDuels._decor`).
+        en_lice = [ligne for ligne in classement.lignes if ligne.statut is StatutClassement.EN_LICE]
         participants = [
             Participant.individuel(ligne.archer_id)
-            for ligne in sorted(classement.lignes, key=lambda ligne: ligne.rang_scratch)
+            for ligne in sorted(en_lice, key=lambda ligne: ligne.rang_scratch or 0)
         ]
         if len(participants) < 2:
             return contexte  # pas de tableau possible : plan vide, sans duel

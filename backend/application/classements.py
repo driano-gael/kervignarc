@@ -17,9 +17,13 @@ from __future__ import annotations
 from application.erreurs import TournoiIntrouvable
 from domain.categorie import CategorieId
 from domain.classement import Classement, calculer_classement
+from domain.forfait import Forfait
+from domain.phase import TypePhase
 from domain.ports import (
     ArcherRepository,
     CategorieRepository,
+    ForfaitRepository,
+    PhaseRepository,
     SerieRepository,
     TournoiRepository,
 )
@@ -35,11 +39,15 @@ class ServiceClassement:
         archers: ArcherRepository,
         series: SerieRepository,
         categories: CategorieRepository,
+        phases: PhaseRepository,
+        forfaits: ForfaitRepository,
     ) -> None:
         self._tournois = tournois
         self._archers = archers
         self._series = series
         self._categories = categories
+        self._phases = phases
+        self._forfaits = forfaits
 
     def pour_tournoi(
         self, tournoi_id: TournoiId, categorie_id: CategorieId | None = None
@@ -55,7 +63,9 @@ class ServiceClassement:
         archers = self._archers.par_tournoi(tournoi_id)
         series = self._series.par_tournoi(tournoi_id)
         categories = self._categories.par_tournoi(tournoi_id)
-        classement = calculer_classement(archers, series, categories)
+        classement = calculer_classement(
+            archers, series, categories, self._forfaits_qualif(tournoi_id)
+        )
         if categorie_id is not None:
             classement = Classement(
                 lignes=tuple(
@@ -63,3 +73,14 @@ class ServiceClassement:
                 )
             )
         return classement
+
+    def _forfaits_qualif(self, tournoi_id: TournoiId) -> list[Forfait]:
+        """Les forfaits déclarés **en phase de qualification** (relégation/exclusion, ADR-0050).
+
+        Filtrés par phase : un forfait déclaré **en duels** ne touche pas le classement de qualif
+        (l'archer avait bien qualifié). Phase de qualif absente → aucun forfait applicable ici.
+        """
+        phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        if phase is None or phase.id is None:
+            return []
+        return self._forfaits.par_phase(phase.id)

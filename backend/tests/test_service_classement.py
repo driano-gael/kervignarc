@@ -26,7 +26,12 @@ from domain.categorie import Categorie
 from domain.entree_audit import EntreeAudit
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
-from tests.conftest import FauxArcherRepository, FauxCategorieRepository
+from tests.conftest import (
+    FauxArcherRepository,
+    FauxCategorieRepository,
+    FauxForfaitRepository,
+)
+from tests.test_service_placement_duels import FauxPhaseRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -105,7 +110,9 @@ def _service() -> ServiceClassement:
             _serie(chloe.id, (ZoneScore.HUIT, ZoneScore.HUIT)),  # 16
         ]
     )
-    return ServiceClassement(tournois, archers, series, categories)
+    return ServiceClassement(
+        tournois, archers, series, categories, FauxPhaseRepository(), FauxForfaitRepository()
+    )
 
 
 def test_tournoi_inconnu_leve_tournoi_introuvable() -> None:
