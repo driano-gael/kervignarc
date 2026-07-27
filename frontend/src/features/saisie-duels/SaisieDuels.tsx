@@ -14,8 +14,8 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Cote, Duel, Tableau } from './api'
 import {
   estJouable,
+  grouperParTour,
   libelleMode,
-  libelleTour,
   mancheExistante,
   nouvelIdentifiant,
   prochaineMancheASaisir,
@@ -136,17 +136,10 @@ function TableauScoreur({ tournoiId, phaseId }: { tournoiId: number; phaseId: nu
   return <ListeDuels tableau={tableau.data} onOuvrir={setMatchOuvert} />
 }
 
-// Petite finale (place 3-4) en dernier de son tour : elle **partage le dernier tour** avec la finale
-// (côté domaine), donc un tri par tour seul les mélangerait sous un même en-tête.
-function estPetiteFinale(duel: Pick<Duel, 'place_en_jeu'>): boolean {
-  const place = duel.place_en_jeu
-  return place !== null && place[0] === 3 && place[1] === 4
-}
-
-// La liste des duels **groupés par libellé de tour** (finale en tête). On regroupe par le **libellé**
-// (`libelleTour`) et non par le `tour` brut : sans quoi la **petite finale** (place 3-4), qui partage
-// le dernier tour avec la finale, se rangerait sous l'en-tête « Finale ». Un duel jouable est tapable
-// pour l'ouvrir ; un bye ou un duel sans adversaires connus est affiché mais non ouvrable.
+// La liste des duels **groupés par libellé de tour** (finale en tête). Le regroupement (par libellé,
+// pas par `tour` brut — pour ne pas ranger la petite finale sous « Finale ») est une **logique pure**
+// portée par `grouperParTour` (testée dans `duel.ts`). Un duel jouable est tapable pour l'ouvrir ; un
+// bye ou un duel sans adversaires connus est affiché mais non ouvrable.
 function ListeDuels({
   tableau,
   onOuvrir,
@@ -154,19 +147,7 @@ function ListeDuels({
   tableau: Tableau
   onOuvrir: (matchNumero: number) => void
 }) {
-  // Ordre de lecture d'un tableau : tour décroissant (finale en tête) ; à tour égal, la finale avant
-  // la petite finale. Le regroupement par libellé fusionne ensuite les duels consécutifs de même titre
-  // (les deux demi-finales → une section « Demi-finales »).
-  const duelsOrdonnes = [...tableau.duels].sort(
-    (a, b) => b.tour - a.tour || Number(estPetiteFinale(a)) - Number(estPetiteFinale(b)),
-  )
-  const groupes: { titre: string; duels: Duel[] }[] = []
-  for (const duel of duelsOrdonnes) {
-    const titre = libelleTour(duel, tableau.nb_tours)
-    const dernier = groupes[groupes.length - 1]
-    if (dernier !== undefined && dernier.titre === titre) dernier.duels.push(duel)
-    else groupes.push({ titre, duels: [duel] })
-  }
+  const groupes = grouperParTour(tableau.duels, tableau.nb_tours)
 
   return (
     <div className="duels-liste">

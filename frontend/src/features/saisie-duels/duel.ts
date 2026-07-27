@@ -28,13 +28,20 @@ export function libelleMode(mode: ModeDuel | null): string {
   return ''
 }
 
+// La petite finale (place 3-4) **partage le dernier tour** avec la finale (côté domaine) : c'est le
+// seul cas où deux matchs d'un même tour portent des libellés distincts. Prédicat isolé (utilisé par
+// `libelleTour` et `grouperParTour`) pour ne pas dupliquer le test.
+export function estPetiteFinale(duel: Pick<Duel, 'place_en_jeu'>): boolean {
+  const place = duel.place_en_jeu
+  return place !== null && place[0] === 3 && place[1] === 4
+}
+
 // Libellé du tour d'un match. On raisonne en **distance à la finale** (`nb_tours - tour`) : le
 // dernier tour est la finale (ou la « petite finale » pour la 3ᵉ place, place_en_jeu = 3-4), l'avant
 // dernier les demies, etc. Au-delà des quarts, on nomme la fraction (1/8, 1/16…). Le placement
 // (`place_en_jeu`) prime pour distinguer finale et petite finale, qui partagent le dernier tour.
 export function libelleTour(duel: Pick<Duel, 'tour' | 'place_en_jeu'>, nbTours: number): string {
-  const place = duel.place_en_jeu
-  if (place !== null && place[0] === 3 && place[1] === 4) return 'Petite finale (3ᵉ place)'
+  if (estPetiteFinale(duel)) return 'Petite finale (3ᵉ place)'
   const distance = nbTours - duel.tour
   switch (distance) {
     case 0:
@@ -46,6 +53,28 @@ export function libelleTour(duel: Pick<Duel, 'tour' | 'place_en_jeu'>, nbTours: 
     default:
       return `1/${2 ** distance} de finale`
   }
+}
+
+// Regroupe les duels d'un tableau **par libellé de tour**, dans l'ordre de lecture : tour décroissant
+// (finale en tête), puis à tour égal la finale **avant** la petite finale. On groupe par le libellé
+// (et non par le `tour` brut) sinon la petite finale, qui partage le dernier tour avec la finale, se
+// rangerait sous l'en-tête « Finale ». Les duels consécutifs de même titre sont fusionnés (les deux
+// demi-finales → une section « Demi-finales »). Logique pure — testée à part du rendu.
+export function grouperParTour(
+  duels: readonly Duel[],
+  nbTours: number,
+): { titre: string; duels: Duel[] }[] {
+  const ordonnes = [...duels].sort(
+    (a, b) => b.tour - a.tour || Number(estPetiteFinale(a)) - Number(estPetiteFinale(b)),
+  )
+  const groupes: { titre: string; duels: Duel[] }[] = []
+  for (const duel of ordonnes) {
+    const titre = libelleTour(duel, nbTours)
+    const dernier = groupes[groupes.length - 1]
+    if (dernier !== undefined && dernier.titre === titre) dernier.duels.push(duel)
+    else groupes.push({ titre, duels: [duel] })
+  }
+  return groupes
 }
 
 // La prochaine manche à saisir : la **plus petite** (1..nbManches) pas encore saisie ; si toutes le

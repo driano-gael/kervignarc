@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Duel, SaisirBarrage, SaisirManche } from './api'
 import {
+  grouperParTour,
   injecterBarrage,
   injecterManche,
   libelleMode,
@@ -53,6 +54,40 @@ describe('libelleTour', () => {
 
   it('distingue la petite finale (3ᵉ place) de la finale, même tour', () => {
     expect(libelleTour({ tour: 2, place_en_jeu: [3, 4] }, 2)).toBe('Petite finale (3ᵉ place)')
+  })
+})
+
+describe('grouperParTour', () => {
+  // Un match minimal pour les regroupements (seuls tour/place/numero comptent ici).
+  const match = (numero: number, tour: number, place: number[] | null): Duel =>
+    duel({ numero, tour, place_en_jeu: place })
+
+  it('range finale puis petite finale (même dernier tour) sous des sections distinctes', () => {
+    const nbTours = 2
+    const duels = [
+      match(1, 2, [1, 2]), // finale
+      match(2, 2, [3, 4]), // petite finale (même tour que la finale)
+      match(3, 1, null), // demie
+      match(4, 1, null), // demie
+    ]
+    const groupes = grouperParTour(duels, nbTours)
+    expect(groupes.map((g) => g.titre)).toEqual([
+      'Finale',
+      'Petite finale (3ᵉ place)',
+      'Demi-finales',
+    ])
+    // Les deux demies fusionnent en une seule section.
+    expect(groupes[2]?.duels.map((d) => d.numero)).toEqual([3, 4])
+  })
+
+  it('un tableau à deux archers n’a qu’une finale', () => {
+    const groupes = grouperParTour([match(1, 1, [1, 2])], 1)
+    expect(groupes.map((g) => g.titre)).toEqual(['Finale'])
+  })
+
+  it('ordonne les tours du plus proche de la finale au plus lointain', () => {
+    const groupes = grouperParTour([match(1, 1, null), match(2, 3, [1, 2]), match(3, 2, null)], 3)
+    expect(groupes.map((g) => g.titre)).toEqual(['Finale', 'Demi-finales', 'Quarts de finale'])
   })
 })
 
