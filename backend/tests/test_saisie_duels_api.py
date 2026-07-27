@@ -150,6 +150,14 @@ def test_saisir_valider_un_duel_fait_avancer_le_tableau(
         finale = next(d for d in tableau.json()["duels"] if d["place_en_jeu"] == [1, 2])
         assert finale["numero"] == 1
         vainqueur_attendu = finale["haut"]["archer_id"]  # tête de série n°1 en haut
+        # Le pavé du front est dimensionné dès la lecture, avant tout tir (arc classique → sets).
+        assert finale["mode"] == "sets"
+        assert finale["nb_manches"] == 5
+        assert finale["nb_fleches_par_volee"] == 3
+        assert finale["points_pour_gagner"] == 6
+        # Zones du blason (par défaut ici) : pavé non vide contenant le tirable saisi.
+        assert finale["zones"], "le pavé du match jouable expose les zones légales du blason"
+        assert {"10", "9"} <= set(finale["zones"])
 
         for numero in (1, 2, 3):
             reponse = client.post(

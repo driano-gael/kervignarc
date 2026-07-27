@@ -77,7 +77,13 @@ class ResultatReponse(BaseModel):
 
 
 class DuelReponse(BaseModel):
-    """L'état d'un match : câblage, occupants, mode, tir (manches/barrage) et résultat."""
+    """L'état d'un match : câblage, occupants, pavé (mode/barème/zones), tir et résultat.
+
+    `mode`, `nb_manches`, `nb_fleches_par_volee`, `points_pour_gagner` et `zones` **dimensionnent le
+    pavé** de saisie du front (comme la grille + le barème de qualification, E04US002) : renseignés
+    dès qu'un match est **jouable**, avant tout tir, `None`/vides pour un bye ou des occupants pas
+    encore connus. `zones` vide sur un match jouable = blason indéterminable (pavé indisponible UI).
+    """
 
     numero: int
     tour: int
@@ -86,6 +92,10 @@ class DuelReponse(BaseModel):
     bas: DuellisteReponse | None
     est_bye: bool
     mode: str | None
+    nb_manches: int | None
+    nb_fleches_par_volee: int | None
+    points_pour_gagner: int | None
+    zones: list[str]
     validee_par: str | None
     manches: list[MancheReponse]
     barrage: BarrageReponse | None
@@ -94,13 +104,16 @@ class DuelReponse(BaseModel):
     @staticmethod
     def de_etat(etat: EtatDuel) -> DuelReponse:
         duel = etat.duel
+        bareme = etat.bareme
         manches: list[MancheReponse] = []
         barrage: BarrageReponse | None = None
         resultat: ResultatReponse | None = None
-        mode: str | None = None
+        # Le mode (sets/cumul) et les dimensions du pavé viennent du **barème du match**, résolu par
+        # l'arme dès que le match est jouable : connus avant la première manche (au contraire de
+        # `validee_par`/`manches`/`resultat`, qui n'existent qu'une fois un tir saisi).
+        mode: str | None = None if bareme is None else bareme.mode.value
         validee_par: str | None = None
         if duel is not None:
-            mode = duel.bareme.mode.value
             validee_par = duel.validee_par
             manches = [
                 MancheReponse(
@@ -133,6 +146,10 @@ class DuelReponse(BaseModel):
             bas=DuellisteReponse.de_duelliste(etat.bas),
             est_bye=etat.est_bye,
             mode=mode,
+            nb_manches=None if bareme is None else bareme.nb_manches,
+            nb_fleches_par_volee=None if bareme is None else bareme.nb_fleches_par_volee,
+            points_pour_gagner=None if bareme is None else bareme.points_pour_gagner,
+            zones=[zone.value for zone in etat.zones],
             validee_par=validee_par,
             manches=manches,
             barrage=barrage,

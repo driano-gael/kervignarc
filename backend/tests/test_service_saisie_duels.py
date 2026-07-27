@@ -72,7 +72,7 @@ class _Monde:
     Les archers reçoivent des scores **décroissants** dans l'ordre de création → rang scratch 1..N.
     """
 
-    def __init__(self, *, arme: str = "Arc Classique") -> None:
+    def __init__(self, *, arme: str = "Arc Classique", avec_blason: bool = True) -> None:
         self.tournoi_id = 1
         self.tournois = FauxTournoiRepository({1})
         self.phases = FauxPhaseRepository()
@@ -81,14 +81,17 @@ class _Monde:
         self.blasons = FauxBlasonRepository()
         self.series = FauxSerieRepository()
         self.duels = FauxDuelRepository()
-        blason = self.blasons.ajouter(
-            Blason.creer(self.tournoi_id, "Triple", taille=0.25, capacite=1)
-        )
-        assert blason.id is not None
-        # Zones du triple 40 (pas de 5 → 1) — pour un pavé de duel réaliste.
-        self.blasons._blasons[blason.id] = replace(blason, zones=ZONES_TRIPLE)
+        blason_id: int | None = None
+        if avec_blason:
+            blason = self.blasons.ajouter(
+                Blason.creer(self.tournoi_id, "Triple", taille=0.25, capacite=1)
+            )
+            assert blason.id is not None
+            # Zones du triple 40 (pas de 5 → 1) — pour un pavé de duel réaliste.
+            self.blasons._blasons[blason.id] = replace(blason, zones=ZONES_TRIPLE)
+            blason_id = blason.id
         categorie = self.categories.ajouter(
-            Categorie.creer(self.tournoi_id, "Cat", arme=arme, blason_id=blason.id, hauteur_cm=130)
+            Categorie.creer(self.tournoi_id, "Cat", arme=arme, blason_id=blason_id, hauteur_cm=130)
         )
         assert categorie.id is not None
         self.categorie_id = categorie.id
@@ -235,6 +238,60 @@ def test_match_bye_pas_saisissable() -> None:
         service.saisir_manche(
             1, monde.phase_id, bye.numero, 1, (ZoneScore.DIX,) * 3, (ZoneScore.NEUF,) * 3
         )
+
+
+def test_lecture_expose_le_bareme_et_les_zones_du_pave() -> None:
+    """Le pavé du front est déterminé côté serveur dès qu'un match est **jouable**, avant tout tir.
+
+    L'état d'un match expose le barème (mode, nb de manches, de flèches, seuil) et les zones légales
+    du blason tiré — l'analogue duel de ce que la grille + le barème de qualification livrent au
+    poste (E04US002). Un arc classique tire en **sets**, premier à 6, 5 manches de 3 flèches.
+    """
+    monde = _Monde()  # arc classique, blason « triple »
+    monde.inscrire_classe(("10", "10", "10"))
+    monde.inscrire_classe(("9", "9", "9"))
+    service = monde.service()
+
+    finale = next(
+        m for m in service.etat_tableau(1, monde.phase_id).duels if m.place_en_jeu == (1, 2)
+    )
+    assert finale.duel is None  # aucun tir encore
+    assert finale.bareme is not None
+    assert finale.bareme.mode is ModeDuel.SETS
+    assert finale.bareme.nb_manches == 5
+    assert finale.bareme.nb_fleches_par_volee == 3
+    assert finale.bareme.points_pour_gagner == 6
+    assert finale.zones == ZONES_TRIPLE  # zones légales du blason, pour le pavé
+
+
+def test_lecture_pas_de_bareme_ni_zones_hors_match_jouable() -> None:
+    """Un bye (gagné d'office) n'a pas de pavé : ni barème ni zones (rien à saisir)."""
+    monde = _Monde()
+    for valeurs in (("10", "10", "10"), ("9", "9", "9"), ("8", "8", "8")):  # 3 archers → 1 bye
+        monde.inscrire_classe(valeurs)
+    service = monde.service()
+    bye = next(m for m in service.etat_tableau(1, monde.phase_id).duels if m.est_bye)
+    assert bye.bareme is None
+    assert bye.zones == ()
+
+
+def test_lecture_zones_vides_si_blason_indeterminable() -> None:
+    """Best-effort en lecture : blason introuvable → pavé **vide**, sans faire échouer le tableau.
+
+    Le chemin d'écriture reste strict (`BlasonIntrouvable`, 404) ; la lecture, elle, tolère — le
+    front affichera « pavé indisponible » sur ce match plutôt que de perdre tout le tableau, comme
+    la grille de qualification renvoie des zones vides (E04US002).
+    """
+    monde = _Monde(avec_blason=False)  # catégorie sans blason → zones indéterminables
+    monde.inscrire_classe(("10", "10", "10"))
+    monde.inscrire_classe(("9", "9", "9"))
+    service = monde.service()
+
+    finale = next(
+        m for m in service.etat_tableau(1, monde.phase_id).duels if m.place_en_jeu == (1, 2)
+    )
+    assert finale.bareme is not None  # le barème (par arme) reste résolu, lui
+    assert finale.zones == ()  # zones vides, pas d'exception
 
 
 def test_phase_de_qualification_refusee() -> None:

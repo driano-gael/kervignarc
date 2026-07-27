@@ -61,6 +61,12 @@ class EtatDuel:
 
     `duel` est `None` tant qu'aucun tir n'y est saisi ; sinon il porte manches, barrage et résultat
     (`duel.resultat`). `est_bye` marque un match gagné d'office (pas de duel à saisir).
+
+    `bareme` et `zones` dimensionnent le **pavé de saisie** du front (nombre de manches, de flèches,
+    zones légales du blason tiré — E04US002 les expose déjà pour la qualif) : disponibles dès qu'un
+    match est **jouable** (deux occupants connus, pas un bye), **avant** tout tir, pour que la
+    grille sache d'emblée sets ou cumul. `bareme` est `None` et `zones` vide pour un bye ou un
+    match dont les occupants ne sont pas encore connus.
     """
 
     numero: int
@@ -70,6 +76,8 @@ class EtatDuel:
     bas: Duelliste | None
     est_bye: bool
     duel: Duel | None
+    bareme: BaremeDuel | None = None
+    zones: tuple[ZoneScore, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -328,6 +336,21 @@ class ServiceSaisieDuels:
             raise BlasonIntrouvable("Blason du duelliste indéterminable : pavé indisponible.")
         return tuple(blason.zones)
 
+    def _zones_best_effort(
+        self, participant: Participant, lignes: dict[int, LigneClassement]
+    ) -> tuple[ZoneScore, ...]:
+        """Les zones du pavé pour la **lecture** — tolérant, jumeau de `_zones_du`.
+
+        Sur le chemin d'**écriture**, un blason indéterminable lève `BlasonIntrouvable` (404, jamais
+        de score faux silencieux). En **lecture**, il ne doit pas faire échouer tout le tableau : on
+        renvoie un pavé **vide** (le front affiche « pavé indisponible » sur ce match), exactement
+        comme la grille de qualification renvoie des zones vides plutôt qu'un 404 (E04US002).
+        """
+        try:
+            return self._zones_du(participant, lignes)
+        except BlasonIntrouvable:
+            return ()
+
     def _duelliste(
         self, participant: Participant | None, lignes: dict[int, LigneClassement]
     ) -> Duelliste | None:
@@ -354,15 +377,19 @@ class ServiceSaisieDuels:
         score au mauvais couple (ADR-0049 §4).
         """
         haut, bas = match.haut, match.bas
-        if duel is None and haut is not None and bas is not None and not match.est_bye:
+        bareme: BaremeDuel | None = None
+        zones: tuple[ZoneScore, ...] = ()
+        if haut is not None and bas is not None and not match.est_bye:
+            # Match jouable : le pavé est déterminé (barème par arme + zones du blason), même avant
+            # tout tir — la grille front sait d'emblée sets/cumul, nb de manches et zones légales.
             bareme = self._bareme_du(haut, lignes)
-            charge = self._duels.charger(phase_id, match.numero, bareme=bareme)
-            occupants = (haut, bas)
-            if (
-                charge is not None
-                and (charge.participant_haut, charge.participant_bas) == occupants
-            ):
-                duel = charge
+            zones = self._zones_best_effort(haut, lignes)
+            if duel is None:
+                charge = self._duels.charger(phase_id, match.numero, bareme=bareme)
+                if (charge is not None) and (
+                    (charge.participant_haut, charge.participant_bas) == (haut, bas)
+                ):
+                    duel = charge
         return EtatDuel(
             numero=match.numero,
             tour=match.tour,
@@ -371,4 +398,6 @@ class ServiceSaisieDuels:
             bas=self._duelliste(match.bas, lignes),
             est_bye=match.est_bye,
             duel=duel,
+            bareme=bareme,
+            zones=zones,
         )
