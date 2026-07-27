@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 27/07/2026** · **69 US livrées** · dernière : `E04US015` *(abandon / DSQ — qualif + duels)*.
+**Dernière mise à jour : 27/07/2026** · **72 US livrées** · dernière : `E02US010` *(horaire `HH:MM` obligatoire & ≥ 1 départ)*.
 
 ---
 
@@ -21,14 +21,18 @@
 > **⚡ Priorité immédiate — retours de la démo du 27/07/2026.** Avant de reprendre la séquence J2,
 > traiter le **lot démo** (bugs & petits ajouts), puis les épics **EPIC-14** (accueil admin) et
 > **EPIC-15** (jeu d'essai & simulation) — détail en section « Ajouts de la démo du 27/07/2026 » plus
-> bas. Ordre des bugs : **E02US010** (horaire `HH:MM`, ♻️ existe), **E01US017** (7 statuts, ♻️ existe —
-> prérequis du dashboard), **E11US008** (LAN + QR), **E03US011** (placement), **E01US022** (blason FFTA).
+> bas. Ordre des bugs : ~~E02US010~~ ✅ (horaire `HH:MM`), ~~E01US017~~ ✅ (7 statuts), puis
+> **E11US008** (LAN + QR), **E03US011** (placement), **E01US022** (blason FFTA).
 > La séquence J2 ci-dessous reprend ensuite à `E12US002`.
 >
-> **`E12US002` — lancer un tour (feu vert + lancement)** : la **clé du J2** — voir ce qui manque avant
-> de lancer, puis faire partir le tour (les 4 canaux prévenus ensemble). *(Prochaine du J2 en
-> séquence.)*
-> *Ensuite* : remboursement `E08US005`, prochaine cible `E04US018`.
+> **`E11US008` — accès LAN (poste organisateur) + QR de rattachement à l'écran** : la **prochaine à
+> prendre**. Rendre l'appli joignable sur le réseau local (le jour J, sans internet) et afficher à
+> l'écran un QR de rattachement des tablettes. *(Bug/ajout démo, `E11` 🆕.)*
+> *Ensuite dans le lot démo* : `E03US011` (retour visuel de placement + position A..D), `E01US022`
+> (blason FFTA par défaut par catégorie).
+> *Puis la séquence J2 reprend à* **`E12US002`** — lancer un tour (feu vert + lancement), la **clé du
+> J2** : voir ce qui manque avant de lancer, puis faire partir le tour (les 4 canaux prévenus
+> ensemble). *Ensuite* : remboursement `E08US005`, prochaine cible `E04US018`.
 > *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
 > moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *`E12US004` (tracer un forfait) est **absorbée** par `E04US015` — voir ci-dessous.*
@@ -36,6 +40,16 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E02US010` **horaire de départ `HH:MM` obligatoire & ≥ 1 départ** — US à **surface visible**.
+>   L'horaire d'un créneau devient une **vraie donnée temporelle `HH:MM`** (24 h), **obligatoire**,
+>   validée **au domaine** (422 ; 400 si le champ manque à la frontière) — le libellé libre
+>   d'E02US004 est abandonné ; le front pose un **masque de saisie**. Deux gardes de cohérence :
+>   passer un tournoi **`prêt`** exige **≥ 1 départ** (`TournoiSansDepart`, première brique de la
+>   complétude de préparation, [ADR-0026] §2), et supprimer le **dernier** départ d'un tournoi
+>   **non-brouillon** est **refusé** (`DernierDepartNonSupprimable`). Migration 0032 : reprise
+>   best-effort des horaires libres existants → `HH:MM` + colonne NOT NULL. La suppression d'un
+>   tournoi non vide reste bloquée par **DETTE-001** (500), rendue systématique par cette US (notée).
+>   Recette : [`docs/fonctionnel/E02US010.md`](../docs/fonctionnel/E02US010.md).
 > - `E12US008` **cycle de vie d'un départ** — US à **surface visible**. Un créneau porte un **état
 >   dérivé** (jamais saisi) : **ouvert** (aucun score) → **lancé** (au moins une flèche validée) →
 >   **clos** (toutes les séries closes, barème validé ou forfait). Modifier/supprimer un créneau
@@ -163,7 +177,7 @@
 | 65 | E12US004 | ~~Tracer un forfait~~ | ⛔ *(absorbée par E04US015)* |
 | 66 | E12US008 | Cycle de vie d'un départ | ✅ *(état dérivé + garde-fou confirmable, ADR-0051)* |
 | 67 | E08US005 | Rembourser une inscription payée annulée | ⬜ |
-| 68 | E12US002 | Lancer un tour (feu vert + lancement) | 🎯 |
+| 68 | E12US002 | Lancer un tour (feu vert + lancement) | ⬜ *(prochaine du J2 en séquence, après le lot démo)* |
 | 69 | E04US018 | Afficher la prochaine cible après validation | ⬜ |
 | 70 | E07US008 | Vue publique des affectations du prochain tour | ⬜ |
 | 71 | E06US003 | Barrage de tir pour places décisives | ⬜ |
@@ -199,7 +213,7 @@
 | 90 | E11US006 | Restauration & arrêt propre | ⬜ |
 | 91 | E10US006 | Modifier le mot de passe admin | ⬜ |
 
-## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (2/10)**
+## Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (4/10)**
 
 > Non renumérotés dans les jalons ci-dessus (séquence indicative, à insérer au bon rang). Cf.
 > [`stories/README.md`](../stories/README.md) § « Ajouts » et ADR-0026/0027/0028.
@@ -208,10 +222,10 @@
 |---|---|---|---|
 | E00US015 | Coquille de navigation admin | J3 | ✅ |
 | E00US016 | Écrans admin : liste/fiche & référentiels | J3 | ⬜ *(définie en `stories/`, non implémentée)* |
-| E01US017 | Cycle de vie enrichi (7 statuts) | J1 | ⬜ *(idem)* |
+| E01US017 | Cycle de vie enrichi (7 statuts) | J1 | ✅ |
 | E01US018 | Vocabulaire de score configurable | J1 | ⬜ *(idem)* |
 | E01US019 | Capacité de cible non bornée | J1→J3 | ⬜ *(idem)* |
-| E02US010 | Horaire de départ HH:MM obligatoire | J1 | ⬜ *(idem)* |
+| E02US010 | Horaire de départ HH:MM obligatoire | J1 | ✅ |
 | E13US001 | Abstraction participant | J2 | ✅ *(livrée avant E05US005, ADR-0028)* |
 | E13US002 | Composer les équipes d'un tournoi | J2 | ⬜ |
 | E13US003 | Scoring d'équipe (politique injectable) | J2 | ⬜ |
@@ -239,7 +253,7 @@
 | E01US020 | Modèle de tarification injectable & sujet de facturation (archer/club) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; sujet `club` sur `club_id`/ADR-0014, **pas** via E13)* |
 | E01US021 | Tarification dégressive (option config, %/montant) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; dépend d'E01US020)* |
 
-## Ajouts de la démo du 27/07/2026 — ⚡ **priorité immédiate (0/10)**
+## Ajouts de la démo du 27/07/2026 — ⚡ **priorité immédiate (2/10)**
 
 > Retours de la présentation au client final **et** du développeur (27/07/2026). Cadrage par le
 > dialogue (esprit agile). Deux US **déjà spécifiées** remontent en priorité (♻️, pas de doublon) ;
@@ -249,9 +263,9 @@
 
 | US | Titre | Épic | État |
 |---|---|---|---|
-| E02US010 | Horaire de départ `HH:MM` (corrige « 8h00 → 18h00 » : n° collé à l'horaire) | E02 ♻️ | ⬜ |
-| E01US017 | Cycle de vie enrichi (7 statuts) — **prérequis** du dashboard | E01 ♻️ | ⬜ |
-| E11US008 | Accès LAN (poste organisateur) + QR de rattachement à l'écran | E11 🆕 | ⬜ |
+| E02US010 | Horaire de départ `HH:MM` (corrige « 8h00 → 18h00 » : n° collé à l'horaire) | E02 ♻️ | ✅ |
+| E01US017 | Cycle de vie enrichi (7 statuts) — **prérequis** du dashboard | E01 ♻️ | ✅ |
+| E11US008 | Accès LAN (poste organisateur) + QR de rattachement à l'écran | E11 🆕 | 🎯 |
 | E03US011 | Placement : retour visuel de génération + position A..D côté admin | E03 🆕 | ⬜ |
 | E01US022 | Blason FFTA par défaut par catégorie + affichage hérité | E01 🆕 | ⬜ |
 | E14US001 | Accueil-tableau de bord contextualisé (`D-20`) | E14 🆕 | ⬜ |

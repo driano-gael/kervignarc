@@ -61,8 +61,10 @@ Tout l'échafaudage sur lequel le reste s'appuie est en place et verrouillé :
 
 Tout ce qu'il faut pour préparer un tournoi avant le jour J :
 
-- **Créer, éditer et lister des tournois**, avec un cycle de vie (brouillon / en cours / terminé).
-  Plusieurs tournois peuvent être « en cours » en même temps (intérieur + extérieur).
+- **Créer, éditer et lister des tournois**, avec un **cycle de vie enrichi à 7 statuts** (brouillon →
+  prêt → en cours ⇄ en pause → terminé → archivé, plus annulé). Passer « prêt » exige **au moins un
+  départ**, et on ne peut plus retirer le dernier créneau d'un tournoi déjà lancé. Plusieurs tournois
+  peuvent être « en cours » en même temps (intérieur + extérieur).
 - **Les catégories** (CRUD, pré-chargement des catégories officielles FFTA salle, éligibilité sur
   plusieurs tranches d'âge).
 - **Les blasons** (la cible en papier) : taille, capacité, et les valeurs de score admises.
@@ -265,17 +267,19 @@ Dans l'ordre de valeur prévu par le backlog :
 4. **Confort et robustesse** : import inscript'arc, presets de barèmes, déroulé horaire, sauvegarde
    et restauration.
 
-Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas encore implémenté : le
-**cycle de vie enrichi à 7 statuts**, le **vocabulaire de score configurable**, et les **épreuves par
-équipes** (nouvel EPIC-13, désormais dans le périmètre MVP).
+Un chantier transverse a été acté à l'entretien du 18/07/2026 : le **cycle de vie enrichi à 7 statuts**
+est désormais **livré** (E01US017) ; restent le **vocabulaire de score configurable** et les
+**épreuves par équipes** (nouvel EPIC-13, désormais dans le périmètre MVP), pas encore implémentés.
 
 ---
 
 ## Chiffres repères
 
-- **70 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026. **`SUIVI-US.md`
+- **72 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
-  livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US).
+  livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Les deux
+  dernières livrées sont des **retours de la démo du 27/07** : le **cycle de vie à 7 statuts**
+  (E01US017) et l'**horaire `HH:MM` obligatoire** (E02US010).
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
@@ -287,13 +291,12 @@ Un chantier transverse a été acté à l'entretien du 18/07/2026 et n'est pas e
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
   (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**), l'**abandon /
   disqualification** (E04US015 — qualif *et* duels) puis le **cycle de vie d'un départ** (E12US008).
-- Dernière US livrée : **E12US008** (cycle de vie d'un départ) — US à **surface visible**. Un créneau
-  porte un **état dérivé** (jamais saisi) : **ouvert** (aucun score) → **lancé** (au moins une flèche
-  validée) → **clos** (toutes les séries closes). Modifier/supprimer un créneau **lancé/clos** est
-  **signalé et confirmable** (alerte chiffrée, même famille qu'E12US007) ; un créneau **ouvert** reste
-  librement éditable (E02US009 inchangé). État **non stocké** : calculé en réutilisant
-  `ServiceCompletude` via un **port étroit** (comme `LecteurPaiements`). À la suppression, la
-  confirmation de cycle **subsume** celle des inscriptions. Badge d'état + confirmation côté front.
-  ([ADR-0051](../docs/adr/0051-cycle-de-vie-d-un-depart.md).)
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — la **bascule de tour** (E12US002, clé du
-  J2), puis le **remboursement** (E08US005). Le fil **équipes** est débloqué (E13US002+).
+- Dernière US livrée : **E02US010** (horaire `HH:MM` obligatoire & ≥ 1 départ) — US à **surface
+  visible**, retour de la démo du 27/07. L'horaire d'un créneau devient une **vraie heure `HH:MM`**
+  (24 h), **obligatoire** et validée au serveur (fini le « 8h00 » lu « 18h00 ») ; le formulaire pose
+  un **masque de saisie**. Deux gardes de cohérence du cycle de vie : passer un tournoi **« prêt »**
+  exige **au moins un départ**, et supprimer le **dernier** départ d'un tournoi déjà lancé est
+  **refusé**. *(Livrée juste avant : **E01US017**, le cycle de vie à 7 statuts.)*
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — la fin du **lot démo** (**E11US008** accès
+  LAN + QR, puis E03US011, E01US022), puis la séquence J2 reprend à la **bascule de tour** (E12US002).
+  Le fil **équipes** est débloqué (E13US002+).
