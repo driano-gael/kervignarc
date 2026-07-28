@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A11 · Placement — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a10-plan-de-salle.html">← A10</a>
+  <span class="fin">
+    <a href="a12-postes-jetons.html">A12 · Postes →</a>
+    <a class="lien-questionnaire" href="questionnaires/a11-placement.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A11</span>Placement des archers</h1>
+  <p class="chapo">L'écran signature de l'admin — et le seul que le CDC UX note explicitement
+  <strong>« non instruit à ce jour »</strong> (<span class="ref">Q-UX8</span>). Tout ce qui suit est donc une
+  <em>proposition</em>, pas une décision actée.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Ce que l'écran doit faire</h2>
+<ul class="exigences">
+  <li>Placer ~156 archers sur 30 cibles × 4 positions, en respectant des contraintes (même club séparé,
+  blasons compatibles, mixité des catégories).</li>
+  <li>Rester utilisable <strong>après coup</strong> : un retardataire arrive, une position se libère, un archer
+  change de départ.</li>
+  <li>Montrer en permanence <strong>qui n'est pas encore placé</strong> — c'est un point de complétude (A14).</li>
+</ul>
+
+<h2 class="section">Partis pris <span class="code-sec">le geste central change tout</span></h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Glisser-déposer</span>
+      <span class="sous-etiquette">On attrape un archer non placé, on le lâche sur une position.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">PLACEMENT · DÉPART 1</span><span class="fin pas att">3 NON PLACÉS</span></div>
+      <div class="colonnes" style="grid-template-columns:minmax(0,1fr) 130px">
+        <div class="corps serre">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+            <div class="carte" style="padding:6px;font-size:11px"><div style="font-weight:800">C1</div>
+              <div>A MARTIN</div><div>B DURAND</div><div>C PETIT</div><div class="faible">D —</div></div>
+            <div class="carte" style="padding:6px;font-size:11px"><div style="font-weight:800">C2</div>
+              <div>A LEROY</div><div>B GARCIA</div><div>C NOËL</div><div>D FABRE</div></div>
+            <div class="carte marquee" style="padding:6px;font-size:11px;border-style:dashed"><div style="font-weight:800">C3</div>
+              <div>A BLANC</div><div>B ROUX</div><div class="faible">C ⌄ déposer ici</div><div class="faible">D —</div></div>
+            <div class="carte" style="padding:6px;font-size:11px"><div style="font-weight:800">C4</div>
+              <div class="faible">vide</div></div>
+          </div>
+        </div>
+        <div class="flanc" style="border-right:0;border-left:1px solid var(--border-subtle)">
+          <div class="mini">NON PLACÉS</div>
+          <div class="carte" style="padding:5px 7px;font-size:11px">MARTINEAU L. · CH</div>
+          <div class="carte" style="padding:5px 7px;font-size:11px">OLLIVIER J. · BF</div>
+          <div class="carte" style="padding:5px 7px;font-size:11px">THOMAS É. · SF</div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">si tu travailles sur PC</span> Geste naturel à la souris.
+    <b>Impraticable au doigt</b> sur une tablette, et il faut de toute façon une alternative clavier
+    (accessibilité, §7.3 du CDC design).</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Sélectionner puis affecter</span>
+      <span class="sous-etiquette">Un tap sur l'archer, un tap sur la position.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">PLACEMENT · DÉPART 1</span></div>
+      <div class="corps serre">
+        <div class="carte marquee"><div class="rang"><span class="pas marque">SÉLECTIONNÉ</span>
+          <span style="font-weight:700">MARTINEAU Luc</span><span class="fin second">CH · Vannes</span></div></div>
+        <p class="faible" style="margin:0">Touchez une position libre — les positions incompatibles sont estompées.</p>
+        <div class="plan" style="grid-template-columns:repeat(6,1fr)">
+          <span class="cible vide">C1 D</span><span class="cible vide">C3 C</span><span class="cible vide">C3 D</span>
+          <span class="cible" style="opacity:.35">C2 —</span><span class="cible vide">C4 A</span><span class="cible vide">C4 B</span>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé si tablette</span> Marche <b>partout</b>, souris
+    comprise, et donne gratuitement l'alternative clavier. Un tap de plus, mais aucun geste précis.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">C · Calcul puis retouches</span>
+      <span class="sous-etiquette">La machine propose, l'humain corrige.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">PLACEMENT</span><span class="fin bouton auto">Calculer</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span>PROPOSITION</span><span class="fin">153 / 156 placés</span></div>
+          <div class="rang"><span class="pas ok">✓</span><span style="flex:1">Clubs séparés</span><span class="second">28 cibles</span></div>
+          <div class="rang"><span class="pas ok">✓</span><span style="flex:1">Blasons compatibles</span><span class="second">30 cibles</span></div>
+          <div class="rang"><span class="pas att">!</span><span style="flex:1">3 archers sans position</span><span class="fin bouton auto">Voir</span></div>
+        </div>
+        <div style="display:flex;gap:8px"><span class="bouton auto">Accepter</span>
+          <span class="bouton auto" style="border-color:var(--border-subtle)">Recommencer</span></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">indispensable en complément</span> Personne ne place 156 archers
+    à la main. Mais le calcul <b>ne suffit jamais</b> : il reste toujours des cas à arbitrer — d'où A ou B
+    par-dessus.</p>
+  </figure>
+</div>
+
+<h2 class="section">La question dure</h2>
+<div class="note">
+  <p><strong>Que fait le recalcul des placements déjà faits à la main ?</strong> Un retardataire arrive à 8 h 50.
+  Si « Calculer » repart de zéro, il <em>efface</em> les arbitrages manuels (« mets ces deux-là ensemble, ils
+  covoiturent »). S'il les préserve, il peut ne plus trouver de solution valide.</p>
+  <p>Il n'y a pas de bonne réponse générale : c'est un <strong>arbitrage produit</strong>. Les deux options
+  raisonnables sont « recalcul complet, avec avertissement chiffré de ce qui sera défait » ou « placements
+  manuels épinglés, le calcul travaille autour ». La seconde est plus confortable et nettement plus coûteuse.</p>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>PC ou tablette ?</strong> Ça décide entre A et B, et ça ne se devine pas.</li>
+  <li><strong>Recalcul :</strong> écrase-t-il les placements manuels, ou travaille-t-il autour ?</li>
+  <li><strong>Quelles contraintes exactement ?</strong> Celles affichées ici sont une hypothèse de ma part, pas
+  une lecture du référentiel FFTA.</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a11-placement.md">Questionnaire A11</a></span>
+  <span class="fin"><a href="a12-postes-jetons.html">Suivant : A12 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

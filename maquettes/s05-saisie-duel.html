@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S05 · Saisie de duel — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="s04-marqueur.html">← S04</a>
+  <span class="fin">
+    <a href="s06-routage.html">S06 · Routage →</a>
+    <a class="lien-questionnaire" href="questionnaires/s05-saisie-duel.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli saisie · /saisie</p>
+  <h1><span class="num">S05</span>Saisie de duel</h1>
+  <p class="chapo">Structure entièrement différente de la qualification, même si le pavé est le même : ce qui
+  décide du vainqueur, ce sont les <strong>points de set</strong>, pas le cumul de flèches. La hiérarchie
+  visuelle doit le dire.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Deux colonnes symétriques</span>
+      <span class="sous-etiquette">Le duel tel qu'on le lit sur une feuille.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="conn"><span class="point"></span></span><span class="titre">CIBLE 4 · 1/4</span>
+        <span class="fin second">Volée 3</span></div>
+      <div class="corps">
+        <div style="display:flex;gap:10px">
+          <div class="carte" style="flex:1">
+            <div class="rang bloc"><div style="font-weight:800">MARTIN P.</div><div class="faible">Kervignac</div></div>
+            <div class="rang"><span class="fl">9</span><span class="fl">9</span><span class="fl saisie vide">_</span><span class="fin somme">18</span></div>
+            <div class="rang"><span class="mini">SETS</span><span class="fin set gagne">4</span></div>
+          </div>
+          <div class="carte" style="flex:1">
+            <div class="rang bloc"><div style="font-weight:800">DURAND J.</div><div class="faible">Lorient</div></div>
+            <div class="rang"><span class="fl">10</span><span class="fl">8</span><span class="fl vide">·</span><span class="fin somme">18</span></div>
+            <div class="rang"><span class="mini">SETS</span><span class="fin set">2</span></div>
+          </div>
+        </div>
+        <div class="faible">Validation en fin de duel</div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> Symétrie = neutralité. Les deux archers
+    regardent le même écran ; <b>aucun ne doit se sentir en second</b>.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Score de set dominant</span>
+      <span class="sous-etiquette">Le 4–2 occupe le centre, les flèches passent dessous.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">CIBLE 4 · 1/4</span><span class="fin second">Volée 3</span></div>
+      <div class="corps" style="text-align:center">
+        <div style="display:flex;align-items:center;justify-content:center;gap:18px">
+          <div><div style="font-weight:800;font-size:13px">MARTIN</div><div class="set gagne">4</div></div>
+          <div class="faible">—</div>
+          <div><div style="font-weight:800;font-size:13px">DURAND</div><div class="set">2</div></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:6px">
+          <div style="flex:1;display:flex;gap:5px"><span class="fl">9</span><span class="fl">9</span><span class="fl saisie vide">_</span></div>
+          <div style="flex:1;display:flex;gap:5px"><span class="fl">10</span><span class="fl">8</span><span class="fl vide">·</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">bon message, mauvais écran</span> C'est la bonne hiérarchie
+    <em>pour le public</em> (voir P06). Mais le marqueur, lui, a besoin des <b>cases</b>, pas du score.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">C · Archer actif agrandi</span>
+      <span class="sous-etiquette">Celui qui tire prend la place, l'autre se réduit.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">CIBLE 4 · 1/4</span></div>
+      <div class="corps">
+        <div class="carte marquee">
+          <div class="rang bloc"><div style="font-weight:800;font-size:18px">MARTIN Paul</div>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <span class="fl" style="flex:1;font-size:17px">9</span><span class="fl" style="flex:1;font-size:17px">9</span>
+              <span class="fl saisie vide" style="flex:1;font-size:17px">_</span></div></div>
+        </div>
+        <div class="carte"><div class="rang"><span style="flex:1">DURAND J.</span>
+          <span class="second">10 · 8 · —</span><span class="fin somme">18</span></div></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce non">écarté</span> Le duel est <b>alterné flèche par flèche</b> :
+    l'écran passerait son temps à changer de forme. Instable là où il faut de la stabilité.</p>
+  </figure>
+</div>
+
+<h2 class="section">Le cas limite qu'aucune planche du CDC ne traite</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">Égalité 5–5 · flèche de barrage</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">CIBLE 4 · 1/4</span><span class="fin pas info">BARRAGE</span></div>
+      <div class="corps">
+        <div class="aplat-alerte forte">▲ Égalité 5 – 5 · flèche de barrage</div>
+        <div style="display:flex;gap:10px">
+          <div class="carte" style="flex:1"><div class="rang bloc"><div style="font-weight:800">MARTIN P.</div></div>
+            <div class="rang"><span class="fl saisie vide" style="flex:1">_</span></div></div>
+          <div class="carte" style="flex:1"><div class="rang bloc"><div style="font-weight:800">DURAND J.</div></div>
+            <div class="rang"><span class="fl vide" style="flex:1">·</span></div></div>
+        </div>
+        <p class="faible" style="margin:0">À valeur égale, la plus proche du centre l'emporte — arbitrage visuel
+        de l'arbitre, saisi ici.</p>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">trouvé en maquettant</span> Rare mais <b>décisif</b>. Sans écran,
+    le marqueur improvise au pire moment — et c'est un appel à l'arbitre garanti.</p>
+  </figure>
+  <figure class="variante">
+    <figcaption><span class="etiquette">Duel terminé, avant validation</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">CIBLE 4 · 1/4</span><span class="fin pas ok">TERMINÉ</span></div>
+      <div class="corps">
+        <div class="carte" style="border-color:var(--success)">
+          <div class="rang"><span style="flex:1;font-weight:800">MARTIN Paul</span><span class="set gagne" style="font-size:26px">6</span></div>
+          <div class="rang"><span style="flex:1">DURAND Jean</span><span class="set" style="font-size:26px">2</span></div>
+        </div>
+        <p class="second" style="margin:0">En attente du scoreur — <strong>3 cibles devant vous</strong>.</p>
+        <button class="bouton discret">↶ Corriger avant validation</button>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">important</span> Dire <b>combien de cibles attendent</b> évite
+    30 personnes qui se demandent si « ça a planté ».</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>Confirmes-tu que le barrage mérite son écran ?</strong></li>
+  <li><strong>Qui saisit aux duels :</strong> la tablette de la cible comme en qualification, ou le scoreur
+  directement ? (le pic de validation change complètement selon la réponse)</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/s05-saisie-duel.md">Questionnaire S05</a></span>
+  <span class="fin"><a href="s06-routage.html">Suivant : S06 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

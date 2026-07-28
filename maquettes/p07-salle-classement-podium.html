@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P07 · Écran de salle, classement et podium — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="p06-salle-affectations.html">← P06</a>
+  <span class="fin">
+    <a href="index.html">Retour à l'index</a>
+    <a class="lien-questionnaire" href="questionnaires/p07-salle-classement-podium.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli publique · poste « écran de salle »</p>
+  <h1><span class="num">P07</span>Écran de salle — classement et podium</h1>
+  <p class="chapo">Les autres vues du déroulé automatique, et le cas de la <strong>prise de contrôle</strong> par
+  l'organisateur depuis son poste (A19). Vu à plusieurs mètres, sans interaction : échelle typographique dédiée,
+  hiérarchie très forte, peu d'items par vue.</p>
+  <p style="margin-top:14px"><span class="etat-pill neuf">à concevoir</span></p>
+</header>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Classement rotatif</span>
+      <span class="sous-etiquette">Une catégorie à la fois, rotation réglable.</span></figcaption>
+    <div class="ui salle">
+      <div class="salle-cadre">
+        <div class="barre marque"><span class="titre-salle">QUALIFICATION — SENIOR HOMME</span>
+          <span class="fin" style="font-size:12px">mise à jour en direct</span></div>
+        <div class="corps-salle">
+          <div style="display:flex;align-items:center;gap:12px"><span style="width:26px;font-weight:800">1</span>
+            <span style="flex:1;font-weight:800">PETIT Luc</span><span class="second">Vannes</span><span class="somme">548</span></div>
+          <div style="display:flex;align-items:center;gap:12px"><span style="width:26px;font-weight:800">2</span>
+            <span style="flex:1;font-weight:800">MARTIN Paul</span><span class="second">Kervignac</span><span class="somme">541</span></div>
+          <div style="display:flex;align-items:center;gap:12px"><span style="width:26px;font-weight:800">3</span>
+            <span style="flex:1;font-weight:800">DURAND Jean</span><span class="second">Lorient</span><span class="somme">541</span></div>
+        </div>
+        <div class="pied-salle"><span>organisé par les Archers de Kervignac</span><span>SH · 1/4 des catégories</span></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> Peu d'items, gros corps. Le pied indique
+    <b>où on en est dans la rotation</b> — même logique que les pages de P06.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Podium plein écran</span>
+      <span class="sous-etiquette">Trois noms, rien d'autre. Le moment de la remise.</span></figcaption>
+    <div class="ui salle">
+      <div class="salle-cadre">
+        <div class="barre marque"><span class="titre-salle">PODIUM — SENIOR HOMME</span>
+          <span class="fin pas att" style="color:var(--sur-danger);background:var(--danger);border-color:var(--danger)">retour dans 7 min</span></div>
+        <div class="corps-salle" style="align-items:center;justify-content:center;gap:6px">
+          <div style="font-size:26px;font-weight:800">1 · PETIT Luc</div>
+          <div style="font-size:20px;font-weight:700">2 · MARTIN Paul</div>
+          <div style="font-size:20px;font-weight:700">3 · DURAND Jean</div>
+        </div>
+        <div class="pied-salle"><span>organisé par les Archers de Kervignac</span><span>12 octobre 2026</span></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">le compte à rebours est intentionnel</span> Il rend la prise de
+    contrôle <b>visible depuis la salle</b>, pas seulement depuis la console. Celui qui a imposé le podium et
+    qui est parti serrer des mains voit, en levant les yeux, que ça se terminera tout seul.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">C · Vue mixte</span>
+      <span class="sous-etiquette">Classement + prochain tour dans le même écran.</span></figcaption>
+    <div class="ui salle">
+      <div class="salle-cadre">
+        <div class="barre marque"><span class="titre-salle">CHALLENGE DES CHAMPIONS</span></div>
+        <div class="corps-salle" style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px">
+          <div>
+            <div class="mini" style="margin-bottom:5px">CLASSEMENT SH</div>
+            <div style="display:flex;gap:8px"><span style="width:16px">1</span><span style="flex:1;font-weight:700">PETIT L.</span><span>548</span></div>
+            <div style="display:flex;gap:8px"><span style="width:16px">2</span><span style="flex:1;font-weight:700">MARTIN P.</span><span>541</span></div>
+            <div style="display:flex;gap:8px"><span style="width:16px">3</span><span style="flex:1;font-weight:700">DURAND J.</span><span>541</span></div>
+          </div>
+          <div style="border-left:1px solid var(--border-subtle);padding-left:14px">
+            <div class="mini" style="margin-bottom:5px">PROCHAIN TOUR</div>
+            <div style="font-weight:800">1/4 · 14 h 20</div>
+            <div class="second">MARTIN → C4</div>
+            <div class="second">PETIT → C7</div>
+          </div>
+        </div>
+        <div class="pied-salle"><span>organisé par les Archers de Kervignac</span><span></span></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce non">écarté</span> Deux messages sur un écran vu à 10 m, c'est
+    <b>zéro message</b>. Le CDC design est explicite : <em>hiérarchie très forte, peu d'items par vue</em>.</p>
+  </figure>
+</div>
+
+<h2 class="section">Question ouverte · la signature graphique</h2>
+<div class="note">
+  <p><span class="ref">Q-D12</span> Le CDC design écarte le registre grunge/stencil de l'UI
+  (<span class="ref">DV-07</span> : l'interface est sobre), mais garde le <strong>« E » en trois barres</strong>,
+  le <strong>nid d'abeille</strong> et les <strong>trajectoires courbes</strong> comme candidats
+  <em>pour l'écran de salle</em>, où la lisibilité n'est pas menacée par un petit corps.</p>
+  <p>Les maquettes ci-dessus sont volontairement <strong>nues</strong> : ajouter une signature graphique est une
+  décision que je ne peux pas prendre à ta place, et qui se juge sur le matériau réel
+  (<code>docs/elements_design/</code>), pas sur une description.</p>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>Le compte à rebours de fin de prise de contrôle :</strong> visible depuis la salle, ou bruit
+  inutile à l'écran ?</li>
+  <li><strong>L'identité est-elle bien dosée ?</strong> Logo événement en tête, club en pied — ou le club
+  doit-il être plus présent ?</li>
+  <li><strong>Faut-il une signature graphique</strong> sur l'écran de salle, et laquelle ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/p07-salle-classement-podium.md">Questionnaire P07</a></span>
+  <span class="fin">Dernier écran — <a href="index.html">retour à l'index</a></span>
+</footer>
+
+</div>
+</body>
+</html>

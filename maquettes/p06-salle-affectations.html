@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P06 · Écran de salle, affectations — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="p05-tableau-duels.html">← P05</a>
+  <span class="fin">
+    <a href="p07-salle-classement-podium.html">P07 · Salle, classement →</a>
+    <a class="lien-questionnaire" href="questionnaires/p06-salle-affectations.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli publique · poste « écran de salle » · <strong>écran majeur</strong></p>
+  <h1><span class="num">P06</span>Écran de salle — affectations</h1>
+  <p class="chapo">Probablement la vue la plus utile de tout le produit : <em>un classement, on le regarde par
+  curiosité ; une affectation, on en a <strong>besoin</strong></em>. C'est aussi la <strong>moins
+  résolue</strong> — <span class="ref">Q-UX2</span> est ouverte, et elle est difficile.</p>
+  <p style="margin-top:14px"><span class="etat-pill neuf">à concevoir</span></p>
+</header>
+
+<h2 class="section">Le problème, posé franchement</h2>
+<div class="note">
+  <p><strong>200 archers ne tiennent pas à l'écran.</strong> Donc ça défile. Et <strong>un archer qui rate son
+  nom attend un cycle entier</strong> — c'est-à-dire qu'il va demander à l'organisateur, ce que le produit
+  cherche justement à éviter.</p>
+  <p>Deuxième difficulté : le tri <strong>par nom</strong> (l'archer se cherche) et le tri <strong>par
+  cible</strong> (l'organisation vérifie que tout le monde est placé) ne servent pas les mêmes gens et ne
+  peuvent pas coexister dans une même vue.</p>
+</div>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Pages, tri par nom</span>
+      <span class="sous-etiquette">Défilement par pages avec indicateur de position.</span></figcaption>
+    <div class="ui salle">
+      <div class="salle-cadre">
+        <div class="barre marque"><span class="titre-salle">1/4 DE FINALE — 14 h 20</span>
+          <span class="fin" style="font-size:12px">page 1/4 · A → F</span></div>
+        <div class="corps-salle">
+          <div style="display:flex;align-items:center"><span style="flex:1;font-weight:800">BLANC Éric</span><span style="font-weight:800">CIBLE 2</span></div>
+          <div style="display:flex;align-items:center"><span style="flex:1;font-weight:800">DURAND Jean</span><span style="font-weight:800">CIBLE 4</span></div>
+          <div style="display:flex;align-items:center"><span style="flex:1;font-weight:800">FABRE Théo</span><span style="font-weight:800">CIBLE 9</span></div>
+        </div>
+        <div class="pied-salle"><span>organisé par les Archers de Kervignac</span><span>▮▯▯▯</span></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> L'indicateur de page <b>dit combien de temps
+    attendre</b> — un archer qui sait qu'il reste 3 pages patiente ; celui qui ne sait rien s'en va.
+    Le regroupement par lettre aide à anticiper.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Deux colonnes, tri par cible</span>
+      <span class="sous-etiquette">Le double d'archers par écran, ordre de la salle.</span></figcaption>
+    <div class="ui salle">
+      <div class="salle-cadre">
+        <div class="barre marque"><span class="titre-salle">1/4 DE FINALE — 14 h 20</span></div>
+        <div class="corps-salle" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;align-content:center">
+          <div style="display:flex"><span style="width:60px;font-weight:800">C2</span><span>GARCIA · NOËL</span></div>
+          <div style="display:flex"><span style="width:60px;font-weight:800">C7</span><span>PETIT · LEROY</span></div>
+          <div style="display:flex"><span style="width:60px;font-weight:800">C4</span><span>MARTIN · DURAND</span></div>
+          <div style="display:flex"><span style="width:60px;font-weight:800">C9</span><span>FABRE · ROUX</span></div>
+        </div>
+        <div class="pied-salle"><span>organisé par les Archers de Kervignac</span><span>tri par cible</span></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">idéal aux duels</span> Aux duels il n'y a que <b>8 à 16
+    noms</b> : tout tient, plus de défilement, problème résolu. En qualification (200 archers) ça ne marche pas.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">C · Seulement le tour lancé</span>
+      <span class="sous-etiquette">On n'affiche que ceux qui doivent bouger maintenant.</span></figcaption>
+    <div class="ui salle">
+      <div class="salle-cadre">
+        <div class="barre marque"><span class="titre-salle">À VOS CIBLES</span><span class="fin" style="font-size:12px">14 h 20</span></div>
+        <div class="corps-salle" style="justify-content:center;text-align:center">
+          <div style="font-size:22px;font-weight:800">MARTIN · DURAND → CIBLE 4</div>
+          <div style="font-size:22px;font-weight:800">PETIT · LEROY → CIBLE 7</div>
+          <div class="second" style="margin-top:8px">Les autres archers : rien à faire pour l'instant.</div>
+        </div>
+        <div class="pied-salle"><span>organisé par les Archers de Kervignac</span><span></span></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">le plus prometteur</span> Retourne le problème : au lieu
+    d'afficher <em>tout le monde</em>, on n'affiche que <b>ceux qui doivent bouger</b>. Le défilement disparaît
+    presque. À valider : est-ce vrai aussi au lancement d'une qualification à 156 archers ?</p>
+  </figure>
+</div>
+
+<h2 class="section">L'identité, ici et nulle part ailleurs</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">Co-branding hiérarchisé — DV-08</span>
+      <span class="sous-etiquette">L'événement domine, le club signe en pied.</span></figcaption>
+    <div class="ui salle">
+      <div class="salle-cadre">
+        <div class="barre marque"><span class="titre-salle">CHALLENGE DES CHAMPIONS</span></div>
+        <div class="corps-salle"><div style="font-weight:800;font-size:18px">1/4 DE FINALE — 14 h 20</div>
+          <div class="second">MARTIN → cible 4 · DURAND → cible 4</div></div>
+        <div class="pied-salle"><span>organisé par les Archers de Kervignac</span><span>12 octobre 2026</span></div>
+      </div>
+    </div>
+    <p class="verdict">Avec l'écran de salle, l'appli publique est la <b>seule surface habillée</b> par
+    l'identité du tournoi (<span class="ref">D-27</span>). L'admin et la saisie restent neutres.</p>
+  </figure>
+  <figure class="variante">
+    <figcaption><span class="etiquette">Question ouverte · la police condensée</span>
+      <span class="sous-etiquette"><span class="ref">Q-D11</span> — non tranchée.</span></figcaption>
+    <div class="ui salle">
+      <div class="salle-cadre">
+        <div class="corps-salle" style="justify-content:center">
+          <div style="font-weight:800;font-size:19px">MARTINEAU-DELAUNAY Jean-Baptiste</div>
+          <div class="second">…ne tient pas sur une ligne en police normale</div>
+          <div style="font-weight:800;font-size:19px;transform:scaleX(.82);transform-origin:left">MARTINEAU-DELAUNAY Jean-Baptiste</div>
+          <div class="faible">simulation d'une condensée — le vrai choix reste à faire</div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">à décider</span> Une <b>condensée</b> fait tenir nom + club +
+    cible sur une ligne à distance. Contrainte : licence redistribuable et embarquable (réseau sans internet).</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>Tri par nom ou par cible ?</strong> Les deux publics s'excluent — il faut choisir, ou alterner.</li>
+  <li><strong>Combien de temps un archer accepte-t-il d'attendre</strong> pour revoir son nom ? Ça fixe la
+  cadence et le nombre de pages.</li>
+  <li><strong>La variante C (seulement le tour lancé)</strong> tient-elle en qualification, ou seulement aux
+  duels ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/p06-salle-affectations.md">Questionnaire P06</a></span>
+  <span class="fin"><a href="p07-salle-classement-podium.html">Suivant : P07 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

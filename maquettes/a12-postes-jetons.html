@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A12 · Postes et jetons — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a11-placement.html">← A11</a>
+  <span class="fin">
+    <a href="a13-supervision.html">A13 · Supervision →</a>
+    <a class="lien-questionnaire" href="questionnaires/a12-postes-jetons.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A12</span>Postes et jetons</h1>
+  <p class="chapo">L'identité d'un poste, c'est <strong>le jeton, pas l'IP</strong>
+  (<span class="ref">D-06</span>) : ~30 tablettes personnelles sur un wifi de gymnase, les adresses changent au
+  gré des reconnexions, le jeton non.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Ce que l'écran doit faire</h2>
+<ul class="exigences">
+  <li>Produire les <strong>QR à coller sur les cibles</strong> — le geste de rattachement du matin (S01).</li>
+  <li><strong>Révoquer</strong> un poste immédiatement, et que ça se voie côté tablette (<span class="ref">D-07</span>).</li>
+  <li>Montrer le <strong>dernier signe de vie</strong> : c'est ce qui distingue une tablette morte d'une cible lente.</li>
+  <li>Traiter l'<strong>écran de salle comme un poste</strong> parmi les autres (<span class="ref">D-21</span>).</li>
+</ul>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Liste des postes</span>
+      <span class="sous-etiquette">Une ligne par poste, actions au bout.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">POSTES</span><span class="fin bouton auto">Imprimer les 30 QR</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span style="flex:1">POSTE</span><span style="width:100px">RATTACHEMENT</span><span style="width:80px">SIGNE DE VIE</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 1</span><span style="width:100px"><span class="pas ok">RATTACHÉ</span></span><span style="width:80px" class="second">2 mn</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 7</span><span style="width:100px"><span class="pas ok">RATTACHÉ</span></span><span style="width:80px"><span class="pas att">14 mn</span></span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 23</span><span style="width:100px"><span class="pas att">NON RATTACHÉ</span></span><span style="width:80px" class="fin bouton auto">QR</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Écran salle A</span><span style="width:100px"><span class="pas ok">RATTACHÉ</span></span><span style="width:80px" class="second">5 s</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> C'est un écran d'<b>administration</b>, pas de
+    supervision : la liste triable convient. La vue temps réel, c'est A13.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Vue plan de salle</span>
+      <span class="sous-etiquette">L'état des postes projeté sur la géographie réelle.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">POSTES · PLAN</span><span class="fin second">28/30 rattachés</span></div>
+      <div class="corps serre">
+        <div class="plan" style="grid-template-columns:repeat(10,1fr)">
+          <span class="cible">1</span><span class="cible">2</span><span class="cible">3</span><span class="cible">4</span><span class="cible">5</span>
+          <span class="cible">6</span><span class="cible hs">7</span><span class="cible">8</span><span class="cible">9</span><span class="cible">10</span>
+          <span class="cible">11</span><span class="cible">12</span><span class="cible">13</span><span class="cible">14</span><span class="cible">15</span>
+          <span class="cible">16</span><span class="cible">17</span><span class="cible">18</span><span class="cible">19</span><span class="cible">20</span>
+          <span class="cible">21</span><span class="cible">22</span><span class="cible vide">23</span><span class="cible">24</span><span class="cible">25</span>
+        </div>
+        <div style="display:flex;gap:12px;font-size:11px;margin-top:4px">
+          <span class="faible">■ rattaché</span><span style="color:var(--danger)">■ hors ligne</span>
+          <span class="faible">▫ non rattaché</span></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">excellent en supervision</span> Voir <b>où</b> est le problème
+    dans la salle fait gagner des pas. Sa vraie place est plutôt A13 — ici, on administre des jetons, on ne
+    court pas.</p>
+  </figure>
+</div>
+
+<h2 class="section">Pièges connus</h2>
+<div class="note">
+  <p><strong>Le thème suit le jeton</strong> (<span class="ref">D-26</span>), pas l'onglet. Sur 30 postes × 8 h,
+  un onglet sera fermé par mégarde plusieurs fois : si la préférence claire/sombre vivait dans la page, la
+  tablette repartirait en thème sombre sous les néons du gymnase.</p>
+  <p><strong>Générer les jetons côté serveur.</strong> <code>crypto.randomUUID()</code> n'existe pas en contexte
+  non sécurisé — or le jour J on est en <strong>http sur le réseau local</strong>, pas en https. C'est masqué en
+  développement, où <code>localhost</code> est considéré comme sûr : le bug n'apparaîtrait que dans le gymnase.</p>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>QR imprimés à l'avance</strong> et collés sur les cibles, ou affichés à la demande depuis l'admin ?</li>
+  <li><strong>Tablette morte en cours de journée :</strong> une autre tablette reprend la cible en un geste
+  (avec avertissement, cf. S01), ou le passage par l'admin est-il obligatoire ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a12-postes-jetons.md">Questionnaire A12</a></span>
+  <span class="fin"><a href="a13-supervision.html">Suivant : A13 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

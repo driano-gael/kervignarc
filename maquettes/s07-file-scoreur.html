@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S07 · File du scoreur — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="s06-routage.html">← S06</a>
+  <span class="fin">
+    <a href="s08-validation-cible.html">S08 · Validation →</a>
+    <a class="lien-questionnaire" href="questionnaires/s07-file-scoreur.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli saisie · /saisie · <strong>écran majeur</strong></p>
+  <h1><span class="num">S07</span>File du scoreur</h1>
+  <p class="chapo">Le scoreur est <strong>itinérant</strong> : son propre téléphone, aucune cible attitrée, il
+  choisit. 3–4 scoreurs pour ~30 cibles. Aux duels, <strong>8 cibles finissent ensemble</strong> et attendent
+  toutes — le tour suivant ne peut pas partir. Le tri n'est pas une préférence, c'est le mécanisme qui débloque
+  la journée.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">A · Liste par ancienneté</span>
+      <span class="sous-etiquette">Le plus vieux toujours en haut, attente chiffrée.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="conn"><span class="point"></span></span><span class="titre">LE GALL Anne</span>
+        <span class="fin faible">18 validations</span></div>
+      <div class="corps">
+        <div class="aplat-alerte">▲ Cible 7 <span class="impact">4 mn 20</span></div>
+        <div class="carte">
+          <div class="tete-carte"><span>À VALIDER</span><span class="fin">3</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 12</span><span class="second">1 mn 05</span><span class="fin">▸</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 3</span><span class="second">0 mn 30</span><span class="fin">▸</span></div>
+        </div>
+        <div class="carte plate">
+          <div class="tete-carte" style="border:0"><span>EN COURS</span></div>
+          <div class="rang"><span class="second" style="flex:1">Cible 1</span><span class="faible">volée 8/12</span></div>
+          <div class="rang"><span class="second" style="flex:1">Cible 5</span><span class="faible">volée 7/12</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> La plus ancienne <b>sort de la liste</b> en
+    aplat : elle n'est pas « la première ligne », elle est <b>l'urgence</b>.</p>
+  </figure>
+
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">B · Carte unique</span>
+      <span class="sous-etiquette">Une seule cible proposée, on enchaîne.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="conn"><span class="point"></span></span><span class="titre">SUIVANT</span>
+        <span class="fin faible">3 en attente</span></div>
+      <div class="corps" style="text-align:center;padding:20px 14px">
+        <div style="font-size:30px;font-weight:800">CIBLE 7</div>
+        <div class="second">attend depuis 4 mn 20 · pas de tir A</div>
+        <button class="bouton principal">Ouvrir</button>
+        <button class="bouton discret">Passer à la suivante</button>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce non">écarté</span> Le scoreur <b>marche dans un gymnase</b> : il
+    optimise sa tournée physique. Lui cacher la liste, c'est le faire traverser la salle deux fois.</p>
+  </figure>
+
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">C · Groupé par zone</span>
+      <span class="sous-etiquette">Par pas de tir, pour économiser les pas.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="conn"><span class="point"></span></span><span class="titre">À VALIDER</span><span class="fin faible">3</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span>PAS DE TIR A</span><span class="fin">2</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 7</span><span style="color:var(--danger);font-weight:700">4 mn 20</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 3</span><span class="second">0 mn 30</span></div>
+        </div>
+        <div class="carte">
+          <div class="tete-carte"><span>PAS DE TIR B</span><span class="fin">1</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 12</span><span class="second">1 mn 05</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">à creuser</span> Économise les pas, mais <b>enterre l'urgence</b>
+    dans un groupe. Peut-être A, avec la zone en simple métadonnée.</p>
+  </figure>
+</div>
+
+<h2 class="section">États</h2>
+<div class="rangee">
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">Vide — rien à valider</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="conn"><span class="point"></span></span><span class="titre">LE GALL Anne</span></div>
+      <div class="corps" style="text-align:center;padding:24px 14px">
+        <div style="font-weight:700">Rien en attente</div>
+        <p class="second" style="margin:0">Les 30 cibles sont à jour. La prochaine série se termine vers 11 h 05.</p>
+      </div>
+    </div>
+    <p class="verdict">Un vide <b>informe</b> : « à jour » <em>et</em> quand ça repart.</p>
+  </figure>
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">Live — une cible part</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="conn"><span class="point"></span></span><span class="titre">À VALIDER</span><span class="fin faible">2</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="rang" style="opacity:.45"><span style="flex:1;text-decoration:line-through">Cible 12</span>
+            <span class="pas info">par MOREAU</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 3</span><span class="second">0 mn 30 ▸</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">D-12</span> Pas de prise en charge, mais la file se vide
+    <b>en direct</b> et dit <b>qui</b> a pris la cible. Sans ça, deux scoreurs traversent la salle pour rien.</p>
+  </figure>
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">Hors ligne — validation impossible</span></figcaption>
+    <div class="ui">
+      <div class="barre alerte"><span class="conn off" style="color:var(--sur-danger)">
+        <span class="point" style="background:var(--sur-danger)"></span>HORS LIGNE</span></div>
+      <div class="corps">
+        <p class="second" style="margin:0">La validation engage votre nom : elle a besoin du serveur.</p>
+        <div class="carte">
+          <div class="rang" style="opacity:.5"><span style="flex:1">Cible 7</span><span class="faible">4 mn 20</span></div>
+          <div class="rang" style="opacity:.5"><span style="flex:1">Cible 12</span><span class="faible">1 mn 05</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">verrou volontaire</span> Signer une donnée que le serveur ne
+    connaît pas, ce serait <b>fabriquer une preuve</b>. La phrase l'explique au lieu de griser en silence.</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>Ancienneté stricte, ou tournée physique ?</strong> Les deux logiques s'opposent réellement.</li>
+  <li><strong>Faut-il pouvoir « réserver » une cible</strong> pour éviter deux déplacements — au prix du
+  principe de non-prise en charge (<span class="ref">D-12</span>) et du risque de cible bloquée par un scoreur
+  parti déjeuner ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/s07-file-scoreur.md">Questionnaire S07</a></span>
+  <span class="fin"><a href="s08-validation-cible.html">Suivant : S08 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

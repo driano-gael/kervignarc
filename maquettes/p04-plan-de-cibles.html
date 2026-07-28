@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P04 · Plan de cibles — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="p03-classements.html">← P03</a>
+  <span class="fin">
+    <a href="p05-tableau-duels.html">P05 · Tableau de duels →</a>
+    <a class="lien-questionnaire" href="questionnaires/p04-plan-de-cibles.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli publique · /</p>
+  <h1><span class="num">P04</span>Plan de cibles</h1>
+  <p class="chapo">Le plan tel que l'archer le lit <strong>en arrivant dans la salle</strong> : « je suis où ? ».
+  Ce n'est pas l'outil de placement de l'organisateur (A11) — la vue d'ensemble est <em>son</em> besoin, pas
+  celui de l'archer.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">A · Ma cible d'abord</span>
+      <span class="sous-etiquette">La réponse en haut, le plan en dessous pour se repérer.</span></figcaption>
+    <div class="ui">
+      <div class="barre marque"><span class="titre">PLAN DE CIBLES</span><span class="fin champ plein" style="padding:2px 8px;color:#fff;border-color:rgba(255,255,255,.5)">Départ 1 ▾</span></div>
+      <div class="corps">
+        <div class="carte marquee">
+          <div class="tete-carte"><span>VOTRE CIBLE</span></div>
+          <div class="rang bloc"><div style="font-size:19px;font-weight:800">CIBLE 12 — position B</div>
+            <div class="second">avec DURAND, PETIT, LEROY</div></div>
+        </div>
+        <div class="plan" style="grid-template-columns:repeat(5,1fr)">
+          <span class="cible">9</span><span class="cible">10</span><span class="cible">11</span>
+          <span class="cible moi">12</span><span class="cible">13</span>
+        </div>
+        <p class="faible" style="margin:0">Toucher une cible affiche ses archers.</p>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> L'archer a <b>une</b> question. Le plan large
+    ne l'aide qu'à se situer physiquement une fois qu'il connaît son numéro.</p>
+  </figure>
+
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">B · Plan complet zoomable</span>
+      <span class="sous-etiquette">Toute la salle, sa cible en évidence.</span></figcaption>
+    <div class="ui">
+      <div class="barre marque"><span class="titre">PLAN DE CIBLES</span></div>
+      <div class="corps serre">
+        <div class="plan" style="grid-template-columns:repeat(6,1fr)">
+          <span class="cible">1</span><span class="cible">2</span><span class="cible">3</span><span class="cible">4</span><span class="cible">5</span><span class="cible">6</span>
+          <span class="cible">7</span><span class="cible">8</span><span class="cible">9</span><span class="cible">10</span><span class="cible">11</span><span class="cible moi">12</span>
+          <span class="cible">13</span><span class="cible">14</span><span class="cible">15</span><span class="cible">16</span><span class="cible">17</span><span class="cible">18</span>
+          <span class="cible">19</span><span class="cible">20</span><span class="cible">21</span><span class="cible">22</span><span class="cible">23</span><span class="cible">24</span>
+        </div>
+        <p class="faible" style="margin:0">Pincer pour zoomer.</p>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">utile en second</span> Bon pour <b>chercher quelqu'un d'autre</b>
+    (un ami, son enfant). Comme vue par défaut, elle noie la seule réponse attendue.</p>
+  </figure>
+</div>
+
+<h2 class="section">Une question d'orientation</h2>
+<div class="note">
+  <p>Un plan numéroté ne suffit pas à <strong>se repérer physiquement</strong> : la cible 12 est à gauche ou à
+  droite quand on entre ? Sans un repère (entrée, pas de tir, table de l'organisation), l'archer devra quand
+  même compter les cibles en marchant.</p>
+  <p>C'est une information que le <strong>gabarit de salle</strong> (A10) devrait porter — et il ne la porte pas
+  aujourd'hui. À décider ensemble : ça élargit A10.</p>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>L'archer a-t-il besoin de toute la salle</strong>, ou seulement de sa cible et de ses voisins ?</li>
+  <li><strong>Faut-il indiquer l'orientation</strong> (entrée, pas de tir) pour s'y retrouver réellement ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/p04-plan-de-cibles.md">Questionnaire P04</a></span>
+  <span class="fin"><a href="p05-tableau-duels.html">Suivant : P05 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

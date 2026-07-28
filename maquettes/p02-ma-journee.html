@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P02 · Ma journée — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="p01-cest-moi.html">← P01</a>
+  <span class="fin">
+    <a href="p03-classements.html">P03 · Classements →</a>
+    <a class="lien-questionnaire" href="questionnaires/p02-ma-journee.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli publique · / · <strong>écran majeur</strong></p>
+  <h1><span class="num">P02</span>Ma journée — maintenant / ensuite</h1>
+  <p class="chapo">L'écran qui porte la promesse du produit. <strong>Ce n'est pas un tableau de résultats,
+  c'est un GPS.</strong> Il répond à une seule question, sans défilement : « où je tire, et où je tire
+  ensuite ? »</p>
+  <p style="margin-top:14px"><span class="etat-pill neuf">à concevoir</span></p>
+</header>
+
+<h2 class="section">Ce que l'écran doit faire</h2>
+<ul class="exigences">
+  <li><strong>« Ensuite » aussi visible que « maintenant »</strong> — c'est l'information qui manque
+  aujourd'hui et qui fait rater son tour.</li>
+  <li>Être <strong>juste avant le duel</strong>, grâce aux cibles attribuées aux matchs
+  (<span class="ref">D-08</span>) : l'appli n'a jamais « rien à dire ».</li>
+  <li>Porter l'<strong>identité du tournoi</strong> (<span class="ref">D-27</span>) : l'archer vient pour
+  <em>le Challenge des Champions</em>, pas pour un logiciel.</li>
+  <li>Tout le reste (classements, plans, tableaux) <strong>en dessous</strong> : on le consulte par curiosité,
+  on ne le cherche pas en urgence.</li>
+</ul>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">A · Maintenant / Ensuite empilés</span>
+      <span class="sous-etiquette">Deux blocs, hiérarchie explicite.</span></figcaption>
+    <div class="ui">
+      <div class="barre marque"><span class="titre">MARTIN Paul</span><span class="fin conn"><span class="point"></span>LIVE</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span>MAINTENANT</span></div>
+          <div class="rang bloc">
+            <div style="font-size:21px;font-weight:800">CIBLE 12 · position B</div>
+            <div class="second">Qualification · volée 8/12</div>
+            <div class="faible">Départ 1 — 9 h</div>
+          </div>
+        </div>
+        <div class="carte">
+          <div class="tete-carte"><span>ENSUITE</span></div>
+          <div class="rang bloc">
+            <div style="font-size:17px;font-weight:800">1/4 DE FINALE · CIBLE 4</div>
+            <div class="second">14 h 20 — contre DURAND Jean</div>
+          </div>
+        </div>
+        <div class="carte plate">
+          <div class="rang"><span style="flex:1">Mon classement</span><span class="second">2<sup>e</sup> / 34 · 541</span></div>
+          <div class="rang"><span style="flex:1">Classements</span><span class="faible">▸</span></div>
+          <div class="rang"><span style="flex:1">Plan de cibles</span><span class="faible">▸</span></div>
+          <div class="rang"><span style="flex:1">Tableaux</span><span class="faible">▸</span></div>
+        </div>
+      </div>
+      <div class="barre" style="justify-content:center;font-size:10px"><span class="faible">organisé par les Archers de Kervignac</span></div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> Les deux informations vitales tiennent
+    <b>sans défilement</b>, et la hiérarchie est lisible d'un coup d'œil au bord du pas de tir.</p>
+  </figure>
+
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">B · Une carte qui bascule</span>
+      <span class="sous-etiquette">Une seule information à la fois, énorme.</span></figcaption>
+    <div class="ui">
+      <div class="barre marque"><span class="titre">MARTIN Paul</span></div>
+      <div class="corps" style="text-align:center;padding:24px 14px">
+        <div class="mini">MAINTENANT</div>
+        <div style="font-size:34px;font-weight:800;line-height:1.05">CIBLE 12</div>
+        <div style="font-size:17px;font-weight:700">position B · volée 8/12</div>
+        <div style="display:flex;gap:6px;justify-content:center;margin-top:12px">
+          <span style="width:22px;height:4px;background:var(--brand-surface);border-radius:2px"></span>
+          <span style="width:22px;height:4px;background:var(--border-subtle);border-radius:2px"></span>
+        </div>
+        <p class="faible" style="margin:0">glisser pour voir « ensuite »</p>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce non">écarté</span> Superbe, et <b>ça cache l'information la plus
+    précieuse</b> derrière un geste. Un archer pressé ne glissera pas.</p>
+  </figure>
+
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">C · Fil chronologique</span>
+      <span class="sous-etiquette">Toute la journée, passée et à venir.</span></figcaption>
+    <div class="ui">
+      <div class="barre marque"><span class="titre">MARTIN Paul</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="rang" style="opacity:.55"><span class="faible" style="width:44px">9 h</span>
+            <span style="flex:1">Série 1 — cible 12</span><span class="second">271</span></div>
+          <div class="rang" style="background:var(--surface-2)"><span class="faible" style="width:44px">10 h</span>
+            <span style="flex:1;font-weight:800">Série 2 — cible 12</span><span class="pas att">EN COURS</span></div>
+          <div class="rang"><span class="faible" style="width:44px">14 h</span>
+            <span style="flex:1;font-weight:700">1/4 — cible 4</span><span class="second">à venir</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">séduisant</span> Donne le contexte complet. Mais le passé
+    <b>occupe la place du futur</b>, et c'est le futur qui fait rater son tour.</p>
+  </figure>
+</div>
+
+<h2 class="section">États</h2>
+<div class="rangee">
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">Rien « ensuite » — encore incertain</span></figcaption>
+    <div class="ui">
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span>ENSUITE</span></div>
+          <div class="rang bloc"><div class="second">Dépend du résultat de votre duel.</div>
+            <div class="faible">Vous saurez dès la validation, ici et sur la tablette.</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict">Même quand l'appli ne sait pas, elle <b>dit quand elle saura</b>. C'est ce qui évite
+    d'aller demander.</p>
+  </figure>
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">Journée terminée</span></figcaption>
+    <div class="ui">
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span>TERMINÉ</span></div>
+          <div class="rang bloc"><div style="font-size:19px;font-weight:800">12<sup>e</sup> place</div>
+            <div class="second">Éliminé en 1/4 par DURAND Jean (6–2)</div>
+            <div class="faible">Merci de votre participation.</div></div>
+        </div>
+        <div class="carte plate"><div class="rang"><span style="flex:1">Classement final</span><span class="faible">▸</span></div></div>
+      </div>
+    </div>
+  </figure>
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">Hors ligne</span></figcaption>
+    <div class="ui">
+      <div class="barre alerte"><span style="font-weight:800">▲ HORS LIGNE</span>
+        <span class="fin" style="font-size:11px;font-weight:700">màj il y a 4 mn</span></div>
+      <div class="corps">
+        <div class="carte"><div class="rang bloc"><div style="font-size:19px;font-weight:800">CIBLE 12 · position B</div>
+          <div class="faible">Dernière information connue — peut avoir changé.</div></div></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">honnêteté</span> On affiche la dernière valeur connue
+    <b>en la datant</b>. Cacher l'écran serait pire ; le montrer sans dater serait mentir.</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>« Ensuite » dès le matin</strong>, ou seulement quand l'affectation est certaine ?</li>
+  <li><strong>Faut-il prévenir l'archer</strong> (notification, vibration) quand son affectation change, ou
+  consulte-t-il quand il veut ? Une notification suppose une appli installée ou une permission navigateur —
+  ce n'est pas gratuit.</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/p02-ma-journee.md">Questionnaire P02</a></span>
+  <span class="fin"><a href="p03-classements.html">Suivant : P03 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

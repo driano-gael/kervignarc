@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A10 · Plan de salle — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a09-inscriptions.html">← A09</a>
+  <span class="fin">
+    <a href="a11-placement.html">A11 · Placement →</a>
+    <a class="lien-questionnaire" href="questionnaires/a10-plan-de-salle.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A10</span>Plan de salle — le gabarit</h1>
+  <p class="chapo">La salle telle qu'elle est : cibles, pas de tir, nombre de postes par cible. C'est
+  <strong>la salle qui ne change pas d'une année sur l'autre</strong>, pas le tournoi — donc un gabarit se
+  réutilise. Premier des deux écrans qui réclament toute la largeur.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Ce que l'écran doit faire</h2>
+<ul class="exigences">
+  <li>Définir le <strong>nombre de postes par cible</strong> (3 ou 4) : ce seul chiffre conditionne la grille de
+  saisie (S02) et tout le placement (A11).</li>
+  <li>Être <strong>réutilisable</strong> : on ne redessine pas le gymnase chaque année.</li>
+  <li>Rester lisible avec la sidebar repliée en icônes (A02).</li>
+</ul>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Grille schématique</span>
+      <span class="sous-etiquette">Des rangées de cibles numérotées, un pas de tir par bloc.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">GABARIT « GYMNASE MUNICIPAL »</span><span class="fin second">30 cibles · 4 postes</span></div>
+      <div class="corps serre">
+        <div class="mini">PAS DE TIR A</div>
+        <div class="plan" style="grid-template-columns:repeat(10,1fr)">
+          <span class="cible">1</span><span class="cible">2</span><span class="cible">3</span><span class="cible">4</span><span class="cible">5</span>
+          <span class="cible">6</span><span class="cible">7</span><span class="cible">8</span><span class="cible">9</span><span class="cible">10</span>
+          <span class="cible">11</span><span class="cible">12</span><span class="cible">13</span><span class="cible">14</span><span class="cible">15</span>
+        </div>
+        <div class="mini" style="margin-top:6px">PAS DE TIR B</div>
+        <div class="plan" style="grid-template-columns:repeat(10,1fr)">
+          <span class="cible">16</span><span class="cible">17</span><span class="cible">18</span><span class="cible">19</span><span class="cible">20</span>
+          <span class="cible">21</span><span class="cible">22</span><span class="cible">23</span><span class="cible">24</span><span class="cible">25</span>
+          <span class="cible">26</span><span class="cible">27</span><span class="cible">28</span><span class="cible">29</span><span class="cible">30</span>
+        </div>
+        <div class="carte plate" style="border-style:dashed;text-align:center;padding:6px;margin-top:6px">
+          <span class="faible">ligne de tir · 18 m</span></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> Suffisant dans <b>l'immense majorité</b> des
+    gymnases : des cibles alignées, un ou deux pas de tir. Simple à saisir, simple à relire.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Plan libre</span>
+      <span class="sous-etiquette">On positionne les cibles où elles sont réellement.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">PLAN LIBRE</span><span class="fin bouton auto">+ Cible</span></div>
+      <div class="corps">
+        <div class="carte plate" style="border-style:dashed;height:150px;position:relative">
+          <span class="cible" style="position:absolute;top:14px;left:16px;width:34px">1</span>
+          <span class="cible" style="position:absolute;top:14px;left:60px;width:34px">2</span>
+          <span class="cible" style="position:absolute;top:14px;left:104px;width:34px">3</span>
+          <span class="cible" style="position:absolute;top:70px;left:16px;width:34px">4</span>
+          <span class="cible" style="position:absolute;top:70px;left:60px;width:34px">5</span>
+          <span class="faible" style="position:absolute;bottom:8px;right:12px;font-size:10px">pilier</span>
+        </div>
+        <p class="faible" style="margin:0">Glisser pour positionner · utile si la salle a des contraintes physiques.</p>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce non">écarté sauf besoin réel</span> Beaucoup de travail (édition
+    graphique, sauvegarde de coordonnées) pour un gain qui n'existe que si <b>ta salle a une forme
+    particulière</b>. À rouvrir seulement si la grille ne sait pas la représenter.</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>Ta salle rentre-t-elle dans une grille ?</strong> Deux pas de tir, cibles décalées, piliers,
+  gradins : si la grille ment, le plan public (P04) mentira aussi.</li>
+  <li><strong>Le gabarit doit-il porter autre chose que les cibles</strong> — table d'organisation, zone
+  d'échauffement, entrée du public ? Ça n'a d'intérêt que si le plan est affiché aux archers.</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a10-plan-de-salle.md">Questionnaire A10</a></span>
+  <span class="fin"><a href="a11-placement.html">Suivant : A11 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

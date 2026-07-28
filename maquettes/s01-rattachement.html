@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S01 · Rattachement du poste — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a19-pilotage-ecran-salle.html">← A19</a>
+  <span class="fin">
+    <a href="s02-poste-de-cible.html">S02 · Poste de cible →</a>
+    <a class="lien-questionnaire" href="questionnaires/s01-rattachement.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli saisie · /saisie</p>
+  <h1><span class="num">S01</span>Rattachement du poste</h1>
+  <p class="chapo">Le premier geste du matin, fait <strong>30 fois</strong> par des bénévoles pressés — et refait
+  en cours de journée à chaque onglet fermé par mégarde. Il n'y a <strong>pas de mode kiosque</strong>
+  (<span class="ref">D-05</span>) : ça arrivera.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Ce que l'écran doit faire</h2>
+<ul class="exigences">
+  <li><strong>Prouver qu'on est devant la bonne cible.</strong> Le QR collé sur la cible sert à ça — pas juste
+  à aller vite.</li>
+  <li>Fonctionner sur un <strong>parc hétérogène</strong> : tablettes personnelles, caméras absentes ou
+  refusées, écrans de tailles diverses.</li>
+  <li>Retenir trois choses : la cible (<span class="ref">D-06</span>), le tournoi
+  (<span class="ref">D-07</span>) et le <strong>thème</strong> (<span class="ref">D-26</span>).</li>
+</ul>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Le QR domine</span>
+      <span class="sous-etiquette">La caméra prend l'écran, le code court est le repli.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="conn off"><span class="point"></span>NON RATTACHÉ</span></div>
+      <div class="corps">
+        <div class="carte plate" style="border-style:dashed;height:150px;display:flex;align-items:center;justify-content:center">
+          <span class="faible">flux caméra</span></div>
+        <p class="second" style="margin:0;text-align:center">Scannez le QR collé sur la cible</p>
+        <button class="bouton discret">Saisir le code à la place</button>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce non">réserve</span> Une tablette sans caméra ou une permission refusée,
+    et l'écran principal ne sert à rien : <b>le cas de repli devient le cas courant</b>.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Le code domine</span>
+      <span class="sous-etiquette">Pavé de saisie du code court, QR offert en second.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="conn off"><span class="point"></span>NON RATTACHÉ</span></div>
+      <div class="corps">
+        <p class="second" style="margin:0">Code affiché sur la cible</p>
+        <div style="display:flex;gap:8px">
+          <span class="fl" style="flex:1;font-size:24px;padding:12px 0">K</span>
+          <span class="fl" style="flex:1;font-size:24px;padding:12px 0">1</span>
+          <span class="fl" style="flex:1;font-size:24px;padding:12px 0">2</span>
+          <span class="fl saisie vide" style="flex:1;font-size:24px;padding:12px 0">_</span>
+        </div>
+        <div class="pave" style="grid-template-columns:repeat(3,1fr)">
+          <button>1</button><button>2</button><button>3</button>
+          <button>4</button><button>5</button><button>6</button>
+          <button>7</button><button>8</button><button>9</button>
+        </div>
+        <button class="bouton discret">Scanner le QR</button>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> Marche sur <b>tout</b> le parc, sans permission
+    à accorder. Le QR reste offert à ceux qui vont vite.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">C · Liste des cibles libres</span>
+      <span class="sous-etiquette">Ni QR ni code : on choisit.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="conn off"><span class="point"></span>NON RATTACHÉ</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span>CIBLES LIBRES</span><span class="fin">2 / 30</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 23</span><span class="second">pas de tir B</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 28</span><span class="second">pas de tir B</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce non">écarté</span> Rien n'empêche de prendre la cible du voisin.
+    On perd la <b>preuve de présence physique</b>, qui est tout l'intérêt du QR.</p>
+  </figure>
+</div>
+
+<h2 class="section">Confirmation — ce que le poste retient</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">Rattaché</span></figcaption>
+    <div class="ui">
+      <div class="barre succes"><span style="font-weight:800">✓ POSTE RATTACHÉ</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="rang"><span style="width:80px" class="second">Cible</span><span style="font-weight:800;flex:1">12</span><span class="faible">D-06</span></div>
+          <div class="rang"><span style="width:80px" class="second">Tournoi</span><span style="font-weight:800;flex:1">12 octobre</span><span class="faible">D-07</span></div>
+          <div class="rang"><span style="width:80px" class="second">Thème</span><span style="font-weight:800;flex:1">clair</span><span class="faible">D-26</span></div>
+        </div>
+        <button class="bouton principal geant">COMMENCER LA SAISIE</button>
+      </div>
+    </div>
+    <p class="verdict">Le <b>thème est stocké avec le jeton</b>, pas dans l'onglet : l'onglet fermé par erreur ne
+    repart pas en sombre sous les néons.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">Cible déjà tenue</span></figcaption>
+    <div class="ui">
+      <div class="corps">
+        <div class="aplat-alerte">▲ Cible 12 déjà rattachée <span class="impact">il y a 4 h</span></div>
+        <p class="second" style="margin:0">Une autre tablette tient cette cible. Continuer la détachera
+        <strong>immédiatement</strong> — l'autre poste perdra la main.</p>
+        <button class="bouton principal">Reprendre la cible 12</button>
+        <button class="bouton discret">Annuler</button>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">cas réel</span> Tablette à plat, remplacée en cours de journée.
+    On <b>chiffre la conséquence</b> au lieu d'interdire (<span class="ref">P-3</span>).</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">Hors ligne</span></figcaption>
+    <div class="ui">
+      <div class="corps">
+        <div class="aplat-alerte">▲ Pas de réseau</div>
+        <p class="second" style="margin:0">Le rattachement a besoin du serveur. La saisie, elle, fonctionnera
+        hors ligne <em>une fois</em> le poste rattaché.</p>
+        <button class="bouton inactif">Rattacher</button>
+      </div>
+    </div>
+    <p class="verdict">Le <b>seul écran de l'appli réellement bloqué</b> hors ligne — et il faut le dire, pas
+    le laisser deviner.</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>Les tablettes ont-elles toutes une caméra utilisable ?</strong> Ça départage A et B.</li>
+  <li><strong>Mauvaise cible rattachée :</strong> correction possible par le bénévole lui-même, ou passage
+  obligé par l'admin ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/s01-rattachement.md">Questionnaire S01</a></span>
+  <span class="fin"><a href="s02-poste-de-cible.html">Suivant : S02 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

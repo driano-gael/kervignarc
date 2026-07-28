@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A09 · Inscriptions — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a08-scoreurs.html">← A08</a>
+  <span class="fin">
+    <a href="a10-plan-de-salle.html">A10 · Plan de salle →</a>
+    <a class="lien-questionnaire" href="questionnaires/a09-inscriptions.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A09</span>Inscriptions — archers, doublons, retardataires</h1>
+  <p class="chapo">L'écran le plus fréquenté avant le jour J, et le plus consulté pendant. Il doit répondre en
+  <strong>trois secondes</strong> à « cet archer est-il inscrit, et où tire-t-il ? » — c'est le bénévole de la
+  table qui a un archer en face de lui (<span class="ref">D-10</span>).</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Ce que l'écran doit faire</h2>
+<ul class="exigences">
+  <li>Trouver un archer <strong>par un début de nom mal orthographié</strong>, sans filtre à configurer.</li>
+  <li>Suggérer les doublons <strong>sans jamais fusionner tout seul</strong> : deux frères du même club existent.</li>
+  <li>Rester ouvrable <strong>pendant</strong> le tournoi (<span class="ref">P-3</span>) et dire clairement ce
+  qu'implique une inscription tardive côté placement.</li>
+  <li>Montrer qu'un archer inscrit n'est <strong>pas encore placé</strong> — c'est un point de complétude (A14).</li>
+</ul>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Tableau dense</span>
+      <span class="sous-etiquette">Tout est visible, on filtre en tapant.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">INSCRIPTIONS</span><span class="champ plein" style="margin-left:10px;padding:3px 8px">mart…</span>
+        <span class="fin pas att">2 DOUBLONS</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span style="flex:1">ARCHER</span><span style="width:70px">CAT.</span><span style="width:70px">CIBLE</span><span style="width:70px">PAIEMENT</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">MARTIN Paul</span><span style="width:70px" class="second">SH</span>
+            <span style="width:70px" class="second">12 B</span><span style="width:70px"><span class="pas ok">RÉGLÉ</span></span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">MARTIN Sophie</span><span style="width:70px" class="second">SF</span>
+            <span style="width:70px" class="second">14 A</span><span style="width:70px"><span class="pas att">DÛ</span></span></div>
+          <div class="rang"><span style="flex:1">MARTINEAU Luc</span><span style="width:70px" class="second">CH</span>
+            <span style="width:70px"><span class="pas att">—</span></span><span style="width:70px"><span class="pas ok">RÉGLÉ</span></span></div>
+        </div>
+        <div class="carte">
+          <div class="tete-carte"><span>DOUBLON PROBABLE</span></div>
+          <div class="rang bloc"><span class="second">MARTIN Paul (Kervignac) ≈ MARTIN P. (Kervignac)</span>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <span class="bouton auto">Fusionner</span><span class="bouton auto" style="border-color:var(--border-subtle)">Deux archers différents</span></div></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> La colonne <b>Cible vide</b> saute aux yeux :
+    c'est l'information qui manque le plus souvent le matin du jour J.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Recherche d'abord</span>
+      <span class="sous-etiquette">Écran vide tant qu'on n'a pas cherché.</span></figcaption>
+    <div class="ui">
+      <div class="corps" style="padding:24px 16px;gap:14px">
+        <div class="champ plein" style="font-size:17px;padding:12px">Nom de l'archer…</div>
+        <p class="faible" style="margin:0;text-align:center">156 inscrits · 12 non réglés · 3 non placés</p>
+        <div style="display:flex;gap:8px"><span class="bouton auto">Voir tous</span>
+          <span class="bouton auto">Non placés (3)</span><span class="bouton auto">Non réglés (12)</span></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">bon pour la table</span> Optimise le cas « un archer devant
+    moi ». Mais l'organisateur qui prépare veut <b>voir la masse</b>, pas la chercher.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">C · Groupé par départ</span>
+      <span class="sous-etiquette">La liste suit l'organisation réelle de la journée.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">INSCRIPTIONS</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span>DÉPART 1 — 9 h</span><span class="fin">78 archers</span></div>
+          <div class="rang"><span style="flex:1">MARTIN Paul</span><span class="second">cible 12 B</span></div>
+          <div class="rang"><span style="flex:1">DURAND Jean</span><span class="second">cible 12 A</span></div>
+        </div>
+        <div class="carte">
+          <div class="tete-carte"><span>DÉPART 2 — 14 h</span><span class="fin">78 archers</span></div>
+          <div class="rang"><span style="flex:1">MARTINEAU Luc</span><span class="fin pas att">non placé</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">utile en impression</span> C'est la <b>bonne forme pour la
+    feuille affichée à l'entrée</b>. Comme écran de travail, elle complique la recherche transverse.</p>
+  </figure>
+</div>
+
+<h2 class="section">État · inscription pendant le tournoi</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">Retardataire, tournoi en cours</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">NOUVEL ARCHER</span><span class="fin pas att">TOURNOI EN COURS</span></div>
+      <div class="corps">
+        <div class="carte info"><div class="rang bloc"><span class="second">Le départ 2 a commencé il y a 12 min.
+        Cet archer devra être placé <strong>manuellement</strong> sur une position libre — le placement
+        automatique ne sera pas rejoué.</span></div></div>
+        <div class="champ plein">MARTINEAU Luc</div>
+        <div style="display:flex;gap:8px"><span class="champ plein" style="flex:1">Vannes</span><span class="champ plein" style="width:70px">CH</span></div>
+        <button class="bouton principal">Inscrire et placer</button>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">exigence</span> L'appli <b>n'interdit pas</b>, elle prévient de
+    la conséquence. C'est <span class="ref">P-3</span> et <span class="ref">P-4</span> ensemble.</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>Retardataire :</strong> proposition de placement automatique, ou placement manuel obligatoire ?</li>
+  <li><strong>Doublons :</strong> bloquer la création, ou seulement avertir ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a09-inscriptions.md">Questionnaire A09</a></span>
+  <span class="fin"><a href="a10-plan-de-salle.html">Suivant : A10 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>
