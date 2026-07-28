@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 28/07/2026** · **80 US livrées** · dernière : `E15US003` *(bot pilote automatique pausable + cockpit interactif multi-vues + canal de diffusion isolé — EPIC-15 close)*.
+**Dernière mise à jour : 28/07/2026** · **81 US livrées** · dernière : `E12US002` *(lancer un tour — feu vert + lancement, la bascule de tour du J2)*.
 
 ---
 
@@ -25,11 +25,12 @@
 > ~~E11US008~~ ✅ (LAN + QR), ~~E03US011~~ ✅ (placement), ~~E01US022~~ ✅ (blason FFTA).
 > **Les bugs du lot démo sont clos**, **EPIC-14 est livrée** (accueil-tableau de bord + aide
 > contextuelle) et **EPIC-15 est close** (`E15US001` jeu d'essai + `E15US002` moteur de simulation
-> éphémère + `E15US003` cockpit de simulation livrés). La séquence J2 reprend maintenant à `E12US002`.
+> éphémère + `E15US003` cockpit de simulation livrés). **`E12US002` est livrée** (feu vert + lancement) ;
+> la séquence J2 reprend maintenant à `E08US005`.
 >
-> **`E12US002` — lancer un tour (feu vert + lancement)** : la **prochaine à prendre**, la **clé du
-> J2** — voir ce qui manque avant de lancer, puis faire partir le tour (les 4 canaux prévenus
-> ensemble). *Ensuite* : remboursement `E08US005`, prochaine cible `E04US018`.
+> **`E08US005` — rembourser une inscription payée annulée** : la **prochaine à prendre**. *Ensuite* :
+> `E04US018` (afficher la prochaine cible après validation — le **premier écran récepteur** du signal
+> de lancement émis par `E12US002`), puis `E07US008` / `E07US004` (les autres canaux).
 > *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
 > moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *`E12US004` (tracer un forfait) est **absorbée** par `E04US015` — voir ci-dessous.*
@@ -37,6 +38,25 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E12US002` **lancer un tour — feu vert + lancement** — US à **surface visible**, la **bascule de
+>   tour** du J2 (là où le produit gagne sa valeur). Un écran admin **« Feu vert »** (« Jour J »)
+>   montre **en continu**, duel par duel à venir, les trois questions du CA — *participants connus ?*,
+>   *cible attribuée ?*, *source amont validée ?* — et **nomme** le blocage (« en attente du duel n°3 »,
+>   « cible non attribuée »), jamais un simple drapeau (`P-3`). Un **bouton chiffre** ce qu'il déclenche
+>   (« 2 duels · cibles 1 · 4 archers prévenus ») et fait **partir** les duels **prêts** (jouables **et**
+>   placés), l'unité lançable étant le **duel** (`D-23`) ; le geste est **recalculé dans la file**, jamais
+>   cru sur parole (précédent E12US007), rien de prêt ⇒ 409 `aucun_duel_a_lancer`. **Décision d'archi
+>   tranchée** ([ADR-0056](../docs/adr/0056-lancement-d-un-tour-acte-audite-et-diffuse.md)) : le lancement
+>   est un **acte audité** (`ActionAuditee.LANCEMENT`) qui **déclenche la diffusion** d'un `LiveEvent`
+>   typé post-commit (règle 7) — **aucun statut posé** sur le tableau (reconstruit, ADR-0049). **Périmètre
+>   séquencé** (règle 9) : les 3 canaux récepteurs (tablette E04US018, public E07US008, salle E07US004)
+>   n'existent pas — le signal **part** mais n'est écouté de façon ciblée par personne ; la cible des
+>   tours ≥ 2 attend le placement 1→N (E05US010). `Q-UX6` **partiellement tranchée** (socle du CA livré ;
+>   métriques d'exploitation en plus restent à arrêter devant l'écran). Nouveau `ServicePilotageTour`
+>   (compose saisie + placement de duels + audit, service→service). Tests **service depuis le CA** (feu
+>   vert, chiffrage, filtrage des non-prêts, trace) ; API **après** (câblage, diffusion typée). Oracle 120
+>   vert. Front : écran + poll live, logique de présentation pure testée. Story alignée (Notes). Recette :
+>   [`docs/fonctionnel/E12US002.md`](../docs/fonctionnel/E12US002.md).
 > - `E15US003` **bot pilote automatique pausable + cockpit interactif multi-vues + canal isolé** — US à
 >   **surface visible**, **3ᵉ et dernière d'EPIC-15** (close). Un écran admin **« Simulation »** rejoue
 >   le tournoi courant **sans rien persister** : un **bot** génère des scores plausibles (déterministes
@@ -267,7 +287,7 @@
 | 56 | E11US001 | Release, base et mise en réseau | ✅ |
 | 57 | E11US003 | Sauvegarde & archive | ✅ |
 
-## J2 — Duels simples + bascule de tour — 🔶 **en cours (8/14)**
+## J2 — Duels simples + bascule de tour — 🔶 **en cours (9/14)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -280,8 +300,8 @@
 | 64 | E04US015 | Gérer abandon / disqualification | ✅ *(qualif + duels, ADR-0050)* |
 | 65 | E12US004 | ~~Tracer un forfait~~ | ⛔ *(absorbée par E04US015)* |
 | 66 | E12US008 | Cycle de vie d'un départ | ✅ *(état dérivé + garde-fou confirmable, ADR-0051)* |
-| 67 | E08US005 | Rembourser une inscription payée annulée | ⬜ |
-| 68 | E12US002 | Lancer un tour (feu vert + lancement) | 🎯 *(prochaine — EPIC-15 close, J2 reprend ici)* |
+| 67 | E08US005 | Rembourser une inscription payée annulée | 🎯 *(prochaine — J2 reprend ici)* |
+| 68 | E12US002 | Lancer un tour (feu vert + lancement) | ✅ *(feu vert + lancement-événement, ADR-0056)* |
 | 69 | E04US018 | Afficher la prochaine cible après validation | ⬜ |
 | 70 | E07US008 | Vue publique des affectations du prochain tour | ⬜ |
 | 71 | E06US003 | Barrage de tir pour places décisives | ⬜ |
