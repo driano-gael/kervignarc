@@ -18,6 +18,7 @@
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { useBlasons } from '../blasons/hooks'
 import { useCategories } from '../categories/hooks'
 import { useClubs } from '../clubs/hooks'
 import { InscriptionsArcher } from '../inscriptions/InscriptionsArcher'
@@ -54,6 +55,7 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
   const supprimer = useSupprimerArcher(tournoiId)
   const clubs = useClubs()
   const categories = useCategories(tournoiId)
+  const blasons = useBlasons(tournoiId)
 
   const engagementSignale =
     supprimer.error instanceof ErreurApi && supprimer.error.code === 'archer_engage'
@@ -86,6 +88,13 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
   const identite = `${archer.nom} ${archer.prenom}`
   const categorie = categories.data?.find((c) => c.id === archer.categorie_id)
   const club = clubs.data?.find((c) => c.id === archer.club_id)
+  // Blason **hérité de la catégorie** (E01US022) : lecture seule, jamais un champ par archer (la
+  // surcharge par archer reste hors périmètre). `blason_id` peut être null (catégorie sans défaut,
+  // ex. tournoi non pré-chargé FFTA) → on n'affiche alors rien.
+  const blason =
+    categorie?.blason_id != null
+      ? blasons.data?.find((b) => b.id === categorie.blason_id)
+      : undefined
 
   return (
     <li>
@@ -106,6 +115,7 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
         </span>
         <span className="archer__details">
           {categorie?.libelle ?? '—'}
+          {blason !== undefined && ` · ${blason.nom}`}
           {club !== undefined && ` · ${club.nom}`}
           {archer.cible !== null && ` · cible ${archer.cible}`}
         </span>
