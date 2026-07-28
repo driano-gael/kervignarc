@@ -20,12 +20,14 @@
 // (E09US003) et « Archive » (E11US003) sont désormais livrées, dans le groupe Jour J. La
 // **recherche d'archer** (E12US006, `D-19`) est désormais livrée : champ permanent en tête de la
 // sidebar, hors du système de destinations (elle coiffe, elle ne s'ouvre pas dans la zone principale).
-// « Complétude » (E12US005) est désormais livrée, dans le groupe Jour J. De même, les 7 statuts d'ADR-0026 (E01US017) ne sont pas encore livrés :
-// l'accueil contextualisé s'appuie sur les **3 statuts actuels** (brouillon / en_cours / termine).
-// « Supervision » (E12US001) est livrée et l'accueil d'un tournoi *en cours* pointe dessus ;
-// « Résultats » n'ayant pas encore d'écran dédié, un tournoi *terminé* retombe sur le classement.
+// « Complétude » (E12US005) est désormais livrée, dans le groupe Jour J. L'**accueil contextualisé**
+// est désormais un **écran** à part entière (E14US001, `Accueil`) : frise du cycle de vie 7 statuts
+// (ADR-0026, front aligné en E14US001) + checklist « à faire » (complétude) + chiffres-clés & alertes
+// (supervision, paiements). Choisir un tournoi ouvre sur son accueil, quel que soit son statut — la
+// contextualisation se joue **dans** l'écran, plus dans le choix de la destination d'ouverture.
 
 import { useState, type ReactNode } from 'react'
+import { Accueil } from '../accueil/Accueil'
 import { Archers } from '../archers/Archers'
 import { Archive } from '../archive/Archive'
 import { Doublons } from '../archers/Doublons'
@@ -35,7 +37,7 @@ import { Blasons } from '../blasons/Blasons'
 import { Categories } from '../categories/Categories'
 import { Clubs } from '../clubs/Clubs'
 import { Completude } from '../completude/Completude'
-import type { StatutTournoi, Tournoi } from '../competition/api'
+import type { Tournoi } from '../competition/api'
 import { useTournois } from '../competition/hooks'
 import { VueClassement } from '../competition/VueClassement'
 import { Departs } from '../departs/Departs'
@@ -81,18 +83,12 @@ const GROUPES: { temps: Temps; libelle: string }[] = [
   { temps: 'jourj', libelle: 'Jour J' },
 ]
 
-// Destination par défaut selon le statut (`D-20`). Un tournoi *en cours* ouvre sur la **supervision**
-// (E12US001) — l'écran du jour J. « Résultats » (termine) n'ayant pas encore d'écran propre, un
-// tournoi *terminé* retombe sur le classement en direct.
-function destinationParDefaut(statut: StatutTournoi): { id: string; groupe: Temps } {
-  switch (statut) {
-    case 'brouillon':
-      return { id: 'tournoi', groupe: 'preparation' }
-    case 'en_cours':
-      return { id: 'supervision', groupe: 'jourj' }
-    case 'termine':
-      return { id: 'classement', groupe: 'jourj' }
-  }
+// Destination d'ouverture quand on choisit un tournoi (`D-20`) : **toujours** l'accueil-tableau de
+// bord (E14US001). C'est lui qui se contextualise par statut (frise, checklist, chiffres) — inutile
+// donc d'aiguiller vers des écrans différents selon le statut. Les autres destinations restent à un
+// clic (`P-3`, priorité d'affichage, pas restriction).
+function destinationParDefaut(): { id: string; groupe: Temps } {
+  return { id: 'accueil', groupe: 'preparation' }
 }
 
 function Coquille() {
@@ -112,7 +108,7 @@ function Coquille() {
   // contraint pas — `P-3`). Le badge, lui, se met à jour en direct.
   const choisirTournoi = (t: Tournoi) => {
     setTournoiId(t.id)
-    const defaut = destinationParDefaut(t.statut)
+    const defaut = destinationParDefaut()
     setDestinationActive(defaut.id)
     setGroupeOuvert(defaut.groupe)
   }
@@ -134,6 +130,15 @@ function Coquille() {
       groupe: 'preparation',
       besoinTournoi: false,
       rendu: () => <GestionTournois selectionneId={tournoiId} onChoisi={choisirTournoi} />,
+    },
+    {
+      id: 'accueil',
+      libelle: 'Accueil (tableau de bord)',
+      groupe: 'preparation',
+      // Accueil-tableau de bord contextualisé (E14US001, `D-20`) : la « photo d'ensemble » du tournoi
+      // courant (frise, checklist, chiffres). Destination d'ouverture par défaut (`destinationParDefaut`).
+      besoinTournoi: true,
+      rendu: () => courant && <Accueil tournoi={courant} />,
     },
     {
       id: 'categories',
