@@ -32,14 +32,19 @@ from application.archers import ServiceArchers
 from application.categories import ServiceCategories
 from application.clubs import ServiceClubs
 from application.departs import ServiceDeparts
-from application.erreurs import ScenarioInconnu
+from application.erreurs import PeuplementTournoiDemarre, ScenarioInconnu
 from application.inscriptions import ServiceInscriptions
 from application.referentiel_ffta import ARC_CLASSIQUE, ARC_NU, ARC_POULIES
 from application.tournois import ServiceTournois
 from domain.archer import Archer
 from domain.categorie import Categorie, TrancheAge
 from domain.club import cle_nom
-from domain.tournoi import TournoiId
+from domain.tournoi import StatutTournoi, TournoiId
+
+# Statuts où peupler de la donnée de test est permis : **avant démarrage** seulement. Au-delà, le
+# tournoi est une compétition vivante ou figée — on n'y injecte pas d'inscrits factices (EPIC-15,
+# « ne pollue jamais le réel »).
+_STATUTS_PEUPLABLES = frozenset({StatutTournoi.BROUILLON, StatutTournoi.PRET})
 
 _GRAINE_DEFAUT = 0
 """Graine par défaut : un jeu **stable et rejouable** tant que l'appelant n'en fournit pas d'autre.
@@ -275,12 +280,13 @@ class ServiceJeuEssai:
         pré-chargé au passage (`precharger_ffta`, idempotent) — sinon on puise dans les catégories
         déjà définies, sans en ajouter.
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas (propagé par
-        `ServiceCategories.lister`). Génération **déterministe** pour une `graine` donnée (règle 9).
-        Chaque archer est ajouté via
-        `ServiceArchers.ajouter(..., autoriser_homonyme=True)` — les noms tirés au hasard peuvent se
-        répéter, et deux homonymes de test ne doivent pas interrompre le peuplement.
+        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `PeuplementTournoiDemarre` (→ 409)
+        s'il est **déjà démarré** (hors `brouillon`/`prêt`) — on ne pollue pas une compétition
+        vivante avec des inscrits de test. Génération **déterministe** pour une `graine` (règle 9).
+        Chaque archer est ajouté via `ServiceArchers.ajouter(..., autoriser_homonyme=True)` — les
+        noms tirés au hasard peuvent se répéter, deux homonymes de test n'interrompent pas le lot.
         """
+        self._exiger_tournoi_peuplable(tournoi_id)
         alea = random.Random(graine)
         categories = self._categories_cibles(tournoi_id, filtre_categorie)
         clubs_ids = self._garantir_clubs()
@@ -314,6 +320,10 @@ class ServiceJeuEssai:
         ne lit pas l'horloge lui-même, pour rester déterministe (règle 9).
         """
         scenario = _scenario_par_id(scenario_id)
+        # Invariant du catalogue figé : 1 ≤ départs ≤ nombre d'horaires disponibles. Un scénario
+        # ajouté avec 0 départ (tourniquet → division par zéro) ou trop de départs (`_HORAIRES` trop
+        # court → IndexError) doit échouer **au test**, pas silencieusement en production.
+        assert 1 <= scenario.nombre_departs <= len(_HORAIRES), "Départs du scénario hors bornes."
         tournoi = self._tournois.creer(f"{scenario.libelle} (jeu d'essai)", date)
         assert tournoi.id is not None, "Un tournoi créé est persisté."
         self._categories.precharger_ffta(tournoi.id)
@@ -334,6 +344,19 @@ class ServiceJeuEssai:
             nombre_archers=len(archers),
             nombre_departs=len(departs),
         )
+
+    def _exiger_tournoi_peuplable(self, tournoi_id: TournoiId) -> None:
+        """Lève `TournoiIntrouvable` si inconnu, `PeuplementTournoiDemarre` si déjà démarré.
+
+        `ServiceTournois.consulter` porte le refus « tournoi inconnu » ; on ne borne qu'ensuite sur
+        le statut, pour ne peupler qu'un tournoi **avant démarrage** (`_STATUTS_PEUPLABLES`)."""
+        tournoi = self._tournois.consulter(tournoi_id)
+        if tournoi.statut not in _STATUTS_PEUPLABLES:
+            raise PeuplementTournoiDemarre(
+                f"Le tournoi « {tournoi.nom} » est {tournoi.statut.value} : on ne peuple d'archers "
+                "de test qu'un tournoi avant démarrage (brouillon ou prêt), pour ne pas polluer "
+                "une compétition. Créez un tournoi de test, ou instanciez un scénario."
+            )
 
     def _categories_cibles(
         self, tournoi_id: TournoiId, filtre: Callable[[Categorie], bool] | None

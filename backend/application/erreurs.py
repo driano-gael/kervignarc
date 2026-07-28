@@ -644,6 +644,22 @@ class ForfaitIntrouvable(ApplicationError):
     code = "forfait_introuvable"
 
 
+class PeuplementTournoiDemarre(ApplicationError):
+    """Peupler d'archers de test un tournoi **déjà démarré** est refusé (E15US001) → 409.
+
+    Le jeu d'essai écrit de la **donnée réelle** : le peupler sur un tournoi `en_cours`, `en_pause`,
+    `terminé` ou `archivé` injecterait des inscrits factices dans une compétition **vivante** (le
+    sélecteur d'admin liste tous les tournois — un clic malencontreux suffit). On borne donc le
+    peuplement aux tournois **avant démarrage** (`brouillon`/`prêt`), cohérent avec l'esprit
+    d'EPIC-15 (« ne pollue jamais le réel ») et le garde-fou de la simulation éphémère à venir
+    (E15US002). Instancier un scénario crée un tournoi `brouillon` neuf — ce chemin n'est pas borné.
+    **Un refus, pas un signalement** (aucun drapeau ne le lève) : pour peupler, l'admin repart d'un
+    tournoi de test. Conflit d'**état**, d'où 409.
+    """
+
+    code = "peuplement_tournoi_demarre"
+
+
 class ScenarioInconnu(ApplicationError):
     """Aucun scénario de jeu d'essai ne correspond à l'identifiant demandé (E15US001) → 404.
 

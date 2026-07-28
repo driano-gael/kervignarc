@@ -106,6 +106,29 @@ def test_peupler_nombre_hors_bornes_400(
         assert reponse.status_code == 400, reponse.text
 
 
+def test_peupler_tournoi_demarre_409(
+    app_jeu_essai: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Peupler un tournoi **démarré** est refusé (409) : pas de pollution d'une compétition."""
+    with TestClient(app_jeu_essai) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        # brouillon → (départ requis) → prêt → en cours
+        depart = client.post(
+            f"/api/v1/tournois/{tournoi_id}/departs",
+            json={"tarif_centimes": 1000, "horaire": "09:00"},
+        )
+        assert depart.status_code == 201, depart.text
+        assert client.post(f"/api/v1/tournois/{tournoi_id}/vers-pret").status_code == 200
+        assert client.post(f"/api/v1/tournois/{tournoi_id}/demarrer").status_code == 200
+
+        reponse = client.post(
+            f"/api/v1/tournois/{tournoi_id}/jeu-essai/peupler", json={"nombre": 5}
+        )
+        assert reponse.status_code == 409, reponse.text
+        assert reponse.json()["code"] == "peuplement_tournoi_demarre"
+
+
 def test_instancier_scenario_pret_a_lancer(
     app_jeu_essai: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:

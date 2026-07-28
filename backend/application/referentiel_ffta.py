@@ -43,9 +43,6 @@ from domain.categorie import HAUTEUR_CENTRE_DEFAUT, SexeCategorie, TrancheAge
 ARC_CLASSIQUE = "Arc Classique"
 ARC_POULIES = "Arc à Poulies"
 ARC_NU = "Arc Nu"
-_ARC_CLASSIQUE = ARC_CLASSIQUE
-_ARC_POULIES = ARC_POULIES
-_ARC_NU = ARC_NU
 
 # Hauteur du centre de l'or des U11 : 110 cm (blason 80 cm, art. C.3.1.1 ;
 # `docs/referentiel-ffta.md` §5), contre 130 cm pour toutes les autres catégories. C'est la seule
@@ -198,7 +195,7 @@ def categories_salle_18m() -> list[ModeleCategorieFFTA]:
     liste des catégories, indépendamment des tranches réellement couvertes par `ages`.
     """
     return [
-        *_modeles_division(_ARC_CLASSIQUE, _GROUPES_CLASSIQUE),
-        *_modeles_division(_ARC_POULIES, _GROUPES_POULIES),
-        *_modeles_division(_ARC_NU, _GROUPES_NU),
+        *_modeles_division(ARC_CLASSIQUE, _GROUPES_CLASSIQUE),
+        *_modeles_division(ARC_POULIES, _GROUPES_POULIES),
+        *_modeles_division(ARC_NU, _GROUPES_NU),
     ]

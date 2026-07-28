@@ -27,14 +27,14 @@ from application.archers import ServiceArchers
 from application.categories import ServiceCategories
 from application.clubs import ServiceClubs
 from application.departs import ServiceDeparts
-from application.erreurs import ScenarioInconnu
+from application.erreurs import PeuplementTournoiDemarre, ScenarioInconnu
 from application.inscriptions import ServiceInscriptions
 from application.jeu_essai import CATALOGUE, ServiceJeuEssai
 from application.referentiel_ffta import ARC_CLASSIQUE, ARC_NU, ARC_POULIES
 from application.tournois import ServiceTournois
 from domain.categorie import Categorie
 from domain.cycle_depart import AvancementDepart
-from domain.depart import DepartId
+from domain.depart import Depart, DepartId
 from domain.tournoi import StatutTournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
@@ -203,6 +203,59 @@ def test_peupler_est_deterministe_pour_une_graine_donnee() -> None:
     assert signature(a1, t1) != signature(a3, t3)
 
 
+def test_peupler_deterministe_independant_de_l_ordre_des_categories() -> None:
+    """Le déterminisme ne doit pas dépendre de l'ordre où le repository renvoie les catégories.
+
+    C'est ce que garantit le tri par libellé dans `_categories_cibles` : sans lui, deux bases où
+    les mêmes catégories ont été insérées dans un ordre différent produiraient un tirage différent.
+    On insère donc les **mêmes** catégories dans un **ordre opposé** dans deux attelages, on peuple
+    à graine égale, et on compare la signature **par libellé** (l'`id`, lui, n'est pas garanti
+    cross-base — cf. docstring du service). Ce test échouerait si l'on retirait le `sorted(...)`."""
+    a1, a2 = _atteler(), _atteler()
+    t1, t2 = _tournoi_brouillon(a1), _tournoi_brouillon(a2)
+    libelles = ["Cat Alpha", "Cat Beta", "Cat Gamma"]
+    for libelle in libelles:
+        a1.categories.creer(t1, libelle, arme=ARC_CLASSIQUE)
+    for libelle in reversed(libelles):  # ordre d'insertion **opposé**
+        a2.categories.creer(t2, libelle, arme=ARC_CLASSIQUE)
+
+    a1.jeu.peupler(t1, nombre=12, graine=9)
+    a2.jeu.peupler(t2, nombre=12, graine=9)
+
+    def signature_par_libelle(a: Attelage, tid: TournoiId) -> list[tuple[str, str, str]]:
+        par_id = {c.id: c for c in a.categories.lister(tid) if c.id is not None}
+        return [
+            (ar.nom, ar.prenom, par_id[ar.categorie_id].libelle)
+            for ar in a.archers.par_tournoi(tid)
+        ]
+
+    assert signature_par_libelle(a1, t1) == signature_par_libelle(a2, t2)
+
+
+def test_peupler_refuse_un_tournoi_demarre() -> None:
+    """On ne peuple pas une compétition vivante de données de test (garde-fou, esprit EPIC-15)."""
+    a = _atteler()
+    tid = _tournoi_brouillon(a)
+    a.departs.ajouter(Depart.creer(tid, 1, 1000, "09:00", None))  # requis pour vers_pret
+    a.tournois.vers_pret(tid)
+    a.tournois.demarrer(tid)  # → en_cours
+
+    with pytest.raises(PeuplementTournoiDemarre):
+        a.jeu.peupler(tid, nombre=5, graine=1)
+
+
+def test_peupler_autorise_un_tournoi_pret() -> None:
+    """Un tournoi `prêt` (pas encore démarré) reste peuplable — la borne est « avant démarrage »."""
+    a = _atteler()
+    tid = _tournoi_brouillon(a)
+    a.departs.ajouter(Depart.creer(tid, 1, 1000, "09:00", None))
+    a.tournois.vers_pret(tid)
+
+    a.jeu.peupler(tid, nombre=6, graine=1)
+
+    assert len(a.archers.par_tournoi(tid)) == 6
+
+
 # --- Catalogue de scénarios (CA « scénarios rejouables ») ----------------------------------------
 
 
@@ -256,7 +309,12 @@ def test_scenario_gros_a_plusieurs_departs_et_beaucoup_d_archers() -> None:
 
 
 def test_scenario_multi_format_couvre_les_trois_armes() -> None:
-    """« Multi-format » mêle les trois divisions — cohabitation des formats (CA multi-format)."""
+    """« Multi-format » mêle les trois divisions — cohabitation des formats (CA multi-format).
+
+    La couverture des 3 armes est **quasi certaine** (60 archers tirés parmi les catégories des 3
+    divisions), et le test est **déterministe** (graine fixée) — donc non-flaky : à cette graine, la
+    propriété tient. Ce n'est pas garanti par construction (un archer par arme n'est pas réservé) ;
+    si un jour on voulait cet invariant dur, il faudrait forcer au moins un tirage par division."""
     a = _atteler()
     resultat = a.jeu.instancier("multi-format", _DATE, graine=1)
     assert _armes_des_archers(a, resultat.tournoi_id) == {ARC_CLASSIQUE, ARC_POULIES, ARC_NU}
