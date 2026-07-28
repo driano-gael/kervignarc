@@ -149,6 +149,31 @@ class ServiceSaisieDuels:
         tableau, lignes = self._decor(tournoi_id, phase_id)
         return self._etat_du_match(tableau.match(match_numero), phase_id, lignes)
 
+    def reconstruire(
+        self, tournoi_id: TournoiId, phase_id: PhaseId
+    ) -> tuple[Tableau, dict[int, LigneClassement]]:
+        """Reconstruit le tableau (duels validés **rejoués**, forfaits **appliqués**) pour un
+        lecteur externe — le **pilotage du tour** (E12US002, feu vert) — avec le classement (noms).
+
+        Même décor que la saisie (`_decor`), simplement **exposé en lecture** : le pilotage a besoin
+        du `Tableau` brut (occupants connus, vainqueurs propagés, câblage des sources) pour dire,
+        par duel à venir, ce qui manque avant de lancer. On ne duplique donc pas la reconstruction —
+        une
+        seule source de vérité de la progression, comme la saisie et le placement partagent l'arbre.
+        Mêmes gardes que `_decor` (`TournoiIntrouvable` / `PhaseIntrouvable` / `PhasePasUnTableau`).
+        """
+        return self._decor(tournoi_id, phase_id)
+
+    def duelliste(
+        self, participant: Participant | None, lignes: dict[int, LigneClassement]
+    ) -> Duelliste | None:
+        """Résout un participant en `Duelliste` (nom du classement), pour un lecteur externe.
+
+        Expose la même résolution que la saisie applique à ses propres occupants (le pilotage
+        affiche les mêmes noms) — `None` pour un camp vide ou une équipe (hors périmètre, E13US002).
+        """
+        return self._duelliste(participant, lignes)
+
     # --- Écritures (via la file) ---------------------------------------------------------------
 
     def saisir_manche(

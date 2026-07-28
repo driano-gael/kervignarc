@@ -39,7 +39,10 @@ accidentelle une fois qu'une session de tir y a commencé. Enfin, pour la démo 
 **cockpit de simulation** rejoue un tournoi **en accéléré et sans rien enregistrer** : un robot génère
 des scores et déroule qualifications puis duels, qu'on peut **mettre en pause pour saisir soi-même** à
 la place d'un rôle (cible, scoreur) avant de rendre la main — le tout observé par une navbar
-cible / archer / scoreur / public. Reste le **pilotage de la bascule de tour** le jour J.
+cible / archer / scoreur / public. Et le **pilotage de la bascule de tour** commence : un écran
+**« Feu vert »** montre en continu, duel par duel, ce qui est **prêt à faire tirer** et ce qui bloque
+(nommé), puis un **bouton chiffré lance** les duels prêts d'un geste — le signal part vers les postes,
+les écrans qui l'afficheront aux archers viendront ensuite.
 
 ---
 
@@ -282,6 +285,16 @@ la recherche restera vide — tant que leur moteur (EPIC-05) n'est pas construit
   geste est **réversible** (« Annuler ») tant que le tournoi n'est pas terminé, et **tracé** au
   journal d'audit. Détail dans
   [`2026-07-27-13h33-abandon-et-disqualification.md`](2026-07-27-13h33-abandon-et-disqualification.md).
+- **Feu vert : voir ce qui est prêt, puis lancer le tour** (dernier fait marquant, 28/07) : un écran
+  admin **« Feu vert »** (groupe « Jour J ») s'attaque au **temps mort entre deux tours**. Il montre
+  **en continu**, duel par duel du prochain tour, s'il est **prêt à partir** — ses **adversaires
+  sont-ils connus**, leur **cible attribuée** — et **nomme** ce qui bloque (« en attente du duel n°2 »,
+  « cible non attribuée ») plutôt que de seulement le signaler. Rien n'est empêché : l'écran montre,
+  l'organisateur décide. Un **bouton chiffre** ce qu'il déclenche (« Lancer — 2 duels · cibles 1 ·
+  4 archers prévenus ») et **fait partir** les duels prêts d'un geste ; l'acte est **tracé** au journal.
+  Le signal est **émis** vers les postes et écrans — mais les **écrans qui l'afficheront aux archers**
+  (tablette, public, salle) ne sont **pas encore construits** : ils le recevront avec leurs propres US.
+  Détail dans [`2026-07-28-22h04-feu-vert-lancer-le-tour.md`](2026-07-28-22h04-feu-vert-lancer-le-tour.md).
 
 ### 12. Peupler et rejouer — le jeu d'essai — *première brique*
 
@@ -321,10 +334,12 @@ Dans l'ordre de valeur prévu par le backlog :
    réseau / déploiement en un fichier** (E11US001) et les **sauvegardes / archive** (E11US003) :
    faits — cf. blocs 3, 7, 9 et 10.)*
 2. **Les duels** (phases finales) : l'arbre d'élimination directe, la saisie en duels (sets/cumul,
-   barrage, podium) et l'**abandon / disqualification** sont **faits** ; reste **surtout la bascule de
-   tour**, qui est le moment où le produit gagne ou perd sa valeur, et les affectations du prochain
-   tour. *L'organisateur **compose déjà la séquence de phases** de son tournoi (E05US001), place les
-   duellistes et le scoreur score les duels — reste à orchestrer le **lancement des tours**.*
+   barrage, podium) et l'**abandon / disqualification** sont **faits**, et la **bascule de tour** est
+   **amorcée** — l'écran **« Feu vert »** montre ce qui est prêt et **lance** les duels prêts
+   (E12US002). Restent les **écrans qui reçoivent** le signal côté archer (tablette, public, salle) et
+   les **affectations du prochain tour**. *L'organisateur **compose la séquence de phases** de son
+   tournoi (E05US001), place les duellistes, le scoreur score les duels, et l'organisateur **lance le
+   tour** — reste à **afficher** aux archers où aller.*
 3. **Le placement intégral 1→N** (le grand format du classeur 120) et l'**écran de salle** avec
    l'identité visuelle du tournoi.
 4. **Confort et robustesse** : import inscript'arc, presets de barèmes, déroulé horaire, sauvegarde
@@ -338,7 +353,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **80 US livrées** sur `main` (mergées, revues, CI verte) à la date du 28/07/2026. **`SUIVI-US.md`
+- **81 US livrées** sur `main` (mergées, revues, CI verte) à la date du 28/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -347,26 +362,30 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   E14US001 + aide contextuelle par écran E14US002) **et EPIC-15** (jeu d'essai & simulation) : le
   **générateur d'inscrits + scénarios rejouables** (E15US001), le **moteur de simulation éphémère**
   (E15US002, technique, sans écran) puis le **cockpit de simulation** (E15US003, bot pausable + reprise
-  en main + canal isolé).
+  en main + canal isolé). La séquence **J2** a ensuite repris avec le **feu vert + lancement d'un tour**
+  (E12US002).
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
   et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (8/14)**
+  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (9/14)**
   avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003), le **tableau
   d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001), la
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
   (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**), l'**abandon /
-  disqualification** (E04US015 — qualif *et* duels) puis le **cycle de vie d'un départ** (E12US008).
-- Dernière US livrée : **E15US003** (bot pilote automatique pausable + cockpit interactif multi-vues +
-  canal de diffusion isolé) — US **à surface visible**, **3ᵉ et dernière d'EPIC-15** (close). Un robot
-  génère des scores plausibles (déterministes par graine) et fait avancer le tournoi simulé par **pas
-  discrets** pilotés côté front (déterminisme, pas de boucle serveur) ; **session vivante** en mémoire,
-  **hors file d'écriture** (règle 7 intacte, rien n'est persisté). Pausable, avec **reprise en main**
-  (l'humain joue la même unité que le bot), sur un **canal WebSocket isolé** (broadcaster dédié).
-  ADR-0055. *(Livré juste avant : **E15US002**, le moteur de simulation éphémère, substrat de ce
-  cockpit ; et **E15US001**, le générateur d'inscrits + scénarios.)*
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — la séquence **J2 reprend à la bascule de
-  tour** (**E12US002** : lancer un tour, feu vert + lancement), la clé du jalon des duels. Le fil
-  **équipes** est débloqué (E13US002+).
+  disqualification** (E04US015 — qualif *et* duels), le **cycle de vie d'un départ** (E12US008) puis
+  le **feu vert + lancement d'un tour** (E12US002).
+- Dernière US livrée : **E12US002** (lancer un tour — **feu vert + lancement**) — US **à surface
+  visible**, la **bascule de tour** du J2 (là où le produit gagne sa valeur). Un écran admin montre
+  **en continu**, duel par duel, ce qui est **prêt à faire tirer** et ce qui **bloque** (nommé :
+  « en attente du duel n°3 », « cible non attribuée ») ; un **bouton chiffré** (« 2 duels · cibles 1 ·
+  4 archers prévenus ») fait **partir** les duels prêts d'un geste, recalculés dans la file (jamais
+  crus sur parole). Le lancement est un **acte audité** qui **déclenche la diffusion** d'un signal
+  typé (ADR-0056), **sans** poser de statut sur le tableau (reconstruit) ; les 3 **écrans récepteurs**
+  (tablette/public/salle) et la cible des **tours ≥ 2** (placement 1→N, E05US010) sont **séquencés**.
+  *(Livré juste avant : **E15US003**, le cockpit de simulation — 3ᵉ et dernière d'EPIC-15, close ;
+  puis **E15US002** / **E15US001**.)*
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E08US005** (rembourser une inscription
+  payée annulée), puis **E04US018** (afficher la prochaine cible après validation — le **premier des
+  écrans récepteurs** du lancement). Le fil **équipes** est débloqué (E13US002+).

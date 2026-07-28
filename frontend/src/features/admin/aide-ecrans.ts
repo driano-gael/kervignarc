@@ -47,6 +47,7 @@ export type DestinationAdminId =
   | 'archive'
   | 'jeu-essai'
   | 'simulation'
+  | 'feu-vert'
 
 export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
   tournoi:
@@ -125,4 +126,8 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'fait avancer qualifications puis duels. Mettez en pause pour saisir vous-même à la place d’un ' +
     'rôle (cible, scoreur), puis rendez la main au robot. Idéal pour démontrer le déroulé ou vérifier ' +
     'que tout s’enchaîne — aucune donnée réelle n’est modifiée.',
+  'feu-vert':
+    'Avant de faire tirer le tour suivant, vérifiez d’un coup d’œil ce qui est prêt : pour chaque ' +
+    'duel, les adversaires sont-ils connus et leur cible attribuée. Quand tout est prêt, le bouton ' +
+    'lance le tour et prévient les postes et les écrans — vous restez maître du moment.',
 }

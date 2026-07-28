@@ -450,6 +450,20 @@ class PhasePasUnTableau(ApplicationError):
     code = "phase_pas_un_tableau"
 
 
+class AucunDuelALancer(ApplicationError):
+    """Le lancement d'un tour ne trouve **aucun duel prêt** à faire partir (E12US002) → 409.
+
+    Le feu vert est **recalculé dans la file** au moment du lancement (jamais cru sur parole — même
+    principe que `ReplacementNonConfirme`/E12US007) : un duel demandé par le front qui n'est plus
+    **jouable** (source non validée, occupant inconnu) ou **sans cible attribuée** est écarté. Si,
+    net, il ne reste rien à lancer, l'acte est un **conflit d'état** (rien à diffuser, aucune trace)
+    — l'organisateur relance quand un duel le sera. Ce n'est pas un refus de principe (`P-3` :
+    l'appli n'empêche rien), c'est l'absence de matière : aucun événement à émettre.
+    """
+
+    code = "aucun_duel_a_lancer"
+
+
 class DuelDesynchronise(ApplicationError):
     """Le tir enregistré oppose d'**autres** duellistes que ceux recalculés (E04US013) → 409.
 

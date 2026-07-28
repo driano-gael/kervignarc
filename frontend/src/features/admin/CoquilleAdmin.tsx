@@ -52,6 +52,7 @@ import { Phases } from '../phases/Phases'
 import { Placement } from '../placement/Placement'
 import { Postes } from '../postes/Postes'
 import { Scoreurs } from '../scoreurs/Scoreurs'
+import { FeuVert } from '../feu-vert/FeuVert'
 import { Simulation } from '../simulation/Simulation'
 import { Supervision } from '../supervision/Supervision'
 import { RechercheArcher } from '../recherche/RechercheArcher'
@@ -313,6 +314,15 @@ function Coquille() {
       groupe: 'jourj',
       besoinTournoi: true,
       rendu: () => courant && <Supervision tournoiId={courant.id} />,
+    },
+    {
+      // Feu vert / lancer le tour (E12US002) : le geste central du jour J — voir en continu ce qui
+      // est prêt à partir, puis faire partir les duels prêts (les postes/écrans sont prévenus).
+      id: 'feu-vert',
+      libelle: 'Feu vert',
+      groupe: 'jourj',
+      besoinTournoi: true,
+      rendu: () => courant && <FeuVert tournoiId={courant.id} />,
     },
     {
       id: 'completude',
