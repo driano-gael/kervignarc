@@ -181,6 +181,33 @@ def test_precharger_ffta_ne_duplique_pas_les_blasons() -> None:
     assert len(blasons.par_tournoi(tournoi_id)) == 4
 
 
+def test_precharger_ffta_ne_reattache_pas_une_categorie_existante_sans_blason() -> None:
+    """Idempotence : une catégorie FFTA déjà présente **sans** blason n'est PAS rétro-rattachée.
+
+    Cas de mise à niveau : un tournoi pré-chargé avant E01US022 a ses catégories à `blason_id`
+    None (aucun blason FFTA n'existait alors). Rejouer le pré-chargement crée bien les blasons
+    mais **ne touche pas** aux catégories existantes — le `continue` par libellé prime. On fige ce
+    choix : un `blason_id` None est **ambigu** (jamais posé *ou* détaché volontairement via
+    E01US006), donc on ne le « guérit » pas d'office au risque d'écraser un détachement délibéré.
+    Le remède reste explicite (réaffecter à la main, ou recréer la catégorie).
+    """
+    service, tournoi_id, blasons = _service_avec_tournoi()
+    # Simule l'état « ancien pré-chargement » : la catégorie FFTA existe, sans blason.
+    prealable = service.creer(tournoi_id, "Arc Classique U11 Homme")
+    assert prealable.id is not None and prealable.blason_id is None
+    service.precharger_ffta(tournoi_id)
+    # Les blasons FFTA sont bien créés…
+    assert {b.nom for b in blasons.par_tournoi(tournoi_id)} == {
+        "Blason 80 cm",
+        "Blason 60 cm",
+        "Blason 40 cm",
+        "Triple 40 cm",
+    }
+    # …mais la catégorie préexistante garde son `blason_id` None (non rétro-rattachée).
+    rechargee = service._categories.par_id(prealable.id)
+    assert rechargee is not None and rechargee.blason_id is None
+
+
 def test_precharger_ffta_reutilise_un_blason_personnalise_de_meme_nom() -> None:
     """Idempotence : un blason FFTA déjà présent (nom identique) est **réutilisé**, pas réécrit.
 
