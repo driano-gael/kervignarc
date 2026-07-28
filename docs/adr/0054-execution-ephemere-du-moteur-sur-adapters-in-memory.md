@@ -88,11 +88,15 @@ front relève d'E15US003 (cockpit) ; cet ADR se contente de garantir la **non-é
 - Règle 7 respectée : aucune transaction longue, la simulation vit **hors** de la file.
 - Substrat réutilisable : E15US003 écrit ses scores de bot dans les mêmes adapters in-memory.
 
-**Négatives / dette.**
+**Négatives / limites.**
 
-- **Duplication** adapters in-memory ↔ doublures de test (assumée, point 2) : deux jeux de magasins
-  `dict` à garder cohérents avec les ports. Atténuée par les tests de conformité ; un futur remède
-  structurel (fusion) reste possible en US dédiée si la 3ᵉ preuve apparaît.
+- **Duplication délibérée, pas dette tracée.** Les adapters in-memory et les doublures `Faux*` des
+  tests forment deux jeux de magasins `dict` conformes aux mêmes ports. C'est la **2ᵉ occurrence** du
+  motif « double de port en mémoire » : la **règle 16** du projet tranche ce cas (« dupliquer une 2ᵉ
+  fois et attendre le 3ᵉ cas est une réponse valide »), donc **aucune dette n'est inscrite** au
+  registre et **aucun pattern n'est introduit** ici. La cohérence est tenue par mypy (conformité de
+  type aux ports) et par les tests de conformité de port (conformité de comportement). Un remède
+  structurel (fusionner les deux jeux) ne se traitera qu'en **US dédiée sur 3ᵉ preuve** — pas avant.
 - L'**hydratation** est un chemin de lecture **nouveau** (SQL → in-memory) : tout port ajouté au
   chemin du moteur devra y être recopié. Le garde-fou (avant démarrage) borne ce qu'il faut hydrater.
 
