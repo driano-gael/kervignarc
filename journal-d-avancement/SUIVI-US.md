@@ -50,8 +50,11 @@
 >   comme `MessageErreur`), un dictionnaire `id → texte` (`features/admin/aide-ecrans.ts`, **1 point de
 >   vérité**), rendu **une seule fois** en tête de `.coquille__contenu` (la coquille connaît la
 >   destination active → zéro édition des 22 features). Textes = **1ᵉʳ jet à relire** avec l'organisateur
->   (signalé dans le fichier). Story alignée (Notes). ⚠️ Front sans test de rendu (pas de
->   `@testing-library` — le fournir serait une dépendance, règle 11) : **à vérifier à l'écran**. Recette :
+>   (signalé dans le fichier). Story alignée (Notes). **Extension à la demande utilisateur** : l'US
+>   **outille le test de rendu front** (Testing Library + jsdom, devDependencies MIT, `npm audit` vert),
+>   env `jsdom` global + `src/test-setup.ts`, et **1er test de rendu** `AideEcran.test.tsx` — décision
+>   structurante, [ADR-0053](../docs/adr/0053-outillage-test-de-rendu-front.md), libs dans
+>   [`docs/dependances.md`](../docs/dependances.md) ; sert désormais aux US front suivantes. Recette :
 >   [`docs/fonctionnel/E14US002.md`](../docs/fonctionnel/E14US002.md).
 > - `E14US001` **accueil-tableau de bord contextualisé par tournoi (`D-20`)** — US à **surface
 >   visible**, **première d'EPIC-14** (lisibilité admin). Choisir un tournoi ouvre son **Accueil** :
