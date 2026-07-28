@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 28/07/2026** · **75 US livrées** · dernière : `E01US022` *(blason FFTA par défaut par catégorie + affichage hérité)*.
+**Dernière mise à jour : 28/07/2026** · **76 US livrées** · dernière : `E14US001` *(accueil-tableau de bord contextualisé par tournoi)*.
 
 ---
 
@@ -26,8 +26,9 @@
 > **Les bugs du lot démo sont clos** ; on passe aux épics **EPIC-14** puis **EPIC-15**.
 > La séquence J2 ci-dessous reprend ensuite à `E12US002`.
 >
-> **`E14US001` — accueil-tableau de bord contextualisé (`D-20`)** : la **prochaine à prendre**
-> (premier écran d'EPIC-14, lisibilité admin). *(Ajout démo, `E14` 🆕.)*
+> **`E14US002` — aide contextuelle « ce qui est saisissable et pourquoi »** : la **prochaine à
+> prendre** (2ᵉ écran d'EPIC-14 ; `E14US001` accueil-tableau de bord **vient d'être livrée**).
+> *(Ajout démo, `E14` 🆕.)* *Puis* **EPIC-15** (jeu d'essai & simulation, `E15US001`+).
 > *Puis la séquence J2 reprend à* **`E12US002`** — lancer un tour (feu vert + lancement), la **clé du
 > J2** : voir ce qui manque avant de lancer, puis faire partir le tour (les 4 canaux prévenus
 > ensemble). *Ensuite* : remboursement `E08US005`, prochaine cible `E04US018`.
@@ -38,6 +39,19 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E14US001` **accueil-tableau de bord contextualisé par tournoi (`D-20`)** — US à **surface
+>   visible**, **première d'EPIC-14** (lisibilité admin). Choisir un tournoi ouvre son **Accueil** :
+>   (1) **frise des 7 statuts** (ADR-0026), courant surligné, avec les **boutons d'action** offerts
+>   par le statut ; (2) **checklist « à faire »** (réutilise la complétude E12US005) ; (3)
+>   **chiffres-clés** — inscrits & réglés (paiements E08US002), postes en ligne (supervision E12US001)
+>   — et **alertes** dérivées. **Aucune règle métier nouvelle** (agrège, ne recalcule pas — cadrage).
+>   **Arbitrages tranchés au cadrage** (CA stub) : *les 3 briques d'un coup* + *frise à boutons
+>   d'action* → d'où l'exposition en **lecture** de la topologie (`transitions_possibles` domaine +
+>   `GET …/transitions`, source unique + test de cohérence topologie↔gardes, règle 1). **Bug corrigé
+>   au passage** : le front ne gérait que **3 statuts** et se **bloquait** dès `prêt`/`en_pause` (badge
+>   muet, aucun bouton) → aligné sur les 7 ; la frise **remplace** l'ancien `CycleDeVie`. Story alignée
+>   (Notes). Décisions : [ADR-0052](../docs/adr/0052-accueil-admin-contextualise-par-statut.md).
+>   Recette : [`docs/fonctionnel/E14US001.md`](../docs/fonctionnel/E14US001.md).
 > - `E01US022` **blason FFTA par défaut par catégorie + affichage hérité** — US à **surface visible**
 >   (dernier bug du lot démo). Le pré-chargement FFTA (`precharger_ffta`) crée désormais aussi les
 >   **quatre blasons** canoniques du §3 — « Blason 80 cm » / « 60 cm » / « 40 cm » / « Triple 40 cm »
@@ -298,8 +312,8 @@
 | E11US008 | Accès LAN (poste organisateur) + QR de rattachement à l'écran | E11 🆕 | ✅ |
 | E03US011 | Placement : retour visuel de génération + position A..D côté admin | E03 🆕 | ✅ |
 | E01US022 | Blason FFTA par défaut par catégorie + affichage hérité | E01 🆕 | ✅ |
-| E14US001 | Accueil-tableau de bord contextualisé (`D-20`) | E14 🆕 | 🎯 |
-| E14US002 | Aide contextuelle « ce qui est saisissable & pourquoi » | E14 🆕 | ⬜ |
+| E14US001 | Accueil-tableau de bord contextualisé (`D-20`) | E14 🆕 | ✅ |
+| E14US002 | Aide contextuelle « ce qui est saisissable & pourquoi » | E14 🆕 | 🎯 |
 | E15US001 | Jeu d'essai : générer des inscrits + scénarios rejouables | E15 🆕 | ⬜ |
 | E15US002 | Moteur de simulation éphémère + garde-fou (non-persistance) | E15 🆕 | ⬜ |
 | E15US003 | Bot pilote auto pausable + cockpit interactif multi-vues | E15 🆕 | ⬜ |

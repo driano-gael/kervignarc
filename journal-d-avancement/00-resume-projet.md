@@ -194,7 +194,7 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
   d'imprimer pour rattacher une tablette. Détail dans
   [`2026-07-27-21h01-acces-reseau-et-qr-a-l-ecran.md`](2026-07-27-21h01-acces-reseau-et-qr-a-l-ecran.md).
 
-### 8. L'interface d'administration — *coquille posée*
+### 8. L'interface d'administration — *coquille posée + accueil contextualisé*
 
 - L'**ossature de navigation** de l'application admin (la coquille dans laquelle les écrans viennent
   se loger).
@@ -203,6 +203,15 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
   écran ensuite. Le spectateur ne peut plus accéder par mégarde au mot de passe admin ou au code
   scoreur ; on change de rôle par un lien discret. Détail dans
   [`2026-07-21-22h10-choisir-son-role-au-lancement.md`](2026-07-21-22h10-choisir-son-role-au-lancement.md).
+- Un **accueil-tableau de bord par tournoi** (dernier fait marquant, 28/07) qui « raconte l'histoire »
+  du tournoi : une **frise des 7 étapes** de sa vie (brouillon → prêt → en cours → terminé → archivé,
+  plus en pause / annulé) avec le statut courant surligné et les **boutons d'action** du moment
+  (marquer prêt, démarrer, mettre en pause, terminer, archiver, annuler) ; dessous, des **chiffres-clés**
+  (inscrits, réglés, postes en ligne), une **checklist « à faire »** et les **alertes**. Il ne fait
+  qu'**assembler** des informations déjà là (complétude, supervision, paiements). Au passage, un bug est
+  corrigé : le pilotage ne connaissait que 3 états et se **bloquait** dès « prêt »/« en pause » — la
+  frise couvre désormais les 7 partout. Détail dans
+  [`2026-07-28-11h04-accueil-tableau-de-bord.md`](2026-07-28-11h04-accueil-tableau-de-bord.md).
 
 ### 9. Suivre la qualification et l'afficher au public — *en place*
 
@@ -296,13 +305,13 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **75 US livrées** sur `main` (mergées, revues, CI verte) à la date du 28/07/2026. **`SUIVI-US.md`
+- **76 US livrées** sur `main` (mergées, revues, CI verte) à la date du 28/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
-  livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Les
-  **cinq dernières** livrées sont des **retours de la démo du 27/07** : le **cycle de vie à 7 statuts**
-  (E01US017), l'**horaire `HH:MM` obligatoire** (E02US010), l'**accès réseau LAN + QR de cible à
-  l'écran** (E11US008), le **retour visuel de génération + position A..D au placement** (E03US011) et
-  le **blason FFTA par défaut par catégorie** (E01US022).
+  livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
+  **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
+  réseau LAN + QR E11US008, retour visuel de génération + position A..D E03US011, blason FFTA par
+  défaut E01US022), le **lot démo bascule sur ses épics** : **E14US001** ouvre **EPIC-14** (lisibilité
+  admin) avec l'**accueil-tableau de bord contextualisé**.
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
@@ -314,13 +323,14 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
   (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**), l'**abandon /
   disqualification** (E04US015 — qualif *et* duels) puis le **cycle de vie d'un départ** (E12US008).
-- Dernière US livrée : **E01US022** (blason FFTA par défaut par catégorie + affichage hérité) — US à
-  **surface visible** (retour de la démo du 27/07). Pré-charger les catégories FFTA crée aussi les
-  **quatre blasons** de la salle (80, 60, 40 cm, triple 40) et **relie chaque catégorie au sien**
-  selon la règle fédérale (§3) ; le blason **hérité** s'affiche à côté de chaque archer et sous la
-  catégorie choisie à l'inscription. Tout reste modifiable (template FFTA). *(Livrée juste avant :
-  **E03US011**, le retour visuel de génération + position A..D au placement.)*
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — le **lot démo** bascule sur ses épics :
-  **EPIC-14** (accueil-tableau de bord admin, `E14US001`) puis **EPIC-15** (jeu d'essai & simulation).
-  La séquence J2 reprend ensuite à la **bascule de tour** (E12US002). Le fil **équipes** est débloqué
+- Dernière US livrée : **E14US001** (accueil-tableau de bord contextualisé par tournoi) — US à
+  **surface visible**, première d'**EPIC-14**. Choisir un tournoi ouvre son **accueil** : frise des 7
+  statuts + boutons d'action du moment, chiffres-clés (inscrits, réglés, postes en ligne), checklist
+  « à faire » et alertes — un **assemblage** de sources existantes, sans nouvelle règle métier. Le
+  front est aligné sur les **7 statuts** d'ADR-0026 (il en connaissait 3 et se bloquait dès « prêt ») ;
+  la topologie des transitions est **exposée en lecture** (source unique, ADR-0052). *(Livrée juste
+  avant : **E01US022**, le blason FFTA par défaut par catégorie.)*
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E14US002** (aide contextuelle « ce qui
+  est saisissable et pourquoi ») poursuit **EPIC-14**, puis **EPIC-15** (jeu d'essai & simulation). La
+  séquence J2 reprend ensuite à la **bascule de tour** (E12US002). Le fil **équipes** est débloqué
   (E13US002+).

@@ -27,7 +27,7 @@ ne veux pas de formation ».
 - Identité visuelle par tournoi (E01US016).
 
 ## Capacités
-- [ ] Accueil-tableau de bord contextualisé par statut (E14US001).
+- [x] Accueil-tableau de bord contextualisé par statut (E14US001) — livré le 28/07/2026 ([ADR-0052](../docs/adr/0052-accueil-admin-contextualise-par-statut.md)).
 - [ ] Aide contextuelle par écran (E14US002).
 
 ## Critères d'acceptation (epic)
