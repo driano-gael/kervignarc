@@ -7,8 +7,11 @@ mémoire serveur, hors file d'écriture — règle 7) qu'un **bot** fait avancer
 
 **Cadence par pas, pas par boucle de fond (ADR-0055 §2).** « Avancer » est synchrone : le pilote
 automatique est un *ticker côté front* qui appelle `avancer` sur un intervalle ; la pause, c'est
-cesser d'appeler. Le serveur reste **déterministe** (règle 9) — aucun thread, aucune horloge : une
-même `(graine, suite d'actions)` produit toujours le même déroulé, donc des tests reproductibles.
+cesser d'appeler. La **logique** reste **déterministe** (règle 9) — pas de boucle de fond, pas
+d'horloge : une même `(graine, suite d'actions séquentielle)` produit toujours le même déroulé, donc
+des tests reproductibles. Les routes s'exécutent sur des threads (`run_in_threadpool`) ; ce
+déterminisme ne vaut donc que si les opérations d'**une même** session sont **sérialisées** — ce que
+garantit un **verrou par session** (`SessionSimulation.verrou`), pas une hypothèse tacite (revue).
 
 **Une unité, deux acteurs (ADR-0055 §3).** Le bot et l'humain jouent la **même** unité atomique — la
 prochaine volée manquante d'un archer (qualif), ou le prochain duel jouable (duels) —, exposée par
@@ -25,7 +28,8 @@ tournoi (ADR-0026).
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, replace
+import threading
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Protocol
 
@@ -49,11 +53,7 @@ from domain.bareme import BaremeQualification
 from domain.blason import ZONES_DEFAUT, ZoneScore
 from domain.classement import Classement
 from domain.duel import Cote
-from domain.erreurs import (
-    EffectifTableauInvalide,
-    NombreFlechesVoleeInvalide,
-    ValeurHorsBlason,
-)
+from domain.erreurs import EffectifTableauInvalide
 from domain.phase import PhaseId, TypePhase
 from domain.ports import (
     ArcherRepository,
@@ -65,7 +65,7 @@ from domain.ports import (
     SerieRepository,
     TournoiRepository,
 )
-from domain.serie import Serie, Volee
+from domain.serie import Serie, Volee, valider_valeurs_volee
 from domain.tournoi import TournoiId
 
 SessionId = int
@@ -74,7 +74,7 @@ SessionId = int
 # Auteurs déclaratifs des actes simulés (`saisie_par`/`validee_par` des volées, `scoreur` des duels)
 # : tracent *qui* a joué l'unité — le bot ou un humain en reprise en main. Purement informatif
 # (aucun audit n'est consigné en simulation, ADR-0054), mais visible dans le cockpit.
-_AUTEUR_BOT = "bot"
+_AUTEUR_BOT = "Bot"
 _AUTEUR_MANUEL = "Manuel"
 
 
@@ -207,6 +207,12 @@ class SessionSimulation:
     etat_pilote: EtatPilote = EtatPilote.EN_COURS
     volees_jouees: int = 0
     duels_joues: int = 0
+    # Sérialise les opérations concurrentes sur **cette** session (revue axe A/C1/D) : les routes
+    # tournent sur des threads (`run_in_threadpool`), et deux admins abonnés au même canal
+    # pourraient piloter la même session en parallèle (double `avancer` → sur-comptage, harnais
+    # incohérent). Un verrou **par session** suffit — deux sessions distinctes ne se bloquent pas.
+    # `compare=False` (un `Lock` n'est ni comparable ni pertinent à l'égalité de session).
+    verrou: threading.Lock = field(default_factory=threading.Lock, compare=False, repr=False)
 
 
 class RegistreSessionsSimulation:
@@ -220,15 +226,20 @@ class RegistreSessionsSimulation:
     def __init__(self) -> None:
         self._sessions: dict[SessionId, SessionSimulation] = {}
         self._compteur = 0
+        # Protège l'attribution d'identifiant et le dict des sessions des accès concurrents (routes
+        # sur threads, `run_in_threadpool`) : `_compteur += 1` n'est pas atomique (revue axe A/D).
+        self._verrou = threading.Lock()
 
     def ajouter(self, session: SessionSimulation) -> SessionSimulation:
-        self._compteur += 1
-        session.id = self._compteur
-        self._sessions[session.id] = session
+        with self._verrou:
+            self._compteur += 1
+            session.id = self._compteur
+            self._sessions[session.id] = session
         return session
 
     def obtenir(self, session_id: SessionId) -> SessionSimulation:
-        session = self._sessions.get(session_id)
+        with self._verrou:
+            session = self._sessions.get(session_id)
         if session is None:
             raise SessionSimulationIntrouvable(
                 f"Aucune session de simulation d'identifiant {session_id} "
@@ -238,7 +249,8 @@ class RegistreSessionsSimulation:
 
     def retirer(self, session_id: SessionId) -> None:
         # Idempotent : arrêter une session déjà partie n'est pas une erreur (le front peut rejouer).
-        self._sessions.pop(session_id, None)
+        with self._verrou:
+            self._sessions.pop(session_id, None)
 
 
 class ServicePilotageSimulation:
@@ -341,24 +353,27 @@ class ServicePilotageSimulation:
     def etat(self, session_id: SessionId) -> EtatSession:
         """Instantané courant de la session (lecture ; le front poll après un signal de
         diffusion)."""
-        return self._etat(self._registre.obtenir(session_id))
+        session = self._registre.obtenir(session_id)
+        with session.verrou:
+            return self._etat(session)
 
     def detail_archer(self, session_id: SessionId, archer_id: ArcherId) -> DetailArcher:
         """La « journée » d'un archer simulé (vue archer) : ses volées et son cumul courant."""
         session = self._registre.obtenir(session_id)
-        archer = session.harnais.archers.par_id(archer_id)
-        if archer is None or archer.tournoi_id != session.tournoi_id:
-            raise ArcherIntrouvable(
-                f"Aucun archer d'identifiant {archer_id} dans la simulation {session_id}."
+        with session.verrou:
+            archer = session.harnais.archers.par_id(archer_id)
+            if archer is None or archer.tournoi_id != session.tournoi_id:
+                raise ArcherIntrouvable(
+                    f"Aucun archer d'identifiant {archer_id} dans la simulation {session_id}."
+                )
+            serie = session.harnais.series.par_archer(session.tournoi_id, archer_id)
+            return DetailArcher(
+                archer_id=archer_id,
+                nom=archer.nom,
+                prenom=archer.prenom,
+                cumul=serie.cumul if serie is not None else 0,
+                volees=serie.volees if serie is not None else (),
             )
-        serie = session.harnais.series.par_archer(session.tournoi_id, archer_id)
-        return DetailArcher(
-            archer_id=archer_id,
-            nom=archer.nom,
-            prenom=archer.prenom,
-            cumul=serie.cumul if serie is not None else 0,
-            volees=serie.volees if serie is not None else (),
-        )
 
     # --- Pilote automatique (bot) ---------------------------------------------------------------
 
@@ -370,17 +385,18 @@ class ServicePilotageSimulation:
         `terminée`.
         """
         session = self._registre.obtenir(session_id)
-        if session.etat_pilote is not EtatPilote.EN_COURS:
-            raise PilotageSimulationInvalide(
-                "Le bot n'avance que lorsqu'il est aux commandes (en cours) : reprends-lui la main "
-                "avant de le laisser jouer."
-            )
-        for _ in range(max(1, nb_pas)):
-            if not self._jouer_prochaine(session):
-                session.etat_pilote = EtatPilote.TERMINEE
-                break
-        self._diffusion.signaler(session_id)
-        return self._etat(session)
+        with session.verrou:
+            if session.etat_pilote is not EtatPilote.EN_COURS:
+                raise PilotageSimulationInvalide(
+                    "Le bot n'avance que lorsqu'il est aux commandes (en cours) : reprends-lui la "
+                    "main avant de le laisser jouer."
+                )
+            for _ in range(max(1, nb_pas)):
+                if not self._jouer_prochaine(session):
+                    session.etat_pilote = EtatPilote.TERMINEE
+                    break
+            self._diffusion.signaler(session_id)
+            return self._etat(session)
 
     def terminer(self, session_id: SessionId) -> EtatSession:
         """Déroule tout ce qui reste d'un coup (QA : « va jusqu'au classement »), puis `terminée`.
@@ -390,34 +406,37 @@ class ServicePilotageSimulation:
         moteur).
         """
         session = self._registre.obtenir(session_id)
-        if session.etat_pilote is EtatPilote.TERMINEE:
-            raise PilotageSimulationInvalide("La simulation est déjà terminée.")
-        for _ in range(self._plafond_pas(session)):
-            if not self._jouer_prochaine(session):
-                break
-        session.etat_pilote = EtatPilote.TERMINEE
-        self._diffusion.signaler(session_id)
-        return self._etat(session)
+        with session.verrou:
+            if session.etat_pilote is EtatPilote.TERMINEE:
+                raise PilotageSimulationInvalide("La simulation est déjà terminée.")
+            for _ in range(self._plafond_pas(session)):
+                if not self._jouer_prochaine(session):
+                    break
+            session.etat_pilote = EtatPilote.TERMINEE
+            self._diffusion.signaler(session_id)
+            return self._etat(session)
 
     def pause(self, session_id: SessionId) -> EtatSession:
         """Suspend le bot (`en_cours` → `en_pause`). 409 si la session n'est pas en cours."""
         session = self._registre.obtenir(session_id)
-        if session.etat_pilote is not EtatPilote.EN_COURS:
-            raise PilotageSimulationInvalide(
-                "Seule une simulation en cours peut être mise en pause."
-            )
-        session.etat_pilote = EtatPilote.EN_PAUSE
-        self._diffusion.signaler(session_id)
-        return self._etat(session)
+        with session.verrou:
+            if session.etat_pilote is not EtatPilote.EN_COURS:
+                raise PilotageSimulationInvalide(
+                    "Seule une simulation en cours peut être mise en pause."
+                )
+            session.etat_pilote = EtatPilote.EN_PAUSE
+            self._diffusion.signaler(session_id)
+            return self._etat(session)
 
     def reprendre(self, session_id: SessionId) -> EtatSession:
         """Rend la main au bot (`en_pause` → `en_cours`). 409 si la session n'est pas en pause."""
         session = self._registre.obtenir(session_id)
-        if session.etat_pilote is not EtatPilote.EN_PAUSE:
-            raise PilotageSimulationInvalide("Seule une simulation en pause peut reprendre.")
-        session.etat_pilote = EtatPilote.EN_COURS
-        self._diffusion.signaler(session_id)
-        return self._etat(session)
+        with session.verrou:
+            if session.etat_pilote is not EtatPilote.EN_PAUSE:
+                raise PilotageSimulationInvalide("Seule une simulation en pause peut reprendre.")
+            session.etat_pilote = EtatPilote.EN_COURS
+            self._diffusion.signaler(session_id)
+            return self._etat(session)
 
     # --- Reprise en main (humain, en pause) -----------------------------------------------------
 
@@ -436,33 +455,30 @@ class ServicePilotageSimulation:
         hors blason). La volée est posée **validée** (comme le bot).
         """
         session = self._registre.obtenir(session_id)
-        self._exiger_pause(session)
-        if archer_id not in session.archers_ordonnes:
-            raise UniteSimulationInvalide(
-                f"L'archer {archer_id} ne participe pas à cette simulation."
+        with session.verrou:
+            self._exiger_pause(session)
+            if archer_id not in session.archers_ordonnes:
+                raise UniteSimulationInvalide(
+                    f"L'archer {archer_id} ne participe pas à cette simulation."
+                )
+            if not 1 <= numero_volee <= session.bareme.nb_volees:
+                raise UniteSimulationInvalide(
+                    f"La volée {numero_volee} est hors du barème (1 à {session.bareme.nb_volees})."
+                )
+            if self._volee_validee(session, archer_id, numero_volee):
+                raise UniteSimulationInvalide(
+                    f"La volée {numero_volee} de l'archer {archer_id} est déjà validée."
+                )
+            archer = session.harnais.archers.par_id(archer_id)
+            assert archer is not None, "L'archer est dans archers_ordonnes, donc hydraté."
+            # Valide les valeurs par le **domaine** (source unique de « qu'est-ce qu'une volée
+            # valide » ; lève les erreurs de domaine → 422), sans repasser par le workflow de grain.
+            valider_valeurs_volee(
+                valeurs, self._zones_archer(session, archer), session.bareme.nb_fleches_par_volee
             )
-        if not 1 <= numero_volee <= session.bareme.nb_volees:
-            raise UniteSimulationInvalide(
-                f"La volée {numero_volee} est hors du barème (1 à {session.bareme.nb_volees})."
-            )
-        if self._volee_validee(session, archer_id, numero_volee):
-            raise UniteSimulationInvalide(
-                f"La volée {numero_volee} de l'archer {archer_id} est déjà validée."
-            )
-        archer = session.harnais.archers.par_id(archer_id)
-        assert archer is not None, "L'archer est dans archers_ordonnes, donc hydraté."
-        zones = self._zones_archer(session, archer)
-        if len(valeurs) != session.bareme.nb_fleches_par_volee:
-            raise NombreFlechesVoleeInvalide(
-                f"Une volée doit compter {session.bareme.nb_fleches_par_volee} flèche(s), "
-                f"pas {len(valeurs)}."
-            )
-        hors = [v for v in valeurs if v not in zones]
-        if hors:
-            raise ValeurHorsBlason("Une valeur saisie n'est pas une zone admise du blason tiré.")
-        self._poser_volee(session, archer_id, numero_volee, valeurs, _AUTEUR_MANUEL)
-        self._diffusion.signaler(session_id)
-        return self._etat(session)
+            self._poser_volee(session, archer_id, numero_volee, valeurs, _AUTEUR_MANUEL)
+            self._diffusion.signaler(session_id)
+            return self._etat(session)
 
     def designer_vainqueur(
         self,
@@ -478,15 +494,16 @@ class ServicePilotageSimulation:
         Les scores sont fabriqués décisifs pour le camp désigné (comme le bot).
         """
         session = self._registre.obtenir(session_id)
-        self._exiger_pause(session)
-        if phase_id not in session.phases_duels:
-            raise UniteSimulationInvalide(
-                f"La phase {phase_id} n'est pas une phase de duels de cette simulation."
-            )
-        etat_duel = self._duel_jouable(session, phase_id, match_numero)
-        self._jouer_duel(session, phase_id, etat_duel, cote, _AUTEUR_MANUEL)
-        self._diffusion.signaler(session_id)
-        return self._etat(session)
+        with session.verrou:
+            self._exiger_pause(session)
+            if phase_id not in session.phases_duels:
+                raise UniteSimulationInvalide(
+                    f"La phase {phase_id} n'est pas une phase de duels de cette simulation."
+                )
+            etat_duel = self._duel_jouable(session, phase_id, match_numero)
+            self._jouer_duel(session, phase_id, etat_duel, cote, _AUTEUR_MANUEL)
+            self._diffusion.signaler(session_id)
+            return self._etat(session)
 
     # --- Moteur interne : jouer une unité -------------------------------------------------------
 

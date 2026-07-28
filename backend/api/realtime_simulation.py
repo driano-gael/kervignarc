@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, WebSocket
 
-from api.realtime import _pump
+from api.realtime import pump
 from infrastructure.realtime import Broadcaster, LiveEvent
 
 router = APIRouter(tags=["realtime"])
@@ -24,4 +24,4 @@ async def live_simulation(websocket: WebSocket) -> None:
     await websocket.accept()
     with broadcaster.subscribe() as subscription:
         await websocket.send_json(LiveEvent("connected").as_message())
-        await _pump(websocket, subscription)
+        await pump(websocket, subscription)

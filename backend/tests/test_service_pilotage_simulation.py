@@ -221,6 +221,26 @@ def test_meme_graine_meme_deroule() -> None:
     assert totaux[0] == totaux[1]
 
 
+def test_meme_graine_meme_deroule_avec_duels() -> None:
+    """Règle 9, phase **duels** comprise : à graine égale, classement **et** podium identiques.
+
+    Le déroulé des duels tire aussi de l'aléa (`_cote_gagnante_bot`, volée perdante) : ce test
+    épingle la reproductibilité du **run complet** (que le rejeu qualif-seul ne couvrait pas — revue
+    axe B).
+    """
+    empreintes = []
+    for _ in range(2):
+        ctx = _Contexte(nb_archers=4, avec_duels=True, nb_volees=2, nb_fleches=3)
+        service = ctx.service()
+        etat = service.terminer(service.demarrer(ctx.tournoi_id, graine=123).session_id)
+        totaux = [ligne.total for ligne in etat.classement.lignes]
+        # `EtatTableau.podium` : tuples (rang, Duelliste), pas des objets.
+        podium = [(rang, duelliste.archer_id) for rang, duelliste in etat.tableaux[0].podium]
+        empreintes.append((totaux, podium))
+    assert empreintes[0] == empreintes[1]
+    assert len(empreintes[0][1]) >= 3  # un podium a bien été produit (le test a du sens)
+
+
 def test_scores_generes_bornes_et_etales() -> None:
     """CA bot « scores plausibles » : les totaux tiennent dans le barème et **s'étalent**."""
     ctx = _Contexte(nb_archers=6, avec_duels=False, nb_volees=3, nb_fleches=3)
@@ -331,9 +351,15 @@ def _avancer_jusqu_aux_duels(service: ServicePilotageSimulation, session_id: int
     raise AssertionError("La simulation n'a jamais atteint l'étape des duels.")
 
 
-def test_reprise_en_main_duel_designe_le_vainqueur() -> None:
-    """CA cockpit : en pause pendant les duels, l'humain désigne le vainqueur d'un match
-    (scoreur)."""
+@pytest.mark.parametrize("cote", [Cote.HAUT, Cote.BAS])
+def test_reprise_en_main_duel_designe_le_vainqueur(cote: Cote) -> None:
+    """CA cockpit : en pause pendant les duels, l'humain désigne le vainqueur d'un match (scoreur).
+
+    Paramétré sur **les deux camps** (revue axe B) : asserter uniquement `Cote.HAUT` laisserait
+    passer un `_jouer_duel` qui **ignorerait** `gagnant` et gratifierait toujours le camp haut. On
+    vérifie que le camp **désigné** — y compris `BAS`, celui que le biais du bot ne favorise pas —
+    l'emporte bien.
+    """
     ctx = _Contexte(nb_archers=4, avec_duels=True, nb_volees=2, nb_fleches=3)
     service = ctx.service()
     depart = service.demarrer(ctx.tournoi_id, graine=2)
@@ -344,15 +370,13 @@ def test_reprise_en_main_duel_designe_le_vainqueur() -> None:
     assert isinstance(unite, ProchaineDuel)
     assert unite.haut is not None and unite.bas is not None
 
-    apres = service.designer_vainqueur(
-        depart.session_id, unite.phase_id, unite.match_numero, Cote.HAUT
-    )
-    # Le match désigné est tranché en faveur du camp haut (l'humain a joué le scoreur).
+    apres = service.designer_vainqueur(depart.session_id, unite.phase_id, unite.match_numero, cote)
+    # Le match désigné est tranché en faveur du camp **choisi** (l'humain a joué le scoreur).
     tableau = apres.tableaux[0]
     match = next(d for d in tableau.duels if d.numero == unite.match_numero)
     assert match.duel is not None
     assert match.duel.validee_par == "Manuel"
-    assert match.duel.resultat.vainqueur is Cote.HAUT
+    assert match.duel.resultat.vainqueur is cote
 
 
 def test_designer_vainqueur_refuse_hors_pause() -> None:

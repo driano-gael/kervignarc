@@ -71,7 +71,7 @@ class Volee:
         return sum(_points_zone(z) for z in self.valeurs)
 
 
-def _valider_valeurs(
+def valider_valeurs_volee(
     valeurs: tuple[ZoneScore, ...],
     zones_admises: tuple[ZoneScore, ...],
     nb_fleches_par_volee: int,
@@ -79,6 +79,12 @@ def _valider_valeurs(
     """Vérifie qu'une volée compte le bon nombre de flèches, toutes dans les zones du blason tiré.
 
     Lève `NombreFlechesVoleeInvalide` (mauvais compte) ou `ValeurHorsBlason` (valeur hors zones).
+
+    **Publique** à dessein : « qu'est-ce qu'une volée valide » est **une** règle du domaine, et
+    d'autres cas d'usage que la saisie l'appliquent — la simulation (E15US003) valide ainsi une
+    volée saisie à la main **sans** repasser par le workflow de grain (ADR-0055 §3) mais **sans**
+    dupliquer la règle (source unique, cf. revue axe A/C2). Même geste que `blason.valider_zones`,
+    publique pour la même raison.
     """
     if len(valeurs) != nb_fleches_par_volee:
         raise NombreFlechesVoleeInvalide(
@@ -195,7 +201,7 @@ class Serie:
             raise NumeroVoleeInvalide(
                 f"Le numéro d'une volée est un rang entre 1 et {nb_volees_bareme} (barème)."
             )
-        _valider_valeurs(valeurs, zones_admises, nb_fleches_par_volee)
+        valider_valeurs_volee(valeurs, zones_admises, nb_fleches_par_volee)
         existante = self.volee(numero)
         if existante is not None and existante.verrouillee:
             raise VoleeVerrouillee(
@@ -277,6 +283,6 @@ class Serie:
             raise VoleeNonVerrouillee(
                 "Seule une volée validée se corrige ; une volée en cours se modifie par saisie."
             )
-        _valider_valeurs(nouvelles_valeurs, zones_admises, nb_fleches_par_volee)
+        valider_valeurs_volee(nouvelles_valeurs, zones_admises, nb_fleches_par_volee)
         corrigee = replace(existante, valeurs=nouvelles_valeurs, validee_par=par)
         return replace(self, volees=_avec_volee(self.volees, corrigee))
