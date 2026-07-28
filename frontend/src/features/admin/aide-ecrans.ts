@@ -46,6 +46,7 @@ export type DestinationAdminId =
   | 'exports'
   | 'archive'
   | 'jeu-essai'
+  | 'simulation'
 
 export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
   tournoi:
@@ -119,4 +120,9 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'Outil de démonstration et de test : peuplez un tournoi de données factices, ou instanciez un ' +
     'scénario prêt à l’emploi (petit, gros, multi-format). Ce sont des données réelles — à réserver ' +
     'aux tournois de test.',
+  simulation:
+    'Rejouez le tournoi courant en accéléré, sans rien enregistrer : un robot génère des scores et ' +
+    'fait avancer qualifications puis duels. Mettez en pause pour saisir vous-même à la place d’un ' +
+    'rôle (cible, scoreur), puis rendez la main au robot. Idéal pour démontrer le déroulé ou vérifier ' +
+    'que tout s’enchaîne — aucune donnée réelle n’est modifiée.',
 }

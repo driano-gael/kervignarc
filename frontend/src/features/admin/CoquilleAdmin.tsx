@@ -52,6 +52,7 @@ import { Phases } from '../phases/Phases'
 import { Placement } from '../placement/Placement'
 import { Postes } from '../postes/Postes'
 import { Scoreurs } from '../scoreurs/Scoreurs'
+import { Simulation } from '../simulation/Simulation'
 import { Supervision } from '../supervision/Supervision'
 import { RechercheArcher } from '../recherche/RechercheArcher'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
@@ -295,6 +296,16 @@ function Coquille() {
           }}
         />
       ),
+    },
+    {
+      id: 'simulation',
+      libelle: 'Simulation',
+      groupe: 'preparation',
+      // Cockpit de simulation (E15US003) : rejoue le tournoi courant en accéléré **sans rien
+      // enregistrer** (bot pausable + reprise en main + vues cible/archer/scoreur/public). Ne simule
+      // qu'un tournoi avant démarrage (garde-fou serveur) — d'où sa place dans « Préparation ».
+      besoinTournoi: true,
+      rendu: () => courant && <Simulation tournoiId={courant.id} />,
     },
     {
       id: 'supervision',

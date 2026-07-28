@@ -20,6 +20,7 @@ from starlette.concurrency import run_in_threadpool
 from api.erreurs import enregistrer_gestionnaires_erreurs
 from api.health import router as health_router
 from api.realtime import router as realtime_router
+from api.realtime_simulation import router as realtime_simulation_router
 from api.spa import frontend_dist_dir, monter_spa
 from api.v1.archive import router as archive_router
 from api.v1.audit import router as audit_router
@@ -50,6 +51,7 @@ from api.v1.saisie import router as saisie_router
 from api.v1.saisie_duels import router as saisie_duels_router
 from api.v1.scoreurs import router as scoreurs_router
 from api.v1.scoreurs import session_router as scoreur_session_router
+from api.v1.simulation import router as simulation_router
 from api.v1.supervision import heartbeat_router as poste_heartbeat_router
 from api.v1.supervision import router as supervision_router
 from api.v1.tournois import router as tournois_router
@@ -68,12 +70,17 @@ from application.documents_salle import ServiceDocumentsSalle
 from application.feuille_de_marque import ServiceFeuilleDeMarque
 from application.forfaits import ServiceForfait
 from application.gabarits import ServiceGabarits
+from application.generateur_scores import GenerateurScoresPlausibles
 from application.grain_validation import ServiceGrainValidation
 from application.inscriptions import ServiceInscriptions
 from application.jeu_essai import ServiceJeuEssai
 from application.listes_impression import ServiceListesImpression
 from application.paiements import ServicePaiements
 from application.phases import ServicePhases
+from application.pilotage_simulation import (
+    RegistreSessionsSimulation,
+    ServicePilotageSimulation,
+)
 from application.placement import ServicePlacement
 from application.placement_duels import ServicePlacementDuels
 from application.postes import ServicePostes
@@ -146,7 +153,7 @@ from infrastructure.postes import (
     RegistrePresenceMemoire,
     generer_code_poste,
 )
-from infrastructure.realtime import Broadcaster, LiveEvent
+from infrastructure.realtime import Broadcaster, DiffusionSimulationBroadcaster, LiveEvent
 from infrastructure.scoreurs import ScoreurSessionStore, generer_code_scoreur
 
 _logger = logging.getLogger(__name__)
@@ -252,6 +259,12 @@ def create_app(
     # renvoyé par une commande d'écriture réussie (point de passage unique, ADR-0005).
     broadcaster = Broadcaster()
 
+    # Canal de diffusion **isolé** de la simulation (E15US003, ADR-0055 §5) : un second hub,
+    # distinct du temps réel réel, servi par `/ws/simulation`. Aucune écriture simulée ne passe
+    # par la file, donc le canal réel reste muet pendant une simulation, et réciproquement —
+    # l'isolement est structurel (deux hubs), pas un filtrage sur un canal partagé.
+    broadcaster_simulation = Broadcaster()
+
     def _diffuser_apres_ecriture(result: object) -> None:
         # Walking skeleton (E00US011) : diffusion à **gros grain**. Une commande peut
         # renvoyer un LiveEvent typé (diffusé tel quel) ; à défaut, toute écriture réussie
@@ -293,6 +306,7 @@ def create_app(
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         """Cycle de vie : broadcaster + worker + tâche de sauvegarde périodique."""
         broadcaster.bind_loop(asyncio.get_running_loop())
+        broadcaster_simulation.bind_loop(asyncio.get_running_loop())
         write_queue.start()
         # `intervalle <= 0` désactive la sauvegarde (aucune tâche lancée).
         tache_sauvegarde = (
@@ -307,11 +321,13 @@ def create_app(
                     await tache_sauvegarde
             write_queue.stop()
             broadcaster.unbind_loop()
+            broadcaster_simulation.unbind_loop()
 
     app = FastAPI(title="Kervignarc", version="0.1.0", lifespan=lifespan)
     app.state.database = database
     app.state.write_queue = write_queue
     app.state.broadcaster = broadcaster
+    app.state.broadcaster_simulation = broadcaster_simulation
 
     # --- Services applicatifs (E00US009) : repository (adapter) → service, injectés via state. ---
     # Le repository lit via les sessions courtes du Database ; les écritures du service passent
@@ -524,6 +540,28 @@ def create_app(
         serie_repository,
         fabriquer_harnais_simulation,
     )
+    # Pilotage de simulation vivante (E15US003, ADR-0055) : le bot pausable + la reprise en main +
+    # le cockpit se posent **sur** le substrat ci-dessus. Le service tient un **registre de
+    # sessions** en mémoire (éphémère, hors file — règle 7 intacte), reçoit la **même** usine de
+    # harnais que le rejeu one-shot (source unique), un **générateur de scores** injecté (stratégie
+    # substituable sans toucher au domaine, règle 1/2) et le port de **diffusion isolée** (canal
+    # `/ws/simulation`, broadcaster dédié). Aucune route n'écrit en base : tout se joue dans le
+    # harnais jetable.
+    app.state.registre_sessions_simulation = RegistreSessionsSimulation()
+    app.state.service_pilotage_simulation = ServicePilotageSimulation(
+        tournoi_repository,
+        archer_repository,
+        categorie_repository,
+        blason_repository,
+        gabarit_repository,
+        inscription_repository,
+        phase_repository,
+        serie_repository,
+        fabriquer_harnais_simulation,
+        GenerateurScoresPlausibles(),
+        app.state.registre_sessions_simulation,
+        DiffusionSimulationBroadcaster(broadcaster_simulation),
+    )
     # Feuille de marque (E09US001) : premier document du socle PDF (ReportLab, ADR-0031). Le service
     # lit le plan persisté et joint archer → catégorie → blason (ports seuls, pas de
     # service→service), récupère la grille depuis le barème, puis délègue le rendu à l'adapter
@@ -722,6 +760,7 @@ def create_app(
     # --- Adapters entrants (routers API). ---
     app.include_router(health_router)
     app.include_router(realtime_router)
+    app.include_router(realtime_simulation_router)
     app.include_router(auth_router)
     app.include_router(audit_router)
     app.include_router(scoreurs_router)
@@ -734,6 +773,7 @@ def create_app(
     app.include_router(departs_router)
     app.include_router(inscriptions_router)
     app.include_router(jeu_essai_router)
+    app.include_router(simulation_router)
     app.include_router(paiements_router)
     app.include_router(categories_router)
     app.include_router(blasons_router)

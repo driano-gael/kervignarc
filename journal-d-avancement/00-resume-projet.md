@@ -35,8 +35,11 @@ validation du vainqueur qui fait avancer le tableau jusqu'au podium. Le scoreur 
 classement, ses flèches conservées) comme en duels (l'adversaire passe d'office) —, un geste
 **réversible** qui remplace la suppression. Et un **créneau de tir affiche désormais son état**
 (ouvert / lancé / clos, déduit du tir réel) et **se protège** d'une modification ou d'une suppression
-accidentelle une fois qu'une session de tir y a commencé. Reste le **pilotage de la bascule de tour**
-le jour J.
+accidentelle une fois qu'une session de tir y a commencé. Enfin, pour la démo et la mise au point, un
+**cockpit de simulation** rejoue un tournoi **en accéléré et sans rien enregistrer** : un robot génère
+des scores et déroule qualifications puis duels, qu'on peut **mettre en pause pour saisir soi-même** à
+la place d'un rôle (cible, scoreur) avant de rendre la main — le tout observé par une navbar
+cible / archer / scoreur / public. Reste le **pilotage de la bascule de tour** le jour J.
 
 ---
 
@@ -291,10 +294,18 @@ la recherche restera vide — tant que leur moteur (EPIC-05) n'est pas construit
   une **graine** permet de **rejouer exactement le même jeu**. Sert la **démo** et la **QA**. Détail
   dans [`2026-07-28-13h36-jeu-d-essai-generer-des-inscrits.md`](2026-07-28-13h36-jeu-d-essai-generer-des-inscrits.md).
 - **Rejouer le moteur sans rien enregistrer** — le **moteur de simulation** (E15US002) existe
-  désormais **sous le capot** : il rejoue un tournoi (classement → tableaux) **avant démarrage** sur
-  des copies **en mémoire**, sans jamais toucher la vraie base — un garde-fou refuse d'ailleurs de
-  simuler un tournoi déjà lancé. C'est une brique **technique, sans écran** : l'**écran qui la pilote**
-  (le bot automatique et le cockpit multi-vues) viendra avec **E15US003**.
+  **sous le capot** : il rejoue un tournoi (classement → tableaux) **avant démarrage** sur des copies
+  **en mémoire**, sans jamais toucher la vraie base — un garde-fou refuse d'ailleurs de simuler un
+  tournoi déjà lancé. C'est une brique **technique, sans écran**.
+- **Le cockpit de simulation** (dernier fait marquant, 28/07) : l'**écran** qui pilote ce moteur, dans
+  la coquille admin (« Simulation »). Un **robot** génère des scores plausibles (déterministes par
+  graine) et fait avancer le tournoi tout seul — **pilote automatique pausable** — jusqu'au classement
+  et au podium. **En pause**, l'organisateur peut **saisir à la place d'un rôle** (une volée comme la
+  cible, un vainqueur comme le scoreur) sur l'action que le robot allait jouer, puis **rendre la main**.
+  Une **navbar** bascule entre les vues **cible / archer / scoreur / public** du tournoi simulé, diffusé
+  sur un **canal séparé** du temps réel réel. **Rien n'est enregistré** : idéal pour **démontrer** le
+  déroulé ou **vérifier** que tout s'enchaîne. **EPIC-15 est ainsi terminée.** Détail dans
+  [`2026-07-28-19h48-cockpit-de-simulation.md`](2026-07-28-19h48-cockpit-de-simulation.md).
 
 ---
 
@@ -327,15 +338,16 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **79 US livrées** sur `main` (mergées, revues, CI verte) à la date du 28/07/2026. **`SUIVI-US.md`
+- **80 US livrées** sur `main` (mergées, revues, CI verte) à la date du 28/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
   réseau LAN + QR E11US008, retour visuel de génération + position A..D E03US011, blason FFTA par
   défaut E01US022), le **lot démo a bouclé EPIC-14** (lisibilité admin : accueil-tableau de bord
-  E14US001 + aide contextuelle par écran E14US002) et **avance EPIC-15** (jeu d'essai & simulation) :
-  le **générateur d'inscrits + scénarios rejouables** (E15US001) puis le **moteur de simulation
-  éphémère** (E15US002, technique, sans écran).
+  E14US001 + aide contextuelle par écran E14US002) **et EPIC-15** (jeu d'essai & simulation) : le
+  **générateur d'inscrits + scénarios rejouables** (E15US001), le **moteur de simulation éphémère**
+  (E15US002, technique, sans écran) puis le **cockpit de simulation** (E15US003, bot pausable + reprise
+  en main + canal isolé).
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
@@ -347,13 +359,14 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
   (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**), l'**abandon /
   disqualification** (E04US015 — qualif *et* duels) puis le **cycle de vie d'un départ** (E12US008).
-- Dernière US livrée : **E15US002** (moteur de simulation éphémère + garde-fou de non-persistance) —
-  US **sans surface visible directe** (couche moteur/infra), **2ᵉ d'EPIC-15**. Rejoue le moteur
-  (classement → tableaux) d'un tournoi **avant démarrage** sur un jeu d'adapters **in-memory** câblant
-  les **mêmes** services et politiques que la production : « ne rien persister » est **structurel**
-  (aucun chemin vers SQLite ni la file d'écriture). Garde-fou (brouillon/prêt seulement) + preuve de
-  non-pollution sur vraie base + tests de conformité de port (anti-dérive). ADR-0054. Substrat du
-  cockpit à venir. *(Livrée juste avant : **E15US001**, le générateur d'inscrits + scénarios.)*
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E15US003** (bot pilote automatique +
-  cockpit interactif multi-vues, dernière d'EPIC-15, à surface visible). La séquence J2 reprend ensuite
-  à la **bascule de tour** (E12US002). Le fil **équipes** est débloqué (E13US002+).
+- Dernière US livrée : **E15US003** (bot pilote automatique pausable + cockpit interactif multi-vues +
+  canal de diffusion isolé) — US **à surface visible**, **3ᵉ et dernière d'EPIC-15** (close). Un robot
+  génère des scores plausibles (déterministes par graine) et fait avancer le tournoi simulé par **pas
+  discrets** pilotés côté front (déterminisme, pas de boucle serveur) ; **session vivante** en mémoire,
+  **hors file d'écriture** (règle 7 intacte, rien n'est persisté). Pausable, avec **reprise en main**
+  (l'humain joue la même unité que le bot), sur un **canal WebSocket isolé** (broadcaster dédié).
+  ADR-0055. *(Livré juste avant : **E15US002**, le moteur de simulation éphémère, substrat de ce
+  cockpit ; et **E15US001**, le générateur d'inscrits + scénarios.)*
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — la séquence **J2 reprend à la bascule de
+  tour** (**E12US002** : lancer un tour, feu vert + lancement), la clé du jalon des duels. Le fil
+  **équipes** est débloqué (E13US002+).
