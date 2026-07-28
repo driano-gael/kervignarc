@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 28/07/2026** · **78 US livrées** · dernière : `E15US001` *(jeu d'essai : générer des inscrits + scénarios rejouables)*.
+**Dernière mise à jour : 28/07/2026** · **79 US livrées** · dernière : `E15US002` *(moteur de simulation éphémère + garde-fou de non-persistance)*.
 
 ---
 
@@ -24,12 +24,13 @@
 > bas. Ordre des bugs : ~~E02US010~~ ✅ (horaire `HH:MM`), ~~E01US017~~ ✅ (7 statuts),
 > ~~E11US008~~ ✅ (LAN + QR), ~~E03US011~~ ✅ (placement), ~~E01US022~~ ✅ (blason FFTA).
 > **Les bugs du lot démo sont clos**, **EPIC-14 est livrée** (accueil-tableau de bord + aide
-> contextuelle) et **EPIC-15 est amorcée** (`E15US001` jeu d'essai livré) ; reste `E15US002`/`E15US003`.
-> La séquence J2 ci-dessous reprend ensuite à `E12US002`.
+> contextuelle) et **EPIC-15 est bien avancée** (`E15US001` jeu d'essai + `E15US002` moteur de
+> simulation éphémère livrés) ; reste `E15US003`. La séquence J2 ci-dessous reprend ensuite à `E12US002`.
 >
-> **`E15US002` — moteur de simulation éphémère + garde-fou (non-persistance)** : la **prochaine à
-> prendre** (2ᵉ US d'EPIC-15, **cœur technique** — démarre par un **spike** de périmètre des ports ;
-> `E15US001` générateur d'inscrits + scénarios **vient d'être livrée**). *(Ajout démo, `E15` 🆕.)*
+> **`E15US003` — bot pilote automatique pausable + cockpit interactif multi-vues** : la **prochaine à
+> prendre** (3ᵉ et **dernière** d'EPIC-15, US à **surface visible** — bot qui génère des scores
+> plausibles + navbar cible/archer/scoreur/public, saisie manuelle en pause, diffusion isolée ; posée
+> sur le **substrat** livré par `E15US002`). *(Ajout démo, `E15` 🆕.)*
 > *Puis la séquence J2 reprend à* **`E12US002`** — lancer un tour (feu vert + lancement), la **clé du
 > J2** : voir ce qui manque avant de lancer, puis faire partir le tour (les 4 canaux prévenus
 > ensemble). *Ensuite* : remboursement `E08US005`, prochaine cible `E04US018`.
@@ -40,6 +41,21 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E15US002` **moteur de simulation éphémère + garde-fou (non-persistance)** — US **sans surface
+>   visible directe** (couche moteur/infra), **2ᵉ d'EPIC-15**, **cœur technique**. Rejoue le moteur
+>   (qualif → duels → classement) d'un tournoi **avant démarrage** sur un jeu d'**adapters in-memory**
+>   (`infrastructure/memory/`) câblant les **mêmes** services (`ServiceClassement`,
+>   `ServicePlacementDuels`, `ServiceSaisieDuels`) et politiques que la production : « ne rien
+>   persister » est **structurel** (aucun chemin de ces adapters vers SQLite ni la file d'écriture —
+>   règle 7). **Option A** confirmée par le spike (aucun service moteur ne touche la base/la file).
+>   **`ServiceSimulation`** (application) ne connaît **aucun** adapter : la composition root lui injecte
+>   une **usine de harnais** (règle 8) ; il **hydrate** les repos in-memory par les ports (identifiants
+>   préservés) puis fait tourner ses services. **Garde-fou** `SimulationTournoiDemarre` (409) —
+>   simulable `brouillon`/`prêt` seulement (arbitrage « terminé/archivé ? » tranché **non**, cohérent
+>   avec `PeuplementTournoiDemarre` d'E15US001). **Non-pollution vérifiée** sur **vraie base** (compteurs
+>   de lignes inchangés). **Anti-dérive** par **tests de conformité de port** (mêmes assertions
+>   SQL ↔ in-memory). **Pas d'API ni d'UI** (substrat pour le cockpit E15US003). Tests service **depuis
+>   le CA** ; oracle 120 vert. Décisions : [ADR-0054](../docs/adr/0054-execution-ephemere-du-moteur-sur-adapters-in-memory.md).
 > - `E15US001` **jeu d'essai : générer des inscrits + scénarios rejouables** — US à **surface visible**,
 >   **1ʳᵉ d'EPIC-15**. Un écran admin **« Jeu d'essai »** (groupe Préparation) : bouton **« peupler N
 >   archers »** sur le tournoi courant (données réalistes, N borné [1, 500]) **et** un **catalogue de
@@ -345,8 +361,8 @@
 | E14US001 | Accueil-tableau de bord contextualisé (`D-20`) | E14 🆕 | ✅ |
 | E14US002 | Aide contextuelle « ce qui est saisissable & pourquoi » | E14 🆕 | ✅ |
 | E15US001 | Jeu d'essai : générer des inscrits + scénarios rejouables | E15 🆕 | ✅ |
-| E15US002 | Moteur de simulation éphémère + garde-fou (non-persistance) | E15 🆕 | 🎯 |
-| E15US003 | Bot pilote auto pausable + cockpit interactif multi-vues | E15 🆕 | ⬜ |
+| E15US002 | Moteur de simulation éphémère + garde-fou (non-persistance) | E15 🆕 | ✅ *(rejeu in-memory, ADR-0054)* |
+| E15US003 | Bot pilote auto pausable + cockpit interactif multi-vues | E15 🆕 | 🎯 |
 
 ## US caduque
 
