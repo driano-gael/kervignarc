@@ -11,7 +11,7 @@ import datetime
 import pytest
 
 from domain.erreurs import NomTournoiInvalide
-from domain.tournoi import StatutTournoi, Tournoi, TypeTournoi
+from domain.tournoi import StatutTournoi, Tournoi, TypeTournoi, transitions_possibles
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -153,3 +153,40 @@ def test_annuler_passe_annule() -> None:
     """`annuler` renvoie une copie au statut terminal `annulé` (conserve la trace)."""
     tournoi = Tournoi.creer("Trophée", _DATE)
     assert tournoi.annuler().statut is StatutTournoi.ANNULE
+
+
+# --- Topologie du cycle de vie (E14US001, ADR-0026 §2) : transitions offertes par statut ---
+# Source unique de lecture pour l'accueil admin (frise à boutons, E14US001). Dérivé du **CA**
+# (ADR-0026 §2, le graphe d'états), PAS du code du service : `transitions_possibles(statut)` doit
+# rendre exactement les arêtes du graphe pour que la frise propose les bonnes actions. La *garde*
+# de chaque arête reste dans le service (ADR-0026 §4) et est recoupée par le test de cohérence de
+# `test_service_tournois.py` (topologie ↔ légalité effective).
+
+
+def _noms_transitions(statut: StatutTournoi) -> set[str]:
+    """Noms d'action offerts depuis `statut` (alignés sur les suffixes d'endpoint)."""
+    return {transition.nom for transition in transitions_possibles(statut)}
+
+
+def test_transitions_offertes_par_statut() -> None:
+    """Chaque statut offre exactement les arêtes d'ADR-0026 §2 (par nom d'action)."""
+    assert _noms_transitions(StatutTournoi.BROUILLON) == {"vers-pret", "annuler"}
+    assert _noms_transitions(StatutTournoi.PRET) == {"demarrer", "revenir-brouillon", "annuler"}
+    assert _noms_transitions(StatutTournoi.EN_COURS) == {"mettre-en-pause", "terminer", "annuler"}
+    assert _noms_transitions(StatutTournoi.EN_PAUSE) == {"reprendre", "annuler"}
+    assert _noms_transitions(StatutTournoi.TERMINE) == {"archiver"}
+
+
+def test_statuts_terminaux_n_offrent_aucune_transition() -> None:
+    """`archivé` et `annulé` sont terminaux : aucune transition sortante (ADR-0026 §2)."""
+    assert transitions_possibles(StatutTournoi.ARCHIVE) == ()
+    assert transitions_possibles(StatutTournoi.ANNULE) == ()
+
+
+def test_chaque_transition_porte_libelle_et_cible() -> None:
+    """Une transition offerte porte un libellé non vide et le statut cible attendu (feu vert)."""
+    par_nom = {t.nom: t for t in transitions_possibles(StatutTournoi.PRET)}
+    assert par_nom["demarrer"].vers is StatutTournoi.EN_COURS
+    assert par_nom["revenir-brouillon"].vers is StatutTournoi.BROUILLON
+    assert par_nom["annuler"].vers is StatutTournoi.ANNULE
+    assert all(t.libelle.strip() for t in transitions_possibles(StatutTournoi.EN_COURS))

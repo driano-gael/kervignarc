@@ -23,7 +23,13 @@ from application.erreurs import (
 from application.tournois import ServiceTournois
 from domain.depart import Depart
 from domain.erreurs import NomTournoiInvalide
-from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
+from domain.tournoi import (
+    StatutTournoi,
+    Tournoi,
+    TournoiId,
+    TypeTournoi,
+    transitions_possibles,
+)
 from tests.conftest import FauxDepartRepository
 
 _DATE = datetime.date(2026, 3, 14)
@@ -296,6 +302,69 @@ def test_annuler_refuse_depuis_termine_ou_archive(depuis: StatutTournoi) -> None
     _amener(service, tid, depuis)
     with pytest.raises(TransitionStatutInvalide):
         service.annuler(tid)
+
+
+# --- Transitions offertes (E14US001) : cohérence topologie ↔ gardes ---
+# `transitions_possibles` (topologie du domaine, lue par l'accueil admin) et les gardes `depuis`
+# éparpillées dans le service sont **deux encodages** du même graphe : ce test les recoupe pour
+# qu'ils ne divergent pas (règle 1, anti-duplication). C'est un test **après** implémentation — la
+# règle métier vit dans le domaine (testée depuis le CA dans `test_domain_tournoi`), ici on vérifie
+# le **câblage** service ↔ domaine.
+
+# Univers des noms de transition, **dérivé de la topologie** (pas codé en dur) : toute arête ajoutée
+# à `_TRANSITIONS` est ainsi automatiquement recoupée contre les gardes du service — sinon un nom
+# oublié dans un set manuel échapperait au filet anti-divergence (revue E14US001, axe adversarial).
+_TOUS_LES_NOMS = {
+    transition.nom for statut in StatutTournoi for transition in transitions_possibles(statut)
+}
+
+
+def _amener_complet(service: ServiceTournois, tid: int, statut: StatutTournoi) -> None:
+    """Comme `_amener`, mais couvre aussi `annulé` (annuler depuis brouillon)."""
+    if statut is StatutTournoi.ANNULE:
+        service.annuler(tid)
+        return
+    _amener(service, tid, statut)
+
+
+def _appliquer(service: ServiceTournois, tid: int, nom: str) -> None:
+    """Applique la transition d'identifiant `nom` (suffixe d'endpoint) sur le service."""
+    getattr(service, nom.replace("-", "_"))(tid)
+
+
+@pytest.mark.parametrize("statut", list(StatutTournoi))
+def test_transitions_possibles_coherentes_avec_les_gardes(statut: StatutTournoi) -> None:
+    """Pour chaque statut, les transitions offertes sont exactement celles acceptées par le service.
+
+    Toute arête **offerte** par `transitions_possibles` est acceptée (aucune
+    `TransitionStatutInvalide`) ; toute arête **non offerte** est refusée (→ 409). Un départ est
+    semé (`_id_cree`), donc `vers-pret` n'est pas bloquée par la garde de complétude `≥ 1 départ`.
+    """
+    service, departs = _service()
+    tid = _id_cree(service, departs)
+    _amener_complet(service, tid, statut)
+    offertes = {transition.nom for transition in service.transitions_possibles(tid)}
+
+    for nom in _TOUS_LES_NOMS:
+        # Appliquer une transition mute l'état : on repart d'un tournoi neuf au même statut.
+        autre, autres_departs = _service()
+        autre_tid = _id_cree(autre, autres_departs)
+        _amener_complet(autre, autre_tid, statut)
+        if nom in offertes:
+            try:
+                _appliquer(autre, autre_tid, nom)
+            except TransitionStatutInvalide:  # pragma: no cover - filet anti-régression
+                pytest.fail(f"{nom} offerte depuis {statut} mais refusée par le service.")
+        else:
+            with pytest.raises(TransitionStatutInvalide):
+                _appliquer(autre, autre_tid, nom)
+
+
+def test_transitions_possibles_leve_si_introuvable() -> None:
+    """`transitions_possibles` relit le tournoi : identifiant inconnu → `TournoiIntrouvable`."""
+    service, _ = _service()
+    with pytest.raises(TournoiIntrouvable):
+        service.transitions_possibles(404)
 
 
 def test_modifier_refuse_si_archive() -> None:

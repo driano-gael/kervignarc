@@ -6,8 +6,13 @@ import { fetchJson } from '../../shared/api/client'
 
 export type TypeTournoi = 'officiel' | 'non_officiel'
 
-// Cycle de vie d'un tournoi (E01US002) : brouillon → en cours → terminé.
-export type StatutTournoi = 'brouillon' | 'en_cours' | 'termine'
+// Cycle de vie d'un tournoi à **sept statuts** (E01US017, ADR-0026 ; front aligné en E14US001) :
+// brouillon ⇄ prêt → en_cours ⇄ en_pause → terminé → archivé ; annulé est terminal (depuis
+// brouillon/prêt/en_cours/en_pause). Le front ne connaissait que les 3 statuts d'E01US002 : dès
+// qu'un tournoi atteignait `pret`/`en_pause`/… le badge et le pilotage étaient muets — d'où cet
+// alignement. La topologie des transitions offertes est lue via la feature « accueil ».
+export type StatutTournoi =
+  'brouillon' | 'pret' | 'en_cours' | 'en_pause' | 'termine' | 'archive' | 'annule'
 
 export interface Tournoi {
   id: number
@@ -101,10 +106,10 @@ export function modifierTournoi(id: number, entree: ModifierTournoi): Promise<To
   })
 }
 
-export function demarrerTournoi(id: number): Promise<Tournoi> {
-  return fetchJson<Tournoi>(`/api/v1/tournois/${id}/demarrer`, { method: 'POST' })
-}
-
+// Le pilotage du cycle de vie passe désormais par la feature « accueil » (transitions génériques,
+// E14US001) : `demarrer` en particulier n'est plus une transition depuis `brouillon` mais depuis
+// `prêt` (ADR-0026). `terminer` reste ici car la **complétude** (E12US005) le déclenche avec son
+// message chiffré d'avertissement — une voie d'écriture distincte de la frise.
 export function terminerTournoi(id: number): Promise<Tournoi> {
   return fetchJson<Tournoi>(`/api/v1/tournois/${id}/terminer`, { method: 'POST' })
 }

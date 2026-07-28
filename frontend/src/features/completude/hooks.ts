@@ -8,6 +8,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { terminerTournoi } from '../competition/api'
+import { CLE_TOURNOIS } from '../competition/hooks'
 import { getCompletude } from './api'
 
 const INTERVALLE_POLL_MS = 5000
@@ -30,7 +31,7 @@ export function useTerminerDepuisCompletude(tournoiId: number) {
     onSuccess: () => {
       // La liste des tournois (statut → badge, accueil contextualisé) **et** la complétude (le
       // bouton disparaît, l'écran reflète l'état figé) se resynchronisent.
-      queryClient.invalidateQueries({ queryKey: ['tournois'] })
+      queryClient.invalidateQueries({ queryKey: CLE_TOURNOIS })
       queryClient.invalidateQueries({ queryKey: cleCompletude(tournoiId) })
     },
   })

@@ -12,19 +12,16 @@
 // (archers, placement en dépendent aussi), qu'on ne déplace pas au titre de cette US.
 
 import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useDeconnexionAdmin } from '../admin/hooks'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
-import { getCompletude } from '../completude/api'
-import { messageConfirmationTerminer } from '../completude/presentation'
-import type { StatutTournoi, Tournoi, TypeTournoi } from '../competition/api'
+import { FriseCycleDeVie } from '../accueil/FriseCycleDeVie'
+import { BadgeStatut } from '../competition/BadgeStatut'
+import type { Tournoi, TypeTournoi } from '../competition/api'
 import {
   useCreerTournoi,
-  useDemarrerTournoi,
   useModifierTournoi,
   useSupprimerTournoi,
-  useTerminerTournoi,
   useTournois,
 } from '../competition/hooks'
 
@@ -71,7 +68,7 @@ export function GestionTournois({
           <h3 className="carte__soustitre">
             {courant.nom} <BadgeStatut statut={courant.statut} />
           </h3>
-          <CycleDeVie tournoi={courant} />
+          <FriseCycleDeVie tournoi={courant} />
         </div>
       )}
 
@@ -123,7 +120,10 @@ function LigneTournoi({
     )
   }
 
-  const enCours = tournoi.statut === 'en_cours'
+  // Le serveur refuse la suppression d'un tournoi `en_cours` **ou** `en_pause`
+  // (`TournoiEnCoursNonSupprimable`, 409) : la pré-vérification front couvre les deux (alignement
+  // 7 statuts, E14US001) pour afficher le garde-fou **avant** le clic plutôt qu'une erreur après coup.
+  const nonSupprimable = tournoi.statut === 'en_cours' || tournoi.statut === 'en_pause'
 
   return (
     <li className={selectionne ? 'tournoi tournoi--selectionne' : 'tournoi'}>
@@ -156,11 +156,13 @@ function LigneTournoi({
                   Annuler
                 </button>
               </>
-            ) : enCours ? (
-              // Un tournoi en cours n'est pas supprimable (garanti aussi côté serveur, 409). On
-              // l'explique par un **texte visible** plutôt qu'un `title` sur un bouton désactivé
-              // (inatteignable au clavier / lecteur d'écran — le CDC vise WCAG AA).
-              <span className="tournoi__note">Terminez le tournoi pour pouvoir le supprimer.</span>
+            ) : nonSupprimable ? (
+              // Un tournoi en cours ou en pause n'est pas supprimable (garanti aussi côté serveur,
+              // 409). On l'explique par un **texte visible** plutôt qu'un `title` sur un bouton
+              // désactivé (inatteignable au clavier / lecteur d'écran — le CDC vise WCAG AA).
+              <span className="tournoi__note">
+                Terminez ou annulez le tournoi pour pouvoir le supprimer.
+              </span>
             ) : (
               <button
                 type="button"
@@ -178,16 +180,10 @@ function LigneTournoi({
   )
 }
 
-// Pastille de statut (cycle de vie du tournoi). Exportée : la coquille (E00US015) l'affiche dans son
-// sélecteur de tournoi, au-dessus de la navigation.
-export function BadgeStatut({ statut }: { statut: StatutTournoi }) {
-  const libelles: Record<StatutTournoi, string> = {
-    brouillon: 'Brouillon',
-    en_cours: 'En cours',
-    termine: 'Terminé',
-  }
-  return <span className={`badge badge--${statut.replace('_', '-')}`}>{libelles[statut]}</span>
-}
+// `BadgeStatut` (pastille de cycle de vie) vit désormais dans `competition/BadgeStatut`, co-localisé
+// avec le type `StatutTournoi` qu'il rend : `accueil` a besoin du badge **et** `tournois` a besoin de
+// la frise de `accueil` — garder le badge ici créait un cycle d'import `accueil ↔ tournois`
+// (revue E14US001). Il est simplement importé en tête.
 
 function FormulaireNouveauTournoi({ onChoisi }: { onChoisi: (t: Tournoi) => void }) {
   const [nom, setNom] = useState('')
@@ -344,55 +340,7 @@ function FormulaireEditionTournoi({
   )
 }
 
-// Cycle de vie (E01US002) : démarrer (brouillon → en cours), terminer (en cours → terminé). Chaque
-// bouton n'apparaît qu'au statut où il a un sens ; le serveur reste l'autorité (409).
-function CycleDeVie({ tournoi }: { tournoi: Tournoi }) {
-  const demarrer = useDemarrerTournoi()
-  const terminer = useTerminerTournoi()
-  const queryClient = useQueryClient()
-
-  // Contrôle en amont du passage à *terminé* (E12US005), **même depuis la préparation** : terminer
-  // est la seule action irréversible (E01US002), elle ne se fait jamais en aveugle — pas de porte
-  // dérobée non gardée. On lit la complétude **à la demande** (au clic, sans poll) et on chiffre ce
-  // qui reste (`P-4`) via la même fonction pure que l'écran Complétude (une seule logique d'alerte).
-  //
-  // La complétude est un **confort, pas une garde bloquante** (`D-15`/`P-3` : rien n'est jamais
-  // refusé). Si sa lecture échoue (endpoint injoignable, hoquet réseau du jour J), on ne laisse
-  // **pas** le bouton muet : on retombe sur une confirmation dégradée qui **laisse passer** — sinon
-  // on bloquerait silencieusement la seule action irréversible sur un incident transitoire.
-  const demanderTerminer = async () => {
-    let message: string
-    try {
-      const completude = await queryClient.fetchQuery({
-        queryKey: ['completude', tournoi.id],
-        queryFn: () => getCompletude(tournoi.id),
-      })
-      message = messageConfirmationTerminer(completude)
-    } catch {
-      message =
-        'Impossible de vérifier ce qui reste (complétude injoignable). Terminer quand même ?'
-    }
-    if (window.confirm(message)) terminer.mutate(tournoi.id)
-  }
-
-  return (
-    <div className="cycle-de-vie">
-      {tournoi.statut === 'brouillon' && (
-        <button
-          type="button"
-          disabled={demarrer.isPending}
-          onClick={() => demarrer.mutate(tournoi.id)}
-        >
-          Démarrer le tournoi
-        </button>
-      )}
-      {tournoi.statut === 'en_cours' && (
-        <button type="button" disabled={terminer.isPending} onClick={demanderTerminer}>
-          Terminer le tournoi
-        </button>
-      )}
-      {tournoi.statut === 'termine' && <p className="carte__etat">Ce tournoi est terminé.</p>}
-      <MessageErreur erreur={demarrer.error ?? terminer.error} />
-    </div>
-  )
-}
+// Le pilotage du cycle de vie (démarrer, terminer, mettre en pause, archiver, annuler…) vit
+// désormais dans `FriseCycleDeVie` (feature « accueil », E14US001) : une frise 7 statuts qui lit les
+// transitions offertes du serveur. L'ancien `CycleDeVie` local ne couvrait que 3 statuts et bloquait
+// dès `prêt`/`en_pause` (aucun bouton) — supprimé au profit de la source unique.

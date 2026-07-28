@@ -19,7 +19,8 @@ import type { Tournoi } from '../competition/api'
 import { VueClassement } from '../competition/VueClassement'
 import { PlanCiblesPublic } from '../placement/PlanCiblesPublic'
 import { VueSuivi } from '../suivi/VueSuivi'
-import { BadgeStatut, GestionTournois } from '../tournois/Tournois'
+import { BadgeStatut } from '../competition/BadgeStatut'
+import { GestionTournois } from '../tournois/Tournois'
 
 // Les vues publiques d'un tournoi. Fermé (pas d'ouverture prévue ici) : les tableaux de duels
 // (E07US005) et l'écran de salle (E07US004) sont d'autres US, pas des onglets à réserver.

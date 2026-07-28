@@ -10,7 +10,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ajouterArcher,
   creerTournoi,
-  demarrerTournoi,
   getClassement,
   getTournois,
   type ModifierTournoi,
@@ -18,7 +17,6 @@ import {
   type NouvelArcher,
   placerArcher,
   supprimerTournoi,
-  terminerTournoi,
 } from './api'
 
 // Exportée : la feature `archers` (E02US003) invalide le classement après une édition ou une
@@ -30,7 +28,10 @@ export const cleClassement = (tournoiId: number, categorieId?: number) =>
   categorieId === undefined
     ? (['classement', tournoiId] as const)
     : (['classement', tournoiId, categorieId] as const)
-const CLE_TOURNOIS = ['tournois'] as const
+// Exportée : la feature « accueil » (E14US001) invalide la liste des tournois après une transition
+// de cycle de vie (le statut change → badge, frise, accueil contextualisé). La clé se déclare **une
+// fois**, ici où vit la requête, pour ne pas diverger d'un littéral `['tournois']` recopié ailleurs.
+export const CLE_TOURNOIS = ['tournois'] as const
 
 // `categorieId` optionnel : filtre le classement à une catégorie (les rangs restent globaux).
 export function useClassement(tournoiId: number, categorieId?: number) {
@@ -63,21 +64,9 @@ export function useModifierTournoi() {
   })
 }
 
-export function useDemarrerTournoi() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: number) => demarrerTournoi(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: CLE_TOURNOIS }),
-  })
-}
-
-export function useTerminerTournoi() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: number) => terminerTournoi(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: CLE_TOURNOIS }),
-  })
-}
+// Le démarrer/terminer isolés (E01US002) ont laissé place au **pilotage générique** du cycle de vie
+// par la frise de l'accueil (E14US001, `useTransitionnerTournoi`), qui couvre les 7 statuts d'un
+// seul geste. `terminer` garde sa voie dédiée côté complétude (message chiffré d'avertissement).
 
 export function useSupprimerTournoi() {
   const queryClient = useQueryClient()
