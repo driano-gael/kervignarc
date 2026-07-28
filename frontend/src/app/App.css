@@ -1282,6 +1282,18 @@ button:disabled {
   color: var(--text);
 }
 
+/* Position (A..D) d'un archer posé, côté admin (E03US011). Même parti pris visuel que
+   `.plan-public__position` (accent, largeur fixe) : la lettre s'aligne à gauche de la case, avant le
+   jeton, cohérente avec la vue publique. */
+.case__position {
+  flex: 0 0 auto;
+  width: 1.4em;
+  padding-left: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
 /* Jeton d'archer déplaçable. `grab`/`grabbing` signalent l'affordance de drag à la souris (PC). */
 .jeton {
   flex: 1;
