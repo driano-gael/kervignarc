@@ -53,16 +53,22 @@ c'est mon travail de dire ce que ça coûte.*
 
 *Ces questions viennent de points que la maquette n'a pas pu trancher seule.*
 
-**1. Qui appuie sur le bouton : toi seul, ou n'importe quel organisateur présent ?**
+**1. E12US002 a livré le feu vert le 28/07 : l'écran actuel te convient-il, ou une des variantes ci-contre est-elle meilleure ?**
 >
 
-**2. Le lancement duel par duel (ne pas bloquer 4 archers à cause d'un 5e en retard) te paraît-il utile ou dangereux ?**
+**2. La confirmation passe par un window.confirm que le code signale comme provisoire — que veux-tu à la place ?**
 >
 
-**3. Qui déclare un forfait — toi depuis l'admin, ou le scoreur depuis la cible ?**
+**3. Qui appuie sur le bouton : toi seul, ou n'importe quel organisateur présent ?**
 >
 
-**4. Quelles informations veux-tu voir obligatoirement avant d'appuyer ?**
+**4. Le lancement duel par duel (ne pas bloquer 4 archers à cause d'un 5e en retard) te paraît-il utile ou dangereux ?**
+>
+
+**5. Qui déclare un forfait — toi depuis l'admin, ou le scoreur depuis la cible ?**
+>
+
+**6. Quelles informations veux-tu voir obligatoirement avant d'appuyer ?**
 >
 
 ---

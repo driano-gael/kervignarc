@@ -52,7 +52,11 @@ qu'aucune page n'invente sa propre couleur.
 1. **La police n'est pas la bonne.** La charte impose **Inter** (`DV-07`), qui n'est pas embarquée ici. Si tu
    ne l'as pas installée, tu vois une police système : les *proportions* sont justes, le *dessin* des lettres
    ne l'est pas.
-2. **« Écran existant » ne veut pas dire « conforme ».** La mention signale qu'un composant du même rôle vit
+2. **Ces maquettes vieillissent pendant qu'on les relit.** Exemple vécu : la planche **A15** (bascule de tour)
+   a été dessinée comme un écran « à concevoir » ; **E12US002** a livré le feu vert le 28/07/2026, pendant la
+   rédaction de ce dossier. La planche a été corrigée le jour même, mais le cas se reproduira — à chaque
+   ouverture d'un questionnaire, vérifier `git log main --first-parent` si l'écran a l'air d'avoir bougé.
+3. **« Écran existant » ne veut pas dire « conforme ».** La mention signale qu'un composant du même rôle vit
    dans `frontend/src/features/` — elle ne dit rien de la ressemblance entre l'écran livré et la maquette.
    Confronter les deux reste à faire.
 

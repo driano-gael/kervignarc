@@ -24,8 +24,23 @@
   <p class="chapo">C'est le moment où le produit gagne ou perd. <strong>La journée a un maître de cérémonie, et
   ce n'est pas le logiciel</strong> : l'appli prépare, contrôle, affiche — et <em>attend</em>. L'organisateur
   appuie quand l'arbitre est prêt (<span class="ref">D-22</span>).</p>
-  <p style="margin-top:14px"><span class="etat-pill neuf">à concevoir</span></p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant depuis le 28/07/2026</span></p>
 </header>
+
+<div class="note">
+  <p><strong>Cette planche a été rattrapée par le code.</strong> Elle a été dessinée alors que rien n'existait ;
+  le 28/07/2026, <strong>E12US002</strong> (<span class="ref">ADR-0056</span>) a livré un écran
+  <em>« Feu vert — lancer le tour »</em> dans <code>frontend/src/features/feu-vert/</code>.</p>
+  <p>Ce qui est <strong>déjà livré</strong> et converge avec la maquette : le feu vert affiché en continu, les
+  blocages nommés (« en attente du duel n° 2 », « cible non attribuée »), le bouton qui <strong>chiffre</strong>
+  son impact, le <strong>lancement des seuls duels prêts</strong> (<span class="ref">D-24</span>), et le refus
+  d'empêcher (<span class="ref">P-3</span>).</p>
+  <p>Ce qui <strong>diverge et reste à trancher</strong> : la confirmation passe aujourd'hui par un
+  <code>window.confirm</code> — le code lui-même la signale comme provisoire, « en attendant une friction plus
+  riche ». Le choix d'emplacement (A / B / C ci-dessous) n'a pas non plus été arbitré : l'écran vit
+  actuellement dans la coquille admin. <strong>Les variantes restent donc utiles</strong>, mais elles se lisent
+  désormais comme une <em>cible à confronter à l'existant</em>, pas comme une page blanche.</p>
+</div>
 
 <h2 class="section">Deux exigences fermes</h2>
 <ul class="exigences">
