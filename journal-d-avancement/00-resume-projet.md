@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 27 juillet 2026
+# Résumé du projet — où on en est au 28 juillet 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -68,7 +68,13 @@ Tout ce qu'il faut pour préparer un tournoi avant le jour J :
 - **Les catégories** (CRUD, pré-chargement des catégories officielles FFTA salle, éligibilité sur
   plusieurs tranches d'âge).
 - **Les blasons** (la cible en papier) : taille, capacité, et les valeurs de score admises.
-- L'**association catégorie ↔ blason**.
+- L'**association catégorie ↔ blason**, désormais **pré-remplie par la FFTA** : pré-charger les
+  catégories crée aussi les **quatre blasons** prévus à 18 m (80, 60, 40 cm et triple 40) et relie
+  **chaque catégorie au sien** (les U11 sur 80 cm, les adultes sur 40, les poulies sur triples…).
+  Plus besoin de se demander « par défaut, ça vaut quoi ? » ni de tout saisir à la main — et le
+  blason **hérité** s'affiche à côté de chaque archer et sous la catégorie qu'on choisit à
+  l'inscription. Tout reste modifiable. Détail dans
+  [`2026-07-28-09h54-blason-par-defaut-des-categories.md`](2026-07-28-09h54-blason-par-defaut-des-categories.md).
 - Les **gabarits de salle** (le plan des cibles, réutilisable et ajustable).
 - Le **barème de qualification** et le **grain de validation** d'une phase.
 - Le **tarif par départ** (le montant d'inscription).
@@ -290,12 +296,13 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **74 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/07/2026. **`SUIVI-US.md`
+- **75 US livrées** sur `main` (mergées, revues, CI verte) à la date du 28/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Les
-  quatre dernières livrées sont des **retours de la démo du 27/07** : le **cycle de vie à 7 statuts**
+  **cinq dernières** livrées sont des **retours de la démo du 27/07** : le **cycle de vie à 7 statuts**
   (E01US017), l'**horaire `HH:MM` obligatoire** (E02US010), l'**accès réseau LAN + QR de cible à
-  l'écran** (E11US008) et le **retour visuel de génération + position A..D au placement** (E03US011).
+  l'écran** (E11US008), le **retour visuel de génération + position A..D au placement** (E03US011) et
+  le **blason FFTA par défaut par catégorie** (E01US022).
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
@@ -307,13 +314,13 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
   (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**), l'**abandon /
   disqualification** (E04US015 — qualif *et* duels) puis le **cycle de vie d'un départ** (E12US008).
-- Dernière US livrée : **E03US011** (placement : retour visuel de génération + position A..D côté
-  admin) — US à **surface visible**, correctif **front** (retour de la démo du 27/07). Le bouton
-  **« Générer le plan »** montre qu'il travaille (« Génération… ») puis **confirme le résultat**
-  (« Plan prêt » si tous placés, sinon le compte de placés / en réserve, ou « aucun archer à placer »
-  si le départ est vide) — fini le bouton qui *paraissait muet*. Et chaque archer posé affiche sa
-  **position** (A, B, C, D…) sur sa cible **côté organisateur**, comme sur l'écran public. *(Livrée
-  juste avant : **E11US008**, l'accès réseau LAN + QR de cible à l'écran.)*
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — la fin du **lot démo** (**E01US022** blason
-  FFTA par défaut par catégorie), puis la séquence J2 reprend à la **bascule de tour** (E12US002). Le
-  fil **équipes** est débloqué (E13US002+).
+- Dernière US livrée : **E01US022** (blason FFTA par défaut par catégorie + affichage hérité) — US à
+  **surface visible** (retour de la démo du 27/07). Pré-charger les catégories FFTA crée aussi les
+  **quatre blasons** de la salle (80, 60, 40 cm, triple 40) et **relie chaque catégorie au sien**
+  selon la règle fédérale (§3) ; le blason **hérité** s'affiche à côté de chaque archer et sous la
+  catégorie choisie à l'inscription. Tout reste modifiable (template FFTA). *(Livrée juste avant :
+  **E03US011**, le retour visuel de génération + position A..D au placement.)*
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — le **lot démo** bascule sur ses épics :
+  **EPIC-14** (accueil-tableau de bord admin, `E14US001`) puis **EPIC-15** (jeu d'essai & simulation).
+  La séquence J2 reprend ensuite à la **bascule de tour** (E12US002). Le fil **équipes** est débloqué
+  (E13US002+).

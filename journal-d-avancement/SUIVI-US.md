@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 27/07/2026** · **74 US livrées** · dernière : `E03US011` *(placement : retour visuel de génération + position A..D côté admin)*.
+**Dernière mise à jour : 28/07/2026** · **75 US livrées** · dernière : `E01US022` *(blason FFTA par défaut par catégorie + affichage hérité)*.
 
 ---
 
@@ -22,11 +22,12 @@
 > traiter le **lot démo** (bugs & petits ajouts), puis les épics **EPIC-14** (accueil admin) et
 > **EPIC-15** (jeu d'essai & simulation) — détail en section « Ajouts de la démo du 27/07/2026 » plus
 > bas. Ordre des bugs : ~~E02US010~~ ✅ (horaire `HH:MM`), ~~E01US017~~ ✅ (7 statuts),
-> ~~E11US008~~ ✅ (LAN + QR), ~~E03US011~~ ✅ (placement), puis **E01US022** (blason FFTA).
+> ~~E11US008~~ ✅ (LAN + QR), ~~E03US011~~ ✅ (placement), ~~E01US022~~ ✅ (blason FFTA).
+> **Les bugs du lot démo sont clos** ; on passe aux épics **EPIC-14** puis **EPIC-15**.
 > La séquence J2 ci-dessous reprend ensuite à `E12US002`.
 >
-> **`E01US022` — blason FFTA par défaut par catégorie + affichage hérité** : la **prochaine à
-> prendre** (dernier bug du lot démo). *(Bug/ajout démo, `E01` 🆕.)*
+> **`E14US001` — accueil-tableau de bord contextualisé (`D-20`)** : la **prochaine à prendre**
+> (premier écran d'EPIC-14, lisibilité admin). *(Ajout démo, `E14` 🆕.)*
 > *Puis la séquence J2 reprend à* **`E12US002`** — lancer un tour (feu vert + lancement), la **clé du
 > J2** : voir ce qui manque avant de lancer, puis faire partir le tour (les 4 canaux prévenus
 > ensemble). *Ensuite* : remboursement `E08US005`, prochaine cible `E04US018`.
@@ -37,6 +38,19 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E01US022` **blason FFTA par défaut par catégorie + affichage hérité** — US à **surface visible**
+>   (dernier bug du lot démo). Le pré-chargement FFTA (`precharger_ffta`) crée désormais aussi les
+>   **quatre blasons** canoniques du §3 — « Blason 80 cm » / « 60 cm » / « 40 cm » / « Triple 40 cm »
+>   — et **relie chaque catégorie au sien** (Classique U11 → 80, U13/U15 → 60, adultes → 40 ;
+>   Poulies → triple 40 ; Arc Nu « U18 » → 60, « Scratch » → 40). **Arbitrage de périmètre tranché**
+>   (option « preset blasons + défauts + affichage ») : `blason_id` étant une FK vers un blason
+>   **existant du tournoi** et E01US005 n'ayant livré **aucun jeu** de blasons, l'US **absorbe** leur
+>   pré-chargement (idempotent par nom, réutilise un blason personnalisé de même nom). `taille` =
+>   fraction de place (canoniques du placement : 80 → `1.0`, 60 → `0.5`, 40/triple → `0.25`) ; le
+>   triple 40 se distingue par ses **zones** (10 → 6 + M, pas de 5 → 1, §4.4). Blasons/liens
+>   **modifiables** (template, RG-8). Affichage **lecture** sur `Archers.tsx` (liste) et
+>   `NouvelArcher.tsx` (indice sous la catégorie) — **pas** de blason par archer (hors périmètre).
+>   Story alignée (Notes). Recette : [`docs/fonctionnel/E01US022.md`](../docs/fonctionnel/E01US022.md).
 > - `E03US011` **placement : retour visuel de génération + position A..D côté admin** — US à
 >   **surface visible**, correctif **front** (présentation, domaine inchangé). Le bouton
 >   **« Générer le plan »** affiche « Génération… » pendant l'appel puis **confirme le résultat**
@@ -269,7 +283,7 @@
 | E01US020 | Modèle de tarification injectable & sujet de facturation (archer/club) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; sujet `club` sur `club_id`/ADR-0014, **pas** via E13)* |
 | E01US021 | Tarification dégressive (option config, %/montant) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; dépend d'E01US020)* |
 
-## Ajouts de la démo du 27/07/2026 — ⚡ **priorité immédiate (4/10)**
+## Ajouts de la démo du 27/07/2026 — ⚡ **priorité immédiate (5/10)**
 
 > Retours de la présentation au client final **et** du développeur (27/07/2026). Cadrage par le
 > dialogue (esprit agile). Deux US **déjà spécifiées** remontent en priorité (♻️, pas de doublon) ;
@@ -283,8 +297,8 @@
 | E01US017 | Cycle de vie enrichi (7 statuts) — **prérequis** du dashboard | E01 ♻️ | ✅ |
 | E11US008 | Accès LAN (poste organisateur) + QR de rattachement à l'écran | E11 🆕 | ✅ |
 | E03US011 | Placement : retour visuel de génération + position A..D côté admin | E03 🆕 | ✅ |
-| E01US022 | Blason FFTA par défaut par catégorie + affichage hérité | E01 🆕 | 🎯 |
-| E14US001 | Accueil-tableau de bord contextualisé (`D-20`) | E14 🆕 | ⬜ |
+| E01US022 | Blason FFTA par défaut par catégorie + affichage hérité | E01 🆕 | ✅ |
+| E14US001 | Accueil-tableau de bord contextualisé (`D-20`) | E14 🆕 | 🎯 |
 | E14US002 | Aide contextuelle « ce qui est saisissable & pourquoi » | E14 🆕 | ⬜ |
 | E15US001 | Jeu d'essai : générer des inscrits + scénarios rejouables | E15 🆕 | ⬜ |
 | E15US002 | Moteur de simulation éphémère + garde-fou (non-persistance) | E15 🆕 | ⬜ |
