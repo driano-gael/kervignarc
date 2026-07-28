@@ -9,10 +9,12 @@ import { AideEcran } from './AideEcran'
 describe('AideEcran', () => {
   const TEXTE = 'Créez les créneaux de tir et leur tarif.'
 
-  it("ne rend rien quand aucun texte n'est fourni", () => {
-    // Repli défensif (comme MessageErreur) : une destination sans aide ne doit pas laisser de bouton
-    // fantôme. `texte` optionnel couvre `undefined` (accès `AIDE_ECRANS[id]` sous noUncheckedIndexedAccess).
-    const { container } = render(<AideEcran texte={undefined} />)
+  // Repli défensif (comme MessageErreur) : une destination sans aide ne doit pas laisser de bouton
+  // fantôme. Le garde `if (!texte)` couvre les **trois** valeurs falsy admises par la signature
+  // (`string | null | undefined`) ; `undefined` est le chemin de prod réaliste (accès `AIDE_ECRANS[id]`
+  // sous noUncheckedIndexedAccess), on cloue les trois pour verrouiller tout le contrat.
+  it.each([undefined, null, ''])('ne rend rien quand le texte est %p', (texte) => {
+    const { container } = render(<AideEcran texte={texte} />)
     expect(container).toBeEmptyDOMElement()
   })
 

@@ -64,6 +64,13 @@ comme les 27 tests déjà en place. Fichiers de test `*.test.tsx` co-localisés 
   suite un peu plus lente (jsdom). Le test de rendu **ne remplace pas** l'œil humain sur le rendu
   réel (jsdom ne peint pas : pas de vraie mise en page ni de vrai tactile) — il couvre la **logique
   d'interaction**, pas l'ergonomie.
+- **Rayon d'impact du jsdom global** (relevé en revue) : les 27 tests de logique pure s'exécutent
+  désormais **dans jsdom** et non plus dans Node. Conséquence concrète : les stores Zustand `persist`
+  y écrivent réellement dans un `localStorage` (inexistant sous Node), et `appliquerTheme` n'est plus
+  court-circuité par sa garde SSR `typeof document`. Aucun test n'en change de **sens** (vérifié :
+  aucun n'assertait sur l'absence de `window`/`localStorage`), mais pour fermer le **piège dormant**
+  (une persistance qui fuirait d'un test au suivant), `src/test-setup.ts` **vide le `localStorage`
+  après chaque test** — ce qui rétablit la sémantique d'isolation qu'offrait l'environnement Node.
 - **Portée volontairement non rétroactive** : on n'ajoute pas de tests de rendu aux US déjà livrées
   (pas de rattrapage). L'outillage sert **à partir de maintenant** ; chaque US front jugera au cas par
   cas ce qui mérite un test de rendu (règle 12 — pas de test décoratif).
