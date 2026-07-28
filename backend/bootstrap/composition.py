@@ -38,6 +38,7 @@ from api.v1.forfaits import router as forfaits_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
 from api.v1.inscriptions import router as inscriptions_router
+from api.v1.jeu_essai import router as jeu_essai_router
 from api.v1.listes_impression import router as listes_impression_router
 from api.v1.paiements import router as paiements_router
 from api.v1.phases import router as phases_router
@@ -69,6 +70,7 @@ from application.forfaits import ServiceForfait
 from application.gabarits import ServiceGabarits
 from application.grain_validation import ServiceGrainValidation
 from application.inscriptions import ServiceInscriptions
+from application.jeu_essai import ServiceJeuEssai
 from application.listes_impression import ServiceListesImpression
 from application.paiements import ServicePaiements
 from application.phases import ServicePhases
@@ -584,6 +586,21 @@ def create_app(
         app.state.service_completude,
     )
 
+    # Jeu d'essai — générateur d'inscrits + scénarios rejouables (E15US001) : outil admin de démo/QA
+    # qui écrit de la **donnée réelle** (à distinguer de la simulation éphémère E15US002). Il ne
+    # touche aucun repository directement : il **compose** les services existants (tournois,
+    # catégories, départs, archers, inscriptions, clubs) — même patron que `ServicePlacementDuels`
+    # au-dessus de `ServiceClassement`. Câblé **ici**, après `service_departs` (le dernier de ses
+    # dépendances à être construit). Génération déterministe par graine injectée (règle 9).
+    app.state.service_jeu_essai = ServiceJeuEssai(
+        app.state.service_tournois,
+        app.state.service_categories,
+        app.state.service_departs,
+        app.state.service_archers,
+        app.state.service_inscriptions,
+        app.state.service_clubs,
+    )
+
     # --- Forfaits — abandon / disqualification (E04US015, ADR-0050) : le scoreur déclare/annule un
     # forfait en qualification (relégation/exclusion au classement) ou en duels (adversaire passe).
     # Réversible tant que le tournoi n'est pas terminé (`D-15`) ; chaque acte trace `FORFAIT` via
@@ -618,6 +635,7 @@ def create_app(
     app.include_router(tournois_router)
     app.include_router(departs_router)
     app.include_router(inscriptions_router)
+    app.include_router(jeu_essai_router)
     app.include_router(paiements_router)
     app.include_router(categories_router)
     app.include_router(blasons_router)

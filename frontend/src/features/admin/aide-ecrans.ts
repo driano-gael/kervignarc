@@ -45,6 +45,7 @@ export type DestinationAdminId =
   | 'classement'
   | 'exports'
   | 'archive'
+  | 'jeu-essai'
 
 export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
   tournoi:
@@ -114,4 +115,8 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
   archive:
     'Constituez le paquet de fin de tournoi (sauvegarde de la base, fichiers CSV et PDF) à conserver. ' +
     'Choisissez ce que vous voulez inclure avant de générer l’archive.',
+  'jeu-essai':
+    'Outil de démonstration et de test : peuplez un tournoi de données factices, ou instanciez un ' +
+    'scénario prêt à l’emploi (petit, gros, multi-format). Ce sont des données réelles — à réserver ' +
+    'aux tournois de test.',
 }
