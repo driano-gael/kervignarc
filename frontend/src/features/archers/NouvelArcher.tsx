@@ -15,6 +15,7 @@
 //    confirmation. C'est le serveur qui arbitre — un simple avertissement d'UI se contournerait.
 
 import { useState } from 'react'
+import { useBlasons } from '../blasons/hooks'
 import { useCategories } from '../categories/hooks'
 import { useClubs } from '../clubs/hooks'
 import { ErreurApi } from '../../shared/api/client'
@@ -28,7 +29,16 @@ export function NouvelArcher({ tournoiId }: { tournoiId: number }) {
   const [categorieId, setCategorieId] = useState('')
   const clubs = useClubs()
   const categories = useCategories(tournoiId)
+  const blasons = useBlasons(tournoiId)
   const ajouter = useAjouterArcher(tournoiId)
+
+  // Blason **hérité de la catégorie** choisie (E01US022), en lecture : dès qu'une catégorie est
+  // sélectionnée, l'admin voit sur quel blason l'archer tirera par défaut — sans champ par archer.
+  const categorieChoisie = categories.data?.find((c) => c.id === Number(categorieId))
+  const blasonHerite =
+    categorieChoisie?.blason_id != null
+      ? blasons.data?.find((b) => b.id === categorieChoisie.blason_id)
+      : undefined
 
   const incomplet = nomArcher.trim() === '' || prenomArcher.trim() === '' || categorieId === ''
   const homonymeSignale =
@@ -121,6 +131,10 @@ export function NouvelArcher({ tournoiId }: { tournoiId: number }) {
           Inscrire
         </button>
       </form>
+      {/* Indice hérité, hors du `<form>` (ligne flex des champs) : ton neutre, lecture seule. */}
+      {blasonHerite !== undefined && (
+        <p className="carte__etat">Blason hérité de la catégorie : {blasonHerite.nom}</p>
+      )}
       {/* `isSuccess` et non `data ?? []` : tant que la requête court, `data` est `undefined` et le
           message s'afficherait à tort sur un tournoi qui a bel et bien des catégories. */}
       {categories.isSuccess && categories.data.length === 0 && (

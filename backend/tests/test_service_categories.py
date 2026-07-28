@@ -148,6 +148,85 @@ def test_precharger_ffta_ignore_les_doublons() -> None:
     assert len(service.lister(tournoi_id)) == 32
 
 
+def test_precharger_ffta_cree_les_blasons_du_paragraphe_3() -> None:
+    """CA E01US022 : le pré-chargement crée les quatre blasons FFTA du §3 dans le tournoi."""
+    service, tournoi_id, blasons = _service_avec_tournoi()
+    service.precharger_ffta(tournoi_id)
+    noms = {b.nom for b in blasons.par_tournoi(tournoi_id)}
+    assert noms == {"Blason 80 cm", "Blason 60 cm", "Blason 40 cm", "Triple 40 cm"}
+
+
+def test_precharger_ffta_rattache_chaque_categorie_a_son_blason_defaut() -> None:
+    """CA E01US022 : chaque catégorie pointe vers le blason par défaut du §3 (via `blason_id`)."""
+    service, tournoi_id, blasons = _service_avec_tournoi()
+    creees = service.precharger_ffta(tournoi_id)
+    nom_du_blason = {b.id: b.nom for b in blasons.par_tournoi(tournoi_id)}
+    blason_de = {c.libelle: nom_du_blason[c.blason_id] for c in creees}
+    # Échantillon couvrant les trois divisions et les trois tailles (§3).
+    assert blason_de["Arc Classique U11 Homme"] == "Blason 80 cm"
+    assert blason_de["Arc Classique U13 Femme"] == "Blason 60 cm"
+    assert blason_de["Arc Classique S1 Homme"] == "Blason 40 cm"
+    assert blason_de["Arc à Poulies U15 Femme"] == "Triple 40 cm"
+    assert blason_de["Arc Nu U18 Homme"] == "Blason 60 cm"
+    assert blason_de["Arc Nu Scratch Femme"] == "Blason 40 cm"
+    # Toutes les catégories sont rattachées (aucun `blason_id` nul).
+    assert all(c.blason_id is not None for c in creees)
+
+
+def test_precharger_ffta_ne_duplique_pas_les_blasons() -> None:
+    """Rejouable : un second pré-chargement ne recrée aucun blason (idempotence par nom)."""
+    service, tournoi_id, blasons = _service_avec_tournoi()
+    service.precharger_ffta(tournoi_id)
+    service.precharger_ffta(tournoi_id)
+    assert len(blasons.par_tournoi(tournoi_id)) == 4
+
+
+def test_precharger_ffta_ne_reattache_pas_une_categorie_existante_sans_blason() -> None:
+    """Idempotence : une catégorie FFTA déjà présente **sans** blason n'est PAS rétro-rattachée.
+
+    Cas de mise à niveau : un tournoi pré-chargé avant E01US022 a ses catégories à `blason_id`
+    None (aucun blason FFTA n'existait alors). Rejouer le pré-chargement crée bien les blasons
+    mais **ne touche pas** aux catégories existantes — le `continue` par libellé prime. On fige ce
+    choix : un `blason_id` None est **ambigu** (jamais posé *ou* détaché volontairement via
+    E01US006), donc on ne le « guérit » pas d'office au risque d'écraser un détachement délibéré.
+    Le remède reste explicite (réaffecter à la main, ou recréer la catégorie).
+    """
+    service, tournoi_id, blasons = _service_avec_tournoi()
+    # Simule l'état « ancien pré-chargement » : la catégorie FFTA existe, sans blason.
+    prealable = service.creer(tournoi_id, "Arc Classique U11 Homme")
+    assert prealable.id is not None and prealable.blason_id is None
+    service.precharger_ffta(tournoi_id)
+    # Les blasons FFTA sont bien créés…
+    assert {b.nom for b in blasons.par_tournoi(tournoi_id)} == {
+        "Blason 80 cm",
+        "Blason 60 cm",
+        "Blason 40 cm",
+        "Triple 40 cm",
+    }
+    # …mais la catégorie préexistante garde son `blason_id` None (non rétro-rattachée).
+    rechargee = service._categories.par_id(prealable.id)
+    assert rechargee is not None and rechargee.blason_id is None
+
+
+def test_precharger_ffta_reutilise_un_blason_personnalise_de_meme_nom() -> None:
+    """Idempotence : un blason FFTA déjà présent (nom identique) est **réutilisé**, pas réécrit.
+
+    L'admin a pu ajuster un blason FFTA après un premier pré-chargement (le référentiel est un
+    template modifiable, RG-8). Un second pré-chargement ne doit ni le doublonner ni écraser ses
+    ajustements — les catégories créées se rattachent au blason existant.
+    """
+    service, tournoi_id, blasons = _service_avec_tournoi()
+    perso = blasons.ajouter(Blason.creer(tournoi_id, "Blason 40 cm", 0.5, 2))
+    creees = service.precharger_ffta(tournoi_id)
+    # Le blason personnalisé n'est ni recréé ni modifié.
+    quarante = [b for b in blasons.par_tournoi(tournoi_id) if b.nom == "Blason 40 cm"]
+    assert len(quarante) == 1
+    assert quarante[0].id == perso.id and quarante[0].taille == 0.5 and quarante[0].capacite == 2
+    # Et une catégorie « 40 cm » du §3 pointe bien vers lui.
+    senior = next(c for c in creees if c.libelle == "Arc Classique S1 Homme")
+    assert senior.blason_id == perso.id
+
+
 def test_precharger_ffta_leve_si_tournoi_introuvable() -> None:
     """Pré-charger dans un tournoi inconnu lève `TournoiIntrouvable` (rien créé)."""
     service = ServiceCategories(

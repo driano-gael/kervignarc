@@ -14,7 +14,9 @@ import {
   supprimerBlason,
 } from './api'
 
-const cleBlasons = (tournoiId: number) => ['blasons', tournoiId] as const
+// Exportée : le pré-chargement FFTA (feature « catégories ») crée aussi des blasons (E01US022) et
+// doit invalider cette liste. La clé reste ainsi définie à un seul endroit.
+export const cleBlasons = (tournoiId: number) => ['blasons', tournoiId] as const
 
 export function useBlasons(tournoiId: number) {
   return useQuery({

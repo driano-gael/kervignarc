@@ -10,12 +10,21 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from application.referentiel_ffta import ModeleCategorieFFTA, categories_salle_18m
+from application.referentiel_ffta import (
+    ModeleCategorieFFTA,
+    blasons_salle_18m,
+    categories_salle_18m,
+)
+from domain.blason import ZoneScore
 from domain.categorie import SexeCategorie, TrancheAge
 
 
 def _libelles() -> list[str]:
     return [modele.libelle for modele in categories_salle_18m()]
+
+
+def _blason_par_libelle() -> dict[str, str]:
+    return {modele.libelle: modele.blason_nom for modele in categories_salle_18m()}
 
 
 def test_effectif_total_et_par_division() -> None:
@@ -122,3 +131,69 @@ def test_exemples_de_libelles_attendus() -> None:
     assert "Arc à Poulies S3 Femme" in libelles
     assert "Arc Nu U18 Femme" in libelles
     assert "Arc Nu Scratch Homme" in libelles
+
+
+# --- Blason par défaut du §3 (E01US022) -------------------------------------------------------
+
+
+def test_blasons_salle_18m_est_le_jeu_du_paragraphe_3() -> None:
+    """CA E01US022 : quatre blasons FFTA à 18 m — 80, 60, 40 (§3) et triple 40 (poulies)."""
+    blasons = blasons_salle_18m()
+    par_nom = {b.nom: b for b in blasons}
+    assert set(par_nom) == {"Blason 80 cm", "Blason 60 cm", "Blason 40 cm", "Triple 40 cm"}
+    # Tailles = fractions de place canoniques du placement (1/2/4 par butte, §5) ; un archer par
+    # carton en qualification.
+    assert (par_nom["Blason 80 cm"].taille, par_nom["Blason 80 cm"].capacite) == (1.0, 1)
+    assert (par_nom["Blason 60 cm"].taille, par_nom["Blason 60 cm"].capacite) == (0.5, 1)
+    assert (par_nom["Blason 40 cm"].taille, par_nom["Blason 40 cm"].capacite) == (0.25, 1)
+    assert (par_nom["Triple 40 cm"].taille, par_nom["Triple 40 cm"].capacite) == (0.25, 1)
+
+
+def test_triple_40_exclut_les_zones_5_a_1() -> None:
+    """CA E01US022 (§4.4) : le triple 40 exclut 5 → 1 ; les simples gardent le jeu complet."""
+    par_nom = {b.nom: b for b in blasons_salle_18m()}
+    triple = par_nom["Triple 40 cm"]
+    assert triple.zones == (
+        ZoneScore.DIX,
+        ZoneScore.NEUF,
+        ZoneScore.HUIT,
+        ZoneScore.SEPT,
+        ZoneScore.SIX,
+        ZoneScore.MANQUE,
+    )
+    # Les blasons simples n'imposent pas de zones : le domaine appliquera son jeu complet.
+    assert par_nom["Blason 80 cm"].zones is None
+    assert par_nom["Blason 60 cm"].zones is None
+    assert par_nom["Blason 40 cm"].zones is None
+
+
+def test_blason_par_defaut_classique_selon_la_tranche() -> None:
+    """CA E01US022 (§3) : Classique U11 → 80 cm, U13/U15 → 60 cm, U18 et au-delà → 40 cm."""
+    blason = _blason_par_libelle()
+    assert blason["Arc Classique U11 Homme"] == "Blason 80 cm"
+    assert blason["Arc Classique U13 Femme"] == "Blason 60 cm"
+    assert blason["Arc Classique U15 Homme"] == "Blason 60 cm"
+    for age in ("U18", "U21", "S1", "S2", "S3"):
+        assert blason[f"Arc Classique {age} Homme"] == "Blason 40 cm", age
+
+
+def test_blason_par_defaut_poulies_toujours_triple_40() -> None:
+    """CA E01US022 (§3) : toutes les catégories Arc à Poulies tirent sur triples 40."""
+    poulies = {m.blason_nom for m in categories_salle_18m() if m.arme == "Arc à Poulies"}
+    assert poulies == {"Triple 40 cm"}
+
+
+def test_blason_par_defaut_arc_nu_selon_le_regroupement() -> None:
+    """CA E01US022 (§3) : Arc Nu « U18 » (=U15+U18) → 60 cm, « Scratch » (=U21..S3) → 40 cm."""
+    blason = _blason_par_libelle()
+    assert blason["Arc Nu U18 Homme"] == "Blason 60 cm"
+    assert blason["Arc Nu U18 Femme"] == "Blason 60 cm"
+    assert blason["Arc Nu Scratch Homme"] == "Blason 40 cm"
+    assert blason["Arc Nu Scratch Femme"] == "Blason 40 cm"
+
+
+def test_chaque_categorie_reference_un_blason_du_jeu() -> None:
+    """Tout `blason_nom` de catégorie pointe vers un blason du jeu pré-chargé (pas d'orphelin)."""
+    noms_blasons = {b.nom for b in blasons_salle_18m()}
+    for modele in categories_salle_18m():
+        assert modele.blason_nom in noms_blasons, modele.libelle

@@ -310,6 +310,39 @@ def test_precharger_ffta_puis_lister(
         assert len(liste) == 32
 
 
+def test_precharger_ffta_cree_les_blasons_et_rattache_les_categories(
+    app_categories: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E01US022 : le pré-chargement crée les blasons FFTA et rattache chaque catégorie à son défaut.
+
+    Bout en bout (vrais repos + persistance) : après le POST, `GET blasons` renvoie les quatre
+    blasons du §3, et chaque `blason_id` de catégorie pointe vers l'un d'eux (aucun orphelin ni
+    `null`). On recoupe un cas par division/taille contre le §3.
+    """
+    with TestClient(app_categories) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        creees = client.post(f"/api/v1/tournois/{tournoi_id}/categories/precharger-ffta").json()
+        blasons = client.get(f"/api/v1/tournois/{tournoi_id}/blasons").json()
+        nom_du_blason = {b["id"]: b["nom"] for b in blasons}
+        assert set(nom_du_blason.values()) == {
+            "Blason 80 cm",
+            "Blason 60 cm",
+            "Blason 40 cm",
+            "Triple 40 cm",
+        }
+        # Le triple 40 exclut 5 → 1 (§4.4) ; il est le seul dont les zones sont restreintes.
+        triple = next(b for b in blasons if b["nom"] == "Triple 40 cm")
+        assert "5" not in triple["zones"] and "6" in triple["zones"] and "M" in triple["zones"]
+        # Chaque catégorie est rattachée à un blason réel du tournoi.
+        assert all(c["blason_id"] in nom_du_blason for c in creees)
+        blason_de = {c["libelle"]: nom_du_blason[c["blason_id"]] for c in creees}
+        assert blason_de["Arc Classique U11 Homme"] == "Blason 80 cm"
+        assert blason_de["Arc Classique U15 Femme"] == "Blason 60 cm"
+        assert blason_de["Arc à Poulies S3 Homme"] == "Triple 40 cm"
+        assert blason_de["Arc Nu Scratch Femme"] == "Blason 40 cm"
+
+
 def test_precharger_ffta_idempotent(
     app_categories: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
