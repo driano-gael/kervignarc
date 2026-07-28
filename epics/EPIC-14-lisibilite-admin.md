@@ -28,7 +28,7 @@ ne veux pas de formation ».
 
 ## Capacités
 - [x] Accueil-tableau de bord contextualisé par statut (E14US001) — livré le 28/07/2026 ([ADR-0052](../docs/adr/0052-accueil-admin-contextualise-par-statut.md)).
-- [ ] Aide contextuelle par écran (E14US002).
+- [x] Aide contextuelle par écran (E14US002) — livré le 28/07/2026 (présentation pure, composant unique + dictionnaire centralisé).
 
 ## Critères d'acceptation (epic)
 - Depuis l'accueil d'un tournoi, un organisateur **non formé** voit **où il en est** et **quoi faire

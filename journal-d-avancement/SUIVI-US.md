@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 28/07/2026** · **76 US livrées** · dernière : `E14US001` *(accueil-tableau de bord contextualisé par tournoi)*.
+**Dernière mise à jour : 28/07/2026** · **77 US livrées** · dernière : `E14US002` *(aide contextuelle « ce qui est saisissable et pourquoi »)*.
 
 ---
 
@@ -23,12 +23,12 @@
 > **EPIC-15** (jeu d'essai & simulation) — détail en section « Ajouts de la démo du 27/07/2026 » plus
 > bas. Ordre des bugs : ~~E02US010~~ ✅ (horaire `HH:MM`), ~~E01US017~~ ✅ (7 statuts),
 > ~~E11US008~~ ✅ (LAN + QR), ~~E03US011~~ ✅ (placement), ~~E01US022~~ ✅ (blason FFTA).
-> **Les bugs du lot démo sont clos** ; on passe aux épics **EPIC-14** puis **EPIC-15**.
-> La séquence J2 ci-dessous reprend ensuite à `E12US002`.
+> **Les bugs du lot démo sont clos** et **EPIC-14 est livrée** (accueil-tableau de bord + aide
+> contextuelle) ; on passe à **EPIC-15**. La séquence J2 ci-dessous reprend ensuite à `E12US002`.
 >
-> **`E14US002` — aide contextuelle « ce qui est saisissable et pourquoi »** : la **prochaine à
-> prendre** (2ᵉ écran d'EPIC-14 ; `E14US001` accueil-tableau de bord **vient d'être livrée**).
-> *(Ajout démo, `E14` 🆕.)* *Puis* **EPIC-15** (jeu d'essai & simulation, `E15US001`+).
+> **`E15US001` — jeu d'essai : générer des inscrits + scénarios rejouables** : la **prochaine à
+> prendre** (1ʳᵉ US d'EPIC-15 ; `E14US001` accueil-tableau de bord **et** `E14US002` aide contextuelle
+> **viennent d'être livrées**, EPIC-14 close). *(Ajout démo, `E15` 🆕.)*
 > *Puis la séquence J2 reprend à* **`E12US002`** — lancer un tour (feu vert + lancement), la **clé du
 > J2** : voir ce qui manque avant de lancer, puis faire partir le tour (les 4 canaux prévenus
 > ensemble). *Ensuite* : remboursement `E08US005`, prochaine cible `E04US018`.
@@ -39,6 +39,20 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E14US002` **aide contextuelle « ce qui est saisissable et pourquoi »** — US à **surface visible**,
+>   **2ᵉ et dernière d'EPIC-14** (close). Sur **chaque** écran d'administration, un bouton **« ⓘ Aide »**
+>   replié par défaut se **déplie au tap** pour expliquer, en langage organisateur, ce qui s'y saisit et
+>   à quoi ça sert en aval. **Présentation pure** — **aucun** changement domaine/API (note story
+>   respectée). **Arbitrages tranchés au cadrage** (CA stub → maquette) : **(1)** couvrir **toutes les
+>   ~22 destinations** (pas seulement les écrans de saisie), texte **centralisé** ; **(2)** forme **bouton
+>   « ⓘ » déployé au tap**, masqué par défaut — dicté par la contrainte **tactile** (les `title=` au
+>   survol ne s'affichent pas au doigt). D'où : un composant unique `AideEcran` (`shared/ui/`, patron
+>   comme `MessageErreur`), un dictionnaire `id → texte` (`features/admin/aide-ecrans.ts`, **1 point de
+>   vérité**), rendu **une seule fois** en tête de `.coquille__contenu` (la coquille connaît la
+>   destination active → zéro édition des 22 features). Textes = **1ᵉʳ jet à relire** avec l'organisateur
+>   (signalé dans le fichier). Story alignée (Notes). ⚠️ Front sans test de rendu (pas de
+>   `@testing-library` — le fournir serait une dépendance, règle 11) : **à vérifier à l'écran**. Recette :
+>   [`docs/fonctionnel/E14US002.md`](../docs/fonctionnel/E14US002.md).
 > - `E14US001` **accueil-tableau de bord contextualisé par tournoi (`D-20`)** — US à **surface
 >   visible**, **première d'EPIC-14** (lisibilité admin). Choisir un tournoi ouvre son **Accueil** :
 >   (1) **frise des 7 statuts** (ADR-0026), courant surligné, avec les **boutons d'action** offerts
@@ -297,7 +311,7 @@
 | E01US020 | Modèle de tarification injectable & sujet de facturation (archer/club) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; sujet `club` sur `club_id`/ADR-0014, **pas** via E13)* |
 | E01US021 | Tarification dégressive (option config, %/montant) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; dépend d'E01US020)* |
 
-## Ajouts de la démo du 27/07/2026 — ⚡ **priorité immédiate (5/10)**
+## Ajouts de la démo du 27/07/2026 — ⚡ **priorité immédiate (6/10)**
 
 > Retours de la présentation au client final **et** du développeur (27/07/2026). Cadrage par le
 > dialogue (esprit agile). Deux US **déjà spécifiées** remontent en priorité (♻️, pas de doublon) ;
@@ -313,8 +327,8 @@
 | E03US011 | Placement : retour visuel de génération + position A..D côté admin | E03 🆕 | ✅ |
 | E01US022 | Blason FFTA par défaut par catégorie + affichage hérité | E01 🆕 | ✅ |
 | E14US001 | Accueil-tableau de bord contextualisé (`D-20`) | E14 🆕 | ✅ |
-| E14US002 | Aide contextuelle « ce qui est saisissable & pourquoi » | E14 🆕 | 🎯 |
-| E15US001 | Jeu d'essai : générer des inscrits + scénarios rejouables | E15 🆕 | ⬜ |
+| E14US002 | Aide contextuelle « ce qui est saisissable & pourquoi » | E14 🆕 | ✅ |
+| E15US001 | Jeu d'essai : générer des inscrits + scénarios rejouables | E15 🆕 | 🎯 |
 | E15US002 | Moteur de simulation éphémère + garde-fou (non-persistance) | E15 🆕 | ⬜ |
 | E15US003 | Bot pilote auto pausable + cockpit interactif multi-vues | E15 🆕 | ⬜ |
 

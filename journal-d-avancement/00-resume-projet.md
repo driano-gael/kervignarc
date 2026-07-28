@@ -212,6 +212,12 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
   corrigé : le pilotage ne connaissait que 3 états et se **bloquait** dès « prêt »/« en pause » — la
   frise couvre désormais les 7 partout. Détail dans
   [`2026-07-28-11h04-accueil-tableau-de-bord.md`](2026-07-28-11h04-accueil-tableau-de-bord.md).
+- Une **aide contextuelle sur chaque écran** (dernier fait marquant, 28/07) : en tête de tout écran
+  d'administration, un bouton **« ⓘ Aide »** discret, replié par défaut, qui **se déplie au toucher**
+  pour expliquer, en langage d'organisateur, **ce qui se saisit là et à quoi ça sert** ensuite. Pensé
+  pour la tablette (ouverture au toucher, jamais au survol). C'est de l'affichage : aucun champ ni
+  règle ajoutés. Réponse au retour de démo « je ne veux pas de formation ». Détail dans
+  [`2026-07-28-12h03-aide-contextuelle-par-ecran.md`](2026-07-28-12h03-aide-contextuelle-par-ecran.md).
 
 ### 9. Suivre la qualification et l'afficher au public — *en place*
 
@@ -305,13 +311,14 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **76 US livrées** sur `main` (mergées, revues, CI verte) à la date du 28/07/2026. **`SUIVI-US.md`
+- **77 US livrées** sur `main` (mergées, revues, CI verte) à la date du 28/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
   réseau LAN + QR E11US008, retour visuel de génération + position A..D E03US011, blason FFTA par
-  défaut E01US022), le **lot démo bascule sur ses épics** : **E14US001** ouvre **EPIC-14** (lisibilité
-  admin) avec l'**accueil-tableau de bord contextualisé**.
+  défaut E01US022), le **lot démo bascule sur ses épics** : **EPIC-14** (lisibilité admin) livre
+  l'**accueil-tableau de bord contextualisé** (E14US001) puis l'**aide contextuelle par écran**
+  (E14US002).
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
@@ -323,14 +330,14 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
   (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**), l'**abandon /
   disqualification** (E04US015 — qualif *et* duels) puis le **cycle de vie d'un départ** (E12US008).
-- Dernière US livrée : **E14US001** (accueil-tableau de bord contextualisé par tournoi) — US à
-  **surface visible**, première d'**EPIC-14**. Choisir un tournoi ouvre son **accueil** : frise des 7
-  statuts + boutons d'action du moment, chiffres-clés (inscrits, réglés, postes en ligne), checklist
-  « à faire » et alertes — un **assemblage** de sources existantes, sans nouvelle règle métier. Le
-  front est aligné sur les **7 statuts** d'ADR-0026 (il en connaissait 3 et se bloquait dès « prêt ») ;
-  la topologie des transitions est **exposée en lecture** (source unique, ADR-0052). *(Livrée juste
-  avant : **E01US022**, le blason FFTA par défaut par catégorie.)*
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E14US002** (aide contextuelle « ce qui
-  est saisissable et pourquoi ») poursuit **EPIC-14**, puis **EPIC-15** (jeu d'essai & simulation). La
-  séquence J2 reprend ensuite à la **bascule de tour** (E12US002). Le fil **équipes** est débloqué
-  (E13US002+).
+- Dernière US livrée : **E14US002** (aide contextuelle « ce qui est saisissable et pourquoi ») — US à
+  **surface visible**, deuxième d'**EPIC-14**. En tête de **chaque** écran d'administration, un bouton
+  **« ⓘ Aide »** replié par défaut se **déplie au toucher** pour expliquer, en langage d'organisateur,
+  ce qui se saisit là et à quoi ça sert en aval — réponse au retour de démo « je ne veux pas de
+  formation ». **Présentation pure** : un composant d'aide unique + un dictionnaire de textes centralisé
+  (un par écran), aucun changement de domaine ni d'API. *(Livrée juste avant : **E14US001**, l'accueil-
+  tableau de bord contextualisé par tournoi — frise des 7 statuts, chiffres-clés, checklist et alertes,
+  ADR-0052.)*
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **EPIC-15** (jeu d'essai & simulation,
+  `E15US001`+), **EPIC-14** étant désormais **livrée** (accueil + aide contextuelle). La séquence J2
+  reprend ensuite à la **bascule de tour** (E12US002). Le fil **équipes** est débloqué (E13US002+).
