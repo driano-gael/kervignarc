@@ -46,6 +46,7 @@ import { Exports } from '../exports/Exports'
 import { Gabarits } from '../gabarits/Gabarits'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { GrainValidation } from '../grain-validation/GrainValidation'
+import { JeuEssai } from '../jeu-essai/JeuEssai'
 import { Paiements } from '../paiements/Paiements'
 import { Phases } from '../phases/Phases'
 import { Placement } from '../placement/Placement'
@@ -275,6 +276,25 @@ function Coquille() {
       groupe: 'preparation',
       besoinTournoi: true,
       rendu: () => courant && <Postes tournoiId={courant.id} />,
+    },
+    {
+      id: 'jeu-essai',
+      libelle: 'Jeu d’essai',
+      groupe: 'preparation',
+      // Outil de démo/QA (E15US001) : peupler le tournoi courant OU instancier un scénario qui crée
+      // son propre tournoi — d'où `besoinTournoi: false` (la brique « peupler » gère elle-même
+      // l'absence de tournoi courant). À l'instanciation, on bascule sur le tournoi créé et son accueil.
+      besoinTournoi: false,
+      rendu: () => (
+        <JeuEssai
+          tournoiId={tournoiId}
+          onTournoiInstancie={(id) => {
+            setTournoiId(id)
+            setDestinationActive('accueil')
+            setGroupeOuvert('preparation')
+          }}
+        />
+      ),
     },
     {
       id: 'supervision',
