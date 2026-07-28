@@ -660,6 +660,23 @@ class PeuplementTournoiDemarre(ApplicationError):
     code = "peuplement_tournoi_demarre"
 
 
+class SimulationTournoiDemarre(ApplicationError):
+    """Simuler (moteur éphémère) un tournoi **déjà démarré** est refusé (E15US002) → 409.
+
+    La simulation rejoue le moteur (qualif → duels → classement) sur des adapters **in-memory**,
+    sans rien persister (ADR-0054) : elle n'a de sens qu'**avant démarrage**, quand le déroulé n'a
+    pas encore commencé pour de vrai. La lancer sur un tournoi `en_cours`, `en_pause`, `terminé`,
+    `archivé` ou `annulé` mêlerait l'outil de démo/QA à une compétition **vivante ou figée** — même
+    borne, même famille et même raison que `PeuplementTournoiDemarre` d'E15US001. Seuls
+    `brouillon`/`prêt` sont simulables. L'arbitrage du CA (« terminé/archivé simulable ? ») est
+    tranché **non** (ADR-0054 §4), cohérent avec l'invariant d'EPIC-15 « ne pollue jamais le réel ».
+
+    **Un refus, pas un signalement** (aucun drapeau ne le lève) : conflit d'**état**, d'où 409.
+    """
+
+    code = "simulation_tournoi_demarre"
+
+
 class ScenarioInconnu(ApplicationError):
     """Aucun scénario de jeu d'essai ne correspond à l'identifiant demandé (E15US001) → 404.
 

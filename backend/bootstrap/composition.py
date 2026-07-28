@@ -80,6 +80,7 @@ from application.postes import ServicePostes
 from application.saisie import ServiceSaisie
 from application.saisie_duels import ServiceSaisieDuels
 from application.scoreurs import ServiceScoreurs
+from application.simulation import HarnaisSimulation, ServiceSimulation
 from application.supervision import ServiceSupervision
 from application.tournois import ServiceTournois
 from domain.duel import ResolveurBaremeDuelFfta
@@ -122,6 +123,19 @@ from infrastructure.db import (
 )
 from infrastructure.horloge import HorlogeSysteme
 from infrastructure.idempotence import RegistreIdempotence
+from infrastructure.memory.repositories import (
+    InMemoryArcherRepository,
+    InMemoryBlasonRepository,
+    InMemoryCategorieRepository,
+    InMemoryDuelRepository,
+    InMemoryForfaitRepository,
+    InMemoryGabaritSalleRepository,
+    InMemoryInscriptionRepository,
+    InMemoryPhaseRepository,
+    InMemoryPlacementTableauRepository,
+    InMemorySerieRepository,
+    InMemoryTournoiRepository,
+)
 from infrastructure.pdf import (
     GenerateurDocumentsSallePdf,
     GenerateurFeuilleDeMarquePdf,
@@ -425,6 +439,79 @@ def create_app(
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
         EliminationSeche(),
+    )
+
+    # Simulation éphémère (E15US002, ADR-0054) : rejoue le moteur (qualif → duels → classement) d'un
+    # tournoi **avant démarrage** sur des adapters **in-memory**, sans rien persister ni diffuser.
+    # C'est le **seul** point qui connaît les adapters in-memory concrets : l'usine ci-dessous
+    # fabrique un harnais **neuf** à chaque simulation (mêmes services moteur, mêmes politiques par
+    # défaut que la production, mais sur des magasins `dict` jetables). `ServiceSimulation` ne
+    # dépend que des ports **réels** (lecture, hydratation) et de cette usine — l'application ne
+    # connaît aucun adapter (règle 8). Aucune route exposée : substrat pour le cockpit d'E15US003.
+    def _fabriquer_harnais_simulation() -> HarnaisSimulation:
+        tournois = InMemoryTournoiRepository()
+        archers = InMemoryArcherRepository()
+        categories = InMemoryCategorieRepository()
+        blasons = InMemoryBlasonRepository()
+        gabarits = InMemoryGabaritSalleRepository()
+        inscriptions = InMemoryInscriptionRepository()
+        phases = InMemoryPhaseRepository()
+        series = InMemorySerieRepository()
+        forfaits = InMemoryForfaitRepository()
+        duels = InMemoryDuelRepository()
+        placements_tableau = InMemoryPlacementTableauRepository()
+        classement = ServiceClassement(tournois, archers, series, categories, phases, forfaits)
+        placement_duels = ServicePlacementDuels(
+            tournois,
+            phases,
+            gabarits,
+            inscriptions,
+            archers,
+            categories,
+            blasons,
+            placements_tableau,
+            classement,
+            SeedingSerpent(),
+            ByesAuxMieuxClasses(),
+            EliminationSeche(),
+        )
+        saisie_duels = ServiceSaisieDuels(
+            tournois,
+            phases,
+            categories,
+            blasons,
+            duels,
+            forfaits,
+            classement,
+            ResolveurBaremeDuelFfta(),
+            SeedingSerpent(),
+            ByesAuxMieuxClasses(),
+            EliminationSeche(),
+        )
+        return HarnaisSimulation(
+            tournois,
+            archers,
+            categories,
+            blasons,
+            gabarits,
+            inscriptions,
+            phases,
+            series,
+            classement,
+            placement_duels,
+            saisie_duels,
+        )
+
+    app.state.service_simulation = ServiceSimulation(
+        tournoi_repository,
+        archer_repository,
+        categorie_repository,
+        blason_repository,
+        gabarit_repository,
+        inscription_repository,
+        phase_repository,
+        serie_repository,
+        _fabriquer_harnais_simulation,
     )
     # Feuille de marque (E09US001) : premier document du socle PDF (ReportLab, ADR-0031). Le service
     # lit le plan persisté et joint archer → catégorie → blason (ports seuls, pas de
