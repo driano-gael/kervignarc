@@ -26,7 +26,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.tournois import ServiceTournois
-from domain.tournoi import StatutTournoi, Tournoi, TypeTournoi
+from domain.tournoi import StatutTournoi, Tournoi, TransitionTournoi, TypeTournoi
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1/tournois", tags=["tournois"])
@@ -78,6 +78,28 @@ class TournoiReponse(BaseModel):
         )
 
 
+class TransitionReponse(BaseModel):
+    """Une transition de cycle de vie **offerte** depuis le statut courant (E14US001).
+
+    `nom` est le suffixe d'endpoint à appeler (`POST /api/v1/tournois/{id}/{nom}`), `libelle` le
+    texte du bouton, `vers` le statut cible. La *garde* reste au service : une transition listée
+    peut échouer à l'exécution (ex. `vers-pret` sans départ → 409).
+    """
+
+    nom: str
+    libelle: str
+    vers: StatutTournoi
+
+    @staticmethod
+    def de_domaine(transition: TransitionTournoi) -> TransitionReponse:
+        """Traduit une transition du domaine en DTO de réponse."""
+        return TransitionReponse(
+            nom=transition.nom,
+            libelle=transition.libelle,
+            vers=transition.vers,
+        )
+
+
 @router.post(
     "",
     status_code=201,
@@ -115,6 +137,19 @@ async def consulter_tournoi(tournoi_id: int, request: Request) -> TournoiReponse
     service: ServiceTournois = request.app.state.service_tournois
     tournoi = await run_in_threadpool(service.consulter, tournoi_id)
     return TournoiReponse.de_agregat(tournoi)
+
+
+@router.get("/{tournoi_id}/transitions", response_model=list[TransitionReponse])
+async def transitions_tournoi(tournoi_id: int, request: Request) -> list[TransitionReponse]:
+    """Transitions de cycle de vie offertes par le statut courant (E14US001, accueil admin).
+
+    Lecture directe hors boucle événementielle. `TournoiIntrouvable` (→ 404) si l'identifiant est
+    inconnu. La *garde* de chaque transition reste au service ; l'accueil s'en sert pour proposer
+    les bons boutons.
+    """
+    service: ServiceTournois = request.app.state.service_tournois
+    transitions = await run_in_threadpool(service.transitions_possibles, tournoi_id)
+    return [TransitionReponse.de_domaine(transition) for transition in transitions]
 
 
 @router.put(

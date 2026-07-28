@@ -152,6 +152,61 @@ class Tournoi:
         return replace(self, statut=StatutTournoi.ANNULE)
 
 
+@dataclass(frozen=True)
+class TransitionTournoi:
+    """Une arête sortante de la machine à états du cycle de vie ([ADR-0026] §2).
+
+    - `nom` : identifiant **stable** de l'action, aligné sur le **suffixe d'endpoint**
+      (`POST /api/v1/tournois/{id}/<nom>`) pour que le client mappe directement action → route ;
+    - `libelle` : texte du bouton en **langage organisateur** (E14US001, accueil admin) ;
+    - `vers` : statut cible une fois la transition appliquée.
+    """
+
+    nom: str
+    libelle: str
+    vers: StatutTournoi
+
+
+# Topologie du cycle de vie ([ADR-0026] §2), source **unique** côté lecture. Les *gardes* (qui peut
+# passer de quoi à quoi, complétude du passage à `prêt`…) restent dans `ServiceTournois`
+# (ADR-0026 §4) ; un test de cohérence recoupe cette table avec la légalité effective du service.
+_TRANSITIONS: dict[StatutTournoi, tuple[TransitionTournoi, ...]] = {
+    StatutTournoi.BROUILLON: (
+        TransitionTournoi("vers-pret", "Marquer prêt", StatutTournoi.PRET),
+        TransitionTournoi("annuler", "Annuler le tournoi", StatutTournoi.ANNULE),
+    ),
+    StatutTournoi.PRET: (
+        TransitionTournoi("demarrer", "Démarrer", StatutTournoi.EN_COURS),
+        TransitionTournoi("revenir-brouillon", "Revenir en brouillon", StatutTournoi.BROUILLON),
+        TransitionTournoi("annuler", "Annuler le tournoi", StatutTournoi.ANNULE),
+    ),
+    StatutTournoi.EN_COURS: (
+        TransitionTournoi("mettre-en-pause", "Mettre en pause", StatutTournoi.EN_PAUSE),
+        TransitionTournoi("terminer", "Terminer", StatutTournoi.TERMINE),
+        TransitionTournoi("annuler", "Annuler le tournoi", StatutTournoi.ANNULE),
+    ),
+    StatutTournoi.EN_PAUSE: (
+        TransitionTournoi("reprendre", "Reprendre", StatutTournoi.EN_COURS),
+        TransitionTournoi("annuler", "Annuler le tournoi", StatutTournoi.ANNULE),
+    ),
+    StatutTournoi.TERMINE: (TransitionTournoi("archiver", "Archiver", StatutTournoi.ARCHIVE),),
+    StatutTournoi.ARCHIVE: (),
+    StatutTournoi.ANNULE: (),
+}
+
+
+def transitions_possibles(statut: StatutTournoi) -> tuple[TransitionTournoi, ...]:
+    """Renvoie les transitions **offertes** depuis `statut` (arêtes d'[ADR-0026] §2).
+
+    Fonction **pure** : topologie du cycle de vie destinée à la lecture (accueil admin E14US001,
+    frise à boutons). N'évalue **aucune** garde — une arête offerte peut encore échouer à
+    l'exécution (ex. `vers-pret` sans départ → `TournoiSansDepart`), car les gardes vivent dans
+    `ServiceTournois` (ADR-0026 §4, règle 2). Les statuts terminaux (`archivé`, `annulé`) renvoient
+    un tuple vide.
+    """
+    return _TRANSITIONS[statut]
+
+
 def _nom_valide(nom: str) -> str:
     """Normalise le nom (espaces de bord retirés) ; lève `NomTournoiInvalide` si vide."""
     nom_normalise = nom.strip()

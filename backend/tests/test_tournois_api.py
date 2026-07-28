@@ -288,6 +288,46 @@ def test_editer_ou_supprimer_un_archive_conflit_409(
         assert suppression.json()["code"] == "tournoi_archive_non_modifiable"
 
 
+# --- Transitions offertes (E14US001) : lecture pour l'accueil admin ---
+
+
+def test_transitions_offertes_d_un_brouillon(
+    app_tournois: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """GET .../transitions liste les actions offertes par le statut courant (brouillon)."""
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
+        reponse = client.get(f"/api/v1/tournois/{cree['id']}/transitions")
+    assert reponse.status_code == 200
+    corps = reponse.json()
+    assert {t["nom"] for t in corps} == {"vers-pret", "annuler"}
+    par_nom = {t["nom"]: t for t in corps}
+    assert par_nom["vers-pret"]["libelle"] == "Marquer prêt"
+    assert par_nom["vers-pret"]["vers"] == "pret"
+
+
+def test_transitions_suivent_le_statut(
+    app_tournois: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Les transitions offertes changent avec le statut (en_cours → pause / terminer / annuler)."""
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
+        tid = cree["id"]
+        _amener_en_cours(client, tid)
+        noms = {t["nom"] for t in client.get(f"/api/v1/tournois/{tid}/transitions").json()}
+    assert noms == {"mettre-en-pause", "terminer", "annuler"}
+
+
+def test_transitions_tournoi_introuvable(app_tournois: FastAPI) -> None:
+    """GET transitions d'un identifiant inconnu → 404 typé (lecture, pas de session requise)."""
+    with TestClient(app_tournois) as client:
+        reponse = client.get("/api/v1/tournois/999/transitions")
+    assert reponse.status_code == 404
+    assert reponse.json()["code"] == "tournoi_introuvable"
+
+
 # --- Suppression (E01US002) ---
 
 

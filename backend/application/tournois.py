@@ -22,7 +22,16 @@ from application.erreurs import (
     TransitionStatutInvalide,
 )
 from domain.ports import DepartRepository, TournoiRepository
-from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
+from domain.tournoi import (
+    StatutTournoi,
+    Tournoi,
+    TournoiId,
+    TransitionTournoi,
+    TypeTournoi,
+)
+from domain.tournoi import (
+    transitions_possibles as topologie_transitions,
+)
 
 
 class ServiceTournois:
@@ -179,6 +188,18 @@ class ServiceTournois:
             Tournoi.annuler,
             "Un tournoi terminé ou archivé ne peut pas être annulé.",
         )
+
+    def transitions_possibles(self, tournoi_id: TournoiId) -> tuple[TransitionTournoi, ...]:
+        """Renvoie les transitions de cycle de vie **offertes** par le statut courant du tournoi.
+
+        Lecture pour l'accueil admin (E14US001, frise à boutons) : relit le tournoi
+        (`TournoiIntrouvable` si inconnu) et délègue la **topologie** au domaine
+        (`domain.tournoi.transitions_possibles`) — pas de second encodage du graphe ici (règle 1).
+        Aucune garde n'est ré-évaluée : une arête offerte peut échouer à l'exécution (ex.
+        `vers-pret` sans départ). Le test de cohérence de `test_service_tournois` vérifie que cette
+        topologie ne diverge pas des gardes réelles.
+        """
+        return topologie_transitions(self.consulter(tournoi_id).statut)
 
     def _transition(
         self,
