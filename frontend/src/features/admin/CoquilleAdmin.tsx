@@ -54,7 +54,9 @@ import { Scoreurs } from '../scoreurs/Scoreurs'
 import { Supervision } from '../supervision/Supervision'
 import { RechercheArcher } from '../recherche/RechercheArcher'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
+import { AideEcran } from '../../shared/ui/AideEcran'
 import { ConnexionAdmin } from './ConnexionAdmin'
+import { AIDE_ECRANS } from './aide-ecrans'
 import { BadgeStatut } from '../competition/BadgeStatut'
 import { GestionTournois } from '../tournois/Tournois'
 
@@ -399,7 +401,15 @@ function Coquille() {
         })}
       </nav>
 
-      <div className="coquille__contenu">{contenu}</div>
+      <div className="coquille__contenu">
+        {/* Aide contextuelle de la destination active (E14US002). Rendue **ici**, au niveau de la
+            coquille, plutôt que dans chacune des 22 features : la coquille connaît déjà la destination
+            active, un seul point d'insertion couvre donc tous les écrans (`AIDE_ECRANS` fournit le
+            texte par `id`). Au-dessus du contenu — y compris de l'invite « choisissez un tournoi »,
+            où expliquer l'écran est encore plus utile. */}
+        <AideEcran texte={AIDE_ECRANS[active.id]} />
+        {contenu}
+      </div>
     </div>
   )
 }
