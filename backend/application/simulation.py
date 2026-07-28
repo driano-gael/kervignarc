@@ -32,6 +32,7 @@ from application.erreurs import SimulationTournoiDemarre, TournoiIntrouvable
 from application.placement_duels import ServicePlacementDuels
 from application.saisie_duels import EtatTableau, ServiceSaisieDuels
 from domain.classement import Classement
+from domain.erreurs import EffectifTableauInvalide
 from domain.phase import TypePhase
 from domain.ports import (
     ArcherRepository,
@@ -76,8 +77,8 @@ class ResultatSimulation:
     """L'état **éphémère** d'une simulation : le classement de qualif et les tableaux joués.
 
     Ces objets vivent en mémoire le temps de l'appel ; rien n'est persisté. `tableaux` porte un
-    `EtatTableau` par phase d'élimination directe (vide s'il n'y en a pas encore — cas d'un tournoi
-    de démo pas encore doté d'une phase de tableau).
+    `EtatTableau` par phase d'élimination directe **jouable** (vide s'il n'y a pas de phase de
+    tableau, ou si aucune n'a assez de duellistes classés — cas d'un tournoi avant démarrage).
     """
 
     tournoi_id: TournoiId
@@ -139,11 +140,20 @@ class ServiceSimulation:
         for phase in harnais.phases.par_tournoi(tournoi_id):
             if phase.type is not TypePhase.ELIMINATION_DIRECTE or phase.id is None:
                 continue
-            # Rejoue le placement des duellistes (exerce `ServicePlacementDuels`) quand une salle
-            # est définie ; l'état du tableau (arbre reconstruit du classement) se lit sans lui.
-            if gabarit_present:
-                harnais.placement_duels.regenerer(tournoi_id, phase.id)
-            tableaux.append(harnais.saisie_duels.etat_tableau(tournoi_id, phase.id))
+            try:
+                # `regenerer` (si une salle est définie) exerce `ServicePlacementDuels` ; son plan
+                # atterrit dans le harnais in-memory, jamais observé ici — exécution de « fumée ».
+                # L'état du tableau, lui, est reconstruit du classement (indépendant du plan).
+                if gabarit_present:
+                    harnais.placement_duels.regenerer(tournoi_id, phase.id)
+                tableaux.append(harnais.saisie_duels.etat_tableau(tournoi_id, phase.id))
+            except EffectifTableauInvalide:
+                # Tournoi *avant démarrage* : une phase de tableau peut exister alors que moins de
+                # deux duellistes sont classés (personne n'a encore tiré). Elle n'est **pas encore
+                # jouable** — on la saute plutôt que de faire échouer toute la simulation (le CA
+                # promet « n'importe quel tournoi créé »). E15US003 la rejouera quand le bot aura
+                # généré des scores.
+                continue
 
         return ResultatSimulation(tournoi_id, classement, tuple(tableaux))
 

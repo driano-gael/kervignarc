@@ -160,6 +160,70 @@ sont liées : les changer, c'est les changer ensemble (front + serveur).
 """
 
 
+def fabriquer_harnais_simulation() -> HarnaisSimulation:
+    """Fabrique un harnais de simulation **neuf** : adapters in-memory + services moteur câblés.
+
+    Source **unique** du harnais (E15US002, ADR-0054) : mêmes services (`ServiceClassement`,
+    `ServicePlacementDuels`, `ServiceSaisieDuels`) et **mêmes** politiques par défaut que la
+    production, mais sur des magasins `dict` jetables. Hissée hors de `create_app` pour être
+    **importable** — la composition root **et** les tests consomment cette même fonction, si bien
+    que le harnais éprouvé par les tests **est** celui déployé (pas une copie qui dériverait en
+    silence). Un harnais neuf par appel : aucune fuite d'état entre deux simulations.
+    """
+    tournois = InMemoryTournoiRepository()
+    archers = InMemoryArcherRepository()
+    categories = InMemoryCategorieRepository()
+    blasons = InMemoryBlasonRepository()
+    gabarits = InMemoryGabaritSalleRepository()
+    inscriptions = InMemoryInscriptionRepository()
+    phases = InMemoryPhaseRepository()
+    series = InMemorySerieRepository()
+    forfaits = InMemoryForfaitRepository()
+    duels = InMemoryDuelRepository()
+    placements_tableau = InMemoryPlacementTableauRepository()
+    classement = ServiceClassement(tournois, archers, series, categories, phases, forfaits)
+    placement_duels = ServicePlacementDuels(
+        tournois,
+        phases,
+        gabarits,
+        inscriptions,
+        archers,
+        categories,
+        blasons,
+        placements_tableau,
+        classement,
+        SeedingSerpent(),
+        ByesAuxMieuxClasses(),
+        EliminationSeche(),
+    )
+    saisie_duels = ServiceSaisieDuels(
+        tournois,
+        phases,
+        categories,
+        blasons,
+        duels,
+        forfaits,
+        classement,
+        ResolveurBaremeDuelFfta(),
+        SeedingSerpent(),
+        ByesAuxMieuxClasses(),
+        EliminationSeche(),
+    )
+    return HarnaisSimulation(
+        tournois,
+        archers,
+        categories,
+        blasons,
+        gabarits,
+        inscriptions,
+        phases,
+        series,
+        classement,
+        placement_duels,
+        saisie_duels,
+    )
+
+
 def create_app(
     database_url: str | None = None,
     *,
@@ -443,65 +507,12 @@ def create_app(
 
     # Simulation éphémère (E15US002, ADR-0054) : rejoue le moteur (qualif → duels → classement) d'un
     # tournoi **avant démarrage** sur des adapters **in-memory**, sans rien persister ni diffuser.
-    # C'est le **seul** point qui connaît les adapters in-memory concrets : l'usine ci-dessous
-    # fabrique un harnais **neuf** à chaque simulation (mêmes services moteur, mêmes politiques par
-    # défaut que la production, mais sur des magasins `dict` jetables). `ServiceSimulation` ne
-    # dépend que des ports **réels** (lecture, hydratation) et de cette usine — l'application ne
-    # connaît aucun adapter (règle 8). Aucune route exposée : substrat pour le cockpit d'E15US003.
-    def _fabriquer_harnais_simulation() -> HarnaisSimulation:
-        tournois = InMemoryTournoiRepository()
-        archers = InMemoryArcherRepository()
-        categories = InMemoryCategorieRepository()
-        blasons = InMemoryBlasonRepository()
-        gabarits = InMemoryGabaritSalleRepository()
-        inscriptions = InMemoryInscriptionRepository()
-        phases = InMemoryPhaseRepository()
-        series = InMemorySerieRepository()
-        forfaits = InMemoryForfaitRepository()
-        duels = InMemoryDuelRepository()
-        placements_tableau = InMemoryPlacementTableauRepository()
-        classement = ServiceClassement(tournois, archers, series, categories, phases, forfaits)
-        placement_duels = ServicePlacementDuels(
-            tournois,
-            phases,
-            gabarits,
-            inscriptions,
-            archers,
-            categories,
-            blasons,
-            placements_tableau,
-            classement,
-            SeedingSerpent(),
-            ByesAuxMieuxClasses(),
-            EliminationSeche(),
-        )
-        saisie_duels = ServiceSaisieDuels(
-            tournois,
-            phases,
-            categories,
-            blasons,
-            duels,
-            forfaits,
-            classement,
-            ResolveurBaremeDuelFfta(),
-            SeedingSerpent(),
-            ByesAuxMieuxClasses(),
-            EliminationSeche(),
-        )
-        return HarnaisSimulation(
-            tournois,
-            archers,
-            categories,
-            blasons,
-            gabarits,
-            inscriptions,
-            phases,
-            series,
-            classement,
-            placement_duels,
-            saisie_duels,
-        )
-
+    # L'usine `fabriquer_harnais_simulation` (module, ci-dessus) est le **seul** point qui connaît
+    # les adapters in-memory concrets ; hissée hors de `create_app` pour être **importable** — les
+    # tests consomment **la même** usine (source unique testée, pas une copie qui dériverait — cf.
+    # revue E15US002). `ServiceSimulation` ne dépend que des ports **réels** (lecture, hydratation)
+    # et de cette usine ; l'application ne connaît aucun adapter (règle 8). Aucune route exposée :
+    # substrat pour le cockpit d'E15US003.
     app.state.service_simulation = ServiceSimulation(
         tournoi_repository,
         archer_repository,
@@ -511,7 +522,7 @@ def create_app(
         inscription_repository,
         phase_repository,
         serie_repository,
-        _fabriquer_harnais_simulation,
+        fabriquer_harnais_simulation,
     )
     # Feuille de marque (E09US001) : premier document du socle PDF (ReportLab, ADR-0031). Le service
     # lit le plan persisté et joint archer → catégorie → blason (ports seuls, pas de

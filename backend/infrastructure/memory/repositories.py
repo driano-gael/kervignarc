@@ -43,12 +43,18 @@ from domain.serie import Serie
 from domain.tournoi import Tournoi, TournoiId
 
 
-class _Sequence:
+class _AllocateurId:
     """Attribue les identifiants auto-incrémentés, en **préservant** un `id` déjà présent.
 
     Un `id` fourni (hydratation) est conservé et fait avancer la séquence au-delà ; un `id` absent
     (`None`, création par le bot E15US003) reçoit le prochain entier. Ainsi un même magasin sert
     l'hydratation (loss-less) et la création sans collision d'identifiants.
+
+    **Piège E15US003 (hors périmètre E15US002).** L'absence de collision suppose que l'hydratation
+    (qui préserve les `id`) précède **toute** création à `id=None`. Si le bot crée une entité avant
+    d'hydrater, ou dans un magasin où un `id` supérieur sera ensuite hydraté, deux entités peuvent
+    partager un `id`. En E15US002 c'est sûr : l'hydratation est complète et préalable, et le rejeu
+    ne crée rien. À revoir quand le bot écrira dans le harnais.
     """
 
     def __init__(self) -> None:
@@ -62,7 +68,7 @@ class _Sequence:
         return self._sequence
 
 
-class InMemoryTournoiRepository(_Sequence):
+class InMemoryTournoiRepository(_AllocateurId):
     """Port `TournoiRepository` en mémoire."""
 
     def __init__(self) -> None:
@@ -90,7 +96,7 @@ class InMemoryTournoiRepository(_Sequence):
         self._items.pop(tournoi_id, None)
 
 
-class InMemoryArcherRepository(_Sequence):
+class InMemoryArcherRepository(_AllocateurId):
     """Port `ArcherRepository` en mémoire."""
 
     def __init__(self) -> None:
@@ -124,7 +130,7 @@ class InMemoryArcherRepository(_Sequence):
         self._items.pop(perdant_id, None)
 
 
-class InMemoryCategorieRepository(_Sequence):
+class InMemoryCategorieRepository(_AllocateurId):
     """Port `CategorieRepository` en mémoire."""
 
     def __init__(self) -> None:
@@ -155,7 +161,7 @@ class InMemoryCategorieRepository(_Sequence):
         self._items.pop(categorie_id, None)
 
 
-class InMemoryBlasonRepository(_Sequence):
+class InMemoryBlasonRepository(_AllocateurId):
     """Port `BlasonRepository` en mémoire."""
 
     def __init__(self) -> None:
@@ -183,7 +189,7 @@ class InMemoryBlasonRepository(_Sequence):
         self._items.pop(blason_id, None)
 
 
-class InMemoryGabaritSalleRepository(_Sequence):
+class InMemoryGabaritSalleRepository(_AllocateurId):
     """Port `GabaritSalleRepository` en mémoire.
 
     `lister` renvoie les **modèles** (`tournoi_id is None`), `par_tournoi` l'**instance** d'un
@@ -221,7 +227,7 @@ class InMemoryGabaritSalleRepository(_Sequence):
         self._items.pop(gabarit_id, None)
 
 
-class InMemoryInscriptionRepository(_Sequence):
+class InMemoryInscriptionRepository(_AllocateurId):
     """Port `InscriptionRepository` en mémoire (`definir_paye_avec_trace` = no-op d'audit)."""
 
     def __init__(self) -> None:
@@ -268,7 +274,7 @@ class InMemoryInscriptionRepository(_Sequence):
         self._items.pop(inscription_id, None)
 
 
-class InMemoryPhaseRepository(_Sequence):
+class InMemoryPhaseRepository(_AllocateurId):
     """Port `PhaseRepository` en mémoire (`par_tournoi` **ordonné par `ordre`**, comme SQL)."""
 
     def __init__(self) -> None:
@@ -303,7 +309,7 @@ class InMemoryPhaseRepository(_Sequence):
         self._items.pop(phase_id, None)
 
 
-class InMemorySerieRepository(_Sequence):
+class InMemorySerieRepository(_AllocateurId):
     """Port `SerieRepository` en mémoire (`enregistrer_avec_trace` = no-op d'audit).
 
     `horodatages` renvoie `{}` : le `created_at` d'une volée est une **métadonnée de persistance**
@@ -338,10 +344,12 @@ class InMemorySerieRepository(_Sequence):
         return self.enregistrer(serie)
 
 
-class InMemoryForfaitRepository(_Sequence):
+class InMemoryForfaitRepository(_AllocateurId):
     """Port `ForfaitRepository` en mémoire (`*_avec_trace` = no-op d'audit).
 
-    `semer` (hors port) sert l'hydratation : recopie un forfait en préservant son `id`, sans trace.
+    `semer` (hors port) factorise l'ajout **sans trace** en préservant l'`id` ; il sert
+    `declarer_avec_trace` (et servira le bot d'E15US003 qui *crée* des forfaits simulés). Les
+    forfaits ne sont **pas** hydratés (ADR-0054 §3 : un tournoi avant démarrage n'en a pas).
     """
 
     def __init__(self) -> None:

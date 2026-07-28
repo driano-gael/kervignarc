@@ -27,29 +27,24 @@ import pytest
 
 from application.classements import ServiceClassement
 from application.erreurs import SimulationTournoiDemarre, TournoiIntrouvable
-from application.placement_duels import ServicePlacementDuels
-from application.saisie_duels import ServiceSaisieDuels
-from application.simulation import HarnaisSimulation, ServiceSimulation
+from application.simulation import ServiceSimulation
+from bootstrap.composition import fabriquer_harnais_simulation
 from domain.archer import Archer
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
-from domain.duel import ResolveurBaremeDuelFfta
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
-from domain.politiques import ByesAuxMieuxClasses, EliminationSeche, SeedingSerpent
 from domain.serie import Serie, Volee
 from domain.tournoi import StatutTournoi, Tournoi
 from infrastructure.memory.repositories import (
     InMemoryArcherRepository,
     InMemoryBlasonRepository,
     InMemoryCategorieRepository,
-    InMemoryDuelRepository,
     InMemoryForfaitRepository,
     InMemoryGabaritSalleRepository,
     InMemoryInscriptionRepository,
     InMemoryPhaseRepository,
-    InMemoryPlacementTableauRepository,
     InMemorySerieRepository,
     InMemoryTournoiRepository,
 )
@@ -148,7 +143,9 @@ class _Reel:
             self.inscriptions,
             self.phases,
             self.series,
-            _fabriquer_harnais,
+            # L'**usine de production** (pas une copie) : le harnais éprouvé ici est celui déployé
+            # (revue E15US002 — évite la dérive silencieuse composition ↔ test).
+            fabriquer_harnais_simulation,
         )
 
     def statut(self, statut: StatutTournoi) -> None:
@@ -156,62 +153,6 @@ class _Reel:
         base = self.tournois.par_id(self.tournoi_id)
         assert base is not None
         self.tournois.enregistrer(dataclasses.replace(base, statut=statut))
-
-
-def _fabriquer_harnais() -> HarnaisSimulation:
-    """Réplique de l'usine de la composition root : un harnais in-memory neuf et câblé."""
-    tournois = InMemoryTournoiRepository()
-    archers = InMemoryArcherRepository()
-    categories = InMemoryCategorieRepository()
-    blasons = InMemoryBlasonRepository()
-    gabarits = InMemoryGabaritSalleRepository()
-    inscriptions = InMemoryInscriptionRepository()
-    phases = InMemoryPhaseRepository()
-    series = InMemorySerieRepository()
-    forfaits = InMemoryForfaitRepository()
-    duels = InMemoryDuelRepository()
-    placements = InMemoryPlacementTableauRepository()
-    classement = ServiceClassement(tournois, archers, series, categories, phases, forfaits)
-    placement_duels = ServicePlacementDuels(
-        tournois,
-        phases,
-        gabarits,
-        inscriptions,
-        archers,
-        categories,
-        blasons,
-        placements,
-        classement,
-        SeedingSerpent(),
-        ByesAuxMieuxClasses(),
-        EliminationSeche(),
-    )
-    saisie_duels = ServiceSaisieDuels(
-        tournois,
-        phases,
-        categories,
-        blasons,
-        duels,
-        forfaits,
-        classement,
-        ResolveurBaremeDuelFfta(),
-        SeedingSerpent(),
-        ByesAuxMieuxClasses(),
-        EliminationSeche(),
-    )
-    return HarnaisSimulation(
-        tournois,
-        archers,
-        categories,
-        blasons,
-        gabarits,
-        inscriptions,
-        phases,
-        series,
-        classement,
-        placement_duels,
-        saisie_duels,
-    )
 
 
 def test_tournoi_inconnu_leve_tournoi_introuvable() -> None:
@@ -305,3 +246,49 @@ def test_chemin_duels_est_exerce_et_renvoie_le_tableau() -> None:
     assert tableau.taille == 4
     # Rien n'a été persisté côté réel : aucun plan de duel matérialisé, aucune série ajoutée.
     assert len(reel.archers.par_tournoi(reel.tournoi_id)) == 4
+
+
+def test_phase_tableau_non_puissance_de_deux() -> None:
+    """Effectif non-puissance-de-2 : le tableau se dimensionne à la puissance supérieure (byes).
+
+    Trois duellistes classés → tableau de taille 4 (un bye), effectif 3. Vérifie qu'on ne suppose
+    jamais `effectif == taille` (borne que la fixture à 4 masquait).
+    """
+    reel = _Reel(avec_tableau=True)
+    for valeurs in (
+        (ZoneScore.DIX, ZoneScore.DIX),
+        (ZoneScore.NEUF, ZoneScore.NEUF),
+        (ZoneScore.HUIT, ZoneScore.HUIT),
+    ):
+        reel.inscrire_classe(valeurs)
+
+    resultat = reel.service().simuler(reel.tournoi_id)
+
+    assert len(resultat.tableaux) == 1
+    assert resultat.tableaux[0].effectif == 3
+    assert resultat.tableaux[0].taille == 4
+
+
+def test_phase_tableau_pas_encore_jouable_est_ignoree() -> None:
+    """CA « n'importe quel tournoi créé » : une phase de tableau à < 2 classés ne fait pas échouer.
+
+    Un seul duelliste classé → `construire_tableau` lèverait `EffectifTableauInvalide` ; `simuler`
+    saute la phase (pas encore jouable) et renvoie le classement, sans tableau ni exception.
+    """
+    reel = _Reel(avec_tableau=True)
+    reel.inscrire_classe((ZoneScore.DIX, ZoneScore.DIX))
+
+    resultat = reel.service().simuler(reel.tournoi_id)
+
+    assert resultat.tableaux == ()
+    assert len(resultat.classement.lignes) == 1
+
+
+def test_tournoi_brouillon_vide_se_simule_sans_erreur() -> None:
+    """Borne basse : un tournoi sans archer ni série se simule et rend un classement vide."""
+    reel = _Reel()  # aucun archer inscrit
+
+    resultat = reel.service().simuler(reel.tournoi_id)
+
+    assert resultat.classement.lignes == ()
+    assert resultat.tableaux == ()
