@@ -1,10 +1,10 @@
 # EPIC-15 — Jeu d'essai & simulation
 
 - **ID** : EPIC-15
-- **Statut** : À planifier
+- **Statut** : ✅ Terminé (E15US001 + E15US002 + E15US003 livrés, 28/07/2026)
 - **Priorité** : MVP+1 *(retours de la démo au client final, 27/07/2026 — outil de démo & de QA)*
 - **Dépend de** : EPIC-02 (inscriptions), EPIC-05 (moteur de phases), EPIC-06 (classements)
-- **Réfs** : **ADR à créer** « Exécution éphémère du moteur sur adaptateurs in-memory des ports » ; règles **1** (domaine pur, politiques injectables) & **7** (single-writer) du projet
+- **Réfs** : [ADR-0054](../docs/adr/0054-execution-ephemere-du-moteur-sur-adapters-in-memory.md) (exécution éphémère sur adapters in-memory) · [ADR-0055](../docs/adr/0055-session-de-simulation-vivante-pilotee-par-pas.md) (session vivante pilotée par pas) ; règles **1** (domaine pur, politiques injectables) & **7** (single-writer) du projet
 
 ## Objectif / valeur
 Pouvoir **démontrer et tester** l'appli sans saisie manuelle : peupler des inscrits, charger des
@@ -26,9 +26,9 @@ simuler les tablettes cible/archer/scoreur/public ».
 - Simuler un tournoi **déjà démarré** (garde-fou).
 
 ## Capacités
-- [ ] Générateur d'inscrits + scénarios (E15US001).
-- [ ] Moteur de simulation éphémère + garde-fou (E15US002).
-- [ ] Bot pilote auto pausable + cockpit interactif (E15US003).
+- [x] Générateur d'inscrits + scénarios (E15US001).
+- [x] Moteur de simulation éphémère + garde-fou (E15US002, ADR-0054).
+- [x] Bot pilote auto pausable + cockpit interactif (E15US003, ADR-0055).
 
 ## Critères d'acceptation (epic)
 - Une simulation lancée sur un tournoi brouillon peuplé se déroule jusqu'au classement, se met en
