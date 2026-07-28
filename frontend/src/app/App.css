@@ -1135,6 +1135,73 @@ button:disabled {
   font-size: 13px;
 }
 
+/* Feu vert / lancer le tour (E12US002) : une ligne par duel à venir, avec son état en **couleur +
+   pastille + texte** (jamais la couleur seule, DV-03) — prêt = vert (`--ok`), en attente = **ambre**
+   (`--warn`), jamais rouge sur l'anthracite de la charte. */
+.feu-vert__selecteur {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  max-width: 280px;
+}
+
+.feu-vert__liste {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.feu-vert__duel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.feu-vert__match {
+  font-weight: 500;
+  min-width: 140px;
+}
+
+.feu-vert__tour {
+  color: var(--text);
+  font-weight: 400;
+}
+
+.feu-vert__opposants {
+  color: var(--text-h);
+  flex: 1;
+}
+
+.feu-vert__etat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.feu-vert__etat--pret {
+  color: var(--ok);
+}
+
+.feu-vert__etat--attente {
+  color: var(--warn);
+}
+
+.feu-vert__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
 /* Complétude du tournoi (E12US005) : deux sections (sportif / hors sportif), chacune une liste
    d'états. Comme la supervision : **couleur + pastille + texte**, jamais la couleur seule (DV-03).
    L'alerte = **ambre** (`--warn`), jamais rouge sur l'anthracite de la charte. */
