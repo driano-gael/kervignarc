@@ -231,6 +231,75 @@ def test_feu_vert_cible_non_attribuee_sans_placement() -> None:
     assert feu.nb_prets == 0
 
 
+def test_feu_vert_tour2_cible_non_attribuee_apres_les_demies() -> None:
+    """CA/ADR-0056 (séquencement) : le placement des cibles n'existe qu'au **tour 1** (E03US009).
+    Une fois les **deux** demis validés, la finale a ses occupants **connus** mais reste « cible non
+    attribuée » — la cible de tour 1 des finalistes est **périmée** (le placement 1→N est E05US010).
+    Le feu vert ne doit donc PAS afficher un tour ≥ 2 prêt avec une cible périmée (sinon il
+    enverrait les finalistes, venus de deux cibles distinctes, chacun sur son ancienne)."""
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    monde.gagner(1)  # demi n°1 tranché
+    monde.gagner(2)  # demi n°2 tranché → la finale a ses deux occupants (vainqueurs propagés)
+
+    feu = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
+    tour2 = [d for d in feu.duels if d.tour == 2]
+    assert tour2  # au moins la finale est à venir
+    for duel in tour2:
+        assert duel.participants_connus  # les occupants sont propagés...
+        assert duel.cible_haut is None and duel.cible_bas is None  # ...mais aucune cible ce tour-ci
+        assert not duel.cible_attribuee and not duel.pret_a_lancer
+        assert duel.blocage == "cible non attribuée"
+    assert feu.nb_prets == 0
+
+
+def test_feu_vert_ignore_les_byes() -> None:
+    """Un match gagné d'office (bye, effectif impair) n'est **pas** un duel à lancer : il est résolu
+    (vainqueur d'office, `vainqueur is not None`) et n'apparaît pas parmi les duels à venir."""
+    monde = _Monde(capacites=(4,))
+    for valeurs in (("10", "10"), ("9", "9"), ("8", "8")):  # 3 archers → un bye au tour 1
+        monde.inscrire_classe(valeurs)
+    monde.placer()
+
+    feu = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
+    tour1 = [d for d in feu.duels if d.tour == 1]
+    assert len(tour1) == 1  # le bye (2ᵉ match du tour 1) est résolu et absent du feu vert
+
+
+def test_feu_vert_tour3_finale_cible_non_attribuee() -> None:
+    """Le garde vaut pour **tous** les tours ≥ 2, pas seulement le tour 2 : sur un tableau à 8
+    (trois tours), une fois quarts (tour 1) et demies (tour 2) validés, la finale (tour 3) a ses
+    occupants connus mais reste « cible non attribuée » — le placement 1→N est E05US010. Ce cas
+    distingue le garde `tour == 1` d'un `tour != nb_tours` (indiscernables à 4 archers)."""
+    monde = _Monde(capacites=(4, 4))
+    for valeurs in (
+        ("10", "10"),
+        ("9", "9"),
+        ("8", "8"),
+        ("7", "7"),
+        ("6", "6"),
+        ("5", "5"),
+        ("4", "4"),
+        ("3", "3"),
+    ):
+        monde.inscrire_classe(valeurs)
+    monde.placer()
+    for numero in (1, 2, 3, 4):  # les quarts (tour 1)
+        monde.gagner(numero)
+    for numero in (5, 6):  # les demies (tour 2) → la finale (tour 3) a ses deux occupants
+        monde.gagner(numero)
+
+    feu = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
+    tour3 = [d for d in feu.duels if d.tour == 3]
+    assert tour3  # finale + petite finale
+    for duel in tour3:
+        assert duel.participants_connus
+        assert duel.cible_haut is None and duel.cible_bas is None
+        assert not duel.cible_attribuee and not duel.pret_a_lancer
+        assert duel.blocage == "cible non attribuée"
+
+
 def test_lancer_global_chiffre_et_trace() -> None:
     """CA lancement : le lancement global fait partir tous les duels prêts, **chiffre** ce qu'il
     déclenche (duels/cibles/archers) et laisse une **trace d'audit** `LANCEMENT` datée/attribuée."""

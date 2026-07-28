@@ -21,7 +21,13 @@ export function FeuVert({ tournoiId }: { tournoiId: number }) {
   // sélecteur de la saisie en duels et du plan de duels). Le serveur reste l'autorité.
   const tableaux = (phases.data ?? []).filter((p) => p.type === 'elimination_directe')
   const [choisie, setChoisie] = useState<number | null>(null)
-  const phaseId = choisie ?? tableaux[0]?.id ?? null
+  // Si la phase choisie n'est plus une phase de tableau disponible (rare : suppression pendant le
+  // pilotage), on retombe sur la première — plutôt que d'interroger une phase absente et de rester
+  // bloqué sur « Feu vert injoignable » sans moyen d'en sortir.
+  const phaseId =
+    choisie !== null && tableaux.some((phase) => phase.id === choisie)
+      ? choisie
+      : (tableaux[0]?.id ?? null)
 
   const feu = useFeuVert(tournoiId, phaseId)
   const impact = useImpactLancement(tournoiId, phaseId)

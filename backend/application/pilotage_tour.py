@@ -248,8 +248,16 @@ class ServicePilotageTour:
     ) -> DuelAVenir:
         """Assemble l'état d'un duel à venir : les trois questions du CA + le blocage nommé."""
         participants_connus = match.haut is not None and match.bas is not None
-        cible_haut = self._cible_de(match.haut, cibles)
-        cible_bas = self._cible_de(match.bas, cibles)
+        # Le placement des cibles n'existe **qu'au tour 1** (E03US009, MVP tour-1 uniquement) ; le
+        # placement intégral 1→N est E05US010, non livré. On **n'attribue donc aucune cible** aux
+        # duels de tour ≥ 2 : leurs occupants (vainqueurs propagés) gardent leur ligne de placement
+        # de tour 1 dans `placement_tableau`, mais cette cible serait **périmée** pour le tour
+        # suivant (elle enverrait les finalistes, venus de deux cibles distinctes, sur l'ancienne).
+        # Sans ce garde, le feu vert afficherait « prêt · cibles X et Y » et lancerait la finale à
+        # tort — l'inverse de ce que promet l'ADR-0056. S'ouvrira aux tours ≥ 2 avec E05US010.
+        place = match.tour == 1
+        cible_haut = self._cible_de(match.haut, cibles) if place else None
+        cible_bas = self._cible_de(match.bas, cibles) if place else None
         cible_attribuee = cible_haut is not None and cible_bas is not None
         sources = self._sources_en_attente(match)
         return DuelAVenir(
