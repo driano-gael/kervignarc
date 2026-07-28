@@ -10,6 +10,10 @@ import type { LiveEvent } from './types'
 export interface OptionsRealtime {
   onStatut: (statut: StatutConnexion) => void
   onEvenement: (evenement: LiveEvent) => void
+  // Chemin du canal WebSocket. Défaut : `/ws` (temps réel réel). Le cockpit de simulation
+  // (E15US003) passe `/ws/simulation` — un canal **isolé**, servi par un broadcaster dédié
+  // (ADR-0055 §5) — pour recevoir les signaux de sa session sans les mêler au flux réel.
+  chemin?: string
 }
 
 const DELAI_RECONNEXION_MS = 1000
@@ -27,7 +31,8 @@ export class RealtimeClient {
   connecter(): void {
     this.options.onStatut('connexion')
     const protocole = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const ws = new WebSocket(`${protocole}//${window.location.host}/ws`)
+    const chemin = this.options.chemin ?? '/ws'
+    const ws = new WebSocket(`${protocole}//${window.location.host}${chemin}`)
     this.ws = ws
 
     ws.onopen = () => this.options.onStatut('connecte')
