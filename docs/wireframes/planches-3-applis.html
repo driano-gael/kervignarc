@@ -1,0 +1,2319 @@
+<title>Kervignarc — planches de wireframes</title>
+
+<style>
+:root {
+  --papier:      #EDF0F3;
+  --surface:     #F7F9FA;
+  --encre:       #16202B;
+  --encre-doux:  #55636F;
+  --trait:       #AAB6C1;
+  --trait-fin:   #C9D2DA;
+  --bleu:        #1F5E8C;
+  --or:          #9A6F0A;
+  --or-fond:     #F5E7C0;
+  --alerte:      #A33A1C;
+  --alerte-fond: #F6DED6;
+  --ok:          #22664B;
+  --ok-fond:     #D6EADF;
+  --serif: Cambria, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "Cascadia Mono", Consolas, "DejaVu Sans Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --papier:      #0F151B;
+    --surface:     #18212A;
+    --encre:       #DDE5EC;
+    --encre-doux:  #93A2B0;
+    --trait:       #46545F;
+    --trait-fin:   #2C3843;
+    --bleu:        #74AAD2;
+    --or:          #D9B155;
+    --or-fond:     #3A2F14;
+    --alerte:      #E08A6C;
+    --alerte-fond: #3B2019;
+    --ok:          #79C6A2;
+    --ok-fond:     #14301F;
+  }
+}
+:root[data-theme="dark"] {
+  --papier:      #0F151B;
+  --surface:     #18212A;
+  --encre:       #DDE5EC;
+  --encre-doux:  #93A2B0;
+  --trait:       #46545F;
+  --trait-fin:   #2C3843;
+  --bleu:        #74AAD2;
+  --or:          #D9B155;
+  --or-fond:     #3A2F14;
+  --alerte:      #E08A6C;
+  --alerte-fond: #3B2019;
+  --ok:          #79C6A2;
+  --ok-fond:     #14301F;
+}
+:root[data-theme="light"] {
+  --papier:      #EDF0F3;
+  --surface:     #F7F9FA;
+  --encre:       #16202B;
+  --encre-doux:  #55636F;
+  --trait:       #AAB6C1;
+  --trait-fin:   #C9D2DA;
+  --bleu:        #1F5E8C;
+  --or:          #9A6F0A;
+  --or-fond:     #F5E7C0;
+  --alerte:      #A33A1C;
+  --alerte-fond: #F6DED6;
+  --ok:          #22664B;
+  --ok-fond:     #D6EADF;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--papier);
+  color: var(--encre);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+a { color: var(--bleu); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--bleu); outline-offset: 2px; }
+
+/* ---------- ossature de page ---------- */
+
+.page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px 96px;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 48px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .page { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .rail { position: static; border-right: 0; border-bottom: 1px solid var(--trait-fin); margin-bottom: 24px; }
+}
+
+.rail {
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 32px 16px 32px 0;
+  border-right: 1px solid var(--trait-fin);
+  font-size: 13px;
+}
+.rail h2 {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--encre-doux);
+  margin: 24px 0 8px;
+  font-weight: 600;
+}
+.rail h2:first-child { margin-top: 0; }
+.rail ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.rail a { text-decoration: none; color: var(--encre); display: block; padding: 2px 0; }
+.rail a:hover { color: var(--bleu); }
+.rail .num { font-family: var(--mono); color: var(--encre-doux); font-size: 11px; margin-right: 6px; }
+
+.corps { min-width: 0; padding-top: 32px; }
+
+/* ---------- en-tête ---------- */
+
+.entete { border-bottom: 2px solid var(--encre); padding-bottom: 20px; margin-bottom: 12px; }
+.entete .eyebrow {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--bleu); margin: 0 0 10px;
+}
+h1 {
+  font-family: var(--serif);
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1.08;
+  margin: 0 0 12px;
+  text-wrap: balance;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.chapo { max-width: 62ch; color: var(--encre-doux); margin: 0; }
+
+.meta {
+  display: flex; flex-wrap: wrap; gap: 8px 20px;
+  font-family: var(--mono); font-size: 11.5px; color: var(--encre-doux);
+  margin: 18px 0 0; padding: 0; list-style: none;
+}
+
+/* ---------- sections ---------- */
+
+section.appli { margin-top: 64px; scroll-margin-top: 16px; }
+.appli-tete { border-top: 1px solid var(--trait); padding-top: 20px; }
+.appli-tete h2 {
+  font-family: var(--serif); font-size: 30px; margin: 0 0 6px; font-weight: 600; text-wrap: balance;
+}
+.appli-tete .route {
+  font-family: var(--mono); font-size: 12px; color: var(--bleu);
+  background: var(--surface); border: 1px solid var(--trait-fin);
+  padding: 2px 8px; border-radius: 2px; display: inline-block;
+}
+.appli-tete p { max-width: 68ch; color: var(--encre-doux); margin: 10px 0 0; }
+
+h3.plaque-titre {
+  font-family: var(--serif); font-size: 21px; margin: 0; font-weight: 600; text-wrap: balance;
+}
+
+/* ---------- planche ---------- */
+
+.plaque {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--trait-fin);
+  scroll-margin-top: 16px;
+}
+.plaque-entete { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.plaque-num {
+  font-family: var(--mono); font-size: 12px; color: var(--encre-doux);
+  border: 1px solid var(--trait); padding: 1px 6px; border-radius: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.role { max-width: 72ch; color: var(--encre-doux); margin: 6px 0 18px; font-size: 15px; }
+
+.duo { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 28px; align-items: start; }
+@media (max-width: 1100px) { .duo { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- cadre d'appareil ---------- */
+
+.cadre { --w: 1024px; width: 100%; }
+.cadre-legende {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--encre-doux); display: flex; justify-content: space-between; gap: 12px;
+  border-bottom: 1px dashed var(--trait); padding-bottom: 4px; margin-bottom: 8px;
+}
+.ecran {
+  width: min(100%, var(--w));
+  border: 1.5px solid var(--trait);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+.ecran + .ecran { margin-top: 14px; }
+
+/* barres et zones internes */
+.wf-barre {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 6px 10px; border-bottom: 1px solid var(--trait-fin);
+  background: color-mix(in srgb, var(--trait-fin) 30%, transparent);
+  font-size: 11.5px;
+}
+.wf-barre .titre { font-weight: 700; letter-spacing: .06em; }
+.wf-barre .pousse { margin-left: auto; }
+.wf-corps { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.wf-colonnes { display: grid; grid-template-columns: 190px minmax(0, 1fr); }
+.wf-colonnes.mince { grid-template-columns: 52px minmax(0, 1fr); }
+.wf-flanc {
+  border-right: 1px solid var(--trait-fin);
+  padding: 8px; display: flex; flex-direction: column; gap: 2px; font-size: 11.5px;
+}
+.wf-flanc .groupe { color: var(--encre-doux); letter-spacing: .08em; margin-top: 8px; }
+.wf-flanc .item { padding-left: 10px; }
+.wf-flanc .item.actif { color: var(--bleu); font-weight: 700; }
+.wf-flanc .item.actif::before { content: "▸ "; margin-left: -10px; }
+
+/* éléments de wireframe */
+.ligne { display: flex; align-items: center; gap: 10px; }
+.ligne .pousse { margin-left: auto; }
+.liste { border: 1px solid var(--trait-fin); }
+.liste > * { padding: 5px 8px; display: flex; align-items: center; gap: 10px; }
+.liste > * + * { border-top: 1px solid var(--trait-fin); }
+.liste .pousse { margin-left: auto; }
+.entete-liste { background: color-mix(in srgb, var(--trait-fin) 25%, transparent); font-size: 11px; letter-spacing: .08em; color: var(--encre-doux); }
+
+.champ { border: 1px solid var(--trait); padding: 4px 8px; color: var(--encre-doux); background: transparent; }
+.champ.plein { color: var(--encre); }
+.btn {
+  border: 1.5px solid var(--encre); padding: 4px 12px; display: inline-block;
+  font-family: var(--mono); font-size: 12px; letter-spacing: .04em; background: transparent; color: var(--encre);
+}
+.btn.primaire { background: var(--encre); color: var(--surface); font-weight: 700; }
+.btn.fantome { border-color: var(--trait); color: var(--encre-doux); }
+.btn.large { display: block; text-align: center; }
+.btn.geant { padding: 14px; font-size: 15px; font-weight: 700; }
+
+.ph { background: repeating-linear-gradient(135deg, var(--trait-fin) 0 6px, transparent 6px 12px); height: 10px; border-radius: 1px; }
+.bloc-vide { border: 1px dashed var(--trait); color: var(--encre-doux); text-align: center; padding: 14px 8px; font-size: 11.5px; }
+
+.pastille { font-size: 10.5px; letter-spacing: .06em; padding: 1px 6px; border: 1px solid currentColor; border-radius: 999px; white-space: nowrap; }
+.pastille.ok { color: var(--ok); background: var(--ok-fond); }
+.pastille.att { color: var(--or); background: var(--or-fond); }
+.pastille.ko { color: var(--alerte); background: var(--alerte-fond); }
+.pastille.neutre { color: var(--encre-doux); }
+
+.jauge { flex: 1; height: 10px; border: 1px solid var(--trait); position: relative; min-width: 80px; }
+.jauge span { position: absolute; inset: 1px auto 1px 1px; background: var(--trait); display: block; }
+
+.pave { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.pave b, .pave i {
+  border: 1.5px solid var(--trait); text-align: center; padding: 14px 0;
+  font-style: normal; font-size: 17px; font-weight: 700;
+}
+.pave i { color: var(--encre-doux); font-weight: 400; }
+.grille-cible { display: grid; gap: 4px; }
+.grille-cible .arc { display: grid; grid-template-columns: 18px minmax(0, 1fr) repeat(3, 34px) 46px; gap: 6px; align-items: center; padding: 5px 6px; border: 1px solid var(--trait-fin); }
+.grille-cible .arc.actif { border-color: var(--encre); border-width: 2px; }
+.grille-cible .case { border: 1px solid var(--trait-fin); text-align: center; }
+.grille-cible .case.remplie { border-color: var(--trait); }
+.tot { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.salle { aspect-ratio: 16 / 9; display: flex; flex-direction: column; }
+.salle .titre-salle { font-size: 20px; font-weight: 700; letter-spacing: .1em; }
+.salle .corps-salle { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+.salle .pied { border-top: 1px solid var(--trait-fin); padding: 6px 14px; font-size: 10.5px; color: var(--encre-doux); display: flex; justify-content: space-between; }
+
+/* ---------- colonne d'annotations ---------- */
+
+.notes { font-size: 13.5px; }
+.notes h4 {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--encre-doux); margin: 0 0 8px; font-weight: 600;
+}
+.notes h4 + ul { margin-top: 0; }
+.notes ul { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.notes li { padding-left: 0; }
+.ref {
+  font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+  color: var(--or); background: var(--or-fond); border: 1px solid color-mix(in srgb, var(--or) 40%, transparent);
+  padding: 0 5px; border-radius: 2px; margin-right: 6px; white-space: nowrap;
+}
+.ref.q { color: var(--alerte); background: var(--alerte-fond); border-color: color-mix(in srgb, var(--alerte) 40%, transparent); }
+.ref.p { color: var(--bleu); background: color-mix(in srgb, var(--bleu) 12%, transparent); border-color: color-mix(in srgb, var(--bleu) 35%, transparent); }
+
+.etat { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; padding: 1px 7px; border-radius: 2px; white-space: nowrap; }
+.etat.code { color: var(--ok); background: var(--ok-fond); border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent); }
+.etat.neuf { color: var(--bleu); background: color-mix(in srgb, var(--bleu) 12%, transparent); border: 1px solid color-mix(in srgb, var(--bleu) 35%, transparent); }
+
+/* ---------- parcours (mermaid) ---------- */
+
+.parcours { border: 1px solid var(--trait-fin); background: var(--surface); padding: 16px; margin: 20px 0 0; overflow-x: auto; }
+.parcours figcaption { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--encre-doux); margin-bottom: 10px; }
+pre.mermaid { margin: 0; text-align: center; }
+
+/* ---------- encadré ---------- */
+
+.encadre {
+  border-left: 3px solid var(--bleu); background: var(--surface);
+  padding: 14px 18px; margin: 24px 0; font-size: 14.5px;
+}
+.encadre p { margin: 0 0 8px; }
+.encadre p:last-child { margin-bottom: 0; }
+.encadre strong { color: var(--encre); }
+
+table.recap { border-collapse: collapse; width: 100%; font-size: 13.5px; margin-top: 14px; }
+table.recap th, table.recap td { border-bottom: 1px solid var(--trait-fin); padding: 6px 10px 6px 0; text-align: left; vertical-align: top; }
+table.recap th { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--encre-doux); font-weight: 600; }
+.enveloppe-table { overflow-x: auto; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="page">
+
+<nav class="rail" aria-label="Index des planches">
+  <h2>Repères</h2>
+  <ol>
+    <li><a href="#lecture"><span class="num">§</span>Comment lire</a></li>
+    <li><a href="#fil"><span class="num">§</span>Le fil de la journée</a></li>
+  </ol>
+
+  <h2>Admin · /admin</h2>
+  <ol>
+    <li><a href="#a01"><span class="num">A01</span>Connexion</a></li>
+    <li><a href="#a02"><span class="num">A02</span>Ossature</a></li>
+    <li><a href="#a03"><span class="num">A03</span>Accueil selon statut</a></li>
+    <li><a href="#a04"><span class="num">A04</span>Tournois</a></li>
+    <li><a href="#a05"><span class="num">A05</span>Identité</a></li>
+    <li><a href="#a06"><span class="num">A06</span>Référentiels</a></li>
+    <li><a href="#a07"><span class="num">A07</span>Phases</a></li>
+    <li><a href="#a08"><span class="num">A08</span>Scoreurs</a></li>
+    <li><a href="#a09"><span class="num">A09</span>Inscriptions</a></li>
+    <li><a href="#a10"><span class="num">A10</span>Plan de salle</a></li>
+    <li><a href="#a11"><span class="num">A11</span>Placement</a></li>
+    <li><a href="#a12"><span class="num">A12</span>Postes &amp; jetons</a></li>
+    <li><a href="#a13"><span class="num">A13</span>Supervision</a></li>
+    <li><a href="#a14"><span class="num">A14</span>Complétude</a></li>
+    <li><a href="#a15"><span class="num">A15</span>Bascule de tour</a></li>
+    <li><a href="#a16"><span class="num">A16</span>Classements &amp; podiums</a></li>
+    <li><a href="#a17"><span class="num">A17</span>Paiements</a></li>
+    <li><a href="#a18"><span class="num">A18</span>Exports, archive, audit</a></li>
+    <li><a href="#a19"><span class="num">A19</span>Pilotage écran de salle</a></li>
+  </ol>
+
+  <h2>Saisie · /saisie</h2>
+  <ol>
+    <li><a href="#s01"><span class="num">S01</span>Rattachement du poste</a></li>
+    <li><a href="#s02"><span class="num">S02</span>Poste de cible</a></li>
+    <li><a href="#s03"><span class="num">S03</span>Pavé de saisie</a></li>
+    <li><a href="#s04"><span class="num">S04</span>Marqueur</a></li>
+    <li><a href="#s05"><span class="num">S05</span>Saisie de duel</a></li>
+    <li><a href="#s06"><span class="num">S06</span>Panneau de routage</a></li>
+    <li><a href="#s07"><span class="num">S07</span>File du scoreur</a></li>
+    <li><a href="#s08"><span class="num">S08</span>Validation d'une cible</a></li>
+    <li><a href="#s09"><span class="num">S09</span>États dégradés</a></li>
+  </ol>
+
+  <h2>Publique · /</h2>
+  <ol>
+    <li><a href="#p01"><span class="num">P01</span>« C'est moi »</a></li>
+    <li><a href="#p02"><span class="num">P02</span>Ma journée</a></li>
+    <li><a href="#p03"><span class="num">P03</span>Classements</a></li>
+    <li><a href="#p04"><span class="num">P04</span>Plan de cibles</a></li>
+    <li><a href="#p05"><span class="num">P05</span>Tableau de duels</a></li>
+    <li><a href="#p06"><span class="num">P06</span>Salle · affectations</a></li>
+    <li><a href="#p07"><span class="num">P07</span>Salle · classement</a></li>
+  </ol>
+
+  <h2>Suite</h2>
+  <ol>
+    <li><a href="#trancher"><span class="num">§</span>À trancher ensemble</a></li>
+  </ol>
+</nav>
+
+<main class="corps">
+
+<header class="entete">
+  <p class="eyebrow">Kervignarc · tournoi salle 18 m</p>
+  <h1>Planches de wireframes<br>et parcours utilisateur</h1>
+  <p class="chapo">Basse fidélité, volontairement sans couleurs de marque : on travaille la <strong>structure</strong>
+  et l'<strong>enchaînement</strong> des écrans, pas l'habillage. Chaque planche est dérivée du
+  <em>cahier des charges UX</em> (§6 à §8) et renvoie aux décisions <code>D-nn</code> qui la justifient.</p>
+  <ul class="meta">
+    <li>3 applications · 35 planches</li>
+    <li>Support de travail — non intégré au dépôt</li>
+    <li>À confronter au code existant</li>
+  </ul>
+</header>
+
+<section id="lecture" class="plaque" style="border-top:0">
+  <h3 class="plaque-titre">Comment lire ces planches</h3>
+  <p class="role">Trois conventions, et c'est tout.</p>
+  <div class="enveloppe-table"><table class="recap">
+    <tr>
+      <th style="width:150px">Cadres</th>
+      <td>Le trait fin est le bord de l'écran ; la légende au-dessus donne la <strong>largeur de conception</strong>.
+      Les planchers responsive diffèrent par appli (<span class="ref p">D-02</span>) : admin 1024 px, saisie 768 px, publique 360 px.</td>
+    </tr>
+    <tr>
+      <th>Annotations</th>
+      <td><span class="ref">D-nn</span> décision actée du CDC UX · <span class="ref p">P-n</span> principe directeur ·
+      <span class="ref q">Q-UXn</span> question <strong>ouverte</strong> — c'est là qu'on a besoin d'un arbitrage.</td>
+    </tr>
+    <tr>
+      <th>État</th>
+      <td><span class="etat code">écran existant</span> un composant du même rôle vit déjà dans <code>frontend/src/features/</code> —
+      le wireframe est alors une <em>cible</em> à confronter à l'existant, pas un constat.
+      <span class="etat neuf">à concevoir</span> rien de tel n'est encore construit.</td>
+    </tr>
+  </table></div>
+</section>
+
+<section id="fil" class="plaque">
+  <h3 class="plaque-titre">Le fil rouge de la journée</h3>
+  <p class="role">La même donnée — « où je tire ensuite » — sort sur quatre canaux
+  (<span class="ref">D-09</span>). Le parcours ci-dessous est <em>transverse</em> aux trois applis : c'est lui
+  qui décide de la valeur du produit, pas les écrans pris un par un.</p>
+
+  <figure class="parcours">
+    <figcaption>Boucle d'un tour — de la dernière flèche à « les archers savent où aller »</figcaption>
+<pre class="mermaid">
+flowchart LR
+  A["Marqueur<br/>saisit la volee"] --> B["Cible en attente<br/>de validation"]
+  B --> C["Scoreur valide<br/>(2e marque, D-03)"]
+  C --> D{"Tous les duels<br/>du tour valides ?"}
+  D -- non --> B
+  D -- oui --> E["Feu vert affiche<br/>chez l'admin (D-23)"]
+  E --> F["L'admin lance<br/>(D-22)"]
+  F --> G["Tablettes de cible"]
+  F --> H["Telephones<br/>appli publique"]
+  F --> I["Ecran de salle"]
+  F --> J["Table de<br/>l'organisation"]
+</pre>
+  </figure>
+
+  <div class="encadre">
+    <p><strong>La métrique du produit</strong> (<span class="ref">D-25</span>) : moins de 2 minutes entre le
+    dernier duel validé et le moment où les archers savent où aller. Tout ce qui suit se juge à cette aune —
+    un écran qui ajoute un clic sur ce chemin coûte plus cher qu'un écran laid ailleurs.</p>
+    <p>Le piège de timing est déjà désamorcé : les cibles sont attribuées <strong>aux matchs</strong> et non aux
+    archers (<span class="ref">D-08</span>), donc l'affectation du tour suivant existe <em>avant</em> le duel.
+    Le bouton « lancer » ne calcule rien, il diffuse.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ ADMIN ══════════════════════════════ -->
+
+<section class="appli" id="admin">
+  <div class="appli-tete">
+    <span class="route">/admin</span>
+    <h2>Appli admin — préparer, superviser, lancer</h2>
+    <p>Un ou deux organisateurs, sur PC ou grande tablette. ~16 destinations rangées par <em>temps du tournoi</em>,
+    toutes cliquables en permanence (<span class="ref">D-19</span>, <span class="ref p">P-3</span> : l'appli
+    n'empêche pas, elle montre). Ce qui change avec le statut, c'est l'<strong>accueil</strong>, pas le menu.</p>
+  </div>
+
+  <figure class="parcours">
+    <figcaption>Parcours admin — les trois temps</figcaption>
+<pre class="mermaid">
+flowchart LR
+  P["PREPARATION<br/>tournoi, identite,<br/>referentiels, phases"] --> I["Inscriptions<br/>+ paiements"]
+  I --> PL["Placement<br/>plan de cibles"]
+  PL --> PR{"Completude<br/>satisfaite ?"}
+  PR -- non --> I
+  PR -- oui --> D["Statut PRET<br/>bouton Demarrer actif"]
+  D --> S["JOUR J<br/>console de supervision"]
+  S --> V["File de validation"]
+  V --> B["Bascule de tour"]
+  B --> S
+  S --> T["Terminer<br/>fige le sportif (D-15)"]
+  T --> R["APRES<br/>classements, podiums,<br/>exports, archive"]
+</pre>
+  </figure>
+
+  <!-- A01 -->
+  <article class="plaque" id="a01">
+    <div class="plaque-entete">
+      <span class="plaque-num">A01</span>
+      <h3 class="plaque-titre">Connexion</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Le seul écran avec mot de passe de tout le produit : l'admin est le seul rôle authentifié
+    par compte (<span class="ref">D-13</span>). Scoreur = identifié sans compte, archer = anonyme.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:520px">
+          <div class="cadre-legende"><span>Admin · 520 px de contenu</span><span>plancher 1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-corps" style="gap:12px;padding:24px">
+              <div style="font-weight:700;letter-spacing:.08em">KERVIGNARC · ADMINISTRATION</div>
+              <div class="ph" style="width:60%"></div>
+              <div class="champ">Identifiant</div>
+              <div class="champ">Mot de passe                        ◉</div>
+              <span class="btn primaire large">SE CONNECTER</span>
+              <div style="color:var(--encre-doux);font-size:11px">Poste non administrateur ? → aller à /saisie ou /</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Ce que la planche fixe</h4>
+        <ul>
+          <li><span class="ref">D-13</span> Trois modes d'identité. Ici seulement le mode « compte ».</li>
+          <li>Pas de création de compte, pas de « mot de passe oublié » : mono-club, hors ligne, le jour J
+          personne n'a le temps.</li>
+          <li>Un lien de secours vers les deux autres applis évite le cul-de-sac quand un bénévole se trompe d'URL.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A02 -->
+  <article class="plaque" id="a02">
+    <div class="plaque-entete">
+      <span class="plaque-num">A02</span>
+      <h3 class="plaque-titre">Ossature — sidebar groupée par temps</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Le squelette stable de l'appli. Groupes repliables suivant la vie du tournoi ;
+    <strong>replié ≠ interdit</strong> — un clic sur <em>Préparation</em> et on inscrit un retardataire.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:900px">
+          <div class="cadre-legende"><span>Admin · sidebar 240 px</span><span>plancher 1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-colonnes">
+              <div class="wf-flanc">
+                <div class="ligne"><strong>Tournoi 12 oct</strong> <span class="pousse">▾</span></div>
+                <div class="ligne"><span class="pastille att">EN COURS</span> <span class="pastille ko">● LIVE</span></div>
+                <div class="champ" style="margin-top:6px">Rechercher un archer…</div>
+                <div class="groupe">PRÉPARATION ▸</div>
+                <div class="groupe">JOUR J ▾</div>
+                <div class="item actif">Supervision</div>
+                <div class="item ligne">Complétude <span class="pousse pastille ko">!</span></div>
+                <div class="item ligne">Validation <span class="pousse pastille att">3</span></div>
+                <div class="item">Classements</div>
+                <div class="groupe">APRÈS ▸</div>
+              </div>
+              <div class="wf-corps">
+                <div class="wf-barre" style="border:0;background:transparent;padding:0"><span class="titre">SUPERVISION</span></div>
+                <div class="ligne">Qualification <span class="pousse">Volée 8/12</span></div>
+                <div class="ligne"><span class="jauge"><span style="width:62%"></span></span> 62 %</div>
+                <div class="bloc-vide">contenu de la destination — voir planches A03 → A19</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Deux éléments non négociables</h4>
+        <ul>
+          <li><span class="ref">D-10</span> <strong>La recherche est dans la sidebar, en haut, toujours.</strong>
+          C'est le bénévole de la table qui répond à un archer venu demander où il tire.</li>
+          <li><strong>Le sélecteur de tournoi est au-dessus de tout</strong> : tout ce qui est en dessous lui
+          appartient. Évite la catastrophe classique — modifier le mauvais tournoi. Plusieurs tournois peuvent
+          être « en cours » simultanément (intérieur + extérieur), donc pas de notion de « tournoi courant » global.</li>
+          <li>Les entrées portent leur <strong>état</strong> (<code>3!</code>, <code>62 %</code>) : le menu informe
+          au lieu de seulement naviguer.</li>
+        </ul>
+        <h4>Variante pleine largeur</h4>
+        <ul>
+          <li>Repli en icônes (56 px) réservé au <strong>plan de salle</strong> et à l'<strong>arbre de duels</strong>
+          — voir A10 et A11.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A03 -->
+  <article class="plaque" id="a03">
+    <div class="plaque-entete">
+      <span class="plaque-num">A03</span>
+      <h3 class="plaque-titre">Accueil contextualisé — 7 statuts</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role"><em>Accessible</em> et <em>au premier plan</em> sont deux choses différentes
+    (<span class="ref">D-20</span>). Les 16 destinations restent à un clic ; c'est l'accueil qui change de registre.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:820px">
+          <div class="cadre-legende"><span>Brouillon — dense, formulaires, on a le temps</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">TOURNOI DU 12 OCTOBRE</span><span class="pastille neutre">BROUILLON</span>
+              <span class="pousse">frise : brouillon ▸ prêt ▸ en cours ▸ terminé</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span>CE QU'IL RESTE À PRÉPARER</span><span class="pousse">4 points</span></div>
+                <div><span class="pastille ko">!</span> Aucun gabarit de salle <span class="pousse btn fantome">Définir</span></div>
+                <div><span class="pastille ko">!</span> Phases sans barème <span class="pousse btn fantome">Configurer</span></div>
+                <div><span class="pastille att">~</span> 12 inscriptions sans paiement <span class="pousse btn fantome">Voir</span></div>
+                <div><span class="pastille att">~</span> Placement non calculé <span class="pousse btn fantome">Placer</span></div>
+              </div>
+              <span class="btn fantome large">DÉMARRER LE TOURNOI — inactif tant que le sportif est incomplet</span>
+            </div>
+          </div>
+        </div>
+        <div class="cadre" style="--w:820px;margin-top:18px">
+          <div class="cadre-legende"><span>En cours — gros, alertes, zéro formulaire au premier plan</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">TOURNOI DU 12 OCTOBRE</span><span class="pastille att">EN COURS</span>
+              <span class="pousse">Qualification · volée 8/12</span></div>
+            <div class="wf-corps">
+              <div class="ligne"><span class="jauge"><span style="width:62%"></span></span><span>62 %</span></div>
+              <div class="liste">
+                <div><span class="pastille ko">2 POSTES HORS LIGNE</span> cibles 7, 23 <span class="pousse btn fantome">Supervision</span></div>
+                <div><span class="pastille att">3 À VALIDER</span> le plus ancien attend 4 mn 20 <span class="pousse btn fantome">File</span></div>
+              </div>
+              <span class="btn primaire large geant">LANCER LES DEMI-FINALES — 2 duels, cibles 4 et 7</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Les 7 statuts et leur accueil</h4>
+        <ul>
+          <li><strong>Brouillon</strong> → la préparation, dense.</li>
+          <li><strong>Prêt</strong> → la préparation + feu vert « Démarrer ».</li>
+          <li><strong>En cours</strong> → la console de supervision.</li>
+          <li><strong>En pause</strong> → supervision + bandeau « gelé », saisie figée.</li>
+          <li><strong>Terminé</strong> → résultats &amp; exports ; le hors-sportif reste modifiable
+          (<span class="ref">D-15</span>, <span class="ref">D-18</span>).</li>
+          <li><strong>Archivé</strong> → lecture seule, verrou total.</li>
+          <li><strong>Annulé</strong> → page d'état, trace conservée, aucune action.</li>
+        </ul>
+        <h4>Piège</h4>
+        <ul>
+          <li>Ce n'est <em>pas</em> une restriction d'accès : si l'accueil devient un mur, on a trahi
+          <span class="ref p">P-3</span>. La sidebar reste identique dans les 7 cas.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A04 -->
+  <article class="plaque" id="a04">
+    <div class="plaque-entete">
+      <span class="plaque-num">A04</span>
+      <h3 class="plaque-titre">Tournois — liste et cycle de vie</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">La porte d'entrée. Plusieurs tournois peuvent coexister « en cours » : la liste ne
+    hiérarchise donc pas par un « tournoi actif », elle affiche l'état de chacun.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:820px">
+          <div class="cadre-legende"><span>Admin</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">TOURNOIS</span><span class="pousse btn">+ NOUVEAU TOURNOI</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span style="width:180px">NOM</span><span style="width:90px">DATE</span><span style="width:110px">STATUT</span><span class="pousse">ACTIONS</span></div>
+                <div><span style="width:180px">Challenge des Champions</span><span style="width:90px">12/10</span>
+                  <span style="width:110px"><span class="pastille att">EN COURS</span></span>
+                  <span class="pousse btn fantome">Ouvrir</span></div>
+                <div><span style="width:180px">Tir extérieur du club</span><span style="width:90px">18/10</span>
+                  <span style="width:110px"><span class="pastille att">EN COURS</span></span>
+                  <span class="pousse btn fantome">Ouvrir</span></div>
+                <div><span style="width:180px">Interclubs jeunes</span><span style="width:90px">09/11</span>
+                  <span style="width:110px"><span class="pastille neutre">BROUILLON</span></span>
+                  <span class="pousse btn fantome">Ouvrir</span></div>
+                <div><span style="width:180px">Concours de printemps</span><span style="width:90px">14/04</span>
+                  <span style="width:110px"><span class="pastille ok">TERMINÉ</span></span>
+                  <span class="pousse btn fantome">Ouvrir</span></div>
+              </div>
+              <div style="color:var(--encre-doux);font-size:11px">La suppression est refusée tant que le tournoi est en cours — message expliquant pourquoi, pas un bouton grisé muet.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Règles portées par l'écran</h4>
+        <ul>
+          <li><strong>Plusieurs « en cours » est voulu</strong>, pas un accident : intérieur et extérieur peuvent
+          tourner le même week-end. Tout se scope par tournoi.</li>
+          <li>La frise du cycle de vie donne l'étape suivante <em>et</em> ce qu'elle fige.</li>
+          <li>Un conflit d'état (démarrer un tournoi déjà en cours) se répond en <strong>409</strong> côté service :
+          l'écran doit afficher la raison, pas « une erreur est survenue ».</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A05 -->
+  <article class="plaque" id="a05">
+    <div class="plaque-entete">
+      <span class="plaque-num">A05</span>
+      <h3 class="plaque-titre">Identité du tournoi</h3>
+      <span class="etat neuf">à concevoir</span>
+    </div>
+    <p class="role">Un logo, deux couleurs d'accent, le système dérive le reste (<span class="ref">D-28</span>).
+    Rangé dans <em>Préparation</em> : le jour J on distribue et on pilote, <strong>on ne choisit pas des
+    couleurs</strong> (<span class="ref p">P-6</span>).</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:820px">
+          <div class="cadre-legende"><span>Admin · aperçu obligatoire</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">IDENTITÉ DU TOURNOI</span><span class="pousse pastille neutre">PRÉPARATION</span></div>
+            <div class="wf-colonnes" style="grid-template-columns:minmax(0,1fr) 300px">
+              <div class="wf-corps">
+                <div class="bloc-vide" style="padding:26px">Déposer le logo de l'événement<br>(PNG/SVG · fond transparent conseillé)</div>
+                <div class="ligne"><span style="width:120px">Accent principal</span><span class="champ plein" style="flex:1">#B0161C</span></div>
+                <div class="ligne"><span style="width:120px">Accent secondaire</span><span class="champ plein" style="flex:1">#1F5E8C</span></div>
+                <div class="liste">
+                  <div style="align-items:flex-start"><span class="pastille att">!</span>
+                    <span>Ce rouge donne <strong>2,55:1</strong> sur le fond sombre. Il servira d'aplat ; le texte
+                    utilisera une variante éclaircie automatiquement.</span></div>
+                </div>
+                <div class="ligne"><span class="btn primaire">ENREGISTRER</span><span class="btn fantome">Revenir à l'identité du club</span></div>
+              </div>
+              <div class="wf-flanc" style="border-right:0;border-left:1px solid var(--trait-fin)">
+                <div style="letter-spacing:.08em;color:var(--encre-doux)">APERÇU</div>
+                <div class="bloc-vide" style="padding:20px 8px">écran de salle<br>(16/9)</div>
+                <div class="bloc-vide" style="padding:20px 8px;width:110px;margin:0 auto">téléphone<br>360 px</div>
+                <div style="font-size:11px;color:var(--encre-doux)">Les deux seules surfaces habillées par
+                l'identité (<span class="ref">D-27</span>).</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Deux exigences de conception</h4>
+        <ul>
+          <li><strong>Un aperçu, pas un nuancier.</strong> L'organisateur ne juge pas une couleur dans un
+          sélecteur : il la juge sur l'écran de salle et sur le téléphone.</li>
+          <li><span class="ref p">P-4</span> <strong>Le contrôle de contraste alerte en chiffrant, il ne refuse
+          pas.</strong> C'est exactement le cas du rouge du club, qui échoue sur le fond sombre. Rien n'est
+          interdit, tout est expliqué.</li>
+          <li><span class="ref">D-27</span> L'identité s'arrête à la vitrine : ni l'admin ni la saisie ne sont
+          habillés. Un outil de travail ne change pas d'apparence d'un tournoi à l'autre.</li>
+          <li>Si le tournoi n'a pas d'identité propre, <strong>le club reprend la place</strong> — aucune surface
+          ne reste vide.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A06 -->
+  <article class="plaque" id="a06">
+    <div class="plaque-entete">
+      <span class="plaque-num">A06</span>
+      <h3 class="plaque-titre">Référentiels — un seul gabarit, six destinations</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Catégories, blasons, clubs, tarifs, barèmes, gabarits partagent la même forme :
+    liste + édition en place. Les dessiner six fois n'apprendrait rien ; la planche fixe le gabarit,
+    le tableau donne les écarts.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:820px">
+          <div class="cadre-legende"><span>Gabarit de référentiel</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">CATÉGORIES</span><span class="champ" style="margin-left:12px">Filtrer…</span><span class="pousse btn">+ AJOUTER</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span style="width:70px">CODE</span><span>LIBELLÉ</span><span class="pousse">DISTANCE · BLASON</span></div>
+                <div><span style="width:70px">SH</span><span>Senior Homme</span><span class="pousse">18 m · 40 cm</span></div>
+                <div><span style="width:70px">SF</span><span>Senior Femme</span><span class="pousse">18 m · 40 cm</span></div>
+                <div><span style="width:70px">CH</span><span>Cadet Homme</span><span class="pousse">18 m · 40 cm</span></div>
+                <div style="background:color-mix(in srgb, var(--trait-fin) 20%, transparent)">
+                  <span style="width:70px" class="champ plein">BJ</span>
+                  <span class="champ plein" style="flex:1">Benjamin</span>
+                  <span class="pousse btn primaire">OK</span><span class="btn fantome">Annuler</span></div>
+              </div>
+              <div style="color:var(--encre-doux);font-size:11px">Édition en place : pas de page séparée pour trois champs.</div>
+            </div>
+          </div>
+        </div>
+        <div class="enveloppe-table"><table class="recap">
+          <tr><th style="width:130px">Destination</th><th>Ce qui diffère du gabarit</th></tr>
+          <tr><td>Catégories</td><td>Distance et blason par défaut ; référence FFTA à ne pas réinventer.</td></tr>
+          <tr><td>Blasons</td><td>Aperçu visuel du blason (diamètre, nombre de zones) — la seule liste où l'image porte l'information.</td></tr>
+          <tr><td>Clubs</td><td>Notion de « club inconnu » plutôt qu'un club sentinelle ; fusion de doublons.</td></tr>
+          <tr><td>Tarifs</td><td>Montant par catégorie ; alimente le suivi des paiements (A17).</td></tr>
+          <tr><td>Barèmes</td><td>Grille de qualification ; rattachée à une phase, pas au tournoi.</td></tr>
+          <tr><td>Gabarits</td><td>Modèles de salle réutilisables d'un tournoi à l'autre — voir A10.</td></tr>
+        </table></div>
+      </div>
+      <aside class="notes">
+        <h4>Pourquoi un gabarit commun</h4>
+        <ul>
+          <li>Six écrans quasi identiques dans un wireframe deck créent l'illusion du travail et cachent les
+          trois écrans qui comptent vraiment (supervision, bascule, saisie).</li>
+          <li>Le vrai risque de ces écrans n'est pas leur forme mais leur <strong>moment</strong> : ils sont
+          tous en <em>Préparation</em> et doivent rester atteignables le jour J (<span class="ref p">P-3</span>).</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A07 -->
+  <article class="plaque" id="a07">
+    <div class="plaque-entete">
+      <span class="plaque-num">A07</span>
+      <h3 class="plaque-titre">Phases — scoring et grain de validation</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Le grain de validation est une <strong>politique de phase</strong>, pas un réglage global
+    (<span class="ref">D-11</span>) : la qualification valide en fin de série, l'élimination directe en fin de duel.
+    Réglé une fois ici, jamais le jour J.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:820px">
+          <div class="cadre-legende"><span>Admin</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">PHASES</span><span class="pousse btn">+ AJOUTER UNE PHASE</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span style="width:150px">PHASE</span><span style="width:130px">SCORING</span><span>VALIDATION</span><span class="pousse">CIBLES</span></div>
+                <div><span style="width:150px">Qualification</span><span style="width:130px">points cumulés</span>
+                  <span>fin de série</span><span class="pousse">30</span></div>
+                <div><span style="width:150px">1/8 de finale</span><span style="width:130px">set-system</span>
+                  <span>fin de duel</span><span class="pousse">8</span></div>
+                <div><span style="width:150px">1/4 de finale</span><span style="width:130px">set-system</span>
+                  <span>fin de duel</span><span class="pousse">4</span></div>
+              </div>
+              <div class="liste">
+                <div class="entete-liste"><span>ÉDITION — QUALIFICATION</span></div>
+                <div><span style="width:150px">Scoring</span><span class="champ plein" style="flex:1">points cumulés ▾</span></div>
+                <div><span style="width:150px">Grain de validation</span><span class="champ plein" style="flex:1">fin de série ▾</span></div>
+                <div style="color:var(--encre-doux)"><span style="width:150px"></span>
+                  <span>≈ 60 validations par départ · 20 par scoreur — confortable</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Chiffrer le choix, pas le subir</h4>
+        <ul>
+          <li>Le grain décide de la charge des scoreurs. L'écran doit afficher la <strong>conséquence chiffrée</strong>
+          au moment du choix (<span class="ref p">P-4</span>) : « chaque volée » = 360 validations, une toutes les
+          20 s — ils ne font plus que ça.</li>
+          <li>« Fin de duel » = 8 validations <em>en simultané</em> : pic court mais violent. C'est le goulot
+          d'étranglement de la journée, et c'est ce qui justifie la file triée par ancienneté (S07).</li>
+          <li>Assise technique : <code>config.validation</code> à côté de <code>config.scoring</code> dans le JSON
+          de phase — pas de changement de schéma.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A08 -->
+  <article class="plaque" id="a08">
+    <div class="plaque-entete">
+      <span class="plaque-num">A08</span>
+      <h3 class="plaque-titre">Scoreurs</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">3 à 4 scoreurs pour ~30 cibles, définis à la configuration et
+    <strong>redéfinissables à tout moment</strong> (<span class="ref">D-14</span>) — un scoreur qui ne vient pas, ça arrive.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:700px">
+          <div class="cadre-legende"><span>Admin</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">SCOREURS</span><span class="pousse btn">+ AJOUTER</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span style="width:170px">NOM</span><span style="width:120px">ÉTAT</span><span class="pousse">VALIDATIONS</span></div>
+                <div><span style="width:170px">LE GALL Anne</span><span style="width:120px"><span class="pastille ok">EN LIGNE</span></span><span class="pousse">18</span></div>
+                <div><span style="width:170px">MOREAU Yves</span><span style="width:120px"><span class="pastille ok">EN LIGNE</span></span><span class="pousse">21</span></div>
+                <div><span style="width:170px">RIOU Claire</span><span style="width:120px"><span class="pastille neutre">JAMAIS VENUE</span></span><span class="pousse">0</span></div>
+              </div>
+              <div style="color:var(--encre-doux);font-size:11px">Ajouter un scoreur en cours de tournoi ne réclame aucun redémarrage : le lien de rattachement est utilisable immédiatement.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Pourquoi le scoreur est nommé</h4>
+        <ul>
+          <li><span class="ref">D-12</span> Chaque validation porte le nom du scoreur : c'est la trace qui donne
+          sa valeur réglementaire à la seconde marque (<span class="ref">D-03</span>).</li>
+          <li>Donc le scoreur est <strong>identifié sans compte</strong> — mode intermédiaire entre l'admin
+          (mot de passe) et l'archer (anonyme) — <span class="ref">D-13</span>.</li>
+          <li>Il n'y a <strong>pas de prise en charge</strong> d'une cible : deux scoreurs peuvent l'ouvrir, le
+          live la retire de la file dès qu'elle est validée. Verrouiller créerait des cibles bloquées par un
+          scoreur parti déjeuner.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A09 -->
+  <article class="plaque" id="a09">
+    <div class="plaque-entete">
+      <span class="plaque-num">A09</span>
+      <h3 class="plaque-titre">Inscriptions — archers, doublons, retardataires</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">L'écran le plus fréquenté avant le jour J, et le plus consulté pendant. Il doit répondre en
+    trois secondes à « cet archer est-il inscrit, et où tire-t-il ? ».</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:860px">
+          <div class="cadre-legende"><span>Admin</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">INSCRIPTIONS</span><span class="champ" style="margin-left:12px;min-width:200px">mart…</span>
+              <span class="pastille att">2 DOUBLONS PROBABLES</span><span class="pousse btn">+ NOUVEL ARCHER</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span style="width:160px">ARCHER</span><span style="width:120px">CLUB</span><span style="width:70px">CAT.</span><span style="width:90px">DÉPART</span><span style="width:70px">CIBLE</span><span class="pousse">PAIEMENT</span></div>
+                <div><span style="width:160px">MARTIN Paul</span><span style="width:120px">Kervignac</span><span style="width:70px">SH</span><span style="width:90px">D1 · 9 h</span><span style="width:70px">12 B</span><span class="pousse pastille ok">RÉGLÉ</span></div>
+                <div><span style="width:160px">MARTIN Sophie</span><span style="width:120px">Lorient</span><span style="width:70px">SF</span><span style="width:90px">D1 · 9 h</span><span style="width:70px">14 A</span><span class="pousse pastille ko">DÛ 12 €</span></div>
+                <div><span style="width:160px">MARTINEAU Luc</span><span style="width:120px">Vannes</span><span style="width:70px">CH</span><span style="width:90px">D2 · 14 h</span><span style="width:70px">—</span><span class="pousse pastille ok">RÉGLÉ</span></div>
+              </div>
+              <div class="liste">
+                <div class="entete-liste"><span>DOUBLONS PROBABLES</span></div>
+                <div><span>MARTIN Paul (Kervignac) ≈ MARTIN P. (Kervignac)</span>
+                  <span class="pousse btn fantome">Ce sont deux archers</span><span class="btn">Fusionner</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Points de conception</h4>
+        <ul>
+          <li>La détection de doublons est une <strong>suggestion</strong>, jamais une fusion automatique :
+          deux frères du même club existent.</li>
+          <li>Un retardataire s'inscrit <em>pendant</em> le tournoi (<span class="ref p">P-3</span>) — l'écran
+          doit rester ouvrable en statut « en cours » et dire clairement ce que ça implique (placement à refaire ?).</li>
+          <li>La colonne <em>Cible</em> vide signale un archer inscrit mais non placé : c'est un point de
+          complétude, il doit remonter en A14.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A10 -->
+  <article class="plaque" id="a10">
+    <div class="plaque-entete">
+      <span class="plaque-num">A10</span>
+      <h3 class="plaque-titre">Plan de salle — sidebar repliée</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Premier des deux écrans qui réclament toute la largeur : la sidebar se replie en icônes (56 px).</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:860px">
+          <div class="cadre-legende"><span>Sidebar repliée · 56 px + 1224 px pour le plan</span><span>1024 px mini</span></div>
+          <div class="ecran">
+            <div class="wf-colonnes mince">
+              <div class="wf-flanc" style="align-items:center;gap:10px;padding-top:10px">
+                <span>≡</span><span>·</span><span>·</span><span>·</span><span>·</span>
+              </div>
+              <div class="wf-corps">
+                <div class="wf-barre" style="border:0;background:transparent;padding:0"><span class="titre">GABARIT DE SALLE</span>
+                  <span class="pousse">30 cibles · 4 postes/cible · 2 pas de tir</span></div>
+                <div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px">
+                  <span class="case-cible btn fantome" style="text-align:center;padding:8px 0">1</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">2</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">3</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">4</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">5</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">6</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">7</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">8</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">9</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">10</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px">
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">11</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">12</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">13</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">14</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">15</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">16</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">17</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">18</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">19</span>
+                  <span class="btn fantome" style="text-align:center;padding:8px 0">20</span>
+                </div>
+                <div class="bloc-vide">pas de tir · ligne de 18 m</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Ce que le gabarit porte</h4>
+        <ul>
+          <li>Un gabarit est <strong>réutilisable</strong> d'un tournoi à l'autre : c'est la salle qui ne change pas,
+          pas le tournoi.</li>
+          <li>Le nombre de postes par cible (3 ou 4) conditionne toute la saisie (S02) et le placement (A11).</li>
+          <li>Le repli en icônes n'est <em>pas</em> un mode global : il est propre à cet écran et au suivant.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A11 -->
+  <article class="plaque" id="a11">
+    <div class="plaque-entete">
+      <span class="plaque-num">A11</span>
+      <h3 class="plaque-titre">Placement — l'écran signature</h3>
+      <span class="etat code">écran existant</span>
+      <span class="ref q">Q-UX8</span>
+    </div>
+    <p class="role">Le CDC UX le classe 4ᵉ en valeur mais le note <strong>non instruit à ce jour</strong> :
+    la planche ci-dessous est une <em>proposition</em>, pas une décision actée.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:860px">
+          <div class="cadre-legende"><span>Proposition — à instruire</span><span>1024 px mini</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">PLACEMENT · DÉPART 1 — 9 h</span>
+              <span class="pastille att">3 ARCHERS NON PLACÉS</span>
+              <span class="pousse btn">CALCULER</span><span class="btn fantome">Vider</span></div>
+            <div class="wf-colonnes" style="grid-template-columns:minmax(0,1fr) 220px">
+              <div class="wf-corps">
+                <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px">
+                  <div class="liste" style="grid-column:span 1"><div style="display:block;padding:4px">
+                    <div style="font-weight:700">C1</div><div>A MARTIN</div><div>B DURAND</div><div>C PETIT</div><div style="color:var(--encre-doux)">D —</div>
+                  </div></div>
+                  <div class="liste"><div style="display:block;padding:4px">
+                    <div style="font-weight:700">C2</div><div>A LEROY</div><div>B GARCIA</div><div>C NOËL</div><div>D FABRE</div>
+                  </div></div>
+                  <div class="liste"><div style="display:block;padding:4px">
+                    <div style="font-weight:700">C3</div><div>A BLANC</div><div>B ROUX</div><div>C —</div><div>D —</div>
+                  </div></div>
+                  <div class="liste"><div style="display:block;padding:4px">
+                    <div style="font-weight:700">C4</div><div class="ph" style="margin:6px 0"></div><div class="ph"></div>
+                  </div></div>
+                  <div class="liste"><div style="display:block;padding:4px">
+                    <div style="font-weight:700">C5</div><div class="ph" style="margin:6px 0"></div><div class="ph"></div>
+                  </div></div>
+                  <div class="liste"><div style="display:block;padding:4px">
+                    <div style="font-weight:700">C6</div><div class="ph" style="margin:6px 0"></div><div class="ph"></div>
+                  </div></div>
+                </div>
+              </div>
+              <div class="wf-flanc" style="border-right:0;border-left:1px solid var(--trait-fin)">
+                <div style="letter-spacing:.08em;color:var(--encre-doux)">NON PLACÉS (3)</div>
+                <div>MARTINEAU Luc · CH</div>
+                <div>OLLIVIER Jo · BF</div>
+                <div>THOMAS Éva · SF</div>
+                <div style="margin-top:10px;letter-spacing:.08em;color:var(--encre-doux)">CONTRAINTES</div>
+                <div style="font-size:11px">· même club → cibles différentes<br>· blasons compatibles par cible<br>· mixité des catégories</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>À instruire avant de coder</h4>
+        <ul>
+          <li><span class="ref q">Q-UX8</span> Le geste central est-il <strong>glisser-déposer</strong> (souris,
+          PC) ou <strong>sélectionner puis affecter</strong> (tactile, tablette) ? Les deux ne donnent pas le
+          même écran.</li>
+          <li>Le calcul automatique doit-il être <em>rejouable</em> après ajout d'un retardataire sans casser
+          les placements manuels déjà faits ? C'est la vraie question dure.</li>
+          <li>Les contraintes affichées à droite sont une hypothèse : la liste exacte se lit dans le référentiel
+          FFTA, à confirmer.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A12 -->
+  <article class="plaque" id="a12">
+    <div class="plaque-entete">
+      <span class="plaque-num">A12</span>
+      <h3 class="plaque-titre">Postes et jetons — rattachement, révocation</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">L'identité d'un poste est <strong>le jeton, pas l'IP</strong> (<span class="ref">D-06</span>) :
+    ~30 tablettes personnelles sur un wifi de gymnase, les adresses changent, le jeton non.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:820px">
+          <div class="cadre-legende"><span>Admin · feuilles de QR à imprimer</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">POSTES</span><span class="pousse btn">IMPRIMER LES QR (30)</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span style="width:110px">POSTE</span><span style="width:130px">RATTACHEMENT</span><span style="width:120px">DERNIER SIGNE</span><span class="pousse">ACTIONS</span></div>
+                <div><span style="width:110px">Cible 1</span><span style="width:130px"><span class="pastille ok">RATTACHÉ</span></span><span style="width:120px">il y a 2 mn</span><span class="pousse btn fantome">Révoquer</span></div>
+                <div><span style="width:110px">Cible 7</span><span style="width:130px"><span class="pastille ok">RATTACHÉ</span></span><span style="width:120px"><span class="pastille ko">14 mn</span></span><span class="pousse btn fantome">Révoquer</span></div>
+                <div><span style="width:110px">Cible 23</span><span style="width:130px"><span class="pastille ko">NON RATTACHÉ</span></span><span style="width:120px">—</span><span class="pousse btn">Afficher le QR</span></div>
+                <div><span style="width:110px">Écran salle A</span><span style="width:130px"><span class="pastille ok">RATTACHÉ</span></span><span style="width:120px">il y a 5 s</span><span class="pousse btn fantome">Piloter</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Ce que le poste retient</h4>
+        <ul>
+          <li><span class="ref">D-06</span> jeton → cible · <span class="ref">D-07</span> révocation ·
+          <span class="ref">D-26</span> <strong>thème</strong> (clair/sombre) : la préférence suit le jeton, pas
+          l'onglet. Sans ça, un onglet fermé par erreur — ça arrivera plusieurs fois sur 30 postes × 8 h — fait
+          repartir la tablette en thème sombre en plein gymnase éclairé.</li>
+          <li>Révoquer doit être <strong>immédiat et visible côté poste</strong> (S09) : un poste révoqué qui
+          continue d'afficher la grille est pire que pas de révocation.</li>
+          <li>Piège connu : <code>crypto.randomUUID()</code> n'existe pas en contexte non sécurisé —
+          le jour J on est en <strong>http sur le LAN</strong>, pas en https. Générer les jetons côté serveur.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A13 -->
+  <article class="plaque" id="a13">
+    <div class="plaque-entete">
+      <span class="plaque-num">A13</span>
+      <h3 class="plaque-titre">Console de supervision</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Ce n'est <strong>pas</strong> un graphique de progression : c'est une console de supervision
+    de 30 postes. Elle distingue « ils tirent lentement » de « leur tablette est morte ».</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:860px">
+          <div class="cadre-legende"><span>Admin · accueil du statut « en cours »</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">SUPERVISION</span><span class="pastille ok">● LIVE</span>
+              <span class="pousse">Qualification · volée 8/12 · 62 %</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span>POSTES DE SAISIE</span><span class="pousse">28/30 EN LIGNE</span></div>
+                <div><span style="width:100px">Cible 1</span><span style="width:110px"><span class="pastille ok">EN LIGNE</span></span><span style="width:90px">volée 8</span><span class="pousse">il y a 2 mn</span></div>
+                <div><span style="width:100px">Cible 7</span><span style="width:110px"><span class="pastille ko">HORS LIGNE</span></span><span style="width:90px">volée 5</span><span class="pousse"><span class="pastille ko">il y a 14 mn</span></span></div>
+                <div><span style="width:100px">Cible 12</span><span style="width:110px"><span class="pastille ok">EN LIGNE</span></span><span style="width:90px">volée 8</span><span class="pousse">il y a 1 mn</span></div>
+                <div><span style="width:100px">Cible 23</span><span style="width:110px"><span class="pastille ko">NON RATTACHÉE</span></span><span style="width:90px">—</span><span class="pousse btn fantome">QR</span></div>
+                <div><span style="width:100px">Écran salle</span><span style="width:110px"><span class="pastille ok">EN LIGNE</span></span><span style="width:90px">Affectations</span><span class="pousse btn fantome">Piloter</span></div>
+              </div>
+              <div class="liste">
+                <div class="entete-liste"><span>À VALIDER</span><span class="pousse">3</span></div>
+                <div><span style="width:100px">Cible 3</span><span>attend 4 mn 20</span><span class="pousse btn fantome">Relancer un scoreur</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Le cœur de l'écran</h4>
+        <ul>
+          <li><strong>Un écran figé ne se plaint pas.</strong> Sans la colonne « dernier signe de vie », l'admin
+          confond lenteur et panne, et envoie quelqu'un courir pour rien à l'autre bout du gymnase.</li>
+          <li>Le seuil qui fait basculer en rouge est un <strong>choix à faire</strong> : 5 mn ? 10 mn ? Il doit
+          dépendre du grain de validation, sinon il crie en permanence en qualification.</li>
+          <li>L'écran de salle figure dans la même liste (<span class="ref">D-21</span>) : c'est un poste comme
+          un autre, donc sa panne se voit ici.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A14 -->
+  <article class="plaque" id="a14">
+    <div class="plaque-entete">
+      <span class="plaque-num">A14</span>
+      <h3 class="plaque-titre">Complétude — « qu'est-ce qui manque ? »</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Le vrai visage de « l'avancement du tournoi » (<span class="ref">D-18</span>) : pas une barre
+    de progression, une réponse. <strong>Sportif et hors-sportif comptés séparément</strong> (<span class="ref">D-17</span>).</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:760px">
+          <div class="cadre-legende"><span>Admin</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">TOURNOI DU 12 OCTOBRE</span><span class="pastille att">EN COURS</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span>SPORTIF</span><span class="pousse"><span class="pastille att">INCOMPLET</span></span></div>
+                <div><span style="width:180px">Qualification</span><span class="pastille ok">OK</span><span class="pousse">30/30 cibles</span></div>
+                <div><span style="width:180px">1/8 de finale</span><span class="pastille ok">OK</span><span class="pousse">8/8 duels</span></div>
+                <div><span style="width:180px">1/4 de finale</span><span class="pastille att">!</span><span class="pousse">3/4 duels</span></div>
+                <div><span style="width:180px">Demi-finales</span><span class="pastille neutre">À VENIR</span><span class="pousse">—</span></div>
+                <div><span style="width:180px">Classement 1 → N</span><span class="pastille neutre">EN ATTENTE</span><span class="pousse">—</span></div>
+              </div>
+              <div class="liste">
+                <div class="entete-liste"><span>HORS SPORTIF</span></div>
+                <div><span style="width:180px">Paiements</span><span class="pastille att">!</span><span class="pousse">144/156</span></div>
+              </div>
+              <div class="liste">
+                <div style="display:block"><strong>Terminer le tournoi</strong> → figera le sportif.
+                  Les paiements resteront modifiables.</div>
+                <div><span class="pousse btn primaire">TERMINER LE TOURNOI</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Pourquoi deux compteurs</h4>
+        <ul>
+          <li><span class="ref">D-15</span> « Terminé » <strong>fige le sportif, et seulement le sportif</strong> :
+          un paiement en retard ne doit pas empêcher de clore la compétition, et clore la compétition ne doit pas
+          empêcher d'encaisser.</li>
+          <li>Le bouton dit ce qu'il fige <em>et</em> ce qu'il laisse ouvert : c'est
+          <span class="ref p">P-4</span> appliqué à une action irréversible.</li>
+          <li>Une confirmation chiffrée (retaper un nombre) se justifie ici ; ailleurs elle serait du bruit
+          (<span class="ref">D-16</span> : on clique « oui » sans lire).</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A15 -->
+  <article class="plaque" id="a15">
+    <div class="plaque-entete">
+      <span class="plaque-num">A15</span>
+      <h3 class="plaque-titre">Bascule de tour — le cœur du produit</h3>
+      <span class="etat neuf">à concevoir</span>
+    </div>
+    <p class="role">C'est le moment où le produit gagne ou perd (<span class="ref">D-22</span>).
+    L'appli prépare, contrôle, affiche — <strong>et attend</strong>. La journée a un maître de cérémonie, et ce
+    n'est pas le logiciel.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:760px">
+          <div class="cadre-legende"><span>Tout est mûr</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">BASCULE DE TOUR</span><span class="pousse">Quart de finale</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div><span class="pastille ok">4/4 DUELS VALIDÉS</span><span class="pousse">feu vert</span></div>
+                <div><span>Vainqueurs : MARTIN, DURAND, PETIT, LEROY</span></div>
+              </div>
+              <div class="liste">
+                <div class="entete-liste"><span>DEMI-FINALES</span><span class="pousse">2 duels</span></div>
+                <div><span class="pastille ok">✓</span><span style="width:70px">Duel 1</span><span>MARTIN vs DURAND</span><span class="pousse">cible 4</span></div>
+                <div><span class="pastille ok">✓</span><span style="width:70px">Duel 2</span><span>PETIT vs LEROY</span><span class="pousse">cible 7</span></div>
+                <div><span>Départ 14 h 20</span></div>
+              </div>
+              <div class="liste"><div style="display:block">En lançant : <strong>31 postes</strong>,
+                <strong>87 téléphones</strong> et l'écran de salle affichent les affectations.</div></div>
+              <span class="btn primaire large geant">LANCER LES DEMI-FINALES</span>
+            </div>
+          </div>
+        </div>
+        <div class="cadre" style="--w:760px;margin-top:18px">
+          <div class="cadre-legende"><span>Tout n'est pas mûr — on lance quand même ce qui l'est</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span>DEMI-FINALES</span><span class="pousse">2 duels</span></div>
+                <div><span class="pastille ok">✓</span><span style="width:70px">Duel 1</span><span>MARTIN vs DURAND</span><span class="pousse">cible 4</span></div>
+                <div><span class="pastille ko">○</span><span style="width:70px">Duel 2</span><span>PETIT vs <strong>?</strong></span><span class="pousse">cible 7</span></div>
+                <div style="color:var(--encre-doux)"><span style="width:70px"></span><span>en attente : 1/4 n° 3 non validé</span>
+                  <span class="pousse btn fantome">Déclarer un forfait</span></div>
+              </div>
+              <div class="ligne"><span class="btn primaire" style="flex:1;text-align:center">LANCER LE DUEL 1</span>
+                <span class="btn fantome" style="flex:1;text-align:center">TOUT LANCER</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Deux exigences fermes</h4>
+        <ul>
+          <li><strong>L'appli prépare tout <em>avant</em> qu'on appuie.</strong> Le bouton ne calcule rien —
+          sinon on a remplacé 20 minutes de recopie par 20 secondes de sablier, et le doute revient.</li>
+          <li><span class="ref p">P-4</span> <strong>Le bouton dit ce qu'il déclenche, chiffré.</strong> Pas
+          « Tour suivant » mais « 2 duels, cibles 4 et 7, 14 h 20 — 118 personnes vont être prévenues ».</li>
+        </ul>
+        <h4>Granularité</h4>
+        <ul>
+          <li><span class="ref">D-23</span> Le feu vert est <strong>affiché en permanence</strong>, pas découvert
+          en appuyant.</li>
+          <li><span class="ref">D-24</span> <strong>L'unité lançable est le duel, pas le tour</strong> : deux duels
+          prêts et un qui attend ? On fait partir les deux, au lieu de bloquer 4 archers à cause d'un cinquième.</li>
+          <li>Le forfait est une <strong>donnée</strong> datée et attribuée, pas un trou dans le tableau.</li>
+        </ul>
+        <h4>À trancher</h4>
+        <ul>
+          <li><span class="ref q">Q-UX5</span> Qui déclare le forfait — l'admin seul, ou le scoreur depuis la cible ?</li>
+          <li><span class="ref q">Q-UX6</span> Liste exacte des métriques du feu vert.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A16 -->
+  <article class="plaque" id="a16">
+    <div class="plaque-entete">
+      <span class="plaque-num">A16</span>
+      <h3 class="plaque-titre">Classements et podiums</h3>
+      <span class="etat code">écran existant</span><span class="etat neuf">podiums à concevoir</span>
+    </div>
+    <p class="role">Deux besoins distincts : le classement <em>consultable</em> (par catégorie, filtrable) et le
+    podium <em>projetable</em> (trois noms, gros, à envoyer sur l'écran de salle).</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:820px">
+          <div class="cadre-legende"><span>Admin</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">CLASSEMENTS</span>
+              <span class="champ" style="margin-left:12px">Catégorie : SH ▾</span>
+              <span class="champ">Phase : qualification ▾</span>
+              <span class="pousse btn fantome">Exporter</span><span class="btn">Projeter le podium</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span style="width:50px">RG</span><span style="width:180px">ARCHER</span><span style="width:130px">CLUB</span><span style="width:70px">TOTAL</span><span style="width:60px">10</span><span class="pousse">9</span></div>
+                <div><span style="width:50px">1</span><span style="width:180px">PETIT Luc</span><span style="width:130px">Vannes</span><span style="width:70px" class="tot">548</span><span style="width:60px">21</span><span class="pousse">18</span></div>
+                <div><span style="width:50px">2</span><span style="width:180px">MARTIN Paul</span><span style="width:130px">Kervignac</span><span style="width:70px" class="tot">541</span><span style="width:60px">19</span><span class="pousse">20</span></div>
+                <div><span style="width:50px">3</span><span style="width:180px">DURAND Jean</span><span style="width:130px">Lorient</span><span style="width:70px" class="tot">541</span><span style="width:60px">17</span><span class="pousse">22</span></div>
+                <div style="color:var(--encre-doux)"><span style="width:50px"></span><span>départage : nombre de 10 puis de 9 — la règle appliquée est nommée à l'écran</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Points de vigilance</h4>
+        <ul>
+          <li>Un ex æquo départagé sans dire <strong>par quelle règle</strong> est un litige en puissance :
+          la règle de tiebreak s'affiche, elle ne se devine pas.</li>
+          <li>« Projeter le podium » est une <strong>prise de contrôle</strong> de l'écran de salle : elle doit
+          savoir se terminer (voir A19, <span class="ref q">Q-UX7</span>).</li>
+          <li>Le classement est consultable aussi côté public (P03) : même donnée, deux mises en forme.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A17 -->
+  <article class="plaque" id="a17">
+    <div class="plaque-entete">
+      <span class="plaque-num">A17</span>
+      <h3 class="plaque-titre">Paiements</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Le seul écran <em>hors sportif</em> qui reste modifiable après « Terminé »
+    (<span class="ref">D-15</span>, <span class="ref">D-18</span>).</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:760px">
+          <div class="cadre-legende"><span>Admin</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">PAIEMENTS</span><span class="pastille att">144/156</span>
+              <span class="pousse">restant dû : 144 €</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span style="width:180px">ARCHER</span><span style="width:110px">TARIF</span><span style="width:110px">ÉTAT</span><span class="pousse">MOYEN</span></div>
+                <div><span style="width:180px">MARTIN Paul</span><span style="width:110px">12 €</span><span style="width:110px"><span class="pastille ok">RÉGLÉ</span></span><span class="pousse">chèque</span></div>
+                <div><span style="width:180px">MARTIN Sophie</span><span style="width:110px">12 €</span><span style="width:110px"><span class="pastille ko">DÛ</span></span><span class="pousse btn fantome">Encaisser</span></div>
+              </div>
+              <div style="color:var(--encre-doux);font-size:11px">Tournoi terminé : cet écran reste actif, le sportif est figé.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Note</h4>
+        <ul>
+          <li>Le bandeau « tournoi terminé, cet écran reste actif » n'est pas décoratif : sans lui, le trésorier
+          croit l'appli verrouillée et ressort son carnet.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A18 -->
+  <article class="plaque" id="a18">
+    <div class="plaque-entete">
+      <span class="plaque-num">A18</span>
+      <h3 class="plaque-titre">Exports, archive, audit</h3>
+      <span class="etat code">exports/archive existants</span><span class="etat neuf">audit à concevoir</span>
+    </div>
+    <p class="role">Le temps « après ». Trois écrans sobres, mais l'audit porte une exigence particulière :
+    c'est la trace de qui a saisi et qui a validé.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:760px">
+          <div class="cadre-legende"><span>Admin · audit</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">JOURNAL D'AUDIT</span>
+              <span class="champ" style="margin-left:12px">Cible : 12 ▾</span><span class="champ">Type : tout ▾</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span style="width:80px">HEURE</span><span style="width:140px">QUI</span><span style="width:110px">QUOI</span><span class="pousse">DÉTAIL</span></div>
+                <div><span style="width:80px">10:42</span><span style="width:140px">MARTIN (marqueur)</span><span style="width:110px">saisie volée 8</span><span class="pousse">cible 12 · 27 pts</span></div>
+                <div><span style="width:80px">10:44</span><span style="width:140px">LE GALL (scoreur)</span><span style="width:110px">validation</span><span class="pousse">cible 12 · série 2</span></div>
+                <div><span style="width:80px">10:51</span><span style="width:140px">admin</span><span style="width:110px">forfait</span><span class="pousse">OLLIVIER Jo · 1/8 n° 3</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Pourquoi l'audit compte</h4>
+        <ul>
+          <li><span class="ref">D-04</span> Chaque volée enregistre <strong>qui l'a saisie</strong> : c'est
+          l'équivalent numérique de la signature de la feuille de marque, que le règlement exige.</li>
+          <li>Sans cet écran, la trace existe en base mais reste inatteignable le jour d'une réclamation —
+          c'est-à-dire qu'elle n'existe pas.</li>
+          <li>L'archive verrouille tout : lecture seule totale, aucun bouton d'action.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- A19 -->
+  <article class="plaque" id="a19">
+    <div class="plaque-entete">
+      <span class="plaque-num">A19</span>
+      <h3 class="plaque-titre">Pilotage de l'écran de salle</h3>
+      <span class="etat neuf">à concevoir</span>
+    </div>
+    <p class="role">L'admin impose une vue <strong>depuis son poste</strong>, sans traverser le gymnase
+    (<span class="ref">D-21</span>).</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:520px">
+          <div class="cadre-legende"><span>Panneau de pilotage (depuis la supervision)</span><span>1024 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">ÉCRAN DE SALLE A</span><span class="pastille ok">EN LIGNE</span></div>
+            <div class="wf-corps">
+              <div style="color:var(--encre-doux)">Affiche actuellement : <strong>Affectations</strong></div>
+              <div class="liste">
+                <div class="entete-liste"><span>DÉROULÉ PAR DÉFAUT</span><span class="pousse">rotation 20 s</span></div>
+                <div><span>1 · Affectations du prochain tour</span><span class="pousse">✓</span></div>
+                <div><span>2 · Classement en cours</span><span class="pousse">✓</span></div>
+                <div><span>3 · Plan de cibles</span><span class="pousse">✓</span></div>
+              </div>
+              <div class="liste">
+                <div class="entete-liste"><span>IMPOSER UNE VUE</span></div>
+                <div><span class="champ plein" style="flex:1">Podium — SH ▾</span></div>
+                <div><span>pendant</span><span class="champ plein">10 min</span><span>puis reprise du déroulé</span></div>
+                <div><span class="pousse btn primaire">IMPOSER</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Recommandation ferme</h4>
+        <ul>
+          <li><span class="ref q">Q-UX7</span> <strong>Une prise de contrôle doit savoir se terminer.</strong>
+          Basculer sur le podium à 17 h puis partir serrer des mains, c'est un écran figé sur le podium à 18 h
+          pendant que les gens cherchent leur classement.</li>
+          <li>Donc : une <strong>durée</strong> obligatoire, ou un retour explicite très visible. Jamais un état
+          forcé qu'on oublie. Le wireframe impose la durée par défaut — c'est un parti pris à valider.</li>
+          <li>Plusieurs écrans sont possibles sans effort : chaque poste a son jeton, donc son déroulé (un sur
+          les affectations près du pas de tir, un sur les classements côté public).</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+</section>
+
+<!-- ══════════════════════════════ SAISIE ══════════════════════════════ -->
+
+<section class="appli" id="saisie">
+  <div class="appli-tete">
+    <span class="route">/saisie</span>
+    <h2>Appli saisie — le geste de la journée</h2>
+    <p>Marqueurs et scoreurs. <strong>Tactile prioritaire</strong>, plancher 768 px, pas de mode kiosque garanti :
+    on conçoit pour le pire cas — parc hétérogène, notifications système par-dessus la saisie, onglet fermé par
+    mégarde (<span class="ref">D-05</span>). Archer et scoreur partagent l'appli parce qu'ils font le même geste :
+    taper des scores (<span class="ref">D-01</span>).</p>
+  </div>
+
+  <figure class="parcours">
+    <figcaption>Parcours saisie — de la tablette froide au tour suivant</figcaption>
+<pre class="mermaid">
+flowchart LR
+  Q["Tablette froide<br/>QR de la cible"] --> R["Rattachee : je SUIS<br/>la cible 12 (D-06)"]
+  R --> M["Grille des 3-4 archers<br/>marqueur designe (D-03)"]
+  M --> V["Saisie volee<br/>ordre decroissant"]
+  V --> M
+  M --> F{"Grain atteint ?<br/>(D-11)"}
+  F -- non --> M
+  F -- oui --> A["En attente<br/>de validation"]
+  A --> S["Scoreur ouvre<br/>depuis sa file"]
+  S --> C["Valide = 2e marque<br/>tracee a son nom (D-12)"]
+  C --> RT["La tablette devient<br/>panneau de routage (6.2)"]
+</pre>
+  </figure>
+
+  <!-- S01 -->
+  <article class="plaque" id="s01">
+    <div class="plaque-entete">
+      <span class="plaque-num">S01</span>
+      <h3 class="plaque-titre">Rattachement du poste</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Le premier geste du matin, fait 30 fois par des bénévoles pressés : il doit être
+    <strong>irratable</strong>. La tablette n'appartient pas à une personne, elle appartient à la cible.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:640px">
+          <div class="cadre-legende"><span>Tablette · avant rattachement</span><span>plancher 768 px</span></div>
+          <div class="ecran">
+            <div class="wf-corps" style="padding:24px;gap:14px;text-align:center">
+              <div style="font-weight:700;letter-spacing:.1em">POSTE NON RATTACHÉ</div>
+              <div class="bloc-vide" style="padding:34px">Scanner le QR affiché sur la cible</div>
+              <div style="color:var(--encre-doux)">— ou —</div>
+              <div class="champ">Code du poste : <strong>K12-4F</strong></div>
+              <span class="btn primaire large geant">RATTACHER CE POSTE</span>
+            </div>
+          </div>
+        </div>
+        <div class="cadre" style="--w:640px;margin-top:18px">
+          <div class="cadre-legende"><span>Confirmation — ce que le poste retient</span><span>768 px</span></div>
+          <div class="ecran">
+            <div class="wf-corps" style="padding:20px;gap:8px">
+              <div class="liste">
+                <div><span style="width:110px">Cible</span><strong>12</strong><span class="pousse">rattachement (D-06)</span></div>
+                <div><span style="width:110px">Tournoi</span><strong>12 octobre</strong><span class="pousse">révocation (D-07)</span></div>
+                <div><span style="width:110px">Thème</span><strong>clair</strong><span class="pousse">préférence (D-26)</span></div>
+              </div>
+              <span class="btn primaire large">COMMENCER LA SAISIE</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Pourquoi le code en repli du QR</h4>
+        <ul>
+          <li>Un QR ne se scanne pas toujours : appareil photo refusé, tablette sans caméra, QR froissé.
+          Le code court est le repli qui évite l'appel à l'organisateur.</li>
+          <li><span class="ref">D-26</span> Le thème est stocké <strong>avec le jeton</strong>, pas dans l'onglet :
+          l'onglet fermé par erreur ne repart pas en thème sombre sous les néons du gymnase.</li>
+          <li>Le même écran sert à rattacher un <strong>écran de salle</strong> : c'est un poste comme un autre.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- S02 -->
+  <article class="plaque" id="s02">
+    <div class="plaque-entete">
+      <span class="plaque-num">S02</span>
+      <h3 class="plaque-titre">Poste de cible — la grille</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Une grille de 3–4 archers, une personne dessus — le <strong>marqueur</strong> — qui tape ce
+    que chacun annonce à voix haute, <strong>dans l'ordre décroissant</strong> (règlement FFTA B.6.1.1).</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:720px">
+          <div class="cadre-legende"><span>Tablette de cible · qualification</span><span>plancher 768 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="pastille ok">● CONNECTÉ</span><span class="titre">CIBLE 12</span>
+              <span class="pousse">Volée 8/12</span></div>
+            <div class="wf-corps">
+              <div class="ligne" style="font-size:11.5px;color:var(--encre-doux)">
+                <span>Marqueur : <strong>MARTIN</strong> ▸</span>
+                <span class="pousse">Validation à la fin de la série</span></div>
+              <div class="grille-cible">
+                <div class="arc"><span>A</span><span>MARTIN</span><span class="case remplie">10</span><span class="case remplie">9</span><span class="case remplie">8</span><span class="tot">27</span></div>
+                <div class="arc"><span>B</span><span>DURAND</span><span class="case remplie">9</span><span class="case remplie">9</span><span class="case remplie">7</span><span class="tot">25</span></div>
+                <div class="arc actif"><span>C</span><span>PETIT</span><span class="case remplie">10</span><span class="case remplie">10</span><span class="case" style="border-style:dashed">_</span><span class="tot">20</span></div>
+                <div class="arc"><span>D</span><span>LEROY</span><span class="case">·</span><span class="case">·</span><span class="case">·</span><span class="tot">—</span></div>
+              </div>
+              <div class="ligne"><span style="color:var(--encre-doux);font-size:11.5px">Cumul série : 214</span>
+                <span class="pousse btn fantome">Volée précédente</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Contraintes d'ergonomie</h4>
+        <ul>
+          <li><span class="ref">D-03</span> <strong>La tablette est le poste du marqueur</strong>, pas de chaque
+          archer : une seule personne tape, les autres vérifient chaque flèche annoncée.</li>
+          <li><span class="ref">D-11</span> <strong>La tablette dit quel grain s'applique.</strong> Sans ça le
+          marqueur ne sait pas quand le scoreur viendra — « fin de série » n'est pas la même journée que
+          « toutes les 2 volées ».</li>
+          <li>L'indicateur de connexion est <strong>permanent</strong>, en haut à gauche : c'est une exigence du
+          projet, pas un ornement.</li>
+          <li>La ligne active est marquée par un trait épais, pas par une couleur seule — le gymnase est mal
+          éclairé et les tablettes sont de qualité inégale.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- S03 -->
+  <article class="plaque" id="s03">
+    <div class="plaque-entete">
+      <span class="plaque-num">S03</span>
+      <h3 class="plaque-titre">Pavé de saisie</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Le seul endroit du produit où l'ergonomie tactile prime sur tout le reste : gros doigts,
+    gants, froid, tablette posée sur un pupitre bancal.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:560px">
+          <div class="cadre-legende"><span>Pavé · flèche 3 de PETIT</span><span>768 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">PETIT · flèche 3/3</span><span class="pousse">volée 8</span></div>
+            <div class="wf-corps">
+              <div class="pave">
+                <b>X</b><b>10</b><b>9</b><b>8</b><b>7</b>
+                <b>6</b><b>5</b><b>4</b><b>3</b><b>2</b>
+                <b>1</b><i>M</i><i>—</i><i>↶</i><i>✓</i>
+              </div>
+              <div style="color:var(--encre-doux);font-size:11.5px">Ordre décroissant imposé : après un 8, les
+              valeurs supérieures sont estompées mais <strong>restent tapables</strong> — l'appli n'empêche pas,
+              elle signale.</div>
+              <span class="btn primaire large geant">VALIDER LA VOLÉE — 27 pts</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Décisions du pavé</h4>
+        <ul>
+          <li><strong>Une seule frappe par flèche</strong>, pas de champ texte : le clavier système mangerait la
+          moitié de l'écran et n'est pas garanti sur un parc BYOD.</li>
+          <li>« M » (manqué) et « X » (10 centre) sont des valeurs de plein droit, pas des cas particuliers
+          cachés dans un menu.</li>
+          <li><span class="ref p">P-3</span> L'ordre décroissant est une <strong>règle affichée</strong>, pas un
+          verrou : une correction légitime ne doit pas obliger à effacer trois flèches.</li>
+          <li>Le bouton de validation <strong>chiffre le total</strong> avant l'envoi
+          (<span class="ref p">P-4</span>) — c'est la dernière chance de voir une faute de frappe.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- S04 -->
+  <article class="plaque" id="s04">
+    <div class="plaque-entete">
+      <span class="plaque-num">S04</span>
+      <h3 class="plaque-titre">Changer de marqueur</h3>
+      <span class="etat neuf">à concevoir</span>
+    </div>
+    <p class="role">Contrainte ferme : <em>le marqueur change rarement, donc l'interface ne s'organise pas autour
+    de ce changement.</em> Discret par défaut, disponible au besoin (<span class="ref">D-04</span>).</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:560px">
+          <div class="cadre-legende"><span>Feuille appelée par le lien discret « Marqueur : MARTIN ▸ »</span><span>768 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">QUI MARQUE ?</span><span class="pousse">✕</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div><span class="pastille ok">ACTUEL</span><span>MARTIN Paul</span><span class="pousse">poste A</span></div>
+                <div><span>DURAND Jean</span><span class="pousse">poste B</span></div>
+                <div><span>PETIT Luc</span><span class="pousse">poste C</span></div>
+                <div><span>Autre personne…</span><span class="pousse">saisie libre</span></div>
+              </div>
+              <div style="color:var(--encre-doux);font-size:11.5px">Chaque volée enregistre qui l'a saisie —
+              équivalent numérique de la signature de la feuille de marque.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Ce que la planche interdit</h4>
+        <ul>
+          <li><strong>Pas de sélecteur permanent</strong> qui trône au-dessus de la grille et vole de l'espace
+          au pavé. C'est écrit noir sur blanc dans le CDC UX, et c'est l'erreur naturelle.</li>
+          <li>Plusieurs marqueurs peuvent se succéder sur une même cible : la trace est <em>à la volée</em>, pas
+          à la journée.</li>
+          <li>« Autre personne » existe parce que le marqueur peut être un accompagnateur, pas un des tireurs.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- S05 -->
+  <article class="plaque" id="s05">
+    <div class="plaque-entete">
+      <span class="plaque-num">S05</span>
+      <h3 class="plaque-titre">Saisie de duel</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Deux archers côte à côte, set-system : la structure de l'écran change complètement par
+    rapport à la qualification, même si le pavé reste le même.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:720px">
+          <div class="cadre-legende"><span>Tablette de cible · élimination directe</span><span>768 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="pastille ok">● CONNECTÉ</span><span class="titre">CIBLE 4 · 1/4 DE FINALE</span>
+              <span class="pousse">Volée 3</span></div>
+            <div class="wf-corps">
+              <div class="ligne" style="gap:14px">
+                <div class="liste" style="flex:1">
+                  <div style="display:block;padding:8px"><strong>MARTIN Paul</strong><br>Kervignac</div>
+                  <div><span class="case remplie" style="border:1px solid var(--trait);padding:0 8px">9</span>
+                       <span class="case remplie" style="border:1px solid var(--trait);padding:0 8px">9</span>
+                       <span class="case" style="border:1px dashed var(--trait);padding:0 8px">_</span>
+                       <span class="pousse tot">18</span></div>
+                  <div><span>points de set</span><span class="pousse" style="font-size:20px;font-weight:700">4</span></div>
+                </div>
+                <div class="liste" style="flex:1">
+                  <div style="display:block;padding:8px"><strong>DURAND Jean</strong><br>Lorient</div>
+                  <div><span class="case remplie" style="border:1px solid var(--trait);padding:0 8px">10</span>
+                       <span class="case remplie" style="border:1px solid var(--trait);padding:0 8px">8</span>
+                       <span class="case" style="border:1px dashed var(--trait);padding:0 8px">_</span>
+                       <span class="pousse tot">18</span></div>
+                  <div><span>points de set</span><span class="pousse" style="font-size:20px;font-weight:700">2</span></div>
+                </div>
+              </div>
+              <div class="bloc-vide">pavé de saisie — identique à S03, ciblé sur l'archer actif</div>
+              <div style="color:var(--encre-doux);font-size:11.5px">Validation à la fin du duel (grain de la phase).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Points structurants</h4>
+        <ul>
+          <li>Les <strong>points de set</strong> sont l'information dominante : c'est eux qui disent qui gagne,
+          pas le cumul de flèches. Ils doivent être les plus gros chiffres de l'écran.</li>
+          <li>Le cas d'égalité (flèche de barrage) doit avoir sa place à l'écran — sinon le marqueur improvise.</li>
+          <li>C'est ici que le pic de validation se produit : 8 duels finissent ensemble
+          (<span class="ref">D-11</span>). L'écran suivant (S06) doit s'afficher <strong>instantanément</strong>.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- S06 -->
+  <article class="plaque" id="s06">
+    <div class="plaque-entete">
+      <span class="plaque-num">S06</span>
+      <h3 class="plaque-titre">Panneau de routage — après validation</h3>
+      <span class="etat neuf">à concevoir</span>
+    </div>
+    <p class="role">La tablette cesse d'être un outil de saisie et devient un <strong>panneau d'affichage</strong>
+    (<span class="ref p">P-2</span>). C'est le premier des quatre canaux, et le seul qui touche l'archer
+    <em>encore présent</em>.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:640px">
+          <div class="cadre-legende"><span>Immédiatement après la validation du duel</span><span>768 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="pastille ok">● VALIDÉ</span><span class="titre">CIBLE 4</span>
+              <span class="pousse">par LE GALL Anne · 14 h 02</span></div>
+            <div class="wf-corps" style="gap:14px">
+              <div class="liste">
+                <div style="display:block;padding:12px">
+                  <div style="font-size:17px;font-weight:700">MARTIN Paul</div>
+                  <div style="font-size:20px;font-weight:700;margin-top:4px">▸ CIBLE 4 — 14 h 20</div>
+                  <div style="color:var(--encre-doux)">Demi-finale</div>
+                </div>
+              </div>
+              <div class="liste">
+                <div style="display:block;padding:12px">
+                  <div style="font-size:17px;font-weight:700">DURAND Jean</div>
+                  <div style="font-size:17px;margin-top:4px">Terminé — 12ᵉ place</div>
+                  <div style="color:var(--encre-doux)">Merci, résultats sur l'appli publique</div>
+                </div>
+              </div>
+              <span class="btn fantome large">Retour à la saisie</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Pourquoi ça marche</h4>
+        <ul>
+          <li><span class="ref">D-08</span> Les cibles sont attribuées <strong>aux matchs</strong>, pas aux
+          archers : le match n° 3 des 1/8 se tire sur la cible 4 <em>quel que soit son vainqueur</em>. L'info
+          existe donc avant le duel — la tablette n'attend rien, elle affiche.</li>
+          <li>Le perdant reçoit aussi une information (place, remerciement) : sans ça, l'écran ne parle qu'à la
+          moitié des gens présents.</li>
+          <li>Cet écran est la moitié visible de la métrique <span class="ref">D-25</span> — les 2 minutes se
+          jouent ici et sur P02.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- S07 -->
+  <article class="plaque" id="s07">
+    <div class="plaque-entete">
+      <span class="plaque-num">S07</span>
+      <h3 class="plaque-titre">File du scoreur</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Le scoreur est <strong>itinérant</strong> : son appareil, aucune cible attitrée, il choisit.
+    3–4 scoreurs pour ~30 cibles.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:420px">
+          <div class="cadre-legende"><span>Téléphone du scoreur</span><span>360 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="pastille ok">●</span><span class="titre">LE GALL Anne</span><span class="pousse">18 validations</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span>À VALIDER</span><span class="pousse">3</span></div>
+                <div><span style="width:80px">Cible 7</span><span class="pastille ko">4 mn 20</span><span class="pousse btn">▸</span></div>
+                <div><span style="width:80px">Cible 12</span><span class="pastille att">1 mn 05</span><span class="pousse btn">▸</span></div>
+                <div><span style="width:80px">Cible 3</span><span class="pastille neutre">0 mn 30</span><span class="pousse btn">▸</span></div>
+              </div>
+              <div class="liste">
+                <div class="entete-liste"><span>EN COURS</span></div>
+                <div><span style="width:80px">Cible 1</span><span>volée 8/12</span></div>
+                <div><span style="width:80px">Cible 5</span><span>volée 7/12</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Le tri est une décision, pas un détail</h4>
+        <ul>
+          <li><strong>Trié par ancienneté d'attente</strong>, le plus ancien toujours en haut : le pic des duels
+          est le goulot d'étranglement de la journée. Les 8 duels d'un tour finissent ensemble, attendent tous,
+          et le tour suivant ne peut pas partir.</li>
+          <li><span class="ref">D-12</span> <strong>Pas de prise en charge</strong> : deux scoreurs peuvent ouvrir
+          la même cible, le live la retire de la file dès qu'elle est validée. Un verrou créerait des cibles
+          bloquées par un scoreur parti déjeuner.</li>
+          <li>Le compteur de validations personnelles n'est pas de la gamification : il aide l'admin à voir qu'un
+          scoreur ne fait rien (A08).</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- S08 -->
+  <article class="plaque" id="s08">
+    <div class="plaque-entete">
+      <span class="plaque-num">S08</span>
+      <h3 class="plaque-titre">Validation d'une cible</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Le geste qui tient lieu de <strong>seconde marque</strong> (<span class="ref">D-03</span>).
+    Le scoreur doit pouvoir <em>vérifier</em>, pas seulement approuver — sinon la double marque est une fiction.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:420px">
+          <div class="cadre-legende"><span>Téléphone du scoreur · cible ouverte</span><span>360 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">CIBLE 7 · SÉRIE 2</span><span class="pousse">attend 4 mn 20</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span style="width:110px">ARCHER</span><span>V7</span><span>V8</span><span class="pousse">SÉRIE</span></div>
+                <div><span style="width:110px">GARCIA M.</span><span>26</span><span>28</span><span class="pousse tot">271</span></div>
+                <div><span style="width:110px">NOËL A.</span><span>24</span><span>25</span><span class="pousse tot">248</span></div>
+                <div><span style="width:110px">FABRE T.</span><span>29</span><span>27</span><span class="pousse tot">283</span></div>
+              </div>
+              <div style="color:var(--encre-doux);font-size:11.5px">Saisi par <strong>GARCIA</strong> (marqueur) ·
+              détail flèche par flèche en dépliant une ligne.</div>
+              <span class="btn primaire large geant">VALIDER — 3 archers, série 2</span>
+              <span class="btn fantome large">Renvoyer à la cible pour correction</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Exigences</h4>
+        <ul>
+          <li>Le <strong>retour en correction</strong> est indispensable : sans lui, le scoreur qui voit une
+          erreur n'a que le choix de valider un score faux ou d'aller chercher l'admin.</li>
+          <li>Le nom du marqueur est affiché : c'est ce qui donne son sens à la trace
+          (<span class="ref">D-04</span>).</li>
+          <li><span class="ref q">Q-UX3</span> <strong>À faire confirmer par un arbitre</strong> : la validation
+          par le scoreur tient-elle réglementairement lieu de double marque ? Toute l'architecture du rôle en
+          dépend.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- S09 -->
+  <article class="plaque" id="s09">
+    <div class="plaque-entete">
+      <span class="plaque-num">S09</span>
+      <h3 class="plaque-titre">États dégradés</h3>
+      <span class="etat code">partiellement existant</span>
+    </div>
+    <p class="role">Trois écrans qu'on oublie toujours de dessiner, et qui décident de la journée quand le wifi
+    du gymnase tousse.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:420px">
+          <div class="cadre-legende"><span>Hors ligne — la saisie continue</span><span>768 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre" style="background:var(--alerte-fond)"><span class="pastille ko">● HORS LIGNE</span>
+              <span class="titre">CIBLE 12</span><span class="pousse">3 volées en attente d'envoi</span></div>
+            <div class="wf-corps">
+              <div class="bloc-vide">la grille reste utilisable</div>
+              <div style="font-size:11.5px">La saisie est conservée sur la tablette et partira toute seule au
+              retour du réseau. <strong>La validation, elle, est impossible hors ligne</strong> — le scoreur ne
+              peut pas signer une donnée que le serveur ne connaît pas.</div>
+            </div>
+          </div>
+        </div>
+        <div class="cadre" style="--w:420px;margin-top:18px">
+          <div class="cadre-legende"><span>Tournoi en pause — saisie gelée</span><span>768 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre" style="background:var(--or-fond)"><span class="pastille att">■ EN PAUSE</span><span class="titre">CIBLE 12</span></div>
+            <div class="wf-corps" style="text-align:center;padding:22px">
+              <div style="font-size:15px;font-weight:700">Tir interrompu par l'organisation</div>
+              <div style="color:var(--encre-doux)">La saisie reprendra automatiquement. Rien n'est perdu.</div>
+            </div>
+          </div>
+        </div>
+        <div class="cadre" style="--w:420px;margin-top:18px">
+          <div class="cadre-legende"><span>Poste révoqué</span><span>768 px</span></div>
+          <div class="ecran">
+            <div class="wf-corps" style="text-align:center;padding:22px;gap:10px">
+              <div style="font-size:15px;font-weight:700">Ce poste a été détaché de la cible 12</div>
+              <div style="color:var(--encre-doux)">Rapprochez-vous de la table de l'organisation.</div>
+              <span class="btn large">Rattacher à nouveau</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Règles</h4>
+        <ul>
+          <li><strong>Hors ligne ≠ bloqué.</strong> La saisie doit survivre à une coupure — c'est la promesse
+          d'un outil conçu pour un réseau local de gymnase.</li>
+          <li>Mais <strong>la validation est refusée hors ligne</strong> : c'est un verrou volontaire, pas un
+          oubli. Signer une donnée non transmise reviendrait à fabriquer une preuve.</li>
+          <li>Un message d'état explique <em>ce qui se passe</em> et <em>ce qu'il faut faire</em>. Jamais
+          « une erreur est survenue ».</li>
+          <li><span class="ref">D-05</span> Pas de mode kiosque : l'onglet peut être fermé. Tous ces états
+          doivent survivre à un rechargement de page.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+</section>
+
+<!-- ══════════════════════════════ PUBLIQUE ══════════════════════════════ -->
+
+<section class="appli" id="publique">
+  <div class="appli-tete">
+    <span class="route">/</span>
+    <h2>Appli publique — le GPS de la journée</h2>
+    <p><strong>Ce n'est pas un tableau de résultats, c'est un GPS.</strong> Mobile d'abord (360 px), lecture
+    seule, live, sans compte. Elle habille — avec l'écran de salle — la seule surface qui porte l'identité du
+    tournoi (<span class="ref">D-27</span>).</p>
+  </div>
+
+  <figure class="parcours">
+    <figcaption>Parcours public — la recherche devient l'exception, pas la porte d'entrée</figcaption>
+<pre class="mermaid">
+flowchart LR
+  O["1re ouverture"] --> R["Recherche<br/>par nom"]
+  R --> M["Case<br/>C'est moi"]
+  M --> J["MA JOURNEE<br/>maintenant / ensuite"]
+  O2["Reouvertures<br/>suivantes"] --> J
+  J --> C["Classements"]
+  J --> P["Plan de cibles"]
+  J --> T["Tableau de duels"]
+  S["Ecran de salle<br/>= poste public (D-21)"] --> A["Affectations"]
+  S --> C2["Classement"]
+  S --> PO["Podium impose<br/>par l'admin"]
+</pre>
+  </figure>
+
+  <!-- P01 -->
+  <article class="plaque" id="p01">
+    <div class="plaque-entete">
+      <span class="plaque-num">P01</span>
+      <h3 class="plaque-titre">« C'est moi » — première ouverture</h3>
+      <span class="etat code">recherche existante</span><span class="etat neuf">mémorisation à concevoir</span>
+    </div>
+    <p class="role">L'archer tape son nom <strong>une fois</strong> ; l'appli le retient en local — même principe
+    que le jeton de poste, sans compte ni mot de passe (<span class="ref">D-13</span>).</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:330px">
+          <div class="cadre-legende"><span>Téléphone · 1re ouverture</span><span>plancher 360 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">CHALLENGE DES CHAMPIONS</span></div>
+            <div class="wf-corps">
+              <div class="champ plein">mart|</div>
+              <div class="liste">
+                <div><span>MARTIN Paul</span><span class="pousse">Kervignac · SH</span></div>
+                <div><span>MARTIN Sophie</span><span class="pousse">Lorient · SF</span></div>
+                <div><span>MARTINEAU Luc</span><span class="pousse">Vannes · CH</span></div>
+              </div>
+              <div class="ligne"><span>☑</span><span>C'est moi — retenir sur ce téléphone</span></div>
+              <div style="font-size:11px;color:var(--encre-doux)">Aucun compte, aucune donnée envoyée : le choix
+              reste sur l'appareil.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Pourquoi pas de borne partagée</h4>
+        <ul>
+          <li><span class="ref">D-10</span> Une borne partagée exigerait un « retour automatique à l'accueil »,
+          qui <strong>contredirait</strong> « mémoriser c'est moi ». Les deux ne peuvent pas coexister sur le
+          même appareil.</li>
+          <li>Donc : appli personnelle sur téléphone perso (mémorise) + <strong>table de l'organisation</strong>
+          pour ceux qui préfèrent demander (4ᵉ canal, <span class="ref">D-09</span>).</li>
+          <li>La recherche reste accessible ensuite, mais comme <em>exception</em> : chercher quelqu'un d'autre,
+          pas se retrouver soi-même.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- P02 -->
+  <article class="plaque" id="p02">
+    <div class="plaque-entete">
+      <span class="plaque-num">P02</span>
+      <h3 class="plaque-titre">Ma journée — maintenant / ensuite</h3>
+      <span class="etat neuf">à concevoir</span>
+    </div>
+    <p class="role">L'écran qui porte la promesse du produit. Il répond à une seule question, sans défilement :
+    <strong>« où je tire, et où je tire ensuite ? »</strong></p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:330px">
+          <div class="cadre-legende"><span>Téléphone · réouverture</span><span>360 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">MARTIN Paul</span><span class="pousse pastille ok">● LIVE</span></div>
+            <div class="wf-corps" style="gap:12px">
+              <div class="liste">
+                <div class="entete-liste"><span>MAINTENANT</span></div>
+                <div style="display:block;padding:12px">
+                  <div style="font-size:22px;font-weight:700">CIBLE 12 · position B</div>
+                  <div>Qualification · volée 8/12</div>
+                  <div style="color:var(--encre-doux)">Départ 1 — 9 h</div>
+                </div>
+              </div>
+              <div class="liste">
+                <div class="entete-liste"><span>ENSUITE</span></div>
+                <div style="display:block;padding:12px">
+                  <div style="font-size:18px;font-weight:700">1/4 DE FINALE · CIBLE 4</div>
+                  <div>14 h 20 — contre DURAND Jean</div>
+                </div>
+              </div>
+              <div class="liste">
+                <div><span>Mon classement</span><span class="pousse">2ᵉ / 34 · 541 pts</span></div>
+                <div><span>Classements</span><span class="pousse">▸</span></div>
+                <div><span>Plan de cibles</span><span class="pousse">▸</span></div>
+                <div><span>Tableaux</span><span class="pousse">▸</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Hiérarchie imposée</h4>
+        <ul>
+          <li><strong>« Ensuite » est aussi visible que « maintenant »</strong> : c'est l'information qui manque
+          aujourd'hui et qui fait rater son tour.</li>
+          <li>Elle est disponible <em>avant</em> le duel grâce à <span class="ref">D-08</span> (cibles attribuées
+          aux matchs). L'appli n'a jamais « rien à dire ».</li>
+          <li>Le reste (classements, plans, tableaux) est volontairement <strong>en dessous</strong> et en liste :
+          on le consulte par curiosité, on ne le cherche pas en urgence.</li>
+          <li>C'est l'écran habillé par l'identité du tournoi (<span class="ref">D-27</span>) : logo en tête,
+          club en signature.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- P03 -->
+  <article class="plaque" id="p03">
+    <div class="plaque-entete">
+      <span class="plaque-num">P03</span>
+      <h3 class="plaque-titre">Classements</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Même donnée que A16, autre mise en forme : sur 360 px, on ne montre pas six colonnes.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:330px">
+          <div class="cadre-legende"><span>Téléphone</span><span>360 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">CLASSEMENTS</span><span class="pousse champ">SH ▾</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div><span style="width:28px">1</span><span>PETIT Luc</span><span class="pousse tot">548</span></div>
+                <div style="background:color-mix(in srgb, var(--trait-fin) 25%, transparent)">
+                  <span style="width:28px">2</span><span><strong>MARTIN Paul</strong></span><span class="pousse tot">541</span></div>
+                <div><span style="width:28px">3</span><span>DURAND Jean</span><span class="pousse tot">541</span></div>
+                <div><span style="width:28px">4</span><span>LEROY Marc</span><span class="pousse tot">533</span></div>
+              </div>
+              <div style="font-size:11px;color:var(--encre-doux)">Ex æquo 541 départagés au nombre de 10.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Détail qui compte</h4>
+        <ul>
+          <li>La ligne de l'archer « c'est moi » est <strong>marquée</strong> et l'écran s'ouvre positionné
+          dessus : sur 200 archers, chercher son nom dans une liste est exactement ce qu'on cherche à éviter.</li>
+          <li>Le départage est explicité, comme côté admin : la même règle, formulée pour un non-technicien.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- P04 -->
+  <article class="plaque" id="p04">
+    <div class="plaque-entete">
+      <span class="plaque-num">P04</span>
+      <h3 class="plaque-titre">Plan de cibles</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">Le plan tel que l'archer le lit en arrivant : « je suis où ? » — pas l'outil de placement de
+    l'admin.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:330px">
+          <div class="cadre-legende"><span>Téléphone</span><span>360 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">PLAN DE CIBLES</span><span class="pousse champ">Départ 1 ▾</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div class="entete-liste"><span>VOTRE CIBLE</span></div>
+                <div style="display:block;padding:10px"><strong style="font-size:18px">CIBLE 12 — position B</strong>
+                  <div style="color:var(--encre-doux)">avec DURAND, PETIT, LEROY</div></div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px">
+                <span class="btn fantome" style="text-align:center;padding:8px 0">9</span>
+                <span class="btn fantome" style="text-align:center;padding:8px 0">10</span>
+                <span class="btn fantome" style="text-align:center;padding:8px 0">11</span>
+                <span class="btn primaire" style="text-align:center;padding:8px 0">12</span>
+                <span class="btn fantome" style="text-align:center;padding:8px 0">13</span>
+              </div>
+              <div style="font-size:11px;color:var(--encre-doux)">Toucher une cible affiche ses archers.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Note</h4>
+        <ul>
+          <li>Le plan public est <strong>centré sur soi</strong> par défaut, pas sur la salle entière : la vue
+          d'ensemble est le besoin de l'organisateur, pas de l'archer.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- P05 -->
+  <article class="plaque" id="p05">
+    <div class="plaque-entete">
+      <span class="plaque-num">P05</span>
+      <h3 class="plaque-titre">Tableau de duels</h3>
+      <span class="etat code">écran existant</span>
+    </div>
+    <p class="role">L'arbre d'élimination directe sur 360 px : le vrai problème de conception de l'appli publique.</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:330px">
+          <div class="cadre-legende"><span>Téléphone · vue « mon chemin »</span><span>360 px</span></div>
+          <div class="ecran">
+            <div class="wf-barre"><span class="titre">TABLEAU · SH</span><span class="pousse champ">Mon chemin ▾</span></div>
+            <div class="wf-corps">
+              <div class="liste">
+                <div><span style="width:60px">1/8</span><span>MARTIN <strong>6</strong> — 2 BLANC</span><span class="pousse pastille ok">GAGNÉ</span></div>
+                <div><span style="width:60px">1/4</span><span>MARTIN vs DURAND</span><span class="pousse pastille att">14 h 20</span></div>
+                <div><span style="width:60px">1/2</span><span>—</span><span class="pousse pastille neutre">À VENIR</span></div>
+              </div>
+              <div style="font-size:11px;color:var(--encre-doux)">Bascule « Mon chemin » ↔ « Tableau complet »
+              (défilement horizontal).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Parti pris</h4>
+        <ul>
+          <li>Un arbre complet est illisible sur téléphone. La vue par défaut est <strong>« mon chemin »</strong> —
+          une liste verticale — et le tableau complet reste accessible en second.</li>
+          <li>Cohérent avec le reste de l'appli : l'archer est le sujet, la compétition est le contexte.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- P06 -->
+  <article class="plaque" id="p06">
+    <div class="plaque-entete">
+      <span class="plaque-num">P06</span>
+      <h3 class="plaque-titre">Écran de salle — affectations</h3>
+      <span class="etat neuf">à concevoir</span>
+      <span class="ref q">Q-UX2</span>
+    </div>
+    <p class="role">Probablement la vue la plus utile de tout le produit : <em>un classement, on le regarde par
+    curiosité ; une affectation, on en a besoin.</em></p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:640px">
+          <div class="cadre-legende"><span>Vidéoprojecteur / TV · 1920 × 1080</span><span>lu à 10 m</span></div>
+          <div class="ecran salle">
+            <div class="wf-barre"><span class="titre-salle">1/4 DE FINALE — 14 h 20</span>
+              <span class="pousse pastille neutre">page 1/4 · tri par nom</span></div>
+            <div class="corps-salle">
+              <div class="ligne" style="font-size:17px"><strong>MARTIN Paul</strong><span class="pousse">▸ CIBLE 4</span></div>
+              <div class="ligne" style="font-size:17px"><strong>DURAND Jean</strong><span class="pousse">▸ CIBLE 4</span></div>
+              <div class="ligne" style="font-size:17px"><strong>PETIT Luc</strong><span class="pousse">▸ CIBLE 7</span></div>
+              <div class="ligne" style="font-size:17px"><strong>LEROY Marc</strong><span class="pousse">▸ CIBLE 7</span></div>
+            </div>
+            <div class="pied"><span>logo du tournoi</span><span>organisé par les Archers de Kervignac</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Le problème non tranché</h4>
+        <ul>
+          <li><span class="ref q">Q-UX2</span> <strong>200 archers ne tiennent pas à l'écran</strong>, donc ça
+          défile — et un archer qui rate son nom attend un cycle entier. C'est le point le plus fragile de la
+          conception actuelle.</li>
+          <li>Le tri <strong>par nom</strong> (l'archer se cherche) et <strong>par cible</strong>
+          (l'organisation vérifie) ne servent pas les mêmes gens. Il faut choisir, ou alterner.</li>
+          <li>Pistes à discuter : n'afficher que le tour <em>en cours de lancement</em>, grouper par lettre,
+          afficher deux colonnes, ralentir le défilement, ou renvoyer explicitement au téléphone.</li>
+        </ul>
+        <h4>Identité</h4>
+        <ul>
+          <li><span class="ref">D-27</span> Co-branding hiérarchisé : logo de l'événement au premier plan,
+          <strong>club en signature de pied</strong>. Si le tournoi n'a pas d'identité propre, le club reprend
+          la place — aucune surface ne reste vide.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+
+  <!-- P07 -->
+  <article class="plaque" id="p07">
+    <div class="plaque-entete">
+      <span class="plaque-num">P07</span>
+      <h3 class="plaque-titre">Écran de salle — classement et podium</h3>
+      <span class="etat neuf">à concevoir</span>
+    </div>
+    <p class="role">Les deux autres vues du déroulé. Le podium est aussi le cas de la
+    <strong>prise de contrôle</strong> par l'admin (A19).</p>
+    <div class="duo">
+      <div>
+        <div class="cadre" style="--w:640px">
+          <div class="cadre-legende"><span>Vue classement · rotation 20 s</span><span>1920 × 1080</span></div>
+          <div class="ecran salle">
+            <div class="wf-barre"><span class="titre-salle">QUALIFICATION — SENIOR HOMME</span><span class="pousse pastille neutre">mise à jour en direct</span></div>
+            <div class="corps-salle">
+              <div class="ligne" style="font-size:17px"><span style="width:40px">1</span><strong>PETIT Luc</strong><span style="color:var(--encre-doux)">Vannes</span><span class="pousse tot">548</span></div>
+              <div class="ligne" style="font-size:17px"><span style="width:40px">2</span><strong>MARTIN Paul</strong><span style="color:var(--encre-doux)">Kervignac</span><span class="pousse tot">541</span></div>
+              <div class="ligne" style="font-size:17px"><span style="width:40px">3</span><strong>DURAND Jean</strong><span style="color:var(--encre-doux)">Lorient</span><span class="pousse tot">541</span></div>
+            </div>
+            <div class="pied"><span>logo du tournoi</span><span>organisé par les Archers de Kervignac</span></div>
+          </div>
+        </div>
+        <div class="cadre" style="--w:640px;margin-top:18px">
+          <div class="cadre-legende"><span>Podium imposé par l'admin — avec durée</span><span>1920 × 1080</span></div>
+          <div class="ecran salle">
+            <div class="wf-barre"><span class="titre-salle">PODIUM — SENIOR HOMME</span>
+              <span class="pousse pastille att">retour au déroulé dans 7 min</span></div>
+            <div class="corps-salle" style="align-items:center">
+              <div style="font-size:24px;font-weight:700">1 · PETIT Luc</div>
+              <div style="font-size:19px">2 · MARTIN Paul</div>
+              <div style="font-size:19px">3 · DURAND Jean</div>
+            </div>
+            <div class="pied"><span>logo du tournoi</span><span>organisé par les Archers de Kervignac</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <h4>Le compte à rebours est intentionnel</h4>
+        <ul>
+          <li><span class="ref q">Q-UX7</span> Il rend la prise de contrôle <strong>visible depuis la salle</strong>,
+          pas seulement depuis la console admin. Celui qui a imposé le podium et qui est parti serrer des mains
+          voit, en levant les yeux, que ça va se terminer tout seul.</li>
+          <li>Alternative à discuter : pas de compte à rebours affiché, mais un retour explicite — plus sobre,
+          moins sûr.</li>
+        </ul>
+      </aside>
+    </div>
+  </article>
+</section>
+
+<!-- ══════════════════════════════ SUITE ══════════════════════════════ -->
+
+<section class="appli" id="trancher">
+  <div class="appli-tete">
+    <h2>À trancher ensemble</h2>
+    <p>Ce que ces planches ont mis au jour. Les trois premières lignes bloquent une conception fine ;
+    les autres peuvent attendre l'US concernée.</p>
+  </div>
+
+  <div class="enveloppe-table"><table class="recap">
+    <tr><th style="width:90px">Réf.</th><th style="width:180px">Question</th><th>Pourquoi ça bloque</th></tr>
+    <tr><td><span class="ref q">Q-UX2</span></td><td>Scannabilité des affectations à l'écran de salle</td>
+      <td>200 archers qui défilent : celui qui rate son nom attend un cycle entier. Tri par nom ou par cible —
+      les deux publics s'excluent. C'est la vue la plus utile du produit et la moins tranchée.</td></tr>
+    <tr><td><span class="ref q">Q-UX8</span></td><td>Geste central du placement</td>
+      <td>Glisser-déposer (PC) ou sélectionner-puis-affecter (tactile) ? Deux écrans différents, et le CDC le
+      note explicitement « non instruit ».</td></tr>
+    <tr><td><span class="ref q">Q-UX3</span></td><td>La validation scoreur vaut-elle double marque ?</td>
+      <td>À confirmer par un arbitre. Si non, tout le rôle du scoreur est à repenser — pas seulement son écran.</td></tr>
+    <tr><td><span class="ref q">Q-UX5</span></td><td>Qui déclare un forfait</td>
+      <td>Admin seul, ou scoreur depuis la cible ? Change la bascule de tour (A15) et l'appli saisie.</td></tr>
+    <tr><td><span class="ref q">Q-UX6</span></td><td>Métriques exactes du feu vert</td>
+      <td>Ce que l'admin doit voir avant de lancer. Décide du contenu de A15.</td></tr>
+    <tr><td>—</td><td>Seuil « hors ligne » en supervision</td>
+      <td>5 mn ? 10 mn ? Dépend du grain de validation, sinon l'écran crie en permanence en qualification.</td></tr>
+    <tr><td>—</td><td>Rejouer le placement après un retardataire</td>
+      <td>Sans réponse, l'écran A11 ne peut pas être conçu : c'est la question dure du placement.</td></tr>
+  </table></div>
+
+  <div class="encadre">
+    <p><strong>Ce que ces planches ne sont pas.</strong> Elles ne constatent pas l'état du front : la mention
+    « écran existant » signale qu'un composant du même rôle vit dans <code>frontend/src/features/</code>, pas
+    que l'écran livré ressemble au wireframe. Confronter les deux est un travail à part entière — et
+    probablement le plus utile juste après cette passe.</p>
+    <p><strong>Prochaine étape possible.</strong> Une fois les parcours validés, ce document descend dans
+    <code>docs/wireframes/</code> avec un commit dédié, et devient la référence de conception à laquelle les US
+    front se rattachent — au même titre que le CDC UX.</p>
+  </div>
+</section>
+
+</main>
+</div>
