@@ -56,7 +56,7 @@ import { RechercheArcher } from '../recherche/RechercheArcher'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { AideEcran } from '../../shared/ui/AideEcran'
 import { ConnexionAdmin } from './ConnexionAdmin'
-import { AIDE_ECRANS } from './aide-ecrans'
+import { AIDE_ECRANS, type DestinationAdminId } from './aide-ecrans'
 import { BadgeStatut } from '../competition/BadgeStatut'
 import { GestionTournois } from '../tournois/Tournois'
 
@@ -121,7 +121,10 @@ function Coquille() {
   // référentiels **globaux**, hors tournoi. Défini dans le composant pour fermer sur `courant` /
   // `choisirTournoi` ; `rendu` n'est appelé que lorsque le garde `besoinTournoi` est satisfait.
   const destinations: {
-    id: string
+    // Typé par l'union des `id` d'aide (et non `string`) : ajouter une destination sans son entrée
+    // dans `AIDE_ECRANS` ne compile plus — la couverture « une aide par écran » (E14US002) est
+    // garantie par `tsc`, plus par une vérification manuelle.
+    id: DestinationAdminId
     libelle: string
     groupe: Temps
     besoinTournoi: boolean
@@ -406,8 +409,11 @@ function Coquille() {
             coquille, plutôt que dans chacune des 22 features : la coquille connaît déjà la destination
             active, un seul point d'insertion couvre donc tous les écrans (`AIDE_ECRANS` fournit le
             texte par `id`). Au-dessus du contenu — y compris de l'invite « choisissez un tournoi »,
-            où expliquer l'écran est encore plus utile. */}
-        <AideEcran texte={AIDE_ECRANS[active.id]} />
+            où expliquer l'écran est encore plus utile. `key={active.id}` **remonte une instance neuve
+            à chaque changement d'écran** : sans lui, l'état `ouvert` (local) survivrait à la
+            navigation et la nouvelle aide s'afficherait déjà dépliée — or le CA la veut **repliée par
+            défaut** sur chaque écran. */}
+        <AideEcran key={active.id} texte={AIDE_ECRANS[active.id]} />
         {contenu}
       </div>
     </div>

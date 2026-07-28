@@ -236,8 +236,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  /* Cible tactile confortable (~40 px de haut) pour les tablettes BYOD. */
-  min-height: 40px;
+  /* Cible tactile confortable (≥ 44 px, WCAG 2.5.5) pour les tablettes BYOD. */
+  min-height: 44px;
   padding: 8px 14px;
   border: 1px solid var(--border);
   border-radius: 8px;

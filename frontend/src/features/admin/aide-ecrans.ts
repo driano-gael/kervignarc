@@ -16,7 +16,37 @@
 // ⚠️ **Premier jet à relire avec l'organisateur.** La story E14US002 prévoit que le contenu se rédige
 // en langage métier avec lui ; ces formulations sont une base de départ raisonnable, pas une version
 // arrêtée. Corriger le texte ne touche que ce fichier.
-export const AIDE_ECRANS: Record<string, string> = {
+
+// Union littérale des `id` de destination admin. La typer — plutôt que `string` — fait **prouver au
+// compilateur** l'invariant du CA « chaque écran porte une aide » : `Record<DestinationAdminId, …>`
+// oblige le dictionnaire à couvrir **exactement** ces clés (une manquante ou en trop = erreur `tsc`),
+// et `CoquilleAdmin` annote le champ `id` de ses destinations avec ce même type — ajouter une
+// destination sans son aide ne compile plus. La synchro clés ↔ écrans n'est donc plus manuelle.
+export type DestinationAdminId =
+  | 'tournoi'
+  | 'accueil'
+  | 'categories'
+  | 'blasons'
+  | 'gabarits'
+  | 'plan'
+  | 'bareme'
+  | 'phases'
+  | 'departs'
+  | 'clubs'
+  | 'scoreurs'
+  | 'inscriptions'
+  | 'doublons'
+  | 'placement'
+  | 'duels'
+  | 'paiements'
+  | 'postes'
+  | 'supervision'
+  | 'completude'
+  | 'classement'
+  | 'exports'
+  | 'archive'
+
+export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
   tournoi:
     'Créez ou choisissez le tournoi sur lequel vous travaillez. Tout ce que vous réglez ensuite — ' +
     'catégories, départs, inscriptions… — appartient au tournoi sélectionné ici.',
