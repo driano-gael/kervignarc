@@ -225,6 +225,49 @@
   }
 }
 
+/* Aide contextuelle par écran (E14US002) : bouton « ⓘ Aide » masqué par défaut, panneau déployé au
+   tap. Neutre (surface/bordure/texte) — l'ambre reste réservé aux alertes (`DV-03`). En tête de la
+   zone de contenu, au-dessus de l'écran actif. */
+.aide-ecran {
+  margin-bottom: 12px;
+}
+
+.aide-ecran__bouton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* Cible tactile confortable (≥ 44 px, WCAG 2.5.5) pour les tablettes BYOD. */
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.aide-ecran__bouton:hover {
+  border-color: var(--accent);
+}
+
+.aide-ecran__glyphe {
+  color: var(--accent);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.aide-ecran__panneau {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  max-width: 560px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
 /* Panneau du tournoi courant (cycle de vie), en tête de la destination « Tournoi ». */
 .tournoi-courant {
   padding-bottom: 12px;

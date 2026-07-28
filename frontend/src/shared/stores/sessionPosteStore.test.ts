@@ -3,8 +3,10 @@
 // Garde-fou du contrat qui distingue « ce navigateur est un poste » (intention persistante) de la
 // simple présence d'un jeton : une session **révoquée** (jeton perdu) doit laisser la tablette sur
 // le **rattachement**, jamais la renvoyer vers l'admin (D-13) ; seul un **détachement explicite**
-// quitte le mode poste. Le thème (D-26) survit aux deux. Tests en environnement node : la garde SSR
-// d'`appliquerTheme` (`typeof document`) rend le store importable sans DOM.
+// quitte le mode poste. Le thème (D-26) survit aux deux. Ces tests s'exécutent sous l'environnement
+// jsdom global (ADR-0053) : `appliquerTheme` s'y applique au `document` de jsdom, sans effet
+// observable ici (aucun test n'asserte sur `data-theme`) ; sa garde SSR `typeof document` ne protège
+// donc plus que le vrai rendu serveur, pas ces tests.
 
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useSessionPosteStore } from './sessionPosteStore'

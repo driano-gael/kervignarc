@@ -16,8 +16,9 @@
 > [ADR-0043](adr/0043-acceptation-dependance-copyleft-lgpl.md)).
 >
 > **Audits de sécurité** (bloquants en CI, cf. `.github/workflows/ci.yml`, E00US003) — dernier contrôle
-> 2026-07-26 (revalidé après l'ajout de `zeroconf` et `pyinstaller`, E11US001) : `pip-audit`
-> = **aucune vulnérabilité** ; `npm audit --audit-level=high` = **0 vulnérabilité**. Outils d'audit
+> 2026-07-28 (revalidé après l'ajout de l'outillage de test de rendu front — `@testing-library/*` +
+> `jsdom`, E14US002) : `pip-audit` = **aucune vulnérabilité** ; `npm audit --audit-level=high`
+> = **0 vulnérabilité** (`npm install` : *found 0 vulnerabilities*). Outils d'audit
 > eux-mêmes : `pip-audit` est installé **ad hoc dans la CI** (non embarqué dans les manifestes
 > applicatifs) ; `npm audit` est intégré à npm.
 
@@ -59,6 +60,10 @@
 | `vite` | ^8.1 | Build & serveur de dev | Outil de build acté ([ADR-0002](adr/0002-stack-et-topologie.md)) ; HMR rapide | MIT |
 | `@vitejs/plugin-react` | ^6.0 | Support React (Fast Refresh) pour Vite | Officiel Vite/React | MIT |
 | `vitest` | ^4.1 | Runner de tests unitaires (front) | Premier runner de test du front (E00US014) ; runner natif de Vite (réutilise `vite.config.ts`, zéro config) ; résorbe [DETTE-005](dette.md) en couvrant `format.ts` (conversion euros↔centimes, [ADR-0012](adr/0012-argent-en-centimes-entiers.md)) | MIT |
+| `@testing-library/react` | ^16.3 | Test de **rendu** de composants React (monter, interroger) | Outillage de test de rendu acté ([ADR-0053](adr/0053-outillage-test-de-rendu-front.md), E14US002) : vérifie qu'un composant s'affiche et réagit (ce que tsc/eslint ne prouvent pas). Standard de fait de l'écosystème React ; teste par le rôle/texte accessibles, pas par les détails d'implémentation | MIT |
+| `@testing-library/user-event` | ^14.6 | Simulation d'interactions utilisateur (clic/tap, saisie) dans les tests | Compagnon de `@testing-library/react` : reproduit un vrai geste (séquence d'événements) plutôt qu'un `fireEvent` bas niveau — fidèle à l'usage tactile visé | MIT |
+| `@testing-library/jest-dom` | ^7.0 | Matchers DOM lisibles pour `expect` (`toBeVisible`, `toHaveAttribute`…) | Assertions expressives sur le DOM rendu + leur typage `tsc` ; entrée `/vitest` intégrée à l'`expect` de Vitest (E14US002) | MIT |
+| `jsdom` | ^29.1 | Implémentation du DOM en mémoire (« faux navigateur ») pour les tests | Environnement requis par Testing Library ([ADR-0053](adr/0053-outillage-test-de-rendu-front.md)) : exécute le rendu sans navigateur réel. `environment: 'jsdom'` global (les tests de logique pure préexistants y tournent inchangés) | MIT |
 | `typescript` | ~6.0 | Compilateur TypeScript (typage strict) | Exigence TS strict (guide §5) | Apache-2.0 |
 | `eslint` | ^10.6 | Linter JS/TS | Exigence ESLint (guide §5) | MIT |
 | `@eslint/js` | ^10.0 | Règles de base ESLint (flat config) | Recommandations officielles ESLint | MIT |
