@@ -16,7 +16,8 @@ import { useDeconnexionAdmin } from '../admin/hooks'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { FriseCycleDeVie } from '../accueil/FriseCycleDeVie'
-import type { StatutTournoi, Tournoi, TypeTournoi } from '../competition/api'
+import { BadgeStatut } from '../competition/BadgeStatut'
+import type { Tournoi, TypeTournoi } from '../competition/api'
 import {
   useCreerTournoi,
   useModifierTournoi,
@@ -119,7 +120,10 @@ function LigneTournoi({
     )
   }
 
-  const enCours = tournoi.statut === 'en_cours'
+  // Le serveur refuse la suppression d'un tournoi `en_cours` **ou** `en_pause`
+  // (`TournoiEnCoursNonSupprimable`, 409) : la pré-vérification front couvre les deux (alignement
+  // 7 statuts, E14US001) pour afficher le garde-fou **avant** le clic plutôt qu'une erreur après coup.
+  const nonSupprimable = tournoi.statut === 'en_cours' || tournoi.statut === 'en_pause'
 
   return (
     <li className={selectionne ? 'tournoi tournoi--selectionne' : 'tournoi'}>
@@ -152,11 +156,13 @@ function LigneTournoi({
                   Annuler
                 </button>
               </>
-            ) : enCours ? (
-              // Un tournoi en cours n'est pas supprimable (garanti aussi côté serveur, 409). On
-              // l'explique par un **texte visible** plutôt qu'un `title` sur un bouton désactivé
-              // (inatteignable au clavier / lecteur d'écran — le CDC vise WCAG AA).
-              <span className="tournoi__note">Terminez le tournoi pour pouvoir le supprimer.</span>
+            ) : nonSupprimable ? (
+              // Un tournoi en cours ou en pause n'est pas supprimable (garanti aussi côté serveur,
+              // 409). On l'explique par un **texte visible** plutôt qu'un `title` sur un bouton
+              // désactivé (inatteignable au clavier / lecteur d'écran — le CDC vise WCAG AA).
+              <span className="tournoi__note">
+                Terminez ou annulez le tournoi pour pouvoir le supprimer.
+              </span>
             ) : (
               <button
                 type="button"
@@ -174,22 +180,10 @@ function LigneTournoi({
   )
 }
 
-// Pastille de statut (cycle de vie du tournoi). Exportée : la coquille (E00US015) l'affiche dans son
-// sélecteur de tournoi, au-dessus de la navigation.
-export function BadgeStatut({ statut }: { statut: StatutTournoi }) {
-  // Les 7 statuts d'ADR-0026 (front aligné en E14US001). `Record` exhaustif : ajouter un statut
-  // sans son libellé casse la compilation (TS strict) — le badge ne peut pas rester muet.
-  const libelles: Record<StatutTournoi, string> = {
-    brouillon: 'Brouillon',
-    pret: 'Prêt',
-    en_cours: 'En cours',
-    en_pause: 'En pause',
-    termine: 'Terminé',
-    archive: 'Archivé',
-    annule: 'Annulé',
-  }
-  return <span className={`badge badge--${statut.replace('_', '-')}`}>{libelles[statut]}</span>
-}
+// `BadgeStatut` (pastille de cycle de vie) vit désormais dans `competition/BadgeStatut`, co-localisé
+// avec le type `StatutTournoi` qu'il rend : `accueil` a besoin du badge **et** `tournois` a besoin de
+// la frise de `accueil` — garder le badge ici créait un cycle d'import `accueil ↔ tournois`
+// (revue E14US001). Il est simplement importé en tête.
 
 function FormulaireNouveauTournoi({ onChoisi }: { onChoisi: (t: Tournoi) => void }) {
   const [nom, setNom] = useState('')

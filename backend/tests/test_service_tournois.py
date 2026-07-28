@@ -23,7 +23,13 @@ from application.erreurs import (
 from application.tournois import ServiceTournois
 from domain.depart import Depart
 from domain.erreurs import NomTournoiInvalide
-from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
+from domain.tournoi import (
+    StatutTournoi,
+    Tournoi,
+    TournoiId,
+    TypeTournoi,
+    transitions_possibles,
+)
 from tests.conftest import FauxDepartRepository
 
 _DATE = datetime.date(2026, 3, 14)
@@ -305,15 +311,11 @@ def test_annuler_refuse_depuis_termine_ou_archive(depuis: StatutTournoi) -> None
 # règle métier vit dans le domaine (testée depuis le CA dans `test_domain_tournoi`), ici on vérifie
 # le **câblage** service ↔ domaine.
 
+# Univers des noms de transition, **dérivé de la topologie** (pas codé en dur) : toute arête ajoutée
+# à `_TRANSITIONS` est ainsi automatiquement recoupée contre les gardes du service — sinon un nom
+# oublié dans un set manuel échapperait au filet anti-divergence (revue E14US001, axe adversarial).
 _TOUS_LES_NOMS = {
-    "vers-pret",
-    "revenir-brouillon",
-    "demarrer",
-    "mettre-en-pause",
-    "reprendre",
-    "terminer",
-    "archiver",
-    "annuler",
+    transition.nom for statut in StatutTournoi for transition in transitions_possibles(statut)
 }
 
 

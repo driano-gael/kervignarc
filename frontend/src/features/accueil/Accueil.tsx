@@ -17,7 +17,7 @@ import type { Tournoi } from '../competition/api'
 import { usePaiementsArchers } from '../paiements/hooks'
 import type { Supervision } from '../supervision/api'
 import { useSupervision } from '../supervision/hooks'
-import { BadgeStatut } from '../tournois/Tournois'
+import { BadgeStatut } from '../competition/BadgeStatut'
 import { FriseCycleDeVie } from './FriseCycleDeVie'
 
 export function Accueil({ tournoi }: { tournoi: Tournoi }) {
@@ -91,8 +91,8 @@ export function Accueil({ tournoi }: { tournoi: Tournoi }) {
           ) : (
             <ul className="alertes">
               {alertes.map((alerte) => (
-                <li key={alerte} className="alertes__ligne">
-                  {alerte}
+                <li key={alerte.cle} className="alertes__ligne">
+                  {alerte.texte}
                 </li>
               ))}
             </ul>
@@ -114,21 +114,33 @@ function Chiffre({ libelle, valeur }: { libelle: string; valeur: string }) {
   )
 }
 
+// Une alerte porte une **clé stable** (`cle`) distincte de son texte : deux lignes de complétude au
+// même libellé et même reste produiraient sinon deux `key` React identiques (revue E14US001).
+interface Alerte {
+  cle: string
+  texte: string
+}
+
 // Alertes = ce qui appelle une action **maintenant** : lignes de complétude en `alerte` (commencé
 // mais incomplet) + postes hors ligne. On ne recalcule rien — on **relit** l'état des sources.
-function construireAlertes(lignes: LigneCompletude[], supervision?: Supervision): string[] {
-  const messages: string[] = []
+function construireAlertes(lignes: LigneCompletude[], supervision?: Supervision): Alerte[] {
+  const alertes: Alerte[] = []
   for (const ligne of lignes) {
     if (ligne.etat !== 'alerte') continue
     const reste = ligne.fait !== null && ligne.total !== null ? ligne.total - ligne.fait : null
-    messages.push(
-      reste !== null && reste > 0
-        ? `${ligne.libelle} : ${reste} à compléter`
-        : `${ligne.libelle} à finir`,
-    )
+    alertes.push({
+      cle: `completude-${ligne.cle}`,
+      texte:
+        reste !== null && reste > 0
+          ? `${ligne.libelle} : ${reste} à compléter`
+          : `${ligne.libelle} à finir`,
+    })
   }
   if (supervision && supervision.nb_total > 0 && supervision.nb_en_ligne < supervision.nb_total) {
-    messages.push(`${supervision.nb_total - supervision.nb_en_ligne} poste(s) hors ligne`)
+    alertes.push({
+      cle: 'postes-hors-ligne',
+      texte: `${supervision.nb_total - supervision.nb_en_ligne} poste(s) hors ligne`,
+    })
   }
-  return messages
+  return alertes
 }

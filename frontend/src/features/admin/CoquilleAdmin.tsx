@@ -55,7 +55,8 @@ import { Supervision } from '../supervision/Supervision'
 import { RechercheArcher } from '../recherche/RechercheArcher'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { ConnexionAdmin } from './ConnexionAdmin'
-import { BadgeStatut, GestionTournois } from '../tournois/Tournois'
+import { BadgeStatut } from '../competition/BadgeStatut'
+import { GestionTournois } from '../tournois/Tournois'
 
 // L'appli admin (coquille) n'est présentée qu'à un admin connecté. Elle n'est atteinte que par la
 // **porte Admin** de l'écran d'accueil (E00US017, ADR-0042) : sans session, on affiche donc le
