@@ -78,6 +78,11 @@ Le bot n'avance que quand il est aux commandes (`en_cours`) ; l'humain ne saisit
 suspendu (`en_pause`) — traduction directe du CA « en pause, l'humain peut saisir… puis rendre la
 main ». `termine` est atteint quand il n'y a plus d'unité à jouer.
 
+Un **raccourci de fin**, `terminer`, déroule d'un coup toutes les unités restantes puis force
+`termine` (usage QA : « va jusqu'au classement »). Il est **borné** par un plafond de pas (filet
+anti-boucle) et permis depuis `en_cours` **ou** `en_pause` — c'est le seul verbe qui fait avancer le
+bot hors de `en_cours`, assumé comme commodité de fin, pas comme un état de plus.
+
 **3. Une *unité* de déroulé, commune au bot et à l'humain.** L'avancée se fait par unités atomiques,
 identiques que ce soit le bot (`avancer`) ou l'humain (`saisir`) qui les joue — la **prochaine
 unité** est un curseur unique, exposé au cockpit pour peupler le formulaire de reprise en main :

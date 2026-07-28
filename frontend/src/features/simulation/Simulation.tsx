@@ -16,6 +16,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { RealtimeClient } from '../../shared/realtime/RealtimeClient'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { TableClassement } from '../competition/TableClassement'
+import { arreter } from './api'
 import type { EtatSession, ProchaineVolee, TableauSimule } from './api'
 import {
   cleSession,
@@ -72,7 +73,13 @@ export function Simulation({ tournoiId }: { tournoiId: number }) {
     )
   }
 
-  return <Cockpit etat={etat} sessionId={sessionId} onArrete={() => setSessionId(null)} />
+  // « Arrêter » **libère la session serveur** (DELETE idempotent) avant de détacher le front — sinon
+  // le harnais in-memory resterait dans le registre jusqu'au redémarrage (fuite mémoire, revue C1).
+  const arreterSession = () => {
+    void arreter(sessionId).catch(() => {})
+    setSessionId(null)
+  }
+  return <Cockpit etat={etat} sessionId={sessionId} onArrete={arreterSession} />
 }
 
 // ————————————————————————————————————————————————————————————————————————————————————————————————
@@ -172,6 +179,9 @@ function Cockpit({
       <div className="simulation__bandeau">
         <EtatBadge etat={etat} />
         <Progression etat={etat} />
+        {/* Un échec de pilotage (ex. session perdue au redémarrage serveur) ne doit pas figer le
+            cockpit en silence : le pilote automatique s'arrête, on le dit (revue B/C1/D). */}
+        <MessageErreur erreur={avancer.error ?? pause.error ?? reprendre.error ?? terminer.error} />
         <div className="simulation__controles">
           {enCours && (
             <button type="button" onClick={() => pause.mutate(sessionId)}>
@@ -381,7 +391,11 @@ function VueCible({
         {volee.numero_volee} ({volee.nb_fleches} flèches).
       </p>
       {enPause ? (
-        <SaisieVolee sessionId={sessionId} volee={volee} />
+        <SaisieVolee
+          key={`${volee.archer_id}-${volee.numero_volee}`}
+          sessionId={sessionId}
+          volee={volee}
+        />
       ) : (
         <p className="carte__etat">
           Mettez en pause pour saisir cette volée à la place de la cible.
