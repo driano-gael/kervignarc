@@ -677,6 +677,42 @@ class SimulationTournoiDemarre(ApplicationError):
     code = "simulation_tournoi_demarre"
 
 
+class SessionSimulationIntrouvable(ApplicationError):
+    """Aucune session de simulation ne correspond à l'identifiant demandé (E15US003) → 404.
+
+    Les sessions sont **éphémères, en mémoire** (ADR-0055 §1) : un identifiant inconnu (jamais créé,
+    déjà arrêté, ou perdu au redémarrage du serveur) est un « introuvable », pas un conflit d'état.
+    Le front repart alors d'un `démarrer`.
+    """
+
+    code = "session_simulation_introuvable"
+
+
+class PilotageSimulationInvalide(ApplicationError):
+    """Action de pilotage incompatible avec l'état du pilote (E15US003, ADR-0055 §2) → 409.
+
+    Le pilote a trois états gardés : avancer (le bot) n'est permis qu'`en_cours`, saisir (l'humain)
+    qu'`en_pause`, et rien n'est permis quand la session est `terminée`. Demander l'un hors de son
+    état — reprendre une session déjà en cours, avancer une session en pause, saisir alors que le
+    bot tient les commandes — est un **conflit d'état**, comme `TransitionStatutInvalide`.
+    """
+
+    code = "pilotage_simulation_invalide"
+
+
+class UniteSimulationInvalide(ApplicationError):
+    """La saisie manuelle ne désigne pas une unité jouable de la simulation (E15US003) → 409.
+
+    En pause, l'humain saisit « à la place d'un rôle » : une volée pour un archer, un vainqueur pour
+    un duel. Viser une unité qui n'a pas de sens — un archer hors tournoi, une volée hors barème ou
+    déjà validée, un duel inexistant, tranché ou non encore jouable — est refusé (l'état reste
+    inchangé). Distinct des erreurs de **valeurs** (nombre de flèches, zone hors blason), qui
+    remontent du domaine en 422 : ici c'est le **ciblage** de l'unité qui est en cause.
+    """
+
+    code = "unite_simulation_invalide"
+
+
 class ScenarioInconnu(ApplicationError):
     """Aucun scénario de jeu d'essai ne correspond à l'identifiant demandé (E15US001) → 404.
 

@@ -45,6 +45,7 @@ from application.erreurs import (
     ScenarioInconnu,
     ScoreurHorsTournoi,
     ScoreurIntrouvable,
+    SessionSimulationIntrouvable,
     TournoiIntrouvable,
 )
 from domain.erreurs import DomainError
@@ -92,7 +93,8 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | PosteIntrouvable
         | ScoreurIntrouvable
         | ForfaitIntrouvable
-        | ScenarioInconnu,
+        | ScenarioInconnu
+        | SessionSimulationIntrouvable,
     ):
         status = 404
     else:

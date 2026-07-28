@@ -5,9 +5,11 @@ Le domaine ignore tout du temps réel : ces adapters vivent dans l'infrastructur
 """
 
 from infrastructure.realtime.broadcaster import Broadcaster, LiveEvent, Subscription
+from infrastructure.realtime.diffusion_simulation import DiffusionSimulationBroadcaster
 
 __all__ = [
     "Broadcaster",
+    "DiffusionSimulationBroadcaster",
     "LiveEvent",
     "Subscription",
 ]

@@ -50,6 +50,68 @@ from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 _STATUTS_SIMULABLES = frozenset({StatutTournoi.BROUILLON, StatutTournoi.PRET})
 
 
+def charger_tournoi_simulable(tournois: TournoiRepository, tournoi_id: TournoiId) -> Tournoi:
+    """Lit le tournoi et applique le garde-fou de simulation (ADR-0054 §4) — **source unique**.
+
+    Partagé par le rejeu one-shot (`ServiceSimulation`, E15US002) et le pilotage vivant
+    (`ServicePilotageSimulation`, E15US003) : les deux refusent exactement les mêmes tournois, au
+    même endroit. Lève `TournoiIntrouvable` (404) si absent, `SimulationTournoiDemarre` (409) s'il
+    est hors `brouillon`/`prêt` — mêmes bornes qu'`E15US001`, « ne pollue jamais le réel ».
+    """
+    tournoi = tournois.par_id(tournoi_id)
+    if tournoi is None:
+        raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+    if tournoi.statut not in _STATUTS_SIMULABLES:
+        raise SimulationTournoiDemarre(
+            f"Le tournoi « {tournoi.nom} » est {tournoi.statut.value} : on ne simule "
+            "(rejeu éphémère du moteur) qu'un tournoi avant démarrage (brouillon ou prêt), "
+            "pour ne pas interférer avec une compétition en cours ou figée."
+        )
+    return tournoi
+
+
+def hydrater_harnais(
+    harnais: HarnaisSimulation,
+    tournoi: Tournoi,
+    *,
+    tournois: TournoiRepository,
+    archers: ArcherRepository,
+    categories: CategorieRepository,
+    blasons: BlasonRepository,
+    gabarits: GabaritSalleRepository,
+    inscriptions: InscriptionRepository,
+    phases: PhaseRepository,
+    series: SerieRepository,
+) -> None:
+    """Recopie le tournoi réel dans le harnais in-memory par les ports (ADR-0054 §3).
+
+    **Source unique** de l'hydratation, partagée par le rejeu one-shot et le pilotage vivant.
+    Duels, plans de duels et forfaits ne sont pas recopiés : un tournoi avant démarrage n'en a
+    pas. Les séries sont recopiées telles quelles — le classement en dérive. Les repositories
+    `tournois`… sont les ports **réels** (lecture seule, hors file, règle 7) ; `harnais.*` sont
+    les magasins in-memory.
+    """
+    assert tournoi.id is not None, "Un tournoi relu est persisté."
+    tournoi_id = tournoi.id
+    harnais.tournois.ajouter(tournoi)
+    for categorie in categories.par_tournoi(tournoi_id):
+        harnais.categories.ajouter(categorie)
+    for blason in blasons.par_tournoi(tournoi_id):
+        harnais.blasons.ajouter(blason)
+    gabarit = gabarits.par_tournoi(tournoi_id)
+    if gabarit is not None:
+        harnais.gabarits.ajouter(gabarit)
+    for archer in archers.par_tournoi(tournoi_id):
+        harnais.archers.ajouter(archer)
+        assert archer.id is not None, "Un archer relu est persisté."
+        for inscription in inscriptions.par_archer(archer.id):
+            harnais.inscriptions.ajouter(inscription)
+    for phase in phases.par_tournoi(tournoi_id):
+        harnais.phases.ajouter(phase)
+    for serie in series.par_tournoi(tournoi_id):
+        harnais.series.enregistrer(serie)
+
+
 @dataclass(frozen=True)
 class HarnaisSimulation:
     """Un jeu d'adapters in-memory **vierge** + les services moteur câblés dessus.
@@ -70,6 +132,13 @@ class HarnaisSimulation:
     classement: ServiceClassement
     placement_duels: ServicePlacementDuels
     saisie_duels: ServiceSaisieDuels
+
+
+UsineHarnais = Callable[[], HarnaisSimulation]
+"""Fabrique d'un harnais **neuf** (règle 8) : le seul point qui connaît les adapters in-memory.
+
+Injectée à `ServiceSimulation` (rejeu one-shot) **et** `ServicePilotageSimulation` (session
+vivante) : un harnais par appel, aucune fuite d'état entre deux simulations."""
 
 
 @dataclass(frozen=True)
@@ -121,18 +190,21 @@ class ServiceSimulation:
         réelle ni la file d'écriture (ADR-0054) : les repositories réels ne sont lus que pour
         hydrater un harnais in-memory jetable.
         """
-        tournoi = self._tournois.par_id(tournoi_id)
-        if tournoi is None:
-            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        if tournoi.statut not in _STATUTS_SIMULABLES:
-            raise SimulationTournoiDemarre(
-                f"Le tournoi « {tournoi.nom} » est {tournoi.statut.value} : on ne simule "
-                "(rejeu éphémère du moteur) qu'un tournoi avant démarrage (brouillon ou prêt), "
-                "pour ne pas interférer avec une compétition en cours ou figée."
-            )
+        tournoi = charger_tournoi_simulable(self._tournois, tournoi_id)
 
         harnais = self._usine_harnais()
-        self._hydrater(tournoi_id, tournoi, harnais)
+        hydrater_harnais(
+            harnais,
+            tournoi,
+            tournois=self._tournois,
+            archers=self._archers,
+            categories=self._categories,
+            blasons=self._blasons,
+            gabarits=self._gabarits,
+            inscriptions=self._inscriptions,
+            phases=self._phases,
+            series=self._series,
+        )
 
         classement = harnais.classement.pour_tournoi(tournoi_id)
         gabarit_present = harnais.gabarits.par_tournoi(tournoi_id) is not None
@@ -156,29 +228,3 @@ class ServiceSimulation:
                 continue
 
         return ResultatSimulation(tournoi_id, classement, tuple(tableaux))
-
-    def _hydrater(
-        self, tournoi_id: TournoiId, tournoi: Tournoi, harnais: HarnaisSimulation
-    ) -> None:
-        """Recopie le tournoi réel dans le harnais in-memory (par les ports, `id` préservés).
-
-        Duels / plans de duels / forfaits ne sont pas recopiés : un tournoi avant démarrage n'en a
-        pas (ADR-0054 §3). Les séries sont recopiées telles quelles — le classement en dérive.
-        """
-        harnais.tournois.ajouter(tournoi)
-        for categorie in self._categories.par_tournoi(tournoi_id):
-            harnais.categories.ajouter(categorie)
-        for blason in self._blasons.par_tournoi(tournoi_id):
-            harnais.blasons.ajouter(blason)
-        gabarit = self._gabarits.par_tournoi(tournoi_id)
-        if gabarit is not None:
-            harnais.gabarits.ajouter(gabarit)
-        for archer in self._archers.par_tournoi(tournoi_id):
-            harnais.archers.ajouter(archer)
-            assert archer.id is not None, "Un archer relu est persisté."
-            for inscription in self._inscriptions.par_archer(archer.id):
-                harnais.inscriptions.ajouter(inscription)
-        for phase in self._phases.par_tournoi(tournoi_id):
-            harnais.phases.ajouter(phase)
-        for serie in self._series.par_tournoi(tournoi_id):
-            harnais.series.enregistrer(serie)
