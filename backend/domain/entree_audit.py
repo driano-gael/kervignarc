@@ -42,10 +42,13 @@ class ActionAuditee(str, Enum):
     Producteurs : `VALIDATION`/`CORRECTION_SCORE` (E04US002), `FORFAIT` (E12US004, à venir),
     `REPLACEMENT` (E12US007 — régénération **massive** du plan de cibles, quand des scores existent
     déjà, [ADR-0040]), `PAIEMENT` (E08US002 — marquage d'un statut de paiement, simple ou groupé :
-    un mouvement d'argent se trace). Les nommer ici n'anticipe pas leur code : c'est le
-    **vocabulaire** du CA.
+    un mouvement d'argent se trace), `LANCEMENT` (E12US002, [ADR-0056] — l'organisateur fait
+    **partir** un ou plusieurs duels prêts : un acte de pilotage du jour J, daté et attribué, qui
+    **déclenche la diffusion** du signal aux postes/écrans, sans poser de statut sur le tableau).
+    Les nommer ici n'anticipe pas leur code : c'est le **vocabulaire** du CA.
 
     [ADR-0040]: ../../docs/adr/0040-alerte-par-calcul-d-impact.md
+    [ADR-0056]: ../../docs/adr/0056-lancement-d-un-tour-acte-audite-et-diffuse.md
     """
 
     VALIDATION = "validation"
@@ -53,6 +56,7 @@ class ActionAuditee(str, Enum):
     FORFAIT = "forfait"
     REPLACEMENT = "replacement"
     PAIEMENT = "paiement"
+    LANCEMENT = "lancement"
 
 
 @dataclass(frozen=True)

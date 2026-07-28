@@ -43,6 +43,7 @@ from api.v1.jeu_essai import router as jeu_essai_router
 from api.v1.listes_impression import router as listes_impression_router
 from api.v1.paiements import router as paiements_router
 from api.v1.phases import router as phases_router
+from api.v1.pilotage import router as pilotage_router
 from api.v1.placement import router as placement_router
 from api.v1.placement_duels import router as placement_duels_router
 from api.v1.postes import router as postes_router
@@ -81,6 +82,7 @@ from application.pilotage_simulation import (
     RegistreSessionsSimulation,
     ServicePilotageSimulation,
 )
+from application.pilotage_tour import ServicePilotageTour
 from application.placement import ServicePlacement
 from application.placement_duels import ServicePlacementDuels
 from application.postes import ServicePostes
@@ -657,6 +659,19 @@ def create_app(
     # par le port `Horloge` (adapter système UTC), injecté pour des cas d'usage déterministes. ---
     app.state.service_audit = ServiceAudit(audit_repository, tournoi_repository, HorlogeSysteme())
 
+    # --- Pilotage d'un tour (E12US002, ADR-0056) : feu vert + lancement. Compose les services de
+    # duels **déjà câblés** — `service_saisie_duels` (reconstruction de l'arbre + noms),
+    # `service_placement_duels` (le plan → la cible de chaque duelliste) — et `service_audit` (la
+    # trace `LANCEMENT`). Aucun repo neuf : le feu vert **lit** le tableau reconstruit + le plan
+    # persisté ; le lancement est un **événement** (aucun statut posé sur le tableau). Le
+    # geste passe par la file et renvoie un `LiveEvent("tour_lance")` diffusé par le listener
+    # post-commit — le point de branchement des 4 canaux (leurs récepteurs sont séquencés). ---
+    app.state.service_pilotage_tour = ServicePilotageTour(
+        app.state.service_saisie_duels,
+        app.state.service_placement_duels,
+        app.state.service_audit,
+    )
+
     # --- Saisie de qualification (E04US002) : moteur métier `Serie`/`Volee` persisté. Le service
     # résout la config (blason → pavé, phase → barème/grain), pilote l'agrégat, date les entrées
     # d'audit (validation/correction) via `Horloge` ; l'adapter `SerieRepositorySQL` co-écrit série
@@ -789,6 +804,7 @@ def create_app(
     app.include_router(placement_router)
     app.include_router(placement_duels_router)
     app.include_router(saisie_duels_router)
+    app.include_router(pilotage_router)
     app.include_router(forfaits_router)
     app.include_router(feuille_de_marque_router)
     app.include_router(documents_salle_router)
