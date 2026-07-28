@@ -51,7 +51,7 @@ function PeuplerTournoi({ tournoiId }: { tournoiId: number }) {
       </p>
       <div className="formulaire formulaire--colonne">
         <label className="formulaire__libelle">
-          Nombre d’archers
+          Nombre d’archers (1 à 500)
           <input
             className="formulaire__champ"
             type="number"
@@ -65,7 +65,7 @@ function PeuplerTournoi({ tournoiId }: { tournoiId: number }) {
         <div className="formulaire__actions">
           <button
             type="button"
-            disabled={peupler.isPending || nombre < 1}
+            disabled={peupler.isPending || nombre < 1 || nombre > 500}
             onClick={() => peupler.mutate({ nombre, graine: grainePour(graine) })}
           >
             {peupler.isPending ? 'Peuplement…' : `Peupler avec ${nombre} archers`}
@@ -110,6 +110,8 @@ function Scenarios({ onTournoiInstancie }: { onTournoiInstancie?: (tournoiId: nu
             </div>
             <button
               type="button"
+              // Tous désactivés pendant une instanciation (évite deux créations concurrentes), mais
+              // seul le bouton cliqué affiche « Création… » — `variables` porte le scénario en cours.
               disabled={instancier.isPending}
               onClick={() =>
                 instancier.mutate(
@@ -118,7 +120,9 @@ function Scenarios({ onTournoiInstancie }: { onTournoiInstancie?: (tournoiId: nu
                 )
               }
             >
-              {instancier.isPending ? 'Création…' : 'Instancier'}
+              {instancier.isPending && instancier.variables?.scenarioId === scenario.id
+                ? 'Création…'
+                : 'Instancier'}
             </button>
           </li>
         ))}
