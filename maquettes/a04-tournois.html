@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A04 · Tournois — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a03-accueil-statuts.html">← A03</a>
+  <span class="fin">
+    <a href="a05-identite.html">A05 · Identité →</a>
+    <a class="lien-questionnaire" href="questionnaires/a04-tournois.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A04</span>Tournois — liste et cycle de vie</h1>
+  <p class="chapo">La porte d'entrée. Point important souvent mal compris : <strong>plusieurs tournois peuvent
+  être « en cours » en même temps</strong> — l'intérieur et l'extérieur le même week-end. C'est une capacité
+  voulue, pas un accident, donc la liste ne désigne jamais un tournoi « actif ».</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Ce que l'écran doit faire</h2>
+<ul class="exigences">
+  <li>Montrer l'état de <strong>chaque</strong> tournoi sans en privilégier un.</li>
+  <li>Rendre le cycle de vie lisible : ce qui vient après, et ce que ça <strong>fige</strong>.</li>
+  <li>Refuser proprement l'impossible : supprimer un tournoi en cours se répond par un <strong>message qui
+  explique</strong>, pas par un bouton grisé muet.</li>
+</ul>
+
+<h2 class="section">Partis pris <span class="code-sec">à départager</span></h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Liste dense</span>
+      <span class="sous-etiquette">Une ligne par tournoi, statut en colonne.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">TOURNOIS</span><span class="fin bouton auto">+ Nouveau</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span style="flex:1">NOM</span><span style="width:60px">DATE</span><span style="width:90px">STATUT</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Challenge des Champions</span>
+            <span style="width:60px" class="second">12/10</span><span style="width:90px"><span class="pas att">EN COURS</span></span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Tir extérieur du club</span>
+            <span style="width:60px" class="second">18/10</span><span style="width:90px"><span class="pas att">EN COURS</span></span></div>
+          <div class="rang"><span style="flex:1">Interclubs jeunes</span>
+            <span style="width:60px" class="second">09/11</span><span style="width:90px"><span class="pas neutre">BROUILLON</span></span></div>
+          <div class="rang"><span style="flex:1">Concours de printemps</span>
+            <span style="width:60px" class="second">14/04</span><span style="width:90px"><span class="pas ok">TERMINÉ</span></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> Dense, triable, et <b>deux « en cours » se
+    voient immédiatement</b> — ce qui est exactement le risque à rendre visible.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Cartes avec frise</span>
+      <span class="sous-etiquette">Le cycle de vie dessiné sur chaque tournoi.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">TOURNOIS</span></div>
+      <div class="corps">
+        <div class="carte marquee">
+          <div class="rang bloc">
+            <div style="font-weight:800">Challenge des Champions</div>
+            <div class="second">12 octobre · 156 inscrits</div>
+            <div style="display:flex;gap:4px;margin-top:8px;font-size:10px">
+              <span class="pas neutre">brouillon</span><span class="pas neutre">prêt</span>
+              <span class="pas att">en cours</span><span class="pas neutre">terminé</span>
+            </div>
+          </div>
+        </div>
+        <div class="carte">
+          <div class="rang bloc">
+            <div style="font-weight:800">Interclubs jeunes</div>
+            <div class="second">9 novembre · 0 inscrit</div>
+            <div style="display:flex;gap:4px;margin-top:8px;font-size:10px">
+              <span class="pas att">brouillon</span><span class="pas neutre">prêt</span>
+              <span class="pas neutre">en cours</span><span class="pas neutre">terminé</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">séduisant</span> La frise apprend le cycle de vie… <b>une
+    fois</b>. Ensuite elle occupe de la place pour une information déjà connue. Peut-être à réserver à la fiche
+    du tournoi.</p>
+  </figure>
+</div>
+
+<h2 class="section">État · refus expliqué</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">Suppression refusée</span></figcaption>
+    <div class="ui"><div class="corps">
+      <div class="aplat-alerte">▲ Suppression impossible</div>
+      <p class="second" style="margin:0">« Challenge des Champions » est <strong>en cours</strong> : 156 archers
+      tirent dessus en ce moment. Terminez-le ou annulez-le d'abord.</p>
+      <button class="bouton discret">Annuler le tournoi à la place</button>
+    </div></div>
+    <p class="verdict">Le service répond <b>409</b> ; l'écran traduit en langage humain et propose la sortie.</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>La frise sert-elle en permanence</strong> ou seulement à la création du tournoi ?</li>
+  <li><strong>Faut-il épingler le tournoi du jour</strong> en tête, ou l'ordre chronologique suffit-il ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a04-tournois.md">Questionnaire A04</a></span>
+  <span class="fin"><a href="a05-identite.html">Suivant : A05 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

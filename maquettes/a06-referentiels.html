@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A06 · Référentiels — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a05-identite.html">← A05</a>
+  <span class="fin">
+    <a href="a07-phases.html">A07 · Phases →</a>
+    <a class="lien-questionnaire" href="questionnaires/a06-referentiels.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A06</span>Référentiels — six destinations, un gabarit</h1>
+  <p class="chapo">Catégories, blasons, clubs, tarifs, barèmes, gabarits partagent la même forme. Les dessiner
+  six fois donnerait <strong>l'illusion du travail</strong> et noierait les écrans qui décident vraiment de la
+  journée. La planche fixe le gabarit ; le tableau donne les écarts.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Partis pris <span class="code-sec">à départager</span></h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Édition en place</span>
+      <span class="sous-etiquette">La ligne se transforme en champs, on valide, on passe à la suivante.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">CATÉGORIES</span><span class="champ" style="margin-left:10px;padding:3px 8px">Filtrer…</span><span class="fin bouton auto">+ Ajouter</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span style="width:60px">CODE</span><span style="flex:1">LIBELLÉ</span><span>DISTANCE · BLASON</span></div>
+          <div class="rang"><span style="width:60px;font-weight:700">SH</span><span style="flex:1">Senior Homme</span><span class="second">18 m · 40 cm</span></div>
+          <div class="rang"><span style="width:60px;font-weight:700">SF</span><span style="flex:1">Senior Femme</span><span class="second">18 m · 40 cm</span></div>
+          <div class="rang" style="background:var(--surface-2)">
+            <span style="width:60px" class="champ plein">BJ</span>
+            <span style="flex:1" class="champ plein">Benjamin</span>
+            <span class="bouton auto" style="border-color:var(--success);color:var(--success)">OK</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> Trois champs ne méritent pas une page.
+    L'édition en place garde <b>le contexte des voisins</b> — utile quand on saisit une grille de catégories.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Panneau latéral</span>
+      <span class="sous-etiquette">La liste reste, l'édition s'ouvre à droite.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">BLASONS</span></div>
+      <div class="colonnes" style="grid-template-columns:minmax(0,1fr) 160px">
+        <div class="corps">
+          <div class="carte">
+            <div class="rang"><span style="flex:1">Blason 40 cm</span><span class="second">10 zones</span></div>
+            <div class="rang" style="background:var(--surface-2)"><span style="flex:1;font-weight:700">Trispot 40 cm</span><span class="second">3 spots</span></div>
+            <div class="rang"><span style="flex:1">Blason 60 cm</span><span class="second">10 zones</span></div>
+          </div>
+        </div>
+        <div class="flanc" style="border-right:0;border-left:1px solid var(--border-subtle)">
+          <div class="mini">TRISPOT 40 CM</div>
+          <div class="champ plein" style="font-size:12px">Trispot 40</div>
+          <div class="champ plein" style="font-size:12px">3 spots</div>
+          <div class="champ plein" style="font-size:12px">zones 10 → 6</div>
+          <button class="bouton auto" style="margin-top:6px">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">utile pour les blasons</span> Dès qu'un élément porte
+    <b>plus de 4 champs ou un aperçu visuel</b>, le panneau devient meilleur que la ligne. C'est le cas des
+    blasons — le seul référentiel où l'image porte l'information.</p>
+  </figure>
+</div>
+
+<h2 class="section">Les six destinations et leurs écarts</h2>
+<div class="enveloppe"><table class="tk">
+  <tr><th style="width:120px">Destination</th><th>Ce qui diffère</th></tr>
+  <tr><td><strong>Catégories</strong></td><td>Distance et blason par défaut. Référentiel FFTA — à ne pas réinventer, à importer si possible.</td></tr>
+  <tr><td><strong>Blasons</strong></td><td>Aperçu visuel (diamètre, zones, trispot). Le seul où l'image <em>est</em> l'information → panneau latéral.</td></tr>
+  <tr><td><strong>Clubs</strong></td><td>Notion de « club inconnu » plutôt qu'un club sentinelle ; fusion de doublons.</td></tr>
+  <tr><td><strong>Tarifs</strong></td><td>Montant par catégorie ; alimente le suivi des paiements (A17).</td></tr>
+  <tr><td><strong>Barèmes</strong></td><td>Rattachés à une <em>phase</em>, pas au tournoi (A07).</td></tr>
+  <tr><td><strong>Gabarits</strong></td><td>Modèles de salle réutilisables d'une année sur l'autre (A10).</td></tr>
+</table></div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>Le gabarit commun tient-il pour les six</strong>, ou l'un d'eux mérite-t-il un écran à part ?</li>
+  <li><strong>L'import de fichier est-il nécessaire</strong> (catégories FFTA, liste de clubs du département) ou
+  la saisie manuelle une fois pour toutes suffit-elle ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a06-referentiels.md">Questionnaire A06</a></span>
+  <span class="fin"><a href="a07-phases.html">Suivant : A07 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

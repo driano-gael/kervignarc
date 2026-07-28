@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A03 · Accueil selon statut — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a02-ossature.html">← A02</a>
+  <span class="fin">
+    <a href="a04-tournois.html">A04 · Tournois →</a>
+    <a class="lien-questionnaire" href="questionnaires/a03-accueil-statuts.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A03</span>Accueil contextualisé — les 7 statuts</h1>
+  <p class="chapo"><em>Accessible</em> et <em>au premier plan</em> sont deux choses différentes. Les 16
+  destinations restent à un clic (<span class="ref">P-3</span>) ; ce qui change avec le statut, c'est ce que
+  l'organisateur voit <strong>en arrivant</strong>.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Ce que l'écran doit faire</h2>
+<ul class="exigences">
+  <li>Répondre à « <strong>qu'est-ce que je fais maintenant ?</strong> » sans que l'organisateur ait à choisir
+  dans un menu.</li>
+  <li>Changer de <strong>registre</strong>, pas de droits : brouillon = dense et formulaire, en cours = gros et
+  alertes, terminé = lecture et export.</li>
+  <li>Ne jamais devenir un mur : c'est une priorité d'affichage, pas une restriction.</li>
+</ul>
+
+<h2 class="section">Les trois registres</h2>
+
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">Brouillon — dense, on a le temps</span>
+      <span class="sous-etiquette">L'accueil est une liste de ce qui manque, chaque ligne mène à sa destination.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">CHALLENGE DES CHAMPIONS</span><span class="fin pas neutre">BROUILLON</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span>À PRÉPARER</span><span class="fin">4 points</span></div>
+          <div class="rang"><span class="pas att">!</span><span>Aucun gabarit de salle</span><span class="fin bouton auto">Définir</span></div>
+          <div class="rang"><span class="pas att">!</span><span>Phases sans barème</span><span class="fin bouton auto">Configurer</span></div>
+          <div class="rang"><span class="pas neutre">~</span><span>12 inscriptions non réglées</span><span class="fin bouton auto">Voir</span></div>
+          <div class="rang"><span class="pas neutre">~</span><span>Placement non calculé</span><span class="fin bouton auto">Placer</span></div>
+        </div>
+        <button class="bouton inactif">DÉMARRER — bloqué tant que le sportif est incomplet</button>
+      </div>
+    </div>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">En cours — gros, alertes, zéro formulaire</span>
+      <span class="sous-etiquette">La console de supervision devient l'accueil.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">CHALLENGE DES CHAMPIONS</span><span class="fin pas att">EN COURS</span></div>
+      <div class="corps">
+        <div style="display:flex;align-items:center;gap:10px"><span class="second">Qualification · volée 8/12</span>
+          <span class="jauge"><span style="width:62%"></span></span><span class="second">62 %</span></div>
+        <div class="aplat-alerte">▲ 2 postes hors ligne — cibles 7, 23 <span class="impact">14 mn</span></div>
+        <div class="carte">
+          <div class="rang"><span class="pas att">3</span><span>à valider</span><span class="fin second">le plus ancien : 4 mn 20</span></div>
+        </div>
+        <button class="bouton principal geant">LANCER LES DEMI-FINALES<br>
+          <span style="font-weight:600;font-size:13px">2 duels · cibles 4 et 7 · 14 h 20</span></button>
+      </div>
+    </div>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">Terminé — lecture et export</span>
+      <span class="sous-etiquette">Le sportif est figé ; le hors-sportif reste ouvert.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">CHALLENGE DES CHAMPIONS</span><span class="fin pas ok">TERMINÉ</span></div>
+      <div class="corps">
+        <div class="carte info"><div class="rang bloc">
+          <span class="verrou">🔒 SPORTIF FIGÉ</span>
+          <p class="second" style="margin:6px 0 0">Scores et classements ne sont plus modifiables.
+          Les paiements, si.</p></div></div>
+        <div class="carte">
+          <div class="rang"><span>Podiums</span><span class="fin bouton auto">Voir</span></div>
+          <div class="rang"><span>Exports</span><span class="fin bouton auto">Télécharger</span></div>
+          <div class="rang"><span>Paiements</span><span class="fin pas att">12 dus</span></div>
+        </div>
+      </div>
+    </div>
+  </figure>
+</div>
+
+<h2 class="section">Les 4 autres statuts</h2>
+<div class="rangee">
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">Prêt — le feu vert</span></figcaption>
+    <div class="ui"><div class="corps">
+      <div class="carte" style="border-color:var(--success)"><div class="rang bloc">
+        <span class="pas ok">COMPLÉTUDE SATISFAITE</span>
+        <p class="second" style="margin:6px 0 0">156 inscrits · 30 cibles placées · 3 scoreurs</p></div></div>
+      <button class="bouton valider geant">DÉMARRER LE TOURNOI</button>
+    </div></div>
+    <p class="verdict">Le feu vert est <b>affiché</b>, pas découvert en appuyant.</p>
+  </figure>
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">En pause — saisie gelée</span></figcaption>
+    <div class="ui">
+      <div class="barre alerte"><span style="font-weight:800">■ TOURNOI EN PAUSE</span></div>
+      <div class="corps">
+        <p class="second" style="margin:0">Les 30 postes affichent « tir interrompu ». Aucune saisie n'est perdue.</p>
+        <button class="bouton valider">REPRENDRE</button>
+      </div>
+    </div>
+    <p class="verdict">L'état est <b>global et visible</b> : sinon on oublie qu'on a mis en pause.</p>
+  </figure>
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">Archivé — verrou total</span></figcaption>
+    <div class="ui"><div class="corps">
+      <div class="carte info"><div class="rang bloc"><span class="verrou">🔒 ARCHIVÉ</span>
+        <p class="second" style="margin:6px 0 0">Lecture seule. Aucune action possible.</p></div></div>
+      <div class="carte"><div class="rang"><span class="faible">Résultats · exports · journal d'audit</span></div></div>
+    </div></div>
+  </figure>
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">Annulé — trace conservée</span></figcaption>
+    <div class="ui"><div class="corps" style="text-align:center;padding:26px 14px">
+      <div style="font-weight:800">Tournoi annulé</div>
+      <p class="second" style="margin:0">le 28/09 — « gymnase indisponible »</p>
+      <p class="faible" style="margin:0">Inscriptions et paiements restent consultables.</p>
+    </div></div>
+    <p class="verdict">Annulé ≠ supprimé : les <b>paiements encaissés</b> doivent rester traçables.</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher <span class="code-sec">reporté dans le questionnaire</span></h2>
+<ul class="exigences">
+  <li><strong>Les 7 statuts servent-ils tous ?</strong> « En pause » et « annulé » sont des hypothèses ; s'ils
+  ne correspondent à rien chez toi, ils coûtent du code et de la complexité pour rien.</li>
+  <li><strong>En cours, la supervision est-elle le bon accueil ?</strong> C'est le pari du CDC UX. Peut-être
+  qu'au petit matin tu veux d'abord voir les inscriptions de dernière minute.</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a03-accueil-statuts.md">Questionnaire A03</a></span>
+  <span class="fin"><a href="a04-tournois.html">Suivant : A04 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

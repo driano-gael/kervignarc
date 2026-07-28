@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A05 · Identité du tournoi — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a04-tournois.html">← A04</a>
+  <span class="fin">
+    <a href="a06-referentiels.html">A06 · Référentiels →</a>
+    <a class="lien-questionnaire" href="questionnaires/a05-identite.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A05</span>Identité du tournoi</h1>
+  <p class="chapo">L'organisateur dépose <strong>un logo et deux couleurs</strong> ; le système dérive tout le
+  reste (<span class="ref">DV-06</span>). Rangé dans <em>Préparation</em> pour une raison de fond : le jour J
+  on distribue et on pilote, <strong>on ne choisit pas des couleurs</strong>.</p>
+  <p style="margin-top:14px"><span class="etat-pill neuf">à concevoir</span></p>
+</header>
+
+<h2 class="section">Ce que l'écran doit faire</h2>
+<ul class="exigences">
+  <li><strong>Un aperçu, pas un nuancier.</strong> Une couleur ne se juge pas dans un sélecteur : elle se juge
+  sur l'écran de salle et sur le téléphone — les deux seules surfaces qu'elle habille
+  (<span class="ref">D-27</span>).</li>
+  <li><strong>Alerter en chiffrant, jamais refuser</strong> (<span class="ref">P-4</span>). C'est exactement le
+  cas du rouge du club : 2,55:1 sur le fond sombre. Il n'est pas interdit — il devient un <em>aplat</em>, et le
+  texte prend une variante éclaircie.</li>
+  <li><strong>Ne jamais toucher aux couleurs sémantiques.</strong> L'ambre d'alerte, le vert de validation ne
+  sont pas personnalisables : c'est le verrou de la cohérence (<span class="ref">DV-06</span>).</li>
+  <li>Si le tournoi n'a pas d'identité propre, <strong>le club reprend la place</strong> — aucune surface ne
+  reste vide.</li>
+</ul>
+
+<h2 class="section">Partis pris <span class="code-sec">à départager</span></h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Réglages + aperçu permanent</span>
+      <span class="sous-etiquette">L'aperçu est à droite, il ne se ferme jamais.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">IDENTITÉ DU TOURNOI</span><span class="fin pas neutre">PRÉPARATION</span></div>
+      <div class="colonnes" style="grid-template-columns:minmax(0,1fr) 150px">
+        <div class="corps">
+          <div class="carte"><div class="rang bloc" style="text-align:center;padding:18px">
+            <span class="faible">Déposer le logo de l'événement</span></div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:26px;height:26px;border-radius:4px;background:#B71918;border:1px solid var(--border)"></span>
+            <span class="second" style="flex:1">Accent principal</span><span class="champ plein">#B71918</span></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:26px;height:26px;border-radius:4px;background:#1D1D1B;border:1px solid var(--border)"></span>
+            <span class="second" style="flex:1">Accent secondaire</span><span class="champ plein">#1D1D1B</span></div>
+          <div class="aplat-alerte" style="align-items:flex-start">▲
+            <span style="font-weight:600;font-size:12.5px">Ce rouge donne <strong>2,55:1</strong> sur fond sombre.
+            Il servira d'aplat ; le texte utilisera <strong>#E84E4D</strong>.</span></div>
+        </div>
+        <div class="flanc" style="border-right:0;border-left:1px solid var(--border-subtle)">
+          <div class="mini">APERÇU</div>
+          <div class="carte" style="padding:10px 6px;text-align:center;font-size:10px">écran de salle</div>
+          <div class="carte" style="padding:16px 6px;text-align:center;font-size:10px">téléphone</div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> L'aperçu <b>réagit pendant qu'on règle</b>.
+    C'est ce qui transforme un formulaire en outil de décision.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Aperçu plein écran</span>
+      <span class="sous-etiquette">On voit la salle en grand, les réglages sont en surcouche.</span></figcaption>
+    <div class="ui">
+      <div class="ui salle" style="border:0;border-radius:0;box-shadow:none">
+        <div class="barre marque"><span class="titre-salle" style="font-size:17px">CHALLENGE DES CHAMPIONS</span></div>
+        <div class="corps" style="padding:20px">
+          <div class="second">1/4 DE FINALE</div>
+          <div style="font-weight:800">MARTIN P. → CIBLE 4</div>
+          <div class="carte" style="margin-top:8px;padding:8px;font-size:11px">
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="width:18px;height:18px;background:#B71918;border-radius:3px"></span>
+              <span class="second">accent 1</span>
+              <span style="width:18px;height:18px;background:#1D1D1B;border:1px solid var(--border);border-radius:3px"></span>
+              <span class="second">accent 2</span>
+            </div>
+          </div>
+        </div>
+        <div class="pied-salle"><span>logo événement</span><span>organisé par les Archers de Kervignac</span></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">à considérer</span> Le rendu est <b>vrai</b>, donc le jugement
+    est juste. Mais régler par-dessus son propre aperçu est acrobatique sur un écran de PC ordinaire.</p>
+  </figure>
+</div>
+
+<h2 class="section">Le co-branding, montré</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">Avec identité de tournoi</span>
+      <span class="sous-etiquette">L'événement domine, le club signe en pied — <span class="ref">DV-08</span>.</span></figcaption>
+    <div class="ui salle">
+      <div class="salle-cadre">
+        <div class="barre marque"><span class="titre-salle" style="font-size:18px">CHALLENGE DES CHAMPIONS</span></div>
+        <div class="corps-salle"><div style="font-weight:800;font-size:17px">1/4 DE FINALE — 14 h 20</div>
+          <div class="second">MARTIN P. → cible 4 · DURAND J. → cible 4</div></div>
+        <div class="pied-salle"><span>organisé par les Archers de Kervignac</span><span>kervignac-tir.fr</span></div>
+      </div>
+    </div>
+  </figure>
+  <figure class="variante">
+    <figcaption><span class="etiquette">Sans identité de tournoi</span>
+      <span class="sous-etiquette">Le club reprend la place, la surface n'est jamais vide.</span></figcaption>
+    <div class="ui salle">
+      <div class="salle-cadre">
+        <div class="barre marque"><span class="titre-salle" style="font-size:18px">ARCHERS DE KERVIGNAC</span></div>
+        <div class="corps-salle"><div style="font-weight:800;font-size:17px">1/4 DE FINALE — 14 h 20</div>
+          <div class="second">MARTIN P. → cible 4 · DURAND J. → cible 4</div></div>
+        <div class="pied-salle"><span>Concours du 12 octobre</span><span>kervignac-tir.fr</span></div>
+      </div>
+    </div>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>L'aperçu doit-il couvrir l'imprimé</strong> (affiche, feuille de marque, plan affiché au mur) ou
+  seulement les surfaces écran ?</li>
+  <li><strong>Alerter ou refuser ?</strong> La charte dit alerter en chiffrant. Si tu préfères qu'une couleur
+  illisible soit refusée net, c'est une décision qui change l'écran — et qui contredirait
+  <span class="ref">DV-05</span>, donc à acter en ADR.</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a05-identite.md">Questionnaire A05</a></span>
+  <span class="fin"><a href="a06-referentiels.html">Suivant : A06 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>
