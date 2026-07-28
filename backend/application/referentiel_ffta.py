@@ -37,10 +37,15 @@ from dataclasses import dataclass
 from domain.blason import ZoneScore
 from domain.categorie import HAUTEUR_CENTRE_DEFAUT, SexeCategorie, TrancheAge
 
-# Divisions (armes) reconnues à 18 m — §1 (art. A.6.2).
-_ARC_CLASSIQUE = "Arc Classique"
-_ARC_POULIES = "Arc à Poulies"
-_ARC_NU = "Arc Nu"
+# Divisions (armes) reconnues à 18 m — §1 (art. A.6.2). Publiques : le jeu d'essai (E15US001) filtre
+# ses catégories cibles par division (`c.arme == ARC_CLASSIQUE`), en s'appuyant sur ces valeurs
+# canoniques plutôt qu'en recopiant les chaînes — une seule source pour le libellé de division.
+ARC_CLASSIQUE = "Arc Classique"
+ARC_POULIES = "Arc à Poulies"
+ARC_NU = "Arc Nu"
+_ARC_CLASSIQUE = ARC_CLASSIQUE
+_ARC_POULIES = ARC_POULIES
+_ARC_NU = ARC_NU
 
 # Hauteur du centre de l'or des U11 : 110 cm (blason 80 cm, art. C.3.1.1 ;
 # `docs/referentiel-ffta.md` §5), contre 130 cm pour toutes les autres catégories. C'est la seule

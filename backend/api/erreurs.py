@@ -42,6 +42,7 @@ from application.erreurs import (
     PhaseQualificationAbsente,
     PosteIntrouvable,
     SaisieHorsCible,
+    ScenarioInconnu,
     ScoreurHorsTournoi,
     ScoreurIntrouvable,
     TournoiIntrouvable,
@@ -90,7 +91,8 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | PhaseIntrouvable
         | PosteIntrouvable
         | ScoreurIntrouvable
-        | ForfaitIntrouvable,
+        | ForfaitIntrouvable
+        | ScenarioInconnu,
     ):
         status = 404
     else:

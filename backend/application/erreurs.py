@@ -644,6 +644,17 @@ class ForfaitIntrouvable(ApplicationError):
     code = "forfait_introuvable"
 
 
+class ScenarioInconnu(ApplicationError):
+    """Aucun scénario de jeu d'essai ne correspond à l'identifiant demandé (E15US001) → 404.
+
+    Le catalogue des scénarios est **fermé** (`application.jeu_essai.CATALOGUE`) et le front puise
+    ses choix dans `GET …/jeu-essai/scenarios` : un identifiant hors catalogue est un
+    « introuvable », pas un conflit d'état. Même parti que `GabaritIntrouvable`.
+    """
+
+    code = "scenario_inconnu"
+
+
 class ForfaitTournoiTermine(ApplicationError):
     """Déclarer ou annuler un forfait sur un tournoi **terminé** est refusé (`D-15`). → 409.
 
