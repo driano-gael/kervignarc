@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 28/07/2026** · **77 US livrées** · dernière : `E14US002` *(aide contextuelle « ce qui est saisissable et pourquoi »)*.
+**Dernière mise à jour : 28/07/2026** · **78 US livrées** · dernière : `E15US001` *(jeu d'essai : générer des inscrits + scénarios rejouables)*.
 
 ---
 
@@ -23,12 +23,13 @@
 > **EPIC-15** (jeu d'essai & simulation) — détail en section « Ajouts de la démo du 27/07/2026 » plus
 > bas. Ordre des bugs : ~~E02US010~~ ✅ (horaire `HH:MM`), ~~E01US017~~ ✅ (7 statuts),
 > ~~E11US008~~ ✅ (LAN + QR), ~~E03US011~~ ✅ (placement), ~~E01US022~~ ✅ (blason FFTA).
-> **Les bugs du lot démo sont clos** et **EPIC-14 est livrée** (accueil-tableau de bord + aide
-> contextuelle) ; on passe à **EPIC-15**. La séquence J2 ci-dessous reprend ensuite à `E12US002`.
+> **Les bugs du lot démo sont clos**, **EPIC-14 est livrée** (accueil-tableau de bord + aide
+> contextuelle) et **EPIC-15 est amorcée** (`E15US001` jeu d'essai livré) ; reste `E15US002`/`E15US003`.
+> La séquence J2 ci-dessous reprend ensuite à `E12US002`.
 >
-> **`E15US001` — jeu d'essai : générer des inscrits + scénarios rejouables** : la **prochaine à
-> prendre** (1ʳᵉ US d'EPIC-15 ; `E14US001` accueil-tableau de bord **et** `E14US002` aide contextuelle
-> **viennent d'être livrées**, EPIC-14 close). *(Ajout démo, `E15` 🆕.)*
+> **`E15US002` — moteur de simulation éphémère + garde-fou (non-persistance)** : la **prochaine à
+> prendre** (2ᵉ US d'EPIC-15, **cœur technique** — démarre par un **spike** de périmètre des ports ;
+> `E15US001` générateur d'inscrits + scénarios **vient d'être livrée**). *(Ajout démo, `E15` 🆕.)*
 > *Puis la séquence J2 reprend à* **`E12US002`** — lancer un tour (feu vert + lancement), la **clé du
 > J2** : voir ce qui manque avant de lancer, puis faire partir le tour (les 4 canaux prévenus
 > ensemble). *Ensuite* : remboursement `E08US005`, prochaine cible `E04US018`.
@@ -39,6 +40,18 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E15US001` **jeu d'essai : générer des inscrits + scénarios rejouables** — US à **surface visible**,
+>   **1ʳᵉ d'EPIC-15**. Un écran admin **« Jeu d'essai »** (groupe Préparation) : bouton **« peupler N
+>   archers »** sur le tournoi courant (données réalistes, N borné [1, 500]) **et** un **catalogue de
+>   scénarios** (`petit` 16 · `gros` 120 · `multi-format` 60) qui **instancie un tournoi complet prêt à
+>   lancer** (catégories FFTA + départs + archers inscrits → passe `prêt`). **Donnée réelle persistée**,
+>   **à distinguer** de la simulation éphémère (E15US002). **Arbitrages tranchés au cadrage** : trio de
+>   scénarios figé + destination dédiée + graine optionnelle. **Déterminisme** (règle 9) par
+>   `random.Random(graine)` injectée. **Réutilise les services existants** (`ServiceJeuEssai` compose
+>   Tournois/Catégories/Départs/Archers/Inscriptions/Clubs — pas de court-circuit du domaine), tout dans
+>   **une** commande de file (patron `precharger_ffta`). **Pas d'ADR** (outillage sans nouveau pattern,
+>   règle 12). Tests service **depuis le CA** ; API testée après. Story alignée (Notes). Recette :
+>   [`docs/fonctionnel/E15US001.md`](../docs/fonctionnel/E15US001.md).
 > - `E14US002` **aide contextuelle « ce qui est saisissable et pourquoi »** — US à **surface visible**,
 >   **2ᵉ et dernière d'EPIC-14** (close). Sur **chaque** écran d'administration, un bouton **« ⓘ Aide »**
 >   replié par défaut se **déplie au tap** pour expliquer, en langage organisateur, ce qui s'y saisit et
@@ -331,8 +344,8 @@
 | E01US022 | Blason FFTA par défaut par catégorie + affichage hérité | E01 🆕 | ✅ |
 | E14US001 | Accueil-tableau de bord contextualisé (`D-20`) | E14 🆕 | ✅ |
 | E14US002 | Aide contextuelle « ce qui est saisissable & pourquoi » | E14 🆕 | ✅ |
-| E15US001 | Jeu d'essai : générer des inscrits + scénarios rejouables | E15 🆕 | 🎯 |
-| E15US002 | Moteur de simulation éphémère + garde-fou (non-persistance) | E15 🆕 | ⬜ |
+| E15US001 | Jeu d'essai : générer des inscrits + scénarios rejouables | E15 🆕 | ✅ |
+| E15US002 | Moteur de simulation éphémère + garde-fou (non-persistance) | E15 🆕 | 🎯 |
 | E15US003 | Bot pilote auto pausable + cockpit interactif multi-vues | E15 🆕 | ⬜ |
 
 ## US caduque
