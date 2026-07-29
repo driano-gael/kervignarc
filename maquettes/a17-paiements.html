@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A17 · Paiements — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a16-classements-podiums.html">← A16</a>
+  <span class="fin">
+    <a href="a18-exports-archive-audit.html">A18 · Exports →</a>
+    <a class="lien-questionnaire" href="questionnaires/a17-paiements.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A17</span>Paiements</h1>
+  <p class="chapo">Le seul écran <em>hors sportif</em> qui reste modifiable après « Terminé »
+  (<span class="ref">D-15</span>, <span class="ref">D-18</span>). Clore la compétition ne doit pas empêcher
+  d'encaisser, et un chèque manquant ne doit pas empêcher de clore.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Liste des dus</span>
+      <span class="sous-etiquette">Ce qui reste à encaisser, en tête.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">PAIEMENTS</span><span class="pas att">12 DUS</span>
+        <span class="fin second">144 € restants</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span style="flex:1">ARCHER</span><span style="width:56px">TARIF</span><span style="width:90px">ÉTAT</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">MARTIN Sophie</span><span style="width:56px" class="second">12 €</span>
+            <span style="width:90px" class="fin bouton auto">Encaisser</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">NOËL Alice</span><span style="width:56px" class="second">12 €</span>
+            <span style="width:90px" class="fin bouton auto">Encaisser</span></div>
+          <div class="rang"><span style="flex:1;color:var(--text-muted)">MARTIN Paul</span><span style="width:56px" class="second">12 €</span>
+            <span style="width:90px"><span class="pas ok">RÉGLÉ</span></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> L'écran sert à <b>une seule chose</b> :
+    encaisser ce qui manque. Les réglés passent en gris, en bas.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Vue caisse</span>
+      <span class="sous-etiquette">Totaux par moyen de paiement, pour la clôture de caisse.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">CAISSE</span><span class="fin second">1 728 € encaissés</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="rang"><span style="flex:1">Espèces</span><span class="somme">420 €</span></div>
+          <div class="rang"><span style="flex:1">Chèques</span><span class="somme">1 128 €</span></div>
+          <div class="rang"><span style="flex:1">Virement club</span><span class="somme">180 €</span></div>
+          <div class="rang"><span style="flex:1;font-weight:800">Restant dû</span><span class="somme" style="color:var(--danger)">144 €</span></div>
+        </div>
+        <button class="bouton discret">Exporter pour le trésorier</button>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">complément, pas alternative</span> C'est la vue du
+    <b>trésorier en fin de journée</b>. Elle ne remplace pas A, elle s'y ajoute.</p>
+  </figure>
+</div>
+
+<h2 class="section">État · après « Terminé »</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">Tournoi terminé, caisse ouverte</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">PAIEMENTS</span><span class="fin pas ok">TOURNOI TERMINÉ</span></div>
+      <div class="corps">
+        <div class="carte info"><div class="rang bloc"><span class="second">Le sportif est figé. <strong>Cet écran
+        reste actif</strong> : vous pouvez encaisser les retardataires.</span></div></div>
+        <div class="carte"><div class="rang"><span style="flex:1">MARTIN Sophie</span><span class="fin bouton auto">Encaisser</span></div></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">le bandeau n'est pas décoratif</span> Sans lui, le trésorier croit
+    l'appli verrouillée et <b>ressort son carnet</b> — et la donnée se perd.</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>Qui tient la caisse le jour J ?</strong> Toi, ou une personne dédiée avec son propre accès ?
+  (aujourd'hui, toutes les écritures sont derrière l'accès admin)</li>
+  <li><strong>Paiement par club</strong> (un chèque pour 12 archers) : nécessaire, ou seulement individuel ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a17-paiements.md">Questionnaire A17</a></span>
+  <span class="fin"><a href="a18-exports-archive-audit.html">Suivant : A18 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

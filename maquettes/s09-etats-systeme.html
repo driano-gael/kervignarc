@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S09 · Vocabulaire d'états — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="s08-validation-cible.html">← S08</a>
+  <span class="fin">
+    <a href="p01-cest-moi.html">P01 · « C'est moi » →</a>
+    <a class="lien-questionnaire" href="questionnaires/s09-etats-systeme.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Transverse aux trois applis</p>
+  <h1><span class="num">S09</span>Le vocabulaire d'états</h1>
+  <p class="chapo">Les sept états transverses du CDC design §7.2, dessinés <strong>une bonne fois</strong>.
+  C'est ce qui évite que chaque écran réinvente son « chargement » et que l'appli finisse par parler sept
+  langues différentes.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">partiellement existant</span></p>
+</header>
+
+<h2 class="section">Les sept états</h2>
+<div class="rangee">
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">1 · Chargement</span>
+      <span class="sous-etiquette">Squelettes à la forme du contenu attendu.</span></figcaption>
+    <div class="ui"><div class="corps">
+      <div class="squelette" style="width:60%"></div><div class="squelette large"></div><div class="squelette large"></div></div></div>
+  </figure>
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">2 · Vide</span>
+      <span class="sous-etiquette">Message + action, jamais une page blanche.</span></figcaption>
+    <div class="ui"><div class="corps" style="text-align:center;padding:20px 12px">
+      <div style="font-weight:700">Aucune volée</div>
+      <p class="second" style="margin:0">La série commencera au top de l'arbitre.</p>
+      <button class="bouton discret">Commencer</button></div></div>
+  </figure>
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">3 · Erreur récupérable</span>
+      <span class="sous-etiquette">Ce qui s'est passé, ce qui va se passer.</span></figcaption>
+    <div class="ui"><div class="corps">
+      <div class="aplat-alerte">▲ Envoi impossible</div>
+      <p class="second" style="margin:0">Nouvel essai dans 15 s.</p>
+      <button class="bouton discret">Réessayer</button></div></div>
+  </figure>
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">4 · Hors ligne / synchro</span>
+      <span class="sous-etiquette">Aplat ambre sur toute la barre.</span></figcaption>
+    <div class="ui">
+      <div class="barre alerte"><span style="font-weight:800">▲ HORS LIGNE</span>
+        <span class="fin" style="font-weight:700">3 en attente</span></div>
+      <div class="corps"><p class="second" style="margin:0">La saisie continue, l'envoi reprendra seul.</p></div>
+    </div>
+  </figure>
+</div>
+
+<div class="rangee" style="margin-top:20px">
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">5 · Live</span>
+      <span class="sous-etiquette">La fraîcheur se dit en secondes.</span></figcaption>
+    <div class="ui"><div class="barre"><span class="conn"><span class="point"></span>EN LIGNE</span>
+      <span class="fin faible">màj il y a 2 s</span></div>
+      <div class="corps"><p class="second" style="margin:0">Pas d'animation permanente : un texte suffit et ne
+      fatigue pas.</p></div></div>
+  </figure>
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">6 · Verrou</span>
+      <span class="sous-etiquette">Qui a verrouillé, et quand.</span></figcaption>
+    <div class="ui"><div class="corps">
+      <span class="verrou">🔒 VALIDÉ · LE GALL 10 h 44</span>
+      <p class="second" style="margin:0">Modifiable uniquement par le scoreur.</p></div></div>
+  </figure>
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">7 · Conflit</span>
+      <span class="sous-etiquette">Les deux valeurs, et un choix.</span></figcaption>
+    <div class="ui"><div class="corps">
+      <div class="aplat-alerte">▲ Modifié ailleurs</div>
+      <div class="carte">
+        <div class="rang"><span class="second" style="flex:1">Ici</span><span style="font-weight:800">8</span></div>
+        <div class="rang"><span class="second" style="flex:1">Serveur</span><span style="font-weight:800">9</span></div>
+      </div></div></div>
+  </figure>
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">Règle · jamais la couleur seule</span>
+      <span class="sous-etiquette">Forme + couleur + mot.</span></figcaption>
+    <div class="ui"><div class="corps">
+      <div class="conn"><span class="point"></span>EN LIGNE — point rond</div>
+      <div class="conn off"><span class="point"></span>HORS LIGNE — carré + mot</div>
+      <p class="faible" style="margin:0">Lisible en daltonisme, en plein soleil, et sur une tablette bas de gamme.</p>
+    </div></div>
+  </figure>
+</div>
+
+<h2 class="section">Pourquoi l'alerte est un aplat, pas une pastille</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">✗ Le réflexe</span>
+      <span class="sous-etiquette">Pastille colorée dans une liste : à 3 m, sur fond sombre, ça disparaît.</span></figcaption>
+    <div class="ui"><div class="corps">
+      <div class="carte">
+        <div class="rang"><span style="flex:1">Cible 7</span><span style="color:#FFB000;font-size:12px">● hors ligne</span></div>
+        <div class="rang"><span style="flex:1">Cible 12</span><span class="faible">en ligne</span></div>
+      </div></div></div>
+  </figure>
+  <figure class="variante">
+    <figcaption><span class="etiquette">✓ La charte — DV-03</span>
+      <span class="sous-etiquette">Aplat ambre plein, texte anthracite, impact chiffré.</span></figcaption>
+    <div class="ui"><div class="corps">
+      <div class="aplat-alerte">▲ Cible 7 hors ligne <span class="impact">14 mn</span></div>
+      <div class="carte"><div class="rang"><span style="flex:1">Cible 12</span><span class="faible">en ligne · volée 8</span></div></div>
+    </div></div>
+  </figure>
+</div>
+<p class="verdict" style="max-width:78ch">Sur fond sombre, un <b>aplat lumineux est le signal le plus fort
+disponible</b>, et il est structurellement impossible à confondre avec un accent de marque (rouge, sombre, en
+surface fine). Bénéfice secondaire : la place existe pour <b>chiffrer l'impact</b> — ce qu'une pastille ne
+permet jamais.</p>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>L'aplat ambre plein est-il trop agressif</strong> pour un incident fréquent comme une micro-coupure
+  wifi ? Alternative : aplat seulement au-delà d'un seuil, bandeau discret en deçà.</li>
+  <li><strong>En cas de conflit, qui tranche ?</strong> La tablette (dernier saisi), le scoreur (autorité), ou
+  toi (arbitrage) ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/s09-etats-systeme.md">Questionnaire S09</a></span>
+  <span class="fin"><a href="p01-cest-moi.html">Suivant : P01 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

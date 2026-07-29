@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A02 · Ossature — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a01-connexion.html">← A01</a>
+  <span class="fin">
+    <a href="a03-accueil-statuts.html">A03 · Accueil selon statut →</a>
+    <a class="lien-questionnaire" href="questionnaires/a02-ossature.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A02</span>Ossature — la navigation permanente</h1>
+  <p class="chapo">Seize destinations, rangées par <strong>temps du tournoi</strong> et non par type d'objet.
+  C'est le squelette stable : il ne change jamais, quel que soit l'état du tournoi. Ce qui change, c'est
+  l'accueil (A03).</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Ce que l'écran doit faire</h2>
+<ul class="exigences">
+  <li><strong>Tout reste cliquable en permanence</strong> — <span class="ref">P-3</span> : l'appli n'empêche
+  pas, elle montre. Replié ≠ interdit : un clic sur <em>Préparation</em> et on inscrit un retardataire à 15 h.</li>
+  <li><strong>Porter les états dans le menu</strong> (<code>3!</code>, <code>62 %</code>, <code>HORS LIGNE</code>) :
+  la navigation informe au lieu de seulement naviguer.</li>
+  <li><strong>Rendre impossible de travailler sur le mauvais tournoi</strong> — plusieurs tournois peuvent être
+  « en cours » simultanément (intérieur + extérieur), il n'y a pas de « tournoi courant » global.</li>
+  <li><strong>Laisser toute la largeur</strong> aux deux écrans qui en ont besoin : plan de salle et arbre de duels.</li>
+</ul>
+
+<h2 class="section">Partis pris <span class="code-sec">à départager</span></h2>
+
+<div class="rangee">
+  <figure class="variante">
+    <figcaption>
+      <span class="etiquette">A · Sidebar groupée par temps</span>
+      <span class="sous-etiquette">Préparation / Jour J / Après. Le groupe du moment est ouvert, les autres repliés.</span>
+    </figcaption>
+    <div class="ui">
+      <div class="colonnes">
+        <div class="flanc">
+          <div style="font-weight:800;font-size:13px">Challenge 12 oct ▾</div>
+          <div style="display:flex;gap:5px;margin:3px 0 6px"><span class="pas att">EN COURS</span></div>
+          <div class="champ" style="padding:5px 8px;font-size:12px">Rechercher…</div>
+          <div class="groupe">Préparation ▸</div>
+          <div class="groupe">Jour J ▾</div>
+          <div class="item actif">Supervision</div>
+          <div class="item">Complétude <span class="fin pas att">!</span></div>
+          <div class="item">Validation <span class="fin pas att">3</span></div>
+          <div class="item">Classements</div>
+          <div class="groupe">Après ▸</div>
+        </div>
+        <div class="corps">
+          <div class="titre">SUPERVISION</div>
+          <div style="display:flex;align-items:center;gap:10px"><span class="second">Qualification</span>
+            <span class="jauge"><span style="width:62%"></span></span><span class="second">62 %</span></div>
+          <div class="carte"><div class="rang"><span class="faible">contenu de la destination</span></div></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> Les groupes <b>suivent la vie du tournoi</b>,
+    donc le bon groupe est déjà ouvert au bon moment. Et le repli reste une commodité, jamais une interdiction.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption>
+      <span class="etiquette">B · Barre horizontale</span>
+      <span class="sous-etiquette">Les trois temps en onglets, les destinations dessous.</span>
+    </figcaption>
+    <div class="ui">
+      <div class="barre"><span style="font-weight:800">Challenge 12 oct ▾</span><span class="fin pas att">EN COURS</span></div>
+      <div class="barre" style="gap:16px;font-size:12px">
+        <span class="faible">PRÉPARATION</span><span style="font-weight:800;border-bottom:2px solid var(--brand-border);padding-bottom:2px">JOUR J</span><span class="faible">APRÈS</span>
+      </div>
+      <div class="barre" style="gap:14px;font-size:12px;background:var(--surface-0)">
+        <span style="font-weight:700">Supervision</span><span class="second">Complétude</span>
+        <span class="second">Validation</span><span class="second">Classements</span>
+      </div>
+      <div class="corps"><div class="carte"><div class="rang"><span class="faible">contenu</span></div></div></div>
+    </div>
+    <p class="verdict"><span class="pouce peut">tenable</span> Libère toute la largeur en permanence. Mais on
+    perd les <b>compteurs d'état</b> dans le menu (pas la place), et il faut deux clics pour atteindre un écran
+    d'un autre temps.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption>
+      <span class="etiquette">C · Sidebar plate</span>
+      <span class="sous-etiquette">Les 16 destinations à plat, sans regroupement.</span>
+    </figcaption>
+    <div class="ui">
+      <div class="colonnes">
+        <div class="flanc" style="gap:1px">
+          <div style="font-weight:800;font-size:13px;margin-bottom:6px">Challenge 12 oct ▾</div>
+          <div class="item">Tournoi</div><div class="item">Identité</div><div class="item">Catégories</div>
+          <div class="item">Blasons</div><div class="item">Gabarit</div><div class="item">Phases</div>
+          <div class="item">Scoreurs</div><div class="item">Inscriptions</div><div class="item">Placement</div>
+          <div class="item actif">Supervision</div><div class="item">Complétude</div><div class="item">Validation</div>
+          <div class="item">Classements</div><div class="item">Paiements</div><div class="item">Exports</div>
+        </div>
+        <div class="corps"><div class="titre">SUPERVISION</div>
+          <div class="carte"><div class="rang"><span class="faible">contenu</span></div></div></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce non">écarté</span> Seize entrées d'affilée, sans hiérarchie : on
+    <b>cherche</b> au lieu de reconnaître. Et la liste ne dit plus <em>quand</em> chaque écran sert.</p>
+  </figure>
+</div>
+
+<h2 class="section">Variante pleine largeur</h2>
+<div class="rangee">
+  <figure class="variante" style="max-width:560px">
+    <figcaption>
+      <span class="etiquette">Repli en icônes — plan de salle et arbre de duels</span>
+      <span class="sous-etiquette">Propre à ces deux écrans, ce n'est pas un mode global.</span>
+    </figcaption>
+    <div class="ui">
+      <div class="colonnes icones">
+        <div class="flanc" style="align-items:center;gap:12px;padding-top:12px">
+          <span>≡</span><span class="faible">▫</span><span class="faible">▫</span><span class="faible">▫</span>
+        </div>
+        <div class="corps serre">
+          <div class="titre">PLACEMENT — DÉPART 1</div>
+          <div class="plan" style="grid-template-columns:repeat(10,1fr)">
+            <span class="cible">1</span><span class="cible">2</span><span class="cible">3</span><span class="cible">4</span>
+            <span class="cible">5</span><span class="cible">6</span><span class="cible">7</span><span class="cible">8</span>
+            <span class="cible">9</span><span class="cible">10</span>
+            <span class="cible">11</span><span class="cible">12</span><span class="cible vide">13</span><span class="cible">14</span>
+            <span class="cible">15</span><span class="cible">16</span><span class="cible vide">17</span><span class="cible">18</span>
+            <span class="cible">19</span><span class="cible">20</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict">La sidebar tombe à 44 px et rend ~180 px au plan. Le geste de repli doit être
+    <b>réversible d'un clic</b> et mémorisé pour cet écran seulement.</p>
+  </figure>
+</div>
+
+<h2 class="section">Deux détails qui ne sont pas des détails</h2>
+<div class="note">
+  <p><strong>La recherche est dans la sidebar, en haut, toujours présente.</strong> Ce n'est pas une commodité
+  de développeur : c'est <span class="ref">D-10</span>, le bénévole de la table qui répond à un archer venu
+  demander où il tire. Si elle disparaît sur certains écrans, ce cas d'usage tombe.</p>
+  <p><strong>Le sélecteur de tournoi est au-dessus de tout.</strong> Tout ce qui est en dessous lui appartient —
+  c'est ce qui évite la catastrophe classique : modifier le mauvais tournoi. Le mettre ailleurs (en bas, dans un
+  menu) casserait cette lecture.</p>
+</div>
+
+<h2 class="section">À trancher <span class="code-sec">reporté dans le questionnaire</span></h2>
+<ul class="exigences">
+  <li><strong>Raisonnes-tu par temps ou par objet ?</strong> Le regroupement Préparation / Jour J / Après est
+  une hypothèse sur ta façon de travailler. Si tu penses « archers », « cibles », « scores », le menu est faux.</li>
+  <li><strong>La recherche est-elle au bon endroit ?</strong> Sidebar, barre du haut, ou raccourci clavier.</li>
+  <li><strong>Le sélecteur de tournoi suffit-il</strong> à éviter l'erreur, ou faut-il un rappel plus fort
+  (couleur, bandeau) quand plusieurs tournois sont en cours ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a02-ossature.md">Questionnaire A02</a></span>
+  <span class="fin"><a href="a03-accueil-statuts.html">Suivant : A03 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

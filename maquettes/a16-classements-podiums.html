@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A16 · Classements et podiums — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a15-bascule-de-tour.html">← A15</a>
+  <span class="fin">
+    <a href="a17-paiements.html">A17 · Paiements →</a>
+    <a class="lien-questionnaire" href="questionnaires/a16-classements-podiums.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A16</span>Classements et podiums</h1>
+  <p class="chapo">Deux besoins qu'on confond souvent : le classement <strong>consultable</strong> (filtrable,
+  dense, pour vérifier) et le podium <strong>projetable</strong> (trois noms, énormes, à envoyer sur l'écran de
+  salle).</p>
+  <p style="margin-top:14px"><span class="etat-pill code">classements existants</span>
+     <span class="etat-pill neuf">podiums à concevoir</span></p>
+</header>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Tableau filtrable + projection</span>
+      <span class="sous-etiquette">Un seul écran, le podium part d'ici.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">CLASSEMENTS</span>
+        <span class="champ plein" style="padding:3px 8px">SH ▾</span>
+        <span class="champ plein" style="padding:3px 8px">Qualification ▾</span>
+        <span class="fin bouton auto">Projeter le podium</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span style="width:34px">RG</span><span style="flex:1">ARCHER</span>
+            <span style="width:56px">TOTAL</span><span style="width:34px">10</span><span style="width:34px">9</span></div>
+          <div class="rang"><span style="width:34px;font-weight:800">1</span><span style="flex:1;font-weight:700">PETIT Luc</span>
+            <span style="width:56px" class="somme">548</span><span style="width:34px" class="second">21</span><span style="width:34px" class="second">18</span></div>
+          <div class="rang"><span style="width:34px;font-weight:800">2</span><span style="flex:1;font-weight:700">MARTIN Paul</span>
+            <span style="width:56px" class="somme">541</span><span style="width:34px" class="second">19</span><span style="width:34px" class="second">20</span></div>
+          <div class="rang"><span style="width:34px;font-weight:800">3</span><span style="flex:1;font-weight:700">DURAND Jean</span>
+            <span style="width:56px" class="somme">541</span><span style="width:34px" class="second">17</span><span style="width:34px" class="second">22</span></div>
+          <div class="rang"><span class="faible">Ex æquo 541 départagés au <strong>nombre de 10</strong> — MARTIN devant.</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> La <b>règle de départage est nommée à
+    l'écran</b>. Un ex æquo tranché sans dire pourquoi, c'est un litige en puissance au moment de la remise des
+    récompenses.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Onglets classement / podium</span>
+      <span class="sous-etiquette">Deux vues, deux usages assumés.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="second">Classement</span>
+        <span style="font-weight:800;border-bottom:2px solid var(--brand-border);padding-bottom:2px">Podium</span>
+        <span class="fin champ plein" style="padding:3px 8px">SH ▾</span></div>
+      <div class="corps" style="text-align:center;padding:20px">
+        <div style="font-size:20px;font-weight:800">1 · PETIT Luc</div>
+        <div style="font-size:17px">2 · MARTIN Paul</div>
+        <div style="font-size:17px">3 · DURAND Jean</div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <span class="bouton auto">Projeter</span><span class="bouton auto">Imprimer</span></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">utile pour la remise</span> Le podium a une vraie vie propre
+    (projection, impression, photo). Deux onglets, c'est honnête.</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>La règle de départage :</strong> affichée en permanence, ou seulement quand il y a ex æquo ?</li>
+  <li><strong>Quels podiums ?</strong> Par catégorie seulement, ou aussi scratch, par club, par équipe ?
+  (les équipes sont dans le périmètre MVP selon l'<span class="ref">ADR-0028</span>)</li>
+  <li><strong>Projeter le podium</strong> est une prise de contrôle de l'écran de salle : elle doit savoir se
+  terminer (A19, <span class="ref">Q-UX7</span>).</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a16-classements-podiums.md">Questionnaire A16</a></span>
+  <span class="fin"><a href="a17-paiements.html">Suivant : A17 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

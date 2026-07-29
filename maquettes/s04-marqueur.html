@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S04 · Changer de marqueur — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="s03-pave-de-saisie.html">← S03</a>
+  <span class="fin">
+    <a href="s05-saisie-duel.html">S05 · Saisie de duel →</a>
+    <a class="lien-questionnaire" href="questionnaires/s04-marqueur.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli saisie · /saisie</p>
+  <h1><span class="num">S04</span>Changer de marqueur</h1>
+  <p class="chapo">Contrainte explicite du CDC UX et du CDC design (<span class="ref">D-04</span>, §7.4) :
+  <em>le marqueur change rarement, donc l'interface ne s'organise pas autour de ce changement.</em>
+  <strong>Discret par défaut, disponible au besoin.</strong> Ces trois versions se jugent à l'espace qu'elles
+  volent au pavé.</p>
+  <p style="margin-top:14px"><span class="etat-pill neuf">à concevoir</span></p>
+</header>
+
+<h2 class="section">Pourquoi la trace existe</h2>
+<ul class="exigences">
+  <li>Chaque volée enregistre <strong>qui l'a saisie</strong> : c'est l'équivalent numérique de la
+  <strong>signature</strong> de la feuille de marque, que le règlement exige de l'archer et du marqueur.</li>
+  <li>Elle alimente le journal d'audit (A18) — donc elle doit être juste <em>au moment</em> de la saisie, pas
+  reconstituée après coup.</li>
+</ul>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Feuille appelée par un lien discret</span>
+      <span class="sous-etiquette">Ouverte depuis « Marqueur : MARTIN ▸ », se referme aussitôt.</span></figcaption>
+    <div class="ui">
+      <div class="corps">
+        <div class="faible" style="text-align:center">— écran de saisie estompé —</div>
+        <div class="carte" style="background:var(--surface-2)">
+          <div class="tete-carte"><span>QUI MARQUE ?</span><span class="fin">✕</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">MARTIN Paul</span><span class="pas ok">ACTUEL</span></div>
+          <div class="rang"><span style="flex:1">DURAND Jean</span><span class="second">poste B</span></div>
+          <div class="rang"><span style="flex:1">PETIT Luc</span><span class="second">poste C</span></div>
+          <div class="rang"><span style="flex:1" class="second">Une autre personne…</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> <b>Zéro pixel volé</b> en régime normal,
+    atteignable au pouce quand il le faut.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Sélecteur permanent</span>
+      <span class="sous-etiquette">Toujours visible au-dessus de la grille.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">CIBLE 12</span><span class="fin second">V8/12</span></div>
+      <div class="corps">
+        <div class="carte" style="background:var(--surface-2)">
+          <div class="rang"><span class="mini">MARQUEUR</span><span class="fin" style="font-weight:700">MARTIN Paul ▾</span></div>
+        </div>
+        <div class="archers">
+          <div class="arc"><span class="pos">A</span><span class="nom">MARTIN</span>
+            <span class="fl">10</span><span class="fl">9</span><span class="fl">8</span><span class="somme">27</span></div>
+          <div class="arc actif"><span class="pos">B</span><span class="nom">DURAND</span>
+            <span class="fl">9</span><span class="fl saisie vide">_</span><span class="fl vide">·</span><span class="somme">9</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce non">explicitement déconseillé</span> C'est le contre-exemple nommé
+    dans le CDC : <b>un bandeau permanent pour un geste qui arrive deux fois par jour</b>, au détriment du pavé.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">C · Confirmation à la validation</span>
+      <span class="sous-etiquette">Pas de sélecteur : on confirme qui a marqué au moment de valider.</span></figcaption>
+    <div class="ui">
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span>VALIDER LA SÉRIE</span></div>
+          <div class="rang"><span class="second" style="flex:1">Saisie par</span><span style="font-weight:700">MARTIN Paul ▾</span></div>
+        </div>
+        <button class="bouton valider">CONFIRMER</button>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce non">réserve sérieuse</span> Demande la trace <b>après coup</b> : si le
+    marqueur a changé en cours de série, l'attribution devient fausse — or c'est justement la signature que
+    <span class="ref">D-04</span> veut fiabiliser.</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>Le marqueur change-t-il vraiment rarement chez vous</strong>, ou tournez-vous à chaque volée ?
+  Si vous tournez, tout le raisonnement ci-dessus s'inverse.</li>
+  <li><strong>Le marqueur est-il toujours un archer de la cible</strong>, ou parfois un accompagnateur extérieur ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/s04-marqueur.md">Questionnaire S04</a></span>
+  <span class="fin"><a href="s05-saisie-duel.html">Suivant : S05 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

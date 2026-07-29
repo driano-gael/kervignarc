@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A13 · Console de supervision — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a12-postes-jetons.html">← A12</a>
+  <span class="fin">
+    <a href="a14-completude.html">A14 · Complétude →</a>
+    <a class="lien-questionnaire" href="questionnaires/a13-supervision.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin · <strong>écran majeur</strong></p>
+  <h1><span class="num">A13</span>Console de supervision</h1>
+  <p class="chapo">Ce n'est <strong>pas</strong> un graphique de progression : c'est une console de supervision
+  de 30 postes. Sa raison d'être tient en une phrase — elle distingue « ils tirent lentement » de
+  <strong>« leur tablette est morte »</strong>. Sans elle, l'organisateur confond les deux et envoie quelqu'un
+  courir pour rien à l'autre bout du gymnase.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Ce que l'écran doit faire</h2>
+<ul class="exigences">
+  <li><strong>Rendre visible ce qui ne se plaint pas.</strong> Un écran figé n'envoie pas d'alerte : seule la
+  colonne « dernier signe de vie » le révèle.</li>
+  <li><strong>Chiffrer l'alerte</strong> (<span class="ref">P-4</span>) : « hors ligne depuis 14 mn », pas
+  « problème ».</li>
+  <li>Servir d'<strong>accueil</strong> quand le tournoi est en cours (<span class="ref">D-20</span>) : c'est le
+  premier écran du jour J.</li>
+  <li>Inclure l'<strong>écran de salle</strong> : c'est un poste, sa panne se voit ici.</li>
+</ul>
+
+<h2 class="section">Partis pris <span class="code-sec">30 postes, trois façons de les montrer</span></h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Liste dense triable</span>
+      <span class="sous-etiquette">Tri par ancienneté du dernier signe : les morts remontent.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">SUPERVISION</span><span class="pas ok">● LIVE</span>
+        <span class="fin second">volée 8/12 · 62 %</span></div>
+      <div class="corps">
+        <div class="aplat-alerte">▲ Cible 7 hors ligne <span class="impact">14 mn</span></div>
+        <div class="carte">
+          <div class="tete-carte"><span style="flex:1">POSTE</span><span style="width:70px">VOLÉE</span><span style="width:80px">SIGNE DE VIE</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 23</span><span style="width:70px" class="faible">—</span>
+            <span style="width:80px"><span class="pas att">JAMAIS</span></span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 5</span><span style="width:70px" class="second">v6</span>
+            <span style="width:80px" class="second">6 mn</span></div>
+          <div class="rang"><span style="flex:1">Cible 1</span><span style="width:70px" class="second">v8</span>
+            <span style="width:80px" class="second">2 mn</span></div>
+          <div class="rang"><span style="flex:1">Écran salle A</span><span style="width:70px" class="second">—</span>
+            <span style="width:80px" class="second">5 s</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> Le tri fait le travail : <b>ce qui va mal est
+    en haut</b>, le reste n'a pas besoin d'être regardé. Scannable même à 30 lignes.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Grille de tuiles</span>
+      <span class="sous-etiquette">Les 30 postes d'un seul coup d'œil.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">SUPERVISION</span><span class="fin second">28/30 en ligne</span></div>
+      <div class="corps serre">
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px">
+          <div class="carte" style="padding:5px;text-align:center;font-size:10px"><div style="font-weight:800">C1</div><div class="second">v8</div></div>
+          <div class="carte" style="padding:5px;text-align:center;font-size:10px"><div style="font-weight:800">C2</div><div class="second">v8</div></div>
+          <div class="carte" style="padding:5px;text-align:center;font-size:10px"><div style="font-weight:800">C3</div><div class="second">v7</div></div>
+          <div class="carte" style="padding:5px;text-align:center;font-size:10px"><div style="font-weight:800">C4</div><div class="second">v8</div></div>
+          <div class="carte" style="padding:5px;text-align:center;font-size:10px"><div style="font-weight:800">C5</div><div class="second">v6</div></div>
+          <div style="padding:5px;text-align:center;font-size:10px;background:var(--danger);color:var(--sur-danger);border-radius:5px">
+            <div style="font-weight:800">C7</div><div style="font-weight:700">14 mn</div></div>
+          <div class="carte" style="padding:5px;text-align:center;font-size:10px"><div style="font-weight:800">C8</div><div class="second">v8</div></div>
+          <div class="carte" style="padding:5px;text-align:center;font-size:10px"><div style="font-weight:800">C9</div><div class="second">v8</div></div>
+          <div class="carte" style="padding:5px;text-align:center;font-size:10px;border-style:dashed"><div style="font-weight:800">C23</div><div class="faible">—</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">sérieux concurrent</span> L'aplat ambre <b>saute aux yeux</b>
+    dans une grille — c'est exactement l'effet visé par <span class="ref">DV-03</span>. Revers : il faut cliquer
+    pour tout détail, et 30 tuiles muettes n'apprennent rien quand tout va bien.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">C · Plan de salle coloré</span>
+      <span class="sous-etiquette">L'état projeté sur la géographie réelle.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">SUPERVISION · PLAN</span></div>
+      <div class="corps serre">
+        <div class="plan" style="grid-template-columns:repeat(10,1fr)">
+          <span class="cible">1</span><span class="cible">2</span><span class="cible">3</span><span class="cible">4</span><span class="cible">5</span>
+          <span class="cible">6</span><span class="cible hs">7</span><span class="cible">8</span><span class="cible">9</span><span class="cible">10</span>
+          <span class="cible">11</span><span class="cible">12</span><span class="cible">13</span><span class="cible">14</span><span class="cible">15</span>
+          <span class="cible">16</span><span class="cible">17</span><span class="cible">18</span><span class="cible">19</span><span class="cible">20</span>
+          <span class="cible">21</span><span class="cible">22</span><span class="cible vide">23</span><span class="cible">24</span><span class="cible">25</span>
+        </div>
+        <p class="faible" style="margin:0">Cible 7 : au fond à gauche, près de la porte.</p>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">à combiner</span> Répond à une question que A et B ne traitent
+    pas : <b>où aller</b>. Idéal en second panneau, pas en vue principale.</p>
+  </figure>
+</div>
+
+<h2 class="section">Ce qui manque encore</h2>
+<div class="note">
+  <p><strong>L'écran dit le problème, il ne propose rien.</strong> Aucune des trois variantes ne répond à
+  « et maintenant, je fais quoi ? ». Or c'est le seul moment de la journée où l'organisateur doit
+  <em>agir vite</em>. Pistes : « appeler le responsable de pas de tir », « marquer comme traité », « prêter une
+  tablette de secours », « passer la cible en saisie papier ».</p>
+  <p>Tant que cette action n'est pas définie, la console <strong>informe sans aider</strong> — et c'est
+  précisément ce qu'on reproche aux tableaux de bord.</p>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>Le seuil d'alerte.</strong> 5 mn ? 10 mn ? Il doit dépendre du grain de validation : en
+  qualification, une cible tranquille peut ne rien envoyer pendant 8 minutes sans que rien n'aille mal.</li>
+  <li><strong>Que fais-tu concrètement quand un poste tombe ?</strong> La réponse devient un bouton.</li>
+  <li><strong>Voir les 30 en permanence, ou seulement les problèmes ?</strong></li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a13-supervision.md">Questionnaire A13</a></span>
+  <span class="fin"><a href="a14-completude.html">Suivant : A14 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

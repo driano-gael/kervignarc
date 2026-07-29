@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A01 · Connexion — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <span class="fin">
+    <a href="a02-ossature.html">A02 · Ossature →</a>
+    <a class="lien-questionnaire" href="questionnaires/a01-connexion.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A01</span>Connexion</h1>
+  <p class="chapo">Le seul écran à mot de passe de tout le produit. L'admin est le <strong>seul rôle
+  authentifié par compte</strong> : le scoreur est identifié sans compte, l'archer reste anonyme.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Ce que l'écran doit faire</h2>
+<ul class="exigences">
+  <li>Identifier l'organisateur, et lui seul — <span class="ref">D-13</span> pose trois modes d'identité,
+  celui-ci est le plus fort des trois.</li>
+  <li>Ne pas devenir un cul-de-sac : un bénévole qui se trompe d'URL doit repartir vers la bonne appli
+  sans appeler quelqu'un.</li>
+  <li>Fonctionner <strong>sans internet</strong>. Pas de « mot de passe oublié » par e-mail, pas de
+  fédération d'identité : le jour J, le réseau s'arrête au gymnase.</li>
+  <li>Ne jamais laisser fuir de détail interne en cas d'échec (<span class="ref">règle 5</span> du projet :
+  le message technique reste dans le log serveur).</li>
+</ul>
+
+<h2 class="section">Partis pris <span class="code-sec">à départager</span></h2>
+
+<div class="rangee">
+  <figure class="variante">
+    <figcaption>
+      <span class="etiquette">A · Formulaire sobre</span>
+      <span class="sous-etiquette">On s'identifie, on choisit le tournoi ensuite, dans l'appli.</span>
+    </figcaption>
+    <div class="ui">
+      <div class="barre marque"><span class="titre">KERVIGNARC</span><span class="fin" style="font-size:11px;opacity:.85">ADMINISTRATION</span></div>
+      <div class="corps" style="padding:22px 18px;gap:14px">
+        <div>
+          <div class="mini" style="margin-bottom:4px">IDENTIFIANT</div>
+          <div class="champ plein">organisateur</div>
+        </div>
+        <div>
+          <div class="mini" style="margin-bottom:4px">MOT DE PASSE</div>
+          <div class="champ">••••••••</div>
+        </div>
+        <button class="bouton principal">SE CONNECTER</button>
+        <p class="faible" style="margin:0;text-align:center">Vous cherchez la saisie des scores ?
+          <span style="color:var(--brand-text)">Aller à /saisie</span></p>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> Un écran qui fait une chose. Le choix du
+    tournoi arrive <b>après</b>, dans un sélecteur qui reste visible en permanence (A02) — donc il n'a rien
+    à faire ici.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption>
+      <span class="etiquette">B · Connexion + tournoi</span>
+      <span class="sous-etiquette">On entre directement dans le bon tournoi.</span>
+    </figcaption>
+    <div class="ui">
+      <div class="barre marque"><span class="titre">KERVIGNARC</span></div>
+      <div class="corps" style="padding:22px 18px;gap:14px">
+        <div class="champ plein">organisateur</div>
+        <div class="champ">••••••••</div>
+        <div>
+          <div class="mini" style="margin-bottom:4px">TOURNOI</div>
+          <div class="champ plein">Challenge des Champions — 12 oct ▾</div>
+        </div>
+        <button class="bouton principal">OUVRIR LE TOURNOI</button>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce non">écarté</span> Séduisant, mais la liste des tournois est une
+    donnée <b>protégée</b> : l'afficher avant l'authentification la publie. Et comme le sélecteur reste
+    accessible partout ensuite, on n'économise rien.</p>
+  </figure>
+</div>
+
+<h2 class="section">États</h2>
+
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">Échec d'authentification</span></figcaption>
+    <div class="ui">
+      <div class="corps" style="padding:20px 18px;gap:12px">
+        <div class="aplat-alerte">▲ Identifiant ou mot de passe incorrect</div>
+        <div class="champ plein">organisateur</div>
+        <div class="champ">••••••••</div>
+        <button class="bouton principal">SE CONNECTER</button>
+      </div>
+    </div>
+    <p class="verdict">Message <b>volontairement indistinct</b> : dire « cet identifiant n'existe pas »
+    renseignerait un curieux sur les comptes valides.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">Serveur injoignable</span></figcaption>
+    <div class="ui">
+      <div class="corps" style="padding:20px 18px;gap:12px">
+        <div class="aplat-alerte">▲ Serveur injoignable</div>
+        <p class="second" style="margin:0">Vérifiez que vous êtes bien sur le réseau du gymnase
+        (<code>kervignarc-local</code>). L'appli ne passe pas par internet.</p>
+        <button class="bouton">Réessayer</button>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">important</span> Le cas <b>le plus probable</b> le jour J.
+    L'erreur doit nommer le réseau, pas parler de « connexion perdue ».</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">Session expirée</span></figcaption>
+    <div class="ui">
+      <div class="corps" style="padding:20px 18px;gap:12px">
+        <div class="carte info"><div class="rang bloc">
+          <span class="verrou">🔒 SESSION EXPIRÉE</span>
+          <p class="second" style="margin:6px 0 0">Reconnectez-vous : vous reviendrez sur la supervision.</p>
+        </div></div>
+        <div class="champ">••••••••</div>
+        <button class="bouton principal">REPRENDRE</button>
+      </div>
+    </div>
+    <p class="verdict">On <b>revient là où on était</b>. Une session qui expire et renvoie à l'accueil fait
+    perdre le fil au pire moment.</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher <span class="code-sec">reporté dans le questionnaire</span></h2>
+<ul class="exigences">
+  <li><strong>Reconnexion automatique sur le poste de la table ?</strong> Confortable pour un poste utilisé
+  toute la journée, risqué s'il reste sans surveillance dans un gymnase ouvert au public.</li>
+  <li><strong>Le lien de secours vers /saisie sert-il ou embrouille-t-il ?</strong> Il suppose que le
+  bénévole sache qu'il s'est trompé d'appli.</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a01-connexion.md">Questionnaire A01</a></span>
+  <span class="fin"><a href="a02-ossature.html">Suivant : A02 · Ossature →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,309 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Kervignarc — système de maquettage
+   ---------------------------------------------------------------------------
+   Deux couches strictement séparées :
+
+   1. LE DOCUMENT  (préfixe .doc-*, variables --doc-*)
+      La page qui présente les maquettes. Suit le thème du lecteur.
+
+   2. LES MAQUETTES (.ui, variables sans préfixe)
+      L'application elle-même. Palette FIGÉE, issue de la charte mesurée
+      du CDC design §3.3 — elle ne suit PAS le thème du lecteur, sinon on
+      ne juge plus rien.
+
+   Toute couleur ci-dessous vient de `cahier-des-charges-design.md`.
+   Les seules valeurs inventées sont signalées par « ⟦DÉRIVÉ⟧ » : elles
+   comblent un trou du CDC (thème clair) et attendent validation.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────── 1. DOCUMENT ─────────────────────────── */
+
+:root {
+  --doc-fond:   #F1F2F0;
+  --doc-carte:  #FFFFFF;
+  --doc-encre:  #1D1D1B;
+  --doc-doux:   #5E5E5B;
+  --doc-trait:  #D4D5D1;
+  --doc-accent: #B71918;
+  --doc-mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --ui: Inter, "Inter var", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --doc-fond:#131412; --doc-carte:#1C1D1B; --doc-encre:#EDEDEA;
+    --doc-doux:#9A9A96; --doc-trait:#33342F; --doc-accent:#E84E4D;
+  }
+}
+:root[data-theme="dark"] {
+  --doc-fond:#131412; --doc-carte:#1C1D1B; --doc-encre:#EDEDEA;
+  --doc-doux:#9A9A96; --doc-trait:#33342F; --doc-accent:#E84E4D;
+}
+:root[data-theme="light"] {
+  --doc-fond:#F1F2F0; --doc-carte:#FFFFFF; --doc-encre:#1D1D1B;
+  --doc-doux:#5E5E5B; --doc-trait:#D4D5D1; --doc-accent:#B71918;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin:0; background:var(--doc-fond); color:var(--doc-encre);
+  font-family:var(--ui); font-size:16px; line-height:1.55;
+}
+a { color:var(--doc-accent); }
+a:focus-visible, button:focus-visible { outline:2px solid var(--doc-accent); outline-offset:2px; }
+
+.page { max-width:1240px; margin:0 auto; padding:0 22px 110px; }
+
+/* — barre de navigation inter-écrans — */
+.nav-ecran {
+  position:sticky; top:0; z-index:20;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:11px 0; margin-bottom:26px;
+  background:color-mix(in srgb, var(--doc-fond) 92%, transparent);
+  backdrop-filter:blur(6px);
+  border-bottom:1px solid var(--doc-trait);
+  font-size:13px;
+}
+.nav-ecran a { text-decoration:none; }
+.nav-ecran a:hover { text-decoration:underline; }
+.nav-ecran .fin { margin-left:auto; display:flex; gap:14px; align-items:center; }
+.nav-ecran .lien-questionnaire {
+  font-weight:700; border:1px solid var(--doc-accent); border-radius:3px;
+  padding:3px 10px; text-decoration:none;
+}
+
+/* — en-tête d'écran — */
+.entete { border-bottom:2px solid var(--doc-encre); padding-bottom:22px; }
+.fil { font-family:var(--doc-mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--doc-accent); margin:0 0 10px; }
+h1 { font-size:clamp(26px,4.2vw,38px); line-height:1.08; margin:0 0 12px; letter-spacing:-.02em; font-weight:800; text-wrap:balance; }
+h1 .num { font-family:var(--doc-mono); font-size:.55em; color:var(--doc-doux); font-weight:600; letter-spacing:0; margin-right:10px; vertical-align:.12em; }
+.chapo { max-width:66ch; color:var(--doc-doux); margin:0; font-size:17px; }
+
+.etat-pill { font-family:var(--doc-mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; padding:2px 8px; border-radius:3px; font-weight:700; white-space:nowrap; }
+.etat-pill.code { color:#0C7A61; background:#22D3AA1F; border:1px solid #22D3AA66; }
+.etat-pill.neuf { color:#0B6E9E; background:#38BDF81F; border:1px solid #38BDF866; }
+@media (prefers-color-scheme: dark) { .etat-pill.code { color:#22D3AA; } .etat-pill.neuf { color:#38BDF8; } }
+:root[data-theme="dark"] .etat-pill.code { color:#22D3AA; }
+:root[data-theme="dark"] .etat-pill.neuf { color:#38BDF8; }
+
+/* — sections — */
+h2.section {
+  font-size:24px; margin:56px 0 6px; font-weight:800; letter-spacing:-.01em;
+  padding-top:20px; border-top:1px solid var(--doc-trait); text-wrap:balance;
+}
+h2.section .code-sec { font-family:var(--doc-mono); font-size:13px; color:var(--doc-doux); font-weight:400; letter-spacing:0; }
+.intro { max-width:72ch; color:var(--doc-doux); margin:8px 0 22px; }
+
+h3.axe {
+  font-family:var(--doc-mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--doc-doux); margin:34px 0 14px; font-weight:700; display:flex; align-items:center; gap:12px;
+}
+h3.axe::after { content:""; flex:1; height:1px; background:var(--doc-trait); }
+
+/* — exigences (ce que l'écran doit faire) — */
+ul.exigences { list-style:none; margin:0 0 8px; padding:0; display:grid; gap:10px; max-width:78ch; }
+ul.exigences li { padding-left:22px; position:relative; font-size:15px; }
+ul.exigences li::before { content:"▸"; position:absolute; left:4px; color:var(--doc-accent); font-weight:700; }
+
+/* — grille de variantes — */
+.rangee { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; }
+.variante { flex:1 1 320px; min-width:0; max-width:430px; margin:0; }
+.variante.etroit { max-width:340px; }
+.variante > figcaption { margin-bottom:9px; }
+.etiquette { font-family:var(--doc-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--doc-encre); font-weight:700; display:block; }
+.sous-etiquette { font-size:13px; color:var(--doc-doux); display:block; margin-top:3px; line-height:1.45; }
+
+.verdict { font-size:13.5px; margin:11px 0 0; color:var(--doc-doux); line-height:1.5; }
+.verdict b { color:var(--doc-encre); }
+.pouce { font-family:var(--doc-mono); font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:2px; margin-right:6px; white-space:nowrap; }
+.pouce.oui { background:#22D3AA22; color:#0C7A61; border:1px solid #22D3AA88; }
+.pouce.non { background:#B7191822; color:#B71918; border:1px solid #B7191888; }
+.pouce.peut { background:#FFB00022; color:#8A5D00; border:1px solid #FFB00088; }
+@media (prefers-color-scheme: dark) {
+  .pouce.oui { color:#22D3AA; } .pouce.non { color:#E84E4D; } .pouce.peut { color:#FFB000; }
+}
+:root[data-theme="dark"] .pouce.oui { color:#22D3AA; }
+:root[data-theme="dark"] .pouce.non { color:#E84E4D; }
+:root[data-theme="dark"] .pouce.peut { color:#FFB000; }
+
+/* — encadrés — */
+.note { border-left:3px solid var(--doc-accent); background:var(--doc-carte); padding:14px 18px; margin:24px 0; font-size:14.5px; }
+.note p { margin:0 0 8px; } .note p:last-child { margin:0; }
+.ref { font-family:var(--doc-mono); font-size:11px; font-weight:700; padding:0 5px; border:1px solid var(--doc-trait); border-radius:2px; white-space:nowrap; background:var(--doc-carte); }
+
+/* — tableaux — */
+.enveloppe { overflow-x:auto; }
+table.tk { border-collapse:collapse; width:100%; font-size:13.5px; margin-top:12px; }
+table.tk th, table.tk td { border-bottom:1px solid var(--doc-trait); padding:8px 14px 8px 0; text-align:left; vertical-align:top; }
+table.tk th { font-family:var(--doc-mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--doc-doux); font-weight:700; }
+table.tk td.num { font-variant-numeric:tabular-nums; font-family:var(--doc-mono); }
+.pastille-couleur { display:inline-block; width:26px; height:16px; border-radius:2px; border:1px solid #7C7C7B55; vertical-align:-3px; margin-right:8px; }
+
+/* — pied de page — */
+.pied { margin-top:70px; padding-top:22px; border-top:1px solid var(--doc-trait); display:flex; gap:18px; flex-wrap:wrap; font-size:13.5px; color:var(--doc-doux); }
+.pied .fin { margin-left:auto; }
+
+
+/* ─────────────────────────── 2. MAQUETTES ─────────────────────────── */
+/* Thème sombre = RÉFÉRENCE de la charte (DV-02) : #1D1D1B est le fond de la
+   banderole du club. Toutes les valeurs sont mesurées (ratio sur #1D1D1B). */
+
+.ui {
+  --surface-0:#1D1D1B;      /* charte                          */
+  --surface-1:#262624;      /* 1,11:1  cartes, panneaux        */
+  --surface-2:#2F2F2C;      /* 1,26:1  modales, menus          */
+  --border-subtle:#3D3D3A;  /* 1,55:1  séparateurs décoratifs  */
+  --border:#7C7C7B;         /* 4,04:1  contours actionnables   */
+  --text-muted:#8A8A87;     /* 4,88:1  métadonnées             */
+  --text-secondary:#A8A8A5; /* 7,08:1  labels                  */
+  --text:#FFFFFF;           /* 16,88:1 corps                   */
+  --brand-surface:#B71918;  /* charte — APLAT SEULEMENT (2,55:1) */
+  --brand-border:#CC1C1B;   /* 3,01:1  dérivée DV-05           */
+  --brand-text:#E84E4D;     /* 4,52:1  dérivée DV-05           */
+  --danger:#FFB000;         /* 9,22:1  alerte — jamais rouge   */
+  --danger-strong:#FFD400;  /* 11,79:1                         */
+  --success:#22D3AA;        /* 8,82:1                          */
+  --info:#38BDF8;           /* 7,88:1                          */
+  --sur-danger:#1D1D1B;     /* texte posé sur l'aplat ambre    */
+  --sur-success:#0A2A22;
+
+  background:var(--surface-0); color:var(--text);
+  border:1px solid var(--border-subtle); border-radius:6px; overflow:hidden;
+  font-family:var(--ui); font-size:15px; line-height:1.4;
+  font-variant-numeric:tabular-nums;
+  box-shadow:0 6px 22px rgba(0,0,0,.28);
+}
+
+/* Thème clair — déclinaison complète, pas un mode dégradé.
+   En clair le rouge charte redevient utilisable EN TEXTE (6,63:1 sur blanc). */
+.ui.clair {
+  --surface-0:#FFFFFF; --surface-1:#F4F4F2; --surface-2:#EAEAE7;
+  --border-subtle:#DEDEDA; --border:#6B6B69;
+  --text-muted:#66665F; --text-secondary:#4A4A48; --text:#1D1D1B;
+  --brand-surface:#B71918; --brand-border:#B71918; --brand-text:#B71918;
+  --danger:#9F6D00;         /* 4,50:1 — l'ambre du sombre tombe à 1,83:1 ici */
+  --danger-strong:#7A5400;
+  --success:#0C7A61;        /* ⟦DÉRIVÉ⟧ absent du CDC design §3.3.4 */
+  --info:#0B6E9E;           /* ⟦DÉRIVÉ⟧ absent du CDC design §3.3.4 */
+  --sur-danger:#FFFFFF; --sur-success:#FFFFFF;
+  box-shadow:0 6px 22px rgba(0,0,0,.12);
+}
+
+/* Écran de salle — dérivé du sombre : contraste renforcé, très grand corps. */
+.ui.salle { --surface-1:#1D1D1B; font-size:19px; }
+.ui.salle .titre-salle { font-size:26px; font-weight:800; letter-spacing:.06em; }
+
+/* -- structure -- */
+.ui .barre { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--surface-1); border-bottom:1px solid var(--border-subtle); font-size:13px; }
+.ui .barre.alerte { background:var(--danger); color:var(--sur-danger); }
+.ui .barre.succes { background:var(--success); color:var(--sur-success); }
+.ui .barre.marque { background:var(--brand-surface); color:#FFFFFF; }
+.ui .barre .fin { margin-left:auto; }
+.ui .titre { font-weight:800; letter-spacing:.02em; font-size:15px; }
+.ui .corps { padding:14px; display:flex; flex-direction:column; gap:12px; }
+.ui .corps.serre { gap:8px; padding:10px; }
+.ui .faible { color:var(--text-muted); font-size:12.5px; }
+.ui .second { color:var(--text-secondary); font-size:13px; }
+.ui .fin { margin-left:auto; }
+.mini { font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-muted); font-weight:700; }
+
+/* -- sidebar admin -- */
+.colonnes { display:grid; grid-template-columns:180px minmax(0,1fr); }
+.colonnes.icones { grid-template-columns:44px minmax(0,1fr); }
+.flanc { border-right:1px solid var(--border-subtle); background:var(--surface-1); padding:10px 8px; display:flex; flex-direction:column; gap:3px; font-size:12.5px; }
+.flanc .groupe { color:var(--text-muted); font-size:10px; letter-spacing:.12em; text-transform:uppercase; margin-top:10px; font-weight:700; }
+.flanc .item { padding:4px 8px; border-radius:3px; display:flex; align-items:center; gap:8px; }
+.flanc .item .fin { margin-left:auto; }
+.flanc .item.actif { background:var(--surface-2); box-shadow:inset 2px 0 0 var(--brand-border); font-weight:700; }
+
+/* -- cartes & listes -- */
+.carte { background:var(--surface-1); border:1px solid var(--border-subtle); border-radius:5px; }
+.carte.plate { background:transparent; }
+.carte.marquee { border-color:var(--brand-border); }
+.carte.info { border-color:color-mix(in srgb, var(--info) 55%, transparent); }
+.carte > .rang { display:flex; align-items:center; gap:10px; padding:9px 12px; }
+.carte > .rang + .rang { border-top:1px solid var(--border-subtle); }
+.carte > .rang.bloc { display:block; }
+.carte .fin { margin-left:auto; }
+.tete-carte { padding:8px 12px; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-muted); font-weight:700; border-bottom:1px solid var(--border-subtle); display:flex; gap:10px; align-items:center; }
+.tete-carte .fin { margin-left:auto; }
+
+/* -- indicateur de connexion : couleur + forme + mot -- */
+.conn { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; letter-spacing:.04em; }
+.conn .point { width:9px; height:9px; border-radius:50%; background:var(--success); box-shadow:0 0 0 3px color-mix(in srgb, var(--success) 22%, transparent); }
+.conn.off .point { background:var(--danger); border-radius:1px; box-shadow:none; }
+
+/* -- alerte critique : APLAT plein, texte anthracite (DV-03) -- */
+.aplat-alerte { background:var(--danger); color:var(--sur-danger); padding:10px 12px; border-radius:4px; display:flex; align-items:center; gap:10px; font-weight:700; font-size:13.5px; }
+.aplat-alerte.forte { background:var(--danger-strong); }
+.aplat-alerte .impact { margin-left:auto; font-weight:800; font-variant-numeric:tabular-nums; }
+
+/* -- boutons -- */
+.bouton { display:block; width:100%; text-align:center; padding:14px; border-radius:5px; font-weight:800; font-size:15px; letter-spacing:.02em; border:1px solid var(--border); color:var(--text); background:transparent; font-family:inherit; }
+.bouton.principal { background:var(--brand-surface); border-color:var(--brand-surface); color:#FFFFFF; }
+.bouton.valider { background:var(--success); border-color:var(--success); color:var(--sur-success); }
+.bouton.discret { padding:9px; font-size:13.5px; font-weight:600; color:var(--text-secondary); }
+.bouton.geant { padding:20px; font-size:18px; }
+.bouton.inactif { opacity:.45; }
+.bouton.auto { width:auto; display:inline-block; padding:7px 14px; font-size:13px; }
+
+/* -- champs -- */
+.champ { border:1px solid var(--border); border-radius:4px; padding:8px 10px; color:var(--text-muted); font-size:13.5px; background:transparent; }
+.champ.plein { color:var(--text); }
+
+/* -- pastilles d'état -- */
+.pas { font-size:10.5px; letter-spacing:.06em; padding:2px 7px; border-radius:999px; border:1px solid currentColor; font-weight:700; white-space:nowrap; }
+.pas.ok { color:var(--success); }
+.pas.att { color:var(--danger); }
+.pas.neutre { color:var(--text-muted); }
+.pas.info { color:var(--info); }
+.pas.marque { background:var(--brand-surface); color:#fff; border-color:var(--brand-surface); }
+
+/* -- jauge -- */
+.jauge { flex:1; height:8px; border-radius:999px; background:var(--surface-2); overflow:hidden; min-width:70px; }
+.jauge span { display:block; height:100%; background:var(--success); }
+
+/* -- grille des archers (saisie) -- */
+.archers { display:flex; flex-direction:column; gap:6px; }
+.arc { display:grid; grid-template-columns:22px minmax(0,1fr) repeat(3,40px) 52px; gap:8px; align-items:center; padding:10px 12px; background:var(--surface-1); border:1px solid var(--border-subtle); border-radius:5px; }
+.arc.actif { border-color:var(--brand-border); background:var(--surface-2); box-shadow:inset 3px 0 0 var(--brand-border); }
+.arc .pos { color:var(--text-muted); font-weight:700; font-size:12px; }
+.arc .nom { font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fl { text-align:center; padding:6px 0; border-radius:4px; background:var(--surface-2); border:1px solid var(--border-subtle); font-weight:700; font-variant-numeric:tabular-nums; }
+.fl.vide { color:var(--text-muted); border-style:dashed; background:transparent; }
+.fl.saisie { border-color:var(--brand-border); }
+.somme { text-align:right; font-weight:800; font-variant-numeric:tabular-nums; font-size:16px; }
+
+/* -- pavé -- */
+.pave { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+.pave button { font-family:inherit; font-size:19px; font-weight:800; padding:16px 0; border-radius:6px; border:1px solid var(--border); background:var(--surface-1); color:var(--text); font-variant-numeric:tabular-nums; }
+.pave button.attenue { color:var(--text-muted); border-color:var(--border-subtle); }
+.pave button.util { font-size:14px; font-weight:700; color:var(--text-secondary); }
+
+/* -- duels -- */
+.set { font-size:40px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+.set.gagne { color:var(--success); }
+
+/* -- plan de cibles -- */
+.plan { display:grid; gap:4px; }
+.plan .cible { text-align:center; padding:7px 0; border-radius:3px; border:1px solid var(--border-subtle); background:var(--surface-1); font-size:12px; font-weight:700; }
+.plan .cible.moi { background:var(--brand-surface); color:#fff; border-color:var(--brand-surface); }
+.plan .cible.vide { color:var(--text-muted); border-style:dashed; background:transparent; font-weight:400; }
+.plan .cible.hs { background:var(--danger); color:var(--sur-danger); border-color:var(--danger); }
+
+/* -- états système -- */
+.squelette { background:linear-gradient(90deg,var(--surface-1) 0%,var(--surface-2) 50%,var(--surface-1) 100%); border-radius:4px; height:16px; }
+.squelette.large { height:36px; }
+.verrou { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--info); border:1px solid color-mix(in srgb,var(--info) 45%,transparent); border-radius:3px; padding:2px 7px; }
+
+/* -- écran de salle -- */
+.salle-cadre { aspect-ratio:16/9; display:flex; flex-direction:column; }
+.salle-cadre .corps-salle { flex:1; padding:16px; display:flex; flex-direction:column; gap:9px; justify-content:center; }
+.salle-cadre .pied-salle { border-top:1px solid var(--border-subtle); padding:7px 16px; font-size:11px; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+@media print {
+  body { background:#fff; }
+  .nav-ecran { position:static; backdrop-filter:none; }
+  .ui { box-shadow:none; }
+}

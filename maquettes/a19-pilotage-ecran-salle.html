@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A19 · Pilotage de l'écran de salle — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a18-exports-archive-audit.html">← A18</a>
+  <span class="fin">
+    <a href="s01-rattachement.html">S01 · Rattachement →</a>
+    <a class="lien-questionnaire" href="questionnaires/a19-pilotage-ecran-salle.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A19</span>Pilotage de l'écran de salle</h1>
+  <p class="chapo">L'écran de salle est un <strong>poste de l'appli publique</strong>
+  (<span class="ref">D-21</span>), rattaché par jeton comme une tablette. L'organisateur peut lui imposer une
+  vue <strong>depuis son poste</strong>, sans traverser le gymnase.</p>
+  <p style="margin-top:14px"><span class="etat-pill neuf">à concevoir</span></p>
+</header>
+
+<h2 class="section">Recommandation ferme</h2>
+<div class="note">
+  <p><strong>Une prise de contrôle doit savoir se terminer.</strong> Basculer sur le podium à 17 h puis partir
+  serrer des mains, c'est un écran <em>figé sur le podium à 18 h</em> pendant que les gens cherchent leur
+  classement.</p>
+  <p>Donc : une <strong>durée</strong> (« podium 10 min puis reprise du déroulé »), ou un retour explicite très
+  visible. <strong>Jamais un état forcé qu'on oublie</strong> (<span class="ref">Q-UX7</span>).</p>
+</div>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Durée obligatoire</span>
+      <span class="sous-etiquette">On ne peut pas imposer une vue sans dire pour combien de temps.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">ÉCRAN DE SALLE A</span><span class="fin pas ok">EN LIGNE</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span>DÉROULÉ PAR DÉFAUT</span><span class="fin">rotation 20 s</span></div>
+          <div class="rang"><span style="flex:1">1 · Affectations du prochain tour</span><span class="pas ok">✓</span></div>
+          <div class="rang"><span style="flex:1">2 · Classement en cours</span><span class="pas ok">✓</span></div>
+          <div class="rang"><span style="flex:1">3 · Plan de cibles</span><span class="pas ok">✓</span></div>
+        </div>
+        <div class="carte marquee">
+          <div class="tete-carte"><span>IMPOSER UNE VUE</span></div>
+          <div class="rang"><span class="champ plein" style="flex:1">Podium — Senior Homme ▾</span></div>
+          <div class="rang"><span class="second">pendant</span><span class="champ plein" style="width:70px;text-align:center">10 min</span>
+            <span class="second">puis reprise</span></div>
+          <div class="rang"><button class="bouton principal">IMPOSER</button></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> Le défaut protège de l'oubli. On peut toujours
+    reprendre la main avant la fin — mais on ne peut pas <b>ne pas décider</b>.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Bascule libre</span>
+      <span class="sous-etiquette">On impose, on annule quand on veut.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">ÉCRAN DE SALLE A</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="rang"><span style="flex:1">Affectations</span><span class="pas marque">EN COURS</span></div>
+          <div class="rang"><span style="flex:1">Classement</span><span class="fin bouton auto">Imposer</span></div>
+          <div class="rang"><span style="flex:1">Podium</span><span class="fin bouton auto">Imposer</span></div>
+        </div>
+        <button class="bouton discret">Reprendre le déroulé automatique</button>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce non">risqué</span> Plus simple, et c'est exactement le scénario que le
+    CDC UX met en garde : <b>rien ne rappelle qu'on a pris la main</b>.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">C · Télécommande flottante</span>
+      <span class="sous-etiquette">Un bandeau discret présent sur tous les écrans admin.</span></figcaption>
+    <div class="ui">
+      <div class="barre" style="justify-content:space-between">
+        <span style="font-size:12px">📺 Salle A · <strong>Affectations</strong></span>
+        <span class="second" style="font-size:11px">Classement · Podium · Auto</span></div>
+      <div class="corps serre"><div class="carte"><div class="rang"><span class="faible">— écran admin courant —</span></div></div></div>
+    </div>
+    <p class="verdict"><span class="pouce peut">à combiner</span> Excellent <b>rappel</b> de l'état courant,
+    trop étroit pour régler une durée. Utile en complément de A.</p>
+  </figure>
+</div>
+
+<h2 class="section">Plusieurs écrans, plusieurs déroulés</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">Deux écrans aux rôles différents</span></figcaption>
+    <div class="ui">
+      <div class="corps">
+        <div class="carte">
+          <div class="rang bloc"><div style="font-weight:700">Salle A — près du pas de tir</div>
+            <div class="second">Affectations uniquement · pas de rotation</div></div>
+        </div>
+        <div class="carte">
+          <div class="rang bloc"><div style="font-weight:700">Salle B — côté public</div>
+            <div class="second">Classements + podiums · rotation 30 s</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">gratuit par construction</span> Chaque poste a son jeton, donc
+    son déroulé. Un écran pour les archers, un pour le public — <b>sans effort supplémentaire</b>.</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>La prise de contrôle expire-t-elle automatiquement</strong>, ou reste-t-elle jusqu'à annulation ?</li>
+  <li><strong>Combien d'écrans de salle</strong> prévois-tu réellement ? Un seul change beaucoup la conception.</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a19-pilotage-ecran-salle.md">Questionnaire A19</a></span>
+  <span class="fin"><a href="s01-rattachement.html">Suivant : S01 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

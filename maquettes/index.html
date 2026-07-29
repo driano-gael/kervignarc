@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquettes — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+<style>
+  .tuiles { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+  .tuile { display:flex; flex-direction:column; gap:5px; padding:14px 16px; text-decoration:none;
+           color:inherit; background:var(--doc-carte); border:1px solid var(--doc-trait); border-radius:6px; }
+  .tuile:hover { border-color:var(--doc-accent); }
+  .tuile.absente { opacity:.55; border-style:dashed; }
+  .tuile-code { font-family:var(--doc-mono); font-size:11px; letter-spacing:.1em; color:var(--doc-accent); font-weight:700; }
+  .tuile-titre { font-weight:700; font-size:16px; line-height:1.25; }
+  .tuile-role { font-size:13px; color:var(--doc-doux); line-height:1.4; }
+  .tuile-pied { display:flex; align-items:center; gap:8px; margin-top:6px; }
+  .tuile-nb { margin-left:auto; font-family:var(--doc-mono); font-size:10.5px; color:var(--doc-doux); }
+  .compteurs { display:flex; gap:28px; flex-wrap:wrap; margin:26px 0 0; padding:16px 0 0; border-top:1px solid var(--doc-trait); }
+  .compteur b { display:block; font-size:30px; font-weight:800; line-height:1; }
+  .compteur span { font-size:12.5px; color:var(--doc-doux); }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="entete" style="margin-top:36px">
+    <p class="fil">Kervignarc · maquettes haute fidélité</p>
+    <h1>Les 35 écrans du produit</h1>
+    <p class="chapo">Chaque écran est décliné en <strong>partis pris de mise en page à départager</strong>, en
+    <strong>états système</strong> et, quand c'est utile, en <strong>thèmes</strong>. À côté de chaque maquette,
+    un <strong>questionnaire</strong> à remplir : c'est lui qui fait avancer la conception, pas la maquette.</p>
+    <div class="compteurs">
+      <div class="compteur"><b>35</b><span>écrans maquettés</span></div>
+      <div class="compteur"><b>3</b><span>applications</span></div>
+      <div class="compteur"><b>7</b><span>écrans sans équivalent dans le code</span></div>
+      <div class="compteur"><b>35</b><span>questionnaires à remplir</span></div>
+    </div>
+  </header>
+
+  <div class="note">
+    <p><strong>Comment s'en servir.</strong> Ouvre un écran, regarde les variantes, puis remplis son
+    questionnaire dans <code>questionnaires/</code>. Tu peux en traiter un par jour ou dix d'affilée : chaque
+    fiche est indépendante.</p>
+    <p><strong>Les couleurs ne sont pas négociables, les écrans le sont.</strong> La palette vient de la charte
+    mesurée (<code>cahier-des-charges-design.md</code> §3.3) : chaque valeur a son ratio de contraste calculé.
+    Ce qui se discute ici, c'est la <em>structure</em> et le <em>vocabulaire</em>.</p>
+  </div>
+
+    <section class="bloc-appli">
+      <h2 class="section">Appli admin <span class="code-sec">/admin · 19 écrans</span></h2>
+      <p class="intro">Préparer, superviser, lancer. PC ou grande tablette, plancher 1024 px.</p>
+      <div class="tuiles">
+      <a class="tuile" href="a01-connexion.html">
+        <span class="tuile-code">A01</span>
+        <span class="tuile-titre">Connexion</span>
+        <span class="tuile-role">Le seul écran à mot de passe du produit : l'admin est le seul rôle authentifié par compte.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a01-connexion.md">questionnaire</a> -->
+      <a class="tuile" href="a02-ossature.html">
+        <span class="tuile-code">A02</span>
+        <span class="tuile-titre">Ossature — sidebar groupée par temps</span>
+        <span class="tuile-role">Le squelette stable de l'appli : 16 destinations rangées par temps du tournoi, toutes cliquables en permanence.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a02-ossature.md">questionnaire</a> -->
+      <a class="tuile" href="a03-accueil-statuts.html">
+        <span class="tuile-code">A03</span>
+        <span class="tuile-titre">Accueil contextualisé — 7 statuts</span>
+        <span class="tuile-role">Ce qui change avec le statut du tournoi, ce n'est pas le menu, c'est ce que l'admin voit en premier.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a03-accueil-statuts.md">questionnaire</a> -->
+      <a class="tuile" href="a04-tournois.html">
+        <span class="tuile-code">A04</span>
+        <span class="tuile-titre">Tournois — liste et cycle de vie</span>
+        <span class="tuile-role">La porte d'entrée : plusieurs tournois peuvent coexister en cours (intérieur + extérieur).</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a04-tournois.md">questionnaire</a> -->
+      <a class="tuile" href="a05-identite.html">
+        <span class="tuile-code">A05</span>
+        <span class="tuile-titre">Identité du tournoi</span>
+        <span class="tuile-role">Un logo, deux couleurs d'accent : le système dérive tout le reste. L'aperçu compte plus que le nuancier.</span>
+        <span class="tuile-pied"><span class="etat-pill neuf">à concevoir</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a05-identite.md">questionnaire</a> -->
+      <a class="tuile" href="a06-referentiels.html">
+        <span class="tuile-code">A06</span>
+        <span class="tuile-titre">Référentiels — catégories, blasons, clubs, tarifs, barèmes</span>
+        <span class="tuile-role">Six destinations qui partagent un gabarit : liste + édition en place.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a06-referentiels.md">questionnaire</a> -->
+      <a class="tuile" href="a07-phases.html">
+        <span class="tuile-code">A07</span>
+        <span class="tuile-titre">Phases — scoring et grain de validation</span>
+        <span class="tuile-role">Le grain de validation est une politique de phase, réglée une fois à la configuration, jamais le jour J.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a07-phases.md">questionnaire</a> -->
+      <a class="tuile" href="a08-scoreurs.html">
+        <span class="tuile-code">A08</span>
+        <span class="tuile-titre">Scoreurs</span>
+        <span class="tuile-role">3 à 4 scoreurs pour ~30 cibles, redéfinissables à tout moment — un scoreur qui ne vient pas, ça arrive.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a08-scoreurs.md">questionnaire</a> -->
+      <a class="tuile" href="a09-inscriptions.html">
+        <span class="tuile-code">A09</span>
+        <span class="tuile-titre">Inscriptions — archers, doublons, retardataires</span>
+        <span class="tuile-role">L'écran le plus fréquenté avant le jour J : il doit répondre en trois secondes à « cet archer est-il inscrit, et où tire-t-il ? ».</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a09-inscriptions.md">questionnaire</a> -->
+      <a class="tuile" href="a10-plan-de-salle.html">
+        <span class="tuile-code">A10</span>
+        <span class="tuile-titre">Plan de salle (gabarit)</span>
+        <span class="tuile-role">La salle telle qu'elle est : cibles, pas de tir, postes par cible. Réutilisable d'un tournoi à l'autre.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a10-plan-de-salle.md">questionnaire</a> -->
+      <a class="tuile" href="a11-placement.html">
+        <span class="tuile-code">A11</span>
+        <span class="tuile-titre">Placement des archers</span>
+        <span class="tuile-role">L'écran signature de l'admin — et le seul que le CDC UX note explicitement « non instruit ».</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a11-placement.md">questionnaire</a> -->
+      <a class="tuile" href="a12-postes-jetons.html">
+        <span class="tuile-code">A12</span>
+        <span class="tuile-titre">Postes et jetons — rattachement, révocation</span>
+        <span class="tuile-role">L'identité d'un poste est le jeton, pas l'IP : ~30 tablettes personnelles sur un wifi de gymnase.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a12-postes-jetons.md">questionnaire</a> -->
+      <a class="tuile" href="a13-supervision.html">
+        <span class="tuile-code">A13</span>
+        <span class="tuile-titre">Console de supervision</span>
+        <span class="tuile-role">Pas un graphique de progression : une console de 30 postes qui distingue « ils tirent lentement » de « leur tablette est morte ».</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a13-supervision.md">questionnaire</a> -->
+      <a class="tuile" href="a14-completude.html">
+        <span class="tuile-code">A14</span>
+        <span class="tuile-titre">Complétude — « qu'est-ce qui manque ? »</span>
+        <span class="tuile-role">Le vrai visage de l'avancement : sportif et hors-sportif comptés séparément.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a14-completude.md">questionnaire</a> -->
+      <a class="tuile" href="a15-bascule-de-tour.html">
+        <span class="tuile-code">A15</span>
+        <span class="tuile-titre">Bascule de tour</span>
+        <span class="tuile-role">Le cœur du produit : le moment où l'organisateur appuie et où 118 personnes apprennent où aller.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a15-bascule-de-tour.md">questionnaire</a> -->
+      <a class="tuile" href="a16-classements-podiums.html">
+        <span class="tuile-code">A16</span>
+        <span class="tuile-titre">Classements et podiums</span>
+        <span class="tuile-role">Deux besoins distincts : le classement consultable et le podium projetable.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a16-classements-podiums.md">questionnaire</a> -->
+      <a class="tuile" href="a17-paiements.html">
+        <span class="tuile-code">A17</span>
+        <span class="tuile-titre">Paiements</span>
+        <span class="tuile-role">Le seul écran hors sportif qui reste modifiable après « Terminé ».</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a17-paiements.md">questionnaire</a> -->
+      <a class="tuile" href="a18-exports-archive-audit.html">
+        <span class="tuile-code">A18</span>
+        <span class="tuile-titre">Exports, archive, journal d'audit</span>
+        <span class="tuile-role">Le temps « après » : sortir les résultats, verrouiller, et pouvoir répondre à une réclamation.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a18-exports-archive-audit.md">questionnaire</a> -->
+      <a class="tuile" href="a19-pilotage-ecran-salle.html">
+        <span class="tuile-code">A19</span>
+        <span class="tuile-titre">Pilotage de l'écran de salle</span>
+        <span class="tuile-role">Imposer une vue depuis son poste, sans traverser le gymnase — et savoir que la prise de contrôle se termine.</span>
+        <span class="tuile-pied"><span class="etat-pill neuf">à concevoir</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/a19-pilotage-ecran-salle.md">questionnaire</a> -->
+      </div>
+    </section>
+    <section class="bloc-appli">
+      <h2 class="section">Appli saisie <span class="code-sec">/saisie · 9 écrans</span></h2>
+      <p class="intro">Marqueurs et scoreurs. Tactile prioritaire, plancher 768 px, parc hétérogène.</p>
+      <div class="tuiles">
+      <a class="tuile" href="s01-rattachement.html">
+        <span class="tuile-code">S01</span>
+        <span class="tuile-titre">Rattachement du poste</span>
+        <span class="tuile-role">Le premier geste du matin, fait 30 fois par des bénévoles pressés — et refait à chaque onglet fermé.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/s01-rattachement.md">questionnaire</a> -->
+      <a class="tuile" href="s02-poste-de-cible.html">
+        <span class="tuile-code">S02</span>
+        <span class="tuile-titre">Poste de cible — la grille</span>
+        <span class="tuile-role">L'écran le plus utilisé de la journée : un marqueur tape pour 3–4 archers, debout, d'une main.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/s02-poste-de-cible.md">questionnaire</a> -->
+      <a class="tuile" href="s03-pave-de-saisie.html">
+        <span class="tuile-code">S03</span>
+        <span class="tuile-titre">Le pavé de saisie</span>
+        <span class="tuile-role">Le geste répété ~4 300 fois par départ : un demi-geste économisé ici pèse plus que n'importe quelle élégance ailleurs.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/s03-pave-de-saisie.md">questionnaire</a> -->
+      <a class="tuile" href="s04-marqueur.html">
+        <span class="tuile-code">S04</span>
+        <span class="tuile-titre">Changer de marqueur</span>
+        <span class="tuile-role">Un geste rare : l'interface ne doit pas s'organiser autour de lui.</span>
+        <span class="tuile-pied"><span class="etat-pill neuf">à concevoir</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/s04-marqueur.md">questionnaire</a> -->
+      <a class="tuile" href="s05-saisie-duel.html">
+        <span class="tuile-code">S05</span>
+        <span class="tuile-titre">Saisie de duel</span>
+        <span class="tuile-role">Set-system, deux archers : ce qui décide du vainqueur, ce sont les points de set, pas le cumul.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/s05-saisie-duel.md">questionnaire</a> -->
+      <a class="tuile" href="s06-routage.html">
+        <span class="tuile-code">S06</span>
+        <span class="tuile-titre">Panneau de routage après validation</span>
+        <span class="tuile-role">La tablette devient un panneau d'affichage : c'est là que se gagnent les 2 minutes.</span>
+        <span class="tuile-pied"><span class="etat-pill neuf">à concevoir</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/s06-routage.md">questionnaire</a> -->
+      <a class="tuile" href="s07-file-scoreur.html">
+        <span class="tuile-code">S07</span>
+        <span class="tuile-titre">File du scoreur</span>
+        <span class="tuile-role">Le goulot d'étranglement de la journée : aux duels, 8 cibles finissent ensemble et attendent toutes.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/s07-file-scoreur.md">questionnaire</a> -->
+      <a class="tuile" href="s08-validation-cible.html">
+        <span class="tuile-code">S08</span>
+        <span class="tuile-titre">Validation d'une cible</span>
+        <span class="tuile-role">L'acte qui tient lieu de seconde marque : le scoreur doit pouvoir vérifier, pas seulement approuver.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/s08-validation-cible.md">questionnaire</a> -->
+      <a class="tuile" href="s09-etats-systeme.html">
+        <span class="tuile-code">S09</span>
+        <span class="tuile-titre">Le vocabulaire d'états</span>
+        <span class="tuile-role">Les sept états transverses dessinés une fois : chargement, vide, erreur, hors-ligne, live, verrou, conflit.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">1 variante</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/s09-etats-systeme.md">questionnaire</a> -->
+      </div>
+    </section>
+    <section class="bloc-appli">
+      <h2 class="section">Appli publique <span class="code-sec">/ · 7 écrans</span></h2>
+      <p class="intro">Archers, public, écran de salle. Mobile d'abord (360 px), lecture seule, live.</p>
+      <div class="tuiles">
+      <a class="tuile" href="p01-cest-moi.html">
+        <span class="tuile-code">P01</span>
+        <span class="tuile-titre">« C'est moi » — première ouverture</span>
+        <span class="tuile-role">L'archer tape son nom une fois ; l'appli le retient. La recherche devient l'exception, pas la porte d'entrée.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/p01-cest-moi.md">questionnaire</a> -->
+      <a class="tuile" href="p02-ma-journee.html">
+        <span class="tuile-code">P02</span>
+        <span class="tuile-titre">Ma journée — maintenant / ensuite</span>
+        <span class="tuile-role">L'écran qui porte la promesse : « où je tire, et où je tire ensuite ? », sans défilement.</span>
+        <span class="tuile-pied"><span class="etat-pill neuf">à concevoir</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/p02-ma-journee.md">questionnaire</a> -->
+      <a class="tuile" href="p03-classements.html">
+        <span class="tuile-code">P03</span>
+        <span class="tuile-titre">Classements</span>
+        <span class="tuile-role">Même donnée que côté admin, autre mise en forme : sur 360 px on ne montre pas six colonnes.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/p03-classements.md">questionnaire</a> -->
+      <a class="tuile" href="p04-plan-de-cibles.html">
+        <span class="tuile-code">P04</span>
+        <span class="tuile-titre">Plan de cibles</span>
+        <span class="tuile-role">Le plan tel que l'archer le lit en arrivant : « je suis où ? » — pas l'outil de placement.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/p04-plan-de-cibles.md">questionnaire</a> -->
+      <a class="tuile" href="p05-tableau-duels.html">
+        <span class="tuile-code">P05</span>
+        <span class="tuile-titre">Tableau de duels</span>
+        <span class="tuile-role">L'arbre d'élimination directe sur 360 px : le vrai problème de conception de l'appli publique.</span>
+        <span class="tuile-pied"><span class="etat-pill code">écran existant</span><span class="tuile-nb">2 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/p05-tableau-duels.md">questionnaire</a> -->
+      <a class="tuile" href="p06-salle-affectations.html">
+        <span class="tuile-code">P06</span>
+        <span class="tuile-titre">Écran de salle — affectations</span>
+        <span class="tuile-role">Probablement la vue la plus utile du produit — et la moins résolue : 200 archers ne tiennent pas à l'écran.</span>
+        <span class="tuile-pied"><span class="etat-pill neuf">à concevoir</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/p06-salle-affectations.md">questionnaire</a> -->
+      <a class="tuile" href="p07-salle-classement-podium.html">
+        <span class="tuile-code">P07</span>
+        <span class="tuile-titre">Écran de salle — classement et podium</span>
+        <span class="tuile-role">Les autres vues du déroulé, et le cas de la prise de contrôle par l'admin.</span>
+        <span class="tuile-pied"><span class="etat-pill neuf">à concevoir</span><span class="tuile-nb">3 variantes</span></span>
+      </a>
+      <!-- <a class="tuile-q" href="questionnaires/p07-salle-classement-podium.md">questionnaire</a> -->
+      </div>
+    </section>
+
+  <footer class="pied">
+    <span>Kervignarc — dossier de maquettes</span>
+    <span class="fin"><a href="questionnaires/">questionnaires/</a></span>
+  </footer>
+</div>
+</body>
+</html>

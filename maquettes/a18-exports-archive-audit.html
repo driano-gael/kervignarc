@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A18 · Exports, archive, audit — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a17-paiements.html">← A17</a>
+  <span class="fin">
+    <a href="a19-pilotage-ecran-salle.html">A19 · Écran de salle →</a>
+    <a class="lien-questionnaire" href="questionnaires/a18-exports-archive-audit.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A18</span>Exports, archive, journal d'audit</h1>
+  <p class="chapo">Le temps « après ». Trois écrans sobres — mais l'audit porte une exigence particulière :
+  c'est la <strong>trace de qui a saisi et qui a validé</strong>, l'équivalent numérique des signatures de la
+  feuille de marque.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">exports et archive existants</span>
+     <span class="etat-pill neuf">audit à concevoir</span></p>
+</header>
+
+<h2 class="section">Les trois écrans</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">Exports</span>
+      <span class="sous-etiquette">Sortir la donnée vers l'extérieur.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">EXPORTS</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="rang"><span style="flex:1;font-weight:700">Résultats FFTA</span><span class="fin bouton auto">CSV</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Classements par catégorie</span><span class="fin bouton auto">PDF</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Liste des inscrits</span><span class="fin bouton auto">Tableur</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Feuilles de marque</span><span class="fin bouton auto">PDF</span></div>
+        </div>
+        <p class="faible" style="margin:0">Généré localement — aucune donnée ne quitte le réseau du gymnase.</p>
+      </div>
+    </div>
+    <p class="verdict">La mention « localement » compte : c'est un club, pas un service en ligne.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">Archive</span>
+      <span class="sous-etiquette">Verrou total, lecture seule.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">ARCHIVE</span><span class="fin verrou">🔒 LECTURE SEULE</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="rang"><span style="flex:1">Concours de printemps</span><span class="second">14/04/2026</span></div>
+          <div class="rang"><span style="flex:1">Challenge 2025</span><span class="second">13/10/2025</span></div>
+        </div>
+        <p class="faible" style="margin:0">Aucune action possible. Consultation et export uniquement.</p>
+      </div>
+    </div>
+    <p class="verdict">Archiver ≠ supprimer : les résultats d'un club se consultent des années après.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">Journal d'audit</span>
+      <span class="sous-etiquette">Qui a fait quoi, quand.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">JOURNAL D'AUDIT</span>
+        <span class="champ plein" style="padding:3px 8px">Cible 12 ▾</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span style="width:50px">HEURE</span><span style="flex:1">QUI</span><span>QUOI</span></div>
+          <div class="rang"><span style="width:50px" class="second">10:42</span>
+            <span style="flex:1">MARTIN <span class="faible">(marqueur)</span></span><span class="second">saisie v8 · 27 pts</span></div>
+          <div class="rang"><span style="width:50px" class="second">10:44</span>
+            <span style="flex:1">LE GALL <span class="faible">(scoreur)</span></span><span class="second">validation série 2</span></div>
+          <div class="rang"><span style="width:50px" class="second">10:51</span>
+            <span style="flex:1">admin</span><span class="second">forfait OLLIVIER</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">indispensable</span> Sans cet écran, la trace existe en base mais
+    reste <b>inatteignable le jour d'une réclamation</b> — c'est-à-dire qu'elle n'existe pas.</p>
+  </figure>
+</div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>Quels exports te sont réellement demandés ?</strong> FFTA, tableur, PDF d'affichage, site du
+  club — la liste ci-dessus est une hypothèse.</li>
+  <li><strong>L'audit est-il consultable pendant le tournoi</strong> (résoudre un litige à chaud) ou seulement
+  après ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a18-exports-archive-audit.md">Questionnaire A18</a></span>
+  <span class="fin"><a href="a19-pilotage-ecran-salle.html">Suivant : A19 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>

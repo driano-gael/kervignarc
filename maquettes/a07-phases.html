@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A07 · Phases — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <a href="a06-referentiels.html">← A06</a>
+  <span class="fin">
+    <a href="a08-scoreurs.html">A08 · Scoreurs →</a>
+    <a class="lien-questionnaire" href="questionnaires/a07-phases.md">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Appli admin · /admin</p>
+  <h1><span class="num">A07</span>Phases — scoring et grain de validation</h1>
+  <p class="chapo">Le grain de validation est une <strong>politique de phase</strong>, pas un réglage global
+  (<span class="ref">D-11</span>) : la qualification valide en fin de série, l'élimination directe en fin de
+  duel. Réglé <strong>une fois ici</strong>, jamais le jour J.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<h2 class="section">Ce que l'écran doit faire</h2>
+<ul class="exigences">
+  <li>Rendre visible que <strong>le grain décide de la charge des scoreurs</strong> — c'est le seul réglage de
+  toute la préparation qui peut rendre la journée intenable.</li>
+  <li>Chiffrer la conséquence <em>au moment du choix</em> (<span class="ref">P-4</span>), pas la découvrir à 10 h.</li>
+  <li>Rester une configuration : un format de tournoi est de la <strong>donnée</strong>, pas du code.</li>
+</ul>
+
+<h2 class="section">Partis pris</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">A · Tableau + édition en place</span>
+      <span class="sous-etiquette">Toutes les phases visibles, la charge chiffrée sous le choix.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">PHASES</span><span class="fin bouton auto">+ Ajouter</span></div>
+      <div class="corps">
+        <div class="carte">
+          <div class="tete-carte"><span style="flex:1">PHASE</span><span style="width:100px">SCORING</span><span style="width:90px">VALIDATION</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">Qualification</span><span style="width:100px" class="second">points cumulés</span><span style="width:90px" class="second">fin de série</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">1/8 de finale</span><span style="width:100px" class="second">set-system</span><span style="width:90px" class="second">fin de duel</span></div>
+          <div class="rang"><span style="flex:1;font-weight:700">1/4 de finale</span><span style="width:100px" class="second">set-system</span><span style="width:90px" class="second">fin de duel</span></div>
+        </div>
+        <div class="carte marquee">
+          <div class="tete-carte"><span>QUALIFICATION</span></div>
+          <div class="rang"><span style="width:110px" class="second">Scoring</span><span class="champ plein" style="flex:1">points cumulés ▾</span></div>
+          <div class="rang"><span style="width:110px" class="second">Validation</span><span class="champ plein" style="flex:1">fin de série ▾</span></div>
+          <div class="rang bloc"><span class="faible">≈ 60 validations par départ · 20 par scoreur — <strong>confortable</strong></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">recommandé</span> La ligne de charge <b>change quand on change
+    le grain</b> : c'est ce qui rend le mauvais choix impossible à faire par inadvertance.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">B · Assistant pas à pas</span>
+      <span class="sous-etiquette">Une phase à la fois, questions guidées.</span></figcaption>
+    <div class="ui">
+      <div class="barre"><span class="titre">NOUVELLE PHASE</span><span class="fin second">2 / 4</span></div>
+      <div class="corps">
+        <div class="second">Quand le scoreur valide-t-il ?</div>
+        <div class="carte">
+          <div class="rang"><span class="pas neutre">○</span><span style="flex:1">Chaque volée</span><span class="fin faible">~360 · une toutes les 20 s</span></div>
+          <div class="rang"><span class="pas neutre">○</span><span style="flex:1">Toutes les 2 volées</span><span class="fin faible">~180 · intenable</span></div>
+          <div class="rang" style="background:var(--surface-2)"><span class="pas ok">●</span><span style="flex:1;font-weight:700">Fin de série</span><span class="fin faible">~60 · confortable</span></div>
+        </div>
+        <button class="bouton principal">Suivant</button>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce peut">bon pour la 1re fois</span> Pédagogique, mais on configure les
+    phases <b>une fois par an</b> et on les ajuste souvent : un assistant devient vite un péage.</p>
+  </figure>
+</div>
+
+<h2 class="section">La table qui justifie le réglage</h2>
+<div class="enveloppe"><table class="tk">
+  <tr><th>Grain</th><th>Validations / départ (30 cibles)</th><th>Avec 3 scoreurs</th></tr>
+  <tr><td>Chaque volée</td><td class="num">~360</td><td>une toutes les 20 s — ils ne font plus que ça</td></tr>
+  <tr><td>Toutes les 2 volées</td><td class="num">~180</td><td>une toutes les 40 s — intenable</td></tr>
+  <tr><td><strong>Fin de série</strong></td><td class="num">~60</td><td><strong>20 chacun — confortable</strong></td></tr>
+  <tr><td><strong>Fin de duel</strong></td><td class="num">8 en simultané</td><td><strong>pic court mais violent</strong></td></tr>
+</table></div>
+
+<h2 class="section">À trancher</h2>
+<ul class="exigences">
+  <li><strong>La charge chiffrée aide-t-elle ou encombre-t-elle ?</strong></li>
+  <li><strong>Faut-il des gabarits de phases</strong> (« qualification 2×10 + tableau 1/8 ») pour ne pas tout
+  reconfigurer chaque année ?</li>
+</ul>
+
+<footer class="pied">
+  <span><a href="index.html">Tous les écrans</a></span>
+  <span><a href="questionnaires/a07-phases.md">Questionnaire A07</a></span>
+  <span class="fin"><a href="a08-scoreurs.html">Suivant : A08 →</a></span>
+</footer>
+
+</div>
+</body>
+</html>
