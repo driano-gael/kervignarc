@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Questionnaire A02 · Ossature — sidebar groupée par temps — Kervignarc</title>
+<title>Questionnaire A02 · Ossature — rôle, espace, étape — Kervignarc</title>
 <link rel="stylesheet" href="../assets/systeme.css">
 <link rel="stylesheet" href="../assets/questionnaire.css">
 </head>
@@ -21,8 +21,8 @@
 
 <header class="entete">
   <p class="fil">Questionnaire · Appli admin · /admin</p>
-  <h1><span class="num">A02</span>Ossature — sidebar groupée par temps</h1>
-  <p class="chapo">Le squelette stable de l'appli : 16 destinations rangées par temps du tournoi, toutes cliquables en permanence.</p>
+  <h1><span class="num">A02</span>Ossature — rôle, espace, étape</h1>
+  <p class="chapo">Trois niveaux : le rôle choisit l'écran, l'espace choisit la situation de travail, l'étape dit où on en est.</p>
   <p style="margin-top:12px;font-size:14px;color:var(--doc-doux)">
     Remplis ce qui te parle, laisse le reste vide. Un « non » sec est une réponse parfaitement utile —
     c'est même la plus rapide à exploiter. Tes réponses sont conservées dans ce navigateur au fil de la
@@ -48,9 +48,8 @@
     <h2><span class="q-num">1</span>Quel parti pris retiens-tu ?</h2>
     <p class="q-aide">Les mentions « recommandé » sur la maquette sont mon avis argumenté, pas une décision.</p>
     <div class="q-choix">
-      <label><input type="radio" name="variante" value="0"><span>A — Sidebar groupée repliable</span></label>
-      <label><input type="radio" name="variante" value="1"><span>B — Barre horizontale par temps</span></label>
-      <label><input type="radio" name="variante" value="2"><span>C — Sidebar plate (16 entrées à plat)</span></label>
+      <label><input type="radio" name="variante" value="0"><span>A — Accueil à trois portes, identique en permanence</span></label>
+      <label><input type="radio" name="variante" value="1"><span>B — Accueil qui s'efface le jour J (entrée directe dans le Déroulé)</span></label>
       <label><input type="radio" name="variante" value="-1"><span>Aucun — voir « à refaire » plus bas</span></label>
     </div>
     <label class="q-champ">
@@ -89,9 +88,11 @@
   <section class="q-bloc">
     <h2><span class="q-num">5</span>Questions ciblées</h2>
     <p class="q-aide">Ces questions viennent de points que la maquette n'a pas pu trancher seule.</p>
-    <div class="q-ciblee"><p><span class="q-idx">1</span>Les groupes Préparation / Jour J / Après correspondent-ils à ta façon de travailler, ou raisonnes-tu par objet (archers, cibles, scores) ?</p><textarea data-question="0" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">2</span>La recherche d'archer en haut de sidebar est-elle au bon endroit, ou la veux-tu ailleurs (barre du haut, raccourci clavier) ?</p><textarea data-question="1" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">3</span>Le sélecteur de tournoi au-dessus de tout : suffisant pour éviter de modifier le mauvais tournoi ?</p><textarea data-question="2" rows="3"></textarea></div>
+    <div class="q-ciblee"><p><span class="q-idx">1</span>Les étapes que je propose pour le **Déroulé** (lancer · supervision · validation · bascule · clôture) sont une déduction de ma part : quelles sont les tiennes ?</p><textarea data-question="0" rows="3"></textarea></div>
+    <div class="q-ciblee"><p><span class="q-idx">2</span>Même question pour les **Résultats** (classements & podiums · comptes · exports & archive) — j'ai regroupé au jugé.</p><textarea data-question="1" rows="3"></textarea></div>
+    <div class="q-ciblee"><p><span class="q-idx">3</span>Les mots te vont-ils : « espace » pour le niveau 1, « étape » pour le niveau 2, « Résultats » plutôt qu'« Après » ?</p><textarea data-question="2" rows="3"></textarea></div>
+    <div class="q-ciblee"><p><span class="q-idx">4</span>Dans le Déroulé, on repasse par supervision et validation en boucle toute la journée : « étape » reste-t-il le bon mot, ou faut-il autre chose pour ce niveau-là ?</p><textarea data-question="3" rows="3"></textarea></div>
+    <div class="q-ciblee"><p><span class="q-idx">5</span>Les briques (catégories, tarifs, barèmes) sont le patrimoine du club. Si tu changes un tarif en 2027, le tournoi 2026 archivé doit-il bouger ? (référence) ou rester figé ? (copie à l'assemblage)</p><textarea data-question="4" rows="3"></textarea></div>
   </section>
 
   <section class="q-bloc">
@@ -127,7 +128,7 @@
   <span class="fin"><a href="a03-accueil-statuts.html">Suivant : A03 · Accueil contextualisé — 7 statuts →</a></span>
 </footer>
 
-<script type="application/json" id="q-modele">{"code": "A02", "titre": "Ossature — sidebar groupée par temps", "slug": "a02-ossature", "appli": "Appli admin", "route": "/admin", "role": "Le squelette stable de l'appli : 16 destinations rangées par temps du tournoi, toutes cliquables en permanence.", "variantes": ["A — Sidebar groupée repliable", "B — Barre horizontale par temps", "C — Sidebar plate (16 entrées à plat)"], "questions": ["Les groupes Préparation / Jour J / Après correspondent-ils à ta façon de travailler, ou raisonnes-tu par objet (archers, cibles, scores) ?", "La recherche d'archer en haut de sidebar est-elle au bon endroit, ou la veux-tu ailleurs (barre du haut, raccourci clavier) ?", "Le sélecteur de tournoi au-dessus de tout : suffisant pour éviter de modifier le mauvais tournoi ?"]}</script>
+<script type="application/json" id="q-modele">{"code": "A02", "titre": "Ossature — rôle, espace, étape", "slug": "a02-ossature", "appli": "Appli admin", "route": "/admin", "role": "Trois niveaux : le rôle choisit l'écran, l'espace choisit la situation de travail, l'étape dit où on en est.", "variantes": ["A — Accueil à trois portes, identique en permanence", "B — Accueil qui s'efface le jour J (entrée directe dans le Déroulé)"], "questions": ["Les étapes que je propose pour le **Déroulé** (lancer · supervision · validation · bascule · clôture) sont une déduction de ma part : quelles sont les tiennes ?", "Même question pour les **Résultats** (classements & podiums · comptes · exports & archive) — j'ai regroupé au jugé.", "Les mots te vont-ils : « espace » pour le niveau 1, « étape » pour le niveau 2, « Résultats » plutôt qu'« Après » ?", "Dans le Déroulé, on repasse par supervision et validation en boucle toute la journée : « étape » reste-t-il le bon mot, ou faut-il autre chose pour ce niveau-là ?", "Les briques (catégories, tarifs, barèmes) sont le patrimoine du club. Si tu changes un tarif en 2027, le tournoi 2026 archivé doit-il bouger ? (référence) ou rester figé ? (copie à l'assemblage)"]}</script>
 <script src="../assets/questionnaire.js"></script>
 
 </div>
