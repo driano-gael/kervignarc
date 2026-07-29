@@ -150,9 +150,19 @@ async def marquer_paye(
     status_code=204,
     dependencies=[Depends(exiger_admin)],
 )
-async def desinscrire(inscription_id: int, request: Request) -> Response:
-    """Désinscrit un archer d'un départ (**action admin**) : écriture via la file, 204 si succès."""
+async def desinscrire(inscription_id: int, request: Request, confirme: bool = False) -> Response:
+    """Désinscrit un archer d'un départ (**action admin**) : écriture via la file, 204 si succès.
+
+    Si l'inscription est **payée** (créneau tarifé), la désinscription est **confirmable** : sans
+    `confirme=true`, renvoie `409 inscription_payee_a_rembourser` — `details` chiffre le montant et
+    nomme l'archer (E08US005, ADR-0057). Confirmée, elle supprime l'inscription **et** ouvre le
+    remboursement en une transaction. Une inscription non payée (ou gratuite) se désinscrit sans
+    confirmation. Le drapeau est en **paramètre de requête** (un `DELETE` n'a pas de corps par
+    convention, comme `autoriser_suppression_inscrits` de la suppression de départ).
+    """
     service: ServiceInscriptions = request.app.state.service_inscriptions
     write_queue: WriteQueue = request.app.state.write_queue
-    await asyncio.wrap_future(write_queue.submit(lambda: service.desinscrire(inscription_id)))
+    await asyncio.wrap_future(
+        write_queue.submit(lambda: service.desinscrire(inscription_id, confirme=confirme))
+    )
     return Response(status_code=204)

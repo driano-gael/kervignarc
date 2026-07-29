@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 import pytest
 
@@ -30,6 +30,7 @@ from application.postes import ServicePostes
 from domain.depart import Depart, DepartId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.poste import Poste, PosteId, normaliser_code
+from domain.remboursement import Remboursement
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 
 _DATE = datetime.date(2026, 3, 14)
@@ -203,6 +204,12 @@ class FauxDepartRepository:
         return depart
 
     def supprimer(self, depart_id: DepartId) -> None:
+        self._departs.pop(depart_id, None)
+
+    def supprimer_avec_remboursements(
+        self, depart_id: DepartId, remboursements: Sequence[Remboursement]
+    ) -> None:
+        # Conformité au port (E08US005) : le service Postes ne l'appelle pas.
         self._departs.pop(depart_id, None)
 
 

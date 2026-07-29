@@ -27,6 +27,7 @@ from domain.listes_impression import ListeClubPaiement, ListePlacement
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
 from domain.poste import Poste, PosteId
+from domain.remboursement import Remboursement, RemboursementId
 from domain.score import Score
 from domain.scoreur import Scoreur, ScoreurId
 from domain.serie import Serie
@@ -215,6 +216,23 @@ class DepartRepository(Protocol):
         """
         ...
 
+    def supprimer_avec_remboursements(
+        self, depart_id: DepartId, remboursements: Sequence[Remboursement]
+    ) -> None:
+        """Supprime le départ (et ses inscriptions) **et** ouvre les remboursements en une
+        transaction (E08US005, ADR-0057).
+
+        Variante de `supprimer` pour un créneau dont **certaines inscriptions étaient payées** : les
+        `remboursements` (un par inscription payée d'un créneau tarifé, construits par le service)
+        sont **insérés dans la même session** que les `DELETE`, puis un **unique** `commit` scelle
+        l'ensemble. Atomicité « on n'efface une inscription payée que si son remboursement est
+        ouvert » — jamais de somme encaissée effacée sans contrepartie (le but de l'US), jamais de
+        remboursement en double. Existence et confirmation garanties par l'appelant, comme
+        `supprimer`. Une liste vide n'a pas de raison d'appeler cette variante (le service appelle
+        `supprimer`) ; l'implémentation doit néanmoins la tolérer (équivalente à `supprimer`).
+        """
+        ...
+
 
 class InscriptionRepository(Protocol):
     """Port de persistance des inscriptions — liens archer ↔ départ (E02US009, ADR-0017).
@@ -278,6 +296,19 @@ class InscriptionRepository(Protocol):
 
     def supprimer(self, inscription_id: InscriptionId) -> None:
         """Supprime l'inscription d'identifiant donné (désinscription ; existence garantie)."""
+        ...
+
+    def supprimer_avec_remboursement(
+        self, inscription_id: InscriptionId, remboursement: Remboursement
+    ) -> None:
+        """Supprime l'inscription **et** ouvre son remboursement en une transaction (E08US005).
+
+        Variante de `supprimer` pour une désinscription dont l'inscription **était payée** (créneau
+        tarifé) : le `remboursement` (construit par le service) est **inséré dans la même session**
+        que le `DELETE`, puis un **unique** `commit` scelle l'ensemble (ADR-0057, même couture que
+        `DepartRepository.supprimer_avec_remboursements`). Jamais de somme encaissée effacée sans
+        contrepartie ; jamais de remboursement en double. Existence garantie par l'appelant.
+        """
         ...
 
 
@@ -761,6 +792,46 @@ class AuditRepository(Protocol):
         Liste éventuellement vide. L'ordre chronologique est **garanti par le port** (à rebours des
         autres `par_tournoi`, qui laissent le tri au service) : un journal se lit dans le sens du
         temps, c'est une propriété de l'audit, pas une préférence d'affichage.
+        """
+        ...
+
+
+class RemboursementRepository(Protocol):
+    """Port de persistance du **registre de remboursements** (E08US005, ADR-0057).
+
+    Le registre n'est **pas** alimenté par ce port : ses lignes naissent **atomiquement** avec la
+    suppression de l'inscription payée qui les a provoquées
+    (`InscriptionRepository.supprimer_avec_remboursement`,
+    `DepartRepository.supprimer_avec_remboursements`). Ce port sert le **traitement** — lire les
+    remboursements d'un tournoi et marquer un poste « remboursé »/« reporté » — et rien d'autre :
+    on ne crée ni ne supprime un remboursement isolément (il naît d'un effacement, il ne meurt pas).
+
+    `enregistrer_avec_trace` co-écrit le nouveau statut **et** son entrée d'audit `REMBOURSEMENT`
+    dans **une seule transaction** (atomicité acte↔trace, ADR-0035, comme `definir_paye_avec_trace`
+    du paiement) : le traitement est un mouvement d'argent, il ne bascule jamais sans trace.
+    """
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Remboursement]:
+        """Renvoie les remboursements d'un tournoi (liste éventuellement vide).
+
+        L'ordre n'est **pas** garanti par le port (le service trie pour l'affichage : les
+        `à_rembourser` d'abord, puis par date).
+        """
+        ...
+
+    def par_id(self, remboursement_id: RemboursementId) -> Remboursement | None:
+        """Renvoie le remboursement d'identifiant donné, ou `None` s'il n'existe pas."""
+        ...
+
+    def enregistrer_avec_trace(
+        self, remboursement: Remboursement, entree: EntreeAudit
+    ) -> Remboursement:
+        """Met à jour un remboursement traité **et** co-écrit sa trace `REMBOURSEMENT` (E08US005).
+
+        Une seule transaction (ADR-0035) : le nouveau statut (`remboursé`/`reporté`, daté) et son
+        entrée d'audit tiennent dans un « tout ou rien ». L'entrée arrive **déjà construite et
+        datée** par le service (port `Horloge`). Existence garantie par l'appelant. Renvoie le
+        remboursement mis à jour.
         """
         ...
 

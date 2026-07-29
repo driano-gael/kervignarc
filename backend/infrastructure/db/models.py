@@ -535,3 +535,36 @@ class ForfaitORM(Base):
     declare_par: Mapped[str] = mapped_column(nullable=False)
     declare_le: Mapped[datetime.datetime] = mapped_column(nullable=False)
     motif: Mapped[str | None] = mapped_column(nullable=True)
+
+
+class RemboursementORM(Base):
+    """Table `remboursement` — registre des sommes encaissées à rendre (E08US005, ADR-0057).
+
+    Née quand une **inscription payée disparaît** (départ supprimé, désinscription) : la ligne
+    **survit** à cette disparition, elle en est la trace comptable. D'où l'absence de FK vers
+    `inscription` ou `depart` — souvent détruits : on fige des **instantanés textuels**
+    (`archer_prenom`, `archer_nom`, `creneau`) et le `montant_centimes` encaissé, comme
+    `entree_audit`/`forfait` figent le **nom** de l'auteur plutôt qu'une FK (survie à la suppression
+    du scoreur). Seul `tournoi_id` reste une FK — le registre appartient à son tournoi.
+
+    `motif` et `statut` stockent la **valeur** des énumérations `MotifRemboursement` /
+    `StatutRemboursement` (traduction chaîne ↔ enum côté repository, comme
+    `action`/`ActionAuditee`).
+    `cree_le` date l'ouverture ; `traite_le` est **nullable** (rempli au traitement
+    remboursé/reporté).
+    """
+
+    __tablename__ = "remboursement"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
+    # dans la politique de suppression du tournoi (non tranchée) ; ne pas contourner ici.
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    archer_prenom: Mapped[str] = mapped_column(nullable=False)
+    archer_nom: Mapped[str] = mapped_column(nullable=False)
+    creneau: Mapped[str] = mapped_column(nullable=False)
+    montant_centimes: Mapped[int] = mapped_column(nullable=False)
+    motif: Mapped[str] = mapped_column(nullable=False)
+    statut: Mapped[str] = mapped_column(nullable=False)
+    cree_le: Mapped[datetime.datetime] = mapped_column(nullable=False)
+    traite_le: Mapped[datetime.datetime | None] = mapped_column(nullable=True)

@@ -39,6 +39,7 @@ from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
+from domain.remboursement import Remboursement
 from domain.serie import Serie
 from domain.tournoi import Tournoi, TournoiId
 
@@ -271,6 +272,13 @@ class InMemoryInscriptionRepository(_AllocateurId):
         return maj
 
     def supprimer(self, inscription_id: InscriptionId) -> None:
+        self._items.pop(inscription_id, None)
+
+    def supprimer_avec_remboursement(
+        self, inscription_id: InscriptionId, remboursement: Remboursement
+    ) -> None:
+        # Simulation **éphémère** (E15US002, ADR-0054) : rien n'est persisté, le remboursement est
+        # ignoré comme `definir_paye_avec_trace` ignore l'audit. Conforme au port (E08US005).
         self._items.pop(inscription_id, None)
 
 

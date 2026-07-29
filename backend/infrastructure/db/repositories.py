@@ -36,6 +36,12 @@ from domain.placement import Affectation
 from domain.ports import Horloge
 from domain.poste import Poste, PosteId
 from domain.poste import normaliser_code as normaliser_code_poste
+from domain.remboursement import (
+    MotifRemboursement,
+    Remboursement,
+    RemboursementId,
+    StatutRemboursement,
+)
 from domain.score import Score
 from domain.scoreur import Scoreur, ScoreurId, normaliser_code
 from domain.serie import Serie, SerieId, Volee
@@ -55,6 +61,7 @@ from infrastructure.db.models import (
     PlacementORM,
     PlacementTableauORM,
     PosteORM,
+    RemboursementORM,
     ScoreORM,
     ScoreurORM,
     SerieORM,
@@ -985,6 +992,37 @@ class DepartRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de suppression du départ.") from exc
 
+    def supprimer_avec_remboursements(
+        self, depart_id: DepartId, remboursements: Sequence[Remboursement]
+    ) -> None:
+        """Supprime le départ (et ses inscriptions) **et** ouvre les remboursements — une
+        transaction.
+
+        Variante de `supprimer` (E08US005, ADR-0057) : les `remboursements` (un par inscription
+        payée
+        d'un créneau tarifé) sont **insérés** dans la **même** session que les deux `DELETE`,
+        scellés
+        par un **unique** `commit`. Ordre des `DELETE` inchangé (`inscription` avant `depart` — FK
+        sans `ON DELETE`, DETTE-001). Atomicité « on n'efface une inscription payée que si son
+        remboursement est ouvert » — jamais de somme encaissée effacée sans contrepartie, jamais de
+        remboursement en double (un échec avant le `commit` annule **tout**). Une liste vide est
+        tolérée (équivalente à `supprimer`) — mais le service appelle `supprimer` dans ce cas.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(DepartORM, depart_id)
+                if ligne is None:
+                    raise InfrastructureError("Départ à supprimer introuvable en base.")
+                for remboursement in remboursements:
+                    session.add(_remboursement_orm(remboursement))
+                session.execute(delete(InscriptionORM).where(InscriptionORM.depart_id == depart_id))
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError(
+                "Échec de suppression du départ avec remboursements."
+            ) from exc
+
 
 class ScoreurRepositorySQL:
     """Adapter SQLite du port `ScoreurRepository` (E10US003)."""
@@ -1277,6 +1315,29 @@ class InscriptionRepositorySQL:
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de suppression de l'inscription.") from exc
+
+    def supprimer_avec_remboursement(
+        self, inscription_id: InscriptionId, remboursement: Remboursement
+    ) -> None:
+        """Supprime l'inscription **et** ouvre son remboursement — une transaction (E08US005).
+
+        Tout ou rien (ADR-0057, couture de session partagée comme `definir_paye_avec_trace`) : le
+        remboursement est **inséré** puis l'inscription **supprimée** dans la **même** session, un
+        **unique** `commit` scelle l'ensemble. Ordre insertion-avant-suppression sans importance
+        (un seul commit), mais l'atomicité garantit qu'on n'efface **jamais** une inscription payée
+        sans ouvrir sa contrepartie, ni l'inverse. Ligne absente = incohérence technique (l'appelant
+        garantit l'existence) → `InfrastructureError`.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(InscriptionORM, inscription_id)
+                if ligne is None:
+                    raise InfrastructureError("Inscription à supprimer introuvable en base.")
+                session.add(_remboursement_orm(remboursement))
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de désinscription avec remboursement.") from exc
 
 
 def _vers_affectation(ligne: PlacementORM) -> Affectation:
@@ -1992,6 +2053,77 @@ class AuditRepositorySQL:
             raise InfrastructureError("Échec de lecture du journal d'audit.") from exc
 
 
+class RemboursementRepositorySQL:
+    """Adapter SQLite du port `RemboursementRepository` (E08US005, ADR-0057).
+
+    Registre des sommes encaissées à rendre. Les **créations** ne passent pas par cet adapter : une
+    ligne naît **atomiquement** avec la suppression de l'inscription payée qui la provoque
+    (`InscriptionRepositorySQL.supprimer_avec_remboursement`,
+    `DepartRepositorySQL.supprimer_avec_remboursements`, via `_remboursement_orm`). Cet adapter sert
+    la **lecture** (`par_tournoi`, `par_id`) et le **traitement** (`enregistrer_avec_trace`).
+
+    `enregistrer_avec_trace` réalise la **couture de session partagée** (ADR-0035, comme
+    `InscriptionRepositorySQL.definir_paye_avec_trace`) : le nouveau statut du remboursement **et**
+    son entrée d'audit `REMBOURSEMENT` s'écrivent dans **une seule session, un seul `commit`**. D'où
+    l'`AuditRepositorySQL` injecté — collaboration **infra → infra** (le port du domaine ignore la
+    couture). L'entrée arrive **déjà construite et datée** par le service (via `Horloge`).
+    """
+
+    def __init__(
+        self, session_factory: sessionmaker[Session], audit_repository: AuditRepositorySQL
+    ) -> None:
+        self._session_factory = session_factory
+        self._audit = audit_repository
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Remboursement]:
+        """Renvoie les remboursements d'un tournoi (ordre non garanti — le service trie)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(RemboursementORM).where(RemboursementORM.tournoi_id == tournoi_id)
+                ).scalars()
+                return [_vers_remboursement(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des remboursements.") from exc
+
+    def par_id(self, remboursement_id: RemboursementId) -> Remboursement | None:
+        """Renvoie le remboursement d'identifiant donné, ou `None` s'il n'existe pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(RemboursementORM, remboursement_id)
+                return None if ligne is None else _vers_remboursement(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du remboursement.") from exc
+
+    def enregistrer_avec_trace(
+        self, remboursement: Remboursement, entree: EntreeAudit
+    ) -> Remboursement:
+        """Met à jour le remboursement traité **et** co-écrit sa trace `REMBOURSEMENT` — une
+        transaction.
+
+        Tout ou rien (ADR-0035) : le nouveau `statut`/`traite_le` et l'entrée d'audit (via
+        `AuditRepositorySQL.consigner_dans`, qui ne commit pas) tiennent dans un **unique**
+        `commit`.
+        Ligne absente = incohérence technique (l'appelant garantit l'existence) →
+        `InfrastructureError`.
+        """
+        assert remboursement.id is not None, "Un remboursement à traiter est persisté."
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(RemboursementORM, remboursement.id)
+                if ligne is None:
+                    raise InfrastructureError("Remboursement à traiter introuvable en base.")
+                ligne.statut = remboursement.statut.value
+                ligne.traite_le = remboursement.traite_le
+                self._audit.consigner_dans(session, entree)
+                session.commit()
+                return _vers_remboursement(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError(
+                "Échec de traitement du remboursement et de sa trace."
+            ) from exc
+
+
 class SerieRepositorySQL:
     """Adapter SQLite du port `SerieRepository` (E04US002) — série + volées enfants.
 
@@ -2281,6 +2413,56 @@ def _vers_forfait(ligne: ForfaitORM) -> Forfait:
         declare_par=ligne.declare_par,
         declare_le=declare_le,
         motif=ligne.motif,
+        id=ligne.id,
+    )
+
+
+def _remboursement_orm(remboursement: Remboursement) -> RemboursementORM:
+    """Construit une ligne ORM `remboursement` depuis l'agrégat (statut/motif → valeur d'énum).
+
+    Partagé par les trois sites d'écriture — la co-écriture à la désinscription
+    (`InscriptionRepositorySQL`), à la suppression d'un départ (`DepartRepositorySQL`) — d'où une
+    fonction libre plutôt qu'une méthode. `id` reste `None` (auto-attribué par SQLite à
+    l'insertion).
+    """
+    return RemboursementORM(
+        tournoi_id=remboursement.tournoi_id,
+        archer_prenom=remboursement.archer_prenom,
+        archer_nom=remboursement.archer_nom,
+        creneau=remboursement.creneau,
+        montant_centimes=remboursement.montant_centimes,
+        motif=remboursement.motif.value,
+        statut=remboursement.statut.value,
+        cree_le=remboursement.cree_le,
+        traite_le=remboursement.traite_le,
+    )
+
+
+def _vers_remboursement(ligne: RemboursementORM) -> Remboursement:
+    """Traduit une ligne ORM `remboursement` en agrégat de domaine (E08US005, ADR-0057).
+
+    `motif`/`statut` : la valeur relue redevient l'énumération. `cree_le`/`traite_le` : SQLite
+    stocke
+    un `DateTime` **sans fuseau** ; on **réattache UTC** (le service n'écrit que de l'UTC via
+    `Horloge`), round-trip fidèle comme l'horodatage d'audit. `traite_le` reste `None` tant que le
+    poste est à traiter.
+    """
+    cree_le = ligne.cree_le
+    if cree_le.tzinfo is None:
+        cree_le = cree_le.replace(tzinfo=datetime.UTC)
+    traite_le = ligne.traite_le
+    if traite_le is not None and traite_le.tzinfo is None:
+        traite_le = traite_le.replace(tzinfo=datetime.UTC)
+    return Remboursement(
+        tournoi_id=ligne.tournoi_id,
+        archer_prenom=ligne.archer_prenom,
+        archer_nom=ligne.archer_nom,
+        creneau=ligne.creneau,
+        montant_centimes=ligne.montant_centimes,
+        motif=MotifRemboursement(ligne.motif),
+        cree_le=cree_le,
+        statut=StatutRemboursement(ligne.statut),
+        traite_le=traite_le,
         id=ligne.id,
     )
 

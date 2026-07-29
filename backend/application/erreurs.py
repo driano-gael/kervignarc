@@ -254,6 +254,55 @@ class InscriptionIntrouvable(ApplicationError):
     code = "inscription_introuvable"
 
 
+class InscriptionPayeeARembourser(ApplicationError):
+    """Désinscription suspendue : l'inscription est **payée**, sa suppression ouvrira un
+    remboursement (E08US005, ADR-0057) → 409.
+
+    **Un signalement chiffré, pas un refus** — même famille que `DepartEnCoursNonConfirme` : la
+    désinscription est **confirmable**, pas interdite. Une inscription non payée (ou d'un créneau
+    gratuit) se désinscrit **librement** (comportement E02US009 inchangé) ; mais désinscrire une
+    inscription **payée** efface une somme encaissée, qui deviendra un **remboursement à traiter**.
+    L'admin doit le voir avant de trancher — d'où ce signalement, levé par
+    `ServiceInscriptions.desinscrire(confirme=True)`, qui supprime **et** ouvre le remboursement
+    dans
+    la même transaction (atomicité, ADR-0057).
+
+    `details` porte le **montant** à rembourser (centimes) et le **nom** de l'archer, calculés au
+    moment d'agir — canal `details` du format `{code, message, details?}` (règle 5), comme
+    `DepartEnCoursNonConfirme`. Symétrique de `DepartAvecInscriptions`, qui joue le même rôle côté
+    suppression d'un **départ** entier.
+    """
+
+    code = "inscription_payee_a_rembourser"
+
+    def __init__(self, message: str, *, montant_centimes: int, archer: str) -> None:
+        super().__init__(message)
+        # Lu tel quel par `_sur_erreur_application` (frontière API) : le front y retrouve le montant
+        # et l'archer pour composer sa demande de confirmation, sans les reconstituer.
+        self.details = {"montant_centimes": montant_centimes, "archer": archer}
+
+
+class RemboursementIntrouvable(ApplicationError):
+    """Aucun remboursement ne correspond à l'identifiant demandé (E08US005) → 404."""
+
+    code = "remboursement_introuvable"
+
+
+class RemboursementDejaTraite(ApplicationError):
+    """Traitement refusé : le remboursement est **déjà** remboursé ou reporté (E08US005) → 409.
+
+    **Un refus, pas un signalement** : un remboursement traité est **terminal** (marquer «
+    remboursé »
+    ou « reporté » clôt le poste). Le re-marquer réécrirait sa date de traitement, brouillant la
+    trace d'un mouvement d'argent — conflit d'**état**, comme les transitions de statut de tournoi
+    (`TransitionStatutInvalide`), d'où le 409 porté par le **service** (l'entité, pure, ne connaît
+    pas l'intention de l'appelant). Le front n'offre le geste que sur les postes `à_rembourser` ;
+    cette garde est le filet serveur (autorité, règle 6).
+    """
+
+    code = "remboursement_deja_traite"
+
+
 class DejaInscrit(ApplicationError):
     """Inscription refusée : l'archer est **déjà inscrit** sur ce départ (E02US009) → 409.
 

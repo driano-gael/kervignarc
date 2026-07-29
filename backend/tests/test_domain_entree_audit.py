@@ -29,7 +29,8 @@ def test_actions_auditees_sont_l_ensemble_ferme_trace() -> None:
     L'enum est étendue par chaque US qui trace un nouvel acte sensible ; ce test **est** l'oracle du
     vocabulaire courant (non-régression) : validation/correction/forfait (E10US005), replacement
     (régénération massive du plan), paiement (marquage d'un règlement, simple ou groupé), lancement
-    (l'organisateur fait partir un ou plusieurs duels prêts d'un tour)."""
+    (l'organisateur fait partir des duels prêts), remboursement (l'admin marque une somme encaissée
+    à rendre remboursée/reportée, E08US005)."""
     assert {a.value for a in ActionAuditee} == {
         "validation",
         "correction_score",
@@ -37,6 +38,7 @@ def test_actions_auditees_sont_l_ensemble_ferme_trace() -> None:
         "replacement",
         "paiement",
         "lancement",
+        "remboursement",
     }
 
 

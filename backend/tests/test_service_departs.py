@@ -23,14 +23,22 @@ from application.erreurs import (
     DernierDepartNonSupprimable,
     TournoiIntrouvable,
 )
+from domain.archer import Archer, ArcherId
 from domain.cycle_depart import AvancementDepart, EtatDepart
 from domain.depart import DepartId
 from domain.erreurs import TarifDepartInvalide
 from domain.inscription import Inscription
+from domain.remboursement import MotifRemboursement, StatutRemboursement
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
-from tests.conftest import FauxDepartRepository, FauxInscriptionRepository
+from tests.conftest import (
+    FauxArcherRepository,
+    FauxDepartRepository,
+    FauxInscriptionRepository,
+    HorlogeFigee,
+)
 
 _DATE = datetime.date(2026, 3, 14)
+_QUAND = datetime.datetime(2026, 7, 29, 9, 30, tzinfo=datetime.UTC)
 
 # Avancement par défaut d'un créneau : aucun tir → **ouvert**. Les tests de cycle (E12US008)
 # posent explicitement un avancement lancé/clos ; tous les autres (E02US004/E02US009) restent
@@ -97,6 +105,7 @@ class Montage(NamedTuple):
     inscriptions: FauxInscriptionRepository
     avancements: FauxLecteurAvancement
     tournois: FauxTournoiRepository
+    archers: FauxArcherRepository
     tournoi_id: TournoiId
 
 
@@ -106,14 +115,16 @@ def _monter() -> Montage:
     departs = FauxDepartRepository()
     inscriptions = FauxInscriptionRepository()
     avancements = FauxLecteurAvancement()
+    archers = FauxArcherRepository()
     tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
     assert tournoi.id is not None
     return Montage(
-        ServiceDeparts(departs, tournois, inscriptions, avancements),
+        ServiceDeparts(departs, tournois, inscriptions, avancements, archers, HorlogeFigee(_QUAND)),
         departs,
         inscriptions,
         avancements,
         tournois,
+        archers,
         tournoi.id,
     )
 
@@ -203,7 +214,12 @@ def test_lister_trie_par_numero_et_isole_le_tournoi() -> None:
     b = tournois.ajouter(Tournoi.creer("B", _DATE))
     assert a.id is not None and b.id is not None
     service = ServiceDeparts(
-        departs, tournois, FauxInscriptionRepository(), FauxLecteurAvancement()
+        departs,
+        tournois,
+        FauxInscriptionRepository(),
+        FauxLecteurAvancement(),
+        FauxArcherRepository(),
+        HorlogeFigee(_QUAND),
     )
     service.creer(a.id, 810, "09:00")
     service.creer(a.id, 810, "09:00")
@@ -248,7 +264,12 @@ def test_modifier_leve_si_depart_d_un_autre_tournoi() -> None:
     b = tournois.ajouter(Tournoi.creer("B", _DATE))
     assert a.id is not None and b.id is not None
     service = ServiceDeparts(
-        departs, tournois, FauxInscriptionRepository(), FauxLecteurAvancement()
+        departs,
+        tournois,
+        FauxInscriptionRepository(),
+        FauxLecteurAvancement(),
+        FauxArcherRepository(),
+        HorlogeFigee(_QUAND),
     )
     depart = service.creer(a.id, 810, "09:00")
     assert depart.id is not None
@@ -278,7 +299,12 @@ def test_supprimer_leve_si_depart_d_un_autre_tournoi() -> None:
     b = tournois.ajouter(Tournoi.creer("B", _DATE))
     assert a.id is not None and b.id is not None
     service = ServiceDeparts(
-        departs, tournois, FauxInscriptionRepository(), FauxLecteurAvancement()
+        departs,
+        tournois,
+        FauxInscriptionRepository(),
+        FauxLecteurAvancement(),
+        FauxArcherRepository(),
+        HorlogeFigee(_QUAND),
     )
     depart = service.creer(a.id, 810, "09:00")
     assert depart.id is not None
@@ -357,6 +383,92 @@ def test_supprimer_depart_avec_inscriptions_confirme_efface() -> None:
 
     m.service.supprimer(m.tournoi_id, depart.id, autoriser_suppression_inscrits=True)
     assert m.service.lister(m.tournoi_id) == []
+
+
+# --- Suppression d'un départ : remboursement des inscriptions payées (E08US005, ADR-0057) ------
+
+
+def _archer_de(m: Montage, nom: str, prenom: str) -> ArcherId:
+    """Persiste un archer du tournoi du montage ; renvoie son id (pour figer un nom au
+    remboursement)."""
+    archer = m.archers.ajouter(Archer.creer(nom, prenom, m.tournoi_id, categorie_id=1))
+    assert archer.id is not None
+    return archer.id
+
+
+def test_supprimer_depart_ouvre_un_remboursement_par_inscription_payee() -> None:
+    """Confirmée, la suppression d'un créneau **tarifé** ouvre un remboursement par payée (CA
+    E08US005).
+
+    Les non-payées ne donnent **rien** (aucune somme encaissée) ; chaque poste fige l'instantané
+    (nom, créneau), le montant = tarif, le motif `depart_supprime`, statut `à_rembourser`.
+    """
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810, "09:00")
+    assert depart.id is not None
+    paye = _archer_de(m, "Robin", "Jean")
+    non_paye = _archer_de(m, "Martin", "Alice")
+    m.inscriptions.ajouter(Inscription.creer(paye, depart.id).marquer_paye(True))
+    m.inscriptions.ajouter(Inscription.creer(non_paye, depart.id))  # non payée : rien à rembourser
+
+    m.service.supprimer(m.tournoi_id, depart.id, autoriser_suppression_inscrits=True)
+
+    assert m.service.lister(m.tournoi_id) == []  # le créneau est parti
+    assert len(m.departs.remboursements) == 1  # un seul poste, pour la payée
+    poste = m.departs.remboursements[0]
+    assert poste.montant_centimes == 810
+    assert poste.motif is MotifRemboursement.DEPART_SUPPRIME
+    assert poste.statut is StatutRemboursement.A_REMBOURSER
+    assert poste.cree_le == _QUAND
+    assert (poste.archer_prenom, poste.archer_nom) == ("Jean", "Robin")
+
+
+def test_supprimer_depart_sans_payee_ne_cree_aucun_remboursement() -> None:
+    """Un créneau sans inscription payée part sans ouvrir de poste (voie `supprimer` simple)."""
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810, "09:00")
+    assert depart.id is not None
+    m.inscriptions.ajouter(Inscription.creer(_archer_de(m, "Martin", "Alice"), depart.id))
+
+    m.service.supprimer(m.tournoi_id, depart.id, autoriser_suppression_inscrits=True)
+    assert m.departs.remboursements == []
+
+
+def test_supprimer_depart_gratuit_ne_rembourse_pas_meme_les_payees() -> None:
+    """Sur un créneau **gratuit** (tarif 0), une inscription payée n'encaisse rien : aucun poste.
+
+    Cohérent avec l'invariant `montant > 0` de l'entité et l'alignement du message de signalement.
+    """
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 0, "09:00")  # créneau gratuit
+    assert depart.id is not None
+    m.inscriptions.ajouter(
+        Inscription.creer(_archer_de(m, "Robin", "Jean"), depart.id).marquer_paye(True)
+    )
+
+    m.service.supprimer(m.tournoi_id, depart.id, autoriser_suppression_inscrits=True)
+    assert m.departs.remboursements == []
+
+
+def test_supprimer_depart_lance_paye_confirme_cycle_rembourse() -> None:
+    """La voie de confirmation *cycle* (créneau lancé) rembourse aussi les payées (E12US008 +
+    E08US005).
+
+    Peu importe le chemin de confirmation (`confirme_cycle` sur un créneau lancé, ou
+    `autoriser_suppression_inscrits` sur un ouvert) : la suppression finale ouvre les
+    remboursements.
+    """
+    m = _monter()
+    depart = m.service.creer(m.tournoi_id, 810, "09:00")
+    assert depart.id is not None
+    m.avancements.poser(depart.id, _lance())  # créneau lancé → confirmation de cycle requise
+    m.inscriptions.ajouter(
+        Inscription.creer(_archer_de(m, "Robin", "Jean"), depart.id).marquer_paye(True)
+    )
+
+    m.service.supprimer(m.tournoi_id, depart.id, confirme_cycle=True)
+    assert len(m.departs.remboursements) == 1
+    assert m.departs.remboursements[0].montant_centimes == 810
 
 
 # --- Dernier départ d'un tournoi non-brouillon (E02US010) --------------------------------------
