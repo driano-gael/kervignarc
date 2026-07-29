@@ -25,11 +25,13 @@ from application.erreurs import (
     DepartComplet,
     DepartIntrouvable,
     InscriptionIntrouvable,
+    InscriptionPayeeARembourser,
 )
 from domain.archer import Archer, ArcherId
 from domain.depart import Depart, DepartId
 from domain.inscription import Inscription, InscriptionId
-from domain.ports import ArcherRepository, DepartRepository, InscriptionRepository
+from domain.ports import ArcherRepository, DepartRepository, Horloge, InscriptionRepository
+from domain.remboursement import MotifRemboursement, Remboursement
 
 
 @dataclass(frozen=True)
@@ -63,10 +65,12 @@ class ServiceInscriptions:
         inscription_repository: InscriptionRepository,
         archer_repository: ArcherRepository,
         depart_repository: DepartRepository,
+        horloge: Horloge,
     ) -> None:
         self._inscriptions = inscription_repository
         self._archers = archer_repository
         self._departs = depart_repository
+        self._horloge = horloge
 
     def inscrire(self, archer_id: ArcherId, depart_id: DepartId) -> InscriptionDetaillee:
         """Inscrit un archer sur un départ de **son** tournoi.
@@ -137,11 +141,55 @@ class ServiceInscriptions:
         """
         return sum(detail.montant_du_centimes for detail in self.lister_par_archer(archer_id))
 
-    def desinscrire(self, inscription_id: InscriptionId) -> None:
-        """Désinscrit un archer d'un départ (libre). Lève `InscriptionIntrouvable` sinon."""
+    def desinscrire(self, inscription_id: InscriptionId, confirme: bool = False) -> None:
+        """Désinscrit un archer d'un départ. Lève `InscriptionIntrouvable` si elle n'existe pas.
+
+        Une inscription **non payée** (ou d'un créneau **gratuit**) se désinscrit **librement**
+        (comportement E02US009 inchangé). Une inscription **payée** d'un créneau **tarifé** efface
+        une somme encaissée : elle est **confirmable** (E08US005, ADR-0057). Tant que `confirme` est
+        faux, lève `InscriptionPayeeARembourser` (409) — `details` chiffre le montant et nomme
+        l'archer. Confirmée, la désinscription **supprime l'inscription ET ouvre le remboursement en
+        une transaction** (`supprimer_avec_remboursement`) : jamais de somme effacée sans
+        contrepartie (le but de l'US), jamais de remboursement en double.
+
+        Le créneau peut avoir disparu (vestige d'un instantané périmé, purge en cascade concurrente)
+        ou l'archer être introuvable : dans ces cas on ne peut/doit pas ouvrir de remboursement — on
+        retombe sur la suppression simple (le départ détruit a déjà ouvert ses propres
+        remboursements par son propre chemin).
+        """
         inscription = self._inscription_existante(inscription_id)
         assert inscription.id is not None, "Une inscription relue est persistée."
-        self._inscriptions.supprimer(inscription.id)
+        depart = self._departs.par_id(inscription.depart_id)
+        archer = self._archers.par_id(inscription.archer_id)
+        a_rembourser = (
+            inscription.paye
+            and depart is not None
+            and depart.tarif_centimes > 0
+            and archer is not None
+        )
+        if not a_rembourser:
+            self._inscriptions.supprimer(inscription.id)
+            return
+        assert depart is not None and archer is not None  # garanti par `a_rembourser`
+        if not confirme:
+            raise InscriptionPayeeARembourser(
+                f"« {archer.prenom} {archer.nom} » a réglé le départ n° {depart.numero} : le "
+                "désinscrire ouvrira un remboursement. Confirmez seulement si c'est voulu.",
+                montant_centimes=depart.tarif_centimes,
+                archer=f"{archer.prenom} {archer.nom}",
+            )
+        remboursement = Remboursement.creer(
+            archer.tournoi_id,
+            archer_prenom=archer.prenom,
+            archer_nom=archer.nom,
+            creneau=_libelle_creneau(depart),
+            # DETTE-016 : montant = tarif **courant** du départ, pas la somme réellement encaissée
+            # (le modèle ne stocke que le booléen `paye`) — faux si le tarif a bougé après paiement.
+            montant_centimes=depart.tarif_centimes,
+            motif=MotifRemboursement.DESINSCRIPTION,
+            cree_le=self._horloge.maintenant(),
+        )
+        self._inscriptions.supprimer_avec_remboursement(inscription.id, remboursement)
 
     def _archer_existant(self, archer_id: ArcherId) -> Archer:
         archer = self._archers.par_id(archer_id)
@@ -167,3 +215,13 @@ class ServiceInscriptions:
         if inscription is None:
             raise InscriptionIntrouvable(f"Aucune inscription d'identifiant {inscription_id}.")
         return inscription
+
+
+def _libelle_creneau(depart: Depart) -> str:
+    """Instantané textuel d'un créneau pour un remboursement (E08US005) : « Départ n°3 — 09:00 ».
+
+    Figé au moment de l'effacement — le remboursement doit survivre à la disparition du départ, il
+    ne peut pas suivre une FK vers une ligne partie (ADR-0057). Dupliqué à l'identique dans
+    `ServiceDeparts` (2ᵉ occurrence assumée, pas de constante partagée — règle 12).
+    """
+    return f"Départ n°{depart.numero} — {depart.horaire}"

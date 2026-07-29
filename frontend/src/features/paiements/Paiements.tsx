@@ -9,11 +9,18 @@
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { decrireTarif } from '../competition/format'
-import type { LignePaiementArcher, RecapClub, RecapPaiement } from './api'
-import { useMarquerArcher, useMarquerClub, usePaiementsArchers, usePaiementsClubs } from './hooks'
+import type { LignePaiementArcher, RecapClub, RecapPaiement, Remboursement } from './api'
+import {
+  useMarquerArcher,
+  useMarquerClub,
+  usePaiementsArchers,
+  usePaiementsClubs,
+  useRemboursements,
+  useTraiterRemboursement,
+} from './hooks'
 import { actionMarquage, statutPaiement, type StatutPaiement } from './statut'
 
-type Onglet = 'archers' | 'clubs'
+type Onglet = 'archers' | 'clubs' | 'remboursements'
 
 export function Paiements({ tournoiId }: { tournoiId: number }) {
   const [onglet, setOnglet] = useState<Onglet>('archers')
@@ -42,13 +49,20 @@ export function Paiements({ tournoiId }: { tournoiId: number }) {
         >
           Par club
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={onglet === 'remboursements'}
+          className={onglet === 'remboursements' ? 'onglet onglet--actif' : 'onglet'}
+          onClick={() => setOnglet('remboursements')}
+        >
+          Remboursements
+        </button>
       </div>
 
-      {onglet === 'archers' ? (
-        <VueParArcher tournoiId={tournoiId} />
-      ) : (
-        <VueParClub tournoiId={tournoiId} />
-      )}
+      {onglet === 'archers' && <VueParArcher tournoiId={tournoiId} />}
+      {onglet === 'clubs' && <VueParClub tournoiId={tournoiId} />}
+      {onglet === 'remboursements' && <VueRemboursements tournoiId={tournoiId} />}
     </section>
   )
 }
@@ -194,6 +208,122 @@ function BlocClub({ tournoiId, club }: { tournoiId: number; club: RecapClub }) {
         </table>
       </div>
     </div>
+  )
+}
+
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+// Vue remboursements : les sommes encaissées à rendre (E08US005), à traiter d'abord. Un poste naît
+// quand une inscription payée est effacée (désinscription, suppression de départ) ; on le marque
+// **remboursé** (argent rendu) ou **reporté** (réaffecté à un autre créneau).
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+
+const LIBELLE_MOTIF: Record<string, string> = {
+  depart_supprime: 'Départ supprimé',
+  desinscription: 'Désinscription',
+}
+
+const LIBELLE_STATUT_REMBOURSEMENT: Record<string, string> = {
+  a_rembourser: 'À rembourser',
+  rembourse: 'Remboursé',
+  reporte: 'Reporté',
+}
+
+function VueRemboursements({ tournoiId }: { tournoiId: number }) {
+  const remboursements = useRemboursements(tournoiId)
+
+  if (remboursements.isError) return <MessageErreur erreur={remboursements.error} />
+  if (!remboursements.data) return <p className="carte__etat">Chargement…</p>
+  if (remboursements.data.length === 0)
+    return <p className="carte__etat">Aucun remboursement à traiter.</p>
+
+  const aTraiter = remboursements.data.filter((r) => r.statut === 'a_rembourser')
+  const total = aTraiter.reduce((s, r) => s + r.montant_centimes, 0)
+
+  return (
+    <>
+      <p className="paiements__total">
+        {aTraiter.length === 0
+          ? 'Tous les remboursements sont traités.'
+          : `${aTraiter.length} remboursement(s) à traiter — ${decrireTarif(total)}`}
+      </p>
+      <div className="table-defilement">
+        <table className="table paiements__table">
+          <thead>
+            <tr>
+              <th scope="col">Archer</th>
+              <th scope="col">Créneau</th>
+              <th scope="col">Motif</th>
+              <th scope="col">Montant</th>
+              <th scope="col">Statut</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {remboursements.data.map((remboursement) => (
+              <LigneRemboursement
+                key={remboursement.id}
+                tournoiId={tournoiId}
+                remboursement={remboursement}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
+function LigneRemboursement({
+  tournoiId,
+  remboursement,
+}: {
+  tournoiId: number
+  remboursement: Remboursement
+}) {
+  const traiter = useTraiterRemboursement(tournoiId)
+  const aTraiter = remboursement.statut === 'a_rembourser'
+
+  return (
+    <tr>
+      <td>
+        {remboursement.archer_prenom} {remboursement.archer_nom}
+      </td>
+      <td>{remboursement.creneau}</td>
+      <td>{LIBELLE_MOTIF[remboursement.motif] ?? remboursement.motif}</td>
+      <td>{decrireTarif(remboursement.montant_centimes)}</td>
+      <td>
+        <span className={`statut statut--${aTraiter ? 'du' : 'regle'}`}>
+          {LIBELLE_STATUT_REMBOURSEMENT[remboursement.statut] ?? remboursement.statut}
+        </span>
+      </td>
+      <td>
+        {aTraiter && (
+          <span className="inscription__actions">
+            <button
+              type="button"
+              className="bouton--discret"
+              disabled={traiter.isPending}
+              onClick={() =>
+                traiter.mutate({ remboursementId: remboursement.id, statut: 'rembourse' })
+              }
+            >
+              Marquer remboursé
+            </button>
+            <button
+              type="button"
+              className="bouton--discret"
+              disabled={traiter.isPending}
+              onClick={() =>
+                traiter.mutate({ remboursementId: remboursement.id, statut: 'reporte' })
+              }
+            >
+              Reporter
+            </button>
+          </span>
+        )}
+        <MessageErreur erreur={traiter.error} />
+      </td>
+    </tr>
   )
 }
 

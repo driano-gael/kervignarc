@@ -6,6 +6,7 @@
 // donc déjà réservé à l'admin.
 
 import { useState } from 'react'
+import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { decrireTarif } from '../competition/format'
 import { useDeparts } from '../departs/hooks'
@@ -38,7 +39,12 @@ export function InscriptionsArcher({
       {inscriptions.data && inscriptions.data.length > 0 && (
         <ul className="liste-inscriptions">
           {inscriptions.data.map((inscription) => (
-            <LigneInscription key={inscription.id} archerId={archerId} inscription={inscription} />
+            <LigneInscription
+              key={inscription.id}
+              archerId={archerId}
+              tournoiId={tournoiId}
+              inscription={inscription}
+            />
           ))}
         </ul>
       )}
@@ -60,15 +66,59 @@ export function InscriptionsArcher({
   )
 }
 
+// `details` du 409 `inscription_payee_a_rembourser` (E08US005) : montant encaissé à rembourser et
+// nom de l'archer, chiffrés côté serveur (jamais reconstitués côté client).
+interface ARembourser {
+  montant_centimes: number
+  archer: string
+}
+
+// Vrai si l'erreur est le 409 « inscription payée à rembourser » — celui qui ouvre le dialogue de
+// confirmation. On le distingue de toute autre erreur (500, 404, réseau) pour ne masquer QUE lui.
+function estConfirmable(erreur: unknown): boolean {
+  return erreur instanceof ErreurApi && erreur.code === 'inscription_payee_a_rembourser'
+}
+
 function LigneInscription({
   archerId,
+  tournoiId,
   inscription,
 }: {
   archerId: number
+  tournoiId: number
   inscription: Inscription
 }) {
   const marquer = useMarquerPaye(archerId)
-  const desinscrire = useDesinscrire(archerId)
+  const desinscrire = useDesinscrire(archerId, tournoiId)
+  // Confirmation en attente : renseignée quand le serveur signale une somme à rembourser (409).
+  const [aRembourser, setARembourser] = useState<ARembourser | null>(null)
+
+  const demanderDesinscription = () => {
+    desinscrire.mutate(
+      { inscriptionId: inscription.id, confirme: false },
+      {
+        onError: (erreur) => {
+          // On n'ouvre le dialogue que si le serveur a bien chiffré la somme à rembourser : le cast
+          // n'est sûr que gardé par le code **et** la présence de `details` (revue C1). Sinon on
+          // laisse l'erreur s'afficher normalement (bandeau ci-dessous).
+          if (
+            erreur instanceof ErreurApi &&
+            erreur.code === 'inscription_payee_a_rembourser' &&
+            erreur.details
+          ) {
+            setARembourser(erreur.details as ARembourser)
+          }
+        },
+      },
+    )
+  }
+
+  const confirmerDesinscription = () => {
+    desinscrire.mutate(
+      { inscriptionId: inscription.id, confirme: true },
+      { onSuccess: () => setARembourser(null) },
+    )
+  }
 
   return (
     <li className="inscription">
@@ -93,12 +143,53 @@ function LigneInscription({
           type="button"
           className="bouton--danger"
           disabled={desinscrire.isPending}
-          onClick={() => desinscrire.mutate(inscription.id)}
+          onClick={demanderDesinscription}
         >
           Désinscrire
         </button>
       </span>
-      <MessageErreur erreur={marquer.error ?? desinscrire.error} />
+      {aRembourser !== null && (
+        <div className="inscription__confirmation" role="alertdialog">
+          <p>
+            {aRembourser.archer} a réglé ce départ : le désinscrire ouvrira un remboursement de{' '}
+            {decrireTarif(aRembourser.montant_centimes)}.
+          </p>
+          <span className="inscription__actions">
+            <button
+              type="button"
+              className="bouton--danger"
+              disabled={desinscrire.isPending}
+              onClick={confirmerDesinscription}
+            >
+              Désinscrire et rembourser
+            </button>
+            <button
+              type="button"
+              className="bouton--discret"
+              disabled={desinscrire.isPending}
+              onClick={() => {
+                // `reset()` efface l'erreur 409 de la mutation : sans lui, annuler laisserait le
+                // message brut du 409 s'afficher dans le bandeau ci-dessous (revue B).
+                setARembourser(null)
+                desinscrire.reset()
+              }}
+            >
+              Annuler
+            </button>
+          </span>
+          {/* Une erreur du chemin **confirmé** (500, 404…) s'affiche DANS le dialogue : sinon le
+              masquage du bandeau l'avalerait et le dialogue resterait muet (revue C1). Le 409
+              confirmable lui-même n'est pas ré-affiché (le texte ci-dessus l'explique déjà). */}
+          {!estConfirmable(desinscrire.error) && <MessageErreur erreur={desinscrire.error} />}
+        </div>
+      )}
+      <MessageErreur erreur={marquer.error} />
+      {/* Bandeau : hors dialogue, on affiche toute erreur de désinscription **sauf** le 409
+          confirmable (traité par le dialogue). Pendant le dialogue, le bandeau se tait — l'erreur
+          du chemin confirmé est montrée dans le dialogue ci-dessus. */}
+      {aRembourser === null && !estConfirmable(desinscrire.error) && (
+        <MessageErreur erreur={desinscrire.error} />
+      )}
     </li>
   )
 }

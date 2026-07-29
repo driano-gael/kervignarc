@@ -38,6 +38,7 @@ pytest avec pytest pour seule dépendance — d'où aussi `fastapi` sous `TYPE_C
 from __future__ import annotations
 
 import dataclasses
+import datetime
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
@@ -53,6 +54,7 @@ from domain.forfait import Forfait
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import PhaseId
 from domain.placement import Affectation
+from domain.remboursement import Remboursement, RemboursementId
 from domain.tournoi import TournoiId
 
 if TYPE_CHECKING:
@@ -64,6 +66,22 @@ if TYPE_CHECKING:
 # annotations sont différées (`from __future__ import annotations`), donc `fastapi` n'est
 # jamais requis ici ; les tests qui s'en servent créent leur `TestClient` ailleurs.
 ConnecterAdmin = Callable[["TestClient"], None]
+
+
+class HorlogeFigee:
+    """Horloge déterministe conforme au port `Horloge` (règle 9) : toujours le même instant.
+
+    Partagée par les tests de service qui **datent** un acte (paiement, remboursement,
+    désinscription
+    payée) : un instant UTC figé rend la trace et les dates d'ouverture/traitement reproductibles,
+    sans horloge système. (`test_service_paiements` garde sa propre copie locale, historique.)
+    """
+
+    def __init__(self, instant: datetime.datetime) -> None:
+        self._instant = instant
+
+    def maintenant(self) -> datetime.datetime:
+        return self._instant
 
 
 class FauxClubRepository:
@@ -187,6 +205,10 @@ class FauxDepartRepository:
     def __init__(self) -> None:
         self._departs: dict[int, Depart] = {}
         self._sequence = 0
+        # Remboursements ouverts par `supprimer_avec_remboursements` : le test de service y lit
+        # *quels* postes le service a construits (archer, créneau, montant, motif). L'ouverture
+        # atomique avec les `DELETE` est un contrat d'adapter, prouvé au niveau du repository.
+        self.remboursements: list[Remboursement] = []
 
     def ajouter(self, depart: Depart) -> Depart:
         self._sequence += 1
@@ -209,6 +231,14 @@ class FauxDepartRepository:
     def supprimer(self, depart_id: DepartId) -> None:
         del self._departs[depart_id]
 
+    def supprimer_avec_remboursements(
+        self, depart_id: DepartId, remboursements: Sequence[Remboursement]
+    ) -> None:
+        # Supprime le départ et **capture** les remboursements ouverts (E08US005). L'atomicité et la
+        # cascade des inscriptions sont un contrat d'adapter, hors des tests de service.
+        del self._departs[depart_id]
+        self.remboursements.extend(remboursements)
+
 
 class FauxInscriptionRepository:
     """Repository d'inscriptions en mémoire conforme au port `InscriptionRepository`.
@@ -227,6 +257,11 @@ class FauxInscriptionRepository:
         # *quelle* trace le service a construite (auteur, action, avant/après). L'**atomicité**
         # acte↔trace, elle, est un contrat d'adapter, prouvé au niveau du repository.
         self.traces: list[EntreeAudit] = []
+        # Remboursements ouverts par `supprimer_avec_remboursement` (désinscription payée,
+        # E08US005) :
+        # le test de service y lit *quel* poste le service a construit. Atomicité = contrat
+        # d'adapter.
+        self.remboursements: list[Remboursement] = []
 
     def ajouter(self, inscription: Inscription) -> Inscription:
         self._sequence += 1
@@ -269,6 +304,51 @@ class FauxInscriptionRepository:
 
     def supprimer(self, inscription_id: InscriptionId) -> None:
         del self._inscriptions[inscription_id]
+
+    def supprimer_avec_remboursement(
+        self, inscription_id: InscriptionId, remboursement: Remboursement
+    ) -> None:
+        # Supprime l'inscription et **capture** le remboursement ouvert (E08US005). L'atomicité est
+        # un contrat d'adapter, hors des tests de service.
+        del self._inscriptions[inscription_id]
+        self.remboursements.append(remboursement)
+
+
+class FauxRemboursementRepository:
+    """Repository de remboursements en mémoire conforme au port `RemboursementRepository`
+    (E08US005).
+
+    Sert les tests de `ServiceRemboursements` : `ajouter` n'est **pas** du port (les postes naissent
+    d'un effacement d'inscription, pas d'un ajout direct) — c'est un utilitaire de test pour peupler
+    le registre. `enregistrer_avec_trace` capture la trace `REMBOURSEMENT` (l'atomicité acte↔trace
+    est un contrat d'adapter, hors des tests de service).
+    """
+
+    def __init__(self) -> None:
+        self._remboursements: dict[int, Remboursement] = {}
+        self._sequence = 0
+        self.traces: list[EntreeAudit] = []
+
+    def ajouter(self, remboursement: Remboursement) -> Remboursement:
+        """Utilitaire de test (hors port) : peuple le registre comme le ferait un effacement."""
+        self._sequence += 1
+        persiste = dataclasses.replace(remboursement, id=self._sequence)
+        self._remboursements[self._sequence] = persiste
+        return persiste
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Remboursement]:
+        return [r for r in self._remboursements.values() if r.tournoi_id == tournoi_id]
+
+    def par_id(self, remboursement_id: RemboursementId) -> Remboursement | None:
+        return self._remboursements.get(remboursement_id)
+
+    def enregistrer_avec_trace(
+        self, remboursement: Remboursement, entree: EntreeAudit
+    ) -> Remboursement:
+        assert remboursement.id in self._remboursements, "Remboursement à traiter absent."
+        self._remboursements[remboursement.id] = remboursement
+        self.traces.append(entree)
+        return remboursement
 
 
 class FauxPlacementRepository:

@@ -42,6 +42,7 @@ from tests.conftest import (
     FauxClubRepository,
     FauxDepartRepository,
     FauxInscriptionRepository,
+    HorlogeFigee,
 )
 from tests.test_service_archers import (
     FauxScoreRepository,
@@ -51,6 +52,12 @@ from tests.test_service_archers import (
 from tests.test_service_categories import FauxBlasonRepository
 
 _DATE = datetime.date(2026, 3, 14)
+
+
+def _horloge() -> HorlogeFigee:
+    """Horloge figée (le jeu d'essai ne désinscrit ni ne supprime de payées : la date n'est jamais
+    lue en pratique — mais les services l'exigent au constructeur, E08US005)."""
+    return HorlogeFigee(datetime.datetime(2026, 7, 29, 9, 0, tzinfo=datetime.UTC))
 
 
 class _AvancementInerte:
@@ -87,7 +94,7 @@ def _atteler() -> Attelage:
     service_tournois = ServiceTournois(tournoi_repo, depart_repo)
     service_categories = ServiceCategories(tournoi_repo, categorie_repo, blason_repo)
     service_departs = ServiceDeparts(
-        depart_repo, tournoi_repo, inscription_repo, _AvancementInerte()
+        depart_repo, tournoi_repo, inscription_repo, _AvancementInerte(), archer_repo, _horloge()
     )
     service_archers = ServiceArchers(
         tournoi_repo,
@@ -98,7 +105,9 @@ def _atteler() -> Attelage:
         inscription_repo,
         serie_repo,
     )
-    service_inscriptions = ServiceInscriptions(inscription_repo, archer_repo, depart_repo)
+    service_inscriptions = ServiceInscriptions(
+        inscription_repo, archer_repo, depart_repo, _horloge()
+    )
     service_clubs = ServiceClubs(club_repo, archer_repo)
 
     jeu = ServiceJeuEssai(

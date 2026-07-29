@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 28/07/2026** · **81 US livrées** · dernière : `E12US002` *(lancer un tour — feu vert + lancement, la bascule de tour du J2)*.
+**Dernière mise à jour : 29/07/2026** · **82 US livrées** · dernière : `E08US005` *(rembourser une inscription payée annulée — registre de remboursements, ADR-0057)*.
 
 ---
 
@@ -28,9 +28,9 @@
 > éphémère + `E15US003` cockpit de simulation livrés). **`E12US002` est livrée** (feu vert + lancement) ;
 > la séquence J2 reprend maintenant à `E08US005`.
 >
-> **`E08US005` — rembourser une inscription payée annulée** : la **prochaine à prendre**. *Ensuite* :
-> `E04US018` (afficher la prochaine cible après validation — le **premier écran récepteur** du signal
-> de lancement émis par `E12US002`), puis `E07US008` / `E07US004` (les autres canaux).
+> **`E04US018` — afficher la prochaine cible après validation** : la **prochaine à prendre**, le
+> **premier écran récepteur** du signal de lancement émis par `E12US002`. *Ensuite* : `E07US008` /
+> `E07US004` (les autres canaux). *(`E08US005` **livrée** — voir « Fait juste avant ».)*
 > *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
 > moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *`E12US004` (tracer un forfait) est **absorbée** par `E04US015` — voir ci-dessous.*
@@ -38,6 +38,22 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E08US005` **rembourser une inscription payée annulée** — US à **surface visible**. Quand une
+>   inscription **payée** est effacée (désinscription ou suppression de départ), la somme encaissée
+>   devient un **remboursement à traiter** dans un **registre à part** (agrégat/table `remboursement`,
+>   migration 0033) : il **survit** à la disparition de l'inscription/du départ, d'où **aucune FK**
+>   vers eux — on fige des **instantanés** (nom d'archer, libellé de créneau, montant), comme l'audit
+>   fige le nom de l'auteur. La création est **atomique** avec le `DELETE` (nouvelles méthodes de repo
+>   `supprimer_avec_remboursement(s)`) : jamais de somme effacée sans contrepartie. Deux issues,
+>   **remboursé** ou **reporté** (intention consignée, pas de ré-inscription auto) ; le **traitement**
+>   est **audité** (`REMBOURSEMENT`, ADR-0035) et **terminal** (`RemboursementDejaTraite`, 409), tandis
+>   que la **création** n'est pas tracée à l'audit — la ligne du registre **est** sa trace datée. La
+>   **désinscription payée** devient **confirmable** (`InscriptionPayeeARembourser`, 409 chiffré),
+>   comme la suppression de départ (ADR-0018). Décision d'archi tranchée au cadrage :
+>   [ADR-0057](../docs/adr/0057-registre-de-remboursements.md). Tests **service depuis le CA** (issues,
+>   confirmable, création aux deux déclencheurs) ; repository/API **après**. Oracle 120 vert. Front :
+>   onglet **« Remboursements »** de l'écran Paiements + dialogue de confirmation à la désinscription.
+>   Story alignée (Notes). Recette : [`docs/fonctionnel/E08US005.md`](../docs/fonctionnel/E08US005.md).
 > - `E12US002` **lancer un tour — feu vert + lancement** — US à **surface visible**, la **bascule de
 >   tour** du J2 (là où le produit gagne sa valeur). Un écran admin **« Feu vert »** (« Jour J »)
 >   montre **en continu**, duel par duel à venir, les trois questions du CA — *participants connus ?*,
@@ -287,7 +303,7 @@
 | 56 | E11US001 | Release, base et mise en réseau | ✅ |
 | 57 | E11US003 | Sauvegarde & archive | ✅ |
 
-## J2 — Duels simples + bascule de tour — 🔶 **en cours (9/14)**
+## J2 — Duels simples + bascule de tour — 🔶 **en cours (10/14)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -300,9 +316,9 @@
 | 64 | E04US015 | Gérer abandon / disqualification | ✅ *(qualif + duels, ADR-0050)* |
 | 65 | E12US004 | ~~Tracer un forfait~~ | ⛔ *(absorbée par E04US015)* |
 | 66 | E12US008 | Cycle de vie d'un départ | ✅ *(état dérivé + garde-fou confirmable, ADR-0051)* |
-| 67 | E08US005 | Rembourser une inscription payée annulée | 🎯 *(prochaine — J2 reprend ici)* |
+| 67 | E08US005 | Rembourser une inscription payée annulée | ✅ *(registre de remboursements, ADR-0057)* |
 | 68 | E12US002 | Lancer un tour (feu vert + lancement) | ✅ *(feu vert + lancement-événement, ADR-0056)* |
-| 69 | E04US018 | Afficher la prochaine cible après validation | ⬜ |
+| 69 | E04US018 | Afficher la prochaine cible après validation | 🎯 *(prochaine — J2 reprend ici)* |
 | 70 | E07US008 | Vue publique des affectations du prochain tour | ⬜ |
 | 71 | E06US003 | Barrage de tir pour places décisives | ⬜ |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ⬜ |

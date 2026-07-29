@@ -44,11 +44,16 @@ class ActionAuditee(str, Enum):
     déjà, [ADR-0040]), `PAIEMENT` (E08US002 — marquage d'un statut de paiement, simple ou groupé :
     un mouvement d'argent se trace), `LANCEMENT` (E12US002, [ADR-0056] — l'organisateur fait
     **partir** un ou plusieurs duels prêts : un acte de pilotage du jour J, daté et attribué, qui
-    **déclenche la diffusion** du signal aux postes/écrans, sans poser de statut sur le tableau).
+    **déclenche la diffusion** du signal aux postes/écrans, sans poser de statut sur le tableau),
+    `REMBOURSEMENT` (E08US005, [ADR-0057] — l'admin **traite** une somme encaissée à rendre : la
+    marque « remboursé » ou « reporté » d'un poste du registre ; un mouvement d'argent, comme le
+    paiement, mais **côté sortie**. La *création* du poste n'est **pas** tracée ici : la ligne du
+    registre **est** sa trace datée — l'audit ne suit que l'acte **humain**).
     Les nommer ici n'anticipe pas leur code : c'est le **vocabulaire** du CA.
 
     [ADR-0040]: ../../docs/adr/0040-alerte-par-calcul-d-impact.md
     [ADR-0056]: ../../docs/adr/0056-lancement-d-un-tour-acte-audite-et-diffuse.md
+    [ADR-0057]: ../../docs/adr/0057-registre-de-remboursements.md
     """
 
     VALIDATION = "validation"
@@ -57,6 +62,7 @@ class ActionAuditee(str, Enum):
     REPLACEMENT = "replacement"
     PAIEMENT = "paiement"
     LANCEMENT = "lancement"
+    REMBOURSEMENT = "remboursement"
 
 
 @dataclass(frozen=True)

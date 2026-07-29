@@ -29,7 +29,14 @@ from application.erreurs import (
 )
 from domain.cycle_depart import AvancementDepart, EtatDepart
 from domain.depart import Depart, DepartId
-from domain.ports import DepartRepository, InscriptionRepository, TournoiRepository
+from domain.ports import (
+    ArcherRepository,
+    DepartRepository,
+    Horloge,
+    InscriptionRepository,
+    TournoiRepository,
+)
+from domain.remboursement import MotifRemboursement, Remboursement
 from domain.tournoi import StatutTournoi, TournoiId
 
 _LIBELLE_ETAT = {EtatDepart.LANCE: "lancé", EtatDepart.CLOS: "clos"}
@@ -60,11 +67,15 @@ class ServiceDeparts:
         tournoi_repository: TournoiRepository,
         inscription_repository: InscriptionRepository,
         lecteur_avancement: LecteurAvancementDepart,
+        archer_repository: ArcherRepository,
+        horloge: Horloge,
     ) -> None:
         self._departs = depart_repository
         self._tournois = tournoi_repository
         self._inscriptions = inscription_repository
         self._avancement = lecteur_avancement
+        self._archers = archer_repository
+        self._horloge = horloge
 
     def creer(
         self,
@@ -175,7 +186,62 @@ class ServiceDeparts:
         # créneau *ouvert* : sur *lancé*/*clos*, la confirmation de cycle a déjà tranché plus haut.
         if etat is EtatDepart.OUVERT and not autoriser_suppression_inscrits:
             self._signaler_inscriptions(depart)
-        self._departs.supprimer(depart.id)
+        self._supprimer_en_remboursant(depart)
+
+    def _supprimer_en_remboursant(self, depart: Depart) -> None:
+        """Supprime le départ en **ouvrant les remboursements** de ses inscriptions payées
+        (E08US005).
+
+        Sur un créneau **tarifé**, chaque inscription **payée** effacée devient un remboursement à
+        traiter (ADR-0057) : on les construit (instantané archer + créneau, montant = tarif) et on
+        confie leur ouverture **atomique** avec les `DELETE` à l'adapter
+        (`supprimer_avec_remboursements`). Sans payée à rembourser (créneau gratuit, aucune payée),
+        on retombe sur la suppression simple. La confirmation de l'admin a déjà été obtenue en
+        amont.
+        """
+        assert depart.id is not None, "Un départ relu est persisté."
+        remboursements = (
+            self._remboursements_des_payees(depart) if depart.tarif_centimes > 0 else []
+        )
+        if remboursements:
+            self._departs.supprimer_avec_remboursements(depart.id, remboursements)
+        else:
+            self._departs.supprimer(depart.id)
+
+    def _remboursements_des_payees(self, depart: Depart) -> list[Remboursement]:
+        """Un `Remboursement` par inscription **payée** du créneau (tarif > 0 garanti par
+        l'appelant).
+
+        L'instantané (prénom/nom de l'archer, libellé du créneau) est figé maintenant — il doit
+        survivre à l'effacement du départ. Une inscription payée dont l'archer aurait disparu (cas
+        défensif quasi impossible : la suppression d'archer purge ses inscriptions) est **ignorée**
+        faute de nom à figer — plutôt qu'un remboursement anonyme.
+        """
+        assert depart.id is not None, "Un départ relu est persisté."
+        instant = self._horloge.maintenant()
+        creneau = f"Départ n°{depart.numero} — {depart.horaire}"
+        remboursements: list[Remboursement] = []
+        for inscription in self._inscriptions.par_depart(depart.id):
+            if not inscription.paye:
+                continue
+            archer = self._archers.par_id(inscription.archer_id)
+            if archer is None:
+                continue
+            remboursements.append(
+                Remboursement.creer(
+                    depart.tournoi_id,
+                    archer_prenom=archer.prenom,
+                    archer_nom=archer.nom,
+                    creneau=creneau,
+                    # DETTE-016 : le montant remboursé est le **tarif courant**, pas la somme
+                    # réellement encaissée (le modèle ne stocke que le booléen `paye`) — faux si le
+                    # tarif a été édité après le paiement. Résorption : figer la somme encaissée.
+                    montant_centimes=depart.tarif_centimes,
+                    motif=MotifRemboursement.DEPART_SUPPRIME,
+                    cree_le=instant,
+                )
+            )
+        return remboursements
 
     def _refuser_suppression_du_dernier_depart(self, tournoi_id: TournoiId) -> None:
         """Lève `DernierDepartNonSupprimable` si retirer ce départ laisserait un tournoi engagé sans
@@ -257,9 +323,12 @@ class ServiceDeparts:
         message = (
             f"Le départ n° {depart.numero} porte {detail}. Le supprimer les effacera définitivement"
         )
-        # La clause de remboursement ne s'affiche **que** s'il y a des payées : sinon elle
-        # évoquerait un remboursement fictif (créneau gratuit ou aucune inscription réglée).
-        if payees:
+        # La clause de remboursement ne s'affiche **que** s'il y a des payées **sur un créneau
+        # tarifé** : sinon elle évoquerait un remboursement fictif (créneau gratuit — rien encaissé
+        # —
+        # ou aucune inscription réglée). Depuis E08US005, cette promesse est **tenue** (le
+        # remboursement est réellement ouvert à la suppression), d'où l'alignement sur `tarif > 0`.
+        if payees and depart.tarif_centimes > 0:
             message += " ; les sommes déjà payées seront à rembourser (E08US005)"
         message += ". Confirmez seulement si ce créneau est bien annulé."
         raise DepartAvecInscriptions(message)

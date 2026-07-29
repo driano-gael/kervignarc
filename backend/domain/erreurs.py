@@ -613,3 +613,16 @@ class HorodatageForfaitInvalide(DomainError):
     """
 
     code = "horodatage_forfait_invalide"
+
+
+class RemboursementMontantInvalide(DomainError):
+    """Le montant d'un remboursement n'est pas strictement positif (E08US005, ADR-0057).
+
+    Un remboursement matérialise une **somme encaissée à rendre** : à 0 € (ou négatif) il n'a pas de
+    raison d'exister. Le site appelant ne construit un remboursement que pour une inscription
+    **payée** d'un créneau **tarifé**, mais l'entité défend l'invariant elle-même à la construction
+    —
+    comme `TarifDepartInvalide` protège un tarif.
+    """
+
+    code = "remboursement_montant_invalide"

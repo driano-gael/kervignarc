@@ -205,6 +205,53 @@ def test_desinscrire(app_inscriptions: FastAPI, connecter_admin: ConnecterAdmin)
         assert client.get(f"/api/v1/archers/{archer_id}/inscriptions").json() == []
 
 
+def test_desinscrire_payee_sans_confirmation_409(
+    app_inscriptions: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """DELETE d'une inscription **payée** sans `confirme` → 409 `inscription_payee_a_rembourser`.
+
+    `details` chiffre le montant et nomme l'archer ; rien n'est supprimé (E08US005, ADR-0057).
+    """
+    with TestClient(app_inscriptions) as client:
+        connecter_admin(client)
+        _, archer_id, depart_id = _preparer(client)  # tarif 810
+        inscription_id = client.post(
+            f"/api/v1/archers/{archer_id}/inscriptions", json={"depart_id": depart_id}
+        ).json()["id"]
+        client.put(f"/api/v1/inscriptions/{inscription_id}", json={"paye": True})
+
+        rejet = client.delete(f"/api/v1/inscriptions/{inscription_id}")
+        assert rejet.status_code == 409, rejet.text
+        corps = rejet.json()
+        assert corps["code"] == "inscription_payee_a_rembourser"
+        assert corps["details"]["montant_centimes"] == 810
+        assert "Alice" in corps["details"]["archer"]
+        # Rien supprimé : l'inscription est toujours là.
+        assert (
+            client.get(f"/api/v1/archers/{archer_id}/inscriptions").json()[0]["id"]
+            == inscription_id
+        )
+
+
+def test_desinscrire_payee_confirmee_204(
+    app_inscriptions: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """DELETE `?confirme=true` d'une inscription payée → 204, et un remboursement apparaît."""
+    with TestClient(app_inscriptions) as client:
+        connecter_admin(client)
+        tid, archer_id, depart_id = _preparer(client)
+        inscription_id = client.post(
+            f"/api/v1/archers/{archer_id}/inscriptions", json={"depart_id": depart_id}
+        ).json()["id"]
+        client.put(f"/api/v1/inscriptions/{inscription_id}", json={"paye": True})
+
+        ok = client.delete(f"/api/v1/inscriptions/{inscription_id}?confirme=true")
+        assert ok.status_code == 204, ok.text
+        assert client.get(f"/api/v1/archers/{archer_id}/inscriptions").json() == []
+        postes = client.get(f"/api/v1/tournois/{tid}/remboursements").json()
+        assert len(postes) == 1 and postes[0]["montant_centimes"] == 810
+
+
 def test_ecriture_sans_session_admin_401(app_inscriptions: FastAPI) -> None:
     """Inscrire sans être connecté admin → 401 (route protégée)."""
     with TestClient(app_inscriptions) as client:

@@ -5,10 +5,21 @@
 // détail par archer que les totaux par club), en plus de la diffusion temps réel post-commit.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getPaiementsArchers, getPaiementsClubs, marquerArcher, marquerClub } from './api'
+import {
+  getPaiementsArchers,
+  getPaiementsClubs,
+  getRemboursements,
+  type IssueRemboursement,
+  marquerArcher,
+  marquerClub,
+  traiterRemboursement,
+} from './api'
 
 const cleArchers = (tournoiId: number) => ['paiements', 'archers', tournoiId] as const
 const cleClubs = (tournoiId: number) => ['paiements', 'clubs', tournoiId] as const
+// Clé alignée sur celle qu'invalide la désinscription (feature « inscriptions ») : les deux vues
+// se rafraîchissent quand un poste s'ouvre.
+const cleRemboursements = (tournoiId: number) => ['remboursements', tournoiId] as const
 
 export function usePaiementsArchers(tournoiId: number) {
   return useQuery({
@@ -49,5 +60,26 @@ export function useMarquerClub(tournoiId: number) {
     mutationFn: ({ clubId, paye }: { clubId: number; paye: boolean }) =>
       marquerClub(tournoiId, clubId, paye),
     onSuccess: invalider,
+  })
+}
+
+export function useRemboursements(tournoiId: number) {
+  return useQuery({
+    queryKey: cleRemboursements(tournoiId),
+    queryFn: () => getRemboursements(tournoiId),
+  })
+}
+
+export function useTraiterRemboursement(tournoiId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      remboursementId,
+      statut,
+    }: {
+      remboursementId: number
+      statut: IssueRemboursement
+    }) => traiterRemboursement(tournoiId, remboursementId, statut),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: cleRemboursements(tournoiId) }),
   })
 }

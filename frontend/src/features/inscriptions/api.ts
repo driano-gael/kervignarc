@@ -35,6 +35,11 @@ export function marquerPaye(inscriptionId: number, paye: boolean): Promise<Inscr
   })
 }
 
-export function desinscrire(inscriptionId: number): Promise<void> {
-  return fetchJson<void>(`/api/v1/inscriptions/${inscriptionId}`, { method: 'DELETE' })
+// Désinscrire. Si l'inscription est **payée** (créneau tarifé), le serveur répond `409
+// inscription_payee_a_rembourser` tant que `confirme` est faux (E08US005, ADR-0057) : le front
+// affiche alors le montant à rembourser et propose de confirmer, ce qui rejoue l'appel avec
+// `confirme=true` (supprime l'inscription **et** ouvre le remboursement).
+export function desinscrire(inscriptionId: number, confirme = false): Promise<void> {
+  const suffixe = confirme ? '?confirme=true' : ''
+  return fetchJson<void>(`/api/v1/inscriptions/${inscriptionId}${suffixe}`, { method: 'DELETE' })
 }

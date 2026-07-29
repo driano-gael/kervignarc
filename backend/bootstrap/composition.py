@@ -48,6 +48,7 @@ from api.v1.placement import router as placement_router
 from api.v1.placement_duels import router as placement_duels_router
 from api.v1.postes import router as postes_router
 from api.v1.postes import session_router as poste_session_router
+from api.v1.remboursements import router as remboursements_router
 from api.v1.saisie import router as saisie_router
 from api.v1.saisie_duels import router as saisie_duels_router
 from api.v1.scoreurs import router as scoreurs_router
@@ -86,6 +87,7 @@ from application.pilotage_tour import ServicePilotageTour
 from application.placement import ServicePlacement
 from application.placement_duels import ServicePlacementDuels
 from application.postes import ServicePostes
+from application.remboursements import ServiceRemboursements
 from application.saisie import ServiceSaisie
 from application.saisie_duels import ServiceSaisieDuels
 from application.scoreurs import ServiceScoreurs
@@ -123,6 +125,7 @@ from infrastructure.db import (
     PlacementRepositorySQL,
     PlacementTableauRepositorySQL,
     PosteRepositorySQL,
+    RemboursementRepositorySQL,
     ScoreRepositorySQL,
     ScoreurRepositorySQL,
     SerieRepositorySQL,
@@ -350,6 +353,15 @@ def create_app(
     # (ADR-0035) : l'adapter reçoit l'`audit_repository` (concret) pour `consigner_dans` sur la
     # session partagée — couplage **infra → infra**, comme la saisie et le placement.
     inscription_repository = InscriptionRepositorySQL(database.session_factory, audit_repository)
+    # Registre de remboursements (E08US005, ADR-0057) : le traitement (marquer remboursé/reporté)
+    # co-écrit sa trace `REMBOURSEMENT` dans une seule transaction (ADR-0035) — d'où
+    # l'`audit_repository`
+    # (concret) injecté, couplage **infra → infra** comme l'inscription et le placement. La
+    # *création*
+    # d'un poste, elle, se fait à la suppression d'une inscription payée (via les repos ci-dessus).
+    remboursement_repository = RemboursementRepositorySQL(
+        database.session_factory, audit_repository
+    )
     # Le plan de cibles co-écrit sa trace d'audit d'une régénération **massive** dans une seule
     # transaction (E12US007, ADR-0035, ADR-0040) : l'adapter reçoit l'`audit_repository` (concret)
     # pour `consigner_dans` sur la session partagée — couplage **infra → infra**, comme la saisie.
@@ -447,8 +459,18 @@ def create_app(
     )
     # Inscriptions archer↔départ (E02US009, ADR-0017) : inscrire sur des créneaux du tournoi de
     # l'archer (même tournoi, unicité), marquer payé, désinscrire ; le montant dû dérive du tarif.
+    # `HorlogeSysteme` **date** l'ouverture d'un remboursement quand une désinscription paye est
+    # confirmée (E08US005) : la désinscription supprime l'inscription **et** ouvre sa contrepartie
+    # en une transaction (`supprimer_avec_remboursement`).
     app.state.service_inscriptions = ServiceInscriptions(
-        inscription_repository, archer_repository, depart_repository
+        inscription_repository, archer_repository, depart_repository, HorlogeSysteme()
+    )
+    # Traitement des remboursements (E08US005, ADR-0057) : lister les postes à traiter et les
+    # marquer
+    # remboursé/reporté (audité, `Horloge` date la trace `REMBOURSEMENT`). La création vit ailleurs
+    # (suppression d'inscription payée) — ce service ne fait que consulter et clore.
+    app.state.service_remboursements = ServiceRemboursements(
+        remboursement_repository, tournoi_repository, HorlogeSysteme()
     )
     # Suivi des paiements (E08US002) : consulter (par archer, par club) et **marquer** le statut
     # (simple, par archer, par club — tout audité). Dérive dû/payé/reste du booléen `paye` par
@@ -730,11 +752,17 @@ def create_app(
     # garde-fou « supprimer un départ qui porte des inscriptions » (E02US009). Câblé **ici**, après
     # `service_completude` : son garde-fou de cycle de vie (E12US008) lit l'état du créneau via le
     # port étroit `LecteurAvancementDepart`, que `ServiceCompletude` réalise (`avancement_depart`).
+    # `archer_repository` + `HorlogeSysteme` : à la suppression d'un départ **tarifé**, chaque
+    # inscription **payée** effacée ouvre un remboursement (E08US005, ADR-0057) — il faut le nom de
+    # l'archer (instantané figé) et la date d'ouverture. Suppression + ouvertures en une transaction
+    # (`supprimer_avec_remboursements`).
     app.state.service_departs = ServiceDeparts(
         depart_repository,
         tournoi_repository,
         inscription_repository,
         app.state.service_completude,
+        archer_repository,
+        HorlogeSysteme(),
     )
 
     # Jeu d'essai — générateur d'inscrits + scénarios rejouables (E15US001) : outil admin de démo/QA
@@ -790,6 +818,7 @@ def create_app(
     app.include_router(jeu_essai_router)
     app.include_router(simulation_router)
     app.include_router(paiements_router)
+    app.include_router(remboursements_router)
     app.include_router(categories_router)
     app.include_router(blasons_router)
     app.include_router(clubs_router)

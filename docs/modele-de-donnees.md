@@ -470,6 +470,31 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 > traces viendront : validations/corrections avec E04US002, forfaits avec E04US015. Consultable par
 > l'admin (`GET /api/v1/tournois/{id}/audit`). Voir le glossaire (`AuditLog`, `Horloge`).
 
+### REMBOURSEMENT (E08US005) — somme encaissée à rendre
+| id | INTEGER | PK |
+| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) — **seule** FK |
+| archer_prenom | TEXT | NOT NULL — **instantané** (pas une FK : survit à la disparition de l'archer) |
+| archer_nom | TEXT | NOT NULL — instantané |
+| creneau | TEXT | NOT NULL — instantané du départ (« Départ n°3 — 09:00 »), le départ a souvent disparu |
+| montant_centimes | INTEGER | NOT NULL, **> 0** — tarif encaissé figé (centimes entiers, ADR-0012) |
+| motif | TEXT | NOT NULL — `depart_supprime`\|`desinscription` (`MotifRemboursement`) |
+| statut | TEXT | NOT NULL — `a_rembourser`\|`rembourse`\|`reporte` (`StatutRemboursement`) |
+| cree_le | DATETIME | NOT NULL — ouverture, en **UTC** (aware, garanti par le domaine) |
+| traite_le | DATETIME | nullable — instant du traitement (`None` tant qu'à traiter) |
+
+> Table **livrée** par E08US005 (migration `0033`, [ADR-0057](adr/0057-registre-de-remboursements.md)).
+> Née quand une inscription **payée** est effacée (départ supprimé, désinscription) : la ligne
+> **survit** à cette disparition, d'où **aucune FK** vers `inscription`/`depart` — on fige des
+> **instantanés textuels** (comme `entree_audit`/`forfait` figent le **nom** de l'auteur). Ouverture
+> **atomique** avec le `DELETE` (`supprimer_avec_remboursement(s)`) ; traitement (`rembourse`/`reporte`)
+> **audité** (`REMBOURSEMENT`, une transaction, ADR-0035) et **terminal**. Seule FK `tournoi_id` sans
+> `ON DELETE` (DETTE-001, comme `entree_audit`).
+>
+> **Limite connue (DETTE-016)** : `montant_centimes` fige le **tarif courant du départ au moment de
+> l'effacement**, or le modèle ne stocke **pas** la somme réellement versée (seul le booléen `paye` de
+> l'inscription) — si le tarif a changé après le paiement, le remboursement peut différer de
+> l'encaissé. Voir le registre de dette.
+
 ---
 
 ## Config d'une PHASE (champ `config` JSON)

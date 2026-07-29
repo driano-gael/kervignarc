@@ -23,19 +23,23 @@ from application.erreurs import (
     DepartComplet,
     DepartIntrouvable,
     InscriptionIntrouvable,
+    InscriptionPayeeARembourser,
 )
 from application.inscriptions import ServiceInscriptions
 from domain.archer import Archer, ArcherId
 from domain.depart import Depart, DepartId
+from domain.remboursement import MotifRemboursement, StatutRemboursement
 from domain.tournoi import TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxDepartRepository,
     FauxInscriptionRepository,
+    HorlogeFigee,
 )
 
 _DATE = datetime.date(2026, 3, 14)
 _TOURNOI = 1
+_QUAND = datetime.datetime(2026, 7, 29, 9, 30, tzinfo=datetime.UTC)
 
 
 def _monter() -> (
@@ -46,7 +50,8 @@ def _monter() -> (
     archers = FauxArcherRepository()
     departs = FauxDepartRepository()
     inscriptions = FauxInscriptionRepository()
-    return ServiceInscriptions(inscriptions, archers, departs), archers, departs, inscriptions
+    service = ServiceInscriptions(inscriptions, archers, departs, HorlogeFigee(_QUAND))
+    return service, archers, departs, inscriptions
 
 
 def _archer(archers: FauxArcherRepository, tournoi_id: TournoiId = _TOURNOI) -> ArcherId:
@@ -323,6 +328,99 @@ def test_desinscrire_inconnue_leve() -> None:
     service, _, _, _ = _monter()
     with pytest.raises(InscriptionIntrouvable):
         service.desinscrire(404)
+
+
+# --- Désinscription d'une inscription payée : confirmable + remboursement (E08US005, ADR-0057) ---
+
+
+def _inscrire_et_payer(
+    service: ServiceInscriptions,
+    inscriptions: FauxInscriptionRepository,
+    archer_id: ArcherId,
+    depart_id: DepartId,
+) -> int:
+    """Inscrit puis marque **payée** (fait posé directement — le marquage vit dans
+    ServicePaiements).
+
+    Renvoie l'id de l'inscription payée.
+    """
+    inscription = service.inscrire(archer_id, depart_id).inscription
+    assert inscription.id is not None
+    inscriptions.enregistrer(dataclasses.replace(inscription, paye=True))
+    return inscription.id
+
+
+def test_desinscrire_payee_sans_confirmation_signale_le_remboursement() -> None:
+    """Désinscrire une inscription **payée** d'un créneau tarifé est **confirmable** (CA E08US005).
+
+    Sans `confirme`, lève `InscriptionPayeeARembourser` (409) : rien n'est supprimé, aucun
+    remboursement ouvert, et `details` chiffre le montant + nomme l'archer.
+    """
+    service, archers, departs, inscriptions = _monter()
+    archer_id = _archer(archers)
+    depart_id = _depart(departs, tarif_centimes=810)
+    inscription_id = _inscrire_et_payer(service, inscriptions, archer_id, depart_id)
+
+    with pytest.raises(InscriptionPayeeARembourser) as capture:
+        service.desinscrire(inscription_id)  # confirme=False par défaut
+
+    assert capture.value.details["montant_centimes"] == 810
+    assert "Robin" in str(capture.value.details["archer"])  # « Jean Robin » (prénom nom)
+    assert inscriptions.par_id(inscription_id) is not None  # rien supprimé
+    assert inscriptions.remboursements == []  # aucun poste ouvert
+
+
+def test_desinscrire_payee_confirmee_supprime_et_ouvre_le_remboursement() -> None:
+    """Confirmée, la désinscription supprime l'inscription **et** ouvre le remboursement (CA).
+
+    Le poste fige l'instantané (nom, créneau), le montant encaissé (le tarif), le motif
+    `desinscription` et naît `à_rembourser`, daté par l'horloge.
+    """
+    service, archers, departs, inscriptions = _monter()
+    archer_id = _archer(archers)
+    depart_id = _depart(departs, tarif_centimes=810, numero=3)
+    inscription_id = _inscrire_et_payer(service, inscriptions, archer_id, depart_id)
+
+    service.desinscrire(inscription_id, confirme=True)
+
+    assert inscriptions.par_id(inscription_id) is None  # supprimée
+    assert len(inscriptions.remboursements) == 1
+    poste = inscriptions.remboursements[0]
+    assert poste.montant_centimes == 810
+    assert poste.motif is MotifRemboursement.DESINSCRIPTION
+    assert poste.statut is StatutRemboursement.A_REMBOURSER
+    assert poste.cree_le == _QUAND
+    assert (poste.archer_prenom, poste.archer_nom) == ("Jean", "Robin")
+    assert "n°3" in poste.creneau
+
+
+def test_desinscrire_non_payee_reste_libre_sans_remboursement() -> None:
+    """Une inscription **non payée** se désinscrit **librement** (E02US009 inchangé), sans poste."""
+    service, archers, departs, inscriptions = _monter()
+    archer_id = _archer(archers)
+    depart_id = _depart(departs, tarif_centimes=810)
+    inscription = service.inscrire(archer_id, depart_id).inscription
+    assert inscription.id is not None
+
+    service.desinscrire(inscription.id)  # aucune confirmation requise
+    assert inscriptions.par_id(inscription.id) is None
+    assert inscriptions.remboursements == []
+
+
+def test_desinscrire_payee_creneau_gratuit_reste_libre_sans_remboursement() -> None:
+    """Payée mais sur un créneau **gratuit** (tarif 0) : rien à rembourser, désinscription libre.
+
+    Rien n'a été encaissé — le montant serait 0, un remboursement fictif. On ne signale ni n'ouvre
+    de poste (cohérent avec l'invariant `montant > 0` de l'entité).
+    """
+    service, archers, departs, inscriptions = _monter()
+    archer_id = _archer(archers)
+    depart_id = _depart(departs, tarif_centimes=0)
+    inscription_id = _inscrire_et_payer(service, inscriptions, archer_id, depart_id)
+
+    service.desinscrire(inscription_id)  # pas de levée malgré `paye`
+    assert inscriptions.par_id(inscription_id) is None
+    assert inscriptions.remboursements == []
 
 
 # --- Montant dû par archer (E08US001) --------------------------------------------------------
