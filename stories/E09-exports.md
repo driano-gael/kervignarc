@@ -18,9 +18,14 @@ premier document imprimable pour la saisie/l'archivage papier.
   intégrée ; un document de test se génère ; ~~fonctionne dans l'exécutable packagé~~ → **volet
   packaging déféré à EPIC-11** (voir Notes).
 - **CA — feuille de marque (ex-002)** : feuille par cible/archer avec zones de scores ; conforme aux
-  données.
+  données. **Précisions actées en cours d'US (18/07/2026)** : (a) une page **par archer placé** — la
+  **réserve** (inscrits non posés sur le plan) **ne reçoit pas** de feuille ; (b) la grille de scores
+  **dérive du barème de qualification** du tournoi (volées × flèches), avec **repli sur le preset
+  FFTA 18 m** (20 volées de 3) si aucun barème n'est encore défini. *(Ces deux points étaient
+  implicites dans « conforme aux données » ; explicités ici pour les US dérivées E09US003/E09US005.)*
 - **Notes** : **QT3 tranchée en ReportLab** ([ADR-0031](../docs/adr/0031-bibliotheque-pdf-reportlab.md)) —
-  wheels autoportantes, aucune dépendance native, embarquable dans PyInstaller. **Arbitrage de
+  wheels autoportantes, aucune biblio native de niveau système à installer à part, embarquable dans
+  PyInstaller. **Arbitrage de
   périmètre (18/07/2026)** : aucun build PyInstaller n'existe encore (E00US012 = exécutable de *dev*
   seul ; le packaging complet est EPIC-11), donc la clause « fonctionne packagé » est **déférée à
   EPIC-11** — E09US001 choisit la lib et génère le PDF dans l'app qui tourne. Risque **R4** résiduel

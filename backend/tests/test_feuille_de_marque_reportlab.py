@@ -66,8 +66,12 @@ def test_grille_dimensionnee_par_le_bareme() -> None:
 
 
 def test_echec_de_rendu_enveloppe_en_infrastructure_error() -> None:
-    """Une donnée qui fait échouer ReportLab remonte en `InfrastructureError`, pas en exception
-    brute : le type de retour du barème est un entier ; un `None` mal typé casse la construction."""
+    """N'importe quelle défaillance **pendant le rendu** ressort en `InfrastructureError`, jamais en
+    exception brute (contrat ADR-0007). On la provoque ici par un `nb_volees` invalide (`None`) qui
+    casse la construction de la grille *à l'intérieur* du `try` — honnêtement une `TypeError`, pas
+    une panne interne de ReportLab, mais elle exerce bien le seul chemin qui compte : tout ce qui
+    lève sous `_rendre` doit être enveloppé. En pratique un barème réel ne peut pas atteindre ce
+    point (`BaremeQualification.creer` refuse `< 1`), d'où l'injection d'un `None` mal typé."""
     feuille = FeuilleDeMarque(
         tournoi="T",
         depart_numero=1,

@@ -40,5 +40,10 @@ backups/
 .DS_Store
 Thumbs.db
 
+# === Outillage assistant ===
+# Worktrees git éphémères créés par l'assistant : jamais versionnés (un `git add` large
+# les committerait sinon comme gitlink sur la branche courante — cf. incident du 19/07/2026).
+.claude/worktrees/
+
 # === Divers ===
 *.log
