@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 28 juillet 2026
+# Résumé du projet — où on en est au 29 juillet 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -20,7 +20,9 @@ tourne en temps réel — y compris quand le wifi saute — et un tournoi de qua
 désormais de bout en bout : les postes de saisie se supervisent, le classement se calcule, et le
 public le consulte en direct sans compte — jusqu'à suivre un archer et voir sa feuille de marque se
 remplir volée par volée. Côté organisateur, le **suivi des paiements** (qui a réglé, combien reste-t-il
-dû, par archer et par club) est en place, un écran de **complétude** dit d'un coup d'œil ce qui
+dû, par archer et par club) est en place — et une somme déjà encaissée ne disparaît plus en silence :
+annuler une inscription **payée** ouvre un **remboursement à traiter** que l'organisateur marque
+remboursé ou reporté. Un écran de **complétude** dit d'un coup d'œil ce qui
 manque avant de terminer le tournoi, une **recherche d'archer** permanente répond à « je tire
 où ? » depuis n'importe quel écran admin, et un écran **« Doublons »** repère les fiches en double
 et les **fusionne** sans rien perdre. Et l'application se **déploie désormais en un seul fichier**
@@ -101,6 +103,14 @@ Tout ce qu'il faut pour préparer un tournoi avant le jour J :
   filtrable) et **par club** (mêmes totaux + détail), qui a réglé. On marque un paiement à la ligne,
   ou d'un geste **tout un archer** ou **tout un club** (règlement groupé) ; chaque marquage laisse une
   **trace** dans le journal d'audit (c'est de l'argent). Pas d'encaissement en ligne : c'est un statut.
+- **Rembourser une inscription payée annulée** : quand une inscription **déjà réglée** est effacée
+  (archer désinscrit, ou créneau supprimé), la somme encaissée ne disparaît pas — elle passe dans un
+  **registre de remboursements** (onglet « Remboursements » de l'écran Paiements) qui garde le nom de
+  l'archer, le créneau et le montant, **même si le créneau a été supprimé**. L'organisateur marque
+  chaque poste **remboursé** (argent rendu) ou **reporté** (réaffecté), acte **tracé** au journal. Et
+  désinscrire un archer **payé** demande désormais une **confirmation chiffrée** (« 8,10 € à
+  rembourser ») — on ne fait plus disparaître de l'argent par mégarde. Détail dans
+  [`2026-07-29-09h53-rembourser-une-inscription-payee.md`](2026-07-29-09h53-rembourser-une-inscription-payee.md).
 - **Détecter et fusionner les doublons** : un écran « Doublons » repère les fiches qui désignent
   probablement le même archer saisi deux fois — mêmes nom/prénom/club, ou rapprochement approximatif
   (faute de frappe, prénom abrégé) classé « à vérifier ». L'organisateur choisit la fiche à **garder** ;
@@ -353,7 +363,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **81 US livrées** sur `main` (mergées, revues, CI verte) à la date du 28/07/2026. **`SUIVI-US.md`
+- **82 US livrées** sur `main` (mergées, revues, CI verte) à la date du 29/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -363,29 +373,29 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   **générateur d'inscrits + scénarios rejouables** (E15US001), le **moteur de simulation éphémère**
   (E15US002, technique, sans écran) puis le **cockpit de simulation** (E15US003, bot pausable + reprise
   en main + canal isolé). La séquence **J2** a ensuite repris avec le **feu vert + lancement d'un tour**
-  (E12US002).
+  (E12US002), puis le **remboursement d'une inscription payée annulée** (E08US005).
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
   et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (9/14)**
+  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (10/14)**
   avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003), le **tableau
   d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001), la
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
   (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**), l'**abandon /
-  disqualification** (E04US015 — qualif *et* duels), le **cycle de vie d'un départ** (E12US008) puis
-  le **feu vert + lancement d'un tour** (E12US002).
-- Dernière US livrée : **E12US002** (lancer un tour — **feu vert + lancement**) — US **à surface
-  visible**, la **bascule de tour** du J2 (là où le produit gagne sa valeur). Un écran admin montre
-  **en continu**, duel par duel, ce qui est **prêt à faire tirer** et ce qui **bloque** (nommé :
-  « en attente du duel n°3 », « cible non attribuée ») ; un **bouton chiffré** (« 2 duels · cibles 1 ·
-  4 archers prévenus ») fait **partir** les duels prêts d'un geste, recalculés dans la file (jamais
-  crus sur parole). Le lancement est un **acte audité** qui **déclenche la diffusion** d'un signal
-  typé (ADR-0056), **sans** poser de statut sur le tableau (reconstruit) ; les 3 **écrans récepteurs**
-  (tablette/public/salle) et la cible des **tours ≥ 2** (placement 1→N, E05US010) sont **séquencés**.
-  *(Livré juste avant : **E15US003**, le cockpit de simulation — 3ᵉ et dernière d'EPIC-15, close ;
-  puis **E15US002** / **E15US001**.)*
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E08US005** (rembourser une inscription
-  payée annulée), puis **E04US018** (afficher la prochaine cible après validation — le **premier des
-  écrans récepteurs** du lancement). Le fil **équipes** est débloqué (E13US002+).
+  disqualification** (E04US015 — qualif *et* duels), le **cycle de vie d'un départ** (E12US008), le
+  **feu vert + lancement d'un tour** (E12US002) puis le **remboursement d'une inscription payée
+  annulée** (E08US005).
+- Dernière US livrée : **E08US005** (rembourser une inscription payée annulée) — US **à surface
+  visible**. Effacer une inscription **payée** (désinscription ou suppression de départ) ouvre un
+  **remboursement à traiter** dans un **registre à part** qui **survit** à la disparition de
+  l'inscription/du départ (aucune FK vers eux — on fige nom d'archer, créneau, montant, comme l'audit
+  fige le nom de l'auteur). L'ouverture est **atomique** avec l'effacement (jamais de somme perdue) ;
+  le **traitement** (remboursé / reporté) est **audité** et **terminal** (ADR-0057). La désinscription
+  d'un payé devient **confirmable** (montant chiffré). Front : onglet « Remboursements » de l'écran
+  Paiements. *(Livré juste avant : **E12US002**, le feu vert + lancement d'un tour ; puis **E15US003**
+  / **E15US002** / **E15US001**.)*
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E04US018** (afficher la prochaine cible
+  après validation — le **premier des écrans récepteurs** du lancement émis par E12US002). Le fil
+  **équipes** est débloqué (E13US002+).
