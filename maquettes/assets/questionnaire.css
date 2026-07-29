@@ -1,0 +1,96 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Kervignarc — feuille de questionnaire (saisie dans le navigateur)
+   Complète systeme.css ; ne redéfinit aucun token.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.q-page { max-width: 860px; }
+
+/* — barre d'actions collante — */
+.q-actions {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 0; margin-bottom: 24px;
+  background: color-mix(in srgb, var(--doc-fond) 94%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--doc-trait);
+}
+.q-actions .fin { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+.q-bouton {
+  font-family: inherit; font-size: 13.5px; font-weight: 700;
+  padding: 7px 14px; border-radius: 4px; cursor: pointer;
+  border: 1px solid var(--doc-trait); background: var(--doc-carte); color: var(--doc-encre);
+}
+.q-bouton:hover { border-color: var(--doc-accent); }
+.q-bouton.principal { background: var(--doc-accent); border-color: var(--doc-accent); color: #fff; }
+.q-bouton.discret { font-weight: 500; color: var(--doc-doux); }
+
+.q-etat {
+  font-family: var(--doc-mono); font-size: 11px; letter-spacing: .06em;
+  color: var(--doc-doux); white-space: nowrap;
+}
+.q-etat.ok { color: #0C7A61; }
+@media (prefers-color-scheme: dark) { .q-etat.ok { color: #22D3AA; } }
+:root[data-theme="dark"] .q-etat.ok { color: #22D3AA; }
+
+/* — sections — */
+.q-bloc { margin: 34px 0 0; padding-top: 22px; border-top: 1px solid var(--doc-trait); }
+.q-bloc:first-of-type { border-top: 0; padding-top: 0; }
+.q-bloc h2 { font-size: 19px; margin: 0 0 4px; font-weight: 800; letter-spacing: -.01em; }
+.q-bloc h2 .q-num {
+  font-family: var(--doc-mono); font-size: 12px; color: var(--doc-accent);
+  margin-right: 9px; font-weight: 700;
+}
+.q-aide { color: var(--doc-doux); font-size: 14px; margin: 0 0 14px; max-width: 68ch; }
+
+/* — choix — */
+.q-choix { display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; }
+.q-choix label {
+  display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+  padding: 10px 12px; border: 1px solid var(--doc-trait); border-radius: 5px;
+  background: var(--doc-carte); font-size: 14.5px; line-height: 1.4;
+}
+.q-choix label:hover { border-color: var(--doc-accent); }
+.q-choix input { margin: 3px 0 0; accent-color: var(--doc-accent); flex: none; }
+.q-choix input:checked + span { font-weight: 700; }
+.q-choix label:has(input:checked) { border-color: var(--doc-accent); box-shadow: inset 3px 0 0 var(--doc-accent); }
+
+/* — champs libres — */
+.q-champ { display: block; margin-bottom: 16px; }
+.q-champ > span {
+  display: block; font-size: 13.5px; font-weight: 700; margin-bottom: 5px;
+}
+.q-champ > em { display: block; font-size: 13px; color: var(--doc-doux); margin-bottom: 6px; font-style: normal; }
+textarea, input[type="text"] {
+  width: 100%; font-family: inherit; font-size: 14.5px; line-height: 1.5;
+  padding: 10px 12px; border-radius: 5px;
+  border: 1px solid var(--doc-trait); background: var(--doc-carte); color: var(--doc-encre);
+  resize: vertical;
+}
+textarea { min-height: 84px; }
+textarea:focus, input[type="text"]:focus { outline: 2px solid var(--doc-accent); outline-offset: 1px; border-color: transparent; }
+
+/* — questions ciblées — */
+.q-ciblee { margin-bottom: 20px; }
+.q-ciblee p { margin: 0 0 6px; font-size: 14.5px; font-weight: 700; }
+.q-ciblee p .q-idx { color: var(--doc-accent); font-family: var(--doc-mono); font-size: 12px; margin-right: 7px; }
+
+/* — vocabulaire — */
+.q-vocab { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.q-vocab .q-vocab-tete {
+  font-family: var(--doc-mono); font-size: 10.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--doc-doux); font-weight: 700;
+}
+
+/* — aperçu du markdown — */
+.q-apercu {
+  margin-top: 14px; border: 1px solid var(--doc-trait); border-radius: 5px;
+  background: var(--doc-carte); padding: 14px; display: none;
+}
+.q-apercu.visible { display: block; }
+.q-apercu pre {
+  margin: 0; font-family: var(--doc-mono); font-size: 12px; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word; max-height: 420px; overflow-y: auto;
+}
+
+@media print { .q-actions { position: static; } .q-apercu { display: none; } }

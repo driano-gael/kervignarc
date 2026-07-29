@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Questionnaire P01 · « C'est moi » — première ouverture — Kervignarc</title>
+<link rel="stylesheet" href="../assets/systeme.css">
+<link rel="stylesheet" href="../assets/questionnaire.css">
+</head>
+<body>
+<div class="page q-page">
+
+<nav class="nav-ecran">
+  <a href="../index.html">← Tous les écrans</a>
+  <a href="../p01-cest-moi.html"><strong>Voir la maquette P01</strong></a>
+  <span class="fin">
+    <a href="s09-etats-systeme.html">← S09</a>
+    <a href="p02-ma-journee.html"><strong>Questionnaire suivant : P02 →</strong></a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Questionnaire · Appli publique · /</p>
+  <h1><span class="num">P01</span>« C'est moi » — première ouverture</h1>
+  <p class="chapo">L'archer tape son nom une fois ; l'appli le retient. La recherche devient l'exception, pas la porte d'entrée.</p>
+  <p style="margin-top:12px;font-size:14px;color:var(--doc-doux)">
+    Remplis ce qui te parle, laisse le reste vide. Un « non » sec est une réponse parfaitement utile —
+    c'est même la plus rapide à exploiter. Tes réponses sont conservées dans ce navigateur au fil de la
+    frappe ; <strong>« Télécharger le .md »</strong> produit le fichier à déposer dans
+    <code>maquettes/questionnaires/</code>.</p>
+</header>
+
+<div class="q-actions">
+  <button type="button" class="q-bouton principal" id="q-telecharger">⬇ Télécharger le .md</button>
+  <button type="button" class="q-bouton" id="q-copier">Copier le markdown</button>
+  <button type="button" class="q-bouton discret" id="q-apercu-bouton">Aperçu</button>
+  <span class="fin">
+    <span class="q-etat" id="q-etat">chargement…</span>
+    <button type="button" class="q-bouton discret" id="q-reinit">Effacer</button>
+  </span>
+</div>
+
+<div class="q-apercu" id="q-apercu"><pre></pre></div>
+
+<form id="q-form" autocomplete="off">
+
+  <section class="q-bloc">
+    <h2><span class="q-num">1</span>Quel parti pris retiens-tu ?</h2>
+    <p class="q-aide">Les mentions « recommandé » sur la maquette sont mon avis argumenté, pas une décision.</p>
+    <div class="q-choix">
+      <label><input type="radio" name="variante" value="0"><span>A — Recherche puis case « c'est moi »</span></label>
+      <label><input type="radio" name="variante" value="1"><span>B — Liste par club</span></label>
+      <label><input type="radio" name="variante" value="2"><span>C — Scan de la licence</span></label>
+      <label><input type="radio" name="variante" value="-1"><span>Aucun — voir « à refaire » plus bas</span></label>
+    </div>
+    <label class="q-champ">
+      <span>Pourquoi ce choix</span>
+      <em>Ce qui a emporté la décision, même si c'est un détail.</em>
+      <textarea data-champ="pourquoi" rows="3"></textarea>
+    </label>
+    <label class="q-champ">
+      <span>Ce que tu prendrais dans les autres variantes</span>
+      <textarea data-champ="ailleurs" rows="3"></textarea>
+    </label>
+  </section>
+
+  <section class="q-bloc">
+    <h2><span class="q-num">2</span>Verdict</h2>
+    <div class="q-choix">
+      <label><input type="radio" name="verdict" value="0"><span>✅ Validé tel quel — on peut coder ça</span></label>
+      <label><input type="radio" name="verdict" value="1"><span>🟡 Validé avec les réserves ci-dessous</span></label>
+      <label><input type="radio" name="verdict" value="2"><span>🔴 À refaire — l'écran ne répond pas au besoin</span></label>
+    </div>
+  </section>
+
+  <section class="q-bloc">
+    <h2><span class="q-num">3</span>Critiques</h2>
+    <p class="q-aide">Hiérarchie, vocabulaire, information manquante, geste pénible, cas réel non couvert.</p>
+    <textarea data-champ="critiques" rows="5"></textarea>
+  </section>
+
+  <section class="q-bloc">
+    <h2><span class="q-num">4</span>Évolutions souhaitées</h2>
+    <p class="q-aide">Ce que tu veux en plus ou en moins. Sans te censurer sur la faisabilité — c'est mon
+    travail de dire ce que ça coûte.</p>
+    <textarea data-champ="evolutions" rows="5"></textarea>
+  </section>
+
+  <section class="q-bloc">
+    <h2><span class="q-num">5</span>Questions ciblées</h2>
+    <p class="q-aide">Ces questions viennent de points que la maquette n'a pas pu trancher seule.</p>
+    <div class="q-ciblee"><p><span class="q-idx">1</span>Es-tu à l'aise avec le fait que l'appli retienne l'archer sans compte ni mot de passe ?</p><textarea data-question="0" rows="3"></textarea></div>
+    <div class="q-ciblee"><p><span class="q-idx">2</span>Faut-il pouvoir suivre plusieurs archers depuis le même téléphone (un parent, deux enfants) ?</p><textarea data-question="1" rows="3"></textarea></div>
+  </section>
+
+  <section class="q-bloc">
+    <h2><span class="q-num">6</span>Vocabulaire</h2>
+    <p class="q-aide">Un mot faux à l'écran coûte cher toute la journée. Corrige sans hésiter.</p>
+    <div class="q-vocab">
+      <span class="q-vocab-tete">À l'écran</span><span class="q-vocab-tete">Le bon mot</span>
+    </div>
+    <div class="q-vocab" style="margin-top:6px">
+      <div class="q-vocab-ligne" style="display:contents">
+        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
+      </div>
+      <div class="q-vocab-ligne" style="display:contents">
+        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
+      </div>
+      <div class="q-vocab-ligne" style="display:contents">
+        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
+      </div>
+    </div>
+  </section>
+
+  <section class="q-bloc">
+    <h2><span class="q-num">7</span>Ce qui manque complètement</h2>
+    <p class="q-aide">Un écran, un état, un cas que cette maquette ignore.</p>
+    <textarea data-champ="manque" rows="4"></textarea>
+  </section>
+
+</form>
+
+<footer class="pied">
+  <span><a href="../index.html">Tous les écrans</a></span>
+  <span><a href="../p01-cest-moi.html">Maquette P01</a></span>
+  <span class="fin"><a href="p02-ma-journee.html">Suivant : P02 · Ma journée — maintenant / ensuite →</a></span>
+</footer>
+
+<script type="application/json" id="q-modele">{"code": "P01", "titre": "« C'est moi » — première ouverture", "slug": "p01-cest-moi", "appli": "Appli publique", "route": "/", "role": "L'archer tape son nom une fois ; l'appli le retient. La recherche devient l'exception, pas la porte d'entrée.", "variantes": ["A — Recherche puis case « c'est moi »", "B — Liste par club", "C — Scan de la licence"], "questions": ["Es-tu à l'aise avec le fait que l'appli retienne l'archer sans compte ni mot de passe ?", "Faut-il pouvoir suivre plusieurs archers depuis le même téléphone (un parent, deux enfants) ?"]}</script>
+<script src="../assets/questionnaire.js"></script>
+
+</div>
+</body>
+</html>
