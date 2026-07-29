@@ -5,6 +5,77 @@
 > [`cahier-des-charges-ux.md`](../cahier-des-charges-ux.md) ou
 > [`cahier-des-charges-design.md`](../cahier-des-charges-design.md), **les CDC gagnent**.
 
+## Point de reprise — au 29/07/2026
+
+*Cette section est le **point d'entrée d'une nouvelle session**. Elle dit où on en est, ce qui attend
+une décision, et ce qu'il ne faut surtout pas refaire trop tôt. Elle se met à jour à chaque avancée.*
+
+### Ce qui est fait
+
+| | |
+|---|---|
+| **35 écrans maquettés** | 19 admin · 9 saisie · 7 publique — tout est dans `main` |
+| **35 questionnaires saisissables** | on répond dans le navigateur, « Télécharger le .md » produit le fichier à déposer dans `questionnaires/` |
+| **Système de design** | `assets/systeme.css` — transcrit la charte **mesurée** du CDC design §3.3, ratio de contraste en commentaire sur chaque token |
+| **Revue** | **1 écran arbitré sur 35** — A02. Les 34 autres questionnaires sont vierges. |
+
+### Le seul arbitrage rendu à ce jour — A02
+
+Verdict du commanditaire sur la v1 : **🔴 à refaire**. Réponse intégrale versionnée dans
+[`questionnaires/a02-ossature.md`](questionnaires/a02-ossature.md) — **c'est la source à relire en
+premier**, pas ce résumé.
+
+Modèle retenu pour la v2, sur **trois niveaux** :
+
+| Niveau | Mot | Choisit | Qui l'a arrêté |
+|---|---|---|---|
+| 1 | **rôle** | quel écran : administration, saisie, public | commanditaire |
+| 2 | **espace** | ce que je viens faire : Préparation · Déroulé · Résultats | commanditaire (« espace ») ; noms proposés par l'assistant |
+| 3 | **étape** | où j'en suis dans cet espace | assistant |
+
+Les **4 étapes de la Préparation** viennent du commanditaire : briques → assemblage → organisation →
+remplissage. Conséquence structurante actée : **les briques (catégories, blasons, clubs, gabarits,
+barèmes, tarifs) sont le patrimoine du club, pas d'un tournoi** — elles vivent hors du sélecteur de
+tournoi.
+
+« Phase » a été **écarté** pour le niveau 3 : le mot désigne déjà une entité du domaine sportif
+(qualification, 1/8ᵉ — `ADR-0011`).
+
+### Ce qui attend une décision du commanditaire
+
+1. **Les étapes du Déroulé et des Résultats** — celles de la planche A02 sont une **déduction de
+   l'assistant**, pas la description du commanditaire. C'est le point le plus fragile du dossier et
+   la première question du questionnaire A02.
+2. **Les mots** — « étape » pour le niveau 3, « Résultats » plutôt qu'« Après ».
+3. **Briques référencées ou copiées ?** Si un tarif change en 2027, le tournoi 2026 archivé
+   doit-il bouger ? Cette question **touche le modèle de données, pas la maquette** : elle se tranche
+   avec [`docs/modele-de-donnees.md`](../docs/modele-de-donnees.md) et mérite un **ADR**.
+
+### ⚠️ Ce qu'il ne faut pas faire tout de suite
+
+**Ne pas refaire A03, A04, A06 et A09.** Elles découlent mécaniquement du nouveau modèle
+d'ossature — les reprendre avant que le modèle soit validé, c'est quatre fois le même rework.
+A06 en particulier range encore les référentiels sous le sélecteur de tournoi, ce que le modèle v2
+contredit.
+
+### Comment reprendre
+
+Dire simplement « **on reprend les maquettes** ». L'état réel se lit dans les fichiers, pas dans la
+mémoire d'une session :
+
+- `questionnaires/*.md` — un fichier rempli = un écran arbitré ;
+- `git log main --first-parent -- maquettes/` — l'historique des décisions.
+
+Pour consulter les pages sans perturber un agent qui travaillerait en parallèle sur le dépôt, créer
+un répertoire de consultation dédié :
+
+```bash
+git worktree add ../kervignarc-maquettes main
+# puis ouvrir ../kervignarc-maquettes/maquettes/index.html
+```
+
+---
+
 ## Comment s'en servir
 
 1. Ouvre [`index.html`](index.html) dans un navigateur — c'est la porte d'entrée des 35 écrans.
