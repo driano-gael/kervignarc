@@ -54,3 +54,42 @@ export function marquerClub(tournoiId: number, clubId: number, paye: boolean): P
     body: JSON.stringify({ paye }),
   })
 }
+
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+// Remboursements (E08US005, ADR-0057) : sommes encaissées à rendre, nées d'une inscription payée
+// effacée (désinscription, suppression de départ). Miroir de `api/v1/remboursements.py`.
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+
+// Issue de traitement : « remboursé » (argent rendu) ou « reporté » (réaffecté à un autre créneau).
+export type IssueRemboursement = 'rembourse' | 'reporte'
+
+export interface Remboursement {
+  id: number
+  // Instantanés figés à l'ouverture (l'inscription/le départ ont souvent disparu, ADR-0057).
+  archer_prenom: string
+  archer_nom: string
+  creneau: string
+  montant_centimes: number
+  // `depart_supprime` | `desinscription`.
+  motif: string
+  // `a_rembourser` | `rembourse` | `reporte`.
+  statut: string
+  // Dates ISO 8601 (UTC). `traite_le` est `null` tant que le poste est à traiter.
+  cree_le: string
+  traite_le: string | null
+}
+
+export function getRemboursements(tournoiId: number): Promise<Remboursement[]> {
+  return fetchJson<Remboursement[]>(`/api/v1/tournois/${tournoiId}/remboursements`)
+}
+
+export function traiterRemboursement(
+  tournoiId: number,
+  remboursementId: number,
+  statut: IssueRemboursement,
+): Promise<Remboursement> {
+  return fetchJson<Remboursement>(
+    `/api/v1/tournois/${tournoiId}/remboursements/${remboursementId}`,
+    { method: 'PUT', body: JSON.stringify({ statut }) },
+  )
+}

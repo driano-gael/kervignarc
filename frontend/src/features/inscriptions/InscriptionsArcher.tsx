@@ -6,6 +6,7 @@
 // donc déjà réservé à l'admin.
 
 import { useState } from 'react'
+import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { decrireTarif } from '../competition/format'
 import { useDeparts } from '../departs/hooks'
@@ -38,7 +39,12 @@ export function InscriptionsArcher({
       {inscriptions.data && inscriptions.data.length > 0 && (
         <ul className="liste-inscriptions">
           {inscriptions.data.map((inscription) => (
-            <LigneInscription key={inscription.id} archerId={archerId} inscription={inscription} />
+            <LigneInscription
+              key={inscription.id}
+              archerId={archerId}
+              tournoiId={tournoiId}
+              inscription={inscription}
+            />
           ))}
         </ul>
       )}
@@ -60,15 +66,46 @@ export function InscriptionsArcher({
   )
 }
 
+// `details` du 409 `inscription_payee_a_rembourser` (E08US005) : montant encaissé à rembourser et
+// nom de l'archer, chiffrés côté serveur (jamais reconstitués côté client).
+interface ARembourser {
+  montant_centimes: number
+  archer: string
+}
+
 function LigneInscription({
   archerId,
+  tournoiId,
   inscription,
 }: {
   archerId: number
+  tournoiId: number
   inscription: Inscription
 }) {
   const marquer = useMarquerPaye(archerId)
-  const desinscrire = useDesinscrire(archerId)
+  const desinscrire = useDesinscrire(archerId, tournoiId)
+  // Confirmation en attente : renseignée quand le serveur signale une somme à rembourser (409).
+  const [aRembourser, setARembourser] = useState<ARembourser | null>(null)
+
+  const demanderDesinscription = () => {
+    desinscrire.mutate(
+      { inscriptionId: inscription.id, confirme: false },
+      {
+        onError: (erreur) => {
+          if (erreur instanceof ErreurApi && erreur.code === 'inscription_payee_a_rembourser') {
+            setARembourser(erreur.details as ARembourser)
+          }
+        },
+      },
+    )
+  }
+
+  const confirmerDesinscription = () => {
+    desinscrire.mutate(
+      { inscriptionId: inscription.id, confirme: true },
+      { onSuccess: () => setARembourser(null) },
+    )
+  }
 
   return (
     <li className="inscription">
@@ -93,12 +130,41 @@ function LigneInscription({
           type="button"
           className="bouton--danger"
           disabled={desinscrire.isPending}
-          onClick={() => desinscrire.mutate(inscription.id)}
+          onClick={demanderDesinscription}
         >
           Désinscrire
         </button>
       </span>
-      <MessageErreur erreur={marquer.error ?? desinscrire.error} />
+      {aRembourser !== null && (
+        <div className="inscription__confirmation" role="alertdialog">
+          <p>
+            {aRembourser.archer} a réglé ce départ : le désinscrire ouvrira un remboursement de{' '}
+            {decrireTarif(aRembourser.montant_centimes)}.
+          </p>
+          <span className="inscription__actions">
+            <button
+              type="button"
+              className="bouton--danger"
+              disabled={desinscrire.isPending}
+              onClick={confirmerDesinscription}
+            >
+              Désinscrire et rembourser
+            </button>
+            <button
+              type="button"
+              className="bouton--discret"
+              disabled={desinscrire.isPending}
+              onClick={() => setARembourser(null)}
+            >
+              Annuler
+            </button>
+          </span>
+        </div>
+      )}
+      {/* On masque l'erreur brute du 409 confirmable (traitée par le dialogue ci-dessus) ; toute
+          autre erreur reste affichée. */}
+      <MessageErreur erreur={marquer.error} />
+      {aRembourser === null && <MessageErreur erreur={desinscrire.error} />}
     </li>
   )
 }

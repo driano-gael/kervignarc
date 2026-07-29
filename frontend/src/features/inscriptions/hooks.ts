@@ -33,10 +33,16 @@ export function useMarquerPaye(archerId: number) {
   })
 }
 
-export function useDesinscrire(archerId: number) {
+// `tournoiId` sert à invalider aussi le registre de remboursements (E08US005) : une désinscription
+// payée confirmée y ouvre un poste, la vue Paiements doit se rafraîchir.
+export function useDesinscrire(archerId: number, tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (inscriptionId: number) => desinscrire(inscriptionId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: cleInscriptions(archerId) }),
+    mutationFn: ({ inscriptionId, confirme }: { inscriptionId: number; confirme: boolean }) =>
+      desinscrire(inscriptionId, confirme),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: cleInscriptions(archerId) })
+      void queryClient.invalidateQueries({ queryKey: ['remboursements', tournoiId] })
+    },
   })
 }
