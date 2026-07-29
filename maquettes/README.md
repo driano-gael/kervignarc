@@ -10,11 +10,27 @@
 1. Ouvre [`index.html`](index.html) dans un navigateur — c'est la porte d'entrée des 35 écrans.
 2. Regarde un écran : chaque page présente **plusieurs partis pris de mise en page**, les **états système**
    (chargement, vide, erreur, hors-ligne, verrou, conflit) et, quand c'est utile, les **thèmes**.
-3. Remplis son questionnaire dans [`questionnaires/`](questionnaires/) — un fichier Markdown par écran.
-   Tu peux en traiter un par jour ou dix d'affilée : chaque fiche est indépendante.
+3. Clique sur **« Remplir le questionnaire »** : la feuille s'ouvre **dans le navigateur, saisissable**.
+   Tu réponds, puis **« ⬇ Télécharger le .md »** produit le fichier à déposer dans
+   [`questionnaires/`](questionnaires/).
 
-Les questionnaires sont volontairement en Markdown : ils se remplissent dans ton éditeur, se versionnent,
-et je les relis directement pour appliquer tes retours. Aucun export, aucune ressaisie.
+La navigation va **dans les deux sens** : chaque maquette pointe vers son questionnaire, chaque questionnaire
+ramène à sa maquette — et les deux enchaînent vers l'écran suivant, pour dérouler les 35 sans repasser par
+l'index.
+
+**Pourquoi cette mécanique en deux temps.** Le livrable versionné reste le **Markdown** : c'est lui qui se
+diffe, se relit et se commente dans Git. Mais un `.md` ouvert dans un navigateur n'est qu'un texte mort — d'où
+la feuille HTML, qui n'est qu'un **moyen de le remplir confortablement**. Rien n'oblige à passer par elle :
+les gabarits `.md` vierges restent dans `questionnaires/` pour qui préfère son éditeur.
+
+Trois détails utiles :
+
+- **Tes réponses sont sauvegardées au fil de la frappe** dans le navigateur : un onglet fermé ne fait pas
+  perdre vingt minutes. Si le stockage est refusé (certains navigateurs le bloquent sur les fichiers ouverts
+  en `file://`), la page **le dit** au lieu de faire semblant — télécharge alors avant de fermer.
+- **« Aperçu »** montre le Markdown exact qui sera produit, sans rien télécharger.
+- **« Copier le markdown »** fonctionne aussi hors contexte sécurisé (repli sur `execCommand`) — même piège
+  technique que le jour J, où l'appli tourne en `http` sur le réseau local.
 
 ## Ce qui se discute, et ce qui ne se discute pas
 
@@ -38,10 +54,13 @@ questionnaire d'écran : elles engagent les 35 écrans à la fois.
 
 ```
 maquettes/
-├── index.html              porte d'entrée — les 35 écrans par application
-├── assets/systeme.css      le système de design (tokens de la charte + composants)
-├── <code>-<slug>.html      une page par écran
-└── questionnaires/         une fiche Markdown par écran, à remplir
+├── index.html                    porte d'entrée — les 35 écrans par application
+├── assets/systeme.css            le système de design (tokens de la charte + composants)
+├── assets/questionnaire.css/.js  la feuille saisissable et son export markdown
+├── <code>-<slug>.html            une page de maquette par écran
+└── questionnaires/
+    ├── <slug>.html               la feuille à remplir dans le navigateur
+    └── <slug>.md                 le gabarit vierge — et la cible de l'export
 ```
 
 Le CSS est **partagé** : une correction de token se répercute sur les 35 pages. C'est aussi ce qui garantit
