@@ -269,7 +269,7 @@ Regroupée par domaines : `tournaments`, `archers`, `imports`, `phases`, `placem
 | R1 | **Complexité du moteur de phases** (Lucky Loser, placement 1→N) — cœur du produit | Formaliser 2-3 flux réels depuis `Tableaux.xlsx` avant dev ; tests de non-régression sur ces cas |
 | R2 | **Fiabilité wifi** pour 30 clients | Routeur dédié dimensionné ; file d'attente + reconnexion côté front |
 | R3 | **Limites PWA iOS/Safari** (BYOD) | Tolérance coupures volontairement minimale ; tests multi-navigateurs |
-| R4 | **Packaging exécutable** (PyInstaller + front + PDF) | Prototype de build tôt. **Volet PDF largement désamorcé** : ReportLab retenu (QT3, [ADR-0031](docs/adr/0031-bibliotheque-pdf-reportlab.md)) — wheels autoportantes, aucune dépendance native à embarquer. Reste à confirmer au 1ᵉʳ build EPIC-11 (dette ouverte) |
+| R4 | **Packaging exécutable** (PyInstaller + front + PDF) | Prototype de build tôt. **Volet PDF largement désamorcé** : ReportLab retenu (QT3, [ADR-0031](docs/adr/0031-bibliotheque-pdf-reportlab.md)) — wheels autoportantes, aucune bibliothèque native de niveau système à installer séparément. Reste à confirmer au 1ᵉʳ build EPIC-11 (**risque résiduel R4, non-dette** — pas de raccourci dans le code livré) |
 | R5 | **Panne du portable-serveur** | Sauvegarde auto périodique + procédure de restauration |
 | R6 | **Format d'import inscript'arc** inconnu | Obtenir un fichier d'exemple avant de figer le parseur |
 
