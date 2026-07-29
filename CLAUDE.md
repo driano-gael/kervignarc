@@ -198,21 +198,39 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   en minuscules) + corps expliquant le **quoi** et surtout le **pourquoi**, avec les références
   (`US: ExxUSyyy`, `ADR-XXXX`). Commits atomiques.
 - **L'assistant déroule le cycle d'une US en autonomie** : branche, implémentation, message de
-  commit rédigé, `git commit`, `git push`. Il **ne rend pas la main** pour ces étapes. Restent
-  soumis à l'aval explicite de l'utilisateur : `git merge`, `git rebase`, et tout ajout de
+  commit rédigé, `git commit`, `git push`. Il **ne rend pas la main** pour ces étapes. Restent hors
+  de cette autonomie : `git rebase` (réécrit l'historique — zone critique) et tout ajout de
   dépendance (`pip install` / `npm install` — cf. règle 11, c'est un arbitrage, pas de la
-  plomberie).
+  plomberie). `git merge` n'est pas un point d'arbitrage mais l'**étape de l'utilisateur** : c'est
+  lui qui merge la PR (bullet suivante).
 - Quand l'utilisateur dit **« lance la PR »**, exécuter [`/revue-us`](.claude/commands/revue-us.md) :
   revue du diff par des **agents dédiés en parallèle** (quatre axes + porte mécanique, plus un
   relecteur **adversarial** si le changement est structurel — [ADR-0013](docs/adr/0013-conduite-de-la-revue-d-us.md)),
   puis synthèse et correction par l'agent auteur,
-  re-commit et push — sans repasser par l'utilisateur. `gh` n'étant **pas installé**, l'assistant
-  livre le lien `pull/new/<branche>` + titre + corps prêts à coller : **c'est l'utilisateur qui
-  ouvre et merge la PR**, puis dit « c'est mergé ».
-- **L'utilisateur n'intervient que pour un arbitrage** : choix métier, CA ambigu ou insatisfaisable
-  en l'état, périmètre d'US, dépendance, décision structurante (ADR). Tout le reste se décide et
-  s'exécute sans lui — un doute purement technique se tranche, se documente et se signale **après
-  coup**, il n'interrompt pas.
+  re-commit et push — sans repasser par l'utilisateur. L'assistant rédige **titre et corps** de la
+  PR ; il l'**ouvre lui-même si l'outillage du poste le permet** (`gh` authentifié), sinon il livre
+  le lien `pull/new/<branche>` prêt à coller. Le résultat est le même des deux côtés : **c'est
+  l'utilisateur qui merge**, puis dit « c'est mergé ».
+  *(La disponibilité de `gh` est un **fait de poste** — l'utilisateur développe sur plusieurs
+  machines. Elle ne s'inscrit donc jamais ici : ce fichier voyage, le poste non.)*
+- **Autonomie par défaut, main rendue sur trois cas seulement.** L'assistant fait avancer le code de
+  bout en bout ; il ne **rend la main que** :
+  1. **Zone critique** — action difficilement réversible ou à fort impact : suppression de branches
+     ou de fichiers non fusionnés, réécriture d'historique, purge, migration destructrice,
+     manipulation du dépôt d'un autre agent, tout ce qui sort vers l'extérieur.
+  2. **Il faut trancher** — choix métier, CA ambigu ou insatisfaisable en l'état, périmètre d'US,
+     ajout de dépendance (règle 11).
+  3. **Divergence de conception** — décision structurante (candidate à un ADR) ou écart au
+     [`guide-architecture.md`](guide-architecture.md).
+
+  Hors de ces trois cas, tout se décide et s'exécute sans lui : un doute purement technique se
+  tranche, se documente (registre de dette, corps de commit, ADR si structurant) et se signale
+  **après coup** — il n'interrompt pas.
+
+  **Le cas 1 se juge sur le risque, pas sur la nature de la décision.** C'est ce qui le distingue
+  des deux autres : une purge de branches ne pose aucune question d'architecture ni de métier, elle
+  est simplement difficile à défaire. *(Ajouté le 29/07/2026 : la règle antérieure ne parlait que
+  d'« arbitrage », donc ne couvrait pas ce cas — il s'était présenté deux fois dans la même journée.)*
 - Cycle : branche depuis `main` à jour → PR → revue + CI verte → merge → suppression de la branche.
 - **Le suivi des US ([`journal-d-avancement/SUIVI-US.md`](journal-d-avancement/SUIVI-US.md)) est tenu
   à jour dès que nécessaire** : c'est le **point de reprise** de « reprend les US » (état de chaque US,
