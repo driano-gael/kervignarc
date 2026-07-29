@@ -64,19 +64,35 @@ règle côté suppression de départ : seules les payées **de tarif > 0** ouvre
 
 ## Conséquences
 
-- **Positif** : le CA « ne pas laisser une somme encaissée sans contrepartie » est tenu de bout en
-  bout et **structurellement** (atomicité de l'ouverture) ; aucune donnée comptable ne suit une FK
-  vers une ligne partie ; cohérence de langage (confirmation chiffrée `DepartEnCoursNonConfirme`,
-  audit `PAIEMENT`↔`REMBOURSEMENT`). Front : onglet « Remboursements » de l'écran Paiements + dialogue
-  de confirmation à la désinscription payée.
+- **Positif** : le CA « ne pas laisser une somme encaissée sans contrepartie » est tenu **sur ses deux
+  déclencheurs** (désinscription, suppression de départ) de bout en bout et **structurellement**
+  (atomicité de l'ouverture) ; aucune donnée comptable ne suit une FK vers une ligne partie ; cohérence
+  de langage (confirmation chiffrée `DepartEnCoursNonConfirme`, audit `PAIEMENT`↔`REMBOURSEMENT`).
+  Front : onglet « Remboursements » de l'écran Paiements + dialogue de confirmation à la désinscription
+  payée.
+- **Périmètre borné aux deux déclencheurs du CA — 3ᵉ chemin exclu, différé (DETTE-018).** La
+  suppression d'une **fiche archer** (`ArcherRepositorySQL.supprimer`) purge aussi ses inscriptions en
+  cascade : c'est un **troisième** chemin d'effacement d'une inscription payée, **hors** du CA écrit.
+  Il n'ouvre **pas** de remboursement — l'étendre ajouterait un déclencheur hors CA **et** toucherait la
+  cascade **sensible** de l'archer (scores/séries/forfaits, [ADR-0016](0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)).
+  **Arbitrage du commanditaire (29/07/2026)** : **différer** dans une US de suite plutôt que grossir
+  E08US005. Le **silence est fermé dès maintenant** — le signalement `ArcherEngage` **alerte** l'admin
+  des sommes à rembourser à la confirmation — et la perte résiduelle est tracée en **DETTE-018** (résorption :
+  `ArcherRepository.supprimer_avec_remboursements` + motif `ARCHER_SUPPRIME`, patron du départ). *(La
+  **fusion** de doublons, E02US005, préserve `paye` : pas de perte.)*
+- **Limite — montant remboursé = tarif courant, pas somme encaissée (DETTE-016).** `montant_centimes`
+  fige le **tarif du départ au moment de l'effacement** ; le modèle de paiement ne stocke **pas** la
+  somme réellement versée (booléen `paye` seul, E08US002). Si le tarif est édité **après** le paiement,
+  le remboursement peut différer de l'encaissé. Nul dans le flux nominal ; tracé en DETTE-016
+  (résorption : figer la somme à l'encaissement, US modèle de paiement).
 - **Coût / limite** : `traite_le`/`cree_le` ne sont **pas** validés UTC-*aware* au domaine (contrairement
   à `EntreeAudit`/`Forfait`) — la date vient exclusivement du port `Horloge` (jamais d'une entrée
   utilisateur), simplicité assumée (règle 12) ; le round-trip UTC est réattaché à la relecture comme
   pour l'audit. Le **report** ne ré-inscrit pas (intention seulement) : une US ultérieure pourra
   l'outiller. La **purge liée à la suppression d'un tournoi** reste non tranchée (DETTE-001, comme
-  `forfait`/`entree_audit`).
-- **Dette signalée (remède structurel, non traité ici)** : la constante `_AUTEUR_ADMIN =
+  `forfait`/`entree_audit` ; la table `remboursement` y est ajoutée).
+- **Dette signalée (remède structurel, non traité ici — DETTE-017)** : la constante `_AUTEUR_ADMIN =
   "Administrateur"` atteint son **3ᵉ site** (`application.paiements`, `application.placement`,
   désormais `application.remboursements`). Le seuil « factoriser au 3ᵉ cas » (CLAUDE.md § Dette) est
   atteint — mais l'extraction d'une constante partagée est un **remède structurel** : à traiter en US
-  dédiée, pas en douce dans E08US005. La duplication locale reste **assumée** en attendant.
+  dédiée, pas en douce dans E08US005. La duplication locale reste **assumée** en attendant (DETTE-017).

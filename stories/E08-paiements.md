@@ -43,6 +43,7 @@
   - **Deux issues** : « remboursé » **et** « reporté ». Le **report** consigne une **intention** (pas de ré-inscription automatique — re-tarification/écart = capacité à part, différée). L'avoir n'est pas un troisième état distinct (le « reporté » le couvre).
   - **Désinscription payée = confirmable** (comme la suppression de départ, ADR-0018) : `InscriptionPayeeARembourser` (409, montant + archer chiffrés) tant que non confirmée ; une inscription non payée ou d'un créneau **gratuit** se désinscrit librement.
   - **Traitement audité** : marquer remboursé/reporté trace `REMBOURSEMENT` (E10US005), atomicité acte↔trace (ADR-0035) ; un poste traité est **terminal** (`RemboursementDejaTraite`, 409). La **création**, elle, n'est pas tracée à l'audit — la ligne du registre **est** sa trace datée.
+  - **Périmètre borné aux deux déclencheurs (arbitrage 29/07/2026, revue adversariale)** : la **suppression d'une fiche archer** est un **3ᵉ** chemin d'effacement d'une inscription payée, **exclu** de cette US (l'étendre toucherait la cascade sensible de l'archer). Le silence est fermé (le signalement `ArcherEngage` **alerte** « sommes à rembourser ») ; la perte résiduelle et la création automatique sur ce chemin sont **différées** en **DETTE-018** (US de suite). De même, le montant remboursé = **tarif courant** du départ, pas la somme réellement encaissée (**DETTE-016**, le modèle ne stocke que `paye`).
 - **Dépend de** : E02US009, E08US002 · **Jalon** : J2
 
 ---
