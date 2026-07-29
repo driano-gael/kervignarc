@@ -73,6 +73,12 @@ interface ARembourser {
   archer: string
 }
 
+// Vrai si l'erreur est le 409 « inscription payée à rembourser » — celui qui ouvre le dialogue de
+// confirmation. On le distingue de toute autre erreur (500, 404, réseau) pour ne masquer QUE lui.
+function estConfirmable(erreur: unknown): boolean {
+  return erreur instanceof ErreurApi && erreur.code === 'inscription_payee_a_rembourser'
+}
+
 function LigneInscription({
   archerId,
   tournoiId,
@@ -92,7 +98,14 @@ function LigneInscription({
       { inscriptionId: inscription.id, confirme: false },
       {
         onError: (erreur) => {
-          if (erreur instanceof ErreurApi && erreur.code === 'inscription_payee_a_rembourser') {
+          // On n'ouvre le dialogue que si le serveur a bien chiffré la somme à rembourser : le cast
+          // n'est sûr que gardé par le code **et** la présence de `details` (revue C1). Sinon on
+          // laisse l'erreur s'afficher normalement (bandeau ci-dessous).
+          if (
+            erreur instanceof ErreurApi &&
+            erreur.code === 'inscription_payee_a_rembourser' &&
+            erreur.details
+          ) {
             setARembourser(erreur.details as ARembourser)
           }
         },
@@ -154,17 +167,29 @@ function LigneInscription({
               type="button"
               className="bouton--discret"
               disabled={desinscrire.isPending}
-              onClick={() => setARembourser(null)}
+              onClick={() => {
+                // `reset()` efface l'erreur 409 de la mutation : sans lui, annuler laisserait le
+                // message brut du 409 s'afficher dans le bandeau ci-dessous (revue B).
+                setARembourser(null)
+                desinscrire.reset()
+              }}
             >
               Annuler
             </button>
           </span>
+          {/* Une erreur du chemin **confirmé** (500, 404…) s'affiche DANS le dialogue : sinon le
+              masquage du bandeau l'avalerait et le dialogue resterait muet (revue C1). Le 409
+              confirmable lui-même n'est pas ré-affiché (le texte ci-dessus l'explique déjà). */}
+          {!estConfirmable(desinscrire.error) && <MessageErreur erreur={desinscrire.error} />}
         </div>
       )}
-      {/* On masque l'erreur brute du 409 confirmable (traitée par le dialogue ci-dessus) ; toute
-          autre erreur reste affichée. */}
       <MessageErreur erreur={marquer.error} />
-      {aRembourser === null && <MessageErreur erreur={desinscrire.error} />}
+      {/* Bandeau : hors dialogue, on affiche toute erreur de désinscription **sauf** le 409
+          confirmable (traité par le dialogue). Pendant le dialogue, le bandeau se tait — l'erreur
+          du chemin confirmé est montrée dans le dialogue ci-dessus. */}
+      {aRembourser === null && !estConfirmable(desinscrire.error) && (
+        <MessageErreur erreur={desinscrire.error} />
+      )}
     </li>
   )
 }
