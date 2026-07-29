@@ -183,6 +183,8 @@ class ServiceInscriptions:
             archer_prenom=archer.prenom,
             archer_nom=archer.nom,
             creneau=_libelle_creneau(depart),
+            # DETTE-016 : montant = tarif **courant** du départ, pas la somme réellement encaissée
+            # (le modèle ne stocke que le booléen `paye`) — faux si le tarif a bougé après paiement.
             montant_centimes=depart.tarif_centimes,
             motif=MotifRemboursement.DESINSCRIPTION,
             cree_le=self._horloge.maintenant(),

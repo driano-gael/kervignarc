@@ -350,7 +350,15 @@ class ServiceArchers:
         # `stories/E02-inscriptions.md`). `par_archer` exige le tournoi — porté par l'agrégat.
         serie = self._series.par_archer(archer.tournoi_id, archer_id)
         fleches = serie.nb_fleches_validees if serie is not None else 0
-        inscriptions = len(self._inscriptions.par_archer(archer_id))
+        liste_inscriptions = self._inscriptions.par_archer(archer_id)
+        inscriptions = len(liste_inscriptions)
+        # DETTE-018 : la suppression d'archer purge ses inscriptions en cascade **sans ouvrir de
+        # remboursement** (E08US005 ne couvre que la désinscription et la suppression de départ).
+        # Faute de mieux pour ce chemin, on **alerte** l'admin des sommes à rembourser — la création
+        # automatique du poste viendra dans l'US de suite. On compte les payées sur `paye`
+        # seul (sans relire les tarifs — pas de `depart_repository` ici) : un créneau gratuit marqué
+        # payé est donc **sur-signalé**, tolérable pour un simple avertissement.
+        payees = sum(1 for inscription in liste_inscriptions if inscription.paye)
         if archer.cible is None and fleches == 0 and inscriptions == 0:
             return
         motifs = []
@@ -363,7 +371,13 @@ class ServiceArchers:
             accord = (
                 "inscription sur un départ" if inscriptions == 1 else "inscriptions sur des départs"
             )
-            motifs.append(f"{inscriptions} {accord}")
+            detail = f"{inscriptions} {accord}"
+            if payees:
+                detail += (
+                    f" (dont {payees} payée{'s' if payees > 1 else ''} : "
+                    "sommes à rembourser, E08US005)"
+                )
+            motifs.append(detail)
         if archer.cible is not None:
             motifs.append(f"un placement sur la cible {archer.cible}")
         raise ArcherEngage(

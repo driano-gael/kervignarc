@@ -88,7 +88,9 @@ def test_lister_met_les_a_traiter_en_premier_puis_les_plus_recents() -> None:
         cree_le=datetime.datetime(2026, 7, 29, 10, 0, tzinfo=datetime.UTC),
     )
     assert vieux.id is not None and recent.id is not None
-    service.marquer_rembourse(vieux.id)  # le plus vieux, mais **traité** → doit passer en dernier
+    service.marquer_rembourse(
+        tournoi_id, vieux.id
+    )  # le + vieux, mais **traité** → passe en dernier
 
     ordre = [r.id for r in service.lister(tournoi_id)]
     assert ordre == [recent.id, vieux.id]  # à traiter d'abord (recent), puis le traité (vieux)
@@ -101,7 +103,7 @@ def test_marquer_rembourse_fige_le_statut_date_et_trace() -> None:
     poste = _poste(remboursements, tournoi_id)
     assert poste.id is not None
 
-    maj = service.marquer_rembourse(poste.id)
+    maj = service.marquer_rembourse(tournoi_id, poste.id)
     assert maj.statut is StatutRemboursement.REMBOURSE
     assert maj.traite_le == _QUAND
     assert len(remboursements.traces) == 1
@@ -117,7 +119,7 @@ def test_marquer_reporte_fige_le_statut_et_trace() -> None:
     poste = _poste(remboursements, tournoi_id)
     assert poste.id is not None
 
-    maj = service.marquer_reporte(poste.id)
+    maj = service.marquer_reporte(tournoi_id, poste.id)
     assert maj.statut is StatutRemboursement.REPORTE
     assert remboursements.traces[0].apres == "reporté"
 
@@ -132,17 +134,32 @@ def test_marquer_un_poste_deja_traite_est_refuse() -> None:
     service, remboursements, tournoi_id = _monter()
     poste = _poste(remboursements, tournoi_id)
     assert poste.id is not None
-    service.marquer_rembourse(poste.id)
+    service.marquer_rembourse(tournoi_id, poste.id)
 
     with pytest.raises(RemboursementDejaTraite):
-        service.marquer_rembourse(poste.id)
+        service.marquer_rembourse(tournoi_id, poste.id)
     with pytest.raises(RemboursementDejaTraite):
-        service.marquer_reporte(poste.id)
+        service.marquer_reporte(tournoi_id, poste.id)
     assert len(remboursements.traces) == 1  # une seule trace, celle du premier traitement
+
+
+def test_marquer_un_poste_d_un_autre_tournoi_leve() -> None:
+    """Traiter un poste via le **mauvais tournoi** lève `RemboursementIntrouvable` (on ne fuite pas
+    le voisin) — symétrique du 404 de `lister` sur un tournoi inconnu (revue A)."""
+    service, remboursements, tournoi_id = _monter()
+    poste = _poste(remboursements, tournoi_id)
+    assert poste.id is not None
+
+    with pytest.raises(RemboursementIntrouvable):
+        service.marquer_rembourse(tournoi_id + 999, poste.id)
+    # Le poste n'a pas été traité (le refus a précédé toute écriture).
+    intact = service.lister(tournoi_id)[0]
+    assert intact.statut is StatutRemboursement.A_REMBOURSER
+    assert remboursements.traces == []
 
 
 def test_marquer_un_poste_inconnu_leve() -> None:
     """Traiter un remboursement inexistant lève `RemboursementIntrouvable` (404)."""
-    service, _, _ = _monter()
+    service, _, tournoi_id = _monter()
     with pytest.raises(RemboursementIntrouvable):
-        service.marquer_rembourse(404)
+        service.marquer_rembourse(tournoi_id, 404)

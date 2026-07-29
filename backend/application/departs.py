@@ -233,6 +233,9 @@ class ServiceDeparts:
                     archer_prenom=archer.prenom,
                     archer_nom=archer.nom,
                     creneau=creneau,
+                    # DETTE-016 : le montant remboursé est le **tarif courant**, pas la somme
+                    # réellement encaissée (le modèle ne stocke que le booléen `paye`) — faux si le
+                    # tarif a été édité après le paiement. Résorption : figer la somme encaissée.
                     montant_centimes=depart.tarif_centimes,
                     motif=MotifRemboursement.DEPART_SUPPRIME,
                     cree_le=instant,

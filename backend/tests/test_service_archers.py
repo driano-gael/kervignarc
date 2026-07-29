@@ -1012,6 +1012,25 @@ def test_signalement_d_engagement_inscription_accorde_au_singulier() -> None:
     assert "inscriptions sur des départs" not in leve.value.message
 
 
+def test_signalement_d_engagement_alerte_sur_les_payees_a_rembourser() -> None:
+    """Une inscription **payée** détruite par la suppression d'archer est signalée « à rembourser ».
+
+    DETTE-018 : la suppression d'archer purge ses inscriptions sans ouvrir de remboursement
+    (E08US005 ne couvre que désinscription + suppression de départ). Faute de création automatique
+    sur ce chemin, le signalement **alerte** au moins l'admin qu'il y a des sommes à rembourser — on
+    ne fait pas disparaître d'argent en silence. Une inscription non payée n'ajoute pas la clause.
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    m.inscriptions.ajouter(Inscription.creer(archer.id, 1).marquer_paye(True))
+    m.inscriptions.ajouter(Inscription.creer(archer.id, 2))  # non payée : pas comptée à rembourser
+    with pytest.raises(ArcherEngage) as leve:
+        m.archers.supprimer(archer.id)
+    assert "dont 1 payée" in leve.value.message
+    assert "à rembourser" in leve.value.message
+
+
 def test_supprimer_archer_inscrit_confirme_efface_l_archer() -> None:
     """`autoriser_suppression_engage=True` : l'admin confirme, l'archer (et ses liens) partent.
 

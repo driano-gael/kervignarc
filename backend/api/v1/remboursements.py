@@ -106,12 +106,14 @@ async def traiter(
 ) -> RemboursementReponse:
     """Marque un remboursement **remboursé** ou **reporté** (audité) : écriture via la file.
 
-    Renvoie `404 remboursement_introuvable` si l'`id` est inconnu, `409 remboursement_deja_traite`
-    s'il est déjà traité. `tournoi_id` est le contexte de la ressource ; le service adresse le poste
-    par son `id` (globalement unique).
+    Renvoie `404 remboursement_introuvable` si l'`id` est inconnu **ou n'appartient pas à ce
+    tournoi**, `409 remboursement_deja_traite` s'il est déjà traité. Le poste est borné au
+    `tournoi_id` de l'URL (le service refuse un `id` d'un autre tournoi, symétrique de `lister`).
     """
     service: ServiceRemboursements = request.app.state.service_remboursements
     write_queue: WriteQueue = request.app.state.write_queue
     action = service.marquer_rembourse if requete.statut == "rembourse" else service.marquer_reporte
-    remboursement = await asyncio.wrap_future(write_queue.submit(lambda: action(remboursement_id)))
+    remboursement = await asyncio.wrap_future(
+        write_queue.submit(lambda: action(tournoi_id, remboursement_id))
+    )
     return RemboursementReponse.de(remboursement)
