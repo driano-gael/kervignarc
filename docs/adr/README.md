@@ -55,6 +55,7 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0042](0042-modele-d-entree-choix-de-role-explicite.md) | Modèle d'entrée de l'appli : **choix de rôle explicite** au 1ᵉʳ lancement | Accepté |
 | [0043](0043-acceptation-dependance-copyleft-lgpl.md) | Acceptation d'une dépendance **copyleft (LGPL)** : `zeroconf`, cadrée (outil interne non distribué) | Accepté |
 | [0057](0057-registre-de-remboursements.md) | **Registre de remboursements** : mouvement d'argent né d'un effacement (instantanés sans FK, ouverture atomique, traitement audité) | Accepté |
+| [0058](0058-decoupage-de-l-admin-en-trois-axes-d-activite.md) | Découpage de l'admin en **trois axes d'activité** (atelier hors tournoi · pilotage · gestion), plus par temps du tournoi — révise `D-19` | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.
