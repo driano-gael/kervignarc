@@ -19,13 +19,25 @@
 </nav>
 
 <header class="entete">
-  <p class="fil">Appli admin · /admin</p>
+  <p class="fil">Appli admin · axe <strong>Pilotage</strong> · <code>/admin/pilotage/…</code>
+     · <strong>réaligné le 30/07/2026</strong></p>
   <h1><span class="num">A03</span>Accueil contextualisé — les 7 statuts</h1>
-  <p class="chapo"><em>Accessible</em> et <em>au premier plan</em> sont deux choses différentes. Les 16
-  destinations restent à un clic (<span class="ref">P-3</span>) ; ce qui change avec le statut, c'est ce que
-  l'organisateur voit <strong>en arrivant</strong>.</p>
+  <p class="chapo"><em>Accessible</em> et <em>au premier plan</em> sont deux choses différentes. Les
+  destinations du pilotage restent à un clic (<span class="ref">P-3</span>) ; ce qui change avec le statut,
+  c'est ce que l'organisateur voit <strong>en arrivant</strong>.</p>
   <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
 </header>
+
+<div class="note">
+  <p><strong>Ce que le découpage en trois axes change pour cet écran</strong> (<a href="a02-ossature.html">A02</a>,
+  <span class="ref">ADR-0058</span>) : cet accueil n'est plus <em>une destination parmi dix-neuf</em>. Il est
+  la <strong>destination d'ouverture de l'axe Pilotage</strong> — on y arrive en entrant dans l'axe, ou en
+  choisissant un tournoi depuis l'accueil de l'admin. C'est exactement ce que <span class="ref">D-20</span>
+  demandait, et que le rangement par temps rendait invisible.</p>
+  <p>À ne pas confondre avec l'<strong>accueil de l'admin</strong>, qui choisit l'axe et porte l'assemblage
+  (liste des tournois, création, cycle de vie) : celui-là est décrit en <a href="a02-ossature.html">A02</a>.
+  Deux écrans, deux rôles — l'un choisit <em>l'activité</em>, l'autre raconte <em>un tournoi</em>.</p>
+</div>
 
 <h2 class="section">Ce que l'écran doit faire</h2>
 <ul class="exigences">

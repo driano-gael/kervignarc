@@ -19,13 +19,27 @@
 </nav>
 
 <header class="entete">
-  <p class="fil">Appli admin · /admin</p>
+  <p class="fil">Appli admin · axe <strong>Atelier</strong> · <code>/admin/atelier/…</code>
+     · <strong>réaligné le 30/07/2026</strong></p>
   <h1><span class="num">A06</span>Référentiels — six destinations, un gabarit</h1>
   <p class="chapo">Catégories, blasons, clubs, tarifs, barèmes, gabarits partagent la même forme. Les dessiner
   six fois donnerait <strong>l'illusion du travail</strong> et noierait les écrans qui décident vraiment de la
   journée. La planche fixe le gabarit ; le tableau donne les écarts.</p>
   <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
 </header>
+
+<div class="note">
+  <p><strong>Correction la plus importante de ce réalignement.</strong> Cette planche rangeait les
+  référentiels <em>sous le sélecteur de tournoi</em>. C'est faux : ce sont les <strong>briques du
+  club</strong>, elles vivent d'année en année et n'appartiennent à aucun tournoi. Elles sont donc dans
+  l'<strong>Atelier</strong>, l'axe qui n'affiche <em>pas</em> de sélecteur
+  (<a href="a02-ossature.html">A02</a>, <span class="ref">ADR-0058</span>).</p>
+  <p><strong>⚠️ Ce que le code ne tient pas encore</strong> (<span class="ref">DETTE-023</span>) : sur les
+  six référentiels, seuls <strong>Clubs</strong> et <strong>Gabarits</strong> sont réellement globaux.
+  Catégories, blasons, barèmes et tarifs portent encore un identifiant de tournoi côté serveur — ils
+  réclameront donc un tournoi que l'Atelier ne propose pas de choisir. Le patron à généraliser existe
+  déjà, chez les gabarits : une <em>bibliothèque</em> globale plus une <em>instance</em> par tournoi.</p>
+</div>
 
 <h2 class="section">Partis pris <span class="code-sec">à départager</span></h2>
 <div class="rangee">

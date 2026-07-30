@@ -19,13 +19,25 @@
 </nav>
 
 <header class="entete">
-  <p class="fil">Appli admin · /admin</p>
+  <p class="fil">Appli admin · <strong>accueil</strong> (l'assemblage) · <code>/admin</code>
+     · <strong>réaligné le 30/07/2026</strong></p>
   <h1><span class="num">A04</span>Tournois — liste et cycle de vie</h1>
   <p class="chapo">La porte d'entrée. Point important souvent mal compris : <strong>plusieurs tournois peuvent
   être « en cours » en même temps</strong> — l'intérieur et l'extérieur le même week-end. C'est une capacité
   voulue, pas un accident, donc la liste ne désigne jamais un tournoi « actif ».</p>
   <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
 </header>
+
+<div class="note">
+  <p><strong>Réaligné sur les trois axes</strong> (<a href="a02-ossature.html">A02</a>,
+  <span class="ref">ADR-0058</span>) : cet écran <strong>n'appartient à aucun des trois axes</strong>, et
+  ce n'est pas un oubli — c'est l'<strong>assemblage</strong>, le geste qui <em>crée</em> l'objet sur
+  lequel le pilotage et la gestion travaillent. Il vit donc sur l'<strong>accueil de l'admin</strong>,
+  sous les trois cartes d'axes, et non comme une destination à choisir dans un menu.</p>
+  <p>Sa promesse gagne au change : « plusieurs tournois peuvent être en cours en même temps » se lit
+  désormais <em>sur la carte Pilotage</em>, qui affiche le compte des tournois en cours avant même qu'on
+  y entre.</p>
+</div>
 
 <h2 class="section">Ce que l'écran doit faire</h2>
 <ul class="exigences">

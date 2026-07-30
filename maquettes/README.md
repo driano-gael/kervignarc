@@ -5,7 +5,7 @@
 > [`cahier-des-charges-ux.md`](../cahier-des-charges-ux.md) ou
 > [`cahier-des-charges-design.md`](../cahier-des-charges-design.md), **les CDC gagnent**.
 
-## Point de reprise — au 29/07/2026
+## Point de reprise — au 30/07/2026
 
 *Cette section est le **point d'entrée d'une nouvelle session**. Elle dit où on en est, ce qui attend
 une décision, et ce qu'il ne faut surtout pas refaire trop tôt. Elle se met à jour à chaque avancée.*
@@ -14,49 +14,57 @@ une décision, et ce qu'il ne faut surtout pas refaire trop tôt. Elle se met à
 
 | | |
 |---|---|
-| **35 écrans maquettés** | 19 admin · 9 saisie · 7 publique — tout est dans `main` |
-| **35 questionnaires saisissables** | on répond dans le navigateur, « Télécharger le .md » produit le fichier à déposer dans `questionnaires/` |
+| **36 écrans maquettés** | 1 porte d'entrée · 19 admin · 9 saisie · 7 publique |
+| **36 questionnaires saisissables** | on répond dans le navigateur, « Télécharger le .md » produit le fichier à déposer dans `questionnaires/` |
 | **Système de design** | `assets/systeme.css` — transcrit la charte **mesurée** du CDC design §3.3, ratio de contraste en commentaire sur chaque token |
-| **Revue** | **1 écran arbitré sur 35** — A02. Les 34 autres questionnaires sont vierges. |
+| **Revue** | **2 écrans arbitrés** — A02 (🔴, refait deux fois) et A01 (parti pris A retenu, verdict d'ensemble non rendu). |
+| **Livré dans le code** | le modèle d'ossature de ce dossier **est implémenté** : E14US003, [ADR-0058](../docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md) |
 
-### Le seul arbitrage rendu à ce jour — A02
+### Le modèle d'ossature, arrêté le 30/07/2026 — **trois axes d'activité**
 
-Verdict du commanditaire sur la v1 : **🔴 à refaire**. Réponse intégrale versionnée dans
-[`questionnaires/a02-ossature.md`](questionnaires/a02-ossature.md) — **c'est la source à relire en
-premier**, pas ce résumé.
+Le critère de découpage a changé **deux fois**. Il faut connaître les trois états pour ne pas
+réintroduire un modèle abandonné :
 
-Modèle retenu pour la v2, sur **trois niveaux** :
+| Version | Critère | Sort |
+|---|---|---|
+| v1 | temps du tournoi — Préparation / Jour J / Après | **🔴 refusée** : « la sidebar fait vivre le tournoi sous tous ses états en même temps » |
+| v2 | même découpage, renommé « espaces » + un 3ᵉ niveau « étape » | **abandonnée** : le problème était le *critère*, pas le vocabulaire |
+| **v3** | **nature de l'activité** — Atelier (hors tournoi) · Pilotage · Gestion | **retenue et livrée** |
 
-| Niveau | Mot | Choisit | Qui l'a arrêté |
-|---|---|---|---|
-| 1 | **rôle** | quel écran : administration, saisie, public | commanditaire |
-| 2 | **espace** | ce que je viens faire : Préparation · Déroulé · Résultats | commanditaire (« espace ») ; noms proposés par l'assistant |
-| 3 | **étape** | où j'en suis dans cet espace | assistant |
+Ce qui a emporté la décision : un rangement temporel **coupe en morceaux une activité qui dure**. La
+gestion administrative commence des semaines avant, encaisse pendant, exporte après — rangée par
+temps, elle se disperse. C'était le cas dans le code livré, par simple ordre d'arrivée des US.
 
-Les **4 étapes de la Préparation** viennent du commanditaire : briques → assemblage → organisation →
-remplissage. Conséquence structurante actée : **les briques (catégories, blasons, clubs, gabarits,
-barèmes, tarifs) sont le patrimoine du club, pas d'un tournoi** — elles vivent hors du sélecteur de
-tournoi.
+Décisions actées avec le commanditaire :
 
-« Phase » a été **écarté** pour le niveau 3 : le mot désigne déjà une entité du domaine sportif
-(qualification, 1/8ᵉ — `ADR-0011`).
+- les trois axes sont le **travail de l'admin** ⇒ un **accueil admin** choisit l'axe. L'option « trois
+  URL de premier niveau » a été **écartée** ;
+- **vraies URL par rôle** (`/public`, `/scoreur`, `/cible`, `/admin/<axe>/…`), la mémoire de position
+  étant portée par l'URL ;
+- les **briques sont le patrimoine du club** : **copiées** dans le tournoi à l'assemblage, modifiables
+  localement, et une modification déclarée **permanente remonte** dans la brique de l'atelier ;
+- la **recherche change de nature selon l'axe** : toutes entités et ouverture en *modification* en
+  atelier/gestion, archer *du tournoi* en *consultation* en pilotage.
 
 ### Ce qui attend une décision du commanditaire
 
-1. **Les étapes du Déroulé et des Résultats** — celles de la planche A02 sont une **déduction de
-   l'assistant**, pas la description du commanditaire. C'est le point le plus fragile du dossier et
-   la première question du questionnaire A02.
-2. **Les mots** — « étape » pour le niveau 3, « Résultats » plutôt qu'« Après ».
-3. **Briques référencées ou copiées ?** Si un tarif change en 2027, le tournoi 2026 archivé
-   doit-il bouger ? Cette question **touche le modèle de données, pas la maquette** : elle se tranche
-   avec [`docs/modele-de-donnees.md`](../docs/modele-de-donnees.md) et mérite un **ADR**.
+1. **Les mots** — « Atelier », « Pilotage », « Gestion » sont de l'assistant ; le commanditaire a
+   donné les **contenus** des trois axes, pas leurs étiquettes. Première question du questionnaire A02.
+2. **Faut-il un niveau nommé sous l'axe ?** Les quatre temps de la Préparation donnés le 29/07
+   (briques → assemblage → organisation → remplissage) se **redistribuent** sur les trois axes
+   plutôt que de disparaître — reste à dire s'il faut encore un niveau, ou juste une liste plate.
+3. **L'étanchéité le jour J** — l'axe Gestion doit rester ouvert (`P-3`, le retardataire de 8 h 50) ;
+   l'atelier n'a rien à faire dans la journée (`P-6`). Masqué, ou seulement rangé ailleurs ?
+4. **Le verdict d'ensemble d'A01** n'a pas été rendu (aucune case cochée en §2).
 
 ### ⚠️ Ce qu'il ne faut pas faire tout de suite
 
-**Ne pas refaire A03, A04, A06 et A09.** Elles découlent mécaniquement du nouveau modèle
-d'ossature — les reprendre avant que le modèle soit validé, c'est quatre fois le même rework.
-A06 en particulier range encore les référentiels sous le sélecteur de tournoi, ce que le modèle v2
-contredit.
+**Ne pas redessiner les écrans de l'Atelier en supposant qu'ils sont hors tournoi.** Quatre d'entre
+eux — catégories, blasons, barèmes, phases — portent encore un identifiant de tournoi côté serveur
+(**DETTE-023**). Seuls **Clubs** et **Gabarits** tiennent la promesse. Le lot « atelier » les
+libérera ; dessiner avant, c'est dessiner un écran qui ne peut pas exister.
+
+**Ne pas rouvrir le débat « trois URL de premier niveau »** : tranché, écarté par le commanditaire.
 
 ### Comment reprendre
 
@@ -78,7 +86,7 @@ git worktree add ../kervignarc-maquettes main
 
 ## Comment s'en servir
 
-1. Ouvre [`index.html`](index.html) dans un navigateur — c'est la porte d'entrée des 35 écrans.
+1. Ouvre [`index.html`](index.html) dans un navigateur — c'est la porte d'entrée des 36 écrans.
 2. Regarde un écran : chaque page présente **plusieurs partis pris de mise en page**, les **états système**
    (chargement, vide, erreur, hors-ligne, verrou, conflit) et, quand c'est utile, les **thèmes**.
 3. Clique sur **« Remplir le questionnaire »** : la feuille s'ouvre **dans le navigateur, saisissable**.
@@ -86,7 +94,7 @@ git worktree add ../kervignarc-maquettes main
    [`questionnaires/`](questionnaires/).
 
 La navigation va **dans les deux sens** : chaque maquette pointe vers son questionnaire, chaque questionnaire
-ramène à sa maquette — et les deux enchaînent vers l'écran suivant, pour dérouler les 35 sans repasser par
+ramène à sa maquette — et les deux enchaînent vers l'écran suivant, pour dérouler les 36 sans repasser par
 l'index.
 
 **Pourquoi cette mécanique en deux temps.** Le livrable versionné reste le **Markdown** : c'est lui qui se
@@ -119,13 +127,13 @@ qui expliquent l'essentiel de ce que tu vois :
   1,83:1 sur blanc et **doit** devenir `#9F6D00` en thème clair.
 
 Si tu veux contester une de ces règles, c'est légitime — mais ça se fait en **ADR**, pas dans un
-questionnaire d'écran : elles engagent les 35 écrans à la fois.
+questionnaire d'écran : elles engagent les 36 écrans à la fois.
 
 ## Organisation du dossier
 
 ```
 maquettes/
-├── index.html                    porte d'entrée — les 35 écrans par application
+├── index.html                    porte d'entrée — les 36 écrans par application
 ├── assets/systeme.css            le système de design (tokens de la charte + composants)
 ├── assets/questionnaire.css/.js  la feuille saisissable et son export markdown
 ├── <code>-<slug>.html            une page de maquette par écran
@@ -134,7 +142,7 @@ maquettes/
     └── <slug>.md                 le gabarit vierge — et la cible de l'export
 ```
 
-Le CSS est **partagé** : une correction de token se répercute sur les 35 pages. C'est aussi ce qui garantit
+Le CSS est **partagé** : une correction de token se répercute sur les 36 pages. C'est aussi ce qui garantit
 qu'aucune page n'invente sa propre couleur.
 
 ## Deux limites à connaître

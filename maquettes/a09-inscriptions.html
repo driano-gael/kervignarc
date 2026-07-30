@@ -19,13 +19,25 @@
 </nav>
 
 <header class="entete">
-  <p class="fil">Appli admin · /admin</p>
+  <p class="fil">Appli admin · axe <strong>Gestion</strong> · <code>/admin/gestion/…</code>
+     · <strong>réaligné le 30/07/2026</strong></p>
   <h1><span class="num">A09</span>Inscriptions — archers, doublons, retardataires</h1>
   <p class="chapo">L'écran le plus fréquenté avant le jour J, et le plus consulté pendant. Il doit répondre en
   <strong>trois secondes</strong> à « cet archer est-il inscrit, et où tire-t-il ? » — c'est le bénévole de la
   table qui a un archer en face de lui (<span class="ref">D-10</span>).</p>
   <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
 </header>
+
+<div class="note">
+  <p><strong>Réaligné sur les trois axes</strong> (<a href="a02-ossature.html">A02</a>,
+  <span class="ref">ADR-0058</span>) : les inscriptions sont dans l'axe <strong>Gestion</strong>, avec les
+  paiements, les exports et l'archive. C'est cet écran qui justifie le changement de critère : rangé par
+  <em>temps du tournoi</em>, il se retrouvait sous « Préparation » alors qu'il sert <strong>aussi le jour
+  J</strong> — le retardataire de 8 h 50 s'inscrit et paie sur place (<span class="ref">P-3</span>).</p>
+  <p><strong>Conséquence directe</strong> : l'axe Gestion doit rester ouvert pendant le pilotage. Les deux
+  se travaillent le même jour sur le même tournoi sans se gêner — c'est précisément ce que trois axes
+  permettent et qu'un découpage temporel interdisait.</p>
+</div>
 
 <h2 class="section">Ce que l'écran doit faire</h2>
 <ul class="exigences">
