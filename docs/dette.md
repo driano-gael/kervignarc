@@ -45,6 +45,8 @@
 | [DETTE-016](#dette-016--montant-remboursé--tarif-courant-pas-somme-encaissée) | conception | mineur | `backend/domain/remboursement.py`, `backend/application/inscriptions.py`, `backend/application/departs.py` | Le `montant_centimes` d'un remboursement fige le **tarif courant du départ au moment de l'effacement**, or le modèle ne stocke **jamais** la somme réellement versée (seul le booléen `paye` de l'inscription). Si le tarif d'un départ est **édité après** qu'une inscription y soit payée, le remboursement ouvert peut différer de l'encaissé | Sur un **mouvement d'argent**, un montant remboursé **faux** est possible — arguablement pire qu'absent. **Nul dans le flux nominal** (le tarif ne bouge pas après paiement) ; suppose une édition de tarif entre paiement et effacement | E08US005 ([ADR-0057](adr/0057-registre-de-remboursements.md), choix « tarif au moment de l'effacement ») ; **constaté en revue adversariale le 29/07/2026** | US dédiée — stocker `montant_paye_centimes` sur l'inscription à l'encaissement (ou **geler** le tarif d'un départ dès qu'une inscription y est payée). Marqueur `# DETTE-016` sur les deux sites de construction |
 | [DETTE-017](#dette-017--auteur_admin-dupliqué-sur-3-sites) | conception | mineur | `backend/application/paiements.py`, `backend/application/placement.py`, `backend/application/remboursements.py` (`_AUTEUR_ADMIN`) | La constante `_AUTEUR_ADMIN = "Administrateur"` (auteur des entrées d'audit d'un acte admin) est **dupliquée** sur 3 sites : paiements (E08US002), régénération de plan (E12US007), remboursements (E08US005). Le seuil « factoriser au 3ᵉ cas » (CLAUDE.md § Dette) est **atteint** | Faible : littéral stable ; un 4ᵉ producteur admin re-dupliquera, et changer le libellé se fait en 3 endroits | E08US002/E12US007 (2 sites) ; **3ᵉ site E08US005**, proposé en résorption dans [ADR-0057](adr/0057-registre-de-remboursements.md) | US dédiée `refactor/` — extraire une constante partagée (`application/`), 3 appelants, zéro changement de comportement. Marqueur `# DETTE-017` sur les 3 sites |
 | [DETTE-018](#dette-018--la-suppression-darcher-perd-les-remboursements) | conception | majeur | `backend/application/archers.py` (`_signaler_engagement`), `backend/infrastructure/db/repositories.py` (`ArcherRepositorySQL.supprimer`) | La suppression d'une **fiche archer** purge ses inscriptions en cascade **sans ouvrir de remboursement** — **3ᵉ chemin** d'effacement d'une inscription **payée**, hors des **deux** déclencheurs d'E08US005 (désinscription, suppression de départ). Le signalement `ArcherEngage` **alerte** (« dont P payée(s) : sommes à rembourser ») mais **aucune création automatique** de poste sur ce chemin | Une somme encaissée peut être effacée **sans poste au registre** (perte d'argent) — **atténué** par l'avertissement chiffré à la confirmation. Chemin **moins courant** que la désinscription (couverte). La **fusion** de doublons, elle, préserve `paye` (pas de perte) | E08US005 (périmètre borné aux 2 déclencheurs du CA) ; **arbitré avec le commanditaire le 29/07/2026** — différer plutôt qu'étendre la cascade **sensible** de l'archer (scores/séries/forfaits, ADR-0016) | US de suite — `ArcherRepository.supprimer_avec_remboursements` + motif `ARCHER_SUPPRIME`, comme le départ (`DepartRepository.supprimer_avec_remboursements`). Marqueur `# DETTE-018` sur `_signaler_engagement` |
+| [DETTE-019](#dette-019--serviceroutage-jumeau-de-servicepilotagetour) | conception | mineur | `backend/application/routage.py`, `backend/application/pilotage_tour.py` | `ServiceRoutage` (E04US018) reprend de `ServicePilotageTour` (E12US002) trois éléments : `_sources_en_attente` (**corps identique**), la lecture « archer → pose du plan de duels » (`_poses_par_archer` / `_cibles_par_archer`, à la position près) et surtout la **garde tour-1** — « ne jamais annoncer la cible d'un match de tour ≥ 2, la pose persistée est celle du tour 1 » — écrite dans **deux formulations différentes** | Les deux premiers sont des dérivations sans enjeu. La **garde tour-1**, elle, est un invariant de sûreté physique : une cible périmée envoie un archer sur la mauvaise butte. Le jour où **E05US010** livrera le placement intégral 1→N, il faudra la lever **aux deux endroits** ; en rater une ne casse rien de visible côté serveur — ça affiche seulement une mauvaise cible | E04US018 (2ᵉ occurrence ; la 1ʳᵉ est E12US002) | Extraction à la **3ᵉ occurrence** — attendue avec `E07US008` / `E07US004`, les canaux 3 et 4 du routage (`D-09`), qui liront la même projection. Remède pressenti : une lecture publique `ServicePlacementDuels.poses_par_archer` + un `cible_du_match(match, poses)` qui **porte** la garde tour-1, ~40 lignes déplacées, zéro changement de comportement. **Point d'entrée pour E05US010** : c'est là que la garde se lève. Marqueurs `# DETTE-019` sur les deux sites |
+| [DETTE-020](#dette-020--le-libellé-de-tour-a-deux-domiciles) | conception | mineur | `backend/domain/tableau.py` (`libelle_tour`), `frontend/src/features/saisie-duels/duel.ts` (`libelleTour`) | Le nom d'un tour de tableau (« quart de finale », « petite finale ») est calculé **deux fois**, avec le même raisonnement (distance à la finale, `place_en_jeu` prioritaire) et des **sorties différentes** : le domaine rend le **singulier** (« Quart de finale », pour *un* archer), le front le **pluriel** (« Quarts de finale », pour un *titre de section ») et suffixe la petite finale (« Petite finale (3ᵉ place) ») | Les deux se lisent **sur le même écran, à un tap d'intervalle** (liste des duels puis panneau de routage). Aucun des deux libellés n'est faux dans son contexte, mais la **règle** est dupliquée : la prochaine évolution du vocabulaire (barrage, repêchage) devra se faire en deux endroits, dans deux langages. [ADR-0006](adr/0006-vocabulaire-metier-francais.md) veut un domicile unique pour le vocabulaire métier | E04US018 (2ᵉ occurrence ; la 1ʳᵉ est E04US013) | US `refactor/` — un seul domicile, le **domaine** : exposer `libelle` sur le DTO de duel comme sur celui de routage, retirer `libelleTour`/`estPetiteFinale` du front (`grouperParTour` groupe déjà par libellé, il consommerait celui du serveur). Le singulier/pluriel se règle alors par un paramètre du domaine, pas par une seconde implémentation. Marqueurs `# DETTE-020` / `// DETTE-020` sur les deux sites |
 
 ## Dette résorbée
 
@@ -839,6 +841,71 @@ le trace ici.
 
 **Résorption attendue.** US `refactor/` — extraire `AUTEUR_ADMIN` dans un module partagé
 (`application/`), 3 appelants, zéro changement de comportement. Marqueur `# DETTE-017` sur les 3 sites.
+
+### DETTE-019 — `ServiceRoutage` jumeau de `ServicePilotageTour`
+
+**Constat.** `ServiceRoutage` (E04US018) et `ServicePilotageTour` (E12US002) posent la même question
+sous deux angles — le pilotage demande « ce duel est-il prêt ? », le routage « où va cet archer ? » —
+et partagent donc trois éléments, dupliqués :
+
+1. `_sources_en_attente(match)` — **corps rigoureusement identique** ;
+2. la lecture « archer → pose du plan de duels » (`_poses_par_archer` / `_cibles_par_archer`) — le
+   routage garde en plus la **position** (A..D), le pilotage ne compte que des cibles ;
+3. la **garde tour-1** : « ne jamais annoncer la cible d'un match de tour ≥ 2 ». Écrite dans deux
+   formulations différentes (`place = match.tour == 1` puis un ternaire, d'un côté ; un
+   `if match.tour != 1: return None, CIBLE_A_VENIR` de l'autre).
+
+**Conséquence.** Les deux premiers points sont des dérivations sans enjeu — les dupliquer une 2ᵉ fois
+est la réponse que le projet prescrit. Le **troisième** est différent : c'est un invariant de sûreté
+**physique**. Le plan de duels ne pose que le 1ᵉʳ tour ([ADR-0048](adr/0048-plan-de-duels.md)) ;
+réutiliser cette pose au tour suivant enverrait un finaliste sur son ancienne butte. Le jour où
+**E05US010** livrera le placement intégral 1→N, la garde devra être levée **aux deux endroits**, sous
+deux formes : en rater une ne fait rien échouer, ça affiche seulement une mauvaise cible — et c'est le
+canal de routage, celui qui parle à l'archer, qui la rendrait comme un ordre.
+
+**Pourquoi assumée maintenant.** C'est la **2ᵉ** occurrence, et le projet place le seuil de
+factorisation au 3ᵉ cas (« dupliquer une 2ᵉ fois et attendre le 3ᵉ » est une réponse valide) ; un
+remède structurel se traite en US dédiée, jamais en douce dans l'US courante. Ce qui manquait — et que
+cette ligne apporte — c'est la **traçabilité** : un commentaire de code n'est pas retrouvable depuis
+l'autre bout, et rien ne reliait E05US010 à la garde qu'elle devra lever.
+
+**Résorption attendue.** À la **3ᵉ** occurrence, attendue avec `E07US008` (appli publique) et
+`E07US004` (écran de salle) — les canaux 3 et 4 du routage (`D-09`), qui liront la même projection.
+Remède pressenti, sans pattern neuf : une lecture publique `ServicePlacementDuels.poses_par_archer`
+et un `cible_du_match(match, poses)` qui **porte** la garde tour-1, ~40 lignes déplacées, deux
+appelants, zéro changement de comportement. Marqueurs `# DETTE-019` sur les deux sites.
+
+### DETTE-020 — le libellé de tour a deux domiciles
+
+**Constat.** Le nom d'un tour de tableau est calculé **deux fois** : `libelle_tour` dans
+`backend/domain/tableau.py` (E04US018) et `libelleTour` dans
+`frontend/src/features/saisie-duels/duel.ts` (E04US013). Même raisonnement — on compte à rebours de la
+finale, `place_en_jeu` prime — mais des **sorties différentes** :
+
+| | domaine | front |
+|---|---|---|
+| 3ᵉ place | `Petite finale` | `Petite finale (3ᵉ place)` |
+| avant-dernier tour | `Demi-finale` | `Demi-finales` |
+| −2 | `Quart de finale` | `Quarts de finale` |
+
+**Conséquence.** Les deux se lisent **sur le même écran, à un tap d'intervalle** : le scoreur voit la
+liste des duels titrée « Quarts de finale », ouvre un duel, le valide, et le panneau de routage lui
+répond « Quart de finale ». Aucun des deux n'est faux dans son contexte — l'un titre un groupe, l'autre
+adresse un archer — mais la **règle** est dupliquée, et
+[ADR-0006](adr/0006-vocabulaire-metier-francais.md) exige un domicile unique pour le vocabulaire
+métier. La prochaine évolution (barrage E06US003, repêchage E05US016) devra se faire en deux endroits,
+dans deux langages, sans que rien ne le signale.
+
+**Pourquoi assumée maintenant.** Unifier suppose de faire porter le libellé par le DTO de duel et de
+retirer `libelleTour` du front, ce qui touche `grouperParTour` et ses tests — un refactor qui déborde
+d'E04US018 et relève d'une US dédiée. Aligner les chaînes « à la main » dans ce commit aurait rendu
+l'incohérence **invisible** sans supprimer la duplication : pire, puisque plus rien ne la signalerait.
+
+**Résorption attendue.** US `refactor/` — exposer `libelle` sur le DTO de duel comme sur celui de
+routage, retirer `libelleTour`/`estPetiteFinale` du front (`grouperParTour` groupe déjà **par
+libellé** : il consommerait simplement celui du serveur). Le singulier/pluriel devient alors un
+paramètre du domaine, pas une seconde implémentation. Marqueurs `# DETTE-020` / `// DETTE-020` sur les
+deux sites.
 
 ### DETTE-018 — la suppression d'archer perd les remboursements
 

@@ -355,6 +355,10 @@ def libelle_tour(tour: int, nb_tours: int, place_en_jeu: tuple[int, int] | None 
     de routage enverrait les demi-finalistes battus au mauvais rendez-vous).
 
     Fonction **pure** : aucune lecture, aucun état. `nb_tours` vient de `Tableau.nb_tours`.
+
+    `# DETTE-020` — le front calcule **aussi** ce libellé (`features/saisie-duels/duel.ts`,
+    E04US013), au pluriel et avec un suffixe sur la petite finale : deux domiciles pour une
+    règle de vocabulaire, à unifier ici (ADR-0006).
     """
     if place_en_jeu == (3, 4):
         return "Petite finale"

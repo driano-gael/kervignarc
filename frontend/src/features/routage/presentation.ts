@@ -61,8 +61,10 @@ export function detail(archer: RoutageArcher): string | null {
     const contexte = `${archer.prochain.libelle} · ${adversaire(archer.prochain)}`
     // Cible inconnue : le titre a déjà pris le libellé du tour, on ne le répète pas — on annonce
     // l'attente (« cible attribuée au lancement du tour »).
+    // `manque` est garanti non nul par le serveur quand il n'y a pas de cible (c'est lui qui sait
+    // *pourquoi* : tour à venir, pas de plan, ou placement périmé) — pas de repli local à inventer.
     return destination(archer.prochain) === null
-      ? `${archer.prochain.manque ?? 'cible à venir'} · ${adversaire(archer.prochain)}`
+      ? `${archer.prochain.manque} · ${adversaire(archer.prochain)}`
       : contexte
   }
   return archer.motif
@@ -71,7 +73,18 @@ export function detail(archer: RoutageArcher): string | null {
 // Le panneau bascule tout seul quand **tous** les archers de la cible ont fini de tirer (CA : « dès
 // la validation »). Une série est finie quand elle est complète **et** verrouillée par le scoreur :
 // un tir non validé ne compte pas — c'est le scoreur qui clôt, pas le marqueur.
-export function serieClose(volees: { verrouillee: boolean }[], nbVolees: number | null): boolean {
+//
+// `forfait` clôt aussi, et c'est indispensable : un archer qui abandonne ou est disqualifié
+// (E04US015) **reste dans la grille** avec une série incomplète pour toujours. Sans cette clause,
+// `cibleClose` ne serait jamais vrai et les trois autres archers de la cible perdraient le panneau.
+// C'est le serveur qui porte le signal (`LigneGrille.forfait`) — même notion que la complétude
+// (« barème validé **ou** forfait », DETTE-014) : le front n'a pas à la re-dériver.
+export function serieClose(
+  volees: { verrouillee: boolean }[],
+  nbVolees: number | null,
+  forfait = false,
+): boolean {
+  if (forfait) return true
   if (nbVolees === null || volees.length < nbVolees) return false
   return volees.every((volee) => volee.verrouillee)
 }

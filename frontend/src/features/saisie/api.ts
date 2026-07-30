@@ -19,6 +19,10 @@ export interface LigneGrille {
   nom: string
   prenom: string
   zones: string[]
+  // Abandon ou disqualification en qualification (E04US015) : l'archer **reste** dans la grille,
+  // mais sa série ne sera jamais complétée. Le signal vient du serveur — c'est lui qui sait qu'une
+  // série incomplète est close pour de bon (E04US018).
+  forfait: boolean
 }
 
 // Une volée relue : ses valeurs, le marqueur déclaratif, le verrou (validée par le scoreur) et le

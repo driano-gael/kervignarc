@@ -21,7 +21,10 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+import pytest
+
 from application.classements import ServiceClassement
+from application.erreurs import PhaseIntrouvable
 from application.placement_duels import ServicePlacementDuels
 from application.routage import IssueRoutage, ServiceRoutage
 from application.saisie_duels import ServiceSaisieDuels
@@ -31,7 +34,8 @@ from domain.categorie import Categorie
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
-from domain.phase import Phase, TypePhase
+from domain.participant import Participant
+from domain.phase import Phase, StatutPhase, TypePhase
 from domain.politiques import ByesAuxMieuxClasses, EliminationSeche, SeedingSerpent
 from tests.conftest import (
     FauxArcherRepository,
@@ -140,7 +144,7 @@ class _Monde:
 
     @property
     def routage(self) -> ServiceRoutage:
-        return ServiceRoutage(self.saisie, self.placement, self.phases)
+        return ServiceRoutage(self.saisie, self.placement, self._classement(), self.phases)
 
     def placer(self) -> None:
         """Matérialise le plan de duels du 1er tour (les duellistes reçoivent cible et position)."""
@@ -177,6 +181,41 @@ class _Monde:
         bas = tableau.match(numero).bas
         assert bas is not None
         return bas.ref_id
+
+    def reclasser(self, archer_id: int, valeurs: tuple[str, ...]) -> None:
+        """Rejoue le score d'un archer : le **classement bouge**, donc l'appariement aussi.
+
+        C'est le geste réel d'une correction de score (E04US013) : l'arbre est **recalculé** à
+        chaque lecture (ADR-0023) tandis que le plan de duels reste **persisté**.
+        """
+        self.series._series = [
+            serie for serie in self.series._series if serie.archer_id != archer_id
+        ]
+        self.series.semer(self.tournoi_id, archer_id, tuple(ZoneScore(v) for v in valeurs))
+
+    def poses(self) -> dict[int, tuple[int, str]]:
+        """`archer_id → (cible, position)` **tel que le plan de duels persisté le dit** — la source
+        indépendante contre laquelle on croise ce que le panneau annonce."""
+        assert self.phase_id is not None
+        plan = self.placement.plan_de_duels(self.tournoi_id, self.phase_id)
+        return {
+            pose.archer_id: (cible.index, pose.position)
+            for cible in plan.cibles
+            for pose in cible.placements
+        }
+
+    def adversaire_de(self, archer_id: int) -> int:
+        """L'`archer_id` que **l'arbre** oppose à celui-ci au tour 1 (source indépendante)."""
+        assert self.phase_id is not None
+        tableau, _ = self.saisie.reconstruire(self.tournoi_id, self.phase_id)
+        moi = Participant.individuel(archer_id)
+        for match in tableau.matchs:
+            if match.tour != 1 or moi not in (match.haut, match.bas):
+                continue
+            autre = match.bas if match.haut == moi else match.haut
+            assert autre is not None
+            return autre.ref_id
+        raise AssertionError(f"L'archer {archer_id} n'a pas de duel au tour 1.")
 
 
 def _quatre(monde: _Monde) -> list[int]:
@@ -217,6 +256,7 @@ def test_chaque_archer_de_la_cible_voit_son_prochain_duel() -> None:
     archers = _quatre(monde)
     monde.placer()
 
+    poses = monde.poses()  # source indépendante : le plan de duels persisté
     routage = monde.routage.routage(monde.tournoi_id, tuple(archers))
 
     assert [r.archer_id for r in routage.archers] == archers  # l'ordre demandé est conservé
@@ -225,10 +265,18 @@ def test_chaque_archer_de_la_cible_voit_son_prochain_duel() -> None:
         assert ligne.prochain is not None
         assert ligne.prochain.tour == 1
         assert ligne.prochain.libelle == "Demi-finale"  # tableau de 4 : le tour 1 est la demie
-        assert ligne.prochain.cible is not None
-        assert ligne.prochain.position in {"A", "B", "C", "D"}
-        assert ligne.prochain.adversaire is not None
         assert ligne.prochain.manque is None
+        # On croise avec les **sources**, pas avec « ce n'est pas None » : une permutation des
+        # poses, ou un panneau qui renverrait l'archer lui-même comme adversaire, passeraient une
+        # assertion de non-nullité — et enverraient un archer sur la mauvaise butte le jour J.
+        assert (ligne.prochain.cible, ligne.prochain.position) == poses[ligne.archer_id]
+        assert ligne.prochain.adversaire is not None
+        assert ligne.prochain.adversaire.archer_id == monde.adversaire_de(ligne.archer_id)
+        assert ligne.prochain.adversaire.archer_id != ligne.archer_id
+    # Les deux duellistes d'un même duel partagent leur cible (E03US009 les veut côte à côte).
+    cibles = {r.archer_id: r.prochain.cible for r in routage.archers if r.prochain is not None}
+    for ligne in routage.archers:
+        assert cibles[ligne.archer_id] == cibles[monde.adversaire_de(ligne.archer_id)]
 
 
 def test_le_vainqueur_est_route_vers_le_tour_suivant() -> None:
@@ -390,6 +438,88 @@ def test_archer_absent_du_tableau_le_panneau_le_dit() -> None:
     assert routage.archers[0].issue is IssueRoutage.PROCHAIN_DUEL
     assert routage.archers[1].issue is IssueRoutage.INDISPONIBLE
     assert routage.archers[1].motif is not None
+
+
+def test_pose_perimee_par_un_reclassement_n_est_jamais_annoncee() -> None:
+    """Le plan de duels est **persisté**, l'appariement est **recalculé** (ADR-0023). Une correction
+    de score suffit à les désaccorder : l'archer garde sa pose mais affronte désormais quelqu'un
+    posé sur une autre cible. Annoncer cette pose enverrait les deux duellistes sur deux buttes
+    différentes — l'incident précis que ce panneau existe pour éviter. La garde « tour 1 » ne couvre
+    **pas** ce cas : elle traite la cible périmée d'un *tour*, celle-ci d'un *appariement*."""
+    monde = _Monde(capacites=(2, 2))  # un duel par cible : deux poses distinctes
+    archers = _quatre(monde)
+    monde.placer()
+    avant = monde.routage.routage(monde.tournoi_id, (archers[0],)).archers[0].prochain
+    assert avant is not None and avant.cible is not None  # sain au départ
+    assert avant.adversaire is not None
+
+    # Le 1er tombe au 2e rang : le serpent l'oppose maintenant au 3e, posé sur l'autre cible.
+    monde.reclasser(archers[0], ("9", "8"))
+    apres = monde.routage.routage(monde.tournoi_id, (archers[0],)).archers[0].prochain
+
+    assert apres is not None
+    assert apres.adversaire is not None
+    assert apres.adversaire.archer_id != avant.adversaire.archer_id  # l'appariement a changé
+    assert apres.cible is None  # surtout pas l'ancienne, qui enverrait sur la mauvaise butte
+    assert apres.manque is not None and "cible" in apres.manque.lower()
+
+
+def test_le_panneau_degrade_reste_nominatif() -> None:
+    """Sans phase de tableau — l'état le plus fréquent de la journée — le panneau ne sait router
+    personne, mais il sait encore dire **qui** est qui : quatre lignes anonymes et identiques
+    seraient illisibles. Les noms viennent du classement, lisible sans phase de tableau."""
+    monde = _Monde()
+    archers = [monde.inscrire_classe(v) for v in (("10", "10"), ("9", "9"))]
+    # aucune phase ELIMINATION_DIRECTE créée
+
+    routage = monde.routage.routage(monde.tournoi_id, tuple(archers))
+
+    assert all(ligne.issue is IssueRoutage.INDISPONIBLE for ligne in routage.archers)
+    assert all(ligne.nom != "" for ligne in routage.archers)
+
+
+def test_phase_imposee_introuvable_est_refusee() -> None:
+    """Un `phase_id` **fourni par le client** est validé, comme partout ailleurs. Sans cette garde,
+    un identifiant périmé (phase supprimée) rendrait un placide « phase finale non configurée » —
+    l'écran afficherait une absence de configuration au lieu d'un vrai refus."""
+    monde = _Monde()
+    archers = _quatre(monde)
+
+    with pytest.raises(PhaseIntrouvable):
+        monde.routage.routage(monde.tournoi_id, (archers[0],), phase_id=9999)
+
+
+def test_la_phase_visee_est_le_tableau_qui_vient() -> None:
+    """Deux tableaux à la suite : une fois le premier **terminé**, la résolution implicite doit
+    passer au suivant. Prendre « la première élimination directe » tout court épinglerait le tournoi
+    sur le premier à jamais, et routerait tout le monde en « terminé »."""
+    monde = _Monde()
+    archers = _quatre(monde)
+    premier = monde.phase_id
+    assert premier is not None
+    monde.phases._phases[premier] = replace(
+        monde.phases._phases[premier], statut=StatutPhase.TERMINEE
+    )
+    second = monde.creer_phase_tableau()
+
+    routage = monde.routage.routage(monde.tournoi_id, (archers[0],))
+
+    assert routage.phase_id == second
+
+
+def test_un_participant_equipe_n_est_pas_route() -> None:
+    """Le moteur oppose des `Participant` (ADR-0028), mais le panneau ne sait router que des
+    **archers**. Un identifiant qui ne correspond à aucun archer du tableau rend une ligne motivée,
+    jamais une erreur : les équipes (E13US002) passeront par ce chemin tant qu'elles ne sont pas
+    routables."""
+    monde = _Monde()
+    archers = _quatre(monde)
+    monde.placer()
+
+    ligne = monde.routage.routage(monde.tournoi_id, (archers[0], 4242)).archers[1]
+
+    assert ligne.issue is IssueRoutage.INDISPONIBLE
+    assert ligne.motif is not None
 
 
 # --- CA « rien n'est calculé à cet instant » (`D-08`) ------------------------------------------

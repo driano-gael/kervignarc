@@ -37,6 +37,7 @@ from domain.tournoi import TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
+    FauxForfaitRepository,
     FauxInscriptionRepository,
 )
 
@@ -227,6 +228,7 @@ class Montage:
         self.blasons = FauxBlasonRepository()
         self.placements = FauxPlacementRepository()
         self.inscriptions = FauxInscriptionRepository()
+        self.forfaits = FauxForfaitRepository()
         self.horloge = HorlogeFigee(_QUAND)
         self.tournoi_id: TournoiId = 1
         blason_id: BlasonId | None = None
@@ -261,6 +263,7 @@ class Montage:
             self.blasons,
             self.placements,
             self.inscriptions,
+            self.forfaits,
             self.horloge,
         )
 

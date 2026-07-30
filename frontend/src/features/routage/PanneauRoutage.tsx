@@ -50,7 +50,15 @@ export function PanneauRoutage({
 
       {routage.isError && <MessageErreur erreur={routage.error} />}
 
-      {routage.isSuccess && lignes.length === 0 && (
+      {/* Un blanc se lit comme une panne — c'est la règle que tout cet écran applique, elle vaut
+          aussi pour la seconde qui suit la bascule, avant l'arrivée des données. */}
+      {routage.isPending && (
+        <p className="routage__vide" role="status">
+          Recherche des destinations…
+        </p>
+      )}
+
+      {!routage.isPending && !routage.isError && lignes.length === 0 && (
         <p className="routage__vide" role="status">
           Aucun archer à router.
         </p>

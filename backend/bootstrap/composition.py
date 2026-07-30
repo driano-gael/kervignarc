@@ -705,6 +705,7 @@ def create_app(
     app.state.service_routage = ServiceRoutage(
         app.state.service_saisie_duels,
         app.state.service_placement_duels,
+        app.state.service_classement,
         phase_repository,
     )
 
@@ -723,6 +724,7 @@ def create_app(
         blason_repository,
         placement_repository,
         inscription_repository,
+        forfait_repository,
         HorlogeSysteme(),
     )
     app.state.service_saisie = service_saisie

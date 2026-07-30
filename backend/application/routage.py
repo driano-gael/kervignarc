@@ -17,10 +17,11 @@ tire sur la cible 4, quel que soit son vainqueur » — donc l'affectation exist
 (E05US010 non livrée), l'adversaire pas encore sorti de son duel amont, le rang intermédiaire
 (E06US004 non livrée). Un blanc se lit comme une panne ; une phrase se lit comme une attente.
 
-*Jumeau assumé de `pilotage_tour.py`* : la lecture « archer → cible du plan » et la règle « pas de
-cible au-delà du tour 1 » y existent déjà, sous un autre angle (le duel, pas l'archer). **2ᵉ**
-occurrence : on duplique et on attend la 3ᵉ pour extraire (règle « remède structurel sur preuve »).
-Les deux copies sont marquées ci-dessous.
+*Jumeau assumé de `pilotage_tour.py`* (**`# DETTE-019`**) : la lecture « archer → pose du plan » et
+la règle « pas de cible au-delà du tour 1 » y existent déjà, sous un autre angle (le duel, pas
+l'archer). **2ᵉ** occurrence : on duplique et on attend la 3ᵉ pour extraire (règle « remède
+structurel sur preuve »). La garde tour-1 est celle qu'**E05US010 devra lever aux deux endroits** —
+c'est pour ça qu'elle est tracée au registre plutôt que seulement commentée.
 """
 
 from __future__ import annotations
@@ -28,13 +29,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from application.erreurs import GabaritDuTournoiAbsent
+from application.classements import ServiceClassement
+from application.erreurs import GabaritDuTournoiAbsent, PhaseIntrouvable, TournoiIntrouvable
 from application.placement_duels import ServicePlacementDuels
 from application.saisie_duels import Duelliste, ServiceSaisieDuels
 from domain.classement import LigneClassement
 from domain.erreurs import EffectifTableauInvalide
 from domain.participant import Participant
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.ports import PhaseRepository
 from domain.tableau import Match, PerdantDe, Tableau, VainqueurDe, libelle_tour
 from domain.tournoi import TournoiId
@@ -43,6 +45,15 @@ from domain.tournoi import TournoiId
 # non dans le front) pour la même raison que le `blocage` du feu vert : c'est le serveur qui sait
 # **pourquoi** la donnée manque, et les quatre canaux de routage doivent dire la même chose.
 CIBLE_A_VENIR = "cible attribuée au lancement du tour"
+"""Tour ≥ 2 : la cible **existera**, elle n'est simplement pas encore posée (E05US010)."""
+
+CIBLE_NON_ATTRIBUEE = "cible non attribuée"
+"""Tour 1 sans pose : aucun plan matérialisé, ou archer en réserve. Rien ne viendra tant que
+l'organisateur n'aura pas placé — d'où le libellé **neutre** du feu vert, et non une promesse."""
+
+PLACEMENT_PERIME = "placement à revoir — adversaire posé sur une autre cible"
+"""La pose persistée ne correspond plus au duel d'aujourd'hui (l'appariement s'est recalculé)."""
+
 RANG_A_VENIR = "rang publié en fin de phase"
 PHASE_ABSENTE = "phase finale non configurée"
 TABLEAU_ABSENT = "tableau non constitué"
@@ -118,10 +129,12 @@ class ServiceRoutage:
         self,
         saisie_duels: ServiceSaisieDuels,
         placement_duels: ServicePlacementDuels,
+        classement: ServiceClassement,
         phases: PhaseRepository,
     ) -> None:
         self._saisie_duels = saisie_duels
         self._placement_duels = placement_duels
+        self._classement = classement
         self._phases = phases
 
     def routage(
@@ -142,56 +155,96 @@ class ServiceRoutage:
         """
         phase = self._phase_de_tableau(tournoi_id, phase_id)
         if phase is None or phase.id is None:
-            return self._tous_indisponibles(None, archer_ids, PHASE_ABSENTE)
+            return self._tous_indisponibles(tournoi_id, None, archer_ids, PHASE_ABSENTE)
         try:
             tableau, lignes = self._saisie_duels.reconstruire(tournoi_id, phase.id)
         except EffectifTableauInvalide:
             # Moins de deux archers en lice : il n'y a pas d'arbre. Comme le feu vert, on rend un
             # panneau **motivé** plutôt qu'une erreur — l'écran est consultable avant la clôture.
-            return self._tous_indisponibles(phase.id, archer_ids, TABLEAU_ABSENT)
+            return self._tous_indisponibles(tournoi_id, phase.id, archer_ids, TABLEAU_ABSENT)
         poses = self._poses_par_archer(tournoi_id, phase.id)
+        # `podium()` rebalaye tout l'arbre : calculé **une fois** pour la grille entière, pas par
+        # archer — la route accepte jusqu'à 64 identifiants.
+        rangs = {place.participant: place.rang for place in tableau.podium()}
         return Routage(
             phase_id=phase.id,
-            archers=tuple(self._router(a, tableau, lignes, poses) for a in archer_ids),
+            archers=tuple(self._router(a, tableau, lignes, poses, rangs) for a in archer_ids),
         )
 
     # --- Résolution de la phase ----------------------------------------------------------------
 
     def _phase_de_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId | None) -> Phase | None:
-        """La phase visée : celle demandée, sinon la **première** élimination directe du tournoi.
+        """La phase visée : celle **imposée** par le client, sinon celle du tournoi qui **vient**.
 
-        « Première » au sens de l'`ordre` de la séquence (`par_tournoi` la garantit, E05US001) : un
-        tournoi qui enchaînerait deux tableaux route vers celui qui vient — le suivant n'a pas
-        encore d'occupants.
+        Deux contrats distincts, et c'est volontaire :
+
+        - `phase_id` **imposé** (écran de duels) : un identifiant fourni par le client est
+          **validé**, comme partout ailleurs — inconnu, ou relevant d'un autre tournoi ⇒
+          `PhaseIntrouvable` (404). Sans cette garde, un `phase_id` périmé (phase supprimée
+          entre-temps) rendrait un placide « phase finale non configurée » au lieu d'un vrai
+          refus : l'écran mentirait.
+        - **résolution implicite** (tablette de qualification, qui ne connaît que sa cible et son
+          départ) : best-effort, `None` si le tournoi n'a pas de tableau — l'écran le dit.
+
+        « Celle qui vient » = la première élimination directe **non terminée**, dans l'ordre de la
+        séquence (`par_tournoi` garantit le tri, E05US001). Prendre la première tout court
+        épinglerait un tournoi à deux tableaux sur le premier **à jamais**, et router tout le monde
+        en « terminé ».
         """
         if phase_id is not None:
-            return self._phases.par_id(phase_id)
-        return next(
-            (
-                p
-                for p in self._phases.par_tournoi(tournoi_id)
-                if p.type is TypePhase.ELIMINATION_DIRECTE
-            ),
-            None,
-        )
+            phase = self._phases.par_id(phase_id)
+            if phase is None or phase.tournoi_id != tournoi_id:
+                raise PhaseIntrouvable(f"Aucune phase {phase_id} pour le tournoi {tournoi_id}.")
+            return phase
+        tableaux = [
+            p
+            for p in self._phases.par_tournoi(tournoi_id)
+            if p.type is TypePhase.ELIMINATION_DIRECTE
+        ]
+        en_cours = [p for p in tableaux if p.statut is not StatutPhase.TERMINEE]
+        return next(iter(en_cours), None) or next(iter(tableaux), None)
 
-    @staticmethod
     def _tous_indisponibles(
-        phase_id: int | None, archer_ids: tuple[int, ...], motif: str
+        self,
+        tournoi_id: TournoiId,
+        phase_id: int | None,
+        archer_ids: tuple[int, ...],
+        motif: str,
     ) -> Routage:
+        """Le panneau dégradé — mais **nominatif**.
+
+        C'est l'état le plus fréquent de la journée (la phase finale n'est configurée qu'une fois la
+        qualification close), donc pas un cas limite : quatre lignes anonymes et identiques seraient
+        illisibles, et un panneau qui ne sait plus dire *qui* est qui a perdu sa raison d'être. Les
+        noms viennent du classement, lisible **indépendamment** de toute phase de tableau — c'est
+        justement ce que les deux branches dégradées n'ont pas.
+        """
+        identites = self._identites(tournoi_id)
         return Routage(
             phase_id=phase_id,
             archers=tuple(
                 RoutageArcher(
                     archer_id=archer_id,
-                    nom="",
-                    prenom="",
+                    nom=identites.get(archer_id, ("", ""))[0],
+                    prenom=identites.get(archer_id, ("", ""))[1],
                     issue=IssueRoutage.INDISPONIBLE,
                     motif=motif,
                 )
                 for archer_id in archer_ids
             ),
         )
+
+    def _identites(self, tournoi_id: TournoiId) -> dict[int, tuple[str, str]]:
+        """`archer_id → (nom, prénom)` depuis le classement (best-effort).
+
+        `{}` si le tournoi a disparu entre-temps : un panneau sans noms reste préférable à un
+        panneau qui échoue — on ne troque pas une dégradation contre une panne.
+        """
+        try:
+            classement = self._classement.pour_tournoi(tournoi_id)
+        except TournoiIntrouvable:
+            return {}
+        return {ligne.archer_id: (ligne.nom, ligne.prenom) for ligne in classement.lignes}
 
     # --- Routage d'un archer -------------------------------------------------------------------
 
@@ -201,6 +254,7 @@ class ServiceRoutage:
         tableau: Tableau,
         lignes: dict[int, LigneClassement],
         poses: dict[int, tuple[int, str]],
+        rangs: dict[Participant, int],
     ) -> RoutageArcher:
         """L'issue d'un archer : prochain duel, sortie, ou l'aveu qu'on ne sait pas le router.
 
@@ -231,7 +285,7 @@ class ServiceRoutage:
                 issue=IssueRoutage.PROCHAIN_DUEL,
                 prochain=self._prochain_duel(prochain, tableau, lignes, poses, moi),
             )
-        rang = next((p.rang for p in tableau.podium() if p.participant == moi), None)
+        rang = rangs.get(moi)
         dernier = max(siens, key=lambda m: m.tour)
         return RoutageArcher(
             archer_id=archer_id,
@@ -255,15 +309,9 @@ class ServiceRoutage:
         moi: Participant,
     ) -> ProchainDuel:
         """Le rendez-vous : sa cible (si elle est **valide**), son libellé de tour, l'adversaire."""
-        # Jumeau de `ServicePilotageTour._duel_a_venir` (2ᵉ occurrence) : le plan de duels ne pose
-        # que le **tour 1** (ADR-0048 ; l'intégral 1→N est E05US010). Au-delà, l'archer garde bien
-        # une ligne dans `placement_tableau`, mais c'est celle de son tour 1 : elle serait
-        # **périmée** et enverrait un finaliste sur son ancienne butte. On n'attribue donc aucune
-        # cible au-delà du tour 1 — un manque nommé vaut mieux qu'une cible fausse.
-        pose = poses.get(moi.ref_id) if match.tour == 1 else None
         adversaire_participant = match.bas if match.haut == moi else match.haut
         adversaire = self._saisie_duels.duelliste(adversaire_participant, lignes)
-        sources = self._sources_en_attente(match)
+        pose, manque = self._pose_valide(match, moi, adversaire_participant, poses)
         return ProchainDuel(
             numero=match.numero,
             tour=match.tour,
@@ -271,12 +319,55 @@ class ServiceRoutage:
             cible=pose[0] if pose is not None else None,
             position=pose[1] if pose is not None else None,
             adversaire=adversaire,
-            sources_en_attente=sources,
-            manque=CIBLE_A_VENIR if pose is None else None,
+            sources_en_attente=self._sources_en_attente(match),
+            manque=manque,
         )
+
+    # DETTE-019 : garde tour-1, jumelle de `ServicePilotageTour._duel_a_venir`.
+    @staticmethod
+    def _pose_valide(
+        match: Match,
+        moi: Participant,
+        adversaire: Participant | None,
+        poses: dict[int, tuple[int, str]],
+    ) -> tuple[tuple[int, str] | None, str | None]:
+        """La pose à **annoncer**, ou `None` + le motif qui dit pourquoi il n'y en a pas.
+
+        Trois raisons de ne rien annoncer, et elles ne se disent pas de la même façon — c'est tout
+        l'objet de cette méthode, qui est la **seule** à décider d'une cible :
+
+        1. **Tour ≥ 2** — le plan ne pose que le 1ᵉʳ tour (ADR-0048 ; l'intégral 1→N est E05US010).
+           L'archer garde bien une ligne dans `placement_tableau`, mais c'est **celle de son tour
+           1** : elle serait périmée et enverrait un finaliste sur son ancienne butte. La cible
+           existera (« attribuée au lancement du tour »). Jumeau de
+           `ServicePilotageTour._duel_a_venir`.
+        2. **Pose absente au tour 1** — aucun plan matérialisé, pas de gabarit, ou archer en
+           réserve. Rien ne viendra tant que l'organisateur n'aura pas placé : libellé **neutre**,
+           pas une promesse. *(Le jumeau dit « cible non attribuée » pour la même raison.)*
+        3. **Pose incohérente avec le duel du jour** — les deux duellistes d'un match tirent
+           forcément sur **la même** cible (E03US009 les veut même côte à côte). Si l'adversaire est
+           posé ailleurs, c'est que l'**appariement s'est recalculé** depuis la matérialisation du
+           plan : le classement a bougé (une correction de score suffit, E04US013) et l'arbre est
+           reconstruit à chaque lecture (ADR-0023) alors que les poses, elles, sont **persistées**.
+           Annoncer la pose enverrait deux archers sur deux buttes différentes — l'incident de salle
+           que ce panneau existe pour éviter. La garde tour-1 (cas 1) ne couvre **pas** ce cas :
+           c'est le même raisonnement décalé d'un cran, de la cible périmée d'un *tour* à celle d'un
+           *appariement*. L'écran Plan de duels signale déjà la situation (`duels_separes`) ; ce
+           canal-ci est le seul à rendre l'information à l'archer, donc le seul où elle vaut ordre.
+        """
+        if match.tour != 1:
+            return None, CIBLE_A_VENIR
+        pose = poses.get(moi.ref_id)
+        if pose is None:
+            return None, CIBLE_NON_ATTRIBUEE
+        pose_adverse = poses.get(adversaire.ref_id) if adversaire is not None else None
+        if pose_adverse is None or pose_adverse[0] != pose[0]:
+            return None, PLACEMENT_PERIME
+        return pose, None
 
     # --- Lectures best-effort ------------------------------------------------------------------
 
+    # DETTE-019 : jumelle de `ServicePilotageTour._cibles_par_archer`.
     def _poses_par_archer(
         self, tournoi_id: TournoiId, phase_id: PhaseId
     ) -> dict[int, tuple[int, str]]:
@@ -297,6 +388,7 @@ class ServiceRoutage:
             for pose in cible.placements
         }
 
+    # DETTE-019 : corps identique à `ServicePilotageTour._sources_en_attente`.
     @staticmethod
     def _sources_en_attente(match: Match) -> tuple[int, ...]:
         """Les duels amont dont ce match attend encore l'issue — pour **nommer** qui l'on attend.

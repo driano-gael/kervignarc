@@ -25,8 +25,13 @@ volontaire : plutôt qu'une case vide qu'on prendrait pour une panne, une phrase
 au lancement du tour** » (les cibles des tours suivants ne sont pas encore posées par l'application),
 « **en attente du duel n°2** » (l'adversaire sort d'un duel qui n'est pas fini), « **rang publié en
 fin de phase** » (l'appli connaît aujourd'hui les quatre premiers du tableau, pas le classement
-complet). Elle n'invente jamais une cible ni un rang : une cible périmée enverrait un finaliste sur
-son ancienne butte.
+complet). Elle n'invente jamais une cible ni un rang.
+
+**Et elle se tait plutôt que de se tromper.** Si le classement bouge après que le plan des duels a
+été fait — une simple correction de score suffit — les adversaires ne sont plus les mêmes, et la
+cible prévue devient fausse. Dans ce cas l'écran n'affiche **pas** l'ancienne cible : il dit
+« placement à revoir ». Envoyer deux archers sur deux buttes différentes est précisément l'incident
+que cet écran existe pour éviter.
 
 **Ce qui reste à venir.** Les **trois autres canaux** de la même information — l'application publique
 sur téléphone, l'écran de salle — recevront le même signal dans leurs propres tâches. Le

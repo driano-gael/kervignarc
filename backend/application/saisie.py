@@ -40,6 +40,7 @@ from domain.ports import (
     ArcherRepository,
     BlasonRepository,
     CategorieRepository,
+    ForfaitRepository,
     Horloge,
     InscriptionRepository,
     PhaseRepository,
@@ -78,6 +79,16 @@ class ArcherPositionne:
     position: str
     archer: Archer
     zones: tuple[ZoneScore, ...] = ()
+    forfait: bool = False
+    """L'archer a **abandonné ou été disqualifié** en qualification (E04US015, ADR-0050).
+
+    Il reste dans la grille (un forfait ne déplace personne) mais sa série ne sera **jamais
+    complétée**. Le signal est exposé parce que le client a besoin de savoir qu'une série incomplète
+    est **close pour de bon** : sans lui, un écran qui attend « toutes les séries finies » (le
+    panneau de routage, E04US018) attendrait indéfiniment des volées qui ne viendront pas. Même
+    notion que `ServiceCompletude._serie_close` — « barème validé **ou** forfait », DETTE-014 :
+    c'est le serveur qui sait, pas le front.
+    """
 
 
 @dataclass(frozen=True)
@@ -128,6 +139,7 @@ class ServiceSaisie:
         blasons: BlasonRepository,
         placements: PlacementRepository,
         inscriptions: InscriptionRepository,
+        forfaits: ForfaitRepository,
         horloge: Horloge,
     ) -> None:
         self._series = series
@@ -137,6 +149,7 @@ class ServiceSaisie:
         self._blasons = blasons
         self._placements = placements
         self._inscriptions = inscriptions
+        self._forfaits = forfaits
         self._horloge = horloge
 
     def archers_du_poste(
@@ -150,6 +163,7 @@ class ServiceSaisie:
         n'apparaît pas. L'appelant fournit le départ courant du poste (déjà validé, ADR-0034).
         """
         inscriptions = {i.id: i for i in self._inscriptions.par_depart(depart_id)}
+        forfaits = self._forfaits_qualif(tournoi_id)
         grille: list[ArcherPositionne] = []
         for affectation in self._placements.par_depart(depart_id):
             if affectation.cible_index != cible_index:
@@ -165,6 +179,7 @@ class ServiceSaisie:
                     position=affectation.position,
                     archer=archer,
                     zones=self._zones_du_blason_grille(archer),
+                    forfait=archer.id in forfaits,
                 )
             )
         grille.sort(key=lambda ligne: ligne.position)
@@ -397,6 +412,17 @@ class ServiceSaisie:
         if blason is None:
             raise BlasonIntrouvable(f"Blason {categorie.blason_id} introuvable.")
         return blason.zones
+
+    def _forfaits_qualif(self, tournoi_id: TournoiId) -> frozenset[ArcherId]:
+        """Les archers **forfaits en qualification** (abandon / DSQ, E04US015, ADR-0050).
+
+        Best-effort : sans phase de qualification configurée, personne n'est forfait — la grille
+        s'affiche quand même (robustesse jour J, même parti que `avancement_cible` sur le barème).
+        """
+        phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        if phase is None or phase.id is None:
+            return frozenset()
+        return frozenset(forfait.archer_id for forfait in self._forfaits.par_phase(phase.id))
 
     def _zones_du_blason_grille(self, archer: Archer) -> tuple[ZoneScore, ...]:
         """Le pavé de l'archer pour la **grille** (lecture), ou `()` s'il est indéterminable.

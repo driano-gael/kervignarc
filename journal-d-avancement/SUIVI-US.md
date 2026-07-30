@@ -59,7 +59,15 @@
 >   Nouveau `libelle_tour` au domaine (« Quart de finale », « 1/8 de finale », « Petite finale »).
 >   Tests **service depuis le CA** (prochain duel, exempt, élimination, podium, lecture pure) ;
 >   API/front **après**. Oracle 120 vert. Story alignée (Arbitrages). **Aucun ADR** : ADR-0056 avait
->   déjà tranché le fond. Recette : [`docs/fonctionnel/E04US018.md`](../docs/fonctionnel/E04US018.md).
+>   déjà tranché le fond — vérifié à la revue sur les quatre candidats. La revue a fait ajouter, avant
+>   la PR : le **signal `forfait`** sur la ligne de grille (sans lui, un abandon privait la cible
+>   entière du panneau **à vie**), une **porte d'ouverture manuelle** en toutes circonstances, des
+>   lignes **nominatives** dans le panneau dégradé, et surtout la garde « **la pose n'est annoncée que
+>   si l'adversaire du jour est posé sur la même cible** » — un reclassement recalcule l'appariement
+>   alors que le plan reste persisté, et l'ancienne pose enverrait les deux duellistes sur deux
+>   buttes. Deux dettes inscrites au registre : [DETTE-019](../docs/dette.md) (jumeau de
+>   `ServicePilotageTour`, point d'entrée d'E05US010) et **DETTE-020** (libellé de tour à deux
+>   domiciles). Recette : [`docs/fonctionnel/E04US018.md`](../docs/fonctionnel/E04US018.md).
 > - `E08US005` **rembourser une inscription payée annulée** — US à **surface visible**. Quand une
 >   inscription **payée** est effacée (désinscription ou suppression de départ), la somme encaissée
 >   devient un **remboursement à traiter** dans un **registre à part** (agrégat/table `remboursement`,

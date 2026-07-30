@@ -77,25 +77,35 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
   const ligneActive = lignes.find((l) => l.archer_id === archerActif) ?? null
 
   // Bascule en panneau de routage (E04US018). « Close » = toutes les volées du barème saisies **et**
-  // verrouillées par le scoreur : c'est lui qui clôt une série, pas le marqueur. Les séries sont
-  // relues via le **même** cache que les lignes de la grille (`useSeries`), donc sans requête en plus.
+  // verrouillées par le scoreur (c'est lui qui clôt une série, pas le marqueur) — **ou** l'archer
+  // est forfait (E04US015 : il reste dans la grille et sa série ne se complétera jamais ; sans cette
+  // clause, une seule DSQ priverait toute la cible du panneau). Les séries sont relues via le
+  // **même** cache que les lignes de la grille (`useSeries`), donc sans requête en plus.
   const archerIds = lignes.map((l) => l.archer_id)
   const series = useSeries(tournoiId, archerIds)
   const nbVolees = bareme.data?.nb_volees ?? null
   const cibleClose =
-    lignes.length > 0 && series.every((s) => serieClose(s.data?.volees ?? [], nbVolees))
+    lignes.length > 0 &&
+    lignes.every((ligne, i) => serieClose(series[i]?.data?.volees ?? [], nbVolees, ligne.forfait))
 
-  // « Retour à la grille » (CA) referme le panneau — et le referme **pour cette grille seulement** :
-  // changer de départ réinitialise le choix, sinon le poste suivant hériterait d'un panneau fermé
-  // qu'il n'a jamais fermé. Ajustement d'état **au rendu** (pas en effet), comme le tampon du pavé.
-  const signatureGrille = archerIds.join(',')
+  // Ouverture **automatique** quand la cible a fini (CA), et « Retour à la grille » qui referme
+  // (CA). Le panneau reste **ouvrable à la main** en toutes circonstances : un archer absent, une
+  // série restée en erreur ou un cas qu'on n'a pas prévu ne doit pas pouvoir condamner la
+  // fonctionnalité pour les trois autres archers — une porte automatique a toujours besoin d'une
+  // poignée. `panneauFerme` est réinitialisé quand la grille change de **composition** (changement
+  // de départ), pas quand elle change d'**ordre** (un échange de positions A↔B au plan ne doit pas
+  // rouvrir sous les doigts un panneau qu'on vient de fermer). Ajustement d'état **au rendu** (pas
+  // en effet), comme le tampon du pavé.
+  const signatureGrille = [...archerIds].sort((a, b) => a - b).join(',')
   const [ancreGrille, setAncreGrille] = useState(signatureGrille)
   const [panneauFerme, setPanneauFerme] = useState(false)
+  const [panneauForce, setPanneauForce] = useState(false)
   if (ancreGrille !== signatureGrille) {
     setAncreGrille(signatureGrille)
     setPanneauFerme(false)
+    setPanneauForce(false)
   }
-  const panneauOuvert = cibleClose && !panneauFerme
+  const panneauOuvert = panneauForce || (cibleClose && !panneauFerme)
 
   if (panneauOuvert) {
     return (
@@ -107,7 +117,10 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
           tournoiId={tournoiId}
           archerIds={archerIds}
           titrePanneau="Où tire-t-on ensuite ?"
-          onRetour={() => setPanneauFerme(true)}
+          onRetour={() => {
+            setPanneauForce(false)
+            setPanneauFerme(true)
+          }}
         />
       </div>
     )
@@ -122,8 +135,15 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
         )}
       </div>
 
-      {cibleClose && (
-        <button type="button" className="lien" onClick={() => setPanneauFerme(false)}>
+      {lignes.length > 0 && (
+        <button
+          type="button"
+          className="lien"
+          onClick={() => {
+            setPanneauFerme(false)
+            setPanneauForce(true)
+          }}
+        >
           Où tire-t-on ensuite ?
         </button>
       )}

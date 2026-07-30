@@ -124,6 +124,21 @@ describe('detail', () => {
     expect(detail(sansCible)).toBe('cible attribuée au lancement du tour · DUPONT Jean')
   })
 
+  it('relaie tel quel le motif d’un placement périmé — c’est le serveur qui sait pourquoi', () => {
+    // Trois causes distinctes de « pas de cible » (tour à venir / pas de plan / appariement
+    // recalculé) : le front ne les redevine pas, il affiche la phrase du serveur.
+    const perime = archer({
+      prochain: prochain({
+        cible: null,
+        position: null,
+        manque: 'placement à revoir — adversaire posé sur une autre cible',
+      }),
+    })
+    expect(detail(perime)).toBe(
+      'placement à revoir — adversaire posé sur une autre cible · DUPONT Jean',
+    )
+  })
+
   it('remonte le motif du serveur pour une issue terminée', () => {
     const sorti = archer({ issue: 'termine', prochain: null, motif: 'rang publié en fin de phase' })
     expect(detail(sorti)).toBe('rang publié en fin de phase')
@@ -149,5 +164,17 @@ describe('serieClose', () => {
 
   it('n’est pas close tant que le barème est inconnu', () => {
     expect(serieClose([validee, validee], null)).toBe(false)
+  })
+
+  it('est close pour un archer forfait, même sans une seule volée', () => {
+    // Un abandon / une DSQ (E04US015) laisse l'archer dans la grille avec une série qui ne se
+    // complétera JAMAIS. Sans cette clause, la cible entière resterait « en cours » à vie et ses
+    // trois autres archers ne verraient jamais leur destination.
+    expect(serieClose([], 2, true)).toBe(true)
+    expect(serieClose([saisie], 2, true)).toBe(true)
+  })
+
+  it('n’est pas close pour un archer non forfait dont la série traîne', () => {
+    expect(serieClose([], 2, false)).toBe(false)
   })
 })

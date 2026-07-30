@@ -194,6 +194,9 @@ def test_fixer_depart_courant_puis_lister_les_archers(
                 "prenom": "Alice",
                 # CA « pavé » : les zones du blason de l'archer, ordre canonique centre→extérieur.
                 "zones": [z.value for z in ZoneScore],
+                # E04US018 : l'archer n'a ni abandonné ni été disqualifié — sa série peut encore
+                # se compléter. Le client s'en sert pour savoir quand la cible a **fini** de tirer.
+                "forfait": False,
             }
         ]
 

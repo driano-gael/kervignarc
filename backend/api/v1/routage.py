@@ -21,7 +21,7 @@ la saisie de duels — l'adversaire s'affiche avec les mêmes noms que la grille
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
@@ -31,6 +31,11 @@ from api.v1.saisie_duels import DuellisteReponse
 from application.routage import ProchainDuel, Routage, RoutageArcher, ServiceRoutage
 
 router = APIRouter(prefix="/api/v1/routage", tags=["routage"])
+
+IssueRoutageReponse = Literal["prochain_duel", "termine", "indisponible"]
+"""Les trois seules issues du panneau — publiées au schéma OpenAPI plutôt que laissées en `str`,
+pour que le client (qui les code en dur) voie une divergence d'énumération au lieu de la subir.
+Miroir fermé de `IssueRoutage`, sans exposer l'énumération d'application (règle 6)."""
 
 
 # --- DTO ---
@@ -70,14 +75,14 @@ class ProchainDuelReponse(BaseModel):
 class RoutageArcherReponse(BaseModel):
     """La ligne d'un archer : son issue (`prochain_duel` / `termine` / `indisponible`) et le détail.
 
-    `issue` est la chaîne de l'énumération d'application — le client n'en connaît que ces trois
-    valeurs, et chacune dit quel champ lire ensuite (`prochain`, `rang_final`, `motif`).
+    `issue` est fermée aux trois valeurs ci-dessus, et chacune dit quel champ lire ensuite
+    (`prochain`, `rang_final`, `motif`).
     """
 
     archer_id: int
     nom: str
     prenom: str
-    issue: str
+    issue: IssueRoutageReponse
     prochain: ProchainDuelReponse | None
     rang_final: int | None
     tour_sortie: str | None
@@ -89,7 +94,7 @@ class RoutageArcherReponse(BaseModel):
             archer_id=ligne.archer_id,
             nom=ligne.nom,
             prenom=ligne.prenom,
-            issue=ligne.issue.value,
+            issue=cast(IssueRoutageReponse, ligne.issue.value),
             prochain=(
                 ProchainDuelReponse.de_prochain(ligne.prochain)
                 if ligne.prochain is not None
@@ -115,6 +120,15 @@ class RoutageReponse(BaseModel):
         )
 
 
+_MAX_ARCHERS = 64
+"""Plafond du nombre d'archers routés en un appel (au-delà : 422, avant que le service tourne).
+
+Les deux appelants réels en demandent 4 (une cible) et 2 (un duel) ; 64 laisse une marge
+confortable. La borne existe parce que la route est **publique et non authentifiée** et que
+chaque identifiant coûte un balayage de l'arbre : sans elle, une seule requête peut occuper
+durablement un thread du threadpool. Un mot-clé contre un vecteur gratuit."""
+
+
 # --- Lecture ---
 
 
@@ -123,7 +137,11 @@ async def lire_routage(
     tournoi_id: int,
     request: Request,
     archer_id: Annotated[
-        list[int] | None, Query(description="Archers à router, dans l'ordre d'affichage")
+        list[int] | None,
+        Query(
+            max_length=_MAX_ARCHERS,
+            description="Archers à router, dans l'ordre d'affichage",
+        ),
     ] = None,
     phase_id: Annotated[int | None, Query(description="Phase de tableau visée")] = None,
 ) -> RoutageReponse:

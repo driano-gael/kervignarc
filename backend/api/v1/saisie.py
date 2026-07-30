@@ -74,6 +74,10 @@ class ArcherGrilleReponse(BaseModel):
     `zones` porte le pavé de saisie **déduit du blason tiré** (CA « pavé ») dans l'ordre canonique
     centre→extérieur : sur un triple 40 les touches basses en sont **absentes**. Le front l'affiche
     tel quel — le serveur reste l'autorité du barème. `[]` = blason indéterminable (pavé indispo.).
+
+    `forfait` dit que l'archer a abandonné ou été disqualifié en qualification (E04US015) : il reste
+    dans la grille, mais sa série **ne sera jamais complétée**. Sans ce signal, un client qui attend
+    « toutes les séries closes » attendrait pour toujours (E04US018).
     """
 
     position: str
@@ -81,6 +85,7 @@ class ArcherGrilleReponse(BaseModel):
     nom: str
     prenom: str
     zones: list[ZoneScore]
+    forfait: bool = False
 
     @staticmethod
     def de_ligne(ligne: ArcherPositionne) -> ArcherGrilleReponse:
@@ -91,6 +96,7 @@ class ArcherGrilleReponse(BaseModel):
             nom=ligne.archer.nom,
             prenom=ligne.archer.prenom,
             zones=list(ligne.zones),
+            forfait=ligne.forfait,
         )
 
 
