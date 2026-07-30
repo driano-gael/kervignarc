@@ -19,6 +19,7 @@ import {
   useVerifierPoste,
 } from './hooks'
 import { oublierCodePosteUrl } from './url'
+import { naviguer } from '../../app/useChemin'
 
 export function EspacePoste({ codeInitial }: { codeInitial: string | null }) {
   const jeton = useSessionPosteStore((s) => s.jeton)
@@ -97,6 +98,9 @@ function PosteRattache({ poste }: { poste: CiblePoste }) {
     // Oublier aussi le marqueur de rôle (E00US017, ADR-0042) : sans quoi `resoudreRole` renverrait
     // encore « tablette » (le choix persiste) → retour au rattachement au lieu de l'écran de choix.
     reinitialiserRole()
+    // Et ramener l'adresse à la racine (E14US003) : rester sur `/cible` rouvrirait le rattachement,
+    // puisque l'adresse l'emporte sur le marqueur de choix qu'on vient d'effacer.
+    naviguer('/')
     deconnexion.mutate()
   }
 

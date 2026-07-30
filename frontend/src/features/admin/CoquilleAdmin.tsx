@@ -27,8 +27,10 @@
 //    d'être des destinations parmi dix-neuf : le premier est la destination d'ouverture du pilotage
 //    (`D-20`), le second l'entrée du banc d'essai de l'atelier.
 //
-// Navigation par **état local `useState`** (pas encore de `react-router`) — l'arbitrage du 18/07/2026
-// tient tant que les URL par rôle ne sont pas livrées ; elles le seront dans le même lot.
+// **Chaque écran a son adresse** : `/admin` ouvre l'accueil des axes, `/admin/pilotage/supervision`
+// ouvre un écran précis. L'axe et la destination ne sont donc **pas** dupliqués en état local — c'est
+// ce qui fait qu'un `F5` revient là où l'on était et qu'un lien se partage. Routeur **maison**
+// (`app/routeur.ts`), pas de dépendance : cf. son en-tête pour le pourquoi.
 //
 // Périmètre borné aux **fonctions livrées** (CA « non-régression ») : les destinations que le CDC UX
 // prévoit mais qui n'existent pas encore (Identité, Validation, Podiums, Audit) ne sont **pas**
@@ -77,6 +79,15 @@ import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { AideEcran } from '../../shared/ui/AideEcran'
 import { ConnexionAdmin } from './ConnexionAdmin'
 import { AIDE_ECRANS, type DestinationAdminId } from './aide-ecrans'
+import {
+  AXES,
+  axeDepuisSegments,
+  destinationDepuisSegments,
+  destinationParDefaut,
+  type Axe,
+} from './axes'
+import { analyserChemin, construireChemin } from '../../app/routeur'
+import { naviguer, useChemin } from '../../app/useChemin'
 import { BadgeStatut } from '../competition/BadgeStatut'
 import { GestionTournois } from '../tournois/Tournois'
 
@@ -99,57 +110,24 @@ export function CoquilleAdmin() {
 // Coquille admin : accueil des trois axes, puis sidebar de l'axe courant + zone principale.
 // ————————————————————————————————————————————————————————————————————————————————————————————————
 
-// Les trois axes de travail de l'admin (E14US003). `besoinTournoi` dit si l'axe travaille **sur un
-// tournoi** : l'atelier, non — c'est le patrimoine du club, il vit d'année en année.
-type Axe = 'atelier' | 'pilotage' | 'gestion'
-
-const AXES: { axe: Axe; libelle: string; phrase: string; besoinTournoi: boolean }[] = [
-  {
-    axe: 'atelier',
-    libelle: 'Atelier',
-    phrase: 'Fabriquer : briques du club, salles types, formats de déroulé, banc d’essai.',
-    besoinTournoi: false,
-  },
-  {
-    axe: 'pilotage',
-    libelle: 'Pilotage',
-    phrase: 'Le temps réel : lancer, superviser, valider, faire tourner la journée.',
-    besoinTournoi: true,
-  },
-  {
-    axe: 'gestion',
-    libelle: 'Gestion',
-    phrase: 'L’administratif : inscriptions, paiements, exports, archives.',
-    besoinTournoi: true,
-  },
-]
-
-// Destination d'ouverture d'un axe. Pour le pilotage, c'est **l'accueil-tableau de bord** (`D-20`,
-// E14US001) : c'est lui qui se contextualise par statut (frise, checklist, chiffres), inutile donc
-// d'aiguiller vers des écrans différents selon le statut. Les autres destinations restent à un clic
-// (`P-3`, priorité d'affichage, pas restriction).
-function destinationParDefaut(axe: Axe): DestinationAdminId {
-  if (axe === 'pilotage') return 'accueil'
-  if (axe === 'gestion') return 'inscriptions'
-  return 'categories'
-}
-
 function Coquille() {
   const tournois = useTournois()
   const [tournoiId, setTournoiId] = useState<number | null>(null)
-  // `null` = on est sur l'**accueil de l'admin**, celui qui choisit l'axe. C'est l'état d'entrée.
-  const [axeActif, setAxeActif] = useState<Axe | null>(null)
-  const [destinationActive, setDestinationActive] = useState<DestinationAdminId>('categories')
+  // **L'axe et la destination vivent dans l'adresse** (E14US003) : `/admin` = l'accueil qui choisit
+  // l'axe, `/admin/pilotage/supervision` = un écran précis. Rien n'est dupliqué en état local — c'est
+  // ce qui fait qu'un `F5` revient exactement où l'on était, et qu'un lien se partage.
+  const segments = analyserChemin(useChemin()).segments
+  const axeActif = axeDepuisSegments(segments)
 
   // Version **fraîche** du tournoi courant : après un démarrer/terminer, la liste est invalidée et
   // re-lue, ce qui rafraîchit le statut ici (badge, accueil) sans état local à synchroniser.
   const courant =
     tournoiId === null ? null : (tournois.data?.find((t) => t.id === tournoiId) ?? null)
 
-  const entrerDansAxe = (axe: Axe) => {
-    setAxeActif(axe)
-    setDestinationActive(destinationParDefaut(axe))
-  }
+  const allerA = (axe: Axe, destination: DestinationAdminId) =>
+    naviguer(construireChemin({ monde: 'admin', segments: [axe, destination] }))
+
+  const entrerDansAxe = (axe: Axe) => allerA(axe, destinationParDefaut(axe))
 
   // Choisir un tournoi **depuis l'accueil** le rend courant et ouvre son **pilotage** sur l'accueil
   // contextualisé (`D-20`) : c'est le geste « je viens m'occuper de ce tournoi ».
@@ -441,9 +419,15 @@ function Coquille() {
 
   const axe = AXES.find((a) => a.axe === axeActif)!
   const dansAxe = destinations.filter((d) => d.axe === axeActif)
-  // `dansAxe` n'est jamais vide (chaque axe a au moins une destination) : le repli lève le
-  // `T | undefined` de l'accès indexé (`noUncheckedIndexedAccess`).
-  const active = dansAxe.find((d) => d.id === destinationActive) ?? dansAxe[0]!
+  // La destination vient de l'adresse, **validée contre les destinations de cet axe** : sans ça,
+  // `/admin/atelier/supervision` afficherait un écran de pilotage sous l'intitulé « Atelier ».
+  // À défaut, l'ouverture de l'axe. `dansAxe` n'est jamais vide (chaque axe a au moins une
+  // destination) : le repli lève le `T | undefined` de l'accès indexé (`noUncheckedIndexedAccess`).
+  const demandee = destinationDepuisSegments(
+    segments,
+    dansAxe.map((d) => d.id),
+  )
+  const active = dansAxe.find((d) => d.id === demandee) ?? dansAxe[0]!
   const contenu =
     active.besoinTournoi && courant === null ? (
       <p className="carte__etat">
@@ -458,7 +442,11 @@ function Coquille() {
       <nav className="coquille__nav" aria-label="Navigation d'administration">
         {/* Retour à l'accueil : l'axe se quitte par un geste explicite. `P-3` est tenu — c'est un
             clic — mais on ne travaille jamais dans deux axes à la fois. */}
-        <button type="button" className="coquille__retour" onClick={() => setAxeActif(null)}>
+        <button
+          type="button"
+          className="coquille__retour"
+          onClick={() => naviguer(construireChemin({ monde: 'admin', segments: [] }))}
+        >
           ← Accueil
         </button>
         <p className="coquille__axe">{axe.libelle}</p>
@@ -506,7 +494,7 @@ function Coquille() {
                   d.id === active.id ? 'coquille__lien coquille__lien--actif' : 'coquille__lien'
                 }
                 aria-current={d.id === active.id ? 'page' : undefined}
-                onClick={() => setDestinationActive(d.id)}
+                onClick={() => allerA(axeActif, d.id)}
               >
                 {d.libelle}
               </button>
