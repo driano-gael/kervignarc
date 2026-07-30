@@ -74,6 +74,8 @@ class ServiceClassement:
             )
         return classement
 
+    # DETTE-022 : même résolution que la complétude (deux fois) et la saisie — extraction en US
+    # dédiée.
     def _forfaits_qualif(self, tournoi_id: TournoiId) -> list[Forfait]:
         """Les forfaits déclarés **en phase de qualification** (relégation/exclusion, ADR-0050).
 

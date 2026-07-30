@@ -5,7 +5,13 @@
 // liste des départs. Écritures : fixer le départ courant, saisir une volée. Chaque écriture invalide
 // ce qu'elle change (changer de départ change les archers ; saisir change la série de l'archer).
 
-import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useConnexionStore } from '../../shared/stores/connexionStore'
 import { useFileHorsLigneStore, type VoleeEnFile } from '../../shared/stores/fileHorsLigneStore'
@@ -47,6 +53,21 @@ export function useSerie(tournoiId: number, archerId: number) {
     // série (co-saisie). Le rafraîchissement se fait sur invalidation après la propre écriture du poste.
     retry: false,
     refetchOnWindowFocus: false,
+  })
+}
+
+// Les séries de **toute** la grille, pour savoir quand la cible a fini de tirer (E04US018 : le
+// panneau de routage bascule quand les quatre séries sont validées). Mêmes clés et mêmes options
+// que `useSerie` : React Query **partage** donc le cache avec les lignes de la grille — aucune
+// requête en double, et une saisie qui invalide sa série rafraîchit aussi ce décompte.
+export function useSeries(tournoiId: number, archerIds: number[]) {
+  return useQueries({
+    queries: archerIds.map((archerId) => ({
+      queryKey: cleSerie(tournoiId, archerId),
+      queryFn: () => getSerie(tournoiId, archerId),
+      retry: false,
+      refetchOnWindowFocus: false,
+    })),
   })
 }
 

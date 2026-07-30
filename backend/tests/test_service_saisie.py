@@ -28,6 +28,7 @@ from domain.categorie import Categorie, CategorieId
 from domain.depart import DepartId
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import NumeroVoleeInvalide, ValeurHorsBlason
+from domain.forfait import Forfait, NatureForfait
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
@@ -37,6 +38,7 @@ from domain.tournoi import TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
+    FauxForfaitRepository,
     FauxInscriptionRepository,
 )
 
@@ -227,6 +229,7 @@ class Montage:
         self.blasons = FauxBlasonRepository()
         self.placements = FauxPlacementRepository()
         self.inscriptions = FauxInscriptionRepository()
+        self.forfaits = FauxForfaitRepository()
         self.horloge = HorlogeFigee(_QUAND)
         self.tournoi_id: TournoiId = 1
         blason_id: BlasonId | None = None
@@ -261,6 +264,7 @@ class Montage:
             self.blasons,
             self.placements,
             self.inscriptions,
+            self.forfaits,
             self.horloge,
         )
 
@@ -392,6 +396,59 @@ def test_archers_du_poste_viennent_des_affectations_cible_depart() -> None:
 
     assert [(ligne.position, ligne.archer.id) for ligne in grille] == [("A", a), ("B", b)]
     assert all(isinstance(ligne, ArcherPositionne) for ligne in grille)
+
+
+def test_archers_du_poste_signalent_un_forfait_de_qualification() -> None:
+    """E04US018 : un abandon / une DSQ (E04US015) laisse l'archer **dans la grille** avec une série
+    qui ne se complétera jamais. Le client a besoin de le savoir pour cesser d'attendre ses volées —
+    sans ce signal, une seule DSQ prive toute la cible du panneau de routage, à vie. C'est le
+    serveur qui sait, comme `ServiceCompletude._serie_close` (DETTE-014) : le front ne re-dérive
+    rien.
+    """
+    m = Montage()
+    a = m.nouvel_archer("ALPHA")
+    b = m.nouvel_archer("BRAVO")
+    m.placer(a, _DEPART, cible_index=1, position="A")
+    m.placer(b, _DEPART, cible_index=1, position="B")
+    phase = m.phases.par_tournoi_et_type(m.tournoi_id, TypePhase.QUALIFICATION)
+    assert phase is not None and phase.id is not None
+    m.forfaits.semer(
+        Forfait.creer(m.tournoi_id, a, phase.id, NatureForfait.ABANDON, "DURAND", _QUAND)
+    )
+
+    grille = m.service.archers_du_poste(m.tournoi_id, cible_index=1, depart_id=_DEPART)
+
+    assert [(ligne.archer.id, ligne.forfait) for ligne in grille] == [(a, True), (b, False)]
+
+
+def test_archers_du_poste_ignorent_un_forfait_declare_en_duels() -> None:
+    """Le forfait qui clôt une série de **qualification** est celui déclaré **en qualification**
+    (ADR-0050 : un abandon en duels ne relègue pas un rang de qualif). Sans ce filtre, un abandon de
+    phase finale ferait croire à la tablette que la série de qualif est close."""
+    m = Montage()
+    a = m.nouvel_archer("ALPHA")
+    m.placer(a, _DEPART, cible_index=1, position="A")
+    tableau = m.phases.ajouter(Phase.creer(m.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE))
+    assert tableau.id is not None
+    m.forfaits.semer(
+        Forfait.creer(m.tournoi_id, a, tableau.id, NatureForfait.ABANDON, "DURAND", _QUAND)
+    )
+
+    grille = m.service.archers_du_poste(m.tournoi_id, cible_index=1, depart_id=_DEPART)
+
+    assert [ligne.forfait for ligne in grille] == [False]
+
+
+def test_archers_du_poste_sans_phase_de_qualification_n_echouent_pas() -> None:
+    """Robustesse jour J : sans phase de qualification configurée, personne n'est forfait et la
+    grille s'affiche quand même — même parti que le barème dans `avancement_cible`."""
+    m = Montage(avec_phase=False)
+    a = m.nouvel_archer("ALPHA")
+    m.placer(a, _DEPART, cible_index=1, position="A")
+
+    grille = m.service.archers_du_poste(m.tournoi_id, cible_index=1, depart_id=_DEPART)
+
+    assert [ligne.forfait for ligne in grille] == [False]
 
 
 def test_archers_du_poste_excluent_un_autre_depart() -> None:

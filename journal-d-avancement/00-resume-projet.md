@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 29 juillet 2026
+# Résumé du projet — où on en est au 30 juillet 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -43,8 +43,12 @@ des scores et déroule qualifications puis duels, qu'on peut **mettre en pause p
 la place d'un rôle (cible, scoreur) avant de rendre la main — le tout observé par une navbar
 cible / archer / scoreur / public. Et le **pilotage de la bascule de tour** commence : un écran
 **« Feu vert »** montre en continu, duel par duel, ce qui est **prêt à faire tirer** et ce qui bloque
-(nommé), puis un **bouton chiffré lance** les duels prêts d'un geste — le signal part vers les postes,
-les écrans qui l'afficheront aux archers viendront ensuite.
+(nommé), puis un **bouton chiffré lance** les duels prêts d'un geste. Et ce signal a désormais son
+**premier écran récepteur** : la tablette de la cible bascule d'elle-même, une fois les tirs validés,
+sur un panneau **« Où tire-t-on ensuite ? »** qui donne à chaque archer sa **cible et sa place** en
+gros caractères — de même après chaque duel, pour ses deux duellistes. Ce que l'appli ne sait pas
+encore (la cible des tours suivants, l'adversaire pas encore sorti de son duel, le rang d'un battu),
+elle l'**écrit en clair** plutôt que de laisser un vide.
 
 ---
 
@@ -346,10 +350,11 @@ Dans l'ordre de valeur prévu par le backlog :
 2. **Les duels** (phases finales) : l'arbre d'élimination directe, la saisie en duels (sets/cumul,
    barrage, podium) et l'**abandon / disqualification** sont **faits**, et la **bascule de tour** est
    **amorcée** — l'écran **« Feu vert »** montre ce qui est prêt et **lance** les duels prêts
-   (E12US002). Restent les **écrans qui reçoivent** le signal côté archer (tablette, public, salle) et
-   les **affectations du prochain tour**. *L'organisateur **compose la séquence de phases** de son
-   tournoi (E05US001), place les duellistes, le scoreur score les duels, et l'organisateur **lance le
-   tour** — reste à **afficher** aux archers où aller.*
+   (E12US002) — et son **premier écran récepteur** est livré : la **tablette de la cible** affiche à
+   chaque archer où il tire ensuite (E04US018). Restent les **deux autres canaux** (appli publique sur
+   téléphone, écran de salle) et les **affectations du prochain tour**. *L'organisateur **compose la
+   séquence de phases** de son tournoi (E05US001), place les duellistes, le scoreur score les duels,
+   l'organisateur **lance le tour**, et l'archer **voit sa destination** sur la tablette de sa cible.*
 3. **Le placement intégral 1→N** (le grand format du classeur 120) et l'**écran de salle** avec
    l'identité visuelle du tournoi.
 4. **Confort et robustesse** : import inscript'arc, presets de barèmes, déroulé horaire, sauvegarde
@@ -363,7 +368,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **82 US livrées** sur `main` (mergées, revues, CI verte) à la date du 29/07/2026. **`SUIVI-US.md`
+- **83 US livrées** sur `main` (mergées, revues, CI verte) à la date du 30/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -373,29 +378,31 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   **générateur d'inscrits + scénarios rejouables** (E15US001), le **moteur de simulation éphémère**
   (E15US002, technique, sans écran) puis le **cockpit de simulation** (E15US003, bot pausable + reprise
   en main + canal isolé). La séquence **J2** a ensuite repris avec le **feu vert + lancement d'un tour**
-  (E12US002), puis le **remboursement d'une inscription payée annulée** (E08US005).
+  (E12US002), le **remboursement d'une inscription payée annulée** (E08US005), puis le **panneau de
+  routage sur la tablette** (E04US018).
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
   et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (10/14)**
+  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (11/14)**
   avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003), le **tableau
   d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001), la
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
   (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**), l'**abandon /
   disqualification** (E04US015 — qualif *et* duels), le **cycle de vie d'un départ** (E12US008), le
-  **feu vert + lancement d'un tour** (E12US002) puis le **remboursement d'une inscription payée
-  annulée** (E08US005).
-- Dernière US livrée : **E08US005** (rembourser une inscription payée annulée) — US **à surface
-  visible**. Effacer une inscription **payée** (désinscription ou suppression de départ) ouvre un
-  **remboursement à traiter** dans un **registre à part** qui **survit** à la disparition de
-  l'inscription/du départ (aucune FK vers eux — on fige nom d'archer, créneau, montant, comme l'audit
-  fige le nom de l'auteur). L'ouverture est **atomique** avec l'effacement (jamais de somme perdue) ;
-  le **traitement** (remboursé / reporté) est **audité** et **terminal** (ADR-0057). La désinscription
-  d'un payé devient **confirmable** (montant chiffré). Front : onglet « Remboursements » de l'écran
-  Paiements. *(Livré juste avant : **E12US002**, le feu vert + lancement d'un tour ; puis **E15US003**
-  / **E15US002** / **E15US001**.)*
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E04US018** (afficher la prochaine cible
-  après validation — le **premier des écrans récepteurs** du lancement émis par E12US002). Le fil
+  **feu vert + lancement d'un tour** (E12US002), le **remboursement d'une inscription payée
+  annulée** (E08US005) et l'**affichage de la prochaine cible après validation** (E04US018).
+- Dernière US livrée : **E04US018** (afficher la prochaine cible après validation) — US **à surface
+  visible**, le **premier des quatre écrans récepteurs** du lancement émis par E12US002. La tablette
+  de la cible bascule en panneau **« Où tire-t-on ensuite ? »** quand ses séries sont validées, et
+  l'écran scoreur fait de même dès un duel tranché : pour chaque archer, sa **cible et sa place** en
+  gros, le tour et l'adversaire en dessous — ou son **rang** s'il est sorti. L'affichage est
+  **instantané** parce que les cibles sont attribuées aux **matchs**, pas aux archers : la destination
+  existe avant le duel. Ce qui n'existe pas encore est **nommé** plutôt que masqué (« cible attribuée
+  au lancement du tour », « en attente du duel n°2 », « rang publié en fin de phase ») — aucune cible
+  ni aucun rang n'est inventé. *(Livré juste avant : **E08US005**, le remboursement d'une inscription
+  payée annulée ; puis **E12US002**, le feu vert + lancement d'un tour.)*
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E07US008** (vue publique des affectations
+  du prochain tour — le **deuxième canal** de routage, sur le téléphone de l'archer). Le fil
   **équipes** est débloqué (E13US002+).

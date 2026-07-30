@@ -229,6 +229,7 @@ class ServicePilotageTour:
         cibles = ", ".join(str(cible) for cible in resume.cibles) or "—"
         return f"{resume.nb_duels} duel(s) lancé(s), cible(s) {cibles}"
 
+    # DETTE-019 : jumelle de `ServiceRoutage._poses_par_archer` (E04US018).
     def _cibles_par_archer(self, tournoi_id: TournoiId, phase_id: PhaseId) -> dict[int, int]:
         """`archer_id → cible_index` depuis le plan de duels **persisté** (`placement_tableau`).
 
@@ -243,6 +244,10 @@ class ServicePilotageTour:
             return {}
         return {pose.archer_id: cible.index for cible in plan.cibles for pose in cible.placements}
 
+    # DETTE-019 : garde tour-1, jumelle de `ServiceRoutage._pose_a_annoncer` (E04US018).
+    # DETTE-021 : `cible_attribuee` n'exige pas que les deux camps soient sur la **même**
+    # cible ni côte à côte — « prêt · cibles 4 et 7 » est donc affiché, et lancé. Le routage
+    # porte l'alerte correspondante depuis E04US018 ; ici elle manque encore.
     def _duel_a_venir(
         self, match: Match, lignes: dict[int, LigneClassement], cibles: dict[int, int]
     ) -> DuelAVenir:
@@ -282,6 +287,7 @@ class ServicePilotageTour:
             return None
         return cibles.get(participant.ref_id)
 
+    # DETTE-019 : corps identique à `ServiceRoutage._sources_en_attente` (E04US018).
     @staticmethod
     def _sources_en_attente(match: Match) -> tuple[int, ...]:
         """Numéros des duels **amont** dont ce match attend encore l'issue — pour nommer le blocage.

@@ -40,6 +40,9 @@ export function estPetiteFinale(duel: Pick<Duel, 'place_en_jeu'>): boolean {
 // dernier tour est la finale (ou la « petite finale » pour la 3ᵉ place, place_en_jeu = 3-4), l'avant
 // dernier les demies, etc. Au-delà des quarts, on nomme la fraction (1/8, 1/16…). Le placement
 // (`place_en_jeu`) prime pour distinguer finale et petite finale, qui partagent le dernier tour.
+// DETTE-020 : le domaine calcule **aussi** ce libellé (`domain/tableau.py:libelle_tour`,
+// E04US018), au singulier et sans suffixe sur la petite finale — deux domiciles pour une règle
+// de vocabulaire (ADR-0006). À unifier côté serveur, le front consommera son libellé.
 export function libelleTour(duel: Pick<Duel, 'tour' | 'place_en_jeu'>, nbTours: number): string {
   if (estPetiteFinale(duel)) return 'Petite finale (3ᵉ place)'
   const distance = nbTours - duel.tour

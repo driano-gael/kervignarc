@@ -44,6 +44,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Tableau** | `Tableau` | Arbre de matchs à élimination. |
 | **Tableau principal** | — | Arbre menant au titre. |
 | **Tableau de placement** | — | Sous-arbre classant une plage de rangs (ex. 17-24). |
+| **Libellé de tour** | `libelle_tour` | Le nom que la salle donne à un tour de tableau : **« finale »**, **« petite finale »**, **« demi-finale »**, **« quart de finale »**, puis les fractions (**« 1/8 de finale »**, « 1/16 », …). Se compte **à rebours** de la finale — c'est la distance au titre qui nomme le tour, jamais son rang dans l'arbre : le tour 1 est un quart sur un tableau de 8, une demie sur un tableau de 4. La **petite finale** se dispute au **même tour** que la finale et ne s'en distingue que par sa place en jeu (rangs 3-4). Le **singulier** s'adresse à un archer (« vous tirez en quart de finale ») ; le **pluriel** titre un groupe de duels (« Quarts de finale »). ⚠️ Calculé aujourd'hui à **deux endroits** — `domain/tableau.py` et le front `saisie-duels/duel.ts` — cf. [DETTE-020](dette.md#dette-020--le-libellé-de-tour-a-deux-domiciles). |
 | **Lucky Loser** | — | Dans ce projet : **tableau de classement/consolation** (pas un repêchage par défaut — cf. `moteur-placement-lucky-loser.md`). |
 | **Repêchage** | routing `repechage` | Réintégration de perdants dans le principal (mode World Archery, optionnel). |
 | **Exempt / Bye** | `Exempt` (`bye`) | Participant qualifié d'office pour un tour (sans adversaire). |

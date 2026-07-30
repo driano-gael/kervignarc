@@ -6,13 +6,19 @@
 // marqueur **discret et tapable** (D-04 : l'interface ne s'organise pas autour d'un changement rare).
 //
 // Périmètre de cette tranche : la **saisie** (et la ré-édition avant validation). La **validation**
-// et la **correction** sont l'acte du **scoreur**, sur sa propre surface (§7.3) — hors d'ici. Le
-// **panneau de routage** post-validation est E04US018 (bloquée) ; la **file hors-ligne** et la
-// **diffusion live**, E04US009.
+// et la **correction** sont l'acte du **scoreur**, sur sa propre surface (§7.3) — hors d'ici. La
+// **file hors-ligne** et la **diffusion live** sont E04US009.
+//
+// Depuis E04US018, l'écran a un **second état** : quand les séries de la cible sont toutes validées,
+// il bascule en **panneau de routage** — « où tire-t-on ensuite ». C'est le moment exact où l'archer
+// range ses flèches et s'en va : l'information doit partir avec lui. « Retour à la grille » revient
+// à la saisie (CA), et le panneau reste rouvrable tant que la cible est close.
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { PanneauRoutage } from '../routage/PanneauRoutage'
+import { apresRetour, panneauOuvert, serieClose } from '../routage/presentation'
 import type { Bareme, LigneGrille } from './api'
 import {
   useBareme,
@@ -23,6 +29,7 @@ import {
   useRejeuFileHorsLigne,
   useSaisirVolee,
   useSerie,
+  useSeries,
 } from './hooks'
 import {
   heureSaisie,
@@ -69,6 +76,59 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
 
   const ligneActive = lignes.find((l) => l.archer_id === archerActif) ?? null
 
+  // Bascule en panneau de routage (E04US018). « Close » = toutes les volées du barème saisies **et**
+  // verrouillées par le scoreur (c'est lui qui clôt une série, pas le marqueur) — **ou** l'archer
+  // est forfait (E04US015 : il reste dans la grille et sa série ne se complétera jamais ; sans cette
+  // clause, une seule DSQ priverait toute la cible du panneau). Les séries sont relues via le
+  // **même** cache que les lignes de la grille (`useSeries`), donc sans requête en plus.
+  const archerIds = lignes.map((l) => l.archer_id)
+  const series = useSeries(tournoiId, archerIds)
+  const nbVolees = bareme.data?.nb_volees ?? null
+  const cibleClose =
+    lignes.length > 0 &&
+    lignes.every((ligne, i) => serieClose(series[i]?.data?.volees ?? [], nbVolees, ligne.forfait))
+
+  // Ouverture **automatique** quand la cible a fini (CA), et « Retour à la grille » qui referme
+  // (CA). Le panneau reste **ouvrable à la main** en toutes circonstances : un archer absent, une
+  // série restée en erreur ou un cas qu'on n'a pas prévu ne doit pas pouvoir condamner la
+  // fonctionnalité pour les trois autres archers — une porte automatique a toujours besoin d'une
+  // poignée. Refermer une consultation **manuelle** ne consomme pas la bascule automatique à venir
+  // (`apresRetour`) : sans cette nuance, jeter un œil au panneau en pleine saisie éteindrait
+  // silencieusement le CA central de l'US. `panneauFerme` est par ailleurs réinitialisé quand la
+  // grille change de **composition** (changement de départ), pas quand elle change d'**ordre** (un
+  // échange de positions A↔B au plan ne doit pas rouvrir sous les doigts un panneau qu'on vient de
+  // fermer). Ajustement d'état **au rendu** (pas en effet), comme le tampon du pavé.
+  const signatureGrille = [...archerIds].sort((a, b) => a - b).join(',')
+  const [ancreGrille, setAncreGrille] = useState(signatureGrille)
+  const [panneauFerme, setPanneauFerme] = useState(false)
+  const [panneauForce, setPanneauForce] = useState(false)
+  if (ancreGrille !== signatureGrille) {
+    setAncreGrille(signatureGrille)
+    setPanneauFerme(false)
+    setPanneauForce(false)
+  }
+  const ouvert = panneauOuvert({ cibleClose, ferme: panneauFerme, force: panneauForce })
+
+  if (ouvert) {
+    return (
+      <div className="saisie">
+        <div className="saisie__entete">
+          <strong>Cible {cibleIndex}</strong>
+        </div>
+        <PanneauRoutage
+          tournoiId={tournoiId}
+          archerIds={archerIds}
+          titrePanneau="Où tire-t-on ensuite ?"
+          onRetour={() => {
+            const suite = apresRetour({ cibleClose })
+            setPanneauForce(suite.force)
+            setPanneauFerme(suite.ferme)
+          }}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="saisie">
       <div className="saisie__entete">
@@ -77,6 +137,19 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
           <SelecteurMarqueur lignes={lignes} marqueur={marqueurActif} onChoisir={setMarqueur} />
         )}
       </div>
+
+      {lignes.length > 0 && (
+        <button
+          type="button"
+          className="lien"
+          onClick={() => {
+            setPanneauFerme(false)
+            setPanneauForce(true)
+          }}
+        >
+          Où tire-t-on ensuite ?
+        </button>
+      )}
 
       {besoinDepart || grille.isSuccess ? (
         <SelecteurDepart tournoiId={tournoiId} obligatoire={besoinDepart} />

@@ -60,6 +60,9 @@ _LECTURES = [
     "/api/v1/tournois/1/departs/1/plan-de-cibles",
     "/api/v1/tournois/1/archers",
     "/api/v1/tournois/1/archers/1/deroule",
+    # Panneau de routage (E04US018) : « où tire-t-on ensuite ». Même raison que le déroulé — c'est
+    # un des quatre canaux de routage (`D-09`), destiné à l'appli publique et à l'écran de salle.
+    "/api/v1/routage/1",
 ]
 
 
