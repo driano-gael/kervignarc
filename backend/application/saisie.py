@@ -413,6 +413,8 @@ class ServiceSaisie:
             raise BlasonIntrouvable(f"Blason {categorie.blason_id} introuvable.")
         return blason.zones
 
+    # DETTE-022 : 4ᵉ écriture de « phase de qualif -> forfaits » (classements, complétude deux
+    # fois).
     def _forfaits_qualif(self, tournoi_id: TournoiId) -> frozenset[ArcherId]:
         """Les archers **forfaits en qualification** (abandon / DSQ, E04US015, ADR-0050).
 

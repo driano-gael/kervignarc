@@ -45,8 +45,10 @@
 | [DETTE-016](#dette-016--montant-remboursé--tarif-courant-pas-somme-encaissée) | conception | mineur | `backend/domain/remboursement.py`, `backend/application/inscriptions.py`, `backend/application/departs.py` | Le `montant_centimes` d'un remboursement fige le **tarif courant du départ au moment de l'effacement**, or le modèle ne stocke **jamais** la somme réellement versée (seul le booléen `paye` de l'inscription). Si le tarif d'un départ est **édité après** qu'une inscription y soit payée, le remboursement ouvert peut différer de l'encaissé | Sur un **mouvement d'argent**, un montant remboursé **faux** est possible — arguablement pire qu'absent. **Nul dans le flux nominal** (le tarif ne bouge pas après paiement) ; suppose une édition de tarif entre paiement et effacement | E08US005 ([ADR-0057](adr/0057-registre-de-remboursements.md), choix « tarif au moment de l'effacement ») ; **constaté en revue adversariale le 29/07/2026** | US dédiée — stocker `montant_paye_centimes` sur l'inscription à l'encaissement (ou **geler** le tarif d'un départ dès qu'une inscription y est payée). Marqueur `# DETTE-016` sur les deux sites de construction |
 | [DETTE-017](#dette-017--auteur_admin-dupliqué-sur-3-sites) | conception | mineur | `backend/application/paiements.py`, `backend/application/placement.py`, `backend/application/remboursements.py` (`_AUTEUR_ADMIN`) | La constante `_AUTEUR_ADMIN = "Administrateur"` (auteur des entrées d'audit d'un acte admin) est **dupliquée** sur 3 sites : paiements (E08US002), régénération de plan (E12US007), remboursements (E08US005). Le seuil « factoriser au 3ᵉ cas » (CLAUDE.md § Dette) est **atteint** | Faible : littéral stable ; un 4ᵉ producteur admin re-dupliquera, et changer le libellé se fait en 3 endroits | E08US002/E12US007 (2 sites) ; **3ᵉ site E08US005**, proposé en résorption dans [ADR-0057](adr/0057-registre-de-remboursements.md) | US dédiée `refactor/` — extraire une constante partagée (`application/`), 3 appelants, zéro changement de comportement. Marqueur `# DETTE-017` sur les 3 sites |
 | [DETTE-018](#dette-018--la-suppression-darcher-perd-les-remboursements) | conception | majeur | `backend/application/archers.py` (`_signaler_engagement`), `backend/infrastructure/db/repositories.py` (`ArcherRepositorySQL.supprimer`) | La suppression d'une **fiche archer** purge ses inscriptions en cascade **sans ouvrir de remboursement** — **3ᵉ chemin** d'effacement d'une inscription **payée**, hors des **deux** déclencheurs d'E08US005 (désinscription, suppression de départ). Le signalement `ArcherEngage` **alerte** (« dont P payée(s) : sommes à rembourser ») mais **aucune création automatique** de poste sur ce chemin | Une somme encaissée peut être effacée **sans poste au registre** (perte d'argent) — **atténué** par l'avertissement chiffré à la confirmation. Chemin **moins courant** que la désinscription (couverte). La **fusion** de doublons, elle, préserve `paye` (pas de perte) | E08US005 (périmètre borné aux 2 déclencheurs du CA) ; **arbitré avec le commanditaire le 29/07/2026** — différer plutôt qu'étendre la cascade **sensible** de l'archer (scores/séries/forfaits, ADR-0016) | US de suite — `ArcherRepository.supprimer_avec_remboursements` + motif `ARCHER_SUPPRIME`, comme le départ (`DepartRepository.supprimer_avec_remboursements`). Marqueur `# DETTE-018` sur `_signaler_engagement` |
-| [DETTE-019](#dette-019--serviceroutage-jumeau-de-servicepilotagetour) | conception | mineur | `backend/application/routage.py`, `backend/application/pilotage_tour.py` | `ServiceRoutage` (E04US018) reprend de `ServicePilotageTour` (E12US002) trois éléments : `_sources_en_attente` (**corps identique**), la lecture « archer → pose du plan de duels » (`_poses_par_archer` / `_cibles_par_archer`, à la position près) et surtout la **garde tour-1** — « ne jamais annoncer la cible d'un match de tour ≥ 2, la pose persistée est celle du tour 1 » — écrite dans **deux formulations différentes** | Les deux premiers sont des dérivations sans enjeu. La **garde tour-1**, elle, est un invariant de sûreté physique : une cible périmée envoie un archer sur la mauvaise butte. Le jour où **E05US010** livrera le placement intégral 1→N, il faudra la lever **aux deux endroits** ; en rater une ne casse rien de visible côté serveur — ça affiche seulement une mauvaise cible | E04US018 (2ᵉ occurrence ; la 1ʳᵉ est E12US002) | Extraction à la **3ᵉ occurrence** — attendue avec `E07US008` / `E07US004`, les canaux 3 et 4 du routage (`D-09`), qui liront la même projection. Remède pressenti : une lecture publique `ServicePlacementDuels.poses_par_archer` + un `cible_du_match(match, poses)` qui **porte** la garde tour-1, ~40 lignes déplacées, zéro changement de comportement. **Point d'entrée pour E05US010** : c'est là que la garde se lève. Marqueurs `# DETTE-019` sur les deux sites |
+| [DETTE-019](#dette-019--serviceroutage-jumeau-de-servicepilotagetour) | conception | mineur | `backend/application/routage.py`, `backend/application/pilotage_tour.py` | `ServiceRoutage` (E04US018) reprend de `ServicePilotageTour` (E12US002) trois éléments : `_sources_en_attente` (**corps identique**), la lecture « archer → pose du plan de duels » (`_poses_par_archer` / `_cibles_par_archer`, à la position près) et surtout la **garde tour-1** — « ne jamais annoncer la cible d'un match de tour ≥ 2, la pose persistée est celle du tour 1 » — écrite dans **deux formulations différentes** | Les deux premiers sont des dérivations sans enjeu. La **garde tour-1**, elle, est un invariant de sûreté physique : une cible périmée envoie un archer sur la mauvaise butte. Le jour où **E05US010** livrera le placement intégral 1→N, il faudra la lever **aux deux endroits** ; en rater une ne casse rien de visible côté serveur — ça affiche seulement une mauvaise cible. ⚠️ La parité s'arrête là : le routage porte **en plus** l'alerte « duel non côte à côte » (`duels_separes`) que le feu vert, lui, **ne porte pas** — cf. DETTE-021, qui est le vrai défaut | E04US018 (2ᵉ occurrence ; la 1ʳᵉ est E12US002) | Extraction à la **3ᵉ occurrence** — attendue avec `E07US008` / `E07US004`, les canaux 3 et 4 du routage (`D-09`), qui liront la même projection. Remède pressenti : une lecture publique `ServicePlacementDuels.poses_par_archer` + un `cible_du_match(match, poses)` qui **porte** la garde tour-1, ~40 lignes déplacées, zéro changement de comportement. **Point d'entrée pour E05US010** : c'est là que la garde se lève. Marqueurs `# DETTE-019` sur les deux sites |
 | [DETTE-020](#dette-020--le-libellé-de-tour-a-deux-domiciles) | conception | mineur | `backend/domain/tableau.py` (`libelle_tour`), `frontend/src/features/saisie-duels/duel.ts` (`libelleTour`) | Le nom d'un tour de tableau (« quart de finale », « petite finale ») est calculé **deux fois**, avec le même raisonnement (distance à la finale, `place_en_jeu` prioritaire) et des **sorties différentes** : le domaine rend le **singulier** (« Quart de finale », pour *un* archer), le front le **pluriel** (« Quarts de finale », pour un *titre de section ») et suffixe la petite finale (« Petite finale (3ᵉ place) ») | Les deux se lisent **sur le même écran, à un tap d'intervalle** (liste des duels puis panneau de routage). Aucun des deux libellés n'est faux dans son contexte, mais la **règle** est dupliquée : la prochaine évolution du vocabulaire (barrage, repêchage) devra se faire en deux endroits, dans deux langages. [ADR-0006](adr/0006-vocabulaire-metier-francais.md) veut un domicile unique pour le vocabulaire métier | E04US018 (2ᵉ occurrence ; la 1ʳᵉ est E04US013) | US `refactor/` — un seul domicile, le **domaine** : exposer `libelle` sur le DTO de duel comme sur celui de routage, retirer `libelleTour`/`estPetiteFinale` du front (`grouperParTour` groupe déjà par libellé, il consommerait celui du serveur). Le singulier/pluriel se règle alors par un paramètre du domaine, pas par une seconde implémentation. Marqueurs `# DETTE-020` / `// DETTE-020` sur les deux sites |
+| [DETTE-021](#dette-021--le-feu-vert-lance-un-duel-dont-les-duellistes-sont-séparés) | conception | **majeur** | `backend/application/pilotage_tour.py` (`_duel_a_venir`, `_blocage`), `frontend/src/features/feu-vert/` | Le feu vert juge un duel « prêt à lancer » dès que **chacun** des deux occupants a *une* cible (`cible_haut is not None and cible_bas is not None`), sans jamais vérifier que c'est **la même** ni qu'ils sont **côte à côte**. Il affiche alors « prêt · cibles 4 et 7 » et **lance** le tour. Le panneau de routage (E04US018) porte, lui, l'alerte dérivée du domaine (`duels_separes`) | Le plan de duels est **persisté** mais l'appariement est **recalculé** à chaque lecture (ADR-0023) : une correction de score suffit à les désaccorder. Les deux écrans se **contredisent** alors — la tablette de l'archer avertit, l'écran de l'organisateur dit « prêt » et fait partir le tour, trace d'audit `LANCEMENT` à l'appui. C'est le canal qui donne l'**ordre**, donc celui où l'erreur coûte le plus | E12US002 (le défaut y est né) ; **constaté** le 30/07/2026 à la revue d'E04US018 (axe adversarial), qui a fermé le trou côté routage et rendu la divergence visible | US `fix/` dédiée — `DuelAVenir` porte le signal `duels_separes` (déjà calculé par `ServicePlacementDuels`, aucun calcul neuf), `_blocage` le nomme, l'écran Feu vert l'affiche en ambre. **Ne pas** en faire un `pret_a_lancer=False` : `P-3`, l'appli montre et n'empêche pas — et E03US009 **accepte** un duel séparé quand les cibles sont trop petites. Marqueur `# DETTE-021` posé |
+| [DETTE-022](#dette-022--forfaits-de-la-phase-de-qualification-résolus-sur-4-sites) | conception | mineur | `backend/application/classements.py`, `backend/application/completude.py` (×2), `backend/application/saisie.py` | « Résoudre la phase de qualification puis lire ses forfaits » est écrit à **quatre** endroits, sous trois formes (`list[Forfait]`, `set`, `frozenset`). `completude.py` avait posé le rendez-vous dans son propre commentaire : « 2ᵉ occurrence, on extraira au **3ᵉ cas**, pas avant » | Faible : le motif est stable. Mais le seuil que le projet s'était lui-même fixé **dans le code** est franchi, et un 5ᵉ producteur re-dupliquera par mimétisme. Jumelle de DETTE-006 et DETTE-017 | E04US018 (4ᵉ site, `ServiceSaisie._forfaits_qualif`) | US `refactor/` — une lecture partagée `forfaits_qualif(tournoi_id) -> frozenset[ArcherId]`, 4 appelants, zéro changement de comportement. Marqueurs `# DETTE-022` sur les 4 sites |
 
 ## Dette résorbée
 
@@ -842,6 +844,41 @@ le trace ici.
 **Résorption attendue.** US `refactor/` — extraire `AUTEUR_ADMIN` dans un module partagé
 (`application/`), 3 appelants, zéro changement de comportement. Marqueur `# DETTE-017` sur les 3 sites.
 
+### DETTE-018 — la suppression d'archer perd les remboursements
+
+**Constat.** E08US005 ouvre un remboursement quand une inscription **payée** disparaît par ses **deux**
+déclencheurs de CA : désinscription (`ServiceInscriptions.desinscrire`) et suppression de départ
+(`ServiceDeparts`). Mais une inscription payée peut aussi disparaître par un **troisième** chemin — la
+suppression d'une **fiche archer** (`ArcherRepositorySQL.supprimer` purge les inscriptions en cascade,
+DETTE-001) — qui, lui, **n'ouvre aucun remboursement**. Une somme encaissée peut donc être effacée sans
+contrepartie, exactement ce que l'*afin-de* du CA vise à empêcher. *(La **fusion** de doublons,
+E02US005, préserve `paye` : pas de perte.)*
+
+**Conséquence.** Perte d'argent possible sur ce chemin, **atténuée** — le signalement `ArcherEngage`
+(`_signaler_engagement`) **alerte** désormais l'admin (« … dont P payée(s) : sommes à rembourser,
+E08US005 ») au moment de la confirmation, mais **aucun poste n'est créé** automatiquement. Le chemin est
+**moins courant** que la désinscription (le geste usuel), qui est couverte.
+
+**Pourquoi assumée maintenant.** Étendre le mécanisme au 3ᵉ chemin ajoute un déclencheur **hors du CA
+écrit** d'E08US005 **et** modifie la cascade de suppression d'archer — un chemin **sensible**
+(scores/séries/forfaits/placements, [ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)).
+**Arbitrage du commanditaire (29/07/2026)** : **différer** dans une US de suite plutôt que grossir
+E08US005 et toucher cette cascade — en fermant le **silence** dès maintenant (avertissement + cette
+dette). Constaté en **revue adversariale**.
+
+**Résorption attendue.** US de suite — doter `ArcherRepository` d'un `supprimer_avec_remboursements` et
+ajouter un motif `MotifRemboursement.ARCHER_SUPPRIME`, sur le patron exact du départ
+(`DepartRepository.supprimer_avec_remboursements`). Marqueur `# DETTE-018` posé sur `_signaler_engagement`.
+
+## Procédure — inscrire une dette
+
+1. **Vérifier qu'elle est assumée** : si elle se corrige dans l'US sans déborder du périmètre, la corriger.
+2. **Ajouter la ligne** au tableau « Dette ouverte » (ID `DETTE-nnn` incrémental) — **même commit** que l'introduction.
+3. **Rédiger le détail** : constat, conséquence, pourquoi non corrigée, résorption attendue.
+4. **Marquer le code** : commentaire à l'endroit exact du raccourci, renvoyant à l'ID (`# DETTE-001 : …`).
+5. **Mentionner dans le corps de la PR**, et proposer l'US de résorption à l'utilisateur.
+6. À la résorption : déplacer la ligne vers « Dette résorbée » avec l'US qui l'a soldée, et retirer les marqueurs du code.
+
 ### DETTE-019 — `ServiceRoutage` jumeau de `ServicePilotageTour`
 
 **Constat.** `ServiceRoutage` (E04US018) et `ServicePilotageTour` (E12US002) posent la même question
@@ -907,37 +944,56 @@ libellé** : il consommerait simplement celui du serveur). Le singulier/pluriel 
 paramètre du domaine, pas une seconde implémentation. Marqueurs `# DETTE-020` / `// DETTE-020` sur les
 deux sites.
 
-### DETTE-018 — la suppression d'archer perd les remboursements
+### DETTE-021 — le feu vert lance un duel dont les duellistes sont séparés
 
-**Constat.** E08US005 ouvre un remboursement quand une inscription **payée** disparaît par ses **deux**
-déclencheurs de CA : désinscription (`ServiceInscriptions.desinscrire`) et suppression de départ
-(`ServiceDeparts`). Mais une inscription payée peut aussi disparaître par un **troisième** chemin — la
-suppression d'une **fiche archer** (`ArcherRepositorySQL.supprimer` purge les inscriptions en cascade,
-DETTE-001) — qui, lui, **n'ouvre aucun remboursement**. Une somme encaissée peut donc être effacée sans
-contrepartie, exactement ce que l'*afin-de* du CA vise à empêcher. *(La **fusion** de doublons,
-E02US005, préserve `paye` : pas de perte.)*
+**Constat.** `ServicePilotageTour._duel_a_venir` calcule
+`cible_attribuee = cible_haut is not None and cible_bas is not None`. Deux cibles **différentes**
+satisfont cette condition : le duel ressort `pret_a_lancer`, `_blocage` rend `None`, et l'écran
+affiche « prêt · cibles 4 et 7 » (`frontend/src/features/feu-vert/etat.ts` sait même mettre les deux
+au pluriel). Le bouton part alors, avec sa trace d'audit `LANCEMENT` et son `LiveEvent`.
 
-**Conséquence.** Perte d'argent possible sur ce chemin, **atténuée** — le signalement `ArcherEngage`
-(`_signaler_engagement`) **alerte** désormais l'admin (« … dont P payée(s) : sommes à rembourser,
-E08US005 ») au moment de la confirmation, mais **aucun poste n'est créé** automatiquement. Le chemin est
-**moins courant** que la désinscription (le geste usuel), qui est couverte.
+**Conséquence.** Le plan de duels est **persisté** ; l'appariement, lui, est **recalculé à chaque
+lecture** (ADR-0023, ADR-0048 : « l'appariement n'est jamais persisté »). Une correction de score en
+qualification (E04US013) suffit donc à désaccorder les deux. Depuis E04US018, la tablette de l'archer
+**avertit** (« placement à revoir »), tandis que l'écran de l'organisateur dit « prêt » et **lance**.
+Deux écrans qui se contredisent, et c'est le second qui donne l'ordre : les deux duellistes partent
+sur deux buttes et se cherchent. Avant E04US018 les deux canaux étaient également muets — le défaut
+existait, il ne se voyait pas.
 
-**Pourquoi assumée maintenant.** Étendre le mécanisme au 3ᵉ chemin ajoute un déclencheur **hors du CA
-écrit** d'E08US005 **et** modifie la cascade de suppression d'archer — un chemin **sensible**
-(scores/séries/forfaits/placements, [ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)).
-**Arbitrage du commanditaire (29/07/2026)** : **différer** dans une US de suite plutôt que grossir
-E08US005 et toucher cette cascade — en fermant le **silence** dès maintenant (avertissement + cette
-dette). Constaté en **revue adversariale**.
+**Pourquoi assumée maintenant.** Le défaut est **antérieur** à E04US018 et vit dans l'écran d'une
+autre US (E12US002). Le corriger en douce dans l'US courante reviendrait à étendre son périmètre à la
+surface d'une autre — ce que le projet interdit pour les remèdes structurels, et ce qu'on ne veut pas
+faire à la sauvette sur le geste le plus engageant du jour J. E04US018 **ferme le trou sur son propre
+canal** et inscrit celui-ci.
 
-**Résorption attendue.** US de suite — doter `ArcherRepository` d'un `supprimer_avec_remboursements` et
-ajouter un motif `MotifRemboursement.ARCHER_SUPPRIME`, sur le patron exact du départ
-(`DepartRepository.supprimer_avec_remboursements`). Marqueur `# DETTE-018` posé sur `_signaler_engagement`.
+**Résorption attendue.** US `fix/` dédiée : `DuelAVenir` porte le signal `duels_separes` — **déjà
+calculé** par `ServicePlacementDuels.plan_de_duels`, aucun calcul neuf —, `_blocage` le nomme, et
+l'écran Feu vert l'affiche en **ambre** (DV-03). ⚠️ **Ne pas** en faire un `pret_a_lancer = False` :
+`P-3` veut que l'appli montre sans empêcher, et E03US009 **accepte** délibérément un duel séparé
+quand les cibles sont trop petites — bloquer le lancement transformerait un avertissement légitime en
+impasse. Marqueur `# DETTE-021` posé sur `_duel_a_venir`.
 
-## Procédure — inscrire une dette
+### DETTE-022 — forfaits de la phase de qualification résolus sur 4 sites
 
-1. **Vérifier qu'elle est assumée** : si elle se corrige dans l'US sans déborder du périmètre, la corriger.
-2. **Ajouter la ligne** au tableau « Dette ouverte » (ID `DETTE-nnn` incrémental) — **même commit** que l'introduction.
-3. **Rédiger le détail** : constat, conséquence, pourquoi non corrigée, résorption attendue.
-4. **Marquer le code** : commentaire à l'endroit exact du raccourci, renvoyant à l'ID (`# DETTE-001 : …`).
-5. **Mentionner dans le corps de la PR**, et proposer l'US de résorption à l'utilisateur.
-6. À la résorption : déplacer la ligne vers « Dette résorbée » avec l'US qui l'a soldée, et retirer les marqueurs du code.
+**Constat.** « Résoudre la phase de qualification, puis lire ses forfaits » est écrit à **quatre**
+endroits : `application/classements.py` (`_forfaits_qualif`, → `list[Forfait]`),
+`application/completude.py` deux fois (`avancement_depart` et `_compter_cibles`, → `set[ArcherId]`),
+et désormais `application/saisie.py` (`_forfaits_qualif`, → `frozenset[ArcherId]`, E04US018).
+
+`completude.py` avait posé le rendez-vous **dans son propre commentaire** : « La résolution barème +
+forfaits est **dupliquée** de `_compter_cibles` (2ᵉ occurrence, règle 12 : on extraira au **3ᵉ cas**,
+pas avant). » Ce site est celui qui franchit le seuil.
+
+**Conséquence.** Faible en soi — le motif est stable et les trois formes de retour sont anodines.
+Mais le seuil que le projet s'est fixé est franchi, et un 5ᵉ producteur re-dupliquera par mimétisme.
+Jumelle de DETTE-006 (`cle_nom`) et DETTE-017 (`_AUTEUR_ADMIN`), toutes deux inscrites au même titre.
+
+**Pourquoi assumée maintenant.** L'extraction est un **remède structurel** : CLAUDE.md § Dette veut
+qu'il se traite en US dédiée, jamais en douce dans l'US courante. E04US018 franchit le seuil, le
+signale et le trace ici.
+
+**Résorption attendue.** US `refactor/` — une lecture partagée
+`forfaits_qualif(tournoi_id) -> frozenset[ArcherId]` dans `application/`, 4 appelants, zéro
+changement de comportement. Retirer au passage la phrase « on extraira au 3ᵉ cas » de
+`completude.py`, devenue fausse. Marqueurs `# DETTE-022` sur les 4 sites.
+

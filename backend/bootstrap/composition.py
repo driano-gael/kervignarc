@@ -705,7 +705,7 @@ def create_app(
     app.state.service_routage = ServiceRoutage(
         app.state.service_saisie_duels,
         app.state.service_placement_duels,
-        app.state.service_classement,
+        archer_repository,
         phase_repository,
     )
 

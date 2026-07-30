@@ -2708,3 +2708,10 @@ button:disabled {
   color: var(--text);
   opacity: 0.85;
 }
+
+/* Avertissement de placement : ambre (DV-03), jamais rouge — la cible reste valable, c'est le
+   voisinage du duel qui est à revoir. */
+.routage__alerte {
+  font-size: 13px;
+  color: var(--warn);
+}

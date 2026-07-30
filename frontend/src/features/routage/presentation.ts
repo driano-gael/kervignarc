@@ -55,6 +55,12 @@ export function titre(archer: RoutageArcher): string {
   return 'Destination inconnue'
 }
 
+// L'avertissement à afficher **en plus** de la destination, ou `null`. Distinct de `detail` : celui-ci
+// dit ce qu'on sait, celui-là ce dont il faut se méfier (le duel n'est pas côte à côte).
+export function alerte(archer: RoutageArcher): string | null {
+  return archer.issue === 'prochain_duel' ? (archer.prochain?.alerte ?? null) : null
+}
+
 // La ligne secondaire : le contexte, ou **l'attente nommée** quand l'information n'existe pas encore.
 export function detail(archer: RoutageArcher): string | null {
   if (archer.issue === 'prochain_duel' && archer.prochain !== null) {
@@ -79,6 +85,25 @@ export function detail(archer: RoutageArcher): string | null {
 // `cibleClose` ne serait jamais vrai et les trois autres archers de la cible perdraient le panneau.
 // C'est le serveur qui porte le signal (`LigneGrille.forfait`) — même notion que la complétude
 // (« barème validé **ou** forfait », DETTE-014) : le front n'a pas à la re-dériver.
+// Le panneau s'ouvre **tout seul** quand la cible a fini (CA), et se rouvre **à la main** à tout
+// moment. Trois entrées, et le piège est dans leur composition : refermer une ouverture *manuelle*
+// ne doit pas consommer l'ouverture *automatique* à venir. Sans cette distinction, jeter un œil au
+// panneau en cours de saisie éteint silencieusement la bascule de fin de cible — c'est-à-dire le CA
+// central de l'US. Logique pure et testée pour cette raison précise.
+export function panneauOuvert(etat: {
+  cibleClose: boolean
+  ferme: boolean
+  force: boolean
+}): boolean {
+  return etat.force || (etat.cibleClose && !etat.ferme)
+}
+
+// Ce que « Retour » laisse derrière lui : on ne marque « déjà vu » que si le panneau s'était ouvert
+// **de lui-même**. Fermer une consultation manuelle laisse la bascule automatique armée.
+export function apresRetour(etat: { cibleClose: boolean }): { ferme: boolean; force: boolean } {
+  return { ferme: etat.cibleClose, force: false }
+}
+
 export function serieClose(
   volees: { verrouillee: boolean }[],
   nbVolees: number | null,

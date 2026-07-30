@@ -18,7 +18,7 @@ import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { PanneauRoutage } from '../routage/PanneauRoutage'
-import { serieClose } from '../routage/presentation'
+import { apresRetour, panneauOuvert, serieClose } from '../routage/presentation'
 import type { Bareme, LigneGrille } from './api'
 import {
   useBareme,
@@ -92,10 +92,12 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
   // (CA). Le panneau reste **ouvrable à la main** en toutes circonstances : un archer absent, une
   // série restée en erreur ou un cas qu'on n'a pas prévu ne doit pas pouvoir condamner la
   // fonctionnalité pour les trois autres archers — une porte automatique a toujours besoin d'une
-  // poignée. `panneauFerme` est réinitialisé quand la grille change de **composition** (changement
-  // de départ), pas quand elle change d'**ordre** (un échange de positions A↔B au plan ne doit pas
-  // rouvrir sous les doigts un panneau qu'on vient de fermer). Ajustement d'état **au rendu** (pas
-  // en effet), comme le tampon du pavé.
+  // poignée. Refermer une consultation **manuelle** ne consomme pas la bascule automatique à venir
+  // (`apresRetour`) : sans cette nuance, jeter un œil au panneau en pleine saisie éteindrait
+  // silencieusement le CA central de l'US. `panneauFerme` est par ailleurs réinitialisé quand la
+  // grille change de **composition** (changement de départ), pas quand elle change d'**ordre** (un
+  // échange de positions A↔B au plan ne doit pas rouvrir sous les doigts un panneau qu'on vient de
+  // fermer). Ajustement d'état **au rendu** (pas en effet), comme le tampon du pavé.
   const signatureGrille = [...archerIds].sort((a, b) => a - b).join(',')
   const [ancreGrille, setAncreGrille] = useState(signatureGrille)
   const [panneauFerme, setPanneauFerme] = useState(false)
@@ -105,9 +107,9 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
     setPanneauFerme(false)
     setPanneauForce(false)
   }
-  const panneauOuvert = panneauForce || (cibleClose && !panneauFerme)
+  const ouvert = panneauOuvert({ cibleClose, ferme: panneauFerme, force: panneauForce })
 
-  if (panneauOuvert) {
+  if (ouvert) {
     return (
       <div className="saisie">
         <div className="saisie__entete">
@@ -118,8 +120,9 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
           archerIds={archerIds}
           titrePanneau="Où tire-t-on ensuite ?"
           onRetour={() => {
-            setPanneauForce(false)
-            setPanneauFerme(true)
+            const suite = apresRetour({ cibleClose })
+            setPanneauForce(suite.force)
+            setPanneauFerme(suite.ferme)
           }}
         />
       </div>

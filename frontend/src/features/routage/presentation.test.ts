@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { ProchainDuel, RoutageArcher } from './api'
-import { adversaire, destination, detail, rang, serieClose, titre } from './presentation'
+import {
+  adversaire,
+  alerte,
+  apresRetour,
+  destination,
+  detail,
+  panneauOuvert,
+  rang,
+  serieClose,
+  titre,
+} from './presentation'
 
 function prochain(patch: Partial<ProchainDuel> = {}): ProchainDuel {
   return {
@@ -12,6 +22,7 @@ function prochain(patch: Partial<ProchainDuel> = {}): ProchainDuel {
     adversaire: { archer_id: 2, nom: 'DUPONT', prenom: 'Jean' },
     sources_en_attente: [],
     manque: null,
+    alerte: null,
     ...patch,
   }
 }
@@ -124,19 +135,13 @@ describe('detail', () => {
     expect(detail(sansCible)).toBe('cible attribuée au lancement du tour · DUPONT Jean')
   })
 
-  it('relaie tel quel le motif d’un placement périmé — c’est le serveur qui sait pourquoi', () => {
-    // Trois causes distinctes de « pas de cible » (tour à venir / pas de plan / appariement
-    // recalculé) : le front ne les redevine pas, il affiche la phrase du serveur.
-    const perime = archer({
-      prochain: prochain({
-        cible: null,
-        position: null,
-        manque: 'placement à revoir — adversaire posé sur une autre cible',
-      }),
+  it('relaie tel quel le motif du serveur, quel qu’il soit', () => {
+    // Deux causes distinctes de « pas de cible » (tour à venir / pas de plan) : le front ne les
+    // redevine pas, il affiche la phrase du serveur — c'est lui qui sait pourquoi.
+    const sansPlan = archer({
+      prochain: prochain({ cible: null, position: null, manque: 'cible non attribuée' }),
     })
-    expect(detail(perime)).toBe(
-      'placement à revoir — adversaire posé sur une autre cible · DUPONT Jean',
-    )
+    expect(detail(sansPlan)).toBe('cible non attribuée · DUPONT Jean')
   })
 
   it('remonte le motif du serveur pour une issue terminée', () => {
@@ -176,5 +181,54 @@ describe('serieClose', () => {
 
   it('n’est pas close pour un archer non forfait dont la série traîne', () => {
     expect(serieClose([], 2, false)).toBe(false)
+  })
+})
+
+describe('panneauOuvert / apresRetour', () => {
+  // Le piège que ces deux fonctions existent pour éviter : le lien manuel a donné un second sens à
+  // « fermé » (« j'ai jeté un œil ») là où il n'en avait qu'un (« j'ai vu le panneau de fin »).
+  // Sans distinction, une consultation en cours de saisie éteint la bascule automatique de fin de
+  // cible — c'est-à-dire le CA central de l'US, en silence.
+  it('s’ouvre tout seul quand la cible a fini', () => {
+    expect(panneauOuvert({ cibleClose: true, ferme: false, force: false })).toBe(true)
+  })
+
+  it('reste fermé tant que la cible tire', () => {
+    expect(panneauOuvert({ cibleClose: false, ferme: false, force: false })).toBe(false)
+  })
+
+  it('s’ouvre à la main même si la cible tire encore', () => {
+    expect(panneauOuvert({ cibleClose: false, ferme: false, force: true })).toBe(true)
+  })
+
+  it('ne se rouvre pas tout seul après avoir été vu', () => {
+    expect(panneauOuvert({ cibleClose: true, ferme: true, force: false })).toBe(false)
+  })
+
+  it('consulter puis refermer en cours de saisie laisse la bascule automatique armée', () => {
+    const suite = apresRetour({ cibleClose: false })
+    expect(panneauOuvert({ cibleClose: false, ...suite })).toBe(false)
+    // …et quand la cible finit, il s'ouvre bien tout seul.
+    expect(panneauOuvert({ cibleClose: true, ...suite })).toBe(true)
+  })
+
+  it('refermer le panneau de fin de cible le consomme', () => {
+    const suite = apresRetour({ cibleClose: true })
+    expect(panneauOuvert({ cibleClose: true, ...suite })).toBe(false)
+  })
+})
+
+describe('alerte', () => {
+  it('remonte l’avertissement de placement du serveur', () => {
+    const separe = archer({ prochain: prochain({ alerte: 'placement à revoir' }) })
+    expect(alerte(separe)).toBe('placement à revoir')
+  })
+
+  it('est nulle quand le placement est sain', () => {
+    expect(alerte(archer())).toBeNull()
+  })
+
+  it('ne s’applique qu’à un archer qui a un duel devant lui', () => {
+    expect(alerte(archer({ issue: 'termine', prochain: null }))).toBeNull()
   })
 })

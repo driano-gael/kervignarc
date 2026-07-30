@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
+from typing import get_args
 
 import pytest
 from alembic import command
@@ -20,6 +21,8 @@ from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.v1.routage import IssueRoutageReponse
+from application.routage import IssueRoutage
 from bootstrap.composition import create_app
 from tests.conftest import ConnecterAdmin
 from tests.test_placement_api import _appliquer_gabarit, _creer_tournoi
@@ -146,3 +149,45 @@ def test_sans_archer_demande_la_reponse_est_vide(
 
     assert reponse.status_code == 200, reponse.text
     assert reponse.json() == {"phase_id": phase_id, "archers": []}
+
+
+def test_phase_imposee_introuvable_rend_404(
+    app_routage: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Câblage du mapping : un `phase_id` **fourni par le client** et inconnu est un vrai refus, pas
+    un placide « phase finale non configurée » (`PhaseIntrouvable` → 404, `api/erreurs.py`)."""
+    with TestClient(app_routage) as client:
+        connecter_admin(client)
+        tournoi_id, _, archers = _preparer(app_routage, client)
+
+        reponse = client.get(
+            f"/api/v1/routage/{tournoi_id}",
+            params={"archer_id": archers[:1], "phase_id": 9999},
+        )
+
+    assert reponse.status_code == 404, reponse.text
+    assert reponse.json()["code"] == "phase_introuvable"
+
+
+def test_trop_d_archers_demandes_est_refuse(
+    app_routage: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La route est **publique et non authentifiée** : le plafond doit réellement mordre, et rendre
+    le **400** du projet (`RequestValidationError`), pas un 422. Un garde-fou non testé rassure sans
+    garder."""
+    with TestClient(app_routage) as client:
+        connecter_admin(client)
+        tournoi_id, _, _ = _preparer(app_routage, client)
+
+        limite = client.get(f"/api/v1/routage/{tournoi_id}", params={"archer_id": list(range(64))})
+        au_dela = client.get(f"/api/v1/routage/{tournoi_id}", params={"archer_id": list(range(65))})
+
+    assert limite.status_code == 200, limite.text  # la borne ne gêne pas les appelants réels
+    assert au_dela.status_code == 400, au_dela.text
+
+
+def test_issue_reponse_est_le_miroir_de_l_enumeration() -> None:
+    """Le `Literal` du DTO est recopié à la main et posé par un `cast` : rien ne le rattacherait à
+    `IssueRoutage` si une 4ᵉ issue apparaissait — la divergence se découvrirait à la sérialisation
+    (500), au pire endroit. Cette égalité est le seul lien qui les tient ensemble."""
+    assert set(get_args(IssueRoutageReponse)) == {issue.value for issue in IssueRoutage}

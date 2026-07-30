@@ -45,8 +45,10 @@ class ProchainDuelReponse(BaseModel):
     """Le prochain rendez-vous d'un archer : où, quand dans l'arbre, contre qui.
 
     `cible`/`position` sont `null` au-delà du tour 1 (placement intégral = E05US010) et `manque` dit
-    alors pourquoi. Pas de champ « heure » : aucun horaire n'existe par tour de tableau — c'est le
-    lancement du tour (E12US002) qui fait partir les duels.
+    alors pourquoi. `alerte` est l'inverse : la cible **est** là, mais quelque chose cloche (le duel
+    n'est pas côte à côte). Les deux ne se remplacent pas : l'un dit « je n'ai pas », l'autre
+    « j'ai, mais méfiance ». Pas de champ « heure » : aucun horaire n'existe par tour de tableau —
+    c'est le lancement du tour (E12US002) qui fait partir les duels.
     """
 
     numero: int
@@ -57,6 +59,7 @@ class ProchainDuelReponse(BaseModel):
     adversaire: DuellisteReponse | None
     sources_en_attente: list[int]
     manque: str | None
+    alerte: str | None
 
     @staticmethod
     def de_prochain(prochain: ProchainDuel) -> ProchainDuelReponse:
@@ -69,6 +72,7 @@ class ProchainDuelReponse(BaseModel):
             adversaire=DuellisteReponse.de_duelliste(prochain.adversaire),
             sources_en_attente=list(prochain.sources_en_attente),
             manque=prochain.manque,
+            alerte=prochain.alerte,
         )
 
 
@@ -121,12 +125,18 @@ class RoutageReponse(BaseModel):
 
 
 _MAX_ARCHERS = 64
-"""Plafond du nombre d'archers routés en un appel (au-delà : 422, avant que le service tourne).
+"""Plafond du nombre d'archers routés en un appel — au-delà, **400** avant que le service tourne.
+
+(400 et non 422 : ce projet mappe `RequestValidationError` sur 400, le 422 étant réservé aux
+`DomainError` — cf. la table de `api/erreurs.py`.)
 
 Les deux appelants réels en demandent 4 (une cible) et 2 (un duel) ; 64 laisse une marge
-confortable. La borne existe parce que la route est **publique et non authentifiée** et que
-chaque identifiant coûte un balayage de l'arbre : sans elle, une seule requête peut occuper
-durablement un thread du threadpool. Un mot-clé contre un vecteur gratuit."""
+confortable. La borne est **secondaire** dans la défense : le coût dominant d'un appel est la
+reconstruction de l'arbre, payée **une fois par requête** quel que soit le nombre d'identifiants, et
+elle n'est bornée par rien. Ce plafond ne ferme donc que l'amplification requête→réponse (le
+régime
+de DETTE-008) sur une route **publique et non authentifiée** ; à ne pas lire comme une protection
+générale contre la charge."""
 
 
 # --- Lecture ---

@@ -19,7 +19,7 @@
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { RoutageArcher } from './api'
 import { useRoutage } from './hooks'
-import { detail, titre } from './presentation'
+import { alerte, detail, titre } from './presentation'
 
 export function PanneauRoutage({
   tournoiId,
@@ -52,13 +52,13 @@ export function PanneauRoutage({
 
       {/* Un blanc se lit comme une panne — c'est la règle que tout cet écran applique, elle vaut
           aussi pour la seconde qui suit la bascule, avant l'arrivée des données. */}
-      {routage.isPending && (
+      {routage.isLoading && (
         <p className="routage__vide" role="status">
           Recherche des destinations…
         </p>
       )}
 
-      {!routage.isPending && !routage.isError && lignes.length === 0 && (
+      {!routage.isLoading && !routage.isError && lignes.length === 0 && (
         <p className="routage__vide" role="status">
           Aucun archer à router.
         </p>
@@ -78,6 +78,7 @@ export function PanneauRoutage({
 // jamais traité comme une erreur : c'est une information, pas un incident (`P-3`).
 function LigneRoutage({ ligne }: { ligne: RoutageArcher }) {
   const secondaire = detail(ligne)
+  const avertissement = alerte(ligne)
   const modificateur = ligne.issue === 'prochain_duel' ? '' : ` routage__ligne--${ligne.issue}`
 
   return (
@@ -87,6 +88,12 @@ function LigneRoutage({ ligne }: { ligne: RoutageArcher }) {
       </span>
       <span className="routage__destination">{titre(ligne)}</span>
       {secondaire !== null && <span className="routage__detail">{secondaire}</span>}
+      {/* Ambre, jamais rouge (DV-03) : la cible reste bonne, c'est le voisinage qui cloche. */}
+      {avertissement !== null && (
+        <span className="routage__alerte" role="status">
+          {avertissement}
+        </span>
+      )}
     </li>
   )
 }

@@ -244,7 +244,10 @@ class ServicePilotageTour:
             return {}
         return {pose.archer_id: cible.index for cible in plan.cibles for pose in cible.placements}
 
-    # DETTE-019 : garde tour-1, jumelle de `ServiceRoutage._pose_valide` (E04US018).
+    # DETTE-019 : garde tour-1, jumelle de `ServiceRoutage._pose_a_annoncer` (E04US018).
+    # DETTE-021 : `cible_attribuee` n'exige pas que les deux camps soient sur la **même**
+    # cible ni côte à côte — « prêt · cibles 4 et 7 » est donc affiché, et lancé. Le routage
+    # porte l'alerte correspondante depuis E04US018 ; ici elle manque encore.
     def _duel_a_venir(
         self, match: Match, lignes: dict[int, LigneClassement], cibles: dict[int, int]
     ) -> DuelAVenir:

@@ -27,11 +27,11 @@ au lancement du tour** » (les cibles des tours suivants ne sont pas encore pos�
 fin de phase** » (l'appli connaît aujourd'hui les quatre premiers du tableau, pas le classement
 complet). Elle n'invente jamais une cible ni un rang.
 
-**Et elle se tait plutôt que de se tromper.** Si le classement bouge après que le plan des duels a
-été fait — une simple correction de score suffit — les adversaires ne sont plus les mêmes, et la
-cible prévue devient fausse. Dans ce cas l'écran n'affiche **pas** l'ancienne cible : il dit
-« placement à revoir ». Envoyer deux archers sur deux buttes différentes est précisément l'incident
-que cet écran existe pour éviter.
+**Et quand il y a un doute, elle avertit sans effacer.** Si le classement bouge après que le plan
+des duels a été fait — une simple correction de score suffit — les adversaires ne sont plus les
+mêmes, et l'archer peut se retrouver placé loin du sien. L'écran garde alors sa cible (c'est bien sa
+place) et ajoute un avertissement : « placement à revoir ». À l'organisateur de régénérer le plan.
+Retirer une information juste n'aurait aidé personne ; ne rien dire du tout, non plus.
 
 **Ce qui reste à venir.** Les **trois autres canaux** de la même information — l'application publique
 sur téléphone, l'écran de salle — recevront le même signal dans leurs propres tâches. Le

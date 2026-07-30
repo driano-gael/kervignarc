@@ -26,6 +26,10 @@ export interface ProchainDuel {
   adversaire: Duelliste | null
   sources_en_attente: number[]
   manque: string | null
+  // L'inverse de `manque` : la cible **est** là, mais le duel n'est pas côte à côte (plan matérialisé
+  // sur un autre appariement, ou cibles trop petites). On affiche la cible **et** l'avertissement —
+  // retirer une information juste ne rend service à personne.
+  alerte: string | null
 }
 
 export type IssueRoutage = 'prochain_duel' | 'termine' | 'indisponible'

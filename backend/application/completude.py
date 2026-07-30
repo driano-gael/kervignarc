@@ -108,7 +108,8 @@ class ServiceCompletude:
         validable : `nb_ayant_tire` et `nb_series_closes` tombent à 0 (hors forfaits), le créneau
         reste donc **ouvert** — librement éditable, robustesse jour J (même parti que
         `_compter_cibles`). La résolution barème + forfaits est **dupliquée** de `_compter_cibles`
-        (2ᵉ occurrence, règle 12 : on extraira au 3ᵉ cas, pas avant).
+        (`# DETTE-022` — le 3ᵉ cas est arrivé avec `ServiceSaisie` en E04US018 ; l'extraction
+        est inscrite au registre, elle se fera en US dédiée).
         """
         phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
         nb_volees = phase.bareme.nb_volees if phase is not None and phase.bareme is not None else 0

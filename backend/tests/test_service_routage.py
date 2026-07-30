@@ -26,7 +26,13 @@ import pytest
 from application.classements import ServiceClassement
 from application.erreurs import PhaseIntrouvable
 from application.placement_duels import ServicePlacementDuels
-from application.routage import IssueRoutage, ServiceRoutage
+from application.routage import (
+    CIBLE_A_VENIR,
+    CIBLE_NON_ATTRIBUEE,
+    PLACEMENT_A_REVOIR,
+    IssueRoutage,
+    ServiceRoutage,
+)
 from application.saisie_duels import ServiceSaisieDuels
 from domain.archer import Archer
 from domain.blason import Blason, ZoneScore
@@ -144,7 +150,7 @@ class _Monde:
 
     @property
     def routage(self) -> ServiceRoutage:
-        return ServiceRoutage(self.saisie, self.placement, self._classement(), self.phases)
+        return ServiceRoutage(self.saisie, self.placement, self.archers, self.phases)
 
     def placer(self) -> None:
         """Matérialise le plan de duels du 1er tour (les duellistes reçoivent cible et position)."""
@@ -330,7 +336,10 @@ def test_pas_de_cible_au_dela_du_premier_tour_et_le_manque_est_nomme() -> None:
     assert ligne.prochain is not None
     assert ligne.prochain.cible is None
     assert ligne.prochain.position is None
-    assert ligne.prochain.manque is not None and "cible" in ligne.prochain.manque.lower()
+    # Égalité stricte, pas « contient le mot cible » : les trois motifs contiennent ce mot, et une
+    # assertion lâche laisserait passer n'importe lequel des trois — donc ne prouverait rien.
+    assert ligne.prochain.manque == CIBLE_A_VENIR
+    assert ligne.prochain.alerte is None
 
 
 def test_adversaire_pas_encore_connu_nomme_le_duel_attendu() -> None:
@@ -361,7 +370,7 @@ def test_sans_plan_de_duels_la_cible_manque_sans_faire_echouer_le_panneau() -> N
     assert ligne.issue is IssueRoutage.PROCHAIN_DUEL
     assert ligne.prochain is not None
     assert ligne.prochain.cible is None
-    assert ligne.prochain.manque is not None
+    assert ligne.prochain.manque == CIBLE_NON_ATTRIBUEE  # neutre : rien n'est *promis* ici
 
 
 # --- CA « son rang final s'il est éliminé » ----------------------------------------------------
@@ -440,17 +449,19 @@ def test_archer_absent_du_tableau_le_panneau_le_dit() -> None:
     assert routage.archers[1].motif is not None
 
 
-def test_pose_perimee_par_un_reclassement_n_est_jamais_annoncee() -> None:
+def test_pose_perimee_par_un_reclassement_est_signalee() -> None:
     """Le plan de duels est **persisté**, l'appariement est **recalculé** (ADR-0023). Une correction
     de score suffit à les désaccorder : l'archer garde sa pose mais affronte désormais quelqu'un
-    posé sur une autre cible. Annoncer cette pose enverrait les deux duellistes sur deux buttes
-    différentes — l'incident précis que ce panneau existe pour éviter. La garde « tour 1 » ne couvre
-    **pas** ce cas : elle traite la cible périmée d'un *tour*, celle-ci d'un *appariement*."""
+    placé ailleurs. Le panneau **garde sa cible** — c'est bien sa place physique, la lui retirer
+    serait échanger une information juste contre un vide — et **alerte** : c'est ce dont il a besoin
+    pour ne pas partir en confiance. Le signal vient du domaine (`duels_separes`), pas d'un calcul
+    refait ici."""
     monde = _Monde(capacites=(2, 2))  # un duel par cible : deux poses distinctes
     archers = _quatre(monde)
     monde.placer()
     avant = monde.routage.routage(monde.tournoi_id, (archers[0],)).archers[0].prochain
     assert avant is not None and avant.cible is not None  # sain au départ
+    assert avant.alerte is None
     assert avant.adversaire is not None
 
     # Le 1er tombe au 2e rang : le serpent l'oppose maintenant au 3e, posé sur l'autre cible.
@@ -460,8 +471,46 @@ def test_pose_perimee_par_un_reclassement_n_est_jamais_annoncee() -> None:
     assert apres is not None
     assert apres.adversaire is not None
     assert apres.adversaire.archer_id != avant.adversaire.archer_id  # l'appariement a changé
-    assert apres.cible is None  # surtout pas l'ancienne, qui enverrait sur la mauvaise butte
-    assert apres.manque is not None and "cible" in apres.manque.lower()
+    assert apres.cible == avant.cible  # sa place physique n'a pas bougé
+    assert apres.alerte == PLACEMENT_A_REVOIR
+    assert apres.manque is None  # rien ne *manque* : c'est une alerte, pas un trou
+
+
+def test_pose_perimee_meme_quand_les_deux_restent_sur_la_meme_cible() -> None:
+    """Le cas que la comparaison « même index de cible » ratait — et c'est la disposition **la plus
+    courante** (une cible de salle porte les quatre archers). Après reclassement, les deux
+    duellistes
+    sont toujours sur la même butte mais **plus côte à côte** : la position annoncée est périmée,
+    l'archer se rangerait à côté du mauvais adversaire. Le signal du domaine, lui, le voit."""
+    monde = _Monde(capacites=(4,))  # les quatre sur une seule cible
+    archers = _quatre(monde)
+    monde.placer()
+    avant = monde.routage.routage(monde.tournoi_id, (archers[0],)).archers[0].prochain
+    assert avant is not None and avant.alerte is None
+
+    monde.reclasser(archers[0], ("9", "8"))
+    apres = monde.routage.routage(monde.tournoi_id, (archers[0],)).archers[0].prochain
+
+    assert apres is not None
+    assert apres.cible == avant.cible  # même butte, forcément : il n'y en a qu'une
+    assert apres.alerte == PLACEMENT_A_REVOIR
+
+
+def test_un_plan_sain_mais_separe_garde_sa_cible() -> None:
+    """Des cibles à **une** place : le moteur ne *peut* pas mettre les duellistes côte à côte, et le
+    placement l'**accepte** en le signalant (E03US009). Le plan est frais et correct — refuser
+    d'annoncer la cible priverait tous les archers d'une information juste. On annonce, avec
+    l'alerte : c'est le sens de « alerte » plutôt que « manque »."""
+    monde = _Monde(capacites=(1, 1, 1, 1))
+    archers = _quatre(monde)
+    monde.placer()
+
+    routage = monde.routage.routage(monde.tournoi_id, tuple(archers))
+
+    for ligne in routage.archers:
+        assert ligne.prochain is not None
+        assert ligne.prochain.cible is not None  # la cible réelle, pas un vide
+        assert ligne.prochain.alerte == PLACEMENT_A_REVOIR
 
 
 def test_le_panneau_degrade_reste_nominatif() -> None:
@@ -487,6 +536,20 @@ def test_phase_imposee_introuvable_est_refusee() -> None:
 
     with pytest.raises(PhaseIntrouvable):
         monde.routage.routage(monde.tournoi_id, (archers[0],), phase_id=9999)
+
+
+def test_phase_imposee_d_un_autre_tournoi_est_refusee() -> None:
+    """La moitié la plus sensible de la garde : la route est **publique et non authentifiée**, un
+    `phase_id` d'un autre tournoi ne doit pas ouvrir son arbre par l'URL de celui-ci."""
+    monde = _Monde()
+    archers = _quatre(monde)
+    autre = monde.phases.ajouter(
+        Phase.creer(tournoi_id=42, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
+    )
+    assert autre.id is not None
+
+    with pytest.raises(PhaseIntrouvable):
+        monde.routage.routage(monde.tournoi_id, (archers[0],), phase_id=autre.id)
 
 
 def test_la_phase_visee_est_le_tableau_qui_vient() -> None:
