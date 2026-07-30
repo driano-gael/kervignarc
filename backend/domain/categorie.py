@@ -98,6 +98,8 @@ class Categorie:
         sexe: SexeCategorie | None = None,
         blason_id: BlasonId | None = None,
         hauteur_cm: int = HAUTEUR_CENTRE_DEFAUT,
+        *,
+        origine: OrigineBrique = OrigineBrique.UTILISATEUR,
     ) -> Categorie:
         """Crée une catégorie valide ; lève `LibelleCategorieInvalide` si le libellé est vide.
 
@@ -117,7 +119,29 @@ class Categorie:
             sexe=sexe,
             blason_id=blason_id,
             hauteur_cm=_hauteur_valide(hauteur_cm),
+            origine=origine,
         )
+
+    def pour_tournoi(self, tournoi_id: TournoiId, blason_id: BlasonId | None) -> Categorie:
+        """Copie ce modèle de bibliothèque en **catégorie d'un tournoi**, non persistée (E01US023).
+
+        `blason_id` est **fourni par l'appelant**, et ce n'est pas un détail : c'est une **clé
+        étrangère**, et la recopier telle quelle ferait pointer la catégorie du tournoi vers le
+        blason de la *bibliothèque*. Seul le service voit les deux collections et sait à quelle
+        copie le lien doit être réattaché — l'agrégat, lui, ne voit qu'une catégorie à la fois
+        (même partage des rôles que la garde `BlasonHorsTournoi`).
+
+        L'`id` est remis à `None` (catégorie neuve) et l'`origine` **suit** le modèle.
+        """
+        return replace(self, tournoi_id=tournoi_id, blason_id=blason_id, id=None)
+
+    def en_bibliotheque(self, blason_id: BlasonId | None) -> Categorie:
+        """Détache cette catégorie en **modèle de bibliothèque**, non persisté (**promotion**).
+
+        Miroir de `pour_tournoi`, `blason_id` compris : au retour, le lien doit viser le blason
+        **de la bibliothèque**, que seul le service sait résoudre.
+        """
+        return replace(self, tournoi_id=None, blason_id=blason_id, id=None)
 
     def modifier(
         self,

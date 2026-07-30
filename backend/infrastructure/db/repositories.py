@@ -8,6 +8,7 @@ ADR-0005) et traduit les lignes ORM en agrégats de domaine. Les pannes SQLAlche
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import json
 from collections.abc import Sequence
@@ -27,6 +28,7 @@ from domain.duel import BaremeDuel, Barrage, Cote, Duel, MancheDuel
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import DomainError
 from domain.forfait import Forfait, NatureForfait
+from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.inscription import Inscription, InscriptionId
@@ -56,6 +58,7 @@ from infrastructure.db.models import (
     DuelORM,
     EntreeAuditORM,
     ForfaitORM,
+    FormatTournoiORM,
     GabaritSalleORM,
     InscriptionORM,
     PhaseORM,
@@ -464,29 +467,128 @@ def _config_phase(phase: Phase) -> str:
     déclarés, quel que soit le type. La relecture (`_vers_phase`) reste tolérante à l'ancienne forme
     à plat pour une base non migrée.
     """
+    return json.dumps(
+        _politiques_json(phase.bareme, phase.validation, phase.source, phase.effectif)
+    )
+
+
+def _politiques_json(
+    bareme: BaremeQualification | None,
+    validation: GrainValidation | None,
+    source: SourcePhase | None,
+    effectif: int | None,
+) -> dict[str, object]:
+    """Corps commun d'une **étape** — une phase de tournoi ou un modèle d'étape d'un format.
+
+    Extrait de `_config_phase` par E01US023 : `format_tournoi.config` stocke une **séquence** de ces
+    objets (ADR-0060 §5), et recopier la forme aurait garanti qu'elles divergent au premier ajout de
+    politique. Les deux tables se relisent donc avec les mêmes fonctions (`_lire_scoring`,
+    `_vers_grain`, `_vers_source`).
+    """
     config: dict[str, object] = {}
-    if phase.bareme is not None:
+    if bareme is not None:
         config["policies"] = {
             "scoring": {
                 "nom": "cumul",
-                "volees": phase.bareme.nb_volees,
-                "fleches": phase.bareme.nb_fleches_par_volee,
+                "volees": bareme.nb_volees,
+                "fleches": bareme.nb_fleches_par_volee,
             }
         }
-    if phase.validation is not None:
-        validation: dict[str, object] = {"grain": phase.validation.type.value}
-        if phase.validation.n_volees is not None:
-            validation["n_volees"] = phase.validation.n_volees
-        config["validation"] = validation
-    if phase.source is not None:
+    if validation is not None:
+        grain: dict[str, object] = {"grain": validation.type.value}
+        if validation.n_volees is not None:
+            grain["n_volees"] = validation.n_volees
+        config["validation"] = grain
+    if source is not None:
         config["source"] = {
-            "ordre_source": phase.source.ordre_source,
-            "rang_debut": phase.source.rang_debut,
-            "rang_fin": phase.source.rang_fin,
+            "ordre_source": source.ordre_source,
+            "rang_debut": source.rang_debut,
+            "rang_fin": source.rang_fin,
         }
-    if phase.effectif is not None:
-        config["effectif"] = phase.effectif
-    return json.dumps(config)
+    if effectif is not None:
+        config["effectif"] = effectif
+    return config
+
+
+def _config_format(format_tournoi: FormatTournoi) -> str:
+    """Sérialise la séquence de modèles de phases d'un format (`{"etapes": [...]}`).
+
+    Chaque étape reprend la forme d'une `config` de phase (`_politiques_json`), augmentée de son
+    `ordre` et de son `type` — que `PhaseORM` porte en colonnes propres et qu'un format, lui, doit
+    ranger dans le JSON puisqu'il en stocke plusieurs par ligne.
+    """
+    return json.dumps(
+        {
+            "etapes": [
+                {
+                    "ordre": etape.ordre,
+                    "type": etape.type.value,
+                    **_politiques_json(
+                        etape.bareme, etape.validation, etape.source, etape.effectif
+                    ),
+                }
+                for etape in format_tournoi.etapes
+            ]
+        }
+    )
+
+
+def _vers_format(ligne: FormatTournoiORM) -> FormatTournoi:
+    """Traduit une ligne ORM en agrégat `FormatTournoi` (config JSON → séquence de modèles).
+
+    Même régime qu'`_vers_phase` (ADR-0007) : le repository est le **seul** rédacteur de cette
+    colonne et n'écrit que des valeurs valides, donc une `config` illisible **ou hors règle** est
+    une incohérence **technique** → `InfrastructureError`, jamais un agrégat silencieusement
+    invalide. On repasse donc par les fabriques du domaine, `FormatTournoi.creer` comprise : c'est
+    elle qui rejoue les invariants de séquence (ordres contigus, sources antérieures).
+    """
+    try:
+        etapes = [_vers_modele_phase(brute) for brute in json.loads(ligne.config)["etapes"]]
+        return dataclasses.replace(
+            FormatTournoi.creer(ligne.nom, etapes, OrigineBrique(ligne.origine)), id=ligne.id
+        )
+    except (
+        json.JSONDecodeError,
+        AttributeError,
+        KeyError,
+        TypeError,
+        ValueError,
+        DomainError,
+    ) as exc:
+        raise InfrastructureError("Configuration de format de tournoi illisible.") from exc
+
+
+def _vers_modele_phase(brute: Any) -> ModelePhase:
+    """Relit un modèle d'étape depuis sa forme JSON.
+
+    Le barème n'est lu que pour une `qualification`, comme dans `_vers_phase` — les autres types
+    n'en portent pas (ADR-0045 §2). Le grain absent d'une qualification retombe sur le preset du
+    type, même mécanisme « politique sans migration » qu'ADR-0011 : un format écrit avant l'ajout
+    d'une clé reste relisible.
+    """
+    type_phase = TypePhase(brute["type"])
+    bareme = None
+    validation = None
+    if type_phase is TypePhase.QUALIFICATION:
+        scoring = _lire_scoring(brute)
+        bareme = BaremeQualification.creer(
+            nb_volees=int(scoring["volees"]),
+            nb_fleches_par_volee=int(scoring["fleches"]),
+        )
+        validation = (
+            grain_par_defaut(type_phase)
+            if "validation" not in brute
+            else _vers_grain(brute["validation"])
+        )
+    effectif = brute.get("effectif")
+    return ModelePhase(
+        ordre=int(brute["ordre"]),
+        type=type_phase,
+        bareme=bareme,
+        validation=validation,
+        source=None if "source" not in brute else _vers_source(brute["source"]),
+        effectif=None if effectif is None else int(effectif),
+    )
 
 
 def _vers_categorie(ligne: CategorieORM) -> Categorie:
@@ -1850,6 +1952,96 @@ class GabaritSalleRepositorySQL:
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de suppression du gabarit de salle.") from exc
+
+
+class FormatTournoiRepositorySQL:
+    """Adapter SQLite du port `FormatTournoiRepository` (E01US023, ADR-0060 §5).
+
+    Pas de `par_tournoi` : un format n'existe qu'en bibliothèque, sa copie dans un tournoi étant
+    les **phases** produites par son application (`PhaseRepositorySQL`).
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def ajouter(self, format_tournoi: FormatTournoi) -> FormatTournoi:
+        """Persiste un format et le renvoie avec son identifiant attribué.
+
+        Le `nom` étant `UNIQUE`, un homonyme remonte en `InfrastructureError` : le refus
+        fonctionnel (409) est porté en amont par le service, qui interroge `par_nom` d'abord — la
+        contrainte n'est ici qu'un garde-fou d'intégrité (même patron que `club`).
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = FormatTournoiORM(
+                    nom=format_tournoi.nom,
+                    origine=format_tournoi.origine.value,
+                    config=_config_format(format_tournoi),
+                )
+                session.add(ligne)
+                session.commit()
+                return _vers_format(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance du format de tournoi.") from exc
+
+    def par_id(self, format_id: FormatTournoiId) -> FormatTournoi | None:
+        """Relit le format d'identifiant donné, ou `None` s'il n'existe pas."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(FormatTournoiORM, format_id)
+                return None if ligne is None else _vers_format(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du format de tournoi.") from exc
+
+    def lister(self) -> list[FormatTournoi]:
+        """Renvoie toute la bibliothèque de formats, par identifiant croissant."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(FormatTournoiORM).order_by(FormatTournoiORM.id)
+                ).scalars()
+                return [_vers_format(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des formats de tournoi.") from exc
+
+    def par_nom(self, nom: str) -> FormatTournoi | None:
+        """Renvoie le format de ce nom exact, ou `None` (sert à l'idempotence de la promotion)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.execute(
+                    select(FormatTournoiORM).where(FormatTournoiORM.nom == nom)
+                ).scalar_one_or_none()
+                return None if ligne is None else _vers_format(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du format de tournoi.") from exc
+
+    def enregistrer(self, format_tournoi: FormatTournoi) -> FormatTournoi:
+        """Met à jour un format déjà persisté (édition, promotion) et le renvoie."""
+        assert format_tournoi.id is not None, "Un format enregistré a déjà un identifiant."
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(FormatTournoiORM, format_tournoi.id)
+                if ligne is None:
+                    raise InfrastructureError("Format de tournoi à mettre à jour introuvable.")
+                ligne.nom = format_tournoi.nom
+                ligne.origine = format_tournoi.origine.value
+                ligne.config = _config_format(format_tournoi)
+                session.commit()
+                return _vers_format(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour du format de tournoi.") from exc
+
+    def supprimer(self, format_id: FormatTournoiId) -> None:
+        """Supprime un format. Les phases appliquées ne le référencent pas : elles survivent."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(FormatTournoiORM, format_id)
+                if ligne is None:
+                    raise InfrastructureError("Format de tournoi à supprimer introuvable en base.")
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression du format de tournoi.") from exc
 
 
 class ScoreRepositorySQL:

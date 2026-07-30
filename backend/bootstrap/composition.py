@@ -36,12 +36,14 @@ from api.v1.deroule import router as deroule_router
 from api.v1.documents_salle import router as documents_salle_router
 from api.v1.feuille_de_marque import router as feuille_de_marque_router
 from api.v1.forfaits import router as forfaits_router
+from api.v1.formats import router as formats_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
 from api.v1.inscriptions import router as inscriptions_router
 from api.v1.jeu_essai import router as jeu_essai_router
 from api.v1.listes_impression import router as listes_impression_router
 from api.v1.paiements import router as paiements_router
+from api.v1.patrimoine import router as patrimoine_router
 from api.v1.phases import router as phases_router
 from api.v1.pilotage import router as pilotage_router
 from api.v1.placement import router as placement_router
@@ -72,6 +74,7 @@ from application.departs import ServiceDeparts
 from application.documents_salle import ServiceDocumentsSalle
 from application.feuille_de_marque import ServiceFeuilleDeMarque
 from application.forfaits import ServiceForfait
+from application.formats import ServiceFormats
 from application.gabarits import ServiceGabarits
 from application.generateur_scores import GenerateurScoresPlausibles
 from application.grain_validation import ServiceGrainValidation
@@ -79,6 +82,7 @@ from application.inscriptions import ServiceInscriptions
 from application.jeu_essai import ServiceJeuEssai
 from application.listes_impression import ServiceListesImpression
 from application.paiements import ServicePaiements
+from application.patrimoine import ServicePatrimoine
 from application.phases import ServicePhases
 from application.pilotage_simulation import (
     RegistreSessionsSimulation,
@@ -121,6 +125,7 @@ from infrastructure.db import (
     DepartRepositorySQL,
     DuelRepositorySQL,
     ForfaitRepositorySQL,
+    FormatTournoiRepositorySQL,
     GabaritSalleRepositorySQL,
     InscriptionRepositorySQL,
     PhaseRepositorySQL,
@@ -344,6 +349,7 @@ def create_app(
     blason_repository = BlasonRepositorySQL(database.session_factory)
     club_repository = ClubRepositorySQL(database.session_factory)
     gabarit_repository = GabaritSalleRepositorySQL(database.session_factory)
+    format_repository = FormatTournoiRepositorySQL(database.session_factory)
     phase_repository = PhaseRepositorySQL(database.session_factory)
     archer_repository = ArcherRepositorySQL(database.session_factory)
     score_repository = ScoreRepositorySQL(database.session_factory)
@@ -404,6 +410,21 @@ def create_app(
     # Gabarits de salle : bibliothèque de modèles (E01US007) + application à un tournoi (E01US008,
     # copie ajustable). Le service vérifie l'existence du tournoi (dépend du port tournoi).
     app.state.service_gabarits = ServiceGabarits(tournoi_repository, gabarit_repository)
+    # Patrimoine du club (E01US023, ADR-0060) : la **bibliothèque** de briques hors tournoi,
+    # l'assemblage d'un tournoi (copie) et la promotion (retour). Service **distinct** de
+    # `service_categories` / `service_blasons`, qui restent cantonnés au périmètre d'un
+    # tournoi : copier une catégorie exige de réattacher son `blason_id` à la copie du blason
+    # du même tournoi — une règle qui traverse les **deux** collections, qu'aucun des deux
+    # services existants ne voit en entier.
+    app.state.service_patrimoine = ServicePatrimoine(
+        tournoi_repository, categorie_repository, blason_repository
+    )
+    # Formats de tournoi (E01US023, ADR-0060 §5) : la brique « déroulé ». Traverse deux ports
+    # — le sien et celui des **phases** — parce que la copie d'un format dans un tournoi n'est
+    # pas un format rattaché, ce sont ses phases.
+    app.state.service_formats = ServiceFormats(
+        tournoi_repository, format_repository, phase_repository
+    )
     # Barème de qualification (E01US009) : porté par la phase `qualification` du tournoi
     # (introduction minimale de `Phase`, ADR-0011). Le service vérifie l'existence du tournoi.
     app.state.service_bareme_qualification = ServiceBaremeQualification(
@@ -838,6 +859,8 @@ def create_app(
     app.include_router(categories_router)
     app.include_router(blasons_router)
     app.include_router(clubs_router)
+    app.include_router(patrimoine_router)
+    app.include_router(formats_router)
     app.include_router(gabarits_router)
     app.include_router(bareme_qualification_router)
     app.include_router(grain_validation_router)

@@ -21,6 +21,7 @@ from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
 from domain.feuille_marque import FeuilleDeMarque
 from domain.forfait import Forfait
+from domain.format_tournoi import FormatTournoi, FormatTournoiId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.listes_impression import ListeClubPaiement, ListePlacement
@@ -504,6 +505,54 @@ class BlasonRepository(Protocol):
 
     def supprimer(self, blason_id: BlasonId) -> None:
         """Supprime le blason d'identifiant donné (existence garantie par l'appelant)."""
+        ...
+
+
+class FormatTournoiRepository(Protocol):
+    """Port de persistance des formats de tournoi (E01US023, ADR-0060 §5).
+
+    **Pas de `par_tournoi` ni de `par_bibliotheque`** — et c'est le fait notable de ce port : un
+    format n'existe qu'en bibliothèque. Sa « copie » dans un tournoi n'est pas un format rattaché,
+    ce sont les **phases** du tournoi, persistées par `PhaseRepository`. `lister` renvoie donc
+    toute la bibliothèque, sans filtre à écrire.
+    """
+
+    def ajouter(self, format_tournoi: FormatTournoi) -> FormatTournoi:
+        """Persiste un format et le renvoie avec son identifiant attribué."""
+        ...
+
+    def par_id(self, format_id: FormatTournoiId) -> FormatTournoi | None:
+        """Renvoie le format d'identifiant donné, ou `None` s'il n'existe pas."""
+        ...
+
+    def lister(self) -> list[FormatTournoi]:
+        """Renvoie tous les formats de la bibliothèque (liste éventuellement vide).
+
+        L'ordre n'est **pas** garanti par le port (détail de l'adapter) : un consommateur qui a
+        besoin d'un ordre précis le trie lui-même.
+        """
+        ...
+
+    def par_nom(self, nom: str) -> FormatTournoi | None:
+        """Renvoie le format dont le nom correspond, ou `None` — comparaison **exacte**.
+
+        Sert à la **promotion** (E01US023) : promouvoir un déroulé sous un nom déjà pris met à jour
+        le format existant au lieu d'en créer un homonyme. La comparaison est exacte, comme
+        l'unicité en base ; le repli de casse et d'accents de `domain.club.cle_nom` ne s'applique
+        pas ici (un format se choisit dans une liste courte, pas au clavier sous pression).
+        """
+        ...
+
+    def enregistrer(self, format_tournoi: FormatTournoi) -> FormatTournoi:
+        """Met à jour un format déjà persisté (édition, promotion) et le renvoie."""
+        ...
+
+    def supprimer(self, format_id: FormatTournoiId) -> None:
+        """Supprime le format d'identifiant donné (existence garantie par l'appelant).
+
+        Les tournois qui l'avaient appliqué gardent leurs **phases** intactes : elles ne le
+        référencent pas (ADR-0060 §2, copie plutôt que référence).
+        """
         ...
 
 

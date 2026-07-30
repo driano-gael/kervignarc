@@ -456,6 +456,70 @@ class GabaritIntrouvable(ApplicationError):
     code = "gabarit_introuvable"
 
 
+class FormatIntrouvable(ApplicationError):
+    """Aucun format de tournoi ne correspond à l'identifiant demandé (E01US023) → 404."""
+
+    code = "format_introuvable"
+
+
+class NomFormatDejaPris(ApplicationError):
+    """Un format porte déjà ce nom dans la bibliothèque (E01US023) → 409.
+
+    Le refus est **fonctionnel** : la contrainte `UNIQUE` de `format_tournoi.nom` n'est qu'un
+    garde-fou d'intégrité en aval (même patron que `NomClubDejaPris`). Un homonyme n'est pas
+    interdit par principe — il l'est parce qu'une bibliothèque où deux formats portent le même nom
+    est une bibliothèque où l'organisateur ne sait plus lequel il applique.
+    """
+
+    code = "nom_format_deja_pris"
+
+
+class BriqueHorsBibliotheque(ApplicationError):
+    """Application demandée sur une brique qui n'est **pas** un modèle de bibliothèque → 409.
+
+    Assembler un tournoi copie des **modèles** (`tournoi_id is None`, ADR-0060 §1). Viser la copie
+    d'un autre tournoi recopierait le matériau d'une autre édition — ce qui n'est pas la promesse
+    de l'atelier, et brouillerait la provenance sans que rien ne le signale.
+    """
+
+    code = "brique_hors_bibliotheque"
+
+
+class BriqueDejaEnBibliotheque(ApplicationError):
+    """Promotion demandée sur une brique qui est **déjà** un modèle de bibliothèque → 409.
+
+    La promotion fait remonter la **copie d'un tournoi** vers l'atelier (« cette modification est
+    permanente », ADR-0060 §3). Promouvoir un modèle serait un geste sans objet : il n'a pas de
+    modèle au-dessus de lui. Erreur distincte de `BriqueHorsBibliotheque` pour que le message dise
+    laquelle des deux confusions a eu lieu.
+    """
+
+    code = "brique_deja_en_bibliotheque"
+
+
+class PhasesEngagees(ApplicationError):
+    """Application d'un format demandée alors qu'une phase du tournoi est déjà engagée → 409.
+
+    Appliquer un format **remplace** la séquence de phases du tournoi. Tant que tout est `à venir`,
+    c'est une reconfiguration anodine ; dès qu'une phase est démarrée, en pause ou terminée, ce
+    serait jeter un déroulé **en cours** — avec les séries et les duels qui y pendent. Le refus est
+    délibérément grossier (une seule phase engagée suffit à bloquer) : à ce stade, deviner ce que
+    l'organisateur veut garder est plus dangereux que de lui rendre la main.
+    """
+
+    code = "phases_engagees"
+
+
+class TournoiSansPhase(ApplicationError):
+    """Promotion d'un format demandée sur un tournoi qui n'a aucune phase (E01US023) → 409.
+
+    Il n'y a pas de déroulé à capturer : le format promu serait vide, et un format vide n'a rien à
+    appliquer (`FormatSansEtape`).
+    """
+
+    code = "tournoi_sans_phase"
+
+
 class GabaritDuTournoiAbsent(ApplicationError):
     """Ajustement (E01US008) ou placement (E03US001) demandé alors qu'aucun gabarit n'est appliqué
     au tournoi → 404.

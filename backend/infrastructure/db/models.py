@@ -177,6 +177,35 @@ class GabaritSalleORM(Base):
     tournoi_id: Mapped[int | None] = mapped_column(ForeignKey("tournoi.id"), nullable=True)
 
 
+class FormatTournoiORM(Base):
+    """Table `format_tournoi` — persistance de l'agrégat `FormatTournoi` (E01US023, ADR-0060 §5).
+
+    **Aucune FK vers `tournoi`**, et ce n'est pas un oubli : un format n'existe qu'en bibliothèque
+    (patrimoine du club). Sa « copie » dans un tournoi n'est pas une ligne de cette table, ce sont
+    les lignes de `phase` produites par son application. La table n'appartient donc **pas** à la
+    descendance de `tournoi` — supprimer un tournoi ne doit pas toucher aux formats, et DETTE-001
+    ne la concerne pas (même régime que `club`).
+
+    La **séquence de modèles de phases** est stockée dans `config` (JSON,
+    `{"etapes": [{"ordre", "type", "policies"?, "validation"?, "source"?, "effectif"?}, …]}`) —
+    même procédé que `PhaseORM.config`, dont elle reprend la forme étape par étape pour que les
+    deux se relisent avec les mêmes fonctions. Une table fille coûterait une jointure pour une
+    donnée toujours lue en bloc et jamais requêtée.
+
+    `nom` est `UNIQUE` : c'est ce qui rend la **promotion** idempotente — promouvoir deux fois sous
+    le même nom met à jour le format au lieu de créer un homonyme que l'organisateur ne saurait pas
+    distinguer dans sa liste.
+    """
+
+    __tablename__ = "format_tournoi"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nom: Mapped[str] = mapped_column(nullable=False, unique=True)
+    # `ffta` (préchargé officiel) ou `utilisateur` — les deux listes séparées de l'atelier.
+    origine: Mapped[str] = mapped_column(nullable=False, server_default="utilisateur")
+    config: Mapped[str] = mapped_column(nullable=False)
+
+
 class ArcherORM(Base):
     """Table `archer` — persistance de l'agrégat `Archer` (E00US011, inscription en E02US002)."""
 

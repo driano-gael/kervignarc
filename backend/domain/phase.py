@@ -30,8 +30,10 @@ de domaine **purs** (immuables, sans dépendance framework).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
+from typing import Protocol
 
 from domain.bareme import BaremeQualification
 from domain.erreurs import (
@@ -180,20 +182,7 @@ class Phase:
     def __post_init__(self) -> None:
         """Fait respecter la cohérence quelle que soit la porte d'entrée (fabriques **et**
         `replace()`, qui repasse par ici)."""
-        if self.effectif is not None and self.effectif < 1:
-            raise EffectifPhaseInvalide(
-                "L'effectif d'une phase, s'il est déclaré, compte au moins un participant."
-            )
-        if self.type is TypePhase.QUALIFICATION and (
-            self.bareme is None or self.validation is None
-        ):
-            raise PhaseQualificationIncomplete(
-                "Une phase de qualification porte un barème et un grain de validation."
-            )
-        if self.validation is not None:
-            _verifier_grain_admis(self.type, self.validation)
-            if self.bareme is not None:
-                _verifier_cadence_couverte(self.validation, self.bareme)
+        verifier_coherence_etape(self.type, self.bareme, self.validation, self.effectif)
 
     @staticmethod
     def qualification(
@@ -306,8 +295,74 @@ class SequencePhases:
     phases: tuple[Phase, ...]
 
     def __post_init__(self) -> None:
-        _verifier_ordres(self.phases)
-        _verifier_sources(self.phases)
+        verifier_sequence(self.phases)
+
+
+class EtapeSequencee(Protocol):
+    """Ce dont les contrôles de séquence ont besoin d'une étape — **rien de plus**.
+
+    Deux agrégats satisfont ce contrat : la `Phase` d'un tournoi (ci-dessus) et le `ModelePhase`
+    d'un `FormatTournoi` (E01US023, ADR-0060 §5). Les contrôles d'ordre et de source ne regardent
+    que `ordre`, `source` et `effectif` — ni le statut, ni le tournoi, qui n'existent que sur une
+    phase réelle. Le protocole rend cette frontière explicite au lieu de la laisser deviner.
+
+    Membres déclarés en **propriétés** (lecture seule) : les deux implémentations sont des
+    dataclasses `frozen`, et un protocole à attributs *variables* exigerait qu'ils soient
+    assignables (règle 4 — l'immutabilité est la norme dans le domaine).
+    """
+
+    @property
+    def ordre(self) -> int: ...
+
+    @property
+    def source(self) -> SourcePhase | None: ...
+
+    @property
+    def effectif(self) -> int | None: ...
+
+
+def verifier_sequence(etapes: Sequence[EtapeSequencee]) -> None:
+    """Vérifie les invariants **collectifs** d'une séquence d'étapes (ADR-0045 §3).
+
+    Les ordres forment la suite contiguë 1..N, et chaque source désigne une étape **antérieure**
+    existante dont l'effectif couvre les rangs prélevés, avec un compte compatible.
+
+    **Publique et partagée** entre `SequencePhases` (les phases d'un tournoi) et `FormatTournoi`
+    (les modèles de phases d'une brique de bibliothèque) : c'est le **même** invariant, et le
+    recopier serait la duplication d'invariant que le registre de dette proscrit. Ce n'est pas
+    l'introduction d'un patron — juste une fonction appelée à deux endroits.
+    """
+    _verifier_ordres(etapes)
+    _verifier_sources(etapes)
+
+
+def verifier_coherence_etape(
+    type_phase: TypePhase,
+    bareme: BaremeQualification | None,
+    validation: GrainValidation | None,
+    effectif: int | None,
+) -> None:
+    """Vérifie les invariants **d'une seule** étape — indépendamment de la séquence qui la porte.
+
+    Effectif ≥ 1 s'il est déclaré ; une `qualification` porte barème **et** grain ; le grain — s'il
+    y en a un — est admis par le type et sa cadence ne dépasse pas le barème.
+
+    Partagée pour la même raison que `verifier_sequence` : une phase de tournoi et un modèle de
+    phase d'un format obéissent aux **mêmes** règles de cohérence interne ; seul le contexte
+    (statut, tournoi) les distingue.
+    """
+    if effectif is not None and effectif < 1:
+        raise EffectifPhaseInvalide(
+            "L'effectif d'une phase, s'il est déclaré, compte au moins un participant."
+        )
+    if type_phase is TypePhase.QUALIFICATION and (bareme is None or validation is None):
+        raise PhaseQualificationIncomplete(
+            "Une phase de qualification porte un barème et un grain de validation."
+        )
+    if validation is not None:
+        _verifier_grain_admis(type_phase, validation)
+        if bareme is not None:
+            _verifier_cadence_couverte(validation, bareme)
 
 
 def _verifier_grain_admis(type_phase: TypePhase, validation: GrainValidation) -> None:
@@ -339,7 +394,7 @@ def _verifier_cadence_couverte(validation: GrainValidation, bareme: BaremeQualif
         )
 
 
-def _verifier_ordres(phases: tuple[Phase, ...]) -> None:
+def _verifier_ordres(phases: Sequence[EtapeSequencee]) -> None:
     """Les ordres doivent former la suite contiguë 1..N (ni trou, ni doublon, ni départ décalé)."""
     ordres = sorted(phase.ordre for phase in phases)
     if ordres != list(range(1, len(phases) + 1)):
@@ -349,7 +404,7 @@ def _verifier_ordres(phases: tuple[Phase, ...]) -> None:
         )
 
 
-def _verifier_sources(phases: tuple[Phase, ...]) -> None:
+def _verifier_sources(phases: Sequence[EtapeSequencee]) -> None:
     """Chaque source désigne une phase antérieure existante, dont l'effectif couvre les rangs
     prélevés, avec un compte compatible avec l'effectif de la phase consommatrice."""
     par_ordre = {phase.ordre: phase for phase in phases}

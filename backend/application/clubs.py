@@ -22,13 +22,31 @@ silencieusement sur des inscriptions. La règle est **exerçable** parce que la 
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 from application.erreurs import ClubIntrouvable, ClubReference, NomClubDejaPris
 from domain.club import Club, ClubId, cle_nom
+from domain.erreurs import NomClubInvalide
 from domain.ports import ArcherRepository, ClubRepository
 
 
+@dataclass(frozen=True)
+class RapportImportClubs:
+    """Compte-rendu d'un import en masse (E01US023) — **aucun import partiel silencieux**.
+
+    Trois issues par ligne, et elles doivent rester distinctes à l'écran : un club **créé**, un
+    **doublon** ignoré (déjà au référentiel, ou répété dans le collage lui-même) et une ligne
+    **rejetée** (vide après normalisation). Un import qui ne rendrait qu'un total laisserait
+    l'organisateur croire à un échec là où il n'y a que du déjà-connu.
+    """
+
+    crees: list[str] = field(default_factory=list)
+    doublons: list[str] = field(default_factory=list)
+    lignes_ignorees: int = 0
+
+
 class ServiceClubs:
-    """Cas d'usage du référentiel des clubs : créer, lister, renommer, supprimer."""
+    """Cas d'usage du référentiel des clubs : créer, lister, renommer, supprimer, importer."""
 
     def __init__(self, clubs: ClubRepository, archers: ArcherRepository) -> None:
         self._clubs = clubs
@@ -53,6 +71,44 @@ class ServiceClubs:
         cherche le sien à l'œil.
         """
         return sorted(self._clubs.lister(), key=lambda club: cle_nom(club.nom))
+
+    def importer(self, lignes: str) -> RapportImportClubs:
+        """Alimente le référentiel **en masse** depuis une liste collée — une ligne, un club.
+
+        Sert le patrimoine du club (E01US023) : les clubs voisins reviennent d'une compétition à
+        l'autre, et les saisir un à un est la corvée que le référentiel existe pour supprimer.
+
+        **Ne pas confondre avec E02US007**, l'import des *inscrits* depuis un fichier fédéral :
+        celui-là crée archers, clubs et départs **d'un tournoi**, avec ses propres pièges (quota
+        d'un départ, homonymes, licence). Ici il n'y a qu'un référentiel global à peupler.
+
+        Le doublon s'entend au sens de `domain.club.cle_nom` — casse, accents et espaces de bord
+        repliés — **comme la saisie unitaire** : un import ne doit pas ouvrir une porte que le
+        formulaire ferme, sinon c'est par lui qu'entreront les « Élan de Fougères » / « elan de
+        fougeres » que `creer` refuse. La déduplication couvre aussi les répétitions **internes** au
+        collage, qui sont le cas le plus fréquent quand on colle deux listes bout à bout.
+
+        Ne lève pas sur une ligne fautive : une ligne vide est **comptée**, pas fatale. C'est la
+        promesse « aucun import partiel silencieux » — on va au bout et on rend le compte-rendu.
+        """
+        crees: list[str] = []
+        doublons: list[str] = []
+        ignorees = 0
+        vus = {cle_nom(club.nom) for club in self._clubs.lister()}
+        for ligne in lignes.splitlines():
+            try:
+                club = Club.creer(ligne)
+            except NomClubInvalide:
+                # Ligne vide ou blanche : le cas normal d'un collage (ligne de séparation, retour
+                # final). On la compte pour que le total du rapport se raccorde au texte fourni.
+                ignorees += 1
+                continue
+            if cle_nom(club.nom) in vus:
+                doublons.append(club.nom)
+                continue
+            vus.add(cle_nom(club.nom))
+            crees.append(self._clubs.ajouter(club).nom)
+        return RapportImportClubs(crees=crees, doublons=doublons, lignes_ignorees=ignorees)
 
     def modifier(self, club_id: ClubId, nom: str) -> Club:
         """Renomme un club.

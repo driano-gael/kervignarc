@@ -33,6 +33,7 @@ from application.erreurs import (
     CodeScoreurInconnu,
     DepartIntrouvable,
     ForfaitIntrouvable,
+    FormatIntrouvable,
     GabaritDuTournoiAbsent,
     GabaritIntrouvable,
     IdentifiantsInvalides,
@@ -88,6 +89,7 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | InscriptionIntrouvable
         | BlasonIntrouvable
         | GabaritIntrouvable
+        | FormatIntrouvable
         | GabaritDuTournoiAbsent
         | PhaseQualificationAbsente
         | PhaseIntrouvable

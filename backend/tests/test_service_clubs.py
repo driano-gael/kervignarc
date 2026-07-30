@@ -227,3 +227,74 @@ def test_supprimer_possible_apres_desengagement_des_archers() -> None:
     service.supprimer(_id(club))
 
     assert service.lister() == []
+
+
+# --- Import en masse du référentiel (E01US023) --------------------------------------------------
+# Dérivés de la puce « CA — import du référentiel des clubs » de `stories/E01-configuration.md` :
+# « l'organisateur peut alimenter le référentiel en masse (une ligne = un club) et obtient un
+# compte-rendu : créés / doublons ignorés / lignes vides. Le doublon s'entend au sens de
+# `domain.club.cle_nom`, comme la saisie unitaire. »
+
+
+def test_importer_cree_un_club_par_ligne(service: ServiceClubs) -> None:
+    rapport = service.importer("Arc Club de Lorient\nLes Archers de Kervignac")
+
+    assert rapport.crees == ["Arc Club de Lorient", "Les Archers de Kervignac"]
+    assert [club.nom for club in service.lister()] == [
+        "Arc Club de Lorient",
+        "Les Archers de Kervignac",
+    ]
+
+
+def test_importer_ignore_les_lignes_vides_sans_echouer(service: ServiceClubs) -> None:
+    """« Aucun import partiel silencieux » : une ligne blanche est comptée, pas fatale."""
+    rapport = service.importer("Arc Club de Lorient\n\n   \nLes Archers de Kervignac\n")
+
+    assert rapport.crees == ["Arc Club de Lorient", "Les Archers de Kervignac"]
+    # Deux, pas trois : le `\n` **final** ne produit pas de ligne vide supplémentaire
+    # (`splitlines`), et un collage se termine presque toujours par un retour à la ligne.
+    assert rapport.lignes_ignorees == 2
+
+
+def test_importer_ne_recree_pas_un_club_deja_au_referentiel(service: ServiceClubs) -> None:
+    service.creer("Arc Club de Lorient")
+
+    rapport = service.importer("Arc Club de Lorient\nLes Archers de Kervignac")
+
+    assert rapport.doublons == ["Arc Club de Lorient"]
+    assert rapport.crees == ["Les Archers de Kervignac"]
+    assert len(service.lister()) == 2
+
+
+def test_importer_replie_casse_et_accents_comme_la_saisie_unitaire(service: ServiceClubs) -> None:
+    """Un import ne doit pas ouvrir la porte que `creer` ferme (`cle_nom`, ADR-0014)."""
+    service.creer("Élan de Fougères")
+
+    rapport = service.importer("elan de fougeres\nELAN DE FOUGERES")
+
+    assert rapport.crees == []
+    assert len(rapport.doublons) == 2
+    assert len(service.lister()) == 1
+
+
+def test_importer_dedoublonne_a_l_interieur_du_collage(service: ServiceClubs) -> None:
+    """Le cas le plus fréquent : deux listes collées bout à bout se recouvrent partiellement."""
+    rapport = service.importer("Arc Club de Lorient\nArc Club de Lorient")
+
+    assert rapport.crees == ["Arc Club de Lorient"]
+    assert rapport.doublons == ["Arc Club de Lorient"]
+    assert len(service.lister()) == 1
+
+
+def test_importer_normalise_les_espaces_de_bord(service: ServiceClubs) -> None:
+    rapport = service.importer("  Arc Club de Lorient  ")
+
+    assert rapport.crees == ["Arc Club de Lorient"]
+
+
+def test_importer_un_texte_vide_ne_fait_rien(service: ServiceClubs) -> None:
+    rapport = service.importer("")
+
+    assert rapport.crees == []
+    assert rapport.doublons == []
+    assert service.lister() == []
