@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 29/07/2026** · **82 US livrées** · dernière : `E08US005` *(rembourser une inscription payée annulée — registre de remboursements, ADR-0057)*.
+**Dernière mise à jour : 30/07/2026** · **83 US livrées** · dernière : `E04US018` *(afficher la prochaine cible après validation — panneau de routage, canal n°1)*.
 
 ---
 
@@ -28,9 +28,12 @@
 > éphémère + `E15US003` cockpit de simulation livrés). **`E12US002` est livrée** (feu vert + lancement) ;
 > la séquence J2 reprend maintenant à `E08US005`.
 >
-> **`E04US018` — afficher la prochaine cible après validation** : la **prochaine à prendre**, le
-> **premier écran récepteur** du signal de lancement émis par `E12US002`. *Ensuite* : `E07US008` /
-> `E07US004` (les autres canaux). *(`E08US005` **livrée** — voir « Fait juste avant ».)*
+> **`E07US008` — vue publique des affectations du prochain tour** : la **prochaine à prendre**, le
+> **deuxième** des quatre canaux de routage (`D-09`) — la même projection que le panneau de la
+> tablette (`E04US018`, livrée), mais sur le **téléphone de l'archer**, qui a déjà quitté la salle.
+> Le service et l'endpoint de routage existent (`ServiceRoutage`, `GET /api/v1/routage/{tournoi}`,
+> lecture publique) : cette US est surtout la **surface publique** qui les consomme. *Ensuite* :
+> `E07US004` (écran de salle, le canal n°3). *(`E04US018` **livrée** — voir « Fait juste avant ».)*
 > *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
 > moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *`E12US004` (tracer un forfait) est **absorbée** par `E04US015` — voir ci-dessous.*
@@ -38,6 +41,25 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E04US018` **afficher la prochaine cible après validation** — US à **surface visible**, le
+>   **canal n°1 des quatre canaux de routage** (`D-09`) et le **premier récepteur** du signal
+>   `tour_lance` d'`E12US002`. Un service de lecture **pure** (`application/routage.py`) répond « où
+>   tire cet archer ensuite » en agrégeant ce que le tableau reconstruit et le plan de duels persisté
+>   tiennent déjà : **rien n'est calculé** à la bascule (`D-08`), puisque les cibles sont attribuées
+>   aux **matchs** et non aux archers. Endpoint `GET /api/v1/routage/{tournoi}` (lecture **publique**,
+>   contrat E10US001), qui **résout lui-même** la phase de tableau quand le client ne la donne pas —
+>   la tablette de qualification ne connaît que sa cible. **Périmètre élargi au cadrage** : les
+>   **deux** surfaces (qualif après validation des séries **et** duels après validation d'un duel),
+>   un seul composant `PanneauRoutage`. **Trois informations du CA étaient insatisfiables** et sont
+>   **retirées ou annoncées** plutôt que devinées : l'**heure** (n'existe pas par tour de tableau),
+>   le **repêchage** (E05US016), le **rang intermédiaire** (E06US004) — et la **cible d'un tour ≥ 2**
+>   (E05US010) n'est **jamais** reprise du tour 1, qui serait périmée (même garde que le feu vert).
+>   Ce qui manque est **nommé côté serveur** (« cible attribuée au lancement du tour », « en attente
+>   du duel n°2 », « rang publié en fin de phase ») pour que les quatre canaux disent la même chose.
+>   Nouveau `libelle_tour` au domaine (« Quart de finale », « 1/8 de finale », « Petite finale »).
+>   Tests **service depuis le CA** (prochain duel, exempt, élimination, podium, lecture pure) ;
+>   API/front **après**. Oracle 120 vert. Story alignée (Arbitrages). **Aucun ADR** : ADR-0056 avait
+>   déjà tranché le fond. Recette : [`docs/fonctionnel/E04US018.md`](../docs/fonctionnel/E04US018.md).
 > - `E08US005` **rembourser une inscription payée annulée** — US à **surface visible**. Quand une
 >   inscription **payée** est effacée (désinscription ou suppression de départ), la somme encaissée
 >   devient un **remboursement à traiter** dans un **registre à part** (agrégat/table `remboursement`,
@@ -303,7 +325,7 @@
 | 56 | E11US001 | Release, base et mise en réseau | ✅ |
 | 57 | E11US003 | Sauvegarde & archive | ✅ |
 
-## J2 — Duels simples + bascule de tour — 🔶 **en cours (10/14)**
+## J2 — Duels simples + bascule de tour — 🔶 **en cours (11/14)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -318,8 +340,8 @@
 | 66 | E12US008 | Cycle de vie d'un départ | ✅ *(état dérivé + garde-fou confirmable, ADR-0051)* |
 | 67 | E08US005 | Rembourser une inscription payée annulée | ✅ *(registre de remboursements, ADR-0057)* |
 | 68 | E12US002 | Lancer un tour (feu vert + lancement) | ✅ *(feu vert + lancement-événement, ADR-0056)* |
-| 69 | E04US018 | Afficher la prochaine cible après validation | 🎯 *(prochaine — J2 reprend ici)* |
-| 70 | E07US008 | Vue publique des affectations du prochain tour | ⬜ |
+| 69 | E04US018 | Afficher la prochaine cible après validation | ✅ *(panneau de routage, canal n°1)* |
+| 70 | E07US008 | Vue publique des affectations du prochain tour | 🎯 *(prochaine — canal n°2)* |
 | 71 | E06US003 | Barrage de tir pour places décisives | ⬜ |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ⬜ |
 
