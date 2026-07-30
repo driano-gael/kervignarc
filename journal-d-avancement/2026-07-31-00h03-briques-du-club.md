@@ -17,7 +17,7 @@ sans rétroagir — les tournois déjà montés gardent leur version, seuls les 
 
 **Ce que ça change à l'écran.** L'Atelier annonçait « fabriquer, hors tournoi » mais affichait
 « choisissez un tournoi ci-dessus » sur la moitié de ses écrans — sans proposer de le choisir. Il
-fallait passer par le Pilotage puis revenir. C'est fini : les huit destinations de l'Atelier s'ouvrent
+fallait passer par le Pilotage puis revenir. C'est fini : les six destinations de l'Atelier s'ouvrent
 sans tournoi. Le référentiel fédéral y est présenté **séparément** des créations du club, avec une
 mention explicite : « officiel » dit d'où vient une catégorie, pas qu'elle est conforme au règlement
 en vigueur — elle reste modifiable.

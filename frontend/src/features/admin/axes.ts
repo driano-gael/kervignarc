@@ -44,7 +44,8 @@ export const AXES: { axe: Axe; libelle: string; phrase: string; besoinTournoi: b
  * l'accueil de l'admin (ADR-0058).
  */
 export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>, Axe> = {
-  // Atelier — fabriquer, hors tournoi. Depuis E01US023, les huit destinations le sont réellement :
+  // Atelier — fabriquer, hors tournoi. Depuis E01US023, ses **six** destinations le sont
+  // réellement (clubs, gabarits, catégories, blasons, formats, jeu d'essai) :
   // catégories, blasons et formats sont devenus des briques du **club** (ADR-0060), et `bareme` /
   // `phases` — qui règlent **une** édition — sont partis au pilotage, exactement comme `plan` (la
   // copie d'un tournoi) est au pilotage tandis que `gabarits` (le modèle) est ici.
@@ -54,12 +55,15 @@ export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>,
   blasons: 'atelier',
   formats: 'atelier',
   'jeu-essai': 'atelier',
-  simulation: 'atelier',
   // Pilotage — le temps réel, et ce qui règle **cette** édition.
   accueil: 'pilotage',
   assemblage: 'pilotage',
   bareme: 'pilotage',
   phases: 'pilotage',
+  // `simulation` **rejoue le tournoi courant** : elle exige donc une édition, exactement comme
+  // `bareme` et `phases`. La laisser à l'atelier rouvrait l'impasse de DETTE-023 — « choisissez un
+  // tournoi ci-dessus » sur un axe qui n'a pas de sélecteur (relevé par trois axes de revue).
+  simulation: 'pilotage',
   supervision: 'pilotage',
   'feu-vert': 'pilotage',
   completude: 'pilotage',
@@ -76,6 +80,47 @@ export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>,
   paiements: 'gestion',
   exports: 'gestion',
   archive: 'gestion',
+}
+
+/**
+ * Quelles destinations exigent un **tournoi courant** — la donnée que `CoquilleAdmin` consomme pour
+ * décider entre l'écran et le message « choisissez un tournoi ».
+ *
+ * Elle vivait dans le tableau local de `CoquilleAdmin.tsx`, donc **hors de portée des tests** : le
+ * garde-fou censé remplacer celui de DETTE-023 ne pouvait pas vérifier l'invariant qu'il annonçait
+ * (« aucune destination de l'atelier n'exige un tournoi ») et se rabattait sur des appartenances
+ * d'axe. Elle est ici, à côté d'`AXE_PAR_DESTINATION`, pour que cet invariant soit **prouvable** —
+ * et le `Record` exhaustif force toute destination neuve à répondre à la question.
+ */
+export const BESOIN_TOURNOI: Record<Exclude<DestinationAdminId, 'tournoi'>, boolean> = {
+  // Atelier — le patrimoine du club, aucune édition requise.
+  clubs: false,
+  gabarits: false,
+  categories: false,
+  blasons: false,
+  formats: false,
+  'jeu-essai': false,
+  // Pilotage & gestion — tout y porte sur une édition précise.
+  accueil: true,
+  assemblage: true,
+  bareme: true,
+  phases: true,
+  simulation: true,
+  supervision: true,
+  'feu-vert': true,
+  completude: true,
+  classement: true,
+  postes: true,
+  scoreurs: true,
+  plan: true,
+  placement: true,
+  duels: true,
+  departs: true,
+  inscriptions: true,
+  doublons: true,
+  paiements: true,
+  exports: true,
+  archive: true,
 }
 
 /**

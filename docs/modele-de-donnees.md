@@ -81,7 +81,8 @@ erDiagram
 
 ### CATEGORIE
 | id | INTEGER | PK |
-| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL |
+| tournoi_id | INTEGER | FK → TOURNOI ; `NULL` = **modèle de bibliothèque** (patrimoine du club, réutilisable d'une année sur l'autre), renseigné = **copie** appartenant à un tournoi, ajustable sans altérer le modèle (E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md)) |
+| origine | TEXT | NOT NULL — `ffta` \| `utilisateur` : **provenance** de la brique (deux listes séparées à l'atelier). Ne dit **pas** la conformité au règlement — il y manque sa version (ADR-0060 §4) |
 | libelle | TEXT | NOT NULL — ex. « Arc Nu U18 Homme » |
 | arme | TEXT | ex. `classique`/`poulie`/`nu` |
 | ages | TEXT (JSON) | **une ou plusieurs** tranches — ex. `["U15","U18"]` |
@@ -99,7 +100,8 @@ erDiagram
 
 ### BLASON
 | id | INTEGER | PK |
-| tournoi_id | INTEGER | FK → TOURNOI |
+| tournoi_id | INTEGER | FK → TOURNOI ; `NULL` = **modèle de bibliothèque** (patrimoine du club, réutilisable d'une année sur l'autre), renseigné = **copie** appartenant à un tournoi, ajustable sans altérer le modèle (E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md)) |
+| origine | TEXT | NOT NULL — `ffta` \| `utilisateur` : **provenance** de la brique (deux listes séparées à l'atelier). Ne dit **pas** la conformité au règlement — il y manque sa version (ADR-0060 §4) |
 | nom | TEXT | NOT NULL |
 | taille | REAL | fraction de place (0 < taille ≤ 1) |
 | capacite | INTEGER | ≥ 1 |
@@ -217,6 +219,23 @@ erDiagram
 | nb_cibles | INTEGER | ≥ 1 |
 | config | TEXT (JSON) | capacités et positions par cible |
 | tournoi_id | INTEGER | FK → TOURNOI ; `NULL` = **modèle** réutilisable, renseigné = **copie** appliquée à un tournoi (E01US008) |
+
+### FORMAT_TOURNOI
+| id | INTEGER | PK |
+| nom | TEXT | NOT NULL, **UNIQUE** — c'est ce qui rend la promotion idempotente (promouvoir deux fois sous le même nom met à jour au lieu de créer un homonyme) |
+| origine | TEXT | NOT NULL — `ffta` \| `utilisateur`, même sens que ci-dessus |
+| config | TEXT (JSON) | la **séquence de modèles de phases** — `{"etapes": [{"ordre", "type", "policies"?, "validation"?, "source"?, "effectif"?}, …]}`, même forme étape par étape que `PHASE.config` |
+
+> **Aucune FK vers TOURNOI**, et ce n'est pas un oubli : un format n'existe qu'en bibliothèque
+> (E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5).
+> Sa « copie » dans un tournoi n'est pas une ligne de cette table, ce sont les lignes de `PHASE`
+> produites par son application. La table n'appartient donc **pas** à la descendance de `TOURNOI` —
+> même régime que `CLUB`, et DETTE-001 ne la concerne pas.
+>
+> **Pourquoi une table neuve** plutôt qu'un `tournoi_id` nullable sur `PHASE`, comme pour `CATEGORIE`
+> et `BLASON` : le barème n'est pas une entité (il vit dans `PHASE.config`), et l'invariant d'une
+> phase est **collectif** — les ordres d'une séquence forment la suite contiguë 1..N. Des phases de
+> bibliothèque porteraient un statut vide de sens et des ordres en collision.
 
 ### CIBLE
 | id | INTEGER | PK |

@@ -20,11 +20,14 @@ import {
   creerBlasonBibliotheque,
   creerCategorieBibliotheque,
   creerFormat,
+  dupliquerBlasonBibliotheque,
+  dupliquerCategorieBibliotheque,
   dupliquerFormat,
   getBlasonsBibliotheque,
   getCategoriesBibliotheque,
   getFormats,
   importerClubs,
+  modifierFormat,
   type NouveauBlasonBibliotheque,
   type NouveauFormat,
   type NouvelleCategorieBibliotheque,
@@ -33,6 +36,7 @@ import {
   promouvoirBlason,
   promouvoirCategorie,
   promouvoirFormat,
+  type ModifierCategorieBibliotheque,
   renommerCategorieBibliotheque,
   supprimerBlasonBibliotheque,
   supprimerCategorieBibliotheque,
@@ -84,13 +88,26 @@ export function useCreerBlasonBibliotheque() {
 export function useRenommerCategorieBibliotheque() {
   const invalider = useInvaliderBibliotheque()
   return useMutation({
-    mutationFn: ({
-      id,
-      entree,
-    }: {
-      id: number
-      entree: { libelle: string; arme: string | null; hauteur_cm: number }
-    }) => renommerCategorieBibliotheque(id, entree),
+    // `entree` est l'entité **complète** : le PUT est total, un champ omis serait effacé (cf. api.ts).
+    mutationFn: ({ id, entree }: { id: number; entree: ModifierCategorieBibliotheque }) =>
+      renommerCategorieBibliotheque(id, entree),
+    onSuccess: invalider,
+  })
+}
+
+export function useDupliquerCategorieBibliotheque() {
+  const invalider = useInvaliderBibliotheque()
+  return useMutation({
+    mutationFn: ({ id, nom }: { id: number; nom: string }) =>
+      dupliquerCategorieBibliotheque(id, nom),
+    onSuccess: invalider,
+  })
+}
+
+export function useDupliquerBlasonBibliotheque() {
+  const invalider = useInvaliderBibliotheque()
+  return useMutation({
+    mutationFn: ({ id, nom }: { id: number; nom: string }) => dupliquerBlasonBibliotheque(id, nom),
     onSuccess: invalider,
   })
 }
@@ -165,6 +182,15 @@ export function useCreerFormat() {
   })
 }
 
+export function useModifierFormat() {
+  const invalider = useInvaliderFormats()
+  return useMutation({
+    mutationFn: ({ id, entree }: { id: number; entree: NouveauFormat }) =>
+      modifierFormat(id, entree),
+    onSuccess: invalider,
+  })
+}
+
 export function useDupliquerFormat() {
   const invalider = useInvaliderFormats()
   return useMutation({
@@ -187,9 +213,16 @@ export function useAppliquerFormat(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (formatId: number) => appliquerFormat(tournoiId, formatId),
-    // Applique = **crée les phases** du tournoi : c'est la séquence de phases qui change, pas la
-    // bibliothèque de formats.
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['phases', tournoiId] }),
+    // Applique = **crée les phases** du tournoi. Trois caches en dépendent, pas un : la séquence
+    // de phases, mais aussi le **barème** et le **grain de validation**, qui vivent *dans* la phase
+    // de qualification et sont servis par leurs propres clés. Ne rafraîchir que `phases` laissait
+    // l'écran « Barème & validation » afficher l'ancien réglage — soit l'étape suivante prescrite
+    // par la recette.
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['phases', tournoiId] })
+      queryClient.invalidateQueries({ queryKey: ['bareme-qualification', tournoiId] })
+      queryClient.invalidateQueries({ queryKey: ['grain-validation', tournoiId] })
+    },
   })
 }
 

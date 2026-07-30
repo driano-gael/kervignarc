@@ -568,18 +568,23 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
     """
     type_phase = TypePhase(brute["type"])
     bareme = None
-    validation = None
     if type_phase is TypePhase.QUALIFICATION:
         scoring = _lire_scoring(brute)
         bareme = BaremeQualification.creer(
             nb_volees=int(scoring["volees"]),
             nb_fleches_par_volee=int(scoring["fleches"]),
         )
-        validation = (
-            grain_par_defaut(type_phase)
-            if "validation" not in brute
-            else _vers_grain(brute["validation"])
-        )
+    # Le grain se relit **quel que soit le type**, contrairement à `_vers_phase`. Motif :
+    # `_politiques_json` l'**écrit** pour tout type, et `ModelePhase` accepte un `fin_de_duel` sur
+    # une élimination directe (`_GRAINS_ADMIS`). Ne le relire que pour la qualification revenait à
+    # écrire ce qu'on ne relit pas — un aller-retour infidèle, sans erreur : un format promu depuis
+    # un tournoi dont l'élimination porte un grain le perdait en silence. Le repli sur le preset du
+    # type reste réservé à la qualification, où l'absence signifie « écrit avant E01US015 ».
+    validation = None
+    if "validation" in brute:
+        validation = _vers_grain(brute["validation"])
+    elif type_phase is TypePhase.QUALIFICATION:
+        validation = grain_par_defaut(type_phase)
     effectif = brute.get("effectif")
     return ModelePhase(
         ordre=int(brute["ordre"]),

@@ -109,11 +109,31 @@ l'application** — ils ne sont pas « vidés » dans le modèle, ils n'y existe
 C'est le même patron qu'aux points 1 à 3 (modèle → copie → promotion), à une maille au-dessus : le
 modèle n'est pas une phase mais une **séquence** de phases.
 
+### 6. Ce qui règle **une édition** va au pilotage, pas à l'atelier
+
+Libérer les briques déplace une frontière que l'[ADR-0058](0058-decoupage-de-l-admin-en-trois-axes-d-activite.md)
+avait tracée, et il faut le dire ici plutôt que dans un commentaire : **`Barème & validation`,
+`Phases` et `Simulation` quittent l'atelier pour le pilotage.**
+
+Le critère est celui qu'ADR-0058 appliquait déjà sans le nommer : **`Gabarits` (le modèle) est à
+l'atelier, `Plan de salle` (la copie d'un tournoi) est au pilotage.** Ces trois destinations sont du
+second type — elles règlent, ou rejouent, **une** édition précise. Ce n'est donc pas un critère neuf
+en concurrence avec « le temps réel » d'ADR-0058, c'est le même partage modèle/copie, appliqué là où
+la libération des briques le rend enfin visible : l'atelier garde le **format**, le pilotage reçoit
+les **phases** de l'édition.
+
+⚠️ **C'est ce point qui rend DETTE-023 réellement soldée.** Tant qu'une seule destination de l'axe
+exigeait un tournoi, l'atelier affichait « choisissez un tournoi ci-dessus » sans avoir de sélecteur
+— l'impasse même de la dette. `Simulation` était dans ce cas et avait été oubliée au premier jet ; la
+revue l'a rattrapée. L'invariant « aucune destination de l'atelier n'exige un tournoi » est désormais
+**vérifié par un test** (`axes.test.ts`), sur une table `BESOIN_TOURNOI` sortie du composant
+précisément pour être lisible par lui.
+
 ## Conséquences
 
 **Positives**
 
-- L'axe atelier tient sa promesse : ses huit destinations sont réellement hors tournoi (DETTE-023
+- L'axe atelier tient sa promesse : ses **six** destinations sont réellement hors tournoi (DETTE-023
   résorbée).
 - Le référentiel FFTA est chargé **une fois** dans la bibliothèque, plus à chaque tournoi.
 - L'archive reste vraie sans effort particulier : elle l'est par construction, pas par discipline.

@@ -62,6 +62,17 @@ class CreerBlasonBibliothequeRequete(BaseModel):
     zones: list[ZoneScore] | None = None
 
 
+class DupliquerBriqueRequete(BaseModel):
+    """Corps d'une duplication de brique : le nom sous lequel ranger la copie.
+
+    Seconde issue du CA « modifier un officiel » — « en faire une **copie** pour garder les deux
+    modèles » — face à `PUT /categories/{id}`, qui modifie l'officiel **sur place** et le laisse
+    officiel (le règlement évolue, ADR-0060 §4). Sans elle, le CA n'était tenu que pour les formats.
+    """
+
+    nom: str
+
+
 class RapportAssemblageReponse(BaseModel):
     """Compte-rendu d'un assemblage ou d'un pré-chargement.
 
@@ -148,6 +159,46 @@ async def creer_blason_bibliotheque(
                 requete.nom, requete.taille, requete.capacite, requete.zones
             )
         )
+    )
+    return BlasonReponse.de_agregat(blason)
+
+
+@router.post(
+    "/categories/{categorie_id}/duplication",
+    status_code=201,
+    response_model=CategorieReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def dupliquer_categorie(
+    categorie_id: int, requete: DupliquerBriqueRequete, request: Request
+) -> CategorieReponse:
+    """Copie une catégorie de bibliothèque (**action admin**), marquée « création du club ».
+
+    L'original reste intact. Renvoie 409 (`brique_hors_bibliotheque`) si l'identifiant vise la copie
+    d'un tournoi, (`nom_brique_deja_pris`) si le libellé est déjà porté par un modèle.
+    """
+    service: ServicePatrimoine = request.app.state.service_patrimoine
+    write_queue: WriteQueue = request.app.state.write_queue
+    categorie = await asyncio.wrap_future(
+        write_queue.submit(lambda: service.dupliquer_categorie(categorie_id, requete.nom))
+    )
+    return CategorieReponse.de_agregat(categorie)
+
+
+@router.post(
+    "/blasons/{blason_id}/duplication",
+    status_code=201,
+    response_model=BlasonReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def dupliquer_blason(
+    blason_id: int, requete: DupliquerBriqueRequete, request: Request
+) -> BlasonReponse:
+    """Copie un blason de bibliothèque (**action admin**), marquée « création du club »."""
+    service: ServicePatrimoine = request.app.state.service_patrimoine
+    write_queue: WriteQueue = request.app.state.write_queue
+    blason = await asyncio.wrap_future(
+        write_queue.submit(lambda: service.dupliquer_blason(blason_id, requete.nom))
     )
     return BlasonReponse.de_agregat(blason)
 

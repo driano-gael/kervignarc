@@ -136,19 +136,129 @@ def test_une_brique_de_bibliotheque_s_edite_par_la_route_existante(
 
     C'est ce qui justifie de **ne pas** avoir redoublé l'édition dans le routeur patrimoine — deux
     chemins pour un même geste auraient divergé.
+
+    ⚠️ La fixture porte **tous** les champs (`ages`, `sexe`, `blason_id`), pas le seul libellé :
+    la première version de ce test créait une catégorie nue, et ne pouvait donc pas voir que le PUT
+    — **total** (ADR-0020) — effaçait ce qu'on ne lui renvoyait pas. Un test dont la fixture
+    évite le champ fautif est vert quoi qu'il arrive (relevé en revue, E01US023).
     """
     with TestClient(app_patrimoine) as client:
         connecter_admin(client)
-        cree = client.post("/api/v1/categories", json={"libelle": "Maison"}).json()
+        blason = client.post(
+            "/api/v1/blasons", json={"nom": "Blason 60 cm", "taille": 0.5, "capacite": 1}
+        ).json()
+        complet = {
+            "libelle": "Maison",
+            "arme": "Arc Classique",
+            "ages": ["U15", "U18"],
+            "sexe": "F",
+            "blason_id": blason["id"],
+            "hauteur_cm": 125,
+        }
+        cree = client.post("/api/v1/categories", json=complet).json()
 
         edition = client.put(
             f"/api/v1/categories/{cree['id']}",
-            json={"libelle": "Maison renommée", "hauteur_cm": 130},
+            json={**complet, "libelle": "Maison renommée"},
         )
 
         assert edition.status_code == 200, edition.text
-        assert edition.json()["tournoi_id"] is None
-        assert edition.json()["libelle"] == "Maison renommée"
+        modifiee = edition.json()
+        assert modifiee["tournoi_id"] is None
+        assert modifiee["libelle"] == "Maison renommée"
+        # Le reste de l'entité doit avoir survécu au PUT total.
+        assert modifiee["ages"] == ["U15", "U18"]
+        assert modifiee["sexe"] == "F"
+        assert modifiee["blason_id"] == blason["id"]
+        assert modifiee["hauteur_cm"] == 125
+
+
+def test_editer_un_modele_refuse_un_blason_de_tournoi(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Miroir du refus à la **création** : la garde ne doit pas céder à l'**édition**.
+
+    C'était le trou : `ServiceCategories.modifier` sautait la vérification pour un modèle au lieu de
+    la remplacer, et cette route héritée devenait le seul chemin par lequel une brique du patrimoine
+    pouvait acquérir une FK vers l'édition d'un tournoi.
+    """
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        blason_du_tournoi = client.post(
+            f"/api/v1/tournois/{tournoi_id}/blasons",
+            json={"nom": "Du tournoi", "taille": 1.0, "capacite": 1},
+        ).json()
+        modele = client.post("/api/v1/categories", json={"libelle": "Maison"}).json()
+
+        refus = client.put(
+            f"/api/v1/categories/{modele['id']}",
+            json={
+                "libelle": "Maison",
+                "blason_id": blason_du_tournoi["id"],
+                "hauteur_cm": 130,
+            },
+        )
+
+        assert refus.status_code == 409
+        assert refus.json()["code"] == "brique_hors_bibliotheque"
+
+
+def test_editer_un_modele_refuse_un_blason_inexistant(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Sans garde, la FK partait en base et rendait un 500 sur une saisie utilisateur."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        modele = client.post("/api/v1/categories", json={"libelle": "Maison"}).json()
+
+        refus = client.put(
+            f"/api/v1/categories/{modele['id']}",
+            json={"libelle": "Maison", "blason_id": 999_999, "hauteur_cm": 130},
+        )
+
+        assert refus.status_code == 404
+        assert refus.json()["code"] == "blason_introuvable"
+
+
+def test_dupliquer_une_brique_officielle_garde_les_deux_modeles(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """CA « modifier un officiel » : la seconde issue, jusqu'ici livrée pour les seuls formats."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        client.post("/api/v1/patrimoine/precharger-ffta")
+        officielle = client.get("/api/v1/categories").json()[0]
+
+        copie = client.post(
+            f"/api/v1/categories/{officielle['id']}/duplication",
+            json={"nom": "Ma variante"},
+        )
+
+        assert copie.status_code == 201, copie.text
+        assert copie.json()["origine"] == "utilisateur"
+        assert copie.json()["id"] != officielle["id"]
+        assert copie.json()["blason_id"] == officielle["blason_id"]
+        # L'original est intact — c'est tout l'objet de « garder les deux modèles ».
+        relues = {c["id"]: c for c in client.get("/api/v1/categories").json()}
+        assert relues[officielle["id"]]["origine"] == "ffta"
+
+
+def test_deux_briques_de_bibliotheque_ne_peuvent_pas_etre_homonymes(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """L'assemblage et la promotion dédoublonnent **par le nom** : deux homonymes les rendraient
+    non déterministes (un seul serait copié, la promotion mettrait à jour l'un au hasard)."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        client.post("/api/v1/blasons", json={"nom": "Blason 40 cm", "taille": 0.25, "capacite": 1})
+
+        refus = client.post(
+            "/api/v1/blasons", json={"nom": "blason 40 CM", "taille": 1.0, "capacite": 2}
+        )
+
+        assert refus.status_code == 409
+        assert refus.json()["code"] == "nom_brique_deja_pris"
 
 
 def test_une_categorie_de_bibliotheque_refuse_un_blason_de_tournoi(
@@ -411,6 +521,37 @@ def test_promouvoir_le_deroule_d_un_tournoi(
             "nb_volees": 12,
             "nb_fleches_par_volee": 3,
         }
+
+
+def test_appliquer_un_format_sans_qualification_est_refuse(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Route parallèle fermée : `ServicePhases.supprimer` refuse de retirer la qualification, mais
+    `appliquer` passait par le repository et la supprimait — emportant le barème avec elle."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/bareme-qualification",
+            json={"nb_volees": 20, "nb_fleches_par_volee": 3},
+        )
+        sans_qualif = client.post(
+            "/api/v1/formats",
+            json={
+                "nom": "Tableau seul",
+                "etapes": [{"ordre": 1, "type": "elimination_directe", "effectif": 16}],
+            },
+        ).json()
+
+        refus = client.put(
+            f"/api/v1/tournois/{tournoi_id}/format", json={"format_id": sans_qualif["id"]}
+        )
+
+        assert refus.status_code == 409
+        assert refus.json()["code"] == "phases_engagees"
+        # Le barème du tournoi est intact.
+        bareme = client.get(f"/api/v1/tournois/{tournoi_id}/bareme-qualification").json()
+        assert bareme["nb_volees"] == 20
 
 
 def test_promouvoir_un_tournoi_sans_phase_renvoie_409(

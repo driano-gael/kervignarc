@@ -11,7 +11,13 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from application.erreurs import BlasonHorsTournoi, CategorieIntrouvable, TournoiIntrouvable
+from application.erreurs import (
+    BlasonHorsTournoi,
+    BlasonIntrouvable,
+    BriqueHorsBibliotheque,
+    CategorieIntrouvable,
+    TournoiIntrouvable,
+)
 from application.referentiel_ffta import blasons_salle_18m, categories_salle_18m
 from domain.blason import Blason, BlasonId
 from domain.categorie import (
@@ -21,6 +27,7 @@ from domain.categorie import (
     SexeCategorie,
     TrancheAge,
 )
+from domain.patrimoine import OrigineBrique
 from domain.ports import BlasonRepository, CategorieRepository, TournoiRepository
 from domain.tournoi import TournoiId
 
@@ -104,6 +111,7 @@ class ServiceCategories:
                 modele.sexe,
                 blason.id,
                 hauteur_cm=modele.hauteur_cm,
+                origine=OrigineBrique.FFTA,
             )
             creees.append(self._categories.ajouter(categorie))
             libelles_existants.add(cle)
@@ -126,7 +134,15 @@ class ServiceCategories:
             if cle in par_nom:
                 continue
             blason = Blason.creer(
-                tournoi_id, modele.nom, modele.taille, modele.capacite, modele.zones
+                tournoi_id,
+                modele.nom,
+                modele.taille,
+                modele.capacite,
+                modele.zones,
+                # Sans cette marque, les briques officielles créées par **ce** chemin sortaient en
+                # `utilisateur` : promues, elles atterrissaient dans « créations du club », ce qui
+                # salit exactement la liste séparée que le CA demande (E01US023).
+                origine=OrigineBrique.FFTA,
             )
             par_nom[cle] = self._blasons.ajouter(blason)
         return par_nom
@@ -148,14 +164,21 @@ class ServiceCategories:
         catégorie le porte depuis E03US004, ce qui résorbe DETTE-009. Paramètre **keyword-only**
         pour rester requis derrière les champs facultatifs.
 
-        Lève `CategorieIntrouvable` si l'identifiant est inconnu, `BlasonHorsTournoi` si le blason
-        par défaut n'appartient pas au tournoi de la catégorie, `DomainError` si le libellé est
-        vide ou la hauteur du centre fournie n'est pas un entier strictement positif.
+        Lève `CategorieIntrouvable` si l'identifiant est inconnu, `DomainError` si le libellé est
+        vide ou la hauteur du centre fournie n'est pas un entier strictement positif. Pour le blason
+        par défaut : `BlasonHorsTournoi` si la catégorie appartient à un tournoi et que le blason
+        n'en fait pas partie ; `BriqueHorsBibliotheque` si c'est un **modèle** et que le blason
+        appartient à un tournoi ; `BlasonIntrouvable` dans les deux cas si le blason n'existe pas.
         """
         categorie = self._categorie_existante(categorie_id)
         # Un modèle de bibliothèque n'a pas de tournoi : la garde « le blason appartient bien à ce
-        # tournoi » ne s'applique qu'aux copies (E01US023).
-        if categorie.tournoi_id is not None:
+        # tournoi » ne s'y applique pas — mais elle est **remplacée**, jamais levée (E01US023).
+        # Sans le `else`, cette route héritée était le seul chemin par lequel un modèle pouvait
+        # acquérir une FK vers l'édition d'un autre tournoi, que `ServicePatrimoine.creer_categorie`
+        # refuse à la création : l'invariant aurait tenu à la création et cédé à l'édition.
+        if categorie.tournoi_id is None:
+            self._verifier_blason_de_bibliotheque(blason_id)
+        else:
             self._verifier_blason_du_tournoi(categorie.tournoi_id, blason_id)
         modifiee = categorie.modifier(libelle, arme, ages, sexe, blason_id, hauteur_cm)
         return self._categories.enregistrer(modifiee)
@@ -170,6 +193,27 @@ class ServiceCategories:
         if categorie is None:
             raise CategorieIntrouvable(f"Aucune catégorie d'identifiant {categorie_id}.")
         return categorie
+
+    def _verifier_blason_de_bibliotheque(self, blason_id: BlasonId | None) -> None:
+        """Vérifie qu'un blason par défaut (facultatif) est bien un **modèle de bibliothèque**.
+
+        Pendant de `_verifier_blason_du_tournoi` pour une catégorie sans tournoi (E01US023). Un
+        modèle qui pointerait vers le blason d'un tournoi serait recopié tel quel à **chaque**
+        assemblage et traînerait une FK vers une autre édition — et à la copie, le service ne
+        retrouvant pas ce blason en bibliothèque, la catégorie atterrirait **sans blason**, en
+        silence. Même règle que `ServicePatrimoine.creer_categorie` ; elle est ici parce que
+        l'édition passe par ce service, la création par l'autre.
+        """
+        if blason_id is None:
+            return
+        blason = self._blasons.par_id(blason_id)
+        if blason is None:
+            raise BlasonIntrouvable(f"Aucun blason d'identifiant {blason_id}.")
+        if blason.tournoi_id is not None:
+            raise BriqueHorsBibliotheque(
+                f"Le blason {blason_id} appartient au tournoi {blason.tournoi_id} : une catégorie "
+                "de bibliothèque ne peut hériter que d'un blason de bibliothèque."
+            )
 
     def _verifier_blason_du_tournoi(
         self, tournoi_id: TournoiId, blason_id: BlasonId | None

@@ -15,6 +15,7 @@ import {
   useCreerFormat,
   useDupliquerFormat,
   useFormats,
+  useModifierFormat,
   usePrechargerPresetsFormats,
   useSupprimerFormat,
 } from './hooks'
@@ -87,8 +88,10 @@ export function Formats() {
 function LigneFormat({ format }: { format: FormatTournoi }) {
   const [duplication, setDuplication] = useState(false)
   const [nouveauNom, setNouveauNom] = useState(`${format.nom} (copie)`)
+  const [edition, setEdition] = useState(false)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const dupliquer = useDupliquerFormat()
+  const modifier = useModifierFormat()
   const supprimer = useSupprimerFormat()
 
   return (
@@ -97,6 +100,12 @@ function LigneFormat({ format }: { format: FormatTournoi }) {
         <span className="gabarit__nom">{format.nom}</span>
         <span className="gabarit__attributs">{format.etapes.map(decrireEtape).join(' → ')}</span>
         <span className="gabarit__actions">
+          {/* Les **deux issues** du CA « modifier un officiel », côte à côte : modifier sur place
+              (l'officiel reste officiel — le règlement évolue) ou dupliquer (les deux modèles
+              coexistent). L'API du premier existait déjà mais aucun écran ne l'atteignait. */}
+          <button type="button" className="bouton--discret" onClick={() => setEdition(!edition)}>
+            {edition ? 'Annuler' : 'Modifier'}
+          </button>
           <button type="button" className="bouton--discret" onClick={() => setDuplication(true)}>
             Dupliquer
           </button>
@@ -137,6 +146,20 @@ function LigneFormat({ format }: { format: FormatTournoi }) {
           eux.
         </p>
       )}
+      {edition && (
+        <FormulaireEtapeUnique
+          format={format}
+          enCours={modifier.isPending}
+          onEnregistrer={(nom, etapes) =>
+            modifier.mutate(
+              { id: format.id, entree: { nom, etapes } },
+              {
+                onSuccess: () => setEdition(false),
+              },
+            )
+          }
+        />
+      )}
       {duplication && (
         <form
           className="formulaire"
@@ -162,9 +185,89 @@ function LigneFormat({ format }: { format: FormatTournoi }) {
           </button>
         </form>
       )}
+      <MessageErreur erreur={modifier.error} />
       <MessageErreur erreur={dupliquer.error} />
       <MessageErreur erreur={supprimer.error} />
     </li>
+  )
+}
+
+/**
+ * Édition **sur place** du barème d'un format à une seule étape.
+ *
+ * Bornée au même périmètre que la création (cf. `FormulaireFormat`) : un format à plusieurs phases
+ * se fabrique en composant un tournoi puis en l'enregistrant comme format du club, plutôt que de
+ * coder ici un second éditeur de séquence. Un format à plusieurs étapes n'affiche donc pas ce
+ * formulaire — mieux vaut ne rien proposer que de proposer un geste qui écraserait les autres étapes.
+ */
+function FormulaireEtapeUnique({
+  format,
+  enCours,
+  onEnregistrer,
+}: {
+  format: FormatTournoi
+  enCours: boolean
+  onEnregistrer: (nom: string, etapes: Etape[]) => void
+}) {
+  const etape = format.etapes[0]
+  const [nom, setNom] = useState(format.nom)
+  const [nbVolees, setNbVolees] = useState(String(etape?.bareme?.nb_volees ?? 20))
+  const [nbFleches, setNbFleches] = useState(String(etape?.bareme?.nb_fleches_par_volee ?? 3))
+
+  if (format.etapes.length !== 1 || etape === undefined || etape.bareme === null) {
+    return (
+      <p className="carte__etat">
+        Ce format enchaîne plusieurs phases&nbsp;: composez-le sur un tournoi (écran
+        «&nbsp;Phases&nbsp;») puis enregistrez-le à nouveau sous ce nom depuis l’assemblage.
+      </p>
+    )
+  }
+
+  const valide = nom.trim() !== '' && Number(nbVolees) >= 1 && Number(nbFleches) >= 1
+
+  return (
+    <form
+      className="formulaire"
+      onSubmit={(evenement) => {
+        evenement.preventDefault()
+        if (!valide) return
+        onEnregistrer(nom, [
+          {
+            ...etape,
+            bareme: {
+              nb_volees: Number(nbVolees),
+              nb_fleches_par_volee: Number(nbFleches),
+            },
+          },
+        ])
+      }}
+    >
+      <input
+        className="formulaire__champ"
+        value={nom}
+        onChange={(e) => setNom(e.target.value)}
+        aria-label="Nom du format"
+      />
+      <input
+        className="formulaire__champ"
+        type="number"
+        min={1}
+        value={nbVolees}
+        onChange={(e) => setNbVolees(e.target.value)}
+        aria-label="Nombre de volées"
+      />
+      <input
+        className="formulaire__champ"
+        type="number"
+        min={1}
+        value={nbFleches}
+        onChange={(e) => setNbFleches(e.target.value)}
+        aria-label="Flèches par volée"
+      />
+      <button type="submit" disabled={enCours || !valide}>
+        Enregistrer
+      </button>
+    </form>
   )
 }
 

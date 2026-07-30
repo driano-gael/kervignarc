@@ -15,10 +15,18 @@ import type { Etape, RapportAssemblage } from './api'
  */
 export function decrireRapport(rapport: RapportAssemblage): string {
   const cree = rapport.categories_copiees + rapport.blasons_copies
+  const ignore = rapport.categories_ignorees + rapport.blasons_ignores
+  // Rien copié **et** rien ignoré : il n'y avait rien à copier. Dire « tout était déjà là » ici
+  // serait faux et décourageant — c'est le cas de la toute première utilisation, avant tout
+  // chargement du référentiel, et l'organisateur repartirait avec un tournoi vide en croyant
+  // l'avoir garni.
+  if (cree === 0 && ignore === 0) {
+    return 'La bibliothèque du club est vide : chargez d’abord le référentiel FFTA depuis l’Atelier.'
+  }
   if (cree === 0) return 'Rien de neuf : tout était déjà là.'
   return (
     `${rapport.categories_copiees} catégorie(s) et ${rapport.blasons_copies} blason(s) ajoutés ; ` +
-    `${rapport.categories_ignorees + rapport.blasons_ignores} déjà présents, laissés tels quels.`
+    `${ignore} déjà présents, laissés tels quels.`
   )
 }
 

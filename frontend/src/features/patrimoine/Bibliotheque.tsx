@@ -26,6 +26,8 @@ import {
   useCategoriesBibliotheque,
   useCreerBlasonBibliotheque,
   useCreerCategorieBibliotheque,
+  useDupliquerBlasonBibliotheque,
+  useDupliquerCategorieBibliotheque,
   usePrechargerFftaBibliotheque,
   useRenommerCategorieBibliotheque,
   useSupprimerBlasonBibliotheque,
@@ -52,6 +54,9 @@ export function CategoriesBibliotheque() {
       <PrechargementFfta />
       <FormulaireCategorie />
       {categories.isError && <MessageErreur erreur={categories.error} />}
+      {/* Sans ce garde, le premier rendu annonce « aucune catégorie » pendant le fetch — sur la
+          destination d'ouverture de l'atelier, donc à chaque entrée dans l'axe. */}
+      {categories.isPending && <p className="carte__etat">Chargement…</p>}
       <ListesParOrigine
         briques={categories.data ?? []}
         rendre={(categorie) => <LigneCategorie key={categorie.id} categorie={categorie} />}
@@ -75,6 +80,7 @@ export function BlasonsBibliotheque() {
       <PrechargementFfta />
       <FormulaireBlason />
       {blasons.isError && <MessageErreur erreur={blasons.error} />}
+      {blasons.isPending && <p className="carte__etat">Chargement…</p>}
       <ListesParOrigine
         briques={blasons.data ?? []}
         rendre={(blason) => <LigneBlason key={blason.id} blason={blason} />}
@@ -151,6 +157,7 @@ function LigneCategorie({ categorie }: { categorie: Categorie }) {
   const [edition, setEdition] = useState(false)
   const [libelle, setLibelle] = useState(categorie.libelle)
   const renommer = useRenommerCategorieBibliotheque()
+  const dupliquer = useDupliquerCategorieBibliotheque()
   const supprimer = useSupprimerCategorieBibliotheque()
 
   return (
@@ -164,6 +171,11 @@ function LigneCategorie({ categorie }: { categorie: Categorie }) {
           <button type="button" className="bouton--discret" onClick={() => setEdition(!edition)}>
             {edition ? 'Annuler' : 'Renommer'}
           </button>
+          <BoutonDupliquer
+            nomInitial={`${categorie.libelle} (copie)`}
+            enCours={dupliquer.isPending}
+            onConfirmer={(nom) => dupliquer.mutate({ id: categorie.id, nom })}
+          />
           <BoutonSupprimer
             enCours={supprimer.isPending}
             onConfirmer={() => supprimer.mutate(categorie.id)}
@@ -178,9 +190,17 @@ function LigneCategorie({ categorie }: { categorie: Categorie }) {
             renommer.mutate(
               {
                 id: categorie.id,
-                // Le PUT catégorie est **total** (ADR-0020) : `hauteur_cm` est obligatoire, et
-                // omettre `arme` l'effacerait. On renvoie donc les valeurs courantes.
-                entree: { libelle, arme: categorie.arme, hauteur_cm: categorie.hauteur_cm },
+                // Le PUT catégorie est **total** (ADR-0020) : tout champ omis est **remis à son
+                // défaut**. On renvoie donc l'entité entière — la première version n'envoyait que
+                // trois champs et effaçait `ages`, `sexe` et `blason_id` à chaque renommage.
+                entree: {
+                  libelle,
+                  arme: categorie.arme,
+                  ages: categorie.ages,
+                  sexe: categorie.sexe,
+                  blason_id: categorie.blason_id,
+                  hauteur_cm: categorie.hauteur_cm,
+                },
               },
               { onSuccess: () => setEdition(false) },
             )
@@ -198,12 +218,14 @@ function LigneCategorie({ categorie }: { categorie: Categorie }) {
         </form>
       )}
       <MessageErreur erreur={renommer.error} />
+      <MessageErreur erreur={dupliquer.error} />
       <MessageErreur erreur={supprimer.error} />
     </li>
   )
 }
 
 function LigneBlason({ blason }: { blason: Blason }) {
+  const dupliquer = useDupliquerBlasonBibliotheque()
   const supprimer = useSupprimerBlasonBibliotheque()
 
   return (
@@ -214,6 +236,11 @@ function LigneBlason({ blason }: { blason: Blason }) {
           {blason.capacite} archer(s) · {blason.zones.length} zone(s)
         </span>
         <span className="gabarit__actions">
+          <BoutonDupliquer
+            nomInitial={`${blason.nom} (copie)`}
+            enCours={dupliquer.isPending}
+            onConfirmer={(nom) => dupliquer.mutate({ id: blason.id, nom })}
+          />
           <BoutonSupprimer
             enCours={supprimer.isPending}
             onConfirmer={() => supprimer.mutate(blason.id)}
@@ -222,8 +249,61 @@ function LigneBlason({ blason }: { blason: Blason }) {
       </div>
       {/* Un blason encore utilisé comme défaut d'une catégorie est refusé en 409 côté serveur
           (`BlasonReference`, E01US006) : l'erreur remonte telle quelle, avec son message. */}
+      <MessageErreur erreur={dupliquer.error} />
       <MessageErreur erreur={supprimer.error} />
     </li>
+  )
+}
+
+/**
+ * « Dupliquer » — la **seconde issue** du CA « modifier un officiel ».
+ *
+ * Face à « Renommer », qui modifie l'officiel **sur place** et le laisse officiel (le règlement
+ * évolue), celle-ci détache une copie marquée « création du club » et laisse l'original intact.
+ * Sans elle, la seule façon d'adapter une brique fédérale était de l'écraser — l'écrasement
+ * silencieux que le CA proscrit.
+ */
+function BoutonDupliquer({
+  nomInitial,
+  enCours,
+  onConfirmer,
+}: {
+  nomInitial: string
+  enCours: boolean
+  onConfirmer: (nom: string) => void
+}) {
+  const [ouvert, setOuvert] = useState(false)
+  const [nom, setNom] = useState(nomInitial)
+
+  if (!ouvert) {
+    return (
+      <button type="button" className="bouton--discret" onClick={() => setOuvert(true)}>
+        Dupliquer
+      </button>
+    )
+  }
+  return (
+    <>
+      <input
+        className="formulaire__champ"
+        value={nom}
+        onChange={(e) => setNom(e.target.value)}
+        aria-label="Nom de la copie"
+      />
+      <button
+        type="button"
+        disabled={enCours || nom.trim() === ''}
+        onClick={() => {
+          onConfirmer(nom)
+          setOuvert(false)
+        }}
+      >
+        Créer la copie
+      </button>
+      <button type="button" className="bouton--discret" onClick={() => setOuvert(false)}>
+        Annuler
+      </button>
+    </>
   )
 }
 

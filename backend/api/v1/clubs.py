@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 
 from fastapi import APIRouter, Depends, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
@@ -113,7 +113,11 @@ class ImporterClubsRequete(BaseModel):
     qu'à faire un `split` que le service fait déjà, mieux (lignes vides, espaces de bord).
     """
 
-    lignes: str
+    # Borné : l'import est **une seule** soumission à la file du writer unique (cf. l'endpoint), et
+    # une tâche de durée non bornée y monopoliserait toutes les écritures — le jour J, cela gèlerait
+    # la saisie des scores. 200 000 caractères laissent largement la place à un collage réaliste
+    # (~5 000 clubs) et transforment l'accident en 400 avant toute écriture (règle 7).
+    lignes: str = Field(max_length=200_000)
 
 
 class RapportImportClubsReponse(BaseModel):

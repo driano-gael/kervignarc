@@ -27,12 +27,30 @@ from application.erreurs import (
 )
 from application.formats import ServiceFormats
 from domain.bareme import BaremeQualification
+from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.patrimoine import OrigineBrique
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
+from domain.phase import PhaseId as _PhaseId
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from tests.test_service_blasons import FauxTournoiRepository
 from tests.test_service_phases import FauxPhaseRepository
+
+
+class FauxLecteurForfaits:
+    """Réalise le port **étroit** `LecteurForfaitsDePhase` — une seule méthode à écrire.
+
+    Il **filtre réellement** par phase : un faux qui renverrait toujours `[]` ferait passer au vert
+    une garde incapable de voir les forfaits pendants, c'est-à-dire exactement le défaut que la
+    revue a relevé.
+    """
+
+    def __init__(self) -> None:
+        self.forfaits: dict[int, list[Forfait]] = {}
+
+    def par_phase(self, phase_id: _PhaseId) -> list[Forfait]:
+        return self.forfaits.get(phase_id, [])
+
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -81,6 +99,7 @@ class Contexte:
     tournois: FauxTournoiRepository
     formats: FauxFormatTournoiRepository
     phases: FauxPhaseRepository
+    forfaits: FauxLecteurForfaits
     tournoi_id: TournoiId
 
 
@@ -94,14 +113,16 @@ def ctx() -> Contexte:
     tournois = FauxTournoiRepository()
     formats = FauxFormatTournoiRepository()
     phases = FauxPhaseRepository()
+    forfaits = FauxLecteurForfaits()
     tournoi = tournois.ajouter(
         Tournoi.creer(nom="Kervignac 2026", date=_DATE, type_tournoi=TypeTournoi.OFFICIEL)
     )
     return Contexte(
-        service=ServiceFormats(tournois, formats, phases),
+        service=ServiceFormats(tournois, formats, phases, forfaits),
         tournois=tournois,
         formats=formats,
         phases=phases,
+        forfaits=forfaits,
         tournoi_id=_id(tournoi.id),
     )
 

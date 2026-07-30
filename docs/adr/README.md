@@ -57,7 +57,7 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0057](0057-registre-de-remboursements.md) | **Registre de remboursements** : mouvement d'argent né d'un effacement (instantanés sans FK, ouverture atomique, traitement audité) | Accepté |
 | [0058](0058-decoupage-de-l-admin-en-trois-axes-d-activite.md) | Découpage de l'admin en **trois axes d'activité** (atelier hors tournoi · pilotage · gestion), plus par temps du tournoi — révise `D-19` | Accepté |
 | [0059](0059-routage-par-role-dans-l-url-routeur-maison.md) | **Une adresse par rôle**, servie par un **routeur maison** (l'adresse prime sur le choix mémorisé, le verrou `D-13` prime sur l'adresse) | Accepté |
-| [0060](0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) | Les briques de configuration sont le **patrimoine du club** : bibliothèque hors tournoi, **copie** à l'assemblage, **promotion** remontante ; le format plutôt que la phase | Accepté |
+| [0060](0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) | Les briques de configuration sont le **patrimoine du club** : bibliothèque hors tournoi, **copie** à l'assemblage, **promotion** remontante ; le format plutôt que la phase — **révise la répartition d'ADR-0058** (§6) | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.

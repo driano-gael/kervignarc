@@ -41,8 +41,6 @@ function CopieDesBriques({ tournoiId }: { tournoiId: number }) {
   const assembler = useAssemblerTournoi(tournoiId)
   const categories = useCategories(tournoiId)
   const blasons = useBlasons(tournoiId)
-  const promouvoirCategorie = usePromouvoirCategorie(tournoiId)
-  const promouvoirBlason = usePromouvoirBlason(tournoiId)
 
   return (
     <>
@@ -58,7 +56,9 @@ function CopieDesBriques({ tournoiId }: { tournoiId: number }) {
 
       <h4 className="carte__soustitre">Reporter au club — catégories</h4>
       {categories.isError && <MessageErreur erreur={categories.error} />}
-      {(categories.data ?? []).length === 0 ? (
+      {categories.isPending ? (
+        <p className="carte__etat">Chargement…</p>
+      ) : (categories.data ?? []).length === 0 ? (
         <p className="carte__etat">
           Aucune catégorie dans ce tournoi : copiez celles du club ci-dessus, ou créez-en une plus
           bas.
@@ -66,45 +66,75 @@ function CopieDesBriques({ tournoiId }: { tournoiId: number }) {
       ) : (
         <ul className="liste-gabarits">
           {(categories.data ?? []).map((categorie) => (
-            <li key={categorie.id} className="gabarit">
-              <div className="gabarit__ligne">
-                <span className="gabarit__nom">{categorie.libelle}</span>
-                <span className="gabarit__actions">
-                  <BoutonPermanent
-                    enCours={promouvoirCategorie.isPending}
-                    onConfirmer={() => promouvoirCategorie.mutate(categorie.id)}
-                  />
-                </span>
-              </div>
-            </li>
+            <LignePromouvable
+              key={categorie.id}
+              nom={categorie.libelle}
+              tournoiId={tournoiId}
+              brique="categorie"
+              briqueId={categorie.id}
+            />
           ))}
         </ul>
       )}
-      <MessageErreur erreur={promouvoirCategorie.error} />
 
       <h4 className="carte__soustitre">Reporter au club — blasons</h4>
       {blasons.isError && <MessageErreur erreur={blasons.error} />}
-      {(blasons.data ?? []).length === 0 ? (
+      {blasons.isPending ? (
+        <p className="carte__etat">Chargement…</p>
+      ) : (blasons.data ?? []).length === 0 ? (
         <p className="carte__etat">Aucun blason dans ce tournoi : copiez ceux du club ci-dessus.</p>
       ) : (
         <ul className="liste-gabarits">
           {(blasons.data ?? []).map((blason) => (
-            <li key={blason.id} className="gabarit">
-              <div className="gabarit__ligne">
-                <span className="gabarit__nom">{blason.nom}</span>
-                <span className="gabarit__actions">
-                  <BoutonPermanent
-                    enCours={promouvoirBlason.isPending}
-                    onConfirmer={() => promouvoirBlason.mutate(blason.id)}
-                  />
-                </span>
-              </div>
-            </li>
+            <LignePromouvable
+              key={blason.id}
+              nom={blason.nom}
+              tournoiId={tournoiId}
+              brique="blason"
+              briqueId={blason.id}
+            />
           ))}
         </ul>
       )}
-      <MessageErreur erreur={promouvoirBlason.error} />
     </>
+  )
+}
+
+/**
+ * Une brique du tournoi et son bouton de promotion — **une mutation par ligne**.
+ *
+ * Les deux mutations étaient d'abord partagées par toute la liste : promouvoir une catégorie
+ * désactivait le bouton des trente-et-une autres pendant la requête, et l'erreur s'affichait en pied
+ * de liste sans dire de quelle ligne elle venait. Même patron que `LigneCategorie` côté atelier.
+ */
+function LignePromouvable({
+  nom,
+  tournoiId,
+  brique,
+  briqueId,
+}: {
+  nom: string
+  tournoiId: number
+  brique: 'categorie' | 'blason'
+  briqueId: number
+}) {
+  const promouvoirCategorie = usePromouvoirCategorie(tournoiId)
+  const promouvoirBlason = usePromouvoirBlason(tournoiId)
+  const promouvoir = brique === 'categorie' ? promouvoirCategorie : promouvoirBlason
+
+  return (
+    <li className="gabarit">
+      <div className="gabarit__ligne">
+        <span className="gabarit__nom">{nom}</span>
+        <span className="gabarit__actions">
+          <BoutonPermanent
+            enCours={promouvoir.isPending}
+            onConfirmer={() => promouvoir.mutate(briqueId)}
+          />
+        </span>
+      </div>
+      <MessageErreur erreur={promouvoir.error} />
+    </li>
   )
 }
 

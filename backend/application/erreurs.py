@@ -485,6 +485,19 @@ class BriqueHorsBibliotheque(ApplicationError):
     code = "brique_hors_bibliotheque"
 
 
+class NomBriqueDejaPris(ApplicationError):
+    """Une brique de bibliothèque porte déjà ce nom (E01US023) → 409.
+
+    Même patron que `NomClubDejaPris` et `NomFormatDejaPris`, et pour la même raison : l'assemblage
+    et la promotion **dédoublonnent par le nom** (`_cle`). Deux modèles homonymes rendraient donc
+    ces deux gestes non déterministes — un seul serait copié, et lequel des deux la promotion met à
+    jour dépendrait de l'ordre du dépôt. Le refus à la création est ce qui rend la déduplication
+    aval honnête.
+    """
+
+    code = "nom_brique_deja_pris"
+
+
 class BriqueDejaEnBibliotheque(ApplicationError):
     """Promotion demandée sur une brique qui est **déjà** un modèle de bibliothèque → 409.
 

@@ -21,6 +21,7 @@ Trois cas d'usage au-delà du CRUD :
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Protocol
 
 from application.erreurs import (
     FormatIntrouvable,
@@ -29,10 +30,28 @@ from application.erreurs import (
     TournoiIntrouvable,
     TournoiSansPhase,
 )
+from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
-from domain.phase import Phase, StatutPhase
+from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.ports import FormatTournoiRepository, PhaseRepository, TournoiRepository
 from domain.tournoi import TournoiId
+
+
+class LecteurForfaitsDePhase(Protocol):
+    """Port **étroit** : tout ce dont la garde de remplacement a besoin des forfaits.
+
+    Le service n'a pas à connaître le `ForfaitRepository` entier (déclarer, lister par tournoi,
+    par archer…) pour répondre à une seule question : « cette phase porte-t-elle des forfaits ? ».
+    Même patron que `LecteurAvancementDepart` (`application/departs.py`), et même bénéfice : le
+    faux de test se réduit à une méthode, et le couplage dit exactement ce qu'il est.
+
+    Déclaré ici plutôt que dans `domain/ports.py` parce que c'est un besoin **de ce service**, pas
+    du domaine — `ForfaitRepositorySQL` le satisfait structurellement, sans rien déclarer.
+    """
+
+    def par_phase(self, phase_id: PhaseId) -> list[Forfait]:
+        """Renvoie les forfaits déclarés sur une phase (liste éventuellement vide)."""
+        ...
 
 
 class ServiceFormats:
@@ -43,10 +62,12 @@ class ServiceFormats:
         tournois: TournoiRepository,
         formats: FormatTournoiRepository,
         phases: PhaseRepository,
+        forfaits: LecteurForfaitsDePhase,
     ) -> None:
         self._tournois = tournois
         self._formats = formats
         self._phases = phases
+        self._forfaits = forfaits
 
     # --- Bibliothèque ---------------------------------------------------------------------
 
@@ -129,16 +150,64 @@ class ServiceFormats:
         self._tournoi_existant(tournoi_id)
         format_tournoi = self._format_existant(format_id)
         existantes = self._phases.par_tournoi(tournoi_id)
+        self._exiger_sequence_remplacable(tournoi_id, existantes, format_tournoi)
+        # DETTE-025 — suppression puis recréation en **transactions séparées** (une session par
+        # appel de repository) : une panne entre les deux boucles laisse le tournoi sans phase. Le
+        # remède est un `remplacer_sequence` atomique sur l'adapter concret (patron
+        # `consigner_dans`,
+        # ADR-0035), qui touche le **port** — hors périmètre de cette US. Les trois gardes ci-dessus
+        # bornent la perte à une séquence `à venir` sans données attachées. Cf. `docs/dette.md`.
+        for phase in existantes:
+            # `assert` et non une erreur typée : la revue a justement relevé qu'il disparaît sous
+            # `python -O`. Le remède serait `InfrastructureError`, que la couche application **ne
+            # peut pas importer** sans inverser le sens des dépendances (règle 2) — le remède serait
+            # pire que le défaut. C'est l'idiome du projet pour cet invariant (« un agrégat persisté
+            # porte un identifiant »), tenu par le repository ; le projet ne tourne pas sous `-O`.
+            assert phase.id is not None, "une phase relue du dépôt porte toujours un identifiant."
+            self._phases.supprimer(phase.id)
+        return [self._phases.ajouter(phase) for phase in format_tournoi.appliquer(tournoi_id)]
+
+    def _exiger_sequence_remplacable(
+        self,
+        tournoi_id: TournoiId,
+        existantes: list[Phase],
+        format_tournoi: FormatTournoi,
+    ) -> None:
+        """Trois refus avant de détruire une séquence — statut, **contenu**, et qualification.
+
+        Le premier jet ne regardait que le `statut`, et c'était insuffisant : une phase `à venir`
+        peut déjà porter des données. `forfait.phase_id` et `placement_tableau.phase_id` sont en
+        `ON DELETE CASCADE` (cf. `infrastructure/db/models.py`), et **ni** `ServiceForfait` **ni**
+        `ServicePlacementDuels` n'exigent qu'une phase soit démarrée : un forfait déclaré au
+        pointage, le matin, pend sur une phase `à venir`. Le remplacement les effaçait donc en
+        silence — alors même que le message de `PhasesEngagees` promet de protéger « les séries et
+        les duels qui y pendent ». La garde regarde donc ce qui pend, pas seulement l'étiquette.
+
+        Le troisième refus ferme une **route parallèle** : `ServicePhases.supprimer` interdit de
+        retirer la phase de qualification (`PhaseQualificationNonSupprimable`) parce qu'elle porte
+        le barème ; passer par le repository contournait ce contrôle. Appliquer un format sans
+        qualification à un tournoi qui en a une lui retirait donc son barème, sans qu'aucun écran ne
+        permette de le recréer autrement qu'en le redéfinissant.
+        """
         engagees = [p for p in existantes if p.statut is not StatutPhase.A_VENIR]
         if engagees:
             raise PhasesEngagees(
                 f"Le tournoi {tournoi_id} a {len(engagees)} phase(s) déjà engagée(s) : appliquer "
                 "un format remplacerait un déroulé en cours."
             )
-        for phase in existantes:
-            assert phase.id is not None, "une phase relue du dépôt porte toujours un identifiant."
-            self._phases.supprimer(phase.id)
-        return [self._phases.ajouter(phase) for phase in format_tournoi.appliquer(tournoi_id)]
+        forfaits = sum(len(self._forfaits.par_phase(p.id)) for p in existantes if p.id is not None)
+        if forfaits:
+            raise PhasesEngagees(
+                f"{forfaits} forfait(s) sont déclarés sur les phases de ce tournoi : appliquer un "
+                "format les effacerait avec elles."
+            )
+        avait_qualification = any(p.type is TypePhase.QUALIFICATION for p in existantes)
+        aura_qualification = any(e.type is TypePhase.QUALIFICATION for e in format_tournoi.etapes)
+        if avait_qualification and not aura_qualification:
+            raise PhasesEngagees(
+                "Ce format ne décrit aucune qualification : l'appliquer retirerait au tournoi son "
+                "barème, que rien ne permettrait de recréer ensuite."
+            )
 
     # --- Promotion ------------------------------------------------------------------------
 

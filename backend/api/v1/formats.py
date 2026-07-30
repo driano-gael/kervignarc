@@ -142,7 +142,9 @@ class FormatRequete(BaseModel):
     """Corps de création ou d'édition d'un format (nom + séquence d'étapes)."""
 
     nom: str
-    etapes: list[EtapeDTO] = Field(default_factory=list)
+    # Borné pour la même raison que l'import de clubs : l'écriture passe par le writer unique. Un
+    # format réel compte quelques étapes ; 64 est déjà hors de tout usage.
+    etapes: list[EtapeDTO] = Field(default_factory=list, max_length=64)
 
 
 class RenommerRequete(BaseModel):

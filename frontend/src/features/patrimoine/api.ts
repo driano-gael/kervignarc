@@ -7,7 +7,7 @@
 
 import { fetchJson } from '../../shared/api/client'
 import type { Blason } from '../blasons/api'
-import type { Categorie } from '../categories/api'
+import type { Categorie, ModifierCategorie } from '../categories/api'
 
 // D'où vient une brique. Dit la **provenance**, pas la conformité au règlement (ADR-0060 §4) :
 // une brique FFTA modifiée reste marquée `ffta`. Sert les deux listes séparées de l'atelier.
@@ -52,13 +52,37 @@ export function creerCategorieBibliotheque(
 // (`PUT /categories/{id}`, `DELETE /blasons/{id}`) : elles ne portent déjà pas de tournoi et
 // fonctionnent telles quelles sur une brique de bibliothèque. En ouvrir de nouvelles aurait créé
 // deux chemins pour un même geste, qui auraient divergé.
+// ⚠️ `PUT /categories/{id}` est **total** (ADR-0020) : tout champ omis est **remis à son défaut**
+// côté serveur (`ages: []`, `sexe: null`, `blason_id: null`). L'entrée reprend donc `ModifierCategorie`
+// en entier — la première version n'envoyait que `libelle`/`arme`/`hauteur_cm` et effaçait
+// silencieusement les tranches d'âge, le sexe et le blason par défaut de toute catégorie renommée,
+// y compris en bibliothèque, d'où le défaut se propageait à chaque assemblage suivant.
+export type ModifierCategorieBibliotheque = ModifierCategorie
+
 export function renommerCategorieBibliotheque(
   id: number,
-  entree: { libelle: string; arme: string | null; hauteur_cm: number },
+  entree: ModifierCategorieBibliotheque,
 ): Promise<Categorie> {
   return fetchJson<Categorie>(`/api/v1/categories/${id}`, {
     method: 'PUT',
     body: JSON.stringify(entree),
+  })
+}
+
+// « En faire une copie pour garder les deux modèles » — l'original reste intact, la copie passe en
+// création utilisateur. Face à `renommerCategorieBibliotheque`, qui modifie l'officiel **sur place**
+// et le laisse officiel (le règlement évolue, ADR-0060 §4).
+export function dupliquerCategorieBibliotheque(id: number, nom: string): Promise<Categorie> {
+  return fetchJson<Categorie>(`/api/v1/categories/${id}/duplication`, {
+    method: 'POST',
+    body: JSON.stringify({ nom }),
+  })
+}
+
+export function dupliquerBlasonBibliotheque(id: number, nom: string): Promise<Blason> {
+  return fetchJson<Blason>(`/api/v1/blasons/${id}/duplication`, {
+    method: 'POST',
+    body: JSON.stringify({ nom }),
   })
 }
 
@@ -190,8 +214,8 @@ export function prechargerPresetsFormats(): Promise<FormatTournoi[]> {
 
 // Applique un format au tournoi : **crée ses phases**. Remplace la séquence existante ; le serveur
 // refuse (409 `phases_engagees`) si une phase n'est plus « à venir ».
-export function appliquerFormat(tournoiId: number, formatId: number): Promise<unknown> {
-  return fetchJson<unknown>(`/api/v1/tournois/${tournoiId}/format`, {
+export function appliquerFormat(tournoiId: number, formatId: number): Promise<void> {
+  return fetchJson<void>(`/api/v1/tournois/${tournoiId}/format`, {
     method: 'PUT',
     body: JSON.stringify({ format_id: formatId }),
   })

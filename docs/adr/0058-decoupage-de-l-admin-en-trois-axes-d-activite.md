@@ -10,6 +10,12 @@
   (les 7 statuts qui contextualisent l'accueil du pilotage), [DETTE-023](../dette.md#dette-023--latelier-affiche-des-briques-encore-scopées-par-tournoi)
   (les briques que l'atelier annonce mais ne libère pas encore)
 
+> **Amendement — 31/07/2026 ([ADR-0060](0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §6).**
+> `Barème & validation`, `Phases` et `Simulation` **quittent l'atelier pour le pilotage** : elles
+> règlent (ou rejouent) **une** édition, donc relèvent du même partage que `Plan de salle` (la copie)
+> face à `Gabarits` (le modèle). L'atelier garde le **format** ; le pilotage reçoit les **phases**.
+> La répartition ci-dessous reste valable pour tout le reste.
+
 ## Contexte et problème
 
 E00US015 avait livré une **sidebar groupée par temps du tournoi** (Préparation / Jour J), conforme au

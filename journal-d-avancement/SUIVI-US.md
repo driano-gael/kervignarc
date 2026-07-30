@@ -49,9 +49,10 @@
 >   [ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md)).
 >   Le déroulé devient une brique neuve, **`FormatTournoi`** : « libérer les phases » en rendant
 >   `Phase.tournoi_id` nullable était impossible sans désarmer l'invariant `SequencePhases`
->   (ordres contigus 1..N) — arbitré avec le commanditaire. `Barème` et `Phases` passent au
->   **pilotage** (elles règlent une édition, comme `Plan de salle` face à `Gabarits`) ; l'atelier
->   gagne `Formats`, le pilotage gagne `Assemblage`. Ajouts au passage : pré-chargement FFTA **dans
+>   (ordres contigus 1..N) — arbitré avec le commanditaire. `Barème`, `Phases` **et `Simulation`**
+>   passent au **pilotage** (elles règlent ou rejouent une édition, comme `Plan de salle` face à
+>   `Gabarits` — ADR-0060 §6, qui amende ADR-0058) ; l'atelier gagne `Formats`, le pilotage gagne
+>   `Assemblage`. Ajouts au passage : pré-chargement FFTA **dans
 >   la bibliothèque** (au lieu d'à chaque tournoi) et **import en masse des clubs**.
 >   Recette : [`docs/fonctionnel/E01US023.md`](../docs/fonctionnel/E01US023.md).
 > - `E04US018` **afficher la prochaine cible après validation** — US à **surface visible**, le

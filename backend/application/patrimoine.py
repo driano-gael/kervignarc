@@ -25,6 +25,7 @@ rattachée mais les **phases** du tournoi (ADR-0060 §5).
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Iterable
 from dataclasses import dataclass
 
@@ -33,6 +34,7 @@ from application.erreurs import (
     BriqueDejaEnBibliotheque,
     BriqueHorsBibliotheque,
     CategorieIntrouvable,
+    NomBriqueDejaPris,
     TournoiIntrouvable,
 )
 from application.referentiel_ffta import blasons_salle_18m, categories_salle_18m
@@ -114,9 +116,9 @@ class ServicePatrimoine:
         traînerait une FK vers une autre édition. Lève `BriqueHorsBibliotheque` sinon.
         """
         self._verifier_blason_de_bibliotheque(blason_id)
-        return self._categories.ajouter(
-            Categorie.creer(None, libelle, arme, ages, sexe, blason_id, hauteur_cm)
-        )
+        categorie = Categorie.creer(None, libelle, arme, ages, sexe, blason_id, hauteur_cm)
+        self._exiger_libelle_categorie_libre(categorie.libelle)
+        return self._categories.ajouter(categorie)
 
     def creer_blason(
         self,
@@ -125,8 +127,46 @@ class ServicePatrimoine:
         capacite: int,
         zones: Iterable[ZoneScore] | None = None,
     ) -> Blason:
-        """Crée un blason **de bibliothèque** (sans tournoi) ; `zones` omises → défaut domaine."""
-        return self._blasons.ajouter(Blason.creer(None, nom, taille, capacite, zones))
+        """Crée un blason **de bibliothèque** (sans tournoi) ; `zones` omises → défaut domaine.
+
+        Lève `NomBriqueDejaPris` si un modèle porte déjà ce nom : l'assemblage et la promotion
+        dédoublonnent par le nom, deux homonymes les rendraient non déterministes.
+        """
+        blason = Blason.creer(None, nom, taille, capacite, zones)
+        self._exiger_nom_blason_libre(blason.nom)
+        return self._blasons.ajouter(blason)
+
+    def dupliquer_categorie(self, categorie_id: CategorieId, libelle: str) -> Categorie:
+        """Détache une **copie** d'un modèle sous un nouveau libellé (CA « modifier un officiel »).
+
+        L'issue « en faire une copie pour garder les deux modèles » : l'original reste intact, et la
+        copie passe en **création utilisateur** — elle n'est plus le référentiel fédéral, même si
+        elle en descend. Pendant exact de `ServiceFormats.dupliquer`, face à l'édition sur place
+        (`PUT /categories/{id}`) qui, elle, laisse un officiel officiel (ADR-0060 §4).
+        """
+        modele = self._modele_categorie(categorie_id)
+        # Par la **fabrique**, pas par `replace` : elle seule normalise et refuse un libellé vide
+        # (`LibelleCategorieInvalide`). `replace` sur une dataclass sans `__post_init__` laisserait
+        # passer « » et fabriquerait une brique invalide en base. `origine` retombe sur son défaut,
+        # `utilisateur` — c'est le sens même de la duplication.
+        copie = Categorie.creer(
+            None,
+            libelle,
+            modele.arme,
+            modele.ages,
+            modele.sexe,
+            modele.blason_id,
+            modele.hauteur_cm,
+        )
+        self._exiger_libelle_categorie_libre(copie.libelle)
+        return self._categories.ajouter(copie)
+
+    def dupliquer_blason(self, blason_id: BlasonId, nom: str) -> Blason:
+        """Détache une **copie** d'un modèle de blason sous un nouveau nom (même règle)."""
+        modele = self._modele_blason(blason_id)
+        copie = Blason.creer(None, nom, modele.taille, modele.capacite, modele.zones)
+        self._exiger_nom_blason_libre(copie.nom)
+        return self._blasons.ajouter(copie)
 
     def precharger_ffta(self) -> RapportAssemblage:
         """Pré-charge le référentiel FFTA 18 m **dans la bibliothèque** (E01US023).
@@ -264,7 +304,14 @@ class ServicePatrimoine:
         copie = self._copie_blason(blason_id)
         existant = self._modele_homonyme_blason(copie.nom)
         if existant is None:
-            return self._blasons.ajouter(copie.en_bibliotheque())
+            # Modèle **neuf** : il n'a aucun ancêtre au référentiel fédéral, donc rien ne lui donne
+            # sa provenance. Le laisser hériter du `ffta` de la copie ferait entrer une brique
+            # renommée localement dans la liste « officiel » de l'atelier — précisément la liste que
+            # le commanditaire veut séparée. Mettre à jour un homonyme, en revanche, conserve son
+            # origine (« modifier un officiel le laisse officiel », ADR-0060 §4).
+            return self._blasons.ajouter(
+                dataclasses.replace(copie.en_bibliotheque(), origine=OrigineBrique.UTILISATEUR)
+            )
         return self._blasons.enregistrer(
             existant.modifier(copie.nom, copie.taille, copie.capacite, copie.zones)
         )
@@ -283,7 +330,13 @@ class ServicePatrimoine:
         blason_bibliotheque = self._blason_bibliotheque_homonyme(copie.blason_id)
         existante = self._modele_homonyme_categorie(copie.libelle)
         if existante is None:
-            return self._categories.ajouter(copie.en_bibliotheque(blason_bibliotheque))
+            # Cf. `promouvoir_blason` : un modèle neuf ne s'auto-proclame pas officiel.
+            return self._categories.ajouter(
+                dataclasses.replace(
+                    copie.en_bibliotheque(blason_bibliotheque),
+                    origine=OrigineBrique.UTILISATEUR,
+                )
+            )
         return self._categories.enregistrer(
             existante.modifier(
                 copie.libelle,
@@ -346,6 +399,14 @@ class ServicePatrimoine:
             return None
         modele = self._modele_homonyme_blason(blason.nom)
         return None if modele is None else modele.id
+
+    def _exiger_libelle_categorie_libre(self, libelle: str) -> None:
+        if self._modele_homonyme_categorie(libelle) is not None:
+            raise NomBriqueDejaPris(f"Une catégorie du club porte déjà le libellé « {libelle} ».")
+
+    def _exiger_nom_blason_libre(self, nom: str) -> None:
+        if self._modele_homonyme_blason(nom) is not None:
+            raise NomBriqueDejaPris(f"Un blason du club porte déjà le nom « {nom} ».")
 
     def _modele_homonyme_blason(self, nom: str) -> Blason | None:
         for modele in self._blasons.par_bibliotheque():
