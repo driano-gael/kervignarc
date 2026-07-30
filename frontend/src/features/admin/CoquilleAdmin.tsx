@@ -40,11 +40,10 @@
 // pas dans la zone principale. Elle est scopée au tournoi courant, donc n'apparaît que dans les axes
 // qui en ont un — sa variante « toutes entités » pour l'atelier relève du lot suivant.
 //
-// **DETTE-023 — l'atelier montre encore des briques scopées par tournoi.** Catégories, Blasons,
-// Barème et Phases sont rangés dans l'atelier (c'est leur place : patrimoine du club) mais leurs
-// endpoints portent encore un `tournoi_id` (`/tournois/{id}/categories`, `/tournois/{id}/blasons`…) :
-// ils exigent donc un tournoi courant, ce qui contredit la promesse de l'axe. Le découpage est livré
-// **avant** la libération des briques, volontairement — voir le registre de dette.
+// **E01US023 a rendu l'atelier honnête** (DETTE-023 résorbée, ADR-0060). Catégories, Blasons et
+// Formats y sont désormais des **briques du club** — des modèles de bibliothèque, sans tournoi. La
+// copie d'une édition se travaille au pilotage (« Assemblage »), là où l'on a un tournoi sous la
+// main : c'est le partage déjà établi entre `gabarits` (le modèle) et `plan` (la copie).
 
 import { useEffect, type ReactNode } from 'react'
 import { Accueil } from '../accueil/Accueil'
@@ -64,6 +63,10 @@ import { Departs } from '../departs/Departs'
 import { Duels } from '../duels/Duels'
 import { Exports } from '../exports/Exports'
 import { Gabarits } from '../gabarits/Gabarits'
+import { Assemblage } from '../patrimoine/Assemblage'
+import { BlasonsBibliotheque, CategoriesBibliotheque } from '../patrimoine/Bibliotheque'
+import { Formats } from '../patrimoine/Formats'
+import { ImportClubs } from '../patrimoine/ImportClubs'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { GrainValidation } from '../grain-validation/GrainValidation'
 import { JeuEssai } from '../jeu-essai/JeuEssai'
@@ -181,14 +184,43 @@ function Coquille() {
     {
       id: 'categories',
       libelle: 'Catégories',
-      besoinTournoi: true,
-      rendu: () => courant && <Categories tournoiId={courant.id} />,
+      // Brique du **club** depuis E01US023 : plus aucun tournoi requis (DETTE-023 résorbée).
+      besoinTournoi: false,
+      rendu: () => <CategoriesBibliotheque />,
     },
     {
       id: 'blasons',
       libelle: 'Blasons',
+      besoinTournoi: false,
+      rendu: () => <BlasonsBibliotheque />,
+    },
+    {
+      id: 'formats',
+      libelle: 'Formats (déroulés)',
+      // Le déroulé type d'une compétition (ADR-0060 §5). Ce qui se réutilise d'une année sur
+      // l'autre est le **format**, pas la phase — celle-ci porte un statut et un rang propres à
+      // une édition.
+      besoinTournoi: false,
+      rendu: () => <Formats />,
+    },
+    {
+      id: 'assemblage',
+      libelle: 'Assemblage',
+      // La **copie** du patrimoine dans cette édition, et son retour (« rendre permanent »).
+      // Au pilotage et non à l'atelier : ici on travaille sur un tournoi, pas sur le club.
       besoinTournoi: true,
-      rendu: () => courant && <Blasons tournoiId={courant.id} />,
+      // Les écrans d'édition des **copies** du tournoi sont montés ici, sous l'assemblage : sans
+      // eux, libérer les briques aurait fait **perdre** la possibilité d'ajuster une catégorie pour
+      // une seule édition — or c'est précisément ce que le CA promet (« modification locale au
+      // tournoi »). L'assemblage les alimente, ces écrans les corrigent.
+      rendu: () =>
+        courant && (
+          <>
+            <Assemblage tournoiId={courant.id} />
+            <Categories tournoiId={courant.id} />
+            <Blasons tournoiId={courant.id} />
+          </>
+        ),
     },
     {
       id: 'gabarits',
@@ -236,7 +268,14 @@ function Coquille() {
       id: 'clubs',
       libelle: 'Clubs',
       besoinTournoi: false,
-      rendu: () => <Clubs />,
+      // Le référentiel et son **import en masse** (E01US023) vont ensemble : c'est le même geste
+      // — peupler la liste des clubs voisins — à deux échelles.
+      rendu: () => (
+        <>
+          <Clubs />
+          <ImportClubs />
+        </>
+      ),
     },
     {
       id: 'scoreurs',
@@ -448,18 +487,12 @@ function Coquille() {
 
   const contenu =
     active.besoinTournoi && courant === null ? (
+      // Depuis E01US023, **seuls** les axes à tournoi peuvent atteindre cet état : toutes les
+      // destinations de l'atelier sont hors tournoi (DETTE-023 résorbée), donc le repli « cette
+      // brique dépend encore d'un tournoi » n'a plus d'objet — et « ci-dessus » désigne bien, ici,
+      // le sélecteur que l'axe affiche.
       <p className="carte__etat">
-        {axe.besoinTournoi ? (
-          <>Choisissez un tournoi ci-dessus pour accéder à «&nbsp;{active.libelle}&nbsp;».</>
-        ) : (
-          // L'atelier n'affiche **pas** de sélecteur : dire « ci-dessus » y désignerait un contrôle
-          // inexistant. On nomme la vraie raison et le chemin de contournement (DETTE-023).
-          <>
-            «&nbsp;{active.libelle}&nbsp;» dépend encore d’un tournoi&nbsp;: ouvrez-la depuis le
-            Pilotage, en choisissant d’abord votre tournoi. Cette brique rejoindra l’atelier quand
-            elle sera libérée du périmètre d’un tournoi.
-          </>
-        )}
+        Choisissez un tournoi ci-dessus pour accéder à «&nbsp;{active.libelle}&nbsp;».
       </p>
     ) : (
       active.rendu()

@@ -2,6 +2,7 @@
 // Miroir des DTO exposés par `api/v1/categories.py`.
 
 import { fetchJson } from '../../shared/api/client'
+import type { OrigineBrique } from '../patrimoine/api'
 
 export type SexeCategorie = 'H' | 'F' | 'mixte'
 
@@ -11,7 +12,9 @@ export type TrancheAge = 'U11' | 'U13' | 'U15' | 'U18' | 'U21' | 'S1' | 'S2' | '
 
 export interface Categorie {
   id: number
-  tournoi_id: number
+  // `null` pour un **modèle de bibliothèque** (patrimoine du club, E01US023) ; renseigné pour la
+  // **copie** d'un tournoi, ajustable sans altérer le modèle.
+  tournoi_id: number | null
   libelle: string
   arme: string | null
   // Tranches d'âge éligibles (E01US013) : toujours un tableau (éventuellement vide), jamais un
@@ -23,6 +26,9 @@ export interface Categorie {
   // Hauteur du centre de l'or, en cm (E03US001, ADR-0022) : pilote la contrainte de placement
   // « une butte, une seule hauteur ». Défaut FFTA 130 ; 110 pour les U11.
   hauteur_cm: number
+  // Provenance de la brique (E01US023) : sert les **deux listes séparées** de l'atelier. Ne dit
+  // **pas** la conformité au règlement (ADR-0060 §4).
+  origine: OrigineBrique
 }
 
 export interface NouvelleCategorie {

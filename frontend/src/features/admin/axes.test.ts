@@ -13,15 +13,16 @@ import {
 import { AIDE_ECRANS, type DestinationAdminId } from './aide-ecrans'
 
 describe('répartition des destinations', () => {
-  it('CA — les 25 destinations livrées sont toutes rangées, aucune perdue', () => {
-    // Le risque n°1 de cette US : 24 destinations réétiquetées à la main. Une entrée oubliée
+  it('CA — les 27 destinations livrées sont toutes rangées, aucune perdue', () => {
+    // Le risque n°1 d'E14US003 : des destinations réétiquetées à la main. Une entrée oubliée
     // disparaîtrait **silencieusement** de la sidebar (elle est filtrée par axe), sans que `tsc`
-    // ni aucun autre test ne le voie.
+    // ni aucun autre test ne le voie. E01US023 en a ajouté deux : `formats` (atelier) et
+    // `assemblage` (pilotage).
     const rangees = Object.keys(AXE_PAR_DESTINATION)
     const toutes = Object.keys(AIDE_ECRANS)
-    expect(toutes).toHaveLength(25)
-    expect(rangees).toHaveLength(24)
-    // La 25ᵉ est « tournoi » : elle n'appartient à aucun axe, c'est l'assemblage porté par l'accueil.
+    expect(toutes).toHaveLength(27)
+    expect(rangees).toHaveLength(26)
+    // La 27ᵉ est « tournoi » : elle n'appartient à aucun axe, c'est l'assemblage porté par l'accueil.
     expect(toutes.filter((d) => !rangees.includes(d))).toEqual(['tournoi'])
   })
 
@@ -56,11 +57,25 @@ describe('destinationParDefaut', () => {
     }
   })
 
-  it('l’atelier n’ouvre PAS sur une brique qui exige un tournoi (DETTE-023)', () => {
-    // Les quatre briques FFTA réclament encore un tournoi que l'atelier ne propose pas de choisir :
-    // ouvrir l'axe sur l'une d'elles afficherait un écran vide dès le premier clic.
-    const bloquees: DestinationAdminId[] = ['categories', 'blasons', 'bareme', 'phases']
-    expect(bloquees).not.toContain(destinationParDefaut('atelier'))
+  it('CA E01US023 — AUCUNE destination de l’atelier n’exige un tournoi (DETTE-023 résorbée)', () => {
+    // Le garde-fou a changé de nature, et c'est le fait notable. Il disait « n'ouvre pas sur une
+    // brique bloquée » — un contournement, tant que quatre des huit destinations de l'axe
+    // réclamaient un tournoi que l'axe ne propose pas de choisir. Depuis que les briques sont le
+    // patrimoine du club (ADR-0060), il n'y a plus de brique bloquée du tout : on vérifie donc
+    // l'invariant **fort**, celui que l'axe promet.
+    //
+    // Ces deux-là ont quitté l'atelier pour le pilotage : elles règlent **une** édition, comme
+    // `plan` (la copie) face à `gabarits` (le modèle).
+    const reglentUneEdition: DestinationAdminId[] = ['bareme', 'phases']
+    for (const destination of reglentUneEdition) {
+      expect(AXE_PAR_DESTINATION[destination as keyof typeof AXE_PAR_DESTINATION]).toBe('pilotage')
+    }
+    const destinationsAtelier = Object.entries(AXE_PAR_DESTINATION)
+      .filter(([, axe]) => axe === 'atelier')
+      .map(([destination]) => destination)
+    expect(destinationsAtelier).toContain('categories')
+    expect(destinationsAtelier).toContain('formats')
+    expect(destinationParDefaut('atelier')).toBe('categories')
   })
 })
 
