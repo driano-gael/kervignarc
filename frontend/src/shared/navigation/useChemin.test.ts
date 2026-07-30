@@ -5,8 +5,9 @@
 // corrige l'adresse vers `/cible` au montage (verrou `D-13`). Si cette correction perdait le
 // paramètre, toutes les étiquettes déjà collées devant les cibles deviendraient muettes.
 
+import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { naviguer } from './useChemin'
+import { naviguer, useChemin } from './useChemin'
 
 describe('naviguer', () => {
   beforeEach(() => {
@@ -36,5 +37,32 @@ describe('naviguer', () => {
     const apres = window.history.length
     naviguer('/public')
     expect(window.history.length).toBe(apres)
+  })
+})
+
+describe('useChemin', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/')
+  })
+
+  it('suit les navigations de l’application', () => {
+    const { result } = renderHook(() => useChemin())
+    expect(result.current).toBe('/')
+    act(() => naviguer('/admin/12/pilotage/supervision'))
+    expect(result.current).toBe('/admin/12/pilotage/supervision')
+  })
+
+  it('« PRÉCÉDENT » resynchronise le chemin — le piège du routeur maison', () => {
+    // L'en-tête du module revendique d'éviter « un état local qui se désynchronise du navigateur
+    // quand l'utilisateur clique sur précédent, parce que `popstate` arrive après le rendu ».
+    // Cette revendication n'était vérifiée par rien.
+    const { result } = renderHook(() => useChemin())
+    act(() => naviguer('/public'))
+    expect(result.current).toBe('/public')
+    act(() => {
+      window.history.replaceState(null, '', '/scoreur')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
+    expect(result.current).toBe('/scoreur')
   })
 })

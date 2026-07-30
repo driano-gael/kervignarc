@@ -11,7 +11,7 @@ import { useSessionAdminStore } from '../shared/stores/sessionAdminStore'
 import { useSessionPosteStore } from '../shared/stores/sessionPosteStore'
 import { useSessionRoleStore } from '../shared/stores/sessionRoleStore'
 import { useSessionScoreurStore } from '../shared/stores/sessionScoreurStore'
-import { naviguer } from './useChemin'
+import { naviguer } from '../shared/navigation/useChemin'
 
 export function ChangerDeRole() {
   const detacherPoste = useSessionPosteStore((s) => s.detacher)
@@ -27,7 +27,9 @@ export function ChangerDeRole() {
     // Depuis E14US003, **l'adresse fait partie de l'état** : purger les sessions sans revenir à `/`
     // laisserait l'URL sur `/admin`, qui l'emporte sur le marqueur de choix (`mondeAServir`) — le
     // bouton n'aurait alors aucun effet visible, il rouvrirait le monde qu'on vient de quitter.
-    naviguer('/')
+    // `remplacer` : c'est une sortie **subie** du monde qu'on quitte, l'empiler laisserait le bouton
+    // « précédent » y ramener aussitôt (même raisonnement qu'ADR-0059 sur les corrections d'adresse).
+    naviguer('/', { remplacer: true })
   }
 
   return (

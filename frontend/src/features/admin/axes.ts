@@ -1,4 +1,4 @@
-// Les trois axes de travail de l'admin et leur lecture depuis l'adresse (E14US003, ADR-0058).
+// Les trois axes de travail de l'admin et la lecture de l'adresse (E14US003, ADR-0058, ADR-0059).
 //
 // Séparé de `CoquilleAdmin.tsx` pour deux raisons : la règle ESLint `react-refresh/only-export-components`
 // (un `.tsx` n'exporte que des composants — même parti que `features/poste/url.ts`), et parce que ces
@@ -33,40 +33,117 @@ export const AXES: { axe: Axe; libelle: string; phrase: string; besoinTournoi: b
 ]
 
 /**
+ * L'axe de chaque destination livrée — **source unique** de la répartition.
+ *
+ * Le type `Record<Exclude<DestinationAdminId, 'tournoi'>, Axe>` est **exhaustif** : oublier une
+ * destination, ou en ajouter une sans lui donner d'axe, ne compile plus. C'est ce qui remplace les 24
+ * champs `axe:` recopiés à la main dans la table de `CoquilleAdmin` — une entrée mal étiquetée y
+ * disparaissait **silencieusement** de la sidebar, sans que `tsc` ni aucun test ne le voie.
+ *
+ * `tournoi` est absente **exprès** : elle n'appartient à aucun axe, c'est l'**assemblage**, porté par
+ * l'accueil de l'admin (ADR-0058).
+ */
+export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>, Axe> = {
+  // Atelier — fabriquer, hors tournoi.
+  clubs: 'atelier',
+  gabarits: 'atelier',
+  categories: 'atelier',
+  blasons: 'atelier',
+  bareme: 'atelier',
+  phases: 'atelier',
+  'jeu-essai': 'atelier',
+  simulation: 'atelier',
+  // Pilotage — le temps réel.
+  accueil: 'pilotage',
+  supervision: 'pilotage',
+  'feu-vert': 'pilotage',
+  completude: 'pilotage',
+  classement: 'pilotage',
+  postes: 'pilotage',
+  scoreurs: 'pilotage',
+  plan: 'pilotage',
+  placement: 'pilotage',
+  duels: 'pilotage',
+  departs: 'pilotage',
+  // Gestion — l'administratif, transverse au temps.
+  inscriptions: 'gestion',
+  doublons: 'gestion',
+  paiements: 'gestion',
+  exports: 'gestion',
+  archive: 'gestion',
+}
+
+/**
  * Destination d'ouverture d'un axe.
  *
  * Pour le pilotage, c'est **l'accueil-tableau de bord** (`D-20`, E14US001) : c'est lui qui se
- * contextualise par statut (frise, checklist, chiffres), inutile donc d'aiguiller vers des écrans
- * différents selon le statut. Les autres destinations restent à un clic (`P-3`, priorité d'affichage,
- * pas restriction).
+ * contextualise par statut, inutile donc d'aiguiller selon le statut.
+ *
+ * Pour l'atelier, c'est **`gabarits`** et non `categories` : les quatre briques FFTA (catégories,
+ * blasons, barème, phases) exigent encore un tournoi que l'axe ne propose pas de choisir
+ * (**DETTE-023**). Ouvrir l'atelier sur l'une d'elles afficherait, dès le premier clic, un écran vide
+ * disant « choisissez un tournoi **ci-dessus** » — sans rien au-dessus. `gabarits` et `clubs` sont les
+ * seules briques réellement hors tournoi aujourd'hui.
  */
 export function destinationParDefaut(axe: Axe): DestinationAdminId {
   if (axe === 'pilotage') return 'accueil'
   if (axe === 'gestion') return 'inscriptions'
-  return 'categories'
+  return 'gabarits'
+}
+
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+// Lecture et écriture de l'adresse admin : `/admin/<tournoi?>/<axe?>/<destination?>`
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+//
+// Le **tournoi est dans l'adresse** (E14US003) : sans lui, un `F5` ou un lien partagé restaurait
+// l'écran mais pas son sujet — et 21 des 24 destinations en dépendent, donc l'utilisateur retombait
+// sur « choisissez un tournoi ». Il est placé **avant** l'axe pour qu'il survive au changement d'axe
+// et se lise dans l'ordre naturel : administration → tournoi → activité → écran.
+//
+// Il est reconnu par sa **forme** (suite de chiffres), ce qui lève toute ambiguïté : aucun axe ni
+// aucune destination n'est numérique.
+
+export interface RouteAdmin {
+  tournoiId: number | null
+  axe: Axe | null
+  destinationDemandee: string | null
+}
+
+function estIdentifiant(segment: string | undefined): segment is string {
+  return segment !== undefined && /^\d+$/.test(segment)
+}
+
+/** Traduit les segments qui suivent `/admin` en route d'administration. */
+export function analyserSegmentsAdmin(segments: readonly string[]): RouteAdmin {
+  const reste = [...segments]
+  const tournoiId = estIdentifiant(reste[0]) ? Number(reste.shift()) : null
+  const [premier, second] = reste
+  const axe = AXES.find((a) => a.axe === premier)?.axe ?? null
+  return { tournoiId, axe, destinationDemandee: axe === null ? null : (second ?? null) }
+}
+
+/** Construit les segments d'une adresse d'administration. Réciproque d'`analyserSegmentsAdmin`. */
+export function segmentsAdmin(
+  tournoiId: number | null,
+  axe: Axe | null,
+  destination: DestinationAdminId | null,
+): string[] {
+  const segments: string[] = []
+  if (tournoiId !== null) segments.push(String(tournoiId))
+  if (axe !== null) segments.push(axe)
+  if (axe !== null && destination !== null) segments.push(destination)
+  return segments
 }
 
 /**
- * L'axe nommé par les segments d'adresse, ou `null` pour l'accueil de l'admin.
+ * La destination demandée, **validée contre celles que l'axe propose réellement**.
  *
- * Un axe inconnu retombe sur `null` — donc sur l'accueil, jamais sur une page vide : une adresse mal
- * tapée doit rendre l'écran qui permet de repartir.
+ * Sans cette validation, `/admin/atelier/supervision` afficherait un écran de pilotage sous
+ * l'intitulé « Atelier » — exactement le mélange que le découpage supprime.
  */
-export function axeDepuisSegments(segments: readonly string[]): Axe | null {
-  const [premier] = segments
-  return AXES.some((a) => a.axe === premier) ? (premier as Axe) : null
-}
-
-/**
- * La destination nommée par les segments, **validée** contre celles que l'axe propose réellement.
- *
- * Sans cette validation, une adresse comme `/admin/atelier/supervision` afficherait un écran de
- * pilotage sous l'intitulé « Atelier » — exactement le mélange que le découpage supprime.
- */
-export function destinationDepuisSegments(
-  segments: readonly string[],
+export function destinationValide(
+  demandee: string | null,
   destinationsDeLAxe: readonly DestinationAdminId[],
 ): DestinationAdminId | null {
-  const [, second] = segments
-  return destinationsDeLAxe.find((d) => d === second) ?? null
+  return destinationsDeLAxe.find((d) => d === demandee) ?? null
 }

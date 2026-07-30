@@ -25,8 +25,8 @@ import { useSessionScoreurStore } from '../shared/stores/sessionScoreurStore'
 import { ChangerDeRole } from './ChangerDeRole'
 import { EcranAccueil } from './EcranAccueil'
 import { mondeAServir, peutChangerDeRole } from './resoudreRole'
-import { analyserChemin, construireChemin, roleDuMonde } from './routeur'
-import { naviguer, useChemin } from './useChemin'
+import { analyserChemin, construireChemin, roleDuMonde } from '../shared/navigation/routeur'
+import { naviguer, useChemin } from '../shared/navigation/useChemin'
 import './App.css'
 
 export function App() {

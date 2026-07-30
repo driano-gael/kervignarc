@@ -3,7 +3,7 @@
 - **Statut** : Accepté
 - **Date** : 2026-07-30
 - **Décideurs** : Organisateur / Architecte
-- **Portée** : E14US003 (adresses `/public`, `/scoreur`, `/cible`, `/admin/<axe>/<destination>`)
+- **Portée** : E14US003 (adresses `/public`, `/scoreur`, `/cible`, `/admin/<tournoi>/<axe>/<destination>`)
 - **Remplace** : [ADR-0032](0032-navigation-admin-par-etat-local.md) — dont il **garde** la conclusion
   sur la dépendance (routeur maison) et **renverse** celle sur les URL
 - **Lie** : [ADR-0042](0042-modele-d-entree-choix-de-role-explicite.md) (les quatre portes, dont cet
@@ -36,7 +36,13 @@ Trois manques concrets le motivent :
 ## Décision
 
 **1. Cinq adresses, une par monde.** `/` (choix des quatre portes), `/public`, `/scoreur`, `/cible`,
-`/admin/<axe>/<destination>`.
+`/admin/<tournoi>/<axe>/<destination>`.
+
+**Le tournoi est dans l'adresse, pas seulement l'écran.** Corrigé en revue : la première version le
+laissait en état local, si bien que `F5` restaurait l'axe et la destination mais **pas leur sujet** —
+21 destinations sur 24 en dépendent, l'utilisateur retombait donc sur « choisissez un tournoi ».
+Il est placé **avant** l'axe pour survivre au changement d'axe, et reconnu à sa **forme** (suite de
+chiffres) : aucun axe ni aucune destination n'est numérique, la lecture est donc sans ambiguïté.
 
 **L'adresse dit `cible`, le code dit `tablette`.** Ce n'est pas une incohérence : l'adresse est lue par
 un bénévole sur l'étiquette collée devant la cible, elle doit donc parler **FFTA** (règle 3) ;
@@ -68,17 +74,31 @@ le jour même** :
   garde de route (les gardes sont déjà des fonctions pures testées). La règle 11 dit précisément
   « stdlib ou quelques lignes maison préférées ; en cas de doute, on n'ajoute pas ».
 
-Le routeur est scindé en **deux fichiers volontairement asymétriques** : `app/routeur.ts` est **pur**
-(analyse et construction de chemins, correspondance monde ↔ rôle) et porte **toutes** les décisions,
-donc tous les tests ; `app/useChemin.ts` n'est que la plomberie d'abonnement à `history`, réduite au
-strict minimum. `useSyncExternalStore` y remplace le couple `useState` + `useEffect` : c'est l'API
-prévue pour lire une source extérieure à React, et elle évite le défaut classique du routeur maison —
-un état local qui se désynchronise du navigateur au clic sur « précédent ».
+Le routeur est scindé en **deux fichiers volontairement asymétriques** :
+`shared/navigation/routeur.ts` est **pur** (analyse et construction de chemins, correspondance
+monde ↔ rôle) et porte **toutes** les décisions, donc tous les tests ;
+`shared/navigation/useChemin.ts` n'est que la plomberie d'abonnement à `history`, réduite au strict
+minimum. `useSyncExternalStore` y remplace le couple `useState` + `useEffect` : c'est l'API prévue
+pour lire une source extérieure à React, et elle évite le défaut classique du routeur maison — un
+état local qui se désynchronise du navigateur au clic sur « précédent ».
 
-**4. Le serveur replie les liens profonds** (`backend/api/spa.py`) : `F5` sur `/admin/pilotage/supervision`
-demande au serveur un fichier qui n'existe pas. Le repli est **borné** — sous `api/`, `ws`, `health`,
-`docs` et `assets/`, un 404 reste un 404, sinon un appel d'API inexistant recevrait une page HTML en
-200 et un asset manquant un type MIME faux.
+Ils vivent sous **`shared/`** et non sous `app/` : une **feature ne doit pas importer le shell**.
+La première version les plaçait dans `app/`, ce qui introduisait trois imports `features/ → app/`
+là où le dépôt n'en comptait aucun — inversion relevée en revue et refermée avant qu'une convention
+ne s'installe.
+
+**4. Le serveur replie les liens profonds** (`backend/api/spa.py`) : `F5` sur
+`/admin/12/pilotage/supervision` demande au serveur un fichier qui n'existe pas. Le repli est
+**doublement borné**, et les deux bornes attrapent des cas différents :
+
+- **les segments du serveur** (`api`, `ws`, `health`, `docs`, `redoc`, `openapi.json`) — comparés
+  **par segment** et **sans casse** : `startswith("ws")` mordrait sur une future adresse `/wsx`, et
+  `/API/v1/x` (aucune route, le routage FastAPI étant sensible à la casse) recevait 200 HTML ;
+- **l'intention du client** — on ne replie que si l'en-tête `Accept` demande du `text/html`, donc
+  une **navigation**. C'est ce qui referme la classe entière au lieu d'allonger une liste : Vite
+  copie `frontend/public/` **à la racine de `dist/`, hors `assets/`** (`favicon.svg`, `icons.svg`,
+  demain un `robots.txt`), et ces fichiers-là recevaient du HTML au type MIME faux dès qu'ils
+  manquaient. Les trois trous ont été trouvés en revue, pas à l'écriture.
 
 ## Alternatives écartées
 

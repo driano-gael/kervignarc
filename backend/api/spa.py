@@ -23,42 +23,69 @@ from starlette.types import Scope
 
 _ENV_VAR = "KERVIGNARC_FRONTEND_DIST"
 
-# Préfixes qui **ne se replient jamais** vers `index.html` (E14US003). Sous ces chemins, une URL
-# inconnue est une **vraie erreur** du client : la lui renvoyer en 404 est la seule réponse honnête.
-# Replier tout aveuglément aurait deux effets pervers :
-#  - un appel d'API vers une route inexistante recevrait une **page HTML en 200**, donc un client
-#    qui croit avoir réussi et un message d'erreur introuvable dans les logs ;
-#  - un asset manquant (`/assets/app-abc123.js` après un build changé) répondrait du HTML avec un
-#    type MIME faux, ce que le navigateur signale par une erreur obscure au lieu d'un 404 clair.
-_PREFIXES_SANS_REPLI = ("api/", "ws", "health", "docs", "redoc", "openapi.json", "assets/")
+# Premiers segments qui **appartiennent au serveur** et ne se replient jamais vers `index.html`
+# (E14US003). Sous ces chemins, une URL inconnue est une **vraie erreur** du client : lui renvoyer
+# un 404 est la seule réponse honnête. Un appel d'API vers une route inexistante qui recevrait une
+# page HTML en 200 donnerait un client persuadé d'avoir réussi, et une erreur introuvable en logs.
+#
+# Comparaison **par segment**, pas par préfixe de chaîne : `startswith("ws")` mordrait aussi sur une
+# future adresse de SPA comme `/wsx` ou `/health-checklist`, qui recevrait alors un 404 au lieu de
+# l'application — panne invisible en développement (Vite sert tout) et seulement derrière FastAPI.
+_SEGMENTS_SERVEUR = frozenset({"api", "ws", "health", "docs", "redoc", "openapi.json"})
 
 
-def _sous_prefixe_serveur(path: str) -> bool:
-    """Le chemin demandé tombe-t-il sous un préfixe qui ne se replie pas ?
+def _premier_segment(path: str) -> str:
+    """Premier segment du chemin demandé, normalisé.
 
-    ⚠️ **Le séparateur doit être normalisé avant la comparaison.** `StaticFiles` construit son
-    `path` avec `os.path.normpath`, qui rend `api\\v1\\x` **sur Windows** — là où les préfixes sont
-    écrits en `/`. Comparer brut fait donc échouer le garde sur Windows *et nulle part ailleurs* :
-    la CI (Linux) resterait verte pendant que le poste de la table d'organisation renverrait une
-    page HTML en 200 sur un appel d'API inexistant. Trouvé par
-    `test_le_repli_ne_masque_ni_l_api_ni_les_assets`.
+    Deux normalisations, chacune pour un piège vérifié :
+
+    - **le séparateur** — `StaticFiles` construit son `path` avec `os.path.normpath`, qui rend le
+      chemin avec des antislashs **sur Windows**, là où les segments sont écrits en `/`. Comparer
+      brut fait échouer le garde sur Windows *et nulle part ailleurs* : la CI (Linux) resterait
+      verte pendant que le poste de la table d'organisation renverrait une page HTML en 200 sur un
+      appel d'API inexistant ;
+    - **la casse** — le routage FastAPI y est sensible, donc `/API/v1/x` n'est **aucune** route :
+      c'est un 404, pas une adresse de SPA. Sans repli de casse, elle recevait `index.html` en 200.
     """
-    return path.replace(os.sep, "/").replace("\\", "/").lstrip("/").startswith(_PREFIXES_SANS_REPLI)
+    return path.replace(os.sep, "/").replace("\\", "/").lstrip("/").split("/", 1)[0].lower()
+
+
+def _demande_une_page(scope: Scope) -> bool:
+    """Le client demande-t-il une **page** (navigation) plutôt qu'une ressource ?
+
+    C'est ce qui referme la classe entière au lieu d'allonger une liste à maintenir : un navigateur
+    qui **navigue** envoie `Accept: text/html…`, alors qu'un appel d'API (`application/json`, `*/*`)
+    ou une ressource (`image/svg+xml` pour un favicon) ne le fait pas.
+
+    Sans ce filtre, tout fichier de `frontend/public/` — que Vite copie **à la racine de `dist/`,
+    hors `assets/`** : `favicon.svg`, `icons.svg`, et demain un `robots.txt` ou une police —
+    recevrait `index.html` en 200 avec un type MIME faux dès qu'il manquerait, ce que le navigateur
+    signale par une erreur obscure. Une liste de préfixes ne peut pas suivre le contenu d'un
+    répertoire.
+    """
+    entetes = dict(scope.get("headers") or [])
+    return b"text/html" in entetes.get(b"accept", b"")
 
 
 class _StatiquesSpa(StaticFiles):
     """`StaticFiles` qui **replie les liens profonds** vers `index.html` (routage côté client).
 
-    Nécessaire dès que la SPA a des routes (E14US003) : `F5` sur `/admin/pilotage/supervision`
+    Nécessaire dès que la SPA a des routes (E14US003) : `F5` sur `/admin/12/pilotage/supervision`
     demande au serveur un fichier qui n'existe pas — sans repli, l'utilisateur reçoit un 404 au lieu
-    de son écran. Le repli est **borné** par `_PREFIXES_SANS_REPLI`.
+    de son écran.
+
+    Le repli est **doublement borné**, et les deux bornes attrapent des cas différents :
+    `_SEGMENTS_SERVEUR` protège les routes du serveur (une 404 d'API doit rester une 404), et
+    `_demande_une_page` protège **tout le reste** — aucune ressource manquante ne reçoit du HTML,
+    quel que soit son emplacement dans `dist/`.
     """
 
     async def get_response(self, path: str, scope: Scope) -> Response:
         try:
             return await super().get_response(path, scope)
         except ErreurHttpStarlette as erreur:
-            if erreur.status_code != 404 or _sous_prefixe_serveur(path):
+            sur_le_serveur = _premier_segment(path) in _SEGMENTS_SERVEUR
+            if erreur.status_code != 404 or sur_le_serveur or not _demande_une_page(scope):
                 raise
             return await super().get_response("index.html", scope)
 

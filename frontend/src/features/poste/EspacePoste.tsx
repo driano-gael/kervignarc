@@ -19,7 +19,7 @@ import {
   useVerifierPoste,
 } from './hooks'
 import { oublierCodePosteUrl } from './url'
-import { naviguer } from '../../app/useChemin'
+import { naviguer } from '../../shared/navigation/useChemin'
 
 export function EspacePoste({ codeInitial }: { codeInitial: string | null }) {
   const jeton = useSessionPosteStore((s) => s.jeton)
@@ -90,6 +90,7 @@ function FormulaireRattachement({ codeInitial }: { codeInitial: string | null })
 function PosteRattache({ poste }: { poste: CiblePoste }) {
   const deconnexion = useDeconnexionPoste()
   const reinitialiserRole = useSessionRoleStore((s) => s.reinitialiser)
+  const quitterModePoste = useSessionPosteStore((s) => s.detacher)
 
   const detacher = () => {
     // Retirer `?poste=…` de l'URL **avant** de détacher : sinon `codePoste` resterait non nul et l'app
@@ -98,9 +99,14 @@ function PosteRattache({ poste }: { poste: CiblePoste }) {
     // Oublier aussi le marqueur de rôle (E00US017, ADR-0042) : sans quoi `resoudreRole` renverrait
     // encore « tablette » (le choix persiste) → retour au rattachement au lieu de l'écran de choix.
     reinitialiserRole()
-    // Et ramener l'adresse à la racine (E14US003) : rester sur `/cible` rouvrirait le rattachement,
-    // puisque l'adresse l'emporte sur le marqueur de choix qu'on vient d'effacer.
-    naviguer('/')
+    // ⚠️ Quitter le mode poste **synchroniquement, avant de naviguer** (E14US003). `useDeconnexionPoste`
+    // ne le fait qu'en `onSettled`, donc après l'aller-retour HTTP : si on naviguait avant, `estPoste`
+    // serait encore vrai au rendu suivant, le verrou `D-13` de `mondeAServir` ramènerait l'adresse sur
+    // `/cible` — et une fois la mutation retombée, l'adresse (qui prime sur le marqueur de choix)
+    // rouvrirait le **formulaire de rattachement** au lieu de l'écran des quatre portes. Le store est
+    // idempotent : le `detacher()` d'`onSettled` reste sans effet.
+    quitterModePoste()
+    naviguer('/', { remplacer: true })
     deconnexion.mutate()
   }
 

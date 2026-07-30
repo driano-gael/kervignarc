@@ -6,7 +6,7 @@
 // qu'un rechargement ne renvoie jamais sur l'écran de choix* (résilience jour J).
 
 import type { Role } from '../shared/stores/sessionRoleStore'
-import type { Monde } from './routeur'
+import type { Monde } from '../shared/navigation/routeur'
 
 export interface EtatEntree {
   // Choix explicite mémorisé à l'écran d'accueil (null tant qu'aucune porte n'a été franchie).

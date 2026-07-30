@@ -393,7 +393,7 @@ ACCUEIL DE L'ADMIN                          UN AXE OUVERT
 | PILOTAGE         [2 en cours]    |        | Tournoi 12 oct v  [######----] 62%   |
 |  lancer, superviser, valider     |        | En cours * LIVE |                    |
 +----------------------------------+        |                 | POSTES     28/30   |
-| GESTION              [12]        |        | Tableau de bord | Cible 7 HORS LIGNE!|
+| GESTION                          |        | Tableau de bord | Cible 7 HORS LIGNE!|
 |  inscriptions, paiements, exports|        | Supervision     | Cible 23 non ratt.!|
 +----------------------------------+        | Feu vert        |                    |
 | + Nouveau tournoi (modele)       |        | Completude    ! | A VALIDER      3   |
@@ -413,10 +413,12 @@ ACCUEIL DE L'ADMIN                          UN AXE OUVERT
   catastrophe classique (modifier le mauvais tournoi) reste évitée par construction.
 - **L'accueil porte l'assemblage** : la liste des tournois, leur création, leur cycle de vie. Ce geste
   n'appartient à aucun des trois axes, puisqu'il **crée l'objet** sur lequel deux d'entre eux travaillent.
-- **La recherche est en haut de la sidebar, toujours présente** — c'est le bénévole de la table qui
-  répond à un archer (`D-10`). Elle **change de nature selon l'axe** : archer *du tournoi* et ouverture
-  en **consultation** en pilotage ; toutes entités et ouverture en **modification** en atelier et en
-  gestion.
+- **La recherche est en haut de la sidebar** — c'est le bénévole de la table qui répond à un archer
+  (`D-10`). Elle **change de nature selon l'axe** : archer *du tournoi* et ouverture en
+  **consultation** en pilotage ; toutes entités et ouverture en **modification** en atelier et en
+  gestion. ⚠️ **Seule la variante « archer du tournoi » est livrée** (E14US003) : elle n'apparaît donc
+  que dans les axes qui ont un tournoi. La variante « toutes entités » de l'atelier relève du lot
+  suivant.
 
 **L'identité est une destination d'atelier — `D-28`.** L'organisateur y dépose **un logo et deux
 couleurs d'accent** ; le système dérive tout le reste (CDC design §3.6). Elle relève de l'atelier au

@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 30/07/2026** · **83 US livrées** · dernière : `E04US018` *(afficher la prochaine cible après validation — panneau de routage, canal n°1)*.
+**Dernière mise à jour : 30/07/2026** · **84 US livrées** · dernière : `E14US003` *(l'administration rangée en trois axes d'activité + une adresse par rôle)*.
 
 ---
 
@@ -443,6 +443,7 @@
 | E15US001 | Jeu d'essai : générer des inscrits + scénarios rejouables | E15 🆕 | ✅ |
 | E15US002 | Moteur de simulation éphémère + garde-fou (non-persistance) | E15 🆕 | ✅ *(rejeu in-memory, ADR-0054)* |
 | E15US003 | Bot pilote auto pausable + cockpit interactif multi-vues | E15 🆕 | ✅ *(session vivante + canal isolé, ADR-0055)* |
+| E14US003 | Admin rangée en **trois axes d'activité** + une adresse par rôle | E14 🆕 | ✅ *(ADR-0058 révise `D-19` ; ADR-0059 remplace ADR-0032)* |
 
 ## US caduque
 

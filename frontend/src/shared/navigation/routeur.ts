@@ -12,7 +12,7 @@
 // **Ce module est pur** (aucun accès au DOM) : c'est lui qui porte les décisions, donc c'est lui
 // qu'on teste. L'abonnement à `history` vit dans `useChemin.ts`, réduit à de la plomberie.
 
-import type { Role } from '../shared/stores/sessionRoleStore'
+import type { Role } from '../stores/sessionRoleStore'
 
 // Les cinq « mondes » adressables. `accueil` est l'écran de choix des quatre portes (E00US017).
 export type Monde = 'accueil' | 'public' | 'scoreur' | 'tablette' | 'admin'
