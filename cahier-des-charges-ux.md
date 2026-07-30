@@ -363,44 +363,66 @@ Sans risque sur un appareil personnel — et c'est précisément pourquoi **il n
 
 ### 7.1 Appli admin — ossature — `D-19`, `D-20`
 
-**Destinations** (~16, réparties en trois temps) :
+> **Révisé le 30/07/2026 (E14US003).** La version précédente groupait les destinations par **temps du
+> tournoi** (Préparation / Jour J / Après). Le commanditaire l'a refusée après l'avoir vue livrée :
+> « la sidebar fait vivre le tournoi sous tous ses états en même temps, je trouve cela confus ». Le
+> critère de découpage change de nature — voir [ADR-0058](docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md).
 
-- **Préparation** — Tournoi · **Identité** · Catégories · Blasons · Gabarit · Phases · Barèmes · Tarifs ·
-  **Scoreurs** · Clubs · Inscriptions · Placement
-- **Jour J** — **Supervision** · **Complétude** · Validation · Classements
-- **Après** — Classements · Podiums · Paiements · Exports · Archive · Audit
+**Le critère n'est pas *quand*, c'est *quelle activité*.** Un rangement temporel **coupe en morceaux**
+une activité qui dure : la gestion administrative commence des semaines avant le tournoi, encaisse
+pendant, exporte après. Rangée par temps, elle se retrouve dispersée dans les trois groupes — ce qui
+s'était effectivement produit dans le code livré (inscriptions et paiements sous *Préparation*, exports
+et archive sous *Jour J*, par simple ordre d'arrivée des US).
 
-**Ossature retenue : sidebar groupée par temps, tout cliquable en permanence.** Les groupes suivent la vie
-du tournoi ; le groupe du moment est ouvert, les autres repliés. **Replié ≠ interdit** — un clic sur
-*Préparation* et on inscrit un retardataire (`P-3`).
+**Trois axes de travail**, chacun avec son utilisateur, sa durée de vie et son tempo :
+
+| Axe | Ce qu'on y fait | Durée de vie | Utilisateur · tempo | Tournoi ? |
+|---|---|---|---|---|
+| **Atelier** | Fabriquer : catégories, blasons, clubs, salles types, barèmes, formats de déroulé, **modèles de tournoi réutilisables**, banc d'essai (jeu d'essai, simulation) | Pluriannuelle | Le concepteur du format · posé | **non** — patrimoine du club |
+| **Pilotage** | Tableau de bord, supervision, feu vert, complétude, classement en direct, postes de cible, staff, plan de salle, placement, plan de duels, départs | La journée | La table d'organisation · la seconde | oui |
+| **Gestion** | Inscriptions, doublons, paiements, exports, archive | De plusieurs semaines avant à après | Secrétaire, trésorier · le jour | oui |
+
+**Ossature retenue : un accueil admin choisit l'axe, puis la sidebar ne montre que cet axe.**
 
 ```
-+------------------+--------------------------------+
-| Tournoi 12 oct v |  SUPERVISION                   |
-| En cours  * LIVE |  ----------------------------- |
-| [ Rechercher.. ] |  Qualification    Volee 8/12   |
-|                  |  [##########------] 62%        |
-| PREPARATION    > |                                |
-| JOUR J         v |  POSTES            28/30       |
-|  > Supervision   |  Cible 7   HORS LIGNE   14mn ! |
-|    Completude  ! |  Cible 23  non rattachee     ! |
-|    Validation  3!|                                |
-|    Classements   |  A VALIDER              3      |
-| APRES          > |  Cible 3   attend 4mn 20   [>] |
-+------------------+--------------------------------+
-     240px               le reste
+ACCUEIL DE L'ADMIN                          UN AXE OUVERT
++----------------------------------+        +----------------+---------------------+
+| ATELIER          [sans tournoi]  |        | < Accueil      |  SUPERVISION        |
+|  briques, salles, formats, essai |        | PILOTAGE       |  ------------------ |
++----------------------------------+        | [ Rechercher.. ]  Qualif  Volee 8/12|
+| PILOTAGE         [2 en cours]    |        | Tournoi 12 oct v  [######----] 62%   |
+|  lancer, superviser, valider     |        | En cours * LIVE |                    |
++----------------------------------+        |                 | POSTES     28/30   |
+| GESTION                          |        | Tableau de bord | Cible 7 HORS LIGNE!|
+|  inscriptions, paiements, exports|        | Supervision     | Cible 23 non ratt.!|
++----------------------------------+        | Feu vert        |                    |
+| + Nouveau tournoi (modele)       |        | Completude    ! | A VALIDER      3   |
+| Liste des tournois (assemblage)  |        | Classement      | Cible 3  4mn20 [>] |
++----------------------------------+        +----------------+---------------------+
+                                                 240px            le reste
 ```
 
-**Deux éléments du wireframe qui ne sont pas des détails :**
+**Quatre éléments qui ne sont pas des détails :**
 
-- **La recherche est dans la sidebar, en haut, toujours présente** — c'est le bénévole de la table qui
-  répond à un archer (`D-10`).
-- **Le sélecteur de tournoi est au-dessus de tout** : tout ce qui est en dessous lui appartient. Évite la
-  catastrophe classique — modifier le mauvais tournoi.
+- **Un seul axe est ouvert à la fois** — donc plus d'en-têtes de groupe repliables : la liste est plate.
+  `P-3` est tenu autrement : l'accueil est à **un clic**, rien n'est interdit. Ce qui disparaît, c'est
+  d'avoir en permanence sous les yeux ce qu'on ne fera pas aujourd'hui.
+- **Le sélecteur de tournoi ne coiffe que les axes qui travaillent sur un tournoi.** L'atelier n'en a
+  pas : ses briques sont le patrimoine du club. L'exception « ici le sélecteur ne s'applique pas »
+  **disparaît au lieu d'être expliquée**. Dans les deux autres axes, il coiffe toujours tout — la
+  catastrophe classique (modifier le mauvais tournoi) reste évitée par construction.
+- **L'accueil porte l'assemblage** : la liste des tournois, leur création, leur cycle de vie. Ce geste
+  n'appartient à aucun des trois axes, puisqu'il **crée l'objet** sur lequel deux d'entre eux travaillent.
+- **La recherche est en haut de la sidebar** — c'est le bénévole de la table qui répond à un archer
+  (`D-10`). Elle **change de nature selon l'axe** : archer *du tournoi* et ouverture en
+  **consultation** en pilotage ; toutes entités et ouverture en **modification** en atelier et en
+  gestion. ⚠️ **Seule la variante « archer du tournoi » est livrée** (E14US003) : elle n'apparaît donc
+  que dans les axes qui ont un tournoi. La variante « toutes entités » de l'atelier relève du lot
+  suivant.
 
-**L'identité est une destination de préparation — `D-28`.** L'organisateur y dépose **un logo et deux
-couleurs d'accent** ; le système dérive tout le reste (CDC design §3.6). Elle est rangée dans *Préparation*
-au titre de `P-6` — **tout ce qui s'identifie se prépare à l'avance** : le jour J, on distribue et on pilote,
+**L'identité est une destination d'atelier — `D-28`.** L'organisateur y dépose **un logo et deux
+couleurs d'accent** ; le système dérive tout le reste (CDC design §3.6). Elle relève de l'atelier au
+titre de `P-6` — **tout ce qui s'identifie se prépare à l'avance** : le jour J, on distribue et on pilote,
 **on ne choisit pas des couleurs**. Comme toute destination, elle **reste accessible en permanence** (`P-3`).
 Deux exigences la distinguent d'un simple formulaire :
 
@@ -424,8 +446,9 @@ Deux exigences la distinguent d'un simple formulaire :
 ```
 
 **Accueil contextualisé — `D-20`.** *Accessible* et *au premier plan* sont deux choses différentes. La
-sidebar est un **squelette stable** ; ce qui change avec le statut du tournoi, c'est **l'accueil** et les
-**états portés par les entrées** (`3!`, `62%`, `HORS LIGNE`) :
+sidebar d'un axe est un **squelette stable** ; ce qui change avec le statut du tournoi, c'est
+**l'accueil-tableau de bord** — destination d'ouverture du **pilotage** — et les **états portés par les
+entrées** (`3!`, `62%`, `HORS LIGNE`) :
 
 | Statut (**7 statuts** — [ADR-0026](../docs/adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md), E01US017) | Accueil | Registre |
 |---|---|---|
@@ -437,8 +460,9 @@ sidebar est un **squelette stable** ; ce qui change avec le statut du tournoi, c
 | **Archivé** | Résultats & exports, **lecture seule** | Verrou total (EPIC-11) |
 | **Annulé** | Page d'état « annulé » | Trace conservée, aucune action |
 
-**Ce n'est pas une restriction** (`P-3`) : les 15 destinations restent à un clic. C'est une priorité
-d'affichage — **l'avancement décide de ce que l'admin voit en premier.**
+**Ce n'est pas une restriction** (`P-3`) : les destinations du pilotage restent à un clic, et les deux
+autres axes à deux (l'accueil, puis l'axe). C'est une priorité d'affichage — **l'avancement décide de ce
+que l'admin voit en premier.**
 
 **La console de supervision — l'écran que le besoin « voir l'avancement » réclamait réellement.** Ce n'est
 pas un graphique de progression : c'est **une console de supervision de 30 postes**.
@@ -800,7 +824,7 @@ viendront comme features dédiées ».
 | **D-16** | Alerte par **calcul d'impact** : pas d'impact → pas d'alerte | Actée | 0.1 | — |
 | **D-17** | **Sportif vs hors sportif** : « terminé » ne fige que le sportif ; les paiements restent ouverts | Actée | 0.1 | E01US002 (cycle de vie) |
 | **D-18** | **Complétude** affichée, sportif et tiers comptés séparément | Actée | 0.1 | Réponse à « afficher l'avancement » |
-| **D-19** | Ossature admin : **sidebar groupée par temps**, tout cliquable ; repli pour le plan de salle | Actée | 0.1 | — |
+| **D-19** | Ossature admin : **trois axes d'activité** (atelier hors tournoi · pilotage · gestion), un accueil choisit l'axe, un seul axe ouvert à la fois ; repli pour le plan de salle | **Révisée** | 0.3 | Remplace « sidebar groupée par temps », refusée par le commanditaire le 30/07/2026 après livraison — [ADR-0058](docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md) |
 | **D-20** | **Accueil contextualisé** par le statut ; *accessible* ≠ *au premier plan* | Actée | 0.1 | — |
 | **D-21** | Écran de salle = **poste de l'appli publique** ; déroulé par défaut + prise de contrôle admin | Actée | 0.1 | E07US004 |
 | **D-22** | Bascule de tour : **l'admin lance** ; tout est prêt **avant** l'appui ; bouton chiffré | Actée | 0.1 | — |

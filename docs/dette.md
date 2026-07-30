@@ -49,6 +49,8 @@
 | [DETTE-020](#dette-020--le-libellé-de-tour-a-deux-domiciles) | conception | mineur | `backend/domain/tableau.py` (`libelle_tour`), `frontend/src/features/saisie-duels/duel.ts` (`libelleTour`) | Le nom d'un tour de tableau (« quart de finale », « petite finale ») est calculé **deux fois**, avec le même raisonnement (distance à la finale, `place_en_jeu` prioritaire) et des **sorties différentes** : le domaine rend le **singulier** (« Quart de finale », pour *un* archer), le front le **pluriel** (« Quarts de finale », pour un *titre de section ») et suffixe la petite finale (« Petite finale (3ᵉ place) ») | Les deux se lisent **sur le même écran, à un tap d'intervalle** (liste des duels puis panneau de routage). Aucun des deux libellés n'est faux dans son contexte, mais la **règle** est dupliquée : la prochaine évolution du vocabulaire (barrage, repêchage) devra se faire en deux endroits, dans deux langages. [ADR-0006](adr/0006-vocabulaire-metier-francais.md) veut un domicile unique pour le vocabulaire métier | E04US018 (2ᵉ occurrence ; la 1ʳᵉ est E04US013) | US `refactor/` — un seul domicile, le **domaine** : exposer `libelle` sur le DTO de duel comme sur celui de routage, retirer `libelleTour`/`estPetiteFinale` du front (`grouperParTour` groupe déjà par libellé, il consommerait celui du serveur). Le singulier/pluriel se règle alors par un paramètre du domaine, pas par une seconde implémentation. Marqueurs `# DETTE-020` / `// DETTE-020` sur les deux sites |
 | [DETTE-021](#dette-021--le-feu-vert-lance-un-duel-dont-les-duellistes-sont-séparés) | conception | **majeur** | `backend/application/pilotage_tour.py` (`_duel_a_venir`, `_blocage`), `frontend/src/features/feu-vert/` | Le feu vert juge un duel « prêt à lancer » dès que **chacun** des deux occupants a *une* cible (`cible_haut is not None and cible_bas is not None`), sans jamais vérifier que c'est **la même** ni qu'ils sont **côte à côte**. Il affiche alors « prêt · cibles 4 et 7 » et **lance** le tour. Le panneau de routage (E04US018) porte, lui, l'alerte dérivée du domaine (`duels_separes`) | Le plan de duels est **persisté** mais l'appariement est **recalculé** à chaque lecture (ADR-0023) : une correction de score suffit à les désaccorder. Les deux écrans se **contredisent** alors — la tablette de l'archer avertit, l'écran de l'organisateur dit « prêt » et fait partir le tour, trace d'audit `LANCEMENT` à l'appui. C'est le canal qui donne l'**ordre**, donc celui où l'erreur coûte le plus | E12US002 (le défaut y est né) ; **constaté** le 30/07/2026 à la revue d'E04US018 (axe adversarial), qui a fermé le trou côté routage et rendu la divergence visible | US `fix/` dédiée — `DuelAVenir` porte le signal `duels_separes` (déjà calculé par `ServicePlacementDuels`, aucun calcul neuf), `_blocage` le nomme, l'écran Feu vert l'affiche en ambre. **Ne pas** en faire un `pret_a_lancer=False` : `P-3`, l'appli montre et n'empêche pas — et E03US009 **accepte** un duel séparé quand les cibles sont trop petites. Marqueur `# DETTE-021` posé |
 | [DETTE-022](#dette-022--forfaits-de-la-phase-de-qualification-résolus-sur-4-sites) | conception | mineur | `backend/application/classements.py`, `backend/application/completude.py` (×2), `backend/application/saisie.py` | « Résoudre la phase de qualification puis lire ses forfaits » est écrit à **quatre** endroits, sous trois formes (`list[Forfait]`, `set`, `frozenset`). `completude.py` avait posé le rendez-vous dans son propre commentaire : « 2ᵉ occurrence, on extraira au **3ᵉ cas**, pas avant » | Faible : le motif est stable. Mais le seuil que le projet s'était lui-même fixé **dans le code** est franchi, et un 5ᵉ producteur re-dupliquera par mimétisme. Jumelle de DETTE-006 et DETTE-017 | E04US018 (4ᵉ site, `ServiceSaisie._forfaits_qualif`) | US `refactor/` — une lecture partagée `forfaits_qualif(tournoi_id) -> frozenset[ArcherId]`, 4 appelants, zéro changement de comportement. Marqueurs `# DETTE-022` sur les 4 sites |
+| [DETTE-023](#dette-023--latelier-affiche-des-briques-encore-scopées-par-tournoi) | conception | majeur | `frontend/src/features/admin/CoquilleAdmin.tsx` (axe `atelier`) | Le découpage en trois axes (E14US003) range **Catégories, Blasons, Barème & validation, Phases** dans l'**atelier**, dont la promesse est « hors tournoi, patrimoine du club ». Or leurs endpoints portent encore un `tournoi_id` (`/tournois/{id}/categories`, `/tournois/{id}/blasons`, `/tournois/{id}/bareme-qualification`, `/tournois/{id}/phases`) : ces quatre destinations exigent donc un tournoi courant, que l'axe ne propose pas de choisir. **Seuls `Clubs` et `Gabarits` tiennent la promesse** — ils sont réellement globaux | L'atelier affiche « Choisissez un tournoi ci-dessus » sur 4 de ses 8 destinations, sans sélecteur pour le faire : l'axe est **incohérent avec son propre intitulé** tant que les briques ne sont pas libérées. Le contournement du jour est d'entrer par le pilotage pour fixer le tournoi courant, puis de revenir — soit exactement le mélange que le découpage supprime | E14US003 (découpage livré **avant** la libération des briques, choix assumé : la structure d'abord, le modèle de données ensuite) | Lot « atelier » — sortir ces briques du périmètre d'un tournoi (bibliothèque globale + copie à l'assemblage, sur le patron déjà éprouvé de `gabarits` : `/gabarits` global + `/tournois/{id}/gabarit` instance, E01US007). Tranché avec le commanditaire le 30/07/2026 : briques **copiées** à l'assemblage, modification locale au tournoi, promotion remontante explicite. Marqueur `# DETTE-023` en tête de `CoquilleAdmin.tsx` |
+| [DETTE-024](#dette-024--routeur-maison-plutôt-quune-bibliothèque) | conception | mineur | `frontend/src/shared/navigation/routeur.ts`, `frontend/src/shared/navigation/useChemin.ts` | Le routage par rôle (E14US003, [ADR-0059](adr/0059-routage-par-role-dans-l-url-routeur-maison.md)) est assuré par ~110 lignes maison au lieu d'une bibliothèque : `history.pushState` + `popstate` + `useSyncExternalStore`, plus deux fonctions pures d'analyse et de construction de chemins. Motif double : `react-router-dom` ≥ 7.12.0 tire un `react-router` dans la plage vulnérable de `GHSA-qwww-vcr4-c8h2` (mode RSC, inatteignable ici mais l'audit doit rester vert — règle 11), et l'installation de la version corrigée `react-router@8.3.0` est bloquée sur le poste | Faible aujourd'hui : le besoin est de cinq mondes et deux segments, sans route imbriquée ni garde déclarative, et les décisions d'aiguillage sont **pures et testées** (24 tests). Ce qui manquera si le produit grossit : routes imbriquées, chargement différé par route, gardes déclaratives, `<Link>` avec préchargement. Le coût se paiera au **premier** de ces besoins, pas avant | E14US003 (ADR-0059) | Remplacer par `react-router@8.3.0` quand l'installation est possible. Le remplacement est **borné par construction** : `routeur.ts` est pur et `useChemin.ts` ne fait que l'abonnement — seuls ces deux fichiers et trois appels à `naviguer` (`App`, `ChangerDeRole`, `EspacePoste`) sont concernés. Marqueur : en-tête de `routeur.ts` |
 
 ## Dette résorbée
 
@@ -987,6 +989,80 @@ signale et le trace ici.
 `forfaits_qualif(tournoi_id) -> frozenset[ArcherId]` dans `application/`, 4 appelants, zéro
 changement de comportement. Retirer au passage la phrase « on extraira au 3ᵉ cas » de
 `completude.py`, devenue fausse. Marqueurs `# DETTE-022` sur les 4 sites.
+
+### DETTE-023 — l'atelier affiche des briques encore scopées par tournoi
+
+**Constat.** E14US003 remplace le découpage temporel de l'appli admin (Préparation / Jour J) par
+trois **axes d'activité** : atelier, pilotage, gestion. L'atelier annonce « fabriquer, **hors
+tournoi** » — c'est le patrimoine du club, il vit d'année en année. Huit destinations y sont rangées,
+mais **quatre ne tiennent pas la promesse** :
+
+| Destination | Endpoint | Tient la promesse ? |
+|---|---|---|
+| Clubs | `/clubs` | ✅ réellement global |
+| Gabarits (salles types) | `/gabarits` + `/tournois/{id}/gabarit` | ✅ patron modèle → instance (E01US007) |
+| Catégories | `/tournois/{id}/categories` | ❌ scopé tournoi |
+| Blasons | `/tournois/{id}/blasons` | ❌ scopé tournoi |
+| Barème & validation | `/tournois/{id}/bareme-qualification` | ❌ scopé tournoi |
+| Phases (format) | `/tournois/{id}/phases` | ❌ scopé tournoi |
+| Jeu d'essai · Simulation | outils | ✅ (le jeu d'essai gère l'absence de tournoi) |
+
+**Conséquence.** L'axe atelier affiche « Choisissez un tournoi ci-dessus » sur la moitié de ses
+destinations — sans proposer de sélecteur, puisque par construction il n'en a pas. Le contournement
+du jour consiste à entrer par le pilotage pour fixer le tournoi courant, puis à revenir dans
+l'atelier : soit **exactement le mélange que le découpage supprime**. C'est une incohérence visible
+par l'utilisateur, d'où la sévérité **majeur** — mais elle ne casse aucun cas d'usage existant : les
+quatre écrans fonctionnent comme avant, seule leur place a changé.
+
+**Pourquoi non corrigée dans cette US.** Libérer les briques est un changement de **modèle de
+données** (bibliothèque globale + copie à l'assemblage, migrations Alembic, ADR sur la portée des
+briques) qui pèse plus que le découpage lui-même. Le commanditaire a demandé de voir la structure
+**vite** ; la livrer avant le modèle est un choix assumé, pas un oubli. Le préchargement FFTA
+(`precharger_ffta`, E01US022) est d'ailleurs le symptôme de fond : il **recrée** les quatre blasons
+canoniques à chaque tournoi, faute de patrimoine où les ranger.
+
+**Résorption attendue.** Lot « atelier » (déjà cadré) : sortir catégories, blasons, barèmes et phases
+du périmètre d'un tournoi, sur le patron **déjà éprouvé** de `gabarits`. Décidé avec le commanditaire
+le 30/07/2026 : la brique est **copiée** à l'assemblage (le tournoi porte son propre matériau, donc
+l'archive reste vraie), la modification est **locale** au tournoi, et une modification déclarée
+**permanente remonte** dans la brique de l'atelier. Marqueur `# DETTE-023` en tête de
+`CoquilleAdmin.tsx`.
+
+### DETTE-024 — routeur maison plutôt qu'une bibliothèque
+
+**Constat.** E14US003 donne une adresse à chaque monde (`/public`, `/scoreur`, `/cible`,
+`/admin/<axe>/<destination>`). Le routage est écrit à la main, en ~110 lignes réparties sur deux
+fichiers : `shared/navigation/routeur.ts` (**pur** — analyse et construction de chemins,
+correspondance monde ↔ rôle) et `shared/navigation/useChemin.ts` (l'abonnement à `history`, via
+`useSyncExternalStore`).
+
+**Pourquoi pas une bibliothèque.** Le commanditaire avait tranché pour `react-router-dom`. Deux faits
+ont refermé l'arbitrage le jour même :
+
+1. **sécurité** — toutes les versions `≥ 7.12.0` dépendent d'un `react-router` dans la plage vulnérable
+   de l'avis `GHSA-qwww-vcr4-c8h2` (contournement CSRF en mode RSC). Le trou n'est **pas atteignable**
+   dans une SPA purement cliente servie en statique, mais la **règle 11** exige un `npm audit` vert ;
+2. **la version corrigée n'a pas pu être installée** — `react-router@8.3.0` existe et convient
+   (peer deps React ≥ 19.2.7, exactement ce que le projet a), mais `npm install` est bloqué par une
+   règle de permission du poste. Déclarer la dépendance sans l'installer produirait une **dépendance
+   fantôme**, que la règle 11 qualifie de bloquante.
+
+**Conséquence.** Ce qui manque, et qui manquera au premier besoin réel : routes **imbriquées**,
+**chargement différé** par route, **gardes déclaratives**, `<Link>` avec préchargement. Aucun de ces
+besoins n'existe aujourd'hui — cinq mondes, deux segments d'admin, et des gardes déjà écrites en
+fonctions pures testées (`mondeAServir`, `peutChangerDeRole`, `resoudreRole`).
+
+**Pourquoi la sévérité est *mineure*.** Le code n'est ni faux ni fragile : les décisions sont pures et
+couvertes par 24 tests, le comportement critique du jour J (conservation de `?poste=<code>` pour les
+QR déjà imprimés) est prouvé par un test dédié. C'est une dette de **conception assumée**, pas un
+raccourci d'implémentation.
+
+**Résorption attendue.** Remplacer par `react-router@8.3.0` quand l'installation redevient possible.
+Le remplacement est **borné par construction** : `routeur.ts` est pur et `useChemin.ts` ne fait que
+l'abonnement — seuls ces deux fichiers et les appels à `naviguer` (`App`, `ChangerDeRole`,
+`EspacePoste`, `CoquilleAdmin`) sont concernés. Ils vivent sous `shared/navigation/` et non sous
+`app/` : une **feature ne doit pas importer le shell** (inversion relevée en revue). Le marqueur vit en tête de `routeur.ts`, avec l'historique complet de
+l'arbitrage.
 
 ## Procédure — inscrire une dette
 

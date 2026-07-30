@@ -214,8 +214,18 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
   d'imprimer pour rattacher une tablette. Détail dans
   [`2026-07-27-21h01-acces-reseau-et-qr-a-l-ecran.md`](2026-07-27-21h01-acces-reseau-et-qr-a-l-ecran.md).
 
-### 8. L'interface d'administration — *coquille posée + accueil contextualisé*
+### 8. L'interface d'administration — *rangée en trois axes de travail*
 
+- L'administration s'ouvre sur **trois cartes** — **Atelier** (fabriquer ce qui ressert d'une année
+  sur l'autre, **sans tournoi**), **Pilotage** (faire tourner la journée), **Gestion**
+  (inscriptions, paiements, exports). On entre dans un axe et on ne voit **que** ses écrans. Le
+  rangement précédent suivait le *temps du tournoi* et, en pratique, l'ordre de développement : il
+  alignait 25 entrées dans deux tiroirs et coupait en morceaux les activités qui durent. Détail dans
+  [`2026-07-30-19h05-admin-en-trois-axes.md`](2026-07-30-19h05-admin-en-trois-axes.md).
+- **Chaque écran a une adresse** (`…/admin/12/pilotage/supervision`) : un rafraîchissement ne fait
+  plus perdre son écran ni son tournoi, un lien s'envoie, et plusieurs écrans s'ouvrent côte à côte
+  pour vérifier le produit. Les quatre mondes ont la leur — `/public`, `/scoreur`, `/cible`,
+  `/admin` — et **les QR déjà imprimés continuent de fonctionner**.
 - L'**ossature de navigation** de l'application admin (la coquille dans laquelle les écrans viennent
   se loger).
 - Un **écran d'accueil qui demande le rôle de l'appareil** au premier lancement — **Tablette**,
@@ -368,7 +378,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **83 US livrées** sur `main` (mergées, revues, CI verte) à la date du 30/07/2026. **`SUIVI-US.md`
+- **84 US livrées** sur `main` (mergées, revues, CI verte) à la date du 30/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès

@@ -6,6 +6,7 @@
 // qu'un rechargement ne renvoie jamais sur l'écran de choix* (résilience jour J).
 
 import type { Role } from '../shared/stores/sessionRoleStore'
+import type { Monde } from '../shared/navigation/routeur'
 
 export interface EtatEntree {
   // Choix explicite mémorisé à l'écran d'accueil (null tant qu'aucune porte n'a été franchie).
@@ -48,4 +49,30 @@ export function peutChangerDeRole(
 ): boolean {
   const tabletteVerrouillee = role === 'tablette' && (estPoste || codePosteUrl)
   return role !== null && !tabletteVerrouillee
+}
+
+// Quel monde servir, maintenant que **l'adresse** est une source d'entrée à part entière (E14US003) —
+// et faut-il corriger l'adresse pour qu'elle dise la vérité ? Fonction **pure**, comme ses deux
+// voisines, parce que c'est là que se joue l'aiguillage d'entrée.
+//
+// Ordre de précédence, prolongement direct de celui d'ADR-0042 :
+//  1. **le verrou de poste** (`D-13`) prime sur tout, y compris sur l'adresse : une tablette rattachée
+//     ou arrivée par QR ne sort pas de son écran parce qu'on a tapé `/admin` dans la barre ;
+//  2. **l'adresse**, si elle nomme un monde — c'est un geste explicite, au même titre qu'un tap sur
+//     une porte, et il doit gagner sur un choix mémorisé plus ancien (sinon un lien envoyé à un
+//     bénévole n'ouvrirait jamais le bon écran) ;
+//  3. **le choix mémorisé ou une session héritée** (`resoudreRole`) quand l'adresse est la racine.
+//     L'adresse est alors **corrigée** pour refléter le monde servi : sans ça, un rechargement
+//     retomberait sur la racine et l'utilisateur croirait avoir perdu sa session.
+export function mondeAServir(
+  mondeUrl: Monde,
+  etat: EtatEntree,
+): { monde: Monde; corrigerUrl: boolean } {
+  if (etat.estPoste || etat.codePosteUrl) {
+    return { monde: 'tablette', corrigerUrl: mondeUrl !== 'tablette' }
+  }
+  if (mondeUrl !== 'accueil') return { monde: mondeUrl, corrigerUrl: false }
+  const role = resoudreRole(etat)
+  if (role === null) return { monde: 'accueil', corrigerUrl: false }
+  return { monde: role, corrigerUrl: true }
 }

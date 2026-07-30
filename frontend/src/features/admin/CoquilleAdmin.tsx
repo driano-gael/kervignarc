@@ -1,32 +1,52 @@
-// Coquille de navigation de l'appli admin (E00US015) — ossature du CDC UX §7.1 (`D-19`, `D-20`).
+// Coquille de navigation de l'appli admin (E00US015, refondue en E14US003).
 //
-// Remplace l'écran monolithique `competition/TrancheVerticale.tsx`, qui empilait ~14 sections dans
-// une seule carte, sans navigation. Désormais :
-//  - une **sidebar** groupe les destinations par **temps du tournoi** (Préparation / Jour J) et
-//    n'affiche **qu'une** destination à la fois dans la zone principale ; toutes restent accessibles
-//    en permanence (`P-3`, replié ≠ interdit) ;
-//  - le **sélecteur de tournoi coiffe** la navigation — tout ce qui est en dessous lui appartient
-//    (évite la faute classique : modifier le mauvais tournoi) ;
-//  - l'**accueil est contextualisé** par le statut du tournoi (`D-20`) : c'est une **priorité
-//    d'affichage, pas une restriction** — les autres destinations restent à un clic.
+// **Le découpage a changé de nature le 30/07/2026.** L'ossature groupait les destinations par
+// **temps du tournoi** (Préparation / Jour J) — 19 entrées d'un côté, 6 de l'autre. Le commanditaire
+// l'a refusé : « la sidebar fait vivre le tournoi sous tous ses états en même temps, je trouve cela
+// confus ». Le critère n'est plus *quand*, c'est **quelle activité** — trois axes :
 //
-// Navigation par **état local `useState`** (pas de `react-router`) — arbitrage du 18/07/2026 : le
-// périmètre (réseau local, pas de deep-link ni d'URL partagée) ne justifie pas la dépendance
-// (règle 11) ; à réévaluer si un vrai besoin d'URL apparaît.
+//  - **atelier** — fabriquer, **hors tournoi** : briques du club, salles types, formats, banc d'essai ;
+//  - **pilotage** — le temps réel : lancer, superviser, valider, faire tourner la journée ;
+//  - **gestion** — l'administratif, **transverse au temps** : inscriptions, paiements, exports.
 //
-// Périmètre borné aux **fonctions livrées** (CA « non-régression ») : les destinations que le §7.1
-// prévoit mais qui n'existent pas encore (Identité, Validation, Podiums, Audit)
-// ne sont **pas** matérialisées par des entrées vides — elles arriveront avec leur US. « Exports »
-// (E09US003) et « Archive » (E11US003) sont désormais livrées, dans le groupe Jour J. La
-// **recherche d'archer** (E12US006, `D-19`) est désormais livrée : champ permanent en tête de la
-// sidebar, hors du système de destinations (elle coiffe, elle ne s'ouvre pas dans la zone principale).
-// « Complétude » (E12US005) est désormais livrée, dans le groupe Jour J. L'**accueil contextualisé**
-// est désormais un **écran** à part entière (E14US001, `Accueil`) : frise du cycle de vie 7 statuts
-// (ADR-0026, front aligné en E14US001) + checklist « à faire » (complétude) + chiffres-clés & alertes
-// (supervision, paiements). Choisir un tournoi ouvre sur son accueil, quel que soit son statut — la
-// contextualisation se joue **dans** l'écran, plus dans le choix de la destination d'ouverture.
+// Pourquoi ce n'est pas un renommage : un rangement **temporel coupe en morceaux** une activité qui
+// dure. La gestion administrative en était la preuve — inscriptions, doublons et paiements étaient
+// rangés dans « Préparation », exports et archive dans « Jour J ». Personne ne l'avait décidé : c'était
+// l'ordre d'arrivée des US, une entrée de sidebar par US livrée.
+//
+// Conséquences de structure :
+//  - **un accueil admin choisit l'axe** (`axeActif === null`), et porte l'**assemblage** — la liste
+//    des tournois, leur création, leur cycle de vie. Un seul axe est ouvert à la fois : les groupes
+//    repliables disparaissent, la sidebar ne montre que les destinations de l'axe courant. `P-3` est
+//    respecté — l'accueil est à un clic, rien n'est interdit — mais on n'est plus *pollué* par les
+//    deux autres axes.
+//  - **le sélecteur de tournoi ne coiffe plus tout** : l'atelier n'a **pas** de tournoi (patrimoine du
+//    club), donc le sélecteur n'apparaît que dans les axes qui en ont besoin. L'exception « ici le
+//    sélecteur ne s'applique pas » disparaît au lieu d'être expliquée.
+//  - l'**accueil-tableau de bord** (E14US001) et le **cockpit de simulation** (E15US003) cessent
+//    d'être des destinations parmi dix-neuf : le premier est la destination d'ouverture du pilotage
+//    (`D-20`), le second l'entrée du banc d'essai de l'atelier.
+//
+// **Chaque écran a son adresse** : `/admin` ouvre l'accueil des axes, `/admin/12/pilotage/supervision`
+// ouvre un écran précis **sur un tournoi précis**. Le tournoi, l'axe et la destination ne sont donc
+// **pas** dupliqués en état local — c'est ce qui fait qu'un `F5` revient là où l'on était et qu'un lien
+// s'ouvre sur la même vue. Routeur **maison** (`shared/navigation/routeur.ts`), pas de dépendance :
+// cf. son en-tête pour le pourquoi (ADR-0059).
+//
+// Périmètre borné aux **fonctions livrées** (CA « non-régression ») : les destinations que le CDC UX
+// prévoit mais qui n'existent pas encore (Identité, Validation, Podiums, Audit) ne sont **pas**
+// matérialisées par des entrées vides — elles arriveront avec leur US. La **recherche d'archer**
+// (E12US006, `D-19`) reste hors du système de destinations : elle coiffe la sidebar, elle ne s'ouvre
+// pas dans la zone principale. Elle est scopée au tournoi courant, donc n'apparaît que dans les axes
+// qui en ont un — sa variante « toutes entités » pour l'atelier relève du lot suivant.
+//
+// **DETTE-023 — l'atelier montre encore des briques scopées par tournoi.** Catégories, Blasons,
+// Barème et Phases sont rangés dans l'atelier (c'est leur place : patrimoine du club) mais leurs
+// endpoints portent encore un `tournoi_id` (`/tournois/{id}/categories`, `/tournois/{id}/blasons`…) :
+// ils exigent donc un tournoi courant, ce qui contredit la promesse de l'axe. Le découpage est livré
+// **avant** la libération des briques, volontairement — voir le registre de dette.
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Accueil } from '../accueil/Accueil'
 import { Archers } from '../archers/Archers'
 import { Archive } from '../archive/Archive'
@@ -60,6 +80,17 @@ import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { AideEcran } from '../../shared/ui/AideEcran'
 import { ConnexionAdmin } from './ConnexionAdmin'
 import { AIDE_ECRANS, type DestinationAdminId } from './aide-ecrans'
+import {
+  AXES,
+  AXE_PAR_DESTINATION,
+  analyserSegmentsAdmin,
+  destinationParDefaut,
+  destinationValide,
+  segmentsAdmin,
+  type Axe,
+} from './axes'
+import { analyserChemin, construireChemin } from '../../shared/navigation/routeur'
+import { naviguer, useChemin } from '../../shared/navigation/useChemin'
 import { BadgeStatut } from '../competition/BadgeStatut'
 import { GestionTournois } from '../tournois/Tournois'
 
@@ -79,44 +110,50 @@ export function CoquilleAdmin() {
 }
 
 // ————————————————————————————————————————————————————————————————————————————————————————————————
-// Coquille admin : sélecteur de tournoi + sidebar groupée par temps + zone principale.
+// Coquille admin : accueil des trois axes, puis sidebar de l'axe courant + zone principale.
 // ————————————————————————————————————————————————————————————————————————————————————————————————
-
-type Temps = 'preparation' | 'jourj'
-
-const GROUPES: { temps: Temps; libelle: string }[] = [
-  { temps: 'preparation', libelle: 'Préparation' },
-  { temps: 'jourj', libelle: 'Jour J' },
-]
-
-// Destination d'ouverture quand on choisit un tournoi (`D-20`) : **toujours** l'accueil-tableau de
-// bord (E14US001). C'est lui qui se contextualise par statut (frise, checklist, chiffres) — inutile
-// donc d'aiguiller vers des écrans différents selon le statut. Les autres destinations restent à un
-// clic (`P-3`, priorité d'affichage, pas restriction).
-function destinationParDefaut(): { id: string; groupe: Temps } {
-  return { id: 'accueil', groupe: 'preparation' }
-}
 
 function Coquille() {
   const tournois = useTournois()
-  const [tournoiId, setTournoiId] = useState<number | null>(null)
-  const [destinationActive, setDestinationActive] = useState<string>('tournoi')
-  const [groupeOuvert, setGroupeOuvert] = useState<Temps>('preparation')
+  // **Le tournoi, l'axe et la destination vivent tous les trois dans l'adresse** (E14US003) :
+  // `/admin` = l'accueil qui choisit l'axe, `/admin/12/pilotage/supervision` = un écran précis sur un
+  // tournoi précis. **Rien n'est dupliqué en état local** — c'est ce qui fait qu'un `F5` revient
+  // exactement où l'on était, et qu'un lien s'ouvre sur la même vue.
+  //
+  // Le tournoi était resté en `useState` dans la première version : l'axe et l'écran survivaient au
+  // rechargement, mais pas leur **sujet** — donc 21 destinations sur 24 retombaient sur « choisissez
+  // un tournoi ». Défaut relevé par les cinq axes de revue.
+  const chemin = useChemin()
+  const {
+    tournoiId,
+    axe: axeActif,
+    destinationDemandee,
+  } = analyserSegmentsAdmin(analyserChemin(chemin).segments)
 
   // Version **fraîche** du tournoi courant : après un démarrer/terminer, la liste est invalidée et
   // re-lue, ce qui rafraîchit le statut ici (badge, accueil) sans état local à synchroniser.
   const courant =
     tournoiId === null ? null : (tournois.data?.find((t) => t.id === tournoiId) ?? null)
 
-  // Choisir un tournoi le rend courant **et** saute à son accueil contextualisé (`D-20`). On ne le
-  // fait qu'au **changement de tournoi**, pas à chaque changement de statut : démarrer un tournoi
-  // ne doit pas arracher l'admin de l'écran où il travaille (la priorité d'affichage guide, elle ne
-  // contraint pas — `P-3`). Le badge, lui, se met à jour en direct.
-  const choisirTournoi = (t: Tournoi) => {
-    setTournoiId(t.id)
-    const defaut = destinationParDefaut()
-    setDestinationActive(defaut.id)
-    setGroupeOuvert(defaut.groupe)
+  // Toute navigation d'administration passe par ici : le tournoi courant est **reconduit** d'un écran
+  // à l'autre et d'un axe à l'autre, puisqu'il fait partie de l'adresse.
+  const allerA = (axe: Axe, destination: DestinationAdminId, tournoi = tournoiId) =>
+    naviguer(
+      construireChemin({ monde: 'admin', segments: segmentsAdmin(tournoi, axe, destination) }),
+    )
+
+  const entrerDansAxe = (axe: Axe) => allerA(axe, destinationParDefaut(axe))
+
+  // Choisir un tournoi **depuis l'accueil** le rend courant et ouvre son **pilotage** sur l'accueil
+  // contextualisé (`D-20`) : c'est le geste « je viens m'occuper de ce tournoi ».
+  const entrerDansTournoi = (t: Tournoi) =>
+    allerA('pilotage', destinationParDefaut('pilotage'), t.id)
+
+  // Changer de tournoi **depuis le sélecteur**, à l'intérieur d'un axe : on reste où l'on travaille.
+  // Ne pas arracher l'admin de son écran est le pendant de `P-3` — la priorité d'affichage guide,
+  // elle ne contraint pas. Le badge de statut, lui, se met à jour en direct.
+  const changerTournoi = (t: Tournoi) => {
+    if (axeActif !== null && active !== undefined) allerA(axeActif, active.id, t.id)
   }
 
   // Chaque destination = une **feature autonome** montée par **une seule entrée** (guide §8). Les
@@ -127,23 +164,15 @@ function Coquille() {
     // Typé par l'union des `id` d'aide (et non `string`) : ajouter une destination sans son entrée
     // dans `AIDE_ECRANS` ne compile plus — la couverture « une aide par écran » (E14US002) est
     // garantie par `tsc`, plus par une vérification manuelle.
-    id: DestinationAdminId
+    // `tournoi` est exclue : elle a quitté les destinations pour l'accueil (l'assemblage).
+    id: Exclude<DestinationAdminId, 'tournoi'>
     libelle: string
-    groupe: Temps
     besoinTournoi: boolean
     rendu: () => ReactNode
   }[] = [
     {
-      id: 'tournoi',
-      libelle: 'Tournoi',
-      groupe: 'preparation',
-      besoinTournoi: false,
-      rendu: () => <GestionTournois selectionneId={tournoiId} onChoisi={choisirTournoi} />,
-    },
-    {
       id: 'accueil',
       libelle: 'Accueil (tableau de bord)',
-      groupe: 'preparation',
       // Accueil-tableau de bord contextualisé (E14US001, `D-20`) : la « photo d'ensemble » du tournoi
       // courant (frise, checklist, chiffres). Destination d'ouverture par défaut (`destinationParDefaut`).
       besoinTournoi: true,
@@ -152,35 +181,30 @@ function Coquille() {
     {
       id: 'categories',
       libelle: 'Catégories',
-      groupe: 'preparation',
       besoinTournoi: true,
       rendu: () => courant && <Categories tournoiId={courant.id} />,
     },
     {
       id: 'blasons',
       libelle: 'Blasons',
-      groupe: 'preparation',
       besoinTournoi: true,
       rendu: () => courant && <Blasons tournoiId={courant.id} />,
     },
     {
       id: 'gabarits',
       libelle: 'Gabarits (modèles)',
-      groupe: 'preparation',
       besoinTournoi: false,
       rendu: () => <Gabarits />,
     },
     {
       id: 'plan',
       libelle: 'Plan de salle',
-      groupe: 'preparation',
       besoinTournoi: true,
       rendu: () => courant && <PlanDeSalle tournoiId={courant.id} />,
     },
     {
       id: 'bareme',
       libelle: 'Barème & validation',
-      groupe: 'preparation',
       besoinTournoi: true,
       // Le grain de validation se règle sur la même phase que le barème et n'a de sens qu'une fois
       // celui-ci défini (E01US015) : les deux vont ensemble sur une même destination.
@@ -195,7 +219,6 @@ function Coquille() {
     {
       id: 'phases',
       libelle: 'Phases (format)',
-      groupe: 'preparation',
       besoinTournoi: true,
       // Séquence des phases du moteur (E05US001, ADR-0045) : élimination directe / placement après
       // la qualification. Juste après « Barème & validation » — c'est la suite de la définition du
@@ -205,7 +228,6 @@ function Coquille() {
     {
       id: 'departs',
       libelle: 'Départs & tarifs',
-      groupe: 'preparation',
       besoinTournoi: true,
       // Les départs (créneaux) portent le tarif (E02US004, ADR-0017).
       rendu: () => courant && <Departs tournoiId={courant.id} />,
@@ -213,21 +235,18 @@ function Coquille() {
     {
       id: 'clubs',
       libelle: 'Clubs',
-      groupe: 'preparation',
       besoinTournoi: false,
       rendu: () => <Clubs />,
     },
     {
       id: 'scoreurs',
       libelle: 'Scoreurs',
-      groupe: 'preparation',
       besoinTournoi: true,
       rendu: () => courant && <Scoreurs tournoiId={courant.id} />,
     },
     {
       id: 'inscriptions',
       libelle: 'Inscriptions',
-      groupe: 'preparation',
       besoinTournoi: true,
       // Créer un archer, puis le corriger / l'inscrire sur des départs : les deux briques de la
       // feature « archers » (création + liste) sur une même destination.
@@ -242,7 +261,6 @@ function Coquille() {
     {
       id: 'doublons',
       libelle: 'Doublons',
-      groupe: 'preparation',
       // Nettoyage de la liste des inscrits (E02US005) : repérer les fiches en double et fusionner.
       // Juste après « Inscriptions » — c'est la suite naturelle du travail sur la liste.
       besoinTournoi: true,
@@ -251,14 +269,12 @@ function Coquille() {
     {
       id: 'placement',
       libelle: 'Placement',
-      groupe: 'preparation',
       besoinTournoi: true,
       rendu: () => courant && <Placement tournoiId={courant.id} />,
     },
     {
       id: 'duels',
       libelle: 'Plan de duels',
-      groupe: 'preparation',
       besoinTournoi: true,
       // Ajustement du placement des duellistes d'une phase de tableau (E03US009, ADR-0048). L'écran
       // choisit lui-même la **phase** (comme « Placement » choisit le départ) : la navigation reste
@@ -268,32 +284,28 @@ function Coquille() {
     {
       id: 'paiements',
       libelle: 'Paiements',
-      groupe: 'preparation',
       besoinTournoi: true,
       rendu: () => courant && <Paiements tournoiId={courant.id} />,
     },
     {
       id: 'postes',
       libelle: 'Postes de cible',
-      groupe: 'preparation',
       besoinTournoi: true,
       rendu: () => courant && <Postes tournoiId={courant.id} />,
     },
     {
       id: 'jeu-essai',
       libelle: 'Jeu d’essai',
-      groupe: 'preparation',
       // Outil de démo/QA (E15US001) : peupler le tournoi courant OU instancier un scénario qui crée
       // son propre tournoi — d'où `besoinTournoi: false` (la brique « peupler » gère elle-même
-      // l'absence de tournoi courant). À l'instanciation, on bascule sur le tournoi créé et son accueil.
+      // l'absence de tournoi courant). À l'instanciation, on **sort de l'atelier** pour aller piloter
+      // le tournoi qui vient de naître : c'est le geste « j'ai fabriqué, je vais m'en servir ».
       besoinTournoi: false,
       rendu: () => (
         <JeuEssai
           tournoiId={tournoiId}
           onTournoiInstancie={(id) => {
-            setTournoiId(id)
-            setDestinationActive('accueil')
-            setGroupeOuvert('preparation')
+            allerA('pilotage', destinationParDefaut('pilotage'), id)
           }}
         />
       ),
@@ -301,7 +313,6 @@ function Coquille() {
     {
       id: 'simulation',
       libelle: 'Simulation',
-      groupe: 'preparation',
       // Cockpit de simulation (E15US003) : rejoue le tournoi courant en accéléré **sans rien
       // enregistrer** (bot pausable + reprise en main + vues cible/archer/scoreur/public). Ne simule
       // qu'un tournoi avant démarrage (garde-fou serveur) — d'où sa place dans « Préparation ».
@@ -311,7 +322,6 @@ function Coquille() {
     {
       id: 'supervision',
       libelle: 'Supervision',
-      groupe: 'jourj',
       besoinTournoi: true,
       rendu: () => courant && <Supervision tournoiId={courant.id} />,
     },
@@ -320,14 +330,12 @@ function Coquille() {
       // est prêt à partir, puis faire partir les duels prêts (les postes/écrans sont prévenus).
       id: 'feu-vert',
       libelle: 'Feu vert',
-      groupe: 'jourj',
       besoinTournoi: true,
       rendu: () => courant && <FeuVert tournoiId={courant.id} />,
     },
     {
       id: 'completude',
       libelle: 'Complétude',
-      groupe: 'jourj',
       besoinTournoi: true,
       // « Qu'est-ce qui manque pour finir ? » (E12US005) + contrôle avant de terminer. Le statut
       // pilote l'apparition du bouton « Terminer » (uniquement *en cours*).
@@ -336,14 +344,12 @@ function Coquille() {
     {
       id: 'classement',
       libelle: 'Classement en direct',
-      groupe: 'jourj',
       besoinTournoi: true,
       rendu: () => courant && <VueClassement tournoiId={courant.id} admin />,
     },
     {
       id: 'exports',
       libelle: 'Exports',
-      groupe: 'jourj',
       // Listes imprimables du jour J (E09US003) : placement (accueil) et club & paiement (admin).
       // Destination prévue au §7.1, désormais matérialisée sur le socle PDF (E09US001).
       besoinTournoi: true,
@@ -352,7 +358,6 @@ function Coquille() {
     {
       id: 'archive',
       libelle: 'Archive',
-      groupe: 'jourj',
       // Paquet ZIP de fin de tournoi (E11US003) : instantané SQLite + CSV + PDF régénérés + manifeste,
       // au choix (cases à cocher). Destination prévue au §7.1, désormais matérialisée.
       besoinTournoi: true,
@@ -360,14 +365,101 @@ function Coquille() {
     },
   ]
 
-  // `destinations` est une liste littérale non vide (sa 1ʳᵉ entrée est « Tournoi ») : le repli est
-  // toujours défini. L'assertion lève le `T | undefined` de l'accès indexé (noUncheckedIndexedAccess).
-  const active = destinations.find((d) => d.id === destinationActive) ?? destinations[0]!
+  // Accueil de l'admin : aucun axe ouvert. Il porte le choix de l'axe **et** l'assemblage (la liste
+  // des tournois, leur création, leur cycle de vie) — l'ancienne destination « Tournoi », qui
+  // n'appartenait à aucun des trois axes puisqu'elle *crée* l'objet sur lequel deux d'entre eux
+  // travaillent.
+  // ⚠️ Tout ce qui suit est calculé **avant** le retour anticipé de l'accueil : le `useEffect` de
+  // correction d'adresse ne peut pas vivre après un `return` conditionnel (règles des hooks). Les
+  // valeurs ne sont exploitées que dans la branche « un axe est ouvert ».
+  const axe = AXES.find((a) => a.axe === axeActif) ?? null
+  const dansAxe =
+    axeActif === null ? [] : destinations.filter((d) => AXE_PAR_DESTINATION[d.id] === axeActif)
+  // La destination vient de l'adresse, **validée contre les destinations de cet axe** : sans ça,
+  // `/admin/atelier/supervision` afficherait un écran de pilotage sous l'intitulé « Atelier ».
+  // À défaut, **l'ouverture de l'axe** — et non `dansAxe[0]`, qui ne coïncidait avec elle que par
+  // l'ordre de déclaration : réordonner la sidebar aurait silencieusement changé l'écran d'entrée.
+  const demandee = destinationValide(
+    destinationDemandee,
+    dansAxe.map((d) => d.id),
+  )
+  const ouverture = axe === null ? null : destinationParDefaut(axe.axe)
+  const active =
+    dansAxe.find((d) => d.id === demandee) ?? dansAxe.find((d) => d.id === ouverture) ?? dansAxe[0]
+
+  // L'adresse doit dire la vérité **aussi à l'intérieur de l'admin** : `/admin/atelier/supervision`
+  // affichait l'ouverture de l'atelier sous une adresse mensongère, qu'un signet ou une capture de
+  // recette aurait figée. Même politique qu'`App` sur les mondes, même `replaceState` (correction
+  // subie, à ne pas empiler dans l'historique).
+  const chemAttendu =
+    axe === null || active === undefined
+      ? null
+      : construireChemin({
+          monde: 'admin',
+          segments: segmentsAdmin(tournoiId, axe.axe, active.id),
+        })
+  useEffect(() => {
+    if (chemAttendu !== null && chemin !== chemAttendu) {
+      naviguer(chemAttendu, { remplacer: true })
+    }
+  }, [chemin, chemAttendu])
+
+  if (axeActif === null) {
+    const enCours = (tournois.data ?? []).filter(
+      (t) => t.statut === 'en_cours' || t.statut === 'en_pause',
+    ).length
+    return (
+      <div className="accueil-admin">
+        <ul className="accueil-admin__axes">
+          {AXES.map((a) => (
+            <li key={a.axe}>
+              <button
+                type="button"
+                className="accueil-admin__axe"
+                onClick={() => entrerDansAxe(a.axe)}
+              >
+                <span className="accueil-admin__titre">
+                  {a.libelle}
+                  {a.axe === 'atelier' && (
+                    <span className="accueil-admin__marque">sans tournoi</span>
+                  )}
+                  {a.axe === 'pilotage' && enCours > 0 && (
+                    <span className="accueil-admin__marque accueil-admin__marque--vif">
+                      {enCours} en cours
+                    </span>
+                  )}
+                </span>
+                <span className="accueil-admin__phrase">{a.phrase}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {/* L'aide de l'écran « Tournoi » suit l'écran (E14US002) : il change de place, sa couverture
+            d'aide ne doit pas disparaître pour autant. */}
+        <AideEcran texte={AIDE_ECRANS['tournoi']} />
+        <GestionTournois selectionneId={tournoiId} onChoisi={entrerDansTournoi} />
+      </div>
+    )
+  }
+
+  // Un axe est ouvert : `axe` et `active` sont nécessairement définis (chaque axe a au moins une
+  // destination, et `axeActif` vient d'être écarté du cas `null`).
+  if (axe === null || active === undefined) return null
+
   const contenu =
     active.besoinTournoi && courant === null ? (
       <p className="carte__etat">
-        Sélectionnez ou créez un tournoi (destination « Tournoi ») pour accéder à «&nbsp;
-        {active.libelle}&nbsp;».
+        {axe.besoinTournoi ? (
+          <>Choisissez un tournoi ci-dessus pour accéder à «&nbsp;{active.libelle}&nbsp;».</>
+        ) : (
+          // L'atelier n'affiche **pas** de sélecteur : dire « ci-dessus » y désignerait un contrôle
+          // inexistant. On nomme la vraie raison et le chemin de contournement (DETTE-023).
+          <>
+            «&nbsp;{active.libelle}&nbsp;» dépend encore d’un tournoi&nbsp;: ouvrez-la depuis le
+            Pilotage, en choisissant d’abord votre tournoi. Cette brique rejoindra l’atelier quand
+            elle sera libérée du périmètre d’un tournoi.
+          </>
+        )}
       </p>
     ) : (
       active.rendu()
@@ -376,73 +468,67 @@ function Coquille() {
   return (
     <div className="coquille">
       <nav className="coquille__nav" aria-label="Navigation d'administration">
-        {/* La recherche d'archer coiffe la sidebar (E12US006, `D-19`) : présente en permanence, quel
-            que soit l'écran, elle répond à « je tire où ? » sans quitter la page courante. Scopée au
-            tournoi courant, elle reste inerte tant qu'aucun n'est choisi. */}
-        <RechercheArcher tournoiId={tournoiId} />
+        {/* Retour à l'accueil : l'axe se quitte par un geste explicite. `P-3` est tenu — c'est un
+            clic — mais on ne travaille jamais dans deux axes à la fois. */}
+        <button
+          type="button"
+          className="coquille__retour"
+          onClick={() => naviguer(construireChemin({ monde: 'admin', segments: [] }))}
+        >
+          ← Accueil
+        </button>
+        <p className="coquille__axe">{axe.libelle}</p>
 
-        {/* Le sélecteur de tournoi est **au-dessus de tout** : tout ce qui suit lui appartient. */}
-        <div className="coquille__selecteur">
-          <label className="formulaire__libelle" htmlFor="coquille-tournoi">
-            Tournoi
-          </label>
-          <select
-            id="coquille-tournoi"
-            className="formulaire__champ"
-            value={tournoiId ?? ''}
-            onChange={(e) => {
-              const id = Number(e.target.value)
-              const t = tournois.data?.find((x) => x.id === id)
-              if (t) choisirTournoi(t)
-            }}
-          >
-            <option value="">— Choisir un tournoi —</option>
-            {(tournois.data ?? []).map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.nom} — {t.date}
-              </option>
-            ))}
-          </select>
-          {courant && <BadgeStatut statut={courant.statut} />}
-        </div>
+        {/* La recherche d'archer coiffe la sidebar (E12US006, `D-19`) : elle répond à « je tire où ? »
+            sans quitter l'écran courant. Scopée au tournoi courant, elle n'a donc rien à faire dans
+            l'atelier, qui n'en a pas. */}
+        {axe.besoinTournoi && <RechercheArcher tournoiId={tournoiId} />}
 
-        {GROUPES.map((groupe) => {
-          const ouvert = groupeOuvert === groupe.temps
-          return (
-            <div className="coquille__groupe" key={groupe.temps}>
+        {/* Le sélecteur de tournoi ne coiffe que les axes qui travaillent **sur** un tournoi. */}
+        {axe.besoinTournoi && (
+          <div className="coquille__selecteur">
+            <label className="formulaire__libelle" htmlFor="coquille-tournoi">
+              Tournoi
+            </label>
+            <select
+              id="coquille-tournoi"
+              className="formulaire__champ"
+              value={tournoiId ?? ''}
+              onChange={(e) => {
+                const id = Number(e.target.value)
+                const t = tournois.data?.find((x) => x.id === id)
+                if (t) changerTournoi(t)
+              }}
+            >
+              <option value="">— Choisir un tournoi —</option>
+              {(tournois.data ?? []).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nom} — {t.date}
+                </option>
+              ))}
+            </select>
+            {courant && <BadgeStatut statut={courant.statut} />}
+          </div>
+        )}
+
+        {/* Un seul axe est ouvert : la liste est **plate**. Les en-têtes de groupe repliables n'ont
+            plus de raison d'être — c'est leur coexistence qui rendait la sidebar confuse. */}
+        <ul className="coquille__liens">
+          {dansAxe.map((d) => (
+            <li key={d.id}>
               <button
                 type="button"
-                className="coquille__entete-groupe"
-                aria-expanded={ouvert}
-                onClick={() => setGroupeOuvert(groupe.temps)}
+                className={
+                  d.id === active.id ? 'coquille__lien coquille__lien--actif' : 'coquille__lien'
+                }
+                aria-current={d.id === active.id ? 'page' : undefined}
+                onClick={() => allerA(axeActif, d.id)}
               >
-                {groupe.libelle}
+                {d.libelle}
               </button>
-              {ouvert && (
-                <ul className="coquille__liens">
-                  {destinations
-                    .filter((d) => d.groupe === groupe.temps)
-                    .map((d) => (
-                      <li key={d.id}>
-                        <button
-                          type="button"
-                          className={
-                            d.id === active.id
-                              ? 'coquille__lien coquille__lien--actif'
-                              : 'coquille__lien'
-                          }
-                          aria-current={d.id === active.id ? 'page' : undefined}
-                          onClick={() => setDestinationActive(d.id)}
-                        >
-                          {d.libelle}
-                        </button>
-                      </li>
-                    ))}
-                </ul>
-              )}
-            </div>
-          )
-        })}
+            </li>
+          ))}
+        </ul>
       </nav>
 
       <div className="coquille__contenu">

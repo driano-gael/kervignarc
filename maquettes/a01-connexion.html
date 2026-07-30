@@ -11,6 +11,7 @@
 
 <nav class="nav-ecran">
   <a href="index.html">← Tous les écrans</a>
+  <a href="a00-portes.html">← A00 · Les quatre portes</a>
   <span class="fin">
     <a href="a02-ossature.html">A02 · Ossature →</a>
     <a class="lien-questionnaire" href="questionnaires/a01-connexion.html">Remplir le questionnaire</a>
@@ -18,19 +19,30 @@
 </nav>
 
 <header class="entete">
-  <p class="fil">Appli admin · /admin</p>
+  <p class="fil">Appli admin · <code>/admin</code> · <strong>corrigée le 30/07/2026</strong></p>
   <h1><span class="num">A01</span>Connexion</h1>
   <p class="chapo">Le seul écran à mot de passe de tout le produit. L'admin est le <strong>seul rôle
   authentifié par compte</strong> : le scoreur est identifié sans compte, l'archer reste anonyme.</p>
   <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
 </header>
 
+<div class="note">
+  <p><strong>Ce que la v1 supposait à tort.</strong> Elle plaçait sur cet écran un <em>lien de secours</em>
+  vers <code>/saisie</code> — une URL qui n'existait pas. On n'arrive pas ici « en se trompant d'URL » : on y
+  arrive par la <strong>porte Administration</strong> de l'écran d'entrée (<a href="a00-portes.html">A00</a>),
+  et on en ressort par « <strong>Changer de rôle</strong> », livré en en-tête (<span class="ref">E00US017</span>).
+  Le commanditaire a confirmé le 30/07 : le lien de secours <strong>n'est pas utile</strong>.</p>
+  <p><strong>Décision actée au même retour :</strong> <strong>pas de reconnexion automatique</strong> sur le
+  poste de la table d'organisation — un poste laissé sans surveillance ne doit pas rouvrir une session admin.</p>
+</div>
+
 <h2 class="section">Ce que l'écran doit faire</h2>
 <ul class="exigences">
   <li>Identifier l'organisateur, et lui seul — <span class="ref">D-13</span> pose trois modes d'identité,
   celui-ci est le plus fort des trois.</li>
-  <li>Ne pas devenir un cul-de-sac : un bénévole qui se trompe d'URL doit repartir vers la bonne appli
-  sans appeler quelqu'un.</li>
+  <li>Ne pas devenir un cul-de-sac : la sortie est le bouton <strong>« Changer de rôle »</strong> de
+  l'en-tête, pas un lien en dur vers une autre adresse.</li>
+  <li><strong>Aucune reconnexion automatique</strong> — décision du commanditaire, 30/07/2026.</li>
   <li>Fonctionner <strong>sans internet</strong>. Pas de « mot de passe oublié » par e-mail, pas de
   fédération d'identité : le jour J, le réseau s'arrête au gymnase.</li>
   <li>Ne jamais laisser fuir de détail interne en cas d'échec (<span class="ref">règle 5</span> du projet :
@@ -57,13 +69,11 @@
           <div class="champ">••••••••</div>
         </div>
         <button class="bouton principal">SE CONNECTER</button>
-        <p class="faible" style="margin:0;text-align:center">Vous cherchez la saisie des scores ?
-          <span style="color:var(--brand-text)">Aller à /saisie</span></p>
       </div>
     </div>
-    <p class="verdict"><span class="pouce oui">recommandé</span> Un écran qui fait une chose. Le choix du
-    tournoi arrive <b>après</b>, dans un sélecteur qui reste visible en permanence (A02) — donc il n'a rien
-    à faire ici.</p>
+    <p class="verdict"><span class="pouce oui">retenu par le commanditaire</span> « Suffisant, respecte le
+    thème. » Un écran qui fait une chose. Le choix du tournoi arrive <b>après</b> — et seulement dans les axes
+    qui en ont besoin (<a href="a02-ossature.html">A02</a>) : l'atelier, lui, n'a pas de tournoi.</p>
   </figure>
 
   <figure class="variante">
@@ -137,13 +147,18 @@
   </figure>
 </div>
 
-<h2 class="section">À trancher <span class="code-sec">reporté dans le questionnaire</span></h2>
-<ul class="exigences">
-  <li><strong>Reconnexion automatique sur le poste de la table ?</strong> Confortable pour un poste utilisé
-  toute la journée, risqué s'il reste sans surveillance dans un gymnase ouvert au public.</li>
-  <li><strong>Le lien de secours vers /saisie sert-il ou embrouille-t-il ?</strong> Il suppose que le
-  bénévole sache qu'il s'est trompé d'appli.</li>
-</ul>
+<h2 class="section">Tranché le 30/07/2026 <span class="code-sec">réponse du commanditaire</span></h2>
+<div class="enveloppe"><table class="tk">
+  <tr><th style="width:300px">Question posée</th><th>Réponse</th></tr>
+  <tr><td>Reconnexion automatique sur le poste de la table ?</td>
+      <td><strong>Non.</strong> Confortable, mais risqué si le poste reste sans surveillance dans un gymnase
+      ouvert au public.</td></tr>
+  <tr><td>Le lien de secours vers <code>/saisie</code> sert-il ou embrouille-t-il ?</td>
+      <td><strong>Pas utile</strong> — et la question était périmée : cette URL n'existait pas. La sortie est
+      « Changer de rôle ».</td></tr>
+</table></div>
+<p class="intro"><strong>Reste ouvert :</strong> le verdict d'ensemble de cet écran n'a pas été rendu (aucune
+case cochée en §2 du questionnaire). Noté tel quel plutôt qu'interprété.</p>
 
 <footer class="pied">
   <span><a href="index.html">Tous les écrans</a></span>

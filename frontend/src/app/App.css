@@ -212,6 +212,38 @@
   min-width: 0;
 }
 
+/* Retour à l'accueil des axes, en tête de sidebar : l'axe se quitte par un geste explicite
+   (E14US003). Discret — c'est une sortie, pas une destination. */
+.coquille__retour {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--dim);
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.coquille__retour:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+/* Nom de l'axe courant : il remplace les en-têtes de groupe repliables, qui n'ont plus de raison
+   d'être puisqu'un seul axe est ouvert à la fois. */
+.coquille__axe {
+  margin: 0 0 4px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
 /* Repli en colonne sous 720 px : la sidebar devient un bandeau au-dessus du contenu. */
 @media (max-width: 720px) {
   .coquille {
@@ -223,6 +255,79 @@
     position: static;
     width: 100%;
   }
+}
+
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Accueil de l'admin (E14US003) : choisir son axe de travail, et assembler un tournoi.
+   C'est la porte du produit — pas une entrée de menu parmi dix-neuf.
+   ———————————————————————————————————————————————————————————————————————————————————————————————— */
+.accueil-admin {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.accueil-admin__axes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+/* Cible tactile généreuse : l'admin peut piloter depuis une grande tablette le jour J. */
+.accueil-admin__axe {
+  width: 100%;
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.accueil-admin__axe:hover {
+  border-color: var(--accent);
+}
+
+.accueil-admin__titre {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-h);
+}
+
+/* Marque d'état sur un axe : neutre par défaut. L'ambre reste réservé aux alertes (`DV-03`), donc
+   « en cours » se signale en `--ok` — c'est un état vivant, pas un incident. */
+.accueil-admin__marque {
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dim);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.accueil-admin__marque--vif {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.accueil-admin__phrase {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--dim);
 }
 
 /* Aide contextuelle par écran (E14US002) : bouton « ⓘ Aide » masqué par défaut, panneau déployé au

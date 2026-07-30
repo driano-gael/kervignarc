@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A00 · Les quatre portes — Kervignarc</title>
+<link rel="stylesheet" href="assets/systeme.css">
+</head>
+<body>
+<div class="page">
+
+<nav class="nav-ecran">
+  <a href="index.html">← Tous les écrans</a>
+  <span class="fin">
+    <a href="a01-connexion.html">A01 · Connexion →</a>
+    <a class="lien-questionnaire" href="questionnaires/a00-portes.html">Remplir le questionnaire</a>
+  </span>
+</nav>
+
+<header class="entete">
+  <p class="fil">Toutes les applis · <code>/</code> · <strong>planche ajoutée le 30/07/2026</strong></p>
+  <h1><span class="num">A00</span>Les quatre portes — choisir le rôle de l'appareil</h1>
+  <p class="chapo">C'est le <strong>tout premier écran</strong> du produit, et il était <strong>absent de ce
+  dossier</strong> alors qu'il est livré depuis le 21/07/2026. Les 35 planches décrivaient trois applications à
+  trois URL ; la réalité est <strong>une application, quatre portes</strong>.</p>
+  <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
+</header>
+
+<div class="note">
+  <p><strong>Pourquoi cette planche arrive après les autres.</strong> Le dossier a été dessiné le 29/07 sur
+  l'image mentale de trois applis (<code>/admin</code>, <code>/saisie</code>, <code>/</code>) — 31 mentions de
+  ces URL dans les planches. Or <span class="ref">E00US017</span> / <span class="ref">ADR-0042</span> avait
+  livré le 21/07 un <strong>écran de choix à quatre portes</strong> dans une application unique, sans aucune
+  URL. Ce n'est pas de l'obsolescence : c'est un défaut de conception du dossier, corrigé ici.</p>
+</div>
+
+<h2 class="section">L'écran livré</h2>
+<div class="rangee">
+  <figure class="variante">
+    <figcaption><span class="etiquette">Premier lancement</span>
+      <span class="sous-etiquette">Quatre portes explicites, au lieu de deviner le rôle.</span></figcaption>
+    <div class="ui">
+      <div class="barre marque"><span class="titre">KERVIGNARC</span>
+        <span class="fin conn"><span class="point"></span>en ligne</span></div>
+      <div class="corps">
+        <div class="second">Choisissez comment cet appareil sera utilisé. Ce choix est mémorisé : on ne vous le
+        redemandera pas au prochain lancement.</div>
+        <div class="carte">
+          <div class="rang bloc"><span style="font-size:16px;font-weight:800">🎯 Tablette de cible</span>
+            <span class="second">Cette tablette saisit les scores d'une cible.</span></div>
+        </div>
+        <div class="carte">
+          <div class="rang bloc"><span style="font-size:16px;font-weight:800">📱 Téléphone (public)</span>
+            <span class="second">Suivre le tournoi : classements, plans, mes archers.</span></div>
+        </div>
+        <div class="carte">
+          <div class="rang bloc"><span style="font-size:16px;font-weight:800">✅ Scoreur</span>
+            <span class="second">Valider les scores avec mon code.</span></div>
+        </div>
+        <div class="carte">
+          <div class="rang bloc"><span style="font-size:16px;font-weight:800">🖥️ Administration (PC)</span>
+            <span class="second">Organiser et piloter le tournoi.</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">livré tel quel</span> Chaque porte dit <b>à qui c'est</b> et
+    <b>ce qu'on y fait</b> — pour qu'un bénévole choisisse sans hésiter. L'habillage est <b>club/neutre</b> :
+    l'identité <em>par tournoi</em> n'a pas de sens sur un écran pré-tournoi.</p>
+  </figure>
+
+  <figure class="variante">
+    <figcaption><span class="etiquette">Lancements suivants</span>
+      <span class="sous-etiquette">On va droit au monde choisi ; « Changer de rôle » reste en en-tête.</span></figcaption>
+    <div class="ui">
+      <div class="barre marque"><span class="titre">KERVIGNARC</span>
+        <span class="fin" style="font-size:11px;opacity:.85">Changer de rôle</span></div>
+      <div class="corps">
+        <div class="carte info">
+          <div class="rang bloc"><span>Le monde du rôle mémorisé s'ouvre directement</span>
+            <span class="second">Une session en cours <b>prime</b> sur le choix : un rechargement ne renvoie
+            jamais à l'écran de choix.</span></div>
+        </div>
+        <div class="carte plate">
+          <div class="rang"><span class="second" style="flex:1">Arrivée par le QR d'une cible</span>
+            <span class="pas marque">RÔLE TABLETTE FORCÉ</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">ton exigence, déjà satisfaite</span> Le questionnaire A01
+    demandait « un retour vers les autres écrans (public, cible, scoreur…) » : c'est <b>ce bouton</b>, livré.</p>
+  </figure>
+</div>
+
+<h2 class="section">La règle qui n'est pas un détail : le verrou de la tablette</h2>
+<div class="note">
+  <p>Le bouton « Changer de rôle » <strong>disparaît</strong> dès qu'une tablette est une <em>vraie</em>
+  tablette : rattachée à une cible, ou arrivée par le QR (<span class="ref">D-13</span> — contrôle d'accès
+  <strong>physique</strong>). Sinon, n'importe qui pourrait sortir du poste de saisie en pleine qualification.</p>
+  <p>Mais une tablette <strong>seulement choisie au menu</strong> — marqueur posé, pas encore rattachée — reste
+  réversible : sans quoi un mauvais tap sur « Tablette » piégerait l'utilisateur sur l'écran de rattachement,
+  sans « Détacher » (absent avant rattachement) ni retour au choix. Ce cas a été trouvé par une
+  <strong>revue adversariale</strong>, pas au cadrage.</p>
+</div>
+
+<h2 class="section">Ce que les URL changent ici</h2>
+<p class="intro">Décidé le 30/07/2026 : de vraies URL par rôle, avec <code>react-router-dom</code>.</p>
+
+<div class="enveloppe"><table class="tk">
+  <tr><th style="width:230px">Adresse</th><th>Ce qu'elle ouvre</th></tr>
+  <tr><td><code>/</code></td><td>Cet écran — les quatre portes</td></tr>
+  <tr><td><code>/public</code></td><td>L'appli publique. <strong>Aucune session requise</strong> : s'ouvre immédiatement</td></tr>
+  <tr><td><code>/scoreur</code></td><td>L'espace scoreur — demande <strong>son code personnel</strong> (session itinérante, <span class="ref">D-12</span>)</td></tr>
+  <tr><td><code>/cible</code></td><td>L'écran de rattachement — demande le <strong>code de la cible</strong></td></tr>
+  <tr><td><code>/cible?poste=&lt;code&gt;</code></td><td>Le QR posé devant la cible : rattachement automatique, rôle tablette forcé</td></tr>
+  <tr><td><code>/admin/&lt;axe&gt;/…</code></td><td>L'administration — login, puis l'accueil à trois axes (<a href="a02-ossature.html">A02</a>)</td></tr>
+</table></div>
+
+<div class="note">
+  <p><strong>Trois barrières superposées, et l'URL n'en lève qu'une.</strong> Aller à <code>/cible</code> ouvre
+  l'écran de <em>rattachement</em>, pas la cible 7 en train de tirer : le <strong>code reste
+  l'autorisation</strong>. Même chose pour <code>/scoreur</code> (son code) et <code>/admin</code> (le login).
+  Et un tournoi vide ne montre rien, quelle que soit l'adresse.</p>
+  <p><strong>Conséquence à ne pas oublier au déploiement :</strong> les QR déjà imprimés pointent vers
+  <code>/?poste=&lt;code&gt;</code>. L'ancienne forme <strong>doit continuer à fonctionner</strong>
+  (<span class="ref">E09US008</span> les imprime), sinon les étiquettes posées devant les cibles deviennent
+  muettes le jour J.</p>
+</div>
+
+<h2 class="section">États du système</h2>
+<div class="rangee">
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">Serveur injoignable</span></figcaption>
+    <div class="ui">
+      <div class="barre alerte"><span class="titre">▲ Serveur injoignable</span></div>
+      <div class="corps">
+        <div class="second">Vérifiez que vous êtes bien sur le réseau du gymnase
+        (<code>kervignarc-local</code>). L'appli ne passe pas par internet.</div>
+        <button class="bouton principal">Réessayer</button>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">important</span> Le cas <b>le plus probable</b> le jour J.
+    L'erreur nomme le réseau, elle ne parle pas de « connexion perdue ».</p>
+  </figure>
+
+  <figure class="variante etroit">
+    <figcaption><span class="etiquette">Rôle mémorisé, session expirée</span></figcaption>
+    <div class="ui">
+      <div class="barre marque"><span class="titre">KERVIGNARC</span></div>
+      <div class="corps">
+        <div class="carte info"><div class="rang bloc"><span class="verrou">🔒 Session expirée</span>
+          <span class="second">On revient là où on était après reconnexion.</span></div></div>
+      </div>
+    </div>
+    <p class="verdict"><span class="pouce oui">acquis</span> Le rôle reste mémorisé : on ne repasse pas par
+    l'écran de choix pour une session qui expire.</p>
+  </figure>
+</div>
+
+<div class="pied">
+  <a href="index.html">Tous les écrans</a>
+  <a href="questionnaires/a00-portes.html">Questionnaire A00</a>
+  <span class="fin"><a href="a01-connexion.html">Suivant : A01 →</a></span>
+</div>
+
+</div>
+</body>
+</html>

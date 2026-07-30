@@ -6,7 +6,7 @@
 // préexistante — jamais à contredire un choix explicite. Chaque cas dérive de la table de l'ADR.
 
 import { describe, expect, it } from 'vitest'
-import { peutChangerDeRole, resoudreRole, type EtatEntree } from './resoudreRole'
+import { mondeAServir, peutChangerDeRole, resoudreRole, type EtatEntree } from './resoudreRole'
 
 // Appareil neuf : aucun jeton, aucun choix.
 const vierge: EtatEntree = {
@@ -94,5 +94,64 @@ describe('peutChangerDeRole — échappatoire « Changer de rôle »', () => {
   it('une tablette seulement choisie au menu (pas rattachée) garde l’échappatoire', () => {
     // Cœur du correctif adversarial : un mauvais tap sur « Tablette » ne piège plus l'utilisateur.
     expect(peutChangerDeRole('tablette', false, false)).toBe(true)
+  })
+})
+
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+// `mondeAServir` — l'aiguillage d'entrée quand l'adresse s'en mêle (E14US003).
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+
+const VIERGE: EtatEntree = {
+  roleChoisi: null,
+  estPoste: false,
+  codePosteUrl: false,
+  aJetonAdmin: false,
+  aJetonScoreur: false,
+}
+
+describe('mondeAServir', () => {
+  it('sans rien : la racine ouvre l’écran de choix, l’adresse est déjà juste', () => {
+    expect(mondeAServir('accueil', VIERGE)).toEqual({ monde: 'accueil', corrigerUrl: false })
+  })
+
+  it('l’adresse nomme un monde : elle gagne, sans correction', () => {
+    expect(mondeAServir('admin', VIERGE)).toEqual({ monde: 'admin', corrigerUrl: false })
+  })
+
+  it('l’adresse gagne sur un choix mémorisé plus ancien', () => {
+    // Sinon un lien envoyé à un bénévole n'ouvrirait jamais le bon écran sur son téléphone.
+    const etat = { ...VIERGE, roleChoisi: 'public' as const }
+    expect(mondeAServir('scoreur', etat)).toEqual({ monde: 'scoreur', corrigerUrl: false })
+  })
+
+  it('racine + choix mémorisé : on sert le monde mémorisé ET on corrige l’adresse', () => {
+    const etat = { ...VIERGE, roleChoisi: 'admin' as const }
+    expect(mondeAServir('accueil', etat)).toEqual({ monde: 'admin', corrigerUrl: true })
+  })
+
+  it('racine + session héritée : idem, l’adresse est corrigée', () => {
+    expect(mondeAServir('accueil', { ...VIERGE, aJetonScoreur: true })).toEqual({
+      monde: 'scoreur',
+      corrigerUrl: true,
+    })
+  })
+
+  it('VERROU D-13 : une tablette rattachée ne sort pas, même si on tape /admin', () => {
+    const etat = { ...VIERGE, estPoste: true, roleChoisi: 'admin' as const }
+    expect(mondeAServir('admin', etat)).toEqual({ monde: 'tablette', corrigerUrl: true })
+  })
+
+  it('VERROU D-13 : arrivée par le QR, l’adresse est ramenée sur /cible', () => {
+    expect(mondeAServir('public', { ...VIERGE, codePosteUrl: true })).toEqual({
+      monde: 'tablette',
+      corrigerUrl: true,
+    })
+  })
+
+  it('tablette déjà sur la bonne adresse : rien à corriger', () => {
+    expect(mondeAServir('tablette', { ...VIERGE, estPoste: true })).toEqual({
+      monde: 'tablette',
+      corrigerUrl: false,
+    })
   })
 })

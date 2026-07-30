@@ -11,65 +11,79 @@
 
 <nav class="nav-ecran">
   <a href="index.html">← Tous les écrans</a>
-  <a href="a01-connexion.html">← A01</a>
+  <a href="a00-portes.html">← A00 · Les quatre portes</a>
   <span class="fin">
-    <a href="a03-accueil-statuts.html">A03 · Accueil selon statut →</a>
+    <a href="a03-accueil-statuts.html">A03 · Accueil de l'axe →</a>
     <a class="lien-questionnaire" href="questionnaires/a02-ossature.html">Remplir le questionnaire</a>
   </span>
 </nav>
 
 <header class="entete">
-  <p class="fil">Appli admin · /admin · <strong>v2 — refonte du 29/07/2026</strong></p>
-  <h1><span class="num">A02</span>Ossature — rôle, espace, étape</h1>
-  <p class="chapo">La v1 proposait <strong>une sidebar où les trois temps du tournoi coexistaient</strong>.
-  Retour du commanditaire : <em>« la sidebar fait vivre le tournoi sous tous ses états en même temps, je trouve
-  cela confus »</em>. Cette v2 repart de la <strong>situation de travail</strong> plutôt que de la navigation.</p>
+  <p class="fil">Appli admin · <strong>v3 — refonte du 30/07/2026</strong></p>
+  <h1><span class="num">A02</span>Ossature — trois axes de travail</h1>
+  <p class="chapo">La v1 rangeait les destinations par <strong>temps du tournoi</strong> (Préparation / Jour J /
+  Après) ; la v2 gardait ce découpage en le renommant « espaces ». Le commanditaire l'a remplacé par un
+  découpage <strong>par nature d'activité</strong> : <em>atelier</em>, <em>pilotage</em>,
+  <em>gestion administrative</em>. Ce n'est pas un renommage — c'est un <strong>changement de critère</strong>.</p>
   <p style="margin-top:14px"><span class="etat-pill code">écran existant</span>
-     <span class="etat-pill neuf">structure à refaire</span></p>
+     <span class="etat-pill neuf">structure refaite</span></p>
 </header>
 
 <div class="note">
-  <p><strong>Ce que la v1 confondait.</strong> Le principe <span class="ref">P-3</span> du CDC UX dit que
-  l'appli n'empêche pas, elle montre. J'en avais déduit « tout doit rester <em>affiché</em> » — alors qu'il dit
-  seulement « tout doit rester <em>atteignable</em> ». <strong>Accessible et affiché en permanence sont deux
-  choses différentes</strong> : c'est exactement ce que dit <span class="ref">D-20</span>, que la v1
-  appliquait à l'accueil mais pas à la navigation elle-même.</p>
-  <p>Un organisateur, le jour J, ne prépare pas. Lui montrer en permanence « Catégories » et « Archive », c'est
-  lui demander de filtrer visuellement toute la journée ce qu'il ne fera pas.</p>
+  <p><strong>Pourquoi le découpage par temps produisait le sentiment que « tout est mélangé ».</strong>
+  Une activité qui <em>dure</em> se retrouve <strong>coupée en morceaux</strong> par un rangement temporel. La
+  gestion administrative en est l'exemple : les inscriptions se prennent des semaines avant, les paiements se
+  règlent avant, pendant <em>et</em> après, les exports après. Le rangement livré la coupe effectivement en
+  trois — <code>Inscriptions</code>, <code>Doublons</code>, <code>Paiements</code> dans le tiroir
+  « Préparation », <code>Exports</code> et <code>Archive</code> dans « Jour J ». Personne n'a décidé ça :
+  c'est <strong>l'ordre d'arrivée des US</strong>.</p>
+  <p>Symétriquement, l'atelier <strong>n'a pas de tournoi</strong> : il vit d'année en année. Le ranger sous un
+  sélecteur de tournoi est un contresens — ce que le commanditaire avait déjà dit le 29/07 (« les briques sont le
+  patrimoine du club ») et dont les trois axes font désormais la conséquence structurelle.</p>
 </div>
 
-<h2 class="section">Les trois niveaux</h2>
-<p class="intro">Le vocabulaire est arrêté pour les deux premiers niveaux. Le troisième est ma proposition —
-il n'est pas encore validé.</p>
+<h2 class="section">Les trois axes</h2>
+<p class="intro">Le critère n'est plus « quand », c'est « <strong>quelle activité</strong> ». Chaque axe a son
+utilisateur, sa durée de vie et son tempo — c'est ce qui justifie de les séparer.</p>
 
 <div class="enveloppe"><table class="tk">
-  <tr><th style="width:90px">Niveau</th><th style="width:140px">Mot retenu</th><th>Ce qu'il choisit</th></tr>
-  <tr><td><strong>1</strong></td><td><strong>Rôle</strong></td>
-      <td>Quel écran j'ouvre : <em>administration</em>, <em>saisie</em>, <em>public</em>.
-      Déjà le vocabulaire du front (<code>ChangerDeRole</code>).</td></tr>
-  <tr><td><strong>2</strong></td><td><strong>Espace</strong></td>
-      <td>Ce que je viens faire aujourd'hui : <em>Préparation</em>, <em>Déroulé</em>, <em>Résultats</em>.</td></tr>
-  <tr><td><strong>3</strong></td><td><strong>Étape</strong> <span class="faible">(proposé)</span></td>
-      <td>Où j'en suis dans cet espace. Quatre étapes en Préparation.</td></tr>
+  <tr><th style="width:150px">Axe</th><th style="width:150px">Ce qu'on y fait</th>
+      <th style="width:130px">Durée de vie</th><th>Utilisateur · tempo</th></tr>
+  <tr><td><strong>1 · Atelier</strong><br><span class="faible">hors tournoi</span></td>
+      <td>Fabriquer : briques, salles types, formats de déroulé, <strong>modèles de tournoi réutilisables</strong></td>
+      <td>Pluriannuelle</td>
+      <td>Le concepteur du format · posé, hors urgence</td></tr>
+  <tr><td><strong>2 · Pilotage</strong><br><span class="faible">temps réel</span></td>
+      <td>Phases, écrans de salle, staff, sportifs, classement en direct, tour suivant</td>
+      <td>La journée</td>
+      <td>La table d'organisation · la seconde, sous pression</td></tr>
+  <tr><td><strong>3 · Gestion</strong><br><span class="faible">transverse au temps</span></td>
+      <td>Inscriptions, paiements, exports</td>
+      <td>Des semaines avant à après</td>
+      <td>Secrétaire, trésorier · le jour, la semaine</td></tr>
 </table></div>
 
+<h2 class="section">Niveau 0 · le rôle — inchangé, et déjà livré</h2>
+<p class="intro">Les trois axes sont <strong>le travail de l'administrateur</strong>. Ils vivent donc
+<em>derrière</em> la porte admin, et non à côté des autres rôles.</p>
+
 <div class="note">
-  <p><strong>Pourquoi pas « phase ».</strong> Le mot est <strong>déjà pris par le domaine sportif</strong> :
-  une <code>Phase</code> est une qualification, un 1/8ᵉ, un 1/4 — avec sa configuration de scoring et son grain
-  de validation (<span class="ref">ADR-0011</span>, écran A07). Réutiliser « phase » pour une étape de travail
-  de l'admin créerait deux sens pour un mot dans le code, l'API, l'UI et la doc. La règle de vocabulaire du
-  projet l'interdit, et c'est le genre d'ambiguïté qui se paie pendant des mois.</p>
-  <p><strong>Pourquoi « Résultats » plutôt qu'« Après ».</strong> « Après » ne dit pas ce qu'on y fait — c'est
-  un repère de temps, pas une situation de travail, alors que les deux autres en sont. <em>Résultats</em>
-  nomme ce qu'on vient y chercher : classements, podiums, exports, archives. À corriger si le club dit
-  autrement.</p>
+  <p>L'application livrée présente déjà <strong>quatre portes</strong> — Tablette · Public · Scoreur · Admin —
+  avec un bouton « Changer de rôle » en en-tête (<span class="ref">E00US017</span>,
+  <span class="ref">ADR-0042</span>, livré le 21/07/2026). Cet écran <strong>n'était maquetté nulle part</strong>
+  dans ce dossier : il a désormais sa planche, <a href="a00-portes.html">A00</a>.</p>
+  <p><strong>Correction apportée à ce dossier :</strong> les planches décrivaient trois applications à trois
+  URL (<code>/admin</code>, <code>/saisie</code>, <code>/</code>). C'était faux — l'application livrée n'avait
+  <em>aucune</em> URL. Elle en aura : <code>/public</code>, <code>/scoreur</code>, <code>/cible</code>,
+  <code>/admin/&lt;axe&gt;/&lt;destination&gt;</code>. La mémoire de position est alors portée par l'URL
+  elle-même : y revenir, c'est retrouver son état.</p>
 </div>
 
-<h2 class="section">Niveau 2 · l'accueil choisit l'espace</h2>
+<h2 class="section">Niveau 1 · l'accueil de l'admin choisit l'axe</h2>
 <div class="rangee">
   <figure class="variante">
     <figcaption><span class="etiquette">Accueil de l'administration</span>
-      <span class="sous-etiquette">Trois portes. Chacune ne montre que les tournois qui la concernent.</span></figcaption>
+      <span class="sous-etiquette">Trois axes. Le tournoi n'est demandé que par ceux qui en ont besoin.</span></figcaption>
     <div class="ui">
       <div class="barre marque"><span class="titre">KERVIGNARC · ADMINISTRATION</span>
         <span class="fin" style="font-size:11px;opacity:.85">Changer de rôle</span></div>
@@ -77,15 +91,15 @@ il n'est pas encore validé.</p>
         <div class="carte">
           <div class="rang bloc">
             <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-size:17px;font-weight:800">PRÉPARATION</span>
-              <span class="fin second">3 tournois</span></div>
-            <div class="second">Créer les briques, assembler un tournoi, organiser, remplir</div>
+              <span style="font-size:17px;font-weight:800">ATELIER</span>
+              <span class="pas neutre">SANS TOURNOI</span></div>
+            <div class="second">Briques du club, salles types, formats de déroulé, modèles de tournoi</div>
           </div>
         </div>
         <div class="carte marquee">
           <div class="rang bloc">
             <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-size:17px;font-weight:800">DÉROULÉ</span>
+              <span style="font-size:17px;font-weight:800">PILOTAGE</span>
               <span class="pas ok">● 2 EN COURS</span>
               <span class="fin"><span class="pas att">▲ 2 alertes</span></span></div>
             <div class="second">Lancer, superviser, valider, faire tourner la journée</div>
@@ -94,284 +108,133 @@ il n'est pas encore validé.</p>
         <div class="carte">
           <div class="rang bloc">
             <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-size:17px;font-weight:800">RÉSULTATS</span>
+              <span style="font-size:17px;font-weight:800">GESTION</span>
               <span class="fin second">12 tournois</span></div>
-            <div class="second">Classements, podiums, exports, paiements, archives</div>
+            <div class="second">Inscriptions, paiements, exports, archives</div>
           </div>
         </div>
-      </div>
-    </div>
-    <p class="verdict"><span class="pouce oui">le point clé</span> Un tournoi apparaît dans <b>un seul
-    espace</b>, selon son statut. Un brouillon n'encombre pas le Déroulé, un tournoi en cours n'encombre pas la
-    Préparation. Les <b>alertes du Déroulé remontent sur la porte</b> : on n'a pas besoin d'y entrer pour savoir
-    que quelque chose cloche.</p>
-  </figure>
-
-  <figure class="variante">
-    <figcaption><span class="etiquette">Variante · l'accueil s'efface le jour J</span>
-      <span class="sous-etiquette">Si un tournoi est en cours, on entre directement dans le Déroulé.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">KERVIGNARC</span></div>
-      <div class="corps">
-        <div class="aplat-alerte">▲ 2 tournois en cours — 2 postes hors ligne</div>
-        <button class="bouton principal geant">ENTRER DANS LE DÉROULÉ</button>
         <div class="carte plate">
-          <div class="rang"><span class="second" style="flex:1">Préparation</span><span class="faible">3 tournois</span></div>
-          <div class="rang"><span class="second" style="flex:1">Résultats</span><span class="faible">12 tournois</span></div>
+          <div class="rang"><span class="second" style="flex:1">Nouveau tournoi à partir d'un modèle</span>
+            <span class="faible">assemblage</span></div>
         </div>
       </div>
     </div>
-    <p class="verdict"><span class="pouce peut">à départager</span> Économise un clic le jour J, au prix d'un
-    accueil qui change de forme. <b>C'est le seul endroit où je réintroduirais du contextuel</b> — ailleurs, il
-    a été la cause du problème.</p>
-  </figure>
-</div>
-
-<h2 class="section">Niveau 3 · les quatre étapes de la Préparation</h2>
-<p class="intro">Découpage donné par le commanditaire : <strong>1. créer/gérer les briques · 2. assembler les
-briques pour créer un tournoi · 3. organiser en amont · 4. remplir le tournoi.</strong></p>
-
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Espace Préparation</span>
-      <span class="sous-etiquette">Les étapes sont numérotées et ordonnées, mais toutes ouvrables.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">PRÉPARATION</span>
-        <span class="fin" style="font-size:11px">← Accueil</span></div>
-      <div class="colonnes">
-        <div class="flanc">
-          <div class="groupe">Étapes</div>
-          <div class="item"><span class="faible">1</span> Briques du club</div>
-          <div class="item"><span class="faible">2</span> Assemblage</div>
-          <div class="item actif"><span class="faible">3</span> Organisation</div>
-          <div class="item"><span class="faible">4</span> Remplissage <span class="fin pas att">12</span></div>
-          <div class="groupe">Recherche</div>
-          <div class="champ" style="padding:5px 8px;font-size:11.5px">Toutes entités ▾</div>
-          <div class="champ" style="padding:5px 8px;font-size:11.5px">Rechercher…</div>
-        </div>
-        <div class="corps">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="mini">TOURNOI</span>
-            <span style="font-weight:800">Challenge des Champions — 12 oct</span>
-            <span class="fin pas neutre">BROUILLON</span>
-          </div>
-          <div class="carte">
-            <div class="tete-carte"><span>ÉTAPE 3 · ORGANISATION</span></div>
-            <div class="rang"><span style="flex:1">Départs</span><span class="second">2 départs · 9 h et 14 h</span></div>
-            <div class="rang"><span style="flex:1">Scoreurs</span><span class="second">3 déclarés</span></div>
-            <div class="rang"><span style="flex:1">Postes &amp; QR</span><span class="second">30 à imprimer</span></div>
-            <div class="rang"><span style="flex:1">Identité du tournoi</span><span class="faible">non renseignée</span></div>
-          </div>
-          <div class="carte plate">
-            <div class="rang"><span class="second" style="flex:1">Étape suivante — Remplissage</span>
-              <span class="fin bouton auto">Continuer →</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <p class="verdict"><span class="pouce oui">décision prise</span> <b>Ordre affiché, accès libre.</b> Les
-    étapes racontent la marche à suivre — c'est ce qui manquait à la v1 — mais rien n'interdit d'ouvrir la 4
-    avant la 3 : un retardataire s'inscrit à 8 h 50 même si l'organisation n'est pas finie
-    (<span class="ref">P-3</span>).</p>
+    <p class="verdict"><span class="pouce oui">le point clé</span> <b>L'atelier ne demande pas de tournoi</b> —
+    et c'est l'URL qui le porte : <code>/admin/atelier/blasons</code> n'a rien à porter, quand
+    <code>/admin/pilotage/12/supervision</code> désigne son tournoi. L'exception « ici le sélecteur ne
+    s'applique pas » <b>disparaît au lieu d'être expliquée</b>.</p>
   </figure>
 
   <figure class="variante">
-    <figcaption><span class="etiquette">Étape 1 · les briques, hors tournoi</span>
-      <span class="sous-etiquette">Aucun sélecteur de tournoi : c'est le patrimoine du club.</span></figcaption>
+    <figcaption><span class="etiquette">Ce que l'accueil rend enfin visible</span>
+      <span class="sous-etiquette">Le tableau de bord et le banc d'essai cessent d'être des entrées de menu.</span></figcaption>
     <div class="ui">
-      <div class="barre"><span class="titre">BRIQUES DU CLUB</span>
-        <span class="fin faible">réutilisables d'une année sur l'autre</span></div>
-      <div class="colonnes">
-        <div class="flanc">
-          <div class="groupe">Étapes</div>
-          <div class="item actif"><span class="faible">1</span> Briques du club</div>
-          <div class="item"><span class="faible">2</span> Assemblage</div>
-          <div class="item"><span class="faible">3</span> Organisation</div>
-          <div class="item"><span class="faible">4</span> Remplissage</div>
-        </div>
-        <div class="corps">
-          <div class="carte">
-            <div class="rang"><span style="flex:1">Catégories</span><span class="second">18</span></div>
-            <div class="rang"><span style="flex:1">Blasons</span><span class="second">5</span></div>
-            <div class="rang"><span style="flex:1">Clubs</span><span class="second">42</span></div>
-            <div class="rang"><span style="flex:1">Gabarits de salle</span><span class="second">2</span></div>
-            <div class="rang"><span style="flex:1">Barèmes</span><span class="second">3</span></div>
-            <div class="rang"><span style="flex:1">Tarifs</span><span class="second">4</span></div>
-          </div>
-          <p class="faible" style="margin:0">Ces briques ne dépendent d'aucun tournoi. Elles servent de
-          matériau à l'étape 2.</p>
-        </div>
-      </div>
-    </div>
-    <p class="verdict"><span class="pouce oui">ce que ton retour a débloqué</span> La v1 rangeait ces écrans
-    <b>sous le sélecteur de tournoi</b> (planche A06) — c'était faux, et c'est une des raisons pour lesquelles
-    l'ossature paraissait confuse. On fabrique des briques, <b>puis</b> on assemble un tournoi avec.</p>
-  </figure>
-</div>
-
-<h2 class="section">Le Déroulé — proposition, à corriger</h2>
-<p class="intro">Tu m'as dit que le même découpage s'applique aux deux autres espaces sans me donner leurs
-étapes. Voici ce que je déduis du CDC UX et des écrans déjà maquettés. <strong>C'est ma lecture, pas la
-tienne</strong> — c'est le point le plus incertain de cette planche.</p>
-
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Espace Déroulé</span>
-      <span class="sous-etiquette">Le sélecteur de tournoi est un sous-header démarqué, comme demandé.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">DÉROULÉ</span><span class="pas ok">● LIVE</span>
-        <span class="fin" style="font-size:11px">← Accueil</span></div>
-      <div class="barre marque"><span style="font-weight:800">▶ CHALLENGE DES CHAMPIONS — 12 OCT ▾</span>
-        <span class="fin" style="font-size:11px">2 tournois en cours</span></div>
-      <div class="colonnes">
-        <div class="flanc">
-          <div class="groupe">Étapes</div>
-          <div class="item"><span class="faible">1</span> Lancer un tournoi</div>
-          <div class="item actif"><span class="faible">2</span> Supervision</div>
-          <div class="item"><span class="faible">3</span> Validation <span class="fin pas att">3</span></div>
-          <div class="item"><span class="faible">4</span> Bascule de tour <span class="fin pas ok">✓</span></div>
-          <div class="item"><span class="faible">5</span> Clôture</div>
-          <div class="groupe">Recherche</div>
-          <div class="champ" style="padding:5px 8px;font-size:11.5px">Archer du tournoi…</div>
-        </div>
-        <div class="corps">
-          <div class="aplat-alerte">▲ Cible 7 hors ligne <span class="impact">14 mn</span></div>
-          <div class="carte">
-            <div class="rang"><span class="second" style="flex:1">Qualification · volée 8/12</span>
-              <span class="jauge" style="max-width:90px"><span style="width:62%"></span></span>
-              <span class="second">62 %</span></div>
-            <div class="rang"><span style="flex:1">28/30 postes en ligne</span><span class="fin bouton auto">Détail</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <p class="verdict"><span class="pouce peut">à valider</span> Les étapes deviennent ici des
-    <b>moments de la journée</b> plutôt que des préalables — on repasse par 2 et 3 en boucle toute la journée.
-    Est-ce que ça reste des « étapes » dans ta tête, ou faut-il un autre mot pour ce niveau dans le Déroulé ?</p>
-  </figure>
-
-  <figure class="variante">
-    <figcaption><span class="etiquette">Espace Résultats — proposition</span>
-      <span class="sous-etiquette">Trois étapes, de la publication à l'archivage.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">RÉSULTATS</span><span class="fin" style="font-size:11px">← Accueil</span></div>
-      <div class="barre" style="background:var(--surface-2)"><span style="font-weight:700">Challenge des Champions — 12 oct ▾</span>
-        <span class="fin pas ok">TERMINÉ</span></div>
-      <div class="colonnes">
-        <div class="flanc">
-          <div class="groupe">Étapes</div>
-          <div class="item actif"><span class="faible">1</span> Classements &amp; podiums</div>
-          <div class="item"><span class="faible">2</span> Comptes <span class="fin pas att">12</span></div>
-          <div class="item"><span class="faible">3</span> Exports &amp; archive</div>
-          <div class="groupe">Recherche</div>
-          <div class="champ" style="padding:5px 8px;font-size:11.5px">Toutes entités ▾</div>
-        </div>
-        <div class="corps">
-          <div class="carte">
-            <div class="rang"><span style="flex:1">Senior Homme</span><span class="second">34 archers</span><span class="fin bouton auto">Podium</span></div>
-            <div class="rang"><span style="flex:1">Senior Femme</span><span class="second">28 archers</span><span class="fin bouton auto">Podium</span></div>
-          </div>
-          <div class="carte info"><div class="rang bloc"><span class="second">Le sportif est figé.
-            Les <strong>comptes</strong> restent modifiables (12 paiements en attente).</span></div></div>
-        </div>
-      </div>
-    </div>
-    <p class="verdict"><span class="pouce peut">à corriger</span> J'ai regroupé paiements et exports sous
-    « Comptes » et « Exports &amp; archive ». <b>Rien ne garantit que c'est ton découpage</b> — c'est
-    typiquement ce que ton questionnaire doit trancher.</p>
-  </figure>
-</div>
-
-<h2 class="section">La recherche change de nature selon l'espace</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">En Préparation et Résultats</span>
-      <span class="sous-etiquette">Toutes entités · complétion · ouverture en <strong>modification</strong>.</span></figcaption>
-    <div class="ui">
+      <div class="barre marque"><span class="titre">PILOTAGE · CHALLENGE DES CHAMPIONS</span>
+        <span class="fin" style="font-size:11px;opacity:.85">← Accueil</span></div>
       <div class="corps">
-        <div style="display:flex;gap:6px">
-          <span class="champ plein" style="width:110px">Toutes entités ▾</span>
-          <span class="champ plein" style="flex:1">mart|</span>
-        </div>
-        <div class="carte">
-          <div class="tete-carte"><span>RÉSULTATS</span><span class="fin">7</span></div>
-          <div class="rang"><span class="mini" style="width:64px">ARCHER</span><span style="flex:1">MARTIN Paul</span><span class="faible">Kervignac</span></div>
-          <div class="rang"><span class="mini" style="width:64px">ARCHER</span><span style="flex:1">MARTIN Sophie</span><span class="faible">Lorient</span></div>
-          <div class="rang"><span class="mini" style="width:64px">CLUB</span><span style="flex:1">Martigné-Ferchaud</span><span class="faible">12 archers</span></div>
-        </div>
-        <p class="faible" style="margin:0">Un clic ouvre la fiche <strong>en modification</strong>.</p>
-      </div>
-    </div>
-    <p class="verdict">La liste déroulante <b>restreint</b> le type quand on sait ce qu'on cherche ;
-    « Toutes entités » cherche partout et groupe par type.</p>
-  </figure>
-
-  <figure class="variante">
-    <figcaption><span class="etiquette">En Déroulé</span>
-      <span class="sous-etiquette">Archers <strong>du tournoi</strong> · ouverture en <strong>consultation</strong>.</span></figcaption>
-    <div class="ui">
-      <div class="corps">
-        <div class="champ plein">Archer du tournoi…</div>
-        <div class="carte">
+        <div class="carte info">
           <div class="rang bloc">
-            <div style="font-weight:800">MARTIN Paul</div>
-            <div class="second">Cible 12 · position B · départ 1</div>
-            <div class="second">Qualification 541 · 2ᵉ SH · 1/4 à 14 h 20 sur cible 4</div>
+            <div class="second">Brouillon → Prêt → <b>En cours</b> → En pause → Terminé → Archivé</div>
+            <div class="second">Qualification · volée 8/12 — 62 %</div>
           </div>
-          <div class="rang"><span class="bouton auto">Déclarer un forfait</span>
-            <span class="bouton auto">Changer de cible</span></div>
+        </div>
+        <div class="carte">
+          <div class="rang"><span style="flex:1">28/30 postes en ligne</span><span class="pas att">▲ Cible 7</span></div>
+          <div class="rang"><span style="flex:1">À valider</span><span class="pas info">3</span></div>
         </div>
       </div>
     </div>
-    <p class="verdict"><span class="pouce oui">ton exigence</span> Fiche <b>en consultation</b>, avec ses
-    informations de tournoi, et les actions du jour J en dessous. C'est le bénévole de la table qui répond à un
-    archer (<span class="ref">D-10</span>).</p>
+    <p class="verdict"><span class="pouce oui">inversion de hiérarchie</span> <code>Accueil</code>
+    (<span class="ref">E14US001</span> : frise des 7 statuts, checklist, chiffres-clés) et
+    <code>Simulation</code> (<span class="ref">E15US003</span> : cockpit multi-vues) étaient rangés
+    <b>parmi dix-neuf destinations</b>, entre « Blasons » et « Postes de cible ». Ils deviennent des
+    <b>points d'entrée</b>.</p>
   </figure>
 </div>
 
-<h2 class="section">Ce que j'ai tranché sans toi, et pourquoi</h2>
+<h2 class="section">Où atterrissent les 25 destinations livrées</h2>
+<p class="intro">Relevé sur <code>frontend/src/features/admin/CoquilleAdmin.tsx</code> : 19 destinations dans le
+tiroir « Préparation », 6 dans « Jour J ». Le tiroir « Préparation » contient <strong>les trois axes à la
+fois</strong> ; le tiroir « Jour J » mélange 4 écrans de pilotage et 2 écrans administratifs.</p>
+
 <div class="enveloppe"><table class="tk">
-  <tr><th style="width:180px">Point</th><th style="width:150px">Décision</th><th>Raison — et comment la renverser</th></tr>
-  <tr><td>Mot du niveau 3</td><td><strong>« étape »</strong></td>
-      <td>Neutre, et sans collision avec <code>Phase</code>, <code>Depart</code>, <code>Volee</code>.
-      Dis un autre mot et je le change partout.</td></tr>
-  <tr><td>Nom du 3ᵉ espace</td><td><strong>« Résultats »</strong></td>
-      <td>« Après » situe dans le temps sans dire ce qu'on y fait, alors que les deux autres nomment une
-      activité.</td></tr>
-  <tr><td>Ordre des étapes</td><td><strong>affiché, non contraignant</strong></td>
-      <td>Un ordre contraignant bloquerait le retardataire de 8 h 50. Contredirait <span class="ref">P-3</span>.</td></tr>
-  <tr><td>Portée des briques</td><td><strong>hors tournoi</strong></td>
-      <td>Découle directement de ta distinction 1 / 2 : on fabrique, puis on assemble.</td></tr>
-  <tr><td>Étapes du Déroulé et des Résultats</td><td><strong>proposition</strong></td>
-      <td>Déduites du CDC UX faute de ta description. <strong>C'est le point le plus fragile de cette
-      planche.</strong></td></tr>
+  <tr><th style="width:33%">1 · Atelier</th><th style="width:33%">2 · Pilotage</th><th>3 · Gestion</th></tr>
+  <tr>
+    <td>Catégories · Blasons · Clubs · Gabarits (salles types) · Barème · <strong>Jeu d'essai</strong> ·
+        <strong>Simulation</strong></td>
+    <td>Supervision · <strong>Feu vert</strong> · Complétude · Classement en direct · Postes de cible ·
+        Scoreurs · Plan de salle · Plan de duels</td>
+    <td>Inscriptions · Doublons · Paiements · Exports · Archive</td>
+  </tr>
+</table></div>
+
+<h2 class="section">Les six écrans que les axes coupent en deux</h2>
+<p class="intro">Ce sont eux qui matérialisent le « tout est mélangé » : un seul écran y sert deux activités
+différentes.</p>
+
+<div class="enveloppe"><table class="tk">
+  <tr><th style="width:190px">Écran livré</th><th>Ce qu'il mélange · où vont les morceaux</th></tr>
+  <tr><td><strong>Départs &amp; tarifs</strong></td>
+      <td>Le <em>créneau</em> (pilotage) et le <em>tarif</em> (gestion) dans un seul formulaire. <b>À scinder.</b></td></tr>
+  <tr><td><strong>Phases (format)</strong></td>
+      <td>Le <em>modèle réutilisable</em> (atelier) et la <em>configuration d'un tournoi</em> (pilotage), confondus.</td></tr>
+  <tr><td><strong>Plan de salle</strong></td>
+      <td>Le <em>gabarit</em> (atelier — déjà global, <code>/gabarits</code>) et le <em>plan instancié</em> (pilotage).</td></tr>
+  <tr><td><strong>Placement</strong></td>
+      <td>La <b>charnière</b> : produit des inscriptions (gestion), consommé par le pilotage. Reste au pilotage.</td></tr>
+  <tr><td><strong>Classement</strong></td>
+      <td>Le <em>direct</em> (pilotage) et les <em>podiums exportés</em> (gestion).</td></tr>
+  <tr><td><strong>Tournoi</strong></td>
+      <td>Ni l'un ni l'autre : c'est l'<b>assemblage</b>, le geste qui crée l'objet sur lequel 2 et 3 travaillent.
+      Porté par l'accueil.</td></tr>
+</table></div>
+
+<h2 class="section">Ce qui a été tranché avec le commanditaire</h2>
+<div class="enveloppe"><table class="tk">
+  <tr><th style="width:230px">Point</th><th>Décision</th></tr>
+  <tr><td>Statut des trois axes</td>
+      <td>Ils relèvent du travail de l'admin ⇒ <strong>un accueil admin choisit l'axe</strong>. L'option
+      « trois URL de premier niveau » a été <strong>écartée</strong>.</td></tr>
+  <tr><td>URL</td><td><strong>Vraies URL par rôle</strong> (<code>react-router-dom</code>), chaque branche se
+      souvenant d'où elle était — la mémoire est portée par l'URL.</td></tr>
+  <tr><td>Portée des briques</td><td><strong>Hors tournoi</strong> : patrimoine du club, copié dans le tournoi
+      à l'assemblage.</td></tr>
+  <tr><td>Recherche</td><td>Elle <strong>change de nature selon l'axe</strong> : toutes entités et ouverture en
+      <em>modification</em> en atelier et en gestion ; archer <em>du tournoi</em> et ouverture en
+      <em>consultation</em> en pilotage.</td></tr>
 </table></div>
 
 <div class="note">
-  <p><strong>Un point que je refuse de trancher seul.</strong> Si les briques sont le patrimoine du club, que
-  se passe-t-il quand tu changes un <strong>tarif</strong> ou un <strong>barème</strong> en 2027 ? Le tournoi
-  2026 déjà archivé doit-il bouger ?</p>
-  <p>Deux réponses possibles : la brique est <em>référencée</em> (simple, mais l'historique se réécrit), ou
-  <em>copiée à l'assemblage</em> (le tournoi fige son matériau, plus lourd mais l'archive reste vraie). Ça
-  touche le <strong>modèle de données</strong>, pas la maquette — donc ça se décide avec
-  <code>docs/modele-de-donnees.md</code> sous les yeux, et ça mérite un ADR.</p>
+  <p><strong>Erreur de la v2, corrigée ici.</strong> La v2 affirmait qu'une <code>Phase</code> est « une
+  qualification, un 1/8ᵉ, un 1/4 ». C'est <strong>faux</strong> : <code>backend/domain/tableau.py</code> montre
+  qu'<strong>une seule</strong> phase <code>elimination_directe</code> contient <strong>tout le tableau</strong>
+  — les matchs numérotés, la finale, la petite finale, les byes et la cascade de placement. Les niveaux du
+  tableau ne sont pas des phases : ils sont portés par le champ <code>Match.tour</code>.</p>
+  <p>Le mot <strong>« phase » reste néanmoins écarté</strong> pour nommer un niveau de navigation : il désigne
+  une entité du domaine sportif, et la règle de vocabulaire du projet interdit les doubles sens.</p>
 </div>
 
-<h2 class="section">À trancher <span class="code-sec">reporté dans le questionnaire</span></h2>
-<ul class="exigences">
-  <li><strong>Les étapes du Déroulé et des Résultats</strong> — les miennes sont une déduction. Corrige-les,
-  c'est le cœur du sujet.</li>
-  <li><strong>L'accueil s'efface-t-il le jour J</strong> (entrée directe dans le Déroulé) ou reste-t-il
-  toujours identique ?</li>
-  <li><strong>« Résultats », « étape »</strong> — les mots te vont-ils ?</li>
-  <li><strong>Briques référencées ou copiées</strong> — la question d'archive ci-dessus.</li>
-</ul>
+<h2 class="section">Ce qui reste ouvert <span class="code-sec">reporté dans le questionnaire</span></h2>
+<div class="enveloppe"><table class="tk">
+  <tr><th style="width:230px">Question</th><th>Pourquoi elle n'est pas tranchée</th></tr>
+  <tr><td><strong>Les mots</strong></td>
+      <td>« Atelier », « Pilotage », « Gestion » sont les mots de l'assistant ; le commanditaire a donné les
+      <em>contenus</em> des trois axes, pas leurs étiquettes.</td></tr>
+  <tr><td><strong>Le niveau sous l'axe</strong></td>
+      <td>Les quatre temps de la Préparation donnés le 29/07 (briques → assemblage → organisation → remplissage)
+      se <em>redistribuent</em> sur les trois axes plutôt que de disparaître. Reste à dire s'il faut encore un
+      niveau nommé sous l'axe, ou seulement une liste de destinations.</td></tr>
+  <tr><td><strong>L'étanchéité le jour J</strong></td>
+      <td>L'axe 3 doit rester ouvert (<span class="ref">P-3</span> — le retardataire de 8 h 50 s'inscrit et
+      paie). L'atelier, lui, n'a rien à faire dans la journée (<span class="ref">P-6</span>). Reste à dire s'il
+      est <em>masqué</em> ou seulement <em>rangé ailleurs</em>.</td></tr>
+</table></div>
 
-<footer class="pied">
-  <span><a href="index.html">Tous les écrans</a></span>
-  <span><a href="questionnaires/a02-ossature.html">Questionnaire A02</a></span>
+<div class="pied">
+  <a href="index.html">Tous les écrans</a>
+  <a href="questionnaires/a02-ossature.html">Questionnaire A02</a>
   <span class="fin"><a href="a03-accueil-statuts.html">Suivant : A03 →</a></span>
-</footer>
+</div>
 
 </div>
 </body>

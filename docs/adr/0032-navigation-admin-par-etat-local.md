@@ -1,7 +1,12 @@
 # ADR-0032 — Navigation de l'appli admin par état local plutôt que react-router
 
-- **Statut** : Accepté
+- **Statut** : **Remplacé par [ADR-0059](0059-routage-par-role-dans-l-url-routeur-maison.md)** (30/07/2026)
 - **Date** : 2026-07-19
+- **Ce qui a changé** : cet ADR posait « pas de `react-router` » **et** « pas d'URL », en s'appuyant
+  sur l'absence de besoin de deep-link — il prévoyait lui-même sa réévaluation « si un vrai besoin
+  d'URL apparaît ». Le besoin est apparu (E14US003) : `F5` perdait l'écran, rien n'était partageable.
+  ADR-0059 **conserve la conclusion sur la dépendance** (routeur maison, règle 11) et **renverse**
+  celle sur les URL : chaque rôle a désormais son adresse.
 - **Décideurs** : Organisateur / Architecte
 - **Amende** : [`stories/E00-socle.md`](../../stories/E00-socle.md) (E00US015 — Notes, arbitrage du
   18/07/2026 déjà consigné).
