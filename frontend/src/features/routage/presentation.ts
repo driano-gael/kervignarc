@@ -68,7 +68,7 @@ export function detail(archer: RoutageArcher): string | null {
     // Cible inconnue : le titre a déjà pris le libellé du tour, on ne le répète pas — on annonce
     // l'attente (« cible attribuée au lancement du tour »).
     // `manque` est garanti non nul par le serveur quand il n'y a pas de cible (c'est lui qui sait
-    // *pourquoi* : tour à venir, pas de plan, ou placement périmé) — pas de repli local à inventer.
+    // *pourquoi* : tour à venir, ou plan non matérialisé) — pas de repli local à inventer.
     return destination(archer.prochain) === null
       ? `${archer.prochain.manque} · ${adversaire(archer.prochain)}`
       : contexte
@@ -76,6 +76,15 @@ export function detail(archer: RoutageArcher): string | null {
   return archer.motif
 }
 
+// Le panneau bascule tout seul quand **tous** les archers de la cible ont fini de tirer (CA : « dès
+// la validation »). Une série est finie quand elle est complète **et** verrouillée par le scoreur :
+// un tir non validé ne compte pas — c'est le scoreur qui clôt, pas le marqueur.
+//
+// `forfait` clôt aussi, et c'est indispensable : un archer qui abandonne ou est disqualifié
+// (E04US015) **reste dans la grille** avec une série incomplète pour toujours. Sans cette clause,
+// `cibleClose` ne serait jamais vrai et les trois autres archers de la cible perdraient le panneau.
+// C'est le serveur qui porte le signal (`LigneGrille.forfait`) — même notion que la complétude
+// (« barème validé **ou** forfait », DETTE-014) : le front n'a pas à la re-dériver.
 // Le panneau bascule tout seul quand **tous** les archers de la cible ont fini de tirer (CA : « dès
 // la validation »). Une série est finie quand elle est complète **et** verrouillée par le scoreur :
 // un tir non validé ne compte pas — c'est le scoreur qui clôt, pas le marqueur.

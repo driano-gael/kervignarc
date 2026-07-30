@@ -142,6 +142,8 @@ class ServiceCompletude:
             nb_series_closes=nb_series_closes,
         )
 
+    # DETTE-022 : 2ᵉ des quatre écritures de « phase de qualif -> forfaits » (avec
+    # `avancement_depart`, `ServiceClassement` et `ServiceSaisie`).
     def _compter_cibles(self, tournoi_id: TournoiId) -> tuple[int, int]:
         """`(cibles_terminees, cibles_total)` sur l'ensemble des couples `(départ, cible)` placés.
 

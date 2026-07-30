@@ -84,7 +84,10 @@ def test_route_les_archers_demandes_dans_l_ordre_demande(
         assert ligne["prochain"]["position"] in {"A", "B", "C", "D"}
         assert ligne["prochain"]["libelle"] == "Demi-finale"
         assert ligne["prochain"]["adversaire"] is not None
-        assert ligne["nom"] != ""  # l'identité vient du classement
+        # Plan frais et duellistes côte à côte : aucune alerte. Sans cette assertion, un `alerte`
+        # figé à `None` dans le DTO passerait toute la suite — le champ ne prouverait rien.
+        assert ligne["prochain"]["alerte"] is None
+        assert ligne["nom"] != ""  # l'identité vient des archers du tournoi
 
 
 def test_phase_de_tableau_resolue_sans_la_donner(

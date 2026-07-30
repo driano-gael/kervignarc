@@ -50,15 +50,30 @@ CIBLE_NON_ATTRIBUEE = "cible non attribuée"
 """Tour 1 sans pose : aucun plan matérialisé, ou archer en réserve. Rien ne viendra tant que
 l'organisateur n'aura pas placé — d'où le libellé **neutre** du feu vert, et non une promesse."""
 
-PLACEMENT_A_REVOIR = "placement à revoir — vous n'êtes pas placé à côté de votre adversaire"
-"""**Alerte**, pas un manque : la cible reste annoncée, mais le duel n'est pas côte à côte.
+PLACEMENT_AUTRE_CIBLE = "placement à revoir — votre adversaire est sur la cible {cible}"
+"""**Mauvais conseil en vue** : la pose annoncée n'est pas là où le duel se tirera.
 
-Deux causes que rien ne distingue (l'appariement n'est jamais persisté, ADR-0048) : le plan a été
-matérialisé sur un **autre appariement** — le classement a bougé depuis, une correction de score
-suffit — ou le glouton n'a **pas pu** les rapprocher (cibles trop petites), cas que le placement
-accepte et signale (E03US009). Dans les deux cas la pose de l'archer reste **sa** place physique :
-l'effacer lui retirerait une information juste. On l'annonce donc, avec l'avertissement.
+Le plan a été matérialisé sur un **autre appariement** (le classement a bougé — une correction de
+score suffit, E04US013 — et l'arbre est recalculé à chaque lecture, ADR-0023, alors que les poses
+sont persistées), ou les cibles sont trop étroites pour rapprocher les duellistes. On annonce quand
+même la pose — c'est la ligne de cet archer sur le plan, et la taire ne dirait rien de plus
+utile — mais on **nomme la butte de l'autre** : c'est ce qui permet de comprendre en deux
+secondes qu'il faut aller voir l'organisateur plutôt que de s'installer.
 """
+
+PLACEMENT_VOISIN_ELOIGNE = "votre adversaire tire sur la même cible, place {position}"
+"""Même butte, places **non adjacentes** — c'est la disposition nominale d'une cible de salle.
+
+Le duel se tire bien là où on l'annonce : la pose est le **bon** conseil, il n'y a rien à revoir
+avant de partir. On le dit quand même, parce qu'E03US009 veut les duellistes **côte à côte** et que
+l'intéressé est mieux placé que quiconque pour se décaler d'une place. Ton neutre, donc : ce n'est
+pas la même situation que `PLACEMENT_AUTRE_CIBLE`, et les confondre — ce que faisait le message
+unique — c'était soit alarmer pour rien, soit envoyer quelqu'un sur la mauvaise butte.
+"""
+
+PLACEMENT_ADVERSAIRE_NON_PLACE = "placement à revoir — votre adversaire n'est pas placé"
+"""L'adversaire est en réserve (pas de blason exploitable, pas d'inscription…) : le duel n'a pas
+de lieu tant que l'organisateur ne l'a pas posé."""
 
 RANG_A_VENIR = "rang publié en fin de phase"
 PHASE_ABSENTE = "phase finale non configurée"
@@ -191,12 +206,15 @@ class ServiceRoutage:
             # panneau **motivé** plutôt qu'une erreur — l'écran est consultable avant la clôture.
             return self._tous_indisponibles(tournoi_id, phase.id, archer_ids, TABLEAU_ABSENT)
         plan = self._plan_lu(tournoi_id, phase.id)
+        identites = self._identites(tournoi_id)
         # `podium()` rebalaye tout l'arbre : calculé **une fois** pour la grille entière, pas par
         # archer — la route accepte jusqu'à 64 identifiants.
         rangs = {place.participant: place.rang for place in tableau.podium()}
         return Routage(
             phase_id=phase.id,
-            archers=tuple(self._router(a, tableau, lignes, plan, rangs) for a in archer_ids),
+            archers=tuple(
+                self._router(a, tableau, lignes, plan, rangs, identites) for a in archer_ids
+            ),
         )
 
     # --- Résolution de la phase ----------------------------------------------------------------
@@ -249,8 +267,8 @@ class ServiceRoutage:
         C'est l'état le plus fréquent de la journée (la phase finale n'est configurée qu'une fois la
         qualification close), donc pas un cas limite : quatre lignes anonymes et identiques seraient
         illisibles, et un panneau qui ne sait plus dire *qui* est qui a perdu sa raison d'être. Les
-        noms viennent du classement, lisible **indépendamment** de toute phase de tableau — c'est
-        justement ce que les deux branches dégradées n'ont pas.
+        noms viennent des **archers du tournoi**, lisibles indépendamment de toute phase de tableau
+        — c'est justement ce que les deux branches dégradées n'ont pas.
         """
         identites = self._identites(tournoi_id)
         return Routage(
@@ -291,6 +309,7 @@ class ServiceRoutage:
         lignes: dict[int, LigneClassement],
         plan: _PlanLu,
         rangs: dict[Participant, int],
+        identites: dict[int, tuple[str, str]],
     ) -> RoutageArcher:
         """L'issue d'un archer : prochain duel, sortie, ou l'aveu qu'on ne sait pas le router.
 
@@ -300,9 +319,11 @@ class ServiceRoutage:
         n'occupe au plus qu'un match non tranché à la fois : l'arbre l'interdit.
         """
         moi = Participant.individuel(archer_id)
-        identite = self._saisie_duels.duelliste(moi, lignes)
-        nom = identite.nom if identite is not None else ""
-        prenom = identite.prenom if identite is not None else ""
+        # Les noms viennent des **archers**, pas du classement : un abandon y est relégué et une
+        # disqualification en est **sortie** (ADR-0050), or ce sont précisément les archers qu'on
+        # route encore (ils restent dans la grille). Les lire du classement rendait leur ligne
+        # **anonyme** — la moitié du trou que le panneau dégradé avait déjà fermée de son côté.
+        nom, prenom = identites.get(archer_id, ("", ""))
         siens = [m for m in tableau.matchs if moi in (m.haut, m.bas)]
         if not siens:
             return RoutageArcher(
@@ -347,7 +368,7 @@ class ServiceRoutage:
         """Le rendez-vous : sa cible (si elle est **valide**), son libellé de tour, l'adversaire."""
         adversaire_participant = match.bas if match.haut == moi else match.haut
         adversaire = self._saisie_duels.duelliste(adversaire_participant, lignes)
-        pose, manque, alerte = self._pose_a_annoncer(match, moi, plan)
+        pose, manque, alerte = self._pose_a_annoncer(match, moi, adversaire_participant, plan)
         return ProchainDuel(
             numero=match.numero,
             tour=match.tour,
@@ -363,7 +384,7 @@ class ServiceRoutage:
     # DETTE-019 : garde tour-1, jumelle de `ServicePilotageTour._duel_a_venir`.
     @staticmethod
     def _pose_a_annoncer(
-        match: Match, moi: Participant, plan: _PlanLu
+        match: Match, moi: Participant, adversaire: Participant | None, plan: _PlanLu
     ) -> tuple[tuple[int, str] | None, str | None, str | None]:
         """La pose à annoncer, le **manque** s'il n'y en a pas, l'**alerte** si elle est douteuse.
 
@@ -378,25 +399,36 @@ class ServiceRoutage:
         2. **Pose absente au tour 1 → aucune cible.** Aucun plan matérialisé, pas de gabarit, ou
            archer en réserve. Rien ne viendra tant que l'organisateur n'aura pas placé : libellé
            **neutre**, pas une promesse. *(Le jumeau dit « cible non attribuée », même raison.)*
-        3. **Pose présente mais duel non côte à côte → cible annoncée + alerte.** Le signal vient du
-           domaine (`duels_non_cote_a_cote`, via `PlanDeDuels.duels_separes`), confronté aux paires
-           du tableau **d'aujourd'hui** : il attrape aussi bien le plan matérialisé sur un **autre
-           appariement** (le classement a bougé — une correction de score suffit, E04US013 — et
-           l'arbre est recalculé à chaque lecture, ADR-0023, alors que les poses sont persistées)
-           que le duel que le glouton n'a **pas pu** rapprocher (cibles trop petites), cas que le
-           placement **accepte** et signale (E03US009).
+        3. **Pose présente mais duel non côte à côte → cible annoncée + alerte qualifiée.** Le
+           **déclenchement** vient du domaine (`duels_non_cote_a_cote`, via
+           `PlanDeDuels.duels_separes`), confronté aux paires du tableau **d'aujourd'hui**. On
+           **n'efface pas** la cible : c'est la ligne de cet archer sur le plan, et la lui retirer
+           échangerait une information contre un vide.
 
-           On **n'efface pas** la cible : rien ne distingue ces deux causes (l'appariement n'est
-           jamais persisté), et dans les deux cas la pose reste **la place physique de cet archer**.
-           La lui retirer, ce serait échanger une information juste contre un vide — alors que le
-           besoin réel est de savoir que quelque chose cloche. D'où l'alerte, pas la suppression.
+           Mais « non côte à côte » recouvre **deux situations qui appellent des conseils
+           opposés**, et les confondre sous un message unique, c'était forcément se tromper sur
+           l'une des deux :
+           - **même butte, places éloignées** (la disposition nominale — quatre archers sur une
+             cible) : la pose est le **bon** conseil, il n'y a qu'à se décaler d'une place ;
+           - **buttes différentes** : la pose est le **mauvais** conseil — le duel ne s'y tirera
+             pas, l'organisateur va régénérer le plan. Il faut le dire, et nommer l'autre butte.
+
+           D'où trois messages, et non un. La donnée est déjà en main (`plan.poses`) : aucune
+           lecture supplémentaire.
         """
         if match.tour != 1:
             return None, CIBLE_A_VENIR, None
         pose = plan.poses.get(moi.ref_id)
         if pose is None:
             return None, CIBLE_NON_ATTRIBUEE, None
-        return pose, None, PLACEMENT_A_REVOIR if moi.ref_id in plan.separes else None
+        if moi.ref_id not in plan.separes:
+            return pose, None, None
+        pose_adverse = plan.poses.get(adversaire.ref_id) if adversaire is not None else None
+        if pose_adverse is None:
+            return pose, None, PLACEMENT_ADVERSAIRE_NON_PLACE
+        if pose_adverse[0] == pose[0]:
+            return pose, None, PLACEMENT_VOISIN_ELOIGNE.format(position=pose_adverse[1])
+        return pose, None, PLACEMENT_AUTRE_CIBLE.format(cible=pose_adverse[0])
 
     # --- Lectures best-effort ------------------------------------------------------------------
 

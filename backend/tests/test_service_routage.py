@@ -19,6 +19,7 @@ que le pilotage lit (le tableau reconstruit + le plan de duels persisté).
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import replace
 
 import pytest
@@ -29,16 +30,19 @@ from application.placement_duels import ServicePlacementDuels
 from application.routage import (
     CIBLE_A_VENIR,
     CIBLE_NON_ATTRIBUEE,
-    PLACEMENT_A_REVOIR,
+    PLACEMENT_AUTRE_CIBLE,
     IssueRoutage,
     ServiceRoutage,
 )
 from application.saisie_duels import ServiceSaisieDuels
 from domain.archer import Archer
+from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.duel import ResolveurBaremeDuelFfta
+from domain.forfait import Forfait, NatureForfait
 from domain.gabarit_salle import GabaritSalle
+from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
 from domain.participant import Participant
 from domain.phase import Phase, StatutPhase, TypePhase
@@ -58,6 +62,8 @@ from tests.test_service_placement_duels import (
     FauxTournoiRepository,
 )
 from tests.test_service_saisie_duels import ZONES_TRIPLE, FauxDuelRepository
+
+_QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
 
 
 class _Monde:
@@ -472,7 +478,11 @@ def test_pose_perimee_par_un_reclassement_est_signalee() -> None:
     assert apres.adversaire is not None
     assert apres.adversaire.archer_id != avant.adversaire.archer_id  # l'appariement a changé
     assert apres.cible == avant.cible  # sa place physique n'a pas bougé
-    assert apres.alerte == PLACEMENT_A_REVOIR
+    # Deux buttes différentes : la pose annoncée n'est **pas** là où le duel se tirera. Le panneau
+    # nomme donc la cible de l'autre — c'est ce qui fait comprendre qu'il faut voir l'organisateur
+    # plutôt que de s'installer. Un message générique laisserait partir sur la mauvaise butte.
+    assert apres.alerte is not None and apres.alerte.startswith("placement à revoir")
+    assert "cible" in apres.alerte
     assert apres.manque is None  # rien ne *manque* : c'est une alerte, pas un trou
 
 
@@ -493,7 +503,11 @@ def test_pose_perimee_meme_quand_les_deux_restent_sur_la_meme_cible() -> None:
 
     assert apres is not None
     assert apres.cible == avant.cible  # même butte, forcément : il n'y en a qu'une
-    assert apres.alerte == PLACEMENT_A_REVOIR
+    # Même butte : la pose est le **bon** conseil, il n'y a qu'à se décaler d'une place. Le ton est
+    # donc neutre — alarmer ici, ce serait confondre deux situations opposées.
+    assert apres.alerte is not None
+    assert apres.alerte.startswith("votre adversaire tire sur la même cible")
+    assert not apres.alerte.startswith("placement à revoir")
 
 
 def test_un_plan_sain_mais_separe_garde_sa_cible() -> None:
@@ -510,7 +524,9 @@ def test_un_plan_sain_mais_separe_garde_sa_cible() -> None:
     for ligne in routage.archers:
         assert ligne.prochain is not None
         assert ligne.prochain.cible is not None  # la cible réelle, pas un vide
-        assert ligne.prochain.alerte == PLACEMENT_A_REVOIR
+        assert ligne.prochain.alerte == PLACEMENT_AUTRE_CIBLE.format(
+            cible=monde.poses()[monde.adversaire_de(ligne.archer_id)][0]
+        )
 
 
 def test_le_panneau_degrade_reste_nominatif() -> None:
@@ -568,6 +584,58 @@ def test_la_phase_visee_est_le_tableau_qui_vient() -> None:
     routage = monde.routage.routage(monde.tournoi_id, (archers[0],))
 
     assert routage.phase_id == second
+
+
+def test_tous_les_tableaux_termines_vise_le_dernier() -> None:
+    """Le repli du repli. Quand plus aucun tableau n'est en cours, viser le **premier** renverrait
+    « non retenu pour le tableau » à qui n'a joué que le second — alors qu'il y a un rang à
+    afficher. C'est le **dernier** qui porte le dénouement."""
+    monde = _Monde()
+    archers = _quatre(monde)
+    premier = monde.phase_id
+    assert premier is not None
+    second = monde.creer_phase_tableau()
+    for phase_id in (premier, second):
+        monde.phases._phases[phase_id] = replace(
+            monde.phases._phases[phase_id], statut=StatutPhase.TERMINEE
+        )
+
+    routage = monde.routage.routage(monde.tournoi_id, (archers[0],))
+
+    assert routage.phase_id == second
+
+
+def test_un_archer_disqualifie_garde_son_nom() -> None:
+    """Une DSQ **sort** l'archer du classement (ADR-0050) — donc du tableau. Il reste pourtant dans
+    la grille du poste, donc le panneau le route encore : sa ligne doit porter son **nom**, sinon
+    c'est précisément lui qu'on rend anonyme. Les identités viennent des archers, pas du classement.
+    """
+    monde = _Monde()
+    archers = _quatre(monde)
+    monde.placer()
+    qualif = monde.phases.ajouter(
+        Phase.qualification(
+            monde.tournoi_id,
+            BaremeQualification.creer(1, 2),
+            GrainValidation.fin_de_serie(),
+        )
+    )
+    assert qualif.id is not None
+    monde.forfaits.semer(
+        Forfait.creer(
+            monde.tournoi_id,
+            archers[0],
+            qualif.id,
+            NatureForfait.DISQUALIFICATION,
+            "DURAND",
+            _QUAND,
+        )
+    )
+
+    ligne = monde.routage.routage(monde.tournoi_id, (archers[0],)).archers[0]
+
+    assert ligne.issue is IssueRoutage.INDISPONIBLE  # sorti du classement, donc du tableau
+    assert ligne.nom != ""
 
 
 def test_un_participant_equipe_n_est_pas_route() -> None:

@@ -870,15 +870,6 @@ dette). Constaté en **revue adversariale**.
 ajouter un motif `MotifRemboursement.ARCHER_SUPPRIME`, sur le patron exact du départ
 (`DepartRepository.supprimer_avec_remboursements`). Marqueur `# DETTE-018` posé sur `_signaler_engagement`.
 
-## Procédure — inscrire une dette
-
-1. **Vérifier qu'elle est assumée** : si elle se corrige dans l'US sans déborder du périmètre, la corriger.
-2. **Ajouter la ligne** au tableau « Dette ouverte » (ID `DETTE-nnn` incrémental) — **même commit** que l'introduction.
-3. **Rédiger le détail** : constat, conséquence, pourquoi non corrigée, résorption attendue.
-4. **Marquer le code** : commentaire à l'endroit exact du raccourci, renvoyant à l'ID (`# DETTE-001 : …`).
-5. **Mentionner dans le corps de la PR**, et proposer l'US de résorption à l'utilisateur.
-6. À la résorption : déplacer la ligne vers « Dette résorbée » avec l'US qui l'a soldée, et retirer les marqueurs du code.
-
 ### DETTE-019 — `ServiceRoutage` jumeau de `ServicePilotageTour`
 
 **Constat.** `ServiceRoutage` (E04US018) et `ServicePilotageTour` (E12US002) posent la même question
@@ -997,3 +988,11 @@ signale et le trace ici.
 changement de comportement. Retirer au passage la phrase « on extraira au 3ᵉ cas » de
 `completude.py`, devenue fausse. Marqueurs `# DETTE-022` sur les 4 sites.
 
+## Procédure — inscrire une dette
+
+1. **Vérifier qu'elle est assumée** : si elle se corrige dans l'US sans déborder du périmètre, la corriger.
+2. **Ajouter la ligne** au tableau « Dette ouverte » (ID `DETTE-nnn` incrémental) — **même commit** que l'introduction.
+3. **Rédiger le détail** : constat, conséquence, pourquoi non corrigée, résorption attendue.
+4. **Marquer le code** : commentaire à l'endroit exact du raccourci, renvoyant à l'ID (`# DETTE-001 : …`).
+5. **Mentionner dans le corps de la PR**, et proposer l'US de résorption à l'utilisateur.
+6. À la résorption : déplacer la ligne vers « Dette résorbée » avec l'US qui l'a soldée, et retirer les marqueurs du code.

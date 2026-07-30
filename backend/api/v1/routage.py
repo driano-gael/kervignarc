@@ -157,9 +157,12 @@ async def lire_routage(
 ) -> RoutageReponse:
     """Où tirent ensuite ces archers. Lecture pure (`D-08`), hors boucle événementielle.
 
-    `phase_id` omis ⇒ le service vise la première phase d'élimination directe du tournoi : la
-    tablette de qualification ne connaît que sa cible et son départ. L'ordre des `archer_id` est
-    **conservé** dans la réponse — le panneau affiche A, B, C, D dans l'ordre de la grille.
+    `phase_id` omis ⇒ le service vise le **tableau qui vient** — la première élimination directe
+    non terminée, sinon la dernière : la tablette de qualification ne connaît que sa cible et son
+    départ.
+    Fourni, il est **validé** (404 s'il est inconnu ou relève d'un autre tournoi). L'ordre des
+    `archer_id` est **conservé** dans la réponse — le panneau affiche A, B, C, D dans l'ordre de la
+    grille.
     """
     service: ServiceRoutage = request.app.state.service_routage
     routage = await run_in_threadpool(service.routage, tournoi_id, tuple(archer_id or ()), phase_id)
