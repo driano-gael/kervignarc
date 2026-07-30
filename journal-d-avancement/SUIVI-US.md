@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 30/07/2026** · **84 US livrées** · dernière : `E14US003` *(l'administration rangée en trois axes d'activité + une adresse par rôle)*.
+**Dernière mise à jour : 31/07/2026** · **85 US livrées** · dernière : `E01US023` *(les briques de configuration deviennent le patrimoine du club : bibliothèque, copie à l'assemblage, promotion)*.
 
 ---
 
@@ -41,6 +41,19 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E01US023` **les briques de l'atelier deviennent le patrimoine du club** — US à **surface
+>   visible**, qui **résorbe DETTE-023**. Catégories et blasons peuvent exister **sans tournoi**
+>   (modèles de bibliothèque) ; un tournoi en reçoit une **copie** ajustable, et une modification
+>   déclarée permanente **remonte** au club sans rétroagir sur les éditions déjà montées (copie et
+>   non référence : un réglage changé en 2027 ne doit pas réécrire le tournoi 2026 archivé —
+>   [ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md)).
+>   Le déroulé devient une brique neuve, **`FormatTournoi`** : « libérer les phases » en rendant
+>   `Phase.tournoi_id` nullable était impossible sans désarmer l'invariant `SequencePhases`
+>   (ordres contigus 1..N) — arbitré avec le commanditaire. `Barème` et `Phases` passent au
+>   **pilotage** (elles règlent une édition, comme `Plan de salle` face à `Gabarits`) ; l'atelier
+>   gagne `Formats`, le pilotage gagne `Assemblage`. Ajouts au passage : pré-chargement FFTA **dans
+>   la bibliothèque** (au lieu d'à chaque tournoi) et **import en masse des clubs**.
+>   Recette : [`docs/fonctionnel/E01US023.md`](../docs/fonctionnel/E01US023.md).
 > - `E04US018` **afficher la prochaine cible après validation** — US à **surface visible**, le
 >   **canal n°1 des quatre canaux de routage** (`D-09`) et le **premier récepteur** du signal
 >   `tour_lance` d'`E12US002`. Un service de lecture **pure** (`application/routage.py`) répond « où
@@ -444,6 +457,7 @@
 | E15US002 | Moteur de simulation éphémère + garde-fou (non-persistance) | E15 🆕 | ✅ *(rejeu in-memory, ADR-0054)* |
 | E15US003 | Bot pilote auto pausable + cockpit interactif multi-vues | E15 🆕 | ✅ *(session vivante + canal isolé, ADR-0055)* |
 | E14US003 | Admin rangée en **trois axes d'activité** + une adresse par rôle | E14 🆕 | ✅ *(ADR-0058 révise `D-19` ; ADR-0059 remplace ADR-0032)* |
+| E01US023 | Les briques de l'atelier deviennent le **patrimoine du club** (bibliothèque, copie, promotion) | E01 🆕 | ✅ *(ADR-0060 ; DETTE-023 résorbée ; brique `FormatTournoi` ajoutée)* |
 
 ## US caduque
 
