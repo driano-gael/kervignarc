@@ -150,6 +150,10 @@ class InMemoryCategorieRepository(_AllocateurId):
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Categorie]:
         return [c for c in self._items.values() if c.tournoi_id == tournoi_id]
 
+    def par_bibliotheque(self) -> list[Categorie]:
+        # Modèles de bibliothèque — patrimoine du club, sans tournoi (E01US023).
+        return [c for c in self._items.values() if c.tournoi_id is None]
+
     def par_blason(self, blason_id: BlasonId) -> list[Categorie]:
         return [c for c in self._items.values() if c.blason_id == blason_id]
 
@@ -180,6 +184,10 @@ class InMemoryBlasonRepository(_AllocateurId):
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Blason]:
         return [b for b in self._items.values() if b.tournoi_id == tournoi_id]
+
+    def par_bibliotheque(self) -> list[Blason]:
+        # Modèles de bibliothèque — patrimoine du club, sans tournoi (E01US023).
+        return [b for b in self._items.values() if b.tournoi_id is None]
 
     def enregistrer(self, blason: Blason) -> Blason:
         assert blason.id is not None

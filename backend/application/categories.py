@@ -153,7 +153,10 @@ class ServiceCategories:
         vide ou la hauteur du centre fournie n'est pas un entier strictement positif.
         """
         categorie = self._categorie_existante(categorie_id)
-        self._verifier_blason_du_tournoi(categorie.tournoi_id, blason_id)
+        # Un modèle de bibliothèque n'a pas de tournoi : la garde « le blason appartient bien à ce
+        # tournoi » ne s'applique qu'aux copies (E01US023).
+        if categorie.tournoi_id is not None:
+            self._verifier_blason_du_tournoi(categorie.tournoi_id, blason_id)
         modifiee = categorie.modifier(libelle, arme, ages, sexe, blason_id, hauteur_cm)
         return self._categories.enregistrer(modifiee)
 

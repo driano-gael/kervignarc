@@ -69,7 +69,8 @@ class CategorieReponse(BaseModel):
     """
 
     id: int
-    tournoi_id: int
+    # `None` pour un **modèle de bibliothèque** (patrimoine du club, E01US023).
+    tournoi_id: int | None
     libelle: str
     arme: str | None
     ages: list[TrancheAge]

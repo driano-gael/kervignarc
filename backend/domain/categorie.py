@@ -24,6 +24,7 @@ from enum import Enum
 
 from domain.blason import BlasonId
 from domain.erreurs import HauteurCentreInvalide, LibelleCategorieInvalide
+from domain.patrimoine import OrigineBrique
 from domain.tournoi import TournoiId
 
 CategorieId = int
@@ -67,25 +68,30 @@ class SexeCategorie(str, Enum):
 
 @dataclass(frozen=True)
 class Categorie:
-    """Une catégorie rattachée à un tournoi. `id` vaut `None` tant qu'elle n'est pas persistée.
+    """Une catégorie — **modèle de bibliothèque** ou copie d'un tournoi (E01US023, ADR-0060).
+
+    `tournoi_id is None` : c'est un modèle du **patrimoine du club**, réutilisable d'une année sur
+    l'autre. Renseigné : c'est la **copie** d'un tournoi, ajustable sans altérer le modèle. Même
+    patron que `gabarit_salle` depuis E01US007. `id` vaut `None` tant qu'elle n'est pas persistée.
 
     `ages` est un **tuple** (immuable, règle 4) de tranches éligibles, vide par défaut (aucune
     contrainte d'âge). Il représente un **ensemble** : dédoublonné et ordonné canoniquement à la
     construction (cf. `_ages_valides`), pour que deux catégories aux mêmes tranches soient égales.
     """
 
-    tournoi_id: TournoiId
+    tournoi_id: TournoiId | None
     libelle: str
     arme: str | None = None
     ages: tuple[TrancheAge, ...] = ()
     sexe: SexeCategorie | None = None
     blason_id: BlasonId | None = None
     hauteur_cm: int = HAUTEUR_CENTRE_DEFAUT
+    origine: OrigineBrique = OrigineBrique.UTILISATEUR
     id: CategorieId | None = None
 
     @staticmethod
     def creer(
-        tournoi_id: TournoiId,
+        tournoi_id: TournoiId | None,
         libelle: str,
         arme: str | None = None,
         ages: Iterable[TrancheAge] = (),

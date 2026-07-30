@@ -23,6 +23,7 @@ from domain.erreurs import (
     TailleBlasonInvalide,
     ZonesBlasonInvalides,
 )
+from domain.patrimoine import OrigineBrique
 from domain.tournoi import TournoiId
 
 BlasonId = int
@@ -93,9 +94,13 @@ migration `0019`.
 
 @dataclass(frozen=True)
 class Blason:
-    """Un blason rattaché à un tournoi. `id` vaut `None` tant qu'il n'est pas persisté."""
+    """Un blason — **modèle de bibliothèque** ou copie d'un tournoi (E01US023, ADR-0060).
 
-    tournoi_id: TournoiId
+    `tournoi_id is None` : modèle du **patrimoine du club**. Renseigné : la **copie** d'un tournoi,
+    ajustable sans altérer le modèle. `id` vaut `None` tant qu'il n'est pas persisté.
+    """
+
+    tournoi_id: TournoiId | None
     nom: str
     taille: float
     capacite: int
@@ -104,11 +109,12 @@ class Blason:
     # silence — mypy et ruff resteraient verts, et le blason ressortirait « tout admis », soit le
     # bug même que cette US corrige. Le défaut vit sur `creer`, où il est un choix explicite.
     zones: tuple[ZoneScore, ...]
+    origine: OrigineBrique = OrigineBrique.UTILISATEUR
     id: BlasonId | None = None
 
     @staticmethod
     def creer(
-        tournoi_id: TournoiId,
+        tournoi_id: TournoiId | None,
         nom: str,
         taille: float,
         capacite: int,

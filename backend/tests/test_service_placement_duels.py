@@ -172,6 +172,10 @@ class FauxBlasonRepository:
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Blason]:
         raise NotImplementedError
 
+    def par_bibliotheque(self) -> list[Blason]:
+        # Modèles de bibliothèque (E01US023) : ceux sans tournoi.
+        return [x for x in self._blasons.values() if x.tournoi_id is None]
+
     def enregistrer(self, blason: Blason) -> Blason:
         raise NotImplementedError
 

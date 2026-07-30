@@ -449,6 +449,15 @@ class CategorieRepository(Protocol):
         """Renvoie toutes les catégories d'un tournoi (liste éventuellement vide)."""
         ...
 
+    def par_bibliotheque(self) -> list[Categorie]:
+        """Renvoie les **modèles de bibliothèque** — patrimoine du club, sans tournoi (E01US023).
+
+        Distincte de `par_tournoi` et non un cas particulier avec `tournoi_id=None` : la
+        bibliothèque et la copie d'un tournoi sont deux lectures **de nature différente**, et les
+        confondre reviendrait à laisser un appelant demander « les catégories du tournoi `None` ».
+        """
+        ...
+
     def par_blason(self, blason_id: BlasonId) -> list[Categorie]:
         """Renvoie les catégories dont le blason par défaut est `blason_id` (E01US006).
 
@@ -478,6 +487,15 @@ class BlasonRepository(Protocol):
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Blason]:
         """Renvoie tous les blasons d'un tournoi (liste éventuellement vide)."""
+        ...
+
+    def par_bibliotheque(self) -> list[Blason]:
+        """Renvoie les **modèles de bibliothèque** — patrimoine du club, sans tournoi (E01US023).
+
+        Distincte de `par_tournoi` et non un cas particulier avec `tournoi_id=None` : la
+        bibliothèque et la copie d'un tournoi sont deux lectures **de nature différente**, et les
+        confondre reviendrait à laisser un appelant demander « les blasons du tournoi `None` ».
+        """
         ...
 
     def enregistrer(self, blason: Blason) -> Blason:

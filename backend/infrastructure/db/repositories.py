@@ -31,6 +31,7 @@ from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.inscription import Inscription, InscriptionId
 from domain.participant import GenreParticipant, Participant
+from domain.patrimoine import OrigineBrique
 from domain.phase import Phase, PhaseId, SourcePhase, StatutPhase, TypePhase, grain_par_defaut
 from domain.placement import Affectation
 from domain.ports import Horloge
@@ -301,6 +302,7 @@ def _vers_blason(ligne: BlasonORM) -> Blason:
         raise InfrastructureError("Zones de blason illisibles.") from exc
     return Blason(
         tournoi_id=ligne.tournoi_id,
+        origine=OrigineBrique(ligne.origine),
         nom=ligne.nom,
         taille=ligne.taille,
         capacite=ligne.capacite,
@@ -501,6 +503,7 @@ def _vers_categorie(ligne: CategorieORM) -> Categorie:
         raise InfrastructureError("Tranches d'âge de catégorie illisibles.") from exc
     return Categorie(
         tournoi_id=ligne.tournoi_id,
+        origine=OrigineBrique(ligne.origine),
         libelle=ligne.libelle,
         arme=ligne.arme,
         ages=ages,
@@ -1560,6 +1563,7 @@ class CategorieRepositorySQL:
             with self._session_factory() as session:
                 ligne = CategorieORM(
                     tournoi_id=categorie.tournoi_id,
+                    origine=categorie.origine.value,
                     libelle=categorie.libelle,
                     arme=categorie.arme,
                     ages=_ages_categorie(categorie),
@@ -1594,6 +1598,19 @@ class CategorieRepositorySQL:
                 return [_vers_categorie(ligne) for ligne in lignes]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des catégories du tournoi.") from exc
+
+    def par_bibliotheque(self) -> list[Categorie]:
+        """Renvoie les modèles de bibliothèque — patrimoine du club, sans tournoi (E01US023)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(CategorieORM)
+                    .where(CategorieORM.tournoi_id.is_(None))
+                    .order_by(CategorieORM.id)
+                ).scalars()
+                return [_vers_categorie(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture de la bibliothèque de catégories.") from exc
 
     def par_blason(self, blason_id: BlasonId) -> list[Categorie]:
         """Renvoie les catégories dont le blason par défaut est `blason_id` (E01US006)."""
@@ -1655,6 +1672,7 @@ class BlasonRepositorySQL:
             with self._session_factory() as session:
                 ligne = BlasonORM(
                     tournoi_id=blason.tournoi_id,
+                    origine=blason.origine.value,
                     nom=blason.nom,
                     taille=blason.taille,
                     capacite=blason.capacite,
@@ -1687,6 +1705,17 @@ class BlasonRepositorySQL:
                 return [_vers_blason(ligne) for ligne in lignes]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des blasons du tournoi.") from exc
+
+    def par_bibliotheque(self) -> list[Blason]:
+        """Renvoie les modèles de bibliothèque — patrimoine du club, sans tournoi (E01US023)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(BlasonORM).where(BlasonORM.tournoi_id.is_(None)).order_by(BlasonORM.id)
+                ).scalars()
+                return [_vers_blason(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture de la bibliothèque de blasons.") from exc
 
     def enregistrer(self, blason: Blason) -> Blason:
         """Met à jour un blason déjà persisté (édition) et le renvoie.

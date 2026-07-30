@@ -96,9 +96,16 @@ class CategorieORM(Base):
     __tablename__ = "categorie"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # `tournoi_id` distingue un **modèle** de bibliothèque (`NULL`, patrimoine du club, réutilisable
+    # d'une année sur l'autre) d'une **copie** appartenant à un tournoi (E01US023, ADR-0060) — même
+    # patron que `gabarit_salle` depuis E01US008. Avant E01US023 la colonne était obligatoire : d'où
+    # un atelier qui promettait « hors tournoi » sans pouvoir le tenir (DETTE-023, résorbée).
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — la politique de suppression d'un
     # tournoi non vide (cascade ou refus 409) n'est pas tranchée ; ne pas contourner ici.
-    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    tournoi_id: Mapped[int | None] = mapped_column(ForeignKey("tournoi.id"), nullable=True)
+    # `ffta` (issue du préchargement officiel) ou `utilisateur` — ce qui permet les deux listes
+    # séparées que le commanditaire demande, et la copie plutôt que l'écrasement d'un officiel.
+    origine: Mapped[str] = mapped_column(nullable=False, server_default="utilisateur")
     libelle: Mapped[str] = mapped_column(nullable=False)
     arme: Mapped[str | None] = mapped_column(nullable=True)
     # Tranches d'âge éligibles, stockées en **tableau JSON** de codes (ex. `["U15","U18"]`,
@@ -133,9 +140,14 @@ class BlasonORM(Base):
     __tablename__ = "blason"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # `tournoi_id` distingue un **modèle** de bibliothèque (`NULL`, patrimoine du club, réutilisable
+    # d'une année sur l'autre) d'une **copie** appartenant à un tournoi (E01US023, ADR-0060) — même
+    # patron que `gabarit_salle` depuis E01US008. Avant E01US023 la colonne était obligatoire : d'où
+    # un atelier qui promettait « hors tournoi » sans pouvoir le tenir (DETTE-023, résorbée).
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — la politique de suppression d'un
     # tournoi non vide (cascade ou refus 409) n'est pas tranchée ; ne pas contourner ici.
-    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    tournoi_id: Mapped[int | None] = mapped_column(ForeignKey("tournoi.id"), nullable=True)
+    origine: Mapped[str] = mapped_column(nullable=False, server_default="utilisateur")
     nom: Mapped[str] = mapped_column(nullable=False)
     taille: Mapped[float] = mapped_column(nullable=False)
     capacite: Mapped[int] = mapped_column(nullable=False)
