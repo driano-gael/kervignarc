@@ -104,7 +104,13 @@ class FauxPhaseRepository:
         )
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        raise NotImplementedError
+        # Implémenté pour E04US018 : le routage résout **lui-même** la phase de tableau (la tablette
+        # de qualification ne la connaît pas), en prenant la première élimination directe de la
+        # séquence — d'où le tri par `ordre` que le port garantit (E05US001).
+        return sorted(
+            (p for p in self._phases.values() if p.tournoi_id == tournoi_id),
+            key=lambda p: p.ordre,
+        )
 
     def enregistrer(self, phase: Phase) -> Phase:
         raise NotImplementedError

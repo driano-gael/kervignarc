@@ -38,6 +38,7 @@ from domain.tableau import (
     TeteDeSerie,
     VainqueurDe,
     construire_tableau,
+    libelle_tour,
     paires_du_premier_tour,
 )
 
@@ -388,3 +389,36 @@ def test_podium_incomplet_avant_la_fin() -> None:
     tableau = construire(8)
     assert not tableau.est_termine
     assert tableau.podium() == ()  # rien de décidé tant que la finale n'est pas jouée
+
+
+# --- Libellé de tour (E04US018) -----------------------------------------------------------------
+#
+# Dérivé du CA d'E04US018 (« sa prochaine affectation — cible, position, heure, **tour** ») : ce que
+# le panneau de routage doit dire à un archer, ce n'est pas « tour 2 » (un rang technique dans
+# l'arbre) mais le nom que la salle emploie — « quart de finale ». Le libellé se compte **à
+# rebours** de la finale : c'est la distance au titre qui le nomme, jamais le rang du tour.
+
+
+def test_libelle_tour_se_compte_a_rebours_de_la_finale() -> None:
+    # Tableau de 8 (3 tours) : quarts → demi → finale. Le même numéro de tour ne donne pas le même
+    # libellé selon la taille du tableau — d'où le `nb_tours` en paramètre.
+    assert libelle_tour(tour=1, nb_tours=3) == "Quart de finale"
+    assert libelle_tour(tour=2, nb_tours=3) == "Demi-finale"
+    assert libelle_tour(tour=3, nb_tours=3) == "Finale"
+    # Tableau de 4 : le tour 1 est déjà la demi-finale.
+    assert libelle_tour(tour=1, nb_tours=2) == "Demi-finale"
+
+
+def test_libelle_tour_au_dela_des_quarts_est_une_fraction() -> None:
+    # Au-delà du quart, la FFTA nomme les tours par leur fraction (1/8, 1/16, 1/32…).
+    assert libelle_tour(tour=1, nb_tours=4) == "1/8 de finale"
+    assert libelle_tour(tour=1, nb_tours=5) == "1/16 de finale"
+    assert libelle_tour(tour=2, nb_tours=6) == "1/16 de finale"
+
+
+def test_libelle_petite_finale_prime_sur_le_tour() -> None:
+    # La petite finale se joue au **même tour** que la finale : sans son `place_en_jeu`, les deux
+    # matchs porteraient le libellé « Finale » et enverraient les demi-finalistes battus au mauvais
+    # rendez-vous. C'est la place en jeu qui la nomme.
+    assert libelle_tour(tour=3, nb_tours=3, place_en_jeu=(3, 4)) == "Petite finale"
+    assert libelle_tour(tour=3, nb_tours=3, place_en_jeu=(1, 2)) == "Finale"

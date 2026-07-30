@@ -49,6 +49,7 @@ from api.v1.placement_duels import router as placement_duels_router
 from api.v1.postes import router as postes_router
 from api.v1.postes import session_router as poste_session_router
 from api.v1.remboursements import router as remboursements_router
+from api.v1.routage import router as routage_router
 from api.v1.saisie import router as saisie_router
 from api.v1.saisie_duels import router as saisie_duels_router
 from api.v1.scoreurs import router as scoreurs_router
@@ -88,6 +89,7 @@ from application.placement import ServicePlacement
 from application.placement_duels import ServicePlacementDuels
 from application.postes import ServicePostes
 from application.remboursements import ServiceRemboursements
+from application.routage import ServiceRoutage
 from application.saisie import ServiceSaisie
 from application.saisie_duels import ServiceSaisieDuels
 from application.scoreurs import ServiceScoreurs
@@ -694,6 +696,18 @@ def create_app(
         app.state.service_audit,
     )
 
+    # --- Panneau de routage (E04US018) : **premier récepteur** du signal `tour_lance` émis
+    # ci-dessus. Même composition que le pilotage, sans l'audit — un panneau de routage ne *décide*
+    # de rien : il lit le tableau reconstruit (où va l'archer) et le plan de duels persisté (sur
+    # quelle cible), et résout lui-même la phase de tableau (`phase_repository`) puisque la tablette
+    # de qualification ne la connaît pas. Aucun repo neuf, aucune écriture (`D-08` : rien n'est
+    # calculé au moment de la bascule). ---
+    app.state.service_routage = ServiceRoutage(
+        app.state.service_saisie_duels,
+        app.state.service_placement_duels,
+        phase_repository,
+    )
+
     # --- Saisie de qualification (E04US002) : moteur métier `Serie`/`Volee` persisté. Le service
     # résout la config (blason → pavé, phase → barème/grain), pilote l'agrégat, date les entrées
     # d'audit (validation/correction) via `Horloge` ; l'adapter `SerieRepositorySQL` co-écrit série
@@ -834,6 +848,7 @@ def create_app(
     app.include_router(placement_duels_router)
     app.include_router(saisie_duels_router)
     app.include_router(pilotage_router)
+    app.include_router(routage_router)
     app.include_router(forfaits_router)
     app.include_router(feuille_de_marque_router)
     app.include_router(documents_salle_router)

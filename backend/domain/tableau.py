@@ -342,6 +342,32 @@ def paires_du_premier_tour(tableau: Tableau) -> tuple[tuple[Participant, Partici
     )
 
 
+def libelle_tour(tour: int, nb_tours: int, place_en_jeu: tuple[int, int] | None = None) -> str:
+    """Le nom que la salle donne à ce tour — « Quart de finale », « 1/8 de finale », « Finale ».
+
+    Vocabulaire métier (règle 3), donc domaine : un archer ne se repère pas au **rang** du tour dans
+    l'arbre (« tour 2 »), il se repère à sa **distance au titre**. Ce libellé se compte donc **à
+    rebours** de la finale — le tour 1 est un quart sur un tableau de 8, une demie sur un tableau de
+    4. Au-delà du quart, la FFTA nomme les tours par leur fraction (1/8, 1/16, …).
+
+    `place_en_jeu` **prime** sur le compte : la petite finale se dispute au **même tour** que la
+    finale, et sans ce discriminant les deux matchs porteraient le même nom (E04US018 — le panneau
+    de routage enverrait les demi-finalistes battus au mauvais rendez-vous).
+
+    Fonction **pure** : aucune lecture, aucun état. `nb_tours` vient de `Tableau.nb_tours`.
+    """
+    if place_en_jeu == (3, 4):
+        return "Petite finale"
+    restants = nb_tours - tour
+    if restants <= 0:
+        return "Finale"
+    if restants == 1:
+        return "Demi-finale"
+    if restants == 2:
+        return "Quart de finale"
+    return f"1/{2**restants} de finale"
+
+
 # --- rouages internes de progression -----------------------------------------------------------
 
 
