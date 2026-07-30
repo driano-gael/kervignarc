@@ -2631,3 +2631,80 @@ button:disabled {
   padding: 4px 0;
   color: var(--warn);
 }
+
+/* --- Panneau de routage (E04US018) — « où tire-t-on ensuite ? ». -----------------------------
+   Il **remplace** la grille de saisie au moment où l'archer s'en va : la destination doit se lire
+   d'un coup d'œil, à bout de bras, sur une tablette posée sur la butte. D'où une destination en
+   gros caractères, le nom au-dessus, le contexte en petit. Cible tactile du retour ≥ 48 px comme
+   le reste de l'écran de saisie. */
+.routage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.routage__entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.routage__entete .bouton--discret {
+  min-height: 48px;
+}
+
+.routage__vide {
+  margin: 0;
+  color: var(--text);
+  opacity: 0.75;
+}
+
+.routage__liste {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.routage__ligne {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+}
+
+/* Plus de duel devant soi, ou destination inconnue : ce n'est **pas** une erreur (`P-3` — l'appli
+   montre, elle n'empêche rien). Le liseré perd son accent, rien ne passe en rouge. */
+.routage__ligne--termine,
+.routage__ligne--indisponible {
+  border-left-color: var(--border);
+}
+
+.routage__archer {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.routage__prenom {
+  opacity: 0.75;
+}
+
+.routage__destination {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.routage__detail {
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.85;
+}

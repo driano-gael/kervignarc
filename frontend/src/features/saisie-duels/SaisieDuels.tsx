@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useDeclarerForfaitDuel } from '../forfaits/hooks'
+import { PanneauRoutage } from '../routage/PanneauRoutage'
 import type { Cote, Duel, Tableau } from './api'
 import {
   estJouable,
@@ -108,6 +109,10 @@ function IndicateurAttente() {
 function TableauScoreur({ tournoiId, phaseId }: { tournoiId: number; phaseId: number }) {
   const tableau = useTableau(tournoiId, phaseId)
   const [matchOuvert, setMatchOuvert] = useState<number | null>(null)
+  // Les deux duellistes du duel qu'on vient de valider (E04US018) : la validation fait avancer le
+  // tableau, donc leur destination est **immédiatement** lisible côté serveur. `null` = pas de
+  // bascule en cours.
+  const [routageDe, setRoutageDe] = useState<number[] | null>(null)
 
   if (tableau.isPending) return <p className="carte__etat">Chargement du tableau…</p>
   if (tableau.isError) {
@@ -122,6 +127,24 @@ function TableauScoreur({ tournoiId, phaseId }: { tournoiId: number; phaseId: nu
     )
   }
 
+  // Panneau de routage (E04US018) : il **remplace** la grille dès le duel tranché — les deux archers
+  // sont encore là, c'est la seconde où l'information leur sert. « Retour à la liste » referme tout.
+  if (routageDe !== null) {
+    return (
+      <PanneauRoutage
+        tournoiId={tournoiId}
+        archerIds={routageDe}
+        phaseId={phaseId}
+        titrePanneau="Où tire-t-on ensuite ?"
+        libelleRetour="Retour à la liste"
+        onRetour={() => {
+          setRoutageDe(null)
+          setMatchOuvert(null)
+        }}
+      />
+    )
+  }
+
   if (matchOuvert !== null) {
     return (
       <GrilleDuel
@@ -130,6 +153,7 @@ function TableauScoreur({ tournoiId, phaseId }: { tournoiId: number; phaseId: nu
         phaseId={phaseId}
         matchNumero={matchOuvert}
         onRetour={() => setMatchOuvert(null)}
+        onValide={setRoutageDe}
       />
     )
   }
@@ -224,11 +248,13 @@ function GrilleDuel({
   phaseId,
   matchNumero,
   onRetour,
+  onValide,
 }: {
   tournoiId: number
   phaseId: number
   matchNumero: number
   onRetour: () => void
+  onValide: (archerIds: number[]) => void
 }) {
   const requete = useDuel(tournoiId, phaseId, matchNumero)
 
@@ -245,6 +271,7 @@ function GrilleDuel({
           phaseId={phaseId}
           matchNumero={matchNumero}
           duel={requete.data}
+          onValide={onValide}
         />
       )}
     </div>
@@ -256,11 +283,13 @@ function DuelCharge({
   phaseId,
   matchNumero,
   duel,
+  onValide,
 }: {
   tournoiId: number
   phaseId: number
   matchNumero: number
   duel: Duel
+  onValide: (archerIds: number[]) => void
 }) {
   const haut = duel.haut ? `${duel.haut.nom} ${duel.haut.prenom}` : '—'
   const bas = duel.bas ? `${duel.bas.nom} ${duel.bas.prenom}` : '—'
@@ -345,7 +374,13 @@ function DuelCharge({
         />
       )}
 
-      <Validation tournoiId={tournoiId} phaseId={phaseId} matchNumero={matchNumero} duel={duel} />
+      <Validation
+        tournoiId={tournoiId}
+        phaseId={phaseId}
+        matchNumero={matchNumero}
+        duel={duel}
+        onValide={onValide}
+      />
     </div>
   )
 }
@@ -743,11 +778,13 @@ function Validation({
   phaseId,
   matchNumero,
   duel,
+  onValide,
 }: {
   tournoiId: number
   phaseId: number
   matchNumero: number
   duel: Duel
+  onValide: (archerIds: number[]) => void
 }) {
   const valider = useValiderDuel(tournoiId, phaseId, matchNumero)
   // Déjà validé, OU validation déjà en file hors-ligne : rien à proposer (le verrou est affiché plus
@@ -779,12 +816,27 @@ function Validation({
         type="button"
         disabled={!termine || valider.isPending}
         onClick={() =>
-          valider.mutate({
-            tournoi_id: tournoiId,
-            phase_id: phaseId,
-            match_numero: matchNumero,
-            identifiant_saisie: nouvelIdentifiant(),
-          })
+          valider.mutate(
+            {
+              tournoi_id: tournoiId,
+              phase_id: phaseId,
+              match_numero: matchNumero,
+              identifiant_saisie: nouvelIdentifiant(),
+            },
+            {
+              // Bascule en panneau de routage (E04US018) — mais **seulement si la validation est
+              // partie**. Hors-ligne elle est mise en file (`validation_en_attente`) : le tableau
+              // n'a pas avancé côté serveur, le panneau annoncerait alors le duel qu'on vient de
+              // scorer comme « prochain ». On ne route pas sur une avancée qui n'a pas eu lieu.
+              onSuccess: (duelValide) => {
+                if (duelValide.validation_en_attente === true) return
+                const archers = [duel.haut?.archer_id, duel.bas?.archer_id].filter(
+                  (id): id is number => id !== undefined && id !== null,
+                )
+                if (archers.length > 0) onValide(archers)
+              },
+            },
+          )
         }
       >
         {valider.isPending ? 'Validation…' : 'Valider le duel'}
