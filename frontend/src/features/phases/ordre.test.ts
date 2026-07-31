@@ -9,7 +9,7 @@ function phase(id: number, ordre: number): Phase {
     ordre,
     type: 'elimination_directe',
     statut: 'a_venir',
-    source: null,
+    sources: [],
     effectif: null,
   }
 }

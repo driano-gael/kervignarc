@@ -295,7 +295,7 @@ function FormulaireFormat() {
       type: 'qualification',
       bareme: { nb_volees: Number(nbVolees), nb_fleches_par_volee: Number(nbFleches) },
       validation: { type: 'fin_de_serie', n_volees: null },
-      source: null,
+      sources: [],
       effectif: null,
     }
     creer.mutate({ nom, etapes: [etape] }, { onSuccess: () => setNom('') })

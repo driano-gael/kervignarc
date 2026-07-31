@@ -58,7 +58,7 @@ describe('decrireEtape', () => {
       type: 'qualification',
       bareme: null,
       validation: null,
-      source: null,
+      sources: [],
       effectif: null,
       ...partiel,
     }
