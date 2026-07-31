@@ -31,7 +31,7 @@ from domain.bareme import BaremeQualification
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.patrimoine import OrigineBrique
-from domain.phase import SourcePhase, TypePhase
+from domain.phase import IssueTour, NatureSource, SourcePhase, TypePhase
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["formats"])
@@ -52,11 +52,42 @@ class GrainDTO(BaseModel):
 
 
 class SourceDTO(BaseModel):
-    """Peuplement d'une étape : « les rangs [début..fin] de l'étape d'ordre `ordre_source` »."""
+    """Un **prélèvement** d'une étape de format (E05US010) — mêmes natures que sur une phase réelle.
+
+    Jumeau assumé de `api/v1/phases.SourceDTO` : les deux routeurs exposent la même notion mais des
+    ressources distinctes (une phase de tournoi / une étape de brique de bibliothèque), et un DTO
+    partagé les coupleraient — la duplication à la frontière est le prix de leur indépendance
+    (déjà tranché à E01US023). Le **domaine**, lui, n'a qu'un seul `SourcePhase` : c'est là que la
+    règle vit, ici il n'y a que du transport.
+    """
 
     ordre_source: int
-    rang_debut: int
-    rang_fin: int
+    nature: NatureSource = NatureSource.RANGS
+    rang_debut: int = 1
+    rang_fin: int | None = None
+    tour: int | None = None
+    issue: IssueTour | None = None
+
+    def vers_agregat(self) -> SourcePhase:
+        return SourcePhase(
+            ordre_source=self.ordre_source,
+            nature=self.nature,
+            rang_debut=self.rang_debut,
+            rang_fin=self.rang_fin,
+            tour=self.tour,
+            issue=self.issue,
+        )
+
+    @staticmethod
+    def de_agregat(source: SourcePhase) -> SourceDTO:
+        return SourceDTO(
+            ordre_source=source.ordre_source,
+            nature=source.nature,
+            rang_debut=source.rang_debut,
+            rang_fin=source.rang_fin,
+            tour=source.tour,
+            issue=source.issue,
+        )
 
 
 class EtapeDTO(BaseModel):
@@ -71,7 +102,7 @@ class EtapeDTO(BaseModel):
     type: TypePhase
     bareme: BaremeDTO | None = None
     validation: GrainDTO | None = None
-    source: SourceDTO | None = None
+    sources: list[SourceDTO] = Field(default_factory=list, max_length=16)
     effectif: int | None = None
 
     def vers_modele(self) -> ModelePhase:
@@ -95,15 +126,7 @@ class EtapeDTO(BaseModel):
                 if self.validation is None
                 else GrainValidation.creer(self.validation.type, self.validation.n_volees)
             ),
-            source=(
-                None
-                if self.source is None
-                else SourcePhase(
-                    ordre_source=self.source.ordre_source,
-                    rang_debut=self.source.rang_debut,
-                    rang_fin=self.source.rang_fin,
-                )
-            ),
+            sources=tuple(source.vers_agregat() for source in self.sources),
             effectif=self.effectif,
         )
 
@@ -125,15 +148,7 @@ class EtapeDTO(BaseModel):
                 if etape.validation is None
                 else GrainDTO(type=etape.validation.type, n_volees=etape.validation.n_volees)
             ),
-            source=(
-                None
-                if etape.source is None
-                else SourceDTO(
-                    ordre_source=etape.source.ordre_source,
-                    rang_debut=etape.source.rang_debut,
-                    rang_fin=etape.source.rang_fin,
-                )
-            ),
+            sources=[SourceDTO.de_agregat(source) for source in etape.sources],
             effectif=etape.effectif,
         )
 

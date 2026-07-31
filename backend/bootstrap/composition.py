@@ -103,7 +103,7 @@ from application.tournois import ServiceTournois
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.politiques import (
     ByesAuxMieuxClasses,
-    EliminationSeche,
+    PlacementEnCascade,
     SeedingSerpent,
     registre_par_defaut,
 )
@@ -213,7 +213,7 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         classement,
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
-        EliminationSeche(),
+        PlacementEnCascade(),
     )
     saisie_duels = ServiceSaisieDuels(
         tournois,
@@ -226,7 +226,7 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         ResolveurBaremeDuelFfta(),
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
-        EliminationSeche(),
+        PlacementEnCascade(),
     )
     return HarnaisSimulation(
         tournois,
@@ -540,8 +540,16 @@ def create_app(
     # Plan de duels (E03US009, ADR-0048) : placer les duellistes d'une phase de tableau côte à côte,
     # matérialisé par phase et ajustable au glisser-déposer. Assemble le classement (recalculé) →
     # l'arbre (`construire_tableau`, politiques par défaut : serpent / byes aux mieux classés /
-    # élimination sèche, MVP) → les paires du 1er tour → le placement réordonné pour l'adjacence.
+    # placement en cascade) → les paires du 1er tour → le placement réordonné pour l'adjacence.
     # Réutilise `service_classement` (source d'ensemencement) ; scoppé par **phase** (≠ départ).
+    #
+    # ⚠️ **`PlacementEnCascade` et non `EliminationSeche`** (E05US010, ADR-0061), malgré le nom :
+    # format livré ici a une **petite finale**, donc les perdants des demies rejouent — ce n'est pas
+    # une élimination sèche mais un placement **tronqué au rang 4** par la profondeur par défaut de
+    # `construire_tableau` (`ProfondeurPodium`). L'arbre produit est **identique** à celui d'avant
+    # l'US ; c'est le vocabulaire qui se met en accord avec le comportement. Injecter une profondeur
+    # `un_vers_n` ici suffirait à passer ces tableaux au placement intégral 1→N — le levier que
+    # `E01US024` exposera à l'organisateur, phase par phase, plutôt qu'en dur.
     app.state.service_placement_duels = ServicePlacementDuels(
         tournoi_repository,
         phase_repository,
@@ -554,7 +562,7 @@ def create_app(
         app.state.service_classement,
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
-        EliminationSeche(),
+        PlacementEnCascade(),
     )
     # Saisie en duels (E04US013, ADR-0049) : reconstruit le même arbre (classement → tableau) et
     # **rejoue** les duels validés pour la progression. Le barème est résolu par arme via le
@@ -574,7 +582,7 @@ def create_app(
         ResolveurBaremeDuelFfta(),
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
-        EliminationSeche(),
+        PlacementEnCascade(),
     )
 
     # Simulation éphémère (E15US002, ADR-0054) : rejoue le moteur (qualif → duels → classement) d'un

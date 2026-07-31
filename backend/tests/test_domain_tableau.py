@@ -19,15 +19,13 @@ from domain.erreurs import (
     EffectifTableauInvalide,
     MatchIntrouvable,
     MatchNonJouable,
-    RoutingNonSupporte,
     VainqueurHorsMatch,
 )
 from domain.participant import Participant
 from domain.politiques import (
     ByesAuxMieuxClasses,
-    DestinationPerdant,
     EliminationSeche,
-    Routing,
+    PlacementEnCascade,
     SeedingSerpent,
 )
 from domain.tableau import (
@@ -44,7 +42,10 @@ from domain.tableau import (
 
 SEEDING = SeedingSerpent()
 BYES = ByesAuxMieuxClasses()
-ROUTING = EliminationSeche()
+# Le format décrit par ce module — élimination directe **avec petite finale** — est, depuis
+# E05US010, un placement en cascade tronqué au rang 4 (la profondeur `podium`, défaut de
+# `construire_tableau`). Même arbre, même numérotation : c'est le contrat de non-régression.
+ROUTING = PlacementEnCascade()
 
 
 def p(rang: int) -> Participant:
@@ -295,23 +296,21 @@ def test_vainqueur_hors_du_match_est_refuse() -> None:
         construire(8).jouer(2, p(7))  # 7 ne dispute pas le match 2 (4 vs 5)
 
 
-def test_routing_non_elimination_seche_est_refuse() -> None:
-    # E05US005 ne gère que l'élimination sèche ; une cascade (E05US010) ressignera le routing.
-    class RoutingEliminationSecheBis:
-        def destination_du_perdant(self) -> DestinationPerdant:
-            return DestinationPerdant.ELIMINE
+def test_l_elimination_seche_ne_departage_meme_pas_la_troisieme_place() -> None:
+    """Le routing « le perdant sort » supprime jusqu'à la petite finale (E05US010).
 
-    # Politique factice renvoyant une destination inconnue du moteur d'élimination directe.
-    class RoutingInconnu:
-        def destination_du_perdant(self) -> DestinationPerdant:
-            return "cascade"  # type: ignore[return-value]
-
+    Remplace l'ancien `test_routing_non_elimination_seche_est_refuse` : le moteur ne refuse plus
+    les destinations autres qu'`ELIMINE`, il les honore. Ce qui reste vérifiable, c'est que les
+    **deux** routings produisent bien deux formats distincts — sinon la politique ne servirait à
+    rien.
+    """
     joueurs = [p(r) for r in range(1, 9)]
-    routing: Routing = RoutingInconnu()
-    with pytest.raises(RoutingNonSupporte):
-        construire_tableau(joueurs, SEEDING, BYES, routing).jouer(2, p(4))
-    # Contrôle négatif : l'élimination sèche, elle, passe.
-    assert construire_tableau(joueurs, SEEDING, BYES, RoutingEliminationSecheBis()).jouer(2, p(4))
+    sec = construire_tableau(joueurs, SEEDING, BYES, EliminationSeche())
+    assert sec.petite_finale is None
+    assert len(sec.matchs) == 7  # 4 quarts + 2 demies + 1 finale, aucun match de classement
+    avec_petite_finale = construire_tableau(joueurs, SEEDING, BYES, PlacementEnCascade())
+    assert avec_petite_finale.petite_finale is not None
+    assert len(avec_petite_finale.matchs) == 8
 
 
 # --- CA « podium » -----------------------------------------------------------------------------

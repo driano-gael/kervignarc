@@ -34,7 +34,16 @@ from domain.grain_validation import GrainValidation, TypeGrain
 from domain.inscription import Inscription, InscriptionId
 from domain.participant import GenreParticipant, Participant
 from domain.patrimoine import OrigineBrique
-from domain.phase import Phase, PhaseId, SourcePhase, StatutPhase, TypePhase, grain_par_defaut
+from domain.phase import (
+    IssueTour,
+    NatureSource,
+    Phase,
+    PhaseId,
+    SourcePhase,
+    StatutPhase,
+    TypePhase,
+    grain_par_defaut,
+)
 from domain.placement import Affectation
 from domain.ports import Horloge
 from domain.poste import Poste, PosteId
@@ -383,7 +392,7 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
             # (mécanisme « politique sans migration », ADR-0011). Sur un autre type, l'absence
             # signifie simplement « pas de grain ».
             validation = grain_par_defaut(type_phase)
-        source = None if "source" not in config else _vers_source(config["source"])
+        sources = _vers_sources(config)
         effectif = config.get("effectif")
         effectif = None if effectif is None else int(effectif)
     except (
@@ -402,7 +411,7 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
             type=type_phase,
             bareme=bareme,
             validation=validation,
-            source=source,
+            sources=sources,
             effectif=effectif,
             statut=statut,
             id=ligne.id,
@@ -429,18 +438,47 @@ def _lire_scoring(config: Any) -> Any:
 
 
 def _vers_source(source: Any) -> SourcePhase:
-    """Relit la source de peuplement depuis sa forme JSON (`config.source`).
+    """Relit **un** prélèvement depuis sa forme JSON.
 
-    Passe par le constructeur de `SourcePhase` pour qu'une plage hors règle (vide, rang `< 1`)
-    remonte en `DomainError`, enveloppée en `InfrastructureError` par l'appelant. `source` est typé
-    `Any` (issu de `json.loads`) : une forme inattendue lève `AttributeError`/`TypeError`, gérée de
-    même.
+    Passe par le constructeur de `SourcePhase` pour qu'une forme hors règle (plage vide, rang `< 1`,
+    issue de tour sans tour) remonte en `DomainError`, enveloppée en `InfrastructureError` par
+    l'appelant. `source` est typé `Any` (issu de `json.loads`) : une forme inattendue lève
+    `AttributeError`/`TypeError`, gérée de même.
+
+    **Tolérante à l'ancienne forme** (E05US001) : sans clé `nature`, c'est un prélèvement par rangs
+    — la migration 0034 réécrit les lignes, mais une base restaurée d'avant elle reste lisible, au
+    même titre que `_lire_scoring` tolère l'ancien `config.scoring` (ADR-0046).
     """
+    nature = NatureSource(source.get("nature", NatureSource.RANGS.value))
+    if nature is NatureSource.ISSUE_DE_TOUR:
+        return SourcePhase(
+            ordre_source=int(source["ordre_source"]),
+            nature=nature,
+            tour=int(source["tour"]),
+            issue=IssueTour(source["issue"]),
+        )
+    if nature is NatureSource.RESTE:
+        return SourcePhase(ordre_source=int(source["ordre_source"]), nature=nature)
+    rang_fin = source.get("rang_fin")
     return SourcePhase(
         ordre_source=int(source["ordre_source"]),
         rang_debut=int(source["rang_debut"]),
-        rang_fin=int(source["rang_fin"]),
+        rang_fin=None if rang_fin is None else int(rang_fin),
     )
+
+
+def _vers_sources(config: Any) -> tuple[SourcePhase, ...]:
+    """Relit **tous** les prélèvements d'une étape, forme cible **ou** ancienne.
+
+    Cible (E05US010) : `config.sources`, une liste. Ancienne (E05US001) : `config.source`, un objet
+    unique — relu comme une liste d'un élément, puisque c'en est exactement le sous-cas. Absence
+    des deux : la phase est alimentée par les inscriptions.
+    """
+    brutes = config.get("sources")
+    if brutes is None:
+        unique = config.get("source")
+        brutes = [] if unique is None else [unique]
+    return tuple(_vers_source(brute) for brute in brutes)
 
 
 def _vers_grain(validation: Any) -> GrainValidation:
@@ -476,14 +514,14 @@ def _config_phase(phase: Phase) -> str:
     à plat pour une base non migrée.
     """
     return json.dumps(
-        _politiques_json(phase.bareme, phase.validation, phase.source, phase.effectif)
+        _politiques_json(phase.bareme, phase.validation, phase.sources, phase.effectif)
     )
 
 
 def _politiques_json(
     bareme: BaremeQualification | None,
     validation: GrainValidation | None,
-    source: SourcePhase | None,
+    sources: tuple[SourcePhase, ...],
     effectif: int | None,
 ) -> dict[str, object]:
     """Corps commun d'une **étape** — une phase de tournoi ou un modèle d'étape d'un format.
@@ -507,15 +545,34 @@ def _politiques_json(
         if validation.n_volees is not None:
             grain["n_volees"] = validation.n_volees
         config["validation"] = grain
-    if source is not None:
-        config["source"] = {
-            "ordre_source": source.ordre_source,
-            "rang_debut": source.rang_debut,
-            "rang_fin": source.rang_fin,
-        }
+    if sources:
+        config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
         config["effectif"] = effectif
     return config
+
+
+def _source_json(source: SourcePhase) -> dict[str, object]:
+    """Un prélèvement en JSON — **seuls** les champs de sa nature sont écrits.
+
+    N'écrire que le pertinent garde le document lisible et empêche qu'un champ mort (un `tour` sur
+    un prélèvement par rangs) ressuscite à la relecture en `SourceMalFormee`.
+    """
+    if source.nature is NatureSource.ISSUE_DE_TOUR:
+        return {
+            "nature": source.nature.value,
+            "ordre_source": source.ordre_source,
+            "tour": source.tour,
+            "issue": source.issue.value if source.issue is not None else None,
+        }
+    if source.nature is NatureSource.RESTE:
+        return {"nature": source.nature.value, "ordre_source": source.ordre_source}
+    return {
+        "nature": source.nature.value,
+        "ordre_source": source.ordre_source,
+        "rang_debut": source.rang_debut,
+        "rang_fin": source.rang_fin,
+    }
 
 
 def _config_format(format_tournoi: FormatTournoi) -> str:
@@ -532,7 +589,7 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                     "ordre": etape.ordre,
                     "type": etape.type.value,
                     **_politiques_json(
-                        etape.bareme, etape.validation, etape.source, etape.effectif
+                        etape.bareme, etape.validation, etape.sources, etape.effectif
                     ),
                 }
                 for etape in format_tournoi.etapes
@@ -599,7 +656,7 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         type=type_phase,
         bareme=bareme,
         validation=validation,
-        source=None if "source" not in brute else _vers_source(brute["source"]),
+        sources=_vers_sources(brute),
         effectif=None if effectif is None else int(effectif),
     )
 

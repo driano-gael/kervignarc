@@ -219,7 +219,7 @@ def test_appliquer_cree_les_phases_a_venir_dans_l_ordre(ctx: Contexte) -> None:
             ModelePhase(
                 ordre=2,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),
+                sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),),
                 effectif=8,
             ),
         ],

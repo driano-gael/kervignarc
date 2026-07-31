@@ -7,12 +7,12 @@ une interface du domaine (`Protocol`) avec au moins une implémentation :
 
 | Famille    | Rôle                                   | Implémentation de ce socle |
 |------------|----------------------------------------|----------------------------|
-| `routing`  | destination du perdant                 | `EliminationSeche`         |
+| `routing`  | où va le perdant                       | `EliminationSeche`, `PlacementEnCascade` |
 | `scoring`  | calcul du score / de la victoire       | `ScoreCumul`               |
 | `seeding`  | composition de l'arbre                 | `SeedingSerpent`           |
 | `byes`     | exempts si effectif ≠ 2^k              | `ByesAuxMieuxClasses`      |
 | `tiebreak` | départage des égalités                 | `TiebreakFftaDefaut`       |
-| `depth`    | jusqu'où classer                       | `ProfondeurUnVersN`        |
+| `depth`    | jusqu'où classer                       | `ProfondeurUnVersN`, `ProfondeurPodium` |
 
 **Portée E05US003.** Ce module livre les **interfaces**, une implémentation **pure et testable**
 par famille, et l'**assemblage** d'une `config.policies` en un jeu résolu (`PolitiquesPhase`) via un
@@ -20,11 +20,13 @@ par famille, et l'**assemblage** d'une `config.policies` en un jeu résolu (`Pol
 orchestre ces stratégies (dimensionnement 2^k, génération, progression, podium) est **E05US005**
 (élimination directe) et **E05US010** (placement intégral, routing en cascade) : ils **consomment**
 ces politiques déjà éprouvées. Les stratégies couplées à la structure d'arbre exposent donc ici leur
-méthode **fondatrice** (celle dont la règle est écrite) ; les US consommatrices la **ressigneront**
-au fil de leurs besoins — ADR-0004 décrit déjà `route(perdant, tour, contexte)` là où ce socle
-n'expose que `destination_du_perdant()`, et le barème par sets renverra un nombre de sets, pas un
-total : ce sont des **ruptures de contrat**, bon marché tant qu'il n'y a **qu'un implémenteur et
-aucun consommateur** par famille (la situation d'aujourd'hui). C'est le sur-gel prématuré que
+méthode **fondatrice** (celle dont la règle est écrite) ; les US consommatrices la **ressignent**
+au fil de leurs besoins. **E05US010 a exercé cette clause** sur le `routing` :
+`destination_du_perdant()` est devenue `route(contexte)` (ADR-0061), la rupture ayant coûté un
+appelant de production et deux
+doubles de test — exactement le pari annoncé ici. Le barème par sets fera de même sur le `scoring`.
+Ce sont des **ruptures de contrat**, bon marché tant qu'il n'y a **qu'un implémenteur et aucun
+consommateur** par famille. C'est le sur-gel prématuré que
 DETTE-003 mettait en garde d'éviter — singulièrement pour le `scoring` : on livre étroit et honnête
 plutôt que de figer une signature spéculative.
 
@@ -47,6 +49,7 @@ from enum import Enum
 from typing import Protocol, cast
 
 from domain.erreurs import PolitiqueInconnue, PolitiqueMalFormee
+from domain.plage import Plage
 
 
 class FamillePolitique(str, Enum):
@@ -65,28 +68,81 @@ class FamillePolitique(str, Enum):
 # --- routing -----------------------------------------------------------------------------------
 
 
-class DestinationPerdant(str, Enum):
-    """Où va le perdant d'un match. Le socle E05US003 n'expose que l'**élimination** ; la
-    **cascade** de placement (E05US010) et le **repêchage** WA (E05US016) ajouteront leurs
-    destinations quand leur tableau existera — extension du catalogue, pas rupture."""
+@dataclass(frozen=True)
+class ContexteRoutage:
+    """Ce que le routing sait du match dont le perdant est à router (E05US010).
 
-    ELIMINE = "elimine"
+    C'est le `contexte` d'ADR-0004. Il ne porte **pas** le perdant lui-même : le routage est décidé
+    à la **construction** de l'arbre, quand les camps sont câblés mais qu'aucun participant n'est
+    encore connu (`PerdantDe(m)` est une arête, pas une personne). Router à la construction plutôt
+    qu'à chaque match joué est ce qui garde le `Tableau` **reconstructible** (ADR-0049) : la
+    structure ne dépend que des politiques, jamais de l'ordre dans lequel les résultats sont
+    tombés. Voir [ADR-0061](../../docs/adr/0061-routing-generique-et-placement-en-cascade.md).
+    """
+
+    tour: int
+    """Le tour perdu, compté dans le groupe courant (1 = premier tour de ce sous-tableau)."""
+
+    plage: Plage
+    """La plage de rangs encore atteignable **avant** ce match."""
+
+
+@dataclass(frozen=True)
+class HorsTableau:
+    """Le perdant quitte le tableau : aucun match aval ne l'attend (élimination sèche)."""
+
+
+@dataclass(frozen=True)
+class VersPlage:
+    """Le perdant descend dans le sous-tableau de placement de cette `plage` (*Règle R*)."""
+
+    plage: Plage
+
+
+type Destination = HorsTableau | VersPlage
+"""Où va le perdant. Le **repêchage** WA (E05US015) ajoutera sa variante « vers le tableau amont »
+— extension de l'union, sans toucher aux deux existantes."""
 
 
 class Routing(Protocol):
-    """Décide de la destination du perdant d'un match (ADR-0004). Méthode fondatrice : l'issue en
-    élimination sèche. ADR-0004 vise `route(perdant, tour, contexte)` : cascade/repêchage
-    (E05US010/E05US016) **ressigneront** cette méthode (rupture bon marché, un implémenteur)."""
+    """Décide où va le perdant d'un match (ADR-0004, `route(perdant, tour, contexte)`).
 
-    def destination_du_perdant(self) -> DestinationPerdant: ...
+    **Signature ressignée par E05US010**, comme `politiques.py` l'annonçait : la méthode fondatrice
+    `destination_du_perdant()` ne prenait aucun argument et ne pouvait donc rendre qu'une réponse
+    constante — inapte à exprimer « la moitié basse de *ta* plage ». Rupture bon marché tenue
+    (un implémenteur, un appelant en production).
+    """
+
+    def route(self, contexte: ContexteRoutage) -> Destination: ...
 
 
 @dataclass(frozen=True)
 class EliminationSeche:
-    """Élimination directe : le perdant quitte le tournoi (ADR-0004, « élimination sèche »)."""
+    """Le perdant quitte le tournoi (ADR-0004, « élimination sèche »).
 
-    def destination_du_perdant(self) -> DestinationPerdant:
-        return DestinationPerdant.ELIMINE
+    ⚠️ **Ce n'est pas le format livré par E05US005**, malgré son nom : un tableau à élimination
+    directe avec **petite finale** fait rejouer les perdants des demi-finales, donc ne les élimine
+    pas. Ce format-là est un `PlacementEnCascade` **tronqué au rang 4** (`ProfondeurPodium`) — c'est
+    ce que câble la composition root. `EliminationSeche` décrit le tableau **vraiment** sec, sans
+    aucun match de classement (Q6 : « formats simples : élimination directe, top N »).
+    """
+
+    def route(self, contexte: ContexteRoutage) -> Destination:
+        return HorsTableau()
+
+
+@dataclass(frozen=True)
+class PlacementEnCascade:
+    """*Règle R* : le perdant descend dans la **moitié basse** de sa plage (E05US010).
+
+    Le mécanisme de la cascade tient dans cette ligne ; tout le reste est la structure d'arbre qui
+    en découle. Q1 du document de formalisation en fait le **défaut** : « Lucky Loser » au sens du
+    classeur est un tableau de **consolation**, pas un repêchage — aucun battu ne revient disputer
+    le titre.
+    """
+
+    def route(self, contexte: ContexteRoutage) -> Destination:
+        return VersPlage(contexte.plage.moitie_basse())
 
 
 # --- scoring -----------------------------------------------------------------------------------
@@ -237,6 +293,22 @@ class ProfondeurUnVersN:
         return tuple(range(1, effectif + 1))
 
 
+@dataclass(frozen=True)
+class ProfondeurPodium:
+    """Profondeur **top N** (Q2) : on ne départage que les `jusqu_au` premiers, 4 par défaut.
+
+    C'est la profondeur du tableau à élimination directe livré par E05US005 : finale (rangs 1-2) et
+    petite finale (rangs 3-4), les battus des tours antérieurs restant **non classés entre eux**.
+    Combinée à `PlacementEnCascade`, elle reproduit exactement cette structure — un tableau de 8
+    rend ses 8 matchs. C'est le sens de Q2 : « l'organisateur peut choisir de s'arrêter à un top ».
+    """
+
+    jusqu_au: int = 4
+
+    def rangs_a_classer(self, effectif: int) -> tuple[int, ...]:
+        return tuple(range(1, min(self.jusqu_au, effectif) + 1))
+
+
 # --- assemblage --------------------------------------------------------------------------------
 
 
@@ -306,12 +378,32 @@ def registre_par_defaut() -> RegistrePolitiques:
     registre.enregistrer(
         FamillePolitique.ROUTING, "elimination_seche", lambda _p: EliminationSeche()
     )
+    registre.enregistrer(
+        FamillePolitique.ROUTING, "placement_cascade", lambda _p: PlacementEnCascade()
+    )
     registre.enregistrer(FamillePolitique.SCORING, "cumul", lambda _p: ScoreCumul())
     registre.enregistrer(FamillePolitique.SEEDING, "serpent", lambda _p: SeedingSerpent())
     registre.enregistrer(FamillePolitique.BYES, "mieux_classes", lambda _p: ByesAuxMieuxClasses())
     registre.enregistrer(FamillePolitique.TIEBREAK, "ffta_defaut", lambda _p: TiebreakFftaDefaut())
     registre.enregistrer(FamillePolitique.DEPTH, "un_vers_n", lambda _p: ProfondeurUnVersN())
+    registre.enregistrer(FamillePolitique.DEPTH, "podium", _fabriquer_profondeur_podium)
     return registre
+
+
+def _fabriquer_profondeur_podium(params: Mapping[str, object]) -> ProfondeurPodium:
+    """`{"nom": "podium", "jusqu_au": 8}` → la profondeur correspondante (4 par défaut).
+
+    Première fabrique **paramétrée** du registre : jusqu'ici toutes les stratégies étaient sans
+    état. Un `jusqu_au` non entier ou non positif est une config mal formée — on refuse plutôt que
+    de retomber sur le défaut en silence, sans quoi une faute de frappe classerait un top 4 là où
+    l'organisateur en demandait 8.
+    """
+    brut = params.get("jusqu_au", 4)
+    if not isinstance(brut, int) or isinstance(brut, bool) or brut < 1:
+        raise PolitiqueMalFormee(
+            f"La profondeur « podium » attend un rang entier positif (reçu {brut!r})."
+        )
+    return ProfondeurPodium(jusqu_au=brut)
 
 
 def assembler_politiques(

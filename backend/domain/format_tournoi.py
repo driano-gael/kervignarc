@@ -70,11 +70,11 @@ class ModelePhase:
     type: TypePhase
     bareme: BaremeQualification | None = None
     validation: GrainValidation | None = None
-    # DETTE-015 — `SourcePhase` est le modèle de peuplement **provisoire** d'E05US001 (une source,
-    # une plage de rangs, pas de routing). E01US023 le **réutilise** sans le dupliquer, mais le
-    # sérialise dans une **seconde** table (`format_tournoi.config`) : E05US010 devra donc migrer
-    # aussi les formats enregistrés, pas seulement les phases. Cf. `docs/dette.md`.
-    source: SourcePhase | None = None
+    # Les prélèvements du modèle, **plusieurs** possibles depuis E05US010 (natures mêlées, plages
+    # relatives) — exactement le même value object que sur une phase réelle, sérialisé ici dans une
+    # **seconde** table (`format_tournoi.config`). C'est ce qui a rendu la migration d'E05US010
+    # double ; DETTE-015 est résorbée.
+    sources: tuple[SourcePhase, ...] = ()
     effectif: int | None = None
 
     def __post_init__(self) -> None:
@@ -113,7 +113,7 @@ class ModelePhase:
             type=self.type,
             bareme=self.bareme,
             validation=self.validation,
-            source=self.source,
+            sources=self.sources,
             effectif=self.effectif,
             statut=StatutPhase.A_VENIR,
         )
@@ -131,7 +131,7 @@ class ModelePhase:
             type=phase.type,
             bareme=phase.bareme,
             validation=phase.validation,
-            source=phase.source,
+            sources=phase.sources,
             effectif=phase.effectif,
         )
 

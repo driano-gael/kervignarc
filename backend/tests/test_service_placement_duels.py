@@ -30,7 +30,7 @@ from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
-from domain.politiques import ByesAuxMieuxClasses, EliminationSeche, SeedingSerpent
+from domain.politiques import ByesAuxMieuxClasses, PlacementEnCascade, SeedingSerpent
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import (
@@ -80,7 +80,7 @@ class FauxPhaseRepository:
             type=phase.type,
             bareme=phase.bareme,
             validation=phase.validation,
-            source=phase.source,
+            sources=phase.sources,
             effectif=phase.effectif,
             statut=phase.statut,
             id=self._sequence,
@@ -312,7 +312,7 @@ class _Monde:
             ),
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
-            EliminationSeche(),
+            PlacementEnCascade(),
         )
 
 

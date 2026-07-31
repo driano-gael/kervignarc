@@ -81,9 +81,15 @@ class ServiceBaremeQualification:
 
 def _decaler_dun_cran(phase: Phase) -> Phase:
     """Décale une phase d'un cran vers le bas (ordre +1) pour faire place à la qualification en
-    tête. La source **suit** : son ancre `ordre_source` est incrémentée d'autant, toutes les phases
-    se décalant du même cran, donc les références restent valides (E05US001)."""
+    tête. Les sources **suivent** : leur ancre `ordre_source` est incrémentée d'autant, toutes les
+    phases se décalant du même cran, donc les références restent valides (E05US001).
+
+    Depuis E05US010 une phase porte **plusieurs** prélèvements : ils se décalent tous, faute de quoi
+    la séquence obtenue serait refusée (`SourceApresPhase`) ou, pire, pointerait la mauvaise phase.
+    """
     decalee = phase.avec_ordre(phase.ordre + 1)
-    if phase.source is None:
+    if not phase.sources:
         return decalee
-    return decalee.avec_source(replace(phase.source, ordre_source=phase.source.ordre_source + 1))
+    return decalee.avec_sources(
+        tuple(replace(source, ordre_source=source.ordre_source + 1) for source in phase.sources)
+    )

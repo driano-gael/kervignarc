@@ -386,15 +386,52 @@ class VainqueurHorsMatch(DomainError):
 
 
 class RoutingNonSupporte(DomainError):
-    """Le moteur d'élimination directe ne route le perdant que par élimination sèche (E05US005).
+    """Le moteur ne sait pas honorer la destination que le routing réclame pour le perdant.
 
-    E05US005 n'implémente que le format « le perdant quitte le tournoi » (`EliminationSeche`). Une
-    destination de **cascade** (placement intégral) ou de **repêchage** (WA) suppose un sous-tableau
-    d'accueil que ce moteur ne construit pas — c'est le périmètre d'E05US010 / E05US016, qui
-    ressigneront le routing (ADR-0004, `route(perdant, tour, contexte)`).
+    E05US005 ne connaissait qu'« élimination sèche » et refusait tout le reste ; E05US010 a livré la
+    **cascade de placement** (`VersPlage`), qui n'est donc plus un cas d'erreur. L'erreur reste pour
+    la destination encore à écrire — le **repêchage** WA (E05US015), qui réinjecte le perdant
+    dans le tableau *amont* au lieu de le faire descendre, et suppose un câblage que ce moteur ne
+    construit
+    pas.
     """
 
     code = "routing_non_supporte"
+
+
+class SourceMalFormee(DomainError):
+    """Le prélèvement décrit ne correspond à aucune nature cohérente (E05US010).
+
+    Une source porte les champs de **sa** nature et pas d'autres : un prélèvement « par issue
+    de tour » sans tour ne désigne personne ; un tour sur un prélèvement « par rangs » est une
+    configuration qui ment sur ce qu'elle fait. Refusé à la construction plutôt qu'ignoré en
+    silence — un champ ignoré, c'est un réglage que l'organisateur croit avoir posé.
+    """
+
+    code = "source_malformee"
+
+
+class SourcesQuiSeRecoupent(DomainError):
+    """Deux sources d'une même phase prélèvent le même participant (E05US010).
+
+    Un archer ne peut pas entrer deux fois dans la même phase : il occuperait deux places et
+    fausserait l'effectif comme l'ensemencement. Le contrôle se fait **par phase source** — les
+    rangs 1-4 de deux phases différentes désignent bien huit participants distincts.
+    """
+
+    code = "sources_qui_se_recoupent"
+
+
+class PlageInvalide(DomainError):
+    """La plage de rangs demandée n'a pas de sens (E05US010).
+
+    Trois cas : elle est **inversée ou vide** (`fin < debut`), elle commence **avant le rang 1**, ou
+    l'on tente de **subdiviser une plage terminale** (largeur 2 : ce n'est plus un sous-tableau à
+    engendrer mais un match à jouer, *Règle T*). Le moteur refuse plutôt que de produire une
+    récursion sans fin ou des rangs fantômes.
+    """
+
+    code = "plage_invalide"
 
 
 # --- duels : saisie et scoring (E04US013, ADR-0049) --------------------------------------------

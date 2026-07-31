@@ -15,17 +15,21 @@ from __future__ import annotations
 import pytest
 
 from domain.erreurs import PolitiqueInconnue, PolitiqueMalFormee
+from domain.plage import Plage
 from domain.politiques import (
     ByesAuxMieuxClasses,
+    ContexteRoutage,
     DecompteDepartage,
-    DestinationPerdant,
     EliminationSeche,
     FamillePolitique,
+    HorsTableau,
+    PlacementEnCascade,
     PolitiquesPhase,
     ProfondeurUnVersN,
     ScoreCumul,
     SeedingSerpent,
     TiebreakFftaDefaut,
+    VersPlage,
     assembler_politiques,
     registre_par_defaut,
 )
@@ -145,8 +149,15 @@ def test_profondeur_un_vers_n_effectif_unitaire() -> None:
 
 
 def test_routing_elimination_seche_evince_le_perdant() -> None:
-    """En élimination directe, le perdant quitte le tournoi : destination = éliminé."""
-    assert EliminationSeche().destination_du_perdant() is DestinationPerdant.ELIMINE
+    """En élimination directe, le perdant quitte le tournoi : aucun sous-tableau ne l'accueille."""
+    contexte = ContexteRoutage(tour=1, plage=Plage(1, 8))
+    assert EliminationSeche().route(contexte) == HorsTableau()
+
+
+def test_routing_placement_cascade_fait_descendre_le_perdant_d_une_moitie() -> None:
+    """*Règle R* : perdre sur la plage [1..8] fait entrer dans le sous-tableau [5..8]."""
+    contexte = ContexteRoutage(tour=1, plage=Plage(1, 8))
+    assert PlacementEnCascade().route(contexte) == VersPlage(Plage(5, 8))
 
 
 # --- registre : catalogue nom → implémentation, peuplé par la composition root ------------------
