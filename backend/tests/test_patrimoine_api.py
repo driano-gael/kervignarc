@@ -613,3 +613,87 @@ def test_importer_des_clubs_rend_un_compte_rendu(
 def test_importer_des_clubs_exige_l_admin(app_patrimoine: FastAPI) -> None:
     with TestClient(app_patrimoine) as client:
         assert client.post("/api/v1/clubs/import", json={"lignes": "X"}).status_code == 401
+
+
+def test_le_grain_d_une_etape_non_qualification_survit_a_l_aller_retour(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`_politiques_json` écrit le grain pour **tout** type d'étape ; la relecture ne le lisait que
+    pour la qualification — on écrivait donc ce qu'on ne relisait pas, et le grain d'une élimination
+    disparaissait en silence à la première relecture.
+
+    Le test va jusqu'à l'**application** : le trou existait des deux côtés (format *et* phase), et
+    la première correction n'avait fermé que le premier — il avait changé de table, pas disparu.
+    """
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        creation = client.post(
+            "/api/v1/formats",
+            json={
+                "nom": "Avec élimination",
+                "etapes": [
+                    {**_QUALIFICATION, "effectif": 16},
+                    {
+                        "ordre": 2,
+                        "type": "elimination_directe",
+                        "validation": {"type": "fin_de_duel"},
+                        "source": {"ordre_source": 1, "rang_debut": 1, "rang_fin": 8},
+                        "effectif": 8,
+                    },
+                ],
+            },
+        )
+        assert creation.status_code == 201, creation.text
+
+        relu = client.get("/api/v1/formats").json()[0]
+        assert relu["etapes"][1]["validation"] == {"type": "fin_de_duel", "n_volees": None}
+
+        client.put(f"/api/v1/tournois/{tournoi_id}/format", json={"format_id": relu["id"]})
+        promu = client.post(
+            f"/api/v1/tournois/{tournoi_id}/format/promotion", json={"nom": "Repromu"}
+        )
+
+        assert promu.status_code == 201, promu.text
+        assert promu.json()["etapes"][1]["validation"] == {
+            "type": "fin_de_duel",
+            "n_volees": None,
+        }
+
+
+def test_renommer_un_modele_vers_un_libelle_deja_pris_est_refuse(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """L'unicité était posée à la **création** et contournable par le bouton « Renommer » — la
+    route héritée, une fois de plus. Deux modèles homonymes rendent l'assemblage non déterministe :
+    un seul est copié, l'autre est compté « déjà présent » et n'atteint jamais aucun tournoi."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        client.post("/api/v1/categories", json={"libelle": "Senior 1 Homme"})
+        autre = client.post("/api/v1/categories", json={"libelle": "Ma variante"}).json()
+
+        refus = client.put(
+            f"/api/v1/categories/{autre['id']}",
+            json={"libelle": "senior 1 HOMME", "hauteur_cm": 130},
+        )
+
+        assert refus.status_code == 409
+        assert refus.json()["code"] == "nom_brique_deja_pris"
+
+
+def test_renommer_un_modele_en_lui_meme_reste_possible(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le pendant de la garde : sans l'exclusion « sauf soi-même », changer la hauteur d'une
+    catégorie sans toucher au libellé deviendrait impossible."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        cree = client.post("/api/v1/categories", json={"libelle": "Senior 1 Homme"}).json()
+
+        edition = client.put(
+            f"/api/v1/categories/{cree['id']}",
+            json={"libelle": "Senior 1 Homme", "hauteur_cm": 110},
+        )
+
+        assert edition.status_code == 200, edition.text
+        assert edition.json()["hauteur_cm"] == 110

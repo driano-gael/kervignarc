@@ -370,11 +370,19 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
                 nb_volees=int(scoring["volees"]),
                 nb_fleches_par_volee=int(scoring["fleches"]),
             )
-            validation = (
-                grain_par_defaut(type_phase)
-                if "validation" not in config
-                else _vers_grain(config["validation"])
-            )
+        # Le grain se relit **quel que soit le type**, comme `_vers_modele_phase`. `_config_phase`
+        # l'écrit pour tout type et `Phase` admet un `fin_de_duel` sur une élimination directe
+        # (`_GRAINS_ADMIS`) : ne le relire que pour la qualification revenait à écrire ce qu'on ne
+        # relit pas. La revue avait corrigé la lecture des **formats** en laissant celle des
+        # **phases** intacte — le trou avait donc changé de table, pas disparu, et le scénario
+        # invoqué (promouvoir un tournoi dont l'élimination porte un grain) restait cassé.
+        if "validation" in config:
+            validation = _vers_grain(config["validation"])
+        elif type_phase is TypePhase.QUALIFICATION:
+            # Absence sur une qualification = phase écrite avant E01US015 → preset du type
+            # (mécanisme « politique sans migration », ADR-0011). Sur un autre type, l'absence
+            # signifie simplement « pas de grain ».
+            validation = grain_par_defaut(type_phase)
         source = None if "source" not in config else _vers_source(config["source"])
         effectif = config.get("effectif")
         effectif = None if effectif is None else int(effectif)

@@ -27,7 +27,6 @@ from application.erreurs import (
 )
 from application.formats import ServiceFormats
 from domain.bareme import BaremeQualification
-from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.patrimoine import OrigineBrique
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
@@ -37,19 +36,24 @@ from tests.test_service_blasons import FauxTournoiRepository
 from tests.test_service_phases import FauxPhaseRepository
 
 
-class FauxLecteurForfaits:
-    """Réalise le port **étroit** `LecteurForfaitsDePhase` — une seule méthode à écrire.
+class FauxLecteurDonneesDePhase:
+    """Réalise le port **étroit** `LecteurDonneesDePhase` — une seule méthode à écrire.
 
-    Il **filtre réellement** par phase : un faux qui renverrait toujours `[]` ferait passer au vert
-    une garde incapable de voir les forfaits pendants, c'est-à-dire exactement le défaut que la
-    revue a relevé.
+    Il **filtre réellement** par phase, et deux tests l'exercent dans les deux sens (une donnée sur
+    la phase visée → refus ; une donnée sur la phase d'un autre tournoi → passage). Sans le second,
+    un faux qui renverrait n'importe quoi pour n'importe quel identifiant passerait aussi, et le
+    filtrage annoncé ne serait prouvé par rien.
+
+    ⚠️ La première version de ce faux était écrite, câblée, documentée — et **jamais alimentée** :
+    la garde qu'il devait protéger pouvait être supprimée en entier sans qu'aucune porte ne bronche.
+    C'est le défaut que la revue avait relevé un cran plus haut, reproduit ici.
     """
 
     def __init__(self) -> None:
-        self.forfaits: dict[int, list[Forfait]] = {}
+        self.par_identifiant: dict[int, list[object]] = {}
 
-    def par_phase(self, phase_id: _PhaseId) -> list[Forfait]:
-        return self.forfaits.get(phase_id, [])
+    def par_phase(self, phase_id: _PhaseId) -> list[object]:
+        return self.par_identifiant.get(phase_id, [])
 
 
 _DATE = datetime.date(2026, 3, 14)
@@ -99,7 +103,8 @@ class Contexte:
     tournois: FauxTournoiRepository
     formats: FauxFormatTournoiRepository
     phases: FauxPhaseRepository
-    forfaits: FauxLecteurForfaits
+    forfaits: FauxLecteurDonneesDePhase
+    placements_tableau: FauxLecteurDonneesDePhase
     tournoi_id: TournoiId
 
 
@@ -113,16 +118,18 @@ def ctx() -> Contexte:
     tournois = FauxTournoiRepository()
     formats = FauxFormatTournoiRepository()
     phases = FauxPhaseRepository()
-    forfaits = FauxLecteurForfaits()
+    forfaits = FauxLecteurDonneesDePhase()
+    placements_tableau = FauxLecteurDonneesDePhase()
     tournoi = tournois.ajouter(
         Tournoi.creer(nom="Kervignac 2026", date=_DATE, type_tournoi=TypeTournoi.OFFICIEL)
     )
     return Contexte(
-        service=ServiceFormats(tournois, formats, phases, forfaits),
+        service=ServiceFormats(tournois, formats, phases, forfaits, placements_tableau),
         tournois=tournois,
         formats=formats,
         phases=phases,
         forfaits=forfaits,
+        placements_tableau=placements_tableau,
         tournoi_id=_id(tournoi.id),
     )
 
@@ -252,6 +259,54 @@ def test_appliquer_refuse_si_une_phase_est_engagee(ctx: Contexte) -> None:
 
     with pytest.raises(PhasesEngagees):
         ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
+
+
+def test_appliquer_refuse_si_un_forfait_pend_sur_une_phase_a_venir(ctx: Contexte) -> None:
+    """Le statut ne suffit pas : `forfait.phase_id` est en `ON DELETE CASCADE`, et un forfait
+    déclaré au pointage vit sur une phase encore « à venir ». Le remplacement l'effacerait."""
+    posee = ctx.phases.ajouter(
+        Phase.qualification(ctx.tournoi_id, BaremeQualification.preset_ffta_18m())
+    )
+    ctx.forfaits.par_identifiant[_id(posee.id)] = [object()]
+    format_tournoi = ctx.service.creer("Officiel", [_qualification()])
+
+    with pytest.raises(PhasesEngagees):
+        ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
+
+    assert ctx.phases.par_tournoi(ctx.tournoi_id) == [posee], "la séquence est intacte"
+
+
+def test_un_forfait_sur_la_phase_d_un_autre_tournoi_ne_bloque_pas(ctx: Contexte) -> None:
+    """Le pendant négatif — sans lui, un faux qui répondrait à n'importe quel identifiant passerait
+    aussi, et le **filtrage** par phase ne serait prouvé par rien."""
+    autre = ctx.tournois.ajouter(
+        Tournoi.creer(nom="Autre", date=_DATE, type_tournoi=TypeTournoi.OFFICIEL)
+    )
+    phase_ailleurs = ctx.phases.ajouter(
+        Phase.qualification(_id(autre.id), BaremeQualification.preset_ffta_18m())
+    )
+    ctx.forfaits.par_identifiant[_id(phase_ailleurs.id)] = [object()]
+    format_tournoi = ctx.service.creer("Officiel", [_qualification()])
+
+    phases = ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
+
+    assert len(phases) == 1
+
+
+def test_appliquer_refuse_si_des_duellistes_sont_poses(ctx: Contexte) -> None:
+    """`placement_tableau.phase_id` est aussi en `ON DELETE CASCADE`, et un plan de duels ajusté à
+    la main la veille pend sur une phase « à venir » — l'ajustement manuel *est* la fonctionnalité
+    (E03US009). La garde le nommait sans le compter ; la revue l'a démontré à l'exécution."""
+    posee = ctx.phases.ajouter(
+        Phase.qualification(ctx.tournoi_id, BaremeQualification.preset_ffta_18m())
+    )
+    ctx.placements_tableau.par_identifiant[_id(posee.id)] = [object(), object()]
+    format_tournoi = ctx.service.creer("Officiel", [_qualification()])
+
+    with pytest.raises(PhasesEngagees):
+        ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
+
+    assert ctx.phases.par_tournoi(ctx.tournoi_id) == [posee]
 
 
 def test_appliquer_refuse_un_format_inconnu(ctx: Contexte) -> None:

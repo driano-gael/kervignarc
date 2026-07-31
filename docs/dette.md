@@ -49,32 +49,8 @@
 | [DETTE-020](#dette-020--le-libellé-de-tour-a-deux-domiciles) | conception | mineur | `backend/domain/tableau.py` (`libelle_tour`), `frontend/src/features/saisie-duels/duel.ts` (`libelleTour`) | Le nom d'un tour de tableau (« quart de finale », « petite finale ») est calculé **deux fois**, avec le même raisonnement (distance à la finale, `place_en_jeu` prioritaire) et des **sorties différentes** : le domaine rend le **singulier** (« Quart de finale », pour *un* archer), le front le **pluriel** (« Quarts de finale », pour un *titre de section ») et suffixe la petite finale (« Petite finale (3ᵉ place) ») | Les deux se lisent **sur le même écran, à un tap d'intervalle** (liste des duels puis panneau de routage). Aucun des deux libellés n'est faux dans son contexte, mais la **règle** est dupliquée : la prochaine évolution du vocabulaire (barrage, repêchage) devra se faire en deux endroits, dans deux langages. [ADR-0006](adr/0006-vocabulaire-metier-francais.md) veut un domicile unique pour le vocabulaire métier | E04US018 (2ᵉ occurrence ; la 1ʳᵉ est E04US013) | US `refactor/` — un seul domicile, le **domaine** : exposer `libelle` sur le DTO de duel comme sur celui de routage, retirer `libelleTour`/`estPetiteFinale` du front (`grouperParTour` groupe déjà par libellé, il consommerait celui du serveur). Le singulier/pluriel se règle alors par un paramètre du domaine, pas par une seconde implémentation. Marqueurs `# DETTE-020` / `// DETTE-020` sur les deux sites |
 | [DETTE-021](#dette-021--le-feu-vert-lance-un-duel-dont-les-duellistes-sont-séparés) | conception | **majeur** | `backend/application/pilotage_tour.py` (`_duel_a_venir`, `_blocage`), `frontend/src/features/feu-vert/` | Le feu vert juge un duel « prêt à lancer » dès que **chacun** des deux occupants a *une* cible (`cible_haut is not None and cible_bas is not None`), sans jamais vérifier que c'est **la même** ni qu'ils sont **côte à côte**. Il affiche alors « prêt · cibles 4 et 7 » et **lance** le tour. Le panneau de routage (E04US018) porte, lui, l'alerte dérivée du domaine (`duels_separes`) | Le plan de duels est **persisté** mais l'appariement est **recalculé** à chaque lecture (ADR-0023) : une correction de score suffit à les désaccorder. Les deux écrans se **contredisent** alors — la tablette de l'archer avertit, l'écran de l'organisateur dit « prêt » et fait partir le tour, trace d'audit `LANCEMENT` à l'appui. C'est le canal qui donne l'**ordre**, donc celui où l'erreur coûte le plus | E12US002 (le défaut y est né) ; **constaté** le 30/07/2026 à la revue d'E04US018 (axe adversarial), qui a fermé le trou côté routage et rendu la divergence visible | US `fix/` dédiée — `DuelAVenir` porte le signal `duels_separes` (déjà calculé par `ServicePlacementDuels`, aucun calcul neuf), `_blocage` le nomme, l'écran Feu vert l'affiche en ambre. **Ne pas** en faire un `pret_a_lancer=False` : `P-3`, l'appli montre et n'empêche pas — et E03US009 **accepte** un duel séparé quand les cibles sont trop petites. Marqueur `# DETTE-021` posé |
 | [DETTE-022](#dette-022--forfaits-de-la-phase-de-qualification-résolus-sur-4-sites) | conception | mineur | `backend/application/classements.py`, `backend/application/completude.py` (×2), `backend/application/saisie.py` | « Résoudre la phase de qualification puis lire ses forfaits » est écrit à **quatre** endroits, sous trois formes (`list[Forfait]`, `set`, `frozenset`). `completude.py` avait posé le rendez-vous dans son propre commentaire : « 2ᵉ occurrence, on extraira au **3ᵉ cas**, pas avant » | Faible : le motif est stable. Mais le seuil que le projet s'était lui-même fixé **dans le code** est franchi, et un 5ᵉ producteur re-dupliquera par mimétisme. Jumelle de DETTE-006 et DETTE-017 | E04US018 (4ᵉ site, `ServiceSaisie._forfaits_qualif`) | US `refactor/` — une lecture partagée `forfaits_qualif(tournoi_id) -> frozenset[ArcherId]`, 4 appelants, zéro changement de comportement. Marqueurs `# DETTE-022` sur les 4 sites |
-| [DETTE-025](#dette-025--appliquer-un-format-remplace-la-séquence-de-phases-sans-transaction) | technique | mineur | `backend/application/formats.py` (`ServiceFormats.appliquer`) | La suppression des phases existantes et la création de celles du format passent par des **transactions séparées** (une session par appel de repository) : une panne entre les deux laisse le tournoi sans phase, et une lecture concurrente peut voir une séquence partielle | Faible : trois gardes (phase engagée, forfait pendant, retrait de la qualification) réduisent le cas à une séquence `à venir` **sans données attachées**, que l'organisateur reconstitue en réappliquant un format | E01US023 (relevé par la revue ; remède hors périmètre — il touche le **port** `PhaseRepository`) | Un `remplacer_sequence(tournoi_id, phases)` atomique sur l'adapter concret, patron `consigner_dans` ([ADR-0035](adr/0035-atomicite-acte-trace-session-partagee.md)). Marqueur `# DETTE-025` |
 | [DETTE-024](#dette-024--routeur-maison-plutôt-quune-bibliothèque) | conception | mineur | `frontend/src/shared/navigation/routeur.ts`, `frontend/src/shared/navigation/useChemin.ts` | Le routage par rôle (E14US003, [ADR-0059](adr/0059-routage-par-role-dans-l-url-routeur-maison.md)) est assuré par ~110 lignes maison au lieu d'une bibliothèque : `history.pushState` + `popstate` + `useSyncExternalStore`, plus deux fonctions pures d'analyse et de construction de chemins. Motif double : `react-router-dom` ≥ 7.12.0 tire un `react-router` dans la plage vulnérable de `GHSA-qwww-vcr4-c8h2` (mode RSC, inatteignable ici mais l'audit doit rester vert — règle 11), et l'installation de la version corrigée `react-router@8.3.0` est bloquée sur le poste | Faible aujourd'hui : le besoin est de cinq mondes et deux segments, sans route imbriquée ni garde déclarative, et les décisions d'aiguillage sont **pures et testées** (24 tests). Ce qui manquera si le produit grossit : routes imbriquées, chargement différé par route, gardes déclaratives, `<Link>` avec préchargement. Le coût se paiera au **premier** de ces besoins, pas avant | E14US003 (ADR-0059) | Remplacer par `react-router@8.3.0` quand l'installation est possible. Le remplacement est **borné par construction** : `routeur.ts` est pur et `useChemin.ts` ne fait que l'abonnement — seuls ces deux fichiers et trois appels à `naviguer` (`App`, `ChangerDeRole`, `EspacePoste`) sont concernés. Marqueur : en-tête de `routeur.ts` |
-
-### DETTE-025 — appliquer un format remplace la séquence de phases **sans transaction**
-
-**Constat.** `ServiceFormats.appliquer` (E01US023) supprime les phases du tournoi puis crée celles du
-format. Chaque appel de `PhaseRepositorySQL` ouvre **sa propre session et son propre commit** : la
-suppression et la recréation ne forment donc pas une unité de travail. Une panne entre les deux
-boucles (disque plein, base verrouillée) laisse le tournoi **sans aucune phase**, sans rollback ; et
-comme les lectures sont synchrones hors file (règle 7), un poste qui lit pendant l'opération peut
-observer une séquence partielle, dont les ordres ne forment pas 1..N.
-
-**Pourquoi c'est de la dette et pas un bloquant.** Trois gardes rendent le cas très improbable et sans
-perte irréparable : le remplacement est **refusé** dès qu'une phase est engagée, dès qu'un forfait
-pend sur l'une d'elles, et dès qu'il retirerait la qualification. Ce qui peut être perdu est donc une
-séquence de phases `à venir` **sans données attachées**, que l'organisateur reconstitue en
-réappliquant un format. Aucun score, aucun duel, aucun forfait n'est en jeu.
-
-**Pourquoi elle est prise.** Le remède est une opération atomique **sur l'adapter concret** — un
-`remplacer_sequence(tournoi_id, phases)` en une seule session, sur le patron `consigner_dans`
-d'[ADR-0035](adr/0035-atomicite-acte-trace-session-partagee.md). C'est un ajout au **port** et à son
-adapter, donc une modification qui dépasse le périmètre de cette US, pour un cas dont la fenêtre est
-de quelques millisecondes et la perte reconstituable.
-
-**Résorption attendue.** À la première US qui touche `PhaseRepository` — ou au premier incident.
-Marqueur `# DETTE-025` posé sur la boucle de suppression de `ServiceFormats.appliquer`.
+| [DETTE-025](#dette-025--appliquer-un-format-remplace-la-séquence-de-phases-sans-transaction) | technique | mineur | `backend/application/formats.py` (`ServiceFormats.appliquer`) | La suppression des phases existantes et la création de celles du format passent par des **transactions séparées** (une session par appel de repository) : une panne entre les deux laisse le tournoi sans phase, et une lecture concurrente peut voir une séquence partielle | Faible : **quatre** gardes (phase engagée, forfait pendant, **duelliste posé**, retrait de la qualification) réduisent le cas à une séquence `à venir` **sans données attachées**, que l'organisateur reconstitue en réappliquant un format | E01US023 (relevé par la revue ; remède hors périmètre — il touche le **port** `PhaseRepository`) | Un `remplacer_sequence(tournoi_id, phases)` atomique sur l'adapter concret, patron `consigner_dans` ([ADR-0035](adr/0035-atomicite-acte-trace-session-partagee.md)). Marqueur `# DETTE-025` |
 
 ## Dette résorbée
 
@@ -828,6 +804,13 @@ d'E05US001 promet ces contrôles, les livrer vides aurait été un CA périmé. 
 (une source, un intervalle de rangs, **pas** de routing ni de gagnants/perdants) précisément pour que
 son retravail par E05US010 reste **peu coûteux**. Voir [ADR-0045](adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md) §3.
 
+> **Élargie par E01US023.** `SourcePhase` est désormais **sérialisée dans une seconde table** :
+> `ModelePhase.source` (`domain/format_tournoi.py`) est écrite dans `format_tournoi.config` par
+> `_config_format` et relue par `_vers_modele_phase`. Le type du domaine est **réutilisé**, pas
+> dupliqué — mais la surface de remédiation grandit : E05US010 devra migrer **aussi** les `config`
+> des formats déjà enregistrés, pas seulement celles des phases. Marqueur `# DETTE-015` posé sur
+> les **deux** sites (`SourcePhase` et `ModelePhase.source`).
+
 **Résorption attendue.** **E05US010** (placement intégral 1→N) : élargir `SourcePhase`/`SequencePhases`
 au peuplement complet (multi-sources, routing en cascade, division récursive), migrer/relire les
 sources uniques existantes comme sous-cas. Retirer alors le marqueur `# DETTE-015` posé sur
@@ -1105,6 +1088,36 @@ l'abonnement — seuls ces deux fichiers et les appels à `naviguer` (`App`, `Ch
 `EspacePoste`, `CoquilleAdmin`) sont concernés. Ils vivent sous `shared/navigation/` et non sous
 `app/` : une **feature ne doit pas importer le shell** (inversion relevée en revue). Le marqueur vit en tête de `routeur.ts`, avec l'historique complet de
 l'arbitrage.
+
+### DETTE-025 — appliquer un format remplace la séquence de phases **sans transaction**
+
+**Constat.** `ServiceFormats.appliquer` (E01US023) supprime les phases du tournoi puis crée celles du
+format. Chaque appel de `PhaseRepositorySQL` ouvre **sa propre session et son propre commit** : la
+suppression et la recréation ne forment donc pas une unité de travail. Une panne entre les deux
+boucles (disque plein, base verrouillée) laisse le tournoi **sans aucune phase**, sans rollback ; et
+comme les lectures sont synchrones hors file (règle 7), un poste qui lit pendant l'opération peut
+observer une séquence partielle, dont les ordres ne forment pas 1..N.
+
+**Pourquoi c'est de la dette et pas un bloquant.** **Quatre** gardes rendent le cas très improbable
+et sans perte irréparable : le remplacement est **refusé** dès qu'une phase est engagée, dès qu'un
+forfait pend sur l'une d'elles, dès qu'un duelliste y est posé, et dès qu'il retirerait la
+qualification.
+
+*(La première rédaction n'en comptait que trois et justifiait la cotation « faible » par une prémisse
+alors **fausse** — la garde ne couvrait pas les poses du plan de duels, qu'elle nommait pourtant. La
+revue l'a démontré à l'exécution ; la quatrième garde a été ajoutée, et la cotation redevient vraie.)* Ce qui peut être perdu est donc une
+séquence de phases `à venir` **sans données attachées**, que l'organisateur reconstitue en
+réappliquant un format. Aucun score, aucun duel, aucun forfait n'est en jeu.
+
+**Pourquoi elle est prise.** Le remède est une opération atomique **sur l'adapter concret** — un
+`remplacer_sequence(tournoi_id, phases)` en une seule session, sur le patron `consigner_dans`
+d'[ADR-0035](adr/0035-atomicite-acte-trace-session-partagee.md). C'est un ajout au **port** et à son
+adapter, donc une modification qui dépasse le périmètre de cette US, pour un cas dont la fenêtre est
+de quelques millisecondes et la perte reconstituable.
+
+**Résorption attendue.** À la première US qui touche `PhaseRepository` — ou au premier incident.
+Marqueur `# DETTE-025` posé sur la boucle de suppression de `ServiceFormats.appliquer`.
+
 
 ## Procédure — inscrire une dette
 

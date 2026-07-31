@@ -11,7 +11,12 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from application.erreurs import BlasonIntrouvable, BlasonReference, TournoiIntrouvable
+from application.erreurs import (
+    BlasonIntrouvable,
+    BlasonReference,
+    NomBriqueDejaPris,
+    TournoiIntrouvable,
+)
 from domain.blason import Blason, BlasonId, ZoneScore
 from domain.ports import BlasonRepository, CategorieRepository, TournoiRepository
 from domain.tournoi import TournoiId
@@ -72,6 +77,17 @@ class ServiceBlasons:
         """
         blason = self._blason_existant(blason_id)
         modifie = blason.modifier(nom, taille, capacite, zones)
+        if blason.tournoi_id is None:
+            # Même garde qu'à l'édition d'une catégorie de bibliothèque, et pour la même raison :
+            # l'assemblage et la promotion dédoublonnent par le nom (E01US023). Aucun écran
+            # n'expose ce renommage aujourd'hui, mais la route admin est ouverte — et c'est
+            # exactement ainsi que le trou précédent avait été laissé.
+            cle = modifie.nom.strip().casefold()
+            for modele in self._blasons.par_bibliotheque():
+                if modele.id != blason_id and modele.nom.strip().casefold() == cle:
+                    raise NomBriqueDejaPris(
+                        f"Un blason du club porte déjà le nom « {modele.nom} »."
+                    )
         return self._blasons.enregistrer(modifie)
 
     def supprimer(self, blason_id: BlasonId) -> None:

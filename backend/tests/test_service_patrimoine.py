@@ -25,10 +25,13 @@ from application.erreurs import (
     BriqueDejaEnBibliotheque,
     BriqueHorsBibliotheque,
     CategorieIntrouvable,
+    NomBriqueDejaPris,
     TournoiIntrouvable,
 )
 from application.patrimoine import ServicePatrimoine
 from domain.blason import ZONES_DEFAUT, Blason
+from domain.categorie import Categorie, SexeCategorie, TrancheAge
+from domain.erreurs import LibelleCategorieInvalide
 from domain.patrimoine import OrigineBrique
 from domain.tournoi import Tournoi, TypeTournoi
 from tests.conftest import FauxCategorieRepository
@@ -346,3 +349,121 @@ def test_une_brique_officielle_reste_supprimable(ctx: Contexte) -> None:
     ctx.categories.supprimer(_id(premiere.id))
 
     assert premiere.id not in {c.id for c in ctx.service.lister_categories()}
+
+
+# --- Règles ajoutées après la revue (unicité, duplication, origine d'un modèle promu) -----------
+# Dérivées des mêmes puces de CA que ci-dessus — « deux listes séparées » et « modifier un
+# officiel » — dont la première version de l'US ne tenait que la moitié.
+
+
+def test_deux_categories_de_bibliotheque_ne_peuvent_pas_etre_homonymes(ctx: Contexte) -> None:
+    """L'assemblage et la promotion dédoublonnent **par le nom** : deux homonymes les rendraient
+    non déterministes — un seul serait copié, et lequel des deux la promotion met à jour dépendrait
+    de l'ordre du dépôt."""
+    ctx.service.creer_categorie("Senior 1 Homme")
+
+    with pytest.raises(NomBriqueDejaPris):
+        ctx.service.creer_categorie("  senior 1 HOMME  ")
+
+
+def test_deux_blasons_de_bibliotheque_ne_peuvent_pas_etre_homonymes(ctx: Contexte) -> None:
+    ctx.service.creer_blason("Blason 40 cm", taille=0.25, capacite=1)
+
+    with pytest.raises(NomBriqueDejaPris):
+        ctx.service.creer_blason("blason 40 CM", taille=1.0, capacite=2)
+
+
+def test_dupliquer_une_categorie_garde_les_deux_modeles_et_tous_les_attributs(
+    ctx: Contexte,
+) -> None:
+    """« En faire une copie pour garder les deux modèles » — l'original reste intact, et la copie
+    n'est pas amputée : c'est la duplication, pas une re-création à partir du seul libellé."""
+    blason = ctx.service.creer_blason("Blason 60 cm", taille=0.5, capacite=1)
+    officielle = ctx.categories.ajouter(
+        Categorie.creer(
+            None,
+            "Arc Nu U18 Homme",
+            "Arc Nu",
+            [TrancheAge.U15, TrancheAge.U18],
+            SexeCategorie.HOMME,
+            blason.id,
+            110,
+            origine=OrigineBrique.FFTA,
+        )
+    )
+
+    copie = ctx.service.dupliquer_categorie(_id(officielle.id), "Ma variante")
+
+    assert copie.origine is OrigineBrique.UTILISATEUR, "une copie n'est pas officielle"
+    assert copie.tournoi_id is None
+    assert (copie.arme, copie.ages, copie.sexe) == (
+        officielle.arme,
+        officielle.ages,
+        officielle.sexe,
+    )
+    assert (copie.blason_id, copie.hauteur_cm) == (blason.id, 110)
+    relue = ctx.categories.par_id(_id(officielle.id))
+    assert relue is not None and relue.origine is OrigineBrique.FFTA, "l'original est intact"
+
+
+def test_dupliquer_un_blason_garde_taille_capacite_et_zones(ctx: Contexte) -> None:
+    modele = ctx.service.creer_blason("Triple 40 cm", taille=0.25, capacite=1)
+
+    copie = ctx.service.dupliquer_blason(_id(modele.id), "Triple 40 maison")
+
+    assert copie.origine is OrigineBrique.UTILISATEUR
+    assert (copie.taille, copie.capacite, copie.zones) == (
+        modele.taille,
+        modele.capacite,
+        modele.zones,
+    )
+
+
+def test_dupliquer_sous_un_nom_deja_pris_est_refuse(ctx: Contexte) -> None:
+    modele = ctx.service.creer_blason("Blason 40 cm", taille=0.25, capacite=1)
+    ctx.service.creer_blason("Déjà pris", taille=1.0, capacite=1)
+
+    with pytest.raises(NomBriqueDejaPris):
+        ctx.service.dupliquer_blason(_id(modele.id), "Déjà pris")
+
+
+def test_dupliquer_un_libelle_vide_est_refuse(ctx: Contexte) -> None:
+    """La duplication passe par la **fabrique** du domaine, pas par `replace` : un libellé vide
+    doit être refusé comme à la création."""
+    modele = ctx.service.creer_categorie("Senior 1 Homme")
+
+    with pytest.raises(LibelleCategorieInvalide):
+        ctx.service.dupliquer_categorie(_id(modele.id), "   ")
+
+
+def test_promouvoir_un_modele_neuf_ne_le_declare_pas_officiel(ctx: Contexte) -> None:
+    """Une brique **renommée** dans un tournoi n'a aucun ancêtre au référentiel fédéral : rien ne
+    lui donne sa provenance. La laisser hériter du `ffta` de la copie ferait entrer une création du
+    club dans la liste « officiel » de l'atelier — la liste même que le CA veut séparée.
+
+    À distinguer de la mise à jour d'un **homonyme**, qui conserve l'origine du modèle existant
+    (« modifier un officiel le laisse officiel », ADR-0060 §4) — cf. le test suivant.
+    """
+    tournoi_id = ctx.tournoi()
+    copie_officielle = ctx.blasons.ajouter(
+        Blason.creer(tournoi_id, "Renommé localement", 0.5, 1, origine=OrigineBrique.FFTA)
+    )
+
+    promu = ctx.service.promouvoir_blason(_id(copie_officielle.id))
+
+    assert promu.origine is OrigineBrique.UTILISATEUR
+
+
+def test_promouvoir_vers_un_homonyme_conserve_l_origine_du_modele(ctx: Contexte) -> None:
+    """L'autre branche : le modèle existe, il garde son étiquette."""
+    tournoi_id = ctx.tournoi()
+    modele = ctx.blasons.ajouter(
+        Blason.creer(None, "Blason 40 cm", 0.25, 1, origine=OrigineBrique.FFTA)
+    )
+    copie = ctx.blasons.ajouter(Blason.creer(tournoi_id, "Blason 40 cm", 0.5, 2))
+
+    promu = ctx.service.promouvoir_blason(_id(copie.id))
+
+    assert promu.id == modele.id
+    assert promu.origine is OrigineBrique.FFTA
+    assert promu.taille == 0.5, "la valeur promue est bien celle de la copie"

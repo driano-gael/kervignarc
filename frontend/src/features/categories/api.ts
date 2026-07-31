@@ -43,8 +43,12 @@ export interface NouvelleCategorie {
   hauteur_cm?: number
 }
 
-// L'édition porte sur les mêmes champs que la création.
-export type ModifierCategorie = NouvelleCategorie
+// L'édition porte sur les mêmes champs que la création, mais **tous obligatoires** : le PUT est
+// **total** (ADR-0020), donc un champ omis est remis à son défaut côté serveur. Laisser les champs
+// optionnels ici est ce qui a permis à un appelant de n'en envoyer que trois sur six et d'effacer
+// silencieusement `ages`, `sexe` et `blason_id` (relevé en revue, E01US023). `Required<>` fait
+// dire au compilateur ce que la sémantique du verbe impose déjà.
+export type ModifierCategorie = Required<NouvelleCategorie>
 
 export function getCategories(tournoiId: number): Promise<Categorie[]> {
   return fetchJson<Categorie[]>(`/api/v1/tournois/${tournoiId}/categories`)

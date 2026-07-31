@@ -56,13 +56,16 @@ export function CategoriesBibliotheque() {
       {categories.isError && <MessageErreur erreur={categories.error} />}
       {/* Sans ce garde, le premier rendu annonce « aucune catégorie » pendant le fetch — sur la
           destination d'ouverture de l'atelier, donc à chaque entrée dans l'axe. */}
-      {categories.isPending && <p className="carte__etat">Chargement…</p>}
-      <ListesParOrigine
-        briques={categories.data ?? []}
-        rendre={(categorie) => <LigneCategorie key={categorie.id} categorie={categorie} />}
-        videOfficiel="Aucune catégorie officielle : utilisez « Charger le référentiel FFTA »."
-        videMaison="Aucune catégorie créée par le club."
-      />
+      {categories.isPending ? (
+        <p className="carte__etat">Chargement…</p>
+      ) : (
+        <ListesParOrigine
+          briques={categories.data ?? []}
+          rendre={(categorie) => <LigneCategorie key={categorie.id} categorie={categorie} />}
+          videOfficiel="Aucune catégorie officielle : utilisez « Charger le référentiel FFTA »."
+          videMaison="Aucune catégorie créée par le club."
+        />
+      )}
     </section>
   )
 }
@@ -80,13 +83,16 @@ export function BlasonsBibliotheque() {
       <PrechargementFfta />
       <FormulaireBlason />
       {blasons.isError && <MessageErreur erreur={blasons.error} />}
-      {blasons.isPending && <p className="carte__etat">Chargement…</p>}
-      <ListesParOrigine
-        briques={blasons.data ?? []}
-        rendre={(blason) => <LigneBlason key={blason.id} blason={blason} />}
-        videOfficiel="Aucun blason officiel : utilisez « Charger le référentiel FFTA »."
-        videMaison="Aucun blason créé par le club."
-      />
+      {blasons.isPending ? (
+        <p className="carte__etat">Chargement…</p>
+      ) : (
+        <ListesParOrigine
+          briques={blasons.data ?? []}
+          rendre={(blason) => <LigneBlason key={blason.id} blason={blason} />}
+          videOfficiel="Aucun blason officiel : utilisez « Charger le référentiel FFTA »."
+          videMaison="Aucun blason créé par le club."
+        />
+      )}
     </section>
   )
 }

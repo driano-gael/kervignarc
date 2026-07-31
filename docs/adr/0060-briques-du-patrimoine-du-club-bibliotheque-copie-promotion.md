@@ -82,6 +82,15 @@ versionné et le contrôle de conformité relèvent d'un lot ultérieur ; tant q
 `FFTA` signifie « issue du préchargement officiel », rien de plus. C'est cohérent avec RG-8
 (ADR-0020) : l'application n'impose ni ne vérifie la conformité au règlement.
 
+**Ce que devient l'origine à la promotion** — la règle n'allait pas de soi et manquait ici :
+
+- la promotion **met à jour un homonyme** de la bibliothèque → celui-ci **conserve son origine**
+  (c'est le « modifier un officiel le laisse officiel » ci-dessus) ;
+- la promotion **crée un modèle neuf** (aucun homonyme) → il est marqué **`utilisateur`**, quelle
+  que soit l'origine de la copie promue. Motif : une brique renommée dans un tournoi n'a **aucun
+  ancêtre** au référentiel fédéral ; la marquer `ffta` ferait entrer une création du club dans la
+  liste « officiel » de l'atelier — précisément la liste que le commanditaire veut séparée.
+
 ### 5. Pour les phases, la brique réutilisable est le **format**, pas la phase
 
 C'est le seul endroit où la généralisation du point 1 **ne s'applique pas**, et il faut dire pourquoi.

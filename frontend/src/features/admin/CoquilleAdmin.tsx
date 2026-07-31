@@ -319,7 +319,7 @@ function Coquille() {
       id: 'jeu-essai',
       libelle: 'Jeu d’essai',
       // Outil de démo/QA (E15US001) : peupler le tournoi courant OU instancier un scénario qui crée
-      // son propre tournoi — d'où `besoinTournoi: false` (la brique « peupler » gère elle-même
+      // son propre tournoi — d'où son `false` dans `BESOIN_TOURNOI` (la brique « peupler » gère
       // l'absence de tournoi courant). À l'instanciation, on **sort de l'atelier** pour aller piloter
       // le tournoi qui vient de naître : c'est le geste « j'ai fabriqué, je vais m'en servir ».
       rendu: () => (

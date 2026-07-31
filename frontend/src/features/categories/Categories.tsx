@@ -6,12 +6,17 @@
 // arc nu « U18 » = U15 + U18) ; le sexe est un choix facultatif (Homme / Femme / Mixte). Un bouton
 // **pré-charge le jeu de catégories FFTA salle (18 m)** officiel (E01US004) : les catégories ainsi
 // ajoutées sont ordinaires (modifiables et supprimables comme les autres).
+//
+// ⚠️ **Le bouton de pré-chargement FFTA a quitté cet écran** avec E01US023 : le référentiel fédéral
+// alimente désormais la bibliothèque du club (Atelier → Catégories), et un tournoi en reçoit une
+// copie (Pilotage → Assemblage). Les fiches de recette `docs/fonctionnel/E01US004.md` et
+// `E01US013.md` ont été mises à jour en conséquence.
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Blason } from '../blasons/api'
 import { useBlasons } from '../blasons/hooks'
-import type { Categorie, NouvelleCategorie, SexeCategorie, TrancheAge } from './api'
+import type { Categorie, ModifierCategorie, SexeCategorie, TrancheAge } from './api'
 import {
   useCategories,
   useCreerCategorie,
@@ -214,7 +219,11 @@ function FormulaireCategorie({
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
     if (libelle.trim() === '' || hauteurAnalysee === 'invalide') return
-    const entree: NouvelleCategorie = {
+    // Annoté `ModifierCategorie` (tous champs requis) et non `NouvelleCategorie` : le PUT est
+    // **total**, et c'est le compilateur qui doit refuser un objet incomplet. `Required<X>` reste
+    // assignable à `X`, donc la création s'en accommode — l'annotation la plus stricte des deux
+    // sert les deux appels.
+    const entree: ModifierCategorie = {
       libelle,
       arme: arme.trim() || null,
       ages,

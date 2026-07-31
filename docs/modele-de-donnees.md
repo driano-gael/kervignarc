@@ -1,7 +1,8 @@
 # Modèle de données détaillé — Kervignarc
 
-- **Version** : 0.6
-- **Date** : 2026-07-27 *(v0.6 : `DEPART.horaire` devient un horaire du jour `HH:MM` **NOT NULL** (abandon du libellé libre facultatif) — E02US010, migration 0032)*
+- **Version** : 0.7
+- **Date** : 2026-07-31 *(v0.7 : les **briques deviennent le patrimoine du club** — `CATEGORIE.tournoi_id` et `BLASON.tournoi_id` passent **nullable** (`NULL` = modèle de bibliothèque), les deux tables gagnent `origine`, et la table **`FORMAT_TOURNOI`** apparaît (sans FK vers `TOURNOI`) — E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md), migrations 0034 et 0035)*
+- *v0.6 : 2026-07-27 — `DEPART.horaire` devient un horaire du jour `HH:MM` **NOT NULL** (abandon du libellé libre facultatif) — E02US010, migration 0032*
 - *v0.5 : 2026-07-16 — table de liaison `INSCRIPTION` (archer ↔ départ, portant `paye`) — E02US009, [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md) ; montant dû **dérivé** du tarif du départ, non stocké*
 - *v0.4 : 2026-07-16 — `DEPART` devient un **créneau du tournoi** (`tournoi_id`, `horaire`, `tarif_centimes` obligatoire), le tarif **quitte** `TOURNOI` — [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md), E02US004 ; le lien archer↔départ + `paye` passent à E02US009*
 - *v0.3 : 2026-07-15 — `ARCHER.club_id` **nullable** = club *inconnu* et index UNIQUE de dédoublonnage **abandonné** ([ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md), [ADR-0015](adr/0015-signaler-un-doublon-plutot-que-l-interdire.md)) ; `ARCHER.categorie_id` NOT NULL*
@@ -15,13 +16,17 @@
 
 ```mermaid
 erDiagram
-    TOURNOI ||--o{ CATEGORIE : "définit"
-    TOURNOI ||--o{ BLASON : "définit"
+    TOURNOI |o--o{ CATEGORIE : "définit"
+    TOURNOI |o--o{ BLASON : "définit"
     TOURNOI ||--o{ ARCHER : "inscrit"
     TOURNOI ||--o{ CIBLE : "instancie"
     TOURNOI ||--o{ PHASE : "séquence"
-    TOURNOI ||--o| GABARIT_SALLE : "plan (copie)"
+    TOURNOI |o--o| GABARIT_SALLE : "plan (copie)"
     TOURNOI ||--o{ DEPART : "planifie (créneaux)"
+    %% FORMAT_TOURNOI et CLUB n'ont **aucune** FK vers TOURNOI : ce sont des
+    %% référentiels du club, pas de la descendance d'une édition (E01US023).
+    FORMAT_TOURNOI
+
     CLUB |o--o{ ARCHER : "rattache (club inconnu possible)"
     CATEGORIE }o--|| BLASON : "associe"
     ARCHER }o--|| CATEGORIE : "concourt en"

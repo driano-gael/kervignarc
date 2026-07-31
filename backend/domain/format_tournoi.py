@@ -70,6 +70,10 @@ class ModelePhase:
     type: TypePhase
     bareme: BaremeQualification | None = None
     validation: GrainValidation | None = None
+    # DETTE-015 — `SourcePhase` est le modèle de peuplement **provisoire** d'E05US001 (une source,
+    # une plage de rangs, pas de routing). E01US023 le **réutilise** sans le dupliquer, mais le
+    # sérialise dans une **seconde** table (`format_tournoi.config`) : E05US010 devra donc migrer
+    # aussi les formats enregistrés, pas seulement les phases. Cf. `docs/dette.md`.
     source: SourcePhase | None = None
     effectif: int | None = None
 

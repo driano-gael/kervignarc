@@ -422,11 +422,17 @@ def create_app(
     # Formats de tournoi (E01US023, ADR-0060 §5) : la brique « déroulé ». Traverse deux ports
     # — le sien et celui des **phases** — parce que la copie d'un format dans un tournoi n'est
     # pas un format rattaché, ce sont ses phases.
-    # `forfait_repository` : la garde d'application d'un format regarde ce qui **pend** aux phases,
-    # pas seulement leur statut — un forfait déclaré au pointage vit sur une phase encore `à venir`
-    # et serait détruit en cascade par le remplacement (revue E01US023).
+    # `forfait_repository` **et** `placement_tableau_repository` : la garde d'application d'un
+    # format regarde ce qui **pend** aux phases, pas seulement leur statut. Un forfait déclaré au
+    # pointage et un plan de duels ajusté à la main vivent tous deux sur des phases encore
+    # `à venir`, et les deux FK sont en `ON DELETE CASCADE` — le remplacement les détruisait en
+    # silence (revue E01US023, démontré à l'exécution).
     app.state.service_formats = ServiceFormats(
-        tournoi_repository, format_repository, phase_repository, forfait_repository
+        tournoi_repository,
+        format_repository,
+        phase_repository,
+        forfait_repository,
+        placement_tableau_repository,
     )
     # Barème de qualification (E01US009) : porté par la phase `qualification` du tournoi
     # (introduction minimale de `Phase`, ADR-0011). Le service vérifie l'existence du tournoi.

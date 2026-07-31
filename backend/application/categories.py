@@ -16,6 +16,7 @@ from application.erreurs import (
     BlasonIntrouvable,
     BriqueHorsBibliotheque,
     CategorieIntrouvable,
+    NomBriqueDejaPris,
     TournoiIntrouvable,
 )
 from application.referentiel_ffta import blasons_salle_18m, categories_salle_18m
@@ -139,9 +140,11 @@ class ServiceCategories:
                 modele.taille,
                 modele.capacite,
                 modele.zones,
-                # Sans cette marque, les briques officielles créées par **ce** chemin sortaient en
-                # `utilisateur` : promues, elles atterrissaient dans « créations du club », ce qui
-                # salit exactement la liste séparée que le CA demande (E01US023).
+                # Provenance **exacte** de la donnée : ces blasons viennent du référentiel
+                # fédéral, ils sont marqués comme tels. Ce n'est **pas** ce qui protège la liste
+                # séparée de l'atelier — c'est la promotion qui s'en charge, en forçant
+                # `utilisateur` pour un modèle neuf (`ServicePatrimoine.promouvoir_*`). Sans effet
+                # d'écran aujourd'hui, donc : une brique de tournoi n'affiche pas son origine.
                 origine=OrigineBrique.FFTA,
             )
             par_nom[cle] = self._blasons.ajouter(blason)
@@ -181,6 +184,13 @@ class ServiceCategories:
         else:
             self._verifier_blason_du_tournoi(categorie.tournoi_id, blason_id)
         modifiee = categorie.modifier(libelle, arme, ages, sexe, blason_id, hauteur_cm)
+        if categorie.tournoi_id is None:
+            # **Deuxième fois** que cette route héritée laisse passer ce que les routes neuves
+            # refusent. L'unicité posée à la création (`NomBriqueDejaPris`) était contournable par
+            # le bouton « Renommer » de l'atelier — qui appelle précisément ce PUT. Deux modèles
+            # homonymes rendent l'assemblage et la promotion non déterministes : un seul est copié,
+            # l'autre est compté « déjà présent » et n'atteint jamais aucun tournoi.
+            self._exiger_libelle_de_bibliotheque_libre(modifiee.libelle, sauf=categorie_id)
         return self._categories.enregistrer(modifiee)
 
     def supprimer(self, categorie_id: CategorieId) -> None:
@@ -193,6 +203,22 @@ class ServiceCategories:
         if categorie is None:
             raise CategorieIntrouvable(f"Aucune catégorie d'identifiant {categorie_id}.")
         return categorie
+
+    def _exiger_libelle_de_bibliotheque_libre(self, libelle: str, sauf: CategorieId) -> None:
+        """Refuse un libellé déjà porté par un **autre** modèle de bibliothèque.
+
+        `sauf` exclut la catégorie en cours d'édition, sans quoi renommer une catégorie en
+        elle-même échouerait — patron `ServiceFormats._verifier_nom_libre`, qui fait déjà ce
+        contrôle à l'édition d'un format. Même clé de comparaison que la déduplication de
+        l'assemblage (`ServicePatrimoine._cle` : casse et espaces de bord repliés), sans quoi la
+        garde et la déduplication ne parleraient pas de la même chose.
+        """
+        cle = libelle.strip().casefold()
+        for modele in self._categories.par_bibliotheque():
+            if modele.id != sauf and modele.libelle.strip().casefold() == cle:
+                raise NomBriqueDejaPris(
+                    f"Une catégorie du club porte déjà le libellé « {modele.libelle} »."
+                )
 
     def _verifier_blason_de_bibliotheque(self, blason_id: BlasonId | None) -> None:
         """Vérifie qu'un blason par défaut (facultatif) est bien un **modèle de bibliothèque**.

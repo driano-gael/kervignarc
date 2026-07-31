@@ -20,7 +20,7 @@ Trois cas d'usage au-delà du CRUD :
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from typing import Protocol
 
 from application.erreurs import (
@@ -30,27 +30,35 @@ from application.erreurs import (
     TournoiIntrouvable,
     TournoiSansPhase,
 )
-from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.ports import FormatTournoiRepository, PhaseRepository, TournoiRepository
 from domain.tournoi import TournoiId
 
 
-class LecteurForfaitsDePhase(Protocol):
-    """Port **étroit** : tout ce dont la garde de remplacement a besoin des forfaits.
+class LecteurDonneesDePhase(Protocol):
+    """Port **étroit** : tout ce dont la garde de remplacement a besoin d'un dépôt qui pend.
 
-    Le service n'a pas à connaître le `ForfaitRepository` entier (déclarer, lister par tournoi,
-    par archer…) pour répondre à une seule question : « cette phase porte-t-elle des forfaits ? ».
-    Même patron que `LecteurAvancementDepart` (`application/departs.py`), et même bénéfice : le
-    faux de test se réduit à une méthode, et le couplage dit exactement ce qu'il est.
+    Le service n'a pas à connaître un `ForfaitRepository` entier (déclarer, lister par tournoi, par
+    archer…) pour répondre à une seule question : « cette phase porte-t-elle des données ? ». Même
+    patron que `LecteurAvancementDepart` (`application/departs.py`), et même bénéfice : le faux de
+    test se réduit à une méthode, et le couplage dit exactement ce qu'il est.
+
+    **Deux** adapters le satisfont structurellement, sans rien déclarer : `ForfaitRepositorySQL` et
+    `PlacementTableauRepositorySQL`. C'est ce qui permet à la garde de couvrir les deux cascades
+    sans les distinguer.
 
     Déclaré ici plutôt que dans `domain/ports.py` parce que c'est un besoin **de ce service**, pas
-    du domaine — `ForfaitRepositorySQL` le satisfait structurellement, sans rien déclarer.
+    du domaine.
     """
 
-    def par_phase(self, phase_id: PhaseId) -> list[Forfait]:
-        """Renvoie les forfaits déclarés sur une phase (liste éventuellement vide)."""
+    def par_phase(self, phase_id: PhaseId) -> Sequence[object]:
+        """Renvoie ce qui pend à une phase (éventuellement rien).
+
+        Typé `Sequence[object]` parce que la garde n'en compte que la **taille** : les deux dépôts
+        qui satisfont ce port rendent des types différents (`Forfait`, `Affectation`), et le port
+        n'a aucune raison de les connaître pour répondre « y a-t-il quelque chose ? ».
+        """
         ...
 
 
@@ -62,12 +70,14 @@ class ServiceFormats:
         tournois: TournoiRepository,
         formats: FormatTournoiRepository,
         phases: PhaseRepository,
-        forfaits: LecteurForfaitsDePhase,
+        forfaits: LecteurDonneesDePhase,
+        placements_tableau: LecteurDonneesDePhase,
     ) -> None:
         self._tournois = tournois
         self._formats = formats
         self._phases = phases
         self._forfaits = forfaits
+        self._placements_tableau = placements_tableau
 
     # --- Bibliothèque ---------------------------------------------------------------------
 
@@ -179,9 +189,14 @@ class ServiceFormats:
         peut déjà porter des données. `forfait.phase_id` et `placement_tableau.phase_id` sont en
         `ON DELETE CASCADE` (cf. `infrastructure/db/models.py`), et **ni** `ServiceForfait` **ni**
         `ServicePlacementDuels` n'exigent qu'une phase soit démarrée : un forfait déclaré au
-        pointage, le matin, pend sur une phase `à venir`. Le remplacement les effaçait donc en
-        silence — alors même que le message de `PhasesEngagees` promet de protéger « les séries et
-        les duels qui y pendent ». La garde regarde donc ce qui pend, pas seulement l'étiquette.
+        pointage pend sur une phase `à venir`, et un plan de duels ajusté à la main la veille aussi
+        (E03US009 — l'ajustement manuel *est* la fonctionnalité). Le remplacement les effaçait en
+        silence, alors que le message de `PhasesEngagees` promet de protéger « les séries et les
+        duels qui y pendent ».
+
+        ⚠️ Le deuxième jet ne comptait que les **forfaits**, tout en **nommant** `placement_tableau`
+        dans cette docstring même — la revue l'a démontré à l'exécution (une pose avant, zéro
+        après). Les deux cascades sont désormais comptées.
 
         Le troisième refus ferme une **route parallèle** : `ServicePhases.supprimer` interdit de
         retirer la phase de qualification (`PhaseQualificationNonSupprimable`) parce qu'elle porte
@@ -195,11 +210,18 @@ class ServiceFormats:
                 f"Le tournoi {tournoi_id} a {len(engagees)} phase(s) déjà engagée(s) : appliquer "
                 "un format remplacerait un déroulé en cours."
             )
-        forfaits = sum(len(self._forfaits.par_phase(p.id)) for p in existantes if p.id is not None)
+        ids = [p.id for p in existantes if p.id is not None]
+        forfaits = sum(len(self._forfaits.par_phase(phase_id)) for phase_id in ids)
         if forfaits:
             raise PhasesEngagees(
                 f"{forfaits} forfait(s) sont déclarés sur les phases de ce tournoi : appliquer un "
                 "format les effacerait avec elles."
+            )
+        poses = sum(len(self._placements_tableau.par_phase(phase_id)) for phase_id in ids)
+        if poses:
+            raise PhasesEngagees(
+                f"{poses} duelliste(s) sont posés sur le plan de duels de ce tournoi : appliquer "
+                "un format les effacerait avec les phases."
             )
         avait_qualification = any(p.type is TypePhase.QUALIFICATION for p in existantes)
         aura_qualification = any(e.type is TypePhase.QUALIFICATION for e in format_tournoi.etapes)
