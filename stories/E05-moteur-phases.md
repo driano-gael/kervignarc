@@ -262,8 +262,14 @@ existent depuis E05US003 (✅) ; cette US en peuple le catalogue.
   plus près du centre** ; *équipe* — une volée de **3 flèches** (1 par archer). Deux règles qui
   surprennent et qu'il ne faut pas rater : le barrage **ne prend pas en compte** le nombre de 10/9
   (seul endroit du produit où ce critère ne s'applique pas), et **un archer absent au barrage annoncé
-  est déclaré perdant**. Tiré sur la cible centrale du triple vertical. Nouveau **type de source** :
-  « les archers à égalité au rang r » d'un classement. Le pavé de saisie des duels (E04US013 ✅) convient.
+  est déclaré perdant**. Tiré sur la cible centrale du triple vertical. Le pavé de saisie des duels (E04US013 ✅) convient.
+  ⚠️ **Reporté, pas oublié** : le CA prévoyait un nouveau **type de source** « les archers à égalité
+  au rang r » d'un classement. Il n'est **pas livré** — `NatureSource` porte toujours `rangs` /
+  `issue_de_tour` / `reste`. Motif : un prélèvement d'ex æquo ne se dénombre qu'à l'exécution, donc
+  il n'a de sens qu'une fois les moteurs branchés à un déroulé — c'est **E01US024**, avec le reste
+  de la consommation des sources ([DETTE-028](../docs/dette.md)). Le barrage se compose d'ici là par
+  un prélèvement par rangs ordinaire. *(Reversé après la revue du 31/07, qui a relevé qu'un CA
+  abandonné en cours d'US et non consigné fait dériver l'US suivante sur une base fausse.)*
 - **CA — poules** : règle fournie par le commanditaire le 31/07/2026, reproduite ici **verbatim** —
   elle n'est écrite **nulle part ailleurs** (ni au règlement FFTA salle, ni dans aucun document du
   projet), donc cette US en est la source :
@@ -278,8 +284,13 @@ existent depuis E05US003 (✅) ; cette US en peuple le catalogue.
   `scoring` (points de match), `tiebreak` (l'ordre à cinq critères ci-dessus), `routing` (où vont les
   qualifiés, et où vont les autres). ⚠️ `DecompteDepartage` (`domain/politiques.py`) ne porte
   aujourd'hui que `nb_dix`/`nb_neuf` : l'enrichir (points, sets, score) **sans casser**
-  `TiebreakFftaDefaut` **ni** `classement._cle_departage`, qui en sont **deux consommateurs
-  existants** — c'est la rupture de contrat la plus risquée de cette US.
+  `TiebreakFftaDefaut` — annoncé au cadrage comme « la rupture de contrat la plus risquée de cette
+  US ». *(Rectifié après la revue du 31/07 : le CA parlait de **deux** consommateurs existants, dont
+  `classement._cle_departage`. C'est faux — `classement.py` travaille sur son propre décompte privé
+  et n'importe pas `DecompteDepartage` ; et `TiebreakFftaDefaut` n'a lui-même aucun appelant de
+  production. L'élargissement était donc non cassant, mais **pas pour la raison affirmée** : il n'y
+  avait aucun consommateur du tout. On corrige le CA plutôt que de laisser la prochaine US hériter
+  d'un fait inexact — cf. [DETTE-028](../docs/dette.md).)*
 - **CA — repêchage World Archery (ex-E05US016)** : `routing = repêchage` **réinjecte** certains
   perdants dans le tableau principal ; sélectionnable par phase. À distinguer du **placement**, où le
   perdant va vers un tableau de **classement** sans jamais revenir. `moteur-placement-lucky-loser.md`
@@ -365,7 +376,14 @@ existent depuis E05US003 (✅) ; cette US en peuple le catalogue.
   solution existait, et lève alors une erreur explicite plutôt que de rejouer une rencontre en
   silence.
 - **CA — King of the Hill & Ladder** : règles fournies le 31/07/2026. **Un seul type**, `colline` :
-  ce qui les sépare est la **portée du défi** (un rang au-dessus, ou deux), donc un paramètre.
+  ce qui les sépare est la **portée du défi**, donc un paramètre. ⚠️ **La portée est une distance
+  MAXIMALE, pas exacte** — la règle dit « le n°6 peut seulement défier le 5 **ou** le 4 », c'est-à-dire
+  un **choix** dans une fourchette ; la distance effective tourne d'une manche à l'autre.
+  *(Reversé après la revue du 31/07 : le CA disait d'abord « un rang au-dessus, ou deux »,
+  formulation qui décrivait l'implémentation d'alors — laquelle figeait la distance à la portée et
+  rendait le Ladder **incapable de classer**, la parité de position devenant un invariant. Un CA
+  réécrit pour épouser le code se relit sans effort et il est faux : c'est le piège que la règle 9
+  vise, un cran au-dessus du code.)*
   **Deux arbitrages du cadrage** : (a) **version « journée »**, pas classement permanent — les règles
   décrivent un classement qui « évolue toute l'année », or une `Phase` a des sources, un effectif et
   une fin **dans un tournoi** ; le classement permanent de club reste un autre produit ; (b)

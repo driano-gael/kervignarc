@@ -36,7 +36,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 
-from domain.erreurs import ConfigurationPouleInvalide
+from domain.erreurs import BarrageRequisAvantQualification, ConfigurationPouleInvalide
 from domain.participant import Participant
 from domain.politiques import DecompteDepartage, Tiebreak, TiebreakPoules
 
@@ -260,6 +260,11 @@ def rencontres_de_poule(
                 f"{configuration.rencontres_par_archer}."
             )
         nb_tours = configuration.rencontres_par_archer
+        if configuration.rencontres_par_archer == len(membres) - 1:
+            # Demander « autant de rencontres que d'adversaires », c'est demander le round-robin
+            # complet : à effectif impair il faut alors le cercle **entier** (un tour de plus, celui
+            # du repos), sinon quatre archers sur cinq en disputent une de moins que le cinquième.
+            nb_tours = len(roue) - 1
     rencontres: list[RencontrePoule] = []
     for tour in range(nb_tours):
         # Rotation : le premier reste en place, les autres tournent d'un cran par tour.
@@ -298,9 +303,23 @@ def classement_de_poule(
     cumuls: dict[Participant, list[int]] = {
         membre: [0, 0, 0, 0, 0] for membre in poule.membres
     }  # points, diff sets, diff score, 10, 9
+    vues: set[frozenset[Participant]] = set()
     for resultat in resultats:
         if resultat.a not in membres or resultat.b not in membres:
             continue
+        if resultat.a == resultat.b:
+            raise ConfigurationPouleInvalide(
+                "Une rencontre de poule oppose deux membres distincts."
+            )
+        paire = frozenset((resultat.a, resultat.b))
+        if paire in vues:
+            # Sans ce contrôle, un double envoi du même résultat compterait les points deux fois et
+            # le classement resterait parfaitement cohérent — simplement faux.
+            raise ConfigurationPouleInvalide(
+                f"La rencontre de la poule {poule.numero} entre ces deux membres est fournie deux "
+                "fois : ses points seraient comptés en double."
+            )
+        vues.add(paire)
         # Une rencontre alimente les **deux** cumuls, symétriquement : on décrit le côté « A » puis
         # on relit le même tuple à l'envers, plutôt que d'écrire deux fois la même arithmétique.
         cotes = (
@@ -338,6 +357,9 @@ def classement_de_poule(
         poule.membres,
         key=_ClefDeTri(decomptes, comparateur),
     )
+    # DETTE-029 (docs/dette.md) : 3ᵉ écriture de « rang partagé à clé égale, avec sauts » dans le
+    # domaine (`classement._ranger`, `poule.classement_de_poule`, `suisse.classement_suisse`), et
+    # les trois divergent déjà. Remède proposé (fonction pure `attribuer_rangs`) en US dédiée.
     lignes: list[RangPoule] = []
     rang = 0
     precedent: Participant | None = None
@@ -379,7 +401,7 @@ def qualifies_de_poule(
     dernier_qualifie = classement[barre - 1]
     premier_elimine = classement[barre] if barre < len(classement) else None
     if premier_elimine is not None and premier_elimine.rang == dernier_qualifie.rang:
-        raise ConfigurationPouleInvalide(
+        raise BarrageRequisAvantQualification(
             f"Le rang {dernier_qualifie.rang} de la poule est partagé et tombe sur la barre de "
             "qualification : un barrage doit départager avant de qualifier."
         )
@@ -410,7 +432,12 @@ class _ClefDeTri:
         return _ClefDeTri(self._decomptes, self._comparateur, participant)
 
     def __lt__(self, autre: _ClefDeTri) -> bool:
-        assert self._participant is not None and autre._participant is not None
+        # Pas d'`assert` : il disparaît sous `python -O`, et l'échec deviendrait alors un `KeyError`
+        # opaque au milieu d'un `sorted`. Ici le message dit ce qui s'est passé.
+        if self._participant is None or autre._participant is None:
+            raise ConfigurationPouleInvalide(
+                "Clé de tri incomplète : comparaison hors du contexte d'un classement de poule."
+            )
         return (
             self._comparateur.departager(
                 self._decomptes[self._participant], self._decomptes[autre._participant]

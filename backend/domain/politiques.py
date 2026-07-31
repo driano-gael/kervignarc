@@ -45,6 +45,12 @@ pas dans un catalogue fermé). Le grain de `validation` **n'est pas** une politi
 reste **hors** `policies` (ADR-0046). Agrégats/stratégies de domaine **purs** — immuables, sans
 dépendance framework (règle 1).
 
+# DETTE-028 (../../docs/dette.md) : les familles `scoring` et `tiebreak` — et les six moteurs de
+# phase d'E05US015 — n'ont **aucun appelant de production**. `domain/classement.py` réimplémente
+# §8.1 à la main sans passer par `PolitiquesPhase`, donc `ScoreAvecHandicap` reste inerte bien que
+# le handicap soit stocké, exposé et affiché. Résorption en E01US024, qui branche les moteurs au
+# service de déroulé.
+
 [ADR-0004]: ../../docs/adr/0004-moteur-de-phases-politiques.md
 [ADR-0046]: ../../docs/adr/0046-config-policies-politiques-nommees-parametrees.md
 [ADR-0062]: ../../docs/adr/0062-catalogue-de-types-de-phase.md
@@ -566,8 +572,18 @@ def registre_par_defaut() -> RegistrePolitiques:
     return registre
 
 
+PROFONDEUR_MAX_ROUTING = 3
+"""Combien de routings peuvent s'envelopper les uns les autres (E05US015).
+
+Le repêchage est une politique **composite** : son `sinon` est résolu par le registre, donc peut
+être un repêchage à son tour. La composition est gratuite, la récursion **non bornée** ne l'est pas
+— une `config.policies` d'origine client imbriquée un millier de fois donnerait un `RecursionError`,
+donc un 500, là où toute config mal formée doit rendre un 422 typé. Trois niveaux dépassent déjà
+largement tout besoin réel (repêchage → repêchage → placement)."""
+
+
 def _fabriquer_repechage(
-    params: Mapping[str, object], registre: RegistrePolitiques
+    params: Mapping[str, object], registre: RegistrePolitiques, profondeur: int = 0
 ) -> RoutingRepechage:
     """`{"nom": "repechage", "tours": [1], "sinon": {"nom": "placement_cascade"}}` → la politique.
 
@@ -580,6 +596,11 @@ def _fabriquer_repechage(
     résolu sans traitement particulier. Ce n'est pas un cas d'usage connu ; c'est simplement ce que
     la composition rend gratuit.
     """
+    if profondeur >= PROFONDEUR_MAX_ROUTING:
+        raise PolitiqueMalFormee(
+            f"Les routings de repêchage s'imbriquent au plus {PROFONDEUR_MAX_ROUTING} fois ; "
+            "au-delà, la configuration ne décrit plus un format."
+        )
     tours_bruts = params.get("tours")
     if not isinstance(tours_bruts, list) or not tours_bruts:
         raise PolitiqueMalFormee(
@@ -594,15 +615,22 @@ def _fabriquer_repechage(
             )
         tours.add(tour)
     spec_sinon = params.get("sinon", {"nom": "placement_cascade"})
-    if not isinstance(spec_sinon, Mapping) or not isinstance(spec_sinon.get("nom"), str):
+    # Une seule lecture du `nom` : la relire deux fois obligerait à un `assert` pour convaincre
+    # mypy de ce que la garde vient de vérifier — or un `assert` disparaît sous `python -O`.
+    nom_sinon = spec_sinon.get("nom") if isinstance(spec_sinon, Mapping) else None
+    if not isinstance(nom_sinon, str):
         raise PolitiqueMalFormee(
             "Le « sinon » d'un repêchage est un objet portant un « nom » de routing "
             f"(reçu {spec_sinon!r})."
         )
-    nom_sinon = spec_sinon["nom"]
-    assert isinstance(nom_sinon, str)
+    assert isinstance(spec_sinon, Mapping)  # garanti par la lecture ci-dessus
     params_sinon = {clef: valeur for clef, valeur in spec_sinon.items() if clef != "nom"}
-    sinon = cast("Routing", registre.resoudre(FamillePolitique.ROUTING, nom_sinon, params_sinon))
+    if nom_sinon == "repechage":
+        sinon: Routing = _fabriquer_repechage(params_sinon, registre, profondeur + 1)
+    else:
+        sinon = cast(
+            "Routing", registre.resoudre(FamillePolitique.ROUTING, nom_sinon, params_sinon)
+        )
     return RoutingRepechage(tours_repeches=frozenset(tours), sinon=sinon)
 
 

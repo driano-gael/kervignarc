@@ -21,6 +21,7 @@ from domain.participant import Participant
 A = Participant.individuel(1)
 B = Participant.individuel(2)
 C = Participant.individuel(3)
+D = Participant.individuel(4)
 
 
 # --- format : 1 flèche en individuel, 3 en équipe (B.6.5.2 / B.6.5.2.2) --------------------------
@@ -83,7 +84,34 @@ def test_un_ordre_partiel_n_est_jamais_rendu() -> None:
     C est nettement devant, mais A et B restent à égalité : rien n'est rendu.
     """
     resultat = resoudre_barrage([TirBarrage(A, 8), TirBarrage(B, 8), TirBarrage(C, 10)])
-    assert resultat == ResultatBarrage(a_rejouer=(A, B))
+    assert resultat == ResultatBarrage(groupes_a_rejouer=((A, B),))
+
+
+def test_deux_egalites_distinctes_forment_deux_groupes() -> None:
+    """⚠️ Les aplatir ferait retirer les quatre ensemble — et un tireur à 8 pourrait alors passer
+    devant un tireur à 10 que le premier tir avait **déjà** départagé.
+
+    Le service doit pouvoir organiser deux barrages séparés ; une liste plate ne le lui dit pas.
+    """
+    resultat = resoudre_barrage(
+        [TirBarrage(A, 10), TirBarrage(B, 10), TirBarrage(C, 8), TirBarrage(D, 8)]
+    )
+    assert resultat.groupes_a_rejouer == ((A, B), (C, D))
+
+
+def test_une_distance_non_mesuree_ne_gagne_pas_le_barrage() -> None:
+    """⚠️ **Une mesure absente est une inconnue, pas un zéro.**
+
+    Un premier jet repliait `None` sur `0`, c'est-à-dire sur le **centre parfait** : le tir non
+    mesuré battait un tir mesuré, et le barrage était déclaré *résolu*. C'est le cas le plus
+    probable du jour J — le juge mesure la flèche litigieuse, rarement les deux. Le verdict rendu
+    était faux **et silencieux**. Le test précédent ne l'attrapait pas : il mesurait les deux.
+    """
+    resultat = resoudre_barrage(
+        [TirBarrage(A, 10, distance_au_centre=None), TirBarrage(B, 10, distance_au_centre=120)]
+    )
+    assert not resultat.est_resolu
+    assert set(resultat.a_rejouer) == {A, B}
 
 
 # --- le piège n°1 du CA : le barrage ne recompte pas les 10/9 (B.6.5.2) --------------------------

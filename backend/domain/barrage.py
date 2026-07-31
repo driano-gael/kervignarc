@@ -31,7 +31,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from itertools import pairwise
 
 from domain.erreurs import ConfigurationBarrageInvalide
 from domain.participant import Participant
@@ -100,17 +99,32 @@ class ResultatBarrage:
     """L'issue d'un barrage : l'ordre obtenu, ou les ex æquo qu'il faut faire retirer.
 
     Les deux champs sont **exclusifs** : soit le barrage a départagé tout le monde (`ordre` plein,
-    `a_rejouer` vide), soit il ne l'a pas fait (`ordre` vide, `a_rejouer` nommant ceux qui restent à
-    égalité). On ne rend **pas** un ordre partiel : un classement à moitié vrai est plus dangereux
-    qu'un refus, parce qu'il s'affiche sans avertir.
+    `groupes_a_rejouer` vide), soit il ne l'a pas fait (`ordre` vide, les groupes nommant ceux qui
+    restent à égalité). On ne rend **pas** un ordre partiel : un classement à moitié vrai est plus
+    dangereux qu'un refus, parce qu'il s'affiche sans avertir.
+
+    ⚠️ **Les ex æquo sont rendus par GROUPES, et c'est ce qui rend le résultat exploitable.** Un
+    barrage à quatre tireurs dont deux à 10 et deux à 8 laisse **deux** égalités distinctes, pas
+    une seule. Les aplatir en une liste ferait retirer les quatre ensemble — et un tireur à 8
+    pourrait alors passer devant un tireur à 10 que le premier tir avait déjà départagé. Chaque
+    groupe se rejoue **séparément** ; c'est le sens de « on répète » au règlement.
     """
 
     ordre: tuple[Participant, ...] = ()
-    a_rejouer: tuple[Participant, ...] = ()
+    groupes_a_rejouer: tuple[tuple[Participant, ...], ...] = ()
+
+    @property
+    def a_rejouer(self) -> tuple[Participant, ...]:
+        """Tous les ex æquo, groupes confondus — commodité d'affichage **seulement**.
+
+        Ne s'en servir pour organiser le retir serait exactement l'erreur que les groupes évitent :
+        cette liste ne dit pas qui doit retirer *contre qui*.
+        """
+        return tuple(participant for groupe in self.groupes_a_rejouer for participant in groupe)
 
     @property
     def est_resolu(self) -> bool:
-        return not self.a_rejouer
+        return not self.groupes_a_rejouer
 
     @property
     def vainqueur(self) -> Participant | None:
@@ -125,9 +139,7 @@ class ResultatBarrage:
         return self.ordre[-1] if self.ordre else None
 
 
-def resoudre_barrage(
-    tirs: Sequence[TirBarrage], configuration: ConfigurationBarrage | None = None
-) -> ResultatBarrage:
+def resoudre_barrage(tirs: Sequence[TirBarrage]) -> ResultatBarrage:
     """Départage les participants d'un barrage (art. B.6.5.2).
 
     Ordre d'application, **séquentiel** :
@@ -136,9 +148,16 @@ def resoudre_barrage(
        la suite — c'est B.6.5.2.4, et cela s'applique avant toute comparaison de score ;
     2. le **plus haut score** l'emporte ;
     3. à score égal, la **distance au centre** (la plus petite gagne) ;
-    4. si l'égalité subsiste — scores égaux et distances égales ou non mesurées —, le barrage
-       **n'est pas résolu** : les ex æquo sont renvoyés dans `a_rejouer`, et le règlement dit de
+    4. si l'égalité subsiste — distances égales, **ou l'une d'elles non mesurée** —, le barrage
+       **n'est pas résolu** : le groupe part dans `groupes_a_rejouer`, et le règlement dit de
        répéter.
+
+    ⚠️ **Une distance non mesurée n'est PAS une distance nulle.** C'est le point 4, et c'est le
+    défaut qu'un premier jet de cette US a laissé passer : `None` était replié sur `0`, c'est-à-dire
+    sur le **centre parfait**, donc le tir non mesuré gagnait contre un tir mesuré. Le cas est le
+    plus probable du jour J — le juge mesure la flèche litigieuse, rarement les deux —, et le
+    verdict rendu était faux **et silencieux**. Une mesure absente est une **inconnue** : on ne
+    départage pas sur une inconnue, on fait retirer.
 
     ⚠️ **Le nombre de 10/9 n'intervient jamais** (B.6.5.2). C'est le seul endroit du produit où ce
     critère est écarté, et l'y réintroduire « pour éviter un retir » serait une faute réglementaire
@@ -146,10 +165,9 @@ def resoudre_barrage(
 
     ⚠️ **Plusieurs absents restent ex æquo entre eux.** Deux absents sont tous deux « déclarés
     perdants » — le règlement ne les ordonne pas l'un par rapport à l'autre, et rien ne permet de le
-    faire : ils n'ont pas tiré. On les renvoie donc à `a_rejouer` plutôt que d'inventer un ordre,
+    faire : ils n'ont pas tiré. Ils forment donc un groupe à rejouer plutôt qu'un ordre inventé,
     quitte à ce que ce soit au service d'en tirer les conséquences (généralement : rang partagé).
     """
-    del configuration  # le format (1 ou 3 flèches) contraint la saisie, pas le départage
     if len(tirs) < 2:
         raise ConfigurationBarrageInvalide(
             "Un barrage départage au moins deux participants ; à un seul il n'y a rien "
@@ -159,25 +177,59 @@ def resoudre_barrage(
     if len(set(participants)) != len(participants):
         raise ConfigurationBarrageInvalide("Un même participant figure deux fois dans ce barrage.")
 
-    # Clé de tri : présent avant absent, puis score décroissant, puis distance croissante. Les
-    # absents partagent une clé unique, ce qui les rend ex æquo entre eux — voir la docstring.
-    def clef(tir: TirBarrage) -> tuple[int, int, int]:
-        if tir.score is None:
-            return (1, 0, 0)
-        distance = tir.distance_au_centre if tir.distance_au_centre is not None else 0
-        return (0, -tir.score, distance)
-
-    tries = sorted(tirs, key=clef)
-    a_rejouer: list[Participant] = []
-    for precedent, suivant in pairwise(tries):
-        if clef(precedent) != clef(suivant):
+    ordre: list[Participant] = []
+    groupes: list[tuple[Participant, ...]] = []
+    for groupe in _groupes_de_score(tirs):
+        if groupe[0].score is None:
+            # Les absents : indépartageables entre eux par construction, ils n'ont pas tiré.
+            if len(groupe) == 1:
+                ordre.append(groupe[0].participant)
+            else:
+                groupes.append(tuple(tir.participant for tir in groupe))
             continue
-        # Deux tirs de clé identique : indépartageables **en l'état**. Si la distance n'a pas été
-        # mesurée, c'est peut-être elle qui manque ; le règlement ne distingue pas les deux cas et
-        # demande de répéter dans les deux.
-        for tir in (precedent, suivant):
-            if tir.participant not in a_rejouer:
-                a_rejouer.append(tir.participant)
-    if a_rejouer:
-        return ResultatBarrage(a_rejouer=tuple(a_rejouer))
-    return ResultatBarrage(ordre=tuple(tir.participant for tir in tries))
+        for sous_groupe in _departager_a_la_distance(groupe):
+            if len(sous_groupe) == 1:
+                ordre.append(sous_groupe[0].participant)
+            else:
+                groupes.append(tuple(tir.participant for tir in sous_groupe))
+    if groupes:
+        return ResultatBarrage(groupes_a_rejouer=tuple(groupes))
+    return ResultatBarrage(ordre=tuple(ordre))
+
+
+def _groupes_de_score(tirs: Sequence[TirBarrage]) -> list[list[TirBarrage]]:
+    """Regroupe les tirs par score, du meilleur au moins bon, les absents relégués en dernier."""
+    tries = sorted(tirs, key=lambda tir: (1, 0) if tir.score is None else (0, -tir.score))
+    groupes: list[list[TirBarrage]] = []
+    for tir in tries:
+        meme_score = (
+            groupes
+            and (groupes[-1][0].score is None) == (tir.score is None)
+            and groupes[-1][0].score == tir.score
+        )
+        if meme_score:
+            groupes[-1].append(tir)
+        else:
+            groupes.append([tir])
+    return groupes
+
+
+def _departager_a_la_distance(groupe: Sequence[TirBarrage]) -> list[list[TirBarrage]]:
+    """Second critère (§8.2) sur un groupe **de même score** : la distance au centre.
+
+    Rend des sous-groupes, du plus près du centre au plus loin ; un sous-groupe de plus d'un tir est
+    indépartageable et devra être rejoué. Si **une seule** distance du groupe manque, tout le groupe
+    est indépartageable : on ne compare pas une mesure à une absence de mesure.
+    """
+    if len(groupe) == 1:
+        return [list(groupe)]
+    if any(tir.distance_au_centre is None for tir in groupe):
+        return [list(groupe)]
+    tries = sorted(groupe, key=lambda tir: tir.distance_au_centre or 0)
+    sous_groupes: list[list[TirBarrage]] = []
+    for tir in tries:
+        if sous_groupes and sous_groupes[-1][0].distance_au_centre == tir.distance_au_centre:
+            sous_groupes[-1].append(tir)
+        else:
+            sous_groupes.append([tir])
+    return sous_groupes

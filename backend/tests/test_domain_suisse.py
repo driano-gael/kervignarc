@@ -145,14 +145,60 @@ def test_le_bye_va_au_moins_bien_classe() -> None:
 
 
 def test_le_bye_ne_revient_pas_deux_fois_a_la_meme_personne() -> None:
-    """Tant que quelqu'un n'en a pas eu, le bye tourne."""
+    """Tant que quelqu'un n'en a pas eu, le bye tourne.
+
+    Les byes passés sont **déclarés**, pas déduits des rencontres manquantes : cette déduction
+    confondait « il a chômé » et « son résultat n'est pas encore saisi ».
+    """
     participants = archers(5)
     a, b, c, d, e = participants
-    # Ronde 1 : E a eu le bye, les autres ont joué.
     ronde_1 = [ResultatRonde.victoire_de(a, c), ResultatRonde.victoire_de(b, d)]
-    appariements = apparier_ronde(participants, ronde_1, ConfigurationSuisse())
+    appariements = apparier_ronde(participants, ronde_1, ConfigurationSuisse(), byes=[e])
     porteur = next(appariement.a for appariement in appariements if appariement.est_bye)
     assert porteur != e
+
+
+def test_un_bye_vaut_une_victoire() -> None:
+    """⚠️ **Le défaut que ce test existe pour empêcher.**
+
+    Sans points, le bénéficiaire du bye finissait **derrière le perdant** de la ronde, et
+    l'appariement suivant — qui trie par points — l'envoyait chez les perdants : l'exact contraire
+    de la règle (« les vainqueurs rencontrent les vainqueurs »). Trois docstrings du module
+    l'annonçaient pourtant comme une « victoire d'office », et le seul test qui bordait ce point
+    n'assertait que le Buchholz.
+    """
+    a, b, c = archers(3)
+    classement = {
+        ligne.participant: ligne
+        for ligne in classement_suisse(archers(3), [ResultatRonde.victoire_de(a, b)], byes=[c])
+    }
+    assert classement[c].points == classement[a].points
+    assert classement[c].points > classement[b].points
+    assert classement[c].rang < classement[b].rang
+
+
+def test_une_ronde_partiellement_saisie_est_refusee() -> None:
+    """⚠️ La docstring promettait « apparier une ronde par-dessus une ronde en cours serait bien
+    pire que de refuser » — et ne refusait rien : elle arrondissait au supérieur et continuait.
+
+    Conséquence constatée : les rencontres non encore saisies étaient **perdues** (jamais rejouées)
+    et le bye échoyait à quelqu'un qui venait de tirer. C'est l'état normal d'une phase en cours,
+    pas un cas limite : une ronde se saisit cible par cible.
+    """
+    participants = archers(6)
+    a, b = participants[0], participants[1]
+    with pytest.raises(ConfigurationSuisseInvalide):
+        apparier_ronde(participants, [ResultatRonde.victoire_de(a, b)], ConfigurationSuisse())
+
+
+def test_un_bye_non_declare_a_effectif_impair_est_refuse() -> None:
+    """À effectif impair, chaque ronde close décerne un bye : ne pas le déclarer rendrait le
+    classement faux sans que rien ne le signale."""
+    participants = archers(5)
+    a, b, c, d, e = participants
+    ronde_1 = [ResultatRonde.victoire_de(a, c), ResultatRonde.victoire_de(b, d)]
+    with pytest.raises(ConfigurationSuisseInvalide):
+        apparier_ronde(participants, ronde_1, ConfigurationSuisse(), byes=[])
 
 
 # --- départage : points, puis Buchholz, puis critères FFTA ---------------------------------------
@@ -172,23 +218,47 @@ def test_le_classement_ordonne_d_abord_par_points() -> None:
 
 
 def test_le_buchholz_departage_deux_parcours_de_difficulte_inegale() -> None:
-    """Deux archers à une victoire ne valent pas la même chose si l'un a battu le meilleur.
+    """⚠️ **Le test précédent portait ce nom sans le prouver** : il ne comparait que des sommes,
+    jamais un **rang**, et sa propre docstring reconnaissait « égalité de Buchholz ici ». Un test
+    qui décrit le calcul au lieu de la règle est la signature d'un test écrit depuis le code.
 
-    B bat A (qui gagne son autre rencontre), D bat C (qui perd la sienne) : B et D ont un point,
-    mais le parcours de B était plus dur.
+    Ici B et D finissent à égalité de points, mais B a affronté le vainqueur et D le dernier : le
+    Buchholz doit placer B devant.
     """
     a, b, c, d = archers(4)
     resultats = [
-        ResultatRonde.victoire_de(b, a),
-        ResultatRonde.victoire_de(d, c),
+        # Ronde 1 : A gagne, C perd.
         ResultatRonde.victoire_de(a, c),
         ResultatRonde.victoire_de(b, d),
+        # Ronde 2 : A bat B (qui a donc affronté le futur premier), D bat C (le futur dernier).
+        ResultatRonde.victoire_de(a, b),
+        ResultatRonde.victoire_de(d, c),
     ]
-    classement = {ligne.participant: ligne for ligne in classement_suisse(archers(4), resultats)}
-    # A a 2 points (une victoire), D aussi ; A a rencontré B (4 pts) et C (0), D a rencontré C (0)
-    # et B (4) — égalité de Buchholz ici, donc on vérifie le calcul lui-même.
-    assert classement[a].buchholz == classement[b].points + classement[c].points
-    assert classement[b].buchholz == classement[a].points + classement[d].points
+    par_participant = {
+        ligne.participant: ligne for ligne in classement_suisse(archers(4), resultats)
+    }
+    assert par_participant[b].points == par_participant[d].points
+    assert par_participant[b].buchholz > par_participant[d].buchholz
+    assert par_participant[b].rang < par_participant[d].rang
+
+
+def test_a_points_et_buchholz_egaux_les_criteres_ffta_departagent() -> None:
+    """Troisième critère du départage : le nombre de 10, puis de 9 (§8.1).
+
+    Deux archers strictement symétriques, séparés par leurs seuls décomptes de flèches.
+    """
+    a, b, c, d = archers(4)
+    resultats = [
+        ResultatRonde(a=a, b=c, points_a=2, points_b=0, nb_dix_a=8),
+        ResultatRonde(a=b, b=d, points_a=2, points_b=0, nb_dix_a=3),
+    ]
+    par_participant = {
+        ligne.participant: ligne for ligne in classement_suisse(archers(4), resultats)
+    }
+    assert par_participant[a].points == par_participant[b].points
+    assert par_participant[a].buchholz == par_participant[b].buchholz
+    assert par_participant[a].rang < par_participant[b].rang
+    assert not par_participant[a].ex_aequo
 
 
 def test_un_bye_ne_gonfle_pas_le_buchholz() -> None:
@@ -196,7 +266,9 @@ def test_un_bye_ne_gonfle_pas_le_buchholz() -> None:
     adversaire fort le favoriserait. Ne rien compter est le seul choix neutre."""
     a, b, c = archers(3)
     resultats = [ResultatRonde.victoire_de(a, b)]  # C a eu le bye : aucune rencontre
-    classement = {ligne.participant: ligne for ligne in classement_suisse(archers(3), resultats)}
+    classement = {
+        ligne.participant: ligne for ligne in classement_suisse(archers(3), resultats, byes=[c])
+    }
     assert classement[c].buchholz == 0
 
 

@@ -131,6 +131,52 @@ def test_les_meilleurs_remontent_naturellement() -> None:
 # --- l'écart entre la règle du Ladder et son exemple chiffré -------------------------------------
 
 
+def test_le_ladder_finit_par_classer_lui_aussi() -> None:
+    """⚠️ **Le test qui manquait, et sans lequel un bloquant est passé.**
+
+    La convergence n'était éprouvée qu'en portée 1 (`king_of_the_hill`), où le piège n'existe pas.
+    En traitant la portée comme une distance **exacte**, tout échange se faisait à distance 2 : la
+    **parité** de la position devenait un invariant, la colline se scindait en deux moitiés
+    étanches, et une colline inversée se stabilisait sur `2 1 4 3 6 5 8 7` — faux, et faux pour
+    toujours. La portée est une distance **maximale** (« défier le 5 **ou** le 4 »), donc les
+    manches à distance 1 existent et brisent la parité.
+    """
+    depart = tuple(Participant.individuel(rang) for rang in range(8, 0, -1))
+    configuration = ConfigurationColline.ladder(nb_manches=20)
+    courante = depart
+    for manche in range(1, 21):
+        defis = defis_de_la_manche(courante, manche, configuration)
+        courante = appliquer_manche(
+            courante,
+            [
+                IssueDefi(
+                    defi=defi, vainqueur=min(defi.defie, defi.challenger, key=lambda p: p.ref_id)
+                )
+                for defi in defis
+            ],
+        )
+    assert [p.ref_id for p in courante] == [1, 2, 3, 4, 5, 6, 7, 8]
+
+
+def test_la_portee_est_une_distance_maximale_pas_exacte() -> None:
+    """« Le n°6 peut seulement défier le 5 **ou** le 4 » : la règle énonce un **choix**.
+
+    Le moteur le rend en faisant **tourner** la distance d'une manche à l'autre — distance 1, puis
+    2, puis 1… Figer la distance à la portée priverait la moitié du plateau de défi à chaque manche
+    et, surtout, empêcherait la colline de classer (test précédent).
+    """
+    depart = colline(8)
+    configuration = ConfigurationColline.ladder(nb_manches=4)
+    assert positions(defis_de_la_manche(depart, 1, configuration)) == [
+        (1, 2),
+        (3, 4),
+        (5, 6),
+        (7, 8),
+    ]
+    assert positions(defis_de_la_manche(depart, 2, configuration)) == [(1, 3), (4, 6)]
+    assert positions(defis_de_la_manche(depart, 3, configuration)) == [(2, 3), (4, 5), (6, 7)]
+
+
 def test_le_ladder_applique_la_regle_et_non_son_exemple() -> None:
     """⚠️ **Écart consigné, à confirmer à la recette.**
 
@@ -143,8 +189,10 @@ def test_le_ladder_applique_la_regle_et_non_son_exemple() -> None:
     quelqu'un aura suivi l'exemple, et il faudra que ce soit une décision, pas un glissement.
     """
     depart = colline(8)
-    configuration = ConfigurationColline.ladder(nb_manches=1)
-    defis = defis_de_la_manche(depart, 1, configuration)
+    configuration = ConfigurationColline.ladder(nb_manches=4)
+    # Le défi 4↔6 (distance 2) se dispute à la manche 2 : la distance tourne d'une manche
+    # à l'autre, puisque la portée est un maximum et non une valeur exacte.
+    defis = defis_de_la_manche(depart, 2, configuration)
     defi_4_6 = next(d for d in defis if (d.position_haute, d.position_basse) == (4, 6))
     apres = appliquer_manche(depart, [IssueDefi(defi=defi_4_6, vainqueur=defi_4_6.challenger)])
     assert [p.ref_id for p in apres] == [1, 2, 3, 6, 5, 4, 7, 8]

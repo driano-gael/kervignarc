@@ -27,6 +27,25 @@ export interface ModifierArcher {
   autoriser_changement_categorie?: boolean
 }
 
+// Réglage du handicap (E05US015) — **remplacement total des deux valeurs**, comme `ModifierArcher`
+// et pour la même raison : `null` veut dire « remets à rien », jamais « n'y touche pas ». Retirer
+// une surcharge (revenir au handicap officiel) doit être exprimable.
+//
+// Ressource **séparée** de l'édition d'état civil : un handicap se règle souvent en série, et le
+// passer par le PUT total obligerait à renvoyer nom/prénom/catégorie à chaque ajustement — donc à
+// écraser une correction faite entre-temps depuis un autre poste.
+export interface DefinirHandicap {
+  officiel: number | null
+  surcharge: number | null
+}
+
+export function definirHandicap(id: number, entree: DefinirHandicap): Promise<Archer> {
+  return fetchJson<Archer>(`/api/v1/archers/${id}/handicap`, {
+    method: 'PUT',
+    body: JSON.stringify(entree),
+  })
+}
+
 export function getArchers(tournoiId: number): Promise<Archer[]> {
   return fetchJson<Archer[]>(`/api/v1/tournois/${tournoiId}/archers`)
 }

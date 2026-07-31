@@ -7,6 +7,11 @@ import { fetchJson } from '../../shared/api/client'
 // ⚠️ Cette union est **dupliquée** dans `features/patrimoine/api.ts` (les formats de bibliothèque
 // composent les mêmes types). Deux copies, donc deux occasions de diverger du backend : c'est
 // assumé tant qu'il n'y en a que deux — à une 3ᵉ, l'extraire dans un module partagé se justifiera.
+// DETTE-030 (../../../../docs/dette.md) : cette union est déclarée **deux fois** côté front (ici et
+// dans l'autre feature), et doit rester synchronisée avec l'enum `TypePhase` du backend — trois
+// domiciles pour une vérité. Assumé à deux occurrences ; ce qui rend la duplication tenable est que
+// **chaque consommateur soit exhaustif** (`Record` ou `switch` + `assertNever`), jamais un ternaire
+// à repli — le repli est précisément ce qui a fait afficher six types comme « Placement ».
 export type TypePhase =
   | 'qualification'
   | 'elimination_directe'

@@ -20,7 +20,7 @@ from domain.big_shoot_off import (
     eliminer_apres_barrage,
     jouer_manche,
 )
-from domain.erreurs import ConfigurationBigShootOffInvalide
+from domain.erreurs import ConfigurationBigShootOffInvalide, ScoreDeMancheManquant
 from domain.participant import Participant
 
 
@@ -142,6 +142,25 @@ def test_le_verdict_du_barrage_conclut_la_manche() -> None:
     assert issue.elimine == c
     assert issue.rang_attribue == 3
     assert issue.etat.en_lice == (a, b)
+    assert issue.etat.barrage_en_cours == ()
+
+
+def test_on_n_elimine_pas_par_barrage_sans_manche_suspendue() -> None:
+    """Sans cette garde, un service pourrait éliminer n'importe qui, hors de toute manche, et lui
+    décerner un rang — la couture BSO ↔ barrage laisserait une liberté qu'aucune règle ne donne."""
+    a, b, c = finalistes(3)
+    etat = demarrer([a, b, c], ConfigurationBigShootOff())
+    with pytest.raises(ConfigurationBigShootOffInvalide):
+        eliminer_apres_barrage(etat, perdant_du_barrage=c)
+
+
+def test_le_perdant_du_barrage_doit_faire_partie_des_ex_aequo() -> None:
+    """Le verdict d'un barrage ne sert pas à éliminer un tiers."""
+    a, b, c = finalistes(3)
+    etat = demarrer([a, b, c], ConfigurationBigShootOff())
+    suspendue = jouer_manche(etat, {a: 28, b: 20, c: 20})
+    with pytest.raises(ConfigurationBigShootOffInvalide):
+        eliminer_apres_barrage(suspendue.etat, perdant_du_barrage=a)
 
 
 # --- garde-fous de saisie ------------------------------------------------------------------------
@@ -152,7 +171,7 @@ def test_un_score_manquant_n_est_pas_un_zero() -> None:
     typique qu'on ne voit qu'après coup, le jour J."""
     a, b, c = finalistes(3)
     etat = demarrer([a, b, c], ConfigurationBigShootOff())
-    with pytest.raises(ConfigurationBigShootOffInvalide):
+    with pytest.raises(ScoreDeMancheManquant):
         jouer_manche(etat, {a: 28, b: 27})
 
 

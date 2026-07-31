@@ -15,6 +15,9 @@ const archer = (id: number, nom: string, prenom: string): Archer => ({
   categorie_id: 1,
   cible: null,
   club_id: null,
+  handicap_officiel: null,
+  handicap_surcharge: null,
+  handicap: 0,
 })
 
 const depart = (id: number, numero: number, horaire: string): Depart => ({

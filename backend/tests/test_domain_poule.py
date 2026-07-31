@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from domain.erreurs import ConfigurationPouleInvalide
+from domain.erreurs import BarrageRequisAvantQualification, ConfigurationPouleInvalide
 from domain.participant import Participant
 from domain.poule import (
     BaremePoule,
@@ -253,5 +253,56 @@ def test_ex_aequo_sur_la_barre_refuse_de_qualifier() -> None:
     ]
     configuration = ConfigurationPoules(nb_poules=1, nb_qualifies=2)
     classement = classement_de_poule(poule, resultats, configuration)
-    with pytest.raises(ConfigurationPouleInvalide):
+    # Code **distinct** de `configuration_poule_invalide` : ce n'est pas un format mal réglé, c'est
+    # une action à proposer à l'organisateur (« barrage si nécessaire », dernier terme de la règle).
+    with pytest.raises(BarrageRequisAvantQualification):
         qualifies_de_poule(classement, configuration)
+
+
+def test_la_difference_de_score_est_le_troisieme_critere() -> None:
+    """3ᵉ critère de §10.1, qui n'était éprouvé nulle part — ni ici ni sur `TiebreakPoules`.
+
+    A et B ont mêmes points **et** même différence de sets ; seul le score les sépare.
+    """
+    poule = Poule(numero=1, membres=tuple(archers(3)))
+    a, b, c = poule.membres
+    resultats = [
+        ResultatRencontre(a=a, b=c, sets_a=6, sets_b=0, score_a=150, score_b=100),
+        ResultatRencontre(a=b, b=c, sets_a=6, sets_b=0, score_a=140, score_b=100),
+    ]
+    classement = classement_de_poule(poule, resultats, ConfigurationPoules(nb_poules=1))
+    par_participant = {ligne.participant: ligne for ligne in classement}
+    assert par_participant[a].decompte.points_match == par_participant[b].decompte.points_match
+    assert par_participant[a].decompte.diff_sets == par_participant[b].decompte.diff_sets
+    assert par_participant[a].rang < par_participant[b].rang
+    assert not par_participant[a].ex_aequo
+
+
+def test_demander_autant_de_rencontres_que_d_adversaires_donne_le_round_robin_complet() -> None:
+    """⚠️ Le piège d'effectif impair, **figé** au lieu d'être seulement documenté.
+
+    « Je veux que chacun rencontre ses 4 adversaires » dans une poule de 5 : sans traitement, la
+    troncature du cercle en donnait 4 à un seul archer et 3 aux quatre autres — l'écart touchait
+    donc 4 membres sur 5, pas « un archer » comme la note le laissait entendre.
+    """
+    poule = Poule(numero=1, membres=tuple(archers(5)))
+    configuration = ConfigurationPoules(nb_poules=1, rencontres_par_archer=4)
+    rencontres = rencontres_de_poule(poule, configuration)
+    for membre in poule.membres:
+        assert sum(1 for r in rencontres if membre in (r.a, r.b)) == 4
+
+
+def test_une_rencontre_fournie_deux_fois_est_refusee() -> None:
+    """Un double envoi compterait les points deux fois et laisserait un classement parfaitement
+    cohérent — simplement faux. C'est le genre d'erreur qui ne se voit jamais."""
+    poule = Poule(numero=1, membres=tuple(archers(2)))
+    a, b = poule.membres
+    with pytest.raises(ConfigurationPouleInvalide):
+        classement_de_poule(
+            poule,
+            [
+                ResultatRencontre(a=a, b=b, sets_a=6, sets_b=0),
+                ResultatRencontre(a=b, b=a, sets_a=0, sets_b=6),
+            ],
+            ConfigurationPoules(nb_poules=1),
+        )

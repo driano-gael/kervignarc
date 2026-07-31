@@ -21,6 +21,7 @@ from domain.erreurs import (
 )
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.phase import (
+    IssueTour,
     Phase,
     SequencePhases,
     SourcePhase,
@@ -521,3 +522,25 @@ def test_preleve_des_rangs_dans_un_type_classant_reste_licite() -> None:
         )
     )
     assert sequence.phases[1].sources[0].rang_fin == 8
+
+
+def test_on_ne_preleve_pas_non_plus_une_issue_de_tour_dans_un_echauffement() -> None:
+    """⚠️ **La nature que le premier jet laissait passer.**
+
+    Le garde-fou ne refusait que `RANGS` — or « les gagnants du tour 1 de l'échauffement » est
+    exactement aussi vide : un échauffement n'a ni tour ni duel. Le trou était d'autant plus
+    invisible que les deux tests encadrants couvraient `RANGS` (refusé) et `RESTE` (accepté),
+    laissant la troisième nature dans l'angle mort — le patron du « cas limite jamais exercé ».
+    """
+    with pytest.raises(PhaseSansClassementPrelevee):
+        SequencePhases(
+            (
+                Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT),
+                Phase.creer(
+                    tournoi_id=7,
+                    ordre=2,
+                    type=TypePhase.ELIMINATION_DIRECTE,
+                    sources=(SourcePhase.par_issue_de_tour(1, tour=1, issue=IssueTour.GAGNANTS),),
+                ),
+            )
+        )

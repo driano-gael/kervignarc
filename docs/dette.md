@@ -51,6 +51,10 @@
 | [DETTE-022](#dette-022--forfaits-de-la-phase-de-qualification-résolus-sur-4-sites) | conception | mineur | `backend/application/classements.py`, `backend/application/completude.py` (×2), `backend/application/saisie.py` | « Résoudre la phase de qualification puis lire ses forfaits » est écrit à **quatre** endroits, sous trois formes (`list[Forfait]`, `set`, `frozenset`). `completude.py` avait posé le rendez-vous dans son propre commentaire : « 2ᵉ occurrence, on extraira au **3ᵉ cas**, pas avant » | Faible : le motif est stable. Mais le seuil que le projet s'était lui-même fixé **dans le code** est franchi, et un 5ᵉ producteur re-dupliquera par mimétisme. Jumelle de DETTE-006 et DETTE-017 | E04US018 (4ᵉ site, `ServiceSaisie._forfaits_qualif`) | US `refactor/` — une lecture partagée `forfaits_qualif(tournoi_id) -> frozenset[ArcherId]`, 4 appelants, zéro changement de comportement. Marqueurs `# DETTE-022` sur les 4 sites |
 | [DETTE-024](#dette-024--routeur-maison-plutôt-quune-bibliothèque) | conception | mineur | `frontend/src/shared/navigation/routeur.ts`, `frontend/src/shared/navigation/useChemin.ts` | Le routage par rôle (E14US003, [ADR-0059](adr/0059-routage-par-role-dans-l-url-routeur-maison.md)) est assuré par ~110 lignes maison au lieu d'une bibliothèque : `history.pushState` + `popstate` + `useSyncExternalStore`, plus deux fonctions pures d'analyse et de construction de chemins. Motif double : `react-router-dom` ≥ 7.12.0 tire un `react-router` dans la plage vulnérable de `GHSA-qwww-vcr4-c8h2` (mode RSC, inatteignable ici mais l'audit doit rester vert — règle 11), et l'installation de la version corrigée `react-router@8.3.0` est bloquée sur le poste | Faible aujourd'hui : le besoin est de cinq mondes et deux segments, sans route imbriquée ni garde déclarative, et les décisions d'aiguillage sont **pures et testées** (24 tests). Ce qui manquera si le produit grossit : routes imbriquées, chargement différé par route, gardes déclaratives, `<Link>` avec préchargement. Le coût se paiera au **premier** de ces besoins, pas avant | E14US003 (ADR-0059) | Remplacer par `react-router@8.3.0` quand l'installation est possible. Le remplacement est **borné par construction** : `routeur.ts` est pur et `useChemin.ts` ne fait que l'abonnement — seuls ces deux fichiers et trois appels à `naviguer` (`App`, `ChangerDeRole`, `EspacePoste`) sont concernés. Marqueur : en-tête de `routeur.ts` |
 | [DETTE-025](#dette-025--appliquer-un-format-remplace-la-séquence-de-phases-sans-transaction) | technique | mineur | `backend/application/formats.py` (`ServiceFormats.appliquer`) | La suppression des phases existantes et la création de celles du format passent par des **transactions séparées** (une session par appel de repository) : une panne entre les deux laisse le tournoi sans phase, et une lecture concurrente peut voir une séquence partielle | Faible : **quatre** gardes (phase engagée, forfait pendant, **duelliste posé**, retrait de la qualification) réduisent le cas à une séquence `à venir` **sans données attachées**, que l'organisateur reconstitue en réappliquant un format | E01US023 (relevé par la revue ; remède hors périmètre — il touche le **port** `PhaseRepository`) | Un `remplacer_sequence(tournoi_id, phases)` atomique sur l'adapter concret, patron `consigner_dans` ([ADR-0035](adr/0035-atomicite-acte-trace-session-partagee.md)). Marqueur `# DETTE-025` |
+| [DETTE-027](#dette-027--lappariement-du-système-suisse-est-glouton-pas-optimal) | technique | mineur | `backend/domain/suisse.py` (`_apparier`) | L'appariement d'une ronde est **glouton** : on parcourt l'ordre trié par score et l'on descend chercher le premier adversaire non déjà rencontré. Ce n'est pas le couplage de poids maximal des fédérations d'échecs (FIDE) : sur une configuration défavorable, l'algorithme peut échouer là où une solution existait | Faible et **explicite** : l'échec lève `AppariementImpossible`, il ne produit jamais un ré-affrontement silencieux. L'organisateur voit un refus qu'il lève en réduisant le nombre de rondes ou en acceptant une rencontre rejouée. Le cas suppose un effectif restreint et beaucoup de rondes | E05US015 ([ADR-0062](adr/0062-catalogue-de-types-de-phase.md)) — compromis assumé à la conception, relevé en revue | Un couplage de poids maximal (Blossom) si le club adopte réellement le format et rencontre le refus. Coût : un algorithme de graphe entier pour un gain qui, à l'échelle d'un club, ne se verra probablement pas. Marqueur `# DETTE-027` en tête de `_apparier` |
+| [DETTE-028](#dette-028--le-catalogue-de-types-de-phase-est-livré-sans-consommateur) | conception | majeur | `backend/domain/poule.py`, `big_shoot_off.py`, `barrage.py`, `suisse.py`, `colline.py`, `politiques.py` (`ScoreAvecHandicap`, `TiebreakPoules`, `RoutingRepechage`) | Les six moteurs et les trois politiques d'E05US015 n'ont **aucun appelant de production** : aucun service ne les instancie, aucune `config.policies` ne sait porter `nb_poules` / `nb_manches` / `portee_de_defi` / `restants`, et `domain/classement.py` calcule toujours son cumul sans passer par la famille `scoring` — donc `ScoreAvecHandicap` reste inerte. L'écran « Phases » propose pourtant les six types à la composition | La lettre d'[ADR-0045](adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md) §2 est tenue (un moteur existe pour chaque type offert), son **intention** ne l'est qu'à moitié : l'organisateur peut composer une phase de poules dont le réglage n'est exprimable nulle part et que rien ne déroulera. Et un moteur sans consommateur n'est éprouvé que par ses propres tests — écrits le même jour, par le même agent | E05US015 ([ADR-0062](adr/0062-catalogue-de-types-de-phase.md)) — **périmètre assumé**, l'exécution relevant d'E01US024 ; relevé en revue comme devant être **tracé** et non seulement documenté à l'ADR | **E01US024** (composer, diagnostiquer et simuler un déroulé) : porter les réglages dans `config.policies`, brancher les moteurs au service de déroulé, et rebrancher `classement.py` sur `PolitiquesPhase` pour que le handicap s'applique. Marqueur `# DETTE-028` en tête de `politiques.py` |
+| [DETTE-029](#dette-029--lattribution-des-rangs-ex-æquo-est-écrite-trois-fois) | conception | mineur | `backend/domain/classement.py` (`_ranger`), `backend/domain/poule.py` (`classement_de_poule`, `_marquer_ex_aequo`), `backend/domain/suisse.py` (`classement_suisse`, `_propager_ex_aequo`) | La règle « rang partagé à clé égale, avec sauts (1-2-2-4) » est écrite **trois fois**, et la propagation du drapeau `ex_aequo` **deux fois** en copie quasi verbatim. Les trois sites **divergent déjà** : `classement._ranger` ne porte aucun drapeau `ex_aequo`, les deux nouveaux si | 3ᵉ occurrence réelle : le seuil que le § Dette de `CLAUDE.md` fixe pour proposer un remède structurel est franchi **sur preuve**, pas sur pronostic. Corriger la règle (ou la faire diverger davantage) demande trois modifications coordonnées, et un oubli produit un classement **cohérent et faux** | E05US015 — deux des trois sites sont introduits par cette US ; relevé en revue (axes C1 et C2) | **US `refactor/` dédiée + ADR** (règle 16 : jamais en douce dans l'US courante). Remède minimal : une fonction pure `attribuer_rangs(ordonnes, meme_rang)` du domaine (~15 lignes, aucune abstraction nouvelle — le comparateur `Tiebreak` injecté suffit), chaque appelant gardant son dataclass de sortie. Marqueur `# DETTE-029` aux trois sites |
+| [DETTE-030](#dette-030--lunion-typephase-est-dupliquée-côté-front) | technique | mineur | `frontend/src/features/phases/api.ts`, `frontend/src/features/patrimoine/api.ts` | L'union `TypePhase` (9 valeurs) est déclarée **deux fois** côté front — les formats de bibliothèque composent les mêmes types que les phases d'un tournoi —, et doit rester synchronisée avec l'enum `TypePhase` du backend : **trois** domiciles pour une seule vérité | Le coût s'est manifesté **dans l'US même qui l'assume** : `patrimoine/format.ts` décrivait les étapes par un ternaire à repli, donc les six types ajoutés s'affichaient tous « Placement » sans que TypeScript bronche. Corrigé en `Record<TypePhase, string>` (exhaustif, donc non compilable à l'oubli) ; la duplication de l'union, elle, demeure | E05US015 — 2ᵉ occurrence assumée (« dupliquer une 2ᵉ fois et attendre le 3ᵉ cas » est une réponse valide), relevée en revue | À une **3ᵉ** feature portant l'union : extraire dans un module partagé (`shared/api/types.ts`). D'ici là, exiger que chaque consommateur soit **exhaustif** (`Record` ou `switch` + `assertNever`), ce qui rend l'oubli non compilable. Marqueur `# DETTE-030` aux deux déclarations |
 
 ## Dette résorbée
 
@@ -1168,6 +1172,98 @@ de quelques millisecondes et la perte reconstituable.
 
 **Résorption attendue.** À la première US qui touche `PhaseRepository` — ou au premier incident.
 Marqueur `# DETTE-025` posé sur la boucle de suppression de `ServiceFormats.appliquer`.
+
+
+### DETTE-027 — l'appariement du système suisse est **glouton**, pas optimal
+
+`suisse._apparier` compose une ronde en parcourant l'ordre trié par score et en descendant chercher,
+pour chaque participant, le premier adversaire qu'il n'a pas encore rencontré. C'est l'algorithme des
+tournois d'échecs de club, pas le **couplage de poids maximal** que la FIDE emploie.
+
+**Ce que cela coûte.** Sur une configuration défavorable — beaucoup de rondes, petit effectif —,
+le glouton peut se retrouver en cul-de-sac alors qu'un appariement sans ré-affrontement existait.
+
+**Pourquoi c'est assumé.** L'échec est **explicite** : `AppariementImpossible` est levée, jamais un
+ré-affrontement silencieux, et l'organisateur lève le refus en réduisant le nombre de rondes ou en
+acceptant une rencontre rejouée. Le remède est un algorithme de graphe entier (Blossom) pour un gain
+qui, à l'échelle d'un club, ne se verra probablement pas.
+
+**Résorption attendue.** Si le club adopte le format et rencontre le refus en pratique.
+Marqueur `# DETTE-027` en tête de `_apparier`.
+
+### DETTE-028 — le catalogue de types de phase est livré **sans consommateur**
+
+E05US015 livre six moteurs de domaine (`poule`, `big_shoot_off`, `barrage`, `suisse`, `colline`,
+plus l'échauffement qui n'en a pas) et trois politiques (`RoutingRepechage`, `ScoreAvecHandicap`,
+`TiebreakPoules`). **Aucun n'a d'appelant de production** : aucun service ne les instancie, aucune
+`config.policies` ne sait porter leurs réglages (`nb_poules`, `nb_manches`, `portee_de_defi`,
+`restants`, barème de poule), et `domain/classement.py` calcule son cumul sans passer par la famille
+`scoring` — donc le handicap, bien que stocké, exposé et affiché, ne s'applique à aucun classement.
+
+**Ce que cela coûte.** L'écran « Phases » propose les six types à la composition : la **lettre**
+d'ADR-0045 §2 est tenue (« on n'offre pas un type qu'aucun moteur ne sait dérouler »), son
+**intention** ne l'est qu'à moitié. Un organisateur peut composer une phase de poules que rien ne
+déroulera, et dont le réglage n'est exprimable nulle part. Corollaire moins visible : un moteur sans
+consommateur n'est éprouvé que par ses propres tests — écrits le même jour, par le même agent, ce que
+la revue de cette US a précisément sanctionné (trois défauts de comportement, chacun protégé par une
+fixture qui l'évitait).
+
+**Pourquoi c'est assumé.** Le découpage du chantier moteur le prévoit : E05US010 livre le placement,
+E05US015 le catalogue, **E01US024** la composition et l'exécution, E07US004 le suivi en direct.
+Livrer les moteurs sans leur pilotage est le prix de ce découpage, pas un oubli — ADR-0062 le dit
+dans sa section « Ce que cet ADR ne tranche pas ».
+
+**Résorption attendue.** **E01US024** : porter les réglages dans `config.policies`, brancher les
+moteurs au service de déroulé, et rebrancher `classement.py` sur `PolitiquesPhase`.
+Marqueur `# DETTE-028` en tête de `politiques.py`.
+
+### DETTE-029 — l'attribution des rangs ex æquo est écrite **trois fois**
+
+La règle « deux entrées de même clé partagent le rang, on repart à `index + 1` dès que la clé change »
+(sauts 1-2-2-4) existe désormais en trois exemplaires : `classement._ranger` (E01US012),
+`poule.classement_de_poule` et `suisse.classement_suisse` (E05US015). La propagation du drapeau
+`ex_aequo` au **premier** d'un groupe existe, elle, en deux copies quasi verbatim
+(`poule._marquer_ex_aequo`, `suisse._propager_ex_aequo` — dont la docstring renvoie explicitement à
+sa jumelle).
+
+**Ce que cela coûte.** Les trois sites **divergent déjà** : `classement._ranger` ne porte aucun
+drapeau `ex_aequo`, les deux nouveaux si. Corriger la règle demande trois modifications coordonnées,
+et un oubli produit un classement **cohérent et faux** — le défaut qui ne se voit pas.
+
+**Pourquoi ce n'est pas corrigé ici.** Le § Dette de `CLAUDE.md` et la règle 16 de la revue sont
+formels : un remède structurel se traite en **ADR + US dédiée**, jamais en douce dans l'US courante.
+La 3ᵉ occurrence est le seuil qui autorise à le **proposer**, pas à le faire.
+
+**Remède proposé.** Une fonction pure du domaine, sans abstraction nouvelle :
+
+```python
+def attribuer_rangs[T](ordonnes: Sequence[T], meme_rang: Callable[[T, T], bool]) -> tuple[tuple[int, bool], ...]
+```
+
+Chaque appelant fournit son prédicat d'égalité (le comparateur `Tiebreak` injecté suffit) et garde
+son propre dataclass de sortie. ~15 lignes, trois appels réécrits, tests existants inchangés.
+
+**Résorption attendue.** US `refactor/` dédiée. Marqueur `# DETTE-029` aux trois sites.
+
+### DETTE-030 — l'union `TypePhase` est **dupliquée** côté front
+
+`TypePhase` (9 valeurs depuis E05US015) est déclarée dans `features/phases/api.ts` **et** dans
+`features/patrimoine/api.ts` — les formats de bibliothèque composent les mêmes types que les phases
+d'un tournoi. Avec l'enum backend, cela fait **trois** domiciles pour une seule vérité.
+
+**Ce que cela coûte, mesuré.** Le coût s'est manifesté dans l'US même qui assume la duplication :
+`patrimoine/format.ts` décrivait une étape par un ternaire à repli (`… : 'Placement'`), donc les six
+types ajoutés s'affichaient tous « Placement » dans les écrans Formats et Assemblage — et
+`npm run typecheck` restait vert, un ternaire n'ayant pas à être exhaustif. Corrigé en
+`Record<TypePhase, string>`, qui rend l'oubli d'un type **non compilable**.
+
+**Pourquoi c'est assumé.** Deux occurrences ne justifient pas d'introduire un module partagé :
+« dupliquer une 2ᵉ fois et attendre le 3ᵉ cas » est une réponse explicitement valide du § Dette.
+
+**Résorption attendue.** À une 3ᵉ feature portant l'union : extraire dans `shared/api/types.ts`.
+D'ici là, la contrainte qui rend la duplication tenable est que **chaque consommateur soit
+exhaustif** (`Record` ou `switch` + `assertNever`), jamais un ternaire à repli.
+Marqueur `# DETTE-030` aux deux déclarations.
 
 
 ## Procédure — inscrire une dette

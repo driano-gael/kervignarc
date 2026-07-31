@@ -703,9 +703,10 @@ class ConfigurationPouleInvalide(DomainError):
 
     Nombre de poules < 1, plus de poules que de participants, barème de points incohérent (une
     victoire ne peut pas rapporter moins qu'un nul), nombre de qualifiés par poule supérieur à
-    l'effectif de la plus petite poule, ou nombre de rencontres par archer supérieur au nombre
-    d'adversaires disponibles. On refuse à la **composition** plutôt que de produire un tableau de
-    poule dont le classement serait indéfendable.
+    d'adversaires disponibles, rencontre fournie deux fois. Les contrôles qui ne dépendent que du
+    réglage sont faits à la **composition** ; ceux qui exigent l'effectif réel (nombre de qualifiés,
+    rencontres par archer) le sont à l'appel, faute de connaître les participants plus tôt. Dans les
+    deux cas on refuse plutôt que de produire un classement de poule indéfendable.
     """
 
     code = "configuration_poule_invalide"
@@ -768,3 +769,42 @@ class HandicapInvalide(DomainError):
     """
 
     code = "handicap_invalide"
+
+
+class AppariementImpossible(DomainError):
+    """Aucun appariement sans ré-affrontement n'a pu être composé pour cette ronde (E05US015).
+
+    **Incident de déroulé, pas défaut de configuration** — et c'est pourquoi ce code est distinct de
+    `ConfigurationSuisseInvalide` : la réaction attendue n'est pas « recompose ta phase » mais
+    « accepte de rejouer une rencontre, ou arrête-toi à cette ronde ». Les confondre obligerait le
+    client à lire le message pour savoir quoi proposer à l'organisateur.
+
+    L'appariement du système suisse est **glouton** (ADR-0062, DETTE-027) : il peut échouer là où
+    une solution existait. On le dit franchement plutôt que de rejouer une rencontre en silence.
+    """
+
+    code = "appariement_impossible"
+
+
+class ScoreDeMancheManquant(DomainError):
+    """Un participant encore en lice n'a pas de score pour la manche à conclure (E05US015).
+
+    **Saisie incomplète**, pas configuration fautive. La distinction compte : un score absent n'est
+    **pas** un score nul, et traiter l'absence comme un zéro éliminerait un archer sur une donnée
+    non saisie — l'erreur qu'on ne voit qu'après coup, le jour J.
+    """
+
+    code = "score_de_manche_manquant"
+
+
+class BarrageRequisAvantQualification(DomainError):
+    """Un rang partagé tombe sur la barre de qualification d'une poule (E05US015, §10.1).
+
+    **Ce n'est pas une erreur mais une action à proposer** : « barrage si nécessaire », dernier
+    terme de la règle de départage. Qualifier « les deux premiers » quand les rangs 2 et 3 sont à
+    égalité reviendrait à qualifier sur l'ordre d'affichage — donc sur le rang de qualification
+    d'origine, qui n'a plus cours en poule. Le code est distinct de `ConfigurationPouleInvalide`
+    pour que le client sache faire tirer au lieu d'inviter à recomposer la phase.
+    """
+
+    code = "barrage_requis_avant_qualification"

@@ -136,6 +136,11 @@ export function promouvoirBlason(id: number): Promise<Blason> {
 // —————————————————————————————————————————————————————————————————————————————————————————————
 
 // ⚠️ Copie de l'union de `features/phases/api.ts` — les deux se mettent à jour ensemble (E05US015).
+// DETTE-030 (../../../../docs/dette.md) : cette union est déclarée **deux fois** côté front (ici et
+// dans l'autre feature), et doit rester synchronisée avec l'enum `TypePhase` du backend — trois
+// domiciles pour une vérité. Assumé à deux occurrences ; ce qui rend la duplication tenable est que
+// **chaque consommateur soit exhaustif** (`Record` ou `switch` + `assertNever`), jamais un ternaire
+// à repli — le repli est précisément ce qui a fait afficher six types comme « Placement ».
 export type TypePhase =
   | 'qualification'
   | 'elimination_directe'

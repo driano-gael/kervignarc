@@ -12,6 +12,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cleClassement } from '../competition/hooks'
 import {
+  type DefinirHandicap,
+  definirHandicap,
   fusionnerArchers,
   getArchers,
   getDoublons,
@@ -63,6 +65,15 @@ export function useModifierArcher(tournoiId: number) {
   return useMutation({
     mutationFn: ({ id, entree }: { id: number; entree: ModifierArcher }) =>
       modifierArcher(id, entree),
+    onSuccess: invalider,
+  })
+}
+
+export function useDefinirHandicap(tournoiId: number) {
+  const invalider = useInvaliderArchers(tournoiId)
+  return useMutation({
+    mutationFn: ({ id, entree }: { id: number; entree: DefinirHandicap }) =>
+      definirHandicap(id, entree),
     onSuccess: invalider,
   })
 }

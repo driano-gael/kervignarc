@@ -6,7 +6,7 @@ qui départage les ex æquo, les poules, la grande finale spectacle. Tout cela d
 avec les briques disponibles, ou tenu à la main sur une feuille à côté.
 
 Ce n'était pas une question de programmation : **les règles de ces formats n'étaient écrites nulle
-part**. Elles ont été fournies ce matin. Le catalogue est donc passé de trois formats à onze d'un
+part**. Elles ont été fournies ce matin. Le catalogue est donc passé de trois formats à douze d'un
 seul coup.
 
 ## Ce qui est nouveau à l'écran
@@ -55,10 +55,12 @@ Les distinguer a évité de programmer trois fois la même chose sous trois noms
 
 ## Le handicap, et une limite qu'il faut dire
 
-Chaque archer peut porter deux valeurs : un handicap **officiel**, celui que le club entretient, et
-une **surcharge** ponctuelle qui le remplace pour un tournoi donné — utile quand la valeur de
-référence est visiblement dépassée (un jeune qui progresse vite, un archer qui reprend après une
-longue absence) sans qu'on veuille pour autant réécrire la fiche du club.
+Chaque archer peut porter deux valeurs, saisissables sur l'écran des archers : un handicap
+**officiel**, celui que le club entretient, et une **surcharge** ponctuelle qui le remplace pour un
+tournoi donné — utile quand la valeur de référence est visiblement dépassée (un jeune qui progresse
+vite, un archer qui reprend après une longue absence) sans qu'on veuille pour autant réécrire la
+fiche du club. La valeur retenue s'affiche sur la ligne de l'archer, avec un astérisque quand c'est
+une surcharge.
 
 ⚠️ **Le logiciel ne fournit aucune table de handicap, et ce n'est pas un oubli.** La fédération
 française n'a pas de système de handicap officiel ; celui qui fait référence est anglo-saxon. En
@@ -76,5 +78,7 @@ chantier : composer et simuler un déroulé, puis voir le tournoi se dérouler.
 Quelques choix ont dû être faits faute de précision dans les règles (le barème des poules, le nombre
 de rondes du système suisse, ce qui se passe entre deux manches d'un Big Shoot Off). Ils sont tous
 **modifiables par réglage** et listés dans le scénario de recette : il suffit de dire lesquels
-changer. Un point mérite un regard particulier — l'exemple chiffré donné avec la règle du Ladder ne
-correspond pas à la règle elle-même ; nous avons appliqué **la règle**, et cela reste à confirmer.
+changer. Deux points méritent un regard particulier, tous deux sur le Ladder : l'exemple chiffré
+donné avec sa règle ne correspond pas à la règle elle-même (nous avons appliqué **la règle**), et
+« défier le 5 **ou** le 4 » a été traduit en faisant alterner la distance des défis d'une manche à
+l'autre — sans quoi le classement ne se remettrait jamais à l'endroit.

@@ -33,7 +33,8 @@ personne ni au mieux classé.
 descendant chercher un adversaire compatible quand le groupe est impair ou déjà rencontré. C'est
 l'algorithme des tournois d'échecs de club (pas le couplage de poids maximal de la FIDE). Il peut,
 sur des configurations défavorables, ne pas trouver de solution alors qu'il en existait une :
-`AppariementImpossible` est alors levée plutôt qu'un ré-affrontement silencieux. C'est un compromis
+`AppariementImpossible` est alors levée plutôt qu'un ré-affrontement silencieux —
+une erreur **de déroulé**, distincte d'un refus de configuration. C'est un compromis
 **assumé** — un couplage optimal est un algorithme de graphe entier pour un gain qui, à l'échelle
 d'un club, ne se verra pas.
 
@@ -48,13 +49,16 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
-from domain.erreurs import ConfigurationSuisseInvalide
+from domain.erreurs import AppariementImpossible, ConfigurationSuisseInvalide
 from domain.participant import Participant
 from domain.politiques import DecompteDepartage
 
-POINTS_VICTOIRE = 1
-"""Une victoire vaut 1 point, un nul 0,5 — donc on compte en **demi-points entiers** (voir
-`ResultatRonde`) pour rester en arithmétique exacte, sans flottant dans le domaine."""
+# Barème du suisse en **demi-points doublés**, pour rester en arithmétique entière : une victoire
+# vaut classiquement 1 point et un nul 0,5, donc on double tout. Le domaine évite ainsi le flottant,
+# dont les comparaisons d'égalité sont exactement ce sur quoi un départage ne doit pas reposer.
+POINTS_VICTOIRE = 2
+POINTS_NUL = 1
+POINTS_DEFAITE = 0
 
 
 @dataclass(frozen=True)
@@ -96,11 +100,13 @@ class ResultatRonde:
 
     @staticmethod
     def victoire_de(gagnant: Participant, perdant: Participant) -> ResultatRonde:
-        return ResultatRonde(a=gagnant, b=perdant, points_a=2, points_b=0)
+        return ResultatRonde(
+            a=gagnant, b=perdant, points_a=POINTS_VICTOIRE, points_b=POINTS_DEFAITE
+        )
 
     @staticmethod
     def nul(a: Participant, b: Participant) -> ResultatRonde:
-        return ResultatRonde(a=a, b=b, points_a=1, points_b=1)
+        return ResultatRonde(a=a, b=b, points_a=POINTS_NUL, points_b=POINTS_NUL)
 
 
 @dataclass(frozen=True)
@@ -131,13 +137,21 @@ def apparier_ronde(
     participants: Sequence[Participant],
     resultats: Sequence[ResultatRonde],
     configuration: ConfigurationSuisse,
+    byes: Sequence[Participant] = (),
 ) -> tuple[Appariement, ...]:
     """Compose les rencontres de la ronde suivante.
 
     `participants` est l'ordre du **classement source** (indice 0 = premier), qui sert d'appariement
-    de la ronde 1 *et* de départage stable ensuite. `resultats` porte **toutes** les rondes déjà
-    jouées ; le nombre de rondes écoulées s'en déduit, il n'est pas passé séparément — deux sources
-    pour un même fait finissent toujours par diverger.
+    de la ronde 1 *et* de départage stable ensuite. `resultats` porte **toutes** les rencontres déjà
+    disputées ; `byes` porte, dans l'ordre des rondes, **qui a reçu un bye**.
+
+    ⚠️ **Les byes sont passés explicitement, ils ne se devinent plus.** Un premier jet de cette US
+    les déduisait des « rencontres manquantes » (celui qui a joué une rencontre de moins que les
+    autres a chômé). Deux défauts, tous deux constatés : un bye ne rapportait alors **aucun point**
+    — le bénéficiaire finissait derrière un perdant, puis se faisait apparier avec les perdants à la
+    ronde suivante, l'exact contraire de la règle ; et une ronde **partiellement saisie** faisait
+    passer pour porteurs de bye tous ceux dont le résultat n'était pas encore entré. Une donnée
+    qu'on déduit d'une absence est fausse dès que l'absence a deux causes possibles.
 
     Ronde 1 : appariement **par classement**, fort contre faible (1 vs N/2+1, 2 vs N/2+2, …), qui
     est la façon habituelle d'ouvrir un suisse : elle évite qu'un favori sorte dès la première
@@ -149,7 +163,7 @@ def apparier_ronde(
     """
     if len(participants) < 2:
         raise ConfigurationSuisseInvalide("Un système suisse apparie au moins deux participants.")
-    rondes_jouees = _nb_rondes_jouees(participants, resultats)
+    rondes_jouees = _verifier_rondes_closes(participants, resultats, byes)
     if rondes_jouees >= configuration.nb_rondes:
         raise ConfigurationSuisseInvalide(
             f"Les {configuration.nb_rondes} rondes de cette phase ont déjà été disputées."
@@ -164,12 +178,12 @@ def apparier_ronde(
     if rondes_jouees == 0:
         ordre = list(participants)
     else:
-        points = _points(participants, resultats)
+        points = _points(participants, resultats, byes)
         # Tri par score décroissant, puis par rang source — le rang source est ce qui rend l'ordre
         # **déterministe** à score égal, donc l'appariement reproductible (règle 9).
         rangs = {participant: index for index, participant in enumerate(participants)}
         ordre = sorted(participants, key=lambda p: (-points[p], rangs[p]))
-    porteur_de_bye = _attribuer_le_bye(ordre, resultats) if len(ordre) % 2 == 1 else None
+    porteur_de_bye = _attribuer_le_bye(ordre, byes) if len(ordre) % 2 == 1 else None
     a_apparier = [p for p in ordre if p != porteur_de_bye]
     paires = _apparier(a_apparier, deja_rencontres, coupe_en_deux=rondes_jouees == 0)
     appariements = [Appariement(a=a, b=b) for a, b in paires]
@@ -179,7 +193,9 @@ def apparier_ronde(
 
 
 def classement_suisse(
-    participants: Sequence[Participant], resultats: Sequence[ResultatRonde]
+    participants: Sequence[Participant],
+    resultats: Sequence[ResultatRonde],
+    byes: Sequence[Participant] = (),
 ) -> tuple[RangSuisse, ...]:
     """Classe les participants : points, puis **Buchholz**, puis les critères FFTA (§8.1).
 
@@ -188,11 +204,14 @@ def classement_suisse(
     battu les trois meilleurs et l'autre les trois derniers — et le système suisse, qui n'oppose
     jamais tout le monde à tout le monde, a besoin de ce correctif.
 
-    ⚠️ Un **bye** rapporte des points mais **aucun** adversaire, donc il ne gonfle pas le Buchholz.
-    C'est voulu : compter le bye comme un adversaire à 0 point pénaliserait celui qui l'a reçu, et
-    le compter comme un adversaire fort le favoriserait. Ne rien compter est le seul choix neutre.
+    ⚠️ Un **bye vaut une victoire** (`POINTS_VICTOIRE`) mais **aucun adversaire**, donc il ne
+    gonfle pas le Buchholz. Les deux moitiés comptent : sans les points, le bénéficiaire finissait
+    derrière un perdant, et l'appariement de la ronde suivante — qui trie par points — l'envoyait
+    chez les perdants, l'exact contraire de la règle. Et compter le bye comme un adversaire à 0
+    point pénaliserait celui qui l'a reçu, tandis que le compter comme un adversaire fort le
+    favoriserait : ne rien compter au Buchholz est le seul choix neutre.
     """
-    points = _points(participants, resultats)
+    points = _points(participants, resultats, byes)
     adversaires = _adversaires(resultats)
     buchholz = {
         participant: sum(points.get(autre, 0) for autre in adversaires.get(participant, ()))
@@ -220,6 +239,9 @@ def classement_suisse(
             decompte.nb_neuf,
         )
 
+    # DETTE-029 (docs/dette.md) : 3ᵉ écriture de « rang partagé à clé égale, avec sauts » dans le
+    # domaine (`classement._ranger`, `poule.classement_de_poule`, `suisse.classement_suisse`), et
+    # les trois divergent déjà. Remède proposé (fonction pure `attribuer_rangs`) en US dédiée.
     lignes: list[RangSuisse] = []
     rang = 0
     precedente: tuple[int, int, int, int] | None = None
@@ -259,18 +281,36 @@ def _rondes_maximales(effectif: int) -> int:
     return effectif - 1 if effectif % 2 == 0 else effectif
 
 
-def _nb_rondes_jouees(
-    participants: Sequence[Participant], resultats: Sequence[ResultatRonde]
+def _verifier_rondes_closes(
+    participants: Sequence[Participant],
+    resultats: Sequence[ResultatRonde],
+    byes: Sequence[Participant],
 ) -> int:
-    """Combien de rondes ont été disputées, déduit du nombre de rencontres.
+    """Combien de rondes sont **closes** — et **refuse** si la dernière ne l'est pas.
 
-    Une ronde produit `len(participants) // 2` rencontres (le bye n'en est pas une). On divise donc
-    le total par ce nombre — arrondi **au supérieur**, pour qu'une ronde partiellement saisie compte
-    comme entamée plutôt que comme inexistante : apparier une ronde par-dessus une ronde en cours
-    serait bien pire que de refuser.
+    Une ronde produit exactement `len(participants) // 2` rencontres, plus un bye si l'effectif est
+    impair. Un compte qui ne tombe pas juste signifie qu'une ronde est **en cours de saisie**.
+
+    ⚠️ **On refuse au lieu d'arrondir.** Un premier jet de cette US arrondissait au supérieur en
+    commentant que « apparier une ronde par-dessus une ronde en cours serait bien pire que de
+    refuser » — mais ne refusait rien, il incrémentait le compteur et continuait. Conséquence
+    constatée : les rencontres non encore saisies étaient **perdues** (jamais rejouées), et le bye
+    échoyait à quelqu'un qui venait de tirer. C'est un cas normal du jour J, pas un cas limite : une
+    ronde se saisit cible par cible.
     """
     par_ronde = max(1, len(participants) // 2)
-    return -(-len(resultats) // par_ronde)
+    rondes, reste = divmod(len(resultats), par_ronde)
+    if reste:
+        raise ConfigurationSuisseInvalide(
+            f"La ronde en cours n'est pas entièrement saisie : {reste} rencontre(s) sur "
+            f"{par_ronde} manquent encore. Apparier la ronde suivante les perdrait."
+        )
+    if len(participants) % 2 == 1 and len(byes) != rondes:
+        raise ConfigurationSuisseInvalide(
+            f"À effectif impair, chaque ronde close décerne un bye : {rondes} ronde(s) disputée(s) "
+            f"mais {len(byes)} bye(s) déclaré(s)."
+        )
+    return rondes
 
 
 def _deja_rencontres(resultats: Iterable[ResultatRonde]) -> set[frozenset[Participant]]:
@@ -278,14 +318,20 @@ def _deja_rencontres(resultats: Iterable[ResultatRonde]) -> set[frozenset[Partic
 
 
 def _points(
-    participants: Sequence[Participant], resultats: Sequence[ResultatRonde]
+    participants: Sequence[Participant],
+    resultats: Sequence[ResultatRonde],
+    byes: Sequence[Participant] = (),
 ) -> dict[Participant, int]:
+    """Points de chacun — rencontres **et** byes, un bye valant une victoire (`POINTS_VICTOIRE`)."""
     points = dict.fromkeys(participants, 0)
     for resultat in resultats:
         if resultat.a in points:
             points[resultat.a] += resultat.points_a
         if resultat.b in points:
             points[resultat.b] += resultat.points_b
+    for beneficiaire in byes:
+        if beneficiaire in points:
+            points[beneficiaire] += POINTS_VICTOIRE
     return points
 
 
@@ -317,42 +363,23 @@ def _decomptes(
     }
 
 
-def _attribuer_le_bye(
-    ordre: Sequence[Participant], resultats: Sequence[ResultatRonde]
-) -> Participant:
+def _attribuer_le_bye(ordre: Sequence[Participant], byes: Sequence[Participant]) -> Participant:
     """Le bye va au **moins bien classé n'en ayant pas encore eu** (arbitrage du 31/07).
 
     Deux principes s'y croisent : un bye est un cadeau (une victoire sans tirer), donc il ne revient
     pas au mieux classé ; et il ne se donne pas deux fois à la même personne tant que quelqu'un n'en
     a pas eu. Si **tout le monde** en a déjà eu un — possible sur beaucoup de rondes à petit
     effectif —, on repart du moins bien classé : mieux vaut un second bye qu'un blocage.
+
+    `byes` est la **liste déclarée** des bénéficiaires passés, et non plus une déduction faite sur
+    les rencontres manquantes : cette déduction confondait « il a chômé » et « son résultat n'est
+    pas encore saisi ».
     """
-    deja_servis = _porteurs_de_bye(ordre, resultats)
+    deja_servis = set(byes)
     for participant in reversed(ordre):
         if participant not in deja_servis:
             return participant
     return ordre[-1]
-
-
-def _porteurs_de_bye(
-    participants: Sequence[Participant], resultats: Sequence[ResultatRonde]
-) -> set[Participant]:
-    """Qui a déjà eu un bye, déduit des **rencontres manquantes**.
-
-    Un bye ne produit pas de `ResultatRonde` (il n'oppose personne) : on le repère en comptant, pour
-    chaque participant, les rencontres qu'il a disputées. Celui qui en a moins que le maximum a
-    chômé — et à effectif impair, chômer signifie avoir eu le bye.
-    """
-    disputees = dict.fromkeys(participants, 0)
-    for resultat in resultats:
-        if resultat.a in disputees:
-            disputees[resultat.a] += 1
-        if resultat.b in disputees:
-            disputees[resultat.b] += 1
-    if not disputees:
-        return set()
-    maximum = max(disputees.values())
-    return {participant for participant, compte in disputees.items() if compte < maximum}
 
 
 def _apparier(
@@ -368,8 +395,12 @@ def _apparier(
     l'ordre est trié par score.
 
     Le repli quand deux voisins se sont déjà rencontrés : on descend chercher le premier adversaire
-    compatible. Glouton, donc faillible — d'où `ConfigurationSuisseInvalide` plutôt qu'un
-    ré-affrontement muet.
+    compatible. Glouton, donc faillible — d'où `AppariementImpossible` plutôt qu'un ré-affrontement
+    muet.
+
+    # DETTE-027 (docs/dette.md) : ce glouton n'est pas le couplage de poids maximal des fédérations
+    # d'échecs ; il peut refuser une ronde pourtant appariable. Assumé — l'échec est explicite, et
+    # le remède est un algorithme de graphe entier pour un gain invisible à l'échelle d'un club.
     """
     if coupe_en_deux:
         moitie = len(ordre) // 2
@@ -384,7 +415,7 @@ def _apparier(
                 adversaire = candidat
                 break
         if adversaire is None:
-            raise ConfigurationSuisseInvalide(
+            raise AppariementImpossible(
                 "Aucun appariement sans ré-affrontement n'a pu être trouvé pour cette ronde : "
                 "réduisez le nombre de rondes ou acceptez de rejouer une rencontre."
             )

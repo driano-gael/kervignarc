@@ -665,12 +665,20 @@ def _verifier_sources(phases: Sequence[EtapeSequencee]) -> None:
                     f"La phase {phase.ordre} ne peut être alimentée que par une phase antérieure ; "
                     f"l'ordre {source.ordre_source} lui est égal ou postérieur."
                 )
-            if source.nature is NatureSource.RANGS and not produit_un_classement(phase_source.type):
+            # ⚠️ **Toutes les natures sauf `RESTE`**, et non les seuls rangs. Le CA est catégorique :
+            # « la seule façon licite de lui succéder est *les mêmes archers, sans ordre* ». Un
+            # premier jet ne refusait que `RANGS` — or « les gagnants du tour 1 de l'échauffement »
+            # est exactement aussi vide, un échauffement n'ayant ni tour ni duel. Le trou était
+            # d'autant plus invisible que les deux tests encadrants couvraient `RANGS` (refusé) et
+            # `RESTE` (accepté), laissant la troisième nature dans l'angle mort.
+            if source.nature is not NatureSource.RESTE and not produit_un_classement(
+                phase_source.type
+            ):
                 raise PhaseSansClassementPrelevee(
-                    f"La phase {phase.ordre} prélève des rangs dans la phase "
+                    f"La phase {phase.ordre} prélève « {source.nature.value} » dans la phase "
                     f"{source.ordre_source}, de type « {phase_source.type.value} », qui ne produit "
-                    "aucun classement : reprendre « le reste » de ses participants est la seule "
-                    "succession possible."
+                    "ni classement ni rencontre : reprendre « le reste » de ses participants "
+                    "est la seule succession possible."
                 )
             if (
                 phase_source.effectif is not None

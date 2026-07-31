@@ -62,12 +62,35 @@ Trois conséquences valent d'être nommées, parce qu'elles ne sont pas intuitiv
 - Le **podium** n'est pas une phase du tout, c'est la **sortie** de la phase terminale. Aucun
   `TypePhase` ne s'appelle « podium », et c'est délibéré.
 
+### 1bis. Les contrôles de séquence ont désormais le droit de lire le **type** de l'amont
+
+`EtapeSequencee` — le protocole minimal que `verifier_sequence` exige d'une étape — ne portait que
+`ordre`, `sources` et `effectif`, avec pour commentaire explicite « **rien de plus** ». Il porte
+maintenant aussi `type`.
+
+C'est un déplacement de frontière, pas un ajout de champ. Le contrôle « une phase sans classement ne
+se prélève pas » est **collectif** : il faut savoir ce qu'*est* la phase **amont**, pas seulement ce
+que la phase avale prélève. Il ne pouvait donc pas vivre dans `SourcePhase.__post_init__`, qui ne
+voit qu'un prélèvement isolé.
+
+L'ajout ne coûte rien — les deux implémentations (`Phase`, `ModelePhase`) portaient déjà `type` —
+mais il **ouvre une catégorie** : d'autres contraintes « ce type-là ne se prélève pas ainsi »
+deviennent exprimables. On l'inscrit ici pour que la prochaine soit une décision et non une dérive.
+
 ### 2. King of the Hill et Ladder sont **un seul** moteur
 
 Les deux règles sont décrites séparément par le commanditaire et se ressemblent au point qu'il le
 signale lui-même (« très proche du King of the Hill »). Leur différence tient en un nombre : la
 **portée du défi** — un rang au-dessus, ou deux. C'est donc un paramètre (règle 2), et le type
 s'appelle `colline`, pas `king_of_the_hill`.
+
+⚠️ **La portée est une distance MAXIMALE, pas une distance exacte** — « le n°6 peut défier le 5
+**ou** le 4 » énonce un choix. La distance effective tourne d'une manche à l'autre. Ce n'est pas un
+détail d'implémentation : en la figeant à la portée, tout échange se fait à distance 2, la **parité**
+de la position devient un invariant, la colline se scinde en deux moitiés étanches et **le Ladder ne
+peut plus classer** — une colline inversée se stabilise sur `2 1 4 3 6 5 8 7`, définitivement. Le
+premier jet de cette US avait ce défaut ; il a été trouvé en revue, par exécution, et **aucun test ne
+l'attrapait** parce que la convergence n'était éprouvée qu'à portée 1.
 
 **Deux arbitrages ont été nécessaires** pour qu'ils rentrent dans le modèle :
 
@@ -131,6 +154,21 @@ Décision, prise avec le commanditaire : l'archer porte **deux valeurs** — un 
 édition. Le produit fournit le **mécanisme** ; le club répond de la **valeur**. C'est cohérent avec
 le point faible que la règle reconnaît elle-même : « le calcul du handicap doit être fiable ».
 
+**Corollaire d'API : le handicap se règle par une sous-ressource dédiée**
+(`PUT /api/v1/archers/{id}/handicap`), pas par un champ de plus au `PUT` total de l'archer. Les deux
+opérations n'ont ni la même cadence ni le même risque : un état civil se corrige à l'unité, un
+handicap se règle souvent en série (import du club, ajustement juste avant une phase). Les mêler
+obligerait à renvoyer nom, prénom et catégorie à chaque ajustement — donc à **écraser** une
+correction faite entre-temps depuis un autre poste, un jour où trente tablettes écrivent. C'est la
+première sous-ressource `/{id}/<aspect>` du routeur `competition` ; le patron « un DTO par cas
+d'usage » (E02US001) la justifiait déjà, on l'inscrit pour qu'elle soit un précédent assumé.
+
+**Le handicap est borné par le haut** (`HANDICAP_MAXIMUM = 600`, le score parfait d'une
+qualification). Ce n'est pas une précaution technique mais la même règle métier : un handicap qui
+dépasse tout ce qu'un archer peut réaliser ne corrige plus une différence de niveau, il **remplace**
+le tir. Effet de bord utile relevé en revue : sans borne, un entier absurde traversait jusqu'à
+SQLite et remontait en **500** au lieu d'un 422 typé.
+
 ## Conséquences
 
 **Positives.**
@@ -148,20 +186,36 @@ le point faible que la règle reconnaît elle-même : « le calcul du handicap d
 
 - **Le catalogue est large, et l'usage réel ne l'est pas.** Six types neufs, dont plusieurs que le
   club n'a peut-être jamais tirés. Un type non utilisé est du code non éprouvé : les moteurs sont
-  couverts par leurs tests unitaires, pas par une journée réelle.
+  couverts par leurs tests unitaires, pas par une journée réelle. **Tracé en
+  [DETTE-028](../dette.md)** — un ADR documente la décision, le registre porte l'engagement de
+  résorption, et c'est ce dernier qui manquait au premier jet de cette US.
+- **La revue a trouvé trois défauts de comportement**, chacun contredit par sa propre docstring et
+  chacun protégé par une fixture qui l'évitait : le Ladder qui ne converge pas (§2), une distance de
+  barrage non mesurée traitée comme un centre parfait, et un bye du système suisse rapportant zéro
+  point. Tous trois corrigés avant merge. La leçon vaut au-delà de cette US : **des moteurs sans
+  consommateur ne sont confrontés qu'à leurs propres tests**, écrits le même jour par le même agent
+  — c'est la population où les fixtures complaisantes survivent.
 - **L'appariement du système suisse est glouton, pas optimal.** Il peut échouer à trouver un
-  appariement sans ré-affrontement là où il en existait un. Il lève alors une erreur explicite plutôt
-  que de rejouer une rencontre en silence. Un couplage de poids maximal (l'algorithme FIDE) est un
-  algorithme de graphe entier pour un gain qui, à l'échelle d'un club, ne se verra pas.
+  appariement sans ré-affrontement là où il en existait un. Il lève alors `AppariementImpossible` —
+  une erreur **de déroulé**, distincte d'un refus de configuration — plutôt que de rejouer une
+  rencontre en silence. **Tracé en [DETTE-027](../dette.md)**.
 - **Une troncature de round-robin à effectif impair ne donne pas le même nombre de rencontres à
-  tout le monde** (écart d'une unité). Signalé dans le module plutôt que corrigé en douce : aucune
-  correction n'est neutre.
+  tout le monde** (écart d'une unité). Le cas « autant de rencontres que d'adversaires » est traité
+  (on déroule le cercle entier) ; l'écart subsiste pour une troncature intermédiaire, et il est
+  signalé dans le module plutôt que corrigé en douce : aucune correction n'est neutre.
+- **L'attribution des rangs ex æquo est désormais écrite trois fois** dans le domaine, et les trois
+  sites divergent. La 3ᵉ occurrence franchit le seuil de la règle 16 **sur preuve** ; le remède se
+  traite en US dédiée, pas ici. **Tracé en [DETTE-029](../dette.md)**.
 - **Un tableau à repêchage dont la composition oublie la phase de repêchage perd ses battus en
   silence.** Le moteur ne peut pas le détecter — un tableau amputé de sa moitié basse est
   structurellement valide, et il ne sait pas ce que la séquence prévoit après lui. C'est au
   diagnostic de déroulé (E01US024) de l'attraper.
 - **`TypePhase` est dupliquée côté front** (`features/phases` et `features/patrimoine`), donc deux
-  occasions de diverger du backend. Assumé à deux occurrences ; à une troisième, l'extraire.
+  occasions de diverger du backend. Assumé à deux occurrences ; à une troisième, l'extraire. Le coût
+  s'est manifesté **dans cette US même** : un consommateur décrivait les étapes par un ternaire à
+  repli, donc les six types neufs s'affichaient tous « Placement » sans que TypeScript bronche. Ce
+  qui rend la duplication tenable n'est pas la vigilance mais l'**exhaustivité** de chaque
+  consommateur (`Record` ou `switch` + `assertNever`). **Tracé en [DETTE-030](../dette.md)**.
 
 ## Ce que cet ADR ne tranche pas
 

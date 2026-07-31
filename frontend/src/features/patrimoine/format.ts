@@ -4,7 +4,7 @@
 // composants n'exporte que des composants — même parti que `features/admin/axes.ts` et
 // `features/gabarits/format.ts`), et parce qu'étant pures, elles se testent sans monter d'écran.
 
-import type { Etape, RapportAssemblage } from './api'
+import type { Etape, RapportAssemblage, TypePhase } from './api'
 
 /**
  * Rend le compte-rendu d'un assemblage lisible pour un organisateur.
@@ -30,14 +30,28 @@ export function decrireRapport(rapport: RapportAssemblage): string {
   )
 }
 
+// Libellé de chaque type de phase, en `Record` **exhaustif** et non en ternaire à repli.
+//
+// ⚠️ Le repli est ce qui a cassé : `… : 'Placement'` attrapait tout ce qui n'était pas les deux
+// premiers types, donc les six types ajoutés par E05US015 s'affichaient tous « Placement » dans les
+// écrans Formats et Assemblage — et TypeScript restait vert, un ternaire n'ayant pas à être
+// exhaustif. Le `Record<TypePhase, string>` rend l'oubli d'un type **non compilable** : c'est la
+// seule forme qui tienne face à une union destinée à s'élargir.
+const LIBELLE_TYPE: Record<TypePhase, string> = {
+  qualification: 'Qualification',
+  elimination_directe: 'Élimination directe',
+  placement: 'Placement',
+  echauffement: 'Échauffement',
+  barrage: 'Barrage',
+  poules: 'Poules',
+  big_shoot_off: 'Big Shoot Off',
+  suisse: 'Système suisse',
+  colline: 'Colline',
+}
+
 /** Décrit une étape en langage d'organisateur (« Qualification 20×3 (16 archers) »). */
 export function decrireEtape(etape: Etape): string {
-  const nom =
-    etape.type === 'qualification'
-      ? 'Qualification'
-      : etape.type === 'elimination_directe'
-        ? 'Élimination directe'
-        : 'Placement'
+  const nom = LIBELLE_TYPE[etape.type]
   const bareme =
     etape.bareme === null ? '' : ` ${etape.bareme.nb_volees}×${etape.bareme.nb_fleches_par_volee}`
   const effectif = etape.effectif === null ? '' : ` (${etape.effectif} archers)`

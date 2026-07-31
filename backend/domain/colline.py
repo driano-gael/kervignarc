@@ -108,13 +108,18 @@ def defis_de_la_manche(
 ) -> tuple[DefiColline, ...]:
     """Les défis **sans recouvrement** de la manche `manche` (1-indexée).
 
-    On découpe la colline en blocs de `portee + 1` positions et, dans chaque bloc, la position basse
-    défie la haute. Le **décalage** du découpage tourne d'une manche à l'autre
-    (`(manche - 1) % (portee + 1)`), ce qui fait que chacun finit par se retrouver engagé : sans
-    cette rotation, à portée 1 les positions impaires affronteraient éternellement les mêmes paires
-    et la colline ne bougerait plus après une manche.
+    ⚠️ **`portee_de_defi` est une distance MAXIMALE, pas une distance exacte** — « le n°6 peut
+    défier le 5 **ou** le 4 » énonce un choix. La distance effective **tourne** d'une manche à
+    l'autre (`1 + (manche-1) % portee`), et le découpage en blocs tourne avec elle.
 
-    À portée 1, c'est exactement l'alternance pair/impair : manche 1 → (1,2)(3,4)(5,6), manche 2 →
+    **C'est ce qui rend le Ladder capable de classer, et un premier jet de cette US l'avait raté.**
+    En figeant la distance à `portee`, tout échange se faisait à distance 2 : la **parité** de la
+    position devenait un invariant, la colline se scindait en deux moitiés étanches, et l'archer
+    parti en position 2 ne pouvait **jamais** atteindre la position 1. Vérifié à l'époque : une
+    colline inversée où le meilleur gagne toujours se stabilisait sur `2 1 4 3 6 5 8 7` — faux, et
+    faux pour toujours. Les manches à distance 1 sont exactement ce qui brise cette parité.
+
+    À portée 1, c'est l'alternance pair/impair : manche 1 → (1,2)(3,4)(5,6), manche 2 →
     (2,3)(4,5)(6,7). Les extrémités se reposent une manche sur deux — inévitable, et sans effet sur
     le classement puisqu'elles rejouent la manche suivante.
     """
@@ -133,13 +138,16 @@ def defis_de_la_manche(
             f"{len(colline)} participants revient à laisser chacun défier n'importe qui : ce n'est "
             "plus un King of the Hill ni un Ladder."
         )
-    pas = configuration.portee_de_defi + 1
-    decalage = (manche - 1) % pas
+    # La distance parcourt 1..portée au fil des manches ; le découpage en blocs suit la distance
+    # retenue, et son décalage tourne à chaque cycle complet de distances.
+    distance = 1 + (manche - 1) % configuration.portee_de_defi
+    pas = distance + 1
+    decalage = ((manche - 1) // configuration.portee_de_defi) % pas
     defis: list[DefiColline] = []
     depart = decalage
-    while depart + configuration.portee_de_defi < len(colline):
+    while depart + distance < len(colline):
         haute = depart
-        basse = depart + configuration.portee_de_defi
+        basse = depart + distance
         defis.append(
             DefiColline(
                 position_haute=haute + 1,

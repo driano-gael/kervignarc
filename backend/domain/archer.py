@@ -41,6 +41,12 @@ ArcherId = int
 CleIdentite = tuple[str, str, ClubId | None]
 """Clé d'homonymie d'un archer — voir `cle_identite`."""
 
+HANDICAP_MAXIMUM = 600
+"""Borne haute d'un handicap (E05US015) : le score parfait d'une qualification FFTA
+(20 volées de 3 flèches à 10).
+
+Au-delà, le handicap ne corrige plus une différence de niveau — il **remplace** le tir."""
+
 
 def cle_identite(nom: str, prenom: str, club_id: ClubId | None) -> CleIdentite:
     """Clé d'homonymie : deux archers de **même clé** sont vraisemblablement le même (E02US002).
@@ -104,19 +110,34 @@ class Archer:
     id: ArcherId | None = None
 
     def __post_init__(self) -> None:
-        """Un handicap s'**ajoute** au score : il est positif ou nul (règle du commanditaire).
+        """Un handicap s'**ajoute** au score : il est positif ou nul, et **borné** par le haut.
 
         Une valeur négative retrancherait des points — ce n'est pas le système décrit, et surtout
         elle passerait inaperçue au classement, où elle ressemblerait à une contre-performance.
+
+        ⚠️ **La borne haute n'est pas une précaution technique, c'est la même règle métier.** Un
+        handicap ajouté au score doit rester du même ordre de grandeur que lui, faute de quoi il ne
+        corrige plus une différence de niveau : il **remplace** le tir. `HANDICAP_MAXIMUM` vaut le
+        score parfait d'une qualification FFTA (20 volées de 3 flèches à 10), au-delà duquel le
+        handicap pèserait plus que tout ce qu'un archer peut réaliser. Effet de bord utile : une
+        valeur aberrante importée en masse est refusée **à la saisie** au lieu de traverser
+        jusqu'à SQLite, où un entier hors bornes remonterait en 500 plutôt qu'en 422 typé.
         """
         for valeur, nom in (
             (self.handicap_officiel, "officiel"),
             (self.handicap_surcharge, "de surcharge"),
         ):
-            if valeur is not None and valeur < 0:
+            if valeur is None:
+                continue
+            if valeur < 0:
                 raise HandicapInvalide(
                     f"Le handicap {nom} s'ajoute au score réalisé : il est positif ou nul "
                     f"(reçu {valeur})."
+                )
+            if valeur > HANDICAP_MAXIMUM:
+                raise HandicapInvalide(
+                    f"Le handicap {nom} ne peut pas dépasser {HANDICAP_MAXIMUM}, le score parfait "
+                    f"d'une qualification : au-delà, il pèserait plus que le tir (reçu {valeur})."
                 )
 
     @property

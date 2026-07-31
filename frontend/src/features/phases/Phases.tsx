@@ -61,6 +61,12 @@ const AIDE_TYPE: Record<TypePhase, string> = {
   colline: 'Défis entre voisins : le gagnant monte, le perdant descend.',
 }
 
+// Les types qui ne produisent **aucun classement** : on ne peut pas y prélever de rangs (le serveur
+// le refuse), donc ce formulaire ne les propose pas comme source. Miroir de
+// `_TYPES_SANS_CLASSEMENT` côté domaine — le backend reste l'autorité, ceci évite juste d'offrir un
+// choix qui mène à un 422 dont la consigne n'est pas réalisable à l'écran.
+const TYPES_SANS_CLASSEMENT: TypePhase[] = ['echauffement']
+
 // Types composables ici (la qualification se règle via le barème). E05US015 peuple le catalogue :
 // chaque entrée a son moteur côté domaine, conformément à ADR-0045 §2.
 const TYPES_AJOUTABLES: TypePhase[] = [
@@ -293,10 +299,21 @@ function FormulairePhase({
   const modifier = useModifierPhase(tournoiId)
   const mutation = enEdition ? modifier : ajouter
 
-  // Sources possibles : les phases **antérieures** (ordre strictement inférieur). En ajout, la
-  // future phase prend le dernier rang, donc toutes les phases existantes sont éligibles.
+  // Sources possibles : les phases **antérieures** (ordre strictement inférieur) **qui produisent
+  // un classement**. En ajout, la future phase prend le dernier rang, donc toutes les phases
+  // existantes sont éligibles.
+  //
+  // ⚠️ Le filtre sur les phases non classantes n'est pas cosmétique : ce formulaire ne sait
+  // exprimer que le prélèvement « par rangs », et le serveur refuse (à juste titre) de prélever des
+  // rangs dans un échauffement, qui n'en produit aucun. Sans le filtre, l'organisateur reçoit un
+  // 422 dont la consigne — « reprendre le reste de ses participants » — n'est réalisable par aucun
+  // écran : une impasse sans sortie. Le chemin réel reste ouvert (une phase peut n'avoir aucune
+  // source, et « échauffement puis qualification » se compose ainsi sans encombre) ; la saisie du
+  // prélèvement « le reste » arrive avec l'éditeur de composition (E01US024).
   const ordreCible = enEdition ? phase.ordre : phases.length + 1
-  const sourcesPossibles = phases.filter((p) => p.ordre < ordreCible)
+  const sourcesPossibles = phases.filter(
+    (p) => p.ordre < ordreCible && !TYPES_SANS_CLASSEMENT.includes(p.type),
+  )
 
   // En édition, seuls les types composables sont proposés ; on garde le type courant même s'il n'y
   // figure pas (ex. qualification éditée par mégarde), pour ne pas le perdre au rendu du <select>.
@@ -359,6 +376,7 @@ function FormulairePhase({
           value={type}
           onChange={(e) => setType(e.target.value as TypePhase)}
           aria-label="Type de la phase"
+          aria-describedby="aide-type-phase"
         >
           {typesProposes.map((valeur) => (
             <option key={valeur} value={valeur}>
@@ -368,7 +386,9 @@ function FormulairePhase({
         </select>
         {/* L'aide suit le type choisi : sans elle, « Colline » ou « Suisse » ne disent rien à un
             organisateur qui découvre le catalogue élargi par E05US015. */}
-        <p className="carte__aide">{AIDE_TYPE[type]}</p>
+        <p className="carte__aide" id="aide-type-phase">
+          {AIDE_TYPE[type]}
+        </p>
         <label className="formulaire__libelle">
           Effectif attendu (facultatif)
           <input

@@ -38,7 +38,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from domain.erreurs import ConfigurationBigShootOffInvalide
+from domain.erreurs import ConfigurationBigShootOffInvalide, ScoreDeMancheManquant
 from domain.participant import Participant
 
 
@@ -90,6 +90,14 @@ class EtatBigShootOff:
     manche: int = 0
     cumuls: tuple[tuple[Participant, int], ...] = ()
     """Scores cumulés depuis le début — vides et inutilisés quand `cumul_des_manches` est faux."""
+
+    barrage_en_cours: tuple[Participant, ...] = ()
+    """Les ex æquo au plus faible score dont le barrage n'est pas encore tranché.
+
+    ⚠️ **Porté par l'état, pas seulement par l'issue de la manche** — sans quoi la couture avec
+    `domain/barrage.py` n'est pas praticable : `eliminer_apres_barrage` ne pourrait vérifier ni
+    qu'une manche est réellement suspendue, ni que le sortant faisait partie des ex æquo. Un service
+    pourrait alors éliminer n'importe qui, à n'importe quel moment, et lui décerner un rang."""
 
     @property
     def est_termine(self) -> bool:
@@ -165,7 +173,7 @@ def jouer_manche(etat: EtatBigShootOff, scores: Mapping[Participant, int]) -> Is
         )
     manquants = [participant for participant in etat.en_lice if participant not in scores]
     if manquants:
-        raise ConfigurationBigShootOffInvalide(
+        raise ScoreDeMancheManquant(
             f"{len(manquants)} archer(s) encore en lice n'ont pas de score pour cette manche : "
             "un score absent n'est pas un score nul."
         )
@@ -194,6 +202,7 @@ def jouer_manche(etat: EtatBigShootOff, scores: Mapping[Participant, int]) -> Is
                 rangs=etat.rangs,
                 manche=etat.manche,
                 cumuls=cumuls_tries if etat.configuration.cumul_des_manches else etat.cumuls,
+                barrage_en_cours=a_egalite,
             ),
             barrage_entre=a_egalite,
         )
@@ -203,13 +212,24 @@ def jouer_manche(etat: EtatBigShootOff, scores: Mapping[Participant, int]) -> Is
 def eliminer_apres_barrage(etat: EtatBigShootOff, perdant_du_barrage: Participant) -> IssueManche:
     """Conclut une manche que l'égalité avait suspendue, une fois le barrage tiré (§8.2).
 
-    Le `perdant_du_barrage` est celui que `domain/barrage.py` a désigné : le moteur du BSO ne
-    rejoue pas le barrage, il en applique le verdict. Séparer les deux est ce qui permet au barrage
-    d'être réutilisé tel quel par les poules et par un duel nul.
+    Le `perdant_du_barrage` est celui que `resoudre_barrage` a désigné (`ResultatBarrage.perdant`
+    du groupe correspondant) : le moteur du BSO ne rejoue pas le barrage, il en applique le verdict.
+    Séparer les deux est ce qui permet au barrage d'être réutilisé tel quel par les poules et par un
+    duel nul.
+
+    ⚠️ **Deux vérifications, et aucune n'est superflue** : il faut qu'une manche soit réellement
+    **suspendue** (sinon on éliminerait quelqu'un hors de toute manche, en lui décernant un rang),
+    et que le sortant fasse partie des **ex æquo** de ce barrage (sinon le verdict d'un barrage
+    servirait à éliminer un tiers). Sans elles, la couture BSO ↔ barrage laisse au service une
+    liberté qu'aucune règle ne lui donne.
     """
-    if perdant_du_barrage not in etat.en_lice:
+    if not etat.barrage_en_cours:
         raise ConfigurationBigShootOffInvalide(
-            "Le perdant du barrage n'est pas en lice dans ce Big Shoot Off."
+            "Aucun barrage n'est en attente : ce Big Shoot Off n'a pas de manche suspendue."
+        )
+    if perdant_du_barrage not in etat.barrage_en_cours:
+        raise ConfigurationBigShootOffInvalide(
+            "Le perdant désigné ne faisait pas partie des ex æquo de ce barrage."
         )
     return _eliminer(etat, perdant_du_barrage, etat.manche + 1, etat.cumuls)
 
@@ -229,5 +249,7 @@ def _eliminer(
         rangs=((sortant, rang), *etat.rangs),
         manche=manche,
         cumuls=tuple((p, s) for p, s in cumuls if p in en_lice),
+        # La manche est conclue : le barrage éventuel ne l'est plus « en cours ».
+        barrage_en_cours=(),
     )
     return IssueManche(etat=suivant, elimine=sortant, rang_attribue=rang)

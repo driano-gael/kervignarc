@@ -249,9 +249,11 @@ En cas d'égalité de total : départage au **plus grand nombre de 10**, puis de
 
 ### 10.1 Formats propres au club — sans équivalent FFTA
 
-Ces trois formats **n'existent pas au règlement fédéral**. Leur règle a été **fournie par le club**,
-et ce document en est la source : rien d'autre ne les décrit. Ne pas les présenter comme des règles
-FFTA.
+Ces formats **n'existent pas au règlement fédéral**. Leur règle a été **fournie par le club**, et ce
+document en est la source : rien d'autre ne les décrit. Ne pas les présenter comme des règles FFTA.
+
+*(La section en comptait trois au 14/07/2026 ; les quatre suivants ont été ajoutés le 31/07/2026,
+quand le commanditaire a fourni leurs règles.)*
 
 **Big Shoot Off** — `❌ hors FFTA` · règle donnée le **31/07/2026** *(ferme la question Q9 du cahier
 des charges, bloquante depuis l'origine)*.
@@ -309,7 +311,8 @@ ré-affrontement** ; départage final **points → Buchholz → critères §8.1*
 > le 4 » — là où le *King of the Hill* oppose les voisins immédiats.
 
 ⚠️ Ce sont **deux réglages d'un même format**, pas deux formats : seule la **portée du défi** les
-sépare. Deux arbitrages du 31/07/2026 : (a) l'application retient la **version de journée** (ordre
+sépare — une distance **maximale** (« le 5 **ou** le 4 »), pas exacte, la distance effective tournant
+d'une manche à l'autre. Deux arbitrages du 31/07/2026 : (a) l'application retient la **version de journée** (ordre
 initial = classement source, nombre de manches réglé à la composition) — le classement permanent de
 club décrit par la règle (« évolue toute l'année ») n'est pas une phase de tournoi ; (b) parmi les
 deux mécaniques que la règle du King of the Hill propose, on retient **« deux voisins s'affrontent »**
