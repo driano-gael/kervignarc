@@ -195,3 +195,102 @@
 - **Arbitrage tranché en cours d'US (30/07/2026, périmètre de l'import des clubs)** : « import des clubs » figurait au reste-à-faire sans spécification retrouvable dans le backlog. Tranché en **import du référentiel** (liste collée, une ligne = un club, avec compte-rendu) — et **non** l'import des inscrits depuis un fichier fédéral, qui est **E02US007** et reste entier. Les deux ne se confondent pas : celui-ci alimente un référentiel **global** de l'atelier, celui-là crée archers, clubs et départs **d'un tournoi** avec ses propres pièges (quota, homonymes, licence).
 - **Arbitrage tranché en cours d'US (31/07/2026, revue — quatre points reversés ici)** : la revue a établi quatre règles que ni le CA ni l'ADR ne portaient, et qui décident du comportement observable. (1) **Unicité de nom en bibliothèque** — deux modèles ne peuvent pas porter le même nom (au sens casse et espaces repliés), à la création **comme au renommage** : l'assemblage et la promotion dédoublonnent par le nom, donc deux homonymes les rendraient non déterministes (un seul serait copié, l'autre compté « déjà présent » sans jamais atteindre un tournoi) → 409 `nom_brique_deja_pris`. (2) **Appliquer un format est refusé** si une phase du tournoi est engagée, **si une phase porte des données** (forfait déclaré au pointage, duelliste posé à la main — les deux FK sont en `ON DELETE CASCADE`), ou **si le format ne décrit aucune qualification** alors que le tournoi en a une (il perdrait son barème, que rien ne permettrait de recréer). (3) **Promouvoir une copie qui n'a pas d'homonyme en bibliothèque crée un modèle « création du club »**, jamais un « officiel FFTA » : une brique renommée localement n'a aucun ancêtre au référentiel fédéral, et la ranger dans la liste officielle salirait la séparation demandée. Mettre à jour un **homonyme** conserve, elle, l'origine du modèle existant (« modifier un officiel le laisse officiel »). (4) **Une brique de bibliothèque ne peut hériter que d'un blason de bibliothèque** — à la création **et** à l'édition ; sans quoi un modèle traînerait une clé étrangère vers l'édition d'un tournoi, recopiée à chaque assemblage.
 - **Dépend de** : E01US003, E01US005, E01US007, E14US003 · **Jalon** : J1 · **ADR** : [ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) · **Origine** : DETTE-023, arbitrage commanditaire 30/07/2026
+
+### E01US024 — Composer, diagnostiquer et simuler un déroulé de tournoi
+*En tant qu'*organisateur, *je veux* composer un déroulé complet dans l'atelier, **le voir**, savoir
+s'il tient debout et **le faire tourner** avant de l'utiliser, *afin de* comprendre mon tournoi d'un
+coup d'œil au lieu de le déduire d'une liste de réglages.
+
+- **Contexte** : E01US023 a fait du **format** une brique du club, mais l'écran livré ne sait
+  fabriquer qu'une **qualification** — pas d'élimination directe, pas d'effectif, pas de source. La
+  capacité de composer un déroulé a donc **disparu de l'atelier** : le contournement documenté
+  (« composez-le sur un tournoi puis enregistrez-le comme format ») oblige à passer par une édition
+  pour fabriquer un modèle du club, soit exactement le mélange que le découpage en axes supprime.
+- **CA — le brouillon** : un format s'**enregistre à tout moment**, même incomplet ou incohérent ;
+  il ne s'**applique** à un tournoi que s'il est cohérent. Demande du commanditaire (31/07/2026) :
+  « *on doit pouvoir sauvegarder le brouillon tout le temps, mais on ne peut réellement l'utiliser
+  pour un vrai tournoi que s'il est valide, avec un déroulé cohérent* ». L'invariant **quitte
+  l'enregistrement pour l'usage** : ce qui doit être cohérent, ce n'est pas la ligne en base, ce sont
+  les **phases produites**. Même patron que le tournoi, qui se crée en `brouillon` et ne passe `prêt`
+  que s'il a au moins un départ ([ADR-0026](../docs/adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md)).
+  Le **nom** reste obligatoire (clé d'unicité) ; l'application refuse en **disant pourquoi**, jamais
+  d'un refus muet.
+- **CA — le schéma à braquets** : un **visuel découpé par phase**, calculé pour un effectif donné.
+  Demande du commanditaire : « *je veux un visuel découpé par phase qui montre où sont les archers,
+  ce qui leur est demandé, où ils iront après leur phase, comme un arbre faisant apparaître les
+  « braquets » des joueurs, en fonction du nombre d'archers […] un visuel bien pensé pour un écran de
+  PC, il ne doit pas laisser d'incompréhension pour celui qui crée l'assemblage de phases* ». Chaque
+  bloc répond à **quatre questions** : *qui est là* (combien, et quelle tranche de rangs), *ce qu'on
+  leur demande* (barème, format de duel), *où ils vont après* (une flèche par sortie), *combien de
+  tours*. Plusieurs flèches peuvent **entrer** dans un bloc, pas seulement en sortir — une phase se
+  peuple de sources multiples (E05US010) : c'est précisément ce qu'un schéma rend lisible et qu'une
+  liste rend opaque.
+- **CA — les braquets** : à chaque tour, les perdants forment une **tranche de rangs** qui devient un
+  sous-tableau. C'est la **Règle R** de `moteur-placement-lucky-loser.md` rendue visible.
+- **CA — effectif simulé** : un champ « simuler avec N archers » en tête d'écran. Sans effectif, un
+  format reste abstrait (« qualification puis tableau ») ; avec, les braquets deviennent calculables
+  (« rangs 33 à 120 »). Changer N recalcule le dessin.
+- **CA — le schéma EST le contrôle de validité** : un archer **sans destination** est un **trou
+  visible** dans le dessin, pas un message d'erreur abstrait. C'est ce qui unifie le brouillon et le
+  visuel — et ce qui rend le diagnostic compréhensible par un non-technicien.
+- **CA — simuler le format** : lancer le déroulé sur N inscrits fictifs et voir ce qu'il produit.
+  Demande du commanditaire : « *je veux être sûr de pouvoir lancer une simulation du format du
+  tournoi une fois les phases et le nombre d'inscrits donnés* ». La simulation révèle ce qu'aucune
+  relecture ne donne : le format **tient-il** à cet effectif (personne bloqué, personne oublié),
+  **combien de duels au total** — donc quelle charge pour les scoreurs et les cibles —, combien de
+  tours par phase, et le **classement 1→N effectivement produit**.
+- **CA — l'ajustement d'effectif** : simuler à **120** puis à **82** doit fonctionner sans retoucher
+  le format (cf. E05US010, CA « plages relatives »). C'est le contrôle qui valide à la fois les
+  sources relatives et la simulation.
+
+**Notes — à lire avant de commencer.**
+
+> **Il n'y a PAS de moteur de simulation à écrire.** `ServiceSimulation`
+> ([ADR-0054](../docs/adr/0054-execution-ephemere-du-moteur-sur-adapters-in-memory.md), E15US002 ✅)
+> rejoue déjà qualif → duels → classement sur des adapters **in-memory**, la non-persistance étant
+> une propriété **structurelle** (aucun chemin vers SQLite ni vers la file d'écriture). Et
+> `ServiceJeuEssai` (E15US001 ✅) sait générer des archers fictifs. Il n'y a qu'à **composer les
+> deux** : `simuler_format(format, effectif)` fabrique un tournoi éphémère **dans le harnais**, y
+> applique le format, y génère N archers, et le joue. C'est même plus propre que le chemin existant,
+> qui hydrate depuis un tournoi réel : ici rien ne vient de la base, donc le garde-fou d'ADR-0054 §4
+> (« on ne simule qu'un tournoi avant démarrage ») n'a pas lieu de s'appliquer — il n'y a pas de
+> tournoi réel à polluer.
+
+> **Une seule source de règles, deux usages.** `verifier_coherence_etape` et `verifier_sequence`
+> (`backend/domain/phase.py`, ~l. 324 et 339) lèvent aujourd'hui la **première** erreur rencontrée.
+> Les transformer en **générateurs d'anomalies**, les versions levantes devenant de minces
+> enveloppes qui lèvent la première produite. Les anomalies sont les **instances d'erreurs typées
+> existantes** (`FormatSansEtape`, `SequenceOrdreInvalide`, `PhaseQualificationIncomplete`,
+> `SourceApresPhase`…), qui portent déjà leur `code` et leur message : **aucune règle n'est
+> recopiée** — c'est ce qui évite la duplication d'invariant que le registre de dette proscrit.
+
+> ⚠️ **Cinq tests seront INVERSÉS**, et c'est délibéré. `test_domain_format_tournoi.py` vérifie
+> aujourd'hui que la **construction refuse** (format sans étape, ordres non contigus, source
+> postérieure, qualification sans barème). Ils deviendront des tests du **diagnostic** : mêmes cas,
+> même vocabulaire, assertion retournée. Précédent au projet : DETTE-009 (« test de non-régression
+> HTTP **inversé** »). **À signaler explicitement en revue** — c'est ce qui ressemble le plus à un
+> garde-fou désarmé sans en être un, l'enforcement se **déplaçant** vers `appliquer`.
+
+> **SVG maison, aucune bibliothèque** (règle 11 ; précédent [DETTE-024](../docs/dette.md), routeur
+> maison plutôt qu'une dépendance). La mise en page d'un graphe à 3-8 nœuds tient en quelques
+> dizaines de lignes. Logique **pure et testée** dans un module dédié (calcul des tranches et des
+> flux depuis format + effectif) : le JSX ne se teste pas, la logique si — convention du projet
+> (`features/blasons/zones.ts`, `features/phases/ordre.ts`). Réutiliser `deplacer<T>` de
+> `frontend/src/features/phases/ordre.ts`, générique et déjà testé.
+
+> **Le modèle à imiter pour l'éditeur** : `frontend/src/features/phases/Phases.tsx` fait déjà ce
+> travail pour un tournoi (ajouter, typer, source, effectif, monter/descendre). Différences : pas de
+> **statut** (un modèle n'en a pas) ; la **qualification est éditable ici** (barème + grain), alors
+> que dans un tournoi elle est gérée par l'écran « Barème & validation » ; les **ordres sont dérivés
+> de la position** dans la liste, jamais saisis — ce qui supprime par construction toute la classe
+> d'erreurs « ordres non contigus ».
+
+> **Décision structurante ⇒ ADR** : « un format se compose en brouillon ; l'invariant se vérifie à
+> l'application, pas à l'enregistrement ». Conséquence à assumer noir sur blanc : **la base peut
+> contenir des formats incohérents**, et c'est `appliquer` qui protège le tournoi.
+
+- **Absorbe** : l'éditeur visuel et la simulation de format, cadrés le 31/07/2026 comme US distinctes
+  puis regroupés à la demande du commanditaire (« des US les plus grosses possible »).
+- **Dépend de** : **E05US010** (sources multiples et relatives — sans elles le schéma ne peut pas
+  montrer les braquets ni s'ajuster à l'effectif) · **Jalon** : J3
+- **Origine** : cadrage du 31/07/2026, parti du constat que l'écran d'E01US023 ne composait rien.

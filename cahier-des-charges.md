@@ -167,7 +167,7 @@ La solution s'articule autour de 9 modules :
 | EF-6.3 | **Progression automatique** : le gagnant d'un match avance ; le perdant est routé selon la règle de la phase (élimination, repêchage, placement). |
 | EF-6.4 | **Repêchage Lucky Loser** : reversement des perdants d'un tour donné dans un tableau de repêchage. |
 | EF-6.5 | **Tableaux de placement** : sous-tableaux classant les rangs intermédiaires (ex. 17-24, 25-32…) — cf. `TABLEAU 2 OK`. |
-| EF-6.6 | **Big Shoot Off** en grande finale (barème dédié). ⚠️ **Règle non spécifiée — cf. Q9** : format club sans équivalent FFTA, non implémentable tant que le club n'a pas fourni sa règle. |
+| EF-6.6 | **Big Shoot Off** en grande finale. ✅ **Règle fournie par le club le 31/07/2026 (Q9 fermée)** : ce n'est **pas un barème de duel** mais un **type de phase** à N participants — ils tirent **en parallèle**, par tours de V volées de F flèches, et **le plus faible est éliminé** à chaque tour, jusqu'à K restants. Le « Big » désigne le **nombre d'archers**, pas le nombre de flèches. Spécifié en [E05US015](stories/E05-moteur-phases.md). |
 | EF-6.7 | Édition manuelle ponctuelle d'un tableau par l'organisateur (correction, forfait) avec recalcul de la progression. |
 
 ### M7 — Classement & affichage public
@@ -263,7 +263,7 @@ La solution s'articule autour de 9 modules :
 | Q6 | **Priorité des contraintes de placement** en cas de conflit (cf. M4) | Ordre de priorité souhaité |
 | Q7 | **Mode de saisie par défaut** sur tablette (scoreur vs archer, cf. H1) | Décision |
 | Q8 | **Récompenses / podiums** | Gestion de l'attribution par catégorie ? |
-| **Q9** | 🔴 **Règle du Big Shoot Off** — **bloquante** | Le BSO est cité comme barème de la grande finale (EF-1.5, EF-3.2, EF-5.2, M6) mais **n'existe pas au règlement FFTA** et n'est défini **dans aucun document du projet**. Il est donc **non implémentable en l'état**. À obtenir du club : nombre de flèches, critère de victoire, départage. |
+| ~~Q9~~ | ✅ **Règle du Big Shoot Off** — **fermée le 31/07/2026** | Le BSO était cité comme barème de la grande finale (EF-1.5, EF-3.2, EF-5.2, M6) sans **exister au règlement FFTA** ni être défini **dans aucun document du projet** — bloquant depuis l'origine. **Règle donnée par le club** : « une phase finale qui reçoit x archers ; ils sont en parallèle, chacun tire x volées de x flèches, et le plus faible score est éliminé, jusqu'aux x derniers restants ». **Conséquence de cadrage** : ce n'est pas un **barème** mais un **type de phase** à N participants — ce qui lève la tension du CDC, qui le rangeait tantôt en barème (EF-1.5, EF-5.2) tantôt en type (EF-3.2). Spécifié en [E05US015](stories/E05-moteur-phases.md), avec quatre points laissés à la recette (score du tour ou cumul, égalité au plus faible, rang des éliminés, K > 1). |
 
 ---
 

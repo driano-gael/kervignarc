@@ -49,7 +49,42 @@ sans traverser le gymnase.
   n'est pas le même écran. `Q-UX7` **ouverte** : durée ou geste pour terminer une prise de contrôle —
   à trancher. Motif du pilotage : basculer sur le podium à 17 h et partir serrer des mains, c'est un
   écran figé sur le podium à 18 h pendant que les gens cherchent leur classement.
-- **Absorbe** : ex-E07US007. **Dépend de** : E07US001, E04US001, E12US001 · **Jalon** : J3
+- **CA — le plan de tournoi, en suivi (ajouté le 31/07/2026)** : l'écran affiche le **même schéma à
+  braquets** que l'atelier (E01US024), mais **rempli par la réalité** : phase terminée / en cours / à
+  venir, **tour en cours**, duels joués sur duels attendus, braquets qui **se remplissent** au fur et
+  à mesure. Demande du commanditaire : « *on doit bien voir l'avancement des tours aussi dans une
+  phase* ». On voit d'un coup d'œil où en est le tournoi, quel tour tourne, et combien de duels
+  restent.
+- **CA — la même vue au pilotage** : ce plan de suivi est aussi une **destination de l'axe pilotage**
+  (écran PC, interactif) — l'organisateur le consulte à son poste sans dépendre d'un écran projeté.
+  Partage habituel : le **modèle** à l'atelier, l'**édition en cours** au pilotage
+  ([ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §6).
+
+> **Un seul composant de dessin, trois surfaces — c'est la décision de conception centrale.** Le
+> dessiner pour un seul écran condamnerait les deux autres : les contraintes sont **opposées**.
+>
+> | Surface | Écran | Interaction | Habillage |
+> |---|---|---|---|
+> | Atelier — composer *(E01US024)* | PC | on compose | **outil** (jamais d'identité, `D-27`) |
+> | Pilotage — suivre | PC | oui | **outil** |
+> | Salle — projeter | ≥ 1920 px, **vu de loin** | **aucune** | **identité du tournoi** (`D-27`, `DV-08`) |
+>
+> Le composant est donc paramétré par **densité** (compact / large), **interactivité** (oui / non) et
+> **habillage** (outil / identité). Distance de lecture, taille de texte, contraste et rotation
+> automatique ne se rattrapent pas après coup.
+
+> **Les données du suivi existent déjà** pour l'élimination directe : `domain/tableau.py` (arbre,
+> progression, podium — E05US005 ✅), les duels (E04US013 ✅) et le classement. Ce qui manque viendra
+> avec le **placement** (E05US010). Ne pas recoder l'arbre.
+
+> **Ce que cette US ne fait pas** : dessiner l'**arbre de matchs duel par duel** (les 32 duels
+> individuels d'un tableau). Le suivi montre l'avancement **par tour**. Un vrai bracket dessiné est
+> un autre chantier, à ouvrir s'il se révèle nécessaire à l'usage.
+
+- **Absorbe** : ex-E07US007, **et le suivi visuel du déroulé** (cadré le 31/07/2026 comme US
+  distincte, regroupé ici à la demande du commanditaire — « des US les plus grosses possible »).
+- **Dépend de** : E07US001, E04US001, E12US001, **E01US024** (le composant de dessin y naît) ·
+  **Jalon** : J3 · **Origine du CA « suivi »** : cadrage du 31/07/2026
 
 ### E07US005 — Vue tableaux/arbres live
 *En tant que* spectateur, *je veux* voir les arbres de duels en direct, *afin de* suivre la progression.

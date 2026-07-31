@@ -28,7 +28,29 @@
 > éphémère + `E15US003` cockpit de simulation livrés). **`E12US002` est livrée** (feu vert + lancement) ;
 > la séquence J2 reprend maintenant à `E08US005`.
 >
-> **`E07US008` — vue publique des affectations du prochain tour** : la **prochaine à prendre**, le
+> **⚡ PRIORITÉ — le chantier « moteur de phases & plan de tournoi » (cadré le 31/07/2026).** Il passe
+> **devant** `E07US008`. Quatre US, à prendre **dans cet ordre** — chacune porte son contexte complet,
+> lisez-la avant de coder :
+>
+> | Ordre | US | Ce qu'elle livre |
+> |---|---|---|
+> | **1** | **`E05US010`** | Le moteur de placement 1→N, le **routing générique** (`route(perdant, tour, contexte)`), les **sources multiples et relatives**, l'oracle 120 |
+> | 2 | `E05US015` | Le **catalogue de types** : échauffement, barrage, poules, repêchage, Big Shoot Off |
+> | 3 | `E01US024` | **Composer, diagnostiquer et simuler** un déroulé (brouillon, schéma à braquets, simulation) |
+> | 4 | `E07US004` | **Voir le tournoi se dérouler** : suivi des tours + écran de salle |
+>
+> **Pourquoi E05US010 en tête** : le verrou du moteur n'est pas le catalogue de types mais le
+> **routing** — `DestinationPerdant` (`backend/domain/politiques.py:68`) n'a qu'**une** valeur,
+> `ELIMINE`. Tout ce qui n'est pas élimination sèche (placement, repêchage, consolation,
+> non-qualifiés de poule) en dépend. Les trois autres US en découlent.
+>
+> **Origine** : une session de cadrage du 31/07/2026, partie du constat que l'écran « Formats » livré
+> par E01US023 ne savait composer qu'une qualification. Trois découvertes y ont été faites et sont
+> consignées dans les US : **Q9 fermée** (la règle du Big Shoot Off, bloquante depuis le cahier des
+> charges, a été fournie par le commanditaire), **E05US019 était un doublon** d'E01US023, et le
+> **verrou routing** ci-dessus. *(Aucun code n'a été écrit ce jour-là : seul le backlog.)*
+>
+> *Ensuite seulement :* **`E07US008`** — vue publique des affectations du prochain tour, le
 > **deuxième** des quatre canaux de routage (`D-09`) — la même projection que le panneau de la
 > tablette (`E04US018`, livrée), mais sur le **téléphone de l'archer**, qui a déjà quitté la salle.
 > Le service et l'endpoint de routage existent (`ServiceRoutage`, `GET /api/v1/routage/{tournoi}`,
@@ -363,7 +385,7 @@
 | 67 | E08US005 | Rembourser une inscription payée annulée | ✅ *(registre de remboursements, ADR-0057)* |
 | 68 | E12US002 | Lancer un tour (feu vert + lancement) | ✅ *(feu vert + lancement-événement, ADR-0056)* |
 | 69 | E04US018 | Afficher la prochaine cible après validation | ✅ *(panneau de routage, canal n°1)* |
-| 70 | E07US008 | Vue publique des affectations du prochain tour | 🎯 *(prochaine — canal n°2)* |
+| 70 | E07US008 | Vue publique des affectations du prochain tour | ⬜ *(canal n°2 — décalée derrière le chantier moteur, cf. 🎯)* |
 | 71 | E06US003 | Barrage de tir pour places décisives | ⬜ |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ⬜ |
 
@@ -371,17 +393,17 @@
 
 | Seq | US | Titre | État |
 |---|---|---|---|
-| 73 | E05US010 | Placement intégral 1→N | ⬜ |
-| 74 | E05US015 | Big Shoot Off | ⬜ |
-| 75 | E05US018 | Oracle 120 (rejeu + comparaison) | ⬜ |
+| 73 | E05US010 | Placement intégral 1→N **& peuplement multiple** | 🎯 *(prochaine — tête du chantier moteur ; absorbe E05US018, résorbe DETTE-015)* |
+| 74 | E05US015 | **Catalogue de types de phase** (échauffement, barrage, poules, repêchage, BSO) | ⬜ *(absorbe E05US016 ; **Q9 fermée** le 31/07)* |
+| 75 | ~~E05US018~~ | ~~Oracle 120~~ → **absorbée par E05US010** | ⬜ *(le moteur et sa preuve ne se séparent pas)* |
 | 76 | E06US006 | Classement intégral 1→N & profondeur | ⬜ |
 | 77 | E03US007 | Contrainte séparation catégorie/blason | ⬜ |
 | 78 | E09US005 | Classements PDF | ⬜ |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |
 | 80 | E01US016 | Définir l'identité visuelle du tournoi | ⬜ |
-| 81 | E07US004 | Écran de salle : déroulé auto & pilotage | ⬜ |
+| 81 | E07US004 | Écran de salle **+ suivi du déroulé** (un composant, trois surfaces) | ⬜ *(dépend d'E01US024)* |
 | 82 | E07US005 | Vue tableaux/arbres live | ⬜ |
-| 83 | E05US019 | Enregistrer une séquence comme modèle | ⬜ |
+| 83 | ~~E05US019~~ | ~~Enregistrer une séquence comme modèle~~ → **livrée par E01US023** | ✅ *(doublon repéré le 31/07 : ADR-0060 §5)* |
 | — | E00US015 | Ossature de navigation admin (coquille) | ✅ *(fait en avance — ajout 18/07)* |
 
 ## J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/8)**
@@ -393,7 +415,7 @@
 | 86 | E01US012 | Gérer plusieurs gabarits | ⬜ |
 | 87 | E03US010 | Générer / éditer le déroulé horaire | ⬜ |
 | 88 | E09US007 | Déroulé horaire imprimable | ⬜ |
-| 89 | E05US016 | Routing repêchage-réintégration (WA) | ⬜ |
+| 89 | ~~E05US016~~ | ~~Routing repêchage (WA)~~ → **absorbée par E05US015** | ⬜ |
 | 90 | E11US006 | Restauration & arrêt propre | ⬜ |
 | 91 | E10US006 | Modifier le mot de passe admin | ⬜ |
 

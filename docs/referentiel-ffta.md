@@ -242,16 +242,52 @@ En cas d'égalité de total : départage au **plus grand nombre de 10**, puis de
 | Duel individuel | sets, premier à **4 pts** | sets, premier à **6 pts**, 5 sets (B.6.1.4.1) |
 | ½ finales / finales | 5 volées de 3, 6 pts | *(format normal du duel — la FFTA ne distingue pas un « barème de finale »)* |
 | Marquage | volée par volée | scores établis **toutes les 2 volées** de 3 (B.6.1.2) |
-| Grande finale | **Big Shoot Off** | *(n'existe pas — voir §11)* |
+| Grande finale | **Big Shoot Off** | *(n'existe pas au règlement — règle **club**, voir §10.1)* |
 | Structure | 120 archers, placement intégral 1→N | 32 à l'éliminatoire, 8 en finale (A.7.5) |
 
 **Décision (2026-07-14)** — L'application livre **deux jeux de presets** : *FFTA officiel* et *format club*. L'organisateur choisit à la création ; les deux restent surchargeables (principe directeur du §10).
+
+### 10.1 Formats propres au club — sans équivalent FFTA
+
+Ces trois formats **n'existent pas au règlement fédéral**. Leur règle a été **fournie par le club**,
+et ce document en est la source : rien d'autre ne les décrit. Ne pas les présenter comme des règles
+FFTA.
+
+**Big Shoot Off** — `❌ hors FFTA` · règle donnée le **31/07/2026** *(ferme la question Q9 du cahier
+des charges, bloquante depuis l'origine)*.
+> Une phase **finale** qui reçoit **N archers**. Ils tirent **en parallèle**, par tours ; à chaque
+> tour chacun tire **V volées de F flèches**, et **le plus faible score est éliminé** — jusqu'à
+> **K restants**.
+
+Ce n'est **pas un barème de duel** mais un **type de phase à N participants** : le « Big » désigne le
+nombre d'archers, pas le nombre de flèches. Quatre points restés à préciser, tranchés par défaut et
+**à confirmer à l'usage** : on compare le score **du tour** (tout se rejoue à chaque manche) ; une
+égalité au plus faible se départage au **barrage** (§8.2) ; les éliminés prennent les rangs dans
+l'**ordre inverse** de leur sortie ; **K = 1** par défaut.
+
+**Poules** — `❌ hors FFTA` (en salle 18 m) · règle donnée le **31/07/2026**.
+> **Principe** — les archers sont regroupés en poules et se rencontrent dans leur groupe.
+> **Fonctionnement** — chaque archer rencontre tout ou partie des autres archers de sa poule ; un
+> barème de points attribue les victoires, nuls et défaites ; le classement de poule détermine les
+> qualifiés pour la phase suivante.
+> **Départage** — points de match, puis différence de sets, puis différence de score, puis nombre de
+> 10 / 9, puis barrage si nécessaire.
+
+⚠️ Cet ordre de départage **diffère** de celui de la qualification (§8.1, qui s'arrête aux 10 puis
+aux 9) : il le **précède** de trois critères propres au jeu en poule. Ne pas confondre les deux.
+
+**Échauffement** — `❌ hors FFTA` · demandé le **31/07/2026**.
+> Une phase **sans point et sans classement**.
+
+Elle n'attribue rien et n'élimine personne ; elle **occupe du temps et des cibles**, donc elle
+apparaît au déroulé, au plan de salle et à l'écran de projection. Conséquence de modèle : une phase
+sans classement **ne peut pas être prélevée par rangs**.
 
 ---
 
 ## 11. Points restés `❓ à confirmer`
 
-- **Big Shoot Off** — 🔴 **bloquant**. Le CDC en fait le barème de la grande finale, mais le BSO **n'existe nulle part dans le règlement FFTA** : c'est un format club, et sa règle n'est écrite **dans aucun document du projet**. Impossible à implémenter en l'état. À obtenir auprès du club (nombre de flèches, départage, critère de victoire), puis à documenter en §10.1.
+- ~~**Big Shoot Off**~~ — ✅ **résolu le 31/07/2026**. La règle a été obtenue auprès du club et est documentée en **§10.1** ; la question **Q9** du cahier des charges est fermée. Au passage, le cadrage a établi que ce n'est pas un *barème* mais un **type de phase** à N participants.
 - **Correspondance** catégories historiques (Poussin…Super Vétéran) ↔ U11…S3 : usage courant, non écrit dans le règlement 2023.
 - **Découpage exact des 60 flèches de qualification** en volées (20 × 3 retenu par usage + art. B.6.1.2) : à confirmer sur le mandat de l'organisateur.
 - **Règles de seeding/exempts** : non normées dans le chapitre 18 m → décision projet.
