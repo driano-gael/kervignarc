@@ -1,7 +1,7 @@
 # Référentiel FFTA — Tir à 18 m (salle)
 
-- **Version** : 1.1
-- **Date** : 2026-07-14 *(v1.1 : §10 réécrit après confrontation au CDC — arbitrages du 14/07 ; §10.1 « formats club » ajouté ; contradictions internes du §3 et du §10 levées)*
+- **Version** : 1.2
+- **Date** : 2026-07-31 *(v1.2 : §10.1 complété — cinq formats supplémentaires dont le commanditaire a fourni la règle le 31/07/2026, ce qui lève le gate « pas de règle écrite, pas d'US » ; défauts des poules et du BSO alignés sur les arbitrages du même jour. v1.1 : §10 réécrit après confrontation au CDC — arbitrages du 14/07 ; §10.1 « formats club » ajouté ; contradictions internes du §3 et du §10 levées)*
 - **Source** : *Règlements sportifs et Arbitrage de la FFTA, édition décembre 2023* — chapitre **II.2 « Le Tir à 18 m »** et **Chapitre I « Les Règlements Généraux »**. Texte intégral archivé dans `docs/sources/ffta/reglement-sportif-ffta-2023_texte-integral.txt`.
 - **But** : source de vérité des règles (catégories, blasons, barèmes, départage, formats) qui alimentent la configuration des tournois (EPIC-01) et le moteur de phases/placement (EPIC-03, EPIC-05). Sert aussi de base documentaire générale sur la discipline.
 
@@ -260,10 +260,11 @@ des charges, bloquante depuis l'origine)*.
 > **K restants**.
 
 Ce n'est **pas un barème de duel** mais un **type de phase à N participants** : le « Big » désigne le
-nombre d'archers, pas le nombre de flèches. Quatre points restés à préciser, tranchés par défaut et
-**à confirmer à l'usage** : on compare le score **du tour** (tout se rejoue à chaque manche) ; une
-égalité au plus faible se départage au **barrage** (§8.2) ; les éliminés prennent les rangs dans
-l'**ordre inverse** de leur sortie ; **K = 1** par défaut.
+nombre d'archers, pas le nombre de flèches. Quatre points restés à préciser, tranchés le
+**31/07/2026** et **à confirmer à l'usage** : le cumul entre manches est un **paramètre** (par
+défaut on repart de zéro, donc on compare le score **du tour**) ; une égalité au plus faible se
+départage au **barrage** (§8.2) ; les éliminés prennent les rangs dans l'**ordre inverse** de leur
+sortie ; **K = 1** par défaut, et si K > 1 les restants **partagent** le rang.
 
 **Poules** — `❌ hors FFTA` (en salle 18 m) · règle donnée le **31/07/2026**.
 > **Principe** — les archers sont regroupés en poules et se rencontrent dans leur groupe.
@@ -276,6 +277,11 @@ l'**ordre inverse** de leur sortie ; **K = 1** par défaut.
 ⚠️ Cet ordre de départage **diffère** de celui de la qualification (§8.1, qui s'arrête aux 10 puis
 aux 9) : il le **précède** de trois critères propres au jeu en poule. Ne pas confondre les deux.
 
+Points laissés ouverts, tranchés le **31/07/2026** : composition **serpent** depuis le classement
+source ; **round-robin complet** par défaut, « tout ou partie » étant un réglage ; barème
+**3 / 1 / 0** (victoire / nul / défaite) ; **aucun défaut** au nombre de qualifiés par poule — il
+dépend de ce que la phase suivante attend, pas du format de poule.
+
 **Échauffement** — `❌ hors FFTA` · demandé le **31/07/2026**.
 > Une phase **sans point et sans classement**.
 
@@ -283,11 +289,69 @@ Elle n'attribue rien et n'élimine personne ; elle **occupe du temps et des cibl
 apparaît au déroulé, au plan de salle et à l'écran de projection. Conséquence de modèle : une phase
 sans classement **ne peut pas être prélevée par rangs**.
 
+**Système suisse** — `❌ hors FFTA` · règle donnée le **31/07/2026**.
+> Classer beaucoup de participants **sans éliminer personne**. Manche 1 : les rencontres sont
+> aléatoires (ou par classement). Manche 2 : les vainqueurs rencontrent les vainqueurs, les perdants
+> rencontrent les perdants. Même principe ensuite. Au fil des manches, les meilleurs jouent les
+> meilleurs et les moins forts des adversaires de leur niveau. Après **5 à 7 rondes**, on obtient un
+> classement très fiable sans avoir éliminé personne.
+
+Quatre points laissés ouverts, **tranchés le 31/07/2026** et à confirmer à l'usage : rondes
+paramétrables (**défaut 5**) ; ronde 1 appariée **par classement, jamais aléatoire** (l'aléa non
+maîtrisé est proscrit par la règle 9 du projet — un tournoi doit se rejouer à l'identique) ; **pas de
+ré-affrontement** ; départage final **points → Buchholz → critères §8.1**. À effectif impair, un
+**bye** revient au moins bien classé n'en ayant pas encore eu.
+
+**King of the Hill & Ladder** — `❌ hors FFTA` · règles données le **31/07/2026**.
+> Les participants occupent des positions ordonnées (« la colline »). On en fait s'affronter
+> certains : **le gagnant monte, le perdant descend**. Après plusieurs manches, les meilleurs
+> remontent naturellement. Le *Ladder* encadre les défis — « le n°6 peut seulement défier le 5 ou
+> le 4 » — là où le *King of the Hill* oppose les voisins immédiats.
+
+⚠️ Ce sont **deux réglages d'un même format**, pas deux formats : seule la **portée du défi** les
+sépare. Deux arbitrages du 31/07/2026 : (a) l'application retient la **version de journée** (ordre
+initial = classement source, nombre de manches réglé à la composition) — le classement permanent de
+club décrit par la règle (« évolue toute l'année ») n'est pas une phase de tournoi ; (b) parmi les
+deux mécaniques que la règle du King of the Hill propose, on retient **« deux voisins s'affrontent »**
+plutôt que « tous défient le King », parce qu'elle fait jouer tout le monde à chaque manche.
+
+⚠️ **L'exemple chiffré du Ladder contredit sa propre règle** et reste **à confirmer** : partant de
+`1 2 3 4 5 6 7 8`, « le n°6 défie le 4 et gagne » y donne `1 2 3 5 6 4 7 8` — le n°6 en 5ᵉ position,
+alors que « le gagnant monte » mène à la 4ᵉ. L'application suit la **règle**.
+
+**Handicap** — `❌ hors FFTA` · règle donnée le **31/07/2026**.
+> Chaque archer possède un handicap calculé à partir de ses performances précédentes. Le score final
+> vaut **score réalisé + handicap**. Un débutant qui tire beaucoup mieux que son niveau habituel peut
+> ainsi battre un champion qui réalise une performance moyenne : le système récompense la
+> **progression** plutôt que la performance absolue. Limite reconnue par la règle : « le calcul du
+> handicap doit être fiable » — un handicap mal évalué avantage indûment les nouveaux.
+
+⚠️ **Aucune table de handicap n'existe dans ce référentiel, et l'application n'en code aucune.** La
+FFTA n'a pas de système de handicap officiel ; celui qui fait référence est **anglo-saxon** (Archery
+GB / World Archery). En reconstituer une produirait des classements plausibles mais **faux**.
+L'application fournit donc le **mécanisme** — deux valeurs par archer, un handicap *officiel*
+entretenu par le club et une *surcharge* qui le prime pour une édition — et le club répond de la
+valeur.
+
+**Finale spectacle** — `❌ hors FFTA` · règle donnée le **31/07/2026**.
+> Format destiné au **public**. Après les qualifications : top 8 → quarts → demi-finales → petite
+> finale → grande finale, pour créer une **montée en intensité**. On y ajoute souvent musique,
+> présentation des archers, écran géant, commentateur, compte à rebours, tirs alternés et une seule
+> cible centrale. En arc classique les duels se jouent au **système de sets** (premier à 6 points de
+> set) ; en arc à poulies au **score cumulé sur 15 flèches**. En cas d'égalité, un **tir de barrage**
+> départage.
+
+⚠️ Ce n'est **pas un format nouveau** au sens du moteur : c'est un tableau à élimination directe à 8
+avec petite finale, plus un barème de duel — les deux barèmes cités sont exactement les presets
+FFTA (§6.2, §7 et A.7.5.2 : 5 volées de 3 = 15 flèches). Sa part propre est la **mise en scène**,
+qui relève de l'écran de salle et du plan de salle.
+
 ---
 
 ## 11. Points restés `❓ à confirmer`
 
 - ~~**Big Shoot Off**~~ — ✅ **résolu le 31/07/2026**. La règle a été obtenue auprès du club et est documentée en **§10.1** ; la question **Q9** du cahier des charges est fermée. Au passage, le cadrage a établi que ce n'est pas un *barème* mais un **type de phase** à N participants.
+- ~~**Formats du catalogue ouvert**~~ (handicap, système suisse, King of the Hill, Ladder, finale spectacle) — ✅ **résolu le 31/07/2026**. Leurs règles ont été obtenues auprès du club et sont documentées en **§10.1**. Restent `❓ à confirmer` à la recette : les **défauts** tranchés faute de précision (défaut des poules, remise à zéro du BSO, 5 rondes au suisse, Buchholz) et l'**écart** entre la règle du Ladder et son exemple chiffré.
 - **Correspondance** catégories historiques (Poussin…Super Vétéran) ↔ U11…S3 : usage courant, non écrit dans le règlement 2023.
 - **Découpage exact des 60 flèches de qualification** en volées (20 × 3 retenu par usage + art. B.6.1.2) : à confirmer sur le mandat de l'organisateur.
 - **Règles de seeding/exempts** : non normées dans le chapitre 18 m → décision projet.

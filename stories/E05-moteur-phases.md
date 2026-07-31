@@ -307,29 +307,94 @@ existent depuis E05US003 (✅) ; cette US en peuple le catalogue.
 
 **Notes.**
 
-> **Décisions prises faute de précision, à confirmer à la recette** — je les écris plutôt que de les
-> enfouir dans le code. **Poules** : composition **serpent** depuis le classement source ; nombre de
-> poules saisi, taille déduite ; **round-robin complet** (la règle dit « tout ou partie » : c'est donc
-> un **réglage**, pas du code — règle 2) ; victoire **2** / nul **1** / défaite **0** (cohérent avec
-> le barème de sets FFTA) ; **2 qualifiés** par poule ; les non-qualifiés vont où la séquence l'indique.
-> **BSO** : on compare le score **du tour** (tout se rejoue à chaque manche — lecture littérale de la
-> règle donnée, et c'est ce qui fait le suspense d'une finale spectacle ; au **cumul**, un mauvais
-> premier tour pèserait jusqu'au bout et les derniers tours perdraient leur enjeu) ; égalité au plus
-> faible → **barrage** entre les ex æquo (règle FFTA §8.2, déjà implémentée — autant la réutiliser) ;
-> les éliminés prennent les rangs dans l'**ordre inverse** de leur sortie, ce qui fait du BSO une
-> phase qui **classe tout le monde**, cohérente avec le placement 1→N ; **K = 1** par défaut, et si
-> K > 1 les restants partagent le rang. **Chacune de ces décisions se corrige par une politique
-> `scoring` ; aucune ne touche le moteur.**
+> **Décisions prises faute de précision** — ⚠️ **arbitrées avec le commanditaire au cadrage du
+> 31/07/2026** ; ce qui suit est le CA **à jour**, pas la proposition initiale.
+> **Poules** : composition **serpent** depuis le classement source ; nombre de poules saisi, taille
+> déduite ; **round-robin complet** par défaut (la règle dit « tout ou partie » : c'est donc un
+> **réglage**, `rencontres_par_archer`, pas du code — règle 2) ; victoire **3** / nul **1** /
+> défaite **0** *(le commanditaire a écarté le 2/1/0 initialement proposé : 3/1/0 **écarte
+> davantage** un vainqueur d'un archer qui accumule les nuls)* ; **aucun défaut** au nombre de
+> qualifiés — l'organisateur le saisit, parce qu'il dépend de ce que la **phase suivante** attend
+> (un tableau de 16 alimenté par 8 poules en prend 2, par 4 poules en prend 4) ; les non-qualifiés
+> vont où la séquence l'indique.
+> **BSO** : le cumul entre manches est un **paramètre** (`cumul_des_manches`), à la demande du
+> commanditaire, avec **remise à zéro** en valeur pré-remplie — lecture littérale de la règle, et
+> c'est ce qui fait le suspense d'une finale spectacle ; au cumul, un mauvais premier tour pèse
+> jusqu'au bout et les dernières manches perdent leur enjeu. Égalité au plus faible → **barrage**
+> entre les ex æquo (§8.2, réutilisé tel quel) ; les éliminés prennent les rangs dans l'**ordre
+> inverse** de leur sortie, ce qui fait du BSO une phase qui **classe tout le monde**, cohérente
+> avec le placement 1→N ; **K = 1** par défaut, et si K > 1 les restants **partagent** le rang (la
+> règle ne donne aucun critère pour les départager entre eux — leur en inventer un serait ajouter à
+> la règle). **Chacune de ces décisions est une politique ou un paramètre ; aucune ne touche le
+> moteur.**
+>
+> ⚠️ **Piège à effectif impair** : tronquer le round-robin (`rencontres_par_archer`) ne donne pas le
+> même nombre de rencontres à tout le monde — un tour sur deux fait reposer quelqu'un, donc l'écart
+> est d'**une** rencontre. Deux façons honnêtes de l'éviter : composer des poules de taille
+> **paire**, ou laisser le round-robin complet. Signalé plutôt que corrigé en douce : rallonger le
+> cercle changerait le nombre de rencontres demandé.
 
-> **Ce que cette US ne fait pas** : handicap, système suisse, king of the hill, ladder, finale
-> spectacle. Ce sont les **cibles** du catalogue ouvert d'EF-3.2, « livrables dès que leur règle est
-> écrite ». Même *gate* que celui qui bloquait le BSO : **pas de règle écrite, pas d'US**.
-> -> demander un jeu de règles au commanditaire pour ces formats, en discuter et les integer a l'us
+> **~~Ce que cette US ne fait pas~~ — le *gate* est levé.** Handicap, système suisse, King of the
+> Hill, Ladder et finale spectacle étaient les **cibles** du catalogue ouvert d'EF-3.2, « livrables
+> dès que leur règle est écrite », sous le même *gate* que celui qui bloquait le BSO : **pas de règle
+> écrite, pas d'US**. ⚠️ **Le commanditaire a fourni les cinq règles le 31/07/2026** — elles sont
+> consignées verbatim au [référentiel §10.1](../docs/referentiel-ffta.md) et **entrent dans cette
+> US**. Voir les cinq CA ci-dessous.
 
-- **Absorbe** : ex-E05US016. **Ajoute** : échauffement, barrage autonome, poules.
+- **CA — handicap** : règle fournie le 31/07/2026. Le score final vaut **score réalisé + handicap**,
+  de sorte qu'un débutant qui dépasse son niveau habituel batte un champion en performance moyenne :
+  le format récompense la **progression**, pas la performance absolue. ⚠️ **Ce n'est pas un type de
+  phase mais une politique `scoring`** — il ne change ni l'arbre, ni le peuplement, ni le classement,
+  seulement l'arithmétique du score ([ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md) §1).
+  **Arbitrage du 31/07** : l'archer porte **deux valeurs**, un `handicap_officiel` entretenu par le
+  club et une `handicap_surcharge` qui le prime pour cette édition. ⚠️ **Aucune table de handicap
+  n'entre dans le produit** : le projet n'en possède aucune (la FFTA n'a pas de système officiel ;
+  celui qui fait référence est anglo-saxon), et en reconstituer une produirait des classements
+  **plausibles mais faux**. Le produit fournit le mécanisme, le club répond de la valeur — cohérent
+  avec le point faible que la règle reconnaît elle-même (« le calcul du handicap doit être fiable »).
+- **CA — système suisse** : règle fournie le 31/07/2026 — classer beaucoup de participants **sans
+  éliminer personne** ; les vainqueurs rencontrent les vainqueurs, les perdants les perdants ; après
+  5 à 7 rondes le classement est fiable. **Quatre points laissés ouverts, tranchés au cadrage** :
+  nombre de rondes **paramétrable, défaut 5** ; ronde 1 appariée **par classement source, jamais
+  aléatoire** (la règle proposait les deux — l'aléa est écarté par la **règle 9 du projet**, qui
+  interdit l'aléa non maîtrisé : c'est ce qui permet de reconstruire une phase après un incident le
+  jour J) ; **pas de ré-affrontement** (la règle ne le dit pas, mais l'omettre dégrade le format —
+  le suisse tire sa précision du fait que chaque ronde apporte une information nouvelle) ; départage
+  final **points → Buchholz → critères FFTA**. Effectif impair : **bye** au moins bien classé n'en
+  ayant pas encore eu. ⚠️ L'appariement est **glouton, pas optimal** : il peut échouer là où une
+  solution existait, et lève alors une erreur explicite plutôt que de rejouer une rencontre en
+  silence.
+- **CA — King of the Hill & Ladder** : règles fournies le 31/07/2026. **Un seul type**, `colline` :
+  ce qui les sépare est la **portée du défi** (un rang au-dessus, ou deux), donc un paramètre.
+  **Deux arbitrages du cadrage** : (a) **version « journée »**, pas classement permanent — les règles
+  décrivent un classement qui « évolue toute l'année », or une `Phase` a des sources, un effectif et
+  une fin **dans un tournoi** ; le classement permanent de club reste un autre produit ; (b)
+  mécanique **« deux voisins s'affrontent »**, la seconde des deux que la règle du King of the Hill
+  propose, retenue parce qu'elle fait jouer **tout le monde** à chaque manche.
+  ⚠️ **Écart consigné, à confirmer à la recette** : l'exemple chiffré du Ladder contredit sa propre
+  règle — partant de `1 2 3 4 5 6 7 8`, « le n°6 défie le 4 et gagne » y donne `1 2 3 5 6 4 7 8`,
+  soit le n°6 en **5ᵉ** position, alors que « le gagnant monte, le perdant descend » mène à la 4ᵉ.
+  **Le moteur applique la règle**, et un test fige l'arbitrage pour qu'un changement futur soit une
+  décision et non un glissement.
+- **CA — finale spectacle** : règle fournie le 31/07/2026 — après les qualifications, top 8 → quarts
+  → demies → petite finale → grande finale, pour créer une montée en intensité ; duels au **système
+  de sets** (premier à 6) en arc classique, au **cumul sur 15 flèches** en poulies, barrage à
+  égalité. ⚠️ **Ce n'est pas un type** : mécaniquement c'est une élimination directe à 8 avec petite
+  finale (livrée par E05US005) plus un `BaremeDuel` qui **existait déjà** (E04US013,
+  `preset_ffta_classique` / `preset_ffta_poulies` — 5 volées de 3 = les 15 flèches de la règle). Sa
+  part réellement neuve — musique, présentation des archers, écran géant, commentateur, compte à
+  rebours, tirs alternés, cible unique — est de la **mise en scène**, donc de l'écran de salle
+  (E07US004) et du plan de salle, pas du moteur.
+
+- **Absorbe** : ex-E05US016. **Ajoute** : échauffement, barrage autonome, poules, **et — après que
+  le commanditaire en a fourni les règles le 31/07/2026 — handicap, système suisse, King of the Hill,
+  Ladder et finale spectacle**, qui étaient jusque-là bloqués par le *gate* « pas de règle écrite,
+  pas d'US ».
 - **Dépend de** : **E05US010** (le routing générique, sans lequel aucun de ces types n'est routable)
-- **Jalon** : J3 · **Origine** : cadrage du 31/07/2026 (règles des poules et du BSO fournies par le
-  commanditaire ; échauffement demandé par lui)
+- **Jalon** : J3 · **Origine** : cadrage du 31/07/2026 (règles fournies par le commanditaire)
+- **Livrée** : 31/07/2026 — [ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md),
+  migration `0037` (handicap), moteurs `poule.py`, `big_shoot_off.py`, `barrage.py`, `suisse.py`,
+  `colline.py`, recette [`docs/fonctionnel/E05US015.md`](../docs/fonctionnel/E05US015.md)
 
 ### ~~E05US018 — Oracle 120~~ → **absorbée par E05US010** *(31/07/2026)*
 L'oracle est le **seul** contrôle sérieux du moteur de placement : les séparer laissait la porte

@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 31/07/2026** · **86 US livrées** · dernière : `E05US010` *(placement intégral 1→N : routing générique, sources multiples et relatives, oracle 120)*.
+**Dernière mise à jour : 31/07/2026** · **87 US livrées** · dernière : `E05US015` *(catalogue de types de phase : échauffement, barrage, poules, Big Shoot Off, suisse, colline, repêchage, handicap — Q9 fermée)*.
 
 ---
 
@@ -35,14 +35,23 @@
 > | Ordre | US | Ce qu'elle livre |
 > |---|---|---|
 > | ~~1~~ ✅ | ~~`E05US010`~~ | **Livrée le 31/07/2026** — moteur de placement 1→N, **routing générique** (`route(contexte)`), **sources multiples et relatives**, oracle 120 ([ADR-0061](../docs/adr/0061-routing-generique-et-placement-en-cascade.md)) |
-> | **2** | **`E05US015`** | ⬅️ **prochaine** — le **catalogue de types** : échauffement, barrage, poules, repêchage, Big Shoot Off |
-> | 3 | `E01US024` | **Composer, diagnostiquer et simuler** un déroulé (brouillon, schéma à braquets, simulation) |
+> | ~~2~~ ✅ | ~~`E05US015`~~ | **Livrée le 31/07/2026** — le **catalogue de types**, élargi à **onze** formats ([ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md)) |
+> | **3** | **`E01US024`** | ⬅️ **prochaine** — **Composer, diagnostiquer et simuler** un déroulé (brouillon, schéma à braquets, simulation) |
 > | 4 | `E07US004` | **Voir le tournoi se dérouler** : suivi des tours + écran de salle |
 >
 > **Pourquoi E05US010 était en tête** : le verrou du moteur n'était pas le catalogue de types mais
 > le **routing** — `DestinationPerdant` n'avait qu'**une** valeur, `ELIMINE`, et une méthode sans
 > argument ne peut rendre qu'une réponse constante. **C'est levé** : `Routing.route(contexte)` rend
-> `HorsTableau` ou `VersPlage`, et E05US015 n'a plus qu'à ajouter sa destination de repêchage.
+> `HorsTableau` ou `VersPlage`, et E05US015 n'a eu qu'à ajouter sa destination de repêchage
+> (`VersRepechage`) — la prévision s'est vérifiée au mot près.
+>
+> **Ce qu'E05US015 a livré au-delà de son CA d'origine.** Le commanditaire a fourni le 31/07 les
+> règles des **cinq formats** que le *gate* « pas de règle écrite, pas d'US » retenait depuis
+> l'origine (handicap, système suisse, King of the Hill, Ladder, finale spectacle) : ils sont entrés
+> dans l'US. Découverte de conception au passage — **trois de ces onze formats ne sont pas des types
+> de phase** : le repêchage est une politique `routing`, le handicap une politique `scoring`, la
+> finale spectacle un assemblage de briques déjà livrées. Un type se justifie par une **structure**,
+> pas par un réglage ([ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md) §1).
 >
 > **Origine** : une session de cadrage du 31/07/2026, partie du constat que l'écran « Formats » livré
 > par E01US023 ne savait composer qu'une qualification. Trois découvertes y ont été faites et sont
@@ -63,6 +72,23 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E05US015` **catalogue de types de phase** — US à **surface visible**, qui **ferme la question Q9**
+>   du cahier des charges, bloquante depuis l'origine du projet. Six types neufs, **chacun avec son
+>   moteur** (ADR-0045 §2 : on n'offre pas un type qu'aucun moteur ne sait dérouler) : `echauffement`,
+>   `barrage`, `poules`, `big_shoot_off`, `suisse`, `colline` — King of the Hill **et** Ladder étant
+>   **un seul** moteur, la portée de défi les sépare. ⚠️ **Trois formats attendus ne sont pas des
+>   types** : repêchage = politique `routing` (`RoutingRepechage`, qui **décore** un routing existant
+>   au lieu de le remplacer — le format du club repêche *et* place), handicap = politique `scoring`,
+>   finale spectacle = élimination directe à 8 + `BaremeDuel` déjà livré. `Scoring.total()` est
+>   **ressignée** pour recevoir un `ContexteScore` (un handicap est une donnée du tireur) : rupture
+>   annoncée par `politiques.py`, qui n'a coûté **aucun** appelant de production. `DecompteDepartage`
+>   s'élargit par **champs à défaut 0**, ce qui réduit à rien la « rupture la plus risquée de l'US ».
+>   L'échauffement porte l'invariant le plus intéressant du lot — une phase **sans classement** ne se
+>   prélève pas **par rangs**. Handicap : deux valeurs par archer (officiel + surcharge), migration
+>   `0037` ; ⚠️ **aucune table n'est codée** — le projet n'en a aucune, la FFTA n'a pas de système
+>   officiel, et en inventer une donnerait des classements plausibles mais faux.
+>   [ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md).
+>   Recette : [`docs/fonctionnel/E05US015.md`](../docs/fonctionnel/E05US015.md).
 > - `E05US010` **placement intégral 1→N & peuplement multiple** — la tête du chantier moteur, qui
 >   **résorbe DETTE-015**. Le moteur ne désigne plus quatre archers mais les **classe tous** : chaque
 >   perdant redescend dans le tableau des places qu'il peut encore atteindre (*Règle R*), jusqu'à un
@@ -408,12 +434,12 @@
 | 71 | E06US003 | Barrage de tir pour places décisives | ⬜ |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ⬜ |
 
-## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (2/11)**
+## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (3/11)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
 | 73 | E05US010 | Placement intégral 1→N **& peuplement multiple** | ✅ *(routing générique + cascade, sources multiples, oracle 120, ADR-0061 ; absorbe E05US018, résorbe DETTE-015)* |
-| 74 | E05US015 | **Catalogue de types de phase** (échauffement, barrage, poules, repêchage, BSO) | 🎯 *(prochaine — absorbe E05US016 ; **Q9 fermée** le 31/07 ; le routing générique dont elle dépend est livré)* |
+| 74 | E05US015 | **Catalogue de types de phase** (échauffement, barrage, poules, repêchage, BSO) | ✅ *(11 formats : + suisse, colline, handicap, finale spectacle — le commanditaire a fourni leurs règles le 31/07 ; ADR-0062)* |
 | 75 | ~~E05US018~~ | ~~Oracle 120~~ → **absorbée par E05US010** | ⬜ *(le moteur et sa preuve ne se séparent pas)* |
 | 76 | E06US006 | Classement intégral 1→N & profondeur | ⬜ |
 | 77 | E03US007 | Contrainte séparation catégorie/blason | ⬜ |
