@@ -14,8 +14,6 @@ import datetime
 from pathlib import Path
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -35,6 +33,7 @@ from infrastructure.db import (
     TournoiRepositorySQL,
 )
 from infrastructure.erreurs import InfrastructureError
+from tests.base_migree import preparer_base
 
 _QUAND = datetime.datetime(2026, 7, 21, 9, 30, tzinfo=datetime.UTC)
 
@@ -57,10 +56,7 @@ _DATE = datetime.date(2026, 3, 14)
 
 
 def _migrer(url: str) -> None:
-    cfg = Config(str(_BACKEND_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", url)
-    command.upgrade(cfg, "head")
+    preparer_base(url)
 
 
 def _base_avec_archer_et_depart(tmp_path: Path) -> tuple[Database, int, int]:

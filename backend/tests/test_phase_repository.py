@@ -32,15 +32,13 @@ from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from infrastructure.db import Database, PhaseORM, PhaseRepositorySQL, TournoiRepositorySQL
 from infrastructure.erreurs import InfrastructureError
+from tests.base_migree import preparer_base
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _migrer(url: str) -> None:
-    cfg = Config(str(_BACKEND_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", url)
-    command.upgrade(cfg, "head")
+    preparer_base(url)
 
 
 def _base(tmp_path: Path) -> Database:
