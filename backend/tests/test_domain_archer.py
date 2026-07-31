@@ -7,6 +7,7 @@ import pytest
 from domain.archer import Archer, cle_identite
 from domain.erreurs import (
     CibleInvalide,
+    HandicapInvalide,
     NomArcherInvalide,
     PrenomArcherInvalide,
     ScoreInvalide,
@@ -159,3 +160,62 @@ def test_creer_score_refuse_hors_plage(points: int) -> None:
     """Une valeur hors de 0-10 lève une erreur de domaine typée."""
     with pytest.raises(ScoreInvalide):
         Score.creer(archer_id=7, points=points)
+
+
+# --- E05US015 : handicap (officiel + surcharge) --------------------------------------------------
+
+
+def test_sans_handicap_l_archer_concourt_au_scratch() -> None:
+    """`0` est le **neutre** du format (`score + 0 == score`) : un archer non évalué ne casse pas un
+    classement au handicap. Plus sûr qu'un `None` qu'un appelant oublierait de traiter."""
+    archer = Archer.creer("Durand", "Léa", tournoi_id=1, categorie_id=2)
+    assert archer.handicap == 0
+
+
+def test_le_handicap_officiel_s_applique_a_defaut_de_surcharge() -> None:
+    archer = Archer.creer("Durand", "Léa", tournoi_id=1, categorie_id=2).avec_handicap(officiel=100)
+    assert archer.handicap == 100
+
+
+def test_la_surcharge_prime_le_handicap_officiel() -> None:
+    """Le second volet de la demande du commanditaire : un handicap officiel manifestement périmé
+    (reprise après absence, progression d'un jeune) s'ajuste sans réécrire la référence du club."""
+    archer = Archer.creer("Durand", "Léa", tournoi_id=1, categorie_id=2).avec_handicap(
+        officiel=100, surcharge=40
+    )
+    assert archer.handicap_officiel == 100
+    assert archer.handicap == 40
+
+
+def test_une_surcharge_a_zero_prime_bien_l_officiel() -> None:
+    """Piège classique du `or` : `0` est une valeur de surcharge **légitime** (l'archer concourt au
+    scratch), pas une absence. Un `surcharge or officiel` retomberait sur 100 et fausserait tout."""
+    archer = Archer.creer("Durand", "Léa", tournoi_id=1, categorie_id=2).avec_handicap(
+        officiel=100, surcharge=0
+    )
+    assert archer.handicap == 0
+
+
+def test_avec_handicap_remplace_les_deux_valeurs() -> None:
+    """**Remplacement total**, comme `modifier` : « je retire la surcharge » doit être exprimable,
+    et un défaut implicite le confondrait avec « je n'y touche pas »."""
+    archer = Archer.creer("Durand", "Léa", tournoi_id=1, categorie_id=2).avec_handicap(
+        officiel=100, surcharge=40
+    )
+    assert archer.avec_handicap().handicap == 0
+
+
+def test_un_handicap_negatif_est_refuse() -> None:
+    """Un handicap s'**ajoute** au score (règle du commanditaire) : négatif, il retrancherait des
+    points et passerait pour une contre-performance au classement."""
+    with pytest.raises(HandicapInvalide):
+        Archer.creer("Durand", "Léa", tournoi_id=1, categorie_id=2).avec_handicap(officiel=-10)
+    with pytest.raises(HandicapInvalide):
+        Archer.creer("Durand", "Léa", tournoi_id=1, categorie_id=2).avec_handicap(surcharge=-1)
+
+
+def test_le_handicap_traverse_une_edition_d_etat_civil() -> None:
+    """`modifier` ne touche que l'état civil : corriger un nom ne remet pas un handicap à zéro."""
+    archer = Archer.creer("Durand", "Léa", tournoi_id=1, categorie_id=2).avec_handicap(officiel=80)
+    edite = archer.modifier(nom="Durand-Martin", prenom="Léa", categorie_id=2, club_id=None)
+    assert edite.handicap == 80

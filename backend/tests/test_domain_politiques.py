@@ -17,8 +17,10 @@ import pytest
 from domain.erreurs import PolitiqueInconnue, PolitiqueMalFormee
 from domain.plage import Plage
 from domain.politiques import (
+    AucunClassement,
     ByesAuxMieuxClasses,
     ContexteRoutage,
+    ContexteScore,
     DecompteDepartage,
     EliminationSeche,
     FamillePolitique,
@@ -26,10 +28,14 @@ from domain.politiques import (
     PlacementEnCascade,
     PolitiquesPhase,
     ProfondeurUnVersN,
+    RoutingRepechage,
+    ScoreAvecHandicap,
     ScoreCumul,
     SeedingSerpent,
     TiebreakFftaDefaut,
+    TiebreakPoules,
     VersPlage,
+    VersRepechage,
     assembler_politiques,
     registre_par_defaut,
 )
@@ -39,12 +45,12 @@ from domain.politiques import (
 
 def test_score_cumul_additionne_les_points() -> None:
     """Le cumul est la **somme** des points de volée (le classement de qualification, §6.1)."""
-    assert ScoreCumul().total([27, 30, 24]) == 81
+    assert ScoreCumul().total([27, 30, 24], ContexteScore()) == 81
 
 
 def test_score_cumul_sans_volee_vaut_zero() -> None:
     """Aucune volée validée → total nul (un archer sans flèche figure au classement à 0)."""
-    assert ScoreCumul().total([]) == 0
+    assert ScoreCumul().total([], ContexteScore()) == 0
 
 
 # --- seeding : serpent `r vs 2^k+1-r` (CA E05US005, moteur-placement) ---------------------------
@@ -248,3 +254,122 @@ def test_assemblage_nom_inconnu_remonte_politique_inconnue() -> None:
     """Un `nom` non enregistré remonte l'erreur du registre à travers l'assemblage."""
     with pytest.raises(PolitiqueInconnue):
         assembler_politiques({"scoring": {"nom": "sets_inexistant"}}, registre_par_defaut())
+
+
+# --- E05US015 : les politiques du catalogue de types ---------------------------------------------
+
+
+def test_repechage_sort_du_tableau_les_perdants_des_tours_designes() -> None:
+    """CA « repêchage World Archery » : `routing = repêchage` **réinjecte** certains perdants.
+
+    La règle WA s'énonce « les perdants du 1ᵉʳ tour sont repêchés » ; `ContexteRoutage.tour` étant
+    compté **depuis la racine**, cela s'écrit `{1}`.
+    """
+    routing = RoutingRepechage(tours_repeches=frozenset({1}), sinon=PlacementEnCascade())
+    assert routing.route(ContexteRoutage(tour=1, plage=Plage(1, 8))) == VersRepechage()
+
+
+def test_repechage_delegue_les_autres_tours_a_sa_politique_de_repli() -> None:
+    """Le repêchage **excepte** quelques tours, il ne remplace pas le placement : c'est le format du
+    club, où le « Lucky-Looser » remonte et où les autres battus descendent se classer."""
+    routing = RoutingRepechage(tours_repeches=frozenset({1}), sinon=PlacementEnCascade())
+    assert routing.route(ContexteRoutage(tour=2, plage=Plage(1, 8))) == VersPlage(Plage(5, 8))
+
+
+def test_repechage_composable_avec_l_elimination_seche() -> None:
+    routing = RoutingRepechage(tours_repeches=frozenset({1}), sinon=EliminationSeche())
+    assert routing.route(ContexteRoutage(tour=3, plage=Plage(1, 4))) == HorsTableau()
+
+
+def test_le_repechage_se_resout_depuis_la_config() -> None:
+    """Première politique **composite** du registre : sa fabrique en résout une autre."""
+    registre = registre_par_defaut()
+    politiques = assembler_politiques(
+        {"routing": {"nom": "repechage", "tours": [1], "sinon": {"nom": "elimination_seche"}}},
+        registre,
+    )
+    assert politiques.routing == RoutingRepechage(
+        tours_repeches=frozenset({1}), sinon=EliminationSeche()
+    )
+
+
+def test_le_repechage_prend_le_placement_en_cascade_par_defaut() -> None:
+    """Le cas du format club : les battus non repêchés descendent malgré tout se classer."""
+    politiques = assembler_politiques(
+        {"routing": {"nom": "repechage", "tours": [1]}}, registre_par_defaut()
+    )
+    assert politiques.routing == RoutingRepechage(
+        tours_repeches=frozenset({1}), sinon=PlacementEnCascade()
+    )
+
+
+def test_un_repechage_sans_tour_est_refuse() -> None:
+    """Un repêchage qui ne repêche rien est un `placement_cascade` déguisé : l'accepter laisserait
+    croire à l'organisateur que son format repêche alors qu'il n'en fait rien."""
+    with pytest.raises(PolitiqueMalFormee):
+        assembler_politiques({"routing": {"nom": "repechage", "tours": []}}, registre_par_defaut())
+
+
+def test_un_tour_repeche_non_entier_est_refuse() -> None:
+    with pytest.raises(PolitiqueMalFormee):
+        assembler_politiques(
+            {"routing": {"nom": "repechage", "tours": ["premier"]}}, registre_par_defaut()
+        )
+
+
+def test_le_handicap_s_ajoute_au_score_realise() -> None:
+    """Règle donnée par le commanditaire (31/07/2026) : « score réalisé + handicap »."""
+    assert ScoreAvecHandicap().total([27, 30, 24], ContexteScore(handicap=100)) == 181
+
+
+def test_sans_handicap_le_format_retombe_sur_le_scratch() -> None:
+    """`0` est le neutre : un archer non évalué concourt sans casser le classement."""
+    assert ScoreAvecHandicap().total([27, 30, 24], ContexteScore()) == 81
+
+
+def test_le_departage_de_poule_commence_par_les_points_de_match() -> None:
+    """Référentiel §10.1 : points de match, diff de sets, diff de score, 10, 9.
+
+    ⚠️ Cet ordre **diffère** de §8.1 (qualification) : ici A gagne malgré **moins** de 10.
+    """
+    a = DecompteDepartage(nb_dix=0, nb_neuf=0, points_match=6)
+    b = DecompteDepartage(nb_dix=20, nb_neuf=20, points_match=3)
+    assert TiebreakPoules().departager(a, b) < 0
+
+
+def test_le_departage_de_poule_retombe_sur_les_criteres_ffta_a_tout_egal() -> None:
+    """Dégradation **silencieuse mais juste** : trois premiers critères nuls → on lit §8.1."""
+    a = DecompteDepartage(nb_dix=10, nb_neuf=2)
+    b = DecompteDepartage(nb_dix=8, nb_neuf=9)
+    assert TiebreakPoules().departager(a, b) < 0
+
+
+def test_le_decompte_de_qualification_reste_constructible_a_deux_champs() -> None:
+    """C'est ce qui rend l'élargissement d'E05US015 **non cassant** : le CA le désignait comme la
+    rupture de contrat la plus risquée de l'US, elle se réduit à des champs facultatifs."""
+    decompte = DecompteDepartage(nb_dix=10, nb_neuf=5)
+    assert (decompte.points_match, decompte.diff_sets, decompte.diff_score) == (0, 0, 0)
+    assert TiebreakFftaDefaut().departager(decompte, DecompteDepartage(nb_dix=8, nb_neuf=9)) < 0
+
+
+def test_l_echauffement_ne_produit_aucun_rang() -> None:
+    """« Sans point et sans classement » (§10.1) : le cas dégénéré de `Depth`, et il est demandé.
+
+    Rendre `()` plutôt que laisser `depth` à `None` **dit** que la politique a été choisie.
+    """
+    assert AucunClassement().rangs_a_classer(120) == ()
+
+
+def test_les_nouvelles_politiques_sont_au_registre() -> None:
+    """Catalogue ouvert par la composition root (règle 2) : un format est de la configuration."""
+    politiques = assembler_politiques(
+        {
+            "scoring": {"nom": "handicap"},
+            "tiebreak": {"nom": "poules"},
+            "depth": {"nom": "aucun"},
+        },
+        registre_par_defaut(),
+    )
+    assert isinstance(politiques.scoring, ScoreAvecHandicap)
+    assert isinstance(politiques.tiebreak, TiebreakPoules)
+    assert isinstance(politiques.depth, AucunClassement)

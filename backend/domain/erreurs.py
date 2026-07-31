@@ -680,3 +680,91 @@ class RemboursementMontantInvalide(DomainError):
     """
 
     code = "remboursement_montant_invalide"
+
+
+class PhaseSansClassementPrelevee(DomainError):
+    """Une source prélève **par rangs** dans une phase qui ne produit aucun classement (E05US015).
+
+    C'est la règle de cohérence de l'**échauffement** (référentiel §10.1) : une phase sans point et
+    sans classement n'ordonne personne, donc « les rangs 1 à 32 de l'échauffement » ne désigne
+    aucun ensemble. Ce n'est pas un détail d'ergonomie mais un invariant de séquence : la seule
+    façon licite de succéder à une phase non classante est de reprendre **les mêmes participants,
+    sans ordre** (`le reste`).
+
+    Le contrôle est **collectif** (il faut connaître la phase amont), donc il vit dans
+    `verifier_sequence` et non dans `SourcePhase.__post_init__`.
+    """
+
+    code = "phase_sans_classement_prelevee"
+
+
+class ConfigurationPouleInvalide(DomainError):
+    """Les paramètres d'une phase de **poules** ne décrivent pas un tournoi jouable (E05US015).
+
+    Nombre de poules < 1, plus de poules que de participants, barème de points incohérent (une
+    victoire ne peut pas rapporter moins qu'un nul), nombre de qualifiés par poule supérieur à
+    l'effectif de la plus petite poule, ou nombre de rencontres par archer supérieur au nombre
+    d'adversaires disponibles. On refuse à la **composition** plutôt que de produire un tableau de
+    poule dont le classement serait indéfendable.
+    """
+
+    code = "configuration_poule_invalide"
+
+
+class ConfigurationBigShootOffInvalide(DomainError):
+    """Les paramètres d'un **Big Shoot Off** ne décrivent pas une finale jouable (E05US015).
+
+    `restants` (le K de la règle du club, référentiel §10.1) doit être ≥ 1 et **strictement
+    inférieur** au nombre d'entrants — à `K = N` personne n'est jamais éliminé et la phase ne se
+    termine pas. Volées et flèches par volée sont ≥ 1.
+    """
+
+    code = "configuration_big_shoot_off_invalide"
+
+
+class ConfigurationSuisseInvalide(DomainError):
+    """Les paramètres d'un **système suisse** ne décrivent pas un tournoi appariable (E05US015).
+
+    Nombre de rondes < 1, ou supérieur à ce que l'effectif permet sans ré-affrontement : à N
+    participants, chacun a N-1 adversaires possibles, donc au-delà de N-1 rondes l'appariement sans
+    rematch est **impossible par construction**. On le dit à la composition plutôt que de bloquer
+    à la ronde 6 le jour J.
+    """
+
+    code = "configuration_suisse_invalide"
+
+
+class ConfigurationCollineInvalide(DomainError):
+    """Les paramètres d'une phase de **colline** (King of the Hill / Ladder) sont incohérents
+    (E05US015).
+
+    Nombre de manches < 1, ou portée de défi < 1 ou ≥ à l'effectif : une portée qui couvre toute la
+    colline transforme le format en « n'importe qui défie n'importe qui », ce qui n'est plus ni un
+    King of the Hill ni un Ladder.
+    """
+
+    code = "configuration_colline_invalide"
+
+
+class ConfigurationBarrageInvalide(DomainError):
+    """Les paramètres d'un **barrage de tir** contredisent le règlement (E05US015, §8.2).
+
+    Le barrage individuel se tire à **1 flèche** et le barrage par équipe à **3** (une par archer,
+    art. B.6.5.2.2) : un nombre de flèches différent n'est pas un réglage mais une autre épreuve.
+    Un barrage oppose par ailleurs **au moins deux** tireurs — départager un ex æquo d'une seule
+    personne n'a pas d'objet.
+    """
+
+    code = "configuration_barrage_invalide"
+
+
+class HandicapInvalide(DomainError):
+    """La valeur de handicap portée par un archer n'est pas exploitable (E05US015).
+
+    Un handicap s'**ajoute** au score réalisé (règle donnée par le commanditaire le 31/07/2026) :
+    il est donc positif ou nul. Une valeur négative retrancherait des points, ce qui n'est pas le
+    système décrit — et passerait inaperçue au classement, où elle ressemblerait à une
+    contre-performance.
+    """
+
+    code = "handicap_invalide"

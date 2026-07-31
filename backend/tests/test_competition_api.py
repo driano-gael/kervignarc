@@ -747,3 +747,103 @@ def test_fusionner_refuse_sans_session(app_competition: FastAPI) -> None:
         reponse = client.post("/api/v1/archers/1/fusionner", json={"perdant_id": 2})
     assert reponse.status_code == 401
     assert reponse.json()["code"] == "non_authentifie"
+
+
+# --- E05US015 : handicap de l'archer -------------------------------------------------------------
+
+
+def test_definir_le_handicap_expose_les_trois_valeurs(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Les deux sources **et** le handicap effectif sont rendus (E05US015).
+
+    Le champ dérivé `handicap` est exposé délibérément : c'est lui que la feuille de marque et le
+    classement affichent, et le recalculer côté client obligerait chaque écran à réimplémenter la
+    règle de priorité — une règle métier dupliquée dans trois écrans finit par diverger dans l'un.
+    """
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        archer_id = _inscrire(client, tournoi_id, categorie_id, "Dupont", "Jean")
+
+        reponse = client.put(
+            f"/api/v1/archers/{archer_id}/handicap", json={"officiel": 100, "surcharge": 40}
+        )
+
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.json()["handicap_officiel"] == 100
+    assert reponse.json()["handicap_surcharge"] == 40
+    assert reponse.json()["handicap"] == 40
+
+
+def test_le_handicap_persiste_et_se_relit(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Aller-retour complet : la migration `0037` et le repository sont bien branchés."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        archer_id = _inscrire(client, tournoi_id, categorie_id, "Dupont", "Jean")
+        client.put(f"/api/v1/archers/{archer_id}/handicap", json={"officiel": 75})
+
+        relu = client.get(f"/api/v1/tournois/{tournoi_id}/archers").json()
+
+    assert [a["handicap"] for a in relu if a["id"] == archer_id] == [75]
+
+
+def test_editer_l_etat_civil_ne_perd_pas_le_handicap(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le piège que le commentaire d'`enregistrer` annonçait : un `enregistrer` partiel effacerait
+    les handicaps dès qu'un autre appelant enregistre pour une raison différente."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        archer_id = _inscrire(client, tournoi_id, categorie_id, "Dupont", "Jean")
+        client.put(f"/api/v1/archers/{archer_id}/handicap", json={"officiel": 75})
+
+        edite = client.put(
+            f"/api/v1/archers/{archer_id}",
+            json={"nom": "Dupond", "prenom": "Jean", "categorie_id": categorie_id},
+        )
+
+    assert edite.status_code == 200, edite.text
+    assert edite.json()["handicap"] == 75
+
+
+def test_placer_un_archer_ne_perd_pas_le_handicap(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Même garde-fou par l'autre appelant d'`enregistrer` : le placement (E00US011)."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        archer_id = _inscrire(client, tournoi_id, categorie_id, "Dupont", "Jean")
+        client.put(f"/api/v1/archers/{archer_id}/handicap", json={"officiel": 75})
+
+        place = client.post(f"/api/v1/archers/{archer_id}/placement", json={"cible": 3})
+
+    assert place.json()["handicap"] == 75
+
+
+def test_un_handicap_negatif_rend_422(
+    app_competition: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`HandicapInvalide` est une `DomainError` : mappée en 422 à la frontière (règle 5)."""
+    with TestClient(app_competition) as client:
+        connecter_admin(client)
+        tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        archer_id = _inscrire(client, tournoi_id, categorie_id, "Dupont", "Jean")
+
+        reponse = client.put(f"/api/v1/archers/{archer_id}/handicap", json={"officiel": -5})
+
+    assert reponse.status_code == 422, reponse.text
+    assert reponse.json()["code"] == "handicap_invalide"
+
+
+def test_definir_le_handicap_refuse_sans_session(app_competition: FastAPI) -> None:
+    """Écriture admin : sans session → 401 (contrat E10US001)."""
+    with TestClient(app_competition) as client:
+        reponse = client.put("/api/v1/archers/1/handicap", json={"officiel": 10})
+    assert reponse.status_code == 401
+    assert reponse.json()["code"] == "non_authentifie"

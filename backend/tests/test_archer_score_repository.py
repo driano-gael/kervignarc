@@ -625,3 +625,37 @@ def test_une_categorie_inexistante_est_bloquee_par_la_fk(tmp_path: Path) -> None
             archers.ajouter(Archer.creer("Robin", "Jean", tournoi_id, 404))
     finally:
         db.engine.dispose()
+
+
+def test_archer_porte_ses_handicaps_en_base(tmp_path: Path) -> None:
+    """Les deux handicaps font l'aller-retour agrégat ↔ ORM (migration `0037`, E05US015).
+
+    Le test tourne sur une base **réellement migrée** (`tests/base_migree`) : il vérifie donc que la
+    chaîne de migrations produit bien les colonnes que `models.py` décrit, pas seulement que l'ORM
+    sait les créer de zéro.
+    """
+    db = _base(tmp_path)
+    try:
+        tournoi_id, categorie_id = _tournoi_et_categorie(db)
+        archers = ArcherRepositorySQL(db.session_factory)
+
+        cree = archers.ajouter(
+            Archer.creer("Lefèvre", "Rémi", tournoi_id, categorie_id).avec_handicap(
+                officiel=120, surcharge=45
+            )
+        )
+        assert cree.id is not None
+        assert archers.par_id(cree.id) == cree
+        assert cree.handicap == 45
+
+        # Le handicap survit à une mise à jour portant sur un autre champ (le placement) : c'est le
+        # trou qu'un `enregistrer` partiel ouvrirait — il ne se verrait qu'en base, bien plus tard.
+        place = archers.enregistrer(cree.placer(3))
+        assert (place.handicap_officiel, place.handicap_surcharge) == (120, 45)
+
+        # Effacer les handicaps est une action à part entière (retour au scratch), pas une absence.
+        efface = archers.enregistrer(place.avec_handicap())
+        assert archers.par_id(cree.id) == efface
+        assert efface.handicap == 0
+    finally:
+        db.engine.dispose()

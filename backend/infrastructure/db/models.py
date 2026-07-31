@@ -232,6 +232,13 @@ class ArcherORM(Base):
     # archers) ne la viole jamais — c'est le sens inverse qu'elle contraint, et ce cas-là est
     # tranché (refus 409), comme l'est déjà `categorie.blason_id`.
     club_id: Mapped[int | None] = mapped_column(ForeignKey("club.id"), nullable=True)
+    # Handicap (E05US015) : deux colonnes, jamais une seule — le handicap **officiel** entretenu par
+    # le club, et la **surcharge** qui le prime pour cette édition (demande du commanditaire,
+    # 31/07/2026). `NULL` = non renseigné, distinct d'un handicap **nul** : un archer sans handicap
+    # connu et un archer à handicap 0 concourent pareil au scratch, mais seul le second a été
+    # évalué. La nuance ne change rien au calcul et tout à ce que l'écran doit afficher.
+    handicap_officiel: Mapped[int | None] = mapped_column(nullable=True)
+    handicap_surcharge: Mapped[int | None] = mapped_column(nullable=True)
 
 
 class ScoreORM(Base):
