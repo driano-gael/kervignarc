@@ -22,6 +22,7 @@ from starlette.concurrency import run_in_threadpool
 from api.dependances import exiger_admin
 from application.blasons import ServiceBlasons
 from domain.blason import Blason, ZoneScore
+from domain.patrimoine import OrigineBrique
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["blasons"])
@@ -62,11 +63,15 @@ class BlasonReponse(BaseModel):
     """Représentation d'un blason renvoyée au client."""
 
     id: int
-    tournoi_id: int
+    # `None` pour un **modèle de bibliothèque** (patrimoine du club, E01US023).
+    tournoi_id: int | None
     nom: str
     taille: float
     capacite: int
     zones: list[ZoneScore]
+    # Provenance de la brique (E01US023) : sert les **deux listes séparées** de l'atelier.
+    # Ne dit **pas** la conformité au règlement (ADR-0060 §4).
+    origine: OrigineBrique
 
     @staticmethod
     def de_agregat(blason: Blason) -> BlasonReponse:
@@ -79,6 +84,7 @@ class BlasonReponse(BaseModel):
             taille=blason.taille,
             capacite=blason.capacite,
             zones=list(blason.zones),
+            origine=blason.origine,
         )
 
 

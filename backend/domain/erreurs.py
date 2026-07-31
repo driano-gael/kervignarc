@@ -57,6 +57,23 @@ class HauteurCentreInvalide(DomainError):
     code = "hauteur_centre_invalide"
 
 
+class NomFormatInvalide(DomainError):
+    """Le nom d'un format de tournoi est vide (après normalisation) — E01US023."""
+
+    code = "nom_format_invalide"
+
+
+class FormatSansEtape(DomainError):
+    """Un format de tournoi ne décrit aucune phase (E01US023, ADR-0060 §5).
+
+    Distinct d'une `SequencePhases` **vide**, qui est licite (un tournoi peut n'avoir aucune phase
+    composée). Un *format*, lui, n'existe que pour être appliqué : appliquer un format vide ne
+    créerait rien, et l'organisateur croirait avoir assemblé son tournoi.
+    """
+
+    code = "format_sans_etape"
+
+
 class NomBlasonInvalide(DomainError):
     """Le nom d'un blason est vide (après normalisation)."""
 

@@ -28,6 +28,8 @@ export type DestinationAdminId =
   | 'categories'
   | 'blasons'
   | 'gabarits'
+  | 'formats'
+  | 'assemblage'
   | 'plan'
   | 'bareme'
   | 'phases'
@@ -57,12 +59,20 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'La photo d’ensemble du tournoi : où il en est, ce qu’il reste à préparer, et les chiffres-clés ' +
     '(inscrits, réglés, postes connectés). Partez d’ici pour savoir quoi faire ensuite.',
   categories:
-    'Définissez les catégories qui tirent dans ce tournoi (âge et type d’arc, par exemple « Sénior ' +
-    'arc classique »). Chaque archer sera rattaché à une catégorie, qui détermine sa cible et son ' +
-    'classement.',
+    'Les catégories du club (âge et type d’arc, par exemple « Sénior arc classique »), conservées ' +
+    'd’une année sur l’autre. Chaque tournoi en reçoit une copie qu’il peut ajuster sans rien ' +
+    'changer ici — et sans que les éditions passées ne bougent.',
   blasons:
-    'Réglez les blasons (les cibles en papier) utilisés et reliez-les aux catégories. Le blason fixe ' +
-    'la taille de cible et les valeurs de points possibles à la saisie des scores.',
+    'Les blasons du club (les cibles en papier) : taille occupée sur une butte et valeurs de points ' +
+    'possibles. Comme les catégories, chaque tournoi en reçoit une copie.',
+  formats:
+    'Les déroulés types du club : combien de volées, de flèches, et quand le scoreur valide. ' +
+    'Appliqué à un tournoi, un format en crée les phases ; les ajuster ensuite ne change pas le ' +
+    'format.',
+  assemblage:
+    'Constituez ce tournoi à partir du patrimoine du club : copiez-y les catégories, les blasons et ' +
+    'un déroulé. Une modification que vous voulez garder pour les prochaines années se remonte ' +
+    'd’ici avec « Rendre permanent ».',
   gabarits:
     'Préparez des modèles de plan de salle réutilisables (nombre de cibles, disposition). Un gabarit ' +
     'sert de point de départ au plan de salle d’un tournoi ; il n’appartient à aucun tournoi précis.',

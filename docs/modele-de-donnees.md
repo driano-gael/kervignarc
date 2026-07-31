@@ -1,7 +1,8 @@
 # Modèle de données détaillé — Kervignarc
 
-- **Version** : 0.6
-- **Date** : 2026-07-27 *(v0.6 : `DEPART.horaire` devient un horaire du jour `HH:MM` **NOT NULL** (abandon du libellé libre facultatif) — E02US010, migration 0032)*
+- **Version** : 0.7
+- **Date** : 2026-07-31 *(v0.7 : les **briques deviennent le patrimoine du club** — `CATEGORIE.tournoi_id` et `BLASON.tournoi_id` passent **nullable** (`NULL` = modèle de bibliothèque), les deux tables gagnent `origine`, et la table **`FORMAT_TOURNOI`** apparaît (sans FK vers `TOURNOI`) — E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md), migrations 0034 et 0035)*
+- *v0.6 : 2026-07-27 — `DEPART.horaire` devient un horaire du jour `HH:MM` **NOT NULL** (abandon du libellé libre facultatif) — E02US010, migration 0032*
 - *v0.5 : 2026-07-16 — table de liaison `INSCRIPTION` (archer ↔ départ, portant `paye`) — E02US009, [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md) ; montant dû **dérivé** du tarif du départ, non stocké*
 - *v0.4 : 2026-07-16 — `DEPART` devient un **créneau du tournoi** (`tournoi_id`, `horaire`, `tarif_centimes` obligatoire), le tarif **quitte** `TOURNOI` — [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md), E02US004 ; le lien archer↔départ + `paye` passent à E02US009*
 - *v0.3 : 2026-07-15 — `ARCHER.club_id` **nullable** = club *inconnu* et index UNIQUE de dédoublonnage **abandonné** ([ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md), [ADR-0015](adr/0015-signaler-un-doublon-plutot-que-l-interdire.md)) ; `ARCHER.categorie_id` NOT NULL*
@@ -15,13 +16,17 @@
 
 ```mermaid
 erDiagram
-    TOURNOI ||--o{ CATEGORIE : "définit"
-    TOURNOI ||--o{ BLASON : "définit"
+    TOURNOI |o--o{ CATEGORIE : "définit"
+    TOURNOI |o--o{ BLASON : "définit"
     TOURNOI ||--o{ ARCHER : "inscrit"
     TOURNOI ||--o{ CIBLE : "instancie"
     TOURNOI ||--o{ PHASE : "séquence"
-    TOURNOI ||--o| GABARIT_SALLE : "plan (copie)"
+    TOURNOI |o--o| GABARIT_SALLE : "plan (copie)"
     TOURNOI ||--o{ DEPART : "planifie (créneaux)"
+    %% FORMAT_TOURNOI et CLUB n'ont **aucune** FK vers TOURNOI : ce sont des
+    %% référentiels du club, pas de la descendance d'une édition (E01US023).
+    FORMAT_TOURNOI
+
     CLUB |o--o{ ARCHER : "rattache (club inconnu possible)"
     CATEGORIE }o--|| BLASON : "associe"
     ARCHER }o--|| CATEGORIE : "concourt en"
@@ -81,7 +86,8 @@ erDiagram
 
 ### CATEGORIE
 | id | INTEGER | PK |
-| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL |
+| tournoi_id | INTEGER | FK → TOURNOI ; `NULL` = **modèle de bibliothèque** (patrimoine du club, réutilisable d'une année sur l'autre), renseigné = **copie** appartenant à un tournoi, ajustable sans altérer le modèle (E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md)) |
+| origine | TEXT | NOT NULL — `ffta` \| `utilisateur` : **provenance** de la brique (deux listes séparées à l'atelier). Ne dit **pas** la conformité au règlement — il y manque sa version (ADR-0060 §4) |
 | libelle | TEXT | NOT NULL — ex. « Arc Nu U18 Homme » |
 | arme | TEXT | ex. `classique`/`poulie`/`nu` |
 | ages | TEXT (JSON) | **une ou plusieurs** tranches — ex. `["U15","U18"]` |
@@ -99,7 +105,8 @@ erDiagram
 
 ### BLASON
 | id | INTEGER | PK |
-| tournoi_id | INTEGER | FK → TOURNOI |
+| tournoi_id | INTEGER | FK → TOURNOI ; `NULL` = **modèle de bibliothèque** (patrimoine du club, réutilisable d'une année sur l'autre), renseigné = **copie** appartenant à un tournoi, ajustable sans altérer le modèle (E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md)) |
+| origine | TEXT | NOT NULL — `ffta` \| `utilisateur` : **provenance** de la brique (deux listes séparées à l'atelier). Ne dit **pas** la conformité au règlement — il y manque sa version (ADR-0060 §4) |
 | nom | TEXT | NOT NULL |
 | taille | REAL | fraction de place (0 < taille ≤ 1) |
 | capacite | INTEGER | ≥ 1 |
@@ -217,6 +224,23 @@ erDiagram
 | nb_cibles | INTEGER | ≥ 1 |
 | config | TEXT (JSON) | capacités et positions par cible |
 | tournoi_id | INTEGER | FK → TOURNOI ; `NULL` = **modèle** réutilisable, renseigné = **copie** appliquée à un tournoi (E01US008) |
+
+### FORMAT_TOURNOI
+| id | INTEGER | PK |
+| nom | TEXT | NOT NULL, **UNIQUE** — c'est ce qui rend la promotion idempotente (promouvoir deux fois sous le même nom met à jour au lieu de créer un homonyme) |
+| origine | TEXT | NOT NULL — `ffta` \| `utilisateur`, même sens que ci-dessus |
+| config | TEXT (JSON) | la **séquence de modèles de phases** — `{"etapes": [{"ordre", "type", "policies"?, "validation"?, "source"?, "effectif"?}, …]}`, même forme étape par étape que `PHASE.config` |
+
+> **Aucune FK vers TOURNOI**, et ce n'est pas un oubli : un format n'existe qu'en bibliothèque
+> (E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5).
+> Sa « copie » dans un tournoi n'est pas une ligne de cette table, ce sont les lignes de `PHASE`
+> produites par son application. La table n'appartient donc **pas** à la descendance de `TOURNOI` —
+> même régime que `CLUB`, et DETTE-001 ne la concerne pas.
+>
+> **Pourquoi une table neuve** plutôt qu'un `tournoi_id` nullable sur `PHASE`, comme pour `CATEGORIE`
+> et `BLASON` : le barème n'est pas une entité (il vit dans `PHASE.config`), et l'invariant d'une
+> phase est **collectif** — les ordres d'une séquence forment la suite contiguë 1..N. Des phases de
+> bibliothèque porteraient un statut vide de sens et des ordres en collision.
 
 ### CIBLE
 | id | INTEGER | PK |

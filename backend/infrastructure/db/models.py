@@ -96,9 +96,16 @@ class CategorieORM(Base):
     __tablename__ = "categorie"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # `tournoi_id` distingue un **modèle** de bibliothèque (`NULL`, patrimoine du club, réutilisable
+    # d'une année sur l'autre) d'une **copie** appartenant à un tournoi (E01US023, ADR-0060) — même
+    # patron que `gabarit_salle` depuis E01US008. Avant E01US023 la colonne était obligatoire : d'où
+    # un atelier qui promettait « hors tournoi » sans pouvoir le tenir (DETTE-023, résorbée).
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — la politique de suppression d'un
     # tournoi non vide (cascade ou refus 409) n'est pas tranchée ; ne pas contourner ici.
-    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    tournoi_id: Mapped[int | None] = mapped_column(ForeignKey("tournoi.id"), nullable=True)
+    # `ffta` (issue du préchargement officiel) ou `utilisateur` — ce qui permet les deux listes
+    # séparées que le commanditaire demande, et la copie plutôt que l'écrasement d'un officiel.
+    origine: Mapped[str] = mapped_column(nullable=False, server_default="utilisateur")
     libelle: Mapped[str] = mapped_column(nullable=False)
     arme: Mapped[str | None] = mapped_column(nullable=True)
     # Tranches d'âge éligibles, stockées en **tableau JSON** de codes (ex. `["U15","U18"]`,
@@ -133,9 +140,14 @@ class BlasonORM(Base):
     __tablename__ = "blason"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # `tournoi_id` distingue un **modèle** de bibliothèque (`NULL`, patrimoine du club, réutilisable
+    # d'une année sur l'autre) d'une **copie** appartenant à un tournoi (E01US023, ADR-0060) — même
+    # patron que `gabarit_salle` depuis E01US008. Avant E01US023 la colonne était obligatoire : d'où
+    # un atelier qui promettait « hors tournoi » sans pouvoir le tenir (DETTE-023, résorbée).
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — la politique de suppression d'un
     # tournoi non vide (cascade ou refus 409) n'est pas tranchée ; ne pas contourner ici.
-    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    tournoi_id: Mapped[int | None] = mapped_column(ForeignKey("tournoi.id"), nullable=True)
+    origine: Mapped[str] = mapped_column(nullable=False, server_default="utilisateur")
     nom: Mapped[str] = mapped_column(nullable=False)
     taille: Mapped[float] = mapped_column(nullable=False)
     capacite: Mapped[int] = mapped_column(nullable=False)
@@ -163,6 +175,35 @@ class GabaritSalleORM(Base):
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — l'instance appartient à la
     # descendance du tournoi, à traiter dans la même politique de suppression, non tranchée.
     tournoi_id: Mapped[int | None] = mapped_column(ForeignKey("tournoi.id"), nullable=True)
+
+
+class FormatTournoiORM(Base):
+    """Table `format_tournoi` — persistance de l'agrégat `FormatTournoi` (E01US023, ADR-0060 §5).
+
+    **Aucune FK vers `tournoi`**, et ce n'est pas un oubli : un format n'existe qu'en bibliothèque
+    (patrimoine du club). Sa « copie » dans un tournoi n'est pas une ligne de cette table, ce sont
+    les lignes de `phase` produites par son application. La table n'appartient donc **pas** à la
+    descendance de `tournoi` — supprimer un tournoi ne doit pas toucher aux formats, et DETTE-001
+    ne la concerne pas (même régime que `club`).
+
+    La **séquence de modèles de phases** est stockée dans `config` (JSON,
+    `{"etapes": [{"ordre", "type", "policies"?, "validation"?, "source"?, "effectif"?}, …]}`) —
+    même procédé que `PhaseORM.config`, dont elle reprend la forme étape par étape pour que les
+    deux se relisent avec les mêmes fonctions. Une table fille coûterait une jointure pour une
+    donnée toujours lue en bloc et jamais requêtée.
+
+    `nom` est `UNIQUE` : c'est ce qui rend la **promotion** idempotente — promouvoir deux fois sous
+    le même nom met à jour le format au lieu de créer un homonyme que l'organisateur ne saurait pas
+    distinguer dans sa liste.
+    """
+
+    __tablename__ = "format_tournoi"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nom: Mapped[str] = mapped_column(nullable=False, unique=True)
+    # `ffta` (préchargé officiel) ou `utilisateur` — les deux listes séparées de l'atelier.
+    origine: Mapped[str] = mapped_column(nullable=False, server_default="utilisateur")
+    config: Mapped[str] = mapped_column(nullable=False)
 
 
 class ArcherORM(Base):

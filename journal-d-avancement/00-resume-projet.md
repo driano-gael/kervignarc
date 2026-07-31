@@ -71,7 +71,13 @@ Tout l'échafaudage sur lequel le reste s'appuie est en place et verrouillé :
 
 ### 2. Configurer un tournoi — *terminé*
 
-Tout ce qu'il faut pour préparer un tournoi avant le jour J :
+Tout ce qu'il faut pour préparer un tournoi avant le jour J. **Depuis le 31/07/2026, ce matériel
+appartient au club, plus à un tournoi** : catégories, blasons et déroulés types se préparent une fois
+dans l'Atelier et vivent d'une année sur l'autre ; monter un tournoi en prend une **copie**, qu'on
+ajuste sans rien changer ailleurs — et une modification qu'on veut garder se **remonte** au club d'un
+clic (« Rendre permanent »). Choix assumé de la copie plutôt que du lien : un réglage changé en 2027
+ne doit pas réécrire le tournoi 2026 déjà archivé. Détail dans
+[`2026-07-31-00h03-briques-du-club.md`](2026-07-31-00h03-briques-du-club.md).
 
 - **Créer, éditer et lister des tournois**, avec un **cycle de vie enrichi à 7 statuts** (brouillon →
   prêt → en cours ⇄ en pause → terminé → archivé, plus annulé). Passer « prêt » exige **au moins un
@@ -88,8 +94,13 @@ Tout ce qu'il faut pour préparer un tournoi avant le jour J :
   l'inscription. Tout reste modifiable. Détail dans
   [`2026-07-28-09h54-blason-par-defaut-des-categories.md`](2026-07-28-09h54-blason-par-defaut-des-categories.md).
 - Les **gabarits de salle** (le plan des cibles, réutilisable et ajustable).
+- Les **déroulés types** (« FFTA officiel 18 m », « Format club ») : appliqués à un tournoi, ils en
+  **créent les phases** ; le déroulé d'un tournoi déjà composé peut à l'inverse être enregistré comme
+  format du club.
 - Le **barème de qualification** et le **grain de validation** d'une phase.
 - Le **tarif par départ** (le montant d'inscription).
+- L'**import en masse du référentiel des clubs** (une liste collée, un club par ligne, avec un
+  compte-rendu de ce qui a été ajouté, de ce qui était déjà connu et des lignes vides).
 
 ### 3. Les inscriptions — *terminé pour l'essentiel*
 
@@ -378,7 +389,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **84 US livrées** sur `main` (mergées, revues, CI verte) à la date du 30/07/2026. **`SUIVI-US.md`
+- **85 US livrées** sur `main` (mergées, revues, CI verte) à la date du 31/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -389,7 +400,9 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   (E15US002, technique, sans écran) puis le **cockpit de simulation** (E15US003, bot pausable + reprise
   en main + canal isolé). La séquence **J2** a ensuite repris avec le **feu vert + lancement d'un tour**
   (E12US002), le **remboursement d'une inscription payée annulée** (E08US005), puis le **panneau de
-  routage sur la tablette** (E04US018).
+  routage sur la tablette** (E04US018). Enfin, l'**administration a été rangée en trois axes
+  d'activité** (E14US003) et les **briques de configuration sont devenues le patrimoine du club**
+  (E01US023), ce qui rend l'axe « Atelier » réellement hors tournoi.
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,

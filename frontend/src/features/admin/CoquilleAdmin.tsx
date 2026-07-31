@@ -40,11 +40,10 @@
 // pas dans la zone principale. Elle est scopée au tournoi courant, donc n'apparaît que dans les axes
 // qui en ont un — sa variante « toutes entités » pour l'atelier relève du lot suivant.
 //
-// **DETTE-023 — l'atelier montre encore des briques scopées par tournoi.** Catégories, Blasons,
-// Barème et Phases sont rangés dans l'atelier (c'est leur place : patrimoine du club) mais leurs
-// endpoints portent encore un `tournoi_id` (`/tournois/{id}/categories`, `/tournois/{id}/blasons`…) :
-// ils exigent donc un tournoi courant, ce qui contredit la promesse de l'axe. Le découpage est livré
-// **avant** la libération des briques, volontairement — voir le registre de dette.
+// **E01US023 a rendu l'atelier honnête** (DETTE-023 résorbée, ADR-0060). Catégories, Blasons et
+// Formats y sont désormais des **briques du club** — des modèles de bibliothèque, sans tournoi. La
+// copie d'une édition se travaille au pilotage (« Assemblage »), là où l'on a un tournoi sous la
+// main : c'est le partage déjà établi entre `gabarits` (le modèle) et `plan` (la copie).
 
 import { useEffect, type ReactNode } from 'react'
 import { Accueil } from '../accueil/Accueil'
@@ -64,6 +63,10 @@ import { Departs } from '../departs/Departs'
 import { Duels } from '../duels/Duels'
 import { Exports } from '../exports/Exports'
 import { Gabarits } from '../gabarits/Gabarits'
+import { Assemblage } from '../patrimoine/Assemblage'
+import { BlasonsBibliotheque, CategoriesBibliotheque } from '../patrimoine/Bibliotheque'
+import { Formats } from '../patrimoine/Formats'
+import { ImportClubs } from '../patrimoine/ImportClubs'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
 import { GrainValidation } from '../grain-validation/GrainValidation'
 import { JeuEssai } from '../jeu-essai/JeuEssai'
@@ -82,6 +85,7 @@ import { ConnexionAdmin } from './ConnexionAdmin'
 import { AIDE_ECRANS, type DestinationAdminId } from './aide-ecrans'
 import {
   AXES,
+  BESOIN_TOURNOI,
   AXE_PAR_DESTINATION,
   analyserSegmentsAdmin,
   destinationParDefaut,
@@ -157,9 +161,10 @@ function Coquille() {
   }
 
   // Chaque destination = une **feature autonome** montée par **une seule entrée** (guide §8). Les
-  // destinations `besoinTournoi` exigent un tournoi courant ; les autres (Gabarits, Clubs) sont des
-  // référentiels **globaux**, hors tournoi. Défini dans le composant pour fermer sur `courant` /
-  // `choisirTournoi` ; `rendu` n'est appelé que lorsque le garde `besoinTournoi` est satisfait.
+  // Le besoin d'un tournoi est déclaré dans `axes.ts` (`BESOIN_TOURNOI`), pas ici : tant qu'il
+  // vivait dans ce tableau local, aucun test ne pouvait vérifier « aucune destination de l'atelier
+  // n'exige un tournoi » — l'invariant même qui solde DETTE-023. `rendu` n'est appelé que lorsque
+  // ce garde est satisfait ; il est défini dans le composant pour fermer sur `courant`.
   const destinations: {
     // Typé par l'union des `id` d'aide (et non `string`) : ajouter une destination sans son entrée
     // dans `AIDE_ECRANS` ne compile plus — la couverture « une aide par écran » (E14US002) est
@@ -167,7 +172,6 @@ function Coquille() {
     // `tournoi` est exclue : elle a quitté les destinations pour l'accueil (l'assemblage).
     id: Exclude<DestinationAdminId, 'tournoi'>
     libelle: string
-    besoinTournoi: boolean
     rendu: () => ReactNode
   }[] = [
     {
@@ -175,37 +179,58 @@ function Coquille() {
       libelle: 'Accueil (tableau de bord)',
       // Accueil-tableau de bord contextualisé (E14US001, `D-20`) : la « photo d'ensemble » du tournoi
       // courant (frise, checklist, chiffres). Destination d'ouverture par défaut (`destinationParDefaut`).
-      besoinTournoi: true,
       rendu: () => courant && <Accueil tournoi={courant} />,
     },
     {
       id: 'categories',
       libelle: 'Catégories',
-      besoinTournoi: true,
-      rendu: () => courant && <Categories tournoiId={courant.id} />,
+      // Brique du **club** depuis E01US023 : plus aucun tournoi requis (DETTE-023 résorbée).
+      rendu: () => <CategoriesBibliotheque />,
     },
     {
       id: 'blasons',
       libelle: 'Blasons',
-      besoinTournoi: true,
-      rendu: () => courant && <Blasons tournoiId={courant.id} />,
+      rendu: () => <BlasonsBibliotheque />,
+    },
+    {
+      id: 'formats',
+      libelle: 'Formats (déroulés)',
+      // Le déroulé type d'une compétition (ADR-0060 §5). Ce qui se réutilise d'une année sur
+      // l'autre est le **format**, pas la phase — celle-ci porte un statut et un rang propres à
+      // une édition.
+      rendu: () => <Formats />,
+    },
+    {
+      id: 'assemblage',
+      libelle: 'Assemblage',
+      // La **copie** du patrimoine dans cette édition, et son retour (« rendre permanent »).
+      // Au pilotage et non à l'atelier : ici on travaille sur un tournoi, pas sur le club.
+      // Les écrans d'édition des **copies** du tournoi sont montés ici, sous l'assemblage : sans
+      // eux, libérer les briques aurait fait **perdre** la possibilité d'ajuster une catégorie pour
+      // une seule édition — or c'est précisément ce que le CA promet (« modification locale au
+      // tournoi »). L'assemblage les alimente, ces écrans les corrigent.
+      rendu: () =>
+        courant && (
+          <>
+            <Assemblage tournoiId={courant.id} />
+            <Categories tournoiId={courant.id} />
+            <Blasons tournoiId={courant.id} />
+          </>
+        ),
     },
     {
       id: 'gabarits',
       libelle: 'Gabarits (modèles)',
-      besoinTournoi: false,
       rendu: () => <Gabarits />,
     },
     {
       id: 'plan',
       libelle: 'Plan de salle',
-      besoinTournoi: true,
       rendu: () => courant && <PlanDeSalle tournoiId={courant.id} />,
     },
     {
       id: 'bareme',
       libelle: 'Barème & validation',
-      besoinTournoi: true,
       // Le grain de validation se règle sur la même phase que le barème et n'a de sens qu'une fois
       // celui-ci défini (E01US015) : les deux vont ensemble sur une même destination.
       rendu: () =>
@@ -219,7 +244,6 @@ function Coquille() {
     {
       id: 'phases',
       libelle: 'Phases (format)',
-      besoinTournoi: true,
       // Séquence des phases du moteur (E05US001, ADR-0045) : élimination directe / placement après
       // la qualification. Juste après « Barème & validation » — c'est la suite de la définition du
       // format (la qualification, elle, se règle sur cet écran-là).
@@ -228,26 +252,29 @@ function Coquille() {
     {
       id: 'departs',
       libelle: 'Départs & tarifs',
-      besoinTournoi: true,
       // Les départs (créneaux) portent le tarif (E02US004, ADR-0017).
       rendu: () => courant && <Departs tournoiId={courant.id} />,
     },
     {
       id: 'clubs',
       libelle: 'Clubs',
-      besoinTournoi: false,
-      rendu: () => <Clubs />,
+      // Le référentiel et son **import en masse** (E01US023) vont ensemble : c'est le même geste
+      // — peupler la liste des clubs voisins — à deux échelles.
+      rendu: () => (
+        <>
+          <Clubs />
+          <ImportClubs />
+        </>
+      ),
     },
     {
       id: 'scoreurs',
       libelle: 'Scoreurs',
-      besoinTournoi: true,
       rendu: () => courant && <Scoreurs tournoiId={courant.id} />,
     },
     {
       id: 'inscriptions',
       libelle: 'Inscriptions',
-      besoinTournoi: true,
       // Créer un archer, puis le corriger / l'inscrire sur des départs : les deux briques de la
       // feature « archers » (création + liste) sur une même destination.
       rendu: () =>
@@ -263,19 +290,16 @@ function Coquille() {
       libelle: 'Doublons',
       // Nettoyage de la liste des inscrits (E02US005) : repérer les fiches en double et fusionner.
       // Juste après « Inscriptions » — c'est la suite naturelle du travail sur la liste.
-      besoinTournoi: true,
       rendu: () => courant && <Doublons tournoiId={courant.id} />,
     },
     {
       id: 'placement',
       libelle: 'Placement',
-      besoinTournoi: true,
       rendu: () => courant && <Placement tournoiId={courant.id} />,
     },
     {
       id: 'duels',
       libelle: 'Plan de duels',
-      besoinTournoi: true,
       // Ajustement du placement des duellistes d'une phase de tableau (E03US009, ADR-0048). L'écran
       // choisit lui-même la **phase** (comme « Placement » choisit le départ) : la navigation reste
       // par `useState` local, sans react-router (arbitrage du 18/07/2026 — cf. en-tête de fichier).
@@ -284,23 +308,20 @@ function Coquille() {
     {
       id: 'paiements',
       libelle: 'Paiements',
-      besoinTournoi: true,
       rendu: () => courant && <Paiements tournoiId={courant.id} />,
     },
     {
       id: 'postes',
       libelle: 'Postes de cible',
-      besoinTournoi: true,
       rendu: () => courant && <Postes tournoiId={courant.id} />,
     },
     {
       id: 'jeu-essai',
       libelle: 'Jeu d’essai',
       // Outil de démo/QA (E15US001) : peupler le tournoi courant OU instancier un scénario qui crée
-      // son propre tournoi — d'où `besoinTournoi: false` (la brique « peupler » gère elle-même
+      // son propre tournoi — d'où son `false` dans `BESOIN_TOURNOI` (la brique « peupler » gère
       // l'absence de tournoi courant). À l'instanciation, on **sort de l'atelier** pour aller piloter
       // le tournoi qui vient de naître : c'est le geste « j'ai fabriqué, je vais m'en servir ».
-      besoinTournoi: false,
       rendu: () => (
         <JeuEssai
           tournoiId={tournoiId}
@@ -316,13 +337,11 @@ function Coquille() {
       // Cockpit de simulation (E15US003) : rejoue le tournoi courant en accéléré **sans rien
       // enregistrer** (bot pausable + reprise en main + vues cible/archer/scoreur/public). Ne simule
       // qu'un tournoi avant démarrage (garde-fou serveur) — d'où sa place dans « Préparation ».
-      besoinTournoi: true,
       rendu: () => courant && <Simulation tournoiId={courant.id} />,
     },
     {
       id: 'supervision',
       libelle: 'Supervision',
-      besoinTournoi: true,
       rendu: () => courant && <Supervision tournoiId={courant.id} />,
     },
     {
@@ -330,13 +349,11 @@ function Coquille() {
       // est prêt à partir, puis faire partir les duels prêts (les postes/écrans sont prévenus).
       id: 'feu-vert',
       libelle: 'Feu vert',
-      besoinTournoi: true,
       rendu: () => courant && <FeuVert tournoiId={courant.id} />,
     },
     {
       id: 'completude',
       libelle: 'Complétude',
-      besoinTournoi: true,
       // « Qu'est-ce qui manque pour finir ? » (E12US005) + contrôle avant de terminer. Le statut
       // pilote l'apparition du bouton « Terminer » (uniquement *en cours*).
       rendu: () => courant && <Completude tournoiId={courant.id} statut={courant.statut} />,
@@ -344,7 +361,6 @@ function Coquille() {
     {
       id: 'classement',
       libelle: 'Classement en direct',
-      besoinTournoi: true,
       rendu: () => courant && <VueClassement tournoiId={courant.id} admin />,
     },
     {
@@ -352,7 +368,6 @@ function Coquille() {
       libelle: 'Exports',
       // Listes imprimables du jour J (E09US003) : placement (accueil) et club & paiement (admin).
       // Destination prévue au §7.1, désormais matérialisée sur le socle PDF (E09US001).
-      besoinTournoi: true,
       rendu: () => courant && <Exports tournoiId={courant.id} />,
     },
     {
@@ -360,7 +375,6 @@ function Coquille() {
       libelle: 'Archive',
       // Paquet ZIP de fin de tournoi (E11US003) : instantané SQLite + CSV + PDF régénérés + manifeste,
       // au choix (cases à cocher). Destination prévue au §7.1, désormais matérialisée.
-      besoinTournoi: true,
       rendu: () => courant && <Archive tournoiId={courant.id} />,
     },
   ]
@@ -447,19 +461,13 @@ function Coquille() {
   if (axe === null || active === undefined) return null
 
   const contenu =
-    active.besoinTournoi && courant === null ? (
+    BESOIN_TOURNOI[active.id] && courant === null ? (
+      // Depuis E01US023, **seuls** les axes à tournoi peuvent atteindre cet état : toutes les
+      // destinations de l'atelier sont hors tournoi (DETTE-023 résorbée), donc le repli « cette
+      // brique dépend encore d'un tournoi » n'a plus d'objet — et « ci-dessus » désigne bien, ici,
+      // le sélecteur que l'axe affiche.
       <p className="carte__etat">
-        {axe.besoinTournoi ? (
-          <>Choisissez un tournoi ci-dessus pour accéder à «&nbsp;{active.libelle}&nbsp;».</>
-        ) : (
-          // L'atelier n'affiche **pas** de sélecteur : dire « ci-dessus » y désignerait un contrôle
-          // inexistant. On nomme la vraie raison et le chemin de contournement (DETTE-023).
-          <>
-            «&nbsp;{active.libelle}&nbsp;» dépend encore d’un tournoi&nbsp;: ouvrez-la depuis le
-            Pilotage, en choisissant d’abord votre tournoi. Cette brique rejoindra l’atelier quand
-            elle sera libérée du périmètre d’un tournoi.
-          </>
-        )}
+        Choisissez un tournoi ci-dessus pour accéder à «&nbsp;{active.libelle}&nbsp;».
       </p>
     ) : (
       active.rendu()

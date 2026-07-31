@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   AXES,
   AXE_PAR_DESTINATION,
+  BESOIN_TOURNOI,
   analyserSegmentsAdmin,
   destinationParDefaut,
   destinationValide,
@@ -13,15 +14,16 @@ import {
 import { AIDE_ECRANS, type DestinationAdminId } from './aide-ecrans'
 
 describe('répartition des destinations', () => {
-  it('CA — les 25 destinations livrées sont toutes rangées, aucune perdue', () => {
-    // Le risque n°1 de cette US : 24 destinations réétiquetées à la main. Une entrée oubliée
+  it('CA — les 27 destinations livrées sont toutes rangées, aucune perdue', () => {
+    // Le risque n°1 d'E14US003 : des destinations réétiquetées à la main. Une entrée oubliée
     // disparaîtrait **silencieusement** de la sidebar (elle est filtrée par axe), sans que `tsc`
-    // ni aucun autre test ne le voie.
+    // ni aucun autre test ne le voie. E01US023 en a ajouté deux : `formats` (atelier) et
+    // `assemblage` (pilotage).
     const rangees = Object.keys(AXE_PAR_DESTINATION)
     const toutes = Object.keys(AIDE_ECRANS)
-    expect(toutes).toHaveLength(25)
-    expect(rangees).toHaveLength(24)
-    // La 25ᵉ est « tournoi » : elle n'appartient à aucun axe, c'est l'assemblage porté par l'accueil.
+    expect(toutes).toHaveLength(27)
+    expect(rangees).toHaveLength(26)
+    // La 27ᵉ est « tournoi » : elle n'appartient à aucun axe, c'est l'assemblage porté par l'accueil.
     expect(toutes.filter((d) => !rangees.includes(d))).toEqual(['tournoi'])
   })
 
@@ -56,11 +58,42 @@ describe('destinationParDefaut', () => {
     }
   })
 
-  it('l’atelier n’ouvre PAS sur une brique qui exige un tournoi (DETTE-023)', () => {
-    // Les quatre briques FFTA réclament encore un tournoi que l'atelier ne propose pas de choisir :
-    // ouvrir l'axe sur l'une d'elles afficherait un écran vide dès le premier clic.
-    const bloquees: DestinationAdminId[] = ['categories', 'blasons', 'bareme', 'phases']
-    expect(bloquees).not.toContain(destinationParDefaut('atelier'))
+  it('CA E01US023 — AUCUNE destination de l’atelier n’exige un tournoi (DETTE-023 résorbée)', () => {
+    // Le garde-fou a changé de nature, et c'est le fait notable. Il disait « n'ouvre pas sur une
+    // brique bloquée » — un contournement, tant que quatre des destinations de l'axe
+    // réclamaient un tournoi que l'axe ne propose pas de choisir. Depuis que les briques sont le
+    // patrimoine du club (ADR-0060), il n'y a plus de brique bloquée : on vérifie l'invariant
+    // **fort**, celui que l'axe promet.
+    //
+    // ⚠️ Sa première version ne le vérifiait pas : elle n'assertait que des appartenances d'axe,
+    // parce que `besoinTournoi` vivait dans `CoquilleAdmin.tsx`, hors de portée du test. Elle est
+    // passée au vert **alors que `simulation` exigeait encore un tournoi** — un test qui affirme un
+    // invariant sans pouvoir le lire est pire que pas de test. La table est désormais dans
+    // `axes.ts` ; l'assertion ci-dessous est la vraie.
+    const destinationsAtelier = Object.entries(AXE_PAR_DESTINATION)
+      .filter(([, axe]) => axe === 'atelier')
+      .map(([destination]) => destination as keyof typeof BESOIN_TOURNOI)
+
+    expect(destinationsAtelier.filter((d) => BESOIN_TOURNOI[d])).toEqual([])
+    expect(destinationsAtelier).toContain('categories')
+    expect(destinationsAtelier).toContain('formats')
+    expect(destinationParDefaut('atelier')).toBe('categories')
+  })
+
+  it('les destinations qui règlent UNE édition sont au pilotage, pas à l’atelier', () => {
+    // Le critère qui a fait bouger ces trois-là (ADR-0060 §6) : `plan` (la copie d'un tournoi) est
+    // au pilotage tandis que `gabarits` (le modèle) est à l'atelier — on applique le même partage.
+    const reglentUneEdition: DestinationAdminId[] = ['bareme', 'phases', 'simulation']
+    for (const destination of reglentUneEdition) {
+      expect(AXE_PAR_DESTINATION[destination as keyof typeof AXE_PAR_DESTINATION]).toBe('pilotage')
+    }
+  })
+
+  it('toute destination rangée déclare si elle exige un tournoi', () => {
+    // Garde-fou de complétude : `BESOIN_TOURNOI` et `AXE_PAR_DESTINATION` doivent couvrir les
+    // mêmes clés. Le typage `Record` exhaustif l'impose déjà à la compilation ; ce test le dit à
+    // l'exécution, pour que l'échec soit lisible plutôt qu'un message de `tsc`.
+    expect(Object.keys(BESOIN_TOURNOI).sort()).toEqual(Object.keys(AXE_PAR_DESTINATION).sort())
   })
 })
 

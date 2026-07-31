@@ -44,17 +44,26 @@ export const AXES: { axe: Axe; libelle: string; phrase: string; besoinTournoi: b
  * l'accueil de l'admin (ADR-0058).
  */
 export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>, Axe> = {
-  // Atelier — fabriquer, hors tournoi.
+  // Atelier — fabriquer, hors tournoi. Depuis E01US023, ses **six** destinations le sont
+  // réellement (clubs, gabarits, catégories, blasons, formats, jeu d'essai) :
+  // catégories, blasons et formats sont devenus des briques du **club** (ADR-0060), et `bareme` /
+  // `phases` — qui règlent **une** édition — sont partis au pilotage, exactement comme `plan` (la
+  // copie d'un tournoi) est au pilotage tandis que `gabarits` (le modèle) est ici.
   clubs: 'atelier',
   gabarits: 'atelier',
   categories: 'atelier',
   blasons: 'atelier',
-  bareme: 'atelier',
-  phases: 'atelier',
+  formats: 'atelier',
   'jeu-essai': 'atelier',
-  simulation: 'atelier',
-  // Pilotage — le temps réel.
+  // Pilotage — le temps réel, et ce qui règle **cette** édition.
   accueil: 'pilotage',
+  assemblage: 'pilotage',
+  bareme: 'pilotage',
+  phases: 'pilotage',
+  // `simulation` **rejoue le tournoi courant** : elle exige donc une édition, exactement comme
+  // `bareme` et `phases`. La laisser à l'atelier rouvrait l'impasse de DETTE-023 — « choisissez un
+  // tournoi ci-dessus » sur un axe qui n'a pas de sélecteur (relevé par trois axes de revue).
+  simulation: 'pilotage',
   supervision: 'pilotage',
   'feu-vert': 'pilotage',
   completude: 'pilotage',
@@ -74,21 +83,63 @@ export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>,
 }
 
 /**
+ * Quelles destinations exigent un **tournoi courant** — la donnée que `CoquilleAdmin` consomme pour
+ * décider entre l'écran et le message « choisissez un tournoi ».
+ *
+ * Elle vivait dans le tableau local de `CoquilleAdmin.tsx`, donc **hors de portée des tests** : le
+ * garde-fou censé remplacer celui de DETTE-023 ne pouvait pas vérifier l'invariant qu'il annonçait
+ * (« aucune destination de l'atelier n'exige un tournoi ») et se rabattait sur des appartenances
+ * d'axe. Elle est ici, à côté d'`AXE_PAR_DESTINATION`, pour que cet invariant soit **prouvable** —
+ * et le `Record` exhaustif force toute destination neuve à répondre à la question.
+ */
+export const BESOIN_TOURNOI: Record<Exclude<DestinationAdminId, 'tournoi'>, boolean> = {
+  // Atelier — le patrimoine du club, aucune édition requise.
+  clubs: false,
+  gabarits: false,
+  categories: false,
+  blasons: false,
+  formats: false,
+  'jeu-essai': false,
+  // Pilotage & gestion — tout y porte sur une édition précise.
+  accueil: true,
+  assemblage: true,
+  bareme: true,
+  phases: true,
+  simulation: true,
+  supervision: true,
+  'feu-vert': true,
+  completude: true,
+  classement: true,
+  postes: true,
+  scoreurs: true,
+  plan: true,
+  placement: true,
+  duels: true,
+  departs: true,
+  inscriptions: true,
+  doublons: true,
+  paiements: true,
+  exports: true,
+  archive: true,
+}
+
+/**
  * Destination d'ouverture d'un axe.
  *
  * Pour le pilotage, c'est **l'accueil-tableau de bord** (`D-20`, E14US001) : c'est lui qui se
  * contextualise par statut, inutile donc d'aiguiller selon le statut.
  *
- * Pour l'atelier, c'est **`gabarits`** et non `categories` : les quatre briques FFTA (catégories,
- * blasons, barème, phases) exigent encore un tournoi que l'axe ne propose pas de choisir
- * (**DETTE-023**). Ouvrir l'atelier sur l'une d'elles afficherait, dès le premier clic, un écran vide
- * disant « choisissez un tournoi **ci-dessus** » — sans rien au-dessus. `gabarits` et `clubs` sont les
- * seules briques réellement hors tournoi aujourd'hui.
+ * Pour l'atelier, c'est **`categories`** depuis E01US023 : les briques du club sont devenues des
+ * modèles de bibliothèque (ADR-0060), donc toutes les destinations de l'axe s'ouvrent sans tournoi.
+ * C'était `gabarits` tant que quatre d'entre elles en exigeaient un que l'axe ne propose pas de
+ * choisir (DETTE-023, résorbée) : ouvrir sur l'une d'elles affichait, dès le premier clic, un écran
+ * vide disant « choisissez un tournoi **ci-dessus** » — sans rien au-dessus. On ouvre désormais sur
+ * la brique la plus consultée.
  */
 export function destinationParDefaut(axe: Axe): DestinationAdminId {
   if (axe === 'pilotage') return 'accueil'
   if (axe === 'gestion') return 'inscriptions'
-  return 'gabarits'
+  return 'categories'
 }
 
 // ————————————————————————————————————————————————————————————————————————————————————————————————

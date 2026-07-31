@@ -187,6 +187,10 @@ class FauxCategorieRepository:
         # tout ferait passer au vert un service incapable de cloisonner les tournois.
         return [c for c in self._categories.values() if c.tournoi_id == tournoi_id]
 
+    def par_bibliotheque(self) -> list[Categorie]:
+        # Modèles de bibliothèque (E01US023) : ceux sans tournoi.
+        return [x for x in self._categories.values() if x.tournoi_id is None]
+
     def par_blason(self, blason_id: BlasonId) -> list[Categorie]:
         return [c for c in self._categories.values() if c.blason_id == blason_id]
 

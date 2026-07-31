@@ -24,6 +24,7 @@ from enum import Enum
 
 from domain.blason import BlasonId
 from domain.erreurs import HauteurCentreInvalide, LibelleCategorieInvalide
+from domain.patrimoine import OrigineBrique
 from domain.tournoi import TournoiId
 
 CategorieId = int
@@ -67,31 +68,38 @@ class SexeCategorie(str, Enum):
 
 @dataclass(frozen=True)
 class Categorie:
-    """Une catégorie rattachée à un tournoi. `id` vaut `None` tant qu'elle n'est pas persistée.
+    """Une catégorie — **modèle de bibliothèque** ou copie d'un tournoi (E01US023, ADR-0060).
+
+    `tournoi_id is None` : c'est un modèle du **patrimoine du club**, réutilisable d'une année sur
+    l'autre. Renseigné : c'est la **copie** d'un tournoi, ajustable sans altérer le modèle. Même
+    patron que `gabarit_salle` depuis E01US007. `id` vaut `None` tant qu'elle n'est pas persistée.
 
     `ages` est un **tuple** (immuable, règle 4) de tranches éligibles, vide par défaut (aucune
     contrainte d'âge). Il représente un **ensemble** : dédoublonné et ordonné canoniquement à la
     construction (cf. `_ages_valides`), pour que deux catégories aux mêmes tranches soient égales.
     """
 
-    tournoi_id: TournoiId
+    tournoi_id: TournoiId | None
     libelle: str
     arme: str | None = None
     ages: tuple[TrancheAge, ...] = ()
     sexe: SexeCategorie | None = None
     blason_id: BlasonId | None = None
     hauteur_cm: int = HAUTEUR_CENTRE_DEFAUT
+    origine: OrigineBrique = OrigineBrique.UTILISATEUR
     id: CategorieId | None = None
 
     @staticmethod
     def creer(
-        tournoi_id: TournoiId,
+        tournoi_id: TournoiId | None,
         libelle: str,
         arme: str | None = None,
         ages: Iterable[TrancheAge] = (),
         sexe: SexeCategorie | None = None,
         blason_id: BlasonId | None = None,
         hauteur_cm: int = HAUTEUR_CENTRE_DEFAUT,
+        *,
+        origine: OrigineBrique = OrigineBrique.UTILISATEUR,
     ) -> Categorie:
         """Crée une catégorie valide ; lève `LibelleCategorieInvalide` si le libellé est vide.
 
@@ -111,7 +119,29 @@ class Categorie:
             sexe=sexe,
             blason_id=blason_id,
             hauteur_cm=_hauteur_valide(hauteur_cm),
+            origine=origine,
         )
+
+    def pour_tournoi(self, tournoi_id: TournoiId, blason_id: BlasonId | None) -> Categorie:
+        """Copie ce modèle de bibliothèque en **catégorie d'un tournoi**, non persistée (E01US023).
+
+        `blason_id` est **fourni par l'appelant**, et ce n'est pas un détail : c'est une **clé
+        étrangère**, et la recopier telle quelle ferait pointer la catégorie du tournoi vers le
+        blason de la *bibliothèque*. Seul le service voit les deux collections et sait à quelle
+        copie le lien doit être réattaché — l'agrégat, lui, ne voit qu'une catégorie à la fois
+        (même partage des rôles que la garde `BlasonHorsTournoi`).
+
+        L'`id` est remis à `None` (catégorie neuve) et l'`origine` **suit** le modèle.
+        """
+        return replace(self, tournoi_id=tournoi_id, blason_id=blason_id, id=None)
+
+    def en_bibliotheque(self, blason_id: BlasonId | None) -> Categorie:
+        """Détache cette catégorie en **modèle de bibliothèque**, non persisté (**promotion**).
+
+        Miroir de `pour_tournoi`, `blason_id` compris : au retour, le lien doit viser le blason
+        **de la bibliothèque**, que seul le service sait résoudre.
+        """
+        return replace(self, tournoi_id=None, blason_id=blason_id, id=None)
 
     def modifier(
         self,

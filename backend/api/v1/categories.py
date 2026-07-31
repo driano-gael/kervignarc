@@ -22,6 +22,7 @@ from starlette.concurrency import run_in_threadpool
 from api.dependances import exiger_admin
 from application.categories import ServiceCategories
 from domain.categorie import HAUTEUR_CENTRE_DEFAUT, Categorie, SexeCategorie, TrancheAge
+from domain.patrimoine import OrigineBrique
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["categories"])
@@ -69,13 +70,17 @@ class CategorieReponse(BaseModel):
     """
 
     id: int
-    tournoi_id: int
+    # `None` pour un **modèle de bibliothèque** (patrimoine du club, E01US023).
+    tournoi_id: int | None
     libelle: str
     arme: str | None
     ages: list[TrancheAge]
     sexe: SexeCategorie | None
     blason_id: int | None
     hauteur_cm: int
+    # Provenance de la brique (E01US023) : sert les **deux listes séparées** de l'atelier.
+    # Ne dit **pas** la conformité au règlement (ADR-0060 §4).
+    origine: OrigineBrique
 
     @staticmethod
     def de_agregat(categorie: Categorie) -> CategorieReponse:
@@ -90,6 +95,7 @@ class CategorieReponse(BaseModel):
             sexe=categorie.sexe,
             blason_id=categorie.blason_id,
             hauteur_cm=categorie.hauteur_cm,
+            origine=categorie.origine,
         )
 
 

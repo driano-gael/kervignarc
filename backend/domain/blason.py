@@ -23,6 +23,7 @@ from domain.erreurs import (
     TailleBlasonInvalide,
     ZonesBlasonInvalides,
 )
+from domain.patrimoine import OrigineBrique
 from domain.tournoi import TournoiId
 
 BlasonId = int
@@ -93,9 +94,13 @@ migration `0019`.
 
 @dataclass(frozen=True)
 class Blason:
-    """Un blason rattaché à un tournoi. `id` vaut `None` tant qu'il n'est pas persisté."""
+    """Un blason — **modèle de bibliothèque** ou copie d'un tournoi (E01US023, ADR-0060).
 
-    tournoi_id: TournoiId
+    `tournoi_id is None` : modèle du **patrimoine du club**. Renseigné : la **copie** d'un tournoi,
+    ajustable sans altérer le modèle. `id` vaut `None` tant qu'il n'est pas persisté.
+    """
+
+    tournoi_id: TournoiId | None
     nom: str
     taille: float
     capacite: int
@@ -104,21 +109,26 @@ class Blason:
     # silence — mypy et ruff resteraient verts, et le blason ressortirait « tout admis », soit le
     # bug même que cette US corrige. Le défaut vit sur `creer`, où il est un choix explicite.
     zones: tuple[ZoneScore, ...]
+    origine: OrigineBrique = OrigineBrique.UTILISATEUR
     id: BlasonId | None = None
 
     @staticmethod
     def creer(
-        tournoi_id: TournoiId,
+        tournoi_id: TournoiId | None,
         nom: str,
         taille: float,
         capacite: int,
         zones: Iterable[ZoneScore | str] | None = None,
+        *,
+        origine: OrigineBrique = OrigineBrique.UTILISATEUR,
     ) -> Blason:
         """Crée un blason valide.
 
         Le `nom` est normalisé (espaces de bord retirés) et ne peut pas être vide ; la `taille`
         doit être dans `]0, 1]` (fraction de place) ; la `capacite` doit être un entier `>= 1` ;
         les `zones`, omises (**seul** sens de `None` ici), valent `ZONES_DEFAUT`.
+        `origine` marque la **provenance** (E01US023) : `utilisateur` par défaut, car une création
+        ordinaire n'est pas officielle — seul le pré-chargement du référentiel passe `FFTA`.
         Lève l'erreur de domaine correspondante en cas de valeur invalide.
         """
         return Blason(
@@ -127,7 +137,26 @@ class Blason:
             taille=_taille_valide(taille),
             capacite=_capacite_valide(capacite),
             zones=ZONES_DEFAUT if zones is None else valider_zones(zones),
+            origine=origine,
         )
+
+    def pour_tournoi(self, tournoi_id: TournoiId) -> Blason:
+        """Copie ce modèle de bibliothèque en **blason d'un tournoi**, non persistée (E01US023).
+
+        L'`id` est remis à `None` — c'est un blason **neuf**, pas une mise à jour du modèle : c'est
+        exactement ce qui fait que modifier la copie ensuite n'altère pas la bibliothèque
+        (ADR-0060 §2). L'`origine` **suit** : assembler ne blanchit pas la provenance, une copie
+        d'officiel reste marquée officielle.
+        """
+        return replace(self, tournoi_id=tournoi_id, id=None)
+
+    def en_bibliotheque(self) -> Blason:
+        """Détache ce blason en **modèle de bibliothèque**, non persisté (**promotion**, E01US023).
+
+        Miroir de `pour_tournoi`. L'`id` est remis à `None` : le service décide ensuite s'il crée un
+        modèle ou met à jour l'homonyme existant — c'est lui qui voit la collection, pas l'agrégat.
+        """
+        return replace(self, tournoi_id=None, id=None)
 
     def modifier(
         self,
