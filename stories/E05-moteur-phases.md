@@ -48,8 +48,9 @@ garde-fous de cohérence, *afin de* définir le format sans risque de blocage pl
 > **Un format est de la configuration, pas du code** (règle 2, [ADR-0004](../docs/adr/0004-moteur-de-phases-politiques.md)) :
 > le moteur (E05US003) doit composer **n'importe quel** format via ses politiques injectables
 > (`routing/scoring/seeding/byes/tiebreak/depth`). Ce catalogue liste les formats **cibles** de l'appli ;
-> chacun devient une US implémentable **quand sa règle est écrite** — **même *gate* que le Big Shoot Off**,
-> aujourd'hui bloqué faute de règle ([référentiel §11](../docs/referentiel-ffta.md), Q9). Un format sans
+> chacun devient une US implémentable **quand sa règle est écrite** — c'est le *gate* qui a bloqué le
+> **Big Shoot Off** jusqu'au **31/07/2026**, date à laquelle le club en a fourni la règle (Q9 fermée,
+> [référentiel §10.1](../docs/referentiel-ffta.md)). Un format sans
 > règle écrite n'a **pas d'oracle** (règle 9) : il reste *cible documentée*, **non planifié**. Catalogue
 > **ouvert** — d'autres formats s'ajoutent en fournissant leur règle.
 
@@ -58,15 +59,16 @@ garde-fous de cohérence, *afin de* définir le format sans risque de blocage pl
 | Qualification (cumul) | ✅ écrite | livré (barème) |
 | Élimination directe (tableau) | ✅ écrite | E05US005 |
 | Duel **par sets** (1ᵉ à 6, FFTA) | ✅ écrite | politique `scoring` (E05US003) |
-| Barrage / shoot-off (1 flèche) | ✅ écrite | référentiel §8.2 |
-| Placement intégral 1→N | ✅ écrite | E05US010 |
-| Repêchage-réintégration (WA) | ✅ écrite | E05US016 |
-| Big Shoot Off | 🔴 à fournir | bloqué (Q9) |
-| **Poules / round-robin** | ⏳ à fournir | cible |
+| Barrage / shoot-off (1 flèche) | ✅ écrite | référentiel §8.2 — **phase autonome** : E05US015 |
+| Placement intégral 1→N | ✅ écrite | **E05US010** — 🎯 prochaine |
+| Repêchage-réintégration (WA) | ✅ écrite | E05US015 *(absorbe ex-E05US016)* |
+| Big Shoot Off | ✅ **écrite le 31/07/2026** | référentiel §10.1 — E05US015 *(Q9 fermée)* |
+| **Poules / round-robin** | ✅ **écrite le 31/07/2026** | référentiel §10.1 — E05US015 |
 | **Handicap** (score ajusté au niveau) | ⏳ à fournir | cible |
 | **Système suisse** (appariement par score) | ⏳ à fournir | cible |
 | **King of the hill** (le vainqueur reste) | ⏳ à fournir | cible (original) |
 | **Montante-descendante (ladder)** | ⏳ à fournir | cible (original) |
+| **Échauffement** (sans point, sans classement) | ✅ **écrite le 31/07/2026** | référentiel §10.1 — E05US015 |
 | **Finale spectacle** (tir alterné, public) | ⏳ à fournir | cible |
 | **Contre-la-montre / découverte** (temps limité) | ⏳ à fournir | cible (original) |
 
@@ -113,10 +115,11 @@ d'élimination directe jusqu'au podium, *afin de* dérouler un tableau équitabl
 - **CA — podium (ex-009)** : finale → rangs 1-2 ; petite finale → rangs 3-4 ; alimente E06US004.
 - **Absorbe** : ex-E05US005 à E05US009. **Dépend de** : E05US003 · **Jalon** : J2
 
-### E05US010 — Placement intégral 1→N
-*En tant que* système, *je veux* peupler des phases de placement depuis n'importe quelle source
-(rangs, gagnants/perdants), router les perdants en cascade et fixer les rangs terminaux, *afin de*
-classer **tout le monde** de 1 à N, personne éliminé.
+### E05US010 — Placement intégral 1→N & peuplement multiple *(élargie le 31/07/2026)*
+*En tant que* système, *je veux* peupler une phase depuis **plusieurs** sources hétérogènes, router
+les perdants en cascade et fixer les rangs terminaux, *afin de* classer **tout le monde** de 1 à N —
+personne éliminé — et de composer des formats qui **s'ajustent** à l'effectif réel.
+
 - **CA — peuplement par rangs (ex-010)** : une phase peut être alimentée par « rangs N→M » d'un
   classement source.
 - **CA — peuplement gagnants/perdants (ex-011)** : sources « gagnants du tour X » / « perdants du
@@ -127,34 +130,160 @@ classer **tout le monde** de 1 à N, personne éliminé.
   (perdants) jusqu'à largeur 2.
 - **CA — rangs terminaux (ex-014)** : match terminal → gagnant = rang supérieur, perdant = rang
   suivant (Règle T vérifiée).
-- **Notes** : le routing cascade (ex-012) applique la **Règle R** de `moteur-placement-lucky-loser.md`
-  ; les rangs terminaux (ex-014) appliquent la **Règle T** du même document.
-- **Absorbe** : ex-E05US010 à E05US014. **Dépend de** : E05US003 · **Jalon** : J3
+- **CA — sources multiples (31/07/2026)** : une phase se peuple de **plusieurs** sources, de natures
+  différentes. Demande du commanditaire, mot pour mot : « *les x archers doivent pouvoir venir de
+  différentes sources de tableaux précédents, exemple les demi-finalistes du tableau principal, et
+  le gagnant du tableau secondaire ; ce n'est qu'un exemple mais le paramétrage doit être ouvert pour
+  ça* ». Conforme à **EF-3.3** du CDC, qui énumérait déjà : *tous les inscrits, rangs N→M, gagnants
+  d'un tour, perdants d'un tour (Lucky Loser), exempts*.
+- **CA — plages relatives (31/07/2026)** : un format composé pour un effectif doit tenir à un autre.
+  Demande du commanditaire : « *il faut également que la phase et le format du tournoi soient
+  capables de s'ajuster si j'ai prévu 120 archers et qu'il n'y en a que 82* ». Une plage accepte donc
+  une **fin ouverte**, et le vocabulaire comporte « **le reste** » — tout ce qu'aucune autre source
+  n'a prélevé. Une phase qui dirait « les rangs 33 à 120 » serait **fausse** à 82 inscrits.
+- **CA — cohérence des sources** : deux sources d'une même phase ne se **recoupent** pas (un archer
+  prélevé deux fois), et leur somme est compatible avec l'effectif déclaré. Un format devenu
+  infaisable à effectif réduit (« les 32 premiers » avec 20 inscrits) n'est **pas** une erreur à
+  corriger dans le format : c'est une **anomalie à afficher** (cf. E01US024).
+- **CA — oracle 120 (ex-E05US018)** : test de non-régression reconstruisant arbre + routage +
+  classement 1→120, comparé à `Tableaux.xlsx`. **Non négociable dans cette US** — un moteur de
+  placement sans oracle n'est pas vérifiable (risque R1).
 
-### E05US015 — Big Shoot Off
-*En tant que* système, *je veux* gérer la grande finale en BSO, *afin de* respecter le format.
-- **CA** : barème BSO appliqué à la grande finale ; vainqueur = rang 1.
-- **Dépend de** : E01US011, E05US005 · **Jalon** : J3
+**Notes — état des lieux au 31/07/2026, à lire avant de commencer.**
 
-### E05US016 — Routing repêchage-réintégration (WA)
-*En tant qu'*administrateur, *je veux* un mode repêchage réintégrant le principal, *afin de* couvrir
-le format World Archery.
-- **CA** : `routing = repêchage` réinjecte certains perdants dans le tableau principal ;
-  sélectionnable par phase.
-- **Dépend de** : E05US010 · **Jalon** : J4
+> **Le verrou est le routing, pas le catalogue de types.** `DestinationPerdant`
+> (`backend/domain/politiques.py:68`) n'a **qu'une** valeur : `ELIMINE`. Tout ce qui n'est pas
+> élimination sèche — placement, repêchage, consolation, non-qualifiés de poule — a besoin que le
+> perdant aille **ailleurs**. `Routing.destination_du_perdant()` doit devenir
+> `route(perdant, tour, contexte)`, exactement comme [ADR-0004](../docs/adr/0004-moteur-de-phases-politiques.md)
+> le prévoit et comme `politiques.py` l'annonce lui-même (« ressigneront cette méthode — rupture bon
+> marché, un implémenteur, aucun consommateur »). **C'est la première chose à poser : tout en dépend.**
 
-### E05US018 — Oracle 120 (rejeu + comparaison)
-*En tant que* équipe, *je veux* rejouer le tournoi 120 du classeur, *afin de* valider le moteur.
-- **CA** : test de non-régression reconstruisant arbre + routage + classement 1→120 et comparant à
-  `Tableaux.xlsx`.
-- **Notes** : oracle de référence (risque R1).
-- **Dépend de** : E05US010 · **Jalon** : J3
+> **Ce qui existe déjà et se réutilise tel quel** — le risque n°1 d'une reprise à froid est de
+> recoder ce qui est là : `backend/domain/tableau.py` (dimensionnement 2^k, génération de l'arbre,
+> progression, podium — E05US005 ✅), `SeedingSerpent`, `ByesAuxMieuxClasses`, `EliminationSeche`
+> (`domain/politiques.py`), l'abstraction `Participant` (ADR-0028). Le dimensionnement **absorbe déjà**
+> les effectifs non-puissance-de-2 : un tableau de 32 avec 28 archers fonctionne, byes aux mieux
+> classés.
 
-### E05US019 — Enregistrer une séquence comme modèle
-*En tant qu'*administrateur, *je veux* sauvegarder un format, *afin de* le réutiliser.
-- **CA** : une séquence + politiques enregistrable comme modèle nommé ; applicable à un nouveau
-  tournoi.
-- **Dépend de** : E05US003 · **Jalon** : J3
+> ⚠️ **Migration de données, sur DEUX tables.** `SourcePhase` est sérialisée dans `phase.config`
+> **et**, depuis E01US023 (30/07/2026), dans `format_tournoi.config`. Les deux doivent être migrées,
+> et l'**ancienne forme** (source unique) doit rester relisable — c'est un sous-cas de la nouvelle.
+> C'est l'élargissement de DETTE-015 relevé par la revue d'E01US023.
+
+> **Règles R et T** : `moteur-placement-lucky-loser.md`. **Règle R** — quand un archer perd au niveau
+> dont la plage atteignable est `[a..b]` (largeur `w`), il entre dans le sous-tableau de cette plage,
+> où l'élimination interne **divise `w` par deux** à chaque tour jusqu'à `w = 2`. **Règle T** — le
+> match terminal d'une paire `(2k−1, 2k)` donne gagnant = rang supérieur, perdant = rang suivant.
+> ⚠️ Piège de vocabulaire : dans `Tableaux.xlsx`, « LUCKY LOSER 1 » désigne le **tableau de
+> consolation**, **pas** un repêchage — aucun archer battu n'y revient disputer le titre.
+
+- **Absorbe** : ex-E05US010 à E05US014, **et E05US018** (oracle). **Résorbe** : DETTE-015.
+- **Dépend de** : E05US003 · **Jalon** : J3 · **Origine** : cadrage du 31/07/2026
+
+### E05US015 — Le catalogue de types de phase *(élargie le 31/07/2026)*
+*En tant qu'*organisateur, *je veux* disposer des types de phase qui composent un vrai tournoi de
+club — échauffement, barrage, poules, repêchage, Big Shoot Off — *afin de* décrire mon déroulé réel
+au lieu de l'approcher.
+
+**Chaque type est un assemblage de politiques** ([ADR-0004](../docs/adr/0004-moteur-de-phases-politiques.md)),
+pas du code en dur : `routing`, `scoring`, `seeding`, `byes`, `tiebreak`, `depth`. Les six familles
+existent depuis E05US003 (✅) ; cette US en peuple le catalogue.
+
+- **CA — échauffement** : une phase **sans point et sans classement**. Demande du commanditaire
+  (31/07/2026), mot pour mot : « *ajoute une phase échauffement, sans point sans classement* ».
+  Aucun barème, aucun grain de validation, aucune politique de score, personne d'éliminé, **aucun
+  classement produit**. Elle **existe dans le déroulé** — et c'est tout son objet : elle occupe du
+  temps et des cibles, donc elle apparaît au plan de salle, au planning et à l'écran de projection.
+  ⚠️ **Elle porte la règle de cohérence la plus intéressante du lot** : une phase **sans classement**
+  ne peut pas être **prélevée par rangs** — « les rangs 1 à 32 de l'échauffement » n'a aucun sens.
+  C'est la seule phase dont la sortie n'est pas ordonnée, donc celle qui éprouve le mieux le modèle
+  d'anomalies d'E01US024. La seule façon licite de lui succéder est « les mêmes archers, sans ordre ».
+- **CA — barrage / shoot-off comme phase autonome** : départager des ex æquo **avant** de monter un
+  tableau. Règle **entièrement écrite** au [référentiel §8.2](../docs/referentiel-ffta.md)
+  (art. B.6.5.2) : *individuel* — **1 flèche**, plus haut score ; si l'égalité subsiste on **répète au
+  plus près du centre** ; *équipe* — une volée de **3 flèches** (1 par archer). Deux règles qui
+  surprennent et qu'il ne faut pas rater : le barrage **ne prend pas en compte** le nombre de 10/9
+  (seul endroit du produit où ce critère ne s'applique pas), et **un archer absent au barrage annoncé
+  est déclaré perdant**. Tiré sur la cible centrale du triple vertical. Nouveau **type de source** :
+  « les archers à égalité au rang r » d'un classement. Le pavé de saisie des duels (E04US013 ✅) convient.
+- **CA — poules** : règle fournie par le commanditaire le 31/07/2026, reproduite ici **verbatim** —
+  elle n'est écrite **nulle part ailleurs** (ni au règlement FFTA salle, ni dans aucun document du
+  projet), donc cette US en est la source :
+  > **Principe** — Les archers sont regroupés en poules et se rencontrent dans leur groupe.
+  > **Fonctionnement** — Chaque archer rencontre tout ou partie des autres archers de sa poule. Un
+  > barème de points attribue les victoires, nuls et défaites. Le classement de poule détermine les
+  > qualifiés pour la phase suivante.
+  > **Départage** — Points de match. Différence de sets. Différence de score. Nombre de 10 / 9.
+  > Barrage si nécessaire.
+
+  Se décompose **exactement** dans les familles existantes : `seeding` (composition des groupes),
+  `scoring` (points de match), `tiebreak` (l'ordre à cinq critères ci-dessus), `routing` (où vont les
+  qualifiés, et où vont les autres). ⚠️ `DecompteDepartage` (`domain/politiques.py`) ne porte
+  aujourd'hui que `nb_dix`/`nb_neuf` : l'enrichir (points, sets, score) **sans casser**
+  `TiebreakFftaDefaut` **ni** `classement._cle_departage`, qui en sont **deux consommateurs
+  existants** — c'est la rupture de contrat la plus risquée de cette US.
+- **CA — repêchage World Archery (ex-E05US016)** : `routing = repêchage` **réinjecte** certains
+  perdants dans le tableau principal ; sélectionnable par phase. À distinguer du **placement**, où le
+  perdant va vers un tableau de **classement** sans jamais revenir. `moteur-placement-lucky-loser.md`
+  (Q1) le dit : « deux configurations d'un même mécanisme de routage ». Coût faible **une fois**
+  E05US010 posée.
+- **CA — Big Shoot Off** : règle fournie par le commanditaire le 31/07/2026 — **ferme la question Q9**
+  du cahier des charges, bloquante depuis l'origine du projet. Verbatim :
+  > *Une phase finale qui reçoit x archers. Ils sont en parallèle, chacun tire x volées de x flèches,
+  > et le plus faible score est éliminé — jusqu'aux x derniers restants.*
+
+  ⚠️ **Ce n'est pas un barème de duel mais un TYPE DE PHASE à N participants.** Le « Big » désigne le
+  **nombre d'archers**, pas le nombre de flèches. Cela lève la tension du CDC, qui le rangeait tantôt
+  en barème (EF-1.5, EF-5.2) tantôt en type de phase (EF-3.2) : c'est bien un type. Quatre
+  paramètres : N vient de la source ; V (volées), F (flèches) et K (derniers restants) se règlent à
+  la composition — défauts proposés **1 volée de 3 flèches, K = 1**.
+- **CA — trois types obtenus par CONFIGURATION, sans code** : le CDC (EF-3.1/EF-3.2) demande aussi un
+  *tournoi des perdants*, une *finale* et un *podium*. Aucun n'est un type : le tournoi des perdants
+  est un tableau alimenté par « perdants du tour X » ; la **finale** est une phase d'élimination
+  directe à **2 participants** alimentée par « gagnants des demies » — elle ne devient une phase
+  distincte que si l'on veut lui donner un **barème propre** (E01US011), ce que les sources multiples
+  d'E05US010 rendent enfin exprimable ; le **podium** est une **sortie** (les rangs produits par la
+  phase terminale), pas une phase. **Vérifier que le catalogue livré couvre bien la séquence
+  d'exemple d'EF-3.1** : `qualification → barrage → tableau principal → repêchage → tournoi des
+  perdants → tableaux de placement → finale → Big Shoot Off → podium`.
+
+**Notes.**
+
+> **Décisions prises faute de précision, à confirmer à la recette** — je les écris plutôt que de les
+> enfouir dans le code. **Poules** : composition **serpent** depuis le classement source ; nombre de
+> poules saisi, taille déduite ; **round-robin complet** (la règle dit « tout ou partie » : c'est donc
+> un **réglage**, pas du code — règle 2) ; victoire **2** / nul **1** / défaite **0** (cohérent avec
+> le barème de sets FFTA) ; **2 qualifiés** par poule ; les non-qualifiés vont où la séquence l'indique.
+> **BSO** : on compare le score **du tour** (tout se rejoue à chaque manche — lecture littérale de la
+> règle donnée, et c'est ce qui fait le suspense d'une finale spectacle ; au **cumul**, un mauvais
+> premier tour pèserait jusqu'au bout et les derniers tours perdraient leur enjeu) ; égalité au plus
+> faible → **barrage** entre les ex æquo (règle FFTA §8.2, déjà implémentée — autant la réutiliser) ;
+> les éliminés prennent les rangs dans l'**ordre inverse** de leur sortie, ce qui fait du BSO une
+> phase qui **classe tout le monde**, cohérente avec le placement 1→N ; **K = 1** par défaut, et si
+> K > 1 les restants partagent le rang. **Chacune de ces décisions se corrige par une politique
+> `scoring` ; aucune ne touche le moteur.**
+
+> **Ce que cette US ne fait pas** : handicap, système suisse, king of the hill, ladder, finale
+> spectacle. Ce sont les **cibles** du catalogue ouvert d'EF-3.2, « livrables dès que leur règle est
+> écrite ». Même *gate* que celui qui bloquait le BSO : **pas de règle écrite, pas d'US**.
+
+- **Absorbe** : ex-E05US016. **Ajoute** : échauffement, barrage autonome, poules.
+- **Dépend de** : **E05US010** (le routing générique, sans lequel aucun de ces types n'est routable)
+- **Jalon** : J3 · **Origine** : cadrage du 31/07/2026 (règles des poules et du BSO fournies par le
+  commanditaire ; échauffement demandé par lui)
+
+### ~~E05US018 — Oracle 120~~ → **absorbée par E05US010** *(31/07/2026)*
+L'oracle est le **seul** contrôle sérieux du moteur de placement : les séparer laissait la porte
+ouverte à un placement livré sans preuve. Le CA « oracle 120 » vit désormais dans E05US010.
+
+### ~~E05US019 — Enregistrer une séquence comme modèle~~ → **livrée par E01US023** *(30/07/2026)*
+**Doublon repéré au cadrage du 31/07/2026.** E01US023 a livré l'agrégat `FormatTournoi`, sa
+bibliothèque (`/api/v1/formats`), l'application à un tournoi (qui **crée ses phases**) et la
+**promotion** (capturer le déroulé d'un tournoi comme format du club) — soit exactement le CA de
+cette US. Cf. [ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5.
+*Leçon de cadrage : le backlog voisin n'avait pas été relu avant de prendre E01US023 ; l'US a été
+écrite deux fois sous deux epics.*
 
 ---
 
