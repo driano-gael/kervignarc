@@ -17,46 +17,88 @@ import asyncio
 from enum import Enum
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.phases import ServicePhases
-from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
+from domain.phase import (
+    IssueTour,
+    NatureSource,
+    Phase,
+    SourcePhase,
+    StatutPhase,
+    TypePhase,
+)
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["phases"])
 
 
 class SourceDTO(BaseModel):
-    """Peuplement : rangs `[rang_debut..rang_fin]` de la phase d'ordre `ordre_source`."""
+    """Un **prélèvement** de participants dans une phase antérieure (E05US010).
+
+    Trois natures, dont les champs diffèrent — `rangs` (le défaut historique, `rang_fin=null` pour
+    « et suivants »), `issue_de_tour` (`tour` + `issue`) et `reste`. Le DTO les accepte tous en
+    optionnel et **délègue la validation au domaine** (`SourcePhase.__post_init__`, qui lève
+    `SourceMalFormee` → 422) : la règle « chaque nature porte ses champs » n'a pas à être écrite
+    deux fois, et la frontière API ne doit pas devenir un second lieu d'invariants (règle 6).
+    """
 
     ordre_source: int
-    rang_debut: int
-    rang_fin: int
+    nature: NatureSource = NatureSource.RANGS
+    rang_debut: int = 1
+    rang_fin: int | None = None
+    tour: int | None = None
+    issue: IssueTour | None = None
 
     @staticmethod
     def de_agregat(source: SourcePhase) -> SourceDTO:
         return SourceDTO(
             ordre_source=source.ordre_source,
+            nature=source.nature,
             rang_debut=source.rang_debut,
             rang_fin=source.rang_fin,
+            tour=source.tour,
+            issue=source.issue,
         )
 
     def vers_agregat(self) -> SourcePhase:
         return SourcePhase(
             ordre_source=self.ordre_source,
+            nature=self.nature,
             rang_debut=self.rang_debut,
             rang_fin=self.rang_fin,
+            tour=self.tour,
+            issue=self.issue,
         )
 
 
 class ConfigPhaseRequete(BaseModel):
-    """Config de séquence d'une phase : son type, sa source (facultative) et son effectif attendu
-    (facultatif). Sert à l'ajout comme à l'édition (totale)."""
+    """Config de séquence d'une phase : son type, ses sources (facultatives, **plusieurs** possibles
+    depuis E05US010) et son effectif attendu (facultatif). Sert à l'ajout comme à l'édition.
+
+    `sources` est borné à 16 : une phase alimentée par plus d'une dizaine de provenances n'est
+    pas un format, c'est une saisie qui a dérapé — et une liste non bornée à la frontière est une
+    porte ouverte au déni de service (même garde que `FormatRequete.etapes`).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    """⚠️ **Seul régime strict du projet, et c'est délibéré** (E05US010, ADR-0061).
+
+    Les 31 autres routeurs laissent Pydantic **ignorer** les champs inconnus. Ici, le champ d'entrée
+    a été **renommé** (`source` → `sources`) : sans cette garde, un client resté sur l'ancienne
+    forme
+    verrait sa clé silencieusement ignorée. Et comme le `PUT` est une édition **totale**, il ne
+    perdrait pas seulement sa saisie — il **écraserait** la composition existante par une liste
+    vide,
+    en 200. Le déploiement rend le cas réel : une trentaine de tablettes personnelles, une SPA
+    servie
+    depuis leur cache, aucun versionnage de bundle qui garantisse qu'elles rechargent le jour J.
+    Mieux vaut un 422 explicite qu'une destruction muette."""
 
     type: TypePhase
-    source: SourceDTO | None = None
+    sources: list[SourceDTO] = Field(default_factory=list, max_length=16)
     effectif: int | None = None
 
 
@@ -90,7 +132,7 @@ class PhaseReponse(BaseModel):
     ordre: int
     type: TypePhase
     statut: StatutPhase
-    source: SourceDTO | None
+    sources: list[SourceDTO]
     effectif: int | None
 
     @staticmethod
@@ -102,7 +144,7 @@ class PhaseReponse(BaseModel):
             ordre=phase.ordre,
             type=phase.type,
             statut=phase.statut,
-            source=None if phase.source is None else SourceDTO.de_agregat(phase.source),
+            sources=[SourceDTO.de_agregat(source) for source in phase.sources],
             effectif=phase.effectif,
         )
 
@@ -127,10 +169,10 @@ async def ajouter_phase(
     """Ajoute une phase en fin de séquence (**action admin**), écriture via la file (ADR-0005)."""
     service: ServicePhases = request.app.state.service_phases
     write_queue: WriteQueue = request.app.state.write_queue
-    source = None if requete.source is None else requete.source.vers_agregat()
+    sources = tuple(source.vers_agregat() for source in requete.sources)
     phase = await asyncio.wrap_future(
         write_queue.submit(
-            lambda: service.ajouter(tournoi_id, requete.type, source, requete.effectif)
+            lambda: service.ajouter(tournoi_id, requete.type, sources, requete.effectif)
         )
     )
     return PhaseReponse.de_agregat(phase)
@@ -147,10 +189,10 @@ async def modifier_phase(
     """Édite (totalement) la config de séquence d'une phase (**action admin**)."""
     service: ServicePhases = request.app.state.service_phases
     write_queue: WriteQueue = request.app.state.write_queue
-    source = None if requete.source is None else requete.source.vers_agregat()
+    sources = tuple(source.vers_agregat() for source in requete.sources)
     phase = await asyncio.wrap_future(
         write_queue.submit(
-            lambda: service.modifier(tournoi_id, phase_id, requete.type, source, requete.effectif)
+            lambda: service.modifier(tournoi_id, phase_id, requete.type, sources, requete.effectif)
         )
     )
     return PhaseReponse.de_agregat(phase)

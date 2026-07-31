@@ -13,8 +13,6 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -29,16 +27,14 @@ from infrastructure.db import (
     SerieRepositorySQL,
 )
 from infrastructure.horloge import HorlogeSysteme
+from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _migrer(url: str) -> None:
-    cfg = Config(str(_BACKEND_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", url)
-    command.upgrade(cfg, "head")
+    preparer_base(url)
 
 
 def _semer_serie(

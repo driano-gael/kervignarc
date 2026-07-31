@@ -14,22 +14,18 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
+from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _migrer(url: str) -> None:
-    cfg = Config(str(_BACKEND_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", url)
-    command.upgrade(cfg, "head")
+    preparer_base(url)
 
 
 @pytest.fixture
@@ -400,7 +396,7 @@ def test_creer_puis_relire_un_format(
                     {
                         "ordre": 2,
                         "type": "elimination_directe",
-                        "source": {"ordre_source": 1, "rang_debut": 1, "rang_fin": 8},
+                        "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 8}],
                         "effectif": 8,
                     },
                 ],
@@ -412,11 +408,16 @@ def test_creer_puis_relire_un_format(
         assert relu == [creation.json()]
         assert [e["ordre"] for e in relu[0]["etapes"]] == [1, 2]
         assert relu[0]["etapes"][0]["bareme"] == {"nb_volees": 20, "nb_fleches_par_volee": 3}
-        assert relu[0]["etapes"][1]["source"] == {
-            "ordre_source": 1,
-            "rang_debut": 1,
-            "rang_fin": 8,
-        }
+        assert relu[0]["etapes"][1]["sources"] == [
+            {
+                "ordre_source": 1,
+                "nature": "rangs",
+                "rang_debut": 1,
+                "rang_fin": 8,
+                "tour": None,
+                "issue": None,
+            }
+        ]
 
 
 def test_un_format_sans_etape_est_refuse_en_422(
@@ -638,7 +639,7 @@ def test_le_grain_d_une_etape_non_qualification_survit_a_l_aller_retour(
                         "ordre": 2,
                         "type": "elimination_directe",
                         "validation": {"type": "fin_de_duel"},
-                        "source": {"ordre_source": 1, "rang_debut": 1, "rang_fin": 8},
+                        "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 8}],
                         "effectif": 8,
                     },
                 ],

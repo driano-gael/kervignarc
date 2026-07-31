@@ -133,7 +133,9 @@ def test_ajouter_une_phase_avec_source_incoherente_ne_persiste_rien() -> None:
         service.ajouter(
             tournoi_id,
             TypePhase.PLACEMENT,
-            source=SourcePhase(ordre_source=2, rang_debut=1, rang_fin=8),  # se référence lui-même
+            sources=(
+                SourcePhase(ordre_source=2, rang_debut=1, rang_fin=8),
+            ),  # se référence lui-même
         )
     assert len(service.lister(tournoi_id)) == 1  # rien ajouté
 
@@ -151,13 +153,13 @@ def test_modifier_change_type_source_effectif() -> None:
         tournoi_id,
         p2.id,
         type=TypePhase.ELIMINATION_DIRECTE,
-        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),
+        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
         effectif=16,
     )
 
     assert modifiee.type is TypePhase.ELIMINATION_DIRECTE
     assert modifiee.effectif == 16
-    assert modifiee.source == SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16)
+    assert modifiee.sources == (SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),)
     assert modifiee.ordre == 2  # préservé
     _ = p1
 
@@ -173,7 +175,7 @@ def test_modifier_effectif_incompatible_est_refuse() -> None:
             tournoi_id,
             p2.id,
             type=TypePhase.ELIMINATION_DIRECTE,
-            source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),  # 8 prélevés
+            sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),),  # 8 prélevés
             effectif=16,  # mais 16 attendus
         )
 
@@ -181,7 +183,7 @@ def test_modifier_effectif_incompatible_est_refuse() -> None:
 def test_modifier_leve_si_phase_d_un_autre_tournoi() -> None:
     service, tournoi_id = _service()
     with pytest.raises(PhaseIntrouvable):
-        service.modifier(tournoi_id, 999, type=TypePhase.PLACEMENT, source=None, effectif=None)
+        service.modifier(tournoi_id, 999, type=TypePhase.PLACEMENT, sources=(), effectif=None)
 
 
 # --- Réordonner --------------------------------------------------------------------------------
@@ -210,7 +212,7 @@ def test_reordonner_remappe_les_sources() -> None:
         tournoi_id,
         b.id,
         type=TypePhase.ELIMINATION_DIRECTE,
-        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),
+        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
         effectif=16,
     )
     assert a.id is not None
@@ -224,7 +226,7 @@ def test_reordonner_remappe_les_sources() -> None:
     assert par_id[a.id].ordre == 2
     assert par_id[b.id].ordre == 3
     # La source de b désigne toujours a — désormais en ordre 2.
-    assert par_id[b.id].source == SourcePhase(ordre_source=2, rang_debut=1, rang_fin=16)
+    assert par_id[b.id].sources == (SourcePhase(ordre_source=2, rang_debut=1, rang_fin=16),)
 
 
 def test_reordonner_qui_place_la_source_apres_la_consommatrice_est_refuse() -> None:
@@ -236,7 +238,7 @@ def test_reordonner_qui_place_la_source_apres_la_consommatrice_est_refuse() -> N
         tournoi_id,
         b.id,
         type=TypePhase.ELIMINATION_DIRECTE,
-        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),
+        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
         effectif=16,
     )
 
@@ -281,7 +283,7 @@ def test_supprimer_une_phase_source_d_une_autre_est_refuse() -> None:
         tournoi_id,
         b.id,
         type=TypePhase.ELIMINATION_DIRECTE,
-        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),
+        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
         effectif=16,
     )
 
@@ -300,7 +302,7 @@ def test_supprimer_recompacte_et_remappe_la_source_restante() -> None:
         tournoi_id,
         b.id,
         type=TypePhase.ELIMINATION_DIRECTE,
-        source=SourcePhase(ordre_source=2, rang_debut=1, rang_fin=16),  # b ← a (ordre 2)
+        sources=(SourcePhase(ordre_source=2, rang_debut=1, rang_fin=16),),  # b ← a (ordre 2)
         effectif=16,
     )
 
@@ -309,7 +311,7 @@ def test_supprimer_recompacte_et_remappe_la_source_restante() -> None:
     par_id = {p.id: p for p in service.lister(tournoi_id)}
     assert par_id[a.id].ordre == 1
     assert par_id[b.id].ordre == 2
-    assert par_id[b.id].source == SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16)
+    assert par_id[b.id].sources == (SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),)
 
 
 def test_supprimer_leve_si_phase_inconnue() -> None:

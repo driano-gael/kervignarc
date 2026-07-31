@@ -76,7 +76,7 @@ def test_appliquer_cree_une_phase_par_etape_dans_l_ordre() -> None:
             ModelePhase(
                 ordre=2,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),
+                sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),),
                 effectif=8,
             ),
         ],
@@ -237,7 +237,7 @@ def test_une_source_ne_peut_pas_designer_une_etape_posterieure() -> None:
                 ModelePhase(
                     ordre=1,
                     type=TypePhase.ELIMINATION_DIRECTE,
-                    source=SourcePhase(ordre_source=2, rang_debut=1, rang_fin=8),
+                    sources=(SourcePhase(ordre_source=2, rang_debut=1, rang_fin=8),),
                 ),
                 _qualification(ordre=2),
             ],

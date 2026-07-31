@@ -13,8 +13,6 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -22,6 +20,7 @@ from bootstrap.composition import create_app
 from domain.bareme import BaremeQualification
 from domain.phase import Phase
 from infrastructure.db import PhaseRepositorySQL
+from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin
 from tests.test_placement_api import _appliquer_gabarit, _creer_tournoi
 from tests.test_placement_duels_api import _phase_elimination, _quatre_archers_classes
@@ -30,10 +29,7 @@ _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _migrer(url: str) -> None:
-    cfg = Config(str(_BACKEND_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", url)
-    command.upgrade(cfg, "head")
+    preparer_base(url)
 
 
 @pytest.fixture

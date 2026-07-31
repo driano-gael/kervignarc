@@ -229,7 +229,7 @@ erDiagram
 | id | INTEGER | PK |
 | nom | TEXT | NOT NULL, **UNIQUE** — c'est ce qui rend la promotion idempotente (promouvoir deux fois sous le même nom met à jour au lieu de créer un homonyme) |
 | origine | TEXT | NOT NULL — `ffta` \| `utilisateur`, même sens que ci-dessus |
-| config | TEXT (JSON) | la **séquence de modèles de phases** — `{"etapes": [{"ordre", "type", "policies"?, "validation"?, "source"?, "effectif"?}, …]}`, même forme étape par étape que `PHASE.config` |
+| config | TEXT (JSON) | la **séquence de modèles de phases** — `{"etapes": [{"ordre", "type", "policies"?, "validation"?, "sources"?, "effectif"?}, …]}`, même forme étape par étape que `PHASE.config` (migrées **ensemble** par `0036`) |
 
 > **Aucune FK vers TOURNOI**, et ce n'est pas un oubli : un format n'existe qu'en bibliothèque
 > (E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5).
@@ -528,8 +528,8 @@ Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Depuis
 objet **`{"nom": <implémentation>, …paramètres}`** — un **nom** (l'implémentation, résolue par le
 registre) **et** ses paramètres (le barème se paramètre, il ne se choisit pas dans un catalogue
 fermé). Seules les **six familles d'ADR-0004** (`routing/scoring/seeding/byes/tiebreak/depth`) vivent
-sous `policies` ; le grain de `validation`, la `source` de peuplement et l'`effectif` restent **à la
-racine** (ce ne sont pas des politiques de moteur). Exemples :
+sous `policies` ; le grain de `validation`, les `sources` de peuplement et l'`effectif` restent **à
+la racine** (ce ne sont pas des politiques de moteur). Exemples :
 
 ```jsonc
 // Qualification (E01US009+, forme livrée)
@@ -538,23 +538,41 @@ racine** (ce ne sont pas des politiques de moteur). Exemples :
   "validation": { "grain": "fin_de_serie" }
 }
 
-// Tableau à placement intégral (forme cible du moteur, E05US005/E05US010)
+// Tableau à placement intégral (E05US010 — noms de politiques réellement enregistrés)
 {
   "policies": {
-    "routing":  { "nom": "cascade" },
-    "scoring":  { "nom": "sets", "points_victoire": 6 },
+    "routing":  { "nom": "placement_cascade" },   // ou "elimination_seche"
+    "scoring":  { "nom": "cumul" },
     "seeding":  { "nom": "serpent" },
     "byes":     { "nom": "mieux_classes" },
     "tiebreak": { "nom": "ffta_defaut" },
-    "depth":    { "nom": "un_vers_n" }
+    "depth":    { "nom": "un_vers_n" }            // ou { "nom": "podium", "jusqu_au": 4 }
   },
   "validation": { "grain": "fin_de_duel" },
-  "source": { "ordre_source": 1, "rang_debut": 1, "rang_fin": 128 },
+  "sources": [
+    { "nature": "rangs", "ordre_source": 1, "rang_debut": 1, "rang_fin": 128 }
+  ],
   "effectif": 128
+}
+
+// Peuplement composé (E05US010) : plusieurs prélèvements, dont un relatif à l'effectif réel
+{
+  "sources": [
+    { "nature": "issue_de_tour", "ordre_source": 2, "tour": 3, "issue": "perdants" },
+    { "nature": "rangs", "ordre_source": 3, "rang_debut": 1, "rang_fin": 1 },
+    { "nature": "reste", "ordre_source": 1 }
+  ]
 }
 ```
 
-> **Historique (résorbé).** Avant E05US003, l'implémentation écrivait `scoring` **à plat à la racine**
+> **Historique (résorbé) — le peuplement.** Avant E05US010, une phase n'avait qu'**une** source,
+> écrite `"source": {"ordre_source", "rang_debut", "rang_fin"}` (objet, pas liste ; ni `nature`, ni
+> fin ouverte). ADR-0061 l'a élargie : `"sources"` est une **liste** de prélèvements discriminés par
+> `nature`, et `rang_fin` peut valoir `null` (« et suivants »). La migration `0036` réécrit les deux
+> tables (`phase` **et** `format_tournoi`) et la relecture reste tolérante à l'ancienne forme, filet
+> pour une base restaurée d'une sauvegarde antérieure. DETTE-015 est résorbée.
+
+> **Historique (résorbé) — le scoring.** Avant E05US003, l'implémentation écrivait `scoring` **à plat à la racine**
 > (`config.scoring`, forme d'E01US009 sous le périmètre ADR-0011 : une seule phase `qualification`).
 > DETTE-003 en gardait la trace ; ADR-0046 l'a tranché — bascule sous `policies`, `mode` → `nom`,
 > migration `0028` des lignes existantes + relecture tolérante de l'ancienne forme. Ce doc décrit

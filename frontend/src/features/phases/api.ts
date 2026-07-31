@@ -12,12 +12,22 @@ export type StatutPhase = 'a_venir' | 'en_cours' | 'en_pause' | 'terminee'
 // Transitions du cycle de vie, miroir de l'enum `TransitionPhase` du backend.
 export type TransitionPhase = 'demarrer' | 'mettre_en_pause' | 'reprendre' | 'terminer'
 
-// Peuplement minimal (DETTE-015) : la phase prend les rangs [rang_debut..rang_fin] du classement
-// de la phase d'ordre `ordre_source`.
+// Comment un prélèvement puise dans la phase amont (E05US010, miroir de `NatureSource`).
+export type NatureSource = 'rangs' | 'issue_de_tour' | 'reste'
+
+// Le côté d'un tour dont on prélève (miroir de `IssueTour`).
+export type IssueTour = 'gagnants' | 'perdants'
+
+// Un prélèvement de participants dans une phase antérieure. Une phase en porte **plusieurs**
+// (E05US010). Selon `nature` : les rangs [rang_debut..rang_fin] (`rang_fin: null` = « et
+// suivants »), les gagnants/perdants d'un `tour`, ou « le reste » de ce qu'aucune autre n'a pris.
 export interface SourcePhase {
   ordre_source: number
+  nature: NatureSource
   rang_debut: number
-  rang_fin: number
+  rang_fin: number | null
+  tour: number | null
+  issue: IssueTour | null
 }
 
 export interface Phase {
@@ -26,8 +36,8 @@ export interface Phase {
   ordre: number
   type: TypePhase
   statut: StatutPhase
-  // null = première de la séquence (alimentée par les inscriptions).
-  source: SourcePhase | null
+  // [] = première de la séquence (alimentée par les inscriptions).
+  sources: SourcePhase[]
   // null = effectif non déclaré (borne les rangs prélevables et le contrôle « effectif incompatible »).
   effectif: number | null
 }
@@ -35,7 +45,7 @@ export interface Phase {
 // Config de séquence envoyée au serveur (ajout et édition totale partagent la même forme).
 export interface ConfigPhase {
   type: TypePhase
-  source?: SourcePhase | null
+  sources?: SourcePhase[]
   effectif?: number | null
 }
 

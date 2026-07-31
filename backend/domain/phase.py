@@ -14,11 +14,20 @@ n'exploitait. E01US015 a ajouté la 2ᵉ politique de qualification (le grain de
   type ne présuppose pas son moteur ; leurs politiques propres viendront en E05US003. En
   conséquence, `bareme`/`validation` deviennent **facultatifs** (obligatoires pour `qualification`
   seulement).
-- **Peuplement minimal** : une phase peut être alimentée par une `SourcePhase` (« rangs [a..b] de la
-  phase d'ordre k »). Amorce **provisoire** (une source, une plage — pas de routing ni de
-  gagnants/perdants ; modèle complet = E05US010) inscrite en DETTE-015. Elle suffit à décider les
-  trois contrôles de cohérence du CA (source vide / rangs inexistants / effectif incompatible),
-  portés par l'agrégat pur `SequencePhases`.
+- **Peuplement** : une phase est alimentée par des `SourcePhase`. E05US001 n'en admettait
+  qu'**une**,
+  « rangs [a..b] de la phase d'ordre k » (amorce inscrite en DETTE-015) ; **E05US010 / [ADR-0061] a
+  livré le modèle complet et résorbé cette dette** : `Phase.sources` est une **liste** de
+  prélèvements de natures mêlées (`rangs`, `issue_de_tour`, `reste`), dont les **plages relatives**
+  (fin ouverte, « le reste ») rendent un format indépendant de l'effectif réel. Les contrôles
+  collectifs — source existante et antérieure, rangs dans l'effectif, sources qui ne se recoupent
+  pas, somme compatible — sont portés par l'agrégat pur `SequencePhases`.
+  ⚠️ **Ce qui reste ancré par `ordre`** (et non par identité) : une source désigne sa phase amont
+  par
+  son rang dans la séquence, ce qui oblige à **remapper** les références à chaque réordonnancement
+  ou suppression (`ServicePhases._remapper`, `ServiceBaremeQualification._decaler_dun_cran`).
+  E05US010 n'a pas changé cet ancrage — elle l'a seulement généralisé à N sources. C'est un écart
+  **assumé et tracé** : cf. [DETTE-026](../../docs/dette.md).
 
 La **forme JSON** de la config est une préoccupation du **repository** (l'agrégat pur ci-dessous ne
 sérialise rien) : depuis E05US003/ADR-0046, les politiques du moteur y vivent sous `config.policies`
@@ -26,10 +35,12 @@ sérialise rien) : depuis E05US003/ADR-0046, les politiques du moteur y vivent s
 de domaine **purs** (immuables, sans dépendance framework).
 
 [ADR-0045]: ../../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md
+[ADR-0061]: ../../docs/adr/0061-routing-generique-et-placement-en-cascade.md
 """
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
@@ -48,6 +59,8 @@ from domain.erreurs import (
     SequenceOrdreInvalide,
     SourceApresPhase,
     SourceIntrouvable,
+    SourceMalFormee,
+    SourcesQuiSeRecoupent,
 )
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.tournoi import TournoiId
@@ -118,39 +131,183 @@ def grain_par_defaut(type_phase: TypePhase) -> GrainValidation:
     return preset
 
 
+class NatureSource(str, Enum):
+    """Comment une source prélève ses participants dans la phase amont (E05US010).
+
+    Le catalogue vient d'**EF-3.3** du cahier des charges, qui énumérait déjà les provenances
+    attendues : tous les inscrits, rangs N→M, gagnants d'un tour, perdants d'un tour, exempts.
+    """
+
+    RANGS = "rangs"
+    """« Les rangs 1 à 32 du classement » — le prélèvement d'origine (E05US001)."""
+
+    ISSUE_DE_TOUR = "issue_de_tour"
+    """« Les gagnants (ou les perdants) du tour X » — indispensable dès qu'une phase succède à un
+    tableau plutôt qu'à un classement."""
+
+    RESTE = "reste"
+    """« Tout ce qu'aucune autre source n'a prélevé » — le complément, qui rend un format
+    indépendant de l'effectif réel."""
+
+
+class IssueTour(str, Enum):
+    """Le côté d'un tour dont on prélève : ceux qui l'ont gagné, ou ceux qui l'ont perdu."""
+
+    GAGNANTS = "gagnants"
+    PERDANTS = "perdants"
+
+
 @dataclass(frozen=True)
 class SourcePhase:
-    """Peuplement d'une phase par une autre — **amorce minimale** (E05US001, ADR-0045 §3).
+    """Un **prélèvement** de participants dans une phase antérieure (E05US010, ADR-0061).
 
-    Une phase est alimentée par « les rangs `[rang_debut..rang_fin]` du classement de la phase
-    d'ordre `ordre_source` ». C'est un value object **pur**, validé à la construction sur ce qui ne
-    dépend **pas** de la séquence (rang de début ≥ 1, plage non vide) ; les contrôles inter-phases
-    (la source existe, est antérieure, tient dans son effectif) vivent dans `SequencePhases`.
+    Une phase peut en porter **plusieurs**, de natures différentes — le CA cite l'exemple du
+    commanditaire : « les demi-finalistes du tableau principal, **et** le gagnant du tableau
+    secondaire ». Value object **pur**, validé à la construction sur ce qui ne dépend **pas** de la
+    séquence ; les contrôles inter-phases (la source existe, est antérieure, tient dans son
+    effectif, ne recoupe pas ses voisines) vivent dans `verifier_sequence`.
 
-    # DETTE-015 — modèle **provisoire** : une seule source, une plage de rangs, **pas** de routing
-    ni de distinction gagnants/perdants. Le modèle complet (sources multiples, cascade, division
-    récursive) est le cœur d'E05US010 ; celui-ci en est le sous-cas le plus simple.
+    **Un seul type, discriminé par `nature`, plutôt qu'une union de trois classes.** L'union serait
+    plus étanche — chaque nature ne porterait que ses champs — mais `SourcePhase(ordre_source=…,
+    rang_debut=…, rang_fin=…)` est construit dans une trentaine d'endroits (tests, DTO, repository,
+    format de bibliothèque) et le prélèvement par rangs reste, de loin, le cas courant. On garde
+    donc cette construction **valide telle quelle** (`nature` vaut `RANGS` par défaut) et l'on
+    défend l'étanchéité par `__post_init__` : un champ étranger à la nature est une
+    `SourceMalFormee`, pas une donnée ignorée en silence. Le compromis est assumé dans l'ADR.
+
+    **Plages relatives** : `rang_fin=None` signifie « et suivants » — la fin dépend de l'effectif
+    réel de la phase source, pas du format. C'est ce qui permet à un déroulé composé pour 120
+    archers d'en accueillir 82 (CA « plages relatives »).
     """
 
     ordre_source: int
-    rang_debut: int
-    rang_fin: int
+    rang_debut: int = 1
+    rang_fin: int | None = None
+    nature: NatureSource = NatureSource.RANGS
+    tour: int | None = None
+    issue: IssueTour | None = None
 
     def __post_init__(self) -> None:
+        if self.nature is NatureSource.RANGS:
+            self._verifier_rangs()
+        elif self.nature is NatureSource.ISSUE_DE_TOUR:
+            self._verifier_issue_de_tour()
+        else:
+            self._verifier_reste()
+        if self.nature is not NatureSource.ISSUE_DE_TOUR and (
+            self.tour is not None or self.issue is not None
+        ):
+            raise SourceMalFormee(
+                f"Un prélèvement « {self.nature.value} » ne désigne pas de tour : "
+                "seul « issue_de_tour » en porte un."
+            )
+
+    def _verifier_rangs(self) -> None:
         if self.rang_debut < 1:
             raise RangSourceInvalide(
                 f"Une source prélève à partir du rang 1 : « {self.rang_debut} » n'existe pas."
             )
-        if self.rang_fin < self.rang_debut:
+        if self.rang_fin is not None and self.rang_fin < self.rang_debut:
             raise PlageSourceVide(
                 f"La plage de rangs [{self.rang_debut}..{self.rang_fin}] est vide : "
                 "elle ne prélève aucun participant."
             )
 
+    def _verifier_issue_de_tour(self) -> None:
+        if self.tour is None or self.issue is None:
+            raise SourceMalFormee(
+                "Un prélèvement par issue de tour désigne un tour **et** un côté "
+                "(gagnants ou perdants) : « les gagnants » sans tour ne désigne personne."
+            )
+        if self.tour < 1:
+            raise SourceMalFormee(f"Le tour d'un prélèvement commence à 1 (reçu {self.tour}).")
+        self._refuser_les_rangs("Un prélèvement par issue de tour ne se lit pas en rangs")
+
+    def _verifier_reste(self) -> None:
+        self._refuser_les_rangs("« Le reste » se définit par complément")
+
+    def _refuser_les_rangs(self, motif: str) -> None:
+        """Interdit `rang_debut`/`rang_fin` sur une nature qui ne se lit pas en rangs.
+
+        ⚠️ `rang_debut` a pour **défaut** `1` : un test `is not None` ne dirait rien, il faut
+        comparer à ce défaut. C'est précisément le trou qu'un premier jet de cette US a laissé —
+        un `rang_fin` parasite sur une source « issue de tour » était **accepté** puis **jamais
+        sérialisé** (`_source_json` n'écrit que les champs de la nature) : le POST répondait 201
+        avec la valeur, le GET suivant la rendait à `null`. C'est exactement le « champ avalé en
+        silence » que l'ADR déclarait écarter, et c'est le prix du type unique discriminé : ce que
+        l'union de trois classes aurait rendu impossible par construction, il faut ici l'interdire
+        à la main.
+        """
+        if self.rang_fin is not None or self.rang_debut != 1:
+            raise SourceMalFormee(f"{motif} : « rang_debut » et « rang_fin » n'y ont aucun sens.")
+
     @property
-    def effectif_selectionne(self) -> int:
-        """Nombre de participants que la plage prélève (bornes incluses)."""
+    def effectif_selectionne(self) -> int | None:
+        """Combien de participants ce prélèvement compte — `None` s'il est **indéterminable**.
+
+        Indéterminable dès que le compte dépend de l'effectif réel (fin ouverte, « le reste ») ou
+        du déroulé (issue de tour, dont le nombre de gagnants dépend des byes). Le `None` n'est pas
+        un manque d'information à combler : c'est l'énoncé même des plages relatives, et c'est ce
+        qui dispense du contrôle de somme exacte (cf. `_verifier_sources`).
+        """
+        if self.nature is not NatureSource.RANGS or self.rang_fin is None:
+            return None
         return self.rang_fin - self.rang_debut + 1
+
+    def resoudre(self, effectif_source: int) -> int | None:
+        """Le compte **réel** de ce prélèvement une fois l'effectif de la phase source connu.
+
+        C'est ici que « les rangs 33 et suivants » devient 88 à 120 inscrits et 50 à 82. Rend
+        `None` pour les natures dont le compte ne se déduit pas de l'effectif seul (« le reste »
+        dépend des autres sources, une issue de tour du déroulé).
+        """
+        if self.nature is not NatureSource.RANGS:
+            return None
+        fin = self.rang_fin if self.rang_fin is not None else effectif_source
+        return max(0, fin - self.rang_debut + 1)
+
+    def intervalle(self, effectif_source: int | None) -> tuple[int, int] | None:
+        """Les **bornes** que ce prélèvement occupe dans la phase source, ou `None` s'il ne se lit
+        pas en rangs (« le reste », une issue de tour : leur recoupement éventuel ne se décide qu'au
+        déroulé — E01US024).
+
+        ⚠️ Rend un **intervalle**, jamais l'ensemble des rangs. Deux intervalles se comparent en
+        O(1) ; matérialiser `frozenset(range(debut, fin))` ferait dépendre l'allocation mémoire d'un
+        entier fourni par le client (`effectif` n'est borné que par le bas), et ce calcul tourne sur
+        le **thread du writer unique** — un effectif absurde y gèlerait toutes les écritures du jour
+        J. Défaut relevé par trois axes de la revue d'E05US010.
+
+        Une **fin ouverte** sans effectif source déclaré s'étend jusqu'à l'infini : c'est
+        littéralement « et tous les suivants », donc elle recoupe tout ce qui commence après son
+        début — le contrôle reste décidable sans connaître l'effectif.
+        """
+        if self.nature is not NatureSource.RANGS:
+            return None
+        if self.rang_fin is not None:
+            return (self.rang_debut, self.rang_fin)
+        return (self.rang_debut, effectif_source if effectif_source is not None else sys.maxsize)
+
+    @staticmethod
+    def par_rangs(
+        ordre_source: int, rang_debut: int = 1, rang_fin: int | None = None
+    ) -> SourcePhase:
+        """« Les rangs `debut`..`fin` » — `fin=None` pour « et suivants »."""
+        return SourcePhase(ordre_source=ordre_source, rang_debut=rang_debut, rang_fin=rang_fin)
+
+    @staticmethod
+    def par_issue_de_tour(ordre_source: int, tour: int, issue: IssueTour) -> SourcePhase:
+        """« Les gagnants / les perdants du tour `tour` » de la phase `ordre_source`."""
+        return SourcePhase(
+            ordre_source=ordre_source,
+            nature=NatureSource.ISSUE_DE_TOUR,
+            tour=tour,
+            issue=issue,
+        )
+
+    @staticmethod
+    def le_reste(ordre_source: int) -> SourcePhase:
+        """« Tout ce qu'aucune autre source n'a prélevé » dans la phase `ordre_source`."""
+        return SourcePhase(ordre_source=ordre_source, nature=NatureSource.RESTE)
 
 
 @dataclass(frozen=True)
@@ -159,10 +316,10 @@ class Phase:
 
     `bareme` et `validation` ne concernent que la **qualification** (barème de cumul + grain,
     `D-11`) : ils sont `None` pour les autres types, dont les politiques propres viendront en
-    E05US003 (ADR-0045 §2). `source` décrit d'où la phase tire ses participants (`None` = première
-    de la séquence, alimentée par les inscriptions). `effectif` (facultatif) déclare combien de
-    participants la phase classe/produit — il borne les rangs prélevables et sert au contrôle
-    « effectif incompatible ».
+    E05US003 (ADR-0045 §2). `sources` décrit d'où la phase tire ses participants — **plusieurs**
+    prélèvements possibles depuis E05US010 (`()` = première de la séquence, alimentée par les
+    inscriptions). `effectif` (facultatif) déclare combien de participants la phase classe/produit —
+    il borne les rangs prélevables et sert au contrôle « effectif incompatible ».
 
     **Invariants** (vérifiés à chaque construction, `replace()` compris) : effectif ≥ 1 s'il est
     déclaré ; une phase de `qualification` porte barème **et** grain ; le grain — s'il y en a un —
@@ -174,7 +331,7 @@ class Phase:
     type: TypePhase
     bareme: BaremeQualification | None = None
     validation: GrainValidation | None = None
-    source: SourcePhase | None = None
+    sources: tuple[SourcePhase, ...] = ()
     effectif: int | None = None
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None
@@ -209,7 +366,7 @@ class Phase:
         tournoi_id: TournoiId,
         ordre: int,
         type: TypePhase,
-        source: SourcePhase | None = None,
+        sources: tuple[SourcePhase, ...] = (),
         effectif: int | None = None,
     ) -> Phase:
         """Crée une phase **générique** (E05US001) à un rang donné de la séquence, statut `a venir`.
@@ -221,7 +378,7 @@ class Phase:
             tournoi_id=tournoi_id,
             ordre=ordre,
             type=type,
-            source=source,
+            sources=sources,
             effectif=effectif,
             statut=StatutPhase.A_VENIR,
         )
@@ -255,10 +412,10 @@ class Phase:
         """
         return replace(self, type=type)
 
-    def avec_source(self, source: SourcePhase | None) -> Phase:
-        """Renvoie une copie à la source (peuplement) mise à jour ; `None` = alimentée par les
-        inscriptions (première de la séquence)."""
-        return replace(self, source=source)
+    def avec_sources(self, sources: tuple[SourcePhase, ...]) -> Phase:
+        """Renvoie une copie aux prélèvements mis à jour ; `()` = alimentée par les inscriptions
+        (première de la séquence)."""
+        return replace(self, sources=sources)
 
     def avec_effectif(self, effectif: int | None) -> Phase:
         """Renvoie une copie à l'effectif déclaré mis à jour ; `None` = non déclaré."""
@@ -303,7 +460,7 @@ class EtapeSequencee(Protocol):
 
     Deux agrégats satisfont ce contrat : la `Phase` d'un tournoi (ci-dessus) et le `ModelePhase`
     d'un `FormatTournoi` (E01US023, ADR-0060 §5). Les contrôles d'ordre et de source ne regardent
-    que `ordre`, `source` et `effectif` — ni le statut, ni le tournoi, qui n'existent que sur une
+    que `ordre`, `sources` et `effectif` — ni le statut, ni le tournoi, qui n'existent que sur une
     phase réelle. Le protocole rend cette frontière explicite au lieu de la laisser deviner.
 
     Membres déclarés en **propriétés** (lecture seule) : les deux implémentations sont des
@@ -315,7 +472,7 @@ class EtapeSequencee(Protocol):
     def ordre(self) -> int: ...
 
     @property
-    def source(self) -> SourcePhase | None: ...
+    def sources(self) -> tuple[SourcePhase, ...]: ...
 
     @property
     def effectif(self) -> int | None: ...
@@ -405,31 +562,122 @@ def _verifier_ordres(phases: Sequence[EtapeSequencee]) -> None:
 
 
 def _verifier_sources(phases: Sequence[EtapeSequencee]) -> None:
-    """Chaque source désigne une phase antérieure existante, dont l'effectif couvre les rangs
-    prélevés, avec un compte compatible avec l'effectif de la phase consommatrice."""
+    """Les invariants **collectifs** du peuplement d'une phase (E05US001, étendus par E05US010).
+
+    Cinq contrôles : chaque source désigne une phase **existante** et **antérieure** ; ses rangs
+    tiennent dans l'effectif de cette phase ; deux sources d'une même phase ne **recoupent** pas
+    leurs rangs ; et la somme des prélèvements **couvre** l'effectif déclaré.
+
+    ⚠️ Le contrôle de somme ne s'applique que si **tous** les prélèvements sont dénombrables au
+    format (`effectif_selectionne is not None`). Dès qu'une source est relative — fin ouverte, « le
+    reste », issue de tour —, le compte ne se connaît qu'à l'exécution : l'exiger ici rendrait les
+    plages relatives inutilisables, alors qu'elles sont précisément ce que le CA demande. Le CA le
+    dit d'ailleurs pour l'autre bout du problème : un format devenu infaisable à effectif réduit
+    n'est **pas** une erreur à corriger dans le format : c'est une **anomalie à afficher**
+    (E01US024).
+    """
     par_ordre = {phase.ordre: phase for phase in phases}
     for phase in phases:
-        source = phase.source
-        if source is None:
-            continue
-        phase_source = par_ordre.get(source.ordre_source)
-        if phase_source is None:
-            raise SourceIntrouvable(
-                f"La phase {phase.ordre} est alimentée par une phase d'ordre "
-                f"{source.ordre_source}, qui n'existe pas dans la séquence."
-            )
-        if source.ordre_source >= phase.ordre:
-            raise SourceApresPhase(
-                f"La phase {phase.ordre} ne peut être alimentée que par une phase antérieure ; "
-                f"l'ordre {source.ordre_source} lui est égal ou postérieur."
-            )
-        if phase_source.effectif is not None and source.rang_fin > phase_source.effectif:
-            raise RangsSourceInexistants(
-                f"La source prélève jusqu'au rang {source.rang_fin}, mais la phase "
-                f"{source.ordre_source} n'en classe que {phase_source.effectif}."
-            )
-        if phase.effectif is not None and source.effectif_selectionne != phase.effectif:
+        for source in phase.sources:
+            phase_source = par_ordre.get(source.ordre_source)
+            if phase_source is None:
+                raise SourceIntrouvable(
+                    f"La phase {phase.ordre} est alimentée par une phase d'ordre "
+                    f"{source.ordre_source}, qui n'existe pas dans la séquence."
+                )
+            if source.ordre_source >= phase.ordre:
+                raise SourceApresPhase(
+                    f"La phase {phase.ordre} ne peut être alimentée que par une phase antérieure ; "
+                    f"l'ordre {source.ordre_source} lui est égal ou postérieur."
+                )
+            if (
+                phase_source.effectif is not None
+                and source.rang_fin is not None
+                and source.rang_fin > phase_source.effectif
+            ):
+                raise RangsSourceInexistants(
+                    f"La source prélève jusqu'au rang {source.rang_fin}, mais la phase "
+                    f"{source.ordre_source} n'en classe que {phase_source.effectif}."
+                )
+        _verifier_recoupements(phase, par_ordre)
+        _verifier_somme(phase)
+
+
+def _verifier_recoupements(phase: EtapeSequencee, par_ordre: dict[int, EtapeSequencee]) -> None:
+    """Deux sources d'une même phase ne prélèvent pas le même participant (CA « cohérence »).
+
+    Le recoupement se juge **par phase source** : « les rangs 1-2 de la phase 1 » et « les rangs 1-2
+    de la phase 2 » désignent quatre participants distincts, pas deux. Seuls les prélèvements **par
+    rangs** se comparent en rangs — mais deux sources **strictement identiques** sont refusées,
+    quelle que soit leur nature : « le reste » deux fois, ou deux fois les mêmes gagnants d'un tour,
+    sont
+    des non-sens qui se voient sans dérouler le tournoi. Un recoupement *partiel* entre natures
+    différentes, lui, reste une anomalie d'exécution (E01US024).
+
+    ⚠️ Le contrôle **ne dépend pas** de l'effectif déclaré de la phase source. Un premier jet de
+    cette US sautait tout le contrôle quand cet effectif valait `None` — or `Phase.effectif` est
+    facultatif, donc le cas par défaut : deux plages pourtant **entièrement bornées** ([1..10] et
+    [5..15]) passaient sans examen. Une fin ouverte sans effectif connu s'étend jusqu'à l'infini,
+    ce qui la rend comparable elle aussi (cf. `SourcePhase.intervalle`).
+    """
+    doublons = [s for s in phase.sources if phase.sources.count(s) > 1]
+    if doublons:
+        raise SourcesQuiSeRecoupent(
+            f"La phase {phase.ordre} porte deux fois le même prélèvement : un participant ne peut "
+            "pas entrer deux fois dans la même phase."
+        )
+    for ordre_source in {source.ordre_source for source in phase.sources}:
+        etape_source = par_ordre.get(ordre_source)
+        effectif_source = None if etape_source is None else etape_source.effectif
+        intervalles: list[tuple[int, int]] = []
+        for source in phase.sources:
+            if source.ordre_source != ordre_source:
+                continue
+            intervalle = source.intervalle(effectif_source)
+            if intervalle is None:
+                continue
+            debut, fin = intervalle
+            for autre_debut, autre_fin in intervalles:
+                if debut <= autre_fin and autre_debut <= fin:
+                    raise SourcesQuiSeRecoupent(
+                        f"Deux sources de la phase {phase.ordre} prélèvent le même rang "
+                        f"{max(debut, autre_debut)} de la phase {ordre_source} : un participant ne "
+                        "peut pas entrer deux fois dans la même phase."
+                    )
+            intervalles.append(intervalle)
+
+
+def _verifier_somme(phase: EtapeSequencee) -> None:
+    """Les prélèvements doivent tenir dans l'effectif déclaré de la phase (CA « cohérence »).
+
+    Deux régimes, et c'est la distinction qui compte :
+
+    - **tous les prélèvements dénombrables** → la somme doit **égaler** l'effectif déclaré ;
+    - **au moins un prélèvement relatif** (fin ouverte, « le reste », issue de tour) → l'**égalité**
+      devient indécidable au format, puisque le compte ne se ferme qu'à l'exécution. Mais
+      l'**inégalité**, elle, reste décidable : un prélèvement relatif ajoute un nombre ≥ 0 de
+      participants, donc si les seuls dénombrables dépassent déjà l'effectif, la composition est
+      fausse quoi qu'il arrive.
+
+    Un premier jet de cette US désactivait **tout** le contrôle dès qu'un prélèvement était
+    relatif :
+    « les rangs 1 à 64, puis le reste » pour une phase déclarant 32 participants passait alors sans
+    broncher, alors qu'il était refusé avant l'US. Relevé par la revue — et son test l'évitait en
+    choisissant 8 prélevés pour 32 déclarés.
+    """
+    if phase.effectif is None or not phase.sources:
+        return
+    comptes = [source.effectif_selectionne for source in phase.sources]
+    total = sum(compte for compte in comptes if compte is not None)
+    if any(compte is None for compte in comptes):
+        if total > phase.effectif:
             raise EffectifIncompatible(
-                f"La phase {phase.ordre} attend {phase.effectif} participants, mais sa source en "
-                f"prélève {source.effectif_selectionne}."
+                f"La phase {phase.ordre} attend {phase.effectif} participants, mais ses seuls "
+                f"prélèvements dénombrables en prennent déjà {total}."
             )
+        return
+    if total != phase.effectif:
+        raise EffectifIncompatible(
+            f"La phase {phase.ordre} attend {phase.effectif} participants, mais ses sources en "
+            f"prélèvent {total}."
+        )

@@ -178,8 +178,65 @@ personne éliminé — et de composer des formats qui **s'ajustent** à l'effect
 > ⚠️ Piège de vocabulaire : dans `Tableaux.xlsx`, « LUCKY LOSER 1 » désigne le **tableau de
 > consolation**, **pas** un repêchage — aucun archer battu n'y revient disputer le titre.
 
+**Arbitrages tranchés à l'implémentation (31/07/2026)** — reversés ici pour que le CA reste vrai.
+
+> **L'oracle 120 ne couvre pas les rangs 1 à 4, et c'est une propriété du classeur, pas une facilité.**
+> À l'extraction de `Tableaux.xlsx`, le sommet du tableau principal s'est révélé n'être **pas** une
+> élimination directe : la **Grande Finale s'y tire en Big Shoot Off** à **cinq** archers — les 4
+> vainqueurs du 8ᵉ tour (M305-M308) et un « **Lucky-Looser** » —, et produit les rangs **1 à 5** par
+> élimination du plus faible à chaque manche (onglet « TABLEAU 1 OK », colonnes « GRANDE FINALE » ;
+> l'échelle 5→4→3→2 des colonnes suivantes le montre). ⚠️ Les étiquettes `BSO 6`…`BSO 10` sont des
+> **postes de tir**, pas un compte d'archers ni des rangs : elles occupent la même colonne que les
+> « 1 A » / « 2 C » du reste de la feuille. *(Un premier jet d'E05US010 les avait lues comme dix
+> archers produisant les rangs 1 à 10 — **c'est faux**, rectifié en revue. E05US015 dimensionne donc
+> son BSO sur **5** entrants, pas 10.)*
+>
+> **Le format du club REPÊCHE — et c'est la découverte à retenir pour E05US015.** Le
+> « Lucky-Looser » est le **gagnant de M427**, le meilleur des battus, qui remonte disputer le titre
+> au lieu de prendre le rang 5. D'où un fait vérifiable dans les données : M427 ne décerne qu'**un**
+> rang (le 6, à son perdant), le classeur compte **115** rangs terminaux (6→120) et non 116, et
+> 5 + 115 = 120. Cela **nuance** l'avertissement « Lucky Loser » ci-dessus : le classeur emploie le
+> mot pour **deux** choses distinctes — « LUCKY LOSER 1 » (tableau de consolation, aucun retour au
+> titre) et ce « Lucky-Looser » de la Grande Finale, qui est un **vrai repêchage**.
+>
+> Il n'y a donc **aucune finale d'élimination à comparer** dans le classeur. L'oracle porte sur les
+> rangs **6 à 120** (57 paires terminales pleines, M428-M484) et le déclare. *Effet de bord heureux :
+> cette Grande Finale, alimentée par les vainqueurs des quarts **et** par un repêché, est le **cas
+> réel** du CA « sources multiples ».*
+>
+> **Écart de structure non expliqué, à instruire en E05US015** : le classeur compte **484** matchs,
+> le moteur en produit **436**. −3 s'expliquent (le BSO remplace demies + finale), +12 aussi
+> (sous-tableau des rangs 121-128, élagué car sans rang réel) ; **39 restent inexpliqués** — une
+> cascade pure de 128 places en compte 448. Hypothèse : des tableaux de **consolation**
+> supplémentaires, hors de la division par deux formalisée. C'est une divergence entre le classeur
+> et `moteur-placement-lucky-loser.md`, **antérieure** à cette US, figée par un test qui documente
+> les deux nombres.
+
+> **L'élimination directe livrée par E05US005 est un placement tronqué au rang 4.** Un tableau à
+> **petite finale** fait rejouer les perdants des demies : il ne les élimine pas. La cascade et
+> l'élimination directe sont donc **le même algorithme** à profondeur près — c'est ce qui a permis
+> une non-régression structurelle (même arbre, même numérotation) plutôt que plaquée. La composition
+> root injecte désormais `PlacementEnCascade` + profondeur `podium`. Cf. [ADR-0061](../docs/adr/0061-routing-generique-et-placement-en-cascade.md) §2.
+
+> **Le contrôle « la somme des sources égale l'effectif déclaré » ne s'applique plus que si tous les
+> prélèvements sont dénombrables au format.** Dès qu'un seul est relatif (fin ouverte, « le reste »,
+> issue de tour), le compte ne se connaît qu'à l'exécution. Ce n'est pas un relâchement : c'est la
+> condition d'existence des plages relatives, et le CA « cohérence des sources » le dit déjà pour
+> l'autre bout du problème (un format infaisable à effectif réduit est une **anomalie à afficher**,
+> E01US024, pas une erreur de format).
+
+> **Ce que cette US ne livre pas, par décision de périmètre.** Le **modèle** de sources multiples est
+> livré (domaine, persistance, API, migration) mais **aucun moteur ne le consomme encore** : peupler
+> effectivement une phase depuis ses sources est le travail d'**E01US024**. De même, l'écran
+> « Phases » **affiche** tous les prélèvements mais n'en **édite** qu'un, « par rangs » ; une phase à
+> composition avancée y est en **lecture seule** (un formulaire mono-source l'écraserait sans le
+> dire). Le modèle est livré ici parce que c'est **lui** qui bloquait le routing, et parce que le
+> reporter aurait imposé une **seconde** migration double table.
+
 - **Absorbe** : ex-E05US010 à E05US014, **et E05US018** (oracle). **Résorbe** : DETTE-015.
 - **Dépend de** : E05US003 · **Jalon** : J3 · **Origine** : cadrage du 31/07/2026
+- **Livrée** : 31/07/2026 — [ADR-0061](../docs/adr/0061-routing-generique-et-placement-en-cascade.md),
+  migration `0036`, oracle `backend/tests/test_oracle_120_placement.py`
 
 ### E05US015 — Le catalogue de types de phase *(élargie le 31/07/2026)*
 *En tant qu'*organisateur, *je veux* disposer des types de phase qui composent un vrai tournoi de
@@ -267,6 +324,7 @@ existent depuis E05US003 (✅) ; cette US en peuple le catalogue.
 > **Ce que cette US ne fait pas** : handicap, système suisse, king of the hill, ladder, finale
 > spectacle. Ce sont les **cibles** du catalogue ouvert d'EF-3.2, « livrables dès que leur règle est
 > écrite ». Même *gate* que celui qui bloquait le BSO : **pas de règle écrite, pas d'US**.
+> -> demander un jeu de règles au commanditaire pour ces formats, en discuter et les integer a l'us
 
 - **Absorbe** : ex-E05US016. **Ajoute** : échauffement, barrage autonome, poules.
 - **Dépend de** : **E05US010** (le routing générique, sans lequel aucun de ces types n'est routable)

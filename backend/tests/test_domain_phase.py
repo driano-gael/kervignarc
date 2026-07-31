@@ -207,7 +207,7 @@ def test_creer_une_phase_generique_sans_bareme() -> None:
     assert phase.statut is StatutPhase.A_VENIR
     assert phase.bareme is None
     assert phase.validation is None
-    assert phase.source is None
+    assert phase.sources == ()
     assert phase.id is None
 
 
@@ -310,7 +310,7 @@ def test_une_sequence_ordonnee_et_bien_sourcee_est_valide() -> None:
         tournoi_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),
+        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
         effectif=16,
     )
 
@@ -341,7 +341,7 @@ def test_une_source_vers_une_phase_inexistante_est_refusee() -> None:
         tournoi_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        source=SourcePhase(ordre_source=5, rang_debut=1, rang_fin=8),
+        sources=(SourcePhase(ordre_source=5, rang_debut=1, rang_fin=8),),
     )
 
     with pytest.raises(SourceIntrouvable):
@@ -355,7 +355,7 @@ def test_une_source_vers_une_phase_non_anterieure_est_refusee() -> None:
         tournoi_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        source=SourcePhase(ordre_source=2, rang_debut=1, rang_fin=8),
+        sources=(SourcePhase(ordre_source=2, rang_debut=1, rang_fin=8),),
     )
 
     with pytest.raises(SourceApresPhase):
@@ -369,7 +369,7 @@ def test_prelever_au_dela_de_l_effectif_de_la_source_est_refuse() -> None:
         tournoi_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=40),
+        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=40),),
     )
 
     with pytest.raises(RangsSourceInexistants):
@@ -383,7 +383,7 @@ def test_un_effectif_consommateur_incompatible_avec_la_source_est_refuse() -> No
         tournoi_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),
+        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),),
         effectif=16,
     )
 
@@ -399,7 +399,7 @@ def test_prelever_plus_que_l_effectif_declare_est_aussi_refuse() -> None:
         tournoi_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=20),
+        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=20),),
         effectif=16,
     )
 
@@ -414,7 +414,7 @@ def test_sans_effectif_declare_la_source_ne_declenche_pas_de_controle_d_effectif
         tournoi_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
-        source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=999),
+        sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=999),),
     )
 
     assert len(SequencePhases(phases=(qualif, elim)).phases) == 2

@@ -15,8 +15,6 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -35,6 +33,7 @@ from infrastructure.db import (
     TournoiRepositorySQL,
 )
 from infrastructure.horloge import HorlogeSysteme
+from tests.base_migree import preparer_base
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -42,10 +41,7 @@ _SCOREUR = "DURAND Jean"
 
 
 def _migrer(url: str) -> None:
-    cfg = Config(str(_BACKEND_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", url)
-    command.upgrade(cfg, "head")
+    preparer_base(url)
 
 
 def _serie(tournoi_id: int, archer_id: int) -> Serie:

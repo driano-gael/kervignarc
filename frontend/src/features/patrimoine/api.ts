@@ -150,8 +150,11 @@ export interface Grain {
 
 export interface Source {
   ordre_source: number
+  nature: 'rangs' | 'issue_de_tour' | 'reste'
   rang_debut: number
-  rang_fin: number
+  rang_fin: number | null
+  tour: number | null
+  issue: 'gagnants' | 'perdants' | null
 }
 
 // Une étape d'un format : tout ce qu'une phase porte, **sauf** son tournoi et son statut — ils
@@ -161,7 +164,7 @@ export interface Etape {
   type: TypePhase
   bareme: Bareme | null
   validation: Grain | null
-  source: Source | null
+  sources: Source[]
   effectif: number | null
 }
 

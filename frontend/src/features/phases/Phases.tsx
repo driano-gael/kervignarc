@@ -7,8 +7,12 @@
 // effectif incompatible) est vérifiée par le serveur : ses refus s'affichent tels quels (422/409).
 //
 // La phase de **qualification** (créée via l'écran « Barème & validation ») apparaît dans la liste
-// mais ne s'ajoute pas ici : ce sont les phases du **moteur d'élimination** qu'on compose. Le
-// peuplement est une **amorce minimale** (une source « par rangs » — DETTE-015), qu'E05US010 enrichira.
+// mais ne s'ajoute pas ici : ce sont les phases du **moteur d'élimination** qu'on compose.
+//
+// Une phase porte désormais **plusieurs** prélèvements, de natures variées (E05US010). Cet écran
+// les **affiche** tous mais n'en **édite** qu'un seul, « par rangs » — la composition riche est
+// l'objet d'E01US024. Toute phase hors de ce cas est donc affichée en lecture (`editableIci`) :
+// la soumettre avec ce formulaire écraserait sa composition sans le dire.
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
@@ -29,6 +33,7 @@ import {
   useSupprimerPhase,
 } from './hooks'
 import { ordreApresDeplacement, type Direction } from './ordre'
+import { decrireSources, editableIci } from './source'
 
 const LIBELLE_TYPE: Record<TypePhase, string> = {
   qualification: 'Qualification',
@@ -96,12 +101,6 @@ function BadgePhase({ statut }: { statut: StatutPhase }) {
   )
 }
 
-// Décrit la source de peuplement d'une phase en clair (ou son absence).
-function decrireSource(source: SourcePhase | null): string {
-  if (source === null) return 'alimentée par les inscriptions'
-  return `rangs ${source.rang_debut} à ${source.rang_fin} de la phase ${source.ordre_source}`
-}
-
 function LignePhase({
   tournoiId,
   phase,
@@ -150,7 +149,7 @@ function LignePhase({
         <span className="phase__type">{LIBELLE_TYPE[phase.type]}</span>
         <BadgePhase statut={phase.statut} />
         <span className="phase__details">
-          {decrireSource(phase.source)}
+          {decrireSources(phase.sources)}
           {phase.effectif !== null && ` · ${phase.effectif} participants`}
         </span>
       </div>
@@ -186,11 +185,16 @@ function LignePhase({
             {action.libelle}
           </button>
         ))}
-        {!gereeAilleurs && (
-          <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
-            Éditer
-          </button>
-        )}
+        {!gereeAilleurs &&
+          (editableIci(phase.sources) ? (
+            <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
+              Éditer
+            </button>
+          ) : (
+            <span className="carte__etat" role="note">
+              Composition avancée : éditable depuis l'écran de composition du déroulé.
+            </span>
+          ))}
         {!gereeAilleurs &&
           (confirmationSuppression ? (
             <>
@@ -242,14 +246,19 @@ function FormulairePhase({
   const enEdition = phase !== undefined
   const [type, setType] = useState<TypePhase>(phase?.type ?? 'elimination_directe')
   const [effectif, setEffectif] = useState(phase?.effectif != null ? String(phase.effectif) : '')
-  const [avecSource, setAvecSource] = useState(phase?.source != null)
+  const premiereSource = phase?.sources?.[0] ?? null
+  const [avecSource, setAvecSource] = useState(premiereSource != null)
   const [ordreSource, setOrdreSource] = useState(
-    phase?.source != null ? String(phase.source.ordre_source) : '',
+    premiereSource != null ? String(premiereSource.ordre_source) : '',
   )
   const [rangDebut, setRangDebut] = useState(
-    phase?.source != null ? String(phase.source.rang_debut) : '1',
+    premiereSource != null ? String(premiereSource.rang_debut) : '1',
   )
-  const [rangFin, setRangFin] = useState(phase?.source != null ? String(phase.source.rang_fin) : '')
+  // Vide = fin ouverte (« et suivants ») : c'est ce qui permet à un format composé pour 120
+  // archers d'en accueillir 82 sans être réécrit (E05US010).
+  const [rangFin, setRangFin] = useState(
+    premiereSource?.rang_fin != null ? String(premiereSource.rang_fin) : '',
+  )
 
   const ajouter = useAjouterPhase(tournoiId)
   const modifier = useModifierPhase(tournoiId)
@@ -266,27 +275,37 @@ function FormulairePhase({
     ? TYPES_AJOUTABLES
     : [type, ...TYPES_AJOUTABLES]
 
-  const construireSource = (): SourcePhase | null | 'invalide' => {
-    if (!avecSource) return null
+  const construireSources = (): SourcePhase[] | 'invalide' => {
+    if (!avecSource) return []
     const os = Number(ordreSource)
     const rd = Number(rangDebut)
+    // Rang de fin laissé vide = plage à fin ouverte (`null` côté serveur), pas une saisie fautive.
+    const ouverte = rangFin.trim() === ''
     const rf = Number(rangFin)
-    if (!ordreSource || !Number.isInteger(rd) || !Number.isInteger(rf) || rd < 1 || rf < rd) {
-      return 'invalide'
-    }
-    return { ordre_source: os, rang_debut: rd, rang_fin: rf }
+    if (!ordreSource || !Number.isInteger(rd) || rd < 1) return 'invalide'
+    if (!ouverte && (!Number.isInteger(rf) || rf < rd)) return 'invalide'
+    return [
+      {
+        ordre_source: os,
+        nature: 'rangs',
+        rang_debut: rd,
+        rang_fin: ouverte ? null : rf,
+        tour: null,
+        issue: null,
+      },
+    ]
   }
 
-  const source = construireSource()
+  const sources = construireSources()
   const effectifAnalyse = effectif.trim() === '' ? null : Number(effectif)
   const effectifInvalide =
     effectifAnalyse !== null && (!Number.isInteger(effectifAnalyse) || effectifAnalyse < 1)
-  const soumissionPossible = source !== 'invalide' && !effectifInvalide
+  const soumissionPossible = sources !== 'invalide' && !effectifInvalide
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
-    if (source === 'invalide' || effectifInvalide) return
-    const config: ConfigPhase = { type, source, effectif: effectifAnalyse }
+    if (sources === 'invalide' || effectifInvalide) return
+    const config: ConfigPhase = { type, sources, effectif: effectifAnalyse }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
     } else {
@@ -372,13 +391,13 @@ function FormulairePhase({
               inputMode="numeric"
               value={rangFin}
               onChange={(e) => setRangFin(e.target.value)}
-              placeholder="Rang de fin (ex. 16)"
+              placeholder="Rang de fin (vide = et suivants)"
               aria-label="Rang de fin"
             />
-            {source === 'invalide' && (
+            {sources === 'invalide' && (
               <span className="carte__etat carte__etat--erreur" role="alert">
-                Source incomplète : choisissez une phase et une plage de rangs (début ≥ 1, fin ≥
-                début).
+                Source incomplète : choisissez une phase et un rang de début ≥ 1. Le rang de fin est
+                facultatif — le laisser vide prélève « et suivants », jusqu'au dernier classé.
               </span>
             )}
           </fieldset>

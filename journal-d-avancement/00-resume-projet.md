@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 30 juillet 2026
+# Résumé du projet — où on en est au 31 juillet 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -48,7 +48,12 @@ cible / archer / scoreur / public. Et le **pilotage de la bascule de tour** comm
 sur un panneau **« Où tire-t-on ensuite ? »** qui donne à chaque archer sa **cible et sa place** en
 gros caractères — de même après chaque duel, pour ses deux duellistes. Ce que l'appli ne sait pas
 encore (la cible des tours suivants, l'adversaire pas encore sorti de son duel, le rang d'un battu),
-elle l'**écrit en clair** plutôt que de laisser un vide.
+elle l'**écrit en clair** plutôt que de laisser un vide. Enfin, le **moteur sait désormais classer
+tout le monde** : au lieu de désigner quatre archers et de renvoyer les autres sans rang, il fait
+**redescendre chaque perdant** dans le tableau des places qu'il peut encore atteindre, jusqu'à un
+rang unique de 1 à N — et un **format préparé pour 120 archers s'ajuste** quand il n'y en a que 82.
+Le classeur réel du club (120 archers, 484 matchs) est devenu un **test automatique** qui vérifie ce
+moteur à chaque modification.
 
 ---
 
@@ -389,7 +394,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **85 US livrées** sur `main` (mergées, revues, CI verte) à la date du 31/07/2026. **`SUIVI-US.md`
+- **86 US livrées** sur `main` (mergées, revues, CI verte) à la date du 31/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -402,7 +407,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   (E12US002), le **remboursement d'une inscription payée annulée** (E08US005), puis le **panneau de
   routage sur la tablette** (E04US018). Enfin, l'**administration a été rangée en trois axes
   d'activité** (E14US003) et les **briques de configuration sont devenues le patrimoine du club**
-  (E01US023), ce qui rend l'axe « Atelier » réellement hors tournoi.
+  (E01US023), ce qui rend l'axe « Atelier » réellement hors tournoi. Le **chantier du moteur de
+  phases** s'est alors ouvert par son verrou : le **placement intégral 1→N** (E05US010), qui livre la
+  cascade de routage, les **sources multiples et relatives**, et l'**oracle 120** — le rejeu
+  automatique du classeur réel, jusqu'ici cité par la doctrine mais jamais outillé.
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,

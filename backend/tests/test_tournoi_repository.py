@@ -11,21 +11,16 @@ from __future__ import annotations
 import datetime
 from pathlib import Path
 
-from alembic import command
-from alembic.config import Config
-
 from domain.tournoi import StatutTournoi, Tournoi, TypeTournoi
 from infrastructure.db import Database, TournoiRepositorySQL
+from tests.base_migree import preparer_base
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
 
 
 def _migrer(url: str) -> None:
-    cfg = Config(str(_BACKEND_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", url)
-    command.upgrade(cfg, "head")
+    preparer_base(url)
 
 
 def test_ajouter_puis_relire(tmp_path: Path) -> None:

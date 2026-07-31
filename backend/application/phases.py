@@ -16,10 +16,13 @@ Répartition des responsabilités (ADR-0045, ADR-0007) :
 Le service ignore HTTP, SQL et la file d'écriture (sérialisation assurée en amont, côté API) : il
 reste synchrone et pur d'infrastructure.
 
-**Le peuplement (source) est une amorce minimale** (DETTE-015) : une source unique « par rangs ».
+**Le peuplement admet plusieurs sources** depuis E05US010 (ADR-0061) : une phase se compose de
+prélèvements de natures mêlées (rangs, issue de tour, « le reste »), éventuellement relatifs à
+l'effectif réel. DETTE-015 est résorbée.
 Le réordonnancement et la suppression **remappent** les références de source (portées par l'`ordre`
-de la phase source) pour qu'elles suivent la phase qu'elles désignaient — un artefact de ce modèle
-provisoire qu'E05US010 simplifiera en référençant autrement.
+de la phase source) pour qu'elles suivent la phase qu'elles désignaient. Cet **ancrage par `ordre`**
+— plutôt que par identité — survit à E05US010, qui l'a seulement généralisé à N sources : c'est
+`# DETTE-026`, la seule facette de DETTE-015 qui n'ait pas été résorbée.
 """
 
 from __future__ import annotations
@@ -70,7 +73,7 @@ class ServicePhases:
         self,
         tournoi_id: TournoiId,
         type: TypePhase,
-        source: SourcePhase | None = None,
+        sources: tuple[SourcePhase, ...] = (),
         effectif: int | None = None,
     ) -> Phase:
         """Ajoute une phase **en fin de séquence** (ordre = N+1) et la persiste.
@@ -82,7 +85,7 @@ class ServicePhases:
         self._exiger_tournoi(tournoi_id)
         existantes = self._phases.par_tournoi(tournoi_id)
         nouvelle = Phase.creer(
-            tournoi_id, ordre=len(existantes) + 1, type=type, source=source, effectif=effectif
+            tournoi_id, ordre=len(existantes) + 1, type=type, sources=sources, effectif=effectif
         )
         # Valide la séquence complète (la nouvelle incluse) avant d'écrire.
         SequencePhases(phases=(*existantes, nouvelle))
@@ -93,7 +96,7 @@ class ServicePhases:
         tournoi_id: TournoiId,
         phase_id: PhaseId,
         type: TypePhase,
-        source: SourcePhase | None,
+        sources: tuple[SourcePhase, ...],
         effectif: int | None,
     ) -> Phase:
         """Édite le type, la source et l'effectif d'une phase (édition **totale** de sa config de
@@ -103,7 +106,7 @@ class ServicePhases:
         le résultat est incohérent (ex. retyper en `qualification` sans barème, source hors bornes).
         """
         phase = self._exiger_phase(tournoi_id, phase_id)
-        modifiee = replace(phase, type=type, source=source, effectif=effectif)
+        modifiee = replace(phase, type=type, sources=sources, effectif=effectif)
         autres = [p for p in self._phases.par_tournoi(tournoi_id) if p.id != phase_id]
         SequencePhases(phases=(*autres, modifiee))
         return self._phases.enregistrer(modifiee)
@@ -155,7 +158,7 @@ class ServicePhases:
                 "La phase de qualification se gère via le barème ; elle ne se supprime pas ici."
             )
         restantes = [p for p in self._phases.par_tournoi(tournoi_id) if p.id != phase_id]
-        if any(p.source is not None and p.source.ordre_source == cible.ordre for p in restantes):
+        if any(s.ordre_source == cible.ordre for p in restantes for s in p.sources):
             raise PhaseSourceReferencee(
                 "Cette phase alimente une autre phase de la séquence ; réaffectez-la d'abord."
             )
@@ -222,15 +225,24 @@ class ServicePhases:
 
     @staticmethod
     def _remapper(phase: Phase, *, nouvel_ordre: int, ancien_vers_nouveau: dict[int, int]) -> Phase:
-        """Renvoie la phase à son nouvel ordre, sa source remappée sur le nouvel ordre de la phase
-        qu'elle désignait (les ancres de source sont des `ordre`, non des id — DETTE-015)."""
+        """Renvoie la phase à son nouvel ordre, **chacune** de ses sources remappée sur le nouvel
+        ordre de la phase qu'elle désignait.
+
+        `# DETTE-026` — les ancres de source sont des `ordre`, non des `id` : déplacer une phase
+        oblige donc à réécrire les références de toutes celles qui la citent. Depuis E05US010 une
+        phase en porte **plusieurs** — le remappage vaut pour chacune, sans quoi seule la première
+        suivrait le déplacement et les autres pointeraient une phase arbitraire. C'est la surface de
+        ce raccourci qui a grandi, pas sa nature.
+        """
         deplacee = phase.avec_ordre(nouvel_ordre)
-        if phase.source is None:
+        if not phase.sources:
             return deplacee
-        nouvelle_source = replace(
-            phase.source, ordre_source=ancien_vers_nouveau[phase.source.ordre_source]
+        return deplacee.avec_sources(
+            tuple(
+                replace(source, ordre_source=ancien_vers_nouveau[source.ordre_source])
+                for source in phase.sources
+            )
         )
-        return deplacee.avec_source(nouvelle_source)
 
     def _exiger_tournoi(self, tournoi_id: TournoiId) -> None:
         if self._tournois.par_id(tournoi_id) is None:

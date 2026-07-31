@@ -162,7 +162,7 @@ def test_definir_apres_composition_place_la_qualification_en_tete() -> None:
             tournoi.id,
             ordre=2,
             type=TypePhase.PLACEMENT,
-            source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),
+            sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
             effectif=16,
         )
     )
@@ -177,7 +177,7 @@ def test_definir_apres_composition_place_la_qualification_en_tete() -> None:
     ]
     # La source du placement suit l'élim déplacée (ordre 1 → 2) : plus aucun « ordre 1 » en double.
     placement = apres[2]
-    assert placement.source == SourcePhase(ordre_source=2, rang_debut=1, rang_fin=16)
+    assert placement.sources == (SourcePhase(ordre_source=2, rang_debut=1, rang_fin=16),)
     # Et la composition peut se poursuivre (aucun blocage 422 sur la séquence).
     assert service.bareme_du_tournoi(tournoi.id) is not None
 
@@ -198,7 +198,7 @@ def test_redefinir_le_bareme_ne_decale_pas_les_phases_deja_composees() -> None:
             tournoi.id,
             ordre=2,
             type=TypePhase.ELIMINATION_DIRECTE,
-            source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),
+            sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
             effectif=16,
         )
     )
@@ -211,4 +211,4 @@ def test_redefinir_le_bareme_ne_decale_pas_les_phases_deja_composees() -> None:
         (2, TypePhase.ELIMINATION_DIRECTE),
     ]
     # La source de l'élim reste sur l'ordre 1 (la qualification) : aucun second décalage.
-    assert apres[1].source == SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16)
+    assert apres[1].sources == (SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),)

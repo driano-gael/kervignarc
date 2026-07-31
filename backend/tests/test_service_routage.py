@@ -46,7 +46,12 @@ from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
 from domain.participant import Participant
 from domain.phase import Phase, StatutPhase, TypePhase
-from domain.politiques import ByesAuxMieuxClasses, EliminationSeche, SeedingSerpent
+from domain.politiques import (
+    ByesAuxMieuxClasses,
+    PlacementEnCascade,
+    ProfondeurPodium,
+    SeedingSerpent,
+)
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
@@ -134,7 +139,8 @@ class _Monde:
             ResolveurBaremeDuelFfta(),
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
-            EliminationSeche(),
+            PlacementEnCascade(),
+            ProfondeurPodium(),
         )
 
     @property
@@ -151,7 +157,8 @@ class _Monde:
             self._classement(),
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
-            EliminationSeche(),
+            PlacementEnCascade(),
+            ProfondeurPodium(),
         )
 
     @property

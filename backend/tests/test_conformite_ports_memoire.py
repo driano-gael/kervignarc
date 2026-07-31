@@ -20,8 +20,6 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from alembic import command
-from alembic.config import Config
 
 from domain.archer import Archer
 from domain.categorie import Categorie
@@ -50,6 +48,7 @@ from infrastructure.memory.repositories import (
     InMemoryPhaseRepository,
     InMemoryTournoiRepository,
 )
+from tests.base_migree import preparer_base
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -59,10 +58,7 @@ _DATE = datetime.date(2026, 3, 14)
 def base_sql(tmp_path: Path) -> Iterator[Database]:
     """Une base migrée jetable ; l'engine est libéré en fin de test."""
     url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
-    cfg = Config(str(_BACKEND_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", url)
-    command.upgrade(cfg, "head")
+    preparer_base(url)
     database = Database(url)
     try:
         yield database

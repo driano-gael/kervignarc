@@ -32,15 +32,13 @@ from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from infrastructure.db import Database, PhaseORM, PhaseRepositorySQL, TournoiRepositorySQL
 from infrastructure.erreurs import InfrastructureError
+from tests.base_migree import preparer_base
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _migrer(url: str) -> None:
-    cfg = Config(str(_BACKEND_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", url)
-    command.upgrade(cfg, "head")
+    preparer_base(url)
 
 
 def _base(tmp_path: Path) -> Database:
@@ -387,7 +385,7 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
                 tournoi_id,
                 ordre=2,
                 type=TypePhase.ELIMINATION_DIRECTE,
-                source=SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),
+                sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
                 effectif=16,
             )
         )
@@ -398,7 +396,7 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
         assert relue is not None
         assert relue.bareme is None
         assert relue.validation is None
-        assert relue.source == SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16)
+        assert relue.sources == (SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),)
         assert relue.effectif == 16
 
         # Le JSON ne porte ni scoring ni validation pour une phase non-qualification.
@@ -407,7 +405,9 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
             assert ligne is not None
             config = json.loads(ligne.config)
         assert "scoring" not in config and "validation" not in config
-        assert config["source"] == {"ordre_source": 1, "rang_debut": 1, "rang_fin": 16}
+        assert config["sources"] == [
+            {"nature": "rangs", "ordre_source": 1, "rang_debut": 1, "rang_fin": 16}
+        ]
     finally:
         db.engine.dispose()
 
