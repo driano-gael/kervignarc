@@ -135,7 +135,17 @@ export function promouvoirBlason(id: number): Promise<Blason> {
 // Formats de tournoi
 // —————————————————————————————————————————————————————————————————————————————————————————————
 
-export type TypePhase = 'qualification' | 'elimination_directe' | 'placement'
+// ⚠️ Copie de l'union de `features/phases/api.ts` — les deux se mettent à jour ensemble (E05US015).
+export type TypePhase =
+  | 'qualification'
+  | 'elimination_directe'
+  | 'placement'
+  | 'echauffement'
+  | 'barrage'
+  | 'poules'
+  | 'big_shoot_off'
+  | 'suisse'
+  | 'colline'
 export type TypeGrain = 'fin_de_serie' | 'fin_de_duel' | 'toutes_les_n_volees'
 
 export interface Bareme {

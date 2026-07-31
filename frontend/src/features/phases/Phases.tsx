@@ -39,11 +39,40 @@ const LIBELLE_TYPE: Record<TypePhase, string> = {
   qualification: 'Qualification',
   elimination_directe: 'Élimination directe',
   placement: 'Placement',
+  echauffement: 'Échauffement',
+  barrage: 'Barrage',
+  poules: 'Poules',
+  big_shoot_off: 'Big Shoot Off',
+  suisse: 'Système suisse',
+  colline: 'Colline (King of the Hill / Ladder)',
 }
 
-// Types composables ici (la qualification se règle via le barème). Le catalogue s'élargira avec les
-// US qui implémentent les autres formats (ADR-0045 §2).
-const TYPES_AJOUTABLES: TypePhase[] = ['elimination_directe', 'placement']
+// Ce que chaque type fait, en une ligne : la moitié de ces formats est inconnue de l'organisateur
+// qui ouvre l'écran, et un `<select>` de neuf entrées sans explication n'aide personne à choisir.
+const AIDE_TYPE: Record<TypePhase, string> = {
+  qualification: 'Tir au cumul qui produit le classement de départ.',
+  elimination_directe: 'Tableau à duels ; le perdant sort (petite finale comprise).',
+  placement: 'Tableau qui classe tout le monde, du 1er au dernier.',
+  echauffement: 'Sans point ni classement : occupe du temps et des cibles.',
+  barrage: 'Départage des ex æquo à 1 flèche, avant de monter un tableau.',
+  poules: 'Groupes en round-robin ; le classement de poule qualifie.',
+  big_shoot_off: 'Finale à N archers : le plus faible sort à chaque manche.',
+  suisse: 'Rondes vainqueurs contre vainqueurs, personne n’est éliminé.',
+  colline: 'Défis entre voisins : le gagnant monte, le perdant descend.',
+}
+
+// Types composables ici (la qualification se règle via le barème). E05US015 peuple le catalogue :
+// chaque entrée a son moteur côté domaine, conformément à ADR-0045 §2.
+const TYPES_AJOUTABLES: TypePhase[] = [
+  'elimination_directe',
+  'placement',
+  'echauffement',
+  'barrage',
+  'poules',
+  'big_shoot_off',
+  'suisse',
+  'colline',
+]
 
 const LIBELLE_STATUT: Record<StatutPhase, string> = {
   a_venir: 'À venir',
@@ -337,6 +366,9 @@ function FormulairePhase({
             </option>
           ))}
         </select>
+        {/* L'aide suit le type choisi : sans elle, « Colline » ou « Suisse » ne disent rien à un
+            organisateur qui découvre le catalogue élargi par E05US015. */}
+        <p className="carte__aide">{AIDE_TYPE[type]}</p>
         <label className="formulaire__libelle">
           Effectif attendu (facultatif)
           <input

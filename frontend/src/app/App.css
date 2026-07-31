@@ -415,6 +415,14 @@
   margin: 0;
 }
 
+/* Aide contextuelle sous un champ (E05US015) : décrit le type de phase choisi. Discrète — elle
+   accompagne un choix, elle ne le commente pas. Même registre que `.zones__aide`. */
+.carte__aide {
+  margin: -4px 0 4px;
+  font-size: 12px;
+  color: var(--text-h);
+}
+
 .carte__etat--ok {
   color: var(--ok);
 }

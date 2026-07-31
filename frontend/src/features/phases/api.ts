@@ -3,8 +3,20 @@
 
 import { fetchJson } from '../../shared/api/client'
 
-// Types de phase déclarables (ADR-0045 §2). D'autres viendront avec l'US qui les implémente.
-export type TypePhase = 'qualification' | 'elimination_directe' | 'placement'
+// Types de phase déclarables (ADR-0045 §2) — le catalogue est peuplé par E05US015 (ADR-0062).
+// ⚠️ Cette union est **dupliquée** dans `features/patrimoine/api.ts` (les formats de bibliothèque
+// composent les mêmes types). Deux copies, donc deux occasions de diverger du backend : c'est
+// assumé tant qu'il n'y en a que deux — à une 3ᵉ, l'extraire dans un module partagé se justifiera.
+export type TypePhase =
+  | 'qualification'
+  | 'elimination_directe'
+  | 'placement'
+  | 'echauffement'
+  | 'barrage'
+  | 'poules'
+  | 'big_shoot_off'
+  | 'suisse'
+  | 'colline'
 
 // Cycle de vie d'une phase (ADR-0045 §1) : `en_pause` gèle la phase, distinct du tournoi.
 export type StatutPhase = 'a_venir' | 'en_cours' | 'en_pause' | 'terminee'
