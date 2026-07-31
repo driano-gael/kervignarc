@@ -178,8 +178,43 @@ personne éliminé — et de composer des formats qui **s'ajustent** à l'effect
 > ⚠️ Piège de vocabulaire : dans `Tableaux.xlsx`, « LUCKY LOSER 1 » désigne le **tableau de
 > consolation**, **pas** un repêchage — aucun archer battu n'y revient disputer le titre.
 
+**Arbitrages tranchés à l'implémentation (31/07/2026)** — reversés ici pour que le CA reste vrai.
+
+> **L'oracle 120 ne couvre pas les rangs 1 à 4, et c'est une propriété du classeur, pas une facilité.**
+> À l'extraction de `Tableaux.xlsx`, le sommet du tableau principal s'est révélé n'être **pas** une
+> élimination directe : la **Grande Finale s'y tire en Big Shoot Off** à dix archers (onglet
+> « TABLEAU 1 OK », colonnes « GRANDE FINALE », étiquettes `BSO 6`…`BSO 10` + `Lucky-Looser`), et
+> produit d'un coup les rangs 1 à 10. Il n'y a donc **aucune finale d'élimination à comparer** dans
+> le classeur. L'oracle porte sur les rangs **5 à 120** — les 58 matchs terminaux M427-M484 — et le
+> déclare. Le sommet relève d'**E05US015** (le BSO est un type de phase). *Effet de bord heureux :
+> cette Grande Finale, alimentée par les vainqueurs des quarts **et** par un lucky loser, est le
+> **cas réel** du CA « sources multiples ».*
+
+> **L'élimination directe livrée par E05US005 est un placement tronqué au rang 4.** Un tableau à
+> **petite finale** fait rejouer les perdants des demies : il ne les élimine pas. La cascade et
+> l'élimination directe sont donc **le même algorithme** à profondeur près — c'est ce qui a permis
+> une non-régression structurelle (même arbre, même numérotation) plutôt que plaquée. La composition
+> root injecte désormais `PlacementEnCascade` + profondeur `podium`. Cf. [ADR-0061](../docs/adr/0061-routing-generique-et-placement-en-cascade.md) §2.
+
+> **Le contrôle « la somme des sources égale l'effectif déclaré » ne s'applique plus que si tous les
+> prélèvements sont dénombrables au format.** Dès qu'un seul est relatif (fin ouverte, « le reste »,
+> issue de tour), le compte ne se connaît qu'à l'exécution. Ce n'est pas un relâchement : c'est la
+> condition d'existence des plages relatives, et le CA « cohérence des sources » le dit déjà pour
+> l'autre bout du problème (un format infaisable à effectif réduit est une **anomalie à afficher**,
+> E01US024, pas une erreur de format).
+
+> **Ce que cette US ne livre pas, par décision de périmètre.** Le **modèle** de sources multiples est
+> livré (domaine, persistance, API, migration) mais **aucun moteur ne le consomme encore** : peupler
+> effectivement une phase depuis ses sources est le travail d'**E01US024**. De même, l'écran
+> « Phases » **affiche** tous les prélèvements mais n'en **édite** qu'un, « par rangs » ; une phase à
+> composition avancée y est en **lecture seule** (un formulaire mono-source l'écraserait sans le
+> dire). Le modèle est livré ici parce que c'est **lui** qui bloquait le routing, et parce que le
+> reporter aurait imposé une **seconde** migration double table.
+
 - **Absorbe** : ex-E05US010 à E05US014, **et E05US018** (oracle). **Résorbe** : DETTE-015.
 - **Dépend de** : E05US003 · **Jalon** : J3 · **Origine** : cadrage du 31/07/2026
+- **Livrée** : 31/07/2026 — [ADR-0061](../docs/adr/0061-routing-generique-et-placement-en-cascade.md),
+  migration `0036`, oracle `backend/tests/test_oracle_120_placement.py`
 
 ### E05US015 — Le catalogue de types de phase *(élargie le 31/07/2026)*
 *En tant qu'*organisateur, *je veux* disposer des types de phase qui composent un vrai tournoi de
@@ -267,6 +302,7 @@ existent depuis E05US003 (✅) ; cette US en peuple le catalogue.
 > **Ce que cette US ne fait pas** : handicap, système suisse, king of the hill, ladder, finale
 > spectacle. Ce sont les **cibles** du catalogue ouvert d'EF-3.2, « livrables dès que leur règle est
 > écrite ». Même *gate* que celui qui bloquait le BSO : **pas de règle écrite, pas d'US**.
+> -> demander un jeu de règles au commanditaire pour ces formats, en discuter et les integer a l'us
 
 - **Absorbe** : ex-E05US016. **Ajoute** : échauffement, barrage autonome, poules.
 - **Dépend de** : **E05US010** (le routing générique, sans lequel aucun de ces types n'est routable)

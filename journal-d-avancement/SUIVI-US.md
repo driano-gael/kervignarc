@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 31/07/2026** · **85 US livrées** · dernière : `E01US023` *(les briques de configuration deviennent le patrimoine du club : bibliothèque, copie à l'assemblage, promotion)*.
+**Dernière mise à jour : 31/07/2026** · **86 US livrées** · dernière : `E05US010` *(placement intégral 1→N : routing générique, sources multiples et relatives, oracle 120)*.
 
 ---
 
@@ -34,15 +34,15 @@
 >
 > | Ordre | US | Ce qu'elle livre |
 > |---|---|---|
-> | **1** | **`E05US010`** | Le moteur de placement 1→N, le **routing générique** (`route(perdant, tour, contexte)`), les **sources multiples et relatives**, l'oracle 120 |
-> | 2 | `E05US015` | Le **catalogue de types** : échauffement, barrage, poules, repêchage, Big Shoot Off |
+> | ~~1~~ ✅ | ~~`E05US010`~~ | **Livrée le 31/07/2026** — moteur de placement 1→N, **routing générique** (`route(contexte)`), **sources multiples et relatives**, oracle 120 ([ADR-0061](../docs/adr/0061-routing-generique-et-placement-en-cascade.md)) |
+> | **2** | **`E05US015`** | ⬅️ **prochaine** — le **catalogue de types** : échauffement, barrage, poules, repêchage, Big Shoot Off |
 > | 3 | `E01US024` | **Composer, diagnostiquer et simuler** un déroulé (brouillon, schéma à braquets, simulation) |
 > | 4 | `E07US004` | **Voir le tournoi se dérouler** : suivi des tours + écran de salle |
 >
-> **Pourquoi E05US010 en tête** : le verrou du moteur n'est pas le catalogue de types mais le
-> **routing** — `DestinationPerdant` (`backend/domain/politiques.py:68`) n'a qu'**une** valeur,
-> `ELIMINE`. Tout ce qui n'est pas élimination sèche (placement, repêchage, consolation,
-> non-qualifiés de poule) en dépend. Les trois autres US en découlent.
+> **Pourquoi E05US010 était en tête** : le verrou du moteur n'était pas le catalogue de types mais
+> le **routing** — `DestinationPerdant` n'avait qu'**une** valeur, `ELIMINE`, et une méthode sans
+> argument ne peut rendre qu'une réponse constante. **C'est levé** : `Routing.route(contexte)` rend
+> `HorsTableau` ou `VersPlage`, et E05US015 n'a plus qu'à ajouter sa destination de repêchage.
 >
 > **Origine** : une session de cadrage du 31/07/2026, partie du constat que l'écran « Formats » livré
 > par E01US023 ne savait composer qu'une qualification. Trois découvertes y ont été faites et sont
@@ -63,6 +63,25 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E05US010` **placement intégral 1→N & peuplement multiple** — la tête du chantier moteur, qui
+>   **résorbe DETTE-015**. Le moteur ne désigne plus quatre archers mais les **classe tous** : chaque
+>   perdant redescend dans le tableau des places qu'il peut encore atteindre (*Règle R*), jusqu'à un
+>   match terminal qui fixe deux rangs (*Règle T*). **Découverte de conception qui a changé la
+>   solution** : l'élimination directe livrée par E05US005 **est déjà un placement** — elle a une
+>   petite finale, donc les perdants des demies rejouent — simplement **tronqué au rang 4**. La
+>   génération est donc devenue une **récursion sur les plages de rangs** dont l'ancien format est le
+>   cas particulier : à profondeur `podium`, elle rend **le même arbre, la même numérotation**
+>   (non-régression structurelle, pas plaquée). `Routing` dit *où* descend un perdant, `Depth` dit
+>   *jusqu'où* — et le routage se décide à la **construction**, pas à chaque match joué, sans quoi la
+>   structure dépendrait de l'ordre de saisie (ADR-0049). Côté peuplement : `Phase.sources` (liste),
+>   trois natures (`rangs` / `issue_de_tour` / `reste`) et **plages relatives** (fin ouverte) — un
+>   format composé pour 120 archers tient à 82. Migration **0036 sur les deux tables** (`phase` **et**
+>   `format_tournoi`, l'écueil signalé par la revue d'E01US023). **L'oracle 120 existe enfin** : il
+>   était cité par la règle 9 depuis l'origine sans qu'aucun test ne l'implémente — c'est désormais un
+>   rejeu du classeur réel (fixture extraite en stdlib, sans ajouter `openpyxl`). ⚠️ Il porte sur les
+>   rangs **5 à 120** : le sommet du classeur est un **Big Shoot Off** (E05US015), pas une finale
+>   d'élimination — il n'y a rien à y comparer. [ADR-0061](../docs/adr/0061-routing-generique-et-placement-en-cascade.md).
+>   Recette : [`docs/fonctionnel/E05US010.md`](../docs/fonctionnel/E05US010.md).
 > - `E01US023` **les briques de l'atelier deviennent le patrimoine du club** — US à **surface
 >   visible**, qui **résorbe DETTE-023**. Catégories et blasons peuvent exister **sans tournoi**
 >   (modèles de bibliothèque) ; un tournoi en reçoit une **copie** ajustable, et une modification
@@ -393,8 +412,8 @@
 
 | Seq | US | Titre | État |
 |---|---|---|---|
-| 73 | E05US010 | Placement intégral 1→N **& peuplement multiple** | 🎯 *(prochaine — tête du chantier moteur ; absorbe E05US018, résorbe DETTE-015)* |
-| 74 | E05US015 | **Catalogue de types de phase** (échauffement, barrage, poules, repêchage, BSO) | ⬜ *(absorbe E05US016 ; **Q9 fermée** le 31/07)* |
+| 73 | E05US010 | Placement intégral 1→N **& peuplement multiple** | ✅ *(routing générique + cascade, sources multiples, oracle 120, ADR-0061 ; absorbe E05US018, résorbe DETTE-015)* |
+| 74 | E05US015 | **Catalogue de types de phase** (échauffement, barrage, poules, repêchage, BSO) | 🎯 *(prochaine — absorbe E05US016 ; **Q9 fermée** le 31/07 ; le routing générique dont elle dépend est livré)* |
 | 75 | ~~E05US018~~ | ~~Oracle 120~~ → **absorbée par E05US010** | ⬜ *(le moteur et sa preuve ne se séparent pas)* |
 | 76 | E06US006 | Classement intégral 1→N & profondeur | ⬜ |
 | 77 | E03US007 | Contrainte séparation catégorie/blason | ⬜ |
