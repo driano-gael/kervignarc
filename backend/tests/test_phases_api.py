@@ -68,16 +68,21 @@ def test_composer_editer_et_lister(app_phases: FastAPI, connecter_admin: Connect
             f"{base}/{elim_id}",
             json={
                 "type": "elimination_directe",
-                "source": {"ordre_source": 1, "rang_debut": 1, "rang_fin": 16},
+                "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 16}],
                 "effectif": 16,
             },
         )
         assert modifiee.status_code == 200, modifiee.text
-        assert modifiee.json()["source"] == {
-            "ordre_source": 1,
-            "rang_debut": 1,
-            "rang_fin": 16,
-        }
+        assert modifiee.json()["sources"] == [
+            {
+                "ordre_source": 1,
+                "nature": "rangs",
+                "rang_debut": 1,
+                "rang_fin": 16,
+                "tour": None,
+                "issue": None,
+            }
+        ]
 
         phases = client.get(base).json()
         assert [p["ordre"] for p in phases] == [1, 2]
@@ -162,7 +167,7 @@ def test_source_incoherente_422(app_phases: FastAPI, connecter_admin: ConnecterA
             base,
             json={
                 "type": "elimination_directe",
-                "source": {"ordre_source": 1, "rang_debut": 1, "rang_fin": 40},
+                "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 40}],
             },
         )
         assert reponse.status_code == 422
@@ -182,7 +187,7 @@ def test_supprimer_source_referencee_409(
             f"{base}/{conso['id']}",
             json={
                 "type": "elimination_directe",
-                "source": {"ordre_source": 1, "rang_debut": 1, "rang_fin": 16},
+                "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 16}],
                 "effectif": 16,
             },
         )
@@ -229,7 +234,7 @@ def test_modifier_phase_inconnue_404(app_phases: FastAPI, connecter_admin: Conne
         tournoi_id = _creer_tournoi(client)
         reponse = client.put(
             f"/api/v1/tournois/{tournoi_id}/phases/999",
-            json={"type": "placement", "source": None, "effectif": None},
+            json={"type": "placement", "sources": [], "effectif": None},
         )
     assert reponse.status_code == 404
     assert reponse.json()["code"] == "phase_introuvable"
