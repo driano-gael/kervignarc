@@ -31,9 +31,10 @@ et sur le classement complet. Ce contrôle tournera à chaque modification : si 
 dérive, il le dira tout de suite.
 
 *Une précision honnête : les places 1 à 5 du classeur ne sont pas décidées par des duels mais par une
-« grande finale » d'un genre particulier, où huit archers tirent ensemble et où le plus faible sort à
-chaque manche. Ce format-là n'est pas encore programmé — c'est la prochaine étape. La vérification
-porte donc sur les places 5 à 120.*
+« grande finale » d'un genre particulier, où **cinq** archers tirent ensemble et où le plus faible
+sort à chaque manche — et l'un des cinq est un **repêché**, le meilleur des battus, qui remonte
+tenter le titre. Ce format-là n'est pas encore programmé : c'est la prochaine étape. La vérification
+porte donc sur les places 6 à 120.*
 
 ## Pour l'organisateur, concrètement
 

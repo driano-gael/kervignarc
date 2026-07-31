@@ -26,6 +26,7 @@ from domain.politiques import (
     ByesAuxMieuxClasses,
     EliminationSeche,
     PlacementEnCascade,
+    ProfondeurPodium,
     SeedingSerpent,
 )
 from domain.tableau import (
@@ -46,6 +47,8 @@ BYES = ByesAuxMieuxClasses()
 # E05US010, un placement en cascade tronqué au rang 4 (la profondeur `podium`, défaut de
 # `construire_tableau`). Même arbre, même numérotation : c'est le contrat de non-régression.
 ROUTING = PlacementEnCascade()
+# La profondeur qui reproduit le format d'E05US005 : on ne départage que le podium.
+DEPTH = ProfondeurPodium()
 
 
 def p(rang: int) -> Participant:
@@ -55,7 +58,7 @@ def p(rang: int) -> Participant:
 
 def construire(effectif: int) -> Tableau:
     """Assemble un tableau pour `effectif` participants ordonnés par rang (p(1) = tête de série)."""
-    return construire_tableau([p(r) for r in range(1, effectif + 1)], SEEDING, BYES, ROUTING)
+    return construire_tableau([p(r) for r in range(1, effectif + 1)], SEEDING, BYES, ROUTING, DEPTH)
 
 
 def _appariements_premier_tour(
@@ -186,7 +189,7 @@ def test_politique_byes_incoherente_avec_le_seeding_refusee() -> None:
 
     joueurs = [p(r) for r in range(1, 6)]
     with pytest.raises(FormatTableauIncoherent):
-        construire_tableau(joueurs, SEEDING, ByesAuxPlusMauvaisClasses(), ROUTING)
+        construire_tableau(joueurs, SEEDING, ByesAuxPlusMauvaisClasses(), ROUTING, DEPTH)
 
 
 # --- CA « génération de l'arbre » --------------------------------------------------------------
@@ -305,10 +308,10 @@ def test_l_elimination_seche_ne_departage_meme_pas_la_troisieme_place() -> None:
     rien.
     """
     joueurs = [p(r) for r in range(1, 9)]
-    sec = construire_tableau(joueurs, SEEDING, BYES, EliminationSeche())
+    sec = construire_tableau(joueurs, SEEDING, BYES, EliminationSeche(), DEPTH)
     assert sec.petite_finale is None
     assert len(sec.matchs) == 7  # 4 quarts + 2 demies + 1 finale, aucun match de classement
-    avec_petite_finale = construire_tableau(joueurs, SEEDING, BYES, PlacementEnCascade())
+    avec_petite_finale = construire_tableau(joueurs, SEEDING, BYES, PlacementEnCascade(), DEPTH)
     assert avec_petite_finale.petite_finale is not None
     assert len(avec_petite_finale.matchs) == 8
 
@@ -374,7 +377,9 @@ def test_le_moteur_traite_les_equipes_comme_les_archers() -> None:
     # Opacité (ADR-0028) : un tableau d'**équipes** se déroule à l'identique — le moteur ne branche
     # jamais sur le genre du participant, il n'en lit que l'identité.
     equipes = [Participant.equipe(i) for i in range(1, 5)]
-    tableau = _derouler_gagne_mieux_classe(construire_tableau(equipes, SEEDING, BYES, ROUTING))
+    tableau = _derouler_gagne_mieux_classe(
+        construire_tableau(equipes, SEEDING, BYES, ROUTING, DEPTH)
+    )
     assert tableau.est_termine
     assert tableau.podium() == (
         Place(1, Participant.equipe(1)),
@@ -421,3 +426,23 @@ def test_libelle_petite_finale_prime_sur_le_tour() -> None:
     # rendez-vous. C'est la place en jeu qui la nomme.
     assert libelle_tour(tour=3, nb_tours=3, place_en_jeu=(3, 4)) == "Petite finale"
     assert libelle_tour(tour=3, nb_tours=3, place_en_jeu=(1, 2)) == "Finale"
+
+
+def test_le_podium_publie_les_rangs_trois_quatre_avant_la_finale() -> None:
+    """La petite finale se tire couramment **avant** la finale (le bronze avant l'or, en salle).
+
+    Test ajouté en revue : un premier jet d'E05US010 avait posé une garde « rien tant que la finale
+    n'est pas jouée », qui privait l'écran de duels et le panneau de routage des rangs 3-4 pendant
+    tout l'intervalle. Aucun test existant ne jouait les matchs dans cet ordre — celui-ci le fait.
+    """
+    tableau = construire(8)
+    for numero in (1, 2, 3, 4):  # les quarts
+        tableau = jouer_gagne_mieux_classe(tableau, numero)
+    for numero in (5, 6):  # les demi-finales
+        tableau = jouer_gagne_mieux_classe(tableau, numero)
+    petite = tableau.petite_finale
+    assert petite is not None
+    tableau = jouer_gagne_mieux_classe(tableau, petite.numero)
+
+    assert tableau.finale.vainqueur is None  # la finale n'est pas encore tirée
+    assert [place.rang for place in tableau.podium()] == [3, 4]

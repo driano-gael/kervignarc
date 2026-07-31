@@ -167,3 +167,35 @@ def test_downgrade_retablit_le_cas_representable_et_laisse_les_autres(tmp_path: 
         assert configs[3]["sources"] == fin_ouverte
     finally:
         engine.dispose()
+
+
+def test_downgrade_retablit_aussi_les_etapes_des_formats(tmp_path: Path) -> None:
+    """Le retour arrière porte sur les **deux** tables, pas seulement sur `phase`.
+
+    Ajouté en revue : `_migrer_formats(_vers_unique)` n'était exercé par aucun test, alors que
+    l'oubli d'une table est précisément l'écueil que cette migration existe pour éviter.
+    """
+    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
+    cfg = _config(url)
+    command.upgrade(cfg, "0036_sources_multiples")
+
+    engine = sa.create_engine(url)
+    try:
+        with engine.begin() as conn:
+            _inserer_format(
+                conn,
+                1,
+                [
+                    {"ordre": 1, "type": "qualification"},
+                    {"ordre": 2, "type": "placement", "sources": [dict(_NOUVELLE_SOURCE)]},
+                ],
+            )
+
+        command.downgrade(cfg, "0035_format_tournoi")
+
+        etapes = _configs_formats(engine)[1]["etapes"]
+        assert isinstance(etapes, list)
+        assert etapes[1]["source"] == _ANCIENNE_SOURCE
+        assert "sources" not in etapes[1]
+    finally:
+        engine.dispose()

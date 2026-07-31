@@ -21,7 +21,7 @@ from __future__ import annotations
 import asyncio
 
 from fastapi import APIRouter, Depends, Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
@@ -97,6 +97,20 @@ class EtapeDTO(BaseModel):
     naissent à l'application. Les exposer ici inviterait un client à les fournir, donc à croire
     qu'un format porte un avancement.
     """
+
+    model_config = ConfigDict(extra="forbid")
+    """⚠️ **Seul régime strict du projet, et c'est délibéré** (E05US010, ADR-0061).
+
+    Les 31 autres routeurs laissent Pydantic **ignorer** les champs inconnus. Ici, le champ d'entrée
+    a été **renommé** (`source` → `sources`) : sans cette garde, un client resté sur l'ancienne
+    forme
+    verrait sa clé silencieusement ignorée. Et comme le `PUT` est une édition **totale**, il ne
+    perdrait pas seulement sa saisie — il **écraserait** la composition existante par une liste
+    vide,
+    en 200. Le déploiement rend le cas réel : une trentaine de tablettes personnelles, une SPA
+    servie
+    depuis leur cache, aucun versionnage de bundle qui garantisse qu'elles rechargent le jour J.
+    Mieux vaut un 422 explicite qu'une destruction muette."""
 
     ordre: int
     type: TypePhase

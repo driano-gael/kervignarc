@@ -38,7 +38,12 @@ from domain.entree_audit import ActionAuditee
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
-from domain.politiques import ByesAuxMieuxClasses, PlacementEnCascade, SeedingSerpent
+from domain.politiques import (
+    ByesAuxMieuxClasses,
+    PlacementEnCascade,
+    ProfondeurPodium,
+    SeedingSerpent,
+)
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
@@ -131,6 +136,7 @@ class _Monde:
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
             PlacementEnCascade(),
+            ProfondeurPodium(),
         )
 
     @property
@@ -148,6 +154,7 @@ class _Monde:
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
             PlacementEnCascade(),
+            ProfondeurPodium(),
         )
 
     @property

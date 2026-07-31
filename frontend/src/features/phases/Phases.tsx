@@ -33,6 +33,7 @@ import {
   useSupprimerPhase,
 } from './hooks'
 import { ordreApresDeplacement, type Direction } from './ordre'
+import { decrireSources, editableIci } from './source'
 
 const LIBELLE_TYPE: Record<TypePhase, string> = {
   qualification: 'Qualification',
@@ -98,32 +99,6 @@ function BadgePhase({ statut }: { statut: StatutPhase }) {
   return (
     <span className={`badge badge--${statut.replace('_', '-')}`}>{LIBELLE_STATUT[statut]}</span>
   )
-}
-
-// Décrit **un** prélèvement en clair, selon sa nature.
-function decrireSource(source: SourcePhase): string {
-  const provenance = `de la phase ${source.ordre_source}`
-  if (source.nature === 'reste') return `le reste ${provenance}`
-  if (source.nature === 'issue_de_tour') {
-    return `${source.issue === 'perdants' ? 'perdants' : 'gagnants'} du tour ${source.tour} ${provenance}`
-  }
-  // Fin ouverte : le format ne fige pas le dernier rang, il suit l'effectif réel (E05US010).
-  if (source.rang_fin === null) return `rangs ${source.rang_debut} et suivants ${provenance}`
-  return `rangs ${source.rang_debut} à ${source.rang_fin} ${provenance}`
-}
-
-// Décrit le peuplement complet d'une phase (ou son absence).
-function decrireSources(sources: SourcePhase[]): string {
-  if (sources.length === 0) return 'alimentée par les inscriptions'
-  return sources.map(decrireSource).join(', puis ')
-}
-
-// Une phase que ce formulaire ne sait **pas** éditer sans perte : plusieurs prélèvements, ou un
-// prélèvement d'une nature qu'il n'expose pas. Le formulaire n'en propose qu'un, par rangs ; le
-// soumettre sur une telle phase écraserait silencieusement le reste de sa composition. L'éditeur
-// complet est l'objet d'E01US024 — d'ici là on affiche, on ne réécrit pas.
-function editableIci(sources: SourcePhase[]): boolean {
-  return sources.length <= 1 && sources.every((source) => source.nature === 'rangs')
 }
 
 function LignePhase({

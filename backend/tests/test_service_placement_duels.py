@@ -30,7 +30,12 @@ from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
-from domain.politiques import ByesAuxMieuxClasses, PlacementEnCascade, SeedingSerpent
+from domain.politiques import (
+    ByesAuxMieuxClasses,
+    PlacementEnCascade,
+    ProfondeurPodium,
+    SeedingSerpent,
+)
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import (
@@ -313,6 +318,7 @@ class _Monde:
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
             PlacementEnCascade(),
+            ProfondeurPodium(),
         )
 
 

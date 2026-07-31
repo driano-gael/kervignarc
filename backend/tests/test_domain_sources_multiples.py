@@ -242,3 +242,115 @@ def test_une_source_par_rangs_ne_porte_pas_de_tour() -> None:
     """Contrôle symétrique : un tour sur un prélèvement par rangs est une config incohérente."""
     with pytest.raises(SourceMalFormee):
         SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8, tour=2)
+
+
+# --- cas adverses issus de la revue d'E05US010 --------------------------------------------------
+# Ces sept cas ne sont pas des variantes de confort : chacun couvre un défaut **réel** que la revue
+# a trouvé et que les tests d'origine laissaient passer, parce qu'ils avaient été écrits dans la
+# seule configuration où le code fonctionnait (règle 9 : « un test qui épouse l'implémentation ne
+# prouve rien »).
+
+
+def test_deux_sources_se_recoupent_meme_sans_effectif_source_declare() -> None:
+    """`Phase.effectif` est **facultatif**, donc `None` est le cas par défaut — pas un cas rare.
+
+    Le premier jet sautait tout le contrôle de recoupement quand l'effectif de la phase source
+    n'était pas déclaré : deux plages pourtant **entièrement bornées** passaient sans examen. Le CA
+    dit « deux sources ne se recoupent pas », sans condition.
+    """
+    qualif = _qualification()  # aucun effectif déclaré
+    tableau = _tableau(
+        2,
+        (
+            SourcePhase(ordre_source=1, rang_debut=1, rang_fin=10),
+            SourcePhase(ordre_source=1, rang_debut=5, rang_fin=15),
+        ),
+    )
+    with pytest.raises(SourcesQuiSeRecoupent):
+        SequencePhases((qualif, tableau))
+
+
+def test_une_fin_ouverte_recoupe_ce_qui_commence_apres_elle() -> None:
+    """« Les rangs 33 et suivants » couvre 40-50 : le recoupement se décide sans aucun effectif."""
+    qualif = _qualification()
+    tableau = _tableau(
+        2,
+        (
+            SourcePhase.par_rangs(ordre_source=1, rang_debut=33, rang_fin=None),
+            SourcePhase.par_rangs(ordre_source=1, rang_debut=40, rang_fin=50),
+        ),
+    )
+    with pytest.raises(SourcesQuiSeRecoupent):
+        SequencePhases((qualif, tableau))
+
+
+def test_le_reste_deux_fois_sur_la_meme_phase_est_refuse() -> None:
+    """« Le reste » ne se prélève pas deux fois — un non-sens qui se voit sans dérouler le tournoi.
+
+    Le contrôle par rangs est aveugle à ces natures : il faut refuser les **doublons stricts**.
+    """
+    qualif = _qualification(effectif=64)
+    tableau = _tableau(
+        2, (SourcePhase.le_reste(ordre_source=1), SourcePhase.le_reste(ordre_source=1))
+    )
+    with pytest.raises(SourcesQuiSeRecoupent):
+        SequencePhases((qualif, tableau))
+
+
+def test_deux_fois_les_memes_gagnants_de_tour_sont_refuses() -> None:
+    qualif = _qualification(effectif=64)
+    doublon = SourcePhase.par_issue_de_tour(ordre_source=1, tour=2, issue=IssueTour.GAGNANTS)
+    tableau = _tableau(2, (doublon, doublon))
+    with pytest.raises(SourcesQuiSeRecoupent):
+        SequencePhases((qualif, tableau))
+
+
+def test_une_issue_de_tour_ne_porte_pas_de_rangs() -> None:
+    """Champ parasite **accepté** puis **jamais sérialisé** : POST 201 avec la valeur, GET à `null`.
+
+    `rang_debut` ayant pour défaut `1`, la garde doit comparer au défaut — un test `is not None` ne
+    voit rien. C'est le trou exact qu'avait laissé le premier jet.
+    """
+    with pytest.raises(SourceMalFormee):
+        SourcePhase(
+            ordre_source=1,
+            nature=NatureSource.ISSUE_DE_TOUR,
+            tour=2,
+            issue=IssueTour.GAGNANTS,
+            rang_fin=50,
+        )
+    with pytest.raises(SourceMalFormee):
+        SourcePhase(
+            ordre_source=1,
+            nature=NatureSource.ISSUE_DE_TOUR,
+            tour=2,
+            issue=IssueTour.GAGNANTS,
+            rang_debut=33,
+        )
+
+
+def test_le_reste_ne_porte_pas_de_rang_de_debut() -> None:
+    with pytest.raises(SourceMalFormee):
+        SourcePhase(ordre_source=1, nature=NatureSource.RESTE, rang_debut=33)
+
+
+def test_des_prelevements_denombrables_depassant_l_effectif_sont_refuses_malgre_un_relatif() -> (
+    None
+):
+    """L'**inégalité** reste décidable même avec un prélèvement relatif (CA « cohérence »).
+
+    « Les rangs 1 à 64, puis le reste » pour une phase qui en déclare 32 : le reste ajoute ≥ 0, donc
+    la composition est fausse quoi qu'il arrive. Le premier jet désactivait *tout* le contrôle dès
+    qu'un prélèvement était relatif, et son test choisissait 8 prélevés pour 32 — sous le seuil.
+    """
+    qualif = _qualification(effectif=120)
+    tableau = _tableau(
+        2,
+        (
+            SourcePhase(ordre_source=1, rang_debut=1, rang_fin=64),
+            SourcePhase.le_reste(ordre_source=1),
+        ),
+        effectif=32,
+    )
+    with pytest.raises(EffectifIncompatible):
+        SequencePhases((qualif, tableau))

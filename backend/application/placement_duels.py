@@ -48,7 +48,7 @@ from domain.placement import (
     placer,
     placer_restants,
 )
-from domain.politiques import Byes, Routing, Seeding
+from domain.politiques import Byes, Depth, Routing, Seeding
 from domain.ports import (
     ArcherRepository,
     BlasonRepository,
@@ -119,6 +119,7 @@ class ServicePlacementDuels:
         seeding: Seeding,
         byes: Byes,
         routing: Routing,
+        depth: Depth,
     ) -> None:
         self._tournois = tournois
         self._phases = phases
@@ -134,6 +135,7 @@ class ServicePlacementDuels:
         self._seeding = seeding
         self._byes = byes
         self._routing = routing
+        self._depth = depth
 
     # --- Lecture -------------------------------------------------------------------------------
 
@@ -479,7 +481,9 @@ class ServicePlacementDuels:
         if len(participants) < 2:
             return contexte  # pas de tableau possible : plan vide, sans duel
 
-        tableau = construire_tableau(participants, self._seeding, self._byes, self._routing)
+        tableau = construire_tableau(
+            participants, self._seeding, self._byes, self._routing, self._depth
+        )
         for haut, bas in paires_du_premier_tour(tableau):
             self._enregistrer_duel(contexte, haut, bas)
         return contexte

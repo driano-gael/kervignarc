@@ -104,6 +104,7 @@ from domain.duel import ResolveurBaremeDuelFfta
 from domain.politiques import (
     ByesAuxMieuxClasses,
     PlacementEnCascade,
+    ProfondeurPodium,
     SeedingSerpent,
     registre_par_defaut,
 )
@@ -214,6 +215,7 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
         PlacementEnCascade(),
+        ProfondeurPodium(),
     )
     saisie_duels = ServiceSaisieDuels(
         tournois,
@@ -227,6 +229,7 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
         PlacementEnCascade(),
+        ProfondeurPodium(),
     )
     return HarnaisSimulation(
         tournois,
@@ -544,12 +547,18 @@ def create_app(
     # Réutilise `service_classement` (source d'ensemencement) ; scoppé par **phase** (≠ départ).
     #
     # ⚠️ **`PlacementEnCascade` et non `EliminationSeche`** (E05US010, ADR-0061), malgré le nom :
-    # format livré ici a une **petite finale**, donc les perdants des demies rejouent — ce n'est pas
-    # une élimination sèche mais un placement **tronqué au rang 4** par la profondeur par défaut de
-    # `construire_tableau` (`ProfondeurPodium`). L'arbre produit est **identique** à celui d'avant
-    # l'US ; c'est le vocabulaire qui se met en accord avec le comportement. Injecter une profondeur
-    # `un_vers_n` ici suffirait à passer ces tableaux au placement intégral 1→N — le levier que
-    # `E01US024` exposera à l'organisateur, phase par phase, plutôt qu'en dur.
+    # le format livré ici a une **petite finale**, donc les perdants des demies rejouent — ce n'est
+    # pas une élimination sèche mais un placement **tronqué au rang 4**. C'est la paire
+    # `PlacementEnCascade` + `ProfondeurPodium()` qui le dit, et les deux sont injectées **ici** :
+    # le `routing` décide *où* descend un perdant, la `depth` *jusqu'où* l'on descend. L'arbre
+    # produit est **identique** à celui d'avant l'US ; c'est le vocabulaire qui se met en accord
+    # avec le comportement.
+    #
+    # Remplacer `ProfondeurPodium()` par `ProfondeurUnVersN()` sur cette ligne suffit à passer ces
+    # tableaux au **placement intégral 1→N** — c'est le levier qu'`E01US024` exposera à
+    # l'organisateur phase par phase, au lieu de le figer au câblage. La profondeur est injectée
+    # plutôt que laissée en défaut du domaine précisément pour que ce levier soit **visible ici**
+    # (règles 2 et 8 : un format est de la configuration, et le câblage se lit au composition root).
     app.state.service_placement_duels = ServicePlacementDuels(
         tournoi_repository,
         phase_repository,
@@ -563,6 +572,7 @@ def create_app(
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
         PlacementEnCascade(),
+        ProfondeurPodium(),
     )
     # Saisie en duels (E04US013, ADR-0049) : reconstruit le même arbre (classement → tableau) et
     # **rejoue** les duels validés pour la progression. Le barème est résolu par arme via le
@@ -583,6 +593,7 @@ def create_app(
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
         PlacementEnCascade(),
+        ProfondeurPodium(),
     )
 
     # Simulation éphémère (E15US002, ADR-0054) : rejoue le moteur (qualif → duels → classement) d'un

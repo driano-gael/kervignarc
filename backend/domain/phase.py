@@ -14,11 +14,20 @@ n'exploitait. E01US015 a ajouté la 2ᵉ politique de qualification (le grain de
   type ne présuppose pas son moteur ; leurs politiques propres viendront en E05US003. En
   conséquence, `bareme`/`validation` deviennent **facultatifs** (obligatoires pour `qualification`
   seulement).
-- **Peuplement minimal** : une phase peut être alimentée par une `SourcePhase` (« rangs [a..b] de la
-  phase d'ordre k »). Amorce **provisoire** (une source, une plage — pas de routing ni de
-  gagnants/perdants ; modèle complet = E05US010) inscrite en DETTE-015. Elle suffit à décider les
-  trois contrôles de cohérence du CA (source vide / rangs inexistants / effectif incompatible),
-  portés par l'agrégat pur `SequencePhases`.
+- **Peuplement** : une phase est alimentée par des `SourcePhase`. E05US001 n'en admettait
+  qu'**une**,
+  « rangs [a..b] de la phase d'ordre k » (amorce inscrite en DETTE-015) ; **E05US010 / [ADR-0061] a
+  livré le modèle complet et résorbé cette dette** : `Phase.sources` est une **liste** de
+  prélèvements de natures mêlées (`rangs`, `issue_de_tour`, `reste`), dont les **plages relatives**
+  (fin ouverte, « le reste ») rendent un format indépendant de l'effectif réel. Les contrôles
+  collectifs — source existante et antérieure, rangs dans l'effectif, sources qui ne se recoupent
+  pas, somme compatible — sont portés par l'agrégat pur `SequencePhases`.
+  ⚠️ **Ce qui reste ancré par `ordre`** (et non par identité) : une source désigne sa phase amont
+  par
+  son rang dans la séquence, ce qui oblige à **remapper** les références à chaque réordonnancement
+  ou suppression (`ServicePhases._remapper`, `ServiceBaremeQualification._decaler_dun_cran`).
+  E05US010 n'a pas changé cet ancrage — elle l'a seulement généralisé à N sources. C'est un écart
+  **assumé et tracé** : cf. [DETTE-026](../../docs/dette.md).
 
 La **forme JSON** de la config est une préoccupation du **repository** (l'agrégat pur ci-dessous ne
 sérialise rien) : depuis E05US003/ADR-0046, les politiques du moteur y vivent sous `config.policies`
@@ -26,10 +35,12 @@ sérialise rien) : depuis E05US003/ADR-0046, les politiques du moteur y vivent s
 de domaine **purs** (immuables, sans dépendance framework).
 
 [ADR-0045]: ../../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md
+[ADR-0061]: ../../docs/adr/0061-routing-generique-et-placement-en-cascade.md
 """
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
@@ -210,12 +221,25 @@ class SourcePhase:
             )
         if self.tour < 1:
             raise SourceMalFormee(f"Le tour d'un prélèvement commence à 1 (reçu {self.tour}).")
+        self._refuser_les_rangs("Un prélèvement par issue de tour ne se lit pas en rangs")
 
     def _verifier_reste(self) -> None:
-        if self.rang_fin is not None:
-            raise SourceMalFormee(
-                "« Le reste » se définit par complément : il ne porte pas de rang de fin."
-            )
+        self._refuser_les_rangs("« Le reste » se définit par complément")
+
+    def _refuser_les_rangs(self, motif: str) -> None:
+        """Interdit `rang_debut`/`rang_fin` sur une nature qui ne se lit pas en rangs.
+
+        ⚠️ `rang_debut` a pour **défaut** `1` : un test `is not None` ne dirait rien, il faut
+        comparer à ce défaut. C'est précisément le trou qu'un premier jet de cette US a laissé —
+        un `rang_fin` parasite sur une source « issue de tour » était **accepté** puis **jamais
+        sérialisé** (`_source_json` n'écrit que les champs de la nature) : le POST répondait 201
+        avec la valeur, le GET suivant la rendait à `null`. C'est exactement le « champ avalé en
+        silence » que l'ADR déclarait écarter, et c'est le prix du type unique discriminé : ce que
+        l'union de trois classes aurait rendu impossible par construction, il faut ici l'interdire
+        à la main.
+        """
+        if self.rang_fin is not None or self.rang_debut != 1:
+            raise SourceMalFormee(f"{motif} : « rang_debut » et « rang_fin » n'y ont aucun sens.")
 
     @property
     def effectif_selectionne(self) -> int | None:
@@ -242,13 +266,26 @@ class SourcePhase:
         fin = self.rang_fin if self.rang_fin is not None else effectif_source
         return max(0, fin - self.rang_debut + 1)
 
-    def rangs_couverts(self, effectif_source: int) -> frozenset[int]:
-        """Les rangs que ce prélèvement occupe dans la phase source — pour détecter les
-        recoupements. Vide pour les natures qui ne se lisent pas en rangs."""
+    def intervalle(self, effectif_source: int | None) -> tuple[int, int] | None:
+        """Les **bornes** que ce prélèvement occupe dans la phase source, ou `None` s'il ne se lit
+        pas en rangs (« le reste », une issue de tour : leur recoupement éventuel ne se décide qu'au
+        déroulé — E01US024).
+
+        ⚠️ Rend un **intervalle**, jamais l'ensemble des rangs. Deux intervalles se comparent en
+        O(1) ; matérialiser `frozenset(range(debut, fin))` ferait dépendre l'allocation mémoire d'un
+        entier fourni par le client (`effectif` n'est borné que par le bas), et ce calcul tourne sur
+        le **thread du writer unique** — un effectif absurde y gèlerait toutes les écritures du jour
+        J. Défaut relevé par trois axes de la revue d'E05US010.
+
+        Une **fin ouverte** sans effectif source déclaré s'étend jusqu'à l'infini : c'est
+        littéralement « et tous les suivants », donc elle recoupe tout ce qui commence après son
+        début — le contrôle reste décidable sans connaître l'effectif.
+        """
         if self.nature is not NatureSource.RANGS:
-            return frozenset()
-        fin = self.rang_fin if self.rang_fin is not None else effectif_source
-        return frozenset(range(self.rang_debut, fin + 1))
+            return None
+        if self.rang_fin is not None:
+            return (self.rang_debut, self.rang_fin)
+        return (self.rang_debut, effectif_source if effectif_source is not None else sys.maxsize)
 
     @staticmethod
     def par_rangs(
@@ -571,39 +608,74 @@ def _verifier_recoupements(phase: EtapeSequencee, par_ordre: dict[int, EtapeSequ
 
     Le recoupement se juge **par phase source** : « les rangs 1-2 de la phase 1 » et « les rangs 1-2
     de la phase 2 » désignent quatre participants distincts, pas deux. Seuls les prélèvements **par
-    rangs** se comparent — deux issues de tour, ou une issue et une plage, ne sont pas confrontables
-    sans dérouler le tournoi (leur recoupement éventuel est une anomalie d'exécution, E01US024).
+    rangs** se comparent en rangs — mais deux sources **strictement identiques** sont refusées,
+    quelle que soit leur nature : « le reste » deux fois, ou deux fois les mêmes gagnants d'un tour,
+    sont
+    des non-sens qui se voient sans dérouler le tournoi. Un recoupement *partiel* entre natures
+    différentes, lui, reste une anomalie d'exécution (E01US024).
 
-    Une fin ouverte est résolue sur l'effectif **déclaré** de la phase source quand il existe ; sans
-    lui, elle n'est pas comparable et le contrôle la laisse passer.
+    ⚠️ Le contrôle **ne dépend pas** de l'effectif déclaré de la phase source. Un premier jet de
+    cette US sautait tout le contrôle quand cet effectif valait `None` — or `Phase.effectif` est
+    facultatif, donc le cas par défaut : deux plages pourtant **entièrement bornées** ([1..10] et
+    [5..15]) passaient sans examen. Une fin ouverte sans effectif connu s'étend jusqu'à l'infini,
+    ce qui la rend comparable elle aussi (cf. `SourcePhase.intervalle`).
     """
+    doublons = [s for s in phase.sources if phase.sources.count(s) > 1]
+    if doublons:
+        raise SourcesQuiSeRecoupent(
+            f"La phase {phase.ordre} porte deux fois le même prélèvement : un participant ne peut "
+            "pas entrer deux fois dans la même phase."
+        )
     for ordre_source in {source.ordre_source for source in phase.sources}:
-        effectif_source = getattr(par_ordre.get(ordre_source), "effectif", None)
-        if effectif_source is None:
-            continue
-        deja: set[int] = set()
+        etape_source = par_ordre.get(ordre_source)
+        effectif_source = None if etape_source is None else etape_source.effectif
+        intervalles: list[tuple[int, int]] = []
         for source in phase.sources:
             if source.ordre_source != ordre_source:
                 continue
-            rangs = source.rangs_couverts(effectif_source)
-            recoupes = deja & rangs
-            if recoupes:
-                raise SourcesQuiSeRecoupent(
-                    f"Deux sources de la phase {phase.ordre} prélèvent le(s) même(s) rang(s) "
-                    f"{sorted(recoupes)[:5]} de la phase {ordre_source} : un participant ne peut "
-                    "pas entrer deux fois dans la même phase."
-                )
-            deja |= rangs
+            intervalle = source.intervalle(effectif_source)
+            if intervalle is None:
+                continue
+            debut, fin = intervalle
+            for autre_debut, autre_fin in intervalles:
+                if debut <= autre_fin and autre_debut <= fin:
+                    raise SourcesQuiSeRecoupent(
+                        f"Deux sources de la phase {phase.ordre} prélèvent le même rang "
+                        f"{max(debut, autre_debut)} de la phase {ordre_source} : un participant ne "
+                        "peut pas entrer deux fois dans la même phase."
+                    )
+            intervalles.append(intervalle)
 
 
 def _verifier_somme(phase: EtapeSequencee) -> None:
-    """La somme des prélèvements dénombrables doit égaler l'effectif déclaré (CA « cohérence »)."""
+    """Les prélèvements doivent tenir dans l'effectif déclaré de la phase (CA « cohérence »).
+
+    Deux régimes, et c'est la distinction qui compte :
+
+    - **tous les prélèvements dénombrables** → la somme doit **égaler** l'effectif déclaré ;
+    - **au moins un prélèvement relatif** (fin ouverte, « le reste », issue de tour) → l'**égalité**
+      devient indécidable au format, puisque le compte ne se ferme qu'à l'exécution. Mais
+      l'**inégalité**, elle, reste décidable : un prélèvement relatif ajoute un nombre ≥ 0 de
+      participants, donc si les seuls dénombrables dépassent déjà l'effectif, la composition est
+      fausse quoi qu'il arrive.
+
+    Un premier jet de cette US désactivait **tout** le contrôle dès qu'un prélèvement était
+    relatif :
+    « les rangs 1 à 64, puis le reste » pour une phase déclarant 32 participants passait alors sans
+    broncher, alors qu'il était refusé avant l'US. Relevé par la revue — et son test l'évitait en
+    choisissant 8 prélevés pour 32 déclarés.
+    """
     if phase.effectif is None or not phase.sources:
         return
     comptes = [source.effectif_selectionne for source in phase.sources]
-    if any(compte is None for compte in comptes):
-        return  # au moins un prélèvement relatif : le compte ne se ferme qu'à l'exécution
     total = sum(compte for compte in comptes if compte is not None)
+    if any(compte is None for compte in comptes):
+        if total > phase.effectif:
+            raise EffectifIncompatible(
+                f"La phase {phase.ordre} attend {phase.effectif} participants, mais ses seuls "
+                f"prélèvements dénombrables en prennent déjà {total}."
+            )
+        return
     if total != phase.effectif:
         raise EffectifIncompatible(
             f"La phase {phase.ordre} attend {phase.effectif} participants, mais ses sources en "

@@ -446,7 +446,7 @@ def _vers_source(source: Any) -> SourcePhase:
     `AttributeError`/`TypeError`, gérée de même.
 
     **Tolérante à l'ancienne forme** (E05US001) : sans clé `nature`, c'est un prélèvement par rangs
-    — la migration 0034 réécrit les lignes, mais une base restaurée d'avant elle reste lisible, au
+    — la migration 0036 réécrit les lignes, mais une base restaurée d'avant elle reste lisible, au
     même titre que `_lire_scoring` tolère l'ancien `config.scoring` (ADR-0046).
     """
     nature = NatureSource(source.get("nature", NatureSource.RANGS.value))

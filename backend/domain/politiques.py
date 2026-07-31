@@ -81,7 +81,12 @@ class ContexteRoutage:
     """
 
     tour: int
-    """Le tour perdu, compté dans le groupe courant (1 = premier tour de ce sous-tableau)."""
+    """Le tour perdu, compté **depuis la racine** (1 = premier tour du tableau principal).
+
+    ⚠️ Ce n'est **pas** un compteur local au sous-tableau : la génération propage `tour + 1` dans les
+    deux branches, donc le premier tour du sous-tableau des places 5-8 d'un tableau de 8 vaut `2`.
+    La distinction comptera pour le repêchage WA (E05US015), dont la règle s'énonce « les perdants
+    du 1ᵉʳ tour sont repêchés » : sur un compteur absolu, cela se lit `tour == 1`."""
 
     plage: Plage
     """La plage de rangs encore atteignable **avant** ce match."""

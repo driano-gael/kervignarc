@@ -34,7 +34,7 @@ from domain.duel import BaremeDuel, Cote, Duel, ResolveurBaremeDuel
 from domain.erreurs import MatchNonJouable
 from domain.participant import GenreParticipant, Participant
 from domain.phase import PhaseId, TypePhase
-from domain.politiques import Byes, Routing, Seeding
+from domain.politiques import Byes, Depth, Routing, Seeding
 from domain.ports import (
     BlasonRepository,
     CategorieRepository,
@@ -109,6 +109,7 @@ class ServiceSaisieDuels:
         seeding: Seeding,
         byes: Byes,
         routing: Routing,
+        depth: Depth,
     ) -> None:
         self._tournois = tournois
         self._phases = phases
@@ -123,6 +124,7 @@ class ServiceSaisieDuels:
         self._seeding = seeding
         self._byes = byes
         self._routing = routing
+        self._depth = depth
 
     # --- Lecture -------------------------------------------------------------------------------
 
@@ -260,7 +262,9 @@ class ServiceSaisieDuels:
             Participant.individuel(ligne.archer_id)
             for ligne in sorted(en_lice, key=lambda ligne: ligne.rang_scratch or 0)
         ]
-        tableau = construire_tableau(participants, self._seeding, self._byes, self._routing)
+        tableau = construire_tableau(
+            participants, self._seeding, self._byes, self._routing, self._depth
+        )
         tableau = self._rejouer(tableau, phase_id, lignes)
         return self._appliquer_forfaits(tableau, phase_id), lignes
 

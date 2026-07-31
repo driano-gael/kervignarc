@@ -12,22 +12,18 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
+from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _migrer(url: str) -> None:
-    cfg = Config(str(_BACKEND_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(_BACKEND_ROOT / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", url)
-    command.upgrade(cfg, "head")
+    preparer_base(url)
 
 
 @pytest.fixture
@@ -299,3 +295,171 @@ def test_type_inconnu_400(app_phases: FastAPI, connecter_admin: ConnecterAdmin) 
         )
     assert reponse.status_code == 400
     assert reponse.json()["code"] == "requete_invalide"
+
+
+# --- contrat multi-sources à la frontière (E05US010) ---------------------------------------------
+# Tests écrits **après** l'implémentation (règle 9 : pas d'oracle en jeu à la frontière), et
+# **ajoutés à la revue** : le contrat a changé de forme *et* de vocabulaire sans qu'aucun test ne le
+# traverse de bout en bout. Ils figent en particulier les `code` d'erreur que le front lira.
+
+
+def test_une_phase_se_compose_de_plusieurs_sources_de_natures_differentes(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le CA cardinal de l'US vu du client : deux prélèvements, deux natures, aller-retour."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        client.post(base, json={"type": "elimination_directe", "effectif": 8})
+
+        reponse = client.post(
+            base,
+            json={
+                "type": "placement",
+                "sources": [
+                    {"ordre_source": 1, "nature": "issue_de_tour", "tour": 2, "issue": "perdants"},
+                    {"ordre_source": 1, "nature": "reste"},
+                ],
+            },
+        )
+        assert reponse.status_code == 201, reponse.text
+
+        relue = next(p for p in client.get(base).json() if p["ordre"] == 2)
+        assert [s["nature"] for s in relue["sources"]] == ["issue_de_tour", "reste"]
+        assert (relue["sources"][0]["tour"], relue["sources"][0]["issue"]) == (2, "perdants")
+        # Les champs étrangers à la nature ne sont pas inventés à la relecture.
+        assert relue["sources"][1]["rang_fin"] is None
+
+
+def test_une_plage_a_fin_ouverte_fait_l_aller_retour(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`rang_fin: null` est une **valeur**, pas un champ manquant : il doit revenir tel quel."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        client.post(base, json={"type": "elimination_directe", "effectif": 120})
+
+        reponse = client.post(
+            base,
+            json={
+                "type": "placement",
+                "sources": [{"ordre_source": 1, "rang_debut": 33, "rang_fin": None}],
+            },
+        )
+        assert reponse.status_code == 201, reponse.text
+        assert reponse.json()["sources"][0]["rang_fin"] is None
+
+
+def test_une_source_mal_formee_rend_422_avec_son_code(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un champ étranger à la nature est **refusé**, jamais avalé (ADR-0061 §4)."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        client.post(base, json={"type": "elimination_directe", "effectif": 8})
+
+        reponse = client.post(
+            base,
+            json={
+                "type": "placement",
+                "sources": [
+                    {
+                        "ordre_source": 1,
+                        "nature": "issue_de_tour",
+                        "tour": 2,
+                        "issue": "gagnants",
+                        "rang_fin": 50,
+                    }
+                ],
+            },
+        )
+        assert reponse.status_code == 422
+        assert reponse.json()["code"] == "source_malformee"
+
+
+def test_deux_sources_qui_se_recoupent_rendent_422_avec_leur_code(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        client.post(base, json={"type": "elimination_directe", "effectif": 64})
+
+        reponse = client.post(
+            base,
+            json={
+                "type": "placement",
+                "sources": [
+                    {"ordre_source": 1, "rang_debut": 1, "rang_fin": 32},
+                    {"ordre_source": 1, "rang_debut": 16, "rang_fin": 48},
+                ],
+            },
+        )
+        assert reponse.status_code == 422
+        assert reponse.json()["code"] == "sources_qui_se_recoupent"
+
+
+def test_l_ancienne_forme_source_est_refusee_et_n_efface_rien(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ Le test le plus important de ce bloc : `PUT` est une **édition totale**.
+
+    Un client resté sur l'ancien contrat (`source`, au singulier) verrait, sans `extra="forbid"`,
+    sa clé ignorée par Pydantic — et la phase réécrite **sans aucune source**, en 200. Il ne
+    perdrait pas sa saisie : il **écraserait** la composition existante. On exige donc un 422, et
+    on vérifie que la composition d'origine est intacte après le refus.
+    """
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        client.post(base, json={"type": "elimination_directe", "effectif": 64})
+        creee = client.post(
+            base,
+            json={
+                "type": "placement",
+                "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 16}],
+                "effectif": 16,
+            },
+        )
+        phase_id = creee.json()["id"]
+
+        refus = client.put(
+            f"{base}/{phase_id}",
+            json={
+                "type": "placement",
+                "source": {"ordre_source": 1, "rang_debut": 1, "rang_fin": 16},
+                "effectif": 16,
+            },
+        )
+        assert refus.status_code == 400, refus.text  # champ inconnu → requête invalide
+
+        inchangee = next(p for p in client.get(base).json() if p["id"] == phase_id)
+        assert len(inchangee["sources"]) == 1
+        assert inchangee["sources"][0]["rang_fin"] == 16
+
+
+def test_trop_de_sources_est_refuse(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """La borne `max_length=16` protège la frontière d'une liste non bornée."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        client.post(base, json={"type": "elimination_directe", "effectif": 64})
+
+        reponse = client.post(
+            base,
+            json={
+                "type": "placement",
+                "sources": [
+                    {"ordre_source": 1, "rang_debut": r, "rang_fin": r} for r in range(1, 20)
+                ],
+            },
+        )
+        assert reponse.status_code == 400

@@ -29,7 +29,12 @@ from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import MatchNonJouable
 from domain.forfait import Forfait, NatureForfait
 from domain.phase import Phase, PhaseId, TypePhase
-from domain.politiques import ByesAuxMieuxClasses, PlacementEnCascade, SeedingSerpent
+from domain.politiques import (
+    ByesAuxMieuxClasses,
+    PlacementEnCascade,
+    ProfondeurPodium,
+    SeedingSerpent,
+)
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
@@ -141,6 +146,7 @@ class _Monde:
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
             PlacementEnCascade(),
+            ProfondeurPodium(),
         )
 
 

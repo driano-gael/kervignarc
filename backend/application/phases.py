@@ -20,8 +20,9 @@ reste synchrone et pur d'infrastructure.
 prélèvements de natures mêlées (rangs, issue de tour, « le reste »), éventuellement relatifs à
 l'effectif réel. DETTE-015 est résorbée.
 Le réordonnancement et la suppression **remappent** les références de source (portées par l'`ordre`
-de la phase source) pour qu'elles suivent la phase qu'elles désignaient — un artefact de ce modèle
-provisoire qu'E05US010 simplifiera en référençant autrement.
+de la phase source) pour qu'elles suivent la phase qu'elles désignaient. Cet **ancrage par `ordre`**
+— plutôt que par identité — survit à E05US010, qui l'a seulement généralisé à N sources : c'est
+`# DETTE-026`, la seule facette de DETTE-015 qui n'ait pas été résorbée.
 """
 
 from __future__ import annotations
@@ -227,10 +228,11 @@ class ServicePhases:
         """Renvoie la phase à son nouvel ordre, **chacune** de ses sources remappée sur le nouvel
         ordre de la phase qu'elle désignait.
 
-        Les ancres de source sont des `ordre`, non des `id` : déplacer une phase oblige donc à
-        réécrire les références de toutes celles qui la citent. Depuis E05US010 une phase en porte
-        plusieurs — le remappage vaut pour chacune, sans quoi seule la première suivrait le
-        déplacement et les autres pointeraient une phase arbitraire.
+        `# DETTE-026` — les ancres de source sont des `ordre`, non des `id` : déplacer une phase
+        oblige donc à réécrire les références de toutes celles qui la citent. Depuis E05US010 une
+        phase en porte **plusieurs** — le remappage vaut pour chacune, sans quoi seule la première
+        suivrait le déplacement et les autres pointeraient une phase arbitraire. C'est la surface de
+        ce raccourci qui a grandi, pas sa nature.
         """
         deplacee = phase.avec_ordre(nouvel_ordre)
         if not phase.sources:

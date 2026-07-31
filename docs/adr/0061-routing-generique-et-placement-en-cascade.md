@@ -104,11 +104,31 @@ est un value object plus large, payé par une validation stricte à la construct
 à la nature lève `SourceMalFormee` — jamais un champ ignoré en silence, qui serait un réglage que
 l'organisateur croit avoir posé).
 
+⚠️ **Cette étanchéité se paie à la main, et un premier jet l'avait manquée.** `rang_debut` ayant pour
+défaut `1`, un test `is not None` ne suffit pas : il faut comparer au défaut. Sans cela, un `rang_fin`
+parasite sur une source « issue de tour » était **accepté** puis **jamais sérialisé** — POST 201 avec
+la valeur, GET suivant à `null`. C'est exactement le mode d'échec que ce paragraphe déclare écarter :
+ce que l'union de trois classes aurait rendu impossible par construction, le discriminant oblige à
+l'interdire explicitement. Rattrapé en revue ; c'est le vrai coût du compromis, et il est ici.
+
+**Coût annexe, à dater pour plus tard** : le `SourceDTO` est **dupliqué** entre `api/v1/phases.py` et
+`api/v1/formats.py` (duplication assumée depuis E01US023, quand elle valait 3 champs scalaires). Cette
+US la porte à ~25 lignes avec méthodes de conversion, et les deux copies doivent désormais suivre le
+catalogue de natures : ajouter une 4ᵉ nature (le repêchage d'E05US015 en est une candidate) demandera
+deux éditions coordonnées qu'aucun test ne rattrapera. **On ne factorise pas** — 2 occurrences, pas 3
+(règle 16) — mais la pression est ici datée.
+
 ### 5. Le contrôle de somme cède devant les plages relatives
 
-Le contrôle « la source prélève exactement l'effectif déclaré » ne s'applique plus que si **tous**
-les prélèvements sont dénombrables au format. Dès qu'un seul est relatif (fin ouverte, « le reste »,
-issue de tour), le compte ne se connaît qu'à l'exécution.
+Le contrôle « la source prélève **exactement** l'effectif déclaré » ne s'applique plus que si
+**tous** les prélèvements sont dénombrables au format. Dès qu'un seul est relatif (fin ouverte,
+« le reste », issue de tour), l'**égalité** ne se connaît qu'à l'exécution.
+
+L'**inégalité**, elle, reste décidable et reste vérifiée : un prélèvement relatif ajoute un nombre
+≥ 0 de participants, donc si les seuls dénombrables dépassent déjà l'effectif déclaré, la composition
+est fausse quoi qu'il arrive. Ne pas faire cette distinction — ce qu'un premier jet de cette US avait
+fait, en désactivant *tout* le contrôle — laissait passer « les rangs 1 à 64, puis le reste » pour une
+phase déclarant 32 participants, alors que c'était refusé avant l'US.
 
 Ce n'est pas un relâchement : c'est la condition d'existence des plages relatives, et le CA le dit
 pour l'autre bout du problème — un format devenu infaisable à effectif réduit (« les 32 premiers »
@@ -119,9 +139,12 @@ décidable.
 ## Conséquences
 
 **Positives.** Le moteur sait produire un classement 1→N vérifié contre un tournoi réel. Le
-repêchage (E05US015) devient une destination de plus, pas un moteur de plus. La profondeur est un
-levier prêt : passer un tableau existant au placement intégral se fait en changeant une politique,
-sans toucher au moteur — c'est ce qu'E01US024 exposera à l'organisateur, phase par phase.
+repêchage (E05US015) devient une destination de plus, pas un moteur de plus. La profondeur est
+**injectée au composition root** au même titre que le routing, et portée par les deux services de
+duels : remplacer `ProfondeurPodium()` par `ProfondeurUnVersN()` sur ces lignes suffit réellement à
+passer ces tableaux au placement intégral. *(Première rédaction de cet ADR : « un levier prêt » —
+c'était faux, la profondeur vivait alors en argument par défaut du domaine et aucun service ne la
+transmettait. La revue l'a fait câbler pour de bon plutôt que de laisser l'ADR sur-promettre.)*
 
 **Coûts.** Une migration de données sur **deux** tables (`phase.config` et `format_tournoi.config`),
 dont la seconde est facile à oublier. Le `downgrade` est **partiel et assumé** : une phase à
@@ -132,13 +155,31 @@ plutôt que d'en perdre une moitié en silence. Un consommateur du domaine (`Pha
 **Limites connues, à ne pas confondre avec des oublis.**
 
 - **L'oracle 120 ne couvre pas les rangs 1 à 4.** Le sommet du classeur n'est pas une élimination
-  directe : la Grande Finale s'y tire en **Big Shoot Off** à dix archers, qui produit d'un coup les
-  rangs 1 à 10. Le BSO est un type de phase d'E05US015 ; le classeur ne contient donc aucune finale
-  d'élimination à comparer. L'oracle porte sur les rangs **5 à 120** (58 matchs terminaux) et le
-  déclare.
+  directe : la Grande Finale s'y tire en **Big Shoot Off** à **cinq** archers (les 4 vainqueurs des
+  quarts + un repêché) et décerne les rangs **1 à 5**. Le BSO est un type de phase d'E05US015 ; le
+  classeur ne contient donc aucune finale d'élimination à comparer. Le format du club **repêche**
+  par ailleurs son meilleur battu (le gagnant de M427 monte en Grande Finale au lieu de prendre le
+  rang 5), là où le moteur livré fait un placement *pur* : les deux divergent par construction
+  au-dessus du rang 6. L'oracle porte donc sur les rangs **6 à 120** (57 paires terminales) et le
+  déclare. *(Chiffres rectifiés en revue : le premier jet lisait les postes de tir « 6…10 » comme
+  dix archers.)*
 - **L'écran « Phases » n'édite qu'un seul prélèvement**, « par rangs ». La composition riche est
   E01US024. Une phase hors de ce cas y est affichée en **lecture seule** : la soumettre avec le
   formulaire mono-source écraserait sa composition sans le dire.
+- **Le renommage `source` → `sources` est bloqué à la frontière**, pas ignoré : `ConfigPhaseRequete`
+  et `EtapeDTO` refusent les champs inconnus (`extra="forbid"`), seuls DTO du projet à le faire. Un
+  `PUT` étant une édition **totale**, un client resté sur l'ancienne forme n'aurait pas seulement
+  perdu sa saisie : il aurait **écrasé** la composition existante par une liste vide, en 200. Le
+  déploiement rend le cas réel (une trentaine de tablettes, SPA en cache, aucun versionnage de
+  bundle). Écart assumé à l'usage du projet, motivé par ce seul renommage.
+- **`est_termine` et `libelle_tour` ont été généralisés** avec le reste : le premier compte les matchs
+  terminaux (et non plus la seule finale), le second nomme un match de placement par son enjeu
+  (« Match pour la 5ᵉ place »). Sans cela, basculer la profondeur aurait déclaré un tableau terminé à
+  mi-parcours et affiché trois « Finale » simultanées au panneau de routage.
+- **L'oracle 120 ne couvre pas les rangs 1 à 6 et le nombre total de matchs diverge** (436 contre 484
+  au classeur, dont 39 inexpliqués) : ces deux limites sont détaillées dans le test lui-même et dans
+  la story. Elles relèvent d'une divergence entre le classeur réel et sa formalisation, antérieure à
+  cette US.
 - **Les natures `issue_de_tour` et `reste` sont modélisées, persistées et exposées, mais aucun
   moteur ne les consomme encore** — le peuplement effectif d'une phase par ses sources est le
   travail d'E01US024/E07US004. Elles sont livrées ici parce que le **modèle** est ce qui bloquait,

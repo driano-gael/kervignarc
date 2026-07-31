@@ -182,13 +182,35 @@ personne éliminé — et de composer des formats qui **s'ajustent** à l'effect
 
 > **L'oracle 120 ne couvre pas les rangs 1 à 4, et c'est une propriété du classeur, pas une facilité.**
 > À l'extraction de `Tableaux.xlsx`, le sommet du tableau principal s'est révélé n'être **pas** une
-> élimination directe : la **Grande Finale s'y tire en Big Shoot Off** à dix archers (onglet
-> « TABLEAU 1 OK », colonnes « GRANDE FINALE », étiquettes `BSO 6`…`BSO 10` + `Lucky-Looser`), et
-> produit d'un coup les rangs 1 à 10. Il n'y a donc **aucune finale d'élimination à comparer** dans
-> le classeur. L'oracle porte sur les rangs **5 à 120** — les 58 matchs terminaux M427-M484 — et le
-> déclare. Le sommet relève d'**E05US015** (le BSO est un type de phase). *Effet de bord heureux :
-> cette Grande Finale, alimentée par les vainqueurs des quarts **et** par un lucky loser, est le
-> **cas réel** du CA « sources multiples ».*
+> élimination directe : la **Grande Finale s'y tire en Big Shoot Off** à **cinq** archers — les 4
+> vainqueurs du 8ᵉ tour (M305-M308) et un « **Lucky-Looser** » —, et produit les rangs **1 à 5** par
+> élimination du plus faible à chaque manche (onglet « TABLEAU 1 OK », colonnes « GRANDE FINALE » ;
+> l'échelle 5→4→3→2 des colonnes suivantes le montre). ⚠️ Les étiquettes `BSO 6`…`BSO 10` sont des
+> **postes de tir**, pas un compte d'archers ni des rangs : elles occupent la même colonne que les
+> « 1 A » / « 2 C » du reste de la feuille. *(Un premier jet d'E05US010 les avait lues comme dix
+> archers produisant les rangs 1 à 10 — **c'est faux**, rectifié en revue. E05US015 dimensionne donc
+> son BSO sur **5** entrants, pas 10.)*
+>
+> **Le format du club REPÊCHE — et c'est la découverte à retenir pour E05US015.** Le
+> « Lucky-Looser » est le **gagnant de M427**, le meilleur des battus, qui remonte disputer le titre
+> au lieu de prendre le rang 5. D'où un fait vérifiable dans les données : M427 ne décerne qu'**un**
+> rang (le 6, à son perdant), le classeur compte **115** rangs terminaux (6→120) et non 116, et
+> 5 + 115 = 120. Cela **nuance** l'avertissement « Lucky Loser » ci-dessus : le classeur emploie le
+> mot pour **deux** choses distinctes — « LUCKY LOSER 1 » (tableau de consolation, aucun retour au
+> titre) et ce « Lucky-Looser » de la Grande Finale, qui est un **vrai repêchage**.
+>
+> Il n'y a donc **aucune finale d'élimination à comparer** dans le classeur. L'oracle porte sur les
+> rangs **6 à 120** (57 paires terminales pleines, M428-M484) et le déclare. *Effet de bord heureux :
+> cette Grande Finale, alimentée par les vainqueurs des quarts **et** par un repêché, est le **cas
+> réel** du CA « sources multiples ».*
+>
+> **Écart de structure non expliqué, à instruire en E05US015** : le classeur compte **484** matchs,
+> le moteur en produit **436**. −3 s'expliquent (le BSO remplace demies + finale), +12 aussi
+> (sous-tableau des rangs 121-128, élagué car sans rang réel) ; **39 restent inexpliqués** — une
+> cascade pure de 128 places en compte 448. Hypothèse : des tableaux de **consolation**
+> supplémentaires, hors de la division par deux formalisée. C'est une divergence entre le classeur
+> et `moteur-placement-lucky-loser.md`, **antérieure** à cette US, figée par un test qui documente
+> les deux nombres.
 
 > **L'élimination directe livrée par E05US005 est un placement tronqué au rang 4.** Un tableau à
 > **petite finale** fait rejouer les perdants des demies : il ne les élimine pas. La cascade et

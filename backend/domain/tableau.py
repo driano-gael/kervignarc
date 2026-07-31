@@ -41,6 +41,7 @@ from domain.erreurs import (
     FormatTableauIncoherent,
     MatchIntrouvable,
     MatchNonJouable,
+    RoutingNonSupporte,
     VainqueurHorsMatch,
 )
 from domain.participant import Participant
@@ -49,7 +50,7 @@ from domain.politiques import (
     Byes,
     ContexteRoutage,
     Depth,
-    ProfondeurPodium,
+    HorsTableau,
     Routing,
     Seeding,
     VersPlage,
@@ -109,8 +110,9 @@ class Match:
 
     `source_haut`/`source_bas` sont le **câblage** (immuable) ; `haut`/`bas` les **occupants** (des
     `Participant`) remplis par la progression (`None` = pas encore connu). `vainqueur` est `None`
-    tant que le match n'est pas tranché. `place_en_jeu` distingue la finale `(1, 2)` et la petite
-    finale `(3, 4)` — les seuls matchs dont l'issue fixe directement un rang de podium.
+    tant que le match n'est pas tranché. `place_en_jeu` porte la paire de rangs qu'un match
+    **terminal** décerne — `(1, 2)` pour la finale, `(3, 4)` pour la petite finale, et jusqu'à
+    `(119, 120)` sous placement intégral.
     """
 
     numero: int
@@ -123,9 +125,12 @@ class Match:
     place_en_jeu: tuple[int, int] | None = None
     plage: Plage | None = None
     """La plage de rangs que ce match départage (E05US010) — `[1..8]` pour un quart d'un tableau de
-    8, `[5..8]` pour le premier tour de son tableau de placement. `None` sur un tableau construit
-    avant cette US (relecture d'un état persisté) : le champ est **facultatif** pour ne pas rompre
-    les consommateurs existants, qui n'ont besoin que de `place_en_jeu`."""
+    8, `[5..8]` pour le premier tour de son tableau de placement.
+
+    Facultatif **pour les `Match` bâtis à la main** (tests, doubles) : `construire_tableau` la
+    renseigne toujours. Ne pas justifier ce `None` par « un état persisté d'avant l'US » — un
+    tableau n'est **jamais** persisté, il est reconstruit (ADR-0049) ; il n'existe donc aucun
+    `Match` relu d'une base."""
 
     @property
     def est_bye(self) -> bool:
@@ -198,11 +203,20 @@ class Tableau:
 
     @property
     def est_termine(self) -> bool:
-        """La finale est jouée et la petite finale (si elle existe) l'est aussi."""
-        petite = self.petite_finale
-        return self.finale.vainqueur is not None and (
-            petite is None or petite.vainqueur is not None
-        )
+        """**Tous** les matchs terminaux sont tranchés : plus aucun rang n'est en attente.
+
+        Définition généralisée par E05US010. La formulation précédente — « la finale est jouée, et
+        la petite finale aussi » — décrivait le seul format alors livré ; sous placement intégral
+        elle déclarerait le tableau terminé dès la finale, alors que des dizaines de matchs de
+        placement resteraient à disputer (le feu vert et l'état de tableau s'en servent). Compter
+        les **matchs terminaux** vaut pour les deux formats : en profondeur `podium` il n'y en a que
+        deux, la finale et la petite finale — le comportement historique est donc rendu à
+        l'identique.
+
+        Un match terminal **bye** (plage dont un seul camp est occupé) est résolu d'office par
+        `_resoudre_byes`, donc porte un vainqueur : il n'empêche pas la terminaison.
+        """
+        return all(m.vainqueur is not None for m in self.matchs if m.place_en_jeu is not None)
 
     def jouer(self, numero: int, vainqueur: Participant) -> Tableau:
         """Enregistre le vainqueur du match `numero` et peuple le(s) match(s) aval — CA progression.
@@ -272,12 +286,15 @@ class Tableau:
     def podium(self) -> tuple[Place, ...]:
         """Les quatre premières places : finale → rangs 1-2, petite finale → rangs 3-4 (CA podium).
 
-        Vue **restreinte** du classement, conservée telle quelle pour ses consommateurs (E06US004,
-        l'état de tableau d'E04US013). Elle reste vide tant que la finale n'est pas jouée — un
-        podium est un tout —, là où `classement()` livre les rangs au fil de l'eau.
+        Vue **restreinte** du classement, au même régime que lui : les places sortent **au fil de
+        l'eau**, chaque match terminal livrant les siennes dès qu'il est tranché.
+
+        ⚠️ Ne pas exiger que la finale soit jouée pour publier les rangs 3-4 : **la petite finale se
+        tire couramment avant la finale** (le bronze avant l'or est l'usage en salle). Une garde
+        « rien tant que la finale n'est pas jouée » priverait l'écran de duels et le panneau de
+        routage des rangs 3-4 pendant tout l'intervalle — c'est la régression qu'a introduite un
+        premier jet de cette US, et que la revue a rattrapée.
         """
-        if self.finale.vainqueur is None:
-            return ()
         return tuple(place for place in self.classement() if place.rang <= 4)
 
 
@@ -289,7 +306,7 @@ def construire_tableau(
     seeding: Seeding,
     byes: Byes,
     routing: Routing,
-    depth: Depth | None = None,
+    depth: Depth,
 ) -> Tableau:
     """Assemble le tableau pour ces `participants` (CA E05US005, généralisé par E05US010).
 
@@ -309,9 +326,11 @@ def construire_tableau(
 
     Consomme **quatre politiques** (ADR-0004) : `seeding` (l'ordre des positions), `byes` (autorité
     sur les dispensés — un garde-fou refuse une paire seeding/byes incohérente via
-    `FormatTableauIncoherent`), `routing` (où descend un perdant) et `depth` (jusqu'où classer ;
-    `ProfondeurPodium` par défaut, qui préserve le comportement historique des appelants qui ne la
-    passent pas encore).
+    `FormatTableauIncoherent`), `routing` (où descend un perdant) et `depth` (jusqu'où classer).
+    Les quatre sont **obligatoires** : la profondeur décide du format autant que le routing, et un
+    défaut implicite ici la rendrait invisible au composition root, où le projet a décidé qu'on lit
+    le câblage (règles 2 et 8). Un appelant qui l'oublierait obtiendrait un top 4 sans le moindre
+    signal — c'est l'écart que la revue d'E05US010 a fait corriger.
 
     **Préconditions à la charge de l'appelant** (non défendues ici : le moteur ne lit aucune
     identité, il ne peut donc pas les vérifier) : `participants` est **trié par rang** de
@@ -326,7 +345,7 @@ def construire_tableau(
         )
     ordre = seeding.ordre_des_tetes(effectif)
     taille = len(ordre)
-    a_classer = frozenset((depth or ProfondeurPodium()).rangs_a_classer(effectif))
+    a_classer = frozenset(depth.rangs_a_classer(effectif))
 
     def occupant(position: int) -> Participant | None:
         """Le participant placé à cette `position` d'ensemencement, ou `None` si c'est un exempt."""
@@ -402,12 +421,25 @@ def construire_tableau(
             ]
             engendrer(gagnants, haute, tour + 1)
         destination = routing.route(ContexteRoutage(tour=tour, plage=plage))
-        if isinstance(destination, VersPlage) and _a_classer(destination.plage, a_classer):
-            # Le perdant d'un match gagné d'office (ou vide) n'existe pas : même raisonnement.
-            entrants: list[tuple[Camp, Participant | None]] = [
-                (Exempt() if matchs[n - 1].est_bye else PerdantDe(n), None) for n in numeros
-            ]
-            engendrer(entrants, destination.plage, tour + 1)
+        if isinstance(destination, VersPlage):
+            if _a_classer(destination.plage, a_classer):
+                # Le perdant d'un match gagné d'office (ou vide) n'existe pas : même raisonnement.
+                entrants: list[tuple[Camp, Participant | None]] = [
+                    (Exempt() if matchs[n - 1].est_bye else PerdantDe(n), None) for n in numeros
+                ]
+                engendrer(entrants, destination.plage, tour + 1)
+        elif not isinstance(destination, HorsTableau):
+            # ⚠️ **Ne jamais laisser tomber une destination inconnue en silence.** E05US005 refusait
+            # tout routing qu'il ne savait pas honorer ; en ouvrant le catalogue, E05US010 a failli
+            # remplacer ce refus par un `if` sans `else` — un trou *déplacé*, pas fermé. Le jour où
+            # E05US015 ajoute la destination « repêchage », le moteur n'aurait construit aucun
+            # sous-tableau d'accueil, n'aurait rien levé, et mypy n'aurait rien dit : les battus
+            # auraient simplement disparu de l'arbre, constat fait le jour J en comptant les
+            # archers. Rattrapé par le relecteur adversarial de la revue.
+            raise RoutingNonSupporte(
+                f"Le moteur ne sait pas honorer la destination « {type(destination).__name__} » "
+                "réclamée pour le perdant : aucun sous-tableau d'accueil n'est construit pour elle."
+            )
         return numeros
 
     engendrer(camps_initiaux, Plage(1, taille), 1)
@@ -464,6 +496,12 @@ def libelle_tour(tour: int, nb_tours: int, place_en_jeu: tuple[int, int] | None 
     finale, et sans ce discriminant les deux matchs porteraient le même nom (E04US018 — le panneau
     de routage enverrait les demi-finalistes battus au mauvais rendez-vous).
 
+    **Les matchs de placement se nomment par leur enjeu, pas par leur distance au titre**
+    (E05US010) : sous placement intégral, le match des places 5-6 se dispute au même tour que la
+    finale et se serait donc appelé « Finale » lui aussi — trois « Finale » simultanées sur le
+    panneau de routage. Un match qui décerne un rang au-delà du podium s'annonce « Match pour la
+    5ᵉ place » : c'est ce qu'un archer attend d'entendre, et c'est sans ambiguïté.
+
     Fonction **pure** : aucune lecture, aucun état. `nb_tours` vient de `Tableau.nb_tours`.
 
     `# DETTE-020` — le front calcule **aussi** ce libellé (`features/saisie-duels/duel.ts`,
@@ -472,6 +510,8 @@ def libelle_tour(tour: int, nb_tours: int, place_en_jeu: tuple[int, int] | None 
     """
     if place_en_jeu == (3, 4):
         return "Petite finale"
+    if place_en_jeu is not None and place_en_jeu[0] > 2:
+        return f"Match pour la {place_en_jeu[0]}ᵉ place"
     restants = nb_tours - tour
     if restants <= 0:
         return "Finale"
