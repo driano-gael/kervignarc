@@ -903,3 +903,18 @@ class FormatNonSimulable(ApplicationError):
     """
 
     code = "format_non_simulable"
+
+
+class PosteNEstPasUnEcran(ApplicationError):
+    """Une opération réservée aux écrans de salle vise un poste de cible (E07US004).
+
+    Régler un déroulé de vues, imposer une vue, lire l'affichage courant : autant de gestes qui
+    n'ont de sens que pour un écran. La garde n'est pas théorique — la console de supervision
+    affiche cibles et écrans **côte à côte** (CA : « un écran figé ne se plaint pas »), donc
+    l'identifiant d'une tablette est à portée de clic de celui d'un écran.
+
+    Conflit d'**état** plutôt qu'absence : le poste existe bien, c'est sa nature qui ne convient pas
+    — d'où un 409 à la frontière API, et non un 404 qui laisserait croire à un identifiant faux.
+    """
+
+    code = "poste_n_est_pas_un_ecran"

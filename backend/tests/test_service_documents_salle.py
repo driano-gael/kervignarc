@@ -26,7 +26,7 @@ import pytest
 from application.documents_salle import ServiceDocumentsSalle
 from application.erreurs import PosteIntrouvable, TournoiIntrouvable
 from domain.documents_salle import CartesScoreurs, EtiquettesCibles
-from domain.poste import Poste, PosteId, normaliser_code
+from domain.poste import Poste, PosteId, TypePoste, normaliser_code
 from domain.scoreur import Scoreur, ScoreurId
 from domain.tournoi import Tournoi, TournoiId
 
@@ -77,12 +77,24 @@ class FauxPosteRepository:
         self._postes[self._sequence] = persiste
         return persiste
 
+    def enregistrer(self, poste: Poste) -> Poste:
+        assert poste.id is not None
+        self._postes[poste.id] = poste
+        return poste
+
+    def supprimer(self, poste_id: PosteId) -> None:
+        self._postes.pop(poste_id, None)
+
     def par_id(self, poste_id: PosteId) -> Poste | None:
         return self._postes.get(poste_id)
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Poste]:
         # Ordre inverse volontaire : prouve que le service trie par numéro de cible.
         return [p for p in self._postes.values() if p.tournoi_id == tournoi_id][::-1]
+
+    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_poste: TypePoste) -> list[Poste]:
+        # Même ordre inverse volontaire que `par_tournoi`.
+        return [p for p in self.par_tournoi(tournoi_id) if p.type is type_poste]
 
     def par_code(self, code: str) -> Poste | None:
         recherche = normaliser_code(code)

@@ -27,6 +27,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin, exiger_poste
+from application.ecrans import PriseActive
 from application.supervision import EtatSupervision, LigneSupervision, ServiceSupervision
 from domain.poste import Poste
 
@@ -41,21 +42,51 @@ class AvancementReponse(BaseModel):
     nb_volees: int
 
 
+class PriseReponse(BaseModel):
+    """La prise de contrôle en vigueur sur un écran de salle (E07US004).
+
+    `reste_s` est `None` quand la prise n'a **pas** d'échéance ; `exige_rappel` vaut alors `true`,
+    et c'est ce drapeau que la console transforme en rappel très visible — le CA « jamais un état
+    forcé qu'on oublie ». Les deux champs disent la même chose sous deux angles : l'un se compte,
+    l'autre s'alarme.
+    """
+
+    vue_figee: str | None
+    reste_s: float | None
+    exige_rappel: bool
+
+    @staticmethod
+    def de_prise(prise: PriseActive) -> PriseReponse:
+        """Traduit une prise du service en DTO de réponse."""
+        return PriseReponse(
+            vue_figee=None if prise.vue_figee is None else prise.vue_figee.value,
+            reste_s=prise.reste_s,
+            exige_rappel=prise.exige_rappel,
+        )
+
+
 class LigneSupervisionReponse(BaseModel):
-    """Une ligne de la console : un poste de cible et son état à cet instant.
+    """Une ligne de la console : un poste (cible **ou** écran) et son état à cet instant.
 
     `etat` ∈ `en_ligne` · `hors_ligne` · `non_rattache` (valeur de `EtatPoste`). `derniere_saisie`
     est un horodatage ISO (le front calcule « il y a 14 mn »), `None` si rien n'a été saisi. `ip`
-    est un indice de diagnostic, `None` si le poste n'est pas rattaché. Le **code** de cible n'est
-    pas exposé (secret de rattachement) : le poste se désigne par sa `cible_index`.
+    est un indice de diagnostic, `None` si le poste n'est pas rattaché. Le **code** n'est
+    pas exposé (secret de rattachement) : le poste se désigne par sa `cible_index` ou son `libelle`.
+
+    `type` ∈ `cible` · `ecran`. Une **cible** porte `cible_index` et `avancement` ; un **écran**
+    porte `libelle` et, s'il est sous contrôle, `prise`. Les deux dans le même tableau, parce que
+    c'est précisément là que le CA veut qu'on découvre un écran figé.
     """
 
     poste_id: int
-    cible_index: int
+    type: str
+    cible_index: int | None
+    libelle: str | None
     etat: str
     derniere_saisie: datetime.datetime | None
     ip: str | None
     avancement: AvancementReponse | None
+    prise: PriseReponse | None
 
     @staticmethod
     def de_ligne(ligne: LigneSupervision) -> LigneSupervisionReponse:
@@ -70,20 +101,30 @@ class LigneSupervisionReponse(BaseModel):
         )
         return LigneSupervisionReponse(
             poste_id=ligne.poste_id,
+            type=ligne.type.value,
             cible_index=ligne.cible_index,
+            libelle=ligne.libelle,
             etat=ligne.etat.value,
             derniere_saisie=ligne.derniere_saisie,
             ip=ligne.ip,
             avancement=avancement,
+            prise=None if ligne.prise is None else PriseReponse.de_prise(ligne.prise),
         )
 
 
 class SupervisionReponse(BaseModel):
-    """Instantané complet de la console : les lignes triées par cible + le compteur global."""
+    """Instantané complet de la console : les lignes (cibles puis écrans) + les compteurs.
+
+    `nb_en_ligne`/`nb_total` comptent **les cibles seules** — c'est l'indicateur « 28/30 tablettes »
+    sur lequel l'organisateur juge s'il peut lancer un tour ; un écran hors ligne n'empêche personne
+    de tirer. Les écrans ont `nb_ecrans_en_ligne`/`nb_ecrans`.
+    """
 
     postes: list[LigneSupervisionReponse]
     nb_en_ligne: int
     nb_total: int
+    nb_ecrans_en_ligne: int
+    nb_ecrans: int
 
     @staticmethod
     def de_etat(etat: EtatSupervision) -> SupervisionReponse:
@@ -92,6 +133,8 @@ class SupervisionReponse(BaseModel):
             postes=[LigneSupervisionReponse.de_ligne(ligne) for ligne in etat.postes],
             nb_en_ligne=etat.nb_en_ligne,
             nb_total=etat.nb_total,
+            nb_ecrans_en_ligne=etat.nb_ecrans_en_ligne,
+            nb_ecrans=etat.nb_ecrans,
         )
 
 

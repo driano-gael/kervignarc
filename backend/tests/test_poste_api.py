@@ -179,7 +179,14 @@ def test_reouverture_retrouve_la_cible(
         reponse = client.get("/api/v1/postes/session", headers={"X-Jeton-Poste": jeton})
 
         assert reponse.status_code == 200, reponse.text
-        assert reponse.json() == {"tournoi_id": tournoi_id, "cible_index": 2}
+        # `type` et `libelle` sont ajoutés par E07US004 : le **même** code de rattachement peut
+        # désigner une cible ou un écran de salle, et c'est `type` qui aiguille le front.
+        assert reponse.json() == {
+            "tournoi_id": tournoi_id,
+            "type": "cible",
+            "cible_index": 2,
+            "libelle": None,
+        }
 
 
 def test_reouverture_sans_jeton_rend_401(app_session: FastAPI) -> None:

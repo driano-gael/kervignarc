@@ -233,7 +233,7 @@ async def archers_du_poste(
     if depart_id is None:
         raise DepartCourantNonDefini("Le poste doit d'abord choisir son départ courant.")
     grille = await run_in_threadpool(
-        service_saisie.archers_du_poste, poste.tournoi_id, poste.cible_index, depart_id
+        service_saisie.archers_du_poste, poste.tournoi_id, poste.cible(), depart_id
     )
     return [ArcherGrilleReponse.de_ligne(ligne) for ligne in grille]
 
@@ -263,7 +263,7 @@ async def saisir_volee(
         depart_id = service_postes.depart_courant(extraire_jeton_poste(request))
         if depart_id is None:
             raise DepartCourantNonDefini("Le poste doit d'abord choisir son départ courant.")
-        contexte = ContexteSaisie(cible_index=poste.cible_index, depart_id=depart_id)
+        contexte = ContexteSaisie(cible_index=poste.cible(), depart_id=depart_id)
 
     valeurs = tuple(requete.valeurs)
     cle = _cle_idempotence(

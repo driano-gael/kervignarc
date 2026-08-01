@@ -29,9 +29,10 @@ from application.erreurs import (
 from application.postes import ServicePostes
 from domain.depart import Depart, DepartId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
-from domain.poste import Poste, PosteId, normaliser_code
+from domain.poste import Poste, PosteId, TypePoste, normaliser_code
 from domain.remboursement import Remboursement
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
+from infrastructure.postes.consignes import RegistreConsignesMemoire
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -52,11 +53,22 @@ class FauxPosteRepository:
         self._postes[self._sequence] = persiste
         return persiste
 
+    def enregistrer(self, poste: Poste) -> Poste:
+        assert poste.id is not None
+        self._postes[poste.id] = poste
+        return poste
+
+    def supprimer(self, poste_id: PosteId) -> None:
+        self._postes.pop(poste_id, None)
+
     def par_id(self, poste_id: PosteId) -> Poste | None:
         return self._postes.get(poste_id)
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Poste]:
         return [p for p in self._postes.values() if p.tournoi_id == tournoi_id]
+
+    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_poste: TypePoste) -> list[Poste]:
+        return [p for p in self.par_tournoi(tournoi_id) if p.type is type_poste]
 
     def par_code(self, code: str) -> Poste | None:
         recherche = normaliser_code(code)
@@ -235,6 +247,9 @@ class Montage:
         self.gabarits = FauxGabaritRepository()
         self.departs = FauxDepartRepository()
         self.sessions = FauxStoreSessionsPoste()
+        # Vrai registre de consignes (en mémoire, déterministe) : E07US004 le fait entrer dans
+        # `ServicePostes` pour que la suppression d'un écran retire aussi sa prise de contrôle.
+        self.consignes = RegistreConsignesMemoire()
         tournoi = self.tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
         assert tournoi.id is not None
         self.tournoi_id: TournoiId = tournoi.id
@@ -245,6 +260,7 @@ class Montage:
             self.gabarits,
             self.departs,
             self.sessions,
+            self.consignes,
             _generateur(*codes),
         )
 

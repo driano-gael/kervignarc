@@ -17,13 +17,15 @@ import datetime
 
 import pytest
 
+from application.ecrans import ServiceEcrans
 from application.erreurs import PosteIntrouvable, TournoiIntrouvable
 from application.saisie import AvancementCible
 from application.supervision import Avancement, LigneSupervision, ServiceSupervision
 from domain.depart import DepartId
-from domain.poste import Poste, PosteId
+from domain.poste import Poste, PosteId, TypePoste
 from domain.supervision import EtatPoste
 from domain.tournoi import Tournoi, TournoiId
+from infrastructure.postes.consignes import RegistreConsignesMemoire
 from infrastructure.postes.presence import RegistrePresenceMemoire
 from infrastructure.postes.sessions import PosteSessionStore
 
@@ -73,11 +75,22 @@ class FauxPosteRepository:
         self._postes[self._sequence] = persiste
         return persiste
 
+    def enregistrer(self, poste: Poste) -> Poste:
+        assert poste.id is not None
+        self._postes[poste.id] = poste
+        return poste
+
+    def supprimer(self, poste_id: PosteId) -> None:
+        self._postes.pop(poste_id, None)
+
     def par_id(self, poste_id: PosteId) -> Poste | None:
         return self._postes.get(poste_id)
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Poste]:
         return [p for p in self._postes.values() if p.tournoi_id == tournoi_id]
+
+    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_poste: TypePoste) -> list[Poste]:
+        return [p for p in self.par_tournoi(tournoi_id) if p.type is type_poste]
 
     def par_code(self, code: str) -> Poste | None:
         return next((p for p in self._postes.values() if p.code == code), None)
@@ -121,6 +134,12 @@ class Montage:
         self.presence = RegistrePresenceMemoire()
         self.avancement = FauxLecteurAvancement()
         self.horloge = HorlogeReglable(_T0)
+        # Vrai `ServiceEcrans` (registre de consignes en mémoire, déterministe) : depuis E07US004,
+        # la console montre aussi les écrans et leur prise de contrôle en vigueur.
+        self.consignes = RegistreConsignesMemoire()
+        self.ecrans = ServiceEcrans(
+            self.postes, self.tournois, self.sessions, self.consignes, self.horloge
+        )
         tournoi = self.tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
         assert tournoi.id is not None
         self.tournoi_id: TournoiId = tournoi.id
@@ -135,6 +154,7 @@ class Montage:
             self.sessions,
             self.presence,
             self.avancement,
+            self.ecrans,
             self.horloge,
             _SEUIL,
         )

@@ -1,0 +1,51 @@
+"""Adapter : prises de contrôle des écrans de salle, en mémoire (E07US004, ADR-0064).
+
+Réalise le port `domain.ports.RegistreConsignes`. Dictionnaire `poste_id → PriseDeControle`, protégé
+par un verrou (les lectures viennent des threads du threadpool, comme `RegistrePresenceMemoire` et
+`PosteSessionStore`). **Sans persistance**, et c'est un choix, pas une facilité : une prise de
+contrôle est un geste du jour J (« podium 10 min ») ; un redémarrage du serveur doit **libérer** les
+écrans, jamais les laisser figés sur une consigne que plus personne ne se rappelle avoir posée. Le
+réglage durable, lui — le déroulé de vues —, est en base sur le `Poste`.
+
+Aucune éviction : le dictionnaire est borné par le nombre d'écrans d'un tournoi (quelques-uns), et
+le service retire les prises échues à chaque lecture.
+"""
+
+from __future__ import annotations
+
+import threading
+
+from domain.ecran import PriseDeControle
+from domain.poste import PosteId
+
+
+class RegistreConsignesMemoire:
+    """Prises de contrôle en mémoire : `poste_id` → consigne posée + instant de pose."""
+
+    def __init__(self) -> None:
+        self._prises: dict[PosteId, PriseDeControle] = {}
+        self._verrou = threading.Lock()
+
+    def poser(self, poste_id: PosteId, prise: PriseDeControle) -> None:
+        """Pose (ou remplace) la prise de contrôle d'un écran.
+
+        Remplacer plutôt qu'empiler : « impose le podium » après « impose le plan » est une
+        correction de l'organisateur, pas une file d'attente — la dernière volonté gagne.
+        """
+        with self._verrou:
+            self._prises[poste_id] = prise
+
+    def prise_de(self, poste_id: PosteId) -> PriseDeControle | None:
+        """Prise en vigueur pour cet écran, ou `None`. Ne juge pas l'expiration (cf. port)."""
+        with self._verrou:
+            return self._prises.get(poste_id)
+
+    def retirer(self, poste_id: PosteId) -> None:
+        """Rend la main sur un écran ; sans effet s'il n'était pas sous consigne."""
+        with self._verrou:
+            self._prises.pop(poste_id, None)
+
+    def toutes(self) -> dict[PosteId, PriseDeControle]:
+        """Copie des prises en vigueur, par écran (copie : l'appelant itère hors du verrou)."""
+        with self._verrou:
+            return dict(self._prises)

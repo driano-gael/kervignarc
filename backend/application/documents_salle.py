@@ -31,6 +31,7 @@ from domain.ports import (
     ScoreurRepository,
     TournoiRepository,
 )
+from domain.poste import TypePoste
 from domain.tournoi import Tournoi, TournoiId
 
 
@@ -58,10 +59,15 @@ class ServiceDocumentsSalle:
         triées par numéro de cible (ordre physique de la salle).
         """
         tournoi = self._verifier_tournoi(tournoi_id)
-        postes = sorted(self._postes.par_tournoi(tournoi_id), key=lambda poste: poste.cible_index)
+        # `par_tournoi_et_type` et non `par_tournoi` : depuis E07US004, ce dernier rend aussi les
+        # écrans de salle, qui n'ont pas de cible à étiqueter (leur code se distribue autrement).
+        postes = sorted(
+            self._postes.par_tournoi_et_type(tournoi_id, TypePoste.CIBLE),
+            key=lambda poste: poste.cible(),
+        )
         etiquettes = tuple(
             EtiquetteCible(
-                cible_index=poste.cible_index,
+                cible_index=poste.cible(),
                 code=poste.code,
                 url=_url_rattachement(origine, poste.code),
             )

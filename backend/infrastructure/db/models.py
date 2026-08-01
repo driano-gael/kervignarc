@@ -386,12 +386,33 @@ class ScoreurORM(Base):
 
 
 class PosteORM(Base):
-    """Table `poste` — persistance de l'agrégat `Poste` (E04US001, ADR-0029).
+    """Table `poste` — persistance de l'agrégat `Poste` (E04US001, ADR-0029 ; E07US004, ADR-0064).
 
-    Credential d'une **cible** d'un tournoi : le couple `(tournoi_id, cible_index)` — `UNIQUE`, une
-    seule cible N par tournoi — plus le `code` imprimé sous le QR. `code` est `UNIQUE` **global**
-    (pas par tournoi) : le rattachement se fait par le seul code, qui doit désigner une cible sans
-    ambiguïté d'un tournoi à l'autre. Le service stocke le code déjà canonique (`normaliser_code`).
+    Credential d'un **lieu** d'un tournoi, plus le `code` imprimé sous le QR. `code` est `UNIQUE`
+    **global** (pas par tournoi) : le rattachement se fait par le seul code, qui doit désigner un
+    lieu sans ambiguïté d'un tournoi à l'autre. Le service stocke le code déjà canonique
+    (`normaliser_code`).
+
+    Deux natures depuis E07US004 (`type`) — **une seule table**, parce que le credential, le jeton,
+    le heartbeat et la supervision sont rigoureusement les mêmes des deux côtés (le CA : *« c'est un
+    poste, comme une tablette de cible — donc rien de neuf à inventer »*) :
+
+    - `cible` : `cible_index` renseigné, `libelle` nul ;
+    - `ecran` : `libelle` renseigné, `cible_index` nul.
+
+    ⚠️ `cible_index` devient donc **nullable**, ce qui **affaiblit** `uq_poste_tournoi_cible` :
+    SQLite considère chaque `NULL` comme distinct, donc plusieurs écrans coexistent sans heurter la
+    contrainte — c'est exactement le CA (« plusieurs écrans possibles »). En contrepartie, la
+    contrainte ne protège plus « une seule cible N par tournoi » que pour les lignes de type
+    `cible`, ce qui est le seul cas où elle avait un sens. L'exclusivité `cible_index` ↔ `libelle`
+    est portée par le domaine (`Poste.creer` / `creer_ecran`), pas par un `CHECK` : la base du
+    projet n'en utilise nulle part, et un `CHECK` ajouté ici serait la seule règle métier vivant
+    hors du domaine (règle 2).
+
+    `deroule_json` porte la `SequenceVues` d'un écran, sérialisée comme `phase.sources_json`
+    (migration 0036) : un tableau JSON `[{"vue": …, "cadence_s": …}]`. Nul pour une cible, et nul
+    aussi pour un écran qui n'a rien réglé — il joue alors `SequenceVues.par_defaut()`, ce que le CA
+    appelle le « déroulé par défaut ».
     """
 
     __tablename__ = "poste"
@@ -400,8 +421,11 @@ class PosteORM(Base):
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
     # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
-    cible_index: Mapped[int] = mapped_column(nullable=False)
+    cible_index: Mapped[int | None] = mapped_column(nullable=True)
     code: Mapped[str] = mapped_column(nullable=False, unique=True)
+    type: Mapped[str] = mapped_column(nullable=False, server_default="cible")
+    libelle: Mapped[str | None] = mapped_column(nullable=True)
+    deroule_json: Mapped[str | None] = mapped_column(nullable=True)
 
     __table_args__ = (UniqueConstraint("tournoi_id", "cible_index", name="uq_poste_tournoi_cible"),)
 

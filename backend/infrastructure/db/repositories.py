@@ -14,7 +14,7 @@ import json
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, nulls_last, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -25,6 +25,7 @@ from domain.categorie import Categorie, CategorieId, SexeCategorie, TrancheAge
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
 from domain.duel import BaremeDuel, Barrage, Cote, Duel, MancheDuel
+from domain.ecran import SequenceVues, VueEcran, VueProgrammee
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import DomainError
 from domain.forfait import Forfait, NatureForfait
@@ -46,7 +47,7 @@ from domain.phase import (
 )
 from domain.placement import Affectation
 from domain.ports import Horloge
-from domain.poste import Poste, PosteId
+from domain.poste import Poste, PosteId, TypePoste
 from domain.poste import normaliser_code as normaliser_code_poste
 from domain.remboursement import (
     MotifRemboursement,
@@ -139,13 +140,45 @@ def _vers_scoreur(ligne: ScoreurORM) -> Scoreur:
 
 
 def _vers_poste(ligne: PosteORM) -> Poste:
-    """Traduit une ligne ORM en agrégat de domaine `Poste` (E04US001)."""
+    """Traduit une ligne ORM en agrégat de domaine `Poste` (E04US001, élargi E07US004).
+
+    `type` est relu par le constructeur d'énumération : une valeur inattendue lève `ValueError`,
+    enveloppée en `InfrastructureError` par l'appelant — jamais un poste au type silencieusement
+    faux. Les lignes antérieures à la migration 0038 valent « cible » par `server_default`.
+    """
     return Poste(
         tournoi_id=ligne.tournoi_id,
         cible_index=ligne.cible_index,
         code=ligne.code,
+        type=TypePoste(ligne.type),
+        libelle=ligne.libelle,
+        deroule=_vers_sequence_vues(ligne.deroule_json),
         id=ligne.id,
     )
+
+
+def _vers_sequence_vues(brut: str | None) -> SequenceVues | None:
+    """Relit le déroulé d'un écran depuis sa forme JSON, ou `None` s'il n'a rien réglé.
+
+    Passe par les constructeurs du domaine pour qu'une cadence hors bornes ou une séquence vide
+    remonte en `DomainError` — enveloppée par l'appelant — plutôt que de produire un écran qui
+    clignoterait. `None` n'est pas une anomalie : c'est un écran qui joue le déroulé par défaut.
+    """
+    if brut is None:
+        return None
+    return SequenceVues(
+        tuple(
+            VueProgrammee(VueEcran(etape["vue"]), int(etape["cadence_s"]))
+            for etape in json.loads(brut)
+        )
+    )
+
+
+def _depuis_sequence_vues(sequence: SequenceVues | None) -> str | None:
+    """Sérialise le déroulé d'un écran : `[{"vue": …, "cadence_s": …}]` (cf. `sources_json`)."""
+    if sequence is None:
+        return None
+    return json.dumps([{"vue": v.vue.value, "cadence_s": v.cadence_s} for v in sequence.vues])
 
 
 def _vers_entree_audit(ligne: EntreeAuditORM) -> EntreeAudit:
@@ -1366,7 +1399,7 @@ class ScoreurRepositorySQL:
 
 
 class PosteRepositorySQL:
-    """Adapter SQLite du port `PosteRepository` — credential d'une cible (E04US001)."""
+    """Adapter SQLite du port `PosteRepository` — credential d'un lieu (E04US001, E07US004)."""
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
@@ -1379,12 +1412,45 @@ class PosteRepositorySQL:
                     tournoi_id=poste.tournoi_id,
                     cible_index=poste.cible_index,
                     code=poste.code,
+                    type=poste.type.value,
+                    libelle=poste.libelle,
+                    deroule_json=_depuis_sequence_vues(poste.deroule),
                 )
                 session.add(ligne)
                 session.commit()
                 return _vers_poste(ligne)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de persistance du poste.") from exc
+
+    def enregistrer(self, poste: Poste) -> Poste:
+        """Réécrit un poste **existant** (renommage ou déroulé d'un écran, E07US004).
+
+        Ne touche ni au `code` ni au `type` : le code est imprimé sous un QR (le réécrire
+        invaliderait une affiche déjà posée) et la nature d'un poste ne change pas — une cible ne
+        devient pas un écran. Lève `InfrastructureError` si le poste n'existe plus.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(PosteORM, poste.id)
+                if ligne is None:
+                    raise InfrastructureError("Poste introuvable à l'enregistrement.")
+                ligne.libelle = poste.libelle
+                ligne.deroule_json = _depuis_sequence_vues(poste.deroule)
+                session.commit()
+                return _vers_poste(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance du poste.") from exc
+
+    def supprimer(self, poste_id: PosteId) -> None:
+        """Supprime un poste ; sans effet s'il n'existe pas (la garde de type est au service)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(PosteORM, poste_id)
+                if ligne is not None:
+                    session.delete(ligne)
+                    session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression du poste.") from exc
 
     def par_id(self, poste_id: PosteId) -> Poste | None:
         """Relit le poste d'identifiant donné, ou `None` s'il n'existe pas."""
@@ -1396,13 +1462,34 @@ class PosteRepositorySQL:
             raise InfrastructureError("Échec de lecture du poste.") from exc
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Poste]:
-        """Renvoie tous les postes d'un tournoi (ordonnés par numéro de cible)."""
+        """Renvoie **tous** les postes d'un tournoi, cibles et écrans.
+
+        Tri par `(cible_index, id)` : les cibles d'abord dans l'ordre du plan, puis les écrans
+        (`cible_index` nul) dans leur ordre de création — SQLite place les `NULL` en tête, d'où le
+        `nulls_last` explicite plutôt qu'un ordre qui dépendrait du moteur.
+        """
         try:
             with self._session_factory() as session:
                 lignes = session.execute(
                     select(PosteORM)
                     .where(PosteORM.tournoi_id == tournoi_id)
-                    .order_by(PosteORM.cible_index)
+                    .order_by(nulls_last(PosteORM.cible_index), PosteORM.id)
+                ).scalars()
+                return [_vers_poste(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des postes du tournoi.") from exc
+
+    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_poste: TypePoste) -> list[Poste]:
+        """Renvoie les postes d'un tournoi d'un type donné (même ordre que `par_tournoi`)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(PosteORM)
+                    .where(
+                        PosteORM.tournoi_id == tournoi_id,
+                        PosteORM.type == type_poste.value,
+                    )
+                    .order_by(nulls_last(PosteORM.cible_index), PosteORM.id)
                 ).scalars()
                 return [_vers_poste(ligne) for ligne in lignes]
         except SQLAlchemyError as exc:

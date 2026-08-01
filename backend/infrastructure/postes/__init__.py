@@ -6,6 +6,7 @@ est injecté tel quel dans `ServicePostes` au composition root. Aucune dépendan
 """
 
 from infrastructure.postes.codes import ALPHABET_CODE, LONGUEUR_CODE, generer_code_poste
+from infrastructure.postes.consignes import RegistreConsignesMemoire
 from infrastructure.postes.presence import RegistrePresenceMemoire
 from infrastructure.postes.sessions import PosteSessionStore
 
@@ -13,6 +14,7 @@ __all__ = [
     "ALPHABET_CODE",
     "LONGUEUR_CODE",
     "PosteSessionStore",
+    "RegistreConsignesMemoire",
     "RegistrePresenceMemoire",
     "generer_code_poste",
 ]
