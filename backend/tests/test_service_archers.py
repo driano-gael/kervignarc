@@ -495,6 +495,30 @@ def test_saisir_score_par_un_poste_d_une_autre_cible_leve() -> None:
         m.archers.saisir_score(archer.id, 9, _poste(m.tournoi_id, 5))
 
 
+def test_saisir_score_par_un_ecran_de_salle_leve_meme_sur_un_archer_non_place() -> None:
+    """**Non-régression de sécurité** (E07US004, trouvé en revue) : un écran ne saisit jamais.
+
+    Le trou : E07US004 a rendu `Poste.cible_index` facultatif (un écran de salle n'a pas de cible).
+    La garde du service s'en remettait alors à la comparaison `archer.cible != poste.cible_index`,
+    en s'appuyant sur un raisonnement écrit noir sur blanc dans sa docstring — « un archer non placé
+    n'est sur aucune cible, `None != cible_index` le refuse naturellement ». Pour un **écran** face
+    à un archer **non placé**, cela devenait `None != None`, donc **faux** : la garde s'ouvrait, et
+    un credential d'appareil public — dont le code est affiché dans le gymnase — obtenait un droit
+    d'écriture sur les scores de tout l'effectif non encore placé.
+
+    Ce test tient l'exact **couple** qui ouvrait le trou : le poste est un écran (`cible_index` nul)
+    **et** l'archer n'est pas placé (`cible` nul). Le refuser sur un archer placé ne prouverait
+    rien : ce cas passait déjà.
+    """
+    m = _monter()
+    archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)
+    assert archer.id is not None
+    ecran = Poste.creer_ecran(m.tournoi_id, "Près du pas de tir", "ECRAN")
+
+    with pytest.raises(SaisieHorsCible):
+        m.archers.saisir_score(archer.id, 9, ecran)
+
+
 def test_saisir_score_par_un_poste_d_un_autre_tournoi_leve() -> None:
     """« SA cible » se juge aussi sur le **tournoi**, pas seulement l'index (CA E10US007).
 

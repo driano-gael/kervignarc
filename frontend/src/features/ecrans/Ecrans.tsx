@@ -56,7 +56,17 @@ export function Ecrans({ tournoiId }: { tournoiId: number }) {
       ) : (
         <ul className="liste">
           {ecrans.data.map((ecran) => (
-            <CarteEcran key={ecran.id} ecran={ecran} tournoiId={tournoiId} />
+            // La `key` inclut l'**état serveur** : toute mutation invalide la liste, et changer de
+            // clé **remonte** la carte, donc réinitialise ses copies locales (nom, déroulé) depuis
+            // les props fraîches. C'est le remplaçant recommandé d'un `useEffect` de
+            // resynchronisation — et il ferme une perte de mise à jour réelle : après un réglage
+            // venu d'un autre poste admin, ou après un 422 sur cadence hors bornes, l'écran gardait
+            // l'ancienne valeur et « Enregistrer » l'écrasait en silence (correctif de revue).
+            <CarteEcran
+              key={`${ecran.id}:${ecran.libelle}:${JSON.stringify(ecran.deroule)}`}
+              ecran={ecran}
+              tournoiId={tournoiId}
+            />
           ))}
         </ul>
       )}

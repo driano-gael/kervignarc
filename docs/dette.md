@@ -54,6 +54,8 @@
 | [DETTE-028](#dette-028--le-catalogue-de-types-de-phase-est-livré-sans-consommateur) | conception | majeur | **`backend/application/saisie_duels.py` (`_decor` — le cœur du raccourci)**, `backend/domain/poule.py`, `big_shoot_off.py`, `barrage.py` (dont `ConfigurationBarrage`, qui décrit le format de saisie et n'a plus d'appelant depuis que `resoudre_barrage` ne fait que départager), `suisse.py`, `colline.py`, `politiques.py` (`ScoreAvecHandicap`, `TiebreakPoules`, `RoutingRepechage`) ; **sites d'affichage de l'écart** (E01US024) : `application/simulation_format.py`, `api/v1/formats.py`, `frontend/src/features/deroule/` | Les six moteurs et les trois politiques d'E05US015 n'ont **aucun appelant de production** : aucun service ne les instancie, aucune `config.policies` ne sait porter `nb_poules` / `nb_manches` / `portee_de_defi` / `restants`, et `domain/classement.py` calcule toujours son cumul sans passer par la famille `scoring` — donc `ScoreAvecHandicap` reste inerte. L'écran « Phases » propose pourtant les six types à la composition | La lettre d'[ADR-0045](adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md) §2 est tenue (un moteur existe pour chaque type offert), son **intention** ne l'est qu'à moitié : l'organisateur peut composer une phase de poules dont le réglage n'est exprimable nulle part et que rien ne déroulera. Et un moteur sans consommateur n'est éprouvé que par ses propres tests — écrits le même jour, par le même agent | E05US015 ([ADR-0062](adr/0062-catalogue-de-types-de-phase.md)) — **périmètre assumé**, l'exécution relevant d'E01US024 ; relevé en revue comme devant être **tracé** et non seulement documenté à l'ADR | ⚠️ **E01US024 n'en a résorbé que la moitié** (01/08/2026, [ADR-0063](adr/0063-brouillon-de-format-invariant-a-l-application.md)) : la **composition** est livrée (les 9 types se composent, avec effectif et prélèvements), l'**exécution** non — aucun service ne lit encore `Phase.sources` pour peupler une phase, `ServiceSaisieDuels._decor` ensemençant chaque tableau avec *tous* les archers en lice. L'US **aggrave** donc le coût (on peut désormais composer un déroulé que le moteur ignorera) et le compense en **affichant l'écart** projeté/constaté, fixé par un test de non-régression. Reste : **US dédiée** du chantier moteur — faire consommer les sources au peuplement, porter les réglages en `config.policies`, rebrancher `classement.py` sur `PolitiquesPhase`. Marqueurs `# DETTE-028` : `politiques.py` (moteurs inertes) **et** `ServiceSaisieDuels._decor` (le peuplement qui ignore les sources) |
 | [DETTE-029](#dette-029--lattribution-des-rangs-ex-æquo-est-écrite-trois-fois) | conception | mineur | `backend/domain/classement.py` (`_ranger`), `backend/domain/poule.py` (`classement_de_poule`, `_marquer_ex_aequo`), `backend/domain/suisse.py` (`classement_suisse`, `_propager_ex_aequo`) | La règle « rang partagé à clé égale, avec sauts (1-2-2-4) » est écrite **trois fois**, et la propagation du drapeau `ex_aequo` **deux fois** en copie quasi verbatim. Les trois sites **divergent déjà** : `classement._ranger` ne porte aucun drapeau `ex_aequo`, les deux nouveaux si | 3ᵉ occurrence réelle : le seuil que le § Dette de `CLAUDE.md` fixe pour proposer un remède structurel est franchi **sur preuve**, pas sur pronostic. Corriger la règle (ou la faire diverger davantage) demande trois modifications coordonnées, et un oubli produit un classement **cohérent et faux** | E05US015 — deux des trois sites sont introduits par cette US ; relevé en revue (axes C1 et C2) | **US `refactor/` dédiée + ADR** (règle 16 : jamais en douce dans l'US courante). Remède minimal : une fonction pure `attribuer_rangs(ordonnes, meme_rang)` du domaine (~15 lignes, aucune abstraction nouvelle — le comparateur `Tiebreak` injecté suffit), chaque appelant gardant son dataclass de sortie. Marqueur `# DETTE-029` aux trois sites |
 
+| [DETTE-030](#dette-030--le-suivi-du-déroulé-se-recalcule-intégralement-à-chaque-lecture) | technique | mineur | `backend/application/suivi_deroule.py` (`ServiceSuiviDeroule.pour_tournoi`), `backend/api/v1/suivi_deroule.py`, `frontend/src/features/suivi-deroule/hooks.ts` | `GET /api/v1/tournois/{id}/suivi-deroule` est **public, non authentifié, sans cache et sans plafond** : chaque appel compte les engagés (départs × inscriptions) puis, **par phase en tableau**, appelle `ServiceSaisieDuels.reconstruire` — qui recalcule tout le classement du tournoi, rebâtit l'arbre, rejoue les duels et applique les forfaits. Deux surfaces le pollent (écran de salle 10 s, pilotage 10 s) et n'importe qui sur le réseau local peut le poller aussi | Faible aujourd'hui : mono-club, quelques phases, un ou deux écrans, réseau local fermé — mesuré à ~34 ms pour le seul classement. Devient sensible avec beaucoup d'écrans, un déroulé à nombreuses phases, ou le jour où l'appli sortirait du LAN | E07US004 ([ADR-0064](adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md)) — relevé en revue (axe adversarial) : la dette était **assumée en commentaire** de `hooks.ts` sans être tracée ici | Mémoïser la projection par `(tournoi_id, version)` — la reconstruction est **pure** à donnée constante, donc invalidable sur l'événement post-commit `donnees_modifiees` qui existe déjà. Aucun cache n'est justifié avant qu'une mesure le réclame. Marqueur `# DETTE-030` sur `ServiceSuiviDeroule.pour_tournoi` |
+
 ## Dette résorbée
 
 | ID | Nature | Portée | Soldée par |
@@ -1344,3 +1346,34 @@ devenue superflue : elle protège contre l'autre moitié du risque, l'oubli d'un
 4. **Marquer le code** : commentaire à l'endroit exact du raccourci, renvoyant à l'ID (`# DETTE-001 : …`).
 5. **Mentionner dans le corps de la PR**, et proposer l'US de résorption à l'utilisateur.
 6. À la résorption : déplacer la ligne vers « Dette résorbée » avec l'US qui l'a soldée, et retirer les marqueurs du code.
+
+### DETTE-030 — le suivi du déroulé se recalcule **intégralement à chaque lecture**
+
+`GET /api/v1/tournois/{id}/suivi-deroule` (E07US004) est une **lecture publique, non authentifiée,
+sans cache et sans plafond**. Chaque appel :
+
+1. compte les engagés — un parcours de tous les départs × toutes leurs inscriptions ;
+2. projette le format (`domain.deroule.projeter`, pur et bon marché) ;
+3. puis, **par phase en tableau**, appelle `ServiceSaisieDuels.reconstruire`, qui recalcule *tout*
+   le classement du tournoi (tous les archers, toutes les séries), rebâtit l'arbre, rejoue les duels
+   persistés et applique les forfaits.
+
+Deux surfaces le pollent en continu — l'écran de salle et le suivi au pilotage, toutes deux à 10 s —
+et, l'endpoint étant public par nécessité (un écran de salle n'a pas de session admin), n'importe
+quel appareil du réseau local peut le poller aussi.
+
+**Pourquoi c'est assumé et non corrigé dans l'US.** Le contexte est mono-club, local, quelques
+phases, un ou deux écrans, réseau fermé ; la mesure disponible (~34 ms pour le seul classement)
+ne justifie pas un cache. Ajouter une mémoïsation sans mesure serait de la sur-ingénierie — et un
+cache est précisément le genre de mécanisme qui coûte cher en justesse (invalidation) pour un gain
+non constaté.
+
+**Ce qui la rendrait sensible** : beaucoup d'écrans, un déroulé à nombreuses phases en tableau, ou
+une sortie du LAN. Le remède est **borné par construction** : la projection est **pure à donnée
+constante**, donc mémoïsable par `(tournoi_id, version)` et invalidable sur l'événement post-commit
+`donnees_modifiees` qui existe déjà (`bootstrap.composition._diffuser_apres_ecriture`). Aucun
+nouveau pattern, aucune abstraction : un dictionnaire et un compteur de version.
+
+*Relevée en revue (axe adversarial) : la dette était **assumée en commentaire** dans
+`frontend/src/features/suivi-deroule/hooks.ts` — donc réelle et connue — mais **pas tracée ici**,
+ce que le § Dette de `CLAUDE.md` compte comme dette silencieuse.*

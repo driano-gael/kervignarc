@@ -1,4 +1,4 @@
-﻿// Tests du `sessionPosteStore` — **mode poste persistant** (E04US001, correctif de revue D-1/D-2).
+// Tests du `sessionPosteStore` — **mode poste persistant** (E04US001, correctif de revue D-1/D-2).
 //
 // Garde-fou du contrat qui distingue « ce navigateur est un poste » (intention persistante) de la
 // simple présence d'un jeton : une session **révoquée** (jeton perdu) doit laisser la tablette sur

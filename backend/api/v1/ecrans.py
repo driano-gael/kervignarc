@@ -45,15 +45,25 @@ session_router = APIRouter(prefix="/api/v1/ecrans/session", tags=["ecrans"])
 class VueProgrammeeDTO(BaseModel):
     """Une étape d'un déroulé : quelle vue, combien de temps.
 
-    ⚠️ **Aucune borne déclarée ici**, bien que `domain.ecran.CADENCE_MIN_S`/`CADENCE_MAX_S`
-    existent. Les répéter en `Field(ge=…, le=…)` aurait deux effets indésirables : la règle vivrait
-    à deux endroits (règle 2 — le domaine en est seul dépositaire), et la violation remonterait en
-    **400 `requete_invalide`** (mapping de `RequestValidationError`) au lieu du **422
-    `cadence_ecran_invalide`** que le domaine produit — un code générique à la place d'un code
-    exploitable par le front. Même parti pour le libellé et la longueur de séquence.
+    **La vue est typée `VueEcran`, la cadence ne l'est pas** — et la distinction n'est pas un
+    caprice (correctif de revue) :
+
+    - `vue` désigne un **catalogue fermé**. Son appartenance relève du **format** de la requête, pas
+      d'une règle métier : `VueEcran` *est* le type. La typer ici fait rejeter une valeur inconnue
+      par Pydantic, en **400 `requete_invalide`** avec le champ fautif. La version d'origine
+      déclarait `vue: str` et traduisait dans le corps du handler :
+      `VueEcran("affectations")` levait
+      un `ValueError` nu, sans gestionnaire typé, qui retombait sur le filet `Exception` → **500 +
+      traceback journalisé**. Et les deux valeurs qui déclenchaient le cas — `affectations`,
+      `tableaux` — sont précisément celles que le CA nomme et que le catalogue ne livre pas encore,
+      donc les premières qu'un client enverra.
+    - `cadence_s` porte au contraire une **règle** (5 s ≤ cadence ≤ 3600 s est un jugement sur la
+      lisibilité à dix mètres). La répéter en `Field(ge=…, le=…)` la ferait vivre à deux endroits
+      (règle 2) et la dégraderait en 400 générique, là où le domaine rend un **422
+      `cadence_ecran_invalide`** exploitable. Même parti pour le libellé et la longueur de séquence.
     """
 
-    vue: str
+    vue: VueEcran
     cadence_s: int
 
 
@@ -82,7 +92,7 @@ class EcranReponse(BaseModel):
             libelle=ecran.libelle,
             code=ecran.code,
             deroule=[
-                VueProgrammeeDTO(vue=v.vue.value, cadence_s=v.cadence_s)
+                VueProgrammeeDTO(vue=v.vue, cadence_s=v.cadence_s)
                 for v in ecran.deroule_effectif.vues
             ],
         )
@@ -109,9 +119,7 @@ class ReglerDerouleRequete(BaseModel):
 
     def vers_domaine(self) -> SequenceVues:
         """Traduit le DTO en value object de domaine (qui revalide les bornes de cadence)."""
-        return SequenceVues(
-            tuple(_vue_programmee(etape.vue, etape.cadence_s) for etape in self.vues)
-        )
+        return SequenceVues(tuple(VueProgrammee(etape.vue, etape.cadence_s) for etape in self.vues))
 
 
 class PrendreLeControleRequete(BaseModel):
@@ -123,7 +131,7 @@ class PrendreLeControleRequete(BaseModel):
     elle ne se duplique pas à la frontière (règle 2).
     """
 
-    vue: str | None = None
+    vue: VueEcran | None = None
     vues: list[VueProgrammeeDTO] | None = None
     duree_s: int | None = None
 
@@ -133,11 +141,11 @@ class PrendreLeControleRequete(BaseModel):
             None
             if self.vues is None
             else SequenceVues(
-                tuple(_vue_programmee(etape.vue, etape.cadence_s) for etape in self.vues)
+                tuple(VueProgrammee(etape.vue, etape.cadence_s) for etape in self.vues)
             )
         )
         return Consigne(
-            vue=None if self.vue is None else _vue(self.vue),
+            vue=self.vue,
             sequence=sequence,
             duree_s=self.duree_s,
         )
@@ -147,7 +155,7 @@ class PriseReponse(BaseModel):
     """La prise posée : ce qui est imposé, pour combien de temps, et faut-il s'en alarmer."""
 
     poste_id: int
-    vue_figee: str | None
+    vue_figee: VueEcran | None
     reste_s: float | None
     exige_rappel: bool
 
@@ -156,7 +164,7 @@ class PriseReponse(BaseModel):
         """Traduit une prise du service en DTO de réponse."""
         return PriseReponse(
             poste_id=prise.poste_id,
-            vue_figee=None if prise.vue_figee is None else prise.vue_figee.value,
+            vue_figee=prise.vue_figee,
             reste_s=prise.reste_s,
             exige_rappel=prise.exige_rappel,
         )
@@ -171,7 +179,7 @@ class AffichageReponse(BaseModel):
     """
 
     vues: list[VueProgrammeeDTO] | None
-    vue_figee: str | None
+    vue_figee: VueEcran | None
     sous_controle: bool
     reste_s: float | None
 
@@ -183,11 +191,11 @@ class AffichageReponse(BaseModel):
                 None
                 if affichage.sequence is None
                 else [
-                    VueProgrammeeDTO(vue=v.vue.value, cadence_s=v.cadence_s)
+                    VueProgrammeeDTO(vue=v.vue, cadence_s=v.cadence_s)
                     for v in affichage.sequence.vues
                 ]
             ),
-            vue_figee=None if affichage.vue_figee is None else affichage.vue_figee.value,
+            vue_figee=affichage.vue_figee,
             sous_controle=affichage.sous_controle,
             reste_s=affichage.reste_s,
         )
@@ -307,13 +315,3 @@ async def affichage_courant(request: Request) -> AffichageReponse:
     service: ServiceEcrans = request.app.state.service_ecrans
     affichage = await run_in_threadpool(service.affichage, extraire_jeton_poste(request))
     return AffichageReponse.de_affichage(affichage)
-
-
-def _vue(valeur: str) -> VueEcran:
-    """Traduit une valeur d'API en `VueEcran` ; `ValueError` → `422` à la frontière."""
-    return VueEcran(valeur)
-
-
-def _vue_programmee(valeur: str, cadence_s: int) -> VueProgrammee:
-    """Traduit une étape d'API en value object de domaine (bornes revalidées par le domaine)."""
-    return VueProgrammee(_vue(valeur), cadence_s)

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
@@ -51,20 +52,22 @@ def _tournoi(client: TestClient, connecter_admin: ConnecterAdmin) -> int:
     )
 
 
-def _creer_ecran(client: TestClient, tournoi_id: int, libelle: str = "Pas de tir") -> dict:  # type: ignore[type-arg]
+def _creer_ecran(
+    client: TestClient, tournoi_id: int, libelle: str = "Pas de tir"
+) -> dict[str, Any]:
     reponse = client.post(f"/api/v1/tournois/{tournoi_id}/ecrans", json={"libelle": libelle})
     assert reponse.status_code == 200, reponse.text
     return dict(reponse.json())
 
 
-def _rattacher(client: TestClient, code: str) -> tuple[str, dict]:  # type: ignore[type-arg]
+def _rattacher(client: TestClient, code: str) -> tuple[str, dict[str, Any]]:
     reponse = client.post("/api/v1/postes/session", json={"code": code})
     assert reponse.status_code == 200, reponse.text
     corps = reponse.json()
     return str(corps["jeton"]), dict(corps["poste"])
 
 
-def _affichage(client: TestClient, jeton: str) -> dict:  # type: ignore[type-arg]
+def _affichage(client: TestClient, jeton: str) -> dict[str, Any]:
     reponse = client.get("/api/v1/ecrans/session/affichage", headers={"X-Jeton-Poste": jeton})
     assert reponse.status_code == 200, reponse.text
     return dict(reponse.json())
@@ -189,7 +192,9 @@ def test_une_vue_imposee_bascule_l_ecran_et_rend_la_main_le_libere(
         sous_controle = _affichage(client, jeton)
         assert sous_controle["sous_controle"] is True
         assert sous_controle["vue_figee"] == "classement"
-        assert sous_controle["vues"] is None
+        # La séquence de repli accompagne la vue figée : c'est ce sur quoi l'écran retombe seul à
+        # l'échéance, même s'il a perdu le réseau entre-temps (correctif de revue).
+        assert len(sous_controle["vues"]) == 3
         assert 0 < float(sous_controle["reste_s"]) <= 600
 
         rendu = client.delete(f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/controle")
@@ -313,6 +318,69 @@ def test_un_jeton_de_cible_n_ouvre_pas_l_affichage_d_un_ecran(
 
         assert reponse.status_code == 409, reponse.text
         assert reponse.json()["code"] == "poste_n_est_pas_un_ecran"
+
+
+def test_un_jeton_d_ecran_ne_peut_pas_saisir_de_score(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**Non-régression de sécurité** (trouvée en revue) : le trou que ce test ferme était réel.
+
+    Un écran de salle est du **matériel public** — son code est affiché dans le gymnase. En rendant
+    `Poste.cible_index` facultatif, cette US avait transformé la garde métier
+    `archer.cible != poste.cible_index` en `None != None` (donc *faux*) pour un écran face à un
+    archer **non placé** : le score était accepté, en 201.
+
+    Le test tape le parcours complet et **public** : rattachement par code (endpoint ouvert), puis
+    écriture. Il vise volontairement un archer **non placé**, le seul cas qui ouvrait le trou.
+    """
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        categorie = client.post(
+            f"/api/v1/tournois/{tournoi_id}/categories", json={"libelle": "Senior 1 H"}
+        )
+        assert categorie.status_code == 201, categorie.text
+        archer = client.post(
+            f"/api/v1/tournois/{tournoi_id}/archers",
+            json={"nom": "Robin", "prenom": "Jean", "categorie_id": categorie.json()["id"]},
+        )
+        assert archer.status_code == 201, archer.text
+        archer_id = int(archer.json()["id"])
+        ecran = _creer_ecran(client, tournoi_id)
+        jeton, _ = _rattacher(client, str(ecran["code"]))
+
+    with TestClient(app_session) as anonyme:
+        reponse = anonyme.post(
+            f"/api/v1/archers/{archer_id}/scores",
+            json={"points": 10},
+            headers={"X-Jeton-Poste": jeton},
+        )
+
+    # 403 et non 422 : l'identité est établie, c'est le **droit** qui manque — même parti que
+    # `SaisieHorsCible` pour un poste de cible qui vise la mauvaise cible.
+    assert reponse.status_code == 403, reponse.text
+    assert reponse.json()["code"] == "saisie_hors_cible"
+
+
+def test_un_jeton_d_ecran_n_ouvre_pas_les_surfaces_de_saisie(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Même barrière sur les autres surfaces de saisie : départ courant et grille d'archers.
+
+    La portée « poste » est **commune** aux deux natures (même en-tête, même store) : c'est la
+    dépendance `exiger_poste_de_cible` qui les sépare. Ce test verrouille les deux routes qu'elle
+    garde, pour qu'une future route de saisie qui reprendrait `exiger_poste` par mégarde se voie.
+    """
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        ecran = _creer_ecran(client, tournoi_id)
+        jeton, _ = _rattacher(client, str(ecran["code"]))
+        entete = {"X-Jeton-Poste": jeton}
+
+        grille = client.get("/api/v1/saisie/archers", headers=entete)
+        depart = client.post("/api/v1/saisie/depart-courant", json={"depart_id": 1}, headers=entete)
+
+        assert grille.status_code == 403, grille.text
+        assert depart.status_code == 403, depart.text
 
 
 def test_l_affichage_sans_jeton_est_refuse(app_session: FastAPI) -> None:

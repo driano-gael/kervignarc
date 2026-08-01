@@ -174,11 +174,25 @@ class Poste:
         return self.cible_index
 
 
+LIBELLE_ECRAN_MAX = 60
+"""Longueur maximale du libellé d'un écran.
+
+Borne **haute** ajoutée en revue : `code` et `cible_index` étaient bornés, pas le libellé. Une
+chaîne de dix mille caractères traversait jusqu'à la console de supervision **et** au bandeau plein
+écran d'un vidéoprojecteur. 60 caractères tiennent largement « Près du pas de tir, côté buvette » et
+restent lisibles de loin — c'est un repère de place dans un gymnase, pas une phrase.
+"""
+
+
 def _libelle_valide(libelle: str) -> str:
-    """Nettoie le libellé d'un écran ; lève `LibelleEcranInvalide` s'il est vide."""
+    """Nettoie le libellé d'un écran ; lève `LibelleEcranInvalide` s'il est vide ou trop long."""
     nettoye = libelle.strip()
     if not nettoye:
         raise LibelleEcranInvalide("Le libellé d'un écran de salle ne peut pas être vide.")
+    if len(nettoye) > LIBELLE_ECRAN_MAX:
+        raise LibelleEcranInvalide(
+            f"Le libellé d'un écran de salle ne peut pas dépasser {LIBELLE_ECRAN_MAX} caractères."
+        )
     return nettoye
 
 

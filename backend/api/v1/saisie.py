@@ -12,7 +12,8 @@ Expose le moteur `Serie`/`Volee` (persisté en PR2a, gardé en PR2b) au poste de
   (`created_at`, ex-017).
 
 Rôles (E10US007) : la saisie est ouverte à l'**admin** *ou* au **poste** (`autoriser_saisie`) ;
-départ courant et grille sont **propres au poste** (`exiger_poste`). La **validation** (scoreur) et
+départ courant et grille sont **propres au poste de cible** (`exiger_poste_de_cible` — un écran de
+salle est refusé). La **validation** (scoreur) et
 la **correction** (rôle habilité) ont leurs propres endpoints, ailleurs. DTO Pydantic distincts des
 agrégats ; erreurs typées traduites à la frontière (`api/erreurs.py`).
 """
@@ -29,7 +30,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import (
     autoriser_saisie,
-    exiger_poste,
+    exiger_poste_de_cible,
     exiger_scoreur,
     extraire_jeton_poste,
 )
@@ -203,9 +204,9 @@ def _cle_idempotence(operation: str, identifiant: str | None, *portee: int) -> s
 async def fixer_depart_courant(
     requete: DepartCourantRequete,
     request: Request,
-    _poste: Annotated[Poste, Depends(exiger_poste)],
+    _poste: Annotated[Poste, Depends(exiger_poste_de_cible)],
 ) -> DepartCourantReponse:
-    """Met le poste « en mode départ X » (ADR-0034). Jeton de poste requis (`exiger_poste`).
+    """Met le poste « en mode départ X » (ADR-0034). Jeton de **poste de cible** requis.
 
     `404 depart_introuvable` si le départ n'existe pas ou relève d'un autre tournoi que le poste
     (ADR-0034 §4). Mutation de **session** (départ courant en mémoire) + lectures de cohérence :
@@ -220,7 +221,7 @@ async def fixer_depart_courant(
 @router.get("/archers", response_model=list[ArcherGrilleReponse])
 async def archers_du_poste(
     request: Request,
-    poste: Annotated[Poste, Depends(exiger_poste)],
+    poste: Annotated[Poste, Depends(exiger_poste_de_cible)],
 ) -> list[ArcherGrilleReponse]:
     """La grille du poste : les archers placés sur sa cible pour son **départ courant** (ADR-0033).
 

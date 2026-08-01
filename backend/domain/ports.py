@@ -801,7 +801,21 @@ class RegistreConsignes(Protocol):
         ...
 
     def retirer(self, poste_id: PosteId) -> None:
-        """Rend la main sur un écran ; sans effet s'il n'était pas sous consigne."""
+        """Rend la main sur un écran ; sans effet s'il n'était pas sous consigne.
+
+        Geste **volontaire** de l'admin : il efface ce qui est en place, quel qu'il soit.
+        """
+        ...
+
+    def retirer_si(self, poste_id: PosteId, prise: PriseDeControle) -> None:
+        """Retire la prise **seulement si c'est toujours celle-ci** ; sans effet sinon.
+
+        Sert au nettoyage d'une prise **échue**, qui est un effet de bord de la lecture — donc non
+        volontaire, donc obligé d'être prudent. Sans cette condition, la séquence « je lis une prise
+        expirée, l'admin en repose une neuve, je retire » effacerait **la neuve** : une fenêtre
+        étroite, mais qui s'ouvre précisément au moment où l'organisateur reprend la main sur un
+        podium qui vient d'expirer, et la console poll en continu (correctif de revue E07US004).
+        """
         ...
 
     def toutes(self) -> dict[PosteId, PriseDeControle]:

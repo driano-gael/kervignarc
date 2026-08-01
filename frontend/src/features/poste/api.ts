@@ -1,4 +1,4 @@
-﻿// Accès API de la feature « poste » (E04US001) : rattachement par code, relecture de cible,
+// Accès API de la feature « poste » (E04US001) : rattachement par code, relecture de cible,
 // détachement. Miroir des DTO exposés par `api/v1/postes.py` (routes à la racine
 // `/api/v1/postes/session`). Le code **seul** rattache (aucun tournoi à désigner : il est unique dans
 // toute la base). Le jeton renvoyé est joint ensuite via l'en-tête `X-Jeton-Poste`.

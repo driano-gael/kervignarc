@@ -87,12 +87,6 @@ class SequenceVues:
                 "pas, et c'est précisément la panne que la supervision doit révéler."
             )
 
-    @property
-    def duree_totale_s(self) -> int:
-        """Durée d'un tour complet du déroulé — ce que l'admin lit pour se régler (« le podium
-        revient toutes les deux minutes »)."""
-        return sum(v.cadence_s for v in self.vues)
-
     @staticmethod
     def par_defaut() -> SequenceVues:
         """Le déroulé d'un écran neuf — CA « déroulé de vues **par défaut** ».
@@ -171,11 +165,18 @@ class PriseDeControle:
 
 
 def reste_secondes(consigne: Consigne, *, secondes_ecoulees: float) -> float | None:
-    """Temps restant avant reprise automatique du déroulé, jamais négatif ; `None` sans durée.
+    """Temps restant avant reprise automatique du déroulé ; `None` sans durée.
 
     Alimente le compte à rebours des deux surfaces : la console (« reprise dans 7 min ») et l'écran
     lui-même, qui décompte en local — la reprise ne dépend donc d'aucun message serveur.
+
+    **Borné des deux côtés** : jamais négatif (plancher à 0), et jamais supérieur à la durée
+    demandée (plafond). Le plafond n'est pas décoratif — `secondes_ecoulees` est calculé par le
+    service comme un écart d'horloge, et une mise à l'heure en cours de journée peut le rendre
+    négatif : la console annoncerait alors « reprise dans 12 min » sur une prise de 10 min, ce qui
+    ferait douter de tout le reste de l'affichage (correctif de revue). Le front, lui, normalise
+    déjà son propre modulo.
     """
     if consigne.duree_s is None:
         return None
-    return max(0.0, consigne.duree_s - secondes_ecoulees)
+    return min(float(consigne.duree_s), max(0.0, consigne.duree_s - secondes_ecoulees))

@@ -1,4 +1,4 @@
-﻿# Architecture Decision Records (ADR)
+# Architecture Decision Records (ADR)
 
 Journal des décisions d'architecture du projet **Kervignarc**.
 

@@ -33,6 +33,7 @@ from domain.poste import Poste, PosteId, TypePoste, normaliser_code
 from domain.remboursement import Remboursement
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 from infrastructure.postes.consignes import RegistreConsignesMemoire
+from infrastructure.postes.presence import RegistrePresenceMemoire
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -250,6 +251,7 @@ class Montage:
         # Vrai registre de consignes (en mémoire, déterministe) : E07US004 le fait entrer dans
         # `ServicePostes` pour que la suppression d'un écran retire aussi sa prise de contrôle.
         self.consignes = RegistreConsignesMemoire()
+        self.presence = RegistrePresenceMemoire()
         tournoi = self.tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
         assert tournoi.id is not None
         self.tournoi_id: TournoiId = tournoi.id
@@ -261,6 +263,7 @@ class Montage:
             self.departs,
             self.sessions,
             self.consignes,
+            self.presence,
             _generateur(*codes),
         )
 

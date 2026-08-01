@@ -60,15 +60,11 @@ def test_les_duels_joues_se_cumulent_sur_les_duels_attendus() -> None:
     assert bloc.duels_attendus == 15
 
 
-def test_un_tour_sait_s_il_est_termine_et_s_il_est_entame() -> None:
+def test_un_tour_sait_s_il_est_termine() -> None:
     """« braquets qui **se remplissent** » : chaque braquet porte son propre remplissage."""
-    plein = AvancementTour(1, 8, 8)
-    entame = AvancementTour(2, 4, 1)
-    vide = AvancementTour(3, 2, 0)
-
-    assert plein.est_termine and plein.est_entame
-    assert not entame.est_termine and entame.est_entame
-    assert not vide.est_termine and not vide.est_entame
+    assert AvancementTour(1, 8, 8).est_termine
+    assert not AvancementTour(2, 4, 1).est_termine
+    assert not AvancementTour(3, 2, 0).est_termine
 
 
 # --- Le tour en cours -----------------------------------------------------------------------------

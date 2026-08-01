@@ -1,4 +1,4 @@
-﻿// Écran « Composer un déroulé » (E01US024, ADR-0063) — axe **atelier**, sans tournoi.
+// Écran « Composer un déroulé » (E01US024, ADR-0063) — axe **atelier**, sans tournoi.
 //
 // Il livre les cinq promesses du CA : composer une séquence complète en **brouillon**, la **voir**
 // (schéma à braquets), savoir si elle **tient debout** (anomalies rattachées aux blocs), la

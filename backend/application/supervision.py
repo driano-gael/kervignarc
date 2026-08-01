@@ -23,7 +23,13 @@ from application.erreurs import PosteIntrouvable, TournoiIntrouvable
 from application.postes import StoreSessionsPoste
 from application.saisie import AvancementCible
 from domain.depart import DepartId
-from domain.ports import Horloge, PosteRepository, RegistrePresence, TournoiRepository
+from domain.ports import (
+    Horloge,
+    PosteRepository,
+    RegistreConsignes,
+    RegistrePresence,
+    TournoiRepository,
+)
 from domain.poste import Poste, PosteId, TypePoste
 from domain.supervision import EtatPoste, etat_poste
 from domain.tournoi import TournoiId
@@ -136,6 +142,7 @@ class ServiceSupervision:
         tournoi_repository: TournoiRepository,
         sessions: StoreSessionsPoste,
         presence: RegistrePresence,
+        consignes: RegistreConsignes,
         avancement: LecteurAvancement,
         ecrans: LecteurPrises,
         horloge: Horloge,
@@ -145,6 +152,7 @@ class ServiceSupervision:
         self._tournois = tournoi_repository
         self._sessions = sessions
         self._presence = presence
+        self._consignes = consignes
         self._avancement = avancement
         self._ecrans = ecrans
         self._horloge = horloge
@@ -162,7 +170,8 @@ class ServiceSupervision:
         """Instantané de supervision : une ligne par poste (cibles **et** écrans) + compteurs.
 
         Lève `TournoiIntrouvable` si le tournoi n'existe pas (cf. `ServicePostes.lister`).
-        Les cibles viennent d'abord, triées par numéro ; les écrans ensuite (`cible_index`
+        Les cibles viennent d'abord, triées par numéro ; les écrans ensuite (`cible_index` nul),
+        triés par identifiant — tri explicite ici (`_ordonnes`), sans dépendre de
         l'ordre du repository. L'état de chacun est dérivé par la **politique pure** du domaine à
         partir du rattachement (session ouverte ?) et de l'écart au dernier heartbeat (calculé ici
         via `Horloge`, jamais dans le domaine) — **la même** pour un écran que pour une tablette :
@@ -224,6 +233,12 @@ class ServiceSupervision:
             raise PosteIntrouvable(f"Aucun poste d'identifiant {poste_id} dans ce tournoi.")
         self._sessions.invalider_poste(poste_id)
         self._presence.oublier(poste_id)
+        # E07US004 (correctif de revue) : révoquer un **écran** doit aussi retirer sa consigne.
+        # Sans cela, la console continuait d'afficher « Classement · reprise dans 7 min » sur une
+        # ligne devenue *non rattachée* — un état forcé sur un écran qui n'existe plus pour
+        # l'utilisateur, c'est-à-dire exactement ce que le CA « jamais un état forcé qu'on oublie »
+        # cherche à empêcher. Sans effet sur une cible (elle n'a jamais de consigne).
+        self._consignes.retirer(poste_id)
 
     def _lire_avancement(
         self,

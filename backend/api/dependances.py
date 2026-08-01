@@ -18,10 +18,10 @@ from __future__ import annotations
 from fastapi import Request
 
 from application.auth import ServiceAuth
-from application.erreurs import NonAuthentifie
+from application.erreurs import NonAuthentifie, SaisieHorsCible
 from application.postes import ServicePostes
 from application.scoreurs import ServiceScoreurs
-from domain.poste import Poste
+from domain.poste import Poste, TypePoste
 from domain.scoreur import Scoreur
 
 _PREFIXE_BEARER = "Bearer "
@@ -94,6 +94,31 @@ def exiger_poste(request: Request) -> Poste:
     return poste
 
 
+def exiger_poste_de_cible(request: Request) -> Poste:
+    """Comme `exiger_poste`, mais **refuse un écran de salle** (E07US004, correctif de revue).
+
+    Depuis E07US004, la portée « poste » couvre **deux natures** : la tablette d'une cible et
+    l'écran de salle. Elles partagent le même en-tête, le même store de sessions et le même
+    endpoint de rattachement — c'est voulu (CA : « même mécanisme »). Mais un écran est du
+    **matériel public**, dont le code est affiché dans le gymnase : il ne doit toucher **aucune**
+    surface de saisie.
+
+    La garde vit **ici**, à la dépendance, et pas dans les services : c'est une question de
+    **portée d'identité**, pas de règle métier — d'où `SaisieHorsCible` (→ **403** « ce jeton n'a
+    pas ce droit ») et non un `DomainError` (→ 422 « ta requête est invalide »), que le front ne
+    saurait pas distinguer d'une erreur de saisie.
+    """
+    poste = exiger_poste(request)
+    return _refuser_ecran(poste)
+
+
+def _refuser_ecran(poste: Poste) -> Poste:
+    """Refuse un poste de type écran sur une surface de saisie (E07US004)."""
+    if poste.type is not TypePoste.CIBLE:
+        raise SaisieHorsCible("Un écran de salle ne saisit pas de score.")
+    return poste
+
+
 def autoriser_saisie(request: Request) -> Poste | None:
     """Autorise la **saisie** de score : admin **ou** poste de cible (E10US007).
 
@@ -101,14 +126,23 @@ def autoriser_saisie(request: Request) -> Poste | None:
     (E04US001), sans jamais rouvrir la saisie au public. Renvoie :
 
     - `None` si une session **admin** valide est présente — l'admin saisit sans contrainte ;
-    - le `Poste` si un **jeton de poste** valide est présent — l'appelant (le service) restreindra
-      alors la saisie à **sa** cible (« un poste ne saisit que pour SA cible ») ;
+    - le `Poste` si un **jeton de poste de cible** valide est présent — l'appelant (le service)
+      restreindra alors la saisie à **sa** cible (« un poste ne saisit que pour SA cible ») ;
     - sinon `NonAuthentifie` (→ 401), comme toute écriture sans session (garde-fou
       `test_acces_public`).
 
     L'admin est essayé **en premier** : c'est le mode le plus large, et purement en mémoire, alors
     que la résolution d'un poste relit la base (statut du tournoi, ADR-0029). **Synchrone** pour la
     même raison qu'`exiger_poste` — FastAPI exécute une dépendance synchrone dans le threadpool.
+
+    ⚠️ **Un écran de salle est refusé ici** (E07US004, correctif de revue). C'est la garde qui
+    manquait : en rendant `Poste.cible_index` facultatif, E07US004 a transformé la comparaison
+    `archer.cible != poste.cible_index` du service en `None != None` — donc **fausse** — pour un
+    écran face à un archer **non placé**. La garde métier passait, et un credential d'appareil
+    public — code affiché dans le gymnase — obtenait un droit d'écriture sur les scores. Le service
+    a été durci en parallèle (`ServiceArchers._verifier_poste_sert_l_archer`) : deux barrières
+    plutôt qu'une, parce que celle-ci n'a pas de test de type et que celle-là s'était révélée
+    dépendre d'un invariant qu'on pouvait retirer ailleurs sans rien casser visiblement.
     """
     service_auth: ServiceAuth = request.app.state.service_auth
     if service_auth.session_valide(extraire_jeton(request)):
@@ -117,4 +151,4 @@ def autoriser_saisie(request: Request) -> Poste | None:
     poste = service_postes.resoudre_session(extraire_jeton_poste(request))
     if poste is None:
         raise NonAuthentifie("Session requise pour saisir un score (admin ou poste de cible).")
-    return poste
+    return _refuser_ecran(poste)

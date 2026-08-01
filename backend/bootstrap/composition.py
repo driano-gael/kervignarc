@@ -740,6 +740,9 @@ def create_app(
     # consigne, sinon SQLite réattribuerait l'identifiant à un futur écran qui en hériterait. ---
     poste_session_store = PosteSessionStore()
     registre_consignes = RegistreConsignesMemoire()
+    # Construit ici (et non plus à la supervision) : trois services nettoient désormais l'état
+    # volatil d'un poste — supprimer un écran, le révoquer, le superviser.
+    poste_presence = RegistrePresenceMemoire()
     app.state.service_postes = ServicePostes(
         poste_repository,
         tournoi_repository,
@@ -747,6 +750,7 @@ def create_app(
         depart_repository,
         poste_session_store,
         registre_consignes,
+        poste_presence,
         generer_code_poste,
     )
 
@@ -826,12 +830,12 @@ def create_app(
     # Depuis E07US004, la console montre aussi les **écrans de salle** — c'est le CA (« un écran
     # figé ne se plaint pas, seule la supervision le révèle ») — et leur prise de contrôle en
     # vigueur, lue par un port étroit sur `ServiceEcrans` (elle affiche, elle ne pilote pas).
-    poste_presence = RegistrePresenceMemoire()
     app.state.service_supervision = ServiceSupervision(
         poste_repository,
         tournoi_repository,
         poste_session_store,
         poste_presence,
+        registre_consignes,
         service_saisie,
         app.state.service_ecrans,
         HorlogeSysteme(),

@@ -45,6 +45,18 @@ class RegistreConsignesMemoire:
         with self._verrou:
             self._prises.pop(poste_id, None)
 
+    def retirer_si(self, poste_id: PosteId, prise: PriseDeControle) -> None:
+        """Retire la prise **seulement si c'est toujours cet objet-là** (cf. port).
+
+        Comparaison d'**identité** (`is`) et non d'égalité : deux prises successives peuvent être
+        structurellement identiques (même vue, même durée) tout en étant deux gestes distincts, et
+        seule la seconde doit survivre. La lecture et le retrait tiennent dans **un seul** verrou —
+        c'est ce qui ferme la fenêtre, pas la condition à elle seule.
+        """
+        with self._verrou:
+            if self._prises.get(poste_id) is prise:
+                del self._prises[poste_id]
+
     def toutes(self) -> dict[PosteId, PriseDeControle]:
         """Copie des prises en vigueur, par écran (copie : l'appelant itère hors du verrou)."""
         with self._verrou:

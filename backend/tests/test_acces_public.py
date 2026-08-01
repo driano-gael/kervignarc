@@ -62,6 +62,11 @@ _LECTURES = [
     # Panneau de routage (E04US018) : « où tire-t-on ensuite ». Même raison que le déroulé — c'est
     # un des quatre canaux de routage (`D-09`), destiné à l'appli publique et à l'écran de salle.
     "/api/v1/routage/1",
+    # Suivi du déroulé (E07US004) : l'**écran de salle** le consomme, et un écran de salle n'a
+    # aucune session admin — c'est un poste public projeté dans un gymnase. Le protéger par mégarde
+    # l'éteindrait sans faire échouer un seul autre test : c'est exactement le scénario que ce
+    # verrou existe pour empêcher (ajouté sur remarque de revue).
+    "/api/v1/tournois/1/suivi-deroule",
 ]
 
 

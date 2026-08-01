@@ -1,4 +1,4 @@
-﻿// Session de poste (Zustand) — E04US001, ADR-0029.
+// Session de poste (Zustand) — E04US001, ADR-0029.
 //
 // Détient le jeton de session de poste (délivré au **rattachement** par code) et la **cible** servie
 // (tournoi, numéro), pour rouvrir directement dessus après une coupure. Persisté dans le

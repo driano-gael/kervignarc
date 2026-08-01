@@ -1,4 +1,4 @@
-﻿// Textes d'aide contextuelle des écrans d'administration (E14US002).
+// Textes d'aide contextuelle des écrans d'administration (E14US002).
 //
 // Un dictionnaire **unique** `id de destination → texte`, consommé par la coquille (`CoquilleAdmin`)
 // pour rendre l'aide de la destination active via `<AideEcran>`. Centraliser ici plutôt que dans

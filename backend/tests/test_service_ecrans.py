@@ -23,6 +23,7 @@ from domain.ecran import Consigne, SequenceVues, VueEcran, VueProgrammee
 from domain.poste import Poste, PosteId, TypePoste
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 from infrastructure.postes.consignes import RegistreConsignesMemoire
+from infrastructure.postes.presence import RegistrePresenceMemoire
 from infrastructure.postes.sessions import PosteSessionStore
 
 _DATE = datetime.date(2026, 3, 14)
@@ -127,6 +128,7 @@ class Contexte:
         self.tournois = FauxTournoiRepository()
         self.sessions = PosteSessionStore()
         self.consignes = RegistreConsignesMemoire()
+        self.presence = RegistrePresenceMemoire()
         self._codes = iter(f"CODE{n:02d}" for n in range(1, 100))
         self.tournoi = self.tournois.ajouter(
             dataclasses.replace(Tournoi.creer("Tournoi", _DATE), statut=StatutTournoi.EN_COURS)
@@ -140,6 +142,7 @@ class Contexte:
             depart_repository=FauxDepartRepository(),  # type: ignore[arg-type]
             sessions=self.sessions,
             consignes=self.consignes,
+            presence=self.presence,
             generer_code=lambda: next(self._codes),
         )
         self.service = ServiceEcrans(
@@ -275,7 +278,11 @@ def test_une_vue_figee_remplace_le_deroule_en_direct(ctx: Contexte) -> None:
     affichage = ctx.service.affichage(jeton)
     assert affichage.sous_controle
     assert affichage.vue_figee is VueEcran.CLASSEMENT
-    assert affichage.sequence is None
+    # ⚠️ La séquence accompagne **toujours** la vue figée (correctif de revue) : c'est le repli sur
+    # lequel l'écran retombera tout seul à l'échéance, sans rien redemander au serveur. La sortir de
+    # la réponse — ce que faisait la première version — rendait impossible la reprise « insensible
+    # au réseau » que promettent l'ADR, la story et la recette.
+    assert affichage.sequence == SequenceVues.par_defaut()
 
 
 def test_une_autre_sequence_peut_etre_imposee(ctx: Contexte) -> None:
@@ -422,3 +429,67 @@ def test_l_affichage_exige_une_session_d_ecran(ctx: Contexte) -> None:
 
     with pytest.raises(PosteNEstPasUnEcran):
         ctx.service.affichage(jeton)
+
+
+def test_rendre_la_main_sur_une_prise_echue_est_sans_effet(ctx: Contexte) -> None:
+    """Cas adverse proposé en revue : la fenêtre où le nettoyage automatique a déjà eu lieu.
+
+    L'idempotence était prouvée sur un écran **libre**, jamais sur celui dont la prise vient
+    d'expirer et d'être retirée par `_retirer_si_echue`. C'est pourtant l'enchaînement réel : la
+    console poll, découvre l'expiration, nettoie — puis l'organisateur clique « rendre la main »
+    sur une ligne qu'il voyait encore.
+    """
+    ecran = ctx.ecran()
+    assert ecran.id is not None
+    jeton = ctx.service_postes.rattacher(ecran.code).jeton
+    ctx.service.prendre_le_controle(
+        ctx.tournoi_id, ecran.id, Consigne(vue=VueEcran.CLASSEMENT, sequence=None, duree_s=60)
+    )
+    ctx.horloge.avancer(61)
+    assert ctx.service.prises(ctx.tournoi_id) == {}  # le nettoyage a déjà eu lieu
+
+    ctx.service.rendre_la_main(ctx.tournoi_id, ecran.id)
+
+    assert not ctx.service.affichage(jeton).sous_controle
+
+
+def test_une_prise_reposee_survit_au_nettoyage_de_la_precedente(ctx: Contexte) -> None:
+    """**Non-régression** (revue, axe A) : le nettoyage d'une prise échue ne doit pas emporter la
+    suivante.
+
+    Le retrait d'une prise expirée est un effet de bord de la **lecture**. S'il retirait par simple
+    identifiant, la séquence « je lis une prise expirée → l'organisateur en repose une → je
+    retire » effacerait **la neuve**. Fenêtre étroite, mais c'est exactement l'instant « le podium
+    expire, l'organisateur le remet » — et la console poll en continu.
+
+    On la reproduit à la main : on capture la prise expirée, on en pose une neuve, puis on demande
+    le retrait conditionnel de l'ancienne.
+    """
+    ecran = ctx.ecran()
+    assert ecran.id is not None
+    ctx.service.prendre_le_controle(
+        ctx.tournoi_id, ecran.id, Consigne(vue=VueEcran.CLASSEMENT, sequence=None, duree_s=60)
+    )
+    echue = ctx.consignes.prise_de(ecran.id)
+    assert echue is not None
+    ctx.horloge.avancer(61)
+    ctx.service.prendre_le_controle(
+        ctx.tournoi_id, ecran.id, Consigne(vue=VueEcran.PLAN_CIBLES, sequence=None, duree_s=600)
+    )
+
+    ctx.consignes.retirer_si(ecran.id, echue)
+
+    prises = ctx.service.prises(ctx.tournoi_id)
+    assert prises[ecran.id].vue_figee is VueEcran.PLAN_CIBLES
+
+
+def test_supprimer_un_ecran_oublie_aussi_sa_presence(ctx: Contexte) -> None:
+    """SQLite **réattribue** les identifiants : tout état volatil indexé par ce `poste_id` doit
+    partir, sinon un écran neuf naîtrait « en ligne » avec l'IP de son prédécesseur (revue)."""
+    ecran = ctx.ecran()
+    assert ecran.id is not None
+    ctx.presence.enregistrer(ecran.id, _T0, "192.168.1.42")
+
+    ctx.service_postes.supprimer_ecran(ctx.tournoi_id, ecran.id)
+
+    assert ctx.presence.derniere_activite(ecran.id) is None

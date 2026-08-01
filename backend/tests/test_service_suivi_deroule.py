@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+from collections.abc import Sequence
 
 import pytest
 
@@ -47,6 +48,20 @@ def _tableau(effectif: int) -> Tableau:
         PlacementEnCascade(),
         ProfondeurPodium(),
     )
+
+
+def _jouer(tableau: Tableau, numeros: Sequence[int]) -> Tableau:
+    """Fait gagner le camp haut des matchs désignés, **dans l'ordre**.
+
+    Le match est **relu dans le tableau courant** à chaque itération : `Tableau.jouer` rend une
+    nouvelle instance où les occupants du tour suivant viennent d'être propagés. Itérer sur une
+    photo prise avant le premier coup donnerait des occupants `None` dès le deuxième tour.
+    """
+    for numero in numeros:
+        match = tableau.match(numero)
+        assert match.haut is not None, f"Le match {numero} n'a pas d'occupant haut."
+        tableau = tableau.jouer(numero, match.haut)
+    return tableau
 
 
 class FauxPhaseRepository:
@@ -204,16 +219,65 @@ def test_les_duels_tranches_remplissent_leur_braquet(ctx: Contexte) -> None:
     ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
     ctx.ajouter_phase(_tableau_ed(ctx.tournoi_id, 2, StatutPhase.EN_COURS), 2)
     tableau = _tableau(8)
-    for match in [m for m in tableau.matchs if m.tour == 1][:2]:
-        assert match.haut is not None
-        tableau = tableau.jouer(match.numero, match.haut)
-    ctx.tableaux.tableaux[2] = tableau
+    ctx.tableaux.tableaux[2] = _jouer(
+        tableau, [m.numero for m in tableau.matchs if m.tour == 1][:2]
+    )
 
     bloc = ctx.service.pour_tournoi(ctx.tournoi_id).avancement.blocs[1]
 
     assert bloc.tours[0].duels_joues == 2
     assert bloc.tours[0].duels_attendus == 4
     assert bloc.tour_courant == 1
+
+
+def test_la_petite_finale_ne_termine_pas_la_phase(ctx: Contexte) -> None:
+    """**Non-régression** (trouvée par la revue adversariale) : le dernier tour a **deux** branches.
+
+    Une élimination directe en placement (`PlacementEnCascade` + `ProfondeurPodium`) fait rejouer
+    les perdants des demies : au dernier tour, il y a la **finale** (places 1-2) *et* la **petite
+    finale** (places 3-4). Le braquet projeté, lui, ne suit que la branche des gagnants et n'annonce
+    qu'**un** duel — c'est délibéré (E01US024), et le CA impose de garder *le même* schéma.
+
+    Le défaut : en comptant les deux matchs sous le même numéro de tour, on obtenait « 2 joués sur 1
+    attendu », plafonné à 1. La petite finale étant souvent tranchée **avant** la finale (ou en
+    parallèle), l'écran projeté affichait « phase terminée · 7/7 duels » **pendant que la finale se
+    tirait** — au moment de la journée où il est le plus regardé.
+
+    Ce test joue la petite finale et **pas** la finale : c'est exactement le couple qui ouvrait le
+    trou. Jouer tout le tableau ne prouverait rien, et n'en jouer qu'un tour non plus — ce que
+    faisaient les tests d'origine.
+    """
+    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
+    ctx.ajouter_phase(_tableau_ed(ctx.tournoi_id, 2, StatutPhase.EN_COURS), 2)
+    tableau = _tableau(8)
+    petite_finale = next(m.numero for m in tableau.matchs if m.place_en_jeu == (3, 4))
+    # Tous les duels **sauf la finale** : les 4 du tour 1, les 2 demies, puis la petite finale.
+    ordre = [m.numero for m in tableau.matchs if m.tour < 3] + [petite_finale]
+    ctx.tableaux.tableaux[2] = _jouer(tableau, ordre)
+
+    bloc = ctx.service.pour_tournoi(ctx.tournoi_id).avancement.blocs[1]
+
+    # Le dernier braquet reste **ouvert** : la finale n'est pas tirée.
+    assert bloc.tours[-1].duels_joues == 0
+    assert bloc.tour_courant == 3
+    assert bloc.duels_joues == 6
+    assert bloc.duels_attendus == 7
+
+
+def test_la_finale_tranchee_ferme_le_dernier_braquet(ctx: Contexte) -> None:
+    """Le pendant du test précédent : c'est bien **la finale** qui clôt le dernier braquet."""
+    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
+    ctx.ajouter_phase(_tableau_ed(ctx.tournoi_id, 2, StatutPhase.EN_COURS), 2)
+    tableau = _tableau(8)
+    finale = next(m.numero for m in tableau.matchs if m.place_en_jeu == (1, 2))
+    ordre = [m.numero for m in tableau.matchs if m.tour < 3] + [finale]
+    ctx.tableaux.tableaux[2] = _jouer(tableau, ordre)
+
+    bloc = ctx.service.pour_tournoi(ctx.tournoi_id).avancement.blocs[1]
+
+    assert bloc.tours[-1].duels_joues == 1
+    assert bloc.tour_courant is None
+    assert bloc.duels_joues == bloc.duels_attendus == 7
 
 
 def test_un_exempt_n_est_pas_un_duel_joue() -> None:

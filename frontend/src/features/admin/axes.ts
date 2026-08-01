@@ -1,4 +1,4 @@
-﻿// Les trois axes de travail de l'admin et la lecture de l'adresse (E14US003, ADR-0058, ADR-0059).
+// Les trois axes de travail de l'admin et la lecture de l'adresse (E14US003, ADR-0058, ADR-0059).
 //
 // Séparé de `CoquilleAdmin.tsx` pour deux raisons : la règle ESLint `react-refresh/only-export-components`
 // (un `.tsx` n'exporte que des composants — même parti que `features/poste/url.ts`), et parce que ces

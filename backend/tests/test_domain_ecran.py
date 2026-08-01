@@ -45,7 +45,7 @@ def test_une_sequence_enchaine_les_vues_dans_l_ordre_donne() -> None:
     )
 
     assert [v.vue for v in sequence.vues] == [VueEcran.CLASSEMENT, VueEcran.SUIVI_DEROULE]
-    assert sequence.duree_totale_s == 75
+    assert [v.cadence_s for v in sequence.vues] == [30, 45]
 
 
 def test_une_meme_vue_peut_revenir_plusieurs_fois_dans_un_deroule() -> None:

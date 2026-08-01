@@ -1,4 +1,4 @@
-﻿# Résumé du projet — où on en est au 1er août 2026
+# Résumé du projet — où on en est au 1er août 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir

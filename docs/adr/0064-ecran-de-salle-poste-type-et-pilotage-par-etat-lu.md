@@ -61,6 +61,13 @@ Conséquence pratique, et c'est un gain : la reprise du déroulé **ne dépend d
 écran qui perd le réseau pendant la prise reprend quand même à l'heure — il connaît le début et la
 durée, il décompte en local (`domain.ecran.reste_secondes`).
 
+⚠️ **Deux conditions rendent cette phrase vraie**, et la première implémentation n'en honorait
+aucune (relevé en revue) : l'affichage renvoie **toujours** la séquence de repli — y compris sous
+une vue figée, où l'écran ne recevait rien vers quoi retomber —, et le front **cesse d'honorer**
+`vue_figee` dès que le reste atteint zéro. Sans elles, le décompte local n'était qu'un ornement de
+bandeau, et un écran isolé serait resté sur le podium en affichant « reprise dans 0 s ». C'est un
+rappel utile : une garantie annoncée dans un ADR n'existe que si un chemin de code la produit.
+
 ### 3. Déroulé **persisté**, prise de contrôle **en mémoire**
 
 Le déroulé de vues est un réglage de **préparation** (« paramétré à la préparation du tournoi ») :
@@ -89,10 +96,24 @@ C'est la contrainte du CA — *« le **même** schéma à braquets que l'atelier
 recalculerait les duels attendus pourrait diverger du schéma que l'organisateur a composé. C'est
 aussi ce qui permet **un seul composant de dessin pour trois surfaces** côté front.
 
-**Un exempt (bye) n'est pas un duel joué.** Dans un tableau incomplet, les exempts sont gagnés
-d'office dès la construction : les compter afficherait « premier tour terminé » avant que quiconque
-ait tiré. La projection ne les compte pas non plus (`_braquets` : *« 24 duellistes dans un tableau
-de 32 → 8 duels, 8 exemptés »*) ; les deux comptes doivent parler de la même chose.
+**Deux écarts à combler pour que « joués » et « attendus » parlent de la même chose** — et le second
+n'a été trouvé que par la relecture adversariale :
+
+1. **Un exempt (bye) n'est pas un duel joué.** Dans un tableau incomplet, les exempts sont gagnés
+   d'office dès la construction : les compter afficherait « premier tour terminé » avant que
+   quiconque ait tiré. La projection ne les compte pas non plus (`_braquets` : *« 24 duellistes dans
+   un tableau de 32 → 8 duels, 8 exemptés »*).
+2. **Un braquet décrit une branche, pas un rang de l'arbre.** `_braquets` ne suit que la branche des
+   **gagnants** : au dernier tour il annonce **un** duel, alors que le tableau réel en porte
+   **deux** — la finale (places 1-2) et la **petite finale** (places 3-4), que `PlacementEnCascade`
+   fait jouer aux perdants des demies. Les compter ensemble donnait « 2 joués sur 1 attendu »,
+   plafonné à 1 : dès que la petite finale tombait, la phase s'affichait **terminée pendant que la
+   finale se tirait**, sur l'écran projeté, au moment de la journée où il est le plus regardé. On
+   filtre donc la **réalité** sur la plage du braquet (`Match.plage`), et non le dessin — corriger
+   `_braquets` le ferait diverger de ce que l'organisateur a composé, ce que le §5 interdit.
+
+Ces deux écarts illustrent la même chose : superposer deux calculs oblige à prouver qu'ils comptent
+la même population, et cette preuve ne se lit pas dans les noms.
 
 ### 6. Un composant de dessin, trois surfaces — **sans variation de géométrie**
 
@@ -111,8 +132,13 @@ salle affiche le dessin de l'atelier, simplement plus gros.
 
 **Positives**
 
-- L'écran hérite gratuitement du jeton, du QR, du heartbeat et de la console de supervision — donc
-  du CA « un écran figé ne se plaint pas, seule la supervision le révèle ».
+- L'écran hérite gratuitement du **jeton**, du **mécanisme de rattachement par code**, du
+  **heartbeat** et de la **console de supervision** — donc du CA « un écran figé ne se plaint pas,
+  seule la supervision le révèle ». ⚠️ En revanche l'**étiquette QR imprimée** reste propre aux
+  cibles : `ServiceDocumentsSalle` exclut explicitement les écrans du PDF d'étiquettes, et leur
+  code s'affiche en clair dans l'écran d'administration. Le mécanisme d'URL `?poste=CODE` est
+  réutilisable, l'artefact imprimé n'est pas produit *(précision de revue — une première rédaction
+  disait « du QR », ce qui aurait laissé croire le PDF déjà livré)*.
 - Un seul flux de rattachement côté front : le même code mène à la saisie ou à l'affichage.
 - La reprise du déroulé est insensible au réseau et au redémarrage serveur.
 - Le suivi ne peut pas diverger du schéma composé : il ne le recalcule pas.

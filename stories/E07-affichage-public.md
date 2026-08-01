@@ -55,6 +55,13 @@ sans traverser le gymnase.
   > transforme en rappel très visible. Sans ce point d'ancrage, « jamais un état forcé qu'on oublie »
   > serait resté une intention de rédaction. Cf. [ADR-0064](../docs/adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md) §4.
   >
+  > ⚠️ **Report déclaré le 02/08/2026 : « imposer une **autre séquence** » n'est pas offert à l'UI.**
+  > Le domaine, le service et l'API le portent (et sont testés) ; la console de supervision, elle,
+  > n'offre que la **vue figée**. Ce n'est donc **pas** livré côté utilisateur, et c'est déclaré ici
+  > plutôt que laissé à deviner (remarque de revue : contrairement au catalogue de vues raccourci,
+  > ce report n'était consigné nulle part, et un relecteur ou une US suivante l'aurait cru livré).
+  > Le backend étant prêt, l'ajouter est un formulaire, pas une tranche.
+  >
   > ⚠️ **« En direct » n'est pas WebSocket** (rectification du 01/08/2026, portée par le code livré).
   > Le v0.1 écrivait « (WebSocket) ». C'est **infaisable en l'état et, surtout, insuffisant** : le hub
   > temps réel est mono-canal (aucun ciblage par destinataire), et surtout la **fin** d'une prise de

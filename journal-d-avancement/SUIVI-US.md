@@ -1,4 +1,4 @@
-﻿# Suivi des US — état d'avancement
+# Suivi des US — état d'avancement
 
 > **Ce fichier est le point de reprise.** Quand l'utilisateur dit « **reprend les US** », l'assistant
 > lit ce tableau : il y trouve ce qui est **fait** (mergé sur `main`), et **la prochaine US** à

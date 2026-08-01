@@ -12,8 +12,15 @@ from __future__ import annotations
 
 import pytest
 
-from domain.erreurs import CibleInvalide, CodePosteInvalide, LibelleEcranInvalide, PosteSansCible
-from domain.poste import Poste, TypePoste, normaliser_code
+from domain.ecran import SequenceVues
+from domain.erreurs import (
+    CibleInvalide,
+    CodePosteInvalide,
+    LibelleEcranInvalide,
+    PosteSansCible,
+    PosteSansEcran,
+)
+from domain.poste import LIBELLE_ECRAN_MAX, Poste, TypePoste, normaliser_code
 
 
 def test_creer_construit_un_poste_valide() -> None:
@@ -95,3 +102,31 @@ def test_cible_refuse_un_ecran() -> None:
 
     with pytest.raises(PosteSansCible):
         ecran.cible()
+
+
+def test_les_reglages_d_ecran_sont_refuses_sur_une_cible() -> None:
+    """Symétrie de `PosteSansCible`, revendiquée par `domain.erreurs` et jusqu'ici à moitié prouvée
+    (remarque de revue) : une cible n'a ni libellé, ni déroulé de vues."""
+    cible = Poste.creer(tournoi_id=1, cible_index=4, code="AB12CD")
+
+    with pytest.raises(PosteSansEcran):
+        cible.avec_deroule(SequenceVues.par_defaut())
+    with pytest.raises(PosteSansEcran):
+        cible.avec_libelle("Podium")
+    with pytest.raises(PosteSansEcran):
+        _ = cible.deroule_effectif
+
+
+def test_creer_ecran_refuse_un_libelle_trop_long() -> None:
+    """Borne **haute** ajoutée en revue : `code` et `cible_index` étaient bornés, pas le libellé.
+
+    Une chaîne sans limite traversait jusqu'à la console de supervision **et** au bandeau plein
+    écran d'un vidéoprojecteur — c'est un repère de place dans un gymnase, pas une phrase.
+    """
+    with pytest.raises(LibelleEcranInvalide):
+        Poste.creer_ecran(tournoi_id=1, libelle="x" * (LIBELLE_ECRAN_MAX + 1), code="EC01ZZ")
+
+    # La borne elle-même reste acceptée : on refuse au-delà, pas à partir de.
+    limite = Poste.creer_ecran(tournoi_id=1, libelle="x" * LIBELLE_ECRAN_MAX, code="EC01ZZ")
+    assert limite.libelle is not None
+    assert len(limite.libelle) == LIBELLE_ECRAN_MAX

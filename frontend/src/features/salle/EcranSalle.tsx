@@ -20,12 +20,12 @@
 import { useEffect, useState } from 'react'
 
 import { VueClassement } from '../competition/VueClassement'
-import { LIBELLE_VUE, type VueEcran, type VueProgrammee } from '../ecrans/api'
+import { LIBELLE_VUE, type VueEcran } from '../ecrans/api'
 import { useAffichageEcran } from '../ecrans/hooks'
-import { PlanCiblesPublic } from '../placement/PlanCiblesPublic'
+import { PlanCiblesDeSalle } from '../placement/PlanCiblesPublic'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { useSuiviDeroule } from '../suivi-deroule/hooks'
-import { formaterReste, resteDeLaPrise, vueCourante } from './rotation'
+import { formaterReste, resteDeLaPrise, vueCourante, type EtatRotation } from './rotation'
 
 /** Cadence du battement local. 1 s suffit : la rotation est au grain de la dizaine de secondes, et
  * seul le compte à rebours d'une prise de contrôle demande une précision à la seconde. */
@@ -50,17 +50,25 @@ export function EcranSalle({ libelle, tournoiId }: { libelle: string | null; tou
   // portant le même déroulé basculent alors ensemble, ce qui évite l'effet désagréable de deux
   // projections voisines montrant la même vue à un décalage de sept secondes.
   const rotation = vues === null ? null : vueCourante(vues, secondes)
-  const vue: VueEcran | null = vueFigee ?? rotation?.vue.vue ?? null
+
+  // ⚠️ **La prise de contrôle se termine ici, en local** — c'est la garantie qui justifie toute
+  // l'architecture « état lu » d'ADR-0064, et la première version ne la branchait pas : `reste`
+  // n'alimentait que le bandeau, si bien qu'un écran ayant perdu le réseau à 17 h 01 restait sur
+  // le podium indéfiniment, en affichant « reprise dans 0 s ». C'est mot pour mot le scénario que
+  // le CA veut éviter (« un écran figé sur le podium à 18 h »). Le serveur envoie désormais
+  // **aussi** le déroulé de repli, donc l'écran sait où retomber sans rien redemander.
+  const priseEchue = sousControle && reste !== null && reste <= 0
+  const vue: VueEcran | null = (priseEchue ? null : vueFigee) ?? rotation?.vue.vue ?? null
 
   return (
     <section className="salle" aria-live="off">
       <BandeauSalle
         libelle={libelle}
         vue={vue}
-        sousControle={sousControle}
+        sousControle={sousControle && !priseEchue}
         reste={reste}
         aJour={affichage.isError !== true}
-        rotation={rotation?.vue ?? null}
+        rotation={rotation}
       />
       <div className="salle__scene">
         {/* Tant que la première réponse n'est pas arrivée, on n'affiche **rien de faux** : un
@@ -76,15 +84,38 @@ export function EcranSalle({ libelle, tournoiId }: { libelle: string | null; tou
 }
 
 function VueDeSalle({ vue, tournoiId }: { vue: VueEcran; tournoiId: number }) {
-  const suivi = useSuiviDeroule(tournoiId)
-
+  // `admin={false}` : la vue publique du classement. `filtrable={false}` : **aucune interaction**
+  // sur un écran projeté — un `<select>` que personne ne peut actionner (correctif de revue).
   if (vue === 'classement') {
-    // `admin={false}` : la vue publique du classement, sans les colonnes de gestion.
-    return <VueClassement tournoiId={tournoiId} admin={false} />
+    return <VueClassement tournoiId={tournoiId} admin={false} filtrable={false} />
   }
   if (vue === 'plan_cibles') {
-    return <PlanCiblesPublic tournoiId={tournoiId} />
+    // Variante sans sélecteur, calée sur le départ **en cours** et non sur le premier.
+    return <PlanCiblesDeSalle tournoiId={tournoiId} />
   }
+  if (vue === 'suivi_deroule') {
+    return <SuiviDeSalle tournoiId={tournoiId} />
+  }
+  // Vue **inconnue** : un SPA resté ouvert pendant une montée de version peut recevoir une valeur
+  // que ce bundle ne connaît pas. On le **dit** plutôt que de retomber en silence sur une autre vue
+  // — un écran qui montre autre chose que ce qui a été demandé, sans le signaler, est indétectable
+  // depuis la salle (correctif de revue).
+  return (
+    <p className="salle__attente">
+      Cette vue n’est pas prise en charge par cet écran. Rechargez-le pour le mettre à jour.
+    </p>
+  )
+}
+
+/** Le suivi du déroulé, **dans son propre composant**.
+ *
+ * Séparé pour que `useSuiviDeroule` ne soit monté que quand cette vue est réellement affichée.
+ * Appelé en tête de `VueDeSalle`, il interrogeait l'endpoint le plus coûteux du serveur (une
+ * reconstruction de tous les tableaux) toutes les 10 s **pendant les deux tiers du cycle** où
+ * l'écran montre autre chose — soit, sur huit heures, des milliers de reconstructions inutiles,
+ * sur un endpoint public non authentifié (correctif de revue). */
+function SuiviDeSalle({ tournoiId }: { tournoiId: number }) {
+  const suivi = useSuiviDeroule(tournoiId)
   // Surface **salle** : taille ajustée (le dessin remplit l'écran, le `viewBox` agrandit texte
   // compris) et habillage « identité ». `DV-08` sera honoré quand E01US016 livrera les couleurs du
   // tournoi ; d'ici là l'habillage se distingue de l'outil par sa mise en page, pas par sa palette.
@@ -117,22 +148,26 @@ function BandeauSalle({
   sousControle: boolean
   reste: number | null
   aJour: boolean
-  rotation: VueProgrammee | null
+  rotation: EtatRotation | null
 }) {
   return (
     <header className="salle__bandeau">
       <span className="salle__lieu">{libelle ?? 'Écran de salle'}</span>
-      <span className="salle__vue">{vue === null ? '—' : LIBELLE_VUE[vue]}</span>
+      <span className="salle__vue">
+        {vue === null ? '—' : (LIBELLE_VUE[vue] ?? 'Vue inconnue')}
+      </span>
       {sousControle && (
         <span className="salle__controle" role="status">
           Vue imposée par l’organisation
           {reste === null ? '' : ` · reprise dans ${formaterReste(reste)}`}
         </span>
       )}
+      {/* `reste_s` de la **rotation**, pas la cadence de l'étape : la première version affichait
+          `cadence_s`, donc une **constante** (« Vue suivante dans 30 s », en permanence). La
+          fonction pure calculait bien le reste et son test le prouvait — c'est le consommateur qui
+          lisait le mauvais champ (correctif de revue). */}
       {!sousControle && rotation !== null && (
-        <span className="salle__cadence">
-          Vue suivante dans {formaterReste(rotation.cadence_s)}
-        </span>
+        <span className="salle__cadence">Vue suivante dans {formaterReste(rotation.reste_s)}</span>
       )}
       {!aJour && (
         // `DV-03` : la couleur ne porte pas le sens seule — le mot « hors ligne » est écrit.

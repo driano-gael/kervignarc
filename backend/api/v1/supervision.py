@@ -29,6 +29,7 @@ from starlette.concurrency import run_in_threadpool
 from api.dependances import exiger_admin, exiger_poste
 from application.ecrans import PriseActive
 from application.supervision import EtatSupervision, LigneSupervision, ServiceSupervision
+from domain.ecran import VueEcran
 from domain.poste import Poste
 
 router = APIRouter(prefix="/api/v1/tournois/{tournoi_id}", tags=["supervision"])
@@ -51,7 +52,7 @@ class PriseReponse(BaseModel):
     l'autre s'alarme.
     """
 
-    vue_figee: str | None
+    vue_figee: VueEcran | None
     reste_s: float | None
     exige_rappel: bool
 
@@ -59,7 +60,7 @@ class PriseReponse(BaseModel):
     def de_prise(prise: PriseActive) -> PriseReponse:
         """Traduit une prise du service en DTO de réponse."""
         return PriseReponse(
-            vue_figee=None if prise.vue_figee is None else prise.vue_figee.value,
+            vue_figee=prise.vue_figee,
             reste_s=prise.reste_s,
             exige_rappel=prise.exige_rappel,
         )

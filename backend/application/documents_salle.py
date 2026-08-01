@@ -87,8 +87,16 @@ class ServiceDocumentsSalle:
         que les autres gardes 404).
         """
         self._verifier_tournoi(tournoi_id)
+        # `par_tournoi_et_type` et non `par_tournoi` : le port réserve ce dernier à qui veut
+        # vraiment l'ensemble (la console de supervision). Sans effet observable ici — un écran a
+        # `cible_index` nul, donc ne matche jamais — mais c'est le contrat que cette US vient
+        # d'écrire, et le laisser violé dans le même diff est le meilleur moyen qu'il ne tienne pas.
         poste = next(
-            (p for p in self._postes.par_tournoi(tournoi_id) if p.cible_index == cible_index),
+            (
+                p
+                for p in self._postes.par_tournoi_et_type(tournoi_id, TypePoste.CIBLE)
+                if p.cible_index == cible_index
+            ),
             None,
         )
         if poste is None:

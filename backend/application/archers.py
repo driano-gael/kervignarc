@@ -37,7 +37,7 @@ from domain.ports import (
     SerieRepository,
     TournoiRepository,
 )
-from domain.poste import Poste
+from domain.poste import Poste, TypePoste
 from domain.score import Score
 from domain.tournoi import TournoiId
 
@@ -309,10 +309,26 @@ class ServiceArchers:
         « SA cible » = même **tournoi** *et* même **index de cible**. Le tournoi compte : plusieurs
         tournois tournent en concurrence (intérieur + extérieur) et les numéros de cible se
         répètent, donc comparer le seul `cible_index` laisserait le poste d'un tournoi voisin saisir
-        ici. Un archer non placé (`cible is None`) n'est sur aucune cible : `None != cible_index` le
-        refuse naturellement.
+        ici.
+
+        ⚠️ **Les deux `None` sont refusés explicitement** (correctif de revue E07US004). La version
+        d'origine s'en remettait à la comparaison : « un archer non placé n'est sur aucune cible,
+        `None != cible_index` le refuse naturellement ». Ce raisonnement ne tenait que tant que
+        `Poste.cible_index` était **garanti non nul** — E07US004 l'a rendu facultatif (écran de
+        salle), et `None != None` vaut **faux** : la garde s'ouvrait pour un jeton d'écran face à
+        n'importe quel archer non placé, c'est-à-dire tout l'effectif avant le placement. mypy n'a
+        rien vu, parce que c'est une **comparaison** et non une affectation.
+
+        Leçon générale, plus utile que le correctif : une garde qui repose sur « ces deux valeurs ne
+        peuvent pas être nulles en même temps » est une garde qu'un changement **lointain** peut
+        désarmer sans rien casser de visible. On énonce donc les conditions, on ne les déduit pas.
         """
-        if archer.tournoi_id != poste.tournoi_id or archer.cible != poste.cible_index:
+        if (
+            poste.type is not TypePoste.CIBLE
+            or archer.tournoi_id != poste.tournoi_id
+            or archer.cible is None
+            or archer.cible != poste.cible_index
+        ):
             raise SaisieHorsCible(
                 "Ce poste ne peut saisir que pour les archers de sa propre cible."
             )

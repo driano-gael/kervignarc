@@ -37,8 +37,16 @@ le tour, et l'organisateur doit lire *où* il a suspendu.
 class AvancementTour:
     """Un braquet en train de se remplir : combien de duels y sont **joués** sur ceux **attendus**.
 
-    « Joué » signifie *tranché* — un vainqueur est désigné —, ce qui inclut les exempts (byes)
-    résolus à la construction du tableau : ils occupent bien une place du braquet.
+    « Joué » signifie **disputé et tranché** — un vainqueur est désigné à l'issue d'un tir. Les
+    **exempts (byes)**, gagnés d'office dès la construction du tableau, **ne sont pas comptés** :
+    ils occupent une place du braquet, mais ce ne sont pas des duels, et la projection ne les compte
+    pas davantage (`domain.deroule._braquets` : « 24 duellistes dans un tableau de 32 → 8 duels,
+    8 exemptés »). Les deux comptes doivent parler de la même chose.
+
+    ⚠️ C'est **le** piège de ce module, et il est ici plutôt qu'au service parce que c'est ici qu'on
+    vient lire la définition de « joué ». Les compter afficherait « premier tour terminé » avant que
+    quiconque ait tiré. *(La première version de cette docstring disait l'inverse du code livré —
+    trois relecteurs l'ont relevé.)*
     """
 
     tour: int
@@ -49,11 +57,6 @@ class AvancementTour:
     def est_termine(self) -> bool:
         """Tous les duels attendus de ce tour sont tranchés."""
         return self.duels_joues >= self.duels_attendus
-
-    @property
-    def est_entame(self) -> bool:
-        """Au moins un duel de ce tour est tranché — le braquet a commencé à se remplir."""
-        return self.duels_joues > 0
 
 
 @dataclass(frozen=True)
@@ -66,15 +69,6 @@ class AvancementBloc:
     tour_courant: int | None
     duels_joues: int
     duels_attendus: int
-
-    @property
-    def est_entame(self) -> bool:
-        """Vrai dès qu'un duel y est tranché — indépendant du statut déclaré.
-
-        Utile à l'écran : une phase démarrée mais dont rien n'est encore joué se dessine autrement
-        qu'une phase où les duels tombent.
-        """
-        return self.duels_joues > 0
 
 
 def avancement_bloc(

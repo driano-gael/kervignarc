@@ -26,11 +26,12 @@ Lecture seule et synchrone hors boucle événementielle (règle 7).
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
 from application.erreurs import ApplicationError, TournoiIntrouvable
-from domain.deroule import ProjectionDeroule, projeter
+from domain.deroule import ProjectionDeroule, TourBraquet, projeter
 from domain.erreurs import DomainError
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.ports import (
@@ -40,7 +41,7 @@ from domain.ports import (
     TournoiRepository,
 )
 from domain.suivi_deroule import AvancementDeroule, avancement_bloc
-from domain.tableau import Tableau
+from domain.tableau import Match, Tableau
 from domain.tournoi import TournoiId
 
 _TYPES_EN_TABLEAU = frozenset({TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMENT})
@@ -81,6 +82,23 @@ class LecteurTableau(Protocol):
         décrit que ce dont il a besoin.
         """
         ...
+
+
+def _dans_la_branche(match: Match, branche: tuple[int, int] | None) -> bool:
+    """Ce match appartient-il à la branche que décrit le braquet de son tour ?
+
+    `Match.plage` est la tranche de rangs que ce match départage — exactement ce que le braquet
+    nomme `[plage_gagnants.debut … plage_perdants.fin]`. L'égalité suffit donc : au dernier tour, la
+    finale porte `[1..2]` et la petite finale `[3..4]`, deux branches distinctes à la même
+    profondeur.
+
+    **Compte par défaut** quand l'information manque (braquet absent, `Match.plage` non renseignée —
+    le cas des `Match` bâtis à la main dans les tests) : mieux vaut un compte plafonné, comme avant,
+    qu'un compteur qui tomberait à zéro sur une structure qu'on ne sait pas lire.
+    """
+    if branche is None or match.plage is None:
+        return True
+    return (match.plage.debut, match.plage.fin) == branche
 
 
 class CompteurEngagesRepository:
@@ -148,6 +166,12 @@ class ServiceSuiviDeroule:
 
         Un tournoi **sans phase** rend un suivi vide plutôt qu'une erreur : avant qu'un format soit
         appliqué, l'écran doit afficher « rien à suivre », pas une page cassée.
+
+        # DETTE-030 : tout est **recalculé à chaque appel** — le compte des engagés, et surtout la
+        # reconstruction de chaque phase en tableau (qui rejoue le classement complet du tournoi).
+        # Endpoint public, pollé toutes les 10 s par deux surfaces. Assumé au contexte mono-club et
+        # local ; le remède est borné (mémoïsation par version, invalidée par donnees_modifiees),
+        # mais aucune mesure ne le réclame aujourd'hui. Cf. docs/dette.md.
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
@@ -160,7 +184,7 @@ class ServiceSuiviDeroule:
                 ordre=bloc.ordre,
                 statut=par_ordre[bloc.ordre].statut,
                 tours=bloc.tours,
-                joues_par_tour=self._duels_tranches(tournoi_id, par_ordre[bloc.ordre]),
+                joues_par_tour=self._duels_tranches(tournoi_id, par_ordre[bloc.ordre], bloc.tours),
             )
             for bloc in projection.blocs
         )
@@ -170,14 +194,31 @@ class ServiceSuiviDeroule:
             avancement=AvancementDeroule(blocs=blocs),
         )
 
-    def _duels_tranches(self, tournoi_id: TournoiId, phase: Phase) -> dict[int, int]:
+    def _duels_tranches(
+        self, tournoi_id: TournoiId, phase: Phase, braquets: Sequence[TourBraquet]
+    ) -> dict[int, int]:
         """Les duels **réellement disputés et tranchés**, par numéro de tour.
 
-        Deux filtres, et le second est le piège du module (cf. l'en-tête) :
+        Trois filtres. Les deux premiers sont évidents une fois écrits ; le troisième est celui que
+        la revue a dû trouver, et c'est le seul qui produisait un affichage **faux devant le
+        public** :
 
         - `vainqueur is not None` : le duel est allé au bout ;
         - `not est_bye` : un exempt occupe une place du braquet mais **n'est pas un duel** — la
-          projection ne le compte pas davantage.
+          projection ne le compte pas davantage ;
+        - **même branche que le braquet** : un braquet décrit *une* branche à une profondeur donnée
+          (`[plage_gagnants.debut … plage_perdants.fin]`), pas tous les matchs de ce rang. Au
+          dernier tour d'une élimination directe, il y en a **deux** : la finale (places 1-2) et la
+          **petite finale** (places 3-4), que `PlacementEnCascade` fait jouer aux perdants des
+          demies. Les compter ensemble donnait « 2 joués sur 1 attendu », plafonné à 1 : dès que la
+          petite finale tombait — souvent avant la finale, ou en parallèle — la phase s'affichait
+          **terminée pendant que la finale se tirait**, sur l'écran projeté, au moment de la journée
+          où il est le plus regardé.
+
+        On filtre donc la **réalité** plutôt que de corriger la projection : le CA impose « le
+        **même** schéma » qu'à l'atelier, et `_braquets` (E01US024) ne suit délibérément que la
+        branche des gagnants. Corriger le dessin ici, c'est le faire diverger de ce que
+        l'organisateur a composé.
 
         Rend un dictionnaire vide dès que le tableau n'est pas lisible : phase non persistée, type
         sans arbre, ou reconstruction en échec (voir la note de robustesse jour J).
@@ -188,8 +229,14 @@ class ServiceSuiviDeroule:
             tableau, _ = self._tableaux.reconstruire(tournoi_id, phase.id)
         except (ApplicationError, DomainError, KeyError):
             return {}
+        branches = {
+            braquet.tour: (braquet.plage_gagnants[0], braquet.plage_perdants[1])
+            for braquet in braquets
+        }
         return Counter(
             match.tour
             for match in tableau.matchs
-            if match.vainqueur is not None and not match.est_bye
+            if match.vainqueur is not None
+            and not match.est_bye
+            and _dans_la_branche(match, branches.get(match.tour))
         )

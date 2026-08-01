@@ -142,9 +142,11 @@ def _vers_scoreur(ligne: ScoreurORM) -> Scoreur:
 def _vers_poste(ligne: PosteORM) -> Poste:
     """Traduit une ligne ORM en agrégat de domaine `Poste` (E04US001, élargi E07US004).
 
-    `type` est relu par le constructeur d'énumération : une valeur inattendue lève `ValueError`,
-    enveloppée en `InfrastructureError` par l'appelant — jamais un poste au type silencieusement
-    faux. Les lignes antérieures à la migration 0038 valent « cible » par `server_default`.
+    `type` est relu par le constructeur d'énumération, et un déroulé illisible remonte du domaine :
+    dans les deux cas l'appelant enveloppe en `InfrastructureError` (cf. `_relire_poste`) — jamais
+    un poste au type silencieusement faux, jamais un 422 métier sur un `GET` alors que c'est la base
+    qui est en faute. Les lignes antérieures à la migration 0038 valent « cible » par
+    `server_default`.
     """
     return Poste(
         tournoi_id=ligne.tournoi_id,
@@ -157,11 +159,26 @@ def _vers_poste(ligne: PosteORM) -> Poste:
     )
 
 
+def _relire_poste(ligne: PosteORM) -> Poste:
+    """`_vers_poste`, avec l'enveloppement d'erreur que le port promet.
+
+    Une ligne corrompue — `type` inconnu, `deroule_json` illisible, cadence hors bornes — est un
+    **défaut d'infrastructure**, pas une violation de règle métier : la laisser remonter telle
+    quelle rendrait un `422 cadence_ecran_invalide` sur un simple `GET /supervision` (le client
+    croirait sa requête fautive) ou un 500 nu sur un JSON cassé. *(Les docstrings promettaient cet
+    enveloppement sans que personne ne l'écrive — relevé par deux axes de revue.)*
+    """
+    try:
+        return _vers_poste(ligne)
+    except (ValueError, DomainError) as exc:
+        raise InfrastructureError(f"Poste {ligne.id} illisible en base.") from exc
+
+
 def _vers_sequence_vues(brut: str | None) -> SequenceVues | None:
     """Relit le déroulé d'un écran depuis sa forme JSON, ou `None` s'il n'a rien réglé.
 
     Passe par les constructeurs du domaine pour qu'une cadence hors bornes ou une séquence vide
-    remonte en `DomainError` — enveloppée par l'appelant — plutôt que de produire un écran qui
+    remonte en `DomainError` — enveloppée par `_relire_poste` — plutôt que de produire un écran qui
     clignoterait. `None` n'est pas une anomalie : c'est un écran qui joue le déroulé par défaut.
     """
     if brut is None:
@@ -1457,7 +1474,7 @@ class PosteRepositorySQL:
         try:
             with self._session_factory() as session:
                 ligne = session.get(PosteORM, poste_id)
-                return None if ligne is None else _vers_poste(ligne)
+                return None if ligne is None else _relire_poste(ligne)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture du poste.") from exc
 
@@ -1475,7 +1492,7 @@ class PosteRepositorySQL:
                     .where(PosteORM.tournoi_id == tournoi_id)
                     .order_by(nulls_last(PosteORM.cible_index), PosteORM.id)
                 ).scalars()
-                return [_vers_poste(ligne) for ligne in lignes]
+                return [_relire_poste(ligne) for ligne in lignes]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des postes du tournoi.") from exc
 
@@ -1491,7 +1508,7 @@ class PosteRepositorySQL:
                     )
                     .order_by(nulls_last(PosteORM.cible_index), PosteORM.id)
                 ).scalars()
-                return [_vers_poste(ligne) for ligne in lignes]
+                return [_relire_poste(ligne) for ligne in lignes]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des postes du tournoi.") from exc
 
@@ -1507,7 +1524,7 @@ class PosteRepositorySQL:
                 ligne = session.execute(
                     select(PosteORM).where(PosteORM.code == normaliser_code_poste(code))
                 ).scalar_one_or_none()
-                return None if ligne is None else _vers_poste(ligne)
+                return None if ligne is None else _relire_poste(ligne)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture du poste par code.") from exc
 

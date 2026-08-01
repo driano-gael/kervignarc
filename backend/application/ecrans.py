@@ -32,13 +32,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from application.erreurs import (
-    NonAuthentifie,
-    PosteIntrouvable,
-    PosteNEstPasUnEcran,
-    TournoiIntrouvable,
-)
-from application.postes import StoreSessionsPoste
+from application.erreurs import NonAuthentifie, PosteIntrouvable, TournoiIntrouvable
+from application.postes import StoreSessionsPoste, exiger_ecran
 from domain.ecran import Consigne, PriseDeControle, SequenceVues, VueEcran, reste_secondes
 from domain.ports import Horloge, PosteRepository, RegistreConsignes, TournoiRepository
 from domain.poste import Poste, PosteId, TypePoste
@@ -47,12 +42,21 @@ from domain.tournoi import TournoiId
 
 @dataclass(frozen=True)
 class AffichageEcran:
-    """Ce qu'un écran doit montrer à cet instant.
+    """Ce qu'un écran doit montrer à cet instant — **et sur quoi retomber**.
 
-    **Exactement l'un** de `sequence` (il tourne) ou `vue_figee` (il est figé) est renseigné —
-    l'écran n'a donc jamais à arbitrer. `reste_s` alimente son propre compte à rebours ; `None`
-    signifie soit « pas sous contrôle », soit « sous contrôle sans échéance », que `sous_controle`
-    permet de distinguer.
+    `vue_figee` renseigné ⇒ l'écran est figé dessus ; sinon il joue `sequence`. Il n'arbitre donc
+    jamais : la présence de `vue_figee` décide.
+
+    ⚠️ **`sequence` est toujours renseigné, même sous contrôle** (correctif de revue). La version
+    d'origine renvoyait `sequence=None` dès qu'une vue était figée — l'écran ne recevait alors
+    jamais le déroulé sur lequel retomber, et la reprise « insensible au réseau » que promettent
+    ADR-0064, la story et la recette **n'était pas tenue** : à l'échéance, l'écran restait figé
+    jusqu'au prochain aller-retour serveur. Sous contrôle, `sequence` porte donc soit la séquence
+    **imposée** par l'admin, soit — pour une vue figée — le déroulé **propre** de l'écran, celui
+    qu'il reprendra tout seul quand `reste_s` atteindra zéro.
+
+    `reste_s` alimente son compte à rebours ; `None` signifie soit « pas sous contrôle », soit
+    « sous contrôle sans échéance », que `sous_controle` permet de distinguer.
     """
 
     sequence: SequenceVues | None
@@ -108,7 +112,7 @@ class ServiceEcrans:
         poste = self._postes.par_id(poste_id)
         if poste is None:
             raise NonAuthentifie("Session de poste requise.")
-        ecran = _exiger_ecran(poste)
+        ecran = exiger_ecran(poste)
         prise = self._prise_en_vigueur(poste_id)
         if prise is None:
             return AffichageEcran(
@@ -118,7 +122,9 @@ class ServiceEcrans:
                 reste_s=None,
             )
         return AffichageEcran(
-            sequence=prise.consigne.sequence,
+            # Séquence imposée s'il y en a une, sinon le déroulé **propre** de l'écran : c'est le
+            # repli local sur lequel il retombera à l'échéance, sans rien redemander au serveur.
+            sequence=prise.consigne.sequence or ecran.deroule_effectif,
             vue_figee=prise.consigne.vue,
             sous_controle=True,
             reste_s=self._reste(prise),
@@ -190,10 +196,16 @@ class ServiceEcrans:
         return prise
 
     def _retirer_si_echue(self, poste_id: PosteId, prise: PriseDeControle) -> bool:
-        """Vrai si la prise était échue — auquel cas elle vient d'être retirée du registre."""
+        """Vrai si la prise était échue — auquel cas elle vient d'être retirée du registre.
+
+        Le retrait est **conditionnel** (`retirer_si`) : c'est un effet de bord de la lecture, pas
+        un geste de l'admin. Un `retirer` inconditionnel effacerait la consigne que l'organisateur
+        vient de reposer entre notre lecture et notre écriture — fenêtre étroite, mais qui s'ouvre
+        exactement au moment « la prise expire, l'organisateur la reprend » (correctif de revue).
+        """
         if not prise.consigne.expiree(secondes_ecoulees=self._ecoulees(prise)):
             return False
-        self._consignes.retirer(poste_id)
+        self._consignes.retirer_si(poste_id, prise)
         return True
 
     def _ecoulees(self, prise: PriseDeControle) -> float:
@@ -215,16 +227,4 @@ class ServiceEcrans:
         poste = self._postes.par_id(poste_id)
         if poste is None or poste.tournoi_id != tournoi_id:
             raise PosteIntrouvable(f"Aucun poste d'identifiant {poste_id} dans ce tournoi.")
-        return _exiger_ecran(poste)
-
-
-def _exiger_ecran(poste: Poste) -> Poste:
-    """Refuse un poste de cible ; renvoie l'écran sinon.
-
-    Garde partagée par le service des écrans et `ServicePostes` (réglage du déroulé) : la console
-    affiche cibles et écrans **côte à côte**, donc l'identifiant d'une tablette est à portée de clic
-    de celui d'un écran. La confusion n'est pas théorique.
-    """
-    if poste.type is not TypePoste.ECRAN:
-        raise PosteNEstPasUnEcran(f"Le poste {poste.id} n'est pas un écran de salle.")
-    return poste
+        return exiger_ecran(poste)
