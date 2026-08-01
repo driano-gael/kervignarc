@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 1er août 2026
+﻿# Résumé du projet — où on en est au 1er août 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -316,6 +316,17 @@ Ce qui transforme la saisie brute en tournoi qu'on suit en direct, dernier bloc 
   position, pour chaque créneau), sans quitter sa page. C'est le **4ᵉ canal** pour répondre à « je tire
   où ? » (après les tablettes, les téléphones du public et « ma journée »). Détail dans
   [`2026-07-22-14h39-rechercher-un-archer.md`](2026-07-22-14h39-rechercher-un-archer.md).
+- **Les écrans de salle** : un ou plusieurs écrans branchés dans le gymnase, rattachés **comme une
+  tablette de cible** (même code, même geste), qui font défiler tout seuls classement, plan de cibles
+  et suivi du déroulé — chacun avec son propre défilé. Ils apparaissent dans la console de
+  supervision (*un écran figé ne se plaint pas non plus*), et l'organisateur peut leur **imposer une
+  vue à distance** avec une durée, après quoi l'écran **reprend son défilé sans que personne y
+  retourne**. Détail dans
+  [`2026-08-02-00h29-ecran-de-salle-et-suivi-du-deroule.md`](2026-08-02-00h29-ecran-de-salle-et-suivi-du-deroule.md).
+- **Le plan du tournoi qui se remplit** : le schéma en cases et flèches composé à l'atelier devient
+  un **suivi** — phase terminée / en cours / à venir, tour en cours, duels joués sur duels attendus.
+  Le **même dessin** à trois endroits (atelier, poste de l'organisateur, écran projeté) : on ne
+  réapprend pas à le lire en changeant d'écran.
 
 *Reste à venir sur ce jalon : les **affectations du prochain tour** (phases finales). Les **duels**
 eux-mêmes (1/8, 1/4…) apparaissent « à venir » dans la complétude — et la « prochaine affectation » de
@@ -413,7 +424,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **87 US livrées** sur `main` (mergées, revues, CI verte) à la date du 31/07/2026. **`SUIVI-US.md`
+- **89 US livrées** sur `main` (mergées, revues, CI verte) à la date du 02/08/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -449,16 +460,17 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   disqualification** (E04US015 — qualif *et* duels), le **cycle de vie d'un départ** (E12US008), le
   **feu vert + lancement d'un tour** (E12US002), le **remboursement d'une inscription payée
   annulée** (E08US005) et l'**affichage de la prochaine cible après validation** (E04US018).
-- Dernière US livrée : **E04US018** (afficher la prochaine cible après validation) — US **à surface
-  visible**, le **premier des quatre écrans récepteurs** du lancement émis par E12US002. La tablette
-  de la cible bascule en panneau **« Où tire-t-on ensuite ? »** quand ses séries sont validées, et
-  l'écran scoreur fait de même dès un duel tranché : pour chaque archer, sa **cible et sa place** en
-  gros, le tour et l'adversaire en dessous — ou son **rang** s'il est sorti. L'affichage est
-  **instantané** parce que les cibles sont attribuées aux **matchs**, pas aux archers : la destination
-  existe avant le duel. Ce qui n'existe pas encore est **nommé** plutôt que masqué (« cible attribuée
-  au lancement du tour », « en attente du duel n°2 », « rang publié en fin de phase ») — aucune cible
-  ni aucun rang n'est inventé. *(Livré juste avant : **E08US005**, le remboursement d'une inscription
-  payée annulée ; puis **E12US002**, le feu vert + lancement d'un tour.)*
+- Dernière US livrée : **E07US004** (écran de salle & suivi du déroulé) — US **à surface visible**,
+  qui referme le chantier du moteur de phases par sa sortie visuelle. Un **écran branché dans le
+  gymnase** se rattache exactement comme une tablette de cible (même code, même geste) puis fait
+  défiler tout seul classement, plan de cibles et suivi ; l'organisateur peut lui **imposer une vue à
+  distance** (« le classement 10 minutes »), après quoi l'écran **reprend son défilé sans que
+  personne y retourne** — et une vue imposée sans échéance reste signalée en console tant qu'on n'a
+  pas rendu la main. Surtout, le **schéma en cases et flèches composé à l'atelier se remplit** : phase
+  terminée / en cours / à venir, tour en cours, duels joués sur duels attendus. C'est **le même
+  dessin** aux trois endroits (atelier, poste de l'organisateur, écran projeté) : on ne réapprend pas
+  à le lire en changeant d'écran. *(Livré juste avant : **E01US024**, composer, diagnostiquer et
+  simuler un déroulé ; puis **E05US015**, le catalogue de types de phase.)*
 - Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E07US008** (vue publique des affectations
   du prochain tour — le **deuxième canal** de routage, sur le téléphone de l'archer). Le fil
   **équipes** est débloqué (E13US002+).
