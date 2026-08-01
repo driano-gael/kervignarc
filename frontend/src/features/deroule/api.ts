@@ -7,8 +7,7 @@
 // propre à cette US, c'est la **projection** — ce que le format produit, pas ce qu'il est.
 
 import { fetchJson } from '../../shared/api/client'
-import type { NatureSource, TypePhase } from '../phases/api'
-import type { IssueTour } from '../phases/api'
+import type { IssueTour, NatureSource, TypePhase } from '../../shared/phases/catalogue'
 
 // Ce qu'une anomalie empêche (ADR-0063 §3). `bloquante` : le défaut est vrai quel que soit
 // l'effectif, le format ne peut pas servir un tournoi. `avertissement` : il n'est vrai qu'à
@@ -88,9 +87,18 @@ export interface PhaseSimulee {
   effectif: number
   effectif_projete: number | null
   ecart: boolean
+  // `false` quand le moteur ne sait pas dérouler ce type (poules, suisse, colline…) : ses chiffres
+  // ne sont alors pas des constats, et l'écran doit le dire plutôt qu'afficher « — » comme un fait.
+  joue: boolean
   tours: number
+  tours_projetes: number | null
   duels: number
+  duels_projetes: number | null
 }
+
+// Plafond d'effectif simulable — miroir d'`application/simulation_format.EFFECTIF_MAX`. Le serveur
+// reste l'autorité (400) ; le front s'en sert seulement pour ne pas offrir un bouton voué au refus.
+export const EFFECTIF_MAX = 200
 
 export interface SimulationFormat {
   format_id: number

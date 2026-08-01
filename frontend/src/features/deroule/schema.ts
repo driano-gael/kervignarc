@@ -21,6 +21,12 @@ export const MARGE = 16
 export const COULOIR_SAUT = 56
 
 export interface Noeud {
+  /** Position dans la séquence triée — clé de rendu **sûre**, contrairement à `ordre`.
+   *
+   * Depuis E01US024, un brouillon peut porter deux étapes de même `ordre` (c'est une anomalie
+   * bloquante, mais un état **enregistrable**). Deux nœuds partageraient alors la même clé React et
+   * le même bloc à l'affichage. La position, elle, est unique par construction. */
+  index: number
   ordre: number
   x: number
   y: number
@@ -67,6 +73,7 @@ export function disposer(blocs: readonly Bloc[]): Plan {
   const noeuds: Noeud[] = ordonnes.map((bloc, index) => {
     colonnes.set(bloc.ordre, index)
     return {
+      index,
       ordre: bloc.ordre,
       x: MARGE + index * (LARGEUR_BLOC + ESPACE_COLONNE),
       y: MARGE,

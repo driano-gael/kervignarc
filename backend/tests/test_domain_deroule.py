@@ -317,3 +317,66 @@ def test_les_gagnants_dun_tour_se_comptent_depuis_la_taille_du_tableau() -> None
 
     assert projection.blocs[2].effectif == 8
     assert projection.blocs[3].effectif == 16
+
+
+# --- Trous fermés en revue (E01US024) -----------------------------------------------------------
+
+
+def test_une_phase_que_personne_natteint_bloque_quel_que_soit_leffectif() -> None:
+    """Un bloc sans flèche entrante est un cul-de-sac : le défaut ne dépend d'aucun effectif.
+
+    Avant correction, le schéma dessinait un rectangle isolé « effectif inconnu / suite inconnue »
+    sous un verdict « tient debout » — le contraire de ce que le CA appelle « un trou visible ».
+    """
+    etapes = [_qualification(), _tableau(2, ())]
+
+    projection = projeter(etapes, effectif=120)
+
+    assert "phase_sans_source" in _codes(projection.anomalies)
+    assert not projection.est_applicable
+
+
+def test_la_premiere_phase_na_pas_besoin_de_source() -> None:
+    """Elle se peuple des inscrits — son absence de prélèvement est le cas normal."""
+    assert projeter([_qualification()], effectif=120).est_applicable
+
+
+def test_deux_phases_avales_qui_se_disputent_les_memes_rangs_sont_signalees() -> None:
+    """« Rangs 1 à 32 » puis « rangs 32 à 64 » — l'erreur de borne d'un rang.
+
+    `_anomalies_recoupements` compare les prélèvements **d'une même phase cible** : deux phases
+    avales différentes puisant dans la même source ne se croisaient jamais, et `max(0, …)` écrasait
+    le négatif de `sans_suite`. Le format passait au vert.
+    """
+    etapes = [
+        _qualification(),
+        _tableau(2, (SourcePhase.par_rangs(1, 1, 32),)),
+        _tableau(3, (SourcePhase.par_rangs(1, 32, 64),)),
+    ]
+
+    projection = projeter(etapes, effectif=64)
+
+    assert "sources_qui_se_recoupent" in _codes(projection.anomalies)
+    assert projection.blocs[0].sans_suite == -1
+
+
+def test_un_effectif_declare_que_les_prelevements_ne_remplissent_pas_est_signale() -> None:
+    """Une flèche « 120 » entrant dans un bloc « 16 archers » ne doit pas passer au vert.
+
+    Le contrôle de somme du domaine abandonne l'égalité dès qu'un prélèvement est relatif ; la
+    projection, elle, sait le résoudre — conjoncturel, donc avertissement.
+    """
+    etapes = [
+        _qualification(),
+        ModelePhase(
+            ordre=2,
+            type=TypePhase.ELIMINATION_DIRECTE,
+            sources=(SourcePhase.le_reste(1),),
+            effectif=16,
+        ),
+    ]
+
+    projection = projeter(etapes, effectif=120)
+
+    assert "effectif_incompatible" in _codes(projection.blocs[1].anomalies)
+    assert projection.est_applicable

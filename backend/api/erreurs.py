@@ -35,6 +35,7 @@ from application.erreurs import (
     EffectifSimulationInvalide,
     ForfaitIntrouvable,
     FormatIntrouvable,
+    FormatNonSimulable,
     GabaritDuTournoiAbsent,
     GabaritIntrouvable,
     IdentifiantsInvalides,
@@ -75,10 +76,11 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         exc, IdentifiantsInvalides | NonAuthentifie | CodeScoreurInconnu | CodePosteInconnu
     ):
         status = 401
-    elif isinstance(exc, EffectifSimulationInvalide):
+    elif isinstance(exc, EffectifSimulationInvalide | FormatNonSimulable):
         # 400 : la requête est impossible **en soi** (borne de service), pas en conflit avec un
         # état. Le 409 par défaut promettrait qu'un changement d'état la rendrait acceptable, ce qui
-        # serait faux — 300 archers ne deviendront jamais simulables (E01US024).
+        # serait faux — 300 archers ne deviendront jamais simulables, et un format sans
+        # qualification ne le devient pas davantage en changeant d'état (E01US024).
         status = 400
     elif isinstance(exc, SaisieHorsCible | ScoreurHorsTournoi):
         # 403 : l'identité est établie (jeton de poste/scoreur valide) mais elle n'autorise pas

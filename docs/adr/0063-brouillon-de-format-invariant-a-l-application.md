@@ -56,9 +56,25 @@ l'application** (`FormatTournoi.appliquer`).
 
 **Le garde-fou n'est pas désarmé : il a changé de porte.** `appliquer` lève la première anomalie
 bloquante *telle quelle* — même classe d'exception, même `code`, même message d'organisateur,
-donc même 422 à la frontière API. Et même si l'on court-circuitait `appliquer`, `pour_tournoi`
-construit une `Phase`, dont le `__post_init__` valide toujours : aucun modèle incohérent ne peut
-atteindre un tournoi réel.
+donc même 422 à la frontière API.
+
+⚠️ **Ce que `pour_tournoi` rattrape, et ce qu'il ne rattrape pas.** Une première rédaction de cet
+ADR affirmait qu'« même en court-circuitant `appliquer`, `pour_tournoi` construit une `Phase` dont
+le `__post_init__` valide : aucun modèle incohérent ne peut atteindre un tournoi réel ». C'est vrai
+pour **la moitié** des invariants seulement. `Phase.__post_init__` n'appelle que
+`verifier_coherence_etape` — les invariants **internes**. Les invariants **collectifs** (ordres
+contigus, source postérieure ou introuvable, recoupements, somme des prélèvements) ne sont tenus
+que par `SequencePhases.__post_init__`, que `appliquer` ne construit **pas** : il rend un
+`tuple[Phase, ...]`. Il n'y a pas de trou aujourd'hui — `pour_tournoi` n'a qu'un seul appelant,
+`appliquer` lui-même — mais la phrase invitait à en ouvrir un. **Règle à tenir : tout nouvel
+appelant de `pour_tournoi` doit passer par `appliquer`.**
+
+**Corollaire découvert en revue, et qui vaut d'être écrit : relâcher une validation ne suffit pas,
+il faut la relâcher partout où l'ancienne hypothèse était encodée.** Trois couches la portaient
+encore, et chacune a produit un défaut réel : l'adapter SQL **refusait d'écrire** l'état devenu
+licite (500 sur toute la bibliothèque), `ServiceFormats.appliquer` **détruisait avant de valider**
+(le tournoi perdait ses phases), et le formulaire front **ne savait pas produire** l'état que l'US
+existe pour rendre possible. Aucun n'était visible depuis le domaine.
 
 **Conséquence à assumer noir sur blanc : la base peut contenir des formats incohérents.** C'est le
 prix, et il est payé volontairement. Ce qui protège le tournoi, ce n'est plus la contrainte
@@ -71,6 +87,12 @@ deviennent de minces enveloppes autour de générateurs — `anomalies_etape`, `
 qui les **énumèrent**. Les anomalies portent les **instances d'erreurs typées existantes**
 (`SourceApresPhase`, `PhaseQualificationIncomplete`, `EffectifIncompatible`…), qui portent déjà leur
 code et leur message.
+
+**Portée de ce mécanisme.** `Anomalie` est le mode de signalement de la **composition d'un
+format** — diagnostiquer un brouillon —, pas un remplacement général de l'exception dans le domaine.
+Partout ailleurs, une règle violée se lève : c'est ce qui garde les invariants tenus par
+construction. Une US qui voudrait l'étendre devrait dire pourquoi son objet est, lui aussi,
+« énumérer les défauts d'un état volontairement incomplet ».
 
 **Aucune règle n'est recopiée.** C'est le point de conception qui compte : un diagnostic qui
 réimplémenterait les contrôles serait une duplication d'invariant — précisément ce que le registre
@@ -118,9 +140,14 @@ cockpit (ADR-0055). `demarrer` a été scindé pour exposer `ouvrir_sur_harnais`
 une seule dérive possible.
 
 Le garde-fou d'ADR-0054 §4 (« on ne simule qu'un tournoi avant démarrage ») **ne s'applique pas** :
-il protège une compétition réelle d'une interférence, et ici il n'y a aucun tournoi réel. La
-non-persistance reste **structurelle** — le service ne reçoit aucun repository SQL sinon la
-bibliothèque de formats, en lecture.
+il protège une compétition réelle d'une interférence, et ici il n'y a aucun tournoi réel.
+
+Sur la non-persistance, une nuance que la revue a eu raison d'exiger : `ServiceSimulationFormat` ne
+reçoit en propre aucun repository SQL sinon la bibliothèque de formats, en lecture — mais
+`ServicePilotageSimulation`, qu'il compose, en **détient**. Ils ne sont lus que par `demarrer`, que
+ce chemin n'emprunte pas. L'isolation tient donc parce qu'on appelle `ouvrir_sur_harnais`, **pas**
+parce que le chemin SQL serait absent : elle est vérifiée, pas structurelle. La dire structurelle
+inviterait à ne plus la vérifier.
 
 **Arbitrage : `ServiceJeuEssai` n'est pas réutilisé pour les archers fictifs.** La note de l'US le
 prévoyait. Le code ne s'y prête pas : ce service pilote des **services** (tournois, départs, clubs,
@@ -128,6 +155,18 @@ inscriptions), pas des repositories ; le brancher sur le harnais supposerait de 
 magasins et d'instancier six services — pour obtenir des noms. Or un format ne connaît ni départs,
 ni clubs, ni quotas. La génération locale tient en vingt lignes et reste déterministe
 (`random.Random(graine)`, règle 9).
+
+### 5 bis. Le schéma est un SVG **maison**, sans bibliothèque de layout
+
+Règle 11 (parcimonie), avec le précédent du routeur maison (DETTE-024). La disposition est linéaire
+— une colonne par phase, dans l'ordre — et les seules courbes sont les flèches qui sautent une
+colonne : 157 lignes de géométrie pure (`schema.ts`), couvertes par 11 tests. L'inline permet en
+outre aux couleurs de passer par les variables CSS, donc au thème clair/sombre de suivre sans code
+conditionnel.
+
+Ce que cette disposition **ne saura pas** faire, et qui justifierait de reconsidérer : des
+branchements non linéaires (deux phases au même rang), des croisements de flèches à optimiser, des
+nœuds de tailles très hétérogènes. Aucun n'est au programme du chantier moteur.
 
 ### 6. La simulation ne passe **pas** par la file d'écriture
 

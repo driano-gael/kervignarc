@@ -36,8 +36,8 @@ conception de cette US.
 le nombre total de duels, les tours par phase, et le classement 1→N effectivement fabriqué. Rien
 n'est enregistré nulle part.
 
-Cette simulation a immédiatement servi. Elle a montré qu'un tableau à 32 duellistes ne coûte pas 31
-duels, comme on le calcule de tête, mais **32** : la petite finale pour la 3ᵉ place s'ajoute.
+Cette simulation a immédiatement servi. Elle a montré qu'un tableau à N duellistes ne coûte pas
+N−1 duels, comme on le calcule de tête, mais **N** : la petite finale pour la 3ᵉ place s'ajoute.
 L'organisateur qui dimensionnait ses scoreurs sur le compte théorique se serait trompé d'un duel par
 tableau — exactement le genre de chose qu'aucune relecture ne donne.
 
@@ -45,7 +45,10 @@ tableau — exactement le genre de chose qu'aucune relecture ne donne.
 
 **Une limite, affichée plutôt que tue.** Le schéma sait dire que seuls les 32 premiers doivent monter
 au tableau ; le moteur qui joue réellement les duels ne sait pas encore lire cette consigne et fait
-monter tout le monde. Quand les deux divergent, l'écran de simulation **montre les deux chiffres côte
-à côte** au lieu d'en afficher un seul qui serait faux sans le dire. C'est un chantier identifié du
-moteur, à traiter dans une prochaine étape ; en attendant, le schéma fait foi pour la composition et
-le chiffre de la simulation donne la charge maximale.
+monter tout le monde. Deux affichages le disent désormais, et pas seulement après une simulation :
+une **réserve permanente** sous le verdict dès qu'une phase prélève, et le détail des trois chiffres
+(archers, tours, duels) dans le tableau de simulation quand ils divergent. Même traitement pour les
+poules, le système suisse et la colline, qui se **composent** aujourd'hui mais que le moteur ne sait
+pas encore **dérouler** : l'écran le dit, au lieu d'afficher un tiret qui ressemblerait à un
+résultat. C'est un chantier identifié du moteur, à traiter dans une prochaine étape ; en attendant,
+le schéma fait foi pour la composition et le chiffre de la simulation donne la charge maximale.

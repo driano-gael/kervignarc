@@ -11,23 +11,58 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import type { NouveauFormat } from '../patrimoine/api'
+import { useModifierFormat } from '../patrimoine/hooks'
 import { getDiagnostic, simulerFormat, type Diagnostic, type SimulationFormat } from './api'
 
-export const cleDiagnostic = (formatId: number, effectif: number | null) =>
-  ['deroule', 'diagnostic', formatId, effectif] as const
+// Préfixe **commun** à tous les diagnostics, quel que soit l'effectif. C'est lui qu'on invalide
+// après un enregistrement : le brouillon a changé, donc **tous** les effectifs déjà calculés sont
+// périmés, pas seulement celui affiché.
+export const cleDiagnostics = ['deroule', 'diagnostic'] as const
 
-export function useDiagnostic(formatId: number | null, effectif: number | null) {
+export const cleDiagnostic = (formatId: number, effectif: number | null) =>
+  [...cleDiagnostics, formatId, effectif] as const
+
+export function useDiagnostic(formatId: number, effectif: number | null) {
   return useQuery<Diagnostic>({
-    queryKey: cleDiagnostic(formatId ?? 0, effectif),
-    queryFn: () => getDiagnostic(formatId as number, effectif),
-    enabled: formatId !== null,
+    queryKey: cleDiagnostic(formatId, effectif),
+    queryFn: () => getDiagnostic(formatId, effectif),
   })
 }
 
-export function useSimulerFormat(formatId: number | null) {
+/**
+ * Enregistre le brouillon **et** périme le schéma.
+ *
+ * ⚠️ `useModifierFormat` seul ne suffit pas : il invalide `['patrimoine', 'formats']`, sans aucun
+ * recouvrement de préfixe avec la clé du diagnostic. Avec `staleTime: 30_000`,
+ * `refetchOnWindowFocus: false` et un composant qui ne remonte pas, la query ne refetchait **ni**
+ * par invalidation **ni** par péremption : le schéma restait figé sur la version d'avant, pendant
+ * que l'écran retirait l'avertissement « modifications non enregistrées ». Il affirmait donc être
+ * à jour tout en montrant le passé — et le bouton « Simuler » restait verrouillé sur un
+ * `applicable` périmé.
+ */
+export function useEnregistrerBrouillon() {
+  const queryClient = useQueryClient()
+  const enregistrer = useModifierFormat()
+  return {
+    ...enregistrer,
+    enregistrer: (
+      variables: { id: number; entree: NouveauFormat },
+      options?: { onSuccess?: () => void },
+    ) =>
+      enregistrer.mutate(variables, {
+        onSuccess: () => {
+          void queryClient.invalidateQueries({ queryKey: cleDiagnostics })
+          options?.onSuccess?.()
+        },
+      }),
+  }
+}
+
+export function useSimulerFormat(formatId: number) {
   const queryClient = useQueryClient()
   return useMutation<SimulationFormat, Error, number>({
-    mutationFn: (effectif: number) => simulerFormat(formatId as number, effectif),
+    mutationFn: (effectif: number) => simulerFormat(formatId, effectif),
     // La simulation renvoie le diagnostic **au même effectif** : on le verse dans le cache plutôt
     // que de laisser l'écran en redemander un identique au serveur.
     onSuccess: (resultat) => {

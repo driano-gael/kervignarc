@@ -51,6 +51,14 @@ describe('hauteurBloc', () => {
 })
 
 describe('disposer', () => {
+  it('indexe les nœuds par position, pas par ordre', () => {
+    // Deux étapes de même ordre : brouillon licite (anomalie bloquante, mais enregistrable). Une
+    // clé de rendu fondée sur `ordre` ferait collision et masquerait un bloc.
+    const plan = disposer([bloc(1), bloc(1)])
+
+    expect(plan.noeuds.map((n) => n.index)).toEqual([0, 1])
+  })
+
   it('rend un plan vide pour aucun bloc', () => {
     const plan = disposer([])
 

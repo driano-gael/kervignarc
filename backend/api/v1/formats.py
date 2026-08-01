@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
@@ -28,6 +28,7 @@ from api.dependances import exiger_admin
 from api.v1.phases import PhaseReponse
 from application.formats import ServiceFormats
 from application.simulation_format import (
+    EFFECTIF_MAX,
     GRAINE_DEFAUT,
     ResultatSimulationFormat,
     ServiceSimulationFormat,
@@ -127,10 +128,15 @@ class EtapeDTO(BaseModel):
     effectif: int | None = None
 
     def vers_modele(self) -> ModelePhase:
-        """Traduit le DTO en agrégat de domaine — les invariants sont revérifiés par `ModelePhase`.
+        """Traduit le DTO en agrégat de domaine.
 
-        Une étape incohérente (qualification sans barème, grain inadmissible pour le type) lève
-        donc une `DomainError` → 422 à la frontière, jamais un format silencieusement invalide.
+        ⚠️ **Aucun invariant d'étape n'est revérifié ici depuis E01US024** (ADR-0063). Cette
+        docstring promettait l'inverse — « une étape incohérente lève une `DomainError` → 422 » —
+        et c'est précisément la garde que l'US a **déplacée** : `ModelePhase.__post_init__` n'existe
+        plus. Un brouillon incohérent s'enregistre, `GET /formats/{id}/diagnostic` dit ce qui cloche
+        et `PUT /tournois/{id}/format` refuse. Les **value objects** conservent, eux, leurs
+        invariants (`BaremeQualification.creer`, `GrainValidation.creer`, `SourcePhase`) : une
+        donnée **malformée** reste un 422, seule la **composition** est tolérée incomplète.
         """
         return ModelePhase(
             ordre=self.ordre,
@@ -363,8 +369,11 @@ class PhaseSimuleeDTO(BaseModel):
     effectif: int
     effectif_projete: int | None
     ecart: bool
+    joue: bool
     tours: int
+    tours_projetes: int | None
     duels: int
+    duels_projetes: int | None
 
 
 class SimulationFormatReponse(BaseModel):
@@ -396,8 +405,11 @@ class SimulationFormatReponse(BaseModel):
                     effectif=phase.effectif,
                     effectif_projete=phase.effectif_projete,
                     ecart=phase.ecart,
+                    joue=phase.joue,
                     tours=phase.tours,
+                    tours_projetes=phase.tours_projetes,
                     duels=phase.duels,
+                    duels_projetes=phase.duels_projetes,
                 )
                 for phase in resultat.phases
             ],
@@ -434,8 +446,10 @@ async def lister_formats(request: Request) -> list[FormatReponse]:
 async def creer_format(requete: FormatRequete, request: Request) -> FormatReponse:
     """Crée un format (**action admin**) : écriture via la file (ADR-0005).
 
-    Renvoie 409 (`nom_format_deja_pris`) si le nom est déjà porté, 422 si le format est invalide
-    (aucune étape, séquence incohérente).
+    **Accepte un brouillon** (E01US024, ADR-0063) : un format sans étape ou à la séquence
+    incohérente est créé en **201** — c'est `PUT /tournois/{id}/format` qui protège le tournoi, et
+    `GET /formats/{id}/diagnostic` qui dit ce qui manque. Renvoie 409 (`nom_format_deja_pris`) si le
+    nom est déjà porté, 422 si le **nom** est vide ou une valeur est malformée.
     """
     service: ServiceFormats = request.app.state.service_formats
     write_queue: WriteQueue = request.app.state.write_queue
@@ -525,7 +539,15 @@ async def supprimer_format(format_id: int, request: Request) -> Response:
 
 @router.get("/formats/{format_id}/diagnostic", response_model=DiagnosticReponse)
 async def diagnostiquer_format(
-    format_id: int, request: Request, effectif: int | None = None
+    format_id: int,
+    request: Request,
+    # Bornes **identiques** à celles de la simulation (source unique : `EFFECTIF_MAX`). Un premier
+    # jet laissait `effectif` libre sur cette route, alors qu'elle est **publique en lecture** et
+    # que le raisonnement d'ADR-0063 §6 — « l'effectif vient du client et rien d'autre ne le
+    # borne » — s'y applique mot pour mot : un entier Python n'a pas de plafond, et la réponse
+    # grossit en `log2(N)` **tours** dont les plages, elles, portent des entiers de la taille de N.
+    # Mesuré en revue : 2 Ko de requête anonyme → 1,2 s de CPU et 27 Mo de réponse.
+    effectif: int | None = Query(default=None, ge=1, le=EFFECTIF_MAX),
 ) -> DiagnosticReponse:
     """Projette le format sur `effectif` archers : le schéma à braquets et ses anomalies.
 

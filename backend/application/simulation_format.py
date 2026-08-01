@@ -23,7 +23,10 @@ scoreurs ; l'afficher dit exactement ce que l'outil sait et ce qu'il ne sait pas
 **Pourquoi le garde-fou d'ADR-0054 §4 ne s'applique pas ici.** Il interdit de simuler un tournoi
 déjà démarré, pour ne pas interférer avec une compétition. Il n'y a ici **aucun tournoi réel** : le
 tournoi simulé naît dans le harnais et meurt avec lui. La non-persistance reste structurelle — ce
-service ne reçoit aucun repository SQL, seulement la bibliothèque de formats, en **lecture**.
+service ne reçoit aucun repository SQL en propre, seulement la bibliothèque de formats, en
+**lecture**. Nuance à ne pas surestimer : `ServicePilotageSimulation`, qu'il compose, **détient**
+des repositories SQL — ils ne sont lus que par `demarrer`, que ce chemin n'emprunte pas. L'isolation
+tient donc parce qu'on appelle `ouvrir_sur_harnais`, pas parce que le chemin SQL serait absent.
 
 **Pourquoi `ServiceJeuEssai` n'est pas réutilisé pour les archers fictifs.** La note de l'US le
 prévoyait (« il n'y a qu'à composer les deux ») ; le code ne s'y prête pas. `ServiceJeuEssai` pilote
@@ -42,7 +45,11 @@ import datetime
 import random
 from dataclasses import dataclass
 
-from application.erreurs import EffectifSimulationInvalide, FormatIntrouvable
+from application.erreurs import (
+    EffectifSimulationInvalide,
+    FormatIntrouvable,
+    FormatNonSimulable,
+)
 from application.pilotage_simulation import EtatSession, ServicePilotageSimulation
 from application.simulation import HarnaisSimulation, UsineHarnais
 from domain.anomalie import Gravite
@@ -123,12 +130,30 @@ class ToursPhase:
     effectif: int
     effectif_projete: int | None
     tours: int
+    tours_projetes: int | None
     duels: int
+    duels_projetes: int | None
+    joue: bool
 
     @property
     def ecart(self) -> bool:
-        """Vrai si la simulation n'a pas joué l'effectif que le schéma annonçait."""
-        return self.effectif_projete is not None and self.effectif_projete != self.effectif
+        """Vrai si la simulation n'a pas produit ce que le schéma annonçait.
+
+        Compare les **trois** chiffres, pas seulement l'effectif : un premier jet ne regardait que
+        lui, et laissait donc passer la divergence la plus coûteuse pour l'organisateur — le nombre
+        de **duels**, celui sur lequel il dimensionne ses scoreurs. Le schéma compte les duels de
+        l'**arbre** ; le moteur y ajoute ce que les politiques injectées imposent (une petite finale
+        avec `ProfondeurPodium`, une cascade complète avec `ProfondeurUnVersN`). Seule la simulation
+        connaît le total réel — d'où l'affichage des deux.
+        """
+        return not self.joue or any(
+            projete is not None and projete != constate
+            for projete, constate in (
+                (self.effectif_projete, self.effectif),
+                (self.tours_projetes, self.tours),
+                (self.duels_projetes, self.duels),
+            )
+        )
 
 
 @dataclass(frozen=True)
@@ -172,7 +197,8 @@ class ServiceSimulationFormat:
     ) -> ResultatSimulationFormat:
         """Joue le format sur `effectif` archers fictifs et rend ce qu'il a produit.
 
-        Lève `FormatIntrouvable` (404), `EffectifSimulationInvalide` (422) hors de [2, 200], et la
+        Lève `FormatIntrouvable` (404), `EffectifSimulationInvalide` (400) hors de [2, 200],
+        `FormatNonSimulable` (400) si aucune qualification n'est décrite, et la
         première anomalie **bloquante** du format (`DomainError` → 422) : on ne simule pas un
         déroulé qu'aucun tournoi ne pourrait recevoir — le diagnostic est là pour ça, et il dit
         pourquoi.
@@ -185,6 +211,8 @@ class ServiceSimulationFormat:
         for anomalie in projection.anomalies:
             if anomalie.gravite is Gravite.BLOQUANTE:
                 raise anomalie.erreur
+
+        _exiger_qualification(format_tournoi)
 
         harnais = self._usine_harnais()
         tournoi = _fonder(harnais, format_tournoi, effectif, graine)
@@ -206,6 +234,26 @@ class ServiceSimulationFormat:
             # La session vit le temps de l'appel : la retirer libère le harnais, et empêche qu'une
             # simulation de format encombre le registre du cockpit (E15US003), qui n'en sait rien.
             self._pilotage.arreter(session.session_id)
+
+
+def _exiger_qualification(format_tournoi: FormatTournoi) -> None:
+    """Un format sans qualification est **applicable**, mais pas **simulable**.
+
+    Ce n'est pas une incohérence du format : `ServiceFormats.appliquer` l'accepte (il ne refuse que
+    de *retirer* une qualification à un tournoi qui en a une). C'est une limite du **bot** — il tire
+    ses volées d'un barème, et sans phase de qualification il n'en a aucun (`ouvrir_sur_harnais` →
+    `PhaseQualificationAbsente`).
+
+    Le contrôle est remonté **avant** l'ouverture de session pour deux raisons : le 404 de
+    `PhaseQualificationAbsente` est un contresens ici (rien n'est « introuvable », et il n'y a même
+    pas de tournoi), et son message parle d'un tournoi que l'organisateur ne verrait nulle part.
+    """
+    if not any(etape.type is TypePhase.QUALIFICATION for etape in format_tournoi.etapes):
+        raise FormatNonSimulable(
+            "Ce format ne décrit aucune qualification : la simulation n'a alors aucun barème d'où "
+            "tirer des scores. Le format reste applicable à un tournoi — c'est le rejeu qui ne "
+            "sait pas le dérouler."
+        )
 
 
 def _exiger_effectif(effectif: int) -> None:
@@ -283,29 +331,60 @@ def _phases_jouees(
     Le compte vient de l'état des tableaux — pas de la projection : c'est tout l'intérêt de la
     simulation, confirmer (ou démentir) ce que le schéma annonçait.
 
-    ⚠️ `EtatTableau` ne porte **pas** son `phase_id` : les tableaux sont rendus dans l'ordre des
-    phases de duels jouables, une phase non jouable étant **sautée** (`_tableaux`). L'appariement se
-    fait donc par consommation ordonnée, jamais par index dans la liste des phases — un `zip` naïf
-    décalerait tout dès la première phase sautée.
+    L'appariement se fait par **`phase_id`**, que `EtatTableau` porte depuis E01US024. Un premier
+    jet consommait une liste ordonnée (`restants.pop(0)`) en croyant échapper au décalage d'un `zip`
+    naïf — c'est **le même** décalage : `_tableaux` saute une phase non jouable sans dire laquelle,
+    et tout ce qui suit glisse d'un cran. Relevé par trois axes de la revue.
+
+    `joue` distingue « joué à 0 duel » de « le moteur ne sait pas dérouler ce type ». Les six types
+    d'E05US015 (poules, suisse, colline, big shoot off, barrage, échauffement) n'ont **aucun**
+    moteur d'exécution (`# DETTE-028`) : sans ce drapeau, ils s'affichaient « — tours, — duels »
+    comme des **faits**, et l'écart restait muet puisque leur effectif « constaté » était l'effectif
+    entier recopié. C'est précisément le cas où l'organisateur a le plus besoin d'être averti.
     """
     assert tournoi.id is not None
-    restants = list(final.tableaux)
-    projetes = {bloc.ordre: bloc.effectif for bloc in projection.blocs}
+    par_phase = {etat.phase_id: etat for etat in final.tableaux}
+    blocs = {bloc.ordre: bloc for bloc in projection.blocs}
     phases: list[ToursPhase] = []
     for phase in sorted(harnais.phases.par_tournoi(tournoi.id), key=lambda p: p.ordre):
-        projete = projetes.get(phase.ordre)
-        if phase.type is not TypePhase.ELIMINATION_DIRECTE or not restants:
+        bloc = blocs.get(phase.ordre)
+        projete = None if bloc is None else bloc.effectif
+        tours_projetes = None if bloc is None else len(bloc.tours) or None
+        duels_projetes = (
+            None if bloc is None or not bloc.tours else sum(t.duels for t in bloc.tours)
+        )
+        etat = par_phase.get(phase.id) if phase.id is not None else None
+        if etat is None:
             phases.append(
-                ToursPhase(phase.ordre, phase.type, len(final.classement.lignes), projete, 0, 0)
+                ToursPhase(
+                    ordre=phase.ordre,
+                    type=phase.type,
+                    effectif=len(final.classement.lignes),
+                    effectif_projete=projete,
+                    tours=0,
+                    tours_projetes=tours_projetes,
+                    duels=0,
+                    duels_projetes=duels_projetes,
+                    joue=phase.type is TypePhase.QUALIFICATION,
+                )
             )
             continue
-        etat = restants.pop(0)
         # Les duels **réellement tirés** (`duel is not None`) : ni les byes, ni les matchs dont les
         # occupants ne sont pas connus. Compter `effectif - 1` serait plus simple et **faux** — la
         # profondeur de podium (`ProfondeurPodium`) ajoute une petite finale, que la simulation est
         # précisément là pour révéler avant que les scoreurs ne la découvrent le jour J.
         joues = sum(1 for match in etat.duels if match.duel is not None)
         phases.append(
-            ToursPhase(phase.ordre, phase.type, etat.effectif, projete, etat.nb_tours, joues)
+            ToursPhase(
+                ordre=phase.ordre,
+                type=phase.type,
+                effectif=etat.effectif,
+                effectif_projete=projete,
+                tours=etat.nb_tours,
+                tours_projetes=tours_projetes,
+                duels=joues,
+                duels_projetes=duels_projetes,
+                joue=True,
+            )
         )
     return tuple(phases)

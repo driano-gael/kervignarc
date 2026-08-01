@@ -830,7 +830,19 @@ def test_simuler_un_format_rend_le_classement_et_la_charge(
                         "bareme": {"nb_volees": 2, "nb_fleches_par_volee": 3},
                         "validation": {"type": "fin_de_serie"},
                     },
-                    {"ordre": 2, "type": "elimination_directe", "sources": []},
+                    {
+                        "ordre": 2,
+                        "type": "elimination_directe",
+                        # ⚠️ Un prélèvement **explicite**, et non `sources: []`. La première
+                        # version de ce test décrivait un tableau que **personne n'atteint** — un
+                        # bloc orphelin, que la revue a fait remonter en anomalie bloquante
+                        # (`phase_sans_source`). Le test de la simulation était donc écrit sur le
+                        # format qui exhibait le trou, et passait au vert parce que le moteur
+                        # ignore les sources (DETTE-028).
+                        "sources": [
+                            {"ordre_source": 1, "nature": "rangs", "rang_debut": 1, "rang_fin": 8}
+                        ],
+                    },
                 ],
             },
         )
@@ -860,3 +872,92 @@ def test_simuler_un_effectif_hors_bornes_est_400(
 
         assert refus.status_code == 400
         assert refus.json()["code"] == "effectif_simulation_invalide"
+
+
+def test_un_brouillon_de_qualification_incomplete_fait_l_aller_retour(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ **Régression fermée en revue — le scénario phare du CA était impersistable.**
+
+    `_politiques_json` n'écrivait `policies.scoring` que si le barème existait, et
+    `_vers_modele_phase` le relisait inconditionnellement pour une qualification : `KeyError` →
+    `InfrastructureError` → **500**, levée *après* le `commit`. La ligne restait en base, et comme
+    `lister()` mappe **toutes** les lignes, un seul brouillon incomplet mettait la bibliothèque
+    entière en 500 — sans qu'aucune route ne permette de le supprimer, puisqu'elles relisent toutes.
+
+    Ce test couvre ce que les tests inversés du domaine ne pouvaient pas voir : ils s'arrêtent à
+    l'agrégat, le trou était dans l'**adapter**.
+    """
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+
+        cree = client.post(
+            "/api/v1/formats",
+            json={"nom": "Qualif à finir", "etapes": [{"ordre": 1, "type": "qualification"}]},
+        )
+        assert cree.status_code == 201, cree.text
+
+        # 1. La bibliothèque reste lisible — c'était le point grave.
+        liste = client.get("/api/v1/formats")
+        assert liste.status_code == 200, liste.text
+
+        # 2. L'aller-retour est fidèle : ni barème ni grain ne sont inventés à la relecture.
+        relu = next(f for f in liste.json() if f["id"] == cree.json()["id"])
+        assert relu["etapes"][0]["bareme"] is None
+        assert relu["etapes"][0]["validation"] is None
+
+        # 3. Le diagnostic nomme le défaut, et l'application le refuse.
+        diagnostic = client.get(f"/api/v1/formats/{relu['id']}/diagnostic").json()
+        assert diagnostic["applicable"] is False
+        assert "phase_qualification_incomplete" in {a["code"] for a in diagnostic["anomalies"]}
+
+        # 4. Et la ligne reste supprimable : aucun cul-de-sac.
+        assert client.delete(f"/api/v1/formats/{relu['id']}").status_code == 204
+
+
+def test_le_diagnostic_refuse_un_effectif_hors_bornes(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Même borne que la simulation : la route est **publique en lecture**, et son entrée est
+    amplificatrice (la réponse grossit avec la taille des entiers de plage)."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        format_id = _format_qualif_puis_tableau(client)
+
+        assert (
+            client.get(
+                f"/api/v1/formats/{format_id}/diagnostic", params={"effectif": 0}
+            ).status_code
+            == 400
+        )
+        assert (
+            client.get(
+                f"/api/v1/formats/{format_id}/diagnostic", params={"effectif": 10**60}
+            ).status_code
+            == 400
+        )
+
+
+def test_simuler_un_format_sans_qualification_est_refuse_en_400(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le format est **applicable** mais pas **simulable** : le bot n'a aucun barème.
+
+    Avant correction, `applicable: true` activait le bouton « Simuler » et la requête revenait en
+    **404** avec un message parlant d'un tournoi que l'organisateur ne voit nulle part.
+    """
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        cree = client.post(
+            "/api/v1/formats",
+            json={
+                "nom": "Duels seuls",
+                "etapes": [{"ordre": 1, "type": "elimination_directe"}],
+            },
+        )
+        assert cree.status_code == 201, cree.text
+
+        refus = client.post(f"/api/v1/formats/{cree.json()['id']}/simulation", json={"effectif": 8})
+
+        assert refus.status_code == 400
+        assert refus.json()["code"] == "format_non_simulable"

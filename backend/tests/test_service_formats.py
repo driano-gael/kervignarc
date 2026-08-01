@@ -27,6 +27,7 @@ from application.erreurs import (
 )
 from application.formats import ServiceFormats
 from domain.bareme import BaremeQualification
+from domain.erreurs import PhaseQualificationIncomplete
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.patrimoine import OrigineBrique
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
@@ -447,3 +448,32 @@ def test_les_phases_supprimees_au_remplacement_ne_laissent_pas_de_trace(ctx: Con
     ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
 
     assert ctx.phases.par_id(_id(ancienne.id)) is None
+
+
+def test_appliquer_un_format_incoherent_laisse_la_sequence_intacte(ctx: Contexte) -> None:
+    """⚠️ **Régression fermée en revue** : `appliquer` détruisait avant de valider.
+
+    Depuis E01US024 un format incohérent s'enregistre, donc `FormatTournoi.appliquer` peut lever —
+    ce qui était impossible avant. Or le service supprimait les phases existantes **d'abord**, et
+    les suppressions sont committées (DETTE-025) : le tournoi perdait sa séquence *et* son barème
+    de qualification, alors même que l'opération lui était refusée. Les trois gardes de
+    `_exiger_sequence_remplacable` ne voyaient rien — c'est l'exception du domaine qui survenait
+    après elles.
+    """
+    tournoi_id = ctx.tournoi_id
+    sain = ctx.service.creer("Sain", [_qualification(ordre=1)])
+    ctx.service.appliquer(tournoi_id, _id(sain.id))
+    avant = ctx.phases.par_tournoi(tournoi_id)
+    assert avant, "le préalable du test : le tournoi a bien une séquence à protéger."
+
+    brouillon = ctx.service.creer(
+        "Brouillon incohérent", [ModelePhase(ordre=1, type=TypePhase.QUALIFICATION)]
+    )
+
+    with pytest.raises(PhaseQualificationIncomplete):
+        ctx.service.appliquer(tournoi_id, _id(brouillon.id))
+
+    apres = ctx.phases.par_tournoi(tournoi_id)
+    assert [p.ordre for p in apres] == [p.ordre for p in avant]
+    assert [p.type for p in apres] == [p.type for p in avant]
+    assert [p.bareme for p in apres] == [p.bareme for p in avant]

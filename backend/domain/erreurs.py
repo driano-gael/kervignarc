@@ -834,3 +834,16 @@ class BarrageRequisAvantQualification(DomainError):
     """
 
     code = "barrage_requis_avant_qualification"
+
+
+class PhaseSansSource(DomainError):
+    """Une phase autre que la première ne prélève dans aucune phase antérieure (E01US024).
+
+    Personne ne peut l'atteindre : c'est un **cul-de-sac**, le « trou » du CA d'E01US024 dans sa
+    forme structurelle. Bloquante, contrairement à `PhaseSansParticipant` : le défaut ne dépend
+    d'aucun effectif — à 12 archers comme à 120, un bloc sans flèche entrante reste inatteignable
+    (ADR-0063 §3). La **première** phase, elle, se peuple des inscrits : son absence de source est
+    normale.
+    """
+
+    code = "phase_sans_source"

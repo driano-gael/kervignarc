@@ -28,10 +28,25 @@ import {
   type TypePhase,
 } from '../../shared/phases/catalogue'
 import type { Etape, FormatTournoi, Source } from '../patrimoine/api'
-import { useCreerFormat, useFormats, useModifierFormat } from '../patrimoine/hooks'
-import { deplacer } from '../phases/ordre'
-import type { Anomalie, Bloc, Diagnostic, PhaseSimulee, SimulationFormat } from './api'
-import { useDiagnostic, useSimulerFormat } from './hooks'
+import { useCreerFormat, useFormats } from '../patrimoine/hooks'
+import {
+  EFFECTIF_MAX,
+  type Anomalie,
+  type Bloc,
+  type Diagnostic,
+  type PhaseSimulee,
+  type SimulationFormat,
+} from './api'
+import { useDiagnostic, useEnregistrerBrouillon, useSimulerFormat } from './hooks'
+import {
+  ajouterEtape,
+  decrireEtape,
+  decrireSource,
+  deplacerEtape,
+  lireEntier,
+  remplacerEtape,
+  retirerEtape,
+} from './sequence'
 import { disposer, type Arete, type Noeud } from './schema'
 
 const EFFECTIF_PAR_DEFAUT = 120
@@ -113,13 +128,14 @@ function CompositionDuFormat({
   const [modifie, setModifie] = useState(false)
 
   const diagnostic = useDiagnostic(format.id, effectif)
-  const enregistrer = useModifierFormat()
+  const enregistrer = useEnregistrerBrouillon()
   const simulation = useSimulerFormat(format.id)
 
+  // Les ordres sont **dérivés de la position**, jamais saisis, et `sequence.ts` **remappe** les
+  // prélèvements en conséquence — sans quoi monter une phase d'un cran ferait glisser en silence
+  // les `ordre_source` de ses cadettes sur la voisine (cf. `renumeroter`).
   const majEtapes = (suivantes: Etape[]) => {
-    // Les ordres sont **dérivés de la position**, jamais saisis : renuméroter ici est ce qui rend
-    // « ordres non contigus » impossible depuis cet écran.
-    setEtapes(suivantes.map((etape, index) => ({ ...etape, ordre: index + 1 })))
+    setEtapes(suivantes)
     setModifie(true)
   }
 
@@ -140,7 +156,7 @@ function CompositionDuFormat({
             type="button"
             disabled={!modifie || enregistrer.isPending}
             onClick={() =>
-              enregistrer.mutate(
+              enregistrer.enregistrer(
                 { id: format.id, entree: { nom, etapes } },
                 { onSuccess: () => setModifie(false) },
               )
@@ -158,16 +174,23 @@ function CompositionDuFormat({
       </div>
 
       <div className="deroule__visuel">
+        {diagnostic.isPending && (
+          <p className="carte__etat" role="status">
+            Calcul du déroulé…
+          </p>
+        )}
+        <MessageErreur erreur={diagnostic.error} />
         {diagnostic.data !== undefined && (
           <>
             <Verdict diagnostic={diagnostic.data} />
+            <ReserveMoteur diagnostic={diagnostic.data} />
             <SchemaBraquets diagnostic={diagnostic.data} />
             <ListeAnomalies anomalies={diagnostic.data.anomalies} />
           </>
         )}
         <PanneauSimulation
           effectif={effectif}
-          applicable={diagnostic.data?.applicable ?? false}
+          diagnostic={diagnostic.data}
           simulation={simulation}
         />
       </div>
@@ -190,6 +213,27 @@ function Verdict({ diagnostic }: { diagnostic: Diagnostic }) {
     <p className="carte__etat carte__etat--alerte" role="status">
       ▲ Ce brouillon est enregistré, mais {bloquantes} point(s) l'empêchent de servir un vrai
       tournoi.
+    </p>
+  )
+}
+
+/**
+ * La réserve que la vue par défaut doit porter (`# DETTE-028`).
+ *
+ * Le schéma est un **engagement dessiné** : il annonce « 32 duellistes » là où le moteur
+ * d'exécution en ensemencera 120, faute de consommateur de `Phase.sources` côté duels. Sans cette
+ * note, l'organisateur qui compose, voit le verdict vert, enregistre et applique — sans jamais
+ * cliquer « Simuler » — repart avec un tournoi qui ne se déroulera pas comme dessiné. C'est
+ * exactement le point où cette US **aggrave** la dette, et l'afficher est ce qui transforme une
+ * promesse en information.
+ */
+function ReserveMoteur({ diagnostic }: { diagnostic: Diagnostic }) {
+  if (!diagnostic.blocs.some((bloc) => bloc.entrees.length > 0)) return null
+  return (
+    <p className="carte__etat carte__etat--alerte" role="note">
+      ▲ Le moteur d'exécution ne lit pas encore les prélèvements : le jour J, chaque tableau est
+      ensemencé avec <strong>tous</strong> les archers encore en lice. Lancez la simulation pour
+      voir l'écart entre ce déroulé et ce qui se jouera réellement.
     </p>
   )
 }
@@ -234,7 +278,9 @@ function SchemaBraquets({ diagnostic }: { diagnostic: Diagnostic }) {
       </p>
     )
   }
-  const parOrdre = new Map(diagnostic.blocs.map((bloc) => [bloc.ordre, bloc]))
+  // Indexé par **position**, pas par `ordre` : deux étapes de même ordre sont un brouillon licite
+  // (anomalie bloquante, mais enregistrable), et une `Map` par ordre en perdrait une.
+  const tries = [...diagnostic.blocs].sort((a, b) => a.ordre - b.ordre)
   return (
     <div className="deroule__schema">
       <svg
@@ -260,9 +306,9 @@ function SchemaBraquets({ diagnostic }: { diagnostic: Diagnostic }) {
           <FlecheDuSchema key={arete.cle} arete={arete} />
         ))}
         {plan.noeuds.map((noeud) => {
-          const bloc = parOrdre.get(noeud.ordre)
+          const bloc = tries[noeud.index]
           return bloc === undefined ? null : (
-            <BlocDuSchema key={noeud.ordre} noeud={noeud} bloc={bloc} />
+            <BlocDuSchema key={noeud.index} noeud={noeud} bloc={bloc} />
           )
         })}
       </svg>
@@ -303,7 +349,7 @@ function BlocDuSchema({ noeud, bloc }: { noeud: Noeud; bloc: Bloc }) {
       {/* Question 2 : ce qu'on leur demande. */}
       <text className="deroule__bloc-ligne" x="12" y="64">
         {bloc.nb_volees === null
-          ? LIBELLE_TYPE[bloc.type] === LIBELLE_TYPE.qualification
+          ? bloc.type === 'qualification'
             ? 'barème à définir'
             : 'duels'
           : `${bloc.nb_volees} volées de ${bloc.nb_fleches_par_volee}`}
@@ -331,14 +377,29 @@ function BlocDuSchema({ noeud, bloc }: { noeud: Noeud; bloc: Bloc }) {
 
 function PanneauSimulation({
   effectif,
-  applicable,
+  diagnostic,
   simulation,
 }: {
   effectif: number | null
-  applicable: boolean
+  diagnostic: Diagnostic | undefined
   simulation: ReturnType<typeof useSimulerFormat>
 }) {
   const resultat: SimulationFormat | undefined = simulation.data
+  // Le serveur reste l'autorité (400 `format_non_simulable`) ; ce garde évite seulement d'offrir un
+  // bouton dont on sait qu'il sera refusé — même parti que `TYPES_SANS_CLASSEMENT`.
+  const aUneQualification = diagnostic?.blocs.some((bloc) => bloc.type === 'qualification') ?? false
+  const applicable = diagnostic?.applicable ?? false
+  const effectifValide = effectif !== null && effectif >= 2 && effectif <= EFFECTIF_MAX
+  const empeche =
+    diagnostic === undefined
+      ? 'Le déroulé est en cours de calcul.'
+      : !applicable
+        ? 'On ne simule pas un déroulé qu’aucun tournoi ne pourrait recevoir : corrigez d’abord les points bloquants.'
+        : !aUneQualification
+          ? 'Ce déroulé ne décrit aucune qualification : la simulation n’a alors aucun barème d’où tirer des scores. Le format reste applicable à un tournoi.'
+          : !effectifValide
+            ? `Indiquez un effectif entre 2 et ${EFFECTIF_MAX} archers pour lancer la simulation.`
+            : null
   return (
     <div className="carte carte--large">
       <h3 className="carte__titre">Faire tourner le déroulé</h3>
@@ -348,15 +409,14 @@ function PanneauSimulation({
       </p>
       <button
         type="button"
-        disabled={effectif === null || !applicable || simulation.isPending}
+        disabled={empeche !== null || simulation.isPending}
         onClick={() => effectif !== null && simulation.mutate(effectif)}
       >
         {simulation.isPending ? 'Simulation en cours…' : `Simuler à ${effectif ?? '—'} archers`}
       </button>
-      {!applicable && (
+      {empeche !== null && (
         <p className="carte__etat" role="note">
-          On ne simule pas un déroulé qu'aucun tournoi ne pourrait recevoir : corrigez d'abord les
-          points bloquants.
+          {empeche}
         </p>
       )}
       <MessageErreur erreur={simulation.error} />
@@ -372,6 +432,12 @@ function ResultatSimulation({ resultat }: { resultat: SimulationFormat }) {
         ● {resultat.effectif} archers, {resultat.volees_total} volées tirées,{' '}
         <strong>{resultat.duels_total} duels</strong> au total.
       </p>
+      {resultat.phases.some((phase) => phase.ecart) && (
+        <p className="carte__etat carte__etat--alerte" role="note">
+          ▲ Ce total est une <strong>borne haute</strong> : sur au moins une phase, le moteur n'a
+          pas joué ce que le schéma annonçait (voir la colonne « Archers »).
+        </p>
+      )}
       <table className="deroule__table">
         <caption>Ce que chaque phase a coûté</caption>
         <thead>
@@ -389,7 +455,10 @@ function ResultatSimulation({ resultat }: { resultat: SimulationFormat }) {
         </tbody>
       </table>
       <details>
-        <summary>Classement produit ({resultat.classement.length} archers)</summary>
+        <summary>
+          Classement produit ({resultat.classement.length} archers
+          {resultat.classement.length > 32 ? ', 32 premiers affichés' : ''})
+        </summary>
         <ol className="deroule__classement">
           {resultat.classement.slice(0, 32).map((ligne) => (
             <li key={`${ligne.rang}-${ligne.nom}-${ligne.prenom}`}>
@@ -409,20 +478,28 @@ function LignePhaseSimulee({ phase }: { phase: PhaseSimulee }) {
         {phase.ordre}. {LIBELLE_TYPE[phase.type]}
       </th>
       <td>
-        {phase.effectif}
-        {/* Honnêteté d'outil : le moteur d'exécution ne lit pas encore le prélèvement déclaré
-            (DETTE-028). Plutôt que de servir un chiffre faux et muet à qui dimensionne ses
-            scoreurs, on montre l'écart avec ce que le schéma annonçait. */}
-        {phase.ecart && (
+        {phase.joue ? phase.effectif : '—'}
+        {/* Honnêteté d'outil : le moteur d'exécution ne lit pas encore le prélèvement déclaré, et
+            ne sait dérouler ni les poules, ni le suisse, ni la colline (DETTE-028). Plutôt que de
+            servir un chiffre faux et muet à qui dimensionne ses scoreurs, on montre l'écart avec ce
+            que le schéma annonçait — et on dit quand le moteur n'a rien joué du tout. */}
+        {!phase.joue ? (
           <span className="deroule__ecart" role="note">
             {' '}
-            ▲ le schéma en annonçait {phase.effectif_projete} — le moteur ne sait pas encore
-            appliquer ce prélèvement en duels
+            ▲ le moteur ne sait pas encore dérouler ce type de phase — rien n'a été joué ici
           </span>
+        ) : (
+          phase.ecart && (
+            <span className="deroule__ecart" role="note">
+              {' '}
+              ▲ le schéma annonçait {phase.effectif_projete} archers, {phase.tours_projetes ?? '—'}{' '}
+              tours et {phase.duels_projetes ?? '—'} duels
+            </span>
+          )
         )}
       </td>
-      <td>{phase.tours === 0 ? '—' : phase.tours}</td>
-      <td>{phase.duels === 0 ? '—' : phase.duels}</td>
+      <td>{phase.joue && phase.tours > 0 ? phase.tours : '—'}</td>
+      <td>{phase.joue && phase.duels > 0 ? phase.duels : '—'}</td>
     </tr>
   )
 }
@@ -458,7 +535,7 @@ function EditeurSequence({
                 etape={etape}
                 etapesAmont={etapes.slice(0, index)}
                 surValider={(modifiee) => {
-                  surEtapes(etapes.map((e, i) => (i === index ? modifiee : e)))
+                  surEtapes(remplacerEtape(etapes, index, modifiee))
                   setEdition(null)
                 }}
                 surAnnuler={() => setEdition(null)}
@@ -467,13 +544,13 @@ function EditeurSequence({
               <div className="phase__ligne">
                 <span className="phase__ordre">{index + 1}</span>
                 <span className="phase__type">{LIBELLE_TYPE[etape.type]}</span>
-                <span className="phase__details">{decrireEtapeCourte(etape)}</span>
+                <span className="phase__details">{decrireEtape(etape)}</span>
                 <span className="phase__actions">
                   <button
                     type="button"
                     className="bouton--discret"
                     disabled={index === 0}
-                    onClick={() => surEtapes(deplacer(etapes, index, index - 1))}
+                    onClick={() => surEtapes(deplacerEtape(etapes, index, index - 1))}
                     aria-label={`Monter la phase ${index + 1}`}
                   >
                     ↑
@@ -482,7 +559,7 @@ function EditeurSequence({
                     type="button"
                     className="bouton--discret"
                     disabled={index === etapes.length - 1}
-                    onClick={() => surEtapes(deplacer(etapes, index, index + 1))}
+                    onClick={() => surEtapes(deplacerEtape(etapes, index, index + 1))}
                     aria-label={`Descendre la phase ${index + 1}`}
                   >
                     ↓
@@ -497,7 +574,7 @@ function EditeurSequence({
                   <button
                     type="button"
                     className="bouton--danger"
-                    onClick={() => surEtapes(etapes.filter((_, i) => i !== index))}
+                    onClick={() => surEtapes(retirerEtape(etapes, index))}
                   >
                     Retirer
                   </button>
@@ -509,31 +586,10 @@ function EditeurSequence({
       </ol>
       <FormulaireEtape
         etapesAmont={etapes}
-        surValider={(nouvelle) => surEtapes([...etapes, nouvelle])}
+        surValider={(nouvelle) => surEtapes(ajouterEtape(etapes, nouvelle))}
       />
     </div>
   )
-}
-
-/** Décrit une étape en une ligne, pour la liste de composition. */
-function decrireEtapeCourte(etape: Etape): string {
-  const morceaux: string[] = []
-  if (etape.bareme !== null) {
-    morceaux.push(`${etape.bareme.nb_volees}×${etape.bareme.nb_fleches_par_volee}`)
-  }
-  if (etape.effectif !== null) morceaux.push(`${etape.effectif} archers`)
-  if (etape.sources.length === 0) morceaux.push('tous les inscrits')
-  else morceaux.push(etape.sources.map(decrireSource).join(' + '))
-  return morceaux.join(' · ')
-}
-
-function decrireSource(source: Source): string {
-  if (source.nature === 'reste') return `le reste de la phase ${source.ordre_source}`
-  if (source.nature === 'issue_de_tour') {
-    return `${source.issue ?? '?'} du tour ${source.tour ?? '?'} (phase ${source.ordre_source})`
-  }
-  const fin = source.rang_fin === null ? 'et suivants' : `à ${source.rang_fin}`
-  return `rangs ${source.rang_debut} ${fin} (phase ${source.ordre_source})`
 }
 
 function FormulaireEtape({
@@ -555,18 +611,31 @@ function FormulaireEtape({
   )
   const [sources, setSources] = useState<Source[]>(etape?.sources ?? [])
 
+  const volees = lireEntier(nbVolees)
+  const fleches = lireEntier(nbFleches)
+  const effectifLu = lireEntier(effectif)
+  // Un barème n'est porté que si **les deux** valeurs sont lisibles. Sinon `null` : c'est un
+  // **brouillon** de qualification, l'état que le CA rend explicitement licite. Un premier jet
+  // envoyait `Number('') === 0`, donc `0 volées` — refusé en 422 par `BaremeQualification`, si bien
+  // que « je remplirai le barème plus tard » était le seul brouillon naturel… et le seul impossible.
+  const baremeSaisi =
+    type === 'qualification' && typeof volees === 'number' && typeof fleches === 'number'
+      ? { nb_volees: volees, nb_fleches_par_volee: fleches }
+      : null
+  const saisieInvalide = volees === undefined || fleches === undefined || effectifLu === undefined
+
   const construire = (): Etape => ({
     ordre: etape?.ordre ?? etapesAmont.length + 1,
     type,
     // La qualification, et elle seule, porte barème et grain — c'est ce que le domaine exige, et
     // les proposer ailleurs offrirait un réglage que le serveur refuse (422).
-    bareme:
-      type === 'qualification'
-        ? { nb_volees: Number(nbVolees), nb_fleches_par_volee: Number(nbFleches) }
+    bareme: baremeSaisi,
+    validation:
+      type === 'qualification' && baremeSaisi !== null
+        ? { type: 'fin_de_serie', n_volees: null }
         : null,
-    validation: type === 'qualification' ? { type: 'fin_de_serie', n_volees: null } : null,
     sources,
-    effectif: effectif.trim() === '' ? null : Number(effectif),
+    effectif: effectifLu ?? null,
   })
 
   return (
@@ -628,7 +697,14 @@ function FormulaireEtape({
       <EditeurSources etapesAmont={etapesAmont} sources={sources} surSources={setSources} />
 
       <div className="formulaire__actions">
-        <button type="submit">{etape === undefined ? 'Ajouter la phase' : 'Valider'}</button>
+        <button type="submit" disabled={saisieInvalide}>
+          {etape === undefined ? 'Ajouter la phase' : 'Valider'}
+        </button>
+        {saisieInvalide && (
+          <span className="carte__etat carte__etat--alerte" role="status">
+            Un nombre entier positif est attendu — laissez le champ vide pour ne rien déclarer.
+          </span>
+        )}
         {surAnnuler !== undefined && (
           <button type="button" className="bouton--discret" onClick={surAnnuler}>
             Annuler
@@ -668,6 +744,15 @@ function EditeurSources({
     nature === 'reste'
       ? etapesAmont
       : etapesAmont.filter((etape) => !TYPES_SANS_CLASSEMENT.includes(etape.type))
+
+  // Changer de nature **réinitialise** la phase choisie : « le reste » autorise les phases sans
+  // classement, les deux autres non. Sans cette remise à zéro, le `<select>` s'affichait vide mais
+  // l'état gardait l'ancienne valeur, et « Ajouter » créait un prélèvement par rangs sur un
+  // échauffement — refusé en 422 par le serveur, sans explication à l'écran.
+  const changerNature = (valeur: Source['nature']) => {
+    setNature(valeur)
+    setOrdreSource('')
+  }
 
   const ajouter = () => {
     const ordre = Number(ordreSource)
@@ -715,7 +800,7 @@ function EditeurSources({
         <div className="formulaire__tranche">
           <select
             value={nature}
-            onChange={(e) => setNature(e.target.value as Source['nature'])}
+            onChange={(e) => changerNature(e.target.value as Source['nature'])}
             aria-label="Nature du prélèvement"
           >
             <option value="rangs">Rangs</option>
@@ -769,7 +854,12 @@ function EditeurSources({
               </select>
             </>
           )}
-          <button type="button" className="bouton--discret" onClick={ajouter}>
+          <button
+            type="button"
+            className="bouton--discret"
+            disabled={ordreSource === ''}
+            onClick={ajouter}
+          >
             Ajouter ce prélèvement
           </button>
         </div>

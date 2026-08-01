@@ -32,7 +32,14 @@ from typing import Protocol
 
 from domain.anomalie import Anomalie, Gravite
 from domain.bareme import BaremeQualification
-from domain.erreurs import PhaseSansParticipant, PrelevementVide, RangsSourceInexistants
+from domain.erreurs import (
+    EffectifIncompatible,
+    PhaseSansParticipant,
+    PhaseSansSource,
+    PrelevementVide,
+    RangsSourceInexistants,
+    SourcesQuiSeRecoupent,
+)
 from domain.grain_validation import GrainValidation
 from domain.phase import (
     EtapeSequencee,
@@ -189,6 +196,13 @@ def projeter(etapes: Sequence[EtapeProjetable], effectif: int | None = None) -> 
                     Gravite.AVERTISSEMENT,
                 )
             )
+        conjoncturelles.extend(_anomalies_effectif_declare(etape, entrees, resolu))
+
+    # Second passage : les sorties d'un bloc ne sont connues qu'une fois **toutes** les étapes
+    # résolues (une phase peut être prélevée par n'importe laquelle de ses cadettes).
+    for etape in triees:
+        sorties = [f for f in flux if f.ordre_source == etape.ordre]
+        conjoncturelles.extend(_anomalies_sur_souscription(etape, effectifs[etape.ordre], sorties))
 
     toutes = tuple(structurelles) + tuple(conjoncturelles)
     blocs = tuple(_bloc(etape, effectifs, tranches, braquets, flux, toutes) for etape in triees)
@@ -209,6 +223,59 @@ def _anomalies_structurelles(etapes: Sequence[EtapeProjetable]) -> Iterator[Anom
             etape.type, etape.bareme, etape.validation, etape.effectif, etape.ordre
         )
     yield from anomalies_sequence(etapes)
+    yield from _anomalies_blocs_orphelins(etapes)
+
+
+def _anomalies_blocs_orphelins(etapes: Sequence[EtapeProjetable]) -> Iterator[Anomalie]:
+    """Une phase qui n'est **pas** la première et ne prélève nulle part : personne ne l'atteint.
+
+    **Bloquante**, et c'est bien le bon régime : le défaut ne dépend d'aucun effectif — à 12 archers
+    comme à 120, un bloc sans flèche entrante reste un cul-de-sac. Sans ce contrôle, le schéma
+    dessinait un rectangle isolé « effectif inconnu / suite inconnue » sous un verdict « tient
+    debout » — le contraire exact de ce que le CA appelle « un trou visible ».
+
+    La première phase, elle, se peuple des inscrits : son absence de source est normale.
+    """
+    if not etapes:
+        return
+    premier_ordre = min(etape.ordre for etape in etapes)
+    for etape in etapes:
+        if etape.ordre != premier_ordre and not etape.sources:
+            yield Anomalie(
+                PhaseSansSource(
+                    f"La phase {etape.ordre} ne prélève dans aucune phase antérieure : personne ne "
+                    "peut l'atteindre. Seule la première phase se peuple des inscrits."
+                ),
+                etape.ordre,
+            )
+
+
+def _anomalies_effectif_declare(
+    etape: EtapeProjetable, entrees: Sequence[Flux], resolu: int | None
+) -> Iterator[Anomalie]:
+    """L'effectif **déclaré** est-il tenable par ce que les prélèvements amènent réellement ?
+
+    `_anomalies_somme` (`domain.phase`) abandonne l'égalité dès qu'un prélèvement est **relatif** —
+    « le reste », une issue de tour, une fin ouverte — parce qu'elle ne se décide pas au format. Or
+    la projection, elle, **sait** les résoudre à l'effectif simulé : ne pas s'en servir laissait
+    dessiner une flèche « 120 » entrant dans un bloc « 16 archers », verdict vert.
+
+    Conjoncturel par nature (le compte dépend de l'effectif) → avertissement, ADR-0063 §3.
+    """
+    if etape.effectif is None or not entrees or resolu is None:
+        return
+    if any(entree.effectif is None for entree in entrees):
+        return
+    apporte = sum(entree.effectif or 0 for entree in entrees)
+    if apporte != etape.effectif:
+        yield Anomalie(
+            EffectifIncompatible(
+                f"La phase {etape.ordre} déclare {etape.effectif} participants, mais ses "
+                f"prélèvements en amènent {apporte} à cet effectif."
+            ),
+            etape.ordre,
+            Gravite.AVERTISSEMENT,
+        )
 
 
 # --- Résolution d'un prélèvement -----------------------------------------------------------------
@@ -466,9 +533,39 @@ def _sans_suite(resolu: int | None, sorties: Sequence[Flux]) -> int | None:
 
     Ce n'est pas une anomalie en soi : les 88 non-qualifiés d'une qualification à 120 gardent leur
     rang et rentrent chez eux, c'est le déroulé normal. Ce que le CA demande, c'est que le dessin le
-    **montre** au lieu de le laisser deviner. Négatif impossible : une sur-souscription est déjà un
-    recoupement, signalé comme tel.
+    **montre** au lieu de le laisser deviner.
+
+    ⚠️ **Rend une valeur signée.** Un premier jet écrasait le négatif par `max(0, …)` en affirmant
+    « négatif impossible : une sur-souscription est déjà un recoupement, signalé comme tel ». C'est
+    faux, et c'est exactement ce qui a laissé passer le trou : `_anomalies_recoupements` compare les
+    prélèvements **d'une même phase cible**, jamais ceux de deux phases avales différentes puisant
+    dans la même source. « Rangs 1 à 32 » puis « rangs 32 à 64 » — l'erreur de borne d'un rang —
+    passait donc au vert. Le négatif est désormais **rendu**, et `_anomalies_sur_souscription` le
+    signale.
     """
     if resolu is None or any(sortie.effectif is None for sortie in sorties):
         return None
-    return max(0, resolu - sum(sortie.effectif or 0 for sortie in sorties))
+    return resolu - sum(sortie.effectif or 0 for sortie in sorties)
+
+
+def _anomalies_sur_souscription(
+    etape: EtapeProjetable, resolu: int | None, sorties: Sequence[Flux]
+) -> Iterator[Anomalie]:
+    """Les phases avales prélèvent-elles, **ensemble**, plus que ce bloc ne compte de participants ?
+
+    Le contrôle manquait : `_anomalies_recoupements` (`domain.phase`) juge le recoupement *par phase
+    cible*, ce qui laisse deux phases avales se disputer les mêmes rangs sans que rien ne le dise.
+    Comme il dépend de l'effectif résolu, il est **conjoncturel** — donc avertissement (ADR-0063
+    §3) : les mêmes plages peuvent tenir à 120 et déborder à 82.
+    """
+    reste = _sans_suite(resolu, sorties)
+    if reste is None or reste >= 0 or resolu is None:
+        return
+    yield Anomalie(
+        SourcesQuiSeRecoupent(
+            f"Les phases suivantes prélèvent au total {resolu - reste} participants dans la phase "
+            f"{etape.ordre}, qui n'en compte que {resolu} : {-reste} archer(s) sont pris deux fois."
+        ),
+        etape.ordre,
+        Gravite.AVERTISSEMENT,
+    )

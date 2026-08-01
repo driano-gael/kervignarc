@@ -323,6 +323,21 @@ coup d'œil au lieu de le déduire d'une liste de réglages.
   brancher le peuplement touche le déroulé réel du jour J et vaut une US à part entière. En attendant,
   l'écart est **mesuré et affiché** (effectif projeté à côté de l'effectif constaté) et fixé par un
   test de non-régression, plutôt que tu.
+- **Arbitrage tranché en revue (01/08/2026, trois « faux verts » du diagnostic)** : le CA fait du
+  schéma le **contrôle de validité**, donc un déroulé qui ne tient pas ne doit pas être déclaré
+  applicable. Trois cas passaient au vert et ont été fermés — leur régime de gravité découle de la
+  règle du point précédent : (1) **une phase que personne n'atteint** (pas la première, aucun
+  prélèvement) est un cul-de-sac vrai à tout effectif → **bloquant** (`phase_sans_source`) ;
+  (2) **deux phases avales qui se disputent les mêmes rangs** (« 1 à 32 » puis « 32 à 64 », l'erreur
+  de borne d'un rang) → **avertissement**, le contrôle existant ne comparant que les prélèvements
+  d'une *même* phase cible ; (3) **un effectif déclaré que les prélèvements ne remplissent pas** →
+  **avertissement**, le contrôle du domaine abandonnant l'égalité dès qu'un prélèvement est relatif,
+  alors que la projection sait le résoudre.
+- **Arbitrage tranché en revue (01/08/2026, un format applicable n'est pas toujours simulable)** :
+  un format sans phase de qualification s'applique parfaitement à un tournoi, mais le bot n'a aucun
+  barème d'où tirer des scores. Le refus est donc **explicite et distinct** (`format_non_simulable`,
+  400) plutôt qu'un `PhaseQualificationAbsente` en 404 parlant d'un tournoi que l'organisateur ne
+  voit nulle part — et l'écran désactive le bouton en le disant.
 - **Dépend de** : **E05US010** (sources multiples et relatives — sans elles le schéma ne peut pas
   montrer les braquets ni s'ajuster à l'effectif) · **Jalon** : J3 ·
   **ADR** : [ADR-0063](../docs/adr/0063-brouillon-de-format-invariant-a-l-application.md)

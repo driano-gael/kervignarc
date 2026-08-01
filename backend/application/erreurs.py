@@ -888,3 +888,18 @@ class EffectifSimulationInvalide(ApplicationError):
     """
 
     code = "effectif_simulation_invalide"
+
+
+class FormatNonSimulable(ApplicationError):
+    """Le format s'applique à un tournoi, mais le rejeu ne sait pas le dérouler (E01US024) → 400.
+
+    Aujourd'hui, un seul motif : **aucune phase de qualification**, donc aucun barème d'où le bot
+    tirerait des volées. Ce n'est **pas** une incohérence du format — `ServiceFormats.appliquer`
+    l'accepte —, c'est une limite du substrat de simulation.
+
+    Même famille que `EffectifSimulationInvalide` (**400**) : la requête est impossible *en soi*, et
+    aucun changement d'état ne la rendrait acceptable. Distincte de `PhaseQualificationAbsente`
+    (404), qui parle d'un **tournoi** réel : ici il n'y en a aucun, et ce 404 était un contresens.
+    """
+
+    code = "format_non_simulable"

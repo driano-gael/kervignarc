@@ -83,8 +83,15 @@ class EtatDuel:
 
 @dataclass(frozen=True)
 class EtatTableau:
-    """La photo du tableau reconstruit : ses matchs (avec tir), son podium acquis, sa complétude."""
+    """La photo du tableau reconstruit : ses matchs (avec tir), son podium acquis, sa complétude.
 
+    `phase_id` a été ajouté par E01US024 : sans lui, tout appelant qui reçoit **plusieurs** tableaux
+    devait les rapparier à leurs phases **par position** — or `_tableaux` (pilotage de simulation)
+    **saute** une phase non encore jouable, ce qui décalait silencieusement toute la suite. Un
+    identifiant porté par la donnée supprime la classe entière de ces bugs d'appariement.
+    """
+
+    phase_id: PhaseId
     effectif: int
     taille: int
     nb_tours: int
@@ -138,6 +145,7 @@ class ServiceSaisieDuels:
             if (duelliste := self._duelliste(place.participant, lignes)) is not None
         )
         return EtatTableau(
+            phase_id=phase_id,
             effectif=tableau.effectif,
             taille=tableau.taille,
             nb_tours=tableau.nb_tours,
@@ -253,6 +261,12 @@ class ServiceSaisieDuels:
             )
         classement = self._classements.pour_tournoi(tournoi_id)
         lignes = {ligne.archer_id: ligne for ligne in classement.lignes}
+        # DETTE-028 (docs/dette.md) — **le cœur du raccourci vit ici** : le tableau est ensemencé
+        # avec **tous** les archers en lice, sans jamais lire `phase.sources` ni `phase.effectif`.
+        # Un format qui déclare « les rangs 1 à 32 au tableau » se joue donc à 120 si 120 archers
+        # sont classés. E01US024 a livré la **composition** de ces prélèvements et rend l'écart
+        # visible (effectif projeté vs constaté, `application/simulation_format.py`) ; leur
+        # **consommation** — ici — reste à faire, en US dédiée : ce code déroule le jour J.
         # Ensemencement : **seuls les archers en lice** entrent dans le tableau. Un forfait déclaré
         # en **qualification** (abandon relégué / DSQ exclu, `statut != EN_LICE`) n'accède pas aux
         # duels ; son rang scratch peut d'ailleurs être `None` (DSQ). Le classement complet reste
