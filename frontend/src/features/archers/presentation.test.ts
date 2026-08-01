@@ -11,6 +11,9 @@ function archer(id: number): Archer {
     categorie_id: 1,
     cible: null,
     club_id: null,
+    handicap_officiel: null,
+    handicap_surcharge: null,
+    handicap: 0,
   }
 }
 

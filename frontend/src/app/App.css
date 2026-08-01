@@ -415,6 +415,17 @@
   margin: 0;
 }
 
+/* Aide contextuelle sous un champ (E05US015) : décrit le type de phase choisi. Discrète — elle
+   accompagne un choix, elle ne le commente pas. Même registre que `.zones__aide`. */
+.carte__aide {
+  margin: -4px 0 4px;
+  font-size: 12px;
+  /* `--text` et non `--text-h` : ce texte **porte de l'information métier** (ce que fait le format
+     choisi), c'est le seul endroit où l'organisateur apprend ce qu'est une « colline ». Le token
+     atténué est pour l'accessoire. Aligné sur `.zones__aide`, que le commentaire disait déjà viser. */
+  color: var(--text);
+}
+
 .carte__etat--ok {
   color: var(--ok);
 }

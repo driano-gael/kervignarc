@@ -53,7 +53,12 @@ tout le monde** : au lieu de désigner quatre archers et de renvoyer les autres 
 **redescendre chaque perdant** dans le tableau des places qu'il peut encore atteindre, jusqu'à un
 rang unique de 1 à N — et un **format préparé pour 120 archers s'ajuste** quand il n'y en a que 82.
 Le classeur réel du club (120 archers, 484 matchs) est devenu un **test automatique** qui vérifie ce
-moteur à chaque modification.
+moteur à chaque modification. Et l'organisateur peut enfin **décrire son vrai déroulé au lieu de
+l'approcher** : l'écran « Phases » propose six formats de plus — **échauffement, barrage, poules,
+Big Shoot Off, système suisse, colline** —, chacun expliqué d'une ligne, auxquels s'ajoutent le
+**repêchage** et le **handicap** de l'archer. La question du **Big Shoot Off**, restée ouverte au
+cahier des charges depuis l'origine du projet, est **fermée** : sa règle a été donnée, et c'est bien
+un format à N archers (le « Big » désigne le nombre d'archers, pas de flèches).
 
 ---
 
@@ -394,7 +399,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **86 US livrées** sur `main` (mergées, revues, CI verte) à la date du 31/07/2026. **`SUIVI-US.md`
+- **87 US livrées** sur `main` (mergées, revues, CI verte) à la date du 31/07/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -410,7 +415,13 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   (E01US023), ce qui rend l'axe « Atelier » réellement hors tournoi. Le **chantier du moteur de
   phases** s'est alors ouvert par son verrou : le **placement intégral 1→N** (E05US010), qui livre la
   cascade de routage, les **sources multiples et relatives**, et l'**oracle 120** — le rejeu
-  automatique du classeur réel, jusqu'ici cité par la doctrine mais jamais outillé.
+  automatique du classeur réel, jusqu'ici cité par la doctrine mais jamais outillé. Il s'est poursuivi
+  par le **catalogue de types de phase** (E05US015) : six formats de plus à l'écran « Phases »
+  (échauffement, barrage, poules, **Big Shoot Off**, système suisse, colline), chacun expliqué d'une
+  ligne, plus le **handicap** de l'archer et le **repêchage**. La question **Q9** du cahier des
+  charges — « qu'est-ce qu'un Big Shoot Off ? » —, bloquante depuis l'origine du projet, est
+  **fermée** : le commanditaire en a fourni la règle, comme celles des poules, de l'échauffement, du
+  handicap, du système suisse, du King of the Hill, du Ladder et de la finale spectacle.
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,

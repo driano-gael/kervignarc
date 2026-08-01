@@ -23,7 +23,7 @@ import { useCategories } from '../categories/hooks'
 import { useClubs } from '../clubs/hooks'
 import { InscriptionsArcher } from '../inscriptions/InscriptionsArcher'
 import type { Archer, ModifierArcher } from './api'
-import { useArchers, useModifierArcher, useSupprimerArcher } from './hooks'
+import { useArchers, useDefinirHandicap, useModifierArcher, useSupprimerArcher } from './hooks'
 
 export function Archers({ tournoiId }: { tournoiId: number }) {
   const archers = useArchers(tournoiId)
@@ -118,6 +118,19 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
           {blason !== undefined && ` · ${blason.nom}`}
           {club !== undefined && ` · ${club.nom}`}
           {archer.cible !== null && ` · cible ${archer.cible}`}
+          {/* Handicap (E05US015) : on affiche le **dérivé** calculé par le serveur, et l'on signale
+              d'un astérisque qu'une surcharge prime le handicap officiel du club — sans quoi
+              l'organisateur ne saurait pas pourquoi la valeur diffère de la fiche club. `0` n'est
+              pas affiché : un archer non évalué concourt au scratch, ce n'est pas une information. */}
+          {archer.handicap !== 0 && ` · handicap ${archer.handicap}`}
+          {archer.handicap_surcharge !== null && (
+            <span
+              title={`Surcharge de ce tournoi ; handicap du club : ${archer.handicap_officiel ?? '—'}`}
+            >
+              {' '}
+              *
+            </span>
+          )}
         </span>
         <span className="archer__actions">
           <button
@@ -203,9 +216,19 @@ function FormulaireArcher({
   const [prenom, setPrenom] = useState(archer.prenom)
   const [categorieId, setCategorieId] = useState(String(archer.categorie_id))
   const [clubId, setClubId] = useState(archer.club_id === null ? '' : String(archer.club_id))
+  // Handicap (E05US015) : **ressource séparée**, donc état et mutation séparés. Le mêler à
+  // `modifier` obligerait à renvoyer nom/prénom/catégorie à chaque ajustement de handicap — et
+  // écraserait une correction d'état civil faite entre-temps depuis un autre poste.
+  const [handicapOfficiel, setHandicapOfficiel] = useState(
+    archer.handicap_officiel === null ? '' : String(archer.handicap_officiel),
+  )
+  const [handicapSurcharge, setHandicapSurcharge] = useState(
+    archer.handicap_surcharge === null ? '' : String(archer.handicap_surcharge),
+  )
   const clubs = useClubs()
   const categories = useCategories(tournoiId)
   const modifier = useModifierArcher(tournoiId)
+  const reglerHandicap = useDefinirHandicap(tournoiId)
 
   // Reprend la règle du domaine (nom et prénom non vides) pour éviter une requête vouée au 422 ;
   // le serveur reste l'autorité (revalidation à la frontière).
@@ -252,10 +275,50 @@ function FormulaireArcher({
     )
   }
 
+  // ⚠️ Enregistrer l'état civil **ferme le panneau** (`onTermine`), donc emporte la saisie du
+  // formulaire de handicap resté en attente. On avertit au lieu de perdre en silence : les deux
+  // formulaires se remplissent naturellement l'un après l'autre, et rien ne signalait la perte.
+  const handicapModifie =
+    handicapOfficiel !==
+      (archer.handicap_officiel === null ? '' : String(archer.handicap_officiel)) ||
+    handicapSurcharge !==
+      (archer.handicap_surcharge === null ? '' : String(archer.handicap_surcharge))
+
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
     if (incomplet) return
     enregistrer({})
+  }
+
+  // Champ vide = **efface** le handicap (retour au scratch), jamais « laisse en l'état » : c'est la
+  // même convention que `club_id` à l'édition, et retirer une surcharge est une action que
+  // l'organisateur demandera. Le serveur reste l'autorité sur les **bornes** (négatif ou trop grand
+  // → 422 `handicap_invalide`, affiché par `MessageErreur`).
+  //
+  // ⚠️ **Mais il ne peut pas être l'autorité sur ce qu'il ne voit jamais.** Un `Number()` nu rend
+  // `NaN` sur `12,5` (la virgule décimale française, que le pavé numérique d'une tablette en locale
+  // FR propose), sur `abc`, sur `7 0` — et `JSON.stringify` sérialise `NaN` en `null`. Le serveur
+  // recevait donc « efface ce handicap », répondait **200**, et la surcharge disparaissait pendant
+  // que l'écran affichait un succès. C'est la seule classe d'erreur que la validation serveur ne
+  // peut pas rattraper, parce que le front la convertit en une demande parfaitement valide.
+  const lireEntier = (saisie: string): number | null | 'invalide' => {
+    const texte = saisie.trim()
+    if (texte === '') return null
+    const valeur = Number(texte)
+    return Number.isInteger(valeur) ? valeur : 'invalide'
+  }
+
+  const officielLu = lireEntier(handicapOfficiel)
+  const surchargeLue = lireEntier(handicapSurcharge)
+  const handicapIllisible = officielLu === 'invalide' || surchargeLue === 'invalide'
+
+  const soumettreHandicap = (evenement: React.FormEvent) => {
+    evenement.preventDefault()
+    if (officielLu === 'invalide' || surchargeLue === 'invalide') return
+    reglerHandicap.mutate({
+      id: archer.id,
+      entree: { officiel: officielLu, surcharge: surchargeLue },
+    })
   }
 
   return (
@@ -310,7 +373,57 @@ function FormulaireArcher({
             Annuler
           </button>
         </div>
+        {handicapModifie && (
+          <p className="carte__etat" role="status">
+            Le handicap saisi ci-dessous n'est pas encore enregistré : utilisez son propre bouton
+            avant de valider l'état civil.
+          </p>
+        )}
       </form>
+      {/* Le handicap se règle **à part** de l'état civil : deux formulaires, deux enregistrements.
+          C'est le pendant à l'écran de la ressource séparée côté API, et cela évite qu'un
+          ajustement de handicap ne renvoie (donc n'écrase) l'identité de l'archer. */}
+      <form className="formulaire" onSubmit={soumettreHandicap}>
+        <p className="carte__aide">
+          Handicap : il s'ajoute au score réalisé. Laissez vide si l'archer n'est pas évalué. La
+          surcharge, si elle est renseignée, remplace le handicap du club pour ce seul tournoi.
+        </p>
+        <input
+          className="formulaire__champ"
+          inputMode="numeric"
+          value={handicapOfficiel}
+          onChange={(e) => setHandicapOfficiel(e.target.value)}
+          placeholder="Handicap officiel (club)"
+          aria-label="Handicap officiel de l'archer"
+        />
+        <input
+          className="formulaire__champ"
+          inputMode="numeric"
+          value={handicapSurcharge}
+          onChange={(e) => setHandicapSurcharge(e.target.value)}
+          placeholder="Surcharge pour ce tournoi"
+          aria-label="Surcharge de handicap de l'archer"
+        />
+        <div className="formulaire__actions">
+          <button type="submit" disabled={reglerHandicap.isPending || handicapIllisible}>
+            Enregistrer le handicap
+          </button>
+        </div>
+        {handicapIllisible && (
+          <p className="carte__etat carte__etat--erreur" role="alert">
+            Un handicap est un nombre entier de points (sans virgule).
+          </p>
+        )}
+        {/* Un retour de succès explicite : sans lui, rien ne distingue « enregistré » de « pas
+            cliqué ». Le formulaire ne se referme pas — on règle souvent les deux valeurs à la
+            suite. */}
+        {reglerHandicap.isSuccess && !handicapIllisible && (
+          <p className="carte__etat carte__etat--ok" role="status">
+            Handicap enregistré.
+          </p>
+        )}
+      </form>
+      {reglerHandicap.isError && <MessageErreur erreur={reglerHandicap.error} />}
       {/* Ton **neutre** (pas de `--erreur`) et une action : ces deux-là ne sont pas des erreurs,
           l'édition reste possible. Chaque bouton ne confirme que **son** motif — jamais les deux
           d'un coup, ce qui ferait acquiescer à un motif jamais affiché — mais les confirmations

@@ -192,6 +192,9 @@ def _ranger(entrees_ordonnees: list[_Entree]) -> dict[ArcherId, int]:
     « index + 1 » dès que la clé change — d'où les sauts après un groupe d'ex æquo. Un abandon,
     trié après les en-lice, reçoit ainsi un rang qui **continue** leur numérotation (relégation).
     """
+    # DETTE-029 (docs/dette.md) : 3ᵉ écriture de « rang partagé à clé égale, avec sauts » dans le
+    # domaine (`classement._ranger`, `poule.classement_de_poule`, `suisse.classement_suisse`), et
+    # les trois divergent déjà. Remède proposé (fonction pure `attribuer_rangs`) en US dédiée.
     rangs: dict[ArcherId, int] = {}
     rang = 0
     cle_precedente: tuple[int, int, int, int] | None = None

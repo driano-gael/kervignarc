@@ -13,20 +13,28 @@ lit qu'une identité opaque.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import cast
+
 import pytest
 
 from domain.erreurs import (
     EffectifTableauInvalide,
     MatchIntrouvable,
     MatchNonJouable,
+    RoutingNonSupporte,
     VainqueurHorsMatch,
 )
 from domain.participant import Participant
 from domain.politiques import (
     ByesAuxMieuxClasses,
+    ContexteRoutage,
+    Destination,
     EliminationSeche,
     PlacementEnCascade,
     ProfondeurPodium,
+    ProfondeurUnVersN,
+    RoutingRepechage,
     SeedingSerpent,
 )
 from domain.tableau import (
@@ -446,3 +454,57 @@ def test_le_podium_publie_les_rangs_trois_quatre_avant_la_finale() -> None:
 
     assert tableau.finale.vainqueur is None  # la finale n'est pas encore tirée
     assert [place.rang for place in tableau.podium()] == [3, 4]
+
+
+# --- E05US015 : la destination « repêchage » -----------------------------------------------------
+
+
+def test_un_routing_de_repechage_n_engendre_pas_la_moitie_basse() -> None:
+    """La branche `VersRepechage` de `construire_tableau`, **jamais atteinte par un test**.
+
+    ⚠️ C'est exactement le cas que le garde-fou d'E05US010 laissait en garde : « le jour où E05US015
+    ajoute la destination repêchage, le moteur n'aurait construit aucun sous-tableau d'accueil,
+    n'aurait rien levé, et mypy n'aurait rien dit ». Ne rien engendrer **est** ici la bonne réponse
+    (le repêché ne se classe pas dans ce tableau, une phase avale le reprend), mais rien ne le
+    figeait : un refactor du dispatch de routing l'aurait cassé en silence.
+
+    Un tableau de 8 en cascade pure produit 12 matchs ; avec les perdants du 1ᵉʳ tour repêchés, la
+    moitié basse (places 5-8) n'est plus engendrée et il n'en reste que 8.
+    """
+    joueurs = [p(rang) for rang in range(1, 9)]
+    cascade = construire_tableau(joueurs, SEEDING, BYES, PlacementEnCascade(), ProfondeurUnVersN())
+    repechage = construire_tableau(
+        joueurs,
+        SEEDING,
+        BYES,
+        RoutingRepechage(tours_repeches=frozenset({1}), sinon=PlacementEnCascade()),
+        ProfondeurUnVersN(),
+    )
+    assert len(cascade.matchs) == 12
+    assert len(repechage.matchs) == 8
+    # Aucun match du tableau repêché ne dispute les places 5 à 8 : elles sont laissées à la phase
+    # de repêchage, et c'est le diagnostic de déroulé (E01US024) qui signalera son absence.
+    assert all(match.plage is None or match.plage.debut <= 4 for match in repechage.matchs)
+
+
+def test_le_repechage_ne_desarme_pas_le_refus_des_destinations_inconnues() -> None:
+    """Le garde-fou d'E05US010 doit survivre à l'ajout d'une destination : une destination que le
+    moteur ne sait pas honorer lève toujours, elle ne tombe pas dans la branche du repêchage."""
+
+    @dataclass(frozen=True)
+    class DestinationInventee:
+        pass
+
+    @dataclass(frozen=True)
+    class RoutingInconnu:
+        def route(self, contexte: ContexteRoutage) -> Destination:
+            return cast("Destination", DestinationInventee())
+
+    with pytest.raises(RoutingNonSupporte):
+        construire_tableau(
+            [p(rang) for rang in range(1, 5)],
+            SEEDING,
+            BYES,
+            RoutingInconnu(),
+            ProfondeurUnVersN(),
+        )

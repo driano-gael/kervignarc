@@ -105,6 +105,8 @@ def _vers_archer(ligne: ArcherORM) -> Archer:
         categorie_id=ligne.categorie_id,
         cible=ligne.cible,
         club_id=ligne.club_id,
+        handicap_officiel=ligne.handicap_officiel,
+        handicap_surcharge=ligne.handicap_surcharge,
         id=ligne.id,
     )
 
@@ -786,6 +788,8 @@ class ArcherRepositorySQL:
                     categorie_id=archer.categorie_id,
                     cible=archer.cible,
                     club_id=archer.club_id,
+                    handicap_officiel=archer.handicap_officiel,
+                    handicap_surcharge=archer.handicap_surcharge,
                 )
                 session.add(ligne)
                 session.commit()
@@ -846,6 +850,11 @@ class ArcherRepositorySQL:
                 ligne.categorie_id = archer.categorie_id
                 ligne.cible = archer.cible
                 ligne.club_id = archer.club_id
+                # E05US015 : les deux handicaps rejoignent la liste, pour la raison exacte que le
+                # commentaire ci-dessus annonce — un `enregistrer` partiel les perdrait dès qu'un
+                # appelant enregistre pour une autre raison (un placement effacerait le handicap).
+                ligne.handicap_officiel = archer.handicap_officiel
+                ligne.handicap_surcharge = archer.handicap_surcharge
                 session.commit()
                 return _vers_archer(ligne)
         except SQLAlchemyError as exc:

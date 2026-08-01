@@ -59,6 +59,7 @@ Chaque ADR est un fichier `NNNN-titre.md` au format court : contexte / options /
 | [0059](0059-routage-par-role-dans-l-url-routeur-maison.md) | **Une adresse par rôle**, servie par un **routeur maison** (l'adresse prime sur le choix mémorisé, le verrou `D-13` prime sur l'adresse) | Accepté |
 | [0060](0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) | Les briques de configuration sont le **patrimoine du club** : bibliothèque hors tournoi, **copie** à l'assemblage, **promotion** remontante ; le format plutôt que la phase — **révise la répartition d'ADR-0058** (§6) | Accepté |
 | [0061](0061-routing-generique-et-placement-en-cascade.md) | Le **routing devient générique** (`route(contexte)` → hors tableau / vers une plage) et l'**élimination directe n'est qu'un placement tronqué au rang 4** ; sources multiples et relatives — **révise la signature de `routing` d'ADR-0004** | Accepté |
+| [0062](0062-catalogue-de-types-de-phase.md) | Un **type de phase se justifie par une structure, pas par un réglage** : six types + leurs moteurs (échauffement, barrage, poules, Big Shoot Off, suisse, colline), le **repêchage** et le **handicap** en **politiques**, la finale spectacle en **composition** — **révise la signature de `scoring` d'ADR-0004** et **étend l'union `Destination` d'ADR-0061** | Accepté |
 
 ## Sources
 `charge.md`, `cahier-des-charges.md`, `cahier-des-charges-technique.md`, `moteur-placement-lucky-loser.md`, `guide-architecture.md`.

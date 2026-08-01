@@ -54,6 +54,7 @@ from domain.politiques import (
     Routing,
     Seeding,
     VersPlage,
+    VersRepechage,
 )
 
 # --- sources d'un camp de match ----------------------------------------------------------------
@@ -428,6 +429,20 @@ def construire_tableau(
                     (Exempt() if matchs[n - 1].est_bye else PerdantDe(n), None) for n in numeros
                 ]
                 engendrer(entrants, destination.plage, tour + 1)
+        elif isinstance(destination, VersRepechage):
+            # **Ne construire aucun sous-tableau est ici la bonne réponse**, et c'est le seul
+            # endroit du moteur où « ne rien faire » demande une justification écrite. Un perdant
+            # repêché ne se classe pas dans *ce* tableau : il en sort, et c'est une **phase avale**
+            # qui le reprend par un prélèvement `issue_de_tour/perdants` (E05US010). La moitié basse
+            # de la plage reste donc délibérément non engendrée — ses rangs seront décernés par le
+            # repêchage, pas ici.
+            #
+            # ⚠️ Le piège que cela ouvre, et qui n'appartient plus au moteur : si la composition
+            # oublie la phase de repêchage, ces battus **disparaissent** du classement sans que rien
+            # ne le signale — un tableau amputé de sa moitié basse est structurellement valide. Le
+            # diagnostic de déroulé (E01US024) est le bon endroit pour l'attraper ; le moteur, lui,
+            # ne peut pas savoir ce que la séquence prévoit après lui.
+            pass
         elif not isinstance(destination, HorsTableau):
             # ⚠️ **Ne jamais laisser tomber une destination inconnue en silence.** E05US005 refusait
             # tout routing qu'il ne savait pas honorer ; en ouvrant le catalogue, E05US010 a failli

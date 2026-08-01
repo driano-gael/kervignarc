@@ -1,7 +1,8 @@
 # Modèle de données détaillé — Kervignarc
 
-- **Version** : 0.7
-- **Date** : 2026-07-31 *(v0.7 : les **briques deviennent le patrimoine du club** — `CATEGORIE.tournoi_id` et `BLASON.tournoi_id` passent **nullable** (`NULL` = modèle de bibliothèque), les deux tables gagnent `origine`, et la table **`FORMAT_TOURNOI`** apparaît (sans FK vers `TOURNOI`) — E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md), migrations 0034 et 0035)*
+- **Version** : 0.8
+- **Date** : 2026-07-31 *(v0.8 : `ARCHER` gagne `handicap_officiel` et `handicap_surcharge` — deux valeurs et non une, la surcharge primant l'officiel pour une édition — E05US015, [ADR-0062](adr/0062-catalogue-de-types-de-phase.md), migration 0037)*
+- *v0.7 : 2026-07-31 — les **briques deviennent le patrimoine du club** — `CATEGORIE.tournoi_id` et `BLASON.tournoi_id` passent **nullable** (`NULL` = modèle de bibliothèque), les deux tables gagnent `origine`, et la table **`FORMAT_TOURNOI`** apparaît (sans FK vers `TOURNOI`) — E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md), migrations 0034 et 0035)*
 - *v0.6 : 2026-07-27 — `DEPART.horaire` devient un horaire du jour `HH:MM` **NOT NULL** (abandon du libellé libre facultatif) — E02US010, migration 0032*
 - *v0.5 : 2026-07-16 — table de liaison `INSCRIPTION` (archer ↔ départ, portant `paye`) — E02US009, [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md) ; montant dû **dérivé** du tarif du départ, non stocké*
 - *v0.4 : 2026-07-16 — `DEPART` devient un **créneau du tournoi** (`tournoi_id`, `horaire`, `tarif_centimes` obligatoire), le tarif **quitte** `TOURNOI` — [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md), E02US004 ; le lien archer↔départ + `paye` passent à E02US009*
@@ -145,6 +146,24 @@ erDiagram
 | club_id | INTEGER | FK → CLUB, **nullable** — `NULL` = club *inconnu*, jamais « aucun club » ([ADR-0014](adr/0014-club-inconnu-plutot-que-club-sentinelle.md)) |
 | categorie_id | INTEGER | FK → CATEGORIE, **NOT NULL** |
 | cible | INTEGER | **nullable** — placement **provisoire** du walking skeleton (E00US011) : un simple numéro, sans capacité ni contrainte de blason. Remplacé par `PLACEMENT` en EPIC-03. `NOT NULL` ⇒ archer *placé*, ce qui suspend sa suppression ([ADR-0016](adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)) |
+| handicap_officiel | INTEGER | **nullable** — handicap de référence, entretenu par le club (E05US015, migration `0037`) |
+| handicap_surcharge | INTEGER | **nullable** — handicap qui **prime** l'officiel pour cette édition |
+
+> **Handicap (E05US015, [ADR-0062](adr/0062-catalogue-de-types-de-phase.md) §6).** Deux colonnes et
+> non une, à la demande du commanditaire : une valeur **officielle** que le club entretient d'une
+> saison à l'autre, et une **surcharge** locale au tournoi pour le cas où elle est visiblement
+> périmée (un jeune qui progresse vite, un archer qui reprend après une longue absence). Le handicap
+> **effectif** est dérivé (`surcharge ?? officiel ?? 0`) et n'est pas stocké.
+>
+> `NULL` signifie « **non renseigné** », **distinct** d'un handicap à `0` : les deux concourent
+> pareil au scratch, mais seul le second a été évalué. C'est pourquoi les colonnes sont nullables
+> **sans valeur par défaut** — un `DEFAULT 0` aurait effacé la distinction sur toutes les lignes
+> existantes, en affirmant que chaque archer déjà en base a été évalué à zéro.
+>
+> ⚠️ **Aucune table de handicap n'est fournie par le produit.** La FFTA n'a pas de système officiel ;
+> celui qui fait référence est anglo-saxon (Archery GB / World Archery). En reconstituer une
+> produirait des classements **plausibles mais faux**. Le schéma ouvre l'emplacement, le club répond
+> de la valeur.
 
 > **`club_id` posé par E02US001** (migration `0014`) ; `prenom` et `categorie_id` par E02US002
 > (migration `0015`). Le rattachement au club est arrivé avec le **référentiel** plutôt qu'avec

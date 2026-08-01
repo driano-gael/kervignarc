@@ -3,8 +3,25 @@
 
 import { fetchJson } from '../../shared/api/client'
 
-// Types de phase déclarables (ADR-0045 §2). D'autres viendront avec l'US qui les implémente.
-export type TypePhase = 'qualification' | 'elimination_directe' | 'placement'
+// Types de phase déclarables (ADR-0045 §2) — le catalogue est peuplé par E05US015 (ADR-0062).
+// ⚠️ Cette union est **dupliquée** dans `features/patrimoine/api.ts` (les formats de bibliothèque
+// composent les mêmes types). Deux copies, donc deux occasions de diverger du backend : c'est
+// assumé tant qu'il n'y en a que deux — à une 3ᵉ, l'extraire dans un module partagé se justifiera.
+// DETTE-030 (../../../../docs/dette.md) : cette union est déclarée **deux fois** côté front (ici et
+// dans l'autre feature), et doit rester synchronisée avec l'enum `TypePhase` du backend — trois
+// domiciles pour une vérité. Assumé à deux occurrences ; ce qui rend la duplication tenable est que
+// **chaque consommateur soit exhaustif** (`Record` ou `switch` + `assertNever`), jamais un ternaire
+// à repli — le repli est précisément ce qui a fait afficher six types comme « Placement ».
+export type TypePhase =
+  | 'qualification'
+  | 'elimination_directe'
+  | 'placement'
+  | 'echauffement'
+  | 'barrage'
+  | 'poules'
+  | 'big_shoot_off'
+  | 'suisse'
+  | 'colline'
 
 // Cycle de vie d'une phase (ADR-0045 §1) : `en_pause` gèle la phase, distinct du tournoi.
 export type StatutPhase = 'a_venir' | 'en_cours' | 'en_pause' | 'terminee'

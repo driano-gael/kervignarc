@@ -224,6 +224,32 @@ class ServiceArchers:
             self._signaler_changement_categorie(archer_id, edite)
         return self._archers.enregistrer(edite)
 
+    def definir_handicap(
+        self,
+        archer_id: ArcherId,
+        handicap_officiel: int | None = None,
+        handicap_surcharge: int | None = None,
+    ) -> Archer:
+        """Fixe les deux handicaps d'un archer (E05US015) — **remplacement total** des deux valeurs.
+
+        **Cas d'usage distinct de `modifier`, et volontairement pas un champ de plus dedans.**
+        `modifier` corrige l'**état civil** d'un archer (nom, prénom, catégorie, club) : c'est une
+        opération d'identité, gardée par deux confirmations d'homonymie et de catégorie. Un
+        handicap n'a rien à y faire — il se règle souvent en série (import du club), parfois juste
+        avant une phase, et le passer par `modifier` obligerait à renvoyer nom/prénom/catégorie à
+        chaque ajustement, avec le risque d'écraser une correction faite entre-temps sur un autre
+        poste. Un DTO par cas d'usage, c'est déjà le patron du projet (E02US001).
+
+        `officiel` est la référence entretenue par le club ; `surcharge` la prime pour cette
+        édition. Passer `None` aux deux **efface** les handicaps (retour au scratch) : comme pour
+        `club_id` dans `modifier`, l'absence de valeur veut dire « remets à rien », jamais « n'y
+        touche pas ». Lève `HandicapInvalide` (domaine) sur une valeur négative.
+        """
+        archer = self._archer_existant(archer_id)
+        return self._archers.enregistrer(
+            archer.avec_handicap(officiel=handicap_officiel, surcharge=handicap_surcharge)
+        )
+
     def supprimer(self, archer_id: ArcherId, autoriser_suppression_engage: bool = False) -> None:
         """Désinscrit un archer (E02US003). Lève `ArcherIntrouvable` s'il n'existe pas.
 

@@ -5,14 +5,22 @@ comment on route le perdant, comment on score, comment on ensemence l'arbre, à 
 comment on départage, jusqu'où on classe. ADR-0004 en fait **six familles** de politiques, chacune
 une interface du domaine (`Protocol`) avec au moins une implémentation :
 
-| Famille    | Rôle                                   | Implémentation de ce socle |
-|------------|----------------------------------------|----------------------------|
-| `routing`  | où va le perdant                       | `EliminationSeche`, `PlacementEnCascade` |
-| `scoring`  | calcul du score / de la victoire       | `ScoreCumul`               |
-| `seeding`  | composition de l'arbre                 | `SeedingSerpent`           |
-| `byes`     | exempts si effectif ≠ 2^k              | `ByesAuxMieuxClasses`      |
-| `tiebreak` | départage des égalités                 | `TiebreakFftaDefaut`       |
-| `depth`    | jusqu'où classer                       | `ProfondeurUnVersN`, `ProfondeurPodium` |
+| Famille    | Rôle                      | Implémentations livrées |
+|------------|---------------------------|-------------------------|
+| `routing`  | où va le perdant          | `EliminationSeche`, `PlacementEnCascade`, |
+|            |                           | `RoutingRepechage` |
+| `scoring`  | calcul du score           | `ScoreCumul`, `ScoreAvecHandicap` |
+| `seeding`  | composition de l'arbre    | `SeedingSerpent` |
+| `byes`     | exempts si effectif ≠ 2^k | `ByesAuxMieuxClasses` |
+| `tiebreak` | départage des égalités    | `TiebreakFftaDefaut`, `TiebreakPoules` |
+| `depth`    | jusqu'où classer          | `ProfondeurUnVersN`, `ProfondeurPodium`, |
+|            |                           | `AucunClassement` |
+
+**E05US015 peuple ce catalogue** ([ADR-0062]) : le **repêchage** et le **handicap**, que le cahier
+des charges rangeait parmi les « types de tournoi » à livrer, ne sont pas des types de phase mais
+des **politiques** — le premier décide où va un perdant, le second comment se calcule un score. Ni
+l'un ni l'autre n'a de structure propre, donc leur donner une `TypePhase` aurait été une erreur de
+maille : c'est l'apport de conception de l'US, pas un détail d'implémentation.
 
 **Portée E05US003.** Ce module livre les **interfaces**, une implémentation **pure et testable**
 par famille, et l'**assemblage** d'une `config.policies` en un jeu résolu (`PolitiquesPhase`) via un
@@ -37,8 +45,15 @@ pas dans un catalogue fermé). Le grain de `validation` **n'est pas** une politi
 reste **hors** `policies` (ADR-0046). Agrégats/stratégies de domaine **purs** — immuables, sans
 dépendance framework (règle 1).
 
+# DETTE-028 (../../docs/dette.md) : les familles `scoring` et `tiebreak` — et les six moteurs de
+# phase d'E05US015 — n'ont **aucun appelant de production**. `domain/classement.py` réimplémente
+# §8.1 à la main sans passer par `PolitiquesPhase`, donc `ScoreAvecHandicap` reste inerte bien que
+# le handicap soit stocké, exposé et affiché. Résorption en E01US024, qui branche les moteurs au
+# service de déroulé.
+
 [ADR-0004]: ../../docs/adr/0004-moteur-de-phases-politiques.md
 [ADR-0046]: ../../docs/adr/0046-config-policies-politiques-nommees-parametrees.md
+[ADR-0062]: ../../docs/adr/0062-catalogue-de-types-de-phase.md
 """
 
 from __future__ import annotations
@@ -104,9 +119,27 @@ class VersPlage:
     plage: Plage
 
 
-type Destination = HorsTableau | VersPlage
-"""Où va le perdant. Le **repêchage** WA (E05US015) ajoutera sa variante « vers le tableau amont »
-— extension de l'union, sans toucher aux deux existantes."""
+@dataclass(frozen=True)
+class VersRepechage:
+    """Le perdant **sort de ce tableau sans être classé** : une phase de repêchage le reprendra.
+
+    C'est la variante annoncée par E05US010, livrée par E05US015. Elle se distingue de
+    `HorsTableau` par ce qu'elle promet : `HorsTableau` **consomme** un rang (le perdant a fini sa
+    compétition), `VersRepechage` n'en consomme **aucun** — le repêché peut encore remonter
+    disputer le titre, donc lui attribuer un rang ici serait faux.
+
+    ⚠️ **Cette destination ne construit rien.** La réintégration n'est pas un lien d'arbre mais un
+    **prélèvement** de la phase avale : `SourcePhase.par_issue_de_tour(ordre, tour, PERDANTS)`,
+    livrée par E05US010. Le routing dit seulement « ces perdants-là ne descendent pas dans la
+    cascade » ; qui les récupère est une affaire de composition. C'est exactement la distinction de
+    `moteur-placement-lucky-loser.md` (Q1) entre **placement** (le perdant descend vers un tableau
+    de classement, sans retour) et **repêchage** (il ressort du tableau et peut revenir).
+    """
+
+
+type Destination = HorsTableau | VersPlage | VersRepechage
+"""Où va le perdant : il a fini (`HorsTableau`), il descend se classer (`VersPlage`), ou il sort
+pour être repêché (`VersRepechage`, E05US015)."""
 
 
 class Routing(Protocol):
@@ -150,15 +183,61 @@ class PlacementEnCascade:
         return VersPlage(contexte.plage.moitie_basse())
 
 
+@dataclass(frozen=True)
+class RoutingRepechage:
+    """*Repêchage World Archery* : les perdants de certains tours **ressortent** du tableau au lieu
+    d'y être classés (E05US015, [ADR-0062]).
+
+    `tours_repeches` liste les tours dont le perdant est repêchable, comptés **depuis la racine**
+    comme le veut `ContexteRoutage.tour` — la règle WA « les perdants du 1ᵉʳ tour sont repêchés »
+    s'écrit donc `frozenset({1})`. Tout autre tour est délégué à `sinon`, ce qui rend le repêchage
+    **composable** avec les deux routings existants : repêchage + cascade (le format du club, où le
+    « Lucky-Looser » remonte en Grande Finale et où les autres battus descendent se classer), ou
+    repêchage + élimination sèche.
+
+    **Décoration plutôt qu'implémentation autonome**, et c'est le point de conception : un
+    repêchage ne remplace pas une politique de placement, il en **excepte** quelques tours. Écrire
+    `RoutingRepechage` sans `sinon` aurait forcé à choisir entre « repêcher » et « classer », alors
+    que le classeur réel fait les deux dans le même tableau.
+    """
+
+    tours_repeches: frozenset[int]
+    sinon: Routing
+
+    def route(self, contexte: ContexteRoutage) -> Destination:
+        if contexte.tour in self.tours_repeches:
+            return VersRepechage()
+        return self.sinon.route(contexte)
+
+
 # --- scoring -----------------------------------------------------------------------------------
 
 
-class Scoring(Protocol):
-    """Calcule le score d'un tireur à partir des points de ses volées (ADR-0004). Méthode
-    fondatrice : le **cumul** de qualification. Le barème par sets (duels, E04US013) renverra un
-    nombre de sets, pas un total : il **ressignera** cette méthode (rupture bon marché)."""
+@dataclass(frozen=True)
+class ContexteScore:
+    """Ce que le `scoring` sait du **tireur** dont il calcule le score (E05US015).
 
-    def total(self, points_par_volee: Iterable[int]) -> int: ...
+    Pendant de `ContexteRoutage` pour la famille `scoring`. Il n'existe que parce que le
+    **handicap** est une donnée *du tireur*, pas de la phase : `total(points_par_volee)` ne pouvait
+    rendre qu'une fonction des seules volées, donc ne pouvait pas exprimer « + son handicap ».
+    C'est la **ressignature** que `Scoring` annonçait comme prévue — et elle n'a coûté aucun
+    appelant de production (aucun n'existait encore), le pari le moins cher de tout le module.
+    """
+
+    handicap: int = 0
+    """Points ajoutés au score réalisé — 0 quand la phase ne joue pas au handicap."""
+
+
+class Scoring(Protocol):
+    """Calcule le score d'un tireur à partir des points de ses volées **et de son contexte**
+    (ADR-0004, ressignée par E05US015 / [ADR-0062]).
+
+    Méthode fondatrice : le **cumul** de qualification. Le barème par sets (duels, E04US013)
+    renverra un nombre de sets, pas un total : il ressignera cette méthode à son tour (rupture bon
+    marché tant qu'il n'y a qu'un implémenteur par famille).
+    """
+
+    def total(self, points_par_volee: Iterable[int], contexte: ContexteScore) -> int: ...
 
 
 @dataclass(frozen=True)
@@ -166,11 +245,33 @@ class ScoreCumul:
     """Classement **au cumul** : le score est la somme des points des volées validées (§6.1).
 
     Stratégie sans état : le barème (nb volées x nb flèches) décrit la *structure* de l'épreuve et
-    vit sur `Phase.bareme` — le cumul, lui, n'a besoin que des points à sommer.
+    vit sur `Phase.bareme` — le cumul, lui, n'a besoin que des points à sommer. Il **ignore** le
+    contexte : un tir scratch ne connaît pas le handicap de qui le tire.
     """
 
-    def total(self, points_par_volee: Iterable[int]) -> int:
+    def total(self, points_par_volee: Iterable[int], contexte: ContexteScore) -> int:
         return sum(points_par_volee)
+
+
+@dataclass(frozen=True)
+class ScoreAvecHandicap:
+    """Classement **au handicap** : score réalisé **+** handicap du tireur (E05US015).
+
+    Règle donnée par le commanditaire le 31/07/2026 : « le score final est *score réalisé +
+    handicap* », de sorte qu'un débutant qui dépasse son niveau habituel batte un champion en
+    performance moyenne. Le format récompense donc la **progression**, pas la performance absolue.
+
+    ⚠️ **La politique ne calcule pas le handicap, elle l'applique.** Sa valeur vient de l'archer
+    (`Archer.handicap`, où une surcharge prime un handicap officiel) et transite par
+    `ContexteScore`. Ce partage est délibéré : la fiabilité du handicap est le point faible reconnu
+    du format (« les nouveaux archers peuvent être avantagés si leur handicap est mal évalué »), et
+    c'est un problème de **donnée entretenue par le club**, pas d'algorithme. Aucune table
+    officielle n'est codée en dur : le projet n'en a aucune, et en inventer une produirait des
+    classements plausibles mais faux.
+    """
+
+    def total(self, points_par_volee: Iterable[int], contexte: ContexteScore) -> int:
+        return sum(points_par_volee) + contexte.handicap
 
 
 # --- seeding -----------------------------------------------------------------------------------
@@ -245,10 +346,32 @@ class ByesAuxMieuxClasses:
 
 @dataclass(frozen=True)
 class DecompteDepartage:
-    """Ce sur quoi la FFTA départage à total égal : nombre de **10** puis de **9** (§8.1)."""
+    """Ce sur quoi on départage deux tireurs à égalité — **union** des critères des formats livrés.
+
+    §8.1 (qualification) n'en emploie que deux, `nb_dix` puis `nb_neuf` ; §10.1 (poules) en emploie
+    **cinq**, en commençant par trois critères propres au jeu en poule. Les deux ordres sont
+    différents et le référentiel avertit de ne pas les confondre : c'est la **politique `tiebreak`**
+    qui porte l'ordre, ce décompte ne porte que les **valeurs**.
+
+    ⚠️ **Les trois champs d'E05US015 sont ajoutés avec un défaut à 0, et c'est ce qui rend
+    l'élargissement non cassant.** `DecompteDepartage(nb_dix=…, nb_neuf=…)` reste valide tel quel,
+    donc `TiebreakFftaDefaut` et tous ses appelants sont intacts — le CA désignait cet
+    élargissement comme la rupture de contrat la plus risquée de l'US, elle se réduit à un ajout de
+    champs facultatifs. Le corollaire à connaître : un décompte de **qualification** comparé par
+    `TiebreakPoules` donnerait trois premiers critères tous nuls, donc retomberait exactement sur
+    §8.1 — dégradation silencieuse mais **juste**, pas une erreur à lever.
+    """
 
     nb_dix: int
     nb_neuf: int
+    points_match: int = 0
+    """Points de match cumulés en poule (victoire / nul / défaite, barème paramétrable)."""
+
+    diff_sets: int = 0
+    """Sets gagnés moins sets perdus sur l'ensemble des rencontres de poule."""
+
+    diff_score: int = 0
+    """Points de score marqués moins encaissés sur l'ensemble des rencontres de poule."""
 
 
 class Tiebreak(Protocol):
@@ -272,6 +395,31 @@ class TiebreakFftaDefaut:
     def departager(self, a: DecompteDepartage, b: DecompteDepartage) -> int:
         cle_a = (a.nb_dix, a.nb_neuf)
         cle_b = (b.nb_dix, b.nb_neuf)
+        if cle_a > cle_b:
+            return -1
+        if cle_a < cle_b:
+            return 1
+        return 0
+
+
+@dataclass(frozen=True)
+class TiebreakPoules:
+    """Départage **de poule** à cinq critères séquentiels (E05US015, référentiel §10.1).
+
+    Ordre donné par le commanditaire, verbatim : « points de match, différence de sets, différence
+    de score, nombre de 10 / 9, barrage si nécessaire ». Il **précède** §8.1 de trois critères et ne
+    s'y substitue pas — le référentiel avertit explicitement de ne pas confondre les deux ordres.
+
+    Le « barrage si nécessaire » n'est **pas** un sixième critère de comparaison : c'est ce qui
+    arrive **après** que ce comparateur a rendu `0`. Un comparateur pur ne peut pas faire tirer des
+    flèches ; il constate l'ex æquo, et c'est au moteur de poule (`poule.py`) de décider s'il
+    organise un barrage ou laisse le rang partagé. Même partage des rôles que
+    `TiebreakFftaDefaut`, dont le `0` laisse déjà l'ex æquo.
+    """
+
+    def departager(self, a: DecompteDepartage, b: DecompteDepartage) -> int:
+        cle_a = (a.points_match, a.diff_sets, a.diff_score, a.nb_dix, a.nb_neuf)
+        cle_b = (b.points_match, b.diff_sets, b.diff_score, b.nb_dix, b.nb_neuf)
         if cle_a > cle_b:
             return -1
         if cle_a < cle_b:
@@ -312,6 +460,23 @@ class ProfondeurPodium:
 
     def rangs_a_classer(self, effectif: int) -> tuple[int, ...]:
         return tuple(range(1, min(self.jusqu_au, effectif) + 1))
+
+
+@dataclass(frozen=True)
+class AucunClassement:
+    """Profondeur de l'**échauffement** : aucun rang n'est produit (E05US015, §10.1).
+
+    Le cas dégénéré de `Depth` — et il n'est pas artificiel, c'est littéralement la demande du
+    commanditaire (« sans point sans classement »). Rendre `()` plutôt que de laisser `depth` à
+    `None` **dit** quelque chose : la phase a une politique de profondeur, et cette politique est
+    « on ne classe rien ». Un `None` se lirait « la profondeur n'a pas encore été choisie ».
+
+    Son pendant côté séquence est `PhaseSansClassementPrelevee` : ce qui ne produit aucun rang ne
+    peut pas être prélevé par rangs.
+    """
+
+    def rangs_a_classer(self, effectif: int) -> tuple[int, ...]:
+        return ()
 
 
 # --- assemblage --------------------------------------------------------------------------------
@@ -386,13 +551,88 @@ def registre_par_defaut() -> RegistrePolitiques:
     registre.enregistrer(
         FamillePolitique.ROUTING, "placement_cascade", lambda _p: PlacementEnCascade()
     )
+    # Fabrique **fermée sur le registre en cours de construction** : c'est la première politique
+    # **composite** du catalogue (elle en enveloppe une autre), donc la seule qui ait besoin de
+    # résoudre un nom à son tour. La clôture est ce qui évite d'élargir la signature `Fabrique` de
+    # toutes les autres pour le besoin d'une seule.
+    registre.enregistrer(
+        FamillePolitique.ROUTING,
+        "repechage",
+        lambda params: _fabriquer_repechage(params, registre),
+    )
     registre.enregistrer(FamillePolitique.SCORING, "cumul", lambda _p: ScoreCumul())
+    registre.enregistrer(FamillePolitique.SCORING, "handicap", lambda _p: ScoreAvecHandicap())
     registre.enregistrer(FamillePolitique.SEEDING, "serpent", lambda _p: SeedingSerpent())
     registre.enregistrer(FamillePolitique.BYES, "mieux_classes", lambda _p: ByesAuxMieuxClasses())
     registre.enregistrer(FamillePolitique.TIEBREAK, "ffta_defaut", lambda _p: TiebreakFftaDefaut())
+    registre.enregistrer(FamillePolitique.TIEBREAK, "poules", lambda _p: TiebreakPoules())
     registre.enregistrer(FamillePolitique.DEPTH, "un_vers_n", lambda _p: ProfondeurUnVersN())
     registre.enregistrer(FamillePolitique.DEPTH, "podium", _fabriquer_profondeur_podium)
+    registre.enregistrer(FamillePolitique.DEPTH, "aucun", lambda _p: AucunClassement())
     return registre
+
+
+PROFONDEUR_MAX_ROUTING = 3
+"""Combien de routings peuvent s'envelopper les uns les autres (E05US015).
+
+Le repêchage est une politique **composite** : son `sinon` est résolu par le registre, donc peut
+être un repêchage à son tour. La composition est gratuite, la récursion **non bornée** ne l'est pas
+— une `config.policies` d'origine client imbriquée un millier de fois donnerait un `RecursionError`,
+donc un 500, là où toute config mal formée doit rendre un 422 typé. Trois niveaux dépassent déjà
+largement tout besoin réel (repêchage → repêchage → placement)."""
+
+
+def _fabriquer_repechage(
+    params: Mapping[str, object], registre: RegistrePolitiques, profondeur: int = 0
+) -> RoutingRepechage:
+    """`{"nom": "repechage", "tours": [1], "sinon": {"nom": "placement_cascade"}}` → la politique.
+
+    `tours` est **obligatoire et non vide** : un repêchage qui ne repêche aucun tour est un
+    `placement_cascade` déguisé, et l'accepter laisserait croire à l'organisateur que son format
+    repêche alors qu'il n'en fait rien. `sinon` est facultatif et vaut `placement_cascade` par
+    défaut — le cas du format club, où les battus non repêchés descendent malgré tout se classer.
+
+    La récursion sur `sinon` passe par le registre, donc un `sinon` lui-même « repechage » est
+    résolu sans traitement particulier. Ce n'est pas un cas d'usage connu ; c'est simplement ce que
+    la composition rend gratuit.
+    """
+    if profondeur >= PROFONDEUR_MAX_ROUTING:
+        raise PolitiqueMalFormee(
+            f"Les routings de repêchage s'imbriquent au plus {PROFONDEUR_MAX_ROUTING} fois ; "
+            "au-delà, la configuration ne décrit plus un format."
+        )
+    tours_bruts = params.get("tours")
+    if not isinstance(tours_bruts, list) or not tours_bruts:
+        raise PolitiqueMalFormee(
+            "Le repêchage attend la liste non vide des tours dont le perdant est repêché "
+            f"(reçu {tours_bruts!r})."
+        )
+    tours: set[int] = set()
+    for tour in tours_bruts:
+        if not isinstance(tour, int) or isinstance(tour, bool) or tour < 1:
+            raise PolitiqueMalFormee(
+                f"Un tour repêché est un entier ≥ 1, compté depuis la racine (reçu {tour!r})."
+            )
+        tours.add(tour)
+    spec_sinon = params.get("sinon", {"nom": "placement_cascade"})
+    # Une seule lecture du `nom` : la relire deux fois obligerait à un `assert` pour convaincre
+    # mypy de ce que la garde vient de vérifier — or un `assert` disparaît sous `python -O`.
+    if not isinstance(spec_sinon, Mapping) or not isinstance(spec_sinon.get("nom"), str):
+        raise PolitiqueMalFormee(
+            "Le « sinon » d'un repêchage est un objet portant un « nom » de routing "
+            f"(reçu {spec_sinon!r})."
+        )
+    nom_sinon = spec_sinon["nom"]
+    if not isinstance(nom_sinon, str):  # pragma: no cover — garanti par la garde ci-dessus
+        raise PolitiqueMalFormee("Le « nom » d'un routing de repêchage doit être une chaîne.")
+    params_sinon = {clef: valeur for clef, valeur in spec_sinon.items() if clef != "nom"}
+    if nom_sinon == "repechage":
+        sinon: Routing = _fabriquer_repechage(params_sinon, registre, profondeur + 1)
+    else:
+        sinon = cast(
+            "Routing", registre.resoudre(FamillePolitique.ROUTING, nom_sinon, params_sinon)
+        )
+    return RoutingRepechage(tours_repeches=frozenset(tours), sinon=sinon)
 
 
 def _fabriquer_profondeur_podium(params: Mapping[str, object]) -> ProfondeurPodium:

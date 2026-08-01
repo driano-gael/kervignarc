@@ -53,6 +53,7 @@ from domain.erreurs import (
     EffectifPhaseInvalide,
     GrainIncompatibleAvecTypePhase,
     PhaseQualificationIncomplete,
+    PhaseSansClassementPrelevee,
     PlageSourceVide,
     RangSourceInvalide,
     RangsSourceInexistants,
@@ -70,13 +71,42 @@ PhaseId = int
 
 
 class TypePhase(str, Enum):
-    """Type d'une phase. E05US001 ouvre le typage aux formats dont la **règle est écrite** ; les
-    autres (barrage, finale, big_shoot_off, poules…) s'ajouteront avec l'US qui les implémente —
-    on n'offre pas en façade un type qu'aucun moteur ne sait dérouler (ADR-0045 §2)."""
+    """Type d'une phase. E05US001 ouvre le typage aux formats dont la **règle est écrite** ;
+    **E05US015 peuple le catalogue** avec les six types dont la règle a été obtenue du
+    commanditaire le 31/07/2026 (référentiel §10.1) ou tirée du règlement (§8.2).
+
+    ⚠️ La règle d'ADR-0045 §2 tient toujours — « on n'offre pas en façade un type qu'aucun moteur
+    ne sait dérouler » : **chaque** valeur ajoutée ici vient avec son moteur de domaine
+    (`poule.py`, `big_shoot_off.py`, `suisse.py`, `colline.py`, `barrage.py`) ; l'échauffement est
+    le seul sans moteur, et c'est **son** contenu — une phase qui ne calcule rien.
+
+    Trois formats du catalogue ouvert (EF-3.2) **n'apparaissent pas ici**, et ce n'est pas un
+    oubli : le **repêchage** est une politique `routing`, le **handicap** une politique `scoring`,
+    la **finale spectacle** un assemblage d'`elimination_directe` + `BaremeDuel` (E05US015,
+    [ADR-0062]). Un type de phase se justifie par une **structure** propre, pas par un réglage.
+    """
 
     QUALIFICATION = "qualification"
     ELIMINATION_DIRECTE = "elimination_directe"
     PLACEMENT = "placement"
+    ECHAUFFEMENT = "echauffement"
+    """Sans point et sans classement (§10.1) : elle occupe du temps et des cibles, rien de plus."""
+
+    BARRAGE = "barrage"
+    """Départage de tir **autonome** — 1 flèche, plus haut score (§8.2), avant de monter un
+    tableau. Distinct du barrage *interne* à un duel nul (E04US013)."""
+
+    POULES = "poules"
+    """Groupes se rencontrant en round-robin, classement de poule à cinq critères (§10.1)."""
+
+    BIG_SHOOT_OFF = "big_shoot_off"
+    """Finale à N archers en parallèle, le plus faible éliminé à chaque manche (§10.1)."""
+
+    SUISSE = "suisse"
+    """Rondes appariant vainqueurs contre vainqueurs, personne n'est éliminé (§10.1)."""
+
+    COLLINE = "colline"
+    """King of the Hill et Ladder — **un seul moteur**, la portée de défi les sépare (§10.1)."""
 
 
 class StatutPhase(str, Enum):
@@ -100,16 +130,50 @@ class StatutPhase(str, Enum):
 # duel** (la feuille de marque se signe « à la fin du duel », FFTA B.6.1.1) : E04US013 ouvre
 # `FIN_DE_DUEL` pour ce type (ADR-0049 §5). L'agrégat `Duel` valide toujours d'un bloc en fin de
 # duel ; ce grain rend le **modèle de phase** cohérent (une phase à duels peut le déclarer).
+#
+# **E05US015** range les six types neufs selon ce qu'ils *font tirer*, pas selon leur famille : ce
+# qui s'y joue en **duels** (barrage, poules, suisse, colline) se valide en fin de duel comme
+# l'élimination directe ; le **Big Shoot Off** fait tirer des **volées** en parallèle, donc il se
+# valide comme une série. L'**échauffement** n'a **aucun** grain admis — et c'est délibéré : il
+# n'attribue rien, donc il n'y a rien à valider. Un grain déclaré sur un échauffement est une
+# `GrainIncompatibleAvecTypePhase`, pas un réglage inutile toléré en silence.
 _GRAINS_ADMIS: dict[TypePhase, frozenset[TypeGrain]] = {
     TypePhase.QUALIFICATION: frozenset({TypeGrain.FIN_DE_SERIE, TypeGrain.TOUTES_LES_N_VOLEES}),
     TypePhase.ELIMINATION_DIRECTE: frozenset({TypeGrain.FIN_DE_DUEL}),
+    TypePhase.BARRAGE: frozenset({TypeGrain.FIN_DE_DUEL}),
+    TypePhase.POULES: frozenset({TypeGrain.FIN_DE_DUEL}),
+    TypePhase.SUISSE: frozenset({TypeGrain.FIN_DE_DUEL}),
+    TypePhase.COLLINE: frozenset({TypeGrain.FIN_DE_DUEL}),
+    TypePhase.BIG_SHOOT_OFF: frozenset({TypeGrain.FIN_DE_SERIE, TypeGrain.TOUTES_LES_N_VOLEES}),
 }
 
 # Grain par défaut de chaque type de phase (« presets cohérents par type de phase », `D-11`).
 _GRAIN_PAR_DEFAUT: dict[TypePhase, GrainValidation] = {
     TypePhase.QUALIFICATION: GrainValidation.fin_de_serie(),
     TypePhase.ELIMINATION_DIRECTE: GrainValidation.fin_de_duel(),
+    TypePhase.BARRAGE: GrainValidation.fin_de_duel(),
+    TypePhase.POULES: GrainValidation.fin_de_duel(),
+    TypePhase.SUISSE: GrainValidation.fin_de_duel(),
+    TypePhase.COLLINE: GrainValidation.fin_de_duel(),
+    TypePhase.BIG_SHOOT_OFF: GrainValidation.fin_de_serie(),
 }
+
+# Les types qui **ordonnent** leurs participants en fin de phase. Tous, sauf l'échauffement : c'est
+# la définition même du format (« sans point et sans classement », §10.1). Cette table est la
+# **source** du contrôle `PhaseSansClassementPrelevee` ; on l'écrit en négatif (l'ensemble des types
+# non classants) pour qu'un type ajouté demain soit classant par défaut — l'oubli le plus probable
+# est d'ajouter un vrai format, pas un second échauffement.
+_TYPES_SANS_CLASSEMENT: frozenset[TypePhase] = frozenset({TypePhase.ECHAUFFEMENT})
+
+
+def produit_un_classement(type_phase: TypePhase) -> bool:
+    """Cette phase ordonne-t-elle ses participants en sortie ? (E05US015, référentiel §10.1)
+
+    Faux pour le seul **échauffement**. C'est ce qui rend « les rangs 1 à 32 de l'échauffement »
+    insensé et fonde `PhaseSansClassementPrelevee` : la seule succession licite à une phase non
+    classante est « les mêmes participants, sans ordre » (`SourcePhase.le_reste`).
+    """
+    return type_phase not in _TYPES_SANS_CLASSEMENT
 
 
 def grain_par_defaut(type_phase: TypePhase) -> GrainValidation:
@@ -466,10 +530,20 @@ class EtapeSequencee(Protocol):
     Membres déclarés en **propriétés** (lecture seule) : les deux implémentations sont des
     dataclasses `frozen`, et un protocole à attributs *variables* exigerait qu'ils soient
     assignables (règle 4 — l'immutabilité est la norme dans le domaine).
+
+    ⚠️ **`type` a rejoint le contrat en E05US015** — c'est un élargissement assumé de « rien de
+    plus ». Le contrôle « une phase sans classement ne se prélève pas par rangs » a besoin de
+    savoir *ce qu'est* la phase **amont**, pas seulement ce qu'elle prélève. Les deux
+    implémentations le portaient déjà (`Phase.type`, `ModelePhase.type`), donc l'ajout ne coûte
+    rien ; il déplace seulement la frontière de « ce que les contrôles de séquence ont le droit de
+    regarder ».
     """
 
     @property
     def ordre(self) -> int: ...
+
+    @property
+    def type(self) -> TypePhase: ...
 
     @property
     def sources(self) -> tuple[SourcePhase, ...]: ...
@@ -564,9 +638,10 @@ def _verifier_ordres(phases: Sequence[EtapeSequencee]) -> None:
 def _verifier_sources(phases: Sequence[EtapeSequencee]) -> None:
     """Les invariants **collectifs** du peuplement d'une phase (E05US001, étendus par E05US010).
 
-    Cinq contrôles : chaque source désigne une phase **existante** et **antérieure** ; ses rangs
-    tiennent dans l'effectif de cette phase ; deux sources d'une même phase ne **recoupent** pas
-    leurs rangs ; et la somme des prélèvements **couvre** l'effectif déclaré.
+    Six contrôles : chaque source désigne une phase **existante** et **antérieure** ; elle ne
+    prélève pas **par rangs** dans une phase qui n'en produit aucun (E05US015 — l'échauffement) ;
+    ses rangs tiennent dans l'effectif de cette phase ; deux sources d'une même phase ne
+    **recoupent** pas leurs rangs ; et la somme des prélèvements **couvre** l'effectif déclaré.
 
     ⚠️ Le contrôle de somme ne s'applique que si **tous** les prélèvements sont dénombrables au
     format (`effectif_selectionne is not None`). Dès qu'une source est relative — fin ouverte, « le
@@ -589,6 +664,21 @@ def _verifier_sources(phases: Sequence[EtapeSequencee]) -> None:
                 raise SourceApresPhase(
                     f"La phase {phase.ordre} ne peut être alimentée que par une phase antérieure ; "
                     f"l'ordre {source.ordre_source} lui est égal ou postérieur."
+                )
+            # ⚠️ **Toutes les natures sauf `RESTE`**, et non les seuls rangs. Le CA est catégorique :
+            # « la seule façon licite de lui succéder est *les mêmes archers, sans ordre* ». Un
+            # premier jet ne refusait que `RANGS` — or « les gagnants du tour 1 de l'échauffement »
+            # est exactement aussi vide, un échauffement n'ayant ni tour ni duel. Le trou était
+            # d'autant plus invisible que les deux tests encadrants couvraient `RANGS` (refusé) et
+            # `RESTE` (accepté), laissant la troisième nature dans l'angle mort.
+            if source.nature is not NatureSource.RESTE and not produit_un_classement(
+                phase_source.type
+            ):
+                raise PhaseSansClassementPrelevee(
+                    f"La phase {phase.ordre} prélève « {source.nature.value} » dans la phase "
+                    f"{source.ordre_source}, de type « {phase_source.type.value} », qui ne produit "
+                    "ni classement ni rencontre : reprendre « le reste » de ses participants "
+                    "est la seule succession possible."
                 )
             if (
                 phase_source.effectif is not None

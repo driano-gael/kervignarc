@@ -43,6 +43,12 @@ export interface Archer {
   categorie_id: number
   cible: number | null
   club_id: number | null
+  // Handicap (E05US015) : le `officiel` est entretenu par le club, la `surcharge` le prime pour
+  // cette édition. `handicap` est le **dérivé** que le serveur calcule (surcharge ?? officiel ?? 0)
+  // — on l'affiche tel quel plutôt que de refaire la règle de priorité dans chaque écran.
+  handicap_officiel: number | null
+  handicap_surcharge: number | null
+  handicap: number
 }
 
 // Inscription d'un archer (E02US002). `categorie_id` est **obligatoire** ; `club_id` reste

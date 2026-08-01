@@ -11,6 +11,7 @@ from domain.erreurs import (
     EffectifPhaseInvalide,
     GrainIncompatibleAvecTypePhase,
     PhaseQualificationIncomplete,
+    PhaseSansClassementPrelevee,
     PlageSourceVide,
     RangSourceInvalide,
     RangsSourceInexistants,
@@ -20,12 +21,14 @@ from domain.erreurs import (
 )
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.phase import (
+    IssueTour,
     Phase,
     SequencePhases,
     SourcePhase,
     StatutPhase,
     TypePhase,
     grain_par_defaut,
+    produit_un_classement,
 )
 
 
@@ -418,3 +421,126 @@ def test_sans_effectif_declare_la_source_ne_declenche_pas_de_controle_d_effectif
     )
 
     assert len(SequencePhases(phases=(qualif, elim)).phases) == 2
+
+
+# --- E05US015 : le catalogue de types de phase ---------------------------------------------------
+
+
+def test_le_catalogue_porte_les_six_types_de_e05us015() -> None:
+    """Chacun vient avec son moteur (ADR-0045 §2 : « on n'offre pas un type qu'aucun moteur ne sait
+    dérouler ») — sauf l'échauffement, dont l'absence de moteur *est* le contenu."""
+    assert TypePhase.ECHAUFFEMENT.value == "echauffement"
+    assert TypePhase.BARRAGE.value == "barrage"
+    assert TypePhase.POULES.value == "poules"
+    assert TypePhase.BIG_SHOOT_OFF.value == "big_shoot_off"
+    assert TypePhase.SUISSE.value == "suisse"
+    assert TypePhase.COLLINE.value == "colline"
+
+
+def test_les_types_a_duels_se_valident_en_fin_de_duel() -> None:
+    """Ce qui se joue en duels (barrage, poules, suisse, colline) suit l'élimination directe."""
+    a_duels = (TypePhase.BARRAGE, TypePhase.POULES, TypePhase.SUISSE, TypePhase.COLLINE)
+    for type_phase in a_duels:
+        assert grain_par_defaut(type_phase) == GrainValidation.fin_de_duel()
+
+
+def test_le_big_shoot_off_se_valide_comme_une_serie() -> None:
+    """Il fait tirer des **volées en parallèle**, pas des duels : son grain est celui d'une
+    série."""
+    assert grain_par_defaut(TypePhase.BIG_SHOOT_OFF) == GrainValidation.fin_de_serie()
+
+
+def test_l_echauffement_n_admet_aucun_grain_de_validation() -> None:
+    """« Sans point et sans classement » : il n'attribue rien, donc il n'y a **rien à valider**.
+
+    Un grain déclaré sur un échauffement est une incohérence, pas un réglage inutile toléré.
+    """
+    with pytest.raises(GrainIncompatibleAvecTypePhase):
+        grain_par_defaut(TypePhase.ECHAUFFEMENT)
+    with pytest.raises(GrainIncompatibleAvecTypePhase):
+        Phase.creer(tournoi_id=7, ordre=2, type=TypePhase.ECHAUFFEMENT).avec_validation(
+            GrainValidation.fin_de_serie()
+        )
+
+
+def test_seul_l_echauffement_ne_produit_pas_de_classement() -> None:
+    """La table est écrite **en négatif** pour qu'un type ajouté demain soit classant par défaut :
+    l'oubli le plus probable est d'ajouter un vrai format, pas un second échauffement."""
+    assert not produit_un_classement(TypePhase.ECHAUFFEMENT)
+    for type_phase in TypePhase:
+        if type_phase is not TypePhase.ECHAUFFEMENT:
+            assert produit_un_classement(type_phase)
+
+
+def test_on_ne_preleve_pas_de_rangs_dans_un_echauffement() -> None:
+    """L'invariant le plus intéressant du lot (CA E05US015) : « les rangs 1 à 32 de l'échauffement »
+    ne désigne aucun ensemble, puisque rien n'y est ordonné."""
+    with pytest.raises(PhaseSansClassementPrelevee):
+        SequencePhases(
+            (
+                Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT),
+                Phase.creer(
+                    tournoi_id=7,
+                    ordre=2,
+                    type=TypePhase.ELIMINATION_DIRECTE,
+                    sources=(SourcePhase.par_rangs(1, 1, 8),),
+                ),
+            )
+        )
+
+
+def test_succeder_a_un_echauffement_par_le_reste_est_licite() -> None:
+    """« Les mêmes archers, sans ordre » est la seule succession possible — et elle doit marcher,
+    sans quoi une phase d'échauffement serait un cul-de-sac dans le déroulé."""
+    sequence = SequencePhases(
+        (
+            Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT),
+            Phase(
+                tournoi_id=7,
+                ordre=2,
+                type=TypePhase.QUALIFICATION,
+                sources=(SourcePhase.le_reste(1),),
+                bareme=BaremeQualification(nb_volees=5, nb_fleches_par_volee=3),
+                validation=GrainValidation.fin_de_serie(),
+            ),
+        )
+    )
+    assert sequence.phases[1].sources[0].ordre_source == 1
+
+
+def test_preleve_des_rangs_dans_un_type_classant_reste_licite() -> None:
+    """Le nouveau contrôle ne doit pas déborder sur les types qui, eux, classent bien."""
+    sequence = SequencePhases(
+        (
+            Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.POULES, effectif=16),
+            Phase.creer(
+                tournoi_id=7,
+                ordre=2,
+                type=TypePhase.ELIMINATION_DIRECTE,
+                sources=(SourcePhase.par_rangs(1, 1, 8),),
+            ),
+        )
+    )
+    assert sequence.phases[1].sources[0].rang_fin == 8
+
+
+def test_on_ne_preleve_pas_non_plus_une_issue_de_tour_dans_un_echauffement() -> None:
+    """⚠️ **La nature que le premier jet laissait passer.**
+
+    Le garde-fou ne refusait que `RANGS` — or « les gagnants du tour 1 de l'échauffement » est
+    exactement aussi vide : un échauffement n'a ni tour ni duel. Le trou était d'autant plus
+    invisible que les deux tests encadrants couvraient `RANGS` (refusé) et `RESTE` (accepté),
+    laissant la troisième nature dans l'angle mort — le patron du « cas limite jamais exercé ».
+    """
+    with pytest.raises(PhaseSansClassementPrelevee):
+        SequencePhases(
+            (
+                Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT),
+                Phase.creer(
+                    tournoi_id=7,
+                    ordre=2,
+                    type=TypePhase.ELIMINATION_DIRECTE,
+                    sources=(SourcePhase.par_issue_de_tour(1, tour=1, issue=IssueTour.GAGNANTS),),
+                ),
+            )
+        )

@@ -80,6 +80,19 @@ class ModifierArcherRequete(BaseModel):
     autoriser_changement_categorie: bool = False
 
 
+class DefinirHandicapRequete(BaseModel):
+    """Corps de réglage du handicap d'un archer (E05US015) — **remplacement total**.
+
+    Les deux valeurs sont attendues ensemble : `officiel` (la référence entretenue par le club) et
+    `surcharge` (celle qui la prime pour cette édition). Absentes ou `null`, elles **effacent** —
+    même convention que `club_id` dans `ModifierArcherRequete`, et pour la même raison : « je
+    retire la surcharge » est une action que l'organisateur demandera, elle doit être exprimable.
+    """
+
+    officiel: int | None = None
+    surcharge: int | None = None
+
+
 class PlacerArcherRequete(BaseModel):
     """Corps de placement d'un archer sur une cible."""
 
@@ -102,6 +115,15 @@ class ArcherReponse(BaseModel):
     categorie_id: int
     cible: int | None
     club_id: int | None
+    handicap_officiel: int | None
+    handicap_surcharge: int | None
+    handicap: int
+    """Le handicap **effectif** — la surcharge si elle existe, sinon l'officiel, sinon 0.
+
+    Champ **dérivé** exposé en plus des deux sources, délibérément : c'est lui que la feuille de
+    marque et l'écran de classement affichent, et le recalculer côté client obligerait chaque
+    surface à réimplémenter la règle de priorité. Une règle métier dupliquée dans trois écrans finit
+    toujours par diverger dans l'un d'eux."""
 
     @staticmethod
     def de_agregat(archer: Archer) -> ArcherReponse:
@@ -115,6 +137,9 @@ class ArcherReponse(BaseModel):
             categorie_id=archer.categorie_id,
             cible=archer.cible,
             club_id=archer.club_id,
+            handicap_officiel=archer.handicap_officiel,
+            handicap_surcharge=archer.handicap_surcharge,
+            handicap=archer.handicap,
         )
 
 
@@ -299,6 +324,33 @@ async def modifier_archer(
                 requete.autoriser_homonyme,
                 requete.autoriser_changement_categorie,
             )
+        )
+    )
+    return ArcherReponse.de_agregat(archer)
+
+
+@router.put(
+    "/archers/{archer_id}/handicap",
+    response_model=ArcherReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def definir_handicap_archer(
+    archer_id: int, requete: DefinirHandicapRequete, request: Request
+) -> ArcherReponse:
+    """Fixe le handicap d'un archer (**écriture**, session requise — E10US001 ; E05US015).
+
+    Ressource **séparée** de `PUT /archers/{id}` : régler un handicap n'est pas corriger un état
+    civil, et mêler les deux obligerait à renvoyer nom/prénom/catégorie à chaque ajustement — donc
+    à écraser une correction faite entre-temps depuis un autre poste.
+
+    Renvoie `422 handicap_invalide` sur une valeur négative **ou supérieure au score parfait d'une
+    qualification** : un handicap s'**ajoute** au score, et au-delà il le remplacerait.
+    """
+    service: ServiceArchers = request.app.state.service_archers
+    write_queue: WriteQueue = request.app.state.write_queue
+    archer = await asyncio.wrap_future(
+        write_queue.submit(
+            lambda: service.definir_handicap(archer_id, requete.officiel, requete.surcharge)
         )
     )
     return ArcherReponse.de_agregat(archer)
