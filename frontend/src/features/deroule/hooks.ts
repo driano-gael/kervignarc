@@ -43,14 +43,18 @@ export function useDiagnostic(formatId: number, effectif: number | null) {
  */
 export function useEnregistrerBrouillon() {
   const queryClient = useQueryClient()
-  const enregistrer = useModifierFormat()
+  const mutation = useModifierFormat()
+  // ⚠️ On **n'étale pas** la mutation (`...mutation`) : cela réexposerait `mutate`/`mutateAsync`
+  // sans l'invalidation, donc un chemin par lequel un futur appelant reproduirait exactement le
+  // défaut corrigé — un schéma figé sur la version d'avant. Seul ce qui est sûr sort d'ici.
   return {
-    ...enregistrer,
+    isPending: mutation.isPending,
+    error: mutation.error,
     enregistrer: (
       variables: { id: number; entree: NouveauFormat },
       options?: { onSuccess?: () => void },
     ) =>
-      enregistrer.mutate(variables, {
+      mutation.mutate(variables, {
         onSuccess: () => {
           void queryClient.invalidateQueries({ queryKey: cleDiagnostics })
           options?.onSuccess?.()

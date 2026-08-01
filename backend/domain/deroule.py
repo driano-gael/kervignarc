@@ -227,12 +227,26 @@ def _anomalies_structurelles(etapes: Sequence[EtapeProjetable]) -> Iterator[Anom
 
 
 def _anomalies_blocs_orphelins(etapes: Sequence[EtapeProjetable]) -> Iterator[Anomalie]:
-    """Une phase qui n'est **pas** la première et ne prélève nulle part : personne ne l'atteint.
+    """Une phase qui n'est pas la première et ne prélève nulle part : d'où viennent ses archers ?
 
-    **Bloquante**, et c'est bien le bon régime : le défaut ne dépend d'aucun effectif — à 12 archers
-    comme à 120, un bloc sans flèche entrante reste un cul-de-sac. Sans ce contrôle, le schéma
-    dessinait un rectangle isolé « effectif inconnu / suite inconnue » sous un verdict « tient
-    debout » — le contraire exact de ce que le CA appelle « un trou visible ».
+    Le schéma dessinait sinon un rectangle isolé « effectif inconnu / suite inconnue » sous un
+    verdict « tient debout » — le contraire exact de ce que le CA appelle « un trou visible ».
+
+    ⚠️ **Avertissement, et non bloquant** — la revue a démontré que le bloquer serait une
+    **régression**. Deux raisons, et la seconde suffirait :
+
+    1. **C'est un déroulé livré et documenté.** `docs/fonctionnel/E05US015.md` (mergé la veille)
+       décrit comme résultat attendu « enregistrez la phase d'élimination directe **sans source** :
+       c'est accepté ». Un format promu depuis un tel tournoi serait devenu inapplicable après mise
+       à jour — un format du club qui cesse de fonctionner.
+    2. **Le message serait faux.** « Personne ne peut l'atteindre » suppose que le moteur lit les
+       prélèvements. Il ne les lit pas (`# DETTE-028` : `ServiceSaisieDuels._decor` ensemence avec
+       *tous* les archers en lice) : une phase sans source accueille en réalité tout le monde.
+
+    L'anomalie garde donc son utilité — elle **montre** le bloc qui ne dit pas d'où viennent ses
+    archers — sans interdire ce que le produit accepte par ailleurs. Elle redeviendra candidate au
+    blocage le jour où le peuplement honorera les sources, et c'est ce jour-là que la règle aura un
+    sens dans `anomalies_sequence`, pour les phases d'un tournoi.
 
     La première phase, elle, se peuple des inscrits : son absence de source est normale.
     """
@@ -243,10 +257,12 @@ def _anomalies_blocs_orphelins(etapes: Sequence[EtapeProjetable]) -> Iterator[An
         if etape.ordre != premier_ordre and not etape.sources:
             yield Anomalie(
                 PhaseSansSource(
-                    f"La phase {etape.ordre} ne prélève dans aucune phase antérieure : personne ne "
-                    "peut l'atteindre. Seule la première phase se peuple des inscrits."
+                    f"La phase {etape.ordre} ne dit pas d'où viennent ses archers : elle ne "
+                    "prélève dans aucune phase antérieure. Seule la première phase se peuple des "
+                    "inscrits."
                 ),
                 etape.ordre,
+                Gravite.AVERTISSEMENT,
             )
 
 
@@ -265,6 +281,14 @@ def _anomalies_effectif_declare(
     if etape.effectif is None or not entrees or resolu is None:
         return
     if any(entree.effectif is None for entree in entrees):
+        return
+    # ⚠️ **Seulement là où `_anomalies_somme` abandonne.** Quand *tous* les prélèvements sont
+    # dénombrables au format, elle rend déjà un `effectif_incompatible` **bloquant** : en ajouter un
+    # second, avertissement et de même code, ferait remonter le même défaut deux fois avec deux
+    # gravités. Le cas propre à la projection est celui du prélèvement **relatif** — « le reste »,
+    # une issue de tour, une fin ouverte —, que le format ne sait pas compter et que l'effectif
+    # simulé, lui, résout.
+    if all(source.effectif_selectionne is not None for source in etape.sources):
         return
     apporte = sum(entree.effectif or 0 for entree in entrees)
     if apporte != etape.effectif:

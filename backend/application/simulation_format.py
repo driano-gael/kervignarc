@@ -63,6 +63,13 @@ from domain.phase import TypePhase
 from domain.ports import FormatTournoiRepository
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 
+_TYPES_DEROULABLES = frozenset({TypePhase.QUALIFICATION, TypePhase.ELIMINATION_DIRECTE})
+"""Les types que le bot sait réellement jouer aujourd'hui.
+
+Tout le reste du catalogue d'E05US015 se **compose** mais ne se **déroule** pas (`# DETTE-028`) :
+c'est ce que `ToursPhase.joue` rend au client, plutôt que des zéros qui passeraient pour des
+constats. À élargir au fur et à mesure que les moteurs trouvent leur consommateur."""
+
 GRAINE_DEFAUT = 20260801
 """Graine par défaut : un même format simulé deux fois rend le **même** déroulé (règle 9)."""
 
@@ -137,21 +144,29 @@ class ToursPhase:
 
     @property
     def ecart(self) -> bool:
-        """Vrai si la simulation n'a pas produit ce que le schéma annonçait.
+        """Vrai si la simulation n'a pas déroulé ce que le schéma annonçait.
 
-        Compare les **trois** chiffres, pas seulement l'effectif : un premier jet ne regardait que
-        lui, et laissait donc passer la divergence la plus coûteuse pour l'organisateur — le nombre
-        de **duels**, celui sur lequel il dimensionne ses scoreurs. Le schéma compte les duels de
-        l'**arbre** ; le moteur y ajoute ce que les politiques injectées imposent (une petite finale
-        avec `ProfondeurPodium`, une cascade complète avec `ProfondeurUnVersN`). Seule la simulation
-        connaît le total réel — d'où l'affichage des deux.
+        Compare l'**effectif** et le **nombre de tours** — et signale une phase que le moteur ne
+        sait pas jouer du tout (`joue`).
+
+        ⚠️ **Les duels sont délibérément hors du prédicat**, alors qu'ils sont affichés. Le schéma
+        compte les duels de l'**arbre** (`effectif - 1`) ; le moteur y ajoute ce que la politique de
+        profondeur injectée impose — une petite finale avec `ProfondeurPodium`, câblée par défaut.
+        L'écart d'une unité est donc **structurel et attendu**, sur *toute* phase de tableau. Un
+        premier jet l'incluait : `ecart` devenait vrai sur 100 % des simulations, y compris pour un
+        format parfaitement composé, et l'avertissement — dont l'objet est de signaler la divergence
+        `# DETTE-028` — se noyait dans son propre bruit. Pire, il rendait le test de non-régression
+        de cette dette **tautologique**, alors qu'on attend précisément qu'il échoue le jour où le
+        moteur honorera les sources.
+
+        Les deux comptes restent rendus côte à côte : c'est à l'organisateur de lire « 15 annoncés,
+        16 joués » et d'en tirer sa charge réelle.
         """
         return not self.joue or any(
             projete is not None and projete != constate
             for projete, constate in (
                 (self.effectif_projete, self.effectif),
                 (self.tours_projetes, self.tours),
-                (self.duels_projetes, self.duels),
             )
         )
 
@@ -341,6 +356,11 @@ def _phases_jouees(
     moteur d'exécution (`# DETTE-028`) : sans ce drapeau, ils s'affichaient « — tours, — duels »
     comme des **faits**, et l'écart restait muet puisque leur effectif « constaté » était l'effectif
     entier recopié. C'est précisément le cas où l'organisateur a le plus besoin d'être averti.
+
+    ⚠️ Il se déduit du **type**, pas de l'absence de tableau. Une élimination directe peut être
+    sautée par `_tableaux` faute de duellistes classés (`EffectifTableauInvalide`) : la conclure
+    « type non déroulable » serait une cause fausse — le moteur sait la jouer, il n'a simplement
+    rien eu à jouer.
     """
     assert tournoi.id is not None
     par_phase = {etat.phase_id: etat for etat in final.tableaux}
@@ -365,7 +385,7 @@ def _phases_jouees(
                     tours_projetes=tours_projetes,
                     duels=0,
                     duels_projetes=duels_projetes,
-                    joue=phase.type is TypePhase.QUALIFICATION,
+                    joue=phase.type in _TYPES_DEROULABLES,
                 )
             )
             continue

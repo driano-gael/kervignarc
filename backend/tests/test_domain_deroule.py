@@ -322,18 +322,36 @@ def test_les_gagnants_dun_tour_se_comptent_depuis_la_taille_du_tableau() -> None
 # --- Trous fermés en revue (E01US024) -----------------------------------------------------------
 
 
-def test_une_phase_que_personne_natteint_bloque_quel_que_soit_leffectif() -> None:
-    """Un bloc sans flèche entrante est un cul-de-sac : le défaut ne dépend d'aucun effectif.
+def test_une_phase_qui_ne_dit_pas_dou_viennent_ses_archers_est_signalee_sans_bloquer() -> None:
+    """Le bloc se **montre**, mais le format reste applicable — et c'est délibéré.
 
-    Avant correction, le schéma dessinait un rectangle isolé « effectif inconnu / suite inconnue »
-    sous un verdict « tient debout » — le contraire de ce que le CA appelle « un trou visible ».
+    Le schéma dessinait un rectangle isolé « effectif inconnu / suite inconnue » sous un verdict
+    « tient debout » : il fallait le signaler. Mais le **bloquer** serait une régression, relevée en
+    revue : `docs/fonctionnel/E05US015.md` décrit « échauffement puis élimination directe **sans
+    source** » comme un déroulé accepté, et le peuplement ensemence de toute façon tous les archers
+    en lice (`# DETTE-028`) — « personne ne peut l'atteindre » serait faux.
     """
     etapes = [_qualification(), _tableau(2, ())]
 
     projection = projeter(etapes, effectif=120)
 
     assert "phase_sans_source" in _codes(projection.anomalies)
-    assert not projection.est_applicable
+    assert projection.est_applicable
+    assert all(
+        anomalie.gravite is Gravite.AVERTISSEMENT
+        for anomalie in projection.anomalies
+        if anomalie.code == "phase_sans_source"
+    )
+
+
+def test_un_deroule_echauffement_puis_tableau_reste_applicable() -> None:
+    """Non-régression explicite du déroulé d'E05US015 : il ne doit pas cesser de fonctionner."""
+    etapes = [
+        ModelePhase(ordre=1, type=TypePhase.ECHAUFFEMENT),
+        ModelePhase(ordre=2, type=TypePhase.ELIMINATION_DIRECTE),
+    ]
+
+    assert projeter(etapes, effectif=32).est_applicable
 
 
 def test_la_premiere_phase_na_pas_besoin_de_source() -> None:
@@ -358,6 +376,27 @@ def test_deux_phases_avales_qui_se_disputent_les_memes_rangs_sont_signalees() ->
 
     assert "sources_qui_se_recoupent" in _codes(projection.anomalies)
     assert projection.blocs[0].sans_suite == -1
+
+
+def test_un_effectif_declare_deja_juge_par_le_domaine_nest_pas_signale_deux_fois() -> None:
+    """Prélèvements tous dénombrables : `_anomalies_somme` tranche seule, en bloquant.
+
+    Sans cette garde, le même défaut remontait deux fois — une bloquante et un avertissement, même
+    code, messages quasi identiques.
+    """
+    etapes = [
+        _qualification(),
+        ModelePhase(
+            ordre=2,
+            type=TypePhase.ELIMINATION_DIRECTE,
+            sources=(SourcePhase.par_rangs(1, 1, 16),),
+            effectif=32,
+        ),
+    ]
+
+    codes = [anomalie.code for anomalie in projeter(etapes, effectif=120).anomalies]
+
+    assert codes.count("effectif_incompatible") == 1
 
 
 def test_un_effectif_declare_que_les_prelevements_ne_remplissent_pas_est_signale() -> None:

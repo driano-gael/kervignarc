@@ -58,7 +58,8 @@ export interface Bloc {
   sorties: Flux[]
   // Combien d'archers voient leur tournoi s'arrêter dans ce bloc. Ce n'est **pas** une anomalie :
   // les non-qualifiés gardent leur rang. Le CA demande que le dessin le montre, pas qu'il s'en
-  // alarme.
+  // alarme. ⚠️ **Signé** : un négatif signifie que les phases avales prélèvent, ensemble, plus de
+  // participants que ce bloc n'en compte — une sur-souscription, signalée par ailleurs en anomalie.
   sans_suite: number | null
   anomalies: Anomalie[]
 }

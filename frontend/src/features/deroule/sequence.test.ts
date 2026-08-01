@@ -61,16 +61,30 @@ describe('renumérotation et remappage des prélèvements', () => {
     expect(apres[1]!.sources[0]!.ordre_source).toBe(1)
   })
 
-  it('laisse pointer dans le vide un prélèvement dont la phase a disparu', () => {
-    // Le réaffecter à la voisine serait faux **et** silencieux ; laissé tel quel, le diagnostic
-    // le signale en `source_phase_introuvable` et l’organisateur le corrige.
-    const avant = [etape(1), etape(2, [rangs(1)])]
+  it('rend introuvable — et non voisin — un prélèvement dont la phase a disparu', () => {
+    // ⚠️ Le test qui occupait cette place prenait deux étapes, le seul cas où le défaut se voyait
+    // par auto-référence. Avec une étape **survivante après** celle qu’on retire, la valeur
+    // conservée retombait silencieusement sur elle : la finale puisait dans le mauvais tableau,
+    // cible existante et antérieure, donc aucune anomalie.
+    const avant = [etape(1), etape(2, [rangs(1)]), etape(3, [rangs(1)]), etape(4, [rangs(2)])]
 
-    const apres = retirerEtape(avant, 0)
+    const apres = retirerEtape(avant, 1)
+
+    expect(apres.map((e) => e.ordre)).toEqual([1, 2, 3])
+    // L’ancienne phase 3 est devenue la 2 : le prélèvement qui visait la 1 la suit correctement.
+    expect(apres[1]!.sources[0]!.ordre_source).toBe(1)
+    // Celui qui visait la phase retirée ne doit **pas** avoir glissé sur elle.
+    expect(apres[2]!.sources[0]!.ordre_source).not.toBe(2)
+    // Il désigne un ordre hors séquence : le diagnostic rendra `source_phase_introuvable`.
+    expect(apres[2]!.sources[0]!.ordre_source).toBeGreaterThan(apres.length)
+  })
+
+  it('rend introuvable le prélèvement quand il ne reste plus rien avant', () => {
+    const apres = retirerEtape([etape(1), etape(2, [rangs(1)])], 0)
 
     expect(apres).toHaveLength(1)
-    expect(apres[0]!.sources[0]!.ordre_source).toBe(1)
     expect(apres[0]!.ordre).toBe(1)
+    expect(apres[0]!.sources[0]!.ordre_source).toBeGreaterThan(1)
   })
 
   it('ajoute en fin de séquence sans toucher aux prélèvements existants', () => {

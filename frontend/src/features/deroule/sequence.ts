@@ -13,6 +13,16 @@
 import type { Etape, Source } from '../patrimoine/api'
 import { deplacer } from '../phases/ordre'
 
+/** Ordre sentinelle d'un prélèvement **orphelin** — hors de toute séquence, donc introuvable.
+ *
+ * ⚠️ La valeur importe : il faut qu'aucune étape ne la porte **et** qu'elle soit supérieure à
+ * toutes les autres, pour que le diagnostic rende `source_phase_introuvable` (le défaut réel) et
+ * non `source_apres_phase` (un défaut d'ordre, qui égarerait l'organisateur). `renumeroter` la
+ * recalcule à partir de la longueur de la séquence. */
+function ordreOrphelin(taille: number): number {
+  return taille + 1
+}
+
 /**
  * Renumérote les ordres selon la **position** et remappe les prélèvements en conséquence.
  *
@@ -20,54 +30,57 @@ import { deplacer } from '../phases/ordre'
  * classe d'erreurs « ordres non contigus ». Le remappage préserve l'**intention** : « je prélève
  * dans la phase qui était la 2ᵉ » reste vrai après que cette phase soit devenue la 3ᵉ.
  *
- * Un prélèvement qui désignait une étape **disparue** est laissé tel quel plutôt que réaffecté à
- * une voisine : le diagnostic le signalera en `source_phase_introuvable`, ce qui est visible et
- * corrigible. Le glisser sur la phase d'à côté serait faux **et** silencieux.
+ * ⚠️ **Un prélèvement dont l'étape a disparu est rendu explicitement introuvable**, jamais laissé
+ * tel quel. Un premier jet le laissait « pointer dans le vide » en croyant que le diagnostic le
+ * verrait — c'était faux, et le trou était pire que celui qu'on venait de fermer : puisque *tous*
+ * les ordres sont renumérotés, la valeur conservée `k` désigne désormais **la phase qui suivait
+ * celle qu'on vient de retirer**. Retirer la phase du milieu d'un déroulé à quatre phases faisait
+ * donc puiser la finale dans le mauvais tableau, **sans aucune anomalie** — la cible existe et est
+ * antérieure. Le garde-fou d'alors était du code mort, et son test ne s'en apercevait pas parce
+ * qu'à deux phases la réaffectation produit une auto-référence, elle, visible.
+ *
+ * Le backend, lui, **refuse** de supprimer une phase encore référencée (`PhaseSourceReferencee`).
+ * Ici, la composition étant un brouillon, on préfère laisser retirer et **montrer** le prélèvement
+ * devenu orphelin : c'est le régime du CA, et le diagnostic le nomme.
  */
-export function renumeroter(etapes: readonly Etape[], avant: readonly Etape[]): Etape[] {
+export function renumeroter(etapes: readonly Etape[]): Etape[] {
   const ancienVersNouveau = new Map<number, number>()
   etapes.forEach((etape, index) => ancienVersNouveau.set(etape.ordre, index + 1))
-  const survivants = new Set(etapes.map((etape) => etape.ordre))
-  // Les ordres disparus (étape retirée) ne sont pas remappés : on les laisse pointer dans le vide.
-  avant.forEach((etape) => {
-    if (!survivants.has(etape.ordre)) ancienVersNouveau.delete(etape.ordre)
-  })
+  const orphelin = ordreOrphelin(etapes.length)
   return etapes.map((etape, index) => ({
     ...etape,
     ordre: index + 1,
-    sources: etape.sources.map((source) => remapper(source, ancienVersNouveau)),
+    sources: etape.sources.map((source) => remapper(source, ancienVersNouveau, orphelin)),
   }))
 }
 
-function remapper(source: Source, ancienVersNouveau: ReadonlyMap<number, number>): Source {
+function remapper(
+  source: Source,
+  ancienVersNouveau: ReadonlyMap<number, number>,
+  orphelin: number,
+): Source {
   const cible = ancienVersNouveau.get(source.ordre_source)
-  return cible === undefined ? source : { ...source, ordre_source: cible }
+  return { ...source, ordre_source: cible ?? orphelin }
 }
 
 /** Déplace l'étape d'index `de` vers `vers`, puis renumérote et remappe. */
 export function deplacerEtape(etapes: readonly Etape[], de: number, vers: number): Etape[] {
-  return renumeroter(deplacer(etapes, de, vers), etapes)
+  return renumeroter(deplacer(etapes, de, vers))
 }
 
 /** Retire l'étape d'index `index`, puis renumérote et remappe. */
 export function retirerEtape(etapes: readonly Etape[], index: number): Etape[] {
-  return renumeroter(
-    etapes.filter((_, position) => position !== index),
-    etapes,
-  )
+  return renumeroter(etapes.filter((_, position) => position !== index))
 }
 
 /** Ajoute une étape en fin de séquence (son ordre est dérivé de sa position). */
 export function ajouterEtape(etapes: readonly Etape[], etape: Etape): Etape[] {
-  return renumeroter([...etapes, etape], etapes)
+  return renumeroter([...etapes, etape])
 }
 
 /** Remplace l'étape d'index `index`, puis renumérote et remappe. */
 export function remplacerEtape(etapes: readonly Etape[], index: number, etape: Etape): Etape[] {
-  return renumeroter(
-    etapes.map((existante, position) => (position === index ? etape : existante)),
-    etapes,
-  )
+  return renumeroter(etapes.map((existante, position) => (position === index ? etape : existante)))
 }
 
 /** Décrit un prélèvement en langage d'organisateur (« rangs 1 à 32 de la phase 1 »). */

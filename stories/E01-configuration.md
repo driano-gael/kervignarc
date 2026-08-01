@@ -326,8 +326,14 @@ coup d'œil au lieu de le déduire d'une liste de réglages.
 - **Arbitrage tranché en revue (01/08/2026, trois « faux verts » du diagnostic)** : le CA fait du
   schéma le **contrôle de validité**, donc un déroulé qui ne tient pas ne doit pas être déclaré
   applicable. Trois cas passaient au vert et ont été fermés — leur régime de gravité découle de la
-  règle du point précédent : (1) **une phase que personne n'atteint** (pas la première, aucun
-  prélèvement) est un cul-de-sac vrai à tout effectif → **bloquant** (`phase_sans_source`) ;
+  règle du point précédent : (1) **une phase qui ne dit pas d'où viennent ses archers** (pas la
+  première, aucun prélèvement) → **avertissement** (`phase_sans_source`). Elle était d'abord
+  bloquante, et la seconde passe de revue a montré que c'était une **régression** : le déroulé
+  « échauffement puis élimination directe sans source » est livré et documenté (recette d'E05US015),
+  et le peuplement ensemence de toute façon tout le monde (DETTE-028) — bloquer aurait rendu
+  inapplicable un format légitime du club, au nom d'une promesse que le moteur ne tient pas. D'où un
+  **troisième critère de gravité**, reversé à l'ADR : *une règle ne peut bloquer que si l'exécution
+  la tient* ;
   (2) **deux phases avales qui se disputent les mêmes rangs** (« 1 à 32 » puis « 32 à 64 », l'erreur
   de borne d'un rang) → **avertissement**, le contrôle existant ne comparant que les prélèvements
   d'une *même* phase cible ; (3) **un effectif déclaré que les prélèvements ne remplissent pas** →

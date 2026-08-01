@@ -298,3 +298,30 @@ def test_un_format_bloquant_n_est_pas_simule_et_dit_pourquoi(
 
     with pytest.raises(PhaseQualificationIncomplete):
         simulation.simuler(brouillon.id, effectif=8)
+
+
+def test_un_format_bien_compose_ne_signale_aucun_ecart(
+    service: tuple[ServiceSimulationFormat, _FormatsEnMemoire],
+) -> None:
+    """⚠️ **Non-régression du bruit** — l'avertissement ne doit se déclencher que s'il dit quelque
+    chose.
+
+    Un premier jet incluait les **duels** dans le prédicat `ecart`. Or le schéma compte l'arbre
+    (`effectif - 1`) et le moteur y ajoute la petite finale de `ProfondeurPodium` : l'écart d'une
+    unité est structurel. `ecart` était donc vrai sur **toute** phase de tableau, y compris pour un
+    format parfait — la bannière « borne haute » s'affichait sur 100 % des simulations, et le
+    signal DETTE-028 se noyait dans son propre bruit.
+    """
+    simulation, formats = service
+    format_id = _qualif_puis_tableau(formats, rang_fin=None)
+
+    resultat = simulation.simuler(format_id, effectif=16)
+
+    tableau = next(p for p in resultat.phases if p.type is TypePhase.ELIMINATION_DIRECTE)
+    assert tableau.effectif == tableau.effectif_projete == 16
+    assert tableau.tours == tableau.tours_projetes == 4
+    # Les deux comptes de duels restent **rendus** (15 d'arbre annoncés, 16 joués) : c'est leur
+    # divergence attendue qui ne doit pas allumer l'alerte.
+    assert (tableau.duels, tableau.duels_projetes) == (16, 15)
+    assert not tableau.ecart
+    assert not any(phase.ecart for phase in resultat.phases)

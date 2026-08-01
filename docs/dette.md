@@ -1260,10 +1260,13 @@ non-régression **fixe** cet écart (`test_la_simulation_signale_l_ecart_quand_l
 : le jour où le moteur honorera les sources, il échouera — c'est le signal attendu pour le retirer.
 
 **Où la compensation s'arrête — dit explicitement, parce que la revue a montré qu'elle promettait
-plus qu'elle ne tient.** L'écart projeté/constaté est affiché sur **trois** chiffres (effectif,
-tours, duels) et un quatrième signal, `joue`, dit quand le moteur n'a **rien** joué du tout — le cas
-des six types d'E05US015, qui n'ont aucun moteur d'exécution et affichaient sinon « — tours, —
-duels » comme des faits. Mais tout cela vit **derrière le bouton « Simuler »** : l'écran de
+plus qu'elle ne tient.** L'alerte se déclenche sur l'**effectif** et le **nombre de tours**, plus un
+signal `joue` qui dit quand le moteur n'a **rien** joué du tout — le cas des six types d'E05US015,
+qui n'ont aucun moteur d'exécution et affichaient sinon « — tours, — duels » comme des faits. Les
+**duels** sont affichés (projetés et constatés) mais **hors du prédicat d'alerte** : le schéma
+compte l'arbre, le moteur y ajoute la petite finale de `ProfondeurPodium`, si bien qu'un écart d'une
+unité existe sur *toute* phase de tableau. L'y inclure — ce que faisait un premier jet — allumait
+l'avertissement sur 100 % des simulations et noyait le signal dans son propre bruit. Mais tout cela vit **derrière le bouton « Simuler »** : l'écran de
 composition porte donc, en permanence, une réserve dès qu'un bloc prélève (« le moteur ne lit pas
 encore les prélèvements »). Sans elle, l'organisateur qui compose, voit le verdict vert et applique
 — sans jamais simuler — repartait avec un tournoi qui ne se déroulerait pas comme dessiné.

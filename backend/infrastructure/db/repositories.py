@@ -451,9 +451,10 @@ def _lire_scoring_facultatif(config: Any) -> Any:
     if isinstance(policies, dict) and "scoring" in policies:
         # Clé **présente** : sa valeur fait foi, `null` compris (barème délibérément absent).
         return policies["scoring"]
-    # Clé absente des `policies` : on retombe sur la racine, exactement comme `_lire_scoring` —
-    # forme d'avant ADR-0046, qu'une base restaurée d'une vieille sauvegarde peut encore porter.
-    # Ne pas la chercher ici ferait perdre le barème de ces lignes en silence.
+    # Repli sur la racine, par **symétrie** avec `_lire_scoring` et non par nécessité : la table
+    # `format_tournoi` naît de la migration 0035, postérieure à 0028 (ADR-0046), donc aucune version
+    # n'y a jamais écrit `scoring` à la racine. Le garder coûte une ligne et évite qu'une divergence
+    # s'installe entre les deux lecteurs le jour où l'une des formes bougera.
     return config.get("scoring")
 
 
@@ -545,6 +546,7 @@ def _politiques_json(
     effectif: int | None,
     *,
     marquer_absences: bool = False,
+    porte_un_bareme: bool = False,
 ) -> dict[str, object]:
     """Corps commun d'une **étape** — une phase de tournoi ou un modèle d'étape d'un format.
 
@@ -575,7 +577,12 @@ def _politiques_json(
                 "fleches": bareme.nb_fleches_par_volee,
             }
         }
-    elif marquer_absences:
+    elif marquer_absences and porte_un_bareme:
+        # Seule une **qualification** peut porter un barème : marquer son absence sur un autre type
+        # écrirait « le rédacteur n'en a pas voulu » là où la question ne se pose pas, et
+        # contredirait la règle de `_config_phase` (« `scoring`, et seulement pour une
+        # qualification »). Sans effet aujourd'hui — la relecture n'y lit pas le scoring —, mais un
+        # piège le jour où ces types porteront leurs propres politiques (ADR-0062).
         config["policies"] = {"scoring": None}
     if validation is not None:
         grain: dict[str, object] = {"grain": validation.type.value}
@@ -633,6 +640,7 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         etape.sources,
                         etape.effectif,
                         marquer_absences=True,
+                        porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
                     ),
                 }
                 for etape in format_tournoi.etapes

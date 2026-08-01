@@ -80,6 +80,15 @@ existe pour rendre possible. Aucun n'était visible depuis le domaine.
 prix, et il est payé volontairement. Ce qui protège le tournoi, ce n'est plus la contrainte
 d'écriture, c'est `appliquer`.
 
+**Corollaire d'encodage, à respecter par toute US qui ajoutera une clé de configuration.** Puisqu'un
+modèle d'étape peut désormais n'avoir *rien* choisi, l'absence d'une clé JSON devient ambiguë : « le
+rédacteur n'en veut pas » ou « la ligne est antérieure à cette clé » ? Les deux appellent des
+relectures opposées — laisser vide, ou retomber sur un preset. La convention retenue, portée par
+`_politiques_json(marquer_absences=True)` : **clé présente à `null` = choix du rédacteur ; clé
+absente = ligne ancienne.** Elle vaudra tout autant pour les réglages que le catalogue d'ADR-0062
+(`nb_poules`, `nb_manches`…) devra porter. Elle ne concerne que les **formats** : une `Phase` réelle
+garde ses invariants, donc son absence de clé n'a jamais été ambiguë.
+
 ### 2. Les règles restent à un seul endroit — elles changent de **mode**, pas de **domicile**
 
 `verifier_coherence_etape` et `verifier_sequence` levaient la **première** erreur rencontrée. Elles
@@ -118,6 +127,20 @@ Sans cette distinction, la décision d'ADR-0061 s'effondrerait : les **plages re
 précisément pour qu'un déroulé composé pour 120 archers se joue à 82. Bloquer sur un débordement
 d'effectif rendrait inutilisable ce que le CA d'E05US010 demande. Inversement, taire ces
 avertissements rendrait le diagnostic muet là où il est le plus utile.
+
+**Un troisième critère s'est révélé nécessaire à la revue : ne pas bloquer sur une règle que le
+moteur ne tient pas.** « Une phase sans prélèvement n'accueille personne » est vrai *à tout
+effectif* — donc bloquant selon la règle ci-dessus — et pourtant faux **en fait** : le peuplement
+ensemence avec tous les archers en lice (`# DETTE-028`), et le déroulé « échauffement puis
+élimination directe sans source » est livré et documenté (E05US015). La bloquer aurait rendu
+inapplicable un format légitime du club. Elle est donc **avertissement**, et redeviendra candidate
+au blocage le jour où le moteur honorera les sources. La leçon générale : une règle **ne peut
+bloquer** que si l'exécution la tient — sinon on interdit au nom d'une promesse qu'on ne tient pas.
+
+**Asymétrie assumée qui en découle** : cette règle vit dans `domain.deroule` et non dans
+`anomalies_sequence`. Un cul-de-sac est donc signalé sur un **format** et silencieux sur les phases
+d'un **tournoi**. La remonter dans `anomalies_sequence` est le bon geste — le jour où elle bloquera
+vraiment.
 
 ### 4. Le domaine **projette**, le front **dessine**
 
@@ -160,9 +183,9 @@ ni clubs, ni quotas. La génération locale tient en vingt lignes et reste déte
 
 Règle 11 (parcimonie), avec le précédent du routeur maison (DETTE-024). La disposition est linéaire
 — une colonne par phase, dans l'ordre — et les seules courbes sont les flèches qui sautent une
-colonne : 157 lignes de géométrie pure (`schema.ts`), couvertes par 11 tests. L'inline permet en
-outre aux couleurs de passer par les variables CSS, donc au thème clair/sombre de suivre sans code
-conditionnel.
+colonne : la géométrie tient dans un module pur (`schema.ts`), couvert par ses propres tests.
+L'inline permet en outre aux couleurs de passer par les variables CSS, donc au thème clair/sombre de
+suivre sans code conditionnel.
 
 Ce que cette disposition **ne saura pas** faire, et qui justifierait de reconsidérer : des
 branchements non linéaires (deux phases au même rang), des croisements de flèches à optimiser, des

@@ -97,7 +97,7 @@ export function Deroule() {
           />
           <p className="carte__aide">
             Sans effectif, le déroulé reste abstrait : les braquets ne se calculent qu'à partir d'un
-            nombre d'archers.
+            nombre d'archers. Entre 1 et {EFFECTIF_MAX}.
           </p>
         </div>
       </header>
@@ -174,7 +174,10 @@ function CompositionDuFormat({
       </div>
 
       <div className="deroule__visuel">
-        {diagnostic.isPending && (
+        {/* `isFetching` et non `isPending` : après une invalidation, `data` porte encore la
+            version d'avant pendant le vol de la requête, et `isPending` est faux — le schéma
+            périmé s'afficherait sans que rien ne le dise. */}
+        {diagnostic.isFetching && (
           <p className="carte__etat" role="status">
             Calcul du déroulé…
           </p>
@@ -363,11 +366,16 @@ function BlocDuSchema({ noeud, bloc }: { noeud: Noeud; bloc: Bloc }) {
       ))}
       {/* Question 3 : où ils vont après — ce qui reste s'arrête ici. */}
       <text className="deroule__bloc-ligne" x="12" y={noeud.hauteur - 14}>
+        {/* `sans_suite` est **signé** depuis la revue : un négatif dit qu'on prélève plus
+            d'archers qu'il n'y en a. L'afficher tel quel donnait « -1 au classement final », un
+            fait faux à côté de l'avertissement juste. */}
         {bloc.sans_suite === null
           ? 'suite inconnue'
-          : bloc.sans_suite === 0
-            ? 'tous repartent en phase suivante'
-            : `${bloc.sans_suite} au classement final`}
+          : bloc.sans_suite < 0
+            ? `${-bloc.sans_suite} pris deux fois !`
+            : bloc.sans_suite === 0
+              ? 'tous repartent en phase suivante'
+              : `${bloc.sans_suite} au classement final`}
       </text>
     </g>
   )
@@ -904,8 +912,17 @@ function NouveauFormat({ surCreation }: { surCreation: (id: number) => void }) {
   )
 }
 
+/**
+ * L'effectif simulé, borné **comme le serveur** (`EFFECTIF_MAX`).
+ *
+ * ⚠️ La borne serveur a été ajoutée sur `GET …/diagnostic` sans être propagée ici dans un premier
+ * jet : saisir `300` envoyait la requête, revenait en 400 « Requête invalide. » — et faisait
+ * **disparaître tout le schéma**, verdict et anomalies compris, derrière un message qui ne disait
+ * même pas quelle était la borne. Avant l'ajout de la borne, ce cas rendait un diagnostic valide :
+ * c'était donc une régression d'écran introduite par le correctif lui-même.
+ */
 function analyserEffectif(saisi: string): number | null {
-  const valeur = Number(saisi)
-  if (saisi.trim() === '' || !Number.isInteger(valeur) || valeur < 1) return null
+  const valeur = lireEntier(saisi)
+  if (typeof valeur !== 'number' || valeur > EFFECTIF_MAX) return null
   return valeur
 }

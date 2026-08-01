@@ -839,11 +839,14 @@ class BarrageRequisAvantQualification(DomainError):
 class PhaseSansSource(DomainError):
     """Une phase autre que la première ne prélève dans aucune phase antérieure (E01US024).
 
-    Personne ne peut l'atteindre : c'est un **cul-de-sac**, le « trou » du CA d'E01US024 dans sa
-    forme structurelle. Bloquante, contrairement à `PhaseSansParticipant` : le défaut ne dépend
-    d'aucun effectif — à 12 archers comme à 120, un bloc sans flèche entrante reste inatteignable
-    (ADR-0063 §3). La **première** phase, elle, se peuple des inscrits : son absence de source est
-    normale.
+    Le bloc ne dit pas d'où viennent ses archers : c'est le « trou » du CA d'E01US024 dans sa forme
+    structurelle. **Avertissement, jamais bloquante** — la revue a montré que la bloquer casserait
+    un déroulé livré (`docs/fonctionnel/E05US015.md` : « échauffement puis élimination directe sans
+    source, c'est accepté ») et affirmerait quelque chose de faux, le peuplement ensemençant
+    aujourd'hui avec *tous* les archers en lice (`# DETTE-028`). Comme les autres erreurs de
+    diagnostic, elle n'est jamais **levée** : elle ne naît que portée par une `Anomalie`.
+
+    La **première** phase, elle, se peuple des inscrits : son absence de source est normale.
     """
 
     code = "phase_sans_source"
