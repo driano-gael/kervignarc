@@ -434,6 +434,14 @@
   color: var(--danger);
 }
 
+/* Ambre : ce qui appelle l'attention **sans** interdire (`DV-03` — l'alerte est ambre, le rouge est
+   réservé au refus). Introduit par E01US024 pour le verdict « brouillon enregistré mais pas encore
+   applicable » : ce n'est ni une réussite ni une erreur de saisie, c'est un état intermédiaire
+   normal — le dire en rouge dramatiserait un brouillon en cours. */
+.carte__etat--alerte {
+  color: var(--warn);
+}
+
 /* Postes de cible : code + QR de rattachement à l'écran (E11US008). */
 .liste-postes {
   list-style: none;
@@ -2830,4 +2838,170 @@ button:disabled {
 .routage__alerte {
   font-size: 13px;
   color: var(--warn);
+}
+
+/* --- Composer un déroulé (E01US024, ADR-0063) -------------------------------------------------
+   L'écran de composition d'un format : l'éditeur de séquence à gauche, le schéma à braquets et la
+   simulation à droite. Tout passe par les tokens (`--accent`, `--warn`, `--danger`, `--surface`)
+   pour que le thème clair/sombre suive sans code conditionnel — le SVG compris, ce qui est
+   précisément pourquoi il est **inline** plutôt qu'une image. */
+.deroule__entete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.deroule__colonnes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.deroule__editeur,
+.deroule__visuel {
+  flex: 1 1 480px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Le schéma déborde volontiers en largeur (une colonne par phase) : il défile **dans son cadre**,
+   jamais la page — même parti que les tableaux de duels. */
+.deroule__schema {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 8px;
+}
+
+.deroule__bloc rect {
+  fill: var(--bg);
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+/* `DV-03` : la couleur ne porte jamais le sens seule — le bloc est aussi listé dans les anomalies,
+   avec sa pastille et son mot. Ici la teinte n'est qu'un rappel. */
+.deroule__bloc--alerte rect {
+  stroke: var(--warn);
+  stroke-width: 2;
+}
+
+.deroule__bloc--bloquant rect {
+  stroke: var(--danger);
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+}
+
+.deroule__bloc-titre {
+  fill: var(--text-h);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.deroule__bloc-ligne {
+  fill: var(--text);
+  font-size: 12px;
+}
+
+.deroule__bloc-braquet {
+  fill: var(--text);
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.deroule__fleche path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.deroule__fleche text {
+  fill: var(--accent);
+  font-size: 11px;
+}
+
+.deroule__anomalies {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.deroule__anomalie {
+  font-size: 13px;
+  border-left: 3px solid var(--border);
+  padding-left: 10px;
+}
+
+/* Ambre pour l'avertissement, rouge pour le bloquant (`DV-03` : l'alerte est ambre, le rouge est
+   réservé à ce qui interdit). */
+.deroule__anomalie--avertissement {
+  border-left-color: var(--warn);
+}
+
+.deroule__anomalie--bloquante {
+  border-left-color: var(--danger);
+}
+
+.deroule__sources {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.deroule__sources legend {
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.deroule__sources ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.deroule__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+.deroule__table caption {
+  text-align: left;
+  font-size: 12px;
+  color: var(--text-h);
+  padding-bottom: 4px;
+}
+
+.deroule__table th,
+.deroule__table td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.deroule__ligne--ecart {
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+
+.deroule__ecart {
+  font-size: 11px;
+  color: var(--warn);
+}
+
+.deroule__classement {
+  font-size: 13px;
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 8px 0 0;
 }
