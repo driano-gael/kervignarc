@@ -309,6 +309,32 @@ class EffectifIncompatible(DomainError):
     code = "effectif_incompatible"
 
 
+class PhaseSansParticipant(DomainError):
+    """À l'effectif projeté, cette phase n'accueille personne (E01US024).
+
+    C'est le « **trou** » du CA d'E01US024 rendu nommable : un bloc du schéma où aucun archer
+    n'arrive — parce que ses prélèvements visent des rangs que l'effectif simulé n'atteint pas, ou
+    parce qu'une source amont s'est vidée. **Jamais bloquant** : le défaut ne vaut qu'à *cet*
+    effectif, et un format composé pour 120 archers a le droit de se vider à 12 sans être faux
+    (ADR-0063 §3). Contrairement aux autres erreurs de ce module, celle-ci n'est jamais **levée** —
+    elle ne naît que portée par une `Anomalie`.
+    """
+
+    code = "phase_sans_participant"
+
+
+class PrelevementVide(DomainError):
+    """À l'effectif projeté, ce prélèvement ne prend aucun participant (E01US024).
+
+    Distincte de `PlageSourceVide`, qui refuse une plage vide **par construction** ([12..8]) : ici
+    la plage est bien formée, c'est l'effectif réel qui la laisse hors d'atteinte (« les rangs 33 et
+    suivants » sur 30 inscrits). Avertissement, jamais bloquante — même raison que
+    `PhaseSansParticipant`.
+    """
+
+    code = "prelevement_vide"
+
+
 class PolitiqueInconnue(DomainError):
     """Une politique de phase désigne une implémentation non enregistrée (E05US003, ADR-0004).
 
@@ -808,3 +834,19 @@ class BarrageRequisAvantQualification(DomainError):
     """
 
     code = "barrage_requis_avant_qualification"
+
+
+class PhaseSansSource(DomainError):
+    """Une phase autre que la première ne prélève dans aucune phase antérieure (E01US024).
+
+    Le bloc ne dit pas d'où viennent ses archers : c'est le « trou » du CA d'E01US024 dans sa forme
+    structurelle. **Avertissement, jamais bloquante** — la revue a montré que la bloquer casserait
+    un déroulé livré (`docs/fonctionnel/E05US015.md` : « échauffement puis élimination directe sans
+    source, c'est accepté ») et affirmerait quelque chose de faux, le peuplement ensemençant
+    aujourd'hui avec *tous* les archers en lice (`# DETTE-028`). Comme les autres erreurs de
+    diagnostic, elle n'est jamais **levée** : elle ne naît que portée par une `Anomalie`.
+
+    La **première** phase, elle, se peuple des inscrits : son absence de source est normale.
+    """
+
+    code = "phase_sans_source"

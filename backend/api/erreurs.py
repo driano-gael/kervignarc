@@ -8,7 +8,7 @@ générique, le détail étant journalisé côté serveur.
 | Famille                | HTTP           |
 |------------------------|----------------|
 | `DomainError`          | 422            |
-| `ApplicationError`     | 401 (auth) / 403 (interdit) / 404 / 409 |
+| `ApplicationError`     | 400 (borne de service) / 401 (auth) / 403 (interdit) / 404 / 409 |
 | `InfrastructureError`  | 500 (générique)|
 | `RequestValidationError` (entrée) | 400 |
 """
@@ -32,8 +32,10 @@ from application.erreurs import (
     CodePosteInconnu,
     CodeScoreurInconnu,
     DepartIntrouvable,
+    EffectifSimulationInvalide,
     ForfaitIntrouvable,
     FormatIntrouvable,
+    FormatNonSimulable,
     GabaritDuTournoiAbsent,
     GabaritIntrouvable,
     IdentifiantsInvalides,
@@ -74,6 +76,12 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         exc, IdentifiantsInvalides | NonAuthentifie | CodeScoreurInconnu | CodePosteInconnu
     ):
         status = 401
+    elif isinstance(exc, EffectifSimulationInvalide | FormatNonSimulable):
+        # 400 : la requête est impossible **en soi** (borne de service), pas en conflit avec un
+        # état. Le 409 par défaut promettrait qu'un changement d'état la rendrait acceptable, ce qui
+        # serait faux — 300 archers ne deviendront jamais simulables, et un format sans
+        # qualification ne le devient pas davantage en changeant d'état (E01US024).
+        status = 400
     elif isinstance(exc, SaisieHorsCible | ScoreurHorsTournoi):
         # 403 : l'identité est établie (jeton de poste/scoreur valide) mais elle n'autorise pas
         # **cette** ressource — la cible (poste, E10US007) ou le tournoi (scoreur, E04US002). À

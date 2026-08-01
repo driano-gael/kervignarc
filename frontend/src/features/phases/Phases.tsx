@@ -32,40 +32,9 @@ import {
   useReordonnerPhases,
   useSupprimerPhase,
 } from './hooks'
+import { AIDE_TYPE, LIBELLE_TYPE, TYPES_SANS_CLASSEMENT } from '../../shared/phases/catalogue'
 import { ordreApresDeplacement, type Direction } from './ordre'
 import { decrireSources, editableIci } from './source'
-
-const LIBELLE_TYPE: Record<TypePhase, string> = {
-  qualification: 'Qualification',
-  elimination_directe: 'Élimination directe',
-  placement: 'Placement',
-  echauffement: 'Échauffement',
-  barrage: 'Barrage',
-  poules: 'Poules',
-  big_shoot_off: 'Big Shoot Off',
-  suisse: 'Système suisse',
-  colline: 'Colline (King of the Hill / Ladder)',
-}
-
-// Ce que chaque type fait, en une ligne : la moitié de ces formats est inconnue de l'organisateur
-// qui ouvre l'écran, et un `<select>` de neuf entrées sans explication n'aide personne à choisir.
-const AIDE_TYPE: Record<TypePhase, string> = {
-  qualification: 'Tir au cumul qui produit le classement de départ.',
-  elimination_directe: 'Tableau à duels ; le perdant sort (petite finale comprise).',
-  placement: 'Tableau qui classe tout le monde, du 1er au dernier.',
-  echauffement: 'Sans point ni classement : occupe du temps et des cibles.',
-  barrage: 'Départage des ex æquo à 1 flèche, avant de monter un tableau.',
-  poules: 'Groupes en round-robin ; le classement de poule qualifie.',
-  big_shoot_off: 'Finale à N archers : le plus faible sort à chaque manche.',
-  suisse: 'Rondes vainqueurs contre vainqueurs, personne n’est éliminé.',
-  colline: 'Défis entre voisins : le gagnant monte, le perdant descend.',
-}
-
-// Les types qui ne produisent **aucun classement** : on ne peut pas y prélever de rangs (le serveur
-// le refuse), donc ce formulaire ne les propose pas comme source. Miroir de
-// `_TYPES_SANS_CLASSEMENT` côté domaine — le backend reste l'autorité, ceci évite juste d'offrir un
-// choix qui mène à un 422 dont la consigne n'est pas réalisable à l'écran.
-const TYPES_SANS_CLASSEMENT: TypePhase[] = ['echauffement']
 
 // Types composables ici (la qualification se règle via le barème). E05US015 peuple le catalogue :
 // chaque entrée a son moteur côté domaine, conformément à ADR-0045 §2.

@@ -29,6 +29,7 @@ export type DestinationAdminId =
   | 'blasons'
   | 'gabarits'
   | 'formats'
+  | 'deroule'
   | 'assemblage'
   | 'plan'
   | 'bareme'
@@ -55,6 +56,11 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
   tournoi:
     'Créez ou choisissez le tournoi sur lequel vous travaillez. Tout ce que vous réglez ensuite — ' +
     'catégories, départs, inscriptions… — appartient au tournoi sélectionné ici.',
+  deroule:
+    'Composez le déroulé complet d’un format : ses phases, ce qu’on y demande, et d’où viennent ' +
+    'les archers de chacune. Le schéma se redessine à chaque enregistrement pour l’effectif que ' +
+    'vous indiquez, et signale ce qui ne tient pas. « Simuler » le fait tourner sur des archers ' +
+    'fictifs pour connaître la charge réelle en duels avant le jour J.',
   accueil:
     'La photo d’ensemble du tournoi : où il en est, ce qu’il reste à préparer, et les chiffres-clés ' +
     '(inscrits, réglés, postes connectés). Partez d’ici pour savoir quoi faire ensuite.',

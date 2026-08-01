@@ -44,8 +44,8 @@ export const AXES: { axe: Axe; libelle: string; phrase: string; besoinTournoi: b
  * l'accueil de l'admin (ADR-0058).
  */
 export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>, Axe> = {
-  // Atelier — fabriquer, hors tournoi. Depuis E01US023, ses **six** destinations le sont
-  // réellement (clubs, gabarits, catégories, blasons, formats, jeu d'essai) :
+  // Atelier — fabriquer, hors tournoi. Depuis E01US023, ses destinations le sont
+  // réellement (clubs, gabarits, catégories, blasons, formats, déroulé, jeu d'essai) :
   // catégories, blasons et formats sont devenus des briques du **club** (ADR-0060), et `bareme` /
   // `phases` — qui règlent **une** édition — sont partis au pilotage, exactement comme `plan` (la
   // copie d'un tournoi) est au pilotage tandis que `gabarits` (le modèle) est ici.
@@ -54,6 +54,7 @@ export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>,
   categories: 'atelier',
   blasons: 'atelier',
   formats: 'atelier',
+  deroule: 'atelier',
   'jeu-essai': 'atelier',
   // Pilotage — le temps réel, et ce qui règle **cette** édition.
   accueil: 'pilotage',
@@ -99,6 +100,7 @@ export const BESOIN_TOURNOI: Record<Exclude<DestinationAdminId, 'tournoi'>, bool
   categories: false,
   blasons: false,
   formats: false,
+  deroule: false,
   'jeu-essai': false,
   // Pilotage & gestion — tout y porte sur une édition précise.
   accueil: true,

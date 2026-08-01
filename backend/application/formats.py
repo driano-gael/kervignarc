@@ -30,6 +30,7 @@ from application.erreurs import (
     TournoiIntrouvable,
     TournoiSansPhase,
 )
+from domain.deroule import ProjectionDeroule
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.ports import FormatTournoiRepository, PhaseRepository, TournoiRepository
@@ -88,8 +89,10 @@ class ServiceFormats:
     def creer(self, nom: str, etapes: Iterable[ModelePhase]) -> FormatTournoi:
         """Crée un format de bibliothèque.
 
-        Lève `NomFormatDejaPris` si le nom est déjà porté, `DomainError` si le format est
-        invalide (nom vide, aucune étape, séquence incohérente).
+        **Accepte un brouillon** depuis E01US024 (ADR-0063) : un format sans étape ou à la séquence
+        incohérente s'enregistre — c'est `appliquer` qui protège le tournoi, et `diagnostiquer` qui
+        dit ce qui manque. Lève `NomFormatDejaPris` si le nom est déjà porté, `DomainError` si le
+        **nom** est vide (seul invariant d'enregistrement restant).
         """
         format_tournoi = FormatTournoi.creer(nom, etapes)
         self._verifier_nom_libre(format_tournoi.nom)
@@ -143,6 +146,19 @@ class ServiceFormats:
             crees.append(self._formats.ajouter(preset))
         return crees
 
+    # --- Diagnostic -----------------------------------------------------------------------
+
+    def diagnostiquer(
+        self, format_id: FormatTournoiId, effectif: int | None = None
+    ) -> ProjectionDeroule:
+        """Projette le format sur `effectif` archers : le schéma à braquets et tout ce qui cloche.
+
+        Lecture pure — aucun refus, c'est justement le point (E01US024) : un brouillon incohérent
+        doit pouvoir être **regardé** pour être corrigé. Le verdict est dans
+        `ProjectionDeroule.est_applicable`. Lève `FormatIntrouvable` (404).
+        """
+        return self._format_existant(format_id).projeter(effectif)
+
     # --- Application à un tournoi ---------------------------------------------------------
 
     def appliquer(self, tournoi_id: TournoiId, format_id: FormatTournoiId) -> list[Phase]:
@@ -161,6 +177,15 @@ class ServiceFormats:
         format_tournoi = self._format_existant(format_id)
         existantes = self._phases.par_tournoi(tournoi_id)
         self._exiger_sequence_remplacable(tournoi_id, existantes, format_tournoi)
+        # ⚠️ **Instancier AVANT de détruire** (E01US024). `format_tournoi.appliquer` peut désormais
+        # lever : depuis ADR-0063 un format incohérent s'enregistre, et c'est ici que l'invariant
+        # est tenu. Tant que c'était impossible, l'ordre « supprimer puis recréer » était sans
+        # risque ; il ne l'est plus. Les suppressions sont **committées** (une session par appel de
+        # repository, cf. DETTE-025 ci-dessous), donc une exception levée après elles laissait le
+        # tournoi **sans aucune phase** — et sans son barème de qualification, que le troisième
+        # garde ci-dessus existe précisément pour protéger. Relevé par trois axes de la revue,
+        # reproduit de bout en bout.
+        nouvelles = format_tournoi.appliquer(tournoi_id)
         # DETTE-025 — suppression puis recréation en **transactions séparées** (une session par
         # appel de repository) : une panne entre les deux boucles laisse le tournoi sans phase. Le
         # remède est un `remplacer_sequence` atomique sur l'adapter concret (patron
@@ -175,7 +200,7 @@ class ServiceFormats:
             # porte un identifiant »), tenu par le repository ; le projet ne tourne pas sous `-O`.
             assert phase.id is not None, "une phase relue du dépôt porte toujours un identifiant."
             self._phases.supprimer(phase.id)
-        return [self._phases.ajouter(phase) for phase in format_tournoi.appliquer(tournoi_id)]
+        return [self._phases.ajouter(phase) for phase in nouvelles]
 
     def _exiger_sequence_remplacable(
         self,

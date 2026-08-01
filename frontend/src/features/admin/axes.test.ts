@@ -14,16 +14,17 @@ import {
 import { AIDE_ECRANS, type DestinationAdminId } from './aide-ecrans'
 
 describe('répartition des destinations', () => {
-  it('CA — les 27 destinations livrées sont toutes rangées, aucune perdue', () => {
+  it('CA — les 28 destinations livrées sont toutes rangées, aucune perdue', () => {
     // Le risque n°1 d'E14US003 : des destinations réétiquetées à la main. Une entrée oubliée
     // disparaîtrait **silencieusement** de la sidebar (elle est filtrée par axe), sans que `tsc`
     // ni aucun autre test ne le voie. E01US023 en a ajouté deux : `formats` (atelier) et
-    // `assemblage` (pilotage).
+    // `assemblage` (pilotage) ; E01US024 une troisième, `deroule` (atelier).
     const rangees = Object.keys(AXE_PAR_DESTINATION)
     const toutes = Object.keys(AIDE_ECRANS)
-    expect(toutes).toHaveLength(27)
-    expect(rangees).toHaveLength(26)
-    // La 27ᵉ est « tournoi » : elle n'appartient à aucun axe, c'est l'assemblage porté par l'accueil.
+    expect(toutes).toHaveLength(28)
+    expect(rangees).toHaveLength(27)
+    // La dernière est « tournoi » : elle n'appartient à aucun axe, c'est l'assemblage porté par
+    // l'accueil.
     expect(toutes.filter((d) => !rangees.includes(d))).toEqual(['tournoi'])
   })
 

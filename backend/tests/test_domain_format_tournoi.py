@@ -199,22 +199,46 @@ def test_de_phases_capture_le_deroule_et_oublie_l_avancement() -> None:
     assert "statut" not in {champ.name for champ in dataclasses.fields(type(promu.etapes[0]))}
 
 
-def test_de_phases_refuse_un_tournoi_sans_phase() -> None:
+def test_de_phases_diagnostique_un_tournoi_sans_phase_au_lieu_de_le_refuser() -> None:
+    """Capturer un tournoi sans phase donne un **brouillon vide**, signalé comme tel.
+
+    Le refus n'a pas disparu du produit : `ServiceFormats.promouvoir` lève toujours
+    `TournoiSansPhase` (409) avant d'en arriver là — c'est lui qui porte cette règle, et il ne
+    dépendait déjà pas du domaine pour l'appliquer.
+    """
+    capture = FormatTournoi.de_phases("Vide", [])
+
+    assert capture.etapes == ()
+    assert "format_sans_etape" in {anomalie.code for anomalie in capture.anomalies()}
+
+
+# --- Invariants : ce qui bloque l'**usage**, non plus l'enregistrement ---------------------------
+#
+# ⚠️ **Cinq tests inversés en E01US024, délibérément.** Ils vérifiaient que la *construction*
+# refuse ; ils vérifient désormais que le brouillon s'enregistre, que le diagnostic **nomme** le
+# défaut avec le même code, et que `appliquer` refuse avec la **même exception qu'avant**. Le
+# garde-fou n'est pas désarmé : il a changé de porte (ADR-0063). C'est le CA qui l'exige — « *on
+# doit pouvoir sauvegarder le brouillon tout le temps, mais on ne peut réellement l'utiliser pour un
+# vrai tournoi que s'il est valide* ». Précédent au projet : le test HTTP inversé de DETTE-009.
+
+
+def _codes(format_tournoi: FormatTournoi) -> set[str]:
+    return {anomalie.code for anomalie in format_tournoi.anomalies()}
+
+
+def test_un_format_sans_etape_s_enregistre_mais_ne_s_applique_pas() -> None:
+    """Appliquer un format vide ne créerait rien, et l'organisateur croirait avoir assemblé son
+    tournoi — le refus reste, il est seulement rendu au moment de l'assemblage."""
+    vide = FormatTournoi.creer("Vide", [])
+
+    assert "format_sans_etape" in _codes(vide)
     with pytest.raises(FormatSansEtape):
-        FormatTournoi.de_phases("Vide", [])
+        vide.appliquer(TOURNOI)
 
 
-# --- Invariants : ceux d'une phase, plus ceux d'une séquence -----------------------------------
-
-
-def test_un_format_sans_etape_est_refuse() -> None:
-    """Distinct d'une `SequencePhases` vide, qui est licite : appliquer un format vide ne créerait
-    rien, et l'organisateur croirait avoir assemblé son tournoi."""
-    with pytest.raises(FormatSansEtape):
-        FormatTournoi.creer("Vide", [])
-
-
-def test_un_nom_vide_est_refuse() -> None:
+def test_un_nom_vide_reste_refuse_a_l_enregistrement() -> None:
+    """**Seul** invariant qui n'a pas bougé : le nom est la clé d'unicité de la bibliothèque, un
+    format sans nom ne serait pas un brouillon mais un modèle introuvable."""
     with pytest.raises(NomFormatInvalide):
         FormatTournoi.creer("   ", [_qualification()])
 
@@ -223,45 +247,68 @@ def test_le_nom_est_normalise() -> None:
     assert FormatTournoi.creer("  Mon format  ", [_qualification()]).nom == "Mon format"
 
 
-def test_les_ordres_doivent_former_la_suite_contigue() -> None:
-    """Le **même** invariant que `SequencePhases` (ADR-0045 §3), appliqué au format."""
+def test_des_ordres_non_contigus_s_enregistrent_mais_ne_s_appliquent_pas() -> None:
+    """Le **même** invariant que `SequencePhases` (ADR-0045 §3) — déplacé vers l'application."""
+    troue = FormatTournoi.creer("Trou", [_qualification(ordre=1), _qualification(ordre=3)])
+
+    assert "sequence_ordre_invalide" in _codes(troue)
     with pytest.raises(SequenceOrdreInvalide):
-        FormatTournoi.creer("Trou", [_qualification(ordre=1), _qualification(ordre=3)])
+        troue.appliquer(TOURNOI)
 
 
-def test_une_source_ne_peut_pas_designer_une_etape_posterieure() -> None:
+def test_une_source_posterieure_s_enregistre_mais_ne_s_applique_pas() -> None:
+    en_avant = FormatTournoi.creer(
+        "Source en avant",
+        [
+            ModelePhase(
+                ordre=1,
+                type=TypePhase.ELIMINATION_DIRECTE,
+                sources=(SourcePhase(ordre_source=2, rang_debut=1, rang_fin=8),),
+            ),
+            _qualification(ordre=2),
+        ],
+    )
+
+    assert "source_apres_phase" in _codes(en_avant)
     with pytest.raises(SourceApresPhase):
-        FormatTournoi.creer(
-            "Source en avant",
-            [
-                ModelePhase(
-                    ordre=1,
-                    type=TypePhase.ELIMINATION_DIRECTE,
-                    sources=(SourcePhase(ordre_source=2, rang_debut=1, rang_fin=8),),
-                ),
-                _qualification(ordre=2),
-            ],
-        )
+        en_avant.appliquer(TOURNOI)
 
 
-def test_un_modele_de_qualification_sans_bareme_est_refuse() -> None:
-    """Les invariants **internes** d'une phase valent aussi pour un modèle."""
+def test_un_modele_de_qualification_sans_bareme_se_compose_mais_ne_s_applique_pas() -> None:
+    """Les invariants **internes** d'une phase valent toujours pour la phase produite — c'est
+    `pour_tournoi` qui construit une `Phase`, et `Phase.__post_init__` n'a pas bougé."""
+    brouillon = FormatTournoi.creer(
+        "Qualif à finir", [ModelePhase(ordre=1, type=TypePhase.QUALIFICATION)]
+    )
+
+    assert "phase_qualification_incomplete" in _codes(brouillon)
     with pytest.raises(PhaseQualificationIncomplete):
-        ModelePhase(ordre=1, type=TypePhase.QUALIFICATION)
+        brouillon.appliquer(TOURNOI)
 
 
-def test_un_format_qui_decrirait_une_phase_impossible_echoue_a_la_construction() -> None:
-    """Le garde-fou annoncé par l'ADR : l'échec est à la construction, pas à l'exécution du moteur.
+def test_un_format_qui_decrirait_une_phase_impossible_echoue_a_l_application() -> None:
+    """Le garde-fou annoncé par l'ADR-0060 : l'échec précède l'exécution du moteur — mais il se
+    produit désormais à l'**assemblage**, pas à la composition.
 
-    Un grain `fin_de_duel` sur une qualification est refusé par `verifier_coherence_etape`, la même
-    fonction que celle qu'applique `Phase` — le format ne peut pas contenir ce qu'un tournoi
-    refuserait.
+    Un grain `fin_de_duel` sur une qualification est refusé par la même règle
+    (`anomalies_etape`) que celle qu'applique `Phase` : le format peut la **décrire**, aucun
+    tournoi ne peut la **recevoir**.
     """
+    impossible = FormatTournoi.creer(
+        "Grain impossible",
+        [
+            ModelePhase(
+                ordre=1,
+                type=TypePhase.QUALIFICATION,
+                bareme=BaremeQualification.preset_ffta_18m(),
+                validation=GrainValidation.fin_de_duel(),
+            )
+        ],
+    )
+
+    assert "grain_incompatible_avec_type_phase" in _codes(impossible)
     with pytest.raises(Exception) as echec:
-        ModelePhase.qualification(
-            BaremeQualification.preset_ffta_18m(),
-            validation=GrainValidation.fin_de_duel(),
-        )
+        impossible.appliquer(TOURNOI)
     assert echec.typename == "GrainIncompatibleAvecTypePhase"
 
 

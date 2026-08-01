@@ -291,6 +291,60 @@ coup d'œil au lieu de le déduire d'une liste de réglages.
 
 - **Absorbe** : l'éditeur visuel et la simulation de format, cadrés le 31/07/2026 comme US distinctes
   puis regroupés à la demande du commanditaire (« des US les plus grosses possible »).
+- **Arbitrage tranché en cours d'US (01/08/2026, deux gravités d'anomalie)** : le CA disait « un
+  format ne s'applique que s'il est cohérent » sans dire ce qu'est *incohérent* — or les deux CA
+  « effectif simulé » et « ajustement d'effectif » rendaient la question décidable, et la réponse
+  structure tout l'écran. Retenu : **ce qui est faux quel que soit l'effectif bloque ; ce qui n'est
+  faux qu'à cet effectif avertit**. Une source postérieure ou une qualification sans barème interdit
+  d'appliquer le format ; « les rangs 33 à 120 » sur 82 inscrits ne fait qu'avertir. Sans cette
+  distinction, bloquer sur un débordement d'effectif rendrait inutilisables les **plages relatives**
+  que le CA d'E05US010 demande explicitement — le format serait déclaré faux parce qu'il y a eu moins
+  d'inscrits que prévu. Consigné en [ADR-0063](../docs/adr/0063-brouillon-de-format-invariant-a-l-application.md) §3.
+- **Arbitrage tranché en cours d'US (01/08/2026, le nom reste un invariant d'enregistrement)** :
+  « un format s'enregistre à tout moment » ne peut pas aller jusqu'au nom vide. Le nom est la **clé
+  d'unicité** de la bibliothèque — l'assemblage et la promotion dédoublonnent par lui (arbitrage
+  d'E01US023, point 1) : un format sans nom ne serait pas un brouillon, il serait **introuvable**.
+  C'est le seul invariant que `FormatTournoi` garde à la construction ; le CA le disait déjà (« le
+  **nom** reste obligatoire »), l'arbitrage en donne la raison.
+- **Arbitrage tranché en cours d'US (01/08/2026, `ServiceJeuEssai` non réutilisé)** : la note
+  « il n'y a qu'à composer les deux » ne tient pas au contact du code. `ServiceJeuEssai` pilote des
+  **services** (tournois, départs, clubs, inscriptions), pas des repositories ; le brancher sur le
+  harnais supposerait d'élargir `HarnaisSimulation` de trois magasins et d'instancier six services —
+  pour obtenir des noms d'archers. Or un format ne connaît ni départ, ni club, ni quota. Retenu :
+  génération locale (vingt lignes, déterministe par `random.Random(graine)`). Le reste de la note
+  s'est vérifié : `ServiceSimulation`/`ServicePilotageSimulation` fournissent bien le substrat et le
+  bot, `demarrer` ayant seulement été scindé pour exposer `ouvrir_sur_harnais`.
+- **Défaut constaté et non corrigé (01/08/2026 — à cadrer)** : la simulation **diverge** de la
+  projection dès qu'un format prélève. Le moteur d'exécution n'a **aucun consommateur de
+  `Phase.sources`** côté duels — `ServiceSaisieDuels._decor` ensemence chaque tableau avec *tous* les
+  archers en lice —, donc « les rangs 1 à 8 au tableau » se joue à 12 si 12 archers sont classés.
+  C'est le cœur de [DETTE-028](../docs/dette.md#dette-028--le-catalogue-de-types-de-phase-est-livré-sans-consommateur),
+  que cette US devait résorber et n'a résorbée qu'à moitié (la **composition**, pas l'**exécution**) :
+  brancher le peuplement touche le déroulé réel du jour J et vaut une US à part entière. En attendant,
+  l'écart est **mesuré et affiché** (effectif projeté à côté de l'effectif constaté) et fixé par un
+  test de non-régression, plutôt que tu.
+- **Arbitrage tranché en revue (01/08/2026, trois « faux verts » du diagnostic)** : le CA fait du
+  schéma le **contrôle de validité**, donc un déroulé qui ne tient pas ne doit pas être déclaré
+  applicable. Trois cas passaient au vert et ont été fermés — leur régime de gravité découle de la
+  règle du point précédent : (1) **une phase qui ne dit pas d'où viennent ses archers** (pas la
+  première, aucun prélèvement) → **avertissement** (`phase_sans_source`). Elle était d'abord
+  bloquante, et la seconde passe de revue a montré que c'était une **régression** : le déroulé
+  « échauffement puis élimination directe sans source » est livré et documenté (recette d'E05US015),
+  et le peuplement ensemence de toute façon tout le monde (DETTE-028) — bloquer aurait rendu
+  inapplicable un format légitime du club, au nom d'une promesse que le moteur ne tient pas. D'où un
+  **troisième critère de gravité**, reversé à l'ADR : *une règle ne peut bloquer que si l'exécution
+  la tient* ;
+  (2) **deux phases avales qui se disputent les mêmes rangs** (« 1 à 32 » puis « 32 à 64 », l'erreur
+  de borne d'un rang) → **avertissement**, le contrôle existant ne comparant que les prélèvements
+  d'une *même* phase cible ; (3) **un effectif déclaré que les prélèvements ne remplissent pas** →
+  **avertissement**, le contrôle du domaine abandonnant l'égalité dès qu'un prélèvement est relatif,
+  alors que la projection sait le résoudre.
+- **Arbitrage tranché en revue (01/08/2026, un format applicable n'est pas toujours simulable)** :
+  un format sans phase de qualification s'applique parfaitement à un tournoi, mais le bot n'a aucun
+  barème d'où tirer des scores. Le refus est donc **explicite et distinct** (`format_non_simulable`,
+  400) plutôt qu'un `PhaseQualificationAbsente` en 404 parlant d'un tournoi que l'organisateur ne
+  voit nulle part — et l'écran désactive le bouton en le disant.
 - **Dépend de** : **E05US010** (sources multiples et relatives — sans elles le schéma ne peut pas
-  montrer les braquets ni s'ajuster à l'effectif) · **Jalon** : J3
+  montrer les braquets ni s'ajuster à l'effectif) · **Jalon** : J3 ·
+  **ADR** : [ADR-0063](../docs/adr/0063-brouillon-de-format-invariant-a-l-application.md)
 - **Origine** : cadrage du 31/07/2026, parti du constat que l'écran d'E01US023 ne composait rien.

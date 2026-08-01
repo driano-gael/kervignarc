@@ -6,6 +6,7 @@
 // qui permet enfin à l'axe atelier de tenir sa promesse « fabriquer, hors tournoi » (DETTE-023).
 
 import { fetchJson } from '../../shared/api/client'
+import type { TypePhase } from '../../shared/phases/catalogue'
 import type { Blason } from '../blasons/api'
 import type { Categorie, ModifierCategorie } from '../categories/api'
 
@@ -135,22 +136,11 @@ export function promouvoirBlason(id: number): Promise<Blason> {
 // Formats de tournoi
 // —————————————————————————————————————————————————————————————————————————————————————————————
 
-// ⚠️ Copie de l'union de `features/phases/api.ts` — les deux se mettent à jour ensemble (E05US015).
-// DETTE-030 (../../../../docs/dette.md) : cette union est déclarée **deux fois** côté front (ici et
-// dans l'autre feature), et doit rester synchronisée avec l'enum `TypePhase` du backend — trois
-// domiciles pour une vérité. Assumé à deux occurrences ; ce qui rend la duplication tenable est que
-// **chaque consommateur soit exhaustif** (`Record` ou `switch` + `assertNever`), jamais un ternaire
-// à repli — le repli est précisément ce qui a fait afficher six types comme « Placement ».
-export type TypePhase =
-  | 'qualification'
-  | 'elimination_directe'
-  | 'placement'
-  | 'echauffement'
-  | 'barrage'
-  | 'poules'
-  | 'big_shoot_off'
-  | 'suisse'
-  | 'colline'
+// L'union des types de phase vient du **catalogue partagé** (`shared/phases/catalogue.ts`),
+// extrait en E01US024 : DETTE-030 est résorbée côté front — un seul domicile à synchroniser avec
+// l'enum `TypePhase` du backend, au lieu de deux copies qui se mettaient à jour « ensemble ».
+export type { TypePhase } from '../../shared/phases/catalogue'
+
 export type TypeGrain = 'fin_de_serie' | 'fin_de_duel' | 'toutes_les_n_volees'
 
 export interface Bareme {

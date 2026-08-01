@@ -2,38 +2,19 @@
 // les phases d'un tournoi et faire vivre leur cycle de vie. Miroir des DTO de `api/v1/phases.py`.
 
 import { fetchJson } from '../../shared/api/client'
+import type { IssueTour, NatureSource, TypePhase } from '../../shared/phases/catalogue'
 
-// Types de phase déclarables (ADR-0045 §2) — le catalogue est peuplé par E05US015 (ADR-0062).
-// ⚠️ Cette union est **dupliquée** dans `features/patrimoine/api.ts` (les formats de bibliothèque
-// composent les mêmes types). Deux copies, donc deux occasions de diverger du backend : c'est
-// assumé tant qu'il n'y en a que deux — à une 3ᵉ, l'extraire dans un module partagé se justifiera.
-// DETTE-030 (../../../../docs/dette.md) : cette union est déclarée **deux fois** côté front (ici et
-// dans l'autre feature), et doit rester synchronisée avec l'enum `TypePhase` du backend — trois
-// domiciles pour une vérité. Assumé à deux occurrences ; ce qui rend la duplication tenable est que
-// **chaque consommateur soit exhaustif** (`Record` ou `switch` + `assertNever`), jamais un ternaire
-// à repli — le repli est précisément ce qui a fait afficher six types comme « Placement ».
-export type TypePhase =
-  | 'qualification'
-  | 'elimination_directe'
-  | 'placement'
-  | 'echauffement'
-  | 'barrage'
-  | 'poules'
-  | 'big_shoot_off'
-  | 'suisse'
-  | 'colline'
+// Types de phase, natures de prélèvement et issues de tour : **ré-exportés** du catalogue partagé
+// (`shared/phases/catalogue.ts`). Ils y ont été extraits en E01US024, à la 3ᵉ occurrence — le seuil
+// que DETTE-030 se fixait elle-même. Les imports existants (`import type { TypePhase } from
+// './api'`) continuent de marcher : il n'y a plus qu'un domicile à synchroniser avec le backend.
+export type { IssueTour, NatureSource, TypePhase } from '../../shared/phases/catalogue'
 
 // Cycle de vie d'une phase (ADR-0045 §1) : `en_pause` gèle la phase, distinct du tournoi.
 export type StatutPhase = 'a_venir' | 'en_cours' | 'en_pause' | 'terminee'
 
 // Transitions du cycle de vie, miroir de l'enum `TransitionPhase` du backend.
 export type TransitionPhase = 'demarrer' | 'mettre_en_pause' | 'reprendre' | 'terminer'
-
-// Comment un prélèvement puise dans la phase amont (E05US010, miroir de `NatureSource`).
-export type NatureSource = 'rangs' | 'issue_de_tour' | 'reste'
-
-// Le côté d'un tour dont on prélève (miroir de `IssueTour`).
-export type IssueTour = 'gagnants' | 'perdants'
 
 // Un prélèvement de participants dans une phase antérieure. Une phase en porte **plusieurs**
 // (E05US010). Selon `nature` : les rangs [rang_debut..rang_fin] (`rang_fin: null` = « et

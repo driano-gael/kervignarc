@@ -65,6 +65,7 @@ import { Exports } from '../exports/Exports'
 import { Gabarits } from '../gabarits/Gabarits'
 import { Assemblage } from '../patrimoine/Assemblage'
 import { BlasonsBibliotheque, CategoriesBibliotheque } from '../patrimoine/Bibliotheque'
+import { Deroule } from '../deroule/Deroule'
 import { Formats } from '../patrimoine/Formats'
 import { ImportClubs } from '../patrimoine/ImportClubs'
 import { PlanDeSalle } from '../gabarits/PlanDeSalle'
@@ -199,6 +200,14 @@ function Coquille() {
       // l'autre est le **format**, pas la phase — celle-ci porte un statut et un rang propres à
       // une édition.
       rendu: () => <Formats />,
+    },
+    {
+      id: 'deroule',
+      libelle: 'Composer un déroulé',
+      // L'atelier de composition (E01US024, ADR-0063) : là où un format se **fabrique**, se
+      // **regarde** et se **fait tourner**, alors que « Formats » n'en gère que la bibliothèque.
+      // Sans tournoi, comme tout l'axe atelier.
+      rendu: () => <Deroule />,
     },
     {
       id: 'assemblage',

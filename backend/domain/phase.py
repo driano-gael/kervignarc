@@ -41,11 +41,12 @@ de domaine **purs** (immuables, sans dépendance framework).
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Protocol
 
+from domain.anomalie import Anomalie
 from domain.bareme import BaremeQualification
 from domain.erreurs import (
     CadenceValidationSuperieureAuBareme,
@@ -562,9 +563,26 @@ def verifier_sequence(etapes: Sequence[EtapeSequencee]) -> None:
     (les modèles de phases d'une brique de bibliothèque) : c'est le **même** invariant, et le
     recopier serait la duplication d'invariant que le registre de dette proscrit. Ce n'est pas
     l'introduction d'un patron — juste une fonction appelée à deux endroits.
+
+    **Enveloppe levante** depuis E01US024 : la règle vit dans `anomalies_sequence`, qui les
+    **énumère** ; celle-ci lève la première. Le type d'exception — donc le code HTTP — est
+    inchangé.
     """
-    _verifier_ordres(etapes)
-    _verifier_sources(etapes)
+    for anomalie in anomalies_sequence(etapes):
+        raise anomalie.erreur
+
+
+def anomalies_sequence(etapes: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
+    """Énumère **tous** les défauts collectifs d'une séquence, au lieu de s'arrêter au premier.
+
+    Source unique des règles de séquence (E01US024, ADR-0063) : `verifier_sequence` en est
+    l'enveloppe levante, et la projection de déroulé la consomme telle quelle. Toutes les anomalies
+    produites ici sont **bloquantes** — un ordre en doublon ou une source postérieure est faux quel
+    que soit l'effectif ; les défauts qui ne valent qu'à un effectif donné naissent dans
+    `domain.deroule`.
+    """
+    yield from _anomalies_ordres(etapes)
+    yield from _anomalies_sources(etapes)
 
 
 def verifier_coherence_etape(
@@ -581,33 +599,64 @@ def verifier_coherence_etape(
     Partagée pour la même raison que `verifier_sequence` : une phase de tournoi et un modèle de
     phase d'un format obéissent aux **mêmes** règles de cohérence interne ; seul le contexte
     (statut, tournoi) les distingue.
+
+    **Enveloppe levante** depuis E01US024 (cf. `verifier_sequence`).
+    """
+    for anomalie in anomalies_etape(type_phase, bareme, validation, effectif):
+        raise anomalie.erreur
+
+
+def anomalies_etape(
+    type_phase: TypePhase,
+    bareme: BaremeQualification | None,
+    validation: GrainValidation | None,
+    effectif: int | None,
+    ordre: int | None = None,
+) -> Iterator[Anomalie]:
+    """Énumère les défauts **internes** d'une étape ; `ordre` sert à les localiser sur le schéma.
+
+    Toutes bloquantes : ces règles ne dépendent d'aucun effectif simulé — une qualification sans
+    barème l'est à 12 archers comme à 120.
     """
     if effectif is not None and effectif < 1:
-        raise EffectifPhaseInvalide(
-            "L'effectif d'une phase, s'il est déclaré, compte au moins un participant."
+        yield Anomalie(
+            EffectifPhaseInvalide(
+                "L'effectif d'une phase, s'il est déclaré, compte au moins un participant."
+            ),
+            ordre,
         )
     if type_phase is TypePhase.QUALIFICATION and (bareme is None or validation is None):
-        raise PhaseQualificationIncomplete(
-            "Une phase de qualification porte un barème et un grain de validation."
+        yield Anomalie(
+            PhaseQualificationIncomplete(
+                "Une phase de qualification porte un barème et un grain de validation."
+            ),
+            ordre,
         )
     if validation is not None:
-        _verifier_grain_admis(type_phase, validation)
+        yield from _anomalies_grain_admis(type_phase, validation, ordre)
         if bareme is not None:
-            _verifier_cadence_couverte(validation, bareme)
+            yield from _anomalies_cadence_couverte(validation, bareme, ordre)
 
 
-def _verifier_grain_admis(type_phase: TypePhase, validation: GrainValidation) -> None:
+def _anomalies_grain_admis(
+    type_phase: TypePhase, validation: GrainValidation, ordre: int | None
+) -> Iterator[Anomalie]:
     # `.get` plutôt qu'une indexation : un type sans entrée n'admet aucun grain, ce qui donne un
     # `GrainIncompatibleAvecTypePhase` au message exact — pas un `KeyError` nu.
     admis = _GRAINS_ADMIS.get(type_phase, frozenset())
     if validation.type not in admis:
-        raise GrainIncompatibleAvecTypePhase(
-            f"Le grain « {validation.type.value} » ne s'applique pas à une phase "
-            f"de type « {type_phase.value} »."
+        yield Anomalie(
+            GrainIncompatibleAvecTypePhase(
+                f"Le grain « {validation.type.value} » ne s'applique pas à une phase "
+                f"de type « {type_phase.value} »."
+            ),
+            ordre,
         )
 
 
-def _verifier_cadence_couverte(validation: GrainValidation, bareme: BaremeQualification) -> None:
+def _anomalies_cadence_couverte(
+    validation: GrainValidation, bareme: BaremeQualification, ordre: int | None
+) -> Iterator[Anomalie]:
     """Garantit qu'**au moins une** validation aura lieu — pas que la cadence divise le barème.
 
     Une cadence de 3 sur 20 volées donne 6 validations, la dernière à la volée 18 : les volées 19-20
@@ -619,23 +668,32 @@ def _verifier_cadence_couverte(validation: GrainValidation, bareme: BaremeQualif
     if validation.n_volees is None:
         return
     if validation.n_volees > bareme.nb_volees:
-        raise CadenceValidationSuperieureAuBareme(
-            f"Valider toutes les {validation.n_volees} volées est impossible sur un barème qui "
-            f"n'en compte que {bareme.nb_volees} : aucune validation n'aurait lieu."
+        yield Anomalie(
+            CadenceValidationSuperieureAuBareme(
+                f"Valider toutes les {validation.n_volees} volées est impossible sur un barème qui "
+                f"n'en compte que {bareme.nb_volees} : aucune validation n'aurait lieu."
+            ),
+            ordre,
         )
 
 
-def _verifier_ordres(phases: Sequence[EtapeSequencee]) -> None:
-    """Les ordres doivent former la suite contiguë 1..N (ni trou, ni doublon, ni départ décalé)."""
+def _anomalies_ordres(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
+    """Les ordres doivent former la suite contiguë 1..N (ni trou, ni doublon, ni départ décalé).
+
+    Anomalie **non localisée** (`ordre=None`) : une suite `[1, 1, 3]` ne désigne aucune phase
+    fautive en particulier — c'est la séquence entière qui l'est.
+    """
     ordres = sorted(phase.ordre for phase in phases)
     if ordres != list(range(1, len(phases) + 1)):
-        raise SequenceOrdreInvalide(
-            "Les phases d'une séquence sont numérotées 1, 2, 3… sans trou ni doublon : "
-            f"ordres reçus {ordres}."
+        yield Anomalie(
+            SequenceOrdreInvalide(
+                "Les phases d'une séquence sont numérotées 1, 2, 3… sans trou ni doublon : "
+                f"ordres reçus {ordres}."
+            )
         )
 
 
-def _verifier_sources(phases: Sequence[EtapeSequencee]) -> None:
+def _anomalies_sources(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
     """Les invariants **collectifs** du peuplement d'une phase (E05US001, étendus par E05US010).
 
     Six contrôles : chaque source désigne une phase **existante** et **antérieure** ; elle ne
@@ -656,15 +714,25 @@ def _verifier_sources(phases: Sequence[EtapeSequencee]) -> None:
         for source in phase.sources:
             phase_source = par_ordre.get(source.ordre_source)
             if phase_source is None:
-                raise SourceIntrouvable(
-                    f"La phase {phase.ordre} est alimentée par une phase d'ordre "
-                    f"{source.ordre_source}, qui n'existe pas dans la séquence."
+                yield Anomalie(
+                    SourceIntrouvable(
+                        f"La phase {phase.ordre} est alimentée par une phase d'ordre "
+                        f"{source.ordre_source}, qui n'existe pas dans la séquence."
+                    ),
+                    phase.ordre,
                 )
+                # Les contrôles suivants déréférencent la phase source : sans elle, ils n'ont pas
+                # de sens. La version levante s'arrêtait ici de toute façon.
+                continue
             if source.ordre_source >= phase.ordre:
-                raise SourceApresPhase(
-                    f"La phase {phase.ordre} ne peut être alimentée que par une phase antérieure ; "
-                    f"l'ordre {source.ordre_source} lui est égal ou postérieur."
+                yield Anomalie(
+                    SourceApresPhase(
+                        f"La phase {phase.ordre} ne peut être alimentée que par une phase "
+                        f"antérieure ; l'ordre {source.ordre_source} lui est égal ou postérieur."
+                    ),
+                    phase.ordre,
                 )
+                continue
             # ⚠️ **Toutes les natures sauf `RESTE`**, et non les seuls rangs. Le CA est catégorique :
             # « la seule façon licite de lui succéder est *les mêmes archers, sans ordre* ». Un
             # premier jet ne refusait que `RANGS` — or « les gagnants du tour 1 de l'échauffement »
@@ -674,26 +742,34 @@ def _verifier_sources(phases: Sequence[EtapeSequencee]) -> None:
             if source.nature is not NatureSource.RESTE and not produit_un_classement(
                 phase_source.type
             ):
-                raise PhaseSansClassementPrelevee(
-                    f"La phase {phase.ordre} prélève « {source.nature.value} » dans la phase "
-                    f"{source.ordre_source}, de type « {phase_source.type.value} », qui ne produit "
-                    "ni classement ni rencontre : reprendre « le reste » de ses participants "
-                    "est la seule succession possible."
+                yield Anomalie(
+                    PhaseSansClassementPrelevee(
+                        f"La phase {phase.ordre} prélève « {source.nature.value} » dans la phase "
+                        f"{source.ordre_source}, de type « {phase_source.type.value} », qui ne "
+                        "produit ni classement ni rencontre : reprendre « le reste » de ses "
+                        "participants est la seule succession possible."
+                    ),
+                    phase.ordre,
                 )
             if (
                 phase_source.effectif is not None
                 and source.rang_fin is not None
                 and source.rang_fin > phase_source.effectif
             ):
-                raise RangsSourceInexistants(
-                    f"La source prélève jusqu'au rang {source.rang_fin}, mais la phase "
-                    f"{source.ordre_source} n'en classe que {phase_source.effectif}."
+                yield Anomalie(
+                    RangsSourceInexistants(
+                        f"La source prélève jusqu'au rang {source.rang_fin}, mais la phase "
+                        f"{source.ordre_source} n'en classe que {phase_source.effectif}."
+                    ),
+                    phase.ordre,
                 )
-        _verifier_recoupements(phase, par_ordre)
-        _verifier_somme(phase)
+        yield from _anomalies_recoupements(phase, par_ordre)
+        yield from _anomalies_somme(phase)
 
 
-def _verifier_recoupements(phase: EtapeSequencee, par_ordre: dict[int, EtapeSequencee]) -> None:
+def _anomalies_recoupements(
+    phase: EtapeSequencee, par_ordre: dict[int, EtapeSequencee]
+) -> Iterator[Anomalie]:
     """Deux sources d'une même phase ne prélèvent pas le même participant (CA « cohérence »).
 
     Le recoupement se juge **par phase source** : « les rangs 1-2 de la phase 1 » et « les rangs 1-2
@@ -712,11 +788,14 @@ def _verifier_recoupements(phase: EtapeSequencee, par_ordre: dict[int, EtapeSequ
     """
     doublons = [s for s in phase.sources if phase.sources.count(s) > 1]
     if doublons:
-        raise SourcesQuiSeRecoupent(
-            f"La phase {phase.ordre} porte deux fois le même prélèvement : un participant ne peut "
-            "pas entrer deux fois dans la même phase."
+        yield Anomalie(
+            SourcesQuiSeRecoupent(
+                f"La phase {phase.ordre} porte deux fois le même prélèvement : un participant ne "
+                "peut pas entrer deux fois dans la même phase."
+            ),
+            phase.ordre,
         )
-    for ordre_source in {source.ordre_source for source in phase.sources}:
+    for ordre_source in sorted({source.ordre_source for source in phase.sources}):
         etape_source = par_ordre.get(ordre_source)
         effectif_source = None if etape_source is None else etape_source.effectif
         intervalles: list[tuple[int, int]] = []
@@ -729,15 +808,21 @@ def _verifier_recoupements(phase: EtapeSequencee, par_ordre: dict[int, EtapeSequ
             debut, fin = intervalle
             for autre_debut, autre_fin in intervalles:
                 if debut <= autre_fin and autre_debut <= fin:
-                    raise SourcesQuiSeRecoupent(
-                        f"Deux sources de la phase {phase.ordre} prélèvent le même rang "
-                        f"{max(debut, autre_debut)} de la phase {ordre_source} : un participant ne "
-                        "peut pas entrer deux fois dans la même phase."
+                    yield Anomalie(
+                        SourcesQuiSeRecoupent(
+                            f"Deux sources de la phase {phase.ordre} prélèvent le même rang "
+                            f"{max(debut, autre_debut)} de la phase {ordre_source} : un "
+                            "participant ne peut pas entrer deux fois dans la même phase."
+                        ),
+                        phase.ordre,
                     )
+                    # Un recoupement par phase source suffit à le dire : énumérer chaque paire
+                    # noierait le diagnostic sous des redites du même défaut.
+                    return
             intervalles.append(intervalle)
 
 
-def _verifier_somme(phase: EtapeSequencee) -> None:
+def _anomalies_somme(phase: EtapeSequencee) -> Iterator[Anomalie]:
     """Les prélèvements doivent tenir dans l'effectif déclaré de la phase (CA « cohérence »).
 
     Deux régimes, et c'est la distinction qui compte :
@@ -761,13 +846,19 @@ def _verifier_somme(phase: EtapeSequencee) -> None:
     total = sum(compte for compte in comptes if compte is not None)
     if any(compte is None for compte in comptes):
         if total > phase.effectif:
-            raise EffectifIncompatible(
-                f"La phase {phase.ordre} attend {phase.effectif} participants, mais ses seuls "
-                f"prélèvements dénombrables en prennent déjà {total}."
+            yield Anomalie(
+                EffectifIncompatible(
+                    f"La phase {phase.ordre} attend {phase.effectif} participants, mais ses seuls "
+                    f"prélèvements dénombrables en prennent déjà {total}."
+                ),
+                phase.ordre,
             )
         return
     if total != phase.effectif:
-        raise EffectifIncompatible(
-            f"La phase {phase.ordre} attend {phase.effectif} participants, mais ses sources en "
-            f"prélèvent {total}."
+        yield Anomalie(
+            EffectifIncompatible(
+                f"La phase {phase.ordre} attend {phase.effectif} participants, mais ses sources en "
+                f"prélèvent {total}."
+            ),
+            phase.ordre,
         )

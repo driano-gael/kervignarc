@@ -439,6 +439,25 @@ def _lire_scoring(config: Any) -> Any:
     return config["scoring"]
 
 
+def _lire_scoring_facultatif(config: Any) -> Any:
+    """Comme `_lire_scoring`, mais rend `None` au lieu de lever quand le barème est absent.
+
+    Réservé aux **modèles d'étape** d'un format, seuls à pouvoir légitimement ne pas en porter
+    (E01US024). Une **phase** de qualification en a toujours un — son invariant n'a pas bougé —,
+    donc `_vers_phase` continue d'utiliser la version levante : une absence y reste une incohérence
+    technique, et l'affaiblir masquerait une vraie corruption.
+    """
+    policies = config.get("policies")
+    if isinstance(policies, dict) and "scoring" in policies:
+        # Clé **présente** : sa valeur fait foi, `null` compris (barème délibérément absent).
+        return policies["scoring"]
+    # Repli sur la racine, par **symétrie** avec `_lire_scoring` et non par nécessité : la table
+    # `format_tournoi` naît de la migration 0035, postérieure à 0028 (ADR-0046), donc aucune version
+    # n'y a jamais écrit `scoring` à la racine. Le garder coûte une ligne et évite qu'une divergence
+    # s'installe entre les deux lecteurs le jour où l'une des formes bougera.
+    return config.get("scoring")
+
+
 def _vers_source(source: Any) -> SourcePhase:
     """Relit **un** prélèvement depuis sa forme JSON.
 
@@ -525,6 +544,9 @@ def _politiques_json(
     validation: GrainValidation | None,
     sources: tuple[SourcePhase, ...],
     effectif: int | None,
+    *,
+    marquer_absences: bool = False,
+    porte_un_bareme: bool = False,
 ) -> dict[str, object]:
     """Corps commun d'une **étape** — une phase de tournoi ou un modèle d'étape d'un format.
 
@@ -532,6 +554,19 @@ def _politiques_json(
     objets (ADR-0060 §5), et recopier la forme aurait garanti qu'elles divergent au premier ajout de
     politique. Les deux tables se relisent donc avec les mêmes fonctions (`_lire_scoring`,
     `_vers_grain`, `_vers_source`).
+
+    ⚠️ **`marquer_absences` distingue « pas encore écrit » de « délibérément vide » (E01US024).**
+    Jusqu'ici l'absence d'une clé n'était **jamais** ambiguë : une qualification portait toujours
+    barème et grain, l'invariant étant tenu à la construction. Depuis E01US024, un **modèle
+    d'étape** peut légitimement n'en porter aucun — c'est le brouillon du CA. Mais l'absence de
+    `validation` sur une qualification signifie déjà autre chose : « ligne écrite avant E01US015 »,
+    qui retombe sur le preset du type (ADR-0011). Sans discriminant, un grain **choisi absent**
+    serait silencieusement rempli à la relecture, et l'anomalie `phase_qualification_incomplete`
+    deviendrait inatteignable pour ce cas.
+
+    D'où : les **formats** écrivent la clé **présente à `null`** (choix du rédacteur), les
+    **phases** gardent le régime historique (leur absence n'est pas ambiguë, leurs invariants n'ont
+    pas bougé). Clé absente = ligne ancienne, dans les deux tables.
     """
     config: dict[str, object] = {}
     if bareme is not None:
@@ -542,11 +577,20 @@ def _politiques_json(
                 "fleches": bareme.nb_fleches_par_volee,
             }
         }
+    elif marquer_absences and porte_un_bareme:
+        # Seule une **qualification** peut porter un barème : marquer son absence sur un autre type
+        # écrirait « le rédacteur n'en a pas voulu » là où la question ne se pose pas, et
+        # contredirait la règle de `_config_phase` (« `scoring`, et seulement pour une
+        # qualification »). Sans effet aujourd'hui — la relecture n'y lit pas le scoring —, mais un
+        # piège le jour où ces types porteront leurs propres politiques (ADR-0062).
+        config["policies"] = {"scoring": None}
     if validation is not None:
         grain: dict[str, object] = {"grain": validation.type.value}
         if validation.n_volees is not None:
             grain["n_volees"] = validation.n_volees
         config["validation"] = grain
+    elif marquer_absences:
+        config["validation"] = None
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
@@ -591,7 +635,12 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                     "ordre": etape.ordre,
                     "type": etape.type.value,
                     **_politiques_json(
-                        etape.bareme, etape.validation, etape.sources, etape.effectif
+                        etape.bareme,
+                        etape.validation,
+                        etape.sources,
+                        etape.effectif,
+                        marquer_absences=True,
+                        porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
                     ),
                 }
                 for etape in format_tournoi.etapes
@@ -632,11 +681,20 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
     n'en portent pas (ADR-0045 §2). Le grain absent d'une qualification retombe sur le preset du
     type, même mécanisme « politique sans migration » qu'ADR-0011 : un format écrit avant l'ajout
     d'une clé reste relisible.
+
+    ⚠️ **Un modèle d'étape peut n'avoir ni barème ni grain depuis E01US024** — c'est le brouillon
+    du CA, et c'est la relecture qui a failli l'interdire. Un premier jet lisait `_lire_scoring`
+    **inconditionnellement** pour une qualification : le `KeyError` remontait en
+    `InfrastructureError` → 500, **après** le `commit`. La ligne restait en base et `lister()`
+    mappant *toutes* les lignes, un seul brouillon incomplet mettait la bibliothèque entière en
+    500 — sans qu'aucune route ne permette de le supprimer, puisqu'elles relisent toutes. Défaut
+    relevé par deux axes de la revue, reproduit de bout en bout. Cf. `_politiques_json` pour le
+    discriminant « clé présente à `null` » vs « clé absente ».
     """
     type_phase = TypePhase(brute["type"])
     bareme = None
-    if type_phase is TypePhase.QUALIFICATION:
-        scoring = _lire_scoring(brute)
+    scoring = _lire_scoring_facultatif(brute) if type_phase is TypePhase.QUALIFICATION else None
+    if scoring is not None:
         bareme = BaremeQualification.creer(
             nb_volees=int(scoring["volees"]),
             nb_fleches_par_volee=int(scoring["fleches"]),
@@ -648,9 +706,12 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
     # un tournoi dont l'élimination porte un grain le perdait en silence. Le repli sur le preset du
     # type reste réservé à la qualification, où l'absence signifie « écrit avant E01US015 ».
     validation = None
-    if "validation" in brute:
+    if brute.get("validation") is not None:
         validation = _vers_grain(brute["validation"])
-    elif type_phase is TypePhase.QUALIFICATION:
+    elif "validation" not in brute and type_phase is TypePhase.QUALIFICATION:
+        # Clé **absente** = format écrit avant E01US015 → preset du type. Clé **présente à `null`**
+        # = le rédacteur n'a pas (encore) choisi de grain : on ne la remplit pas, sans quoi le
+        # diagnostic ne pourrait jamais signaler `phase_qualification_incomplete` pour ce cas.
         validation = grain_par_defaut(type_phase)
     effectif = brute.get("effectif")
     return ModelePhase(
