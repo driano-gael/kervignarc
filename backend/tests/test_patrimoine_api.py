@@ -420,13 +420,39 @@ def test_creer_puis_relire_un_format(
         ]
 
 
-def test_un_format_sans_etape_est_refuse_en_422(
+def test_un_format_sans_etape_s_enregistre_en_201_et_se_diagnostique(
     app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
+    """⚠️ **Test inversé en E01US024** — le refus n'a pas disparu, il s'est déplacé.
+
+    Il vérifiait le 422 à la création ; il vérifie désormais que le brouillon s'enregistre (201) et
+    que le diagnostic le **nomme** avec le **même code**. Le 422 est repris par le test suivant, à
+    l'application — la seule porte qui protège un vrai tournoi (ADR-0063).
+    """
     with TestClient(app_patrimoine) as client:
         connecter_admin(client)
 
-        refus = client.post("/api/v1/formats", json={"nom": "Vide", "etapes": []})
+        cree = client.post("/api/v1/formats", json={"nom": "Vide", "etapes": []})
+        assert cree.status_code == 201
+
+        diagnostic = client.get(f"/api/v1/formats/{cree.json()['id']}/diagnostic")
+
+        assert diagnostic.status_code == 200
+        corps = diagnostic.json()
+        assert corps["applicable"] is False
+        assert "format_sans_etape" in {a["code"] for a in corps["anomalies"]}
+
+
+def test_un_format_sans_etape_est_refuse_a_l_application_en_422(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """L'invariant tenu à l'**usage** : la même erreur, le même code, le même 422 qu'avant l'US."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        format_id = client.post("/api/v1/formats", json={"nom": "Vide", "etapes": []}).json()["id"]
+
+        refus = client.put(f"/api/v1/tournois/{tournoi_id}/format", json={"format_id": format_id})
 
         assert refus.status_code == 422
         assert refus.json()["code"] == "format_sans_etape"
@@ -698,3 +724,139 @@ def test_renommer_un_modele_en_lui_meme_reste_possible(
 
         assert edition.status_code == 200, edition.text
         assert edition.json()["hauteur_cm"] == 110
+
+
+# --- Diagnostic & simulation d'un format (E01US024) ---------------------------------------------
+
+
+def _format_qualif_puis_tableau(client: TestClient, nom: str = "Déroulé") -> int:
+    """Un format à deux étapes : la qualification FFTA, puis un tableau des 8 premiers rangs."""
+    reponse = client.post(
+        "/api/v1/formats",
+        json={
+            "nom": nom,
+            "etapes": [
+                _QUALIFICATION,
+                {
+                    "ordre": 2,
+                    "type": "elimination_directe",
+                    "sources": [
+                        {"ordre_source": 1, "nature": "rangs", "rang_debut": 1, "rang_fin": 8}
+                    ],
+                },
+            ],
+        },
+    )
+    assert reponse.status_code == 201, reponse.text
+    return int(reponse.json()["id"])
+
+
+def test_le_diagnostic_rend_le_schema_a_braquets(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Les quatre questions du CA, servies au front : qui, quoi, où, combien de tours."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        format_id = _format_qualif_puis_tableau(client)
+
+        reponse = client.get(f"/api/v1/formats/{format_id}/diagnostic", params={"effectif": 24})
+
+        assert reponse.status_code == 200, reponse.text
+        corps = reponse.json()
+        assert corps["applicable"] is True
+        qualif, tableau = corps["blocs"]
+        assert qualif["effectif"] == 24
+        assert qualif["nb_volees"] == 20
+        assert qualif["sans_suite"] == 16
+        assert len(qualif["sorties"]) == 1
+        assert tableau["tranche"] == [1, 8]
+        assert [tour["plage_perdants"] for tour in tableau["tours"]] == [[5, 8], [3, 4], [2, 2]]
+
+
+def test_le_diagnostic_sans_effectif_reste_abstrait(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        format_id = _format_qualif_puis_tableau(client)
+
+        corps = client.get(f"/api/v1/formats/{format_id}/diagnostic").json()
+
+        assert corps["effectif"] is None
+        assert corps["blocs"][0]["effectif"] is None
+
+
+def test_le_diagnostic_avertit_sans_bloquer_a_effectif_reduit(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un format composé pour 8 qualifiés reste applicable à 5 inscrits — il avertit, il ne bloque
+    pas (ADR-0063 §3)."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        format_id = _format_qualif_puis_tableau(client)
+
+        corps = client.get(f"/api/v1/formats/{format_id}/diagnostic", params={"effectif": 5}).json()
+
+        assert corps["applicable"] is True
+        anomalies = {a["code"]: a for a in corps["anomalies"]}
+        assert "rangs_source_inexistants" in anomalies
+        assert anomalies["rangs_source_inexistants"]["gravite"] == "avertissement"
+        assert anomalies["rangs_source_inexistants"]["ordre"] == 2
+
+
+def test_le_diagnostic_d_un_format_inconnu_est_404(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+
+        assert client.get("/api/v1/formats/999/diagnostic").status_code == 404
+
+
+def test_simuler_un_format_rend_le_classement_et_la_charge(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le CA « simuler le format » de bout en bout, par l'API."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        reponse_creation = client.post(
+            "/api/v1/formats",
+            json={
+                "nom": "Court",
+                "etapes": [
+                    {
+                        "ordre": 1,
+                        "type": "qualification",
+                        "bareme": {"nb_volees": 2, "nb_fleches_par_volee": 3},
+                        "validation": {"type": "fin_de_serie"},
+                    },
+                    {"ordre": 2, "type": "elimination_directe", "sources": []},
+                ],
+            },
+        )
+        format_id = reponse_creation.json()["id"]
+
+        reponse = client.post(
+            f"/api/v1/formats/{format_id}/simulation", json={"effectif": 8, "graine": 7}
+        )
+
+        assert reponse.status_code == 200, reponse.text
+        corps = reponse.json()
+        assert len(corps["classement"]) == 8
+        assert [ligne["rang"] for ligne in corps["classement"]] == list(range(1, 9))
+        assert corps["duels_total"] == 8  # 7 duels d'arbre + la petite finale
+        assert corps["diagnostic"]["effectif"] == 8
+
+
+def test_simuler_un_effectif_hors_bornes_est_400(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Borne de **service** (E01US024) : ni 404 ni 409 — la requête est impossible en soi."""
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+        format_id = _format_qualif_puis_tableau(client)
+
+        refus = client.post(f"/api/v1/formats/{format_id}/simulation", json={"effectif": 500})
+
+        assert refus.status_code == 400
+        assert refus.json()["code"] == "effectif_simulation_invalide"

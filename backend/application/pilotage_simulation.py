@@ -66,7 +66,7 @@ from domain.ports import (
     TournoiRepository,
 )
 from domain.serie import Serie, Volee, valider_valeurs_volee
-from domain.tournoi import TournoiId
+from domain.tournoi import Tournoi, TournoiId
 
 SessionId = int
 """Identifiant d'une session de simulation, attribué par le registre (en mémoire, éphémère)."""
@@ -311,6 +311,21 @@ class ServicePilotageSimulation:
             phases=self._phases,
             series=self._series,
         )
+        return self.ouvrir_sur_harnais(harnais, tournoi, graine)
+
+    def ouvrir_sur_harnais(
+        self, harnais: HarnaisSimulation, tournoi: Tournoi, graine: int
+    ) -> EtatSession:
+        """Ouvre une session sur un harnais **déjà rempli**, quelle qu'en soit la provenance.
+
+        Extrait de `demarrer` en E01US024 : la simulation d'un **format**
+        (`ServiceSimulationFormat`)
+        remplit son harnais de toutes pièces — tournoi éphémère, archers fictifs, phases du
+        format — sans qu'aucun tournoi réel n'existe à hydrater. Tout ce qui suit l'hydratation est
+        identique dans les deux cas ; le partager évite deux bots qui dériveraient.
+        """
+        assert tournoi.id is not None, "Un tournoi de simulation porte un identifiant."
+        tournoi_id = tournoi.id
         phase_qualif = harnais.phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
         if phase_qualif is None or phase_qualif.bareme is None or phase_qualif.id is None:
             raise PhaseQualificationAbsente(

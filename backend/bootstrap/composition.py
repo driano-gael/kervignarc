@@ -98,6 +98,7 @@ from application.saisie import ServiceSaisie
 from application.saisie_duels import ServiceSaisieDuels
 from application.scoreurs import ServiceScoreurs
 from application.simulation import HarnaisSimulation, ServiceSimulation
+from application.simulation_format import ServiceSimulationFormat
 from application.supervision import ServiceSupervision
 from application.tournois import ServiceTournois
 from domain.duel import ResolveurBaremeDuelFfta
@@ -636,6 +637,16 @@ def create_app(
         GenerateurScoresPlausibles(),
         app.state.registre_sessions_simulation,
         DiffusionSimulationBroadcaster(broadcaster_simulation),
+    )
+    # Simulation de **format** (E01US024, ADR-0063) : « ce déroulé tient-il à N archers ? ». Ne
+    # reçoit **aucun** repository SQL sinon la bibliothèque de formats, en lecture — le tournoi
+    # simulé naît dans le harnais et meurt avec lui, donc la non-pollution reste structurelle
+    # (ADR-0054). Réutilise le bot du cockpit (`ServicePilotageSimulation`) plutôt qu'un second
+    # moteur : un seul bot, une seule dérive possible.
+    app.state.service_simulation_format = ServiceSimulationFormat(
+        format_repository,
+        fabriquer_harnais_simulation,
+        app.state.service_pilotage_simulation,
     )
     # Feuille de marque (E09US001) : premier document du socle PDF (ReportLab, ADR-0031). Le service
     # lit le plan persisté et joint archer → catégorie → blason (ports seuls, pas de

@@ -27,7 +27,14 @@ from starlette.concurrency import run_in_threadpool
 from api.dependances import exiger_admin
 from api.v1.phases import PhaseReponse
 from application.formats import ServiceFormats
+from application.simulation_format import (
+    GRAINE_DEFAUT,
+    ResultatSimulationFormat,
+    ServiceSimulationFormat,
+)
+from domain.anomalie import Anomalie, Gravite
 from domain.bareme import BaremeQualification
+from domain.deroule import BlocDeroule, Flux, ProjectionDeroule, TourBraquet
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.patrimoine import OrigineBrique
@@ -210,6 +217,203 @@ class FormatReponse(BaseModel):
         )
 
 
+class AnomalieDTO(BaseModel):
+    """Un défaut du déroulé, tel que l'écran doit le montrer (E01US024).
+
+    `ordre` colle l'anomalie au **bloc** du schéma qu'elle concerne (`null` = la séquence entière) :
+    c'est ce que le CA exige — « un trou visible dans le dessin, pas un message d'erreur abstrait ».
+    `code` et `message` sont ceux de l'erreur typée du domaine, inchangés.
+    """
+
+    code: str
+    message: str
+    ordre: int | None
+    gravite: Gravite
+
+    @staticmethod
+    def de_agregat(anomalie: Anomalie) -> AnomalieDTO:
+        return AnomalieDTO(
+            code=anomalie.code,
+            message=anomalie.message,
+            ordre=anomalie.ordre,
+            gravite=anomalie.gravite,
+        )
+
+
+class FluxDTO(BaseModel):
+    """Une flèche du schéma : qui passe d'une phase à l'autre, et combien."""
+
+    ordre_source: int
+    ordre_cible: int
+    nature: NatureSource
+    effectif: int | None
+    rang_debut: int | None
+    rang_fin: int | None
+    tour: int | None
+    issue: IssueTour | None
+
+    @staticmethod
+    def de_agregat(flux: Flux) -> FluxDTO:
+        return FluxDTO(
+            ordre_source=flux.ordre_source,
+            ordre_cible=flux.ordre_cible,
+            nature=flux.nature,
+            effectif=flux.effectif,
+            rang_debut=flux.rang_debut,
+            rang_fin=flux.rang_fin,
+            tour=flux.tour,
+            issue=flux.issue,
+        )
+
+
+class TourDTO(BaseModel):
+    """Un tour d'un tableau et son **braquet** : les rangs que se partagent gagnants et perdants."""
+
+    tour: int
+    duels: int
+    plage_gagnants: tuple[int, int]
+    plage_perdants: tuple[int, int]
+
+    @staticmethod
+    def de_agregat(tour: TourBraquet) -> TourDTO:
+        return TourDTO(
+            tour=tour.tour,
+            duels=tour.duels,
+            plage_gagnants=tour.plage_gagnants,
+            plage_perdants=tour.plage_perdants,
+        )
+
+
+class BlocDTO(BaseModel):
+    """Un bloc du schéma à braquets — les quatre questions du CA pour une phase."""
+
+    ordre: int
+    type: TypePhase
+    effectif: int | None
+    tranche: tuple[int, int] | None
+    nb_volees: int | None
+    nb_fleches_par_volee: int | None
+    tours: list[TourDTO]
+    entrees: list[FluxDTO]
+    sorties: list[FluxDTO]
+    sans_suite: int | None
+    anomalies: list[AnomalieDTO]
+
+    @staticmethod
+    def de_agregat(bloc: BlocDeroule) -> BlocDTO:
+        return BlocDTO(
+            ordre=bloc.ordre,
+            type=bloc.type,
+            effectif=bloc.effectif,
+            tranche=bloc.tranche,
+            nb_volees=bloc.nb_volees,
+            nb_fleches_par_volee=bloc.nb_fleches_par_volee,
+            tours=[TourDTO.de_agregat(tour) for tour in bloc.tours],
+            entrees=[FluxDTO.de_agregat(flux) for flux in bloc.entrees],
+            sorties=[FluxDTO.de_agregat(flux) for flux in bloc.sorties],
+            sans_suite=bloc.sans_suite,
+            anomalies=[AnomalieDTO.de_agregat(a) for a in bloc.anomalies],
+        )
+
+
+class DiagnosticReponse(BaseModel):
+    """Le déroulé projeté : de quoi dessiner le schéma **et** rendre le verdict d'applicabilité."""
+
+    effectif: int | None
+    applicable: bool
+    blocs: list[BlocDTO]
+    anomalies: list[AnomalieDTO]
+
+    @staticmethod
+    def de_agregat(projection: ProjectionDeroule) -> DiagnosticReponse:
+        return DiagnosticReponse(
+            effectif=projection.effectif,
+            applicable=projection.est_applicable,
+            blocs=[BlocDTO.de_agregat(bloc) for bloc in projection.blocs],
+            anomalies=[AnomalieDTO.de_agregat(a) for a in projection.anomalies],
+        )
+
+
+class SimulerFormatRequete(BaseModel):
+    """Corps de simulation d'un format : combien d'archers fictifs, et avec quelle graine."""
+
+    effectif: int
+    graine: int = GRAINE_DEFAUT
+
+
+class LigneClassementDTO(BaseModel):
+    """Une ligne du classement 1→N effectivement produit par la simulation."""
+
+    rang: int | None
+    nom: str
+    prenom: str
+    total: int
+
+
+class PhaseSimuleeDTO(BaseModel):
+    """Ce qu'une phase a réellement coûté : tours joués et duels tranchés.
+
+    `effectif_projete` et `ecart` disent si le moteur a joué ce que le schéma annonçait. Aujourd'hui
+    il peut diverger (`# DETTE-028` : les duels ensemencent tous les archers en lice, sans lire le
+    prélèvement déclaré) — l'écran l'affiche plutôt que de servir un chiffre faux et muet.
+    """
+
+    ordre: int
+    type: TypePhase
+    effectif: int
+    effectif_projete: int | None
+    ecart: bool
+    tours: int
+    duels: int
+
+
+class SimulationFormatReponse(BaseModel):
+    """Ce que le format a produit à cet effectif — la réponse au CA « simuler le format »."""
+
+    format_id: int
+    nom: str
+    effectif: int
+    graine: int
+    duels_total: int
+    volees_total: int
+    phases: list[PhaseSimuleeDTO]
+    classement: list[LigneClassementDTO]
+    diagnostic: DiagnosticReponse
+
+    @staticmethod
+    def de_agregat(resultat: ResultatSimulationFormat) -> SimulationFormatReponse:
+        return SimulationFormatReponse(
+            format_id=resultat.format_id,
+            nom=resultat.nom,
+            effectif=resultat.effectif,
+            graine=resultat.graine,
+            duels_total=resultat.duels_total,
+            volees_total=resultat.volees_total,
+            phases=[
+                PhaseSimuleeDTO(
+                    ordre=phase.ordre,
+                    type=phase.type,
+                    effectif=phase.effectif,
+                    effectif_projete=phase.effectif_projete,
+                    ecart=phase.ecart,
+                    tours=phase.tours,
+                    duels=phase.duels,
+                )
+                for phase in resultat.phases
+            ],
+            classement=[
+                LigneClassementDTO(
+                    rang=ligne.rang_scratch,
+                    nom=ligne.nom,
+                    prenom=ligne.prenom,
+                    total=ligne.total,
+                )
+                for ligne in resultat.classement.lignes
+            ],
+            diagnostic=DiagnosticReponse.de_agregat(resultat.projection),
+        )
+
+
 # --- Bibliothèque de formats --------------------------------------------------------------------
 
 
@@ -314,6 +518,49 @@ async def supprimer_format(format_id: int, request: Request) -> Response:
     write_queue: WriteQueue = request.app.state.write_queue
     await asyncio.wrap_future(write_queue.submit(lambda: service.supprimer(format_id)))
     return Response(status_code=204)
+
+
+# --- Diagnostic & simulation d'un format --------------------------------------------------------
+
+
+@router.get("/formats/{format_id}/diagnostic", response_model=DiagnosticReponse)
+async def diagnostiquer_format(
+    format_id: int, request: Request, effectif: int | None = None
+) -> DiagnosticReponse:
+    """Projette le format sur `effectif` archers : le schéma à braquets et ses anomalies.
+
+    **Lecture** (hors file, règle 7) et **sans refus** : c'est l'écran de composition qui l'appelle
+    à chaque frappe, sur un brouillon par définition incomplet. Le verdict d'applicabilité est dans
+    le corps (`applicable`), pas dans le code HTTP — un brouillon incohérent est une réponse 200
+    parfaitement normale. 404 si le format n'existe pas.
+    """
+    service: ServiceFormats = request.app.state.service_formats
+    projection = await run_in_threadpool(service.diagnostiquer, format_id, effectif)
+    return DiagnosticReponse.de_agregat(projection)
+
+
+@router.post(
+    "/formats/{format_id}/simulation",
+    response_model=SimulationFormatReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def simuler_format(
+    format_id: int, requete: SimulerFormatRequete, request: Request
+) -> SimulationFormatReponse:
+    """Joue le format sur N archers fictifs et rend ce qu'il produit (**action admin**).
+
+    **Hors de la file d'écriture**, délibérément (ADR-0063 §6) : la simulation n'écrit rien de
+    persistant — elle tourne de bout en bout sur des adapters in-memory (ADR-0054), et rien n'y mène
+    à SQLite. La faire passer par le writer unique bloquerait toutes les écritures du tournoi
+    pendant plusieurs secondes, pour un calcul qui ne touche pas la base. Elle part donc au
+    threadpool, comme une lecture.
+
+    400 si l'effectif sort des bornes de service, 404 si le format n'existe pas, 422 s'il porte
+    une anomalie bloquante (on ne simule pas un déroulé qu'aucun tournoi ne pourrait recevoir).
+    """
+    service: ServiceSimulationFormat = request.app.state.service_simulation_format
+    resultat = await run_in_threadpool(service.simuler, format_id, requete.effectif, requete.graine)
+    return SimulationFormatReponse.de_agregat(resultat)
 
 
 # --- Déroulé d'un tournoi -----------------------------------------------------------------------

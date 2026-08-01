@@ -30,6 +30,7 @@ from application.erreurs import (
     TournoiIntrouvable,
     TournoiSansPhase,
 )
+from domain.deroule import ProjectionDeroule
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.ports import FormatTournoiRepository, PhaseRepository, TournoiRepository
@@ -88,8 +89,10 @@ class ServiceFormats:
     def creer(self, nom: str, etapes: Iterable[ModelePhase]) -> FormatTournoi:
         """Crée un format de bibliothèque.
 
-        Lève `NomFormatDejaPris` si le nom est déjà porté, `DomainError` si le format est
-        invalide (nom vide, aucune étape, séquence incohérente).
+        **Accepte un brouillon** depuis E01US024 (ADR-0063) : un format sans étape ou à la séquence
+        incohérente s'enregistre — c'est `appliquer` qui protège le tournoi, et `diagnostiquer` qui
+        dit ce qui manque. Lève `NomFormatDejaPris` si le nom est déjà porté, `DomainError` si le
+        **nom** est vide (seul invariant d'enregistrement restant).
         """
         format_tournoi = FormatTournoi.creer(nom, etapes)
         self._verifier_nom_libre(format_tournoi.nom)
@@ -142,6 +145,19 @@ class ServiceFormats:
                 continue
             crees.append(self._formats.ajouter(preset))
         return crees
+
+    # --- Diagnostic -----------------------------------------------------------------------
+
+    def diagnostiquer(
+        self, format_id: FormatTournoiId, effectif: int | None = None
+    ) -> ProjectionDeroule:
+        """Projette le format sur `effectif` archers : le schéma à braquets et tout ce qui cloche.
+
+        Lecture pure — aucun refus, c'est justement le point (E01US024) : un brouillon incohérent
+        doit pouvoir être **regardé** pour être corrigé. Le verdict est dans
+        `ProjectionDeroule.est_applicable`. Lève `FormatIntrouvable` (404).
+        """
+        return self._format_existant(format_id).projeter(effectif)
 
     # --- Application à un tournoi ---------------------------------------------------------
 

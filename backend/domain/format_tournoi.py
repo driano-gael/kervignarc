@@ -29,7 +29,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 
+from domain.anomalie import Anomalie, Gravite
 from domain.bareme import BaremeQualification
+from domain.deroule import ProjectionDeroule, projeter
 from domain.erreurs import FormatSansEtape, NomFormatInvalide
 from domain.grain_validation import GrainValidation
 from domain.patrimoine import OrigineBrique
@@ -39,8 +41,6 @@ from domain.phase import (
     StatutPhase,
     TypePhase,
     grain_par_defaut,
-    verifier_coherence_etape,
-    verifier_sequence,
 )
 from domain.tournoi import TournoiId
 
@@ -57,13 +57,18 @@ PRESET_CLUB_NB_FLECHES_PAR_VOLEE = 3
 class ModelePhase:
     """Une étape d'un format — tout ce qu'une `Phase` porte, **sauf** son tournoi et son statut.
 
-    Les invariants **internes** sont exactement ceux d'une phase (`verifier_coherence_etape`) : une
-    `qualification` porte barème et grain, le grain est admis par le type, sa cadence ne dépasse pas
-    le barème, l'effectif déclaré vaut au moins 1. Les invariants **collectifs** (ordres contigus,
-    sources antérieures) sont portés par `FormatTournoi`, comme `SequencePhases` les porte pour un
-    tournoi — c'est la **même** fonction dans les deux cas (`verifier_sequence`).
+    ⚠️ **Un modèle de phase ne valide plus rien à la construction** depuis E01US024 (ADR-0063). Il
+    portait les mêmes invariants internes qu'une `Phase` (`verifier_coherence_etape`) ; le CA a
+    déplacé cette vérification vers l'**usage** : « *on doit pouvoir sauvegarder le brouillon tout
+    le temps, mais on ne peut réellement l'utiliser pour un vrai tournoi que s'il est valide* ».
+    Une `qualification` sans barème est donc un modèle **licite** — mais un format qui en contient
+    un refusera de s'appliquer.
 
-    Satisfait structurellement `domain.phase.EtapeSequencee`.
+    Le garde-fou n'est pas désarmé, il a **changé de porte** : `pour_tournoi` construit une `Phase`,
+    dont le `__post_init__` valide, lui, toujours. Aucun modèle incohérent ne peut donc atteindre un
+    tournoi réel.
+
+    Satisfait structurellement `domain.phase.EtapeSequencee` et `domain.deroule.EtapeProjetable`.
     """
 
     ordre: int
@@ -76,10 +81,6 @@ class ModelePhase:
     # double ; DETTE-015 est résorbée.
     sources: tuple[SourcePhase, ...] = ()
     effectif: int | None = None
-
-    def __post_init__(self) -> None:
-        """Cohérence garantie quelle que soit la porte d'entrée (fabriques **et** `replace()`)."""
-        verifier_coherence_etape(self.type, self.bareme, self.validation, self.effectif)
 
     @staticmethod
     def qualification(
@@ -154,14 +155,15 @@ class FormatTournoi:
     id: FormatTournoiId | None = None
 
     def __post_init__(self) -> None:
+        """**Seul** le nom est un invariant d'enregistrement (E01US024, ADR-0063).
+
+        Il l'est parce qu'il est la **clé d'unicité** de la bibliothèque : l'assemblage et la
+        promotion dédoublonnent par le nom (arbitrage d'E01US023, point 1). Un format sans nom ne
+        serait pas un brouillon, il serait introuvable. Tout le reste — étapes manquantes, ordres,
+        sources — se **diagnostique** (`anomalies`) et se refuse à l'**application** (`appliquer`).
+        """
         if not self.nom.strip():
             raise NomFormatInvalide("Le nom d'un format de tournoi ne peut pas être vide.")
-        if not self.etapes:
-            raise FormatSansEtape(
-                "Un format de tournoi décrit au moins une phase : appliquer un format vide ne "
-                "créerait rien."
-            )
-        verifier_sequence(self.etapes)
 
     @staticmethod
     def creer(
@@ -169,13 +171,45 @@ class FormatTournoi:
         etapes: Iterable[ModelePhase],
         origine: OrigineBrique = OrigineBrique.UTILISATEUR,
     ) -> FormatTournoi:
-        """Crée un format valide ; le nom est normalisé (espaces de bord retirés).
+        """Crée un format, **cohérent ou non** ; le nom est normalisé (espaces de bord retirés).
 
-        Lève `NomFormatInvalide` si le nom est vide, `FormatSansEtape` si aucune phase n'est
-        décrite, et les erreurs de séquence (`SequenceOrdreInvalide`, `SourceApresPhase`…) si les
-        étapes ne forment pas une séquence cohérente.
+        Lève `NomFormatInvalide` si le nom est vide — et rien d'autre : depuis E01US024 un format
+        s'enregistre à tout moment, même incomplet. Pour savoir s'il tient debout, appeler
+        `anomalies()` ; pour être sûr qu'il ne salira pas un tournoi, `appliquer()` refuse.
         """
         return FormatTournoi(nom=_nom_valide(nom), etapes=tuple(etapes), origine=origine)
+
+    def projeter(self, effectif: int | None = None) -> ProjectionDeroule:
+        """Le déroulé que ce format produit à `effectif` archers (schéma à braquets, E01US024).
+
+        Ajoute à la projection générique la seule anomalie qui appartienne au **format** et non à sa
+        séquence : n'avoir aucune étape. Une séquence vide est licite pour un tournoi
+        (`SequencePhases`, ADR-0045) — pas pour un format, qu'appliquer ne créerait rien. La
+        distinction reste donc ici, et non dans `domain.deroule`.
+
+        **Source unique du diagnostic** : `anomalies()` en dérive, et le service comme l'API
+        n'appellent que celle-ci. Un premier jet avait deux chemins — la projection oubliait
+        `FormatSansEtape`, et l'écran affichait « inapplicable » sans dire pourquoi.
+        """
+        projection = projeter(self.etapes, effectif)
+        if self.etapes:
+            return projection
+        return replace(
+            projection,
+            anomalies=(
+                Anomalie(
+                    FormatSansEtape(
+                        "Ce format ne décrit aucune phase : l'appliquer à un tournoi ne créerait "
+                        "rien."
+                    )
+                ),
+                *projection.anomalies,
+            ),
+        )
+
+    def anomalies(self, effectif: int | None = None) -> tuple[Anomalie, ...]:
+        """Tout ce qui cloche dans ce format, à `effectif` archers — le diagnostic du CA."""
+        return self.projeter(effectif).anomalies
 
     @staticmethod
     def preset_ffta_18m() -> FormatTournoi:
@@ -229,10 +263,23 @@ class FormatTournoi:
     def appliquer(self, tournoi_id: TournoiId) -> tuple[Phase, ...]:
         """Instancie le format en **phases** d'un tournoi (statut `à venir`, ordres 1..N).
 
+        **C'est ici que l'invariant est tenu** (ADR-0063). L'enregistrement accepte le brouillon ;
+        l'application, elle, refuse en **disant pourquoi** : la première anomalie bloquante est
+        levée telle quelle, donc avec le même type d'exception, le même code et le même message
+        d'organisateur qu'avant l'US — et donc le même 422 à la frontière API.
+
+        Seules les **bloquantes** arrêtent : un format dont la seule anomalie est conjoncturelle
+        (« les rangs 33 à 120 » alors qu'il n'y a que 82 inscrits) s'applique, parce qu'il n'est pas
+        faux — le tournoi n'a simplement pas l'effectif prévu, et le déroulé s'y adapte (CA
+        « ajustement d'effectif »). Ce contrôle-là est le rôle du diagnostic, à l'écran.
+
         Le format d'origine reste intact : les phases produites sont des copies indépendantes,
         ajustables sans remonter. Aucune écriture ici — le service décide quoi persister et
         comment traiter les phases déjà présentes.
         """
+        for anomalie in self.anomalies():
+            if anomalie.gravite is Gravite.BLOQUANTE:
+                raise anomalie.erreur
         return tuple(etape.pour_tournoi(tournoi_id) for etape in self.etapes)
 
     @staticmethod

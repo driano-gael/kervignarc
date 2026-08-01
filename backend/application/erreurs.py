@@ -873,3 +873,18 @@ class ForfaitTournoiTermine(ApplicationError):
     """
 
     code = "forfait_tournoi_termine"
+
+
+class EffectifSimulationInvalide(ApplicationError):
+    """L'effectif demandé pour simuler un format sort des bornes de service (E01US024) → 400.
+
+    Ce n'est **ni** une règle métier (le domaine ne connaît pas de nombre maximal d'archers) **ni**
+    un conflit d'état : c'est une **borne de service**, comme le refus de matérialiser
+    `frozenset(range(…))` dans `SourcePhase.intervalle`. Simuler joue le tournoi entier — volées
+    puis duels — sur le thread de la requête, et l'effectif vient du client : sans plafond, une
+    valeur absurde immobiliserait le serveur. En dessous de 2, il n'y a pas de tournoi à jouer.
+
+    Seule erreur applicative en **400** : les autres sont 401/403/404/409 (cf. `api/erreurs.py`).
+    """
+
+    code = "effectif_simulation_invalide"

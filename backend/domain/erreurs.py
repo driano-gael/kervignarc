@@ -309,6 +309,32 @@ class EffectifIncompatible(DomainError):
     code = "effectif_incompatible"
 
 
+class PhaseSansParticipant(DomainError):
+    """À l'effectif projeté, cette phase n'accueille personne (E01US024).
+
+    C'est le « **trou** » du CA d'E01US024 rendu nommable : un bloc du schéma où aucun archer
+    n'arrive — parce que ses prélèvements visent des rangs que l'effectif simulé n'atteint pas, ou
+    parce qu'une source amont s'est vidée. **Jamais bloquant** : le défaut ne vaut qu'à *cet*
+    effectif, et un format composé pour 120 archers a le droit de se vider à 12 sans être faux
+    (ADR-0063 §3). Contrairement aux autres erreurs de ce module, celle-ci n'est jamais **levée** —
+    elle ne naît que portée par une `Anomalie`.
+    """
+
+    code = "phase_sans_participant"
+
+
+class PrelevementVide(DomainError):
+    """À l'effectif projeté, ce prélèvement ne prend aucun participant (E01US024).
+
+    Distincte de `PlageSourceVide`, qui refuse une plage vide **par construction** ([12..8]) : ici
+    la plage est bien formée, c'est l'effectif réel qui la laisse hors d'atteinte (« les rangs 33 et
+    suivants » sur 30 inscrits). Avertissement, jamais bloquante — même raison que
+    `PhaseSansParticipant`.
+    """
+
+    code = "prelevement_vide"
+
+
 class PolitiqueInconnue(DomainError):
     """Une politique de phase désigne une implémentation non enregistrée (E05US003, ADR-0004).
 
