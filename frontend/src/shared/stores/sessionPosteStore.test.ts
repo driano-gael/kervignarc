@@ -1,4 +1,4 @@
-// Tests du `sessionPosteStore` — **mode poste persistant** (E04US001, correctif de revue D-1/D-2).
+﻿// Tests du `sessionPosteStore` — **mode poste persistant** (E04US001, correctif de revue D-1/D-2).
 //
 // Garde-fou du contrat qui distingue « ce navigateur est un poste » (intention persistante) de la
 // simple présence d'un jeton : une session **révoquée** (jeton perdu) doit laisser la tablette sur
@@ -9,9 +9,12 @@
 // donc plus que le vrai rendu serveur, pas ces tests.
 
 import { beforeEach, describe, expect, it } from 'vitest'
-import { useSessionPosteStore } from './sessionPosteStore'
+import { useSessionPosteStore, type PosteRattache } from './sessionPosteStore'
 
-const cible = { tournoi_id: 1, cible_index: 3 }
+// Depuis E07US004, un poste porte sa **nature** : le même rattachement mène à une tablette de cible
+// ou à un écran de salle. Les invariants testés ici (mode poste persistant, révocation, thème) sont
+// communs aux deux — c'est même la raison d'avoir gardé un seul flux plutôt que deux.
+const cible: PosteRattache = { tournoi_id: 1, type: 'cible', cible_index: 3, libelle: null }
 
 beforeEach(() => {
   useSessionPosteStore.setState({ jeton: null, poste: null, theme: null, estPoste: false })

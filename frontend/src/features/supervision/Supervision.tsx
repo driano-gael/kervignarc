@@ -1,12 +1,19 @@
-// Console de supervision des postes (E12US001, ADR-0038) — l'écran du jour J.
+// Console de supervision des postes (E12US001, ADR-0038 ; écrans de salle : E07US004, ADR-0064) —
+// l'écran du jour J.
 //
 // « Ce n'est pas un graphique de progression : c'est une console de supervision. » Elle distingue
 // *ils tirent lentement* (en ligne, mais dernière activité ancienne) de *leur tablette est morte*
 // (hors ligne). Live par poll court (cf. `useSupervision`). L'état se rend en **couleur + pastille +
 // texte** (jamais la couleur seule) ; hors ligne = **ambre**, pas rouge (arbitrage ADR-0038 / DV-03).
+//
+// **Les écrans de salle y figurent aussi** (E07US004), dans un second tableau — pas dans un autre
+// écran. Le CA le dit sans détour : *« un écran figé ne se plaint pas, seule la supervision le
+// révèle »*. C'est aussi d'ici que l'organisateur **impose une vue** sans traverser le gymnase, et
+// qu'il voit, en rouge, les prises de contrôle qu'il a oublié de rendre.
 
 import { ErreurApi } from '../../shared/api/client'
 import type { PosteSupervision } from './api'
+import { PiloterEcrans } from './PiloterEcrans'
 import { afficheEtat, avancementLibelle } from './etat'
 import { useRevoquerPoste, useSupervision } from './hooks'
 import { tempsRelatif } from './tempsRelatif'
@@ -54,12 +61,20 @@ export function Supervision({ tournoiId }: { tournoiId: number }) {
                 </tr>
               </thead>
               <tbody>
-                {supervision.data.postes.map((poste) => (
-                  <LignePoste key={poste.poste_id} poste={poste} tournoiId={tournoiId} />
-                ))}
+                {supervision.data.postes
+                  .filter((poste) => poste.type === 'cible')
+                  .map((poste) => (
+                    <LignePoste key={poste.poste_id} poste={poste} tournoiId={tournoiId} />
+                  ))}
               </tbody>
             </table>
           )}
+
+          <PiloterEcrans
+            tournoiId={tournoiId}
+            ecrans={supervision.data.postes.filter((poste) => poste.type === 'ecran')}
+            nbEnLigne={supervision.data.nb_ecrans_en_ligne}
+          />
         </>
       )}
     </section>
@@ -75,14 +90,14 @@ function LignePoste({ poste, tournoiId }: { poste: PosteSupervision; tournoiId: 
     // Garde-fou tactile : révoquer un poste en cours de tir le coupe. Confirmation simple en
     // attendant E12US007 (« alerter par calcul d'impact »), qui généralisera les alertes chiffrées.
     const ok = window.confirm(
-      `Révoquer la cible ${poste.cible_index} ? La tablette repassera à l'écran de rattachement.`,
+      `Révoquer la cible ${poste.cible_index ?? '?'} ? La tablette repassera à l'écran de rattachement.`,
     )
     if (ok) revoquer.mutate(poste.poste_id)
   }
 
   return (
     <tr>
-      <td>Cible {poste.cible_index}</td>
+      <td>Cible {poste.cible_index ?? '—'}</td>
       <td>
         <span className={`supervision__etat supervision__etat--${classe}`}>
           <span className="indicateur__pastille" aria-hidden="true" />

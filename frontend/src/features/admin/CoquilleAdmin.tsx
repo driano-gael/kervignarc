@@ -61,6 +61,7 @@ import { useTournois } from '../competition/hooks'
 import { VueClassement } from '../competition/VueClassement'
 import { Departs } from '../departs/Departs'
 import { Duels } from '../duels/Duels'
+import { Ecrans } from '../ecrans/Ecrans'
 import { Exports } from '../exports/Exports'
 import { Gabarits } from '../gabarits/Gabarits'
 import { Assemblage } from '../patrimoine/Assemblage'
@@ -78,6 +79,7 @@ import { Postes } from '../postes/Postes'
 import { Scoreurs } from '../scoreurs/Scoreurs'
 import { FeuVert } from '../feu-vert/FeuVert'
 import { Simulation } from '../simulation/Simulation'
+import { SuiviDeroule } from '../suivi-deroule/SuiviDeroule'
 import { Supervision } from '../supervision/Supervision'
 import { RechercheArcher } from '../recherche/RechercheArcher'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
@@ -352,6 +354,21 @@ function Coquille() {
       id: 'supervision',
       libelle: 'Supervision',
       rendu: () => courant && <Supervision tournoiId={courant.id} />,
+    },
+    {
+      // Écrans de salle (E07US004) : la **préparation** — créer, nommer, distribuer le code,
+      // régler le déroulé de vues. Le **pilotage** (imposer une vue) est dans la supervision : on
+      // prépare à froid, on pilote à chaud, là où l'on voit déjà l'état de la salle.
+      id: 'ecrans',
+      libelle: 'Écrans de salle',
+      rendu: () => courant && <Ecrans tournoiId={courant.id} />,
+    },
+    {
+      // Suivi du déroulé (E07US004) : la **deuxième surface** du schéma à braquets — le même
+      // dessin que l'atelier, rempli par la réalité, à un poste PC plutôt que projeté.
+      id: 'suivi-deroule',
+      libelle: 'Suivi du déroulé',
+      rendu: () => courant && <SuiviDeroule tournoiId={courant.id} />,
     },
     {
       // Feu vert / lancer le tour (E12US002) : le geste central du jour J — voir en continu ce qui

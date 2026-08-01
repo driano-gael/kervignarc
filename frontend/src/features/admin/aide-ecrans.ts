@@ -1,4 +1,4 @@
-// Textes d'aide contextuelle des écrans d'administration (E14US002).
+﻿// Textes d'aide contextuelle des écrans d'administration (E14US002).
 //
 // Un dictionnaire **unique** `id de destination → texte`, consommé par la coquille (`CoquilleAdmin`)
 // pour rendre l'aide de la destination active via `<AideEcran>`. Centraliser ici plutôt que dans
@@ -44,6 +44,8 @@ export type DestinationAdminId =
   | 'paiements'
   | 'postes'
   | 'supervision'
+  | 'ecrans'
+  | 'suivi-deroule'
   | 'completude'
   | 'classement'
   | 'exports'
@@ -121,6 +123,15 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
   supervision:
     'Suivez en direct l’état des postes de saisie le jour J : qui est connecté, où en est la saisie. ' +
     'Sert à repérer un poste en panne ou en retard sans quitter votre place.',
+  ecrans:
+    'Préparez les écrans projetés dans le gymnase. Chaque écran est un poste : on le rattache en ' +
+    'scannant son code, puis il fait défiler tout seul les vues de son déroulé. Réglez ici ce qu’il ' +
+    'montre et pendant combien de temps ; pour lui imposer une vue en cours de journée, passez par ' +
+    'la supervision.',
+  'suivi-deroule':
+    'Voyez le tournoi se dérouler : quelles phases sont terminées, laquelle tourne, quel tour est en ' +
+    'cours et combien de duels restent à jouer. C’est le même schéma que celui composé à l’atelier, ' +
+    'rempli par la réalité.',
   completude:
     'Vérifiez ce qui manque avant de terminer le tournoi (inscriptions, placement, scores…). Le ' +
     'contrôle liste les points bloquants et débloque la clôture quand tout est prêt.',

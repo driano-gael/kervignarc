@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+﻿import { describe, expect, it } from 'vitest'
 
-import type { Bloc, Flux } from './api'
+import type { Bloc, Flux } from './modele'
 import {
   COULOIR_SAUT,
   ESPACE_COLONNE,
@@ -8,7 +8,7 @@ import {
   LARGEUR_BLOC,
   disposer,
   hauteurBloc,
-} from './schema'
+} from './geometrie'
 
 function flux(ordre_source: number, ordre_cible: number, effectif: number | null = 8): Flux {
   return {
