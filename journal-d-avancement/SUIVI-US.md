@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 31/07/2026** · **87 US livrées** · dernière : `E05US015` *(catalogue de types de phase : échauffement, barrage, poules, Big Shoot Off, suisse, colline, repêchage, handicap — Q9 fermée)*.
+**Dernière mise à jour : 01/08/2026** · **88 US livrées** · dernière : `E01US024` *(composer, diagnostiquer et simuler un déroulé : brouillon, schéma à braquets, simulation sur N archers — ADR-0063)*.
 
 ---
 
@@ -36,8 +36,8 @@
 > |---|---|---|
 > | ~~1~~ ✅ | ~~`E05US010`~~ | **Livrée le 31/07/2026** — moteur de placement 1→N, **routing générique** (`route(contexte)`), **sources multiples et relatives**, oracle 120 ([ADR-0061](../docs/adr/0061-routing-generique-et-placement-en-cascade.md)) |
 > | ~~2~~ ✅ | ~~`E05US015`~~ | **Livrée le 31/07/2026** — le **catalogue de types**, élargi à **onze** formats ([ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md)) |
-> | **3** | **`E01US024`** | ⬅️ **prochaine** — **Composer, diagnostiquer et simuler** un déroulé (brouillon, schéma à braquets, simulation) |
-> | 4 | `E07US004` | **Voir le tournoi se dérouler** : suivi des tours + écran de salle |
+> | ~~3~~ ✅ | ~~`E01US024`~~ | **Livrée le 01/08/2026** — écran « Composer un déroulé » : brouillon enregistrable à tout moment, **schéma à braquets** (Règle R rendue visible), diagnostic à deux gravités et **simulation** sur N archers fictifs ([ADR-0063](../docs/adr/0063-brouillon-de-format-invariant-a-l-application.md)) |
+> | **4** | **`E07US004`** | ⬅️ **prochaine** — **Voir le tournoi se dérouler** : suivi des tours + écran de salle |
 >
 > **Pourquoi E05US010 était en tête** : le verrou du moteur n'était pas le catalogue de types mais
 > le **routing** — `DestinationPerdant` n'avait qu'**une** valeur, `ELIMINE`, et une méthode sans
@@ -440,13 +440,14 @@
 |---|---|---|---|
 | 73 | E05US010 | Placement intégral 1→N **& peuplement multiple** | ✅ *(routing générique + cascade, sources multiples, oracle 120, ADR-0061 ; absorbe E05US018, résorbe DETTE-015)* |
 | 74 | E05US015 | **Catalogue de types de phase** (échauffement, barrage, poules, repêchage, BSO) | ✅ *(11 formats : + suisse, colline, handicap, finale spectacle — le commanditaire a fourni leurs règles le 31/07 ; ADR-0062)* |
+| 74bis | E01US024 | **Composer, diagnostiquer et simuler un déroulé** | ✅ *(brouillon + invariant déplacé vers `appliquer`, schéma SVG maison, 2 gravités d'anomalie, simulation composée sur ADR-0054/0055 ; ADR-0063 — résorbe DETTE-030, ne résorbe DETTE-028 qu'à moitié)* |
 | 75 | ~~E05US018~~ | ~~Oracle 120~~ → **absorbée par E05US010** | ⬜ *(le moteur et sa preuve ne se séparent pas)* |
 | 76 | E06US006 | Classement intégral 1→N & profondeur | ⬜ |
 | 77 | E03US007 | Contrainte séparation catégorie/blason | ⬜ |
 | 78 | E09US005 | Classements PDF | ⬜ |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |
 | 80 | E01US016 | Définir l'identité visuelle du tournoi | ⬜ |
-| 81 | E07US004 | Écran de salle **+ suivi du déroulé** (un composant, trois surfaces) | ⬜ *(dépend d'E01US024)* |
+| 81 | E07US004 | Écran de salle **+ suivi du déroulé** (un composant, trois surfaces) | 🎯 *(dépendance E01US024 **levée** le 01/08 — prochaine US du chantier moteur)* |
 | 82 | E07US005 | Vue tableaux/arbres live | ⬜ |
 | 83 | ~~E05US019~~ | ~~Enregistrer une séquence comme modèle~~ → **livrée par E01US023** | ✅ *(doublon repéré le 31/07 : ADR-0060 §5)* |
 | — | E00US015 | Ossature de navigation admin (coquille) | ✅ *(fait en avance — ajout 18/07)* |

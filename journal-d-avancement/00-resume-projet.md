@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 31 juillet 2026
+# Résumé du projet — où on en est au 1er août 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -58,7 +58,17 @@ l'approcher** : l'écran « Phases » propose six formats de plus — **échauff
 Big Shoot Off, système suisse, colline** —, chacun expliqué d'une ligne, auxquels s'ajoutent le
 **repêchage** et le **handicap** de l'archer. La question du **Big Shoot Off**, restée ouverte au
 cahier des charges depuis l'origine du projet, est **fermée** : sa règle a été donnée, et c'est bien
-un format à N archers (le « Big » désigne le nombre d'archers, pas de flèches).
+un format à N archers (le « Big » désigne le nombre d'archers, pas de flèches). Et depuis le
+01/08/2026, ces formats ne se déclarent plus seulement : ils se **composent, se voient et se font
+tourner**. Un écran **« Composer un déroulé »** assemble la séquence complète d'un tournoi type — les
+phases, ce qu'on y demande, d'où viennent les archers de chacune —, l'**enregistre même à moitié
+faite** (un déroulé n'a besoin d'être complet que le jour où on l'applique) et la **dessine** : une
+case par phase, une flèche par groupe d'archers qui passe, et les « braquets » — la tranche de rangs
+que se partagent les battus de chaque tour. Changer le nombre d'archers **redessine tout** sans
+retoucher le format. Enfin, un bouton **fait jouer le déroulé** sur des archers fictifs et rend la
+charge réelle : combien de duels, combien de tours, et le classement produit. Il a immédiatement
+corrigé une erreur de comptage que personne n'aurait vue autrement — un tableau à 32 coûte 32 duels
+et non 31, la petite finale comprise.
 
 ---
 
@@ -106,7 +116,11 @@ ne doit pas réécrire le tournoi 2026 déjà archivé. Détail dans
 - Les **gabarits de salle** (le plan des cibles, réutilisable et ajustable).
 - Les **déroulés types** (« FFTA officiel 18 m », « Format club ») : appliqués à un tournoi, ils en
   **créent les phases** ; le déroulé d'un tournoi déjà composé peut à l'inverse être enregistré comme
-  format du club.
+  format du club. Depuis le 01/08/2026, un écran **« Composer un déroulé »** permet de les
+  **fabriquer de bout en bout** dans l'Atelier — au lieu de devoir monter un tournoi pour obtenir un
+  modèle —, de les **voir en schéma**, de savoir si le déroulé tient debout, et de le **faire
+  tourner** sur des archers fictifs. Détail dans
+  [`2026-08-01-19h30-composer-un-deroule.md`](2026-08-01-19h30-composer-un-deroule.md).
 - Le **barème de qualification** et le **grain de validation** d'une phase.
 - Le **tarif par départ** (le montant d'inscription).
 - L'**import en masse du référentiel des clubs** (une liste collée, un club par ligne, avec un
