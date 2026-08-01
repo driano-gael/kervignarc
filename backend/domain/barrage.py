@@ -49,6 +49,11 @@ class ConfigurationBarrage:
     Le nombre de flèches **n'est pas un réglage libre** : le règlement le fixe, et un barrage à 2
     flèches ne serait pas un barrage mal réglé mais une autre épreuve. On le vérifie donc au lieu
     de l'accepter, contrairement au barème de poule ou au BSO où le club choisit.
+
+    ⚠️ **Ce value object n'a aucun consommateur** : il décrit le **format de saisie** (combien de
+    flèches on fait tirer), quand `resoudre_barrage` ne fait que **départager** des tirs déjà clos —
+    d'où le retrait de son paramètre. Il attend donc la surface de saisie du barrage, en même temps
+    que les autres moteurs de cette US ([DETTE-028](../../docs/dette.md)).
     """
 
     fleches: int = FLECHES_INDIVIDUEL
@@ -92,6 +97,22 @@ class TirBarrage:
     participant: Participant
     score: int | None
     distance_au_centre: int | None = None
+
+    def __post_init__(self) -> None:
+        """Un score et une distance sont des grandeurs **positives**.
+
+        ⚠️ Une distance négative ne serait pas seulement absurde : elle **gagnerait**, le départage
+        retenant la plus petite. On ferme le domaine de définition plutôt que de durcir un seul cas
+        (le `None` traité comme un zéro, corrigé plus haut) et d'en laisser un autre ouvert.
+        """
+        if self.score is not None and self.score < 0:
+            raise ConfigurationBarrageInvalide(
+                f"Un score de barrage est positif ou nul (reçu {self.score})."
+            )
+        if self.distance_au_centre is not None and self.distance_au_centre < 0:
+            raise ConfigurationBarrageInvalide(
+                f"Une distance au centre est positive ou nulle (reçu {self.distance_au_centre})."
+            )
 
 
 @dataclass(frozen=True)

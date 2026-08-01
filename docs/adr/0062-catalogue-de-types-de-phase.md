@@ -161,7 +161,10 @@ handicap se règle souvent en série (import du club, ajustement juste avant une
 obligerait à renvoyer nom, prénom et catégorie à chaque ajustement — donc à **écraser** une
 correction faite entre-temps depuis un autre poste, un jour où trente tablettes écrivent. C'est la
 première sous-ressource `/{id}/<aspect>` du routeur `competition` ; le patron « un DTO par cas
-d'usage » (E02US001) la justifiait déjà, on l'inscrit pour qu'elle soit un précédent assumé.
+d'usage » (E02US001) la justifiait déjà — le routeur `competition` porte du reste plusieurs
+sous-ressources de ce genre (`/archers/{id}/placement`, `/archers/{id}/scores`,
+`/archers/{gagnant_id}/fusionner`), ce qui range celle-ci dans un patron établi plutôt que dans une
+nouveauté.
 
 **Le handicap est borné par le haut** (`HANDICAP_MAXIMUM = 600`, le score parfait d'une
 qualification). Ce n'est pas une précaution technique mais la même règle métier : un handicap qui
@@ -195,10 +198,12 @@ SQLite et remontait en **500** au lieu d'un 422 typé.
   point. Tous trois corrigés avant merge. La leçon vaut au-delà de cette US : **des moteurs sans
   consommateur ne sont confrontés qu'à leurs propres tests**, écrits le même jour par le même agent
   — c'est la population où les fixtures complaisantes survivent.
-- **L'appariement du système suisse est glouton, pas optimal.** Il peut échouer à trouver un
-  appariement sans ré-affrontement là où il en existait un. Il lève alors `AppariementImpossible` —
-  une erreur **de déroulé**, distincte d'un refus de configuration — plutôt que de rejouer une
-  rencontre en silence. **Tracé en [DETTE-027](../dette.md)**.
+- **L'appariement du système suisse procède par essais avec retour arrière**, et non en glouton.
+  Le premier jet l'était, et la dette qui l'assumait estimait son impact « faible » : la revue l'a
+  **mesuré** à **53 % de tournois bloqués** au réglage par défaut (16 archers, 5 rondes). La leçon
+  vaut au-delà du cas : *une ligne d'impact estimée à vue rassure plus qu'elle n'informe*. Le remède
+  jugé disproportionné tenait en vingt lignes, et ramène le blocage à **0 sur 500** dans toutes les
+  configurations mesurées — [DETTE-027](../dette.md), résorbée le jour de son inscription.
 - **Une troncature de round-robin à effectif impair ne donne pas le même nombre de rencontres à
   tout le monde** (écart d'une unité). Le cas « autant de rencontres que d'adversaires » est traité
   (on déroule le cercle entier) ; l'écart subsiste pour une troncature intermédiaire, et il est

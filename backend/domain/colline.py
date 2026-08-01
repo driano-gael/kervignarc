@@ -143,6 +143,13 @@ def defis_de_la_manche(
     distance = 1 + (manche - 1) % configuration.portee_de_defi
     pas = distance + 1
     decalage = ((manche - 1) // configuration.portee_de_defi) % pas
+    # ⚠️ **Le décalage est replié pour qu'au moins un bloc tienne.** Sans ce repli, un décalage trop
+    # grand devant l'effectif produit une manche **entièrement vide** : personne ne tire, et rien ne
+    # le signale. Constaté sur les petites collines, parfaitement plausibles — un Ladder à 4 archers
+    # avait une manche sur six sans aucun défi, et une colline de 2 une sur deux. Le repli est sans
+    # effet dès que l'effectif dépasse la distance de plus d'un pas, donc il ne change rien aux
+    # collines ordinaires.
+    decalage %= max(1, len(colline) - distance)
     defis: list[DefiColline] = []
     depart = decalage
     while depart + distance < len(colline):

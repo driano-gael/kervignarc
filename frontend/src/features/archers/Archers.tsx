@@ -275,6 +275,15 @@ function FormulaireArcher({
     )
   }
 
+  // ⚠️ Enregistrer l'état civil **ferme le panneau** (`onTermine`), donc emporte la saisie du
+  // formulaire de handicap resté en attente. On avertit au lieu de perdre en silence : les deux
+  // formulaires se remplissent naturellement l'un après l'autre, et rien ne signalait la perte.
+  const handicapModifie =
+    handicapOfficiel !==
+      (archer.handicap_officiel === null ? '' : String(archer.handicap_officiel)) ||
+    handicapSurcharge !==
+      (archer.handicap_surcharge === null ? '' : String(archer.handicap_surcharge))
+
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
     if (incomplet) return
@@ -283,16 +292,32 @@ function FormulaireArcher({
 
   // Champ vide = **efface** le handicap (retour au scratch), jamais « laisse en l'état » : c'est la
   // même convention que `club_id` à l'édition, et retirer une surcharge est une action que
-  // l'organisateur demandera. Le serveur reste l'autorité sur les bornes (négatif ou trop grand →
-  // 422 `handicap_invalide`, affiché par `MessageErreur`).
+  // l'organisateur demandera. Le serveur reste l'autorité sur les **bornes** (négatif ou trop grand
+  // → 422 `handicap_invalide`, affiché par `MessageErreur`).
+  //
+  // ⚠️ **Mais il ne peut pas être l'autorité sur ce qu'il ne voit jamais.** Un `Number()` nu rend
+  // `NaN` sur `12,5` (la virgule décimale française, que le pavé numérique d'une tablette en locale
+  // FR propose), sur `abc`, sur `7 0` — et `JSON.stringify` sérialise `NaN` en `null`. Le serveur
+  // recevait donc « efface ce handicap », répondait **200**, et la surcharge disparaissait pendant
+  // que l'écran affichait un succès. C'est la seule classe d'erreur que la validation serveur ne
+  // peut pas rattraper, parce que le front la convertit en une demande parfaitement valide.
+  const lireEntier = (saisie: string): number | null | 'invalide' => {
+    const texte = saisie.trim()
+    if (texte === '') return null
+    const valeur = Number(texte)
+    return Number.isInteger(valeur) ? valeur : 'invalide'
+  }
+
+  const officielLu = lireEntier(handicapOfficiel)
+  const surchargeLue = lireEntier(handicapSurcharge)
+  const handicapIllisible = officielLu === 'invalide' || surchargeLue === 'invalide'
+
   const soumettreHandicap = (evenement: React.FormEvent) => {
     evenement.preventDefault()
+    if (officielLu === 'invalide' || surchargeLue === 'invalide') return
     reglerHandicap.mutate({
       id: archer.id,
-      entree: {
-        officiel: handicapOfficiel.trim() === '' ? null : Number(handicapOfficiel),
-        surcharge: handicapSurcharge.trim() === '' ? null : Number(handicapSurcharge),
-      },
+      entree: { officiel: officielLu, surcharge: surchargeLue },
     })
   }
 
@@ -348,6 +373,12 @@ function FormulaireArcher({
             Annuler
           </button>
         </div>
+        {handicapModifie && (
+          <p className="carte__etat" role="status">
+            Le handicap saisi ci-dessous n'est pas encore enregistré : utilisez son propre bouton
+            avant de valider l'état civil.
+          </p>
+        )}
       </form>
       {/* Le handicap se règle **à part** de l'état civil : deux formulaires, deux enregistrements.
           C'est le pendant à l'écran de la ressource séparée côté API, et cela évite qu'un
@@ -374,10 +405,23 @@ function FormulaireArcher({
           aria-label="Surcharge de handicap de l'archer"
         />
         <div className="formulaire__actions">
-          <button type="submit" disabled={reglerHandicap.isPending}>
+          <button type="submit" disabled={reglerHandicap.isPending || handicapIllisible}>
             Enregistrer le handicap
           </button>
         </div>
+        {handicapIllisible && (
+          <p className="carte__etat carte__etat--erreur" role="alert">
+            Un handicap est un nombre entier de points (sans virgule).
+          </p>
+        )}
+        {/* Un retour de succès explicite : sans lui, rien ne distingue « enregistré » de « pas
+            cliqué ». Le formulaire ne se referme pas — on règle souvent les deux valeurs à la
+            suite. */}
+        {reglerHandicap.isSuccess && !handicapIllisible && (
+          <p className="carte__etat carte__etat--ok" role="status">
+            Handicap enregistré.
+          </p>
+        )}
       </form>
       {reglerHandicap.isError && <MessageErreur erreur={reglerHandicap.error} />}
       {/* Ton **neutre** (pas de `--erreur`) et une action : ces deux-là ne sont pas des erreurs,

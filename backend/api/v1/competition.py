@@ -343,7 +343,8 @@ async def definir_handicap_archer(
     civil, et mêler les deux obligerait à renvoyer nom/prénom/catégorie à chaque ajustement — donc
     à écraser une correction faite entre-temps depuis un autre poste.
 
-    Renvoie `422 handicap_invalide` sur une valeur négative : un handicap s'**ajoute** au score.
+    Renvoie `422 handicap_invalide` sur une valeur négative **ou supérieure au score parfait d'une
+    qualification** : un handicap s'**ajoute** au score, et au-delà il le remplacerait.
     """
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue

@@ -228,3 +228,43 @@ def test_un_vainqueur_etranger_au_defi_est_refuse() -> None:
     defi = defis_de_la_manche(depart, 1, configuration)[0]
     with pytest.raises(ConfigurationCollineInvalide):
         appliquer_manche(depart, [IssueDefi(defi=defi, vainqueur=Participant.individuel(99))])
+
+
+def test_aucune_manche_n_est_vide_meme_sur_une_petite_colline() -> None:
+    """⚠️ Une manche vide ne fait tirer personne, et rien ne le signale.
+
+    Le découpage produisait un décalage supérieur à ce que l'effectif pouvait porter : un Ladder à
+    4 archers avait une manche sur six sans aucun défi, une colline de 2 une sur deux. Les petites
+    collines sont parfaitement plausibles — c'est même là que le format est le plus lisible.
+    """
+    for effectif in range(2, 10):
+        for portee in range(1, min(4, effectif)):
+            configuration = ConfigurationColline(nb_manches=40, portee_de_defi=portee)
+            for manche in range(1, 41):
+                defis = defis_de_la_manche(colline(effectif), manche, configuration)
+                assert defis, f"manche {manche} vide à {effectif} archers, portée {portee}"
+
+
+def test_toute_colline_finit_par_se_remettre_a_l_endroit() -> None:
+    """La convergence, éprouvée sur **toutes** les portées et tous les effectifs — pas seulement le
+    cas qui passait. C'est l'angle mort qui avait laissé passer le bloquant du Ladder."""
+    for effectif in range(2, 10):
+        for portee in range(1, min(4, effectif)):
+            configuration = ConfigurationColline(nb_manches=60, portee_de_defi=portee)
+            courante = tuple(Participant.individuel(rang) for rang in range(effectif, 0, -1))
+            for manche in range(1, 61):
+                defis = defis_de_la_manche(courante, manche, configuration)
+                courante = appliquer_manche(
+                    courante,
+                    [
+                        IssueDefi(
+                            defi=defi,
+                            vainqueur=min(defi.defie, defi.challenger, key=lambda p: p.ref_id),
+                        )
+                        for defi in defis
+                    ],
+                )
+            assert [p.ref_id for p in courante] == list(range(1, effectif + 1)), (
+                effectif,
+                portee,
+            )

@@ -162,3 +162,13 @@ def test_un_barrage_a_un_seul_tireur_n_a_pas_d_objet() -> None:
 def test_un_participant_ne_figure_pas_deux_fois() -> None:
     with pytest.raises(ConfigurationBarrageInvalide):
         resoudre_barrage([TirBarrage(A, 10), TirBarrage(A, 9)])
+
+
+def test_un_score_ou_une_distance_negatifs_sont_refuses() -> None:
+    """⚠️ Une distance négative ne serait pas seulement absurde : elle **gagnerait**, le départage
+    retenant la plus petite. On ferme le domaine de définition plutôt que de durcir le seul cas du
+    `None` et d'en laisser un autre ouvert."""
+    with pytest.raises(ConfigurationBarrageInvalide):
+        TirBarrage(A, -3)
+    with pytest.raises(ConfigurationBarrageInvalide):
+        TirBarrage(A, 10, distance_au_centre=-5)

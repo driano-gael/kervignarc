@@ -372,9 +372,10 @@ existent depuis E05US003 (✅) ; cette US en peuple le catalogue.
   jour J) ; **pas de ré-affrontement** (la règle ne le dit pas, mais l'omettre dégrade le format —
   le suisse tire sa précision du fait que chaque ronde apporte une information nouvelle) ; départage
   final **points → Buchholz → critères FFTA**. Effectif impair : **bye** au moins bien classé n'en
-  ayant pas encore eu. ⚠️ L'appariement est **glouton, pas optimal** : il peut échouer là où une
-  solution existait, et lève alors une erreur explicite plutôt que de rejouer une rencontre en
-  silence.
+  ayant pas encore eu. ⚠️ L'appariement procède par
+  **essais avec retour arrière** : il n'échoue que si aucun appariement sans ré-affrontement
+  n'existe réellement. *(Le premier jet était glouton et se bloquait sur 53 % des tournois au
+  réglage par défaut — mesuré en revue, corrigé.)*
 - **CA — King of the Hill & Ladder** : règles fournies le 31/07/2026. **Un seul type**, `colline` :
   ce qui les sépare est la **portée du défi**, donc un paramètre. ⚠️ **La portée est une distance
   MAXIMALE, pas exacte** — la règle dit « le n°6 peut seulement défier le 5 **ou** le 4 », c'est-à-dire

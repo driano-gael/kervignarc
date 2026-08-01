@@ -29,14 +29,17 @@ commanditaire et reversés dans `stories/E05-moteur-phases.md` :
 classé n'en ayant pas encore eu** — un bye est un cadeau, il ne doit pas revenir deux fois à la même
 personne ni au mieux classé.
 
-⚠️ **L'appariement est glouton, pas optimal.** On apparie par groupes de score décroissants, en
-descendant chercher un adversaire compatible quand le groupe est impair ou déjà rencontré. C'est
-l'algorithme des tournois d'échecs de club (pas le couplage de poids maximal de la FIDE). Il peut,
-sur des configurations défavorables, ne pas trouver de solution alors qu'il en existait une :
-`AppariementImpossible` est alors levée plutôt qu'un ré-affrontement silencieux —
-une erreur **de déroulé**, distincte d'un refus de configuration. C'est un compromis
-**assumé** — un couplage optimal est un algorithme de graphe entier pour un gain qui, à l'échelle
-d'un club, ne se verra pas.
+⚠️ **L'appariement procède par essais successifs avec retour arrière**, et non en glouton. Il
+parcourt l'ordre trié par score et essaie, pour chaque participant, ses adversaires du plus proche
+au plus lointain — ce qui préserve « les vainqueurs rencontrent les vainqueurs » —, en revenant sur
+ses pas dès qu'une branche mène à un cul-de-sac. `AppariementImpossible` n'est donc levée que si
+**aucun** appariement sans ré-affrontement n'existe, jamais parce que l'algorithme a mal choisi.
+
+Ce n'est pas de la sophistication gratuite : le premier jet était glouton, et sa dette assumait un
+impact « faible ». Mesure faite en revue sur 500 tournois simulés — **16 archers, 5 rondes**, le
+réglage **par défaut** — : le glouton se bloquait **53 % du temps**, le plus souvent à la dernière
+ronde. Le format était inutilisable au réglage nominal (cf. [DETTE-027](../../docs/dette.md),
+requalifiée).
 
 Domaine **pur** (règle 1).
 
@@ -163,7 +166,8 @@ def apparier_ronde(
     """
     if len(participants) < 2:
         raise ConfigurationSuisseInvalide("Un système suisse apparie au moins deux participants.")
-    rondes_jouees = _verifier_rondes_closes(participants, resultats, byes)
+    rondes_jouees = _rondes_closes(participants, resultats)
+    _verifier_byes(participants, byes, rondes_jouees)
     if rondes_jouees >= configuration.nb_rondes:
         raise ConfigurationSuisseInvalide(
             f"Les {configuration.nb_rondes} rondes de cette phase ont déjà été disputées."
@@ -211,6 +215,11 @@ def classement_suisse(
     point pénaliserait celui qui l'a reçu, tandis que le compter comme un adversaire fort le
     favoriserait : ne rien compter au Buchholz est le seul choix neutre.
     """
+    # ⚠️ Le classement **vérifie** ses byes, il ne les prend pas sur parole. `apparier_ronde` le
+    # faisait déjà, pas lui : un appelant qui oubliait l'argument à effectif impair obtenait un
+    # classement **silencieusement faux** — le porteur de bye relégué dernier à zéro point. Une
+    # fonction qui rend un classement ne doit pas avoir de mode « à peu près juste ».
+    _verifier_byes(participants, byes, _rondes_closes(participants, resultats))
     points = _points(participants, resultats, byes)
     adversaires = _adversaires(resultats)
     buchholz = {
@@ -281,11 +290,7 @@ def _rondes_maximales(effectif: int) -> int:
     return effectif - 1 if effectif % 2 == 0 else effectif
 
 
-def _verifier_rondes_closes(
-    participants: Sequence[Participant],
-    resultats: Sequence[ResultatRonde],
-    byes: Sequence[Participant],
-) -> int:
+def _rondes_closes(participants: Sequence[Participant], resultats: Sequence[ResultatRonde]) -> int:
     """Combien de rondes sont **closes** — et **refuse** si la dernière ne l'est pas.
 
     Une ronde produit exactement `len(participants) // 2` rencontres, plus un bye si l'effectif est
@@ -305,12 +310,49 @@ def _verifier_rondes_closes(
             f"La ronde en cours n'est pas entièrement saisie : {reste} rencontre(s) sur "
             f"{par_ronde} manquent encore. Apparier la ronde suivante les perdrait."
         )
-    if len(participants) % 2 == 1 and len(byes) != rondes:
+    return rondes
+
+
+def _verifier_byes(
+    participants: Sequence[Participant], byes: Sequence[Participant], rondes: int
+) -> None:
+    """Vérifie que les byes déclarés décrivent un déroulé possible.
+
+    ⚠️ **Trois contrôles, et le cardinal seul n'en est qu'un.** Un premier jet ne comparait que
+    `len(byes)` au nombre de rondes, et **seulement à effectif impair**. Trois trous en résultaient,
+    tous constatés :
+
+    - à effectif **pair**, `byes` n'était jamais examiné alors que `_points` le créditait quand même
+      — un perdant déclaré porteur de bye finissait à égalité de tête avec les vainqueurs ;
+    - un bénéficiaire **hors liste** passait le compte : le vrai bye ne rapportait rien et la
+      rotation était corrompue ;
+    - **deux byes pour la même personne** passaient aussi : elle terminait première avec six points
+      en n'ayant tiré qu'une rencontre.
+
+    C'est la leçon du correctif précédent, une marche plus haut : passer une donnée explicitement au
+    lieu de la déduire ne suffit pas — encore faut-il la **vérifier**.
+    """
+    if len(participants) % 2 == 0:
+        if byes:
+            raise ConfigurationSuisseInvalide(
+                "À effectif pair, aucune ronde ne décerne de bye : tout le monde est apparié."
+            )
+        return
+    if len(byes) != rondes:
         raise ConfigurationSuisseInvalide(
             f"À effectif impair, chaque ronde close décerne un bye : {rondes} ronde(s) disputée(s) "
             f"mais {len(byes)} bye(s) déclaré(s)."
         )
-    return rondes
+    inscrits = set(participants)
+    etrangers = [beneficiaire for beneficiaire in byes if beneficiaire not in inscrits]
+    if etrangers:
+        raise ConfigurationSuisseInvalide(
+            f"{len(etrangers)} bye(s) sont déclarés pour des participants absents de la phase."
+        )
+    if len(set(byes)) != len(byes):
+        raise ConfigurationSuisseInvalide(
+            "Un même participant ne peut pas recevoir deux byes tant que quelqu'un n'en a pas eu."
+        )
 
 
 def _deja_rencontres(resultats: Iterable[ResultatRonde]) -> set[frozenset[Participant]]:
@@ -398,30 +440,51 @@ def _apparier(
     compatible. Glouton, donc faillible — d'où `AppariementImpossible` plutôt qu'un ré-affrontement
     muet.
 
-    # DETTE-027 (docs/dette.md) : ce glouton n'est pas le couplage de poids maximal des fédérations
-    # d'échecs ; il peut refuser une ronde pourtant appariable. Assumé — l'échec est explicite, et
-    # le remède est un algorithme de graphe entier pour un gain invisible à l'échelle d'un club.
     """
     if coupe_en_deux:
         moitie = len(ordre) // 2
         return list(zip(ordre[:moitie], ordre[moitie:], strict=True))
-    restants = list(ordre)
-    paires: list[tuple[Participant, Participant]] = []
-    while restants:
-        premier = restants.pop(0)
-        adversaire: Participant | None = None
-        for candidat in restants:
-            if frozenset((premier, candidat)) not in deja_rencontres:
-                adversaire = candidat
-                break
-        if adversaire is None:
-            raise AppariementImpossible(
-                "Aucun appariement sans ré-affrontement n'a pu être trouvé pour cette ronde : "
-                "réduisez le nombre de rondes ou acceptez de rejouer une rencontre."
-            )
-        restants.remove(adversaire)
-        paires.append((premier, adversaire))
+    paires = _apparier_en_reculant(list(ordre), deja_rencontres)
+    if paires is None:
+        raise AppariementImpossible(
+            "Aucun appariement sans ré-affrontement n'existe pour cette ronde : réduisez le nombre "
+            "de rondes ou acceptez de rejouer une rencontre."
+        )
     return paires
+
+
+def _apparier_en_reculant(
+    restants: list[Participant], deja_rencontres: set[frozenset[Participant]]
+) -> list[tuple[Participant, Participant]] | None:
+    """Apparie par **essais successifs avec retour arrière** ; `None` si aucun appariement n'existe.
+
+    On prend toujours le **premier** restant (le mieux placé), on lui essaie chaque adversaire
+    possible dans l'ordre — donc le plus proche de lui d'abord, ce qui conserve « les vainqueurs
+    rencontrent les vainqueurs » —, et l'on **revient sur ses pas** si la suite mène à une impasse.
+
+    ⚠️ **Pourquoi ce n'est pas un luxe.** Le premier jet appariait en **glouton** sans retour
+    arrière, et la dette qui l'assumait affirmait un impact faible « sur un effectif restreint et
+    beaucoup de rondes ». C'était faux, et mesurable : sur 500 tournois simulés à **16 archers en
+    5 rondes** — le réglage par **défaut**, sur un effectif de club ordinaire —, le glouton se
+    bloquait **53 % du temps**, le plus souvent à la **dernière** ronde, quand chacun avait déjà
+    tiré quatre fois. Pas un cas limite : le cas nominal, et le format en était inutilisable.
+
+    Le retour arrière **rend l'échec exact** : il n'échoue que si aucun appariement n'existe
+    réellement, ce qui rend `AppariementImpossible` enfin honnête. Le coût est celui d'une recherche
+    en profondeur sur un graphe de quelques dizaines de sommets, calculée une fois par ronde entre
+    deux volées — sans commune mesure avec le temps de tir qu'elle sépare.
+    """
+    if not restants:
+        return []
+    premier = restants[0]
+    for index in range(1, len(restants)):
+        candidat = restants[index]
+        if frozenset((premier, candidat)) in deja_rencontres:
+            continue
+        suite = _apparier_en_reculant([p for p in restants[1:] if p != candidat], deja_rencontres)
+        if suite is not None:
+            return [(premier, candidat), *suite]
+    return None
 
 
 def _propager_ex_aequo(lignes: Sequence[RangSuisse]) -> list[RangSuisse]:

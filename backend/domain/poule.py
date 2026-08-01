@@ -230,16 +230,18 @@ def rencontres_de_poule(
     matchs. Et surtout, le cercle est **déterministe** — ce que la règle 9 exige d'un moteur testé.
 
     `rencontres_par_archer` **tronque** le cercle à ses `k` premiers tours : c'est le « ou partie
-    des autres archers » de la règle, obtenu sans second algorithme.
+    des autres archers » de la règle, obtenu sans second algorithme. Sauf pour `k = n-1`, qui est le
+    round-robin complet exprimé en nombre : on y déroule le cercle **entier** (un tour de plus à
+    effectif impair, celui du repos), sans quoi un seul membre disputerait ses `n-1` rencontres et
+    tous les autres `n-2`.
 
-    ⚠️ **À effectif impair, une troncature ne donne pas le même nombre de rencontres à tout le
-    monde.** Un tour sur deux fait reposer quelqu'un ; sur `k` tours, les `k` archers qui se sont
-    reposés ont disputé `k-1` rencontres et les autres `k`. L'écart est d'**une** rencontre au plus,
-    mais il est réel et il fausse légèrement la comparaison des points de match. Deux façons
-    honnêtes de l'éviter : composer des poules de taille **paire**, ou laisser le round-robin
-    **complet** (où chacun rencontre tout le monde, quelle que soit la parité). On le signale ici
-    plutôt que de le corriger en douce, parce qu'aucune correction n'est neutre — rallonger le
-    cercle changerait le nombre de rencontres demandé.
+    ⚠️ **Pour une troncature intermédiaire (`k < n-1`) à effectif impair, l'écart subsiste.** Un
+    tour sur deux fait reposer quelqu'un ; sur `k` tours, les `k` archers qui se sont reposés ont
+    disputé `k-1` rencontres et les autres `k`. L'écart est d'**une** rencontre, mais il fausse
+    légèrement la comparaison des points de match. Deux façons honnêtes de l'éviter : composer des
+    poules de taille **paire**, ou laisser le round-robin complet. On le signale plutôt que de le
+    corriger en douce, parce qu'aucune correction n'est neutre — rallonger le cercle changerait le
+    nombre de rencontres demandé.
     """
     membres = list(poule.membres)
     if len(membres) < 2:

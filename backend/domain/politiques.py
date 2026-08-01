@@ -617,13 +617,14 @@ def _fabriquer_repechage(
     spec_sinon = params.get("sinon", {"nom": "placement_cascade"})
     # Une seule lecture du `nom` : la relire deux fois obligerait à un `assert` pour convaincre
     # mypy de ce que la garde vient de vérifier — or un `assert` disparaît sous `python -O`.
-    nom_sinon = spec_sinon.get("nom") if isinstance(spec_sinon, Mapping) else None
-    if not isinstance(nom_sinon, str):
+    if not isinstance(spec_sinon, Mapping) or not isinstance(spec_sinon.get("nom"), str):
         raise PolitiqueMalFormee(
             "Le « sinon » d'un repêchage est un objet portant un « nom » de routing "
             f"(reçu {spec_sinon!r})."
         )
-    assert isinstance(spec_sinon, Mapping)  # garanti par la lecture ci-dessus
+    nom_sinon = spec_sinon["nom"]
+    if not isinstance(nom_sinon, str):  # pragma: no cover — garanti par la garde ci-dessus
+        raise PolitiqueMalFormee("Le « nom » d'un routing de repêchage doit être une chaîne.")
     params_sinon = {clef: valeur for clef, valeur in spec_sinon.items() if clef != "nom"}
     if nom_sinon == "repechage":
         sinon: Routing = _fabriquer_repechage(params_sinon, registre, profondeur + 1)

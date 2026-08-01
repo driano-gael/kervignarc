@@ -181,3 +181,19 @@ def test_on_ne_joue_pas_une_manche_sur_un_bso_termine() -> None:
     etat = jouer_manche(etat, {a: 28, b: 20}).etat
     with pytest.raises(ConfigurationBigShootOffInvalide):
         jouer_manche(etat, {a: 28})
+
+
+def test_on_ne_joue_pas_une_manche_par_dessus_un_barrage_en_attente() -> None:
+    """⚠️ **Le garde-fou n'avait été posé que d'un côté de la couture.**
+
+    `eliminer_apres_barrage` vérifiait qu'une manche est suspendue ; `jouer_manche` ne vérifiait
+    rien. On pouvait donc enjamber un barrage en cours : le **leader** s'y faisait éliminer,
+    l'égalité était oubliée sans trace, et les scores de la manche suspendue — déjà repliés dans les
+    cumuls — étaient comptés deux fois. Fermer une porte et laisser l'autre ouverte ne ferme rien.
+    """
+    a, b, c = finalistes(3)
+    etat = demarrer([a, b, c], ConfigurationBigShootOff(cumul_des_manches=True))
+    suspendue = jouer_manche(etat, {a: 28, b: 20, c: 20})
+    assert suspendue.etat.barrage_en_cours == (b, c)
+    with pytest.raises(ConfigurationBigShootOffInvalide):
+        jouer_manche(suspendue.etat, {a: 10, b: 30, c: 30})

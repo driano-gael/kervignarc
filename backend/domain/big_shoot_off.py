@@ -171,6 +171,16 @@ def jouer_manche(etat: EtatBigShootOff, scores: Mapping[Participant, int]) -> Is
         raise ConfigurationBigShootOffInvalide(
             "Ce Big Shoot Off est terminé : il ne reste que les archers à conserver."
         )
+    if etat.barrage_en_cours:
+        # ⚠️ **Le garde-fou de l'autre porte.** `eliminer_apres_barrage` vérifiait déjà qu'une manche
+        # est suspendue ; `jouer_manche` ne vérifiait rien, donc on pouvait enjamber un barrage en
+        # cours en rejouant une manche. Constaté : le leader s'y faisait éliminer, l'égalité était
+        # oubliée sans trace, et les scores de la manche suspendue — déjà repliés dans `cumuls` —
+        # étaient comptés deux fois. Fermer une porte et laisser l'autre ouverte ne ferme rien.
+        raise ConfigurationBigShootOffInvalide(
+            "Un barrage est en attente entre "
+            f"{len(etat.barrage_en_cours)} archers : il doit être tranché avant la manche suivante."
+        )
     manquants = [participant for participant in etat.en_lice if participant not in scores]
     if manquants:
         raise ScoreDeMancheManquant(

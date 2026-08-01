@@ -292,3 +292,90 @@ def test_nombre_de_rondes_par_defaut() -> None:
 def test_zero_ronde_est_refuse() -> None:
     with pytest.raises(ConfigurationSuisseInvalide):
         ConfigurationSuisse(nb_rondes=0)
+
+
+def test_un_bye_declare_a_effectif_pair_est_refuse() -> None:
+    """⚠️ Le contrôle ne portait que sur l'effectif **impair** : à effectif pair, `byes` n'était
+    jamais examiné alors que le calcul des points le créditait quand même. Un perdant déclaré
+    porteur de bye finissait à égalité de tête avec les vainqueurs."""
+    a, b, c, d = archers(4)
+    ronde_1 = [ResultatRonde.victoire_de(a, c), ResultatRonde.victoire_de(b, d)]
+    with pytest.raises(ConfigurationSuisseInvalide):
+        apparier_ronde(archers(4), ronde_1, ConfigurationSuisse(nb_rondes=3), byes=[d])
+
+
+def test_un_bye_pour_un_participant_hors_phase_est_refuse() -> None:
+    """Le cardinal tombait juste, donc le contrôle passait — mais le vrai bye ne rapportait rien et
+    la rotation était corrompue. Passer une donnée explicitement ne suffit pas : il faut la
+    vérifier."""
+    participants = archers(5)
+    a, b, c, d, _e = participants
+    ronde_1 = [ResultatRonde.victoire_de(a, c), ResultatRonde.victoire_de(b, d)]
+    with pytest.raises(ConfigurationSuisseInvalide):
+        apparier_ronde(
+            participants, ronde_1, ConfigurationSuisse(), byes=[Participant.individuel(99)]
+        )
+
+
+def test_deux_byes_pour_la_meme_personne_sont_refuses() -> None:
+    """Sinon elle termine première avec six points en n'ayant tiré qu'une rencontre."""
+    participants = archers(5)
+    a, b, c, d, e = participants
+    deux_rondes = [
+        ResultatRonde.victoire_de(a, c),
+        ResultatRonde.victoire_de(b, d),
+        ResultatRonde.victoire_de(a, b),
+        ResultatRonde.victoire_de(c, d),
+    ]
+    with pytest.raises(ConfigurationSuisseInvalide):
+        apparier_ronde(participants, deux_rondes, ConfigurationSuisse(), byes=[e, e])
+
+
+def test_le_classement_refuse_un_bye_manquant_au_lieu_de_mentir() -> None:
+    """⚠️ `apparier_ronde` était protégée, **pas** `classement_suisse` : un appelant qui oubliait
+    l'argument à effectif impair obtenait un classement silencieusement faux — le porteur de bye
+    relégué dernier à zéro point. Une fonction qui rend un classement n'a pas de mode
+    « à peu près juste »."""
+    participants = archers(5)
+    a, b, c, d, _e = participants
+    ronde_1 = [ResultatRonde.victoire_de(a, c), ResultatRonde.victoire_de(b, d)]
+    with pytest.raises(ConfigurationSuisseInvalide):
+        classement_suisse(participants, ronde_1)
+
+
+def test_l_appariement_va_au_bout_du_reglage_par_defaut() -> None:
+    """⚠️ **Le test qui manquait, et que la dette remplaçait par une affirmation fausse.**
+
+    L'appariement glouton d'origine se bloquait sur **53 %** des tournois à 16 archers en 5 rondes —
+    le réglage par défaut, sur un effectif de club ordinaire —, le plus souvent à la dernière ronde.
+    La dette qui l'assumait parlait d'un impact « faible », « sur un effectif restreint et beaucoup
+    de rondes ». Le retour arrière rend l'échec **exact** : il n'échoue que si aucun appariement
+    n'existe.
+
+    Déroulé déterministe (le vainqueur est toujours le mieux classé), qui est le pire cas pour
+    l'appariement : les scores s'y concentrent, donc les groupes de même score sont les plus gros.
+    """
+    participants = archers(16)
+    resultats: list[ResultatRonde] = []
+    for _ in range(5):
+        for appariement in apparier_ronde(participants, resultats, ConfigurationSuisse()):
+            assert appariement.b is not None
+            gagnant, perdant = sorted((appariement.a, appariement.b), key=lambda p: p.ref_id)
+            resultats.append(ResultatRonde.victoire_de(gagnant, perdant))
+    assert len(resultats) == 40  # 5 rondes x 8 rencontres, aucune ronde perdue en route
+
+
+def test_l_appariement_va_au_bout_a_effectif_impair() -> None:
+    """Même exigence avec un bye qui tourne : c'est là que la rotation et le compte se croisent."""
+    participants = archers(9)
+    resultats: list[ResultatRonde] = []
+    byes: list[Participant] = []
+    for _ in range(5):
+        for appariement in apparier_ronde(participants, resultats, ConfigurationSuisse(), byes):
+            if appariement.b is None:
+                byes.append(appariement.a)
+                continue
+            gagnant, perdant = sorted((appariement.a, appariement.b), key=lambda p: p.ref_id)
+            resultats.append(ResultatRonde.victoire_de(gagnant, perdant))
+    assert len(byes) == 5
+    assert len(set(byes)) == 5  # le bye n'est jamais revenu deux fois à la même personne
