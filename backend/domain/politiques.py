@@ -151,7 +151,17 @@ class Routing(Protocol):
     (un implémenteur, un appelant en production).
     """
 
-    def route(self, contexte: ContexteRoutage) -> Destination: ...
+    def route(self, contexte: ContexteRoutage) -> Destination:
+        """Où va le perdant du match décrit par `contexte`.
+
+        ⚠️ **Précondition : jamais appelée sur une plage indivisible** (`largeur < 4`). La *Règle T*
+        tranche avant — `construire_tableau` sort dès `plage.est_terminale`, « l'issue fixe les deux
+        rangs, il n'y a plus rien à diviser » — et `PlacementEnCascade` y lèverait `PlageInvalide`
+        en appelant `moitie_basse()`. Le contrat était **implicite** et a été enfreint par son
+        deuxième appelant (`application.routage._est_repeche`, E07US008) : il est écrit ici pour que
+        le troisième le trouve à la source plutôt qu'en production — ADR-0065 §2.
+        """
+        ...
 
 
 @dataclass(frozen=True)

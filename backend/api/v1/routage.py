@@ -35,6 +35,7 @@ from application.routage import (
     RoutageArcher,
     ServiceRoutage,
 )
+from domain.phase import TypePhase
 
 router = APIRouter(prefix="/api/v1/routage", tags=["routage"])
 
@@ -92,11 +93,17 @@ class DestinationRepechageReponse(BaseModel):
     Pas de libellé tout fait : le front sait déjà nommer un type de phase (`LIBELLE_TYPE`), et une
     phase n'a pas de nom propre dans le modèle. Envoyer « 3. Élimination directe » depuis le serveur
     dupliquerait ce vocabulaire à un deuxième endroit, où il finirait par diverger.
+
+    `type` est déclaré sur l'**énumération** `TypePhase`, comme dans `api/v1/phases.py` et
+    `api/v1/formats.py` (correctif de revue, axe A) : un `str` ouvert publiait une chaîne libre au
+    schéma OpenAPI, ce qui obligeait le client à écrire `LIBELLE_TYPE[type as TypePhase]` — un cast
+    non vérifié, dupliqué à deux endroits. L'énumération fermée rend la divergence **visible** au
+    client au lieu de la lui faire subir, exactement comme `IssueRoutageReponse` ci-dessus.
     """
 
     phase_id: int
     ordre: int
-    type: str
+    type: TypePhase
 
     @staticmethod
     def de_destination(destination: DestinationRepechage) -> DestinationRepechageReponse:
@@ -237,11 +244,15 @@ async def lire_affectations(
     connaître le tableau.
 
     **Pas de plafond `_MAX_ARCHERS` ici, et ce n'est pas un oubli.** Ce plafond bornait
-    l'amplification requête→réponse : un client pouvait demander 64 lignes pour un coût de
-    reconstruction déjà payé. Ici le client ne demande rien — la taille de la réponse est celle du
-    tableau, donc bornée par les inscrits du tournoi, pas par la requête. Le coût dominant reste la
-    reconstruction de l'arbre, payée une fois, sur une route publique non authentifiée : c'est le
-    régime **DETTE-008**, inchangé, ni aggravé ni fermé par cette US.
+    l'amplification requête→réponse (le régime de `DETTE-008`) : un client pouvait demander 64
+    lignes pour un coût de reconstruction déjà payé. Ici le client ne demande rien — la taille de la
+    réponse est celle du tableau, donc bornée par les inscrits du tournoi, pas par la requête.
+
+    Le coût dominant reste la **reconstruction de l'arbre**, payée une fois par appel, sur une route
+    publique non authentifiée : c'est le régime de **`# DETTE-031`**, que cette US **aggrave** et
+    dont elle élargit la ligne au registre (correctif de revue — trois axes ont relevé que ces
+    textes citaient `DETTE-008`, qui traite de tout autre chose : l'écho non borné de l'entrée
+    client dans une réponse 400).
     """
     service: ServiceRoutage = request.app.state.service_routage
     routage = await run_in_threadpool(service.affectations, tournoi_id, phase_id)

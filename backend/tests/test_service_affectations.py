@@ -201,6 +201,57 @@ def test_l_elimine_hors_podium_voit_sa_fourchette_de_rangs() -> None:
     assert ligne.motif is None  # plus d'« en attente » : le rang acquis est connu
 
 
+def test_la_fourchette_ne_depasse_jamais_l_effectif_reel() -> None:
+    """**La borne haute est écrêtée à l'effectif** — correctif de revue (axes C1 et adversarial).
+
+    Une plage est bornée par la **taille** du tableau, une puissance de 2, pas par le nombre
+    d'archers. À 6 archers le tableau fait 8 : la moitié basse du tour 1 est `[5..8]`, alors que les
+    rangs 7 et 8 **n'existent pas**. Sur l'oracle 120 (taille 128) le même défaut annonçait
+    « 65ᵉ-128ᵉ » dans un tournoi de 120 — sur le CA central de l'US, affiché en public.
+
+    Le défaut était invisible parce que `_quatre` et `_huit` sont les deux **seuls** effectifs du
+    décor où `taille == effectif`. D'où ce cas à 6, qui casse cette coïncidence : sans lui, le
+    correctif ne serait gardé par rien.
+    """
+    monde = _Monde()
+    totaux = (("10", "10"), ("10", "9"), ("9", "9"), ("9", "8"), ("8", "8"), ("8", "7"))
+    archers = [monde.inscrire_classe(v) for v in totaux]
+    monde.creer_phase_tableau()
+    monde.placer()
+    tableau, _ = monde.saisie.reconstruire(monde.tournoi_id, monde.phase_id or 0)
+    assert (tableau.effectif, tableau.taille) == (6, 8)  # la coïncidence est bien rompue
+    duel = next(m for m in tableau.matchs if m.tour == 1 and m.est_jouable)
+    monde.gagner(duel.numero)
+    battu = monde.perd_de(duel.numero)
+
+    ligne = _ligne(monde.routage, monde.tournoi_id, battu)
+
+    assert ligne.rang_max == 6, "le rang annoncé ne peut pas dépasser le nombre d'archers"
+    assert (ligne.rang_min, ligne.rang_max) == (5, 6)
+    assert battu in archers
+
+
+def test_la_vue_collective_distingue_un_tableau_non_constitue_d_une_phase_absente() -> None:
+    """Phase configurée **mais tableau inconstituable** ⇒ `phase_id` **non nul** et liste vide.
+
+    Cas de la matinée : la séquence de phases est composée d'avance (E05US001) alors que la
+    qualification n'est pas encore scorée — moins de deux archers en lice, donc pas d'arbre.
+
+    ⚠️ **Branche sans aucun test avant la revue (axe B)**, et le front en tirait une conclusion
+    fausse : `phase_id` non nul + zéro ligne lui faisait afficher « Non retenu pour le tableau
+    final » à *tous* les archers suivis. Les deux états sont bel et bien distincts — c'est ce que ce
+    test fige — et c'est au front de les distinguer, ce qu'il fait désormais.
+    """
+    monde = _Monde()
+    monde.inscrire_classe(("10", "10"))  # un seul archer : pas d'arbre possible
+    phase_id = monde.creer_phase_tableau()
+
+    affectations = monde.routage.affectations(monde.tournoi_id)
+
+    assert affectations.phase_id == phase_id  # ...la phase existe (≠ « pas encore de tableau »)
+    assert affectations.archers == ()
+
+
 def test_le_perdant_d_un_match_terminal_voit_un_rang_exact() -> None:
     """Quand le match perdu **décerne** les rangs (`place_en_jeu`), la fourchette se referme.
 
@@ -332,19 +383,62 @@ def test_le_battu_d_un_tour_non_repeche_reste_elimine() -> None:
     """Le repêchage n'excepte que **certains tours** (`RoutingRepechage.tours_repeches`).
 
     Sans ce cas, une implémentation qui déclarerait « repêché » tout battu d'un tableau à repêchage
-    passerait les trois tests précédents et serait fausse dès la demi-finale.
+    passerait les tests précédents et serait fausse pour les autres tours.
+
+    ⚠️ **Réécrit sur remarque de revue (axe B), preuve par mutation à l'appui.** La version d'origine
+    faisait jouer les quarts puis une demie et interrogeait le battu de la demie — qui a encore la
+    **petite finale** devant lui, donc `PROCHAIN_DUEL` : elle n'atteignait jamais `_est_repeche` et
+    survivait au mutant `_est_repeche → True`. On repêche donc ici le **tour 2**, et l'on interroge
+    un battu du **tour 1**, qui n'a bien plus aucun duel : lui seul traverse la garde.
     """
-    monde = _MondeRepechage()
+    monde = _MondeRepechage(tours_repeches=frozenset({2}))
     _huit(monde)
-    monde.declarer_phase_de_repechage()
+    monde.declarer_phase_de_repechage(tour=2)
     monde.placer()
-    for numero in (1, 2, 3, 4, 5):  # les quatre quarts, puis une demie
-        monde.gagner(numero)
-    battu_demie = monde.perd_de(5)
+    monde.gagner(1)
+    battu_du_tour_1 = monde.perd_de(1)
 
-    ligne = _ligne(monde.routage, monde.tournoi_id, battu_demie)
+    ligne = _ligne(monde.routage, monde.tournoi_id, battu_du_tour_1)
 
-    assert ligne.issue is not IssueRoutage.REPECHE
+    assert ligne.issue is IssueRoutage.TERMINE  # son tour n'est pas repêché
+    assert (ligne.rang_min, ligne.rang_max) == (5, 8)
+
+
+def test_le_battu_repris_par_la_sequence_voit_sa_destination_meme_sans_repechage() -> None:
+    """**Le seul cas de repêchage atteignable aujourd'hui** — correctif de revue (axe adversarial).
+
+    Les deux moitiés du repêchage se lisent à deux sources indépendantes : le **routing**
+    (`_est_repeche`) et les **sources de la séquence** (`grille.repechages`). Or aucun
+    `RoutingRepechage` n'est câblé en production (`# DETTE-028`), tandis que l'atelier de déroulé
+    (E01US024) permet **déjà** de composer « les perdants du tour 1 de la phase 2 ». Le code fermait
+    donc le trou qu'aucun chemin de production n'ouvre, et laissait ouvert celui que l'éditeur livré
+    permet d'ouvrir : cet archer-là lisait « 5ᵉ-8ᵉ », comprenait qu'il était sorti, et rentrait chez
+    lui — le mal exact que l'issue `REPECHE` existe pour éviter.
+
+    Il reste `TERMINE` — il a bel et bien acquis un rang dans *ce* tableau, contrairement au repêché
+    du routing qui n'en consomme aucun — mais sa **destination est annoncée**. « 5ᵉ-8ᵉ *et* repris
+    en phase 3 » est vrai des deux côtés ; forcer `REPECHE` effacerait un rang réellement acquis.
+    """
+    monde = _Monde()  # routing de production : cascade, aucun repêchage
+    _huit(monde)
+    repechage_id = monde.phases.ajouter(
+        Phase.creer(
+            monde.tournoi_id,
+            3,
+            TypePhase.ELIMINATION_DIRECTE,
+            sources=(SourcePhase.par_issue_de_tour(2, tour=1, issue=IssueTour.PERDANTS),),
+        )
+    ).id
+    monde.placer()
+    monde.gagner(1)
+    battu = monde.perd_de(1)
+
+    ligne = _ligne(monde.routage, monde.tournoi_id, battu)
+
+    assert ligne.issue is IssueRoutage.TERMINE
+    assert (ligne.rang_min, ligne.rang_max) == (5, 8)  # le rang acquis n'est pas effacé
+    assert ligne.destination is not None  # ...mais la suite est annoncée
+    assert ligne.destination.phase_id == repechage_id
 
 
 # --- décor du repêchage --------------------------------------------------------------------------
@@ -359,19 +453,19 @@ class _MondeRepechage(_Monde):
     battus en **sortent**, et c'est tout le sujet de cette section.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, tours_repeches: frozenset[int] = frozenset({1})) -> None:
         super().__init__(
-            routing=RoutingRepechage(tours_repeches=frozenset({1}), sinon=PlacementEnCascade())
+            routing=RoutingRepechage(tours_repeches=tours_repeches, sinon=PlacementEnCascade())
         )
 
-    def declarer_phase_de_repechage(self) -> int:
-        """La phase avale qui **prélève les perdants du tour 1** de la phase de tableau."""
+    def declarer_phase_de_repechage(self, tour: int = 1) -> int:
+        """La phase avale qui **prélève les perdants du tour** donné de la phase de tableau."""
         phase = self.phases.ajouter(
             Phase.creer(
                 self.tournoi_id,
                 3,
                 TypePhase.ELIMINATION_DIRECTE,
-                sources=(SourcePhase.par_issue_de_tour(2, tour=1, issue=IssueTour.PERDANTS),),
+                sources=(SourcePhase.par_issue_de_tour(2, tour=tour, issue=IssueTour.PERDANTS),),
             )
         )
         assert phase.id is not None

@@ -222,9 +222,15 @@ def test_affectations_sont_ordonnees_par_cible_puis_position(
 
         corps = client.get(f"/api/v1/routage/{tournoi_id}/affectations").json()
 
+    # Filtre repris du test de service (correctif de revue) : sans lui, le jour où ce décor tranche
+    # un duel, l'assertion casse en `TypeError` sur un `prochain` nul — un échec qui ne désigne pas
+    # la régression qu'il est censé garder.
     poses = [
-        (ligne["prochain"]["cible"], ligne["prochain"]["position"]) for ligne in corps["archers"]
+        (ligne["prochain"]["cible"], ligne["prochain"]["position"])
+        for ligne in corps["archers"]
+        if ligne["prochain"] is not None and ligne["prochain"]["cible"] is not None
     ]
+    assert len(poses) == 4  # les quatre archers du décor sont posés au tour 1
     assert poses == sorted(poses)
 
 

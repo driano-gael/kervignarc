@@ -33,7 +33,7 @@ from application.erreurs import GabaritDuTournoiAbsent, PhaseIntrouvable
 from application.placement_duels import ServicePlacementDuels
 from application.saisie_duels import Duelliste, ServiceSaisieDuels
 from domain.classement import LigneClassement
-from domain.erreurs import EffectifTableauInvalide, PlageInvalide
+from domain.erreurs import EffectifTableauInvalide
 from domain.participant import GenreParticipant, Participant
 from domain.phase import (
     IssueTour,
@@ -161,11 +161,15 @@ class DestinationRepechage:
 
     On rend `ordre` et `type` plutôt qu'un libellé tout fait : le front sait déjà nommer un type de
     phase (`LIBELLE_TYPE`), et une phase n'a pas de nom propre dans le modèle.
+
+    `type` porte l'**énumération**, pas une chaîne libre (correctif de revue, axe A) : c'est ce que
+    font tous les autres DTO de phase du projet, et c'est ce qui permet de la publier fermée au
+    schéma OpenAPI — donc de faire disparaître le `as TypePhase` que le front devait écrire.
     """
 
     phase_id: int
     ordre: int
-    type: str
+    type: TypePhase
 
 
 @dataclass(frozen=True)
@@ -237,7 +241,6 @@ class _Grille:
     tiendrait encore à quatre (la tablette), pas à cent vingt (l'écran de salle).
     """
 
-    phase: Phase
     tableau: Tableau
     lignes: dict[int, LigneClassement]
     plan: _PlanLu
@@ -321,21 +324,30 @@ class ServiceRoutage:
 
     # --- Lecture de la grille --------------------------------------------------------------------
 
+    # DETTE-031 : cette lecture appelle `ServiceSaisieDuels.reconstruire` — tout le classement du
+    # tournoi, l'arbre rebâti, les duels rejoués — sans cache et sans plafond, sur deux routes
+    # **publiques non authentifiées**. E07US008 y ajoute un second endpoint et deux surfaces de
+    # polling ; la ligne du registre a été élargie en conséquence.
     def _grille(self, tournoi_id: TournoiId, phase: Phase, phase_id: PhaseId) -> _Grille | None:
         """Tout ce qu'il faut pour router, lu **une fois** — `None` si le tableau n'existe pas.
 
         `classement()` plutôt que `podium()` (E07US008) : le podium n'est que sa restriction aux
         rangs ≤ 4. Sous placement intégral (E05US010), tous les rangs sont décernés par des matchs
-        terminaux, et les lire donne le rang **exact** de chacun sans autre calcul. Sous profondeur
-        podium, la sortie est identique à celle d'hier — ce n'est donc pas un changement de
-        comportement, c'est le même code qui cesse de jeter ce qu'il avait déjà.
+        terminaux, et les lire donne le rang **exact** de chacun sans autre calcul.
+
+        Sous `ProfondeurPodium()` **par défaut** (`jusqu_au=4`, le câblage de production), la sortie
+        est identique à celle d'hier : seules `[1..2]` et `[3..4]` sont terminales, donc
+        `classement()` ne rend jamais de rang > 4. ⚠️ Mais `jusqu_au` est un **paramètre** — sous
+        `ProfondeurPodium(jusqu_au=8)`, le service gagne les rangs 5-8 exacts que `podium()`
+        jetait. C'est donc bien un changement de comportement dans cette configuration, et il est
+        **voulu** ; la formulation « ce n'est pas un changement de comportement » d'un premier jet
+        était fausse et la revue l'a rattrapée.
         """
         try:
             tableau, lignes = self._saisie_duels.reconstruire(tournoi_id, phase_id)
         except EffectifTableauInvalide:
             return None
         return _Grille(
-            phase=phase,
             tableau=tableau,
             lignes=lignes,
             plan=self._plan_lu(tournoi_id, phase_id),
@@ -368,7 +380,7 @@ class ServiceRoutage:
                 ):
                     destinations.setdefault(
                         source.tour,
-                        DestinationRepechage(autre.id, autre.ordre, autre.type.value),
+                        DestinationRepechage(autre.id, autre.ordre, autre.type),
                     )
         return destinations
 
@@ -498,8 +510,8 @@ class ServiceRoutage:
         dernier = max(siens, key=lambda m: m.tour)
         tour_sortie = libelle_tour(dernier.tour, tableau.nb_tours, dernier.place_en_jeu)
         a_perdu = dernier.vainqueur != moi
+        destination = grille.repechages.get(dernier.tour) if a_perdu else None
         if a_perdu and _est_repeche(tableau, dernier):
-            destination = grille.repechages.get(dernier.tour)
             return RoutageArcher(
                 archer_id=archer_id,
                 nom=nom,
@@ -510,7 +522,7 @@ class ServiceRoutage:
                 motif=REPECHAGE_SANS_DESTINATION if destination is None else None,
             )
         rang = grille.rangs.get(moi)
-        fourchette = _fourchette_de_rangs(rang, dernier if a_perdu else None)
+        fourchette = _fourchette_de_rangs(rang, dernier if a_perdu else None, tableau.effectif)
         return RoutageArcher(
             archer_id=archer_id,
             nom=nom,
@@ -520,6 +532,21 @@ class ServiceRoutage:
             rang_min=fourchette[0] if fourchette is not None else None,
             rang_max=fourchette[1] if fourchette is not None else None,
             tour_sortie=tour_sortie,
+            # ⚠️ **Un battu classé ici peut malgré tout être repris en aval** (correctif de revue,
+            # axe adversarial). Les deux moitiés du repêchage se lisent à deux sources
+            # indépendantes : le **routing** (`_est_repeche`) et les **sources de la séquence**
+            # (`grille.repechages`). Or aucun `RoutingRepechage` n'est câblé en production
+            # (`# DETTE-028`), tandis que l'atelier de déroulé (E01US024) permet **déjà** de
+            # composer « les perdants du tour 1 de la phase 2 ». Le seul cas atteignable
+            # aujourd'hui est donc celui où la séquence reprend un battu que le routing, lui,
+            # classe ici — et le taire lui ferait lire son rang, comprendre qu'il est sorti, et
+            # rentrer chez lui : exactement le mal que l'issue `REPECHE` existe pour éviter.
+            #
+            # On garde `TERMINE` — il a bel et bien acquis un rang dans *ce* tableau, contrairement
+            # au repêché du routing qui n'en consomme aucun — mais on **annonce sa destination**.
+            # Dire « 9ᵉ-16ᵉ **et** repris en phase 3 » est vrai des deux côtés ; forcer `REPECHE`
+            # effacerait un rang réellement acquis.
+            destination=destination,
             # `RANG_A_VENIR` ne subsiste que là où **rien** n'est acquis : ni rang exact, ni
             # fourchette (plage absente d'un `Match` bâti à la main). Avant E07US008 il couvrait
             # tout le hors-podium, ce qui n'apprenait rien à quelqu'un qui venait de perdre.
@@ -654,30 +681,43 @@ def _est_repeche(tableau: Tableau, match: Match) -> bool:
     repêché » serait faux — un match dont la plage aval est **élaguée par la profondeur**
     (`ProfondeurPodium`) n'a pas non plus d'aval, et son battu est bel et bien éliminé.
     """
-    if match.plage is None or match.plage.est_terminale:
-        # ⚠️ **Le routing ne s'interroge pas sur une plage terminale**, et ce n'est pas une
+    if match.plage is None or match.plage.largeur < 4:
+        # ⚠️ **Le routing ne s'interroge pas sur une plage indivisible**, et ce n'est pas une
         # optimisation : `construire_tableau` sort *avant* de l'appeler dans ce cas (*Règle T* —
         # « l'issue fixe les deux rangs, il n'y a plus rien à diviser »), si bien que
-        # `PlacementEnCascade` y appelle `moitie_basse()` sur `[1..2]` et lève `PlageInvalide`.
-        # C'est un contrat implicite du protocole `Routing`, qu'on redonde ici parce qu'on est le
-        # deuxième appelant — et le premier à l'avoir enfreint. Métier, la garde est vraie de
-        # toute façon : un match terminal **décerne** les deux rangs, son perdant est classé ici.
+        # `PlacementEnCascade` y appelle `moitie_basse()` et lève `PlageInvalide`. Le contrat est
+        # désormais écrit à sa source (`Routing.route`, ADR-0065 §2) ; on le redonde ici parce
+        # qu'on est le deuxième appelant — et le premier à l'avoir enfreint.
+        #
+        # `largeur < 4` et non `est_terminale` (largeur 2) : c'est la borne exacte que
+        # `Plage._demi_largeur` refuse (correctif de revue). Métier, la garde est vraie de toute
+        # façon : un match terminal **décerne** les deux rangs, son perdant est classé ici.
         return False
     destination = tableau.routing.route(ContexteRoutage(tour=match.tour, plage=match.plage))
     return isinstance(destination, VersRepechage)
 
 
-def _fourchette_de_rangs(rang: int | None, perdu: Match | None) -> tuple[int, int] | None:
+def _fourchette_de_rangs(
+    rang: int | None, perdu: Match | None, effectif: int
+) -> tuple[int, int] | None:
     """Les rangs que cet archer a **acquis** — exacts si connus, sinon la fourchette *ex æquo*.
 
     Trois cas, du plus précis au plus honnête :
 
     1. **rang exact connu** (un match terminal l'a décerné) ⇒ la fourchette s'y referme ;
     2. **battu sans rang exact** ⇒ la *moitié basse* de la plage du match perdu (*Règle R*,
-       `Plage.moitie_basse`). Le battu d'un quart d'un tableau de 8 est 5ᵉ-8ᵉ : aucun match n'a été
-       joué pour départager les quatre battus des quarts, donc l'*ex æquo* n'est pas une
-       approximation, c'est **le** résultat ;
+       `Plage.moitie_basse`), **écrêtée à l'effectif réel**. Le battu d'un quart d'un tableau de 8
+       est 5ᵉ-8ᵉ : aucun match n'a été joué pour départager les quatre battus des quarts, donc
+       l'*ex æquo* n'est pas une approximation, c'est **le** résultat ;
     3. **rien d'exploitable** ⇒ `None`, et l'appelant dira que le rang viendra.
+
+    ⚠️ **L'écrêtage à l'effectif n'est pas cosmétique** (correctif de revue, axes C1 et adversarial,
+    tous deux preuve à l'appui). Une plage est bornée par la **taille** du tableau — une puissance
+    de 2 — pas par le nombre d'archers : sur l'oracle 120 (taille 128), un battu du 1ᵉʳ tour sortait
+    « 65ᵉ-**128**ᵉ » alors que les rangs 121 à 128 **n'existent pas**. Le défaut était invisible aux
+    tests parce que 4 et 8 archers sont les deux seuls effectifs du décor où `taille == effectif`.
+    Seule la borne **haute** a besoin de l'écrêtage : un occupant réel d'un match réel a toujours
+    `basse.debut <= effectif`, `_a_classer` élaguant les sous-plages sans rang atteignable.
 
     Ce n'est **pas** le classement officiel d'E06US004 : c'est ce que *ce tableau* a décidé, sans
     agrégation inter-phases ni départage FFTA. La fourchette naît de la plage que le domaine porte
@@ -686,15 +726,14 @@ def _fourchette_de_rangs(rang: int | None, perdu: Match | None) -> tuple[int, in
     """
     if rang is not None:
         return (rang, rang)
-    if perdu is None or perdu.plage is None:
+    if perdu is None or perdu.plage is None or perdu.plage.largeur < 4:
+        # `largeur < 4` plutôt que `est_terminale` (largeur 2) : c'est la borne exacte que
+        # `Plage._demi_largeur` refuse. Une garde plus étroite que ce qu'elle protège finit par
+        # laisser passer le cas qu'elle prétendait couvrir — et une plage terminale a de toute
+        # façon décerné son rang par `classement()`, donc on n'arrive pas ici sans `rang`.
         return None
-    try:
-        basse = perdu.plage.moitie_basse()
-    except PlageInvalide:
-        # Plage de largeur < 4 : le match **était** terminal, donc un rang exact aurait dû sortir du
-        # classement. On préfère avouer plutôt que d'inventer une borne sur une plage indivisible.
-        return None
-    return (basse.debut, basse.fin)
+    basse = perdu.plage.moitie_basse()
+    return (basse.debut, min(basse.fin, effectif))
 
 
 def _archers_du_tableau(tableau: Tableau) -> tuple[int, ...]:

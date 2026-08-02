@@ -98,6 +98,14 @@ class SequenceVues:
 
         Un écran doit informer **sans configuration** : on le branche, il tourne. L'ordre suit ce
         que le public cherche le plus souvent (où j'en suis, où je tire, où en est le tournoi).
+
+        ⚠️ **`AFFECTATIONS` (E07US008) n'y figure délibérément pas** — question posée en revue, et
+        tranchée par l'essai. Elle n'a de contenu qu'une fois un tableau constitué, c'est-à-dire
+        **après la qualification**, soit l'essentiel de la journée. L'inscrire au défaut ferait
+        cycler tout écran neuf, toutes les 90 secondes et pendant des heures, sur une page « pas
+        encore de tableau final » : moins informatif que de ne pas l'afficher du tout. Le déroulé
+        par défaut est fait de vues **toujours pleines** ; celle-ci s'ajoute à la main, quand elle
+        a quelque chose à dire (scénario 3 de `docs/fonctionnel/E07US008.md`).
         """
         return SequenceVues(
             (
