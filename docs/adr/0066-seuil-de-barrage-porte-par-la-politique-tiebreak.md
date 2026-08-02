@@ -101,6 +101,37 @@ insuffisant pour la **répétition en manches**, qui doit savoir que le groupe �
 8 — sans quoi un retir ferait passer un tireur à 8 devant un tireur à 10 déjà départagé. On expose
 la partition à côté plutôt que d'affaiblir un contrat pour un seul appelant.
 
+### 4 bis. Le tri du classement devient un comparateur injecté
+
+`domain/classement.py` triait sur une **clé** (`_cle_tri`, `_cle_departage`). Une politique
+injectable rend un **ordre relatif** (`departager(a, b) -> int`), pas une valeur ordonnable : il
+n'existe aucune clé qui exprimerait à la fois les cinq critères de poule et les deux de la
+qualification sans les figer dans le classement — ce que l'injection sert précisément à éviter. D'où
+`functools.cmp_to_key` au moment du tri, et `_ranger` qui compare par **prédicat d'égalité** au lieu
+d'une égalité de clés.
+
+C'est la modification la plus invasive du diff, sur un module livré et éprouvé, **pour une option
+que la plupart des tournois n'activeront pas**. Deux garde-fous, et ils ont été vérifiés plutôt
+que supposés :
+
+- un test fixe que le classement obtenu en injectant le comparateur **par défaut** est identique,
+  ligne à ligne, à celui d'E06US001 ; les ~400 lignes de tests préexistants passent sans
+  modification, oracle 120 compris ;
+- `_comparer_classant` compose lexicographiquement quatre préordres totaux (statut → total →
+  `departager` → position de barrage), donc l'ordre est antisymétrique et **transitif** : `_ranger`
+  par la tête de groupe est équivalent au `_ranger` par clés consécutives, et `sorted` reste
+  déterministe.
+
+⚠️ **Cette transitivité est fragile au bon endroit**, et c'est le piège à connaître : elle tient
+parce que la position de barrage n'est comparée qu'**après** que tout le reste a été jugé égal. Un
+correctif qui neutraliserait la comparaison « quand un seul des deux a une position » casserait la
+transitivité et rendrait `sorted` dépendant de l'ordre d'entrée. C'est pourquoi le verdict fantôme
+(§7) se corrige en **écartant le verdict**, jamais en assouplissant le comparateur.
+
+Conséquence tracée : **DETTE-029 gagne un axe de divergence** — ce site range par comparateur, les
+deux autres (`poule.py`, `suisse.py`) par clé. Le remède déjà proposé au registre (prédicat
+d'égalité en paramètre) accommode les deux formes ; il reste à faire en US dédiée.
+
 ### 5. Ce que le barrage change au classement, et ce qu'il ne change pas
 
 Le verdict n'intervient **qu'après** épuisement de la politique de départage — c'est-à-dire
@@ -122,16 +153,27 @@ et les deux de la qualification sans les figer, ce que l'injection sert justemen
 - L'option laissée ouverte par E06US001 est **fermée sans changer le défaut** : un tournoi qui ne
   règle rien se comporte exactement comme avant, ce qu'un test fixe explicitement.
 - Le moteur d'E05US015 a enfin des consommateurs, et une part de DETTE-028 est résorbée.
-- Le seuil vit dans `config.policies`, donc il voyagera avec les **formats** (E01US023/E01US024)
-  sans travail supplémentaire le jour où l'écran « Composer un déroulé » l'exposera.
+- Le seuil vit dans `config.policies`, la forme que les **formats** stockent déjà — mais **il n'y
+  voyage pas encore**, et c'est à corriger avant de s'y fier : `ModelePhase` ne porte pas
+  `barrage_jusqu_au`, `de_phase` ne le lit pas et `pour_tournoi` ne le repose pas. Donc
+  `ServiceFormats.promouvoir` capture un tournoi réglé et **perd le seuil en silence** — exactement
+  la classe de défaut déjà attrapée en revue pour le grain de validation. Tracé ici plutôt que
+  promis : le portage demandera trois modifications coordonnées (agrégat, sérialiseur, relecteur),
+  et il appartient à l'US qui exposera le réglage dans « Composer un déroulé ».
 
 **Négatives / à surveiller.**
-- **Une seule des trois portées est câblée.** `PorteeBarrage` modélise qualification, poule et Big
-  Shoot Off, et le moteur les sert toutes les trois ; mais ni `poule.py` ni `big_shoot_off.py` n'ont
-  de **consommateur de production** (DETTE-028, vérifié dans le code et non supposé) : il n'existe
-  aucun classement de poule calculé quelque part où brancher un barrage. Les câbler aurait produit
-  une surface pour une phase que l'application ne sait pas dérouler. Le discriminant est en base dès
-  maintenant pour éviter une migration de données le jour venu.
+- **Les trois portées sont servies, mais la boucle n'est fermée que pour une** *(décision révisée
+  le 02/08/2026 : l'US s'arrêtait d'abord à la qualification ; le commanditaire a demandé les
+  trois)*. En **qualification**, les tireurs sont **dérivés** du classement et le verdict y
+  **retourne**. En **poule** et en **Big Shoot Off**, ils sont **désignés** par l'organisateur —
+  parce que ni `poule.py` ni `big_shoot_off.py` n'ont de consommateur de production (DETTE-028,
+  vérifié dans le code, pas supposé) : il n'existe aucun classement de poule calculé quelque part où
+  lire les ex æquo, ni où reverser le verdict. Le barrage y est **pleinement opérationnel** (annonce,
+  manches, absents, distance, correction, annulation) mais son résultat ne remonte dans aucun
+  classement. La boucle se fermera quand le chantier moteur livrera l'exécution de ces phases.
+  Corollaire à surveiller : le régime **désigné** perd les garanties que le classement offrait
+  gratuitement, donc le service les reprend explicitement (archers du tournoi, distincts, ≥ 2, phase
+  du tournoi). Un oubli là ferait tirer l'archer d'un autre tournoi.
 - **Le `PUT` de phase est une édition totale** : omettre `barrage_jusqu_au` **efface** le seuil.
   C'est le régime déjà annoncé pour `sources` (et la raison de son `extra="forbid"`), mais il vaut
   désormais pour un réglage de plus.
@@ -147,6 +189,50 @@ et les deux de la qualification sans les figer, ce que l'injection sert justemen
 - **Le `barrage_requis` du protocole et le `barrage_requis` de `ResultatDuel`** portent le même nom
   dans deux espaces distincts, avec des sens voisins mais non identiques (« cette place mérite un
   tir » vs « ce duel est nul »). Sans conflit technique, mais à ne pas confondre en lecture.
+
+## Ce que la revue a changé (02/08/2026)
+
+Cinq relecteurs ont trouvé **cinq bloquants** et un majeur unanime. Trois décisions en découlent et
+appartiennent à cet ADR, parce qu'elles corrigent des raisonnements qui y étaient écrits.
+
+**Un invariant se joue avant d'écrire, pas à la relecture.** §4 fait du verdict une valeur
+recalculée, jamais mémorisée — c'est juste, mais la première version en tirait une conclusion
+fausse : puisque le moteur validera à la lecture, le service n'avait « pas à dupliquer la garde ».
+La manche était donc **persistée puis** jugée. Refusée en 422 *et* écrite, elle faisait ensuite lever
+toutes les lectures — `GET /classement` est **public et projeté en salle**, et le panneau qui aurait
+permis de réparer mourait avec lui. *Dupliquer la règle* et *la jouer avant d'écrire* sont deux
+choses différentes. Le service rejoue donc le moteur sur l'agrégat projeté, et la lecture du
+classement **dégrade** (rang partagé) au lieu de tomber.
+
+**Un invariant qui ne connaît que ses entrées ne peut pas voir ce qui manque.** La règle « un groupe
+se retire en entier » vivait dans la répétition en manches, laquelle ne traite que les manches ≥ 2 :
+la manche 1 allait droit à `partitionner_barrage`, qui ne connaît **que les tirs qu'on lui donne**.
+Un barrage annoncé à trois dont on saisissait deux tirs se déclarait résolu en oubliant le
+troisième. L'invariant appartient à l'**agrégat**, seul à connaître `participants` — c'est la leçon
+générale, pas le correctif ponctuel.
+
+**Un verdict n'est appliqué que si son groupe existe encore.** §5 disait que le verdict n'intervient
+« que là où le rang serait resté partagé ». Vrai à l'instant du tir, faux ensuite : les tireurs sont
+figés à l'annonce, le classement continue de vivre, et un archer qu'une volée validée en retard
+amène à la même égalité portait une position de barrage nulle — donc le **meilleur rang possible**.
+Il prenait la place que le barrage venait de trancher, devant son vainqueur, et le signalement
+disparaissait. Le classement se calcule désormais en deux passes : les groupes constatés d'abord,
+puis les seuls verdicts qui portent exactement sur l'un d'eux. Un verdict écarté laisse l'égalité
+**re-signalée** — ce que le règlement prescrit quand le groupe a changé.
+
+Deux corrections de fait, également issues de la revue :
+
+- **le `sinon` du composite n'est pas atteignable depuis le produit.** `Phase.barrage_jusqu_au` est
+  un entier, donc le repository n'écrit jamais que `{"nom": "barrage", "jusqu_au": N}` et le service
+  re-synthétise la même forme : seul `ffta_defaut` peut être enveloppé. L'argument de §1 — loger le
+  seuil dans `tiebreak` pour que seuil et comparateur restent **accordés** — reste juste, mais il
+  n'est **pas encore exercé** : le code n'offre qu'un comparateur. La garde d'auto-imbrication est
+  conservée (elle protège une config écrite à la main) ; le portage du `sinon` attend un
+  consommateur ;
+- **le seuil ne se réglait par aucun écran.** Livré jusqu'à l'API, il n'existait dans aucun
+  formulaire — la capacité tête d'affiche de l'US était donc hors de portée d'un organisateur, et la
+  fiche de recette décrivait un champ inexistant. Corrigé, avec les deux gestes que les mêmes textes
+  promettaient déjà sans qu'ils existent : **annuler** un barrage et **corriger** une manche.
 
 ## Alternatives écartées
 

@@ -671,6 +671,7 @@ class BarrageORM(Base):
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
     # dans la politique de suppression du tournoi (non tranchée) ; ne pas contourner ici.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    # DETTE-001 : FK sans ON DELETE CASCADE — lien latéral dans la descendance du tournoi.
     phase_id: Mapped[int | None] = mapped_column(ForeignKey("phase.id"), nullable=True)
     portee: Mapped[str] = mapped_column(nullable=False)
     reference: Mapped[str | None] = mapped_column(nullable=True)
@@ -700,8 +701,12 @@ class BarrageTirORM(Base):
     __tablename__ = "barrage_tir"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 : FK sans ON DELETE CASCADE — enfant du barrage, purgé avec lui par le repository.
     barrage_id: Mapped[int] = mapped_column(ForeignKey("barrage.id"), nullable=False)
     manche: Mapped[int] = mapped_column(nullable=False)
+    # DETTE-001 : enfant **indirect** via `archer`, comme `forfait.archer_id`. FK *enforced* : la
+    # cascade applicative de `ArcherRepositorySQL.supprimer`/`fusionner` la traite explicitement,
+    # sans quoi l'archer devient indéracinable (500).
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
     score: Mapped[int | None] = mapped_column(nullable=True)
     distance_au_centre: Mapped[int | None] = mapped_column(nullable=True)

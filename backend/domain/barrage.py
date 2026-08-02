@@ -57,10 +57,11 @@ class ConfigurationBarrage:
     flèches ne serait pas un barrage mal réglé mais une autre épreuve. On le vérifie donc au lieu
     de l'accepter, contrairement au barème de poule ou au BSO où le club choisit.
 
-    ⚠️ **Ce value object n'a aucun consommateur** : il décrit le **format de saisie** (combien de
-    flèches on fait tirer), quand `resoudre_barrage` ne fait que **départager** des tirs déjà clos —
-    d'où le retrait de son paramètre. Il attend donc la surface de saisie du barrage, en même temps
-    que les autres moteurs de cette US ([DETTE-028](../../docs/dette.md)).
+    ⚠️ **Ce value object n'a toujours aucun consommateur, et E06US003 ne l'a pas branché** : la
+    surface de saisie est arrivée, mais elle fixe **une flèche par archer et par manche** dans le
+    schéma (`uq_barrage_tir`). Le barrage **par équipe** (volée de 3 flèches) reste donc
+    inexprimable sans migration — décision de modélisation assumée, l'épreuve par équipes n'ayant
+    pas encore de moteur ([DETTE-028](../../docs/dette.md), ADR-0028).
     """
 
     fleches: int = FLECHES_INDIVIDUEL

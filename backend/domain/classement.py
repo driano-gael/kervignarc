@@ -221,9 +221,12 @@ def _ranger(entrees_ordonnees: Sequence[_Entree], tiebreak: Tiebreak) -> dict[Ar
     « index + 1 » dès qu'il les sépare — d'où les sauts après un groupe d'ex æquo. Un abandon, trié
     après les en-lice, reçoit ainsi un rang qui **continue** leur numérotation (relégation).
     """
-    # DETTE-029 (docs/dette.md) : 3ᵉ écriture de « rang partagé à clé égale, avec sauts » dans le
-    # domaine (`classement._ranger`, `poule.classement_de_poule`, `suisse.classement_suisse`), et
-    # les trois divergent déjà. Remède proposé (fonction pure `attribuer_rangs`) en US dédiée.
+    # DETTE-029 (docs/dette.md) : 3ᵉ écriture de « rang partagé à critères classants égaux, avec
+    # sauts » dans le domaine (`classement._ranger`, `poule.classement_de_poule`,
+    # `suisse.classement_suisse`). E06US003 fait **diverger un axe de plus** : ce site range par
+    # **comparateur injecté**, les deux autres par **clé**. Le remède proposé au registre (fonction
+    # pure `attribuer_rangs(ordonnes, meme_rang)`, prédicat d'égalité en paramètre) accommode les
+    # deux formes — il reste valide, et l'US dédiée reste à faire.
     rangs: dict[ArcherId, int] = {}
     rang = 0
     tete: _Entree | None = None

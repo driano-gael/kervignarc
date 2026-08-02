@@ -45,11 +45,16 @@ pas dans un catalogue fermé). Le grain de `validation` **n'est pas** une politi
 reste **hors** `policies` (ADR-0046). Agrégats/stratégies de domaine **purs** — immuables, sans
 dépendance framework (règle 1).
 
-# DETTE-028 (../../docs/dette.md) : les familles `scoring` et `tiebreak` — et les six moteurs de
-# phase d'E05US015 — n'ont **aucun appelant de production**. `domain/classement.py` réimplémente
-# §8.1 à la main sans passer par `PolitiquesPhase`, donc `ScoreAvecHandicap` reste inerte bien que
-# le handicap soit stocké, exposé et affiché. Résorption en E01US024, qui branche les moteurs au
-# service de déroulé.
+# DETTE-028 (../../docs/dette.md) — **rétréci par E06US003 (02/08/2026)**, ne pas le relire au
+# passé : la famille `tiebreak` a désormais un appelant de production
+# (`ServiceClassement._tiebreak`, résolu **par le registre** depuis `config.policies.tiebreak`),
+# et `domain/classement.py` ne
+# réimplémente plus §8.1 à la main. Ce qui reste vrai, et seul : la famille **`scoring`** n'a
+# toujours aucun appelant — le classement calcule son cumul hors politique, donc
+# `ScoreAvecHandicap` reste inerte bien que le handicap soit stocké, exposé et affiché — et les
+# moteurs `poule`, `big_shoot_off`, `suisse`, `colline` (ainsi que `TiebreakPoules` et
+# `RoutingRepechage`) n'en ont pas davantage. Résorption : US dédiée du chantier moteur, la couture
+# `tiebreak` montrant désormais comment s'y prendre.
 
 [ADR-0004]: ../../docs/adr/0004-moteur-de-phases-politiques.md
 [ADR-0046]: ../../docs/adr/0046-config-policies-politiques-nommees-parametrees.md

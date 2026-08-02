@@ -101,11 +101,21 @@
 > **Le défaut du produit ne bouge pas** : sans seuil réglé, le classement est mot pour mot celui
 > d'E06US001 (rangs partagés), ce qu'un test fixe explicitement.
 >
-> ⚠️ **Une seule des trois portées est câblée**, et c'est une limite à connaître. `PorteeBarrage`
-> modélise qualification, poule et Big Shoot Off, et le moteur les sert toutes ; mais ni `poule.py`
-> ni `big_shoot_off.py` n'ont de **consommateur de production** (vérifié dans le code, pas supposé —
-> DETTE-028). Il n'existe aucun classement de poule calculé quelque part où brancher un barrage :
-> les câbler aurait produit une surface pour une phase que l'application ne sait pas dérouler.
+> **Les trois portées sont câblées** (élargissement demandé après le cadrage), mais **la boucle
+> n'est fermée que pour la qualification** : là, les tireurs sont *dérivés* du classement et le
+> verdict y *retourne*. En poule et en Big Shoot Off, l'organisateur *désigne* les tireurs — ni
+> `poule.py` ni `big_shoot_off.py` n'ont de consommateur de production (vérifié dans le code,
+> DETTE-028), donc il n'existe aucun classement où lire les ex æquo ni reverser le verdict. Le
+> barrage y est pleinement opérationnel ; son résultat se lit à l'écran et se reporte à la main.
+>
+> ⚠️ **La revue a trouvé cinq bloquants**, tous corrigés. Trois méritent d'être retenus parce
+> qu'aucun axe ne pouvait les voir seul : la manche était **écrite puis validée** (une saisie
+> refusée mettait le classement *public* en 422 pour tout le tournoi) ; la **manche 1** n'était
+> jamais confrontée aux tireurs annoncés (un barrage saisi à moitié classait **premier** l'archer
+> non noté) ; et le **seuil ne se réglait par aucun écran** — livré jusqu'à l'API, la fiche de
+> recette décrivait un champ qui n'existait pas. S'y ajoutait un défaut relevé par **les cinq
+> axes** : un archer qu'une volée validée en retard amenait à égalité *après* le tir prenait la
+> place devant le vainqueur du barrage, sans que rien ne le signale.
 >
 > **🎯 Prochaine :** **`E06US004`** — podium des duels & agrégation des rangs. *(E07US008 a occupé
 > une partie de son terrain sans la préempter : l'ADR-0065 dit ce qui reste à sa charge.)*

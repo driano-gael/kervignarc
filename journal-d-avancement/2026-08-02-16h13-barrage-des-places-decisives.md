@@ -31,9 +31,19 @@ rangs deviennent consécutifs dans le tableau — sans décaler les archers suiv
 exactement comme avant : rangs partagés, aucun encart, aucun message. Le barrage est une **option**,
 et c'est resté le point de vigilance principal de la livraison.
 
+**Les poules et le Big Shoot Off aussi.** Un dépliant « Départager d'autres archers » permet de
+conduire un barrage de poule ou de Big Shoot Off. Une différence à connaître : là, c'est
+l'organisateur qui **désigne** les archers à départager, parce que l'application ne calcule pas
+encore ces classements-là — et pour la même raison, le résultat s'affiche à l'écran mais ne remonte
+dans aucun classement. On le reporte à la main, en attendant que ces formats soient déroulés par
+l'application.
+
 **Ce qui n'est pas couvert.** Le barrage à l'intérieur d'un duel (égalité de sets) est une autre
-fonction, déjà livrée par ailleurs. Et le barrage en poule ou en Big Shoot Off attendra que
-l'application sache dérouler ces formats de phase : le mécanisme est prêt, mais il n'y a pas encore
-de classement de poule où l'insérer.
+fonction, déjà livrée par ailleurs.
+
+Deux garde-fous ajoutés après relecture, qui se voient à l'usage : un barrage ouvert par erreur
+s'**annule**, et une flèche mal notée se **corrige** depuis l'écran. Par ailleurs, aucune égalité
+n'est proposée tant qu'aucune flèche n'a été validée — sinon, au démarrage, tous les archers étant à
+zéro, l'application aurait proposé de faire tirer le plateau entier.
 
 Détail du parcours de vérification : [`docs/fonctionnel/E06US003.md`](../docs/fonctionnel/E06US003.md).

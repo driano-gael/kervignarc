@@ -480,8 +480,11 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   Si les flèches sont encore égales, on compare la distance au centre ; si elle n'a pas été mesurée,
   l'application **fait retirer** plutôt que de trancher sur une inconnue. Un archer absent au barrage
   annoncé est déclaré perdant, comme le veut le règlement — et cela se **coche**, jamais ne se
-  déduit d'un champ vide. **Rien ne change pour un tournoi qui ne demande rien** : c'est le défaut, et
-  il est resté intact. *(Livré juste avant : **E07US008**, les affectations du prochain tour.)*
+  déduit d'un champ vide. Un barrage ouvert par erreur s'**annule**, une flèche mal notée se
+  **corrige**. Les **poules** et le **Big Shoot Off** sont servis eux aussi, à une différence près :
+  l'organisateur y désigne lui-même les archers à départager, et le résultat ne remonte dans aucun
+  classement — l'application ne déroule pas encore ces formats. **Rien ne change pour un tournoi qui
+  ne demande rien** : c'est le défaut, et il est resté intact. *(Livré juste avant : **E07US008**, les affectations du prochain tour.)*
 - Avant-dernière US livrée : **E07US008** (les affectations du prochain tour) — US **à surface visible**,
   qui referme les **quatre canaux de routage**. L'archer parti de la salle retrouve sur son téléphone
   sa **cible** et sa **place** pour le duel suivant ; l'archer sorti voit le **rang qu'il a acquis**,
