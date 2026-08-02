@@ -176,6 +176,21 @@ describe('PanneauBarrages', () => {
     expect(screen.getByRole('button', { name: /Faire tirer/ })).toBeInTheDocument()
   })
 
+  it('propose « Faire tirer » quand le barrage au même rang porte D’AUTRES tireurs', () => {
+    // ⚠️ **Troisième cas à mécanisme unique, et le seul qui manquait.** Le barrage est de
+    // qualification, ni clos ni périmé, au même rang : `!clos` et `!perime` sont tous deux vrais,
+    // donc **seul** `memesTireurs` peut découvrir le bouton. Vérifié par mutation — sans ce cas,
+    // remplacer `memesTireurs(...)` par `true` laissait toute la suite verte, alors que c'est le
+    // mécanisme le plus robuste des trois (il se calcule sur les deux payloads locaux, là où
+    // `perime` vient d'une seconde requête qui peut arriver en retard).
+    afficher(
+      [barrage({ est_resolu: false, groupes_a_rejouer: [[1, 2]], participants: [1, 2] })],
+      [{ rang: 2, archer_ids: [1, 2, 3] }],
+    )
+
+    expect(screen.getByRole('button', { name: /Faire tirer/ })).toBeInTheDocument()
+  })
+
   it('n’allume l’ambre que s’il reste quelque chose à faire', () => {
     // Les barrages actés restent affichés (ils portent le chemin de correction) mais un tournoi
     // réglé ne doit pas garder une alerte permanente.
