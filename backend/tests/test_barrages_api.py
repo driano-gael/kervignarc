@@ -747,6 +747,7 @@ def test_un_barrage_designe_exige_deux_archers_distincts(
         )
 
         assert reponse.status_code == 409
+        assert reponse.json()["code"] == "tireurs_designes_invalides"
 
 
 def test_deux_poules_distinctes_ne_se_confondent_pas(
@@ -876,6 +877,7 @@ def test_la_qualification_refuse_les_champs_du_regime_designe(
         reponse = client.post(url, json={"rang": 2, "reference": "x"})
 
         assert reponse.status_code == 400
+        assert reponse.json()["code"] == "requete_invalide"
 
 
 def test_un_barrage_incoherent_n_emporte_pas_le_panneau(
@@ -984,15 +986,18 @@ def test_une_phase_d_un_vrai_autre_tournoi_est_refusee(
         assert reponse.json()["code"] == "tireurs_designes_invalides"
 
 
-def test_le_verdict_change_qui_entre_au_tableau(
+def test_le_verdict_est_visible_du_classement_que_consomme_le_placement(
     app_barrages: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """**La couture la plus à risque de l'US, et la seule qui n'était pas exercée.**
+    """Le classement **que consomme le placement** porte bien l'ordre issu du barrage.
 
-    `ServicePlacementDuels` compose le `ServiceClassement` qui porte désormais les barrages : un
-    verdict change donc *qui entre au tableau*, ce qui est le sens même de « places décisives ».
-    L'oracle 120 et les tests d'E06US001 passent tous par le chemin **par défaut** (sans seuil, sans
-    verdict) — ils ne pouvaient rien en dire.
+    ⚠️ **Portée exacte de ce test, parce que son nom précédent mentait.** Il vérifie que le
+    classement rendu par l'API reflète le verdict ; il ne traverse **pas** `ServicePlacementDuels`
+    et ne monte aucune phase d'élimination directe. La couture complète seuil → classement →
+    composition du tableau reste donc **non exercée** : elle demande un décor de tableau, qui
+    appartient à E06US004 (podium & agrégation des rangs). L'oracle 120 et les tests d'E06US001
+    passent tous par le chemin par défaut (sans seuil, sans verdict) et ne peuvent rien en dire —
+    c'est un angle mort connu, inscrit au registre plutôt que masqué par un nom flatteur.
     """
     scenario = Scenario(app_barrages)
     _, second, troisieme = scenario.archers

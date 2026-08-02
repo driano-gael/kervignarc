@@ -24,7 +24,7 @@ fait tourner une poule sur papier peut conduire et enregistrer son barrage dans 
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from application.classements import ServiceClassement
 from application.erreurs import (
@@ -54,6 +54,14 @@ from domain.ports import (
 from domain.tournoi import TournoiId
 
 
+@dataclass(frozen=True)
+class BarrageAffiche:
+    """Un barrage tel que l'écran doit le voir : l'agrégat, plus ce que seul le service sait."""
+
+    barrage: BarrageDePlaces
+    perime: bool
+
+
 class ServiceBarrage:
     """Cas d'usage du barrage de places : annoncer, saisir une manche, clore."""
 
@@ -78,10 +86,46 @@ class ServiceBarrage:
         self._archers = archers
         self._phases = phases
 
-    def lister(self, tournoi_id: TournoiId) -> list[BarrageDePlaces]:
-        """Tous les barrages d'un tournoi, clos compris (les verdicts acquis en font partie)."""
+    def lister(self, tournoi_id: TournoiId) -> list[BarrageAffiche]:
+        """Tous les barrages d'un tournoi, **clos compris**, avec leur état de péremption.
+
+        Les clos sont rendus parce que ce sont eux qui portent les verdicts acquis — et surtout
+        parce qu'ils doivent rester **corrigeables** : un verdict acté par erreur n'a aucun autre
+        chemin de réparation.
+
+        La **péremption** est calculée ici et non déduite par l'écran : elle demande le classement
+        courant, que seul le service sait obtenir. Un barrage périmé garde ses tirs et son verdict
+        recalculé, mais celui-ci sera **écarté** du classement ; l'écran doit donc le dire au lieu
+        de laisser saisir un groupe qui n'oppose plus les bonnes personnes.
+        """
         self._exiger_tournoi(tournoi_id)
-        return self._barrages.par_tournoi(tournoi_id)
+        barrages = self._barrages.par_tournoi(tournoi_id)
+        if not barrages:
+            return []
+        egalites = {
+            egalite.rang: set(egalite.participants)
+            for egalite in self._classements.pour_tournoi(tournoi_id).egalites_a_departager
+        }
+        return [
+            BarrageAffiche(barrage=barrage, perime=self._est_perime(barrage, egalites))
+            for barrage in barrages
+        ]
+
+    @staticmethod
+    def _est_perime(barrage: BarrageDePlaces, egalites: dict[int, set[Participant]]) -> bool:
+        """Ce barrage porte-t-il encore sur le groupe d'ex æquo constaté aujourd'hui ?
+
+        Ne vaut que pour la **qualification** : ailleurs, aucun classement n'est calculé, donc rien
+        ne permet de dire qu'un groupe a changé. Un barrage **clos** n'est jamais périmé : son
+        verdict est déjà appliqué, donc l'égalité a disparu — la relire comme une péremption
+        marquerait tous les barrages acheves.
+        """
+        if barrage.portee is not PorteeBarrage.QUALIFICATION or barrage.clos:
+            return False
+        if barrage.rang_dispute is None:
+            return False
+        attendu = egalites.get(barrage.rang_dispute)
+        return attendu is not None and attendu != set(barrage.participants)
 
     def annoncer(
         self,

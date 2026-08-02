@@ -16,7 +16,15 @@
 
 import { useState } from 'react'
 import type { Barrage, EgaliteADepartager, LigneClassement, PorteeBarrage, TirBarrage } from './api'
-import { depuisTirs, mancheComplete, type SaisieTir, TIR_VIERGE, versTirs } from './barrage'
+import {
+  correspond,
+  depuisTirs,
+  mancheComplete,
+  memesTireurs,
+  type SaisieTir,
+  TIR_VIERGE,
+  versTirs,
+} from './barrage'
 import {
   useAnnoncerBarrage,
   useAnnulerBarrage,
@@ -24,11 +32,6 @@ import {
   useCloreBarrage,
   useSaisirMancheBarrage,
 } from './hooks'
-
-/** Deux barrages portent-ils sur exactement les memes tireurs ? */
-function memesTireurs(a: number[], b: number[]): boolean {
-  return a.length === b.length && a.every((identifiant) => b.includes(identifiant))
-}
 
 /** Ce que chaque portée vient trancher — le panneau sert les trois (ADR-0066). */
 const LIBELLE_PORTEE: Record<PorteeBarrage, string> = {
@@ -53,7 +56,13 @@ export function PanneauBarrages({
   lignes: LigneClassement[]
 }) {
   const barrages = useBarrages(tournoiId)
-  const enCours = (barrages.data ?? []).filter((barrage) => !barrage.clos)
+  // ⚠️ **Les barrages CLOS sont rendus eux aussi**, et c'est un correctif de revue. Les filtrer
+  // rendait inatteignable le seul chemin de réparation d'un verdict acté par erreur : le barrage
+  // quittait l'écran au clic sur « Acter », l'égalité disparaissait du classement (le verdict
+  // s'appliquant), et la carte entière s'effaçait. Le juge qui avait inversé deux flèches sur la
+  // dernière place qualificative envoyait le mauvais archer au tableau, définitivement — le
+  // dommage même que le correctif serveur disait avoir fermé.
+  const tous = barrages.data ?? []
   const nomDe = (archerId: number) => {
     const ligne = lignes.find((candidate) => candidate.archer_id === archerId)
     return ligne ? `${ligne.nom} ${ligne.prenom}` : `Archer ${archerId}`
@@ -63,7 +72,7 @@ export function PanneauBarrages({
   // promesse « aucun bruit par defaut », et l'etape 1 de la recette la verifie explicitement. Le
   // depliant de departage manuel, lui, vit hors de cette carte (`VueClassement`) : il doit rester
   // atteignable en permanence sans allumer une alerte ambre toute la journee.
-  if (egalites.length === 0 && enCours.length === 0) {
+  if (egalites.length === 0 && tous.length === 0) {
     return null
   }
 
@@ -78,13 +87,15 @@ export function PanneauBarrages({
               tournoiId={tournoiId}
               egalite={egalite}
               nomDe={nomDe}
-              dejaOuvert={enCours.some(
+              dejaOuvert={tous.some(
                 (barrage) =>
                   // Portee **et** tireurs : un barrage de poule portant un rang masquait le bouton
                   // de l'egalite de qualification du meme rang, et un barrage **perime** (annonce
                   // avant qu'un archer ne rejoigne l'egalite) le masquait aussi — l'organisateur
                   // faisait alors tirer un groupe incomplet sans que rien ne l'explique.
                   barrage.portee === 'qualification' &&
+                  !barrage.clos &&
+                  !barrage.perime &&
                   barrage.rang_dispute === egalite.rang &&
                   memesTireurs(barrage.participants, egalite.archer_ids),
               )}
@@ -92,7 +103,7 @@ export function PanneauBarrages({
           ))}
         </ul>
       )}
-      {enCours.map((barrage) => (
+      {tous.map((barrage) => (
         <BarrageEnCours key={barrage.id} tournoiId={tournoiId} barrage={barrage} nomDe={nomDe} />
       ))}
     </section>
@@ -157,7 +168,13 @@ function BarrageEnCours({
   return (
     <article className="barrage">
       <h4 className="barrage__titre">
-        {titre} — manche {derniere + 1}
+        {titre}
+        {barrage.portee !== 'qualification' && barrage.rang_dispute !== null && (
+          // Un barrage de poule **portant un rang** s'affichait « 2ᵉ place », indiscernable de
+          // celui de qualification au même rang.
+          <span className="barrage__portee">{` · ${LIBELLE_PORTEE[barrage.portee]}`}</span>
+        )}
+        {barrage.clos ? ' — acté' : ` — manche ${derniere + 1}`}
         {barrage.reference && (
           // La **reference** (numero de poule, de manche) est le seul champ qui distingue deux
           // barrages de meme portee : la saisir sans jamais la reafficher laissait l'organisateur
@@ -166,18 +183,32 @@ function BarrageEnCours({
         )}
         {barrage.incoherent && (
           <span className="carte__etat carte__etat--erreur" role="alert">
-            {' · '}Saisie incoherente : corrigez une manche ou annulez ce barrage.
+            {' · '}Saisie incohérente : corrigez une manche ou annulez ce barrage.
           </span>
         )}
       </h4>
-      {barrage.est_resolu ? (
+      {barrage.perime ? (
+        // Périmé : le groupe d'ex æquo a changé depuis l'annonce. On **retire** le formulaire de
+        // saisie et « Acter » — les laisser conduisait à faire tirer un groupe incomplet, à
+        // l'acter en 200, et à ne voir aucun rang bouger, sans un mot d'explication.
+        <p className="carte__etat carte__etat--erreur" role="alert">
+          Ce barrage ne porte plus sur les archers à départager : le classement a bougé depuis son
+          annonce. Annulez-le, puis relancez le barrage depuis l&apos;égalité signalée.
+        </p>
+      ) : barrage.est_resolu ? (
         <>
           <p className="barrage__verdict">
             Départagé : {barrage.ordre.map(nomDe).join(' devant ')}
           </p>
-          <button type="button" onClick={() => clore.mutate(barrage.id)} disabled={clore.isPending}>
-            Acter le résultat
-          </button>
+          {!barrage.clos && (
+            <button
+              type="button"
+              onClick={() => clore.mutate(barrage.id)}
+              disabled={clore.isPending}
+            >
+              Acter le résultat
+            </button>
+          )}
         </>
       ) : (
         // Un groupe par égalité restante : ils se retirent **séparément**, et les fusionner
@@ -210,7 +241,7 @@ function BarrageEnCours({
             // est colle a « Corriger la manche N » sur une interface tactile. Le projet confirme
             // des suppressions bien moins couteuses ; on s'aligne des qu'il y a quelque chose a
             // perdre, et on laisse le clic unique sur un barrage vierge.
-            const perte = `Annuler ce barrage ? ${derniere} manche(s) saisie(s) seront effacees.`
+            const perte = `Annuler ce barrage ? ${derniere} manche(s) saisie(s) seront effacées.`
             if (derniere > 0 && !window.confirm(perte)) return
             annuler.mutate(barrage.id)
           }}
@@ -380,9 +411,7 @@ export function DepartageManuel({
   // filtre. Les archers **déjà cochés** restent toujours visibles, sinon un filtre les ferait
   // disparaître de l'écran tout en comptant dans la sélection.
   const visibles = lignes.filter(
-    (ligne) =>
-      choisis.includes(ligne.archer_id) ||
-      `${ligne.nom} ${ligne.prenom}`.toLowerCase().includes(recherche.trim().toLowerCase()),
+    (ligne) => choisis.includes(ligne.archer_id) || correspond(ligne.nom, ligne.prenom, recherche),
   )
 
   const soumettre = () =>

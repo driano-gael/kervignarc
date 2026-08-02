@@ -64,3 +64,28 @@ export function depuisTirs(tirs: TirBarrage[] | undefined): Record<number, Saisi
   }
   return saisies
 }
+
+/** Deux barrages portent-ils sur exactement les mêmes tireurs ?
+ *
+ * Sert à décider si un barrage déjà ouvert **est** celui de l'égalité signalée. Comparer les seuls
+ * rangs laissait un barrage périmé masquer le bouton « Faire tirer » de l'égalité courante.
+ */
+export function memesTireurs(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((identifiant) => b.includes(identifiant))
+}
+
+/** Un archer répond-il à la recherche ? Casse **et accents** repliés.
+ *
+ * ⚠️ Sans le repli des diacritiques, « Créac'h » ne répondait pas à « creach » — ce qui compte
+ * dans un club breton, et c'est le genre de détail qui rend une liste de 120 noms inutilisable au
+ * doigt. Même parti que `domain.club.cle_nom` côté serveur.
+ */
+export function correspond(nom: string, prenom: string, recherche: string): boolean {
+  const replier = (texte: string) =>
+    texte
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLowerCase()
+  const terme = replier(recherche.trim())
+  return terme === '' || replier(`${nom} ${prenom}`).includes(terme)
+}

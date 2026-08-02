@@ -34,7 +34,9 @@
 
 ### E06US003 — Barrage de tir pour places décisives
 *En tant que* système, *je veux* un barrage quand le comptage ne suffit pas, *afin de* trancher les places décisives.
-- **CA** : déclenchement d'un barrage (shoot-off) pour les positions à enjeu ; résultat intégré au classement.
+- **CA** : déclenchement d'un barrage (shoot-off) pour les positions à enjeu ; résultat intégré au
+  classement **de qualification**. *(Précisé le 02/08/2026 : en poule et en Big Shoot Off le barrage
+  est conduit mais son verdict n'est reversé nulle part — voir la puce « poule & Big Shoot Off ».)*
 - **CA — seuil configurable (cadrage du 02/08/2026)** : ce qui fait qu'une place est « à enjeu » est un
   **réglage de format**, pas une règle en dur : la politique `tiebreak` de la phase porte un seuil
   `jusqu_au`, et **toute égalité dont le rang du groupe est ≤ seuil** est signalée « barrage requis ».
@@ -47,16 +49,16 @@
   faible** d'un **Big Shoot Off**. Les trois appliquent le même moteur (`resoudre_barrage`) ; aucun ne
   le réimplémente. Le BSO n'est **pas** soumis au seuil : son égalité bloque la manche par
   construction, elle n'a pas de « place à enjeu » à comparer.
-- **CA — poule & Big Shoot Off : tireurs désignés, verdict non reversé (extension du 02/08/2026)**.
-  Le CA ci-dessus disait « résultat intégré au classement » pour les trois consommateurs : c'est
-  vrai en **qualification** seulement. Pour les deux autres portées, l'organisateur **désigne**
-  lui-même les tireurs, et le verdict **ne remonte dans aucun classement** — non par choix de
-  conception, mais parce qu'il n'existe **aucun classement de poule ni aucun état de Big Shoot Off
-  calculé** où le lire ni où le reverser (ni `poule.py` ni `big_shoot_off.py` n'ont de consommateur
-  de production, [DETTE-028](../docs/dette.md)). Le barrage y est pleinement conduit (annonce,
-  manches, absents, distance, correction, annulation) et son résultat se lit à l'écran. La boucle se
-  fermera quand le chantier moteur livrera l'exécution de ces phases — **c'est cette US-là qui
-  devra reprendre le présent CA**, pas la suivante qui en dériverait ses tests.
+  ⚠️ **Seul (a) ferme la boucle** (précisé le 02/08/2026) : pour (b) et (c), les tireurs sont
+  **désignés** et le verdict n'est reversé nulle part, faute de classement calculé — puce suivante.
+- **CA — poule & Big Shoot Off : tireurs désignés, verdict non reversé** : hors qualification,
+  l'organisateur **désigne** les archers à départager, et le résultat du barrage **se lit à
+  l'écran sans être reversé dans aucun classement**. Le barrage y est conduit entièrement (annonce,
+  manches, absents, distance au centre, correction, annulation) avec le même moteur.
+  *Pourquoi* : il n'existe aucun classement de poule ni aucun état de Big Shoot Off **calculé** où
+  lire les ex æquo ni où reverser le verdict — ni `poule.py` ni `big_shoot_off.py` n'ont de
+  consommateur de production ([DETTE-028](../docs/dette.md)). **L'US qui livrera l'exécution de ces
+  phases devra reprendre ce CA** ; une US qui en dériverait ses tests d'ici là écrirait un test faux.
 - **CA — un verdict périmé ne s'applique pas**. Les tireurs sont **figés à l'annonce** ; le
   classement, lui, continue de vivre. Si une volée validée en retard, une correction ou un forfait
   **change le groupe** d'ex æquo, le verdict ne décrit plus cette égalité : il est **écarté** et

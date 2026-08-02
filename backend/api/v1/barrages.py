@@ -90,6 +90,12 @@ class AnnonceRequete(BaseModel):
         ensemble de tireurs), et le dernier lu l'emportait **en silence**. L'UI ne le permettait
         pas ; l'API est le contrat.
         """
+        # `""` et `None` désignent le même « endroit » : ne pas les normaliser laisserait ouvrir
+        # deux barrages concurrents sur la même poule, aux mêmes tireurs et aux verdicts opposés.
+        if self.reference is not None and self.reference.strip() == "":
+            self.reference = None
+        elif self.reference is not None:
+            self.reference = self.reference.strip()
         if self.portee is PorteeBarrage.QUALIFICATION:
             if self.rang is None:
                 raise ValueError(
@@ -123,6 +129,17 @@ class BarrageReponse(BaseModel):
     égalités distinctes, qui se retirent séparément.
     """
 
+    perime: bool = False
+    """Ce barrage ne porte plus sur le groupe d'ex æquo actuellement constaté (E06US003).
+
+    ⚠️ **Signalé, et non simplement refusé à l'annonce.** Une première version ne gardait que le
+    chemin `annoncer` : le barrage déjà ouvert, lui, restait tirable, résoluble et **actable**. Le
+    panneau affichait côte à côte « 2ᵉ place — A, B, C » et un formulaire ne contenant que A et B ;
+    le geste naturel était de remplir celui qui était là. L'application répondait « Départagé »,
+    acceptait la clôture — et le classement ne bougeait pas d'un rang, le verdict étant écarté,
+    sans un mot d'explication.
+    """
+
     incoherent: bool = False
     """L'agrégat en base ne se relit pas (correction partielle, écriture directe…).
 
@@ -152,7 +169,7 @@ class BarrageReponse(BaseModel):
     groupes_a_rejouer: list[list[int]]
 
     @staticmethod
-    def de_agregat(barrage: BarrageDePlaces) -> BarrageReponse:
+    def de_agregat(barrage: BarrageDePlaces, perime: bool = False) -> BarrageReponse:
         assert barrage.id is not None, "Un barrage rendu par le service est persisté."
         try:
             resultat = barrage.resultat()
@@ -161,6 +178,7 @@ class BarrageReponse(BaseModel):
             resultat = ResultatBarrage(groupes_a_rejouer=(barrage.participants,))
             incoherent = True
         return BarrageReponse(
+            perime=perime,
             incoherent=incoherent,
             id=barrage.id,
             tournoi_id=barrage.tournoi_id,
@@ -193,8 +211,8 @@ class BarrageReponse(BaseModel):
 async def lister_barrages(tournoi_id: int, request: Request) -> list[BarrageReponse]:
     """Les barrages d'un tournoi, **clos compris** — ce sont eux qui portent les verdicts acquis."""
     service: ServiceBarrage = request.app.state.service_barrage
-    barrages = await run_in_threadpool(service.lister, tournoi_id)
-    return [BarrageReponse.de_agregat(barrage) for barrage in barrages]
+    affiches = await run_in_threadpool(service.lister, tournoi_id)
+    return [BarrageReponse.de_agregat(a.barrage, perime=a.perime) for a in affiches]
 
 
 @router.post(
@@ -263,9 +281,8 @@ async def annuler_barrage(tournoi_id: int, barrage_id: int, request: Request) ->
     """Annule un barrage annoncé par erreur (mauvais rang, égalité disparue).
 
     Sans cette route, un barrage qu'on ne veut pas faire tirer était **définitif** : la clôture
-    exige un barrage résolu, et son rang bloquait toute nouvelle annonce. 409 si le barrage est
-    clos — son verdict est acquis, c'est une correction de manche qu'il faut alors, pas une
-    suppression.
+    exige un barrage résolu, et son rang bloquait toute nouvelle annonce. Un barrage **clos**
+    s'annule aussi — son verdict n'est jamais stocké, `clos` ne dit que « le juge a acté ».
     """
     service: ServiceBarrage = request.app.state.service_barrage
     write_queue: WriteQueue = request.app.state.write_queue

@@ -15,6 +15,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import delete, nulls_last, select, update
+from sqlalchemy import true as sa_true
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -3111,17 +3112,16 @@ def _fusionner_barrages(session: Session, gagnant_id: int, perdant_id: int) -> N
     Un barrage qui se retrouverait à **moins de deux** participants après fusion n'oppose plus
     personne : il est supprimé plutôt que laissé dans un état que l'agrégat rejetterait.
     """
+    # Ceinture symétrique de `_supprimer_barrages_de_l_archer` : un tir du perdant orphelin de
+    # `participants_json` échapperait à la boucle et ferait échouer le `DELETE` de l'archer (500).
+    orphelins = [ligne.id for ligne in _barrages_contenant(session, perdant_id)]
+    session.execute(
+        delete(BarrageTirORM).where(
+            BarrageTirORM.archer_id == perdant_id,
+            BarrageTirORM.barrage_id.notin_(orphelins) if orphelins else sa_true(),
+        )
+    )
     for ligne in _barrages_contenant(session, perdant_id):
-        if gagnant_id in json.loads(ligne.participants_json):
-            # ⚠️ **Les deux fiches tiraient le même barrage : il n'a plus de verdict à conserver.**
-            # Reporter les tirs produirait un agrégat que le moteur refuse à la relecture — une
-            # manche ≥ 2 se retrouverait avec un tireur que la manche 1 vient de départager, et
-            # `GET /barrages` tomberait en 422, emportant le panneau qui permettrait de réparer.
-            # Un barrage qui opposait une personne à elle-même est caduc, quel que soit le nombre
-            # de tireurs restants : on le supprime, l'organisateur le rouvrira s'il y a lieu.
-            session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id == ligne.id))
-            session.execute(delete(BarrageORM).where(BarrageORM.id == ligne.id))
-            continue
         deja = {
             manche
             for (manche,) in session.execute(
@@ -3160,6 +3160,38 @@ def _fusionner_barrages(session: Session, gagnant_id: int, perdant_id: int) -> N
             .where(BarrageORM.id == ligne.id)
             .values(participants_json=json.dumps(participants))
         )
+        _supprimer_si_illisible(session, ligne.id)
+
+
+def _supprimer_si_illisible(session: Session, barrage_id: int) -> None:
+    """Supprime le barrage **seulement s'il ne se relit plus** après fusion.
+
+    ⚠️ **On vérifie au lieu de présumer, et c'est un correctif de revue.** Une première version
+    supprimait le barrage dès que la fusion touchait deux de ses participants — ce qui détruisait
+    aussi des barrages parfaitement sains : à une seule manche, le report des tirs produit un
+    agrégat relisible. L'organisateur nettoyait un doublon d'inscription, geste de routine, et un
+    barrage tiré et acté sur la dernière place qualificative disparaissait sans trace, le classement
+    revenant silencieusement au rang partagé.
+
+    Le vrai critère n'est pas « deux fiches concernées » mais « l'agrégat tient-il encore » : une
+    manche ≥ 2 peut se retrouver avec un tireur que la manche 1 vient de départager. On rejoue donc
+    le moteur, et on ne supprime que s'il refuse.
+    """
+    ligne = session.get(BarrageORM, barrage_id)
+    if ligne is None:  # pragma: no cover — on vient de l'écrire
+        return
+    tirs = list(
+        session.execute(
+            select(BarrageTirORM)
+            .where(BarrageTirORM.barrage_id == barrage_id)
+            .order_by(BarrageTirORM.id)
+        ).scalars()
+    )
+    try:
+        _vers_barrage(ligne, tirs).resultat()
+    except DomainError:
+        session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id == barrage_id))
+        session.execute(delete(BarrageORM).where(BarrageORM.id == barrage_id))
 
 
 def _vers_barrage(ligne: BarrageORM, tirs: Sequence[BarrageTirORM]) -> BarrageDePlaces:

@@ -355,3 +355,68 @@ def test_supprimer_un_barrage_efface_ses_tirs(tmp_path: Path) -> None:
 
     assert depot.par_id(ouvert.id) is None
     assert depot.par_tournoi(tournoi_id) == []
+
+
+def test_fusionner_preserve_un_barrage_qui_se_relit_encore(tmp_path: Path) -> None:
+    """La suppression ne doit frapper que ce qui **ne se relit plus**.
+
+    Une première version supprimait le barrage dès que la fusion touchait deux de ses participants
+    — ce qui détruisait aussi des cas parfaitement sains : à une seule manche, le report des tirs
+    produit un agrégat relisible. L'organisateur nettoyait un doublon d'inscription, geste de
+    routine, et un barrage tiré et acté sur la dernière place qualificative disparaissait sans
+    trace, le classement revenant silencieusement au rang partagé.
+    """
+    db, tournoi_id, archers = _contexte(tmp_path, 3)
+    gagnant, perdant, tiers = archers
+    depot = BarrageRepositorySQL(db.session_factory)
+    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    assert ouvert.id is not None
+    depot.enregistrer_manche(
+        ouvert.id,
+        1,
+        [
+            TirBarrage(Participant.individuel(gagnant), 10),
+            TirBarrage(Participant.individuel(perdant), 9),
+            TirBarrage(Participant.individuel(tiers), 8),
+        ],
+    )
+
+    ArcherRepositorySQL(db.session_factory).fusionner(gagnant, perdant)
+
+    relu = depot.par_tournoi(tournoi_id)
+    assert len(relu) == 1, "un barrage encore relisible ne doit pas être détruit"
+    assert relu[0].participants == (
+        Participant.individuel(gagnant),
+        Participant.individuel(tiers),
+    )
+    assert relu[0].resultat().est_resolu
+
+
+def test_fusionner_supprime_un_barrage_devenu_illisible(tmp_path: Path) -> None:
+    """…mais un agrégat que le moteur refuse doit bien partir : sinon chaque lecture lèverait."""
+    db, tournoi_id, archers = _contexte(tmp_path, 3)
+    gagnant, perdant, tiers = archers
+    depot = BarrageRepositorySQL(db.session_factory)
+    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    assert ouvert.id is not None
+    depot.enregistrer_manche(
+        ouvert.id,
+        1,
+        [
+            TirBarrage(Participant.individuel(gagnant), 10),
+            TirBarrage(Participant.individuel(perdant), 8),
+            TirBarrage(Participant.individuel(tiers), 8),
+        ],
+    )
+    depot.enregistrer_manche(
+        ouvert.id,
+        2,
+        [
+            TirBarrage(Participant.individuel(perdant), 9),
+            TirBarrage(Participant.individuel(tiers), 7),
+        ],
+    )
+
+    ArcherRepositorySQL(db.session_factory).fusionner(gagnant, perdant)
+
+    assert depot.par_tournoi(tournoi_id) == []

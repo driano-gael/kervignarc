@@ -131,6 +131,10 @@ export interface Barrage {
   // Numéro de poule ou de manche. Le **seul** champ qui distingue deux barrages de même portée :
   // il entre dans l'identité côté serveur, donc il doit être affiché.
   reference: string | null
+  // Le groupe d'ex æquo a changé depuis l'annonce : le verdict de ce barrage sera **écarté** du
+  // classement. L'écran doit le dire au lieu de laisser saisir un groupe qui n'oppose plus les
+  // bonnes personnes.
+  perime: boolean
   // L'agrégat en base ne se relit pas (saisie corrompue, écriture directe). Le barrage reste
   // **listé et actionnable** plutôt que de faire tomber tout le panneau en 422.
   incoherent: boolean
