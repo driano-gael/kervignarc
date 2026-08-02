@@ -16,10 +16,15 @@ Trois points du CA méritaient leur test nommé, parce qu'ils sont contre-intuit
 
 from __future__ import annotations
 
+import dataclasses as _dataclasses
+import datetime
+
 import pytest
 
 from domain.barrage import (
+    BarrageDePlaces,
     EgaliteADepartager,
+    PorteeBarrage,
     TirBarrage,
     VerdictBarrage,
     egalites_a_departager,
@@ -250,3 +255,42 @@ def test_un_verdict_vide_ne_range_personne() -> None:
     vrai serait pire qu'un refus, parce qu'il s'affiche sans avertir (contrat de `ResultatBarrage`).
     """
     assert VerdictBarrage(rang=8, ordre=()).rangs() == {}
+
+
+# --- couverture de la manche 1 (correctif de revue, bloquant) ------------------------------------
+
+
+def _annonce(participants: tuple[Participant, ...]) -> BarrageDePlaces:
+    return BarrageDePlaces(
+        tournoi_id=1,
+        portee=PorteeBarrage.QUALIFICATION,
+        participants=participants,
+        cree_le=datetime.datetime(2026, 8, 2, 12, 0, tzinfo=datetime.UTC),
+        rang_dispute=8,
+    )
+
+
+def test_la_premiere_manche_doit_faire_tirer_tous_les_participants() -> None:
+    """Le pendant, pour la manche 1, de « un groupe se retire en entier ou pas du tout ».
+
+    C'est le trou qui rendait le reste inopérant : `_rejouer` ne traite que les manches ≥ 2, et
+    `partitionner_barrage` ne connaît que les tirs qu'on lui donne — il ne peut pas remarquer qu'il
+    en manque. Un barrage annoncé à trois dont on ne saisit que deux tirs rendait `est_resolu=True`
+    en **oubliant** le troisième, lequel passait ensuite devant les tireurs au classement.
+    """
+    barrage = _annonce((A, B, C))
+    with pytest.raises(ConfigurationBarrageInvalide, match="tous les participants"):
+        _dataclasses.replace(barrage, manches=((TirBarrage(A, 10), TirBarrage(B, 9)),)).resultat()
+
+
+def test_un_absent_se_saisit_il_ne_s_omet_pas() -> None:
+    """La bonne façon de ne pas noter quelqu'un : un score nul (absent), pas une ligne manquante."""
+    barrage = _dataclasses.replace(
+        _annonce((A, B, C)),
+        manches=((TirBarrage(A, 10), TirBarrage(B, 9), TirBarrage(C, None)),),
+    )
+    assert barrage.resultat().ordre == (A, B, C)
+
+
+def test_un_barrage_sans_manche_reste_a_tirer() -> None:
+    assert not _annonce((A, B)).resultat().est_resolu

@@ -332,3 +332,244 @@ def test_les_ecritures_du_barrage_exigent_l_admin(app_barrages: FastAPI) -> None
         reponse = client.post(f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2})
 
         assert reponse.status_code == 401
+
+
+# --- correctifs de revue -------------------------------------------------------------------------
+
+
+def test_une_manche_refusee_ne_laisse_aucune_trace_et_le_classement_reste_lisible(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le défaut le plus coûteux trouvé en revue : la manche était **écrite puis** validée.
+
+    La requête était refusée *et* la ligne persistée ; ensuite, chaque lecture rejouait le moteur
+    et levait — donc `GET /classement`, **public et projeté en salle**, tombait en 422 pour tout le
+    tournoi, panneau d'organisation compris : plus aucun écran pour réparer.
+    """
+    scenario = Scenario(app_barrages)
+    _, second, _ = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+
+        # Deux tirs, mais du **même** archer : la manche passe le DTO (deux entrées) et échoue au
+        # domaine — le troisième tireur annoncé manque, et un participant figure deux fois. C'est
+        # exactement le chemin qui écrivait avant de valider.
+        refus = client.put(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
+            json={
+                "tirs": [
+                    {"archer_id": second, "score": 9},
+                    {"archer_id": second, "score": 8},
+                ]
+            },
+        )
+
+        assert refus.status_code == 422, refus.text
+        # Rien n'a été écrit…
+        barrages = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/barrages").json()
+        assert barrages[0]["manches"] == []
+        # …et les deux lectures restent saines.
+        assert client.get(f"/api/v1/tournois/{scenario.tournoi_id}/classement").status_code == 200
+
+
+def test_corriger_la_manche_1_tronque_les_suivantes(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Réécrire la manche 1 change la partition : les retirs qui en découlaient n'ont plus d'objet.
+
+    Les garder produisait un agrégat que le moteur refuse à la relecture — donc, à nouveau, un
+    classement en 422 permanent.
+    """
+    scenario = Scenario(app_barrages)
+    _, second, troisieme = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+        url = f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche"
+        client.put(
+            url,
+            json={
+                "tirs": [
+                    {"archer_id": second, "score": 9},
+                    {"archer_id": troisieme, "score": 9},
+                ]
+            },
+        )
+        client.put(
+            url,
+            json={
+                "tirs": [
+                    {"archer_id": second, "score": 8},
+                    {"archer_id": troisieme, "score": 10},
+                ]
+            },
+        )
+
+        corrige = client.put(
+            url,
+            json={
+                "manche": 1,
+                "tirs": [
+                    {"archer_id": second, "score": 10},
+                    {"archer_id": troisieme, "score": 8},
+                ],
+            },
+        )
+
+        assert corrige.status_code == 200, corrige.text
+        assert len(corrige.json()["manches"]) == 1
+        assert corrige.json()["ordre"] == [second, troisieme]
+        assert client.get(f"/api/v1/tournois/{scenario.tournoi_id}/classement").status_code == 200
+
+
+def test_annuler_un_barrage_libere_le_rang(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Sans annulation, un barrage ouvert par erreur restait définitif et bloquait son rang."""
+    scenario = Scenario(app_barrages)
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+
+        annulation = client.delete(f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}")
+
+        assert annulation.status_code == 204
+        assert client.get(f"/api/v1/tournois/{scenario.tournoi_id}/barrages").json() == []
+        # Le rang est de nouveau annonçable.
+        assert (
+            client.post(
+                f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            ).status_code
+            == 201
+        )
+
+
+def test_un_barrage_d_un_autre_tournoi_est_introuvable(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Deux tournois tournent en parallèle par conception : un identifiant deviné ne doit pas
+    permettre d'écrire dans le barrage du voisin."""
+    scenario = Scenario(app_barrages)
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+        autre = client.post("/api/v1/tournois", json={"nom": "Autre", "date": "2026-03-15"}).json()[
+            "id"
+        ]
+
+        reponse = client.delete(f"/api/v1/tournois/{autre}/barrages/{barrage_id}")
+
+        assert reponse.status_code == 404
+        assert reponse.json()["code"] == "barrage_introuvable"
+
+
+def test_un_barrage_clos_refuse_une_manche_de_plus(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    scenario = Scenario(app_barrages)
+    _, second, troisieme = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+        url = f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche"
+        client.put(
+            url,
+            json={
+                "tirs": [
+                    {"archer_id": second, "score": 8},
+                    {"archer_id": troisieme, "score": 10},
+                ]
+            },
+        )
+        client.post(f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/cloture")
+
+        reponse = client.put(
+            url,
+            json={
+                "tirs": [
+                    {"archer_id": second, "score": 9},
+                    {"archer_id": troisieme, "score": 9},
+                ]
+            },
+        )
+
+        assert reponse.status_code == 409
+        assert reponse.json()["code"] == "barrage_deja_clos"
+
+
+def test_le_verdict_survit_a_l_effacement_du_seuil(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Promesse de l'étape 7 de la recette : les archers **ont** tiré, leur résultat n'est pas
+    annulé par un changement de réglage."""
+    scenario = Scenario(app_barrages)
+    _, second, troisieme = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+        client.put(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
+            json={
+                "tirs": [
+                    {"archer_id": second, "score": 8},
+                    {"archer_id": troisieme, "score": 10},
+                ]
+            },
+        )
+
+        _regler_le_seuil(client, scenario, None)
+
+        assert _classement(client, scenario.tournoi_id)["egalites_a_departager"] == []
+        assert _rangs(client, scenario.tournoi_id) == {
+            scenario.archers[0]: 1,
+            troisieme: 2,
+            second: 3,
+        }
+
+
+def test_un_score_hors_bareme_est_refuse(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Une flèche vaut au plus 10. Un `100` mal tapé gagnait le barrage et modifiait le podium.
+
+    Borné au DTO, donc **400** (entrée invalide) et non 422 : la convention du projet distingue la
+    requête mal formée de la règle métier violée."""
+    scenario = Scenario(app_barrages)
+    _, second, troisieme = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+
+        reponse = client.put(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
+            json={
+                "tirs": [
+                    {"archer_id": second, "score": 100},
+                    {"archer_id": troisieme, "score": 9},
+                ]
+            },
+        )
+
+        assert reponse.status_code == 400

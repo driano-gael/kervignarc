@@ -42,14 +42,21 @@ class TirRequete(BaseModel):
     """
 
     archer_id: int
-    score: int | None = Field(default=None, ge=0)
+    score: int | None = Field(default=None, ge=0, le=10)
     distance_au_centre: int | None = Field(default=None, ge=0)
 
 
 class MancheRequete(BaseModel):
     """Les tirs d'une manche. `manche` absent = la suivante ; fourni = la manche à **corriger**."""
 
-    tirs: list[TirRequete]
+    tirs: list[TirRequete] = Field(min_length=2, max_length=64)
+    """Un barrage oppose **au moins deux** tireurs, et le groupe se retire **en entier**.
+
+    `min_length=2` n'est pas décoratif : une liste vide effaçait la manche, et une liste d'un seul
+    tir faisait « gagner » celui qui avait tiré, faute d'adversaire. Le plafond borne l'entrée
+    cliente, comme `ConfigPhaseRequete.sources`.
+    """
+
     manche: int | None = Field(default=None, ge=1)
 
 
@@ -169,6 +176,24 @@ async def saisir_manche(
         )
     )
     return BarrageReponse.de_agregat(barrage)
+
+
+@router.delete(
+    "/tournois/{tournoi_id}/barrages/{barrage_id}",
+    status_code=204,
+    dependencies=[Depends(exiger_admin)],
+)
+async def annuler_barrage(tournoi_id: int, barrage_id: int, request: Request) -> None:
+    """Annule un barrage annoncé par erreur (mauvais rang, égalité disparue).
+
+    Sans cette route, un barrage qu'on ne veut pas faire tirer était **définitif** : la clôture
+    exige un barrage résolu, et son rang bloquait toute nouvelle annonce. 409 si le barrage est
+    clos — son verdict est acquis, c'est une correction de manche qu'il faut alors, pas une
+    suppression.
+    """
+    service: ServiceBarrage = request.app.state.service_barrage
+    write_queue: WriteQueue = request.app.state.write_queue
+    await asyncio.wrap_future(write_queue.submit(lambda: service.annuler(tournoi_id, barrage_id)))
 
 
 @router.post(

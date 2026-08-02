@@ -18,6 +18,7 @@ from application.erreurs import TournoiIntrouvable
 from domain.barrage import PorteeBarrage, VerdictBarrage
 from domain.categorie import CategorieId
 from domain.classement import Classement, calculer_classement
+from domain.erreurs import ConfigurationBarrageInvalide
 from domain.forfait import Forfait
 from domain.phase import Phase, TypePhase
 from domain.politiques import (
@@ -127,11 +128,23 @@ class ServiceClassement:
         """
         if self._barrages is None:
             return []
-        return [
-            barrage.verdict()
-            for barrage in self._barrages.par_tournoi(tournoi_id)
-            if barrage.portee is PorteeBarrage.QUALIFICATION
-        ]
+        verdicts: list[VerdictBarrage] = []
+        for barrage in self._barrages.par_tournoi(tournoi_id):
+            if barrage.portee is not PorteeBarrage.QUALIFICATION:
+                continue
+            try:
+                verdicts.append(barrage.verdict())
+            except ConfigurationBarrageInvalide:
+                # ⚠️ **Le classement ne tombe jamais à cause d'un barrage.** Le verdict se recalcule
+                # à chaque lecture : un barrage incohérent en base ferait lever *toutes* les
+                # lectures : `GET /classement` est **public et projeté en salle**, et le panneau qui
+                # permettrait de réparer meurt avec lui. Le service valide désormais chaque manche
+                # **avant** de l'écrire (`_exiger_manche_jouable`), si bien qu'un tel état
+                # ne devrait plus naître ; ce filet couvre les lignes antérieures et toute
+                # écriture directe en base. Un barrage illisible dégrade donc en **rang partagé** —
+                # le défaut d'E06US001, faux mais lisible — plutôt qu'en écran noir.
+                continue
+        return verdicts
 
     # DETTE-022 : même résolution que la complétude (deux fois) et la saisie — extraction en US
     # dédiée.

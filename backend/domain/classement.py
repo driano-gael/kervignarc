@@ -33,7 +33,7 @@ Fonction pure sur des agrégats : testable sans base ni serveur.
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from functools import cmp_to_key
 
@@ -127,11 +127,17 @@ class Classement:
 
 @dataclass(frozen=True)
 class _Decompte:
-    """Ce dont le classement a besoin pour un archer : total et décomptes de départage."""
+    """Ce dont le classement a besoin : total, décomptes de départage, et si l'archer a tiré.
+
+    `a_tire` est **distinct de `total > 0`** : un archer qui a validé une volée entièrement manquée
+    a bien tiré, pour un total nul. La nuance ne sert qu'au **signalement des barrages** (E06US003),
+    où confondre les deux reviendrait à ne jamais proposer de départager celui qui a tout manqué.
+    """
 
     total: int
     nb_dix: int
     nb_neuf: int
+    a_tire: bool = False
 
 
 def _decompte(serie: Serie | None) -> _Decompte:
@@ -141,11 +147,12 @@ def _decompte(serie: Serie | None) -> _Decompte:
     un total nul, comme l'exige le CA « un archer sans flèche apparaît quand même ».
     """
     if serie is None:
-        return _Decompte(total=0, nb_dix=0, nb_neuf=0)
+        return _Decompte(total=0, nb_dix=0, nb_neuf=0, a_tire=False)
     return _Decompte(
         total=serie.cumul,
         nb_dix=serie.compter(ZoneScore.DIX),
         nb_neuf=serie.compter(ZoneScore.NEUF),
+        a_tire=any(volee.validee_par is not None for volee in serie.volees),
     )
 
 
@@ -228,6 +235,44 @@ def _ranger(entrees_ordonnees: Sequence[_Entree], tiebreak: Tiebreak) -> dict[Ar
     return rangs
 
 
+def _verdicts_applicables(
+    verdicts: Iterable[VerdictBarrage], rangs: dict[ArcherId, int]
+) -> list[VerdictBarrage]:
+    """Ne garde que les verdicts qui portent **exactement** sur une égalité encore constatée.
+
+    `rangs` est la numérotation obtenue **sans** verdict, c'est-à-dire l'état actuel des ex æquo.
+    Un verdict n'est retenu que si l'ensemble de ses tireurs est exactement le groupe qui partage
+    son rang aujourd'hui.
+
+    ⚠️ **Ce filtre est la seule protection contre le « verdict fantôme ».** Les tireurs d'un barrage
+    sont figés à l'annonce (`BarrageDePlaces.participants`) ; le classement, lui, continue de
+    vivre. Une volée validée en retard, une correction de score ou un forfait peuvent **élargir ou
+    réduire** l'égalité après le tir. Appliquer quand même le verdict donnerait à l'arrivant
+    — dont la position de barrage vaut `0`, le meilleur rang possible — la place que le barrage
+    venait de trancher,
+    et ferait taire le signalement : un classement faux, réglé en apparence, sans avertissement.
+
+    Écarter le verdict laisse l'égalité **re-signalée**, donc le barrage à refaire. C'est le bon
+    comportement métier : le groupe ayant changé, le tir précédent n'a pas départagé les bonnes
+    personnes — le règlement fait retirer, il ne recycle pas un verdict devenu sans objet.
+    """
+    par_rang: dict[int, set[ArcherId]] = {}
+    for archer_id, rang in rangs.items():
+        par_rang.setdefault(rang, set()).add(archer_id)
+    applicables: list[VerdictBarrage] = []
+    for verdict in verdicts:
+        if not verdict.ordre:
+            continue
+        tireurs = {
+            participant.ref_id
+            for participant in verdict.ordre
+            if participant.genre is GenreParticipant.INDIVIDUEL
+        }
+        if tireurs and tireurs == par_rang.get(verdict.rang, set()):
+            applicables.append(verdict)
+    return applicables
+
+
 def _positions_de_barrage(verdicts: Iterable[VerdictBarrage]) -> dict[ArcherId, int]:
     """Les rangs qu'ont attribués les barrages **déjà tirés**, par archer.
 
@@ -278,7 +323,6 @@ def calculer_classement(
     serie_par_archer = {s.archer_id: s for s in series}
     libelle_par_categorie = {c.id: c.libelle for c in categories if c.id is not None}
     nature_par_archer = {f.archer_id: f.nature for f in forfaits}
-    positions = _positions_de_barrage(verdicts)
     entrees: list[_Entree] = []
     for archer in archers:
         assert archer.id is not None, "Le classement se calcule sur des archers persistés."
@@ -290,7 +334,6 @@ def calculer_classement(
                 decompte=decompte,
                 departage=DecompteDepartage(nb_dix=decompte.nb_dix, nb_neuf=decompte.nb_neuf),
                 statut=_statut_pour(nature_par_archer.get(archer.id)),
-                position_barrage=positions.get(archer.id, 0),
             )
         )
 
@@ -306,6 +349,23 @@ def calculer_classement(
         return _comparer(a, b, departage)
 
     cle = cmp_to_key(comparer)
+
+    # **Deux passages, et le premier n'est pas un luxe.** On range d'abord *sans* verdict pour
+    # connaître les groupes d'ex æquo **réellement constatés maintenant**, puis on ne retient que
+    # les verdicts qui portent exactement sur l'un d'eux (`_verdicts_applicables`). Un barrage fige
+    # ses tireurs à l'annonce ; si une volée validée en retard amène un archer de plus à égalité, le
+    # verdict ne décrit plus cette égalité-là — l'appliquer classerait l'arrivant **devant** le
+    # vainqueur du barrage (sa position valant 0, le meilleur rang possible) et ferait disparaître
+    # le signalement. On écarte donc le verdict, ce qui laisse l'égalité **re-signalée** : le juge
+    # refait tirer, ce que le règlement prescrit de toute façon quand le groupe a changé.
+    rangs_provisoires = _ranger(sorted(classables, key=cle), departage)
+    positions = _positions_de_barrage(_verdicts_applicables(verdicts, rangs_provisoires))
+    if positions:
+        classables = [
+            replace(entree, position_barrage=positions.get(entree.archer_id, 0))
+            for entree in classables
+        ]
+
     ordre_classables = sorted(classables, key=cle)
     rangs_scratch = _ranger(ordre_classables, departage)
 
@@ -348,11 +408,36 @@ def calculer_classement(
         )
     # Les égalités se lisent sur les rangs **définitifs** : un barrage déjà tiré ne doit plus être
     # réclamé, sans quoi l'écran redemanderait éternellement ce qui vient d'être fait.
-    egalites = egalites_a_departager(
-        [
-            (rangs_scratch[entree.archer_id], Participant.individuel(entree.archer_id))
-            for entree in ordre_classables
-        ],
-        departage,
+    #
+    # ⚠️ **Seuls les archers EN LICE qui ont tiré sont candidats**, et les deux conditions sont
+    # indispensables :
+    #
+    # - **avoir tiré** — sans cela, au démarrage du tournoi *tout le plateau* est à zéro, donc ex
+    #   æquo au rang 1. Or c'est exactement le moment où l'organisateur règle le seuil : il
+    #   enregistrait, revenait au classement, et lisait « 1ʳᵉ place — les 120 archers » avec un
+    #   bouton « Faire tirer ». On teste `a_tire` et non `total > 0` : un archer qui a validé une
+    #   volée entièrement manquée a bien tiré, et doit pouvoir être départagé ;
+    # - **être en lice** — on ne fait pas retirer deux personnes qui ont abandonné. Elles sont
+    #   reléguées en fin de classement, donc rarement sous le seuil, mais « rarement » n'est pas
+    #   « jamais » sur un petit effectif.
+    #
+    # Un groupe **partiellement** éligible n'est pas signalé : il y manquerait un tireur, et un
+    # barrage amputé est précisément ce que `resultat()` refuse désormais.
+    candidats = [
+        entree
+        for entree in ordre_classables
+        if entree.statut is StatutClassement.EN_LICE and entree.decompte.a_tire
+    ]
+    eligibles = {entree.archer_id for entree in candidats}
+    egalites = tuple(
+        egalite
+        for egalite in egalites_a_departager(
+            [
+                (rangs_scratch[entree.archer_id], Participant.individuel(entree.archer_id))
+                for entree in ordre_classables
+            ],
+            departage,
+        )
+        if all(participant.ref_id in eligibles for participant in egalite.participants)
     )
     return Classement(lignes=tuple(lignes), egalites_a_departager=egalites)

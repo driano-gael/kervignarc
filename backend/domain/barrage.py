@@ -476,9 +476,26 @@ class BarrageDePlaces:
 
         Tant qu'aucune manche n'est saisie, tout le monde est à égalité : le barrage est « à
         tirer », ce qui est un `groupes_a_rejouer` d'un seul groupe et non un ordre vide ambigu.
+
+        ⚠️ **La manche 1 doit faire tirer TOUS les participants annoncés.** C'est le pendant, pour
+        la première manche, de la règle « un groupe se retire en entier ou pas du tout » que
+        `_rejouer` applique aux suivantes — et l'oubli qui rendait le reste inopérant : la manche 1
+        ne passe pas par `_rejouer`, elle va droit à `partitionner_barrage`, qui ne connaît **que
+        les tirs qu'on lui donne** et ne peut donc pas remarquer qu'il en manque. Un barrage annoncé
+        à trois dont on ne saisissait que deux tirs rendait `est_resolu = True` en **oubliant** le
+        troisième, lequel gardait ensuite `position_barrage = 0` au classement et passait devant
+        ceux qui avaient tiré. L'invariant vit ici, dans le domaine, parce que `self.participants`
+        n'est connu que de l'agrégat — le moteur, lui, ne voit jamais que des tirs.
         """
         if not self.manches:
             return ResultatBarrage(groupes_a_rejouer=(self.participants,))
+        tireurs = {tir.participant for tir in self.manches[0]}
+        if tireurs != set(self.participants):
+            manquants = len(set(self.participants) - tireurs)
+            raise ConfigurationBarrageInvalide(
+                "La première manche d'un barrage fait tirer tous les participants annoncés : "
+                f"{manquants} manquant(s). Un absent se saisit avec un score nul, il ne s'omet pas."
+            )
         return resoudre_barrage_en_manches(self.manches)
 
     def verdict(self) -> VerdictBarrage:

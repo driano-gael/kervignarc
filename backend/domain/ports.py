@@ -1128,6 +1128,15 @@ class BarrageRepository(Protocol):
         """
         ...
 
+    def supprimer(self, barrage_id: BarrageId) -> None:
+        """Supprime un barrage **et ses tirs** (annonce erronée — E06US003).
+
+        Porte de sortie indispensable : `clore` exige un barrage **résolu**, donc un barrage qu'on
+        ne veut pas faire tirer ne pourrait jamais quitter l'écran, et son rang bloquerait toute
+        nouvelle annonce.
+        """
+        ...
+
     def clore(self, barrage_id: BarrageId) -> BarrageDePlaces:
         """Marque le barrage comme clos — le juge a acté le verdict, plus de retir attendu."""
         ...

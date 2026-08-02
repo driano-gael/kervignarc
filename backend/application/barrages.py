@@ -20,6 +20,7 @@ que l'application ne sait pas encore dérouler.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 
 from application.classements import ServiceClassement
 from application.erreurs import (
@@ -108,23 +109,75 @@ class ServiceBarrage:
         `manche` absent = la **suivante** ; fourni, il désigne la manche à réécrire — c'est le mode
         de correction d'une flèche mal notée, le verdict n'étant jamais stocké mais recalculé.
 
-        Le moteur valide le reste au moment où le verdict se recalcule : un tireur déjà départagé,
-        un groupe retiré à moitié, un participant en double lèvent `ConfigurationBarrageInvalide`
-        (→ 422). On ne les revérifie pas ici — les dupliquer ferait diverger deux gardes qui disent
-        la même chose.
+        ⚠️ **La manche est validée AVANT d'être écrite, en rejouant le moteur sur l'agrégat
+        projeté.** C'est le correctif d'un défaut qui coûtait cher : les gardes du moteur (tireur
+        déjà départagé, groupe retiré à moitié, manche 1 incomplète, doublon) ne se déclenchaient
+        qu'au moment de **relire** le verdict, donc **après** le commit. La requête était refusée et
+        la ligne écrite ; ensuite, chaque lecture rejouait le moteur et levait — donc
+        `GET /classement`, **public et affiché en salle**, tombait en 422 pour tout le tournoi, et
+        le panneau d'organisation avec lui : plus aucun écran pour réparer. Le raisonnement initial
+        (« ne pas dupliquer une garde ») confondait *dupliquer la règle* et *la jouer avant
+        d'écrire*.
+
+        ⚠️ **Corriger une manche tronque les suivantes.** Réécrire la manche 1 change la partition,
+        donc les retirs qui en découlaient n'ont plus d'objet — les garder produirait un agrégat
+        incohérent que le moteur refuserait à la lecture. Le règlement fait retirer ; il ne recycle
+        pas un tir devenu sans objet.
         """
         barrage = self._exiger_barrage(tournoi_id, barrage_id)
         if barrage.clos:
             raise BarrageDejaClos(
-                "Ce barrage est clos : rouvrez-le avant d'y saisir une manche de plus."
+                "Ce barrage est clos : annulez-le ou ouvrez-en un nouveau pour faire retirer."
             )
         numero = manche if manche is not None else len(barrage.manches) + 1
         if numero < 1:
             raise ConfigurationBarrageInvalide(
                 "Les manches d'un barrage se comptent à partir de 1."
             )
+        if numero > len(barrage.manches) + 1:
+            # Sans cette garde, un `manche: 5` sur un barrage vierge créerait un trou : le
+            # repository relit les manches **triées puis renumérotées positionnellement**, si bien
+            # que la saisie suivante s'écrirait « manche 2 » et passerait *avant* le tir réellement
+            # effectué en premier.
+            raise ConfigurationBarrageInvalide(
+                f"Ce barrage compte {len(barrage.manches)} manche(s) : la suivante porte le numéro "
+                f"{len(barrage.manches) + 1}, pas {numero}."
+            )
         self._exiger_tireurs_du_barrage(barrage, tirs)
+        self._exiger_manche_jouable(barrage, numero, tirs)
         return self._barrages.enregistrer_manche(barrage_id, numero, tirs)
+
+    def annuler(self, tournoi_id: TournoiId, barrage_id: BarrageId) -> None:
+        """Supprime un barrage annoncé par erreur, et ses tirs.
+
+        Sans cette porte de sortie, un barrage ouvert au mauvais rang était **définitif** :
+        `clore` exige un barrage résolu, et un barrage qu'on ne veut pas faire tirer ne le sera
+        jamais. Il restait affiché indéfiniment, et son rang bloquait toute nouvelle annonce.
+
+        Un barrage **clos** ne s'annule pas : son verdict est acquis et appliqué au classement.
+        Le défaire demanderait de re-signaler l'égalité, ce qui est le travail d'une correction de
+        manche, pas d'une suppression.
+        """
+        barrage = self._exiger_barrage(tournoi_id, barrage_id)
+        if barrage.clos:
+            raise BarrageDejaClos(
+                "Ce barrage est clos : son verdict est acquis. Corrigez une manche si le résultat "
+                "saisi est faux."
+            )
+        assert barrage.id is not None, "Un barrage relu est persisté."
+        self._barrages.supprimer(barrage.id)
+
+    def _exiger_manche_jouable(
+        self, barrage: BarrageDePlaces, numero: int, tirs: Sequence[TirBarrage]
+    ) -> None:
+        """Rejoue le moteur sur l'agrégat **projeté** : rien n'est écrit si le verdict ne tient pas.
+
+        La projection **tronque** les manches postérieures à celle qu'on écrit, exactement comme le
+        fera le repository — sans quoi on validerait un état qui ne sera pas celui persisté.
+        """
+        manches = list(barrage.manches)[: numero - 1]
+        manches.append(tuple(tirs))
+        replace(barrage, manches=tuple(manches)).resultat()
 
     def clore(self, tournoi_id: TournoiId, barrage_id: BarrageId) -> BarrageDePlaces:
         """Clôt un barrage **résolu** — le juge acte le verdict, plus de retir attendu.

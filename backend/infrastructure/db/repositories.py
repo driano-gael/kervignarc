@@ -1046,6 +1046,13 @@ class ArcherRepositorySQL:
                 # `forfait` (E04US015) : même cascade applicative que `serie` — FK enforced, sinon
                 # une ligne orpheline bloque la suppression (revue adversariale E04US015).
                 session.execute(delete(ForfaitORM).where(ForfaitORM.archer_id == archer_id))
+                # `barrage_tir` (E06US003) : **exactement le même piège que `forfait`**, rejoué sur
+                # une table neuve — FK enforced, archer indéracinable sans ce nettoyage. On supprime
+                # le **barrage entier**, pas seulement les tirs : un barrage amputé d'un de ses
+                # tireurs annoncés n'a plus de sens et serait refusé à la relecture (la manche 1
+                # doit couvrir tous les participants). D'où la lecture de `participants_json` — un
+                # archer peut être *annoncé* sans avoir encore tiré, donc sans ligne de tir.
+                _supprimer_barrages_de_l_archer(session, archer_id)
                 session.delete(ligne)
                 session.commit()
         except SQLAlchemyError as exc:
@@ -1144,6 +1151,10 @@ class ArcherRepositorySQL:
                             .where(ForfaitORM.id == forfait_id)
                             .values(archer_id=gagnant_id)
                         )
+                # Barrages (E06US003) : même famille que le forfait — FK `barrage_tir.archer_id`
+                # enforced, donc sans ce report le `DELETE` du perdant échoue et la fusion d'un
+                # doublon devient impossible dès qu'un des deux a barré.
+                _fusionner_barrages(session, gagnant_id, perdant_id)
                 session.execute(delete(ArcherORM).where(ArcherORM.id == perdant_id))
                 session.commit()
         except SQLAlchemyError as exc:
@@ -3060,6 +3071,83 @@ class ForfaitRepositorySQL:
             raise InfrastructureError("Échec de l'annulation du forfait et de sa trace.") from exc
 
 
+def _barrages_contenant(session: Session, archer_id: int) -> list[BarrageORM]:
+    """Les barrages dont `archer_id` est un **participant annoncé** (tir saisi ou non).
+
+    On lit `participants_json` plutôt que la table des tirs : un archer peut être annoncé sans
+    avoir encore tiré, et c'est précisément ce cas qui laisserait un identifiant fantôme derrière
+    lui. La table est petite (quelques lignes par tournoi) — un filtre Python est ici plus sûr
+    qu'une recherche dans du JSON en SQL.
+    """
+    return [
+        ligne
+        for ligne in session.execute(select(BarrageORM)).scalars()
+        if archer_id in json.loads(ligne.participants_json)
+    ]
+
+
+def _supprimer_barrages_de_l_archer(session: Session, archer_id: int) -> None:
+    """Supprime les barrages où figure cet archer, tirs compris (suppression d'archer, E06US003)."""
+    for ligne in _barrages_contenant(session, archer_id):
+        session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id == ligne.id))
+        session.execute(delete(BarrageORM).where(BarrageORM.id == ligne.id))
+
+
+def _fusionner_barrages(session: Session, gagnant_id: int, perdant_id: int) -> None:
+    """Reporte sur le gagnant les barrages du perdant (fusion de doublons, E02US005 et E06US003).
+
+    Deux collisions à traiter, et elles ne sont pas symétriques :
+
+    - **un tir** — `uq_barrage_tir(barrage_id, manche, archer_id)` : si les deux fiches ont tiré la
+      même manche du même barrage (le cas d'un doublon réellement dédoublé sur le pas de tir), on
+      **garde celui du gagnant** et on supprime celui du perdant, comme pour l'inscription ;
+    - **la liste des participants** : le perdant y est remplacé par le gagnant, **dédoublonné**.
+      Sans cela le barrage compterait deux fois la même personne, ce que l'agrégat refuse.
+
+    Un barrage qui se retrouverait à **moins de deux** participants après fusion n'oppose plus
+    personne : il est supprimé plutôt que laissé dans un état que l'agrégat rejetterait.
+    """
+    for ligne in _barrages_contenant(session, perdant_id):
+        deja = {
+            manche
+            for (manche,) in session.execute(
+                select(BarrageTirORM.manche).where(
+                    BarrageTirORM.barrage_id == ligne.id,
+                    BarrageTirORM.archer_id == gagnant_id,
+                )
+            ).all()
+        }
+        session.execute(
+            delete(BarrageTirORM).where(
+                BarrageTirORM.barrage_id == ligne.id,
+                BarrageTirORM.archer_id == perdant_id,
+                BarrageTirORM.manche.in_(deja),
+            )
+        )
+        session.execute(
+            update(BarrageTirORM)
+            .where(
+                BarrageTirORM.barrage_id == ligne.id,
+                BarrageTirORM.archer_id == perdant_id,
+            )
+            .values(archer_id=gagnant_id)
+        )
+        participants: list[int] = []
+        for reference in json.loads(ligne.participants_json):
+            remplace = gagnant_id if reference == perdant_id else reference
+            if remplace not in participants:
+                participants.append(remplace)
+        if len(participants) < 2:
+            session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id == ligne.id))
+            session.execute(delete(BarrageORM).where(BarrageORM.id == ligne.id))
+            continue
+        session.execute(
+            update(BarrageORM)
+            .where(BarrageORM.id == ligne.id)
+            .values(participants_json=json.dumps(participants))
+        )
+
+
 def _vers_barrage(ligne: BarrageORM, tirs: Sequence[BarrageTirORM]) -> BarrageDePlaces:
     """Reconstruit l'agrégat depuis sa ligne et ses tirs, **groupés par manche**.
 
@@ -3182,10 +3270,14 @@ class BarrageRepositorySQL:
         """Remplace **en bloc** les tirs de cette manche, puis renvoie le barrage rechargé."""
         try:
             with self._session_factory() as session:
+                # `>=` et non `==` : réécrire une manche **tronque les suivantes**. Corriger la
+                # manche 1 change la partition, donc les retirs qui en découlaient n'ont plus
+                # d'objet — les garder produirait un agrégat que le moteur refuse à la relecture,
+                # c'est-à-dire un classement en 422 permanent.
                 session.execute(
                     delete(BarrageTirORM).where(
                         BarrageTirORM.barrage_id == barrage_id,
-                        BarrageTirORM.manche == manche,
+                        BarrageTirORM.manche >= manche,
                     )
                 )
                 for tir in tirs:
@@ -3205,6 +3297,16 @@ class BarrageRepositorySQL:
         if recharge is None:  # pragma: no cover — l'appelant a vérifié l'existence
             raise InfrastructureError("Le barrage a disparu pendant l'enregistrement de sa manche.")
         return recharge
+
+    def supprimer(self, barrage_id: BarrageId) -> None:
+        """Supprime un barrage **et ses tirs** — les tirs d'abord, ils le référencent."""
+        try:
+            with self._session_factory() as session:
+                session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id == barrage_id))
+                session.execute(delete(BarrageORM).where(BarrageORM.id == barrage_id))
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression du barrage.") from exc
 
     def clore(self, barrage_id: BarrageId) -> BarrageDePlaces:
         """Marque le barrage comme clos — le juge a acté le verdict, plus de retir attendu."""
