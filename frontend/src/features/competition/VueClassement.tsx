@@ -13,6 +13,7 @@
 import { useState } from 'react'
 import { useCategories } from '../categories/hooks'
 import { useClassement } from './hooks'
+import { PanneauBarrages } from './PanneauBarrages'
 import { TableClassement } from './TableClassement'
 
 export function VueClassement({
@@ -48,6 +49,16 @@ export function VueClassement({
         <p className="carte__etat carte__etat--erreur" role="alert">
           Classement injoignable — {classement.error.message}
         </p>
+      )}
+      {/* Barrages : surface d'**organisation**, donc admin seulement — le public voit le
+          classement, pas les places encore à trancher. Le panneau se replie de lui-même quand il
+          n'y a ni égalité signalée ni barrage en cours (aucun seuil réglé = rien à afficher). */}
+      {admin && classement.data && (
+        <PanneauBarrages
+          tournoiId={tournoiId}
+          egalites={classement.data.egalites_a_departager}
+          lignes={classement.data.lignes}
+        />
       )}
       {classement.data && (
         // Conteneur défilant : à 8 colonnes, la table déborde sur mobile (CA « responsive ») — on la

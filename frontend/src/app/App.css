@@ -3316,3 +3316,75 @@ button:disabled {
   font-size: 14px;
   color: var(--warn);
 }
+
+/* --- Barrages de places décisives (E06US003, ADR-0066) --------------------------------------- */
+
+/* Le panneau ne s'affiche que s'il y a une égalité signalée ou un barrage en cours — le composant
+   se replie de lui-même sinon. Un tournoi qui ne barre pas (le défaut) n'en voit donc jamais rien.
+   Bordure ambre : c'est une **alerte d'organisation** (`DV-03`), quelque chose reste à faire avant
+   que le classement soit définitif. */
+.carte--barrages {
+  border-left: 3px solid var(--warn);
+}
+
+.barrages__egalites {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.barrages__egalite {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.barrage {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.barrage__titre {
+  margin: 0 0 8px;
+  color: var(--text-h);
+  font-size: 1rem;
+}
+
+.barrage__verdict {
+  margin: 0 0 8px;
+  color: var(--ok);
+  font-weight: 600;
+}
+
+/* Un groupe par égalité restante : ils se retirent séparément (les fusionner ferait passer un
+   tireur à 8 devant un tireur à 10 déjà départagé). Le cadre les rend visuellement distincts. */
+.barrage__groupe {
+  display: grid;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+/* Ergonomie tactile (règle 10) : les champs restent sur une ligne au large, s'empilent au doigt. */
+.barrage__tireur {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.barrage__nom {
+  min-width: 10ch;
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.barrage__tireur input[type='number'] {
+  width: 7ch;
+  min-height: 40px;
+}

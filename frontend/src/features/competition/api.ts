@@ -89,9 +89,78 @@ export interface LigneClassement {
   statut: StatutClassement
 }
 
+// Un ex æquo que le format veut voir tranché **au tir** (E06US003, ADR-0066). Vide tant qu'aucun
+// seuil de barrage n'est réglé sur la phase de qualification : le défaut reste le rang partagé.
+// `rang` est le rang **partagé** que le barrage va éclater en rangs consécutifs.
+export interface EgaliteADepartager {
+  rang: number
+  archer_ids: number[]
+}
+
 export interface Classement {
   tournoi_id: number
   lignes: LigneClassement[]
+  egalites_a_departager: EgaliteADepartager[]
+}
+
+// --- barrage de places décisives (E06US003, ADR-0066) ---
+
+// ⚠️ `score` **nul** = **absent** au barrage annoncé, pas « pas encore saisi » : l'absence est une
+// issue réglementaire (B.6.5.2.4, l'archer est déclaré perdant). Une flèche pas encore notée ne
+// s'envoie pas du tout. `distance_au_centre` est en **dixièmes de millimètre** ; nulle = mesure non
+// faite, sur laquelle le moteur refuse de départager (il fait retirer) — le cas le plus fréquent.
+export interface TirBarrage {
+  archer_id: number
+  score: number | null
+  distance_au_centre: number | null
+}
+
+// `ordre` porte le verdict quand tout est départagé ; **vide** sinon, `groupes_a_rejouer` nommant
+// alors qui doit retirer. Les deux sont exclusifs, et les groupes ne sont **pas aplatis** : un
+// barrage à quatre dont deux à 10 et deux à 8 laisse deux égalités distinctes, qui se retirent
+// séparément — les fusionner ferait passer un tireur à 8 devant un tireur à 10 déjà départagé.
+export interface Barrage {
+  id: number
+  tournoi_id: number
+  portee: string
+  rang_dispute: number | null
+  participants: number[]
+  manches: TirBarrage[][]
+  clos: boolean
+  est_resolu: boolean
+  ordre: number[]
+  groupes_a_rejouer: number[][]
+}
+
+export function getBarrages(tournoiId: number): Promise<Barrage[]> {
+  return fetchJson<Barrage[]>(`/api/v1/tournois/${tournoiId}/barrages`)
+}
+
+export function annoncerBarrage(tournoiId: number, rang: number): Promise<Barrage> {
+  return fetchJson<Barrage>(`/api/v1/tournois/${tournoiId}/barrages`, {
+    method: 'POST',
+    body: JSON.stringify({ rang }),
+  })
+}
+
+// `manche` omis = la suivante ; fourni = la manche à **corriger** (le verdict n'est jamais stocké,
+// il se recalcule depuis les tirs — donc corriger une flèche corrige le classement).
+export function saisirMancheBarrage(
+  tournoiId: number,
+  barrageId: number,
+  tirs: TirBarrage[],
+  manche?: number,
+): Promise<Barrage> {
+  return fetchJson<Barrage>(`/api/v1/tournois/${tournoiId}/barrages/${barrageId}/manche`, {
+    method: 'PUT',
+    body: JSON.stringify({ tirs, manche }),
+  })
+}
+
+export function cloreBarrage(tournoiId: number, barrageId: number): Promise<Barrage> {
+  return fetchJson<Barrage>(`/api/v1/tournois/${tournoiId}/barrages/${barrageId}/cloture`, {
+    method: 'POST',
+  })
 }
 
 export function creerTournoi(entree: NouveauTournoi): Promise<Tournoi> {
