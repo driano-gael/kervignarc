@@ -60,10 +60,11 @@ de plus, et la fourchette se referme d'elle-même.
 Sous `ProfondeurPodium()` **par défaut** (`jusqu_au=4`, le câblage de production), la sortie est
 identique à celle d'hier : seules `[1..2]` et `[3..4]` sont terminales, donc `classement()` ne rend
 jamais de rang > 4. ⚠️ **Mais `jusqu_au` est un paramètre** (correctif de revue) : sous
-`ProfondeurPodium(jusqu_au=8)` — l'exemple de sa propre docstring — le service gagne les rangs 5-8
-exacts que `podium()` jetait. C'est donc bien un changement de comportement dans cette
-configuration, et il est **voulu** ; un premier jet de cet ADR écrivait « ce n'est pas un changement
-de comportement », ce qui était faux.
+`ProfondeurPodium(jusqu_au=8)`, le service gagnerait les rangs 5-8 exacts que `podium()` jetait —
+changement de comportement **attendu et souhaitable**, mais **non gardé** : aucune configuration de
+ce genre n'est câblée, et aucun test ne l'instancie. À traiter comme une propriété, pas comme un
+acquis. *(Un premier jet de cet ADR écrivait « ce n'est pas un changement de comportement », ce qui
+était faux, puis attribuait à tort l'exemple `jusqu_au=8` à la docstring de `ProfondeurPodium`.)*
 
 **Ce n'est pas E06US004.** Cette lecture dit ce que *ce tableau* a décidé — sans agrégation
 inter-phases ni départage FFTA. E06US004 reste due, et la fourchette ne la préempte pas : elle
@@ -100,20 +101,31 @@ que rien ne le signale ». Le routage est le premier endroit où ce trou de comp
 **humain** — l'archer demande où il tire, et personne ne peut répondre. Un panneau muet passerait
 pour une panne réseau, et l'organisateur ne saurait pas que son déroulé est incomplet.
 
-⚠️ **Le cas symétrique — le seul atteignable aujourd'hui — a failli être manqué** (correctif de
-revue, axe adversarial). Les deux moitiés du repêchage se lisent à **deux sources indépendantes** :
-le routing (`_est_repeche`) et les sources de la séquence (`_repechages`). Or aucun
-`RoutingRepechage` n'est câblé en production (`DETTE-028`), donc `_est_repeche` rend **toujours**
-faux — tandis que l'atelier de déroulé (E01US024) permet **déjà** de composer « les perdants du
-tour 1 de la phase 2 ». Un premier jet fermait donc soigneusement le trou qu'aucun chemin de
-production n'ouvre, et laissait ouvert celui que l'éditeur livré permet d'ouvrir : cet archer-là
-lisait « 5ᵉ-8ᵉ », comprenait qu'il était sorti, et rentrait chez lui.
+⚠️ **Le cas symétrique n'est PAS traité, et c'est un choix — `DETTE-033`.** Les deux moitiés du
+repêchage se lisent à **deux sources indépendantes** : le routing (`_est_repeche`, décidé match par
+match) et les sources de la séquence (`_repechages`, indexées par **tour**). Or aucun
+`RoutingRepechage` n'est câblé en production (`DETTE-028`) tandis que l'atelier de déroulé
+(E01US024) permet **déjà** de composer « les perdants du tour 1 de la phase 2 ». Un battu repris de
+cette seconde façon lit donc son rang sans savoir qu'il rejoue.
 
-Décision : un battu que la séquence reprend garde l'issue **`TERMINE`** — il a bel et bien acquis un
-rang dans *ce* tableau, contrairement au repêché du routing qui n'en consomme aucun — mais sa
-**destination est annoncée** (« 5ᵉ-8ᵉ du tableau · repris en 3. Élimination directe »). Forcer
-`REPECHE` aurait effacé un rang réellement acquis ; se taire l'aurait renvoyé chez lui. Dire les
-deux est vrai des deux côtés.
+Un correctif de revue a voulu combler ce trou en posant la `destination` sur les lignes `TERMINE`.
+La seconde passe l'a démoli **de deux façons opposées** :
+
+- `dernier` est le **dernier match joué**, pas le match perdu — sous cascade le battu des demies
+  redescend en petite finale, donc son `dernier.tour` vaut 3 : on rate précisément les archers que
+  « perdants du tour 2 » désigne ;
+- un **tour couvre plusieurs plages** dès qu'il y a des sous-tableaux — finale et petite finale sont
+  toutes deux au tour 3 : une source « perdants du tour 3 » décorerait aussi le 4ᵉ du podium.
+
+Les deux correctifs proposés étaient **incompatibles** (restreindre au braquet principal / élargir à
+tous les tours perdus). C'est le signal, et il est plus utile que l'un ou l'autre : **la sémantique
+de `SourcePhase.par_issue_de_tour` n'est pas tranchée**, et `DETTE-028` acte qu'aucun moteur ne la
+consomme. La figer dans un canal d'**affichage** reviendrait à décider une règle métier au mauvais
+endroit, et à la figer là où personne n'irait la chercher.
+
+Décision : on s'abstient, la lacune est **inscrite au registre** (`DETTE-033`) et **figée par un
+test de caractérisation** qui échouera le jour où l'US du prélèvement tranchera. Le repêchage par
+**routing**, lui, reste traité : il se décide match par match, donc sans ambiguïté.
 
 ### 4. Une lecture **collective**, partagée par toutes les surfaces
 

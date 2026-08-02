@@ -81,13 +81,20 @@ sans traverser le gymnase.
   donc rien de neuf à inventer (réemploi du jeton, du QR, de la supervision). ~~`Q-UX2` **ouverte**~~ :
   tri des affectations **par nom** (l'archer se cherche) ou **par cible** (l'organisation vérifie) — ce
   n'est pas le même écran.
-  > **`Q-UX2` fermée le 02/08/2026 par E07US008 : les deux** ([ADR-0065](../docs/adr/0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md)).
+  > **`Q-UX2` fermée le 02/08/2026 par E07US008 — sur son seul volet « tri » : les deux** ([ADR-0065](../docs/adr/0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md)).
   > Le constat « ce n'est pas le même écran » était juste, et c'est **exactement** pourquoi trancher
   > pour tout le monde était le mauvais réflexe. L'**écran projeté** garde l'ordre du **pas de tir**
   > (cible croissante, position A→D) — il n'a aucune interaction, l'ordre du serveur est le seul
   > qu'il aura, et c'est le seul qui se lise de loin. La **table de l'organisation**, interactive,
   > bascule d'un bouton. Même forme d'arbitrage que `Q-UX7` : « les deux », quand offrir les deux
-  > coûte un bouton. Motif du pilotage : basculer sur le podium à 17 h
+  > coûte un bouton.
+  >
+  > ⚠️ **Son volet « scannabilité » reste OUVERT** (rectification de revue, 2ᵉ passe) : la question
+  > enregistrée au CDC UX porte d'abord sur le fait que « 200 archers ne tiennent pas à l'écran,
+  > donc ça défile, et un archer qui rate son nom attend un cycle entier ». E07US008 ne livre ni
+  > pagination ni cycle — même régime que la vue `classement` depuis E07US004. Ne pas lire cette US
+  > comme ayant clos la question entière : le CA périmé aurait fait dériver E07US005 d'un arbitrage
+  > qui n'a pas eu lieu. Motif du pilotage : basculer sur le podium à 17 h
   et partir serrer des mains, c'est un écran figé sur le podium à 18 h pendant que les gens cherchent
   leur classement.
 - **CA — le plan de tournoi, en suivi (ajouté le 31/07/2026)** : l'écran affiche le **même schéma à
@@ -201,14 +208,24 @@ rater mon tour ni aller demander à l'organisation.
   > 1. **Périmètre : le CA complet** — le téléphone de l'archer **et** la vue collective, donc la
   >    dernière vue manquante du déroulé de l'écran de salle (E07US004) au passage.
   > 2. **Le rang de l'éliminé est calculé ici**, et non renvoyé à E06US004. Il se lit sur la
-  >    **plage du match perdu** (*Règle R*, `Plage.moitie_basse`) — donc une **fourchette** :
-  >    « 5ᵉ-8ᵉ ». Ce n'est pas un pis-aller — dans un tableau tronqué au podium, **aucun match n'a
-  >    départagé** les quatre battus des quarts, ils sont *ex æquo*. Sous placement intégral
-  >    (E05US010), la fourchette se referme d'elle-même sur le rang exact. E06US004 (agrégation
-  >    inter-phases, départage FFTA) reste due.
+  >    **plage du match perdu** (*Règle R*, `Plage.moitie_basse`), **écrêtée à l'effectif réel** —
+  >    donc une **fourchette** : « 5ᵉ-8ᵉ ». Ce n'est pas un pis-aller — dans un tableau tronqué au
+  >    podium, **aucun match n'a départagé** les quatre battus des quarts, ils sont *ex æquo*. Sous
+  >    placement intégral (E05US010), la fourchette se referme d'elle-même sur le rang exact.
+  >    E06US004 (agrégation inter-phases, départage FFTA) reste due. *(L'écrêtage à l'effectif est un
+  >    correctif de revue : une plage est bornée par la **taille** du tableau, une puissance de 2, et
+  >    non par le nombre d'archers — sans lui, un battu du 1ᵉʳ tour de l'oracle 120 lisait
+  >    « 65ᵉ-128ᵉ ».)*
   > 3. **Le repêché est traité**, avec une **issue distincte** de « éliminé » : `VersRepechage` ne
   >    consomme aucun rang, l'archer peut encore remonter. Sa destination se lit dans les
   >    **sources** de la phase avale.
+  >    > ⚠️ **Portée exacte, rectifiée en 2ᵉ passe de revue (`DETTE-033`)** : seul le repêchage
+  >    > décidé par le **routing** est annoncé — il se tranche **match par match**, donc sans
+  >    > ambiguïté. Le battu qu'une phase avale **prélève** par `issue_de_tour/perdants` (composable
+  >    > dès aujourd'hui dans l'atelier E01US024) lit son rang **sans savoir qu'il rejoue**. Ce n'est
+  >    > pas un oubli : la sémantique de `par_issue_de_tour` **n'est pas tranchée** — un tour couvre
+  >    > plusieurs plages, et « le tour perdu » n'est pas « le dernier match joué ». Elle appartient
+  >    > à l'US qui implémentera le prélèvement (`DETTE-028`), pas à un canal d'affichage.
   >
   > ⚠️ **Pas d'« heure »**, malgré le v0.1 : aucun horaire n'existe par tour de tableau (les
   > horaires vivent sur les `Depart`, côté qualification). Arbitrage déjà pris en E04US018,
