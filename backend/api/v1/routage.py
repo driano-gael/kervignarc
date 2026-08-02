@@ -28,14 +28,24 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from api.v1.saisie_duels import DuellisteReponse
-from application.routage import ProchainDuel, Routage, RoutageArcher, ServiceRoutage
+from application.routage import (
+    DestinationRepechage,
+    ProchainDuel,
+    Routage,
+    RoutageArcher,
+    ServiceRoutage,
+)
 
 router = APIRouter(prefix="/api/v1/routage", tags=["routage"])
 
-IssueRoutageReponse = Literal["prochain_duel", "termine", "indisponible"]
-"""Les trois seules issues du panneau — publiées au schéma OpenAPI plutôt que laissées en `str`,
+IssueRoutageReponse = Literal["prochain_duel", "termine", "repeche", "indisponible"]
+"""Les seules issues du panneau — publiées au schéma OpenAPI plutôt que laissées en `str`,
 pour que le client (qui les code en dur) voie une divergence d'énumération au lieu de la subir.
-Miroir fermé de `IssueRoutage`, sans exposer l'énumération d'application (règle 6)."""
+Miroir fermé de `IssueRoutage`, sans exposer l'énumération d'application (règle 6).
+
+`repeche` est ajouté par E07US008 : **élargissement**, pas rupture — un client qui ne le connaît
+pas ne peut pas le rencontrer sur un tournoi sans repêchage, et le test miroir garantit qu'aucune
+valeur du domaine ne circule sans être déclarée ici."""
 
 
 # --- DTO ---
@@ -76,11 +86,39 @@ class ProchainDuelReponse(BaseModel):
         )
 
 
-class RoutageArcherReponse(BaseModel):
-    """La ligne d'un archer : son issue (`prochain_duel` / `termine` / `indisponible`) et le détail.
+class DestinationRepechageReponse(BaseModel):
+    """La phase qui **reprend** un repêché (E07US008) : son id, son rang de séquence, son type.
 
-    `issue` est fermée aux trois valeurs ci-dessus, et chacune dit quel champ lire ensuite
-    (`prochain`, `rang_final`, `motif`).
+    Pas de libellé tout fait : le front sait déjà nommer un type de phase (`LIBELLE_TYPE`), et une
+    phase n'a pas de nom propre dans le modèle. Envoyer « 3. Élimination directe » depuis le serveur
+    dupliquerait ce vocabulaire à un deuxième endroit, où il finirait par diverger.
+    """
+
+    phase_id: int
+    ordre: int
+    type: str
+
+    @staticmethod
+    def de_destination(destination: DestinationRepechage) -> DestinationRepechageReponse:
+        return DestinationRepechageReponse(
+            phase_id=destination.phase_id,
+            ordre=destination.ordre,
+            type=destination.type,
+        )
+
+
+class RoutageArcherReponse(BaseModel):
+    """La ligne d'un archer : son issue et le détail qui va avec.
+
+    `issue` est fermée (`IssueRoutageReponse`), et chacune de ses valeurs dit quel champ lire
+    ensuite : `prochain` pour `prochain_duel`, `rang_final`/`rang_min`/`rang_max` pour `termine`,
+    `destination` pour `repeche`, `motif` pour `indisponible`.
+
+    **Trois champs de rang, et ils ne se répètent pas** (E07US008) : `rang_final` est le rang
+    **exact** quand un match terminal l'a décerné ; `rang_min`/`rang_max` la **fourchette acquise**,
+    qui vaut aussi dans un tableau tronqué au podium (le battu d'un quart est 5ᵉ-8ᵉ *ex æquo*).
+    Quand le rang exact existe, la fourchette s'y referme. Un client qui n'affiche que `rang_final`
+    continue de fonctionner : il perd l'*ex æquo*, il ne lit rien de faux.
     """
 
     archer_id: int
@@ -89,7 +127,10 @@ class RoutageArcherReponse(BaseModel):
     issue: IssueRoutageReponse
     prochain: ProchainDuelReponse | None
     rang_final: int | None
+    rang_min: int | None
+    rang_max: int | None
     tour_sortie: str | None
+    destination: DestinationRepechageReponse | None
     motif: str | None
 
     @staticmethod
@@ -105,13 +146,25 @@ class RoutageArcherReponse(BaseModel):
                 else None
             ),
             rang_final=ligne.rang_final,
+            rang_min=ligne.rang_min,
+            rang_max=ligne.rang_max,
             tour_sortie=ligne.tour_sortie,
+            destination=(
+                DestinationRepechageReponse.de_destination(ligne.destination)
+                if ligne.destination is not None
+                else None
+            ),
             motif=ligne.motif,
         )
 
 
 class RoutageReponse(BaseModel):
-    """La réponse du panneau : la phase de tableau visée et une ligne par archer demandé."""
+    """La réponse du panneau : la phase de tableau visée et une ligne par archer.
+
+    `phase_id` à `null` signifie **« aucune phase d'élimination configurée »** — à distinguer d'une
+    liste vide, qui dirait « le tableau ne route personne ». C'est la seule chose qui permette à
+    l'écran de salle de dire « on n'en est pas là » au lieu d'afficher un pas de tir désert.
+    """
 
     phase_id: int | None
     archers: list[RoutageArcherReponse]
@@ -166,4 +219,30 @@ async def lire_routage(
     """
     service: ServiceRoutage = request.app.state.service_routage
     routage = await run_in_threadpool(service.routage, tournoi_id, tuple(archer_id or ()), phase_id)
+    return RoutageReponse.de_routage(routage)
+
+
+@router.get("/{tournoi_id}/affectations", response_model=RoutageReponse)
+async def lire_affectations(
+    tournoi_id: int,
+    request: Request,
+    phase_id: Annotated[int | None, Query(description="Phase de tableau visée")] = None,
+) -> RoutageReponse:
+    """**Toutes** les affectations du tableau, dans l'ordre du pas de tir (E07US008).
+
+    Même projection et **même DTO** que la route précédente : les quatre canaux de routage doivent
+    dire la même chose, et deux formes de réponse finiraient par diverger sur la butte annoncée.
+    Seule l'entrée change — ici, aucun `archer_id` : ni l'écran de salle ni la table de
+    l'organisation ne connaissent la liste, et la leur faire reconstituer serait leur faire
+    connaître le tableau.
+
+    **Pas de plafond `_MAX_ARCHERS` ici, et ce n'est pas un oubli.** Ce plafond bornait
+    l'amplification requête→réponse : un client pouvait demander 64 lignes pour un coût de
+    reconstruction déjà payé. Ici le client ne demande rien — la taille de la réponse est celle du
+    tableau, donc bornée par les inscrits du tournoi, pas par la requête. Le coût dominant reste la
+    reconstruction de l'arbre, payée une fois, sur une route publique non authentifiée : c'est le
+    régime **DETTE-008**, inchangé, ni aggravé ni fermé par cette US.
+    """
+    service: ServiceRoutage = request.app.state.service_routage
+    routage = await run_in_threadpool(service.affectations, tournoi_id, phase_id)
     return RoutageReponse.de_routage(routage)

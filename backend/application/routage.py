@@ -33,9 +33,17 @@ from application.erreurs import GabaritDuTournoiAbsent, PhaseIntrouvable
 from application.placement_duels import ServicePlacementDuels
 from application.saisie_duels import Duelliste, ServiceSaisieDuels
 from domain.classement import LigneClassement
-from domain.erreurs import EffectifTableauInvalide
-from domain.participant import Participant
-from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
+from domain.erreurs import EffectifTableauInvalide, PlageInvalide
+from domain.participant import GenreParticipant, Participant
+from domain.phase import (
+    IssueTour,
+    NatureSource,
+    Phase,
+    PhaseId,
+    StatutPhase,
+    TypePhase,
+)
+from domain.politiques import ContexteRoutage, VersRepechage
 from domain.ports import ArcherRepository, PhaseRepository
 from domain.tableau import Match, PerdantDe, Tableau, VainqueurDe, libelle_tour
 from domain.tournoi import TournoiId
@@ -80,15 +88,34 @@ PHASE_ABSENTE = "phase finale non configurée"
 TABLEAU_ABSENT = "tableau non constitué"
 HORS_TABLEAU = "non retenu pour le tableau"
 
+REPECHAGE_SANS_DESTINATION = "repêché — phase de repêchage non configurée"
+"""Le routing repêche ce battu, mais **aucune phase avale ne le prélève** (E07US008).
+
+`construire_tableau` le dit déjà de son côté : un tableau dont la moitié basse n'est pas engendrée
+est structurellement valide, donc « les battus disparaissent sans que rien ne le signale ». Le
+routage est le premier endroit où ce trou de composition rencontre un **humain** — l'archer demande
+où il tire, et personne ne peut répondre. On le nomme plutôt que de rendre un panneau muet, qu'on
+prendrait pour une panne réseau (`P-3`, « ce qui n'est pas connu est nommé »).
+"""
+
 
 class IssueRoutage(str, Enum):
-    """Ce que le panneau a à dire d'un archer — les trois seules issues possibles."""
+    """Ce que le panneau a à dire d'un archer."""
 
     PROCHAIN_DUEL = "prochain_duel"
     """Il a un duel devant lui (`prochain` renseigné)."""
 
     TERMINE = "termine"
     """Il n'a plus de duel : éliminé, ou le tableau est allé à son terme pour lui."""
+
+    REPECHE = "repeche"
+    """Il a perdu, mais il **ressort** du tableau au lieu d'y être classé (E07US008).
+
+    Quatrième issue ajoutée par le canal public, et non un sous-cas de `TERMINE` : `VersRepechage`
+    ne consomme **aucun rang** (`domain/politiques.py`), donc annoncer « terminé » — même sans rang
+    — dirait à quelqu'un d'encore en course qu'il peut rentrer chez lui. `destination` nomme la
+    phase qui le reprend.
+    """
 
     INDISPONIBLE = "indisponible"
     """On ne sait pas le router (`motif` dit pourquoi)."""
@@ -124,8 +151,38 @@ class ProchainDuel:
 
 
 @dataclass(frozen=True)
+class DestinationRepechage:
+    """La phase avale qui **reprend** un repêché (E07US008).
+
+    Elle ne se lit pas dans le tableau : la réintégration n'est pas un lien d'arbre mais un
+    **prélèvement** de la phase suivante (`SourcePhase.par_issue_de_tour(…, PERDANTS)`, cf.
+    `VersRepechage`). Le routage la retrouve donc dans les **sources de la séquence** — c'est la
+    seule lecture qui la connaisse.
+
+    On rend `ordre` et `type` plutôt qu'un libellé tout fait : le front sait déjà nommer un type de
+    phase (`LIBELLE_TYPE`), et une phase n'a pas de nom propre dans le modèle.
+    """
+
+    phase_id: int
+    ordre: int
+    type: str
+
+
+@dataclass(frozen=True)
 class RoutageArcher:
-    """Ce que le panneau affiche pour **un** archer : son issue et ce qui la détaille."""
+    """Ce que le panneau affiche pour **un** archer : son issue et ce qui la détaille.
+
+    Trois champs disent un rang, et ils ne sont pas redondants (E07US008) :
+
+    - `rang_final` — le rang **exact**, décerné par un match terminal (`Tableau.classement`) ;
+    - `rang_min`/`rang_max` — la **fourchette acquise**, qui vaut aussi quand le tableau est tronqué
+      au podium : le battu d'un quart est 5ᵉ-8ᵉ *ex æquo*, et aucun match n'a été joué pour le
+      départager. Quand le rang exact existe, la fourchette s'y referme (`min == max == rang_final`)
+      — c'est la même notion à deux profondeurs, pas deux calculs concurrents.
+
+    Un archer **encore en lice** n'a ni l'un ni l'autre : un rang annoncé avant la fin serait un
+    faux départ.
+    """
 
     archer_id: int
     nom: str
@@ -133,7 +190,10 @@ class RoutageArcher:
     issue: IssueRoutage
     prochain: ProchainDuel | None = None
     rang_final: int | None = None
+    rang_min: int | None = None
+    rang_max: int | None = None
     tour_sortie: str | None = None
+    destination: DestinationRepechage | None = None
     motif: str | None = None
 
 
@@ -154,14 +214,36 @@ class _PlanLu:
 
 @dataclass(frozen=True)
 class Routage:
-    """La réponse du panneau : la phase de tableau visée, et une ligne **par archer demandé**.
+    """La réponse du panneau : la phase de tableau visée, et une ligne par archer.
 
     `phase_id` est `None` quand aucune phase d'élimination n'est configurée — l'écran le dit au lieu
-    de rendre une liste vide qu'on prendrait pour une panne.
+    de rendre une liste vide qu'on prendrait pour une panne. C'est la seule chose qui distingue
+    « il n'y a pas encore de tableau » de « le tableau ne route personne ».
+
+    Même type pour les deux lectures (`routage` par identifiants, `affectations` pour tout le
+    tableau) : les quatre canaux de routage doivent dire **la même chose**, et deux formes de
+    réponse finiraient par diverger sur un détail — la butte annoncée, par exemple.
     """
 
     phase_id: int | None
     archers: tuple[RoutageArcher, ...]
+
+
+@dataclass(frozen=True)
+class _Grille:
+    """Ce qu'une lecture de tableau prépare **une fois** pour tous les archers à router.
+
+    Tout ici coûte une reconstruction d'arbre ou une lecture de plan : le calculer par archer
+    tiendrait encore à quatre (la tablette), pas à cent vingt (l'écran de salle).
+    """
+
+    phase: Phase
+    tableau: Tableau
+    lignes: dict[int, LigneClassement]
+    plan: _PlanLu
+    rangs: dict[Participant, int]
+    identites: dict[int, tuple[str, str]]
+    repechages: dict[int, DestinationRepechage]
 
 
 class ServiceRoutage:
@@ -199,23 +281,96 @@ class ServiceRoutage:
         phase = self._phase_de_tableau(tournoi_id, phase_id)
         if phase is None or phase.id is None:
             return self._tous_indisponibles(tournoi_id, None, archer_ids, PHASE_ABSENTE)
-        try:
-            tableau, lignes = self._saisie_duels.reconstruire(tournoi_id, phase.id)
-        except EffectifTableauInvalide:
+        grille = self._grille(tournoi_id, phase, phase.id)
+        if grille is None:
             # Moins de deux archers en lice : il n'y a pas d'arbre. Comme le feu vert, on rend un
             # panneau **motivé** plutôt qu'une erreur — l'écran est consultable avant la clôture.
             return self._tous_indisponibles(tournoi_id, phase.id, archer_ids, TABLEAU_ABSENT)
-        plan = self._plan_lu(tournoi_id, phase.id)
-        identites = self._identites(tournoi_id)
-        # `podium()` rebalaye tout l'arbre : calculé **une fois** pour la grille entière, pas par
-        # archer — la route accepte jusqu'à 64 identifiants.
-        rangs = {place.participant: place.rang for place in tableau.podium()}
         return Routage(
             phase_id=phase.id,
-            archers=tuple(
-                self._router(a, tableau, lignes, plan, rangs, identites) for a in archer_ids
-            ),
+            archers=tuple(self._router(archer_id, grille) for archer_id in archer_ids),
         )
+
+    def affectations(self, tournoi_id: TournoiId, phase_id: PhaseId | None = None) -> Routage:
+        """**Tout** le tableau, dans l'ordre du pas de tir — le canal n°2 (E07US008).
+
+        Différence de fond avec `routage`, et non de commodité : l'appelant ne fournit **aucun**
+        identifiant. La tablette sait qui sont ses quatre archers ; l'écran de salle et la table de
+        l'organisation ne savent rien du tout. Leur faire reconstituer la liste d'abord, ce serait
+        leur faire connaître le tableau — c'est le travail de ce service.
+
+        Les archers **hors tableau** n'y figurent pas, et c'est le contraire de `routage` : là on a
+        *demandé* cet archer, donc on lui doit une ligne motivée ; ici personne ne l'a nommé, et
+        l'afficher ferait chercher une butte à quelqu'un qui n'en a pas.
+
+        Les participants **équipe** (E13US002) sont écartés : le routage résout un `Participant` en
+        archer (`_identites`), et une équipe n'a pas de nom d'archer. Les afficher rendrait des
+        lignes anonymes — la résolution `Participant → équipe` viendra avec les équipes elles-mêmes.
+        """
+        phase = self._phase_de_tableau(tournoi_id, phase_id)
+        if phase is None or phase.id is None:
+            return Routage(phase_id=None, archers=())
+        grille = self._grille(tournoi_id, phase, phase.id)
+        if grille is None:
+            return Routage(phase_id=phase.id, archers=())
+        lignes = [self._router(a, grille) for a in _archers_du_tableau(grille.tableau)]
+        return Routage(
+            phase_id=phase.id,
+            archers=tuple(sorted(lignes, key=_ordre_du_pas_de_tir)),
+        )
+
+    # --- Lecture de la grille --------------------------------------------------------------------
+
+    def _grille(self, tournoi_id: TournoiId, phase: Phase, phase_id: PhaseId) -> _Grille | None:
+        """Tout ce qu'il faut pour router, lu **une fois** — `None` si le tableau n'existe pas.
+
+        `classement()` plutôt que `podium()` (E07US008) : le podium n'est que sa restriction aux
+        rangs ≤ 4. Sous placement intégral (E05US010), tous les rangs sont décernés par des matchs
+        terminaux, et les lire donne le rang **exact** de chacun sans autre calcul. Sous profondeur
+        podium, la sortie est identique à celle d'hier — ce n'est donc pas un changement de
+        comportement, c'est le même code qui cesse de jeter ce qu'il avait déjà.
+        """
+        try:
+            tableau, lignes = self._saisie_duels.reconstruire(tournoi_id, phase_id)
+        except EffectifTableauInvalide:
+            return None
+        return _Grille(
+            phase=phase,
+            tableau=tableau,
+            lignes=lignes,
+            plan=self._plan_lu(tournoi_id, phase_id),
+            rangs={place.participant: place.rang for place in tableau.classement()},
+            identites=self._identites(tournoi_id),
+            repechages=self._repechages(tournoi_id, phase),
+        )
+
+    def _repechages(self, tournoi_id: TournoiId, phase: Phase) -> dict[int, DestinationRepechage]:
+        """`tour perdu → phase qui reprend ses battus`, lu dans les **sources de la séquence**.
+
+        `VersRepechage` « ne construit rien » (`domain/politiques.py`) : la réintégration est un
+        **prélèvement** de la phase avale, `SourcePhase.par_issue_de_tour(ordre, tour, PERDANTS)`.
+        La destination d'un repêché n'est donc pas dans son tableau — elle est dans le déroulé, et
+        c'est la seule lecture qui puisse la donner.
+
+        `par_tournoi` trie par ordre (E05US001) : `setdefault` retient donc la phase **la plus
+        proche**, celle qui reprendra effectivement ces battus si deux la déclarent.
+        """
+        destinations: dict[int, DestinationRepechage] = {}
+        for autre in self._phases.par_tournoi(tournoi_id):
+            if autre.id is None or autre.ordre <= phase.ordre:
+                continue
+            for source in autre.sources:
+                if (
+                    source.nature is NatureSource.ISSUE_DE_TOUR
+                    and source.ordre_source == phase.ordre
+                    and source.issue is IssueTour.PERDANTS
+                    and source.tour is not None
+                ):
+                    destinations.setdefault(
+                        source.tour,
+                        DestinationRepechage(autre.id, autre.ordre, autre.type.value),
+                    )
+        return destinations
 
     # --- Résolution de la phase ----------------------------------------------------------------
 
@@ -302,28 +457,26 @@ class ServiceRoutage:
 
     # --- Routage d'un archer -------------------------------------------------------------------
 
-    def _router(
-        self,
-        archer_id: int,
-        tableau: Tableau,
-        lignes: dict[int, LigneClassement],
-        plan: _PlanLu,
-        rangs: dict[Participant, int],
-        identites: dict[int, tuple[str, str]],
-    ) -> RoutageArcher:
-        """L'issue d'un archer : prochain duel, sortie, ou l'aveu qu'on ne sait pas le router.
+    def _router(self, archer_id: int, grille: _Grille) -> RoutageArcher:
+        """L'issue d'un archer : prochain duel, repêchage, sortie, ou l'aveu qu'on ne sait pas.
 
         La règle tient en une phrase : **son prochain duel est le match non tranché qu'il occupe**.
         Le tableau reconstruit a déjà propagé les vainqueurs et résolu les byes — un exempt du 1er
         tour occupe donc déjà son match du tour 2, et c'est celui-là qu'on trouve. Un participant
         n'occupe au plus qu'un match non tranché à la fois : l'arbre l'interdit.
+
+        Plus de match devant lui ⇒ il a **perdu son dernier match** (ou gagné le dernier du
+        tableau). Deux sorties très différentes s'y cachent, et E07US008 les sépare : le battu qui
+        est **classé ici** (`TERMINE`, avec son rang) et celui que le routing **fait ressortir**
+        (`REPECHE`, sans rang — il peut encore remonter).
         """
+        tableau = grille.tableau
         moi = Participant.individuel(archer_id)
         # Les noms viennent des **archers**, pas du classement : un abandon y est relégué et une
         # disqualification en est **sortie** (ADR-0050), or ce sont précisément les archers qu'on
         # route encore (ils restent dans la grille). Les lire du classement rendait leur ligne
         # **anonyme** — la moitié du trou que le panneau dégradé avait déjà fermée de son côté.
-        nom, prenom = identites.get(archer_id, ("", ""))
+        nom, prenom = grille.identites.get(archer_id, ("", ""))
         siens = [m for m in tableau.matchs if moi in (m.haut, m.bas)]
         if not siens:
             return RoutageArcher(
@@ -340,39 +493,50 @@ class ServiceRoutage:
                 nom=nom,
                 prenom=prenom,
                 issue=IssueRoutage.PROCHAIN_DUEL,
-                prochain=self._prochain_duel(prochain, tableau, lignes, plan, moi),
+                prochain=self._prochain_duel(prochain, grille, moi),
             )
-        rang = rangs.get(moi)
         dernier = max(siens, key=lambda m: m.tour)
+        tour_sortie = libelle_tour(dernier.tour, tableau.nb_tours, dernier.place_en_jeu)
+        a_perdu = dernier.vainqueur != moi
+        if a_perdu and _est_repeche(tableau, dernier):
+            destination = grille.repechages.get(dernier.tour)
+            return RoutageArcher(
+                archer_id=archer_id,
+                nom=nom,
+                prenom=prenom,
+                issue=IssueRoutage.REPECHE,
+                tour_sortie=tour_sortie,
+                destination=destination,
+                motif=REPECHAGE_SANS_DESTINATION if destination is None else None,
+            )
+        rang = grille.rangs.get(moi)
+        fourchette = _fourchette_de_rangs(rang, dernier if a_perdu else None)
         return RoutageArcher(
             archer_id=archer_id,
             nom=nom,
             prenom=prenom,
             issue=IssueRoutage.TERMINE,
             rang_final=rang,
-            tour_sortie=libelle_tour(dernier.tour, tableau.nb_tours, dernier.place_en_jeu),
-            # Le rang d'un battu **avant** le podium (9-16ᵉ d'un tableau de 32…) suppose
-            # l'agrégation des rangs de tableau — E06US004, non livrée. On annonce l'attente au
-            # lieu d'afficher un rang faux ou un vide.
-            motif=RANG_A_VENIR if rang is None else None,
+            rang_min=fourchette[0] if fourchette is not None else None,
+            rang_max=fourchette[1] if fourchette is not None else None,
+            tour_sortie=tour_sortie,
+            # `RANG_A_VENIR` ne subsiste que là où **rien** n'est acquis : ni rang exact, ni
+            # fourchette (plage absente d'un `Match` bâti à la main). Avant E07US008 il couvrait
+            # tout le hors-podium, ce qui n'apprenait rien à quelqu'un qui venait de perdre.
+            motif=RANG_A_VENIR if fourchette is None else None,
         )
 
-    def _prochain_duel(
-        self,
-        match: Match,
-        tableau: Tableau,
-        lignes: dict[int, LigneClassement],
-        plan: _PlanLu,
-        moi: Participant,
-    ) -> ProchainDuel:
+    def _prochain_duel(self, match: Match, grille: _Grille, moi: Participant) -> ProchainDuel:
         """Le rendez-vous : sa cible (si elle est **valide**), son libellé de tour, l'adversaire."""
         adversaire_participant = match.bas if match.haut == moi else match.haut
-        adversaire = self._saisie_duels.duelliste(adversaire_participant, lignes)
-        pose, manque, alerte = self._pose_a_annoncer(match, moi, adversaire_participant, plan)
+        adversaire = self._saisie_duels.duelliste(adversaire_participant, grille.lignes)
+        pose, manque, alerte = self._pose_a_annoncer(
+            match, moi, adversaire_participant, grille.plan
+        )
         return ProchainDuel(
             numero=match.numero,
             tour=match.tour,
-            libelle=libelle_tour(match.tour, tableau.nb_tours, match.place_en_jeu),
+            libelle=libelle_tour(match.tour, grille.tableau.nb_tours, match.place_en_jeu),
             cible=pose[0] if pose is not None else None,
             position=pose[1] if pose is not None else None,
             adversaire=adversaire,
@@ -476,3 +640,91 @@ class ServiceRoutage:
             if occupant is None and isinstance(source, VainqueurDe | PerdantDe):
                 pending.append(source.numero)
         return tuple(pending)
+
+
+# --- lectures dérivées du tableau ----------------------------------------------------------------
+
+
+def _est_repeche(tableau: Tableau, match: Match) -> bool:
+    """Le perdant de ce match **ressort** du tableau au lieu d'y être classé (E07US008).
+
+    On **redemande au routing** plutôt que de deviner à la structure de l'arbre. C'est la même
+    question que `construire_tableau` a posée en engendrant l'arbre, à la même politique, avec le
+    même contexte : la réponse ne peut donc pas diverger. Déduire « pas de sous-tableau aval ⇒
+    repêché » serait faux — un match dont la plage aval est **élaguée par la profondeur**
+    (`ProfondeurPodium`) n'a pas non plus d'aval, et son battu est bel et bien éliminé.
+    """
+    if match.plage is None or match.plage.est_terminale:
+        # ⚠️ **Le routing ne s'interroge pas sur une plage terminale**, et ce n'est pas une
+        # optimisation : `construire_tableau` sort *avant* de l'appeler dans ce cas (*Règle T* —
+        # « l'issue fixe les deux rangs, il n'y a plus rien à diviser »), si bien que
+        # `PlacementEnCascade` y appelle `moitie_basse()` sur `[1..2]` et lève `PlageInvalide`.
+        # C'est un contrat implicite du protocole `Routing`, qu'on redonde ici parce qu'on est le
+        # deuxième appelant — et le premier à l'avoir enfreint. Métier, la garde est vraie de
+        # toute façon : un match terminal **décerne** les deux rangs, son perdant est classé ici.
+        return False
+    destination = tableau.routing.route(ContexteRoutage(tour=match.tour, plage=match.plage))
+    return isinstance(destination, VersRepechage)
+
+
+def _fourchette_de_rangs(rang: int | None, perdu: Match | None) -> tuple[int, int] | None:
+    """Les rangs que cet archer a **acquis** — exacts si connus, sinon la fourchette *ex æquo*.
+
+    Trois cas, du plus précis au plus honnête :
+
+    1. **rang exact connu** (un match terminal l'a décerné) ⇒ la fourchette s'y referme ;
+    2. **battu sans rang exact** ⇒ la *moitié basse* de la plage du match perdu (*Règle R*,
+       `Plage.moitie_basse`). Le battu d'un quart d'un tableau de 8 est 5ᵉ-8ᵉ : aucun match n'a été
+       joué pour départager les quatre battus des quarts, donc l'*ex æquo* n'est pas une
+       approximation, c'est **le** résultat ;
+    3. **rien d'exploitable** ⇒ `None`, et l'appelant dira que le rang viendra.
+
+    Ce n'est **pas** le classement officiel d'E06US004 : c'est ce que *ce tableau* a décidé, sans
+    agrégation inter-phases ni départage FFTA. La fourchette naît de la plage que le domaine porte
+    déjà — aucune règle de classement n'est réinventée ici, ce qui est précisément la raison de la
+    lire là plutôt que de la recalculer.
+    """
+    if rang is not None:
+        return (rang, rang)
+    if perdu is None or perdu.plage is None:
+        return None
+    try:
+        basse = perdu.plage.moitie_basse()
+    except PlageInvalide:
+        # Plage de largeur < 4 : le match **était** terminal, donc un rang exact aurait dû sortir du
+        # classement. On préfère avouer plutôt que d'inventer une borne sur une plage indivisible.
+        return None
+    return (basse.debut, basse.fin)
+
+
+def _archers_du_tableau(tableau: Tableau) -> tuple[int, ...]:
+    """Les archers qui occupent au moins un camp du tableau, **sans doublon**, dans l'ordre des
+    matchs — la liste que l'écran de salle ne peut pas fournir lui-même.
+
+    Un `dict` plutôt qu'un `set` : l'ordre d'insertion est stable, donc deux lectures successives
+    d'un même tableau rendent la même liste. Le tri final du pas de tir s'appuie dessus pour être
+    déterministe jusque dans les ex æquo.
+    """
+    vus: dict[int, None] = {}
+    for match in tableau.matchs:
+        for camp in (match.haut, match.bas):
+            if camp is not None and camp.genre is GenreParticipant.INDIVIDUEL:
+                vus.setdefault(camp.ref_id, None)
+    return tuple(vus)
+
+
+def _ordre_du_pas_de_tir(ligne: RoutageArcher) -> tuple[int, int, str, str, str]:
+    """L'ordre de lecture d'un panneau d'affectations : **la salle telle qu'elle est disposée**.
+
+    Cible croissante, puis position A→D. L'écran de salle n'a **aucune interaction** (CA E07US004) :
+    l'ordre rendu par le serveur est le seul qu'il aura, et l'ordre naturel d'une boucle sur l'arbre
+    (par numéro de match) ne veut rien dire pour quelqu'un qui cherche sa butte de loin.
+
+    Ceux qui n'ont plus de pose — sortis, repêchés, pas encore placés — passent **après**, jamais
+    intercalés : une ligne sans cible au milieu du pas de tir fait sauter une butte à l'œil qui
+    descend la liste. Entre eux, le nom, seul ordre stable dont on dispose alors.
+    """
+    prochain = ligne.prochain
+    if prochain is not None and prochain.cible is not None:
+        return (0, prochain.cible, prochain.position or "", ligne.nom, ligne.prenom)
+    return (1, 0, "", ligne.nom, ligne.prenom)

@@ -44,15 +44,20 @@ class VueEcran(str, Enum):
     """Les vues qu'un écran de salle sait afficher (CA : « classement, affectations, tableaux,
     plans »).
 
-    ⚠️ **Le catalogue est volontairement plus court que le CA** : `AFFECTATIONS` (E07US008) et
-    `TABLEAUX` (E07US005) ne sont pas livrées — les inscrire ici ferait programmer un déroulé qui
-    afficherait une page vide. Elles s'ajouteront avec leur US, et la migration n'aura rien à
-    reprendre : la valeur persistée est la chaîne, pas un rang.
+    ⚠️ **Le catalogue reste plus court que le CA** : `TABLEAUX` (E07US005) n'est pas livrée —
+    l'inscrire ici ferait programmer un déroulé qui afficherait une page vide. Elle s'ajoutera avec
+    son US, et la migration n'aura rien à reprendre : la valeur persistée est la chaîne, pas un
+    rang.
+
+    `AFFECTATIONS` est entrée avec E07US008, **sans migration**, exactement comme annoncé : la
+    prévision de conception s'est vérifiée, ce qui est la meilleure preuve que persister la chaîne
+    plutôt qu'un rang était le bon choix.
     """
 
     CLASSEMENT = "classement"
     PLAN_CIBLES = "plan_cibles"
     SUIVI_DEROULE = "suivi_deroule"
+    AFFECTATIONS = "affectations"
 
 
 @dataclass(frozen=True)

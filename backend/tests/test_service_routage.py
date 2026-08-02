@@ -50,6 +50,7 @@ from domain.politiques import (
     ByesAuxMieuxClasses,
     PlacementEnCascade,
     ProfondeurPodium,
+    Routing,
     SeedingSerpent,
 )
 from tests.conftest import (
@@ -70,11 +71,25 @@ from tests.test_service_saisie_duels import ZONES_TRIPLE, FauxDuelRepository
 
 _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
 
+_CASCADE = PlacementEnCascade()
+"""Le routing par défaut du décor, en **singleton de module** : `ruff` refuse un appel de fonction
+en argument par défaut (`B008`). Sans risque ici — les politiques sont des dataclasses `frozen`,
+donc un exemplaire partagé ne peut garder aucun état d'un test à l'autre."""
+
 
 class _Monde:
-    """Décor : un tournoi, un gabarit, une catégorie, N archers classés, une phase de tableau."""
+    """Décor : un tournoi, un gabarit, une catégorie, N archers classés, une phase de tableau.
 
-    def __init__(self, capacites: tuple[int, ...] = (4, 4)) -> None:
+    `routing` est **injectable** parce qu'un format de tournoi est de la configuration, pas du code
+    (règle 2) : E07US008 s'en sert pour monter un décor à **repêchage** sans dupliquer ce décor.
+    """
+
+    def __init__(
+        self,
+        capacites: tuple[int, ...] = (4, 4),
+        routing: Routing = _CASCADE,
+    ) -> None:
+        self.routing = routing
         self.tournoi_id = 1
         self.tournois = FauxTournoiRepository({1})
         self.phases = FauxPhaseRepository()
@@ -139,7 +154,7 @@ class _Monde:
             ResolveurBaremeDuelFfta(),
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
-            PlacementEnCascade(),
+            self.routing,
             ProfondeurPodium(),
         )
 
@@ -157,7 +172,7 @@ class _Monde:
             self._classement(),
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
-            PlacementEnCascade(),
+            self.routing,
             ProfondeurPodium(),
         )
 
@@ -392,7 +407,14 @@ def test_sans_plan_de_duels_la_cible_manque_sans_faire_echouer_le_panneau() -> N
 def test_l_elimine_sort_du_tableau_et_son_tour_de_sortie_est_nomme() -> None:
     """CA : l'archer éliminé n'a plus de prochaine affectation. Son **rang final** n'est pas encore
     publiable — l'agrégation des rangs de tableau est E06US004 — donc le panneau dit *où* il est
-    sorti et **annonce** le rang à venir plutôt que d'inventer un chiffre."""
+    sorti et **quels rangs il a acquis**.
+
+    ⚠️ **Attendu révisé par E07US008** (arbitrage du commanditaire, 02/08/2026), reversé au CA
+    d'E04US018. Ce test exigeait auparavant `motif is not None` — « rang publié en fin de phase ».
+    C'était vrai du code, pas du besoin : le battu d'un quart **est** 5ᵉ-8ᵉ *ex æquo*, aucun match
+    ne départage les quatre battus des quarts, et cette fourchette était déjà lisible dans la plage
+    du match. On l'annonce donc, et `rang_final` reste `None` — il n'y a pas de rang **exact** ici.
+    """
     monde = _Monde()
     _huit(monde)
     monde.placer()
@@ -403,9 +425,10 @@ def test_l_elimine_sort_du_tableau_et_son_tour_de_sortie_est_nomme() -> None:
 
     assert ligne.issue is IssueRoutage.TERMINE
     assert ligne.prochain is None
-    assert ligne.rang_final is None
+    assert ligne.rang_final is None  # pas de rang exact : les quatre battus sont ex æquo
+    assert (ligne.rang_min, ligne.rang_max) == (5, 8)
     assert ligne.tour_sortie == "Quart de finale"
-    assert ligne.motif is not None
+    assert ligne.motif is None  # plus d'« en attente » : ce qui est acquis est dit
 
 
 def test_rang_final_publie_quand_le_podium_est_acquis() -> None:

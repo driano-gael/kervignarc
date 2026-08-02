@@ -190,3 +190,72 @@ def test_issue_reponse_est_le_miroir_de_l_enumeration() -> None:
     `IssueRoutage` si une 4ᵉ issue apparaissait — la divergence se découvrirait à la sérialisation
     (500), au pire endroit. Cette égalité est le seul lien qui les tient ensemble."""
     assert set(get_args(IssueRoutageReponse)) == {issue.value for issue in IssueRoutage}
+
+
+# --- E07US008 : la vue « toutes les affectations » ----------------------------------------------
+
+
+def test_affectations_rend_tout_le_tableau_sans_qu_on_le_demande(
+    app_routage: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Câblage de la route collective (E07US008) : aucun `archer_id` en entrée, tout le tableau en
+    sortie. C'est le point de la route — l'écran de salle ne connaît pas la liste."""
+    with TestClient(app_routage) as client:
+        connecter_admin(client)
+        tournoi_id, phase_id, archers = _preparer(app_routage, client)
+
+        reponse = client.get(f"/api/v1/routage/{tournoi_id}/affectations")
+
+    assert reponse.status_code == 200, reponse.text
+    corps = reponse.json()
+    assert corps["phase_id"] == phase_id
+    assert sorted(ligne["archer_id"] for ligne in corps["archers"]) == sorted(archers)
+
+
+def test_affectations_sont_ordonnees_par_cible_puis_position(
+    app_routage: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """L'écran de salle n'a aucune interaction : l'ordre du serveur est le seul qu'il aura."""
+    with TestClient(app_routage) as client:
+        connecter_admin(client)
+        tournoi_id, _, _ = _preparer(app_routage, client)
+
+        corps = client.get(f"/api/v1/routage/{tournoi_id}/affectations").json()
+
+    poses = [
+        (ligne["prochain"]["cible"], ligne["prochain"]["position"]) for ligne in corps["archers"]
+    ]
+    assert poses == sorted(poses)
+
+
+def test_affectations_en_lecture_publique_sans_authentification(
+    app_routage: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Contrat de lecture publique (E10US001) : le téléphone de l'archer n'a **aucune** session.
+
+    Le client qui lit n'est pas celui qui a préparé le tournoi — sans ce démontage, le cookie admin
+    de la préparation rendrait le test vert quelle que soit la garde posée sur la route.
+    """
+    with TestClient(app_routage) as admin:
+        connecter_admin(admin)
+        tournoi_id, _, _ = _preparer(app_routage, admin)
+
+    with TestClient(app_routage) as anonyme:
+        reponse = anonyme.get(f"/api/v1/routage/{tournoi_id}/affectations")
+
+    assert reponse.status_code == 200, reponse.text
+
+
+def test_affectations_sans_phase_de_tableau_rendent_une_phase_nulle(
+    app_routage: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`phase_id` à `null` distingue « pas encore de tableau » de « tableau vide » — sans quoi
+    l'écran de salle afficherait un pas de tir désert au lieu de dire qu'on n'en est pas là."""
+    with TestClient(app_routage) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        corps = client.get(f"/api/v1/routage/{tournoi_id}/affectations").json()
+
+    assert corps["phase_id"] is None
+    assert corps["archers"] == []
