@@ -64,6 +64,11 @@
   **change le groupe** d'ex æquo, le verdict ne décrit plus cette égalité : il est **écarté** et
   l'égalité **re-signalée** (le juge refait tirer). Annoncer un second barrage sur une place où un
   barrage **périmé** reste ouvert est **refusé** : il faut l'annuler d'abord.
+  Le barrage périmé est aussi **signalé à l'écran** : son formulaire de saisie et son bouton
+  « acter » disparaissent, il ne reste qu'à l'annuler — sans quoi on ferait tirer un groupe qui
+  n'oppose plus les bonnes personnes, et le classement ne bougerait pas sans un mot d'explication.
+  ⚠️ Cela vaut **aussi pour un barrage déjà acté** : la clôture ne protège de rien, le verdict
+  n'étant jamais stocké mais recalculé et écarté dès que le groupe change.
 - **CA — rien n'est signalé avant le premier tir**. Seuls les archers **en lice ayant validé au
   moins une volée** sont candidats à un barrage. Sans cela, au démarrage tout le plateau est à zéro,
   donc ex æquo au rang 1 — et l'écran proposerait de faire tirer les 120 archers au moment même où

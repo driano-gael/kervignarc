@@ -1022,3 +1022,74 @@ def test_le_verdict_est_visible_du_classement_que_consomme_le_placement(
         rangs = _rangs(client, scenario.tournoi_id)
         assert rangs[troisieme] == 2
         assert rangs[second] == 3
+
+
+def test_un_barrage_acte_devient_perime_si_le_groupe_change(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**Un barrage clos peut être périmé** — l'exclure était une présomption fausse.
+
+    Le domaine écarte un verdict dès que le groupe d'ex æquo a changé, sans jamais regarder `clos`.
+    Un archer qu'une volée validée en retard amène à l'égalité *après* la clôture fait donc écarter
+    le verdict : les rangs redeviennent partagés. Sans ce signal, l'écran affichait « Départagé »
+    en vert pendant que le classement disait le contraire, sans un mot.
+    """
+    scenario = Scenario(app_barrages)
+    _, second, troisieme = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+        client.put(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
+            json={
+                "tirs": [
+                    {"archer_id": second, "score": 8},
+                    {"archer_id": troisieme, "score": 10},
+                ]
+            },
+        )
+        client.post(f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/cloture")
+        assert _rangs(client, scenario.tournoi_id)[troisieme] == 2
+
+        # Un 4ᵉ archer rejoint l'égalité : le verdict clos ne décrit plus le bon groupe.
+        _ajouter_archer(app_barrages, scenario, ("10", "9", "8"))
+
+        barrage = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/barrages").json()[0]
+        assert barrage["clos"] is True
+        assert barrage["perime"] is True, "un barrage clos dont le groupe a changé est périmé"
+        # …et le classement confirme : le verdict est écarté, les rangs sont repartagés.
+        assert _rangs(client, scenario.tournoi_id)[second] == 2
+        assert _rangs(client, scenario.tournoi_id)[troisieme] == 2
+
+
+def test_un_barrage_acte_dont_le_verdict_tient_n_est_pas_perime(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le contre-test qui évite la sur-correction : sans lui, retirer le court-circuit `clos`
+    aurait pu marquer périmés **tous** les barrages achevés."""
+    scenario = Scenario(app_barrages)
+    _, second, troisieme = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+        client.put(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
+            json={
+                "tirs": [
+                    {"archer_id": second, "score": 8},
+                    {"archer_id": troisieme, "score": 10},
+                ]
+            },
+        )
+        client.post(f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/cloture")
+
+        barrage = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/barrages").json()[0]
+
+        assert barrage["clos"] is True
+        assert barrage["perime"] is False

@@ -116,11 +116,23 @@ class ServiceBarrage:
         """Ce barrage porte-t-il encore sur le groupe d'ex æquo constaté aujourd'hui ?
 
         Ne vaut que pour la **qualification** : ailleurs, aucun classement n'est calculé, donc rien
-        ne permet de dire qu'un groupe a changé. Un barrage **clos** n'est jamais périmé : son
-        verdict est déjà appliqué, donc l'égalité a disparu — la relire comme une péremption
-        marquerait tous les barrages acheves.
+        ne permet de dire qu'un groupe a changé.
+
+        ⚠️ **Un barrage CLOS peut être périmé, et l'exclure était une présomption fausse.** Une
+        première version court-circuitait sur `clos` en raisonnant « son verdict est appliqué, donc
+        l'égalité a disparu ». Le domaine dit le contraire : `_verdicts_applicables` écarte un
+        verdict dès que le groupe a changé, **sans jamais regarder `clos`**. Un archer qu'une volée
+        validée en retard amène à l'égalité *après* la clôture fait donc écarter le verdict — et
+        l'écran affichait « Départagé » en vert pendant que les rangs redevenaient partagés, sans un
+        mot. C'est exactement le dommage que ce champ existe pour éviter, reproduit sur le seul
+        chemin qu'il s'interdisait d'instruire.
+
+        La crainte « cela marquerait tous les barrages achevés » est infondée, et c'est vérifiable :
+        `egalites_a_departager` se calcule sur les rangs **définitifs**, verdicts appliqués. Un
+        barrage clos dont le verdict tient n'a donc plus d'égalité à son rang — `attendu is None`,
+        et il n'est pas périmé.
         """
-        if barrage.portee is not PorteeBarrage.QUALIFICATION or barrage.clos:
+        if barrage.portee is not PorteeBarrage.QUALIFICATION:
             return False
         if barrage.rang_dispute is None:
             return False

@@ -3324,7 +3324,14 @@ button:disabled {
    Bordure ambre : c'est une **alerte d'organisation** (`DV-03`), quelque chose reste à faire avant
    que le classement soit définitif. */
 .carte--barrages {
-  border-left: 3px solid var(--warn);
+  border-left: 3px solid var(--border);
+}
+
+/* L'ambre ne s'allume que s'il **reste quelque chose à faire** (`DV-03`). Les barrages actés
+   restent affichés — ils portent le seul chemin de correction d'un verdict faux — mais un tournoi
+   terminé et réglé ne doit pas garder une alerte permanente. */
+.carte--barrages-actif {
+  border-left-color: var(--warn);
 }
 
 .barrages__egalites {

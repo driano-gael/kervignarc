@@ -154,6 +154,40 @@ describe('PanneauBarrages', () => {
     expect(screen.getByRole('button', { name: /Faire tirer/ })).toBeInTheDocument()
   })
 
+  it('propose « Faire tirer » quand le seul barrage au même rang est ACTÉ', () => {
+    // ⚠️ **Ce cas ne laisse debout qu'un seul mécanisme.** Les trois conjonctions de `dejaOuvert`
+    // (`!clos`, `!perime`, `memesTireurs`) se masquaient mutuellement : une revue par mutation a
+    // montré que retirer `!clos`, ou `!perime`, ou même remplacer `memesTireurs` par `true`
+    // laissait les sept cas verts. Ici les tireurs **correspondent** et le barrage n'est pas
+    // périmé : seul `!clos` peut encore faire apparaître le bouton.
+    afficher([barrage({ clos: true, participants: [1, 2] })], [{ rang: 2, archer_ids: [1, 2] }])
+
+    expect(screen.getByRole('button', { name: /Faire tirer/ })).toBeInTheDocument()
+  })
+
+  it('propose « Faire tirer » quand le barrage au même rang est PÉRIMÉ et porte les mêmes tireurs', () => {
+    // Second cas à mécanisme unique : les tireurs correspondent et le barrage n'est pas clos, donc
+    // seul `!perime` peut découvrir le bouton.
+    afficher(
+      [barrage({ perime: true, est_resolu: false, groupes_a_rejouer: [[1, 2]] })],
+      [{ rang: 2, archer_ids: [1, 2] }],
+    )
+
+    expect(screen.getByRole('button', { name: /Faire tirer/ })).toBeInTheDocument()
+  })
+
+  it('n’allume l’ambre que s’il reste quelque chose à faire', () => {
+    // Les barrages actés restent affichés (ils portent le chemin de correction) mais un tournoi
+    // réglé ne doit pas garder une alerte permanente.
+    const { container } = afficher([barrage({ clos: true })])
+    expect(container.querySelector('.carte--barrages-actif')).toBeNull()
+  })
+
+  it('allume l’ambre tant qu’un barrage reste à tirer', () => {
+    const { container } = afficher([barrage({ est_resolu: false, groupes_a_rejouer: [[1, 2]] })])
+    expect(container.querySelector('.carte--barrages-actif')).not.toBeNull()
+  })
+
   it('masque « Faire tirer » quand le barrage ouvert porte bien sur le groupe signalé', () => {
     afficher(
       [barrage({ est_resolu: false, groupes_a_rejouer: [[1, 2]] })],

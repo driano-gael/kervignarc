@@ -76,8 +76,14 @@ export function PanneauBarrages({
     return null
   }
 
+  // ⚠️ **L'ambre signale « il reste à faire », pas « il s'est passé quelque chose ».** Depuis que
+  // les barrages clos sont rendus, la carte reste affichée jusqu'à la fin du tournoi — sans ce
+  // distinguo, un tournoi terminé et entièrement réglé garderait une alerte permanente, et l'ambre
+  // ne signalerait plus rien.
+  const aFaire = egalites.length > 0 || tous.some((b) => !b.clos || b.perime || b.incoherent)
+
   return (
-    <section className="carte carte--barrages">
+    <section className={`carte carte--barrages${aFaire ? ' carte--barrages-actif' : ''}`}>
       <h3 className="carte__soustitre">Barrages — places décisives</h3>
       {egalites.length > 0 && (
         <ul className="barrages__egalites">
@@ -241,7 +247,9 @@ function BarrageEnCours({
             // est colle a « Corriger la manche N » sur une interface tactile. Le projet confirme
             // des suppressions bien moins couteuses ; on s'aligne des qu'il y a quelque chose a
             // perdre, et on laisse le clic unique sur un barrage vierge.
-            const perte = `Annuler ce barrage ? ${derniere} manche(s) saisie(s) seront effacées.`
+            const perte =
+              `Annuler ce barrage ? ${derniere} manche(s) saisie(s) seront effacées` +
+              `${barrage.clos ? ', et les archers repartageront leur rang' : ''}.`
             if (derniere > 0 && !window.confirm(perte)) return
             annuler.mutate(barrage.id)
           }}
