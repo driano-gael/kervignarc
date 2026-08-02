@@ -53,6 +53,8 @@
 | [DETTE-025](#dette-025--appliquer-un-format-remplace-la-séquence-de-phases-sans-transaction) | technique | mineur | `backend/application/formats.py` (`ServiceFormats.appliquer`) | La suppression des phases existantes et la création de celles du format passent par des **transactions séparées** (une session par appel de repository) : une panne entre les deux laisse le tournoi sans phase, et une lecture concurrente peut voir une séquence partielle | Faible : **quatre** gardes (phase engagée, forfait pendant, **duelliste posé**, retrait de la qualification) réduisent le cas à une séquence `à venir` **sans données attachées**, que l'organisateur reconstitue en réappliquant un format | E01US023 (relevé par la revue ; remède hors périmètre — il touche le **port** `PhaseRepository`) | Un `remplacer_sequence(tournoi_id, phases)` atomique sur l'adapter concret, patron `consigner_dans` ([ADR-0035](adr/0035-atomicite-acte-trace-session-partagee.md)). Marqueur `# DETTE-025` |
 | [DETTE-028](#dette-028--le-catalogue-de-types-de-phase-est-livré-sans-consommateur) | conception | majeur | **`backend/application/saisie_duels.py` (`_decor` — le cœur du raccourci)**, `backend/domain/poule.py`, `big_shoot_off.py`, `barrage.py` (dont `ConfigurationBarrage`, qui décrit le format de saisie et n'a plus d'appelant depuis que `resoudre_barrage` ne fait que départager), `suisse.py`, `colline.py`, `politiques.py` (`ScoreAvecHandicap`, `TiebreakPoules`, `RoutingRepechage`) ; **sites d'affichage de l'écart** (E01US024) : `application/simulation_format.py`, `api/v1/formats.py`, `frontend/src/features/deroule/` | Les six moteurs et les trois politiques d'E05US015 n'ont **aucun appelant de production** : aucun service ne les instancie, aucune `config.policies` ne sait porter `nb_poules` / `nb_manches` / `portee_de_defi` / `restants`, et `domain/classement.py` calcule toujours son cumul sans passer par la famille `scoring` — donc `ScoreAvecHandicap` reste inerte. L'écran « Phases » propose pourtant les six types à la composition | La lettre d'[ADR-0045](adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md) §2 est tenue (un moteur existe pour chaque type offert), son **intention** ne l'est qu'à moitié : l'organisateur peut composer une phase de poules dont le réglage n'est exprimable nulle part et que rien ne déroulera. Et un moteur sans consommateur n'est éprouvé que par ses propres tests — écrits le même jour, par le même agent | E05US015 ([ADR-0062](adr/0062-catalogue-de-types-de-phase.md)) — **périmètre assumé**, l'exécution relevant d'E01US024 ; relevé en revue comme devant être **tracé** et non seulement documenté à l'ADR | ⚠️ **E01US024 n'en a résorbé que la moitié** (01/08/2026, [ADR-0063](adr/0063-brouillon-de-format-invariant-a-l-application.md)) : la **composition** est livrée (les 9 types se composent, avec effectif et prélèvements), l'**exécution** non — aucun service ne lit encore `Phase.sources` pour peupler une phase, `ServiceSaisieDuels._decor` ensemençant chaque tableau avec *tous* les archers en lice. L'US **aggrave** donc le coût (on peut désormais composer un déroulé que le moteur ignorera) et le compense en **affichant l'écart** projeté/constaté, fixé par un test de non-régression. Reste : **US dédiée** du chantier moteur — faire consommer les sources au peuplement, porter les réglages en `config.policies`, rebrancher `classement.py` sur `PolitiquesPhase`. Marqueurs `# DETTE-028` : `politiques.py` (moteurs inertes) **et** `ServiceSaisieDuels._decor` (le peuplement qui ignore les sources) |
 | [DETTE-029](#dette-029--lattribution-des-rangs-ex-æquo-est-écrite-trois-fois) | conception | mineur | `backend/domain/classement.py` (`_ranger`), `backend/domain/poule.py` (`classement_de_poule`, `_marquer_ex_aequo`), `backend/domain/suisse.py` (`classement_suisse`, `_propager_ex_aequo`) | La règle « rang partagé à clé égale, avec sauts (1-2-2-4) » est écrite **trois fois**, et la propagation du drapeau `ex_aequo` **deux fois** en copie quasi verbatim. Les trois sites **divergent déjà** : `classement._ranger` ne porte aucun drapeau `ex_aequo`, les deux nouveaux si | 3ᵉ occurrence réelle : le seuil que le § Dette de `CLAUDE.md` fixe pour proposer un remède structurel est franchi **sur preuve**, pas sur pronostic. Corriger la règle (ou la faire diverger davantage) demande trois modifications coordonnées, et un oubli produit un classement **cohérent et faux** | E05US015 — deux des trois sites sont introduits par cette US ; relevé en revue (axes C1 et C2) | **US `refactor/` dédiée + ADR** (règle 16 : jamais en douce dans l'US courante). Remède minimal : une fonction pure `attribuer_rangs(ordonnes, meme_rang)` du domaine (~15 lignes, aucune abstraction nouvelle — le comparateur `Tiebreak` injecté suffit), chaque appelant gardant son dataclass de sortie. Marqueur `# DETTE-029` aux trois sites |
+| [DETTE-031](#dette-031--le-suivi-du-déroulé-se-recalcule-intégralement-à-chaque-lecture) | technique | mineur | `backend/application/suivi_deroule.py` (`ServiceSuiviDeroule.pour_tournoi`), `backend/api/v1/suivi_deroule.py`, `frontend/src/features/suivi-deroule/hooks.ts` | `GET /api/v1/tournois/{id}/suivi-deroule` est **public, non authentifié, sans cache et sans plafond** : chaque appel compte les engagés (départs × inscriptions) puis, **par phase en tableau**, appelle `ServiceSaisieDuels.reconstruire` — qui recalcule tout le classement du tournoi, rebâtit l'arbre, rejoue les duels et applique les forfaits. Deux surfaces le pollent (écran de salle 10 s, pilotage 10 s) et n'importe qui sur le réseau local peut le poller aussi | Faible aujourd'hui : mono-club, quelques phases, un ou deux écrans, réseau local fermé — mesuré à ~34 ms pour le seul classement. Devient sensible avec beaucoup d'écrans, un déroulé à nombreuses phases, ou le jour où l'appli sortirait du LAN | E07US004 ([ADR-0064](adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md)) — relevé en revue (axe adversarial) : la dette était **assumée en commentaire** de `hooks.ts` sans être tracée ici | Mémoïser la projection par `(tournoi_id, version)` — la reconstruction est **pure** à donnée constante, donc invalidable sur l'événement post-commit `donnees_modifiees` qui existe déjà. Aucun cache n'est justifié avant qu'une mesure le réclame. Marqueur `# DETTE-031` sur `ServiceSuiviDeroule.pour_tournoi` |
+| [DETTE-032](#dette-032--la-prise-de-controle-se-mesure-sur-lheure-murale-pas-sur-une-horloge-monotone) | technique | mineur | `backend/application/ecrans.py` (`ServiceEcrans._ecoulees`), `backend/domain/ecran.py` (`Consigne.expiree`, `reste_secondes`) | L'échéance d'une prise de contrôle est calculée comme un écart entre deux lectures de l'**heure murale** (port `Horloge`). Une resynchronisation NTP en cours de journée qui **recule** l'horloge repousse d'autant l'expiration ; côté écran, le décompte local atteint zéro, le sondage suivant lui rend la durée pleine, et l'affichage **oscille** entre vue imposée et déroulé | Faible : suppose une remise à l'heure en pleine journée sur un serveur local sans internet. Le pire cas est cosmétique (un écran qui hésite quelques secondes), jamais une perte de donnée | E07US004 ([ADR-0064](adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md)) — relevé en 3ᵉ passe de revue, après qu'un correctif eut **prétendu** le traiter sans le faire | Mesurer la durée sur une référence **monotone** (`time.monotonic`) plutôt que sur l'heure murale, en ajoutant un port dédié à côté d'`Horloge` — ce dernier reste juste pour *dater* (audit, présence), pas pour *chronométrer*. Marqueur `# DETTE-032` sur `ServiceEcrans._ecoulees` |
 
 ## Dette résorbée
 
@@ -1344,3 +1346,63 @@ devenue superflue : elle protège contre l'autre moitié du risque, l'oubli d'un
 4. **Marquer le code** : commentaire à l'endroit exact du raccourci, renvoyant à l'ID (`# DETTE-001 : …`).
 5. **Mentionner dans le corps de la PR**, et proposer l'US de résorption à l'utilisateur.
 6. À la résorption : déplacer la ligne vers « Dette résorbée » avec l'US qui l'a soldée, et retirer les marqueurs du code.
+
+### DETTE-031 — le suivi du déroulé se recalcule **intégralement à chaque lecture**
+
+`GET /api/v1/tournois/{id}/suivi-deroule` (E07US004) est une **lecture publique, non authentifiée,
+sans cache et sans plafond**. Chaque appel :
+
+1. compte les engagés — un parcours de tous les départs × toutes leurs inscriptions ;
+2. projette le format (`domain.deroule.projeter`, pur et bon marché) ;
+3. puis, **par phase en tableau**, appelle `ServiceSaisieDuels.reconstruire`, qui recalcule *tout*
+   le classement du tournoi (tous les archers, toutes les séries), rebâtit l'arbre, rejoue les duels
+   persistés et applique les forfaits.
+
+Deux surfaces le pollent en continu — l'écran de salle et le suivi au pilotage, toutes deux à 10 s —
+et, l'endpoint étant public par nécessité (un écran de salle n'a pas de session admin), n'importe
+quel appareil du réseau local peut le poller aussi.
+
+**Pourquoi c'est assumé et non corrigé dans l'US.** Le contexte est mono-club, local, quelques
+phases, un ou deux écrans, réseau fermé ; la mesure disponible (~34 ms pour le seul classement)
+ne justifie pas un cache. Ajouter une mémoïsation sans mesure serait de la sur-ingénierie — et un
+cache est précisément le genre de mécanisme qui coûte cher en justesse (invalidation) pour un gain
+non constaté.
+
+**Ce qui la rendrait sensible** : beaucoup d'écrans, un déroulé à nombreuses phases en tableau, ou
+une sortie du LAN. Le remède est **borné par construction** : la projection est **pure à donnée
+constante**, donc mémoïsable par `(tournoi_id, version)` et invalidable sur l'événement post-commit
+`donnees_modifiees` qui existe déjà (`bootstrap.composition._diffuser_apres_ecriture`). Aucun
+nouveau pattern, aucune abstraction : un dictionnaire et un compteur de version.
+
+*Relevée en revue (axe adversarial) : la dette était **assumée en commentaire** dans
+`frontend/src/features/suivi-deroule/hooks.ts` — donc réelle et connue — mais **pas tracée ici**,
+ce que le § Dette de `CLAUDE.md` compte comme dette silencieuse.*
+
+### DETTE-032 — la prise de contrôle se mesure sur l'heure murale, pas sur une horloge monotone
+
+`ServiceEcrans._ecoulees` calcule la durée écoulée d'une prise de contrôle comme un écart entre deux
+lectures du port `Horloge`, c'est-à-dire de l'**heure murale**. `Consigne.expiree` et
+`reste_secondes` en dépendent.
+
+Si l'horloge **recule** — une resynchronisation NTP en cours de journée — l'expiration est repoussée
+d'autant. Côté écran, le décompte **local** atteint zéro et la vue imposée est abandonnée ; le
+sondage suivant rend une durée pleine et l'écran se refige. L'affichage **oscille** jusqu'à ce que
+l'heure rattrape son retard.
+
+**Pourquoi ce n'est pas corrigé dans l'US.** Le cas suppose une remise à l'heure en pleine
+compétition, sur un serveur local sans internet (le déploiement du jour J est hors ligne, ADR-0044).
+Le pire effet est cosmétique : un écran qui hésite quelques secondes sur ce qu'il montre. Aucune
+donnée n'est en jeu.
+
+**Le remède, quand il se justifiera** : chronométrer sur `time.monotonic` via un port dédié, à côté
+d'`Horloge`. La distinction est propre et vaut d'être nommée — **`Horloge` sert à *dater*** (une
+trace d'audit, un heartbeat, tout ce qui doit rester lisible et comparable après coup) ; **une
+référence monotone sert à *chronométrer*** (une durée, un délai). Les confondre est exactement ce
+qui produit ce défaut, et le projet a d'autres endroits où la même distinction s'appliquerait
+(présence, idempotence) — d'où une US dédiée plutôt qu'un correctif local.
+
+*Relevée en 3ᵉ passe de revue, après qu'un correctif de 2ᵉ passe eut **prétendu** la traiter : un
+plancher à zéro sur l'écart, dont la mesure a montré qu'il ne changeait strictement rien (le
+plafond de `reste_secondes` normalisait déjà la sortie). Le plancher est conservé — il évite qu'un
+appelant reçoive un temps négatif — mais sa docstring dit désormais ce qu'il fait, et pas ce qu'on
+aurait voulu qu'il fasse.*

@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 01/08/2026** · **88 US livrées** · dernière : `E01US024` *(composer, diagnostiquer et simuler un déroulé : brouillon, schéma à braquets, simulation sur N archers — ADR-0063)*.
+**Dernière mise à jour : 02/08/2026** · **89 US livrées** · dernière : `E07US004` *(écran de salle : poste typé, déroulé de vues, pilotage à distance, et le schéma à braquets rempli par la réalité — ADR-0064)*.
 
 ---
 
@@ -37,7 +37,10 @@
 > | ~~1~~ ✅ | ~~`E05US010`~~ | **Livrée le 31/07/2026** — moteur de placement 1→N, **routing générique** (`route(contexte)`), **sources multiples et relatives**, oracle 120 ([ADR-0061](../docs/adr/0061-routing-generique-et-placement-en-cascade.md)) |
 > | ~~2~~ ✅ | ~~`E05US015`~~ | **Livrée le 31/07/2026** — le **catalogue de types**, élargi à **onze** formats ([ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md)) |
 > | ~~3~~ ✅ | ~~`E01US024`~~ | **Livrée le 01/08/2026** — écran « Composer un déroulé » : brouillon enregistrable à tout moment, **schéma à braquets** (Règle R rendue visible), diagnostic à deux gravités et **simulation** sur N archers fictifs ([ADR-0063](../docs/adr/0063-brouillon-de-format-invariant-a-l-application.md)) |
-> | **4** | **`E07US004`** | ⬅️ **prochaine** — **Voir le tournoi se dérouler** : suivi des tours + écran de salle |
+> | ~~4~~ ✅ | ~~`E07US004`~~ | **Livrée le 02/08/2026** — **écran de salle** (poste typé cible/écran, déroulé de vues, pilotage à distance) + le schéma à braquets **rempli par la réalité**, sur trois surfaces ([ADR-0064](../docs/adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md)) |
+>
+> **Le chantier « moteur de phases & plan de tournoi » est clos** (4/4). `E07US008` reprend donc la
+> tête de la séquence J2.
 >
 > **Pourquoi E05US010 était en tête** : le verrou du moteur n'était pas le catalogue de types mais
 > le **routing** — `DestinationPerdant` n'avait qu'**une** valeur, `ELIMINE`, et une méthode sans
@@ -59,12 +62,15 @@
 > charges, a été fournie par le commanditaire), **E05US019 était un doublon** d'E01US023, et le
 > **verrou routing** ci-dessus. *(Aucun code n'a été écrit ce jour-là : seul le backlog.)*
 >
-> *Ensuite seulement :* **`E07US008`** — vue publique des affectations du prochain tour, le
+> **🎯 Prochaine :** **`E07US008`** — vue publique des affectations du prochain tour, le
 > **deuxième** des quatre canaux de routage (`D-09`) — la même projection que le panneau de la
 > tablette (`E04US018`, livrée), mais sur le **téléphone de l'archer**, qui a déjà quitté la salle.
 > Le service et l'endpoint de routage existent (`ServiceRoutage`, `GET /api/v1/routage/{tournoi}`,
-> lecture publique) : cette US est surtout la **surface publique** qui les consomme. *Ensuite* :
-> `E07US004` (écran de salle, le canal n°3). *(`E04US018` **livrée** — voir « Fait juste avant ».)*
+> lecture publique) : cette US est surtout la **surface publique** qui les consomme.
+> ⚠️ **Elle a maintenant un second consommateur** : le catalogue de vues de l'écran de salle
+> (E07US004) attend `affectations` — c'est la seule vue du CA qu'il ne sait pas encore afficher.
+> L'ajouter au catalogue (`domain.ecran.VueEcran`) est **une ligne, sans migration** : la valeur
+> persistée est la chaîne, pas un rang. *(Le canal n°3, l'**écran de salle**, est livré.)*
 > *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
 > moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *`E12US004` (tracer un forfait) est **absorbée** par `E04US015` — voir ci-dessous.*
@@ -72,6 +78,28 @@
 > décompte du jalon.*
 >
 > *Fait juste avant :*
+> - `E07US004` **écran de salle & suivi du déroulé** — US à **surface visible**, qui **clôt le
+>   chantier moteur** par sa sortie visuelle. L'écran de salle est un **`Poste` typé** (`cible` |
+>   `ecran`), pas un agrégat parallèle : le CA disait « rien de neuf à inventer », et le typage fait
+>   hériter gratuitement le jeton, le QR, le heartbeat et la supervision. ⚠️ Le prix est que
+>   `cible_index` devient `int | None` — mypy strict a listé les **14 points** qui supposaient « tout
+>   poste est une cible », et l'invariant est désormais **exigible au point d'usage** (`Poste.cible()`
+>   lève) plutôt que porté par un `CHECK` hors domaine. **Décision centrale** : le pilotage admin est
+>   un **état lu, pas un ordre poussé** — le hub temps réel est mono-canal, et surtout la **fin** d'une
+>   prise de contrôle naît du *temps qui passe*, qu'aucun événement serveur ne peut diffuser (le
+>   raisonnement d'ADR-0038 §4, réemployé). Corollaire assumé : déroulé **persisté**, consigne **en
+>   mémoire** — un redémarrage *libère* les écrans au lieu de les figer. **Q-UX7 fermée** (durée **et**
+>   retour explicite ; `Consigne.exige_rappel` nomme le cas « sans échéance » **dans le domaine**, ce
+>   qui donne un point d'ancrage au « jamais un état forcé qu'on oublie »). Le suivi **superpose** la
+>   réalité sur la projection d'E01US024 **sans la recalculer** — le CA dit « le **même** schéma » —,
+>   et le piège du lot est traité : **un exempt n'est pas un duel joué** (les compter afficherait
+>   « premier tour terminé » avant que quiconque ait tiré). Côté front, **un seul composant de dessin
+>   pour trois surfaces**, sans variation de géométrie : c'est le `viewBox` du SVG qui met tout à
+>   l'échelle. ⚠️ Le **catalogue de vues** est plus court que le CA (`affectations` E07US008 et
+>   `tableaux` E07US005 manquent) — les offrir programmerait une page vide ; leur ajout sera **une
+>   ligne, sans migration**. Migration `0038`.
+>   [ADR-0064](../docs/adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md).
+>   Recette : [`docs/fonctionnel/E07US004.md`](../docs/fonctionnel/E07US004.md).
 > - `E05US015` **catalogue de types de phase** — US à **surface visible**, qui **ferme la question Q9**
 >   du cahier des charges, bloquante depuis l'origine du projet. Six types neufs, **chacun avec son
 >   moteur** (ADR-0045 §2 : on n'offre pas un type qu'aucun moteur ne sait dérouler) : `echauffement`,
@@ -430,11 +458,11 @@
 | 67 | E08US005 | Rembourser une inscription payée annulée | ✅ *(registre de remboursements, ADR-0057)* |
 | 68 | E12US002 | Lancer un tour (feu vert + lancement) | ✅ *(feu vert + lancement-événement, ADR-0056)* |
 | 69 | E04US018 | Afficher la prochaine cible après validation | ✅ *(panneau de routage, canal n°1)* |
-| 70 | E07US008 | Vue publique des affectations du prochain tour | ⬜ *(canal n°2 — décalée derrière le chantier moteur, cf. 🎯)* |
+| 70 | E07US008 | Vue publique des affectations du prochain tour | 🎯 *(canal n°2 — le chantier moteur est clos, elle reprend la tête)* |
 | 71 | E06US003 | Barrage de tir pour places décisives | ⬜ |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ⬜ |
 
-## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (3/11)**
+## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (4/11)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -447,7 +475,7 @@
 | 78 | E09US005 | Classements PDF | ⬜ |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |
 | 80 | E01US016 | Définir l'identité visuelle du tournoi | ⬜ |
-| 81 | E07US004 | Écran de salle **+ suivi du déroulé** (un composant, trois surfaces) | 🎯 *(dépendance E01US024 **levée** le 01/08 — prochaine US du chantier moteur)* |
+| 81 | E07US004 | Écran de salle **+ suivi du déroulé** (un composant, trois surfaces) | ✅ *(poste typé cible/écran, pilotage par état lu, suivi superposé — ADR-0064)* |
 | 82 | E07US005 | Vue tableaux/arbres live | ⬜ |
 | 83 | ~~E05US019~~ | ~~Enregistrer une séquence comme modèle~~ → **livrée par E01US023** | ✅ *(doublon repéré le 31/07 : ADR-0060 §5)* |
 | — | E00US015 | Ossature de navigation admin (coquille) | ✅ *(fait en avance — ajout 18/07)* |

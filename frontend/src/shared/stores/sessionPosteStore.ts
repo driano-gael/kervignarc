@@ -16,23 +16,35 @@ import { persist } from 'zustand/middleware'
 import { enregistrerJetonPoste, enregistrerSurNonAutorisePoste } from '../api/client'
 import { appliquerTheme, type Theme } from '../theme'
 
-// La cible servie par le poste (miroir du DTO `PosteRattacheReponse`). Défini ici, dans `shared/`,
-// pour que la feature `poste` en dépende (et non l'inverse) — même parti que `ScoreurConnecte`.
-export interface CiblePoste {
+// Ce que sert le poste (miroir du DTO `PosteRattacheReponse`). Défini ici, dans `shared/`, pour que
+// la feature `poste` en dépende (et non l'inverse) — même parti que `ScoreurConnecte`.
+//
+// **Deux natures depuis E07US004** : une tablette de **cible** (qui saisit) et un **écran de salle**
+// (qui informe). Le `type` est la clé du routage : le même code de rattachement, le même endpoint et
+// le même jeton mènent à deux écrans différents. Le déduire de la présence de `cible_index` ferait
+// dépendre une décision de navigation d'une valeur nulle — une inférence qui casse en silence le
+// jour où un troisième type apparaît.
+export type TypePoste = 'cible' | 'ecran'
+
+export interface PosteRattache {
   tournoi_id: number
-  cible_index: number
+  type: TypePoste
+  /** Renseigné pour un poste de **cible** uniquement. */
+  cible_index: number | null
+  /** Renseigné pour un **écran de salle** uniquement (« près du pas de tir »). */
+  libelle: string | null
 }
 
 interface SessionPosteState {
   jeton: string | null
-  poste: CiblePoste | null
+  poste: PosteRattache | null
   theme: Theme | null
   // « Ce navigateur est un poste de cible » — intention **persistante**, distincte de la présence
   // d'un jeton. Sans elle, une session révoquée (jeton perdu) renverrait la tablette vers l'écran
   // admin ; avec elle, on retombe sur le **formulaire de rattachement** (re-scan), conforme à D-13.
   estPoste: boolean
   // Rattachement réussi : pose le jeton + la cible **et** marque le navigateur comme poste.
-  definir: (session: { jeton: string; poste: CiblePoste }) => void
+  definir: (session: { jeton: string; poste: PosteRattache }) => void
   // Session perdue (révocation « tournoi terminé », redémarrage serveur) : efface jeton + cible mais
   // **reste un poste** (et garde le thème) → l'UI réaffiche le formulaire de rattachement.
   effacer: () => void

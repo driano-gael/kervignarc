@@ -17,13 +17,16 @@ import datetime
 
 import pytest
 
+from application.ecrans import ServiceEcrans
 from application.erreurs import PosteIntrouvable, TournoiIntrouvable
 from application.saisie import AvancementCible
 from application.supervision import Avancement, LigneSupervision, ServiceSupervision
 from domain.depart import DepartId
-from domain.poste import Poste, PosteId
+from domain.ecran import Consigne, VueEcran
+from domain.poste import Poste, PosteId, TypePoste
 from domain.supervision import EtatPoste
 from domain.tournoi import Tournoi, TournoiId
+from infrastructure.postes.consignes import RegistreConsignesMemoire
 from infrastructure.postes.presence import RegistrePresenceMemoire
 from infrastructure.postes.sessions import PosteSessionStore
 
@@ -73,11 +76,22 @@ class FauxPosteRepository:
         self._postes[self._sequence] = persiste
         return persiste
 
+    def enregistrer(self, poste: Poste) -> Poste:
+        assert poste.id is not None
+        self._postes[poste.id] = poste
+        return poste
+
+    def supprimer(self, poste_id: PosteId) -> None:
+        self._postes.pop(poste_id, None)
+
     def par_id(self, poste_id: PosteId) -> Poste | None:
         return self._postes.get(poste_id)
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Poste]:
         return [p for p in self._postes.values() if p.tournoi_id == tournoi_id]
+
+    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_poste: TypePoste) -> list[Poste]:
+        return [p for p in self.par_tournoi(tournoi_id) if p.type is type_poste]
 
     def par_code(self, code: str) -> Poste | None:
         return next((p for p in self._postes.values() if p.code == code), None)
@@ -121,6 +135,12 @@ class Montage:
         self.presence = RegistrePresenceMemoire()
         self.avancement = FauxLecteurAvancement()
         self.horloge = HorlogeReglable(_T0)
+        # Vrai `ServiceEcrans` (registre de consignes en mémoire, déterministe) : depuis E07US004,
+        # la console montre aussi les écrans et leur prise de contrôle en vigueur.
+        self.consignes = RegistreConsignesMemoire()
+        self.ecrans = ServiceEcrans(
+            self.postes, self.tournois, self.sessions, self.consignes, self.horloge
+        )
         tournoi = self.tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
         assert tournoi.id is not None
         self.tournoi_id: TournoiId = tournoi.id
@@ -134,7 +154,9 @@ class Montage:
             self.tournois,
             self.sessions,
             self.presence,
+            self.consignes,
             self.avancement,
+            self.ecrans,
             self.horloge,
             _SEUIL,
         )
@@ -321,3 +343,104 @@ def test_etat_d_un_tournoi_inexistant_leve_introuvable() -> None:
     m = Montage(nb_cibles=1)
     with pytest.raises(TournoiIntrouvable):
         m.service.etat(999)
+
+
+# --- Écrans de salle (E07US004) ---
+
+
+def _ecran(m: Montage, libelle: str = "Pas de tir") -> PosteId:
+    """Ajoute un écran de salle au tournoi du montage et rend son identifiant."""
+    poste = m.postes.ajouter(Poste.creer_ecran(m.tournoi_id, libelle, f"E{libelle[:2].upper()}"))
+    assert poste.id is not None
+    return poste.id
+
+
+def _ligne_ecran(m: Montage, poste_id: PosteId) -> LigneSupervision:
+    return next(
+        ligne for ligne in m.service.etat(m.tournoi_id).postes if ligne.poste_id == poste_id
+    )
+
+
+def test_un_ecran_rattache_et_pinge_est_en_ligne_dans_la_console() -> None:
+    """CA E07US004 : « il **apparaît dans la console de supervision** — *un écran figé ne se plaint
+    pas, seule la supervision le révèle* ».
+
+    La chaîne complète — heartbeat de l'écran → registre de présence → politique `etat_poste` →
+    compteur — n'était prouvée par **rien** (relevé en revue) : c'est pourtant le motif même du CA.
+    L'écran passe par la **même** politique que la tablette, ce qui est tout l'intérêt d'en avoir
+    fait un poste.
+    """
+    m = Montage(nb_cibles=1)
+    ecran = _ecran(m)
+    m.sessions.ouvrir(ecran)
+
+    m.service.enregistrer_heartbeat(ecran, "192.168.1.42")
+
+    ligne = _ligne_ecran(m, ecran)
+    assert ligne.type is TypePoste.ECRAN
+    assert ligne.libelle == "Pas de tir"
+    assert ligne.cible_index is None
+    assert ligne.etat is EtatPoste.EN_LIGNE
+    assert ligne.avancement is None  # un écran n'a pas de grille
+
+
+def test_un_ecran_muet_passe_hors_ligne_sans_toucher_le_compteur_des_cibles() -> None:
+    """Le temps qui passe suffit — et les **compteurs restent séparés**.
+
+    « 28/30 en ligne » est l'indicateur sur lequel l'organisateur juge s'il peut lancer un tour :
+    y mêler les écrans le rendrait faux, un écran hors ligne n'empêchant personne de tirer.
+    """
+    m = Montage(nb_cibles=1)
+    ecran = _ecran(m)
+    m.sessions.ouvrir(ecran)
+    m.rattacher(1)
+    m.service.enregistrer_heartbeat(ecran, None)
+    m.service.enregistrer_heartbeat(m.poste_id(1), None)
+    assert m.service.etat(m.tournoi_id).nb_ecrans_en_ligne == 1
+
+    m.horloge.avancer(_SEUIL + 1)
+    m.service.enregistrer_heartbeat(m.poste_id(1), None)  # la tablette, elle, reste vivante
+
+    etat = m.service.etat(m.tournoi_id)
+    assert _ligne_ecran(m, ecran).etat is EtatPoste.HORS_LIGNE
+    assert (etat.nb_ecrans_en_ligne, etat.nb_ecrans) == (0, 1)
+    assert (etat.nb_en_ligne, etat.nb_total) == (1, 1)
+
+
+def test_les_cibles_precedent_les_ecrans_dans_la_console() -> None:
+    """`_ordonnes` : cibles d'abord (par numéro), écrans ensuite — quel que soit l'ordre d'arrivée.
+
+    Le tri est **explicite** parce que `cible_index` est nul pour un écran et que l'ordre des `NULL`
+    varie d'un moteur SQL à l'autre : la console doit rester lisible sans dépendre de SQLite. Le
+    montage crée ici l'écran **avant** de lire, alors que ses cibles existent déjà.
+    """
+    m = Montage(nb_cibles=3)
+    ecran = _ecran(m)
+
+    etat = m.service.etat(m.tournoi_id)
+
+    assert [(ligne.type, ligne.cible_index) for ligne in etat.postes] == [
+        (TypePoste.CIBLE, 1),
+        (TypePoste.CIBLE, 2),
+        (TypePoste.CIBLE, 3),
+        (TypePoste.ECRAN, None),
+    ]
+    assert etat.postes[-1].poste_id == ecran
+
+
+def test_revoquer_un_ecran_retire_aussi_sa_prise_de_controle() -> None:
+    """Sinon la console afficherait « Classement · reprise dans 7 min » sur une ligne devenue *non
+    rattachée* — un état forcé sur un écran qui n'existe plus pour l'utilisateur, c'est-à-dire
+    exactement ce que le CA « jamais un état forcé qu'on oublie » veut empêcher (revue)."""
+    m = Montage(nb_cibles=1)
+    ecran = _ecran(m)
+    m.sessions.ouvrir(ecran)
+    m.ecrans.prendre_le_controle(
+        m.tournoi_id, ecran, Consigne(vue=VueEcran.CLASSEMENT, sequence=None, duree_s=None)
+    )
+    assert _ligne_ecran(m, ecran).prise is not None
+
+    m.service.revoquer_poste(m.tournoi_id, ecran)
+
+    assert _ligne_ecran(m, ecran).prise is None
+    assert m.ecrans.prises(m.tournoi_id) == {}

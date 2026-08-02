@@ -37,18 +37,46 @@ sans traverser le gymnase.
   E07US008, tableaux, plans) avec **cadence réglable** ; rendu **plein écran, lisible à distance**
   (échelle typographique dédiée, thème sombre par défaut) ; **aucune interaction** ; **plusieurs écrans
   possibles**, chacun son déroulé (ex. affectations près du pas de tir, classements côté public).
+  > **Catalogue livré le 01/08/2026 : trois vues, pas quatre.** `classement`, `plan_cibles` et
+  > `suivi_deroule`. Les **affectations** (E07US008) et les **tableaux** (E07US005) ne sont pas
+  > livrées : les offrir au réglage ferait programmer un déroulé qui afficherait une page vide. Elles
+  > s'ajouteront avec leur US **sans migration** — la valeur persistée est la chaîne, pas un rang.
+  > *(Le CA n'est donc pas satisfait en totalité aujourd'hui, et c'est une conséquence de l'ordre des
+  > US, pas un raccourci : voir la même note dans [ADR-0064](../docs/adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md) §Conséquences.)*
 - **CA — pilotage admin (ex-007)** : depuis la console de supervision (E12US001), l'admin voit chaque
   écran de salle et **impose** soit une **vue figée** (ex. podium), soit une **autre séquence** ; l'écran
-  bascule **en direct** (WebSocket) ; **une prise de contrôle sait se terminer** — **durée** (« podium
-  10 min puis reprise du déroulé ») **ou** retour explicite très visible ; **jamais un état forcé qu'on
+  bascule **en direct** ; **une prise de contrôle sait se terminer** — **durée** (« podium
+  10 min puis reprise du déroulé ») **et** retour explicite très visible ; **jamais un état forcé qu'on
   oublie**.
+  > **`Q-UX7` fermée le 01/08/2026** (arbitrage du commanditaire, cadrage d'intention). Réponse :
+  > **les deux**. L'admin choisit une durée bornée **ou** « jusqu'à ce que je rende la main », et
+  > « rendre la main » reste disponible dans les deux cas. Une prise **sans échéance** porte un
+  > drapeau `exige_rappel` — nommé **dans le domaine**, pas seulement dessiné — que la console
+  > transforme en rappel très visible. Sans ce point d'ancrage, « jamais un état forcé qu'on oublie »
+  > serait resté une intention de rédaction. Cf. [ADR-0064](../docs/adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md) §4.
+  >
+  > ⚠️ **Report déclaré le 02/08/2026 : « imposer une **autre séquence** » n'est pas offert à l'UI.**
+  > Le domaine, le service et l'API le portent (et sont testés) ; la console de supervision, elle,
+  > n'offre que la **vue figée**. Ce n'est donc **pas** livré côté utilisateur, et c'est déclaré ici
+  > plutôt que laissé à deviner (remarque de revue : contrairement au catalogue de vues raccourci,
+  > ce report n'était consigné nulle part, et un relecteur ou une US suivante l'aurait cru livré).
+  > Le backend étant prêt, l'ajouter est un formulaire, pas une tranche.
+  >
+  > ⚠️ **« En direct » n'est pas WebSocket** (rectification du 01/08/2026, portée par le code livré).
+  > Le v0.1 écrivait « (WebSocket) ». C'est **infaisable en l'état et, surtout, insuffisant** : le hub
+  > temps réel est mono-canal (aucun ciblage par destinataire), et surtout la **fin** d'une prise de
+  > contrôle naît du *temps qui passe* — qu'aucun événement serveur ne peut pousser (même
+  > raisonnement qu'ADR-0038 §4 pour le passage hors-ligne d'un poste). L'écran **lit** donc sa
+  > consigne (~15 s) et décompte en local ; en échange, une coupure réseau ne peut pas le laisser
+  > bloqué sur un podium expiré.
 - **Notes** : ~~« Écran projeté plein écran », v0.1~~ → **réécrite le 14/07/2026** (`D-21`, CDC UX §7.5).
   Ce n'est **ni une 4ᵉ appli, ni une vue autonome** : c'est un **poste**, comme une tablette de cible —
   donc rien de neuf à inventer (réemploi du jeton, du QR, de la supervision). `Q-UX2` **ouverte** : tri
   des affectations **par nom** (l'archer se cherche) ou **par cible** (l'organisation vérifie) — ce
-  n'est pas le même écran. `Q-UX7` **ouverte** : durée ou geste pour terminer une prise de contrôle —
-  à trancher. Motif du pilotage : basculer sur le podium à 17 h et partir serrer des mains, c'est un
-  écran figé sur le podium à 18 h pendant que les gens cherchent leur classement.
+  n'est pas le même écran. *(Elle ne bloquait pas cette US : la vue « affectations » relève d'E07US008,
+  non livrée — cf. le catalogue de vues ci-dessous.)* Motif du pilotage : basculer sur le podium à 17 h
+  et partir serrer des mains, c'est un écran figé sur le podium à 18 h pendant que les gens cherchent
+  leur classement.
 - **CA — le plan de tournoi, en suivi (ajouté le 31/07/2026)** : l'écran affiche le **même schéma à
   braquets** que l'atelier (E01US024), mais **rempli par la réalité** : phase terminée / en cours / à
   venir, **tour en cours**, duels joués sur duels attendus, braquets qui **se remplissent** au fur et

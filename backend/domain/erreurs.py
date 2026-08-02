@@ -850,3 +850,80 @@ class PhaseSansSource(DomainError):
     """
 
     code = "phase_sans_source"
+
+
+class LibelleEcranInvalide(DomainError):
+    """Un poste de type « écran de salle » est créé sans libellé exploitable (E07US004).
+
+    Un écran n'est pas devant une cible : il est *quelque part* dans le gymnase, et c'est ce
+    « quelque part » qui le désigne dans la console de supervision au moment de le piloter. Sans
+    libellé, l'admin ne peut pas savoir lequel des trois écrans il fige sur le podium.
+    """
+
+    code = "libelle_ecran_invalide"
+
+
+class PosteSansCible(DomainError):
+    """La cible d'un poste est demandée alors que ce poste n'en a pas (E07US004).
+
+    Depuis l'élargissement du `Poste` à l'écran de salle, `cible_index` est facultatif. Plutôt que
+    de rendre `None` et de laisser chaque appelant décider quoi en faire — donc parfois l'oublier —,
+    l'accesseur `Poste.cible()` exige l'invariant au point d'usage : un écran ne saisit pas de
+    score, ne s'affecte pas un départ, et n'apparaît pas dans l'avancement d'une cible.
+    """
+
+    code = "poste_sans_cible"
+
+
+class SequenceVuesVide(DomainError):
+    """Un déroulé d'écran de salle ne programme aucune vue (E07US004).
+
+    Un écran sans vue n'affiche rien, et un écran noir « ne se plaint pas » (CA) : c'est exactement
+    la panne muette que la supervision est censée révéler. On refuse donc de la fabriquer.
+    """
+
+    code = "sequence_vues_vide"
+
+
+class CadenceEcranInvalide(DomainError):
+    """La cadence d'une vue du déroulé sort des bornes tenables (E07US004).
+
+    « Cadence réglable » n'est pas « cadence quelconque » : sous le plancher, l'écran clignote et
+    devient illisible à dix mètres ; au-delà du plafond, le déroulé n'en est plus un — c'est une vue
+    figée qui s'ignore, et le CA a un geste dédié pour cela (la prise de contrôle).
+    """
+
+    code = "cadence_ecran_invalide"
+
+
+class ConsigneEcranInvalide(DomainError):
+    """Une prise de contrôle n'impose ni exactement une vue figée, ni exactement une séquence
+    (E07US004).
+
+    Les deux à la fois : l'écran ne saurait laquelle honorer. Ni l'une ni l'autre : ce n'est pas une
+    prise de contrôle mais un retour à la main, qui est un **autre** geste (et le seul qui efface la
+    consigne).
+    """
+
+    code = "consigne_ecran_invalide"
+
+
+class DureePriseDeControleInvalide(DomainError):
+    """La durée d'une prise de contrôle n'est pas strictement positive (E07US004).
+
+    « Podium 0 minute » n'est pas une prise de contrôle. L'absence de durée, elle, est **licite**
+    (« jusqu'à ce que je rende la main », arbitrage Q-UX7 du 01/08/2026) : c'est `None`, pas zéro.
+    """
+
+    code = "duree_prise_de_controle_invalide"
+
+
+class PosteSansEcran(DomainError):
+    """Un réglage d'écran de salle est demandé sur un poste qui n'en est pas un (E07US004).
+
+    Symétrique de `PosteSansCible` : un poste de cible n'a ni libellé, ni déroulé de vues. Les deux
+    gardes ensemble ferment le typage du `Poste` par ses **points d'usage** plutôt que par un
+    `CHECK` en base — le domaine reste seul dépositaire de la règle (règle 2).
+    """
+
+    code = "poste_sans_ecran"

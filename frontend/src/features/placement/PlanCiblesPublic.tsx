@@ -17,6 +17,7 @@
 import { useMemo, useState } from 'react'
 import { useArchers } from '../archers/hooks'
 import { useDeparts } from '../departs/hooks'
+import { departDeSalle } from '../salle/rotation'
 import { usePlanDeCibles } from './hooks'
 import { construirePlanConsultation } from './planConsultation'
 
@@ -71,6 +72,38 @@ export function PlanCiblesPublic({ tournoiId }: { tournoiId: number }) {
         </select>
       </label>
       {departId !== null && <GrilleCibles tournoiId={tournoiId} departId={departId} />}
+    </>
+  )
+}
+
+/** Le plan de cibles **sans sélecteur**, pour une surface sans interaction (écran de salle).
+ *
+ * Deux défauts corrigés en revue, et le second était le vrai :
+ *
+ * 1. `PlanCiblesPublic` embarque un `<select>` que personne ne peut actionner sur un écran projeté
+ *    — le CA d'E07US004 dit « **aucune interaction** » ;
+ * 2. surtout, il retombe sur le **premier** départ. Le plan affiché restait donc celui du départ 1
+ *    toute la journée, y compris quand le départ 3 était sur le pas de tir — sur *le* canal censé
+ *    répondre à « où je tire ».
+ *
+ * On choisit ici le départ **réellement en cours** : le premier `lance` (E12US008), sinon le
+ * premier encore ouvert, sinon le premier tout court. Un départ clos n'intéresse plus personne dans
+ * la salle.
+ */
+export function PlanCiblesDeSalle({ tournoiId }: { tournoiId: number }) {
+  const departs = useDeparts(tournoiId)
+  const courant = departDeSalle(departs.data ?? [])
+
+  if (departs.isPending) {
+    return <p className="carte__etat">Chargement…</p>
+  }
+  if (courant === undefined) {
+    return <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
+  }
+  return (
+    <>
+      <h3 className="carte__soustitre">Plan de cibles — {libelleDepart(courant)}</h3>
+      <GrilleCibles tournoiId={tournoiId} departId={courant.id} />
     </>
   )
 }

@@ -4,11 +4,11 @@
 // toute la base). Le jeton renvoyé est joint ensuite via l'en-tête `X-Jeton-Poste`.
 
 import { fetchJson } from '../../shared/api/client'
-import type { CiblePoste } from '../../shared/stores/sessionPosteStore'
+import type { PosteRattache } from '../../shared/stores/sessionPosteStore'
 
 export interface SessionPoste {
   jeton: string
-  poste: CiblePoste
+  poste: PosteRattache
 }
 
 export function rattacherPoste(code: string): Promise<SessionPoste> {
@@ -22,10 +22,10 @@ export function rattacherPoste(code: string): Promise<SessionPoste> {
   )
 }
 
-export function cibleDuPoste(): Promise<CiblePoste> {
+export function cibleDuPoste(): Promise<PosteRattache> {
   // Portée `'poste'` : relit la cible du poste courant (réouverture / vérification de révocation).
   // Un 401 (tournoi terminé, serveur redémarré) purge la session de poste, jamais une autre.
-  return fetchJson<CiblePoste>('/api/v1/postes/session', undefined, 'poste')
+  return fetchJson<PosteRattache>('/api/v1/postes/session', undefined, 'poste')
 }
 
 export function deconnexionPoste(): Promise<void> {

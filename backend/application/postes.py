@@ -28,17 +28,23 @@ from application.erreurs import (
     CodePosteInconnu,
     DepartIntrouvable,
     NonAuthentifie,
+    PosteIntrouvable,
+    PosteNEstPasUnEcran,
     RattachementTournoiTermine,
+    SaisieHorsCible,
     TournoiIntrouvable,
 )
 from domain.depart import Depart, DepartId
+from domain.ecran import SequenceVues
 from domain.ports import (
     DepartRepository,
     GabaritSalleRepository,
     PosteRepository,
+    RegistreConsignes,
+    RegistrePresence,
     TournoiRepository,
 )
-from domain.poste import Poste, PosteId, normaliser_code
+from domain.poste import Poste, PosteId, TypePoste, normaliser_code
 from domain.tournoi import StatutTournoi, TournoiId
 
 _MAX_TENTATIVES_CODE = 100
@@ -48,6 +54,23 @@ Sur ~10^9 codes pour quelques dizaines de cibles, une collision est quasi imposs
 n'est qu'un garde-fou contre un générateur défectueux. L'atteindre est une **incohérence
 technique** (`AssertionError` → 500 générique), jamais rencontrée en exploitation.
 """
+
+
+def exiger_ecran(poste: Poste) -> Poste:
+    """Refuse un poste de cible ; renvoie l'écran sinon (E07US004).
+
+    Garde **réellement partagée** par `ServicePostes` (préparation, réglage) et `ServiceEcrans`
+    (affichage, pilotage). Elle vit dans ce module et non dans `application.ecrans` parce que la
+    dépendance ne va que dans ce sens : `ecrans.py` importe déjà `StoreSessionsPoste` d'ici, donc
+    l'inverse serait circulaire. *(La première version la dupliquait ligne à ligne dans les deux
+    services tout en affirmant en docstring qu'elle était partagée — corrigé en revue.)*
+
+    La confusion n'est pas théorique : la console de supervision affiche cibles et écrans **côte à
+    côte**, donc l'identifiant d'une tablette est à portée de clic de celui d'un écran.
+    """
+    if poste.type is not TypePoste.ECRAN:
+        raise PosteNEstPasUnEcran(f"Le poste {poste.id} n'est pas un écran de salle.")
+    return poste
 
 
 class StoreSessionsPoste(Protocol):
@@ -119,6 +142,8 @@ class ServicePostes:
         gabarit_repository: GabaritSalleRepository,
         depart_repository: DepartRepository,
         sessions: StoreSessionsPoste,
+        consignes: RegistreConsignes,
+        presence: RegistrePresence,
         generer_code: Callable[[], str],
     ) -> None:
         self._postes = poste_repository
@@ -126,6 +151,8 @@ class ServicePostes:
         self._gabarits = gabarit_repository
         self._departs = depart_repository
         self._sessions = sessions
+        self._consignes = consignes
+        self._presence = presence
         self._generer_code = generer_code
 
     # --- Préparation des codes (admin) ---
@@ -140,7 +167,7 @@ class ServicePostes:
         pré-contrôle des codes et insertions tiennent dans **une seule commande** en file (règle 7).
         """
         self._verifier_tournoi(tournoi_id)
-        existants = {poste.cible_index: poste for poste in self._postes.par_tournoi(tournoi_id)}
+        existants = {poste.cible(): poste for poste in self._cibles(tournoi_id)}
         gabarit = self._gabarits.par_tournoi(tournoi_id)
         if gabarit is not None:
             for cible in gabarit.cibles:
@@ -152,13 +179,67 @@ class ServicePostes:
         return [existants[index] for index in sorted(existants)]
 
     def lister(self, tournoi_id: TournoiId) -> list[Poste]:
-        """Renvoie les postes déjà préparés d'un tournoi (triés par cible), **sans rien créer**.
+        """Renvoie les postes de **cible** déjà préparés d'un tournoi (triés), **sans rien créer**.
 
         Lecture pour l'admin (afficher les codes à distribuer/imprimer). Lève `TournoiIntrouvable`
-        si le tournoi n'existe pas ; liste vide tant qu'aucun code n'a été préparé.
+        si le tournoi n'existe pas ; liste vide tant qu'aucun code n'a été préparé. Les **écrans**
+        de salle (E07US004) sont exclus : ils ne se préparent pas depuis le plan de salle et se
+        listent par `ServiceEcrans.lister`.
         """
         self._verifier_tournoi(tournoi_id)
-        return sorted(self._postes.par_tournoi(tournoi_id), key=lambda poste: poste.cible_index)
+        return sorted(self._cibles(tournoi_id), key=lambda poste: poste.cible())
+
+    # --- Écrans de salle (E07US004) ---
+
+    def creer_ecran(self, tournoi_id: TournoiId, libelle: str) -> Poste:
+        """Crée un écran de salle et lui alloue un code distribuable (QR ou saisie de secours).
+
+        **Création explicite**, à l'inverse des cibles (`assurer_codes`, dérivées du plan) :
+        aucun gabarit ne dit combien d'écrans le club branchera ni où. C'est aussi pourquoi le CA
+        parle de « plusieurs écrans possibles, chacun son déroulé » — la liste est ouverte.
+
+        Aucune garde de statut, comme pour les codes de cible : un écran se prépare **à l'avance**
+        (`D-07`), y compris sur un brouillon.
+        """
+        self._verifier_tournoi(tournoi_id)
+        return self._postes.ajouter(Poste.creer_ecran(tournoi_id, libelle, self._allouer_code()))
+
+    def renommer_ecran(self, tournoi_id: TournoiId, poste_id: PosteId, libelle: str) -> Poste:
+        """Renomme un écran (il a déménagé). Le **code reste** : le QR est peut-être imprimé."""
+        ecran = self._exiger_ecran(tournoi_id, poste_id)
+        return self._postes.enregistrer(ecran.avec_libelle(libelle))
+
+    def regler_deroule_ecran(
+        self, tournoi_id: TournoiId, poste_id: PosteId, deroule: SequenceVues
+    ) -> Poste:
+        """Fixe le déroulé de vues d'un écran — le réglage « à la préparation du tournoi » du CA.
+
+        Persisté (contrairement à la prise de contrôle, volatile) : c'est un réglage de préparation,
+        il doit survivre au redémarrage du serveur le matin du jour J.
+        """
+        ecran = self._exiger_ecran(tournoi_id, poste_id)
+        return self._postes.enregistrer(ecran.avec_deroule(deroule))
+
+    def supprimer_ecran(self, tournoi_id: TournoiId, poste_id: PosteId) -> None:
+        """Retire un écran : sessions, consigne et présence oubliées, puis ligne supprimée.
+
+        Fermer les sessions **avant** évite qu'un appareil branché sur cet écran continue de
+        résoudre un poste disparu. Le reste n'est pas cosmétique : SQLite **réattribue** les
+        identifiants libérés, donc **tout** état volatil indexé par ce `poste_id` serait hérité par
+        le prochain poste créé — une consigne orpheline figerait un écran neuf sur un podium que
+        personne n'a demandé, une présence orpheline le ferait naître « en ligne ». Le nettoyage
+        couvre donc les **trois** registres, comme `ServiceSupervision.revoquer_poste` — que la
+        version d'origine citait en modèle tout en n'en reprenant que deux tiers (correctif de
+        revue).
+
+        La suppression est réservée aux écrans : le code d'une cible est imprimé sous un QR, le
+        supprimer invaliderait une affiche déjà posée.
+        """
+        self._exiger_ecran(tournoi_id, poste_id)
+        self._sessions.invalider_poste(poste_id)
+        self._consignes.retirer(poste_id)
+        self._presence.oublier(poste_id)
+        self._postes.supprimer(poste_id)
 
     # --- Session (poste) ---
 
@@ -216,6 +297,14 @@ class ServicePostes:
         poste = self.resoudre_session(jeton)
         if poste is None:
             raise NonAuthentifie("Session de poste requise.")
+        # ⚠️ **Garde de nature, ici et pas seulement à la frontière** (correctif de 2ᵉ passe).
+        # La docstring ci-dessus annonce un appelant **hors HTTP** (E12US002, l'orchestrateur de
+        # lancement) : la dépendance `exiger_poste_de_cible` ne le couvrirait pas. C'est exactement
+        # la leçon tirée dans `ServiceArchers._verifier_poste_sert_l_archer` — une garde posée à un
+        # seul niveau se contourne par le chemin qu'on n'avait pas prévu — et elle n'avait pas été
+        # rejouée ici.
+        if poste.type is not TypePoste.CIBLE:
+            raise SaisieHorsCible("Un écran de salle ne fixe pas de départ courant.")
         depart = self._departs.par_id(depart_id)
         if depart is None or depart.tournoi_id != poste.tournoi_id:
             raise DepartIntrouvable(f"Aucun départ d'identifiant {depart_id} dans ce tournoi.")
@@ -236,6 +325,22 @@ class ServicePostes:
         self._sessions.fermer(jeton)
 
     # --- Gardes internes ---
+
+    def _cibles(self, tournoi_id: TournoiId) -> list[Poste]:
+        """Les postes de **cible** — jamais `par_tournoi`, qui rend aussi les écrans."""
+        return self._postes.par_tournoi_et_type(tournoi_id, TypePoste.CIBLE)
+
+    def _exiger_ecran(self, tournoi_id: TournoiId, poste_id: PosteId) -> Poste:
+        """L'écran d'identifiant donné dans ce tournoi, ou l'erreur qui convient.
+
+        `PosteIntrouvable` couvre le poste d'un **autre** tournoi (ADR-0034 §4) ; la garde de nature
+        est déléguée à `exiger_ecran`, **partagée** avec `ServiceEcrans` (qui importe déjà ce
+        module — l'inverse serait circulaire).
+        """
+        poste = self._postes.par_id(poste_id)
+        if poste is None or poste.tournoi_id != tournoi_id:
+            raise PosteIntrouvable(f"Aucun poste d'identifiant {poste_id} dans ce tournoi.")
+        return exiger_ecran(poste)
 
     def _verifier_tournoi(self, tournoi_id: TournoiId) -> None:
         if self._tournois.par_id(tournoi_id) is None:

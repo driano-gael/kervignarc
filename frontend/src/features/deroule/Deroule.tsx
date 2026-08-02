@@ -17,7 +17,7 @@
 // dérivés de la position** dans la liste, jamais saisis — ce qui supprime par construction toute la
 // classe d'erreurs « ordres non contigus ».
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import {
@@ -32,7 +32,6 @@ import { useCreerFormat, useFormats } from '../patrimoine/hooks'
 import {
   EFFECTIF_MAX,
   type Anomalie,
-  type Bloc,
   type Diagnostic,
   type PhaseSimulee,
   type SimulationFormat,
@@ -47,7 +46,7 @@ import {
   remplacerEtape,
   retirerEtape,
 } from './sequence'
-import { disposer, type Arete, type Noeud } from './schema'
+import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 
 const EFFECTIF_PAR_DEFAUT = 120
 
@@ -187,7 +186,13 @@ function CompositionDuFormat({
           <>
             <Verdict diagnostic={diagnostic.data} />
             <ReserveMoteur diagnostic={diagnostic.data} />
-            <SchemaBraquets diagnostic={diagnostic.data} />
+            {/* Surface **atelier** : taille fixe (on lit les chiffres et on fait défiler), habillage
+                outil (`D-27` : jamais d'identité de tournoi ici — on compose un modèle, pas une
+                édition), et **aucun** calque d'avancement (il n'y a pas de réalité à superposer). */}
+            <SchemaBraquets
+              blocs={diagnostic.data.blocs}
+              messageVide="Ce format ne décrit encore aucune phase : ajoutez-en une pour voir le déroulé se dessiner."
+            />
             <ListeAnomalies anomalies={diagnostic.data.anomalies} />
           </>
         )}
@@ -260,124 +265,6 @@ function ListeAnomalies({ anomalies }: { anomalies: Anomalie[] }) {
         </li>
       ))}
     </ul>
-  )
-}
-
-// --- Le schéma à braquets ------------------------------------------------------------------------
-
-/**
- * Dessine le déroulé : un bloc par phase, une flèche par prélèvement.
- *
- * SVG **maison**, sans bibliothèque (règle 11) ; la géométrie vient de `schema.ts`, testée à part.
- * Les couleurs passent par les variables CSS (`var(--accent)`, `var(--warn)`…) pour que le thème
- * clair/sombre suive sans code conditionnel.
- */
-function SchemaBraquets({ diagnostic }: { diagnostic: Diagnostic }) {
-  const plan = useMemo(() => disposer(diagnostic.blocs), [diagnostic.blocs])
-  if (diagnostic.blocs.length === 0) {
-    return (
-      <p className="carte__etat" role="note">
-        Ce format ne décrit encore aucune phase : ajoutez-en une pour voir le déroulé se dessiner.
-      </p>
-    )
-  }
-  // Indexé par **position**, pas par `ordre` : deux étapes de même ordre sont un brouillon licite
-  // (anomalie bloquante, mais enregistrable), et une `Map` par ordre en perdrait une.
-  const tries = [...diagnostic.blocs].sort((a, b) => a.ordre - b.ordre)
-  return (
-    <div className="deroule__schema">
-      <svg
-        viewBox={`0 0 ${plan.largeur} ${plan.hauteur}`}
-        width={plan.largeur}
-        height={plan.hauteur}
-        role="img"
-        aria-label="Schéma du déroulé, une case par phase et une flèche par prélèvement"
-      >
-        <defs>
-          <marker
-            id="deroule-pointe"
-            markerWidth="8"
-            markerHeight="8"
-            refX="7"
-            refY="4"
-            orient="auto"
-          >
-            <path d="M 0 0 L 8 4 L 0 8 z" fill="var(--accent)" />
-          </marker>
-        </defs>
-        {plan.aretes.map((arete) => (
-          <FlecheDuSchema key={arete.cle} arete={arete} />
-        ))}
-        {plan.noeuds.map((noeud) => {
-          const bloc = tries[noeud.index]
-          return bloc === undefined ? null : (
-            <BlocDuSchema key={noeud.index} noeud={noeud} bloc={bloc} />
-          )
-        })}
-      </svg>
-    </div>
-  )
-}
-
-function FlecheDuSchema({ arete }: { arete: Arete }) {
-  return (
-    <g className="deroule__fleche">
-      <path d={arete.trace} markerEnd="url(#deroule-pointe)" />
-      <text x={arete.etiquette_x} y={arete.etiquette_y} textAnchor="middle">
-        {arete.effectif === null ? '?' : arete.effectif}
-      </text>
-    </g>
-  )
-}
-
-function BlocDuSchema({ noeud, bloc }: { noeud: Noeud; bloc: Bloc }) {
-  const bloquant = bloc.anomalies.some((a) => a.gravite === 'bloquante')
-  const alerte = bloc.anomalies.length > 0
-  const modificateur = bloquant
-    ? ' deroule__bloc--bloquant'
-    : alerte
-      ? ' deroule__bloc--alerte'
-      : ''
-  return (
-    <g className={`deroule__bloc${modificateur}`} transform={`translate(${noeud.x} ${noeud.y})`}>
-      <rect width={noeud.largeur} height={noeud.hauteur} rx="10" />
-      <text className="deroule__bloc-titre" x="12" y="24">
-        {bloc.ordre}. {LIBELLE_TYPE[bloc.type]}
-      </text>
-      {/* Question 1 du CA : qui est là — combien, et quelle tranche de rangs. */}
-      <text className="deroule__bloc-ligne" x="12" y="46">
-        {bloc.effectif === null ? 'effectif inconnu' : `${bloc.effectif} archers`}
-        {bloc.tranche === null ? '' : ` · rangs ${bloc.tranche[0]}–${bloc.tranche[1]}`}
-      </text>
-      {/* Question 2 : ce qu'on leur demande. */}
-      <text className="deroule__bloc-ligne" x="12" y="64">
-        {bloc.nb_volees === null
-          ? bloc.type === 'qualification'
-            ? 'barème à définir'
-            : 'duels'
-          : `${bloc.nb_volees} volées de ${bloc.nb_fleches_par_volee}`}
-      </text>
-      {/* Question 4 : combien de tours — et la Règle R, tour par tour. */}
-      {bloc.tours.map((tour, index) => (
-        <text className="deroule__bloc-braquet" key={tour.tour} x="12" y={88 + index * 18}>
-          T{tour.tour} · {tour.duels} duel(s) → perdants rangs {tour.plage_perdants[0]}–
-          {tour.plage_perdants[1]}
-        </text>
-      ))}
-      {/* Question 3 : où ils vont après — ce qui reste s'arrête ici. */}
-      <text className="deroule__bloc-ligne" x="12" y={noeud.hauteur - 14}>
-        {/* `sans_suite` est **signé** depuis la revue : un négatif dit qu'on prélève plus
-            d'archers qu'il n'y en a. L'afficher tel quel donnait « -1 au classement final », un
-            fait faux à côté de l'avertissement juste. */}
-        {bloc.sans_suite === null
-          ? 'suite inconnue'
-          : bloc.sans_suite < 0
-            ? `${-bloc.sans_suite} pris deux fois !`
-            : bloc.sans_suite === 0
-              ? 'tous repartent en phase suivante'
-              : `${bloc.sans_suite} au classement final`}
-      </text>
-    </g>
   )
 }
 

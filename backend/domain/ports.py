@@ -18,6 +18,7 @@ from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
 from domain.documents_salle import CartesScoreurs, EtiquettesCibles
 from domain.duel import BaremeDuel, Duel
+from domain.ecran import PriseDeControle
 from domain.entree_audit import EntreeAudit
 from domain.feuille_marque import FeuilleDeMarque
 from domain.forfait import Forfait
@@ -27,7 +28,7 @@ from domain.inscription import Inscription, InscriptionId
 from domain.listes_impression import ListeClubPaiement, ListePlacement
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
-from domain.poste import Poste, PosteId
+from domain.poste import Poste, PosteId, TypePoste
 from domain.remboursement import Remboursement, RemboursementId
 from domain.score import Score
 from domain.scoreur import Scoreur, ScoreurId
@@ -703,12 +704,16 @@ class ScoreurRepository(Protocol):
 
 
 class PosteRepository(Protocol):
-    """Port de persistance des postes de cible — credential d'une cible (E04US001, ADR-0029).
+    """Port de persistance des postes — credential d'un lieu (E04US001, ADR-0029 ; élargi E07US004).
 
-    Entité **du tournoi** (`par_tournoi` énumère les postes d'un plan), mais le `code` de cible est
-    **unique dans toute la base** (`par_code` n'a pas de `tournoi_id`) : le rattachement se fait par
-    le seul code (scan/saisie), qui doit désigner une cible sans ambiguïté d'un tournoi à l'autre.
-    E04US001 n'expose ni `enregistrer` ni `supprimer` : la régénération d'un code relève d'E09US008.
+    Entité **du tournoi** (`par_tournoi` énumère les postes d'un plan), mais le `code` est **unique
+    dans toute la base** (`par_code` n'a pas de `tournoi_id`) : le rattachement se fait par le seul
+    code (scan/saisie), qui doit désigner un lieu sans ambiguïté d'un tournoi à l'autre.
+
+    Depuis E07US004, un poste est de type **cible** ou **écran** — d'où `par_tournoi_et_type`
+    (cf. sa docstring : `par_tournoi` seul est devenu un piège pour tout appelant qui ne pense
+    qu'aux cibles). `supprimer` n'existe que pour les écrans (un écran se retire du gymnase ; une
+    cible, elle, existe tant que le plan de salle l'a).
     """
 
     def ajouter(self, poste: Poste) -> Poste:
@@ -720,10 +725,41 @@ class PosteRepository(Protocol):
         ...
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Poste]:
-        """Renvoie tous les postes d'un tournoi (liste éventuellement vide).
+        """Renvoie **tous** les postes d'un tournoi, cibles **et** écrans (liste éventuellement
+        vide).
 
-        Sert à la **préparation idempotente** des codes (quelles cibles ont déjà un poste). L'ordre
-        n'est pas garanti par le port ; le service trie par numéro de cible.
+        ⚠️ Depuis E07US004, « tous » inclut les écrans de salle : un appelant qui ne traite que des
+        cibles doit passer par `par_tournoi_et_type`, sous peine de trier des écrans par numéro de
+        cible inexistant. Le seul appelant légitime de cette méthode est celui qui veut vraiment
+        l'ensemble — la console de supervision, dont le CA d'E07US004 exige qu'elle montre les
+        écrans à côté des tablettes.
+        """
+        ...
+
+    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_poste: TypePoste) -> list[Poste]:
+        """Renvoie les postes d'un tournoi d'un **type** donné (liste éventuellement vide).
+
+        Sert à la **préparation idempotente** des codes de cible (quelles cibles ont déjà un poste)
+        et à l'énumération des écrans de salle. L'ordre n'est pas garanti par le port ; le service
+        trie.
+        """
+        ...
+
+    def enregistrer(self, poste: Poste) -> Poste:
+        """Réécrit un poste existant (renommage ou déroulé d'un écran, E07US004).
+
+        Ne touche ni au `code` ni au `type` : le code est imprimé sous un QR — le réécrire
+        invaliderait une affiche déjà posée — et la nature d'un poste ne change pas, une cible ne
+        devient pas un écran.
+        """
+        ...
+
+    def supprimer(self, poste_id: PosteId) -> None:
+        """Supprime un poste ; sans effet s'il n'existe pas.
+
+        Réservé aux **écrans** (un écran se débranche et se retire), la garde étant portée par le
+        service : une cible, elle, existe aussi longtemps que le plan de salle la porte, et son code
+        est imprimé — le supprimer invaliderait un QR distribué.
         """
         ...
 
@@ -734,6 +770,56 @@ class PosteRepository(Protocol):
         Sert à rattacher (par code) et à refuser un code déjà attribué à la génération. Recherche
         **globale** : le code est unique dans toute la base.
         """
+        ...
+
+
+class RegistreConsignes(Protocol):
+    """Port : **prises de contrôle** des écrans de salle (E07US004, ADR-0064) — volatil en mémoire.
+
+    Quand l'admin impose une vue à un écran, la consigne est **posée ici**, pas poussée à l'écran :
+    le hub temps réel est mono-canal (aucun ciblage par destinataire) et, surtout, la **fin** d'une
+    prise de contrôle naît du *temps qui passe*, que nul événement serveur ne peut pousser — le même
+    raisonnement qu'ADR-0038 §4 pour le passage hors-ligne. L'écran **lit** donc sa consigne et
+    décompte lui-même.
+
+    **En mémoire, comme les sessions de poste et la présence** : une prise de contrôle est un geste
+    du jour J, pas un réglage de préparation (celui-là, le déroulé, est en base sur le `Poste`).
+    Effet de bord **voulu** : un redémarrage du serveur **libère** les écrans au lieu de les figer —
+    c'est le sens du CA « jamais un état forcé qu'on oublie », appliqué à la panne.
+    """
+
+    def poser(self, poste_id: PosteId, prise: PriseDeControle) -> None:
+        """Pose (ou remplace) la prise de contrôle d'un écran."""
+        ...
+
+    def prise_de(self, poste_id: PosteId) -> PriseDeControle | None:
+        """Prise de contrôle en vigueur pour cet écran, ou `None`.
+
+        **Ne juge pas l'expiration** : le registre ne lit pas l'heure, il stocke. C'est le service
+        qui compare via `Horloge` et retire les prises échues.
+        """
+        ...
+
+    def retirer(self, poste_id: PosteId) -> None:
+        """Rend la main sur un écran ; sans effet s'il n'était pas sous consigne.
+
+        Geste **volontaire** de l'admin : il efface ce qui est en place, quel qu'il soit.
+        """
+        ...
+
+    def retirer_si(self, poste_id: PosteId, prise: PriseDeControle) -> None:
+        """Retire la prise **seulement si c'est toujours celle-ci** ; sans effet sinon.
+
+        Sert au nettoyage d'une prise **échue**, qui est un effet de bord de la lecture — donc non
+        volontaire, donc obligé d'être prudent. Sans cette condition, la séquence « je lis une prise
+        expirée, l'admin en repose une neuve, je retire » effacerait **la neuve** : une fenêtre
+        étroite, mais qui s'ouvre précisément au moment où l'organisateur reprend la main sur un
+        podium qui vient d'expirer, et la console poll en continu (correctif de revue E07US004).
+        """
+        ...
+
+    def toutes(self) -> dict[PosteId, PriseDeControle]:
+        """Toutes les prises en vigueur, par écran — la console en a besoin d'un coup."""
         ...
 
 

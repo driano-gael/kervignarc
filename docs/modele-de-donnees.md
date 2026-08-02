@@ -460,18 +460,35 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 > **code individuel** ; il est **itinérant** (aucune cible rattachée) et **valide** les scores
 > (`D-12`/`D-13`). Voir [ADR-0025](adr/0025-mode-d-identite-scoreur-par-code-individuel.md).
 
-### POSTE (E04US001)
+### POSTE (E04US001 ; élargi E07US004)
 | id | INTEGER | PK |
 | tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) |
-| cible_index | INTEGER | NOT NULL (rang 1-based de la cible dans le plan de salle) |
+| type | TEXT | NOT NULL, `cible` \| `ecran` (`server_default 'cible'`, E07US004) |
+| cible_index | INTEGER | **NULL** pour un écran ; rang 1-based de la cible dans le plan sinon |
+| libelle | TEXT | NULL sauf pour un **écran** (sa place dans le gymnase, ≤ 60 car.) |
+| deroule_json | TEXT | NULL ; déroulé de vues d'un écran, `[{"vue": …, "cadence_s": …}]` |
 | code | TEXT | NOT NULL, **UNIQUE global** (rattachement par code seul) |
 
-> `UNIQUE(tournoi_id, cible_index)` : **une seule cible N par tournoi**. Table **livrée** par
-> E04US001. Le poste est le **credential d'une cible** — identité = le **lieu** (`D-13`, 3ᵉ mode
-> après le scoreur) : une tablette s'y **rattache** par le code (imprimé sous le QR de la cible,
-> E09US008), et reçoit un **jeton de poste** opaque en **mémoire** (`PosteSessionStore`, sans
-> expiration, persisté côté client), **lié au tournoi** et invalidé à sa clôture. La régénération des
-> codes est E09US008. Voir [ADR-0029](adr/0029-mode-d-identite-poste-de-cible-et-jeton-de-poste.md).
+> Le poste est le **credential d'un lieu** — identité = le **lieu** (`D-13`, 3ᵉ mode après le
+> scoreur) : un appareil s'y **rattache** par le code (imprimé sous le QR pour une cible, E09US008),
+> et reçoit un **jeton de poste** opaque en **mémoire** (`PosteSessionStore`, sans expiration,
+> persisté côté client), **lié au tournoi** et invalidé à sa clôture. La régénération des codes est
+> E09US008. Voir [ADR-0029](adr/0029-mode-d-identite-poste-de-cible-et-jeton-de-poste.md).
+>
+> **Deux natures depuis E07US004** (migration `0038`), une seule table : le credential, le jeton, le
+> heartbeat et la supervision sont rigoureusement identiques des deux côtés — c'est le CA (« c'est un
+> poste, comme une tablette de cible »). Une **cible** porte `cible_index` ; un **écran de salle**
+> porte `libelle` et son `deroule_json`.
+>
+> ⚠️ `UNIQUE(tournoi_id, cible_index)` ne protège plus que « une seule cible N par tournoi » : en
+> SQLite deux `NULL` ne s'égalent pas, donc plusieurs écrans coexistent sans la heurter — c'est le CA
+> (« plusieurs écrans possibles »). L'exclusivité `cible_index` ↔ `libelle` est portée par le
+> **domaine** (`Poste.creer` / `creer_ecran`, `Poste.cible()`), pas par un `CHECK` : le projet n'en
+> utilise aucun, et en poser un ferait vivre une règle métier hors du domaine (règle 2).
+> Voir [ADR-0064](adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md).
+>
+> La **prise de contrôle** d'un écran n'est **pas** en base : registre en mémoire, comme les sessions
+> et la présence — un redémarrage libère les écrans au lieu de les figer (ADR-0064 §3).
 
 ### ~~UTILISATEUR / SESSION~~ — **modèle prospectif abandonné** (E10US002/E10US003)
 > ⚠️ Ce modèle unifié à trois rôles (`admin`/`scoreur`/`public`) et sessions persistées **n'a pas

@@ -33,11 +33,11 @@ session_router = APIRouter(prefix="/api/v1/postes/session", tags=["postes"])
 
 
 class PosteReponse(BaseModel):
-    """Représentation d'un poste renvoyée à l'admin : porte le `code` de cible à imprimer."""
+    """Représentation d'un poste renvoyée à l'admin : porte le `code` à imprimer."""
 
     id: int
     tournoi_id: int
-    cible_index: int
+    cible_index: int | None
     code: str
 
     @staticmethod
@@ -59,16 +59,29 @@ class RattacherRequete(BaseModel):
 
 
 class PosteRattacheReponse(BaseModel):
-    """Cible servie par le poste : de quoi savoir **quel tournoi** et **quelle cible**, **sans le
-    code** (la session est un endpoint public ; le front n'a besoin que du couple tournoi/cible)."""
+    """Ce que sert le poste : **quel tournoi**, **quelle nature**, et de quoi l'afficher — **sans le
+    code** (la session est un endpoint public ; le front n'a pas besoin du secret de rattachement).
+
+    `type` est la clé du routage front : le **même** code de rattachement peut désigner une cible
+    (→ application de saisie) ou un écran de salle (→ affichage plein écran). Sans lui, le SPA
+    devrait deviner d'après la présence de `cible_index`, ce qui ferait dépendre une décision de
+    navigation d'une valeur nulle — exactement le genre d'inférence qui casse en silence.
+    """
 
     tournoi_id: int
-    cible_index: int
+    type: str
+    cible_index: int | None
+    libelle: str | None
 
     @staticmethod
     def de_agregat(poste: Poste) -> PosteRattacheReponse:
         """Traduit un agrégat de domaine (persisté) en DTO de session, **code omis**."""
-        return PosteRattacheReponse(tournoi_id=poste.tournoi_id, cible_index=poste.cible_index)
+        return PosteRattacheReponse(
+            tournoi_id=poste.tournoi_id,
+            type=poste.type.value,
+            cible_index=poste.cible_index,
+            libelle=poste.libelle,
+        )
 
 
 class SessionPosteReponse(BaseModel):

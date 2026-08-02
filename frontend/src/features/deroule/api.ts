@@ -7,62 +7,15 @@
 // propre à cette US, c'est la **projection** — ce que le format produit, pas ce qu'il est.
 
 import { fetchJson } from '../../shared/api/client'
-import type { IssueTour, NatureSource, TypePhase } from '../../shared/phases/catalogue'
+import type { TypePhase } from '../../shared/phases/catalogue'
+import type { Anomalie, Bloc } from '../../shared/schema-braquets/modele'
 
-// Ce qu'une anomalie empêche (ADR-0063 §3). `bloquante` : le défaut est vrai quel que soit
-// l'effectif, le format ne peut pas servir un tournoi. `avertissement` : il n'est vrai qu'à
-// **cet** effectif — le format n'est pas faux, il ne tient pas ici.
-export type Gravite = 'bloquante' | 'avertissement'
-
-// Un défaut du déroulé, **localisé** : `ordre` désigne le bloc du schéma auquel le coller
-// (`null` = la séquence entière). `code`/`message` viennent de l'erreur typée du domaine.
-export interface Anomalie {
-  code: string
-  message: string
-  ordre: number | null
-  gravite: Gravite
-}
-
-// Une flèche du schéma : le même objet est la *sortie* du bloc amont et l'*entrée* du bloc aval.
-export interface Flux {
-  ordre_source: number
-  ordre_cible: number
-  nature: NatureSource
-  effectif: number | null
-  rang_debut: number | null
-  rang_fin: number | null
-  tour: number | null
-  issue: IssueTour | null
-}
-
-// Un tour d'un tableau et son **braquet** : les rangs que se partagent gagnants et perdants
-// (Règle R de `moteur-placement-lucky-loser.md`). Plages **absolues** (rangs du tournoi).
-export interface Tour {
-  tour: number
-  duels: number
-  plage_gagnants: [number, number]
-  plage_perdants: [number, number]
-}
-
-// Un bloc du schéma — les quatre questions du CA : qui est là, ce qu'on leur demande, où ils vont
-// après, combien de tours.
-export interface Bloc {
-  ordre: number
-  type: TypePhase
-  effectif: number | null
-  tranche: [number, number] | null
-  nb_volees: number | null
-  nb_fleches_par_volee: number | null
-  tours: Tour[]
-  entrees: Flux[]
-  sorties: Flux[]
-  // Combien d'archers voient leur tournoi s'arrêter dans ce bloc. Ce n'est **pas** une anomalie :
-  // les non-qualifiés gardent leur rang. Le CA demande que le dessin le montre, pas qu'il s'en
-  // alarme. ⚠️ **Signé** : un négatif signifie que les phases avales prélèvent, ensemble, plus de
-  // participants que ce bloc n'en compte — une sur-souscription, signalée par ailleurs en anomalie.
-  sans_suite: number | null
-  anomalies: Anomalie[]
-}
+// Les types du **schéma** (blocs, flèches, braquets, anomalies) ont déménagé en
+// `shared/schema-braquets/modele.ts` en E07US004, quand le pilotage et l'écran de salle sont devenus
+// consommateurs du même dessin : un type partagé qui habite chez l'un de ses trois consommateurs
+// ferait dépendre les deux autres d'une feature qui ne les concerne pas. Ils sont **ré-exportés**
+// ici pour que les imports existants de la feature ne se disloquent pas.
+export type { Anomalie, Bloc, Flux, Gravite, Tour } from '../../shared/schema-braquets/modele'
 
 export interface Diagnostic {
   effectif: number | null

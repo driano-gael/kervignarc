@@ -34,6 +34,8 @@ from api.v1.completude import router as completude_router
 from api.v1.departs import router as departs_router
 from api.v1.deroule import router as deroule_router
 from api.v1.documents_salle import router as documents_salle_router
+from api.v1.ecrans import router as ecrans_router
+from api.v1.ecrans import session_router as ecran_session_router
 from api.v1.feuille_de_marque import router as feuille_de_marque_router
 from api.v1.forfaits import router as forfaits_router
 from api.v1.formats import router as formats_router
@@ -57,6 +59,7 @@ from api.v1.saisie_duels import router as saisie_duels_router
 from api.v1.scoreurs import router as scoreurs_router
 from api.v1.scoreurs import session_router as scoreur_session_router
 from api.v1.simulation import router as simulation_router
+from api.v1.suivi_deroule import router as suivi_deroule_router
 from api.v1.supervision import heartbeat_router as poste_heartbeat_router
 from api.v1.supervision import router as supervision_router
 from api.v1.tournois import router as tournois_router
@@ -72,6 +75,7 @@ from application.clubs import ServiceClubs
 from application.completude import ServiceCompletude
 from application.departs import ServiceDeparts
 from application.documents_salle import ServiceDocumentsSalle
+from application.ecrans import ServiceEcrans
 from application.feuille_de_marque import ServiceFeuilleDeMarque
 from application.forfaits import ServiceForfait
 from application.formats import ServiceFormats
@@ -99,6 +103,7 @@ from application.saisie_duels import ServiceSaisieDuels
 from application.scoreurs import ServiceScoreurs
 from application.simulation import HarnaisSimulation, ServiceSimulation
 from application.simulation_format import ServiceSimulationFormat
+from application.suivi_deroule import CompteurEngagesRepository, ServiceSuiviDeroule
 from application.supervision import ServiceSupervision
 from application.tournois import ServiceTournois
 from domain.duel import ResolveurBaremeDuelFfta
@@ -164,6 +169,7 @@ from infrastructure.pdf import (
 )
 from infrastructure.postes import (
     PosteSessionStore,
+    RegistreConsignesMemoire,
     RegistrePresenceMemoire,
     generer_code_poste,
 )
@@ -726,14 +732,40 @@ def create_app(
     # et générateur de code injecté (déterminisme des tests, règle 9) ; le service lit le plan de
     # salle (gabarit) pour émettre un code par cible. La dépendance API `exiger_poste` protégera la
     # saisie (E04US002) et gardera « le poste ne saisit que pour SA cible » (E10US007). ---
+    #
+    # E07US004 élargit ce service aux **écrans de salle** : le CA en fait des postes, rattachés par
+    # le même jeton, avec le même code — d'où la création/le réglage/la suppression d'écrans ici
+    # plutôt que dans un service parallèle (`ServicePostes` possède déjà l'allocation de code). Il
+    # reçoit pour cela le registre de consignes : supprimer un écran doit **aussi** retirer sa
+    # consigne, sinon SQLite réattribuerait l'identifiant à un futur écran qui en hériterait. ---
     poste_session_store = PosteSessionStore()
+    registre_consignes = RegistreConsignesMemoire()
+    # Construit ici (et non plus à la supervision) : trois services nettoient désormais l'état
+    # volatil d'un poste — supprimer un écran, le révoquer, le superviser.
+    poste_presence = RegistrePresenceMemoire()
     app.state.service_postes = ServicePostes(
         poste_repository,
         tournoi_repository,
         gabarit_repository,
         depart_repository,
         poste_session_store,
+        registre_consignes,
+        poste_presence,
         generer_code_poste,
+    )
+
+    # --- Écrans de salle (E07US004, ADR-0064) : « que montre cet écran, maintenant ? ». Le pilotage
+    # admin est un **état lu**, pas un ordre poussé — le hub temps réel est mono-canal (aucun
+    # ciblage par destinataire) et, surtout, la **fin** d'une prise de contrôle naît du temps qui
+    # passe, que nul événement ne peut pousser (même raisonnement qu'ADR-0038 §4, qui a mis la
+    # supervision en poll). D'où ce registre **en mémoire** : le déroulé, lui, est persisté sur le
+    # poste. Effet de bord voulu — un redémarrage **libère** les écrans au lieu de les figer. ---
+    app.state.service_ecrans = ServiceEcrans(
+        poste_repository,
+        tournoi_repository,
+        poste_session_store,
+        registre_consignes,
+        HorlogeSysteme(),
     )
 
     # --- Journal d'audit métier (E10US005, socle) : trace les actes sensibles (qui/quand/
@@ -795,15 +827,31 @@ def create_app(
     # ADR-0033), la « dernière saisie » sur les séries — jamais le heartbeat (ADR-0038 §2). Seuil
     # hors ligne injecté (30 s > l'intervalle de heartbeat ~10 s côté front). L'`Horloge` système
     # date/mesure la présence (déterminisme en test via injection). Révocation admin (`D-07`). ---
-    poste_presence = RegistrePresenceMemoire()
+    # Depuis E07US004, la console montre aussi les **écrans de salle** — c'est le CA (« un écran
+    # figé ne se plaint pas, seule la supervision le révèle ») — et leur prise de contrôle en
+    # vigueur, lue par un port étroit sur `ServiceEcrans` (elle affiche, elle ne pilote pas).
     app.state.service_supervision = ServiceSupervision(
         poste_repository,
         tournoi_repository,
         poste_session_store,
         poste_presence,
+        registre_consignes,
         service_saisie,
+        app.state.service_ecrans,
         HorlogeSysteme(),
         _SEUIL_POSTE_HORS_LIGNE_S,
+    )
+
+    # --- Suivi du déroulé (E07US004, ADR-0064) : le schéma à braquets de l'atelier (E01US024)
+    # **rempli par la réalité**. Ne recalcule rien : `domain.deroule.projeter` pour le dessin,
+    # `ServiceSaisieDuels.reconstruire` pour les duels tranchés (une seule source de vérité de la
+    # progression, déjà partagée par la saisie, le placement et le feu vert). L'effectif est le
+    # nombre d'engagés — l'équivalent live du « je simule à N archers » de l'atelier. ---
+    app.state.service_suivi_deroule = ServiceSuiviDeroule(
+        tournoi_repository,
+        phase_repository,
+        CompteurEngagesRepository(depart_repository, inscription_repository),
+        app.state.service_saisie_duels,
     )
 
     # --- Complétude du tournoi (E12US005) : « qu'est-ce qui manque pour finir ? », sportif et hors
@@ -887,6 +935,9 @@ def create_app(
     app.include_router(postes_router)
     app.include_router(poste_session_router)
     app.include_router(supervision_router)
+    app.include_router(ecrans_router)
+    app.include_router(ecran_session_router)
+    app.include_router(suivi_deroule_router)
     app.include_router(poste_heartbeat_router)
     app.include_router(tournois_router)
     app.include_router(departs_router)

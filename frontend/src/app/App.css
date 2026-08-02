@@ -2869,9 +2869,14 @@ button:disabled {
   gap: 12px;
 }
 
+/* --- Le schéma à braquets : un composant, trois surfaces (E01US024, E07US004) ---
+   Les tailles de police sont en **unités utilisateur du SVG**, donc mises à l'échelle par le
+   `viewBox` : l'écran de salle n'a aucune règle typographique propre, il affiche le *même* dessin,
+   simplement agrandi. C'est ce qui rend tenable la promesse « le même schéma » du CA. */
+
 /* Le schéma déborde volontiers en largeur (une colonne par phase) : il défile **dans son cadre**,
    jamais la page — même parti que les tableaux de duels. */
-.deroule__schema {
+.schema-braquets {
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -2879,7 +2884,21 @@ button:disabled {
   padding: 8px;
 }
 
-.deroule__bloc rect {
+/* Surface **salle** : le dessin remplit la largeur disponible, sans cadre ni défilement — personne
+   n'est devant l'écran pour faire défiler, et un cadre mange des pixels de lecture. */
+.schema-braquets--identite {
+  overflow: visible;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.schema-braquets--identite svg {
+  width: 100%;
+  height: auto;
+}
+
+.schema-braquets__bloc rect {
   fill: var(--bg);
   stroke: var(--border);
   stroke-width: 1.5;
@@ -2887,41 +2906,79 @@ button:disabled {
 
 /* `DV-03` : la couleur ne porte jamais le sens seule — le bloc est aussi listé dans les anomalies,
    avec sa pastille et son mot. Ici la teinte n'est qu'un rappel. */
-.deroule__bloc--alerte rect {
+.schema-braquets__bloc--alerte rect {
   stroke: var(--warn);
   stroke-width: 2;
 }
 
-.deroule__bloc--bloquant rect {
+.schema-braquets__bloc--bloquant rect {
   stroke: var(--danger);
   stroke-width: 2;
   stroke-dasharray: 5 3;
 }
 
-.deroule__bloc-titre {
+/* Statuts du suivi (E07US004). Là encore `DV-03` : le statut est **écrit en toutes lettres** dans
+   le bloc (« en cours », « terminée »), la teinte ne fait que le rappeler de loin. */
+.schema-braquets__bloc--en_cours rect {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+}
+
+.schema-braquets__bloc--en_pause rect {
+  stroke: var(--warn);
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+}
+
+.schema-braquets__bloc--terminee rect {
+  stroke: var(--ok);
+  stroke-width: 1.5;
+  opacity: 0.75;
+}
+
+.schema-braquets__bloc--a_venir rect {
+  stroke: var(--border);
+  stroke-dasharray: 3 3;
+}
+
+.schema-braquets__bloc-titre {
   fill: var(--text-h);
   font-size: 14px;
   font-weight: 600;
 }
 
-.deroule__bloc-ligne {
+.schema-braquets__bloc-statut {
+  fill: var(--text);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+.schema-braquets__bloc-ligne {
   fill: var(--text);
   font-size: 12px;
 }
 
-.deroule__bloc-braquet {
+.schema-braquets__bloc-braquet {
   fill: var(--text);
   font-size: 11px;
   opacity: 0.8;
 }
 
-.deroule__fleche path {
+.schema-braquets__bloc-braquet--courant {
+  fill: var(--accent);
+  font-weight: 600;
+  opacity: 1;
+}
+
+.schema-braquets__fleche path {
   fill: none;
   stroke: var(--accent);
   stroke-width: 1.5;
 }
 
-.deroule__fleche text {
+.schema-braquets__fleche text {
   fill: var(--accent);
   font-size: 11px;
 }
@@ -3004,4 +3061,111 @@ button:disabled {
   max-height: 240px;
   overflow-y: auto;
   margin: 8px 0 0;
+}
+
+/* --- Écran de salle (E07US004) ---
+   Contraintes **opposées** aux deux autres surfaces : ≥ 1920 px, vu de loin, aucune interaction.
+   D'où une échelle typographique dédiée (`clamp` sur la largeur de vue : le même code sert un
+   moniteur 24" et un vidéoprojecteur), un fond plein et aucune coquille « carte ». */
+.salle {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.5vw, 32px);
+  min-height: 100%;
+  padding: clamp(12px, 1.5vw, 32px);
+  background: var(--bg);
+  font-size: clamp(16px, 1.15vw, 28px);
+}
+
+.salle__bandeau {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: clamp(12px, 1.5vw, 32px);
+  border-bottom: 2px solid var(--border);
+  padding-bottom: clamp(8px, 0.8vw, 18px);
+}
+
+.salle__lieu {
+  color: var(--text-h);
+  font-size: 1.5em;
+  font-weight: 700;
+}
+
+.salle__vue {
+  color: var(--text);
+  font-size: 1.2em;
+  opacity: 0.85;
+}
+
+/* Le CA veut qu'une prise de contrôle soit **très visible** : c'est ce qui distingue, vu du
+   gymnase, un podium volontairement figé d'un écran planté. */
+.salle__controle {
+  margin-left: auto;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg);
+  padding: 0.25em 0.9em;
+  font-weight: 700;
+}
+
+.salle__cadence {
+  margin-left: auto;
+  color: var(--text);
+  opacity: 0.6;
+}
+
+/* `DV-03` : couleur **et** mot. Ambre pour l'alerte (jamais le rouge club, cf. charte). */
+.salle__hors-ligne {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.salle__scene {
+  flex: 1;
+  min-height: 0;
+}
+
+.salle__attente {
+  color: var(--text);
+  font-size: 1.4em;
+  opacity: 0.7;
+  text-align: center;
+  padding-top: 12vh;
+}
+
+/* Les vues réemployées (classement, plan de cibles) héritent de l'échelle du conteneur : leurs
+   tableaux passent en unités relatives pour grossir avec elle plutôt qu'en px figés. */
+.salle__scene table {
+  font-size: 1em;
+}
+
+/* --- Pilotage des écrans depuis la console de supervision (E07US004) --- */
+.ecrans__ligne-prise {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Le rappel « état forcé sans échéance » : le seul cas où la console doit **alarmer**, parce que
+   personne d'autre ne le fera (CA « jamais un état forcé qu'on oublie »). */
+.ecrans__rappel {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.ecrans__deroule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ecrans__etape {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 13px;
 }

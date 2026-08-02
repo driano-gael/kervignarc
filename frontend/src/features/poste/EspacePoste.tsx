@@ -1,15 +1,28 @@
-// Espace poste (E04US001) — l'écran d'une tablette de cible, ouvert au montage.
+// Espace poste (E04US001 ; élargi E07US004) — l'écran d'un appareil rattaché à un lieu.
 //
 // Le bénévole **scanne le QR** de sa cible (l'URL pré-remplit le code → rattachement automatique) ou
 // **tape le code** imprimé en secours. Une session de poste s'ouvre alors, persistée localement pour
 // survivre à la fermeture de l'onglet, à une veille, à un redémarrage — la tablette **retrouve sa
 // cible sans rien redemander** (D-13). Le poste peut choisir sa **luminosité** (D-26), qui revient
 // toute seule. La **saisie** des scores relève d'E04US002 ; ici, on rattache et on détache.
+//
+// **Depuis E07US004, deux natures de poste passent par ici.** Le CA de l'écran de salle est
+// explicite : *« c'est un poste, comme une tablette de cible — même mécanisme de jeton »*. Un même
+// code, un même endpoint, un même écran de rattachement ; c'est le `type` rendu par le serveur qui
+// aiguille ensuite vers la **saisie** (cible) ou l'**affichage plein écran** (écran de salle).
+// Dupliquer le formulaire dans un monde « salle » aurait recopié le QR, le heartbeat, la
+// persistance et la révocation — pour n'en changer que la dernière ligne.
+//
+// ⚠️ L'adresse de ce monde reste `/cible` (routeur maison, `Monde = 'tablette'`), y compris pour un
+// écran de salle. C'est une imprécision **assumée** : personne ne tape cette adresse (on arrive par
+// QR ou par le menu), et renommer le monde toucherait le routeur, ses tests et la résolution de
+// rôle pour un gain purement cosmétique.
 
 import { useEffect, useRef, useState } from 'react'
+import { EcranSalle } from '../salle/EcranSalle'
 import { Saisie } from '../saisie/Saisie'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
-import { type CiblePoste, useSessionPosteStore } from '../../shared/stores/sessionPosteStore'
+import { type PosteRattache, useSessionPosteStore } from '../../shared/stores/sessionPosteStore'
 import { useSessionRoleStore } from '../../shared/stores/sessionRoleStore'
 import type { Theme } from '../../shared/theme'
 import {
@@ -29,11 +42,18 @@ export function EspacePoste({ codeInitial }: { codeInitial: string | null }) {
   // Signe de vie périodique tant que la session est active → « en ligne » dans la supervision.
   useHeartbeatPoste(jeton !== null)
 
+  // Un **écran de salle** rattaché sort de la coquille « carte » : il doit remplir l'écran, sans
+  // titre ni sélecteur de luminosité (« aucune interaction », CA). Le rattachement, lui, garde la
+  // coquille — c'est un geste humain, fait de près, sur un appareil qu'on tient encore en main.
+  if (jeton !== null && poste !== null && poste.type === 'ecran') {
+    return <EcranSalle libelle={poste.libelle} tournoiId={poste.tournoi_id} />
+  }
+
   return (
     <section className="carte carte--large">
       <h2 className="carte__titre">Poste de saisie</h2>
       {jeton !== null && poste !== null ? (
-        <PosteRattache poste={poste} />
+        <PosteDeCible poste={poste} />
       ) : (
         <FormulaireRattachement codeInitial={codeInitial} />
       )}
@@ -87,7 +107,7 @@ function FormulaireRattachement({ codeInitial }: { codeInitial: string | null })
   )
 }
 
-function PosteRattache({ poste }: { poste: CiblePoste }) {
+function PosteDeCible({ poste }: { poste: PosteRattache }) {
   const deconnexion = useDeconnexionPoste()
   const reinitialiserRole = useSessionRoleStore((s) => s.reinitialiser)
   const quitterModePoste = useSessionPosteStore((s) => s.detacher)
@@ -108,6 +128,13 @@ function PosteRattache({ poste }: { poste: CiblePoste }) {
     quitterModePoste()
     naviguer('/', { remplacer: true })
     deconnexion.mutate()
+  }
+
+  // `cible_index` est facultatif au type depuis E07US004 (un écran n'en a pas) ; ici il est garanti
+  // par l'aiguillage sur `type` — la garde protège d'une réponse serveur incohérente plutôt que
+  // d'afficher « cible null » à un bénévole.
+  if (poste.cible_index === null) {
+    return <p className="carte__etat">Ce poste n’est pas rattaché à une cible.</p>
   }
 
   return (
