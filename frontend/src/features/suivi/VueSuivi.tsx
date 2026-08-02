@@ -16,9 +16,17 @@
 // diffusion temps réel post-commit (E04US009) ; un **déplacement de placement** (admin) ou un
 // **rattachement** rafraîchit la carte sans action de l'utilisateur.
 //
-// La carte couvre le « où il tire » (cible/position/départ) **et** le **déroulé du tour en direct**
+// La carte couvre le « où il tire » (cible/position/départ), le **déroulé du tour en direct**
 // (E07US009, ADR-0039) : les volées du jour, chacune avec son statut « en attente de validation » /
-// « validé ». L'**à-venir** (prochaine phase/cible) reste E07US008.
+// « validé », et depuis E07US008 l'**à-venir** — où il tire au tableau, son rang s'il est sorti, sa
+// destination s'il est repêché.
+//
+// ⚠️ **L'à-venir passe par la lecture collective** (`useAffectations`), pas par un `useRoutage` par
+// carte, et c'est un choix de charge assumé : une lecture par archer suivi multiplierait la
+// requête la plus chère de l'application (classement + reconstruction de l'arbre + plan de duels)
+// par le nombre d'archers suivis **et** par le nombre de téléphones dans le gymnase. La lecture
+// collective est la **même pour tout le monde** : une seule entrée de cache, un seul appel — c'est
+// le régime DETTE-008, qu'on ne veut pas aggraver.
 
 import { useState } from 'react'
 import { useQueries } from '@tanstack/react-query'
@@ -28,9 +36,18 @@ import type { Depart } from '../departs/api'
 import { useDeparts } from '../departs/hooks'
 import { getPlanDeCibles, type PlanDeCibles } from '../placement/api'
 import { clePlan } from '../placement/hooks'
+import type { RoutageArcher } from '../routage/api'
+import { useAffectations } from '../routage/hooks'
+import { alerte, detail, titre } from '../routage/presentation'
+import { LIBELLE_TYPE, type TypePhase } from '../../shared/phases/catalogue'
 import { type ArcherSuivi, useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import { useDeroule } from './deroule'
 import { construireJournee, filtrerArchers } from './suivi'
+
+// Nomme un type de phase renvoyé par le serveur. Le repli sur la chaîne brute couvre le cas où le
+// backend connaîtrait un type que ce front ne connaît pas encore (déploiement décalé) : mieux vaut
+// « repêché → 3. poule » que rien du tout.
+const nommerType = (type: string) => LIBELLE_TYPE[type as TypePhase] ?? type
 
 // Borne l'affichage des résultats de recherche : au-delà, on invite à préciser plutôt que de dérouler
 // tout un club (et de risquer de cacher l'archer cherché en silence).
@@ -69,6 +86,16 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
   const chargementPlans = departsQuery.isLoading || plansResults.some((r) => r.isLoading)
   const erreurPlans = departsQuery.isError || plansResults.some((r) => r.isError)
 
+  // L'à-venir (E07US008), lu **une fois** pour toutes les cartes. `phase_id` à `null` = aucun tableau
+  // configuré : on ne montre alors aucun bloc « ensuite », plutôt qu'un bloc vide qui ferait croire
+  // à une panne. `null` non plus n'est pas « pas de tableau » côté ligne : un archer sans ligne alors
+  // qu'un tableau existe n'y a simplement pas été retenu, et c'est une information à donner.
+  const affectations = useAffectations(tournoiId)
+  const tableauConfigure = affectations.data?.phase_id != null
+  const routageParArcher = new Map(
+    (affectations.data?.archers ?? []).map((ligne) => [ligne.archer_id, ligne]),
+  )
+
   return (
     <div>
       <p className="carte__etat">
@@ -101,6 +128,8 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
               plansParDepart={plansParDepart}
               chargement={archersQuery.isLoading || chargementPlans}
               erreur={erreurPlans}
+              routage={routageParArcher.get(s.archerId) ?? null}
+              tableauConfigure={tableauConfigure}
             />
           ))}
         </ul>
@@ -200,6 +229,8 @@ function CarteArcherSuivi({
   plansParDepart,
   chargement,
   erreur,
+  routage,
+  tableauConfigure,
 }: {
   tournoiId: number
   archerId: number
@@ -210,6 +241,8 @@ function CarteArcherSuivi({
   plansParDepart: Map<number, PlanDeCibles>
   chargement: boolean
   erreur: boolean
+  routage: RoutageArcher | null
+  tableauConfigure: boolean
 }) {
   const nePlusSuivre = useSessionSuivisStore((s) => s.nePlusSuivre)
   const journee = construireJournee(archerId, departs, plansParDepart)
@@ -258,6 +291,30 @@ function CarteArcherSuivi({
         <p className="carte__etat">Chargement…</p>
       ) : (
         <p className="carte__etat">Pas encore placé.</p>
+      )}
+
+      {/* L'à-venir (E07US008) : « où je tire ensuite », sans avoir à demander à l'organisation.
+          Placé **après** la journée et **avant** le déroulé : c'est ce qu'on vient chercher quand on
+          a déjà tiré (l'archer a quitté la salle), pas quand on suit un tour en cours. */}
+      {tableauConfigure && (
+        <div className="suivi-ensuite">
+          <span className="suivi-ensuite__libelle">Ensuite</span>
+          {routage === null ? (
+            <span className="suivi-ensuite__titre">Non retenu pour le tableau final.</span>
+          ) : (
+            <>
+              <strong className="suivi-ensuite__titre">{titre(routage, nommerType)}</strong>
+              {detail(routage) !== null && (
+                <span className="suivi-ensuite__detail">{detail(routage)}</span>
+              )}
+              {/* Ambre : la cible **est** annoncée mais le duel n'est pas côte à côte — c'est un
+                  avertissement, pas une erreur (DV-03), et retirer l'info ne servirait personne. */}
+              {alerte(routage) !== null && (
+                <span className="suivi-ensuite__alerte">{alerte(routage)}</span>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       {volees.length > 0 && (

@@ -18,16 +18,23 @@ import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import type { Tournoi } from '../competition/api'
 import { VueClassement } from '../competition/VueClassement'
 import { PlanCiblesPublic } from '../placement/PlanCiblesPublic'
+import { VueAffectations } from '../routage/VueAffectations'
 import { VueSuivi } from '../suivi/VueSuivi'
 import { BadgeStatut } from '../competition/BadgeStatut'
 import { GestionTournois } from '../tournois/Tournois'
 
 // Les vues publiques d'un tournoi. Fermé (pas d'ouverture prévue ici) : les tableaux de duels
-// (E07US005) et l'écran de salle (E07US004) sont d'autres US, pas des onglets à réserver.
-type Vue = 'suivi' | 'classement' | 'plan'
+// (E07US005) sont une autre US, pas un onglet à réserver ; l'écran de salle (E07US004) n'est pas un
+// onglet du tout, c'est un **poste**.
+//
+// « Affectations » (E07US008) sert deux publics d'un coup : l'archer qui cherche sa butte et la
+// **table de l'organisation**, qui vérifie le pas de tir — c'est la même lecture, et le CA n'en
+// demandait qu'une. On la place après le suivi (« mes archers » reste la porte d'entrée, `D-09`).
+type Vue = 'suivi' | 'affectations' | 'classement' | 'plan'
 
 const VUES: { id: Vue; libelle: string }[] = [
   { id: 'suivi', libelle: 'Suivi' },
+  { id: 'affectations', libelle: 'Affectations' },
   { id: 'classement', libelle: 'Classement' },
   { id: 'plan', libelle: 'Plan de cibles' },
 ]
@@ -85,6 +92,8 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
 
       {vue === 'suivi' ? (
         <VueSuivi tournoiId={tournoi.id} />
+      ) : vue === 'affectations' ? (
+        <VueAffectations tournoiId={tournoi.id} />
       ) : vue === 'classement' ? (
         <VueClassement tournoiId={tournoi.id} admin={false} />
       ) : (

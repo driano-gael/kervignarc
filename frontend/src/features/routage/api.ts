@@ -32,7 +32,16 @@ export interface ProchainDuel {
   alerte: string | null
 }
 
-export type IssueRoutage = 'prochain_duel' | 'termine' | 'indisponible'
+export type IssueRoutage = 'prochain_duel' | 'termine' | 'repeche' | 'indisponible'
+
+// La phase qui **reprend** un repêché (E07US008). Elle n'est pas dans son tableau : un repêché en
+// sort, et c'est une phase avale qui le prélève. Pas de libellé tout fait côté serveur — le front
+// sait déjà nommer un type de phase (`LIBELLE_TYPE`), et le dupliquer le ferait diverger.
+export interface DestinationRepechage {
+  phase_id: number
+  ordre: number
+  type: string
+}
 
 export interface RoutageArcher {
   archer_id: number
@@ -40,12 +49,22 @@ export interface RoutageArcher {
   prenom: string
   issue: IssueRoutage
   prochain: ProchainDuel | null
+  // `rang_final` = le rang **exact**, décerné par un match terminal. `rang_min`/`rang_max` = la
+  // **fourchette acquise**, qui vaut aussi dans un tableau tronqué au podium : le battu d'un quart
+  // est 5ᵉ-8ᵉ *ex æquo*, et aucun match n'a été joué pour les départager. Quand le rang exact
+  // existe, la fourchette s'y referme — c'est la même notion à deux profondeurs.
   rang_final: number | null
+  rang_min: number | null
+  rang_max: number | null
   tour_sortie: string | null
+  destination: DestinationRepechage | null
   motif: string | null
 }
 
 export interface Routage {
+  // `null` = **aucune phase d'élimination configurée**, à distinguer d'une liste d'archers vide
+  // (« le tableau ne route personne »). Sans ça, un écran de salle afficherait un pas de tir désert
+  // au lieu de dire qu'on n'en est pas là.
   phase_id: number | null
   archers: RoutageArcher[]
 }
@@ -62,4 +81,18 @@ export function getRoutage(
   for (const archerId of archerIds) parametres.append('archer_id', String(archerId))
   if (phaseId != null) parametres.set('phase_id', String(phaseId))
   return fetchJson<Routage>(`/api/v1/routage/${tournoiId}?${parametres}`, undefined, 'aucune')
+}
+
+// **Toutes** les affectations du tableau, dans l'ordre du pas de tir (E07US008) — aucun `archer_id`
+// à fournir. C'est ce qui distingue cette lecture de `getRoutage` : l'écran de salle et la table de
+// l'organisation ne connaissent pas la liste des archers, et la leur faire reconstituer reviendrait
+// à leur faire connaître le tableau. Même type de réponse : les quatre canaux disent la même chose.
+export function getAffectations(tournoiId: number, phaseId?: number | null): Promise<Routage> {
+  const parametres = new URLSearchParams()
+  if (phaseId != null) parametres.set('phase_id', String(phaseId))
+  return fetchJson<Routage>(
+    `/api/v1/routage/${tournoiId}/affectations?${parametres}`,
+    undefined,
+    'aucune',
+  )
 }

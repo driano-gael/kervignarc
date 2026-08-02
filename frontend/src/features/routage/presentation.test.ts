@@ -6,6 +6,7 @@ import {
   apresRetour,
   destination,
   detail,
+  encoreEnLice,
   panneauOuvert,
   rang,
   serieClose,
@@ -35,7 +36,10 @@ function archer(patch: Partial<RoutageArcher> = {}): RoutageArcher {
     issue: 'prochain_duel',
     prochain: prochain(),
     rang_final: null,
+    rang_min: null,
+    rang_max: null,
     tour_sortie: null,
+    destination: null,
     motif: null,
     ...patch,
   }
@@ -83,8 +87,65 @@ describe('rang', () => {
   })
 
   it('n’invente aucun rang tant qu’il n’est pas acquis', () => {
-    // Les rangs intermédiaires (9-16ᵉ…) supposent l'agrégation d'E06US004, non livrée.
     expect(rang(archer({ rang_final: null }))).toBeNull()
+  })
+
+  // E07US008 : la fourchette *ex æquo*. Dans un tableau tronqué au podium, les quatre battus des
+  // quarts sont 5ᵉ-8ᵉ et **aucun match ne les départage** — la fourchette n'est donc pas une
+  // approximation du rang, c'est le rang.
+  it('annonce la fourchette quand aucun match ne départage', () => {
+    expect(rang(archer({ rang_final: null, rang_min: 5, rang_max: 8 }))).toBe('5ᵉ-8ᵉ du tableau')
+  })
+
+  it('referme la fourchette sur un rang unique quand elle en désigne un seul', () => {
+    // Sans ce cas, un tableau en placement intégral afficherait « 7ᵉ-7ᵉ » — le même calcul, rendu
+    // ridicule par sa mise en phrase.
+    expect(rang(archer({ rang_final: null, rang_min: 7, rang_max: 7 }))).toBe('7ᵉ du tableau')
+  })
+
+  it('préfère le rang exact à la fourchette quand les deux existent', () => {
+    expect(rang(archer({ rang_final: 2, rang_min: 2, rang_max: 2 }))).toBe('2ᵉ du tableau')
+  })
+})
+
+describe('repêchage (E07US008)', () => {
+  const repeche = (patch: Partial<RoutageArcher> = {}) =>
+    archer({
+      issue: 'repeche',
+      prochain: null,
+      tour_sortie: 'Quart de finale',
+      destination: { phase_id: 3, ordre: 3, type: 'elimination_directe' },
+      ...patch,
+    })
+
+  it('nomme la phase qui reprend l’archer', () => {
+    expect(titre(repeche(), () => 'Élimination directe')).toBe('Repêché → 3. Élimination directe')
+  })
+
+  it('n’annonce jamais « éliminé » à un repêché', () => {
+    // Le cas qui motive l'issue distincte : un repêché à qui l'on dit « éliminé » rentre chez lui
+    // avant son duel. `TERMINE` aurait suffi techniquement — pas métier.
+    expect(titre(repeche())).not.toContain('Éliminé')
+  })
+
+  it('le compte encore en lice, contrairement à un éliminé', () => {
+    expect(encoreEnLice(repeche())).toBe(true)
+    expect(encoreEnLice(archer({ issue: 'termine', prochain: null, rang_final: 5 }))).toBe(false)
+  })
+
+  it('dit d’où il vient en détail, pour rattacher la destination à ce qu’il vient de vivre', () => {
+    expect(detail(repeche())).toBe('Quart de finale')
+  })
+
+  it('relaie le motif du serveur quand aucune phase ne le reprend', () => {
+    // Trou de composition : le routing repêche, mais rien ne prélève ces battus. C'est le premier
+    // endroit où ce trou rencontre un humain — se taire le ferait passer pour une panne réseau.
+    const orphelin = repeche({
+      destination: null,
+      motif: 'repêché — phase de repêchage non configurée',
+    })
+    expect(titre(orphelin)).toBe('Repêché')
+    expect(detail(orphelin)).toBe('repêché — phase de repêchage non configurée')
   })
 })
 

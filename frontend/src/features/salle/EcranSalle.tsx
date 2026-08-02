@@ -23,6 +23,7 @@ import { VueClassement } from '../competition/VueClassement'
 import { LIBELLE_VUE, type VueEcran } from '../ecrans/api'
 import { useAffichageEcran } from '../ecrans/hooks'
 import { PlanCiblesDeSalle } from '../placement/PlanCiblesPublic'
+import { VueAffectations } from '../routage/VueAffectations'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { useSuiviDeroule } from '../suivi-deroule/hooks'
 import {
@@ -110,6 +111,12 @@ function VueDeSalle({ vue, tournoiId }: { vue: VueEcran; tournoiId: number }) {
   }
   if (vue === 'suivi_deroule') {
     return <SuiviDeSalle tournoiId={tournoiId} />
+  }
+  if (vue === 'affectations') {
+    // `interactif={false}` : **aucune interaction** sur un écran projeté (CA E07US004). Ce n'est pas
+    // qu'une question de boutons inutiles — c'est ce qui fixe la lecture sur l'ordre du **pas de
+    // tir**, le seul qui se lise de loin quand on cherche sa butte (`Q-UX2`).
+    return <VueAffectations tournoiId={tournoiId} interactif={false} />
   }
   // Vue **inconnue** : un SPA resté ouvert pendant une montée de version peut recevoir une valeur
   // que ce bundle ne connaît pas. On le **dit** plutôt que de retomber en silence sur une autre vue
