@@ -18,12 +18,15 @@
 // destinations du poste A.
 
 import { useQuery } from '@tanstack/react-query'
-import { getRoutage } from './api'
+import { getAffectations, getRoutage } from './api'
 
 const INTERVALLE_POLL_MS = 20000
 
 const cleRoutage = (tournoiId: number, archerIds: number[], phaseId: number | null) =>
   ['routage', tournoiId, phaseId, archerIds.join(',')] as const
+
+const cleAffectations = (tournoiId: number, phaseId: number | null) =>
+  ['routage', 'affectations', tournoiId, phaseId] as const
 
 export function useRoutage(tournoiId: number, archerIds: number[], phaseId: number | null = null) {
   return useQuery({
@@ -32,6 +35,29 @@ export function useRoutage(tournoiId: number, archerIds: number[], phaseId: numb
     // Aucun archer à router : pas de requête. (Panneau fermé = composant **démonté** par les deux
     // appelants — inutile d'ajouter un drapeau `actif` qui ne serait jamais passé à `false`.)
     enabled: archerIds.length > 0,
+    refetchInterval: INTERVALLE_POLL_MS,
+    staleTime: 0,
+  })
+}
+
+// Toutes les affectations du tableau (E07US008) — la vue publique et l'écran de salle.
+//
+// Pas de liste d'archers dans la clé, et c'est justement ce qui change : la lecture est la **même
+// pour tout le monde**, donc **une seule entrée de cache par appareil** sert toutes les cartes
+// suivies de cet appareil, là où un `useRoutage` par archer suivi en aurait déclenché une par
+// archer.
+//
+// ⚠️ Le gain s'arrête à l'appareil (correctif de revue) : le cache React Query est **par
+// navigateur**, il n'existe ni cache serveur ni en-tête HTTP sur cette route. Le coût serveur reste
+// d'une reconstruction d'arbre **par appareil et par cycle** — et le filet de 20 s n'est pas le
+// régime dominant, puisque `useRealtime` invalide **sans clé** : chaque écriture serveur refetch
+// tous les clients montés. C'est `# DETTE-031`, que cette US aggrave et dont elle élargit la ligne.
+// D'où `actif` : les appelants qui n'ont rien à afficher ne montent pas la requête.
+export function useAffectations(tournoiId: number, phaseId: number | null = null, actif = true) {
+  return useQuery({
+    queryKey: cleAffectations(tournoiId, phaseId),
+    queryFn: () => getAffectations(tournoiId, phaseId),
+    enabled: actif,
     refetchInterval: INTERVALLE_POLL_MS,
     staleTime: 0,
   })

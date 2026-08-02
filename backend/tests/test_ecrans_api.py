@@ -403,12 +403,17 @@ def test_le_pilotage_est_reserve_a_l_admin(app_session: FastAPI) -> None:
 def test_une_vue_inconnue_est_refusee_sans_500(
     app_session: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """**Non-régression** (2ᵉ passe) : ces deux valeurs sont les **premières** qu'un client enverra.
+    """**Non-régression** (2ᵉ passe) : ces valeurs sont les **premières** qu'un client enverra.
 
-    `affectations` (E07US008) et `tableaux` (E07US005) sont nommées par le CA et absentes du
-    catalogue livré. Avant correctif, elles produisaient un `ValueError` nu dans le corps du
-    handler → **500 + traceback journalisé**. Typer le champ au DTO les fait rejeter par Pydantic,
-    avec le champ fautif — et ce test l'empêche de régresser quand le catalogue s'élargira.
+    `tableaux` (E07US005) est nommée par le CA d'E07US004 et absente du catalogue livré. Avant
+    correctif, une telle valeur produisait un `ValueError` nu dans le corps du handler → **500 +
+    traceback journalisé**. Typer le champ au DTO la fait rejeter par Pydantic, champ fautif nommé.
+
+    ⚠️ **Mis à jour par E07US008** : `affectations` servait ici de second exemple de vue inconnue et
+    est maintenant **livrée**. Ce test annonçait le cas (« quand le catalogue s'élargira ») — il a
+    donc échoué au bon endroit et pour la bonne raison. On garde `tableaux` comme vue encore absente
+    et l'on vérifie qu'`affectations` est bel et bien **acceptée** : sans cette seconde assertion,
+    le test ne dirait plus rien de l'élargissement qui vient de l'invalider.
     """
     with TestClient(app_session) as client:
         tournoi_id = _tournoi(client, connecter_admin)
@@ -416,13 +421,18 @@ def test_une_vue_inconnue_est_refusee_sans_500(
 
         deroule = client.put(
             f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/deroule",
-            json={"vues": [{"vue": "affectations", "cadence_s": 30}]},
+            json={"vues": [{"vue": "tableaux", "cadence_s": 30}]},
         )
         controle = client.post(
             f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/controle",
             json={"vue": "tableaux", "duree_s": 300},
         )
+        desormais_connue = client.put(
+            f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/deroule",
+            json={"vues": [{"vue": "affectations", "cadence_s": 30}]},
+        )
 
         assert deroule.status_code == 400, deroule.text
         assert deroule.json()["code"] == "requete_invalide"
         assert controle.status_code == 400, controle.text
+        assert desormais_connue.status_code == 200, desormais_connue.text

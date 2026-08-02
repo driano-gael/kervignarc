@@ -273,6 +273,14 @@ class Tableau:
         Un bye en match terminal (une plage dont un seul camp est occupé — effectif tronqué)
         attribue le rang supérieur à son unique occupant, sans attribuer le suivant : il n'y a
         personne à ce rang.
+
+        ⚠️ **Un battu non classé ici n'est pas sans rang pour autant.** La *fourchette* qu'il a
+        acquise (« 5ᵉ-8ᵉ » : la moitié basse de la plage du match perdu, écrêtée à l'effectif) se
+        lit dans `application.routage._fourchette_de_rangs`
+        ([ADR-0065](../../docs/adr/0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md) §1). Elle
+        n'est **pas** dupliquée ici : elle ne fait que relire `Plage.moitie_basse`, que ce module
+        porte déjà. Renvoi posé à la demande de la revue, pour qu'E06US004 — qui devra classer, elle
+        aussi — tombe dessus avant de la réécrire.
         """
         places: list[Place] = []
         for m in self.matchs:

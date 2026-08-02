@@ -9,9 +9,11 @@
 // 2. **Ce qui manque est dit, jamais laissé en blanc** (arbitrage de cadrage du 30/07/2026) : un
 //    champ vide se lit comme une panne, une phrase se lit comme une attente. Les motifs viennent du
 //    serveur — les quatre canaux de routage (`D-09`) doivent dire la même chose.
-// 3. **Aucun rang inventé.** Le tableau ne sait attribuer que les rangs 1-4 (podium) ; les rangs
-//    intermédiaires sont E06US004. Un battu sans rang lit où il est sorti, pas un chiffre faux.
+// 3. **Aucun rang inventé.** Un rang unique hors podium n'existe pas dans un tableau tronqué — on
+//    affiche donc la **fourchette** acquise (« 5ᵉ-8ᵉ », E07US008), jamais un chiffre choisi au
+//    hasard dedans. Le classement officiel, agrégé entre phases, reste E06US004.
 
+import { nommerType } from '../../shared/phases/catalogue'
 import type { ProchainDuel, RoutageArcher } from './api'
 
 // « Cible 4 · place B », ou `null` si la cible n'est pas encore attribuée (tour ≥ 2, ou plan de
@@ -34,19 +36,73 @@ export function adversaire(prochain: ProchainDuel): string {
   return 'adversaire non déterminé'
 }
 
-// Le rang de podium en toutes lettres — « Vainqueur du tableau », « 2ᵉ », « 3ᵉ »… `null` tant que
-// le rang n'est pas acquis (le panneau affiche alors le tour de sortie et le motif).
+// Le rang acquis en toutes lettres — « Vainqueur du tableau », « 2ᵉ du tableau », « 5ᵉ-8ᵉ du
+// tableau »… `null` tant que rien n'est acquis (le panneau affiche alors le tour de sortie).
+//
+// La **fourchette** n'est pas un pis-aller (E07US008) : dans un tableau tronqué au podium, les
+// quatre battus des quarts sont 5ᵉ-8ᵉ *ex æquo* et aucun match ne les départage. Annoncer un chiffre
+// unique serait faux ; ne rien annoncer, ce que faisait le panneau avant cette US, n'apprenait rien
+// à quelqu'un qui vient de perdre.
 export function rang(archer: RoutageArcher): string | null {
-  if (archer.rang_final === null) return null
   if (archer.rang_final === 1) return 'Vainqueur du tableau'
-  return `${archer.rang_final}ᵉ du tableau`
+  if (archer.rang_final !== null) return `${archer.rang_final}ᵉ du tableau`
+  if (archer.rang_min === null || archer.rang_max === null) return null
+  if (archer.rang_min === archer.rang_max) return `${archer.rang_min}ᵉ du tableau`
+  return `${archer.rang_min}ᵉ-${archer.rang_max}ᵉ du tableau`
+}
+
+// Où va un repêché — « Repêché → 3. Élimination directe ». Sans destination : un trou de
+// composition (aucune phase ne prélève ces battus), que `motif` explicite.
+export function repechage(
+  archer: RoutageArcher,
+  nommer: (type: string) => string = nommerType,
+): string {
+  if (archer.destination === null) return 'Repêché'
+  return `Repêché → ${archer.destination.ordre}. ${nommer(archer.destination.type)}`
+}
+
+// Les trois groupes d'un panneau d'affectations — **logique pure, donc testable**.
+//
+// ⚠️ **On partitionne sur l'ISSUE, jamais sur la cible.** Le serveur ne pose une cible qu'au
+// **tour 1** (garde tour-1, `DETTE-019`) : partitionner sur `prochain?.cible` rangeait, dès le
+// tour 2, tous les archers encore en lice — demi-finalistes compris — parmi les **sortis**. C'était
+// le bloquant de la revue, et cette fonction existe pour qu'il ne puisse pas revenir en silence :
+// laissée dans le composant, la correction n'avait aucun filet (remarque de la 2ᵉ passe).
+//
+// Trois groupes parce qu'il y a trois situations, et non deux : posé sur une butte, en lice sans
+// butte encore attribuée, sorti du tableau.
+export function partitionner(archers: RoutageArcher[]): {
+  poses: RoutageArcher[]
+  attente: RoutageArcher[]
+  sortis: RoutageArcher[]
+} {
+  const enLice = (l: RoutageArcher) => l.issue === 'prochain_duel'
+  return {
+    poses: archers.filter((l) => enLice(l) && l.prochain?.cible != null),
+    attente: archers.filter((l) => enLice(l) && l.prochain?.cible == null),
+    // `indisponible` atterrit ici. Injoignable sur ce canal — la vue collective n'itère que sur les
+    // occupants du tableau, donc `_router` ne peut pas rendre « non retenu » — mais si cela changeait,
+    // « sorti » reste la lecture la moins fausse.
+    sortis: archers.filter((l) => !enLice(l)),
+  }
 }
 
 // La ligne principale d'un archer : ce qu'il doit retenir en une seconde.
-export function titre(archer: RoutageArcher): string {
+//
+// ⚠️ Le défaut de `nommer` est le **vrai** catalogue, pas l'identité (correctif de revue). Un repli
+// identité rendait l'oubli d'un appelant silencieux : `PanneauRoutage` (canal n°1) appelait
+// `titre(ligne)` tout court et aurait affiché « Repêché → 3. **elimination_directe** » — la valeur
+// d'énumération brute — alors que l'US répète que les quatre canaux disent la même chose.
+export function titre(
+  archer: RoutageArcher,
+  nommer: (type: string) => string = nommerType,
+): string {
   if (archer.issue === 'prochain_duel' && archer.prochain !== null) {
     return destination(archer.prochain) ?? archer.prochain.libelle
   }
+  // Un repêché **avant** un éliminé, et jamais confondu avec lui : il n'a pas de rang et n'a pas
+  // fini. Lui afficher « Éliminé » le ferait rentrer chez lui avant son duel.
+  if (archer.issue === 'repeche') return repechage(archer, nommer)
   if (archer.issue === 'termine') {
     const place = rang(archer)
     if (place !== null) return place
@@ -61,6 +117,13 @@ export function alerte(archer: RoutageArcher): string | null {
   return archer.issue === 'prochain_duel' ? (archer.prochain?.alerte ?? null) : null
 }
 
+// L'archer a-t-il encore quelque chose à jouer ? Un repêché **oui**, même sans duel affiché : il est
+// sorti de ce tableau, pas de la compétition. Sert aux surfaces qui distinguent « en lice » de
+// « fini » (couleur, tri) — la distinction est métier, pas décorative, d'où sa place ici.
+export function encoreEnLice(archer: RoutageArcher): boolean {
+  return archer.issue === 'prochain_duel' || archer.issue === 'repeche'
+}
+
 // La ligne secondaire : le contexte, ou **l'attente nommée** quand l'information n'existe pas encore.
 export function detail(archer: RoutageArcher): string | null {
   if (archer.issue === 'prochain_duel' && archer.prochain !== null) {
@@ -72,6 +135,13 @@ export function detail(archer: RoutageArcher): string | null {
     return destination(archer.prochain) === null
       ? `${archer.prochain.manque} · ${adversaire(archer.prochain)}`
       : contexte
+  }
+  // Un repêché a une destination en titre : le détail dit **d'où** il vient (le tour qu'il a perdu),
+  // sans quoi « Repêché → phase 3 » ne se rattache à rien de ce qu'il vient de vivre. Le `motif`
+  // reprend la main quand il n'y a pas de destination — c'est alors la seule chose à dire.
+  if (archer.issue === 'repeche') return archer.motif ?? archer.tour_sortie
+  if (archer.issue === 'termine' && archer.motif === null && rang(archer) !== null) {
+    return archer.tour_sortie
   }
   return archer.motif
 }

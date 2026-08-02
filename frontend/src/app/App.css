@@ -3169,3 +3169,150 @@ button:disabled {
   padding: 2px 10px;
   font-size: 13px;
 }
+
+/* --- Affectations du prochain tour (E07US008) ---------------------------------------------------
+   Un seul jeu de règles pour deux surfaces : la table de l'organisation (dans l'appli publique) et
+   l'écran de salle. Tailles en **em**, jamais en px : le conteneur `.salle` porte une échelle
+   typographique dédiée (E07US004), et des px figés y resteraient illisibles à cinq mètres. */
+.affectations__tri {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.affectations__cibles,
+.affectations__postes,
+.affectations__nominatif {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.affectations__cibles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+}
+
+.affectations__cible {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5em 0.7em;
+}
+
+/* Le numéro de butte est ce que l'œil cherche en premier quand il descend le pas de tir. */
+.affectations__cible-num {
+  display: block;
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 1.1em;
+  margin-bottom: 0.3em;
+}
+
+.affectations__postes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+}
+
+.affectations__poste,
+.affectations__ligne {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  flex-wrap: wrap;
+}
+
+/* Largeur fixe pour la position : les lettres A→D s'alignent en colonne, sinon chaque ligne décale
+   le nom suivant et la liste cesse de se lire en diagonale. */
+.affectations__position {
+  flex: 0 0 1.4em;
+  font-weight: 700;
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+}
+
+.affectations__nom {
+  flex: 1 1 auto;
+  color: var(--text-h);
+}
+
+.affectations__titre {
+  flex: 0 0 auto;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Encore quelque chose à jouer — un prochain duel, ou un repêchage. Distinguer visuellement le
+   repêché de l'éliminé n'est pas décoratif : c'est la différence entre rester et rentrer chez soi. */
+.affectations__titre--en-lice {
+  color: var(--accent);
+}
+
+.affectations__contexte {
+  flex: 0 0 auto;
+  font-size: 0.85em;
+  color: var(--text);
+  opacity: 0.8;
+}
+
+/* `DV-03` : ambre pour l'avertissement (le duel n'est pas côte à côte), jamais le rouge club. */
+.affectations__alerte {
+  flex: 1 1 100%;
+  font-size: 0.85em;
+  color: var(--warn);
+}
+
+.affectations__annexe {
+  margin-top: 1em;
+  padding-top: 0.6em;
+  border-top: 1px solid var(--border);
+}
+
+.affectations__annexe-titre {
+  display: block;
+  font-size: 0.9em;
+  color: var(--text);
+  opacity: 0.8;
+  margin-bottom: 0.4em;
+}
+
+/* --- Bloc « Ensuite » de la carte d'un archer suivi (E07US008) -----------------------------------
+   L'à-venir sous la journée et le déroulé : où il tire au tableau, son rang s'il est sorti, sa
+   destination s'il est repêché. Calqué sur `.suivi-deroule` voisin — ces règles manquaient au
+   premier jet, et les quatre axes de revue l'ont relevé : les `<span>` en flux inline se collaient,
+   et l'ambre `DV-03` que le code revendique n'était pas appliquée. */
+.suivi-ensuite {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.suivi-ensuite__libelle {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* La destination est ce que l'archer vient chercher : même mise en avant que `.suivi-depart__place`. */
+.suivi-ensuite__titre {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.suivi-ensuite__detail {
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* `DV-03` : ambre pour l'avertissement (la cible est annoncée mais le duel n'est pas côte à côte),
+   jamais le rouge club — c'est un signalement, pas une erreur. */
+.suivi-ensuite__alerte {
+  font-size: 14px;
+  color: var(--warn);
+}

@@ -842,7 +842,7 @@ viendront comme features dédiées ».
 | # | Sujet | À décider | Bloque |
 |---|---|---|---|
 | **Q-UX1** | « Interdiction d'installer » inclut-elle le **raccourci sur l'écran d'accueil** (PWA) ? Ce n'est pas une installation (pas de store, pas de fichier, pas de permission) et ça rend ~100 px + supprime la sortie accidentelle | À demander au **propriétaire des tablettes**. En attendant : **conçu pour l'onglet** (pire cas) | Rien — dégradation gracieuse |
-| **Q-UX2** | **Tri des affectations** sur l'écran de salle : par **nom** (l'archer se cherche) ou par **cible** (l'organisation vérifie) ? | Client | E07US004 |
+| **Q-UX2** | ~~**Tri des affectations** sur l'écran de salle : par **nom** (l'archer se cherche) ou par **cible** (l'organisation vérifie) ?~~ → **tranchée le 02/08/2026 par E07US008 ([ADR-0065](docs/adr/0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md)) : les deux.** L'écran projeté, qui ne peut rien actionner, garde l'ordre du **pas de tir** ; la table de l'organisation bascule d'un bouton. ⚠️ **Reste ouvert : la scannabilité** — 200 archers ne tiennent pas à l'écran et rien ne pagine ni ne cycle (même régime que la vue `classement` depuis E07US004) | Client | *(volet tri : clos)* · scannabilité : E07US005+ |
 | **Q-UX3** | La **validation du scoreur vaut-elle double marque** (FFTA B.6.1.1) ? | **Un arbitre du club** — remonte jusqu'au nombre de tablettes à prévoir | `D-03` |
 | **Q-UX4** | **Alimentation** des postes (6–10 h d'écran) : prises au pas de tir, batteries, ou veille tolérée ? Si veille : réveil instantané exigé, sinon 15 s perdues par volée | Client / terrain | §4.1 |
 | **Q-UX5** | Qui **déclare le forfait** : l'admin, le marqueur sur la tablette, le scoreur ? | Client | `D-24` |

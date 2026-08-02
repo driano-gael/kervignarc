@@ -43,6 +43,13 @@ sans traverser le gymnase.
   > s'ajouteront avec leur US **sans migration** — la valeur persistée est la chaîne, pas un rang.
   > *(Le CA n'est donc pas satisfait en totalité aujourd'hui, et c'est une conséquence de l'ordre des
   > US, pas un raccourci : voir la même note dans [ADR-0064](../docs/adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md) §Conséquences.)*
+  >
+  > ✅ **`affectations` ajoutée le 02/08/2026 par E07US008 — sans migration, comme annoncé.** La
+  > prévision de conception s'est vérifiée au mot près : persister la **chaîne** plutôt qu'un rang a
+  > rendu l'élargissement gratuit. Reste `tableaux` (E07US005), toujours absente pour la même
+  > raison. *(Le test `test_une_vue_inconnue_est_refusee_sans_500` prenait `affectations` comme
+  > exemple de vue inconnue : il a échoué au bon endroit, exactement comme sa docstring l'annonçait,
+  > et a été mis à jour.)*
 - **CA — pilotage admin (ex-007)** : depuis la console de supervision (E12US001), l'admin voit chaque
   écran de salle et **impose** soit une **vue figée** (ex. podium), soit une **autre séquence** ; l'écran
   bascule **en direct** ; **une prise de contrôle sait se terminer** — **durée** (« podium
@@ -71,10 +78,23 @@ sans traverser le gymnase.
   > bloqué sur un podium expiré.
 - **Notes** : ~~« Écran projeté plein écran », v0.1~~ → **réécrite le 14/07/2026** (`D-21`, CDC UX §7.5).
   Ce n'est **ni une 4ᵉ appli, ni une vue autonome** : c'est un **poste**, comme une tablette de cible —
-  donc rien de neuf à inventer (réemploi du jeton, du QR, de la supervision). `Q-UX2` **ouverte** : tri
-  des affectations **par nom** (l'archer se cherche) ou **par cible** (l'organisation vérifie) — ce
-  n'est pas le même écran. *(Elle ne bloquait pas cette US : la vue « affectations » relève d'E07US008,
-  non livrée — cf. le catalogue de vues ci-dessous.)* Motif du pilotage : basculer sur le podium à 17 h
+  donc rien de neuf à inventer (réemploi du jeton, du QR, de la supervision). ~~`Q-UX2` **ouverte**~~ :
+  tri des affectations **par nom** (l'archer se cherche) ou **par cible** (l'organisation vérifie) — ce
+  n'est pas le même écran.
+  > **`Q-UX2` fermée le 02/08/2026 par E07US008 — sur son seul volet « tri » : les deux** ([ADR-0065](../docs/adr/0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md)).
+  > Le constat « ce n'est pas le même écran » était juste, et c'est **exactement** pourquoi trancher
+  > pour tout le monde était le mauvais réflexe. L'**écran projeté** garde l'ordre du **pas de tir**
+  > (cible croissante, position A→D) — il n'a aucune interaction, l'ordre du serveur est le seul
+  > qu'il aura, et c'est le seul qui se lise de loin. La **table de l'organisation**, interactive,
+  > bascule d'un bouton. Même forme d'arbitrage que `Q-UX7` : « les deux », quand offrir les deux
+  > coûte un bouton.
+  >
+  > ⚠️ **Son volet « scannabilité » reste OUVERT** (rectification de revue, 2ᵉ passe) : la question
+  > enregistrée au CDC UX porte d'abord sur le fait que « 200 archers ne tiennent pas à l'écran,
+  > donc ça défile, et un archer qui rate son nom attend un cycle entier ». E07US008 ne livre ni
+  > pagination ni cycle — même régime que la vue `classement` depuis E07US004. Ne pas lire cette US
+  > comme ayant clos la question entière : le CA périmé aurait fait dériver E07US005 d'un arbitrage
+  > qui n'a pas eu lieu. Motif du pilotage : basculer sur le podium à 17 h
   et partir serrer des mains, c'est un écran figé sur le podium à 18 h pendant que les gens cherchent
   leur classement.
 - **CA — le plan de tournoi, en suivi (ajouté le 31/07/2026)** : l'écran affiche le **même schéma à
@@ -179,10 +199,42 @@ retrouver leur cible **sans rien chercher**, à chaque ouverture.
 *En tant qu'*archer, *je veux* savoir **où je tire ensuite** dès que c'est décidé, *afin de* ne pas
 rater mon tour ni aller demander à l'organisation.
 - **CA** : après le lancement d'un tour (E12US002), chaque archer concerné voit **sa** prochaine
-  affectation (**cible, position, heure, tour**) sur son téléphone (E07US006) ; l'archer **éliminé**
-  voit son **rang final** ; l'archer **repêché** voit sa destination ; mise à jour **sans action de sa
-  part** (WebSocket, E07US001) ; une **vue « toutes les affectations »** alimente l'écran de salle
-  (E07US004) et la table de l'organisation.
+  affectation (**cible, position, tour**) sur son téléphone (E07US006) ; l'archer **éliminé**
+  voit le **rang qu'il a acquis** ; l'archer **repêché** voit sa destination ; mise à jour **sans
+  action de sa part** (WebSocket, E07US001) ; une **vue « toutes les affectations »** alimente
+  l'écran de salle (E07US004) et la table de l'organisation.
+  > **Trois arbitrages tranchés au cadrage du 02\08\2026** ([ADR-0065](../docs/adr/0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md)) :
+  >
+  > 1. **Périmètre : le CA complet** — le téléphone de l'archer **et** la vue collective, donc la
+  >    dernière vue manquante du déroulé de l'écran de salle (E07US004) au passage.
+  > 2. **Le rang de l'éliminé est calculé ici**, et non renvoyé à E06US004. Il se lit sur la
+  >    **plage du match perdu** (*Règle R*, `Plage.moitie_basse`), **écrêtée à l'effectif réel** —
+  >    donc une **fourchette** : « 5ᵉ-8ᵉ ». Ce n'est pas un pis-aller — dans un tableau tronqué au
+  >    podium, **aucun match n'a départagé** les quatre battus des quarts, ils sont *ex æquo*. Sous
+  >    placement intégral (E05US010), la fourchette se referme d'elle-même sur le rang exact.
+  >    E06US004 (agrégation inter-phases, départage FFTA) reste due. *(L'écrêtage à l'effectif est un
+  >    correctif de revue : une plage est bornée par la **taille** du tableau, une puissance de 2, et
+  >    non par le nombre d'archers — sans lui, un battu du 1ᵉʳ tour de l'oracle 120 lisait
+  >    « 65ᵉ-128ᵉ ».)*
+  > 3. **Le repêché est traité**, avec une **issue distincte** de « éliminé » : `VersRepechage` ne
+  >    consomme aucun rang, l'archer peut encore remonter. Sa destination se lit dans les
+  >    **sources** de la phase avale.
+  >    > ⚠️ **Portée exacte, rectifiée en 2ᵉ passe de revue (`DETTE-033`)** : seul le repêchage
+  >    > décidé par le **routing** est annoncé — il se tranche **match par match**, donc sans
+  >    > ambiguïté. Le battu qu'une phase avale **prélève** par `issue_de_tour/perdants` (composable
+  >    > dès aujourd'hui dans l'atelier E01US024) lit son rang **sans savoir qu'il rejoue**. Ce n'est
+  >    > pas un oubli : la sémantique de `par_issue_de_tour` **n'est pas tranchée** — un tour couvre
+  >    > plusieurs plages, et « le tour perdu » n'est pas « le dernier match joué ». Elle appartient
+  >    > à l'US qui implémentera le prélèvement (`DETTE-028`), pas à un canal d'affichage.
+  >
+  > ⚠️ **Pas d'« heure »**, malgré le v0.1 : aucun horaire n'existe par tour de tableau (les
+  > horaires vivent sur les `Depart`, côté qualification). Arbitrage déjà pris en E04US018,
+  > reconduit — c'est le **lancement du tour** (E12US002) qui fait partir les duels. On ne fabrique
+  > pas une heure qu'on ne sait pas tenir.
+  >
+  > ⚠️ **Report déclaré** : un participant **équipe** (E13US002) est écarté de la vue collective —
+  > le routage résout un `Participant` en **archer**, et une équipe n'a pas de nom d'archer ; ses
+  > lignes seraient anonymes. La résolution viendra avec les équipes.
 - **Notes** : `D-08`/`D-09` (CDC UX §6). **L'info existe *avant* le duel** : les cibles sont attribuées
   **aux matchs** (positions de tableau), pas aux archers — donc rien à calculer au moment du
   lancement. **L'archer part après avoir validé : l'info doit le suivre** — la tablette de cible

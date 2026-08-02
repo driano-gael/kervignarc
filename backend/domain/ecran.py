@@ -44,15 +44,20 @@ class VueEcran(str, Enum):
     """Les vues qu'un écran de salle sait afficher (CA : « classement, affectations, tableaux,
     plans »).
 
-    ⚠️ **Le catalogue est volontairement plus court que le CA** : `AFFECTATIONS` (E07US008) et
-    `TABLEAUX` (E07US005) ne sont pas livrées — les inscrire ici ferait programmer un déroulé qui
-    afficherait une page vide. Elles s'ajouteront avec leur US, et la migration n'aura rien à
-    reprendre : la valeur persistée est la chaîne, pas un rang.
+    ⚠️ **Le catalogue reste plus court que le CA** : `TABLEAUX` (E07US005) n'est pas livrée —
+    l'inscrire ici ferait programmer un déroulé qui afficherait une page vide. Elle s'ajoutera avec
+    son US, et la migration n'aura rien à reprendre : la valeur persistée est la chaîne, pas un
+    rang.
+
+    `AFFECTATIONS` est entrée avec E07US008, **sans migration**, exactement comme annoncé : la
+    prévision de conception s'est vérifiée, ce qui est la meilleure preuve que persister la chaîne
+    plutôt qu'un rang était le bon choix.
     """
 
     CLASSEMENT = "classement"
     PLAN_CIBLES = "plan_cibles"
     SUIVI_DEROULE = "suivi_deroule"
+    AFFECTATIONS = "affectations"
 
 
 @dataclass(frozen=True)
@@ -93,6 +98,14 @@ class SequenceVues:
 
         Un écran doit informer **sans configuration** : on le branche, il tourne. L'ordre suit ce
         que le public cherche le plus souvent (où j'en suis, où je tire, où en est le tournoi).
+
+        ⚠️ **`AFFECTATIONS` (E07US008) n'y figure délibérément pas** — question posée en revue, et
+        tranchée par l'essai. Elle n'a de contenu qu'une fois un tableau constitué, c'est-à-dire
+        **après la qualification**, soit l'essentiel de la journée. L'inscrire au défaut ferait
+        cycler tout écran neuf, toutes les 90 secondes et pendant des heures, sur une page « pas
+        encore de tableau final » : moins informatif que de ne pas l'afficher du tout. Le déroulé
+        par défaut est fait de vues **toujours pleines** ; celle-ci s'ajoute à la main, quand elle
+        a quelque chose à dire (scénario 3 de `docs/fonctionnel/E07US008.md`).
         """
         return SequenceVues(
             (

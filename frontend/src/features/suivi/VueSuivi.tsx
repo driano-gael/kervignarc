@@ -16,9 +16,21 @@
 // diffusion temps réel post-commit (E04US009) ; un **déplacement de placement** (admin) ou un
 // **rattachement** rafraîchit la carte sans action de l'utilisateur.
 //
-// La carte couvre le « où il tire » (cible/position/départ) **et** le **déroulé du tour en direct**
+// La carte couvre le « où il tire » (cible/position/départ), le **déroulé du tour en direct**
 // (E07US009, ADR-0039) : les volées du jour, chacune avec son statut « en attente de validation » /
-// « validé ». L'**à-venir** (prochaine phase/cible) reste E07US008.
+// « validé », et depuis E07US008 l'**à-venir** — où il tire au tableau, son rang s'il est sorti, sa
+// destination s'il est repêché.
+//
+// ⚠️ **L'à-venir passe par la lecture collective** (`useAffectations`), pas par un `useRoutage` par
+// carte : une lecture par archer suivi multiplierait par le nombre de suivis la requête la plus
+// chère de l'application (classement + reconstruction de l'arbre + plan de duels). Le gain est
+// **une** requête au lieu de N, et il s'arrête à l'appareil — le cache React Query est par
+// navigateur, il n'y a ni cache serveur ni en-tête HTTP sur cette route. C'est `# DETTE-031`, que
+// cette US **aggrave** et dont elle élargit la ligne au registre.
+//
+// *(Un premier jet écrivait « une seule entrée de cache, un seul appel » pour tout le gymnase, sous
+// le numéro DETTE-008 — deux erreurs, relevées en revue : le cache n'est pas partagé entre
+// appareils, et DETTE-008 traite de l'écho d'une réponse 400.)*
 
 import { useState } from 'react'
 import { useQueries } from '@tanstack/react-query'
@@ -28,6 +40,9 @@ import type { Depart } from '../departs/api'
 import { useDeparts } from '../departs/hooks'
 import { getPlanDeCibles, type PlanDeCibles } from '../placement/api'
 import { clePlan } from '../placement/hooks'
+import type { RoutageArcher } from '../routage/api'
+import { useAffectations } from '../routage/hooks'
+import { alerte, detail, titre } from '../routage/presentation'
 import { type ArcherSuivi, useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import { useDeroule } from './deroule'
 import { construireJournee, filtrerArchers } from './suivi'
@@ -69,6 +84,21 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
   const chargementPlans = departsQuery.isLoading || plansResults.some((r) => r.isLoading)
   const erreurPlans = departsQuery.isError || plansResults.some((r) => r.isError)
 
+  // L'à-venir (E07US008), lu **une fois** pour toutes les cartes.
+  //
+  // `enabled` : même garde que `besoinPlans` ci-dessus (correctif de revue). Sans elle, un
+  // spectateur qui ouvre l'onglet **sans suivre personne** déclenchait toutes les 20 s la lecture
+  // la plus chère du serveur — classement complet, arbre rebâti, duels rejoués (`# DETTE-031`).
+  //
+  // ⚠️ Trois états à distinguer, et non deux (correctif de revue) : pas de tableau (`phase_id` nul),
+  // tableau **pas encore constituable** (phase présente, aucune ligne — le cas de la matinée), et
+  // tableau constitué dont cet archer est absent. Les confondre faisait annoncer « non retenu » à
+  // tout le monde un matin où personne n'était encore placé.
+  const affectations = useAffectations(tournoiId, null, besoinPlans)
+  const lignesAffectations = affectations.data?.archers ?? []
+  const tableauConstitue = affectations.data?.phase_id != null && lignesAffectations.length > 0
+  const routageParArcher = new Map(lignesAffectations.map((ligne) => [ligne.archer_id, ligne]))
+
   return (
     <div>
       <p className="carte__etat">
@@ -101,6 +131,8 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
               plansParDepart={plansParDepart}
               chargement={archersQuery.isLoading || chargementPlans}
               erreur={erreurPlans}
+              routage={routageParArcher.get(s.archerId) ?? null}
+              tableauConstitue={tableauConstitue}
             />
           ))}
         </ul>
@@ -200,6 +232,8 @@ function CarteArcherSuivi({
   plansParDepart,
   chargement,
   erreur,
+  routage,
+  tableauConstitue,
 }: {
   tournoiId: number
   archerId: number
@@ -210,6 +244,8 @@ function CarteArcherSuivi({
   plansParDepart: Map<number, PlanDeCibles>
   chargement: boolean
   erreur: boolean
+  routage: RoutageArcher | null
+  tableauConstitue: boolean
 }) {
   const nePlusSuivre = useSessionSuivisStore((s) => s.nePlusSuivre)
   const journee = construireJournee(archerId, departs, plansParDepart)
@@ -258,6 +294,33 @@ function CarteArcherSuivi({
         <p className="carte__etat">Chargement…</p>
       ) : (
         <p className="carte__etat">Pas encore placé.</p>
+      )}
+
+      {/* L'à-venir (E07US008) : « où je tire ensuite », sans avoir à demander à l'organisation.
+          Placé **après** la journée et **avant** le déroulé : c'est ce qu'on vient chercher quand on
+          a déjà tiré (l'archer a quitté la salle), pas quand on suit un tour en cours. */}
+      {tableauConstitue && (
+        <div className="suivi-ensuite">
+          <span className="suivi-ensuite__libelle">Ensuite</span>
+          {routage === null ? (
+            // Le tableau **est** constitué et cet archer n'y figure pas : il n'a pas été retenu, ou
+            // il en a été sorti (disqualification, ADR-0050). On ne le dit que dans ce cas — quand
+            // le tableau n'est pas encore constitué, le bloc entier ne s'affiche pas.
+            <span className="suivi-ensuite__titre">Pas d’affectation sur la phase en cours.</span>
+          ) : (
+            <>
+              <strong className="suivi-ensuite__titre">{titre(routage)}</strong>
+              {detail(routage) !== null && (
+                <span className="suivi-ensuite__detail">{detail(routage)}</span>
+              )}
+              {/* Ambre : la cible **est** annoncée mais le duel n'est pas côte à côte — c'est un
+                  avertissement, pas une erreur (DV-03), et retirer l'info ne servirait personne. */}
+              {alerte(routage) !== null && (
+                <span className="suivi-ensuite__alerte">{alerte(routage)}</span>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       {volees.length > 0 && (

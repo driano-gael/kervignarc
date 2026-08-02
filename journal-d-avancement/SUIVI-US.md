@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 02/08/2026** · **89 US livrées** · dernière : `E07US004` *(écran de salle : poste typé, déroulé de vues, pilotage à distance, et le schéma à braquets rempli par la réalité — ADR-0064)*.
+**Dernière mise à jour : 02/08/2026** · **90 US livrées** · dernière : `E07US008` *(affectations du prochain tour : sur le téléphone de l'archer et sur un panneau collectif, rang acquis en fourchette, repêché distingué de l'éliminé — ADR-0065)*.
 
 ---
 
@@ -62,15 +62,30 @@
 > charges, a été fournie par le commanditaire), **E05US019 était un doublon** d'E01US023, et le
 > **verrou routing** ci-dessus. *(Aucun code n'a été écrit ce jour-là : seul le backlog.)*
 >
-> **🎯 Prochaine :** **`E07US008`** — vue publique des affectations du prochain tour, le
-> **deuxième** des quatre canaux de routage (`D-09`) — la même projection que le panneau de la
-> tablette (`E04US018`, livrée), mais sur le **téléphone de l'archer**, qui a déjà quitté la salle.
-> Le service et l'endpoint de routage existent (`ServiceRoutage`, `GET /api/v1/routage/{tournoi}`,
-> lecture publique) : cette US est surtout la **surface publique** qui les consomme.
-> ⚠️ **Elle a maintenant un second consommateur** : le catalogue de vues de l'écran de salle
-> (E07US004) attend `affectations` — c'est la seule vue du CA qu'il ne sait pas encore afficher.
-> L'ajouter au catalogue (`domain.ecran.VueEcran`) est **une ligne, sans migration** : la valeur
-> persistée est la chaîne, pas un rang. *(Le canal n°3, l'**écran de salle**, est livré.)*
+> **`E07US008` est livrée (02/08/2026)** — le **canal n°2** est en place. Elle a tenu plus que sa
+> promesse de « simple surface publique » : le service savait router **une liste d'archers fournie**,
+> pas *tout* le tableau, et deux cas du CA n'étaient pas couverts du tout. D'où
+> [ADR-0065](../docs/adr/0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md) :
+> - le **rang de l'éliminé** se lit désormais sur la **plage du match perdu** (*Règle R*), donc en
+>   **fourchette** (« 5ᵉ-8ᵉ ») — plus de « rang publié en fin de phase » là où le rang *est* acquis.
+>   Le panneau de la tablette (E04US018) en bénéficie sans y toucher : même projection ;
+> - le **repêché** a une **issue distincte** de « éliminé » et voit la phase qui le reprend ;
+> - `affectations` est entrée au catalogue de l'écran de salle **sans migration**, exactement comme
+>   ADR-0064 l'avait prévu. Il ne lui manque plus que `tableaux` (E07US005).
+>
+> **La revue a trouvé un bloquant et neuf majeurs, tous corrigés avant la PR.** Deux méritent d'être
+> retenus parce qu'ils disent quelque chose de la manière dont l'US a été écrite : (a) le panneau
+> rangeait **les demi-finalistes sous « Sortis du tableau »** dès le 2ᵉ tour — il partitionnait sur
+> la *cible*, que le serveur ne pose qu'au tour 1 ; la recette ne déroulait que le tour 1, donc elle
+> ne pouvait pas le voir ; (b) la fourchette de rangs n'était **pas bornée par l'effectif** — « 65ᵉ-128ᵉ »
+> sur l'oracle 120 — parce que les seuls effectifs du décor de test, 4 et 8, sont précisément ceux
+> où `taille == effectif`. Dans les deux cas le défaut naît de la **rencontre** du code et de son
+> jeu d'essai, pas de l'un des deux.
+>
+> **🎯 Prochaine :** **`E06US003`** — barrage de tir pour places décisives ; la séquence J2 reprend
+> son cours. *(À vérifier au cadrage : `E06US004` — podium & agrégation des rangs — la suit
+> immédiatement, et E07US008 vient d'occuper une partie de son terrain sans la préempter ; l'ADR-0065
+> dit ce qui reste à sa charge.)*
 > *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
 > moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *`E12US004` (tracer un forfait) est **absorbée** par `E04US015` — voir ci-dessous.*
@@ -458,8 +473,8 @@
 | 67 | E08US005 | Rembourser une inscription payée annulée | ✅ *(registre de remboursements, ADR-0057)* |
 | 68 | E12US002 | Lancer un tour (feu vert + lancement) | ✅ *(feu vert + lancement-événement, ADR-0056)* |
 | 69 | E04US018 | Afficher la prochaine cible après validation | ✅ *(panneau de routage, canal n°1)* |
-| 70 | E07US008 | Vue publique des affectations du prochain tour | 🎯 *(canal n°2 — le chantier moteur est clos, elle reprend la tête)* |
-| 71 | E06US003 | Barrage de tir pour places décisives | ⬜ |
+| 70 | E07US008 | Vue publique des affectations du prochain tour | ✅ *(canal n°2 : téléphone + panneau collectif, rang en fourchette, issue « repêché », ADR-0065)* |
+| 71 | E06US003 | Barrage de tir pour places décisives | 🎯 *(J2 reprend son cours)* |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ⬜ |
 
 ## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (4/11)**
