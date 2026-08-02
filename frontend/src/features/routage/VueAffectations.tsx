@@ -20,7 +20,7 @@
 import { useState } from 'react'
 import type { RoutageArcher } from './api'
 import { useAffectations } from './hooks'
-import { alerte, detail, encoreEnLice, titre } from './presentation'
+import { alerte, detail, encoreEnLice, partitionner, titre } from './presentation'
 
 type Tri = 'cible' | 'nom'
 
@@ -61,25 +61,18 @@ export function VueAffectations({
     )
   }
   if (donnees.archers.length === 0) {
-    // Phase configurée mais tableau **pas encore constituable** (moins de deux archers en lice) :
-    // le cas de la matinée, quand la séquence est composée d'avance. À ne pas confondre avec
-    // « personne n'est retenu » — le canal n°1 le dit déjà (`TABLEAU_ABSENT`), celui-ci aussi.
+    // Phase configurée mais tableau **pas constituable** : moins de deux archers en lice dans tout
+    // le tournoi. ⚠️ Ce n'est **pas** « le matin avant la qualification » (rectification de la 2ᵉ
+    // passe) — `calculer_classement` crée une ligne `EN_LICE` pour *chaque* archer, série ou pas,
+    // si bien que le tableau s'ensemence dès deux inscrits. Cas rare, donc, mais il vaut mieux le
+    // nommer que rendre un panneau vide : le canal n°1 le dit déjà de son côté (`TABLEAU_ABSENT`).
     return <p className="carte__etat">Tableau final pas encore constitué.</p>
   }
 
-  // ⚠️ **On partitionne sur l'ISSUE, jamais sur la cible** (correctif de revue — bloquant relevé par
-  // trois axes, deux preuves à l'exécution). Le serveur ne pose une cible **qu'au tour 1** (garde
-  // tour-1, `# DETTE-019`) : partitionner sur `prochain?.cible` rangeait donc, dès le tour 2, **tous
-  // les archers encore en lice — demi-finalistes compris — sous « Sortis du tableau »**, sur l'appli
-  // publique comme sur l'écran projeté, et pour toute la durée du tableau sauf le premier tour.
-  // Trois groupes, parce qu'il y a bien trois situations et non deux.
-  const poses = donnees.archers.filter(
-    (l) => l.issue === 'prochain_duel' && l.prochain?.cible != null,
-  )
-  const attente = donnees.archers.filter(
-    (l) => l.issue === 'prochain_duel' && l.prochain?.cible == null,
-  )
-  const sortis = donnees.archers.filter((l) => l.issue !== 'prochain_duel')
+  // La partition vit dans `presentation.ts` — c'est elle qui portait le bloquant de la revue, et
+  // la laisser ici la privait de tout test (remarque de la 2ᵉ passe). Le composant ne fait plus que
+  // du rendu.
+  const { poses, attente, sortis } = partitionner(donnees.archers)
 
   return (
     <div className="affectations">
@@ -111,11 +104,14 @@ export function VueAffectations({
       ) : (
         <>
           <ListeParCible poses={poses} />
-          {/* Encore en lice, mais la cible ne sera posée qu'au lancement du tour. Ni dans le pas de
-              tir (ils n'ont pas de butte), ni parmi les sortis (ils n'ont rien perdu) : leur propre
-              section, sinon l'écran ment dans un sens ou dans l'autre. */}
+          {/* Encore en lice, sans butte attribuée. Ni dans le pas de tir (ils n'ont pas de cible),
+              ni parmi les sortis (ils n'ont rien perdu) : leur propre section, sinon l'écran ment
+              dans un sens ou dans l'autre. Titre **neutre** — le groupe rassemble deux attentes que
+              le serveur distingue (tour ≥ 2 / plan non matérialisé au tour 1) et chaque ligne porte
+              déjà le `manque` exact ; un titre qui n'en nomme qu'une contredirait ses propres
+              lignes dans l'autre cas (remarque de la 2ᵉ passe). */}
           {attente.length > 0 && (
-            <ListeAnnexe titre="En lice — cible annoncée au lancement du tour" lignes={attente} />
+            <ListeAnnexe titre="En lice — cible pas encore attribuée" lignes={attente} />
           )}
           {sortis.length > 0 && <ListeAnnexe titre="Sortis du tableau" lignes={sortis} />}
         </>
@@ -211,8 +207,8 @@ function ListeAnnexe({ titre: intitule, lignes }: { titre: string; lignes: Routa
     return nomComplet(a).localeCompare(nomComplet(b), 'fr')
   })
   return (
-    <div className="affectations__sortis">
-      <span className="affectations__sortis-titre">{intitule}</span>
+    <div className="affectations__annexe">
+      <span className="affectations__annexe-titre">{intitule}</span>
       <ul className="affectations__nominatif">
         {ordonnees.map((ligne) => (
           <LigneNominative key={ligne.archer_id} ligne={ligne} />

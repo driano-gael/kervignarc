@@ -52,6 +52,13 @@ export const LIBELLE_TYPE: Record<TypePhase, string> = {
 
 // Nomme un type de phase venu du serveur, avec repli sur la chaîne brute.
 //
+// ⚠️ **Dérogation explicite au ⚠️ d'en-tête** (précision de revue) : celui-ci interdit les replis
+// **dans les tables**, parce qu'un `Record` à repli fait afficher six types comme « Placement ».
+// `LIBELLE_TYPE` reste un `Record<TypePhase, string>` exhaustif — ajouter un type à l'union reste
+// non compilable. Le repli ci-dessous ne s'arme que pour une chaîne **hors union**, ce qui ne peut
+// venir que d'un serveur plus récent que ce bundle : ce n'est pas la même chose, et l'interdire
+// reviendrait à afficher un blanc là où le nom technique renseigne encore.
+//
 // Le repli couvre un **déploiement décalé** : un backend plus récent peut connaître un type que ce
 // bundle ignore (l'appli publique reste ouverte des heures sur un téléphone). Mieux vaut alors
 // « 3. poules » que rien du tout.

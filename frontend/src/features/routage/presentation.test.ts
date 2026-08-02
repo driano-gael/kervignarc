@@ -8,6 +8,7 @@ import {
   detail,
   encoreEnLice,
   panneauOuvert,
+  partitionner,
   rang,
   serieClose,
   titre,
@@ -151,24 +152,6 @@ describe('repêchage (E07US008)', () => {
     expect(detail(repeche())).toBe('Quart de finale')
   })
 
-  // Le **seul** chemin de repêchage atteignable aujourd'hui (correctif de revue, axe adversarial) :
-  // aucun `RoutingRepechage` n'est câblé en production, mais l'atelier de déroulé permet déjà de
-  // composer « les perdants du tour 1 ». Cet archer-là est classé ici **et** repris en aval.
-  it('annonce la reprise en aval d’un battu pourtant classé dans ce tableau', () => {
-    const classe_et_repris = archer({
-      issue: 'termine',
-      prochain: null,
-      rang_min: 5,
-      rang_max: 8,
-      tour_sortie: 'Quart de finale',
-      destination: { phase_id: 3, ordre: 3, type: 'elimination_directe' },
-    })
-    expect(titre(classe_et_repris)).toBe('5ᵉ-8ᵉ du tableau')
-    expect(detail(classe_et_repris)).toBe('Quart de finale · repris en 3. Élimination directe')
-    // Sans ça il serait trié et coloré comme un éliminé, alors qu'il a un duel devant lui.
-    expect(encoreEnLice(classe_et_repris)).toBe(true)
-  })
-
   it('relaie le motif du serveur quand aucune phase ne le reprend', () => {
     // Trou de composition : le routing repêche, mais rien ne prélève ces battus. C'est le premier
     // endroit où ce trou rencontre un humain — se taire le ferait passer pour une panne réseau.
@@ -178,6 +161,43 @@ describe('repêchage (E07US008)', () => {
     })
     expect(titre(orphelin)).toBe('Repêché')
     expect(detail(orphelin)).toBe('repêché — phase de repêchage non configurée')
+  })
+})
+
+// Le garde-fou du **bloquant** de la revue. Laissée dans le composant, la partition n'avait aucun
+// filet : c'est la remarque de la 2ᵉ passe qui l'a fait remonter ici.
+describe('partitionner (E07US008)', () => {
+  const pose = archer({ archer_id: 1, prochain: prochain({ cible: 4 }) })
+  const sansCible = archer({
+    archer_id: 2,
+    prochain: prochain({ cible: null, position: null, manque: 'cible attribuée au lancement' }),
+  })
+  const sorti = archer({ archer_id: 3, issue: 'termine', prochain: null, rang_final: 5 })
+
+  it('range dans le pas de tir celui qui a une butte', () => {
+    expect(partitionner([pose]).poses).toEqual([pose])
+  })
+
+  it('range EN ATTENTE, jamais parmi les sortis, celui qui est en lice sans cible', () => {
+    // ⚠️ **Le bloquant, en une assertion.** Le serveur ne pose une cible qu'au tour 1 : partitionner
+    // sur la cible rangeait les demi-finalistes sous « Sortis du tableau », sur l'écran projeté du
+    // gymnase, pendant toute la durée du tableau sauf le premier tour.
+    const { attente, sortis } = partitionner([sansCible])
+    expect(attente).toEqual([sansCible])
+    expect(sortis).toEqual([])
+  })
+
+  it('range parmi les sortis celui qui n’a plus de duel', () => {
+    const repeche = archer({ archer_id: 4, issue: 'repeche', prochain: null })
+    expect(partitionner([sorti, repeche]).sortis).toEqual([sorti, repeche])
+  })
+
+  it('ne perd et ne duplique personne', () => {
+    // Une partition, au sens strict : la réunion rend l'effectif d'origine. Sans cette assertion,
+    // un futur quatrième groupe pourrait faire disparaître une catégorie en silence.
+    const tous = [pose, sansCible, sorti]
+    const { poses, attente, sortis } = partitionner(tous)
+    expect([...poses, ...attente, ...sortis]).toHaveLength(tous.length)
   })
 })
 

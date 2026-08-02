@@ -61,16 +61,30 @@ export function repechage(
   return `Repêché → ${archer.destination.ordre}. ${nommer(archer.destination.type)}`
 }
 
-// Ce qu'un archer sorti a **encore devant lui**, s'il y a lieu — « repris en 3. Élimination
-// directe ». Un battu peut être **classé ici et repris ensuite** : c'est le cas qu'ouvre l'atelier
-// de déroulé quand la séquence prélève « les perdants du tour 1 » sans que le routing les repêche
-// (correctif de revue). Il garde donc son rang *et* apprend qu'il n'a pas fini.
-export function repriseApresSortie(
-  archer: RoutageArcher,
-  nommer: (type: string) => string = nommerType,
-): string | null {
-  if (archer.issue !== 'termine' || archer.destination === null) return null
-  return `repris en ${archer.destination.ordre}. ${nommer(archer.destination.type)}`
+// Les trois groupes d'un panneau d'affectations — **logique pure, donc testable**.
+//
+// ⚠️ **On partitionne sur l'ISSUE, jamais sur la cible.** Le serveur ne pose une cible qu'au
+// **tour 1** (garde tour-1, `DETTE-019`) : partitionner sur `prochain?.cible` rangeait, dès le
+// tour 2, tous les archers encore en lice — demi-finalistes compris — parmi les **sortis**. C'était
+// le bloquant de la revue, et cette fonction existe pour qu'il ne puisse pas revenir en silence :
+// laissée dans le composant, la correction n'avait aucun filet (remarque de la 2ᵉ passe).
+//
+// Trois groupes parce qu'il y a trois situations, et non deux : posé sur une butte, en lice sans
+// butte encore attribuée, sorti du tableau.
+export function partitionner(archers: RoutageArcher[]): {
+  poses: RoutageArcher[]
+  attente: RoutageArcher[]
+  sortis: RoutageArcher[]
+} {
+  const enLice = (l: RoutageArcher) => l.issue === 'prochain_duel'
+  return {
+    poses: archers.filter((l) => enLice(l) && l.prochain?.cible != null),
+    attente: archers.filter((l) => enLice(l) && l.prochain?.cible == null),
+    // `indisponible` atterrit ici. Injoignable sur ce canal — la vue collective n'itère que sur les
+    // occupants du tableau, donc `_router` ne peut pas rendre « non retenu » — mais si cela changeait,
+    // « sorti » reste la lecture la moins fausse.
+    sortis: archers.filter((l) => !enLice(l)),
+  }
 }
 
 // La ligne principale d'un archer : ce qu'il doit retenir en une seconde.
@@ -107,10 +121,7 @@ export function alerte(archer: RoutageArcher): string | null {
 // sorti de ce tableau, pas de la compétition. Sert aux surfaces qui distinguent « en lice » de
 // « fini » (couleur, tri) — la distinction est métier, pas décorative, d'où sa place ici.
 export function encoreEnLice(archer: RoutageArcher): boolean {
-  if (archer.issue === 'prochain_duel' || archer.issue === 'repeche') return true
-  // Sorti de *ce* tableau mais **repris en aval** : classé ici, et pourtant pas fini. Sans cette
-  // clause, il serait trié et coloré comme un éliminé alors qu'il a un duel devant lui.
-  return archer.issue === 'termine' && archer.destination !== null
+  return archer.issue === 'prochain_duel' || archer.issue === 'repeche'
 }
 
 // La ligne secondaire : le contexte, ou **l'attente nommée** quand l'information n'existe pas encore.
@@ -130,14 +141,6 @@ export function detail(archer: RoutageArcher): string | null {
   // reprend la main quand il n'y a pas de destination — c'est alors la seule chose à dire.
   if (archer.issue === 'repeche') return archer.motif ?? archer.tour_sortie
   if (archer.issue === 'termine' && archer.motif === null && rang(archer) !== null) {
-    // ⚠️ **La reprise passe avant le tour de sortie.** Un battu peut être classé ici *et* repris en
-    // aval (séquence qui prélève « les perdants du tour 1 » sans que le routing les repêche) : lui
-    // afficher son rang et rien d'autre le ferait rentrer chez lui alors qu'il a un duel à venir.
-    // C'est le seul chemin de repêchage réellement atteignable aujourd'hui — correctif de revue.
-    const reprise = repriseApresSortie(archer)
-    if (reprise !== null) {
-      return archer.tour_sortie !== null ? `${archer.tour_sortie} · ${reprise}` : reprise
-    }
     return archer.tour_sortie
   }
   return archer.motif

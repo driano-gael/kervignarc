@@ -22,11 +22,15 @@
 // destination s'il est repêché.
 //
 // ⚠️ **L'à-venir passe par la lecture collective** (`useAffectations`), pas par un `useRoutage` par
-// carte, et c'est un choix de charge assumé : une lecture par archer suivi multiplierait la
-// requête la plus chère de l'application (classement + reconstruction de l'arbre + plan de duels)
-// par le nombre d'archers suivis **et** par le nombre de téléphones dans le gymnase. La lecture
-// collective est la **même pour tout le monde** : une seule entrée de cache, un seul appel — c'est
-// le régime DETTE-008, qu'on ne veut pas aggraver.
+// carte : une lecture par archer suivi multiplierait par le nombre de suivis la requête la plus
+// chère de l'application (classement + reconstruction de l'arbre + plan de duels). Le gain est
+// **une** requête au lieu de N, et il s'arrête à l'appareil — le cache React Query est par
+// navigateur, il n'y a ni cache serveur ni en-tête HTTP sur cette route. C'est `# DETTE-031`, que
+// cette US **aggrave** et dont elle élargit la ligne au registre.
+//
+// *(Un premier jet écrivait « une seule entrée de cache, un seul appel » pour tout le gymnase, sous
+// le numéro DETTE-008 — deux erreurs, relevées en revue : le cache n'est pas partagé entre
+// appareils, et DETTE-008 traite de l'écho d'une réponse 400.)*
 
 import { useState } from 'react'
 import { useQueries } from '@tanstack/react-query'

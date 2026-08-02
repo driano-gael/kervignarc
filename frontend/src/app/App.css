@@ -3263,13 +3263,13 @@ button:disabled {
   color: var(--warn);
 }
 
-.affectations__sortis {
+.affectations__annexe {
   margin-top: 1em;
   padding-top: 0.6em;
   border-top: 1px solid var(--border);
 }
 
-.affectations__sortis-titre {
+.affectations__annexe-titre {
   display: block;
   font-size: 0.9em;
   color: var(--text);
