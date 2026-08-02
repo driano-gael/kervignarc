@@ -2,14 +2,7 @@
 // un archer à tort** : un groupe soumis à moitié, et un champ vide pris pour une absence.
 
 import { describe, expect, it } from 'vitest'
-import {
-  correspond,
-  depuisTirs,
-  mancheComplete,
-  memesTireurs,
-  type SaisieTir,
-  versTirs,
-} from './barrage'
+import { correspond, depuisTirs, mancheComplete, type SaisieTir, versTirs } from './barrage'
 
 const NOTE = (score: string): SaisieTir => ({ score, distance: '', absent: false })
 const ABSENT: SaisieTir = { score: '', distance: '', absent: true }
@@ -88,20 +81,6 @@ describe('depuisTirs', () => {
 
   it('rend un formulaire vierge sans tir', () => {
     expect(depuisTirs(undefined)).toEqual({})
-  })
-})
-
-describe('memesTireurs', () => {
-  it('ignore l’ordre', () => {
-    expect(memesTireurs([1, 2], [2, 1])).toBe(true)
-  })
-
-  it('distingue un groupe élargi — le cas du barrage périmé', () => {
-    expect(memesTireurs([1, 2], [1, 2, 3])).toBe(false)
-  })
-
-  it('distingue un groupe réduit', () => {
-    expect(memesTireurs([1, 2, 3], [1, 2])).toBe(false)
   })
 })
 

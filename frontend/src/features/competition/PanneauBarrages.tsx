@@ -20,7 +20,6 @@ import {
   correspond,
   depuisTirs,
   mancheComplete,
-  memesTireurs,
   type SaisieTir,
   TIR_VIERGE,
   versTirs,
@@ -100,10 +99,13 @@ export function PanneauBarrages({
                   // avant qu'un archer ne rejoigne l'egalite) le masquait aussi — l'organisateur
                   // faisait alors tirer un groupe incomplet sans que rien ne l'explique.
                   barrage.portee === 'qualification' &&
-                  !barrage.clos &&
-                  !barrage.perime &&
                   barrage.rang_dispute === egalite.rang &&
-                  memesTireurs(barrage.participants, egalite.archer_ids),
+                  // Bloquant tant qu'il n'est pas **acté et sain** : un barrage encore ouvert (même
+                  // sur d'autres tireurs) ou **périmé** (fût-il acté) fait refuser l'annonce côté
+                  // serveur. Offrir le bouton conduisait à deux cartes « acté » au même rang, aux
+                  // verdicts inversés, sans le moindre signal — l'organisateur prenant le gros
+                  // bouton plutôt que la phrase qui lui disait d'annuler d'abord.
+                  (!barrage.clos || barrage.perime),
               )}
             />
           ))}
@@ -249,7 +251,7 @@ function BarrageEnCours({
             // perdre, et on laisse le clic unique sur un barrage vierge.
             const perte =
               `Annuler ce barrage ? ${derniere} manche(s) saisie(s) seront effacées` +
-              `${barrage.clos ? ', et les archers repartageront leur rang' : ''}.`
+              `${barrage.clos && !barrage.perime ? ', et les archers repartageront leur rang' : ''}.`
             if (derniere > 0 && !window.confirm(perte)) return
             annuler.mutate(barrage.id)
           }}

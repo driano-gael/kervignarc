@@ -64,8 +64,9 @@
   **change le groupe** d'ex æquo, le verdict ne décrit plus cette égalité : il est **écarté** et
   l'égalité **re-signalée** (le juge refait tirer). Annoncer un second barrage sur une place où un
   barrage **périmé** reste ouvert est **refusé** : il faut l'annuler d'abord.
-  Le barrage périmé est aussi **signalé à l'écran** : son formulaire de saisie et son bouton
-  « acter » disparaissent, il ne reste qu'à l'annuler — sans quoi on ferait tirer un groupe qui
+  Le barrage périmé est aussi **signalé à l'écran** : sur un barrage en cours, son formulaire de
+  saisie et son bouton « acter » disparaissent ; sur un barrage **acté**, c'est son verdict — le
+  « Départagé » — qui cède la place à l'avertissement. Dans les deux cas il ne reste qu'à l'annuler — sans quoi on ferait tirer un groupe qui
   n'oppose plus les bonnes personnes, et le classement ne bougerait pas sans un mot d'explication.
   ⚠️ Cela vaut **aussi pour un barrage déjà acté** : la clôture ne protège de rien, le verdict
   n'étant jamais stocké mais recalculé et écarté dès que le groupe change.

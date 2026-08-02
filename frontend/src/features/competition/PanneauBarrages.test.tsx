@@ -20,6 +20,7 @@
 // On double **uniquement** les hooks de données (`./hooks`) : le JSX, lui, est celui de production.
 
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { Barrage, LigneClassement } from './api'
@@ -144,71 +145,101 @@ describe('PanneauBarrages', () => {
     expect(screen.getByText(/MARTIN Alice, DURAND Chloé/)).toBeInTheDocument()
   })
 
-  it('ne masque pas « Faire tirer » à cause d’un barrage périmé au même rang', () => {
-    // Le barrage ouvert ne porte plus sur le bon groupe : il ne doit pas empêcher d'en relancer un.
-    afficher(
-      [barrage({ perime: true, participants: [1, 2] })],
-      [{ rang: 2, archer_ids: [1, 2, 3] }],
-    )
-
-    expect(screen.getByRole('button', { name: /Faire tirer/ })).toBeInTheDocument()
-  })
-
-  it('propose « Faire tirer » quand le seul barrage au même rang est ACTÉ', () => {
-    // ⚠️ **Ce cas ne laisse debout qu'un seul mécanisme.** Les trois conjonctions de `dejaOuvert`
-    // (`!clos`, `!perime`, `memesTireurs`) se masquaient mutuellement : une revue par mutation a
-    // montré que retirer `!clos`, ou `!perime`, ou même remplacer `memesTireurs` par `true`
-    // laissait les sept cas verts. Ici les tireurs **correspondent** et le barrage n'est pas
-    // périmé : seul `!clos` peut encore faire apparaître le bouton.
+  it('propose « Faire tirer » quand le seul barrage au même rang est ACTÉ et SAIN', () => {
+    // Un barrage acté dont le verdict tient ne bloque rien : il n'y aurait d'ailleurs pas
+    // d'égalité signalée à son rang si son verdict s'appliquait — ce cas n'existe que le temps
+    // qu'une nouvelle égalité s'y forme.
     afficher([barrage({ clos: true, participants: [1, 2] })], [{ rang: 2, archer_ids: [1, 2] }])
 
     expect(screen.getByRole('button', { name: /Faire tirer/ })).toBeInTheDocument()
   })
 
-  it('propose « Faire tirer » quand le barrage au même rang est PÉRIMÉ et porte les mêmes tireurs', () => {
-    // Second cas à mécanisme unique : les tireurs correspondent et le barrage n'est pas clos, donc
-    // seul `!perime` peut découvrir le bouton.
+  it('masque « Faire tirer » au-dessus d’un barrage acté mais PÉRIMÉ', () => {
+    // ⚠️ Le bloquant : l'alerte rouge dit « annulez-le puis relancez », et le bouton était offert
+    // juste au-dessus — le serveur acceptait, produisant deux cartes « acté » au même rang aux
+    // verdicts inversés, sans le moindre signal.
     afficher(
-      [barrage({ perime: true, est_resolu: false, groupes_a_rejouer: [[1, 2]] })],
-      [{ rang: 2, archer_ids: [1, 2] }],
+      [barrage({ clos: true, perime: true, participants: [1, 2] })],
+      [{ rang: 2, archer_ids: [1, 2, 3] }],
     )
 
-    expect(screen.getByRole('button', { name: /Faire tirer/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Faire tirer/ })).not.toBeInTheDocument()
   })
 
-  it('propose « Faire tirer » quand le barrage au même rang porte D’AUTRES tireurs', () => {
-    // ⚠️ **Troisième cas à mécanisme unique, et le seul qui manquait.** Le barrage est de
-    // qualification, ni clos ni périmé, au même rang : `!clos` et `!perime` sont tous deux vrais,
-    // donc **seul** `memesTireurs` peut découvrir le bouton. Vérifié par mutation — sans ce cas,
-    // remplacer `memesTireurs(...)` par `true` laissait toute la suite verte, alors que c'est le
-    // mécanisme le plus robuste des trois (il se calcule sur les deux payloads locaux, là où
-    // `perime` vient d'une seconde requête qui peut arriver en retard).
+  it('masque « Faire tirer » au-dessus d’un barrage encore OUVERT, mêmes tireurs ou non', () => {
     afficher(
       [barrage({ est_resolu: false, groupes_a_rejouer: [[1, 2]], participants: [1, 2] })],
       [{ rang: 2, archer_ids: [1, 2, 3] }],
     )
 
+    expect(screen.queryByRole('button', { name: /Faire tirer/ })).not.toBeInTheDocument()
+  })
+
+  it('ne masque pas « Faire tirer » à cause d’un barrage d’un AUTRE rang', () => {
+    afficher(
+      [barrage({ rang_dispute: 5, est_resolu: false, groupes_a_rejouer: [[1, 2]] })],
+      [{ rang: 2, archer_ids: [1, 2] }],
+    )
+
     expect(screen.getByRole('button', { name: /Faire tirer/ })).toBeInTheDocument()
   })
 
-  it('n’allume l’ambre que s’il reste quelque chose à faire', () => {
-    // Les barrages actés restent affichés (ils portent le chemin de correction) mais un tournoi
-    // réglé ne doit pas garder une alerte permanente.
-    const { container } = afficher([barrage({ clos: true })])
-    expect(container.querySelector('.carte--barrages-actif')).toBeNull()
+  it('ne masque pas « Faire tirer » à cause d’un barrage de POULE au même rang', () => {
+    // La régression que le commentaire du prédicat nomme, et que rien n'épinglait.
+    afficher(
+      [barrage({ portee: 'poule', est_resolu: false, groupes_a_rejouer: [[1, 2]] })],
+      [{ rang: 2, archer_ids: [1, 2] }],
+    )
+
+    expect(screen.getByRole('button', { name: /Faire tirer/ })).toBeInTheDocument()
+  })
+
+  it('annonce la perte des rangs quand on annule un barrage ACTÉ et sain', async () => {
+    // La phrase ajoutée par la 4e passe n'était couverte par rien. Elle compte : annuler un
+    // barrage acté **remet les archers à égalité**, ce que « N manche(s) seront effacées » ne dit
+    // pas. Sur un barrage périmé, en revanche, les rangs sont **déjà** repartagés — la promesse
+    // serait fausse, d'où la condition `clos && !perime`.
+    const confirmer = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    afficher([barrage({ clos: true })])
+
+    await userEvent.click(screen.getByRole('button', { name: /Annuler ce barrage/ }))
+
+    expect(confirmer).toHaveBeenCalledWith(expect.stringContaining('repartageront leur rang'))
+    confirmer.mockRestore()
+  })
+
+  it('ne promet pas la perte des rangs sur un barrage PÉRIMÉ (ils sont déjà repartagés)', async () => {
+    const confirmer = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    afficher([barrage({ clos: true, perime: true })])
+
+    await userEvent.click(screen.getByRole('button', { name: /Annuler ce barrage/ }))
+
+    expect(confirmer).toHaveBeenCalledWith(expect.not.stringContaining('repartageront'))
+    confirmer.mockRestore()
+  })
+
+  it('allume l’ambre sur une égalité signalée, même sans aucun barrage', () => {
+    // Quatrième branche de `aFaire`, sans quoi son retrait passait inaperçu : c'est pourtant le cas
+    // le plus courant — une place à départager, rien encore d'ouvert.
+    const { container } = afficher([], [{ rang: 2, archer_ids: [1, 2] }])
+    expect(container.querySelector('.carte--barrages-actif')).not.toBeNull()
+  })
+
+  it('allume l’ambre sur un barrage ACTÉ mais PÉRIMÉ', () => {
+    // ⚠️ Le cas que le correctif du barrage clos vient d'ouvrir : le seul barrage acté qui doit
+    // rallumer l'alerte. Vérifié par mutation — sans ce cas, retirer `|| b.perime` de `aFaire`
+    // laissait la suite verte, `!b.clos` masquant tous les autres cas périmés.
+    const { container } = afficher([barrage({ clos: true, perime: true })])
+    expect(container.querySelector('.carte--barrages-actif')).not.toBeNull()
+  })
+
+  it('allume l’ambre sur un barrage ACTÉ mais INCOHÉRENT', () => {
+    const { container } = afficher([barrage({ clos: true, incoherent: true })])
+    expect(container.querySelector('.carte--barrages-actif')).not.toBeNull()
   })
 
   it('allume l’ambre tant qu’un barrage reste à tirer', () => {
     const { container } = afficher([barrage({ est_resolu: false, groupes_a_rejouer: [[1, 2]] })])
     expect(container.querySelector('.carte--barrages-actif')).not.toBeNull()
-  })
-
-  it('masque « Faire tirer » quand le barrage ouvert porte bien sur le groupe signalé', () => {
-    afficher(
-      [barrage({ est_resolu: false, groupes_a_rejouer: [[1, 2]] })],
-      [{ rang: 2, archer_ids: [1, 2] }],
-    )
-
-    expect(screen.queryByRole('button', { name: /Faire tirer/ })).not.toBeInTheDocument()
   })
 })

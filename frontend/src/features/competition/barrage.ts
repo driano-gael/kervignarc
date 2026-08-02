@@ -65,15 +65,6 @@ export function depuisTirs(tirs: TirBarrage[] | undefined): Record<number, Saisi
   return saisies
 }
 
-/** Deux barrages portent-ils sur exactement les mêmes tireurs ?
- *
- * Sert à décider si un barrage déjà ouvert **est** celui de l'égalité signalée. Comparer les seuls
- * rangs laissait un barrage périmé masquer le bouton « Faire tirer » de l'égalité courante.
- */
-export function memesTireurs(a: number[], b: number[]): boolean {
-  return a.length === b.length && a.every((identifiant) => b.includes(identifiant))
-}
-
 /** Un archer répond-il à la recherche ? Casse **et accents** repliés.
  *
  * ⚠️ Sans le repli des diacritiques, « Créac'h » ne répondait pas à « creach » — ce qui compte

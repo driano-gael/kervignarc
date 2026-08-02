@@ -1060,9 +1060,13 @@ def test_un_barrage_acte_devient_perime_si_le_groupe_change(
         barrage = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/barrages").json()[0]
         assert barrage["clos"] is True
         assert barrage["perime"] is True, "un barrage clos dont le groupe a changé est périmé"
-        # …et le classement confirme : le verdict est écarté, les rangs sont repartagés.
-        assert _rangs(client, scenario.tournoi_id)[second] == 2
-        assert _rangs(client, scenario.tournoi_id)[troisieme] == 2
+        # …et le classement confirme : le verdict est écarté, les rangs sont repartagés — **les
+        # trois**, arrivant compris. Sans cette dernière assertion, une variante où l'arrivant
+        # serait mal classé tout en repartageant les deux autres passerait inaperçue.
+        rangs = _rangs(client, scenario.tournoi_id)
+        assert rangs[second] == 2
+        assert rangs[troisieme] == 2
+        assert sorted(rang for rang in rangs.values() if rang is not None) == [1, 2, 2, 2]
 
 
 def test_un_barrage_acte_dont_le_verdict_tient_n_est_pas_perime(
@@ -1093,3 +1097,81 @@ def test_un_barrage_acte_dont_le_verdict_tient_n_est_pas_perime(
 
         assert barrage["clos"] is True
         assert barrage["perime"] is False
+
+
+def test_un_barrage_acte_est_perime_meme_si_le_groupe_glisse_de_rang(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**Premier cas que le proxy manquait** : l'arrivant passe DEVANT le groupe.
+
+    L'égalité ne se signale alors plus au rang 2 mais au rang 3 — donc une péremption déduite de
+    « y a-t-il une égalité **à mon rang** ? » répondait non, pendant que le domaine écartait bien le
+    verdict et repartageait les rangs. L'écran affichait « Départagé » en vert au-dessus de rangs
+    partagés.
+    """
+    scenario = Scenario(app_barrages)
+    _, second, troisieme = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+        client.put(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
+            json={
+                "tirs": [
+                    {"archer_id": second, "score": 8},
+                    {"archer_id": troisieme, "score": 10},
+                ]
+            },
+        )
+        client.post(f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/cloture")
+
+        # 28 > 27 : l'arrivant se place **devant** la paire, qui glisse du rang 2 au rang 3.
+        _ajouter_archer(app_barrages, scenario, ("10", "10", "8"))
+
+        barrage = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/barrages").json()[0]
+        rangs = _rangs(client, scenario.tournoi_id)
+        assert rangs[second] == rangs[troisieme], "le verdict est écarté, les rangs sont repartagés"
+        assert barrage["perime"] is True, "…et l'écran doit le dire"
+
+
+def test_un_barrage_acte_est_perime_meme_si_le_seuil_est_efface(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**Second cas que le proxy manquait**, et c'est l'étape 7 de la recette.
+
+    Le seuil effacé, plus **aucune** égalité n'est signalée : la péremption déduite des égalités
+    répondait donc non pour tout le monde. Or si le groupe a changé entre-temps, le verdict reste
+    écarté et les rangs partagés — écran vert, tableau contradictoire, aucun signal.
+    """
+    scenario = Scenario(app_barrages)
+    _, second, troisieme = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+        client.put(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
+            json={
+                "tirs": [
+                    {"archer_id": second, "score": 8},
+                    {"archer_id": troisieme, "score": 10},
+                ]
+            },
+        )
+        client.post(f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/cloture")
+        _ajouter_archer(app_barrages, scenario, ("10", "9", "8"))
+
+        _regler_le_seuil(client, scenario, None)
+
+        assert _classement(client, scenario.tournoi_id)["egalites_a_departager"] == []
+        barrage = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/barrages").json()[0]
+        assert (
+            _rangs(client, scenario.tournoi_id)[second]
+            == _rangs(client, scenario.tournoi_id)[troisieme]
+        )
+        assert barrage["perime"] is True

@@ -102,42 +102,38 @@ class ServiceBarrage:
         barrages = self._barrages.par_tournoi(tournoi_id)
         if not barrages:
             return []
-        egalites = {
-            egalite.rang: set(egalite.participants)
-            for egalite in self._classements.pour_tournoi(tournoi_id).egalites_a_departager
-        }
+        ecartes = self._verdicts_ecartes(tournoi_id)
         return [
-            BarrageAffiche(barrage=barrage, perime=self._est_perime(barrage, egalites))
+            BarrageAffiche(barrage=barrage, perime=self._est_perime(barrage, ecartes))
             for barrage in barrages
         ]
 
     @staticmethod
-    def _est_perime(barrage: BarrageDePlaces, egalites: dict[int, set[Participant]]) -> bool:
-        """Ce barrage porte-t-il encore sur le groupe d'ex æquo constaté aujourd'hui ?
+    def _est_perime(barrage: BarrageDePlaces, ecartes: set[frozenset[Participant]]) -> bool:
+        """Ce barrage a-t-il produit un verdict que le classement **n'a pas retenu** ?
 
-        Ne vaut que pour la **qualification** : ailleurs, aucun classement n'est calculé, donc rien
-        ne permet de dire qu'un groupe a changé.
+        ⚠️ **On lit la réponse du domaine, on ne la recalcule pas.** Une première version comparait
+        les tireurs à l'égalité signalée au même rang : un *proxy*, qui manquait deux cas réels et
+        laissait dans les deux un « Départagé » vert au-dessus de rangs redevenus partagés — le
+        groupe qui **glisse de rang** (un archer arrive devant), et celui dont le rang **sort du
+        seuil** ou dont le seuil est effacé, où plus aucune égalité n'est signalée. `Classement`
+        expose désormais ses `verdicts_ecartes`, c'est-à-dire exactement le prédicat que
+        `_verdicts_applicables` applique.
 
-        ⚠️ **Un barrage CLOS peut être périmé, et l'exclure était une présomption fausse.** Une
-        première version court-circuitait sur `clos` en raisonnant « son verdict est appliqué, donc
-        l'égalité a disparu ». Le domaine dit le contraire : `_verdicts_applicables` écarte un
-        verdict dès que le groupe a changé, **sans jamais regarder `clos`**. Un archer qu'une volée
-        validée en retard amène à l'égalité *après* la clôture fait donc écarter le verdict — et
-        l'écran affichait « Départagé » en vert pendant que les rangs redevenaient partagés, sans un
-        mot. C'est exactement le dommage que ce champ existe pour éviter, reproduit sur le seul
-        chemin qu'il s'interdisait d'instruire.
-
-        La crainte « cela marquerait tous les barrages achevés » est infondée, et c'est vérifiable :
-        `egalites_a_departager` se calcule sur les rangs **définitifs**, verdicts appliqués. Un
-        barrage clos dont le verdict tient n'a donc plus d'égalité à son rang — `attendu is None`,
-        et il n'est pas périmé.
+        Ne vaut que pour la **qualification** : ailleurs aucun verdict n'est reversé, donc aucun
+        n'est écarté (DETTE-028). Vaut en revanche pour un barrage **clos** : la clôture ne protège
+        de rien, le verdict n'étant jamais stocké mais recalculé.
         """
         if barrage.portee is not PorteeBarrage.QUALIFICATION:
             return False
-        if barrage.rang_dispute is None:
+        try:
+            verdict = barrage.verdict()
+        except ConfigurationBarrageInvalide:
+            # Agrégat illisible : il est déjà signalé `incoherent`, et son verdict n'existe pas —
+            # donc il n'a rien pu faire écarter. Le laisser lever ferait retomber `GET /barrages`
+            # en 422, c'est-à-dire rouvrir le trou que le filet de `de_agregat` vient de fermer.
             return False
-        attendu = egalites.get(barrage.rang_dispute)
-        return attendu is not None and attendu != set(barrage.participants)
+        return bool(verdict.ordre) and frozenset(verdict.ordre) in ecartes
 
     def annoncer(
         self,
@@ -172,9 +168,35 @@ class ServiceBarrage:
             participants = self._egalite_signalee(tournoi_id, rang)
         else:
             participants = self._participants_designes(tournoi_id, archer_ids, phase_id)
-        meme_endroit = self._ouverts_au_meme_endroit(tournoi_id, portee, rang, phase_id, reference)
+        # ⚠️ **Les barrages CLOS comptent ici aussi, dès qu'ils sont périmés.** Une première
+        # version ne regardait que les non-clos : sur une place où un barrage acté était devenu
+        # périmé, l'alerte disait « annulez-le puis relancez » **et** le bouton « Faire tirer »
+        # restait offert, et le serveur acceptait. On obtenait deux cartes « acté » au même rang,
+        # aux verdicts **inversés**, sans le moindre signal — et annuler la mauvaise détruisait le
+        # verdict réellement appliqué.
+        ecartes = (
+            self._verdicts_ecartes(tournoi_id) if portee is PorteeBarrage.QUALIFICATION else set()
+        )
+        meme_endroit = [
+            barrage
+            for barrage in self._barrages.par_tournoi(tournoi_id)
+            if barrage.portee is portee
+            and barrage.rang_dispute == rang
+            and barrage.phase_id == phase_id
+            and barrage.reference == reference
+            and (not barrage.clos or self._est_perime(barrage, ecartes))
+        ]
         attendus = set(participants)
-        existant = next((b for b in meme_endroit if set(b.participants) == attendus), None)
+        existant = next(
+            (
+                b
+                for b in meme_endroit
+                if set(b.participants) == attendus
+                and not b.clos
+                and not self._est_perime(b, ecartes)
+            ),
+            None,
+        )
         if existant is not None:
             return existant
         if meme_endroit and portee is PorteeBarrage.QUALIFICATION:
@@ -353,6 +375,13 @@ class ServiceBarrage:
                 "retirer avant de le clore."
             )
         return self._barrages.clore(barrage_id)
+
+    def _verdicts_ecartes(self, tournoi_id: TournoiId) -> set[frozenset[Participant]]:
+        """Les verdicts que le classement **n'a pas retenus**, par ensemble de tireurs."""
+        return {
+            frozenset(verdict.ordre)
+            for verdict in self._classements.pour_tournoi(tournoi_id).verdicts_ecartes
+        }
 
     def _ouverts_au_meme_endroit(
         self,

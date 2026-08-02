@@ -123,6 +123,20 @@ class Classement:
 
     lignes: tuple[LigneClassement, ...]
     egalites_a_departager: tuple[EgaliteADepartager, ...] = ()
+    verdicts_ecartes: tuple[VerdictBarrage, ...] = ()
+    """Les verdicts de barrage que ce classement **n'a pas retenus** (E06US003).
+
+    Un barrage fige ses tireurs à l'annonce ; le classement continue de vivre. Quand le groupe
+    d'ex æquo change, le verdict ne décrit plus cette égalité et il est écarté — les rangs
+    redeviennent partagés. Le dire **ici** plutôt que de le laisser deviner est ce qui permet à
+    l'écran d'avertir : sans cela il affichait « Départagé » en vert pendant que le tableau montrait
+    des rangs partagés.
+
+    ⚠️ **C'est le seul énoncé fidèle de la péremption.** Un service qui la déduirait de
+    `egalites_a_departager` construirait un *proxy* : il manquerait le groupe qui a **glissé de
+    rang**, et celui dont le rang est sorti du seuil (ou dont le seuil a été effacé) — deux cas où
+    aucune égalité n'est signalée alors que le verdict est bel et bien écarté.
+    """
 
 
 @dataclass(frozen=True)
@@ -362,7 +376,10 @@ def calculer_classement(
     # le signalement. On écarte donc le verdict, ce qui laisse l'égalité **re-signalée** : le juge
     # refait tirer, ce que le règlement prescrit de toute façon quand le groupe a changé.
     rangs_provisoires = _ranger(sorted(classables, key=cle), departage)
-    positions = _positions_de_barrage(_verdicts_applicables(verdicts, rangs_provisoires))
+    applicables = _verdicts_applicables(verdicts, rangs_provisoires)
+    retenus = {id(verdict) for verdict in applicables}
+    ecartes = tuple(verdict for verdict in verdicts if verdict.ordre and id(verdict) not in retenus)
+    positions = _positions_de_barrage(applicables)
     if positions:
         classables = [
             replace(entree, position_barrage=positions.get(entree.archer_id, 0))
@@ -443,4 +460,8 @@ def calculer_classement(
         )
         if all(participant.ref_id in eligibles for participant in egalite.participants)
     )
-    return Classement(lignes=tuple(lignes), egalites_a_departager=egalites)
+    return Classement(
+        lignes=tuple(lignes),
+        egalites_a_departager=egalites,
+        verdicts_ecartes=ecartes,
+    )

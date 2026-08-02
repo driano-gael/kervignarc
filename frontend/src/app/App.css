@@ -3321,8 +3321,9 @@ button:disabled {
 
 /* Le panneau ne s'affiche que s'il y a une égalité signalée ou un barrage en cours — le composant
    se replie de lui-même sinon. Un tournoi qui ne barre pas (le défaut) n'en voit donc jamais rien.
-   Bordure ambre : c'est une **alerte d'organisation** (`DV-03`), quelque chose reste à faire avant
-   que le classement soit définitif. */
+   Liseré **neutre** par défaut : la carte reste affichée tant qu'un barrage existe, y compris
+   acté — elle porte le seul chemin de correction d'un verdict faux. L'ambre est posé par
+   `--actif` ci-dessous, et seulement s'il reste quelque chose à faire (`DV-03`). */
 .carte--barrages {
   border-left: 3px solid var(--border);
 }
