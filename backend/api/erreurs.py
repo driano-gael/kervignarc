@@ -26,6 +26,7 @@ from fastapi.responses import JSONResponse
 from application.erreurs import (
     ApplicationError,
     ArcherIntrouvable,
+    BarrageIntrouvable,
     BlasonIntrouvable,
     CategorieIntrouvable,
     ClubIntrouvable,
@@ -104,6 +105,7 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | PosteIntrouvable
         | ScoreurIntrouvable
         | ForfaitIntrouvable
+        | BarrageIntrouvable
         | RemboursementIntrouvable
         | ScenarioInconnu
         | SessionSimulationIntrouvable,

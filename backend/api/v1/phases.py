@@ -100,6 +100,13 @@ class ConfigPhaseRequete(BaseModel):
     type: TypePhase
     sources: list[SourceDTO] = Field(default_factory=list, max_length=16)
     effectif: int | None = None
+    barrage_jusqu_au: int | None = Field(default=None, ge=1)
+    """Rang jusqu'auquel les ex æquo se départagent **au tir** (E06US003, ADR-0066).
+
+    `null` (défaut) = **aucun barrage**, donc l'ex æquo partagé d'E06US001. ⚠️ Le `PUT` étant une
+    édition **totale**, omettre ce champ **efface** le seuil : c'est le régime déjà annoncé plus
+    haut pour `sources`, et la raison du `extra="forbid"`.
+    """
 
 
 class ReordonnerRequete(BaseModel):
@@ -134,6 +141,7 @@ class PhaseReponse(BaseModel):
     statut: StatutPhase
     sources: list[SourceDTO]
     effectif: int | None
+    barrage_jusqu_au: int | None = None
 
     @staticmethod
     def de_agregat(phase: Phase) -> PhaseReponse:
@@ -146,6 +154,7 @@ class PhaseReponse(BaseModel):
             statut=phase.statut,
             sources=[SourceDTO.de_agregat(source) for source in phase.sources],
             effectif=phase.effectif,
+            barrage_jusqu_au=phase.barrage_jusqu_au,
         )
 
 
@@ -172,7 +181,13 @@ async def ajouter_phase(
     sources = tuple(source.vers_agregat() for source in requete.sources)
     phase = await asyncio.wrap_future(
         write_queue.submit(
-            lambda: service.ajouter(tournoi_id, requete.type, sources, requete.effectif)
+            lambda: service.ajouter(
+                tournoi_id,
+                requete.type,
+                sources,
+                requete.effectif,
+                requete.barrage_jusqu_au,
+            )
         )
     )
     return PhaseReponse.de_agregat(phase)
@@ -192,7 +207,14 @@ async def modifier_phase(
     sources = tuple(source.vers_agregat() for source in requete.sources)
     phase = await asyncio.wrap_future(
         write_queue.submit(
-            lambda: service.modifier(tournoi_id, phase_id, requete.type, sources, requete.effectif)
+            lambda: service.modifier(
+                tournoi_id,
+                phase_id,
+                requete.type,
+                sources,
+                requete.effectif,
+                requete.barrage_jusqu_au,
+            )
         )
     )
     return PhaseReponse.de_agregat(phase)

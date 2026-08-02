@@ -222,17 +222,36 @@ class LigneClassementReponse(BaseModel):
     statut: str
 
 
+class EgaliteADepartagerReponse(BaseModel):
+    """Un ex æquo que le format de ce tournoi veut voir tranché **au tir** (E06US003, ADR-0066).
+
+    Signalé, pas organisé : c'est l'organisateur qui décide de faire tirer. Vide tant qu'aucun seuil
+    de barrage n'est réglé sur la phase de qualification — le défaut reste l'ex æquo partagé.
+    """
+
+    rang: int
+    archer_ids: list[int]
+
+
 class ClassementReponse(BaseModel):
     """Classement d'un tournoi renvoyé au client."""
 
     tournoi_id: int
     lignes: list[LigneClassementReponse]
+    egalites_a_departager: list[EgaliteADepartagerReponse] = []
 
     @staticmethod
     def de_agregat(tournoi_id: int, classement: Classement) -> ClassementReponse:
         """Traduit le classement de domaine en DTO de réponse."""
         return ClassementReponse(
             tournoi_id=tournoi_id,
+            egalites_a_departager=[
+                EgaliteADepartagerReponse(
+                    rang=egalite.rang,
+                    archer_ids=[p.ref_id for p in egalite.participants],
+                )
+                for egalite in classement.egalites_a_departager
+            ],
             lignes=[
                 LigneClassementReponse(
                     rang_scratch=ligne.rang_scratch,

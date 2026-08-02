@@ -455,6 +455,7 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
         sources = _vers_sources(config)
         effectif = config.get("effectif")
         effectif = None if effectif is None else int(effectif)
+        barrage_jusqu_au = _lire_barrage_jusqu_au(config)
     except (
         json.JSONDecodeError,
         AttributeError,
@@ -473,6 +474,7 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
             validation=validation,
             sources=sources,
             effectif=effectif,
+            barrage_jusqu_au=barrage_jusqu_au,
             statut=statut,
             id=ligne.id,
         )
@@ -593,7 +595,13 @@ def _config_phase(phase: Phase) -> str:
     à plat pour une base non migrée.
     """
     return json.dumps(
-        _politiques_json(phase.bareme, phase.validation, phase.sources, phase.effectif)
+        _politiques_json(
+            phase.bareme,
+            phase.validation,
+            phase.sources,
+            phase.effectif,
+            phase.barrage_jusqu_au,
+        )
     )
 
 
@@ -602,6 +610,7 @@ def _politiques_json(
     validation: GrainValidation | None,
     sources: tuple[SourcePhase, ...],
     effectif: int | None,
+    barrage_jusqu_au: int | None = None,
     *,
     marquer_absences: bool = False,
     porte_un_bareme: bool = False,
@@ -649,11 +658,34 @@ def _politiques_json(
         config["validation"] = grain
     elif marquer_absences:
         config["validation"] = None
+    if barrage_jusqu_au is not None:
+        # Forme ADR-0046 : `config.policies.tiebreak = {"nom": …, …paramètres}`, exactement comme
+        # `scoring`. Le `policies` peut ne pas exister (phase sans barème) — un barrage se règle sur
+        # une phase de n'importe quel type, alors que le barème est propre à la qualification.
+        politiques = config.setdefault("policies", {})
+        if isinstance(politiques, dict):
+            politiques["tiebreak"] = {"nom": "barrage", "jusqu_au": barrage_jusqu_au}
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
         config["effectif"] = effectif
     return config
+
+
+def _lire_barrage_jusqu_au(config: Any) -> int | None:
+    """Le seuil de barrage d'une phase, lu dans `config.policies.tiebreak` (E06US003, ADR-0066).
+
+    Absence = **aucun barrage**, qui est le défaut d'E06US001 (les ex æquo partagent leur rang) —
+    pas une incohérence. Un `tiebreak` d'un autre `nom` (`ffta_defaut`, `poules`) est un départage
+    **sans** barrage : il n'a pas de seuil, et on n'en invente pas.
+    """
+    politiques = config.get("policies")
+    if not isinstance(politiques, dict):
+        return None
+    tiebreak = politiques.get("tiebreak")
+    if not isinstance(tiebreak, dict) or tiebreak.get("nom") != "barrage":
+        return None
+    return int(tiebreak["jusqu_au"])
 
 
 def _source_json(source: SourcePhase) -> dict[str, object]:

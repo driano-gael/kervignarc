@@ -15,12 +15,21 @@ perdre la position d'ensemble.
 from __future__ import annotations
 
 from application.erreurs import TournoiIntrouvable
+from domain.barrage import PorteeBarrage, VerdictBarrage
 from domain.categorie import CategorieId
 from domain.classement import Classement, calculer_classement
 from domain.forfait import Forfait
-from domain.phase import TypePhase
+from domain.phase import Phase, TypePhase
+from domain.politiques import (
+    RegistrePolitiques,
+    Tiebreak,
+    TiebreakFftaDefaut,
+    assembler_politiques,
+    registre_par_defaut,
+)
 from domain.ports import (
     ArcherRepository,
+    BarrageRepository,
     CategorieRepository,
     ForfaitRepository,
     PhaseRepository,
@@ -41,6 +50,8 @@ class ServiceClassement:
         categories: CategorieRepository,
         phases: PhaseRepository,
         forfaits: ForfaitRepository,
+        barrages: BarrageRepository | None = None,
+        registre: RegistrePolitiques | None = None,
     ) -> None:
         self._tournois = tournois
         self._archers = archers
@@ -48,6 +59,12 @@ class ServiceClassement:
         self._categories = categories
         self._phases = phases
         self._forfaits = forfaits
+        # `barrages` et `registre` sont **facultatifs** (E06US003) : le harnais de simulation
+        # (ADR-0054) ne persiste aucun barrage et n'a donc rien à en lire. Absents, le classement
+        # retombe sur le défaut d'E06US001 — ex æquo partagés, aucune égalité signalée —, qui est
+        # exactement ce que la simulation attend.
+        self._barrages = barrages
+        self._registre = registre if registre is not None else registre_par_defaut()
 
     def pour_tournoi(
         self, tournoi_id: TournoiId, categorie_id: CategorieId | None = None
@@ -63,16 +80,58 @@ class ServiceClassement:
         archers = self._archers.par_tournoi(tournoi_id)
         series = self._series.par_tournoi(tournoi_id)
         categories = self._categories.par_tournoi(tournoi_id)
+        phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
         classement = calculer_classement(
-            archers, series, categories, self._forfaits_qualif(tournoi_id)
+            archers,
+            series,
+            categories,
+            self._forfaits_qualif(tournoi_id),
+            tiebreak=self._tiebreak(phase),
+            verdicts=self._verdicts_qualif(tournoi_id),
         )
         if categorie_id is not None:
             classement = Classement(
                 lignes=tuple(
                     ligne for ligne in classement.lignes if ligne.categorie_id == categorie_id
-                )
+                ),
+                # Le filtre ne restreint que l'**affichage** : les égalités à départager restent
+                # celles du classement entier. Les filtrer sur la catégorie ferait disparaître de
+                # l'écran un barrage à organiser dès que l'organisateur cadre sa vue.
+                egalites_a_departager=classement.egalites_a_departager,
             )
         return classement
+
+    def _tiebreak(self, phase: Phase | None) -> Tiebreak:
+        """La politique de départage de la phase de qualification (ADR-0004, ADR-0066).
+
+        Sans phase ou sans seuil réglé : le départage FFTA **nu** (§8.1), donc l'ex æquo par défaut
+        — E06US001 à l'identique. Réglé, le seuil se résout **par le registre**, sur la forme
+        `config.policies` d'ADR-0046 : c'est le point d'injection, et le contourner en instanciant
+        la stratégie à la main ferait de la politique une décoration.
+        """
+        if phase is None or phase.barrage_jusqu_au is None:
+            return TiebreakFftaDefaut()
+        politiques = assembler_politiques(
+            {"tiebreak": {"nom": "barrage", "jusqu_au": phase.barrage_jusqu_au}},
+            self._registre,
+        )
+        return politiques.tiebreak if politiques.tiebreak is not None else TiebreakFftaDefaut()
+
+    def _verdicts_qualif(self, tournoi_id: TournoiId) -> list[VerdictBarrage]:
+        """Les verdicts des barrages **de qualification** de ce tournoi.
+
+        Les barrages **clos comme ouverts** sont lus : un barrage résolu mais non encore clos a déjà
+        un verdict exploitable, et attendre la clôture pour l'appliquer laisserait le classement
+        afficher un ex æquo que les archers viennent de départager sous les yeux du public. Un
+        barrage non résolu rend un verdict vide, donc sans effet.
+        """
+        if self._barrages is None:
+            return []
+        return [
+            barrage.verdict()
+            for barrage in self._barrages.par_tournoi(tournoi_id)
+            if barrage.portee is PorteeBarrage.QUALIFICATION
+        ]
 
     # DETTE-022 : même résolution que la complétude (deux fois) et la saisie — extraction en US
     # dédiée.

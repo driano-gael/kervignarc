@@ -23,6 +23,30 @@ class TournoiIntrouvable(ApplicationError):
     code = "tournoi_introuvable"
 
 
+class BarrageIntrouvable(ApplicationError):
+    """Aucun barrage de cet identifiant dans ce tournoi (E06US003)."""
+
+    code = "barrage_introuvable"
+
+
+class EgaliteNonDepartageable(ApplicationError):
+    """L'égalité annoncée n'en est plus une, ou la politique ne réclame pas de barrage (E06US003).
+
+    Le cas n'est pas théorique : entre le moment où l'écran affiche « barrage requis au rang 8 » et
+    celui où l'organisateur clique, une volée validée en retard peut avoir défait l'égalité. Ouvrir
+    quand même ferait tirer des archers que plus rien n'oppose. Sert aussi au refus de **clore** un
+    barrage encore indécis — sa clôture dirait « c'est tranché » alors qu'il reste à retirer.
+    """
+
+    code = "egalite_non_departageable"
+
+
+class BarrageDejaClos(ApplicationError):
+    """Le barrage est clos : on n'y saisit plus de manche (E06US003)."""
+
+    code = "barrage_deja_clos"
+
+
 class TransitionStatutInvalide(ApplicationError):
     """Transition de cycle de vie impossible depuis l'état courant (E01US002, E01US017) → 409.
 

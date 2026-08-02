@@ -221,6 +221,18 @@ class EffectifPhaseInvalide(DomainError):
     code = "effectif_phase_invalide"
 
 
+class SeuilDeBarrageInvalide(DomainError):
+    """Le rang jusqu'auquel une phase départage **au tir** n'est pas un entier `>= 1` (E06US003).
+
+    Le seuil est **facultatif** (`None` = aucun barrage, le défaut d'E06US001 : les ex æquo
+    partagent leur rang). Réglé, il désigne le dernier rang « à enjeu », donc au moins le premier.
+    Un `0` ne veut pas dire « aucun barrage » — cela se dit en ne réglant rien —, et l'accepter
+    laisserait croire à l'organisateur qu'il a désactivé une option qu'il vient en fait de régler.
+    """
+
+    code = "seuil_de_barrage_invalide"
+
+
 class PhaseQualificationIncomplete(DomainError):
     """Une phase de `qualification` a été construite sans barème ou sans grain (E05US001).
 
