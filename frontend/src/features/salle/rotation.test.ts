@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { VueProgrammee } from '../ecrans/api'
-import { formaterReste, resteDeLaPrise, vueCourante } from './rotation'
+import { departDeSalle, formaterReste, resteDeLaPrise, vueAAfficher, vueCourante } from './rotation'
 
 const DEROULE: VueProgrammee[] = [
   { vue: 'classement', cadence_s: 30 },
@@ -88,5 +88,78 @@ describe('formaterReste', () => {
 
   it('ne rend jamais de négatif', () => {
     expect(formaterReste(-3)).toBe('0 s')
+  })
+})
+
+describe('vueAAfficher', () => {
+  const rotation = { index: 0, vue: DEROULE[0]!, reste_s: 12 }
+
+  it('honore la vue imposée tant que la prise court', () => {
+    expect(
+      vueAAfficher({ sous_controle: true, vue_figee: 'plan_cibles', reste: 300, rotation }),
+    ).toEqual({ vue: 'plan_cibles', sous_controle: true })
+  })
+
+  it('rend la main tout seul à l’échéance, sans rien demander au serveur', () => {
+    // LE test de la garantie centrale d'ADR-0064 : à 17 h 01 l'écran perd le réseau, à 17 h 10 la
+    // prise expire. Personne ne peut lui parler — il doit reprendre son déroulé de lui-même.
+    expect(
+      vueAAfficher({ sous_controle: true, vue_figee: 'plan_cibles', reste: 0, rotation }),
+    ).toEqual({ vue: 'classement', sous_controle: false })
+  })
+
+  it('reste figé indéfiniment quand la prise n’a pas d’échéance', () => {
+    // « Jusqu'à ce que je rende la main » (Q-UX7) : c'est voulu, et c'est précisément le cas que la
+    // console signale par un rappel très visible.
+    expect(
+      vueAAfficher({ sous_controle: true, vue_figee: 'plan_cibles', reste: null, rotation }),
+    ).toEqual({ vue: 'plan_cibles', sous_controle: true })
+  })
+
+  it('joue la rotation hors contrôle', () => {
+    expect(vueAAfficher({ sous_controle: false, vue_figee: null, reste: null, rotation })).toEqual({
+      vue: 'classement',
+      sous_controle: false,
+    })
+  })
+
+  it('n’affiche rien tant que la première réponse n’est pas arrivée', () => {
+    // Un classement vide ressemblerait à un classement : mieux vaut « — » que du faux.
+    expect(
+      vueAAfficher({ sous_controle: false, vue_figee: null, reste: null, rotation: null }),
+    ).toEqual({ vue: null, sous_controle: false })
+  })
+})
+
+describe('departDeSalle', () => {
+  it('montre le départ qu’on est en train de tirer', () => {
+    const departs = [
+      { numero: 1, etat: 'clos' },
+      { numero: 2, etat: 'lance' },
+      { numero: 3, etat: 'ouvert' },
+    ]
+    expect(departDeSalle(departs)?.numero).toBe(2)
+  })
+
+  it('à défaut, le premier encore ouvert', () => {
+    expect(
+      departDeSalle([
+        { numero: 1, etat: 'clos' },
+        { numero: 2, etat: 'ouvert' },
+      ])?.numero,
+    ).toBe(2)
+  })
+
+  it('si tout est clos, montre le **dernier** terminé, pas celui du matin', () => {
+    expect(
+      departDeSalle([
+        { numero: 1, etat: 'clos' },
+        { numero: 2, etat: 'clos' },
+      ])?.numero,
+    ).toBe(2)
+  })
+
+  it('rend undefined sans départ', () => {
+    expect(departDeSalle([])).toBeUndefined()
   })
 })

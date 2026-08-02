@@ -398,3 +398,31 @@ def test_le_pilotage_est_reserve_a_l_admin(app_session: FastAPI) -> None:
             ).status_code
             == 401
         )
+
+
+def test_une_vue_inconnue_est_refusee_sans_500(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**Non-régression** (2ᵉ passe) : ces deux valeurs sont les **premières** qu'un client enverra.
+
+    `affectations` (E07US008) et `tableaux` (E07US005) sont nommées par le CA et absentes du
+    catalogue livré. Avant correctif, elles produisaient un `ValueError` nu dans le corps du
+    handler → **500 + traceback journalisé**. Typer le champ au DTO les fait rejeter par Pydantic,
+    avec le champ fautif — et ce test l'empêche de régresser quand le catalogue s'élargira.
+    """
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        ecran = _creer_ecran(client, tournoi_id)
+
+        deroule = client.put(
+            f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/deroule",
+            json={"vues": [{"vue": "affectations", "cadence_s": 30}]},
+        )
+        controle = client.post(
+            f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/controle",
+            json={"vue": "tableaux", "duree_s": 300},
+        )
+
+        assert deroule.status_code == 400, deroule.text
+        assert deroule.json()["code"] == "requete_invalide"
+        assert controle.status_code == 400, controle.text

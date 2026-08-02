@@ -25,7 +25,13 @@ import { useAffichageEcran } from '../ecrans/hooks'
 import { PlanCiblesDeSalle } from '../placement/PlanCiblesPublic'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { useSuiviDeroule } from '../suivi-deroule/hooks'
-import { formaterReste, resteDeLaPrise, vueCourante, type EtatRotation } from './rotation'
+import {
+  formaterReste,
+  resteDeLaPrise,
+  vueAAfficher,
+  vueCourante,
+  type EtatRotation,
+} from './rotation'
 
 /** Cadence du battement local. 1 s suffit : la rotation est au grain de la dizaine de secondes, et
  * seul le compte à rebours d'une prise de contrôle demande une précision à la seconde. */
@@ -37,7 +43,11 @@ export function EcranSalle({ libelle, tournoiId }: { libelle: string | null; tou
 
   const sousControle = affichage.data?.sous_controle === true
   const vueFigee = affichage.data?.vue_figee ?? null
+  // Ce qui tourne **maintenant** ; et le repli, toujours le déroulé propre de l'écran. Les deux sont
+  // distincts parce qu'une séquence **imposée** occupe `vues` : à l'échéance, retomber sur `vues`
+  // reviendrait à continuer de jouer la consigne (2ᵉ passe de revue).
   const vues = affichage.data?.vues ?? null
+  const repli = affichage.data?.deroule_repli ?? null
 
   // L'origine du décompte est l'instant où la réponse a été **reçue**, que React Query horodate
   // pour nous (`dataUpdatedAt`, en millisecondes). Aucun état local à tenir : sans cela, il aurait
@@ -49,23 +59,28 @@ export function EcranSalle({ libelle, tournoiId }: { libelle: string | null; tou
   // La rotation est calée sur l'**heure absolue**, pas sur le temps depuis l'allumage : deux écrans
   // portant le même déroulé basculent alors ensemble, ce qui évite l'effet désagréable de deux
   // projections voisines montrant la même vue à un décalage de sept secondes.
-  const rotation = vues === null ? null : vueCourante(vues, secondes)
-
-  // ⚠️ **La prise de contrôle se termine ici, en local** — c'est la garantie qui justifie toute
-  // l'architecture « état lu » d'ADR-0064, et la première version ne la branchait pas : `reste`
-  // n'alimentait que le bandeau, si bien qu'un écran ayant perdu le réseau à 17 h 01 restait sur
-  // le podium indéfiniment, en affichant « reprise dans 0 s ». C'est mot pour mot le scénario que
-  // le CA veut éviter (« un écran figé sur le podium à 18 h »). Le serveur envoie désormais
-  // **aussi** le déroulé de repli, donc l'écran sait où retomber sans rien redemander.
-  const priseEchue = sousControle && reste !== null && reste <= 0
-  const vue: VueEcran | null = (priseEchue ? null : vueFigee) ?? rotation?.vue.vue ?? null
+  // ⚠️ **La prise de contrôle se termine en local** — la garantie qui justifie toute l'architecture
+  // « état lu » d'ADR-0064. L'arbitrage vit dans `rotation.ts` (`vueAAfficher`), pas ici : il y est
+  // **testé**, alors qu'écrit dans ce rendu il ne l'était pas — c'est le reproche de la 2ᵉ passe de
+  // revue, et il était juste (la fonction qui porte la promesse centrale de l'ADR n'avait aucun
+  // verrou).
+  const echue = sousControle && reste !== null && reste <= 0
+  // À l'échéance on tourne sur le **repli**, pas sur `vues` : une séquence imposée y serait encore.
+  const aJouer = echue ? repli : vues
+  const rotation = aJouer === null ? null : vueCourante(aJouer, secondes)
+  const affiche = vueAAfficher({
+    sous_controle: sousControle,
+    vue_figee: vueFigee,
+    reste,
+    rotation,
+  })
 
   return (
     <section className="salle" aria-live="off">
       <BandeauSalle
         libelle={libelle}
-        vue={vue}
-        sousControle={sousControle && !priseEchue}
+        vue={affiche.vue}
+        sousControle={affiche.sous_controle}
         reste={reste}
         aJour={affichage.isError !== true}
         rotation={rotation}
@@ -73,10 +88,10 @@ export function EcranSalle({ libelle, tournoiId }: { libelle: string | null; tou
       <div className="salle__scene">
         {/* Tant que la première réponse n'est pas arrivée, on n'affiche **rien de faux** : un
             message d'attente vaut mieux qu'un classement vide qui ressemblerait à un classement. */}
-        {vue === null ? (
+        {affiche.vue === null ? (
           <p className="salle__attente">Connexion à l’écran…</p>
         ) : (
-          <VueDeSalle vue={vue} tournoiId={tournoiId} />
+          <VueDeSalle vue={affiche.vue} tournoiId={tournoiId} />
         )}
       </div>
     </section>

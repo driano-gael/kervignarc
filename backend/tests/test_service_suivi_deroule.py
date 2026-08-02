@@ -280,6 +280,80 @@ def test_la_finale_tranchee_ferme_le_dernier_braquet(ctx: Contexte) -> None:
     assert bloc.duels_joues == bloc.duels_attendus == 7
 
 
+def test_un_tableau_de_placement_decale_compte_correctement() -> None:
+    """**Non-régression** (2ᵉ passe adversariale) : deux systèmes de coordonnées, un seul comparé.
+
+    `_braquets` produit des plages **absolues** (« un tableau des rangs 33-64 rend des perdants en
+    49-64 ») ; `construire_tableau` produit des `Match.plage` **relatives au tableau**, toujours à
+    partir de 1. La comparaison directe ne pouvait fonctionner que pour un tableau partant du rang 1
+    — le seul cas que montaient toutes les fixtures, y compris celles ajoutées au premier correctif.
+
+    Sur un **tableau de placement** des rangs 9-16 — capacité de première classe depuis E05US010, et
+    un cas parfaitement ordinaire d'un déroulé composé —, aucune plage ne correspondait à aucun tour
+    : l'écran projeté affichait « tour 1 · 0/7 » du début à la fin de la journée, remise des prix
+    comprise.
+
+    Ce test tient les **deux** exigences à la fois : le compte avance (le décalage est appliqué)
+    **et** la petite finale n'achève pas la phase (le filtre par branche opère encore).
+    """
+    ctx = Contexte(nb_engages=16)
+    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
+    placement = Phase.creer(
+        tournoi_id=ctx.tournoi_id,
+        ordre=2,
+        type=TypePhase.PLACEMENT,
+        sources=(
+            SourcePhase(ordre_source=1, rang_debut=9, rang_fin=16, nature=NatureSource.RANGS),
+        ),
+        effectif=8,
+    ).demarrer()
+    ctx.ajouter_phase(placement, 2)
+    tableau = _tableau(8)
+    petite_finale = next(m.numero for m in tableau.matchs if m.place_en_jeu == (3, 4))
+    ctx.tableaux.tableaux[2] = _jouer(
+        tableau, [m.numero for m in tableau.matchs if m.tour < 3] + [petite_finale]
+    )
+
+    bloc = ctx.service.pour_tournoi(ctx.tournoi_id).avancement.blocs[1]
+
+    # Le décalage est appliqué : les six duels des deux premiers tours sont bien comptés.
+    assert bloc.duels_joues == 6
+    # Et la petite finale ne ferme pas le dernier braquet : la finale reste à tirer.
+    assert bloc.tours[-1].duels_joues == 0
+    assert bloc.tour_courant == 3
+
+
+def test_un_tableau_plus_large_que_la_tranche_declaree_compte_quand_meme() -> None:
+    """**Non-régression** (2ᵉ passe de revue) : le filtre par branche ne doit pas tomber à zéro.
+
+    C'est le **cas normal en production**, et aucun montage ne le couvrait : `# DETTE-028` fait
+    qu'un tableau est ensemencé avec *tous* les archers en lice, sans lire `Phase.sources`, alors
+    que les braquets projetés se calculent sur l'effectif **déclaré**. Une phase qui déclare « rangs
+    1..8 » mais qu'on joue à 12 archers produit des plages réelles `(1,16)`, `(1,8)`, `(1,4)`… face
+    à des branches attendues `(1,8)`, `(1,4)`, `(1,2)` — **aucune** ne coïncide.
+
+    Le premier correctif (filtre inconditionnel) rendait alors **0 duel joué en permanence** :
+    l'écran projeté affichait « tour 1 · 0/7 » toute la journée. On avait remplacé un affichage faux
+    (« terminé » trop tôt) par un autre affichage faux, en sens inverse.
+
+    Ici on ne vérifie **pas** un chiffre exact — les deux structures divergent, aucun chiffre n'est
+    « juste ». On vérifie que le suivi **avance** : c'est tout ce que l'écran doit garantir dans ce
+    cas dégradé.
+    """
+    ctx = Contexte(nb_engages=12)
+    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
+    ctx.ajouter_phase(_tableau_ed(ctx.tournoi_id, 2, StatutPhase.EN_COURS), 2)
+    tableau = _tableau(12)
+    ctx.tableaux.tableaux[2] = _jouer(
+        tableau, [m.numero for m in tableau.matchs if m.tour == 1 and not m.est_bye]
+    )
+
+    bloc = ctx.service.pour_tournoi(ctx.tournoi_id).avancement.blocs[1]
+
+    assert bloc.duels_joues > 0
+    assert bloc.tour_courant is not None
+
+
 def test_un_exempt_n_est_pas_un_duel_joue() -> None:
     """Piège central : un tableau **incomplet** distribue des exempts, gagnés d'office.
 

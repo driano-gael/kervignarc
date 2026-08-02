@@ -47,6 +47,10 @@ export interface Ecran {
  * renseigné : l'écran n'arbitre jamais. */
 export interface Affichage {
   vues: VueProgrammee[] | null
+  /** **Toujours** le déroulé propre de l'écran : ce sur quoi il retombe seul à l'échéance, sans
+   * rien redemander au serveur. Distinct de `vues`, qui peut porter une séquence **imposée** —
+   * les confondre laissait un écran isolé jouer indéfiniment la consigne de l'admin (revue). */
+  deroule_repli: VueProgrammee[]
   vue_figee: VueEcran | null
   sous_controle: boolean
   /** Secondes avant reprise automatique du déroulé ; `null` = pas d'échéance. L'écran décompte

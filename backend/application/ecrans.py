@@ -47,19 +47,26 @@ class AffichageEcran:
     `vue_figee` renseigné ⇒ l'écran est figé dessus ; sinon il joue `sequence`. Il n'arbitre donc
     jamais : la présence de `vue_figee` décide.
 
-    ⚠️ **`sequence` est toujours renseigné, même sous contrôle** (correctif de revue). La version
-    d'origine renvoyait `sequence=None` dès qu'une vue était figée — l'écran ne recevait alors
-    jamais le déroulé sur lequel retomber, et la reprise « insensible au réseau » que promettent
-    ADR-0064, la story et la recette **n'était pas tenue** : à l'échéance, l'écran restait figé
-    jusqu'au prochain aller-retour serveur. Sous contrôle, `sequence` porte donc soit la séquence
-    **imposée** par l'admin, soit — pour une vue figée — le déroulé **propre** de l'écran, celui
-    qu'il reprendra tout seul quand `reste_s` atteindra zéro.
+    **Deux séquences, et la distinction est la garantie centrale d'ADR-0064** :
+
+    - `sequence` est ce que l'écran joue **maintenant** — son propre déroulé, ou celui que l'admin
+      lui impose ;
+    - `deroule_repli` est **toujours** son déroulé propre : ce sur quoi il retombe seul quand
+      `reste_s` atteint zéro, **sans rien redemander au serveur**.
+
+    ⚠️ Deux corrections successives ont été nécessaires pour que cette phrase soit vraie. La version
+    d'origine renvoyait `sequence=None` sous une vue figée : l'écran n'avait alors *rien* vers quoi
+    retomber. La deuxième repliait `sequence` sur le déroulé propre — ce qui marchait pour une vue
+    figée, mais **pas** pour une séquence imposée, où `sequence` porte déjà la consigne : à
+    l'échéance, un écran isolé continuait de jouer la séquence de l'admin **en affirmant au bandeau
+    avoir repris son déroulé**. D'où un champ **distinct**, plutôt qu'un champ à deux sens.
 
     `reste_s` alimente son compte à rebours ; `None` signifie soit « pas sous contrôle », soit
     « sous contrôle sans échéance », que `sous_controle` permet de distinguer.
     """
 
     sequence: SequenceVues | None
+    deroule_repli: SequenceVues
     vue_figee: VueEcran | None
     sous_controle: bool
     reste_s: float | None
@@ -114,17 +121,23 @@ class ServiceEcrans:
             raise NonAuthentifie("Session de poste requise.")
         ecran = exiger_ecran(poste)
         prise = self._prise_en_vigueur(poste_id)
+        repli = ecran.deroule_effectif
         if prise is None:
             return AffichageEcran(
-                sequence=ecran.deroule_effectif,
+                sequence=repli,
+                deroule_repli=repli,
                 vue_figee=None,
                 sous_controle=False,
                 reste_s=None,
             )
         return AffichageEcran(
-            # Séquence imposée s'il y en a une, sinon le déroulé **propre** de l'écran : c'est le
-            # repli local sur lequel il retombera à l'échéance, sans rien redemander au serveur.
-            sequence=prise.consigne.sequence or ecran.deroule_effectif,
+            # Ce qui tourne maintenant : la séquence imposée s'il y en a une, sinon le déroulé
+            # propre (une vue figée le suspend sans le remplacer).
+            sequence=prise.consigne.sequence or repli,
+            # Et **toujours** le déroulé propre à part : c'est le repli local de l'échéance. Le
+            # confondre avec `sequence` faisait qu'une **séquence imposée** ne laissait rien vers
+            # quoi retomber — l'écran isolé continuait de la jouer en affirmant le contraire.
+            deroule_repli=repli,
             vue_figee=prise.consigne.vue,
             sous_controle=True,
             reste_s=self._reste(prise),
@@ -209,7 +222,15 @@ class ServiceEcrans:
         return True
 
     def _ecoulees(self, prise: PriseDeControle) -> float:
-        return (self._horloge.maintenant() - prise.debut).total_seconds()
+        """Secondes depuis la pose, **jamais négatives** (2ᵉ passe de revue).
+
+        Planché **ici**, à la source, et non à la sortie de `reste_secondes` : une horloge
+        serveur qui recule (mise à l'heure en cours de journée) rendait un écart négatif que
+        `Consigne.expiree` consommait tel quel — la prise **n'expirait pas**, pendant que le
+        plafond d'affichage montrait un « reprise dans 10 min » parfaitement plausible. Le
+        correctif de sortie masquait le seul témoin de l'anomalie ; le plancher la supprime.
+        """
+        return max(0.0, (self._horloge.maintenant() - prise.debut).total_seconds())
 
     def _reste(self, prise: PriseDeControle) -> float | None:
         return reste_secondes(prise.consigne, secondes_ecoulees=self._ecoulees(prise))

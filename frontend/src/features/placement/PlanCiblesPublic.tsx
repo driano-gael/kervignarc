@@ -17,6 +17,7 @@
 import { useMemo, useState } from 'react'
 import { useArchers } from '../archers/hooks'
 import { useDeparts } from '../departs/hooks'
+import { departDeSalle } from '../salle/rotation'
 import { usePlanDeCibles } from './hooks'
 import { construirePlanConsultation } from './planConsultation'
 
@@ -91,9 +92,7 @@ export function PlanCiblesPublic({ tournoiId }: { tournoiId: number }) {
  */
 export function PlanCiblesDeSalle({ tournoiId }: { tournoiId: number }) {
   const departs = useDeparts(tournoiId)
-  const liste = departs.data ?? []
-  const courant =
-    liste.find((d) => d.etat === 'lance') ?? liste.find((d) => d.etat === 'ouvert') ?? liste[0]
+  const courant = departDeSalle(departs.data ?? [])
 
   if (departs.isPending) {
     return <p className="carte__etat">Chargement…</p>

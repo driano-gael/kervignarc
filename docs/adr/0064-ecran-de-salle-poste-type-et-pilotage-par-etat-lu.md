@@ -61,12 +61,24 @@ Conséquence pratique, et c'est un gain : la reprise du déroulé **ne dépend d
 écran qui perd le réseau pendant la prise reprend quand même à l'heure — il connaît le début et la
 durée, il décompte en local (`domain.ecran.reste_secondes`).
 
-⚠️ **Deux conditions rendent cette phrase vraie**, et la première implémentation n'en honorait
-aucune (relevé en revue) : l'affichage renvoie **toujours** la séquence de repli — y compris sous
-une vue figée, où l'écran ne recevait rien vers quoi retomber —, et le front **cesse d'honorer**
-`vue_figee` dès que le reste atteint zéro. Sans elles, le décompte local n'était qu'un ornement de
-bandeau, et un écran isolé serait resté sur le podium en affichant « reprise dans 0 s ». C'est un
-rappel utile : une garantie annoncée dans un ADR n'existe que si un chemin de code la produit.
+⚠️ **Trois conditions rendent cette phrase vraie**, et il a fallu **deux passes de revue** pour les
+réunir — ce qui est en soi l'enseignement le plus utile de cet ADR :
+
+1. l'affichage porte un champ **`deroule_repli` distinct**, toujours égal au déroulé propre de
+   l'écran ;
+2. le front **cesse d'honorer** `vue_figee` dès que le reste atteint zéro ;
+3. et il **rejoue le repli**, pas `sequence`.
+
+La première version n'en honorait aucune (l'écran ne recevait rien vers quoi retomber). La deuxième
+repliait `sequence` sur le déroulé propre : correct pour une **vue figée**, faux pour une **séquence
+imposée**, où `sequence` porte déjà la consigne — l'écran isolé continuait alors de la jouer *en
+affirmant au bandeau avoir repris son déroulé*. D'où un champ distinct plutôt qu'un champ à deux
+sens : quand une valeur doit signifier deux choses selon le contexte, elle finit par mentir dans
+l'un des deux.
+
+Rappel général : **une garantie annoncée dans un ADR n'existe que si un chemin de code la produit —
+et qu'un test l'exerce.** Ici la logique d'arbitrage vivait dans le JSX, donc hors de toute épreuve ;
+elle a été extraite dans `rotation.ts` (`vueAAfficher`) et couverte, sur les trois cas.
 
 ### 3. Déroulé **persisté**, prise de contrôle **en mémoire**
 
@@ -111,9 +123,20 @@ n'a été trouvé que par la relecture adversariale :
    finale se tirait**, sur l'écran projeté, au moment de la journée où il est le plus regardé. On
    filtre donc la **réalité** sur la plage du braquet (`Match.plage`), et non le dessin — corriger
    `_braquets` le ferait diverger de ce que l'organisateur a composé, ce que le §5 interdit.
+3. **Les deux plages ne sont pas dans le même repère.** `_braquets` produit des rangs **absolus**
+   (« un tableau des rangs 33-64 rend des perdants en 49-64 ») ; `construire_tableau` engendre des
+   `Match.plage` **relatives au tableau**, toujours à partir de 1. Le filtre du point 2, écrit sans
+   le savoir, ne pouvait donc fonctionner que pour un tableau partant du rang 1 — le seul cas que
+   montaient les fixtures. Sur un **tableau de placement des rangs 9-16**, cas parfaitement ordinaire
+   depuis E05US010, plus aucune plage ne correspondait : l'écran affichait « 0 duel joué » du début
+   à la fin de la journée. On normalise donc par le décalage avant de comparer, et on **ne filtre
+   pas** quand la branche projetée est absente du tableau (les tailles peuvent diverger,
+   `# DETTE-028`) — un compte approximatif vaut mieux qu'un compteur bloqué à zéro.
 
-Ces deux écarts illustrent la même chose : superposer deux calculs oblige à prouver qu'ils comptent
-la même population, et cette preuve ne se lit pas dans les noms.
+Ces trois écarts illustrent la même chose, et le troisième l'illustre deux fois : **superposer deux
+calculs oblige à prouver qu'ils comptent la même population, dans le même repère** — et cette preuve
+ne se lit ni dans les noms, ni dans les types. Chacun des deux premiers correctifs était juste sur
+le cas que les fixtures montaient, et faux sur la classe de cas dont il faisait partie.
 
 ### 6. Un composant de dessin, trois surfaces — **sans variation de géométrie**
 

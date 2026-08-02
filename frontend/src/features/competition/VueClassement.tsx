@@ -31,29 +31,17 @@ export function VueClassement({
   filtrable?: boolean
 }) {
   const [categorieId, setCategorieId] = useState<number | undefined>(undefined)
-  const categories = useCategories(tournoiId)
   const classement = useClassement(tournoiId, filtrable ? categorieId : undefined)
 
   return (
     <>
       <h3 className="carte__soustitre">Classement en direct</h3>
       {filtrable && (
-        <label className="classement-filtre">
-          Catégorie{' '}
-          <select
-            value={categorieId ?? ''}
-            onChange={(e) =>
-              setCategorieId(e.target.value === '' ? undefined : Number(e.target.value))
-            }
-          >
-            <option value="">Toutes catégories</option>
-            {(categories.data ?? []).map((categorie) => (
-              <option key={categorie.id} value={categorie.id}>
-                {categorie.libelle}
-              </option>
-            ))}
-          </select>
-        </label>
+        <FiltreCategorie
+          tournoiId={tournoiId}
+          valeur={categorieId}
+          surChangement={setCategorieId}
+        />
       )}
       {classement.isPending && <p className="carte__etat">Chargement…</p>}
       {classement.isError && (
@@ -69,5 +57,40 @@ export function VueClassement({
         </div>
       )}
     </>
+  )
+}
+
+/** Le filtre par catégorie, **dans son propre composant**.
+ *
+ * Séparé pour que `useCategories` ne soit monté que quand le filtre est réellement rendu : appelé en
+ * tête de `VueClassement`, il faisait interroger `/categories` par l'écran de salle pour un
+ * `<select>` qu'il n'affiche jamais (relevé en revue — le même défaut que le hook de suivi corrigé
+ * trois fichiers plus loin).
+ */
+function FiltreCategorie({
+  tournoiId,
+  valeur,
+  surChangement,
+}: {
+  tournoiId: number
+  valeur: number | undefined
+  surChangement: (categorieId: number | undefined) => void
+}) {
+  const categories = useCategories(tournoiId)
+  return (
+    <label className="classement-filtre">
+      Catégorie{' '}
+      <select
+        value={valeur ?? ''}
+        onChange={(e) => surChangement(e.target.value === '' ? undefined : Number(e.target.value))}
+      >
+        <option value="">Toutes catégories</option>
+        {(categories.data ?? []).map((categorie) => (
+          <option key={categorie.id} value={categorie.id}>
+            {categorie.libelle}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }

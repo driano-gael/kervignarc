@@ -179,6 +179,7 @@ class AffichageReponse(BaseModel):
     """
 
     vues: list[VueProgrammeeDTO] | None
+    deroule_repli: list[VueProgrammeeDTO]
     vue_figee: VueEcran | None
     sous_controle: bool
     reste_s: float | None
@@ -195,6 +196,10 @@ class AffichageReponse(BaseModel):
                     for v in affichage.sequence.vues
                 ]
             ),
+            deroule_repli=[
+                VueProgrammeeDTO(vue=v.vue, cadence_s=v.cadence_s)
+                for v in affichage.deroule_repli.vues
+            ],
             vue_figee=affichage.vue_figee,
             sous_controle=affichage.sous_controle,
             reste_s=affichage.reste_s,

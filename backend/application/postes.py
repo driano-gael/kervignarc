@@ -31,6 +31,7 @@ from application.erreurs import (
     PosteIntrouvable,
     PosteNEstPasUnEcran,
     RattachementTournoiTermine,
+    SaisieHorsCible,
     TournoiIntrouvable,
 )
 from domain.depart import Depart, DepartId
@@ -296,6 +297,14 @@ class ServicePostes:
         poste = self.resoudre_session(jeton)
         if poste is None:
             raise NonAuthentifie("Session de poste requise.")
+        # ⚠️ **Garde de nature, ici et pas seulement à la frontière** (correctif de 2ᵉ passe).
+        # La docstring ci-dessus annonce un appelant **hors HTTP** (E12US002, l'orchestrateur de
+        # lancement) : la dépendance `exiger_poste_de_cible` ne le couvrirait pas. C'est exactement
+        # la leçon tirée dans `ServiceArchers._verifier_poste_sert_l_archer` — une garde posée à un
+        # seul niveau se contourne par le chemin qu'on n'avait pas prévu — et elle n'avait pas été
+        # rejouée ici.
+        if poste.type is not TypePoste.CIBLE:
+            raise SaisieHorsCible("Un écran de salle ne fixe pas de départ courant.")
         depart = self._departs.par_id(depart_id)
         if depart is None or depart.tournoi_id != poste.tournoi_id:
             raise DepartIntrouvable(f"Aucun départ d'identifiant {depart_id} dans ce tournoi.")

@@ -84,21 +84,72 @@ class LecteurTableau(Protocol):
         ...
 
 
-def _dans_la_branche(match: Match, branche: tuple[int, int] | None) -> bool:
+def _decalage(braquets: Sequence[TourBraquet]) -> int:
+    """De combien décaler les plages du tableau pour les lire dans les rangs **du tournoi**.
+
+    ⚠️ **Deux systèmes de coordonnées, et c'est le piège qui a coûté deux correctifs.**
+    `_braquets` (`domain.deroule`) produit des plages **absolues** — sa docstring l'écrit :
+    *« un tableau des rangs 33-64 rend des perdants en 49-64 »*. `construire_tableau`, lui,
+    engendre ses `Match.plage` **relatives au tableau**, toujours à partir de 1. Comparer
+    les deux directement ne pouvait fonctionner que pour un tableau partant du rang 1 — le seul cas
+    que montaient les fixtures. Sur un tableau de placement des rangs 9-16, aucune plage ne
+    correspondait à aucun tour, et l'écran projeté affichait « 0 duel joué » du début à la fin de la
+    journée.
+
+    Le premier tour du braquet donne l'origine : `plage_gagnants[0]` vaut la borne basse de la
+    tranche d'entrée (`_braquets` part de `Plage(tranche[0], …)`).
+    """
+    premier = braquets[0] if braquets else None
+    return 0 if premier is None else premier.plage_gagnants[0] - 1
+
+
+def _branches_reconnues(
+    tableau: Tableau, braquets: Sequence[TourBraquet], decalage: int
+) -> dict[int, tuple[int, int]]:
+    """Les branches projetées que le tableau reconstruit **contient réellement**, par tour.
+
+    Deuxième garde, après la normalisation des coordonnées : **le filtre ne s'applique que si les
+    deux structures parlent du même arbre**. Les tailles peuvent différer même à origine commune —
+    `# DETTE-028` fait que `ServiceSaisieDuels._decor` ensemence l'arbre avec *tous* les archers en
+    lice, sans lire `Phase.sources`, quand `_braquets` compte l'effectif **déclaré**. Une phase
+    déclarant « rangs 1..8 » mais jouée à 12 donne des plages réelles `(1,16)`, `(1,8)`, `(1,4)`…
+    face à des branches `(1,8)`, `(1,4)`, `(1,2)`.
+
+    Le critère juste n'est pas *combien* on a compté — un tour dont seule la petite finale est jouée
+    compte légitimement zéro — mais si la branche projetée **existe** parmi les matchs de ce tour,
+    joués ou non. Si elle existe, on filtre (la petite finale est écartée) ; sinon on ne filtre pas,
+    et on retombe sur le comptage d'avant, plafonné par `avancement_bloc`. Un compte approximatif
+    vaut mieux qu'un compteur bloqué à zéro.
+    """
+    presentes: dict[int, set[tuple[int, int]]] = {}
+    for match in tableau.matchs:
+        if match.plage is not None:
+            presentes.setdefault(match.tour, set()).add(
+                (match.plage.debut + decalage, match.plage.fin + decalage)
+            )
+    reconnues: dict[int, tuple[int, int]] = {}
+    for braquet in braquets:
+        attendue = (braquet.plage_gagnants[0], braquet.plage_perdants[1])
+        if attendue in presentes.get(braquet.tour, set()):
+            reconnues[braquet.tour] = attendue
+    return reconnues
+
+
+def _dans_la_branche(match: Match, branche: tuple[int, int] | None, decalage: int) -> bool:
     """Ce match appartient-il à la branche que décrit le braquet de son tour ?
 
-    `Match.plage` est la tranche de rangs que ce match départage — exactement ce que le braquet
-    nomme `[plage_gagnants.debut … plage_perdants.fin]`. L'égalité suffit donc : au dernier tour, la
-    finale porte `[1..2]` et la petite finale `[3..4]`, deux branches distinctes à la même
-    profondeur.
+    `Match.plage` est la tranche de rangs que ce match départage, **relative au tableau** ; on la
+    ramène dans les rangs du tournoi (`decalage`) avant de comparer. Au dernier tour, la finale
+    porte alors la branche du braquet et la petite finale une autre — deux branches distinctes à la
+    même profondeur.
 
-    **Compte par défaut** quand l'information manque (braquet absent, `Match.plage` non renseignée —
-    le cas des `Match` bâtis à la main dans les tests) : mieux vaut un compte plafonné, comme avant,
-    qu'un compteur qui tomberait à zéro sur une structure qu'on ne sait pas lire.
+    **Compte par défaut** quand l'information manque : branche non reconnue (cf.
+    `_branches_reconnues`), tour sans braquet, ou `Match.plage` non renseignée (les `Match` bâtis à
+    la main dans les tests). Mieux vaut un compte plafonné qu'un compteur bloqué à zéro.
     """
     if branche is None or match.plage is None:
         return True
-    return (match.plage.debut, match.plage.fin) == branche
+    return (match.plage.debut + decalage, match.plage.fin + decalage) == branche
 
 
 class CompteurEngagesRepository:
@@ -167,7 +218,7 @@ class ServiceSuiviDeroule:
         Un tournoi **sans phase** rend un suivi vide plutôt qu'une erreur : avant qu'un format soit
         appliqué, l'écran doit afficher « rien à suivre », pas une page cassée.
 
-        # DETTE-030 : tout est **recalculé à chaque appel** — le compte des engagés, et surtout la
+        # DETTE-031 : tout est **recalculé à chaque appel** — le compte des engagés, et surtout la
         # reconstruction de chaque phase en tableau (qui rejoue le classement complet du tournoi).
         # Endpoint public, pollé toutes les 10 s par deux surfaces. Assumé au contexte mono-club et
         # local ; le remède est borné (mémoïsation par version, invalidée par donnees_modifiees),
@@ -229,14 +280,12 @@ class ServiceSuiviDeroule:
             tableau, _ = self._tableaux.reconstruire(tournoi_id, phase.id)
         except (ApplicationError, DomainError, KeyError):
             return {}
-        branches = {
-            braquet.tour: (braquet.plage_gagnants[0], braquet.plage_perdants[1])
-            for braquet in braquets
-        }
+        decalage = _decalage(braquets)
+        branches = _branches_reconnues(tableau, braquets, decalage)
         return Counter(
             match.tour
             for match in tableau.matchs
             if match.vainqueur is not None
             and not match.est_bye
-            and _dans_la_branche(match, branches.get(match.tour))
+            and _dans_la_branche(match, branches.get(match.tour), decalage)
         )
