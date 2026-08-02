@@ -515,6 +515,8 @@ def create_app(
         barrage_repository,
         app.state.service_classement,
         HorlogeSysteme(),
+        archer_repository,
+        phase_repository,
     )
     # Inscriptions archer↔départ (E02US009, ADR-0017) : inscrire sur des créneaux du tournoi de
     # l'archer (même tournoi, unicité), marquer payé, désinscrire ; le montant dû dérive du tarif.

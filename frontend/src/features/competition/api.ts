@@ -140,10 +140,21 @@ export function getBarrages(tournoiId: number): Promise<Barrage[]> {
   return fetchJson<Barrage[]>(`/api/v1/tournois/${tournoiId}/barrages`)
 }
 
-export function annoncerBarrage(tournoiId: number, rang: number): Promise<Barrage> {
+// Deux régimes d'annonce (ADR-0066) : en **qualification** les tireurs sont dérivés du classement
+// (seul `rang` est requis, et seule une égalité signalée est annonçable) ; en **poule** et en **Big
+// Shoot Off** ils sont **désignés**, faute de classement calculé où les lire (DETTE-028).
+export interface AnnonceBarrage {
+  rang?: number | null
+  portee?: PorteeBarrage
+  archer_ids?: number[]
+  phase_id?: number | null
+  reference?: string | null
+}
+
+export function annoncerBarrage(tournoiId: number, annonce: AnnonceBarrage): Promise<Barrage> {
   return fetchJson<Barrage>(`/api/v1/tournois/${tournoiId}/barrages`, {
     method: 'POST',
-    body: JSON.stringify({ rang }),
+    body: JSON.stringify(annonce),
   })
 }
 

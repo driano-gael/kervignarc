@@ -9,6 +9,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ajouterArcher,
+  type AnnonceBarrage,
   annoncerBarrage,
   annulerBarrage,
   cloreBarrage,
@@ -125,7 +126,9 @@ function useMutationBarrage<T>(tournoiId: number, action: (variables: T) => Prom
 }
 
 export function useAnnoncerBarrage(tournoiId: number) {
-  return useMutationBarrage(tournoiId, (rang: number) => annoncerBarrage(tournoiId, rang))
+  return useMutationBarrage(tournoiId, (annonce: AnnonceBarrage) =>
+    annoncerBarrage(tournoiId, annonce),
+  )
 }
 
 export function useSaisirMancheBarrage(tournoiId: number) {

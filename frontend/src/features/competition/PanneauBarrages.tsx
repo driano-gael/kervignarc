@@ -52,11 +52,6 @@ export function PanneauBarrages({
     return ligne ? `${ligne.nom} ${ligne.prenom}` : `Archer ${archerId}`
   }
 
-  // Le panneau ne s'affiche que s'il y a quelque chose à faire ou à suivre.
-  if (egalites.length === 0 && enCours.length === 0) {
-    return null
-  }
-
   return (
     <section className="carte carte--barrages">
       <h3 className="carte__soustitre">Barrages — places décisives</h3>
@@ -76,6 +71,7 @@ export function PanneauBarrages({
       {enCours.map((barrage) => (
         <BarrageEnCours key={barrage.id} tournoiId={tournoiId} barrage={barrage} nomDe={nomDe} />
       ))}
+      <DepartageManuel tournoiId={tournoiId} lignes={lignes} />
     </section>
   )
 }
@@ -101,7 +97,7 @@ function EgaliteALancer({
       {!dejaOuvert && (
         <button
           type="button"
-          onClick={() => annoncer.mutate(egalite.rang)}
+          onClick={() => annoncer.mutate({ rang: egalite.rang })}
           disabled={annoncer.isPending}
         >
           Faire tirer
@@ -324,4 +320,94 @@ function depuisTirs(tirs: TirBarrage[] | undefined): Record<number, SaisieTir> {
     }
   }
   return saisies
+}
+
+/** Départager des archers **hors qualification** — poule ou Big Shoot Off (ADR-0066).
+ *
+ * ⚠️ **Pourquoi un formulaire plutôt qu'un bouton comme en qualification.** Là-haut, l'application
+ * *sait* qui est à égalité : elle lit le classement. Ici elle ne le sait pas — aucun classement de
+ * poule ni aucun état de Big Shoot Off n'est calculé nulle part (DETTE-028) —, donc c'est
+ * l'organisateur qui désigne les tireurs. Le barrage se conduit ensuite exactement pareil ; seul
+ * son verdict ne retourne dans aucun classement, faute de classement à alimenter.
+ *
+ * Replié par défaut : sur un tournoi qui ne fait ni poule ni Big Shoot Off, cela ne doit être
+ * qu'une ligne discrète sur l'écran qu'on regarde toute la journée.
+ */
+function DepartageManuel({ tournoiId, lignes }: { tournoiId: number; lignes: LigneClassement[] }) {
+  const [portee, setPortee] = useState<'poule' | 'big_shoot_off'>('poule')
+  const [reference, setReference] = useState('')
+  const [choisis, setChoisis] = useState<number[]>([])
+  const annoncer = useAnnoncerBarrage(tournoiId)
+
+  const basculer = (archerId: number) =>
+    setChoisis((actuel) =>
+      actuel.includes(archerId)
+        ? actuel.filter((candidat) => candidat !== archerId)
+        : [...actuel, archerId],
+    )
+
+  const soumettre = () =>
+    annoncer.mutate(
+      {
+        portee,
+        archer_ids: choisis,
+        reference: reference.trim() === '' ? null : reference.trim(),
+      },
+      { onSuccess: () => setChoisis([]) },
+    )
+
+  return (
+    <details className="barrages__manuel">
+      <summary>Départager d&apos;autres archers (poule, Big Shoot Off)</summary>
+      <p className="carte__aide">
+        L&apos;application ne calcule pas encore les classements de poule ni les manches de Big
+        Shoot Off : désignez vous-même les archers à départager. Le barrage se tire ensuite
+        normalement, mais son résultat ne remonte dans aucun classement.
+      </p>
+      <label>
+        Départage{' '}
+        <select
+          value={portee}
+          onChange={(e) => setPortee(e.target.value as 'poule' | 'big_shoot_off')}
+        >
+          <option value="poule">de poule</option>
+          <option value="big_shoot_off">de Big Shoot Off</option>
+        </select>
+      </label>
+      <label>
+        Repère{' '}
+        <input
+          value={reference}
+          onChange={(e) => setReference(e.target.value)}
+          placeholder={portee === 'poule' ? 'ex. Poule A' : 'ex. manche 3'}
+          aria-label="Repère du barrage (numéro de poule ou de manche)"
+        />
+      </label>
+      <ul className="barrages__choix">
+        {lignes.map((ligne) => (
+          <li key={ligne.archer_id}>
+            <label>
+              <input
+                type="checkbox"
+                checked={choisis.includes(ligne.archer_id)}
+                onChange={() => basculer(ligne.archer_id)}
+              />{' '}
+              {ligne.nom} {ligne.prenom}
+            </label>
+          </li>
+        ))}
+      </ul>
+      <button type="button" onClick={soumettre} disabled={choisis.length < 2 || annoncer.isPending}>
+        Faire tirer ces {choisis.length || ''} archers
+      </button>
+      {choisis.length < 2 && (
+        <p className="carte__etat">Un barrage départage au moins deux archers.</p>
+      )}
+      {annoncer.isError && (
+        <p className="carte__etat carte__etat--erreur" role="alert">
+          {annoncer.error.message}
+        </p>
+      )}
+    </details>
+  )
 }

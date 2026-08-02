@@ -24,7 +24,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.barrages import ServiceBarrage
-from domain.barrage import BarrageDePlaces
+from domain.barrage import BarrageDePlaces, PorteeBarrage
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["barrages"])
@@ -61,9 +61,22 @@ class MancheRequete(BaseModel):
 
 
 class AnnonceRequete(BaseModel):
-    """Le rang partagé sur lequel on fait tirer."""
+    """Ce qu'on fait tirer — **deux régimes** selon la portée (ADR-0066).
 
-    rang: int = Field(ge=1)
+    - `qualification` (défaut) : `rang` suffit, et il est **obligatoire**. Les tireurs sont dérivés
+      du classement, donc l'organisateur n'a rien à désigner — et ne le peut pas : seule une
+      égalité **signalée** par la politique est annonçable.
+    - `poule` / `big_shoot_off` : `archer_ids` est obligatoire, parce qu'aucun classement calculé
+      n'existe où lire les ex æquo (DETTE-028). `phase_id` et `reference` (numéro de poule ou de
+      manche) situent le barrage ; `rang` reste facultatif — un Big Shoot Off désigne un sortant,
+      pas une place.
+    """
+
+    rang: int | None = Field(default=None, ge=1)
+    portee: PorteeBarrage = PorteeBarrage.QUALIFICATION
+    archer_ids: list[int] = Field(default_factory=list, max_length=64)
+    phase_id: int | None = None
+    reference: str | None = Field(default=None, max_length=64)
 
 
 class TirReponse(BaseModel):
@@ -154,7 +167,16 @@ async def annoncer_barrage(
     service: ServiceBarrage = request.app.state.service_barrage
     write_queue: WriteQueue = request.app.state.write_queue
     barrage = await asyncio.wrap_future(
-        write_queue.submit(lambda: service.annoncer(tournoi_id, requete.rang))
+        write_queue.submit(
+            lambda: service.annoncer(
+                tournoi_id,
+                rang=requete.rang,
+                portee=requete.portee,
+                archer_ids=requete.archer_ids,
+                phase_id=requete.phase_id,
+                reference=requete.reference,
+            )
+        )
     )
     return BarrageReponse.de_agregat(barrage)
 

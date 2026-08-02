@@ -3405,3 +3405,34 @@ button:disabled {
   color: var(--text);
   font-weight: 400;
 }
+
+/* Départage manuel (poule, Big Shoot Off) — replié par défaut : sur un tournoi qui n'en fait pas,
+   ce n'est qu'une ligne discrète sur l'écran qu'on regarde toute la journée. */
+.barrages__manuel {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.barrages__manuel > summary {
+  cursor: pointer;
+  color: var(--text-h);
+}
+
+.barrages__manuel label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 12px;
+}
+
+/* Liste des archers à cocher : colonnes auto pour rester lisible à 120 inscrits. */
+.barrages__choix {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 4px 12px;
+}
