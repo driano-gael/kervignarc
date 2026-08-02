@@ -35,9 +35,36 @@
 ### E06US003 — Barrage de tir pour places décisives
 *En tant que* système, *je veux* un barrage quand le comptage ne suffit pas, *afin de* trancher les places décisives.
 - **CA** : déclenchement d'un barrage (shoot-off) pour les positions à enjeu ; résultat intégré au classement.
+- **CA — seuil configurable (cadrage du 02/08/2026)** : ce qui fait qu'une place est « à enjeu » est un
+  **réglage de format**, pas une règle en dur : la politique `tiebreak` de la phase porte un seuil
+  `jusqu_au`, et **toute égalité dont le rang du groupe est ≤ seuil** est signalée « barrage requis ».
+  Le **défaut reste l'ex æquo** (aucun barrage) — E06US001 est inchangée tant que rien n'est réglé.
+  ⚠️ Le seuil désigne le **rang du groupe**, pas chacune de ses places : deux ex æquo au rang 8 avec
+  `jusqu_au = 8` se départagent, et le barrage tranche donc aussi la 9ᵉ place. Sans cela on ne
+  pourrait jamais départager la **dernière place qualificative**, qui est le cas d'usage même.
+- **CA — trois consommateurs** : le barrage sert (a) le **classement de qualification** quand §8.1 est
+  épuisé, (b) le **classement de poule** (« barrage si nécessaire », §10.1), (c) l'égalité **au plus
+  faible** d'un **Big Shoot Off**. Les trois appliquent le même moteur (`resoudre_barrage`) ; aucun ne
+  le réimplémente. Le BSO n'est **pas** soumis au seuil : son égalité bloque la manche par
+  construction, elle n'a pas de « place à enjeu » à comparer.
+- **CA — persistance flèche par flèche** : chaque tir est enregistré (score, distance au centre,
+  **absence** distinguée d'une saisie en attente), les **manches successives** sont conservées, et le
+  verdict est **rejouable** depuis les tirs — on ne stocke pas un ordre saisi à la main.
+- **CA — intégration au classement** : les rangs partagés que le barrage a tranchés deviennent
+  **consécutifs** dans l'ordre du barrage ; un barrage **non résolu** ne change rien (le rang reste
+  partagé) plutôt que de publier un ordre à moitié vrai.
+- **CA — câblage de la politique** : `domain/classement.py` cesse de réimplémenter §8.1 à la main et
+  passe par `PolitiquesPhase.tiebreak` — c'est la couture qu'E06US001 avait laissée en attente, et
+  une part de **DETTE-028**.
 - **Notes** : dépendances redirigées au regroupement du 17/07/2026 — l'ex-`E06US002` (dont dépendait cette
   US) a rejoint `E06US001` ; l'ex-`E04US016` a rejoint `E04US013` (redirection déjà actée dans
   `E04-saisie-scores.md`).
+- **Notes — ce que l'US ne refait pas** : le **moteur** du barrage est déjà livré et pur
+  (`domain/barrage.py`, E05US015 : absents relégués → plus haut score → distance au centre → groupes à
+  rejouer). E06US003 lui donne ses **consommateurs**, sa **persistance** et son **déclenchement** ;
+  elle ne retouche sa règle nulle part. Le **shoot-off interne à un duel nul** (égalité de sets) reste
+  hors périmètre : il vit dans l'agrégat `Duel` depuis E04US013 ([ADR-0049](../docs/adr/0049-saisie-et-scoring-des-duels.md) §3),
+  et cet arbitrage n'est pas rouvert.
 - **Dépend de** : E06US001, E04US013 · **Jalon** : J2
 
 ### E06US004 — Podium des duels & agrégation des rangs

@@ -32,15 +32,19 @@ Fonction pure sur des agrégats : testable sans base ni serveur.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum
+from functools import cmp_to_key
 
 from domain.archer import Archer, ArcherId
+from domain.barrage import EgaliteADepartager, VerdictBarrage, egalites_a_departager
 from domain.blason import ZoneScore
 from domain.categorie import Categorie, CategorieId
 from domain.club import ClubId
 from domain.forfait import Forfait, NatureForfait
+from domain.participant import GenreParticipant, Participant
+from domain.politiques import DecompteDepartage, Tiebreak, TiebreakFftaDefaut
 from domain.serie import Serie
 
 
@@ -109,9 +113,16 @@ class LigneClassement:
 
 @dataclass(frozen=True)
 class Classement:
-    """Classement d'un tournoi, ordonné par rang **scratch** (du meilleur au moins bon)."""
+    """Classement d'un tournoi, ordonné par rang **scratch** (du meilleur au moins bon).
+
+    `egalites_a_departager` (E06US003) liste les ex æquo que la politique `tiebreak` réclame de
+    trancher **au tir**, sur les rangs **scratch** — c'est là que se jouent les places décisives
+    (l'entrée au tableau se fait sur l'ordre général, pas sur le rang de catégorie). Vide par
+    défaut : sans seuil réglé, le classement se comporte exactement comme E06US001 le livrait.
+    """
 
     lignes: tuple[LigneClassement, ...]
+    egalites_a_departager: tuple[EgaliteADepartager, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -140,72 +151,97 @@ def _decompte(serie: Serie | None) -> _Decompte:
 
 @dataclass(frozen=True)
 class _Entree:
-    """Une entrée à classer : l'archer, son décompte et son statut (en lice / abandon / DSQ)."""
+    """Une entrée à classer : l'archer, son décompte, son statut et son éventuel verdict de barrage.
+
+    `position_barrage` est le rang qu'un **barrage déjà tiré** a attribué à cet archer (E06US003),
+    `0` quand aucun ne le concerne. Il n'intervient qu'**après** épuisement de la politique de
+    départage — c'est-à-dire exactement là où le rang serait resté partagé.
+    """
 
     archer: Archer
+    archer_id: ArcherId
     decompte: _Decompte
+    departage: DecompteDepartage
     statut: StatutClassement
+    position_barrage: int = 0
 
 
-def _cle_tri(entree: _Entree) -> tuple[int, int, int, int, str, str, int]:
-    """Clé de tri **totale** d'une entrée : statut, critères FFTA, puis départage déterministe.
+def _comparer_classant(a: _Entree, b: _Entree, tiebreak: Tiebreak) -> int:
+    """Les critères qui **rangent** — deux entrées nulles ici sont **ex æquo**.
 
-    Le **statut** est en tête (`_RANG_STATUT` : en lice = 0, abandon = 1) : un abandon passe donc
-    **après** tous les archers en lice quel que soit son score — la « relégation en fin » du CA
-    (Q2). Puis `(-total, -nb_dix, -nb_neuf)` = le classement FFTA (mieux classé = clé plus petite,
-    les valeurs étant niées). Puis `(nom, prenom, archer_id)` : à égalité **parfaite**, un ordre
-    d'affichage stable (mêmes homonymes, même écran). Ce suffixe **n'entre pas** dans le partage de
-    rang. N'ordonne que les **classables** (en lice / abandon) ; les DSQ sont triés à part.
+    Ordre séquentiel : le **statut** d'abord (`_RANG_STATUT` : en lice = 0, abandon = 1), donc un
+    abandon passe après tous les en-lice quel que soit son score (« relégation en fin », Q2) ; puis
+    le **total** ; puis la **politique** `tiebreak` — c'est la couture qu'E06US001 avait laissée en
+    attente et que DETTE-028 réclamait, `classement.py` ne réimplémentant plus §8.1 à la main ;
+    puis le **verdict de barrage**, qui ne joue que sur ce que la politique a laissé à égalité.
+
+    ⚠️ **Un comparateur, pas une clé de tri.** Une politique injectable rend un ordre relatif
+    (`departager`), pas une valeur ordonnable : il n'existe aucune clé qui exprimerait les cinq
+    critères de poule et les deux de la qualification sans les figer ici — c'est précisément ce que
+    l'injection sert à éviter. D'où `cmp_to_key` au moment du tri.
     """
-    archer_id = entree.archer.id
-    assert archer_id is not None, "Le classement se calcule sur des archers persistés."
-    return (
-        _RANG_STATUT[entree.statut],
-        -entree.decompte.total,
-        -entree.decompte.nb_dix,
-        -entree.decompte.nb_neuf,
-        entree.archer.nom,
-        entree.archer.prenom,
-        archer_id,
-    )
+    if a.statut is not b.statut:
+        return _RANG_STATUT[a.statut] - _RANG_STATUT[b.statut]
+    if a.decompte.total != b.decompte.total:
+        return b.decompte.total - a.decompte.total
+    ecart = tiebreak.departager(a.departage, b.departage)
+    if ecart:
+        return ecart
+    return a.position_barrage - b.position_barrage
 
 
-def _cle_departage(entree: _Entree) -> tuple[int, int, int, int]:
-    """Ce qui fait deux archers **ex æquo** : même **statut**, même total, mêmes 10, mêmes 9 (§8.1).
+def _comparer(a: _Entree, b: _Entree, tiebreak: Tiebreak) -> int:
+    """Le comparateur **total** : les critères classants, puis un ordre d'affichage stable.
 
-    Le statut est inclus : un archer en lice et un abandon de même score **ne partagent pas** le
-    rang (l'abandon est relégué). Le suffixe de `_cle_tri` (nom, prénom, id) n'est qu'un ordre
-    d'affichage — il ne crée pas de rangs distincts.
+    À égalité **parfaite**, `(nom, prenom, archer_id)` fixe l'ordre d'écran (mêmes homonymes, même
+    affichage d'une lecture à l'autre). Ce suffixe **n'entre pas** dans le partage de rang : deux
+    archers qu'il sépare restent ex æquo.
     """
-    return (
-        _RANG_STATUT[entree.statut],
-        entree.decompte.total,
-        entree.decompte.nb_dix,
-        entree.decompte.nb_neuf,
-    )
+    ecart = _comparer_classant(a, b, tiebreak)
+    if ecart:
+        return ecart
+    cle_a = (a.archer.nom, a.archer.prenom, a.archer_id)
+    cle_b = (b.archer.nom, b.archer.prenom, b.archer_id)
+    if cle_a < cle_b:
+        return -1
+    return 1 if cle_a > cle_b else 0
 
 
-def _ranger(entrees_ordonnees: list[_Entree]) -> dict[ArcherId, int]:
+def _ranger(entrees_ordonnees: Sequence[_Entree], tiebreak: Tiebreak) -> dict[ArcherId, int]:
     """Attribue un rang à des entrées **déjà triées**, ex æquo partagés (ex. 1-2-2-4).
 
-    Deux entrées consécutives de même `_cle_departage` gardent le même rang ; on repart du rang
-    « index + 1 » dès que la clé change — d'où les sauts après un groupe d'ex æquo. Un abandon,
-    trié après les en-lice, reçoit ainsi un rang qui **continue** leur numérotation (relégation).
+    Deux entrées que `_comparer_classant` ne sépare pas gardent le même rang ; on repart du rang
+    « index + 1 » dès qu'il les sépare — d'où les sauts après un groupe d'ex æquo. Un abandon, trié
+    après les en-lice, reçoit ainsi un rang qui **continue** leur numérotation (relégation).
     """
     # DETTE-029 (docs/dette.md) : 3ᵉ écriture de « rang partagé à clé égale, avec sauts » dans le
     # domaine (`classement._ranger`, `poule.classement_de_poule`, `suisse.classement_suisse`), et
     # les trois divergent déjà. Remède proposé (fonction pure `attribuer_rangs`) en US dédiée.
     rangs: dict[ArcherId, int] = {}
     rang = 0
-    cle_precedente: tuple[int, int, int, int] | None = None
+    tete: _Entree | None = None
     for index, entree in enumerate(entrees_ordonnees):
-        assert entree.archer.id is not None
-        cle = _cle_departage(entree)
-        if cle != cle_precedente:
+        if tete is None or _comparer_classant(tete, entree, tiebreak) != 0:
             rang = index + 1
-            cle_precedente = cle
-        rangs[entree.archer.id] = rang
+            tete = entree
+        rangs[entree.archer_id] = rang
     return rangs
+
+
+def _positions_de_barrage(verdicts: Iterable[VerdictBarrage]) -> dict[ArcherId, int]:
+    """Les rangs qu'ont attribués les barrages **déjà tirés**, par archer.
+
+    Un verdict **non résolu** (`ordre` vide) n'apporte rien : le rang reste partagé, et c'est le
+    contrat de `ResultatBarrage` — pas de classement à moitié vrai. Seuls les participants
+    **individuels** sont retenus : un classement de qualification range des archers (une épreuve par
+    équipes classe des équipes, ailleurs).
+    """
+    positions: dict[ArcherId, int] = {}
+    for verdict in verdicts:
+        for participant, rang in verdict.rangs().items():
+            if participant.genre is GenreParticipant.INDIVIDUEL:
+                positions[participant.ref_id] = rang
+    return positions
 
 
 def calculer_classement(
@@ -213,6 +249,8 @@ def calculer_classement(
     series: Iterable[Serie],
     categories: Iterable[Categorie],
     forfaits: Iterable[Forfait] = (),
+    tiebreak: Tiebreak | None = None,
+    verdicts: Iterable[VerdictBarrage] = (),
 ) -> Classement:
     """Construit le classement des `archers` à partir de leurs `series`, avec départage FFTA.
 
@@ -224,21 +262,35 @@ def calculer_classement(
       tous les en-lice ; un archer **disqualifié** est **sorti** du classement (`rang_* is None`),
       listé en dernier avec son statut et son score (ses flèches restent — Q2/Q3 du cadrage).
 
+    - `tiebreak` (E06US003) : la politique de **départage** de la phase (ADR-0004). `None` retombe
+      sur `TiebreakFftaDefaut` — §8.1, exactement la règle qu'E06US001 écrivait à la main. C'est
+      donc un changement de **plomberie**, pas de règle : la couture réclamée par DETTE-028 ;
+    - `verdicts` (E06US003) : les **barrages déjà tirés**. Ils n'interviennent que là où le
+      départage a laissé un ex æquo, et y rendent les rangs **consécutifs** — sans décaler les
+      archers suivants, un barrage éclatant un rang partagé plutôt qu'insérant quelqu'un.
+
     Renvoie les lignes ordonnées par **rang scratch** (en lice, puis abandons relégués, puis DSQ).
     Chaque ligne porte aussi son rang **dans sa catégorie** (repartant de 1 par catégorie, ex æquo
-    partagés avec sauts), calculé sur le même ordre restreint aux archers de la catégorie.
+    partagés avec sauts), calculé sur le même ordre restreint aux archers de la catégorie — un
+    barrage tranche donc les **deux** rangs, l'ordre étant commun.
     """
+    departage = tiebreak if tiebreak is not None else TiebreakFftaDefaut()
     serie_par_archer = {s.archer_id: s for s in series}
     libelle_par_categorie = {c.id: c.libelle for c in categories if c.id is not None}
     nature_par_archer = {f.archer_id: f.nature for f in forfaits}
+    positions = _positions_de_barrage(verdicts)
     entrees: list[_Entree] = []
     for archer in archers:
         assert archer.id is not None, "Le classement se calcule sur des archers persistés."
+        decompte = _decompte(serie_par_archer.get(archer.id))
         entrees.append(
             _Entree(
                 archer=archer,
-                decompte=_decompte(serie_par_archer.get(archer.id)),
+                archer_id=archer.id,
+                decompte=decompte,
+                departage=DecompteDepartage(nb_dix=decompte.nb_dix, nb_neuf=decompte.nb_neuf),
                 statut=_statut_pour(nature_par_archer.get(archer.id)),
+                position_barrage=positions.get(archer.id, 0),
             )
         )
 
@@ -248,8 +300,14 @@ def calculer_classement(
     classables = [e for e in entrees if e.statut is not StatutClassement.DISQUALIFIE]
     disqualifies = [e for e in entrees if e.statut is StatutClassement.DISQUALIFIE]
 
-    ordre_classables = sorted(classables, key=_cle_tri)
-    rangs_scratch = _ranger(ordre_classables)
+    def comparer(a: _Entree, b: _Entree) -> int:
+        """Ferme le comparateur sur la politique — `cmp_to_key` est générique, il lui faut des
+        paramètres annotés pour inférer le type comparé."""
+        return _comparer(a, b, departage)
+
+    cle = cmp_to_key(comparer)
+    ordre_classables = sorted(classables, key=cle)
+    rangs_scratch = _ranger(ordre_classables, departage)
 
     # Rangs par catégorie : même comparateur, appliqué au sous-ensemble de chaque catégorie.
     # L'ordre relatif y est **identique** à l'ordre scratch (mêmes archers, même clé) — seule la
@@ -259,9 +317,9 @@ def calculer_classement(
     for entree in ordre_classables:
         par_categorie.setdefault(entree.archer.categorie_id, []).append(entree)
     for groupe in par_categorie.values():
-        rangs_categorie.update(_ranger(groupe))
+        rangs_categorie.update(_ranger(groupe, departage))
 
-    ordre_final = ordre_classables + sorted(disqualifies, key=_cle_tri)
+    ordre_final = ordre_classables + sorted(disqualifies, key=cle)
 
     # `categorie_libelle` retombe sur "" si la catégorie de l'archer manque au lot passé — ne
     # devrait pas arriver (FK obligatoire depuis E02US002). Contrairement au `club_id` inconnu
@@ -288,4 +346,13 @@ def calculer_classement(
                 statut=entree.statut,
             )
         )
-    return Classement(lignes=tuple(lignes))
+    # Les égalités se lisent sur les rangs **définitifs** : un barrage déjà tiré ne doit plus être
+    # réclamé, sans quoi l'écran redemanderait éternellement ce qui vient d'être fait.
+    egalites = egalites_a_departager(
+        [
+            (rangs_scratch[entree.archer_id], Participant.individuel(entree.archer_id))
+            for entree in ordre_classables
+        ],
+        departage,
+    )
+    return Classement(lignes=tuple(lignes), egalites_a_departager=egalites)

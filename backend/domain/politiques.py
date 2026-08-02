@@ -391,10 +391,26 @@ class DecompteDepartage:
 
 class Tiebreak(Protocol):
     """Départage deux tireurs à égalité de score (ADR-0004). Méthode fondatrice : le comparateur
-    (`< 0` si `a` devance `b`, `0` si ex æquo). Un barrage de tir (E06US003) sera une autre
-    implémentation de cette même interface."""
+    (`< 0` si `a` devance `b`, `0` si ex æquo).
+
+    **Seconde méthode, ajoutée par E06US003** ([ADR-0066]) : `barrage_requis`. Elle ne départage
+    rien — elle dit si l'ex æquo constaté à un `rang` donné doit être tranché **au tir** plutôt que
+    partagé. Le partage des rôles écrit par E05US015 est **intact** : le comparateur constate,
+    le moteur fait tirer. Décider « jusqu'où on barre » reste une **constatation** de politique, et
+    c'est un réglage de **format** — donc de la configuration, pas du code (règle 2).
+
+    Pourquoi ici plutôt que dans une 7ᵉ famille : le seuil et le comparateur doivent rester
+    **cohérents entre eux** (barrer selon §8.1 dans un tournoi qui départage en poule n'a pas de
+    sens), et deux familles séparées permettraient précisément de les désaccorder. Le prix assumé :
+    toute implémentation de `Tiebreak` porte désormais deux méthodes, dont une qui vaut `False`
+    pour les deux stratégies historiques.
+
+    [ADR-0066]: ../../docs/adr/0066-seuil-de-barrage-porte-par-la-politique-tiebreak.md
+    """
 
     def departager(self, a: DecompteDepartage, b: DecompteDepartage) -> int: ...
+
+    def barrage_requis(self, rang: int) -> bool: ...
 
 
 @dataclass(frozen=True)
@@ -415,6 +431,10 @@ class TiebreakFftaDefaut:
         if cle_a < cle_b:
             return 1
         return 0
+
+    def barrage_requis(self, rang: int) -> bool:
+        """Jamais : le **défaut** d'E06US001 est l'ex æquo, à tous les rangs (§8.1)."""
+        return False
 
 
 @dataclass(frozen=True)
@@ -440,6 +460,47 @@ class TiebreakPoules:
         if cle_a < cle_b:
             return 1
         return 0
+
+    def barrage_requis(self, rang: int) -> bool:
+        """Non — le « barrage si nécessaire » de §10.1 n'est pas *systématique*.
+
+        Le référentiel le cite en fin de cascade sans dire à quelles places il s'applique ; c'est
+        `TiebreakAvecBarrage` qui répond à cette question, en enveloppant celui-ci. Renvoyer `True`
+        ici ferait retirer pour départager le 27ᵉ d'une poule de qualification.
+        """
+        return False
+
+
+@dataclass(frozen=True)
+class TiebreakAvecBarrage:
+    """Départage **composite** : celui de `sous_jacent`, plus un **barrage** jusqu'au rang réglé.
+
+    C'est l'option qu'E06US001 avait laissée ouverte (« seul le défaut, l'ex æquo, est fixé ici »),
+    réglée au cadrage du 02/08/2026 en **seuil configurable** plutôt qu'en règle fixe : ce
+    qui fait qu'une place est « à enjeu » dépend du tournoi — la dernière place qualificative d'un
+    tableau de 8 n'est pas celle d'un tableau de 32.
+
+    ⚠️ **Le seuil désigne le rang du GROUPE, pas chacune de ses places.** Deux ex æquo au rang 8
+    avec `jusqu_au=8` se départagent, et le barrage tranche donc **aussi** la 9ᵉ place, au-delà du
+    seuil. C'est voulu : « départager la dernière place qualificative » est précisément une égalité
+    qui **chevauche** le seuil, et la lire place par place rendrait l'option inutile là où on la
+    demande.
+
+    Composite au même titre que `RoutingRepechage` : il **délègue** `departager` sans y toucher, et
+    n'ajoute que le déclenchement. Un seuil réglé sur `TiebreakPoules` départage donc toujours en
+    poule — les deux réglages restent cohérents parce qu'ils voyagent ensemble ([ADR-0066]).
+
+    [ADR-0066]: ../../docs/adr/0066-seuil-de-barrage-porte-par-la-politique-tiebreak.md
+    """
+
+    sous_jacent: Tiebreak
+    jusqu_au: int
+
+    def departager(self, a: DecompteDepartage, b: DecompteDepartage) -> int:
+        return self.sous_jacent.departager(a, b)
+
+    def barrage_requis(self, rang: int) -> bool:
+        return rang <= self.jusqu_au
 
 
 # --- depth -------------------------------------------------------------------------------------
@@ -581,6 +642,14 @@ def registre_par_defaut() -> RegistrePolitiques:
     registre.enregistrer(FamillePolitique.BYES, "mieux_classes", lambda _p: ByesAuxMieuxClasses())
     registre.enregistrer(FamillePolitique.TIEBREAK, "ffta_defaut", lambda _p: TiebreakFftaDefaut())
     registre.enregistrer(FamillePolitique.TIEBREAK, "poules", lambda _p: TiebreakPoules())
+    # Seconde politique **composite** du catalogue (E06US003) : comme le repêchage, sa fabrique est
+    # fermée sur le registre en cours de construction, parce qu'elle doit résoudre le nom du
+    # comparateur qu'elle enveloppe.
+    registre.enregistrer(
+        FamillePolitique.TIEBREAK,
+        "barrage",
+        lambda params: _fabriquer_barrage(params, registre),
+    )
     registre.enregistrer(FamillePolitique.DEPTH, "un_vers_n", lambda _p: ProfondeurUnVersN())
     registre.enregistrer(FamillePolitique.DEPTH, "podium", _fabriquer_profondeur_podium)
     registre.enregistrer(FamillePolitique.DEPTH, "aucun", lambda _p: AucunClassement())
@@ -648,6 +717,51 @@ def _fabriquer_repechage(
             "Routing", registre.resoudre(FamillePolitique.ROUTING, nom_sinon, params_sinon)
         )
     return RoutingRepechage(tours_repeches=frozenset(tours), sinon=sinon)
+
+
+def _fabriquer_barrage(
+    params: Mapping[str, object], registre: RegistrePolitiques
+) -> TiebreakAvecBarrage:
+    """`{"nom": "barrage", "jusqu_au": 8, "sinon": {"nom": "ffta_defaut"}}` → la politique.
+
+    `jusqu_au` est **obligatoire** : un barrage sans seuil ne barre rien, c'est un `ffta_defaut`
+    déguisé — et l'accepter laisserait croire à l'organisateur que son format départage au tir alors
+    qu'il n'en fait rien. Même raisonnement que le `tours` obligatoire du repêchage. `sinon` est
+    facultatif et vaut `ffta_defaut`, le comparateur de qualification.
+
+    ⚠️ **Un barrage ne s'enveloppe pas lui-même**, et le cas est refusé explicitement plutôt que
+    laissé à une limite de profondeur : deux seuils imbriqués ne composent rien (le plus interne
+    serait purement et simplement ignoré, `barrage_requis` n'étant jamais délégué). C'est ce qui le
+    distingue du repêchage, dont l'imbrication a un sens même si aucun format ne l'emploie.
+    """
+    brut = params.get("jusqu_au")
+    if not isinstance(brut, int) or isinstance(brut, bool) or brut < 1:
+        raise PolitiqueMalFormee(
+            "Un barrage attend le rang **jusqu'auquel** il départage, entier positif "
+            f"(reçu {brut!r}) ; sans seuil il ne barre rien."
+        )
+    spec_sinon = params.get("sinon", {"nom": "ffta_defaut"})
+    if not isinstance(spec_sinon, Mapping):
+        raise PolitiqueMalFormee(
+            "Le « sinon » d'un barrage est un objet portant un « nom » de départage "
+            f"(reçu {spec_sinon!r})."
+        )
+    nom_sinon = spec_sinon.get("nom")
+    if not isinstance(nom_sinon, str):
+        raise PolitiqueMalFormee(
+            f"Le « nom » du départage enveloppé par un barrage doit être une chaîne "
+            f"(reçu {nom_sinon!r})."
+        )
+    if nom_sinon == "barrage":
+        raise PolitiqueMalFormee(
+            "Un barrage ne s'enveloppe pas lui-même : deux seuils imbriqués ne composent pas, "
+            "le plus interne serait ignoré."
+        )
+    params_sinon = {clef: valeur for clef, valeur in spec_sinon.items() if clef != "nom"}
+    sous_jacent = cast(
+        "Tiebreak", registre.resoudre(FamillePolitique.TIEBREAK, nom_sinon, params_sinon)
+    )
+    return TiebreakAvecBarrage(sous_jacent=sous_jacent, jusqu_au=brut)
 
 
 def _fabriquer_profondeur_podium(params: Mapping[str, object]) -> ProfondeurPodium:

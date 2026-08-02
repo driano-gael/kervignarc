@@ -34,6 +34,7 @@ from dataclasses import dataclass
 
 from domain.erreurs import ConfigurationBarrageInvalide
 from domain.participant import Participant
+from domain.politiques import Tiebreak
 
 FLECHES_INDIVIDUEL = 1
 """Art. B.6.5.2 : le barrage individuel se tire à **une** flèche."""
@@ -189,6 +190,24 @@ def resoudre_barrage(tirs: Sequence[TirBarrage]) -> ResultatBarrage:
     faire : ils n'ont pas tiré. Ils forment donc un groupe à rejouer plutôt qu'un ordre inventé,
     quitte à ce que ce soit au service d'en tirer les conséquences (généralement : rang partagé).
     """
+    return _issue(partitionner_barrage(tirs))
+
+
+def partitionner_barrage(tirs: Sequence[TirBarrage]) -> tuple[tuple[Participant, ...], ...]:
+    """La même règle que `resoudre_barrage`, rendue **structurée** : la partition **ordonnée**.
+
+    Chaque groupe rassemble des participants que ce tir n'a pas départagés ; les groupes sont rendus
+    du mieux placé au moins bien, un **singleton** valant « départagé ». `((A, C), (B, D))` se lit
+    donc : A et C devant B et D, mais indépartageables entre eux.
+
+    ⚠️ **C'est l'information que `resoudre_barrage` doit jeter, et pourquoi ce découpage existe.**
+    Son contrat interdit l'ordre partiel (« un classement à moitié vrai est plus dangereux qu'un
+    refus »), donc il rend `groupes_a_rejouer` **sans** l'ordre relatif des groupes. Ce choix reste
+    juste pour un appelant qui publie un résultat — mais la **répétition en manches**, elle, a
+    besoin de savoir que le groupe à 10 précède le groupe à 8, sans quoi le retir pourrait faire
+    passer un tireur à 8 devant un tireur à 10 déjà départagé. On expose donc la partition à côté,
+    plutôt que d'affaiblir le contrat de `resoudre_barrage` pour un seul appelant.
+    """
     if len(tirs) < 2:
         raise ConfigurationBarrageInvalide(
             "Un barrage départage au moins deux participants ; à un seul il n'y a rien "
@@ -198,24 +217,88 @@ def resoudre_barrage(tirs: Sequence[TirBarrage]) -> ResultatBarrage:
     if len(set(participants)) != len(participants):
         raise ConfigurationBarrageInvalide("Un même participant figure deux fois dans ce barrage.")
 
-    ordre: list[Participant] = []
-    groupes: list[tuple[Participant, ...]] = []
+    partition: list[tuple[Participant, ...]] = []
     for groupe in _groupes_de_score(tirs):
         if groupe[0].score is None:
             # Les absents : indépartageables entre eux par construction, ils n'ont pas tiré.
-            if len(groupe) == 1:
-                ordre.append(groupe[0].participant)
-            else:
-                groupes.append(tuple(tir.participant for tir in groupe))
+            partition.append(tuple(tir.participant for tir in groupe))
             continue
         for sous_groupe in _departager_a_la_distance(groupe):
-            if len(sous_groupe) == 1:
-                ordre.append(sous_groupe[0].participant)
-            else:
-                groupes.append(tuple(tir.participant for tir in sous_groupe))
+            partition.append(tuple(tir.participant for tir in sous_groupe))
+    return tuple(partition)
+
+
+def _issue(partition: Sequence[tuple[Participant, ...]]) -> ResultatBarrage:
+    """Traduit une partition en `ResultatBarrage` — tout ou rien, conformément à son contrat."""
+    groupes = tuple(groupe for groupe in partition if len(groupe) > 1)
     if groupes:
-        return ResultatBarrage(groupes_a_rejouer=tuple(groupes))
-    return ResultatBarrage(ordre=tuple(ordre))
+        return ResultatBarrage(groupes_a_rejouer=groupes)
+    return ResultatBarrage(ordre=tuple(groupe[0] for groupe in partition))
+
+
+def resoudre_barrage_en_manches(manches: Sequence[Sequence[TirBarrage]]) -> ResultatBarrage:
+    """Applique les manches successives d'un barrage — le « on répète » du règlement (§8.2).
+
+    `manches[0]` est le barrage annoncé, chaque manche suivante le **retir** des ex æquo qu'il n'a
+    pas départagés. Le verdict se **recalcule** intégralement depuis les tirs : rien n'est stocké
+    d'un ordre saisi à la main, donc corriger une flèche mal saisie corrige le classement (CA
+    « verdict rejouable »).
+
+    Trois règles de saisie, refusées plutôt qu'absorbées en silence :
+
+    1. **un tireur déjà départagé ne retire pas** — le laisser passer réordonnerait des places que
+       la manche précédente avait tranchées, et c'est exactement l'accident que la partition
+       ordonnée existe pour empêcher ;
+    2. **un groupe se retire en entier ou pas du tout** — deux ex æquo dont un seul a tiré ne se
+       départagent sur rien ; l'accepter ferait gagner celui qui a tiré, faute d'adversaire ;
+    3. un groupe **absent** de la manche n'est pas résolu pour autant : il reste à égalité. C'est le
+       cas normal du jour J, où le juge fait retirer une égalité puis l'autre, pas les deux
+       ensemble.
+    """
+    if not manches:
+        raise ConfigurationBarrageInvalide(
+            "Un barrage compte au moins une manche : celle qui a été annoncée."
+        )
+    partition = partitionner_barrage(manches[0])
+    for numero, manche in enumerate(manches[1:], start=2):
+        partition = _rejouer(partition, manche, numero)
+    return _issue(partition)
+
+
+def _rejouer(
+    partition: Sequence[tuple[Participant, ...]], manche: Sequence[TirBarrage], numero: int
+) -> tuple[tuple[Participant, ...], ...]:
+    """Applique une manche de retir à une partition, en n'y touchant que les groupes concernés."""
+    tirs: dict[Participant, TirBarrage] = {}
+    for tir in manche:
+        if tir.participant in tirs:
+            raise ConfigurationBarrageInvalide(
+                f"Un même participant figure deux fois dans la manche {numero}."
+            )
+        tirs[tir.participant] = tir
+
+    a_egalite = {participant for groupe in partition if len(groupe) > 1 for participant in groupe}
+    intrus = [participant for participant in tirs if participant not in a_egalite]
+    if intrus:
+        raise ConfigurationBarrageInvalide(
+            f"{len(intrus)} tireur(s) de la manche {numero} étaient déjà départagés : un retir ne "
+            "rouvre pas des places tranchées."
+        )
+
+    nouvelle: list[tuple[Participant, ...]] = []
+    for groupe in partition:
+        presents = [participant for participant in groupe if participant in tirs]
+        if len(groupe) == 1 or not presents:
+            # Départagé, ou groupe que cette manche n'a pas fait retirer : inchangé.
+            nouvelle.append(groupe)
+            continue
+        if len(presents) != len(groupe):
+            raise ConfigurationBarrageInvalide(
+                f"Manche {numero} : {len(presents)} tireur(s) sur {len(groupe)} d'une même "
+                "égalité ont retiré. Un groupe se retire en entier ou pas du tout."
+            )
+        nouvelle.extend(partitionner_barrage([tirs[participant] for participant in groupe]))
+    return tuple(nouvelle)
 
 
 def _groupes_de_score(tirs: Sequence[TirBarrage]) -> list[list[TirBarrage]]:
@@ -254,3 +337,66 @@ def _departager_a_la_distance(groupe: Sequence[TirBarrage]) -> list[list[TirBarr
         else:
             sous_groupes.append([tir])
     return sous_groupes
+
+
+# --- déclenchement : quelles égalités méritent un barrage (E06US003) -----------------------------
+
+
+@dataclass(frozen=True)
+class EgaliteADepartager:
+    """Un ex æquo que la politique `tiebreak` désigne comme **à trancher au tir**.
+
+    `rang` est le rang **partagé** par le groupe — celui que le barrage va éclater en rangs
+    consécutifs. Une égalité signalée n'est pas un barrage déjà organisé : le moteur **constate**,
+    l'organisateur fait tirer (même partage des rôles que `TiebreakPoules`, dont le `0` constate
+    l'ex æquo sans faire tirer personne).
+    """
+
+    rang: int
+    participants: tuple[Participant, ...]
+
+
+def egalites_a_departager(
+    rangs: Sequence[tuple[int, Participant]], tiebreak: Tiebreak
+) -> tuple[EgaliteADepartager, ...]:
+    """Les égalités de `rangs` que `tiebreak` veut voir départagées au tir (E06US003).
+
+    `rangs` associe à chaque participant son rang, **ex æquo déjà partagés** — c'est-à-dire la
+    sortie d'un classement, quel qu'il soit : qualification (§8.1), poule (§10.1) ou tout autre.
+    C'est ce qui permet aux trois consommateurs du CA de partager ce déclenchement sans qu'aucun ne
+    connaisse la structure des autres.
+
+    Un rang **non partagé** n'est jamais une égalité, et un groupe que la politique ne réclame pas
+    reste **ex æquo** — le défaut d'E06US001, que le seuil ne fait qu'ouvrir là où on le règle.
+    Rendu trié par rang : la sortie est une surface d'affichage, elle doit être déterministe.
+    """
+    par_rang: dict[int, list[Participant]] = {}
+    for rang, participant in rangs:
+        par_rang.setdefault(rang, []).append(participant)
+    return tuple(
+        EgaliteADepartager(rang=rang, participants=tuple(participants))
+        for rang, participants in sorted(par_rang.items())
+        if len(participants) > 1 and tiebreak.barrage_requis(rang)
+    )
+
+
+@dataclass(frozen=True)
+class VerdictBarrage:
+    """L'ordre qu'un barrage a produit sur un groupe d'ex æquo, prêt à être appliqué au classement.
+
+    `rang` est le rang partagé d'origine, `ordre` le classement obtenu au tir. Un barrage **non
+    résolu** rend un `ordre` vide : il ne range personne et le rang **reste partagé**. C'est la
+    même exigence que `ResultatBarrage` — ne jamais publier un ordre à moitié vrai, parce qu'il
+    s'affiche sans avertir.
+    """
+
+    rang: int
+    ordre: tuple[Participant, ...] = ()
+
+    def rangs(self) -> dict[Participant, int]:
+        """Les rangs **consécutifs** que ce verdict attribue, à partir du rang partagé.
+
+        Trois ex æquo au rang 8 départagés donnent 8, 9 et 10 — le barrage tranche donc aussi des
+        places situées **au-delà** du seuil qui l'a déclenché, ce qui est voulu (ADR-0066).
+        """
+        return {participant: self.rang + ecart for ecart, participant in enumerate(self.ordre)}
