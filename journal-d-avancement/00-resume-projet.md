@@ -435,7 +435,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **90 US livrées** sur `main` (mergées, revues, CI verte) à la date du 02/08/2026. **`SUIVI-US.md`
+- **91 US livrées** sur `main` (mergées, revues, CI verte) à la date du 02/08/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -463,15 +463,26 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
   et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (11/14)**
+  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (12/14)**
   avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003), le **tableau
   d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001), la
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
   (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**), l'**abandon /
   disqualification** (E04US015 — qualif *et* duels), le **cycle de vie d'un départ** (E12US008), le
   **feu vert + lancement d'un tour** (E12US002), le **remboursement d'une inscription payée
-  annulée** (E08US005) et l'**affichage de la prochaine cible après validation** (E04US018).
-- Dernière US livrée : **E07US008** (les affectations du prochain tour) — US **à surface visible**,
+  annulée** (E08US005) l'**affichage de la prochaine cible après validation** (E04US018) et le **barrage de tir pour les places décisives** (E06US003).
+- Dernière US livrée : **E06US003** (le barrage de tir pour les places décisives) — US **à surface
+  visible**. À score égal, le classement départage au nombre de 10 puis de 9 ; quand cela ne suffit
+  pas, deux archers **partageaient** leur rang. C'est acceptable au milieu du tableau, pas quand la
+  place décide de quelque chose — la dernière qualificative, une marche du podium. L'organisateur
+  peut désormais déclarer « je départage au tir jusqu'au rang N » : le classement **signale** les
+  places concernées, il fait tirer, saisit la flèche de chacun, et les rangs deviennent consécutifs.
+  Si les flèches sont encore égales, on compare la distance au centre ; si elle n'a pas été mesurée,
+  l'application **fait retirer** plutôt que de trancher sur une inconnue. Un archer absent au barrage
+  annoncé est déclaré perdant, comme le veut le règlement — et cela se **coche**, jamais ne se
+  déduit d'un champ vide. **Rien ne change pour un tournoi qui ne demande rien** : c'est le défaut, et
+  il est resté intact. *(Livré juste avant : **E07US008**, les affectations du prochain tour.)*
+- Avant-dernière US livrée : **E07US008** (les affectations du prochain tour) — US **à surface visible**,
   qui referme les **quatre canaux de routage**. L'archer parti de la salle retrouve sur son téléphone
   sa **cible** et sa **place** pour le duel suivant ; l'archer sorti voit le **rang qu'il a acquis**,
   en fourchette (« 5ᵉ-8ᵉ ») quand aucun match n'a départagé les battus — c'est le résultat réel, pas
@@ -479,7 +490,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   l'aurait fait rentrer chez lui. Un **panneau « Affectations »** montre tout le pas de tir d'un coup,
   pour la table de l'organisation comme pour l'écran de salle, qui gagne ainsi la dernière vue qui lui
   manquait. *(Livré juste avant : **E07US004**, l'écran de salle et le suivi du déroulé.)*
-- Avant-dernière US livrée : **E07US004** (écran de salle & suivi du déroulé) — US **à surface visible**,
+- Livrée peu avant : **E07US004** (écran de salle & suivi du déroulé) — US **à surface visible**,
   qui referme le chantier du moteur de phases par sa sortie visuelle. Un **écran branché dans le
   gymnase** se rattache exactement comme une tablette de cible (même code, même geste) puis fait
   défiler tout seul classement, plan de cibles et suivi ; l'organisateur peut lui **imposer une vue à
@@ -490,5 +501,5 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   dessin** aux trois endroits (atelier, poste de l'organisateur, écran projeté) : on ne réapprend pas
   à le lire en changeant d'écran. *(Livré juste avant : **E01US024**, composer, diagnostiquer et
   simuler un déroulé ; puis **E05US015**, le catalogue de types de phase.)*
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E06US003** (barrage de tir pour places
-  décisives) ; la séquence J2 reprend son cours. Le fil **équipes** est débloqué (E13US002+).
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E06US004** (podium des duels &
+  agrégation des rangs). Le fil **équipes** est débloqué (E13US002+).
