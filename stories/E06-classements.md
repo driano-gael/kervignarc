@@ -47,6 +47,30 @@
   faible** d'un **Big Shoot Off**. Les trois appliquent le même moteur (`resoudre_barrage`) ; aucun ne
   le réimplémente. Le BSO n'est **pas** soumis au seuil : son égalité bloque la manche par
   construction, elle n'a pas de « place à enjeu » à comparer.
+- **CA — poule & Big Shoot Off : tireurs désignés, verdict non reversé (extension du 02/08/2026)**.
+  Le CA ci-dessus disait « résultat intégré au classement » pour les trois consommateurs : c'est
+  vrai en **qualification** seulement. Pour les deux autres portées, l'organisateur **désigne**
+  lui-même les tireurs, et le verdict **ne remonte dans aucun classement** — non par choix de
+  conception, mais parce qu'il n'existe **aucun classement de poule ni aucun état de Big Shoot Off
+  calculé** où le lire ni où le reverser (ni `poule.py` ni `big_shoot_off.py` n'ont de consommateur
+  de production, [DETTE-028](../docs/dette.md)). Le barrage y est pleinement conduit (annonce,
+  manches, absents, distance, correction, annulation) et son résultat se lit à l'écran. La boucle se
+  fermera quand le chantier moteur livrera l'exécution de ces phases — **c'est cette US-là qui
+  devra reprendre le présent CA**, pas la suivante qui en dériverait ses tests.
+- **CA — un verdict périmé ne s'applique pas**. Les tireurs sont **figés à l'annonce** ; le
+  classement, lui, continue de vivre. Si une volée validée en retard, une correction ou un forfait
+  **change le groupe** d'ex æquo, le verdict ne décrit plus cette égalité : il est **écarté** et
+  l'égalité **re-signalée** (le juge refait tirer). Annoncer un second barrage sur une place où un
+  barrage **périmé** reste ouvert est **refusé** : il faut l'annuler d'abord.
+- **CA — rien n'est signalé avant le premier tir**. Seuls les archers **en lice ayant validé au
+  moins une volée** sont candidats à un barrage. Sans cela, au démarrage tout le plateau est à zéro,
+  donc ex æquo au rang 1 — et l'écran proposerait de faire tirer les 120 archers au moment même où
+  l'organisateur règle sa phase. « Avoir tiré » n'est pas « avoir marqué » : une volée entièrement
+  manquée compte.
+- **CA — un verdict acté reste corrigible**. Clore un barrage signifie « le juge a acté », pas « le
+  résultat est gravé » : le verdict n'est jamais stocké, il se recalcule. Corriger une manche d'un
+  barrage clos le **rouvre**. Sans quoi un verdict inversé sur la dernière place qualificative
+  enverrait le mauvais archer au tableau, définitivement.
 - **CA — persistance flèche par flèche** : chaque tir est enregistré (score, distance au centre,
   **absence** distinguée d'une saisie en attente), les **manches successives** sont conservées, et le
   verdict est **rejouable** depuis les tirs — on ne stocke pas un ordre saisi à la main.

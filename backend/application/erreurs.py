@@ -41,10 +41,28 @@ class EgaliteNonDepartageable(ApplicationError):
     code = "egalite_non_departageable"
 
 
-class BarrageDejaClos(ApplicationError):
-    """Le barrage est clos : on n'y saisit plus de manche (E06US003)."""
+class BarragePerime(ApplicationError):
+    """Un barrage est ouvert à cette place, mais sur d'autres tireurs (E06US003).
 
-    code = "barrage_deja_clos"
+    Le classement a bougé depuis son annonce — une volée validée en retard, un score corrigé, un
+    forfait. L'ancien barrage ne départage plus le bon groupe, et son verdict sera écarté. On refuse
+    d'en ouvrir un second plutôt que de laisser l'organisateur faire tirer un groupe incomplet
+    devant un écran qui ne lui dirait rien.
+    """
+
+    code = "barrage_perime"
+
+
+class TireursDesignesInvalides(ApplicationError):
+    """Les archers désignés pour un barrage de poule / Big Shoot Off ne conviennent pas (E06US003).
+
+    Régime **désigné** : aucun classement ne valide les tireurs, donc le service vérifie ce que la
+    qualification obtenait gratuitement — au moins deux archers distincts, du **bon** tournoi, et
+    une phase du bon tournoi. Erreur distincte d'`EgaliteNonDepartageable` : aucun de ces cas n'est
+    une égalité indépartageable, et le `code` est ce sur quoi le front et les journaux s'appuient.
+    """
+
+    code = "tireurs_designes_invalides"
 
 
 class TransitionStatutInvalide(ApplicationError):

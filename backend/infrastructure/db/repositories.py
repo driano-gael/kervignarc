@@ -3091,6 +3091,10 @@ def _supprimer_barrages_de_l_archer(session: Session, archer_id: int) -> None:
     for ligne in _barrages_contenant(session, archer_id):
         session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id == ligne.id))
         session.execute(delete(BarrageORM).where(BarrageORM.id == ligne.id))
+    # Ceinture : un tir dont l'archer ne figure (plus) dans `participants_json` échapperait à la
+    # boucle et rebloquerait la suppression en 500. Inatteignable par le service aujourd'hui — une
+    # ligne pour que ça le reste.
+    session.execute(delete(BarrageTirORM).where(BarrageTirORM.archer_id == archer_id))
 
 
 def _fusionner_barrages(session: Session, gagnant_id: int, perdant_id: int) -> None:
@@ -3108,6 +3112,16 @@ def _fusionner_barrages(session: Session, gagnant_id: int, perdant_id: int) -> N
     personne : il est supprimé plutôt que laissé dans un état que l'agrégat rejetterait.
     """
     for ligne in _barrages_contenant(session, perdant_id):
+        if gagnant_id in json.loads(ligne.participants_json):
+            # ⚠️ **Les deux fiches tiraient le même barrage : il n'a plus de verdict à conserver.**
+            # Reporter les tirs produirait un agrégat que le moteur refuse à la relecture — une
+            # manche ≥ 2 se retrouverait avec un tireur que la manche 1 vient de départager, et
+            # `GET /barrages` tomberait en 422, emportant le panneau qui permettrait de réparer.
+            # Un barrage qui opposait une personne à elle-même est caduc, quel que soit le nombre
+            # de tireurs restants : on le supprime, l'organisateur le rouvrira s'il y a lieu.
+            session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id == ligne.id))
+            session.execute(delete(BarrageORM).where(BarrageORM.id == ligne.id))
+            continue
         deja = {
             manche
             for (manche,) in session.execute(
@@ -3308,16 +3322,24 @@ class BarrageRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de suppression du barrage.") from exc
 
+    def rouvrir(self, barrage_id: BarrageId) -> BarrageDePlaces:
+        """Lève la clôture (une manche a été saisie après coup)."""
+        return self._basculer_cloture(barrage_id, clos=False)
+
     def clore(self, barrage_id: BarrageId) -> BarrageDePlaces:
         """Marque le barrage comme clos — le juge a acté le verdict, plus de retir attendu."""
+        return self._basculer_cloture(barrage_id, clos=True)
+
+    def _basculer_cloture(self, barrage_id: BarrageId, *, clos: bool) -> BarrageDePlaces:
+        """Pose ou lève le drapeau de clôture, puis recharge l'agrégat."""
         try:
             with self._session_factory() as session:
                 session.execute(
-                    update(BarrageORM).where(BarrageORM.id == barrage_id).values(clos=True)
+                    update(BarrageORM).where(BarrageORM.id == barrage_id).values(clos=clos)
                 )
                 session.commit()
         except SQLAlchemyError as exc:
-            raise InfrastructureError("Échec de clôture du barrage.") from exc
+            raise InfrastructureError("Échec de mise à jour de la clôture du barrage.") from exc
         recharge = self.par_id(barrage_id)
         if recharge is None:  # pragma: no cover — l'appelant a vérifié l'existence
             raise InfrastructureError("Le barrage a disparu pendant sa clôture.")

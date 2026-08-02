@@ -28,9 +28,10 @@ from dataclasses import replace
 
 from application.classements import ServiceClassement
 from application.erreurs import (
-    BarrageDejaClos,
     BarrageIntrouvable,
+    BarragePerime,
     EgaliteNonDepartageable,
+    TireursDesignesInvalides,
     TournoiIntrouvable,
 )
 from domain.archer import ArcherId
@@ -62,17 +63,18 @@ class ServiceBarrage:
         barrages: BarrageRepository,
         classements: ServiceClassement,
         horloge: Horloge,
-        archers: ArcherRepository | None = None,
-        phases: PhaseRepository | None = None,
+        archers: ArcherRepository,
+        phases: PhaseRepository,
     ) -> None:
         self._tournois = tournois
         self._barrages = barrages
         self._classements = classements
         self._horloge = horloge
-        # Requis par les portées **poule** et **Big Shoot Off**, où les tireurs sont *désignés* et
-        # non dérivés d'un classement : il faut alors vérifier qu'ils appartiennent au tournoi, et
-        # que la phase citée aussi. Facultatifs pour ne pas casser un câblage qui n'annoncerait que
-        # des barrages de qualification.
+        # Requis par les portées **poule** et **Big Shoot Off**, où les tireurs sont *désignés*
+        # et non dérivés d'un classement : ce sont les **seules** protections de ce régime. Rendus
+        # obligatoires après revue — il n'existe qu'un site de construction (composition root,
+        # règle 8), donc l'optionalité n'achetait rien et laissait une garde de sécurité s'éteindre
+        # sans le moindre signal.
         self._archers = archers
         self._phases = phases
 
@@ -110,13 +112,24 @@ class ServiceBarrage:
         « faire tirer » ne doit pas ouvrir deux barrages sur la même place.
         """
         self._exiger_tournoi(tournoi_id)
-        existant = self._ouvert_equivalent(tournoi_id, portee, rang, phase_id, reference)
-        if existant is not None:
-            return existant
         if portee is PorteeBarrage.QUALIFICATION:
             participants = self._egalite_signalee(tournoi_id, rang)
         else:
             participants = self._participants_designes(tournoi_id, archer_ids, phase_id)
+        meme_endroit = self._ouverts_au_meme_endroit(tournoi_id, portee, rang, phase_id, reference)
+        attendus = set(participants)
+        existant = next((b for b in meme_endroit if set(b.participants) == attendus), None)
+        if existant is not None:
+            return existant
+        if meme_endroit and portee is PorteeBarrage.QUALIFICATION:
+            # Hors qualification, « même place, tireurs différents » n'est pas un barrage périmé
+            # mais **un autre barrage** : deux égalités d'une même poule se disputent séparément.
+            # C'est en qualification seulement que le rang identifie la place de façon unique.
+            raise BarragePerime(
+                "Un barrage est deja ouvert ici, mais il ne porte plus sur les memes tireurs "
+                "- le classement a bouge depuis son annonce. Annulez-le avant d'en ouvrir un "
+                "nouveau : les archers qu'il designait ne sont plus ceux a departager."
+            )
         return self._barrages.ouvrir(
             BarrageDePlaces(
                 tournoi_id=tournoi_id,
@@ -169,18 +182,21 @@ class ServiceBarrage:
             if archer_id not in distincts:
                 distincts.append(archer_id)
         if len(distincts) < 2:
-            raise EgaliteNonDepartageable("Un barrage départage au moins deux archers distincts.")
-        if self._archers is not None:
-            connus = {archer.id for archer in self._archers.par_tournoi(tournoi_id) if archer.id}
-            etrangers = [archer_id for archer_id in distincts if archer_id not in connus]
-            if etrangers:
-                raise EgaliteNonDepartageable(
-                    f"{len(etrangers)} archer(s) désigné(s) n'appartiennent pas à ce tournoi."
-                )
-        if phase_id is not None and self._phases is not None:
+            raise TireursDesignesInvalides("Un barrage départage au moins deux archers distincts.")
+        connus = {
+            archer.id for archer in self._archers.par_tournoi(tournoi_id) if archer.id is not None
+        }
+        etrangers = [archer_id for archer_id in distincts if archer_id not in connus]
+        if etrangers:
+            raise TireursDesignesInvalides(
+                f"{len(etrangers)} archer(s) désigné(s) n'appartiennent pas à ce tournoi."
+            )
+        if phase_id is not None:
             phases = {phase.id for phase in self._phases.par_tournoi(tournoi_id)}
             if phase_id not in phases:
-                raise EgaliteNonDepartageable(f"La phase {phase_id} n'appartient pas à ce tournoi.")
+                raise TireursDesignesInvalides(
+                    f"La phase {phase_id} n'appartient pas à ce tournoi."
+                )
         return tuple(Participant.individuel(archer_id) for archer_id in distincts)
 
     def saisir_manche(
@@ -211,10 +227,6 @@ class ServiceBarrage:
         pas un tir devenu sans objet.
         """
         barrage = self._exiger_barrage(tournoi_id, barrage_id)
-        if barrage.clos:
-            raise BarrageDejaClos(
-                "Ce barrage est clos : annulez-le ou ouvrez-en un nouveau pour faire retirer."
-            )
         numero = manche if manche is not None else len(barrage.manches) + 1
         if numero < 1:
             raise ConfigurationBarrageInvalide(
@@ -231,7 +243,13 @@ class ServiceBarrage:
             )
         self._exiger_tireurs_du_barrage(barrage, tirs)
         self._exiger_manche_jouable(barrage, numero, tirs)
-        return self._barrages.enregistrer_manche(barrage_id, numero, tirs)
+        enregistre = self._barrages.enregistrer_manche(barrage_id, numero, tirs)
+        if barrage.clos:
+            # Saisir une manche sur un barrage clos le **rouvre** : on vient de dire que son
+            # résultat n'était pas le bon, donc « le juge a acté » ne tient plus. Le laisser clos
+            # afficherait un barrage réglé dont le verdict vient de changer.
+            return self._barrages.rouvrir(barrage_id)
+        return enregistre
 
     def annuler(self, tournoi_id: TournoiId, barrage_id: BarrageId) -> None:
         """Supprime un barrage annoncé par erreur, et ses tirs.
@@ -240,16 +258,16 @@ class ServiceBarrage:
         `clore` exige un barrage résolu, et un barrage qu'on ne veut pas faire tirer ne le sera
         jamais. Il restait affiché indéfiniment, et son rang bloquait toute nouvelle annonce.
 
-        Un barrage **clos** ne s'annule pas : son verdict est acquis et appliqué au classement.
-        Le défaire demanderait de re-signaler l'égalité, ce qui est le travail d'une correction de
-        manche, pas d'une suppression.
+        ⚠️ **Un barrage clos s'annule aussi**, et c'est un correctif de revue, pas un confort.
+        Une première version gardait les deux portes : `saisir_manche` refusait un barrage clos en
+        renvoyant vers l'annulation, `annuler` le refusait en renvoyant vers la correction — et la
+        ré-annonce échouait *précisément parce que* le verdict faux avait éclaté l'égalité, donc
+        plus rien n'était signalé. Les trois issues étaient fermées. Un juge qui actait un verdict
+        inversé sur la dernière place qualificative envoyait le mauvais archer au tableau,
+        **définitivement**. L'argument « le verdict est acquis » était faux : le verdict n'est
+        jamais stocké, `clos` n'est qu'un drapeau qui dit « le juge a acté ».
         """
         barrage = self._exiger_barrage(tournoi_id, barrage_id)
-        if barrage.clos:
-            raise BarrageDejaClos(
-                "Ce barrage est clos : son verdict est acquis. Corrigez une manche si le résultat "
-                "saisi est faux."
-            )
         assert barrage.id is not None, "Un barrage relu est persisté."
         self._barrages.supprimer(barrage.id)
 
@@ -280,32 +298,37 @@ class ServiceBarrage:
             )
         return self._barrages.clore(barrage_id)
 
-    def _ouvert_equivalent(
+    def _ouverts_au_meme_endroit(
         self,
         tournoi_id: TournoiId,
         portee: PorteeBarrage,
         rang: int | None,
         phase_id: PhaseId | None,
         reference: str | None,
-    ) -> BarrageDePlaces | None:
-        """Le barrage **non clos** qui dispute déjà la même chose, s'il y en a un.
+    ) -> list[BarrageDePlaces]:
+        """Les barrages non clos qui disputent la même **place** — tireurs non regardés.
 
-        L'identité d'un barrage, c'est le quadruplet `(portée, phase, référence, rang)` : c'est lui
-        qui rend l'annonce idempotente. La `référence` porte le numéro de poule ou de manche —
-        deux poules du même tournoi disputent des places distinctes, elles ne se confondent pas.
+        ⚠️ **L'identité d'un barrage inclut ses TIREURS, et c'était le trou.** Une première version
+        s'arrêtait au quadruplet `(portée, phase, référence, rang)`. En qualification `rang`
+        discrimine, mais hors qualification les quatre composantes sont facultatives — et le
+        formulaire n'envoie ni rang ni phase, et laisse la référence vide. Deux égalités de poule
+        successives tombaient donc sur la **même clé** : le second appel rendait le **premier**
+        barrage, l'écran vidait la sélection, et la deuxième égalité n'avait pas de barrage sans
+        que rien ne le dise.
+
+        `annoncer` compare donc les tireurs : même place **et** mêmes tireurs → c'est le même
+        barrage (idempotence) ; même place, tireurs différents → l'ancien est **périmé**, et on
+        refuse plutôt que de laisser faire tirer le mauvais groupe.
         """
-        return next(
-            (
-                barrage
-                for barrage in self._barrages.par_tournoi(tournoi_id)
-                if barrage.portee is portee
-                and barrage.rang_dispute == rang
-                and barrage.phase_id == phase_id
-                and barrage.reference == reference
-                and not barrage.clos
-            ),
-            None,
-        )
+        return [
+            barrage
+            for barrage in self._barrages.par_tournoi(tournoi_id)
+            if barrage.portee is portee
+            and barrage.rang_dispute == rang
+            and barrage.phase_id == phase_id
+            and barrage.reference == reference
+            and not barrage.clos
+        ]
 
     def _exiger_tournoi(self, tournoi_id: TournoiId) -> None:
         if self._tournois.par_id(tournoi_id) is None:

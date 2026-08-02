@@ -3436,3 +3436,19 @@ button:disabled {
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 4px 12px;
 }
+
+/* Réglage du barrage sur la ligne de la phase de qualification (E06US003). Il vit ici parce que la
+   qualification n'ouvre pas le formulaire d'édition complet — l'y mettre laissait le seuil
+   inatteignable, correctif de revue. */
+.phase__barrage {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.phase__barrage input {
+  width: 8ch;
+  min-height: 40px;
+}

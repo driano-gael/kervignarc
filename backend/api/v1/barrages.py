@@ -19,12 +19,13 @@ from __future__ import annotations
 import asyncio
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.barrages import ServiceBarrage
-from domain.barrage import BarrageDePlaces, PorteeBarrage
+from domain.barrage import BarrageDePlaces, PorteeBarrage, ResultatBarrage
+from domain.erreurs import ConfigurationBarrageInvalide
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["barrages"])
@@ -78,6 +79,34 @@ class AnnonceRequete(BaseModel):
     phase_id: int | None = None
     reference: str | None = Field(default=None, max_length=64)
 
+    @model_validator(mode="after")
+    def _coherence_du_regime(self) -> AnnonceRequete:
+        """Chaque régime n'accepte **que** ses champs.
+
+        ⚠️ Sans cette garde, `phase_id`/`reference` étaient acceptés en **qualification** alors
+        qu'ils y sont sans objet — et comme ils entrent dans la clé d'idempotence, deux `POST` au
+        même rang avec des références différentes ouvraient **deux** barrages sur la même place.
+        Leurs verdicts, contradictoires, passaient tous deux le filtre d'applicabilité (même
+        ensemble de tireurs), et le dernier lu l'emportait **en silence**. L'UI ne le permettait
+        pas ; l'API est le contrat.
+        """
+        if self.portee is PorteeBarrage.QUALIFICATION:
+            if self.rang is None:
+                raise ValueError(
+                    "Un barrage de qualification départage une place : indiquez son rang."
+                )
+            if self.archer_ids or self.phase_id is not None or self.reference is not None:
+                raise ValueError(
+                    "En qualification, les tireurs sont dérivés du classement : ne fournissez ni "
+                    "archer_ids, ni phase_id, ni reference."
+                )
+        elif not self.archer_ids:
+            raise ValueError(
+                "Hors qualification, aucun classement n'est calculé : désignez les archers à "
+                "départager (archer_ids)."
+            )
+        return self
+
 
 class TirReponse(BaseModel):
     archer_id: int
@@ -94,6 +123,16 @@ class BarrageReponse(BaseModel):
     égalités distinctes, qui se retirent séparément.
     """
 
+    incoherent: bool = False
+    """L'agrégat en base ne se relit pas (correction partielle, écriture directe…).
+
+    ⚠️ **Ce drapeau existe pour que le panneau ne meure jamais.** Le verdict se recalcule à chaque
+    lecture ; s'il lève, une première version faisait tomber `GET /barrages` en 422 — donc *tous*
+    les barrages du tournoi disparaissaient de l'écran, **avec** les boutons « Annuler » et
+    « Corriger » qui seraient la réparation. Le filet posé sur le classement ne couvrait que le côté
+    public. On dégrade donc ici aussi : le barrage reste listé, marqué incohérent, et actionnable.
+    """
+
     id: int
     """Toujours renseigné : un barrage **rendu** par l'API est persisté.
 
@@ -104,6 +143,7 @@ class BarrageReponse(BaseModel):
     tournoi_id: int
     portee: str
     rang_dispute: int | None
+    reference: str | None
     participants: list[int]
     manches: list[list[TirReponse]]
     clos: bool
@@ -113,13 +153,20 @@ class BarrageReponse(BaseModel):
 
     @staticmethod
     def de_agregat(barrage: BarrageDePlaces) -> BarrageReponse:
-        resultat = barrage.resultat()
         assert barrage.id is not None, "Un barrage rendu par le service est persisté."
+        try:
+            resultat = barrage.resultat()
+            incoherent = False
+        except ConfigurationBarrageInvalide:
+            resultat = ResultatBarrage(groupes_a_rejouer=(barrage.participants,))
+            incoherent = True
         return BarrageReponse(
+            incoherent=incoherent,
             id=barrage.id,
             tournoi_id=barrage.tournoi_id,
             portee=barrage.portee.value,
             rang_dispute=barrage.rang_dispute,
+            reference=barrage.reference,
             participants=[p.ref_id for p in barrage.participants],
             manches=[
                 [

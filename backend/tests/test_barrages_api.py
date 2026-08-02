@@ -30,6 +30,7 @@ from domain.tournoi import Tournoi
 from infrastructure.db import (
     ArcherRepositorySQL,
     AuditRepositorySQL,
+    BarrageTirORM,
     BlasonRepositorySQL,
     CategorieRepositorySQL,
     Database,
@@ -59,6 +60,7 @@ class Scenario:
             Categorie.creer(self.tournoi_id, "Cat", arme="Arc Classique", blason_id=blason.id)
         )
         assert categorie.id is not None
+        self.categorie_id = categorie.id
         archers = ArcherRepositorySQL(db.session_factory)
         series = SerieRepositorySQL(
             db.session_factory, AuditRepositorySQL(db.session_factory), HorlogeSysteme()
@@ -124,6 +126,37 @@ def _regler_le_seuil(client: TestClient, scenario: Scenario, jusqu_au: int | Non
         json={"type": "qualification", "sources": [], "barrage_jusqu_au": jusqu_au},
     )
     assert reponse.status_code == 200, reponse.text
+
+
+def _ajouter_archer(app: FastAPI, scenario: Scenario, valeurs: tuple[str, ...]) -> int:
+    """Ajoute un archer **avec sa série validée** — sert à faire bouger le classement en cours de
+    scénario (volée validée en retard, correction de score)."""
+    db: Database = app.state.database
+    archer = ArcherRepositorySQL(db.session_factory).ajouter(
+        Archer(
+            nom="Tardif",
+            prenom="P",
+            tournoi_id=scenario.tournoi_id,
+            categorie_id=scenario.categorie_id,
+        )
+    )
+    assert archer.id is not None
+    SerieRepositorySQL(
+        db.session_factory, AuditRepositorySQL(db.session_factory), HorlogeSysteme()
+    ).enregistrer(
+        Serie(
+            tournoi_id=scenario.tournoi_id,
+            archer_id=archer.id,
+            volees=(
+                Volee(
+                    numero=1,
+                    valeurs=tuple(ZoneScore(v) for v in valeurs),
+                    validee_par="Scoreur",
+                ),
+            ),
+        )
+    )
+    return archer.id
 
 
 def test_sans_seuil_le_classement_est_celui_d_e06us001(
@@ -476,9 +509,17 @@ def test_un_barrage_d_un_autre_tournoi_est_introuvable(
         assert reponse.json()["code"] == "barrage_introuvable"
 
 
-def test_un_barrage_clos_refuse_une_manche_de_plus(
+def test_corriger_un_barrage_clos_le_rouvre(
     app_barrages: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
+    """Corriger une flèche d'un barrage **déjà acté** doit rester possible.
+
+    Une première version gardait les deux portes — `saisir_manche` refusait un barrage clos en
+    renvoyant vers l'annulation, `annuler` le refusait en renvoyant vers la correction — et la
+    ré-annonce échouait parce que le verdict faux avait éclaté l'égalité. Les trois issues étaient
+    fermées : un verdict inversé sur la dernière place qualificative envoyait le mauvais archer au
+    tableau, définitivement.
+    """
     scenario = Scenario(app_barrages)
     _, second, troisieme = scenario.archers
     with TestClient(app_barrages) as client:
@@ -499,18 +540,22 @@ def test_un_barrage_clos_refuse_une_manche_de_plus(
         )
         client.post(f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/cloture")
 
+        # Le juge s'aperçoit qu'il a inversé les scores : il corrige la manche 1.
         reponse = client.put(
             url,
             json={
+                "manche": 1,
                 "tirs": [
-                    {"archer_id": second, "score": 9},
-                    {"archer_id": troisieme, "score": 9},
-                ]
+                    {"archer_id": second, "score": 10},
+                    {"archer_id": troisieme, "score": 8},
+                ],
             },
         )
 
-        assert reponse.status_code == 409
-        assert reponse.json()["code"] == "barrage_deja_clos"
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.json()["clos"] is False
+        assert reponse.json()["ordre"] == [second, troisieme]
+        assert _rangs(client, scenario.tournoi_id)[second] == 2
 
 
 def test_le_verdict_survit_a_l_effacement_du_seuil(
@@ -688,25 +733,6 @@ def test_un_big_shoot_off_se_declare_sans_rang(
         assert annonce.json()["est_resolu"] is False
 
 
-def test_un_archer_d_un_autre_tournoi_ne_peut_pas_etre_designe(
-    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
-) -> None:
-    """Garde propre au régime désigné : aucun classement ne valide les tireurs ici, et deux
-    tournois tournent en parallèle par conception."""
-    scenario = Scenario(app_barrages)
-    premier, _, _ = scenario.archers
-    with TestClient(app_barrages) as client:
-        connecter_admin(client)
-
-        reponse = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
-            json={"portee": "poule", "archer_ids": [premier, 99999]},
-        )
-
-        assert reponse.status_code == 409
-        assert reponse.json()["code"] == "egalite_non_departageable"
-
-
 def test_un_barrage_designe_exige_deux_archers_distincts(
     app_barrages: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
@@ -718,22 +744,6 @@ def test_un_barrage_designe_exige_deux_archers_distincts(
         reponse = client.post(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
             json={"portee": "poule", "archer_ids": [premier, premier]},
-        )
-
-        assert reponse.status_code == 409
-
-
-def test_une_phase_d_un_autre_tournoi_est_refusee(
-    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
-) -> None:
-    scenario = Scenario(app_barrages)
-    premier, second, _ = scenario.archers
-    with TestClient(app_barrages) as client:
-        connecter_admin(client)
-
-        reponse = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
-            json={"portee": "poule", "archer_ids": [premier, second], "phase_id": 99999},
         )
 
         assert reponse.status_code == 409
@@ -778,4 +788,232 @@ def test_un_barrage_de_qualification_sans_rang_est_refuse(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"portee": "qualification"}
         )
 
+        # 400 : le DTO refuse le régime incohérent avant même d'atteindre le service.
+        assert reponse.status_code == 400
+
+
+# --- correctifs de 2ᵉ passe ----------------------------------------------------------------------
+
+
+def test_deux_egalites_de_poule_sans_repere_ne_se_confondent_pas(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**Le cas par défaut de l'écran**, et celui que la 1ʳᵉ version écrasait.
+
+    Le formulaire n'envoie ni rang, ni phase, et laisse le repère vide : les quatre composantes de
+    l'ancienne clé d'identité étaient donc nulles. Le second appel rendait le **premier** barrage,
+    l'écran vidait la sélection, et la deuxième égalité n'avait pas de barrage sans que rien ne le
+    dise. Le test précédent utilisait « Poule A » / « Poule B » — la fixture choisissait exactement
+    les valeurs qui contournaient la borne.
+    """
+    scenario = Scenario(app_barrages)
+    premier, second, troisieme = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        url = f"/api/v1/tournois/{scenario.tournoi_id}/barrages"
+
+        a = client.post(url, json={"portee": "poule", "archer_ids": [premier, second]})
+        b = client.post(url, json={"portee": "poule", "archer_ids": [second, troisieme]})
+
+        assert a.status_code == 201 and b.status_code == 201, b.text
+        assert a.json()["id"] != b.json()["id"]
+        assert b.json()["participants"] == [second, troisieme]
+        assert len(client.get(url).json()) == 2
+
+
+def test_reannoncer_les_memes_tireurs_reste_idempotent(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    scenario = Scenario(app_barrages)
+    premier, second, _ = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        url = f"/api/v1/tournois/{scenario.tournoi_id}/barrages"
+
+        a = client.post(url, json={"portee": "poule", "archer_ids": [premier, second]})
+        bis = client.post(url, json={"portee": "poule", "archer_ids": [second, premier]})
+
+        assert a.json()["id"] == bis.json()["id"]
+
+
+def test_un_barrage_perime_est_refuse_au_lieu_d_etre_rendu(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un barrage annoncé sur deux archers, puis un troisième rejoint l'égalité.
+
+    L'ancien barrage ne départage plus le bon groupe et son verdict sera écarté. Avant correctif,
+    la ré-annonce le **rendait** en silence : l'organisateur faisait tirer deux archers sur trois,
+    actait, et le classement ne bougeait pas.
+    """
+    scenario = Scenario(app_barrages)
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        url = f"/api/v1/tournois/{scenario.tournoi_id}/barrages"
+        assert client.post(url, json={"rang": 2}).status_code == 201
+
+        # Un 4ᵉ archer, dont la volée est validée en retard, rejoint l'égalité du rang 2.
+        _ajouter_archer(app_barrages, scenario, ("10", "9", "8"))
+
+        reponse = client.post(url, json={"rang": 2})
+
         assert reponse.status_code == 409
+        assert reponse.json()["code"] == "barrage_perime"
+
+
+def test_la_qualification_refuse_les_champs_du_regime_designe(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`phase_id`/`reference` entraient dans la clé d'identité : les accepter en qualification
+    permettait **deux** barrages au même rang, aux verdicts contradictoires, le dernier gagnant."""
+    scenario = Scenario(app_barrages)
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        url = f"/api/v1/tournois/{scenario.tournoi_id}/barrages"
+        assert client.post(url, json={"rang": 2}).status_code == 201
+
+        reponse = client.post(url, json={"rang": 2, "reference": "x"})
+
+        assert reponse.status_code == 400
+
+
+def test_un_barrage_incoherent_n_emporte_pas_le_panneau(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le filet avait été posé sur le classement, pas sur les barrages.
+
+    Un seul agrégat illisible mettait **tout** le panneau d'organisation en 422 — donc les boutons
+    « Annuler » et « Corriger » qui seraient la réparation. On dégrade : le barrage reste listé et
+    actionnable, marqué incohérent.
+    """
+    scenario = Scenario(app_barrages)
+    _, second, troisieme = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+        client.put(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
+            json={
+                "tirs": [
+                    {"archer_id": second, "score": 9},
+                    {"archer_id": troisieme, "score": 10},
+                ]
+            },
+        )
+        # On corrompt l'agrégat comme le ferait une écriture directe en base : un tir de trop.
+        db = app_barrages.state.database
+        with db.session_factory() as session:
+            session.add(BarrageTirORM(barrage_id=barrage_id, manche=2, archer_id=second, score=7))
+            session.commit()
+
+        liste = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/barrages")
+
+        assert liste.status_code == 200, liste.text
+        assert liste.json()[0]["incoherent"] is True
+        assert liste.json()[0]["est_resolu"] is False
+        # …et le barrage reste annulable, donc réparable depuis l'écran.
+        assert (
+            client.delete(
+                f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}"
+            ).status_code
+            == 204
+        )
+
+
+def test_annuler_exige_l_admin(app_barrages: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """La route la plus destructive de l'US n'avait aucun test d'autorisation."""
+    scenario = Scenario(app_barrages)
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+        client.cookies.clear()
+        client.headers.pop("Authorization", None)
+
+    with TestClient(app_barrages) as anonyme:
+        reponse = anonyme.delete(f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}")
+
+    assert reponse.status_code == 401
+
+
+def test_un_archer_d_un_vrai_autre_tournoi_est_refuse(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La version précédente passait `99999` : elle prouvait « identifiant inconnu », pas
+    « archer d'un autre tournoi » — le scénario de sécurité que la docstring invoque."""
+    scenario = Scenario(app_barrages)
+    premier, _, _ = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        voisin = Scenario(app_barrages)
+
+        reponse = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"portee": "poule", "archer_ids": [premier, voisin.archers[0]]},
+        )
+
+        assert reponse.status_code == 409
+        assert reponse.json()["code"] == "tireurs_designes_invalides"
+
+
+def test_une_phase_d_un_vrai_autre_tournoi_est_refusee(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    scenario = Scenario(app_barrages)
+    premier, second, _ = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        voisin = Scenario(app_barrages)
+
+        reponse = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={
+                "portee": "poule",
+                "archer_ids": [premier, second],
+                "phase_id": voisin.qualif_id,
+            },
+        )
+
+        assert reponse.status_code == 409
+        assert reponse.json()["code"] == "tireurs_designes_invalides"
+
+
+def test_le_verdict_change_qui_entre_au_tableau(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**La couture la plus à risque de l'US, et la seule qui n'était pas exercée.**
+
+    `ServicePlacementDuels` compose le `ServiceClassement` qui porte désormais les barrages : un
+    verdict change donc *qui entre au tableau*, ce qui est le sens même de « places décisives ».
+    L'oracle 120 et les tests d'E06US001 passent tous par le chemin **par défaut** (sans seuil, sans
+    verdict) — ils ne pouvaient rien en dire.
+    """
+    scenario = Scenario(app_barrages)
+    _, second, troisieme = scenario.archers
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        _regler_le_seuil(client, scenario, 8)
+        barrage_id = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+        ).json()["id"]
+
+        client.put(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
+            json={
+                "tirs": [
+                    {"archer_id": second, "score": 7},
+                    {"archer_id": troisieme, "score": 10},
+                ]
+            },
+        )
+
+        # Le classement que consomme le placement voit bien l'ordre issu du barrage.
+        rangs = _rangs(client, scenario.tournoi_id)
+        assert rangs[troisieme] == 2
+        assert rangs[second] == 3

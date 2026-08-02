@@ -495,7 +495,8 @@ class BarrageDePlaces:
             manquants = len(set(self.participants) - tireurs)
             raise ConfigurationBarrageInvalide(
                 "La première manche d'un barrage fait tirer tous les participants annoncés : "
-                f"{manquants} manquant(s). Un absent se saisit avec un score nul, il ne s'omet pas."
+                f"{manquants} manquant(s). Un absent se saisit **sans score** (case « absent ») ; "
+                "un 0 est un tireur présent qui a manqué, et il bat un absent."
             )
         return resoudre_barrage_en_manches(self.manches)
 

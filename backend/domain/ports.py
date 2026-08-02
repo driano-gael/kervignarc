@@ -1140,3 +1140,7 @@ class BarrageRepository(Protocol):
     def clore(self, barrage_id: BarrageId) -> BarrageDePlaces:
         """Marque le barrage comme clos — le juge a acté le verdict, plus de retir attendu."""
         ...
+
+    def rouvrir(self, barrage_id: BarrageId) -> BarrageDePlaces:
+        """Lève la clôture — une manche vient d'être saisie, le verdict acté n'est plus le bon."""
+        ...

@@ -128,6 +128,12 @@ export interface Barrage {
   tournoi_id: number
   portee: PorteeBarrage
   rang_dispute: number | null
+  // Numéro de poule ou de manche. Le **seul** champ qui distingue deux barrages de même portée :
+  // il entre dans l'identité côté serveur, donc il doit être affiché.
+  reference: string | null
+  // L'agrégat en base ne se relit pas (saisie corrompue, écriture directe). Le barrage reste
+  // **listé et actionnable** plutôt que de faire tomber tout le panneau en 422.
+  incoherent: boolean
   participants: number[]
   manches: TirBarrage[][]
   clos: boolean

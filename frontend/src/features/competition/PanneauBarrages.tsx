@@ -3,9 +3,11 @@
 // Deux moitiés, dans l'ordre où l'organisateur les vit : les égalités que le format réclame de
 // trancher au tir (« faire tirer »), puis les barrages en cours, avec la saisie de leur manche.
 //
-// Rien ne s'affiche tant qu'aucun seuil de barrage n'est réglé sur la phase de qualification : le
-// défaut du produit reste l'ex æquo partagé (E06US001), et un panneau vide en permanence sur les
-// tournois qui ne barrent pas serait du bruit sur l'écran qu'on regarde toute la journée.
+// Cette carte ne s'affiche que s'il y a une egalite signalee ou un barrage en cours : le defaut du
+// produit reste l'ex aequo partage (E06US001), et une alerte ambre permanente sur les tournois qui
+// ne barrent pas serait du bruit sur l'ecran qu'on regarde toute la journee. Le **departage
+// manuel** (poule, Big Shoot Off) vit hors de cette carte, dans `VueClassement` : il doit rester
+// atteignable en permanence, mais replie, sans allumer d'alerte.
 //
 // ⚠️ **Un groupe se retire en entier.** Le serveur refuse une manche où une partie seulement du
 // groupe a tiré — deux ex æquo dont un seul a retiré ne se départagent sur rien. Le formulaire
@@ -13,8 +15,8 @@
 // seulement si on l'a coché : sans cela, un oubli de saisie ferait perdre quelqu'un qui a tiré.
 
 import { useState } from 'react'
-import type { Barrage, EgaliteADepartager, LigneClassement, TirBarrage } from './api'
-import { mancheComplete, type SaisieTir, TIR_VIERGE, versTirs } from './barrage'
+import type { Barrage, EgaliteADepartager, LigneClassement, PorteeBarrage, TirBarrage } from './api'
+import { depuisTirs, mancheComplete, type SaisieTir, TIR_VIERGE, versTirs } from './barrage'
 import {
   useAnnoncerBarrage,
   useAnnulerBarrage,
@@ -23,8 +25,13 @@ import {
   useSaisirMancheBarrage,
 } from './hooks'
 
+/** Deux barrages portent-ils sur exactement les memes tireurs ? */
+function memesTireurs(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((identifiant) => b.includes(identifiant))
+}
+
 /** Ce que chaque portée vient trancher — le panneau sert les trois (ADR-0066). */
-const LIBELLE_PORTEE: Record<string, string> = {
+const LIBELLE_PORTEE: Record<PorteeBarrage, string> = {
   qualification: 'Qualification',
   poule: 'Poule',
   big_shoot_off: 'Big Shoot Off',
@@ -52,6 +59,14 @@ export function PanneauBarrages({
     return ligne ? `${ligne.nom} ${ligne.prenom}` : `Archer ${archerId}`
   }
 
+  // La carte d'**alerte** ne s'affiche que s'il y a quelque chose a faire ou a suivre : c'est la
+  // promesse « aucun bruit par defaut », et l'etape 1 de la recette la verifie explicitement. Le
+  // depliant de departage manuel, lui, vit hors de cette carte (`VueClassement`) : il doit rester
+  // atteignable en permanence sans allumer une alerte ambre toute la journee.
+  if (egalites.length === 0 && enCours.length === 0) {
+    return null
+  }
+
   return (
     <section className="carte carte--barrages">
       <h3 className="carte__soustitre">Barrages — places décisives</h3>
@@ -63,7 +78,16 @@ export function PanneauBarrages({
               tournoiId={tournoiId}
               egalite={egalite}
               nomDe={nomDe}
-              dejaOuvert={enCours.some((barrage) => barrage.rang_dispute === egalite.rang)}
+              dejaOuvert={enCours.some(
+                (barrage) =>
+                  // Portee **et** tireurs : un barrage de poule portant un rang masquait le bouton
+                  // de l'egalite de qualification du meme rang, et un barrage **perime** (annonce
+                  // avant qu'un archer ne rejoigne l'egalite) le masquait aussi — l'organisateur
+                  // faisait alors tirer un groupe incomplet sans que rien ne l'explique.
+                  barrage.portee === 'qualification' &&
+                  barrage.rang_dispute === egalite.rang &&
+                  memesTireurs(barrage.participants, egalite.archer_ids),
+              )}
             />
           ))}
         </ul>
@@ -71,7 +95,6 @@ export function PanneauBarrages({
       {enCours.map((barrage) => (
         <BarrageEnCours key={barrage.id} tournoiId={tournoiId} barrage={barrage} nomDe={nomDe} />
       ))}
-      <DepartageManuel tournoiId={tournoiId} lignes={lignes} />
     </section>
   )
 }
@@ -129,16 +152,21 @@ function BarrageEnCours({
   const titre =
     barrage.rang_dispute !== null
       ? `${barrage.rang_dispute}ᵉ place`
-      : (LIBELLE_PORTEE[barrage.portee] ?? barrage.portee)
+      : LIBELLE_PORTEE[barrage.portee]
 
   return (
     <article className="barrage">
       <h4 className="barrage__titre">
         {titre} — manche {derniere + 1}
-        {barrage.portee !== 'qualification' && (
-          <span className="barrage__portee">
-            {' · '}
-            {LIBELLE_PORTEE[barrage.portee] ?? barrage.portee}
+        {barrage.reference && (
+          // La **reference** (numero de poule, de manche) est le seul champ qui distingue deux
+          // barrages de meme portee : la saisir sans jamais la reafficher laissait l'organisateur
+          // piloter un discriminant invisible.
+          <span className="barrage__portee">{` · ${barrage.reference}`}</span>
+        )}
+        {barrage.incoherent && (
+          <span className="carte__etat carte__etat--erreur" role="alert">
+            {' · '}Saisie incoherente : corrigez une manche ou annulez ce barrage.
           </span>
         )}
       </h4>
@@ -176,7 +204,16 @@ function BarrageEnCours({
         )}
         <button
           type="button"
-          onClick={() => annuler.mutate(barrage.id)}
+          className="bouton--danger"
+          onClick={() => {
+            // Geste **irreversible** : les manches saisies partent avec le barrage, et le bouton
+            // est colle a « Corriger la manche N » sur une interface tactile. Le projet confirme
+            // des suppressions bien moins couteuses ; on s'aligne des qu'il y a quelque chose a
+            // perdre, et on laisse le clic unique sur un barrage vierge.
+            const perte = `Annuler ce barrage ? ${derniere} manche(s) saisie(s) seront effacees.`
+            if (derniere > 0 && !window.confirm(perte)) return
+            annuler.mutate(barrage.id)
+          }}
           disabled={annuler.isPending}
         >
           Annuler ce barrage
@@ -307,21 +344,6 @@ function SaisieGroupe({
   )
 }
 
-/** Pré-remplit le formulaire depuis des tirs déjà enregistrés (correction d'une manche). */
-function depuisTirs(tirs: TirBarrage[] | undefined): Record<number, SaisieTir> {
-  const saisies: Record<number, SaisieTir> = {}
-  for (const tir of tirs ?? []) {
-    saisies[tir.archer_id] = {
-      // `score` nul en base = **absent** : on recoche la case plutôt que d'afficher un champ vide,
-      // qui se relirait « pas encore noté » et changerait le sens de la correction.
-      score: tir.score === null ? '' : String(tir.score),
-      distance: tir.distance_au_centre === null ? '' : String(tir.distance_au_centre),
-      absent: tir.score === null,
-    }
-  }
-  return saisies
-}
-
 /** Départager des archers **hors qualification** — poule ou Big Shoot Off (ADR-0066).
  *
  * ⚠️ **Pourquoi un formulaire plutôt qu'un bouton comme en qualification.** Là-haut, l'application
@@ -330,12 +352,20 @@ function depuisTirs(tirs: TirBarrage[] | undefined): Record<number, SaisieTir> {
  * l'organisateur qui désigne les tireurs. Le barrage se conduit ensuite exactement pareil ; seul
  * son verdict ne retourne dans aucun classement, faute de classement à alimenter.
  *
- * Replié par défaut : sur un tournoi qui ne fait ni poule ni Big Shoot Off, cela ne doit être
- * qu'une ligne discrète sur l'écran qu'on regarde toute la journée.
+ * Vit **hors de la carte d'alerte** et replié par défaut : il doit rester atteignable en
+ * permanence (rien ne peut le signaler), sans pour autant allumer une alerte ambre toute la
+ * journée sur un tournoi qui ne fait ni poule ni Big Shoot Off.
  */
-function DepartageManuel({ tournoiId, lignes }: { tournoiId: number; lignes: LigneClassement[] }) {
+export function DepartageManuel({
+  tournoiId,
+  lignes,
+}: {
+  tournoiId: number
+  lignes: LigneClassement[]
+}) {
   const [portee, setPortee] = useState<'poule' | 'big_shoot_off'>('poule')
   const [reference, setReference] = useState('')
+  const [recherche, setRecherche] = useState('')
   const [choisis, setChoisis] = useState<number[]>([])
   const annoncer = useAnnoncerBarrage(tournoiId)
 
@@ -346,6 +376,15 @@ function DepartageManuel({ tournoiId, lignes }: { tournoiId: number; lignes: Lig
         : [...actuel, archerId],
     )
 
+  // À 120 inscrits, cocher deux noms dans une liste triée par rang est une corvée tactile : on
+  // filtre. Les archers **déjà cochés** restent toujours visibles, sinon un filtre les ferait
+  // disparaître de l'écran tout en comptant dans la sélection.
+  const visibles = lignes.filter(
+    (ligne) =>
+      choisis.includes(ligne.archer_id) ||
+      `${ligne.nom} ${ligne.prenom}`.toLowerCase().includes(recherche.trim().toLowerCase()),
+  )
+
   const soumettre = () =>
     annoncer.mutate(
       {
@@ -353,7 +392,12 @@ function DepartageManuel({ tournoiId, lignes }: { tournoiId: number; lignes: Lig
         archer_ids: choisis,
         reference: reference.trim() === '' ? null : reference.trim(),
       },
-      { onSuccess: () => setChoisis([]) },
+      {
+        onSuccess: () => {
+          setChoisis([])
+          setReference('')
+        },
+      },
     )
 
   return (
@@ -380,11 +424,18 @@ function DepartageManuel({ tournoiId, lignes }: { tournoiId: number; lignes: Lig
           value={reference}
           onChange={(e) => setReference(e.target.value)}
           placeholder={portee === 'poule' ? 'ex. Poule A' : 'ex. manche 3'}
-          aria-label="Repère du barrage (numéro de poule ou de manche)"
+        />
+      </label>
+      <label>
+        Chercher{' '}
+        <input
+          value={recherche}
+          onChange={(e) => setRecherche(e.target.value)}
+          placeholder="nom de l'archer"
         />
       </label>
       <ul className="barrages__choix">
-        {lignes.map((ligne) => (
+        {visibles.map((ligne) => (
           <li key={ligne.archer_id}>
             <label>
               <input
@@ -398,7 +449,7 @@ function DepartageManuel({ tournoiId, lignes }: { tournoiId: number; lignes: Lig
         ))}
       </ul>
       <button type="button" onClick={soumettre} disabled={choisis.length < 2 || annoncer.isPending}>
-        Faire tirer ces {choisis.length || ''} archers
+        Faire tirer les archers sélectionnés ({choisis.length})
       </button>
       {choisis.length < 2 && (
         <p className="carte__etat">Un barrage départage au moins deux archers.</p>

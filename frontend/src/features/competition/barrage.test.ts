@@ -2,7 +2,7 @@
 // un archer à tort** : un groupe soumis à moitié, et un champ vide pris pour une absence.
 
 import { describe, expect, it } from 'vitest'
-import { mancheComplete, type SaisieTir, versTirs } from './barrage'
+import { depuisTirs, mancheComplete, type SaisieTir, versTirs } from './barrage'
 
 const NOTE = (score: string): SaisieTir => ({ score, distance: '', absent: false })
 const ABSENT: SaisieTir = { score: '', distance: '', absent: true }
@@ -55,5 +55,31 @@ describe('versTirs', () => {
   it('ignore le score saisi si l’archer est finalement déclaré absent', () => {
     const tirs = versTirs([1], { 1: { score: '9', distance: '', absent: true } })
     expect(tirs).toEqual([{ archer_id: 1, score: null, distance_au_centre: null }])
+  })
+})
+
+describe('depuisTirs', () => {
+  it('recoche « absent » sur un score nul, plutôt que de laisser un champ vide', () => {
+    // Le contresens (« pas encore noté ») changerait le sens de la correction, et laisserait le
+    // bouton grisé.
+    expect(depuisTirs([{ archer_id: 1, score: null, distance_au_centre: null }])).toEqual({
+      1: { score: '', distance: '', absent: true },
+    })
+  })
+
+  it('restitue score et distance tels qu’ils ont été enregistrés', () => {
+    expect(depuisTirs([{ archer_id: 2, score: 9, distance_au_centre: 17 }])).toEqual({
+      2: { score: '9', distance: '17', absent: false },
+    })
+  })
+
+  it('distingue un zéro d’une absence', () => {
+    expect(depuisTirs([{ archer_id: 3, score: 0, distance_au_centre: null }])).toEqual({
+      3: { score: '0', distance: '', absent: false },
+    })
+  })
+
+  it('rend un formulaire vierge sans tir', () => {
+    expect(depuisTirs(undefined)).toEqual({})
   })
 })

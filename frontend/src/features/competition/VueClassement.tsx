@@ -13,7 +13,7 @@
 import { useState } from 'react'
 import { useCategories } from '../categories/hooks'
 import { useClassement } from './hooks'
-import { PanneauBarrages } from './PanneauBarrages'
+import { DepartageManuel, PanneauBarrages } from './PanneauBarrages'
 import { TableClassement } from './TableClassement'
 
 export function VueClassement({
@@ -66,6 +66,12 @@ export function VueClassement({
         <div className="table-defilement">
           <TableClassement tournoiId={tournoiId} lignes={classement.data.lignes} admin={admin} />
         </div>
+      )}
+      {/* Departage manuel (poule, Big Shoot Off) : replie, hors de la carte d'alerte. Ces formats
+          n'ont aucun classement calcule qui pourrait signaler leurs ex aequo, donc c'est
+          l'organisateur qui designe les tireurs — il lui faut un point d'entree permanent. */}
+      {admin && classement.data && (
+        <DepartageManuel tournoiId={tournoiId} lignes={classement.data.lignes} />
       )}
     </>
   )

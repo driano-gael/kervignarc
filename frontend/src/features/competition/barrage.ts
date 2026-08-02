@@ -45,3 +45,22 @@ export function versTirs(groupe: number[], saisies: Record<number, SaisieTir>): 
     }
   })
 }
+
+/** Pré-remplit le formulaire depuis des tirs **déjà enregistrés** — correction d'une manche.
+ *
+ * ⚠️ `score === null` **recoche « absent »**, il ne laisse pas un champ vide. Dans ce domaine, un
+ * score nul *est* l'absence réglementaire ; « pas encore noté » n'a pas de ligne du tout. Rouvrir
+ * la correction avec un champ vide changerait donc le sens de ce qui avait été saisi — et le
+ * bouton resterait grisé, `mancheComplete` exigeant une note ou une case cochée.
+ */
+export function depuisTirs(tirs: TirBarrage[] | undefined): Record<number, SaisieTir> {
+  const saisies: Record<number, SaisieTir> = {}
+  for (const tir of tirs ?? []) {
+    saisies[tir.archer_id] = {
+      score: tir.score === null ? '' : String(tir.score),
+      distance: tir.distance_au_centre === null ? '' : String(tir.distance_au_centre),
+      absent: tir.score === null,
+    }
+  }
+  return saisies
+}
