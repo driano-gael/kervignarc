@@ -510,8 +510,8 @@ class ServiceRoutage:
         dernier = max(siens, key=lambda m: m.tour)
         tour_sortie = libelle_tour(dernier.tour, tableau.nb_tours, dernier.place_en_jeu)
         a_perdu = dernier.vainqueur != moi
-        destination = grille.repechages.get(dernier.tour) if a_perdu else None
         if a_perdu and _est_repeche(tableau, dernier):
+            destination = grille.repechages.get(dernier.tour)
             return RoutageArcher(
                 archer_id=archer_id,
                 nom=nom,
@@ -532,21 +532,28 @@ class ServiceRoutage:
             rang_min=fourchette[0] if fourchette is not None else None,
             rang_max=fourchette[1] if fourchette is not None else None,
             tour_sortie=tour_sortie,
-            # ⚠️ **Un battu classé ici peut malgré tout être repris en aval** (correctif de revue,
-            # axe adversarial). Les deux moitiés du repêchage se lisent à deux sources
-            # indépendantes : le **routing** (`_est_repeche`) et les **sources de la séquence**
-            # (`grille.repechages`). Or aucun `RoutingRepechage` n'est câblé en production
-            # (`# DETTE-028`), tandis que l'atelier de déroulé (E01US024) permet **déjà** de
-            # composer « les perdants du tour 1 de la phase 2 ». Le seul cas atteignable
-            # aujourd'hui est donc celui où la séquence reprend un battu que le routing, lui,
-            # classe ici — et le taire lui ferait lire son rang, comprendre qu'il est sorti, et
-            # rentrer chez lui : exactement le mal que l'issue `REPECHE` existe pour éviter.
+            # ⚠️ **`# DETTE-033` — un battu repris par la *séquence* n'est pas annoncé ici.**
             #
-            # On garde `TERMINE` — il a bel et bien acquis un rang dans *ce* tableau, contrairement
-            # au repêché du routing qui n'en consomme aucun — mais on **annonce sa destination**.
-            # Dire « 9ᵉ-16ᵉ **et** repris en phase 3 » est vrai des deux côtés ; forcer `REPECHE`
-            # effacerait un rang réellement acquis.
-            destination=destination,
+            # Les deux moitiés du repêchage se lisent à deux sources indépendantes : le **routing**
+            # (`_est_repeche`, décidé match par match — c'est la branche ci-dessus) et les
+            # **sources de la séquence** (`grille.repechages`, indexées par **tour**). Un premier
+            # correctif de revue a voulu annoncer la seconde ici aussi ; deux relecteurs l'ont
+            # démoli, et de deux façons **opposées** :
+            #
+            # - `dernier` est le **dernier match joué**, pas le match perdu : sous cascade, le battu
+            #   des demies redescend en petite finale, donc son `dernier.tour` vaut 3 et l'on rate
+            #   précisément les archers que « perdants du tour 2 » désigne ;
+            # - un **tour couvre plusieurs plages** dès qu'il y a des sous-tableaux : finale et
+            #   petite finale sont toutes deux au tour 3, si bien qu'une source « perdants du
+            #   tour 3 » décorerait aussi le 4ᵉ du podium.
+            #
+            # Les deux correctifs proposés étaient **incompatibles** (restreindre au braquet
+            # principal / élargir à tous les tours perdus), et pour cause : la sémantique de
+            # `SourcePhase.par_issue_de_tour` n'est **pas tranchée** — `# DETTE-028` acte qu'aucun
+            # moteur ne consomme encore ces prélèvements. La figer ici, dans un canal d'affichage,
+            # serait décider une règle métier au mauvais endroit. On s'abstient donc, et la lacune
+            # est inscrite au registre plutôt que devinée.
+            destination=None,
             # `RANG_A_VENIR` ne subsiste que là où **rien** n'est acquis : ni rang exact, ni
             # fourchette (plage absente d'un `Match` bâti à la main). Avant E07US008 il couvrait
             # tout le hors-podium, ce qui n'apprenait rien à quelqu'un qui venait de perdre.

@@ -226,6 +226,10 @@ def test_la_fourchette_ne_depasse_jamais_l_effectif_reel() -> None:
 
     ligne = _ligne(monde.routage, monde.tournoi_id, battu)
 
+    # L'issue est assertée explicitement (remarque de revue) : tout le test **dépend** du fait que
+    # ce battu n'a plus de match aval. Sans elle, un changement de profondeur le ferait échouer sur
+    # `(5, 6) != (None, None)` — un message qui ne désigne pas la cause.
+    assert ligne.issue is IssueRoutage.TERMINE
     assert ligne.rang_max == 6, "le rang annoncé ne peut pas dépasser le nombre d'archers"
     assert (ligne.rang_min, ligne.rang_max) == (5, 6)
     assert battu in archers
@@ -404,31 +408,30 @@ def test_le_battu_d_un_tour_non_repeche_reste_elimine() -> None:
     assert (ligne.rang_min, ligne.rang_max) == (5, 8)
 
 
-def test_le_battu_repris_par_la_sequence_voit_sa_destination_meme_sans_repechage() -> None:
-    """**Le seul cas de repêchage atteignable aujourd'hui** — correctif de revue (axe adversarial).
+def test_le_battu_repris_par_la_sequence_n_est_pas_encore_annonce() -> None:
+    """**Caractérisation de `# DETTE-033`** : la reprise par la *séquence* n'est pas annoncée.
 
-    Les deux moitiés du repêchage se lisent à deux sources indépendantes : le **routing**
-    (`_est_repeche`) et les **sources de la séquence** (`grille.repechages`). Or aucun
-    `RoutingRepechage` n'est câblé en production (`# DETTE-028`), tandis que l'atelier de déroulé
-    (E01US024) permet **déjà** de composer « les perdants du tour 1 de la phase 2 ». Le code fermait
-    donc le trou qu'aucun chemin de production n'ouvre, et laissait ouvert celui que l'éditeur livré
-    permet d'ouvrir : cet archer-là lisait « 5ᵉ-8ᵉ », comprenait qu'il était sorti, et rentrait chez
-    lui — le mal exact que l'issue `REPECHE` existe pour éviter.
+    Un premier correctif de revue posait la `destination` sur les lignes `TERMINE` aussi. Deux
+    relecteurs l'ont démoli de deux façons opposées — `dernier` est le dernier match **joué** et non
+    le match perdu (le battu des demies redescend en petite finale, on rate donc « perdants du
+    tour 2 ») ; et un tour couvre **plusieurs plages** (finale et petite finale sont toutes deux au
+    tour 3, on décorerait le 4ᵉ du podium). Leurs correctifs étaient **incompatibles**, ce qui est
+    le signal : la sémantique de `par_issue_de_tour` n'est pas tranchée, et `# DETTE-028` acte
+    qu'aucun moteur ne la consomme. On ne la devine pas dans un canal d'affichage.
 
-    Il reste `TERMINE` — il a bel et bien acquis un rang dans *ce* tableau, contrairement au repêché
-    du routing qui n'en consomme aucun — mais sa **destination est annoncée**. « 5ᵉ-8ᵉ *et* repris
-    en phase 3 » est vrai des deux côtés ; forcer `REPECHE` effacerait un rang réellement acquis.
+    Ce test **fige la lacune** plutôt que de la laisser muette : le jour où l'US du prélèvement
+    tranchera, il échouera — et c'est exactement ce qu'on lui demande.
     """
     monde = _Monde()  # routing de production : cascade, aucun repêchage
     _huit(monde)
-    repechage_id = monde.phases.ajouter(
+    monde.phases.ajouter(
         Phase.creer(
             monde.tournoi_id,
             3,
             TypePhase.ELIMINATION_DIRECTE,
             sources=(SourcePhase.par_issue_de_tour(2, tour=1, issue=IssueTour.PERDANTS),),
         )
-    ).id
+    )
     monde.placer()
     monde.gagner(1)
     battu = monde.perd_de(1)
@@ -436,9 +439,8 @@ def test_le_battu_repris_par_la_sequence_voit_sa_destination_meme_sans_repechage
     ligne = _ligne(monde.routage, monde.tournoi_id, battu)
 
     assert ligne.issue is IssueRoutage.TERMINE
-    assert (ligne.rang_min, ligne.rang_max) == (5, 8)  # le rang acquis n'est pas effacé
-    assert ligne.destination is not None  # ...mais la suite est annoncée
-    assert ligne.destination.phase_id == repechage_id
+    assert (ligne.rang_min, ligne.rang_max) == (5, 8)  # le rang acquis, lui, est bien annoncé
+    assert ligne.destination is None, "cf. DETTE-033 — à lever quand le prélèvement aura un moteur"
 
 
 # --- décor du repêchage --------------------------------------------------------------------------

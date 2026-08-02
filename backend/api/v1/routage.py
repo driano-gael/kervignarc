@@ -96,9 +96,15 @@ class DestinationRepechageReponse(BaseModel):
 
     `type` est déclaré sur l'**énumération** `TypePhase`, comme dans `api/v1/phases.py` et
     `api/v1/formats.py` (correctif de revue, axe A) : un `str` ouvert publiait une chaîne libre au
-    schéma OpenAPI, ce qui obligeait le client à écrire `LIBELLE_TYPE[type as TypePhase]` — un cast
-    non vérifié, dupliqué à deux endroits. L'énumération fermée rend la divergence **visible** au
-    client au lieu de la lui faire subir, exactement comme `IssueRoutageReponse` ci-dessus.
+    schéma OpenAPI. L'énumération fermée y rend une divergence **visible** au client au lieu de la
+    lui faire subir, exactement comme `IssueRoutageReponse` ci-dessus. La sérialisation JSON est
+    **inchangée** (`TypePhase` est un `str, Enum` : Pydantic rend `"elimination_directe"`), donc le
+    client existant ne voit aucune différence.
+
+    ⚠️ Le miroir TS reste volontairement `type: string`, et ce n'est pas un oubli (précision de
+    revue) : le front doit pouvoir nommer un type qu'un serveur **plus récent** lui enverrait, et le
+    durcir rendrait mort le repli de `nommerType` — c'est ce repli, pas cette déclaration, qui a
+    supprimé le cast côté client.
     """
 
     phase_id: int
