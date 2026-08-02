@@ -73,6 +73,15 @@
 > - `affectations` est entrée au catalogue de l'écran de salle **sans migration**, exactement comme
 >   ADR-0064 l'avait prévu. Il ne lui manque plus que `tableaux` (E07US005).
 >
+> **La revue a trouvé un bloquant et neuf majeurs, tous corrigés avant la PR.** Deux méritent d'être
+> retenus parce qu'ils disent quelque chose de la manière dont l'US a été écrite : (a) le panneau
+> rangeait **les demi-finalistes sous « Sortis du tableau »** dès le 2ᵉ tour — il partitionnait sur
+> la *cible*, que le serveur ne pose qu'au tour 1 ; la recette ne déroulait que le tour 1, donc elle
+> ne pouvait pas le voir ; (b) la fourchette de rangs n'était **pas bornée par l'effectif** — « 65ᵉ-128ᵉ »
+> sur l'oracle 120 — parce que les seuls effectifs du décor de test, 4 et 8, sont précisément ceux
+> où `taille == effectif`. Dans les deux cas le défaut naît de la **rencontre** du code et de son
+> jeu d'essai, pas de l'un des deux.
+>
 > **🎯 Prochaine :** **`E06US003`** — barrage de tir pour places décisives ; la séquence J2 reprend
 > son cours. *(À vérifier au cadrage : `E06US004` — podium & agrégation des rangs — la suit
 > immédiatement, et E07US008 vient d'occuper une partie de son terrain sans la préempter ; l'ADR-0065

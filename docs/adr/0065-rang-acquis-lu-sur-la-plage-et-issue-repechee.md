@@ -38,6 +38,13 @@ approximation faute de mieux : dans un tableau tronqué au podium, **aucun match
 départager les quatre battus des quarts**. Ils sont *ex æquo*, et c'est le résultat. Choisir un
 chiffre dans la fourchette aurait fabriqué un classement que la compétition n'a pas produit.
 
+⚠️ **La borne haute est écrêtée à l'effectif réel** — correctif de revue, relevé indépendamment par
+deux axes, preuve d'exécution à l'appui. Une plage est bornée par la **taille** du tableau, une
+puissance de 2, pas par le nombre d'archers : sur l'oracle 120 (taille 128), un battu du 1ᵉʳ tour
+sortait « 65ᵉ-**128**ᵉ » alors que les rangs 121 à 128 n'existent pas. Le défaut avait échappé aux
+tests parce que les deux effectifs du décor — 4 et 8 — sont précisément les seuls où
+`taille == effectif` ; un cas à 6 archers a été ajouté pour rompre cette coïncidence.
+
 Trois champs, et ils ne se répètent pas :
 
 | Champ | Ce qu'il dit |
@@ -48,9 +55,15 @@ Trois champs, et ils ne se répètent pas :
 Effet de bord favorable : `_grille` lit désormais `classement()` là où elle lisait `podium()`. Le
 podium n'en est que la restriction aux rangs ≤ 4 ; sous **placement intégral** (E05US010), tous les
 rangs sont décernés par des matchs terminaux, donc chacun reçoit son rang **exact** sans un calcul
-de plus, et la fourchette se referme d'elle-même. Sous profondeur podium, la sortie est identique à
-celle d'hier : ce n'est pas un changement de comportement, c'est le même code qui cesse de jeter ce
-qu'il tenait déjà.
+de plus, et la fourchette se referme d'elle-même.
+
+Sous `ProfondeurPodium()` **par défaut** (`jusqu_au=4`, le câblage de production), la sortie est
+identique à celle d'hier : seules `[1..2]` et `[3..4]` sont terminales, donc `classement()` ne rend
+jamais de rang > 4. ⚠️ **Mais `jusqu_au` est un paramètre** (correctif de revue) : sous
+`ProfondeurPodium(jusqu_au=8)` — l'exemple de sa propre docstring — le service gagne les rangs 5-8
+exacts que `podium()` jetait. C'est donc bien un changement de comportement dans cette
+configuration, et il est **voulu** ; un premier jet de cet ADR écrivait « ce n'est pas un changement
+de comportement », ce qui était faux.
 
 **Ce n'est pas E06US004.** Cette lecture dit ce que *ce tableau* a décidé — sans agrégation
 inter-phases ni départage FFTA. E06US004 reste due, et la fourchette ne la préempte pas : elle
@@ -87,6 +100,21 @@ que rien ne le signale ». Le routage est le premier endroit où ce trou de comp
 **humain** — l'archer demande où il tire, et personne ne peut répondre. Un panneau muet passerait
 pour une panne réseau, et l'organisateur ne saurait pas que son déroulé est incomplet.
 
+⚠️ **Le cas symétrique — le seul atteignable aujourd'hui — a failli être manqué** (correctif de
+revue, axe adversarial). Les deux moitiés du repêchage se lisent à **deux sources indépendantes** :
+le routing (`_est_repeche`) et les sources de la séquence (`_repechages`). Or aucun
+`RoutingRepechage` n'est câblé en production (`DETTE-028`), donc `_est_repeche` rend **toujours**
+faux — tandis que l'atelier de déroulé (E01US024) permet **déjà** de composer « les perdants du
+tour 1 de la phase 2 ». Un premier jet fermait donc soigneusement le trou qu'aucun chemin de
+production n'ouvre, et laissait ouvert celui que l'éditeur livré permet d'ouvrir : cet archer-là
+lisait « 5ᵉ-8ᵉ », comprenait qu'il était sorti, et rentrait chez lui.
+
+Décision : un battu que la séquence reprend garde l'issue **`TERMINE`** — il a bel et bien acquis un
+rang dans *ce* tableau, contrairement au repêché du routing qui n'en consomme aucun — mais sa
+**destination est annoncée** (« 5ᵉ-8ᵉ du tableau · repris en 3. Élimination directe »). Forcer
+`REPECHE` aurait effacé un rang réellement acquis ; se taire l'aurait renvoyé chez lui. Dire les
+deux est vrai des deux côtés.
+
 ### 4. Une lecture **collective**, partagée par toutes les surfaces
 
 `ServiceRoutage.affectations(tournoi_id)` ne prend **aucun** identifiant d'archer, contrairement à
@@ -99,11 +127,24 @@ deux formes de réponse finiraient par diverger sur la butte annoncée — l'éc
 qu'à 18 h, quand deux archers se présentent au même endroit.
 
 Conséquence de charge, et c'est ce qui a décidé du câblage front : **les cartes de « ma journée »
-(E07US006) consomment la lecture collective**, pas un `useRoutage` par archer suivi. La lecture est
-la même pour tout le monde, donc **une seule entrée de cache** sert le gymnase entier, sur ce qui est
+(E07US006) consomment la lecture collective**, pas un `useRoutage` par archer suivi. Une seule
+entrée de cache **par appareil** sert donc toutes les cartes suivies de cet appareil, sur ce qui est
 la requête la plus chère de l'application (classement + reconstruction de l'arbre + plan de duels).
-Une lecture par archer suivi l'aurait multipliée par le nombre de suivis **et** par le nombre de
-téléphones. C'est le régime **DETTE-008**, qu'on ne ferme pas ici mais qu'on refuse d'aggraver.
+
+⚠️ **Le gain s'arrête à l'appareil** — correction de revue (deux axes). Un premier jet de cet ADR
+écrivait « une seule entrée de cache sert le gymnase entier » : c'est faux. Le cache React Query est
+**par navigateur**, il n'existe ni cache serveur ni en-tête HTTP sur cette route, et `useRealtime`
+invalide **sans clé** — chaque écriture serveur refetch tous les clients montés. Le coût serveur est
+donc d'une reconstruction **par appareil et par invalidation**. Le vrai gain — une requête au lieu
+d'une par archer suivi — suffisait à justifier la décision ; le raisonnement inter-appareils était
+une image mentale du système, exactement le défaut d'ADR qu'un précédent du projet avait déjà
+produit.
+
+La dette concernée est **`DETTE-031`** (« le suivi du déroulé se recalcule intégralement à chaque
+lecture »), **pas `DETTE-008`** (l'écho non borné de l'entrée client dans une réponse 400), que
+quatre textes de cette US citaient par erreur. Cette US **aggrave** DETTE-031 — second endpoint au
+même régime, deux surfaces de polling de plus dont une sur le téléphone de chaque spectateur — et
+**élargit sa ligne au registre**, comme la règle du projet l'impose.
 
 ## Conséquences
 
@@ -113,9 +154,13 @@ téléphones. C'est le régime **DETTE-008**, qu'on ne ferme pas ici mais qu'on 
 - L'écran de salle gagne la vue `affectations` — la dernière du CA d'E07US004 qui lui manquait,
   ajoutée **sans migration** exactement comme ADR-0064 l'avait prévu (la valeur persistée est la
   chaîne, pas un rang). La prévision s'est vérifiée au mot près.
-- `Q-UX2` (« trier par nom ou par cible ? ») est **fermée par « les deux »**, comme `Q-UX7` en
-  E07US004 : l'écran projeté garde l'ordre du pas de tir (il ne peut rien actionner), la table de
-  l'organisation bascule d'un bouton.
+- `Q-UX2` est fermée **sur son volet « tri »** par « les deux », comme `Q-UX7` en E07US004 : l'écran
+  projeté garde l'ordre du pas de tir (il ne peut rien actionner), la table de l'organisation
+  bascule d'un bouton. ⚠️ **Son volet « scannabilité » reste ouvert** (correctif de revue) : la
+  question enregistrée au CDC UX dit « 200 archers ne tiennent pas à l'écran, donc ça défile, et un
+  archer qui rate son nom attend un cycle entier ». Cette US ne livre ni pagination ni cycle — la
+  liste déborde de `.salle__scene` comme le fait déjà la vue `classement` depuis E07US004. Déclarer
+  la question close en entier l'aurait retirée du radar sans l'avoir résolue.
 
 **À savoir**
 

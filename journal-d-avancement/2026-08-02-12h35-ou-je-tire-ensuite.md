@@ -25,9 +25,16 @@ donc **la phase qui le reprend**. Et si le déroulé du tournoi a été composé
 oubli qui, jusqu'ici, faisait simplement disparaître ces archers du classement sans que rien ne le
 signale —, l'écran le **dit** au lieu de rester muet.
 
+Un troisième cas est apparu en cours de route : un archer peut être **classé dans ce tableau et
+repris ensuite** par une phase suivante, quand l'organisateur a composé son déroulé de cette façon.
+Celui-là voit son rang **et** la phase qui le reprend — lui montrer seulement son rang l'aurait fait
+rentrer chez lui alors qu'il avait encore un duel.
+
 Comme partout ailleurs dans l'application, ce qui n'est pas encore connu est **écrit en clair**
 plutôt que laissé en blanc : « cible attribuée au lancement du tour » tant que l'organisateur n'a pas
-lancé, « non retenu pour le tableau final » pour un archer qui n'y est pas. Un blanc se lit comme une
-panne ; une phrase se lit comme une attente.
+lancé, et rien du tout tant que le tableau n'est pas constitué. Un blanc se lit comme une panne ;
+une phrase se lit comme une attente. Entre deux tours, quand personne n'a encore de butte, les
+archers encore en course apparaissent sous **« En lice — cible annoncée au lancement du tour »** :
+ils ne sont pas sortis, ils attendent.
 
 *Détail des vérifications : [`docs/fonctionnel/E07US008.md`](../docs/fonctionnel/E07US008.md).*
