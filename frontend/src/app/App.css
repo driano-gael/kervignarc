@@ -3388,3 +3388,20 @@ button:disabled {
   width: 7ch;
   min-height: 40px;
 }
+
+/* Portes de sortie d'un barrage (E06US003, correctif de revue) : corriger la dernière manche, ou
+   annuler un barrage annoncé par erreur. Sans elles, un barrage ouvert au mauvais rang restait
+   affiché indéfiniment — `clore` exige un barrage résolu. */
+.barrage__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Portée non-qualification (poule, Big Shoot Off) : discrète, elle situe le barrage sans voler la
+   vedette au rang disputé. */
+.barrage__portee {
+  color: var(--text);
+  font-weight: 400;
+}

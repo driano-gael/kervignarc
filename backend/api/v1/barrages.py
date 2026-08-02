@@ -81,7 +81,13 @@ class BarrageReponse(BaseModel):
     égalités distinctes, qui se retirent séparément.
     """
 
-    id: int | None
+    id: int
+    """Toujours renseigné : un barrage **rendu** par l'API est persisté.
+
+    Typé non nullable pour que le contrat dise la vérité — le front s'appuyait déjà sur cette
+    garantie (`clore.mutate(barrage.id)`) sans qu'elle soit exprimée.
+    """
+
     tournoi_id: int
     portee: str
     rang_dispute: int | None
@@ -95,6 +101,7 @@ class BarrageReponse(BaseModel):
     @staticmethod
     def de_agregat(barrage: BarrageDePlaces) -> BarrageReponse:
         resultat = barrage.resultat()
+        assert barrage.id is not None, "Un barrage rendu par le service est persisté."
         return BarrageReponse(
             id=barrage.id,
             tournoi_id=barrage.tournoi_id,

@@ -119,10 +119,14 @@ export interface TirBarrage {
 // alors qui doit retirer. Les deux sont exclusifs, et les groupes ne sont **pas aplatis** : un
 // barrage à quatre dont deux à 10 et deux à 8 laisse deux égalités distinctes, qui se retirent
 // séparément — les fusionner ferait passer un tireur à 8 devant un tireur à 10 déjà départagé.
+// `portee` est une énumération **fermée** côté serveur : on la type comme telle plutôt que
+// `string`, au même titre que `StatutClassement`.
+export type PorteeBarrage = 'qualification' | 'poule' | 'big_shoot_off'
+
 export interface Barrage {
   id: number
   tournoi_id: number
-  portee: string
+  portee: PorteeBarrage
   rang_dispute: number | null
   participants: number[]
   manches: TirBarrage[][]
@@ -154,6 +158,12 @@ export function saisirMancheBarrage(
   return fetchJson<Barrage>(`/api/v1/tournois/${tournoiId}/barrages/${barrageId}/manche`, {
     method: 'PUT',
     body: JSON.stringify({ tirs, manche }),
+  })
+}
+
+export function annulerBarrage(tournoiId: number, barrageId: number): Promise<void> {
+  return fetchJson<void>(`/api/v1/tournois/${tournoiId}/barrages/${barrageId}`, {
+    method: 'DELETE',
   })
 }
 

@@ -38,13 +38,21 @@ export interface Phase {
   sources: SourcePhase[]
   // null = effectif non déclaré (borne les rangs prélevables et le contrôle « effectif incompatible »).
   effectif: number | null
+  // Rang jusqu'auquel les ex æquo se départagent **au tir** (E06US003, ADR-0066). `null` = aucun
+  // barrage, donc l'ex æquo partagé qui est le défaut du produit.
+  barrage_jusqu_au: number | null
 }
 
 // Config de séquence envoyée au serveur (ajout et édition totale partagent la même forme).
+//
+// ⚠️ **Édition totale** : un champ omis est **effacé** côté serveur. C'est pourquoi
+// `barrage_jusqu_au` doit être renvoyé à chaque `PUT`, réhydraté depuis la phase — sans quoi
+// corriger l'effectif d'une phase effacerait son seuil de barrage en silence.
 export interface ConfigPhase {
   type: TypePhase
   sources?: SourcePhase[]
   effectif?: number | null
+  barrage_jusqu_au?: number | null
 }
 
 export function getPhases(tournoiId: number): Promise<Phase[]> {

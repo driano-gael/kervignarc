@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ajouterArcher,
   annoncerBarrage,
+  annulerBarrage,
   cloreBarrage,
   creerTournoi,
   getBarrages,
@@ -137,4 +138,11 @@ export function useSaisirMancheBarrage(tournoiId: number) {
 
 export function useCloreBarrage(tournoiId: number) {
   return useMutationBarrage(tournoiId, (barrageId: number) => cloreBarrage(tournoiId, barrageId))
+}
+
+// Annulation d'un barrage annoncé par erreur. Sans elle, un barrage qu'on ne veut pas faire tirer
+// restait affiché indéfiniment et son rang bloquait toute nouvelle annonce (`clore` exige un
+// barrage résolu).
+export function useAnnulerBarrage(tournoiId: number) {
+  return useMutationBarrage(tournoiId, (barrageId: number) => annulerBarrage(tournoiId, barrageId))
 }

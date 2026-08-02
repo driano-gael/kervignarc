@@ -13,9 +13,22 @@
 // seulement si on l'a coché : sans cela, un oubli de saisie ferait perdre quelqu'un qui a tiré.
 
 import { useState } from 'react'
-import type { Barrage, EgaliteADepartager, LigneClassement } from './api'
+import type { Barrage, EgaliteADepartager, LigneClassement, TirBarrage } from './api'
 import { mancheComplete, type SaisieTir, TIR_VIERGE, versTirs } from './barrage'
-import { useAnnoncerBarrage, useBarrages, useCloreBarrage, useSaisirMancheBarrage } from './hooks'
+import {
+  useAnnoncerBarrage,
+  useAnnulerBarrage,
+  useBarrages,
+  useCloreBarrage,
+  useSaisirMancheBarrage,
+} from './hooks'
+
+/** Ce que chaque portée vient trancher — le panneau sert les trois (ADR-0066). */
+const LIBELLE_PORTEE: Record<string, string> = {
+  qualification: 'Qualification',
+  poule: 'Poule',
+  big_shoot_off: 'Big Shoot Off',
+}
 
 export function PanneauBarrages({
   tournoiId,
@@ -103,7 +116,7 @@ function EgaliteALancer({
   )
 }
 
-/** Un barrage ouvert : ce qu'il reste à faire tirer, ou son verdict. */
+/** Un barrage ouvert : ce qu'il reste à faire tirer, son verdict, et les deux portes de sortie. */
 function BarrageEnCours({
   tournoiId,
   barrage,
@@ -114,10 +127,24 @@ function BarrageEnCours({
   nomDe: (archerId: number) => string
 }) {
   const clore = useCloreBarrage(tournoiId)
+  const annuler = useAnnulerBarrage(tournoiId)
+  const [correction, setCorrection] = useState(false)
+  const derniere = barrage.manches.length
+  const titre =
+    barrage.rang_dispute !== null
+      ? `${barrage.rang_dispute}ᵉ place`
+      : (LIBELLE_PORTEE[barrage.portee] ?? barrage.portee)
+
   return (
     <article className="barrage">
       <h4 className="barrage__titre">
-        {barrage.rang_dispute}ᵉ place — manche {barrage.manches.length + 1}
+        {titre} — manche {derniere + 1}
+        {barrage.portee !== 'qualification' && (
+          <span className="barrage__portee">
+            {' · '}
+            {LIBELLE_PORTEE[barrage.portee] ?? barrage.portee}
+          </span>
+        )}
       </h4>
       {barrage.est_resolu ? (
         <>
@@ -133,17 +160,56 @@ function BarrageEnCours({
         // ferait passer un tireur à 8 devant un tireur à 10 que le tir précédent avait départagé.
         barrage.groupes_a_rejouer.map((groupe) => (
           <SaisieGroupe
-            key={groupe.join('-')}
+            // ⚠️ **La clé porte le numéro de manche.** Un retir non concluant rend *le même*
+            // groupe, donc la même clé : React réutilisait l'instance et la manche suivante
+            // s'ouvrait **pré-remplie** avec les scores précédents, bouton déjà actif. Un clic
+            // réflexe enregistrait alors le tir précédent comme retir.
+            key={`${derniere}-${groupe.join('-')}`}
             tournoiId={tournoiId}
-            barrage={barrage}
+            barrageId={barrage.id}
             groupe={groupe}
             nomDe={nomDe}
           />
         ))
       )}
+      <div className="barrage__actions">
+        {derniere > 0 && (
+          <button type="button" onClick={() => setCorrection((ouvert) => !ouvert)}>
+            {correction ? 'Fermer la correction' : `Corriger la manche ${derniere}`}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => annuler.mutate(barrage.id)}
+          disabled={annuler.isPending}
+        >
+          Annuler ce barrage
+        </button>
+      </div>
+      {correction && derniere > 0 && (
+        // ⚠️ **Corriger la manche N tronque les suivantes** (le serveur s'en charge) : la partition
+        // ayant changé, les retirs qui en découlaient n'ont plus d'objet. C'est le geste que
+        // promettait le CA — « corriger une flèche corrige le classement » — et qui n'existait dans
+        // aucun écran : le formulaire disparaissait dès que le barrage était résolu.
+        <SaisieGroupe
+          key={`correction-${derniere}`}
+          tournoiId={tournoiId}
+          barrageId={barrage.id}
+          groupe={(barrage.manches[derniere - 1] ?? []).map((tir) => tir.archer_id)}
+          nomDe={nomDe}
+          manche={derniere}
+          initial={barrage.manches[derniere - 1]}
+          surSucces={() => setCorrection(false)}
+        />
+      )}
       {clore.isError && (
         <p className="carte__etat carte__etat--erreur" role="alert">
           {clore.error.message}
+        </p>
+      )}
+      {annuler.isError && (
+        <p className="carte__etat carte__etat--erreur" role="alert">
+          {annuler.error.message}
         </p>
       )}
     </article>
@@ -153,16 +219,24 @@ function BarrageEnCours({
 /** Le formulaire d'un groupe à départager : une flèche par tireur, la manche soumise d'un bloc. */
 function SaisieGroupe({
   tournoiId,
-  barrage,
+  barrageId,
   groupe,
   nomDe,
+  manche,
+  initial,
+  surSucces,
 }: {
   tournoiId: number
-  barrage: Barrage
+  barrageId: number
   groupe: number[]
   nomDe: (archerId: number) => string
+  /** Fourni = on **réécrit** cette manche (correction) ; absent = on ajoute la suivante. */
+  manche?: number
+  /** Les tirs déjà saisis, pour pré-remplir une correction. */
+  initial?: TirBarrage[]
+  surSucces?: () => void
 }) {
-  const [saisies, setSaisies] = useState<Record<number, SaisieTir>>({})
+  const [saisies, setSaisies] = useState<Record<number, SaisieTir>>(() => depuisTirs(initial))
   const saisir = useSaisirMancheBarrage(tournoiId)
   const lire = (archerId: number) => saisies[archerId] ?? TIR_VIERGE
   const modifier = (archerId: number, champ: Partial<SaisieTir>) =>
@@ -173,7 +247,11 @@ function SaisieGroupe({
   // tout ») — on l'annonce ici plutôt que de laisser partir une requête vouée au 422.
   const complet = mancheComplete(groupe, saisies)
 
-  const soumettre = () => saisir.mutate({ barrageId: barrage.id, tirs: versTirs(groupe, saisies) })
+  const soumettre = () =>
+    saisir.mutate(
+      { barrageId, tirs: versTirs(groupe, saisies), manche },
+      { onSuccess: () => surSucces?.() },
+    )
 
   return (
     <div className="barrage__groupe">
@@ -194,11 +272,7 @@ function SaisieGroupe({
                 onChange={(e) => modifier(archerId, { score: e.target.value })}
               />
             </label>
-            <label
-              title="Distance du centre à l'impact, en dixièmes de millimètre. À ne renseigner
-que si les flèches sont à égalité et que le juge a mesuré — une mesure absente n'est pas une
-distance nulle : le barrage se retire."
-            >
+            <label title="Distance du centre à l'impact, en dixièmes de millimètre. À ne renseigner que si les flèches sont à égalité et que le juge a mesuré — une mesure absente n'est pas une distance nulle : le barrage se retire.">
               Distance (⅒ mm){' '}
               <input
                 type="number"
@@ -221,7 +295,7 @@ distance nulle : le barrage se retire."
         )
       })}
       <button type="button" onClick={soumettre} disabled={!complet || saisir.isPending}>
-        Enregistrer la manche
+        {manche === undefined ? 'Enregistrer la manche' : `Corriger la manche ${manche}`}
       </button>
       {!complet && (
         <p className="carte__etat">
@@ -235,4 +309,19 @@ distance nulle : le barrage se retire."
       )}
     </div>
   )
+}
+
+/** Pré-remplit le formulaire depuis des tirs déjà enregistrés (correction d'une manche). */
+function depuisTirs(tirs: TirBarrage[] | undefined): Record<number, SaisieTir> {
+  const saisies: Record<number, SaisieTir> = {}
+  for (const tir of tirs ?? []) {
+    saisies[tir.archer_id] = {
+      // `score` nul en base = **absent** : on recoche la case plutôt que d'afficher un champ vide,
+      // qui se relirait « pas encore noté » et changerait le sens de la correction.
+      score: tir.score === null ? '' : String(tir.score),
+      distance: tir.distance_au_centre === null ? '' : String(tir.distance_au_centre),
+      absent: tir.score === null,
+    }
+  }
+  return saisies
 }

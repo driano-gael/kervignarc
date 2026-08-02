@@ -250,6 +250,11 @@ function FormulairePhase({
   const enEdition = phase !== undefined
   const [type, setType] = useState<TypePhase>(phase?.type ?? 'elimination_directe')
   const [effectif, setEffectif] = useState(phase?.effectif != null ? String(phase.effectif) : '')
+  // Réhydraté depuis la phase : le `PUT` étant une édition **totale**, ne pas le renvoyer
+  // effacerait le seuil dès qu'on touche à autre chose sur la phase.
+  const [barrage, setBarrage] = useState(
+    phase?.barrage_jusqu_au != null ? String(phase.barrage_jusqu_au) : '',
+  )
   const premiereSource = phase?.sources?.[0] ?? null
   const [avecSource, setAvecSource] = useState(premiereSource != null)
   const [ordreSource, setOrdreSource] = useState(
@@ -315,18 +320,27 @@ function FormulairePhase({
   const effectifAnalyse = effectif.trim() === '' ? null : Number(effectif)
   const effectifInvalide =
     effectifAnalyse !== null && (!Number.isInteger(effectifAnalyse) || effectifAnalyse < 1)
-  const soumissionPossible = sources !== 'invalide' && !effectifInvalide
+  const barrageAnalyse = barrage.trim() === '' ? null : Number(barrage)
+  const barrageInvalide =
+    barrageAnalyse !== null && (!Number.isInteger(barrageAnalyse) || barrageAnalyse < 1)
+  const soumissionPossible = sources !== 'invalide' && !effectifInvalide && !barrageInvalide
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
-    if (sources === 'invalide' || effectifInvalide) return
-    const config: ConfigPhase = { type, sources, effectif: effectifAnalyse }
+    if (sources === 'invalide' || effectifInvalide || barrageInvalide) return
+    const config: ConfigPhase = {
+      type,
+      sources,
+      effectif: effectifAnalyse,
+      barrage_jusqu_au: barrageAnalyse,
+    }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
     } else {
       ajouter.mutate(config, {
         onSuccess: () => {
           setEffectif('')
+          setBarrage('')
           setAvecSource(false)
           setOrdreSource('')
           setRangDebut('1')
@@ -371,6 +385,26 @@ function FormulairePhase({
           {effectifInvalide && (
             <span className="carte__etat carte__etat--erreur" role="alert">
               Effectif attendu : un entier ≥ 1, ou vide (non déclaré).
+            </span>
+          )}
+        </label>
+        <label className="formulaire__libelle">
+          Barrage jusqu'au rang (facultatif)
+          <input
+            className="formulaire__champ"
+            inputMode="numeric"
+            value={barrage}
+            onChange={(e) => setBarrage(e.target.value)}
+            placeholder="ex. 8 (dernière place qualificative)"
+            aria-label="Rang jusqu'auquel départager les ex æquo au tir"
+          />
+          <span className="carte__aide">
+            Vide = les ex æquo partagent leur rang (défaut). Renseigné, l'application signale les
+            égalités jusqu'à ce rang et propose un tir de barrage.
+          </span>
+          {barrageInvalide && (
+            <span className="carte__etat carte__etat--erreur" role="alert">
+              Barrage jusqu'au rang : un entier ≥ 1, ou vide (aucun barrage).
             </span>
           )}
         </label>
