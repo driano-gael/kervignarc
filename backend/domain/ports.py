@@ -12,6 +12,7 @@ from collections.abc import Sequence
 from typing import Protocol
 
 from domain.archer import Archer, ArcherId
+from domain.barrage import BarrageDePlaces, BarrageId, TirBarrage
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId
@@ -1081,4 +1082,52 @@ class ForfaitRepository(Protocol):
         touchées), pas un drapeau. `forfait` porte l'`id` à supprimer (résolu par
         `par_archer_et_phase`). Tout ou rien : jamais d'annulation non tracée.
         """
+        ...
+
+
+class BarrageRepository(Protocol):
+    """Port de persistance des **barrages de places** (E06US003, [ADR-0066]).
+
+    Le grain d'écriture est la **manche**, pas la flèche : un barrage se tire en une fois, tous ses
+    tireurs ensemble, et le moteur refuse d'ailleurs un groupe retiré à moitié. Enregistrer flèche
+    par flèche exposerait une manche incomplète à la lecture — donc un verdict provisoire faux.
+
+    ⚠️ **Aucune méthode ne rend le verdict** : il se recalcule depuis les tirs
+    (`BarrageDePlaces.resultat`),
+    et rien ne le stocke. C'est ce qui rend une flèche mal saisie corrigeable — la corriger corrige
+    le classement. Un port qui exposerait « le verdict » inviterait à le mémoriser, donc à créer une
+    seconde vérité périmée dès le premier correctif.
+
+    [ADR-0066]: ../../docs/adr/0066-seuil-de-barrage-porte-par-la-politique-tiebreak.md
+    """
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[BarrageDePlaces]:
+        """Tous les barrages d'un tournoi, clos compris (liste éventuellement vide).
+
+        Les **clos** sont rendus eux aussi : ce sont eux qui portent les verdicts déjà appliqués au
+        classement. Les filtrer ici ferait retomber les rangs tranchés en ex æquo à la lecture
+        suivante.
+        """
+        ...
+
+    def par_id(self, barrage_id: BarrageId) -> BarrageDePlaces | None:
+        """Le barrage d'identifiant donné, avec toutes ses manches, ou `None`."""
+        ...
+
+    def ouvrir(self, barrage: BarrageDePlaces) -> BarrageDePlaces:
+        """Persiste un barrage **annoncé** (sans tir) et renvoie l'agrégat avec son identifiant."""
+        ...
+
+    def enregistrer_manche(
+        self, barrage_id: BarrageId, manche: int, tirs: Sequence[TirBarrage]
+    ) -> BarrageDePlaces:
+        """Écrit les tirs d'une manche, en **remplaçant** ceux déjà saisis pour ce numéro.
+
+        Le remplacement est le mode de **correction** : ressaisir la manche 2 corrige une flèche mal
+        notée, et le verdict s'en déduit à nouveau. Renvoie le barrage rechargé.
+        """
+        ...
+
+    def clore(self, barrage_id: BarrageId) -> BarrageDePlaces:
+        """Marque le barrage comme clos — le juge a acté le verdict, plus de retir attendu."""
         ...

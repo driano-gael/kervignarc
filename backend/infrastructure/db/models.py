@@ -640,3 +640,70 @@ class RemboursementORM(Base):
     statut: Mapped[str] = mapped_column(nullable=False)
     cree_le: Mapped[datetime.datetime] = mapped_column(nullable=False)
     traite_le: Mapped[datetime.datetime | None] = mapped_column(nullable=True)
+
+
+class BarrageORM(Base):
+    """Table `barrage` — un tir de barrage **annoncé** (E06US003, ADR-0066).
+
+    `portee` stocke la valeur de `PorteeBarrage` (qualification / poule / big_shoot_off). Les trois
+    sont modélisées d'emblée bien qu'une seule soit câblée : le discriminant coûte une colonne
+    aujourd'hui et une **migration de données** si on l'ajoutait plus tard (DETTE-028).
+
+    `phase_id` et `reference` situent le barrage **dans** sa portée : la phase concernée, et le
+    numéro de poule ou de manche pour les portées qui en ont une. Nuls en qualification, où le
+    tournoi et le rang suffisent. `rang_dispute` est le rang partagé à éclater — **nul** pour un Big
+    Shoot Off, dont l'égalité désigne un sortant plutôt qu'une place.
+
+    `participants_json` fige la liste des tireurs (`[archer_id, …]`) à l'annonce. Même parti que
+    `phase.sources_json` (migration 0036) et `poste.deroule_json` (0038) : du JSON dans une colonne
+    texte pour une donnée toujours lue et écrite **en entier**, jamais ligne à ligne. Et surtout,
+    elle est **figée** — la recalculer depuis le classement à chaque lecture ferait changer les
+    tireurs sous les pieds du juge dès qu'une volée en retard est validée.
+
+    ⚠️ **Le verdict n'est pas stocké**, il se recalcule depuis les tirs (`Barrage.resultat`). C'est
+    ce qui rend une flèche mal saisie corrigeable : la corriger corrige le classement. Stocker
+    l'ordre en plus des tirs créerait deux vérités, dont une périmée au premier correctif.
+    """
+
+    __tablename__ = "barrage"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
+    # dans la politique de suppression du tournoi (non tranchée) ; ne pas contourner ici.
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    phase_id: Mapped[int | None] = mapped_column(ForeignKey("phase.id"), nullable=True)
+    portee: Mapped[str] = mapped_column(nullable=False)
+    reference: Mapped[str | None] = mapped_column(nullable=True)
+    rang_dispute: Mapped[int | None] = mapped_column(nullable=True)
+    participants_json: Mapped[str] = mapped_column(nullable=False)
+    clos: Mapped[bool] = mapped_column(nullable=False, server_default=text("0"))
+    cree_le: Mapped[datetime.datetime] = mapped_column(nullable=False)
+
+
+class BarrageTirORM(Base):
+    """Table `barrage_tir` — une flèche de barrage, manche par manche (E06US003).
+
+    Le grain est le **tir d'un participant à une manche**, ce qu'exige le CA (« persistance flèche
+    par flèche ») et ce dont le moteur a besoin pour rejouer le verdict.
+
+    ⚠️ **`score` nul signifie ABSENT, pas « pas encore saisi ».** C'est une issue réglementaire
+    (B.6.5.2.4 : l'archer absent au barrage annoncé est déclaré perdant), et le domaine en avertit
+    déjà (`TirBarrage`). Une saisie en attente n'a **pas de ligne** dans cette table — c'est ce qui
+    distingue les deux, et confondre les deux ferait perdre quelqu'un qui n'a pas encore tiré.
+
+    `distance_au_centre` est en **dixièmes de millimètre**, nulle quand la mesure n'a pas été faite.
+    Une mesure absente n'est pas une distance nulle : le domaine refuse de départager dessus et fait
+    retirer, ce qui est le cas le plus fréquent du jour J (le juge mesure la flèche litigieuse,
+    rarement les deux).
+    """
+
+    __tablename__ = "barrage_tir"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    barrage_id: Mapped[int] = mapped_column(ForeignKey("barrage.id"), nullable=False)
+    manche: Mapped[int] = mapped_column(nullable=False)
+    archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
+    score: Mapped[int | None] = mapped_column(nullable=True)
+    distance_au_centre: Mapped[int | None] = mapped_column(nullable=True)
+
+    __table_args__ = (UniqueConstraint("barrage_id", "manche", "archer_id", name="uq_barrage_tir"),)

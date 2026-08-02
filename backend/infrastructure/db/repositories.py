@@ -20,6 +20,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
+from domain.barrage import (
+    BarrageDePlaces,
+    BarrageId,
+    PorteeBarrage,
+    TirBarrage,
+)
 from domain.blason import Blason, BlasonId, ZoneScore, valider_zones
 from domain.categorie import Categorie, CategorieId, SexeCategorie, TrancheAge
 from domain.club import Club, ClubId, cle_nom
@@ -61,6 +67,8 @@ from domain.serie import Serie, SerieId, Volee
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
 from infrastructure.db.models import (
     ArcherORM,
+    BarrageORM,
+    BarrageTirORM,
     BlasonORM,
     CategorieORM,
     ClubORM,
@@ -3018,3 +3026,165 @@ class ForfaitRepositorySQL:
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de l'annulation du forfait et de sa trace.") from exc
+
+
+def _vers_barrage(ligne: BarrageORM, tirs: Sequence[BarrageTirORM]) -> BarrageDePlaces:
+    """Reconstruit l'agrégat depuis sa ligne et ses tirs, **groupés par manche**.
+
+    Les manches sont rendues **triées par numéro** : c'est leur ordre qui porte le sens (la manche 1
+    acquiert un ordre que les suivantes ne peuvent pas défaire), et le moteur les consomme dans
+    cette séquence. Un trou de numérotation est sans effet — seul l'ordre relatif compte.
+    """
+    participants = tuple(
+        Participant.individuel(int(ref)) for ref in json.loads(ligne.participants_json)
+    )
+    par_manche: dict[int, list[TirBarrage]] = {}
+    for tir in tirs:
+        par_manche.setdefault(tir.manche, []).append(
+            TirBarrage(
+                participant=Participant.individuel(tir.archer_id),
+                score=tir.score,
+                distance_au_centre=tir.distance_au_centre,
+            )
+        )
+    return BarrageDePlaces(
+        tournoi_id=ligne.tournoi_id,
+        portee=PorteeBarrage(ligne.portee),
+        participants=participants,
+        cree_le=ligne.cree_le,
+        manches=tuple(tuple(par_manche[numero]) for numero in sorted(par_manche)),
+        rang_dispute=ligne.rang_dispute,
+        phase_id=ligne.phase_id,
+        reference=ligne.reference,
+        clos=ligne.clos,
+        id=ligne.id,
+    )
+
+
+class BarrageRepositorySQL:
+    """Adapter SQLite du port `BarrageRepository` (E06US003, ADR-0066).
+
+    Le grain d'écriture est la **manche** : `enregistrer_manche` remplace en bloc les tirs d'un
+    numéro donné, ce qui fait de la ressaisie le mode de **correction** d'une flèche mal notée.
+    Suppression puis insertion dans **une seule transaction** — un remplacement à moitié appliqué
+    laisserait une manche mêlant anciennes et nouvelles flèches, donc un verdict faux et plausible.
+
+    ⚠️ **Le verdict n'est jamais persisté** : il se recalcule depuis les tirs. C'est pourquoi aucune
+    méthode d'écriture ne le prend en argument.
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[BarrageDePlaces]:
+        """Tous les barrages d'un tournoi, **clos compris** — ce sont eux qui portent les verdicts
+        déjà acquis, et les filtrer ferait retomber les rangs tranchés en ex æquo."""
+        try:
+            with self._session_factory() as session:
+                lignes = list(
+                    session.execute(
+                        select(BarrageORM)
+                        .where(BarrageORM.tournoi_id == tournoi_id)
+                        .order_by(BarrageORM.id)
+                    ).scalars()
+                )
+                if not lignes:
+                    return []
+                tirs = list(
+                    session.execute(
+                        select(BarrageTirORM)
+                        .where(BarrageTirORM.barrage_id.in_([ligne.id for ligne in lignes]))
+                        .order_by(BarrageTirORM.id)
+                    ).scalars()
+                )
+                par_barrage: dict[int, list[BarrageTirORM]] = {}
+                for tir in tirs:
+                    par_barrage.setdefault(tir.barrage_id, []).append(tir)
+                return [_vers_barrage(ligne, par_barrage.get(ligne.id, [])) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des barrages du tournoi.") from exc
+
+    def par_id(self, barrage_id: BarrageId) -> BarrageDePlaces | None:
+        """Le barrage d'identifiant donné avec toutes ses manches, ou `None`."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(BarrageORM, barrage_id)
+                if ligne is None:
+                    return None
+                tirs = list(
+                    session.execute(
+                        select(BarrageTirORM)
+                        .where(BarrageTirORM.barrage_id == barrage_id)
+                        .order_by(BarrageTirORM.id)
+                    ).scalars()
+                )
+                return _vers_barrage(ligne, tirs)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du barrage.") from exc
+
+    def ouvrir(self, barrage: BarrageDePlaces) -> BarrageDePlaces:
+        """Persiste un barrage annoncé (sans tir) et le renvoie avec son identifiant."""
+        try:
+            with self._session_factory() as session:
+                ligne = BarrageORM(
+                    tournoi_id=barrage.tournoi_id,
+                    phase_id=barrage.phase_id,
+                    portee=barrage.portee.value,
+                    reference=barrage.reference,
+                    rang_dispute=barrage.rang_dispute,
+                    participants_json=json.dumps(
+                        [participant.ref_id for participant in barrage.participants]
+                    ),
+                    clos=barrage.clos,
+                    cree_le=barrage.cree_le,
+                )
+                session.add(ligne)
+                session.commit()
+                return _vers_barrage(ligne, [])
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance du barrage.") from exc
+
+    def enregistrer_manche(
+        self, barrage_id: BarrageId, manche: int, tirs: Sequence[TirBarrage]
+    ) -> BarrageDePlaces:
+        """Remplace **en bloc** les tirs de cette manche, puis renvoie le barrage rechargé."""
+        try:
+            with self._session_factory() as session:
+                session.execute(
+                    delete(BarrageTirORM).where(
+                        BarrageTirORM.barrage_id == barrage_id,
+                        BarrageTirORM.manche == manche,
+                    )
+                )
+                for tir in tirs:
+                    session.add(
+                        BarrageTirORM(
+                            barrage_id=barrage_id,
+                            manche=manche,
+                            archer_id=tir.participant.ref_id,
+                            score=tir.score,
+                            distance_au_centre=tir.distance_au_centre,
+                        )
+                    )
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec d'enregistrement de la manche de barrage.") from exc
+        recharge = self.par_id(barrage_id)
+        if recharge is None:  # pragma: no cover — l'appelant a vérifié l'existence
+            raise InfrastructureError("Le barrage a disparu pendant l'enregistrement de sa manche.")
+        return recharge
+
+    def clore(self, barrage_id: BarrageId) -> BarrageDePlaces:
+        """Marque le barrage comme clos — le juge a acté le verdict, plus de retir attendu."""
+        try:
+            with self._session_factory() as session:
+                session.execute(
+                    update(BarrageORM).where(BarrageORM.id == barrage_id).values(clos=True)
+                )
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de clôture du barrage.") from exc
+        recharge = self.par_id(barrage_id)
+        if recharge is None:  # pragma: no cover — l'appelant a vérifié l'existence
+            raise InfrastructureError("Le barrage a disparu pendant sa clôture.")
+        return recharge

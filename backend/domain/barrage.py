@@ -29,12 +29,18 @@ deux à deux. Domaine **pur** (règle 1).
 
 from __future__ import annotations
 
+import datetime
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import Enum
 
 from domain.erreurs import ConfigurationBarrageInvalide
 from domain.participant import Participant
+from domain.phase import PhaseId
 from domain.politiques import Tiebreak
+from domain.tournoi import TournoiId
+
+BarrageId = int
 
 FLECHES_INDIVIDUEL = 1
 """Art. B.6.5.2 : le barrage individuel se tire à **une** flèche."""
@@ -400,3 +406,92 @@ class VerdictBarrage:
         places situées **au-delà** du seuil qui l'a déclenché, ce qui est voulu (ADR-0066).
         """
         return {participant: self.rang + ecart for ecart, participant in enumerate(self.ordre)}
+
+
+# --- l'agrégat persisté : un barrage annoncé, ses manches et son verdict (E06US003) --------------
+
+
+class PorteeBarrage(str, Enum):
+    """Le classement qu'un barrage vient trancher — les **trois usages** du moteur (§8.2).
+
+    Le champ existe dès maintenant, bien qu'une seule portée soit câblée de bout en bout : c'est ce
+    qui évite une migration le jour où les moteurs de poule et de Big Shoot Off recevront leurs
+    consommateurs (DETTE-028). Un discriminant ajouté d'emblée ne coûte rien ; l'ajouter après coup
+    oblige à réécrire des lignes existantes.
+    """
+
+    QUALIFICATION = "qualification"
+    """Ex æquo du classement de qualification, §8.1 épuisé — la seule portée câblée à ce jour."""
+
+    POULE = "poule"
+    """Ex æquo d'un classement de poule (« barrage si nécessaire », §10.1)."""
+
+    BIG_SHOOT_OFF = "big_shoot_off"
+    """Égalité **au plus faible** d'une manche de Big Shoot Off — celle qui suspend la manche."""
+
+
+@dataclass(frozen=True)
+class BarrageDePlaces:
+    """Un barrage **annoncé** : qui il départage, ce qui a été tiré, et ce qu'il en résulte.
+
+    Agrégat de persistance du barrage de places (E06US003). `participants` est figé à l'annonce —
+    et non recalculé depuis le classement à chaque lecture : les scores continuent d'évoluer (une
+    volée validée en retard, un forfait), et un barrage dont la liste de tireurs change sous les
+    pieds du juge ne serait pas un barrage. `manches` porte les tirs, manche par manche ; le verdict
+    s'en **recalcule** intégralement : corriger une flèche mal saisie corrige le classement.
+
+    `rang_dispute` est le rang partagé que ce barrage vient éclater. Il est `None` pour un Big Shoot
+    Off, dont l'égalité au plus faible n'a pas de rang à disputer — elle désigne un **sortant**.
+
+    ⚠️ **Un tir absent de `manches` n'est pas un tireur absent.** L'absence réglementaire
+    (B.6.5.2.4, l'archer est déclaré perdant) se saisit comme un `TirBarrage` de `score` à `None` ;
+    « pas encore saisi », c'est l'absence de la **ligne** elle-même. Confondre les deux ferait
+    perdre quelqu'un qui n'a pas encore tiré, ce dont `TirBarrage` avertit déjà.
+    """
+
+    tournoi_id: TournoiId
+    portee: PorteeBarrage
+    participants: tuple[Participant, ...]
+    cree_le: datetime.datetime
+    manches: tuple[tuple[TirBarrage, ...], ...] = ()
+    rang_dispute: int | None = None
+    phase_id: PhaseId | None = None
+    reference: str | None = None
+    clos: bool = False
+    id: BarrageId | None = field(default=None)
+
+    def __post_init__(self) -> None:
+        if len(self.participants) < 2:
+            raise ConfigurationBarrageInvalide(
+                "Un barrage départage au moins deux participants ; à un seul il n'y a rien "
+                "à départager."
+            )
+        if len(set(self.participants)) != len(self.participants):
+            raise ConfigurationBarrageInvalide(
+                "Un même participant figure deux fois parmi les tireurs de ce barrage."
+            )
+
+    def resultat(self) -> ResultatBarrage:
+        """L'issue du barrage au vu des manches saisies — recalculée, jamais mémorisée.
+
+        Tant qu'aucune manche n'est saisie, tout le monde est à égalité : le barrage est « à
+        tirer », ce qui est un `groupes_a_rejouer` d'un seul groupe et non un ordre vide ambigu.
+        """
+        if not self.manches:
+            return ResultatBarrage(groupes_a_rejouer=(self.participants,))
+        return resoudre_barrage_en_manches(self.manches)
+
+    def verdict(self) -> VerdictBarrage:
+        """Ce que ce barrage apporte au classement — **rien** tant qu'il n'a pas tout départagé.
+
+        Un barrage non résolu rend un verdict d'`ordre` vide : le rang **reste partagé**. C'est la
+        même exigence qu'en E05US015 — ne pas publier un classement à moitié vrai, qui s'afficherait
+        sans avertir. Sans `rang_dispute` (Big Shoot Off), il n'y a pas de rang à éclater : le
+        verdict n'a pas de sens et l'appelant lit `resultat()` pour connaître le sortant.
+        """
+        if self.rang_dispute is None:
+            return VerdictBarrage(rang=0, ordre=())
+        resultat = self.resultat()
+        return VerdictBarrage(
+            rang=self.rang_dispute, ordre=resultat.ordre if resultat.est_resolu else ()
+        )
