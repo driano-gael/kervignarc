@@ -280,7 +280,7 @@ def test_la_finale_tranchee_ferme_le_dernier_braquet(ctx: Contexte) -> None:
     assert bloc.duels_joues == bloc.duels_attendus == 7
 
 
-def test_un_tableau_de_placement_decale_compte_correctement() -> None:
+def test_un_tableau_alimente_par_une_tranche_haute_compte_correctement() -> None:
     """**Non-régression** (2ᵉ passe adversariale) : deux systèmes de coordonnées, un seul comparé.
 
     `_braquets` produit des plages **absolues** (« un tableau des rangs 33-64 rend des perdants en
@@ -288,26 +288,30 @@ def test_un_tableau_de_placement_decale_compte_correctement() -> None:
     partir de 1. La comparaison directe ne pouvait fonctionner que pour un tableau partant du rang 1
     — le seul cas que montaient toutes les fixtures, y compris celles ajoutées au premier correctif.
 
-    Sur un **tableau de placement** des rangs 9-16 — capacité de première classe depuis E05US010, et
-    un cas parfaitement ordinaire d'un déroulé composé —, aucune plage ne correspondait à aucun tour
-    : l'écran projeté affichait « tour 1 · 0/7 » du début à la fin de la journée, remise des prix
-    comprise.
+    Le comptage ne compare donc plus de **positions** : il apparie les braquets aux tours réels
+    **par la fin**, et ne retient que la branche des gagnants, reconnue à sa **largeur** — une
+    largeur est un nombre de rangs, donc indépendante du repère.
 
-    Ce test tient les **deux** exigences à la fois : le compte avance (le décalage est appliqué)
-    **et** la petite finale n'achève pas la phase (le filtre par branche opère encore).
+    Ce test tient les deux exigences à la fois : le compte avance sur une tranche haute, **et** la
+    petite finale n'achève pas la phase.
+
+    ⚠️ La première version montait une phase de type `PLACEMENT`. Fixture **irréelle**, relevée en
+    3ᵉ passe : en production `ServiceSaisieDuels.reconstruire` refuse tout type autre
+    qu'`ELIMINATION_DIRECTE`, donc une phase de placement rend **toujours** zéro duel — le test
+    prouvait une arithmétique sur un chemin que le produit n'emprunte jamais.
     """
     ctx = Contexte(nb_engages=16)
     ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
-    placement = Phase.creer(
+    tranche_haute = Phase.creer(
         tournoi_id=ctx.tournoi_id,
         ordre=2,
-        type=TypePhase.PLACEMENT,
+        type=TypePhase.ELIMINATION_DIRECTE,
         sources=(
             SourcePhase(ordre_source=1, rang_debut=9, rang_fin=16, nature=NatureSource.RANGS),
         ),
         effectif=8,
     ).demarrer()
-    ctx.ajouter_phase(placement, 2)
+    ctx.ajouter_phase(tranche_haute, 2)
     tableau = _tableau(8)
     petite_finale = next(m.numero for m in tableau.matchs if m.place_en_jeu == (3, 4))
     ctx.tableaux.tableaux[2] = _jouer(
@@ -323,34 +327,88 @@ def test_un_tableau_de_placement_decale_compte_correctement() -> None:
     assert bloc.tour_courant == 3
 
 
-def test_un_tableau_plus_large_que_la_tranche_declaree_compte_quand_meme() -> None:
-    """**Non-régression** (2ᵉ passe de revue) : le filtre par branche ne doit pas tomber à zéro.
+def test_une_phase_ne_se_termine_jamais_avant_sa_finale() -> None:
+    """**LA propriété du suivi**, et celle que trois correctifs successifs ont manquée.
 
-    C'est le **cas normal en production**, et aucun montage ne le couvrait : `# DETTE-028` fait
-    qu'un tableau est ensemencé avec *tous* les archers en lice, sans lire `Phase.sources`, alors
-    que les braquets projetés se calculent sur l'effectif **déclaré**. Une phase qui déclare « rangs
-    1..8 » mais qu'on joue à 12 archers produit des plages réelles `(1,16)`, `(1,8)`, `(1,4)`… face
-    à des branches attendues `(1,8)`, `(1,4)`, `(1,2)` — **aucune** ne coïncide.
+    Le format FFTA courant : qualification à 120, puis élimination directe déclarée « rangs 1-32 ».
+    `# DETTE-028` fait que le tableau réel est ensemencé avec les **120** archers en lice — donc 7
+    tours là où la projection en annonce 5. Les trois versions précédentes du comptage donnaient, à
+    l'issue du 5ᵉ tour réel — **quatre duels restants, dont les demi-finales et la finale** —, un
+    schéma **entièrement rempli** (`31/31`, plus aucun tour en cours) sur l'écran projeté.
 
-    Le premier correctif (filtre inconditionnel) rendait alors **0 duel joué en permanence** :
-    l'écran projeté affichait « tour 1 · 0/7 » toute la journée. On avait remplacé un affichage faux
-    (« terminé » trop tôt) par un autre affichage faux, en sens inverse.
+    On ne vérifie donc pas un chiffre : on vérifie l'**invariant** qui compte pour le public — tant
+    qu'un duel du dernier braquet n'est pas tiré, la phase n'est **pas** terminée. Et on le vérifie
+    à chaque tour, parce que c'est la progression tour à tour qui a menti, pas l'état final.
+    """
+    ctx = Contexte(nb_engages=120)
+    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
+    phase = Phase.creer(
+        tournoi_id=ctx.tournoi_id,
+        ordre=2,
+        type=TypePhase.ELIMINATION_DIRECTE,
+        sources=(
+            SourcePhase(ordre_source=1, rang_debut=1, rang_fin=32, nature=NatureSource.RANGS),
+        ),
+        effectif=32,
+    ).demarrer()
+    ctx.ajouter_phase(phase, 2)
+    tableau = _tableau(120)
+    dernier_tour = max(m.tour for m in tableau.matchs)
 
-    Ici on ne vérifie **pas** un chiffre exact — les deux structures divergent, aucun chiffre n'est
-    « juste ». On vérifie que le suivi **avance** : c'est tout ce que l'écran doit garantir dans ce
-    cas dégradé.
+    precedent = 0
+    for jusqu_au_tour in range(1, dernier_tour):
+        tableau = _jouer(
+            tableau,
+            [m.numero for m in tableau.matchs if m.tour == jusqu_au_tour and not m.est_bye],
+        )
+        ctx.tableaux.tableaux[2] = tableau
+        bloc = ctx.service.pour_tournoi(ctx.tournoi_id).avancement.blocs[1]
+
+        # Tant que la finale n'est pas tirée, la phase reste ouverte — quel que soit le tour.
+        assert bloc.tour_courant is not None, f"phase close au tour réel {jusqu_au_tour}"
+        assert bloc.duels_joues < bloc.duels_attendus
+        # Et l'avancement ne recule jamais.
+        assert bloc.duels_joues >= precedent
+        precedent = bloc.duels_joues
+
+    # Le dernier tour réel porte la finale : là, et là seulement, le schéma se ferme.
+    ctx.tableaux.tableaux[2] = _jouer(
+        tableau, [m.numero for m in tableau.matchs if m.tour == dernier_tour and not m.est_bye]
+    )
+    bloc = ctx.service.pour_tournoi(ctx.tournoi_id).avancement.blocs[1]
+    assert bloc.tour_courant is None
+    assert bloc.duels_joues == bloc.duels_attendus
+
+
+def test_un_tableau_plus_large_que_la_tranche_declaree_ne_reste_pas_bloque() -> None:
+    """**Non-régression** (2ᵉ passe) : le compteur ne doit pas rester bloqué à zéro.
+
+    `# DETTE-028` : un tableau est ensemencé avec *tous* les archers en lice, sans lire
+    `Phase.sources`, alors que les braquets se calculent sur l'effectif **déclaré**. Une phase
+    déclarant « rangs 1..8 » jouée à 12 archers a donc **quatre** tours réels contre trois projetés.
+
+    ⚠️ Avec l'alignement **par la fin** (`_correspondance`), le **premier** tour réel ne remplit
+    rien : les trois braquets sont les trois **derniers** tours. C'est voulu et c'est honnête — ce
+    premier tour fait tirer des archers que le format déclaré ne comptait pas. La version d'origine
+    de ce test affirmait l'inverse (« un duel du tour 1 doit compter ») : elle encodait la
+    sémantique d'alors, pas une exigence du CA.
+
+    Ce qu'on garde de sa valeur : après les tours qui, eux, correspondent, le suivi **avance** — il
+    ne reste pas bloqué à zéro comme il l'avait fait après le premier correctif.
     """
     ctx = Contexte(nb_engages=12)
     ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
     ctx.ajouter_phase(_tableau_ed(ctx.tournoi_id, 2, StatutPhase.EN_COURS), 2)
     tableau = _tableau(12)
+    dernier = max(m.tour for m in tableau.matchs)
     ctx.tableaux.tableaux[2] = _jouer(
-        tableau, [m.numero for m in tableau.matchs if m.tour == 1 and not m.est_bye]
+        tableau, [m.numero for m in tableau.matchs if m.tour < dernier and not m.est_bye]
     )
 
     bloc = ctx.service.pour_tournoi(ctx.tournoi_id).avancement.blocs[1]
 
     assert bloc.duels_joues > 0
+    # La finale n'est pas tirée : la phase reste ouverte.
     assert bloc.tour_courant is not None
 
 

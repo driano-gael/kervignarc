@@ -222,14 +222,21 @@ class ServiceEcrans:
         return True
 
     def _ecoulees(self, prise: PriseDeControle) -> float:
-        """Secondes depuis la pose, **jamais négatives** (2ᵉ passe de revue).
+        """Secondes depuis la pose, planchées à zéro.
 
-        Planché **ici**, à la source, et non à la sortie de `reste_secondes` : une horloge
-        serveur qui recule (mise à l'heure en cours de journée) rendait un écart négatif que
-        `Consigne.expiree` consommait tel quel — la prise **n'expirait pas**, pendant que le
-        plafond d'affichage montrait un « reprise dans 10 min » parfaitement plausible. Le
-        correctif de sortie masquait le seul témoin de l'anomalie ; le plancher la supprime.
+        Défense simple contre un écart **négatif** — une horloge serveur remise à l'heure en cours
+        de journée — pour qu'aucun appelant ne reçoive un temps qui recule.
+
+        ⚠️ **Ce plancher ne fait pas expirer une prise**, et une rédaction précédente le prétendait
+        (relevé en 3ᵉ passe, mesuré : avec ou sans lui, `expiree` et `reste_secondes` rendent les
+        mêmes valeurs, `reste_secondes` plafonnant déjà). Sous horloge reculée, la prise **n'expire
+        toujours pas** à l'heure nominale : côté écran, le décompte local atteint zéro, le sondage
+        suivant lui rend la durée pleine, et l'affichage **oscille**. Le vrai remède est une
+        référence **monotone** plutôt que l'heure murale — hors périmètre de cette US, et inscrit
+        au registre (`# DETTE-032`). Le cas suppose une resynchronisation NTP en pleine journée sur
+        un serveur local hors ligne : rare, mais réel.
         """
+        # DETTE-032 : chronométrage sur l'heure murale ; une horloge monotone serait juste.
         return max(0.0, (self._horloge.maintenant() - prise.debut).total_seconds())
 
     def _reste(self, prise: PriseDeControle) -> float | None:

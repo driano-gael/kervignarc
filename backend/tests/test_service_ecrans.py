@@ -17,7 +17,7 @@ import datetime
 import pytest
 
 from application.ecrans import ServiceEcrans
-from application.erreurs import PosteIntrouvable, PosteNEstPasUnEcran
+from application.erreurs import PosteIntrouvable, PosteNEstPasUnEcran, SaisieHorsCible
 from application.postes import ServicePostes
 from domain.ecran import Consigne, SequenceVues, VueEcran, VueProgrammee
 from domain.poste import Poste, PosteId, TypePoste
@@ -493,3 +493,44 @@ def test_supprimer_un_ecran_oublie_aussi_sa_presence(ctx: Contexte) -> None:
     ctx.service_postes.supprimer_ecran(ctx.tournoi_id, ecran.id)
 
     assert ctx.presence.derniere_activite(ecran.id) is None
+
+
+def test_un_ecran_ne_fixe_pas_de_depart_courant(ctx: Contexte) -> None:
+    """Garde de nature **au service**, pas seulement à la frontière (2ᵉ passe de revue).
+
+    `fixer_depart_courant` annonce dans sa propre docstring un appelant **hors HTTP** (E12US002,
+    « l'orchestrateur l'appellera sans passer par `exiger_poste` ») : une garde posée uniquement à
+    la dépendance API ne le couvrirait pas. C'est exactement le raisonnement tiré du bloquant de la
+    1ʳᵉ passe, qui n'avait pas été rejoué ici.
+    """
+    ecran = ctx.ecran()
+    jeton = ctx.service_postes.rattacher(ecran.code).jeton
+
+    with pytest.raises(SaisieHorsCible):
+        ctx.service_postes.fixer_depart_courant(jeton, 1)
+
+
+def test_une_sequence_imposee_laisse_le_deroule_propre_en_repli(ctx: Contexte) -> None:
+    """**Non-régression** (3ᵉ passe) : le repli local doit exister **aussi** sous séquence imposée.
+
+    Un correctif intermédiaire repliait `sequence` sur le déroulé propre. Cela marchait pour une
+    **vue figée** — où `sequence` était libre — mais pas pour une **séquence imposée**, où elle
+    porte déjà la consigne : à l'échéance, un écran isolé continuait de jouer la séquence de l'admin
+    **en affirmant au bandeau avoir repris son déroulé**. D'où un champ distinct.
+
+    Le test tient les deux à la fois : `sequence` porte bien la consigne, `deroule_repli` bien le
+    déroulé propre, et les deux **diffèrent**.
+    """
+    ecran = ctx.ecran()
+    assert ecran.id is not None
+    jeton = ctx.service_postes.rattacher(ecran.code).jeton
+    imposee = SequenceVues((VueProgrammee(VueEcran.PLAN_CIBLES, 15),))
+    ctx.service.prendre_le_controle(
+        ctx.tournoi_id, ecran.id, Consigne(vue=None, sequence=imposee, duree_s=600)
+    )
+
+    affichage = ctx.service.affichage(jeton)
+
+    assert affichage.sequence == imposee
+    assert affichage.deroule_repli == SequenceVues.par_defaut()
+    assert affichage.sequence != affichage.deroule_repli

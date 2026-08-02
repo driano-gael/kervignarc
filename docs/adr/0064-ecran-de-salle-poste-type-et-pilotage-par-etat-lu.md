@@ -125,18 +125,33 @@ n'a été trouvé que par la relecture adversariale :
    `_braquets` le ferait diverger de ce que l'organisateur a composé, ce que le §5 interdit.
 3. **Les deux plages ne sont pas dans le même repère.** `_braquets` produit des rangs **absolus**
    (« un tableau des rangs 33-64 rend des perdants en 49-64 ») ; `construire_tableau` engendre des
-   `Match.plage` **relatives au tableau**, toujours à partir de 1. Le filtre du point 2, écrit sans
-   le savoir, ne pouvait donc fonctionner que pour un tableau partant du rang 1 — le seul cas que
-   montaient les fixtures. Sur un **tableau de placement des rangs 9-16**, cas parfaitement ordinaire
-   depuis E05US010, plus aucune plage ne correspondait : l'écran affichait « 0 duel joué » du début
-   à la fin de la journée. On normalise donc par le décalage avant de comparer, et on **ne filtre
-   pas** quand la branche projetée est absente du tableau (les tailles peuvent diverger,
-   `# DETTE-028`) — un compte approximatif vaut mieux qu'un compteur bloqué à zéro.
+   `Match.plage` **relatives au tableau**, toujours à partir de 1. Le filtre du point 2 ne pouvait
+   donc fonctionner que pour une tranche partant du rang 1 — le seul cas que montaient les fixtures.
+4. **Et les deux arbres n'ont pas la même taille.** `# DETTE-028` : `ServiceSaisieDuels._decor`
+   ensemence le tableau avec *tous* les archers en lice, sans lire `Phase.sources`, quand
+   `_braquets` compte l'effectif **déclaré**. Un format FFTA courant — qualification à 120, puis
+   élimination directe déclarée « rangs 1-32 » — donne **7 tours réels contre 5 projetés**.
 
-Ces trois écarts illustrent la même chose, et le troisième l'illustre deux fois : **superposer deux
-calculs oblige à prouver qu'ils comptent la même population, dans le même repère** — et cette preuve
-ne se lit ni dans les noms, ni dans les types. Chacun des deux premiers correctifs était juste sur
-le cas que les fixtures montaient, et faux sur la classe de cas dont il faisait partie.
+**La décision : apparier les braquets aux tours réels par la FIN, jamais par le début.** Un braquet
+décrit la branche des gagnants qui se resserre jusqu'à la finale ; le tableau réel s'y resserre
+aussi. Les *N* tours projetés sont donc les *N* **derniers** tours réels. Et la branche des gagnants
+se reconnaît à deux traits **indépendants du repère** : elle part du haut du tableau
+(`plage.debut == 1`) et sa **largeur** vaut celle du braquet — une largeur est un nombre de rangs,
+pas une position.
+
+Propriétés obtenues : **identité** quand les structures concordent, lecture **monotone et jamais
+prématurée** sinon (`0, 0, 16, 24, 28, 30, 31` sur 32 déclarés / 120 en lice), et la phase ne se
+ferme **qu'au tour qui porte la finale**. Quand le tableau est plus large que la phase déclarée, les
+premiers tours réels ne remplissent rien — ce qui est honnête : ils font tirer des archers que le
+format déclaré ne comptait pas.
+
+Ces quatre écarts illustrent la même chose : **superposer deux calculs oblige à prouver qu'ils
+comptent la même population, dans le même repère et à la même profondeur** — et cette preuve ne se
+lit ni dans les noms, ni dans les types. Il a fallu **trois passes de revue** pour la faire, parce
+que chaque correctif intermédiaire était juste sur le cas que la fixture d'alors montait, et faux
+sur la classe dont il faisait partie. Le test qui verrouille aujourd'hui n'affirme donc pas un
+chiffre : il affirme l'**invariant** — tant que la finale n'est pas tirée, la phase n'est pas
+terminée — et le vérifie **à chaque tour**, sur une divergence de taille réaliste.
 
 ### 6. Un composant de dessin, trois surfaces — **sans variation de géométrie**
 
