@@ -50,6 +50,23 @@ export const LIBELLE_TYPE: Record<TypePhase, string> = {
   colline: 'Colline (King of the Hill / Ladder)',
 }
 
+// Nomme un type de phase venu du serveur, avec repli sur la chaîne brute.
+//
+// Le repli couvre un **déploiement décalé** : un backend plus récent peut connaître un type que ce
+// bundle ignore (l'appli publique reste ouverte des heures sur un téléphone). Mieux vaut alors
+// « 3. poules » que rien du tout.
+//
+// ⚠️ Le cast porte sur la **table**, pas sur la valeur (correctif de revue). Écrire
+// `LIBELLE_TYPE[type as TypePhase] ?? type` affirmait qu'une chaîne serveur quelconque *est* un
+// `TypePhase` : TS typait alors l'accès en `string` non nullable, rendant le `??` **mort pour le
+// compilateur** alors qu'il est le seul filet réel à l'exécution — le genre de cast qui survit
+// après qu'on ait retiré le repli.
+//
+// Son domicile est ici, sous `LIBELLE_TYPE` : deux features en avaient écrit une copie chacune.
+export function nommerType(type: string): string {
+  return (LIBELLE_TYPE as Record<string, string | undefined>)[type] ?? type
+}
+
 // Ce que chaque type fait, en une ligne : la moitié de ces formats est inconnue de l'organisateur
 // qui ouvre l'écran, et un `<select>` de neuf entrées sans explication n'aide personne à choisir.
 export const AIDE_TYPE: Record<TypePhase, string> = {

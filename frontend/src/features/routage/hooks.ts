@@ -42,14 +42,22 @@ export function useRoutage(tournoiId: number, archerIds: number[], phaseId: numb
 
 // Toutes les affectations du tableau (E07US008) — la vue publique et l'écran de salle.
 //
-// Pas de liste d'archers dans la clé, et c'est justement ce qui change : cette lecture est la
-// **même pour tout le monde**, donc une seule entrée de cache sert les ~30 tablettes, les téléphones
-// et les écrans de salle du gymnase. C'est aussi pourquoi elle peut se permettre le même filet de
-// 20 s sans multiplier la lecture la plus chère de l'application par le nombre de spectateurs.
-export function useAffectations(tournoiId: number, phaseId: number | null = null) {
+// Pas de liste d'archers dans la clé, et c'est justement ce qui change : la lecture est la **même
+// pour tout le monde**, donc **une seule entrée de cache par appareil** sert toutes les cartes
+// suivies de cet appareil, là où un `useRoutage` par archer suivi en aurait déclenché une par
+// archer.
+//
+// ⚠️ Le gain s'arrête à l'appareil (correctif de revue) : le cache React Query est **par
+// navigateur**, il n'existe ni cache serveur ni en-tête HTTP sur cette route. Le coût serveur reste
+// d'une reconstruction d'arbre **par appareil et par cycle** — et le filet de 20 s n'est pas le
+// régime dominant, puisque `useRealtime` invalide **sans clé** : chaque écriture serveur refetch
+// tous les clients montés. C'est `# DETTE-031`, que cette US aggrave et dont elle élargit la ligne.
+// D'où `actif` : les appelants qui n'ont rien à afficher ne montent pas la requête.
+export function useAffectations(tournoiId: number, phaseId: number | null = null, actif = true) {
   return useQuery({
     queryKey: cleAffectations(tournoiId, phaseId),
     queryFn: () => getAffectations(tournoiId, phaseId),
+    enabled: actif,
     refetchInterval: INTERVALLE_POLL_MS,
     staleTime: 0,
   })

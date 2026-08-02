@@ -3276,3 +3276,43 @@ button:disabled {
   opacity: 0.8;
   margin-bottom: 0.4em;
 }
+
+/* --- Bloc « Ensuite » de la carte d'un archer suivi (E07US008) -----------------------------------
+   L'à-venir sous la journée et le déroulé : où il tire au tableau, son rang s'il est sorti, sa
+   destination s'il est repêché. Calqué sur `.suivi-deroule` voisin — ces règles manquaient au
+   premier jet, et les quatre axes de revue l'ont relevé : les `<span>` en flux inline se collaient,
+   et l'ambre `DV-03` que le code revendique n'était pas appliquée. */
+.suivi-ensuite {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.suivi-ensuite__libelle {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* La destination est ce que l'archer vient chercher : même mise en avant que `.suivi-depart__place`. */
+.suivi-ensuite__titre {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.suivi-ensuite__detail {
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* `DV-03` : ambre pour l'avertissement (la cible est annoncée mais le duel n'est pas côte à côte),
+   jamais le rouge club — c'est un signalement, pas une erreur. */
+.suivi-ensuite__alerte {
+  font-size: 14px;
+  color: var(--warn);
+}

@@ -122,6 +122,20 @@ describe('repêchage (E07US008)', () => {
     expect(titre(repeche(), () => 'Élimination directe')).toBe('Repêché → 3. Élimination directe')
   })
 
+  it('nomme le type depuis le catalogue même sans nommeur explicite', () => {
+    // Correctif de revue : le défaut était l'**identité**, si bien qu'un appelant qui oubliait le
+    // second argument affichait la valeur d'énumération brute. C'était le cas de `PanneauRoutage`
+    // (canal n°1) — un oubli qu'aucun outil ne pouvait signaler.
+    expect(titre(repeche())).toBe('Repêché → 3. Élimination directe')
+  })
+
+  it('retombe sur la chaîne brute pour un type que ce bundle ne connaît pas', () => {
+    // Déploiement décalé : le backend peut connaître un type plus récent que l'appli ouverte depuis
+    // des heures sur un téléphone. Mieux vaut « 4. tir_a_la_perche » que rien.
+    const inconnu = repeche({ destination: { phase_id: 9, ordre: 4, type: 'tir_a_la_perche' } })
+    expect(titre(inconnu)).toBe('Repêché → 4. tir_a_la_perche')
+  })
+
   it('n’annonce jamais « éliminé » à un repêché', () => {
     // Le cas qui motive l'issue distincte : un repêché à qui l'on dit « éliminé » rentre chez lui
     // avant son duel. `TERMINE` aurait suffi techniquement — pas métier.
@@ -135,6 +149,24 @@ describe('repêchage (E07US008)', () => {
 
   it('dit d’où il vient en détail, pour rattacher la destination à ce qu’il vient de vivre', () => {
     expect(detail(repeche())).toBe('Quart de finale')
+  })
+
+  // Le **seul** chemin de repêchage atteignable aujourd'hui (correctif de revue, axe adversarial) :
+  // aucun `RoutingRepechage` n'est câblé en production, mais l'atelier de déroulé permet déjà de
+  // composer « les perdants du tour 1 ». Cet archer-là est classé ici **et** repris en aval.
+  it('annonce la reprise en aval d’un battu pourtant classé dans ce tableau', () => {
+    const classe_et_repris = archer({
+      issue: 'termine',
+      prochain: null,
+      rang_min: 5,
+      rang_max: 8,
+      tour_sortie: 'Quart de finale',
+      destination: { phase_id: 3, ordre: 3, type: 'elimination_directe' },
+    })
+    expect(titre(classe_et_repris)).toBe('5ᵉ-8ᵉ du tableau')
+    expect(detail(classe_et_repris)).toBe('Quart de finale · repris en 3. Élimination directe')
+    // Sans ça il serait trié et coloré comme un éliminé, alors qu'il a un duel devant lui.
+    expect(encoreEnLice(classe_et_repris)).toBe(true)
   })
 
   it('relaie le motif du serveur quand aucune phase ne le reprend', () => {

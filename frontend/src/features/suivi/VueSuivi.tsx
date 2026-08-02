@@ -39,15 +39,9 @@ import { clePlan } from '../placement/hooks'
 import type { RoutageArcher } from '../routage/api'
 import { useAffectations } from '../routage/hooks'
 import { alerte, detail, titre } from '../routage/presentation'
-import { LIBELLE_TYPE, type TypePhase } from '../../shared/phases/catalogue'
 import { type ArcherSuivi, useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import { useDeroule } from './deroule'
 import { construireJournee, filtrerArchers } from './suivi'
-
-// Nomme un type de phase renvoyé par le serveur. Le repli sur la chaîne brute couvre le cas où le
-// backend connaîtrait un type que ce front ne connaît pas encore (déploiement décalé) : mieux vaut
-// « repêché → 3. poule » que rien du tout.
-const nommerType = (type: string) => LIBELLE_TYPE[type as TypePhase] ?? type
 
 // Borne l'affichage des résultats de recherche : au-delà, on invite à préciser plutôt que de dérouler
 // tout un club (et de risquer de cacher l'archer cherché en silence).
@@ -86,15 +80,20 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
   const chargementPlans = departsQuery.isLoading || plansResults.some((r) => r.isLoading)
   const erreurPlans = departsQuery.isError || plansResults.some((r) => r.isError)
 
-  // L'à-venir (E07US008), lu **une fois** pour toutes les cartes. `phase_id` à `null` = aucun tableau
-  // configuré : on ne montre alors aucun bloc « ensuite », plutôt qu'un bloc vide qui ferait croire
-  // à une panne. `null` non plus n'est pas « pas de tableau » côté ligne : un archer sans ligne alors
-  // qu'un tableau existe n'y a simplement pas été retenu, et c'est une information à donner.
-  const affectations = useAffectations(tournoiId)
-  const tableauConfigure = affectations.data?.phase_id != null
-  const routageParArcher = new Map(
-    (affectations.data?.archers ?? []).map((ligne) => [ligne.archer_id, ligne]),
-  )
+  // L'à-venir (E07US008), lu **une fois** pour toutes les cartes.
+  //
+  // `enabled` : même garde que `besoinPlans` ci-dessus (correctif de revue). Sans elle, un
+  // spectateur qui ouvre l'onglet **sans suivre personne** déclenchait toutes les 20 s la lecture
+  // la plus chère du serveur — classement complet, arbre rebâti, duels rejoués (`# DETTE-031`).
+  //
+  // ⚠️ Trois états à distinguer, et non deux (correctif de revue) : pas de tableau (`phase_id` nul),
+  // tableau **pas encore constituable** (phase présente, aucune ligne — le cas de la matinée), et
+  // tableau constitué dont cet archer est absent. Les confondre faisait annoncer « non retenu » à
+  // tout le monde un matin où personne n'était encore placé.
+  const affectations = useAffectations(tournoiId, null, besoinPlans)
+  const lignesAffectations = affectations.data?.archers ?? []
+  const tableauConstitue = affectations.data?.phase_id != null && lignesAffectations.length > 0
+  const routageParArcher = new Map(lignesAffectations.map((ligne) => [ligne.archer_id, ligne]))
 
   return (
     <div>
@@ -129,7 +128,7 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
               chargement={archersQuery.isLoading || chargementPlans}
               erreur={erreurPlans}
               routage={routageParArcher.get(s.archerId) ?? null}
-              tableauConfigure={tableauConfigure}
+              tableauConstitue={tableauConstitue}
             />
           ))}
         </ul>
@@ -230,7 +229,7 @@ function CarteArcherSuivi({
   chargement,
   erreur,
   routage,
-  tableauConfigure,
+  tableauConstitue,
 }: {
   tournoiId: number
   archerId: number
@@ -242,7 +241,7 @@ function CarteArcherSuivi({
   chargement: boolean
   erreur: boolean
   routage: RoutageArcher | null
-  tableauConfigure: boolean
+  tableauConstitue: boolean
 }) {
   const nePlusSuivre = useSessionSuivisStore((s) => s.nePlusSuivre)
   const journee = construireJournee(archerId, departs, plansParDepart)
@@ -296,14 +295,17 @@ function CarteArcherSuivi({
       {/* L'à-venir (E07US008) : « où je tire ensuite », sans avoir à demander à l'organisation.
           Placé **après** la journée et **avant** le déroulé : c'est ce qu'on vient chercher quand on
           a déjà tiré (l'archer a quitté la salle), pas quand on suit un tour en cours. */}
-      {tableauConfigure && (
+      {tableauConstitue && (
         <div className="suivi-ensuite">
           <span className="suivi-ensuite__libelle">Ensuite</span>
           {routage === null ? (
-            <span className="suivi-ensuite__titre">Non retenu pour le tableau final.</span>
+            // Le tableau **est** constitué et cet archer n'y figure pas : il n'a pas été retenu, ou
+            // il en a été sorti (disqualification, ADR-0050). On ne le dit que dans ce cas — quand
+            // le tableau n'est pas encore constitué, le bloc entier ne s'affiche pas.
+            <span className="suivi-ensuite__titre">Pas d’affectation sur la phase en cours.</span>
           ) : (
             <>
-              <strong className="suivi-ensuite__titre">{titre(routage, nommerType)}</strong>
+              <strong className="suivi-ensuite__titre">{titre(routage)}</strong>
               {detail(routage) !== null && (
                 <span className="suivi-ensuite__detail">{detail(routage)}</span>
               )}
