@@ -28,7 +28,7 @@ from domain.duel import BaremeDuel, Duel, ModeDuel, ResolveurBaremeDuelFfta
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import MatchNonJouable
 from domain.forfait import Forfait, NatureForfait
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import IssueTour, Phase, PhaseId, SourcePhase, TypePhase
 from domain.politiques import (
     ByesAuxMieuxClasses,
     PlacementEnCascade,
@@ -455,3 +455,130 @@ def test_double_forfait_le_camp_haut_avance() -> None:
     occupants = {m.archer_id for m in (finale.haut, finale.bas) if m is not None}
     assert a in occupants  # le haut (rang 1) avance malgré son forfait
     assert d not in occupants
+
+
+# --- CA E05US020 : le moteur consomme les prélèvements déclarés (résorbe DETTE-028) -------------
+# Écrits **depuis le CA** de `stories/E05-moteur-phases.md` (puce « CA ») avant l'implémentation :
+# jusqu'ici `_decor` ensemençait le tableau avec *tous* les archers en lice, quel que soit ce que la
+# phase déclarait prélever — l'organisateur composait « les rangs 1 à 32 » et le moteur en jouait
+# 120.
+
+
+def _monde_classe(nb: int) -> _Monde:
+    """`nb` archers aux scores décroissants : le rang scratch suit l'ordre de création."""
+    monde = _Monde()
+    for rang in range(nb):
+        monde.inscrire_classe(("10", "10", str(max(1, 10 - rang))))
+    return monde
+
+
+def _prelever(monde: _Monde, *sources: SourcePhase) -> None:
+    """Déclare les prélèvements de la phase de tableau (elle est d'ordre 2, la qualif d'ordre 1)."""
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    monde.phases._phases[monde.phase_id] = replace(phase, sources=sources)
+
+
+def _effectif_du_tableau(monde: _Monde) -> int:
+    return monde.service().etat_tableau(monde.tournoi_id, monde.phase_id).effectif
+
+
+def _archers_du_tableau(monde: _Monde) -> list[int]:
+    tableau, _ = monde.service().reconstruire(monde.tournoi_id, monde.phase_id)
+    vus: dict[int, None] = {}
+    for match in tableau.matchs:
+        for camp in (match.haut, match.bas):
+            if camp is not None:
+                vus.setdefault(camp.ref_id, None)
+    return list(vus)
+
+
+def test_le_tableau_ne_prend_que_les_rangs_declares() -> None:
+    """CA « prélèvement par rangs » : « les rangs 1 à 8 de la phase 1 » monte un tableau de **8**.
+
+    C'est le cœur de DETTE-028 : à 12 archers classés, le moteur en jouait 12 et l'organisateur
+    repartait avec un tournoi qui ne se déroulait pas comme le schéma qu'il avait validé.
+    """
+    monde = _monde_classe(12)
+    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8))
+
+    assert _effectif_du_tableau(monde) == 8
+
+
+def test_le_tableau_prend_les_bons_archers_pas_seulement_le_bon_compte() -> None:
+    """Un compte juste sur les mauvais archers serait un faux positif : on vérifie l'**identité**.
+
+    Les rangs 1 à 8 sont les huit **premiers du classement** — pas huit archers quelconques.
+    """
+    monde = _monde_classe(12)
+    attendus = [ligne.archer_id for ligne in _classement_du(monde).pour_tournoi(1).lignes[:8]]
+    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8))
+
+    assert sorted(_archers_du_tableau(monde)) == sorted(attendus)
+
+
+def test_une_plage_ouverte_se_resout_sur_l_effectif_reel() -> None:
+    """CA « plage relative » : « les rangs 9 **et suivants** » vaut 4 archers à 12 classés.
+
+    C'est la promesse d'E05US010 (`rang_fin=None`, « et tous les suivants ») — tenue jusqu'ici par
+    la seule composition. Le même déroulé doit accueillir un effectif qu'il ne connaissait pas.
+    """
+    monde = _monde_classe(12)
+    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=9))
+
+    assert _effectif_du_tableau(monde) == 4
+
+
+def test_une_plage_ouverte_suit_l_effectif_quand_il_change() -> None:
+    """Le même prélèvement, deux effectifs : c'est ce que « relative » veut dire."""
+    petit = _monde_classe(10)
+    _prelever(petit, SourcePhase.par_rangs(ordre_source=1, rang_debut=5))
+    grand = _monde_classe(16)
+    _prelever(grand, SourcePhase.par_rangs(ordre_source=1, rang_debut=5))
+
+    assert (_effectif_du_tableau(petit), _effectif_du_tableau(grand)) == (6, 12)
+
+
+def test_sans_source_declaree_le_tableau_prend_tout_le_monde() -> None:
+    """CA « première phase » : le comportement d'aujourd'hui ne doit pas casser.
+
+    Une phase sans prélèvement est alimentée par les inscriptions — c'est le cas de la
+    qualification, et celui du tableau tant que l'organisateur n'a rien déclaré.
+    """
+    monde = _monde_classe(12)
+
+    assert _effectif_du_tableau(monde) == 12
+
+
+def test_le_rang_preleve_suit_le_classement_au_moment_de_la_lecture() -> None:
+    """CA « le rang prélevé est celui du classement » : l'abandon du 5ᵉ ne laisse **pas** de trou.
+
+    Un abandon est relégué en fin de classement (ADR-0050) et les suivants **remontent** : « les
+    rangs 1 à 8 » prélève donc toujours 8 archers, le 9ᵉ prenant la place laissée. Ce n'est pas un
+    repêchage décidé par le moteur, c'est la conséquence du classement, recalculé à chaque lecture.
+    """
+    monde = _monde_classe(12)
+    avant = [ligne.archer_id for ligne in _classement_du(monde).pour_tournoi(1).lignes]
+    cinquieme, neuvieme = avant[4], avant[8]
+    monde.forfaits.semer(_forfait(monde, cinquieme, monde.qualif_id))
+    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8))
+
+    archers = _archers_du_tableau(monde)
+    assert _effectif_du_tableau(monde) == 8
+    assert cinquieme not in archers
+    assert neuvieme in archers
+
+
+def test_un_prelevement_par_issue_de_tour_reste_inerte() -> None:
+    """Hors périmètre, **épinglé** : `par_issue_de_tour` n'est résolu nulle part (`DETTE-033`).
+
+    Le moteur retombe donc sur « tous les archers en lice » plutôt que de deviner une sémantique
+    que la séquence n'a pas tranchée. Ce test **tombera** le jour où l'US du prélèvement la
+    décidera — c'est le signal attendu.
+    """
+    monde = _monde_classe(12)
+    _prelever(
+        monde, SourcePhase.par_issue_de_tour(ordre_source=1, tour=1, issue=IssueTour.GAGNANTS)
+    )
+
+    assert _effectif_du_tableau(monde) == 12
