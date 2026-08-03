@@ -139,16 +139,6 @@ class LignePalmares:
     origine: OriginePalmares
     statut: StatutClassement
 
-    @property
-    def est_exact(self) -> bool:
-        """Le rang s'affiche en un seul nombre (« 3ᵉ ») plutôt qu'en fourchette (« 5ᵉ-8ᵉ »).
-
-        ⚠️ Question d'**affichage**, pas de médaille : un rang peut être exact sans avoir été
-        décerné par un match (rang de qualification, ex æquo tranché par la politique). C'est
-        `decerne` que le podium regarde.
-        """
-        return self.rang_min is not None and self.rang_min == self.rang_max
-
 
 @dataclass(frozen=True)
 class Palmares:
@@ -253,7 +243,10 @@ def calculer_palmares(
        il a franchi une porte que l'autre n'a pas franchie ;
     3. **la renumérotation** — les rangs repartent de 1 et se suivent **sans trou**, chaque paquet
        d'ex æquo occupant autant de rangs qu'il compte d'archers. Le palmarès est un classement du
-       tournoi, pas la juxtaposition des numérotations de ses phases.
+       tournoi, pas la juxtaposition des numérotations de ses phases. ⚠️ **Une exception** :
+       un paquet encore **en lice** rend sa fourchette acquise (`_numeroter`), si bien que deux
+       lignes peuvent se **chevaucher** tant que le tir n'a pas tranché — c'est ce qu'un
+       tournoi en cours a de vrai à dire.
 
     Les **disqualifiés** (ADR-0050) restent hors classement (`rang_* is None`), listés en fin.
     """
@@ -461,9 +454,16 @@ def _numeroter(
         membres = [archer for archer in paquet.archers if retenir is None or retenir(archer)]
         if not membres:
             continue
+        # ⚠️ `retenir is None` : la fourchette acquise est exprimée dans l'espace de
+        # rangs **du tournoi**, pas dans celui d'une catégorie. L'honorer aussi dans la
+        # passe par catégorie rendait « 1ᵉʳ-8ᵉ » à une catégorie de deux archers, et
+        # faisait chevaucher un rang de catégorie ouvert avec un rang décerné — défaut
+        # relevé par trois axes en contre-revue, et régression par rapport à l'état
+        # d'avant le correctif. La passe par catégorie retombe donc sur le curseur,
+        # borné par l'effectif de la catégorie ; la médaille reste gardée par `decerne`.
         fourchette = (
             paquet.acquis
-            if paquet.en_lice and paquet.acquis is not None
+            if retenir is None and paquet.en_lice and paquet.acquis is not None
             else (curseur, curseur + len(membres) - 1)
         )
         for archer in membres:

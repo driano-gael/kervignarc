@@ -28,12 +28,21 @@ import pytest
 
 from application.erreurs import TournoiIntrouvable
 from application.palmares import ServicePalmares
+from domain.archer import Archer
 from domain.bareme import BaremeQualification
+from domain.blason import ZoneScore
+from domain.categorie import Categorie
 from domain.classement import StatutClassement
 from domain.forfait import Forfait, NatureForfait
+from domain.inscription import Inscription
 from domain.palmares import OriginePalmares, Palmares
 from domain.phase import Phase
-from domain.politiques import Aggregation, AggregationExAequo, AggregationParQualification
+from domain.politiques import (
+    Aggregation,
+    AggregationExAequo,
+    AggregationParQualification,
+    ProfondeurPodium,
+)
 from tests.test_service_routage import _Monde
 
 _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
@@ -129,6 +138,7 @@ def _service(
         monde.phases,
         monde._classement(),
         monde.saisie,
+        monde.duels,
         generateur or _FauxGenerateurPalmares(),
         aggregation,
     )
@@ -412,3 +422,147 @@ def test_le_premier_duel_tranche_fait_basculer_le_palmares_sur_le_tableau() -> N
 
     assert palmares.lignes[-1].archer_id == battu
     assert all(ligne.origine is OriginePalmares.DUELS for ligne in palmares.lignes)
+
+
+# --- CA « podium » : la petite finale est un réglage du moteur de phases -------------------------
+
+
+def test_sans_petite_finale_aucun_bronze_n_est_decerne() -> None:
+    """**Le match pour la 3ᵉ place est un paramètre du moteur** — la politique `depth` (ADR-0004).
+
+    `ProfondeurPodium(jusqu_au=4)`, le défaut câblé en production, dispute la finale **et** la
+    petite finale : le podium a ses trois métaux. `jusqu_au=2` ne dispute que la finale — plus
+    aucun match ne départage les deux battus des demies, qui restent donc **ex æquo 3ᵉ-4ᵉ**.
+
+    C'est là que se voit la distinction entre **classement** et **podium** (arbitrage du
+    commanditaire, 03/08/2026) : les quatre archers ont bien un rang au classement, mais seuls
+    ceux qu'un match a départagés montent sur la boîte. Un bronze décerné sans match à tirer
+    serait une médaille que la compétition n'a pas produite.
+    """
+    monde = _Monde(depth=ProfondeurPodium(jusqu_au=2))
+    for valeurs in (("10", "10", "10"), ("10", "10", "9"), ("10", "9", "9"), ("9", "9", "9")):
+        monde.inscrire_classe(valeurs)
+    monde.creer_phase_tableau()
+    monde.placer()
+    for numero in (1, 2, 3):
+        monde.gagner(numero)
+
+    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    podium = palmares.podium(monde.categorie_id)
+
+    # Au **classement**, les deux battus des demies ont bien un rang : 3ᵉ et 4ᵉ, que la politique
+    # `aggregation` leur donne sur leur qualification faute de match. Au **podium**, ils n'ont
+    # rien : aucun tir ne les a départagés, donc aucune médaille — c'est toute la distinction.
+    assert [ligne.rang_min for ligne in podium] == [1, 2]
+    assert [ligne.rang_min for ligne in palmares.lignes[2:]] == [3, 4]
+    assert all(not ligne.decerne for ligne in palmares.lignes[2:])
+
+
+def test_avec_petite_finale_le_bronze_est_decerne() -> None:
+    """Le pendant : au défaut du moteur (`jusqu_au=4`), la petite finale se tire et le bronze est
+    bien décerné. Deux tests pour un seul réglage — c'est le réglage qui est l'objet du test."""
+    monde, _ = _monde_de_quatre()
+    for numero in (1, 2, 3, 4):
+        monde.gagner(numero)
+
+    podium = _service(monde).pour_tournoi(monde.tournoi_id).podium(monde.categorie_id)
+
+    assert [ligne.rang_min for ligne in podium] == [1, 2, 3, 4]
+    assert all(ligne.decerne for ligne in podium)
+
+
+def test_un_forfait_avant_tout_duel_ne_fait_pas_basculer_le_palmares() -> None:
+    """Un **walkover de forfait** avance l'arbre sans qu'une flèche soit tirée (ADR-0050).
+
+    Le premier critère (« un match a un vainqueur hors bye ») le prenait pour un duel joué et
+    rouvrait la régression « 1ᵉʳ-Nᵉ sur toutes les lignes » — sur un geste que le produit
+    encourage : l'archer qui prévient le matin qu'il ne restera pas pour les duels. D'où le
+    critère « un **tir** enregistré » (contre-revue, axe C1).
+    """
+    monde, archers = _monde_de_quatre()
+    assert monde.phase_id is not None
+    monde.forfaits.semer(
+        Forfait.creer(
+            tournoi_id=monde.tournoi_id,
+            archer_id=archers[3],
+            phase_id=monde.phase_id,
+            nature=NatureForfait.ABANDON,
+            declare_par="DURAND",
+            declare_le=_QUAND,
+        )
+    )
+
+    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+
+    assert [ligne.rang_min for ligne in palmares.lignes] == [1, 2, 3, 4]
+    assert all(ligne.origine is OriginePalmares.QUALIFICATION for ligne in palmares.lignes)
+
+
+def test_le_rang_de_categorie_reste_borne_par_la_categorie() -> None:
+    """Un rang de catégorie ne sort **jamais** de l'effectif de sa catégorie.
+
+    La fourchette acquise (« 1ᵉʳ-8ᵉ ») est exprimée dans l'espace de rangs du **tournoi** : la
+    rendre telle quelle comme rang de catégorie annonçait « 1ᵉʳ-8ᵉ » à une catégorie de deux
+    archers, et faisait chevaucher un rang ouvert avec un rang décerné. Relevé par trois axes en
+    contre-revue — c'était une régression de mon propre correctif.
+    """
+    monde = _Monde()
+    autre = monde.categories.ajouter(
+        Categorie.creer(monde.tournoi_id, "Cat2", arme="Arc Classique", blason_id=1, hauteur_cm=130)
+    )
+    assert autre.id is not None
+    archers = [monde.inscrire_classe(v) for v in (("10", "10", "10"), ("10", "10", "9"))]
+    for valeurs in (("10", "9", "9"), ("9", "9", "9")):
+        archer = monde.archers.ajouter(
+            Archer(nom="N", prenom="P", tournoi_id=monde.tournoi_id, categorie_id=autre.id)
+        )
+        assert archer.id is not None
+        monde.inscriptions.ajouter(Inscription(archer_id=archer.id, depart_id=monde.depart_id))
+        monde.series.semer(monde.tournoi_id, archer.id, tuple(ZoneScore(v) for v in valeurs))
+        archers.append(archer.id)
+    monde.creer_phase_tableau()
+    monde.placer()
+    monde.gagner(1)
+
+    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+
+    par_categorie: dict[int, int] = {}
+    for ligne in palmares.lignes:
+        par_categorie[ligne.categorie_id] = par_categorie.get(ligne.categorie_id, 0) + 1
+    for ligne in palmares.lignes:
+        assert ligne.rang_categorie_max is not None
+        assert ligne.rang_categorie_max <= par_categorie[ligne.categorie_id]
+
+
+def test_un_bye_resolu_ne_fait_pas_basculer_le_palmares() -> None:
+    """Un **bye** avance un archer sans qu'une flèche soit tirée (effectif ≠ puissance de 2).
+
+    Les deux tests de bascule tournaient sur un tableau de 4, **sans aucun bye** : la clause
+    `not match.est_bye` n'était donc jamais exercée, alors qu'elle est le cœur du correctif et que
+    le cas est le plus courant en salle. Ici, six archers (tableau de 8, deux byes) et un tir
+    **saisi mais non validé** — le tableau s'est avancé tout seul, rien n'est tranché.
+    """
+    monde = _Monde(capacites=(4, 4))
+    for valeurs in (
+        ("10", "10", "10"),
+        ("10", "10", "9"),
+        ("10", "9", "9"),
+        ("9", "9", "9"),
+        ("9", "9", "8"),
+        ("9", "8", "8"),
+    ):
+        monde.inscrire_classe(valeurs)
+    monde.creer_phase_tableau()
+    monde.placer()
+    assert monde.phase_id is not None
+    numero = next(
+        m.numero for m in monde.saisie.reconstruire(1, monde.phase_id)[0].matchs if m.est_jouable
+    )
+    monde.saisie.saisir_manche(
+        monde.tournoi_id, monde.phase_id, numero, 1, (ZoneScore.DIX,) * 3, (ZoneScore.SIX,) * 3
+    )
+
+    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+
+    assert all(ligne.origine is OriginePalmares.QUALIFICATION for ligne in palmares.lignes)
+    assert [ligne.rang_min for ligne in palmares.lignes] == [1, 2, 3, 4, 5, 6]

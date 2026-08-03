@@ -528,3 +528,30 @@ def test_un_archer_sans_rang_de_qualification_passe_en_dernier() -> None:
     paquets = AggregationParQualification().departager(groupe, {7: None, 8: 3, 9: None})
 
     assert paquets == ((8,), (7, 9))
+
+
+def test_un_rang_tranche_par_la_politique_ne_monte_pas_au_podium() -> None:
+    """Un rang **unique** n'est pas un rang **décerné**.
+
+    Les deux battus des demies d'un tableau tronqué reçoivent 3ᵉ et 4ᵉ de la politique
+    `AggregationParQualification` — un rang unique, donc « exact » à l'affichage. Aucun match ne
+    les a pourtant départagés : ils ne montent pas sur la boîte. C'était le mutant survivant de la
+    contre-revue (`decerne = acquis is not None`), qui remettait des médailles sans tir.
+    """
+    qualification = _qualification(*[_ligne(i, i) for i in range(1, 5)])
+    tableau = ResultatPhase(
+        ordre=2,
+        positions=(
+            PositionPhase(archer_id=1, rang_min=1, rang_max=1),
+            PositionPhase(archer_id=2, rang_min=2, rang_max=2),
+            PositionPhase(archer_id=3, rang_min=3, rang_max=4),
+            PositionPhase(archer_id=4, rang_min=3, rang_max=4),
+        ),
+    )
+
+    palmares = calculer_palmares(qualification, (tableau,), AggregationParQualification())
+
+    assert _rangs(palmares)[2:] == [(3, 3, 3), (4, 4, 4)]
+    par_archer = {ligne.archer_id: ligne for ligne in palmares.lignes}
+    assert not par_archer[3].decerne and not par_archer[4].decerne
+    assert [ligne.archer_id for ligne in palmares.podium(1)] == [1, 2]

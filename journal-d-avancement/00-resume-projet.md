@@ -474,7 +474,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 - Dernière US livrée : **E06US004** (le palmarès) — US **à surface visible**, qui **clôt le jalon
   J2**. Le tournoi savait dire qui avait le mieux tiré le matin, et qui avait gagné un tableau — mais
   ces deux réponses vivaient sur deux écrans différents, et aucune ne donnait le **classement final**.
-  C'est fait : un onglet **« Palmarès »** montre le **podium de chaque catégorie** puis le
+  C'est fait : un onglet **« Palmarès »** montre les **podiums** puis le
   **classement complet**, où le vainqueur des duels est 1ᵉʳ même s'il n'était que 6ᵉ le matin, et où
   l'archer qui n'a pas disputé de duel garde un rang, à la suite. L'écran se remplit **au fil des
   duels** : le bronze s'affiche dès la petite finale sans attendre la finale, et tant que la finale
@@ -517,5 +517,5 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   dessin** aux trois endroits (atelier, poste de l'organisateur, écran projeté) : on ne réapprend pas
   à le lire en changeant d'écran. *(Livré juste avant : **E01US024**, composer, diagnostiquer et
   simuler un déroulé ; puis **E05US015**, le catalogue de types de phase.)*
-- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E06US004** (podium des duels &
-  agrégation des rangs). Le fil **équipes** est débloqué (E13US002+).
+- Prochaine US prévue : cf. [`SUIVI-US.md`](SUIVI-US.md) — **E06US006** (classement intégral 1→N &
+  profondeur configurable). Le fil **équipes** est débloqué (E13US002+).

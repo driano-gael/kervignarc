@@ -731,6 +731,7 @@ def create_app(
         phase_repository,
         app.state.service_classement,
         app.state.service_saisie_duels,
+        duel_repository,
         GenerateurPalmaresPdf(),
         cast(
             "Aggregation",

@@ -36,7 +36,12 @@ from domain.palmares import (
 from domain.participant import GenreParticipant
 from domain.phase import Phase, TypePhase
 from domain.politiques import Aggregation, AggregationParQualification
-from domain.ports import GenerateurPalmares, PhaseRepository, TournoiRepository
+from domain.ports import (
+    DuelRepository,
+    GenerateurPalmares,
+    PhaseRepository,
+    TournoiRepository,
+)
 from domain.tournoi import TournoiId
 
 _logger = logging.getLogger(__name__)
@@ -60,6 +65,7 @@ class ServicePalmares:
         phases: PhaseRepository,
         classements: ServiceClassement,
         saisie_duels: ServiceSaisieDuels,
+        duels: DuelRepository,
         generateur: GenerateurPalmares,
         aggregation: Aggregation | None = None,
     ) -> None:
@@ -67,6 +73,10 @@ class ServicePalmares:
         self._phases = phases
         self._classements = classements
         self._saisie_duels = saisie_duels
+        # Lu pour une seule question : **un tir a-t-il été enregistré** dans cette phase ? Le
+        # tableau reconstruit ne sait pas le dire — un match peut y porter un vainqueur sans
+        # qu'une flèche ait été tirée (bye, walkover de forfait).
+        self._duels = duels
         self._generateur = generateur
         # Politique de **départage des sortis au même tour** (ADR-0067), injectée par la
         # composition root — un format de tournoi est de la configuration (règle 2). Elle n'est pas
@@ -127,7 +137,13 @@ class ServicePalmares:
         un écran public de sa discipline le laisserait muet tout l'après-midi s'il l'oublie. Un
         tableau dont un duel est tranché a forcément commencé ; la lecture est auto-corrective.
 
-        Un **bye** ne compte pas : il avance un archer sans que rien ne se soit joué.
+        Deux choses ne comptent pas, et les distinguer a demandé une contre-revue : un **bye**
+        avance un archer sans que rien ne se soit joué, et un **walkover de forfait**
+        (`_appliquer_forfaits`, ADR-0050) fait de même sur un match qui n'est pourtant **pas**
+        un bye. `est_bye` seul laissait donc revenir la régression dès qu'un organisateur
+        enregistrait un forfait le matin — geste que le produit encourage. D'où le second
+        critère : **un tir enregistré**. Aucun tir, aucun duel, quelle que soit la façon dont
+        l'arbre s'est avancé tout seul.
 
         ⚠️ Le correctif symétrique proposé en revue — écarter côté domaine toute position couvrant
         le tableau entier — a été **écarté** : il casserait le milieu de tour. Après le premier
@@ -151,6 +167,8 @@ class ServicePalmares:
             tableau, _lignes = self._saisie_duels.reconstruire(tournoi_id, phase.id)
         except (EffectifTableauInvalide, PhaseIntrouvable) as exc:
             _logger.info("Phase %s écartée du palmarès : %s", phase.id, exc)
+            return None
+        if not self._duels.numeros_enregistres(phase.id):
             return None
         if not any(match.vainqueur is not None and not match.est_bye for match in tableau.matchs):
             return None
