@@ -435,7 +435,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **91 US livrées** sur `main` (mergées, revues, CI verte) à la date du 02/08/2026. **`SUIVI-US.md`
+- **92 US livrées** sur `main` (mergées, revues, CI verte) à la date du 03/08/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -463,15 +463,28 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
   détection/fusion des doublons, **listes imprimables**, **déploiement en un fichier / mise en réseau**
   et **sauvegarde & archive** faits. *(Le confort « ma journée » ouverte sur « c'est moi » et les
-  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : démarré (12/14)**
+  classements imprimables restent, hors décompte du jalon.)* Jalon **J2 (les duels) : terminé (14/14)**
   avec la **séquence de phases** (E05US001), les **politiques injectables** (E05US003), le **tableau
   d'élimination directe** (E05US005 — posé sur l'**abstraction Participant** E13US001), la
   **mixité des clubs au placement** (E03US006), le **placement des duellistes côte à côte**
   (E03US009), la **saisie en duels** (E04US013 — backend *et* **écran scoreur**), l'**abandon /
   disqualification** (E04US015 — qualif *et* duels), le **cycle de vie d'un départ** (E12US008), le
   **feu vert + lancement d'un tour** (E12US002), le **remboursement d'une inscription payée
-  annulée** (E08US005) l'**affichage de la prochaine cible après validation** (E04US018) et le **barrage de tir pour les places décisives** (E06US003).
-- Dernière US livrée : **E06US003** (le barrage de tir pour les places décisives) — US **à surface
+  annulée** (E08US005) l'**affichage de la prochaine cible après validation** (E04US018), le **barrage de tir pour les places décisives** (E06US003) et le **palmarès** (E06US004), qui le referme.
+- Dernière US livrée : **E06US004** (le palmarès) — US **à surface visible**, qui **clôt le jalon
+  J2**. Le tournoi savait dire qui avait le mieux tiré le matin, et qui avait gagné un tableau — mais
+  ces deux réponses vivaient sur deux écrans différents, et aucune ne donnait le **classement final**.
+  C'est fait : un onglet **« Palmarès »** montre le **podium de chaque catégorie** puis le
+  **classement complet**, où le vainqueur des duels est 1ᵉʳ même s'il n'était que 6ᵉ le matin, et où
+  l'archer qui n'a pas disputé de duel garde un rang, à la suite. L'écran se remplit **au fil des
+  duels** : le bronze s'affiche dès la petite finale sans attendre la finale, et tant que la finale
+  n'est pas tirée les deux finalistes partagent « 1ᵉʳ-2ᵉ » — l'application ne désigne **jamais** un
+  vainqueur à la place du tir. Quand aucun match n'a départagé des archers sortis au même tour, ils
+  sont rangés sur leur classement de qualification, comme le veut l'usage. Le tout s'**exporte en
+  PDF** — podiums puis classement, prêt à afficher au mur — et se **projette sur l'écran de salle**,
+  qui gagne la vue qu'on attendait pour 17 h. *(Livré juste avant : **E06US003**, le barrage des
+  places décisives.)*
+- Avant-dernière US livrée : **E06US003** (le barrage de tir pour les places décisives) — US **à surface
   visible**. À score égal, le classement départage au nombre de 10 puis de 9 ; quand cela ne suffit
   pas, deux archers **partageaient** leur rang. C'est acceptable au milieu du tableau, pas quand la
   place décide de quelque chose — la dernière qualificative, une marche du podium. L'organisateur
@@ -485,7 +498,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   l'organisateur y désigne lui-même les archers à départager, et le résultat ne remonte dans aucun
   classement — l'application ne déroule pas encore ces formats. **Rien ne change pour un tournoi qui
   ne demande rien** : c'est le défaut, et il est resté intact. *(Livré juste avant : **E07US008**, les affectations du prochain tour.)*
-- Avant-dernière US livrée : **E07US008** (les affectations du prochain tour) — US **à surface visible**,
+- Livrée peu avant : **E07US008** (les affectations du prochain tour) — US **à surface visible**,
   qui referme les **quatre canaux de routage**. L'archer parti de la salle retrouve sur son téléphone
   sa **cible** et sa **place** pour le duel suivant ; l'archer sorti voit le **rang qu'il a acquis**,
   en fourchette (« 5ᵉ-8ᵉ ») quand aucun match n'a départagé les battus — c'est le résultat réel, pas

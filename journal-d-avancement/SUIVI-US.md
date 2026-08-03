@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 02/08/2026** · **91 US livrées** · dernière : `E06US003` *(barrage de tir pour les places décisives : seuil configurable porté par la politique `tiebreak`, manches successives persistées flèche par flèche, verdict recalculé — ADR-0066)*.
+**Dernière mise à jour : 03/08/2026** · **92 US livrées** · dernière : `E06US004` *(palmarès : le classement final du tournoi — rangs des tableaux fusionnés avec ceux de la qualification, podiums par catégorie, export PDF, et une 7ᵉ famille de politiques `aggregation` pour départager les sortis au même tour — ADR-0067)*.
 
 ---
 
@@ -117,8 +117,13 @@
 > axes** : un archer qu'une volée validée en retard amenait à égalité *après* le tir prenait la
 > place devant le vainqueur du barrage, sans que rien ne le signale.
 >
-> **🎯 Prochaine :** **`E06US004`** — podium des duels & agrégation des rangs. *(E07US008 a occupé
-> une partie de son terrain sans la préempter : l'ADR-0065 dit ce qui reste à sa charge.)*
+> **🎯 Prochaine :** **`E06US006`** — classement intégral 1→N & profondeur configurable. *(Elle
+> **prolonge** E06US004 sans la refaire : le palmarès sait déjà fusionner et renuméroter 1→N ; ce
+> qui reste est la **profondeur** — top N + regroupement du reliquat — et le fait que, sous
+> placement intégral, tous les rangs deviennent **exacts** et les fourchettes disparaissent d'
+> elles-mêmes.)*
+> *Note : **J2 est terminé** (14/14). Son compteur affichait `11/14` — périmé de deux crans depuis
+> E07US008 et E06US003, qui l'avaient laissé en l'état ; recompté et corrigé par E06US004.*
 > *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
 > moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *`E12US004` (tracer un forfait) est **absorbée** par `E04US015` — voir ci-dessous.*
@@ -490,7 +495,7 @@
 | 56 | E11US001 | Release, base et mise en réseau | ✅ |
 | 57 | E11US003 | Sauvegarde & archive | ✅ |
 
-## J2 — Duels simples + bascule de tour — 🔶 **en cours (11/14)**
+## J2 — Duels simples + bascule de tour — ✅ **terminé (14/14)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -508,7 +513,7 @@
 | 69 | E04US018 | Afficher la prochaine cible après validation | ✅ *(panneau de routage, canal n°1)* |
 | 70 | E07US008 | Vue publique des affectations du prochain tour | ✅ *(canal n°2 : téléphone + panneau collectif, rang en fourchette, issue « repêché », ADR-0065)* |
 | 71 | E06US003 | Barrage de tir pour places décisives | ✅ *(seuil dans la politique `tiebreak`, manches persistées, verdict recalculé, ADR-0066)* |
-| 72 | E06US004 | Podium des duels & agrégation des rangs | 🎯 |
+| 72 | E06US004 | Podium des duels & agrégation des rangs | ✅ *(palmarès : fusion des rangs de phases, podiums par catégorie, export PDF, politique `aggregation`, ADR-0067)* |
 
 ## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (4/11)**
 
@@ -518,9 +523,9 @@
 | 74 | E05US015 | **Catalogue de types de phase** (échauffement, barrage, poules, repêchage, BSO) | ✅ *(11 formats : + suisse, colline, handicap, finale spectacle — le commanditaire a fourni leurs règles le 31/07 ; ADR-0062)* |
 | 74bis | E01US024 | **Composer, diagnostiquer et simuler un déroulé** | ✅ *(brouillon + invariant déplacé vers `appliquer`, schéma SVG maison, 2 gravités d'anomalie, simulation composée sur ADR-0054/0055 ; ADR-0063 — résorbe DETTE-030, ne résorbe DETTE-028 qu'à moitié)* |
 | 75 | ~~E05US018~~ | ~~Oracle 120~~ → **absorbée par E05US010** | ⬜ *(le moteur et sa preuve ne se séparent pas)* |
-| 76 | E06US006 | Classement intégral 1→N & profondeur | ⬜ |
+| 76 | E06US006 | Classement intégral 1→N & profondeur | 🎯 |
 | 77 | E03US007 | Contrainte séparation catégorie/blason | ⬜ |
-| 78 | E09US005 | Classements PDF | ⬜ |
+| 78 | E09US005 | Classements PDF | ⬜ *(rétrécie par E06US004 : le **palmarès** a son PDF ; reste celui du classement de **qualification**)* |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |
 | 80 | E01US016 | Définir l'identité visuelle du tournoi | ⬜ |
 | 81 | E07US004 | Écran de salle **+ suivi du déroulé** (un composant, trois surfaces) | ✅ *(poste typé cible/écran, pilotage par état lu, suivi superposé — ADR-0064)* |
