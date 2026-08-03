@@ -20,8 +20,10 @@ toucher au domaine — `calculer_palmares` ne connaît que des positions acquise
 
 from __future__ import annotations
 
+import logging
+
 from application.classements import ServiceClassement
-from application.erreurs import PhaseIntrouvable, PhasePasUnTableau, TournoiIntrouvable
+from application.erreurs import PhaseIntrouvable, TournoiIntrouvable
 from application.saisie_duels import ServiceSaisieDuels
 from domain.categorie import CategorieId
 from domain.erreurs import EffectifTableauInvalide
@@ -33,9 +35,11 @@ from domain.palmares import (
 )
 from domain.participant import GenreParticipant
 from domain.phase import Phase, TypePhase
-from domain.politiques import Aggregation, AgregationParQualification
+from domain.politiques import Aggregation, AggregationParQualification
 from domain.ports import GenerateurPalmares, PhaseRepository, TournoiRepository
 from domain.tournoi import TournoiId
+
+_logger = logging.getLogger(__name__)
 
 _TYPES_RECONSTRUCTIBLES = (TypePhase.ELIMINATION_DIRECTE,)
 """Les types de phase dont ce service sait lire le résultat aujourd'hui.
@@ -57,7 +61,7 @@ class ServicePalmares:
         classements: ServiceClassement,
         saisie_duels: ServiceSaisieDuels,
         generateur: GenerateurPalmares,
-        agregation: Aggregation | None = None,
+        aggregation: Aggregation | None = None,
     ) -> None:
         self._tournois = tournois
         self._phases = phases
@@ -70,7 +74,9 @@ class ServicePalmares:
         # générique (seul `barrage_jusqu_au` l'est, E06US003), donc il n'existe aucun champ où
         # écrire le choix. Injectable aujourd'hui, réglable le jour où les phases porteront leur
         # config — c'est un manque de **surface**, pas de conception.
-        self._agregation = agregation if agregation is not None else AgregationParQualification()
+        self._aggregation = (
+            aggregation if aggregation is not None else AggregationParQualification()
+        )
 
     def pour_tournoi(
         self, tournoi_id: TournoiId, categorie_id: CategorieId | None = None
@@ -91,7 +97,7 @@ class ServicePalmares:
             if phase.type in _TYPES_RECONSTRUCTIBLES
             if (resultat := self._resultat(tournoi_id, phase)) is not None
         )
-        palmares = calculer_palmares(qualification, resultats, self._agregation)
+        palmares = calculer_palmares(qualification, resultats, self._aggregation)
         return palmares if categorie_id is None else palmares.pour_categorie(categorie_id)
 
     def imprimer(self, tournoi_id: TournoiId, categorie_id: CategorieId | None = None) -> bytes:
@@ -107,19 +113,46 @@ class ServicePalmares:
         return self._generateur.palmares(tournoi.nom, self.pour_tournoi(tournoi_id, categorie_id))
 
     def _resultat(self, tournoi_id: TournoiId, phase: Phase) -> ResultatPhase | None:
-        """Ce qu'une phase à tableau a décidé — `None` si elle n'a rien à dire (encore).
+        """Ce qu'une phase à tableau a décidé — `None` si elle n'a **rien** décidé (encore).
 
-        Les trois échecs absorbés sont ceux d'un tableau **pas encore montable** : effectif
-        insuffisant (`EffectifTableauInvalide`, comme le routage), phase disparue entre deux
-        lectures, phase requalifiée. Le palmarès est **public et projeté en salle** : une phase
-        vide de la séquence ne doit pas éteindre l'écran, elle doit simplement n'y rien ajouter —
-        même parti que le filet d'E06US003 sur les barrages.
+        ⚠️ **Une phase qui n'a tranché aucun duel est écartée**, et c'est un correctif de revue
+        relevé par trois axes. Le déroulé se compose à l'avance (E01US024), donc la phase de
+        tableau existe **dès le matin** ; `_decor` l'ensemence alors avec tous les archers en lice
+        (`# DETTE-028`), et chacun n'a acquis que la plage de son premier match — c'est-à-dire le
+        tableau **entier**. Le palmarès affichait donc « 1ᵉʳ-120ᵉ · à départager » sur 120 lignes,
+        pendant toute la qualification, sur l'onglet public et l'écran de salle.
+
+        Le critère est **ce que le tableau a décidé**, pas `phase.statut` : le passage à `en_cours`
+        est une action **manuelle** de l'organisateur (`ServicePhases.demarrer`), et faire dépendre
+        un écran public de sa discipline le laisserait muet tout l'après-midi s'il l'oublie. Un
+        tableau dont un duel est tranché a forcément commencé ; la lecture est auto-corrective.
+
+        Un **bye** ne compte pas : il avance un archer sans que rien ne se soit joué.
+
+        ⚠️ Le correctif symétrique proposé en revue — écarter côté domaine toute position couvrant
+        le tableau entier — a été **écarté** : il casserait le milieu de tour. Après le premier
+        duel d'un tableau de 8, six archers n'ont encore rien acquis (`[1..8]`) ; les faire retomber
+        sur la qualification les classerait **derrière le battu** qu'ils n'ont pas rencontré.
+
+        Les échecs absorbés sont ceux d'un tableau pas encore montable : effectif insuffisant
+        (`EffectifTableauInvalide`, comme le routage) et phase disparue entre deux lectures. Le
+        palmarès est **public et projeté en salle** : une phase de la séquence ne doit pas éteindre
+        l'écran, elle doit simplement n'y rien ajouter — même parti que le filet d'E06US003. Ils
+        sont **journalisés** : une phase absente du palmarès le jour J serait sinon indébogable.
+        `PhasePasUnTableau` n'y figure plus — `pour_tournoi` filtre déjà sur le type, la garde était
+        morte et une garde morte finit par masquer autre chose.
         """
         if phase.id is None:
             return None
+        # DETTE-031 : cette lecture appelle `ServiceSaisieDuels.reconstruire` — tout le classement
+        # du tournoi, l'arbre rebâti, les duels rejoués — **une fois par phase à tableau**, sans
+        # cache et sans plafond, sur deux routes publiques non authentifiées (dont le PDF).
         try:
             tableau, _lignes = self._saisie_duels.reconstruire(tournoi_id, phase.id)
-        except (EffectifTableauInvalide, PhaseIntrouvable, PhasePasUnTableau):
+        except (EffectifTableauInvalide, PhaseIntrouvable) as exc:
+            _logger.info("Phase %s écartée du palmarès : %s", phase.id, exc)
+            return None
+        if not any(match.vainqueur is not None and not match.est_bye for match in tableau.matchs):
             return None
         positions = tuple(
             PositionPhase(

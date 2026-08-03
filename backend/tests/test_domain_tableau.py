@@ -41,6 +41,7 @@ from domain.tableau import (
     Exempt,
     PerdantDe,
     Place,
+    PositionAcquise,
     Tableau,
     TeteDeSerie,
     VainqueurDe,
@@ -611,3 +612,21 @@ def test_positions_acquises_ignore_qui_n_est_pas_dans_le_tableau() -> None:
     tableau = construire(4)
 
     assert p(9) not in tableau.positions_acquises()
+
+
+def test_positions_acquises_ecrete_aussi_la_plage_d_un_archer_en_lice() -> None:
+    """L'écrêtage à l'effectif vaut pour les **deux** branches, pas seulement pour le battu.
+
+    Mutant survivant relevé en revue (axe adversarial) : retirer le `min(..., effectif)` de la
+    branche « encore en lice » ne faisait échouer aucun test, alors que son jumeau de
+    `fourchette_de_rangs` en a un dédié. Sur l'oracle 120 (taille 128), sa perte annoncerait
+    « 1ᵉʳ-128ᵉ » à des rangs qui n'existent pas.
+    """
+    tableau = construire(6)
+
+    acquises = tableau.positions_acquises()
+    # `p(5)` n'a pas de bye : son 1ᵉʳ match porte la plage entière du tableau (`[1..8]`, taille 8),
+    # que seul l'écrêtage ramène à `[1..6]`. Les têtes de série, exemptées, entrent au tour 2 sur
+    # une plage déjà resserrée (`[1..4]`) — elles ne montreraient donc rien de ce mutant.
+    assert acquises[p(5)] == PositionAcquise(rang_min=1, rang_max=6, en_lice=True)
+    assert all(position.rang_max <= 6 for position in acquises.values())

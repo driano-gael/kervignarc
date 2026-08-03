@@ -13,7 +13,7 @@ Cas dérivés du CA d'E06US004 (`stories/E06-classements.md`), écrits **avant**
 - **CA agrégation** : « rangs des différentes phases fusionnés en un classement cohérent par
   catégorie » — les duellistes devant, les non-qualifiés dans l'ordre de la qualification ;
 - **arbitrage du 03/08/2026** : les sortis au même tour sont départagés par une politique
-  injectable, `AgregationParQualification` par défaut.
+  injectable, `AggregationParQualification` par défaut.
 
 Le décor est celui d'E07US008 (`_Monde`) : mêmes services sur repositories en mémoire, classement
 **vrai** sur des séries semées. Le réutiliser plutôt que d'en monter un second garantit que le
@@ -33,7 +33,7 @@ from domain.classement import StatutClassement
 from domain.forfait import Forfait, NatureForfait
 from domain.palmares import OriginePalmares, Palmares
 from domain.phase import Phase
-from domain.politiques import Aggregation, AgregationExAequo, AgregationParQualification
+from domain.politiques import Aggregation, AggregationExAequo, AggregationParQualification
 from tests.test_service_routage import _Monde
 
 _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
@@ -122,7 +122,7 @@ class _FauxGenerateurPalmares:
 def _service(
     monde: _Monde,
     generateur: _FauxGenerateurPalmares | None = None,
-    agregation: Aggregation | None = None,
+    aggregation: Aggregation | None = None,
 ) -> ServicePalmares:
     return ServicePalmares(
         monde.tournois,
@@ -130,14 +130,14 @@ def _service(
         monde._classement(),
         monde.saisie,
         generateur or _FauxGenerateurPalmares(),
-        agregation,
+        aggregation,
     )
 
 
 def _rangs(
-    monde: _Monde, agregation: Aggregation | None = None
+    monde: _Monde, aggregation: Aggregation | None = None
 ) -> list[tuple[int, int | None, int | None]]:
-    palmares = _service(monde, agregation=agregation).pour_tournoi(monde.tournoi_id)
+    palmares = _service(monde, aggregation=aggregation).pour_tournoi(monde.tournoi_id)
     return [(ligne.archer_id, ligne.rang_min, ligne.rang_max) for ligne in palmares.lignes]
 
 
@@ -188,9 +188,11 @@ def test_le_podium_sort_des_matchs_terminaux_du_tableau() -> None:
     tableau, _lignes = monde.saisie.reconstruire(monde.tournoi_id, monde.phase_id or 0)
     attendus = [place.participant.ref_id for place in tableau.podium()]
 
-    assert [ligne.archer_id for ligne in palmares.podium()] == attendus
-    assert [ligne.rang_min for ligne in palmares.podium()] == [1, 2, 3, 4]
-    assert all(ligne.origine is OriginePalmares.DUELS for ligne in palmares.podium())
+    podium = palmares.podium(monde.categorie_id)
+    assert [ligne.archer_id for ligne in podium] == attendus
+    assert [ligne.rang_min for ligne in podium] == [1, 2, 3, 4]
+    assert all(ligne.origine is OriginePalmares.DUELS for ligne in podium)
+    assert all(ligne.decerne for ligne in podium)
 
 
 def test_le_podium_se_publie_des_la_petite_finale_sans_attendre_la_finale() -> None:
@@ -204,7 +206,7 @@ def test_le_podium_se_publie_des_la_petite_finale_sans_attendre_la_finale() -> N
 
     palmares = _service(monde).pour_tournoi(monde.tournoi_id)
 
-    assert [ligne.rang_min for ligne in palmares.podium()] == [3, 4]
+    assert [ligne.rang_min for ligne in palmares.podium(monde.categorie_id)] == [3, 4]
 
 
 # --- CA « agrégation » ---------------------------------------------------------------------------
@@ -268,7 +270,7 @@ def test_les_sortis_au_meme_tour_sont_departages_par_la_qualification_par_defaut
 
 
 def test_la_politique_ex_aequo_est_injectable() -> None:
-    """La même situation, avec `AgregationExAequo` : les deux battus restent 3ᵉ-4ᵉ tous les deux.
+    """La même situation, avec `AggregationExAequo` : les deux battus restent 3ᵉ-4ᵉ tous les deux.
 
     C'est ce que l'arbitrage du 03/08/2026 demandait — la règle de départage est une **politique**
     (règle 2), pas une décision figée dans le service.
@@ -280,7 +282,7 @@ def test_la_politique_ex_aequo_est_injectable() -> None:
 
     rangs = {
         ligne.archer_id: (ligne.rang_min, ligne.rang_max)
-        for ligne in _service(monde, agregation=AgregationExAequo())
+        for ligne in _service(monde, aggregation=AggregationExAequo())
         .pour_tournoi(monde.tournoi_id)
         .lignes
     }
@@ -294,7 +296,7 @@ def test_la_politique_par_defaut_est_le_departage_par_la_qualification() -> None
     for numero in (1, 2, 3, 4):
         monde.gagner(numero)
 
-    assert _rangs(monde) == _rangs(monde, agregation=AgregationParQualification())
+    assert _rangs(monde) == _rangs(monde, aggregation=AggregationParQualification())
 
 
 # --- filtrage par catégorie ----------------------------------------------------------------------
@@ -345,7 +347,9 @@ def test_l_export_pdf_recoit_exactement_le_palmares_affiche() -> None:
 
     assert document == b"%PDF-faux"
     ((tournoi, palmares),) = generateur.appels
-    assert tournoi == monde.tournois.par_id(monde.tournoi_id).nom  # type: ignore[union-attr]
+    attendu = monde.tournois.par_id(monde.tournoi_id)
+    assert attendu is not None
+    assert tournoi == attendu.nom
     assert palmares == _service(monde).pour_tournoi(monde.tournoi_id)
 
 
@@ -370,3 +374,41 @@ def test_l_export_pdf_honore_le_filtre_de_categorie() -> None:
 
     ((_tournoi, palmares),) = generateur.appels
     assert palmares.lignes == ()
+
+
+def test_une_phase_sans_duel_tranche_ne_pese_pas_sur_le_palmares() -> None:
+    """Le déroulé se compose **à l'avance** (E01US024) : la phase de tableau existe dès le matin.
+
+    Sans garde, `_decor` l'ensemençait avec tous les archers en lice et chacun n'avait acquis que
+    la plage de son premier match — le tableau entier. Le palmarès affichait « 1ᵉʳ-Nᵉ · à
+    départager » sur **toutes** ses lignes, pendant toute la qualification, sur l'onglet public et
+    l'écran de salle (défaut trouvé en revue par trois axes).
+
+    Attendu : tant qu'aucun duel n'est tranché, le palmarès **est** le classement de qualification.
+    """
+    monde, archers = _monde_de_quatre()
+
+    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+
+    assert [ligne.archer_id for ligne in palmares.lignes] == archers
+    assert [ligne.rang_min for ligne in palmares.lignes] == [1, 2, 3, 4]
+    assert all(ligne.origine is OriginePalmares.QUALIFICATION for ligne in palmares.lignes)
+    assert palmares.podium(monde.categorie_id) == ()
+
+
+def test_le_premier_duel_tranche_fait_basculer_le_palmares_sur_le_tableau() -> None:
+    """Le pendant du test précédent : la bascule se fait sur **ce que le tableau a décidé**, et non
+    sur le statut de la phase — que l'organisateur passe à la main et peut oublier.
+
+    Après un seul duel validé, le battu sort sur sa fourchette et tous les autres restent devant
+    lui, y compris ceux qui n'ont pas encore tiré : ils sont toujours en course pour la première
+    place.
+    """
+    monde, _ = _monde_de_quatre()
+    monde.gagner(1)
+
+    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+    battu = monde.perd_de(1)
+
+    assert palmares.lignes[-1].archer_id == battu
+    assert all(ligne.origine is OriginePalmares.DUELS for ligne in palmares.lignes)

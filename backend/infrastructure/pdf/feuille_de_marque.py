@@ -31,6 +31,10 @@ from reportlab.platypus import (
 from domain.feuille_marque import FeuilleDeMarque, LigneArcher
 from infrastructure.erreurs import InfrastructureError
 
+# Un nom d'archer contenant `&`, `<` ou `>` casserait le balisage du `Paragraph` :
+# l'échappement est factorisé depuis E06US004 (4ᵉ occurrence de la même règle).
+from infrastructure.pdf._commun import echapper as _echapper
+
 _MARGE = 15 * mm
 
 
@@ -121,11 +125,3 @@ class GenerateurFeuilleDeMarquePdf:
             )
         )
         return table
-
-
-def _echapper(texte: str) -> str:
-    """Neutralise les caractères spéciaux du mini-HTML des `Paragraph` ReportLab.
-
-    Un nom d'archer contenant `&`, `<` ou `>` casserait le balisage : on l'échappe pour que la
-    feuille reste conforme à la donnée, quel que soit le texte saisi."""
-    return texte.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

@@ -16,8 +16,8 @@ E06US004 en ajoute une **septième**, `aggregation` ([ADR-0067]) — chacune une
 | `tiebreak`    | départage des égalités      | `TiebreakFftaDefaut`, `TiebreakPoules` |
 | `depth`       | jusqu'où classer            | `ProfondeurUnVersN`, `ProfondeurPodium`, |
 |               |                             | `AucunClassement` |
-| `aggregation` | départage des sortis        | `AgregationParQualification`, |
-|               | au même tour                | `AgregationExAequo` |
+| `aggregation` | départage des sortis        | `AggregationParQualification`, |
+|               | au même tour                | `AggregationExAequo` |
 
 **E05US015 peuple ce catalogue** ([ADR-0062]) : le **repêchage** et le **handicap**, que le cahier
 des charges rangeait parmi les « types de tournoi » à livrer, ne sont pas des types de phase mais
@@ -100,6 +100,29 @@ class FamillePolitique(str, Enum):
     (usage World Archery : le rang de qualification) ou si l'on assume l'*ex æquo*. Les deux
     réponses sont légitimes selon le tournoi — c'est la définition d'une politique (règle 2).
     """
+
+
+FAMILLES_HORS_CONFIG_PHASE: frozenset[FamillePolitique] = frozenset({FamillePolitique.AGGREGATION})
+"""Les familles qui **ne se règlent pas** dans la `config.policies` d'une phase.
+
+`aggregation` fusionne les rangs de **toutes** les phases en un palmarès : elle vaut pour le
+tournoi, pas pour l'une d'elles. Rien ne la persiste aujourd'hui (`Phase` n'a pas de `config`
+générique) et elle s'injecte à la composition root (E06US004).
+
+⚠️ **Sans cette liste, ajouter la famille élargissait ce que le serveur accepte.**
+`FamillePolitique` sert de **catalogue fermé** des clés admises — `assembler_politiques` refuse
+une clé inconnue. `config.policies.aggregation`, refusée avant E06US004, devenait donc
+acceptée, résolue… et silencieusement **ignorée** : un réglage sans effet, que l'organisateur
+croirait actif. Relevé en revue (axe C2) ; c'est un cran pire que « pas encore réglable ».
+
+Même parti que le grain de `validation`, qu'ADR-0046 garde déjà **hors** de `policies` : une
+clé n'est acceptée que si quelqu'un la consomme.
+"""
+
+_FAMILLES_DE_PHASE: tuple[FamillePolitique, ...] = tuple(
+    famille for famille in FamillePolitique if famille not in FAMILLES_HORS_CONFIG_PHASE
+)
+"""Les familles réellement réglables par phase — celles que cite le message d'erreur."""
 
 
 # --- routing -----------------------------------------------------------------------------------
@@ -594,6 +617,12 @@ class Aggregation(Protocol):
     mêmes flèches. Les fusionner en une seule famille aurait obligé `Tiebreak` à accepter un
     `DecompteDepartage` vide, c'est-à-dire à mentir sur ce qu'il compare.
 
+    ⚠️ **Seule famille typée sur l'archer** (`ArcherId`), là où le moteur traite des
+    `Participant` opaques (ADR-0028). C'est délibéré, pas un oubli : elle départage sur le
+    **rang de qualification**, qui est une notion d'archer — une équipe n'en a pas. Le service
+    écarte donc les participants « équipe » avant de l'appeler, et leur classement viendra
+    avec les équipes elles-mêmes (E13US002). Relevé en revue, axe A.
+
     Méthode fondatrice : rendre des **paquets ordonnés**. Un paquet d'un seul archer vaut un rang
     exact ; un paquet de `k` archers, un *ex æquo* sur `k` rangs consécutifs. Rendre des paquets
     plutôt qu'une liste plate est ce qui permet à une implémentation de dire « je n'ai pas su
@@ -610,7 +639,7 @@ class Aggregation(Protocol):
 
 
 @dataclass(frozen=True)
-class AgregationParQualification:
+class AggregationParQualification:
     """Défaut du projet : les sortis au même tour se rangent sur leur **rang de qualification**.
 
     C'est l'usage World Archery — le classement de qualification sert d'ordre de référence partout
@@ -650,7 +679,7 @@ class AgregationParQualification:
 
 
 @dataclass(frozen=True)
-class AgregationExAequo:
+class AggregationExAequo:
     """On ne classe **que** ce que la compétition a décidé : les sortis au même tour restent
     *ex æquo*.
 
@@ -682,7 +711,10 @@ class PolitiquesPhase:
     byes: Byes | None = None
     tiebreak: Tiebreak | None = None
     depth: Depth | None = None
-    aggregation: Aggregation | None = None
+
+    # Pas de champ `aggregation` : elle ne se regle **pas par phase** (cf.
+    # `FAMILLES_HORS_CONFIG_PHASE`). L'exposer ici aurait fait accepter une cle sans
+    # consommateur - un reglage sans effet, ce qui est pire que pas de reglage du tout.
 
 
 # Une fabrique construit une politique à partir de ses paramètres (l'objet
@@ -767,9 +799,9 @@ def registre_par_defaut() -> RegistrePolitiques:
     registre.enregistrer(FamillePolitique.DEPTH, "podium", _fabriquer_profondeur_podium)
     registre.enregistrer(FamillePolitique.DEPTH, "aucun", lambda _p: AucunClassement())
     registre.enregistrer(
-        FamillePolitique.AGGREGATION, "par_qualification", lambda _p: AgregationParQualification()
+        FamillePolitique.AGGREGATION, "par_qualification", lambda _p: AggregationParQualification()
     )
-    registre.enregistrer(FamillePolitique.AGGREGATION, "ex_aequo", lambda _p: AgregationExAequo())
+    registre.enregistrer(FamillePolitique.AGGREGATION, "ex_aequo", lambda _p: AggregationExAequo())
     return registre
 
 
@@ -915,8 +947,13 @@ def assembler_politiques(
         except ValueError as exc:
             raise PolitiqueMalFormee(
                 f"« {cle} » n'est pas une politique du moteur "
-                f"({', '.join(f.value for f in FamillePolitique)})."
+                f"({', '.join(f.value for f in _FAMILLES_DE_PHASE)})."
             ) from exc
+        if famille in FAMILLES_HORS_CONFIG_PHASE:
+            raise PolitiqueMalFormee(
+                f"La politique « {famille.value} » ne se règle pas par phase : elle vaut "
+                "pour tout le tournoi et s'injecte à la composition root (ADR-0067)."
+            )
         if not isinstance(spec, Mapping) or "nom" not in spec:
             raise PolitiqueMalFormee(
                 f"La politique « {famille.value} » doit être un objet portant un « nom » "
@@ -939,5 +976,4 @@ def assembler_politiques(
         byes=cast("Byes | None", resolues.get(FamillePolitique.BYES)),
         tiebreak=cast("Tiebreak | None", resolues.get(FamillePolitique.TIEBREAK)),
         depth=cast("Depth | None", resolues.get(FamillePolitique.DEPTH)),
-        aggregation=cast("Aggregation | None", resolues.get(FamillePolitique.AGGREGATION)),
     )

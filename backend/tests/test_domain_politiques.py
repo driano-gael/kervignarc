@@ -17,6 +17,8 @@ import pytest
 from domain.erreurs import PolitiqueInconnue, PolitiqueMalFormee
 from domain.plage import Plage
 from domain.politiques import (
+    AggregationExAequo,
+    AggregationParQualification,
     AucunClassement,
     ByesAuxMieuxClasses,
     ContexteRoutage,
@@ -434,3 +436,28 @@ def test_un_barrage_ne_s_enveloppe_pas_lui_meme() -> None:
 def test_un_departage_inconnu_dans_le_sinon_est_signale() -> None:
     with pytest.raises(PolitiqueInconnue):
         _resoudre_tiebreak({"jusqu_au": 8, "sinon": {"nom": "inexistant"}})
+
+
+def test_la_politique_d_agregation_ne_se_regle_pas_par_phase() -> None:
+    """`aggregation` vaut pour **tout le tournoi**, pas pour une phase (E06US004, ADR-0067).
+
+    `FamillePolitique` sert de catalogue fermé des clés admises : sans garde, ajouter la famille
+    faisait **accepter** `config.policies.aggregation`, la résoudre… puis l'ignorer — un réglage
+    sans effet, que l'organisateur croirait actif (relevé en revue, axe C2).
+    """
+    with pytest.raises(PolitiqueMalFormee):
+        assembler_politiques({"aggregation": {"nom": "ex_aequo"}}, registre_par_defaut())
+
+
+def test_le_registre_resout_la_politique_d_agregation() -> None:
+    """Elle reste une politique **injectable** résolue par le registre — c'est ce qui la distingue
+    d'une stratégie codée en dur dans le service (règle 2)."""
+    registre = registre_par_defaut()
+
+    assert isinstance(
+        registre.resoudre(FamillePolitique.AGGREGATION, "par_qualification", {}),
+        AggregationParQualification,
+    )
+    assert isinstance(
+        registre.resoudre(FamillePolitique.AGGREGATION, "ex_aequo", {}), AggregationExAequo
+    )

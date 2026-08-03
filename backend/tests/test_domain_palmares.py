@@ -9,8 +9,8 @@ Dérivés du **CA** de `stories/E06-classements.md` (et non de l'implémentation
   rangs, ceux qui n'y sont pas entrés suivent **dans l'ordre de la qualification** ;
 - **arbitrage du 03/08/2026** (reversé dans `stories/`) : deux archers sortis **au même tour** ne
   sont départagés par **aucun match** — c'est une **politique injectable** (famille `aggregation`,
-  ADR-0004) qui décide. Le défaut `AgregationParQualification` les range sur leur rang de qualif
-  (usage World Archery) ; `AgregationExAequo` les laisse *ex æquo* sur une fourchette.
+  ADR-0004) qui décide. Le défaut `AggregationParQualification` les range sur leur rang de qualif
+  (usage World Archery) ; `AggregationExAequo` les laisse *ex æquo* sur une fourchette.
 
 Le palmarès reçoit ce que **chaque phase a décidé** (`ResultatPhase`) et ne rejoue aucun tableau :
 la lecture d'un tableau est le travail du service. Ce qui se teste ici est la **règle de fusion**,
@@ -27,7 +27,7 @@ from domain.palmares import (
     ResultatPhase,
     calculer_palmares,
 )
-from domain.politiques import AgregationExAequo, AgregationParQualification
+from domain.politiques import AggregationExAequo, AggregationParQualification
 
 
 def _ligne(
@@ -116,7 +116,7 @@ def test_le_podium_est_la_restriction_aux_quatre_premiers() -> None:
     """CA podium : `podium()` est une **vue** du palmarès, pas un second calcul."""
     palmares = calculer_palmares(_huit_archers(), (_tableau_de_huit_joue(),))
 
-    assert [ligne.archer_id for ligne in palmares.podium()] == [6, 1, 3, 2]
+    assert [ligne.archer_id for ligne in palmares.podium(1)] == [6, 1, 3, 2]
 
 
 def test_le_podium_ne_retient_que_les_rangs_exacts() -> None:
@@ -133,9 +133,9 @@ def test_le_podium_ne_retient_que_les_rangs_exacts() -> None:
     )
     qualification = _qualification(*[_ligne(i, i) for i in range(1, 5)])
 
-    palmares = calculer_palmares(qualification, (tableau,), AgregationExAequo())
+    palmares = calculer_palmares(qualification, (tableau,), AggregationExAequo())
 
-    assert [ligne.archer_id for ligne in palmares.podium()] == [1, 2]
+    assert [ligne.archer_id for ligne in palmares.podium(1)] == [1, 2]
 
 
 # --- CA « agrégation » ---------------------------------------------------------------------------
@@ -236,7 +236,7 @@ def test_les_sortis_au_meme_tour_sont_departages_par_le_rang_de_qualification() 
     leur rang de qualification qui les ordonne (usage World Archery) — 4, 5, 7, 8 dans cet ordre,
     aux rangs 5, 6, 7 et 8."""
     palmares = calculer_palmares(
-        _huit_archers(), (_tableau_de_huit_joue(),), AgregationParQualification()
+        _huit_archers(), (_tableau_de_huit_joue(),), AggregationParQualification()
     )
 
     assert _rangs(palmares)[4:] == [(4, 5, 5), (5, 6, 6), (7, 7, 7), (8, 8, 8)]
@@ -245,7 +245,7 @@ def test_les_sortis_au_meme_tour_sont_departages_par_le_rang_de_qualification() 
 def test_la_politique_ex_aequo_laisse_la_fourchette_partagee() -> None:
     """Politique **ex æquo** : on ne classe que ce que la compétition a décidé. Les quatre battus
     des quarts restent 5ᵉ-8ᵉ, tous les quatre, et aucun n'est dit meilleur qu'un autre."""
-    palmares = calculer_palmares(_huit_archers(), (_tableau_de_huit_joue(),), AgregationExAequo())
+    palmares = calculer_palmares(_huit_archers(), (_tableau_de_huit_joue(),), AggregationExAequo())
 
     assert _rangs(palmares)[4:] == [(4, 5, 8), (5, 5, 8), (7, 5, 8), (8, 5, 8)]
 
@@ -256,9 +256,9 @@ def test_le_departage_ne_decale_pas_les_archers_suivants() -> None:
     qualification = _qualification(*[_ligne(i, i) for i in range(1, 11)])
 
     par_qualif = calculer_palmares(
-        qualification, (_tableau_de_huit_joue(),), AgregationParQualification()
+        qualification, (_tableau_de_huit_joue(),), AggregationParQualification()
     )
-    ex_aequo = calculer_palmares(qualification, (_tableau_de_huit_joue(),), AgregationExAequo())
+    ex_aequo = calculer_palmares(qualification, (_tableau_de_huit_joue(),), AggregationExAequo())
 
     assert _rangs(par_qualif)[-2:] == [(9, 9, 9), (10, 10, 10)]
     assert _rangs(ex_aequo)[-2:] == [(9, 9, 9), (10, 10, 10)]
@@ -284,7 +284,7 @@ def test_deux_ex_aequo_en_qualification_le_restent_apres_departage() -> None:
         ),
     )
 
-    palmares = calculer_palmares(qualification, (tableau,), AgregationParQualification())
+    palmares = calculer_palmares(qualification, (tableau,), AggregationParQualification())
 
     assert _rangs(palmares)[2:] == [(3, 3, 4), (4, 3, 4)]
 
@@ -411,3 +411,120 @@ def test_un_resultat_de_phase_ignore_les_archers_inconnus_de_la_qualification() 
     palmares = calculer_palmares(qualification, (tableau,))
 
     assert _ordre(palmares) == [2, 1]
+
+
+# --- CA « podium » : ce qu'aucun match n'a décerné n'est pas une médaille -------------------------
+# Les trois cas ci-dessous ont été **trouvés en revue** (axes B, C1 et adversarial) : chacun
+# décernait de l'or que la compétition n'avait pas produit, et aucun test ne les voyait.
+
+
+def test_sans_phase_de_duels_aucun_podium_n_est_decerne() -> None:
+    """CA podium : « rangs 1-4 issus de la **finale/petite finale** ».
+
+    Un rang de qualification est exact par construction — sans garde, le podium se remplissait
+    donc sur les seuls scores du matin, et l'écran public décernait « Or / Argent / Bronze » avant
+    le moindre duel. Ce n'est pas un cas limite : c'est l'état du tournoi pendant toute la
+    matinée.
+    """
+    palmares = calculer_palmares(_huit_archers(), ())
+
+    assert palmares.podium(1) == ()
+    assert all(not ligne.decerne for ligne in palmares.lignes)
+
+
+def test_le_vainqueur_d_une_demi_finale_n_a_pas_encore_l_or() -> None:
+    """Deux demi-finales ne se valident **jamais au même instant**.
+
+    Entre les deux, le vainqueur de la première est seul sur sa position `[1..2]` : la
+    renumérotation lui donnait un rang **exact** — donc « 1ᵉʳ », médaille comprise — alors que la
+    finale n'est pas tirée. Le drapeau `en_lice` protégeait le *groupement*, pas la
+    *numérotation* (défaut trouvé en revue, axe adversarial).
+
+    Attendu : il garde sa fourchette acquise « 1ᵉʳ-2ᵉ », et le podium reste vide.
+    """
+    qualification = _qualification(*[_ligne(i, i) for i in range(1, 5)])
+    tableau = ResultatPhase(
+        ordre=2,
+        positions=(
+            PositionPhase(archer_id=1, rang_min=1, rang_max=2, en_lice=True),
+            PositionPhase(archer_id=2, rang_min=1, rang_max=4, en_lice=True),
+            PositionPhase(archer_id=3, rang_min=1, rang_max=4, en_lice=True),
+            PositionPhase(archer_id=4, rang_min=3, rang_max=4, en_lice=True),
+        ),
+    )
+
+    palmares = calculer_palmares(qualification, (tableau,))
+
+    par_archer = {ligne.archer_id: ligne for ligne in palmares.lignes}
+    assert (par_archer[1].rang_min, par_archer[1].rang_max) == (1, 2)
+    assert not par_archer[1].decerne
+    assert palmares.podium(1) == ()
+
+
+def test_deux_finalistes_ne_sont_pas_departages_par_la_politique() -> None:
+    """CA départage : « le départage ne s'applique **qu'à ce qui est joué** ».
+
+    La règle vit dans le domaine ; elle n'était couverte que par un test de service. Deux
+    finalistes partagent « 1ᵉʳ-2ᵉ » — leur rang de qualification n'a pas le droit de trancher.
+    """
+    qualification = _qualification(_ligne(1, 1), _ligne(2, 2))
+    tableau = ResultatPhase(
+        ordre=2,
+        positions=(
+            PositionPhase(archer_id=1, rang_min=1, rang_max=2, en_lice=True),
+            PositionPhase(archer_id=2, rang_min=1, rang_max=2, en_lice=True),
+        ),
+    )
+
+    palmares = calculer_palmares(qualification, (tableau,), AggregationParQualification())
+
+    assert _rangs(palmares) == [(1, 1, 2), (2, 1, 2)]
+
+
+def test_un_groupe_mixte_en_lice_n_est_pas_departage() -> None:
+    """Un seul membre encore en lice suffit à geler tout le groupe : tant qu'un match peut
+    trancher, la politique n'a rien à décider."""
+    qualification = _qualification(_ligne(1, 1), _ligne(2, 2))
+    tableau = ResultatPhase(
+        ordre=2,
+        positions=(
+            PositionPhase(archer_id=1, rang_min=1, rang_max=2, en_lice=True),
+            PositionPhase(archer_id=2, rang_min=1, rang_max=2, en_lice=False),
+        ),
+    )
+
+    palmares = calculer_palmares(qualification, (tableau,), AggregationParQualification())
+
+    assert _rangs(palmares) == [(1, 1, 2), (2, 1, 2)]
+
+
+def test_un_disqualifie_ne_prend_pas_une_position_de_phase() -> None:
+    """Un disqualifié est **sorti** du classement (ADR-0050) : une position de phase ne l'y
+    ramène pas.
+
+    L'invariant est tenu en amont par l'ensemencement du tableau (seuls les archers en lice y
+    entrent), mais ADR-0067 promet de brancher d'autres producteurs de `ResultatPhase` « sans
+    toucher au domaine » — ceux-là n'auront aucune raison de refaire le filtre. Sans cette garde,
+    un DSQ prenait le rang 1 et l'or (relevé en revue, axe adversarial).
+    """
+    qualification = _qualification(
+        _ligne(1, 1),
+        _ligne(2, None, statut=StatutClassement.DISQUALIFIE),
+    )
+    tableau = ResultatPhase(
+        ordre=2, positions=(PositionPhase(archer_id=2, rang_min=1, rang_max=1),)
+    )
+
+    palmares = calculer_palmares(qualification, (tableau,))
+
+    assert _rangs(palmares) == [(1, 1, 1), (2, None, None)]
+    assert palmares.podium(1) == ()
+
+
+def test_un_archer_sans_rang_de_qualification_passe_en_dernier() -> None:
+    """`AggregationParQualification` départage **sur** la qualification : celui dont elle ne dit
+    rien passe derrière, et deux sans-rang restent ensemble. Affirmé en docstring, épinglé ici."""
+    groupe = [7, 8, 9]
+    paquets = AggregationParQualification().departager(groupe, {7: None, 8: 3, 9: None})
+
+    assert paquets == ((8,), (7, 9))

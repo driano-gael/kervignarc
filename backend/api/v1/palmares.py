@@ -18,6 +18,12 @@ from pydantic import BaseModel
 from application.palmares import ServicePalmares
 from domain.palmares import LignePalmares, Palmares
 
+# DETTE-031 (../../../docs/dette.md) : les deux routes de ce module appellent
+# `ServicePalmares`, qui reconstruit **chaque phase à tableau** (classement complet + arbre
+# rebâti + duels rejoués) à chaque lecture, sans cache ni plafond — et elles sont **publiques
+# et non authentifiées**. Le PDF y ajoute ~40 ms de rendu ReportLab (mesuré en revue, 120
+# lignes). C'est la seule route PDF publique du produit ; les quatre autres documents sont
+# derrière `exiger_admin`, parce qu'ils portent des données qui ne sont pas publiques.
 router = APIRouter(prefix="/api/v1", tags=["palmares"])
 
 
@@ -28,6 +34,14 @@ class LignePalmaresReponse(BaseModel):
     æquo* 5ᵉ-8ᵉ, que rien n'a départagé (tableau tronqué au podium) ou que la finale doit encore
     trancher. Les deux bornes sont `null` pour un archer **hors classement** (disqualifié,
     ADR-0050), comme le classement de qualification les rend `null`.
+
+    `decerne` dit qu'un **match** a décidé ce rang — la seule forme qui vaut une
+    médaille. Il ne se déduit **pas** de `rang_min == rang_max` : la renumérotation
+    rend un rang exact dès qu'un archer est seul de son groupe, ce qui arrive au
+    vainqueur d'une demi-finale avant la finale. `en_lice` dit, lui, que ce qui reste
+    ouvert le sera **au tir** — à distinguer d'un *ex æquo* définitif, que plus aucun
+    match ne départagera. Sans ces deux drapeaux, l'écran décernait l'or avant la
+    finale et disait « à départager » à deux finalistes (défauts trouvés en revue).
 
     `origine` (`duels` / `qualification`) dit **d'où vient** le rang : « 9ᵉ » n'a pas le même sens
     selon qu'un duel perdu l'a décidé ou que l'archer n'a jamais quitté la qualification. Sans lui,
@@ -46,6 +60,8 @@ class LignePalmaresReponse(BaseModel):
     club_id: int | None
     origine: str
     statut: str
+    decerne: bool
+    en_lice: bool
 
     @staticmethod
     def de_ligne(ligne: LignePalmares) -> LignePalmaresReponse:
@@ -62,6 +78,8 @@ class LignePalmaresReponse(BaseModel):
             club_id=ligne.club_id,
             origine=ligne.origine.value,
             statut=ligne.statut.value,
+            decerne=ligne.decerne,
+            en_lice=ligne.en_lice,
         )
 
 

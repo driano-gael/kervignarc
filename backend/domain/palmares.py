@@ -41,7 +41,7 @@ from domain.archer import ArcherId
 from domain.categorie import CategorieId
 from domain.classement import Classement, LigneClassement, StatutClassement
 from domain.club import ClubId
-from domain.politiques import Aggregation, AgregationParQualification
+from domain.politiques import Aggregation, AggregationParQualification
 
 PODIUM_JUSQU_AU = 4
 """Les rangs qui font un podium : 1-2 (finale) et 3-4 (petite finale), CA « podium »."""
@@ -108,6 +108,28 @@ class LignePalmares:
     rang_max: int | None
     rang_categorie_min: int | None
     rang_categorie_max: int | None
+    decerne: bool
+    """Un **match** a décerné ce rang — la seule forme qui vaut une médaille.
+
+    ⚠️ **Ne se déduit PAS de `rang_min == rang_max`**, et c'est tout l'objet de ce champ. La
+    renumérotation rend un rang « exact » dès qu'un archer est **seul dans son paquet**, ce qui
+    arrive à un finaliste dont la finale n'est pas tirée : sa position acquise vaut `[1..2]`, mais
+    aucun autre archer ne la partage, donc le curseur lui donnait « 1ᵉʳ ». L'écran et le PDF lui
+    remettaient l'**or avant le tir** (défaut trouvé en revue, axe adversarial — le drapeau
+    `en_lice` protégeait le *groupement*, pas la *numérotation*).
+
+    Faux, donc, pour : un rang de qualification (aucun duel ne l'a décerné), une position encore
+    ouverte (`en_lice`), et un ex æquo tranché par la politique `aggregation` — celle-ci **décide**
+    un ordre, elle ne le fait pas **gagner**.
+    """
+
+    en_lice: bool
+    """L'archer a encore un match devant lui : ce qui reste ouvert le sera **au tir**.
+
+    À distinguer d'un ex æquo **définitif** (`decerne=False`, `en_lice=False`), que plus aucun match
+    ne départagera. Les deux se présentent comme une fourchette ; les confondre à l'écran ferait
+    dire « à départager » à deux finalistes, ce qui annonce un barrage là où c'est la finale."""
+
     archer_id: ArcherId
     nom: str
     prenom: str
@@ -119,7 +141,12 @@ class LignePalmares:
 
     @property
     def est_exact(self) -> bool:
-        """Le rang est **décerné**, pas partagé : la seule forme qui vaut une médaille."""
+        """Le rang s'affiche en un seul nombre (« 3ᵉ ») plutôt qu'en fourchette (« 5ᵉ-8ᵉ »).
+
+        ⚠️ Question d'**affichage**, pas de médaille : un rang peut être exact sans avoir été
+        décerné par un match (rang de qualification, ex æquo tranché par la politique). C'est
+        `decerne` que le podium regarde.
+        """
         return self.rang_min is not None and self.rang_min == self.rang_max
 
 
@@ -129,28 +156,33 @@ class Palmares:
 
     lignes: tuple[LignePalmares, ...]
 
-    def podium(self, categorie_id: CategorieId | None = None) -> tuple[LignePalmares, ...]:
-        """Les quatre premiers — **scratch** ou d'une catégorie (CA « podium »).
+    def podium(self, categorie_id: CategorieId) -> tuple[LignePalmares, ...]:
+        """Les quatre premiers **d'une catégorie** (CA « podium »).
 
-        Seuls les rangs **exacts** y figurent : on ne remet pas une médaille à quatre archers *ex
-        æquo* 5ᵉ-8ᵉ, et afficher une fourchette sur un podium ferait chercher longtemps qui monte
-        sur la boîte. Un podium peut donc être **partiel** (rangs 1-2 publiés, la petite finale
-        n'étant pas tirée), ce qui est la lecture « au fil de l'eau » de tout le projet.
+        Trois conditions, et chacune ferme un trou trouvé en revue :
 
-        Par catégorie, le podium se lit sur le rang **de catégorie** : la restriction du podium
-        scratch serait vide pour toute catégorie n'ayant personne dans les quatre premiers — or
-        chaque catégorie a bien son podium et ses médailles.
+        1. **`decerne`** — le rang vient d'un **match** (finale / petite finale). Sans cette
+           condition, le podium se remplissait sur les seuls scores du matin : chaque rang de
+           qualification étant exact par construction, l'écran public décernait « Or / Argent /
+           Bronze » **avant le moindre duel**. Elle écarte aussi le finaliste dont la finale n'est
+           pas tirée, à qui la renumérotation donnait « 1ᵉʳ » ;
+        2. **rang de catégorie exact** — on ne remet pas une médaille à quatre archers *ex æquo* ;
+        3. **≤ 4** — finale (1-2) et petite finale (3-4).
+
+        Le podium se lit **par catégorie**, jamais scratch : c'est là que se remettent les
+        médailles, et la restriction du podium scratch serait vide pour toute catégorie n'ayant
+        personne dans les quatre premiers. Le paramètre est **obligatoire** depuis la revue — une
+        branche scratch que seuls ses tests tenaient aurait dérivé en silence.
+
+        Un podium peut donc être **partiel** (rangs 3-4 publiés seuls : la petite finale se tire
+        couramment avant la finale) ou **vide** — c'est la lecture au fil de l'eau de tout le
+        projet, et l'écran le **dit** plutôt que de laisser un blanc.
         """
-        if categorie_id is None:
-            return tuple(
-                ligne
-                for ligne in self.lignes
-                if ligne.est_exact and (ligne.rang_min or 0) <= PODIUM_JUSQU_AU
-            )
         return tuple(
             ligne
             for ligne in self.lignes
             if ligne.categorie_id == categorie_id
+            and ligne.decerne
             and ligne.rang_categorie_min is not None
             and ligne.rang_categorie_min == ligne.rang_categorie_max
             and ligne.rang_categorie_min <= PODIUM_JUSQU_AU
@@ -202,7 +234,7 @@ def calculer_palmares(
       chaque archer, son statut (ADR-0050) et le rang de repli de qui n'a pas disputé de duel ;
     - `resultats` : ce que chaque phase classante a décidé, dans un ordre quelconque ;
     - `aggregation` : la politique de **départage des sortis au même tour** par défaut du tournoi.
-      `None` retombe sur `AgregationParQualification` (usage World Archery).
+      `None` retombe sur `AggregationParQualification` (usage World Archery).
 
     La règle de fusion tient en trois temps :
 
@@ -225,7 +257,7 @@ def calculer_palmares(
 
     Les **disqualifiés** (ADR-0050) restent hors classement (`rang_* is None`), listés en fin.
     """
-    defaut = aggregation if aggregation is not None else AgregationParQualification()
+    defaut = aggregation if aggregation is not None else AggregationParQualification()
     rang_qualification = {ligne.archer_id: ligne.rang_scratch for ligne in qualification.lignes}
     positions = _positions_par_archer(resultats, connus=set(rang_qualification))
 
@@ -242,13 +274,21 @@ def calculer_palmares(
             _numeroter(paquets, retenir=_de_categorie(par_categorie, categorie_id))
         )
 
-    ordonnees = [archer_id for paquet in paquets for archer_id in paquet]
     entree_par_archer = {entree.ligne.archer_id: entree for entree in classables}
     lignes = [
-        _ligne(entree_par_archer[archer_id], rangs.get(archer_id), rangs_categorie.get(archer_id))
-        for archer_id in ordonnees
+        _ligne(
+            entree_par_archer[archer_id],
+            rangs.get(archer_id),
+            rangs_categorie.get(archer_id),
+            decerne=paquet.decerne,
+            en_lice=paquet.en_lice,
+        )
+        for paquet in paquets
+        for archer_id in paquet.archers
     ]
-    lignes += [_ligne(entree, None, None) for entree in hors_classement]
+    lignes += [
+        _ligne(entree, None, None, decerne=False, en_lice=False) for entree in hors_classement
+    ]
     return Palmares(lignes=tuple(lignes))
 
 
@@ -287,7 +327,15 @@ def _situer(
     positions: Mapping[ArcherId, tuple[ResultatPhase, PositionPhase]],
 ) -> _Entree:
     """Situe un archer : la phase qui l'a classé, ou la qualification à défaut."""
-    trouvee = positions.get(ligne.archer_id)
+    # Un **disqualifié** est sorti du classement (ADR-0050) et n'entre donc pas au tableau :
+    # `ServiceSaisieDuels._decor` n'ensemence que les archers en lice. La garde est ici quand
+    # même, parce que l'invariant vit **en amont** et qu'ADR-0067 promet de brancher d'autres
+    # producteurs de `ResultatPhase` (poules, suisse) « sans toucher au domaine » — ceux-là
+    # n'auront aucune raison de refaire le filtre. Sans elle, un DSQ prenait le rang 1 et l'or
+    # (relevé en revue, axe adversarial).
+    trouvee = (
+        None if ligne.statut is StatutClassement.DISQUALIFIE else positions.get(ligne.archer_id)
+    )
     if trouvee is None:
         return _Entree(
             ligne=ligne,
@@ -307,11 +355,26 @@ def _situer(
     )
 
 
+@dataclass(frozen=True)
+class _Paquet:
+    """Un groupe d'archers à numéroter d'un bloc, et ce que le tournoi en a décidé."""
+
+    archers: tuple[ArcherId, ...]
+    acquis: tuple[int, int] | None
+    """La position **acquise** commune, quand elle vient d'une phase (`None` pour un rang de
+    qualification). C'est elle qu'on rend telle quelle quand le paquet est encore en lice."""
+
+    en_lice: bool
+    decerne: bool
+    """Un match a décerné ce rang : position acquise **fermée** (`min == max`) dans une
+    phase."""
+
+
 def _paquets(
     classables: Sequence[_Entree],
     rang_qualification: Mapping[ArcherId, int | None],
     defaut: Aggregation,
-) -> tuple[tuple[ArcherId, ...], ...]:
+) -> tuple[_Paquet, ...]:
     """Ordonne les archers et regroupe en paquets ceux que rien ne départage.
 
     Deux archers forment un groupe quand ils sortent du **même bloc** sur la **même position** —
@@ -323,16 +386,26 @@ def _paquets(
         classables,
         key=lambda entree: (-entree.bloc, entree.rang_min or 0, entree.rang_max or 0),
     )
-    paquets: list[tuple[ArcherId, ...]] = []
+    paquets: list[_Paquet] = []
     for _cle, groupe in _grouper(ordonnees):
+        tete = groupe[0]
         identifiants = [entree.ligne.archer_id for entree in groupe]
+        acquis = (
+            (tete.rang_min, tete.rang_max)
+            if tete.bloc > 0 and tete.rang_min is not None and tete.rang_max is not None
+            else None
+        )
+        decerne = acquis is not None and acquis[0] == acquis[1]
         if any(entree.en_lice for entree in groupe):
             # Rien à départager : ces archers ont un match devant eux. Les deux finalistes
             # partagent « 1ᵉʳ-2ᵉ » jusqu'à ce que la finale tranche — leur appliquer la politique
             # reviendrait à décerner l'or au mieux qualifié **avant** le tir.
-            paquets.append(tuple(identifiants))
+            paquets.append(_Paquet(tuple(identifiants), acquis, en_lice=True, decerne=False))
             continue
-        paquets.extend(defaut.departager(identifiants, rang_qualification))
+        paquets.extend(
+            _Paquet(bucket, acquis, en_lice=False, decerne=decerne)
+            for bucket in defaut.departager(identifiants, rang_qualification)
+        )
     return tuple(paquets)
 
 
@@ -351,7 +424,7 @@ def _grouper(
 
 
 def _numeroter(
-    paquets: Sequence[tuple[ArcherId, ...]],
+    paquets: Sequence[_Paquet],
     retenir: Callable[[ArcherId], bool] | None = None,
 ) -> dict[ArcherId, tuple[int, int]]:
     """Numérote les paquets **1→N sans trou**, chacun occupant autant de rangs qu'il a de membres.
@@ -360,19 +433,41 @@ def _numeroter(
     celui du palmarès, seule la numérotation repart de 1. C'est le même parti qu'E06US001 sur le
     rang de catégorie — même ordre, deux numérotations.
 
+    ⚠️ **Un paquet encore en lice rend sa fourchette acquise, pas celle du curseur.** C'est le
+    correctif du défaut le plus grave de cette US (revue, axe adversarial) : la numérotation par
+    curseur donne un rang **exact** à qui est seul dans son paquet, ce qui arrive au vainqueur
+    d'une demi-finale quand l'autre demie n'est pas encore validée — il sortait « 1ᵉʳ », médaille
+    comprise, la finale non tirée. Sa position acquise dit `[1..2]` : c'est **elle** la vérité,
+    et la rendre telle quelle est la seule façon de ne rien resserrer que le tir n'a pas resserré.
+    La fourchette acquise vaut directement comme rang du tournoi parce qu'une phase dispute les
+    rangs du haut de celui-ci — l'hypothèse qu'un repêchage romprait (`# DETTE-034`).
+
     ⚠️ Un paquet d'ex æquo filtré peut se réduire à un seul membre : deux archers 5ᵉ-8ᵉ scratch de
     catégories différentes sont chacun **seul** de sa catégorie à ce niveau, donc chacun reçoit un
     rang de catégorie **exact**. Ce n'est pas une contradiction : rien ne les départage entre eux,
-    mais ils ne concourent pas l'un contre l'autre pour la médaille.
+    mais ils ne concourent pas l'un contre l'autre pour la médaille. Le podium ne s'y trompe pas —
+    il exige `decerne`, pas l'exactitude d'affichage.
     """
+    # DETTE-029 (../../docs/dette.md) — 4ᵉ site de l'arithmétique « un paquet d'ex æquo
+    # occupe autant de rangs qu'il compte de membres, le suivant reprend après le saut »
+    # (avec `classement._ranger`, `poule.classement_de_poule`, `suisse.classement_suisse`).
+    # Nuance : la **détection** de l'égalité n'est pas dupliquée ici — `_grouper` et la
+    # politique la portent —, seule la numérotation l'est, et sous une autre forme
+    # (`(min, max)` plutôt que rang + drapeau). Le remède déjà proposé au registre
+    # (`attribuer_rangs`) accommoderait ce site.
     rangs: dict[ArcherId, tuple[int, int]] = {}
     curseur = 1
     for paquet in paquets:
-        membres = [archer for archer in paquet if retenir is None or retenir(archer)]
+        membres = [archer for archer in paquet.archers if retenir is None or retenir(archer)]
         if not membres:
             continue
+        fourchette = (
+            paquet.acquis
+            if paquet.en_lice and paquet.acquis is not None
+            else (curseur, curseur + len(membres) - 1)
+        )
         for archer in membres:
-            rangs[archer] = (curseur, curseur + len(membres) - 1)
+            rangs[archer] = fourchette
         curseur += len(membres)
     return rangs
 
@@ -381,8 +476,13 @@ def _ligne(
     entree: _Entree,
     rang: tuple[int, int] | None,
     rang_categorie: tuple[int, int] | None,
+    *,
+    decerne: bool,
+    en_lice: bool,
 ) -> LignePalmares:
     return LignePalmares(
+        decerne=decerne,
+        en_lice=en_lice,
         rang_min=rang[0] if rang is not None else None,
         rang_max=rang[1] if rang is not None else None,
         rang_categorie_min=rang_categorie[0] if rang_categorie is not None else None,

@@ -31,6 +31,7 @@ from reportlab.platypus import (
 from domain.classement import StatutClassement
 from domain.palmares import LignePalmares, Palmares
 from infrastructure.erreurs import InfrastructureError
+from infrastructure.pdf._commun import echapper as _echapper
 
 _MARGE = 15 * mm
 
@@ -180,8 +181,3 @@ def _libelle_statut(statut: StatutClassement) -> str:
     if statut is StatutClassement.DISQUALIFIE:
         return "Disqualifié"
     return ""
-
-
-def _echapper(texte: str) -> str:
-    """Neutralise les caractères spéciaux du mini-HTML des `Paragraph` ReportLab (`&`, `<`, `>`)."""
-    return texte.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
