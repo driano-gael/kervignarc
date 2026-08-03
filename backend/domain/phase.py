@@ -59,6 +59,7 @@ from domain.erreurs import (
     RangSourceInvalide,
     RangsSourceInexistants,
     SequenceOrdreInvalide,
+    SeuilDeBarrageInvalide,
     SourceApresPhase,
     SourceIntrouvable,
     SourceMalFormee,
@@ -398,6 +399,7 @@ class Phase:
     validation: GrainValidation | None = None
     sources: tuple[SourcePhase, ...] = ()
     effectif: int | None = None
+    barrage_jusqu_au: int | None = None
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None
 
@@ -405,6 +407,11 @@ class Phase:
         """Fait respecter la cohérence quelle que soit la porte d'entrée (fabriques **et**
         `replace()`, qui repasse par ici)."""
         verifier_coherence_etape(self.type, self.bareme, self.validation, self.effectif)
+        if self.barrage_jusqu_au is not None and self.barrage_jusqu_au < 1:
+            raise SeuilDeBarrageInvalide(
+                "Le rang jusqu'auquel un barrage départage est un entier positif "
+                f"(reçu {self.barrage_jusqu_au}) ; « aucun barrage » se dit en ne réglant rien."
+            )
 
     @staticmethod
     def qualification(
@@ -433,6 +440,7 @@ class Phase:
         type: TypePhase,
         sources: tuple[SourcePhase, ...] = (),
         effectif: int | None = None,
+        barrage_jusqu_au: int | None = None,
     ) -> Phase:
         """Crée une phase **générique** (E05US001) à un rang donné de la séquence, statut `a venir`.
 
@@ -445,6 +453,7 @@ class Phase:
             type=type,
             sources=sources,
             effectif=effectif,
+            barrage_jusqu_au=barrage_jusqu_au,
             statut=StatutPhase.A_VENIR,
         )
 

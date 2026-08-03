@@ -34,10 +34,69 @@
 
 ### E06US003 — Barrage de tir pour places décisives
 *En tant que* système, *je veux* un barrage quand le comptage ne suffit pas, *afin de* trancher les places décisives.
-- **CA** : déclenchement d'un barrage (shoot-off) pour les positions à enjeu ; résultat intégré au classement.
+- **CA** : déclenchement d'un barrage (shoot-off) pour les positions à enjeu ; résultat intégré au
+  classement **de qualification**. *(Précisé le 02/08/2026 : en poule et en Big Shoot Off le barrage
+  est conduit mais son verdict n'est reversé nulle part — voir la puce « poule & Big Shoot Off ».)*
+- **CA — seuil configurable (cadrage du 02/08/2026)** : ce qui fait qu'une place est « à enjeu » est un
+  **réglage de format**, pas une règle en dur : la politique `tiebreak` de la phase porte un seuil
+  `jusqu_au`, et **toute égalité dont le rang du groupe est ≤ seuil** est signalée « barrage requis ».
+  Le **défaut reste l'ex æquo** (aucun barrage) — E06US001 est inchangée tant que rien n'est réglé.
+  ⚠️ Le seuil désigne le **rang du groupe**, pas chacune de ses places : deux ex æquo au rang 8 avec
+  `jusqu_au = 8` se départagent, et le barrage tranche donc aussi la 9ᵉ place. Sans cela on ne
+  pourrait jamais départager la **dernière place qualificative**, qui est le cas d'usage même.
+- **CA — trois consommateurs** : le barrage sert (a) le **classement de qualification** quand §8.1 est
+  épuisé, (b) le **classement de poule** (« barrage si nécessaire », §10.1), (c) l'égalité **au plus
+  faible** d'un **Big Shoot Off**. Les trois appliquent le même moteur (`resoudre_barrage`) ; aucun ne
+  le réimplémente. Le BSO n'est **pas** soumis au seuil : son égalité bloque la manche par
+  construction, elle n'a pas de « place à enjeu » à comparer.
+  ⚠️ **Seul (a) ferme la boucle** (précisé le 02/08/2026) : pour (b) et (c), les tireurs sont
+  **désignés** et le verdict n'est reversé nulle part, faute de classement calculé — puce suivante.
+- **CA — poule & Big Shoot Off : tireurs désignés, verdict non reversé** : hors qualification,
+  l'organisateur **désigne** les archers à départager, et le résultat du barrage **se lit à
+  l'écran sans être reversé dans aucun classement**. Le barrage y est conduit entièrement (annonce,
+  manches, absents, distance au centre, correction, annulation) avec le même moteur.
+  *Pourquoi* : il n'existe aucun classement de poule ni aucun état de Big Shoot Off **calculé** où
+  lire les ex æquo ni où reverser le verdict — ni `poule.py` ni `big_shoot_off.py` n'ont de
+  consommateur de production ([DETTE-028](../docs/dette.md)). **L'US qui livrera l'exécution de ces
+  phases devra reprendre ce CA** ; une US qui en dériverait ses tests d'ici là écrirait un test faux.
+- **CA — un verdict périmé ne s'applique pas**. Les tireurs sont **figés à l'annonce** ; le
+  classement, lui, continue de vivre. Si une volée validée en retard, une correction ou un forfait
+  **change le groupe** d'ex æquo, le verdict ne décrit plus cette égalité : il est **écarté** et
+  l'égalité **re-signalée** (le juge refait tirer). Annoncer un second barrage sur une place où un
+  barrage **périmé** reste ouvert est **refusé** : il faut l'annuler d'abord.
+  Le barrage périmé est aussi **signalé à l'écran** : sur un barrage en cours, son formulaire de
+  saisie et son bouton « acter » disparaissent ; sur un barrage **acté**, c'est son verdict — le
+  « Départagé » — qui cède la place à l'avertissement. Dans les deux cas il ne reste qu'à l'annuler — sans quoi on ferait tirer un groupe qui
+  n'oppose plus les bonnes personnes, et le classement ne bougerait pas sans un mot d'explication.
+  ⚠️ Cela vaut **aussi pour un barrage déjà acté** : la clôture ne protège de rien, le verdict
+  n'étant jamais stocké mais recalculé et écarté dès que le groupe change.
+- **CA — rien n'est signalé avant le premier tir**. Seuls les archers **en lice ayant validé au
+  moins une volée** sont candidats à un barrage. Sans cela, au démarrage tout le plateau est à zéro,
+  donc ex æquo au rang 1 — et l'écran proposerait de faire tirer les 120 archers au moment même où
+  l'organisateur règle sa phase. « Avoir tiré » n'est pas « avoir marqué » : une volée entièrement
+  manquée compte.
+- **CA — un verdict acté reste corrigible**. Clore un barrage signifie « le juge a acté », pas « le
+  résultat est gravé » : le verdict n'est jamais stocké, il se recalcule. Corriger une manche d'un
+  barrage clos le **rouvre**. Sans quoi un verdict inversé sur la dernière place qualificative
+  enverrait le mauvais archer au tableau, définitivement.
+- **CA — persistance flèche par flèche** : chaque tir est enregistré (score, distance au centre,
+  **absence** distinguée d'une saisie en attente), les **manches successives** sont conservées, et le
+  verdict est **rejouable** depuis les tirs — on ne stocke pas un ordre saisi à la main.
+- **CA — intégration au classement** : les rangs partagés que le barrage a tranchés deviennent
+  **consécutifs** dans l'ordre du barrage ; un barrage **non résolu** ne change rien (le rang reste
+  partagé) plutôt que de publier un ordre à moitié vrai.
+- **CA — câblage de la politique** : `domain/classement.py` cesse de réimplémenter §8.1 à la main et
+  passe par `PolitiquesPhase.tiebreak` — c'est la couture qu'E06US001 avait laissée en attente, et
+  une part de **DETTE-028**.
 - **Notes** : dépendances redirigées au regroupement du 17/07/2026 — l'ex-`E06US002` (dont dépendait cette
   US) a rejoint `E06US001` ; l'ex-`E04US016` a rejoint `E04US013` (redirection déjà actée dans
   `E04-saisie-scores.md`).
+- **Notes — ce que l'US ne refait pas** : le **moteur** du barrage est déjà livré et pur
+  (`domain/barrage.py`, E05US015 : absents relégués → plus haut score → distance au centre → groupes à
+  rejouer). E06US003 lui donne ses **consommateurs**, sa **persistance** et son **déclenchement** ;
+  elle ne retouche sa règle nulle part. Le **shoot-off interne à un duel nul** (égalité de sets) reste
+  hors périmètre : il vit dans l'agrégat `Duel` depuis E04US013 ([ADR-0049](../docs/adr/0049-saisie-et-scoring-des-duels.md) §3),
+  et cet arbitrage n'est pas rouvert.
 - **Dépend de** : E06US001, E04US013 · **Jalon** : J2
 
 ### E06US004 — Podium des duels & agrégation des rangs

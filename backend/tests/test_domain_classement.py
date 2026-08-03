@@ -24,10 +24,13 @@ import datetime
 from collections.abc import Sequence
 
 from domain.archer import Archer
+from domain.barrage import EgaliteADepartager, VerdictBarrage
 from domain.blason import ZoneScore
 from domain.categorie import Categorie
 from domain.classement import LigneClassement, StatutClassement, calculer_classement
 from domain.forfait import Forfait, NatureForfait
+from domain.participant import Participant
+from domain.politiques import TiebreakAvecBarrage, TiebreakFftaDefaut
 from domain.serie import Serie, Volee
 
 
@@ -400,3 +403,250 @@ def test_deux_abandons_sont_classes_entre_eux() -> None:
     assert par_nom["Alice"].rang_scratch == 1  # seule en lice
     assert par_nom["Bob"].rang_scratch == 2  # abandon, meilleur score des relégués
     assert par_nom["Carl"].rang_scratch == 3  # abandon
+
+
+# --- barrage de places décisives (E06US003) ------------------------------------------------------
+#
+# Dérivés du CA cadré le 02/08/2026 : le **défaut reste l'ex æquo**, un seuil l'ouvre, et le verdict
+# rend les rangs consécutifs. Le premier test de la section est le plus important : il fixe que la
+# couture de la politique **ne change pas** le classement livré par E06US001.
+
+
+def _duo_ex_aequo_parfait() -> tuple[list[Archer], list[Serie]]:
+    """Alice devant, Bob et Chloé **parfaitement** ex æquo au rang 2, Dora 4ᵉ (donc saut)."""
+    archers = [
+        _archer(1, "Alice", categorie_id=1),
+        _archer(2, "Bob", categorie_id=1),
+        _archer(3, "Chloé", categorie_id=1),
+        _archer(4, "Dora", categorie_id=1),
+    ]
+    series = [
+        _serie(1, [_volee_validee(1, [DIX, DIX])]),  # 20
+        _serie(2, [_volee_validee(1, [DIX, HUIT])]),  # 18 — 1 dix, 0 neuf
+        _serie(3, [_volee_validee(1, [DIX, HUIT])]),  # 18 — ex æquo parfait de Bob
+        _serie(4, [_volee_validee(1, [HUIT, HUIT])]),  # 16
+    ]
+    return archers, series
+
+
+def test_injecter_le_departage_ffta_ne_change_rien_au_classement_livre() -> None:
+    """La couture de DETTE-028 est un **changement de plomberie, pas de règle**.
+
+    `classement.py` cesse de réimplémenter §8.1 à la main et passe par `PolitiquesPhase.tiebreak` ;
+    injecter explicitement le comparateur par défaut doit donc rendre **exactement** le classement
+    qu'E06US001 rendait sans lui. C'est ce test qui empêche la couture de consacrer une régression.
+    """
+    archers, series = _duo_ex_aequo_parfait()
+    sans = calculer_classement(archers, series, [_cat(1)])
+    avec = calculer_classement(archers, series, [_cat(1)], tiebreak=TiebreakFftaDefaut())
+    assert avec.lignes == sans.lignes
+    assert {ligne.nom: ligne.rang_scratch for ligne in avec.lignes} == {
+        "Alice": 1,
+        "Bob": 2,
+        "Chloé": 2,
+        "Dora": 4,
+    }
+
+
+def test_sans_seuil_aucune_egalite_n_est_signalee() -> None:
+    archers, series = _duo_ex_aequo_parfait()
+    assert calculer_classement(archers, series, [_cat(1)]).egalites_a_departager == ()
+
+
+def test_un_seuil_signale_l_egalite_sans_pour_autant_la_trancher() -> None:
+    """Le moteur **constate**, l'organisateur fait tirer : tant qu'aucun verdict n'est rendu, les
+    rangs restent partagés. Signaler n'est pas départager."""
+    archers, series = _duo_ex_aequo_parfait()
+    classement = calculer_classement(
+        archers,
+        series,
+        [_cat(1)],
+        tiebreak=TiebreakAvecBarrage(sous_jacent=TiebreakFftaDefaut(), jusqu_au=8),
+    )
+    assert classement.egalites_a_departager == (
+        EgaliteADepartager(
+            rang=2, participants=(Participant.individuel(2), Participant.individuel(3))
+        ),
+    )
+    assert {ligne.nom: ligne.rang_scratch for ligne in classement.lignes} == {
+        "Alice": 1,
+        "Bob": 2,
+        "Chloé": 2,
+        "Dora": 4,
+    }
+
+
+def test_une_egalite_au_dela_du_seuil_n_est_pas_signalee() -> None:
+    archers, series = _duo_ex_aequo_parfait()
+    classement = calculer_classement(
+        archers,
+        series,
+        [_cat(1)],
+        tiebreak=TiebreakAvecBarrage(sous_jacent=TiebreakFftaDefaut(), jusqu_au=1),
+    )
+    assert classement.egalites_a_departager == ()
+
+
+def test_le_verdict_rend_les_rangs_consecutifs_sans_decaler_les_suivants() -> None:
+    """Chloé a gagné le barrage : elle prend le 2, Bob le 3. Dora **reste 4ᵉ** — le barrage éclate
+    un rang partagé, il n'insère personne."""
+    archers, series = _duo_ex_aequo_parfait()
+    verdict = VerdictBarrage(rang=2, ordre=(Participant.individuel(3), Participant.individuel(2)))
+    classement = calculer_classement(archers, series, [_cat(1)], verdicts=[verdict])
+    assert {ligne.nom: ligne.rang_scratch for ligne in classement.lignes} == {
+        "Alice": 1,
+        "Chloé": 2,
+        "Bob": 3,
+        "Dora": 4,
+    }
+
+
+def test_le_verdict_tranche_aussi_le_rang_de_categorie() -> None:
+    """Un barrage départage **les archers**, pas un tableau d'affichage : les deux rangs suivent.
+
+    Bob et Chloé sont dans la même catégorie, donc ex æquo là aussi. Laisser le rang de catégorie
+    partagé pendant que le scratch est tranché produirait un classement **cohérent en apparence et
+    contradictoire** — exactement le genre d'écart qui ne se voit qu'à l'impression du podium.
+    """
+    archers, series = _duo_ex_aequo_parfait()
+    verdict = VerdictBarrage(rang=2, ordre=(Participant.individuel(3), Participant.individuel(2)))
+    classement = calculer_classement(archers, series, [_cat(1)], verdicts=[verdict])
+    assert {ligne.nom: ligne.rang_categorie for ligne in classement.lignes} == {
+        "Alice": 1,
+        "Chloé": 2,
+        "Bob": 3,
+        "Dora": 4,
+    }
+
+
+def test_un_barrage_non_resolu_laisse_le_rang_partage() -> None:
+    """Un verdict sans ordre ne range personne : on ne publie pas un classement à moitié vrai."""
+    archers, series = _duo_ex_aequo_parfait()
+    classement = calculer_classement(
+        archers, series, [_cat(1)], verdicts=[VerdictBarrage(rang=2, ordre=())]
+    )
+    assert {ligne.nom: ligne.rang_scratch for ligne in classement.lignes} == {
+        "Alice": 1,
+        "Bob": 2,
+        "Chloé": 2,
+        "Dora": 4,
+    }
+
+
+def test_le_verdict_survit_a_l_egalite_qui_l_a_declenche() -> None:
+    """Une fois le barrage tiré, l'égalité **n'est plus** à départager : elle disparaît du signal.
+
+    Sans quoi l'écran réclamerait éternellement un barrage déjà tiré, et l'organisateur ne saurait
+    pas ce qu'il lui reste à faire.
+    """
+    archers, series = _duo_ex_aequo_parfait()
+    classement = calculer_classement(
+        archers,
+        series,
+        [_cat(1)],
+        tiebreak=TiebreakAvecBarrage(sous_jacent=TiebreakFftaDefaut(), jusqu_au=8),
+        verdicts=[
+            VerdictBarrage(rang=2, ordre=(Participant.individuel(3), Participant.individuel(2)))
+        ],
+    )
+    assert classement.egalites_a_departager == ()
+
+
+# --- correctifs de revue : verdict fantôme et égalités non disputables ---------------------------
+
+
+def test_un_verdict_dont_le_groupe_a_change_est_ecarte() -> None:
+    """**Le verdict fantôme.** Les tireurs d'un barrage sont figés à l'annonce ; le classement, lui,
+    continue de vivre. Si une volée validée en retard amène un 3ᵉ archer à la même égalité, le
+    verdict ne décrit plus cette égalité-là.
+
+    Sans ce filtre, l'arrivant — dont la position de barrage vaut 0, le meilleur rang possible —
+    prenait la place que le barrage venait de trancher, **devant** son vainqueur, et le signalement
+    disparaissait : un classement faux, réglé en apparence, sans le moindre avertissement.
+    """
+    archers = [
+        _archer(1, "Alice", categorie_id=1),
+        _archer(2, "Bob", categorie_id=1),
+        _archer(3, "Chloé", categorie_id=1),
+    ]
+    # Les trois sont désormais ex æquo : le verdict ne portait que sur deux d'entre eux.
+    series = [_serie(i, [_volee_validee(1, [DIX, HUIT])]) for i in (1, 2, 3)]
+    verdict = VerdictBarrage(rang=1, ordre=(Participant.individuel(2), Participant.individuel(1)))
+    classement = calculer_classement(
+        archers,
+        series,
+        [_cat(1)],
+        tiebreak=TiebreakAvecBarrage(sous_jacent=TiebreakFftaDefaut(), jusqu_au=8),
+        verdicts=[verdict],
+    )
+    assert {ligne.nom: ligne.rang_scratch for ligne in classement.lignes} == {
+        "Alice": 1,
+        "Bob": 1,
+        "Chloé": 1,
+    }
+    # …et l'égalité est **re-signalée** : le juge refait tirer, à trois cette fois.
+    assert classement.egalites_a_departager == (
+        EgaliteADepartager(
+            rang=1,
+            participants=(
+                Participant.individuel(1),
+                Participant.individuel(2),
+                Participant.individuel(3),
+            ),
+        ),
+    )
+
+
+def test_aucune_egalite_n_est_signalee_avant_le_premier_tir() -> None:
+    """Sans ce filtre, régler le seuil **avant** le tir — ce que fait l'organisateur — affichait
+    « 1ʳᵉ place » suivie de **tout le plateau**, avec un bouton « Faire tirer »."""
+    archers = [_archer(i, f"A{i}", categorie_id=1) for i in range(1, 6)]
+    classement = calculer_classement(
+        archers,
+        [],
+        [_cat(1)],
+        tiebreak=TiebreakAvecBarrage(sous_jacent=TiebreakFftaDefaut(), jusqu_au=8),
+    )
+    assert classement.egalites_a_departager == ()
+
+
+def test_un_archer_qui_a_tout_manque_reste_departageable() -> None:
+    """`a_tire` n'est pas `total > 0` : une volée validée entièrement manquée compte comme un tir.
+
+    Confondre les deux rendrait indépartageables ceux qui ont tout manqué — rare, mais c'est
+    précisément le genre d'égalité que le règlement prévoit de trancher."""
+    archers = [_archer(1, "Alice", categorie_id=1), _archer(2, "Bob", categorie_id=1)]
+    series = [
+        _serie(1, [_volee_validee(1, [ZoneScore.MANQUE, ZoneScore.MANQUE])]),
+        _serie(2, [_volee_validee(1, [ZoneScore.MANQUE, ZoneScore.MANQUE])]),
+    ]
+    classement = calculer_classement(
+        archers,
+        series,
+        [_cat(1)],
+        tiebreak=TiebreakAvecBarrage(sous_jacent=TiebreakFftaDefaut(), jusqu_au=8),
+    )
+    assert classement.egalites_a_departager == (
+        EgaliteADepartager(
+            rang=1, participants=(Participant.individuel(1), Participant.individuel(2))
+        ),
+    )
+
+
+def test_deux_abandons_ex_aequo_ne_declenchent_pas_de_barrage() -> None:
+    """On ne fait pas retirer des gens qui ont quitté le pas de tir."""
+    archers = [_archer(1, "Alice"), _archer(2, "Bob"), _archer(3, "Carl")]
+    series = [
+        _serie(1, [_volee_validee(1, [DIX, DIX])]),
+        _serie(2, [_volee_validee(1, [HUIT, HUIT])]),
+        _serie(3, [_volee_validee(1, [HUIT, HUIT])]),
+    ]
+    forfaits = [_forfait(2, NatureForfait.ABANDON), _forfait(3, NatureForfait.ABANDON)]
+    classement = calculer_classement(
+        archers,
+        series,
+        [_cat(1)],
+        forfaits,
+        tiebreak=TiebreakAvecBarrage(sous_jacent=TiebreakFftaDefaut(), jusqu_au=8),
+    )
+    assert classement.egalites_a_departager == ()

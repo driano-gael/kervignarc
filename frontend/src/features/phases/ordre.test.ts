@@ -11,6 +11,7 @@ function phase(id: number, ordre: number): Phase {
     statut: 'a_venir',
     sources: [],
     effectif: null,
+    barrage_jusqu_au: null,
   }
 }
 

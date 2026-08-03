@@ -75,6 +75,7 @@ class ServicePhases:
         type: TypePhase,
         sources: tuple[SourcePhase, ...] = (),
         effectif: int | None = None,
+        barrage_jusqu_au: int | None = None,
     ) -> Phase:
         """Ajoute une phase **en fin de séquence** (ordre = N+1) et la persiste.
 
@@ -85,7 +86,12 @@ class ServicePhases:
         self._exiger_tournoi(tournoi_id)
         existantes = self._phases.par_tournoi(tournoi_id)
         nouvelle = Phase.creer(
-            tournoi_id, ordre=len(existantes) + 1, type=type, sources=sources, effectif=effectif
+            tournoi_id,
+            ordre=len(existantes) + 1,
+            type=type,
+            sources=sources,
+            effectif=effectif,
+            barrage_jusqu_au=barrage_jusqu_au,
         )
         # Valide la séquence complète (la nouvelle incluse) avant d'écrire.
         SequencePhases(phases=(*existantes, nouvelle))
@@ -98,6 +104,7 @@ class ServicePhases:
         type: TypePhase,
         sources: tuple[SourcePhase, ...],
         effectif: int | None,
+        barrage_jusqu_au: int | None = None,
     ) -> Phase:
         """Édite le type, la source et l'effectif d'une phase (édition **totale** de sa config de
         séquence — `ordre`, `statut`, barème/grain sont préservés).
@@ -106,7 +113,13 @@ class ServicePhases:
         le résultat est incohérent (ex. retyper en `qualification` sans barème, source hors bornes).
         """
         phase = self._exiger_phase(tournoi_id, phase_id)
-        modifiee = replace(phase, type=type, sources=sources, effectif=effectif)
+        modifiee = replace(
+            phase,
+            type=type,
+            sources=sources,
+            effectif=effectif,
+            barrage_jusqu_au=barrage_jusqu_au,
+        )
         autres = [p for p in self._phases.par_tournoi(tournoi_id) if p.id != phase_id]
         SequencePhases(phases=(*autres, modifiee))
         return self._phases.enregistrer(modifiee)

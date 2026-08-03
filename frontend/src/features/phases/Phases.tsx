@@ -189,6 +189,7 @@ function LignePhase({
             {action.libelle}
           </button>
         ))}
+        {gereeAilleurs && <ReglageBarrage tournoiId={tournoiId} phase={phase} />}
         {!gereeAilleurs &&
           (editableIci(phase.sources) ? (
             <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
@@ -320,7 +321,15 @@ function FormulairePhase({
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
     if (sources === 'invalide' || effectifInvalide) return
-    const config: ConfigPhase = { type, sources, effectif: effectifAnalyse }
+    // ⚠️ `barrage_jusqu_au` est **réémis tel quel** : le `PUT` est une édition **totale**, donc
+    // l'omettre effacerait le seuil dès qu'on corrige un effectif. Il ne se **règle** pas ici (voir
+    // `ReglageBarrage`, sur la qualification), il se **préserve**.
+    const config: ConfigPhase = {
+      type,
+      sources,
+      effectif: effectifAnalyse,
+      barrage_jusqu_au: phase?.barrage_jusqu_au ?? null,
+    }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
     } else {
@@ -435,6 +444,77 @@ function FormulairePhase({
         </div>
       </form>
       <MessageErreur erreur={mutation.error} />
+    </div>
+  )
+}
+
+/** Réglage du **barrage** sur la phase de qualification (E06US003, ADR-0066).
+ *
+ * ⚠️ **Il vit ici et nulle part ailleurs, et c'est un correctif de revue.** Le champ avait d'abord
+ * été ajouté à `FormulairePhase` — que la qualification **n'ouvre jamais** (`gereeAilleurs`) : le
+ * seuil restait donc réglable par aucun écran, alors que `ServiceClassement` ne le lit que sur la
+ * phase de qualification. Le trou avait été déplacé, pas fermé.
+ *
+ * Contrôle **réduit au seul seuil** : le `PUT` de phase est une édition totale, donc on réémet
+ * `type`, `sources` et `effectif` tels que la phase les porte. Rouvrir le formulaire complet sur la
+ * qualification risquerait au contraire d'écraser son barème par surprise — la raison même pour
+ * laquelle elle est « gérée ailleurs ».
+ */
+function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: Phase }) {
+  const [valeur, setValeur] = useState(
+    phase.barrage_jusqu_au != null ? String(phase.barrage_jusqu_au) : '',
+  )
+  const modifier = useModifierPhase(tournoiId)
+  const analyse = valeur.trim() === '' ? null : Number(valeur)
+  const invalide = analyse !== null && (!Number.isInteger(analyse) || analyse < 1)
+
+  const enregistrer = () => {
+    if (invalide) return
+    modifier.mutate({
+      phaseId: phase.id,
+      config: {
+        type: phase.type,
+        sources: phase.sources,
+        effectif: phase.effectif,
+        barrage_jusqu_au: analyse,
+      },
+    })
+  }
+
+  return (
+    <div className="phase__barrage">
+      <label>
+        Barrage jusqu&apos;au rang{' '}
+        <input
+          className="formulaire__champ"
+          inputMode="numeric"
+          value={valeur}
+          onChange={(e) => setValeur(e.target.value)}
+          placeholder="aucun"
+        />
+      </label>
+      <button
+        type="button"
+        className="bouton--discret"
+        onClick={enregistrer}
+        disabled={invalide || modifier.isPending}
+      >
+        Enregistrer
+      </button>
+      <span className="carte__aide">
+        Vide = les ex æquo partagent leur rang (défaut). Renseigné, l&apos;application signale les
+        égalités jusqu&apos;à ce rang et propose un tir de barrage.
+      </span>
+      {invalide && (
+        <span className="carte__etat carte__etat--erreur" role="alert">
+          Un entier ≥ 1, ou vide (aucun barrage).
+        </span>
+      )}
+      {modifier.isError && (
+        <span className="carte__etat carte__etat--erreur" role="alert">
+          {modifier.error.message}
+        </span>
+      )}
     </div>
   )
 }

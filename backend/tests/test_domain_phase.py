@@ -16,6 +16,7 @@ from domain.erreurs import (
     RangSourceInvalide,
     RangsSourceInexistants,
     SequenceOrdreInvalide,
+    SeuilDeBarrageInvalide,
     SourceApresPhase,
     SourceIntrouvable,
 )
@@ -544,3 +545,15 @@ def test_on_ne_preleve_pas_non_plus_une_issue_de_tour_dans_un_echauffement() -> 
                 ),
             )
         )
+
+
+def test_un_seuil_de_barrage_nul_est_refuse() -> None:
+    """« Aucun barrage » se dit en ne réglant rien ; un 0 accepté laisserait croire à l'organisateur
+    qu'il a désactivé une option qu'il vient en fait de régler (E06US003)."""
+    with pytest.raises(SeuilDeBarrageInvalide):
+        Phase.creer(1, ordre=2, type=TypePhase.ELIMINATION_DIRECTE, barrage_jusqu_au=0)
+
+
+def test_un_seuil_de_barrage_positif_est_conserve() -> None:
+    phase = Phase.creer(1, ordre=2, type=TypePhase.ELIMINATION_DIRECTE, barrage_jusqu_au=8)
+    assert phase.barrage_jusqu_au == 8

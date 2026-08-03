@@ -460,6 +460,48 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 > **code individuel** ; il est **itinérant** (aucune cible rattachée) et **valide** les scores
 > (`D-12`/`D-13`). Voir [ADR-0025](adr/0025-mode-d-identite-scoreur-par-code-individuel.md).
 
+### BARRAGE (E06US003) — tir de départage d'une place
+
+| id | INTEGER | PK |
+| tournoi_id | INTEGER | FK → TOURNOI (DETTE-001) |
+| phase_id | INTEGER | FK → PHASE, nullable (DETTE-001, lien latéral) |
+| portee | TEXT | `qualification`\|`poule`\|`big_shoot_off` (`PorteeBarrage`) |
+| reference | TEXT | nullable — numéro de poule ou de manche |
+| rang_dispute | INTEGER | nullable — **nul** en Big Shoot Off (il désigne un sortant, pas une place) |
+| participants_json | TEXT | `[archer_id, …]`, **figé à l'annonce** |
+| clos | BOOLEAN | NOT NULL, défaut `0` |
+| cree_le | DATETIME | NOT NULL |
+
+⚠️ **Le verdict n'est pas stocké** : il se recalcule depuis les tirs (`BarrageDePlaces.resultat`).
+C'est ce qui rend une flèche mal notée corrigeable — la corriger corrige le classement. Une colonne
+`ordre` créerait deux vérités, dont une périmée dès le premier correctif.
+
+⚠️ **`participants_json` est figé**, et c'est le point essentiel (le format JSON ne l'est pas) :
+recalculer les tireurs depuis le classement à chaque lecture les ferait changer sous les pieds du
+juge dès qu'une volée validée en retard arrive. Même parti que `phase.sources_json` (0036) et
+`poste.deroule_json` (0038) — une donnée toujours lue et écrite **en entier**.
+
+### BARRAGE_TIR (E06US003) — une flèche, par manche et par archer
+
+| id | INTEGER | PK |
+| barrage_id | INTEGER | FK → BARRAGE (DETTE-001 ; purgé avec le barrage) |
+| manche | INTEGER | NOT NULL — 1, 2, … (« on répète jusqu'à résolution », §8.2) |
+| archer_id | INTEGER | FK → ARCHER (DETTE-001 ; purgé/réassigné par cascade applicative) |
+| score | INTEGER | nullable — **`NULL` = ABSENT** (B.6.5.2.4, déclaré perdant) |
+| distance_au_centre | INTEGER | nullable — dixièmes de mm ; `NULL` = **non mesurée**, pas zéro |
+
+`UNIQUE(barrage_id, manche, archer_id)` : à ce grain, une seconde saisie est une **correction**.
+
+⚠️ **`NULL` ne veut pas dire la même chose dans les deux colonnes.** Sur `score`, il porte une issue
+réglementaire (absent → perdant) ; « pas encore saisi », c'est l'**absence de la ligne**. Sur
+`distance_au_centre`, il porte une **inconnue** — le moteur refuse de départager dessus et fait
+retirer, ce qui est le cas le plus fréquent du jour J (le juge mesure la flèche litigieuse, rarement
+les deux).
+
+⚠️ Ce grain fige **une flèche par archer et par manche** : le barrage **par équipe** (volée de 3,
+B.6.5.2.2) est donc inexprimable sans migration — assumé, l'épreuve par équipes n'ayant pas encore
+de moteur (DETTE-028).
+
 ### POSTE (E04US001 ; élargi E07US004)
 | id | INTEGER | PK |
 | tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) |
@@ -630,8 +672,19 @@ la racine** (ce ne sont pas des politiques de moteur). Exemples :
   Absent ⇒ on retient le `CATEGORIE.blason_id`.
 - Autres valeurs de `routing` : `elimination_seche` (MVP, podium), `repechage` (World Archery, J4).
 - Autres `depth` : `top_n` (avec `params.n`).
-- `tiebreak` : `10_puis_9` (qualif) ; en duel, `shoot_off` = 1 flèche au plus haut score **puis**, si
-  l'égalité persiste, au plus près du centre (deux critères séquentiels — FFTA B.6.5.2).
+- `tiebreak` — **forme livrée** (E06US003, ADR-0066) : `{"nom": "ffta_defaut"}` (§8.1, nb de 10 puis
+  de 9, ex æquo par défaut), `{"nom": "poules"}` (§10.1, cinq critères), ou le **composite**
+  `{"nom": "barrage", "jusqu_au": 8, "sinon": {"nom": "ffta_defaut"}}` — qui délègue le départage à
+  son `sinon` et n'ajoute que le **déclenchement** d'un tir jusqu'au rang indiqué. Absent ⇒ aucun
+  barrage, ce qui est le défaut du produit.
+  ⚠️ Le seuil désigne le rang du **groupe**, pas chacune de ses places : un barrage déclenché au 8ᵉ
+  tranche donc aussi la 9ᵉ. C'est le cas d'usage — « départager la dernière place qualificative »
+  est par construction une égalité qui chevauche le seuil.
+  ⚠️ Le `sinon` **n'est pas encore atteignable depuis le produit** : `Phase.barrage_jusqu_au` est un
+  entier, donc le repository n'écrit jamais que `ffta_defaut` en enveloppé (cf. ADR-0066).
+  En duel, le `shoot_off` reste porté par l'agrégat `Duel` (E04US013, ADR-0049 §3) : 1 flèche au plus
+  haut score **puis**, si l'égalité persiste, au plus près du centre — **désigné** par le scoreur,
+  l'application ne mesurant pas la distance dans ce cas-là.
 
 ---
 

@@ -6,6 +6,8 @@
 // l'ordre optimiste du geste diverger de la vérité serveur (cf. `placement/hooks.ts`).
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+import { cleClassement } from '../competition/hooks'
 import {
   ajouterPhase,
   changerStatutPhase,
@@ -30,7 +32,14 @@ export function useAjouterPhase(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (config: ConfigPhase) => ajouterPhase(tournoiId, config),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: clePhases(tournoiId) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: clePhases(tournoiId) })
+      // ⚠️ **Le classement aussi.** `barrage_jusqu_au` vit sur la phase mais ne se **voit** que
+      // dans le classement (égalités signalées). Sans cette invalidation, le cache de 30 s faisait
+      // que régler le seuil puis revenir au classement n'affichait rien — le recetteur concluait à
+      // un échec. Aucun événement temps réel n'est diffusé sur `PUT /phases`.
+      void queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) })
+    },
   })
 }
 
@@ -39,7 +48,14 @@ export function useModifierPhase(tournoiId: number) {
   return useMutation({
     mutationFn: ({ phaseId, config }: { phaseId: number; config: ConfigPhase }) =>
       modifierPhase(tournoiId, phaseId, config),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: clePhases(tournoiId) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: clePhases(tournoiId) })
+      // ⚠️ **Le classement aussi.** `barrage_jusqu_au` vit sur la phase mais ne se **voit** que
+      // dans le classement (égalités signalées). Sans cette invalidation, le cache de 30 s faisait
+      // que régler le seuil puis revenir au classement n'affichait rien — le recetteur concluait à
+      // un échec. Aucun événement temps réel n'est diffusé sur `PUT /phases`.
+      void queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) })
+    },
   })
 }
 
@@ -56,7 +72,14 @@ export function useSupprimerPhase(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (phaseId: number) => supprimerPhase(tournoiId, phaseId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: clePhases(tournoiId) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: clePhases(tournoiId) })
+      // ⚠️ **Le classement aussi.** `barrage_jusqu_au` vit sur la phase mais ne se **voit** que
+      // dans le classement (égalités signalées). Sans cette invalidation, le cache de 30 s faisait
+      // que régler le seuil puis revenir au classement n'affichait rien — le recetteur concluait à
+      // un échec. Aucun événement temps réel n'est diffusé sur `PUT /phases`.
+      void queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) })
+    },
   })
 }
 
@@ -65,6 +88,13 @@ export function useChangerStatutPhase(tournoiId: number) {
   return useMutation({
     mutationFn: ({ phaseId, transition }: { phaseId: number; transition: TransitionPhase }) =>
       changerStatutPhase(tournoiId, phaseId, transition),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: clePhases(tournoiId) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: clePhases(tournoiId) })
+      // ⚠️ **Le classement aussi.** `barrage_jusqu_au` vit sur la phase mais ne se **voit** que
+      // dans le classement (égalités signalées). Sans cette invalidation, le cache de 30 s faisait
+      // que régler le seuil puis revenir au classement n'affichait rien — le recetteur concluait à
+      // un échec. Aucun événement temps réel n'est diffusé sur `PUT /phases`.
+      void queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) })
+    },
   })
 }

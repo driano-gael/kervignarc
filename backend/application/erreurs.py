@@ -23,6 +23,48 @@ class TournoiIntrouvable(ApplicationError):
     code = "tournoi_introuvable"
 
 
+class BarrageIntrouvable(ApplicationError):
+    """Aucun barrage de cet identifiant dans ce tournoi (E06US003)."""
+
+    code = "barrage_introuvable"
+
+
+class EgaliteNonDepartageable(ApplicationError):
+    """L'égalité annoncée n'en est plus une, ou la politique ne réclame pas de barrage (E06US003).
+
+    Le cas n'est pas théorique : entre le moment où l'écran affiche « barrage requis au rang 8 » et
+    celui où l'organisateur clique, une volée validée en retard peut avoir défait l'égalité. Ouvrir
+    quand même ferait tirer des archers que plus rien n'oppose. Sert aussi au refus de **clore** un
+    barrage encore indécis — sa clôture dirait « c'est tranché » alors qu'il reste à retirer.
+    """
+
+    code = "egalite_non_departageable"
+
+
+class BarragePerime(ApplicationError):
+    """Un barrage est ouvert à cette place, mais sur d'autres tireurs (E06US003).
+
+    Le classement a bougé depuis son annonce — une volée validée en retard, un score corrigé, un
+    forfait. L'ancien barrage ne départage plus le bon groupe, et son verdict sera écarté. On refuse
+    d'en ouvrir un second plutôt que de laisser l'organisateur faire tirer un groupe incomplet
+    devant un écran qui ne lui dirait rien.
+    """
+
+    code = "barrage_perime"
+
+
+class TireursDesignesInvalides(ApplicationError):
+    """Les archers désignés pour un barrage de poule / Big Shoot Off ne conviennent pas (E06US003).
+
+    Régime **désigné** : aucun classement ne valide les tireurs, donc le service vérifie ce que la
+    qualification obtenait gratuitement — au moins deux archers distincts, du **bon** tournoi, et
+    une phase du bon tournoi. Erreur distincte d'`EgaliteNonDepartageable` : aucun de ces cas n'est
+    une égalité indépartageable, et le `code` est ce sur quoi le front et les journaux s'appuient.
+    """
+
+    code = "tireurs_designes_invalides"
+
+
 class TransitionStatutInvalide(ApplicationError):
     """Transition de cycle de vie impossible depuis l'état courant (E01US002, E01US017) → 409.
 

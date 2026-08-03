@@ -13,6 +13,7 @@
 import { useState } from 'react'
 import { useCategories } from '../categories/hooks'
 import { useClassement } from './hooks'
+import { DepartageManuel, PanneauBarrages } from './PanneauBarrages'
 import { TableClassement } from './TableClassement'
 
 export function VueClassement({
@@ -49,12 +50,28 @@ export function VueClassement({
           Classement injoignable — {classement.error.message}
         </p>
       )}
+      {/* Barrages : surface d'**organisation**, donc admin seulement — le public voit le
+          classement, pas les places encore à trancher. Le panneau se replie de lui-même quand il
+          n'y a ni égalité signalée ni barrage en cours (aucun seuil réglé = rien à afficher). */}
+      {admin && classement.data && (
+        <PanneauBarrages
+          tournoiId={tournoiId}
+          egalites={classement.data.egalites_a_departager}
+          lignes={classement.data.lignes}
+        />
+      )}
       {classement.data && (
         // Conteneur défilant : à 8 colonnes, la table déborde sur mobile (CA « responsive ») — on la
         // laisse défiler horizontalement plutôt que d'écraser les colonnes.
         <div className="table-defilement">
           <TableClassement tournoiId={tournoiId} lignes={classement.data.lignes} admin={admin} />
         </div>
+      )}
+      {/* Departage manuel (poule, Big Shoot Off) : replie, hors de la carte d'alerte. Ces formats
+          n'ont aucun classement calcule qui pourrait signaler leurs ex aequo, donc c'est
+          l'organisateur qui designe les tireurs — il lui faut un point d'entree permanent. */}
+      {admin && classement.data && (
+        <DepartageManuel tournoiId={tournoiId} lignes={classement.data.lignes} />
       )}
     </>
   )

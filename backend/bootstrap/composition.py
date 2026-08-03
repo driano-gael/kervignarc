@@ -26,6 +26,7 @@ from api.v1.archive import router as archive_router
 from api.v1.audit import router as audit_router
 from api.v1.auth import router as auth_router
 from api.v1.bareme_qualification import router as bareme_qualification_router
+from api.v1.barrages import router as barrages_router
 from api.v1.blasons import router as blasons_router
 from api.v1.categories import router as categories_router
 from api.v1.clubs import router as clubs_router
@@ -68,6 +69,7 @@ from application.archive import ServiceArchive
 from application.audit import ServiceAudit
 from application.auth import ServiceAuth
 from application.bareme_qualification import ServiceBaremeQualification
+from application.barrages import ServiceBarrage
 from application.blasons import ServiceBlasons
 from application.categories import ServiceCategories
 from application.classements import ServiceClassement
@@ -125,6 +127,7 @@ from infrastructure.backup.sauvegarde import SauvegardeSQLite
 from infrastructure.db import (
     ArcherRepositorySQL,
     AuditRepositorySQL,
+    BarrageRepositorySQL,
     BlasonRepositorySQL,
     CategorieRepositorySQL,
     ClubRepositorySQL,
@@ -491,6 +494,10 @@ def create_app(
     # E04US015 (ADR-0050) : le classement lit les forfaits **de la phase de qualification** — un
     # abandon y est **relégué**, une DSQ **exclue** (rang `None`), leurs flèches préservées. D'où le
     # port `phase` (résoudre la phase de qualif) et le port `forfait`.
+    # E06US003 (ADR-0066) : le classement résout sa politique de départage **par le registre**
+    # (seuil de barrage lu dans `config.policies.tiebreak`) et applique les verdicts des barrages
+    # déjà tirés. Sans seuil réglé, il retombe mot pour mot sur E06US001 — ex æquo partagés.
+    barrage_repository = BarrageRepositorySQL(database.session_factory)
     app.state.service_classement = ServiceClassement(
         tournoi_repository,
         archer_repository,
@@ -498,6 +505,18 @@ def create_app(
         categorie_repository,
         phase_repository,
         forfait_repository,
+        barrage_repository,
+        app.state.registre_politiques,
+    )
+    # Organisation du barrage : annoncer sur une égalité **signalée par le classement** (jamais
+    # recalculée ici, sous peine d'une seconde version qui dériverait), saisir ses manches, clore.
+    app.state.service_barrage = ServiceBarrage(
+        tournoi_repository,
+        barrage_repository,
+        app.state.service_classement,
+        HorlogeSysteme(),
+        archer_repository,
+        phase_repository,
     )
     # Inscriptions archer↔départ (E02US009, ADR-0017) : inscrire sur des créneaux du tournoi de
     # l'archer (même tournoi, unicité), marquer payé, désinscrire ; le montant dû dérive du tarif.
@@ -965,6 +984,7 @@ def create_app(
     app.include_router(pilotage_router)
     app.include_router(routage_router)
     app.include_router(forfaits_router)
+    app.include_router(barrages_router)
     app.include_router(feuille_de_marque_router)
     app.include_router(documents_salle_router)
     app.include_router(listes_impression_router)

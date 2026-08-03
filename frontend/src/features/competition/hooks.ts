@@ -9,14 +9,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ajouterArcher,
+  type AnnonceBarrage,
+  annoncerBarrage,
+  annulerBarrage,
+  cloreBarrage,
   creerTournoi,
+  getBarrages,
   getClassement,
   getTournois,
   type ModifierTournoi,
   modifierTournoi,
   type NouvelArcher,
   placerArcher,
+  saisirMancheBarrage,
   supprimerTournoi,
+  type TirBarrage,
 } from './api'
 
 // Exportée : la feature `archers` (E02US003) invalide le classement après une édition ou une
@@ -91,4 +98,54 @@ export function usePlacerArcher(tournoiId: number) {
       placerArcher(archerId, cible),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) }),
   })
+}
+
+// --- barrage de places décisives (E06US003, ADR-0066) ---
+
+// Clé exportée pour la même raison que `cleClassement` : elle est invalidée depuis plusieurs
+// mutations, et deux littéraux recopiés finiraient par diverger en silence.
+export const cleBarrages = (tournoiId: number) => ['barrages', tournoiId] as const
+
+export function useBarrages(tournoiId: number) {
+  return useQuery({ queryKey: cleBarrages(tournoiId), queryFn: () => getBarrages(tournoiId) })
+}
+
+// ⚠️ Chaque mutation invalide **le classement autant que les barrages** : un barrage tiré change
+// les rangs publiés (les ex æquo deviennent consécutifs) et fait disparaître l'égalité de la liste
+// à départager. N'invalider que `cleBarrages` laisserait le tableau afficher un rang partagé que
+// l'archer vient de perdre au tir — l'écart le plus visible du jour J.
+function useMutationBarrage<T>(tournoiId: number, action: (variables: T) => Promise<unknown>) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: action,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: cleBarrages(tournoiId) })
+      void queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) })
+    },
+  })
+}
+
+export function useAnnoncerBarrage(tournoiId: number) {
+  return useMutationBarrage(tournoiId, (annonce: AnnonceBarrage) =>
+    annoncerBarrage(tournoiId, annonce),
+  )
+}
+
+export function useSaisirMancheBarrage(tournoiId: number) {
+  return useMutationBarrage(
+    tournoiId,
+    ({ barrageId, tirs, manche }: { barrageId: number; tirs: TirBarrage[]; manche?: number }) =>
+      saisirMancheBarrage(tournoiId, barrageId, tirs, manche),
+  )
+}
+
+export function useCloreBarrage(tournoiId: number) {
+  return useMutationBarrage(tournoiId, (barrageId: number) => cloreBarrage(tournoiId, barrageId))
+}
+
+// Annulation d'un barrage annoncé par erreur. Sans elle, un barrage qu'on ne veut pas faire tirer
+// restait affiché indéfiniment et son rang bloquait toute nouvelle annonce (`clore` exige un
+// barrage résolu).
+export function useAnnulerBarrage(tournoiId: number) {
+  return useMutationBarrage(tournoiId, (barrageId: number) => annulerBarrage(tournoiId, barrageId))
 }

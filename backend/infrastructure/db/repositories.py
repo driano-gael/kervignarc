@@ -15,11 +15,18 @@ from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import delete, nulls_last, select, update
+from sqlalchemy import true as sa_true
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
+from domain.barrage import (
+    BarrageDePlaces,
+    BarrageId,
+    PorteeBarrage,
+    TirBarrage,
+)
 from domain.blason import Blason, BlasonId, ZoneScore, valider_zones
 from domain.categorie import Categorie, CategorieId, SexeCategorie, TrancheAge
 from domain.club import Club, ClubId, cle_nom
@@ -61,6 +68,8 @@ from domain.serie import Serie, SerieId, Volee
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId, TypeTournoi
 from infrastructure.db.models import (
     ArcherORM,
+    BarrageORM,
+    BarrageTirORM,
     BlasonORM,
     CategorieORM,
     ClubORM,
@@ -447,6 +456,7 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
         sources = _vers_sources(config)
         effectif = config.get("effectif")
         effectif = None if effectif is None else int(effectif)
+        barrage_jusqu_au = _lire_barrage_jusqu_au(config)
     except (
         json.JSONDecodeError,
         AttributeError,
@@ -465,6 +475,7 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
             validation=validation,
             sources=sources,
             effectif=effectif,
+            barrage_jusqu_au=barrage_jusqu_au,
             statut=statut,
             id=ligne.id,
         )
@@ -585,7 +596,13 @@ def _config_phase(phase: Phase) -> str:
     à plat pour une base non migrée.
     """
     return json.dumps(
-        _politiques_json(phase.bareme, phase.validation, phase.sources, phase.effectif)
+        _politiques_json(
+            phase.bareme,
+            phase.validation,
+            phase.sources,
+            phase.effectif,
+            phase.barrage_jusqu_au,
+        )
     )
 
 
@@ -594,6 +611,7 @@ def _politiques_json(
     validation: GrainValidation | None,
     sources: tuple[SourcePhase, ...],
     effectif: int | None,
+    barrage_jusqu_au: int | None = None,
     *,
     marquer_absences: bool = False,
     porte_un_bareme: bool = False,
@@ -641,11 +659,34 @@ def _politiques_json(
         config["validation"] = grain
     elif marquer_absences:
         config["validation"] = None
+    if barrage_jusqu_au is not None:
+        # Forme ADR-0046 : `config.policies.tiebreak = {"nom": …, …paramètres}`, exactement comme
+        # `scoring`. Le `policies` peut ne pas exister (phase sans barème) — un barrage se règle sur
+        # une phase de n'importe quel type, alors que le barème est propre à la qualification.
+        politiques = config.setdefault("policies", {})
+        if isinstance(politiques, dict):
+            politiques["tiebreak"] = {"nom": "barrage", "jusqu_au": barrage_jusqu_au}
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
         config["effectif"] = effectif
     return config
+
+
+def _lire_barrage_jusqu_au(config: Any) -> int | None:
+    """Le seuil de barrage d'une phase, lu dans `config.policies.tiebreak` (E06US003, ADR-0066).
+
+    Absence = **aucun barrage**, qui est le défaut d'E06US001 (les ex æquo partagent leur rang) —
+    pas une incohérence. Un `tiebreak` d'un autre `nom` (`ffta_defaut`, `poules`) est un départage
+    **sans** barrage : il n'a pas de seuil, et on n'en invente pas.
+    """
+    politiques = config.get("policies")
+    if not isinstance(politiques, dict):
+        return None
+    tiebreak = politiques.get("tiebreak")
+    if not isinstance(tiebreak, dict) or tiebreak.get("nom") != "barrage":
+        return None
+    return int(tiebreak["jusqu_au"])
 
 
 def _source_json(source: SourcePhase) -> dict[str, object]:
@@ -1006,6 +1047,13 @@ class ArcherRepositorySQL:
                 # `forfait` (E04US015) : même cascade applicative que `serie` — FK enforced, sinon
                 # une ligne orpheline bloque la suppression (revue adversariale E04US015).
                 session.execute(delete(ForfaitORM).where(ForfaitORM.archer_id == archer_id))
+                # `barrage_tir` (E06US003) : **exactement le même piège que `forfait`**, rejoué sur
+                # une table neuve — FK enforced, archer indéracinable sans ce nettoyage. On supprime
+                # le **barrage entier**, pas seulement les tirs : un barrage amputé d'un de ses
+                # tireurs annoncés n'a plus de sens et serait refusé à la relecture (la manche 1
+                # doit couvrir tous les participants). D'où la lecture de `participants_json` — un
+                # archer peut être *annoncé* sans avoir encore tiré, donc sans ligne de tir.
+                _supprimer_barrages_de_l_archer(session, archer_id)
                 session.delete(ligne)
                 session.commit()
         except SQLAlchemyError as exc:
@@ -1104,6 +1152,10 @@ class ArcherRepositorySQL:
                             .where(ForfaitORM.id == forfait_id)
                             .values(archer_id=gagnant_id)
                         )
+                # Barrages (E06US003) : même famille que le forfait — FK `barrage_tir.archer_id`
+                # enforced, donc sans ce report le `DELETE` du perdant échoue et la fusion d'un
+                # doublon devient impossible dès qu'un des deux a barré.
+                _fusionner_barrages(session, gagnant_id, perdant_id)
                 session.execute(delete(ArcherORM).where(ArcherORM.id == perdant_id))
                 session.commit()
         except SQLAlchemyError as exc:
@@ -3018,3 +3070,309 @@ class ForfaitRepositorySQL:
                 session.commit()
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de l'annulation du forfait et de sa trace.") from exc
+
+
+def _barrages_contenant(session: Session, archer_id: int) -> list[BarrageORM]:
+    """Les barrages dont `archer_id` est un **participant annoncé** (tir saisi ou non).
+
+    On lit `participants_json` plutôt que la table des tirs : un archer peut être annoncé sans
+    avoir encore tiré, et c'est précisément ce cas qui laisserait un identifiant fantôme derrière
+    lui. La table est petite (quelques lignes par tournoi) — un filtre Python est ici plus sûr
+    qu'une recherche dans du JSON en SQL.
+    """
+    return [
+        ligne
+        for ligne in session.execute(select(BarrageORM)).scalars()
+        if archer_id in json.loads(ligne.participants_json)
+    ]
+
+
+def _supprimer_barrages_de_l_archer(session: Session, archer_id: int) -> None:
+    """Supprime les barrages où figure cet archer, tirs compris (suppression d'archer, E06US003)."""
+    for ligne in _barrages_contenant(session, archer_id):
+        session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id == ligne.id))
+        session.execute(delete(BarrageORM).where(BarrageORM.id == ligne.id))
+    # Ceinture : un tir dont l'archer ne figure (plus) dans `participants_json` échapperait à la
+    # boucle et rebloquerait la suppression en 500. Inatteignable par le service aujourd'hui — une
+    # ligne pour que ça le reste.
+    session.execute(delete(BarrageTirORM).where(BarrageTirORM.archer_id == archer_id))
+
+
+def _fusionner_barrages(session: Session, gagnant_id: int, perdant_id: int) -> None:
+    """Reporte sur le gagnant les barrages du perdant (fusion de doublons, E02US005 et E06US003).
+
+    Deux collisions à traiter, et elles ne sont pas symétriques :
+
+    - **un tir** — `uq_barrage_tir(barrage_id, manche, archer_id)` : si les deux fiches ont tiré la
+      même manche du même barrage (le cas d'un doublon réellement dédoublé sur le pas de tir), on
+      **garde celui du gagnant** et on supprime celui du perdant, comme pour l'inscription ;
+    - **la liste des participants** : le perdant y est remplacé par le gagnant, **dédoublonné**.
+      Sans cela le barrage compterait deux fois la même personne, ce que l'agrégat refuse.
+
+    Un barrage qui se retrouverait à **moins de deux** participants après fusion n'oppose plus
+    personne : il est supprimé plutôt que laissé dans un état que l'agrégat rejetterait.
+    """
+    # Ceinture symétrique de `_supprimer_barrages_de_l_archer` : un tir du perdant orphelin de
+    # `participants_json` échapperait à la boucle et ferait échouer le `DELETE` de l'archer (500).
+    orphelins = [ligne.id for ligne in _barrages_contenant(session, perdant_id)]
+    session.execute(
+        delete(BarrageTirORM).where(
+            BarrageTirORM.archer_id == perdant_id,
+            BarrageTirORM.barrage_id.notin_(orphelins) if orphelins else sa_true(),
+        )
+    )
+    for ligne in _barrages_contenant(session, perdant_id):
+        deja = {
+            manche
+            for (manche,) in session.execute(
+                select(BarrageTirORM.manche).where(
+                    BarrageTirORM.barrage_id == ligne.id,
+                    BarrageTirORM.archer_id == gagnant_id,
+                )
+            ).all()
+        }
+        session.execute(
+            delete(BarrageTirORM).where(
+                BarrageTirORM.barrage_id == ligne.id,
+                BarrageTirORM.archer_id == perdant_id,
+                BarrageTirORM.manche.in_(deja),
+            )
+        )
+        session.execute(
+            update(BarrageTirORM)
+            .where(
+                BarrageTirORM.barrage_id == ligne.id,
+                BarrageTirORM.archer_id == perdant_id,
+            )
+            .values(archer_id=gagnant_id)
+        )
+        participants: list[int] = []
+        for reference in json.loads(ligne.participants_json):
+            remplace = gagnant_id if reference == perdant_id else reference
+            if remplace not in participants:
+                participants.append(remplace)
+        if len(participants) < 2:
+            session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id == ligne.id))
+            session.execute(delete(BarrageORM).where(BarrageORM.id == ligne.id))
+            continue
+        session.execute(
+            update(BarrageORM)
+            .where(BarrageORM.id == ligne.id)
+            .values(participants_json=json.dumps(participants))
+        )
+        _supprimer_si_illisible(session, ligne.id)
+
+
+def _supprimer_si_illisible(session: Session, barrage_id: int) -> None:
+    """Supprime le barrage **seulement s'il ne se relit plus** après fusion.
+
+    ⚠️ **On vérifie au lieu de présumer, et c'est un correctif de revue.** Une première version
+    supprimait le barrage dès que la fusion touchait deux de ses participants — ce qui détruisait
+    aussi des barrages parfaitement sains : à une seule manche, le report des tirs produit un
+    agrégat relisible. L'organisateur nettoyait un doublon d'inscription, geste de routine, et un
+    barrage tiré et acté sur la dernière place qualificative disparaissait sans trace, le classement
+    revenant silencieusement au rang partagé.
+
+    Le vrai critère n'est pas « deux fiches concernées » mais « l'agrégat tient-il encore » : une
+    manche ≥ 2 peut se retrouver avec un tireur que la manche 1 vient de départager. On rejoue donc
+    le moteur, et on ne supprime que s'il refuse.
+    """
+    ligne = session.get(BarrageORM, barrage_id)
+    if ligne is None:  # pragma: no cover — on vient de l'écrire
+        return
+    tirs = list(
+        session.execute(
+            select(BarrageTirORM)
+            .where(BarrageTirORM.barrage_id == barrage_id)
+            .order_by(BarrageTirORM.id)
+        ).scalars()
+    )
+    try:
+        _vers_barrage(ligne, tirs).resultat()
+    except DomainError:
+        session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id == barrage_id))
+        session.execute(delete(BarrageORM).where(BarrageORM.id == barrage_id))
+
+
+def _vers_barrage(ligne: BarrageORM, tirs: Sequence[BarrageTirORM]) -> BarrageDePlaces:
+    """Reconstruit l'agrégat depuis sa ligne et ses tirs, **groupés par manche**.
+
+    Les manches sont rendues **triées par numéro** : c'est leur ordre qui porte le sens (la manche 1
+    acquiert un ordre que les suivantes ne peuvent pas défaire), et le moteur les consomme dans
+    cette séquence. Un trou de numérotation est sans effet — seul l'ordre relatif compte.
+    """
+    participants = tuple(
+        Participant.individuel(int(ref)) for ref in json.loads(ligne.participants_json)
+    )
+    par_manche: dict[int, list[TirBarrage]] = {}
+    for tir in tirs:
+        par_manche.setdefault(tir.manche, []).append(
+            TirBarrage(
+                participant=Participant.individuel(tir.archer_id),
+                score=tir.score,
+                distance_au_centre=tir.distance_au_centre,
+            )
+        )
+    return BarrageDePlaces(
+        tournoi_id=ligne.tournoi_id,
+        portee=PorteeBarrage(ligne.portee),
+        participants=participants,
+        cree_le=ligne.cree_le,
+        manches=tuple(tuple(par_manche[numero]) for numero in sorted(par_manche)),
+        rang_dispute=ligne.rang_dispute,
+        phase_id=ligne.phase_id,
+        reference=ligne.reference,
+        clos=ligne.clos,
+        id=ligne.id,
+    )
+
+
+class BarrageRepositorySQL:
+    """Adapter SQLite du port `BarrageRepository` (E06US003, ADR-0066).
+
+    Le grain d'écriture est la **manche** : `enregistrer_manche` remplace en bloc les tirs d'un
+    numéro donné, ce qui fait de la ressaisie le mode de **correction** d'une flèche mal notée.
+    Suppression puis insertion dans **une seule transaction** — un remplacement à moitié appliqué
+    laisserait une manche mêlant anciennes et nouvelles flèches, donc un verdict faux et plausible.
+
+    ⚠️ **Le verdict n'est jamais persisté** : il se recalcule depuis les tirs. C'est pourquoi aucune
+    méthode d'écriture ne le prend en argument.
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[BarrageDePlaces]:
+        """Tous les barrages d'un tournoi, **clos compris** — ce sont eux qui portent les verdicts
+        déjà acquis, et les filtrer ferait retomber les rangs tranchés en ex æquo."""
+        try:
+            with self._session_factory() as session:
+                lignes = list(
+                    session.execute(
+                        select(BarrageORM)
+                        .where(BarrageORM.tournoi_id == tournoi_id)
+                        .order_by(BarrageORM.id)
+                    ).scalars()
+                )
+                if not lignes:
+                    return []
+                tirs = list(
+                    session.execute(
+                        select(BarrageTirORM)
+                        .where(BarrageTirORM.barrage_id.in_([ligne.id for ligne in lignes]))
+                        .order_by(BarrageTirORM.id)
+                    ).scalars()
+                )
+                par_barrage: dict[int, list[BarrageTirORM]] = {}
+                for tir in tirs:
+                    par_barrage.setdefault(tir.barrage_id, []).append(tir)
+                return [_vers_barrage(ligne, par_barrage.get(ligne.id, [])) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des barrages du tournoi.") from exc
+
+    def par_id(self, barrage_id: BarrageId) -> BarrageDePlaces | None:
+        """Le barrage d'identifiant donné avec toutes ses manches, ou `None`."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(BarrageORM, barrage_id)
+                if ligne is None:
+                    return None
+                tirs = list(
+                    session.execute(
+                        select(BarrageTirORM)
+                        .where(BarrageTirORM.barrage_id == barrage_id)
+                        .order_by(BarrageTirORM.id)
+                    ).scalars()
+                )
+                return _vers_barrage(ligne, tirs)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du barrage.") from exc
+
+    def ouvrir(self, barrage: BarrageDePlaces) -> BarrageDePlaces:
+        """Persiste un barrage annoncé (sans tir) et le renvoie avec son identifiant."""
+        try:
+            with self._session_factory() as session:
+                ligne = BarrageORM(
+                    tournoi_id=barrage.tournoi_id,
+                    phase_id=barrage.phase_id,
+                    portee=barrage.portee.value,
+                    reference=barrage.reference,
+                    rang_dispute=barrage.rang_dispute,
+                    participants_json=json.dumps(
+                        [participant.ref_id for participant in barrage.participants]
+                    ),
+                    clos=barrage.clos,
+                    cree_le=barrage.cree_le,
+                )
+                session.add(ligne)
+                session.commit()
+                return _vers_barrage(ligne, [])
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance du barrage.") from exc
+
+    def enregistrer_manche(
+        self, barrage_id: BarrageId, manche: int, tirs: Sequence[TirBarrage]
+    ) -> BarrageDePlaces:
+        """Remplace **en bloc** les tirs de cette manche, puis renvoie le barrage rechargé."""
+        try:
+            with self._session_factory() as session:
+                # `>=` et non `==` : réécrire une manche **tronque les suivantes**. Corriger la
+                # manche 1 change la partition, donc les retirs qui en découlaient n'ont plus
+                # d'objet — les garder produirait un agrégat que le moteur refuse à la relecture,
+                # c'est-à-dire un classement en 422 permanent.
+                session.execute(
+                    delete(BarrageTirORM).where(
+                        BarrageTirORM.barrage_id == barrage_id,
+                        BarrageTirORM.manche >= manche,
+                    )
+                )
+                for tir in tirs:
+                    session.add(
+                        BarrageTirORM(
+                            barrage_id=barrage_id,
+                            manche=manche,
+                            archer_id=tir.participant.ref_id,
+                            score=tir.score,
+                            distance_au_centre=tir.distance_au_centre,
+                        )
+                    )
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec d'enregistrement de la manche de barrage.") from exc
+        recharge = self.par_id(barrage_id)
+        if recharge is None:  # pragma: no cover — l'appelant a vérifié l'existence
+            raise InfrastructureError("Le barrage a disparu pendant l'enregistrement de sa manche.")
+        return recharge
+
+    def supprimer(self, barrage_id: BarrageId) -> None:
+        """Supprime un barrage **et ses tirs** — les tirs d'abord, ils le référencent."""
+        try:
+            with self._session_factory() as session:
+                session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id == barrage_id))
+                session.execute(delete(BarrageORM).where(BarrageORM.id == barrage_id))
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression du barrage.") from exc
+
+    def rouvrir(self, barrage_id: BarrageId) -> BarrageDePlaces:
+        """Lève la clôture (une manche a été saisie après coup)."""
+        return self._basculer_cloture(barrage_id, clos=False)
+
+    def clore(self, barrage_id: BarrageId) -> BarrageDePlaces:
+        """Marque le barrage comme clos — le juge a acté le verdict, plus de retir attendu."""
+        return self._basculer_cloture(barrage_id, clos=True)
+
+    def _basculer_cloture(self, barrage_id: BarrageId, *, clos: bool) -> BarrageDePlaces:
+        """Pose ou lève le drapeau de clôture, puis recharge l'agrégat."""
+        try:
+            with self._session_factory() as session:
+                session.execute(
+                    update(BarrageORM).where(BarrageORM.id == barrage_id).values(clos=clos)
+                )
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour de la clôture du barrage.") from exc
+        recharge = self.par_id(barrage_id)
+        if recharge is None:  # pragma: no cover — l'appelant a vérifié l'existence
+            raise InfrastructureError("Le barrage a disparu pendant sa clôture.")
+        return recharge

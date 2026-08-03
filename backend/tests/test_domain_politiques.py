@@ -32,6 +32,7 @@ from domain.politiques import (
     ScoreAvecHandicap,
     ScoreCumul,
     SeedingSerpent,
+    TiebreakAvecBarrage,
     TiebreakFftaDefaut,
     TiebreakPoules,
     VersPlage,
@@ -373,3 +374,63 @@ def test_les_nouvelles_politiques_sont_au_registre() -> None:
     assert isinstance(politiques.scoring, ScoreAvecHandicap)
     assert isinstance(politiques.tiebreak, TiebreakPoules)
     assert isinstance(politiques.depth, AucunClassement)
+
+
+# --- fabrique du barrage (E06US003, ADR-0066) ----------------------------------------------------
+#
+# Six branches de refus pour un point d'injection par lequel passe **tout** le classement en
+# production : la revue a relevé qu'aucune n'était couverte.
+
+
+def _resoudre_tiebreak(params: dict[str, object]) -> object:
+    return registre_par_defaut().resoudre(FamillePolitique.TIEBREAK, "barrage", params)
+
+
+def test_un_barrage_sans_seuil_est_refuse() -> None:
+    """Sans seuil, un barrage ne barre rien : c'est un `ffta_defaut` déguisé, et l'accepter
+    laisserait croire à l'organisateur que son format départage au tir."""
+    with pytest.raises(PolitiqueMalFormee, match="jusqu"):
+        _resoudre_tiebreak({})
+
+
+def test_un_seuil_booleen_est_refuse() -> None:
+    """`True` est un `int` en Python : sans la garde explicite, `jusqu_au=True` réglerait un
+    barrage jusqu'au rang 1."""
+    with pytest.raises(PolitiqueMalFormee):
+        _resoudre_tiebreak({"jusqu_au": True})
+
+
+def test_un_seuil_nul_ou_negatif_est_refuse() -> None:
+    with pytest.raises(PolitiqueMalFormee):
+        _resoudre_tiebreak({"jusqu_au": 0})
+    with pytest.raises(PolitiqueMalFormee):
+        _resoudre_tiebreak({"jusqu_au": -3})
+
+
+def test_un_barrage_enveloppe_le_departage_ffta_par_defaut() -> None:
+    politique = _resoudre_tiebreak({"jusqu_au": 8})
+    assert politique == TiebreakAvecBarrage(sous_jacent=TiebreakFftaDefaut(), jusqu_au=8)
+
+
+def test_un_barrage_enveloppe_le_departage_nomme() -> None:
+    politique = _resoudre_tiebreak({"jusqu_au": 4, "sinon": {"nom": "poules"}})
+    assert politique == TiebreakAvecBarrage(sous_jacent=TiebreakPoules(), jusqu_au=4)
+
+
+def test_un_sinon_mal_forme_est_refuse() -> None:
+    with pytest.raises(PolitiqueMalFormee):
+        _resoudre_tiebreak({"jusqu_au": 8, "sinon": "ffta_defaut"})
+    with pytest.raises(PolitiqueMalFormee):
+        _resoudre_tiebreak({"jusqu_au": 8, "sinon": {"nom": 3}})
+
+
+def test_un_barrage_ne_s_enveloppe_pas_lui_meme() -> None:
+    """Deux seuils imbriqués ne composent rien : le plus interne serait purement ignoré,
+    `barrage_requis` n'étant jamais délégué. Refusé explicitement plutôt que toléré."""
+    with pytest.raises(PolitiqueMalFormee, match="lui-même"):
+        _resoudre_tiebreak({"jusqu_au": 8, "sinon": {"nom": "barrage", "jusqu_au": 4}})
+
+
+def test_un_departage_inconnu_dans_le_sinon_est_signale() -> None:
+    with pytest.raises(PolitiqueInconnue):
+        _resoudre_tiebreak({"jusqu_au": 8, "sinon": {"nom": "inexistant"}})

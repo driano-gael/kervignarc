@@ -11,6 +11,8 @@ from infrastructure.db.config import DEFAULT_DATABASE_URL, default_database_url
 from infrastructure.db.engine import Database, create_database_engine
 from infrastructure.db.models import (
     ArcherORM,
+    BarrageORM,
+    BarrageTirORM,
     BlasonORM,
     CategorieORM,
     ClubORM,
@@ -33,6 +35,7 @@ from infrastructure.db.models import (
 from infrastructure.db.repositories import (
     ArcherRepositorySQL,
     AuditRepositorySQL,
+    BarrageRepositorySQL,
     BlasonRepositorySQL,
     CategorieRepositorySQL,
     ClubRepositorySQL,
@@ -64,6 +67,9 @@ __all__ = [
     "ArcherORM",
     "ArcherRepositorySQL",
     "AuditRepositorySQL",
+    "BarrageORM",
+    "BarrageRepositorySQL",
+    "BarrageTirORM",
     "Base",
     "BlasonORM",
     "BlasonRepositorySQL",

@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 02/08/2026** · **90 US livrées** · dernière : `E07US008` *(affectations du prochain tour : sur le téléphone de l'archer et sur un panneau collectif, rang acquis en fourchette, repêché distingué de l'éliminé — ADR-0065)*.
+**Dernière mise à jour : 02/08/2026** · **91 US livrées** · dernière : `E06US003` *(barrage de tir pour les places décisives : seuil configurable porté par la politique `tiebreak`, manches successives persistées flèche par flèche, verdict recalculé — ADR-0066)*.
 
 ---
 
@@ -82,10 +82,43 @@
 > où `taille == effectif`. Dans les deux cas le défaut naît de la **rencontre** du code et de son
 > jeu d'essai, pas de l'un des deux.
 >
-> **🎯 Prochaine :** **`E06US003`** — barrage de tir pour places décisives ; la séquence J2 reprend
-> son cours. *(À vérifier au cadrage : `E06US004` — podium & agrégation des rangs — la suit
-> immédiatement, et E07US008 vient d'occuper une partie de son terrain sans la préempter ; l'ADR-0065
-> dit ce qui reste à sa charge.)*
+> **`E06US003` est livrée (02/08/2026)** — les ex æquo peuvent enfin se départager **au tir**.
+> L'US a surtout révélé que le travail n'était pas là où le CA le laissait croire : le **moteur** du
+> barrage était livré et pur depuis E05US015 (absents relégués → plus haut score → distance au
+> centre → groupes à rejouer), mais **sans aucun appelant**. Ce qui manquait, c'était le
+> **déclenchement**, la **persistance** et le **verdict** — [ADR-0066](../docs/adr/0066-seuil-de-barrage-porte-par-la-politique-tiebreak.md) :
+> - le **seuil** (« barrer jusqu'au rang N ») est un réglage de **format**, donc une politique. Logé
+>   dans la famille `tiebreak` plutôt qu'en 7ᵉ famille, pour que seuil et comparateur restent
+>   **accordés** — barrer selon §8.1 dans un tournoi qui départage en poule n'aurait aucun sens ;
+> - le seuil désigne le rang du **groupe**, pas chacune de ses places : un barrage déclenché au 8ᵉ
+>   tranche donc aussi la 9ᵉ. C'est le cas d'usage même — « départager la dernière place
+>   qualificative » est par construction une égalité qui chevauche le seuil ;
+> - le **verdict n'est pas stocké**, il se recalcule depuis les tirs. C'est ce qui rend une flèche
+>   mal notée corrigeable : la corriger corrige le classement ;
+> - `classement.py` **passe enfin par `PolitiquesPhase.tiebreak`** au lieu de réimplémenter §8.1 à la
+>   main — la couture qu'E06US001 avait annoncée, et **une part de DETTE-028**.
+>
+> **Le défaut du produit ne bouge pas** : sans seuil réglé, le classement est mot pour mot celui
+> d'E06US001 (rangs partagés), ce qu'un test fixe explicitement.
+>
+> **Les trois portées sont câblées** (élargissement demandé après le cadrage), mais **la boucle
+> n'est fermée que pour la qualification** : là, les tireurs sont *dérivés* du classement et le
+> verdict y *retourne*. En poule et en Big Shoot Off, l'organisateur *désigne* les tireurs — ni
+> `poule.py` ni `big_shoot_off.py` n'ont de consommateur de production (vérifié dans le code,
+> DETTE-028), donc il n'existe aucun classement où lire les ex æquo ni reverser le verdict. Le
+> barrage y est pleinement opérationnel ; son résultat se lit à l'écran et se reporte à la main.
+>
+> ⚠️ **La revue a trouvé cinq bloquants**, tous corrigés. Trois méritent d'être retenus parce
+> qu'aucun axe ne pouvait les voir seul : la manche était **écrite puis validée** (une saisie
+> refusée mettait le classement *public* en 422 pour tout le tournoi) ; la **manche 1** n'était
+> jamais confrontée aux tireurs annoncés (un barrage saisi à moitié classait **premier** l'archer
+> non noté) ; et le **seuil ne se réglait par aucun écran** — livré jusqu'à l'API, la fiche de
+> recette décrivait un champ qui n'existait pas. S'y ajoutait un défaut relevé par **les cinq
+> axes** : un archer qu'une volée validée en retard amenait à égalité *après* le tir prenait la
+> place devant le vainqueur du barrage, sans que rien ne le signale.
+>
+> **🎯 Prochaine :** **`E06US004`** — podium des duels & agrégation des rangs. *(E07US008 a occupé
+> une partie de son terrain sans la préempter : l'ADR-0065 dit ce qui reste à sa charge.)*
 > *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
 > moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *`E12US004` (tracer un forfait) est **absorbée** par `E04US015` — voir ci-dessous.*
@@ -474,8 +507,8 @@
 | 68 | E12US002 | Lancer un tour (feu vert + lancement) | ✅ *(feu vert + lancement-événement, ADR-0056)* |
 | 69 | E04US018 | Afficher la prochaine cible après validation | ✅ *(panneau de routage, canal n°1)* |
 | 70 | E07US008 | Vue publique des affectations du prochain tour | ✅ *(canal n°2 : téléphone + panneau collectif, rang en fourchette, issue « repêché », ADR-0065)* |
-| 71 | E06US003 | Barrage de tir pour places décisives | 🎯 *(J2 reprend son cours)* |
-| 72 | E06US004 | Podium des duels & agrégation des rangs | ⬜ |
+| 71 | E06US003 | Barrage de tir pour places décisives | ✅ *(seuil dans la politique `tiebreak`, manches persistées, verdict recalculé, ADR-0066)* |
+| 72 | E06US004 | Podium des duels & agrégation des rangs | 🎯 |
 
 ## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (4/11)**
 
