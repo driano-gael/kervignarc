@@ -452,3 +452,46 @@ cette US. Cf. [ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-biblioth
 | E05US017 | Contrôles de cohérence | **E05US001** — CA « cohérence » |
 | E05US018 | Oracle 120 (rejeu + comparaison) | **E05US018** (inchangée) |
 | E05US019 | Enregistrer une séquence comme modèle | **E05US019** (inchangée) |
+
+### E05US020 — Le moteur consomme les prélèvements déclarés *(résorbe le cœur de DETTE-028)*
+*En tant qu'*organisateur, *je veux* que le tableau se monte avec **les archers que ma phase déclare
+prélever**, *afin que* le tournoi se déroule comme le schéma que j'ai composé et validé.
+
+Origine : [`docs/dette.md` → DETTE-028](../docs/dette.md) (« aucun service ne lit encore
+`Phase.sources` pour peupler une phase : `ServiceSaisieDuels._decor` ensemence **chaque** tableau
+avec *tous* les archers en lice, quel que soit le prélèvement déclaré ») et
+[l'audit de maintenabilité du 03/08/2026](../docs/audit-maintenabilite.md), qui la désigne comme la
+**seule dette ouverte fabriquant des défauts visibles par l'utilisateur** — trois des cinq bloquants
+d'E06US004 en découlaient.
+
+- **CA — prélèvement par rangs** : une phase qui déclare « les rangs 1 à 32 de la phase 1 » monte son
+  tableau avec **ces archers-là**. À 120 archers classés, le tableau est de **32**, pas de 120.
+- **CA — plage relative** : « les rangs 33 **et suivants** » se résout sur l'effectif **réel** de la
+  phase source — 88 archers si 120 sont classés, 50 si 82 le sont. C'est la promesse d'E05US010
+  (`rang_fin=None`), jusqu'ici tenue par la composition seule.
+- **CA — première phase** : une phase **sans source déclarée** est alimentée par les inscriptions —
+  comportement d'aujourd'hui, à ne pas casser (c'est celui de la qualification, et du tableau tant
+  que l'organisateur n'a rien déclaré).
+- **CA — l'écart se referme** : la simulation ne signale plus d'écart entre effectif **projeté** et
+  **constaté** sur une phase à prélèvement par rangs. Le test de caractérisation posé par E01US024
+  (`test_la_simulation_signale_l_ecart_quand_le_moteur_ignore_le_prelevement`) **doit échouer** — il
+  a été écrit pour ça, et le retirer fait partie de l'US.
+- **CA — le rang prélevé est celui du classement au moment de la lecture** : un abandon est
+  **relégué en fin** de classement (ADR-0050) et les suivants **remontent**. « Les rangs 1 à 32 »
+  prélève donc toujours 32 archers tant que 32 restent en lice — le 33ᵉ prend la place laissée. Ce
+  n'est pas un repêchage décidé ici : c'est la conséquence du classement de qualification, qui se
+  recalcule à chaque lecture. *(Vérifié au cadrage : un premier jet de ce CA supposait l'inverse —
+  que le prélèvement laisserait un trou.)*
+- **Notes — hors périmètre, et dit explicitement** : (a) les prélèvements par **issue de tour**
+  (`par_issue_de_tour`) **et « le reste »** (`le_reste`) restent inertes. Vérifié dans le code au
+  cadrage : ni l'un ni l'autre n'est **résolu nulle part** — `effectif_selectionne`, `resoudre` et
+  `intervalle` rendent tous `None`, et aucun module ne les interprète. Leur donner un sens **ici**
+  serait décider une règle métier dans un service d'exécution, l'erreur exacte qu'ADR-0065 §3 a
+  refusé de commettre et que `DETTE-033` acte ; (b) une
+  source dont la phase amont **n'est pas la qualification** garde le comportement actuel — lire le
+  classement d'un tableau amont demande la lecture d'E06US004, et l'y brancher créerait un cycle ;
+  (c) les **tableaux par catégorie** ne sont **pas** dans cette US : `SourcePhase` sélectionne par
+  **rangs**, `Phase` ne porte aucune catégorie, et le podium par catégorie décerné par des matchs
+  demande donc un concept qui n'existe pas encore — US dédiée, avec son ADR. *(L'audit du 03/08
+  laissait croire l'inverse ; corrigé dans le même commit que cette US.)*
+- **Dépend de** : E05US010, E01US024 · **Jalon** : J3

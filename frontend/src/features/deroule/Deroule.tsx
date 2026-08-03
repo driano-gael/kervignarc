@@ -236,12 +236,22 @@ function Verdict({ diagnostic }: { diagnostic: Diagnostic }) {
  * promesse en information.
  */
 function ReserveMoteur({ diagnostic }: { diagnostic: Diagnostic }) {
-  if (!diagnostic.blocs.some((bloc) => bloc.entrees.length > 0)) return null
+  // ⚠️ **Reformulée, pas supprimée** (E05US020, ADR-0068). Le moteur lit désormais les
+  // prélèvements **par rangs** : « les rangs 1 à 32 » monte bien un tableau de 32. Restent inertes
+  // « le reste » et « les gagnants/perdants du tour N », dont la sémantique n'est tranchée nulle
+  // part (DETTE-033) — la réserve ne s'affiche donc que si l'un d'eux est réellement déclaré.
+  // Continuer à l'afficher sur un prélèvement par rangs aurait fait douter d'un déroulé désormais
+  // exact ; la retirer entièrement aurait laissé croire que tout est honoré.
+  const inertes = diagnostic.blocs.some((bloc) =>
+    bloc.entrees.some((flux) => flux.nature !== 'rangs'),
+  )
+  if (!inertes) return null
   return (
     <p className="carte__etat carte__etat--alerte" role="note">
-      ▲ Le moteur d'exécution ne lit pas encore les prélèvements : le jour J, chaque tableau est
-      ensemencé avec <strong>tous</strong> les archers encore en lice. Lancez la simulation pour
-      voir l'écart entre ce déroulé et ce qui se jouera réellement.
+      ▲ Ce déroulé contient un prélèvement que le moteur ne sait <strong>pas encore</strong> honorer
+      (« le reste », ou « les gagnants/perdants d'un tour ») : le jour J, la phase concernée sera
+      ensemencée avec <strong>tous</strong> les archers encore en lice. Les prélèvements{' '}
+      <strong>par rangs</strong>, eux, sont respectés. Lancez la simulation pour voir l'écart.
     </p>
   )
 }
@@ -374,10 +384,12 @@ function LignePhaseSimulee({ phase }: { phase: PhaseSimulee }) {
       </th>
       <td>
         {phase.joue ? phase.effectif : '—'}
-        {/* Honnêteté d'outil : le moteur d'exécution ne lit pas encore le prélèvement déclaré, et
-            ne sait dérouler ni les poules, ni le suisse, ni la colline (DETTE-028). Plutôt que de
-            servir un chiffre faux et muet à qui dimensionne ses scoreurs, on montre l'écart avec ce
-            que le schéma annonçait — et on dit quand le moteur n'a rien joué du tout. */}
+        {/* Honnêteté d'outil : le moteur ne sait dérouler ni les poules, ni le suisse, ni la
+            colline (DETTE-028), et n'honore pas les prélèvements « le reste » / « issue de tour »
+            (ADR-0068 §3). Plutôt que de servir un chiffre faux et muet à qui dimensionne ses
+            scoreurs, on montre l'écart avec ce que le schéma annonçait — et on dit quand le moteur
+            n'a rien joué du tout. Les prélèvements **par rangs** sont désormais honorés (E05US020),
+            donc l'écart s'y referme de lui-même. */}
         {!phase.joue ? (
           <span className="deroule__ecart" role="note">
             {' '}

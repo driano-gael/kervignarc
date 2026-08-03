@@ -1249,9 +1249,15 @@ reste :
 - **Composition — fait.** Les neuf types sont désormais composables depuis un écran (« Composer un
   déroulé »), avec effectif et prélèvements des trois natures. La projection de déroulé
   (`domain/deroule.py`) calcule ce que chaque phase accueille et ce qu'elle produit.
-- **Exécution — non fait, et c'est le cœur de la dette.** Aucun service ne lit encore
-  `Phase.sources` pour peupler une phase : `ServiceSaisieDuels._decor` ensemence **chaque** tableau
-  avec *tous* les archers en lice, quel que soit le prélèvement déclaré. Les réglages
+- **Exécution — ⚠️ RÉSORBÉE POUR LES RANGS le 03/08/2026 (E05US020, [ADR-0068](adr/0068-le-moteur-consomme-les-prelevements-declares.md)).**
+  `ServiceSaisieDuels._preleves` lit désormais `Phase.sources` : une phase qui déclare « les rangs 1
+  à 32 » monte un tableau de 32, et « les rangs 33 et suivants » se résout sur l'effectif réel. Le
+  test de caractérisation posé ci-dessous **a échoué comme prévu** et a été remplacé par son pendant
+  positif. **Ce qui reste** : `le_reste` et `par_issue_de_tour` demeurent **inertes** — vérifié dans
+  le code, aucune des deux n'est résolue nulle part (`effectif_selectionne`, `resoudre`, `intervalle`
+  rendent `None`) ; leur donner un sens dans un service d'exécution serait décider une règle métier
+  au mauvais endroit (`DETTE-033`). Et une source dont la phase amont n'est **pas** la qualification
+  garde le comportement d'avant. Les réglages
   (`nb_poules`, `nb_manches`, `portee_de_defi`, `restants`) restent inexprimables en
   `config.policies`, et `classement.py` ne passe toujours pas par la famille `scoring`.
 

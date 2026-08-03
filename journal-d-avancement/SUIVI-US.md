@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 03/08/2026** · **92 US livrées** · dernière : `E06US004` *(palmarès : le classement final du tournoi — rangs des tableaux fusionnés avec ceux de la qualification, podiums par catégorie, export PDF, et une 7ᵉ famille de politiques `aggregation` pour départager les sortis au même tour — ADR-0067)*.
+**Dernière mise à jour : 03/08/2026** · **93 US livrées** · dernière : `E05US020` *(le moteur consomme les prélèvements déclarés : « les rangs 1 à 32 » monte enfin un tableau de 32 — cœur de DETTE-028 résorbé, ADR-0068)*. Précédente : `E06US004` *(palmarès : le classement final du tournoi — rangs des tableaux fusionnés avec ceux de la qualification, podiums par catégorie, export PDF, et une 7ᵉ famille de politiques `aggregation` pour départager les sortis au même tour — ADR-0067)*.
 
 ---
 
@@ -117,7 +117,9 @@
 > axes** : un archer qu'une volée validée en retard amenait à égalité *après* le tir prenait la
 > place devant le vainqueur du barrage, sans que rien ne le signale.
 >
-> **🎯 Prochaine :** **`E06US006`** — classement intégral 1→N & profondeur configurable. *(Elle
+> **🎯 Prochaine :** **découpage des agrégateurs techniques** (action 2 de
+> [l'audit de maintenabilité](../docs/audit-maintenabilite.md)) — `repositories.py`, les deux
+> `erreurs.py` et `App.css` par feature. Puis **`E06US006`** — classement intégral 1→N & profondeur configurable. *(Elle
 > **prolonge** E06US004 sans la refaire : le palmarès sait déjà fusionner et renuméroter 1→N ; ce
 > qui reste est la **profondeur** — top N + regroupement du reliquat — et le fait que, sous
 > placement intégral, tous les rangs deviennent **exacts** et les fourchettes disparaissent d'
@@ -518,7 +520,7 @@
 | 71 | E06US003 | Barrage de tir pour places décisives | ✅ *(seuil dans la politique `tiebreak`, manches persistées, verdict recalculé, ADR-0066)* |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ✅ *(palmarès : fusion des rangs de phases, podiums par catégorie, export PDF, politique `aggregation`, ADR-0067)* |
 
-## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (6/11)**
+## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (7/12)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -526,7 +528,8 @@
 | 74 | E05US015 | **Catalogue de types de phase** (échauffement, barrage, poules, repêchage, BSO) | ✅ *(11 formats : + suisse, colline, handicap, finale spectacle — le commanditaire a fourni leurs règles le 31/07 ; ADR-0062)* |
 | 74bis | E01US024 | **Composer, diagnostiquer et simuler un déroulé** | ✅ *(brouillon + invariant déplacé vers `appliquer`, schéma SVG maison, 2 gravités d'anomalie, simulation composée sur ADR-0054/0055 ; ADR-0063 — résorbe DETTE-030, ne résorbe DETTE-028 qu'à moitié)* |
 | 75 | ~~E05US018~~ | ~~Oracle 120~~ → **absorbée par E05US010** | ⬜ *(le moteur et sa preuve ne se séparent pas)* |
-| 76 | E06US006 | Classement intégral 1→N & profondeur | 🎯 |
+| 76 | E06US006 | Classement intégral 1→N & profondeur | ⬜ |
+| 76bis | E05US020 | **Le moteur consomme les prélèvements déclarés** | ✅ *(cœur de DETTE-028 : prélèvement par rangs honoré, plage relative résolue sur l'effectif réel, ADR-0068)* |
 | 77 | E03US007 | Contrainte séparation catégorie/blason | ⬜ |
 | 78 | E09US005 | Classements PDF | ⬜ *(rétrécie par E06US004 : le **palmarès** a son PDF ; reste celui du classement de **qualification**)* |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |
