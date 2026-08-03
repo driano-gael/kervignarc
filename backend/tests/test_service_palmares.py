@@ -427,17 +427,17 @@ def test_le_premier_duel_tranche_fait_basculer_le_palmares_sur_le_tableau() -> N
 # --- CA « podium » : la petite finale est un réglage du moteur de phases -------------------------
 
 
-def test_sans_petite_finale_aucun_bronze_n_est_decerne() -> None:
+def test_sans_petite_finale_le_bronze_n_est_pas_gagne_au_tir() -> None:
     """**Le match pour la 3ᵉ place est un paramètre du moteur** — la politique `depth` (ADR-0004).
 
     `ProfondeurPodium(jusqu_au=4)`, le défaut câblé en production, dispute la finale **et** la
-    petite finale : le podium a ses trois métaux. `jusqu_au=2` ne dispute que la finale — plus
-    aucun match ne départage les deux battus des demies, qui restent donc **ex æquo 3ᵉ-4ᵉ**.
+    petite finale : le bronze est gagné au tir. `jusqu_au=2` ne dispute que la finale — plus aucun
+    match ne départage les deux battus des demies, que la politique `aggregation` range alors sur
+    leur qualification.
 
-    C'est là que se voit la distinction entre **classement** et **podium** (arbitrage du
-    commanditaire, 03/08/2026) : les quatre archers ont bien un rang au classement, mais seuls
-    ceux qu'un match a départagés montent sur la boîte. Un bronze décerné sans match à tirer
-    serait une médaille que la compétition n'a pas produite.
+    C'est là que se voit la distinction **classement / podium** (arbitrage du 03/08/2026) : les
+    quatre archers ont une place, mais seules les deux premières ont été **gagnées**. Le drapeau
+    `decerne` porte la différence, et l'écran comme le PDF l'affichent.
     """
     monde = _Monde(depth=ProfondeurPodium(jusqu_au=2))
     for valeurs in (("10", "10", "10"), ("10", "10", "9"), ("10", "9", "9"), ("9", "9", "9")):
@@ -450,12 +450,8 @@ def test_sans_petite_finale_aucun_bronze_n_est_decerne() -> None:
     palmares = _service(monde).pour_tournoi(monde.tournoi_id)
     podium = palmares.podium(monde.categorie_id)
 
-    # Au **classement**, les deux battus des demies ont bien un rang : 3ᵉ et 4ᵉ, que la politique
-    # `aggregation` leur donne sur leur qualification faute de match. Au **podium**, ils n'ont
-    # rien : aucun tir ne les a départagés, donc aucune médaille — c'est toute la distinction.
-    assert [ligne.rang_min for ligne in podium] == [1, 2]
-    assert [ligne.rang_min for ligne in palmares.lignes[2:]] == [3, 4]
-    assert all(not ligne.decerne for ligne in palmares.lignes[2:])
+    assert [ligne.rang_categorie_min for ligne in podium] == [1, 2, 3, 4]
+    assert [ligne.decerne for ligne in podium] == [True, True, False, False]
 
 
 def test_avec_petite_finale_le_bronze_est_decerne() -> None:

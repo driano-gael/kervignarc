@@ -151,13 +151,27 @@ class Palmares:
 
         Trois conditions, et chacune ferme un trou trouvé en revue :
 
-        1. **`decerne`** — le rang vient d'un **match** (finale / petite finale). Sans cette
-           condition, le podium se remplissait sur les seuls scores du matin : chaque rang de
-           qualification étant exact par construction, l'écran public décernait « Or / Argent /
-           Bronze » **avant le moindre duel**. Elle écarte aussi le finaliste dont la finale n'est
-           pas tirée, à qui la renumérotation donnait « 1ᵉʳ » ;
+        1. **le rang vient des duels et n'est plus ouvert** (`origine is DUELS`, `not en_lice`).
+           Sans la première moitié, le podium se remplissait sur les seuls scores du matin : un
+           rang de qualification étant exact par construction, l'écran décernait « Or / Argent /
+           Bronze » **avant le moindre duel**. Sans la seconde, le vainqueur d'une demi-finale
+           recevait l'or **avant la finale** — sa position `[1..2]`, seule de son paquet, sortait
+           « 1ᵉʳ » de la renumérotation ;
         2. **rang de catégorie exact** — on ne remet pas une médaille à quatre archers *ex æquo* ;
         3. **≤ 4** — finale (1-2) et petite finale (3-4).
+
+        ⚠️ **Un rang définitif suffit ; il n'a pas à être décerné par un match** (arbitrage du
+        commanditaire, 03/08/2026). La condition « décerné » avait été essayée et **amputait le
+        livrable** : le moteur ne monte qu'un **seul tableau scratch** (`# DETTE-028`), donc quatre
+        archers du tournoi entier seulement ont un rang décerné par un match terminal — toutes les
+        autres catégories perdaient leur podium, **tournoi terminé**, et le PDF affiché au mur
+        omettait leurs blocs. Le CA (« rangs 1-4 issus de la finale/petite finale ») présuppose un
+        tableau **par catégorie**, que le moteur ne réalise pas encore.
+
+        La provenance n'est pas perdue pour autant : `LignePalmares.decerne` la porte, et l'écran
+        comme le PDF **disent** quand une place a été rangée au classement plutôt que gagnée au
+        tir. C'est ce qui garde la distinction demandée entre *classement* et *podium* sans faire
+        disparaître les médailles.
 
         Le podium se lit **par catégorie**, jamais scratch : c'est là que se remettent les
         médailles, et la restriction du podium scratch serait vide pour toute catégorie n'ayant
@@ -172,7 +186,8 @@ class Palmares:
             ligne
             for ligne in self.lignes
             if ligne.categorie_id == categorie_id
-            and ligne.decerne
+            and ligne.origine is OriginePalmares.DUELS
+            and not ligne.en_lice
             and ligne.rang_categorie_min is not None
             and ligne.rang_categorie_min == ligne.rang_categorie_max
             and ligne.rang_categorie_min <= PODIUM_JUSQU_AU

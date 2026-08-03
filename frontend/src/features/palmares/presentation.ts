@@ -36,6 +36,15 @@ export function medaille(rangCategorie: number | null): string {
   return rangCategorie === null ? '' : (MEDAILLES[rangCategorie] ?? '')
 }
 
+// La **provenance** d'une place de podium. Le moteur ne monte qu'un seul tableau scratch, donc dans
+// la plupart des catégories le bronze est rangé par la qualification faute d'un match qui départage.
+// On l'affiche (l'amputer laissait la majorité des catégories sans médailles) mais on le **dit** :
+// c'est la distinction entre le classement et le podium, rendue visible plutôt que tranchée en
+// supprimant des lignes.
+export function provenance(ligne: LignePalmares): string | null {
+  return ligne.decerne ? null : 'au classement'
+}
+
 // Ce qu'on écrit sous le rang d'une ligne. `null` quand il n'y a rien à ajouter : le cas normal
 // d'un rang décerné en duel, où répéter « duels » serait du bruit sur 120 lignes.
 export function detail(ligne: LignePalmares): string | null {

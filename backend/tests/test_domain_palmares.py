@@ -530,13 +530,14 @@ def test_un_archer_sans_rang_de_qualification_passe_en_dernier() -> None:
     assert paquets == ((8,), (7, 9))
 
 
-def test_un_rang_tranche_par_la_politique_ne_monte_pas_au_podium() -> None:
-    """Un rang **unique** n'est pas un rang **décerné**.
+def test_un_rang_tranche_par_la_politique_monte_au_podium_mais_le_dit() -> None:
+    """Un rang **définitif** vaut une place ; `decerne` dit s'il a été **gagné au tir**.
 
     Les deux battus des demies d'un tableau tronqué reçoivent 3ᵉ et 4ᵉ de la politique
-    `AggregationParQualification` — un rang unique, donc « exact » à l'affichage. Aucun match ne
-    les a pourtant départagés : ils ne montent pas sur la boîte. C'était le mutant survivant de la
-    contre-revue (`decerne = acquis is not None`), qui remettait des médailles sans tir.
+    `AggregationParQualification`. Aucun match ne les a départagés — mais leur rang ne bougera
+    plus. Arbitrage du commanditaire (03/08/2026) : ils montent sur le podium, et l'écran comme le
+    PDF **disent** que la place vient du classement. Exiger un match amputait la majorité des
+    catégories de leurs médailles, le moteur ne montant qu'un seul tableau scratch (DETTE-028).
     """
     qualification = _qualification(*[_ligne(i, i) for i in range(1, 5)])
     tableau = ResultatPhase(
@@ -552,6 +553,7 @@ def test_un_rang_tranche_par_la_politique_ne_monte_pas_au_podium() -> None:
     palmares = calculer_palmares(qualification, (tableau,), AggregationParQualification())
 
     assert _rangs(palmares)[2:] == [(3, 3, 3), (4, 4, 4)]
+    assert [ligne.archer_id for ligne in palmares.podium(1)] == [1, 2, 3, 4]
     par_archer = {ligne.archer_id: ligne for ligne in palmares.lignes}
+    assert par_archer[1].decerne and par_archer[2].decerne
     assert not par_archer[3].decerne and not par_archer[4].decerne
-    assert [ligne.archer_id for ligne in palmares.podium(1)] == [1, 2]

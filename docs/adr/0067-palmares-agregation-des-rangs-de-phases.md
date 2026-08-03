@@ -160,9 +160,24 @@ Bronze » **avant le moindre duel**. Trois axes l'ont relevé indépendamment, e
 ne cassait en le corrigeant — le signe exact que le CA « rangs 1-4 issus de la finale/petite
 finale » n'avait jamais été mis à l'épreuve.
 
-⚠️ **Conséquence à connaître** : un tournoi qui ne dispute **aucun** duel n'a donc **pas** de
-podium. C'est ce que dit le CA, mot pour mot ; si le commanditaire veut qu'un tournoi purement
-qualificatif décerne quand même ses médailles, c'est le CA qu'il faut amender, pas le filtre.
+⚠️ **La condition « décerné par un match » a été essayée, puis écartée par le commanditaire**
+(03/08/2026). Elle amputait le livrable : le moteur ne monte qu'un **seul tableau scratch**
+(`DETTE-028`), donc **quatre archers du tournoi entier** seulement obtiennent un rang décerné par
+un match terminal. Toutes les autres catégories perdaient leur podium **tournoi terminé**, et le
+PDF affiché au mur omettait leurs blocs. Le CA (« rangs 1-4 issus de la finale/petite finale »)
+présuppose un tableau **par catégorie**, que le moteur ne réalise pas — c'est `DETTE-028` qui parle,
+pas le palmarès.
+
+La règle retenue est donc : **un rang de catégorie définitif suffit**, et `decerne` porte la
+**provenance**, affichée à l'écran et sur le PDF (« Bronze · au classement »). La distinction
+demandée entre *classement* et *podium* est préservée — elle se lit au lieu de faire disparaître
+des médailles. Un tournoi sans aucun duel n'a toujours pas de podium : `origine` y vaut
+`qualification` pour tout le monde.
+
+**Le match pour la 3ᵉ place, lui, est déjà un paramètre du moteur** : la politique `depth`
+(ADR-0004). `ProfondeurPodium(jusqu_au=4)` — le défaut câblé — dispute la petite finale ;
+`jusqu_au=2` ne dispute que la finale. Deux tests l'épinglent. Ce qui manque n'est pas le
+paramètre, c'est l'écran pour le régler par phase — même lacune que pour `aggregation`.
 
 Un podium peut être **partiel** — rangs 3-4 publiés seuls, la petite finale se tirant couramment
 avant la finale (le bronze avant l'or est l'usage en salle) — voire vide, et il le **dit** plutôt

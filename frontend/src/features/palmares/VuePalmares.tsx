@@ -13,7 +13,7 @@ import { useCategories } from '../categories/hooks'
 import type { LignePalmares, PodiumCategorie } from './api'
 import { urlPalmaresPdf } from './api'
 import { usePalmares } from './hooks'
-import { detail, etatPodium, medaille, nomComplet, rang } from './presentation'
+import { detail, etatPodium, medaille, nomComplet, provenance, rang } from './presentation'
 
 export function VuePalmares({
   tournoiId,
@@ -117,6 +117,7 @@ function BlocPodium({
               {medaille(ligne.rang_categorie_min) && (
                 <span className="palmares-podium__medaille">
                   {medaille(ligne.rang_categorie_min)}
+                  {provenance(ligne) && ` · ${provenance(ligne)}`}
                 </span>
               )}
             </li>

@@ -112,7 +112,7 @@ class GenerateurPalmaresPdf:
                     *[
                         [
                             _rang(ligne.rang_categorie_min, ligne.rang_categorie_max),
-                            _MEDAILLES.get(ligne.rang_categorie_min or 0, "—"),
+                            _medaille(ligne),
                             ligne.nom,
                             ligne.prenom,
                         ]
@@ -160,6 +160,19 @@ class GenerateurPalmaresPdf:
         )
         document.build(elements)
         return tampon.getvalue()
+
+
+def _medaille(ligne: LignePalmares) -> str:
+    """Le métal, suivi de sa **provenance** quand aucun match ne l'a décerné.
+
+    Le moteur ne monte qu'un seul tableau scratch (`DETTE-028`) : dans la plupart des catégories,
+    le bronze est rangé par le **classement de qualification** faute d'un match qui les départage.
+    Le podium l'affiche quand même (arbitrage du 03/08/2026 — l'amputer laissait la majorité des
+    catégories sans médailles), mais le document **le dit** : c'est le mur du gymnase, et une
+    médaille dont on ignore d'où elle vient s'y discute toute la soirée.
+    """
+    metal = _MEDAILLES.get(ligne.rang_categorie_min or 0, "—")
+    return metal if ligne.decerne else f"{metal} (au classement)"
 
 
 def _rang(minimum: int | None, maximum: int | None) -> str:
