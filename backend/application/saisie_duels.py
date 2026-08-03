@@ -28,8 +28,9 @@ from application.erreurs import (
     PhasePasUnTableau,
     TournoiIntrouvable,
 )
+from application.prelevement import preleves
 from domain.blason import ZoneScore
-from domain.classement import LigneClassement, StatutClassement
+from domain.classement import LigneClassement
 from domain.duel import BaremeDuel, Cote, Duel, ResolveurBaremeDuel
 from domain.erreurs import MatchNonJouable
 from domain.participant import GenreParticipant, Participant
@@ -261,26 +262,29 @@ class ServiceSaisieDuels:
             )
         classement = self._classements.pour_tournoi(tournoi_id)
         lignes = {ligne.archer_id: ligne for ligne in classement.lignes}
-        # DETTE-028 (docs/dette.md) — **le cœur du raccourci vit ici** : le tableau est ensemencé
-        # avec **tous** les archers en lice, sans jamais lire `phase.sources` ni `phase.effectif`.
-        # Un format qui déclare « les rangs 1 à 32 au tableau » se joue donc à 120 si 120 archers
-        # sont classés. E01US024 a livré la **composition** de ces prélèvements et rend l'écart
-        # visible (effectif projeté vs constaté, `application/simulation_format.py`) ; leur
-        # **consommation** — ici — reste à faire, en US dédiée : ce code déroule le jour J.
         # Ensemencement : **seuls les archers en lice** entrent dans le tableau. Un forfait déclaré
         # en **qualification** (abandon relégué / DSQ exclu, `statut != EN_LICE`) n'accède pas aux
         # duels ; son rang scratch peut d'ailleurs être `None` (DSQ). Le classement complet reste
         # dans `lignes` pour résoudre les noms.
-        en_lice = [ligne for ligne in classement.lignes if ligne.statut is StatutClassement.EN_LICE]
         participants = [
             Participant.individuel(ligne.archer_id)
-            for ligne in sorted(en_lice, key=lambda ligne: ligne.rang_scratch or 0)
+            for ligne in preleves(phase, classement, self._ordre_de_la_qualification(tournoi_id))
         ]
         tableau = construire_tableau(
             participants, self._seeding, self._byes, self._routing, self._depth
         )
         tableau = self._rejouer(tableau, phase_id, lignes)
         return self._appliquer_forfaits(tableau, phase_id), lignes
+
+    def _ordre_de_la_qualification(self, tournoi_id: TournoiId) -> int | None:
+        """L'`ordre` de la phase de qualification — le seul classement que ce service lit.
+
+        `None` si le tournoi n'en a pas : aucune source n'est alors honorée, et le tableau
+        retombe sur tous les archers en lice. C'est le cas des décors de test montés sans
+        qualification, et celui d'un tournoi dont la séquence commence autrement.
+        """
+        qualification = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        return qualification.ordre if qualification is not None else None
 
     def _appliquer_forfaits(self, tableau: Tableau, phase_id: PhaseId) -> Tableau:
         """Fait **passer l'adversaire** de tout duelliste déclaré forfait **dans cette phase de

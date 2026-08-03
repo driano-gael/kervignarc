@@ -159,10 +159,17 @@ surveiller si le ratio dépasse le tiers.
 
 | # | Action | Ce que ça rend | Coût |
 |---|---|---|---|
-| **1** | **Résorber `DETTE-028`** — le moteur consomme `phase.sources` (tableau par catégorie / par rangs) | Supprime la cause de 3 des 5 bloquants d'E06US004 ; rend possible le vrai podium par catégorie ; aligne le moteur sur les CA déjà écrits | 1 US moteur + 1 ADR |
+| **1** | **Résorber `DETTE-028`** — le moteur consomme `phase.sources` **par rangs** | Le tournoi se déroule comme le schéma composé ; supprime la cause des défauts « palmarès plat ». ⚠️ **Correction du 03/08** : ne rend **pas** possible le podium par catégorie — `SourcePhase` sélectionne par **rangs** et `Phase` ne porte aucune catégorie (vérifié au cadrage d'E05US020). Les tableaux par catégorie sont une **US distincte**, avec son ADR | ✅ livrée (E05US020, [ADR-0068](adr/0068-le-moteur-consomme-les-prelevements-declares.md)) |
 | **2** | **Découper les 4 agrégateurs techniques** (`repositories.py`, les deux `erreurs.py`, `App.css`) **par feature** | Retire ~4 des 18 fichiers existants qu'une US doit modifier. Mécanique, sans changement de comportement, testable par la suite existante | 1 US de refactor, risque faible |
 | **3** | **Mémoïser `reconstruire`** par `(tournoi_id, version)`, invalidée sur `donnees_modifiees` | Résorbe `DETTE-031` | À ne faire **que** si une mesure le réclame — aucune mesure n'existe |
 | — | Documentation, tests, procédure de revue | — | **Ne rien changer** : mesurés stables et rentables |
+
+⚠️ **Correction apportée à ce document le 03/08/2026**, au cadrage d'E05US020 : l'action 1 était
+présentée comme rendant possible « le vrai podium par catégorie ». C'est **faux** — consommer les
+prélèvements donne « les rangs 1 à 32 du classement scratch », jamais « les Seniors Hommes ». Le
+podium par catégorie demande un concept qui n'existe pas (une phase scopée à une catégorie), donc une
+**troisième action** : *US « tableaux par catégorie » + ADR*. Vérifier avant de promettre aurait évité
+de faire croire qu'une US en réglerait deux.
 
 **Ordre recommandé : 1, puis 2.** L'action 1 traite ce qui casse des cas utilisateurs ; l'action 2
 traite ce qui ralentit. L'action 3 attend une mesure.

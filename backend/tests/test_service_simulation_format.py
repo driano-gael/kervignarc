@@ -164,16 +164,19 @@ def test_la_simulation_compte_les_tours_par_phase(
     assert tableau.effectif == 8
 
 
-def test_la_simulation_signale_l_ecart_quand_le_moteur_ignore_le_prelevement(
+def test_la_simulation_ne_signale_plus_d_ecart_sur_un_prelevement_par_rangs(
     service: tuple[ServiceSimulationFormat, _FormatsEnMemoire],
 ) -> None:
-    """⚠️ **Limite d'aujourd'hui rendue explicite** (`# DETTE-028`).
+    """E05US020 : le moteur **honore** désormais le prélèvement — l'écart se referme.
 
-    Le format déclare « les rangs 1 à 8 au tableau », le schéma projette donc 8 duellistes. Mais le
-    moteur d'exécution n'a **aucun consommateur de `Phase.sources`** — `ServiceSaisieDuels._decor`
-    ensemence avec tous les archers en lice — et joue donc à 12. Ce test **fixe** cet écart pour
-    qu'il ne passe pas inaperçu : le jour où le moteur honorera les sources, il échouera, et c'est
-    précisément le signal qu'on attend pour le retirer.
+    Ce test **remplace** `test_la_simulation_signale_l_ecart_quand_le_moteur_ignore_le_prelevement`,
+    posé par E01US024 comme test de **caractérisation** de `DETTE-028` : il fixait l'écart
+    (projeté 8, constaté 12) pour qu'il ne passe pas inaperçu, et devait échouer « le jour où le
+    moteur honorera les sources ». Ce jour est arrivé, et il a bien échoué — c'est le signal
+    attendu, pas une régression.
+
+    Le format déclare « les rangs 1 à 8 au tableau » ; à 12 archers simulés, le moteur en joue
+    **8**, comme le schéma le projetait.
     """
     simulation, formats = service
     format_id = _qualif_puis_tableau(formats, rang_fin=8)
@@ -182,8 +185,8 @@ def test_la_simulation_signale_l_ecart_quand_le_moteur_ignore_le_prelevement(
 
     tableau = next(p for p in resultat.phases if p.type is TypePhase.ELIMINATION_DIRECTE)
     assert tableau.effectif_projete == 8
-    assert tableau.effectif == 12
-    assert tableau.ecart
+    assert tableau.effectif == 8
+    assert not tableau.ecart
 
 
 def test_la_simulation_est_deterministe_a_graine_egale(

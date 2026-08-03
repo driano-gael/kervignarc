@@ -27,8 +27,8 @@ from application.erreurs import (
     PhasePasUnTableau,
     TournoiIntrouvable,
 )
+from application.prelevement import preleves
 from domain.archer import ArcherId
-from domain.classement import StatutClassement
 from domain.gabarit_salle import Cible, GabaritSalle
 from domain.inscription import Inscription, InscriptionId
 from domain.participant import GenreParticipant, Participant
@@ -470,13 +470,18 @@ class ServicePlacementDuels:
 
         contexte = _Contexte(phase_id=phase_id, gabarit=gabarit)
         classement = self._classements.pour_tournoi(tournoi_id)
-        # Seuls les archers **en lice** entrent au tableau : un forfait de qualification (abandon
-        # relégué / DSQ, `statut != EN_LICE`) n'y accède pas (ADR-0050), et son rang scratch peut
-        # valoir `None` (DSQ). Même exclusion qu'à la reconstruction (`ServiceSaisieDuels._decor`).
-        en_lice = [ligne for ligne in classement.lignes if ligne.statut is StatutClassement.EN_LICE]
+        # ⚠️ **Même ensemencement que la reconstruction, par la même fonction** (E05US020) : le
+        # plan pose les duellistes que le tableau fera jouer. Les deux règles étaient **recopiées**,
+        # avec un commentaire affirmant leur parité ; la recopie a lâché à la première évolution —
+        # E05US020 a fait consommer les prélèvements d'un seul côté, et la revue a mesuré un plan de
+        # 8 placements pour un tableau de 4. Un archer posté sur une butte sans duel, un autre en
+        # face du mauvais adversaire, invisibles jusqu'au jour J.
+        qualification = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
         participants = [
             Participant.individuel(ligne.archer_id)
-            for ligne in sorted(en_lice, key=lambda ligne: ligne.rang_scratch or 0)
+            for ligne in preleves(
+                phase, classement, qualification.ordre if qualification is not None else None
+            )
         ]
         if len(participants) < 2:
             return contexte  # pas de tableau possible : plan vide, sans duel

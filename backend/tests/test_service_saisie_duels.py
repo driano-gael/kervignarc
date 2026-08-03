@@ -26,9 +26,9 @@ from domain.categorie import Categorie
 from domain.classement import StatutClassement
 from domain.duel import BaremeDuel, Duel, ModeDuel, ResolveurBaremeDuelFfta
 from domain.entree_audit import ActionAuditee, EntreeAudit
-from domain.erreurs import MatchNonJouable
+from domain.erreurs import EffectifTableauInvalide, MatchNonJouable
 from domain.forfait import Forfait, NatureForfait
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import IssueTour, Phase, PhaseId, SourcePhase, TypePhase
 from domain.politiques import (
     ByesAuxMieuxClasses,
     PlacementEnCascade,
@@ -381,12 +381,17 @@ def test_annuler_le_forfait_de_duel_retire_le_walkover() -> None:
     assert etat.podium == ()
 
 
-def _forfait(monde: _Monde, archer_id: int, phase_id: int) -> Forfait:
+def _forfait(
+    monde: _Monde,
+    archer_id: int,
+    phase_id: int,
+    nature: NatureForfait = NatureForfait.ABANDON,
+) -> Forfait:
     return Forfait.creer(
         tournoi_id=monde.tournoi_id,
         archer_id=archer_id,
         phase_id=phase_id,
-        nature=NatureForfait.ABANDON,
+        nature=nature,
         declare_par="Scoreur",
         declare_le=datetime.datetime(2026, 3, 14, 10, 0, tzinfo=datetime.UTC),
     )
@@ -455,3 +460,213 @@ def test_double_forfait_le_camp_haut_avance() -> None:
     occupants = {m.archer_id for m in (finale.haut, finale.bas) if m is not None}
     assert a in occupants  # le haut (rang 1) avance malgré son forfait
     assert d not in occupants
+
+
+# --- CA E05US020 : le moteur consomme les prélèvements déclarés (résorbe DETTE-028) -------------
+# Écrits **depuis le CA** de `stories/E05-moteur-phases.md` (puce « CA ») avant l'implémentation :
+# jusqu'ici `_decor` ensemençait le tableau avec *tous* les archers en lice, quel que soit ce que la
+# phase déclarait prélever — l'organisateur composait « les rangs 1 à 32 » et le moteur en jouait
+# 120.
+
+
+def _monde_classe(nb: int) -> _Monde:
+    """`nb` archers aux scores décroissants : le rang scratch suit l'ordre de création."""
+    monde = _Monde()
+    for rang in range(nb):
+        monde.inscrire_classe(("10", "10", str(max(1, 10 - rang))))
+    return monde
+
+
+def _prelever(monde: _Monde, *sources: SourcePhase) -> None:
+    """Déclare les prélèvements de la phase de tableau (elle est d'ordre 2, la qualif d'ordre 1)."""
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    monde.phases._phases[monde.phase_id] = replace(phase, sources=sources)
+
+
+def _effectif_du_tableau(monde: _Monde) -> int:
+    return monde.service().etat_tableau(monde.tournoi_id, monde.phase_id).effectif
+
+
+def _archers_du_tableau(monde: _Monde) -> list[int]:
+    tableau, _ = monde.service().reconstruire(monde.tournoi_id, monde.phase_id)
+    vus: dict[int, None] = {}
+    for match in tableau.matchs:
+        for camp in (match.haut, match.bas):
+            if camp is not None:
+                vus.setdefault(camp.ref_id, None)
+    return list(vus)
+
+
+def test_le_tableau_ne_prend_que_les_rangs_declares() -> None:
+    """CA « prélèvement par rangs » : « les rangs 1 à 8 de la phase 1 » monte un tableau de **8**.
+
+    C'est le cœur de DETTE-028 : à 12 archers classés, le moteur en jouait 12 et l'organisateur
+    repartait avec un tournoi qui ne se déroulait pas comme le schéma qu'il avait validé.
+    """
+    monde = _monde_classe(12)
+    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8))
+
+    assert _effectif_du_tableau(monde) == 8
+
+
+def test_le_tableau_prend_les_bons_archers_pas_seulement_le_bon_compte() -> None:
+    """Un compte juste sur les mauvais archers serait un faux positif : on vérifie l'**identité**.
+
+    Les rangs 1 à 8 sont les huit **premiers du classement** — pas huit archers quelconques.
+    """
+    monde = _monde_classe(12)
+    attendus = [ligne.archer_id for ligne in _classement_du(monde).pour_tournoi(1).lignes[:8]]
+    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8))
+
+    assert sorted(_archers_du_tableau(monde)) == sorted(attendus)
+
+
+def test_une_plage_ouverte_se_resout_sur_l_effectif_reel() -> None:
+    """CA « plage relative » : « les rangs 9 **et suivants** » vaut 4 archers à 12 classés.
+
+    C'est la promesse d'E05US010 (`rang_fin=None`, « et tous les suivants ») — tenue jusqu'ici par
+    la seule composition. Le même déroulé doit accueillir un effectif qu'il ne connaissait pas.
+    """
+    monde = _monde_classe(12)
+    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=9))
+
+    assert _effectif_du_tableau(monde) == 4
+
+
+def test_une_plage_ouverte_suit_l_effectif_quand_il_change() -> None:
+    """Le même prélèvement, deux effectifs : c'est ce que « relative » veut dire."""
+    petit = _monde_classe(10)
+    _prelever(petit, SourcePhase.par_rangs(ordre_source=1, rang_debut=5))
+    grand = _monde_classe(16)
+    _prelever(grand, SourcePhase.par_rangs(ordre_source=1, rang_debut=5))
+
+    assert (_effectif_du_tableau(petit), _effectif_du_tableau(grand)) == (6, 12)
+
+
+def test_sans_source_declaree_le_tableau_prend_tout_le_monde() -> None:
+    """CA « première phase » : le comportement d'aujourd'hui ne doit pas casser.
+
+    Une phase sans prélèvement est alimentée par les inscriptions — c'est le cas de la
+    qualification, et celui du tableau tant que l'organisateur n'a rien déclaré.
+    """
+    monde = _monde_classe(12)
+
+    assert _effectif_du_tableau(monde) == 12
+
+
+def test_le_rang_preleve_suit_le_classement_au_moment_de_la_lecture() -> None:
+    """CA « le rang prélevé est celui du classement » : l'abandon du 5ᵉ ne laisse **pas** de trou.
+
+    Un abandon est relégué en fin de classement (ADR-0050) et les suivants **remontent** : « les
+    rangs 1 à 8 » prélève donc toujours 8 archers, le 9ᵉ prenant la place laissée. Ce n'est pas un
+    repêchage décidé par le moteur, c'est la conséquence du classement, recalculé à chaque lecture.
+    """
+    monde = _monde_classe(12)
+    avant = [ligne.archer_id for ligne in _classement_du(monde).pour_tournoi(1).lignes]
+    cinquieme, neuvieme = avant[4], avant[8]
+    monde.forfaits.semer(_forfait(monde, cinquieme, monde.qualif_id))
+    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8))
+
+    archers = _archers_du_tableau(monde)
+    assert _effectif_du_tableau(monde) == 8
+    assert cinquieme not in archers
+    assert neuvieme in archers
+
+
+def test_un_prelevement_par_issue_de_tour_reste_inerte() -> None:
+    """Hors périmètre, **épinglé** : `par_issue_de_tour` n'est résolu nulle part (`DETTE-033`).
+
+    Le moteur retombe donc sur « tous les archers en lice » plutôt que de deviner une sémantique
+    que la séquence n'a pas tranchée. Ce test **tombera** le jour où l'US du prélèvement la
+    décidera — c'est le signal attendu.
+    """
+    monde = _monde_classe(12)
+    _prelever(
+        monde, SourcePhase.par_issue_de_tour(ordre_source=1, tour=1, issue=IssueTour.GAGNANTS)
+    )
+
+    assert _effectif_du_tableau(monde) == 12
+
+
+def test_deux_sources_de_rangs_se_cumulent() -> None:
+    """L'exemple canonique du commanditaire : « les demi-finalistes **et** le gagnant du
+    secondaire ».
+
+    Une phase porte **plusieurs** prélèvements (ADR-0061) ; le tableau prend leur **union**.
+    Relevé en revue : le `any(...)` du service n'était jamais exercé à plus d'un intervalle.
+    """
+    monde = _monde_classe(12)
+    ordonnes = [ligne.archer_id for ligne in _classement_du(monde).pour_tournoi(1).lignes]
+    _prelever(
+        monde,
+        SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=4),
+        SourcePhase.par_rangs(ordre_source=1, rang_debut=9, rang_fin=12),
+    )
+
+    assert _effectif_du_tableau(monde) == 8
+    assert sorted(_archers_du_tableau(monde)) == sorted(ordonnes[:4] + ordonnes[8:])
+
+
+def test_l_effectif_source_compte_les_classes_pas_les_inscrits() -> None:
+    """« Les rangs 9 **et suivants** » se résout sur les archers **classés**, pas sur les inscrits.
+
+    Un disqualifié est **sorti** du classement (ADR-0050) : il n'a pas de rang. Le compter
+    étendrait « et suivants » jusqu'à un rang qui n'existe pas — la même erreur que l'écrêtage
+    d'ADR-0065 a corrigée sur les plages de tableau. Relevé en revue : deux mutations de cette
+    ligne survivaient, alors que c'est la plus commentée du diff.
+    """
+    monde = _monde_classe(12)
+    dernier = _classement_du(monde).pour_tournoi(1).lignes[-1].archer_id
+    monde.forfaits.semer(
+        _forfait(monde, dernier, monde.qualif_id, nature=NatureForfait.DISQUALIFICATION)
+    )
+    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=9))
+
+    # 11 archers classés (le DSQ est sorti) → les rangs 9, 10 et 11, soit 3 archers.
+    assert _effectif_du_tableau(monde) == 3
+
+
+def test_une_source_qui_ne_vise_pas_la_qualification_est_ignoree() -> None:
+    """CA, note (b) : une source dont la phase amont **n'est pas la qualification** garde le
+    comportement d'avant l'US.
+
+    Le service ne sait lire qu'**un** classement, celui de la qualification. Appliquer « les rangs
+    1 à 8 de la phase 2 » à ce classement-là prendrait les 8 premiers de la **qualification** en
+    croyant prendre ceux du tableau principal : un tableau bien formé, plausible, et faux, que rien
+    ne signalerait. Défaut relevé en revue — le CA promettait déjà ce comportement, le code ne le
+    tenait pas.
+    """
+    monde = _monde_classe(12)
+    _prelever(monde, SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=8))
+
+    assert _effectif_du_tableau(monde) == 12
+
+
+def test_un_prelevement_le_reste_reste_inerte() -> None:
+    """Jumeau du test sur `par_issue_de_tour` : `le_reste` n'est résolu nulle part non plus.
+
+    L'ADR, la docstring, le message de l'écran et la recette nomment **les deux** systématiquement ;
+    les épingler tous les deux évite qu'un seul soit décidé en silence un jour.
+    """
+    monde = _monde_classe(12)
+    _prelever(monde, SourcePhase.le_reste(ordre_source=1))
+
+    assert _effectif_du_tableau(monde) == 12
+
+
+def test_un_prelevement_qui_ne_garde_personne_refuse_de_monter_un_tableau() -> None:
+    """« Les rangs 33 et suivants » avec 12 classés ne prélève **personne** — et le dit.
+
+    Le déroulé est mal composé : la phase déclare un prélèvement que l'effectif réel ne peut pas
+    honorer, et le contrôle de composition ne le voit pas (il compare à l'effectif **déclaré**, pas
+    au réel). Le moteur **refuse** plutôt que d'inventer un tableau : `EffectifTableauInvalide`, que
+    la frontière traduit — un écran qui dit « ce tableau ne peut pas se monter » vaut mieux qu'un
+    tableau silencieusement peuplé de tout le monde, qui est précisément le défaut que cette US
+    corrige. Comportement **décidé**, pas accidentel (relevé en revue).
+    """
+    monde = _monde_classe(12)
+    _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=33))
+
+    with pytest.raises(EffectifTableauInvalide):
+        _effectif_du_tableau(monde)

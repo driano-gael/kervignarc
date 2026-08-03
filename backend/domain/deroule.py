@@ -240,7 +240,8 @@ def _anomalies_blocs_orphelins(etapes: Sequence[EtapeProjetable]) -> Iterator[An
        c'est accepté ». Un format promu depuis un tel tournoi serait devenu inapplicable après mise
        à jour — un format du club qui cesse de fonctionner.
     2. **Le message serait faux.** « Personne ne peut l'atteindre » suppose que le moteur lit les
-       prélèvements. Il ne les lit pas (`# DETTE-028` : `ServiceSaisieDuels._decor` ensemence avec
+       prélèvements. Il lit désormais ceux **par rangs** (E05US020, ADR-0068) ; pour les autres
+       natures il ne les lit toujours pas (`# DETTE-028` : `_decor` ensemence avec
        *tous* les archers en lice) : une phase sans source accueille en réalité tout le monde.
 
     L'anomalie garde donc son utilité — elle **montre** le bloc qui ne dit pas d'où viennent ses
