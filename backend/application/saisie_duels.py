@@ -28,12 +28,13 @@ from application.erreurs import (
     PhasePasUnTableau,
     TournoiIntrouvable,
 )
+from application.prelevement import preleves
 from domain.blason import ZoneScore
-from domain.classement import Classement, LigneClassement, StatutClassement
+from domain.classement import LigneClassement
 from domain.duel import BaremeDuel, Cote, Duel, ResolveurBaremeDuel
 from domain.erreurs import MatchNonJouable
 from domain.participant import GenreParticipant, Participant
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import PhaseId, TypePhase
 from domain.politiques import Byes, Depth, Routing, Seeding
 from domain.ports import (
     BlasonRepository,
@@ -266,7 +267,8 @@ class ServiceSaisieDuels:
         # duels ; son rang scratch peut d'ailleurs être `None` (DSQ). Le classement complet reste
         # dans `lignes` pour résoudre les noms.
         participants = [
-            Participant.individuel(ligne.archer_id) for ligne in self._preleves(phase, classement)
+            Participant.individuel(ligne.archer_id)
+            for ligne in preleves(phase, classement, self._ordre_de_la_qualification(tournoi_id))
         ]
         tableau = construire_tableau(
             participants, self._seeding, self._byes, self._routing, self._depth
@@ -274,55 +276,15 @@ class ServiceSaisieDuels:
         tableau = self._rejouer(tableau, phase_id, lignes)
         return self._appliquer_forfaits(tableau, phase_id), lignes
 
-    def _preleves(self, phase: Phase, classement: Classement) -> list[LigneClassement]:
-        """Les archers que **cette phase déclare prélever**, dans l'ordre du classement source.
+    def _ordre_de_la_qualification(self, tournoi_id: TournoiId) -> int | None:
+        """L'`ordre` de la phase de qualification — le seul classement que ce service lit.
 
-        E05US020 — c'est ici que le moteur cesse d'ignorer `phase.sources` (cœur de
-        `DETTE-028`). Jusqu'ici le tableau était ensemencé avec **tous** les archers en lice :
-        un format déclarant « les rangs 1 à 32 » se jouait à 120 si 120 archers étaient
-        classés, et l'organisateur repartait avec un tournoi qui ne suivait pas le schéma
-        qu'il avait composé et validé (E01US024).
-
-        La règle tient en une phrase : **un prélèvement par rangs garde les archers dont le
-        rang scratch tombe dans son intervalle**. Les bornes viennent du domaine
-        (`SourcePhase.intervalle`), qui sait déjà résoudre une fin ouverte sur l'effectif réel
-        — « les rangs 33 et suivants » vaut 88 archers à 120 classés et 50 à 82. On consomme
-        cette sémantique, on ne la réécrit pas.
-
-        ⚠️ **L'effectif source est celui des archers *classés*, pas des inscrits.** Un
-        disqualifié n'a pas de rang (ADR-0050) : le compter étendrait « et suivants » d'un
-        rang qui n'existe pas — la même erreur que l'écrêtage d'ADR-0065 a corrigée sur les
-        plages de tableau.
-
-        ⚠️ **Deux natures de source restent inertes, et c'est délibéré** : `le_reste` et
-        `par_issue_de_tour`. Vérifié au cadrage — ni l'une ni l'autre n'est **résolue nulle
-        part** (`effectif_selectionne`, `resoudre` et `intervalle` rendent `None`, aucun module
-        ne les interprète). Leur donner un sens **ici**, dans un service d'exécution, serait
-        décider une règle métier au mauvais endroit — l'erreur qu'ADR-0065 §3 a refusé de
-        commettre et que `DETTE-033` acte. Une phase qui n'en déclare que de celles-là retombe
-        donc sur « tous les archers en lice », comme avant.
-
-        Une phase **sans source** est la première de sa séquence : elle est alimentée par les
-        inscriptions, et garde le comportement d'avant l'US.
+        `None` si le tournoi n'en a pas : aucune source n'est alors honorée, et le tableau
+        retombe sur tous les archers en lice. C'est le cas des décors de test montés sans
+        qualification, et celui d'un tournoi dont la séquence commence autrement.
         """
-        en_lice = sorted(
-            (ligne for ligne in classement.lignes if ligne.statut is StatutClassement.EN_LICE),
-            key=lambda ligne: ligne.rang_scratch or 0,
-        )
-        effectif_source = sum(1 for ligne in classement.lignes if ligne.rang_scratch is not None)
-        intervalles = [
-            borne
-            for source in phase.sources
-            if (borne := source.intervalle(effectif_source)) is not None
-        ]
-        if not intervalles:
-            return en_lice
-        return [
-            ligne
-            for ligne in en_lice
-            if ligne.rang_scratch is not None
-            and any(debut <= ligne.rang_scratch <= fin for debut, fin in intervalles)
-        ]
+        qualification = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        return qualification.ordre if qualification is not None else None
 
     def _appliquer_forfaits(self, tableau: Tableau, phase_id: PhaseId) -> Tableau:
         """Fait **passer l'adversaire** de tout duelliste déclaré forfait **dans cette phase de

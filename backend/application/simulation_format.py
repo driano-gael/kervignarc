@@ -11,7 +11,9 @@ bot qui joue les volées et tranche les duels. Ce service **compose** les deux s
 n'existe nulle part.
 
 ⚠️ **Ce que la simulation mesure vraiment — et sa limite d'aujourd'hui.** Elle joue le format sur le
-moteur **réel**, celui du jour J. Or ce moteur **n'a pas encore de consommateur de `Phase.sources`**
+moteur **réel**, celui du jour J. ⚠️ **Depuis E05US020 il honore les prélèvements par rangs**
+(ADR-0068) ; ce qui suit ne vaut donc plus que pour `le_reste`, `par_issue_de_tour` et les types
+qu'aucun service ne déroule. Le moteur **n'a pas de consommateur** de ces sources-là
 côté duels : `ServiceSaisieDuels._decor` ensemence chaque tableau avec **tous** les archers en lice,
 sans regarder le prélèvement déclaré. Un format qui dit « les rangs 1 à 8 au tableau » se joue donc
 aujourd'hui à 12 si 12 archers sont classés. C'est `# DETTE-028` — le catalogue de types et le
@@ -126,7 +128,8 @@ class ToursPhase:
 
     `effectif_projete` est ce que le **schéma** annonçait pour cette phase ; `effectif` ce que la
     simulation a **constaté**. Les deux doivent coïncider — quand ils divergent, c'est que le moteur
-    d'exécution n'honore pas encore le prélèvement déclaré (`# DETTE-028` : aucun consommateur de
+    d'exécution n'honore pas **certains** prélèvements (`# DETTE-028` — depuis E05US020 les rangs
+    le sont ; restent `le_reste` et `par_issue_de_tour` : aucun consommateur de
     `Phase.sources` côté duels ; `ServiceSaisieDuels._decor` ensemence le tableau avec **tous** les
     archers en lice, quelle que soit la source). L'écart est rendu au client plutôt que tu, parce
     qu'un chiffre faux et silencieux est pire qu'un chiffre discuté (`ecart` ci-dessous).
