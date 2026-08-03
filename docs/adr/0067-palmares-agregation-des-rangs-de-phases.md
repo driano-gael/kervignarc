@@ -85,6 +85,20 @@ pas de conception ; il se comblera avec l'US qui donnera aux phases leur config.
 `ResultatPhase` **ne porte pas** de politique par phase : un champ que rien ne peut renseigner
 serait de la généralité spéculative.
 
+⚠️ **Et la clé `config.policies.aggregation` est explicitement refusée**
+(`FAMILLES_HORS_CONFIG_PHASE`, correctif de revue — axe C2). `FamillePolitique` sert de **catalogue
+fermé** des clés admises : ajouter la famille faisait, sans le vouloir, passer cette clé de
+« refusée » à « acceptée, résolue, puis **silencieusement ignorée** ». C'est un cran pire que « pas
+encore réglable » — c'est réglable *en apparence* et sans effet, donc un organisateur qui la
+poserait croirait avoir changé la règle. Le premier jet de cet ADR se contredisait d'ailleurs à un
+fichier d'écart : il refusait un champ sur `ResultatPhase` faute de consommateur… et en ajoutait un
+sur `PolitiquesPhase`. Même parti que le grain de `validation`, qu'ADR-0046 garde déjà hors de
+`policies` : une clé n'est acceptée que si quelqu'un la consomme.
+
+**Une famille typée sur l'archer**, là où le moteur traite des `Participant` opaques (ADR-0028).
+Délibéré : elle départage sur le **rang de qualification**, qui est une notion d'archer — une
+équipe n'en a pas. Le service écarte donc les participants « équipe » avant de l'appeler.
+
 ### 3. Une fourchette « encore en lice » n'est **pas** un ex æquo — et les confondre décerne l'or avant la finale
 
 `Tableau.positions_acquises()` rend, par participant, une `PositionAcquise(rang_min, rang_max,
@@ -103,6 +117,29 @@ Corollaire heureux : un archer encore en lice reçoit la plage de son match en c
 demi-finaliste est `[1..4]`). Le palmarès se consulte **pendant** le tournoi ; sans cela, un
 demi-finaliste tomberait derrière les archers qu'il vient de battre.
 
+⚠️ **Mais le drapeau seul ne suffisait pas**, et la revue l'a démontré (axe adversarial) : il
+protégeait le *groupement*, pas la *numérotation*. Deux demi-finales ne se valident jamais au même
+instant ; entre les deux, le vainqueur de la première est **seul** sur sa position `[1..2]`, et le
+curseur lui donnait donc un rang **exact** — « 1ᵉʳ », médaille comprise. Deux corrections en
+découlent :
+
+- un paquet **encore en lice** rend sa **fourchette acquise**, pas celle du curseur : « 1ᵉʳ-2ᵉ »
+  reste « 1ᵉʳ-2ᵉ ». C'est la seule façon de ne rien resserrer que le tir n'a pas resserré ;
+- `LignePalmares.decerne` dit qu'un **match** a décidé le rang, et c'est **lui** que le podium
+  regarde — pas `rang_min == rang_max`, qui n'est qu'une question d'affichage. Un rang de
+  qualification est exact par construction ; un ex æquo tranché par la politique l'est aussi.
+
+**Une phase qui n'a tranché aucun duel est écartée** (`ServicePalmares._resultat`). Le déroulé se
+compose à l'avance (E01US024) : la phase de tableau existe **dès le matin**, `_decor` l'ensemence
+avec tous les archers en lice (`DETTE-028`), et chacun n'a acquis que la plage de son premier match
+— le tableau entier. Le palmarès affichait donc « 1ᵉʳ-120ᵉ » sur 120 lignes pendant toute la
+qualification. Le critère retenu est **ce que le tableau a décidé**, et non `phase.statut` : passer
+une phase à `en_cours` est une action manuelle, et faire dépendre un écran public de la discipline
+de l'organisateur le laisserait muet tout l'après-midi s'il l'oublie. Le correctif symétrique
+proposé en revue — écarter côté domaine toute position couvrant le tableau entier — a été
+**écarté** : il casserait le milieu de tour, où six archers d'un tableau de 8 n'ont encore rien
+acquis et tomberaient **derrière le battu** qu'ils n'ont pas rencontré.
+
 ### 4. `fourchette_de_rangs` **remonte** dans le domaine
 
 E07US008 l'avait écrite dans `application/routage.py`, faute d'un second consommateur — et
@@ -113,15 +150,28 @@ des dépendances (règle 2) pour une règle métier de bout en bout.
 
 ### 5. Le podium ne montre **que** des rangs exacts
 
-`Palmares.podium()` écarte les fourchettes : on ne remet pas une médaille à quatre archers 5ᵉ-8ᵉ, et
-afficher une fourchette sur un podium ferait chercher longtemps qui monte sur la boîte. Un podium
-peut donc être **partiel** — rangs 3-4 publiés seuls, la petite finale se tirant couramment avant la
-finale (le bronze avant l'or est l'usage en salle) — voire vide, et il le **dit** plutôt que de
-laisser un blanc (`P-3`).
+`Palmares.podium(categorie_id)` exige trois choses, et chacune ferme un trou trouvé en revue : le
+rang est **décerné par un match** (§3), il est **exact** — on ne remet pas une médaille à quatre
+archers 5ᵉ-8ᵉ — et il vaut **≤ 4**.
 
-Le podium se lit **par catégorie**, sur le rang de catégorie : c'est là que se remettent les
-médailles, et la restriction du podium scratch serait vide pour toute catégorie n'ayant personne
-dans les quatre premiers.
+Sans la première, le podium se remplissait sur les seuls scores du matin : tout rang de
+qualification étant exact par construction, l'écran public et le PDF décernaient « Or / Argent /
+Bronze » **avant le moindre duel**. Trois axes l'ont relevé indépendamment, et aucun test existant
+ne cassait en le corrigeant — le signe exact que le CA « rangs 1-4 issus de la finale/petite
+finale » n'avait jamais été mis à l'épreuve.
+
+⚠️ **Conséquence à connaître** : un tournoi qui ne dispute **aucun** duel n'a donc **pas** de
+podium. C'est ce que dit le CA, mot pour mot ; si le commanditaire veut qu'un tournoi purement
+qualificatif décerne quand même ses médailles, c'est le CA qu'il faut amender, pas le filtre.
+
+Un podium peut être **partiel** — rangs 3-4 publiés seuls, la petite finale se tirant couramment
+avant la finale (le bronze avant l'or est l'usage en salle) — voire vide, et il le **dit** plutôt
+que de laisser un blanc (`P-3`).
+
+Le podium se lit **par catégorie**, et le paramètre est **obligatoire** : c'est là que se remettent
+les médailles, la restriction du podium scratch serait vide pour toute catégorie n'ayant personne
+dans les quatre premiers, et une branche scratch que seuls ses tests tenaient aurait dérivé en
+silence (correctif de revue, axe C2).
 
 ### 6. `PALMARES` entre au catalogue des vues d'écran, sans migration
 
@@ -143,5 +193,10 @@ E07US008, `PALMARES` est la deuxième à en profiter. C'est le motif littéral d
   n'est câblé en production (`DETTE-028`) et la sémantique de `SourcePhase.par_issue_de_tour` n'est
   toujours pas tranchée (`DETTE-033`) : trancher **ici**, dans un canal d'affichage, referait
   exactement l'erreur qu'ADR-0065 §3 a refusé de commettre. La lacune est inscrite au registre.
+- **Couplage assumé** : `ServicePalmares` appelle `ServiceSaisieDuels.reconstruire`, comme le
+  routage (E04US018) et le pilotage (E12US002) — 3ᵉ occurrence d'un motif établi. Recoder la
+  reconstruction par ports seuls la ferait **diverger** de l'écran de duels : le palmarès
+  annoncerait un vainqueur que la saisie ne montre pas. On duplique une chaîne de ports, jamais une
+  règle métier.
 - **Coût** : un troisième consommateur de la reconstruction d'arbre non cachée sur route publique —
   `DETTE-031` élargie (poll de 30 s, plus long que les 20 s du routage, pour cette raison).

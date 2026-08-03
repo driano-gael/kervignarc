@@ -123,7 +123,10 @@
 > placement intégral, tous les rangs deviennent **exacts** et les fourchettes disparaissent d'
 > elles-mêmes.)*
 > *Note : **J2 est terminé** (14/14). Son compteur affichait `11/14` — périmé de deux crans depuis
-> E07US008 et E06US003, qui l'avaient laissé en l'état ; recompté et corrigé par E06US004.*
+> E07US008 et E06US003, qui l'avaient laissé en l'état ; recompté et corrigé par E06US004. **J3**
+> l'était aussi (`4/11` pour six lignes ✅) : un premier jet de ce commit s'était arrêté à la ligne
+> du dessus, ce que la revue a relevé — un recompte annoncé qui ne recompte qu'un jalon laisse le
+> voisin faux et fait repartir « reprend les US » sur une base fausse.*
 > *Note : le **fil équipes** est **débloqué** — `E13US002` (composer les équipes) peut être pris à tout
 > moment maintenant qu'`E13US001` a posé l'abstraction `Participant`.*
 > *`E12US004` (tracer un forfait) est **absorbée** par `E04US015` — voir ci-dessous.*
@@ -515,7 +518,7 @@
 | 71 | E06US003 | Barrage de tir pour places décisives | ✅ *(seuil dans la politique `tiebreak`, manches persistées, verdict recalculé, ADR-0066)* |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ✅ *(palmarès : fusion des rangs de phases, podiums par catégorie, export PDF, politique `aggregation`, ADR-0067)* |
 
-## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (4/11)**
+## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (6/11)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
