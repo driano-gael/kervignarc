@@ -160,7 +160,7 @@ surveiller si le ratio dépasse le tiers.
 | # | Action | Ce que ça rend | Coût |
 |---|---|---|---|
 | **1** | **Résorber `DETTE-028`** — le moteur consomme `phase.sources` **par rangs** | Le tournoi se déroule comme le schéma composé ; supprime la cause des défauts « palmarès plat ». ⚠️ **Correction du 03/08** : ne rend **pas** possible le podium par catégorie — `SourcePhase` sélectionne par **rangs** et `Phase` ne porte aucune catégorie (vérifié au cadrage d'E05US020). Les tableaux par catégorie sont une **US distincte**, avec son ADR | ✅ livrée (E05US020, [ADR-0068](adr/0068-le-moteur-consomme-les-prelevements-declares.md)) |
-| **2** | **Découper les 4 agrégateurs techniques** (`repositories.py`, les deux `erreurs.py`, `App.css`) **par feature** | Retire ~4 des 18 fichiers existants qu'une US doit modifier. Mécanique, sans changement de comportement, testable par la suite existante | 1 US de refactor, risque faible |
+| **2** | **Découper les 4 agrégateurs techniques** (`repositories.py`, les deux `erreurs.py`, `App.css`) **par feature** | Retire ~4 des 18 fichiers existants qu'une US doit modifier. Mécanique, sans changement de comportement, testable par la suite existante | 🔶 **3 sur 4 faits** (03/08/2026) : les deux `erreurs.py` en paquets thématiques (171 classes préservées, aucun import changé) et `App.css` allégé de 752 lignes (505 règles avant / 505 après). **`repositories.py` reste** — voir ci-dessous |
 | **3** | **Mémoïser `reconstruire`** par `(tournoi_id, version)`, invalidée sur `donnees_modifiees` | Résorbe `DETTE-031` | À ne faire **que** si une mesure le réclame — aucune mesure n'existe |
 | — | Documentation, tests, procédure de revue | — | **Ne rien changer** : mesurés stables et rentables |
 
@@ -170,6 +170,18 @@ prélèvements donne « les rangs 1 à 32 du classement scratch », jamais « le
 podium par catégorie demande un concept qui n'existe pas (une phase scopée à une catégorie), donc une
 **troisième action** : *US « tableaux par catégorie » + ADR*. Vérifier avant de promettre aurait évité
 de faire croire qu'une US en réglerait deux.
+
+### Pourquoi `repositories.py` n'a pas été découpé avec les trois autres
+
+Les deux `erreurs.py` et `App.css` sont des **listes** : des classes ou des règles indépendantes,
+qu'on déplace sans rien résoudre. `repositories.py` ne l'est pas — ses 3 378 lignes commencent par
+**840 lignes de préambule partagé** (imports SQLAlchemy et une trentaine de fonctions de mapping
+`_vers_categorie`, `_ages_categorie`…) que les 21 adapters se partagent de façon croisée.
+
+Le découper demande donc de résoudre, pour chaque module de thème, **quels helpers il utilise** —
+ce n'est plus mécanique, et un découpage approximatif y produirait des imports circulaires ou des
+helpers dupliqués. Il mérite sa propre passe, avec la même exigence de preuve (aucune ligne
+déplacée modifiée, suite verte, aucun symbole perdu).
 
 **Ordre recommandé : 1, puis 2.** L'action 1 traite ce qui casse des cas utilisateurs ; l'action 2
 traite ce qui ralentit. L'action 3 attend une mesure.

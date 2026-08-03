@@ -1,0 +1,150 @@
+/* Styles de cette feature, sortis d'`app/App.css` par l'action 2 de l'audit de
+   maintenabilité (03/08/2026). Le fichier unique de 3 524 lignes figurait parmi les onze
+   « passages obligés » mesurés : 8 des 12 dernières US devaient l'ouvrir.
+
+   ⚠️ Ré-importé depuis `App.css`, **à sa place d'origine** : le CSS est global et sa
+   cascade dépend de l'ordre. Les règles n'ont pas bougé d'un caractère. */
+
+/* --- Barrages de places décisives (E06US003, ADR-0066) --------------------------------------- */
+
+/* Le panneau ne s'affiche que s'il y a une égalité signalée ou un barrage en cours — le composant
+   se replie de lui-même sinon. Un tournoi qui ne barre pas (le défaut) n'en voit donc jamais rien.
+   Liseré **neutre** par défaut : la carte reste affichée tant qu'un barrage existe, y compris
+   acté — elle porte le seul chemin de correction d'un verdict faux. L'ambre est posé par
+   `--actif` ci-dessous, et seulement s'il reste quelque chose à faire (`DV-03`). */
+.carte--barrages {
+  border-left: 3px solid var(--border);
+}
+
+/* L'ambre ne s'allume que s'il **reste quelque chose à faire** (`DV-03`). Les barrages actés
+   restent affichés — ils portent le seul chemin de correction d'un verdict faux — mais un tournoi
+   terminé et réglé ne doit pas garder une alerte permanente. */
+.carte--barrages-actif {
+  border-left-color: var(--warn);
+}
+
+.barrages__egalites {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.barrages__egalite {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.barrage {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.barrage__titre {
+  margin: 0 0 8px;
+  color: var(--text-h);
+  font-size: 1rem;
+}
+
+.barrage__verdict {
+  margin: 0 0 8px;
+  color: var(--ok);
+  font-weight: 600;
+}
+
+/* Un groupe par égalité restante : ils se retirent séparément (les fusionner ferait passer un
+   tireur à 8 devant un tireur à 10 déjà départagé). Le cadre les rend visuellement distincts. */
+.barrage__groupe {
+  display: grid;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+/* Ergonomie tactile (règle 10) : les champs restent sur une ligne au large, s'empilent au doigt. */
+.barrage__tireur {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.barrage__nom {
+  min-width: 10ch;
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.barrage__tireur input[type='number'] {
+  width: 7ch;
+  min-height: 40px;
+}
+
+/* Portes de sortie d'un barrage (E06US003, correctif de revue) : corriger la dernière manche, ou
+   annuler un barrage annoncé par erreur. Sans elles, un barrage ouvert au mauvais rang restait
+   affiché indéfiniment — `clore` exige un barrage résolu. */
+.barrage__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Portée non-qualification (poule, Big Shoot Off) : discrète, elle situe le barrage sans voler la
+   vedette au rang disputé. */
+.barrage__portee {
+  color: var(--text);
+  font-weight: 400;
+}
+
+/* Départage manuel (poule, Big Shoot Off) — replié par défaut : sur un tournoi qui n'en fait pas,
+   ce n'est qu'une ligne discrète sur l'écran qu'on regarde toute la journée. */
+.barrages__manuel {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.barrages__manuel > summary {
+  cursor: pointer;
+  color: var(--text-h);
+}
+
+.barrages__manuel label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 12px;
+}
+
+/* Liste des archers à cocher : colonnes auto pour rester lisible à 120 inscrits. */
+.barrages__choix {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 4px 12px;
+}
+
+/* Réglage du barrage sur la ligne de la phase de qualification (E06US003). Il vit ici parce que la
+   qualification n'ouvre pas le formulaire d'édition complet — l'y mettre laissait le seuil
+   inatteignable, correctif de revue. */
+.phase__barrage {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.phase__barrage input {
+  width: 8ch;
+  min-height: 40px;
+}

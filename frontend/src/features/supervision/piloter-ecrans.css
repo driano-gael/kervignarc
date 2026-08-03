@@ -1,0 +1,36 @@
+/* Styles de cette feature, sortis d'`app/App.css` par l'action 2 de l'audit de
+   maintenabilité (03/08/2026). Le fichier unique de 3 524 lignes figurait parmi les onze
+   « passages obligés » mesurés : 8 des 12 dernières US devaient l'ouvrir.
+
+   ⚠️ Ré-importé depuis `App.css`, **à sa place d'origine** : le CSS est global et sa
+   cascade dépend de l'ordre. Les règles n'ont pas bougé d'un caractère. */
+
+/* --- Pilotage des écrans depuis la console de supervision (E07US004) --- */
+.ecrans__ligne-prise {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Le rappel « état forcé sans échéance » : le seul cas où la console doit **alarmer**, parce que
+   personne d'autre ne le fera (CA « jamais un état forcé qu'on oublie »). */
+.ecrans__rappel {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.ecrans__deroule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ecrans__etape {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 13px;
+}

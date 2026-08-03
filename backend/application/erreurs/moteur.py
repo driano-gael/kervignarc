@@ -1,0 +1,206 @@
+"""Erreurs du **moteur de phases** — comment le tournoi se déroule : l'enchaînement des
+phases, ce que chacune prélève à la précédente, la construction de l'arbre de duels et
+les politiques injectées.
+
+Découpé de l'ancien module plat par l'action 2 de
+[l'audit de maintenabilité](../../../docs/audit-maintenabilite.md) (E00US018) : 77 classes
+dans un seul fichier faisaient de lui un **passage obligé** de presque chaque US.
+Le contenu des classes n'a pas bougé d'un caractère."""
+
+from __future__ import annotations
+
+from application.erreurs.base import ApplicationError
+
+
+class TournoiIntrouvable(ApplicationError):
+    """Aucun tournoi ne correspond à l'identifiant demandé."""
+
+    code = "tournoi_introuvable"
+
+
+class TransitionStatutInvalide(ApplicationError):
+    """Transition de cycle de vie impossible depuis l'état courant (E01US002, E01US017) → 409.
+
+    Le graphe des sept statuts ([ADR-0026] §2) n'autorise qu'un sous-ensemble d'arêtes : passer
+    `prêt` un tournoi déjà démarré, reprendre un tournoi qui n'est pas en pause, archiver un
+    tournoi non terminé, annuler un tournoi terminé… — tout le reste est refusé ici. L'agrégat ne
+    porte que la valeur ; c'est le service qui arbitre l'enchaînement (ADR-0007/0026 §4).
+    """
+
+    code = "transition_statut_invalide"
+
+
+class DepartIntrouvable(ApplicationError):
+    """Aucun départ (créneau) ne correspond à l'identifiant dans ce tournoi (E02US004) → 404.
+
+    Couvre l'identifiant inconnu **et** le départ d'un **autre** tournoi : du point de vue du
+    tournoi de l'URL, un créneau qui ne lui appartient pas n'existe pas davantage qu'un identifiant
+    inventé — même parti que `CategorieHorsTournoi`, distinguer les deux apprendrait au client ce
+    qui vit dans les tournois voisins.
+    """
+
+    code = "depart_introuvable"
+
+
+class InscriptionIntrouvable(ApplicationError):
+    """Aucune inscription ne correspond à l'identifiant demandé (E02US009) → 404."""
+
+    code = "inscription_introuvable"
+
+
+class DeplacementInvalide(ApplicationError):
+    """Ajustement de placement refusé : le déplacement/échange violerait une contrainte (E03US004).
+
+    **Un refus, pas un signalement** (famille de `DejaInscrit`/`DepartComplet`) → 409. Couvre le
+    déplacement qui déborde un budget de cible (capacité, espace, partage de carton, **hauteur** —
+    ADR-0022/0024), l'échange dont l'un des deux tireurs ne tient pas à la place de l'autre (refus
+    **en bloc**, état inchangé), le dépôt depuis la réserve sur une case **occupée** (rien à
+    permuter en retour), une cible/position **inexistante**, ou un archer **sans blason** (fraction
+    inconnue, non plaçable). Aucun drapeau ne le lève : l'admin corrige son geste. Le message dit
+    **quelle** contrainte bloque, sans détail interne (règle 5).
+    """
+
+    code = "deplacement_invalide"
+
+
+class ReplacementNonConfirme(ApplicationError):
+    """Régénération **massive** du plan non confirmée (E12US007, [ADR-0040]) → 409.
+
+    **Un signalement chiffré, pas un refus** — famille d'`ArcherEngage`/`DepartAvecInscriptions`
+    (ADR-0016/0018) : régénérer le plan écrase le placement de tous les archers, et **des scores
+    existent déjà** (niveau `MASSIF`). Le geste demande donc une confirmation explicite
+    (`regenerer(..., confirme=True)`) ; côté UI, il faut **taper un mot** (`REPLACER`) — friction
+    humaine impossible par réflexe. Ici, à la frontière API, le serveur n'exige que le booléen : il
+    ne connaît pas la copie d'UI (couplage évité, ADR-0040 §4).
+
+    À la **différence** des confirmations aveugles de la famille (DETTE-007), le décompte est
+    **recalculé au commit**, jamais cru sur parole : `details` porte les chiffres frais
+    (`archers_deplaces`, `cibles_avec_scores`) — première utilisation du canal `details` du format
+    `{code, message, details?}` (règle 5). L'action ne rejoint donc pas DETTE-007.
+    """
+
+    code = "replacement_non_confirme"
+
+    def __init__(self, message: str, *, archers_deplaces: int, cibles_avec_scores: int) -> None:
+        super().__init__(message)
+        # `details` est lu tel quel par le gestionnaire `_sur_erreur_application` (frontière API) et
+        # sérialisé dans la réponse — le client y retrouve l'impact chiffré sans le reconstituer.
+        self.details = {
+            "archers_deplaces": archers_deplaces,
+            "cibles_avec_scores": cibles_avec_scores,
+        }
+
+
+class FormatIntrouvable(ApplicationError):
+    """Aucun format de tournoi ne correspond à l'identifiant demandé (E01US023) → 404."""
+
+    code = "format_introuvable"
+
+
+class GabaritDuTournoiAbsent(ApplicationError):
+    """Ajustement (E01US008) ou placement (E03US001) demandé alors qu'aucun gabarit n'est appliqué
+    au tournoi → 404.
+
+    Il faut d'abord **appliquer** un gabarit modèle au tournoi : sans cibles, il n'y a rien à
+    ajuster ni où placer les archers.
+    """
+
+    code = "gabarit_du_tournoi_absent"
+
+
+class PhaseQualificationAbsente(ApplicationError):
+    """Grain de validation demandé alors que la qualification n'existe pas encore (E01US015) → 404.
+
+    La phase de qualification naît avec son **barème** (E01US009) : il faut d'abord le définir.
+    """
+
+    code = "phase_qualification_absente"
+
+
+class PhaseIntrouvable(ApplicationError):
+    """Aucune phase ne correspond à l'identifiant dans ce tournoi (E05US001) → 404.
+
+    Couvre l'identifiant inconnu **et** la phase d'un **autre** tournoi : du point de vue du tournoi
+    de l'URL, une phase qui ne lui appartient pas n'existe pas davantage qu'un identifiant inventé —
+    même parti que `DepartIntrouvable` / `ScoreurIntrouvable`.
+    """
+
+    code = "phase_introuvable"
+
+
+class PhasePasUnTableau(ApplicationError):
+    """La phase existe mais n'est **pas** une élimination directe (E03US009) → 409.
+
+    Le plan de duels (placer les duellistes côte à côte) n'a de sens que pour une phase de
+    **tableau** (`TypePhase.ELIMINATION_DIRECTE`) : la demander sur une qualification ou un barrage
+    est un conflit d'état, pas un 404 (la phase existe bien) — même famille que
+    `TransitionStatutInvalide`.
+    """
+
+    code = "phase_pas_un_tableau"
+
+
+class PhaseSourceReferencee(ApplicationError):
+    """Suppression refusée : la phase est la **source** d'une autre phase (E05US001) → 409.
+
+    **Un refus, pas un signalement** (famille de `ClubReference`/`BlasonReference`) : retirer une
+    phase dont une autre tire ses participants romprait le peuplement de cette dernière. Il faut
+    d'abord réaffecter ou retirer la phase consommatrice. Se distingue de la cohérence de séquence
+    (levée en 422 à la construction) : ici, c'est un **conflit d'état** entre phases existantes.
+    """
+
+    code = "phase_source_referencee"
+
+
+class PhaseQualificationNonSupprimable(ApplicationError):
+    """Suppression refusée : la phase de qualification se gère via le barème (E05US001) → 409.
+
+    La qualification naît et vit avec le **barème** (ADR-0011) ; la retirer par l'écran des phases
+    l'**orphelinerait** (le barème n'aurait plus de phase porteuse) et casserait la saisie. Garde en
+    profondeur : le front masque déjà l'action (`gereeAilleurs`), mais l'API ne doit pas l'ouvrir
+    par une route directe (revue E05US001, axe D).
+    """
+
+    code = "phase_qualification_non_supprimable"
+
+
+class ReordonnancementPhasesInvalide(ApplicationError):
+    """Réordonnancement refusé : la liste fournie ne recouvre pas exactement les phases du tournoi
+    (E05US001) → 409.
+
+    Réordonner, c'est **permuter l'ensemble** des phases : la liste d'identifiants doit contenir
+    chaque phase du tournoi une et une seule fois. Un identifiant manquant, en trop, en double ou
+    étranger au tournoi rend l'opération ambiguë — refus net plutôt qu'un ordre partiel deviné.
+    """
+
+    code = "reordonnancement_phases_invalide"
+
+
+class EffectifSimulationInvalide(ApplicationError):
+    """L'effectif demandé pour simuler un format sort des bornes de service (E01US024) → 400.
+
+    Ce n'est **ni** une règle métier (le domaine ne connaît pas de nombre maximal d'archers) **ni**
+    un conflit d'état : c'est une **borne de service**, comme le refus de matérialiser
+    `frozenset(range(…))` dans `SourcePhase.intervalle`. Simuler joue le tournoi entier — volées
+    puis duels — sur le thread de la requête, et l'effectif vient du client : sans plafond, une
+    valeur absurde immobiliserait le serveur. En dessous de 2, il n'y a pas de tournoi à jouer.
+
+    Seule erreur applicative en **400** : les autres sont 401/403/404/409 (cf. `api/erreurs.py`).
+    """
+
+    code = "effectif_simulation_invalide"
+
+
+class FormatNonSimulable(ApplicationError):
+    """Le format s'applique à un tournoi, mais le rejeu ne sait pas le dérouler (E01US024) → 400.
+
+    Aujourd'hui, un seul motif : **aucune phase de qualification**, donc aucun barème d'où le bot
+    tirerait des volées. Ce n'est **pas** une incohérence du format — `ServiceFormats.appliquer`
+    l'accepte —, c'est une limite du substrat de simulation.
+
+    Même famille que `EffectifSimulationInvalide` (**400**) : la requête est impossible *en soi*, et
+    aucun changement d'état ne la rendrait acceptable. Distincte de `PhaseQualificationAbsente`
+    (404), qui parle d'un **tournoi** réel : ici il n'y en a aucun, et ce 404 était un contresens.
+    """
+
+    code = "format_non_simulable"
