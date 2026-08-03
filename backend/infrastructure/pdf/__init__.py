@@ -10,9 +10,11 @@ from __future__ import annotations
 from infrastructure.pdf.documents_salle import GenerateurDocumentsSallePdf
 from infrastructure.pdf.feuille_de_marque import GenerateurFeuilleDeMarquePdf
 from infrastructure.pdf.listes_impression import GenerateurListesImpressionPdf
+from infrastructure.pdf.palmares import GenerateurPalmaresPdf
 
 __all__ = [
     "GenerateurDocumentsSallePdf",
     "GenerateurFeuilleDeMarquePdf",
     "GenerateurListesImpressionPdf",
+    "GenerateurPalmaresPdf",
 ]

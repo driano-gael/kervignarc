@@ -45,7 +45,14 @@ from domain.phase import (
 )
 from domain.politiques import ContexteRoutage, VersRepechage
 from domain.ports import ArcherRepository, PhaseRepository
-from domain.tableau import Match, PerdantDe, Tableau, VainqueurDe, libelle_tour
+from domain.tableau import (
+    Match,
+    PerdantDe,
+    Tableau,
+    VainqueurDe,
+    fourchette_de_rangs,
+    libelle_tour,
+)
 from domain.tournoi import TournoiId
 
 # Les phrases que le panneau affiche quand l'information n'existe pas encore. Elles vivent ici (et
@@ -522,7 +529,7 @@ class ServiceRoutage:
                 motif=REPECHAGE_SANS_DESTINATION if destination is None else None,
             )
         rang = grille.rangs.get(moi)
-        fourchette = _fourchette_de_rangs(rang, dernier if a_perdu else None, tableau.effectif)
+        fourchette = fourchette_de_rangs(rang, dernier if a_perdu else None, tableau.effectif)
         return RoutageArcher(
             archer_id=archer_id,
             nom=nom,
@@ -704,43 +711,9 @@ def _est_repeche(tableau: Tableau, match: Match) -> bool:
     return isinstance(destination, VersRepechage)
 
 
-def _fourchette_de_rangs(
-    rang: int | None, perdu: Match | None, effectif: int
-) -> tuple[int, int] | None:
-    """Les rangs que cet archer a **acquis** — exacts si connus, sinon la fourchette *ex æquo*.
-
-    Trois cas, du plus précis au plus honnête :
-
-    1. **rang exact connu** (un match terminal l'a décerné) ⇒ la fourchette s'y referme ;
-    2. **battu sans rang exact** ⇒ la *moitié basse* de la plage du match perdu (*Règle R*,
-       `Plage.moitie_basse`), **écrêtée à l'effectif réel**. Le battu d'un quart d'un tableau de 8
-       est 5ᵉ-8ᵉ : aucun match n'a été joué pour départager les quatre battus des quarts, donc
-       l'*ex æquo* n'est pas une approximation, c'est **le** résultat ;
-    3. **rien d'exploitable** ⇒ `None`, et l'appelant dira que le rang viendra.
-
-    ⚠️ **L'écrêtage à l'effectif n'est pas cosmétique** (correctif de revue, axes C1 et adversarial,
-    tous deux preuve à l'appui). Une plage est bornée par la **taille** du tableau — une puissance
-    de 2 — pas par le nombre d'archers : sur l'oracle 120 (taille 128), un battu du 1ᵉʳ tour sortait
-    « 65ᵉ-**128**ᵉ » alors que les rangs 121 à 128 **n'existent pas**. Le défaut était invisible aux
-    tests parce que 4 et 8 archers sont les deux seuls effectifs du décor où `taille == effectif`.
-    Seule la borne **haute** a besoin de l'écrêtage : un occupant réel d'un match réel a toujours
-    `basse.debut <= effectif`, `_a_classer` élaguant les sous-plages sans rang atteignable.
-
-    Ce n'est **pas** le classement officiel d'E06US004 : c'est ce que *ce tableau* a décidé, sans
-    agrégation inter-phases ni départage FFTA. La fourchette naît de la plage que le domaine porte
-    déjà — aucune règle de classement n'est réinventée ici, ce qui est précisément la raison de la
-    lire là plutôt que de la recalculer.
-    """
-    if rang is not None:
-        return (rang, rang)
-    if perdu is None or perdu.plage is None or perdu.plage.largeur < 4:
-        # `largeur < 4` plutôt que `est_terminale` (largeur 2) : c'est la borne exacte que
-        # `Plage._demi_largeur` refuse. Une garde plus étroite que ce qu'elle protège finit par
-        # laisser passer le cas qu'elle prétendait couvrir — et une plage terminale a de toute
-        # façon décerné son rang par `classement()`, donc on n'arrive pas ici sans `rang`.
-        return None
-    basse = perdu.plage.moitie_basse()
-    return (basse.debut, min(basse.fin, effectif))
+# `_fourchette_de_rangs` a **remonté dans le domaine** en E06US004 (`domain.tableau`) : le
+# palmarès en est le second consommateur, et deux services s'important une fonction privée
+# l'un de l'autre auraient inversé le sens des dépendances (règle 2) pour une règle métier.
 
 
 def _archers_du_tableau(tableau: Tableau) -> tuple[int, ...]:

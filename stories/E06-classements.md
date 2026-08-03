@@ -102,7 +102,24 @@
 ### E06US004 — Podium des duels & agrégation des rangs
 *En tant que* public, *je veux* voir le podium et un classement de duels cohérent, *afin de* connaître les vainqueurs et le rang de chacun.
 - **CA — podium (ex-004)** : rangs 1-4 issus de la finale/petite finale (E05US005) ; affiché et exportable.
+  Un podium se lit **par catégorie** (c'est là que se remettent les médailles) et n'affiche que des
+  rangs **décernés** — il peut donc être partiel (le bronze se tire couramment avant l'or) ou vide,
+  et le **dit** plutôt que de laisser un blanc.
 - **CA — agrégation (ex-005)** : rangs des différentes phases fusionnés en un classement cohérent par catégorie.
+  Avoir disputé le tableau passe avant tout : le battu du 1ᵉʳ tour devance tout non-qualifié, quel
+  qu'ait été son rang de qualification. Les rangs sont renumérotés **1→N sans trou**.
+- **CA — départage des sortis au même tour** *(arbitrage du 03/08/2026, reversé ici)* : deux archers
+  sortis au même tour n'ont été départagés par **aucun match** (les quatre battus des quarts d'un
+  tableau tronqué au podium sont 5ᵉ-8ᵉ). C'est une **politique injectable** (famille `aggregation`,
+  7ᵉ du catalogue ADR-0004) qui décide, au **défaut** `par_qualification` — l'usage World Archery,
+  qui donne un classement sans ex æquo. `ex_aequo` publie la fourchette telle quelle.
+  ⚠️ Le départage ne s'applique **qu'à ce qui est joué** : deux finalistes partagent « 1ᵉʳ-2ᵉ »
+  jusqu'à ce que la finale tranche — aucune politique ne décerne l'or à la place du tir.
+- **Notes** : périmètre arbitré au cadrage du 03/08/2026 — **moteur + API + vue publique + export
+  PDF**. Portée réelle : qualification + phases à **tableau** ; les moteurs `poule`, `suisse`,
+  `colline`, `big_shoot_off` existent mais aucun service ne les déroule (`DETTE-028`), ils entreront
+  sans toucher au domaine. Une phase de **consolation** serait mal classée (`DETTE-034`), impact nul
+  tant qu'aucun repêchage n'est câblé. Voir [ADR-0067](../docs/adr/0067-palmares-agregation-des-rangs-de-phases.md).
 - **Absorbe** : ex-E06US005. **Dépend de** : E05US005 · **Jalon** : J2
 
 ### E06US006 — Classement intégral 1→N & profondeur configurable

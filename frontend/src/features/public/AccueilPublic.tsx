@@ -17,6 +17,7 @@ import { useState } from 'react'
 import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import type { Tournoi } from '../competition/api'
 import { VueClassement } from '../competition/VueClassement'
+import { VuePalmares } from '../palmares/VuePalmares'
 import { PlanCiblesPublic } from '../placement/PlanCiblesPublic'
 import { VueAffectations } from '../routage/VueAffectations'
 import { VueSuivi } from '../suivi/VueSuivi'
@@ -30,12 +31,18 @@ import { GestionTournois } from '../tournois/Tournois'
 // « Affectations » (E07US008) sert deux publics d'un coup : l'archer qui cherche sa butte et la
 // **table de l'organisation**, qui vérifie le pas de tir — c'est la même lecture, et le CA n'en
 // demandait qu'une. On la place après le suivi (« mes archers » reste la porte d'entrée, `D-09`).
-type Vue = 'suivi' | 'affectations' | 'classement' | 'plan'
+//
+// « Palmarès » (E06US004) est le **classement final** — podiums en tête. Il vient après
+// « Classement » (celui de la qualification) et non à sa place : les deux se consultent, et à des
+// moments différents de la journée. On les distingue par le libellé plutôt que de renommer l'un des
+// deux, qui ferait chercher longtemps celui qu'on connaissait.
+type Vue = 'suivi' | 'affectations' | 'classement' | 'palmares' | 'plan'
 
 const VUES: { id: Vue; libelle: string }[] = [
   { id: 'suivi', libelle: 'Suivi' },
   { id: 'affectations', libelle: 'Affectations' },
   { id: 'classement', libelle: 'Classement' },
+  { id: 'palmares', libelle: 'Palmarès' },
   { id: 'plan', libelle: 'Plan de cibles' },
 ]
 
@@ -96,6 +103,8 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
         <VueAffectations tournoiId={tournoi.id} />
       ) : vue === 'classement' ? (
         <VueClassement tournoiId={tournoi.id} admin={false} />
+      ) : vue === 'palmares' ? (
+        <VuePalmares tournoiId={tournoi.id} />
       ) : (
         <PlanCiblesPublic tournoiId={tournoi.id} />
       )}

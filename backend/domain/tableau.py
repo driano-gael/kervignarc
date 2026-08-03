@@ -276,11 +276,13 @@ class Tableau:
 
         ⚠️ **Un battu non classé ici n'est pas sans rang pour autant.** La *fourchette* qu'il a
         acquise (« 5ᵉ-8ᵉ » : la moitié basse de la plage du match perdu, écrêtée à l'effectif) se
-        lit dans `application.routage._fourchette_de_rangs`
+        lit dans `fourchette_de_rangs` / `positions_acquises`
         ([ADR-0065](../../docs/adr/0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md) §1). Elle
         n'est **pas** dupliquée ici : elle ne fait que relire `Plage.moitie_basse`, que ce module
-        porte déjà. Renvoi posé à la demande de la revue, pour qu'E06US004 — qui devra classer, elle
-        aussi — tombe dessus avant de la réécrire.
+        porte déjà. Le renvoi avait été posé à la demande de la revue d'E07US008 pour qu'E06US004
+        tombe dessus avant de la réécrire ; c'est ce qui est arrivé, et la fonction a **remonté de
+        `application.routage` vers ce module** à cette occasion — deux consommateurs valaient mieux
+        qu'un import de fonction privée entre services.
         """
         places: list[Place] = []
         for m in self.matchs:
@@ -305,6 +307,131 @@ class Tableau:
         premier jet de cette US, et que la revue a rattrapée.
         """
         return tuple(place for place in self.classement() if place.rang <= 4)
+
+    def positions_acquises(self) -> dict[Participant, PositionAcquise]:
+        """Ce que ce tableau a décidé **pour chacun** : `participant → position acquise`.
+
+        La lecture dont vit le palmarès (E06US004) — et le pendant collectif de `classement()`, qui
+        ne rend que les rangs **exacts**. Trois cas, du plus précis au plus honnête :
+
+        1. **rang exact** décerné par un match terminal ⇒ la fourchette s'y referme (`(3, 3)`) ;
+        2. **battu sans rang exact** ⇒ la moitié basse de la plage du match perdu (*Règle R*,
+           ADR-0065), écrêtée à l'effectif : le battu d'un quart d'un tableau de 8 est `(5, 8)` ;
+        3. **encore en lice** ⇒ la plage de son match en cours : un demi-finaliste est `(1, 4)`.
+
+        Le cas 3 n'est pas une coquetterie. Le palmarès se consulte **pendant** le tournoi (l'écran
+        public le rafraîchit en direct) : sans lui, un demi-finaliste n'aurait aucune position et
+        tomberait derrière les éliminés qu'il vient de battre. Il dit exactement ce qui est acquis
+        — « au mieux 1ᵉʳ, au pire 4ᵉ » — et se referme match après match.
+
+        Un participant **absent** du tableau n'a pas d'entrée (plutôt qu'une entrée vide) : c'est
+        au palmarès de le classer sur la qualification, et une entrée le ferait passer pour sorti.
+
+        ⚠️ `PositionAcquise.en_lice` **distingue les deux fourchettes**, et cette distinction n'est
+        pas décorative : `[1..2]` porté par deux finalistes ne veut pas dire la même chose que
+        `[5..8]` porté par quatre battus. Les seconds sont *ex æquo* — plus aucun match ne les
+        départagera, une politique doit trancher ; les premiers vont **tirer la finale**. Sans le
+        drapeau, le palmarès départageait les finalistes sur leur rang de qualification et
+        décernait l'or **avant** que la finale ne soit tirée (défaut relevé par le test de service
+        d'E06US004).
+        """
+        rangs = {place.participant: place.rang for place in self.classement()}
+        acquises: dict[Participant, PositionAcquise] = {}
+        for participant in self._occupants():
+            siens = [m for m in self.matchs if participant in (m.haut, m.bas)]
+            en_cours = next((m for m in siens if m.vainqueur is None), None)
+            if en_cours is not None:
+                if en_cours.plage is not None:
+                    acquises[participant] = PositionAcquise(
+                        rang_min=en_cours.plage.debut,
+                        rang_max=min(en_cours.plage.fin, self.effectif),
+                        en_lice=True,
+                    )
+                continue
+            dernier = max(siens, key=lambda m: m.tour)
+            a_perdu = dernier.vainqueur != participant
+            fourchette = fourchette_de_rangs(
+                rangs.get(participant), dernier if a_perdu else None, self.effectif
+            )
+            if fourchette is not None:
+                acquises[participant] = PositionAcquise(
+                    rang_min=fourchette[0], rang_max=fourchette[1], en_lice=False
+                )
+        return acquises
+
+    def _occupants(self) -> tuple[Participant, ...]:
+        """Les participants qui occupent au moins un camp, **sans doublon**, ordre des matchs."""
+        vus: dict[Participant, None] = {}
+        for match in self.matchs:
+            for camp in (match.haut, match.bas):
+                if camp is not None:
+                    vus.setdefault(camp, None)
+        return tuple(vus)
+
+
+@dataclass(frozen=True)
+class PositionAcquise:
+    """Ce qu'un participant a acquis dans un tableau : une fourchette de rangs, et son statut.
+
+    `rang_min == rang_max` : le rang est **décerné**. Sinon la fourchette dit ce qui reste ouvert,
+    et `en_lice` dit **pourquoi** :
+
+    - `en_lice=True` — l'archer a un match devant lui : `[1..4]` en demi-finale. Ce qui reste
+      ouvert le sera **par le tir** ;
+    - `en_lice=False` — l'archer est sorti sans que rien ne le départage de ses compagnons de
+      plage : `[5..8]` pour les quatre battus des quarts. Ce qui reste ouvert ne se fermera
+      **jamais** au tir, et c'est là — et seulement là — qu'une politique `aggregation` intervient.
+
+    Deux fourchettes de forme identique, deux sens opposés : les confondre revient à décerner l'or
+    au mieux qualifié avant la finale.
+    """
+
+    rang_min: int
+    rang_max: int
+    en_lice: bool
+
+
+def fourchette_de_rangs(
+    rang: int | None, perdu: Match | None, effectif: int
+) -> tuple[int, int] | None:
+    """Les rangs qu'un participant a **acquis** — exacts si connus, sinon la fourchette *ex æquo*.
+
+    Trois cas, du plus précis au plus honnête :
+
+    1. **rang exact connu** (un match terminal l'a décerné) ⇒ la fourchette s'y referme ;
+    2. **battu sans rang exact** ⇒ la *moitié basse* de la plage du match perdu (*Règle R*,
+       `Plage.moitie_basse`), **écrêtée à l'effectif réel**. Le battu d'un quart d'un tableau de 8
+       est 5ᵉ-8ᵉ : aucun match n'a été joué pour départager les quatre battus des quarts, donc
+       l'*ex æquo* n'est pas une approximation, c'est **le** résultat ;
+    3. **rien d'exploitable** ⇒ `None`, et l'appelant dira que le rang viendra.
+
+    ⚠️ **L'écrêtage à l'effectif n'est pas cosmétique** (correctif de revue d'E07US008, axes C1 et
+    adversarial, tous deux preuve à l'appui). Une plage est bornée par la **taille** du tableau —
+    une puissance de 2 — pas par le nombre d'archers : sur l'oracle 120 (taille 128), un battu du
+    1ᵉʳ tour sortait « 65ᵉ-**128**ᵉ » alors que les rangs 121 à 128 **n'existent pas**. Le défaut
+    était invisible aux tests parce que 4 et 8 archers sont les deux seuls effectifs du décor où
+    `taille == effectif`. Seule la borne **haute** a besoin de l'écrêtage : un occupant réel d'un
+    match réel a toujours `basse.debut <= effectif`, `_a_classer` élaguant les sous-plages sans
+    rang atteignable.
+
+    **Vit dans le domaine depuis E06US004**, d'où elle sort la *Règle R* qu'elle relit ; E07US008
+    l'avait écrite dans `application/routage.py` faute d'un second consommateur. Le palmarès en est
+    le second : deux services important une fonction privée l'un de l'autre auraient inversé le
+    sens des dépendances (règle 2) pour une règle qui est de bout en bout métier.
+
+    Ce n'est pas le **palmarès** pour autant : c'est ce que *ce tableau* a décidé, sans agrégation
+    inter-phases ni départage des ex æquo — c'est `domain/palmares.py` qui les fusionne.
+    """
+    if rang is not None:
+        return (rang, rang)
+    if perdu is None or perdu.plage is None or perdu.plage.largeur < 4:
+        # `largeur < 4` plutôt que `est_terminale` (largeur 2) : c'est la borne exacte que
+        # `Plage._demi_largeur` refuse. Une garde plus étroite que ce qu'elle protège finit par
+        # laisser passer le cas qu'elle prétendait couvrir — et une plage terminale a de toute
+        # façon décerné son rang par `classement()`, donc on n'arrive pas ici sans `rang`.
+        return None
+    basse = perdu.plage.moitie_basse()
+    return (basse.debut, min(basse.fin, effectif))
 
 
 # --- construction ------------------------------------------------------------------------------

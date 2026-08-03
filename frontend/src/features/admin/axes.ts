@@ -71,6 +71,10 @@ export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>,
   'feu-vert': 'pilotage',
   completude: 'pilotage',
   classement: 'pilotage',
+  // Le palmarès se **consulte** pendant que le tournoi tourne (les podiums se remplissent au fil
+  // des duels) : pilotage, comme le classement en direct — et non gestion, où il ne serait
+  // regardé qu'une fois tout fini.
+  palmares: 'pilotage',
   postes: 'pilotage',
   scoreurs: 'pilotage',
   plan: 'pilotage',
@@ -116,6 +120,7 @@ export const BESOIN_TOURNOI: Record<Exclude<DestinationAdminId, 'tournoi'>, bool
   'feu-vert': true,
   completude: true,
   classement: true,
+  palmares: true,
   postes: true,
   scoreurs: true,
   plan: true,

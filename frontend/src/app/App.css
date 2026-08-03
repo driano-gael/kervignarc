@@ -3460,3 +3460,65 @@ button:disabled {
   width: 8ch;
   min-height: 40px;
 }
+
+/* --- Palmarès (E06US004) : podiums par catégorie puis classement final. ------------------------
+   Le bloc podium reprend la carte du podium de duels (`.duels-podium`) plutôt que d'inventer un
+   second style : c'est la même chose, vue d'un autre écran. */
+.palmares-barre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.palmares-section {
+  margin: 14px 0 6px;
+  font-size: 15px;
+  color: var(--text-h);
+}
+
+.palmares-podium {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.palmares-podium__places {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.palmares-podium__place {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.palmares-podium__rang {
+  min-width: 4ch;
+  font-weight: 600;
+}
+
+.palmares-podium__nom {
+  flex: 1;
+}
+
+/* Le métal, en retrait : il aide à lire un podium projeté sans voler la vedette au nom. */
+.palmares-podium__medaille {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* Le complément d'un rang (« Qualification », « À départager »). Discret : sur 120 lignes, il ne
+   doit pas concurrencer le rang lui-même — mais il doit rester lisible, c'est lui qui empêche de
+   prendre un non-qualifié pour un éliminé. */
+.palmares-detail {
+  font-size: 13px;
+  color: var(--text);
+}

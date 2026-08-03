@@ -59,6 +59,7 @@ import { Completude } from '../completude/Completude'
 import type { Tournoi } from '../competition/api'
 import { useTournois } from '../competition/hooks'
 import { VueClassement } from '../competition/VueClassement'
+import { VuePalmares } from '../palmares/VuePalmares'
 import { Departs } from '../departs/Departs'
 import { Duels } from '../duels/Duels'
 import { Ecrans } from '../ecrans/Ecrans'
@@ -388,6 +389,14 @@ function Coquille() {
       id: 'classement',
       libelle: 'Classement en direct',
       rendu: () => courant && <VueClassement tournoiId={courant.id} admin />,
+    },
+    {
+      id: 'palmares',
+      libelle: 'Palmarès',
+      // Le classement **final** (E06US004) : podiums par catégorie puis classement complet, et
+      // l'export PDF qu'on affiche au mur. Distinct de « Classement en direct », qui est celui de
+      // la qualification — l'organisateur consulte les deux, à deux moments de la journée.
+      rendu: () => courant && <VuePalmares tournoiId={courant.id} />,
     },
     {
       id: 'exports',

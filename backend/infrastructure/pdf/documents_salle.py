@@ -31,6 +31,7 @@ from reportlab.platypus import Flowable, PageBreak, Paragraph, SimpleDocTemplate
 
 from domain.documents_salle import CartesScoreurs, EtiquettesCibles
 from infrastructure.erreurs import InfrastructureError
+from infrastructure.pdf._commun import echapper as _echapper
 
 _MARGE = 15 * mm
 _COTE_QR = 90 * mm
@@ -188,8 +189,3 @@ def _dessin_qr(url: str, cote: float) -> Drawing:
     dessin.add(widget)
     dessin.hAlign = "CENTER"
     return dessin
-
-
-def _echapper(texte: str) -> str:
-    """Neutralise les caractères spéciaux du mini-HTML des `Paragraph` ReportLab (`&`, `<`, `>`)."""
-    return texte.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

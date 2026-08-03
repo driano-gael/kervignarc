@@ -23,6 +23,7 @@ import { VueClassement } from '../competition/VueClassement'
 import { LIBELLE_VUE, type VueEcran } from '../ecrans/api'
 import { useAffichageEcran } from '../ecrans/hooks'
 import { PlanCiblesDeSalle } from '../placement/PlanCiblesPublic'
+import { VuePalmares } from '../palmares/VuePalmares'
 import { VueAffectations } from '../routage/VueAffectations'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { useSuiviDeroule } from '../suivi-deroule/hooks'
@@ -117,6 +118,11 @@ function VueDeSalle({ vue, tournoiId }: { vue: VueEcran; tournoiId: number }) {
     // qu'une question de boutons inutiles — c'est ce qui fixe la lecture sur l'ordre du **pas de
     // tir**, le seul qui se lise de loin quand on cherche sa butte (`Q-UX2`).
     return <VueAffectations tournoiId={tournoiId} interactif={false} />
+  }
+  if (vue === 'palmares') {
+    // `interactif={false}` : ni filtre ni bouton d'export sur un écran projeté (CA E07US004). La
+    // vue garde ses podiums par catégorie — c'est ce qu'on vient lire à 17 h.
+    return <VuePalmares tournoiId={tournoiId} interactif={false} />
   }
   // Vue **inconnue** : un SPA resté ouvert pendant une montée de version peut recevoir une valeur
   // que ce bundle ne connaît pas. On le **dit** plutôt que de retomber en silence sur une autre vue

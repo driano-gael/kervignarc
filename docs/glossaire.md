@@ -93,6 +93,8 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 | **Anomalie** | `Anomalie`, `Gravite` | Un défaut de composition **rendu** au lieu d'être levé, **localisé** sur la phase concernée. Deux gravités : **bloquante** (fausse à tout effectif → interdit d'appliquer le format) et **avertissement** (fausse seulement à *cet* effectif → le dessin le montre, l'application reste permise). |
 | **Flux** (de déroulé) | `Flux` | Une flèche du schéma : un **prélèvement** vu comme un mouvement d'une phase vers une autre, avec son compte résolu. Le même objet est la *sortie* du bloc amont et l'*entrée* du bloc aval. |
 | **Classement** | `Classement` | Ordre des archers ; peut être intégral (1→N) ou partiel. |
+| **Palmarès** | `Palmares` (`domain/palmares.py`) | Le **classement final** du tournoi (E06US004, [ADR-0067](adr/0067-palmares-agregation-des-rangs-de-phases.md)) : les rangs décernés par les phases **fusionnés** avec ceux de la qualification, un rang par archer, scratch **et** par catégorie, renumérotés 1→N sans trou. Les rangs sont des **fourchettes** qui se referment au fil des duels. ⚠️ **Trois mots à ne pas confondre** : le **Classement** est celui de la *qualification* (qui a le mieux tiré), le **Palmarès** celui du *tournoi* (qui a gagné), le **Podium** la restriction aux rangs 1-4 **décernés par un match** d'une catégorie. |
+| **Rang décerné** | `LignePalmares.decerne` | Un rang qu'un **match** a décidé — la seule forme qui vaut une médaille. Ne se déduit **pas** de « rang exact » : un rang de qualification l'est par construction, et la renumérotation en produit un dès qu'un archer est seul de son groupe (le vainqueur d'une demi-finale, avant la finale). |
 | **Rang** | `rang` | Position finale d'un archer. |
 | **Feuille de marque** | — | Document de scores par cible/archer. |
 
@@ -117,7 +119,7 @@ Référence de l'**ubiquitous language** (ADR-0006). **Termes métier en frança
 |---|---|
 | **Port / Adapter** | Interface du domaine (port) et son implémentation d'infrastructure (adapter) — architecture hexagonale (ADR-0003). |
 | **Composition root** | Point unique de câblage explicite des dépendances (`bootstrap/`). |
-| **Policy** | Stratégie injectable d'une phase : `routing`, `scoring`, `validation`, `seeding`, `byes`, `tiebreak`, `depth` (ADR-0004 ; `validation` = `D-11`). |
+| **Policy** | Stratégie injectable : `routing`, `scoring`, `seeding`, `byes`, `tiebreak`, `depth` (ADR-0004), plus **`aggregation`** (E06US004, [ADR-0067](adr/0067-palmares-agregation-des-rangs-de-phases.md)). Les six premières se règlent **par phase** (`config.policies`) ; `aggregation` vaut pour **tout le tournoi** et s'injecte à la composition root — la déclarer sur une phase est refusée, faute de consommateur. `validation` (`D-11`) n'est **pas** une policy de moteur et reste hors `policies` (ADR-0046). |
 | **Repository** | Port d'accès aux données d'un agrégat. |
 | **DTO** | Objet de transport à la frontière API (Pydantic), distinct du domaine. |
 | **File d'écriture (write queue)** | File des commandes d'écriture consommée par un **writer unique** (ADR-0005). |

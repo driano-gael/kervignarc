@@ -38,6 +38,7 @@ from domain.listes_impression import (
     TriPlacement,
 )
 from infrastructure.erreurs import InfrastructureError
+from infrastructure.pdf._commun import echapper as _echapper
 
 _MARGE = 15 * mm
 
@@ -207,8 +208,3 @@ def _libelle_statut(statut: StatutPaiement) -> str:
     if statut is StatutPaiement.DU:
         return "Non"
     return "—"
-
-
-def _echapper(texte: str) -> str:
-    """Neutralise les caractères spéciaux du mini-HTML des `Paragraph` ReportLab (`&`, `<`, `>`)."""
-    return texte.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

@@ -48,6 +48,7 @@ from domain.participant import Participant
 from domain.phase import Phase, StatutPhase, TypePhase
 from domain.politiques import (
     ByesAuxMieuxClasses,
+    Depth,
     PlacementEnCascade,
     ProfondeurPodium,
     Routing,
@@ -72,6 +73,7 @@ from tests.test_service_saisie_duels import ZONES_TRIPLE, FauxDuelRepository
 _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
 
 _CASCADE = PlacementEnCascade()
+_PODIUM = ProfondeurPodium()
 """Le routing par défaut du décor, en **singleton de module** : `ruff` refuse un appel de fonction
 en argument par défaut (`B008`). Sans risque ici — les politiques sont des dataclasses `frozen`,
 donc un exemplaire partagé ne peut garder aucun état d'un test à l'autre."""
@@ -88,8 +90,13 @@ class _Monde:
         self,
         capacites: tuple[int, ...] = (4, 4),
         routing: Routing = _CASCADE,
+        depth: Depth = _PODIUM,
     ) -> None:
         self.routing = routing
+        # Injectable pour la même raison que `routing` : la **profondeur** décide s'il y a un
+        # match pour la 3ᵉ place (E06US004 s'en sert pour montrer qu'un tournoi sans petite
+        # finale n'a pas de bronze).
+        self.depth = depth
         self.tournoi_id = 1
         self.tournois = FauxTournoiRepository({1})
         self.phases = FauxPhaseRepository()
@@ -155,7 +162,7 @@ class _Monde:
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
             self.routing,
-            ProfondeurPodium(),
+            self.depth,
         )
 
     @property
@@ -173,7 +180,7 @@ class _Monde:
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
             self.routing,
-            ProfondeurPodium(),
+            self.depth,
         )
 
     @property
