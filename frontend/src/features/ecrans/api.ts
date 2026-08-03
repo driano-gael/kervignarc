@@ -11,15 +11,19 @@ import { fetchJson } from '../../shared/api/client'
 
 /** Les vues qu'un écran sait afficher. Miroir de `domain.ecran.VueEcran` — encore plus court que le
  * CA : les arbres (E07US005) ne sont pas livrés, les offrir au réglage programmerait une page vide.
- * Les affectations sont entrées avec E07US008, **sans migration** (la valeur persistée est la
- * chaîne). */
-export type VueEcran = 'classement' | 'plan_cibles' | 'suivi_deroule' | 'affectations'
+ * Les affectations sont entrées avec E07US008 et le palmarès avec E06US004, **sans migration** (la
+ * valeur persistée est la chaîne). */
+export type VueEcran = 'classement' | 'plan_cibles' | 'suivi_deroule' | 'affectations' | 'palmares'
 
 export const LIBELLE_VUE: Record<VueEcran, string> = {
   classement: 'Classement',
   plan_cibles: 'Plan de cibles',
   suivi_deroule: 'Suivi du déroulé',
   affectations: 'Affectations',
+  // « Palmarès » et non « Podium » : la vue porte les podiums **et** le classement final complet.
+  // L'appeler podium ferait croire à quatre lignes, et l'organisateur qui cherche le classement de
+  // fin de journée ne le programmerait pas.
+  palmares: 'Palmarès',
 }
 
 export const TOUTES_LES_VUES: VueEcran[] = [
@@ -27,6 +31,7 @@ export const TOUTES_LES_VUES: VueEcran[] = [
   'plan_cibles',
   'suivi_deroule',
   'affectations',
+  'palmares',
 ]
 
 /** Bornes de cadence — miroir de `domain.ecran.CADENCE_MIN_S`/`CADENCE_MAX_S`. Le serveur reste

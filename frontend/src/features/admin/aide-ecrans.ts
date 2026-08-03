@@ -48,6 +48,7 @@ export type DestinationAdminId =
   | 'suivi-deroule'
   | 'completude'
   | 'classement'
+  | 'palmares'
   | 'exports'
   | 'archive'
   | 'jeu-essai'
@@ -138,6 +139,11 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
   classement:
     'Consultez le classement, mis à jour en direct au fil de la saisie. C’est une vue de lecture : ' +
     'rien ne s’y saisit, elle reflète les scores validés.',
+  palmares:
+    'Le classement final du tournoi : le podium de chaque catégorie, puis le classement complet ' +
+    'de tous les archers. Il se remplit au fil des duels — un rang affiché « 5ᵉ-8ᵉ » signifie que ' +
+    'ces archers sont à égalité, aucun match ne les ayant départagés. « Exporter en PDF » sort le ' +
+    'document à afficher au mur.',
   exports:
     'Générez les documents imprimables du jour J : listes de placement, par club, feuilles de ' +
     'paiement. À imprimer pour l’accueil et les bénévoles.',
