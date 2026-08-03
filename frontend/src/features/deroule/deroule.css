@@ -1,0 +1,35 @@
+/* Styles de cette feature, sortis d'`app/App.css` par l'action 2 de l'audit de
+   maintenabilité (03/08/2026). Le fichier unique de 3 524 lignes figurait parmi les onze
+   « passages obligés » mesurés : 8 des 12 dernières US devaient l'ouvrir.
+
+   ⚠️ Ré-importé depuis `App.css`, **à sa place d'origine** : le CSS est global et sa
+   cascade dépend de l'ordre. Les règles n'ont pas bougé d'un caractère. */
+
+/* --- Composer un déroulé (E01US024, ADR-0063) -------------------------------------------------
+   L'écran de composition d'un format : l'éditeur de séquence à gauche, le schéma à braquets et la
+   simulation à droite. Tout passe par les tokens (`--accent`, `--warn`, `--danger`, `--surface`)
+   pour que le thème clair/sombre suive sans code conditionnel — le SVG compris, ce qui est
+   précisément pourquoi il est **inline** plutôt qu'une image. */
+.deroule__entete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.deroule__colonnes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.deroule__editeur,
+.deroule__visuel {
+  flex: 1 1 480px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

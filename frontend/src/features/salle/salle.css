@@ -1,0 +1,83 @@
+/* Styles de cette feature, sortis d'`app/App.css` par l'action 2 de l'audit de
+   maintenabilité (03/08/2026). Le fichier unique de 3 524 lignes figurait parmi les onze
+   « passages obligés » mesurés : 8 des 12 dernières US devaient l'ouvrir.
+
+   ⚠️ Ré-importé depuis `App.css`, **à sa place d'origine** : le CSS est global et sa
+   cascade dépend de l'ordre. Les règles n'ont pas bougé d'un caractère. */
+
+/* --- Écran de salle (E07US004) ---
+   Contraintes **opposées** aux deux autres surfaces : ≥ 1920 px, vu de loin, aucune interaction.
+   D'où une échelle typographique dédiée (`clamp` sur la largeur de vue : le même code sert un
+   moniteur 24" et un vidéoprojecteur), un fond plein et aucune coquille « carte ». */
+.salle {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.5vw, 32px);
+  min-height: 100%;
+  padding: clamp(12px, 1.5vw, 32px);
+  background: var(--bg);
+  font-size: clamp(16px, 1.15vw, 28px);
+}
+
+.salle__bandeau {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: clamp(12px, 1.5vw, 32px);
+  border-bottom: 2px solid var(--border);
+  padding-bottom: clamp(8px, 0.8vw, 18px);
+}
+
+.salle__lieu {
+  color: var(--text-h);
+  font-size: 1.5em;
+  font-weight: 700;
+}
+
+.salle__vue {
+  color: var(--text);
+  font-size: 1.2em;
+  opacity: 0.85;
+}
+
+/* Le CA veut qu'une prise de contrôle soit **très visible** : c'est ce qui distingue, vu du
+   gymnase, un podium volontairement figé d'un écran planté. */
+.salle__controle {
+  margin-left: auto;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg);
+  padding: 0.25em 0.9em;
+  font-weight: 700;
+}
+
+.salle__cadence {
+  margin-left: auto;
+  color: var(--text);
+  opacity: 0.6;
+}
+
+/* `DV-03` : couleur **et** mot. Ambre pour l'alerte (jamais le rouge club, cf. charte). */
+.salle__hors-ligne {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.salle__scene {
+  flex: 1;
+  min-height: 0;
+}
+
+.salle__attente {
+  color: var(--text);
+  font-size: 1.4em;
+  opacity: 0.7;
+  text-align: center;
+  padding-top: 12vh;
+}
+
+/* Les vues réemployées (classement, plan de cibles) héritent de l'échelle du conteneur : leurs
+   tableaux passent en unités relatives pour grossir avec elle plutôt qu'en px figés. */
+.salle__scene table {
+  font-size: 1em;
+}
