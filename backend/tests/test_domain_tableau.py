@@ -508,3 +508,106 @@ def test_le_repechage_ne_desarme_pas_le_refus_des_destinations_inconnues() -> No
             RoutingInconnu(),
             ProfondeurUnVersN(),
         )
+
+
+# --- CA E06US004 « agrégation » : la position acquise de chaque participant ---------------------
+# Le palmarès a besoin, pour chaque archer, de ce que *ce tableau* a décidé — rang exact quand un
+# match terminal l'a décerné, fourchette sinon (*Règle R*, ADR-0065). La lecture vit ici parce que
+# la règle y vit déjà (`Plage.moitie_basse`, `classement()`) : E06US004 la lit, ne la réécrit pas.
+
+
+def _positions(tableau: Tableau) -> dict[int, tuple[int, int]]:
+    """`ref_id → (rang_min, rang_max)`, pour des assertions lisibles."""
+    return {
+        participant.ref_id: (acquise.rang_min, acquise.rang_max)
+        for participant, acquise in tableau.positions_acquises().items()
+    }
+
+
+def test_positions_acquises_rend_les_rangs_exacts_des_matchs_terminaux() -> None:
+    """Un tableau de 4 entièrement joué : les quatre rangs sont décernés, aucune fourchette."""
+    tableau = construire(4)
+    for numero in (1, 2, 3, 4):
+        tableau = jouer_gagne_mieux_classe(tableau, numero)
+
+    assert _positions(tableau) == {1: (1, 1), 2: (2, 2), 3: (3, 3), 4: (4, 4)}
+
+
+def test_positions_acquises_rend_la_fourchette_des_battus_non_departages() -> None:
+    """Tableau de 8 tronqué au podium : les quatre battus des quarts sortent tous sur `[5..8]`.
+
+    Aucun match ne les a départagés — c'est le cas que la politique `aggregation` (E06US004)
+    tranche ensuite, et la raison pour laquelle cette lecture rend une **fourchette** plutôt qu'un
+    rang inventé.
+    """
+    tableau = construire(8)
+    for numero in range(1, 9):
+        tableau = jouer_gagne_mieux_classe(tableau, numero)
+
+    positions = _positions(tableau)
+    assert positions[1] == (1, 1)
+    assert positions[2] == (2, 2)
+    assert {positions[r] for r in (5, 6, 7, 8)} == {(5, 8)}
+
+
+def test_positions_acquises_ecrete_la_fourchette_a_l_effectif_reel() -> None:
+    """La plage est bornée par la **taille** du tableau (une puissance de 2), pas par l'effectif :
+    à 6 archers (taille 8), un battu du 1ᵉʳ tour est 5ᵉ-**6**ᵉ, pas 5ᵉ-8ᵉ — les rangs 7 et 8
+    n'existent pas. Écrêtage relevé en revue d'E07US008 (ADR-0065)."""
+    tableau = construire(6)
+    for numero in range(1, len(tableau.matchs) + 1):
+        match = tableau.match(numero)
+        if match.est_jouable:
+            tableau = jouer_gagne_mieux_classe(tableau, numero)
+
+    positions = _positions(tableau)
+    assert positions[5] == (5, 6)
+    assert positions[6] == (5, 6)
+
+
+def test_positions_acquises_rend_la_plage_courante_d_un_archer_encore_en_lice() -> None:
+    """Un archer qui a un match devant lui a déjà **acquis** quelque chose : la plage de ce match.
+
+    En demi-finale d'un tableau de 8, il est assuré d'être au mieux 1ᵉʳ et au pire 4ᵉ. Le palmarès
+    est consulté **pendant** le tournoi (écran public) : lui refuser tout rang jusqu'à la fin le
+    ferait tomber derrière des archers déjà éliminés, ce qui serait faux.
+    """
+    tableau = construire(8)
+    for numero in (1, 2, 3, 4):
+        tableau = jouer_gagne_mieux_classe(tableau, numero)
+
+    assert _positions(tableau)[1] == (1, 4)
+    assert tableau.positions_acquises()[p(1)].en_lice is True
+
+
+def test_positions_acquises_distingue_l_ex_aequo_du_match_a_venir() -> None:
+    """Deux fourchettes de même forme, deux sens opposés — et c'est `en_lice` qui les sépare.
+
+    Tableau de 8 tronqué au podium, quarts joués : les quatre vainqueurs portent `[1..4]` parce
+    qu'ils vont **tirer** les demies ; les quatre battus portent `[5..8]` parce que **plus rien**
+    ne les départagera (la profondeur `podium` élague leur sous-tableau). Confondre les deux fait
+    décerner l'or au mieux qualifié avant la finale — le défaut qu'a relevé le test de service
+    d'E06US004.
+
+    ⚠️ Le même essai sur un tableau de **4** ne montrerait rien : en cascade, les battus du 1ᵉʳ
+    tour y descendent en **petite finale**, donc restent en lice. Il faut un tableau où la
+    profondeur élague vraiment pour que l'ex æquo définitif existe.
+    """
+    tableau = construire(8)
+    for numero in (1, 2, 3, 4):
+        tableau = jouer_gagne_mieux_classe(tableau, numero)
+
+    acquises = tableau.positions_acquises()
+    vainqueurs = [r for r in range(1, 9) if acquises[p(r)].en_lice]
+    battus = [r for r in range(1, 9) if not acquises[p(r)].en_lice]
+    assert len(vainqueurs) == 4 and len(battus) == 4
+    assert {(acquises[p(r)].rang_min, acquises[p(r)].rang_max) for r in vainqueurs} == {(1, 4)}
+    assert {(acquises[p(r)].rang_min, acquises[p(r)].rang_max) for r in battus} == {(5, 8)}
+
+
+def test_positions_acquises_ignore_qui_n_est_pas_dans_le_tableau() -> None:
+    """Seuls les occupants d'au moins un camp y figurent : le palmarès classera les autres par la
+    qualification, et une entrée vide les ferait passer pour éliminés."""
+    tableau = construire(4)
+
+    assert p(9) not in tableau.positions_acquises()

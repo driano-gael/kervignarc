@@ -2,19 +2,22 @@
 
 Un **format** de phase de tableau n'est pas du code mais un **assemblage de stratégies** (règle 2) :
 comment on route le perdant, comment on score, comment on ensemence l'arbre, à qui vont les byes,
-comment on départage, jusqu'où on classe. ADR-0004 en fait **six familles** de politiques, chacune
-une interface du domaine (`Protocol`) avec au moins une implémentation :
+comment on départage, jusqu'où on classe. ADR-0004 en faisait **six familles** de politiques —
+E06US004 en ajoute une **septième**, `aggregation` ([ADR-0067]) — chacune une interface du domaine
+(`Protocol`) avec au moins une implémentation :
 
-| Famille    | Rôle                      | Implémentations livrées |
-|------------|---------------------------|-------------------------|
-| `routing`  | où va le perdant          | `EliminationSeche`, `PlacementEnCascade`, |
-|            |                           | `RoutingRepechage` |
-| `scoring`  | calcul du score           | `ScoreCumul`, `ScoreAvecHandicap` |
-| `seeding`  | composition de l'arbre    | `SeedingSerpent` |
-| `byes`     | exempts si effectif ≠ 2^k | `ByesAuxMieuxClasses` |
-| `tiebreak` | départage des égalités    | `TiebreakFftaDefaut`, `TiebreakPoules` |
-| `depth`    | jusqu'où classer          | `ProfondeurUnVersN`, `ProfondeurPodium`, |
-|            |                           | `AucunClassement` |
+| Famille       | Rôle                        | Implémentations livrées |
+|---------------|-----------------------------|-------------------------|
+| `routing`     | où va le perdant            | `EliminationSeche`, `PlacementEnCascade`, |
+|               |                             | `RoutingRepechage` |
+| `scoring`     | calcul du score             | `ScoreCumul`, `ScoreAvecHandicap` |
+| `seeding`     | composition de l'arbre      | `SeedingSerpent` |
+| `byes`        | exempts si effectif ≠ 2^k   | `ByesAuxMieuxClasses` |
+| `tiebreak`    | départage des égalités      | `TiebreakFftaDefaut`, `TiebreakPoules` |
+| `depth`       | jusqu'où classer            | `ProfondeurUnVersN`, `ProfondeurPodium`, |
+|               |                             | `AucunClassement` |
+| `aggregation` | départage des sortis        | `AgregationParQualification`, |
+|               | au même tour                | `AgregationExAequo` |
 
 **E05US015 peuple ce catalogue** ([ADR-0062]) : le **repêchage** et le **handicap**, que le cahier
 des charges rangeait parmi les « types de tournoi » à livrer, ne sont pas des types de phase mais
@@ -58,24 +61,29 @@ dépendance framework (règle 1).
 
 [ADR-0004]: ../../docs/adr/0004-moteur-de-phases-politiques.md
 [ADR-0046]: ../../docs/adr/0046-config-policies-politiques-nommees-parametrees.md
+[ADR-0067]: ../../docs/adr/0067-palmares-agregation-des-rangs-de-phases.md
 [ADR-0062]: ../../docs/adr/0062-catalogue-de-types-de-phase.md
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from typing import Protocol, cast
 
+from domain.archer import ArcherId
 from domain.erreurs import PolitiqueInconnue, PolitiqueMalFormee
 from domain.plage import Plage
 
 
 class FamillePolitique(str, Enum):
-    """Les six familles de politiques d'ADR-0004 — le **catalogue fermé** des clés de
-    `config.policies`. Une clé hors de cette énumération est une config mal formée (le grain de
-    `validation` en est le cas emblématique : ce n'est pas une politique de moteur, ADR-0046)."""
+    """Les familles de politiques du moteur — le **catalogue fermé** des clés de `config.policies`.
+
+    Six à ADR-0004, **sept depuis E06US004** (`aggregation`, ADR-0067). Une clé hors de cette
+    énumération est une config mal formée (le grain de `validation` en est le cas emblématique : ce
+    n'est pas une politique de moteur, ADR-0046).
+    """
 
     ROUTING = "routing"
     SCORING = "scoring"
@@ -83,6 +91,15 @@ class FamillePolitique(str, Enum):
     BYES = "byes"
     TIEBREAK = "tiebreak"
     DEPTH = "depth"
+    AGGREGATION = "aggregation"
+    """Comment fusionner les rangs des phases en un palmarès (E06US004, [ADR-0067]).
+
+    Septième famille — le catalogue d'ADR-0004 en comptait six. Elle ne s'ajoute pas par symétrie
+    mais parce qu'une **règle métier sans arbitre** est apparue : deux archers sortis au **même
+    tour** n'ont été départagés par aucun match, et il faut bien décider si l'on invente un ordre
+    (usage World Archery : le rang de qualification) ou si l'on assume l'*ex æquo*. Les deux
+    réponses sont légitimes selon le tournoi — c'est la définition d'une politique (règle 2).
+    """
 
 
 # --- routing -----------------------------------------------------------------------------------
@@ -560,6 +577,96 @@ class AucunClassement:
         return ()
 
 
+# --- aggregation -------------------------------------------------------------------------------
+
+
+class Aggregation(Protocol):
+    """Décide comment ordonner des archers qu'**aucun match n'a départagés** ([ADR-0067]).
+
+    Le cas : les quatre battus des quarts d'un tableau de 8 sortent tous sur la plage `[5..8]`
+    (*Règle R*, ADR-0065) — la compétition ne dit pas lequel est 5ᵉ. Deux réponses défendables, donc
+    une politique : leur donner l'ordre de la qualification (usage World Archery, défaut du projet)
+    ou assumer l'*ex æquo* et publier une fourchette.
+
+    ⚠️ **À ne pas confondre avec `tiebreak`.** `tiebreak` départage sur un **score** (nombre de 10
+    puis de 9, §8.1) des archers qui ont tiré la même chose ; `aggregation` intervient là où il n'y
+    a **aucun score commun à comparer** — deux archers de tableaux différents n'ont pas tiré les
+    mêmes flèches. Les fusionner en une seule famille aurait obligé `Tiebreak` à accepter un
+    `DecompteDepartage` vide, c'est-à-dire à mentir sur ce qu'il compare.
+
+    Méthode fondatrice : rendre des **paquets ordonnés**. Un paquet d'un seul archer vaut un rang
+    exact ; un paquet de `k` archers, un *ex æquo* sur `k` rangs consécutifs. Rendre des paquets
+    plutôt qu'une liste plate est ce qui permet à une implémentation de dire « je n'ai pas su
+    départager » sans avoir à inventer un ordre.
+    """
+
+    def departager(
+        self,
+        groupe: Sequence[ArcherId],
+        rang_qualification: Mapping[ArcherId, int | None],
+    ) -> tuple[tuple[ArcherId, ...], ...]:
+        """Ordonne `groupe` en paquets, du meilleur au moins bon. Tous les archers en sortent."""
+        ...
+
+
+@dataclass(frozen=True)
+class AgregationParQualification:
+    """Défaut du projet : les sortis au même tour se rangent sur leur **rang de qualification**.
+
+    C'est l'usage World Archery — le classement de qualification sert d'ordre de référence partout
+    où la compétition n'a pas tranché. Il donne un classement **1→N sans ex æquo**, ce qu'un
+    palmarès affiché au mur demande.
+
+    Deux archers **ex æquo en qualification** ressortent ex æquo ici : la politique départage *sur*
+    la qualification, elle ne la contourne pas. Un archer sans rang de qualification (disqualifié —
+    ADR-0050) passe en dernier, et deux archers sans rang restent ensemble : il n'y a rien à
+    comparer, et fabriquer un ordre sur l'identifiant de base serait un tirage au sort déguisé.
+    """
+
+    def departager(
+        self,
+        groupe: Sequence[ArcherId],
+        rang_qualification: Mapping[ArcherId, int | None],
+    ) -> tuple[tuple[ArcherId, ...], ...]:
+        ordonne = sorted(
+            groupe,
+            # Clé totale : les sans-rang en dernier, puis le rang, puis l'identifiant — ce dernier
+            # critère **n'ordonne pas** (les ex æquo sont regroupés juste après), il rend seulement
+            # deux lectures successives identiques.
+            key=lambda archer: (
+                rang_qualification.get(archer) is None,
+                rang_qualification.get(archer) or 0,
+                archer,
+            ),
+        )
+        paquets: list[list[ArcherId]] = []
+        for archer in ordonne:
+            rang = rang_qualification.get(archer)
+            if paquets and rang_qualification.get(paquets[-1][0]) == rang:
+                paquets[-1].append(archer)
+            else:
+                paquets.append([archer])
+        return tuple(tuple(paquet) for paquet in paquets)
+
+
+@dataclass(frozen=True)
+class AgregationExAequo:
+    """On ne classe **que** ce que la compétition a décidé : les sortis au même tour restent
+    *ex æquo*.
+
+    Le cas dégénéré d'`Aggregation` — un seul paquet — et il n'est pas artificiel : dans un tableau
+    tronqué au podium, *aucun match n'a été joué* pour départager les quatre battus des quarts. Le
+    palmarès affiche alors « 5ᵉ-8ᵉ » pour les quatre, ce qui est le résultat exact du tournoi.
+    """
+
+    def departager(
+        self,
+        groupe: Sequence[ArcherId],
+        rang_qualification: Mapping[ArcherId, int | None],
+    ) -> tuple[tuple[ArcherId, ...], ...]:
+        return (tuple(groupe),)
+
+
 # --- assemblage --------------------------------------------------------------------------------
 
 
@@ -575,6 +682,7 @@ class PolitiquesPhase:
     byes: Byes | None = None
     tiebreak: Tiebreak | None = None
     depth: Depth | None = None
+    aggregation: Aggregation | None = None
 
 
 # Une fabrique construit une politique à partir de ses paramètres (l'objet
@@ -658,6 +766,10 @@ def registre_par_defaut() -> RegistrePolitiques:
     registre.enregistrer(FamillePolitique.DEPTH, "un_vers_n", lambda _p: ProfondeurUnVersN())
     registre.enregistrer(FamillePolitique.DEPTH, "podium", _fabriquer_profondeur_podium)
     registre.enregistrer(FamillePolitique.DEPTH, "aucun", lambda _p: AucunClassement())
+    registre.enregistrer(
+        FamillePolitique.AGGREGATION, "par_qualification", lambda _p: AgregationParQualification()
+    )
+    registre.enregistrer(FamillePolitique.AGGREGATION, "ex_aequo", lambda _p: AgregationExAequo())
     return registre
 
 
@@ -827,4 +939,5 @@ def assembler_politiques(
         byes=cast("Byes | None", resolues.get(FamillePolitique.BYES)),
         tiebreak=cast("Tiebreak | None", resolues.get(FamillePolitique.TIEBREAK)),
         depth=cast("Depth | None", resolues.get(FamillePolitique.DEPTH)),
+        aggregation=cast("Aggregation | None", resolues.get(FamillePolitique.AGGREGATION)),
     )

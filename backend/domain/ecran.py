@@ -51,13 +51,19 @@ class VueEcran(str, Enum):
 
     `AFFECTATIONS` est entrée avec E07US008, **sans migration**, exactement comme annoncé : la
     prévision de conception s'est vérifiée, ce qui est la meilleure preuve que persister la chaîne
-    plutôt qu'un rang était le bon choix.
+    plutôt qu'un rang était le bon choix. `PALMARES` (E06US004) est la **deuxième** à le faire.
     """
 
     CLASSEMENT = "classement"
     PLAN_CIBLES = "plan_cibles"
     SUIVI_DEROULE = "suivi_deroule"
     AFFECTATIONS = "affectations"
+    PALMARES = "palmares"
+    """Le classement **final** — podiums en tête (E06US004).
+
+    Distinct de `CLASSEMENT`, qui est celui de la **qualification** : à 17 h, ce qu'on projette
+    n'est plus qui a le mieux tiré le matin mais qui a gagné. C'est le motif même du CA de pilotage
+    des écrans (E12US003) — « basculer sur le podium à 17 h et partir serrer des mains »."""
 
 
 @dataclass(frozen=True)

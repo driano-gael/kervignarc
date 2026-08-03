@@ -13,6 +13,7 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
+from typing import cast
 
 from fastapi import FastAPI
 from starlette.concurrency import run_in_threadpool
@@ -46,6 +47,7 @@ from api.v1.inscriptions import router as inscriptions_router
 from api.v1.jeu_essai import router as jeu_essai_router
 from api.v1.listes_impression import router as listes_impression_router
 from api.v1.paiements import router as paiements_router
+from api.v1.palmares import router as palmares_router
 from api.v1.patrimoine import router as patrimoine_router
 from api.v1.phases import router as phases_router
 from api.v1.pilotage import router as pilotage_router
@@ -88,6 +90,7 @@ from application.inscriptions import ServiceInscriptions
 from application.jeu_essai import ServiceJeuEssai
 from application.listes_impression import ServiceListesImpression
 from application.paiements import ServicePaiements
+from application.palmares import ServicePalmares
 from application.patrimoine import ServicePatrimoine
 from application.phases import ServicePhases
 from application.pilotage_simulation import (
@@ -110,7 +113,9 @@ from application.supervision import ServiceSupervision
 from application.tournois import ServiceTournois
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.politiques import (
+    Aggregation,
     ByesAuxMieuxClasses,
+    FamillePolitique,
     PlacementEnCascade,
     ProfondeurPodium,
     SeedingSerpent,
@@ -169,6 +174,7 @@ from infrastructure.pdf import (
     GenerateurDocumentsSallePdf,
     GenerateurFeuilleDeMarquePdf,
     GenerateurListesImpressionPdf,
+    GenerateurPalmaresPdf,
 )
 from infrastructure.postes import (
     PosteSessionStore,
@@ -712,6 +718,27 @@ def create_app(
         app.state.service_paiements,
         GenerateurListesImpressionPdf(),
     )
+    # Palmarès (E06US004, ADR-0067) : le **classement final** du tournoi — les rangs décernés par
+    # les tableaux fusionnés avec ceux de la qualification, par catégorie, plus l'export PDF affiché
+    # au mur. Réutilise `service_saisie_duels` pour reconstruire chaque tableau (comme le routage et
+    # le pilotage) : recoder la reconstruction la ferait diverger de l'écran de duels. La politique
+    # `aggregation` — qui départage les archers sortis au même tour, qu'aucun match n'a séparés —
+    # est **injectée ici**, au défaut `par_qualification` (usage World Archery), résolu **par le
+    # registre** : la contourner en instanciant la stratégie à la main ferait de la politique une
+    # décoration (même parti que le `tiebreak` du classement, ADR-0066).
+    app.state.service_palmares = ServicePalmares(
+        tournoi_repository,
+        phase_repository,
+        app.state.service_classement,
+        app.state.service_saisie_duels,
+        GenerateurPalmaresPdf(),
+        cast(
+            "Aggregation",
+            app.state.registre_politiques.resoudre(
+                FamillePolitique.AGGREGATION, "par_qualification", {}
+            ),
+        ),
+    )
     # Archive de fin de tournoi (E11US003) : paquet ZIP réunissant l'instantané SQLite complet, un
     # dump CSV de toute la base, les PDF régénérés du tournoi (feuilles de marque par départ,
     # listes) et un manifeste — selon les parties cochées côté UI. L'assemblage mécanique délégué à
@@ -988,6 +1015,7 @@ def create_app(
     app.include_router(feuille_de_marque_router)
     app.include_router(documents_salle_router)
     app.include_router(listes_impression_router)
+    app.include_router(palmares_router)
     app.include_router(archive_router)
 
     # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement

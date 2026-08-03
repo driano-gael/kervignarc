@@ -27,6 +27,7 @@ from domain.format_tournoi import FormatTournoi, FormatTournoiId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.listes_impression import ListeClubPaiement, ListePlacement
+from domain.palmares import Palmares
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
 from domain.poste import Poste, PosteId, TypePoste
@@ -908,6 +909,25 @@ class GenerateurListesImpression(Protocol):
 
     def club_paiement(self, liste: ListeClubPaiement) -> bytes:
         """Rend la liste club & paiement en un PDF (un bloc par club, avec totaux)."""
+        ...
+
+
+class GenerateurPalmares(Protocol):
+    """Port de génération du **palmarès imprimable** (E06US004 ; adapter d'infrastructure).
+
+    Le domaine décrit le contenu (`Palmares`), l'adapter (ReportLab, ADR-0031) le rend en octets
+    PDF. Une seule méthode : le palmarès **est** le document — podiums par catégorie puis
+    classement complet, comme on l'affiche au mur en fin de journée. Le retour est un simple
+    `bytes` (règle 1) ; un échec de rendu remonte en `InfrastructureError`, traduit en 500.
+
+    `tournoi` est passé à part plutôt qu'inclus dans un objet « document » : le palmarès porte déjà
+    tout son contenu, et l'envelopper d'un type dont le seul apport serait un titre serait une
+    indirection sans règle. Les listes d'impression en ont un parce qu'elles portent, elles, des
+    paramètres de composition (départ visé, ordre de tri).
+    """
+
+    def palmares(self, tournoi: str, palmares: Palmares) -> bytes:
+        """Rend le palmarès en un PDF (podiums par catégorie + classement complet)."""
         ...
 
 
