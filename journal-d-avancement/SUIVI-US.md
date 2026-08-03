@@ -119,7 +119,8 @@
 >
 > **🎯 Prochaine :** **découpage des agrégateurs techniques** (action 2 de
 > [l'audit de maintenabilité](../docs/audit-maintenabilite.md)) — `repositories.py`, les deux
-> `erreurs.py` et `App.css` par feature. Puis **`E06US006`** — classement intégral 1→N & profondeur configurable. *(Elle
+> `erreurs.py` et `App.css` par feature. Puis **`E05US021`** (un format connaît son effectif minimum,
+> arbitrage du 03/08, ADR-0068 §6) et **`E06US006`** — classement intégral 1→N & profondeur configurable. *(Elle
 > **prolonge** E06US004 sans la refaire : le palmarès sait déjà fusionner et renuméroter 1→N ; ce
 > qui reste est la **profondeur** — top N + regroupement du reliquat — et le fait que, sous
 > placement intégral, tous les rangs deviennent **exacts** et les fourchettes disparaissent d'
@@ -529,7 +530,8 @@
 | 74bis | E01US024 | **Composer, diagnostiquer et simuler un déroulé** | ✅ *(brouillon + invariant déplacé vers `appliquer`, schéma SVG maison, 2 gravités d'anomalie, simulation composée sur ADR-0054/0055 ; ADR-0063 — résorbe DETTE-030, ne résorbe DETTE-028 qu'à moitié)* |
 | 75 | ~~E05US018~~ | ~~Oracle 120~~ → **absorbée par E05US010** | ⬜ *(le moteur et sa preuve ne se séparent pas)* |
 | 76 | E06US006 | Classement intégral 1→N & profondeur | ⬜ |
-| 76bis | E05US020 | **Le moteur consomme les prélèvements déclarés** | ✅ *(cœur de DETTE-028 : prélèvement par rangs honoré, plage relative résolue sur l'effectif réel, ADR-0068)* |
+| 76bis | E05US020 | **Le moteur consomme les prélèvements déclarés** | ✅ *(cœur de DETTE-028 : prélèvement par rangs honoré, plage relative résolue, tranche de rangs au palmarès — DETTE-034 soldée, ADR-0068)* |
+| 76ter | E05US021 | Un format connaît son effectif minimum (avertir avant de lancer) | ⬜ *(arbitrage du 03/08, ADR-0068 §6)* |
 | 77 | E03US007 | Contrainte séparation catégorie/blason | ⬜ |
 | 78 | E09US005 | Classements PDF | ⬜ *(rétrécie par E06US004 : le **palmarès** a son PDF ; reste celui du classement de **qualification**)* |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |

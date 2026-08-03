@@ -495,3 +495,26 @@ d'E06US004 en découlaient.
   demande donc un concept qui n'existe pas encore — US dédiée, avec son ADR. *(L'audit du 03/08
   laissait croire l'inverse ; corrigé dans le même commit que cette US.)*
 - **Dépend de** : E05US010, E01US024 · **Jalon** : J3
+
+### E05US021 — Un format connaît son effectif minimum, et le lancement le vérifie
+*En tant qu'*organisateur, *je veux* être averti **avant de lancer** mon tournoi si je n'ai pas assez
+d'inscrits pour le format choisi, *afin de* basculer sur un autre format plutôt que de le découvrir
+sur une tablette en pleine compétition.
+
+Origine : arbitrage du commanditaire du 03/08/2026, au cadrage d'E05US020 —
+[ADR-0068](../docs/adr/0068-le-moteur-consomme-les-prelevements-declares.md) §6. « Les inscrits sont
+connus au lancement, donc on ne peut pas lancer un tournoi qui n'a pas assez d'inscrits pour son
+format ; le logiciel doit connaître la fourchette basse et avertir l'admin avant de lancer. »
+
+- **CA — effectif minimum d'un format** : un format déclare, ou l'application dérive de ses
+  prélèvements, le **nombre d'inscrits en dessous duquel il ne peut pas se dérouler** (« les rangs 33
+  et suivants » exige au moins 34 classés pour produire un tableau de 2).
+- **CA — avertissement au lancement** : passer un tournoi « en cours » avec un effectif insuffisant
+  est **refusé**, avec un message qui nomme la phase et son prélèvement. L'organisateur peut alors
+  changer de format.
+- **CA — visible à la composition** : le diagnostic de déroulé signale le cas **avant** l'application
+  du format, pas seulement au lancement.
+- **Notes** : le moteur refuse déjà de monter un tableau vide (E05US020, `EffectifTableauInvalide`) —
+  c'est le **dernier** garde-fou, pas le bon endroit : il s'exprime sur la tablette, en compétition.
+  Cette US met le contrôle là où la décision se prend.
+- **Dépend de** : E05US020 · **Jalon** : J3

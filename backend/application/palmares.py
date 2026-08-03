@@ -24,6 +24,7 @@ import logging
 
 from application.classements import ServiceClassement
 from application.erreurs import PhaseIntrouvable, TournoiIntrouvable
+from application.prelevement import tranche
 from application.saisie_duels import ServiceSaisieDuels
 from domain.categorie import CategorieId
 from domain.erreurs import EffectifTableauInvalide
@@ -185,4 +186,14 @@ class ServicePalmares:
             # les équipes elles-mêmes, comme pour le routage.
             if participant.genre is GenreParticipant.INDIVIDUEL
         )
-        return ResultatPhase(ordre=phase.ordre, positions=positions)
+        # ⚠️ La **tranche** que cette phase dispute (E05US020, ADR-0068 §5) : une consolante
+        # prélevant « les rangs 5 et suivants » joue pour la 5ᵉ place, pas pour la victoire. Sans
+        # ce décalage, son vainqueur passait devant le finaliste du tableau principal — c'était
+        # `DETTE-034`, inatteignable tant qu'aucun moteur ne consommait les prélèvements.
+        qualification = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        rang_premier = tranche(
+            phase,
+            self._classements.pour_tournoi(tournoi_id),
+            qualification.ordre if qualification is not None else None,
+        )
+        return ResultatPhase(ordre=phase.ordre, positions=positions, rang_premier=rang_premier)

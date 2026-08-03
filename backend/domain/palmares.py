@@ -89,6 +89,19 @@ class ResultatPhase:
 
     ordre: int
     positions: tuple[PositionPhase, ...]
+    rang_premier: int = 1
+    """Le **premier rang du tournoi** que cette phase dispute (E05US020, ADR-0068 §5).
+
+    Une phase qui prélève « les rangs 5 et suivants » ne joue pas pour la victoire : son vainqueur
+    est 5ᵉ, pas 1ᵉʳ. Les positions arrivent dans l'espace de rangs **du tableau** (1..effectif) ;
+    ce décalage les ramène dans celui **du tournoi**.
+
+    ⚠️ C'est ce qui résorbe `DETTE-034`. Sans lui, l'ordre entre phases se lisait sur `ordre` — « la
+    plus tardive l'emporte » — et couronnait le vainqueur d'une **consolante** devant le finaliste
+    du tableau principal. Défaut inatteignable tant qu'aucun moteur ne consommait les prélèvements,
+    rendu atteignable par E05US020 et mesuré en revue adversariale.
+
+    Vaut **1** par défaut : une phase qui ne prélève rien dispute le tournoi entier."""
 
 
 @dataclass(frozen=True)
@@ -246,13 +259,10 @@ def calculer_palmares(
     1. **le bloc** — chaque archer est situé par la phase la plus **tardive** qui l'a classé (son
        `ordre`), la qualification faisant bloc 0. Un rang acquis plus tard **remplace** le
        précédent : celui qui gagne son tableau n'est plus 6ᵉ de qualif, il est 1ᵉʳ.
-       # DETTE-034 (../../docs/dette.md) — cette règle suppose qu'une phase avale dispute les rangs
-       # **du haut** que la précédente laissait ouverts, ce qui est vrai de la cascade réelle
-       # (qualification → tableau) et **faux** d'une phase de **consolation** : son vainqueur
-       # passerait devant le finaliste du tableau principal. Corriger demanderait de savoir quels
-       # rangs une phase dispute — ce que `SourcePhase.par_issue_de_tour` ne dit pas encore
-       # (DETTE-033) et qu'aucun moteur ne consomme (DETTE-028). Impact nul aujourd'hui : aucun
-       # repêchage n'est câblé en production ;
+       ⚠️ **L'ordre entre archers se lit sur le rang absolu**, pas sur l'ordre de
+       phase : une phase qui prélève « les rangs 5 et suivants » dispute les places 5+, et
+       son vainqueur est 5ᵉ. `ResultatPhase.rang_premier` porte ce décalage (E05US020,
+       ADR-0068 §5, qui résorbe DETTE-034) ;
     2. **l'ordre** — blocs décroissants, puis position acquise croissante. Un battu du 1ᵉʳ tour du
        tableau passe donc devant tout non-qualifié, quel qu'ait été son rang de qualification :
        il a franchi une porte que l'autre n'a pas franchie ;
@@ -353,11 +363,12 @@ def _situer(
             origine=OriginePalmares.QUALIFICATION,
         )
     resultat, position = trouvee
+    decalage = resultat.rang_premier - 1
     return _Entree(
         ligne=ligne,
         bloc=resultat.ordre,
-        rang_min=position.rang_min,
-        rang_max=position.rang_max,
+        rang_min=position.rang_min + decalage,
+        rang_max=position.rang_max + decalage,
         origine=OriginePalmares.DUELS,
         en_lice=position.en_lice,
     )
@@ -390,9 +401,15 @@ def _paquets(
     groupe (par la qualification) ou le laisser tel quel… **sauf** si le groupe est encore en lice :
     ce que le tir doit trancher ne se départage pas d'avance.
     """
+    # ⚠️ **Le tri se fait sur le rang absolu, pas sur l'ordre de phase** (E05US020, ADR-0068 §5).
+    # Trier d'abord sur `-bloc` — « la phase la plus tardive l'emporte » — plaçait le vainqueur
+    # d'une consolante devant le finaliste du tableau principal. Les tranches d'un déroulé valide ne
+    # se recoupent pas (`verifier_sequence`), donc les rangs absolus suffisent à ordonner ; `bloc`
+    # ne sert plus que de départage, pour qu'à rang égal une position **jouée** précède un rang de
+    # qualification.
     ordonnees = sorted(
         classables,
-        key=lambda entree: (-entree.bloc, entree.rang_min or 0, entree.rang_max or 0),
+        key=lambda entree: (entree.rang_min or 0, entree.rang_max or 0, -entree.bloc),
     )
     paquets: list[_Paquet] = []
     for _cle, groupe in _grouper(ordonnees):

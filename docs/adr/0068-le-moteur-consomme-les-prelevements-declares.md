@@ -40,9 +40,13 @@ Une phase **sans source** reste alimentée par les inscriptions : c'est la premi
 (la qualification), et c'est aussi le tableau tant que l'organisateur n'a rien déclaré. Le
 comportement d'avant l'US est donc préservé là où il était correct.
 
-⚠️ **L'effectif source compte les archers *classés*, pas les inscrits.** Un disqualifié n'a pas de
-rang (ADR-0050) ; le compter étendrait « et suivants » jusqu'à un rang qui n'existe pas — la même
-erreur que l'écrêtage d'ADR-0065 a corrigée sur les plages de tableau, au même endroit conceptuel.
+L'effectif de la phase source compte les archers **classés** (un disqualifié n'a pas de rang,
+ADR-0050). ⚠️ **Cette borne est aujourd'hui redondante**, et un premier jet de cet ADR en faisait à
+tort un argument central : le rang d'une ligne classée ne dépasse jamais le nombre de lignes
+classées, donc la borne haute d'une fin ouverte ne filtre rien. La revue adversariale l'a montré
+mutation à l'appui — aucun test ne peut distinguer ce calcul de son absence. On garde l'appel parce
+qu'il est sémantiquement juste, on retire l'argument plutôt que de l'illustrer par un test
+décoratif.
 
 ### 2. Le rang prélevé est celui du **classement au moment de la lecture**
 
@@ -85,6 +89,49 @@ C'est une **décision de modélisation**, qui mérite son propre cadrage et son 
 catégorie »). C'était faux, et la vérification a été faite avant d'écrire une ligne de cette US.
 L'audit est corrigé dans le même commit.
 
+### 5. Une phase dispute une **tranche** de rangs — et le palmarès le sait (résorbe `DETTE-034`)
+
+Correctif de revue adversariale. Consommer les prélèvements a **rendu atteignable** un défaut que
+`DETTE-034` décrivait en le jugeant sans impact — au motif, précisément, qu'« aucun moteur ne
+consomme les prélèvements ». C'est cette US qui retire la prémisse : c'est donc à elle de solder la
+dette.
+
+Le scénario, mesuré sur un déroulé que `verifier_sequence` **accepte** : phase 2 « les rangs 1 à 4 »
+(tableau principal), phase 3 « les rangs 5 et suivants » (consolante). La règle du palmarès — « la
+phase la plus tardive l'emporte » — couronnait le vainqueur de la **consolante** en tête, et
+reléguait le finaliste du principal. Schéma vert, aucune anomalie, aucun bandeau : le PDF projeté en
+salle donnait l'or au 5ᵉ de qualification.
+
+**Décision** : `ResultatPhase` porte le **premier rang du tournoi** que sa phase dispute
+(`rang_premier`, calculé par `application.prelevement.tranche` depuis les sources), et le palmarès
+ordonne sur le rang **absolu** au lieu de l'`ordre` de phase. Une consolante prélevant les rangs 5+
+voit son vainqueur classé 5ᵉ — ce qu'il est.
+
+`ordre` ne sert plus que de **départage** à rang égal (une position jouée précède un rang de
+qualification). Les tranches d'un déroulé valide ne se recoupant pas, les rangs absolus suffisent à
+ordonner.
+
+⚠️ **Ce qu'il faut retenir de méthode** : une dette justifiée par « impact nul parce que X n'existe
+pas » doit être **relue par l'US qui livre X**. Ici, `DETTE-034` avait été écrite la veille par
+l'auteur même de l'US qui allait l'activer, et la connexion n'a été faite ni au cadrage ni à
+l'implémentation — c'est la revue adversariale qui l'a mesurée.
+
+### 6. Un prélèvement que l'effectif ne peut pas honorer : refus, et contrôle **en amont**
+
+Un déroulé composé pour 120 archers, appliqué à une édition qui en réunit 40 : « les rangs 33 et
+suivants » ne prélève personne. Le moteur **refuse** de monter un tableau (`EffectifTableauInvalide`)
+plutôt que d'inventer une population — retomber sur « tous les archers en lice » ressusciterait
+exactement le défaut que cette US corrige.
+
+Mais le refus arrive **trop tard** : sur la tablette, en pleine compétition. Arbitrage du
+commanditaire (03/08/2026) : *« les inscrits sont connus au lancement, donc on ne peut pas lancer un
+tournoi qui n'a pas assez d'inscrits pour son format ; le logiciel doit connaître la fourchette basse
+et avertir l'admin avant de lancer. On bascule sur un autre format. »*
+
+Le refus du moteur reste donc comme **dernier garde-fou** — un tournoi dans cet état ne devrait plus
+pouvoir être lancé — et le contrôle qui l'empêchera d'arriver fait l'objet d'une **US dédiée** :
+un format connaît son effectif minimum, et le lancement le vérifie contre les inscrits réels.
+
 ## Conséquences
 
 - **Ce qui devient vrai** : le tournoi se déroule comme le schéma composé. Un format déclarant « les
@@ -96,6 +143,9 @@ L'audit est corrigé dans le même commit.
 - **La réserve permanente de l'écran de composition** (« le moteur ne lit pas encore les
   prélèvements ») n'est plus vraie **pour les rangs** ; elle reste vraie pour `le_reste` et les
   issues de tour. Elle est reformulée, pas supprimée.
+- **`DETTE-034` est soldée** (§5) — par l'US même qui l'avait rendue atteignable.
+- **`E05US021` est ouverte** (§6) : un format connaît son effectif minimum, et le lancement le
+  vérifie contre les inscrits réels.
 - **`DETTE-028` rétrécit fortement** sans disparaître : la consommation des sources par rangs est
   faite, mais les réglages (`nb_poules`, `nb_manches`…) restent inexprimables en `config.policies`,
   `classement.py` ne passe toujours pas par la famille `scoring`, et `poule`/`suisse`/`colline`/

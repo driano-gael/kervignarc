@@ -199,20 +199,24 @@ def test_l_origine_du_rang_est_portee_par_la_ligne() -> None:
     assert origines[9] is OriginePalmares.QUALIFICATION
 
 
-def test_la_phase_la_plus_tardive_l_emporte() -> None:
+def test_la_phase_la_plus_tardive_l_emporte_pour_un_archer_donne() -> None:
     """Deux phases classantes : c'est la **dernière** disputée qui donne son rang à l'archer.
 
-    Un archer classé 3ᵉ-4ᵉ par la phase d'ordre 2 puis 1ᵉʳ par la phase d'ordre 3 est 1ᵉʳ : le rang
-    acquis plus tard remplace le précédent, il ne s'y ajoute pas.
+    Un archer classé 3ᵉ-4ᵉ par la phase d'ordre 2 puis 1ᵉʳ par la phase d'ordre 3 est 1ᵉʳ : le
+    rang acquis plus tard **remplace** le précédent, il ne s'y ajoute pas.
+
+    ⚠️ **Ce test disait autrefois autre chose**, et le disait faux. Il fixait aussi l'ordre
+    **entre** archers sur l'`ordre` de phase (`DETTE-034`), ce qui plaçait le vainqueur d'une
+    consolante devant le finaliste du tableau principal. L'ordre se lit désormais sur le rang
+    **absolu** (E05US020, ADR-0068 §5) ; ce test ne garde donc que ce qui était vrai — la règle
+    par archer.
     """
     qualification = _qualification(*[_ligne(i, i) for i in range(1, 5)])
     phase2 = ResultatPhase(
         ordre=2,
         positions=(
-            PositionPhase(archer_id=1, rang_min=1, rang_max=2),
-            PositionPhase(archer_id=2, rang_min=1, rang_max=2),
+            PositionPhase(archer_id=1, rang_min=3, rang_max=4),
             PositionPhase(archer_id=3, rang_min=3, rang_max=4),
-            PositionPhase(archer_id=4, rang_min=3, rang_max=4),
         ),
     )
     phase3 = ResultatPhase(
@@ -225,7 +229,9 @@ def test_la_phase_la_plus_tardive_l_emporte() -> None:
 
     palmares = calculer_palmares(qualification, (phase2, phase3))
 
-    assert _ordre(palmares)[:2] == [3, 1]
+    par_archer = {ligne.archer_id: ligne for ligne in palmares.lignes}
+    assert (par_archer[3].rang_min, par_archer[3].rang_max) == (1, 1)
+    assert (par_archer[1].rang_min, par_archer[1].rang_max) == (2, 2)
 
 
 # --- CA « agrégation » : départage des sortis au même tour (politique injectable) -----------------
@@ -557,3 +563,52 @@ def test_un_rang_tranche_par_la_politique_monte_au_podium_mais_le_dit() -> None:
     par_archer = {ligne.archer_id: ligne for ligne in palmares.lignes}
     assert par_archer[1].decerne and par_archer[2].decerne
     assert not par_archer[3].decerne and not par_archer[4].decerne
+
+
+# --- CA E05US020 : une phase dispute une TRANCHE de rangs, pas toujours la victoire ------------
+
+
+def test_le_vainqueur_d_une_consolante_ne_passe_pas_devant_le_finaliste() -> None:
+    """Une phase qui prélève « les rangs 5 et suivants » dispute les places **5 et au-delà**.
+
+    Son vainqueur est 5ᵉ du tournoi, pas 1ᵉʳ. Sans cette notion de **tranche**, le palmarès situait
+    chaque archer par l'`ordre` de sa phase — « la plus tardive l'emporte » — et couronnait donc le
+    vainqueur de la **consolante** (phase 3) devant le finaliste du tableau principal (phase 2).
+
+    Le défaut était inatteignable tant qu'aucun moteur ne consommait les prélèvements ; E05US020 l'a
+    rendu atteignable, et la revue adversariale l'a mesuré sur un déroulé que `verifier_sequence`
+    **accepte**. C'est `DETTE-034`, ici résorbée.
+    """
+    qualification = _qualification(*[_ligne(i, i) for i in range(1, 9)])
+    principal = ResultatPhase(
+        ordre=2,
+        rang_premier=1,
+        positions=(
+            PositionPhase(archer_id=1, rang_min=1, rang_max=1),
+            PositionPhase(archer_id=2, rang_min=2, rang_max=2),
+            PositionPhase(archer_id=3, rang_min=3, rang_max=3),
+            PositionPhase(archer_id=4, rang_min=4, rang_max=4),
+        ),
+    )
+    consolante = ResultatPhase(
+        ordre=3,
+        rang_premier=5,
+        positions=(
+            PositionPhase(archer_id=5, rang_min=1, rang_max=1),
+            PositionPhase(archer_id=6, rang_min=2, rang_max=2),
+            PositionPhase(archer_id=7, rang_min=3, rang_max=3),
+            PositionPhase(archer_id=8, rang_min=4, rang_max=4),
+        ),
+    )
+
+    palmares = calculer_palmares(qualification, (principal, consolante))
+
+    assert _ordre(palmares) == [1, 2, 3, 4, 5, 6, 7, 8]
+    assert _rangs(palmares)[4] == (5, 5, 5)
+
+
+def test_sans_tranche_declaree_une_phase_dispute_le_tournoi_entier() -> None:
+    """Le défaut : une phase sans prélèvement lisible dispute les rangs 1→N (`rang_premier=1`)."""
+    palmares = calculer_palmares(_huit_archers(), (_tableau_de_huit_joue(),))
+
+    assert _rangs(palmares)[:2] == [(6, 1, 1), (1, 2, 2)]

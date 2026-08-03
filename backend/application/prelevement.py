@@ -80,3 +80,29 @@ def preleves(
         if ligne.rang_scratch is not None
         and any(debut <= ligne.rang_scratch <= fin for debut, fin in intervalles)
     ]
+
+
+def tranche(phase: Phase, classement: Classement, ordre_qualification: int | None) -> int:
+    """Le **premier rang du tournoi** que cette phase dispute — 1 si elle les dispute tous.
+
+    Une phase qui prélève « les rangs 5 et suivants » ne joue **pas** pour la victoire : elle
+    dispute les places 5 et au-delà. Son vainqueur est 5ᵉ du tournoi, pas 1ᵉʳ. Le palmarès a besoin
+    de ce décalage pour situer ses positions dans l'espace de rangs **du tournoi** au lieu de celui
+    du tableau (ADR-0068 §5, résorbe `DETTE-034`).
+
+    Sans lui, le palmarès situait les archers par l'`ordre` de leur phase — « la plus tardive
+    l'emporte » — et couronnait donc le vainqueur d'une **consolante** devant le finaliste du
+    tableau principal. Le défaut était inatteignable tant qu'aucun moteur ne consommait les
+    prélèvements ; E05US020 l'a rendu atteignable, et la revue adversariale l'a mesuré.
+
+    Rend **1** quand la phase ne déclare aucun prélèvement lisible en rangs : elle est alimentée par
+    les inscriptions et dispute donc le tournoi entier.
+    """
+    effectif_source = sum(1 for ligne in classement.lignes if ligne.rang_scratch is not None)
+    debuts = [
+        borne[0]
+        for source in phase.sources
+        if source.ordre_source == ordre_qualification
+        if (borne := source.intervalle(effectif_source)) is not None
+    ]
+    return min(debuts) if debuts else 1
