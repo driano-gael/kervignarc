@@ -22,6 +22,8 @@ function ligne(partiel: Partial<LignePalmares> = {}): LignePalmares {
     club_id: 1,
     origine: 'duels',
     statut: 'en_lice',
+    decerne: true,
+    en_lice: false,
     ...partiel,
   }
 }
@@ -30,6 +32,14 @@ describe('rang', () => {
   it('rend un rang exact en ordinal français', () => {
     expect(rang(1, 1)).toBe('1ᵉʳ')
     expect(rang(3, 3)).toBe('3ᵉ')
+  })
+
+  it('applique l’ordinal aux DEUX bornes — « 1ᵉʳ-2ᵉ », jamais « 1ᵉ-2ᵉ »', () => {
+    // Le cas le plus regardé du palmarès : les deux finalistes, en tête de liste, tant que la
+    // finale n'est pas tirée. Le test ne couvrait que `rang(5, 8)`, seule fourchette dont la
+    // borne basse n'est pas 1 — la fixture évitait exactement la borne (relevé en revue).
+    expect(rang(1, 2)).toBe('1ᵉʳ-2ᵉ')
+    expect(rang(1, 4)).toBe('1ᵉʳ-4ᵉ')
   })
 
   it('rend une fourchette telle quelle, sans choisir de chiffre', () => {
@@ -70,8 +80,22 @@ describe('detail', () => {
     )
   })
 
-  it('signale un rang encore à départager', () => {
-    expect(detail(ligne({ rang_min: 5, rang_max: 8 }))).toBe('À départager')
+  it('distingue « reste à tirer » d’un ex æquo définitif', () => {
+    // Deux libellés, parce que ce sont deux situations opposées : la finale va trancher, ou plus
+    // aucun match ne le fera. « Départager » est le vocabulaire du barrage (E06US003) — le dire à
+    // deux finalistes annonce au public qu'une règle va décider à la place du tir.
+    expect(detail(ligne({ rang_min: 1, rang_max: 2, en_lice: true, decerne: false }))).toBe(
+      'Reste à tirer',
+    )
+    expect(detail(ligne({ rang_min: 5, rang_max: 8, decerne: false }))).toBe('Ex æquo')
+  })
+
+  it('signale un rang tranché par la politique et non par un match', () => {
+    // Les quatre battus des quarts rangés sur leur qualification : le rang est unique, mais aucun
+    // match ne l'a décerné — et c'est pour cela qu'ils ne montent pas sur le podium.
+    expect(detail(ligne({ rang_min: 5, rang_max: 5, decerne: false }))).toBe(
+      'Départagé au classement',
+    )
   })
 
   it('fait primer le statut sur l’origine du rang', () => {
@@ -94,15 +118,23 @@ describe('etatPodium', () => {
 
   it('nomme un podium vide plutôt que de laisser un blanc', () => {
     // Sur un écran projeté, un blanc se lit comme une panne d'affichage (`P-3`, E07US008).
-    expect(etatPodium(podium(0))).toBe('Podium en cours — aucune place décernée.')
+    expect(etatPodium(podium(0), 8)).toBe('Podium en cours — aucune place décernée.')
   })
 
   it('signale un podium partiel — le bronze se tire couramment avant l’or', () => {
-    expect(etatPodium(podium(2))).toBe('Podium partiel — les finales ne sont pas toutes tirées.')
+    expect(etatPodium(podium(2), 8)).toBe('Podium partiel — les finales ne sont pas toutes tirées.')
   })
 
   it('ne dit rien d’un podium complet', () => {
-    expect(etatPodium(podium(3))).toBeNull()
-    expect(etatPodium(podium(4))).toBeNull()
+    expect(etatPodium(podium(3), 8)).toBeNull()
+    expect(etatPodium(podium(4), 8)).toBeNull()
+  })
+
+  it('ne dit pas « partiel » du podium complet d’une petite catégorie', () => {
+    // Benjamine, Cadet Femme… : deux archers inscrits, podium complet à deux noms. Comparé à la
+    // constante 3, le message « les finales ne sont pas toutes tirées » restait affiché à
+    // perpétuité, tournoi terminé compris (relevé en revue).
+    expect(etatPodium(podium(2), 2)).toBeNull()
+    expect(etatPodium(podium(1), 1)).toBeNull()
   })
 })

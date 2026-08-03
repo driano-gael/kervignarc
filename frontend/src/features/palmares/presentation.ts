@@ -19,7 +19,11 @@ const MEDAILLES: Record<number, string> = { 1: 'Or', 2: 'Argent', 3: 'Bronze' }
 export function rang(minimum: number | null, maximum: number | null): string {
   if (minimum === null || maximum === null) return '—'
   if (minimum === maximum) return ordinal(minimum)
-  return `${minimum}ᵉ-${ordinal(maximum)}`
+  // Les **deux** bornes passent par `ordinal` : « 1ᵉ-2ᵉ » au lieu de « 1ᵉʳ-2ᵉ » était
+  // le cas le plus visible du palmarès (les deux finalistes, en tête de liste), et le
+  // test ne couvrait que `rang(5, 8)` — la seule fourchette dont la borne basse n'est
+  // pas 1. Relevé par trois axes de revue.
+  return `${ordinal(minimum)}-${ordinal(maximum)}`
 }
 
 export function ordinal(valeur: number): string {
@@ -38,14 +42,28 @@ export function detail(ligne: LignePalmares): string | null {
   if (ligne.statut === 'disqualifie') return 'Disqualifié'
   if (ligne.statut === 'abandon') return 'Abandon'
   if (ligne.origine === 'qualification') return 'Qualification'
-  if (ligne.rang_min !== ligne.rang_max) return 'À départager'
+  // ⚠️ « Reste à tirer » et non « à départager » : *départager* est le vocabulaire du
+  // **barrage** (E06US003). Dire « à départager » à deux finalistes annonce au public
+  // qu'une règle va décider, alors que c'est la finale — et c'est l'inverse pour les
+  // quatre battus 5ᵉ-8ᵉ, que plus aucun match ne séparera. Les deux se présentaient
+  // sous le même libellé faute d'exposer `en_lice` (relevé en revue, trois axes).
+  if (ligne.en_lice) return 'Reste à tirer'
+  if (ligne.rang_min !== ligne.rang_max) return 'Ex æquo'
+  if (!ligne.decerne) return 'Départagé au classement'
   return null
 }
 
 // Le titre d'un bloc de podium, et son état quand il est vide.
-export function etatPodium(podium: PodiumCategorie): string | null {
+export function etatPodium(podium: PodiumCategorie, effectif: number): string | null {
   if (podium.lignes.length === 0) return 'Podium en cours — aucune place décernée.'
-  if (podium.lignes.length < 3) return 'Podium partiel — les finales ne sont pas toutes tirées.'
+  // Comparé à l'**effectif de la catégorie**, pas à la constante 3 : une catégorie de
+  // deux archers (courant en salle — Benjamine, Cadet Femme…) a un podium complet à
+  // deux noms, et affichait « podium partiel » à perpétuité, tournoi terminé compris
+  // (relevé en revue, axes B et C1).
+  const complet = Math.min(3, effectif)
+  if (podium.lignes.length < complet) {
+    return 'Podium partiel — les finales ne sont pas toutes tirées.'
+  }
   return null
 }
 

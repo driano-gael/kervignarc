@@ -29,6 +29,14 @@ export interface LignePalmares {
   club_id: number | null
   origine: OriginePalmares
   statut: StatutPalmares
+  // Un **match** a décidé ce rang : la seule forme qui vaut une médaille. Ne se déduit
+  // pas de `rang_min === rang_max` — la renumérotation rend un rang exact dès qu'un
+  // archer est seul de son groupe, ce qui arrive au vainqueur d'une demi-finale avant
+  // la finale.
+  decerne: boolean
+  // Ce qui reste ouvert le sera **au tir** — à distinguer d'un ex æquo définitif, que
+  // plus aucun match ne départagera. Les deux se présentent comme une fourchette.
+  en_lice: boolean
 }
 
 // Le podium d'une catégorie : ses rangs **décernés** parmi les quatre premiers. Peut être vide (la

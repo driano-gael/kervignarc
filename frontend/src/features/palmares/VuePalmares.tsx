@@ -68,7 +68,11 @@ export function VuePalmares({
       ) : (
         <>
           {donnees.podiums.map((podium) => (
-            <BlocPodium key={podium.categorie_id} podium={podium} />
+            <BlocPodium
+              key={podium.categorie_id}
+              podium={podium}
+              effectif={donnees.lignes.filter((l) => l.categorie_id === podium.categorie_id).length}
+            />
           ))}
           <h4 className="palmares-section">Classement complet</h4>
           {/* Conteneur défilant : la table déborde sur mobile (CA « responsive ») — on la laisse
@@ -88,8 +92,16 @@ export function VuePalmares({
  * une catégorie sans archers, alors qu'elle est simplement en cours. Le dire est le parti `P-3`
  * (« ce qui n'est pas encore connu est nommé ») qu'E07US008 a posé pour le routage.
  */
-function BlocPodium({ podium }: { podium: PodiumCategorie }) {
-  const etat = etatPodium(podium)
+function BlocPodium({
+  podium,
+  effectif,
+}: {
+  podium: PodiumCategorie
+  /** Le nombre d'archers de la catégorie — une catégorie de deux a un podium complet
+   * à deux noms, et ne doit pas être annoncée « partielle » indéfiniment. */
+  effectif: number
+}) {
+  const etat = etatPodium(podium, effectif)
   return (
     <section className="palmares-podium" aria-label={`Podium ${podium.categorie_libelle}`}>
       <h4 className="palmares-section">{podium.categorie_libelle}</h4>
