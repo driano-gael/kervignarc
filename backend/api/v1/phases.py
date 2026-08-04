@@ -30,6 +30,7 @@ from domain.phase import (
     StatutPhase,
     TypePhase,
 )
+from domain.politiques import NomProfondeur, ProfondeurClassement
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["phases"])
@@ -74,6 +75,32 @@ class SourceDTO(BaseModel):
         )
 
 
+class ProfondeurDTO(BaseModel):
+    """La **profondeur de classement** d'une phase (E06US006, ADR-0070).
+
+    Deux modes seulement, ceux qu'un organisateur choisit : `un_vers_n` (tous les rangs se jouent)
+    et `podium` (on ne départage que les `jusqu_au` premiers, le reste reste groupé). Le catalogue
+    `depth` en compte un troisième — `aucun` — délibérément **absent** de la façade : c'est le
+    contenu du type échauffement, pas un réglage de tableau (règle « on n'offre pas en façade ce
+    qu'aucun moteur ne sait dérouler », ADR-0045 §2).
+
+    Jumeau assumé de `api/v1/formats.ProfondeurDTO`, pour la raison déjà tranchée sur `SourceDTO`.
+    """
+
+    nom: NomProfondeur
+    jusqu_au: int | None = Field(default=None, ge=1)
+    """Obligatoire pour `podium`, interdit pour `un_vers_n` — l'incohérence est refusée par le
+    domaine (`ProfondeurInvalide` → 422), pas ici : la règle appartient au `ProfondeurClassement`,
+    et la recopier en validateur Pydantic en ferait une seconde source à maintenir."""
+
+    def vers_agregat(self) -> ProfondeurClassement:
+        return ProfondeurClassement(nom=self.nom, jusqu_au=self.jusqu_au)
+
+    @staticmethod
+    def de_agregat(profondeur: ProfondeurClassement) -> ProfondeurDTO:
+        return ProfondeurDTO(nom=profondeur.nom, jusqu_au=profondeur.jusqu_au)
+
+
 class ConfigPhaseRequete(BaseModel):
     """Config de séquence d'une phase : son type, ses sources (facultatives, **plusieurs** possibles
     depuis E05US010) et son effectif attendu (facultatif). Sert à l'ajout comme à l'édition.
@@ -100,6 +127,14 @@ class ConfigPhaseRequete(BaseModel):
     type: TypePhase
     sources: list[SourceDTO] = Field(default_factory=list, max_length=16)
     effectif: int | None = None
+    profondeur: ProfondeurDTO | None = None
+    """Jusqu'où cette phase départage (E06US006, ADR-0070).
+
+    `null` (défaut) = **non réglée**, donc le preset du type — le podium pour un tableau, soit ce
+    qui se jouait avant cette US. ⚠️ Même régime d'édition **totale** que `sources` : omettre le
+    champ au `PUT` **efface** le réglage et fait retomber la phase sur son preset.
+    """
+
     barrage_jusqu_au: int | None = Field(default=None, ge=1)
     """Rang jusqu'auquel les ex æquo se départagent **au tir** (E06US003, ADR-0066).
 
@@ -141,6 +176,7 @@ class PhaseReponse(BaseModel):
     statut: StatutPhase
     sources: list[SourceDTO]
     effectif: int | None
+    profondeur: ProfondeurDTO | None = None
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -154,6 +190,9 @@ class PhaseReponse(BaseModel):
             statut=phase.statut,
             sources=[SourceDTO.de_agregat(source) for source in phase.sources],
             effectif=phase.effectif,
+            profondeur=(
+                None if phase.profondeur is None else ProfondeurDTO.de_agregat(phase.profondeur)
+            ),
             barrage_jusqu_au=phase.barrage_jusqu_au,
         )
 
@@ -187,6 +226,7 @@ async def ajouter_phase(
                 sources,
                 requete.effectif,
                 requete.barrage_jusqu_au,
+                None if requete.profondeur is None else requete.profondeur.vers_agregat(),
             )
         )
     )
@@ -214,6 +254,7 @@ async def modifier_phase(
                 sources,
                 requete.effectif,
                 requete.barrage_jusqu_au,
+                None if requete.profondeur is None else requete.profondeur.vers_agregat(),
             )
         )
     )

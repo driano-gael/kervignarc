@@ -43,6 +43,7 @@ from domain.erreurs import (
 )
 from domain.grain_validation import GrainValidation
 from domain.phase import (
+    TYPES_EN_TABLEAU,
     EtapeSequencee,
     IssueTour,
     NatureSource,
@@ -53,11 +54,14 @@ from domain.phase import (
 )
 from domain.plage import Plage
 
-_TYPES_EN_TABLEAU = frozenset({TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMENT})
+_TYPES_EN_TABLEAU = TYPES_EN_TABLEAU
 """Les types dont le déroulé est un **arbre** : leur nombre de tours se déduit de l'effectif seul.
 
 Les six autres types du catalogue (E05US015) tirent le leur d'une configuration que ni `Phase` ni
-`ModelePhase` ne portent encore — cf. `# DETTE-028`."""
+`ModelePhase` ne portent encore — cf. `# DETTE-028`.
+
+Défini dans `domain.phase` depuis E06US006, qui en a besoin pour savoir où une profondeur de
+classement se règle : l'alias garde les lectures locales courtes sans dédoubler la table."""
 
 _TYPES_SANS_OPPOSITION = frozenset({TypePhase.QUALIFICATION, TypePhase.ECHAUFFEMENT})
 """Les types où l'archer tire **seul** : un participant leur suffit (E05US021).
@@ -658,6 +662,12 @@ def _braquets(
     Le nombre de duels d'un tour est `engagés - places gagnantes` : au premier tour d'un tableau
     incomplet, cela donne exactement les byes que `ByesAuxMieuxClasses` distribuera (24 duellistes
     dans un tableau de 32 → 8 duels, 8 exemptés). La somme des duels vaut toujours `effectif - 1`.
+
+    ⚠️ `# DETTE-035` — c'est l'arbre **nu** : les duels que la politique `depth` ajoute (une petite
+    finale au preset, toute la cascade de placement en 1→N) **n'y sont pas comptés**. Depuis
+    E06US006 l'organisateur choisit cette profondeur juste à côté du schéma, sans en voir le coût
+    en duels. Les deux corrections évidentes sont pires que le mal (ensemencer un vrai tableau ici,
+    ou recopier la formule de l'arbre) : cf. le registre de dette.
     """
     if etape.type not in _TYPES_EN_TABLEAU or resolu is None or tranche is None or resolu < 2:
         return ()

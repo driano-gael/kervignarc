@@ -47,6 +47,7 @@ from domain.phase import (
     TypePhase,
     grain_par_defaut,
 )
+from domain.politiques import ProfondeurClassement
 from domain.tournoi import TournoiId
 
 FormatTournoiId = int
@@ -86,6 +87,10 @@ class ModelePhase:
     # double ; DETTE-015 est résorbée.
     sources: tuple[SourcePhase, ...] = ()
     effectif: int | None = None
+    profondeur: ProfondeurClassement | None = None
+    """Jusqu'où cette étape départage (E06US006). Non validée ici — c'est le brouillon d'ADR-0063 :
+    une profondeur réglée sur un type qui ne monte pas de tableau est un modèle **licite** qui
+    refusera de s'appliquer, `Phase.__post_init__` faisant barrage à `pour_tournoi`."""
 
     @staticmethod
     def qualification(
@@ -121,6 +126,7 @@ class ModelePhase:
             validation=self.validation,
             sources=self.sources,
             effectif=self.effectif,
+            profondeur=self.profondeur,
             statut=StatutPhase.A_VENIR,
         )
 
@@ -139,6 +145,7 @@ class ModelePhase:
             validation=phase.validation,
             sources=phase.sources,
             effectif=phase.effectif,
+            profondeur=phase.profondeur,
         )
 
 

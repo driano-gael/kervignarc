@@ -117,7 +117,6 @@ from domain.politiques import (
     ByesAuxMieuxClasses,
     FamillePolitique,
     PlacementEnCascade,
-    ProfondeurPodium,
     SeedingSerpent,
     registre_par_defaut,
 )
@@ -218,6 +217,9 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
     duels = InMemoryDuelRepository()
     placements_tableau = InMemoryPlacementTableauRepository()
     classement = ServiceClassement(tournois, archers, series, categories, phases, forfaits)
+    # **Un seul** registre pour les deux services (E06US006) : c'est lui qui résout la profondeur
+    # lue sur chaque phase, et deux catalogues distincts laisseraient croire qu'ils divergent.
+    registre = registre_par_defaut()
     placement_duels = ServicePlacementDuels(
         tournois,
         phases,
@@ -231,7 +233,7 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
         PlacementEnCascade(),
-        ProfondeurPodium(),
+        registre,
     )
     saisie_duels = ServiceSaisieDuels(
         tournois,
@@ -245,7 +247,7 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
         PlacementEnCascade(),
-        ProfondeurPodium(),
+        registre,
     )
     return HarnaisSimulation(
         tournois,
@@ -595,11 +597,15 @@ def create_app(
     # produit est **identique** à celui d'avant l'US ; c'est le vocabulaire qui se met en accord
     # avec le comportement.
     #
-    # Remplacer `ProfondeurPodium()` par `ProfondeurUnVersN()` sur cette ligne suffit à passer ces
-    # tableaux au **placement intégral 1→N** — c'est le levier qu'`E01US024` exposera à
-    # l'organisateur phase par phase, au lieu de le figer au câblage. La profondeur est injectée
-    # plutôt que laissée en défaut du domaine précisément pour que ce levier soit **visible ici**
-    # (règles 2 et 8 : un format est de la configuration, et le câblage se lit au composition root).
+    # ⚠️ **La profondeur n'est plus injectée ici depuis E06US006** ([ADR-0070]). Elle était figée à
+    # `ProfondeurPodium()` sur cette ligne, en attendant « le levier qu'E01US024 exposera à
+    # l'organisateur phase par phase » — E01US024 a livré le composeur de déroulé sans lui, et
+    # E06US006 hérite donc de la promesse. Chaque phase porte désormais sa profondeur
+    # (`Phase.profondeur`), résolue **par le registre** (`profondeur_de`) ; ce qui s'injecte ici est
+    # le **catalogue**, pas le choix. Une phase qui ne règle rien retombe sur le preset de son type,
+    # le podium — soit exactement ce que cette ligne câblait, pour que rien de déjà joué ne bouge.
+    #
+    # [ADR-0070]: ../../docs/adr/0070-profondeur-de-classement-reglee-par-phase.md
     app.state.service_placement_duels = ServicePlacementDuels(
         tournoi_repository,
         phase_repository,
@@ -613,7 +619,7 @@ def create_app(
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
         PlacementEnCascade(),
-        ProfondeurPodium(),
+        app.state.registre_politiques,
     )
     # Saisie en duels (E04US013, ADR-0049) : reconstruit le même arbre (classement → tableau) et
     # **rejoue** les duels validés pour la progression. Le barème est résolu par arme via le
@@ -634,7 +640,7 @@ def create_app(
         SeedingSerpent(),
         ByesAuxMieuxClasses(),
         PlacementEnCascade(),
-        ProfondeurPodium(),
+        app.state.registre_politiques,
     )
 
     # Simulation éphémère (E15US002, ADR-0054) : rejoue le moteur (qualif → duels → classement) d'un

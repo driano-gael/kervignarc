@@ -463,3 +463,80 @@ def test_trop_de_sources_est_refuse(app_phases: FastAPI, connecter_admin: Connec
             },
         )
         assert reponse.status_code == 400
+
+
+def test_profondeur_aller_retour(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """La profondeur réglée à la composition se relit telle quelle (E06US006).
+
+    Test **d'après implémentation** (règle 9) : il n'y a pas d'oracle en jeu ici, seulement du
+    transport DTO → service → `config.policies.depth` → relecture.
+    """
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+
+        reponse = client.post(
+            base,
+            json={"type": "elimination_directe", "profondeur": {"nom": "un_vers_n"}},
+        )
+        assert reponse.status_code == 201, reponse.text
+        assert reponse.json()["profondeur"] == {"nom": "un_vers_n", "jusqu_au": None}
+
+        phase_id = reponse.json()["id"]
+        modifiee = client.put(
+            f"{base}/{phase_id}",
+            json={
+                "type": "elimination_directe",
+                "profondeur": {"nom": "podium", "jusqu_au": 8},
+            },
+        )
+        assert modifiee.status_code == 200, modifiee.text
+        assert modifiee.json()["profondeur"] == {"nom": "podium", "jusqu_au": 8}
+
+        # Édition **totale** : omettre le champ efface le réglage (régime annoncé au DTO).
+        efface = client.put(f"{base}/{phase_id}", json={"type": "elimination_directe"})
+        assert efface.status_code == 200, efface.text
+        assert efface.json()["profondeur"] is None
+
+        assert client.get(base).json()[0]["profondeur"] is None
+
+
+def test_profondeur_sur_un_type_sans_tableau_422(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un type qui ne monte aucun arbre n'a pas de profondeur à régler.
+
+    L'échauffement plutôt que la qualification : les deux sont refusés par le même invariant, mais
+    une qualification créée sans barème échoue **plus tôt** (`phase_qualification_incomplete`), si
+    bien que le test ne prouverait pas ce qu'il annonce. Le cas de l'échauffement est en outre le
+    plus proche du réel — c'est le type sur lequel un réglage de profondeur n'a aucun sens.
+    """
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+
+        reponse = client.post(
+            base,
+            json={"type": "echauffement", "profondeur": {"nom": "un_vers_n"}},
+        )
+        assert reponse.status_code == 422, reponse.text
+        assert reponse.json()["code"] == "profondeur_invalide"
+
+
+def test_profondeur_podium_sans_seuil_422(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """« S'arrêter à un top » sans dire lequel n'est pas un réglage — l'invariant est au domaine."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+
+        reponse = client.post(
+            base,
+            json={"type": "elimination_directe", "profondeur": {"nom": "podium"}},
+        )
+        assert reponse.status_code == 422, reponse.text
+        assert reponse.json()["code"] == "profondeur_invalide"

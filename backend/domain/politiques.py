@@ -73,7 +73,7 @@ from enum import Enum
 from typing import Protocol, cast
 
 from domain.archer import ArcherId
-from domain.erreurs import PolitiqueInconnue, PolitiqueMalFormee
+from domain.erreurs import PolitiqueInconnue, PolitiqueMalFormee, ProfondeurInvalide
 from domain.plage import Plage
 
 
@@ -550,6 +550,12 @@ class TiebreakAvecBarrage:
 
 # --- depth -------------------------------------------------------------------------------------
 
+RANGS_DU_PODIUM = 4
+"""Les rangs qu'un tableau à petite finale décerne : 1-2 (finale) et 3-4 (petite finale).
+
+Défaut de `ProfondeurPodium` **et** preset des phases en tableau (`phase.profondeur_par_defaut`) —
+un seul 4 pour une seule raison, plutôt qu'un littéral recopié dans chaque module."""
+
 
 class Depth(Protocol):
     """Décide jusqu'où classer (ADR-0004). Méthode fondatrice : les rangs à produire pour un
@@ -577,7 +583,7 @@ class ProfondeurPodium:
     rend ses 8 matchs. C'est le sens de Q2 : « l'organisateur peut choisir de s'arrêter à un top ».
     """
 
-    jusqu_au: int = 4
+    jusqu_au: int = RANGS_DU_PODIUM
 
     def rangs_a_classer(self, effectif: int) -> tuple[int, ...]:
         return tuple(range(1, min(self.jusqu_au, effectif) + 1))
@@ -598,6 +604,76 @@ class AucunClassement:
 
     def rangs_a_classer(self, effectif: int) -> tuple[int, ...]:
         return ()
+
+
+class NomProfondeur(str, Enum):
+    """Les profondeurs qu'un **organisateur** choisit — un sous-ensemble du catalogue `depth`.
+
+    `aucun` (`AucunClassement`) n'y figure pas : ce n'est pas un choix mais le contenu même du type
+    `échauffement` (§10.1), et l'offrir sur un tableau proposerait de monter un arbre dont on ne
+    lirait aucun rang.
+    """
+
+    UN_VERS_N = "un_vers_n"
+    PODIUM = "podium"
+
+
+@dataclass(frozen=True)
+class ProfondeurClassement:
+    """Le **choix** de profondeur d'une phase — un descripteur sérialisable, pas la stratégie.
+
+    La distinction est celle d'ADR-0066 : l'agrégat porte de la **donnée** (ce que l'organisateur a
+    réglé, ce que la base relit), et c'est le **registre** qui en fait une `Depth`. Mettre la
+    stratégie sur la phase ferait entrer un objet non sérialisable dans un agrégat, et court-
+    circuiterait le point d'injection — la politique deviendrait une décoration.
+
+    `en_config()` rend la forme ADR-0046 (`{"nom": …, …paramètres}`), donc directement consommable
+    par `assembler_politiques`.
+    """
+
+    nom: NomProfondeur
+    jusqu_au: int | None = None
+    """Le dernier rang départagé — **et seulement** pour un top N.
+
+    Porté par `podium` uniquement : un classement intégral ne s'arrête à aucun rang, et lui en
+    donner un décrirait deux profondeurs à la fois. Le refus est plus utile que la tolérance —
+    silencieusement ignoré, le seuil laisserait croire à un top N qui n'aurait jamais lieu.
+    """
+
+    def __post_init__(self) -> None:
+        if self.nom is NomProfondeur.PODIUM:
+            if self.jusqu_au is None or self.jusqu_au < 1:
+                raise ProfondeurInvalide(
+                    "Un classement en top N s'arrête à un rang entier positif "
+                    f"(reçu {self.jusqu_au!r}) ; « classer tout le monde » se dit en choisissant "
+                    "le classement intégral."
+                )
+        elif self.jusqu_au is not None:
+            raise ProfondeurInvalide(
+                "Un classement intégral va jusqu'au dernier archer : il ne s'arrête à aucun rang "
+                f"(reçu {self.jusqu_au!r})."
+            )
+
+    @staticmethod
+    def integrale() -> ProfondeurClassement:
+        """Le mode **1→N** : tous les rangs se jouent, aucun archer n'est laissé en fourchette."""
+        return ProfondeurClassement(nom=NomProfondeur.UN_VERS_N)
+
+    @staticmethod
+    def top(jusqu_au: int) -> ProfondeurClassement:
+        """Le mode **top N** : seuls les `jusqu_au` premiers sont départagés, le reste groupé."""
+        return ProfondeurClassement(nom=NomProfondeur.PODIUM, jusqu_au=jusqu_au)
+
+    @property
+    def est_integrale(self) -> bool:
+        return self.nom is NomProfondeur.UN_VERS_N
+
+    def en_config(self) -> dict[str, object]:
+        """La forme `config.policies.depth` (ADR-0046) — ce qui se persiste et ce qui se résout."""
+        config: dict[str, object] = {"nom": self.nom.value}
+        if self.jusqu_au is not None:
+            config["jusqu_au"] = self.jusqu_au
+        return config
 
 
 # --- aggregation -------------------------------------------------------------------------------

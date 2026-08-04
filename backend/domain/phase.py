@@ -57,6 +57,7 @@ from domain.erreurs import (
     PhaseSansClassementPrelevee,
     PlageSourceVide,
     PlusieursQualifications,
+    ProfondeurInvalide,
     RangSourceInvalide,
     RangsSourceInexistants,
     SequenceOrdreInvalide,
@@ -67,6 +68,7 @@ from domain.erreurs import (
     SourcesQuiSeRecoupent,
 )
 from domain.grain_validation import GrainValidation, TypeGrain
+from domain.politiques import RANGS_DU_PODIUM, ProfondeurClassement
 from domain.tournoi import TournoiId
 
 PhaseId = int
@@ -167,6 +169,47 @@ _GRAIN_PAR_DEFAUT: dict[TypePhase, GrainValidation] = {
 # non classants) pour qu'un type ajouté demain soit classant par défaut — l'oubli le plus probable
 # est d'ajouter un vrai format, pas un second échauffement.
 _TYPES_SANS_CLASSEMENT: frozenset[TypePhase] = frozenset({TypePhase.ECHAUFFEMENT})
+
+# Les types qui montent un **arbre de duels**, donc les seuls dont la profondeur de classement soit
+# un réglage (E06US006). Déclaré ici plutôt que dans `deroule.py` — qui le portait seul jusqu'à
+# cette US — parce que deux modules en ont désormais besoin et qu'une seconde copie divergerait au
+# premier type ajouté. À ne pas confondre avec `_TYPES_SANS_CLASSEMENT` : une poule **classe** ses
+# participants sans monter d'arbre, elle n'a donc pas de profondeur à régler.
+TYPES_EN_TABLEAU: frozenset[TypePhase] = frozenset(
+    {TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMENT}
+)
+
+# Profondeur preset de chaque type en tableau (« politique sans migration », ADR-0011).
+#
+# ⚠️ **Le podium, et non 1→N**, malgré le « 1→N (défaut) » du CA et d'ADR-0004 — arbitrage du
+# 04/08/2026, ADR-0070. Le défaut du *catalogue* n'est pas le preset d'une *phase déjà en base* :
+# jusqu'à E06US006 toutes les phases se jouaient en `ProfondeurPodium` figée au câblage, et faire
+# de 1→N le preset aurait converti tous les tournois existants au placement intégral — un tableau
+# de 120 passant d'une trentaine de duels à plus d'une centaine, sans que personne ne l'ait demandé.
+# 1→N est ce que l'organisateur **choisit** ; l'absence de réglage reste ce qui était joué hier.
+_PROFONDEUR_PAR_DEFAUT: dict[TypePhase, ProfondeurClassement] = {
+    TypePhase.ELIMINATION_DIRECTE: ProfondeurClassement.top(RANGS_DU_PODIUM),
+    TypePhase.PLACEMENT: ProfondeurClassement.top(RANGS_DU_PODIUM),
+}
+
+
+def profondeur_par_defaut(type_phase: TypePhase) -> ProfondeurClassement:
+    """La profondeur preset d'un type de phase — le podium pour un tableau (E06US006).
+
+    Sert à la création d'une phase **et** à la relecture d'une phase antérieure à E06US006, dont la
+    `config` ne porte pas encore de clé `depth` : c'est le même mécanisme que `grain_par_defaut`
+    pour les phases d'avant E01US015.
+
+    Lève `ProfondeurInvalide` si le type ne monte aucun tableau — explicite plutôt qu'un `KeyError`
+    que le repository diagnostiquerait « configuration illisible ».
+    """
+    preset = _PROFONDEUR_PAR_DEFAUT.get(type_phase)
+    if preset is None:
+        raise ProfondeurInvalide(
+            f"Une phase de type « {type_phase.value} » ne monte aucun tableau : elle n'a pas de "
+            "profondeur de classement à régler."
+        )
+    return preset
 
 
 def produit_un_classement(type_phase: TypePhase) -> bool:
@@ -401,6 +444,13 @@ class Phase:
     sources: tuple[SourcePhase, ...] = ()
     effectif: int | None = None
     barrage_jusqu_au: int | None = None
+    profondeur: ProfondeurClassement | None = None
+    """Jusqu'où cette phase départage ses participants (E06US006, ADR-0070).
+
+    `None` = **non réglée**, et non « 1→N » : la phase retombe sur le preset de son type
+    (`profondeur_par_defaut`), qui vaut le podium pour un tableau. C'est ce qui rend l'US
+    rétro-compatible — une phase écrite avant elle continue de jouer ce qu'elle jouait."""
+
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None
 
@@ -408,6 +458,11 @@ class Phase:
         """Fait respecter la cohérence quelle que soit la porte d'entrée (fabriques **et**
         `replace()`, qui repasse par ici)."""
         verifier_coherence_etape(self.type, self.bareme, self.validation, self.effectif)
+        if self.profondeur is not None and self.type not in TYPES_EN_TABLEAU:
+            raise ProfondeurInvalide(
+                f"Une phase de type « {self.type.value} » ne monte aucun tableau : elle n'a pas "
+                "de profondeur de classement à régler."
+            )
         if self.barrage_jusqu_au is not None and self.barrage_jusqu_au < 1:
             raise SeuilDeBarrageInvalide(
                 "Le rang jusqu'auquel un barrage départage est un entier positif "
@@ -442,6 +497,7 @@ class Phase:
         sources: tuple[SourcePhase, ...] = (),
         effectif: int | None = None,
         barrage_jusqu_au: int | None = None,
+        profondeur: ProfondeurClassement | None = None,
     ) -> Phase:
         """Crée une phase **générique** (E05US001) à un rang donné de la séquence, statut `a venir`.
 
@@ -455,6 +511,7 @@ class Phase:
             sources=sources,
             effectif=effectif,
             barrage_jusqu_au=barrage_jusqu_au,
+            profondeur=profondeur,
             statut=StatutPhase.A_VENIR,
         )
 

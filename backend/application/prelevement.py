@@ -21,7 +21,39 @@ aucune abstraction : une fonction pure, appelée deux fois.
 from __future__ import annotations
 
 from domain.classement import Classement, LigneClassement, StatutClassement
-from domain.phase import Phase
+from domain.erreurs import PolitiqueInconnue
+from domain.phase import Phase, profondeur_par_defaut
+from domain.politiques import Depth, RegistrePolitiques, assembler_politiques
+
+
+def profondeur_de(phase: Phase, registre: RegistrePolitiques) -> Depth:
+    """Jusqu'où cette phase départage — la politique `depth` **résolue** (E06US006, ADR-0070).
+
+    Extraite ici pour la **même raison** que `preleves`, et pour un risque identique : les deux
+    services montent le même arbre (`construire_tableau`) et doivent lui donner la **même**
+    profondeur. S'ils divergeaient, `ServicePlacementDuels` poserait les cibles d'un tableau et
+    `ServiceSaisieDuels` en jouerait un autre — la panne exacte qu'E05US020 a produite sur
+    l'ensemencement, mesurée en revue (plan de 8 pour un tableau de 4). Une seule lecture, deux
+    appels.
+
+    Une phase qui ne règle rien retombe sur le **preset de son type** (le podium), et non sur 1→N :
+    l'absence de réglage doit rejouer ce qui se jouait hier, pas convertir les tournois existants
+    au placement intégral (ADR-0070).
+
+    La résolution passe par le **registre** (règle 2) : le descripteur porté par la phase est de la
+    donnée, la stratégie sort du catalogue. L'instancier à la main ferait de la politique une
+    décoration — même parti que le `tiebreak` d'E06US003 (ADR-0066).
+    """
+    choix = phase.profondeur if phase.profondeur is not None else profondeur_par_defaut(phase.type)
+    depth = assembler_politiques({"depth": choix.en_config()}, registre).depth
+    if depth is None:
+        # Inatteignable : `assembler_politiques` lève déjà `PolitiqueInconnue` sur un nom absent du
+        # catalogue. Explicite plutôt que silencieux — un repli maison réintroduirait ici la
+        # stratégie en dur que tout le reste du chemin s'applique à ne pas écrire.
+        raise PolitiqueInconnue(
+            f"Aucune profondeur « {choix.nom.value} » n'est enregistrée au catalogue."
+        )
+    return depth
 
 
 def preleves(

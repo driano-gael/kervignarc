@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import datetime
 from collections.abc import Sequence
+from dataclasses import replace
 
 import pytest
 
@@ -33,8 +34,8 @@ from domain.placement import Affectation
 from domain.politiques import (
     ByesAuxMieuxClasses,
     PlacementEnCascade,
-    ProfondeurPodium,
     SeedingSerpent,
+    registre_par_defaut,
 )
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
@@ -79,17 +80,12 @@ class FauxPhaseRepository:
 
     def ajouter(self, phase: Phase) -> Phase:
         self._sequence += 1
-        persiste = Phase(
-            tournoi_id=phase.tournoi_id,
-            ordre=phase.ordre,
-            type=phase.type,
-            bareme=phase.bareme,
-            validation=phase.validation,
-            sources=phase.sources,
-            effectif=phase.effectif,
-            statut=phase.statut,
-            id=self._sequence,
-        )
+        # ⚠️ `replace()` et non une reconstruction champ par champ (corrigé en E06US006). La forme
+        # précédente énumérait les champs de `Phase` : chaque champ ajouté à l'agrégat depuis était
+        # **silencieusement perdu** à l'écriture — `barrage_jusqu_au` l'était déjà, `profondeur` l'a
+        # été à son tour, et le symptôme (un décor qui ignore le réglage qu'on vient de lui poser)
+        # ne désigne jamais ce double. Un faux qui recopie la forme de l'agrégat dérive à chaque US.
+        persiste = replace(phase, id=self._sequence)
         self._phases[self._sequence] = persiste
         return persiste
 
@@ -318,7 +314,7 @@ class _Monde:
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
             PlacementEnCascade(),
-            ProfondeurPodium(),
+            registre_par_defaut(),
         )
 
 

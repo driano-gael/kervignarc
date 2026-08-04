@@ -54,6 +54,21 @@ class EffectifPhaseInvalide(DomainError):
     code = "effectif_phase_invalide"
 
 
+class ProfondeurInvalide(DomainError):
+    """La profondeur de classement réglée sur une phase est incohérente (E06US006, ADR-0070).
+
+    Trois cas : un top N sans rang d'arrêt (ou à un rang `< 1`), un classement intégral assorti
+    d'un rang d'arrêt — les deux décrivent des profondeurs contradictoires —, et une profondeur
+    réglée sur un type qui ne monte **aucun tableau** (une qualification classe toujours tout le
+    monde, un échauffement ne classe rien : le réglage n'y agit sur rien).
+
+    La profondeur est **facultative** (`None` = non réglée) : elle retombe alors sur le preset du
+    type, le podium pour un tableau (mécanisme « politique sans migration », ADR-0011).
+    """
+
+    code = "profondeur_invalide"
+
+
 class SeuilDeBarrageInvalide(DomainError):
     """Le rang jusqu'auquel une phase départage **au tir** n'est pas un entier `>= 1` (E06US003).
 

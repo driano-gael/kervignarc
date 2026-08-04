@@ -27,7 +27,7 @@ from application.erreurs import (
     PhasePasUnTableau,
     TournoiIntrouvable,
 )
-from application.prelevement import preleves
+from application.prelevement import preleves, profondeur_de
 from domain.archer import ArcherId
 from domain.gabarit_salle import Cible, GabaritSalle
 from domain.inscription import Inscription, InscriptionId
@@ -48,7 +48,7 @@ from domain.placement import (
     placer,
     placer_restants,
 )
-from domain.politiques import Byes, Depth, Routing, Seeding
+from domain.politiques import Byes, RegistrePolitiques, Routing, Seeding
 from domain.ports import (
     ArcherRepository,
     BlasonRepository,
@@ -119,7 +119,7 @@ class ServicePlacementDuels:
         seeding: Seeding,
         byes: Byes,
         routing: Routing,
-        depth: Depth,
+        registre: RegistrePolitiques,
     ) -> None:
         self._tournois = tournois
         self._phases = phases
@@ -135,7 +135,10 @@ class ServicePlacementDuels:
         self._seeding = seeding
         self._byes = byes
         self._routing = routing
-        self._depth = depth
+        # La **profondeur** n'est plus injectée ici depuis E06US006 : elle se lit sur la phase
+        # (`profondeur_de`), qui la porte enfin. Garder le paramètre aurait laissé deux sources —
+        # celle du câblage, celle de l'organisateur — dont l'une aurait silencieusement gagné.
+        self._registre = registre
 
     # --- Lecture -------------------------------------------------------------------------------
 
@@ -487,7 +490,11 @@ class ServicePlacementDuels:
             return contexte  # pas de tableau possible : plan vide, sans duel
 
         tableau = construire_tableau(
-            participants, self._seeding, self._byes, self._routing, self._depth
+            participants,
+            self._seeding,
+            self._byes,
+            self._routing,
+            profondeur_de(phase, self._registre),
         )
         for haut, bas in paires_du_premier_tour(tableau):
             self._enregistrer_duel(contexte, haut, bas)

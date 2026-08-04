@@ -28,14 +28,14 @@ from application.erreurs import (
     PhasePasUnTableau,
     TournoiIntrouvable,
 )
-from application.prelevement import preleves
+from application.prelevement import preleves, profondeur_de
 from domain.blason import ZoneScore
 from domain.classement import LigneClassement
 from domain.duel import BaremeDuel, Cote, Duel, ResolveurBaremeDuel
 from domain.erreurs import MatchNonJouable
 from domain.participant import GenreParticipant, Participant
 from domain.phase import PhaseId, TypePhase
-from domain.politiques import Byes, Depth, Routing, Seeding
+from domain.politiques import Byes, RegistrePolitiques, Routing, Seeding
 from domain.ports import (
     BlasonRepository,
     CategorieRepository,
@@ -117,7 +117,7 @@ class ServiceSaisieDuels:
         seeding: Seeding,
         byes: Byes,
         routing: Routing,
-        depth: Depth,
+        registre: RegistrePolitiques,
     ) -> None:
         self._tournois = tournois
         self._phases = phases
@@ -132,7 +132,9 @@ class ServiceSaisieDuels:
         self._seeding = seeding
         self._byes = byes
         self._routing = routing
-        self._depth = depth
+        # Profondeur lue **sur la phase** depuis E06US006 (`profondeur_de`), comme le plan de
+        # duels : les deux montent le même arbre, ils ne peuvent pas le tronquer différemment.
+        self._registre = registre
 
     # --- Lecture -------------------------------------------------------------------------------
 
@@ -271,7 +273,11 @@ class ServiceSaisieDuels:
             for ligne in preleves(phase, classement, self._ordre_de_la_qualification(tournoi_id))
         ]
         tableau = construire_tableau(
-            participants, self._seeding, self._byes, self._routing, self._depth
+            participants,
+            self._seeding,
+            self._byes,
+            self._routing,
+            profondeur_de(phase, self._registre),
         )
         tableau = self._rejouer(tableau, phase_id, lignes)
         return self._appliquer_forfaits(tableau, phase_id), lignes

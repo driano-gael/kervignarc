@@ -46,6 +46,7 @@ from domain.phase import (
     StatutPhase,
     TypePhase,
 )
+from domain.politiques import ProfondeurClassement
 from domain.ports import PhaseRepository, TournoiRepository
 from domain.tournoi import TournoiId
 
@@ -76,6 +77,7 @@ class ServicePhases:
         sources: tuple[SourcePhase, ...] = (),
         effectif: int | None = None,
         barrage_jusqu_au: int | None = None,
+        profondeur: ProfondeurClassement | None = None,
     ) -> Phase:
         """Ajoute une phase **en fin de séquence** (ordre = N+1) et la persiste.
 
@@ -92,6 +94,7 @@ class ServicePhases:
             sources=sources,
             effectif=effectif,
             barrage_jusqu_au=barrage_jusqu_au,
+            profondeur=profondeur,
         )
         # Valide la séquence complète (la nouvelle incluse) avant d'écrire.
         SequencePhases(phases=(*existantes, nouvelle))
@@ -105,6 +108,7 @@ class ServicePhases:
         sources: tuple[SourcePhase, ...],
         effectif: int | None,
         barrage_jusqu_au: int | None = None,
+        profondeur: ProfondeurClassement | None = None,
     ) -> Phase:
         """Édite le type, la source et l'effectif d'une phase (édition **totale** de sa config de
         séquence — `ordre`, `statut`, barème/grain sont préservés).
@@ -119,6 +123,7 @@ class ServicePhases:
             sources=sources,
             effectif=effectif,
             barrage_jusqu_au=barrage_jusqu_au,
+            profondeur=profondeur,
         )
         autres = [p for p in self._phases.par_tournoi(tournoi_id) if p.id != phase_id]
         SequencePhases(phases=(*autres, modifiee))

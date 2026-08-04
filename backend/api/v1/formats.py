@@ -40,6 +40,7 @@ from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.patrimoine import OrigineBrique
 from domain.phase import IssueTour, NatureSource, SourcePhase, TypePhase
+from domain.politiques import NomProfondeur, ProfondeurClassement
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["formats"])
@@ -98,6 +99,27 @@ class SourceDTO(BaseModel):
         )
 
 
+class ProfondeurDTO(BaseModel):
+    """La **profondeur de classement** d'une étape de format (E06US006, ADR-0070).
+
+    Jumeau assumé de `api/v1/phases.ProfondeurDTO`, pour la raison déjà tranchée sur `SourceDTO` :
+    même notion, deux ressources distinctes. ⚠️ Contrairement à son jumeau, celui-ci ne valide
+    **rien** de plus que la forme : une étape de format est un **brouillon** (ADR-0063), et un
+    modèle incohérent doit pouvoir s'enregistrer pour être diagnostiqué. C'est `pour_tournoi` qui
+    fera barrage à l'application.
+    """
+
+    nom: NomProfondeur
+    jusqu_au: int | None = Field(default=None, ge=1)
+
+    def vers_agregat(self) -> ProfondeurClassement:
+        return ProfondeurClassement(nom=self.nom, jusqu_au=self.jusqu_au)
+
+    @staticmethod
+    def de_agregat(profondeur: ProfondeurClassement) -> ProfondeurDTO:
+        return ProfondeurDTO(nom=profondeur.nom, jusqu_au=profondeur.jusqu_au)
+
+
 class EtapeDTO(BaseModel):
     """Un modèle de phase dans un format — **ni statut, ni tournoi** (ADR-0060 §5).
 
@@ -126,6 +148,8 @@ class EtapeDTO(BaseModel):
     validation: GrainDTO | None = None
     sources: list[SourceDTO] = Field(default_factory=list, max_length=16)
     effectif: int | None = None
+    profondeur: ProfondeurDTO | None = None
+    """Jusqu'où cette étape départage (E06US006). `null` = non réglée → preset du type."""
 
     def vers_modele(self) -> ModelePhase:
         """Traduit le DTO en agrégat de domaine.
@@ -155,6 +179,7 @@ class EtapeDTO(BaseModel):
             ),
             sources=tuple(source.vers_agregat() for source in self.sources),
             effectif=self.effectif,
+            profondeur=None if self.profondeur is None else self.profondeur.vers_agregat(),
         )
 
     @staticmethod
@@ -177,6 +202,9 @@ class EtapeDTO(BaseModel):
             ),
             sources=[SourceDTO.de_agregat(source) for source in etape.sources],
             effectif=etape.effectif,
+            profondeur=(
+                None if etape.profondeur is None else ProfondeurDTO.de_agregat(etape.profondeur)
+            ),
         )
 
 

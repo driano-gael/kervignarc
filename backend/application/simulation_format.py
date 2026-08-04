@@ -154,13 +154,16 @@ class ToursPhase:
 
         ⚠️ **Les duels sont délibérément hors du prédicat**, alors qu'ils sont affichés. Le schéma
         compte les duels de l'**arbre** (`effectif - 1`) ; le moteur y ajoute ce que la politique de
-        profondeur injectée impose — une petite finale avec `ProfondeurPodium`, câblée par défaut.
-        L'écart d'une unité est donc **structurel et attendu**, sur *toute* phase de tableau. Un
-        premier jet l'incluait : `ecart` devenait vrai sur 100 % des simulations, y compris pour un
-        format parfaitement composé, et l'avertissement — dont l'objet est de signaler la divergence
-        `# DETTE-028` — se noyait dans son propre bruit. Pire, il rendait le test de non-régression
-        de cette dette **tautologique**, alors qu'on attend précisément qu'il échoue le jour où le
-        moteur honorera les sources.
+        profondeur impose — une petite finale au preset `podium`, **toute la cascade de placement**
+        si la phase déclare un classement intégral (E06US006 : la profondeur se lit désormais sur la
+        phase, elle n'est plus câblée). L'écart n'est donc plus « d'une unité » dans tous les cas,
+        mais il reste **structurel et attendu** sur toute phase de tableau — `# DETTE-035`.
+
+        Un premier jet l'incluait : `ecart` devenait vrai sur 100 % des simulations, y compris pour
+        un format parfaitement composé, et l'avertissement — dont l'objet est de signaler la
+        divergence `# DETTE-028` — se noyait dans son propre bruit. Pire, il rendait le test de
+        non-régression de cette dette **tautologique**, alors qu'on attend précisément qu'il échoue
+        le jour où le moteur honorera les sources.
 
         Les deux comptes restent rendus côte à côte : c'est à l'organisateur de lire « 15 annoncés,
         16 joués » et d'en tirer sa charge réelle.
