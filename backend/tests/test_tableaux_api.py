@@ -107,12 +107,21 @@ def test_le_dto_public_ne_porte_ni_identite_de_scoreur_ni_detail_de_tir(
 ) -> None:
     """**Le verrou de règle 6 de cette US.**
 
-    Le tableau du scoreur (`/api/v1/duels/tableau/...`) rend `manches`, `barrage`, `zones`,
-    `bareme` et surtout `validee_par` — le **nom** de la personne qui a validé. Sur une route
-    publique du réseau local, ces champs n'ont aucun destinataire et un seul effet possible : la
-    fuite. On vérifie donc la projection **par ce qu'elle exclut**, et non seulement par ce qu'elle
-    contient : un `de_etat` élargi par mégarde (ou un futur champ ajouté au DTO du scoreur puis
-    recopié ici) échouerait ici, et nulle part ailleurs.
+    Le tableau du scoreur (`/api/v1/duels/tableau/...`) rend `manches`, `barrage`, `zones`, `mode`,
+    `nb_manches`, `nb_fleches_par_volee`, `points_pour_gagner` et surtout `validee_par` — le **nom**
+    de la personne qui a validé. Sur une route publique du réseau local, ces champs n'ont aucun
+    destinataire et un seul effet possible : la fuite.
+
+    ⚠️ **Liste blanche, et non liste noire** (correctif de revue, axe adversarial). Un premier jet
+    asserait `not (interdits & set(joue))` sur six noms — un contrôle par **exclusion**,
+    c'est-à-dire exactement le mode d'échec que le choix d'un DTO **distinct** (plutôt qu'un
+    `exclude`) visait à éviter : l'argument était juste pour le DTO et abandonné pour son
+    test. Cette liste ratait trois champs réels du DTO scoreur (`mode`,
+    `nb_fleches_par_volee`, `points_pour_gagner`) et en protégeait un **fantôme**
+    (`bareme` n'est le nom d'aucun champ). Elle n'inspectait pas non plus
+    `DuellisteReponse` : une US future ajoutant `club` ou `licence` pour départager les homonymes
+    aurait publié le champ sans faire échouer un seul test du dépôt, sur un LAN ouvert, mineurs
+    compris. L'égalité de clés ferme les deux trous d'un coup.
 
     Le score de sets (`points_haut`/`points_bas`) reste, lui : c'est **le** résultat d'un duel, et
     l'afficher est le sujet même de l'US.
@@ -143,8 +152,22 @@ def test_le_dto_public_ne_porte_ni_identite_de_scoreur_ni_detail_de_tir(
         assert joue["validee"] is True
         assert joue["termine"] is True
         assert (joue["points_haut"], joue["points_bas"]) == (6, 0)
-        interdits = {"validee_par", "manches", "barrage", "zones", "bareme", "nb_manches"}
-        assert not (interdits & set(joue)), f"champs de saisie exposés au public : {joue.keys()}"
+        assert set(joue) == {
+            "numero",
+            "tour",
+            "libelle",
+            "place_en_jeu",
+            "plage",
+            "haut",
+            "bas",
+            "est_bye",
+            "points_haut",
+            "points_bas",
+            "vainqueur",
+            "termine",
+            "validee",
+        }, f"champs inattendus sur la route publique : {sorted(joue)}"
+        assert set(joue["haut"]) == {"archer_id", "nom", "prenom"}, sorted(joue["haut"])
 
 
 def test_un_resultat_non_valide_n_est_pas_annonce_comme_acquis(

@@ -1,8 +1,7 @@
-// Tests de la présentation des tableaux (E07US005), écrits **depuis le CA et la maquette P05**
-// avant le composant.
+// Tests de la présentation des tableaux (E07US005).
 //
 // C'est ici que vit la règle de la vue « Mon chemin » — la variante **recommandée** par la maquette
-// (« l'archer est le sujet, la compétition est le contexte »). Elle n'est pas un simple filtre :
+// P05 (« l'archer est le sujet, la compétition est le contexte »). Elle n'est pas un simple filtre :
 // elle doit dire, sans jamais mentir, où en est un archer dans un arbre qui n'a de vérité que
 // partielle — un duel tiré mais pas validé n'a pas de vainqueur acquis, un adversaire peut n'être
 // pas encore sorti de son duel amont, et un archer battu n'est **pas** forcément éliminé depuis que
@@ -10,10 +9,17 @@
 //
 // Le piège que ces tests existent pour empêcher : afficher « éliminé » à quelqu'un qui joue encore,
 // ou « à venir » à quelqu'un qui est rentré chez lui. Les deux sont indétectables depuis le code.
+//
+// ⚠️ **Les fixtures reproduisent le DTO réel, et c'est un correctif de revue.** Un premier jet
+// posait `place_en_jeu: [5, 8]` sur un match de tour 2 — une valeur que le serveur **ne produit
+// jamais** (`place_en_jeu` n'existe que sur les matchs terminaux, `domain/tableau.py`). Les tests
+// passaient donc sur une fiction et masquaient le vrai comportement : « Demi-finales » affiché sur
+// un match des places 5-8. Toute fixture ajoutée ici doit rester une **sortie possible du
+// serveur** ; en cas de doute, faire tourner le domaine plutôt que de l'imaginer.
 
 import { describe, expect, it } from 'vitest'
 import type { DuelPublic, TableauPublic } from './api'
-import { cheminDeArcher, libelleEnjeu, libelleTour, parTour, scoreVu } from './presentation'
+import { cheminDeArcher, parTour, scoreVu } from './presentation'
 
 const MARTIN = { archer_id: 1, nom: 'MARTIN', prenom: 'Luc' }
 const DURAND = { archer_id: 2, nom: 'DURAND', prenom: 'Eve' }
@@ -23,7 +29,9 @@ function duel(patch: Partial<DuelPublic> = {}): DuelPublic {
   return {
     numero: 1,
     tour: 1,
+    libelle: 'Quart de finale',
     place_en_jeu: null,
+    plage: [1, 8],
     haut: MARTIN,
     bas: DURAND,
     est_bye: false,
@@ -51,39 +59,18 @@ function tableau(duels: DuelPublic[], patch: Partial<TableauPublic> = {}): Table
   }
 }
 
-describe('libelleTour', () => {
-  it('nomme les derniers tours comme la salle les nomme', () => {
-    // Vocabulaire FFTA (règle 3) : personne ne dit « tour 3 sur 3 », on dit « la finale ».
-    expect(libelleTour(3, 3)).toBe('Finale')
-    expect(libelleTour(2, 3)).toBe('Demi-finales')
-    expect(libelleTour(1, 3)).toBe('Quarts de finale')
-  })
+/** Le tour 2 d'un tableau de 8 en profondeur **podium** : deux demi-finales, rien d'autre. */
+const DEMIES = [
+  duel({ numero: 5, tour: 2, libelle: 'Demi-finale', plage: [1, 4], haut: null, bas: null }),
+  duel({ numero: 6, tour: 2, libelle: 'Demi-finale', plage: [1, 4], haut: null, bas: null }),
+]
 
-  it('bascule en fractions au-delà des quarts', () => {
-    // Au-delà, la langue n'a plus de mot : « 1/8 de finale » est ce qui est écrit sur les tableaux
-    // papier de la fédération, donc ce qu'un archer reconnaît.
-    expect(libelleTour(1, 4)).toBe('1/8 de finale')
-    expect(libelleTour(1, 5)).toBe('1/16 de finale')
-  })
-})
-
-describe('libelleEnjeu', () => {
-  it('nomme la finale et la petite finale', () => {
-    expect(libelleEnjeu([1, 2])).toBe('Finale')
-    expect(libelleEnjeu([3, 4])).toBe('Petite finale')
-  })
-
-  it('nomme les places au-delà du podium', () => {
-    // Le sujet d'E06US006 : sous profondeur intégrale, un match joue les places 5 à 8. Le déduire
-    // du numéro de tour serait faux — c'est le même tour que la demi-finale.
-    expect(libelleEnjeu([5, 8])).toBe('Places 5 à 8')
-    expect(libelleEnjeu([5, 6])).toBe('Places 5-6')
-  })
-
-  it('ne nomme rien quand le tableau ne met pas de place en jeu', () => {
-    expect(libelleEnjeu(null)).toBeNull()
-  })
-})
+/** Les deux matchs du sous-tableau des places 5-8, tels que le serveur les émet réellement :
+ * `place_en_jeu` **null** (non terminaux) et `plage` `[5, 8]`, au même tour que les demies. */
+const PLACEMENT_5_8 = [
+  duel({ numero: 9, tour: 2, libelle: 'Places 5 à 8', plage: [5, 8], haut: DURAND, bas: PETIT }),
+  duel({ numero: 10, tour: 2, libelle: 'Places 5 à 8', plage: [5, 8], haut: null, bas: null }),
+]
 
 describe('scoreVu', () => {
   it('rend le score du point de vue du camp regardé', () => {
@@ -106,13 +93,32 @@ describe('cheminDeArcher', () => {
       tableau([
         duel({ numero: 2, tour: 1, haut: PETIT, bas: DURAND }),
         duel({ numero: 1, tour: 1, haut: MARTIN, bas: PETIT }),
-        duel({ numero: 5, tour: 2, haut: MARTIN, bas: null }),
+        duel({
+          numero: 5,
+          tour: 2,
+          libelle: 'Demi-finale',
+          plage: [1, 4],
+          haut: MARTIN,
+          bas: null,
+        }),
       ]),
       MARTIN.archer_id,
     )
 
     expect(chemin.map((e) => e.tour)).toEqual([1, 2, 3])
     expect(chemin[0]?.adversaire).toEqual(PETIT)
+  })
+
+  it('reprend le nom du match tel que le serveur le donne', () => {
+    // Le vocabulaire n'est **pas** recalculé ici (règle 3, `DETTE-020`) : ce test verrouille le fait
+    // que la présentation se contente de relayer. S'il échoue parce qu'on a « amélioré » un libellé
+    // côté client, c'est le client qu'il faut corriger, pas le test.
+    const chemin = cheminDeArcher(
+      tableau([duel({ numero: 11, tour: 3, libelle: 'Petite finale', place_en_jeu: [3, 4] })]),
+      MARTIN.archer_id,
+    )
+
+    expect(chemin[0]?.libelle).toBe('Petite finale')
   })
 
   it('marque gagné / perdu seulement quand le duel est validé', () => {
@@ -131,51 +137,119 @@ describe('cheminDeArcher', () => {
     expect(cheminDeArcher(scelle, DURAND.archer_id)[0]?.statut).toBe('perdu')
   })
 
-  it('annonce les tours restants tant que l’archer n’est pas sorti', () => {
+  it('annonce les tours restants, nommés par les matchs réels de la branche', () => {
     // La 3ᵉ ligne de la maquette P05 : « 1/2 · — · À VENIR ». L'archer n'y est pas encore placé,
     // mais son tableau a encore des tours — les taire ferait croire que sa journée s'arrête là.
+    // Le nom du tour est **lu** sur les matchs réels de ce tour, jamais recalculé.
     const chemin = cheminDeArcher(
-      tableau([duel({ numero: 1, tour: 1, vainqueur: 'haut', termine: true, validee: true })]),
+      tableau([
+        duel({ numero: 1, tour: 1, vainqueur: 'haut', termine: true, validee: true }),
+        ...DEMIES,
+        duel({
+          numero: 11,
+          tour: 3,
+          libelle: 'Finale',
+          place_en_jeu: [1, 2],
+          plage: [1, 2],
+          haut: null,
+          bas: null,
+        }),
+      ]),
       MARTIN.archer_id,
     )
 
     expect(chemin.map((e) => e.statut)).toEqual(['gagne', 'a_venir', 'a_venir'])
-    expect(chemin.map((e) => e.tour)).toEqual([1, 2, 3])
+    expect(chemin.map((e) => e.libelle)).toEqual(['Quart de finale', 'Demi-finale', 'Finale'])
+  })
+
+  it('ne nomme pas un tour à venir quand la branche n’est pas décidée', () => {
+    // Sous profondeur intégrale, le tour 2 porte **deux** branches : les demi-finales et les places
+    // 5-8. Un archer dont le quart n'est pas tranché peut aller dans l'une ou l'autre — le nommer
+    // « Demi-finale » lui promettrait un podium, le nommer « Places 5 à 8 » l'enterrerait. On ne
+    // nomme donc rien, et la vue affiche « À venir ». C'est le seul cas où la maquette ne peut pas
+    // être honorée : elle supposait une seule suite possible.
+    const chemin = cheminDeArcher(
+      tableau([duel({ numero: 1, tour: 1 }), ...DEMIES, ...PLACEMENT_5_8]),
+      MARTIN.archer_id,
+    )
+
+    expect(chemin[0]?.statut).toBe('a_jouer')
+    expect(chemin[1]?.statut).toBe('a_venir')
+    expect(chemin[1]?.libelle).toBeNull()
   })
 
   it('n’annonce aucun tour à venir à un archer battu et sorti', () => {
-    // Le piège symétrique : lui promettre des tours qu'il ne jouera pas. Il est sorti **parce
-    // qu'aucun match ultérieur ne le porte**, pas parce qu'il a perdu — nuance qui compte, cf. le
-    // test suivant.
+    // Le piège symétrique : lui promettre des tours qu'il ne jouera pas.
     const chemin = cheminDeArcher(
-      tableau([duel({ numero: 1, tour: 1, vainqueur: 'haut', termine: true, validee: true })]),
+      tableau([
+        duel({ numero: 1, tour: 1, vainqueur: 'haut', termine: true, validee: true }),
+        ...DEMIES,
+      ]),
       DURAND.archer_id,
     )
 
     expect(chemin.map((e) => e.statut)).toEqual(['perdu'])
   })
 
-  it('suit le perdant qui descend dans le tableau de placement', () => {
+  it('n’annonce aucun tour à venir tant que la défaite n’est pas validée', () => {
+    // **Cas adverse relevé en revue.** Un premier jet ne fermait le parcours que sur `perdu` : un
+    // archer battu 0-6, dont le scoreur n'avait pas encore scellé, lisait « Demi-finale · À venir »
+    // puis « Finale · À venir » juste sous son score. Tant que rien n'est acquis, on ne promet
+    // rien — ni la sortie, ni la suite.
+    const chemin = cheminDeArcher(
+      tableau([
+        duel({
+          numero: 1,
+          tour: 1,
+          points_haut: 6,
+          points_bas: 0,
+          vainqueur: 'haut',
+          termine: true,
+          validee: false,
+        }),
+        ...DEMIES,
+      ]),
+      DURAND.archer_id,
+    )
+
+    expect(chemin.map((e) => e.statut)).toEqual(['en_attente'])
+  })
+
+  it('suit le perdant qui descend en placement, sans le dire demi-finaliste', () => {
     // E06US006 : sous profondeur intégrale, perdre ne veut plus dire rentrer chez soi. Le serveur
-    // place le battu dans son sous-tableau ; le chemin doit le suivre là-bas plutôt que de
-    // s'arrêter sur la défaite — sinon la vue annonce « éliminé » à quelqu'un qui tire encore.
+    // place le battu dans son sous-tableau ; le chemin doit le suivre là-bas **et le nommer
+    // correctement**. C'est le défaut trouvé en revue : `place_en_jeu` étant `null` sur ce match
+    // (non terminal), un libellé recalculé côté client affichait « Demi-finales ».
     const chemin = cheminDeArcher(
       tableau([
         duel({ numero: 1, tour: 1, vainqueur: 'haut', termine: true, validee: true }),
-        duel({ numero: 6, tour: 2, place_en_jeu: [5, 8], haut: DURAND, bas: PETIT }),
+        ...DEMIES,
+        ...PLACEMENT_5_8,
       ]),
       DURAND.archer_id,
     )
 
     expect(chemin.map((e) => e.statut)).toEqual(['perdu', 'a_jouer', 'a_venir'])
-    expect(chemin[1]?.enjeu).toBe('Places 5 à 8')
+    expect(chemin[1]?.libelle).toBe('Places 5 à 8')
+    // Le tour 3 de sa branche : les matchs `[5,6]` et `[7,8]` n'existent pas dans ce décor, donc
+    // rien à lire — « À venir » sans nom, plutôt que « Finale ».
+    expect(chemin[2]?.libelle).toBeNull()
   })
 
   it('distingue « adversaire pas encore connu » de « à jouer »', () => {
     // L'archer **est** placé au tour suivant, mais son adversaire sort d'un duel amont non tranché.
     // Afficher un tiret sans le dire laisserait croire à un exempt.
     const chemin = cheminDeArcher(
-      tableau([duel({ numero: 5, tour: 2, haut: MARTIN, bas: null })]),
+      tableau([
+        duel({
+          numero: 5,
+          tour: 2,
+          libelle: 'Demi-finale',
+          plage: [1, 4],
+          haut: MARTIN,
+          bas: null,
+        }),
+      ]),
       MARTIN.archer_id,
     )
 
@@ -201,20 +275,27 @@ describe('cheminDeArcher', () => {
 })
 
 describe('parTour', () => {
-  it('groupe les matchs par tour, dans l’ordre, en nommant chaque tour', () => {
-    // Variante B de la maquette : « l'arbre en vraies branches ne tient pas [sur 360 px] ; en
-    // **liste par tour**, si ». Le groupement est donc la concession mobile assumée.
+  it('groupe par branche et non par numéro de tour', () => {
+    // **Correctif de revue.** La fonction jumelle de la saisie (`saisie-duels/duel.ts`) documente
+    // déjà ce piège : la petite finale se dispute au **même tour** que la finale, et un groupement
+    // par tour brut la range sous l'en-tête « Finale ». Sous profondeur intégrale c'était pire —
+    // les matchs des places 5-8 atterrissaient sous « Demi-finales ».
     const groupes = parTour(
       tableau([
-        duel({ numero: 5, tour: 2 }),
-        duel({ numero: 2, tour: 1 }),
-        duel({ numero: 1, tour: 1 }),
+        duel({ numero: 11, tour: 3, libelle: 'Finale', place_en_jeu: [1, 2], plage: [1, 2] }),
+        duel({
+          numero: 12,
+          tour: 3,
+          libelle: 'Petite finale',
+          place_en_jeu: [3, 4],
+          plage: [3, 4],
+        }),
+        ...DEMIES.map((d) => ({ ...d, haut: MARTIN })),
       ]),
     )
 
-    expect(groupes.map((g) => g.tour)).toEqual([1, 2])
-    expect(groupes[0]?.libelle).toBe('Quarts de finale')
-    expect(groupes[0]?.duels.map((d) => d.numero)).toEqual([1, 2])
+    expect(groupes.map((g) => g.libelle)).toEqual(['Demi-finale', 'Finale', 'Petite finale'])
+    expect(groupes[1]?.duels.map((d) => d.numero)).toEqual([11])
   })
 
   it('écarte les exempts, qui ne sont pas des matchs à regarder', () => {
@@ -228,5 +309,14 @@ describe('parTour', () => {
     )
 
     expect(groupes[0]?.duels.map((d) => d.numero)).toEqual([1])
+  })
+
+  it('écarte les matchs dont aucun occupant n’est connu', () => {
+    // **Correctif de revue.** L'arbre porte tous ses matchs dès la construction : à 9 h, les tours
+    // au-delà du premier n'ont aucun occupant, et l'écran projeté affichait des suites de lignes
+    // « — vs — » qui n'apprennent rien à personne.
+    const groupes = parTour(tableau([duel({ numero: 1, tour: 1 }), ...DEMIES]))
+
+    expect(groupes.map((g) => g.libelle)).toEqual(['Quart de finale'])
   })
 })

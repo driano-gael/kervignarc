@@ -11,9 +11,13 @@
 //  - la reconstruction est payée **une fois par phase en tableau**, pas une fois par appel ;
 //  - la surface est en **autant d'exemplaires qu'il y a de spectateurs** — même régime que la carte
 //    de suivi d'E07US008, et le cache React Query étant par navigateur, rien ne se mutualise.
-// D'où `actif` : les appelants qui n'affichent pas cette vue ne montent pas la requête. C'est le
-// même correctif qu'`EcranSalle` a dû appliquer à `useSuiviDeroule` (l'endpoint le plus cher du
-// serveur, interrogé pendant les deux tiers du cycle où l'écran montrait autre chose).
+// ⚠️ **Ce qui limite la casse est le montage conditionnel du composant, pas un drapeau.** Un
+// premier jet portait un paramètre `actif` qu'aucun appelant ne passait — et trois textes, dont le
+// registre de dette, lui attribuaient la protection : un futur mainteneur y aurait cru. Le vrai
+// mécanisme est celui qu'`EcranSalle` a appliqué à `useSuiviDeroule` : la vue n'est **rendue** que
+// lorsqu'elle est affichée (`if (vue === 'tableaux')` côté salle, ternaire d'onglets côté public),
+// donc React Query démonte l'observateur et arrête l'intervalle. `useSuiviDeroule` n'a pas non plus
+// de paramètre `actif` — la convention est cohérente, il ne fallait pas s'en écarter.
 
 import { useQuery } from '@tanstack/react-query'
 import { getTableaux } from './api'
@@ -22,11 +26,10 @@ const INTERVALLE_POLL_MS = 20000
 
 const cleTableaux = (tournoiId: number) => ['tableaux', tournoiId] as const
 
-export function useTableaux(tournoiId: number, actif = true) {
+export function useTableaux(tournoiId: number) {
   return useQuery({
     queryKey: cleTableaux(tournoiId),
     queryFn: () => getTableaux(tournoiId),
-    enabled: actif,
     refetchInterval: INTERVALLE_POLL_MS,
     // Écran vivant, pas une fiche : ce qu'on relit doit être considéré périmé d'emblée.
     staleTime: 0,

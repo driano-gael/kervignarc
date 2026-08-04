@@ -44,7 +44,7 @@ from domain.ports import (
     PhaseRepository,
     TournoiRepository,
 )
-from domain.tableau import Match, Tableau, construire_tableau
+from domain.tableau import Match, Tableau, construire_tableau, libelle_tour
 from domain.tournoi import TournoiId
 
 
@@ -80,6 +80,20 @@ class EtatDuel:
     duel: Duel | None
     bareme: BaremeDuel | None = None
     zones: tuple[ZoneScore, ...] = ()
+    plage: tuple[int, int] | None = None
+    """La **branche** du match — `[1..8]` pour le tableau principal, `[5..8]` pour le sous-tableau
+    de placement qui en descend (E07US005).
+
+    Distincte de `place_en_jeu`, et c'est **tout l'intérêt** : `place_en_jeu` n'existe que sur les
+    matchs **terminaux**, si bien qu'un match des places 5-8 disputé au tour d'une demi-finale
+    n'avait, avant cette US, aucun champ qui le distinguât d'une demi-finale. Tout consommateur
+    qui nommait ce match par son seul numéro de tour l'appelait « Demi-finale ». C'est ce que
+    `libelle` ci-dessous corrige — et pourquoi la plage doit remonter jusqu'ici."""
+    libelle: str = ""
+    """Le nom que la salle donne au match, calculé par `domain.tableau.libelle_tour`.
+
+    Porté par l'application plutôt que recalculé par chaque surface : c'est du **vocabulaire
+    métier** (règle 3), il n'a qu'un domicile légitime, le domaine (`DETTE-020`)."""
 
 
 @dataclass(frozen=True)
@@ -141,7 +155,9 @@ class ServiceSaisieDuels:
     def etat_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatTableau:
         """Reconstruit le tableau (duels validés rejoués) et renvoie ses matchs + podium."""
         tableau, lignes = self._decor(tournoi_id, phase_id)
-        duels = tuple(self._etat_du_match(m, phase_id, lignes) for m in tableau.matchs)
+        duels = tuple(
+            self._etat_du_match(m, phase_id, lignes, tableau.nb_tours) for m in tableau.matchs
+        )
         podium = tuple(
             (place.rang, duelliste)
             for place in tableau.podium()
@@ -160,7 +176,7 @@ class ServiceSaisieDuels:
     def etat_duel(self, tournoi_id: TournoiId, phase_id: PhaseId, match_numero: int) -> EtatDuel:
         """L'état d'un match précis (câblage, occupants, tir). `MatchIntrouvable` si rang absent."""
         tableau, lignes = self._decor(tournoi_id, phase_id)
-        return self._etat_du_match(tableau.match(match_numero), phase_id, lignes)
+        return self._etat_du_match(tableau.match(match_numero), phase_id, lignes, tableau.nb_tours)
 
     def reconstruire(
         self, tournoi_id: TournoiId, phase_id: PhaseId
@@ -212,7 +228,7 @@ class ServiceSaisieDuels:
             nb_fleches_par_volee=bareme.nb_fleches_par_volee,
         )
         self._duels.enregistrer(phase_id, match_numero, duel)
-        return self._etat_du_match(match, phase_id, lignes, duel=duel)
+        return self._etat_du_match(match, phase_id, lignes, tableau.nb_tours, duel=duel)
 
     def saisir_barrage(
         self,
@@ -233,7 +249,7 @@ class ServiceSaisieDuels:
             fleche_haut, fleche_bas, zones_admises=zones, gagnant_designe=gagnant_designe
         )
         self._duels.enregistrer(phase_id, match_numero, duel)
-        return self._etat_du_match(match, phase_id, lignes, duel=duel)
+        return self._etat_du_match(match, phase_id, lignes, tableau.nb_tours, duel=duel)
 
     def valider(
         self, tournoi_id: TournoiId, phase_id: PhaseId, match_numero: int, scoreur: str
@@ -245,7 +261,7 @@ class ServiceSaisieDuels:
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
         duel = duel.valider(scoreur)
         self._duels.enregistrer(phase_id, match_numero, duel)
-        return self._etat_du_match(match, phase_id, lignes, duel=duel)
+        return self._etat_du_match(match, phase_id, lignes, tableau.nb_tours, duel=duel)
 
     # --- Interne : reconstruction du décor (classement → arbre → rejeu des duels validés) -------
 
@@ -464,6 +480,7 @@ class ServiceSaisieDuels:
         match: Match,
         phase_id: PhaseId,
         lignes: dict[int, LigneClassement],
+        nb_tours: int,
         *,
         duel: Duel | None = None,
     ) -> EtatDuel:
@@ -497,4 +514,6 @@ class ServiceSaisieDuels:
             duel=duel,
             bareme=bareme,
             zones=zones,
+            plage=None if match.plage is None else (match.plage.debut, match.plage.fin),
+            libelle=libelle_tour(match.tour, nb_tours, match.place_en_jeu, match.plage),
         )

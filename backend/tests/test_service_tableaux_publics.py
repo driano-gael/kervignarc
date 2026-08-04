@@ -71,9 +71,55 @@ def test_l_arbre_rendu_porte_le_principal_et_le_placement() -> None:
     assert [t.etat.phase_id for t in tableaux] == [monde.phase_id]
     places = {duel.place_en_jeu for duel in tableaux[0].etat.duels}
     assert (1, 2) in places, "la finale du tableau principal"
-    assert any(
-        place is not None and place[0] > 2 for place in places
-    ), "les matchs de placement (rangs au-delà du podium) doivent être rendus aussi"
+    # Les paires **nommées**, et non `place[0] > 2` : ce prédicat était satisfait par la petite
+    # finale `(3, 4)`, qui existe déjà en profondeur podium — le test passait donc à l'identique
+    # sans `integrale()` et ne prouvait pas le point du CA qu'il annonce (relevé en revue). Le
+    # miroir ci-dessous complète la démonstration : sans profondeur intégrale, ces paires sont
+    # absentes.
+    assert {(5, 6), (7, 8)} <= places, "les matchs de placement (rangs 5→8) doivent être rendus"
+
+
+def test_sans_profondeur_integrale_il_n_y_a_pas_de_match_de_placement() -> None:
+    """Miroir du test ci-dessus — c'est **le couple** qui prouve, pas l'assertion seule.
+
+    En profondeur `podium` (le défaut), le tournoi ne dispute que les rangs 1 à 4 : les places 5-8
+    ne se jouent pas, elles restent *ex æquo*. Sans ce test, une assertion satisfaite par la petite
+    finale laisserait croire que le placement est couvert alors qu'il ne l'est pas.
+    """
+    monde = _Monde()
+    _huit(monde)
+    monde.placer()
+
+    tableaux = _service(monde).pour_tournoi(monde.tournoi_id).tableaux
+
+    places = {duel.place_en_jeu for duel in tableaux[0].etat.duels}
+    assert (1, 2) in places and (3, 4) in places
+    assert not ({(5, 6), (7, 8)} & places)
+
+
+def test_un_match_de_placement_non_terminal_ne_se_nomme_pas_comme_une_demi_finale() -> None:
+    """**Le défaut trouvé en revue, figé ici.**
+
+    `place_en_jeu` n'est renseigné que sur les matchs **terminaux** (`domain/tableau.py`). Un match
+    du sous-tableau des places 5-8 se dispute donc au **même tour** qu'une demi-finale **sans aucun
+    champ qui l'en distingue** — et tout consommateur qui le nommait par son numéro de tour
+    l'appelait « Demi-finale ». C'est ce que lisait l'archer sorti en quart, sur la vue publique.
+
+    Le libellé vient désormais du domaine et s'appuie sur la **plage** (`Match.plage`), disponible
+    dès le premier tour. Ce test vaut pour toutes les surfaces : le routage lit le même libellé.
+    """
+    monde = _Monde(profondeur=ProfondeurClassement.integrale())
+    _huit(monde)
+    monde.placer()
+
+    duels = _service(monde).pour_tournoi(monde.tournoi_id).tableaux[0].etat.duels
+    par_libelle = {duel.numero: (duel.libelle, duel.plage) for duel in duels if duel.tour == 2}
+
+    demies = [num for num, (lib, _) in par_libelle.items() if lib == "Demi-finale"]
+    placement = [num for num, (lib, _) in par_libelle.items() if lib == "Places 5 à 8"]
+    assert len(demies) == 2, f"le tour 2 porte deux demi-finales, pas {len(demies)}"
+    assert len(placement) == 2, "les matchs des places 5-8 se nomment par leurs rangs"
+    assert all(par_libelle[num][1] == (5, 8) for num in placement)
 
 
 def test_une_phase_de_type_placement_est_omise_tant_que_le_moteur_l_ignore() -> None:

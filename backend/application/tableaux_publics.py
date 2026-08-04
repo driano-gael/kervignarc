@@ -19,6 +19,7 @@ partage est volontaire — le domaine et l'application n'ont pas à connaître l
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from application.erreurs import ApplicationError, TournoiIntrouvable
@@ -27,6 +28,8 @@ from domain.erreurs import DomainError
 from domain.phase import TYPES_EN_TABLEAU, PhaseId, TypePhase
 from domain.ports import PhaseRepository, TournoiRepository
 from domain.tournoi import TournoiId
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -100,13 +103,30 @@ class ServiceTableauxPublics:
         participants. Laisser remonter l'erreur donnerait une **page blanche** — sur une surface
         publique et projetée, pour tout le monde, à cause d'une phase qui n'a pas commencé.
 
-        On avale donc l'échec **par phase**, exactement comme `ServiceSuiviDeroule._duels_tranches`
-        (E07US004) et pour la même raison. La contrepartie est réelle et assumée : un tableau
+        On avale donc l'échec **par phase**. La contrepartie est réelle et assumée : un tableau
         **cassé** est indiscernable d'un tableau **à venir** — les deux disparaissent de la liste.
-        C'est le bon arbitrage pour cette surface (le public n'a rien à réparer), pas pour une
-        surface d'administration ; le diagnostic de format, lui, vit à l'atelier (E01US024).
+        C'est le bon arbitrage **pour le spectateur** (il n'a rien à réparer), pas pour une surface
+        d'administration ; le diagnostic de format, lui, vit à l'atelier (E01US024).
+
+        ⚠️ **L'indiscernabilité s'arrête au client : le serveur, lui, journalise** (correctif de
+        revue, relevé par quatre axes). Un premier jet copiait `ServiceSuiviDeroule._duels_tranches`
+        — même tuple, aucun log. Le modèle juste est `ServicePalmares._resultat` (E06US004), même
+        surface publique et projetée, dont la docstring dit exactement pourquoi : « une phase
+        absente du palmarès le jour J serait sinon **indébogable** ». La conséquence est ici plus
+        lourde que pour le suivi du déroulé, qui dégrade vers un bloc à zéro — **visible** : ici le
+        tableau **disparaît**, de l'onglet public *et* de l'écran de salle, et sans trace personne
+        ne peut relier les deux.
+
+        `KeyError` est capturé **à part** et en `warning` : aucun code de ce chemin ne le lève
+        délibérément (le domaine s'y refuse explicitement — `phase.py`, `politiques.py`, `poule.py`
+        disent tous « explicite plutôt qu'un `KeyError` »). Un `KeyError` ici est donc un **défaut
+        de programmation**, pas une phase à venir, et le confondre avec elle le rendrait invisible.
         """
         try:
             return self._saisie.etat_tableau(tournoi_id, phase_id)
-        except (ApplicationError, DomainError, KeyError):
+        except (ApplicationError, DomainError) as exc:
+            _logger.info("Tableau de la phase %s écarté de la vue publique : %s", phase_id, exc)
+            return None
+        except KeyError as exc:
+            _logger.warning("Défaut interne sur la phase %s, tableau écarté : %r", phase_id, exc)
             return None

@@ -18,9 +18,10 @@ export interface DuellistePublic {
 
 // Un match de l'arbre.
 //
-// `place_en_jeu` nomme l'enjeu sans le déduire du tour : `[1, 2]` c'est la finale, `[5, 8]` un
-// match de placement. La déduction par le numéro de tour serait fausse dès qu'un tableau descend
-// sous le podium (E06US006), ce qui est désormais un réglage courant.
+// ⚠️ `place_en_jeu` n'est renseigné que sur les matchs **terminaux** (ceux qui départagent deux
+// rangs) : il vaut `[1, 2]` pour la finale, `[5, 6]` pour le match de la 5ᵉ place, et **`null`
+// partout ailleurs** — y compris sur un match des places 5-8 disputé au tour d'une demi-finale.
+// C'est `plage` qui distingue ces branches-là, et `libelle` qui les nomme.
 //
 // `termine` et `validee` ne disent pas la même chose et l'écart est **visible à l'écran** : le tir
 // est allé au bout (`termine`) mais le scoreur n'a pas encore scellé (`validee`), donc l'arbre
@@ -28,7 +29,17 @@ export interface DuellistePublic {
 export interface DuelPublic {
   numero: number
   tour: number
+  // Le nom du match — « Demi-finale », « Petite finale », « Places 5 à 8 », « Match pour la 5ᵉ
+  // place » —, calculé par le **domaine** (`domain/tableau.py::libelle_tour`). Ne pas le
+  // recalculer ici : c'est du vocabulaire métier (règle 3), il n'a qu'un domicile, et un premier
+  // jet de cette US a prouvé le coût de l'oublier (« Demi-finales » affiché sur un match des
+  // places 5-8). `DETTE-020` en compte déjà deux, n'en ouvrons pas un troisième.
+  libelle: string
   place_en_jeu: number[] | null
+  // La **branche** du match : `[1, 8]` pour le tableau principal, `[5, 8]` pour le sous-tableau de
+  // placement qui en descend. Contrairement à `place_en_jeu`, elle existe **dès le premier tour** —
+  // c'est elle qui permet de distinguer deux branches disputées au même tour.
+  plage: number[] | null
   haut: DuellistePublic | null
   bas: DuellistePublic | null
   est_bye: boolean

@@ -7,11 +7,20 @@
 //  - **A · « Mon chemin »** (`cheminDeArcher`) — recommandée : l'arbre réduit à la trajectoire d'un
 //    archer suivi. « L'archer est le sujet, la compétition est le contexte » (`D-09`).
 //  - **B · « Arbre complet »** (`parTour`) — nécessaire en second : l'arbre en vraies branches ne
-//    tient pas sur 360 px, en **liste par tour** si. C'est la concession mobile assumée par la
+//    tient pas sur 360 px, en **liste par branche** si. C'est la concession mobile assumée par la
 //    maquette, pas un pis-aller.
 //
-// ⚠️ Le fil rouge de ce fichier : **ne jamais affirmer plus que ce que le serveur sait**. Trois
-// pièges, chacun verrouillé par un test :
+// ⚠️ **Aucun nom de match n'est calculé ici, et c'est le correctif central de la revue.** Nommer un
+// match est du **vocabulaire métier** (règle 3), dont le domicile est le domaine
+// (`domain/tableau.py::libelle_tour`) ; le serveur le sert désormais dans `DuelPublic.libelle`. Un
+// premier jet le recalculait en TypeScript et affichait **« Demi-finales » sur un match des places
+// 5-8** — parce que `place_en_jeu` n'existe que sur les matchs *terminaux*, ce que le modèle
+// mental de ce fichier ignorait. Deux fixtures de test et deux pas de la fiche de recette
+// décrivaient le même monde imaginaire et se confirmaient mutuellement : c'est pour cela que rien
+// ne l'a arrêté. Ne pas rouvrir ce domicile (`DETTE-020` en compte déjà deux).
+//
+// Le fil rouge qui reste : **ne jamais affirmer plus que ce que le serveur sait**. Trois pièges,
+// chacun verrouillé par un test :
 //  1. un duel **tiré mais pas validé** n'a pas de vainqueur acquis — l'arbre ne rejoue que le
 //     validé, donc annoncer « gagné » promettrait une qualification que la ligne suivante dément ;
 //  2. un archer **battu n'est pas forcément éliminé** — depuis E06US006, la profondeur intégrale
@@ -35,53 +44,22 @@ export type StatutEtape =
 
 export interface EtapeChemin {
   tour: number
-  libelle: string
-  /** L'enjeu nommé (« Finale », « Places 5 à 8 »), ou `null` si le tableau n'en met pas. */
-  enjeu: string | null
+  /** Le nom du match, **tel que le serveur le donne** — ou `null` sur une étape à venir dont la
+   * branche n'est pas encore décidée. Un `null` s'affiche « À venir » : ne rien nommer vaut
+   * infiniment mieux que nommer faux. */
+  libelle: string | null
   adversaire: DuellistePublic | null
   statut: StatutEtape
   /** Le score **vu de l'archer suivi** (« 6 — 2 »), ou `null` si rien n'est tiré. */
   score: string | null
 }
 
-export interface GroupeDeTour {
-  tour: number
+export interface GroupeDeBranche {
+  /** Clé de regroupement : le libellé du serveur. Deux branches partageant un tour (une demi-finale
+   * et un match des places 5-8) forment donc **deux groupes**, pas un seul. */
   libelle: string
+  tour: number
   duels: DuelPublic[]
-}
-
-/** Le nom du tour, tel que la salle le dit — pas « tour 3 sur 3 » (règle 3, vocabulaire FFTA).
- *
- * Se calcule sur le **nombre de tours restants**, pas sur le rang du tour : c'est ce qui rend le
- * libellé juste quel que soit l'effectif. Au-delà des quarts, la langue n'a plus de mot et l'on
- * bascule sur les fractions imprimées sur les tableaux papier de la fédération.
- */
-export function libelleTour(tour: number, nbTours: number): string {
-  const restants = 2 ** (nbTours - tour + 1)
-  if (restants <= 2) return 'Finale'
-  if (restants === 4) return 'Demi-finales'
-  if (restants === 8) return 'Quarts de finale'
-  return `1/${restants / 2} de finale`
-}
-
-/** L'enjeu d'un match, nommé depuis la **place en jeu** et jamais déduit du tour.
- *
- * La déduction par le tour serait fausse dès qu'un tableau descend sous le podium (E06US006) : le
- * match des places 5-8 se joue au **même tour** que la demi-finale, et l'appeler « demi-finale »
- * ferait chercher un podium à qui n'en jouera pas.
- */
-export function libelleEnjeu(place: number[] | null): string | null {
-  // `noUncheckedIndexedAccess` : un tuple venu du réseau n'est qu'un tableau, ses cases sont
-  // `number | undefined`. On les extrait explicitement plutôt que de rassurer TS par un cast —
-  // le DTO promet deux entiers, la promesse d'un DTO n'est pas une garantie d'exécution.
-  const debut = place?.[0]
-  const fin = place?.[1]
-  if (debut === undefined || fin === undefined) return null
-  if (debut === 1 && fin === 2) return 'Finale'
-  if (debut === 3 && fin === 4) return 'Petite finale'
-  // Une plage large (« 5 à 8 ») décrit un sous-tableau encore ouvert ; une plage serrée (« 5-6 »)
-  // décrit le match qui départage. Deux mots différents pour deux situations différentes.
-  return fin - debut === 1 ? `Places ${debut}-${fin}` : `Places ${debut} à ${fin}`
 }
 
 /** Le score de sets **du point de vue d'un camp** — l'archer suivi est toujours à gauche. */
@@ -99,6 +77,16 @@ function coteDe(duel: DuelPublic, archerId: number): Cote | null {
   return null
 }
 
+/** Une branche est-elle **incluse** dans une autre ? Les plages se divisent en deux à chaque tour,
+ * donc la branche d'un tour suivant est toujours une sous-plage de la branche courante. */
+function inclus(interne: number[] | null, externe: number[] | null): boolean {
+  if (externe === null || interne === null) return true
+  const [db, fb] = [externe[0], externe[1]]
+  const [di, fi] = [interne[0], interne[1]]
+  if (db === undefined || fb === undefined || di === undefined || fi === undefined) return true
+  return di >= db && fi <= fb
+}
+
 function statutDeLEtape(duel: DuelPublic, cote: Cote, adversaire: DuellistePublic | null) {
   if (duel.est_bye) return 'exempt' as const
   // Piège n°1 : `validee`, pas `termine`. Tant que le scoreur n'a pas scellé, l'arbre n'a pas
@@ -110,6 +98,28 @@ function statutDeLEtape(duel: DuelPublic, cote: Cote, adversaire: DuellistePubli
   return adversaire === null ? ('attente_adversaire' as const) : ('a_jouer' as const)
 }
 
+/** Le nom d'un tour que l'archer n'a pas encore atteint — **lu**, jamais calculé.
+ *
+ * On regarde les matchs réels de ce tour situés dans la même branche. S'ils portent **tous le même
+ * nom**, ce nom est le sien sans risque (cas courant : la branche des gagnants, où le tour 2 d'un
+ * tableau de 8 en profondeur podium ne contient que des demi-finales). S'ils en portent plusieurs,
+ * c'est que la branche n'est pas décidée — un archer non encore tranché peut monter vers les demies
+ * **ou** descendre vers les places 5-8 —, et l'on ne nomme rien. C'est le seul cas où la maquette
+ * (« 1/2 · — · À VENIR ») ne peut pas être honorée : elle supposait une seule suite possible.
+ */
+function libelleDuTourAVenir(
+  tableau: TableauPublic,
+  tour: number,
+  branche: number[] | null,
+): string | null {
+  const noms = new Set(
+    tableau.duels.filter((d) => d.tour === tour && inclus(d.plage, branche)).map((d) => d.libelle),
+  )
+  if (noms.size !== 1) return null
+  const [seul] = [...noms]
+  return seul ?? null
+}
+
 /** Le chemin d'un archer dans un tableau : ses matchs, puis les tours qu'il peut encore atteindre.
  *
  * Les matchs viennent du serveur, qui les tient à jour tout seul — un vainqueur validé occupe
@@ -118,9 +128,10 @@ function statutDeLEtape(duel: DuelPublic, cote: Cote, adversaire: DuellistePubli
  * l'archer suffit, et c'est ce qui rend le piège n°2 impossible.
  *
  * Les étapes `a_venir` ne sont ajoutées que si la dernière étape connue **laisse une suite
- * ouverte** : un archer battu et non repêché s'arrête sur sa défaite, sans qu'on ait besoin de
- * savoir si le tableau le repêche — c'est l'absence de match ultérieur qui le dit, pas une règle
- * de format recopiée ici (elle vit dans `routing`, règle 2).
+ * acquise** — c'est-à-dire `gagne`, `exempt`, ou un match encore à disputer. Un `perdu` ferme le
+ * parcours ; un **`en_attente` aussi**, et c'est un correctif de revue : tant que le scoreur n'a
+ * pas scellé, rien n'est acquis, et un archer battu 6-0 lisait « Demi-finales · À venir » puis
+ * « Finale · À venir » juste sous son score. Ne rien promettre est la seule réponse honnête.
  */
 export function cheminDeArcher(tableau: TableauPublic, archerId: number): EtapeChemin[] {
   const siens = tableau.duels
@@ -133,22 +144,21 @@ export function cheminDeArcher(tableau: TableauPublic, archerId: number): EtapeC
     const adversaire = cote === 'haut' ? duel.bas : duel.haut
     return {
       tour: duel.tour,
-      libelle: libelleTour(duel.tour, tableau.nb_tours),
-      enjeu: libelleEnjeu(duel.place_en_jeu),
+      libelle: duel.libelle,
       adversaire,
       statut: statutDeLEtape(duel, cote, adversaire),
       score: scoreVu(duel, cote),
     }
   })
 
+  const dernier = siens[siens.length - 1]
   const derniere = etapes[etapes.length - 1]
-  if (derniere === undefined) return etapes
-  const sorti = derniere.statut === 'perdu'
-  for (let tour = derniere.tour + 1; !sorti && tour <= tableau.nb_tours; tour += 1) {
+  if (derniere === undefined || dernier === undefined) return etapes
+  const suiteOuverte = derniere.statut !== 'perdu' && derniere.statut !== 'en_attente'
+  for (let tour = derniere.tour + 1; suiteOuverte && tour <= tableau.nb_tours; tour += 1) {
     etapes.push({
       tour,
-      libelle: libelleTour(tour, tableau.nb_tours),
-      enjeu: null,
+      libelle: libelleDuTourAVenir(tableau, tour, dernier.duel.plage),
       adversaire: null,
       statut: 'a_venir',
       score: null,
@@ -157,25 +167,34 @@ export function cheminDeArcher(tableau: TableauPublic, archerId: number): EtapeC
   return etapes
 }
 
-/** L'arbre complet en **liste par tour** — variante B de la maquette.
+/** L'arbre complet, groupé **par branche** — variante B de la maquette.
  *
- * Les **exempts sont écartés** : un bye occupe une place de l'arbre mais ne se tire pas, et le
- * lister ferait chercher une rencontre qui n'aura pas lieu. Même filtre que le suivi du déroulé
- * (E07US004), pour la même raison.
+ * ⚠️ **Par libellé, pas par numéro de tour** (correctif de revue). La fonction jumelle de la saisie
+ * (`features/saisie-duels/duel.ts`) porte déjà l'avertissement : grouper par tour brut range la
+ * petite finale sous l'en-tête « Finale », puisqu'elles se disputent au même tour. Sous profondeur
+ * intégrale c'est pire — le bloc « Demi-finales » contenait aussi les matchs des places 5-8, et le
+ * bloc « Finale » en contenait quatre. Le libellé du serveur distingue déjà ces branches : il
+ * suffit de s'en servir comme clé.
+ *
+ * Deux filtres, chacun pour une raison distincte :
+ *  - les **exempts** : un bye occupe une place de l'arbre mais ne se tire pas, le lister ferait
+ *    chercher une rencontre qui n'aura pas lieu ;
+ *  - les matchs **sans aucun occupant** : à 9 h, tous les tours au-delà du premier en sont pleins,
+ *    et l'écran projeté affichait des suites de lignes « — vs — » (relevé en revue).
  */
-export function parTour(tableau: TableauPublic): GroupeDeTour[] {
-  const groupes = new Map<number, DuelPublic[]>()
+export function parTour(tableau: TableauPublic): GroupeDeBranche[] {
+  const groupes = new Map<string, GroupeDeBranche>()
   for (const duel of tableau.duels) {
     if (duel.est_bye) continue
-    const existant = groupes.get(duel.tour)
-    if (existant === undefined) groupes.set(duel.tour, [duel])
-    else existant.push(duel)
+    if (duel.haut === null && duel.bas === null) continue
+    const existant = groupes.get(duel.libelle)
+    if (existant === undefined) {
+      groupes.set(duel.libelle, { libelle: duel.libelle, tour: duel.tour, duels: [duel] })
+    } else {
+      existant.duels.push(duel)
+    }
   }
-  return [...groupes.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([tour, duels]) => ({
-      tour,
-      libelle: libelleTour(tour, tableau.nb_tours),
-      duels: [...duels].sort((a, b) => a.numero - b.numero),
-    }))
+  return [...groupes.values()]
+    .sort((a, b) => a.tour - b.tour || (a.duels[0]?.numero ?? 0) - (b.duels[0]?.numero ?? 0))
+    .map((groupe) => ({ ...groupe, duels: [...groupe.duels].sort((a, b) => a.numero - b.numero) }))
 }

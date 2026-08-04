@@ -191,10 +191,17 @@ salle affiche le dessin de l'atelier, simplement plus gros.
 - Le registre de consignes est **par processus**. Le déploiement est mono-processus (règle 7,
   single-writer SQLite) ; un jour où l'application tournerait en plusieurs workers, les prises de
   contrôle deviendraient incohérentes — au même titre que les sessions de poste, déjà dans ce cas.
-- Le catalogue de vues (`VueEcran`) est **plus court que le CA** : `affectations` (E07US008) et
-  `tableaux` (E07US005) n'y sont pas, faute d'être livrées. Les inscrire ferait programmer un
-  déroulé qui afficherait une page vide. Elles s'ajouteront avec leur US, sans migration : la valeur
-  persistée est la chaîne, pas un rang.
+- ~~Le catalogue de vues (`VueEcran`) est **plus court que le CA**~~ — **prédiction vérifiée, et
+  close le 04/08/2026.** Cet ADR annonçait que `affectations` et `tableaux` s'ajouteraient « avec
+  leur US, sans migration : la valeur persistée est la chaîne, pas un rang ». C'est arrivé **trois
+  fois** — `palmares` (E06US004), `affectations` (E07US008), `tableaux` (E07US005) — et **aucune
+  migration** n'a été nécessaire. Le catalogue couvre désormais le CA en entier. La règle qui a
+  tenu à chaque fois, et qui vaut pour la vue suivante : **on n'inscrit une vue qu'une fois son
+  écran capable de l'afficher**, sinon le réglage programme une page vide — et un écran de salle
+  n'a personne devant lui pour comprendre ce qui manque.
+  *(Cette ligne a été laissée périmée par E07US008, qui n'en avait corrigé que la moitié : un ADR
+  qui prédit juste et que personne ne vient clore finit par être le seul document à dire le
+  contraire de la réalité. Relevé à la revue d'E07US005.)*
 - L'habillage « identité » se distingue aujourd'hui par la mise en page, **pas par la palette** :
   `DV-08` ne sera pleinement honoré que quand E01US016 aura livré l'identité visuelle du tournoi.
 

@@ -53,10 +53,14 @@ c'est mon travail de dire ce que ça coûte.*
 *Ces questions viennent de points que la maquette n'a pas pu trancher seule.*
 
 **1. Le tableau complet est-il attendu par le public, ou est-ce surtout l'affaire de l'organisation ?**
->
+> **Tranchée le 04/08/2026 (cadrage E07US005) : les deux.** Les deux partis pris sont livrés — A
+> « Mon chemin » (par archer suivi, lecture par défaut) et B « Tableau complet ». Ils ne servent pas
+> le même geste, et offrir les deux coûte un bouton. Cf. `stories/E07-affichage-public.md`.
 
 **2. Faut-il afficher les horaires prévisionnels des tours suivants, au risque qu'ils glissent ?**
->
+> **Reste ouverte.** E07US005 a tranché « non » **pour cette US** : le domaine ne porte aucun horaire
+> au grain de la phase ou du duel (seul le départ en a un), les afficher supposerait un moteur
+> d'ordonnancement qui n'existe pas. La question de fond — le public en veut-il ? — n'est pas close.
 
 ---
 

@@ -20,12 +20,12 @@
 // précisément le risque que la maquette pointait (« au risque qu'ils glissent et qu'on vous le
 // reproche »). La question reste ouverte au questionnaire P05.
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { nommerType } from '../../shared/phases/catalogue'
 import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import type { DuelPublic, DuellistePublic, TableauPublic } from './api'
 import { useTableaux } from './hooks'
-import { cheminDeArcher, libelleEnjeu, parTour, type EtapeChemin } from './presentation'
+import { cheminDeArcher, parTour, type EtapeChemin } from './presentation'
 
 type Lecture = 'chemin' | 'complet'
 
@@ -50,8 +50,16 @@ export function VueTableaux({
   tournoiId: number
   interactif?: boolean
 }) {
-  const suivis = useSessionSuivisStore((s) =>
-    s.suivis.filter((x) => x.tournoiId === tournoiId).map((x) => x.archerId),
+  // ⚠️ Sélecteur **stable** : on lit la référence brute `s.suivis`, puis on filtre dans le corps.
+  // Filtrer DANS le sélecteur rend un tableau neuf à chaque appel, donc un `getSnapshot` instable
+  // pour `useSyncExternalStore` → **boucle de rendu infinie** en Zustand v5 / React 19, y compris
+  // avec zéro suivi. C'est le correctif que `VueSuivi` porte déjà, sur le **même store** : un
+  // premier jet de cette US l'avait réintroduit à l'identique, et aucune porte mécanique ne peut
+  // l'attraper — d'où le test de montage `VueTableaux.test.tsx`, qui, lui, le peut.
+  const tousLesSuivis = useSessionSuivisStore((s) => s.suivis)
+  const suivis = useMemo(
+    () => tousLesSuivis.filter((x) => x.tournoiId === tournoiId).map((x) => x.archerId),
+    [tousLesSuivis, tournoiId],
   )
   // Sur l'écran de salle il n'y a personne à suivre : la lecture y est **toujours** l'arbre
   // complet, et le sélecteur n'existe pas. Dans l'appli publique, on ouvre sur « mon chemin » si
@@ -200,7 +208,9 @@ function CheminArcher({ tableau, archerId }: { tableau: TableauPublic; archerId:
             key={etape.tour}
             className={`tableaux__etape tableaux__etape--${etape.statut.replace('_', '-')}`}
           >
-            <span className="tableaux__tour">{etape.enjeu ?? etape.libelle}</span>
+            {/* Le libellé vient du serveur ; `null` (branche non décidée) s'affiche « À venir »
+                plutôt qu'un nom deviné — cf. l'en-tête de `presentation.ts`. */}
+            <span className="tableaux__tour">{etape.libelle ?? 'À venir'}</span>
             <span className="tableaux__contre">
               {etape.adversaire === null ? '—' : nomComplet(etape.adversaire)}
               {etape.score !== null && <strong className="tableaux__score"> {etape.score}</strong>}
@@ -223,7 +233,7 @@ function ArbreComplet({ tableau }: { tableau: TableauPublic }) {
   return (
     <div className="tableaux__tours">
       {groupes.map((groupe) => (
-        <section key={groupe.tour} className="tableaux__tour-bloc">
+        <section key={groupe.libelle} className="tableaux__tour-bloc">
           <h4 className="tableaux__tour-titre">{groupe.libelle}</h4>
           <ul className="tableaux__duels">
             {groupe.duels.map((duel) => (
@@ -237,7 +247,6 @@ function ArbreComplet({ tableau }: { tableau: TableauPublic }) {
 }
 
 function LigneDuel({ duel }: { duel: DuelPublic }) {
-  const enjeu = libelleEnjeu(duel.place_en_jeu)
   const score =
     duel.points_haut === null || duel.points_bas === null
       ? null
@@ -251,10 +260,6 @@ function LigneDuel({ duel }: { duel: DuelPublic }) {
       <span className={duel.validee && duel.vainqueur === 'bas' ? 'tableaux__gagnant' : undefined}>
         {duel.bas === null ? '—' : nomComplet(duel.bas)}
       </span>
-      {/* L'enjeu n'est écrit que quand il dit quelque chose de plus que le titre du tour : au
-          dernier tour, « Finale » et « Places 5-6 » se jouent au même moment, et c'est cette
-          distinction-là qui manque quand on ne l'affiche pas. */}
-      {enjeu !== null && <span className="tableaux__enjeu">{enjeu}</span>}
       {duel.termine && !duel.validee && (
         <span className="tableaux__attente">En attente de validation</span>
       )}

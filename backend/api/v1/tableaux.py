@@ -60,19 +60,28 @@ class DuellisteReponse(BaseModel):
 class DuelPublicReponse(BaseModel):
     """Un match de l'arbre, vu du public.
 
-    `place_en_jeu` est ce qui distingue la finale (`[1, 2]`) d'un match de placement (`[5, 8]`) :
-    c'est lui qui permet de nommer l'enjeu sans le déduire du numéro de tour, déduction fausse dès
-    qu'un tableau descend sous le podium (E06US006).
+    ⚠️ **`libelle` vient du domaine, il n'est pas recalculé côté client.** Nommer un match est du
+    **vocabulaire métier** (règle 3) : `domain.tableau.libelle_tour` en est le domicile, et le
+    servir ici évite d'en ouvrir un troisième (`DETTE-020` en compte déjà deux). Un premier jet de
+    cette US le recalculait en TypeScript et produisait **« Demi-finales » sur un match des places
+    5-8** — le mot faux, sur la vue publique, au moment où le tournoi descend sous le podium.
+
+    `place_en_jeu` ne dit **pas** tout, et c'est la leçon de cette US : il n'existe que sur les
+    matchs **terminaux**. `plage` est la **branche** (`[5, 8]` pour le sous-tableau de placement),
+    disponible dès le premier tour — c'est elle qui permet de grouper l'affichage par branche et
+    non par numéro de tour, deux branches partageant le même tour.
 
     `termine` et `validee` disent deux choses différentes, et les confondre afficherait un
     vainqueur qui n'en est pas encore un : `termine` = le tir est allé au bout ; `validee` = le
     scoreur a scellé, et c'est **seulement** à partir de là que l'arbre avance. Le public voit donc
-    « en attente de validation » entre les deux — le même vocabulaire qu'E07US009.
+    « en attente de validation » entre les deux — même vocabulaire qu'E07US009 (livrée).
     """
 
     numero: int
     tour: int
+    libelle: str
     place_en_jeu: list[int] | None
+    plage: list[int] | None
     haut: DuellisteReponse | None
     bas: DuellisteReponse | None
     est_bye: bool
@@ -89,7 +98,9 @@ class DuelPublicReponse(BaseModel):
         return DuelPublicReponse(
             numero=etat.numero,
             tour=etat.tour,
+            libelle=etat.libelle,
             place_en_jeu=None if etat.place_en_jeu is None else list(etat.place_en_jeu),
+            plage=None if etat.plage is None else list(etat.plage),
             haut=DuellisteReponse.de_duelliste(etat.haut),
             bas=DuellisteReponse.de_duelliste(etat.bas),
             est_bye=etat.est_bye,
@@ -137,10 +148,16 @@ class TableauPublicReponse(BaseModel):
             nb_tours=etat.nb_tours,
             est_termine=etat.est_termine,
             duels=[DuelPublicReponse.de_etat(duel) for duel in etat.duels],
+            # Construction directe : `EtatTableau.podium` est typé `tuple[tuple[int, Duelliste]]`,
+            # donc passer par la fabrique optionnelle imposait un filtre **toujours vrai** — et ce
+            # filtre aurait un jour **supprimé une place du podium en silence** au lieu d'échouer
+            # (remarque de revue).
             podium=[
-                PlaceReponse(rang=rang, duelliste=reponse)
-                for rang, duelliste in etat.podium
-                if (reponse := DuellisteReponse.de_duelliste(duelliste)) is not None
+                PlaceReponse(
+                    rang=rang,
+                    duelliste=DuellisteReponse(archer_id=d.archer_id, nom=d.nom, prenom=d.prenom),
+                )
+                for rang, d in etat.podium
             ],
         )
 

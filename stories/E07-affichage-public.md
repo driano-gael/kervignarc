@@ -146,10 +146,17 @@ sans traverser le gymnase.
 - **CA** : rendu de l'arbre (principal + placement) mis à jour en live ; **deux lectures** dans
   l'appli publique — **« Mon chemin »** (le parcours de chaque **archer suivi**, E07US006 : tour,
   adversaire, score vu de son côté, état) et **« Tableau complet »** (tous les duels **groupés par
-  tour**) — ; la lecture **« Mon chemin » est celle par défaut dès qu'on suit quelqu'un** ; le
-  **DTO est public restreint** (règle 6 : ni identité du scoreur, ni détail flèche à flèche) ;
-  la vue **`tableaux` entre au catalogue de l'écran de salle** (E07US004), où elle montre le
-  **tableau qui se joue**, sans interaction.
+  branche**, une branche et un tour ne se confondant pas) — ; la lecture **« Mon chemin » est celle
+  par défaut dès qu'on suit quelqu'un** ; **aucun match n'est nommé par sa seule distance à la
+  finale** : un match de placement disputé au tour d'une demi-finale s'annonce par ses **rangs** ;
+  **rien n'est promis qui ne soit acquis** (ni vainqueur avant validation, ni tour à venir à qui
+  n'a plus de match ou dont la défaite n'est pas scellée) ; la vue **`tableaux` entre au catalogue
+  de l'écran de salle** (E07US004), où elle montre le **tableau qui se joue**, sans interaction.
+- **Notes de conception** *(sorties du CA à la revue : ce sont des contraintes de mise en œuvre, pas
+  du besoin — les y laisser aurait fait dériver les tests d'une US future de la forme du DTO plutôt
+  que du besoin)* : DTO **public restreint** (règle 6, contrainte générale à toute surface
+  publique) ; filtre du service sur `TYPES_EN_TABLEAU` ; libellé de match **servi par le domaine**
+  (`libelle_tour`), jamais recalculé côté client.
 - **Notes** : maquette **P05** (`maquettes/p05-tableau-duels.html`), dont les **deux partis pris
   sont livrés** dans l'ordre qu'elle recommande — A « Mon chemin » (*recommandé*, « l'archer est le
   sujet, la compétition est le contexte », `D-09`), B « Arbre complet » (*nécessaire en second*).
@@ -186,6 +193,29 @@ sans traverser le gymnase.
   > *Conséquence à ne pas relire à l'envers : cette US ne résorbe pas `DETTE-028`, elle en montre le
   > coût sur une surface publique.*
   >
+  > **⚠️ Ce que la revue a trouvé, et qui vaut d'être lu avant la prochaine US de cette épic.**
+  > Trois défauts sérieux, une seule racine : **la règle de nommage d'un match a été réécrite de
+  > mémoire au lieu d'être lue**. Le domaine possède `libelle_tour`, qui porte déjà un marqueur
+  > `DETTE-020` avertissant qu'une copie front existe ; l'US en a d'abord écrit une troisième, avec
+  > un modèle **faux** de `place_en_jeu` (renseigné seulement sur les matchs **terminaux**). Ce
+  > modèle faux s'est propagé à l'identique dans le code, dans deux tests et dans la fiche de
+  > recette — les trois se **confirmaient mutuellement**, ce qui est exactement pourquoi la suite
+  > verte n'a rien arrêté. Résultat à l'écran : « Demi-finale » annoncée à un archer disputant les
+  > places 5-8. Corrigé en servant le libellé du **domaine** au DTO, ce qui a **aussi** réparé le
+  > panneau de routage (E07US008), porteur silencieux du même défaut. *Leçon reportable : quand une
+  > règle métier existe côté serveur, la consommer coûte moins cher que la réécrire — et la copie
+  > n'est pas seulement redondante, elle est souvent fausse.*
+  >
+  > Deux autres, de même famille (« affirmer plus que ce que le serveur sait ») : un archer battu
+  > **dont la défaite n'était pas encore validée** se voyait promettre les tours restants ; et le
+  > groupement par **numéro de tour** rangeait la petite finale sous l'en-tête « Finale » — le
+  > piège que la fonction jumelle de la saisie documente pourtant avoir corrigé.
+  >
+  > **Et un bloquant sans rapport avec le métier** : le sélecteur Zustand dérivait un tableau neuf à
+  > chaque appel → **boucle de rendu** (v5 / React 19), vue inutilisable. Le correctif existait déjà
+  > dans la feature voisine, sur le même store. Ce qui manquait n'était pas la connaissance mais un
+  > test qui **monte le composant** : `VueTableaux.test.tsx` a été ajouté pour cela.
+
   > **Robustesse jour J.** Un tableau **illisible** (phase déclarée dont la source ne prélève encore
   > personne — cas du matin) est **omis** de la liste au lieu de faire échouer la lecture : sur une
   > surface publique et projetée, une phase à venir ne doit pas produire une page blanche pour tout
