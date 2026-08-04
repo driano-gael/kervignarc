@@ -16,6 +16,7 @@
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import type { Profondeur } from '../patrimoine/api'
 import type {
   ConfigPhase,
   Phase,
@@ -32,7 +33,13 @@ import {
   useReordonnerPhases,
   useSupprimerPhase,
 } from './hooks'
-import { AIDE_TYPE, LIBELLE_TYPE, TYPES_SANS_CLASSEMENT } from '../../shared/phases/catalogue'
+import {
+  AIDE_TYPE,
+  LIBELLE_TYPE,
+  TYPES_EN_TABLEAU,
+  TYPES_SANS_CLASSEMENT,
+} from '../../shared/phases/catalogue'
+import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
 import { ordreApresDeplacement, type Direction } from './ordre'
 import { decrireSources, editableIci } from './source'
 
@@ -251,6 +258,12 @@ function FormulairePhase({
   const enEdition = phase !== undefined
   const [type, setType] = useState<TypePhase>(phase?.type ?? 'elimination_directe')
   const [effectif, setEffectif] = useState(phase?.effectif != null ? String(phase.effectif) : '')
+  // Tri-état de la profondeur (E06US006) : `null` = non réglée (preset du type), `undefined` =
+  // saisie illisible, qui bloque la soumission. Le contrôle lui-même est partagé avec l'écran de
+  // composition d'un déroulé — le réglage y a exactement le même sens.
+  const [profondeur, setProfondeur] = useState<Profondeur | null | undefined>(
+    phase?.profondeur ?? null,
+  )
   const premiereSource = phase?.sources?.[0] ?? null
   const [avecSource, setAvecSource] = useState(premiereSource != null)
   const [ordreSource, setOrdreSource] = useState(
@@ -316,11 +329,13 @@ function FormulairePhase({
   const effectifAnalyse = effectif.trim() === '' ? null : Number(effectif)
   const effectifInvalide =
     effectifAnalyse !== null && (!Number.isInteger(effectifAnalyse) || effectifAnalyse < 1)
-  const soumissionPossible = sources !== 'invalide' && !effectifInvalide
+  const enTableau = TYPES_EN_TABLEAU.includes(type)
+  const soumissionPossible =
+    sources !== 'invalide' && !effectifInvalide && !(enTableau && profondeur === undefined)
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
-    if (sources === 'invalide' || effectifInvalide) return
+    if (!soumissionPossible) return
     // ⚠️ `barrage_jusqu_au` est **réémis tel quel** : le `PUT` est une édition **totale**, donc
     // l'omettre effacerait le seuil dès qu'on corrige un effectif. Il ne se **règle** pas ici (voir
     // `ReglageBarrage`, sur la qualification), il se **préserve**.
@@ -329,6 +344,9 @@ function FormulairePhase({
       sources,
       effectif: effectifAnalyse,
       barrage_jusqu_au: phase?.barrage_jusqu_au ?? null,
+      // Même règle d'édition totale que le barrage — mais celle-ci se **règle** ici aussi : une
+      // phase retypée hors tableau perd sa profondeur, puisque le serveur la refuserait (422).
+      profondeur: enTableau ? (profondeur ?? null) : null,
     }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
@@ -383,6 +401,9 @@ function FormulairePhase({
             </span>
           )}
         </label>
+        {enTableau && (
+          <ChoixProfondeur valeur={phase?.profondeur ?? null} surChangement={setProfondeur} />
+        )}
         <label className="formulaire__tranche">
           <input
             type="checkbox"

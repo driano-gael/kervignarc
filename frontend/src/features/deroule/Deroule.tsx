@@ -24,10 +24,11 @@ import {
   AIDE_TYPE,
   LIBELLE_TYPE,
   TOUS_LES_TYPES,
+  TYPES_EN_TABLEAU,
   TYPES_SANS_CLASSEMENT,
   type TypePhase,
 } from '../../shared/phases/catalogue'
-import type { Etape, FormatTournoi, Source } from '../patrimoine/api'
+import type { Etape, FormatTournoi, Profondeur, Source } from '../patrimoine/api'
 import { useCreerFormat, useFormats } from '../patrimoine/hooks'
 import {
   EFFECTIF_MAX,
@@ -47,6 +48,7 @@ import {
   retirerEtape,
 } from './sequence'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
+import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
 
 const EFFECTIF_PAR_DEFAUT = 120
 
@@ -599,7 +601,10 @@ function EditeurSequence({
   )
 }
 
-function FormulaireEtape({
+/** Exporté pour ses tests, comme `EffectifMinimum` : la composition d'une étape porte deux
+ * garde-fous (profondeur réservée aux tableaux, seuil obligatoire sur un top N) qui ne se
+ * vérifient qu'en manipulant le formulaire. */
+export function FormulaireEtape({
   etape,
   etapesAmont,
   surValider,
@@ -617,6 +622,12 @@ function FormulaireEtape({
     etape?.effectif === null ? '' : String(etape?.effectif ?? ''),
   )
   const [sources, setSources] = useState<Source[]>(etape?.sources ?? [])
+  // Le tri-état (`preset` / intégral / top N) vit dans `ChoixProfondeur`, partagé avec l'écran
+  // « Phases » ; ici on ne garde que ce qu'il rend. `undefined` = saisie illisible, ce qui bloque la
+  // soumission — même convention que `lireEntier` pour le barème et l'effectif.
+  const [profondeurSaisie, setProfondeurSaisie] = useState<Profondeur | null | undefined>(
+    etape?.profondeur ?? null,
+  )
 
   const volees = lireEntier(nbVolees)
   const fleches = lireEntier(nbFleches)
@@ -629,7 +640,12 @@ function FormulaireEtape({
     type === 'qualification' && typeof volees === 'number' && typeof fleches === 'number'
       ? { nb_volees: volees, nb_fleches_par_volee: fleches }
       : null
+  const enTableau = TYPES_EN_TABLEAU.includes(type)
   const saisieInvalide = volees === undefined || fleches === undefined || effectifLu === undefined
+  // Deux conditions de blocage, **un message chacune**. Les fondre ferait afficher au seuil vide le
+  // conseil générique « laissez le champ vide pour ne rien déclarer » — l'exact contraire de ce
+  // qu'il faut faire, puisqu'un top N sans rang d'arrêt est précisément ce qui est refusé.
+  const soumissionBloquee = saisieInvalide || (enTableau && profondeurSaisie === undefined)
 
   const construire = (): Etape => ({
     ordre: etape?.ordre ?? etapesAmont.length + 1,
@@ -643,6 +659,9 @@ function FormulaireEtape({
         : null,
     sources,
     effectif: effectifLu ?? null,
+    // Même garde que le barème : une profondeur n'a de sens que sur un tableau. Retyper une phase
+    // de tableau en poule **efface** donc le réglage plutôt que de l'envoyer se faire refuser.
+    profondeur: enTableau ? (profondeurSaisie ?? null) : null,
   })
 
   return (
@@ -658,14 +677,20 @@ function FormulaireEtape({
       }}
     >
       <div className="formulaire__champ">
-        <label className="formulaire__libelle">Type de phase</label>
-        <select value={type} onChange={(e) => setType(e.target.value as TypePhase)}>
-          {TOUS_LES_TYPES.map((valeur) => (
-            <option key={valeur} value={valeur}>
-              {LIBELLE_TYPE[valeur]}
-            </option>
-          ))}
-        </select>
+        {/* Le libellé **enveloppe** son `<select>` (corrigé en E06US006) : il flottait à côté sans
+            `htmlFor` ni imbrication, donc ne labellisait rien — un lecteur d'écran annonçait une
+            liste anonyme, et le champ n'était pas atteignable par son intitulé. Les autres champs
+            de ce formulaire enveloppent déjà, celui-ci était le seul écart. */}
+        <label className="formulaire__libelle">
+          Type de phase
+          <select value={type} onChange={(e) => setType(e.target.value as TypePhase)}>
+            {TOUS_LES_TYPES.map((valeur) => (
+              <option key={valeur} value={valeur}>
+                {LIBELLE_TYPE[valeur]}
+              </option>
+            ))}
+          </select>
+        </label>
         <p className="carte__aide">{AIDE_TYPE[type]}</p>
       </div>
 
@@ -701,10 +726,14 @@ function FormulaireEtape({
         </label>
       </div>
 
+      {enTableau && (
+        <ChoixProfondeur valeur={etape?.profondeur ?? null} surChangement={setProfondeurSaisie} />
+      )}
+
       <EditeurSources etapesAmont={etapesAmont} sources={sources} surSources={setSources} />
 
       <div className="formulaire__actions">
-        <button type="submit" disabled={saisieInvalide}>
+        <button type="submit" disabled={soumissionBloquee}>
           {etape === undefined ? 'Ajouter la phase' : 'Valider'}
         </button>
         {saisieInvalide && (

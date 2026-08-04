@@ -10,7 +10,7 @@
 // (`PhaseSourceReferencee`). Un premier jet de cet écran ne faisait ni l'un ni l'autre : c'est la
 // parité avec l'écran équivalent qui manquait, pas une subtilité nouvelle.
 
-import type { Etape, Source } from '../patrimoine/api'
+import type { Etape, Profondeur, Source } from '../patrimoine/api'
 import { deplacer } from '../phases/ordre'
 
 /** Ordre sentinelle d'un prélèvement **orphelin** — hors de toute séquence, donc introuvable.
@@ -100,10 +100,19 @@ export function decrireEtape(etape: Etape): string {
     morceaux.push(`${etape.bareme.nb_volees}×${etape.bareme.nb_fleches_par_volee}`)
   }
   if (etape.effectif !== null) morceaux.push(`${etape.effectif} archers`)
+  // La profondeur n'apparaît que si elle est **réglée** : une phase au preset se lit comme avant,
+  // et afficher « podium » partout ferait passer un défaut hérité pour une décision (E06US006).
+  if (etape.profondeur !== null) morceaux.push(decrireProfondeur(etape.profondeur))
   morceaux.push(
     etape.sources.length === 0 ? 'tous les inscrits' : etape.sources.map(decrireSource).join(' + '),
   )
   return morceaux.join(' · ')
+}
+
+/** Dit une profondeur de classement en clair — « classement intégral » / « classé jusqu'au 8ᵉ ». */
+export function decrireProfondeur(profondeur: Profondeur): string {
+  if (profondeur.nom === 'un_vers_n') return 'classement intégral'
+  return `classé jusqu'au ${profondeur.jusqu_au}ᵉ`
 }
 
 /**

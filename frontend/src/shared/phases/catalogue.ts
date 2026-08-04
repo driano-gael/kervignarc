@@ -93,6 +93,11 @@ export const AIDE_TYPE: Record<TypePhase, string> = {
 // évite juste d'offrir un choix qui mène à un 422 dont la consigne n'est pas réalisable à l'écran.
 export const TYPES_SANS_CLASSEMENT: TypePhase[] = ['echauffement']
 
+// Les types qui montent un **arbre de duels**, donc les seuls dont la profondeur de classement soit
+// un réglage (E06US006). Miroir de `TYPES_EN_TABLEAU` côté domaine, même parti que ci-dessus : le
+// backend refuse (422) une profondeur sur un autre type, l'écran évite simplement de la proposer.
+export const TYPES_EN_TABLEAU: TypePhase[] = ['elimination_directe', 'placement']
+
 /** L'ordre d'affichage du catalogue dans un `<select>` — le plus courant d'abord. */
 export const TOUS_LES_TYPES: TypePhase[] = [
   'qualification',
