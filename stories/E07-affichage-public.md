@@ -283,6 +283,16 @@ retrouver leur cible **sans rien chercher**, à chaque ouverture.
 ### E07US008 — Vue publique des affectations du prochain tour
 *En tant qu'*archer, *je veux* savoir **où je tire ensuite** dès que c'est décidé, *afin de* ne pas
 rater mon tour ni aller demander à l'organisation.
+> ⚠️ **Son affichage a changé le 04/08/2026, du fait d'E07US005 — correction de bug, pas évolution.**
+> Le **tour de sortie** et le **libellé du prochain duel** viennent de `domain.tableau.libelle_tour`,
+> qui ne recevait pas la **plage** du match : sous profondeur intégrale (E06US006), un match du
+> sous-tableau des places 5-8 se dispute au tour d'une demi-finale et n'a **pas** de place en jeu —
+> le panneau annonçait donc « **Demi-finale** » à un archer qui joue la 5ᵉ place. On lit désormais
+> « **Places 5 à 8** ». E07US005 a corrigé le domaine et a passé la plage aux deux appels de
+> `ServiceRoutage` : un domicile unique, corrigé une fois, corrige toutes les surfaces. Un test de
+> non-régression le tient (`test_le_battu_qui_descend_en_placement_lit_le_nom_de_sa_branche`).
+> *(En profondeur `podium` — le preset d'une élimination directe, donc le décor de la fiche de
+> recette d'E07US008 — rien ne change : aucune branche de placement non terminale n'y existe.)*
 - **CA** : après le lancement d'un tour (E12US002), chaque archer concerné voit **sa** prochaine
   affectation (**cible, position, tour**) sur son téléphone (E07US006) ; l'archer **éliminé**
   voit le **rang qu'il a acquis** ; l'archer **repêché** voit sa destination ; mise à jour **sans

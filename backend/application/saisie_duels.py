@@ -18,7 +18,7 @@ Le pont `Participant → archer` (nom, catégorie, blason) vit ici (couche haute
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from application.classements import ServiceClassement
 from application.erreurs import (
@@ -80,7 +80,7 @@ class EtatDuel:
     duel: Duel | None
     bareme: BaremeDuel | None = None
     zones: tuple[ZoneScore, ...] = ()
-    plage: tuple[int, int] | None = None
+    plage: tuple[int, int] | None = field(default=None, kw_only=True)
     """La **branche** du match — `[1..8]` pour le tableau principal, `[5..8]` pour le sous-tableau
     de placement qui en descend (E07US005).
 
@@ -89,11 +89,16 @@ class EtatDuel:
     n'avait, avant cette US, aucun champ qui le distinguât d'une demi-finale. Tout consommateur
     qui nommait ce match par son seul numéro de tour l'appelait « Demi-finale ». C'est ce que
     `libelle` ci-dessous corrige — et pourquoi la plage doit remonter jusqu'ici."""
-    libelle: str = ""
+    libelle: str = field(kw_only=True)
     """Le nom que la salle donne au match, calculé par `domain.tableau.libelle_tour`.
 
     Porté par l'application plutôt que recalculé par chaque surface : c'est du **vocabulaire
-    métier** (règle 3), il n'a qu'un domicile légitime, le domaine (`DETTE-020`)."""
+    métier** (règle 3), il n'a qu'un domicile légitime, le domaine (`DETTE-020`).
+
+    **Sans défaut** (`kw_only`, correctif de revue) : le DTO public le sert comme `str` obligatoire,
+    et un défaut vide aurait publié un titre de section vide — que le repli `?? '—'` du front ne
+    rattrape pas, puisqu'il ne teste que `null`. `kw_only` permet un champ obligatoire **après** des
+    champs à défaut, sans réordonner la dataclass."""
 
 
 @dataclass(frozen=True)

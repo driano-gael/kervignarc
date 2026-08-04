@@ -49,12 +49,16 @@ class DuellisteReponse(BaseModel):
     prenom: str
 
     @staticmethod
-    def de_duelliste(duelliste: Duelliste | None) -> DuellisteReponse | None:
-        if duelliste is None:
-            return None
+    def de_connu(duelliste: Duelliste) -> DuellisteReponse:
+        """Projection d'un duelliste **certain** (podium). Domicile unique de la conversion."""
         return DuellisteReponse(
             archer_id=duelliste.archer_id, nom=duelliste.nom, prenom=duelliste.prenom
         )
+
+    @staticmethod
+    def de_duelliste(duelliste: Duelliste | None) -> DuellisteReponse | None:
+        """Projection d'un camp qui peut être **vide** (adversaire pas encore sorti de son duel)."""
+        return None if duelliste is None else DuellisteReponse.de_connu(duelliste)
 
 
 class DuelPublicReponse(BaseModel):
@@ -148,15 +152,14 @@ class TableauPublicReponse(BaseModel):
             nb_tours=etat.nb_tours,
             est_termine=etat.est_termine,
             duels=[DuelPublicReponse.de_etat(duel) for duel in etat.duels],
-            # Construction directe : `EtatTableau.podium` est typé `tuple[tuple[int, Duelliste]]`,
-            # donc passer par la fabrique optionnelle imposait un filtre **toujours vrai** — et ce
-            # filtre aurait un jour **supprimé une place du podium en silence** au lieu d'échouer
-            # (remarque de revue).
+            # `de_connu` et non la fabrique optionnelle : `EtatTableau.podium` est typé
+            # `tuple[tuple[int, Duelliste]]`, donc le filtre `is not None` d'un premier jet était
+            # **toujours vrai** — et il aurait un jour supprimé une place du podium **en silence**
+            # au lieu d'échouer. Deux fabriques, une seule conversion (correctif de revue : la
+            # version intermédiaire recopiait le mapping en ligne, dans un fichier dont tout le
+            # propos est « un domicile unique »).
             podium=[
-                PlaceReponse(
-                    rang=rang,
-                    duelliste=DuellisteReponse(archer_id=d.archer_id, nom=d.nom, prenom=d.prenom),
-                )
+                PlaceReponse(rang=rang, duelliste=DuellisteReponse.de_connu(d))
                 for rang, d in etat.podium
             ],
         )

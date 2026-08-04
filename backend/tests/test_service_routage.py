@@ -452,6 +452,34 @@ def test_l_elimine_sort_du_tableau_et_son_tour_de_sortie_est_nomme() -> None:
     assert ligne.motif is None  # plus d'« en attente » : ce qui est acquis est dit
 
 
+def test_le_battu_qui_descend_en_placement_lit_le_nom_de_sa_branche() -> None:
+    """**Non-régression du correctif d'E07US005** — ce test rend vraie la promesse « un domicile
+    unique, corrigé une fois, corrige toutes les surfaces ».
+
+    En profondeur intégrale (E06US006), le battu d'un quart ne sort pas : il descend dans le
+    sous-tableau des places 5-8, qui se dispute **au tour d'une demi-finale**. Ce match n'a pas de
+    `place_en_jeu` (il n'est pas terminal), si bien que `libelle_tour` le nommait « Demi-finale » —
+    et le panneau de routage annonçait donc une demi-finale à quelqu'un qui joue la 5ᵉ place.
+
+    Le correctif a fait passer la **plage** à `libelle_tour` ; sans ce test, les deux lignes
+    modifiées de `ServiceRoutage` n'étaient exercées par rien — aucun test de ce fichier ne tourne
+    en profondeur intégrale, et un refactor qui retirerait l'argument ne casserait rien.
+    """
+    monde = _Monde(profondeur=ProfondeurClassement.integrale())
+    _huit(monde)
+    monde.placer()
+    perdant = monde.perd_de(1)
+    monde.gagner(1)
+
+    ligne = monde.routage.routage(monde.tournoi_id, (perdant,)).archers[0]
+
+    assert (
+        ligne.issue is IssueRoutage.PROCHAIN_DUEL
+    ), "sous profondeur intégrale, un battu tire encore"
+    assert ligne.prochain is not None
+    assert ligne.prochain.libelle == "Places 5 à 8"
+
+
 def test_rang_final_publie_quand_le_podium_est_acquis() -> None:
     """CA « son rang final » : une fois finale et petite finale jouées, les quatre archers portent
     leur rang de podium (1-4) — le seul rang que le tableau sache attribuer aujourd'hui."""

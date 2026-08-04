@@ -676,12 +676,18 @@ def libelle_tour(
     """
     if place_en_jeu == (3, 4):
         return "Petite finale"
+    # `# DETTE-038` — ce rang est **relatif au tableau** (l'arbre est engendré depuis
+    # `Plage(1, n)`).
+    # Sur un tableau secondaire prélevant « les rangs 33 et suivants », « la 5ᵉ place » désigne en
+    # réalité la 37ᵉ. Sans effet aujourd'hui (aucun format livré n'enchaîne de tableau secondaire) ;
+    # le remède est le décalage que `domain.palmares` applique déjà. Cf. docs/dette.md.
     if place_en_jeu is not None and place_en_jeu[0] > 2:
         return f"Match pour la {place_en_jeu[0]}ᵉ place"
     # `debut > 1` et non « au-delà du podium » : la condition structurelle est « ce n'est pas la
     # branche du titre ». Les plages se divisant en deux, toute plage de début > 1 encore large
     # est un sous-tableau de placement ; celles de largeur 2 sont terminales et déjà nommées par
     # `place_en_jeu` juste au-dessus.
+    # `# DETTE-038` — mêmes rangs relatifs que la branche ci-dessus.
     if place_en_jeu is None and plage is not None and plage.debut > 1:
         return f"Places {plage.debut} à {plage.fin}"
     restants = nb_tours - tour

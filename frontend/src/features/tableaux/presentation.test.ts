@@ -65,6 +65,56 @@ const DEMIES = [
   duel({ numero: 6, tour: 2, libelle: 'Demi-finale', plage: [1, 4], haut: null, bas: null }),
 ]
 
+/** Le dernier tour d'un tableau de 8 en profondeur **podium** — le réglage par défaut du projet.
+ * Il porte **toujours deux** matchs : `PlacementEnCascade` fait rejouer les perdants des demies en
+ * petite finale. Un décor à finale seule n'existe qu'en profondeur `top(2)` — un test qui en
+ * fabriquerait un consacrerait un comportement que la production ne produit jamais. */
+const PODIUM_T2_T3 = [
+  duel({ numero: 5, tour: 2, libelle: 'Demi-finale', plage: [1, 4], haut: null, bas: null }),
+  duel({ numero: 6, tour: 2, libelle: 'Demi-finale', plage: [1, 4], haut: null, bas: null }),
+  duel({
+    numero: 7,
+    tour: 3,
+    libelle: 'Finale',
+    place_en_jeu: [1, 2],
+    plage: [1, 2],
+    haut: null,
+    bas: null,
+  }),
+  duel({
+    numero: 8,
+    tour: 3,
+    libelle: 'Petite finale',
+    place_en_jeu: [3, 4],
+    plage: [3, 4],
+    haut: null,
+    bas: null,
+  }),
+]
+
+/** Les quatre matchs terminaux d'un tableau de 8 en profondeur **intégrale** (tour 3). */
+const FINALES_INTEGRALE = [
+  ...PODIUM_T2_T3.filter((d) => d.tour === 3),
+  duel({
+    numero: 11,
+    tour: 3,
+    libelle: 'Match pour la 5ᵉ place',
+    place_en_jeu: [5, 6],
+    plage: [5, 6],
+    haut: null,
+    bas: null,
+  }),
+  duel({
+    numero: 12,
+    tour: 3,
+    libelle: 'Match pour la 7ᵉ place',
+    place_en_jeu: [7, 8],
+    plage: [7, 8],
+    haut: null,
+    bas: null,
+  }),
+]
+
 /** Les deux matchs du sous-tableau des places 5-8, tels que le serveur les émet réellement :
  * `place_en_jeu` **null** (non terminaux) et `plage` `[5, 8]`, au même tour que les demies. */
 const PLACEMENT_5_8 = [
@@ -137,37 +187,53 @@ describe('cheminDeArcher', () => {
     expect(cheminDeArcher(scelle, DURAND.archer_id)[0]?.statut).toBe('perdu')
   })
 
-  it('annonce les tours restants, nommés par les matchs réels de la branche', () => {
+  it('annonce les tours restants, en nommant toutes les suites possibles', () => {
     // La 3ᵉ ligne de la maquette P05 : « 1/2 · — · À VENIR ». L'archer n'y est pas encore placé,
     // mais son tableau a encore des tours — les taire ferait croire que sa journée s'arrête là.
-    // Le nom du tour est **lu** sur les matchs réels de ce tour, jamais recalculé.
+    //
+    // ⚠️ **Le décor est celui de la production.** Un premier jet ne mettait que la finale au tour 3
+    // — un arbre que le serveur ne produit jamais — et consacrait ainsi un comportement qui ne
+    // fonctionnait dans **aucune** configuration réelle : en profondeur podium comme en intégrale,
+    // le dernier tour porte toujours au moins deux branches. C'est l'erreur que l'en-tête de ce
+    // fichier interdit, refaite dans le fichier même qui l'interdit ; d'où cette note.
     const chemin = cheminDeArcher(
       tableau([
         duel({ numero: 1, tour: 1, vainqueur: 'haut', termine: true, validee: true }),
-        ...DEMIES,
-        duel({
-          numero: 11,
-          tour: 3,
-          libelle: 'Finale',
-          place_en_jeu: [1, 2],
-          plage: [1, 2],
-          haut: null,
-          bas: null,
-        }),
+        ...PODIUM_T2_T3,
       ]),
       MARTIN.archer_id,
     )
 
     expect(chemin.map((e) => e.statut)).toEqual(['gagne', 'a_venir', 'a_venir'])
-    expect(chemin.map((e) => e.libelle)).toEqual(['Quart de finale', 'Demi-finale', 'Finale'])
+    // Le tour 2 n'a qu'une suite ; le tour 3 en a deux, et **les deux sont vraies**. Les nommer
+    // toutes les deux informe ; n'en nommer aucune — le comportement du premier correctif —
+    // laissait la dernière ligne anonyme sur tous les tournois standards.
+    expect(chemin.map((e) => e.libelle)).toEqual([
+      'Quart de finale',
+      'Demi-finale',
+      'Finale ou Petite finale',
+    ])
   })
 
-  it('ne nomme pas un tour à venir quand la branche n’est pas décidée', () => {
+  it('cesse de nommer quand les suites possibles se multiplient', () => {
+    // À deux tours de distance sous placement intégral, quatre branches sont atteignables : une
+    // énumération de quatre libellés n'informe plus, elle encombre. La ligne dit alors « à venir »
+    // sans nom — omission assumée, et **bornée à ce cas**, ce qui est toute la différence avec le
+    // premier correctif.
+    const chemin = cheminDeArcher(
+      tableau([duel({ numero: 1, tour: 1 }), ...DEMIES, ...PLACEMENT_5_8, ...FINALES_INTEGRALE]),
+      MARTIN.archer_id,
+    )
+
+    expect(chemin[1]?.libelle).toBe('Demi-finale ou Places 5 à 8')
+    expect(chemin[2]?.libelle).toBeNull()
+  })
+
+  it('nomme les deux suites possibles quand la branche n’est pas décidée', () => {
     // Sous profondeur intégrale, le tour 2 porte **deux** branches : les demi-finales et les places
     // 5-8. Un archer dont le quart n'est pas tranché peut aller dans l'une ou l'autre — le nommer
-    // « Demi-finale » lui promettrait un podium, le nommer « Places 5 à 8 » l'enterrerait. On ne
-    // nomme donc rien, et la vue affiche « À venir ». C'est le seul cas où la maquette ne peut pas
-    // être honorée : elle supposait une seule suite possible.
+    // « Demi-finale » lui promettrait un podium, le nommer « Places 5 à 8 » l'enterrerait. Les deux
+    // sont vrais : c'est exactement ce qu'il peut encore atteindre.
     const chemin = cheminDeArcher(
       tableau([duel({ numero: 1, tour: 1 }), ...DEMIES, ...PLACEMENT_5_8]),
       MARTIN.archer_id,
@@ -175,7 +241,7 @@ describe('cheminDeArcher', () => {
 
     expect(chemin[0]?.statut).toBe('a_jouer')
     expect(chemin[1]?.statut).toBe('a_venir')
-    expect(chemin[1]?.libelle).toBeNull()
+    expect(chemin[1]?.libelle).toBe('Demi-finale ou Places 5 à 8')
   })
 
   it('n’annonce aucun tour à venir à un archer battu et sorti', () => {
@@ -225,15 +291,17 @@ describe('cheminDeArcher', () => {
         duel({ numero: 1, tour: 1, vainqueur: 'haut', termine: true, validee: true }),
         ...DEMIES,
         ...PLACEMENT_5_8,
+        ...FINALES_INTEGRALE,
       ]),
       DURAND.archer_id,
     )
 
     expect(chemin.map((e) => e.statut)).toEqual(['perdu', 'a_jouer', 'a_venir'])
     expect(chemin[1]?.libelle).toBe('Places 5 à 8')
-    // Le tour 3 de sa branche : les matchs `[5,6]` et `[7,8]` n'existent pas dans ce décor, donc
-    // rien à lire — « À venir » sans nom, plutôt que « Finale ».
-    expect(chemin[2]?.libelle).toBeNull()
+    // Son tour 3 : les matchs `[5,6]` et `[7,8]` existent bel et bien dans un vrai arbre — ce sont
+    // eux qu'il peut atteindre. Ce qu'il ne peut **pas** atteindre, c'est la finale, et c'est
+    // `inclus()` qui l'écarte. Jamais « Finale » pour un archer parti en placement.
+    expect(chemin[2]?.libelle).toBe('Match pour la 5ᵉ place ou Match pour la 7ᵉ place')
   })
 
   it('distingue « adversaire pas encore connu » de « à jouer »', () => {

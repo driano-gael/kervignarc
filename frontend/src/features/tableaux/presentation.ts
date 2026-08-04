@@ -98,26 +98,41 @@ function statutDeLEtape(duel: DuelPublic, cote: Cote, adversaire: DuellistePubli
   return adversaire === null ? ('attente_adversaire' as const) : ('a_jouer' as const)
 }
 
-/** Le nom d'un tour que l'archer n'a pas encore atteint — **lu**, jamais calculé.
+/** Le nom d'un tour que l'archer n'a pas encore atteint — **lu** sur les matchs réels, jamais
+ * calculé (le vocabulaire n'a qu'un domicile, le domaine).
  *
- * On regarde les matchs réels de ce tour situés dans la même branche. S'ils portent **tous le même
- * nom**, ce nom est le sien sans risque (cas courant : la branche des gagnants, où le tour 2 d'un
- * tableau de 8 en profondeur podium ne contient que des demi-finales). S'ils en portent plusieurs,
- * c'est que la branche n'est pas décidée — un archer non encore tranché peut monter vers les demies
- * **ou** descendre vers les places 5-8 —, et l'on ne nomme rien. C'est le seul cas où la maquette
- * (« 1/2 · — · À VENIR ») ne peut pas être honorée : elle supposait une seule suite possible.
+ * On regarde les matchs de ce tour situés dans la même branche, et l'on rend **les noms
+ * possibles** : un seul s'il n'y a qu'une suite (« Demi-finale »), les deux joints s'il y en a deux
+ * (« Finale ou Petite finale », « Demi-finale ou Places 5 à 8 »). Les deux sont **vrais** — c'est
+ * exactement ce que l'archer peut encore atteindre —, alors que n'en nommer qu'un serait un pari.
+ *
+ * ⚠️ **Un premier correctif rendait `null` dès que plusieurs noms coexistaient, en présentant ce
+ * cas comme l'exception. La seconde passe de revue l'a mesuré : c'était la règle.** Sous profondeur
+ * podium — le réglage par défaut —, le dernier tour porte toujours la finale **et** la petite
+ * finale, donc la dernière ligne de chaque chemin n'était jamais nommée ; sous profondeur
+ * intégrale, aucune ligne à venir ne l'était. L'omission était plus large que le mensonge qu'elle
+ * remplaçait. Joindre les noms rend la maquette P05 (« 1/2 · — · À VENIR ») honorable **et** exacte.
+ *
+ * Au-delà de deux noms, on ne nomme plus : à deux tours de distance les branches se multiplient
+ * (quatre au tour +2 en placement intégral), et une énumération de quatre libellés n'informe plus,
+ * elle encombre. La ligne dit alors simplement « à venir ».
  */
+const MAX_NOMS_JOINTS = 2
+
 function libelleDuTourAVenir(
   tableau: TableauPublic,
   tour: number,
   branche: number[] | null,
 ): string | null {
-  const noms = new Set(
-    tableau.duels.filter((d) => d.tour === tour && inclus(d.plage, branche)).map((d) => d.libelle),
-  )
-  if (noms.size !== 1) return null
-  const [seul] = [...noms]
-  return seul ?? null
+  const noms = [
+    ...new Set(
+      tableau.duels
+        .filter((d) => d.tour === tour && inclus(d.plage, branche))
+        .map((d) => d.libelle),
+    ),
+  ]
+  if (noms.length === 0 || noms.length > MAX_NOMS_JOINTS) return null
+  return noms.join(' ou ')
 }
 
 /** Le chemin d'un archer dans un tableau : ses matchs, puis les tours qu'il peut encore atteindre.

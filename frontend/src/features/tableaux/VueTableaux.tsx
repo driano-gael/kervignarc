@@ -208,9 +208,10 @@ function CheminArcher({ tableau, archerId }: { tableau: TableauPublic; archerId:
             key={etape.tour}
             className={`tableaux__etape tableaux__etape--${etape.statut.replace('_', '-')}`}
           >
-            {/* Le libellé vient du serveur ; `null` (branche non décidée) s'affiche « À venir »
-                plutôt qu'un nom deviné — cf. l'en-tête de `presentation.ts`. */}
-            <span className="tableaux__tour">{etape.libelle ?? 'À venir'}</span>
+            {/* Le libellé vient du serveur. `null` — trop de branches possibles pour nommer — met
+                un tiret et non « À venir » : le statut de la ligne le dit déjà, l'écrire deux fois
+                sur la même ligne n'apprend rien (correctif de revue). */}
+            <span className="tableaux__tour">{etape.libelle ?? '—'}</span>
             <span className="tableaux__contre">
               {etape.adversaire === null ? '—' : nomComplet(etape.adversaire)}
               {etape.score !== null && <strong className="tableaux__score"> {etape.score}</strong>}
