@@ -40,12 +40,14 @@ from domain.placement import (
     ArcherAPlacer,
     CiblePlacee,
     Conflit,
+    MotifRefus,
     Placement,
     PlanDeCibles,
     RaisonConflit,
     cible_accepte,
     cible_cloisonnement_non_respecte,
     cible_mixite_non_garantie,
+    motif_de_refus,
     placer,
     placer_restants,
 )
@@ -229,6 +231,10 @@ class ServicePlacement:
     ) -> ImpactRegeneration:
         """Chiffre l'impact d'une régénération : archers actuellement placés + cibles avec scores.
 
+        # DETTE-037 : ne chiffre **pas** la réserve qu'un cloisonnement plus strict (E03US007) va
+        # créer — l'organisateur confirme, puis la découvre. Remède pressenti : rejouer `placer` à
+        # blanc (lecture pure) et compter les conflits. Voir `docs/dette.md`.
+
         `archers_deplaces` = toutes les affectations actuelles (le glouton déterministe re-brasse
         tout). `cibles_avec_scores` = cibles distinctes du plan **actuel** dont un archer a **au
         moins une volée validée** — la marque de « données réelles produites » (la ligne de partage
@@ -408,22 +414,13 @@ class ServicePlacement:
             contexte, affectations, cible_cible, candidat, exclus
         ) and self._accepte(contexte, affectations, cible_source, occupant_candidat, exclus)
         if not tient:
-            # Même distinction que `_valider_pose` : si les deux tiendraient **sans** le réglage,
-            # c'est lui qui refuse, et c'est ce qu'il faut dire. Le garde vient **d'abord** (comme
-            # dans `_valider_pose`) : sans réglage actif, les deux rejeux supplémentaires seraient
-            # payés à chaque échange refusé — le cas nominal — pour une réponse connue d'avance.
-            if contexte.cloisonnement is not Cloisonnement.AUCUN and (
-                self._accepte_sans_cloisonnement(
-                    contexte, affectations, cible_cible, candidat, exclus
-                )
-                and self._accepte_sans_cloisonnement(
-                    contexte, affectations, cible_source, occupant_candidat, exclus
-                )
-            ):
-                raise DeplacementInvalide(
-                    "Échange refusé : le cloisonnement des cibles interdit de mêler ces archers "
-                    "sur une même cible."
-                )
+            # Le motif est demandé au domaine pour **chacune des deux jambes** : un échange met deux
+            # cibles en jeu, et celle qui refuse n'est pas forcément celle qu'on regarde. La
+            # première qui rend autre chose qu'`AUCUN` explique le refus. Relevé en 2e passe :
+            # l'échange gardait le message unique que `_valider_pose` venait d'abandonner, donc
+            # accusait de « mêler » deux archers parfois de la **même** catégorie.
+            self._refuser_echange(contexte, affectations, cible_cible, candidat, exclus)
+            self._refuser_echange(contexte, affectations, cible_source, occupant_candidat, exclus)
             raise DeplacementInvalide(
                 "Échange refusé : l'un des deux archers ne tient pas à la place de l'autre "
                 "(capacité, espace ou hauteur)."
@@ -454,18 +451,15 @@ class ServicePlacement:
         « neutre » est refusée. Dans ce second cas, accuser le candidat serait faux — ce n'est pas
         lui qui mêle quoi que ce soit —, et l'admin chercherait indéfiniment ce qu'il a mal fait.
         """
-        if self._accepte(contexte, affectations, cible, candidat, exclus):
+        motif = self._motif(contexte, affectations, cible, candidat, exclus)
+        if motif is MotifRefus.AUCUN:
             return
-        if contexte.cloisonnement is not Cloisonnement.AUCUN and self._accepte_sans_cloisonnement(
-            contexte, affectations, cible, candidat, exclus
-        ):
-            occupants = self._occupants(contexte, affectations, cible.index, exclus)
-            if cible_cloisonnement_non_respecte(contexte.cloisonnement, occupants):
-                raise DeplacementInvalide(
-                    f"Déplacement refusé : la cible {cible.index} ne respecte déjà pas le "
-                    "cloisonnement demandé. Régénérez le plan, ou videz-la, avant d'y poser un "
-                    "archer."
-                )
+        if motif is MotifRefus.CLOISONNEMENT_CIBLE_DEJA_NON_CONFORME:
+            raise DeplacementInvalide(
+                f"Déplacement refusé : la cible {cible.index} ne respecte déjà pas le "
+                "cloisonnement demandé. Régénérez le plan, ou videz-la, avant d'y poser un archer."
+            )
+        if motif is MotifRefus.CLOISONNEMENT_MELANGE:
             raise DeplacementInvalide(
                 "Déplacement refusé : le cloisonnement des cibles interdit de mêler ces archers "
                 "sur une même cible."
@@ -487,21 +481,39 @@ class ServicePlacement:
         occupants = self._occupants(contexte, affectations, cible.index, exclus)
         return cible_accepte(cible, occupants, candidat, cloisonnement=contexte.cloisonnement)
 
-    def _accepte_sans_cloisonnement(
+    def _motif(
         self,
         contexte: _Contexte,
         affectations: list[Affectation],
         cible: Cible,
         candidat: ArcherAPlacer,
         exclus: set[InscriptionId],
-    ) -> bool:
-        """Même question, **réglage neutralisé** — sert à dire *pourquoi* un refus a lieu.
-
-        Deux usages : la raison de réserve (`CLOISONNEMENT` plutôt que `NON_PLACE`) et le message
-        d'un déplacement refusé. Sans cette seconde lecture, l'organisateur ne saurait pas si le
-        geste bute sur la salle (ajouter une cible) ou sur son propre réglage (le desserrer)."""
+    ) -> MotifRefus:
+        """Pourquoi `cible` refuse `candidat` — la règle est au domaine, ici le seul décor."""
         occupants = self._occupants(contexte, affectations, cible.index, exclus)
-        return cible_accepte(cible, occupants, candidat)
+        return motif_de_refus(cible, occupants, candidat, cloisonnement=contexte.cloisonnement)
+
+    def _refuser_echange(
+        self,
+        contexte: _Contexte,
+        affectations: list[Affectation],
+        cible: Cible,
+        candidat: ArcherAPlacer,
+        exclus: set[InscriptionId],
+    ) -> None:
+        """Lève le refus d'échange **nommé** si cette jambe est celle qui bloque ; sinon rend la
+        main (l'autre jambe, ou le message générique de l'appelant, prendra le relais)."""
+        motif = self._motif(contexte, affectations, cible, candidat, exclus)
+        if motif is MotifRefus.CLOISONNEMENT_CIBLE_DEJA_NON_CONFORME:
+            raise DeplacementInvalide(
+                f"Échange refusé : la cible {cible.index} ne respecte déjà pas le cloisonnement "
+                "demandé. Régénérez le plan, ou videz-la, avant d'y échanger un archer."
+            )
+        if motif is MotifRefus.CLOISONNEMENT_MELANGE:
+            raise DeplacementInvalide(
+                "Échange refusé : le cloisonnement des cibles interdit de mêler ces archers "
+                "sur une même cible."
+            )
 
     def _occupants(
         self,
@@ -625,10 +637,18 @@ class ServicePlacement:
             )
             if placable:
                 raison = RaisonConflit.EN_RESERVE
-            elif contexte.cloisonnement is not Cloisonnement.AUCUN and any(
-                cible_accepte(cible_par_index[index], occupants, candidat)
+            elif any(
+                motif_de_refus(
+                    cible_par_index[index],
+                    occupants,
+                    candidat,
+                    cloisonnement=contexte.cloisonnement,
+                )
+                is not MotifRefus.BUDGETS
                 for index, occupants in occupants_par_index.items()
             ):
+                # Au moins une cible ne le refuse **que** pour cause de cloisonnement : c'est le
+                # réglage qui l'exclut, pas la salle.
                 raison = RaisonConflit.CLOISONNEMENT
             else:
                 raison = RaisonConflit.NON_PLACE

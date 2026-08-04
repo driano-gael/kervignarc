@@ -657,3 +657,88 @@ def test_plan_de_duels_pose_avant_le_reglage_est_signale_non_conforme() -> None:
 
     assert len(plan.cibles[0].placements) == 2  # personne n'a bougé
     assert plan.cibles[0].cloisonnement_non_respecte is True
+
+
+def _deux_par_categorie(monde: _Monde) -> tuple[int, int, int, int]:
+    """Quatre duellistes, deux par catégorie, aux rangs 1 à 4 (tous duellistes au tour 1).
+
+    Quatre et non trois : sur un tableau de 4, un effectif impair donne un **bye** au premier
+    classé, qui n'est alors duelliste d'aucun match du tour 1 — il n'apparaît donc pas au plan
+    (piège rencontré en écrivant ces tests)."""
+    return (
+        monde.inscrire_classe((ZoneScore.DIX, ZoneScore.DIX)),
+        monde.inscrire_classe((ZoneScore.NEUF, ZoneScore.NEUF)),
+        monde.inscrire_classe(
+            (ZoneScore.HUIT, ZoneScore.HUIT), categorie_id=monde.autre_categorie_id
+        ),
+        monde.inscrire_classe(
+            (ZoneScore.SEPT, ZoneScore.SEPT), categorie_id=monde.autre_categorie_id
+        ),
+    )
+
+
+def _cible_de(plan: PlanDeDuels) -> dict[int, int]:
+    return {pose.archer_id: cible.index for cible in plan.cibles for pose in cible.placements}
+
+
+def test_echange_refuse_par_le_cloisonnement_le_dit_sur_le_plan_de_duels() -> None:
+    """L'**échange** aussi nomme le cloisonnement (jumeau du test de qualification).
+
+    Relevé en 2ᵉ passe : la branche existait sans test — la supprimer laissait la suite verte, et
+    l'écran des duels redisait « capacité, espace ou hauteur » sur un refus de réglage, c'est-à-dire
+    le défaut même que la 1ʳᵉ passe avait fait corriger."""
+    monde = _Monde(capacites=(4, 4))
+    monde.regler_cloisonnement(Cloisonnement.CATEGORIE)
+    a1, a2, b1, _ = _deux_par_categorie(monde)
+    plan = monde.service.regenerer(monde.tournoi_id, monde.phase_id)
+    cible_de = _cible_de(plan)
+    # Le réglage a séparé les catégories : `a2` **reste** derrière `a1`, c'est lui qui rend
+    # l'échange illégal (échanger deux cibles autrement vides serait conforme).
+    assert cible_de[a1] == cible_de[a2] != cible_de[b1]
+    avant = monde.service.plan_de_duels(monde.tournoi_id, monde.phase_id)
+    position_a1 = next(
+        pose.position for cible in plan.cibles for pose in cible.placements if pose.archer_id == a1
+    )
+
+    with pytest.raises(DeplacementInvalide) as refus:
+        monde.service.deplacer(
+            monde.tournoi_id,
+            monde.phase_id,
+            monde.inscription_par_archer[b1],
+            cible_de[a1],
+            position_a1,
+        )
+
+    assert "cloisonnement" in str(refus.value).lower()
+    assert monde.service.plan_de_duels(monde.tournoi_id, monde.phase_id) == avant
+
+
+def test_pose_sur_une_cible_de_duels_deja_non_conforme_dit_de_regenerer() -> None:
+    """Sur une cible de duels déjà non conforme, le refus **n'accuse pas le candidat**.
+
+    Second jumeau manquant relevé en 2ᵉ passe : le décor existait (plan posé avant le réglage) mais
+    aucun test n'y tentait de pose, donc le message n'était jamais exécuté."""
+    monde = _Monde(capacites=(4, 4))
+    _, _, _, b2 = _deux_par_categorie(monde)
+    monde.service.regenerer(
+        monde.tournoi_id, monde.phase_id
+    )  # posé **sans** réglage : tous cible 1
+    monde.regler_cloisonnement(Cloisonnement.CATEGORIE)
+    # On libère une place sur la cible non conforme en écartant un duelliste, puis on tente de l'y
+    # reposer : la cible reste mêlée sans lui, ce n'est donc pas *lui* qui mêle quoi que ce soit.
+    monde.service.deplacer(
+        monde.tournoi_id, monde.phase_id, monde.inscription_par_archer[b2], 2, "A"
+    )
+    plan = monde.service.plan_de_duels(monde.tournoi_id, monde.phase_id)
+    assert plan.cibles[0].cloisonnement_non_respecte is True
+    occupees = {pose.position for pose in plan.cibles[0].placements}
+    libre = next(lettre for lettre in ("A", "B", "C", "D") if lettre not in occupees)
+
+    with pytest.raises(DeplacementInvalide) as refus:
+        monde.service.deplacer(
+            monde.tournoi_id, monde.phase_id, monde.inscription_par_archer[b2], 1, libre
+        )
+
+    message = str(refus.value).lower()
+    assert "ne respecte déjà pas" in message
+    assert "régénérez" in message

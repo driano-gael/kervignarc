@@ -404,37 +404,19 @@ class _CibleEnCours:
     def accueille(self, archer: ArcherAPlacer) -> bool:
         """Tente de poser `archer` sur cette cible ; renvoie `True` si posé, `False` sinon.
 
-        **Les gardes ne sont pas réécrites ici** : elles vivent dans `peut_accueillir`, dont cette
-        méthode est l'exécution. Poser exactement ce qu'on autorise est le seul moyen d'être sûr que
-        les deux ne divergeront pas — elles avaient déjà commencé à le faire (E03US007 a dû ajouter
-        la ligne de cloisonnement des deux côtés). Ce qui reste ici est la **consommation** des
-        budgets : on mutualise d'abord un carton du même blason (aucun coût d'espace), sinon on pose
-        un carton neuf."""
+        **Ni les gardes ni la consommation ne sont réécrites ici** : la première vit dans
+        `peut_accueillir`, la seconde dans `reprendre`. Cette méthode n'est que leur composition —
+        « si c'est autorisé, alors pose à la première lettre libre ».
+
+        C'est ce qui rend vraie l'affirmation d'ADR-0071 §6 : une contrainte de plus ne s'écrit
+        qu'**à un seul endroit**. Elle ne l'était qu'à moitié après la première correction de revue,
+        qui n'avait dédupliqué que les gardes — `reprendre` recopiait encore mot pour mot le bloc
+        carton/espace/hauteur, si bien qu'une contrainte **consommant un budget** aurait dû être
+        écrite trois fois. Relevé par deux axes en seconde passe."""
         if not self.peut_accueillir(archer):
             return False
-        # Partage d'un carton existant du même blason : il reste une place dessus.
-        if self.cartons.get(archer.blason_id, 0) > 0:
-            self._poser(archer)
-            self.cartons[archer.blason_id] -= 1
-            return True
-        # Carton neuf. La place physique n'est **plus retestée** ici : la garde vient de le faire,
-        # et la retester laisserait croire qu'elle peut échouer — un futur lecteur y verrait une
-        # branche morte à supprimer, ou pire, une seconde règle à maintenir.
-        self.espace_restant -= archer.taille
-        self.cartons[archer.blason_id] = archer.capacite_blason - 1
-        self.hauteur = archer.hauteur_cm
-        self._poser(archer)
+        self.reprendre(archer, self._prochaine_lettre())
         return True
-
-    def _poser(self, archer: ArcherAPlacer) -> None:
-        self.positions.append(
-            Placement(
-                position=self._prochaine_lettre(),
-                archer_id=archer.archer_id,
-                blason_id=archer.blason_id,
-            )
-        )
-        self.archers_poses.append(archer)
 
     def figer(self) -> CiblePlacee:
         """Fige la cible en valeur immuable pour le plan, drapeaux dérivés compris.
@@ -671,24 +653,73 @@ def cible_accepte(
     quatre budgets de la cible (espace, positions, partage de carton, hauteur), puis on teste le
     candidat **sans muter**. Un ajout qui violerait un budget est refusé. Les positions exactes des
     occupants n'importent pas pour cette question (seul leur décompte joue), on les rejoue donc
-    densément via `accueille`. Un **échange** A↔B se compose de deux appels : A accepté par la cible
-    de B *privée de B*, et B accepté par la cible de A *privée de A*.
+    densément. Un **échange** A↔B se compose de deux appels : A accepté par la cible de B *privée de
+    B*, et B accepté par la cible de A *privée de A*.
 
-    ⚠️ **Le cloisonnement se juge sur les occupants réels, pas sur le rejeu** — et c'est une
-    correction de revue, pas un détail de style. Le rejeu peut **perdre** un occupant (`accueille`
-    rend `False` sans qu'on le sache) dès que l'état persisté a cessé d'être conforme aux données :
-    il suffit d'éditer la hauteur d'une catégorie ou la taille d'un blason **après** placement, ce
-    qu'aucune garde n'interdit. On jugerait alors la règle contre une cible plus pauvre que la vraie
-    et l'on accepterait une pose qui laisse la cible non conforme — l'exact contraire de
-    l'invariant annoncé (« sur une cible déjà non conforme, toute pose est refusée »). Le prédicat
-    pur est donc évalué **d'abord**, sur `[*occupants, candidat]` tels qu'ils sont ; le rejeu ne
-    sert plus qu'aux trois budgets, et `_CibleEnCours` reste neutre de bout en bout."""
-    if cible_cloisonnement_non_respecte(cloisonnement, [*occupants, candidat]):
-        return False
-    en_cours = _CibleEnCours(cible, _ESPACE_CIBLE)
-    for occupant in occupants:
-        en_cours.accueille(occupant)
+    ⚠️ **Les occupants sont repris par `reprendre`, jamais par `accueille`** — correction de revue,
+    en deux temps. `accueille` **valide** avant de poser : un occupant que l'état persisté rend
+    aujourd'hui invalide (hauteur de catégorie ou taille de blason éditée **après** placement, ce
+    qu'aucune garde n'interdit) est silencieusement **perdu** au rejeu, son retour n'étant pas lu.
+    On jugeait alors le candidat contre une cible **plus vide que la vraie** : d'abord sur le
+    cloisonnement (première passe de revue), puis — la correction ne fermant qu'une moitié — sur les
+    budgets eux-mêmes, au point d'accepter une pose sur une cible physiquement pleine (mesuré par
+    l'axe adversarial en seconde passe). `reprendre` ne consulte aucune garde : il **reconstitue**
+    l'état réel, conforme ou non, ce qui est exactement ce qu'on veut d'une reconstruction. Le
+    cloisonnement peut dès lors être posé au constructeur comme partout ailleurs."""
+    en_cours = _CibleEnCours(cible, _ESPACE_CIBLE, cloisonnement=cloisonnement)
+    for occupant, position in zip(occupants, cible.positions, strict=False):
+        en_cours.reprendre(occupant, position)
     return en_cours.peut_accueillir(candidat)
+
+
+class MotifRefus(str, Enum):
+    """Pourquoi une cible refuse un archer — la question que pose un **ajustement manuel**.
+
+    `cible_accepte` répond oui/non ; ceci répond *pourquoi*, parce que les trois « non » n'appellent
+    pas le même geste de l'organisateur : libérer de la place, desserrer un réglage, ou remettre une
+    cible en ordre. Les deux services (qualification et duels) traduisaient chacun cette question en
+    enchaînant deux appels à `cible_accepte` et un prédicat — quatre recopies d'un même
+    raisonnement, dans deux fichiers jumeaux qu'ADR-0048 signale déjà comme dupliqués. La **règle**
+    vit ici ; il ne reste aux services que le **vocabulaire** (« archers », « duellistes »).
+    """
+
+    AUCUN = "aucun"
+    """La cible accepte l'archer : rien à refuser."""
+
+    BUDGETS = "budgets"
+    """Capacité, espace, partage de carton ou hauteur — la **physique** de la cible."""
+
+    CLOISONNEMENT_MELANGE = "cloisonnement_melange"
+    """Le candidat mêlerait ce que le réglage sépare. Desserrer le réglage, ou viser ailleurs."""
+
+    CLOISONNEMENT_CIBLE_DEJA_NON_CONFORME = "cloisonnement_cible_deja_non_conforme"
+    """La cible viole **déjà** le réglage sans le candidat (plan antérieur à son activation).
+
+    Distinct du précédent : ici le candidat ne mêle rien — l'accuser enverrait l'organisateur
+    chercher une faute qu'il n'a pas commise, alors que le geste utile est de régénérer ou de vider
+    la cible."""
+
+
+def motif_de_refus(
+    cible: Cible,
+    occupants: tuple[ArcherAPlacer, ...],
+    candidat: ArcherAPlacer,
+    *,
+    cloisonnement: Cloisonnement = Cloisonnement.AUCUN,
+) -> MotifRefus:
+    """Dit **pourquoi** `cible` refuse `candidat`, ou `AUCUN` si elle l'accepte (E03US007).
+
+    Fonction pure, dérivée des deux prédicats existants — aucune règle nouvelle : `cible_accepte`
+    sous réglage donne le verdict, `cible_accepte` **sans** réglage dit si le réglage en est la
+    cause, et `cible_cloisonnement_non_respecte` sur les seuls occupants distingue « le candidat
+    mêlerait » de « la cible est déjà en faute »."""
+    if cible_accepte(cible, occupants, candidat, cloisonnement=cloisonnement):
+        return MotifRefus.AUCUN
+    if cloisonnement is Cloisonnement.AUCUN or not cible_accepte(cible, occupants, candidat):
+        return MotifRefus.BUDGETS
+    if cible_cloisonnement_non_respecte(cloisonnement, occupants):
+        return MotifRefus.CLOISONNEMENT_CIBLE_DEJA_NON_CONFORME
+    return MotifRefus.CLOISONNEMENT_MELANGE
 
 
 def placer_restants(

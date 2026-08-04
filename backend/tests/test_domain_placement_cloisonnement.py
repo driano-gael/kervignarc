@@ -357,12 +357,21 @@ def test_categorie_inconnue_ne_gene_pas_un_cloisonnement_par_blason() -> None:
 def test_categorie_zero_est_une_categorie_connue() -> None:
     """`0` est un identifiant, pas une absence — tri et prédicat doivent en convenir.
 
-    Le tri d'entrée mappait `None` **et** `0` sur la même valeur sentinelle (test de véracité au
-    lieu de nullité) alors que le prédicat traite `0` comme décidable : les deux divergeaient sur
-    cette valeur. Inatteignable en base (identifiants ≥ 1), fixé pour que le jour où une sentinelle
-    apparaîtra, ce soit un choix et non une surprise."""
-    memes = (_archer(1, categorie=0), _archer(2, categorie=0))
+    Le tri d'entrée mappait `None` **et** `0` sur la même sentinelle (test de véracité au lieu de
+    nullité) alors que le prédicat traite `0` comme décidable. Le cas **discriminant** est leur
+    **mélange** : deux archers de catégorie `0` seuls tombent dans le même groupe dans les deux
+    versions — la 2ᵉ passe de revue a relevé que le premier jet de ce test passait donc aussi sur
+    l'ancien code, et ne prouvait rien.
 
+    Ici, l'archer de catégorie inconnue s'intercale entre les deux `0` par `archer_id`. Sous
+    l'ancienne clé, les trois partagent la sentinelle : le glouton, qui ne revient jamais en
+    arrière, ferme une cible à chaque alternance et le troisième archer finit en conflit. Sous la
+    nouvelle, les deux `0` sont contigus et tiennent ensemble."""
+    memes = (_archer(1, categorie=0), _archer(2, categorie=0))
     assert not cible_cloisonnement_non_respecte(Cloisonnement.CATEGORIE, memes)
-    plan = placer(_cibles(2), memes, cloisonnement=Cloisonnement.CATEGORIE)
-    assert _archers_de(plan.cibles[0]) == (1, 2)
+
+    melange = (_archer(1, categorie=0), _archer(2, categorie=None), _archer(3, categorie=0))
+    plan = placer(_cibles(2, 2), melange, cloisonnement=Cloisonnement.CATEGORIE)
+
+    assert _archers_de(plan.cibles[1]) == (1, 3)
+    assert plan.conflits == ()
