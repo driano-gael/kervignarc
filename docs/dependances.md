@@ -85,3 +85,31 @@
    ou `npm install`) — **même commit**.
 4. **Documenter** ici (ligne du tableau adéquat) — **même commit**.
 5. **Signaler en revue de PR** ; si structurante → **ADR** dédié.
+
+## Épingles de version transitives (`frontend/package.json` › `overrides`)
+
+Trois paquets **transitifs** (jamais importés par notre code) sont épinglés à une version précise.
+Un `overrides` npm force la version d'une dépendance de dépendance ; c'est le seul levier quand le
+problème vient d'un paquet qu'on ne déclare pas soi-même.
+
+| Paquet | Version | Pourquoi |
+|---|---|---|
+| `@emnapi/core` | `1.11.1` | `npm ci` échouait en CI sur « Missing @emnapi/core/runtime » — un lockfile valide pour `npm install` peut ne pas l'être pour `npm ci`, qui est plus strict. Dépendance optionnelle de binaires par plateforme (rollup/oxide). |
+| `@emnapi/runtime` | `1.11.1` | idem. |
+| `brace-expansion` | `5.0.9` | Advisory **GHSA-rgw5-rvv9-x895** (DoS, sévérité **high**) couvrant `4.0.0 – 5.0.8`. Tiré par `eslint` → `minimatch`. **Dev only** : rien n'en part dans le bundle du jour J. |
+
+### ⚠️ Une épingle doit être **relue** à chaque advisory
+
+`brace-expansion` était déjà épinglé — à `5.0.8`, précisément la borne haute de l'advisory publiée
+le 03/08/2026. **L'épingle d'hier est devenue le problème d'aujourd'hui** : figer une version protège
+d'une régression, mais empêche aussi de recevoir un correctif de sécurité. La CI a échoué sur des PR
+qui ne touchaient aucun fichier front.
+
+Le réflexe, quand `npm audit` casse une PR sans rapport : **regarder si le paquet fautif est dans
+`overrides`** avant de chercher ailleurs. Et à chaque montée d'épingle, revalider par un **`npm ci`**
+— pas un `npm install` : c'est `npm ci` que la CI exécute, et c'est lui qui avait piégé le projet la
+première fois.
+
+*(Vérifié le 04/08/2026 : la régénération du lockfile retire les deux entrées `@emnapi` du fichier ;
+`npm ci` passe néanmoins en local. L'`overrides` de `package.json`, lui, reste — c'est lui qui porte
+la contrainte, le lockfile n'en est que le calcul.)*
