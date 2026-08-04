@@ -1,0 +1,279 @@
+// Vue publique des tableaux de duels (E07US005) — maquette **P05**.
+//
+// Un seul composant pour deux surfaces, comme les affectations (E07US008) et le schéma à braquets
+// (E01US024) : l'appli publique (interactive) et l'**écran de salle** (projeté, `interactif=false`,
+// aucune interaction — CA E07US004). Les dessiner séparément les ferait diverger sur la seule chose
+// qui compte, l'appariement affiché.
+//
+// **Les deux partis pris de la maquette sont livrés, et l'ordre entre eux est le sien :**
+//  - **A · « Mon chemin »**, *recommandé* — « l'archer est le sujet, la compétition est le
+//    contexte » (`D-09`). C'est la vue par défaut **dès qu'on suit quelqu'un**, exactement comme
+//    l'onglet « Suivi » est la porte d'entrée de l'appli publique ;
+//  - **B · « Arbre complet »**, *nécessaire en second* — l'arbre en vraies branches ne tient pas
+//    sur 360 px ; en **liste par tour**, si. C'est la concession mobile que la maquette assume, et
+//    la seule lecture possible sur l'écran de salle (personne à suivre devant un projecteur).
+//
+// ⚠️ **Ce que la maquette proposait et qui n'est pas livré : les horaires prévisionnels** (« 1/4 ·
+// MARTIN vs DURAND · 14 h 20 »). Arbitrage du 04/08/2026 : le domaine ne porte **aucun** horaire au
+// grain de la phase ou du duel — seul le départ en a un (E02US010). Les afficher supposerait un
+// moteur d'ordonnancement qui n'existe pas ; les inventer serait pire que les taire, puisque c'est
+// précisément le risque que la maquette pointait (« au risque qu'ils glissent et qu'on vous le
+// reproche »). La question reste ouverte au questionnaire P05.
+
+import { useState } from 'react'
+import { nommerType } from '../../shared/phases/catalogue'
+import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
+import type { DuelPublic, DuellistePublic, TableauPublic } from './api'
+import { useTableaux } from './hooks'
+import { cheminDeArcher, libelleEnjeu, parTour, type EtapeChemin } from './presentation'
+
+type Lecture = 'chemin' | 'complet'
+
+const nomComplet = (qui: DuellistePublic) => `${qui.prenom} ${qui.nom}`.trim()
+
+/** Ce qu'on écrit en face de chaque étape du chemin. Un mot par situation, jamais une couleur
+ * seule (`DV-03`) : l'écran de salle est vu de loin et l'appli publique est lue en plein soleil. */
+const LIBELLE_STATUT: Record<EtapeChemin['statut'], string> = {
+  gagne: 'Gagné',
+  perdu: 'Perdu',
+  en_attente: 'En attente de validation',
+  a_jouer: 'À tirer',
+  attente_adversaire: 'Adversaire à désigner',
+  exempt: 'Exempt',
+  a_venir: 'À venir',
+}
+
+export function VueTableaux({
+  tournoiId,
+  interactif = true,
+}: {
+  tournoiId: number
+  interactif?: boolean
+}) {
+  const suivis = useSessionSuivisStore((s) =>
+    s.suivis.filter((x) => x.tournoiId === tournoiId).map((x) => x.archerId),
+  )
+  // Sur l'écran de salle il n'y a personne à suivre : la lecture y est **toujours** l'arbre
+  // complet, et le sélecteur n'existe pas. Dans l'appli publique, on ouvre sur « mon chemin » si
+  // l'utilisateur suit quelqu'un — même principe que l'onglet « Suivi » ouvert d'entrée (D-09).
+  const [lecture, setLecture] = useState<Lecture>(suivis.length > 0 ? 'chemin' : 'complet')
+  const [phaseChoisie, setPhaseChoisie] = useState<number | null>(null)
+  const tableaux = useTableaux(tournoiId)
+  const donnees = tableaux.data
+
+  // Les **données priment sur l'erreur** : React Query garde le `data` de la dernière lecture
+  // réussie pendant un échec. Tester `isError` d'abord jetterait un arbre encore exact au premier
+  // clignotement réseau et laisserait l'écran projeté sur un message d'erreur ≥ 20 s — le défaut
+  // qu'E07US008 a dû corriger en revue, à ne pas refaire ici.
+  if (donnees === undefined) {
+    return (
+      <p className="carte__etat">
+        {tableaux.isError
+          ? 'Connexion momentanément perdue — mise à jour au retour.'
+          : 'Chargement…'}
+      </p>
+    )
+  }
+  // L'écran de salle ne peut rien choisir : il montre le tableau **qui se joue** — le premier non
+  // terminé, sinon le dernier (à 17 h, c'est celui dont on veut voir le podium). Même règle que le
+  // plan de cibles de salle, calé sur le départ en cours et non sur le premier.
+  const courant = donnees.tableaux.find((t) => !t.est_termine) ?? donnees.tableaux.at(-1)
+  const tableau =
+    (interactif && phaseChoisie !== null
+      ? donnees.tableaux.find((t) => t.phase_id === phaseChoisie)
+      : undefined) ?? courant
+  if (tableau === undefined) {
+    // Liste vide : ni erreur ni page blanche. Le matin, les tableaux n'existent pas encore, et le
+    // dire évite de laisser croire à une panne devant un écran vide. (Le test `undefined` porte
+    // aussi la garde d'indexation — une liste non vide rend toujours un élément.)
+    return <p className="carte__etat">Pas encore de tableau — les duels ne sont pas lancés.</p>
+  }
+  const lectureEffective: Lecture = interactif ? lecture : 'complet'
+
+  return (
+    <div className="tableaux">
+      {interactif && (
+        <div className="tableaux__barre">
+          {/* Le choix de phase n'apparaît que s'il y a un choix à faire : un tournoi à un seul
+              tableau n'a pas à afficher une liste d'un élément. */}
+          {donnees.tableaux.length > 1 && (
+            <label className="tableaux__phase">
+              <span className="tableaux__phase-libelle">Tableau</span>
+              <select
+                value={tableau.phase_id}
+                onChange={(e) => setPhaseChoisie(Number(e.target.value))}
+              >
+                {donnees.tableaux.map((t) => (
+                  <option key={t.phase_id} value={t.phase_id}>
+                    {nommerType(t.type)} — {t.effectif} archers
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <div className="tableaux__lecture" role="group" aria-label="Lecture du tableau">
+            <button
+              type="button"
+              className={lecture === 'chemin' ? 'onglet onglet--actif' : 'onglet'}
+              aria-pressed={lecture === 'chemin'}
+              onClick={() => setLecture('chemin')}
+            >
+              Mon chemin
+            </button>
+            <button
+              type="button"
+              className={lecture === 'complet' ? 'onglet onglet--actif' : 'onglet'}
+              aria-pressed={lecture === 'complet'}
+              onClick={() => setLecture('complet')}
+            >
+              Tableau complet
+            </button>
+          </div>
+        </div>
+      )}
+
+      <p className="tableaux__entete">
+        {nommerType(tableau.type)} · {tableau.effectif} archers
+        {tableau.est_termine ? ' · terminé' : ''}
+      </p>
+
+      {lectureEffective === 'chemin' ? (
+        <MonChemin tableau={tableau} suivis={suivis} />
+      ) : (
+        <ArbreComplet tableau={tableau} />
+      )}
+
+      {tableau.podium.length > 0 && <Podium places={tableau.podium} />}
+    </div>
+  )
+}
+
+/** Variante A : l'arbre réduit à la trajectoire de chaque archer suivi. */
+function MonChemin({ tableau, suivis }: { tableau: TableauPublic; suivis: number[] }) {
+  if (suivis.length === 0) {
+    // On ne bascule pas d'autorité sur l'autre lecture : ce serait répondre à côté sans le dire.
+    // On nomme le geste manquant — la liste de suivis se remplit dans l'onglet « Suivi »
+    // (E07US006), et c'est le seul endroit où elle se remplit.
+    return (
+      <p className="carte__etat">
+        Aucun archer suivi. Ajoutez-en dans l’onglet « Suivi » pour voir son parcours ici, ou passez
+        au tableau complet.
+      </p>
+    )
+  }
+  return (
+    <ul className="tableaux__chemins">
+      {suivis.map((archerId) => (
+        <CheminArcher key={archerId} tableau={tableau} archerId={archerId} />
+      ))}
+    </ul>
+  )
+}
+
+function CheminArcher({ tableau, archerId }: { tableau: TableauPublic; archerId: number }) {
+  const etapes = cheminDeArcher(tableau, archerId)
+  // Le nom vient du tableau lui-même : il n'est pas mémorisé côté client (un archer renommé garde
+  // son suivi sans afficher un nom périmé — cf. `sessionSuivisStore`).
+  const moi = tableau.duels
+    .flatMap((duel) => [duel.haut, duel.bas])
+    .find((qui) => qui?.archer_id === archerId)
+
+  if (etapes.length === 0 || moi === undefined || moi === null) {
+    // Suivi d'un archer qui n'est pas dans **ce** tableau (autre catégorie, sorti en qualification,
+    // ou tableau d'une autre phase) : le dire vaut mieux qu'une carte vide inexplicable.
+    return (
+      <li className="tableaux__chemin">
+        <span className="tableaux__chemin-nom">Archer suivi</span>
+        <p className="carte__etat">Pas engagé dans ce tableau.</p>
+      </li>
+    )
+  }
+
+  const sorti = etapes.at(-1)?.statut === 'perdu'
+  return (
+    <li className="tableaux__chemin">
+      <span className="tableaux__chemin-nom">{nomComplet(moi)}</span>
+      <ol className="tableaux__etapes">
+        {etapes.map((etape) => (
+          <li
+            key={etape.tour}
+            className={`tableaux__etape tableaux__etape--${etape.statut.replace('_', '-')}`}
+          >
+            <span className="tableaux__tour">{etape.enjeu ?? etape.libelle}</span>
+            <span className="tableaux__contre">
+              {etape.adversaire === null ? '—' : nomComplet(etape.adversaire)}
+              {etape.score !== null && <strong className="tableaux__score"> {etape.score}</strong>}
+            </span>
+            <span className="tableaux__statut">{LIBELLE_STATUT[etape.statut]}</span>
+          </li>
+        ))}
+      </ol>
+      {sorti && <p className="tableaux__sortie">Parcours terminé dans ce tableau.</p>}
+    </li>
+  )
+}
+
+/** Variante B : l'arbre complet, en **liste par tour** (concession mobile assumée, maquette P05). */
+function ArbreComplet({ tableau }: { tableau: TableauPublic }) {
+  const groupes = parTour(tableau)
+  if (groupes.length === 0) {
+    return <p className="carte__etat">Aucun duel à afficher dans ce tableau.</p>
+  }
+  return (
+    <div className="tableaux__tours">
+      {groupes.map((groupe) => (
+        <section key={groupe.tour} className="tableaux__tour-bloc">
+          <h4 className="tableaux__tour-titre">{groupe.libelle}</h4>
+          <ul className="tableaux__duels">
+            {groupe.duels.map((duel) => (
+              <LigneDuel key={duel.numero} duel={duel} />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+function LigneDuel({ duel }: { duel: DuelPublic }) {
+  const enjeu = libelleEnjeu(duel.place_en_jeu)
+  const score =
+    duel.points_haut === null || duel.points_bas === null
+      ? null
+      : `${duel.points_haut} — ${duel.points_bas}`
+  return (
+    <li className="tableaux__duel">
+      <span className={duel.validee && duel.vainqueur === 'haut' ? 'tableaux__gagnant' : undefined}>
+        {duel.haut === null ? '—' : nomComplet(duel.haut)}
+      </span>
+      <span className="tableaux__vs">{score ?? 'vs'}</span>
+      <span className={duel.validee && duel.vainqueur === 'bas' ? 'tableaux__gagnant' : undefined}>
+        {duel.bas === null ? '—' : nomComplet(duel.bas)}
+      </span>
+      {/* L'enjeu n'est écrit que quand il dit quelque chose de plus que le titre du tour : au
+          dernier tour, « Finale » et « Places 5-6 » se jouent au même moment, et c'est cette
+          distinction-là qui manque quand on ne l'affiche pas. */}
+      {enjeu !== null && <span className="tableaux__enjeu">{enjeu}</span>}
+      {duel.termine && !duel.validee && (
+        <span className="tableaux__attente">En attente de validation</span>
+      )}
+    </li>
+  )
+}
+
+function Podium({ places }: { places: TableauPublic['podium'] }) {
+  return (
+    <section className="tableaux__podium">
+      <h4 className="tableaux__tour-titre">Places acquises</h4>
+      <ol className="tableaux__places">
+        {places.map((place) => (
+          <li key={place.rang} className="tableaux__place">
+            <span className="tableaux__rang">{place.rang}</span>
+            <span>{nomComplet(place.duelliste)}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}

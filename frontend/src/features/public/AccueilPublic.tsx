@@ -21,12 +21,17 @@ import { VuePalmares } from '../palmares/VuePalmares'
 import { PlanCiblesPublic } from '../placement/PlanCiblesPublic'
 import { VueAffectations } from '../routage/VueAffectations'
 import { VueSuivi } from '../suivi/VueSuivi'
+import { VueTableaux } from '../tableaux/VueTableaux'
 import { BadgeStatut } from '../competition/BadgeStatut'
 import { GestionTournois } from '../tournois/Tournois'
 
-// Les vues publiques d'un tournoi. Fermé (pas d'ouverture prévue ici) : les tableaux de duels
-// (E07US005) sont une autre US, pas un onglet à réserver ; l'écran de salle (E07US004) n'est pas un
-// onglet du tout, c'est un **poste**.
+// Les vues publiques d'un tournoi. Fermé (pas d'ouverture prévue ici) : l'écran de salle (E07US004)
+// n'est pas un onglet du tout, c'est un **poste**.
+//
+// « Tableaux » (E07US005) est arrivé le 04/08/2026, exactement comme cette liste l'annonçait — un
+// onglet de plus, ni réservé ni anticipé. Il se place **après** « Affectations » et avant les
+// classements : l'ordre suit la journée de l'archer (qui je suis, où je tire, contre qui, qui a
+// gagné), pas la structure du logiciel.
 //
 // « Affectations » (E07US008) sert deux publics d'un coup : l'archer qui cherche sa butte et la
 // **table de l'organisation**, qui vérifie le pas de tir — c'est la même lecture, et le CA n'en
@@ -36,11 +41,12 @@ import { GestionTournois } from '../tournois/Tournois'
 // « Classement » (celui de la qualification) et non à sa place : les deux se consultent, et à des
 // moments différents de la journée. On les distingue par le libellé plutôt que de renommer l'un des
 // deux, qui ferait chercher longtemps celui qu'on connaissait.
-type Vue = 'suivi' | 'affectations' | 'classement' | 'palmares' | 'plan'
+type Vue = 'suivi' | 'affectations' | 'tableaux' | 'classement' | 'palmares' | 'plan'
 
 const VUES: { id: Vue; libelle: string }[] = [
   { id: 'suivi', libelle: 'Suivi' },
   { id: 'affectations', libelle: 'Affectations' },
+  { id: 'tableaux', libelle: 'Tableaux' },
   { id: 'classement', libelle: 'Classement' },
   { id: 'palmares', libelle: 'Palmarès' },
   { id: 'plan', libelle: 'Plan de cibles' },
@@ -101,6 +107,8 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
         <VueSuivi tournoiId={tournoi.id} />
       ) : vue === 'affectations' ? (
         <VueAffectations tournoiId={tournoi.id} />
+      ) : vue === 'tableaux' ? (
+        <VueTableaux tournoiId={tournoi.id} />
       ) : vue === 'classement' ? (
         <VueClassement tournoiId={tournoi.id} admin={false} />
       ) : vue === 'palmares' ? (
