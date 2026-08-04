@@ -85,3 +85,52 @@
    ou `npm install`) — **même commit**.
 4. **Documenter** ici (ligne du tableau adéquat) — **même commit**.
 5. **Signaler en revue de PR** ; si structurante → **ADR** dédié.
+
+## Épingles de version transitives (`frontend/package.json` › `overrides`)
+
+Trois paquets **transitifs** (jamais importés par notre code) sont épinglés à une version précise.
+Un `overrides` npm force la version d'une dépendance de dépendance ; c'est le seul levier quand le
+problème vient d'un paquet qu'on ne déclare pas soi-même.
+
+| Paquet | Version | Pourquoi |
+|---|---|---|
+| `@emnapi/core` | `1.11.1` | `npm ci` échouait en CI sur « Missing @emnapi/core/runtime » — un lockfile valide pour `npm install` peut ne pas l'être pour `npm ci`, qui est plus strict. Dépendance optionnelle de binaires par plateforme (rollup/oxide). |
+| `@emnapi/runtime` | `1.11.1` | idem. |
+| `brace-expansion` | `5.0.9` | Advisory **GHSA-rgw5-rvv9-x895** (DoS, sévérité **high**) couvrant `4.0.0 – 5.0.8`. Tiré par `eslint` → `minimatch`. **Dev only** : rien n'en part dans le bundle du jour J. |
+
+### ⚠️ Une épingle doit être **relue** à chaque advisory
+
+`brace-expansion` était déjà épinglé — à `5.0.8`, précisément la borne haute de l'advisory publiée
+le 03/08/2026. **L'épingle d'hier est devenue le problème d'aujourd'hui** : figer une version protège
+d'une régression, mais empêche aussi de recevoir un correctif de sécurité. La CI a échoué sur des PR
+qui ne touchaient aucun fichier front.
+
+Le réflexe, quand `npm audit` casse une PR sans rapport : **regarder si le paquet fautif est dans
+`overrides`** avant de chercher ailleurs. Et à chaque montée d'épingle, revalider par un **`npm ci`**
+— pas un `npm install` : c'est `npm ci` que la CI exécute, et c'est lui qui avait piégé le projet la
+première fois.
+
+### ⚠️ Ne **jamais** régénérer ce lockfile depuis un poste Windows
+
+`npm install --package-lock-only` **élague** du lockfile les paquets optionnels propres à une autre
+plateforme. Sous Windows, les deux entrées `@emnapi` disparaissent — elles ne servent qu'aux binaires
+Linux. Le lockfile obtenu est parfaitement valide **sur le poste qui l'a produit**, et fait échouer
+`npm ci` en CI :
+
+```
+npm error `npm ci` can only install packages when your package.json and package-lock.json are in sync
+npm error Missing: @emnapi/core@1.11.1 from lock file
+npm error Missing: @emnapi/runtime@1.11.1 from lock file
+```
+
+**Un `npm ci` local ne peut pas l'attraper** : il valide sur la plateforme qui vient d'élaguer. C'est
+ce qui rend le piège coûteux — la boucle de retour passe obligatoirement par la CI.
+
+**Le remède** : partir du lockfile **existant** et n'y modifier que l'entrée visée — trois champs,
+`version`, `resolved` et `integrity` (relevés par `npm view <paquet>@<version> dist.integrity`).
+Puis vérifier que chaque clé d'`overrides` a son entrée à la bonne version dans `packages` : c'est
+exactement la condition que `npm ci` contrôle.
+
+*(Constaté le 04/08/2026. C'est la **deuxième fois** que ce lockfile piège le projet, et la première
+où la cause profonde est nommée : ce n'est pas `@emnapi` qui est capricieux, c'est **régénérer un
+lockfile multiplateforme depuis une seule plateforme**.)*

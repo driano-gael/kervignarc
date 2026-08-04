@@ -160,7 +160,7 @@ surveiller si le ratio dépasse le tiers.
 | # | Action | Ce que ça rend | Coût |
 |---|---|---|---|
 | **1** | **Résorber `DETTE-028`** — le moteur consomme `phase.sources` **par rangs** | Le tournoi se déroule comme le schéma composé ; supprime la cause des défauts « palmarès plat ». ⚠️ **Correction du 03/08** : ne rend **pas** possible le podium par catégorie — `SourcePhase` sélectionne par **rangs** et `Phase` ne porte aucune catégorie (vérifié au cadrage d'E05US020). Les tableaux par catégorie sont une **US distincte**, avec son ADR | ✅ livrée (E05US020, [ADR-0068](adr/0068-le-moteur-consomme-les-prelevements-declares.md)) |
-| **2** | **Découper les 4 agrégateurs techniques** (`repositories.py`, les deux `erreurs.py`, `App.css`) **par feature** | Retire ~4 des 18 fichiers existants qu'une US doit modifier. Mécanique, sans changement de comportement, testable par la suite existante | 🔶 **3 sur 4 faits** (03/08/2026) : les deux `erreurs.py` en paquets thématiques (171 classes préservées, aucun import changé) et `App.css` allégé de 752 lignes (505 règles avant / 505 après). **`repositories.py` reste** — voir ci-dessous |
+| **2** | **Découper les 4 agrégateurs techniques** (`repositories.py`, les deux `erreurs.py`, `App.css`) **par feature** | Retire ~4 des 18 fichiers existants qu'une US doit modifier. Mécanique, sans changement de comportement, testable par la suite existante | ✅ **fait** (03/08/2026) : les deux `erreurs.py` en paquets thématiques (171 classes préservées, aucun import changé) et `App.css` allégé de 752 lignes (505 règles avant / 505 après). `repositories.py` découpé en 4 thèmes + `_mapping.py` (21 adapters et 45 helpers préservés, 0 ligne de corps perdue) |
 | **3** | **Mémoïser `reconstruire`** par `(tournoi_id, version)`, invalidée sur `donnees_modifiees` | Résorbe `DETTE-031` | À ne faire **que** si une mesure le réclame — aucune mesure n'existe |
 | — | Documentation, tests, procédure de revue | — | **Ne rien changer** : mesurés stables et rentables |
 
@@ -171,17 +171,23 @@ podium par catégorie demande un concept qui n'existe pas (une phase scopée à 
 **troisième action** : *US « tableaux par catégorie » + ADR*. Vérifier avant de promettre aurait évité
 de faire croire qu'une US en réglerait deux.
 
-### Pourquoi `repositories.py` n'a pas été découpé avec les trois autres
+### Ce que `repositories.py` a appris — la mesure contre l'intuition
 
-Les deux `erreurs.py` et `App.css` sont des **listes** : des classes ou des règles indépendantes,
-qu'on déplace sans rien résoudre. `repositories.py` ne l'est pas — ses 3 378 lignes commencent par
-**840 lignes de préambule partagé** (imports SQLAlchemy et une trentaine de fonctions de mapping
-`_vers_categorie`, `_ages_categorie`…) que les 21 adapters se partagent de façon croisée.
+Ce fichier avait été mis de côté au premier passage : ses 3 378 lignes commençaient par ce qui
+ressemblait à **840 lignes de préambule partagé** (imports SQLAlchemy et 45 fonctions de mapping),
+et le découper semblait demander de démêler des dépendances croisées entre 21 adapters.
 
-Le découper demande donc de résoudre, pour chaque module de thème, **quels helpers il utilise** —
-ce n'est plus mécanique, et un découpage approximatif y produirait des imports circulaires ou des
-helpers dupliqués. Il mérite sa propre passe, avec la même exigence de preuve (aucune ligne
-déplacée modifiée, suite verte, aucun symbole perdu).
+**La mesure a démenti l'intuition.** En calculant la fermeture transitive des appels — quel thème
+appelle quel helper —, il s'avère qu'une **seule** fonction sur 45 est partagée par deux thèmes. Les
+44 autres appartiennent à un thème unique. Le « préambule partagé » n'était pas partagé : il était
+simplement *rangé ensemble*.
+
+Deux leçons, au-delà de ce fichier :
+
+- **mesurer avant de renoncer** — l'estimation de difficulté portait sur une apparence (tout est en
+  haut du fichier), pas sur une dépendance réelle ;
+- **ne pas deviner les imports** — chaque module de thème a reçu ceux de l'original, puis
+  `ruff --fix` en a élagué 396. Les déduire à la main aurait produit des oublis silencieux.
 
 **Ordre recommandé : 1, puis 2.** L'action 1 traite ce qui casse des cas utilisateurs ; l'action 2
 traite ce qui ralentit. L'action 3 attend une mesure.
