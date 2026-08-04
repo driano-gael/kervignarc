@@ -110,6 +110,27 @@ Le réflexe, quand `npm audit` casse une PR sans rapport : **regarder si le paqu
 — pas un `npm install` : c'est `npm ci` que la CI exécute, et c'est lui qui avait piégé le projet la
 première fois.
 
-*(Vérifié le 04/08/2026 : la régénération du lockfile retire les deux entrées `@emnapi` du fichier ;
-`npm ci` passe néanmoins en local. L'`overrides` de `package.json`, lui, reste — c'est lui qui porte
-la contrainte, le lockfile n'en est que le calcul.)*
+### ⚠️ Ne **jamais** régénérer ce lockfile depuis un poste Windows
+
+`npm install --package-lock-only` **élague** du lockfile les paquets optionnels propres à une autre
+plateforme. Sous Windows, les deux entrées `@emnapi` disparaissent — elles ne servent qu'aux binaires
+Linux. Le lockfile obtenu est parfaitement valide **sur le poste qui l'a produit**, et fait échouer
+`npm ci` en CI :
+
+```
+npm error `npm ci` can only install packages when your package.json and package-lock.json are in sync
+npm error Missing: @emnapi/core@1.11.1 from lock file
+npm error Missing: @emnapi/runtime@1.11.1 from lock file
+```
+
+**Un `npm ci` local ne peut pas l'attraper** : il valide sur la plateforme qui vient d'élaguer. C'est
+ce qui rend le piège coûteux — la boucle de retour passe obligatoirement par la CI.
+
+**Le remède** : partir du lockfile **existant** et n'y modifier que l'entrée visée — trois champs,
+`version`, `resolved` et `integrity` (relevés par `npm view <paquet>@<version> dist.integrity`).
+Puis vérifier que chaque clé d'`overrides` a son entrée à la bonne version dans `packages` : c'est
+exactement la condition que `npm ci` contrôle.
+
+*(Constaté le 04/08/2026. C'est la **deuxième fois** que ce lockfile piège le projet, et la première
+où la cause profonde est nommée : ce n'est pas `@emnapi` qui est capricieux, c'est **régénérer un
+lockfile multiplateforme depuis une seule plateforme**.)*
