@@ -35,5 +35,9 @@ Répartir automatiquement les archers sur les cibles en respectant les contraint
 - Un placement valide (contraintes respectées ou conflits signalés) est produit et ajustable.
 
 ## Questions ouvertes
-- **Priorité des contraintes** en cas de conflit (hypothèse : capacité > catégorie > mixité club).
+- ~~**Priorité des contraintes** en cas de conflit~~ — **tranchée le 04/08/2026** (E03US007,
+  [ADR-0071](../docs/adr/0071-cloisonnement-categorie-blason-active-et-dur.md) §2), l'hypothèse est
+  confirmée et précisée : `capacité / espace / hauteur` (dures, structurelles) > `cloisonnement`
+  catégorie/blason (dure, mais **activable**) > `mixité de club` (molle) > `adjacence des
+  duellistes` (molle).
 - **Déroulé horaire** : calculé (durées × tours) ou saisi manuellement ?

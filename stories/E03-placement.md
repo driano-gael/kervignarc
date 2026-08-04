@@ -40,7 +40,8 @@ disposer d'un plan exploitable sans saisie manuelle.
   cible produite par le placement — source des exports (E09US003) et de la vue publique (E07US001).
   **L'ex-E03US008 est absorbée ici** ; ses liens entrants (E04US001, E07, E09, E12) ont été
   **redirigés vers E03US001** dans la passe globale du 17/07/2026. La **mixité ≥ 2 clubs** (RG-3) et
-  la **séparation catégorie/blason** restent hors de cette US (E03US006 / E03US007). Périmètre
+  la **séparation catégorie/blason** restent hors de cette US (E03US006 / E03US007 — **livrées** les
+  26/07 et 04/08/2026). Périmètre
   technique tranché le 17/07/2026 : **domaine + service + endpoint de lecture** (recalcul à la
   demande) ; la **persistance** du plan et l'**ajustement** manuel sont E03US004 — d'où la hauteur
   laissée **facultative** au PUT catégorie ([DETTE-009](../docs/dette.md), le front est hors
@@ -95,11 +96,40 @@ assurer la mixité.
   signal). Recette : [`docs/fonctionnel/E03US006.md`](../docs/fonctionnel/E03US006.md).
 - **Dépend de** : E03US001 · **Jalon** : J2
 
-### E03US007 — Contrainte séparation catégorie/blason
+### E03US007 — Contrainte séparation catégorie/blason ✅
 *En tant qu'*administrateur (officiel), *je veux* cloisonner par catégorie/blason, *afin de*
 respecter les règles officielles.
-- **CA** : sur une cible, respect du blason associé à la catégorie ; conflits signalés.
-- **Notes** : ordre de priorité des contraintes à confirmer (question ouverte EPIC-03).
+- **CA — réglage activable à quatre positions** *(élargi au cadrage du 04/08/2026, reversé ici)* :
+  le cloisonnement est un **réglage du tournoi** (RG-4, activable, indépendant du type de tournoi) à
+  quatre positions — `aucun` (**défaut**, comportement d'E03US001), `categorie` (une seule catégorie
+  par cible), `blason` (un seul blason par cible), `blason_et_categorie`.
+- **CA — contrainte dure** : quand le réglage est actif, le placement automatique **ne mêle jamais**
+  ce qu'il sépare, et le **déplacement manuel** violant la règle est refusé (409, état inchangé).
+- **CA — conflits signalés** : ce que le cloisonnement empêche de poser part en **réserve** avec une
+  raison **propre** (`cloisonnement`), distincte de « aucune cible possible » (salle saturée) — le
+  geste correctif n'est pas le même. Jamais d'échec silencieux.
+- **CA — priorité des contraintes** *(question ouverte d'EPIC-03, tranchée)* :
+  `capacité / espace / hauteur` > **cloisonnement** > `mixité de club` > `adjacence des duellistes`.
+  Le cloisonnement ne peut que **retirer** des cohabitations, jamais en autoriser une.
+- **CA — changer le réglage ne déplace personne** : le plan est matérialisé (ADR-0024) ; une cible
+  déjà posée qui viole le réglage nouvellement activé est **signalée** (badge + bannière disant de
+  régénérer), jamais réarrangée d'office.
+- **Notes (livré, 04/08/2026 — [ADR-0071](../docs/adr/0071-cloisonnement-categorie-blason-active-et-dur.md))** :
+  - **Surface livrée** : moteur + service + API (`GET`/`PUT /api/v1/tournois/{id}/cloisonnement`)
+    **et** le sélecteur sur l'écran de placement admin, le badge ambre par cible, la bannière
+    récapitulative et la raison de réserve. Le réglage vaut aussi pour le **plan de duels**
+    (E03US009) : même salle, même règle.
+  - ⚠️ **`blason_et_categorie` est aujourd'hui équivalent à `categorie`** : le blason dérive de la
+    catégorie (`Categorie.blason_id`), donc deux archers de même catégorie ont le même blason. Les
+    deux positions divergeront quand une **phase pourra surcharger le blason** (EF-1.4). Livré à
+    quatre positions en connaissance de cette redondance (ADR-0071 §3) — ne pas la lire comme un
+    gain actuel.
+  - **Catégorie inconnue = refus**, jamais « même catégorie » : l'indécidable d'ADR-0014 transposé à
+    une contrainte dure.
+  - **Coût assumé** : un cloisonnement strict consomme des cibles (chaque catégorie entame sa butte)
+    et peut produire de la réserve sur un gabarit juste — visible dans les conflits, réversible d'un
+    réglage.
+  - Recette : [`docs/fonctionnel/E03US007.md`](../docs/fonctionnel/E03US007.md).
 - **Dépend de** : E03US001, E01US006 · **Jalon** : J3
 
 ### E03US009 — Placer les duellistes côte à côte
