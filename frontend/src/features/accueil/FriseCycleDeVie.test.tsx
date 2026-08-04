@@ -104,10 +104,23 @@ describe('AvertissementEffectif', () => {
     expect(encart.className).toContain('carte__etat--alerte')
   })
 
-  it('ne dit plus rien une fois le tournoi lancé', async () => {
-    // Le rappeler en cours de compétition serait un reproche sans action possible.
-    expect(await pasDEncart('en_cours')).toBeNull()
-  })
+  it.each<StatutTournoi>(['brouillon', 'pret'])(
+    'prévient tant que le tournoi n’est pas lancé (%s)',
+    async (statut) => {
+      expect(await encartDe(statut)).not.toBeNull()
+    },
+  )
+
+  it.each<StatutTournoi>(['en_cours', 'en_pause', 'termine', 'archive', 'annule'])(
+    'ne dit plus rien une fois le tournoi lancé ou clos (%s)',
+    async (statut) => {
+      // Le rappeler après le départ serait un reproche sans action possible.
+      // ⚠️ Les 7 statuts sont exercés, pas seulement `pret`/`en_cours` : réduire la condition à
+      // `statut === 'pret'` laissait les tests verts en cassant le CA pour un **brouillon** —
+      // l'état où l'organisateur passe le plus de temps.
+      expect(await pasDEncart(statut)).toBeNull()
+    },
+  )
 
   it('se tait quand le compte y est', async () => {
     vi.mocked(getExigenceEffectif).mockResolvedValue(exigence({ inscrits: 40, suffisant: true }))

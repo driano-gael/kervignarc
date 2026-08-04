@@ -265,6 +265,40 @@ def test_appliquer_un_format_sans_exigence_efface_la_precedente(ctx: Contexte) -
     assert tournoi.effectif_minimum_exige is None
 
 
+def test_promouvoir_fait_remonter_lexigence_du_tournoi(ctx: Contexte) -> None:
+    """E05US021 : l'exigence est une propriété du **déroulé** qu'on promeut, pas de l'édition.
+
+    Elle n'est pas lisible depuis les phases — le tournoi la porte —, donc rien ne la ferait
+    remonter sans le paramètre explicite de `de_phases`. La fiche de recette liste nommément
+    « une exigence qui disparaît après promotion » parmi les défauts à signaler.
+    """
+    exigeant = ctx.service.creer("Exigeant", [_qualification(ordre=1)], effectif_minimum_exige=40)
+    ctx.service.appliquer(ctx.tournoi_id, _id(exigeant.id))
+
+    promu = ctx.service.promouvoir(ctx.tournoi_id, "Déroulé promu")
+
+    assert promu.effectif_minimum_exige == 40
+
+
+def test_repromouvoir_ne_detruit_pas_lexigence_du_format_existant(ctx: Contexte) -> None:
+    """La promotion est **idempotente par nom** : la seconde met à jour la première.
+
+    Un tournoi sans exigence propre ne doit pas, en repassant par là, effacer la règle de club du
+    format cible — la promotion capture des *phases*, elle n'exprime rien sur l'exigence.
+    """
+    sobre = ctx.service.creer("Sobre", [_qualification(ordre=1)])
+    ctx.service.appliquer(ctx.tournoi_id, _id(sobre.id))
+    ctx.service.promouvoir(ctx.tournoi_id, "Déroulé promu")
+    # Le format promu reçoit ensuite une règle de club, réglée à l'atelier.
+    promu = ctx.formats.par_nom("Déroulé promu")
+    assert promu is not None
+    ctx.service.modifier(_id(promu.id), "Déroulé promu", promu.etapes, 40)
+
+    republie = ctx.service.promouvoir(ctx.tournoi_id, "Déroulé promu")
+
+    assert republie.effectif_minimum_exige == 40
+
+
 def test_appliquer_remplace_les_phases_a_venir_existantes(ctx: Contexte) -> None:
     """Reconfigurer un tournoi non engagé ne doit pas empiler deux séquences."""
     ctx.phases.ajouter(

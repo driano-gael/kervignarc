@@ -26,6 +26,7 @@ suisse, colline le tirent d'une configuration que le domaine ne modélise pas en
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from typing import Protocol
@@ -61,10 +62,20 @@ Les six autres types du catalogue (E05US015) tirent le leur d'une configuration 
 _TYPES_SANS_OPPOSITION = frozenset({TypePhase.QUALIFICATION, TypePhase.ECHAUFFEMENT})
 """Les types où l'archer tire **seul** : un participant leur suffit (E05US021).
 
-Liste énoncée **en négatif** des six autres à dessein. Poule, système suisse, colline, Big Shoot
+Liste énoncée **en négatif** des sept autres à dessein. Poule, système suisse, colline, Big Shoot
 Off, barrage et les deux tableaux **opposent** des tireurs : il leur en faut deux. Énumérer les
 « accueillants » plutôt que les « opposants » fait qu'un type ajouté au catalogue hérite du
 plancher **prudent** (2) au lieu du permissif — un oubli y sur-protège au lieu de laisser passer."""
+
+_TYPES_DEROULES = frozenset({TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMENT})
+"""Les types qu'un service **exécute réellement** aujourd'hui (E05US021).
+
+Distinct de `_TYPES_EN_TABLEAU`, qu'il recoupe par coïncidence : celui-ci répond « sait-on
+dessiner ses tours ? », celui-là « le moteur va-t-il seulement monter cette phase ? ». Les six
+autres types ont un moteur de domaine mais **aucun consommateur de production** (`# DETTE-028`) —
+leur prélèvement ne sera pas honoré, donc il ne peut pas justifier un refus de démarrage. Le jour
+où l'un d'eux gagne son service, il rejoint cette liste **et** le plancher redevient exigible.
+Miroir de `_TYPES_RECONSTRUCTIBLES` (`application/palmares.py`) et du `TYPES_DEROULES` du front."""
 
 
 class EtapeProjetable(EtapeSequencee, Protocol):
@@ -318,6 +329,14 @@ def _exigence_de_letape(etape: EtapeSequencee, ordre_qualification: int | None) 
     `base` est le plancher **structurel** : ce qu'il faut pour que l'étape ait un sens, quelle que
     soit sa provenance. Il est retenu dans **tous** les cas de repli — une phase à duels alimentée
     par « le reste » reste une phase à duels, et le moteur lui demandera deux tireurs.
+
+    ⚠️ **Le plancher par rangs ne vaut que pour ce que le moteur déroule vraiment.** Un déroulé
+    « qualification → poules (rangs 33 et suivants) » ne doit pas empêcher de démarrer à 28
+    inscrits : aucun service n'exécute une poule (`# DETTE-028`), donc rien ne cassera en salle, et
+    refuser le lancement serait un **refus abusif** — le pire mode de défaillance pour cette US,
+    puisqu'il ne se répare que le jour J en éditant le déroulé. C'est la symétrie exacte du repli
+    « pas de qualification » ci-dessous : l'oracle « ce que le moteur lira » s'applique dans les
+    **deux** sens, pas seulement dans le permissif. *(Relevé en contre-revue adversariale.)*
     """
     base = 1 if etape.type in _TYPES_SANS_OPPOSITION else 2
 
@@ -327,21 +346,35 @@ def _exigence_de_letape(etape: EtapeSequencee, ordre_qualification: int | None) 
         # juste de quoi tenir debout.
         return ExigenceEffectif(minimum=base)
 
-    if ordre_qualification is None:
-        # Aucun classement à lire : le moteur ignore les prélèvements et ensemence avec tous les
-        # archers en lice. Réclamer le rang de départ serait un refus abusif.
+    if ordre_qualification is None or etape.type not in _TYPES_DEROULES:
+        # Aucun classement à lire, ou aucun moteur pour dérouler cette phase : le prélèvement ne
+        # sera pas honoré, et réclamer son rang de départ refuserait un tournoi qui se jouera.
         return ExigenceEffectif(minimum=base)
 
+    # ⚠️ Une fenêtre de rangs **plus étroite que `base`** ne fournira jamais assez de participants,
+    # à aucun effectif : « les rangs 33 à 33 » n'en donne qu'un. Elle ne fixe donc pas un plancher
+    # d'inscrits — c'est un défaut de composition, qu'aucun effectif ne répare. L'inclure dans le
+    # `min` produirait un chiffre rassurant et **faux** : « rangs 1 à 1 » + « rangs 33 et suivants »
+    # annoncerait 2 là où il en faut 34. On l'écarte plutôt que d'annoncer un mensonge.
     rangs = [
         source.rang_debut
         for source in etape.sources
-        if source.nature is NatureSource.RANGS and source.ordre_source == ordre_qualification
+        if source.nature is NatureSource.RANGS
+        and source.ordre_source == ordre_qualification
+        and _largeur(source) >= base
     ]
     if not rangs:
         return ExigenceEffectif(minimum=base)
 
     plus_bas = min(rangs)
     return ExigenceEffectif(minimum=plus_bas - 1 + base, ordre=etape.ordre, rang_debut=plus_bas)
+
+
+def _largeur(source: SourcePhase) -> int:
+    """Combien de rangs cette fenêtre peut prélever **au plus** (`sys.maxsize` si fin ouverte)."""
+    if source.rang_fin is None:
+        return sys.maxsize
+    return source.rang_fin - source.rang_debut + 1
 
 
 # --- Anomalies structurelles ---------------------------------------------------------------------

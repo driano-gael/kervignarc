@@ -66,6 +66,30 @@ c'était faux, et cela rendait la limite invisible.)* Le seul filet est donc le 
 structurel** : il est retenu dans **tous** les cas de repli, parce qu'une phase à duels exige deux
 tireurs quelle que soit la source qui l'alimente. C'est une borne inférieure jamais surestimante.
 
+### 2 bis. Le plancher ne vaut que pour ce que le moteur **exécute**, et une seule qualification
+
+Deux corollaires du même principe — « viser exactement ce que le moteur lira » —, tous deux trouvés
+en **contre-revue adversariale**, après que le §2 avait été corrigé une première fois. Ils montrent
+qu'un bloquant se ferme sur son *raisonnement*, pas sur son cas :
+
+- **Les types sans consommateur ne fixent aucun plancher.** Poule, système suisse, colline, Big
+  Shoot Off et barrage autonome ont un moteur de domaine mais **aucun service ne les déroule**
+  (`DETTE-028`). Leur prélèvement ne sera pas honoré, donc rien ne cassera en salle : leur réclamer
+  34 inscrits empêchait de lancer un tournoi qui se serait joué. Un **refus abusif** est le pire
+  mode de défaillance de cette US — il ne se répare que le jour J, en éditant le déroulé. Le
+  premier jet n'appliquait l'oracle que dans le sens permissif ; il vaut dans les deux.
+- **Une séquence ne porte qu'une qualification** (`PlusieursQualifications`, bloquante). L'unicité
+  était supposée par **neuf** lecteurs de « la » qualification et vérifiée nulle part — et deux la
+  résolvaient différemment : plus petit `ordre` dans le domaine, plus grand `id` dans le repository.
+  Un déroulé à deux qualifications faisait donc calculer le minimum sur une phase et prélever dans
+  l'autre : le tournoi démarrait, puis cassait en salle — le bloquant d'origine, rejoué par un autre
+  chemin. Aligner les deux résolutions n'aurait fait que reporter le problème (un réordonnancement
+  les redésaccorde) ; poser l'invariant ferme les neuf sites d'un coup.
+
+**Une fenêtre de rangs plus étroite que le plancher** (« les rangs 33 à 33 » vers un tableau) est
+écartée du calcul : elle ne fournira jamais deux tireurs, à aucun effectif. Annoncer 34 laisserait
+croire qu'un effectif répare le format, alors que c'est le déroulé qu'il faut corriger.
+
 ### 3. Le club peut exiger **davantage**, jamais moins
 
 `FormatTournoi.effectif_minimum_exige` porte la règle sportive (« pas de tournoi de ce type sous 40
@@ -86,7 +110,11 @@ D'où deux traitements opposés, et c'est le cœur de la décision :
   garantit qu'il ne peut pas se périmer quand l'organisateur retouche son déroulé ;
 - le **minimum exigé** est une donnée saisie que rien ne permet de retrouver : il est **recopié**
   sur le tournoi à l'application du format (migration `0040`), au patron du gabarit de salle —
-  modèle → copie → ajustement sans altérer le modèle.
+  modèle → copie. ⚠️ **L'« ajustement » du patron n'est pas livré** : aucune surface ne règle
+  l'exigence d'un tournoi indépendamment de son format, et une méthode de service qui le prétendait
+  a été retirée (elle n'avait aucun appelant). Conséquence à connaître : une exigence de club trop
+  haute le jour J se corrige en éditant le format **puis en le ré-appliquant**, ce qui détruit et
+  recrée les phases. C'est une limite, pas un oubli — l'exposer demandera son US.
 
 Côté format, l'exigence entre dans le JSON `format_tournoi.config` **sans migration**, comme les
 prélèvements l'avaient fait : une config antérieure relue sans la clé rend `None`, soit le

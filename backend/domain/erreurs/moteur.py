@@ -215,6 +215,29 @@ class EffectifTableauInvalide(DomainError):
     code = "effectif_tableau_invalide"
 
 
+class PlusieursQualifications(DomainError):
+    """Une séquence déclare **plus d'une** phase de qualification (E05US021).
+
+    L'unicité était supposée partout et vérifiée nulle part : `PhaseRepository.par_tournoi_et_type`
+    en rend « la plus récente » avec un commentaire « ne devrait pas survenir », et **neuf** sites
+    (classements, palmarès, complétude, placement, feuille de marque, saisie en duels…) lisent
+    « la » qualification comme s'il n'y en avait qu'une. Rien ne l'interdisait pourtant : l'écran de
+    composition offre tous les types à chaque étape.
+
+    Le coût de l'ambiguïté a été démontré en revue : « la qualification » se résolvait au plus
+    petit `ordre` dans le domaine et au plus grand `id` dans le repository — deux phases
+    différentes. Le minimum d'inscrits se calculait donc sur une phase et le moteur prélevait dans
+    l'autre : un tournoi annoncé « minimum 2 » cassait en salle. Aligner les deux résolutions
+    n'aurait fait que reporter le problème (un réordonnancement les redésaccorde) ; on rend
+    l'ambiguïté **impossible**.
+
+    Bloquante : c'est faux à tout effectif. Une qualification en deux manches se modélise par un
+    barème, pas par deux phases.
+    """
+
+    code = "plusieurs_qualifications"
+
+
 class EffectifMinimumIncoherent(DomainError):
     """Un format exige **moins** d'inscrits que son déroulé n'en réclame (E05US021).
 

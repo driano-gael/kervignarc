@@ -19,6 +19,8 @@ classe `d + 1`. D'où `d - 1 + 2` inscrits, soit 34 pour d = 33.
 
 from __future__ import annotations
 
+import datetime
+
 import pytest
 
 from domain.anomalie import Anomalie, Gravite
@@ -27,6 +29,7 @@ from domain.deroule import effectif_minimum, projeter
 from domain.erreurs import EffectifMinimumIncoherent, ExigenceEffectifInvalide
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.phase import IssueTour, SourcePhase, TypePhase
+from domain.tournoi import Tournoi
 
 
 def _qualification(ordre: int = 1) -> ModelePhase:
@@ -183,11 +186,23 @@ def test_une_phase_sans_opposition_se_contente_dun_participant() -> None:
     assert effectif_minimum([_qualification()]) == 1
 
 
+def _avec_prelevement_haut(type_phase: TypePhase) -> list[ModelePhase]:
+    """Une qualification, puis une phase de `type_phase` prélevant « les rangs 33 et suivants »."""
+    return [
+        _qualification(),
+        ModelePhase(ordre=2, type=type_phase, sources=(SourcePhase.par_rangs(1, rang_debut=33),)),
+    ]
+
+
+@pytest.mark.parametrize("type_deroule", [TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMENT])
+def test_un_type_que_le_moteur_deroule_reclame_ses_34_inscrits(type_deroule: TypePhase) -> None:
+    """Le plancher n'a de sens que si le moteur va réellement monter la phase — c'est le cas ici."""
+    assert effectif_minimum(_avec_prelevement_haut(type_deroule)) == 34
+
+
 @pytest.mark.parametrize(
-    "type_a_duels",
+    "type_sans_moteur",
     [
-        TypePhase.ELIMINATION_DIRECTE,
-        TypePhase.PLACEMENT,
         TypePhase.POULES,
         TypePhase.SUISSE,
         TypePhase.COLLINE,
@@ -195,15 +210,44 @@ def test_une_phase_sans_opposition_se_contente_dun_participant() -> None:
         TypePhase.BARRAGE,
     ],
 )
-def test_tout_type_qui_oppose_des_tireurs_en_exige_deux(type_a_duels: TypePhase) -> None:
-    """« Les rangs 33 et suivants » vers une poule exige 34 inscrits, comme vers un tableau.
+def test_un_type_sans_consommateur_ne_bloque_pas_le_lancement(type_sans_moteur: TypePhase) -> None:
+    """Ces types ont un moteur de domaine mais **aucun service ne les déroule** (`DETTE-028`).
 
-    Le plancher tient à ce que la phase **oppose** des tireurs, pas à sa structure d'arbre : un
-    premier jet ne comptait que les deux types en tableau et minorait les cinq autres d'un cran.
+    Leur prélèvement ne sera pas honoré : rien ne cassera en salle, donc rien ne justifie de refuser
+    le démarrage. ⚠️ Un premier jet leur réclamait 34 inscrits — un déroulé « qualification →
+    poules » cessait donc de démarrer à 28, pour une phase que rien n'exécute. **Refuser à tort est
+    le pire mode de défaillance de cette US** : il ne se répare que le jour J, en éditant le
+    déroulé. Le plancher structurel (deux tireurs) subsiste, lui.
+
+    Le jour où l'un de ces types gagne son service, il entre dans `_TYPES_DEROULES` et ce test
+    change de camp — c'est le signal attendu, pas une régression.
+    """
+    assert effectif_minimum(_avec_prelevement_haut(type_sans_moteur)) == 2
+
+
+# --- Fenêtres de rangs trop étroites : un défaut de composition, pas un plancher -----------------
+
+
+def test_une_fenetre_dun_seul_rang_ne_fixe_pas_de_plancher() -> None:
+    """« Les rangs 33 à 33 » ne donnera **jamais** deux tireurs, à aucun effectif.
+
+    Annoncer 34 laisserait croire qu'un effectif répare le format ; c'est faux — c'est le déroulé
+    qu'il faut corriger. On n'invente donc pas de plancher pour un prélèvement impossible.
+    """
+    etapes = [_qualification(), _tableau(2, SourcePhase.par_rangs(1, 33, 33))]
+
+    assert effectif_minimum(etapes) == 2
+
+
+def test_une_fenetre_etroite_ne_masque_pas_la_vraie_exigence_de_sa_voisine() -> None:
+    """Le piège du `min` : « rangs 1 à 1 » **et** « rangs 33 et suivants » sur la même phase.
+
+    La fenêtre étroite a le plus petit rang de départ, donc elle gagnait le `min` et faisait
+    annoncer 2 — alors qu'elle n'apporte qu'un archer et que la seconde en exige 34.
     """
     etapes = [
         _qualification(),
-        ModelePhase(ordre=2, type=type_a_duels, sources=(SourcePhase.par_rangs(1, rang_debut=33),)),
+        _tableau(2, SourcePhase.par_rangs(1, 1, 1), SourcePhase.par_rangs(1, rang_debut=33)),
     ]
 
     assert effectif_minimum(etapes) == 34
@@ -281,6 +325,24 @@ def test_une_exigence_absurde_est_refusee_des_la_saisie(absurde: int) -> None:
     """Zéro ou négatif ne veut rien dire : « aucune exigence » se dit en ne réglant rien."""
     with pytest.raises(ExigenceEffectifInvalide):
         FormatTournoi.creer("Salle 120", [_qualification()], effectif_minimum_exige=absurde)
+
+
+@pytest.mark.parametrize("absurde", [0, -1])
+def test_un_tournoi_refuse_la_meme_exigence_absurde_a_la_construction(absurde: int) -> None:
+    """L'invariant est sur `__post_init__`, **pas** sur la méthode qui le règle — et ce test le
+    prouve par la porte que le correctif visait.
+
+    Le repository reconstruit `Tournoi(...)` directement depuis la colonne : un contrôle logé dans
+    la seule `exiger_effectif_minimum` laissait entrer une valeur absurde par cette porte-là. Un
+    test qui passerait par la méthode serait vert avec **l'ancienne** implémentation, donc ne
+    prouverait rien.
+    """
+    with pytest.raises(ExigenceEffectifInvalide):
+        Tournoi(
+            nom="Trophée",
+            date=datetime.date(2026, 3, 14),
+            effectif_minimum_exige=absurde,
+        )
 
 
 # --- CA « visible à la composition » -------------------------------------------------------------

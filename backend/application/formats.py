@@ -298,9 +298,9 @@ class ServiceFormats:
         (ADR-0060 §3). Lève `TournoiIntrouvable`, `TournoiSansPhase` si le tournoi n'a aucune phase
         à capturer.
 
-        **L'exigence d'effectif du tournoi remonte avec le déroulé** (E05US021) : elle y avait été
-        recopiée à l'application d'un format, ou réglée depuis, et c'est une propriété du déroulé
-        qu'on promeut — pas un accident de l'édition. En son absence, l'exigence du format existant
+        **L'exigence d'effectif du tournoi remonte avec le déroulé** (E05US021) : elle y a été
+        recopiée à l'application d'un format, et c'est une propriété du déroulé qu'on promeut — pas
+        un accident de l'édition. En son absence, l'exigence du format existant
         est **conservée** : la promotion capture des *phases*, elle n'a aucune raison d'effacer une
         règle de club qu'elle ne sait pas exprimer.
         """

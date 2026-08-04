@@ -544,6 +544,19 @@ format ; le logiciel doit connaître la fourchette basse et avertir l'admin avan
   plancher est le **seul** filet pour ces cas : contrairement à ce qu'une première rédaction
   affirmait, `PrelevementVide` ne les couvre pas (il n'existe que pour les prélèvements par rangs, et
   seulement à compte nul).
+- **Notes — le plancher ne vaut que pour ce que le moteur déroule.** Un prélèvement par rangs vers
+  une **poule**, un système suisse, une colline, un Big Shoot Off ou un barrage autonome ne fixe
+  **aucun** minimum : ces types ont un moteur de domaine mais aucun service ne les exécute
+  (`DETTE-028`), donc rien ne cassera en salle. Refuser le lancement pour eux serait un **refus
+  abusif**, qui ne se répare que le jour J. *(Arbitrage de la contre-revue du 04/08/2026 : un
+  premier jet réclamait 34 inscrits pour « qualification → poules », donc empêchait de démarrer un
+  tournoi qui se serait joué. L'oracle « ce que le moteur lira » vaut dans les **deux** sens.)*
+- **Notes — une seule qualification par déroulé.** L'invariant était supposé par neuf lecteurs de
+  « **la** » qualification et vérifié nulle part ; deux d'entre eux la résolvaient différemment
+  (plus petit `ordre` / plus grand `id`), si bien qu'un déroulé à deux qualifications faisait
+  calculer le minimum sur une phase et prélever dans l'autre. Une anomalie **bloquante**
+  (`PlusieursQualifications`) le rend désormais impossible. Une qualification en plusieurs manches
+  se règle par son **barème**. *(Arbitrage de la contre-revue du 04/08/2026.)*
 - **Notes — pas de nouvelle anomalie de composition** : le diagnostic signale **déjà**
   `PrelevementVide` quand un prélèvement ne prend personne à l'effectif simulé. Le minimum est donc
   exposé comme une **donnée** de la projection, pas comme une anomalie de plus — un second
