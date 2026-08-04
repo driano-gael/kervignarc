@@ -25,6 +25,7 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from sqlalchemy import text
 
 from domain.bareme import BaremeQualification
 from domain.grain_validation import GrainValidation
@@ -166,6 +167,37 @@ def test_config_lisible_mais_hors_regle_leve_infrastructure_error(tmp_path: Path
             )
     finally:
         db.engine.dispose()
+
+
+def _tournoi_au_schema_historique(db: Database) -> TournoiId:
+    """Insère un tournoi en **SQL explicite**, pour une base arrêtée à une révision ancienne.
+
+    `_tournoi` passe par `TournoiRepositorySQL`, donc par le mapping ORM **courant** : dès qu'une
+    migration ajoute une colonne à `tournoi` (E05US021 et sa `effectif_minimum_exige`, 0040),
+    l'`INSERT` généré nomme une colonne que le schéma historique n'a pas, et le test de migration
+    échoue pour une raison qui n'a rien à voir avec ce qu'il vérifie.
+
+    On nomme donc **explicitement** les seules colonnes qui existaient déjà. Le test devient
+    insensible aux colonnes futures, ce qu'un test de migration doit être par nature : il décrit un
+    passé, que le présent n'a pas à réécrire.
+    """
+    with db.session_factory() as session:
+        session.execute(
+            text(
+                "INSERT INTO tournoi (nom, date, lieu, type_tournoi, statut) "
+                "VALUES (:nom, :date, NULL, :type_tournoi, :statut)"
+            ),
+            {
+                "nom": "Kervignarc",
+                "date": "2026-03-14",
+                "type_tournoi": TypeTournoi.NON_OFFICIEL.value,
+                "statut": "brouillon",
+            },
+        )
+        session.commit()
+        identifiant = session.execute(text("SELECT id FROM tournoi")).scalar_one()
+    assert isinstance(identifiant, int)
+    return identifiant
 
 
 def _phase_brute(db: Database, tournoi_id: TournoiId, config: str) -> None:
@@ -576,7 +608,7 @@ def test_migration_0028_deplace_le_scoring_sous_policies(tmp_path: Path) -> None
 
     db = Database(url)
     try:
-        tournoi_id = _tournoi(db)
+        tournoi_id = _tournoi_au_schema_historique(db)
         _phase_brute(
             db,
             tournoi_id,

@@ -1,7 +1,8 @@
 # Modèle de données détaillé — Kervignarc
 
-- **Version** : 0.8
-- **Date** : 2026-07-31 *(v0.8 : `ARCHER` gagne `handicap_officiel` et `handicap_surcharge` — deux valeurs et non une, la surcharge primant l'officiel pour une édition — E05US015, [ADR-0062](adr/0062-catalogue-de-types-de-phase.md), migration 0037)*
+- **Version** : 0.9
+- **Date** : 2026-08-04 *(v0.9 : `TOURNOI` gagne `effectif_minimum_exige` et `FORMAT_TOURNOI.config` la clé sœur — le minimum d'inscrits **exigé** par le club ; le plancher **technique**, lui, se déduit des prélèvements et n'est **pas** stocké — E05US021, [ADR-0069](adr/0069-effectif-minimum-deduit-et-exige.md), migration 0040)*
+- *v0.8 : 2026-07-31 — `ARCHER` gagne `handicap_officiel` et `handicap_surcharge` — deux valeurs et non une, la surcharge primant l'officiel pour une édition — E05US015, [ADR-0062](adr/0062-catalogue-de-types-de-phase.md), migration 0037*
 - *v0.7 : 2026-07-31 — les **briques deviennent le patrimoine du club** — `CATEGORIE.tournoi_id` et `BLASON.tournoi_id` passent **nullable** (`NULL` = modèle de bibliothèque), les deux tables gagnent `origine`, et la table **`FORMAT_TOURNOI`** apparaît (sans FK vers `TOURNOI`) — E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md), migrations 0034 et 0035)*
 - *v0.6 : 2026-07-27 — `DEPART.horaire` devient un horaire du jour `HH:MM` **NOT NULL** (abandon du libellé libre facultatif) — E02US010, migration 0032*
 - *v0.5 : 2026-07-16 — table de liaison `INSCRIPTION` (archer ↔ départ, portant `paye`) — E02US009, [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md) ; montant dû **dérivé** du tarif du départ, non stocké*
@@ -59,6 +60,7 @@ erDiagram
 | lieu | TEXT | |
 | type_tournoi | TEXT | `officiel` \| `non_officiel` |
 | statut | TEXT | `brouillon` \| `prêt` \| `en_cours` \| `en_pause` \| `termine` \| `archive` \| `annule` — **7 statuts** ([ADR-0026](adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md), E01US017) |
+| effectif_minimum_exige | INTEGER | `NULL` = aucune exigence propre. Le minimum d'inscrits **exigé** par le club, recopié du format à son application ; le plancher **technique** n'est pas ici — il se **déduit** des phases à chaque lecture, pour ne pas se périmer quand le déroulé change (E05US021, [ADR-0069](adr/0069-effectif-minimum-deduit-et-exige.md), migration 0040) |
 | created_at | TEXT (datetime) | |
 
 > **Le tarif n'est plus au tournoi** ([ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md),
@@ -248,7 +250,7 @@ erDiagram
 | id | INTEGER | PK |
 | nom | TEXT | NOT NULL, **UNIQUE** — c'est ce qui rend la promotion idempotente (promouvoir deux fois sous le même nom met à jour au lieu de créer un homonyme) |
 | origine | TEXT | NOT NULL — `ffta` \| `utilisateur`, même sens que ci-dessus |
-| config | TEXT (JSON) | la **séquence de modèles de phases** — `{"etapes": [{"ordre", "type", "policies"?, "validation"?, "sources"?, "effectif"?}, …]}`, même forme étape par étape que `PHASE.config` (migrées **ensemble** par `0036`) |
+| config | TEXT (JSON) | la **séquence de modèles de phases**, et ce qui appartient au format entier — `{"etapes": [{"ordre", "type", "policies"?, "validation"?, "sources"?, "effectif"?}, …], "effectif_minimum_exige"?: int}`. Les étapes ont la même forme que `PHASE.config` (migrées **ensemble** par `0036`) ; `effectif_minimum_exige` (E05US021) s'y ajoute **sans migration**, la clé étant **omise** quand rien n'est exigé — une config d'avant l'US et une config sans exigence sont ainsi le même document |
 
 > **Aucune FK vers TOURNOI**, et ce n'est pas un oubli : un format n'existe qu'en bibliothèque
 > (E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5).

@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 03/08/2026** · **93 US livrées** · dernière : `E05US020` *(le moteur consomme les prélèvements déclarés : « les rangs 1 à 32 » monte enfin un tableau de 32 — cœur de DETTE-028 résorbé, ADR-0068)*. Précédente : `E06US004` *(palmarès : le classement final du tournoi — rangs des tableaux fusionnés avec ceux de la qualification, podiums par catégorie, export PDF, et une 7ᵉ famille de politiques `aggregation` pour départager les sortis au même tour — ADR-0067)*.
+**Dernière mise à jour : 04/08/2026** · **94 US livrées** · dernière : `E05US021` *(un tournoi ne se lance plus s'il manque des archers : le minimum d'inscrits se **déduit** des prélèvements, s'affiche avant le clic et refuse le démarrage — ADR-0069)*. Précédente : `E05US020` *(le moteur consomme les prélèvements déclarés : « les rangs 1 à 32 » monte enfin un tableau de 32 — cœur de DETTE-028 résorbé, ADR-0068)*.
 
 ---
 
@@ -117,10 +117,26 @@
 > axes** : un archer qu'une volée validée en retard amenait à égalité *après* le tir prenait la
 > place devant le vainqueur du barrage, sans que rien ne le signale.
 >
-> **🎯 Prochaine :** **découpage des agrégateurs techniques** (action 2 de
-> [l'audit de maintenabilité](../docs/audit-maintenabilite.md)) — `repositories.py`, les deux
-> `erreurs.py` et `App.css` par feature. Puis **`E05US021`** (un format connaît son effectif minimum,
-> arbitrage du 03/08, ADR-0068 §6) et **`E06US006`** — classement intégral 1→N & profondeur configurable. *(Elle
+> **`E05US021` est livrée (04/08/2026)** — le contrôle d'effectif remonte de la tablette vers la
+> table de l'organisateur ([ADR-0069](../docs/adr/0069-effectif-minimum-deduit-et-exige.md)). Trois
+> points méritent d'être retenus :
+> - le minimum se **déduit** des prélèvements, il ne se saisit pas. Le CA laissait les deux ouverts
+>   (« déclare, **ou** dérive ») ; un nombre saisi peut contredire le déroulé écrit juste en dessous,
+>   et le problème reviendrait là même où l'US le retire. Le club peut exiger **plus** (règle
+>   sportive), jamais moins — l'énoncer sous le plancher rend le format inapplicable ;
+> - **portée volontairement étroite** : un rang se lit dans le classement de sa *phase source*, pas
+>   dans les inscrits. Seuls les prélèvements visant la **première** phase se traduisent en nombre
+>   d'inscrits ; élargir aurait produit un chiffre **faux**, ce qui est pire que pas de chiffre ;
+> - **aucune anomalie nouvelle** à la composition : `PrelevementVide` couvrait déjà le cas. Le
+>   minimum est exposé comme une **donnée** du diagnostic — l'ajouter en anomalie aurait signalé le
+>   même défaut deux fois, le piège déjà documenté dans `_anomalies_effectif_declare`.
+>
+> Le CA a été **élargi au cadrage** (04/08) sur deux points, reversés dans `stories/` : le minimum
+> exigé facultatif, et l'annonce **avant** le clic (le CA d'origine ne prévoyait qu'un refus au
+> clic — qui n'apprend rien tant qu'on ne clique pas). Un test d'API a trouvé un vrai défaut au
+> passage : la lecture de l'exigence rendait 200 sur un tournoi inexistant.
+>
+> **🎯 Prochaine :** **`E06US006`** — classement intégral 1→N & profondeur configurable. *(Elle
 > **prolonge** E06US004 sans la refaire : le palmarès sait déjà fusionner et renuméroter 1→N ; ce
 > qui reste est la **profondeur** — top N + regroupement du reliquat — et le fait que, sous
 > placement intégral, tous les rangs deviennent **exacts** et les fourchettes disparaissent d'
@@ -531,7 +547,7 @@
 | 75 | ~~E05US018~~ | ~~Oracle 120~~ → **absorbée par E05US010** | ⬜ *(le moteur et sa preuve ne se séparent pas)* |
 | 76 | E06US006 | Classement intégral 1→N & profondeur | ⬜ |
 | 76bis | E05US020 | **Le moteur consomme les prélèvements déclarés** | ✅ *(cœur de DETTE-028 : prélèvement par rangs honoré, plage relative résolue, tranche de rangs au palmarès — DETTE-034 soldée, ADR-0068)* |
-| 76ter | E05US021 | Un format connaît son effectif minimum (avertir avant de lancer) | ⬜ *(arbitrage du 03/08, ADR-0068 §6)* |
+| 76ter | E05US021 | **Un format connaît son effectif minimum** (avertir avant de lancer) | ✅ *(minimum **déduit** des prélèvements, exigence de club au-dessus, refus au démarrage + annonce avant le clic — ADR-0069)* |
 | 77 | E03US007 | Contrainte séparation catégorie/blason | ⬜ |
 | 78 | E09US005 | Classements PDF | ⬜ *(rétrécie par E06US004 : le **palmarès** a son PDF ; reste celui du classement de **qualification**)* |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |

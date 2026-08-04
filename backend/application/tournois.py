@@ -13,14 +13,21 @@ from __future__ import annotations
 
 import datetime
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
+from enum import Enum
+from typing import Protocol
 
 from application.erreurs import (
+    EffectifInsuffisantPourDemarrer,
     TournoiArchiveNonModifiable,
     TournoiEnCoursNonSupprimable,
     TournoiIntrouvable,
     TournoiSansDepart,
     TransitionStatutInvalide,
 )
+from application.suivi_deroule import CompteurEngages
+from domain.deroule import exigence_minimale
+from domain.phase import Phase
 from domain.ports import DepartRepository, TournoiRepository
 from domain.tournoi import (
     StatutTournoi,
@@ -34,16 +41,112 @@ from domain.tournoi import (
 )
 
 
+class LecteurSequencePhases(Protocol):
+    """Port **étroit** : la séquence de phases d'un tournoi, et rien d'autre (E05US021).
+
+    La garde de démarrage n'a besoin que de « quel déroulé ce tournoi a-t-il ? » — pas d'un
+    `PhaseRepository` entier (ajouter, supprimer, chercher par type). Même patron que
+    `CompteurEngages` et `LecteurDonneesDePhase` (`application/formats.py`), et même bénéfice : le
+    couplage dit exactement ce qu'il est, et le faux de test se réduit à une méthode.
+
+    `PhaseRepositorySQL` le satisfait structurellement, sans rien déclarer.
+    """
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
+        """Renvoie les phases du tournoi (liste éventuellement vide)."""
+        ...
+
+
+class OrigineExigence(str, Enum):
+    """D'où vient le minimum d'inscrits d'un tournoi (E05US021).
+
+    Trois origines qui appellent trois phrases différentes — les confondre fait dire au produit des
+    choses fausses (cf. `ExigenceEffectifTournoi`).
+    """
+
+    AUCUNE = "aucune"
+    """Aucun déroulé composé : rien n'est exigé."""
+
+    DEROULE = "deroule"
+    """Le plancher **déduit** du déroulé — un prélèvement par rangs, ou la structure d'une phase."""
+
+    CLUB = "club"
+    """Une règle sportive **saisie** sur le format (« pas de tournoi de ce type sous 40 »)."""
+
+
+@dataclass(frozen=True)
+class ExigenceEffectifTournoi:
+    """Ce qu'un tournoi exige d'inscrits, ce qu'il en a, et pourquoi (E05US021).
+
+    Lecture d'écran **et** matière du refus : le CA demande que le manque soit visible *avant* le
+    clic (« 28 inscrits / 34 requis ») et que le refus *au* clic nomme la phase et son prélèvement.
+    Les deux disent la même chose — d'où un seul objet, calculé une fois.
+
+    `minimum` vaut `0` quand aucun déroulé n'est composé : il n'y a alors rien à exiger.
+
+    `origine` dit **d'où vient le chiffre**, et ce n'est pas décoratif : la première version le
+    déduisait de `ordre_phase is None`, ce qui faisait annoncer « ce minimum est celui exigé pour ce
+    format » — une règle de club — sur un simple plancher structurel, donc sur le format nominal du
+    projet (une qualification seule n'a aucun prélèvement par rangs). Le message inventait une
+    cause. Porter l'origine explicitement coûte un champ et supprime la classe entière d'erreurs.
+
+    `ordre_phase` et `rang_debut` restent `None` quand le manque ne vient d'aucun prélèvement en
+    particulier.
+    """
+
+    inscrits: int
+    minimum: int
+    suffisant: bool
+    origine: OrigineExigence = OrigineExigence.AUCUNE
+    ordre_phase: int | None = None
+    rang_debut: int | None = None
+
+    def message_de_refus(self) -> str:
+        """Le message rendu à l'organisateur — **chiffré et actionnable** (`D-16` / `P-4`).
+
+        « Une alerte qui ne chiffre pas son impact est un clic de plus, pas une protection » : on
+        nomme donc le manque *et* ce qui le cause, pour que l'organisateur sache quoi changer dans
+        son format plutôt que de rester devant un refus opaque.
+        """
+        manque = f"{self.inscrits} archer(s) inscrit(s) pour {self.minimum} requis"
+        if self.origine is OrigineExigence.CLUB:
+            return (
+                f"Ce tournoi ne peut pas démarrer : {manque}. Ce format exige au moins "
+                f"{self.minimum} inscrits. Complétez les inscriptions ou changez de format."
+            )
+        if self.ordre_phase is None:
+            return (
+                f"Ce tournoi ne peut pas démarrer : {manque}. Son déroulé ne peut pas se jouer à "
+                "moins que cela."
+            )
+        return (
+            f"Ce tournoi ne peut pas démarrer : {manque}. La phase {self.ordre_phase} prélève à "
+            f"partir du rang {self.rang_debut} : il faut au moins {self.minimum} classés pour "
+            "qu'elle ait des tireurs. Changez de format ou complétez les inscriptions."
+        )
+
+
 class ServiceTournois:
     """Cas d'usage des tournois : créer, consulter, lister, éditer, cycle de vie, supprimer."""
 
-    def __init__(self, repository: TournoiRepository, depart_repository: DepartRepository) -> None:
+    def __init__(
+        self,
+        repository: TournoiRepository,
+        depart_repository: DepartRepository,
+        phase_repository: LecteurSequencePhases,
+        engages: CompteurEngages,
+    ) -> None:
         self._repository = repository
         # E02US010 : le passage à `prêt` exige **au moins un départ**. `ServiceTournois` lit donc
         # les créneaux (port `DepartRepository`, un port de domaine — pas l'autre service, pas
         # d'infra), comme il lit les tournois. Couplage minimal : une seule lecture (`par_tournoi`),
         # dont on ne prend que le compte.
         self._departs = depart_repository
+        # E05US021 : le **démarrage** confronte les inscrits au minimum que le déroulé réclame. Même
+        # parti que ci-dessus — deux lectures de plus, par des ports (`PhaseRepository`, et le port
+        # étroit `CompteurEngages` déjà réalisé pour le suivi), pas par d'autres services.
+        self._phases = phase_repository
+        self._engages = engages
 
     def creer(
         self,
@@ -127,13 +230,71 @@ class ServiceTournois:
         )
 
     def demarrer(self, tournoi_id: TournoiId) -> Tournoi:
-        """Passe un tournoi `prêt` à `en_cours` (le démarrage passe désormais par `prêt`)."""
-        return self._transition(
-            tournoi_id,
-            {StatutTournoi.PRET},
-            Tournoi.demarrer,
-            "Seul un tournoi prêt peut être démarré.",
+        """Passe un tournoi `prêt` à `en_cours`, **si l'effectif suit** (E05US021).
+
+        Lève `TransitionStatutInvalide` (→ 409) s'il n'est pas `prêt`, et
+        `EffectifInsuffisantPourDemarrer` (→ 409) s'il compte moins d'inscrits que son déroulé n'en
+        réclame. Cette seconde garde ne s'exprime que si un déroulé est **composé** : sans phase, il
+        n'y a aucun prélèvement à honorer, donc rien à exiger.
+        """
+        tournoi = self.consulter(tournoi_id)
+        if tournoi.statut is not StatutTournoi.PRET:
+            raise TransitionStatutInvalide("Seul un tournoi prêt peut être démarré.")
+        self._exiger_un_effectif_suffisant(tournoi_id)
+        return self._repository.enregistrer(tournoi.demarrer())
+
+    def exigence_effectif(self, tournoi_id: TournoiId) -> ExigenceEffectifTournoi:
+        """Ce que ce tournoi exige d'inscrits, et ce qu'il en a — la lecture du CA « visible avant
+        le clic ».
+
+        Aucune écriture : c'est un **état à afficher** en continu, pas un verdict à provoquer.
+        L'écran s'en sert pour montrer « 28 inscrits / 34 requis » tant que le compte n'y est pas ;
+        le refus au clic « Démarrer », lui, relève de `demarrer`.
+
+        Lève `TournoiIntrouvable` (→ 404) — la seule levée, et elle porte sur l'**existence**, pas
+        sur l'effectif. Un tournoi inconnu rendrait sinon « aucune exigence, tout va bien », un 200
+        rassurant sur une ressource qui n'existe pas.
+        """
+        tournoi = self.consulter(tournoi_id)
+        phases = self._phases.par_tournoi(tournoi_id)
+        inscrits = self._engages.nb_engages(tournoi_id)
+        if not phases:
+            # Aucun déroulé composé : rien n'est prélevé, donc rien n'est exigé. Le dire
+            # « satisfait » plutôt que « minimum 1 » évite d'afficher une exigence là où
+            # l'organisateur n'a encore rien décidé.
+            return ExigenceEffectifTournoi(
+                inscrits=inscrits,
+                minimum=0,
+                suffisant=True,
+                origine=OrigineExigence.AUCUNE,
+            )
+
+        exige = tournoi.effectif_minimum_exige
+        deduite = exigence_minimale(phases)
+        if exige is not None and exige > deduite.minimum:
+            # L'exigence du club dépasse le plancher technique : c'est elle qui commande, et aucune
+            # phase n'est en cause — le manque vient d'une règle sportive, pas d'un prélèvement.
+            return ExigenceEffectifTournoi(
+                inscrits=inscrits,
+                minimum=exige,
+                suffisant=inscrits >= exige,
+                origine=OrigineExigence.CLUB,
+            )
+        return ExigenceEffectifTournoi(
+            inscrits=inscrits,
+            minimum=deduite.minimum,
+            suffisant=inscrits >= deduite.minimum,
+            origine=OrigineExigence.DEROULE,
+            ordre_phase=deduite.ordre,
+            rang_debut=deduite.rang_debut,
         )
+
+    def _exiger_un_effectif_suffisant(self, tournoi_id: TournoiId) -> None:
+        """Refuse le démarrage si les inscrits ne couvrent pas ce que le déroulé réclame."""
+        exigence = self.exigence_effectif(tournoi_id)
+        if exigence.suffisant:
+            return
+        raise EffectifInsuffisantPourDemarrer(exigence.message_de_refus())
 
     def mettre_en_pause(self, tournoi_id: TournoiId) -> Tournoi:
         """Gèle un tournoi `en_cours` en `en_pause` (la saisie s'arrête jusqu'à `reprendre`)."""

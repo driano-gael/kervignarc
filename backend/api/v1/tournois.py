@@ -25,7 +25,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
-from application.tournois import ServiceTournois
+from application.tournois import ExigenceEffectifTournoi, OrigineExigence, ServiceTournois
 from domain.tournoi import StatutTournoi, Tournoi, TransitionTournoi, TypeTournoi
 from infrastructure.db import WriteQueue
 
@@ -100,6 +100,42 @@ class TransitionReponse(BaseModel):
         )
 
 
+class ExigenceEffectifReponse(BaseModel):
+    """Ce que le déroulé d'un tournoi exige d'inscrits, et ce qu'il en a (E05US021).
+
+    Sert l'affichage **permanent** du CA (« 28 inscrits / 34 requis ») : l'écran s'en sert pour
+    prévenir *avant* le clic « Démarrer », que le serveur refuserait. `minimum` vaut `0` quand aucun
+    déroulé n'est composé — il n'y a alors rien à exiger.
+
+    `ordre_phase` et `rang_debut` disent **pourquoi** — « la phase 3 prélève à partir du rang 33 » —
+    et sont `None` quand le manque ne vient d'aucun prélèvement en particulier (rien de composé, ou
+    exigence propre du club). `D-16` / `P-4` : une alerte qui ne chiffre pas son impact est un clic
+    de plus, pas une protection.
+    """
+
+    inscrits: int
+    minimum: int
+    suffisant: bool
+    # E05US021 : d'où vient le chiffre — `deroule` (plancher déduit) ou `club` (règle saisie). Le
+    # front en fait deux phrases distinctes ; le déduire de `ordre_phase is None` faisait annoncer
+    # une règle de club là où il n'y en avait aucune.
+    origine: OrigineExigence
+    ordre_phase: int | None
+    rang_debut: int | None
+
+    @staticmethod
+    def de_agregat(exigence: ExigenceEffectifTournoi) -> ExigenceEffectifReponse:
+        """Traduit la lecture applicative en DTO de réponse."""
+        return ExigenceEffectifReponse(
+            inscrits=exigence.inscrits,
+            minimum=exigence.minimum,
+            suffisant=exigence.suffisant,
+            origine=exigence.origine,
+            ordre_phase=exigence.ordre_phase,
+            rang_debut=exigence.rang_debut,
+        )
+
+
 @router.post(
     "",
     status_code=201,
@@ -150,6 +186,19 @@ async def transitions_tournoi(tournoi_id: int, request: Request) -> list[Transit
     service: ServiceTournois = request.app.state.service_tournois
     transitions = await run_in_threadpool(service.transitions_possibles, tournoi_id)
     return [TransitionReponse.de_domaine(transition) for transition in transitions]
+
+
+@router.get("/{tournoi_id}/exigence-effectif", response_model=ExigenceEffectifReponse)
+async def exigence_effectif_tournoi(tournoi_id: int, request: Request) -> ExigenceEffectifReponse:
+    """Combien d'inscrits ce tournoi exige, et combien il en a (E05US021).
+
+    Lecture directe hors boucle événementielle, **sans refus** : c'est un état à afficher en continu
+    (« 28 inscrits / 34 requis »), pas un verdict à provoquer — le refus, lui, vient du `POST
+    …/demarrer`. `TournoiIntrouvable` (→ 404) si l'identifiant est inconnu.
+    """
+    service: ServiceTournois = request.app.state.service_tournois
+    exigence = await run_in_threadpool(service.exigence_effectif, tournoi_id)
+    return ExigenceEffectifReponse.de_agregat(exigence)
 
 
 @router.put(

@@ -215,6 +215,65 @@ class EffectifTableauInvalide(DomainError):
     code = "effectif_tableau_invalide"
 
 
+class PlusieursQualifications(DomainError):
+    """Une séquence déclare **plus d'une** phase de qualification (E05US021).
+
+    L'unicité était supposée partout et vérifiée nulle part : `PhaseRepository.par_tournoi_et_type`
+    en rend « la plus récente » avec un commentaire « ne devrait pas survenir », et **neuf** sites
+    (classements, palmarès, complétude, placement, feuille de marque, saisie en duels…) lisent
+    « la » qualification comme s'il n'y en avait qu'une. Rien ne l'interdisait pourtant : l'écran de
+    composition offre tous les types à chaque étape.
+
+    Le coût de l'ambiguïté a été démontré en revue : « la qualification » se résolvait au plus
+    petit `ordre` dans le domaine et au plus grand `id` dans le repository — deux phases
+    différentes. Le minimum d'inscrits se calculait donc sur une phase et le moteur prélevait dans
+    l'autre : un tournoi annoncé « minimum 2 » cassait en salle. Aligner les deux résolutions
+    n'aurait fait que reporter le problème (un réordonnancement les redésaccorde) ; on rend
+    l'ambiguïté **impossible**.
+
+    Bloquante : c'est faux à tout effectif. Une qualification en deux manches se modélise par un
+    barème, pas par deux phases.
+    """
+
+    code = "plusieurs_qualifications"
+
+
+class EffectifMinimumIncoherent(DomainError):
+    """Un format exige **moins** d'inscrits que son déroulé n'en réclame (E05US021).
+
+    Le minimum d'un format se **déduit** de ses prélèvements : « les rangs 33 et suivants » ne monte
+    un tableau de deux qu'à partir du 34ᵉ classé. Un club peut exiger davantage (« pas de tournoi de
+    ce type sous 40 archers ») — c'est une règle sportive, elle se pose au-dessus du plancher
+    technique.
+
+    ⚠️ **Une exigence trop basse ne laisse rien passer** : le minimum retenu est le `max` des deux,
+    donc une valeur sous le plancher est simplement **inerte**. Ce n'est pas un risque pour le
+    tournoi, c'est un **écran qui ment** — l'organisateur croit avoir réglé un seuil qui ne
+    s'appliquera jamais, et le corrigera d'autant moins qu'il le croit posé. C'est ce mensonge que
+    l'anomalie interdit, pas un danger d'exécution. *(La docstring affirmait initialement l'inverse
+    — « il laisserait démarrer un tournoi que le moteur refuserait » — ce que le `max` contredit ;
+    relevé en revue.)*
+
+    Bloquante, donc, et non conjoncturelle : la contradiction est vraie à tout effectif. Le prix
+    assumé est qu'ajouter une consolante « rangs 41 et suivants » à un format qui exigeait 40 le
+    rend inapplicable jusqu'à ce que le chiffre soit relevé — le déroulé a changé, l'exigence doit
+    être revue.
+    """
+
+    code = "effectif_minimum_incoherent"
+
+
+class ExigenceEffectifInvalide(DomainError):
+    """Le minimum exigé d'un format n'est pas un entier positif (E05US021).
+
+    « Aucune exigence » se dit en ne réglant **rien** (`None`), pas en réglant zéro — même parti que
+    `Phase.barrage_jusqu_au`. Un zéro accepté se lirait « exige 0 archer », un nombre qui n'a aucun
+    sens et qu'aucun écran ne saurait présenter.
+    """
+
+    code = "exigence_effectif_invalide"
+
+
 class FormatTableauIncoherent(DomainError):
     """Les politiques `seeding` et `byes` injectées se contredisent sur les exempts (E05US005).
 

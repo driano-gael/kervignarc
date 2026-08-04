@@ -187,6 +187,10 @@ class FormatRequete(BaseModel):
     # Borné pour la même raison que l'import de clubs : l'écriture passe par le writer unique. Un
     # format réel compte quelques étapes ; 64 est déjà hors de tout usage.
     etapes: list[EtapeDTO] = Field(default_factory=list, max_length=64)
+    # E05US021 : « pas de tournoi de ce type sous 40 archers ». Facultatif — `None` = aucune
+    # exigence propre, le plancher déduit des prélèvements fait seul la règle. Borné par le haut au
+    # même plafond que la simulation : au-delà, c'est une saisie erronée, pas une règle de club.
+    effectif_minimum_exige: int | None = Field(default=None, ge=1, le=EFFECTIF_MAX)
 
 
 class RenommerRequete(BaseModel):
@@ -210,6 +214,10 @@ class FormatReponse(BaseModel):
     # **pas** la conformité au règlement (ADR-0060 §4).
     origine: OrigineBrique
     etapes: list[EtapeDTO]
+    # E05US021 : ce que le club exige **en plus** du plancher déduit (`None` = rien). Le minimum
+    # *effectif* ne se lit pas ici mais au diagnostic (`DiagnosticReponse.effectif_minimum`), qui
+    # seul connaît les deux termes du `max`. **Sans défaut** : cf. `DiagnosticReponse`.
+    effectif_minimum_exige: int | None
 
     @staticmethod
     def de_agregat(format_tournoi: FormatTournoi) -> FormatReponse:
@@ -220,6 +228,7 @@ class FormatReponse(BaseModel):
             nom=format_tournoi.nom,
             origine=format_tournoi.origine,
             etapes=[EtapeDTO.de_modele(etape) for etape in format_tournoi.etapes],
+            effectif_minimum_exige=format_tournoi.effectif_minimum_exige,
         )
 
 
@@ -329,6 +338,11 @@ class DiagnosticReponse(BaseModel):
     applicable: bool
     blocs: list[BlocDTO]
     anomalies: list[AnomalieDTO]
+    # E05US021 : le nombre d'inscrits en dessous duquel ce format ne peut pas se dérouler. Une
+    # **donnée** du diagnostic, pas une anomalie : l'écran l'annonce en permanence, qu'un effectif
+    # soit simulé ou non. **Sans défaut** : sur une réponse, un défaut masquerait un oubli de
+    # mapping au lieu de le faire échouer.
+    effectif_minimum: int
 
     @staticmethod
     def de_agregat(projection: ProjectionDeroule) -> DiagnosticReponse:
@@ -337,6 +351,7 @@ class DiagnosticReponse(BaseModel):
             applicable=projection.est_applicable,
             blocs=[BlocDTO.de_agregat(bloc) for bloc in projection.blocs],
             anomalies=[AnomalieDTO.de_agregat(a) for a in projection.anomalies],
+            effectif_minimum=projection.effectif_minimum,
         )
 
 
@@ -455,7 +470,9 @@ async def creer_format(requete: FormatRequete, request: Request) -> FormatRepons
     write_queue: WriteQueue = request.app.state.write_queue
     etapes = [etape.vers_modele() for etape in requete.etapes]
     format_tournoi = await asyncio.wrap_future(
-        write_queue.submit(lambda: service.creer(requete.nom, etapes))
+        write_queue.submit(
+            lambda: service.creer(requete.nom, etapes, requete.effectif_minimum_exige)
+        )
     )
     return FormatReponse.de_agregat(format_tournoi)
 
@@ -495,7 +512,9 @@ async def modifier_format(
     write_queue: WriteQueue = request.app.state.write_queue
     etapes = [etape.vers_modele() for etape in requete.etapes]
     format_tournoi = await asyncio.wrap_future(
-        write_queue.submit(lambda: service.modifier(format_id, requete.nom, etapes))
+        write_queue.submit(
+            lambda: service.modifier(format_id, requete.nom, etapes, requete.effectif_minimum_exige)
+        )
     )
     return FormatReponse.de_agregat(format_tournoi)
 

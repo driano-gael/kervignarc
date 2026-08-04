@@ -150,6 +150,7 @@ def test_modifier_le_format_n_altere_pas_les_phases_deja_appliquees() -> None:
     format_tournoi.modifier(
         "Renommé",
         [ModelePhase.qualification(BaremeQualification.creer(1, 1))],
+        None,
     )
 
     assert phase.bareme == BaremeQualification.preset_ffta_18m()
@@ -169,6 +170,7 @@ def test_modifier_un_officiel_sur_place_le_laisse_officiel() -> None:
                 BaremeQualification.creer(nb_volees=18, nb_fleches_par_volee=3)
             )
         ],
+        None,
     )
 
     assert modifie.origine is OrigineBrique.FFTA

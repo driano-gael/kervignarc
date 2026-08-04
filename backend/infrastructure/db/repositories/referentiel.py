@@ -66,15 +66,28 @@ from infrastructure.erreurs import InfrastructureError
 
 
 def _vers_tournoi(ligne: TournoiORM) -> Tournoi:
-    """Traduit une ligne ORM en agrégat de domaine `Tournoi`."""
-    return Tournoi(
-        nom=ligne.nom,
-        date=ligne.date,
-        lieu=ligne.lieu,
-        type_tournoi=TypeTournoi(ligne.type_tournoi),
-        statut=StatutTournoi(ligne.statut),
-        id=ligne.id,
-    )
+    """Traduit une ligne ORM en agrégat de domaine `Tournoi`.
+
+    Même régime qu'`_vers_format` : le repository est le **seul** rédacteur de ces colonnes et n'y
+    écrit que des valeurs valides, donc une ligne que le domaine refuse est une incohérence
+    **technique** → `InfrastructureError`, pas une `DomainError` nue qui traverserait l'infra
+    (E05US021 ; `Tournoi.__post_init__` peut désormais lever). Sans cette enveloppe, une seule
+    ligne éditée à la main rendait `GET /tournois` inutilisable en 500 non typé.
+    """
+    try:
+        return Tournoi(
+            nom=ligne.nom,
+            date=ligne.date,
+            lieu=ligne.lieu,
+            type_tournoi=TypeTournoi(ligne.type_tournoi),
+            statut=StatutTournoi(ligne.statut),
+            effectif_minimum_exige=ligne.effectif_minimum_exige,
+            id=ligne.id,
+        )
+    except (DomainError, ValueError) as exc:
+        raise InfrastructureError(
+            f"Tournoi {ligne.id} illisible : une valeur en base viole une règle du domaine."
+        ) from exc
 
 
 def _vers_archer(ligne: ArcherORM) -> Archer:
@@ -215,6 +228,7 @@ class TournoiRepositorySQL:
                     lieu=tournoi.lieu,
                     type_tournoi=tournoi.type_tournoi.value,
                     statut=tournoi.statut.value,
+                    effectif_minimum_exige=tournoi.effectif_minimum_exige,
                 )
                 session.add(ligne)
                 session.commit()
@@ -259,6 +273,7 @@ class TournoiRepositorySQL:
                 ligne.lieu = tournoi.lieu
                 ligne.type_tournoi = tournoi.type_tournoi.value
                 ligne.statut = tournoi.statut.value
+                ligne.effectif_minimum_exige = tournoi.effectif_minimum_exige
                 session.commit()
                 return _vers_tournoi(ligne)
         except SQLAlchemyError as exc:

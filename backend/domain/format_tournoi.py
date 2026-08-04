@@ -31,8 +31,13 @@ from dataclasses import dataclass, replace
 
 from domain.anomalie import Anomalie, Gravite
 from domain.bareme import BaremeQualification
-from domain.deroule import ProjectionDeroule, projeter
-from domain.erreurs import FormatSansEtape, NomFormatInvalide
+from domain.deroule import ProjectionDeroule, effectif_minimum, projeter
+from domain.erreurs import (
+    EffectifMinimumIncoherent,
+    ExigenceEffectifInvalide,
+    FormatSansEtape,
+    NomFormatInvalide,
+)
 from domain.grain_validation import GrainValidation
 from domain.patrimoine import OrigineBrique
 from domain.phase import (
@@ -152,6 +157,9 @@ class FormatTournoi:
     nom: str
     etapes: tuple[ModelePhase, ...]
     origine: OrigineBrique = OrigineBrique.UTILISATEUR
+    # E05US021 : le minimum d'inscrits **exigé en plus** du plancher technique — « pas de tournoi de
+    # ce type sous 40 archers ». `None` = aucune exigence propre, le déduit fait seul la règle.
+    effectif_minimum_exige: int | None = None
     id: FormatTournoiId | None = None
 
     def __post_init__(self) -> None:
@@ -161,23 +169,51 @@ class FormatTournoi:
         promotion dédoublonnent par le nom (arbitrage d'E01US023, point 1). Un format sans nom ne
         serait pas un brouillon, il serait introuvable. Tout le reste — étapes manquantes, ordres,
         sources — se **diagnostique** (`anomalies`) et se refuse à l'**application** (`appliquer`).
+
+        L'exigence d'effectif fait exception **de forme**, pas de fond : un zéro ou un négatif n'est
+        pas un brouillon incomplet, c'est une valeur qui ne veut rien dire. Sa cohérence avec le
+        déroulé (« exiger 20 quand il en faut 34 »), elle, se diagnostique comme le reste.
         """
         if not self.nom.strip():
             raise NomFormatInvalide("Le nom d'un format de tournoi ne peut pas être vide.")
+        if self.effectif_minimum_exige is not None and self.effectif_minimum_exige < 1:
+            raise ExigenceEffectifInvalide(
+                "Le minimum d'inscrits exigé par un format est un entier positif "
+                f"(reçu {self.effectif_minimum_exige}) ; « aucune exigence » se dit en ne réglant "
+                "rien."
+            )
 
     @staticmethod
     def creer(
         nom: str,
         etapes: Iterable[ModelePhase],
         origine: OrigineBrique = OrigineBrique.UTILISATEUR,
+        effectif_minimum_exige: int | None = None,
     ) -> FormatTournoi:
         """Crée un format, **cohérent ou non** ; le nom est normalisé (espaces de bord retirés).
 
-        Lève `NomFormatInvalide` si le nom est vide — et rien d'autre : depuis E01US024 un format
-        s'enregistre à tout moment, même incomplet. Pour savoir s'il tient debout, appeler
-        `anomalies()` ; pour être sûr qu'il ne salira pas un tournoi, `appliquer()` refuse.
+        Lève `NomFormatInvalide` si le nom est vide, `ExigenceEffectifInvalide` si l'exigence
+        d'effectif n'est pas positive — et rien d'autre : depuis E01US024 un format s'enregistre à
+        tout moment, même incomplet. Pour savoir s'il tient debout, appeler `anomalies()` ; pour
+        être sûr qu'il ne salira pas un tournoi, `appliquer()` refuse.
         """
-        return FormatTournoi(nom=_nom_valide(nom), etapes=tuple(etapes), origine=origine)
+        return FormatTournoi(
+            nom=_nom_valide(nom),
+            etapes=tuple(etapes),
+            origine=origine,
+            effectif_minimum_exige=effectif_minimum_exige,
+        )
+
+    @property
+    def effectif_minimum(self) -> int:
+        """Le nombre d'inscrits **en dessous duquel ce format ne peut pas se dérouler** (E05US021).
+
+        Le plancher **déduit** des prélèvements, relevé par l'exigence du club si elle est plus
+        haute. Une exigence plus **basse** ne l'abaisse pas — elle est signalée comme incohérente
+        (`EffectifMinimumIncoherent`) et rend le format inapplicable : c'est le déduit qui a le
+        dernier mot, parce que c'est lui que le moteur fera respecter sur la tablette.
+        """
+        return max(effectif_minimum(self.etapes), self.effectif_minimum_exige or 0)
 
     def projeter(self, effectif: int | None = None) -> ProjectionDeroule:
         """Le déroulé que ce format produit à `effectif` archers (schéma à braquets, E01US024).
@@ -192,20 +228,38 @@ class FormatTournoi:
         `FormatSansEtape`, et l'écran affichait « inapplicable » sans dire pourquoi.
         """
         projection = projeter(self.etapes, effectif)
-        if self.etapes:
-            return projection
-        return replace(
-            projection,
-            anomalies=(
-                Anomalie(
-                    FormatSansEtape(
-                        "Ce format ne décrit aucune phase : l'appliquer à un tournoi ne créerait "
-                        "rien."
-                    )
+        propres = tuple(self._anomalies_propres(projection))
+        if propres:
+            projection = replace(projection, anomalies=propres + projection.anomalies)
+        if self.effectif_minimum_exige is not None:
+            # L'exigence du club relève le chiffre annoncé à l'écran de composition — sans quoi il
+            # afficherait le plancher technique, non ce que l'organisateur devra réunir.
+            projection = replace(projection, effectif_minimum=self.effectif_minimum)
+        return projection
+
+    def _anomalies_propres(self, projection: ProjectionDeroule) -> Iterable[Anomalie]:
+        """Les anomalies qui appartiennent au **format** et non à sa séquence de phases.
+
+        Deux seulement, et elles se ressemblent : n'avoir aucune étape, et exiger un effectif que le
+        déroulé contredit. Toutes deux portent sur le format **en tant qu'objet de bibliothèque** —
+        `domain.deroule`, qui ne voit qu'une suite d'étapes, ne peut ni l'une ni l'autre.
+        """
+        if not self.etapes:
+            yield Anomalie(
+                FormatSansEtape(
+                    "Ce format ne décrit aucune phase : l'appliquer à un tournoi ne créerait rien."
+                )
+            )
+        exige = self.effectif_minimum_exige
+        if exige is not None and exige < projection.effectif_minimum:
+            yield Anomalie(
+                EffectifMinimumIncoherent(
+                    f"Ce format exige {exige} inscrits, mais son déroulé en réclame au moins "
+                    f"{projection.effectif_minimum} : l'exigence ne peut pas descendre sous ce que "
+                    "les prélèvements imposent."
                 ),
-                *projection.anomalies,
-            ),
-        )
+                gravite=Gravite.BLOQUANTE,
+            )
 
     def anomalies(self, effectif: int | None = None) -> tuple[Anomalie, ...]:
         """Tout ce qui cloche dans ce format, à `effectif` archers — le diagnostic du CA."""
@@ -243,14 +297,34 @@ class FormatTournoi:
             ],
         )
 
-    def modifier(self, nom: str, etapes: Iterable[ModelePhase]) -> FormatTournoi:
-        """Renvoie une copie au nom et aux étapes remplacés (mêmes règles que `creer`).
+    def modifier(
+        self,
+        nom: str,
+        etapes: Iterable[ModelePhase],
+        effectif_minimum_exige: int | None,
+    ) -> FormatTournoi:
+        """Renvoie une copie au nom, aux étapes et à l'exigence d'effectif remplacés (mêmes règles
+        que `creer`).
 
         L'`id` et l'`origine` sont **préservés** : modifier un format officiel sur place le laisse
         officiel (le règlement évolue — ADR-0060 §4). Pour obtenir deux modèles distincts,
         l'appelant passe par `en_creation_utilisateur`.
+
+        ⚠️ `effectif_minimum_exige` est **remplacé**, pas fusionné : le passer à `None` *efface*
+        l'exigence, exactement comme passer une liste vide efface les étapes. C'est le contrat d'un
+        `PUT`.
+
+        **Le paramètre est délibérément sans défaut**, et c'est un garde-fou, pas une rigidité : un
+        défaut `None` avait laissé **deux** appelants de production effacer la règle du club en
+        silence (`ServiceFormats.promouvoir` et l'écran Patrimoine). Sans défaut, mypy les nomme.
+        Un paramètre dont l'omission détruit une donnée ne doit pas pouvoir s'omettre.
         """
-        return replace(self, nom=_nom_valide(nom), etapes=tuple(etapes))
+        return replace(
+            self,
+            nom=_nom_valide(nom),
+            etapes=tuple(etapes),
+            effectif_minimum_exige=effectif_minimum_exige,
+        )
 
     def en_creation_utilisateur(self, nom: str) -> FormatTournoi:
         """Détache une **copie** marquée « création utilisateur », **non persistée**.
@@ -283,14 +357,24 @@ class FormatTournoi:
         return tuple(etape.pour_tournoi(tournoi_id) for etape in self.etapes)
 
     @staticmethod
-    def de_phases(nom: str, phases: Iterable[Phase]) -> FormatTournoi:
+    def de_phases(
+        nom: str, phases: Iterable[Phase], effectif_minimum_exige: int | None = None
+    ) -> FormatTournoi:
         """Capture les phases d'un tournoi en format de bibliothèque (**promotion**).
 
         Les statuts sont perdus (cf. `ModelePhase.de_phase`) : on promeut un **déroulé**, pas un
-        avancement. Lève `FormatSansEtape` si le tournoi n'a aucune phase à promouvoir, et les
-        erreurs de séquence si ses phases n'en forment pas une valide.
+        avancement. L'exigence d'effectif, elle, **remonte** si l'appelant la fournit : à la
+        différence du statut, c'est une propriété du déroulé et non de l'édition. Elle n'est pas
+        lisible depuis les phases — le tournoi la porte —, d'où le paramètre explicite.
+
+        Lève `FormatSansEtape` si le tournoi n'a aucune phase à promouvoir, et les erreurs de
+        séquence si ses phases n'en forment pas une valide.
         """
-        return FormatTournoi.creer(nom, [ModelePhase.de_phase(phase) for phase in phases])
+        return FormatTournoi.creer(
+            nom,
+            [ModelePhase.de_phase(phase) for phase in phases],
+            effectif_minimum_exige=effectif_minimum_exige,
+        )
 
 
 def _nom_valide(nom: str) -> str:

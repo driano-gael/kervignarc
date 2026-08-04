@@ -178,11 +178,19 @@ export interface FormatTournoi {
   nom: string
   origine: OrigineBrique
   etapes: Etape[]
+  // E05US021 — ce que le club exige **en plus** du plancher déduit des prélèvements (`null` = rien).
+  // Le minimum *effectif* (le plus haut des deux) se lit au diagnostic, pas ici.
+  effectif_minimum_exige: number | null
 }
 
 export interface NouveauFormat {
   nom: string
   etapes: Etape[]
+  // ⚠️ **Requis, et c'est un garde-fou.** Le `PUT` est une édition **totale** : omettre ce champ
+  // efface l'exigence, comme omettre les étapes les effacerait. Il a d'abord été optionnel, et deux
+  // écrans l'ont aussitôt omis — la règle de club disparaissait sans message. En le rendant requis,
+  // le compilateur nomme tout appelant qui l'oublie. `null` reste la façon de dire « aucune ».
+  effectif_minimum_exige: number | null
 }
 
 export function getFormats(): Promise<FormatTournoi[]> {

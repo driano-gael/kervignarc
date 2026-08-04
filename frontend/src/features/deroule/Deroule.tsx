@@ -124,7 +124,19 @@ function CompositionDuFormat({
 }) {
   const [nom, setNom] = useState(format.nom)
   const [etapes, setEtapes] = useState<Etape[]>(format.etapes)
+  // Saisi en **texte** comme l'effectif simulé : un champ numérique vidé doit pouvoir rester vide
+  // pendant qu'on le retape, ce qu'un `number | null` piloté ferait perdre à chaque frappe.
+  const [minimumExige, setMinimumExige] = useState(
+    format.effectif_minimum_exige === null ? '' : String(format.effectif_minimum_exige),
+  )
   const [modifie, setModifie] = useState(false)
+
+  // `lireEntier` rend `null` (vide = aucune exigence), un entier, ou `undefined` (illisible).
+  // ⚠️ Le `Number()` nu qui était ici **effaçait** la règle du club : `Number('quarante')` vaut
+  // `NaN`, que `JSON.stringify` sérialise en `null` — le serveur comprenait « aucune exigence » et
+  // répondait 200. Le même piège était déjà résolu deux fonctions plus bas pour l'effectif simulé ;
+  // il n'avait pas été réappliqué ici.
+  const exigenceSaisie = lireEntier(minimumExige)
 
   const diagnostic = useDiagnostic(format.id, effectif)
   const enregistrer = useEnregistrerBrouillon()
@@ -149,21 +161,34 @@ function CompositionDuFormat({
           }}
           etapes={etapes}
           surEtapes={majEtapes}
+          minimumExige={minimumExige}
+          surMinimumExige={(valeur) => {
+            setMinimumExige(valeur)
+            setModifie(true)
+          }}
         />
         <div className="formulaire__actions">
           <button
             type="button"
-            disabled={!modifie || enregistrer.isPending}
+            disabled={!modifie || enregistrer.isPending || exigenceSaisie === undefined}
             onClick={() =>
               enregistrer.enregistrer(
-                { id: format.id, entree: { nom, etapes } },
+                {
+                  id: format.id,
+                  entree: { nom, etapes, effectif_minimum_exige: exigenceSaisie ?? null },
+                },
                 { onSuccess: () => setModifie(false) },
               )
             }
           >
             Enregistrer le brouillon
           </button>
-          {modifie && (
+          {exigenceSaisie === undefined && (
+            <span className="carte__etat carte__etat--alerte" role="status">
+              ▲ Le minimum d’inscrits doit être un nombre entier d’au moins 1 — ou vide.
+            </span>
+          )}
+          {modifie && exigenceSaisie !== undefined && (
             <span className="carte__etat" role="status">
               Modifications non enregistrées — le schéma montre encore la version enregistrée.
             </span>
@@ -185,6 +210,7 @@ function CompositionDuFormat({
         {diagnostic.data !== undefined && (
           <>
             <Verdict diagnostic={diagnostic.data} />
+            <EffectifMinimum diagnostic={diagnostic.data} />
             <ReserveMoteur diagnostic={diagnostic.data} />
             {/* Surface **atelier** : taille fixe (on lit les chiffres et on fait défiler), habillage
                 outil (`D-27` : jamais d'identité de tournoi ici — on compose un modèle, pas une
@@ -221,6 +247,40 @@ function Verdict({ diagnostic }: { diagnostic: Diagnostic }) {
     <p className="carte__etat carte__etat--alerte" role="status">
       ▲ Ce brouillon est enregistré, mais {bloquantes} point(s) l'empêchent de servir un vrai
       tournoi.
+    </p>
+  )
+}
+
+/**
+ * Le plancher d'inscrits de ce format (E05US021) — annoncé **qu'un effectif soit simulé ou non**.
+ *
+ * Deux registres, et c'est délibéré. Tant que le compte est bon (ou qu'on ne simule rien), c'est une
+ * **information** neutre : `carte__aide`, pas d'alerte — le format n'a rien de fautif, il a
+ * simplement un plancher. Dès que l'effectif simulé passe dessous, ça devient un **avertissement**
+ * ambre (`--warn`, `DV-03`), avec glyphe *et* mot : à cet effectif-là, le tournoi ne se lancera pas.
+ *
+ * Jamais bloquant : un format composé pour 120 archers reste parfaitement valide le jour où l'on en
+ * simule 28 — c'est la simulation qui ne correspond pas, pas le format. Le blocage n'a lieu qu'au
+ * démarrage d'un vrai tournoi, où les inscrits sont des faits et non une hypothèse.
+ */
+export function EffectifMinimum({ diagnostic }: { diagnostic: Diagnostic }) {
+  const minimum = diagnostic.effectif_minimum
+  // 1 = « aucune exigence » : tout déroulé accueille au moins un archer. L'afficher ferait passer
+  // une trivialité pour une contrainte.
+  if (minimum <= 1) return null
+
+  const insuffisant = diagnostic.effectif !== null && diagnostic.effectif < minimum
+  if (!insuffisant) {
+    return (
+      <p className="carte__aide">
+        Ce déroulé demande au moins <strong>{minimum} inscrits</strong> pour pouvoir être lancé.
+      </p>
+    )
+  }
+  return (
+    <p className="carte__etat carte__etat--alerte" role="status">
+      ▲ <strong>À vérifier</strong> — à {diagnostic.effectif} archers, ce déroulé ne peut pas être
+      lancé : il en demande au moins {minimum}.
     </p>
   )
 }
@@ -438,11 +498,15 @@ function EditeurSequence({
   surNom,
   etapes,
   surEtapes,
+  minimumExige,
+  surMinimumExige,
 }: {
   nom: string
   surNom: (valeur: string) => void
   etapes: Etape[]
   surEtapes: (etapes: Etape[]) => void
+  minimumExige: string
+  surMinimumExige: (valeur: string) => void
 }) {
   const [edition, setEdition] = useState<number | null>(null)
   return (
@@ -453,6 +517,22 @@ function EditeurSequence({
           Nom du format
         </label>
         <input id="deroule-nom" value={nom} onChange={(e) => surNom(e.target.value)} />
+      </div>
+      <div className="formulaire__champ">
+        <label className="formulaire__libelle" htmlFor="deroule-minimum-exige">
+          Minimum d'inscrits exigé (facultatif)
+        </label>
+        <input
+          id="deroule-minimum-exige"
+          inputMode="numeric"
+          value={minimumExige}
+          onChange={(e) => surMinimumExige(e.target.value)}
+        />
+        <p className="carte__aide">
+          Une règle de club : « pas de tournoi de ce type sous 40 archers ». Laissez vide pour vous
+          en tenir au minimum que le déroulé impose de lui-même — vous ne pouvez pas exiger moins
+          que lui.
+        </p>
       </div>
       <ol className="liste-phases">
         {etapes.map((etape, index) => (
@@ -809,7 +889,8 @@ function NouveauFormat({ surCreation }: { surCreation: (id: number) => void }) {
         // Un format **vide** est un brouillon parfaitement licite depuis E01US024 : c'est même
         // l'état normal de celui qu'on vient de nommer.
         creer.mutate(
-          { nom, etapes: [] },
+          // Un format neuf n'exige rien : la règle de club se pose ensuite, à la composition.
+          { nom, etapes: [], effectif_minimum_exige: null },
           {
             onSuccess: (cree: FormatTournoi) => {
               surCreation(cree.id)

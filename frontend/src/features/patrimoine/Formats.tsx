@@ -152,7 +152,13 @@ function LigneFormat({ format }: { format: FormatTournoi }) {
           enCours={modifier.isPending}
           onEnregistrer={(nom, etapes) =>
             modifier.mutate(
-              { id: format.id, entree: { nom, etapes } },
+              {
+                id: format.id,
+                // ⚠️ Le `PUT` est une édition **totale** : omettre ce champ effacerait la règle de
+                // club posée depuis « Composer un déroulé ». Cet écran ne la modifie pas, il la
+                // **fait suivre** (défaut relevé en revue — la perte était silencieuse).
+                entree: { nom, etapes, effectif_minimum_exige: format.effectif_minimum_exige },
+              },
               {
                 onSuccess: () => setEdition(false),
               },
@@ -298,7 +304,10 @@ function FormulaireFormat() {
       sources: [],
       effectif: null,
     }
-    creer.mutate({ nom, etapes: [etape] }, { onSuccess: () => setNom('') })
+    creer.mutate(
+      { nom, etapes: [etape], effectif_minimum_exige: null },
+      { onSuccess: () => setNom('') },
+    )
   }
 
   return (

@@ -369,7 +369,17 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
     Chaque étape reprend la forme d'une `config` de phase (`_politiques_json`), augmentée de son
     `ordre` et de son `type` — que `PhaseORM` porte en colonnes propres et qu'un format, lui, doit
     ranger dans le JSON puisqu'il en stocke plusieurs par ligne.
+
+    `effectif_minimum_exige` (E05US021) s'ajoute **à côté** des étapes plutôt qu'en colonne : c'est
+    une propriété du format entier, elle suit donc le même parti que la séquence — une donnée
+    toujours lue et écrite en bloc, jamais requêtée. La clé est **omise** quand rien n'est exigé,
+    pour qu'une config d'avant l'US et une config sans exigence soient le même document.
     """
+    exigence = (
+        {}
+        if format_tournoi.effectif_minimum_exige is None
+        else {"effectif_minimum_exige": format_tournoi.effectif_minimum_exige}
+    )
     return json.dumps(
         {
             "etapes": [
@@ -386,7 +396,8 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                     ),
                 }
                 for etape in format_tournoi.etapes
-            ]
+            ],
+            **exigence,
         }
     )
 
@@ -401,9 +412,18 @@ def _vers_format(ligne: FormatTournoiORM) -> FormatTournoi:
     elle qui rejoue les invariants de séquence (ordres contigus, sources antérieures).
     """
     try:
-        etapes = [_vers_modele_phase(brute) for brute in json.loads(ligne.config)["etapes"]]
+        config = json.loads(ligne.config)
+        etapes = [_vers_modele_phase(brute) for brute in config["etapes"]]
         return dataclasses.replace(
-            FormatTournoi.creer(ligne.nom, etapes, OrigineBrique(ligne.origine)), id=ligne.id
+            FormatTournoi.creer(
+                ligne.nom,
+                etapes,
+                OrigineBrique(ligne.origine),
+                # Absente des configs antérieures à E05US021 : leur relecture rend `None`, soit
+                # exactement le comportement d'avant l'US.
+                effectif_minimum_exige=config.get("effectif_minimum_exige"),
+            ),
+            id=ligne.id,
         )
     except (
         json.JSONDecodeError,

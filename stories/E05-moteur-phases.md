@@ -506,15 +506,60 @@ Origine : arbitrage du commanditaire du 03/08/2026, au cadrage d'E05US020 —
 connus au lancement, donc on ne peut pas lancer un tournoi qui n'a pas assez d'inscrits pour son
 format ; le logiciel doit connaître la fourchette basse et avertir l'admin avant de lancer. »
 
-- **CA — effectif minimum d'un format** : un format déclare, ou l'application dérive de ses
-  prélèvements, le **nombre d'inscrits en dessous duquel il ne peut pas se dérouler** (« les rangs 33
-  et suivants » exige au moins 34 classés pour produire un tableau de 2).
+- **CA — effectif minimum déduit** : l'application **dérive** des prélèvements le **nombre d'inscrits
+  en dessous duquel le format ne peut pas se dérouler** (« les rangs 33 et suivants » exige au moins
+  34 classés pour produire un tableau de 2). *(Arbitrage du 04/08/2026 : la déduction, **et non** une
+  saisie seule — un nombre saisi peut contredire le déroulé écrit juste en dessous, et le problème
+  reviendrait sur la tablette. Le CA d'origine laissait les deux ouverts.)*
+- **CA — minimum exigé, facultatif** : un format peut en plus **exiger davantage** que son minimum
+  technique (« pas de tournoi de ce type sous 40 archers », règle de club). La valeur saisie ne peut
+  pas être **inférieure** au minimum déduit — un format qui l'énonce est **inapplicable**, au même
+  titre qu'un format sans barème. *(Arbitrage du 04/08/2026, en réponse au CA d'origine « déclare,
+  ou dérive » : c'est **les deux**, le déduit servant de plancher au déclaré.)*
 - **CA — avertissement au lancement** : passer un tournoi « en cours » avec un effectif insuffisant
   est **refusé**, avec un message qui nomme la phase et son prélèvement. L'organisateur peut alors
-  changer de format.
-- **CA — visible à la composition** : le diagnostic de déroulé signale le cas **avant** l'application
-  du format, pas seulement au lancement.
+  changer de format. Le compte des inscrits est celui des **archers distincts tous départs
+  confondus**, tel que l'affiche déjà le suivi de déroulé.
+- **CA — visible avant le clic** : tant que le compte n'y est pas **et que le tournoi n'est pas
+  lancé**, l'écran du tournoi affiche en continu **« N inscrits / M requis »** et la cause (la phase
+  en cause, ou la règle de club). L'organisateur voit le manque arriver au lieu de le découvrir en
+  cliquant « Démarrer ». *(Arbitrage du 04/08/2026 : ajouté au CA — le CA d'origine ne prévoyait que
+  le refus au clic, ce qui n'apprend rien tant qu'on ne clique pas. La restriction « pas lancé » a
+  été tranchée à la revue : rappeler le manque sur un tournoi en cours serait un reproche sans
+  action possible.)*
+- **CA — visible à la composition** : l'écran « Composer un déroulé » annonce le minimum du format,
+  qu'un effectif soit simulé ou non.
 - **Notes** : le moteur refuse déjà de monter un tableau vide (E05US020, `EffectifTableauInvalide`) —
   c'est le **dernier** garde-fou, pas le bon endroit : il s'exprime sur la tablette, en compétition.
   Cette US met le contrôle là où la décision se prend.
+- **Notes — portée du calcul** : un rang se lit dans le classement de la **phase source**, pas dans
+  les inscrits. Le minimum n'est donc déduit que des prélèvements visant la **phase de
+  qualification** — la seule que le moteur sache lire (`_ordre_de_la_qualification`). ⚠️ Viser « la
+  première phase » **ne revient pas au même** : un échauffement en tête désactivait tout le contrôle,
+  et un déroulé sans qualification se voyait refuser à tort (défaut bloquant trouvé à la revue). Les
+  prélèvements par issue de tour, « le reste », et ceux qui visent une phase intermédiaire n'y
+  contribuent pas — annoncer un minimum qui les englobe serait annoncer un chiffre faux. Il leur
+  reste le **plancher structurel** : une phase qui oppose des tireurs en exige deux, quelle que soit
+  la source qui l'alimente (seuls la qualification et l'échauffement se contentent d'un). Ce
+  plancher est le **seul** filet pour ces cas : contrairement à ce qu'une première rédaction
+  affirmait, `PrelevementVide` ne les couvre pas (il n'existe que pour les prélèvements par rangs, et
+  seulement à compte nul).
+- **Notes — le plancher ne vaut que pour ce que le moteur déroule.** Un prélèvement par rangs vers
+  une **poule**, un système suisse, une colline, un Big Shoot Off ou un barrage autonome ne fixe
+  **aucun** minimum : ces types ont un moteur de domaine mais aucun service ne les exécute
+  (`DETTE-028`), donc rien ne cassera en salle. Refuser le lancement pour eux serait un **refus
+  abusif**, qui ne se répare que le jour J. *(Arbitrage de la contre-revue du 04/08/2026 : un
+  premier jet réclamait 34 inscrits pour « qualification → poules », donc empêchait de démarrer un
+  tournoi qui se serait joué. L'oracle « ce que le moteur lira » vaut dans les **deux** sens.)*
+- **Notes — une seule qualification par déroulé.** L'invariant était supposé par neuf lecteurs de
+  « **la** » qualification et vérifié nulle part ; deux d'entre eux la résolvaient différemment
+  (plus petit `ordre` / plus grand `id`), si bien qu'un déroulé à deux qualifications faisait
+  calculer le minimum sur une phase et prélever dans l'autre. Une anomalie **bloquante**
+  (`PlusieursQualifications`) le rend désormais impossible. Une qualification en plusieurs manches
+  se règle par son **barème**. *(Arbitrage de la contre-revue du 04/08/2026.)*
+- **Notes — pas de nouvelle anomalie de composition** : le diagnostic signale **déjà**
+  `PrelevementVide` quand un prélèvement ne prend personne à l'effectif simulé. Le minimum est donc
+  exposé comme une **donnée** de la projection, pas comme une anomalie de plus — un second
+  avertissement sur le même défaut le ferait remonter deux fois, le piège déjà documenté dans
+  `_anomalies_effectif_declare`.
 - **Dépend de** : E05US020 · **Jalon** : J3

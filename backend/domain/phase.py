@@ -56,6 +56,7 @@ from domain.erreurs import (
     PhaseQualificationIncomplete,
     PhaseSansClassementPrelevee,
     PlageSourceVide,
+    PlusieursQualifications,
     RangSourceInvalide,
     RangsSourceInexistants,
     SequenceOrdreInvalide,
@@ -591,6 +592,7 @@ def anomalies_sequence(etapes: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
     `domain.deroule`.
     """
     yield from _anomalies_ordres(etapes)
+    yield from _anomalies_unicite_qualification(etapes)
     yield from _anomalies_sources(etapes)
 
 
@@ -698,6 +700,31 @@ def _anomalies_ordres(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
             SequenceOrdreInvalide(
                 "Les phases d'une séquence sont numérotées 1, 2, 3… sans trou ni doublon : "
                 f"ordres reçus {ordres}."
+            )
+        )
+
+
+def _anomalies_unicite_qualification(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
+    """Une séquence ne porte **qu'une** phase de qualification (E05US021).
+
+    L'invariant était supposé partout et vérifié nulle part : neuf sites lisent « **la** »
+    qualification (`par_tournoi_et_type`), dont le peuplement des tableaux — et deux d'entre eux la
+    résolvaient différemment (plus petit `ordre` d'un côté, plus grand `id` de l'autre). Un déroulé
+    à deux qualifications faisait donc calculer le minimum d'inscrits sur une phase et prélever dans
+    l'autre : le tournoi démarrait puis cassait en salle.
+
+    Le contrôle est ici, avec les autres invariants **collectifs**, plutôt qu'en garde locale de
+    chaque lecteur : c'est une propriété de la séquence, et la poser une fois ferme les neuf sites
+    d'un coup. Non localisée (`ordre=None`) — c'est la séquence entière qui est ambiguë, aucune des
+    deux phases n'est fautive en particulier.
+    """
+    ordres = [phase.ordre for phase in phases if phase.type is TypePhase.QUALIFICATION]
+    if len(ordres) > 1:
+        yield Anomalie(
+            PlusieursQualifications(
+                "Une séquence ne peut porter qu'une phase de qualification : les phases "
+                f"{sorted(ordres)} en déclarent {len(ordres)}. Une qualification en plusieurs "
+                "manches se règle par son barème, pas par plusieurs phases."
             )
         )
 

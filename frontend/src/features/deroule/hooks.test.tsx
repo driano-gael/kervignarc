@@ -25,7 +25,13 @@ import { useDiagnostic, useEnregistrerBrouillon } from './hooks'
 vi.mock('./api', () => ({ getDiagnostic: vi.fn(), simulerFormat: vi.fn(), EFFECTIF_MAX: 200 }))
 vi.mock('../patrimoine/api', () => ({ modifierFormat: vi.fn() }))
 
-const DIAGNOSTIC: Diagnostic = { effectif: 120, applicable: true, blocs: [], anomalies: [] }
+const DIAGNOSTIC: Diagnostic = {
+  effectif: 120,
+  applicable: true,
+  blocs: [],
+  anomalies: [],
+  effectif_minimum: 1,
+}
 
 function enveloppe(client: QueryClient) {
   return function Enveloppe({ children }: { children: ReactNode }) {
@@ -47,6 +53,7 @@ describe('useEnregistrerBrouillon', () => {
       nom: 'X',
       origine: 'utilisateur',
       etapes: [],
+      effectif_minimum_exige: null,
     })
   })
 
@@ -59,7 +66,10 @@ describe('useEnregistrerBrouillon', () => {
     expect(getDiagnostic).toHaveBeenCalledTimes(1)
 
     await act(async () => {
-      rendu.result.current.sauvegarde.enregistrer({ id: 1, entree: { nom: 'X', etapes: [] } })
+      rendu.result.current.sauvegarde.enregistrer({
+        id: 1,
+        entree: { nom: 'X', etapes: [], effectif_minimum_exige: null },
+      })
     })
 
     await waitFor(() => expect(getDiagnostic).toHaveBeenCalledTimes(2))
@@ -73,7 +83,7 @@ describe('useEnregistrerBrouillon', () => {
 
     await act(async () => {
       rendu.result.current.enregistrer(
-        { id: 1, entree: { nom: 'X', etapes: [] } },
+        { id: 1, entree: { nom: 'X', etapes: [], effectif_minimum_exige: null } },
         { onSuccess: apresSucces },
       )
     })

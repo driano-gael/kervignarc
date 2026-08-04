@@ -23,3 +23,26 @@ export function getTransitions(tournoiId: number): Promise<Transition[]> {
 export function transitionnerTournoi(tournoiId: number, nom: string): Promise<Tournoi> {
   return fetchJson<Tournoi>(`/api/v1/tournois/${tournoiId}/${nom}`, { method: 'POST' })
 }
+
+// Ce que le déroulé du tournoi exige d'inscrits, et ce qu'il en a (E05US021).
+//
+// `minimum` vaut 0 quand aucun déroulé n'est composé — il n'y a alors rien à exiger.
+// `ordre_phase` / `rang_debut` disent **pourquoi** (« la phase 3 prélève à partir du rang 33 ») et
+// sont nuls quand le manque ne vient d'aucun prélèvement en particulier.
+// `origine` dit d'où vient le chiffre : `deroule` = plancher déduit des phases, `club` = règle
+// saisie sur le format, `aucune` = rien de composé. C'est ce qui décide de la **phrase** affichée ;
+// le déduire de `ordre_phase === null` faisait annoncer une règle de club là où il n'y en a pas.
+export type OrigineExigence = 'aucune' | 'deroule' | 'club'
+
+export interface ExigenceEffectif {
+  inscrits: number
+  minimum: number
+  suffisant: boolean
+  origine: OrigineExigence
+  ordre_phase: number | null
+  rang_debut: number | null
+}
+
+export function getExigenceEffectif(tournoiId: number): Promise<ExigenceEffectif> {
+  return fetchJson<ExigenceEffectif>(`/api/v1/tournois/${tournoiId}/exigence-effectif`)
+}
