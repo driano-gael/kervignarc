@@ -1,0 +1,224 @@
+/* --- Vue publique des tableaux de duels (E07US005), maquette P05 --------------------------------
+   Un seul jeu de règles pour deux surfaces : l'appli publique (360 px, tenue à la main) et l'écran
+   de salle (projeté, lu à cinq mètres). Tailles en **em**, jamais en px : `.salle` porte une échelle
+   typographique dédiée (E07US004) et des px figés y resteraient illisibles de loin. Même règle que
+   `affectations.css`, pour la même raison.
+
+   Le problème de conception que la maquette pose — « un arbre à 16 entrées ne rentre pas sur
+   360 px, et le réduire le rend illisible » — se résout ici en **listes** : par étape pour « mon
+   chemin », par tour pour l'arbre complet. Aucune tentative de dessiner des branches : elles ne
+   passeraient pas, et la concession est assumée. */
+
+.tableaux__barre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tableaux__lecture {
+  display: flex;
+  gap: 8px;
+}
+
+.tableaux__phase {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.tableaux__phase-libelle {
+  font-size: 0.9em;
+  color: var(--text);
+}
+
+.tableaux__entete {
+  margin: 0 0 0.8em;
+  font-size: 0.9em;
+  color: var(--text);
+}
+
+/* --- A · « Mon chemin » ------------------------------------------------------------------------- */
+
+.tableaux__chemins,
+.tableaux__etapes,
+.tableaux__duels,
+.tableaux__places {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tableaux__chemins {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9em;
+}
+
+.tableaux__chemin {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6em 0.7em;
+}
+
+.tableaux__chemin-nom {
+  display: block;
+  font-weight: 700;
+  color: var(--text-h);
+  margin-bottom: 0.4em;
+}
+
+.tableaux__etapes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+}
+
+.tableaux__etape {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  flex-wrap: wrap;
+  padding: 0.25em 0;
+}
+
+/* Colonne fixe pour le tour : les étiquettes s'alignent en colonne, sinon chaque ligne décale le
+   nom suivant et le chemin cesse de se lire en diagonale (même raison que la position A→D du pas
+   de tir dans `affectations.css`). */
+.tableaux__tour {
+  flex: 0 0 7.5em;
+  font-size: 0.85em;
+  color: var(--text);
+}
+
+.tableaux__contre {
+  flex: 1 1 8em;
+  color: var(--text-h);
+}
+
+.tableaux__score {
+  font-variant-numeric: tabular-nums;
+}
+
+.tableaux__statut {
+  flex: 0 0 auto;
+  font-size: 0.8em;
+  color: var(--text);
+  opacity: 0.85;
+}
+
+/* `DV-03` : la couleur ne porte jamais le sens seule — chaque étape écrit son statut en toutes
+   lettres (`LIBELLE_STATUT`). Ces teintes ne font qu'accélérer la lecture. */
+.tableaux__etape--gagne .tableaux__statut {
+  color: var(--ok);
+  opacity: 1;
+}
+
+.tableaux__etape--perdu .tableaux__statut {
+  color: var(--text);
+}
+
+/* Ambre pour l'attente, jamais le rouge : rien n'est en faute, le scoreur n'a pas encore scellé. */
+.tableaux__etape--en-attente .tableaux__statut {
+  color: var(--warn);
+  opacity: 1;
+}
+
+.tableaux__etape--a-jouer .tableaux__contre {
+  font-weight: 700;
+}
+
+.tableaux__etape--a-venir {
+  opacity: 0.6;
+}
+
+.tableaux__sortie {
+  margin: 0.5em 0 0;
+  font-size: 0.85em;
+  color: var(--text);
+}
+
+/* --- B · Arbre complet, en liste par tour -------------------------------------------------------- */
+
+.tableaux__tours {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+}
+
+.tableaux__tour-titre {
+  margin: 0 0 0.4em;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.tableaux__duels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+
+.tableaux__duel {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  flex-wrap: wrap;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4em 0.6em;
+  color: var(--text-h);
+}
+
+.tableaux__vs {
+  flex: 0 0 auto;
+  font-size: 0.85em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.tableaux__gagnant {
+  font-weight: 700;
+}
+
+.tableaux__enjeu {
+  flex: 0 0 auto;
+  font-size: 0.8em;
+  color: var(--accent);
+}
+
+.tableaux__attente {
+  flex: 1 1 100%;
+  font-size: 0.8em;
+  color: var(--warn);
+}
+
+/* --- Places acquises ----------------------------------------------------------------------------- */
+
+.tableaux__podium {
+  margin-top: 1em;
+  padding-top: 0.6em;
+  border-top: 1px solid var(--border);
+}
+
+.tableaux__places {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+}
+
+.tableaux__place {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  color: var(--text-h);
+}
+
+.tableaux__rang {
+  flex: 0 0 1.6em;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}

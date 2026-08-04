@@ -330,20 +330,27 @@ Ce qui transforme la saisie brute en tournoi qu'on suit en direct, dernier bloc 
   où ? » (après les tablettes, les téléphones du public et « ma journée »). Détail dans
   [`2026-07-22-14h39-rechercher-un-archer.md`](2026-07-22-14h39-rechercher-un-archer.md).
 - **Les écrans de salle** : un ou plusieurs écrans branchés dans le gymnase, rattachés **comme une
-  tablette de cible** (même code, même geste), qui font défiler tout seuls classement, plan de cibles
-  et suivi du déroulé — chacun avec son propre défilé. Ils apparaissent dans la console de
+  tablette de cible** (même code, même geste), qui font défiler tout seuls classement, plan de cibles,
+  affectations, **tableaux de duels**, palmarès et suivi du déroulé — chacun avec son propre défilé. Ils apparaissent dans la console de
   supervision (*un écran figé ne se plaint pas non plus*), et l'organisateur peut leur **imposer une
   vue à distance** avec une durée, après quoi l'écran **reprend son défilé sans que personne y
   retourne**. Détail dans
   [`2026-08-02-00h29-ecran-de-salle-et-suivi-du-deroule.md`](2026-08-02-00h29-ecran-de-salle-et-suivi-du-deroule.md).
+- **Les tableaux de duels en direct** (dernier fait marquant, 04/08) : le public gagne un onglet
+  **« Tableaux »** et voit enfin **contre qui** on tire. Deux façons de lire le même arbre — **« Mon
+  chemin »**, le parcours de chaque archer suivi tour par tour, et le **tableau complet** groupé par
+  tour. L'écran de salle sait projeter la même chose, sur le tableau qui se joue. Détail dans
+  [`2026-08-04-22h40-tableaux-de-duels-en-direct.md`](2026-08-04-22h40-tableaux-de-duels-en-direct.md).
 - **Le plan du tournoi qui se remplit** : le schéma en cases et flèches composé à l'atelier devient
   un **suivi** — phase terminée / en cours / à venir, tour en cours, duels joués sur duels attendus.
   Le **même dessin** à trois endroits (atelier, poste de l'organisateur, écran projeté) : on ne
   réapprend pas à le lire en changeant d'écran.
 
-*Reste à venir sur ce jalon : les **affectations du prochain tour** (phases finales). Les **duels**
-eux-mêmes (1/8, 1/4…) apparaissent « à venir » dans la complétude — et la « prochaine affectation » de
-la recherche restera vide — tant que leur moteur (EPIC-05) n'est pas construit.*
+*Les **affectations du prochain tour** (E07US008) et les **tableaux de duels** (E07US005) sont
+désormais livrées : ce paragraphe annonçait leur absence, il n'a plus lieu d'être. Ce qui reste hors
+de portée du public tient à ce que l'application ne planifie pas : il n'y a **pas d'horaire
+prévisionnel** de duel — c'est le lancement d'un tour par l'organisateur qui fait partir les
+rencontres.*
 
 ### 11. Scorer les duels — *premier écran du chantier duels*
 
@@ -439,7 +446,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **96 US livrées** sur `main` (mergées, revues, CI verte) à la date du 04/08/2026. **`SUIVI-US.md`
+- **97 US livrées** sur `main` (mergées, revues, CI verte) à la date du 04/08/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès

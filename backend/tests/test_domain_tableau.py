@@ -26,6 +26,7 @@ from domain.erreurs import (
     VainqueurHorsMatch,
 )
 from domain.participant import Participant
+from domain.plage import Plage
 from domain.politiques import (
     ByesAuxMieuxClasses,
     ContexteRoutage,
@@ -435,6 +436,31 @@ def test_libelle_petite_finale_prime_sur_le_tour() -> None:
     # rendez-vous. C'est la place en jeu qui la nomme.
     assert libelle_tour(tour=3, nb_tours=3, place_en_jeu=(3, 4)) == "Petite finale"
     assert libelle_tour(tour=3, nb_tours=3, place_en_jeu=(1, 2)) == "Finale"
+
+
+def test_libelle_d_une_branche_de_placement_se_lit_sur_sa_plage() -> None:
+    """La **version non terminale** du piège que `place_en_jeu` couvrait déjà (E07US005).
+
+    `place_en_jeu` n'est renseigné que sur les matchs **terminaux** : un match du sous-tableau des
+    places 5-8 se dispute au tour d'une demi-finale **sans place en jeu**, et se faisait donc
+    appeler « Demi-finale » par le seul compte des tours. Le coût est le même que pour la petite
+    finale — on envoie au podium quelqu'un qui joue la 5ᵉ place —, et le défaut était visible sur
+    deux surfaces publiques (l'onglet « Tableaux » et le panneau de routage).
+
+    Le discriminant est la **plage** : `debut > 1` signifie « descendu d'au moins une moitié
+    basse », donc branche de placement. Ce n'est pas un seuil arbitraire mais une conséquence
+    de la construction (`moitie_haute` conserve `debut`, `moitie_basse` le fait croître).
+    """
+    assert libelle_tour(tour=2, nb_tours=3, plage=Plage(5, 8)) == "Places 5 à 8"
+    # La branche du titre garde son nom : `debut == 1` n'est jamais un sous-tableau de placement.
+    assert libelle_tour(tour=2, nb_tours=3, plage=Plage(1, 4)) == "Demi-finale"
+    # `place_en_jeu` **prime** toujours : un match terminal reste nommé par ses rangs exacts.
+    assert libelle_tour(tour=3, nb_tours=3, place_en_jeu=(5, 6), plage=Plage(5, 6)) == (
+        "Match pour la 5ᵉ place"
+    )
+    assert libelle_tour(tour=3, nb_tours=3, place_en_jeu=(3, 4), plage=Plage(3, 4)) == (
+        "Petite finale"
+    )
 
 
 def test_le_podium_publie_les_rangs_trois_quatre_avant_la_finale() -> None:

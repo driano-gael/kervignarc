@@ -515,7 +515,9 @@ class ServiceRoutage:
                 prochain=self._prochain_duel(prochain, grille, moi),
             )
         dernier = max(siens, key=lambda m: m.tour)
-        tour_sortie = libelle_tour(dernier.tour, tableau.nb_tours, dernier.place_en_jeu)
+        tour_sortie = libelle_tour(
+            dernier.tour, tableau.nb_tours, dernier.place_en_jeu, dernier.plage
+        )
         a_perdu = dernier.vainqueur != moi
         if a_perdu and _est_repeche(tableau, dernier):
             destination = grille.repechages.get(dernier.tour)
@@ -577,7 +579,9 @@ class ServiceRoutage:
         return ProchainDuel(
             numero=match.numero,
             tour=match.tour,
-            libelle=libelle_tour(match.tour, grille.tableau.nb_tours, match.place_en_jeu),
+            libelle=libelle_tour(
+                match.tour, grille.tableau.nb_tours, match.place_en_jeu, match.plage
+            ),
             cible=pose[0] if pose is not None else None,
             position=pose[1] if pose is not None else None,
             adversaire=adversaire,

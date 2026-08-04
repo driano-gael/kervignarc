@@ -405,15 +405,17 @@ def test_une_vue_inconnue_est_refusee_sans_500(
 ) -> None:
     """**Non-régression** (2ᵉ passe) : ces valeurs sont les **premières** qu'un client enverra.
 
-    `tableaux` (E07US005) est nommée par le CA d'E07US004 et absente du catalogue livré. Avant
-    correctif, une telle valeur produisait un `ValueError` nu dans le corps du handler → **500 +
-    traceback journalisé**. Typer le champ au DTO la fait rejeter par Pydantic, champ fautif nommé.
+    Avant correctif, une valeur hors catalogue produisait un `ValueError` nu dans le corps du
+    handler → **500 + traceback journalisé**. Typer le champ au DTO la fait rejeter par Pydantic,
+    champ fautif nommé.
 
-    ⚠️ **Mis à jour par E07US008** : `affectations` servait ici de second exemple de vue inconnue et
-    est maintenant **livrée**. Ce test annonçait le cas (« quand le catalogue s'élargira ») — il a
-    donc échoué au bon endroit et pour la bonne raison. On garde `tableaux` comme vue encore absente
-    et l'on vérifie qu'`affectations` est bel et bien **acceptée** : sans cette seconde assertion,
-    le test ne dirait plus rien de l'élargissement qui vient de l'invalider.
+    ⚠️ **Deuxième mise à jour, par E07US005** (la première était E07US008, pour `affectations`).
+    Les deux exemples successifs de « vue inconnue » étaient des vues **nommées par le CA
+    d'E07US004 mais pas encore livrées** — un vivier qui vient de se **tarir** : avec `tableaux`, le
+    catalogue couvre le CA en entier. L'exemple est donc désormais une valeur **franchement
+    inventée**, qui ne peut plus être rattrapée par une US future — et le test vérifie en regard
+    que `tableaux` est bel et bien **acceptée**, sinon il ne dirait plus rien de l'élargissement qui
+    vient de l'invalider.
     """
     with TestClient(app_session) as client:
         tournoi_id = _tournoi(client, connecter_admin)
@@ -421,15 +423,15 @@ def test_une_vue_inconnue_est_refusee_sans_500(
 
         deroule = client.put(
             f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/deroule",
-            json={"vues": [{"vue": "tableaux", "cadence_s": 30}]},
+            json={"vues": [{"vue": "meteo_du_gymnase", "cadence_s": 30}]},
         )
         controle = client.post(
             f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/controle",
-            json={"vue": "tableaux", "duree_s": 300},
+            json={"vue": "meteo_du_gymnase", "duree_s": 300},
         )
         desormais_connue = client.put(
             f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/deroule",
-            json={"vues": [{"vue": "affectations", "cadence_s": 30}]},
+            json={"vues": [{"vue": "tableaux", "cadence_s": 30}]},
         )
 
         assert deroule.status_code == 400, deroule.text

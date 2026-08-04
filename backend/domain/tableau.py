@@ -634,7 +634,12 @@ def paires_du_premier_tour(tableau: Tableau) -> tuple[tuple[Participant, Partici
     )
 
 
-def libelle_tour(tour: int, nb_tours: int, place_en_jeu: tuple[int, int] | None = None) -> str:
+def libelle_tour(
+    tour: int,
+    nb_tours: int,
+    place_en_jeu: tuple[int, int] | None = None,
+    plage: Plage | None = None,
+) -> str:
     """Le nom que la salle donne à ce tour — « Quart de finale », « 1/8 de finale », « Finale ».
 
     Vocabulaire métier (règle 3), donc domaine : un archer ne se repère pas au **rang** du tour dans
@@ -652,16 +657,39 @@ def libelle_tour(tour: int, nb_tours: int, place_en_jeu: tuple[int, int] | None 
     panneau de routage. Un match qui décerne un rang au-delà du podium s'annonce « Match pour la
     5ᵉ place » : c'est ce qu'un archer attend d'entendre, et c'est sans ambiguïté.
 
-    Fonction **pure** : aucune lecture, aucun état. `nb_tours` vient de `Tableau.nb_tours`.
+    **`plage` couvre l'angle mort de `place_en_jeu`** (E07US005). `place_en_jeu` n'est renseigné
+    que sur les matchs **terminaux** (`plage.paire_terminale if terminal`, plus bas) : un match
+    d'un sous-tableau de placement **non terminal** — les places 5-8 au tour d'une demi-finale —
+    n'en a **aucun**, et se faisait donc appeler « Demi-finale » par le seul compte des tours.
+    C'est la version non terminale du défaut que `place_en_jeu` corrigeait déjà, et elle a le
+    même coût : elle envoie au podium quelqu'un qui joue la 5ᵉ place. Une plage dont le premier
+    rang dépasse le podium se nomme donc par ses **rangs**, pas par sa distance au titre.
+
+    Fonction **pure** : aucune lecture, aucun état. `nb_tours` vient de `Tableau.nb_tours`,
+    `plage` de `Match.plage`.
 
     `# DETTE-020` — le front calcule **aussi** ce libellé (`features/saisie-duels/duel.ts`,
     E04US013), au pluriel et avec un suffixe sur la petite finale : deux domiciles pour une
-    règle de vocabulaire, à unifier ici (ADR-0006).
+    règle de vocabulaire, à unifier ici (ADR-0006). E07US005 a **failli en ouvrir un troisième**
+    (`features/tableaux/`) et l'a refermé en consommant ce libellé au DTO ; la dette reste à
+    deux domiciles, et le suivant devra faire pareil.
     """
     if place_en_jeu == (3, 4):
         return "Petite finale"
+    # `# DETTE-038` — ce rang est **relatif au tableau** (l'arbre est engendré depuis
+    # `Plage(1, n)`).
+    # Sur un tableau secondaire prélevant « les rangs 33 et suivants », « la 5ᵉ place » désigne en
+    # réalité la 37ᵉ. Sans effet aujourd'hui (aucun format livré n'enchaîne de tableau secondaire) ;
+    # le remède est le décalage que `domain.palmares` applique déjà. Cf. docs/dette.md.
     if place_en_jeu is not None and place_en_jeu[0] > 2:
         return f"Match pour la {place_en_jeu[0]}ᵉ place"
+    # `debut > 1` et non « au-delà du podium » : la condition structurelle est « ce n'est pas la
+    # branche du titre ». Les plages se divisant en deux, toute plage de début > 1 encore large
+    # est un sous-tableau de placement ; celles de largeur 2 sont terminales et déjà nommées par
+    # `place_en_jeu` juste au-dessus.
+    # `# DETTE-038` — mêmes rangs relatifs que la branche ci-dessus.
+    if place_en_jeu is None and plage is not None and plage.debut > 1:
+        return f"Places {plage.debut} à {plage.fin}"
     restants = nb_tours - tour
     if restants <= 0:
         return "Finale"

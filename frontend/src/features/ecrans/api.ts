@@ -9,17 +9,22 @@
 
 import { fetchJson } from '../../shared/api/client'
 
-/** Les vues qu'un écran sait afficher. Miroir de `domain.ecran.VueEcran` — encore plus court que le
- * CA : les arbres (E07US005) ne sont pas livrés, les offrir au réglage programmerait une page vide.
- * Les affectations sont entrées avec E07US008 et le palmarès avec E06US004, **sans migration** (la
- * valeur persistée est la chaîne). */
-export type VueEcran = 'classement' | 'plan_cibles' | 'suivi_deroule' | 'affectations' | 'palmares'
+/** Les vues qu'un écran sait afficher. Miroir de `domain.ecran.VueEcran`, qui **couvre désormais le
+ * CA d'E07US004 en entier** : le catalogue s'est élargi trois fois — palmarès (E06US004),
+ * affectations (E07US008), tableaux (E07US005) — **sans une seule migration**, la valeur persistée
+ * étant la chaîne et non un rang. La règle qui a tenu à chaque fois : on n'inscrit une vue qu'une
+ * fois son écran capable de l'afficher, sinon le réglage programme une page vide. */
+export type VueEcran =
+  'classement' | 'plan_cibles' | 'suivi_deroule' | 'affectations' | 'palmares' | 'tableaux'
 
 export const LIBELLE_VUE: Record<VueEcran, string> = {
   classement: 'Classement',
   plan_cibles: 'Plan de cibles',
   suivi_deroule: 'Suivi du déroulé',
   affectations: 'Affectations',
+  // « Tableaux » et non « Arbres » : c'est le mot de la salle et celui du CA (règle 3). Sur l'écran
+  // projeté, la vue montre le tableau **qui se joue** — personne n'est là pour en choisir un.
+  tableaux: 'Tableaux',
   // « Palmarès » et non « Podium » : la vue porte les podiums **et** le classement final complet.
   // L'appeler podium ferait croire à quatre lignes, et l'organisateur qui cherche le classement de
   // fin de journée ne le programmerait pas.
@@ -31,6 +36,7 @@ export const TOUTES_LES_VUES: VueEcran[] = [
   'plan_cibles',
   'suivi_deroule',
   'affectations',
+  'tableaux',
   'palmares',
 ]
 

@@ -71,6 +71,11 @@ _LECTURES = [
     # l'éteindrait sans faire échouer un seul autre test : c'est exactement le scénario que ce
     # verrou existe pour empêcher (ajouté sur remarque de revue).
     "/api/v1/tournois/1/suivi-deroule",
+    # Tableaux du tournoi (E07US005) : « voir les arbres en direct ». Deux destinataires sans
+    # session — le spectateur sur son téléphone et l'écran de salle (vue `tableaux`). Le contenu
+    # est restreint au DTO (`api/v1/tableaux.py`) : pas d'identité de scoreur, pas de détail
+    # flèche à flèche.
+    "/api/v1/tableaux/1",
 ]
 
 
