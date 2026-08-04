@@ -170,11 +170,19 @@ _GRAIN_PAR_DEFAUT: dict[TypePhase, GrainValidation] = {
 # est d'ajouter un vrai format, pas un second échauffement.
 _TYPES_SANS_CLASSEMENT: frozenset[TypePhase] = frozenset({TypePhase.ECHAUFFEMENT})
 
-# Les types qui montent un **arbre de duels**, donc les seuls dont la profondeur de classement soit
-# un réglage (E06US006). Déclaré ici plutôt que dans `deroule.py` — qui le portait seul jusqu'à
-# cette US — parce que deux modules en ont désormais besoin et qu'une seconde copie divergerait au
-# premier type ajouté. À ne pas confondre avec `_TYPES_SANS_CLASSEMENT` : une poule **classe** ses
-# participants sans monter d'arbre, elle n'a donc pas de profondeur à régler.
+# Les types qui montent un **arbre de duels** : leur nombre de tours se déduit de l'effectif seul,
+# et ce sont les seuls dont la profondeur de classement soit un réglage (E06US006).
+#
+# Déclaré ici plutôt que dans `deroule.py` — qui le portait seul jusqu'à E06US006 — parce que trois
+# modules en ont désormais besoin (`domain.deroule`, `application.suivi_deroule`, et le contrôle de
+# `Phase.profondeur` ci-dessous) et qu'une copie de plus divergerait au premier type ajouté. ⚠️ Les
+# **trois** sites ont été ramenés ici : un premier jet n'en avait consolidé que deux, en affirmant
+# dans ce commentaire même qu'une seconde copie divergerait — pendant qu'une troisième vivait dans
+# `suivi_deroule`. Relevé par trois axes de revue.
+#
+# À ne pas confondre avec `_TYPES_SANS_CLASSEMENT` (une poule **classe** ses participants sans
+# monter d'arbre) ni avec `deroule._TYPES_DEROULES`, qui répond à une autre question — « le moteur
+# va-t-il seulement monter cette phase ? » — et ne recoupe celle-ci que par coïncidence.
 TYPES_EN_TABLEAU: frozenset[TypePhase] = frozenset(
     {TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMENT}
 )
@@ -189,7 +197,17 @@ TYPES_EN_TABLEAU: frozenset[TypePhase] = frozenset(
 # 1→N est ce que l'organisateur **choisit** ; l'absence de réglage reste ce qui était joué hier.
 _PROFONDEUR_PAR_DEFAUT: dict[TypePhase, ProfondeurClassement] = {
     TypePhase.ELIMINATION_DIRECTE: ProfondeurClassement.top(RANGS_DU_PODIUM),
-    TypePhase.PLACEMENT: ProfondeurClassement.top(RANGS_DU_PODIUM),
+    # ⚠️ **Le placement, lui, va jusqu'au bout** — asymétrie voulue, relevée en revue (axe A).
+    # L'argument de rétro-compatibilité ci-dessus ne s'applique **qu'à l'élimination directe** :
+    # elle seule a un existant à préserver. Aucun service ne monte de tableau pour une phase de
+    # type `placement` (les deux gardent `TypePhase.ELIMINATION_DIRECTE`, `# DETTE-028`), donc il
+    # n'y a **rien** à ne pas casser — et le catalogue promet à l'organisateur « tableau qui classe
+    # tout le monde, du 1ᵉʳ au dernier ». Lui donner le podium en preset ferait afficher « Podium —
+    # rangs 1 à 4 (défaut) » sur le type dont le nom dit l'inverse.
+    #
+    # La fenêtre est **maintenant** : le jour où ce type gagne son moteur, corriger le preset
+    # exigerait exactement la conversion silencieuse qu'ADR-0070 §3 refuse.
+    TypePhase.PLACEMENT: ProfondeurClassement.integrale(),
 }
 
 

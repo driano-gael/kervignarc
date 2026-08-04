@@ -10,7 +10,8 @@
 // (`PhaseSourceReferencee`). Un premier jet de cet écran ne faisait ni l'un ni l'autre : c'est la
 // parité avec l'écran équivalent qui manquait, pas une subtilité nouvelle.
 
-import type { Etape, Profondeur, Source } from '../patrimoine/api'
+import type { Etape, Source } from '../patrimoine/api'
+import { decrireProfondeur } from '../../shared/phases/profondeur'
 import { deplacer } from '../phases/ordre'
 
 /** Ordre sentinelle d'un prélèvement **orphelin** — hors de toute séquence, donc introuvable.
@@ -109,12 +110,6 @@ export function decrireEtape(etape: Etape): string {
   return morceaux.join(' · ')
 }
 
-/** Dit une profondeur de classement en clair — « classement intégral » / « classé jusqu'au 8ᵉ ». */
-export function decrireProfondeur(profondeur: Profondeur): string {
-  if (profondeur.nom === 'un_vers_n') return 'classement intégral'
-  return `classé jusqu'au ${profondeur.jusqu_au}ᵉ`
-}
-
 /**
  * Lit un entier saisi ; rend `null` pour « non renseigné » et `undefined` pour « invalide ».
  *
@@ -122,6 +117,8 @@ export function decrireProfondeur(profondeur: Profondeur): string {
  * `JSON.stringify` sérialise en `null` — un effectif déclaré s'effaçait donc silencieusement à la
  * moindre faute de frappe, et un barème vide partait en `0 volées` pour revenir en 422 illisible.
  */
+export { decrireProfondeur }
+
 export function lireEntier(saisi: string): number | null | undefined {
   if (saisi.trim() === '') return null
   const valeur = Number(saisi)

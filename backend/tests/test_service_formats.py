@@ -32,6 +32,7 @@ from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.patrimoine import OrigineBrique
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.phase import PhaseId as _PhaseId
+from domain.politiques import ProfondeurClassement
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from tests.test_service_blasons import FauxTournoiRepository
 from tests.test_service_phases import FauxPhaseRepository
@@ -542,3 +543,37 @@ def test_appliquer_un_format_incoherent_laisse_la_sequence_intacte(ctx: Contexte
     assert [p.ordre for p in apres] == [p.ordre for p in avant]
     assert [p.type for p in apres] == [p.type for p in avant]
     assert [p.bareme for p in apres] == [p.bareme for p in avant]
+
+
+def test_appliquer_transporte_la_profondeur_du_format_vers_les_phases(ctx: Contexte) -> None:
+    """E06US006 : un format composé en classement intégral produit des phases en intégral.
+
+    C'est la moitié « bibliothèque » du CA, et rien ne la couvrait : l'aller-retour de persistance
+    des **phases** était testé, celui des **formats** ne l'était pas, ni la propagation
+    `ModelePhase → Phase`. Un format enregistré en 1→N pouvait donc rendre des phases au preset
+    sans qu'aucun test ne bronche — relevé en revue (axe B).
+    """
+    format_tournoi = ctx.service.creer(
+        "Placement intégral",
+        [
+            _qualification(ordre=1, effectif=16),
+            ModelePhase(
+                ordre=2,
+                type=TypePhase.ELIMINATION_DIRECTE,
+                sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),),
+                effectif=8,
+                profondeur=ProfondeurClassement.integrale(),
+            ),
+        ],
+    )
+
+    # Relu depuis le repository : c'est le round-trip de `format_tournoi.config`, la seule table où
+    # la clé `depth` cohabite avec le régime `marquer_absences` des brouillons.
+    relu = next(f for f in ctx.service.lister() if f.id == format_tournoi.id)
+    assert relu.etapes[1].profondeur == ProfondeurClassement.integrale()
+    assert relu.etapes[0].profondeur is None
+
+    phases = ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
+
+    assert phases[1].profondeur == ProfondeurClassement.integrale()
+    assert phases[0].profondeur is None

@@ -54,15 +54,6 @@ from domain.phase import (
 )
 from domain.plage import Plage
 
-_TYPES_EN_TABLEAU = TYPES_EN_TABLEAU
-"""Les types dont le déroulé est un **arbre** : leur nombre de tours se déduit de l'effectif seul.
-
-Les six autres types du catalogue (E05US015) tirent le leur d'une configuration que ni `Phase` ni
-`ModelePhase` ne portent encore — cf. `# DETTE-028`.
-
-Défini dans `domain.phase` depuis E06US006, qui en a besoin pour savoir où une profondeur de
-classement se règle : l'alias garde les lectures locales courtes sans dédoubler la table."""
-
 _TYPES_SANS_OPPOSITION = frozenset({TypePhase.QUALIFICATION, TypePhase.ECHAUFFEMENT})
 """Les types où l'archer tire **seul** : un participant leur suffit (E05US021).
 
@@ -669,7 +660,7 @@ def _braquets(
     en duels. Les deux corrections évidentes sont pires que le mal (ensemencer un vrai tableau ici,
     ou recopier la formule de l'arbre) : cf. le registre de dette.
     """
-    if etape.type not in _TYPES_EN_TABLEAU or resolu is None or tranche is None or resolu < 2:
+    if etape.type not in TYPES_EN_TABLEAU or resolu is None or tranche is None or resolu < 2:
         return ()
     taille = 1 << (resolu - 1).bit_length()
     plage = Plage(tranche[0], tranche[0] + taille - 1)

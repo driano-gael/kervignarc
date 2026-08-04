@@ -156,14 +156,10 @@ class FauxBlasonRepository:
 
     def ajouter(self, blason: Blason) -> Blason:
         self._sequence += 1
-        persiste = Blason(
-            tournoi_id=blason.tournoi_id,
-            nom=blason.nom,
-            taille=blason.taille,
-            capacite=blason.capacite,
-            zones=blason.zones,
-            id=self._sequence,
-        )
+        # Même correction que `FauxPhaseRepository` 76 lignes plus haut, et trouvée seulement en
+        # revue adversariale : cette reconstruction perdait `origine`. Appliquer le raisonnement à
+        # un site et pas à ses voisins immédiats, c'est déplacer le trou, pas le fermer.
+        persiste = replace(blason, id=self._sequence)
         self._blasons[self._sequence] = persiste
         return persiste
 

@@ -1,4 +1,9 @@
-"""Qui entre dans une phase — la règle d'ensemencement, **partagée** (E05US020, ADR-0068).
+"""Ce que deux services de tableau doivent lire **de la même façon** (E05US020, E06US006).
+
+Deux règles y vivent, pour un seul et même motif : `preleves` (qui entre dans une phase) et
+`profondeur_de` (jusqu'où cette phase départage). Le module s'appelait « la règle d'ensemencement »
+quand il n'en portait qu'une ; il porte désormais **ce que `ServicePlacementDuels` et
+`ServiceSaisieDuels` ne peuvent pas lire différemment sans monter deux arbres distincts**.
 
 Deux services montent le même tableau à partir du même classement : `ServiceSaisieDuels` (l'arbre
 que l'on joue) et `ServicePlacementDuels` (le plan de cibles qui pose les duellistes côte à côte).
@@ -12,16 +17,24 @@ recopie a tenu tant que la règle était « tous les archers en lice » ; elle a
 mesuré le résultat : plan de 8 placements pour un tableau de 4. D'où cette extraction, qui n'ajoute
 aucune abstraction : une fonction pure, appelée deux fois.
 
-**Pourquoi en couche application et non dans le domaine** : la règle croise un `Classement`
+**Pourquoi en couche application et non dans le domaine** : `preleves` croise un `Classement`
 (domaine) et une `Phase` (domaine), mais son *besoin* est celui de deux cas d'usage. La poser dans
 `domain/phase.py` obligerait ce module à importer `domain/classement.py`, qui importe déjà
 `domain/politiques.py` — on paierait un couplage de modules pour une fonction de quinze lignes.
+
+⚠️ **Cet argument ne vaut pas pour `profondeur_de`**, et la revue l'a relevé : elle ne touche pas au
+`Classement`, elle croise une `Phase` et un
+`RegistrePolitiques`, tous deux du domaine — et `domain/phase.py` importe déjà
+`domain/politiques.py` depuis E06US006. Le couplage invoqué serait donc nul, et la
+descendre dans le domaine la rendrait testable comme unité de domaine. Elle reste ici pour une autre
+raison, moins noble mais réelle : c'est **le lieu que les deux services partagent déjà**, et le
+motif de son extraction est un motif de cas d'usage (« ces deux-là ne peuvent pas diverger »), pas
+une règle métier. À rouvrir si une troisième politique de phase rejoint la file — cf. ADR-0070.
 """
 
 from __future__ import annotations
 
 from domain.classement import Classement, LigneClassement, StatutClassement
-from domain.erreurs import PolitiqueInconnue
 from domain.phase import Phase, profondeur_par_defaut
 from domain.politiques import Depth, RegistrePolitiques, assembler_politiques
 
@@ -48,10 +61,17 @@ def profondeur_de(phase: Phase, registre: RegistrePolitiques) -> Depth:
     depth = assembler_politiques({"depth": choix.en_config()}, registre).depth
     if depth is None:
         # Inatteignable : `assembler_politiques` lève déjà `PolitiqueInconnue` sur un nom absent du
-        # catalogue. Explicite plutôt que silencieux — un repli maison réintroduirait ici la
-        # stratégie en dur que tout le reste du chemin s'applique à ne pas écrire.
-        raise PolitiqueInconnue(
-            f"Aucune profondeur « {choix.nom.value} » n'est enregistrée au catalogue."
+        # catalogue, et la clé est toujours fournie ci-dessus. Explicite plutôt que silencieux — un
+        # repli maison réintroduirait ici la stratégie en dur que tout le chemin s'applique à ne pas
+        # écrire.
+        #
+        # ⚠️ **`RuntimeError` et non une erreur typée de couche** (corrigé en revue, axe A). Une
+        # `DomainError` serait mappée en **422** : le client s'entendrait reprocher une faute
+        # métier alors que la panne réelle est un **catalogue incomplet au composition root**. Cette
+        # branche doit tomber dans le filet `_sur_erreur_inattendue` (500), qui dit la vérité — un
+        # défaut de câblage serveur — sans rien laisser fuir vers le client.
+        raise RuntimeError(
+            f"Profondeur « {choix.nom.value} » absente du registre : catalogue mal peuplé."
         )
     return depth
 

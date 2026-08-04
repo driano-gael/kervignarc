@@ -6,7 +6,7 @@
 // qui permet enfin à l'axe atelier de tenir sa promesse « fabriquer, hors tournoi » (DETTE-023).
 
 import { fetchJson } from '../../shared/api/client'
-import type { TypePhase } from '../../shared/phases/catalogue'
+import type { Profondeur, TypePhase } from '../../shared/phases/catalogue'
 import type { Blason } from '../blasons/api'
 import type { Categorie, ModifierCategorie } from '../categories/api'
 
@@ -162,18 +162,10 @@ export interface Source {
   issue: 'gagnants' | 'perdants' | null
 }
 
-// Jusqu'où une phase en tableau départage ses participants (E06US006, ADR-0070).
-//
-// `un_vers_n` joue **tous** les rangs (placement intégral) ; `podium` s'arrête au `jusqu_au`-ième,
-// les battus des tours antérieurs restant groupés sur leur fourchette. Le catalogue `depth` du
-// serveur en compte un troisième (`aucun`) volontairement absent de la façade : c'est le contenu du
-// type échauffement, pas un réglage de tableau.
-export interface Profondeur {
-  nom: 'un_vers_n' | 'podium'
-  // Le rang d'arrêt — porté par `podium` seulement. `null` sur `un_vers_n` : un classement intégral
-  // ne s'arrête à aucun rang, et le serveur refuse (422) qu'on lui en donne un.
-  jusqu_au: number | null
-}
+// Ré-exporté depuis le catalogue partagé (E06US006) : le type y est domicilié pour que
+// `shared/phases/ChoixProfondeur.tsx` puisse le lire sans qu'un module `shared/` dépende d'une
+// feature. Les imports existants ne changent pas.
+export type { Profondeur } from '../../shared/phases/catalogue'
 
 // Une étape d'un format : tout ce qu'une phase porte, **sauf** son tournoi et son statut — ils
 // n'existent pas sur le modèle et naissent à l'application (ADR-0060 §5).

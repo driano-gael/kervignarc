@@ -612,10 +612,22 @@ class NomProfondeur(str, Enum):
     `aucun` (`AucunClassement`) n'y figure pas : ce n'est pas un choix mais le contenu même du type
     `échauffement` (§10.1), et l'offrir sur un tableau proposerait de monter un arbre dont on ne
     lirait aucun rang.
+
+    ⚠️ **`top_n` et non `podium`** (E06US006, relevé en revue). La stratégie s'appelle
+    `ProfondeurPodium` depuis E05US003, mais `docs/glossaire.md` réserve le mot **Podium** aux
+    rangs **1-4 décernés par un match** — un encadré « trois mots à ne pas confondre » y insiste.
+    Or ce nom devient ici un **contrat REST et une valeur persistée**, où il désignerait un
+    « podium jusqu'au 8ᵉ » : la règle 3 (cohérence code ↔ API ↔ UI ↔ doc) serait rompue dans les
+    quatre sens. Le renommage est **gratuit aujourd'hui** — la clé `config.policies.depth` n'a
+    jamais été écrite avant cette US, aucune base ne porte l'ancien nom — et coûteux dès la
+    première base de production. `docs/modele-de-donnees.md` annonçait d'ailleurs `top_n`.
+
+    La **classe** garde son nom : elle est interne, et le renommer toucherait quatre fichiers de
+    tests sans rien changer au contrat. C'est le nom de façade qui devait être juste.
     """
 
     UN_VERS_N = "un_vers_n"
-    PODIUM = "podium"
+    TOP_N = "top_n"
 
 
 @dataclass(frozen=True)
@@ -641,7 +653,7 @@ class ProfondeurClassement:
     """
 
     def __post_init__(self) -> None:
-        if self.nom is NomProfondeur.PODIUM:
+        if self.nom is NomProfondeur.TOP_N:
             if self.jusqu_au is None or self.jusqu_au < 1:
                 raise ProfondeurInvalide(
                     "Un classement en top N s'arrête à un rang entier positif "
@@ -662,11 +674,7 @@ class ProfondeurClassement:
     @staticmethod
     def top(jusqu_au: int) -> ProfondeurClassement:
         """Le mode **top N** : seuls les `jusqu_au` premiers sont départagés, le reste groupé."""
-        return ProfondeurClassement(nom=NomProfondeur.PODIUM, jusqu_au=jusqu_au)
-
-    @property
-    def est_integrale(self) -> bool:
-        return self.nom is NomProfondeur.UN_VERS_N
+        return ProfondeurClassement(nom=NomProfondeur.TOP_N, jusqu_au=jusqu_au)
 
     def en_config(self) -> dict[str, object]:
         """La forme `config.policies.depth` (ADR-0046) — ce qui se persiste et ce qui se résout."""
@@ -872,7 +880,7 @@ def registre_par_defaut() -> RegistrePolitiques:
         lambda params: _fabriquer_barrage(params, registre),
     )
     registre.enregistrer(FamillePolitique.DEPTH, "un_vers_n", lambda _p: ProfondeurUnVersN())
-    registre.enregistrer(FamillePolitique.DEPTH, "podium", _fabriquer_profondeur_podium)
+    registre.enregistrer(FamillePolitique.DEPTH, "top_n", _fabriquer_profondeur_podium)
     registre.enregistrer(FamillePolitique.DEPTH, "aucun", lambda _p: AucunClassement())
     registre.enregistrer(
         FamillePolitique.AGGREGATION, "par_qualification", lambda _p: AggregationParQualification()
@@ -990,7 +998,7 @@ def _fabriquer_barrage(
 
 
 def _fabriquer_profondeur_podium(params: Mapping[str, object]) -> ProfondeurPodium:
-    """`{"nom": "podium", "jusqu_au": 8}` → la profondeur correspondante (4 par défaut).
+    """`{"nom": "top_n", "jusqu_au": 8}` → la profondeur correspondante (4 par défaut).
 
     Première fabrique **paramétrée** du registre : jusqu'ici toutes les stratégies étaient sans
     état. Un `jusqu_au` non entier ou non positif est une config mal formée — on refuse plutôt que

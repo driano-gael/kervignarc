@@ -88,10 +88,19 @@ class ProfondeurDTO(BaseModel):
     """
 
     nom: NomProfondeur
-    jusqu_au: int | None = Field(default=None, ge=1)
-    """Obligatoire pour `podium`, interdit pour `un_vers_n` — l'incohérence est refusée par le
-    domaine (`ProfondeurInvalide` → 422), pas ici : la règle appartient au `ProfondeurClassement`,
-    et la recopier en validateur Pydantic en ferait une seconde source à maintenir."""
+    jusqu_au: int | None = None
+    """Obligatoire pour `top_n`, interdit pour `un_vers_n`.
+
+    ⚠️ **Aucune borne Pydantic ici, délibérément** (corrigé en revue). Un `ge=1` y figurait, et il
+    contredisait la phrase qui l'accompagnait : il **recopiait** à moitié l'invariant que le
+    `ProfondeurClassement` porte déjà, avec pour effet observable **deux codes d'erreur pour une
+    seule faute** — `{"nom":"top_n","jusqu_au":0}` rendait 400 `requete_invalide`, alors que
+    `{"nom":"top_n"}` rend 422 `profondeur_invalide`. Une seule source, un seul code : le domaine
+    (règle 6 — la frontière API ne doit pas devenir un second lieu d'invariants).
+
+    *(`barrage_jusqu_au`, plus bas, garde son `ge=1` : il est un entier nu sans value object pour le
+    porter, donc la frontière y est bien le seul lieu possible. La divergence est assumée, pas une
+    incohérence — cf. ADR-0070 « Négatives / à surveiller ».)*"""
 
     def vers_agregat(self) -> ProfondeurClassement:
         return ProfondeurClassement(nom=self.nom, jusqu_au=self.jusqu_au)

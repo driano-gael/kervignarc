@@ -30,6 +30,7 @@ from sqlalchemy import text
 from domain.bareme import BaremeQualification
 from domain.grain_validation import GrainValidation
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
+from domain.politiques import ProfondeurClassement
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from infrastructure.db import Database, PhaseORM, PhaseRepositorySQL, TournoiRepositorySQL
 from infrastructure.erreurs import InfrastructureError
@@ -630,3 +631,98 @@ def test_migration_0028_deplace_le_scoring_sous_policies(tmp_path: Path) -> None
         assert config["validation"] == {"grain": "fin_de_serie"}  # resté à la racine
     finally:
         db.engine.dispose()
+
+
+# --- Profondeur de classement (E06US006, ADR-0070) ----------------------------------------------
+
+
+def _tableau_brut(db: Database, tournoi_id: TournoiId, config: str) -> None:
+    """Écrit une ligne `phase` **de tableau** directement, config imposée.
+
+    Jumeau de `_phase_brute`, qui force `type="qualification"` : une profondeur ne se règle que sur
+    un tableau, et la relire sur une qualification échouerait pour une **autre** raison (barème
+    manquant), donc sans rien prouver de ce qu'on veut vérifier.
+    """
+    with db.session_factory() as session:
+        session.add(
+            PhaseORM(
+                tournoi_id=tournoi_id,
+                ordre=1,
+                type="elimination_directe",
+                config=config,
+                statut="a_venir",
+            )
+        )
+        session.commit()
+
+
+def test_la_profondeur_fait_l_aller_retour(tmp_path: Path) -> None:
+    """`config.policies.depth` s'écrit et se relit à l'identique, sans migration."""
+    db = _base(tmp_path)
+    tournoi_id = _tournoi(db)
+    repo = PhaseRepositorySQL(db.session_factory)
+
+    integrale = repo.ajouter(
+        Phase.creer(
+            tournoi_id,
+            ordre=1,
+            type=TypePhase.ELIMINATION_DIRECTE,
+            profondeur=ProfondeurClassement.integrale(),
+        )
+    )
+    top = repo.ajouter(
+        Phase.creer(
+            tournoi_id,
+            ordre=2,
+            type=TypePhase.ELIMINATION_DIRECTE,
+            profondeur=ProfondeurClassement.top(8),
+        )
+    )
+
+    relues = {p.ordre: p.profondeur for p in repo.par_tournoi(tournoi_id)}
+    assert relues[1] == ProfondeurClassement.integrale()
+    assert relues[2] == ProfondeurClassement.top(8)
+    assert integrale.profondeur == relues[1] and top.profondeur == relues[2]
+
+
+def test_une_phase_sans_cle_depth_se_relit_non_reglee(tmp_path: Path) -> None:
+    """Contrepartie du choix « aucune migration » : une ligne écrite **avant** E06US006 se relit
+    `profondeur=None`, donc au preset de son type — elle ne doit ni exploser, ni changer de régime.
+
+    C'est l'affirmation centrale d'ADR-0070 §3 (« rien de déjà joué ne bouge ») ; rien ne la
+    vérifiait avant cette correction de revue.
+    """
+    db = _base(tmp_path)
+    tournoi_id = _tournoi(db)
+    _tableau_brut(db, tournoi_id, json.dumps({"validation": {"grain": "fin_de_duel"}}))
+
+    phase = PhaseRepositorySQL(db.session_factory).par_tournoi(tournoi_id)[0]
+
+    assert phase.profondeur is None
+
+
+@pytest.mark.parametrize(
+    "depth",
+    [
+        {"nom": "aucun"},  # existe au catalogue, jamais offert en façade → base altérée
+        {"nom": "top_n"},  # top N sans rang d'arrêt
+        {"nom": "un_vers_n", "jusqu_au": 4},  # deux profondeurs contradictoires
+        {"jusqu_au": 4},  # pas de nom : on ne devine pas l'implémentation
+        {"nom": "inconnue"},
+    ],
+)
+def test_une_profondeur_alteree_remonte_en_erreur_typee(
+    tmp_path: Path, depth: dict[str, object]
+) -> None:
+    """Une `config` altérée hors API doit rendre « configuration illisible », **jamais** un 500 nu.
+
+    Le repository attrape `KeyError` / `ValueError` / `DomainError` et les enveloppe. Le jour où
+    quelqu'un resserre ce tuple d'exceptions, une seule ligne corrompue mettrait toute la lecture
+    en 500 — la panne déjà documentée sur `_vers_modele_phase`, sans route pour s'en sortir.
+    """
+    db = _base(tmp_path)
+    tournoi_id = _tournoi(db)
+    _tableau_brut(db, tournoi_id, json.dumps({"policies": {"depth": depth}}))
+
+    with pytest.raises(InfrastructureError):
+        PhaseRepositorySQL(db.session_factory).par_tournoi(tournoi_id)

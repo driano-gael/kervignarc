@@ -103,14 +103,22 @@ class ProfondeurDTO(BaseModel):
     """La **profondeur de classement** d'une étape de format (E06US006, ADR-0070).
 
     Jumeau assumé de `api/v1/phases.ProfondeurDTO`, pour la raison déjà tranchée sur `SourceDTO` :
-    même notion, deux ressources distinctes. ⚠️ Contrairement à son jumeau, celui-ci ne valide
-    **rien** de plus que la forme : une étape de format est un **brouillon** (ADR-0063), et un
-    modèle incohérent doit pouvoir s'enregistrer pour être diagnostiqué. C'est `pour_tournoi` qui
-    fera barrage à l'application.
+    même notion, deux ressources distinctes.
+
+    ⚠️ **Les deux jumeaux sont strictement identiques**, et c'est ce que le régime brouillon
+    d'ADR-0063 laisse ici. Un premier jet affirmait le contraire (« celui-ci ne valide rien de plus
+    que la forme ») — c'était faux, et doublement : `vers_agregat()` construit un
+    `ProfondeurClassement`, dont le `__post_init__` **refuse** un `top_n` sans seuil comme un
+    `un_vers_n` avec seuil. Ce qui échappe au brouillon, ce n'est pas l'incohérence **interne** du
+    descripteur (refusée des deux côtés, en 422), c'est sa **compatibilité avec le type** de
+    l'étape : une profondeur posée sur une qualification s'enregistre, et n'est refusée qu'à
+    `pour_tournoi`. ⚠️ Elle n'est pas non plus **diagnostiquée** — `projeter` ne lit pas la
+    profondeur — donc l'organisateur ne l'apprend qu'à l'application. Inatteignable depuis l'écran
+    (le front force `profondeur: null` hors tableau) ; cf. ADR-0070 §2.
     """
 
     nom: NomProfondeur
-    jusqu_au: int | None = Field(default=None, ge=1)
+    jusqu_au: int | None = None
 
     def vers_agregat(self) -> ProfondeurClassement:
         return ProfondeurClassement(nom=self.nom, jusqu_au=self.jusqu_au)

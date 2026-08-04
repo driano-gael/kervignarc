@@ -10,6 +10,7 @@ restent ici — ce module est leur seul consommateur.
 from __future__ import annotations
 
 import datetime
+from dataclasses import replace
 from typing import NamedTuple
 
 import pytest
@@ -66,13 +67,13 @@ class FauxTournoiRepository:
 
     def ajouter(self, tournoi: Tournoi) -> Tournoi:
         self._sequence += 1
-        persiste = Tournoi(
-            nom=tournoi.nom,
-            date=tournoi.date,
-            lieu=tournoi.lieu,
-            type_tournoi=tournoi.type_tournoi,
-            id=self._sequence,
-        )
+        # `replace()` et non une reconstruction champ par champ (corrigé en E06US006, revue
+        # adversariale). La forme précédente **écrasait** `statut` et `effectif_minimum_exige` par
+        # leur défaut : un tournoi posé `EN_COURS` par ce double se relisait `BROUILLON`, sans que
+        # rien ne le signale. Un faux qui recopie la forme d'un agrégat dérive à chaque US qui
+        # l'enrichit — c'est le même défaut que celui trouvé sur `FauxPhaseRepository`, et il
+        # vivait à deux fichiers de là.
+        persiste = replace(tournoi, id=self._sequence)
         self._tournois[self._sequence] = persiste
         return persiste
 

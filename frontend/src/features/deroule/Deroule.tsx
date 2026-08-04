@@ -28,7 +28,7 @@ import {
   TYPES_SANS_CLASSEMENT,
   type TypePhase,
 } from '../../shared/phases/catalogue'
-import type { Etape, FormatTournoi, Profondeur, Source } from '../patrimoine/api'
+import type { Etape, FormatTournoi, Source } from '../patrimoine/api'
 import { useCreerFormat, useFormats } from '../patrimoine/hooks'
 import {
   EFFECTIF_MAX,
@@ -49,6 +49,7 @@ import {
 } from './sequence'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
+import { depuisProfondeur, estValide, versProfondeur } from '../../shared/phases/profondeur'
 
 const EFFECTIF_PAR_DEFAUT = 120
 
@@ -622,12 +623,11 @@ export function FormulaireEtape({
     etape?.effectif === null ? '' : String(etape?.effectif ?? ''),
   )
   const [sources, setSources] = useState<Source[]>(etape?.sources ?? [])
-  // Le tri-état (`preset` / intégral / top N) vit dans `ChoixProfondeur`, partagé avec l'écran
-  // « Phases » ; ici on ne garde que ce qu'il rend. `undefined` = saisie illisible, ce qui bloque la
-  // soumission — même convention que `lireEntier` pour le barème et l'effectif.
-  const [profondeurSaisie, setProfondeurSaisie] = useState<Profondeur | null | undefined>(
-    etape?.profondeur ?? null,
-  )
+  // **Source unique** du réglage de profondeur : le formulaire le détient, `ChoixProfondeur` ne
+  // fait que le rendre. Le composant en détenait une copie, et comme il est monté sous condition,
+  // un aller-retour de type le réinitialisait sans réinitialiser celle-ci — l'écran affichait
+  // « Podium » et la soumission envoyait « classement intégral » (cf. l'en-tête du composant).
+  const [profondeur, setProfondeur] = useState(depuisProfondeur(etape?.profondeur ?? null))
 
   const volees = lireEntier(nbVolees)
   const fleches = lireEntier(nbFleches)
@@ -645,7 +645,7 @@ export function FormulaireEtape({
   // Deux conditions de blocage, **un message chacune**. Les fondre ferait afficher au seuil vide le
   // conseil générique « laissez le champ vide pour ne rien déclarer » — l'exact contraire de ce
   // qu'il faut faire, puisqu'un top N sans rang d'arrêt est précisément ce qui est refusé.
-  const soumissionBloquee = saisieInvalide || (enTableau && profondeurSaisie === undefined)
+  const soumissionBloquee = saisieInvalide || (enTableau && !estValide(profondeur))
 
   const construire = (): Etape => ({
     ordre: etape?.ordre ?? etapesAmont.length + 1,
@@ -661,7 +661,7 @@ export function FormulaireEtape({
     effectif: effectifLu ?? null,
     // Même garde que le barème : une profondeur n'a de sens que sur un tableau. Retyper une phase
     // de tableau en poule **efface** donc le réglage plutôt que de l'envoyer se faire refuser.
-    profondeur: enTableau ? (profondeurSaisie ?? null) : null,
+    profondeur: enTableau ? (versProfondeur(profondeur) ?? null) : null,
   })
 
   return (
@@ -726,9 +726,7 @@ export function FormulaireEtape({
         </label>
       </div>
 
-      {enTableau && (
-        <ChoixProfondeur valeur={etape?.profondeur ?? null} surChangement={setProfondeurSaisie} />
-      )}
+      {enTableau && <ChoixProfondeur etat={profondeur} surChangement={setProfondeur} />}
 
       <EditeurSources etapesAmont={etapesAmont} sources={sources} surSources={setSources} />
 

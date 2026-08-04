@@ -488,11 +488,11 @@ def test_profondeur_aller_retour(app_phases: FastAPI, connecter_admin: Connecter
             f"{base}/{phase_id}",
             json={
                 "type": "elimination_directe",
-                "profondeur": {"nom": "podium", "jusqu_au": 8},
+                "profondeur": {"nom": "top_n", "jusqu_au": 8},
             },
         )
         assert modifiee.status_code == 200, modifiee.text
-        assert modifiee.json()["profondeur"] == {"nom": "podium", "jusqu_au": 8}
+        assert modifiee.json()["profondeur"] == {"nom": "top_n", "jusqu_au": 8}
 
         # Édition **totale** : omettre le champ efface le réglage (régime annoncé au DTO).
         efface = client.put(f"{base}/{phase_id}", json={"type": "elimination_directe"})
@@ -525,7 +525,7 @@ def test_profondeur_sur_un_type_sans_tableau_422(
         assert reponse.json()["code"] == "profondeur_invalide"
 
 
-def test_profondeur_podium_sans_seuil_422(
+def test_profondeur_top_n_sans_seuil_422(
     app_phases: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
     """« S'arrêter à un top » sans dire lequel n'est pas un réglage — l'invariant est au domaine."""
@@ -536,7 +536,7 @@ def test_profondeur_podium_sans_seuil_422(
 
         reponse = client.post(
             base,
-            json={"type": "elimination_directe", "profondeur": {"nom": "podium"}},
+            json={"type": "elimination_directe", "profondeur": {"nom": "top_n"}},
         )
         assert reponse.status_code == 422, reponse.text
         assert reponse.json()["code"] == "profondeur_invalide"

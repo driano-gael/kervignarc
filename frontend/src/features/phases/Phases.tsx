@@ -16,7 +16,6 @@
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
-import type { Profondeur } from '../patrimoine/api'
 import type {
   ConfigPhase,
   Phase,
@@ -40,6 +39,13 @@ import {
   TYPES_SANS_CLASSEMENT,
 } from '../../shared/phases/catalogue'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
+import {
+  decrireProfondeur,
+  depuisProfondeur,
+  estValide,
+  versProfondeur,
+  PROFONDEUR_AU_PRESET,
+} from '../../shared/phases/profondeur'
 import { ordreApresDeplacement, type Direction } from './ordre'
 import { decrireSources, editableIci } from './source'
 
@@ -162,6 +168,11 @@ function LignePhase({
         <span className="phase__details">
           {decrireSources(phase.sources)}
           {phase.effectif !== null && ` · ${phase.effectif} participants`}
+          {/* Parité avec l'écran de composition, qui l'affiche déjà : sur un tournoi réel, le
+              réglage le plus lourd de la journée ne doit pas n'être visible qu'en rouvrant le
+              formulaire d'édition. Rien n'est dit d'une phase au preset — l'afficher partout ferait
+              passer un défaut hérité pour une décision. */}
+          {phase.profondeur !== null && ` · ${decrireProfondeur(phase.profondeur)}`}
         </span>
       </div>
       <div className="phase__actions">
@@ -244,7 +255,9 @@ function LignePhase({
 }
 
 // Formulaire partagé création / édition : sans `phase` il ajoute (en fin de séquence), avec il édite.
-function FormulairePhase({
+/** Exporté pour ses tests : c'est le seul des deux écrans de composition qui touche un tournoi
+ * réel, et le `PUT` y est **total** — un champ non réémis est effacé côté serveur. */
+export function FormulairePhase({
   tournoiId,
   phases,
   phase,
@@ -258,12 +271,10 @@ function FormulairePhase({
   const enEdition = phase !== undefined
   const [type, setType] = useState<TypePhase>(phase?.type ?? 'elimination_directe')
   const [effectif, setEffectif] = useState(phase?.effectif != null ? String(phase.effectif) : '')
-  // Tri-état de la profondeur (E06US006) : `null` = non réglée (preset du type), `undefined` =
-  // saisie illisible, qui bloque la soumission. Le contrôle lui-même est partagé avec l'écran de
-  // composition d'un déroulé — le réglage y a exactement le même sens.
-  const [profondeur, setProfondeur] = useState<Profondeur | null | undefined>(
-    phase?.profondeur ?? null,
-  )
+  // **Source unique** du réglage de profondeur (E06US006), détenue ici et non dans le contrôle :
+  // celui-ci est monté sous condition, donc une copie interne divergerait au premier aller-retour
+  // de type. Le contrôle est partagé avec « Composer un déroulé » — le réglage y a le même sens.
+  const [profondeur, setProfondeur] = useState(depuisProfondeur(phase?.profondeur ?? null))
   const premiereSource = phase?.sources?.[0] ?? null
   const [avecSource, setAvecSource] = useState(premiereSource != null)
   const [ordreSource, setOrdreSource] = useState(
@@ -331,7 +342,7 @@ function FormulairePhase({
     effectifAnalyse !== null && (!Number.isInteger(effectifAnalyse) || effectifAnalyse < 1)
   const enTableau = TYPES_EN_TABLEAU.includes(type)
   const soumissionPossible =
-    sources !== 'invalide' && !effectifInvalide && !(enTableau && profondeur === undefined)
+    sources !== 'invalide' && !effectifInvalide && !(enTableau && !estValide(profondeur))
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -346,7 +357,7 @@ function FormulairePhase({
       barrage_jusqu_au: phase?.barrage_jusqu_au ?? null,
       // Même règle d'édition totale que le barrage — mais celle-ci se **règle** ici aussi : une
       // phase retypée hors tableau perd sa profondeur, puisque le serveur la refuserait (422).
-      profondeur: enTableau ? (profondeur ?? null) : null,
+      profondeur: enTableau ? (versProfondeur(profondeur) ?? null) : null,
     }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
@@ -354,6 +365,10 @@ function FormulairePhase({
       ajouter.mutate(config, {
         onSuccess: () => {
           setEffectif('')
+          // La profondeur se remet au preset comme les autres champs : « classement intégral » est
+          // le réglage le plus coûteux de la journée, il ne doit pas se reporter en silence d'une
+          // phase à la suivante.
+          setProfondeur(PROFONDEUR_AU_PRESET)
           setAvecSource(false)
           setOrdreSource('')
           setRangDebut('1')
@@ -401,9 +416,7 @@ function FormulairePhase({
             </span>
           )}
         </label>
-        {enTableau && (
-          <ChoixProfondeur valeur={phase?.profondeur ?? null} surChangement={setProfondeur} />
-        )}
+        {enTableau && <ChoixProfondeur etat={profondeur} surChangement={setProfondeur} />}
         <label className="formulaire__tranche">
           <input
             type="checkbox"
@@ -498,6 +511,10 @@ function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: Phase 
         sources: phase.sources,
         effectif: phase.effectif,
         barrage_jusqu_au: analyse,
+        // Réémise pour la même raison que le reste : le `PUT` est **total**. Inoffensif aujourd'hui
+        // (ce widget n'est rendu que sur la qualification, qui ne porte jamais de profondeur), mais
+        // c'était le seul chemin d'appel non audité par l'US — relevé en revue, fermé à une ligne.
+        profondeur: phase.profondeur,
       },
     })
   }

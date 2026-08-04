@@ -4,97 +4,98 @@
 // bibliothèque) et « Phases » (les phases d'un tournoi). Ce n'est pas un pattern introduit par
 // anticipation : les deux sites existent aujourd'hui, et ils portent le même tri-état délicat.
 //
-// **Trois états, pas deux**, et c'est là que la duplication aurait fait mal :
+// **Trois états, pas deux** :
 //
 // | À l'écran | Envoyé | Ce que le serveur en fait |
 // |---|---|---|
 // | Podium (défaut) | `null` | la phase suit le preset de son type |
 // | Classement intégral | `{ nom: 'un_vers_n' }` | tous les rangs se jouent |
-// | S'arrêter au rang N | `{ nom: 'podium', jusqu_au: N }` | seuls les N premiers sont départagés |
+// | S'arrêter au rang N | `{ nom: 'top_n', jusqu_au: N }` | seuls les N premiers sont départagés |
 //
 // « Podium (défaut) » et « s'arrêter au rang 4 » produisent le **même tournoi**. Les fondre en une
 // seule option écrirait pourtant un réglage sur chaque phase déjà composée, et ferait passer un
-// défaut hérité pour une décision de l'organisateur. Deux copies de cette subtilité auraient
-// divergé à la première correction.
+// défaut hérité pour une décision de l'organisateur.
+//
+// ⚠️ **Ce composant ne détient AUCUN état, et c'est la correction centrale de la revue.** Il en
+// détenait un (`mode` + `seuil`, initialisés depuis une prop), pendant que le parent gardait le
+// sien : deux sources pour une donnée. Comme il est monté sous condition
+// (`{enTableau && <ChoixProfondeur/>}`), retyper une phase le **démontait**, y revenir le
+// **remontait** réinitialisé — et le parent, lui, ne bougeait pas. L'écran affichait alors « Podium
+// (défaut) » pendant que le formulaire envoyait « classement intégral » : sur un tableau de 120,
+// 128 duels devenaient 436 sans que personne ne l'ait demandé, soit exactement ce qu'ADR-0070 §3
+// s'engage à ne jamais imposer. Les **cinq** axes de revue l'ont trouvé.
+//
+// La leçon dépasse ce composant : un état dérivé d'une prop, dans un composant monté sous
+// condition, diverge dès que la condition bascule. Ici l'unique source est le parent ; ce fichier
+// ne fait que rendre et notifier.
 
-import { useState } from 'react'
-
-import type { Profondeur } from '../../features/patrimoine/api'
-
-/** Les rangs qu'un tableau à petite finale décerne — miroir de `RANGS_DU_PODIUM` côté domaine. */
-export const RANGS_DU_PODIUM = 4
-
-/** Ce que l'organisateur choisit ; `preset` = « je ne règle rien ». */
-type ModeProfondeur = 'preset' | 'un_vers_n' | 'podium'
+import type { EtatProfondeur } from './profondeur'
+import { estValide, RANGS_DU_PODIUM } from './profondeur'
 
 // La **conséquence** de chaque mode, énoncée sous le choix (maquette A07, exigence `P-4` : chiffrer
-// au moment du choix, pas le découvrir à 10 h). C'est le réglage du déroulé qui pèse le plus lourd
-// sur la journée : le classement intégral fait tirer un duel par rang, soit plusieurs fois le
-// nombre de matchs d'un tableau tronqué au podium.
-const AIDE_PROFONDEUR: Record<ModeProfondeur, string> = {
+// au moment du choix, pas le découvrir à 10 h).
+//
+// # DETTE-035 — c'est ici **l'endroit exact du raccourci** : le schéma à braquets, affiché juste à
+// côté, ne compte **pas** les duels que la profondeur ajoute. On énonce donc la conséquence en
+// toutes lettres, avec le seul chiffre mesuré, et l'on renvoie à la simulation pour le compte exact. C'est le réglage du déroulé qui pèse le plus lourd
+// sur la journée : le classement intégral fait tirer un duel par rang — 436 duels au lieu de 128 sur
+// un tableau de 120 (mesuré), soit près de quatre fois plus.
+const AIDE_PROFONDEUR: Record<EtatProfondeur['mode'], string> = {
   preset:
     "La phase se joue comme aujourd'hui : finale et petite finale. Les battus des tours " +
     'antérieurs partagent la tranche de rangs de leur sortie — « 5ᵉ-8ᵉ » — sans être départagés ' +
     'au tir.',
-  un_vers_n:
+  integral:
     'Chaque rang se joue : les perdants redescendent en cascade jusqu’au dernier. Personne ne ' +
-    'reste en fourchette, mais le nombre de duels augmente fortement — vérifiez la simulation ' +
-    'avant de vous y engager.',
-  podium:
-    'Seuls les premiers rangs sont départagés au tir ; au-delà, les archers restent groupés sur ' +
-    'la tranche de leur sortie.',
+    'reste en fourchette, mais le nombre de duels est multiplié par trois ou quatre (128 → 436 ' +
+    'sur un tableau de 120) — vérifiez la simulation avant de vous y engager.',
+  top: 'Seuls les premiers rangs sont départagés au tir ; au-delà, les archers restent groupés sur la tranche de leur sortie.',
 }
 
-/**
- * Rend le choix de profondeur et **remonte** ce qu'il vaut.
- *
- * `surChangement` reçoit `undefined` quand la saisie est illisible — la convention de `lireEntier`,
- * déjà en place dans ces écrans : le parent bloque alors sa soumission sans avoir à réinterpréter
- * le formulaire.
- */
+/** Rend le choix de profondeur. Aucun état : l'unique source est `etat`, détenu par le parent. */
 export function ChoixProfondeur({
-  valeur,
+  etat,
   surChangement,
 }: {
-  valeur: Profondeur | null
-  surChangement: (profondeur: Profondeur | null | undefined) => void
+  etat: EtatProfondeur
+  surChangement: (etat: EtatProfondeur) => void
 }) {
-  const [mode, setMode] = useState<ModeProfondeur>(valeur?.nom ?? 'preset')
-  // Saisi en **texte** : un champ numérique vidé doit pouvoir rester vide pendant qu'on le retape,
-  // ce qu'un `number` piloté ferait perdre à chaque frappe (même parti que l'effectif simulé).
-  const [seuil, setSeuil] = useState(String(valeur?.jusqu_au ?? RANGS_DU_PODIUM))
-
-  const lu = lireSeuil(seuil)
-  const invalide = mode === 'podium' && lu === undefined
-
-  const propager = (modeSuivant: ModeProfondeur, seuilSuivant: string) => {
-    setMode(modeSuivant)
-    setSeuil(seuilSuivant)
-    surChangement(composer(modeSuivant, lireSeuil(seuilSuivant)))
+  const changerMode = (mode: EtatProfondeur['mode']) => {
+    if (mode === 'top') {
+      surChangement({ mode, seuil: etat.mode === 'top' ? etat.seuil : String(RANGS_DU_PODIUM) })
+      return
+    }
+    surChangement({ mode })
   }
 
   return (
     <div className="formulaire__champ">
       <label className="formulaire__libelle">
         Jusqu’où classer
-        <select value={mode} onChange={(e) => propager(e.target.value as ModeProfondeur, seuil)}>
-          <option value="preset">Podium — rangs 1 à {RANGS_DU_PODIUM} (défaut)</option>
-          <option value="un_vers_n">Classement intégral — tous les rangs se jouent</option>
-          <option value="podium">S’arrêter à un rang précis…</option>
+        <select
+          value={etat.mode}
+          onChange={(e) => changerMode(e.target.value as EtatProfondeur['mode'])}
+        >
+          {/* Le libellé ne **chiffre** pas le défaut : `RANGS_DU_PODIUM` est un miroir du domaine,
+              et un miroir qui dérive ferait ici *mentir* l'écran sur le comportement du serveur —
+              alors qu'en pré-saisie du champ ci-dessous, une dérive est sans conséquence. */}
+          <option value="preset">Podium (défaut) — finale et petite finale</option>
+          <option value="integral">Classement intégral — tous les rangs se jouent</option>
+          <option value="top">S’arrêter à un rang précis…</option>
         </select>
       </label>
-      {mode === 'podium' && (
+      {etat.mode === 'top' && (
         <label className="formulaire__libelle">
           Dernier rang départagé
           <input
             inputMode="numeric"
-            value={seuil}
-            onChange={(e) => propager(mode, e.target.value)}
+            value={etat.seuil}
+            onChange={(e) => surChangement({ mode: 'top', seuil: e.target.value })}
           />
         </label>
       )}
-      <p className="carte__aide">{AIDE_PROFONDEUR[mode]}</p>
-      {invalide && (
+      <p className="carte__aide">{AIDE_PROFONDEUR[etat.mode]}</p>
+      {!estValide(etat) && (
         <span className="carte__etat carte__etat--alerte" role="status">
           Indiquez le rang où le classement s’arrête — « tout classer » se dit en choisissant le
           classement intégral.
@@ -102,17 +103,4 @@ export function ChoixProfondeur({
       )}
     </div>
   )
-}
-
-/** `undefined` = illisible **ou vide** : « je m'arrête à un rang » sans dire lequel n'en est pas un. */
-function lireSeuil(saisi: string): number | undefined {
-  const valeur = Number(saisi)
-  if (saisi.trim() === '' || !Number.isInteger(valeur) || valeur < 1) return undefined
-  return valeur
-}
-
-function composer(mode: ModeProfondeur, seuil: number | undefined): Profondeur | null | undefined {
-  if (mode === 'preset') return null
-  if (mode === 'un_vers_n') return { nom: 'un_vers_n', jusqu_au: null }
-  return seuil === undefined ? undefined : { nom: 'podium', jusqu_au: seuil }
 }
