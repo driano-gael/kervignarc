@@ -50,7 +50,7 @@ cloisonnement`, migration `0041`, **NOT NULL** avec défaut `aucun`).
 
 Le module `domain/cloisonnement.py` **existe séparément du moteur** pour une raison mécanique :
 `domain/placement` importe `domain/archer`, qui importe `domain/tournoi`. Loger l'énumération dans le
-moteur et l'importer depuis `Tournoi` fermerait un cycle. Le moteur la ré-exporte.
+moteur et l'importer depuis `Tournoi` fermerait un cycle. Le moteur l'importe simplement.
 
 ### 2. Contrainte **dure** quand elle est active — et c'est ce qui la distingue de la mixité
 
@@ -92,7 +92,10 @@ d'énumération et d'un `if` : nettement moins qu'un changement de contrat plus 
 
 **Ce que nous ne prétendons pas** : cette position n'apporte rien *aujourd'hui*. Elle est documentée
 comme telle dans le code (`domain/cloisonnement.py`), dans la fiche de recette et ici — plutôt que
-présentée comme un gain, ce qui aurait faussé la lecture d'un futur relecteur.
+présentée comme un gain, ce qui aurait faussé la lecture d'un futur relecteur. La revue a établi que
+documenter ne suffisait pas : une capacité livrée sans effet se **trace au registre**
+([DETTE-036](../dette.md#dette-036--une-position-du-cloisonnement-na-pas-deffet-distinct)), comme
+DETTE-028 l'avait fixé pour le catalogue de types livré sans consommateur.
 
 ### 4. L'indécidable se résout en **refus**, pas en hypothèse favorable
 
@@ -111,24 +114,49 @@ renseigne toujours la catégorie ; le cas ne se présente qu'aux frontières.
   (ADR-0024) et déplacer des archers au changement d'un réglage serait le contraire du serveur
   autoritaire. On **signale**, l'admin régénère ou ajuste. Badge ambre par cible + bannière chiffrée
   qui **dit le geste** (régénérer), sur le modèle exact d'ADR-0047.
+Les deux valent **des deux côtés de la salle** — plan de cibles et plan de duels. La contrainte y
+était dure dès la première rédaction, mais les signaux n'y avaient pas suivi : quatre axes de revue
+ont relevé un plan de duels muet, une réserve sans motif à l'écran et un message de refus qui
+envoyait l'organisateur chercher de la place là où c'était son réglage qui refusait. Une contrainte
+dure qui ne se *rend* que sur un écran sur deux ne vaut pas mieux qu'une préférence.
+
 - **`RaisonConflit.CLOISONNEMENT`** : l'archer est en réserve *à cause du réglage*, non de la salle.
   Le service la dérive en reposant la question **sans** le cloisonnement : si une cible l'accepterait
   alors, le refus vient du réglage. Le moteur pur, lui, ne rend que `NON_PLACE` — il n'a qu'un monde
   à sa disposition. Deux gestes correctifs différents (desserrer le réglage / ajouter une cible),
   donc deux raisons distinctes, y compris dans le message d'un déplacement refusé.
 
-### 6. **Pas** d'extraction d'un mécanisme de contraintes injectables
+### 6. **Pas** d'extraction d'un mécanisme de contraintes injectables — mais le seuil *est* franchi
 
 ADR-0023 §2 fixait le seuil : « à la 3ᵉ contrainte **et** si une duplication apparaît ». ADR-0047
-avait désigné cette US comme « la prochaine occasion de réévaluer ». Verdict : **on n'extrait rien**.
+avait désigné cette US comme « la prochaine occasion de réévaluer ». Verdict : **on n'extrait rien**
+— pour une raison qu'il faut énoncer correctement, la première rédaction de ce paragraphe étant
+fausse et corrigée en revue.
 
-La contrainte ajoute bien un `if` dans le glouton, mais la duplication qu'on redoutait est évitée par
-un **prédicat pur unique** — `cible_cloisonnement_non_respecte(cloisonnement, archers)` — dont
-`_cloisonnement_admet` est la négation, et que réutilisent tels quels le glouton, la validation d'un
-déplacement manuel et le signal calculé à la lecture. Trois chemins, un seul énoncé de la règle.
-Introduire un registre de contraintes injectables pour **une** contrainte dure supplémentaire serait
-un remède structurel sur une évolution supposée — précisément ce que `CLAUDE.md` interdit (« 3ᵉ
-occurrence réelle, invariant déjà dupliqué »). Le seuil reste posé pour la contrainte suivante.
+**Les deux conditions sont remplies.** Le glouton câble aujourd'hui **cinq** contraintes (positions,
+hauteur, espace, partage de carton, cloisonnement) : le compte de trois est dépassé depuis
+longtemps. Et une duplication existait bel et bien — non pas celle de la *règle*, mais celle de la
+**séquence de gardes** : `peut_accueillir` et `accueille` portaient le même trio de tests, et cette
+US y avait ajouté la même ligne de cloisonnement **des deux côtés**. C'est précisément le signal
+qu'ADR-0023 guettait.
+
+**Ce que nous en faisons n'est pourtant pas un registre**, parce que les cinq contraintes ne sont
+pas de même nature : trois **consomment un budget mutable** (espace, carton, positions) et sont
+indissociables de l'acte de poser ; deux seulement sont des **prédicats purs** (hauteur,
+cloisonnement). Un mécanisme injectable universel devrait donc modéliser la consommation de budget,
+c'est-à-dire réimplémenter `_CibleEnCours` derrière une interface : un protocole, cinq
+implémentations, un registre élargi, trois chemins d'appel migrés et les tests du moteur réécrits —
+pour zéro comportement nouveau. **Option « rien » retenue**, au sens plein de la règle 16.
+
+Le remède que la preuve appelle réellement tient en une **délégation** : `accueille` dérive
+désormais de `peut_accueillir` (il pose ce que celle-ci autorise) au lieu de recopier ses gardes. La
+6ᵉ contrainte ne s'écrira donc qu'à un seul endroit, et le seuil d'ADR-0023 §2 reste posé —
+honnêtement, cette fois — pour la contrainte suivante.
+
+**La règle de cloisonnement, elle, n'a bien qu'un énoncé** : le prédicat pur
+`cible_cloisonnement_non_respecte(cloisonnement, archers)`, dont `_cloisonnement_admet` est la
+négation, sert le glouton, la validation d'un déplacement manuel et le signal calculé à la lecture.
+Trois chemins, une définition. C'est vrai — mais ce n'était pas ce que le seuil d'ADR-0023 mesurait.
 
 ### 7. L'ordre d'entrée groupe par catégorie **quand, et seulement quand, le réglage la sépare**
 
@@ -151,9 +179,15 @@ mais **uniquement** sous un réglage qui la sépare, ce qui garantit que le plan
   réversible d'un réglage.
 - **−** Sur une cible **déjà** non conforme (plan antérieur au réglage), **toute** pose est refusée,
   même « neutre ». Choix de prévisibilité : une règle « ne pas aggraver » dépendrait de l'ordre des
-  gestes. L'admin régénère, ou vide la cible d'abord.
+  gestes. Le refus le **dit** (« cette cible ne respecte déjà pas le cloisonnement : régénérez, ou
+  videz-la ») plutôt que d'accuser le candidat, qui ne mêle rien — nuance ajoutée en revue, sans
+  quoi l'admin cherchait indéfiniment sa propre faute.
 - **−** `blason_et_categorie` est aujourd'hui indiscernable de `categorie` (§3) : quatre positions
   pour trois comportements observables tant qu'EF-1.4 n'est pas livré.
 - **~** Le réglage reste modifiable **tournoi en cours** : aucun statut ne le verrouille, comme le
   plan lui-même s'ajuste jusqu'au bout (E03US004). Une régénération tardive reste protégée par
-  l'alerte d'impact chiffrée (E12US007).
+  l'alerte d'impact chiffrée (E12US007) — mais **cette alerte ne chiffre pas la réserve** que le
+  réglage va créer : elle compte les archers replacés et les cibles déjà scorées, pas ceux qu'un
+  cloisonnement plus strict va exclure. L'organisateur les découvre **après** avoir confirmé.
+  Relevé par l'axe adversarial ; non corrigé ici (il faudrait un `placer` à blanc dans le calcul
+  d'impact), et donc énoncé plutôt que sous-entendu.

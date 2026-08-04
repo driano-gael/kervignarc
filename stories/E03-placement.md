@@ -113,7 +113,10 @@ respecter les règles officielles.
   Le cloisonnement ne peut que **retirer** des cohabitations, jamais en autoriser une.
 - **CA — changer le réglage ne déplace personne** : le plan est matérialisé (ADR-0024) ; une cible
   déjà posée qui viole le réglage nouvellement activé est **signalée** (badge + bannière disant de
-  régénérer), jamais réarrangée d'office.
+  régénérer), jamais réarrangée d'office. Sur une telle cible, **toute** pose est refusée — même
+  celle d'un archer de la catégorie déjà présente : le refus dit « cette cible ne respecte déjà pas
+  le cloisonnement », il n'accuse pas le candidat. *(Arbitrage tranché en cours d'US : une règle
+  « ne pas aggraver » dépendrait de l'ordre des gestes, donc serait imprévisible pour l'admin.)*
 - **Notes (livré, 04/08/2026 — [ADR-0071](../docs/adr/0071-cloisonnement-categorie-blason-active-et-dur.md))** :
   - **Surface livrée** : moteur + service + API (`GET`/`PUT /api/v1/tournois/{id}/cloisonnement`)
     **et** le sélecteur sur l'écran de placement admin, le badge ambre par cible, la bannière
