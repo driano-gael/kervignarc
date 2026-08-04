@@ -146,6 +146,16 @@
 > maille (« ex-006 / ex-007 ») décrit l'intention, pas l'état du code : le vérifier **avant** de
 > cadrer aurait évité un aller-retour d'analyse.
 >
+> **Ce que la revue a corrigé, et qui vaut pour les US suivantes.** Un **bloquant** trouvé par les
+> **cinq** axes : un composant monté sous condition (`{enTableau && …}`) qui dérivait son état
+> d'une prop — au retour, l'écran affichait un réglage et le formulaire en soumettait un autre. La
+> leçon est réutilisable telle quelle : *un état dérivé d'une prop, dans un composant monté sous
+> condition, diverge dès que la condition bascule*. Le test qui aurait dû l'attraper suivait le
+> chemin **aller** du garde-fou et jamais le retour. L'axe adversarial a par ailleurs **mesuré** ce
+> que l'US annonçait à la louche (128 → 436 duels sur un tableau de 120, et non « une trentaine →
+> plus d'une centaine ») : un chiffre faux reversé dans `stories/` serait devenu l'oracle des US
+> suivantes.
+>
 > **🎯 Prochaine :** **`E03US007`** — contrainte de séparation catégorie/blason au placement.
 > *(Prochaine ligne ⬜ de J3. Deux voisines sont à considérer si la priorité change : `E07US005`
 > (vue tableaux/arbres live) devient nettement plus intéressante maintenant qu'un tableau peut

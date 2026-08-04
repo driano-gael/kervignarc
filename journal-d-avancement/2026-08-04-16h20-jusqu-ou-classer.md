@@ -23,7 +23,7 @@ Le palmarès affiché au mur le montre aussitôt : sous le classement intégral,
 fourchette, plus un seul rang emprunté au classement du matin.
 
 **Le point de vigilance, dit franchement.** Le classement intégral fait tirer **beaucoup plus de
-duels** : sur un tournoi de 120 archers, on passe d'une trentaine de matchs à plus d'une centaine.
+duels** : sur un tableau de 120 archers, on passe de **128 matchs à 436** — près de quatre fois plus.
 C'est une décision d'organisation — temps de salle, cibles, fatigue des archers —, pas un choix
 d'affichage. L'écran vous le rappelle sous le réglage, et la simulation vous en donne le compte exact
 avant que vous ne vous engagiez. *(Le schéma dessiné à côté du réglage, lui, ne compte pas encore ces

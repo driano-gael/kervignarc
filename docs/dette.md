@@ -56,7 +56,7 @@
 | [DETTE-031](#dette-031--le-suivi-du-déroulé-se-recalcule-intégralement-à-chaque-lecture) | technique | mineur | `backend/application/suivi_deroule.py` (`ServiceSuiviDeroule.pour_tournoi`), `backend/api/v1/suivi_deroule.py`, `frontend/src/features/suivi-deroule/hooks.ts`, **+ E06US003** : `ServiceClassement._verdicts_qualif` (une requête `barrage` de plus **à chaque** lecture du classement, endpoint pollé toutes les 10 s par chaque écran), **+ E07US008** : `backend/application/routage.py` (`ServiceRoutage._grille`), `backend/api/v1/routage.py` (les **deux** routes), `frontend/src/features/routage/hooks.ts`, **+ E06US004** : `backend/application/palmares.py` (`ServicePalmares._resultat`, une reconstruction **par phase à tableau**), `backend/api/v1/palmares.py` (les **deux** routes, dont le PDF), `frontend/src/features/palmares/hooks.ts` | `GET /api/v1/tournois/{id}/suivi-deroule` est **public, non authentifié, sans cache et sans plafond** : chaque appel compte les engagés (départs × inscriptions) puis, **par phase en tableau**, appelle `ServiceSaisieDuels.reconstruire` — qui recalcule tout le classement du tournoi, rebâtit l'arbre, rejoue les duels et applique les forfaits. Deux surfaces le pollent (écran de salle 10 s, pilotage 10 s) et n'importe qui sur le réseau local peut le poller aussi | Faible aujourd'hui : mono-club, quelques phases, un ou deux écrans, réseau local fermé — mesuré à ~34 ms pour le seul classement. Devient sensible avec beaucoup d'écrans, un déroulé à nombreuses phases, ou le jour où l'appli sortirait du LAN | E07US004 ([ADR-0064](adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md)) — relevé en revue (axe adversarial) : la dette était **assumée en commentaire** de `hooks.ts` sans être tracée ici. **Élargie par E07US008** ([ADR-0065](adr/0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md)) : un **2ᵉ endpoint** au même régime (`/routage/{id}/affectations`) et **deux surfaces de polling** de plus (onglet public « Affectations », carte de suivi sur chaque téléphone) — relevé par trois axes de revue, qui ont aussi corrigé quatre textes citant `DETTE-008` à sa place | Mémoïser la projection par `(tournoi_id, version)` — la reconstruction est **pure** à donnée constante, donc invalidable sur l'événement post-commit `donnees_modifiees` qui existe déjà. Aucun cache n'est justifié avant qu'une mesure le réclame. Marqueurs `# DETTE-031` sur `ServiceSuiviDeroule.pour_tournoi`, `ServiceRoutage._grille`, les deux routes de `api/v1/routage.py`, `features/routage/hooks.ts`, `ServicePalmares._resultat`, `api/v1/palmares.py` et `features/palmares/hooks.ts` |
 | [DETTE-032](#dette-032--la-prise-de-controle-se-mesure-sur-lheure-murale-pas-sur-une-horloge-monotone) | technique | mineur | `backend/application/ecrans.py` (`ServiceEcrans._ecoulees`), `backend/domain/ecran.py` (`Consigne.expiree`, `reste_secondes`) | L'échéance d'une prise de contrôle est calculée comme un écart entre deux lectures de l'**heure murale** (port `Horloge`). Une resynchronisation NTP en cours de journée qui **recule** l'horloge repousse d'autant l'expiration ; côté écran, le décompte local atteint zéro, le sondage suivant lui rend la durée pleine, et l'affichage **oscille** entre vue imposée et déroulé | Faible : suppose une remise à l'heure en pleine journée sur un serveur local sans internet. Le pire cas est cosmétique (un écran qui hésite quelques secondes), jamais une perte de donnée | E07US004 ([ADR-0064](adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md)) — relevé en 3ᵉ passe de revue, après qu'un correctif eut **prétendu** le traiter sans le faire | Mesurer la durée sur une référence **monotone** (`time.monotonic`) plutôt que sur l'heure murale, en ajoutant un port dédié à côté d'`Horloge` — ce dernier reste juste pour *dater* (audit, présence), pas pour *chronométrer*. Marqueur `# DETTE-032` sur `ServiceEcrans._ecoulees` |
 | [DETTE-033](#dette-033--un-battu-repris-par-la-séquence-nest-pas-annoncé) | conception | mineur | `backend/application/routage.py` (`ServiceRoutage._router`, branche `TERMINE`) | Le repêchage a **deux moitiés lues à deux sources indépendantes** : le `routing` (`_est_repeche`, décidé **match par match**) et les **sources de la séquence** (`_repechages`, indexées par **tour**). Seule la première est annoncée. Un battu que la phase avale prélève par `issue_de_tour/perdants` lit donc son rang **sans savoir qu'il rejoue** | Faible aujourd'hui : aucun moteur ne consomme les prélèvements (**DETTE-028**), donc composer un tel déroulé ne fait encore rien tirer à personne. Devient **réel** dès qu'E05US010+ exécutera le prélèvement — l'archer rentrerait chez lui entre deux phases | E07US008 ([ADR-0065](adr/0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md) §3) — un correctif de revue a tenté de la combler et a été **démoli de deux façons opposées** en 2ᵉ passe : `dernier` est le dernier match *joué* et non le match perdu (on rate le battu qui redescend en petite finale), et un **tour couvre plusieurs plages** (finale et petite finale sont toutes deux au tour 3, on décorerait le 4ᵉ du podium) | **Ne pas deviner** : les deux correctifs proposés étaient incompatibles, ce qui est le signal que la **sémantique de `SourcePhase.par_issue_de_tour` n'est pas tranchée**. Elle appartient à l'US qui implémentera le prélèvement, pas à un canal d'affichage. Figée par `test_le_battu_repris_par_la_sequence_n_est_pas_encore_annonce`, qui **échouera** le jour où la règle sera décidée. Marqueur `# DETTE-033` sur la branche `TERMINE` de `_router` |
-| [DETTE-035](#dette-035--la-conséquence-dune-profondeur-de-classement-nest-pas-chiffrée-au-moment-du-choix) | conception | mineur | `backend/domain/deroule.py` (`_braquets`, `BlocDeroule.tours`), `frontend/src/shared/phases/ChoixProfondeur.tsx` | Le schéma à braquets compte les duels de l'**arbre** (`effectif - 1`) et **ignore ceux que la politique `depth` ajoute** : une petite finale au preset, toute la cascade de placement en 1→N. L'organisateur choisit donc « classement intégral » sans voir le nombre de duels qu'il vient d'engager, alors que la maquette A07 fait de ce chiffrage l'exigence `P-4` (« chiffrer la conséquence **au moment du choix**, pas la découvrir à 10 h ») | Modéré : c'est le réglage du déroulé qui pèse le plus lourd sur la journée — un tableau de 120 passe d'une trentaine de duels à plus d'une centaine. Atténué de deux façons : l'écran **énonce** la conséquence en clair sous le choix, et la **simulation** (E15US002), qui joue réellement le format, en rend le compte exact | E06US006 ([ADR-0070](adr/0070-profondeur-de-classement-reglee-par-phase.md)) — assumée à l'écriture, pas découverte en revue | **Ne pas recopier la structure du tableau dans la projection.** Les deux voies faciles sont mauvaises : ensemencer un vrai `construire_tableau` dans `projeter` lui imposerait `seeding`/`byes` qu'une projection évite délibérément ; une formule fermée (`P/2 × log2(P)`) serait une **seconde source de vérité** sur l'arbre, à faire diverger au premier format. Piste : faire rendre à `Depth` le nombre de matchs de classement qu'elle implique pour un effectif — la politique sait déjà quels rangs elle produit. Marqueur `# DETTE-035` sur `_braquets` |
+| [DETTE-035](#dette-035--la-conséquence-dune-profondeur-de-classement-nest-pas-chiffrée-au-moment-du-choix) | conception | mineur | `backend/domain/deroule.py` (`_braquets`), `backend/application/simulation_format.py` (`PhaseSimulee.ecart`), `frontend/src/shared/phases/ChoixProfondeur.tsx` (`AIDE_PROFONDEUR`) | Le schéma à braquets compte les duels de l'**arbre** (`effectif - 1`) et **ignore ceux que la politique `depth` ajoute** : une petite finale au preset, toute la cascade de placement en 1→N. L'organisateur choisit donc « classement intégral » sans voir le nombre de duels qu'il vient d'engager, alors que la maquette A07 fait de ce chiffrage l'exigence `P-4` (« chiffrer la conséquence **au moment du choix**, pas la découvrir à 10 h ») | Modéré : c'est le réglage du déroulé qui pèse le plus lourd sur la journée — un tableau de 120 passe de **128 duels à 436** (mesuré en revue), près de quatre fois plus. Atténué de deux façons : l'écran **énonce** la conséquence en clair sous le choix, et la **simulation** (E15US002), qui joue réellement le format, en rend le compte exact | E06US006 ([ADR-0070](adr/0070-profondeur-de-classement-reglee-par-phase.md)) — assumée à l'écriture, pas découverte en revue | **Ne pas recopier la structure du tableau dans la projection.** Les deux voies faciles sont mauvaises : ensemencer un vrai `construire_tableau` dans `projeter` lui imposerait `seeding`/`byes` qu'une projection évite délibérément ; une formule fermée (`P/2 × log2(P)`) serait une **seconde source de vérité** sur l'arbre, à faire diverger au premier format. Piste : faire rendre à `Depth` le nombre de matchs de classement qu'elle implique pour un effectif — la politique sait déjà quels rangs elle produit. Marqueurs `# DETTE-035` sur `_braquets`, sur `PhaseSimulee.ecart` et sur `AIDE_PROFONDEUR` (le front est l'endroit exact du raccourci : c'est là que l'organisateur choisit sans voir le chiffre) |
 
 ## Dette résorbée
 
@@ -1514,48 +1514,6 @@ Figée par `test_le_battu_repris_par_la_sequence_n_est_pas_encore_annonce`
 la règle sera décidée, ce qui est précisément ce qu'on lui demande. Marqueur `# DETTE-033` sur la
 branche `TERMINE` de `ServiceRoutage._router`.
 
-### DETTE-035 — la conséquence d'une profondeur de classement n'est pas chiffrée au moment du choix
-
-Le **schéma à braquets** (`domain/deroule.py`, E01US024) répond à la question « combien de tours,
-combien de duels » en dépliant la *Règle R* : à chaque tour, les gagnants gardent la moitié haute,
-les perdants la basse. La somme de ses duels vaut toujours `effectif - 1` — c'est l'arbre **nu**.
-
-Or la politique `depth` en **ajoute**, et le nombre n'est pas anecdotique :
-
-| Profondeur | Duels d'un tableau de 32 |
-|---|---|
-| podium (preset) | 31 + 1 (petite finale) |
-| classement intégral 1→N | ~80 — un match par rang à départager |
-
-Depuis E06US006, l'organisateur **choisit** cette profondeur sur l'écran de composition… sans que le
-schéma d'à côté ne bouge d'un duel. La maquette A07 en fait pourtant son exigence `P-4` : *« chiffrer
-la conséquence au moment du choix, pas la découvrir à 10 h »* — et c'est le réglage du déroulé qui
-pèse le plus lourd sur la journée, devant même le grain de validation.
-
-**Ce qui l'atténue aujourd'hui** : l'écran **énonce** la conséquence en clair sous le sélecteur
-(« le nombre de duels augmente fortement — vérifiez la simulation avant de vous y engager »), et la
-**simulation** d'E15US002, qui joue réellement le format sur des archers fictifs, en rend le compte
-exact. L'organisateur peut donc savoir ; il doit simplement faire un geste de plus.
-
-**Pourquoi ce n'est pas corrigé dans l'US** — et pourquoi les deux corrections évidentes sont
-mauvaises :
-
-1. **appeler `construire_tableau` depuis `projeter`** lui imposerait un `seeding` et des `byes` que
-   la projection évite délibérément : elle ne connaît que des **plages de rangs**, jamais des
-   participants, et c'est ce qui la rend calculable sur un brouillon sans inscrits ;
-2. **écrire une formule fermée** (`P/2 × log2(P)` pour un placement complet) créerait une **seconde
-   source de vérité** sur la structure de l'arbre, à côté de `domain/tableau.py`. Elle serait juste
-   le jour de son écriture et fausse au premier format qui compose autrement — exactement le motif
-   pour lequel `DETTE-029` est ouverte.
-
-**Piste** : faire rendre à la politique `Depth` elle-même le nombre de matchs de classement qu'elle
-implique pour un effectif donné. Elle sait déjà quels rangs elle produit (`rangs_a_classer`), donc
-elle est le seul objet qui puisse répondre sans dupliquer l'arbre — et la réponse suivrait
-automatiquement toute profondeur ajoutée au catalogue. À traiter dans une US dédiée, avec la mise à
-jour du schéma qui va avec.
-
-Marqueur `# DETTE-035` sur `_braquets` (`backend/domain/deroule.py`).
-
 ### DETTE-034 — une phase de **consolation** serait mal classée au palmarès
 
 > ✅ **RÉSORBÉE le 03/08/2026 par E05US020** ([ADR-0068](adr/0068-le-moteur-consomme-les-prelevements-declares.md) §5).
@@ -1590,3 +1548,45 @@ dispute, et le palmarès n'aura qu'à lire cette information au lieu de déduire
 comportement actuel est **documenté** par `test_la_phase_la_plus_tardive_l_emporte`
 (`backend/tests/test_domain_palmares.py`), à réviser ce jour-là. Marqueur `# DETTE-034` sur
 `calculer_palmares`.
+### DETTE-035 — la conséquence d'une profondeur de classement n'est pas chiffrée au moment du choix
+
+Le **schéma à braquets** (`domain/deroule.py`, E01US024) répond à la question « combien de tours,
+combien de duels » en dépliant la *Règle R* : à chaque tour, les gagnants gardent la moitié haute,
+les perdants la basse. La somme de ses duels vaut toujours `effectif - 1` — c'est l'arbre **nu**.
+
+Or la politique `depth` en **ajoute**, et le nombre n'est pas anecdotique :
+
+| Profondeur | Tableau de 32 | Tableau de 120 |
+|---|---|---|
+| podium (preset) | 32 | 128 |
+| classement intégral 1→N | **80** | **436** |
+
+Depuis E06US006, l'organisateur **choisit** cette profondeur sur l'écran de composition… sans que le
+schéma d'à côté ne bouge d'un duel. La maquette A07 en fait pourtant son exigence `P-4` : *« chiffrer
+la conséquence au moment du choix, pas la découvrir à 10 h »* — et c'est le réglage du déroulé qui
+pèse le plus lourd sur la journée, devant même le grain de validation.
+
+**Ce qui l'atténue aujourd'hui** : l'écran **énonce** la conséquence en clair sous le sélecteur
+(« le nombre de duels augmente fortement — vérifiez la simulation avant de vous y engager »), et la
+**simulation** d'E15US002, qui joue réellement le format sur des archers fictifs, en rend le compte
+exact. L'organisateur peut donc savoir ; il doit simplement faire un geste de plus.
+
+**Pourquoi ce n'est pas corrigé dans l'US** — et pourquoi les deux corrections évidentes sont
+mauvaises :
+
+1. **appeler `construire_tableau` depuis `projeter`** lui imposerait un `seeding` et des `byes` que
+   la projection évite délibérément : elle ne connaît que des **plages de rangs**, jamais des
+   participants, et c'est ce qui la rend calculable sur un brouillon sans inscrits ;
+2. **écrire une formule fermée** (`P/2 × log2(P)` pour un placement complet) créerait une **seconde
+   source de vérité** sur la structure de l'arbre, à côté de `domain/tableau.py`. Elle serait juste
+   le jour de son écriture et fausse au premier format qui compose autrement — exactement le motif
+   pour lequel `DETTE-029` est ouverte.
+
+**Piste** : faire rendre à la politique `Depth` elle-même le nombre de matchs de classement qu'elle
+implique pour un effectif donné. Elle sait déjà quels rangs elle produit (`rangs_a_classer`), donc
+elle est le seul objet qui puisse répondre sans dupliquer l'arbre — et la réponse suivrait
+automatiquement toute profondeur ajoutée au catalogue. À traiter dans une US dédiée, avec la mise à
+jour du schéma qui va avec.
+
+Marqueur `# DETTE-035` sur `_braquets` (`backend/domain/deroule.py`).
+

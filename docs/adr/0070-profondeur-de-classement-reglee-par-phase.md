@@ -43,13 +43,26 @@ migration Alembic** — la colonne `config` est un document JSON, comme pour `ti
 
 ### 2. Deux modes en façade, trois au catalogue
 
-L'API et l'écran n'offrent que `un_vers_n` et `podium`. `aucun` (`AucunClassement`) reste au
+L'API et l'écran n'offrent que `un_vers_n` et `top_n`. `aucun` (`AucunClassement`) reste au
 catalogue mais **hors façade** : ce n'est pas un réglage de tableau, c'est le contenu même du type
 `échauffement` (§10.1). L'offrir proposerait de monter un arbre dont on ne lirait aucun rang.
+
+⚠️ **`top_n`, et non `podium`** (corrigé en revue). La stratégie s'appelle `ProfondeurPodium`
+depuis E05US003, mais `docs/glossaire.md` réserve le mot *Podium* aux **rangs 1-4 décernés par un
+match**. Ce nom devenant ici un **contrat REST et une valeur persistée**, un « podium jusqu'au 8ᵉ »
+aurait rompu la règle 3 dans les quatre sens (code, API, UI, doc). Le renommage est **gratuit
+aujourd'hui** — la clé `config.policies.depth` n'a jamais été écrite, aucune base ne la porte — et
+coûteux dès la première base de production. La **classe** garde son nom, qui est interne.
 
 Symétriquement, une profondeur réglée sur un type qui ne monte **aucun** tableau est refusée
 (`ProfondeurInvalide` → 422) : une qualification classe toujours tout le monde, une poule classe
 sans arbre. Un réglage qui n'agit sur rien est pire qu'absent — il se croit appliqué.
+
+⚠️ **Ce refus vaut pour une `Phase`, pas pour un `ModelePhase`.** Une étape de format incohérente
+s'enregistre — c'est le régime brouillon d'ADR-0063 — et n'est refusée qu'à `pour_tournoi`. Elle
+n'est pas non plus **diagnostiquée** (`projeter` ne lit pas la profondeur), donc l'organisateur ne
+l'apprend qu'à l'application. Inatteignable depuis l'écran, qui force `profondeur: null` hors
+tableau ; c'est par l'API seule que le cas se produit.
 
 ### 3. ⚠️ L'absence de réglage vaut **podium**, et non 1→N
 
@@ -60,12 +73,30 @@ Le défaut du *catalogue* — quelle politique un format assemble quand il ne di
 preset d'une *phase déjà écrite en base*. Jusqu'à cette US, **toutes** les phases se jouaient en
 `ProfondeurPodium` figée au câblage. Faire de 1→N le preset des phases non réglées aurait converti
 d'un coup **tous les tournois existants** au placement intégral : un tableau de 120 serait passé
-d'une trentaine de duels à plus d'une centaine, sans que personne ne l'ait demandé, et sans qu'aucun
+de **128 duels à 436** (mesuré), sans que personne ne l'ait demandé, et sans qu'aucun
 écran ne le signale — le format composé et validé la veille aurait produit un autre tournoi.
 
-Donc : `profondeur = None` ⇒ preset du type ⇒ `podium(4)` pour un tableau — le mécanisme « politique
-sans migration » d'ADR-0011, celui-là même qui fait retomber une phase d'avant E01US015 sur son
-grain preset. **1→N est ce que l'organisateur choisit**, jamais ce qu'il subit.
+Donc : `profondeur = None` ⇒ preset du type ⇒ `top_n(4)` pour une élimination directe — le mécanisme
+« politique sans migration » d'ADR-0011, celui-là même qui fait retomber une phase d'avant E01US015
+sur son grain preset. **1→N est ce que l'organisateur choisit**, jamais ce qu'il subit.
+
+⚠️ **L'argument couvre aussi les phases créées après cette US**, et il faut le dire — la revue a
+relevé que la formulation ci-dessus (« les tournois **existants** ») ne couvrait que la moitié du
+périmètre. La raison est mécanique : l'absence de clé ne permet **pas** de distinguer une phase
+ancienne d'une phase neuve. Il faudrait pour cela une migration — donc matérialiser `top_n(4)` sur
+chaque phase déjà composée, soit un défaut hérité maquillé en décision — ou un marqueur de version.
+On choisit un seul preset pour les deux, et le CA est corrigé en conséquence. *Si le commanditaire
+voulait 1→N par défaut sur les nouvelles phases, c'est un arbitrage produit à lui soumettre, pas
+une correction technique.*
+
+**Exception : le type `placement`.** Son preset est `un_vers_n`, et l'asymétrie est voulue.
+L'argument de rétro-compatibilité ne s'y applique pas — **aucun service ne monte de tableau pour ce
+type** (`# DETTE-028`), donc il n'y a rien à ne pas casser — tandis que le catalogue promet à
+l'organisateur « tableau qui classe tout le monde, du 1ᵉʳ au dernier ». Lui donner le podium aurait
+affiché « Podium (défaut) » sur le type dont le nom dit l'inverse. La fenêtre est **maintenant** :
+après la livraison de son moteur, corriger ce preset exigerait la conversion silencieuse que ce
+paragraphe refuse. *(Relevé en revue par deux axes, sous deux angles opposés — l'un demandant le
+changement de preset, l'autre notant que le réglage n'est lu par personne sur ce type.)*
 
 Conséquence assumée : le CA est **corrigé** dans `stories/` plutôt que suivi à la lettre (règle 9 —
 un arbitrage tranché en cours d'US est reversé dans la story, dans le même commit).
@@ -86,9 +117,20 @@ dans `application/prelevement.py` — le module créé par E05US020 pour exactem
 
 Ce n'est pas une précaution théorique : la règle d'ensemencement y vivait **recopiée** aux deux
 endroits, avec un commentaire affirmant leur parité, et la recopie a lâché à la première évolution
-(plan de 8 placements pour un tableau de 4, mesuré en revue adversariale). Deux profondeurs
-divergentes donneraient la même classe de panne, en pire : des cibles posées pour un arbre qui n'est
-pas celui qu'on joue.
+(plan de 8 placements pour un tableau de 4, mesuré en revue adversariale).
+
+⚠️ **Mais la panne symétrique n'existe pas encore, et un premier jet de cet ADR l'affirmait à
+tort.** Sous `PlacementEnCascade`, les **paires du premier tour sont identiques quelle que soit la
+profondeur** (mesuré : `top_n(4)` et `un_vers_n` sur 8 participants rendent les mêmes paires), et
+`ServicePlacementDuels` ne consomme **que** ce premier tour. Sa sortie est donc structurellement
+insensible à la profondeur : neutraliser sa lecture laisse la suite de tests entièrement verte —
+non par défaut de couverture, mais **parce qu'il n'y a rien à distinguer**. Écrire malgré tout un
+test de parité aurait produit un test décoratif, vert quoi qu'il arrive.
+
+Ce que la lecture partagée achète est donc une garantie **future**, pas une divergence évitée
+aujourd'hui : le jour où le plan couvrira les tours suivants, la parité sera acquise sans qu'on ait
+à y penser. Un test de caractérisation (`test_le_plan_de_cibles_reste_le_meme_a_toute_profondeur`)
+fige l'état actuel et **échouera** ce jour-là — c'est exactement ce qu'on lui demande.
 
 ## Conséquences
 
@@ -119,7 +161,16 @@ pas celui qu'on joue.
 - l'édition d'une phase est **totale** (PUT) : les deux écrans doivent réémettre la profondeur, sous
   peine de la voir s'effacer en corrigeant un effectif. Le piège est déjà documenté pour
   `barrage_jusqu_au` ; il est plus coûteux ici, puisqu'une profondeur effacée fait **rejouer** un
-  tournoi tronqué.
+  tournoi tronqué ;
+- **deux politiques de phase, deux modélisations.** `barrage_jusqu_au` est un **entier nu**
+  (E06US003) ; `profondeur` est un **descripteur** `nom` + paramètres. La seconde forme est la
+  bonne — c'est elle qui rendrait atteignable le `sinon` du composite `tiebreak`, que
+  `docs/modele-de-donnees.md` signale aujourd'hui comme impossible à écrire — mais la première n'a
+  pas été convertie : le faire aurait élargi le périmètre de l'US. **La 3ᵉ politique portée par une
+  phase doit converger vers le descripteur**, et non inventer une forme de plus. C'est aussi à ce
+  moment-là que « résoudre une politique de phase par le registre » atteindra sa 3ᵉ occurrence,
+  seuil auquel le projet autorise un remède structurel (règle 16) — aujourd'hui il n'y en a que
+  deux, aux formes encore divergentes, donc **on duplique et on attend**.
 
 ## Alternatives écartées
 
