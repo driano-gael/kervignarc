@@ -215,6 +215,32 @@ class EffectifTableauInvalide(DomainError):
     code = "effectif_tableau_invalide"
 
 
+class EffectifMinimumIncoherent(DomainError):
+    """Un format exige **moins** d'inscrits que son déroulé n'en réclame (E05US021).
+
+    Le minimum d'un format se **déduit** de ses prélèvements : « les rangs 33 et suivants » ne monte
+    un tableau de deux qu'à partir du 34ᵉ classé. Un club peut exiger davantage (« pas de tournoi de
+    ce type sous 40 archers ») — c'est une règle sportive, elle se pose au-dessus du plancher
+    technique. En dessous, le chiffre est un **mensonge** : il laisserait démarrer un tournoi que le
+    moteur refuserait de dérouler sur la tablette, le défaut même que l'US corrige.
+
+    Bloquante, donc, et non conjoncturelle : la contradiction est vraie à tout effectif.
+    """
+
+    code = "effectif_minimum_incoherent"
+
+
+class ExigenceEffectifInvalide(DomainError):
+    """Le minimum exigé d'un format n'est pas un entier positif (E05US021).
+
+    « Aucune exigence » se dit en ne réglant **rien** (`None`), pas en réglant zéro — même parti que
+    `Phase.barrage_jusqu_au`. Un zéro accepté se lirait « exige 0 archer », un nombre qui n'a aucun
+    sens et qu'aucun écran ne saurait présenter.
+    """
+
+    code = "exigence_effectif_invalide"
+
+
 class FormatTableauIncoherent(DomainError):
     """Les politiques `seeding` et `byes` injectées se contredisent sur les exempts (E05US005).
 

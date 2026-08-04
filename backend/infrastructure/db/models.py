@@ -32,6 +32,9 @@ class TournoiORM(Base):
     lieu: Mapped[str | None] = mapped_column(nullable=True)
     type_tournoi: Mapped[str] = mapped_column(nullable=False)
     statut: Mapped[str] = mapped_column(nullable=False)
+    # E05US021 : minimum d'inscrits **exigé en plus** du plancher déduit des prélèvements (0040).
+    # `NULL` = aucune exigence propre ; le plancher technique, lui, se recalcule des phases.
+    effectif_minimum_exige: Mapped[int | None] = mapped_column(nullable=True)
 
 
 class DepartORM(Base):

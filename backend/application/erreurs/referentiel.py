@@ -27,6 +27,26 @@ class TournoiSansDepart(ApplicationError):
     code = "tournoi_sans_depart"
 
 
+class EffectifInsuffisantPourDemarrer(ApplicationError):
+    """Démarrage refusé : le tournoi a **moins d'inscrits** que son déroulé n'en exige (E05US021)
+    → 409.
+
+    Un déroulé qui prélève « les rangs 33 et suivants » ne monte un tableau qu'à partir du 34ᵉ
+    classé. Jusqu'ici, ce manque n'apparaissait qu'**en compétition**, quand le moteur refusait de
+    construire le tableau (`EffectifTableauInvalide`, E05US020) : sur la tablette, trop tard pour
+    changer de format. La garde remonte donc le contrôle au **lancement**, là où l'organisateur peut
+    encore décider — arbitrage du commanditaire, [ADR-0068] §6.
+
+    **Une exception assumée à `D-15`** (« en cours, tout passe ») : le refus ne porte pas sur une
+    saisie mais sur l'ouverture d'un tournoi qu'on sait déjà impossible à dérouler. Le message
+    **chiffre** ce qui manque et **nomme la phase en cause** (`D-16`/`P-4`) — sans quoi il
+    ajouterait un clic sans dire quoi corriger. Conflit d'**état**, d'où 409, comme
+    `TournoiSansDepart` dont il est le voisin direct.
+    """
+
+    code = "effectif_insuffisant_pour_demarrer"
+
+
 class TournoiEnCoursNonSupprimable(ApplicationError):
     """Suppression refusée : le tournoi est `en_cours` ou `en_pause` (E01US002, E01US017) → 409.
 

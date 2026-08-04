@@ -31,10 +31,12 @@ from application.erreurs import PeuplementTournoiDemarre, ScenarioInconnu
 from application.inscriptions import ServiceInscriptions
 from application.jeu_essai import CATALOGUE, ServiceJeuEssai
 from application.referentiel_ffta import ARC_CLASSIQUE, ARC_NU, ARC_POULIES
+from application.suivi_deroule import CompteurEngagesRepository
 from application.tournois import ServiceTournois
 from domain.categorie import Categorie
 from domain.cycle_depart import AvancementDepart
 from domain.depart import Depart, DepartId
+from domain.phase import Phase
 from domain.tournoi import StatutTournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
@@ -68,6 +70,17 @@ class _AvancementInerte:
         raise NotImplementedError("Le jeu d'essai ne crée que des départs (pas de lecture d'état).")
 
 
+class _PhasesVides:
+    """Double du port `PhaseRepository` pour la garde d'effectif d'E05US021.
+
+    Le jeu d'essai **peuple** un tournoi (archers, départs, inscriptions) mais ne lui compose aucun
+    déroulé : sans phase, il n'y a aucun prélèvement à honorer, donc rien à exiger au démarrage.
+    """
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
+        return []
+
+
 class Attelage(NamedTuple):
     """Le service sous test + les repos/services dont les assertions ont besoin."""
 
@@ -91,7 +104,15 @@ def _atteler() -> Attelage:
     score_repo = FauxScoreRepository(archer_repo)
     serie_repo = FauxSerieRepository(archer_repo)
 
-    service_tournois = ServiceTournois(tournoi_repo, depart_repo)
+    # E05US021 : `ServiceTournois` lit désormais phases et engagés (garde d'effectif au démarrage).
+    # Le jeu d'essai ne compose aucun déroulé — la garde reste donc muette, et un dépôt de phases
+    # vide suffit à câbler comme la composition root.
+    service_tournois = ServiceTournois(
+        tournoi_repo,
+        depart_repo,
+        _PhasesVides(),
+        CompteurEngagesRepository(depart_repo, inscription_repo),
+    )
     service_categories = ServiceCategories(tournoi_repo, categorie_repo, blason_repo)
     service_departs = ServiceDeparts(
         depart_repo, tournoi_repo, inscription_repo, _AvancementInerte(), archer_repo, _horloge()

@@ -17,7 +17,7 @@ import datetime
 from dataclasses import dataclass, replace
 from enum import Enum
 
-from domain.erreurs import NomTournoiInvalide
+from domain.erreurs import ExigenceEffectifInvalide, NomTournoiInvalide
 
 TournoiId = int
 """Identifiant technique d'un tournoi, attribué par la persistance."""
@@ -72,6 +72,11 @@ class Tournoi:
     lieu: str | None = None
     type_tournoi: TypeTournoi = TypeTournoi.NON_OFFICIEL
     statut: StatutTournoi = StatutTournoi.BROUILLON
+    # E05US021 : le minimum d'inscrits **exigé** par le format appliqué, recopié ici à l'application
+    # — le patron du gabarit (modèle → copie), déjà celui des phases. Le tournoi ne garde aucun lien
+    # vers son format : sans cette copie, la garde de démarrage n'aurait rien à lire. Le plancher
+    # **technique**, lui, ne se stocke pas : il se recalcule des phases, qui sont là.
+    effectif_minimum_exige: int | None = None
     id: TournoiId | None = None
 
     @staticmethod
@@ -115,6 +120,21 @@ class Tournoi:
             lieu=_lieu_normalise(lieu),
             type_tournoi=type_tournoi,
         )
+
+    def exiger_effectif_minimum(self, minimum: int | None) -> Tournoi:
+        """Renvoie une copie au minimum d'inscrits exigé remplacé (`None` = aucune exigence).
+
+        Lève `ExigenceEffectifInvalide` si le nombre n'est pas positif — même parti que sur le
+        format : « aucune exigence » se dit en ne réglant rien, pas en réglant zéro. Le contrôle de
+        **cohérence** avec le déroulé (« exiger 20 quand il en faut 34 ») n'est pas ici : il dépend
+        des phases, que l'agrégat `Tournoi` ne porte pas — c'est le service qui les rapproche.
+        """
+        if minimum is not None and minimum < 1:
+            raise ExigenceEffectifInvalide(
+                f"Le minimum d'inscrits exigé est un entier positif (reçu {minimum}) ; "
+                "« aucune exigence » se dit en ne réglant rien."
+            )
+        return replace(self, effectif_minimum_exige=minimum)
 
     def vers_pret(self) -> Tournoi:
         """Renvoie une copie passée `prêt` (précondition `brouillon` + complétude garantie en

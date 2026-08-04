@@ -34,7 +34,7 @@ from domain.deroule import ProjectionDeroule
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.ports import FormatTournoiRepository, PhaseRepository, TournoiRepository
-from domain.tournoi import TournoiId
+from domain.tournoi import Tournoi, TournoiId
 
 
 class LecteurDonneesDePhase(Protocol):
@@ -86,20 +86,32 @@ class ServiceFormats:
         """Renvoie toute la bibliothèque de formats (liste éventuellement vide)."""
         return self._formats.lister()
 
-    def creer(self, nom: str, etapes: Iterable[ModelePhase]) -> FormatTournoi:
+    def creer(
+        self,
+        nom: str,
+        etapes: Iterable[ModelePhase],
+        effectif_minimum_exige: int | None = None,
+    ) -> FormatTournoi:
         """Crée un format de bibliothèque.
 
         **Accepte un brouillon** depuis E01US024 (ADR-0063) : un format sans étape ou à la séquence
         incohérente s'enregistre — c'est `appliquer` qui protège le tournoi, et `diagnostiquer` qui
-        dit ce qui manque. Lève `NomFormatDejaPris` si le nom est déjà porté, `DomainError` si le
-        **nom** est vide (seul invariant d'enregistrement restant).
+        dit ce qui manque. Un minimum d'inscrits **incohérent** avec le déroulé (E05US021) suit la
+        même règle : il s'enregistre et se diagnostique. Lève `NomFormatDejaPris` si le nom est déjà
+        porté, `DomainError` si le **nom** est vide ou si l'exigence n'est pas positive.
         """
-        format_tournoi = FormatTournoi.creer(nom, etapes)
+        format_tournoi = FormatTournoi.creer(
+            nom, etapes, effectif_minimum_exige=effectif_minimum_exige
+        )
         self._verifier_nom_libre(format_tournoi.nom)
         return self._formats.ajouter(format_tournoi)
 
     def modifier(
-        self, format_id: FormatTournoiId, nom: str, etapes: Iterable[ModelePhase]
+        self,
+        format_id: FormatTournoiId,
+        nom: str,
+        etapes: Iterable[ModelePhase],
+        effectif_minimum_exige: int | None = None,
     ) -> FormatTournoi:
         """Édite un format **sur place** — l'origine est préservée (ADR-0060 §4).
 
@@ -110,7 +122,7 @@ class ServiceFormats:
         format, `DomainError` si le résultat est invalide.
         """
         existant = self._format_existant(format_id)
-        modifie = existant.modifier(nom, etapes)
+        modifie = existant.modifier(nom, etapes, effectif_minimum_exige)
         self._verifier_nom_libre(modifie.nom, sauf=format_id)
         return self._formats.enregistrer(modifie)
 
@@ -171,9 +183,16 @@ class ServiceFormats:
         Refuse (`PhasesEngagees`) dès qu'une phase du tournoi n'est plus `à venir` : le
         remplacement jetterait un déroulé en cours, avec les séries et les duels qui y pendent.
 
+        **Recopie le minimum d'inscrits exigé** par le format sur le tournoi (E05US021) : le tournoi
+        ne garde aucun lien vers son format — sa copie, ce sont ses phases (ADR-0060) —, donc
+        sans ce transport la garde de démarrage n'aurait rien à lire. Même patron que le
+        gabarit de salle : modèle → copie → ajustement sans altérer le modèle. Le plancher
+        **technique**, lui, ne se recopie pas : il se déduit des phases, qui viennent d'être
+        posées.
+
         Lève `TournoiIntrouvable`, `FormatIntrouvable`.
         """
-        self._tournoi_existant(tournoi_id)
+        tournoi = self._tournoi_existant(tournoi_id)
         format_tournoi = self._format_existant(format_id)
         existantes = self._phases.par_tournoi(tournoi_id)
         self._exiger_sequence_remplacable(tournoi_id, existantes, format_tournoi)
@@ -200,7 +219,13 @@ class ServiceFormats:
             # porte un identifiant »), tenu par le repository ; le projet ne tourne pas sous `-O`.
             assert phase.id is not None, "une phase relue du dépôt porte toujours un identifiant."
             self._phases.supprimer(phase.id)
-        return [self._phases.ajouter(phase) for phase in nouvelles]
+        posees = [self._phases.ajouter(phase) for phase in nouvelles]
+        # Après les phases : le tournoi ne doit porter l'exigence du format que si le déroulé qui la
+        # justifie est réellement en place.
+        self._tournois.enregistrer(
+            tournoi.exiger_effectif_minimum(format_tournoi.effectif_minimum_exige)
+        )
+        return posees
 
     def _exiger_sequence_remplacable(
         self,
@@ -295,6 +320,8 @@ class ServiceFormats:
         if existant is not None and existant.id != sauf:
             raise NomFormatDejaPris(f"Un format de tournoi porte déjà le nom « {nom} ».")
 
-    def _tournoi_existant(self, tournoi_id: TournoiId) -> None:
-        if self._tournois.par_id(tournoi_id) is None:
+    def _tournoi_existant(self, tournoi_id: TournoiId) -> Tournoi:
+        tournoi = self._tournois.par_id(tournoi_id)
+        if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+        return tournoi

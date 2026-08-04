@@ -14,6 +14,7 @@ import datetime
 import pytest
 
 from application.erreurs import (
+    EffectifInsuffisantPourDemarrer,
     TournoiArchiveNonModifiable,
     TournoiEnCoursNonSupprimable,
     TournoiIntrouvable,
@@ -21,8 +22,10 @@ from application.erreurs import (
     TransitionStatutInvalide,
 )
 from application.tournois import ServiceTournois
+from domain.bareme import BaremeQualification
 from domain.depart import Depart
 from domain.erreurs import NomTournoiInvalide
+from domain.phase import Phase, SourcePhase, TypePhase
 from domain.tournoi import (
     StatutTournoi,
     Tournoi,
@@ -63,10 +66,45 @@ class FauxTournoiRepository:
         del self._tournois[tournoi_id]
 
 
-def _service() -> tuple[ServiceTournois, FauxDepartRepository]:
-    """Fabrique le service et son dépôt de départs (à garnir pour les tests de passage à `prêt`)."""
+class FauxPhaseRepository:
+    """Repository de phases en mémoire — juste ce que le service lit (E05US021)."""
+
+    def __init__(self) -> None:
+        self.phases: list[Phase] = []
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
+        return [p for p in self.phases if p.tournoi_id == tournoi_id]
+
+
+class FauxCompteurEngages:
+    """Combien d'archers sont inscrits — réglable, c'est ce que la garde de démarrage confronte."""
+
+    def __init__(self, nb: int = 0) -> None:
+        self.nb = nb
+
+    def nb_engages(self, tournoi_id: TournoiId) -> int:
+        return self.nb
+
+
+def _service_complet() -> (
+    tuple[ServiceTournois, FauxDepartRepository, FauxPhaseRepository, FauxCompteurEngages]
+):
+    """Le service et **tous** ses dépôts, pour les tests qui garnissent phases et inscrits."""
     departs = FauxDepartRepository()
-    return ServiceTournois(FauxTournoiRepository(), departs), departs
+    phases = FauxPhaseRepository()
+    engages = FauxCompteurEngages()
+    service = ServiceTournois(FauxTournoiRepository(), departs, phases, engages)
+    return service, departs, phases, engages
+
+
+def _service() -> tuple[ServiceTournois, FauxDepartRepository]:
+    """Fabrique le service et son dépôt de départs (à garnir pour les tests de passage à `prêt`).
+
+    Le tournoi obtenu n'a **aucune phase** : la garde d'effectif d'E05US021 ne s'exprime donc pas,
+    et les tests de cycle de vie antérieurs restent exactement ce qu'ils étaient.
+    """
+    service, departs, _, _ = _service_complet()
+    return service, departs
 
 
 def _id_cree(service: ServiceTournois, departs: FauxDepartRepository, nom: str = "Trophée") -> int:
@@ -249,6 +287,160 @@ def test_demarrer_refuse_si_pas_pret() -> None:
     tid = _id_cree(service, departs)
     with pytest.raises(TransitionStatutInvalide):
         service.demarrer(tid)  # encore brouillon, pas prêt
+
+
+# --- Garde d'effectif au démarrage (E05US021) ---
+# Écrits **depuis le CA** de `stories/E05-moteur-phases.md` (règle 9), avant l'implémentation :
+# « passer un tournoi "en cours" avec un effectif insuffisant est **refusé**, avec un message qui
+# nomme la phase et son prélèvement ». Le contrôle que le moteur faisait sur la tablette
+# (`EffectifTableauInvalide`, E05US020) remonte là où la décision se prend.
+
+
+def _deroule_120(tournoi_id: int) -> list[Phase]:
+    """Le déroulé d'ADR-0068 §6 : qualification, tableau 1-32, tableau de classement 33 et suivants.
+
+    Son minimum déduit est **34** — la phase 3 ne monte un tableau de 2 qu'à partir du 34ᵉ classé.
+    """
+    return [
+        Phase.qualification(tournoi_id, BaremeQualification.preset_ffta_18m()),
+        Phase(
+            tournoi_id=tournoi_id,
+            ordre=2,
+            type=TypePhase.ELIMINATION_DIRECTE,
+            sources=(SourcePhase.par_rangs(1, 1, 32),),
+        ),
+        Phase(
+            tournoi_id=tournoi_id,
+            ordre=3,
+            type=TypePhase.ELIMINATION_DIRECTE,
+            sources=(SourcePhase.par_rangs(1, rang_debut=33),),
+        ),
+    ]
+
+
+def _pret_avec_deroule(inscrits: int) -> tuple[ServiceTournois, int]:
+    """Un tournoi `prêt`, doté du déroulé à 34 minimum et de `inscrits` archers."""
+    service, departs, phases, engages = _service_complet()
+    tid = _id_cree(service, departs)
+    phases.phases = _deroule_120(tid)
+    engages.nb = inscrits
+    service.vers_pret(tid)
+    return service, tid
+
+
+def test_demarrer_refuse_un_effectif_sous_le_minimum_du_deroule() -> None:
+    """28 inscrits pour un déroulé qui en exige 34 : refus (→ 409), le tournoi reste `prêt`."""
+    service, tid = _pret_avec_deroule(inscrits=28)
+
+    with pytest.raises(EffectifInsuffisantPourDemarrer):
+        service.demarrer(tid)
+
+    assert service.consulter(tid).statut is StatutTournoi.PRET
+
+
+def test_le_refus_nomme_la_phase_et_son_prelevement() -> None:
+    """Le CA exige un message actionnable : sans la phase en cause, l'organisateur ne sait pas quoi
+    changer dans son format."""
+    service, tid = _pret_avec_deroule(inscrits=28)
+
+    with pytest.raises(EffectifInsuffisantPourDemarrer) as leve:
+        service.demarrer(tid)
+
+    message = str(leve.value)
+    assert "3" in message, "le message doit désigner la phase en cause"
+    assert "33" in message, "le message doit citer le prélèvement fautif"
+    assert "34" in message and "28" in message, "le message doit dire requis et réel"
+
+
+def test_demarrer_accepte_des_que_leffectif_atteint_le_minimum() -> None:
+    """34 inscrits pile : la borne est **inclusive**, le tournoi démarre."""
+    service, tid = _pret_avec_deroule(inscrits=34)
+
+    assert service.demarrer(tid).statut is StatutTournoi.EN_COURS
+
+
+def test_demarrer_accepte_un_effectif_confortable() -> None:
+    service, tid = _pret_avec_deroule(inscrits=120)
+
+    assert service.demarrer(tid).statut is StatutTournoi.EN_COURS
+
+
+def test_un_tournoi_sans_deroule_compose_demarre_sans_controle() -> None:
+    """Aucune phase : aucun format n'est appliqué, il n'y a donc aucun minimum à confronter.
+
+    C'est ce qui garde la garde **silencieuse** tant que l'organisateur n'a rien composé — et ce qui
+    laisse intacts les tests de cycle de vie antérieurs à cette US.
+    """
+    service, departs, _, engages = _service_complet()
+    tid = _id_cree(service, departs)
+    engages.nb = 0
+    service.vers_pret(tid)
+
+    assert service.demarrer(tid).statut is StatutTournoi.EN_COURS
+
+
+def test_lexigence_du_tournoi_prime_quand_elle_depasse_le_minimum_deduit() -> None:
+    """Le « minimum exigé » copié du format (« pas sous 40 ») refuse un effectif que le déduit
+    accepterait."""
+    service, departs, phases, engages = _service_complet()
+    tid = _id_cree(service, departs)
+    phases.phases = _deroule_120(tid)
+    engages.nb = 36
+    service.exiger_effectif_minimum(tid, 40)
+    service.vers_pret(tid)
+
+    with pytest.raises(EffectifInsuffisantPourDemarrer):
+        service.demarrer(tid)
+
+
+def test_une_exigence_plus_basse_que_le_deduit_ne_labaisse_pas() -> None:
+    """Le déduit est un **plancher** : une exigence inférieure ne peut pas autoriser un tournoi que
+    le moteur ne saura pas dérouler."""
+    service, departs, phases, engages = _service_complet()
+    tid = _id_cree(service, departs)
+    phases.phases = _deroule_120(tid)
+    engages.nb = 20
+    service.exiger_effectif_minimum(tid, 10)
+    service.vers_pret(tid)
+
+    with pytest.raises(EffectifInsuffisantPourDemarrer):
+        service.demarrer(tid)
+
+
+# --- CA « visible avant le clic » : la lecture qu'affiche l'écran du tournoi ---
+
+
+def test_lexigence_se_lit_avant_de_cliquer_et_dit_ce_qui_manque() -> None:
+    """« 28 inscrits / 34 requis » — le CA veut le manque visible **sans** cliquer « Démarrer »."""
+    service, tid = _pret_avec_deroule(inscrits=28)
+
+    exigence = service.exigence_effectif(tid)
+
+    assert exigence.inscrits == 28
+    assert exigence.minimum == 34
+    assert exigence.suffisant is False
+    assert exigence.ordre_phase == 3
+
+
+def test_lexigence_est_satisfaite_quand_le_compte_y_est() -> None:
+    service, tid = _pret_avec_deroule(inscrits=40)
+
+    exigence = service.exigence_effectif(tid)
+
+    assert exigence.suffisant is True
+    assert exigence.minimum == 34
+
+
+def test_lexigence_dun_tournoi_sans_deroule_est_toujours_satisfaite() -> None:
+    """Rien n'est composé : il n'y a rien à exiger, et l'écran n'a rien à signaler."""
+    service, departs, _, engages = _service_complet()
+    tid = _id_cree(service, departs)
+    engages.nb = 0
+
+    exigence = service.exigence_effectif(tid)
+
+    assert exigence.suffisant is True
+    assert exigence.ordre_phase is None
 
 
 def test_reprendre_refuse_si_pas_en_pause() -> None:

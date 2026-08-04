@@ -234,6 +234,37 @@ def test_appliquer_cree_les_phases_a_venir_dans_l_ordre(ctx: Contexte) -> None:
     assert ctx.phases.par_tournoi(ctx.tournoi_id) == phases
 
 
+def test_appliquer_recopie_le_minimum_exige_sur_le_tournoi(ctx: Contexte) -> None:
+    """E05US021 : le tournoi ne garde aucun lien vers son format — l'exigence doit **voyager**.
+
+    Sans cette copie, la garde de démarrage n'aurait rien à lire : elle ne connaît que le tournoi et
+    ses phases.
+    """
+    format_tournoi = ctx.service.creer(
+        "Salle 120", [_qualification(ordre=1)], effectif_minimum_exige=40
+    )
+
+    ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
+
+    tournoi = ctx.tournois.par_id(ctx.tournoi_id)
+    assert tournoi is not None
+    assert tournoi.effectif_minimum_exige == 40
+
+
+def test_appliquer_un_format_sans_exigence_efface_la_precedente(ctx: Contexte) -> None:
+    """Rechanger de format doit **remplacer** la règle, pas laisser traîner celle d'avant : le
+    tournoi porte le déroulé qu'on vient de lui appliquer, exigence comprise."""
+    exigeant = ctx.service.creer("Exigeant", [_qualification(ordre=1)], effectif_minimum_exige=40)
+    ctx.service.appliquer(ctx.tournoi_id, _id(exigeant.id))
+
+    sobre = ctx.service.creer("Sobre", [_qualification(ordre=1)])
+    ctx.service.appliquer(ctx.tournoi_id, _id(sobre.id))
+
+    tournoi = ctx.tournois.par_id(ctx.tournoi_id)
+    assert tournoi is not None
+    assert tournoi.effectif_minimum_exige is None
+
+
 def test_appliquer_remplace_les_phases_a_venir_existantes(ctx: Contexte) -> None:
     """Reconfigurer un tournoi non engagé ne doit pas empiler deux séquences."""
     ctx.phases.ajouter(

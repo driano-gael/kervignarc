@@ -253,6 +253,107 @@ def test_demarrer_sans_passer_pret_conflit_409(
     assert reponse.json()["code"] == "transition_statut_invalide"
 
 
+# --- Garde d'effectif au démarrage (E05US021) : bout en bout, DTO et code d'erreur compris ---
+# Tests **après** implémentation (règle 9) : la règle métier est déjà couverte depuis le CA dans
+# `test_domain_effectif_minimum` et `test_service_tournois` ; ici on vérifie le câblage et le
+# contrat HTTP.
+
+
+def _composer_deroule_exigeant(client: TestClient, tid: int) -> None:
+    """Applique au tournoi le déroulé d'ADR-0068 §6 : son minimum déduit est **34** inscrits."""
+    format_cree = client.post(
+        "/api/v1/formats",
+        json={
+            "nom": "Salle 120",
+            "etapes": [
+                {
+                    "ordre": 1,
+                    "type": "qualification",
+                    "bareme": {"nb_volees": 20, "nb_fleches_par_volee": 3},
+                    "validation": {"type": "fin_de_serie"},
+                },
+                {
+                    "ordre": 2,
+                    "type": "elimination_directe",
+                    "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 32}],
+                },
+                {
+                    "ordre": 3,
+                    "type": "elimination_directe",
+                    "sources": [{"ordre_source": 1, "rang_debut": 33}],
+                },
+            ],
+        },
+    )
+    assert format_cree.status_code == 201, format_cree.text
+    applique = client.put(
+        f"/api/v1/tournois/{tid}/format", json={"format_id": format_cree.json()["id"]}
+    )
+    assert applique.status_code == 200, applique.text
+
+
+def test_demarrer_sans_assez_d_inscrits_conflit_409(
+    app_tournois: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un déroulé qui exige 34 inscrits, un tournoi qui n'en a aucun → 409 typé et **chiffré**."""
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
+        tid = cree["id"]
+        _creer_depart(client, tid)
+        _composer_deroule_exigeant(client, tid)
+        assert client.post(f"/api/v1/tournois/{tid}/vers-pret").status_code == 200
+        reponse = client.post(f"/api/v1/tournois/{tid}/demarrer")
+        apres = client.get(f"/api/v1/tournois/{tid}").json()
+
+    assert reponse.status_code == 409
+    corps = reponse.json()
+    assert corps["code"] == "effectif_insuffisant_pour_demarrer"
+    # `D-16`/`P-4` : l'alerte chiffre son impact et nomme la cause.
+    assert "34" in corps["message"] and "33" in corps["message"]
+    assert apres["statut"] == "pret", "le refus laisse le tournoi tel qu'il était"
+
+
+def test_l_exigence_d_effectif_se_lit_avant_de_cliquer(
+    app_tournois: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """CA « visible avant le clic » : l'écran lit « N inscrits / M requis » sans rien déclencher."""
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        cree = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"}).json()
+        tid = cree["id"]
+        _creer_depart(client, tid)
+        avant = client.get(f"/api/v1/tournois/{tid}/exigence-effectif").json()
+        _composer_deroule_exigeant(client, tid)
+        apres = client.get(f"/api/v1/tournois/{tid}/exigence-effectif").json()
+
+    # Sans déroulé composé, rien n'est exigé — l'écran n'a rien à signaler.
+    assert avant == {
+        "inscrits": 0,
+        "minimum": 0,
+        "suffisant": True,
+        "ordre_phase": None,
+        "rang_debut": None,
+    }
+    assert apres == {
+        "inscrits": 0,
+        "minimum": 34,
+        "suffisant": False,
+        "ordre_phase": 3,
+        "rang_debut": 33,
+    }
+
+
+def test_l_exigence_d_un_tournoi_inconnu_est_un_404(
+    app_tournois: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_tournois) as client:
+        connecter_admin(client)
+        reponse = client.get("/api/v1/tournois/404/exigence-effectif")
+    assert reponse.status_code == 404
+    assert reponse.json()["code"] == "tournoi_introuvable"
+
+
 def test_terminer_non_demarre_conflit_409(
     app_tournois: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:

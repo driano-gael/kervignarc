@@ -406,9 +406,18 @@ def create_app(
     serie_repository = SerieRepositorySQL(
         database.session_factory, audit_repository, HorlogeSysteme()
     )
+    # Le compteur d'engagés (archers distincts, tous départs confondus) est monté **ici** parce que
+    # deux services le lisent : la garde de démarrage d'E05US021 (juste en dessous) et le suivi de
+    # déroulé (plus bas). Une seule instance, pour que « combien sommes-nous » ait une seule
+    # définition — deux comptes divergents seraient invisibles et faux au même endroit.
+    compteur_engages = CompteurEngagesRepository(depart_repository, inscription_repository)
     # `ServiceTournois` lit aussi les **départs** (port `depart_repository`) : le passage à `prêt`
-    # exige au moins un créneau (garde `TournoiSansDepart`, E02US010).
-    app.state.service_tournois = ServiceTournois(tournoi_repository, depart_repository)
+    # exige au moins un créneau (garde `TournoiSansDepart`, E02US010). Depuis E05US021 il lit en
+    # plus les **phases** et les **engagés** : démarrer exige assez d'inscrits pour que le déroulé
+    # composé puisse se dérouler (ADR-0068 §6).
+    app.state.service_tournois = ServiceTournois(
+        tournoi_repository, depart_repository, phase_repository, compteur_engages
+    )
     # `service_departs` est câblé **plus bas**, après `service_completude` : son garde-fou de cycle
     # (E12US008) dépend du port étroit `LecteurAvancementDepart`, que réalise `ServiceCompletude`.
     # Catégories ↔ blasons se référencent mutuellement (E01US006) : la catégorie valide son
@@ -897,7 +906,7 @@ def create_app(
     app.state.service_suivi_deroule = ServiceSuiviDeroule(
         tournoi_repository,
         phase_repository,
-        CompteurEngagesRepository(depart_repository, inscription_repository),
+        compteur_engages,
         app.state.service_saisie_duels,
     )
 

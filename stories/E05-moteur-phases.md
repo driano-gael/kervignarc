@@ -506,15 +506,38 @@ Origine : arbitrage du commanditaire du 03/08/2026, au cadrage d'E05US020 —
 connus au lancement, donc on ne peut pas lancer un tournoi qui n'a pas assez d'inscrits pour son
 format ; le logiciel doit connaître la fourchette basse et avertir l'admin avant de lancer. »
 
-- **CA — effectif minimum d'un format** : un format déclare, ou l'application dérive de ses
-  prélèvements, le **nombre d'inscrits en dessous duquel il ne peut pas se dérouler** (« les rangs 33
-  et suivants » exige au moins 34 classés pour produire un tableau de 2).
+- **CA — effectif minimum déduit** : l'application **dérive** des prélèvements le **nombre d'inscrits
+  en dessous duquel le format ne peut pas se dérouler** (« les rangs 33 et suivants » exige au moins
+  34 classés pour produire un tableau de 2). *(Arbitrage du 04/08/2026 : la déduction, **et non** une
+  saisie seule — un nombre saisi peut contredire le déroulé écrit juste en dessous, et le problème
+  reviendrait sur la tablette. Le CA d'origine laissait les deux ouverts.)*
+- **CA — minimum exigé, facultatif** : un format peut en plus **exiger davantage** que son minimum
+  technique (« pas de tournoi de ce type sous 40 archers », règle de club). La valeur saisie ne peut
+  pas être **inférieure** au minimum déduit — un format qui l'énonce est **inapplicable**, au même
+  titre qu'un format sans barème. *(Arbitrage du 04/08/2026, en réponse au CA d'origine « déclare,
+  ou dérive » : c'est **les deux**, le déduit servant de plancher au déclaré.)*
 - **CA — avertissement au lancement** : passer un tournoi « en cours » avec un effectif insuffisant
   est **refusé**, avec un message qui nomme la phase et son prélèvement. L'organisateur peut alors
-  changer de format.
-- **CA — visible à la composition** : le diagnostic de déroulé signale le cas **avant** l'application
-  du format, pas seulement au lancement.
+  changer de format. Le compte des inscrits est celui des **archers distincts tous départs
+  confondus**, tel que l'affiche déjà le suivi de déroulé.
+- **CA — visible avant le clic** : tant que le compte n'y est pas, l'écran du tournoi affiche en
+  continu **« N inscrits / M requis »** et la phase en cause. L'organisateur voit le manque arriver
+  au lieu de le découvrir en cliquant « Démarrer ». *(Arbitrage du 04/08/2026 : ajouté au CA — le CA
+  d'origine ne prévoyait que le refus au clic, ce qui n'apprend rien tant qu'on ne clique pas.)*
+- **CA — visible à la composition** : l'écran « Composer un déroulé » annonce le minimum du format,
+  qu'un effectif soit simulé ou non.
 - **Notes** : le moteur refuse déjà de monter un tableau vide (E05US020, `EffectifTableauInvalide`) —
   c'est le **dernier** garde-fou, pas le bon endroit : il s'exprime sur la tablette, en compétition.
   Cette US met le contrôle là où la décision se prend.
+- **Notes — portée du calcul** : un rang se lit dans le classement de la **phase source**, pas dans
+  les inscrits. Le minimum n'est donc déduit que des prélèvements visant la **première phase** (la
+  seule que les inscriptions peuplent). Les prélèvements par issue de tour, « le reste », et ceux qui
+  visent une phase intermédiaire n'y contribuent pas : ils restent couverts par le diagnostic à
+  effectif simulé (`PrelevementVide`, `RangsSourceInexistants`). Annoncer un minimum qui les
+  englobe serait annoncer un chiffre faux.
+- **Notes — pas de nouvelle anomalie de composition** : le diagnostic signale **déjà**
+  `PrelevementVide` quand un prélèvement ne prend personne à l'effectif simulé. Le minimum est donc
+  exposé comme une **donnée** de la projection, pas comme une anomalie de plus — un second
+  avertissement sur le même défaut le ferait remonter deux fois, le piège déjà documenté dans
+  `_anomalies_effectif_declare`.
 - **Dépend de** : E05US020 · **Jalon** : J3

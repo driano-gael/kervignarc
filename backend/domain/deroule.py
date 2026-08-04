@@ -133,16 +133,39 @@ class BlocDeroule:
 
 
 @dataclass(frozen=True)
+class ExigenceEffectif:
+    """Le **plancher d'inscrits** d'un déroulé, et la phase qui le réclame (E05US021).
+
+    `ordre` et `rang_debut` valent `None` quand aucune phase n'exprime d'exigence particulière : le
+    minimum se réduit alors à ce qu'il faut pour que la structure tienne (deux archers pour un
+    tableau, un pour une qualification). Ils sont **la matière du message** exigé par le CA — « le
+    refus nomme la phase et son prélèvement » —, d'où leur transport avec le nombre plutôt qu'un
+    entier nu que l'appelant devrait ré-expliquer.
+    """
+
+    minimum: int
+    ordre: int | None = None
+    rang_debut: int | None = None
+
+
+@dataclass(frozen=True)
 class ProjectionDeroule:
     """Le déroulé projeté : les blocs, leurs flèches, et tout ce qui cloche.
 
     `anomalies` porte **tout** — y compris ce qui est déjà rattaché à un bloc — pour que l'appelant
     qui ne veut qu'un verdict n'ait pas à parcourir les blocs.
+
+    `effectif_minimum` est le plancher d'inscrits **déduit** des prélèvements (E05US021). Il est une
+    donnée, **pas** une anomalie de plus : le cas « à cet effectif, ce prélèvement ne prend
+    personne » remonte déjà en `PrelevementVide`, et l'ajouter une seconde fois ferait signaler le
+    même défaut deux fois — le piège documenté sous `_anomalies_effectif_declare`. Un format qui
+    *exige* davantage relève le chiffre au-dessus (`FormatTournoi.projeter`).
     """
 
     effectif: int | None
     blocs: tuple[BlocDeroule, ...]
     anomalies: tuple[Anomalie, ...]
+    effectif_minimum: int = 1
 
     @property
     def bloquantes(self) -> tuple[Anomalie, ...]:
@@ -206,7 +229,78 @@ def projeter(etapes: Sequence[EtapeProjetable], effectif: int | None = None) -> 
 
     toutes = tuple(structurelles) + tuple(conjoncturelles)
     blocs = tuple(_bloc(etape, effectifs, tranches, braquets, flux, toutes) for etape in triees)
-    return ProjectionDeroule(effectif=effectif, blocs=blocs, anomalies=toutes)
+    return ProjectionDeroule(
+        effectif=effectif,
+        blocs=blocs,
+        anomalies=toutes,
+        effectif_minimum=exigence_minimale(triees).minimum,
+    )
+
+
+# --- Effectif minimum (E05US021) -----------------------------------------------------------------
+
+
+def effectif_minimum(etapes: Sequence[EtapeSequencee]) -> int:
+    """Le nombre d'inscrits **en dessous duquel** ce déroulé ne peut pas se dérouler."""
+    return exigence_minimale(etapes).minimum
+
+
+def exigence_minimale(etapes: Sequence[EtapeSequencee]) -> ExigenceEffectif:
+    """Le plancher d'inscrits de ce déroulé, **et la phase qui le réclame** (E05US021).
+
+    Le raisonnement, une fois pour toutes : une phase en tableau a besoin de **deux** participants
+    pour qu'un duel existe ; un prélèvement « à partir du rang *d* » n'en trouve deux que lorsque sa
+    phase source en classe *d + 1*. D'où `d - 1 + 2` inscrits — 34 pour « les rangs 33 et
+    suivants », l'exemple même du CA. Une phase hors tableau se contente d'un participant.
+
+    **Portée délibérément étroite** (note du CA). Un rang se lit dans le classement de sa **phase
+    source**, pas dans les inscrits : seuls les prélèvements visant la **première** phase — la seule
+    que les inscriptions peuplent — se traduisent en nombre d'inscrits. « Les rangs 33 et suivants
+    *du tableau* » ne dit rien sur le nombre d'inscrits nécessaires ; l'inclure produirait un
+    chiffre **faux**, ce qui est pire que pas de chiffre du tout. Ces cas-là restent couverts,
+    à effectif simulé, par `PrelevementVide` et `RangsSourceInexistants`.
+
+    Même raison pour les natures qui ne se lisent pas en rangs (`issue_de_tour`, `le_reste`) : leur
+    compte dépend du déroulé, pas de l'effectif de départ.
+
+    **Plusieurs prélèvements sur une phase se cumulent**, donc c'est le **plus bas** qui décide :
+    une phase nourrie par « 1 à 8 » *et* « 33 à 40 » a ses deux archers dès le 2ᵉ inscrit. Entre
+    phases, au contraire, c'est le **plus exigeant** qui l'emporte — toutes doivent pouvoir
+    se dérouler.
+    """
+    triees = sorted(etapes, key=lambda etape: etape.ordre)
+    if not triees:
+        return ExigenceEffectif(minimum=1)
+
+    premier_ordre = triees[0].ordre
+    exigence = ExigenceEffectif(minimum=1)
+    for etape in triees:
+        candidate = _exigence_de_letape(etape, premier_ordre)
+        if candidate.minimum > exigence.minimum:
+            exigence = candidate
+    return exigence
+
+
+def _exigence_de_letape(etape: EtapeSequencee, premier_ordre: int) -> ExigenceEffectif:
+    """Le plancher d'inscrits qu'une seule étape réclame."""
+    base = 2 if etape.type in _TYPES_EN_TABLEAU else 1
+
+    if not etape.sources:
+        # Aucun prélèvement : la phase se peuple des inscrits (la première), ou de tout le monde
+        # faute que le moteur sache lire ses sources (`# DETTE-028`). Dans les deux cas, il lui faut
+        # juste de quoi tenir debout.
+        return ExigenceEffectif(minimum=base)
+
+    rangs = [
+        source.rang_debut
+        for source in etape.sources
+        if source.nature is NatureSource.RANGS and source.ordre_source == premier_ordre
+    ]
+    if not rangs:
+        return ExigenceEffectif(minimum=1)
+
+    plus_bas = min(rangs)
+    return ExigenceEffectif(minimum=plus_bas - 1 + base, ordre=etape.ordre, rang_debut=plus_bas)
 
 
 # --- Anomalies structurelles ---------------------------------------------------------------------
