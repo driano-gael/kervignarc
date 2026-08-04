@@ -1644,6 +1644,22 @@ button:disabled {
   font-size: 13px;
 }
 
+/* Réglage de cloisonnement des cibles (E03US007, RG-4) : un bloc de configuration **du tournoi**,
+   posé au-dessus du choix de créneau. Registre neutre (ce n'est ni une alerte ni une action
+   destructrice) ; le texte d'aide sous le champ reste en `carte__etat`. */
+.placement__reglage {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.placement__reglage-libelle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
 /* Adjacence de duel non garantie (E03US009, ADR-0048) : même registre **ambre** (DV-03, `--warn`)
    que la mixité de club, jamais rouge — au moins un duel n'est pas placé côte à côte (adversaires
    séparés). Signal d'organisation, pas erreur bloquante : l'admin peut ajuster à la main. Badge par

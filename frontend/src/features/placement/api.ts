@@ -9,9 +9,16 @@
 import { fetchJson } from '../../shared/api/client'
 
 // Pourquoi un archer est en réserve (non posé) : `sans_blason` (aucun blason pour tirer),
-// `non_place` (aucune cible ne peut l'accueillir), `en_reserve` (en attente d'un placement).
-// Vocabulaire **fermé**, miroir de l'enum `RaisonConflit` du domaine.
-export type RaisonConflit = 'sans_blason' | 'non_place' | 'en_reserve'
+// `non_place` (aucune cible ne peut l'accueillir), `cloisonnement` (c'est le **réglage** de
+// cloisonnement, et non la salle, qui l'exclut — E03US007), `en_reserve` (en attente d'un
+// placement). Vocabulaire **fermé**, miroir de l'enum `RaisonConflit` du domaine.
+export type RaisonConflit = 'sans_blason' | 'non_place' | 'cloisonnement' | 'en_reserve'
+
+// Ce qu'une cible n'a pas le droit de mêler (E03US007, RG-4) — réglage **du tournoi**, à quatre
+// positions. `aucun` = comportement d'origine. `categorie` sépare les catégories, `blason` les
+// blasons (deux catégories tirant le même carton restent alors ensemble), `blason_et_categorie`
+// les deux.
+export type Cloisonnement = 'aucun' | 'categorie' | 'blason' | 'blason_et_categorie'
 
 // Un archer posé sur une cible : sa position (lettre « A »…« D »), le blason sur lequel il tire, et
 // son `inscription_id` — la cible du `PUT` de déplacement (l'archer sur *ce* départ). Le serveur
@@ -30,11 +37,16 @@ export interface Placement {
 // affirmer ≥ 2 clubs distincts (un seul club, ou clubs inconnus — le serveur traite `NULL` comme
 // *indécidable*). L'admin le voit pour ajuster à la main s'il le souhaite ; ce n'est **pas** une
 // erreur, juste un objectif d'équité non atteint. Recalculé serveur à chaque lecture (jamais persisté).
+//
+// `cloisonnement_non_respecte` (E03US007) : `true` quand la cible **mêle** ce que le réglage du
+// tournoi interdit de mêler. Le placement auto ne peut pas produire ça (contrainte dure) : c'est le
+// signe d'un plan **posé avant** l'activation du réglage, donc à régénérer.
 export interface CiblePlacee {
   index: number
   capacite: number
   placements: Placement[]
   mixite_non_garantie: boolean
+  cloisonnement_non_respecte: boolean
 }
 
 // Un archer que le placement n'a pas pu poser (il est **dans la réserve**), et pourquoi. Porte aussi
@@ -70,6 +82,26 @@ export interface ImpactRegeneration {
 export interface Destination {
   cible_index: number | null
   position: string | null
+}
+
+// Réglage de cloisonnement du tournoi (E03US007). Lecture ouverte ; écriture réservée à l'admin
+// côté serveur. Le PUT **ne replace personne** : il vaut pour la prochaine génération, les
+// déplacements manuels et les badges — d'où l'invalidation du plan côté hook.
+export function getCloisonnement(tournoiId: number): Promise<{ cloisonnement: Cloisonnement }> {
+  return fetchJson<{ cloisonnement: Cloisonnement }>(`/api/v1/tournois/${tournoiId}/cloisonnement`)
+}
+
+export function reglerCloisonnement(
+  tournoiId: number,
+  cloisonnement: Cloisonnement,
+): Promise<{ cloisonnement: Cloisonnement }> {
+  return fetchJson<{ cloisonnement: Cloisonnement }>(
+    `/api/v1/tournois/${tournoiId}/cloisonnement`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ cloisonnement }),
+    },
+  )
 }
 
 const basePlan = (tournoiId: number, departId: number) =>

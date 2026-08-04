@@ -8,13 +8,16 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  type Cloisonnement,
   type Destination,
   type PlanDeCibles,
   deplacerInscription,
+  getCloisonnement,
   getImpactRegeneration,
   getPlanDeCibles,
   placerRestants,
   regenererPlan,
+  reglerCloisonnement,
 } from './api'
 
 // Exportée : la feature « suivi » (E07US006) rejoue ces plans via `useQueries` et doit partager
@@ -82,5 +85,33 @@ export function usePlacerRestants(tournoiId: number, departId: number) {
   return useMutation({
     mutationFn: () => placerRestants(tournoiId, departId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: clePlan(tournoiId, departId) }),
+  })
+}
+
+// --- Cloisonnement des cibles (E03US007) --------------------------------------------------------
+//
+// Réglage **du tournoi** (pas du départ) : une seule clé pour tout l'écran, quel que soit le
+// créneau affiché.
+export const cleCloisonnement = (tournoiId: number) => ['cloisonnement', tournoiId] as const
+
+export function useCloisonnement(tournoiId: number) {
+  return useQuery({
+    queryKey: cleCloisonnement(tournoiId),
+    queryFn: () => getCloisonnement(tournoiId),
+  })
+}
+
+export function useReglerCloisonnement(tournoiId: number) {
+  const queryClient = useQueryClient()
+  return useMutation<{ cloisonnement: Cloisonnement }, Error, Cloisonnement>({
+    mutationFn: (valeur) => reglerCloisonnement(tournoiId, valeur),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cleCloisonnement(tournoiId) })
+      // Le réglage ne déplace personne, mais il change ce que le serveur **signale** : les cibles
+      // déjà posées qui le violent portent désormais un badge, et la réserve peut changer de
+      // raison. Sans cette invalidation, l'écran resterait muet jusqu'au prochain refetch — le
+      // réglage paraîtrait sans effet.
+      queryClient.invalidateQueries({ queryKey: ['plan-de-cibles', tournoiId] })
+    },
   })
 }
