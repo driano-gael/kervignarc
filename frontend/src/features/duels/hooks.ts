@@ -19,6 +19,12 @@ import {
   regenererPlanDuels,
 } from './api'
 
+// Préfixe **exporté** : tout ce qui touche au plan de duels d'un tournoi, toutes phases confondues.
+// Il existe pour que l'écran de placement puisse invalider ces plans après un changement de
+// cloisonnement (E03US007) sans **recopier** la clé — la recopie d'un vocabulaire partagé est
+// exactement ce qui a coûté un bloquant à cette US, côté `RaisonConflit`.
+export const clePlansDuelsDuTournoi = (tournoiId: number) => ['plan-de-duels', tournoiId] as const
+
 export const clePlanDuels = (tournoiId: number, phaseId: number) =>
   ['plan-de-duels', tournoiId, phaseId] as const
 

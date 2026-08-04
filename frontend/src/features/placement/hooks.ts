@@ -7,6 +7,7 @@
 // réserve), aucune correspondance à reconstituer côté client.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { clePlansDuelsDuTournoi } from '../duels/hooks'
 import {
   type Cloisonnement,
   type Destination,
@@ -23,6 +24,10 @@ import {
 // Exportée : la feature « suivi » (E07US006) rejoue ces plans via `useQueries` et doit partager
 // EXACTEMENT la même clé, sinon le cache diverge (le plan public et le suivi refetcheraient chacun
 // de leur côté au lieu de partager la donnée déjà chargée).
+// Préfixe de toutes les clés de plan d'un tournoi — dérivé, jamais recopié (cf. son jumeau côté
+// duels, `clePlansDuelsDuTournoi`).
+export const clePlansDuTournoi = (tournoiId: number) => ['plan-de-cibles', tournoiId] as const
+
 export const clePlan = (tournoiId: number, departId: number) =>
   ['plan-de-cibles', tournoiId, departId] as const
 
@@ -113,8 +118,8 @@ export function useReglerCloisonnement(tournoiId: number) {
       // réglage paraîtrait sans effet. Les **deux** plans sont concernés (même salle, même
       // réglage) : oublier celui des duels laissait un écran mentir jusqu'au prochain événement
       // temps réel. Préfixes de clé : tous les départs / toutes les phases du tournoi.
-      queryClient.invalidateQueries({ queryKey: ['plan-de-cibles', tournoiId] })
-      queryClient.invalidateQueries({ queryKey: ['plan-de-duels', tournoiId] })
+      queryClient.invalidateQueries({ queryKey: clePlansDuTournoi(tournoiId) })
+      queryClient.invalidateQueries({ queryKey: clePlansDuelsDuTournoi(tournoiId) })
     },
   })
 }

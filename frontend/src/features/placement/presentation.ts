@@ -28,7 +28,7 @@ export function resumeMixiteNonGarantie(cibles: CiblePlacee[]): string | null {
 // dérivé plus bas) — pour que l'écran ne puisse pas dire « par catégorie » à un endroit et
 // « catégories » à un autre. Ordre du plus permissif au plus strict, comme l'énumération du domaine.
 //
-// DETTE-036 : la quatrième position rend aujourd'hui le **même plan** que la deuxième (le blason
+// # DETTE-036 : la quatrième position rend aujourd'hui le **même plan** que la deuxième (le blason
 // d'un archer est celui de sa catégorie). Elle est offerte quand même — choix du commanditaire —
 // et se distinguera avec EF-1.4 (une phase surcharge le blason). Ne pas la retirer d'ici là : la
 // remettre coûterait une migration et un réglage de club invalidé entre-temps.
@@ -59,7 +59,7 @@ export function resumeCloisonnementNonRespecte(
   const pluriel = nombre > 1
   return (
     `${nombre} cible${pluriel ? 's' : ''} ne respecte${pluriel ? 'nt' : ''} pas le cloisonnement ` +
-    `demandé (plan posé avant le réglage) : régénérez le plan ou déplacez les archers concernés.`
+    `demandé (plan posé avant le réglage) : régénérez le plan ou déplacez les tireurs concernés.`
   )
 }
 

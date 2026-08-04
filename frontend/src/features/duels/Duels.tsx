@@ -384,7 +384,10 @@ function Reserve({
               <span
                 className={`reserve__raison${RAISON_ANOMALIE[conflit.raison] ? ' reserve__raison--anomalie' : ''}`}
               >
-                {LIBELLE_RAISON[conflit.raison]}
+                {/* Repli : mutualiser le vocabulaire supprime la recopie **entre écrans**, pas
+                    la divergence **front ↔ serveur** — c'est pourtant elle qui a produit le défaut
+                    d'E03US007. Une raison inconnue s'affiche telle quelle plutôt qu'en blanc. */}
+                {LIBELLE_RAISON[conflit.raison] ?? conflit.raison}
               </span>
             </li>
           ))}
