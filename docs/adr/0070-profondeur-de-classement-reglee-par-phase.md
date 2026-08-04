@@ -73,7 +73,7 @@ Le défaut du *catalogue* — quelle politique un format assemble quand il ne di
 preset d'une *phase déjà écrite en base*. Jusqu'à cette US, **toutes** les phases se jouaient en
 `ProfondeurPodium` figée au câblage. Faire de 1→N le preset des phases non réglées aurait converti
 d'un coup **tous les tournois existants** au placement intégral : un tableau de 120 serait passé
-de **128 duels à 436** (mesuré), sans que personne ne l'ait demandé, et sans qu'aucun
+de **128 duels à 436** (mesuré sous `PlacementEnCascade`, le routing câblé en production ; sous un repêchage ce serait 128 → 256, et sous élimination sèche la profondeur n'a aucun effet), sans que personne ne l'ait demandé, et sans qu'aucun
 écran ne le signale — le format composé et validé la veille aurait produit un autre tournoi.
 
 Donc : `profondeur = None` ⇒ preset du type ⇒ `top_n(4)` pour une élimination directe — le mécanisme

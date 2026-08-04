@@ -105,10 +105,11 @@ export const TYPES_EN_TABLEAU: TypePhase[] = ['elimination_directe', 'placement'
 // serveur en compte un troisième (`aucun`) volontairement absent de la façade : c'est le contenu du
 // type échauffement, pas un réglage de tableau.
 //
-// ⚠️ Domicilié ici et non dans une feature (corrigé en revue) : trois modules le consomment
-// (`patrimoine/api.ts`, `phases/api.ts`, `shared/phases/ChoixProfondeur.tsx`), et le laisser dans
-// `features/patrimoine` faisait importer `shared/ → features/` — la **seule** inversion de ce genre
-// du front, sur le même seuil de 3 occurrences qui avait justifié l'extraction de ce fichier.
+// ⚠️ Domicilié ici et non dans une feature (corrigé en revue) : le laisser dans
+// `features/patrimoine` faisait importer `shared/ → features/`, la **seule** inversion de ce genre
+// du front. `patrimoine/api.ts` et `phases/api.ts` le ré-exportent, donc aucun import existant ne
+// casse — le second passe encore par le premier, ce qui reste un saut feature → feature à ranger
+// le jour où l'on y touchera.
 export interface Profondeur {
   nom: 'un_vers_n' | 'top_n'
   // Le rang d'arrêt — porté par `top_n` seulement. `null` sur `un_vers_n` : un classement intégral

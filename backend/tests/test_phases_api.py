@@ -540,3 +540,23 @@ def test_profondeur_top_n_sans_seuil_422(
         )
         assert reponse.status_code == 422, reponse.text
         assert reponse.json()["code"] == "profondeur_invalide"
+
+
+def test_profondeur_rang_zero_422(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """Un rang d'arrêt nul rend **le même code** qu'un rang absent — un seul propriétaire.
+
+    Épingle le correctif de revue : le DTO portait un `ge=1` qui doublait l'invariant du domaine, si
+    bien que la **même** faute rendait 400 `requete_invalide` ou 422 `profondeur_invalide` selon
+    lequel des deux tirait le premier.
+    """
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+
+        reponse = client.post(
+            base,
+            json={"type": "elimination_directe", "profondeur": {"nom": "top_n", "jusqu_au": 0}},
+        )
+        assert reponse.status_code == 422, reponse.text
+        assert reponse.json()["code"] == "profondeur_invalide"

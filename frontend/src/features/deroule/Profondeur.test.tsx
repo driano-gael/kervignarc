@@ -24,7 +24,7 @@ import { FormulaireEtape } from './Deroule'
 // écrans, et un test qui casse sur une apostrophe ne dit rien de la fonctionnalité.
 const CHOIX = /classer/
 
-function poser(type: 'elimination_directe' | 'poules' = 'elimination_directe') {
+function poser(type: 'elimination_directe' | 'poules' | 'placement' = 'elimination_directe') {
   const surValider = vi.fn()
   render(
     <FormulaireEtape
@@ -148,5 +148,30 @@ describe('profondeur de classement', () => {
     const bloque = screen.getByRole('button', { name: 'Valider' }).hasAttribute('disabled')
     expect(bloque).toBe(screen.queryByRole('status') !== null)
     expect(surValider).not.toHaveBeenCalled()
+  })
+
+  it('annonce le preset du type, qui n’est pas le même pour un placement', () => {
+    // Le serveur donne au type `placement` le preset **intégral** (il n'a aucun existant à
+    // préserver, et son intitulé promet de classer tout le monde). Un libellé unique ferait donc
+    // annoncer « finale et petite finale » là où tous les rangs se joueront — le premier correctif
+    // n'avait changé que le backend, et deux axes de la 2ᵉ passe l'ont relevé.
+    poser('placement')
+
+    expect(screen.getByLabelText(CHOIX).textContent).toContain('classement intégral')
+    expect(screen.getByLabelText(CHOIX).textContent).not.toContain('petite finale')
+  })
+
+  it('remet le réglage au preset après un ajout, pour ne pas le reporter en silence', async () => {
+    // Le formulaire d'ajout n'est jamais démonté entre deux phases. Sans remise à zéro,
+    // « classement intégral » se reportait sur la phase suivante — deux tableaux de 120 partant à
+    // ~616 duels non demandés. Le correctif avait été appliqué à l'écran jumeau seulement.
+    const surValider = vi.fn()
+    render(<FormulaireEtape etapesAmont={[]} surValider={surValider} />)
+
+    await userEvent.selectOptions(screen.getByLabelText(/Type de phase/), 'elimination_directe')
+    await userEvent.selectOptions(screen.getByLabelText(CHOIX), 'integral')
+    await userEvent.click(screen.getByRole('button', { name: 'Ajouter la phase' }))
+
+    expect(screen.getByLabelText(CHOIX)).toHaveProperty('value', 'preset')
   })
 })

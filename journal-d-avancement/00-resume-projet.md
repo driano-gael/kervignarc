@@ -480,8 +480,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   options : s'arrêter au podium (ou à un rang de son choix), ou **classer intégralement** — un duel
   pour chaque rang, si bien que **chaque archer repart avec un rang unique qu'il a gagné au tir**, du
   1ᵉʳ au dernier. Le palmarès le montre aussitôt : plus aucune fourchette, plus aucun rang emprunté au
-  classement du matin. ⚠️ Le classement intégral fait tirer **près de quatre fois plus de duels** (128
-  → plus d'une centaine sur un tournoi de 120) : c'est une décision d'organisation, l'écran le
+  classement du matin. ⚠️ Le classement intégral fait tirer **près de quatre fois plus de duels** (128 → 436
+  sur un tableau de 120) : c'est une décision d'organisation, l'écran le
   rappelle et la simulation en donne le compte exact. Ne rien changer ne change rien — les tournois
   déjà composés continuent de se jouer au podium. *(Livré juste avant : **E05US021**, un tournoi ne se
   lance plus s'il manque des archers.)*

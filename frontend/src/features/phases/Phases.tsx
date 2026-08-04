@@ -365,9 +365,11 @@ export function FormulairePhase({
       ajouter.mutate(config, {
         onSuccess: () => {
           setEffectif('')
-          // La profondeur se remet au preset comme les autres champs : « classement intégral » est
-          // le réglage le plus coûteux de la journée, il ne doit pas se reporter en silence d'une
-          // phase à la suivante.
+          // La profondeur se remet au preset comme les autres champs de ce formulaire :
+          // « classement intégral » est le réglage le plus coûteux de la journée, il ne doit pas
+          // se reporter en silence d'une phase à la suivante. ⚠️ Le formulaire d'ajout de
+          // « Composer un déroulé » ne réinitialise, lui, **aucun** champ (comportement antérieur
+          // à cette US, type et effectif compris) : l'asymétrie est constatée, pas voulue.
           setProfondeur(PROFONDEUR_AU_PRESET)
           setAvecSource(false)
           setOrdreSource('')
@@ -416,7 +418,13 @@ export function FormulairePhase({
             </span>
           )}
         </label>
-        {enTableau && <ChoixProfondeur etat={profondeur} surChangement={setProfondeur} />}
+        {enTableau && (
+          <ChoixProfondeur
+            etat={profondeur}
+            surChangement={setProfondeur}
+            presetIntegral={type === 'placement'}
+          />
+        )}
         <label className="formulaire__tranche">
           <input
             type="checkbox"

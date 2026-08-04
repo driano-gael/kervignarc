@@ -189,11 +189,16 @@ TYPES_EN_TABLEAU: frozenset[TypePhase] = frozenset(
 
 # Profondeur preset de chaque type en tableau (« politique sans migration », ADR-0011).
 #
-# ⚠️ **Le podium, et non 1→N**, malgré le « 1→N (défaut) » du CA et d'ADR-0004 — arbitrage du
+# ⚠️ **Deux presets différents, et l'asymétrie est le sujet** : le podium pour l'élimination
+# directe, le classement **intégral** pour le placement. La règle ci-dessous vaut donc pour le
+# **premier** type ; la raison de l'exception est notée sur l'entrée elle-même.
+#
+# ⚠️ **Le podium, et non 1→N** pour l'élimination directe, malgré le « 1→N (défaut) » du CA et
+# d'ADR-0004 — arbitrage du
 # 04/08/2026, ADR-0070. Le défaut du *catalogue* n'est pas le preset d'une *phase déjà en base* :
 # jusqu'à E06US006 toutes les phases se jouaient en `ProfondeurPodium` figée au câblage, et faire
 # de 1→N le preset aurait converti tous les tournois existants au placement intégral — un tableau
-# de 120 passant d'une trentaine de duels à plus d'une centaine, sans que personne ne l'ait demandé.
+# de 120 passant de **128 duels à 436** (mesuré), sans que personne ne l'ait demandé.
 # 1→N est ce que l'organisateur **choisit** ; l'absence de réglage reste ce qui était joué hier.
 _PROFONDEUR_PAR_DEFAUT: dict[TypePhase, ProfondeurClassement] = {
     TypePhase.ELIMINATION_DIRECTE: ProfondeurClassement.top(RANGS_DU_PODIUM),
@@ -217,6 +222,10 @@ def profondeur_par_defaut(type_phase: TypePhase) -> ProfondeurClassement:
     Sert à la création d'une phase **et** à la relecture d'une phase antérieure à E06US006, dont la
     `config` ne porte pas encore de clé `depth` : c'est le même mécanisme que `grain_par_defaut`
     pour les phases d'avant E01US015.
+
+    ⚠️ Le preset **dépend du type** : podium pour une élimination directe, classement intégral pour
+    un placement (ADR-0070 §3). Dire « le preset, c'est le podium » serait faux pour la moitié des
+    types en tableau.
 
     Lève `ProfondeurInvalide` si le type ne monte aucun tableau — explicite plutôt qu'un `KeyError`
     que le repository diagnostiquerait « configuration illisible ».
@@ -465,9 +474,10 @@ class Phase:
     profondeur: ProfondeurClassement | None = None
     """Jusqu'où cette phase départage ses participants (E06US006, ADR-0070).
 
-    `None` = **non réglée**, et non « 1→N » : la phase retombe sur le preset de son type
-    (`profondeur_par_defaut`), qui vaut le podium pour un tableau. C'est ce qui rend l'US
-    rétro-compatible — une phase écrite avant elle continue de jouer ce qu'elle jouait."""
+    `None` = **non réglée**, et non « 1→N » : la phase retombe sur le preset de son type —
+    `top_n(4)` pour une élimination directe, `un_vers_n` pour un placement (ADR-0070 §3). C'est ce
+    qui rend l'US rétro-compatible : une phase écrite avant elle continue de jouer ce qu'elle
+    jouait."""
 
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None

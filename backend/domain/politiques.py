@@ -647,7 +647,7 @@ class ProfondeurClassement:
     jusqu_au: int | None = None
     """Le dernier rang départagé — **et seulement** pour un top N.
 
-    Porté par `podium` uniquement : un classement intégral ne s'arrête à aucun rang, et lui en
+    Porté par `top_n` uniquement : un classement intégral ne s'arrête à aucun rang, et lui en
     donner un décrirait deux profondeurs à la fois. Le refus est plus utile que la tolérance —
     silencieusement ignoré, le seuil laisserait croire à un top N qui n'aurait jamais lieu.
     """
@@ -1008,7 +1008,7 @@ def _fabriquer_profondeur_podium(params: Mapping[str, object]) -> ProfondeurPodi
     brut = params.get("jusqu_au", 4)
     if not isinstance(brut, int) or isinstance(brut, bool) or brut < 1:
         raise PolitiqueMalFormee(
-            f"La profondeur « podium » attend un rang entier positif (reçu {brut!r})."
+            f"La profondeur « top_n » attend un rang entier positif (reçu {brut!r})."
         )
     return ProfondeurPodium(jusqu_au=brut)
 

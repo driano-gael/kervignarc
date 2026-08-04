@@ -40,6 +40,13 @@ import { estValide, RANGS_DU_PODIUM } from './profondeur'
 // toutes lettres, avec le seul chiffre mesuré, et l'on renvoie à la simulation pour le compte exact. C'est le réglage du déroulé qui pèse le plus lourd
 // sur la journée : le classement intégral fait tirer un duel par rang — 436 duels au lieu de 128 sur
 // un tableau de 120 (mesuré), soit près de quatre fois plus.
+// ⚠️ Le mode `preset` a **deux** libellés, parce que le serveur a deux presets : le podium pour une
+// élimination directe, le **classement intégral** pour un placement — ce type-là n'a aucun existant
+// à préserver et son intitulé promet de classer tout le monde (ADR-0070 §3). Un libellé unique
+// ferait donc *mentir* l'écran sur la moitié des types en tableau : il annoncerait « finale et
+// petite finale » là où le serveur jouera tous les rangs. Relevé en 2ᵉ passe de revue — le premier
+// correctif n'avait changé que le backend, et la justification écrite du changement décrivait
+// exactement le défaut qu'elle laissait en place.
 const AIDE_PROFONDEUR: Record<EtatProfondeur['mode'], string> = {
   preset:
     "La phase se joue comme aujourd'hui : finale et petite finale. Les battus des tours " +
@@ -52,13 +59,19 @@ const AIDE_PROFONDEUR: Record<EtatProfondeur['mode'], string> = {
   top: 'Seuls les premiers rangs sont départagés au tir ; au-delà, les archers restent groupés sur la tranche de leur sortie.',
 }
 
-/** Rend le choix de profondeur. Aucun état : l'unique source est `etat`, détenu par le parent. */
+/** Rend le choix de profondeur. Aucun état : l'unique source est `etat`, détenu par le parent.
+ *
+ * `presetIntegral` dit quel preset le **serveur** appliquera si l'on ne règle rien — il dépend du
+ * type de la phase, et l'écran doit le refléter sous peine d'annoncer l'inverse de ce qui se jouera.
+ */
 export function ChoixProfondeur({
   etat,
   surChangement,
+  presetIntegral = false,
 }: {
   etat: EtatProfondeur
   surChangement: (etat: EtatProfondeur) => void
+  presetIntegral?: boolean
 }) {
   const changerMode = (mode: EtatProfondeur['mode']) => {
     if (mode === 'top') {
@@ -79,7 +92,11 @@ export function ChoixProfondeur({
           {/* Le libellé ne **chiffre** pas le défaut : `RANGS_DU_PODIUM` est un miroir du domaine,
               et un miroir qui dérive ferait ici *mentir* l'écran sur le comportement du serveur —
               alors qu'en pré-saisie du champ ci-dessous, une dérive est sans conséquence. */}
-          <option value="preset">Podium (défaut) — finale et petite finale</option>
+          <option value="preset">
+            {presetIntegral
+              ? 'Défaut du type — classement intégral'
+              : 'Défaut du type — podium (finale et petite finale)'}
+          </option>
           <option value="integral">Classement intégral — tous les rangs se jouent</option>
           <option value="top">S’arrêter à un rang précis…</option>
         </select>
@@ -94,7 +111,11 @@ export function ChoixProfondeur({
           />
         </label>
       )}
-      <p className="carte__aide">{AIDE_PROFONDEUR[etat.mode]}</p>
+      <p className="carte__aide">
+        {etat.mode === 'preset' && presetIntegral
+          ? AIDE_PROFONDEUR.integral
+          : AIDE_PROFONDEUR[etat.mode]}
+      </p>
       {!estValide(etat) && (
         <span className="carte__etat carte__etat--alerte" role="status">
           Indiquez le rang où le classement s’arrête — « tout classer » se dit en choisissant le

@@ -79,7 +79,7 @@ class ProfondeurDTO(BaseModel):
     """La **profondeur de classement** d'une phase (E06US006, ADR-0070).
 
     Deux modes seulement, ceux qu'un organisateur choisit : `un_vers_n` (tous les rangs se jouent)
-    et `podium` (on ne départage que les `jusqu_au` premiers, le reste reste groupé). Le catalogue
+    et `top_n` (on ne départage que les `jusqu_au` premiers, le reste reste groupé). Le catalogue
     `depth` en compte un troisième — `aucun` — délibérément **absent** de la façade : c'est le
     contenu du type échauffement, pas un réglage de tableau (règle « on n'offre pas en façade ce
     qu'aucun moteur ne sait dérouler », ADR-0045 §2).
@@ -139,9 +139,12 @@ class ConfigPhaseRequete(BaseModel):
     profondeur: ProfondeurDTO | None = None
     """Jusqu'où cette phase départage (E06US006, ADR-0070).
 
-    `null` (défaut) = **non réglée**, donc le preset du type — le podium pour un tableau, soit ce
-    qui se jouait avant cette US. ⚠️ Même régime d'édition **totale** que `sources` : omettre le
-    champ au `PUT` **efface** le réglage et fait retomber la phase sur son preset.
+    `null` (défaut) = **non réglée**, donc le preset du type : le **podium** pour une élimination
+    directe (ce qui se jouait avant cette US), le **classement intégral** pour un placement, qui
+    n'a aucun existant à préserver (ADR-0070 §3).
+
+    ⚠️ Même régime d'édition **totale** que `sources` : omettre le champ au `PUT` **efface** le
+    réglage et fait retomber la phase sur son preset.
     """
 
     barrage_jusqu_au: int | None = Field(default=None, ge=1)

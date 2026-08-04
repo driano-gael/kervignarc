@@ -724,7 +724,7 @@ la racine** (ce ne sont pas des politiques de moteur). Exemples :
 | `type_phase` | qualification, barrage, elimination_directe, placement, finale, big_shoot_off — **catalogue ouvert** (format = config, [ADR-0004](adr/0004-moteur-de-phases-politiques.md) ; cf. catalogue E05). *Valeurs livrées (E05US001) : `qualification`, `elimination_directe`, `placement` ; les autres restent des cibles.* |
 | `routing` | elimination_seche, cascade, repechage |
 | `grain_validation` | fin_de_serie, fin_de_duel, toutes_les_n_volees |
-| `depth` | 1_a_n, top_n |
+| `depth` | un_vers_n, top_n, aucun |
 | `statut_match` | a_jouer, en_cours, termine, bye, forfait |
 | `role` | admin, scoreur, public |
 | `valeur_fleche` | 0-10, X, M — **vocabulaire par tournoi, défaut FFTA** ([ADR-0027](adr/0027-vocabulaire-de-score-injectable-defaut-ffta.md)) ; restreint par `BLASON.zones` (un triple 40 exclut 5→1). L'enum figé et `VALEUR_FLECHE_MAX` sont abandonnés |

@@ -42,16 +42,22 @@ from domain.politiques import Depth, RegistrePolitiques, assembler_politiques
 def profondeur_de(phase: Phase, registre: RegistrePolitiques) -> Depth:
     """Jusqu'où cette phase départage — la politique `depth` **résolue** (E06US006, ADR-0070).
 
-    Extraite ici pour la **même raison** que `preleves`, et pour un risque identique : les deux
-    services montent le même arbre (`construire_tableau`) et doivent lui donner la **même**
-    profondeur. S'ils divergeaient, `ServicePlacementDuels` poserait les cibles d'un tableau et
-    `ServiceSaisieDuels` en jouerait un autre — la panne exacte qu'E05US020 a produite sur
-    l'ensemencement, mesurée en revue (plan de 8 pour un tableau de 4). Une seule lecture, deux
-    appels.
+    Extraite ici pour la **même raison** que `preleves` : les deux services montent le même arbre
+    (`construire_tableau`) et ne peuvent pas lui donner deux profondeurs différentes. Une seule
+    lecture, deux appels.
 
-    Une phase qui ne règle rien retombe sur le **preset de son type** (le podium), et non sur 1→N :
-    l'absence de réglage doit rejouer ce qui se jouait hier, pas convertir les tournois existants
-    au placement intégral (ADR-0070).
+    ⚠️ **La divergence n'est pas observable aujourd'hui**, et un premier jet affirmait le contraire
+    (« les cibles d'un arbre qu'on ne joue pas »). Mesuré : sous `PlacementEnCascade`, les paires du
+    **premier tour** sont identiques à toute profondeur, et `ServicePlacementDuels` ne consomme que
+    ce tour — sa sortie est donc structurellement insensible au réglage. Ce que la lecture partagée
+    achète est une garantie **future**, pour le jour où le plan couvrira les tours suivants ;
+    `test_le_plan_de_cibles_reste_le_meme_a_toute_profondeur` fige l'état actuel et échouera alors.
+    Le précédent d'E05US020 (plan de 8 pour un tableau de 4) reste la raison d'être du module, mais
+    il portait sur l'**ensemencement**, pas sur la profondeur (ADR-0070 §5).
+
+    Une phase qui ne règle rien retombe sur le **preset de son type** — le podium pour une
+    élimination directe, le classement **intégral** pour un placement, qui n'a aucun existant à
+    préserver. L'absence de réglage rejoue ce qui se jouait hier, elle ne convertit rien (ADR-0070).
 
     La résolution passe par le **registre** (règle 2) : le descripteur porté par la phase est de la
     donnée, la stratégie sort du catalogue. L'instancier à la main ferait de la politique une

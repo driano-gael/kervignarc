@@ -49,7 +49,12 @@ import {
 } from './sequence'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
-import { depuisProfondeur, estValide, versProfondeur } from '../../shared/phases/profondeur'
+import {
+  depuisProfondeur,
+  estValide,
+  versProfondeur,
+  PROFONDEUR_AU_PRESET,
+} from '../../shared/phases/profondeur'
 
 const EFFECTIF_PAR_DEFAUT = 120
 
@@ -673,6 +678,11 @@ export function FormulaireEtape({
         if (surAnnuler === undefined) {
           setSources([])
           setEffectif('')
+          // Comme sur l'écran « Phases » (relevé en 2ᵉ passe : le correctif n'avait été appliqué
+          // qu'à un des deux formulaires jumeaux). Ce formulaire n'est jamais démonté entre deux
+          // ajouts : sans ce reset, « classement intégral » se reportait en silence sur la phase
+          // suivante — deux tableaux de 120 partant à ~616 duels que personne n'a demandés.
+          setProfondeur(PROFONDEUR_AU_PRESET)
         }
       }}
     >
@@ -726,7 +736,13 @@ export function FormulaireEtape({
         </label>
       </div>
 
-      {enTableau && <ChoixProfondeur etat={profondeur} surChangement={setProfondeur} />}
+      {enTableau && (
+        <ChoixProfondeur
+          etat={profondeur}
+          surChangement={setProfondeur}
+          presetIntegral={type === 'placement'}
+        />
+      )}
 
       <EditeurSources etapesAmont={etapesAmont} sources={sources} surSources={setSources} />
 

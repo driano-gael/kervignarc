@@ -5,7 +5,7 @@ direct, et neutraliser son appel dans `ServicePlacementDuels` laissait la suite 
 
 ⚠️ **Ce que ce fichier a appris, et que l'ADR affirmait à tort.** La revue attribuait ce trou à un
 défaut de couverture ; la mesure dit autre chose. Sous `PlacementEnCascade`, les **paires du premier
-tour sont identiques** quelle que soit la profondeur (vérifié : `podium` et `un_vers_n` sur 8
+tour sont identiques** quelle que soit la profondeur (vérifié : `top_n(4)` et `un_vers_n` sur 8
 participants rendent `[(1,8), (4,5), (2,7), (3,6)]`), et `ServicePlacementDuels` ne consomme **que**
 ce premier tour. Sa sortie est donc **structurellement insensible** à la profondeur aujourd'hui :
 aucun test ne peut distinguer une profondeur juste d'une profondeur fausse de ce côté-là, parce
@@ -88,7 +88,7 @@ def test_un_top_n_rend_la_profondeur_parametree() -> None:
 
 
 def _monde(profondeur: ProfondeurClassement | None, scores: tuple[tuple[str, ...], ...]) -> _Monde:
-    monde = _Monde() if profondeur is None else _Monde(profondeur=profondeur)
+    monde = _Monde(profondeur=profondeur)
     for valeurs in scores:
         monde.inscrire_classe(valeurs)
     monde.creer_phase_tableau()
@@ -98,7 +98,10 @@ def _monde(profondeur: ProfondeurClassement | None, scores: tuple[tuple[str, ...
 @pytest.mark.parametrize(
     ("profondeur", "matchs_attendus"),
     [
-        (None, 8),  # preset : tableau principal (7) + petite finale
+        # `None` = phase **réellement non réglée**, donc repli sur le preset du type : c'est le
+        # cœur d'ADR-0070 §3, et l'étiqueter sans l'exercer était un faux témoignage (relevé en
+        # 2ᵉ passe — le décor posait un `top_n(4)` explicite).
+        (None, 8),
         (ProfondeurClassement.top(2), 7),  # finale seule, aucune petite finale
         (ProfondeurClassement.integrale(), 12),  # un match par rang : 8/2 fois log2(8)
     ],
@@ -124,10 +127,16 @@ def test_le_plan_de_cibles_reste_le_meme_a_toute_profondeur() -> None:
     profondeur. Le jour où le plan couvrira les tours suivants, ce test **échouera** — et c'est
     exactement ce qu'on lui demande : il signalera que la lecture partagée (`profondeur_de`) est
     devenue observable des deux côtés, donc qu'un vrai test de parité est enfin possible.
+
+    ⚠️ **Huit archers, et non quatre** (corrigé en 2ᵉ passe de revue). À quatre, `top_n(4)` et
+    `un_vers_n` produisent le **même arbre entier** (4 matchs des deux côtés) : le test comparait
+    deux fois le même tableau et serait resté vert quoi qu'il arrive — le « test décoratif » que
+    l'en-tête de ce fichier condamne, reproduit un cran au-dessus. À huit, les arbres diffèrent
+    (8 matchs contre 12) et l'égalité des plans devient un vrai témoin.
     """
     paires = []
     for profondeur in (None, ProfondeurClassement.integrale()):
-        monde = _monde(profondeur, _QUATRE_SCORES)
+        monde = _monde(profondeur, _HUIT_SCORES)
         monde.placer()
         plan = monde.placement.plan_de_duels(monde.tournoi_id, monde.phase_id or 0)
         paires.append(sorted(plan.duels_separes))

@@ -12,6 +12,8 @@ posée par E15US002 — le harnais éprouvé par les tests **est** celui déploy
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from application.erreurs import EffectifSimulationInvalide, FormatIntrouvable
@@ -43,12 +45,11 @@ class _FormatsEnMemoire:
 
     def ajouter(self, format_tournoi: FormatTournoi) -> FormatTournoi:
         self._compteur += 1
-        enregistre = FormatTournoi(
-            nom=format_tournoi.nom,
-            etapes=format_tournoi.etapes,
-            origine=format_tournoi.origine,
-            id=self._compteur,
-        )
+        # `replace()` plutôt qu'une reconstruction champ par champ (3ᵉ jumeau du même défaut,
+        # trouvé en 2ᵉ passe de revue) : la forme précédente perdait `effectif_minimum_exige`,
+        # ajouté par E05US021 — l'US juste avant celle-ci. Ces tests étaient donc aveugles à sa
+        # propagation, sans que rien ne le signale.
+        enregistre = replace(format_tournoi, id=self._compteur)
         self._formats[self._compteur] = enregistre
         return enregistre
 

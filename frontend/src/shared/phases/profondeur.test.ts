@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from 'vitest'
 import {
+  decrireProfondeur,
   depuisProfondeur,
   estValide,
   versProfondeur,
@@ -66,5 +67,16 @@ describe('versProfondeur', () => {
     ]) {
       expect(versProfondeur(depuisProfondeur(profondeur))).toEqual(profondeur)
     }
+  })
+})
+
+describe('decrireProfondeur', () => {
+  // Affiché sur la ligne de phase des **deux** écrans de composition ; aucun des deux ne l'assertait.
+  it('nomme le classement intégral', () => {
+    expect(decrireProfondeur({ nom: 'un_vers_n', jusqu_au: null })).toBe('classement intégral')
+  })
+
+  it('nomme le rang où le classement s’arrête', () => {
+    expect(decrireProfondeur({ nom: 'top_n', jusqu_au: 8 })).toBe("classé jusqu'au 8ᵉ")
   })
 })

@@ -1567,7 +1567,7 @@ la conséquence au moment du choix, pas la découvrir à 10 h »* — et c'est l
 pèse le plus lourd sur la journée, devant même le grain de validation.
 
 **Ce qui l'atténue aujourd'hui** : l'écran **énonce** la conséquence en clair sous le sélecteur
-(« le nombre de duels augmente fortement — vérifiez la simulation avant de vous y engager »), et la
+(« le nombre de duels est multiplié par trois ou quatre — vérifiez la simulation avant de vous y engager »), et la
 **simulation** d'E15US002, qui joue réellement le format sur des archers fictifs, en rend le compte
 exact. L'organisateur peut donc savoir ; il doit simplement faire un geste de plus.
 
@@ -1588,5 +1588,5 @@ elle est le seul objet qui puisse répondre sans dupliquer l'arbre — et la ré
 automatiquement toute profondeur ajoutée au catalogue. À traiter dans une US dédiée, avec la mise à
 jour du schéma qui va avec.
 
-Marqueur `# DETTE-035` sur `_braquets` (`backend/domain/deroule.py`).
+Marqueurs `# DETTE-035` sur `_braquets` (`backend/domain/deroule.py`), sur `PhaseSimulee.ecart` (`backend/application/simulation_format.py`) et sur `AIDE_PROFONDEUR` (`frontend/src/shared/phases/ChoixProfondeur.tsx`) — le front est **l'endroit exact du raccourci** : c'est là que l'organisateur choisit sans voir le chiffre.
 

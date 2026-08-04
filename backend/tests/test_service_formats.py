@@ -27,10 +27,10 @@ from application.erreurs import (
 )
 from application.formats import ServiceFormats
 from domain.bareme import BaremeQualification
-from domain.erreurs import PhaseQualificationIncomplete
+from domain.erreurs import PhaseQualificationIncomplete, ProfondeurInvalide
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.patrimoine import OrigineBrique
-from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
+from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase, grain_par_defaut
 from domain.phase import PhaseId as _PhaseId
 from domain.politiques import ProfondeurClassement
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
@@ -577,3 +577,49 @@ def test_appliquer_transporte_la_profondeur_du_format_vers_les_phases(ctx: Conte
 
     assert phases[1].profondeur == ProfondeurClassement.integrale()
     assert phases[0].profondeur is None
+
+
+def test_un_brouillon_incoherent_s_enregistre_mais_refuse_de_s_appliquer(ctx: Contexte) -> None:
+    """Le régime **brouillon** d'ADR-0063 vaut aussi pour la profondeur (E06US006, ADR-0070 §2).
+
+    Une profondeur posée sur une qualification est un modèle **licite** — un format s'enregistre à
+    tout moment — mais `pour_tournoi` construit une vraie `Phase`, dont l'invariant refuse. Ce CA a
+    été reversé dans `stories/` au cours de l'US sans qu'aucun test ne l'exerce (relevé en revue).
+    """
+    format_tournoi = ctx.service.creer(
+        "Brouillon incohérent",
+        [
+            ModelePhase(
+                ordre=1,
+                type=TypePhase.QUALIFICATION,
+                bareme=BaremeQualification.creer(20, 3),
+                validation=grain_par_defaut(TypePhase.QUALIFICATION),
+                profondeur=ProfondeurClassement.integrale(),
+            )
+        ],
+    )
+    relu = next(f for f in ctx.service.lister() if f.id == format_tournoi.id)
+    assert relu.etapes[0].profondeur == ProfondeurClassement.integrale()
+
+    with pytest.raises(ProfondeurInvalide):
+        ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
+
+
+def test_promouvoir_transporte_la_profondeur_des_phases(ctx: Contexte) -> None:
+    """La promotion « ce déroulé devient un format » ne doit pas perdre le réglage.
+
+    Sans elle, un organisateur qui remonte son tournoi en brique de bibliothèque perdrait le
+    classement intégral **en silence** — et c'est précisément la boucle que la fiche recommande.
+    """
+    ctx.phases.ajouter(
+        Phase.creer(
+            ctx.tournoi_id,
+            ordre=1,
+            type=TypePhase.ELIMINATION_DIRECTE,
+            profondeur=ProfondeurClassement.integrale(),
+        )
+    )
+
+    promu = ctx.service.promouvoir(ctx.tournoi_id, "Déroulé du jour")
+
+    assert promu.etapes[0].profondeur == ProfondeurClassement.integrale()

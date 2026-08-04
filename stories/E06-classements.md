@@ -133,7 +133,7 @@
   Le CA d'origine disait « mode 1→N (**défaut**) », repris d'[ADR-0004](../docs/adr/0004-moteur-de-phases-politiques.md).
   C'est vrai du **catalogue**, faux du **preset d'une phase déjà en base** : jusqu'à cette US, toutes
   les phases se jouaient en `ProfondeurPodium` figée au câblage, et faire de 1→N le preset aurait
-  converti **tous les tournois existants** au placement intégral — un tableau de 120 passant d'une
+  converti **tous les tournois existants** au placement intégral — un tableau de 120 passant de
   128 duels à 436 (mesuré), sans que personne ne l'ait demandé. 1→N est donc ce que
   l'organisateur **choisit**, jamais ce qu'il subit ([ADR-0070](../docs/adr/0070-profondeur-de-classement-reglee-par-phase.md) §3).
   ⚠️ **Une exception, voulue** : le type `placement` a pour preset le classement **intégral**. Lui
