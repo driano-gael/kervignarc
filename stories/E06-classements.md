@@ -125,8 +125,25 @@
 ### E06US006 — Classement intégral 1→N & profondeur configurable
 *En tant que* public/organisateur, *je veux* un classement complet dont je choisis la profondeur, *afin de* connaître le rang de chaque archer, adapté au tournoi.
 - **CA — rang unique (ex-006)** : chaque archer a un rang unique 1→N, alimenté par les matchs terminaux (E05US010).
-- **CA — profondeur configurable (ex-007)** : mode 1→N (défaut) OU top N + regroupement du reliquat ; politique `depth`.
-- **Notes** : cohérent avec l'oracle 120.
+- **CA — profondeur configurable (ex-007)** : mode 1→N OU top N + regroupement du reliquat ;
+  politique `depth`, réglée **phase par phase** (cadrage du 04/08/2026 : le déroulé se compose déjà
+  à cette maille, et un tournoi peut jouer un tableau principal intégral avec une consolante
+  tronquée). Réglable depuis « Composer un déroulé » **et** depuis les phases d'un tournoi.
+- **CA — le preset d'une phase non réglée est le podium** *(arbitrage du 04/08/2026, reversé ici)*.
+  Le CA d'origine disait « mode 1→N (**défaut**) », repris d'[ADR-0004](../docs/adr/0004-moteur-de-phases-politiques.md).
+  C'est vrai du **catalogue**, faux du **preset d'une phase déjà en base** : jusqu'à cette US, toutes
+  les phases se jouaient en `ProfondeurPodium` figée au câblage, et faire de 1→N le preset aurait
+  converti **tous les tournois existants** au placement intégral — un tableau de 120 passant d'une
+  trentaine de duels à plus d'une centaine, sans que personne ne l'ait demandé. 1→N est donc ce que
+  l'organisateur **choisit**, jamais ce qu'il subit ([ADR-0070](../docs/adr/0070-profondeur-de-classement-reglee-par-phase.md) §3).
+- **Notes** : cohérent avec l'oracle 120. Le « regroupement du reliquat » **existe déjà** : c'est le
+  mécanisme de **fourchette** livré par E06US004 (`rang_min`/`rang_max` + `decerne`), qui dit ce
+  qu'aucun match n'a départagé. L'US n'ajoute donc rien au palmarès — sous placement intégral, les
+  fourchettes disparaissent d'elles-mêmes et chaque rang devient exact **et** décerné. Une
+  profondeur sur un type qui ne monte aucun tableau (qualification, poule, échauffement) est
+  **refusée** : le réglage n'y agirait sur rien. ⚠️ Reste non livré, inscrit en `DETTE-035` : le
+  schéma à braquets ne **chiffre** pas les duels qu'une profondeur ajoute, alors que la maquette A07
+  en fait son exigence `P-4` — la simulation, elle, donne le compte exact.
 - **Absorbe** : ex-E06US007. **Dépend de** : E05US010 · **Jalon** : J3
 
 ---

@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 04/08/2026** · **94 US livrées** · dernière : `E05US021` *(un tournoi ne se lance plus s'il manque des archers : le minimum d'inscrits se **déduit** des prélèvements, s'affiche avant le clic et refuse le démarrage — ADR-0069)*. Précédente : `E05US020` *(le moteur consomme les prélèvements déclarés : « les rangs 1 à 32 » monte enfin un tableau de 32 — cœur de DETTE-028 résorbé, ADR-0068)*.
+**Dernière mise à jour : 04/08/2026** · **95 US livrées** · dernière : `E06US006` *(l'organisateur choisit, **phase par phase**, jusqu'où le tournoi classe : podium, top N, ou classement intégral où chaque rang se gagne au tir — ADR-0070)*. Précédente : `E05US021` *(un tournoi ne se lance plus s'il manque des archers : le minimum d'inscrits se **déduit** des prélèvements, s'affiche avant le clic et refuse le démarrage — ADR-0069)*.
 
 ---
 
@@ -136,11 +136,20 @@
 > clic — qui n'apprend rien tant qu'on ne clique pas). Un test d'API a trouvé un vrai défaut au
 > passage : la lecture de l'exigence rendait 200 sur un tournoi inexistant.
 >
-> **🎯 Prochaine :** **`E06US006`** — classement intégral 1→N & profondeur configurable. *(Elle
-> **prolonge** E06US004 sans la refaire : le palmarès sait déjà fusionner et renuméroter 1→N ; ce
-> qui reste est la **profondeur** — top N + regroupement du reliquat — et le fait que, sous
-> placement intégral, tous les rangs deviennent **exacts** et les fourchettes disparaissent d'
-> elles-mêmes.)*
+> **`E06US006` est livrée** (04/08/2026, [ADR-0070](../docs/adr/0070-profondeur-de-classement-reglee-par-phase.md)).
+> La prévision s'est vérifiée sur un point et trompée sur un autre, et les deux méritent d'être lues
+> avant de prendre la suite : **le palmarès n'a effectivement pas bougé** — sous placement intégral
+> les fourchettes se referment d'elles-mêmes, le mécanisme d'E06US004 *était* déjà le « regroupement
+> du reliquat » du CA. En revanche, la profondeur n'était **exposée nulle part** : elle était figée
+> au composition root, avec un commentaire annonçant qu'E01US024 l'exposerait — ce qu'E01US024 n'a
+> pas fait. **Le vrai travail était l'exposition, pas le classement.** Un CA hérité d'une refonte de
+> maille (« ex-006 / ex-007 ») décrit l'intention, pas l'état du code : le vérifier **avant** de
+> cadrer aurait évité un aller-retour d'analyse.
+>
+> **🎯 Prochaine :** **`E03US007`** — contrainte de séparation catégorie/blason au placement.
+> *(Prochaine ligne ⬜ de J3. Deux voisines sont à considérer si la priorité change : `E07US005`
+> (vue tableaux/arbres live) devient nettement plus intéressante maintenant qu'un tableau peut
+> descendre jusqu'au dernier rang, et `E13US002` (composer les équipes) reste débloquée.)*
 > *Note : **J2 est terminé** (14/14). Son compteur affichait `11/14` — périmé de deux crans depuis
 > E07US008 et E06US003, qui l'avaient laissé en l'état ; recompté et corrigé par E06US004. **J3**
 > l'était aussi (`4/11` pour six lignes ✅) : un premier jet de ce commit s'était arrêté à la ligne
@@ -537,7 +546,7 @@
 | 71 | E06US003 | Barrage de tir pour places décisives | ✅ *(seuil dans la politique `tiebreak`, manches persistées, verdict recalculé, ADR-0066)* |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ✅ *(palmarès : fusion des rangs de phases, podiums par catégorie, export PDF, politique `aggregation`, ADR-0067)* |
 
-## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (7/12)**
+## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (8/12)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -545,7 +554,7 @@
 | 74 | E05US015 | **Catalogue de types de phase** (échauffement, barrage, poules, repêchage, BSO) | ✅ *(11 formats : + suisse, colline, handicap, finale spectacle — le commanditaire a fourni leurs règles le 31/07 ; ADR-0062)* |
 | 74bis | E01US024 | **Composer, diagnostiquer et simuler un déroulé** | ✅ *(brouillon + invariant déplacé vers `appliquer`, schéma SVG maison, 2 gravités d'anomalie, simulation composée sur ADR-0054/0055 ; ADR-0063 — résorbe DETTE-030, ne résorbe DETTE-028 qu'à moitié)* |
 | 75 | ~~E05US018~~ | ~~Oracle 120~~ → **absorbée par E05US010** | ⬜ *(le moteur et sa preuve ne se séparent pas)* |
-| 76 | E06US006 | Classement intégral 1→N & profondeur | ⬜ |
+| 76 | E06US006 | **Classement intégral 1→N & profondeur configurable** | ✅ *(la profondeur se règle **par phase** et non plus au câblage ; absence = preset podium, pas 1→N — ADR-0070, DETTE-035 ouverte)* |
 | 76bis | E05US020 | **Le moteur consomme les prélèvements déclarés** | ✅ *(cœur de DETTE-028 : prélèvement par rangs honoré, plage relative résolue, tranche de rangs au palmarès — DETTE-034 soldée, ADR-0068)* |
 | 76ter | E05US021 | **Un format connaît son effectif minimum** (avertir avant de lancer) | ✅ *(minimum **déduit** des prélèvements, exigence de club au-dessus, refus au démarrage + annonce avant le clic — ADR-0069)* |
 | 77 | E03US007 | Contrainte séparation catégorie/blason | ⬜ |

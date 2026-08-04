@@ -673,7 +673,19 @@ la racine** (ce ne sont pas des politiques de moteur). Exemples :
   catégorie (`*` = toutes catégories), ex. « toutes les finales sur triples verticaux » (FFTA A.7.6/A.7.7).
   Absent ⇒ on retient le `CATEGORIE.blason_id`.
 - Autres valeurs de `routing` : `elimination_seche` (MVP, podium), `repechage` (World Archery, J4).
-- Autres `depth` : `top_n` (avec `params.n`).
+- `depth` — **forme livrée** (E06US006, [ADR-0070](adr/0070-profondeur-de-classement-reglee-par-phase.md)) :
+  `{"nom": "un_vers_n"}` (placement intégral — tous les rangs se jouent, plus aucune fourchette) ou
+  `{"nom": "podium", "jusqu_au": N}` (seuls les N premiers sont départagés, le reste reste groupé sur
+  la tranche de rangs de sa sortie). Écrit **sans migration** : la clé est **omise** quand rien n'est
+  réglé, si bien qu'une config d'avant l'US et une config non réglée sont le même document.
+  ⚠️ **Clé absente ⇒ preset du type, soit `podium` à 4** — et **non** `un_vers_n`, malgré le « 1→N par
+  défaut » d'ADR-0004. Le défaut du *catalogue* n'est pas le preset d'une *phase déjà en base* :
+  toutes les phases écrites avant E06US006 se jouaient au podium (profondeur figée au câblage), et
+  faire de 1→N leur preset aurait converti tous les tournois existants au placement intégral.
+  ⚠️ Le catalogue porte un troisième nom, `aucun` (`AucunClassement`, contenu du type échauffement),
+  **jamais écrit ici** : ni l'API ni les écrans ne l'offrent, et le trouver dans une `config` de
+  tableau signifie que la base a été altérée. Une profondeur sur un type qui ne monte aucun arbre
+  (qualification, poule, échauffement) est refusée en 422.
 - `tiebreak` — **forme livrée** (E06US003, ADR-0066) : `{"nom": "ffta_defaut"}` (§8.1, nb de 10 puis
   de 9, ex æquo par défaut), `{"nom": "poules"}` (§10.1, cinq critères), ou le **composite**
   `{"nom": "barrage", "jusqu_au": 8, "sinon": {"nom": "ffta_defaut"}}` — qui délègue le départage à

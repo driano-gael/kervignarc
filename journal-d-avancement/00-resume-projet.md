@@ -435,7 +435,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **94 US livrées** sur `main` (mergées, revues, CI verte) à la date du 04/08/2026. **`SUIVI-US.md`
+- **95 US livrées** sur `main` (mergées, revues, CI verte) à la date du 04/08/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -471,7 +471,21 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   disqualification** (E04US015 — qualif *et* duels), le **cycle de vie d'un départ** (E12US008), le
   **feu vert + lancement d'un tour** (E12US002), le **remboursement d'une inscription payée
   annulée** (E08US005) l'**affichage de la prochaine cible après validation** (E04US018), le **barrage de tir pour les places décisives** (E06US003) et le **palmarès** (E06US004), qui le referme.
-- Dernière US livrée : **E05US021** (un tournoi ne se lance plus s'il manque des archers) — US **à
+- Dernière US livrée : **E06US006** (choisir jusqu'où le tournoi classe ses archers) — US **à surface
+  visible**. Un tableau de duels s'arrêtait toujours au podium : on tirait la finale et la petite
+  finale, et les archers sortis plus tôt restaient groupés — les quatre battus des quarts partageaient
+  « 5ᵉ-8ᵉ », sans que rien ne dise lequel était 5ᵉ. Le moteur savait pourtant faire autrement depuis
+  E05US010, mais le choix était **figé dans le logiciel** : aucun écran ne permettait de le demander.
+  Il devient un réglage, **phase par phase**, sur les deux écrans où l'on compose des phases. Deux
+  options : s'arrêter au podium (ou à un rang de son choix), ou **classer intégralement** — un duel
+  pour chaque rang, si bien que **chaque archer repart avec un rang unique qu'il a gagné au tir**, du
+  1ᵉʳ au dernier. Le palmarès le montre aussitôt : plus aucune fourchette, plus aucun rang emprunté au
+  classement du matin. ⚠️ Le classement intégral fait tirer **beaucoup plus de duels** (une trentaine
+  → plus d'une centaine sur un tournoi de 120) : c'est une décision d'organisation, l'écran le
+  rappelle et la simulation en donne le compte exact. Ne rien changer ne change rien — les tournois
+  déjà composés continuent de se jouer au podium. *(Livré juste avant : **E05US021**, un tournoi ne se
+  lance plus s'il manque des archers.)*
+- Avant-dernière US livrée : **E05US021** (un tournoi ne se lance plus s'il manque des archers) — US **à
   surface visible**. Un déroulé composé pour 120 archers appliqué à une édition qui en réunit 28
   démarrait sans rien dire, et le problème n'éclatait qu'**en pleine compétition**, sur une tablette,
   au moment de monter un tableau vide. Le contrôle remonte là où la décision se prend : l'application
@@ -480,13 +494,13 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   cause), et **refuse** le démarrage tant que le compte n'y est pas. Un club peut exiger davantage
   (« pas de tournoi de ce type sous 40 archers ») — jamais moins. *(Livré juste avant : **E05US020**,
   le déroulé composé est celui qui se joue.)*
-- Avant-dernière US livrée : **E05US020** (le déroulé composé est celui qui se joue) — US **à surface
+- Antépénultième US livrée : **E05US020** (le déroulé composé est celui qui se joue) — US **à surface
   visible**. L'organisateur décrivait sa journée (« le tableau prend les rangs 1 à 32 »), l'outil la
   dessinait, la contrôlait, la validait — et le jour J montait un tableau avec **tous** les archers.
   C'est fini : le prélèvement déclaré est honoré, « les rangs 33 et suivants » s'adapte à l'effectif
   réel, et un abandon ne laisse pas de trou. L'avertissement qui prévenait de l'écart a disparu, sauf
   pour les deux formes de prélèvement que le moteur ne sait toujours pas honorer.
-- Antépénultième US livrée : **E06US004** (le palmarès) — US **à surface visible**, qui **clôt le jalon
+- Quatrième US la plus récente : **E06US004** (le palmarès) — US **à surface visible**, qui **clôt le jalon
   J2**. Le tournoi savait dire qui avait le mieux tiré le matin, et qui avait gagné un tableau — mais
   ces deux réponses vivaient sur deux écrans différents, et aucune ne donnait le **classement final**.
   C'est fait : un onglet **« Palmarès »** montre les **podiums** puis le
