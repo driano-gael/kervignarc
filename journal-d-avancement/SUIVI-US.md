@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 04/08/2026** · **96 US livrées** · dernière : `E03US007` *(l'organisateur choisit **ce qu'une cible n'a pas le droit de mélanger** — rien, la catégorie, le blason, ou les deux : contrainte **dure**, réserve motivée, plan antérieur signalé — ADR-0071)*. Précédente : `E06US006` *(l'organisateur choisit, **phase par phase**, jusqu'où le tournoi classe : podium, top N, ou classement intégral où chaque rang se gagne au tir — ADR-0070)*.
+**Dernière mise à jour : 04/08/2026** · **96 US livrées** · dernière : `E03US007` *(l'organisateur choisit **ce qu'une cible n'a pas le droit de mélanger** — rien, la catégorie, le blason, ou les deux : contrainte **dure** sur le plan de cibles **et** le plan de duels, réserve motivée, plan antérieur signalé — ADR-0071)*. Précédente : `E06US006` *(l'organisateur choisit, **phase par phase**, jusqu'où le tournoi classe : podium, top N, ou classement intégral où chaque rang se gagne au tir — ADR-0070)*.
 
 ---
 
@@ -164,11 +164,18 @@
 >   le glouton. Le réflexe « faire comme la mixité » aurait produit une règle officielle violable au
 >   mieux — c'est-à-dire rien. Corollaire : l'ordre de priorité laissé ouvert par EPIC-03 depuis
 >   l'origine est tranché — `capacité/espace/hauteur` > `cloisonnement` > `mixité` > `adjacence` ;
-> - **le seuil d'ADR-0023 §2 n'est toujours pas franchi.** ADR-0047 désignait cette US comme « la
->   prochaine occasion » d'extraire un mécanisme de contraintes injectables. Verdict : **non** — un
->   **prédicat pur unique** (`cible_cloisonnement_non_respecte`) sert les trois chemins (glouton,
->   validation d'un déplacement, signal à la lecture), donc aucune duplication n'apparaît. Le seuil
->   reste posé pour la contrainte suivante ;
+> - **le seuil d'ADR-0023 §2 n'est pas franchi — mais pas pour la raison qu'on croyait.** ADR-0047
+>   désignait cette US comme « la prochaine occasion » d'extraire un mécanisme de contraintes
+>   injectables. Verdict : **non**, on n'extrait rien. Le paragraphe qui l'explique (ADR-0071 §6) a
+>   dû être **réécrit deux fois** avant d'être juste, et c'est la leçon la plus réutilisable de
+>   l'US : (1) « aucune duplication n'apparaît » était faux — la **séquence de gardes** de
+>   `_CibleEnCours` était recopiée, et l'US y avait ajouté la même ligne des deux côtés ; (2) « cinq
+>   contraintes, le seuil de trois est dépassé » était faux aussi — ADR-0023 compte les contraintes
+>   **ajoutées** au socle, et la mixité n'en étant pas une (ré-ordonnancement), le cloisonnement est
+>   le **premier** ajout. Le remède réel n'était pas un registre mais **deux délégations** :
+>   `accueille` ne réécrit plus ni les gardes (`peut_accueillir`) ni la consommation (`reprendre`).
+>   Le seuil reste donc posé pour la contrainte suivante. **À retenir pour EF-1.4** : vérifier ce
+>   que le seuil compte *avant* de conclure qu'il est atteint ;
 > - **une position du réglage ne sert à rien aujourd'hui, et c'est écrit partout.**
 >   `blason_et_categorie` rend le même plan que `categorie` tant que le blason **dérive** de la
 >   catégorie. Livrée sur demande du commanditaire, la redondance est documentée dans le code, la
@@ -588,7 +595,7 @@
 | 76 | E06US006 | **Classement intégral 1→N & profondeur configurable** | ✅ *(la profondeur se règle **par phase** et non plus au câblage ; absence = preset du type, podium pour une élimination directe et intégral pour un placement — ADR-0070, DETTE-035 ouverte)* |
 | 76bis | E05US020 | **Le moteur consomme les prélèvements déclarés** | ✅ *(cœur de DETTE-028 : prélèvement par rangs honoré, plage relative résolue, tranche de rangs au palmarès — DETTE-034 soldée, ADR-0068)* |
 | 76ter | E05US021 | **Un format connaît son effectif minimum** (avertir avant de lancer) | ✅ *(minimum **déduit** des prélèvements, exigence de club au-dessus, refus au démarrage + annonce avant le clic — ADR-0069)* |
-| 77 | E03US007 | **Contrainte séparation catégorie/blason** | ✅ *(réglage de tournoi à 4 positions, contrainte **dure** au placement auto **et** au glisser-déposer, raison de réserve propre `cloisonnement`, cibles non conformes signalées — ADR-0071 ; tranche la priorité des contraintes restée ouverte à EPIC-03)* |
+| 77 | E03US007 | **Contrainte séparation catégorie/blason** | ✅ *(réglage de tournoi à 4 positions, contrainte **dure** au placement auto **et** au glisser-déposer, **sur les deux plans** (cibles et duels), raison de réserve propre `cloisonnement`, cibles non conformes signalées — ADR-0071, DETTE-036/037 ; tranche la priorité des contraintes restée ouverte à EPIC-03)* |
 | 78 | E09US005 | Classements PDF | ⬜ *(rétrécie par E06US004 : le **palmarès** a son PDF ; reste celui du classement de **qualification**)* |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |
 | 80 | E01US016 | Définir l'identité visuelle du tournoi | ⬜ |

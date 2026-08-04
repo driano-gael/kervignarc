@@ -20,6 +20,12 @@ l'écran. Ce que le réglage empêche de placer part en réserve avec la mention
 cloisonnement »** — et non « aucune cible possible » : la distinction dit à l'organisateur si le
 problème vient de sa salle ou de son propre réglage.
 
+Le réglage vaut pour **tout le tournoi**, y compris l'écran « Duels » : même séparation à la
+génération, même refus au glisser-déposer, même motif en réserve et mêmes cibles signalées. Il n'y a
+rien à régler en plus de ce côté-là. Un effet de bord à connaître : si le tableau oppose deux
+catégories que vous cloisonnez, leurs deux duellistes **ne pourront pas** être placés côte à côte —
+la règle d'arbitrage passe avant le confort d'organisation, et la cible le signale.
+
 Deux choix méritent d'être connus :
 
 - **changer le réglage ne déplace personne.** Le plan qu'on vient d'ajuster à la main ne se réarrange

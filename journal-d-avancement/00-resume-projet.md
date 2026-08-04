@@ -480,9 +480,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   catégories pouvaient s'y retrouver côte à côte, ce que l'arbitre interdit sur certains tournois.
   L'organisateur **choisit désormais ce qu'une cible n'a pas le droit de mélanger** — rien (défaut),
   la catégorie, le blason, ou les deux. Le réglage est **strict** : ni le placement automatique ni un
-  glisser-déposer ne peut le contourner, et ce qu'il empêche de poser part en réserve avec la mention
-  **« exclu par le cloisonnement »**, distincte de « aucune cible possible » — la salle pleine et le
-  réglage trop serré ne se corrigent pas du même geste. Changer le réglage **ne déplace personne** :
+  glisser-déposer ne peut le contourner — **ni sur le plan de cibles, ni sur celui des duels** —, et
+  ce qu'il empêche de poser part en réserve avec la mention **« exclu par le cloisonnement »**,
+  distincte de « aucune cible possible » : la salle pleine et le réglage trop serré ne se corrigent
+  pas du même geste. Changer le réglage **ne déplace personne** :
   les cibles devenues non conformes sont signalées (badge + bandeau qui dit de régénérer), c'est
   l'organisateur qui décide du moment. ⚠️ Cloisonner **coûte des cibles** (chaque catégorie entame sa
   propre butte) : sur une salle juste, il y aura plus d'archers en réserve — visible aussitôt, et

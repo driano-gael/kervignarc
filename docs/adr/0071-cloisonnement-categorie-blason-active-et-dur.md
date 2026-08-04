@@ -126,45 +126,58 @@ dure qui ne se *rend* que sur un écran sur deux ne vaut pas mieux qu'une préf�
   à sa disposition. Deux gestes correctifs différents (desserrer le réglage / ajouter une cible),
   donc deux raisons distinctes, y compris dans le message d'un déplacement refusé.
 
-### 6. **Pas** d'extraction d'un mécanisme de contraintes injectables — mais le seuil *est* franchi
+### 6. **Pas** d'extraction d'un mécanisme de contraintes injectables
 
-ADR-0023 §2 fixait le seuil : « à la 3ᵉ contrainte **et** si une duplication apparaît ». ADR-0047
-avait désigné cette US comme « la prochaine occasion de réévaluer ». Verdict : **on n'extrait rien**
-— pour une raison qu'il faut énoncer correctement, la première rédaction de ce paragraphe étant
-fausse et corrigée en revue.
+ADR-0023 §2 fixait le seuil : « le jour où une **3ᵉ** contrainte réelle s'ajoutera (E03US006
+mixité, E03US007 catégorie) **et** qu'une duplication apparaîtra, on extraira un mécanisme de
+contraintes ». ADR-0047 avait désigné cette US comme « la prochaine occasion de réévaluer ».
+Verdict : **on n'extrait rien** — et ce paragraphe a dû être réécrit **deux fois** avant d'être
+juste, ce qui mérite d'être dit plutôt que masqué.
 
-**Les deux conditions sont remplies.** Le glouton câble aujourd'hui **cinq** contraintes (positions,
-hauteur, espace, partage de carton, cloisonnement) : le compte de trois est dépassé depuis
-longtemps. Et une duplication existait bel et bien — non pas celle de la *règle*, mais celle de la
+**Ce que le seuil comptait.** ADR-0023 énumère d'abord les contraintes **de base** (espace,
+positions, partage de carton, hauteur) puis parle de la « 3ᵉ contrainte qui s'ajoutera » : il compte
+les **ajouts** au socle, pas le total. Or la mixité (E03US006) n'en fut pas une — elle passe par
+l'ordre d'entrée, sans toucher au glouton (ADR-0047). **Le cloisonnement est donc le premier ajout
+réel**, pas le troisième.
+
+- 1ʳᵉ rédaction : « aucune duplication n'apparaît » — **faux**, voir ci-dessous.
+- 2ᵉ rédaction : « cinq contraintes, le compte de trois est dépassé » — **faux aussi**, elle
+  comptait le total au lieu des ajouts.
+
+**La duplication, elle, existait bel et bien** — non pas celle de la *règle*, mais celle de la
 **séquence de gardes** : `peut_accueillir` et `accueille` portaient le même trio de tests, et cette
-US y avait ajouté la même ligne de cloisonnement **des deux côtés**. C'est précisément le signal
-qu'ADR-0023 guettait.
+US y avait ajouté la même ligne de cloisonnement **des deux côtés**. Une seconde recopie, plus
+discrète, doublait la **consommation** des budgets entre `accueille` et `reprendre`.
 
-**Ce que nous en faisons n'est pourtant pas un registre**, parce que les cinq contraintes ne sont
-pas de même nature : trois **consomment un budget mutable** (espace, carton, positions) et sont
-indissociables de l'acte de poser ; deux seulement sont des **prédicats purs** (hauteur,
-cloisonnement). Un mécanisme injectable universel devrait donc modéliser la consommation de budget,
-c'est-à-dire réimplémenter `_CibleEnCours` derrière une interface : un protocole, cinq
-implémentations, un registre élargi, trois chemins d'appel migrés et les tests du moteur réécrits —
-pour zéro comportement nouveau. **Option « rien » retenue**, au sens plein de la règle 16.
+**Le seuil d'ADR-0023 n'est donc pas franchi** (sa condition est un *et* : 3ᵉ ajout **et**
+duplication), et il resterait de toute façon un mauvais déclencheur ici, parce que les contraintes
+ne sont pas de même nature : trois **consomment un budget mutable** (espace, carton, positions) et
+sont indissociables de l'acte de poser ; deux sont des **prédicats purs** (hauteur, cloisonnement).
+Un mécanisme injectable universel devrait modéliser la consommation, c'est-à-dire réimplémenter
+`_CibleEnCours` derrière une interface : un protocole, cinq implémentations, un registre élargi,
+trois chemins d'appel migrés et les tests du moteur réécrits — pour zéro comportement nouveau.
+**Option « rien » retenue**, au sens plein de la règle 16.
 
-Le remède que la preuve appelle réellement tient en une **délégation** : `accueille` dérive
-désormais de `peut_accueillir` (il pose ce que celle-ci autorise) au lieu de recopier ses gardes. La
-6ᵉ contrainte ne s'écrira donc qu'à un seul endroit, et le seuil d'ADR-0023 §2 reste posé —
-honnêtement, cette fois — pour la contrainte suivante.
+**Ce que la duplication appelait tient en deux délégations**, et elles sont faites : `accueille`
+n'écrit plus ni gardes ni consommation — il compose `peut_accueillir` (la garde) et `reprendre` (la
+pose). Une contrainte de plus ne s'écrit donc **qu'à un seul endroit**, qu'elle soit un prédicat ou
+un budget. La seconde délégation vient de la 2ᵉ passe de revue : la première ne dédupliquait que les
+gardes, et l'affirmation « à un seul endroit » était alors fausse pour la classe majoritaire des
+contraintes.
 
 **La règle de cloisonnement, elle, n'a bien qu'un énoncé** : le prédicat pur
-`cible_cloisonnement_non_respecte(cloisonnement, archers)`, dont `_cloisonnement_admet` est la
-négation, sert le glouton, la validation d'un déplacement manuel et le signal calculé à la lecture.
-Trois chemins, une définition. C'est vrai — mais ce n'était pas ce que le seuil d'ADR-0023 mesurait.
+`cible_cloisonnement_non_respecte(cloisonnement, archers)` — dont `_cloisonnement_admet` est la
+négation et sur lequel `motif_de_refus` est bâti — sert le glouton, la validation d'un déplacement
+manuel, le motif d'un refus et le signal calculé à la lecture. Quatre chemins, une définition.
 
-### 7. L'ordre d'entrée groupe par catégorie **quand, et seulement quand, le réglage la sépare**
-
-Le glouton ne revient jamais en arrière (ADR-0023). Si deux catégories partageant un blason
-s'entrelacent par `archer_id`, il **ferme une cible à chaque alternance** : le réglage coûterait des
-cibles sans rien apporter. La clé de groupe du tri (`_cle_de_groupe`) intègre donc la catégorie —
-mais **uniquement** sous un réglage qui la sépare, ce qui garantit que le plan par défaut reste
-**identique** à celui d'avant l'US (non-régression stricte, vérifiée par test).
+**Un remède plus modeste a en revanche été retenu, dans l'application** : `motif_de_refus` (domaine)
+répond à « *pourquoi* cette cible refuse cet archer ». Les deux services jumeaux enchaînaient chacun
+deux appels à `cible_accepte` et un prédicat pour le déduire — **quatre recopies** d'un même
+raisonnement dans deux fichiers qu'ADR-0048 signale déjà comme dupliqués, et c'est la 1ʳᵉ passe de
+correctifs qui avait porté cette recopie de deux à quatre. Ce n'est pas un pattern : c'est une règle
+métier remise dans le domaine, où elle vivait déjà à moitié. Les services n'en gardent que le
+**vocabulaire** (« archers » / « duellistes »). La duplication d'orchestration entre les deux
+services, elle, reste entière et reste assumée (ADR-0048 : 2ᵉ occurrence, extraction à la 3ᵉ).
 
 ## Conséquences
 
@@ -183,11 +196,15 @@ mais **uniquement** sous un réglage qui la sépare, ce qui garantit que le plan
   videz-la ») plutôt que d'accuser le candidat, qui ne mêle rien — nuance ajoutée en revue, sans
   quoi l'admin cherchait indéfiniment sa propre faute.
 - **−** `blason_et_categorie` est aujourd'hui indiscernable de `categorie` (§3) : quatre positions
-  pour trois comportements observables tant qu'EF-1.4 n'est pas livré.
+  pour trois comportements observables tant qu'EF-1.4 n'est pas livré
+  ([DETTE-036](../dette.md#dette-036--une-position-du-cloisonnement-na-pas-deffet-distinct)).
 - **~** Le réglage reste modifiable **tournoi en cours** : aucun statut ne le verrouille, comme le
   plan lui-même s'ajuste jusqu'au bout (E03US004). Une régénération tardive reste protégée par
   l'alerte d'impact chiffrée (E12US007) — mais **cette alerte ne chiffre pas la réserve** que le
   réglage va créer : elle compte les archers replacés et les cibles déjà scorées, pas ceux qu'un
-  cloisonnement plus strict va exclure. L'organisateur les découvre **après** avoir confirmé.
-  Relevé par l'axe adversarial ; non corrigé ici (il faudrait un `placer` à blanc dans le calcul
-  d'impact), et donc énoncé plutôt que sous-entendu.
+  cloisonnement plus strict va exclure. L'organisateur les découvre **après** avoir confirmé. Relevé
+  par l'axe adversarial, non corrigé ici (il faudrait un `placer` à blanc dans le calcul d'impact) —
+  et **tracé au registre**
+  ([DETTE-037](../dette.md#dette-037--lalerte-dimpact-ne-chiffre-pas-la-réserve-que-le-cloisonnement-va-créer)),
+  faute de quoi ce paragraphe aurait fait exactement ce que le §3 reproche : documenter un manque au
+  lieu de le tracer. Deux poids, deux mesures dans un même ADR, relevé en 2ᵉ passe.
