@@ -15,12 +15,11 @@ import type { Archer } from '../competition/api'
 import { useDeparts } from '../departs/hooks'
 import type {
   CiblePlacee,
-  Cloisonnement as ValeurCloisonnement,
+  Cloisonnement,
   Conflit,
   Destination,
   ImpactRegeneration,
   PlanDeCibles,
-  RaisonConflit,
 } from './api'
 import {
   useCloisonnement,
@@ -33,38 +32,15 @@ import {
 } from './hooks'
 import {
   LIBELLE_CLOISONNEMENT,
+  LIBELLE_RAISON,
+  RAISON_ANOMALIE,
+  VALEURS_CLOISONNEMENT,
   resumeCloisonnementNonRespecte,
   resumeMixiteNonGarantie,
 } from './presentation'
 
 // Les positions d'une cible sont des lettres ; une cible de capacité N expose les N premières.
 const POSITIONS = ['A', 'B', 'C', 'D']
-
-// Libellé lisible de la raison d'une mise en réserve. `en_reserve` est neutre (en attente) ;
-// `sans_blason` et `non_place` sont des **anomalies** à traiter (style ambre — DV-03, `--warn`).
-const LIBELLE_RAISON: Record<RaisonConflit, string> = {
-  sans_blason: 'sans blason',
-  non_place: 'aucune cible possible',
-  // E03US007 : dire **le réglage**, pas « aucune cible possible » — le geste correctif n'est pas le
-  // même (desserrer le cloisonnement plutôt que chercher de la place).
-  cloisonnement: 'exclu par le cloisonnement',
-  en_reserve: 'en attente',
-}
-
-const RAISON_ANOMALIE: Record<RaisonConflit, boolean> = {
-  sans_blason: true,
-  non_place: true,
-  cloisonnement: true,
-  en_reserve: false,
-}
-
-// Ordre du sélecteur : du plus permissif au plus strict, comme l'énumération du domaine.
-const VALEURS_CLOISONNEMENT: ValeurCloisonnement[] = [
-  'aucun',
-  'categorie',
-  'blason',
-  'blason_et_categorie',
-]
 
 export function Placement({ tournoiId }: { tournoiId: number }) {
   const departs = useDeparts(tournoiId)
@@ -126,8 +102,8 @@ function ReglageCloisonnement({ tournoiId }: { tournoiId: number }) {
         value={valeur}
         // `isPending` sur la lecture **et** l'écriture : tant que le serveur n'a pas répondu, le
         // réglage affiché n'est pas encore une vérité — on ne laisse pas empiler les changements.
-        disabled={reglage.isPending || regler.isPending}
-        onChange={(e) => regler.mutate(e.target.value as ValeurCloisonnement)}
+        disabled={reglage.isPending || reglage.isError || regler.isPending}
+        onChange={(e) => regler.mutate(e.target.value as Cloisonnement)}
       >
         {VALEURS_CLOISONNEMENT.map((option) => (
           <option key={option} value={option}>

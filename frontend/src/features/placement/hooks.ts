@@ -110,8 +110,11 @@ export function useReglerCloisonnement(tournoiId: number) {
       // Le réglage ne déplace personne, mais il change ce que le serveur **signale** : les cibles
       // déjà posées qui le violent portent désormais un badge, et la réserve peut changer de
       // raison. Sans cette invalidation, l'écran resterait muet jusqu'au prochain refetch — le
-      // réglage paraîtrait sans effet.
+      // réglage paraîtrait sans effet. Les **deux** plans sont concernés (même salle, même
+      // réglage) : oublier celui des duels laissait un écran mentir jusqu'au prochain événement
+      // temps réel. Préfixes de clé : tous les départs / toutes les phases du tournoi.
       queryClient.invalidateQueries({ queryKey: ['plan-de-cibles', tournoiId] })
+      queryClient.invalidateQueries({ queryKey: ['plan-de-duels', tournoiId] })
     },
   })
 }

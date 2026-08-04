@@ -11,10 +11,13 @@
 
 import { fetchJson } from '../../shared/api/client'
 
-// Pourquoi un duelliste est en réserve (non posé), miroir de l'enum `RaisonConflit` du domaine :
-// `sans_blason` (aucun blason pour tirer), `non_place` (aucune cible ne peut l'accueillir),
-// `en_reserve` (en attente d'un placement). Vocabulaire **fermé**.
-export type RaisonConflit = 'sans_blason' | 'non_place' | 'en_reserve'
+// Pourquoi un duelliste est en réserve (non posé). **Réexporté** depuis la feature `placement`
+// (même endpoint serveur, même DTO `ConflitReponse`) : en tenir une copie a coûté le défaut
+// d'E03US007 — le serveur a gagné `cloisonnement`, la copie ne l'a pas su, et la réserve des duels
+// s'est affichée sans motif.
+import type { RaisonConflit } from '../placement/api'
+
+export type { RaisonConflit }
 
 // Un duelliste posé sur une cible : sa position (lettre « A »…« D »), le blason sur lequel il tire,
 // et son `inscription_id` — la cible du `PUT` de déplacement. Le serveur l'expose directement pour
@@ -33,11 +36,16 @@ export interface Placement {
 // adversaires ne sont pas placés **côte à côte**. L'admin le voit pour ajuster à la main ; ce n'est
 // **pas** une erreur, juste un objectif d'organisation non atteint. Recalculé serveur à chaque
 // lecture (jamais persisté).
+//
+// `cloisonnement_non_respecte` (E03US007) : `true` quand la cible mêle ce que le réglage du tournoi
+// interdit de mêler — un plan de duels posé **avant** l'activation du réglage. Le cloisonnement
+// vaut pour la salle, donc pour les deux plans.
 export interface CiblePlaceeDuel {
   index: number
   capacite: number
   placements: Placement[]
   adjacence_non_garantie: boolean
+  cloisonnement_non_respecte: boolean
 }
 
 // Un duelliste que le placement n'a pas pu poser (il est **dans la réserve**), et pourquoi. Porte

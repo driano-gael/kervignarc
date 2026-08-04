@@ -9,6 +9,8 @@
 //
 // Jumeau de `placement/Placement.tsx` (plan de cibles de qualification), à deux différences près :
 //  - le signal d'équité est l'**adjacence** (adversaires côte à côte), pas la mixité de club ;
+//    en revanche le **cloisonnement** (E03US007) vaut ici aussi : c'est la même salle, réglée une
+//    fois pour le tournoi — d'où les libellés de réserve et la bannière importés de `placement` ;
 //  - **aucune** confirmation d'impact (E12US007) : la régénération est **directe** (ADR-0048).
 
 import { useMemo, useState } from 'react'
@@ -17,31 +19,22 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useArchers } from '../archers/hooks'
 import type { Archer } from '../competition/api'
 import { usePhases } from '../phases/hooks'
-import type { CiblePlaceeDuel, Conflit, Destination, PlanDeDuels, RaisonConflit } from './api'
+import type { CiblePlaceeDuel, Conflit, Destination, PlanDeDuels } from './api'
 import {
   useDeplacerDuelliste,
   usePlacerRestantsDuels,
   usePlanDeDuels,
   useRegenererDuels,
 } from './hooks'
+import {
+  LIBELLE_RAISON,
+  RAISON_ANOMALIE,
+  resumeCloisonnementNonRespecte,
+} from '../placement/presentation'
 import { resumeAdjacenceNonGarantie } from './presentation'
 
 // Les positions d'une cible sont des lettres ; une cible de capacité N expose les N premières.
 const POSITIONS = ['A', 'B', 'C', 'D']
-
-// Libellé lisible de la raison d'une mise en réserve. `en_reserve` est neutre (en attente) ;
-// `sans_blason` et `non_place` sont des **anomalies** à traiter (style ambre — DV-03, `--warn`).
-const LIBELLE_RAISON: Record<RaisonConflit, string> = {
-  sans_blason: 'sans blason',
-  non_place: 'aucune cible possible',
-  en_reserve: 'en attente',
-}
-
-const RAISON_ANOMALIE: Record<RaisonConflit, boolean> = {
-  sans_blason: true,
-  non_place: true,
-  en_reserve: false,
-}
 
 export function Duels({ tournoiId }: { tournoiId: number }) {
   const phases = usePhases(tournoiId)
@@ -143,6 +136,8 @@ function PlanCharge({
   // Avertissement d'organisation (E03US009) : duels dont les adversaires ne sont pas côte à côte.
   // `null` si tout est adjacent → aucune bannière. Signal, pas blocage (l'admin ajuste).
   const resumeAdjacence = resumeAdjacenceNonGarantie(plan)
+  // Cibles du plan de duels qui violent le cloisonnement demandé (E03US007).
+  const resumeCloisonnement = resumeCloisonnementNonRespecte(plan.cibles)
 
   const jeton = (archerId: number, inscriptionId: number): Jeton => ({
     nom: nomParArcher.get(archerId) ?? `Archer #${archerId}`,
@@ -191,6 +186,14 @@ function PlanCharge({
       {resumeAdjacence && (
         <p className="placement__mixite" role="status">
           {resumeAdjacence}
+        </p>
+      )}
+
+      {/* Cloisonnement non respecté (E03US007) : plan de duels posé avant l'activation du réglage.
+          Même registre ambre, même message que sur le plan de cibles — un seul énoncé. */}
+      {resumeCloisonnement && (
+        <p className="placement__mixite" role="status">
+          {resumeCloisonnement}
         </p>
       )}
 
@@ -246,6 +249,12 @@ function Cible({
           s'il ajuste. Pas de badge quand les duels sont bien côte à côte. */}
       {cible.adjacence_non_garantie && (
         <span className="cible__adjacence">duel non côte à côte</span>
+      )}
+      {/* Cette cible mêle ce que le cloisonnement du tournoi sépare (E03US007) : plan posé avant
+          l'activation du réglage — le placement auto ne peut pas le produire. Même badge ambre
+          qu'en qualification. */}
+      {cible.cloisonnement_non_respecte && (
+        <span className="cible__mixite">cloisonnement non respecté</span>
       )}
       <div className="cible__cases">
         {positions.map((position) => {

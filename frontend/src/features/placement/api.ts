@@ -12,6 +12,11 @@ import { fetchJson } from '../../shared/api/client'
 // `non_place` (aucune cible ne peut l'accueillir), `cloisonnement` (c'est le **réglage** de
 // cloisonnement, et non la salle, qui l'exclut — E03US007), `en_reserve` (en attente d'un
 // placement). Vocabulaire **fermé**, miroir de l'enum `RaisonConflit` du domaine.
+//
+// ⚠️ **Déclaré ici pour tout le front** : la feature `duels` l'importe au lieu d'en tenir une
+// copie. Elle en tenait une jusqu'à E03US007, restée à trois valeurs quand le serveur en a émis une
+// quatrième — l'écran des duels affichait alors une réserve **sans motif**, et `tsc` ne voyait rien
+// puisqu'un miroir manuel ne contraint pas la donnée reçue. Un vocabulaire fermé n'a qu'un énoncé.
 export type RaisonConflit = 'sans_blason' | 'non_place' | 'cloisonnement' | 'en_reserve'
 
 // Ce qu'une cible n'a pas le droit de mêler (E03US007, RG-4) — réglage **du tournoi**, à quatre
