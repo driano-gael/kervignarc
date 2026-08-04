@@ -7,7 +7,14 @@ import type { CiblePlaceeDuel, DuelSepare, PlanDeDuels } from './api'
 import { compterAdjacenceNonGarantie, resumeAdjacenceNonGarantie } from './presentation'
 
 function cible(over: Partial<CiblePlaceeDuel> = {}): CiblePlaceeDuel {
-  return { index: 1, capacite: 4, placements: [], adjacence_non_garantie: false, ...over }
+  return {
+    index: 1,
+    capacite: 4,
+    placements: [],
+    adjacence_non_garantie: false,
+    cloisonnement_non_respecte: false,
+    ...over,
+  }
 }
 
 function plan(over: Partial<PlanDeDuels> = {}): PlanDeDuels {

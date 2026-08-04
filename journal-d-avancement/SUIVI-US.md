@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 04/08/2026** · **95 US livrées** · dernière : `E06US006` *(l'organisateur choisit, **phase par phase**, jusqu'où le tournoi classe : podium, top N, ou classement intégral où chaque rang se gagne au tir — ADR-0070)*. Précédente : `E05US021` *(un tournoi ne se lance plus s'il manque des archers : le minimum d'inscrits se **déduit** des prélèvements, s'affiche avant le clic et refuse le démarrage — ADR-0069)*.
+**Dernière mise à jour : 04/08/2026** · **96 US livrées** · dernière : `E03US007` *(l'organisateur choisit **ce qu'une cible n'a pas le droit de mélanger** — rien, la catégorie, le blason, ou les deux : contrainte **dure** sur le plan de cibles **et** le plan de duels, réserve motivée, plan antérieur signalé — ADR-0071)*. Précédente : `E06US006` *(l'organisateur choisit, **phase par phase**, jusqu'où le tournoi classe : podium, top N, ou classement intégral où chaque rang se gagne au tir — ADR-0070)*.
 
 ---
 
@@ -156,10 +156,38 @@
 > plus d'une centaine ») : un chiffre faux reversé dans `stories/` serait devenu l'oracle des US
 > suivantes.
 >
-> **🎯 Prochaine :** **`E03US007`** — contrainte de séparation catégorie/blason au placement.
-> *(Prochaine ligne ⬜ de J3. Deux voisines sont à considérer si la priorité change : `E07US005`
-> (vue tableaux/arbres live) devient nettement plus intéressante maintenant qu'un tableau peut
-> descendre jusqu'au dernier rang, et `E13US002` (composer les équipes) reste débloquée.)*
+> **`E03US007` est livrée** (04/08/2026, [ADR-0071](../docs/adr/0071-cloisonnement-categorie-blason-active-et-dur.md)).
+> Trois points valent d'être retenus avant de prendre la suite :
+> - **la contrainte est d'une autre nature que ses deux voisines.** Mixité de club (ADR-0047) et
+>   côte à côte des duellistes (ADR-0048) sont des **préférences** obtenues en ré-ordonnant l'entrée
+>   du glouton ; le cloisonnement s'**active délibérément**, donc il est **dur** et se câble *dans*
+>   le glouton. Le réflexe « faire comme la mixité » aurait produit une règle officielle violable au
+>   mieux — c'est-à-dire rien. Corollaire : l'ordre de priorité laissé ouvert par EPIC-03 depuis
+>   l'origine est tranché — `capacité/espace/hauteur` > `cloisonnement` > `mixité` > `adjacence` ;
+> - **le seuil d'ADR-0023 §2 n'est pas franchi — mais pas pour la raison qu'on croyait.** ADR-0047
+>   désignait cette US comme « la prochaine occasion » d'extraire un mécanisme de contraintes
+>   injectables. Verdict : **non**, on n'extrait rien. Le paragraphe qui l'explique (ADR-0071 §6) a
+>   dû être **réécrit deux fois** avant d'être juste, et c'est la leçon la plus réutilisable de
+>   l'US : (1) « aucune duplication n'apparaît » était faux — la **séquence de gardes** de
+>   `_CibleEnCours` était recopiée, et l'US y avait ajouté la même ligne des deux côtés ; (2) « cinq
+>   contraintes, le seuil de trois est dépassé » était faux aussi — ADR-0023 compte les contraintes
+>   **ajoutées** au socle, et la mixité n'en étant pas une (ré-ordonnancement), le cloisonnement est
+>   le **premier** ajout. Le remède réel n'était pas un registre mais **deux délégations** :
+>   `accueille` ne réécrit plus ni les gardes (`peut_accueillir`) ni la consommation (`reprendre`).
+>   Le seuil reste donc posé pour la contrainte suivante. **À retenir pour EF-1.4** : vérifier ce
+>   que le seuil compte *avant* de conclure qu'il est atteint ;
+> - **une position du réglage ne sert à rien aujourd'hui, et c'est écrit partout.**
+>   `blason_et_categorie` rend le même plan que `categorie` tant que le blason **dérive** de la
+>   catégorie. Livrée sur demande du commanditaire, la redondance est documentée dans le code, la
+>   story, l'ADR §3 et la fiche de recette — elle se dissipera avec EF-1.4 (une phase surcharge le
+>   blason). Ne pas la relire plus tard comme une capacité acquise.
+>
+> **🎯 Prochaine :** **`E07US005`** — vue tableaux/arbres live.
+> *(Choisie parmi les ⬜ de J3 : c'est la dernière surface qui manque au catalogue de l'écran de
+> salle — ADR-0064 l'avait explicitement laissée en attente —, et elle prend d'autant plus de valeur
+> qu'un tableau peut désormais descendre jusqu'au dernier rang (E06US006). Alternatives si la
+> priorité change : `E13US002` (composer les équipes, débloquée depuis E13US001) et `E09US005`
+> (PDF du classement de qualification, rétrécie par E06US004).)*
 > *Note : **J2 est terminé** (14/14). Son compteur affichait `11/14` — périmé de deux crans depuis
 > E07US008 et E06US003, qui l'avaient laissé en l'état ; recompté et corrigé par E06US004. **J3**
 > l'était aussi (`4/11` pour six lignes ✅) : un premier jet de ce commit s'était arrêté à la ligne
@@ -556,7 +584,7 @@
 | 71 | E06US003 | Barrage de tir pour places décisives | ✅ *(seuil dans la politique `tiebreak`, manches persistées, verdict recalculé, ADR-0066)* |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ✅ *(palmarès : fusion des rangs de phases, podiums par catégorie, export PDF, politique `aggregation`, ADR-0067)* |
 
-## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (8/12)**
+## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (9/12)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -567,7 +595,7 @@
 | 76 | E06US006 | **Classement intégral 1→N & profondeur configurable** | ✅ *(la profondeur se règle **par phase** et non plus au câblage ; absence = preset du type, podium pour une élimination directe et intégral pour un placement — ADR-0070, DETTE-035 ouverte)* |
 | 76bis | E05US020 | **Le moteur consomme les prélèvements déclarés** | ✅ *(cœur de DETTE-028 : prélèvement par rangs honoré, plage relative résolue, tranche de rangs au palmarès — DETTE-034 soldée, ADR-0068)* |
 | 76ter | E05US021 | **Un format connaît son effectif minimum** (avertir avant de lancer) | ✅ *(minimum **déduit** des prélèvements, exigence de club au-dessus, refus au démarrage + annonce avant le clic — ADR-0069)* |
-| 77 | E03US007 | Contrainte séparation catégorie/blason | ⬜ |
+| 77 | E03US007 | **Contrainte séparation catégorie/blason** | ✅ *(réglage de tournoi à 4 positions, contrainte **dure** au placement auto **et** au glisser-déposer, **sur les deux plans** (cibles et duels), raison de réserve propre `cloisonnement`, cibles non conformes signalées — ADR-0071, DETTE-036/037 ; tranche la priorité des contraintes restée ouverte à EPIC-03)* |
 | 78 | E09US005 | Classements PDF | ⬜ *(rétrécie par E06US004 : le **palmarès** a son PDF ; reste celui du classement de **qualification**)* |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |
 | 80 | E01US016 | Définir l'identité visuelle du tournoi | ⬜ |

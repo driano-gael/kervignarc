@@ -41,8 +41,23 @@ carton, même hauteur), les clubs sont **entrelacés en round-robin** (`_ordonne
 cible qui puise dans ce groupe reçoit des clubs variés quand ils existent, sans menacer un budget.
 Quand la mixité **ne peut pas** être garantie (un seul club, ou clubs inconnus —
 `club_id NULL`, *indécidable*, ADR-0014), la cible est **signalée** via `mixite_non_garantie`
-(propriété dérivée du prédicat pur `cible_mixite_non_garantie`), jamais un échec. La **séparation
-catégorie/blason** (E03US007) reste, elle, une US ultérieure.
+(propriété dérivée du prédicat pur `cible_mixite_non_garantie`), jamais un échec.
+
+**Cloisonnement catégorie/blason** (E03US007, RG-4,
+[ADR-0071](../../docs/adr/0071-cloisonnement-categorie-blason-active-et-dur.md)) : contrainte
+**activable** à quatre positions (`aucun` — défaut, `categorie`, `blason`, `blason_et_categorie`) et
+**dure** quand elle est active — au contraire de la mixité, qui est une préférence. Elle se câble
+donc *dans* le glouton (`_CibleEnCours`), pas dans l'ordre d'entrée ; l'ordre, lui, groupe en plus
+par catégorie quand le réglage la sépare, sans quoi le glouton — qui ne revient jamais en arrière
+(ADR-0023) — fermerait une cible à chaque alternance de catégorie. Un archer qu'aucune cible ne peut
+accueillir sous cette contrainte ressort en conflit, jamais en silence ; et une cible d'un plan
+**déjà posé** qui viole le réglage nouvellement activé est signalée par `cloisonnement_non_respecte`
+— dérivée, jamais persistée, même régime que la mixité.
+
+**Ordre de priorité des contraintes** (question ouverte d'EPIC-03, tranchée ici) :
+`capacité / espace / hauteur` (dures, structurelles) > `cloisonnement` (dure, mais **réglable**) >
+`mixité de club` (molle) > `adjacence des duellistes` (molle). Le cloisonnement ne peut donc que
+**retirer** des cohabitations, jamais en autoriser une.
 """
 
 from __future__ import annotations
@@ -54,6 +69,8 @@ from itertools import groupby
 
 from domain.archer import ArcherId
 from domain.blason import BlasonId
+from domain.categorie import CategorieId
+from domain.cloisonnement import Cloisonnement
 from domain.club import ClubId
 from domain.gabarit_salle import Cible
 from domain.inscription import InscriptionId
@@ -66,6 +83,12 @@ _EPSILON = 1e-9
 # Espace physique d'une cible, normalisé à 1,0 (une face unitaire). Les `taille` des blasons en sont
 # des fractions ; leur somme sur une cible ne peut pas le dépasser.
 _ESPACE_CIBLE = 1.0
+
+# Stratégie d'**ordre d'entrée** du glouton — le point d'injection des contraintes molles (mixité
+# E03US006, adjacence E03US009). Elle reçoit le cloisonnement (E03US007) parce que la clé de groupe
+# en dépend : ce qui ne doit pas cohabiter doit d'abord être **contigu**, sinon le glouton ferme une
+# cible à chaque alternance. Déclaré ici, utilisé par `placer` et `placer_restants`.
+Ordonnancement = Callable[["tuple[ArcherAPlacer, ...]", "Cloisonnement"], "list[ArcherAPlacer]"]
 
 
 @dataclass(frozen=True)
@@ -89,6 +112,12 @@ class ArcherAPlacer:
     # club. Facultatif (défaut `None`) : les entrées qui l'ignorent restent sur l'ordre d'origine
     # (`archer_id`), d'où la non-régression d'E03US001. Ne pilote que l'ordre, jamais un budget.
     club_id: ClubId | None = None
+    # Catégorie de l'archer, pour le **cloisonnement** (E03US007, RG-4). `None` = catégorie
+    # **indécidable** : jamais réputée identique à une autre (esprit d'ADR-0014), donc refusée par
+    # un cloisonnement par catégorie — la contrainte étant dure, l'indécidable se résout en refus.
+    # Facultatif (défaut `None`) : les entrées qui l'ignorent ne changent pas de comportement tant
+    # que le cloisonnement ne porte pas sur la catégorie (non-régression d'E03US001).
+    categorie_id: CategorieId | None = None
 
 
 class RaisonConflit(str, Enum):
@@ -109,6 +138,18 @@ class RaisonConflit(str, Enum):
 
     Produit par le **service** (l'archer n'atteint pas le moteur), mais nommé ici pour que le
     rapport de conflits ait un vocabulaire unique."""
+
+    CLOISONNEMENT = "cloisonnement"
+    """Le **cloisonnement** actif (E03US007) est ce qui l'empêche de tenir : sans lui, il
+    rentrerait.
+
+    Raison **dérivée à la lecture** par le service, qui est seul à pouvoir la distinguer de
+    `NON_PLACE` : il rejoue la question « cette cible l'accepterait-elle **sans** le
+    cloisonnement ? »
+    et ne qualifie ainsi que les archers dont le *réglage* — et non la saturation de la salle — fait
+    la réserve. Le moteur pur, lui, ne rend que `NON_PLACE` : il n'a qu'un monde à sa disposition.
+    Distinction utile à l'admin : « désactivez le réglage ou ajoutez une cible » n'est pas le même
+    geste que « la salle est pleine »."""
 
 
 @dataclass(frozen=True)
@@ -137,12 +178,19 @@ class CiblePlacee:
     `mixite_non_garantie` signale (RG-3, E03US006) une cible portant ≥ 2 archers **sans** qu'on
     puisse affirmer ≥ 2 clubs connus distincts (un seul club, ou clubs inconnus — ADR-0014). C'est
     une **propriété dérivée** (`cible_mixite_non_garantie`), jamais persistée : recalculée au moteur
-    et à la lecture du plan matérialisé (ADR-0047), comme la raison de réserve (ADR-0024)."""
+    et à la lecture du plan matérialisé (ADR-0047), comme la raison de réserve (ADR-0024).
+
+    `cloisonnement_non_respecte` signale (E03US007) une cible qui **mêle** ce que le réglage actif
+    interdit de mêler. Le placement auto ne peut pas produire cette situation (la contrainte est
+    dure) : elle vient d'un plan **posé avant** l'activation du réglage, ou d'un plan importé —
+    activer le réglage ne déplace personne. Propriété **dérivée** elle aussi
+    (`cible_cloisonnement_non_respecte`), jamais persistée."""
 
     index: int
     capacite: int
     placements: tuple[Placement, ...] = ()
     mixite_non_garantie: bool = False
+    cloisonnement_non_respecte: bool = False
 
 
 @dataclass(frozen=True)
@@ -179,6 +227,47 @@ def cible_mixite_non_garantie(clubs: Sequence[ClubId | None]) -> bool:
         return False
     clubs_connus = {club for club in clubs if club is not None}
     return len(clubs_connus) < 2
+
+
+def cible_cloisonnement_non_respecte(
+    cloisonnement: Cloisonnement, archers: Sequence[ArcherAPlacer]
+) -> bool:
+    """Dit si les `archers` posés sur une cible **violent** le cloisonnement demandé (E03US007).
+
+    Vrai quand la cible mêle deux catégories (resp. deux blasons) que le réglage sépare. Une
+    catégorie `None` est **indécidable** (esprit d'ADR-0014) : deux `None` ne sont pas réputés de la
+    même catégorie, donc leur cohabitation est une violation — on ne fait jamais l'hypothèse
+    favorable sur une donnée manquante. Une cible à 0 ou 1 archer est **sans objet** (elle ne peut
+    structurellement rien mêler), tout comme le réglage `AUCUN`.
+
+    Prédicat **pur** et unique : la même vérité sert le glouton (qui l'utilise en négatif pour
+    refuser une pose), la validation d'un déplacement manuel et le signal calculé à la lecture d'un
+    plan matérialisé — trois chemins, un seul énoncé de la règle."""
+    if cloisonnement is Cloisonnement.AUCUN or len(archers) < 2:
+        return False
+    if cloisonnement.separe_blason and len({archer.blason_id for archer in archers}) > 1:
+        return True
+    if cloisonnement.separe_categorie:
+        categories = {archer.categorie_id for archer in archers}
+        # `None` (indécidable) rend la cible non conforme dès qu'un second archer est présent :
+        # `{None}` compte pour « autant de catégories distinctes que d'archers ».
+        if None in categories or len(categories) > 1:
+            return True
+    return False
+
+
+def _cloisonnement_admet(
+    cloisonnement: Cloisonnement, occupants: Sequence[ArcherAPlacer], candidat: ArcherAPlacer
+) -> bool:
+    """Dit si `candidat` peut rejoindre `occupants` sans violer le cloisonnement (négatif du
+    signal).
+
+    Défini **à partir** de `cible_cloisonnement_non_respecte` pour qu'il n'existe qu'une seule
+    définition de la règle. Conséquence assumée : sur une cible **déjà** non conforme (plan
+    antérieur à l'activation du réglage), toute pose est refusée — même « neutre ». L'admin la rend
+    conforme en retirant les intrus ou en régénérant ; c'est plus prévisible qu'une règle « ne pas
+    aggraver », dont le résultat dépendrait de l'ordre des gestes."""
+    return not cible_cloisonnement_non_respecte(cloisonnement, [*occupants, candidat])
 
 
 def _positions_adjacentes(a: str, b: str) -> bool:
@@ -244,13 +333,22 @@ class _CibleEnCours:
     hauteur: int | None = None
     # blason_id → capacité de carton restante (nombre d'archers encore admissibles sur ce carton).
     cartons: dict[BlasonId, int] = field(default_factory=dict)
-    # Clubs des archers posés, dans l'ordre — pour dériver `mixite_non_garantie` au moment de figer
-    # (E03US006). `Placement` ne porte pas le club (il n'en a pas besoin) : on le suit ici.
-    clubs_poses: list[ClubId | None] = field(default_factory=list)
+    # Archers posés, dans l'ordre — `Placement` ne porte ni le club ni la catégorie (il n'en a pas
+    # besoin), et les deux signaux dérivés en ont besoin au moment de figer : la mixité (E03US006)
+    # lit les clubs, le cloisonnement (E03US007) la catégorie et le blason. On garde donc l'entrée
+    # complète plutôt que deux listes parallèles à tenir synchronisées.
+    archers_poses: list[ArcherAPlacer] = field(default_factory=list)
+    # Ce que cette cible n'a pas le droit de mêler (E03US007) — `AUCUN` = comportement d'E03US001.
+    cloisonnement: Cloisonnement = Cloisonnement.AUCUN
 
     @property
     def positions_restantes(self) -> int:
         return self.cible.capacite - len(self.positions)
+
+    @property
+    def clubs_poses(self) -> list[ClubId | None]:
+        """Clubs des archers posés, dans l'ordre (entrée du signal de mixité, E03US006)."""
+        return [archer.club_id for archer in self.archers_poses]
 
     def _prochaine_lettre(self) -> str:
         """Première position **libre** de la cible (A, puis B, …), en sautant les trous.
@@ -268,10 +366,18 @@ class _CibleEnCours:
         """Dit si `archer` **pourrait** être posé, sans muter l'état — même règle qu'`accueille`.
 
         Sert à valider un déplacement manuel (E03US004) avant de l'appliquer : on ne veut pas
-        modifier la cible pour tester, seulement répondre oui/non aux quatre budgets."""
+        modifier la cible pour tester, seulement répondre oui/non aux quatre budgets — et, depuis
+        E03US007, au cloisonnement actif.
+
+        `accueille` **en dérive** (il pose ce que celle-ci autorise) : les gardes ne sont écrites
+        qu'ici. Elles l'étaient en double jusqu'à E03US007, qui a ajouté la même ligne de
+        cloisonnement aux deux — c'est précisément la duplication qu'ADR-0023 §2 guettait, et le
+        remède tient en une délégation, pas en un registre de contraintes (ADR-0071 §6)."""
         if self.positions_restantes == 0:
             return False
         if self.hauteur is not None and self.hauteur != archer.hauteur_cm:
+            return False
+        if not _cloisonnement_admet(self.cloisonnement, self.archers_poses, archer):
             return False
         if self.cartons.get(archer.blason_id, 0) > 0:
             return True
@@ -293,48 +399,40 @@ class _CibleEnCours:
         self.positions.append(
             Placement(position=position, archer_id=archer.archer_id, blason_id=archer.blason_id)
         )
-        self.clubs_poses.append(archer.club_id)
+        self.archers_poses.append(archer)
 
     def accueille(self, archer: ArcherAPlacer) -> bool:
         """Tente de poser `archer` sur cette cible ; renvoie `True` si posé, `False` sinon.
 
-        On mutualise d'abord un carton déjà présent du même blason (aucun coût d'espace), sinon on
-        pose un carton neuf si l'espace, une position **et** la hauteur le permettent."""
-        if self.positions_restantes == 0:
-            return False
-        if self.hauteur is not None and self.hauteur != archer.hauteur_cm:
-            return False
-        # Partage d'un carton existant du même blason : il reste une place dessus.
-        if self.cartons.get(archer.blason_id, 0) > 0:
-            self._poser(archer)
-            self.cartons[archer.blason_id] -= 1
-            return True
-        # Carton neuf : il faut de la place physique pour sa fraction.
-        if archer.taille <= self.espace_restant + _EPSILON:
-            self.espace_restant -= archer.taille
-            self.cartons[archer.blason_id] = archer.capacite_blason - 1
-            self.hauteur = archer.hauteur_cm
-            self._poser(archer)
-            return True
-        return False
+        **Ni les gardes ni la consommation ne sont réécrites ici** : la première vit dans
+        `peut_accueillir`, la seconde dans `reprendre`. Cette méthode n'est que leur composition —
+        « si c'est autorisé, alors pose à la première lettre libre ».
 
-    def _poser(self, archer: ArcherAPlacer) -> None:
-        self.positions.append(
-            Placement(
-                position=self._prochaine_lettre(),
-                archer_id=archer.archer_id,
-                blason_id=archer.blason_id,
-            )
-        )
-        self.clubs_poses.append(archer.club_id)
+        C'est ce qui rend vraie l'affirmation d'ADR-0071 §6 : une contrainte de plus ne s'écrit
+        qu'**à un seul endroit**. Elle ne l'était qu'à moitié après la première correction de revue,
+        qui n'avait dédupliqué que les gardes — `reprendre` recopiait encore mot pour mot le bloc
+        carton/espace/hauteur, si bien qu'une contrainte **consommant un budget** aurait dû être
+        écrite trois fois. Relevé par deux axes en seconde passe."""
+        if not self.peut_accueillir(archer):
+            return False
+        self.reprendre(archer, self._prochaine_lettre())
+        return True
 
     def figer(self) -> CiblePlacee:
-        """Fige la cible en valeur immuable pour le plan, drapeau de mixité compris (E03US006)."""
+        """Fige la cible en valeur immuable pour le plan, drapeaux dérivés compris.
+
+        Mixité de club (E03US006) et cloisonnement (E03US007) sont calculés ici depuis les archers
+        posés. Le second est toujours `False` sur un plan **fraîchement généré** (la contrainte est
+        dure : le glouton n'a pas pu la violer) — il ne devient vrai qu'à la relecture d'un plan
+        matérialisé antérieur au réglage, où le service refait le même calcul."""
         return CiblePlacee(
             index=self.cible.index,
             capacite=self.cible.capacite,
             placements=tuple(self.positions),
             mixite_non_garantie=cible_mixite_non_garantie(self.clubs_poses),
+            cloisonnement_non_respecte=cible_cloisonnement_non_respecte(
+                self.cloisonnement, self.archers_poses
+            ),
         )
 
 
@@ -364,15 +462,45 @@ def _entrelacer_clubs(groupe: list[ArcherAPlacer]) -> list[ArcherAPlacer]:
     return entrelaces
 
 
-def _ordonner_pour_mixite(archers: tuple[ArcherAPlacer, ...]) -> list[ArcherAPlacer]:
+def _cle_de_groupe(
+    cloisonnement: Cloisonnement,
+) -> Callable[[ArcherAPlacer], tuple[int, int, int]]:
+    """Clé de **groupe** du tri d'entrée : ce qui rend contigus des archers interchangeables.
+
+    `(hauteur, blason)` depuis E03US001 ; s'y ajoute la **catégorie** quand le cloisonnement la
+    sépare (E03US007). Sans cet ajout, deux catégories partageant un blason s'entrelaceraient par
+    `archer_id` et le glouton — qui ne revient jamais en arrière (ADR-0023) — fermerait une cible à
+    chaque alternance : le réglage coûterait des cibles sans rien apporter. La catégorie n'entre
+    **pas** dans la clé quand le réglage ne la sépare pas : le plan par défaut reste alors
+    exactement celui d'avant l'US (non-régression stricte).
+
+    `categorie_id` à `None` est trié comme `-1` : une valeur fixe, pour que le tri reste **total et
+    déterministe** (règle 9) — `None` n'est pas comparable à un `int`. Le refus des indécidables est
+    la responsabilité du prédicat de cloisonnement, pas du tri. Le test est `is not None` et non la
+    véracité : une catégorie d'identifiant `0` est une catégorie **connue**, et la ranger avec les
+    inconnues ferait diverger le tri du prédicat, qui la traite bien comme décidable."""
+    if cloisonnement.separe_categorie:
+        return lambda a: (
+            a.hauteur_cm,
+            a.blason_id,
+            a.categorie_id if a.categorie_id is not None else -1,
+        )
+    return lambda a: (a.hauteur_cm, a.blason_id, 0)
+
+
+def _ordonner_pour_mixite(
+    archers: tuple[ArcherAPlacer, ...], cloisonnement: Cloisonnement = Cloisonnement.AUCUN
+) -> list[ArcherAPlacer]:
     """Ordre d'entrée du glouton, mixité comprise (E03US006, ADR-0047).
 
-    Tri de base identique à E03US001 — `(hauteur, blason, id)`, qui fixe les **groupes** contigus —
-    puis entrelacement des clubs **à l'intérieur** de chaque groupe `(hauteur, blason)`. Le glouton
-    lui-même n'est pas touché : il consomme simplement une liste dont l'ordre favorise la mixité."""
-    base = sorted(archers, key=lambda a: (a.hauteur_cm, a.blason_id, a.archer_id))
+    Tri de base identique à E03US001 — `(hauteur, blason, id)`, enrichi de la **catégorie** quand le
+    cloisonnement la sépare (E03US007) —, qui fixe les **groupes** contigus, puis entrelacement des
+    clubs **à l'intérieur** de chaque groupe. Le glouton lui-même n'est pas touché par la mixité :
+    il consomme simplement une liste dont l'ordre la favorise."""
+    groupe_de = _cle_de_groupe(cloisonnement)
+    base = sorted(archers, key=lambda a: (*groupe_de(a), a.archer_id))
     ordonnes: list[ArcherAPlacer] = []
-    for _, groupe in groupby(base, key=lambda a: (a.hauteur_cm, a.blason_id)):
+    for _, groupe in groupby(base, key=groupe_de):
         ordonnes.extend(_entrelacer_clubs(list(groupe)))
     return ordonnes
 
@@ -405,7 +533,10 @@ def _grouper_paires(
 
 
 def _ordonner_pour_adjacence(
-    archers: tuple[ArcherAPlacer, ...], partenaire: Mapping[ArcherId, ArcherId]
+    archers: tuple[ArcherAPlacer, ...],
+    cloisonnement: Cloisonnement = Cloisonnement.AUCUN,
+    *,
+    partenaire: Mapping[ArcherId, ArcherId],
 ) -> list[ArcherAPlacer]:
     """Ordre d'entrée du glouton favorisant le côte à côte des duellistes (E03US009, ADR-0048).
 
@@ -413,11 +544,17 @@ def _ordonner_pour_adjacence(
     puis regroupement des paires **à l'intérieur** de chaque groupe `(hauteur, blason)`. Deux
     duellistes partagent la catégorie → même blason/hauteur → **même groupe**, donc le clustering
     est naturel. Le glouton n'est pas touché (ADR-0048 §4) : il consomme une liste dont l'ordre
-    favorise l'adjacence. `partenaire` associe chaque archer à son adversaire (relation
-    symétrique)."""
-    base = sorted(archers, key=lambda a: (a.hauteur_cm, a.blason_id, a.archer_id))
+    favorise l'adjacence. `partenaire` associe chaque archer à son adversaire (relation symétrique).
+
+    ⚠️ Sous **cloisonnement par catégorie** (E03US007), un tableau ensemencé au scratch peut opposer
+    deux catégories (ADR-0028 : `construire_tableau` ignore les catégories) : les duellistes tombent
+    alors dans deux groupes distincts et le côte à côte devient **impossible**. C'est l'ordre de
+    priorité assumé — la contrainte dure gagne sur la molle —, et le duel est signalé
+    `adjacence_non_garantie` comme n'importe quel autre duel séparé."""
+    groupe_de = _cle_de_groupe(cloisonnement)
+    base = sorted(archers, key=lambda a: (*groupe_de(a), a.archer_id))
     ordonnes: list[ArcherAPlacer] = []
-    for _, groupe in groupby(base, key=lambda a: (a.hauteur_cm, a.blason_id)):
+    for _, groupe in groupby(base, key=groupe_de):
         ordonnes.extend(_grouper_paires(list(groupe), partenaire))
     return ordonnes
 
@@ -426,7 +563,8 @@ def placer(
     cibles: tuple[Cible, ...],
     archers: tuple[ArcherAPlacer, ...],
     *,
-    ordonner: Callable[[tuple[ArcherAPlacer, ...]], list[ArcherAPlacer]] = _ordonner_pour_mixite,
+    ordonner: Ordonnancement = _ordonner_pour_mixite,
+    cloisonnement: Cloisonnement = Cloisonnement.AUCUN,
 ) -> PlanDeCibles:
     """Place les archers sur les cibles et renvoie le plan de cibles + les conflits.
 
@@ -439,13 +577,19 @@ def placer(
     mixité (défaut) pour la qualification, l'adjacence des duellistes (`_ordonner_pour_adjacence`)
     pour un plan de duels (E03US009, ADR-0048). Le glouton reste inchangé quel que soit l'ordre —
     seule change l'identité de qui occupe quelle position, jamais les budgets (ADR-0047 §1).
+
+    `cloisonnement`, lui, **change** les budgets : c'est une contrainte **dure** (E03US007), passée
+    à chaque cible et à la stratégie d'ordre (qui groupe alors par catégorie). `AUCUN` (défaut) rend
+    le plan d'avant l'US, à l'identique.
     """
-    ordonnes = ordonner(archers)
+    ordonnes = ordonner(archers, cloisonnement)
     figees: list[CiblePlacee] = []
     conflits: list[Conflit] = []
 
     index_cible = 0
-    en_cours = _CibleEnCours(cibles[0], _ESPACE_CIBLE) if cibles else None
+    en_cours = (
+        _CibleEnCours(cibles[0], _ESPACE_CIBLE, cloisonnement=cloisonnement) if cibles else None
+    )
 
     for archer in ordonnes:
         while en_cours is not None and not en_cours.accueille(archer):
@@ -453,7 +597,7 @@ def placer(
             figees.append(en_cours.figer())
             index_cible += 1
             en_cours = (
-                _CibleEnCours(cibles[index_cible], _ESPACE_CIBLE)
+                _CibleEnCours(cibles[index_cible], _ESPACE_CIBLE, cloisonnement=cloisonnement)
                 if index_cible < len(cibles)
                 else None
             )
@@ -497,7 +641,11 @@ class PoseCalculee:
 
 
 def cible_accepte(
-    cible: Cible, occupants: tuple[ArcherAPlacer, ...], candidat: ArcherAPlacer
+    cible: Cible,
+    occupants: tuple[ArcherAPlacer, ...],
+    candidat: ArcherAPlacer,
+    *,
+    cloisonnement: Cloisonnement = Cloisonnement.AUCUN,
 ) -> bool:
     """Dit si `candidat` peut rejoindre `cible` déjà peuplée par `occupants` (E03US004, ADR-0024).
 
@@ -505,12 +653,73 @@ def cible_accepte(
     quatre budgets de la cible (espace, positions, partage de carton, hauteur), puis on teste le
     candidat **sans muter**. Un ajout qui violerait un budget est refusé. Les positions exactes des
     occupants n'importent pas pour cette question (seul leur décompte joue), on les rejoue donc
-    densément via `accueille`. Un **échange** A↔B se compose de deux appels : A accepté par la cible
-    de B *privée de B*, et B accepté par la cible de A *privée de A*."""
-    en_cours = _CibleEnCours(cible, _ESPACE_CIBLE)
-    for occupant in occupants:
-        en_cours.accueille(occupant)
+    densément. Un **échange** A↔B se compose de deux appels : A accepté par la cible de B *privée de
+    B*, et B accepté par la cible de A *privée de A*.
+
+    ⚠️ **Les occupants sont repris par `reprendre`, jamais par `accueille`** — correction de revue,
+    en deux temps. `accueille` **valide** avant de poser : un occupant que l'état persisté rend
+    aujourd'hui invalide (hauteur de catégorie ou taille de blason éditée **après** placement, ce
+    qu'aucune garde n'interdit) est silencieusement **perdu** au rejeu, son retour n'étant pas lu.
+    On jugeait alors le candidat contre une cible **plus vide que la vraie** : d'abord sur le
+    cloisonnement (première passe de revue), puis — la correction ne fermant qu'une moitié — sur les
+    budgets eux-mêmes, au point d'accepter une pose sur une cible physiquement pleine (mesuré par
+    l'axe adversarial en seconde passe). `reprendre` ne consulte aucune garde : il **reconstitue**
+    l'état réel, conforme ou non, ce qui est exactement ce qu'on veut d'une reconstruction. Le
+    cloisonnement peut dès lors être posé au constructeur comme partout ailleurs."""
+    en_cours = _CibleEnCours(cible, _ESPACE_CIBLE, cloisonnement=cloisonnement)
+    for occupant, position in zip(occupants, cible.positions, strict=False):
+        en_cours.reprendre(occupant, position)
     return en_cours.peut_accueillir(candidat)
+
+
+class MotifRefus(str, Enum):
+    """Pourquoi une cible refuse un archer — la question que pose un **ajustement manuel**.
+
+    `cible_accepte` répond oui/non ; ceci répond *pourquoi*, parce que les trois « non » n'appellent
+    pas le même geste de l'organisateur : libérer de la place, desserrer un réglage, ou remettre une
+    cible en ordre. Les deux services (qualification et duels) traduisaient chacun cette question en
+    enchaînant deux appels à `cible_accepte` et un prédicat — quatre recopies d'un même
+    raisonnement, dans deux fichiers jumeaux qu'ADR-0048 signale déjà comme dupliqués. La **règle**
+    vit ici ; il ne reste aux services que le **vocabulaire** (« archers », « duellistes »).
+    """
+
+    AUCUN = "aucun"
+    """La cible accepte l'archer : rien à refuser."""
+
+    BUDGETS = "budgets"
+    """Capacité, espace, partage de carton ou hauteur — la **physique** de la cible."""
+
+    CLOISONNEMENT_MELANGE = "cloisonnement_melange"
+    """Le candidat mêlerait ce que le réglage sépare. Desserrer le réglage, ou viser ailleurs."""
+
+    CLOISONNEMENT_CIBLE_DEJA_NON_CONFORME = "cloisonnement_cible_deja_non_conforme"
+    """La cible viole **déjà** le réglage sans le candidat (plan antérieur à son activation).
+
+    Distinct du précédent : ici le candidat ne mêle rien — l'accuser enverrait l'organisateur
+    chercher une faute qu'il n'a pas commise, alors que le geste utile est de régénérer ou de vider
+    la cible."""
+
+
+def motif_de_refus(
+    cible: Cible,
+    occupants: tuple[ArcherAPlacer, ...],
+    candidat: ArcherAPlacer,
+    *,
+    cloisonnement: Cloisonnement = Cloisonnement.AUCUN,
+) -> MotifRefus:
+    """Dit **pourquoi** `cible` refuse `candidat`, ou `AUCUN` si elle l'accepte (E03US007).
+
+    Fonction pure, dérivée des deux prédicats existants — aucune règle nouvelle : `cible_accepte`
+    sous réglage donne le verdict, `cible_accepte` **sans** réglage dit si le réglage en est la
+    cause, et `cible_cloisonnement_non_respecte` sur les seuls occupants distingue « le candidat
+    mêlerait » de « la cible est déjà en faute »."""
+    if cible_accepte(cible, occupants, candidat, cloisonnement=cloisonnement):
+        return MotifRefus.AUCUN
+    if cloisonnement is Cloisonnement.AUCUN or not cible_accepte(cible, occupants, candidat):
+        return MotifRefus.BUDGETS
+    if cible_cloisonnement_non_respecte(cloisonnement, occupants):
+        return MotifRefus.CLOISONNEMENT_CIBLE_DEJA_NON_CONFORME
+    return MotifRefus.CLOISONNEMENT_MELANGE
 
 
 def placer_restants(
@@ -519,7 +728,8 @@ def placer_restants(
     donnees: Mapping[ArcherId, ArcherAPlacer],
     a_placer: tuple[ArcherAPlacer, ...],
     *,
-    ordonner: Callable[[tuple[ArcherAPlacer, ...]], list[ArcherAPlacer]] = _ordonner_pour_mixite,
+    ordonner: Ordonnancement = _ordonner_pour_mixite,
+    cloisonnement: Cloisonnement = Cloisonnement.AUCUN,
 ) -> tuple[tuple[PoseCalculee, ...], tuple[Conflit, ...]]:
     """Pose la réserve (`a_placer`) dans les trous du plan **sans déplacer les placés** (E03US004).
 
@@ -528,8 +738,17 @@ def placer_restants(
     l'accepte (premier-trouvé, ordre déterministe `(hauteur, blason, id)` comme `placer`). Un nouvel
     archer prend la 1ʳᵉ lettre libre ; les positions déjà prises sont préservées. Ce
     qu'aucune cible ne peut accueillir ressort en conflit `NON_PLACE` (reste en réserve). Ne renvoie
-    que les **nouvelles** poses : les archers déjà placés ne bougent pas."""
-    par_index = {cible.index: _CibleEnCours(cible, _ESPACE_CIBLE) for cible in cibles}
+    que les **nouvelles** poses : les archers déjà placés ne bougent pas.
+
+    Le `cloisonnement` (E03US007) ne s'applique qu'aux **nouvelles** poses : les occupants sont
+    repris par `reprendre`, qui ne consulte aucune garde — l'état persisté existe déjà, conforme ou
+    non, il n'y a rien à valider. La contrainte est donc posée **au constructeur** et ne gêne pas la
+    reprise. Un archer qu'elle exclut de partout reste en réserve, comme un archer que la salle ne
+    peut plus prendre."""
+    par_index = {
+        cible.index: _CibleEnCours(cible, _ESPACE_CIBLE, cloisonnement=cloisonnement)
+        for cible in cibles
+    }
     placee_par_index = {cible_placee.index: cible_placee for cible_placee in plan_actuel}
     for cible in cibles:
         en_cours = par_index[cible.index]
@@ -540,7 +759,7 @@ def placer_restants(
 
     poses: list[PoseCalculee] = []
     conflits: list[Conflit] = []
-    for archer in ordonner(a_placer):
+    for archer in ordonner(a_placer, cloisonnement):
         for cible in cibles:
             en_cours = par_index[cible.index]
             if en_cours.accueille(archer):

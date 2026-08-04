@@ -29,6 +29,7 @@ from application.erreurs import (
 )
 from application.prelevement import preleves, profondeur_de
 from domain.archer import ArcherId
+from domain.cloisonnement import Cloisonnement
 from domain.gabarit_salle import Cible, GabaritSalle
 from domain.inscription import Inscription, InscriptionId
 from domain.participant import GenreParticipant, Participant
@@ -38,13 +39,16 @@ from domain.placement import (
     ArcherAPlacer,
     CiblePlacee,
     Conflit,
+    MotifRefus,
     Placement,
     PlanDeCibles,
     RaisonConflit,
     _ordonner_pour_adjacence,
     cible_accepte,
+    cible_cloisonnement_non_respecte,
     cibles_avec_duel_separe,
     duels_non_cote_a_cote,
+    motif_de_refus,
     placer,
     placer_restants,
 )
@@ -89,6 +93,10 @@ class _Contexte:
 
     phase_id: PhaseId
     gabarit: GabaritSalle
+    # Cloisonnement des cibles réglé sur le tournoi (E03US007) : le plan de duels est posé dans la
+    # **même salle** que la qualification, un réglage qui ne vaudrait que pour l'une serait
+    # incompréhensible pour l'organisateur.
+    cloisonnement: Cloisonnement
     inscriptions: list[Inscription] = field(default_factory=list)
     donnees: dict[ArcherId, ArcherAPlacer] = field(default_factory=dict)
     sans_blason: set[InscriptionId] = field(default_factory=set)
@@ -165,6 +173,7 @@ class ServicePlacementDuels:
             contexte.gabarit.cibles,
             tuple(contexte.donnees.values()),
             ordonner=partial(_ordonner_pour_adjacence, partenaire=contexte.partenaire),
+            cloisonnement=contexte.cloisonnement,
         )
         affectations = [
             Affectation(
@@ -269,6 +278,7 @@ class ServicePlacementDuels:
             contexte.donnees,
             a_placer,
             ordonner=partial(_ordonner_pour_adjacence, partenaire=contexte.partenaire),
+            cloisonnement=contexte.cloisonnement,
         )
         nouvelles = [
             Affectation(
@@ -329,6 +339,12 @@ class ServicePlacementDuels:
             contexte, affectations, cible_cible, candidat, exclus
         ) and self._accepte(contexte, affectations, cible_source, occupant_candidat, exclus)
         if not tient:
+            # Motif demandé au domaine pour **chacune des deux jambes** (jumeau de
+            # `ServicePlacement._echanger`) : celle qui refuse n'est pas forcément celle qu'on
+            # regarde. Relevé en 2e passe — l'échange gardait le message unique que `_valider_pose`
+            # venait d'abandonner.
+            self._refuser_echange(contexte, affectations, cible_cible, candidat, exclus)
+            self._refuser_echange(contexte, affectations, cible_source, occupant_candidat, exclus)
             raise DeplacementInvalide(
                 "Échange refusé : l'un des deux ne tient pas à la place de l'autre "
                 "(capacité, espace ou hauteur)."
@@ -349,12 +365,29 @@ class ServicePlacementDuels:
         candidat: ArcherAPlacer,
         exclus: set[InscriptionId],
     ) -> None:
-        """Refuse la pose si la cible ne peut pas accueillir le candidat (déplacement invalide)."""
-        if not self._accepte(contexte, affectations, cible, candidat, exclus):
+        """Refuse la pose si la cible ne peut pas accueillir le candidat (déplacement invalide).
+
+        Le message **nomme la cause**, comme en qualification (E03US007) : un refus dû au
+        cloisonnement se corrige en desserrant un réglage, pas en libérant de la place — et sur une
+        cible **déjà** non conforme, ce n'est pas le candidat qui mêle quoi que ce soit."""
+        motif = self._motif(contexte, affectations, cible, candidat, exclus)
+        if motif is MotifRefus.AUCUN:
+            return
+        if motif is MotifRefus.CLOISONNEMENT_CIBLE_DEJA_NON_CONFORME:
             raise DeplacementInvalide(
-                "Déplacement refusé : la cible ne peut pas accueillir ce duelliste "
-                "(capacité, espace ou hauteur)."
+                f"Déplacement refusé : la cible {cible.index} ne respecte déjà pas le "
+                "cloisonnement demandé. Régénérez le plan de duels, ou videz-la, avant d'y poser "
+                "un duelliste."
             )
+        if motif is MotifRefus.CLOISONNEMENT_MELANGE:
+            raise DeplacementInvalide(
+                "Déplacement refusé : le cloisonnement des cibles interdit de mêler ces duellistes "
+                "sur une même cible."
+            )
+        raise DeplacementInvalide(
+            "Déplacement refusé : la cible ne peut pas accueillir ce duelliste "
+            "(capacité, espace ou hauteur)."
+        )
 
     def _accepte(
         self,
@@ -365,14 +398,75 @@ class ServicePlacementDuels:
         exclus: set[InscriptionId],
     ) -> bool:
         """Vrai si `candidat` tient sur `cible` (occupants actuels lus des affectations)."""
-        occupants = tuple(
+        return cible_accepte(
+            cible,
+            self._occupants(contexte, affectations, cible, exclus),
+            candidat,
+            cloisonnement=contexte.cloisonnement,
+        )
+
+    def _motif(
+        self,
+        contexte: _Contexte,
+        affectations: list[Affectation],
+        cible: Cible,
+        candidat: ArcherAPlacer,
+        exclus: set[InscriptionId],
+    ) -> MotifRefus:
+        """Pourquoi `cible` refuse `candidat` — la règle est au domaine, ici le seul décor.
+
+        La 1ʳᵉ passe de revue avait fait recopier ici l'enchaînement « accepte ? accepte sans
+        réglage ? cible déjà non conforme ? » du service jumeau — 4ᵉ occurrence d'un même
+        raisonnement, dans deux fichiers qu'ADR-0048 signale déjà comme dupliqués. La 2ᵉ passe l'a
+        relevé : la règle est remontée en `domain.placement.motif_de_refus`, il ne reste ici que le
+        **vocabulaire** (« duelliste » et non « archer »)."""
+        return motif_de_refus(
+            cible,
+            self._occupants(contexte, affectations, cible, exclus),
+            candidat,
+            cloisonnement=contexte.cloisonnement,
+        )
+
+    def _refuser_echange(
+        self,
+        contexte: _Contexte,
+        affectations: list[Affectation],
+        cible: Cible,
+        candidat: ArcherAPlacer,
+        exclus: set[InscriptionId],
+    ) -> None:
+        """Lève le refus d'échange **nommé** si cette jambe bloque ; sinon rend la main."""
+        motif = self._motif(contexte, affectations, cible, candidat, exclus)
+        if motif is MotifRefus.CLOISONNEMENT_CIBLE_DEJA_NON_CONFORME:
+            raise DeplacementInvalide(
+                f"Échange refusé : la cible {cible.index} ne respecte déjà pas le cloisonnement "
+                "demandé. Régénérez le plan de duels, ou videz-la, avant d'y échanger un duelliste."
+            )
+        if motif is MotifRefus.CLOISONNEMENT_MELANGE:
+            raise DeplacementInvalide(
+                "Échange refusé : le cloisonnement des cibles interdit de mêler ces duellistes "
+                "sur une même cible."
+            )
+
+    def _occupants(
+        self,
+        contexte: _Contexte,
+        affectations: list[Affectation],
+        cible: Cible,
+        exclus: set[InscriptionId],
+    ) -> tuple[ArcherAPlacer, ...]:
+        """Duellistes actuellement posés sur une cible, hors inscriptions `exclus`.
+
+        Prend la `Cible` et non son index, contrairement au jumeau de `ServicePlacement` : tous les
+        appelants d'ici ont l'objet en main. Divergence de signature relevée en revue et **assumée**
+        — l'aligner pour l'alignement ferait passer par `cible.index` puis re-résoudre la cible."""
+        return tuple(
             contexte.donnees[contexte.archer_par_inscription[affectation.inscription_id]]
             for affectation in affectations
             if affectation.cible_index == cible.index
             and affectation.inscription_id not in exclus
             and contexte.est_placable(affectation.inscription_id)
         )
-        return cible_accepte(cible, occupants, candidat)
 
     def _cible(self, gabarit: GabaritSalle, cible_index: int) -> Cible:
         """Renvoie la cible d'index donné, ou lève `DeplacementInvalide` si elle n'existe pas."""
@@ -420,8 +514,22 @@ class ServicePlacementDuels:
             )
 
         def _figer(cible: Cible) -> CiblePlacee:
+            # `cloisonnement_non_respecte` (E03US007) se recalcule ici comme en qualification : le
+            # plan de duels est posé dans la **même salle**, sous le **même** réglage. L'omettre
+            # laissait un plan de duels antérieur au réglage muet là où le plan de cibles, lui,
+            # affichait badge et bannière — la contrainte y était dure à l'écriture et invisible à
+            # la lecture. `mixite_non_garantie` reste, elle, hors sujet ici (préférence de
+            # qualification, E03US006).
             poses = sorted(placements_par_cible.get(cible.index, []), key=lambda p: p.position)
-            return CiblePlacee(index=cible.index, capacite=cible.capacite, placements=tuple(poses))
+            occupants = [contexte.donnees[pose.archer_id] for pose in poses]
+            return CiblePlacee(
+                index=cible.index,
+                capacite=cible.capacite,
+                placements=tuple(poses),
+                cloisonnement_non_respecte=cible_cloisonnement_non_respecte(
+                    contexte.cloisonnement, occupants
+                ),
+            )
 
         cibles = tuple(_figer(cible) for cible in contexte.gabarit.cibles)
         return PlanDeCibles(cibles=cibles, conflits=self._reserve(contexte, cibles, placees))
@@ -445,10 +553,31 @@ class ServicePlacementDuels:
                 continue
             candidat = contexte.donnees[archer_id]
             placable = any(
-                cible_accepte(cible_par_index[index], occupants, candidat)
+                cible_accepte(
+                    cible_par_index[index],
+                    occupants,
+                    candidat,
+                    cloisonnement=contexte.cloisonnement,
+                )
                 for index, occupants in occupants_par_index.items()
             )
-            raison = RaisonConflit.EN_RESERVE if placable else RaisonConflit.NON_PLACE
+            if placable:
+                raison = RaisonConflit.EN_RESERVE
+            elif any(
+                motif_de_refus(
+                    cible_par_index[index],
+                    occupants,
+                    candidat,
+                    cloisonnement=contexte.cloisonnement,
+                )
+                is not MotifRefus.BUDGETS
+                for index, occupants in occupants_par_index.items()
+            ):
+                # Même distinction qu'en qualification : c'est le **réglage** qui exclut, pas la
+                # salle (E03US007) — deux gestes différents pour l'organisateur.
+                raison = RaisonConflit.CLOISONNEMENT
+            else:
+                raison = RaisonConflit.NON_PLACE
             conflits.append(Conflit(archer_id, raison, inscription.id))
         return tuple(conflits)
 
@@ -456,7 +585,8 @@ class ServicePlacementDuels:
 
     def _charger(self, tournoi_id: TournoiId, phase_id: PhaseId) -> _Contexte:
         """Valide les gardes et assemble le décor : classement → arbre → duellistes du 1er tour."""
-        if self._tournois.par_id(tournoi_id) is None:
+        tournoi = self._tournois.par_id(tournoi_id)
+        if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         phase = self._phases.par_id(phase_id)
         if phase is None or phase.tournoi_id != tournoi_id:
@@ -471,7 +601,9 @@ class ServicePlacementDuels:
                 f"Aucun gabarit de salle n'est appliqué au tournoi {tournoi_id}."
             )
 
-        contexte = _Contexte(phase_id=phase_id, gabarit=gabarit)
+        contexte = _Contexte(
+            phase_id=phase_id, gabarit=gabarit, cloisonnement=tournoi.cloisonnement
+        )
         classement = self._classements.pour_tournoi(tournoi_id)
         # ⚠️ **Même ensemencement que la reconstruction, par la même fonction** (E05US020) : le
         # plan pose les duellistes que le tableau fera jouer. Les deux règles étaient **recopiées**,
@@ -575,4 +707,5 @@ class ServicePlacementDuels:
             capacite_blason=blason.capacite,
             hauteur_cm=categorie.hauteur_cm,
             club_id=archer.club_id,
+            categorie_id=archer.categorie_id,
         )

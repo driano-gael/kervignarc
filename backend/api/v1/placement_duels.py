@@ -30,12 +30,18 @@ class CiblePlaceeDuelReponse(BaseModel):
 
     `adjacence_non_garantie` (E03US009, ADR-0048) : `true` quand la cible porte un duelliste dont
     l'adversaire n'est **pas** côte à côte (autre cible ou position non adjacente). Le front en fait
-    un badge ambre ; l'admin peut ajuster à la main. Dérivé, jamais persisté."""
+    un badge ambre ; l'admin peut ajuster à la main. Dérivé, jamais persisté.
+
+    `cloisonnement_non_respecte` (E03US007) : `true` quand la cible mêle ce que le réglage du
+    tournoi interdit de mêler — un plan de duels **posé avant** l'activation du réglage. Même
+    régime dérivé, et même signal que sur le plan de cibles : le cloisonnement vaut pour la salle,
+    pas pour un écran."""
 
     index: int
     capacite: int
     placements: list[PlacementReponse]
     adjacence_non_garantie: bool
+    cloisonnement_non_respecte: bool
 
 
 class DuelSepareReponse(BaseModel):
@@ -71,6 +77,7 @@ class PlanDeDuelsReponse(BaseModel):
                         for p in cible.placements
                     ],
                     adjacence_non_garantie=cible.index in plan.adjacence_non_garantie,
+                    cloisonnement_non_respecte=cible.cloisonnement_non_respecte,
                 )
                 for cible in plan.cibles
             ],

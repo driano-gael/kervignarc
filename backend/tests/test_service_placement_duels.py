@@ -26,11 +26,12 @@ from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId, ZoneScore
 from domain.categorie import Categorie
+from domain.cloisonnement import Cloisonnement
 from domain.entree_audit import EntreeAudit
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
-from domain.placement import Affectation
+from domain.placement import Affectation, RaisonConflit
 from domain.politiques import (
     ByesAuxMieuxClasses,
     PlacementEnCascade,
@@ -50,13 +51,19 @@ _DATE = datetime.date(2026, 3, 14)
 
 
 class FauxTournoiRepository:
-    """Double de `TournoiRepository` : seul `par_id` sert (reste = conformité au port)."""
+    """Double de `TournoiRepository` : seul `par_id` sert (reste = conformité au port).
 
-    def __init__(self, ids: set[int]) -> None:
+    `cloisonnement` (E03US007) est porté ici parce que le service le **lit sur le tournoi** : le
+    plan de duels est posé dans la même salle que la qualification, sous le même réglage."""
+
+    def __init__(self, ids: set[int], cloisonnement: Cloisonnement = Cloisonnement.AUCUN) -> None:
         self._ids = ids
+        self.cloisonnement = cloisonnement
 
     def par_id(self, tournoi_id: TournoiId) -> Tournoi | None:
-        return Tournoi.creer("Salle 18m", _DATE) if tournoi_id in self._ids else None
+        if tournoi_id not in self._ids:
+            return None
+        return Tournoi.creer("Salle 18m", _DATE).definir_cloisonnement(self.cloisonnement)
 
     def ajouter(self, tournoi: Tournoi) -> Tournoi:
         raise NotImplementedError
@@ -267,6 +274,13 @@ class _Monde:
         )
         assert categorie.id is not None
         self.categorie_id = categorie.id
+        # Seconde catégorie sur le **même** blason (E03US007) : c'est le cas qui distingue un
+        # cloisonnement par catégorie d'un cloisonnement par blason.
+        autre = self.categories.ajouter(
+            Categorie.creer(self.tournoi_id, "Cat2", blason_id=blason.id, hauteur_cm=130)
+        )
+        assert autre.id is not None
+        self.autre_categorie_id = autre.id
         depart = 1  # un seul « départ » logique ; l'inscription suffit (pas de repo départ ici)
         self.depart_id = depart
         phase = self.phases.ajouter(Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE))
@@ -274,10 +288,21 @@ class _Monde:
         self.phase_id = phase.id
         self.inscription_par_archer: dict[int, int] = {}
 
-    def inscrire_classe(self, valeurs: tuple[ZoneScore, ...]) -> int:
+    def regler_cloisonnement(self, cloisonnement: Cloisonnement) -> None:
+        """Règle le cloisonnement du tournoi (E03US007) — lu par le service à chaque opération."""
+        self.tournois.cloisonnement = cloisonnement
+
+    def inscrire_classe(
+        self, valeurs: tuple[ZoneScore, ...], *, categorie_id: int | None = None
+    ) -> int:
         """Crée un archer inscrit avec un score (une volée validée) ; renvoie son `archer_id`."""
         archer = self.archers.ajouter(
-            Archer(nom="N", prenom="P", tournoi_id=self.tournoi_id, categorie_id=self.categorie_id)
+            Archer(
+                nom="N",
+                prenom="P",
+                tournoi_id=self.tournoi_id,
+                categorie_id=categorie_id if categorie_id is not None else self.categorie_id,
+            )
         )
         assert archer.id is not None
         inscription = self.inscriptions.ajouter(
@@ -525,3 +550,195 @@ def test_placer_les_restants_ignore_les_poses_orphelines() -> None:
     assert len(cases) == len(set(cases))  # aucune case doublement occupée (orpheline purgée)
     places = {pose.archer_id for cible in plan.cibles for pose in cible.placements}
     assert r5 in places  # le seul restant plaçable est bien reposé
+
+
+# --- Cloisonnement des cibles (E03US007) --------------------------------------------------------
+#
+# Le plan de duels est posé dans la **même salle** que la qualification, sous le **même** réglage de
+# tournoi : la story et l'ADR-0071 l'affirment tous deux. Ces tests fixent ce que cette affirmation
+# veut dire — sans eux, la propagation du réglage à ce service n'était couverte par rien, et c'est
+# précisément ce qui a laissé passer trois défauts à la revue d'E03US007.
+
+
+def test_cloisonnement_par_categorie_separe_les_duellistes_sur_le_plan_de_duels() -> None:
+    """Deux catégories partageant un blason ne se retrouvent pas sur la même cible.
+
+    Vérifie du même coup que le service **propage la catégorie** jusqu'au moteur : sans
+    `categorie_id` dans `ArcherAPlacer`, tous les duellistes seraient indécidables et chacun
+    occuperait sa propre cible — un plan très différent de celui qu'on attend ici."""
+    monde = _Monde(capacites=(4, 4))
+    monde.regler_cloisonnement(Cloisonnement.CATEGORIE)
+    a1 = monde.inscrire_classe((ZoneScore.DIX, ZoneScore.DIX))
+    a2 = monde.inscrire_classe((ZoneScore.NEUF, ZoneScore.NEUF))
+    b1 = monde.inscrire_classe(
+        (ZoneScore.HUIT, ZoneScore.HUIT), categorie_id=monde.autre_categorie_id
+    )
+    b2 = monde.inscrire_classe(
+        (ZoneScore.SEPT, ZoneScore.SEPT), categorie_id=monde.autre_categorie_id
+    )
+
+    plan = monde.service.regenerer(monde.tournoi_id, monde.phase_id)
+
+    cible_de = {pose.archer_id: cible.index for cible in plan.cibles for pose in cible.placements}
+    assert cible_de[a1] == cible_de[a2]
+    assert cible_de[b1] == cible_de[b2]
+    assert cible_de[a1] != cible_de[b1]
+
+
+def test_sans_reglage_les_duellistes_de_deux_categories_partagent_la_cible() -> None:
+    """Non-régression : sans réglage, le plan de duels est celui d'E03US009 (une seule cible)."""
+    monde = _Monde(capacites=(4, 4))
+    a1 = monde.inscrire_classe((ZoneScore.DIX, ZoneScore.DIX))
+    b1 = monde.inscrire_classe(
+        (ZoneScore.SEPT, ZoneScore.SEPT), categorie_id=monde.autre_categorie_id
+    )
+
+    plan = monde.service.regenerer(monde.tournoi_id, monde.phase_id)
+
+    cible_de = {pose.archer_id: cible.index for cible in plan.cibles for pose in cible.placements}
+    assert cible_de[a1] == cible_de[b1]
+
+
+def test_duelliste_exclu_par_le_reglage_porte_la_raison_cloisonnement() -> None:
+    """En réserve **pour cause de réglage**, la raison le dit — sinon l'écran reste muet.
+
+    Une seule cible, largement assez grande : ce n'est pas la salle qui refuse le second duelliste,
+    c'est le cloisonnement. La distinction commande le geste correctif de l'organisateur."""
+    monde = _Monde(capacites=(4,))
+    monde.regler_cloisonnement(Cloisonnement.CATEGORIE)
+    monde.inscrire_classe((ZoneScore.DIX, ZoneScore.DIX))
+    exclu = monde.inscrire_classe(
+        (ZoneScore.SEPT, ZoneScore.SEPT), categorie_id=monde.autre_categorie_id
+    )
+
+    plan = monde.service.regenerer(monde.tournoi_id, monde.phase_id)
+
+    raisons = {conflit.archer_id: conflit.raison for conflit in plan.conflits}
+    assert raisons[exclu] is RaisonConflit.CLOISONNEMENT
+
+
+def test_deplacement_manuel_refuse_nomme_le_cloisonnement_sur_le_plan_de_duels() -> None:
+    """Le message de refus **nomme la cause** — dire « capacité, espace ou hauteur » enverrait
+    l'organisateur libérer des places, ce qui n'y changerait rien."""
+    monde = _Monde(capacites=(4, 4))
+    monde.regler_cloisonnement(Cloisonnement.CATEGORIE)
+    monde.inscrire_classe((ZoneScore.DIX, ZoneScore.DIX))
+    intrus = monde.inscrire_classe(
+        (ZoneScore.SEPT, ZoneScore.SEPT), categorie_id=monde.autre_categorie_id
+    )
+    monde.service.regenerer(monde.tournoi_id, monde.phase_id)
+    avant = monde.service.plan_de_duels(monde.tournoi_id, monde.phase_id)
+
+    with pytest.raises(DeplacementInvalide) as refus:
+        monde.service.deplacer(
+            monde.tournoi_id,
+            monde.phase_id,
+            monde.inscription_par_archer[intrus],
+            1,
+            "B",
+        )
+
+    assert "cloisonnement" in str(refus.value).lower()
+    assert monde.service.plan_de_duels(monde.tournoi_id, monde.phase_id) == avant
+
+
+def test_plan_de_duels_pose_avant_le_reglage_est_signale_non_conforme() -> None:
+    """Activer le réglage ne déplace personne : la cible devenue non conforme est **signalée**.
+
+    Sans ce signal, le plan de duels restait muet là où le plan de cibles affichait badge et
+    bannière — la contrainte y était dure à l'écriture et invisible à la lecture."""
+    monde = _Monde(capacites=(4,))
+    monde.inscrire_classe((ZoneScore.DIX, ZoneScore.DIX))
+    monde.inscrire_classe((ZoneScore.SEPT, ZoneScore.SEPT), categorie_id=monde.autre_categorie_id)
+    monde.service.regenerer(monde.tournoi_id, monde.phase_id)  # posé **sans** réglage
+
+    monde.regler_cloisonnement(Cloisonnement.CATEGORIE)
+    plan = monde.service.plan_de_duels(monde.tournoi_id, monde.phase_id)
+
+    assert len(plan.cibles[0].placements) == 2  # personne n'a bougé
+    assert plan.cibles[0].cloisonnement_non_respecte is True
+
+
+def _deux_par_categorie(monde: _Monde) -> tuple[int, int, int, int]:
+    """Quatre duellistes, deux par catégorie, aux rangs 1 à 4 (tous duellistes au tour 1).
+
+    Quatre et non trois : sur un tableau de 4, un effectif impair donne un **bye** au premier
+    classé, qui n'est alors duelliste d'aucun match du tour 1 — il n'apparaît donc pas au plan
+    (piège rencontré en écrivant ces tests)."""
+    return (
+        monde.inscrire_classe((ZoneScore.DIX, ZoneScore.DIX)),
+        monde.inscrire_classe((ZoneScore.NEUF, ZoneScore.NEUF)),
+        monde.inscrire_classe(
+            (ZoneScore.HUIT, ZoneScore.HUIT), categorie_id=monde.autre_categorie_id
+        ),
+        monde.inscrire_classe(
+            (ZoneScore.SEPT, ZoneScore.SEPT), categorie_id=monde.autre_categorie_id
+        ),
+    )
+
+
+def _cible_de(plan: PlanDeDuels) -> dict[int, int]:
+    return {pose.archer_id: cible.index for cible in plan.cibles for pose in cible.placements}
+
+
+def test_echange_refuse_par_le_cloisonnement_le_dit_sur_le_plan_de_duels() -> None:
+    """L'**échange** aussi nomme le cloisonnement (jumeau du test de qualification).
+
+    Relevé en 2ᵉ passe : la branche existait sans test — la supprimer laissait la suite verte, et
+    l'écran des duels redisait « capacité, espace ou hauteur » sur un refus de réglage, c'est-à-dire
+    le défaut même que la 1ʳᵉ passe avait fait corriger."""
+    monde = _Monde(capacites=(4, 4))
+    monde.regler_cloisonnement(Cloisonnement.CATEGORIE)
+    a1, a2, b1, _ = _deux_par_categorie(monde)
+    plan = monde.service.regenerer(monde.tournoi_id, monde.phase_id)
+    cible_de = _cible_de(plan)
+    # Le réglage a séparé les catégories : `a2` **reste** derrière `a1`, c'est lui qui rend
+    # l'échange illégal (échanger deux cibles autrement vides serait conforme).
+    assert cible_de[a1] == cible_de[a2] != cible_de[b1]
+    avant = monde.service.plan_de_duels(monde.tournoi_id, monde.phase_id)
+    position_a1 = next(
+        pose.position for cible in plan.cibles for pose in cible.placements if pose.archer_id == a1
+    )
+
+    with pytest.raises(DeplacementInvalide) as refus:
+        monde.service.deplacer(
+            monde.tournoi_id,
+            monde.phase_id,
+            monde.inscription_par_archer[b1],
+            cible_de[a1],
+            position_a1,
+        )
+
+    assert "cloisonnement" in str(refus.value).lower()
+    assert monde.service.plan_de_duels(monde.tournoi_id, monde.phase_id) == avant
+
+
+def test_pose_sur_une_cible_de_duels_deja_non_conforme_dit_de_regenerer() -> None:
+    """Sur une cible de duels déjà non conforme, le refus **n'accuse pas le candidat**.
+
+    Second jumeau manquant relevé en 2ᵉ passe : le décor existait (plan posé avant le réglage) mais
+    aucun test n'y tentait de pose, donc le message n'était jamais exécuté."""
+    monde = _Monde(capacites=(4, 4))
+    _, _, _, b2 = _deux_par_categorie(monde)
+    monde.service.regenerer(
+        monde.tournoi_id, monde.phase_id
+    )  # posé **sans** réglage : tous cible 1
+    monde.regler_cloisonnement(Cloisonnement.CATEGORIE)
+    # On libère une place sur la cible non conforme en écartant un duelliste, puis on tente de l'y
+    # reposer : la cible reste mêlée sans lui, ce n'est donc pas *lui* qui mêle quoi que ce soit.
+    monde.service.deplacer(
+        monde.tournoi_id, monde.phase_id, monde.inscription_par_archer[b2], 2, "A"
+    )
+    plan = monde.service.plan_de_duels(monde.tournoi_id, monde.phase_id)
+    assert plan.cibles[0].cloisonnement_non_respecte is True
+    occupees = {pose.position for pose in plan.cibles[0].placements}
+    libre = next(lettre for lettre in ("A", "B", "C", "D") if lettre not in occupees)
+
+    with pytest.raises(DeplacementInvalide) as refus:
+        monde.service.deplacer(
+            monde.tournoi_id, monde.phase_id, monde.inscription_par_archer[b2], 1, libre
+        )
+
+    message = str(refus.value).lower()
+    assert "ne respecte déjà pas" in message
+    assert "régénérez" in message

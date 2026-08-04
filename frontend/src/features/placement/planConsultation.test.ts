@@ -18,6 +18,7 @@ function plan(
       index: c.index,
       capacite: c.capacite,
       mixite_non_garantie: false,
+      cloisonnement_non_respecte: false,
       placements: c.places.map((p) => ({
         position: p.position,
         archer_id: p.archer_id,

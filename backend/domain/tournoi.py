@@ -17,6 +17,7 @@ import datetime
 from dataclasses import dataclass, replace
 from enum import Enum
 
+from domain.cloisonnement import Cloisonnement
 from domain.erreurs import ExigenceEffectifInvalide, NomTournoiInvalide
 
 TournoiId = int
@@ -77,6 +78,11 @@ class Tournoi:
     # vers son format : sans cette copie, la garde de démarrage n'aurait rien à lire. Le plancher
     # **technique**, lui, ne se stocke pas : il se recalcule des phases, qui sont là.
     effectif_minimum_exige: int | None = None
+    # E03US007 (RG-4) : ce qu'une cible n'a pas le droit de mêler au placement. Réglage **du
+    # tournoi** — activable, indépendant du type de tournoi (officiel ou non) — et non du gabarit,
+    # qui est une brique de patrimoine partagée entre tournois : deux tournois montés sur le même
+    # plan de salle peuvent cloisonner différemment. `AUCUN` par défaut = comportement d'E03US001.
+    cloisonnement: Cloisonnement = Cloisonnement.AUCUN
     id: TournoiId | None = None
 
     def __post_init__(self) -> None:
@@ -144,6 +150,18 @@ class Tournoi:
         rapproche.
         """
         return replace(self, effectif_minimum_exige=minimum)
+
+    def definir_cloisonnement(self, cloisonnement: Cloisonnement) -> Tournoi:
+        """Renvoie une copie au cloisonnement de cible remplacé (E03US007, RG-4).
+
+        Aucun invariant à tenir : les quatre positions sont toutes valides à tout moment, y compris
+        `AUCUN`. Changer le réglage ne **déplace personne** — le plan de cibles est matérialisé
+        (ADR-0024) : il s'applique aux prochaines générations et aux prochains gestes, et les cibles
+        déjà posées qui le violent sont **signalées** (`cloisonnement_non_respecte`). Déplacer des
+        archers en silence au changement d'un réglage serait le contraire du serveur autoritaire :
+        l'admin verrait son plan bouger sans l'avoir demandé.
+        """
+        return replace(self, cloisonnement=cloisonnement)
 
     def vers_pret(self) -> Tournoi:
         """Renvoie une copie passée `prêt` (précondition `brouillon` + complétude garantie en

@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from domain.archer import Archer, ArcherId
 from domain.blason import Blason, BlasonId, valider_zones
 from domain.categorie import Categorie, CategorieId, SexeCategorie, TrancheAge
+from domain.cloisonnement import Cloisonnement
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
 from domain.entree_audit import EntreeAudit
@@ -82,6 +83,7 @@ def _vers_tournoi(ligne: TournoiORM) -> Tournoi:
             type_tournoi=TypeTournoi(ligne.type_tournoi),
             statut=StatutTournoi(ligne.statut),
             effectif_minimum_exige=ligne.effectif_minimum_exige,
+            cloisonnement=Cloisonnement(ligne.cloisonnement),
             id=ligne.id,
         )
     except (DomainError, ValueError) as exc:
@@ -229,6 +231,7 @@ class TournoiRepositorySQL:
                     type_tournoi=tournoi.type_tournoi.value,
                     statut=tournoi.statut.value,
                     effectif_minimum_exige=tournoi.effectif_minimum_exige,
+                    cloisonnement=tournoi.cloisonnement.value,
                 )
                 session.add(ligne)
                 session.commit()
@@ -274,6 +277,7 @@ class TournoiRepositorySQL:
                 ligne.type_tournoi = tournoi.type_tournoi.value
                 ligne.statut = tournoi.statut.value
                 ligne.effectif_minimum_exige = tournoi.effectif_minimum_exige
+                ligne.cloisonnement = tournoi.cloisonnement.value
                 session.commit()
                 return _vers_tournoi(ligne)
         except SQLAlchemyError as exc:

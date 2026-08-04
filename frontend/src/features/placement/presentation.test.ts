@@ -4,10 +4,22 @@
 
 import { describe, expect, it } from 'vitest'
 import type { CiblePlacee } from './api'
-import { compterMixiteNonGarantie, resumeMixiteNonGarantie } from './presentation'
+import {
+  LIBELLE_CLOISONNEMENT,
+  compterMixiteNonGarantie,
+  resumeCloisonnementNonRespecte,
+  resumeMixiteNonGarantie,
+} from './presentation'
 
 function cible(over: Partial<CiblePlacee> = {}): CiblePlacee {
-  return { index: 1, capacite: 4, placements: [], mixite_non_garantie: false, ...over }
+  return {
+    index: 1,
+    capacite: 4,
+    placements: [],
+    mixite_non_garantie: false,
+    cloisonnement_non_respecte: false,
+    ...over,
+  }
 }
 
 describe('compterMixiteNonGarantie', () => {
@@ -42,5 +54,40 @@ describe('resumeMixiteNonGarantie', () => {
       cible({ index: 2, mixite_non_garantie: true }),
     ])
     expect(resume).toContain('2 cibles sans')
+  })
+})
+
+// --- Cloisonnement des cibles (E03US007) --------------------------------------------------------
+
+describe('resumeCloisonnementNonRespecte', () => {
+  it('renvoie null quand aucune cible ne viole le réglage (pas de bannière)', () => {
+    expect(resumeCloisonnementNonRespecte([cible(), cible({ index: 2 })])).toBeNull()
+  })
+
+  it('accorde au singulier et dit quoi faire', () => {
+    const resume = resumeCloisonnementNonRespecte([cible({ cloisonnement_non_respecte: true })])
+    expect(resume).toContain('1 cible ne respecte pas')
+    // Un signal qui n'indique pas le geste correctif est un reproche sans issue : la bannière ne
+    // peut apparaître que sur un plan antérieur au réglage, la régénération est la sortie.
+    expect(resume).toContain('régénérez')
+  })
+
+  it('accorde au pluriel', () => {
+    const resume = resumeCloisonnementNonRespecte([
+      cible({ cloisonnement_non_respecte: true }),
+      cible({ index: 2, cloisonnement_non_respecte: true }),
+    ])
+    expect(resume).toContain('2 cibles ne respectent pas')
+  })
+})
+
+describe('LIBELLE_CLOISONNEMENT', () => {
+  it('couvre les quatre positions du réglage', () => {
+    expect(Object.keys(LIBELLE_CLOISONNEMENT)).toEqual([
+      'aucun',
+      'categorie',
+      'blason',
+      'blason_et_categorie',
+    ])
   })
 })

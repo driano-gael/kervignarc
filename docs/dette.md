@@ -57,6 +57,8 @@
 | [DETTE-032](#dette-032--la-prise-de-controle-se-mesure-sur-lheure-murale-pas-sur-une-horloge-monotone) | technique | mineur | `backend/application/ecrans.py` (`ServiceEcrans._ecoulees`), `backend/domain/ecran.py` (`Consigne.expiree`, `reste_secondes`) | L'échéance d'une prise de contrôle est calculée comme un écart entre deux lectures de l'**heure murale** (port `Horloge`). Une resynchronisation NTP en cours de journée qui **recule** l'horloge repousse d'autant l'expiration ; côté écran, le décompte local atteint zéro, le sondage suivant lui rend la durée pleine, et l'affichage **oscille** entre vue imposée et déroulé | Faible : suppose une remise à l'heure en pleine journée sur un serveur local sans internet. Le pire cas est cosmétique (un écran qui hésite quelques secondes), jamais une perte de donnée | E07US004 ([ADR-0064](adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md)) — relevé en 3ᵉ passe de revue, après qu'un correctif eut **prétendu** le traiter sans le faire | Mesurer la durée sur une référence **monotone** (`time.monotonic`) plutôt que sur l'heure murale, en ajoutant un port dédié à côté d'`Horloge` — ce dernier reste juste pour *dater* (audit, présence), pas pour *chronométrer*. Marqueur `# DETTE-032` sur `ServiceEcrans._ecoulees` |
 | [DETTE-033](#dette-033--un-battu-repris-par-la-séquence-nest-pas-annoncé) | conception | mineur | `backend/application/routage.py` (`ServiceRoutage._router`, branche `TERMINE`) | Le repêchage a **deux moitiés lues à deux sources indépendantes** : le `routing` (`_est_repeche`, décidé **match par match**) et les **sources de la séquence** (`_repechages`, indexées par **tour**). Seule la première est annoncée. Un battu que la phase avale prélève par `issue_de_tour/perdants` lit donc son rang **sans savoir qu'il rejoue** | Faible aujourd'hui : aucun moteur ne consomme les prélèvements (**DETTE-028**), donc composer un tel déroulé ne fait encore rien tirer à personne. Devient **réel** dès qu'E05US010+ exécutera le prélèvement — l'archer rentrerait chez lui entre deux phases | E07US008 ([ADR-0065](adr/0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md) §3) — un correctif de revue a tenté de la combler et a été **démoli de deux façons opposées** en 2ᵉ passe : `dernier` est le dernier match *joué* et non le match perdu (on rate le battu qui redescend en petite finale), et un **tour couvre plusieurs plages** (finale et petite finale sont toutes deux au tour 3, on décorerait le 4ᵉ du podium) | **Ne pas deviner** : les deux correctifs proposés étaient incompatibles, ce qui est le signal que la **sémantique de `SourcePhase.par_issue_de_tour` n'est pas tranchée**. Elle appartient à l'US qui implémentera le prélèvement, pas à un canal d'affichage. Figée par `test_le_battu_repris_par_la_sequence_n_est_pas_encore_annonce`, qui **échouera** le jour où la règle sera décidée. Marqueur `# DETTE-033` sur la branche `TERMINE` de `_router` |
 | [DETTE-035](#dette-035--la-conséquence-dune-profondeur-de-classement-nest-pas-chiffrée-au-moment-du-choix) | conception | mineur | `backend/domain/deroule.py` (`_braquets`), `backend/application/simulation_format.py` (`PhaseSimulee.ecart`), `frontend/src/shared/phases/ChoixProfondeur.tsx` (`AIDE_PROFONDEUR`) | Le schéma à braquets compte les duels de l'**arbre** (`effectif - 1`) et **ignore ceux que la politique `depth` ajoute** : une petite finale au preset, toute la cascade de placement en 1→N. L'organisateur choisit donc « classement intégral » sans voir le nombre de duels qu'il vient d'engager, alors que la maquette A07 fait de ce chiffrage l'exigence `P-4` (« chiffrer la conséquence **au moment du choix**, pas la découvrir à 10 h ») | Modéré : c'est le réglage du déroulé qui pèse le plus lourd sur la journée — un tableau de 120 passe de **128 duels à 436** (mesuré en revue), près de quatre fois plus. Atténué de deux façons : l'écran **énonce** la conséquence en clair sous le choix, et la **simulation** (E15US002), qui joue réellement le format, en rend le compte exact | E06US006 ([ADR-0070](adr/0070-profondeur-de-classement-reglee-par-phase.md)) — assumée à l'écriture, pas découverte en revue | **Ne pas recopier la structure du tableau dans la projection.** Les deux voies faciles sont mauvaises : ensemencer un vrai `construire_tableau` dans `projeter` lui imposerait `seeding`/`byes` qu'une projection évite délibérément ; une formule fermée (`P/2 × log2(P)`) serait une **seconde source de vérité** sur l'arbre, à faire diverger au premier format. Piste : faire rendre à `Depth` le nombre de matchs de classement qu'elle implique pour un effectif — la politique sait déjà quels rangs elle produit. Marqueurs `# DETTE-035` sur `_braquets`, sur `PhaseSimulee.ecart` et sur `AIDE_PROFONDEUR` (le front est l'endroit exact du raccourci : c'est là que l'organisateur choisit sans voir le chiffre) |
+| [DETTE-036](#dette-036--une-position-du-cloisonnement-na-pas-deffet-distinct) | conception | mineur | `backend/domain/cloisonnement.py` (`Cloisonnement.separe_blason`/`separe_categorie`), `frontend/src/features/placement/presentation.ts` (`LIBELLE_CLOISONNEMENT`) | Le réglage de cloisonnement offre **quatre** positions à l'organisateur, mais n'en produit que **trois** comportements : le blason d'un archer étant celui de sa catégorie (`Categorie.blason_id`), « un seul blason **et** une seule catégorie par cible » rend le même plan que « une seule catégorie par cible ». L'organisateur choisit une position plus stricte et obtient celle d'avant | Faible : aucun plan n'est faux, aucune règle n'est violée — le coût est un choix d'écran qui n'a pas l'effet qu'il annonce, sur la position la moins utilisée. Atténué par une mention explicite dans la fiche de recette, l'aide de l'écran et l'ADR | E03US007 ([ADR-0071](adr/0071-cloisonnement-categorie-blason-active-et-dur.md) §3) — **assumée au cadrage** (les quatre positions sont un choix du commanditaire, en connaissance de la redondance), **tracée** sur relevé de revue (axe C2) : le précédent DETTE-028 a établi qu'une capacité livrée sans effet se trace au registre et ne se contente pas d'un ADR | Se résorbe **d'elle-même** avec `EF-1.4` (une phase surcharge le blason : « toutes les finales sur triples ») — le couple (catégorie, blason) cesse alors d'être fonctionnel et les deux positions divergent, sans migration ni changement de contrat. **Ne rien faire d'ici là** : retirer la position coûterait une migration et un réapprentissage pour la remettre. Marqueurs `# DETTE-036` sur les deux prédicats de `Cloisonnement` et sur `LIBELLE_CLOISONNEMENT` |
+| [DETTE-037](#dette-037--lalerte-dimpact-ne-chiffre-pas-la-réserve-que-le-cloisonnement-va-créer) | conception | mineur | `backend/application/placement.py` (`ServicePlacement._impact`) | L'alerte qui protège une régénération tardive (E12US007) compte les archers **replacés** et les cibles **déjà scorées**, mais pas ceux qu'un cloisonnement plus strict va **exclure** : l'organisateur confirme, puis découvre la réserve. ADR-0071 invoque pourtant cette alerte comme la protection du réglage tournoi en cours | Faible à modéré : rien n'est perdu (la régénération est déterministe et réversible en desserrant le réglage), mais la décision est prise **sans** son chiffre — le défaut même que `P-4` et DETTE-035 nomment ailleurs | E03US007 ([ADR-0071](adr/0071-cloisonnement-categorie-blason-active-et-dur.md), Conséquences) — relevé en **2ᵉ passe** de revue par trois axes : le manque était **avoué dans l'ADR** et non tracé, alors que le même commit ouvrait DETTE-036 en invoquant « documenter ne suffit pas ». Deux poids, deux mesures dans un seul commit | Faire rendre à `_impact` un **compte de réserve projetée** : rejouer `placer` à blanc sur le gabarit et le réglage courants (lecture pure, aucun effet de bord — le moteur est déterministe et sans état) puis compter les conflits. Ne **pas** approcher le chiffre par une heuristique (« une cible par catégorie ») : il serait faux là où il compte, sur les gabarits justes. Marqueur `# DETTE-037` sur `ServicePlacement._impact` |
 
 ## Dette résorbée
 
@@ -1590,3 +1592,64 @@ jour du schéma qui va avec.
 
 Marqueurs `# DETTE-035` sur `_braquets` (`backend/domain/deroule.py`), sur `PhaseSimulee.ecart` (`backend/application/simulation_format.py`) et sur `AIDE_PROFONDEUR` (`frontend/src/shared/phases/ChoixProfondeur.tsx`) — le front est **l'endroit exact du raccourci** : c'est là que l'organisateur choisit sans voir le chiffre.
 
+### DETTE-036 — une position du cloisonnement n'a pas d'effet distinct
+
+E03US007 livre le cloisonnement des cibles comme un réglage de tournoi à **quatre** positions :
+`aucun`, `categorie`, `blason`, `blason_et_categorie`. Trois seulement produisent des plans
+différents.
+
+La raison est en amont du placement : le blason d'un archer **dérive** de sa catégorie
+(`Categorie.blason_id`, reconstitué par `application/placement._archer_a_placer`). Deux archers de
+la même catégorie ont donc nécessairement le même blason, et « ne pas mêler deux catégories » interdit
+déjà, par construction, de mêler deux blasons. `blason_et_categorie` est la **conjonction d'une
+condition avec elle-même**.
+
+**Pourquoi c'est livré ainsi.** Les quatre positions sont un choix du commanditaire au cadrage du
+04/08/2026, pris en connaissance de la redondance. Le pari est daté : le cahier des charges prévoit
+(`EF-1.4`) qu'une **phase puisse surcharger le blason** — « toutes les finales sur triples
+verticaux » — et que l'organisateur choisisse unique vs triple. Ce jour-là, le blason effectif cesse
+de dériver de la catégorie, les deux positions divergent, et rien n'aura à changer : ni migration
+(la colonne stocke déjà les quatre valeurs), ni contrat d'API, ni réapprentissage pour l'utilisateur.
+
+**Pourquoi c'est une dette et pas seulement une note d'ADR.** Le fait est documenté en cinq endroits
+(docstring du value object, story, ADR §3, fiche de recette, aide de l'écran) et l'US ne le cache
+pas. Mais le précédent **DETTE-028** a tranché le principe : une capacité *livrée sans effet* se
+**trace au registre**, parce qu'un lecteur ultérieur qui ne relit pas l'ADR la comptera comme
+acquise. Ici l'écart est même visible par l'utilisateur final, puisque la position est offerte dans
+un `<select>`.
+
+**Ce qu'il ne faut pas faire** : retirer la quatrième position en attendant EF-1.4. Elle coûterait
+une migration pour la retirer, une autre pour la remettre, et un réglage déjà choisi par un club
+deviendrait invalide entre les deux. La bonne réponse est de ne rien faire et de savoir pourquoi.
+
+Marqueurs `# DETTE-036` sur `Cloisonnement.separe_blason` / `separe_categorie`
+(`backend/domain/cloisonnement.py`) et sur `LIBELLE_CLOISONNEMENT`
+(`frontend/src/features/placement/presentation.ts`) — les deux endroits où la quatrième position
+existe sans se distinguer.
+
+### DETTE-037 — l'alerte d'impact ne chiffre pas la réserve que le cloisonnement va créer
+
+E12US007 a posé un principe : une action massive s'annonce **chiffrée** avant d'être confirmée
+(« N archers vont être replacés ; M cibles ont déjà des scores »). E03US007 ajoute une cause de
+perte que ce chiffrage ignore : un cloisonnement plus strict **exclut** des archers, qui partent en
+réserve. `ServicePlacement._impact` ne les compte pas.
+
+Conséquence concrète : l'organisateur qui resserre son réglage en cours de journée, puis régénère,
+confirme une alerte qui lui parle d'archers *replacés* — et découvre **après** que douze d'entre eux
+ne sont plus placés du tout. Le geste reste réversible (desserrer le réglage et régénérer à
+nouveau), mais la décision aura été prise sans son information la plus utile.
+
+**Pourquoi c'est tracé plutôt que corrigé ici.** Le calcul demande de rejouer `placer` à blanc dans
+le calcul d'impact — c'est une lecture pure et le moteur est déterministe, donc c'est faisable sans
+risque, mais cela ajoute un passage complet du glouton à un endpoint appelé avant chaque
+régénération, et cela mérite d'être mesuré plutôt que présumé anodin. L'US était par ailleurs
+au-delà de son périmètre.
+
+**Pourquoi c'est une ligne de registre et pas seulement une phrase d'ADR.** Parce que le même commit
+a ouvert **DETTE-036** en énonçant exactement le principe inverse — « documenter en cinq endroits ne
+suffit pas, une capacité livrée sans effet se trace au registre ». Trois axes de la seconde passe
+ont relevé l'asymétrie : un manque avoué dans un ADR se lit une fois, à l'écriture ; une ligne de
+registre se relit à chaque US. Le jumeau le plus proche, **DETTE-035**, dit la même chose d'un autre
+réglage : « la conséquence n'est pas chiffrée **au moment du choix** ».
+
+Marqueur `# DETTE-037` sur `ServicePlacement._impact` (`backend/application/placement.py`).

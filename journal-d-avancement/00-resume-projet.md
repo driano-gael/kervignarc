@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 1er août 2026
+# Résumé du projet — où on en est au 4 août 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -77,7 +77,11 @@ salle n'a plus à revenir demander où il tire** : son téléphone lui annonce s
 **place** pour le duel suivant, son **rang** s'il est sorti — et « 5ᵉ-8ᵉ » quand aucun match n'a
 départagé les battus, plutôt qu'un chiffre inventé —, ou la **phase qui le reprend** s'il est
 repêché. La même information s'affiche en **panneau complet** pour la table de l'organisation et sur
-l'écran de salle : tout le pas de tir d'un coup d'œil, dans l'ordre des cibles.
+l'écran de salle : tout le pas de tir d'un coup d'œil, dans l'ordre des cibles. Enfin, l'organisateur
+**décide jusqu'où son tournoi classe** (podium, top N, ou un rang unique gagné au tir pour chacun) et
+**ce qu'une cible n'a pas le droit de mélanger** — rien, la catégorie, le blason, ou les deux : une
+règle d'arbitre que le placement automatique respecte sans exception et qu'aucun glisser-déposer ne
+contourne.
 
 ---
 
@@ -435,7 +439,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **95 US livrées** sur `main` (mergées, revues, CI verte) à la date du 04/08/2026. **`SUIVI-US.md`
+- **96 US livrées** sur `main` (mergées, revues, CI verte) à la date du 04/08/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -471,7 +475,20 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   disqualification** (E04US015 — qualif *et* duels), le **cycle de vie d'un départ** (E12US008), le
   **feu vert + lancement d'un tour** (E12US002), le **remboursement d'une inscription payée
   annulée** (E08US005) l'**affichage de la prochaine cible après validation** (E04US018), le **barrage de tir pour les places décisives** (E06US003) et le **palmarès** (E06US004), qui le referme.
-- Dernière US livrée : **E06US006** (choisir jusqu'où le tournoi classe ses archers) — US **à surface
+- Dernière US livrée : **E03US007** (cloisonner les cibles par catégorie ou par blason) — US **à
+  surface visible**. Le placement automatique remplissait une cible avec ce qui tenait dedans : deux
+  catégories pouvaient s'y retrouver côte à côte, ce que l'arbitre interdit sur certains tournois.
+  L'organisateur **choisit désormais ce qu'une cible n'a pas le droit de mélanger** — rien (défaut),
+  la catégorie, le blason, ou les deux. Le réglage est **strict** : ni le placement automatique ni un
+  glisser-déposer ne peut le contourner — **ni sur le plan de cibles, ni sur celui des duels** —, et
+  ce qu'il empêche de poser part en réserve avec la mention **« exclu par le cloisonnement »**,
+  distincte de « aucune cible possible » : la salle pleine et le réglage trop serré ne se corrigent
+  pas du même geste. Changer le réglage **ne déplace personne** :
+  les cibles devenues non conformes sont signalées (badge + bandeau qui dit de régénérer), c'est
+  l'organisateur qui décide du moment. ⚠️ Cloisonner **coûte des cibles** (chaque catégorie entame sa
+  propre butte) : sur une salle juste, il y aura plus d'archers en réserve — visible aussitôt, et
+  réversible. *(Livré juste avant : **E06US006**, jusqu'où le tournoi classe ses archers.)*
+- Avant-dernière US livrée : **E06US006** (choisir jusqu'où le tournoi classe ses archers) — US **à surface
   visible**. Un tableau de duels s'arrêtait toujours au podium : on tirait la finale et la petite
   finale, et les archers sortis plus tôt restaient groupés — les quatre battus des quarts partageaient
   « 5ᵉ-8ᵉ », sans que rien ne dise lequel était 5ᵉ. Le moteur savait pourtant faire autrement depuis
@@ -485,7 +502,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   rappelle et la simulation en donne le compte exact. Ne rien changer ne change rien — les tournois
   déjà composés continuent de se jouer au podium. *(Livré juste avant : **E05US021**, un tournoi ne se
   lance plus s'il manque des archers.)*
-- Avant-dernière US livrée : **E05US021** (un tournoi ne se lance plus s'il manque des archers) — US **à
+- Antépénultième US livrée : **E05US021** (un tournoi ne se lance plus s'il manque des archers) — US **à
   surface visible**. Un déroulé composé pour 120 archers appliqué à une édition qui en réunit 28
   démarrait sans rien dire, et le problème n'éclatait qu'**en pleine compétition**, sur une tablette,
   au moment de monter un tableau vide. Le contrôle remonte là où la décision se prend : l'application
@@ -494,7 +511,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   cause), et **refuse** le démarrage tant que le compte n'y est pas. Un club peut exiger davantage
   (« pas de tournoi de ce type sous 40 archers ») — jamais moins. *(Livré juste avant : **E05US020**,
   le déroulé composé est celui qui se joue.)*
-- Antépénultième US livrée : **E05US020** (le déroulé composé est celui qui se joue) — US **à surface
+- Encore avant : **E05US020** (le déroulé composé est celui qui se joue) — US **à surface
   visible**. L'organisateur décrivait sa journée (« le tableau prend les rangs 1 à 32 »), l'outil la
   dessinait, la contrôlait, la validait — et le jour J montait un tableau avec **tous** les archers.
   C'est fini : le prélèvement déclaré est honoré, « les rangs 33 et suivants » s'adapte à l'effectif

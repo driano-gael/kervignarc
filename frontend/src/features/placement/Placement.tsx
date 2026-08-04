@@ -15,37 +15,32 @@ import type { Archer } from '../competition/api'
 import { useDeparts } from '../departs/hooks'
 import type {
   CiblePlacee,
+  Cloisonnement,
   Conflit,
   Destination,
   ImpactRegeneration,
   PlanDeCibles,
-  RaisonConflit,
 } from './api'
 import {
+  useCloisonnement,
   useDeplacer,
   useImpactRegeneration,
   usePlacerRestants,
   usePlanDeCibles,
   useRegenerer,
+  useReglerCloisonnement,
 } from './hooks'
-import { resumeMixiteNonGarantie } from './presentation'
+import {
+  LIBELLE_CLOISONNEMENT,
+  LIBELLE_RAISON,
+  RAISON_ANOMALIE,
+  VALEURS_CLOISONNEMENT,
+  resumeCloisonnementNonRespecte,
+  resumeMixiteNonGarantie,
+} from './presentation'
 
 // Les positions d'une cible sont des lettres ; une cible de capacité N expose les N premières.
 const POSITIONS = ['A', 'B', 'C', 'D']
-
-// Libellé lisible de la raison d'une mise en réserve. `en_reserve` est neutre (en attente) ;
-// `sans_blason` et `non_place` sont des **anomalies** à traiter (style ambre — DV-03, `--warn`).
-const LIBELLE_RAISON: Record<RaisonConflit, string> = {
-  sans_blason: 'sans blason',
-  non_place: 'aucune cible possible',
-  en_reserve: 'en attente',
-}
-
-const RAISON_ANOMALIE: Record<RaisonConflit, boolean> = {
-  sans_blason: true,
-  non_place: true,
-  en_reserve: false,
-}
 
 export function Placement({ tournoiId }: { tournoiId: number }) {
   const departs = useDeparts(tournoiId)
@@ -61,6 +56,7 @@ export function Placement({ tournoiId }: { tournoiId: number }) {
           Aucun départ dans ce tournoi : créez un créneau ci-dessus avant de placer les archers.
         </p>
       )}
+      <ReglageCloisonnement tournoiId={tournoiId} />
       {liste.length > 0 && (
         <select
           className="formulaire__champ"
@@ -81,6 +77,48 @@ export function Placement({ tournoiId }: { tournoiId: number }) {
           l'état de drag et les confirmations sans les synchroniser à la main. */}
       {departId !== null && <PlanDepart key={departId} tournoiId={tournoiId} departId={departId} />}
     </section>
+  )
+}
+
+// Réglage de cloisonnement du **tournoi** (E03US007, RG-4) : posé au-dessus du choix de départ,
+// parce qu'il ne dépend pas du créneau — il vaut pour tous, et pour le plan de duels.
+//
+// Aucun état local : la valeur affichée est **celle du serveur** (`select` contrôlé par la query).
+// Un état local synchronisé par `useEffect` afficherait un réglage que le serveur n'a pas encore
+// accepté — exactement le défaut relevé en revue d'E06US006 (état dérivé d'une prop qui diverge).
+function ReglageCloisonnement({ tournoiId }: { tournoiId: number }) {
+  const reglage = useCloisonnement(tournoiId)
+  const regler = useReglerCloisonnement(tournoiId)
+  const valeur = reglage.data?.cloisonnement ?? 'aucun'
+
+  return (
+    <div className="placement__reglage">
+      <label className="placement__reglage-libelle" htmlFor="cloisonnement">
+        Cloisonnement des cibles
+      </label>
+      <select
+        id="cloisonnement"
+        className="formulaire__champ"
+        value={valeur}
+        // `isPending` sur la lecture **et** l'écriture : tant que le serveur n'a pas répondu, le
+        // réglage affiché n'est pas encore une vérité — on ne laisse pas empiler les changements.
+        disabled={reglage.isPending || reglage.isError || regler.isPending}
+        onChange={(e) => regler.mutate(e.target.value as Cloisonnement)}
+      >
+        {VALEURS_CLOISONNEMENT.map((option) => (
+          <option key={option} value={option}>
+            {LIBELLE_CLOISONNEMENT[option]}
+          </option>
+        ))}
+      </select>
+      <p className="carte__etat">
+        Le placement automatique ne mêlera plus sur une même cible ce que ce réglage sépare. Changer
+        ce réglage <strong>ne déplace personne</strong> : il s'applique à la prochaine génération et
+        aux déplacements à la main.
+      </p>
+      <MessageErreur erreur={reglage.error} />
+      <MessageErreur erreur={regler.error} />
+    </div>
   )
 }
 
@@ -157,6 +195,8 @@ function PlanCharge({
   // Avertissement d'équité (E03US006, RG-3) : cibles où la mixité ≥ 2 clubs n'est pas garantie.
   // `null` si tout est mixé → aucune bannière. C'est un signal, pas un blocage (l'admin ajuste).
   const resumeMixite = resumeMixiteNonGarantie(plan.cibles)
+  // Cibles qui violent le cloisonnement demandé (E03US007) — plan antérieur au réglage.
+  const resumeCloisonnement = resumeCloisonnementNonRespecte(plan.cibles)
 
   const jeton = (archerId: number, inscriptionId: number): Jeton => ({
     nom: nomParArcher.get(archerId) ?? `Archer #${archerId}`,
@@ -289,6 +329,16 @@ function PlanCharge({
         </p>
       )}
 
+      {/* Cloisonnement non respecté (E03US007) : même registre **ambre** (DV-03) — signal, pas
+          erreur. Il ne peut apparaître que sur un plan posé **avant** l'activation du réglage ;
+          le message dit donc quoi faire (régénérer ou déplacer), sinon l'admin voit un reproche
+          sans issue. */}
+      {resumeCloisonnement && (
+        <p className="placement__mixite" role="status">
+          {resumeCloisonnement}
+        </p>
+      )}
+
       <div className="placement__cibles">
         {plan.cibles.map((cible) => (
           <Cible
@@ -341,6 +391,11 @@ function Cible({
           l'admin décide s'il ajuste. Pas de badge quand la mixité est garantie ou sans objet. */}
       {cible.mixite_non_garantie && (
         <span className="cible__mixite">mixité de club non garantie</span>
+      )}
+      {/* Cette cible mêle ce que le réglage sépare (E03US007) : badge ambre, même registre que la
+          mixité. Le placement auto ne peut pas la produire — c'est un plan à régénérer. */}
+      {cible.cloisonnement_non_respecte && (
+        <span className="cible__mixite">cloisonnement non respecté</span>
       )}
       <div className="cible__cases">
         {positions.map((position) => {
@@ -476,7 +531,10 @@ function Reserve({
               <span
                 className={`reserve__raison${RAISON_ANOMALIE[conflit.raison] ? ' reserve__raison--anomalie' : ''}`}
               >
-                {LIBELLE_RAISON[conflit.raison]}
+                {/* Repli : mutualiser le vocabulaire supprime la recopie **entre écrans**, pas
+                    la divergence **front ↔ serveur** — c'est pourtant elle qui a produit le défaut
+                    d'E03US007. Une raison inconnue s'affiche telle quelle plutôt qu'en blanc. */}
+                {LIBELLE_RAISON[conflit.raison] ?? conflit.raison}
               </span>
             </li>
           ))}

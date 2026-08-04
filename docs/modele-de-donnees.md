@@ -1,7 +1,8 @@
 # Modèle de données détaillé — Kervignarc
 
-- **Version** : 0.9
-- **Date** : 2026-08-04 *(v0.9 : `TOURNOI` gagne `effectif_minimum_exige` et `FORMAT_TOURNOI.config` la clé sœur — le minimum d'inscrits **exigé** par le club ; le plancher **technique**, lui, se déduit des prélèvements et n'est **pas** stocké — E05US021, [ADR-0069](adr/0069-effectif-minimum-deduit-et-exige.md), migration 0040)*
+- **Version** : 0.10
+- **Date** : 2026-08-04 *(v0.10 : `TOURNOI` gagne `cloisonnement` — ce qu'une cible n'a pas le droit de mêler (`aucun` | `categorie` | `blason` | `blason_et_categorie`), réglage **activable** du tournoi et non du gabarit, qui est partagé entre tournois — E03US007, [ADR-0071](adr/0071-cloisonnement-categorie-blason-active-et-dur.md), migration 0041)*
+- *v0.9 : 2026-08-04 — `TOURNOI` gagne `effectif_minimum_exige` et `FORMAT_TOURNOI.config` la clé sœur — le minimum d'inscrits **exigé** par le club ; le plancher **technique**, lui, se déduit des prélèvements et n'est **pas** stocké — E05US021, [ADR-0069](adr/0069-effectif-minimum-deduit-et-exige.md), migration 0040)*
 - *v0.8 : 2026-07-31 — `ARCHER` gagne `handicap_officiel` et `handicap_surcharge` — deux valeurs et non une, la surcharge primant l'officiel pour une édition — E05US015, [ADR-0062](adr/0062-catalogue-de-types-de-phase.md), migration 0037*
 - *v0.7 : 2026-07-31 — les **briques deviennent le patrimoine du club** — `CATEGORIE.tournoi_id` et `BLASON.tournoi_id` passent **nullable** (`NULL` = modèle de bibliothèque), les deux tables gagnent `origine`, et la table **`FORMAT_TOURNOI`** apparaît (sans FK vers `TOURNOI`) — E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md), migrations 0034 et 0035)*
 - *v0.6 : 2026-07-27 — `DEPART.horaire` devient un horaire du jour `HH:MM` **NOT NULL** (abandon du libellé libre facultatif) — E02US010, migration 0032*
@@ -60,6 +61,7 @@ erDiagram
 | lieu | TEXT | |
 | type_tournoi | TEXT | `officiel` \| `non_officiel` |
 | statut | TEXT | `brouillon` \| `prêt` \| `en_cours` \| `en_pause` \| `termine` \| `archive` \| `annule` — **7 statuts** ([ADR-0026](adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md), E01US017) |
+| cloisonnement | TEXT | NOT NULL, défaut `aucun` — ce qu'une cible n'a pas le droit de mêler : `aucun` \| `categorie` \| `blason` \| `blason_et_categorie`. Contrainte de placement **activable** (RG-4) et **dure** quand elle l'est. Sur le tournoi et non sur `GABARIT_SALLE`, qui est une brique **partagée** : deux tournois du même plan de salle peuvent cloisonner différemment. « Aucun » est une **valeur**, pas un `NULL` (E03US007, [ADR-0071](adr/0071-cloisonnement-categorie-blason-active-et-dur.md), migration 0041) |
 | effectif_minimum_exige | INTEGER | `NULL` = aucune exigence propre. Le minimum d'inscrits **exigé** par le club, recopié du format à son application ; le plancher **technique** n'est pas ici — il se **déduit** des phases à chaque lecture, pour ne pas se périmer quand le déroulé change (E05US021, [ADR-0069](adr/0069-effectif-minimum-deduit-et-exige.md), migration 0040) |
 | created_at | TEXT (datetime) | |
 

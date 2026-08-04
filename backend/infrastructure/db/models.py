@@ -35,6 +35,10 @@ class TournoiORM(Base):
     # E05US021 : minimum d'inscrits **exigé en plus** du plancher déduit des prélèvements (0040).
     # `NULL` = aucune exigence propre ; le plancher technique, lui, se recalcule des phases.
     effectif_minimum_exige: Mapped[int | None] = mapped_column(nullable=True)
+    # E03US007 : cloisonnement des cibles (`aucun` / `categorie` / `blason` / `blason_et_categorie`,
+    # 0041). NOT NULL avec défaut serveur `aucun` — un tournoi a **toujours** un réglage, et
+    # « aucun » est une valeur, pas une absence : `NULL` aurait ouvert un cinquième état à traduire.
+    cloisonnement: Mapped[str] = mapped_column(nullable=False, server_default="aucun")
 
 
 class DepartORM(Base):
