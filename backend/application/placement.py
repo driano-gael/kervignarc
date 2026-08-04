@@ -29,6 +29,7 @@ from application.erreurs import (
     TournoiIntrouvable,
 )
 from domain.archer import ArcherId
+from domain.cloisonnement import Cloisonnement
 from domain.depart import DepartId
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.gabarit_salle import Cible, GabaritSalle
@@ -43,6 +44,7 @@ from domain.placement import (
     PlanDeCibles,
     RaisonConflit,
     cible_accepte,
+    cible_cloisonnement_non_respecte,
     cible_mixite_non_garantie,
     placer,
     placer_restants,
@@ -77,6 +79,9 @@ class _Contexte:
     sont 1:1 sur un départ (contrainte d'unicité), on garde les deux sens."""
 
     gabarit: GabaritSalle
+    # Réglage de cloisonnement du **tournoi** (E03US007), chargé une fois avec le décor : toutes les
+    # opérations du service (générer, déplacer, compléter, lire) doivent parler du même.
+    cloisonnement: Cloisonnement
     inscriptions: list[Inscription]
     donnees: dict[ArcherId, ArcherAPlacer]
     sans_blason: set[InscriptionId]
@@ -139,7 +144,37 @@ class ServicePlacement:
         contexte = self._charger(tournoi_id, depart_id)
         return self._impact(contexte, tournoi_id, depart_id)
 
+    def cloisonnement(self, tournoi_id: TournoiId) -> Cloisonnement:
+        """Réglage de cloisonnement du tournoi (E03US007, RG-4) — `AUCUN` par défaut.
+
+        Lecture **sans départ** : le réglage vaut pour tout le tournoi, l'écran de placement
+        l'affiche avant même d'avoir choisi un créneau. `TournoiIntrouvable` (→ 404) si
+        l'identifiant est inconnu — un réglage rendu pour un tournoi absent serait un mensonge
+        poli."""
+        tournoi = self._tournois.par_id(tournoi_id)
+        if tournoi is None:
+            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+        return tournoi.cloisonnement
+
     # --- Écritures (via la file, ADR-0005) -----------------------------------------------------
+
+    def definir_cloisonnement(
+        self, tournoi_id: TournoiId, cloisonnement: Cloisonnement
+    ) -> Cloisonnement:
+        """Règle le cloisonnement des cibles du tournoi et renvoie la valeur retenue (E03US007).
+
+        **Ne replace personne** : le plan est matérialisé (ADR-0024) et l'organisateur reste maître
+        de ses ajustements. Le nouveau réglage s'applique à la prochaine régénération, aux
+        déplacements manuels et au **signal** porté par les cibles déjà posées qui le violent
+        (`cloisonnement_non_respecte`). Aucune garde de statut : cloisonner reste réglable tournoi
+        en cours — c'est un critère de placement, pas une donnée de résultat, et le plan lui-même
+        s'ajuste jusqu'au bout (E03US004).
+        """
+        tournoi = self._tournois.par_id(tournoi_id)
+        if tournoi is None:
+            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+        enregistre = self._tournois.enregistrer(tournoi.definir_cloisonnement(cloisonnement))
+        return enregistre.cloisonnement
 
     def regenerer(
         self, tournoi_id: TournoiId, depart_id: DepartId, *, confirme: bool = False
@@ -167,7 +202,11 @@ class ServicePlacement:
                 archers_deplaces=impact.archers_deplaces,
                 cibles_avec_scores=impact.cibles_avec_scores,
             )
-        plan = placer(contexte.gabarit.cibles, tuple(contexte.donnees.values()))
+        plan = placer(
+            contexte.gabarit.cibles,
+            tuple(contexte.donnees.values()),
+            cloisonnement=contexte.cloisonnement,
+        )
         affectations = [
             Affectation(
                 inscription_id=contexte.inscription_par_archer[pose.archer_id],
@@ -325,7 +364,13 @@ class ServicePlacement:
             and inscription.id not in placees
             and inscription.id not in contexte.sans_blason
         )
-        poses, _ = placer_restants(contexte.gabarit.cibles, plan_actuel, contexte.donnees, a_placer)
+        poses, _ = placer_restants(
+            contexte.gabarit.cibles,
+            plan_actuel,
+            contexte.donnees,
+            a_placer,
+            cloisonnement=contexte.cloisonnement,
+        )
         nouvelles = [
             Affectation(
                 inscription_id=contexte.inscription_par_archer[pose.archer_id],
@@ -363,6 +408,18 @@ class ServicePlacement:
             contexte, affectations, cible_cible, candidat, exclus
         ) and self._accepte(contexte, affectations, cible_source, occupant_candidat, exclus)
         if not tient:
+            # Même distinction que `_valider_pose` : si les deux tiendraient **sans** le réglage,
+            # c'est lui qui refuse, et c'est ce qu'il faut dire.
+            sans_reglage = self._accepte_sans_cloisonnement(
+                contexte, affectations, cible_cible, candidat, exclus
+            ) and self._accepte_sans_cloisonnement(
+                contexte, affectations, cible_source, occupant_candidat, exclus
+            )
+            if contexte.cloisonnement is not Cloisonnement.AUCUN and sans_reglage:
+                raise DeplacementInvalide(
+                    "Échange refusé : le cloisonnement des cibles interdit de mêler ces archers "
+                    "sur une même cible."
+                )
             raise DeplacementInvalide(
                 "Échange refusé : l'un des deux archers ne tient pas à la place de l'autre "
                 "(capacité, espace ou hauteur)."
@@ -383,12 +440,24 @@ class ServicePlacement:
         candidat: ArcherAPlacer,
         exclus: set[InscriptionId],
     ) -> None:
-        """Refuse la pose si la cible ne peut pas accueillir le candidat (déplacement invalide)."""
-        if not self._accepte(contexte, affectations, cible, candidat, exclus):
+        """Refuse la pose si la cible ne peut pas accueillir le candidat (déplacement invalide).
+
+        Le message **nomme la cause** : un refus dû au cloisonnement (E03US007) se corrige en
+        desserrant un réglage, pas en libérant de la place — dire « capacité, espace ou hauteur »
+        enverrait l'admin chercher un problème qui n'existe pas."""
+        if self._accepte(contexte, affectations, cible, candidat, exclus):
+            return
+        if contexte.cloisonnement is not Cloisonnement.AUCUN and self._accepte_sans_cloisonnement(
+            contexte, affectations, cible, candidat, exclus
+        ):
             raise DeplacementInvalide(
-                "Déplacement refusé : la cible ne peut pas accueillir cet archer "
-                "(capacité, espace ou hauteur)."
+                "Déplacement refusé : le cloisonnement des cibles interdit de mêler ces archers "
+                "sur une même cible."
             )
+        raise DeplacementInvalide(
+            "Déplacement refusé : la cible ne peut pas accueillir cet archer "
+            "(capacité, espace ou hauteur)."
+        )
 
     def _accepte(
         self,
@@ -399,6 +468,22 @@ class ServicePlacement:
         exclus: set[InscriptionId],
     ) -> bool:
         """Vrai si `candidat` tient sur `cible` (occupants actuels lus des affectations)."""
+        occupants = self._occupants(contexte, affectations, cible.index, exclus)
+        return cible_accepte(cible, occupants, candidat, cloisonnement=contexte.cloisonnement)
+
+    def _accepte_sans_cloisonnement(
+        self,
+        contexte: _Contexte,
+        affectations: list[Affectation],
+        cible: Cible,
+        candidat: ArcherAPlacer,
+        exclus: set[InscriptionId],
+    ) -> bool:
+        """Même question, **réglage neutralisé** — sert à dire *pourquoi* un refus a lieu.
+
+        Deux usages : la raison de réserve (`CLOISONNEMENT` plutôt que `NON_PLACE`) et le message
+        d'un déplacement refusé. Sans cette seconde lecture, l'organisateur ne saurait pas si le
+        geste bute sur la salle (ajouter une cible) ou sur son propre réglage (le desserrer)."""
         occupants = self._occupants(contexte, affectations, cible.index, exclus)
         return cible_accepte(cible, occupants, candidat)
 
@@ -462,12 +547,18 @@ class ServicePlacement:
             # déjà chargée (`contexte.donnees`), avec le prédicat pur du domaine (ADR-0047). Même
             # régime que la raison de réserve : dérivé, jamais persisté.
             poses = sorted(placements_par_cible.get(cible.index, []), key=lambda p: p.position)
-            clubs = [contexte.donnees[pose.archer_id].club_id for pose in poses]
+            occupants = [contexte.donnees[pose.archer_id] for pose in poses]
             return CiblePlacee(
                 index=cible.index,
                 capacite=cible.capacite,
                 placements=tuple(poses),
-                mixite_non_garantie=cible_mixite_non_garantie(clubs),
+                mixite_non_garantie=cible_mixite_non_garantie([o.club_id for o in occupants]),
+                # E03US007 : même régime dérivé. Vrai uniquement sur un plan **posé avant**
+                # l'activation du réglage (le placement auto, lui, ne peut pas violer une contrainte
+                # dure) — c'est ce qui prévient l'admin qu'il lui reste un plan à régénérer.
+                cloisonnement_non_respecte=cible_cloisonnement_non_respecte(
+                    contexte.cloisonnement, occupants
+                ),
             )
 
         cibles = tuple(_figer(cible) for cible in contexte.gabarit.cibles)
@@ -481,6 +572,11 @@ class ServicePlacement:
         `SANS_BLASON` (donnée), sinon `NON_PLACE` si plus aucune cible ne l'accueille (saturé /
         hauteur), sinon `EN_RESERVE` (plaçable, mis de côté ou en attente). Ordre déterministe :
         celui des inscriptions.
+
+        **E03US007** : entre les deux, `CLOISONNEMENT` quand c'est le *réglage* — et non la salle —
+        qui l'exclut. On le sait en reposant la même question **sans** le cloisonnement : si une
+        cible l'accueillerait alors, le refus vient du réglage. Deux gestes différents pour l'admin
+        (desserrer le réglage vs. ajouter une cible), donc deux raisons distinctes.
         """
         cible_par_index = {cible.index: cible for cible in contexte.gabarit.cibles}
         occupants_par_index = {
@@ -503,10 +599,23 @@ class ServicePlacement:
                 continue
             candidat = contexte.donnees[archer_id]
             placable = any(
-                cible_accepte(cible_par_index[index], occupants, candidat)
+                cible_accepte(
+                    cible_par_index[index],
+                    occupants,
+                    candidat,
+                    cloisonnement=contexte.cloisonnement,
+                )
                 for index, occupants in occupants_par_index.items()
             )
-            raison = RaisonConflit.EN_RESERVE if placable else RaisonConflit.NON_PLACE
+            if placable:
+                raison = RaisonConflit.EN_RESERVE
+            elif contexte.cloisonnement is not Cloisonnement.AUCUN and any(
+                cible_accepte(cible_par_index[index], occupants, candidat)
+                for index, occupants in occupants_par_index.items()
+            ):
+                raison = RaisonConflit.CLOISONNEMENT
+            else:
+                raison = RaisonConflit.NON_PLACE
             conflits.append(
                 Conflit(archer_id=archer_id, raison=raison, inscription_id=inscription.id)
             )
@@ -514,7 +623,8 @@ class ServicePlacement:
 
     def _charger(self, tournoi_id: TournoiId, depart_id: DepartId) -> _Contexte:
         """Valide les gardes 404 et charge le décor du départ (cibles, inscrits, jointures)."""
-        if self._tournois.par_id(tournoi_id) is None:
+        tournoi = self._tournois.par_id(tournoi_id)
+        if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         depart = self._departs.par_id(depart_id)
         if depart is None or depart.tournoi_id != tournoi_id:
@@ -529,6 +639,7 @@ class ServicePlacement:
 
         contexte = _Contexte(
             gabarit=gabarit,
+            cloisonnement=tournoi.cloisonnement,
             inscriptions=[],
             donnees={},
             sans_blason=set(),
@@ -576,4 +687,7 @@ class ServicePlacement:
             # Club propagé pour la mixité ≥ 2 clubs/cible (E03US006). `None` (club inconnu,
             # ADR-0014) traverse tel quel : le moteur le traite comme indécidable, jamais même club.
             club_id=archer.club_id,
+            # Catégorie propagée pour le cloisonnement (E03US007) : c'est ici, et nulle part
+            # ailleurs, que la jointure archer → catégorie existe.
+            categorie_id=archer.categorie_id,
         )

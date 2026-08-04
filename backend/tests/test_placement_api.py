@@ -481,3 +481,154 @@ def test_plan_de_cibles_expose_le_drapeau_de_mixite(
     cible = reponse.json()["cibles"][0]
     assert len(cible["placements"]) == 2
     assert cible["mixite_non_garantie"] is True  # deux clubs inconnus → non garantie
+
+
+# --- Cloisonnement des cibles (E03US007) --------------------------------------------------
+#
+# Tests écrits **après** l'implémentation : câblage de route, pas d'oracle métier (règle 9).
+# La règle elle-même est couverte par `test_domain_placement_cloisonnement` et
+# `test_service_placement`.
+
+
+def _creer_categorie_sur_blason(
+    client: TestClient, tournoi_id: int, blason_id: int, libelle: str
+) -> int:
+    """Crée une catégorie **sur un blason existant** — deux catégories, un seul carton.
+
+    C'est le décor qui distingue `categorie` de `blason` : les séparer par blason ne changerait
+    rien ici, les séparer par catégorie change tout."""
+    categorie = client.post(
+        f"/api/v1/tournois/{tournoi_id}/categories",
+        json={"libelle": libelle, "blason_id": blason_id, "hauteur_cm": 130},
+    )
+    assert categorie.status_code == 201, categorie.text
+    return int(categorie.json()["id"])
+
+
+def _blason_de_categorie(client: TestClient, tournoi_id: int, categorie_id: int) -> int:
+    categories = client.get(f"/api/v1/tournois/{tournoi_id}/categories")
+    assert categories.status_code == 200, categories.text
+    ligne = next(c for c in categories.json() if c["id"] == categorie_id)
+    return int(ligne["blason_id"])
+
+
+def test_cloisonnement_par_defaut_est_aucun(
+    app_placement: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """RG-4 : un tournoi neuf ne cloisonne rien — le comportement d'E03US001 reste le défaut."""
+    with TestClient(app_placement) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/cloisonnement")
+
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.json() == {"cloisonnement": "aucun"}
+
+
+def test_regler_puis_relire_le_cloisonnement(
+    app_placement: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le PUT persiste le réglage (écriture par la file) et le GET le relit."""
+    with TestClient(app_placement) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        ecriture = client.put(
+            f"/api/v1/tournois/{tournoi_id}/cloisonnement",
+            json={"cloisonnement": "blason_et_categorie"},
+        )
+        lecture = client.get(f"/api/v1/tournois/{tournoi_id}/cloisonnement")
+
+    assert ecriture.status_code == 200, ecriture.text
+    assert lecture.json() == {"cloisonnement": "blason_et_categorie"}
+
+
+def test_valeur_de_cloisonnement_inconnue_est_refusee(
+    app_placement: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Une valeur hors des quatre positions est refusée **à la frontière** : elle n'atteint pas le
+    service (règle 6 — les DTO valident, le domaine ne se défend pas contre l'API).
+
+    400 `requete_invalide`, pas 422 : le dépôt traduit les erreurs de validation Pydantic dans son
+    propre format `{code, message, details}` (règle 5)."""
+    with TestClient(app_placement) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        reponse = client.put(
+            f"/api/v1/tournois/{tournoi_id}/cloisonnement", json={"cloisonnement": "par_club"}
+        )
+
+    assert reponse.status_code == 400, reponse.text
+    assert reponse.json()["code"] == "requete_invalide"
+
+
+def test_cloisonnement_d_un_tournoi_inconnu_est_404(app_placement: FastAPI) -> None:
+    """Garde 404 du service, traduite à la frontière."""
+    with TestClient(app_placement) as client:
+        reponse = client.get("/api/v1/tournois/9999/cloisonnement")
+
+    assert reponse.status_code == 404, reponse.text
+
+
+def test_regler_le_cloisonnement_exige_l_admin(app_placement: FastAPI) -> None:
+    """Écriture **admin** (E10US001) : sans session, 401/403 — jamais un réglage anonyme."""
+    with TestClient(app_placement) as client:
+        reponse = client.put(
+            "/api/v1/tournois/1/cloisonnement", json={"cloisonnement": "categorie"}
+        )
+
+    assert reponse.status_code in (401, 403), reponse.text
+
+
+def test_plan_genere_sous_cloisonnement_separe_les_categories(
+    app_placement: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Bout en bout : deux catégories d'un **même blason** finissent sur deux cibles distinctes."""
+    with TestClient(app_placement) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        _appliquer_gabarit(client, tournoi_id, nb_cibles=2)
+        premiere = _creer_categorie(client, tournoi_id)
+        blason_id = _blason_de_categorie(client, tournoi_id, premiere)
+        seconde = _creer_categorie_sur_blason(client, tournoi_id, blason_id, "Junior")
+        depart_id = _creer_depart(client, tournoi_id)
+        a1, _ = _inscrire_archer(client, tournoi_id, premiere, depart_id, prenom="Guillaume")
+        a2, _ = _inscrire_archer(client, tournoi_id, seconde, depart_id, prenom="Walter")
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/cloisonnement", json={"cloisonnement": "categorie"}
+        )
+
+        plan = _regenerer(client, tournoi_id, depart_id)
+
+    cible_de = {p["archer_id"]: c["index"] for c in plan["cibles"] for p in c["placements"]}
+    assert cible_de[a1] != cible_de[a2]
+
+
+def test_cible_non_conforme_est_signalee_dans_la_reponse(
+    app_placement: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le drapeau `cloisonnement_non_respecte` traverse jusqu'au JSON (badge front).
+
+    Décor : plan posé **sans** réglage (les deux catégories cohabitent), réglage activé ensuite —
+    personne ne bouge, la cible est signalée."""
+    with TestClient(app_placement) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        _appliquer_gabarit(client, tournoi_id, nb_cibles=2)
+        premiere = _creer_categorie(client, tournoi_id)
+        blason_id = _blason_de_categorie(client, tournoi_id, premiere)
+        seconde = _creer_categorie_sur_blason(client, tournoi_id, blason_id, "Junior")
+        depart_id = _creer_depart(client, tournoi_id)
+        _inscrire_archer(client, tournoi_id, premiere, depart_id, prenom="Guillaume")
+        _inscrire_archer(client, tournoi_id, seconde, depart_id, prenom="Walter")
+        _regenerer(client, tournoi_id, depart_id)
+
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/cloisonnement", json={"cloisonnement": "categorie"}
+        )
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/departs/{depart_id}/plan-de-cibles")
+
+    plan = reponse.json()
+    assert [c["cloisonnement_non_respecte"] for c in plan["cibles"]] == [True, False]

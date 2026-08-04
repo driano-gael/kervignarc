@@ -483,7 +483,13 @@ def _placer_duels(
     for a, b in paires:
         partenaire[a] = b
         partenaire[b] = a
-    return placer(cibles, archers, ordonner=lambda ar: _ordonner_pour_adjacence(ar, partenaire))
+    # La stratégie d'ordre reçoit le cloisonnement depuis E03US007 (clé de groupe) : ces tests-là
+    # ne cloisonnent pas, le paramètre traverse tel quel.
+    return placer(
+        cibles,
+        archers,
+        ordonner=lambda ar, cl: _ordonner_pour_adjacence(ar, cl, partenaire=partenaire),
+    )
 
 
 def test_duellistes_places_cote_a_cote_quand_la_cible_a_la_place() -> None:

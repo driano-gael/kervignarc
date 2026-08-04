@@ -18,6 +18,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.placement import ServicePlacement
+from domain.cloisonnement import Cloisonnement
 from domain.impact import ImpactRegeneration, NiveauImpact
 from domain.placement import CiblePlacee, Conflit, PlanDeCibles, RaisonConflit
 from infrastructure.db import WriteQueue
@@ -54,18 +55,24 @@ class CiblePlaceeReponse(BaseModel):
     `mixite_non_garantie` (RG-3, E03US006) : `true` quand la cible porte ≥ 2 archers sans qu'on
     puisse affirmer ≥ 2 clubs distincts (un seul club, ou clubs inconnus). Le front en fait un
     indicateur discret ; l'admin peut alors ajuster à la main (E03US004). Recalculé à la lecture,
-    jamais persisté (ADR-0047)."""
+    jamais persisté (ADR-0047).
+
+    `cloisonnement_non_respecte` (E03US007) : `true` quand la cible **mêle** ce que le réglage du
+    tournoi interdit de mêler. Impossible sur un plan fraîchement généré (la contrainte est dure) :
+    signale un plan **posé avant** l'activation du réglage, donc à régénérer. Dérivé lui aussi."""
 
     index: int
     capacite: int
     placements: list[PlacementReponse]
     mixite_non_garantie: bool
+    cloisonnement_non_respecte: bool
 
     @staticmethod
     def de_cible(cible: CiblePlacee) -> CiblePlaceeReponse:
         return CiblePlaceeReponse(
             index=cible.index,
             capacite=cible.capacite,
+            cloisonnement_non_respecte=cible.cloisonnement_non_respecte,
             placements=[
                 PlacementReponse(
                     position=p.position,
@@ -80,7 +87,8 @@ class CiblePlaceeReponse(BaseModel):
 
 
 class ConflitReponse(BaseModel):
-    """Un archer **en réserve** (non posé), et pourquoi : `non_place`/`sans_blason`/`en_reserve`.
+    """Un archer **en réserve** (non posé), et pourquoi : `non_place`/`sans_blason`/`en_reserve`/
+    `cloisonnement`.
 
     `inscription_id` : pour reposer l'archer depuis la réserve (drag) sans reconstituer la
     correspondance archer → inscription côté client."""
@@ -112,6 +120,24 @@ class PlanDeCiblesReponse(BaseModel):
             cibles=[CiblePlaceeReponse.de_cible(cible) for cible in plan.cibles],
             conflits=[ConflitReponse.de_conflit(conflit) for conflit in plan.conflits],
         )
+
+
+class CloisonnementReponse(BaseModel):
+    """Le cloisonnement des cibles réglé sur un tournoi (E03US007, RG-4).
+
+    Réglage **du tournoi**, pas du départ : il vaut pour tous les créneaux et pour le plan de duels
+    (même salle). `aucun` = comportement d'origine."""
+
+    cloisonnement: Cloisonnement
+
+
+class ReglerCloisonnementRequete(BaseModel):
+    """Corps du réglage : la valeur voulue parmi les quatre positions.
+
+    Pydantic **valide l'énumération** à la frontière : une valeur inconnue est refusée en 400
+    `requete_invalide` (format maison, règle 5) et n'atteint jamais le service (règle 6)."""
+
+    cloisonnement: Cloisonnement
 
 
 class ImpactRegenerationReponse(BaseModel):
@@ -168,6 +194,40 @@ async def plan_de_cibles(tournoi_id: int, depart_id: int, request: Request) -> P
     service: ServicePlacement = request.app.state.service_placement
     plan = await run_in_threadpool(service.plan_de_cibles, tournoi_id, depart_id)
     return PlanDeCiblesReponse.de_plan(depart_id, plan)
+
+
+@router.get("/tournois/{tournoi_id}/cloisonnement", response_model=CloisonnementReponse)
+async def cloisonnement_tournoi(tournoi_id: int, request: Request) -> CloisonnementReponse:
+    """Lit le cloisonnement des cibles réglé sur ce tournoi (E03US007, RG-4).
+
+    Lecture directe hors boucle événementielle, **ouverte** comme le plan de cibles lui-même : c'est
+    une donnée d'affichage, pas un secret. 404 si le tournoi est inconnu.
+    """
+    service: ServicePlacement = request.app.state.service_placement
+    valeur = await run_in_threadpool(service.cloisonnement, tournoi_id)
+    return CloisonnementReponse(cloisonnement=valeur)
+
+
+@router.put(
+    "/tournois/{tournoi_id}/cloisonnement",
+    response_model=CloisonnementReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def regler_cloisonnement(
+    tournoi_id: int, requete: ReglerCloisonnementRequete, request: Request
+) -> CloisonnementReponse:
+    """Règle le cloisonnement des cibles (**action admin**) : écriture via la file.
+
+    **Ne replace personne** — le plan matérialisé reste tel quel (ADR-0024) ; le réglage vaut pour
+    la prochaine régénération, les déplacements manuels, et le signal porté par les cibles déjà
+    posées qui le violent. Le front invalide donc le plan après ce PUT pour rafraîchir les badges.
+    """
+    service: ServicePlacement = request.app.state.service_placement
+    write_queue: WriteQueue = request.app.state.write_queue
+    valeur = await asyncio.wrap_future(
+        write_queue.submit(lambda: service.definir_cloisonnement(tournoi_id, requete.cloisonnement))
+    )
+    return CloisonnementReponse(cloisonnement=valeur)
 
 
 @router.get(

@@ -30,6 +30,7 @@ from application.placement import ServicePlacement
 from domain.archer import Archer, ArcherId
 from domain.blason import Blason, BlasonId, ZoneScore
 from domain.categorie import Categorie
+from domain.cloisonnement import Cloisonnement
 from domain.depart import Depart, DepartId
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
@@ -290,14 +291,25 @@ class _Monde:
         return depart.id
 
     def categorie(
-        self, *, taille: float = 0.5, hauteur: int = 130, avec_blason: bool = True
+        self,
+        *,
+        taille: float = 0.5,
+        hauteur: int = 130,
+        avec_blason: bool = True,
+        blason: int | None = None,
     ) -> int:
-        blason_id = None
-        if avec_blason:
-            blason = self.blasons.ajouter(
+        """Crée une catégorie et, sauf `blason` fourni, **son** blason.
+
+        `blason` sert au cloisonnement (E03US007) : deux catégories **partageant** un blason est
+        précisément le cas où `categorie` et `blason` ne cloisonnent pas pareil."""
+        blason_id = blason
+        if avec_blason and blason_id is None:
+            nouveau = self.blasons.ajouter(
                 Blason.creer(self.tournoi_id, "B", taille=taille, capacite=1)
             )
-            blason_id = blason.id
+            blason_id = nouveau.id
+        if not avec_blason:
+            blason_id = None
         categorie = self.categories.ajouter(
             Categorie.creer(self.tournoi_id, "Cat", blason_id=blason_id, hauteur_cm=hauteur)
         )
@@ -875,3 +887,164 @@ def test_mixite_club_inconnu_ne_peut_etre_affirmee_donc_signalee() -> None:
     plan = monde.service.plan_de_cibles(monde.tournoi_id, depart)
 
     assert plan.cibles[0].mixite_non_garantie is True
+
+
+# --- Cloisonnement catégorie/blason (E03US007) --------------------------------------------
+#
+# Tests écrits **depuis le CA** et les arbitrages de cadrage du 04/08/2026 (réglage à quatre
+# positions, contrainte **dure**, réserve avec raison explicite), avant l'implémentation du
+# service : la règle métier — « qu'est-ce qui empêche cet archer de tenir, et que doit voir
+# l'organisateur » — vit ici, pas seulement dans le moteur.
+
+
+def test_cloisonnement_par_categorie_separe_deux_categories_du_meme_blason() -> None:
+    """Deux catégories qui tirent le **même** blason ne partagent plus une cible sous `categorie`.
+
+    Le service est le seul endroit où la jointure archer → catégorie existe : c'est lui qui doit
+    porter `categorie_id` jusqu'au moteur, sans quoi le réglage n'aurait aucun effet observable."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat_a = monde.categorie(taille=0.25)
+    cat_b = monde.categorie(taille=0.25, blason=1)  # partage le blason de `cat_a`
+    monde.service.definir_cloisonnement(monde.tournoi_id, Cloisonnement.CATEGORIE)
+    a = monde.inscrire(depart, cat_a)
+    b = monde.inscrire(depart, cat_b)
+
+    plan = monde.service.regenerer(monde.tournoi_id, depart)
+
+    cibles = {p.archer_id: cible.index for cible in plan.cibles for p in cible.placements}
+    assert cibles[a] != cibles[b]
+
+
+def test_sans_reglage_les_deux_categories_partagent_la_cible() -> None:
+    """Non-régression : sans réglage, le plan est celui d'E03US001 (mêmes archers, même cible)."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat_a = monde.categorie(taille=0.25)
+    cat_b = monde.categorie(taille=0.25, blason=1)
+    a = monde.inscrire(depart, cat_a)
+    b = monde.inscrire(depart, cat_b)
+
+    plan = monde.service.regenerer(monde.tournoi_id, depart)
+
+    cibles = {p.archer_id: cible.index for cible in plan.cibles for p in cible.placements}
+    assert cibles[a] == cibles[b]
+
+
+def test_reserve_distingue_le_cloisonnement_de_la_saturation() -> None:
+    """Un archer que **le réglage** empêche de placer porte la raison `CLOISONNEMENT`.
+
+    Distinction utile : « désactivez le réglage ou ajoutez une cible » n'est pas le même geste que
+    « la salle est pleine ». Le moteur ne peut pas la faire (il n'a qu'un monde à sa disposition) ;
+    le service, si — il rejoue la question sans le cloisonnement."""
+    monde = _Monde(capacites=(4,))  # une seule cible, largement assez grande
+    depart = monde.depart(1)
+    cat_a = monde.categorie(taille=0.25)
+    cat_b = monde.categorie(taille=0.25, blason=1)
+    monde.service.definir_cloisonnement(monde.tournoi_id, Cloisonnement.CATEGORIE)
+    monde.inscrire(depart, cat_a)
+    exclu = monde.inscrire(depart, cat_b)
+
+    plan = monde.service.regenerer(monde.tournoi_id, depart)
+
+    raisons = {c.archer_id: c.raison for c in plan.conflits}
+    assert raisons[exclu] is RaisonConflit.CLOISONNEMENT
+
+
+def test_salle_pleine_reste_non_place_meme_sous_cloisonnement() -> None:
+    """Réglage actif mais **sans rapport** avec le refus : la raison reste `NON_PLACE`.
+
+    Sans ce test, une implémentation qui qualifierait de « cloisonnement » tout refus sous réglage
+    actif passerait — et mentirait à l'organisateur sur ce qu'il doit changer."""
+    monde = _Monde(capacites=(1,))
+    depart = monde.depart(1)
+    cat = monde.categorie(taille=1.0)
+    monde.service.definir_cloisonnement(monde.tournoi_id, Cloisonnement.CATEGORIE)
+    monde.inscrire(depart, cat)
+    surnombre = monde.inscrire(depart, cat)  # même catégorie : le cloisonnement n'y est pour rien
+
+    plan = monde.service.regenerer(monde.tournoi_id, depart)
+
+    raisons = {c.archer_id: c.raison for c in plan.conflits}
+    assert raisons[surnombre] is RaisonConflit.NON_PLACE
+
+
+def test_deplacement_manuel_violant_le_cloisonnement_est_refuse() -> None:
+    """La contrainte vaut aussi au glisser-déposer : refus 409, **état inchangé**.
+
+    Une contrainte « dure à la génération, molle à la main » se contournerait d'un geste sans que
+    l'admin le sache — le plan afficherait alors une salle non conforme sans rien signaler."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat_a = monde.categorie(taille=0.25)
+    cat_b = monde.categorie(taille=0.25, blason=1)
+    monde.service.definir_cloisonnement(monde.tournoi_id, Cloisonnement.CATEGORIE)
+    monde.inscrire(depart, cat_a)
+    intrus = monde.inscrire(depart, cat_b)
+    monde.service.regenerer(monde.tournoi_id, depart)
+    avant = monde.service.plan_de_cibles(monde.tournoi_id, depart)
+
+    with pytest.raises(DeplacementInvalide) as refus:
+        monde.service.deplacer(monde.tournoi_id, depart, monde.inscription(intrus), 1, "B")
+
+    assert "cloisonnement" in str(refus.value).lower()
+    assert monde.service.plan_de_cibles(monde.tournoi_id, depart) == avant
+
+
+def test_plan_pose_avant_le_reglage_est_signale_non_conforme() -> None:
+    """Activer le réglage **ne déplace personne** : la cible devenue non conforme est signalée.
+
+    C'est le seul chemin par lequel `cloisonnement_non_respecte` peut valoir `True` — le placement
+    auto, lui, ne peut pas produire une cible non conforme."""
+    monde = _Monde(capacites=(4,))
+    depart = monde.depart(1)
+    cat_a = monde.categorie(taille=0.25)
+    cat_b = monde.categorie(taille=0.25, blason=1)
+    monde.inscrire(depart, cat_a)
+    monde.inscrire(depart, cat_b)
+    monde.service.regenerer(monde.tournoi_id, depart)  # plan posé **sans** réglage : ils cohabitent
+
+    monde.service.definir_cloisonnement(monde.tournoi_id, Cloisonnement.CATEGORIE)
+    plan = monde.service.plan_de_cibles(monde.tournoi_id, depart)
+
+    assert len(plan.cibles[0].placements) == 2  # personne n'a bougé
+    assert plan.cibles[0].cloisonnement_non_respecte is True
+
+
+def test_placer_les_restants_respecte_le_cloisonnement() -> None:
+    """« Placer les restants » comble les trous sans casser le réglage (cible suivante)."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat_a = monde.categorie(taille=0.25)
+    cat_b = monde.categorie(taille=0.25, blason=1)
+    monde.service.definir_cloisonnement(monde.tournoi_id, Cloisonnement.CATEGORIE)
+    a = monde.inscrire(depart, cat_a)
+    b = monde.inscrire(depart, cat_b)
+    monde.service.deplacer(monde.tournoi_id, depart, monde.inscription(a), 1, "A")
+
+    plan = monde.service.placer_les_restants(monde.tournoi_id, depart)
+
+    cibles = {p.archer_id: cible.index for cible in plan.cibles for p in cible.placements}
+    assert cibles[a] == 1
+    assert cibles[b] == 2
+
+
+def test_reglage_lu_et_ecrit_sur_le_tournoi() -> None:
+    """Le réglage se lit et s'écrit sur le tournoi ; `aucun` par défaut (RG-4)."""
+    monde = _Monde(capacites=(4,))
+
+    assert monde.service.cloisonnement(monde.tournoi_id) is Cloisonnement.AUCUN
+
+    monde.service.definir_cloisonnement(monde.tournoi_id, Cloisonnement.BLASON_ET_CATEGORIE)
+
+    assert monde.service.cloisonnement(monde.tournoi_id) is Cloisonnement.BLASON_ET_CATEGORIE
+
+
+def test_reglage_sur_un_tournoi_inconnu_est_un_404() -> None:
+    """Lire ou régler le cloisonnement d'un tournoi inexistant lève `TournoiIntrouvable`."""
+    monde = _Monde(capacites=(4,))
+
+    with pytest.raises(TournoiIntrouvable):
+        monde.service.cloisonnement(999)
+    with pytest.raises(TournoiIntrouvable):
+        monde.service.definir_cloisonnement(999, Cloisonnement.BLASON)

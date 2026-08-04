@@ -29,6 +29,7 @@ from application.erreurs import (
 )
 from application.prelevement import preleves, profondeur_de
 from domain.archer import ArcherId
+from domain.cloisonnement import Cloisonnement
 from domain.gabarit_salle import Cible, GabaritSalle
 from domain.inscription import Inscription, InscriptionId
 from domain.participant import GenreParticipant, Participant
@@ -89,6 +90,10 @@ class _Contexte:
 
     phase_id: PhaseId
     gabarit: GabaritSalle
+    # Cloisonnement des cibles réglé sur le tournoi (E03US007) : le plan de duels est posé dans la
+    # **même salle** que la qualification, un réglage qui ne vaudrait que pour l'une serait
+    # incompréhensible pour l'organisateur.
+    cloisonnement: Cloisonnement = Cloisonnement.AUCUN
     inscriptions: list[Inscription] = field(default_factory=list)
     donnees: dict[ArcherId, ArcherAPlacer] = field(default_factory=dict)
     sans_blason: set[InscriptionId] = field(default_factory=set)
@@ -165,6 +170,7 @@ class ServicePlacementDuels:
             contexte.gabarit.cibles,
             tuple(contexte.donnees.values()),
             ordonner=partial(_ordonner_pour_adjacence, partenaire=contexte.partenaire),
+            cloisonnement=contexte.cloisonnement,
         )
         affectations = [
             Affectation(
@@ -269,6 +275,7 @@ class ServicePlacementDuels:
             contexte.donnees,
             a_placer,
             ordonner=partial(_ordonner_pour_adjacence, partenaire=contexte.partenaire),
+            cloisonnement=contexte.cloisonnement,
         )
         nouvelles = [
             Affectation(
@@ -372,7 +379,7 @@ class ServicePlacementDuels:
             and affectation.inscription_id not in exclus
             and contexte.est_placable(affectation.inscription_id)
         )
-        return cible_accepte(cible, occupants, candidat)
+        return cible_accepte(cible, occupants, candidat, cloisonnement=contexte.cloisonnement)
 
     def _cible(self, gabarit: GabaritSalle, cible_index: int) -> Cible:
         """Renvoie la cible d'index donné, ou lève `DeplacementInvalide` si elle n'existe pas."""
@@ -445,10 +452,25 @@ class ServicePlacementDuels:
                 continue
             candidat = contexte.donnees[archer_id]
             placable = any(
-                cible_accepte(cible_par_index[index], occupants, candidat)
+                cible_accepte(
+                    cible_par_index[index],
+                    occupants,
+                    candidat,
+                    cloisonnement=contexte.cloisonnement,
+                )
                 for index, occupants in occupants_par_index.items()
             )
-            raison = RaisonConflit.EN_RESERVE if placable else RaisonConflit.NON_PLACE
+            if placable:
+                raison = RaisonConflit.EN_RESERVE
+            elif contexte.cloisonnement is not Cloisonnement.AUCUN and any(
+                cible_accepte(cible_par_index[index], occupants, candidat)
+                for index, occupants in occupants_par_index.items()
+            ):
+                # Même distinction qu'en qualification : c'est le **réglage** qui exclut, pas la
+                # salle (E03US007) — deux gestes différents pour l'organisateur.
+                raison = RaisonConflit.CLOISONNEMENT
+            else:
+                raison = RaisonConflit.NON_PLACE
             conflits.append(Conflit(archer_id, raison, inscription.id))
         return tuple(conflits)
 
@@ -456,7 +478,8 @@ class ServicePlacementDuels:
 
     def _charger(self, tournoi_id: TournoiId, phase_id: PhaseId) -> _Contexte:
         """Valide les gardes et assemble le décor : classement → arbre → duellistes du 1er tour."""
-        if self._tournois.par_id(tournoi_id) is None:
+        tournoi = self._tournois.par_id(tournoi_id)
+        if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         phase = self._phases.par_id(phase_id)
         if phase is None or phase.tournoi_id != tournoi_id:
@@ -471,7 +494,9 @@ class ServicePlacementDuels:
                 f"Aucun gabarit de salle n'est appliqué au tournoi {tournoi_id}."
             )
 
-        contexte = _Contexte(phase_id=phase_id, gabarit=gabarit)
+        contexte = _Contexte(
+            phase_id=phase_id, gabarit=gabarit, cloisonnement=tournoi.cloisonnement
+        )
         classement = self._classements.pour_tournoi(tournoi_id)
         # ⚠️ **Même ensemencement que la reconstruction, par la même fonction** (E05US020) : le
         # plan pose les duellistes que le tableau fera jouer. Les deux règles étaient **recopiées**,
@@ -575,4 +600,5 @@ class ServicePlacementDuels:
             capacite_blason=blason.capacite,
             hauteur_cm=categorie.hauteur_cm,
             club_id=archer.club_id,
+            categorie_id=archer.categorie_id,
         )
