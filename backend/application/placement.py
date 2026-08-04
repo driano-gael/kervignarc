@@ -409,13 +409,17 @@ class ServicePlacement:
         ) and self._accepte(contexte, affectations, cible_source, occupant_candidat, exclus)
         if not tient:
             # Même distinction que `_valider_pose` : si les deux tiendraient **sans** le réglage,
-            # c'est lui qui refuse, et c'est ce qu'il faut dire.
-            sans_reglage = self._accepte_sans_cloisonnement(
-                contexte, affectations, cible_cible, candidat, exclus
-            ) and self._accepte_sans_cloisonnement(
-                contexte, affectations, cible_source, occupant_candidat, exclus
-            )
-            if contexte.cloisonnement is not Cloisonnement.AUCUN and sans_reglage:
+            # c'est lui qui refuse, et c'est ce qu'il faut dire. Le garde vient **d'abord** (comme
+            # dans `_valider_pose`) : sans réglage actif, les deux rejeux supplémentaires seraient
+            # payés à chaque échange refusé — le cas nominal — pour une réponse connue d'avance.
+            if contexte.cloisonnement is not Cloisonnement.AUCUN and (
+                self._accepte_sans_cloisonnement(
+                    contexte, affectations, cible_cible, candidat, exclus
+                )
+                and self._accepte_sans_cloisonnement(
+                    contexte, affectations, cible_source, occupant_candidat, exclus
+                )
+            ):
                 raise DeplacementInvalide(
                     "Échange refusé : le cloisonnement des cibles interdit de mêler ces archers "
                     "sur une même cible."
@@ -444,12 +448,24 @@ class ServicePlacement:
 
         Le message **nomme la cause** : un refus dû au cloisonnement (E03US007) se corrige en
         desserrant un réglage, pas en libérant de la place — dire « capacité, espace ou hauteur »
-        enverrait l'admin chercher un problème qui n'existe pas."""
+        enverrait l'admin chercher un problème qui n'existe pas. Et il distingue **deux** refus de
+        cloisonnement, parce qu'ils n'appellent pas le même geste : le candidat qui mêlerait, et la
+        cible **déjà** non conforme (plan posé avant l'activation du réglage), où même une pose
+        « neutre » est refusée. Dans ce second cas, accuser le candidat serait faux — ce n'est pas
+        lui qui mêle quoi que ce soit —, et l'admin chercherait indéfiniment ce qu'il a mal fait.
+        """
         if self._accepte(contexte, affectations, cible, candidat, exclus):
             return
         if contexte.cloisonnement is not Cloisonnement.AUCUN and self._accepte_sans_cloisonnement(
             contexte, affectations, cible, candidat, exclus
         ):
+            occupants = self._occupants(contexte, affectations, cible.index, exclus)
+            if cible_cloisonnement_non_respecte(contexte.cloisonnement, occupants):
+                raise DeplacementInvalide(
+                    f"Déplacement refusé : la cible {cible.index} ne respecte déjà pas le "
+                    "cloisonnement demandé. Régénérez le plan, ou videz-la, avant d'y poser un "
+                    "archer."
+                )
             raise DeplacementInvalide(
                 "Déplacement refusé : le cloisonnement des cibles interdit de mêler ces archers "
                 "sur une même cible."

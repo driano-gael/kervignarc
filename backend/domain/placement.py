@@ -367,7 +367,12 @@ class _CibleEnCours:
 
         Sert à valider un déplacement manuel (E03US004) avant de l'appliquer : on ne veut pas
         modifier la cible pour tester, seulement répondre oui/non aux quatre budgets — et, depuis
-        E03US007, au cloisonnement actif."""
+        E03US007, au cloisonnement actif.
+
+        `accueille` **en dérive** (il pose ce que celle-ci autorise) : les gardes ne sont écrites
+        qu'ici. Elles l'étaient en double jusqu'à E03US007, qui a ajouté la même ligne de
+        cloisonnement aux deux — c'est précisément la duplication qu'ADR-0023 §2 guettait, et le
+        remède tient en une délégation, pas en un registre de contraintes (ADR-0071 §6)."""
         if self.positions_restantes == 0:
             return False
         if self.hauteur is not None and self.hauteur != archer.hauteur_cm:
@@ -399,29 +404,27 @@ class _CibleEnCours:
     def accueille(self, archer: ArcherAPlacer) -> bool:
         """Tente de poser `archer` sur cette cible ; renvoie `True` si posé, `False` sinon.
 
-        On mutualise d'abord un carton déjà présent du même blason (aucun coût d'espace), sinon on
-        pose un carton neuf si l'espace, une position **et** la hauteur le permettent. Le
-        **cloisonnement** (E03US007) est une porte de plus, franchie avant tout partage de carton :
-        deux archers du même blason peuvent appartenir à deux catégories que le réglage sépare."""
-        if self.positions_restantes == 0:
-            return False
-        if self.hauteur is not None and self.hauteur != archer.hauteur_cm:
-            return False
-        if not _cloisonnement_admet(self.cloisonnement, self.archers_poses, archer):
+        **Les gardes ne sont pas réécrites ici** : elles vivent dans `peut_accueillir`, dont cette
+        méthode est l'exécution. Poser exactement ce qu'on autorise est le seul moyen d'être sûr que
+        les deux ne divergeront pas — elles avaient déjà commencé à le faire (E03US007 a dû ajouter
+        la ligne de cloisonnement des deux côtés). Ce qui reste ici est la **consommation** des
+        budgets : on mutualise d'abord un carton du même blason (aucun coût d'espace), sinon on pose
+        un carton neuf."""
+        if not self.peut_accueillir(archer):
             return False
         # Partage d'un carton existant du même blason : il reste une place dessus.
         if self.cartons.get(archer.blason_id, 0) > 0:
             self._poser(archer)
             self.cartons[archer.blason_id] -= 1
             return True
-        # Carton neuf : il faut de la place physique pour sa fraction.
-        if archer.taille <= self.espace_restant + _EPSILON:
-            self.espace_restant -= archer.taille
-            self.cartons[archer.blason_id] = archer.capacite_blason - 1
-            self.hauteur = archer.hauteur_cm
-            self._poser(archer)
-            return True
-        return False
+        # Carton neuf. La place physique n'est **plus retestée** ici : la garde vient de le faire,
+        # et la retester laisserait croire qu'elle peut échouer — un futur lecteur y verrait une
+        # branche morte à supprimer, ou pire, une seconde règle à maintenir.
+        self.espace_restant -= archer.taille
+        self.cartons[archer.blason_id] = archer.capacite_blason - 1
+        self.hauteur = archer.hauteur_cm
+        self._poser(archer)
+        return True
 
     def _poser(self, archer: ArcherAPlacer) -> None:
         self.positions.append(
@@ -491,9 +494,15 @@ def _cle_de_groupe(
 
     `categorie_id` à `None` est trié comme `-1` : une valeur fixe, pour que le tri reste **total et
     déterministe** (règle 9) — `None` n'est pas comparable à un `int`. Le refus des indécidables est
-    la responsabilité du prédicat de cloisonnement, pas du tri."""
+    la responsabilité du prédicat de cloisonnement, pas du tri. Le test est `is not None` et non la
+    véracité : une catégorie d'identifiant `0` est une catégorie **connue**, et la ranger avec les
+    inconnues ferait diverger le tri du prédicat, qui la traite bien comme décidable."""
     if cloisonnement.separe_categorie:
-        return lambda a: (a.hauteur_cm, a.blason_id, a.categorie_id if a.categorie_id else -1)
+        return lambda a: (
+            a.hauteur_cm,
+            a.blason_id,
+            a.categorie_id if a.categorie_id is not None else -1,
+        )
     return lambda a: (a.hauteur_cm, a.blason_id, 0)
 
 
@@ -665,15 +674,20 @@ def cible_accepte(
     densément via `accueille`. Un **échange** A↔B se compose de deux appels : A accepté par la cible
     de B *privée de B*, et B accepté par la cible de A *privée de A*.
 
-    ⚠️ Les occupants sont rejoués **sans** cloisonnement (`_CibleEnCours` neutre) : sur un plan
-    antérieur à l'activation du réglage, une cible peut déjà mêler deux catégories, et rejouer sous
-    contrainte en perdrait une — on validerait alors le candidat contre une cible imaginaire, plus
-    vide que la vraie. La contrainte est appliquée au seul **candidat**, contre les occupants
-    réels."""
+    ⚠️ **Le cloisonnement se juge sur les occupants réels, pas sur le rejeu** — et c'est une
+    correction de revue, pas un détail de style. Le rejeu peut **perdre** un occupant (`accueille`
+    rend `False` sans qu'on le sache) dès que l'état persisté a cessé d'être conforme aux données :
+    il suffit d'éditer la hauteur d'une catégorie ou la taille d'un blason **après** placement, ce
+    qu'aucune garde n'interdit. On jugerait alors la règle contre une cible plus pauvre que la vraie
+    et l'on accepterait une pose qui laisse la cible non conforme — l'exact contraire de
+    l'invariant annoncé (« sur une cible déjà non conforme, toute pose est refusée »). Le prédicat
+    pur est donc évalué **d'abord**, sur `[*occupants, candidat]` tels qu'ils sont ; le rejeu ne
+    sert plus qu'aux trois budgets, et `_CibleEnCours` reste neutre de bout en bout."""
+    if cible_cloisonnement_non_respecte(cloisonnement, [*occupants, candidat]):
+        return False
     en_cours = _CibleEnCours(cible, _ESPACE_CIBLE)
     for occupant in occupants:
         en_cours.accueille(occupant)
-    en_cours.cloisonnement = cloisonnement
     return en_cours.peut_accueillir(candidat)
 
 
@@ -696,10 +710,14 @@ def placer_restants(
     que les **nouvelles** poses : les archers déjà placés ne bougent pas.
 
     Le `cloisonnement` (E03US007) ne s'applique qu'aux **nouvelles** poses : les occupants sont
-    repris tels quels (`reprendre` n'a rien à valider — l'état persisté existe déjà, conforme ou
-    non), puis la contrainte est activée pour la suite. Un archer qu'elle exclut de partout reste en
-    réserve, comme un archer que la salle ne peut plus prendre."""
-    par_index = {cible.index: _CibleEnCours(cible, _ESPACE_CIBLE) for cible in cibles}
+    repris par `reprendre`, qui ne consulte aucune garde — l'état persisté existe déjà, conforme ou
+    non, il n'y a rien à valider. La contrainte est donc posée **au constructeur** et ne gêne pas la
+    reprise. Un archer qu'elle exclut de partout reste en réserve, comme un archer que la salle ne
+    peut plus prendre."""
+    par_index = {
+        cible.index: _CibleEnCours(cible, _ESPACE_CIBLE, cloisonnement=cloisonnement)
+        for cible in cibles
+    }
     placee_par_index = {cible_placee.index: cible_placee for cible_placee in plan_actuel}
     for cible in cibles:
         en_cours = par_index[cible.index]
@@ -707,7 +725,6 @@ def placer_restants(
         if placee is not None:
             for pose in placee.placements:
                 en_cours.reprendre(donnees[pose.archer_id], pose.position)
-        en_cours.cloisonnement = cloisonnement
 
     poses: list[PoseCalculee] = []
     conflits: list[Conflit] = []

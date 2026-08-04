@@ -297,3 +297,72 @@ def test_signal_de_cloisonnement_porte_par_le_plan() -> None:
         cloisonnement=Cloisonnement.CATEGORIE,
     )
     assert all(cible.cloisonnement_non_respecte is False for cible in conforme.cibles)
+
+
+# --- Ce que la revue a relevé comme documenté mais non fixé -------------------------------------
+
+
+def test_pose_refusee_sur_une_cible_deja_non_conforme_meme_neutre() -> None:
+    """Sur une cible **déjà** non conforme, même une pose « neutre » est refusée.
+
+    Comportement écrit dans l'ADR, la docstring et la fiche de recette — donc opposable — et que
+    rien ne fixait : passer à une règle « ne pas aggraver » (tentation naturelle d'un futur
+    correctif) n'aurait rien cassé. Le choix retenu est la prévisibilité : une règle « ne pas
+    aggraver » dépendrait de l'ordre des gestes."""
+    cible = Cible(index=1, capacite=4)
+    occupants = (_archer(1, categorie=1), _archer(2, categorie=2))  # plan antérieur au réglage
+
+    assert not cible_accepte(
+        cible, occupants, _archer(3, categorie=1), cloisonnement=Cloisonnement.CATEGORIE
+    )
+
+
+def test_cloisonnement_juge_les_occupants_reels_pas_le_rejeu() -> None:
+    """Un occupant que le rejeu ne peut pas reposer ne doit pas **disparaître** de la règle.
+
+    `cible_accepte` reconstitue les budgets en rejouant les occupants ; ce rejeu peut en perdre un
+    dès que l'état persisté a cessé d'être conforme aux données (hauteur de catégorie ou taille de
+    blason éditées **après** placement, ce qu'aucune garde n'interdit). Juger le cloisonnement sur
+    la cible rejouée revenait alors à la juger plus vide qu'elle n'est — et à accepter une pose qui
+    laisse la cible non conforme, l'exact contraire de l'invariant ci-dessus. Trouvé par la revue
+    adversariale."""
+    cible = Cible(index=1, capacite=4)
+    # Le second occupant a une hauteur incompatible : le rejeu le perd (une butte, une hauteur).
+    occupants = (
+        _archer(1, categorie=1, hauteur=130),
+        _archer(2, categorie=2, hauteur=110),
+    )
+
+    assert cible_cloisonnement_non_respecte(Cloisonnement.CATEGORIE, occupants)
+    assert not cible_accepte(
+        cible,
+        occupants,
+        _archer(3, categorie=1, hauteur=130),
+        cloisonnement=Cloisonnement.CATEGORIE,
+    )
+
+
+def test_categorie_inconnue_ne_gene_pas_un_cloisonnement_par_blason() -> None:
+    """L'indécidable ne pèse que là où le réglage le regarde.
+
+    Sous `BLASON`, deux archers de catégorie inconnue partageant un carton **doivent** cohabiter :
+    sortir le test de `None` du bloc « sépare la catégorie » (refactor plausible) éparpillerait un
+    archer par cible sans qu'aucun test ne s'en plaigne."""
+    inconnus = (_archer(1, categorie=None), _archer(2, categorie=None))
+
+    assert not cible_cloisonnement_non_respecte(Cloisonnement.BLASON, inconnus)
+    assert cible_cloisonnement_non_respecte(Cloisonnement.BLASON_ET_CATEGORIE, inconnus)
+
+
+def test_categorie_zero_est_une_categorie_connue() -> None:
+    """`0` est un identifiant, pas une absence — tri et prédicat doivent en convenir.
+
+    Le tri d'entrée mappait `None` **et** `0` sur la même valeur sentinelle (test de véracité au
+    lieu de nullité) alors que le prédicat traite `0` comme décidable : les deux divergeaient sur
+    cette valeur. Inatteignable en base (identifiants ≥ 1), fixé pour que le jour où une sentinelle
+    apparaîtra, ce soit un choix et non une surprise."""
+    memes = (_archer(1, categorie=0), _archer(2, categorie=0))
+
+    assert not cible_cloisonnement_non_respecte(Cloisonnement.CATEGORIE, memes)
+    plan = placer(_cibles(2), memes, cloisonnement=Cloisonnement.CATEGORIE)
+    assert _archers_de(plan.cibles[0]) == (1, 2)

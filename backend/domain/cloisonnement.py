@@ -8,7 +8,7 @@ depuis `Tournoi` fermerait un **cycle d'imports**. Un value object partagé, san
 sortie habituelle — et il dit ce qu'il est : une valeur de configuration, pas un morceau
 d'algorithme.
 
-`domain/placement` la ré-exporte pour que le moteur se lise d'un bloc.
+`domain/placement` l'importe et s'en sert ; c'est ici qu'elle est **définie**.
 """
 
 from __future__ import annotations
@@ -47,9 +47,13 @@ class Cloisonnement(str, Enum):
     @property
     def separe_categorie(self) -> bool:
         """Vrai si ce réglage interdit deux catégories sur une même cible."""
+        # DETTE-036 : `BLASON_ET_CATEGORIE` rend ici la même réponse que `CATEGORIE`, et là-bas la
+        # même que `BLASON` — la quatrième position n'a pas d'effet distinct tant que le blason
+        # dérive de la catégorie. Se résorbe d'elle-même avec EF-1.4 (surcharge par phase).
         return self in (Cloisonnement.CATEGORIE, Cloisonnement.BLASON_ET_CATEGORIE)
 
     @property
     def separe_blason(self) -> bool:
         """Vrai si ce réglage interdit deux blasons sur une même cible."""
+        # DETTE-036 (voir ci-dessus).
         return self in (Cloisonnement.BLASON, Cloisonnement.BLASON_ET_CATEGORIE)

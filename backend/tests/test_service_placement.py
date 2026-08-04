@@ -1048,3 +1048,52 @@ def test_reglage_sur_un_tournoi_inconnu_est_un_404() -> None:
         monde.service.cloisonnement(999)
     with pytest.raises(TournoiIntrouvable):
         monde.service.definir_cloisonnement(999, Cloisonnement.BLASON)
+
+
+def test_echange_refuse_par_le_cloisonnement_nomme_la_cause() -> None:
+    """L'échange atomique **aussi** nomme le cloisonnement quand c'est lui qui refuse.
+
+    Branche ajoutée par E03US007 et qu'aucun test n'exerçait : inverser le `and` en `or`, ou
+    oublier le garde « réglage actif », serait passé inaperçu."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat_a = monde.categorie(taille=0.25)
+    cat_b = monde.categorie(taille=0.25, blason=1)
+    a1 = monde.inscrire(depart, cat_a)
+    a2 = monde.inscrire(depart, cat_a)  # **reste** sur la cible 1 : c'est lui qui rend l'échange
+    b1 = monde.inscrire(depart, cat_b)  # illégal (échanger deux cibles vides serait conforme)
+    monde.service.deplacer(monde.tournoi_id, depart, monde.inscription(a1), 1, "A")
+    monde.service.deplacer(monde.tournoi_id, depart, monde.inscription(a2), 1, "B")
+    monde.service.deplacer(monde.tournoi_id, depart, monde.inscription(b1), 2, "A")
+    monde.service.definir_cloisonnement(monde.tournoi_id, Cloisonnement.CATEGORIE)
+    avant = monde.service.plan_de_cibles(monde.tournoi_id, depart)
+
+    with pytest.raises(DeplacementInvalide) as refus:
+        monde.service.deplacer(monde.tournoi_id, depart, monde.inscription(a1), 2, "A")
+
+    assert "cloisonnement" in str(refus.value).lower()
+    assert monde.service.plan_de_cibles(monde.tournoi_id, depart) == avant
+
+
+def test_pose_sur_une_cible_deja_non_conforme_dit_de_regenerer() -> None:
+    """Sur une cible déjà non conforme, le refus **n'accuse pas le candidat**.
+
+    Relevé en revue : le message « le cloisonnement interdit de mêler ces archers » est faux ici —
+    ce n'est pas le candidat qui mêle quoi que ce soit, c'est la cible qui est en faute. L'admin,
+    qui voit justement le badge ambre sur cette cible, doit lire quoi faire."""
+    monde = _Monde(capacites=(4, 4))
+    depart = monde.depart(1)
+    cat_a = monde.categorie(taille=0.25)
+    cat_b = monde.categorie(taille=0.25, blason=1)
+    monde.inscrire(depart, cat_a)
+    monde.inscrire(depart, cat_b)
+    monde.service.regenerer(monde.tournoi_id, depart)  # plan posé **sans** réglage : ils cohabitent
+    monde.service.definir_cloisonnement(monde.tournoi_id, Cloisonnement.CATEGORIE)
+    tardif = monde.inscrire(depart, cat_a)
+
+    with pytest.raises(DeplacementInvalide) as refus:
+        monde.service.deplacer(monde.tournoi_id, depart, monde.inscription(tardif), 1, "C")
+
+    message = str(refus.value).lower()
+    assert "ne respecte déjà pas" in message
+    assert "régénérez" in message
