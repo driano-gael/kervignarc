@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 04/08/2026** · **96 US livrées** · dernière : `E03US007` *(l'organisateur choisit **ce qu'une cible n'a pas le droit de mélanger** — rien, la catégorie, le blason, ou les deux : contrainte **dure** sur le plan de cibles **et** le plan de duels, réserve motivée, plan antérieur signalé — ADR-0071)*. Précédente : `E06US006` *(l'organisateur choisit, **phase par phase**, jusqu'où le tournoi classe : podium, top N, ou classement intégral où chaque rang se gagne au tir — ADR-0070)*.
+**Dernière mise à jour : 04/08/2026** · **97 US livrées** · dernière : `E07US005` *(le public suit les **arbres de duels en direct** — « mon chemin » par archer suivi ou tableau complet par tour —, et l'écran de salle sait enfin projeter les tableaux : le catalogue de vues d'ADR-0064 est complet)*. Précédente : `E03US007` *(l'organisateur choisit **ce qu'une cible n'a pas le droit de mélanger** — rien, la catégorie, le blason, ou les deux : contrainte **dure** sur le plan de cibles **et** le plan de duels, réserve motivée, plan antérieur signalé — ADR-0071)*.
 
 ---
 
@@ -182,12 +182,30 @@
 >   story, l'ADR §3 et la fiche de recette — elle se dissipera avec EF-1.4 (une phase surcharge le
 >   blason). Ne pas la relire plus tard comme une capacité acquise.
 >
-> **🎯 Prochaine :** **`E07US005`** — vue tableaux/arbres live.
-> *(Choisie parmi les ⬜ de J3 : c'est la dernière surface qui manque au catalogue de l'écran de
-> salle — ADR-0064 l'avait explicitement laissée en attente —, et elle prend d'autant plus de valeur
-> qu'un tableau peut désormais descendre jusqu'au dernier rang (E06US006). Alternatives si la
-> priorité change : `E13US002` (composer les équipes, débloquée depuis E13US001) et `E09US005`
-> (PDF du classement de qualification, rétrécie par E06US004).)*
+> **E07US005 est livrée (04/08/2026)** — l'appli publique gagne un onglet « Tableaux » à deux
+> lectures (« Mon chemin » par archer suivi, tableau complet par tour) et l'écran de salle sa
+> quatrième vue. **Le catalogue de vues d'ADR-0064 couvre désormais son CA en entier**, après trois
+> élargissements et **zéro migration** — la prévision de conception d'E07US004 est validée jusqu'au
+> bout. Deux enseignements à ne pas perdre :
+>
+> - **le test a corrigé la lecture du CA, pas l'inverse.** « L'arbre (principal + placement) » a
+>   d'abord été lu comme « les deux **types de phase** en tableau » ; le test écrit sur cette
+>   lecture a échoué en découvrant que `TypePhase.PLACEMENT` est **composable mais pas exécutable**
+>   (`DETTE-028` — `ServiceSaisieDuels._decor` le refuse). La bonne lecture était « les deux
+>   **branches d'un même arbre** », sous-tableaux de placement compris (E06US006). Écrire le test
+>   depuis le CA **avant** d'implémenter est exactement ce qui a rendu l'erreur visible en dix
+>   minutes plutôt qu'à la recette ;
+> - **la maquette avait deux questions ouvertes et son questionnaire était vide.** Elles ont été
+>   tranchées au cadrage (les deux lectures, oui ; les horaires prévisionnels, non — le domaine n'en
+>   porte aucun) et **reversées dans `stories/`**. Le CA d'origine tenait en une ligne : sans le
+>   cadrage, l'US aurait livré un tableau brut sans « mon chemin ».
+>
+> **🎯 Prochaine :** **`E13US002`** — composer les équipes.
+> *(Choisie parmi les ⬜ : le **fil équipes** est débloqué depuis `E13US001` (abstraction
+> `Participant`, ADR-0028) et n'a jamais été repris ; c'est la dernière capacité **métier** encore
+> absente du MVP+1, là où les autres ⬜ de J3 sont du confort (`E01US016` identité visuelle) ou un
+> export déjà à moitié couvert. Alternatives si la priorité change : `E09US005` (PDF du classement
+> de qualification, rétrécie par E06US004) et `E01US016`.)*
 > *Note : **J2 est terminé** (14/14). Son compteur affichait `11/14` — périmé de deux crans depuis
 > E07US008 et E06US003, qui l'avaient laissé en l'état ; recompté et corrigé par E06US004. **J3**
 > l'était aussi (`4/11` pour six lignes ✅) : un premier jet de ce commit s'était arrêté à la ligne
@@ -584,7 +602,7 @@
 | 71 | E06US003 | Barrage de tir pour places décisives | ✅ *(seuil dans la politique `tiebreak`, manches persistées, verdict recalculé, ADR-0066)* |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ✅ *(palmarès : fusion des rangs de phases, podiums par catégorie, export PDF, politique `aggregation`, ADR-0067)* |
 
-## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (9/12)**
+## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (10/12)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -600,7 +618,7 @@
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |
 | 80 | E01US016 | Définir l'identité visuelle du tournoi | ⬜ |
 | 81 | E07US004 | Écran de salle **+ suivi du déroulé** (un composant, trois surfaces) | ✅ *(poste typé cible/écran, pilotage par état lu, suivi superposé — ADR-0064)* |
-| 82 | E07US005 | Vue tableaux/arbres live | ⬜ |
+| 82 | E07US005 | **Vue tableaux/arbres live** | ✅ *(onglet public « Tableaux » à deux lectures — « Mon chemin » par archer suivi et tableau complet par tour —, DTO public restreint, vue `tableaux` de l'écran de salle : le catalogue d'ADR-0064 couvre enfin son CA en entier ; DETTE-031 élargie)* |
 | 83 | ~~E05US019~~ | ~~Enregistrer une séquence comme modèle~~ → **livrée par E01US023** | ✅ *(doublon repéré le 31/07 : ADR-0060 §5)* |
 | — | E00US015 | Ossature de navigation admin (coquille) | ✅ *(fait en avance — ajout 18/07)* |
 

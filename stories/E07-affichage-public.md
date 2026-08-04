@@ -46,10 +46,17 @@ sans traverser le gymnase.
   >
   > ✅ **`affectations` ajoutée le 02/08/2026 par E07US008 — sans migration, comme annoncé.** La
   > prévision de conception s'est vérifiée au mot près : persister la **chaîne** plutôt qu'un rang a
-  > rendu l'élargissement gratuit. Reste `tableaux` (E07US005), toujours absente pour la même
-  > raison. *(Le test `test_une_vue_inconnue_est_refusee_sans_500` prenait `affectations` comme
-  > exemple de vue inconnue : il a échoué au bon endroit, exactement comme sa docstring l'annonçait,
-  > et a été mis à jour.)*
+  > rendu l'élargissement gratuit. *(Le test `test_une_vue_inconnue_est_refusee_sans_500` prenait
+  > `affectations` comme exemple de vue inconnue : il a échoué au bon endroit, exactement comme sa
+  > docstring l'annonçait, et a été mis à jour.)*
+  >
+  > ✅ **`tableaux` ajoutée le 04/08/2026 par E07US005 — le catalogue couvre désormais ce CA en
+  > entier** (`classement`, `affectations`, `tableaux`, `plans`, plus `suivi_deroule` et
+  > `palmares`). **Trois élargissements, zéro migration** : c'est la validation complète du choix
+  > d'origine. Comme `affectations`, `tableaux` n'entre **pas** au déroulé par défaut — elle n'a de
+  > contenu qu'après la qualification. *(Le même test a donc échoué une seconde fois, et son vivier
+  > d'exemples — les vues nommées par ce CA mais non livrées — s'est **tari** : il prend désormais
+  > une valeur franchement inventée, qu'aucune US future ne pourra rattraper.)*
 - **CA — pilotage admin (ex-007)** : depuis la console de supervision (E12US001), l'admin voit chaque
   écran de salle et **impose** soit une **vue figée** (ex. podium), soit une **autre séquence** ; l'écran
   bascule **en direct** ; **une prise de contrôle sait se terminer** — **durée** (« podium
@@ -136,8 +143,56 @@ sans traverser le gymnase.
 
 ### E07US005 — Vue tableaux/arbres live
 *En tant que* spectateur, *je veux* voir les arbres de duels en direct, *afin de* suivre la progression.
-- **CA** : rendu de l'arbre (principal + placement) mis à jour en live.
-- **Dépend de** : E05US005, E07US001 · **Jalon** : J3
+- **CA** : rendu de l'arbre (principal + placement) mis à jour en live ; **deux lectures** dans
+  l'appli publique — **« Mon chemin »** (le parcours de chaque **archer suivi**, E07US006 : tour,
+  adversaire, score vu de son côté, état) et **« Tableau complet »** (tous les duels **groupés par
+  tour**) — ; la lecture **« Mon chemin » est celle par défaut dès qu'on suit quelqu'un** ; le
+  **DTO est public restreint** (règle 6 : ni identité du scoreur, ni détail flèche à flèche) ;
+  la vue **`tableaux` entre au catalogue de l'écran de salle** (E07US004), où elle montre le
+  **tableau qui se joue**, sans interaction.
+- **Notes** : maquette **P05** (`maquettes/p05-tableau-duels.html`), dont les **deux partis pris
+  sont livrés** dans l'ordre qu'elle recommande — A « Mon chemin » (*recommandé*, « l'archer est le
+  sujet, la compétition est le contexte », `D-09`), B « Arbre complet » (*nécessaire en second*).
+  **Pas de dessin d'arbre en branches** : il ne tient pas sur 360 px, la **liste par tour** est la
+  concession assumée par la maquette.
+  > **Trois arbitrages du 04/08/2026 (cadrage d'intention), reversés ici** — le CA d'origine tenait
+  > en une ligne et datait d'avant tout le moteur J2 :
+  >
+  > 1. **Périmètre = A + B + la vue d'écran de salle.** Le questionnaire P05 était resté vide ; sa
+  >    1ʳᵉ question (« le tableau complet est-il attendu du public, ou est-ce l'affaire de
+  >    l'organisation ? ») est tranchée **« des deux »**, comme `Q-UX2` et `Q-UX7` avant elle : la
+  >    lecture par archer et la lecture d'ensemble ne servent pas le même geste, et offrir les deux
+  >    coûte un bouton.
+  > 2. **« Mon chemin » s'appuie sur les archers suivis (E07US006)**, pas sur un sélecteur propre à
+  >    l'onglet : `D-09` a précisément supprimé la recherche comme porte d'entrée, en réintroduire
+  >    une ici la rétablirait par la bande.
+  > 3. **Pas d'horaires prévisionnels** — 2ᵉ question de la maquette, tranchée **non**. Le domaine
+  >    ne porte **aucun** horaire au grain de la phase ou du duel (seul le départ en a un,
+  >    E02US010) : les afficher supposerait un moteur d'ordonnancement qui n'existe pas, et les
+  >    inventer réaliserait exactement le risque que la maquette pointait. **La question reste
+  >    ouverte** au questionnaire P05 — elle n'est pas close, elle est hors de cette US.
+  >
+  > **⚠️ « principal + placement » : la lecture du CA a dû être corrigée en cours d'US, et c'est le
+  > test qui l'a trouvée.** Première lecture (naturelle) : les **deux types de phase**
+  > `elimination_directe` et `placement`, les deux membres de `TYPES_EN_TABLEAU`. Le test écrit sur
+  > cette lecture a **échoué** : `ServiceSaisieDuels._decor` refuse tout type autre que
+  > l'élimination directe — le type `placement` est **composable mais pas exécutable**
+  > ([DETTE-028](../docs/dette.md#dette-028--le-catalogue-de-types-de-phase-est-livré-sans-consommateur)).
+  > Lecture retenue, et c'est celle du vocabulaire des tableaux : **les deux branches d'un même
+  > arbre** — celle des gagnants et les **sous-tableaux de placement** que `PlacementEnCascade`
+  > alimente sous profondeur intégrale (E06US006). Le service filtre sur `TYPES_EN_TABLEAU`, donc
+  > une phase de type `placement` **entrera dans la vue sans rien toucher** le jour où le moteur
+  > saura la monter ; d'ici là elle est **omise**, et un test le caractérise plutôt que de le taire.
+  > *Conséquence à ne pas relire à l'envers : cette US ne résorbe pas `DETTE-028`, elle en montre le
+  > coût sur une surface publique.*
+  >
+  > **Robustesse jour J.** Un tableau **illisible** (phase déclarée dont la source ne prélève encore
+  > personne — cas du matin) est **omis** de la liste au lieu de faire échouer la lecture : sur une
+  > surface publique et projetée, une phase à venir ne doit pas produire une page blanche pour tout
+  > le monde. Contrepartie assumée : un tableau **cassé** y est indiscernable d'un tableau **à
+  > venir**. Même posture que `ServiceSuiviDeroule` (E07US004) et `ServicePalmares` (E06US004).
+- **Dépend de** : E05US005, E07US001, **E07US006** (les archers suivis) · **Jalon** : J3
+- **Élargit** : `DETTE-031` (3ᵉ endpoint public au régime « reconstruction à chaque lecture »)
 
 ### E07US006 — Suivre des archers : ma journée
 *En tant qu'*archer/accompagnateur, *je veux* désigner un ou plusieurs archers à **suivre**, *afin de*
