@@ -301,7 +301,7 @@ class FormatTournoi:
         self,
         nom: str,
         etapes: Iterable[ModelePhase],
-        effectif_minimum_exige: int | None = None,
+        effectif_minimum_exige: int | None,
     ) -> FormatTournoi:
         """Renvoie une copie au nom, aux étapes et à l'exigence d'effectif remplacés (mêmes règles
         que `creer`).
@@ -310,10 +310,14 @@ class FormatTournoi:
         officiel (le règlement évolue — ADR-0060 §4). Pour obtenir deux modèles distincts,
         l'appelant passe par `en_creation_utilisateur`.
 
-        ⚠️ `effectif_minimum_exige` est **remplacé**, pas fusionné : ne pas le passer *efface*
-        l'exigence, exactement comme ne pas passer d'étapes les efface. C'est le contrat d'un `PUT`,
-        que l'écran respecte en renvoyant le format entier ; un appelant partiel qui l'ignorerait
-        perdrait la règle du club sans s'en apercevoir.
+        ⚠️ `effectif_minimum_exige` est **remplacé**, pas fusionné : le passer à `None` *efface*
+        l'exigence, exactement comme passer une liste vide efface les étapes. C'est le contrat d'un
+        `PUT`.
+
+        **Le paramètre est délibérément sans défaut**, et c'est un garde-fou, pas une rigidité : un
+        défaut `None` avait laissé **deux** appelants de production effacer la règle du club en
+        silence (`ServiceFormats.promouvoir` et l'écran Patrimoine). Sans défaut, mypy les nomme.
+        Un paramètre dont l'omission détruit une donnée ne doit pas pouvoir s'omettre.
         """
         return replace(
             self,
@@ -353,14 +357,24 @@ class FormatTournoi:
         return tuple(etape.pour_tournoi(tournoi_id) for etape in self.etapes)
 
     @staticmethod
-    def de_phases(nom: str, phases: Iterable[Phase]) -> FormatTournoi:
+    def de_phases(
+        nom: str, phases: Iterable[Phase], effectif_minimum_exige: int | None = None
+    ) -> FormatTournoi:
         """Capture les phases d'un tournoi en format de bibliothèque (**promotion**).
 
         Les statuts sont perdus (cf. `ModelePhase.de_phase`) : on promeut un **déroulé**, pas un
-        avancement. Lève `FormatSansEtape` si le tournoi n'a aucune phase à promouvoir, et les
-        erreurs de séquence si ses phases n'en forment pas une valide.
+        avancement. L'exigence d'effectif, elle, **remonte** si l'appelant la fournit : à la
+        différence du statut, c'est une propriété du déroulé et non de l'édition. Elle n'est pas
+        lisible depuis les phases — le tournoi la porte —, d'où le paramètre explicite.
+
+        Lève `FormatSansEtape` si le tournoi n'a aucune phase à promouvoir, et les erreurs de
+        séquence si ses phases n'en forment pas une valide.
         """
-        return FormatTournoi.creer(nom, [ModelePhase.de_phase(phase) for phase in phases])
+        return FormatTournoi.creer(
+            nom,
+            [ModelePhase.de_phase(phase) for phase in phases],
+            effectif_minimum_exige=effectif_minimum_exige,
+        )
 
 
 def _nom_valide(nom: str) -> str:

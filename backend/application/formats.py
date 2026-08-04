@@ -220,8 +220,12 @@ class ServiceFormats:
             assert phase.id is not None, "une phase relue du dépôt porte toujours un identifiant."
             self._phases.supprimer(phase.id)
         posees = [self._phases.ajouter(phase) for phase in nouvelles]
-        # Après les phases : le tournoi ne doit porter l'exigence du format que si le déroulé qui la
-        # justifie est réellement en place.
+        # DETTE-025 (élargie par E05US021) — **troisième** écriture, dans sa propre transaction :
+        # une panne ici laisse un tournoi aux phases du nouveau format et à l'exigence de l'ancien,
+        # état silencieux qu'aucun écran ne signale. Placée après les phases à dessein : le tournoi
+        # ne doit porter l'exigence que si le déroulé qui la justifie est réellement en place. Le
+        # remède est le `remplacer_sequence` atomique du registre, qui devra réunir les deux
+        # écritures. Cf. `docs/dette.md`.
         self._tournois.enregistrer(
             tournoi.exiger_effectif_minimum(format_tournoi.effectif_minimum_exige)
         )
@@ -293,18 +297,30 @@ class ServiceFormats:
         Ne rétroagit sur aucun tournoi : les éditions déjà assemblées gardent leurs phases
         (ADR-0060 §3). Lève `TournoiIntrouvable`, `TournoiSansPhase` si le tournoi n'a aucune phase
         à capturer.
+
+        **L'exigence d'effectif du tournoi remonte avec le déroulé** (E05US021) : elle y avait été
+        recopiée à l'application d'un format, ou réglée depuis, et c'est une propriété du déroulé
+        qu'on promeut — pas un accident de l'édition. En son absence, l'exigence du format existant
+        est **conservée** : la promotion capture des *phases*, elle n'a aucune raison d'effacer une
+        règle de club qu'elle ne sait pas exprimer.
         """
-        self._tournoi_existant(tournoi_id)
+        tournoi = self._tournoi_existant(tournoi_id)
         phases = self._phases.par_tournoi(tournoi_id)
         if not phases:
             raise TournoiSansPhase(
                 f"Le tournoi {tournoi_id} n'a aucune phase : il n'y a pas de déroulé à promouvoir."
             )
-        capture = FormatTournoi.de_phases(nom, phases)
+        capture = FormatTournoi.de_phases(nom, phases, tournoi.effectif_minimum_exige)
         existant = self._formats.par_nom(capture.nom)
         if existant is None:
             return self._formats.ajouter(capture)
-        return self._formats.enregistrer(existant.modifier(capture.nom, capture.etapes))
+        return self._formats.enregistrer(
+            existant.modifier(
+                capture.nom,
+                capture.etapes,
+                capture.effectif_minimum_exige or existant.effectif_minimum_exige,
+            )
+        )
 
     # --- Rouages internes -----------------------------------------------------------------
 

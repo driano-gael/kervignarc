@@ -79,6 +79,16 @@ class Tournoi:
     effectif_minimum_exige: int | None = None
     id: TournoiId | None = None
 
+    def __post_init__(self) -> None:
+        """Fait respecter l'invariant quelle que soit la porte d'entrée — `replace()` et la
+        reconstruction du repository comprises (E05US021)."""
+        if self.effectif_minimum_exige is not None and self.effectif_minimum_exige < 1:
+            raise ExigenceEffectifInvalide(
+                f"Le minimum d'inscrits exigé est un entier positif "
+                f"(reçu {self.effectif_minimum_exige}) ; « aucune exigence » se dit en ne réglant "
+                "rien."
+            )
+
     @staticmethod
     def creer(
         nom: str,
@@ -124,16 +134,15 @@ class Tournoi:
     def exiger_effectif_minimum(self, minimum: int | None) -> Tournoi:
         """Renvoie une copie au minimum d'inscrits exigé remplacé (`None` = aucune exigence).
 
-        Lève `ExigenceEffectifInvalide` si le nombre n'est pas positif — même parti que sur le
-        format : « aucune exigence » se dit en ne réglant rien, pas en réglant zéro. Le contrôle de
-        **cohérence** avec le déroulé (« exiger 20 quand il en faut 34 ») n'est pas ici : il dépend
-        des phases, que l'agrégat `Tournoi` ne porte pas — c'est le service qui les rapproche.
+        L'invariant est tenu par `__post_init__`, que `replace` retraverse — pas ici : le vérifier
+        dans cette seule méthode laissait entrer une valeur absurde par la reconstruction du
+        repository, qui construit `Tournoi(...)` directement depuis la colonne. Asymétrie relevée en
+        revue face à `FormatTournoi`, qui validait, lui, à la construction.
+
+        Le contrôle de **cohérence** avec le déroulé (« exiger 20 quand il en faut 34 ») n'est pas
+        ici : il dépend des phases, que l'agrégat `Tournoi` ne porte pas — c'est le service qui les
+        rapproche.
         """
-        if minimum is not None and minimum < 1:
-            raise ExigenceEffectifInvalide(
-                f"Le minimum d'inscrits exigé est un entier positif (reçu {minimum}) ; "
-                "« aucune exigence » se dit en ne réglant rien."
-            )
         return replace(self, effectif_minimum_exige=minimum)
 
     def vers_pret(self) -> Tournoi:

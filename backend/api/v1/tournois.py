@@ -25,7 +25,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
-from application.tournois import ExigenceEffectifTournoi, ServiceTournois
+from application.tournois import ExigenceEffectifTournoi, OrigineExigence, ServiceTournois
 from domain.tournoi import StatutTournoi, Tournoi, TransitionTournoi, TypeTournoi
 from infrastructure.db import WriteQueue
 
@@ -116,6 +116,10 @@ class ExigenceEffectifReponse(BaseModel):
     inscrits: int
     minimum: int
     suffisant: bool
+    # E05US021 : d'où vient le chiffre — `deroule` (plancher déduit) ou `club` (règle saisie). Le
+    # front en fait deux phrases distinctes ; le déduire de `ordre_phase is None` faisait annoncer
+    # une règle de club là où il n'y en avait aucune.
+    origine: OrigineExigence
     ordre_phase: int | None
     rang_debut: int | None
 
@@ -126,6 +130,7 @@ class ExigenceEffectifReponse(BaseModel):
             inscrits=exigence.inscrits,
             minimum=exigence.minimum,
             suffisant=exigence.suffisant,
+            origine=exigence.origine,
             ordre_phase=exigence.ordre_phase,
             rang_debut=exigence.rang_debut,
         )

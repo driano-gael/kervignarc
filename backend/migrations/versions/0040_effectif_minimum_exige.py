@@ -41,8 +41,13 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("tournoi", sa.Column("effectif_minimum_exige", sa.Integer(), nullable=True))
+    # `batch_alter_table` comme toutes les migrations de colonne du dépôt (0037 en dernier) :
+    # sous SQLite, Alembic y recrée la table plutôt que d'émettre un `ALTER TABLE`. L'ajout
+    # passerait sans lui ; le `downgrade`, non — `DROP COLUMN` date de SQLite 3.35.
+    with op.batch_alter_table("tournoi") as batch:
+        batch.add_column(sa.Column("effectif_minimum_exige", sa.Integer(), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column("tournoi", "effectif_minimum_exige")
+    with op.batch_alter_table("tournoi") as batch:
+        batch.drop_column("effectif_minimum_exige")

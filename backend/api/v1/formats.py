@@ -216,8 +216,8 @@ class FormatReponse(BaseModel):
     etapes: list[EtapeDTO]
     # E05US021 : ce que le club exige **en plus** du plancher déduit (`None` = rien). Le minimum
     # *effectif* ne se lit pas ici mais au diagnostic (`DiagnosticReponse.effectif_minimum`), qui
-    # seul connaît les deux termes du `max`.
-    effectif_minimum_exige: int | None = None
+    # seul connaît les deux termes du `max`. **Sans défaut** : cf. `DiagnosticReponse`.
+    effectif_minimum_exige: int | None
 
     @staticmethod
     def de_agregat(format_tournoi: FormatTournoi) -> FormatReponse:
@@ -340,8 +340,9 @@ class DiagnosticReponse(BaseModel):
     anomalies: list[AnomalieDTO]
     # E05US021 : le nombre d'inscrits en dessous duquel ce format ne peut pas se dérouler. Une
     # **donnée** du diagnostic, pas une anomalie : l'écran l'annonce en permanence, qu'un effectif
-    # soit simulé ou non.
-    effectif_minimum: int = 1
+    # soit simulé ou non. **Sans défaut** : sur une réponse, un défaut masquerait un oubli de
+    # mapping au lieu de le faire échouer.
+    effectif_minimum: int
 
     @staticmethod
     def de_agregat(projection: ProjectionDeroule) -> DiagnosticReponse:

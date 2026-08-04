@@ -21,7 +21,7 @@ from application.erreurs import (
     TournoiSansDepart,
     TransitionStatutInvalide,
 )
-from application.tournois import ServiceTournois
+from application.tournois import OrigineExigence, ServiceTournois
 from domain.bareme import BaremeQualification
 from domain.depart import Depart
 from domain.erreurs import NomTournoiInvalide
@@ -87,14 +87,21 @@ class FauxCompteurEngages:
 
 
 def _service_complet() -> (
-    tuple[ServiceTournois, FauxDepartRepository, FauxPhaseRepository, FauxCompteurEngages]
+    tuple[
+        ServiceTournois,
+        FauxDepartRepository,
+        FauxPhaseRepository,
+        FauxCompteurEngages,
+        FauxTournoiRepository,
+    ]
 ):
     """Le service et **tous** ses dépôts, pour les tests qui garnissent phases et inscrits."""
     departs = FauxDepartRepository()
     phases = FauxPhaseRepository()
     engages = FauxCompteurEngages()
-    service = ServiceTournois(FauxTournoiRepository(), departs, phases, engages)
-    return service, departs, phases, engages
+    tournois = FauxTournoiRepository()
+    service = ServiceTournois(tournois, departs, phases, engages)
+    return service, departs, phases, engages, tournois
 
 
 def _service() -> tuple[ServiceTournois, FauxDepartRepository]:
@@ -103,7 +110,7 @@ def _service() -> tuple[ServiceTournois, FauxDepartRepository]:
     Le tournoi obtenu n'a **aucune phase** : la garde d'effectif d'E05US021 ne s'exprime donc pas,
     et les tests de cycle de vie antérieurs restent exactement ce qu'ils étaient.
     """
-    service, departs, _, _ = _service_complet()
+    service, departs = _service_complet()[:2]
     return service, departs
 
 
@@ -320,7 +327,7 @@ def _deroule_120(tournoi_id: int) -> list[Phase]:
 
 def _pret_avec_deroule(inscrits: int) -> tuple[ServiceTournois, int]:
     """Un tournoi `prêt`, doté du déroulé à 34 minimum et de `inscrits` archers."""
-    service, departs, phases, engages = _service_complet()
+    service, departs, phases, engages = _service_complet()[:4]
     tid = _id_cree(service, departs)
     phases.phases = _deroule_120(tid)
     engages.nb = inscrits
@@ -371,7 +378,7 @@ def test_un_tournoi_sans_deroule_compose_demarre_sans_controle() -> None:
     C'est ce qui garde la garde **silencieuse** tant que l'organisateur n'a rien composé — et ce qui
     laisse intacts les tests de cycle de vie antérieurs à cette US.
     """
-    service, departs, _, engages = _service_complet()
+    service, departs, _, engages = _service_complet()[:4]
     tid = _id_cree(service, departs)
     engages.nb = 0
     service.vers_pret(tid)
@@ -379,28 +386,65 @@ def test_un_tournoi_sans_deroule_compose_demarre_sans_controle() -> None:
     assert service.demarrer(tid).statut is StatutTournoi.EN_COURS
 
 
+def _exiger(
+    service: ServiceTournois, tournoi_repository: FauxTournoiRepository, tid: int, minimum: int
+) -> None:
+    """Pose l'exigence du club sur le tournoi, **comme le fait `ServiceFormats.appliquer`**.
+
+    On passe par l'agrégat et le dépôt plutôt que par une méthode de `ServiceTournois` : aucune
+    n'existe, et il ne faut pas en inventer une pour les besoins d'un test — la revue a relevé
+    qu'une telle méthode, sans appelant de production, décrivait un chemin qui n'existe pas.
+    """
+    tournoi = service.consulter(tid)
+    tournoi_repository.enregistrer(tournoi.exiger_effectif_minimum(minimum))
+
+
 def test_lexigence_du_tournoi_prime_quand_elle_depasse_le_minimum_deduit() -> None:
     """Le « minimum exigé » copié du format (« pas sous 40 ») refuse un effectif que le déduit
-    accepterait."""
-    service, departs, phases, engages = _service_complet()
+    accepterait — et le message ne parle **pas** d'un prélèvement, puisqu'aucun n'est en cause."""
+    service, departs, phases, engages, tournois = _service_complet()
     tid = _id_cree(service, departs)
     phases.phases = _deroule_120(tid)
     engages.nb = 36
-    service.exiger_effectif_minimum(tid, 40)
+    _exiger(service, tournois, tid, 40)
     service.vers_pret(tid)
 
-    with pytest.raises(EffectifInsuffisantPourDemarrer):
+    exigence = service.exigence_effectif(tid)
+    assert exigence.minimum == 40
+    assert exigence.origine is OrigineExigence.CLUB
+    assert exigence.ordre_phase is None and exigence.rang_debut is None
+
+    with pytest.raises(EffectifInsuffisantPourDemarrer) as leve:
         service.demarrer(tid)
+
+    message = str(leve.value)
+    assert "40" in message and "36" in message
+    assert "prélève" not in message, "aucune phase n'est en cause : ne pas en inventer une"
 
 
 def test_une_exigence_plus_basse_que_le_deduit_ne_labaisse_pas() -> None:
     """Le déduit est un **plancher** : une exigence inférieure ne peut pas autoriser un tournoi que
     le moteur ne saura pas dérouler."""
-    service, departs, phases, engages = _service_complet()
+    service, departs, phases, engages, tournois = _service_complet()
     tid = _id_cree(service, departs)
     phases.phases = _deroule_120(tid)
     engages.nb = 20
-    service.exiger_effectif_minimum(tid, 10)
+    _exiger(service, tournois, tid, 10)
+    service.vers_pret(tid)
+
+    assert service.exigence_effectif(tid).minimum == 34
+
+    with pytest.raises(EffectifInsuffisantPourDemarrer):
+        service.demarrer(tid)
+
+
+def test_un_deroule_meme_minimal_exige_au_moins_un_inscrit() -> None:
+    """Changement de comportement de l'US, à fixer explicitement : un tournoi **avec** déroulé et
+    **zéro** inscrit ne démarre plus, là où il le pouvait avant."""
+    service, departs, phases, engages = _service_complet()[:4]
+    tid = _id_cree(service, departs)
+    phases.phases = [Phase.qualification(tid, BaremeQualification.preset_ffta_18m())]
+    engages.nb = 0
     service.vers_pret(tid)
 
     with pytest.raises(EffectifInsuffisantPourDemarrer):
@@ -433,7 +477,7 @@ def test_lexigence_est_satisfaite_quand_le_compte_y_est() -> None:
 
 def test_lexigence_dun_tournoi_sans_deroule_est_toujours_satisfaite() -> None:
     """Rien n'est composé : il n'y a rien à exiger, et l'écran n'a rien à signaler."""
-    service, departs, _, engages = _service_complet()
+    service, departs, _, engages = _service_complet()[:4]
     tid = _id_cree(service, departs)
     engages.nb = 0
 

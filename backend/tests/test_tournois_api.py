@@ -332,13 +332,18 @@ def test_l_exigence_d_effectif_se_lit_avant_de_cliquer(
         "inscrits": 0,
         "minimum": 0,
         "suffisant": True,
+        "origine": "aucune",
         "ordre_phase": None,
         "rang_debut": None,
     }
+    # `origine` = `deroule` : le chiffre vient du déroulé, pas d'une règle de club. C'est lui qui
+    # décide de la phrase affichée — le déduire de `ordre_phase is None` faisait annoncer une
+    # exigence de club là où il n'y en avait aucune.
     assert apres == {
         "inscrits": 0,
         "minimum": 34,
         "suffisant": False,
+        "origine": "deroule",
         "ordre_phase": 3,
         "rang_debut": 33,
     }

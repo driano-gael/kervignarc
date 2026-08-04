@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import pytest
 
-from domain.anomalie import Gravite
+from domain.anomalie import Anomalie, Gravite
 from domain.bareme import BaremeQualification
 from domain.deroule import effectif_minimum, projeter
 from domain.erreurs import EffectifMinimumIncoherent, ExigenceEffectifInvalide
@@ -37,8 +37,11 @@ def _tableau(ordre: int, *sources: SourcePhase) -> ModelePhase:
     return ModelePhase(ordre=ordre, type=TypePhase.ELIMINATION_DIRECTE, sources=tuple(sources))
 
 
-def _codes(anomalies: object) -> list[str]:
-    assert isinstance(anomalies, tuple)
+def _echauffement(ordre: int) -> ModelePhase:
+    return ModelePhase(ordre=ordre, type=TypePhase.ECHAUFFEMENT)
+
+
+def _codes(anomalies: tuple[Anomalie, ...]) -> list[str]:
     return [anomalie.code for anomalie in anomalies]
 
 
@@ -97,7 +100,10 @@ def test_un_format_sans_etape_nexige_rien() -> None:
 
 
 def test_un_prelevement_par_issue_de_tour_ne_fixe_aucun_minimum() -> None:
-    """« Les perdants du tour 2 » ne se traduit pas en nombre d'inscrits — le déroulé en décide."""
+    """« Les perdants du tour 2 » ne se traduit pas en nombre d'inscrits — le déroulé en décide.
+
+    Le plancher **structurel** subsiste : un tableau reste un tableau, il lui faut deux tireurs.
+    """
     etapes = [
         _qualification(),
         _tableau(2, SourcePhase.par_rangs(1, 1, 32)),
@@ -107,10 +113,16 @@ def test_un_prelevement_par_issue_de_tour_ne_fixe_aucun_minimum() -> None:
     assert effectif_minimum(etapes) == 2
 
 
-def test_le_reste_ne_fixe_aucun_minimum() -> None:
+def test_le_reste_ne_chiffre_rien_mais_un_tableau_reste_un_tableau() -> None:
+    """« Le reste » ne dit pas *combien* d'inscrits il faut, mais la phase qu'il alimente **oppose**
+    toujours deux tireurs — le plancher structurel ne se perd pas en route.
+
+    ⚠️ Un premier jet rendait `1` ici, et son test l'entérinait : à 1 inscrit, le moteur levait
+    `EffectifTableauInvalide` **en salle**, soit le défaut même que l'US retire.
+    """
     etapes = [_qualification(), _tableau(2, SourcePhase.le_reste(1))]
 
-    assert effectif_minimum(etapes) == 1
+    assert effectif_minimum(etapes) == 2
 
 
 def test_un_prelevement_dans_une_phase_intermediaire_ne_se_lit_pas_en_inscrits() -> None:
@@ -123,6 +135,78 @@ def test_un_prelevement_dans_une_phase_intermediaire_ne_se_lit_pas_en_inscrits()
     ]
 
     assert effectif_minimum(etapes) == 2
+
+
+# --- Le classement traduisible est celui de la QUALIFICATION, pas celui de la première phase -----
+# L'oracle de cette section est le **moteur** : `ServiceSaisieDuels._ordre_de_la_qualification`
+# n'honore un prélèvement que s'il vise la phase de type `qualification`. Un plancher qui viserait
+# autre chose mentirait — et il a menti dans les deux sens avant d'être corrigé.
+
+
+def test_un_echauffement_en_tete_ne_desactive_pas_le_controle() -> None:
+    """Le déroulé d'ADR-0068, précédé d'un échauffement : le plancher ne bouge pas d'un cran.
+
+    ⚠️ Le défaut que ce test verrouille était **bloquant** : viser la première phase au lieu de la
+    qualification rendait un plancher de 1, l'écran n'affichait rien, le tournoi démarrait, et la
+    consolante cassait sur la tablette. `echauffement` est l'un des types offerts par l'écran de
+    composition — le déroulé n'a rien d'exotique.
+    """
+    etapes = [
+        _echauffement(1),
+        _qualification(ordre=2),
+        _tableau(3, SourcePhase.par_rangs(2, 1, 32)),
+        _tableau(4, SourcePhase.par_rangs(2, rang_debut=33)),
+    ]
+
+    assert effectif_minimum(etapes) == 34
+
+
+def test_sans_qualification_aucun_rang_ne_se_traduit_en_inscrits() -> None:
+    """Sans classement à lire, le moteur ensemence avec **tous** les archers en lice : réclamer le
+    rang de départ serait un refus abusif le jour J.
+
+    Il reste le plancher structurel — deux tireurs pour un tableau.
+    """
+    etapes = [
+        _tableau(1),
+        ModelePhase(
+            ordre=2, type=TypePhase.PLACEMENT, sources=(SourcePhase.par_rangs(1, rang_debut=33),)
+        ),
+    ]
+
+    assert effectif_minimum(etapes) == 2
+
+
+def test_une_phase_sans_opposition_se_contente_dun_participant() -> None:
+    """Qualification et échauffement font tirer l'archer **seul** ; les six autres opposent."""
+    assert effectif_minimum([_echauffement(1)]) == 1
+    assert effectif_minimum([_qualification()]) == 1
+
+
+@pytest.mark.parametrize(
+    "type_a_duels",
+    [
+        TypePhase.ELIMINATION_DIRECTE,
+        TypePhase.PLACEMENT,
+        TypePhase.POULES,
+        TypePhase.SUISSE,
+        TypePhase.COLLINE,
+        TypePhase.BIG_SHOOT_OFF,
+        TypePhase.BARRAGE,
+    ],
+)
+def test_tout_type_qui_oppose_des_tireurs_en_exige_deux(type_a_duels: TypePhase) -> None:
+    """« Les rangs 33 et suivants » vers une poule exige 34 inscrits, comme vers un tableau.
+
+    Le plancher tient à ce que la phase **oppose** des tireurs, pas à sa structure d'arbre : un
+    premier jet ne comptait que les deux types en tableau et minorait les cinq autres d'un cran.
+    """
+    etapes = [
+        _qualification(),
+        ModelePhase(ordre=2, type=type_a_duels, sources=(SourcePhase.par_rangs(1, rang_debut=33),)),
+    ]
+
+    assert effectif_minimum(etapes) == 34
 
 
 def test_une_phase_sans_prelevement_est_peuplee_par_les_inscrits() -> None:

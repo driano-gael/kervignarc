@@ -14,6 +14,7 @@ from __future__ import annotations
 import datetime
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from enum import Enum
 from typing import Protocol
 
 from application.erreurs import (
@@ -56,6 +57,23 @@ class LecteurSequencePhases(Protocol):
         ...
 
 
+class OrigineExigence(str, Enum):
+    """D'où vient le minimum d'inscrits d'un tournoi (E05US021).
+
+    Trois origines qui appellent trois phrases différentes — les confondre fait dire au produit des
+    choses fausses (cf. `ExigenceEffectifTournoi`).
+    """
+
+    AUCUNE = "aucune"
+    """Aucun déroulé composé : rien n'est exigé."""
+
+    DEROULE = "deroule"
+    """Le plancher **déduit** du déroulé — un prélèvement par rangs, ou la structure d'une phase."""
+
+    CLUB = "club"
+    """Une règle sportive **saisie** sur le format (« pas de tournoi de ce type sous 40 »)."""
+
+
 @dataclass(frozen=True)
 class ExigenceEffectifTournoi:
     """Ce qu'un tournoi exige d'inscrits, ce qu'il en a, et pourquoi (E05US021).
@@ -65,13 +83,21 @@ class ExigenceEffectifTournoi:
     Les deux disent la même chose — d'où un seul objet, calculé une fois.
 
     `minimum` vaut `0` quand aucun déroulé n'est composé : il n'y a alors rien à exiger.
-    `ordre_phase` et `rang_debut` sont `None` quand le manque ne vient d'aucun prélèvement en
-    particulier — soit rien n'est composé, soit c'est l'exigence du club qui commande.
+
+    `origine` dit **d'où vient le chiffre**, et ce n'est pas décoratif : la première version le
+    déduisait de `ordre_phase is None`, ce qui faisait annoncer « ce minimum est celui exigé pour ce
+    format » — une règle de club — sur un simple plancher structurel, donc sur le format nominal du
+    projet (une qualification seule n'a aucun prélèvement par rangs). Le message inventait une
+    cause. Porter l'origine explicitement coûte un champ et supprime la classe entière d'erreurs.
+
+    `ordre_phase` et `rang_debut` restent `None` quand le manque ne vient d'aucun prélèvement en
+    particulier.
     """
 
     inscrits: int
     minimum: int
     suffisant: bool
+    origine: OrigineExigence = OrigineExigence.AUCUNE
     ordre_phase: int | None = None
     rang_debut: int | None = None
 
@@ -83,10 +109,15 @@ class ExigenceEffectifTournoi:
         son format plutôt que de rester devant un refus opaque.
         """
         manque = f"{self.inscrits} archer(s) inscrit(s) pour {self.minimum} requis"
+        if self.origine is OrigineExigence.CLUB:
+            return (
+                f"Ce tournoi ne peut pas démarrer : {manque}. Ce format exige au moins "
+                f"{self.minimum} inscrits. Complétez les inscriptions ou changez de format."
+            )
         if self.ordre_phase is None:
             return (
-                f"Ce tournoi ne peut pas démarrer : {manque}. Ce minimum est celui exigé pour ce "
-                "format."
+                f"Ce tournoi ne peut pas démarrer : {manque}. Son déroulé ne peut pas se jouer à "
+                "moins que cela."
             )
         return (
             f"Ce tournoi ne peut pas démarrer : {manque}. La phase {self.ordre_phase} prélève à "
@@ -212,16 +243,6 @@ class ServiceTournois:
         self._exiger_un_effectif_suffisant(tournoi_id)
         return self._repository.enregistrer(tournoi.demarrer())
 
-    def exiger_effectif_minimum(self, tournoi_id: TournoiId, minimum: int | None) -> Tournoi:
-        """Règle le minimum d'inscrits **exigé** par ce tournoi (`None` = aucune exigence propre).
-
-        Recopié du format à son application ; réglable ensuite sans toucher au modèle de
-        bibliothèque — le patron du gabarit appliqué. Une valeur **inférieure** au plancher déduit
-        des prélèvements n'abaisse rien : `exigence_effectif` retient toujours le plus haut.
-        """
-        tournoi = self.consulter(tournoi_id)
-        return self._repository.enregistrer(tournoi.exiger_effectif_minimum(minimum))
-
     def exigence_effectif(self, tournoi_id: TournoiId) -> ExigenceEffectifTournoi:
         """Ce que ce tournoi exige d'inscrits, et ce qu'il en a — la lecture du CA « visible avant
         le clic ».
@@ -241,7 +262,12 @@ class ServiceTournois:
             # Aucun déroulé composé : rien n'est prélevé, donc rien n'est exigé. Le dire
             # « satisfait » plutôt que « minimum 1 » évite d'afficher une exigence là où
             # l'organisateur n'a encore rien décidé.
-            return ExigenceEffectifTournoi(inscrits=inscrits, minimum=0, suffisant=True)
+            return ExigenceEffectifTournoi(
+                inscrits=inscrits,
+                minimum=0,
+                suffisant=True,
+                origine=OrigineExigence.AUCUNE,
+            )
 
         exige = tournoi.effectif_minimum_exige
         deduite = exigence_minimale(phases)
@@ -249,12 +275,16 @@ class ServiceTournois:
             # L'exigence du club dépasse le plancher technique : c'est elle qui commande, et aucune
             # phase n'est en cause — le manque vient d'une règle sportive, pas d'un prélèvement.
             return ExigenceEffectifTournoi(
-                inscrits=inscrits, minimum=exige, suffisant=inscrits >= exige
+                inscrits=inscrits,
+                minimum=exige,
+                suffisant=inscrits >= exige,
+                origine=OrigineExigence.CLUB,
             )
         return ExigenceEffectifTournoi(
             inscrits=inscrits,
             minimum=deduite.minimum,
             suffisant=inscrits >= deduite.minimum,
+            origine=OrigineExigence.DEROULE,
             ordre_phase=deduite.ordre,
             rang_debut=deduite.rang_debut,
         )

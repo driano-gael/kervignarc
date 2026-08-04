@@ -58,6 +58,14 @@ _TYPES_EN_TABLEAU = frozenset({TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMEN
 Les six autres types du catalogue (E05US015) tirent le leur d'une configuration que ni `Phase` ni
 `ModelePhase` ne portent encore — cf. `# DETTE-028`."""
 
+_TYPES_SANS_OPPOSITION = frozenset({TypePhase.QUALIFICATION, TypePhase.ECHAUFFEMENT})
+"""Les types où l'archer tire **seul** : un participant leur suffit (E05US021).
+
+Liste énoncée **en négatif** des six autres à dessein. Poule, système suisse, colline, Big Shoot
+Off, barrage et les deux tableaux **opposent** des tireurs : il leur en faut deux. Énumérer les
+« accueillants » plutôt que les « opposants » fait qu'un type ajouté au catalogue hérite du
+plancher **prudent** (2) au lieu du permissif — un oubli y sur-protège au lieu de laisser passer."""
+
 
 class EtapeProjetable(EtapeSequencee, Protocol):
     """Ce dont la projection a besoin d'une étape : la séquence, **plus** ce qu'on y demande.
@@ -248,20 +256,41 @@ def effectif_minimum(etapes: Sequence[EtapeSequencee]) -> int:
 def exigence_minimale(etapes: Sequence[EtapeSequencee]) -> ExigenceEffectif:
     """Le plancher d'inscrits de ce déroulé, **et la phase qui le réclame** (E05US021).
 
-    Le raisonnement, une fois pour toutes : une phase en tableau a besoin de **deux** participants
-    pour qu'un duel existe ; un prélèvement « à partir du rang *d* » n'en trouve deux que lorsque sa
+    Le raisonnement, une fois pour toutes : une phase à duels a besoin de **deux** participants pour
+    qu'un match existe ; un prélèvement « à partir du rang *d* » n'en trouve deux que lorsque sa
     phase source en classe *d + 1*. D'où `d - 1 + 2` inscrits — 34 pour « les rangs 33 et
-    suivants », l'exemple même du CA. Une phase hors tableau se contente d'un participant.
+    suivants », l'exemple même du CA. Seules la qualification et l'échauffement se contentent d'un
+    participant : les six autres types du catalogue opposent des tireurs.
+
+    **Le seul classement traduisible en inscrits est celui de la QUALIFICATION** — et c'est une
+    contrainte du **moteur**, pas une commodité. `ServiceSaisieDuels._ordre_de_la_qualification`
+    n'honore les prélèvements que s'ils visent la phase de type `qualification` ; tout autre
+    prélèvement par rangs est ignoré et la phase reçoit *tous* les archers en lice (`# DETTE-028`).
+    Ce plancher doit donc viser **exactement ce que le moteur lira**, sinon il ment dans les deux
+    sens — et il a menti dans les deux sens avant d'être corrigé :
+
+    - viser la **première phase** au lieu de la qualification laissait passer un déroulé
+      « échauffement → qualification → tableau 33+ » avec un plancher de 1, alors que le moteur
+      lèverait `EffectifTableauInvalide` en salle. C'est le défaut même que l'US retire ;
+    - à l'inverse, un déroulé **sans qualification** se voyait réclamer 34 inscrits alors que le
+      moteur, n'ayant aucun classement à lire, ensemence avec tout le monde et se contente de deux.
+      Un refus abusif le jour J coûte aussi cher qu'un oubli.
+
+    D'où : sans phase de qualification, **aucun prélèvement par rangs n'est traduisible** et seul le
+    plancher structurel de chaque étape subsiste.
 
     **Portée délibérément étroite** (note du CA). Un rang se lit dans le classement de sa **phase
-    source**, pas dans les inscrits : seuls les prélèvements visant la **première** phase — la seule
-    que les inscriptions peuplent — se traduisent en nombre d'inscrits. « Les rangs 33 et suivants
-    *du tableau* » ne dit rien sur le nombre d'inscrits nécessaires ; l'inclure produirait un
-    chiffre **faux**, ce qui est pire que pas de chiffre du tout. Ces cas-là restent couverts,
-    à effectif simulé, par `PrelevementVide` et `RangsSourceInexistants`.
+    source** : « les rangs 33 et suivants *du tableau* » ne dit rien sur le nombre d'inscrits
+    nécessaires, et l'inclure produirait un chiffre **faux** — pire que pas de chiffre. Même raison
+    pour les natures qui ne se lisent pas en rangs (`issue_de_tour`, `le_reste`), dont le compte
+    dépend du déroulé.
 
-    Même raison pour les natures qui ne se lisent pas en rangs (`issue_de_tour`, `le_reste`) : leur
-    compte dépend du déroulé, pas de l'effectif de départ.
+    ⚠️ **Ces cas ne sont couverts par rien à la composition** — ni ici, ni par une anomalie :
+    `PrelevementVide` et `RangsSourceInexistants` ne naissent que dans la branche `RANGS` de
+    `_flux_de_source`, et `PhaseSansParticipant` exige un compte **nul**. Le plancher structurel
+    (`base`) est donc le seul filet : il est **toujours** retenu, quelle que soit la nature des
+    prélèvements, parce qu'un tableau exige deux tireurs quoi qu'il l'alimente. C'est une borne
+    inférieure jamais surestimante.
 
     **Plusieurs prélèvements sur une phase se cumulent**, donc c'est le **plus bas** qui décide :
     une phase nourrie par « 1 à 8 » *et* « 33 à 40 » a ses deux archers dès le 2ᵉ inscrit. Entre
@@ -272,18 +301,25 @@ def exigence_minimale(etapes: Sequence[EtapeSequencee]) -> ExigenceEffectif:
     if not triees:
         return ExigenceEffectif(minimum=1)
 
-    premier_ordre = triees[0].ordre
+    ordre_qualification = next(
+        (etape.ordre for etape in triees if etape.type is TypePhase.QUALIFICATION), None
+    )
     exigence = ExigenceEffectif(minimum=1)
     for etape in triees:
-        candidate = _exigence_de_letape(etape, premier_ordre)
+        candidate = _exigence_de_letape(etape, ordre_qualification)
         if candidate.minimum > exigence.minimum:
             exigence = candidate
     return exigence
 
 
-def _exigence_de_letape(etape: EtapeSequencee, premier_ordre: int) -> ExigenceEffectif:
-    """Le plancher d'inscrits qu'une seule étape réclame."""
-    base = 2 if etape.type in _TYPES_EN_TABLEAU else 1
+def _exigence_de_letape(etape: EtapeSequencee, ordre_qualification: int | None) -> ExigenceEffectif:
+    """Le plancher d'inscrits qu'une seule étape réclame.
+
+    `base` est le plancher **structurel** : ce qu'il faut pour que l'étape ait un sens, quelle que
+    soit sa provenance. Il est retenu dans **tous** les cas de repli — une phase à duels alimentée
+    par « le reste » reste une phase à duels, et le moteur lui demandera deux tireurs.
+    """
+    base = 1 if etape.type in _TYPES_SANS_OPPOSITION else 2
 
     if not etape.sources:
         # Aucun prélèvement : la phase se peuple des inscrits (la première), ou de tout le monde
@@ -291,13 +327,18 @@ def _exigence_de_letape(etape: EtapeSequencee, premier_ordre: int) -> ExigenceEf
         # juste de quoi tenir debout.
         return ExigenceEffectif(minimum=base)
 
+    if ordre_qualification is None:
+        # Aucun classement à lire : le moteur ignore les prélèvements et ensemence avec tous les
+        # archers en lice. Réclamer le rang de départ serait un refus abusif.
+        return ExigenceEffectif(minimum=base)
+
     rangs = [
         source.rang_debut
         for source in etape.sources
-        if source.nature is NatureSource.RANGS and source.ordre_source == premier_ordre
+        if source.nature is NatureSource.RANGS and source.ordre_source == ordre_qualification
     ]
     if not rangs:
-        return ExigenceEffectif(minimum=1)
+        return ExigenceEffectif(minimum=base)
 
     plus_bas = min(rangs)
     return ExigenceEffectif(minimum=plus_bas - 1 + base, ordre=etape.ordre, rang_debut=plus_bas)

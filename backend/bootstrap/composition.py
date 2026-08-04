@@ -414,7 +414,7 @@ def create_app(
     # `ServiceTournois` lit aussi les **départs** (port `depart_repository`) : le passage à `prêt`
     # exige au moins un créneau (garde `TournoiSansDepart`, E02US010). Depuis E05US021 il lit en
     # plus les **phases** et les **engagés** : démarrer exige assez d'inscrits pour que le déroulé
-    # composé puisse se dérouler (ADR-0068 §6).
+    # composé puisse se dérouler ([ADR-0069]).
     app.state.service_tournois = ServiceTournois(
         tournoi_repository, depart_repository, phase_repository, compteur_engages
     )

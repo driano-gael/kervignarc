@@ -221,10 +221,20 @@ class EffectifMinimumIncoherent(DomainError):
     Le minimum d'un format se **déduit** de ses prélèvements : « les rangs 33 et suivants » ne monte
     un tableau de deux qu'à partir du 34ᵉ classé. Un club peut exiger davantage (« pas de tournoi de
     ce type sous 40 archers ») — c'est une règle sportive, elle se pose au-dessus du plancher
-    technique. En dessous, le chiffre est un **mensonge** : il laisserait démarrer un tournoi que le
-    moteur refuserait de dérouler sur la tablette, le défaut même que l'US corrige.
+    technique.
 
-    Bloquante, donc, et non conjoncturelle : la contradiction est vraie à tout effectif.
+    ⚠️ **Une exigence trop basse ne laisse rien passer** : le minimum retenu est le `max` des deux,
+    donc une valeur sous le plancher est simplement **inerte**. Ce n'est pas un risque pour le
+    tournoi, c'est un **écran qui ment** — l'organisateur croit avoir réglé un seuil qui ne
+    s'appliquera jamais, et le corrigera d'autant moins qu'il le croit posé. C'est ce mensonge que
+    l'anomalie interdit, pas un danger d'exécution. *(La docstring affirmait initialement l'inverse
+    — « il laisserait démarrer un tournoi que le moteur refuserait » — ce que le `max` contredit ;
+    relevé en revue.)*
+
+    Bloquante, donc, et non conjoncturelle : la contradiction est vraie à tout effectif. Le prix
+    assumé est qu'ajouter une consolante « rangs 41 et suivants » à un format qui exigeait 40 le
+    rend inapplicable jusqu'à ce que le chiffre soit relevé — le déroulé a changé, l'exigence doit
+    être revue.
     """
 
     code = "effectif_minimum_incoherent"

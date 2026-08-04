@@ -520,21 +520,30 @@ format ; le logiciel doit connaître la fourchette basse et avertir l'admin avan
   est **refusé**, avec un message qui nomme la phase et son prélèvement. L'organisateur peut alors
   changer de format. Le compte des inscrits est celui des **archers distincts tous départs
   confondus**, tel que l'affiche déjà le suivi de déroulé.
-- **CA — visible avant le clic** : tant que le compte n'y est pas, l'écran du tournoi affiche en
-  continu **« N inscrits / M requis »** et la phase en cause. L'organisateur voit le manque arriver
-  au lieu de le découvrir en cliquant « Démarrer ». *(Arbitrage du 04/08/2026 : ajouté au CA — le CA
-  d'origine ne prévoyait que le refus au clic, ce qui n'apprend rien tant qu'on ne clique pas.)*
+- **CA — visible avant le clic** : tant que le compte n'y est pas **et que le tournoi n'est pas
+  lancé**, l'écran du tournoi affiche en continu **« N inscrits / M requis »** et la cause (la phase
+  en cause, ou la règle de club). L'organisateur voit le manque arriver au lieu de le découvrir en
+  cliquant « Démarrer ». *(Arbitrage du 04/08/2026 : ajouté au CA — le CA d'origine ne prévoyait que
+  le refus au clic, ce qui n'apprend rien tant qu'on ne clique pas. La restriction « pas lancé » a
+  été tranchée à la revue : rappeler le manque sur un tournoi en cours serait un reproche sans
+  action possible.)*
 - **CA — visible à la composition** : l'écran « Composer un déroulé » annonce le minimum du format,
   qu'un effectif soit simulé ou non.
 - **Notes** : le moteur refuse déjà de monter un tableau vide (E05US020, `EffectifTableauInvalide`) —
   c'est le **dernier** garde-fou, pas le bon endroit : il s'exprime sur la tablette, en compétition.
   Cette US met le contrôle là où la décision se prend.
 - **Notes — portée du calcul** : un rang se lit dans le classement de la **phase source**, pas dans
-  les inscrits. Le minimum n'est donc déduit que des prélèvements visant la **première phase** (la
-  seule que les inscriptions peuplent). Les prélèvements par issue de tour, « le reste », et ceux qui
-  visent une phase intermédiaire n'y contribuent pas : ils restent couverts par le diagnostic à
-  effectif simulé (`PrelevementVide`, `RangsSourceInexistants`). Annoncer un minimum qui les
-  englobe serait annoncer un chiffre faux.
+  les inscrits. Le minimum n'est donc déduit que des prélèvements visant la **phase de
+  qualification** — la seule que le moteur sache lire (`_ordre_de_la_qualification`). ⚠️ Viser « la
+  première phase » **ne revient pas au même** : un échauffement en tête désactivait tout le contrôle,
+  et un déroulé sans qualification se voyait refuser à tort (défaut bloquant trouvé à la revue). Les
+  prélèvements par issue de tour, « le reste », et ceux qui visent une phase intermédiaire n'y
+  contribuent pas — annoncer un minimum qui les englobe serait annoncer un chiffre faux. Il leur
+  reste le **plancher structurel** : une phase qui oppose des tireurs en exige deux, quelle que soit
+  la source qui l'alimente (seuls la qualification et l'échauffement se contentent d'un). Ce
+  plancher est le **seul** filet pour ces cas : contrairement à ce qu'une première rédaction
+  affirmait, `PrelevementVide` ne les couvre pas (il n'existe que pour les prélèvements par rangs, et
+  seulement à compte nul).
 - **Notes — pas de nouvelle anomalie de composition** : le diagnostic signale **déjà**
   `PrelevementVide` quand un prélèvement ne prend personne à l'effectif simulé. Le minimum est donc
   exposé comme une **donnée** de la projection, pas comme une anomalie de plus — un second

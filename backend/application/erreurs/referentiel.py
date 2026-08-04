@@ -35,7 +35,7 @@ class EffectifInsuffisantPourDemarrer(ApplicationError):
     classé. Jusqu'ici, ce manque n'apparaissait qu'**en compétition**, quand le moteur refusait de
     construire le tableau (`EffectifTableauInvalide`, E05US020) : sur la tablette, trop tard pour
     changer de format. La garde remonte donc le contrôle au **lancement**, là où l'organisateur peut
-    encore décider — arbitrage du commanditaire, [ADR-0068] §6.
+    encore décider — [ADR-0069], sur arbitrage du commanditaire ([ADR-0068] §6).
 
     **Une exception assumée à `D-15`** (« en cours, tout passe ») : le refus ne porte pas sur une
     saisie mais sur l'ouverture d'un tournoi qu'on sait déjà impossible à dérouler. Le message
