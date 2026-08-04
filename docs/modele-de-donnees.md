@@ -626,7 +626,7 @@ la racine** (ce ne sont pas des politiques de moteur). Exemples :
     "seeding":  { "nom": "serpent" },
     "byes":     { "nom": "mieux_classes" },
     "tiebreak": { "nom": "ffta_defaut" },
-    "depth":    { "nom": "un_vers_n" }            // ou { "nom": "podium", "jusqu_au": 4 }
+    "depth":    { "nom": "un_vers_n" }            // ou { "nom": "top_n", "jusqu_au": 4 }
   },
   "validation": { "grain": "fin_de_duel" },
   "sources": [
@@ -673,7 +673,23 @@ la racine** (ce ne sont pas des politiques de moteur). Exemples :
   catégorie (`*` = toutes catégories), ex. « toutes les finales sur triples verticaux » (FFTA A.7.6/A.7.7).
   Absent ⇒ on retient le `CATEGORIE.blason_id`.
 - Autres valeurs de `routing` : `elimination_seche` (MVP, podium), `repechage` (World Archery, J4).
-- Autres `depth` : `top_n` (avec `params.n`).
+- `depth` — **forme livrée** (E06US006, [ADR-0070](adr/0070-profondeur-de-classement-reglee-par-phase.md)) :
+  `{"nom": "un_vers_n"}` (placement intégral — tous les rangs se jouent, plus aucune fourchette) ou
+  `{"nom": "top_n", "jusqu_au": N}` (seuls les N premiers sont départagés, le reste reste groupé sur
+  la tranche de rangs de sa sortie). Écrit **sans migration** : la clé est **omise** quand rien n'est
+  réglé, si bien qu'une config d'avant l'US et une config non réglée sont le même document.
+  ⚠️ **Clé absente ⇒ preset du type** : `top_n` à 4 pour une **élimination directe** — et **non**
+  `un_vers_n`, malgré le « 1→N par défaut » d'ADR-0004 —, mais `un_vers_n` pour un **placement**,
+  qui n'a aucun existant à préserver et dont l'intitulé promet de classer tout le monde. Le défaut du *catalogue* n'est pas le preset d'une *phase déjà en base* :
+  toutes les phases écrites avant E06US006 se jouaient au podium (profondeur figée au câblage), et
+  faire de 1→N leur preset aurait converti tous les tournois existants au placement intégral.
+  ⚠️ Le catalogue porte un troisième nom, `aucun` (`AucunClassement`, contenu du type échauffement),
+  **jamais écrit ici** : ni l'API ni les écrans ne l'offrent, et le trouver dans une `config` de
+  tableau signifie que la base a été altérée. Une profondeur sur un type qui ne monte aucun arbre
+  (qualification, poule, échauffement) est refusée en 422 **sur une phase** ; sur une **étape de
+  format**, elle s'enregistre (régime brouillon d'ADR-0063) et n'est refusée qu'à l'application.
+  ⚠️ Le nom de catalogue est `top_n` et non `podium` : le mot *Podium* reste réservé aux rangs 1-4
+  décernés par un match (`docs/glossaire.md`), et il n'aurait pas décrit un « top 8 ».
 - `tiebreak` — **forme livrée** (E06US003, ADR-0066) : `{"nom": "ffta_defaut"}` (§8.1, nb de 10 puis
   de 9, ex æquo par défaut), `{"nom": "poules"}` (§10.1, cinq critères), ou le **composite**
   `{"nom": "barrage", "jusqu_au": 8, "sinon": {"nom": "ffta_defaut"}}` — qui délègue le départage à
@@ -708,7 +724,7 @@ la racine** (ce ne sont pas des politiques de moteur). Exemples :
 | `type_phase` | qualification, barrage, elimination_directe, placement, finale, big_shoot_off — **catalogue ouvert** (format = config, [ADR-0004](adr/0004-moteur-de-phases-politiques.md) ; cf. catalogue E05). *Valeurs livrées (E05US001) : `qualification`, `elimination_directe`, `placement` ; les autres restent des cibles.* |
 | `routing` | elimination_seche, cascade, repechage |
 | `grain_validation` | fin_de_serie, fin_de_duel, toutes_les_n_volees |
-| `depth` | 1_a_n, top_n |
+| `depth` | un_vers_n, top_n, aucun |
 | `statut_match` | a_jouer, en_cours, termine, bye, forfait |
 | `role` | admin, scoreur, public |
 | `valeur_fleche` | 0-10, X, M — **vocabulaire par tournoi, défaut FFTA** ([ADR-0027](adr/0027-vocabulaire-de-score-injectable-defaut-ffta.md)) ; restreint par `BLASON.zones` (un triple 40 exclut 5→1). L'enum figé et `VALEUR_FLECHE_MAX` sont abandonnés |

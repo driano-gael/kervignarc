@@ -33,7 +33,7 @@ from typing import Protocol
 from application.erreurs import ApplicationError, TournoiIntrouvable
 from domain.deroule import ProjectionDeroule, TourBraquet, projeter
 from domain.erreurs import DomainError
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import TYPES_EN_TABLEAU, Phase, PhaseId
 from domain.ports import (
     DepartRepository,
     InscriptionRepository,
@@ -43,13 +43,6 @@ from domain.ports import (
 from domain.suivi_deroule import AvancementDeroule, avancement_bloc
 from domain.tableau import Match, Tableau
 from domain.tournoi import TournoiId
-
-_TYPES_EN_TABLEAU = frozenset({TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMENT})
-"""Les types dont on sait reconstruire un arbre — donc dénombrer les duels tranchés.
-
-Volontairement **le même ensemble** que `domain.deroule._TYPES_EN_TABLEAU` : les autres types du
-catalogue (E05US015) n'ont pas de braquet projeté, il n'y a donc rien à y remplir (`# DETTE-028`).
-"""
 
 
 class CompteurEngages(Protocol):
@@ -265,7 +258,7 @@ class ServiceSuiviDeroule:
         # Sans braquet, il n'y a rien à remplir : on évite la reconstruction, qui est l'opération la
         # plus coûteuse du service (`# DETTE-031`) — cas d'une phase à plusieurs sources, dont la
         # tranche d'entrée est indéterminable.
-        if phase.type not in _TYPES_EN_TABLEAU or phase.id is None or not braquets:
+        if phase.type not in TYPES_EN_TABLEAU or phase.id is None or not braquets:
             return {}
         try:
             tableau, _ = self._tableaux.reconstruire(tournoi_id, phase.id)

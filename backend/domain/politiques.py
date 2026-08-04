@@ -73,7 +73,7 @@ from enum import Enum
 from typing import Protocol, cast
 
 from domain.archer import ArcherId
-from domain.erreurs import PolitiqueInconnue, PolitiqueMalFormee
+from domain.erreurs import PolitiqueInconnue, PolitiqueMalFormee, ProfondeurInvalide
 from domain.plage import Plage
 
 
@@ -550,6 +550,12 @@ class TiebreakAvecBarrage:
 
 # --- depth -------------------------------------------------------------------------------------
 
+RANGS_DU_PODIUM = 4
+"""Les rangs qu'un tableau à petite finale décerne : 1-2 (finale) et 3-4 (petite finale).
+
+Défaut de `ProfondeurPodium` **et** preset des phases en tableau (`phase.profondeur_par_defaut`) —
+un seul 4 pour une seule raison, plutôt qu'un littéral recopié dans chaque module."""
+
 
 class Depth(Protocol):
     """Décide jusqu'où classer (ADR-0004). Méthode fondatrice : les rangs à produire pour un
@@ -577,7 +583,7 @@ class ProfondeurPodium:
     rend ses 8 matchs. C'est le sens de Q2 : « l'organisateur peut choisir de s'arrêter à un top ».
     """
 
-    jusqu_au: int = 4
+    jusqu_au: int = RANGS_DU_PODIUM
 
     def rangs_a_classer(self, effectif: int) -> tuple[int, ...]:
         return tuple(range(1, min(self.jusqu_au, effectif) + 1))
@@ -598,6 +604,84 @@ class AucunClassement:
 
     def rangs_a_classer(self, effectif: int) -> tuple[int, ...]:
         return ()
+
+
+class NomProfondeur(str, Enum):
+    """Les profondeurs qu'un **organisateur** choisit — un sous-ensemble du catalogue `depth`.
+
+    `aucun` (`AucunClassement`) n'y figure pas : ce n'est pas un choix mais le contenu même du type
+    `échauffement` (§10.1), et l'offrir sur un tableau proposerait de monter un arbre dont on ne
+    lirait aucun rang.
+
+    ⚠️ **`top_n` et non `podium`** (E06US006, relevé en revue). La stratégie s'appelle
+    `ProfondeurPodium` depuis E05US003, mais `docs/glossaire.md` réserve le mot **Podium** aux
+    rangs **1-4 décernés par un match** — un encadré « trois mots à ne pas confondre » y insiste.
+    Or ce nom devient ici un **contrat REST et une valeur persistée**, où il désignerait un
+    « podium jusqu'au 8ᵉ » : la règle 3 (cohérence code ↔ API ↔ UI ↔ doc) serait rompue dans les
+    quatre sens. Le renommage est **gratuit aujourd'hui** — la clé `config.policies.depth` n'a
+    jamais été écrite avant cette US, aucune base ne porte l'ancien nom — et coûteux dès la
+    première base de production. `docs/modele-de-donnees.md` annonçait d'ailleurs `top_n`.
+
+    La **classe** garde son nom : elle est interne, et le renommer toucherait quatre fichiers de
+    tests sans rien changer au contrat. C'est le nom de façade qui devait être juste.
+    """
+
+    UN_VERS_N = "un_vers_n"
+    TOP_N = "top_n"
+
+
+@dataclass(frozen=True)
+class ProfondeurClassement:
+    """Le **choix** de profondeur d'une phase — un descripteur sérialisable, pas la stratégie.
+
+    La distinction est celle d'ADR-0066 : l'agrégat porte de la **donnée** (ce que l'organisateur a
+    réglé, ce que la base relit), et c'est le **registre** qui en fait une `Depth`. Mettre la
+    stratégie sur la phase ferait entrer un objet non sérialisable dans un agrégat, et court-
+    circuiterait le point d'injection — la politique deviendrait une décoration.
+
+    `en_config()` rend la forme ADR-0046 (`{"nom": …, …paramètres}`), donc directement consommable
+    par `assembler_politiques`.
+    """
+
+    nom: NomProfondeur
+    jusqu_au: int | None = None
+    """Le dernier rang départagé — **et seulement** pour un top N.
+
+    Porté par `top_n` uniquement : un classement intégral ne s'arrête à aucun rang, et lui en
+    donner un décrirait deux profondeurs à la fois. Le refus est plus utile que la tolérance —
+    silencieusement ignoré, le seuil laisserait croire à un top N qui n'aurait jamais lieu.
+    """
+
+    def __post_init__(self) -> None:
+        if self.nom is NomProfondeur.TOP_N:
+            if self.jusqu_au is None or self.jusqu_au < 1:
+                raise ProfondeurInvalide(
+                    "Un classement en top N s'arrête à un rang entier positif "
+                    f"(reçu {self.jusqu_au!r}) ; « classer tout le monde » se dit en choisissant "
+                    "le classement intégral."
+                )
+        elif self.jusqu_au is not None:
+            raise ProfondeurInvalide(
+                "Un classement intégral va jusqu'au dernier archer : il ne s'arrête à aucun rang "
+                f"(reçu {self.jusqu_au!r})."
+            )
+
+    @staticmethod
+    def integrale() -> ProfondeurClassement:
+        """Le mode **1→N** : tous les rangs se jouent, aucun archer n'est laissé en fourchette."""
+        return ProfondeurClassement(nom=NomProfondeur.UN_VERS_N)
+
+    @staticmethod
+    def top(jusqu_au: int) -> ProfondeurClassement:
+        """Le mode **top N** : seuls les `jusqu_au` premiers sont départagés, le reste groupé."""
+        return ProfondeurClassement(nom=NomProfondeur.TOP_N, jusqu_au=jusqu_au)
+
+    def en_config(self) -> dict[str, object]:
+        """La forme `config.policies.depth` (ADR-0046) — ce qui se persiste et ce qui se résout."""
+        config: dict[str, object] = {"nom": self.nom.value}
+        if self.jusqu_au is not None:
+            config["jusqu_au"] = self.jusqu_au
+        return config
 
 
 # --- aggregation -------------------------------------------------------------------------------
@@ -796,7 +880,7 @@ def registre_par_defaut() -> RegistrePolitiques:
         lambda params: _fabriquer_barrage(params, registre),
     )
     registre.enregistrer(FamillePolitique.DEPTH, "un_vers_n", lambda _p: ProfondeurUnVersN())
-    registre.enregistrer(FamillePolitique.DEPTH, "podium", _fabriquer_profondeur_podium)
+    registre.enregistrer(FamillePolitique.DEPTH, "top_n", _fabriquer_profondeur_podium)
     registre.enregistrer(FamillePolitique.DEPTH, "aucun", lambda _p: AucunClassement())
     registre.enregistrer(
         FamillePolitique.AGGREGATION, "par_qualification", lambda _p: AggregationParQualification()
@@ -914,7 +998,7 @@ def _fabriquer_barrage(
 
 
 def _fabriquer_profondeur_podium(params: Mapping[str, object]) -> ProfondeurPodium:
-    """`{"nom": "podium", "jusqu_au": 8}` → la profondeur correspondante (4 par défaut).
+    """`{"nom": "top_n", "jusqu_au": 8}` → la profondeur correspondante (4 par défaut).
 
     Première fabrique **paramétrée** du registre : jusqu'ici toutes les stratégies étaient sans
     état. Un `jusqu_au` non entier ou non positif est une config mal formée — on refuse plutôt que
@@ -924,7 +1008,7 @@ def _fabriquer_profondeur_podium(params: Mapping[str, object]) -> ProfondeurPodi
     brut = params.get("jusqu_au", 4)
     if not isinstance(brut, int) or isinstance(brut, bool) or brut < 1:
         raise PolitiqueMalFormee(
-            f"La profondeur « podium » attend un rang entier positif (reçu {brut!r})."
+            f"La profondeur « top_n » attend un rang entier positif (reçu {brut!r})."
         )
     return ProfondeurPodium(jusqu_au=brut)
 

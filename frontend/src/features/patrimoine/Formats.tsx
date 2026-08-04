@@ -303,6 +303,8 @@ function FormulaireFormat() {
       validation: { type: 'fin_de_serie', n_volees: null },
       sources: [],
       effectif: null,
+      // Une qualification n'a pas de profondeur à régler : elle classe toujours tout le monde.
+      profondeur: null,
     }
     creer.mutate(
       { nom, etapes: [etape], effectif_minimum_exige: null },

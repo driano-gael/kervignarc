@@ -23,6 +23,7 @@ function etape(ordre: number, sources: Source[] = []): Etape {
     validation: null,
     sources,
     effectif: null,
+    profondeur: null,
   }
 }
 
@@ -151,6 +152,7 @@ describe('decrireEtape', () => {
       bareme: { nb_volees: 20, nb_fleches_par_volee: 3 },
       validation: null,
       sources: [rangs(1, 1, 32)],
+      profondeur: null,
       effectif: 32,
     }
 

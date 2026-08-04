@@ -41,6 +41,7 @@ from domain.phase import (
     grain_par_defaut,
 )
 from domain.placement import Affectation
+from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.tournoi import TournoiId
 from infrastructure.db.models import (
     FormatTournoiORM,
@@ -108,6 +109,7 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
         effectif = config.get("effectif")
         effectif = None if effectif is None else int(effectif)
         barrage_jusqu_au = _lire_barrage_jusqu_au(config)
+        profondeur = _lire_profondeur(config)
     except (
         json.JSONDecodeError,
         AttributeError,
@@ -127,6 +129,7 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
             sources=sources,
             effectif=effectif,
             barrage_jusqu_au=barrage_jusqu_au,
+            profondeur=profondeur,
             statut=statut,
             id=ligne.id,
         )
@@ -253,6 +256,7 @@ def _config_phase(phase: Phase) -> str:
             phase.sources,
             phase.effectif,
             phase.barrage_jusqu_au,
+            phase.profondeur,
         )
     )
 
@@ -263,6 +267,7 @@ def _politiques_json(
     sources: tuple[SourcePhase, ...],
     effectif: int | None,
     barrage_jusqu_au: int | None = None,
+    profondeur: ProfondeurClassement | None = None,
     *,
     marquer_absences: bool = False,
     porte_un_bareme: bool = False,
@@ -317,11 +322,45 @@ def _politiques_json(
         politiques = config.setdefault("policies", {})
         if isinstance(politiques, dict):
             politiques["tiebreak"] = {"nom": "barrage", "jusqu_au": barrage_jusqu_au}
+    if profondeur is not None:
+        # Même forme, même raison (E06US006) : `config.policies.depth = {"nom": …, "jusqu_au": …}`.
+        # **Rien n'est écrit quand la profondeur n'est pas réglée**, et l'absence n'est pas ambiguë
+        # ici — contrairement au grain, elle veut dire la même chose dans les deux tables : « preset
+        # du type », soit le podium. C'est pourquoi `depth` échappe à `marquer_absences` : écrire
+        # `null` pour distinguer « pas choisi » de « pas encore écrit » distinguerait deux états qui
+        # se relisent à l'identique, et donnerait au lecteur une nuance sans conséquence.
+        politiques_depth = config.setdefault("policies", {})
+        if isinstance(politiques_depth, dict):
+            politiques_depth["depth"] = profondeur.en_config()
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
         config["effectif"] = effectif
     return config
+
+
+def _lire_profondeur(config: Any) -> ProfondeurClassement | None:
+    """La profondeur de classement d'une phase, lue dans `config.policies.depth` (E06US006).
+
+    Absence = **non réglée**, donc preset du type à l'usage (le podium) — pas une incohérence :
+    c'est le régime de toute phase écrite avant cette US (« politique sans migration », ADR-0011).
+
+    Un `nom` hors des deux modes offerts à l'organisateur (`aucun`, ou un nom inconnu) lève
+    `ValueError` via l'enum, que `_vers_phase` traduit en « configuration illisible » — ce qui est
+    exact : `AucunClassement` est le contenu du type échauffement, pas un réglage de tableau, donc
+    le trouver là veut dire que la base a été altérée.
+    """
+    politiques = config.get("policies")
+    if not isinstance(politiques, dict):
+        return None
+    depth = politiques.get("depth")
+    if not isinstance(depth, dict):
+        return None
+    jusqu_au = depth.get("jusqu_au")
+    return ProfondeurClassement(
+        nom=NomProfondeur(depth["nom"]),
+        jusqu_au=None if jusqu_au is None else int(jusqu_au),
+    )
 
 
 def _lire_barrage_jusqu_au(config: Any) -> int | None:
@@ -391,6 +430,7 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         etape.validation,
                         etape.sources,
                         etape.effectif,
+                        profondeur=etape.profondeur,
                         marquer_absences=True,
                         porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
                     ),
@@ -483,6 +523,7 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         validation=validation,
         sources=_vers_sources(brute),
         effectif=None if effectif is None else int(effectif),
+        profondeur=_lire_profondeur(brute),
     )
 
 

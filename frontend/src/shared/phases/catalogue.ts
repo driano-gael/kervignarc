@@ -93,6 +93,30 @@ export const AIDE_TYPE: Record<TypePhase, string> = {
 // évite juste d'offrir un choix qui mène à un 422 dont la consigne n'est pas réalisable à l'écran.
 export const TYPES_SANS_CLASSEMENT: TypePhase[] = ['echauffement']
 
+// Les types qui montent un **arbre de duels**, donc les seuls dont la profondeur de classement soit
+// un réglage (E06US006). Miroir de `TYPES_EN_TABLEAU` côté domaine, même parti que ci-dessus : le
+// backend refuse (422) une profondeur sur un autre type, l'écran évite simplement de la proposer.
+export const TYPES_EN_TABLEAU: TypePhase[] = ['elimination_directe', 'placement']
+
+// Jusqu'où une phase en tableau départage ses participants (E06US006, ADR-0070).
+//
+// `un_vers_n` joue **tous** les rangs (placement intégral) ; `top_n` s'arrête au `jusqu_au`-ième,
+// les battus des tours antérieurs restant groupés sur leur fourchette. Le catalogue `depth` du
+// serveur en compte un troisième (`aucun`) volontairement absent de la façade : c'est le contenu du
+// type échauffement, pas un réglage de tableau.
+//
+// ⚠️ Domicilié ici et non dans une feature (corrigé en revue) : le laisser dans
+// `features/patrimoine` faisait importer `shared/ → features/`, la **seule** inversion de ce genre
+// du front. `patrimoine/api.ts` et `phases/api.ts` le ré-exportent, donc aucun import existant ne
+// casse — le second passe encore par le premier, ce qui reste un saut feature → feature à ranger
+// le jour où l'on y touchera.
+export interface Profondeur {
+  nom: 'un_vers_n' | 'top_n'
+  // Le rang d'arrêt — porté par `top_n` seulement. `null` sur `un_vers_n` : un classement intégral
+  // ne s'arrête à aucun rang, et le serveur refuse (422) qu'on lui en donne un.
+  jusqu_au: number | null
+}
+
 /** L'ordre d'affichage du catalogue dans un `<select>` — le plus courant d'abord. */
 export const TOUS_LES_TYPES: TypePhase[] = [
   'qualification',

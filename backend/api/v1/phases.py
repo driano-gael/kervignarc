@@ -30,6 +30,7 @@ from domain.phase import (
     StatutPhase,
     TypePhase,
 )
+from domain.politiques import NomProfondeur, ProfondeurClassement
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["phases"])
@@ -74,6 +75,41 @@ class SourceDTO(BaseModel):
         )
 
 
+class ProfondeurDTO(BaseModel):
+    """La **profondeur de classement** d'une phase (E06US006, ADR-0070).
+
+    Deux modes seulement, ceux qu'un organisateur choisit : `un_vers_n` (tous les rangs se jouent)
+    et `top_n` (on ne départage que les `jusqu_au` premiers, le reste reste groupé). Le catalogue
+    `depth` en compte un troisième — `aucun` — délibérément **absent** de la façade : c'est le
+    contenu du type échauffement, pas un réglage de tableau (règle « on n'offre pas en façade ce
+    qu'aucun moteur ne sait dérouler », ADR-0045 §2).
+
+    Jumeau assumé de `api/v1/formats.ProfondeurDTO`, pour la raison déjà tranchée sur `SourceDTO`.
+    """
+
+    nom: NomProfondeur
+    jusqu_au: int | None = None
+    """Obligatoire pour `top_n`, interdit pour `un_vers_n`.
+
+    ⚠️ **Aucune borne Pydantic ici, délibérément** (corrigé en revue). Un `ge=1` y figurait, et il
+    contredisait la phrase qui l'accompagnait : il **recopiait** à moitié l'invariant que le
+    `ProfondeurClassement` porte déjà, avec pour effet observable **deux codes d'erreur pour une
+    seule faute** — `{"nom":"top_n","jusqu_au":0}` rendait 400 `requete_invalide`, alors que
+    `{"nom":"top_n"}` rend 422 `profondeur_invalide`. Une seule source, un seul code : le domaine
+    (règle 6 — la frontière API ne doit pas devenir un second lieu d'invariants).
+
+    *(`barrage_jusqu_au`, plus bas, garde son `ge=1` : il est un entier nu sans value object pour le
+    porter, donc la frontière y est bien le seul lieu possible. La divergence est assumée, pas une
+    incohérence — cf. ADR-0070 « Négatives / à surveiller ».)*"""
+
+    def vers_agregat(self) -> ProfondeurClassement:
+        return ProfondeurClassement(nom=self.nom, jusqu_au=self.jusqu_au)
+
+    @staticmethod
+    def de_agregat(profondeur: ProfondeurClassement) -> ProfondeurDTO:
+        return ProfondeurDTO(nom=profondeur.nom, jusqu_au=profondeur.jusqu_au)
+
+
 class ConfigPhaseRequete(BaseModel):
     """Config de séquence d'une phase : son type, ses sources (facultatives, **plusieurs** possibles
     depuis E05US010) et son effectif attendu (facultatif). Sert à l'ajout comme à l'édition.
@@ -100,6 +136,17 @@ class ConfigPhaseRequete(BaseModel):
     type: TypePhase
     sources: list[SourceDTO] = Field(default_factory=list, max_length=16)
     effectif: int | None = None
+    profondeur: ProfondeurDTO | None = None
+    """Jusqu'où cette phase départage (E06US006, ADR-0070).
+
+    `null` (défaut) = **non réglée**, donc le preset du type : le **podium** pour une élimination
+    directe (ce qui se jouait avant cette US), le **classement intégral** pour un placement, qui
+    n'a aucun existant à préserver (ADR-0070 §3).
+
+    ⚠️ Même régime d'édition **totale** que `sources` : omettre le champ au `PUT` **efface** le
+    réglage et fait retomber la phase sur son preset.
+    """
+
     barrage_jusqu_au: int | None = Field(default=None, ge=1)
     """Rang jusqu'auquel les ex æquo se départagent **au tir** (E06US003, ADR-0066).
 
@@ -141,6 +188,7 @@ class PhaseReponse(BaseModel):
     statut: StatutPhase
     sources: list[SourceDTO]
     effectif: int | None
+    profondeur: ProfondeurDTO | None = None
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -154,6 +202,9 @@ class PhaseReponse(BaseModel):
             statut=phase.statut,
             sources=[SourceDTO.de_agregat(source) for source in phase.sources],
             effectif=phase.effectif,
+            profondeur=(
+                None if phase.profondeur is None else ProfondeurDTO.de_agregat(phase.profondeur)
+            ),
             barrage_jusqu_au=phase.barrage_jusqu_au,
         )
 
@@ -187,6 +238,7 @@ async def ajouter_phase(
                 sources,
                 requete.effectif,
                 requete.barrage_jusqu_au,
+                None if requete.profondeur is None else requete.profondeur.vers_agregat(),
             )
         )
     )
@@ -214,6 +266,7 @@ async def modifier_phase(
                 sources,
                 requete.effectif,
                 requete.barrage_jusqu_au,
+                None if requete.profondeur is None else requete.profondeur.vers_agregat(),
             )
         )
     )

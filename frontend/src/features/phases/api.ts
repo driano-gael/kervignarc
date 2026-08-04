@@ -3,6 +3,7 @@
 
 import { fetchJson } from '../../shared/api/client'
 import type { IssueTour, NatureSource, TypePhase } from '../../shared/phases/catalogue'
+import type { Profondeur } from '../patrimoine/api'
 
 // Types de phase, natures de prélèvement et issues de tour : **ré-exportés** du catalogue partagé
 // (`shared/phases/catalogue.ts`). Ils y ont été extraits en E01US024, à la 3ᵉ occurrence — le seuil
@@ -41,18 +42,24 @@ export interface Phase {
   // Rang jusqu'auquel les ex æquo se départagent **au tir** (E06US003, ADR-0066). `null` = aucun
   // barrage, donc l'ex æquo partagé qui est le défaut du produit.
   barrage_jusqu_au: number | null
+  // Jusqu'où cette phase départage (E06US006, ADR-0070). `null` = **non réglée**, donc le preset de
+  // son type — le podium pour un tableau. Pas « 1→N » : l'absence rejoue ce qui se jouait hier.
+  profondeur: Profondeur | null
 }
 
 // Config de séquence envoyée au serveur (ajout et édition totale partagent la même forme).
 //
 // ⚠️ **Édition totale** : un champ omis est **effacé** côté serveur. C'est pourquoi
 // `barrage_jusqu_au` doit être renvoyé à chaque `PUT`, réhydraté depuis la phase — sans quoi
-// corriger l'effectif d'une phase effacerait son seuil de barrage en silence.
+// corriger l'effectif d'une phase effacerait son seuil de barrage en silence. `profondeur` (E06US006)
+// tombe sous la même règle, avec une conséquence plus lourde encore : effacée, la phase retombe sur
+// son preset, et un tournoi composé en placement intégral se rejouerait tronqué au podium.
 export interface ConfigPhase {
   type: TypePhase
   sources?: SourcePhase[]
   effectif?: number | null
   barrage_jusqu_au?: number | null
+  profondeur?: Profondeur | null
 }
 
 export function getPhases(tournoiId: number): Promise<Phase[]> {

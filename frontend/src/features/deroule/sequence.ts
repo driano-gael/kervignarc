@@ -11,6 +11,7 @@
 // parité avec l'écran équivalent qui manquait, pas une subtilité nouvelle.
 
 import type { Etape, Source } from '../patrimoine/api'
+import { decrireProfondeur } from '../../shared/phases/profondeur'
 import { deplacer } from '../phases/ordre'
 
 /** Ordre sentinelle d'un prélèvement **orphelin** — hors de toute séquence, donc introuvable.
@@ -100,6 +101,9 @@ export function decrireEtape(etape: Etape): string {
     morceaux.push(`${etape.bareme.nb_volees}×${etape.bareme.nb_fleches_par_volee}`)
   }
   if (etape.effectif !== null) morceaux.push(`${etape.effectif} archers`)
+  // La profondeur n'apparaît que si elle est **réglée** : une phase au preset se lit comme avant,
+  // et afficher « podium » partout ferait passer un défaut hérité pour une décision (E06US006).
+  if (etape.profondeur !== null) morceaux.push(decrireProfondeur(etape.profondeur))
   morceaux.push(
     etape.sources.length === 0 ? 'tous les inscrits' : etape.sources.map(decrireSource).join(' + '),
   )
@@ -113,6 +117,8 @@ export function decrireEtape(etape: Etape): string {
  * `JSON.stringify` sérialise en `null` — un effectif déclaré s'effaçait donc silencieusement à la
  * moindre faute de frappe, et un barème vide partait en `0 volées` pour revenir en 422 illisible.
  */
+export { decrireProfondeur }
+
 export function lireEntier(saisi: string): number | null | undefined {
   if (saisi.trim() === '') return null
   const valeur = Number(saisi)

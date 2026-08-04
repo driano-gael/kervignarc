@@ -6,7 +6,7 @@
 // qui permet enfin à l'axe atelier de tenir sa promesse « fabriquer, hors tournoi » (DETTE-023).
 
 import { fetchJson } from '../../shared/api/client'
-import type { TypePhase } from '../../shared/phases/catalogue'
+import type { Profondeur, TypePhase } from '../../shared/phases/catalogue'
 import type { Blason } from '../blasons/api'
 import type { Categorie, ModifierCategorie } from '../categories/api'
 
@@ -162,6 +162,11 @@ export interface Source {
   issue: 'gagnants' | 'perdants' | null
 }
 
+// Ré-exporté depuis le catalogue partagé (E06US006) : le type y est domicilié pour que
+// `shared/phases/ChoixProfondeur.tsx` puisse le lire sans qu'un module `shared/` dépende d'une
+// feature. Les imports existants ne changent pas.
+export type { Profondeur } from '../../shared/phases/catalogue'
+
 // Une étape d'un format : tout ce qu'une phase porte, **sauf** son tournoi et son statut — ils
 // n'existent pas sur le modèle et naissent à l'application (ADR-0060 §5).
 export interface Etape {
@@ -171,6 +176,8 @@ export interface Etape {
   validation: Grain | null
   sources: Source[]
   effectif: number | null
+  // `null` = **non réglée**, donc le preset du type (le podium pour un tableau) — pas « 1→N ».
+  profondeur: Profondeur | null
 }
 
 export interface FormatTournoi {

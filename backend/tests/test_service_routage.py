@@ -47,12 +47,13 @@ from domain.inscription import Inscription
 from domain.participant import Participant
 from domain.phase import Phase, StatutPhase, TypePhase
 from domain.politiques import (
+    RANGS_DU_PODIUM,
     ByesAuxMieuxClasses,
-    Depth,
     PlacementEnCascade,
-    ProfondeurPodium,
+    ProfondeurClassement,
     Routing,
     SeedingSerpent,
+    registre_par_defaut,
 )
 from tests.conftest import (
     FauxArcherRepository,
@@ -72,8 +73,10 @@ from tests.test_service_saisie_duels import ZONES_TRIPLE, FauxDuelRepository
 
 _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
 
+_REGISTRE = registre_par_defaut()
+
 _CASCADE = PlacementEnCascade()
-_PODIUM = ProfondeurPodium()
+_PODIUM = ProfondeurClassement.top(RANGS_DU_PODIUM)
 """Le routing par défaut du décor, en **singleton de module** : `ruff` refuse un appel de fonction
 en argument par défaut (`B008`). Sans risque ici — les politiques sont des dataclasses `frozen`,
 donc un exemplaire partagé ne peut garder aucun état d'un test à l'autre."""
@@ -90,13 +93,17 @@ class _Monde:
         self,
         capacites: tuple[int, ...] = (4, 4),
         routing: Routing = _CASCADE,
-        depth: Depth = _PODIUM,
+        profondeur: ProfondeurClassement | None = _PODIUM,
     ) -> None:
         self.routing = routing
         # Injectable pour la même raison que `routing` : la **profondeur** décide s'il y a un
         # match pour la 3ᵉ place (E06US004 s'en sert pour montrer qu'un tournoi sans petite
-        # finale n'a pas de bronze).
-        self.depth = depth
+        # finale n'a pas de bronze). Depuis E06US006 elle est portée **par la phase** et non plus
+        # par le service : le décor la pose donc sur la phase de tableau qu'il crée.
+        #
+        # `None` est une valeur **utile** et non un défaut : elle laisse la phase **non réglée**,
+        # seul moyen d'exercer de bout en bout le repli sur le preset du type (ADR-0070 §3).
+        self.profondeur = profondeur
         self.tournoi_id = 1
         self.tournois = FauxTournoiRepository({1})
         self.phases = FauxPhaseRepository()
@@ -126,7 +133,14 @@ class _Monde:
         self.phase_id: int | None = None
 
     def creer_phase_tableau(self) -> int:
-        phase = self.phases.ajouter(Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE))
+        phase = self.phases.ajouter(
+            Phase.creer(
+                self.tournoi_id,
+                2,
+                TypePhase.ELIMINATION_DIRECTE,
+                profondeur=self.profondeur,
+            )
+        )
         assert phase.id is not None
         self.phase_id = phase.id
         return phase.id
@@ -162,7 +176,7 @@ class _Monde:
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
             self.routing,
-            self.depth,
+            _REGISTRE,
         )
 
     @property
@@ -180,7 +194,7 @@ class _Monde:
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
             self.routing,
-            self.depth,
+            _REGISTRE,
         )
 
     @property

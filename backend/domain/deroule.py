@@ -43,6 +43,7 @@ from domain.erreurs import (
 )
 from domain.grain_validation import GrainValidation
 from domain.phase import (
+    TYPES_EN_TABLEAU,
     EtapeSequencee,
     IssueTour,
     NatureSource,
@@ -52,12 +53,6 @@ from domain.phase import (
     anomalies_sequence,
 )
 from domain.plage import Plage
-
-_TYPES_EN_TABLEAU = frozenset({TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMENT})
-"""Les types dont le déroulé est un **arbre** : leur nombre de tours se déduit de l'effectif seul.
-
-Les six autres types du catalogue (E05US015) tirent le leur d'une configuration que ni `Phase` ni
-`ModelePhase` ne portent encore — cf. `# DETTE-028`."""
 
 _TYPES_SANS_OPPOSITION = frozenset({TypePhase.QUALIFICATION, TypePhase.ECHAUFFEMENT})
 """Les types où l'archer tire **seul** : un participant leur suffit (E05US021).
@@ -70,12 +65,21 @@ plancher **prudent** (2) au lieu du permissif — un oubli y sur-protège au lie
 _TYPES_DEROULES = frozenset({TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMENT})
 """Les types qu'un service **exécute réellement** aujourd'hui (E05US021).
 
-Distinct de `_TYPES_EN_TABLEAU`, qu'il recoupe par coïncidence : celui-ci répond « sait-on
+Distinct de `TYPES_EN_TABLEAU`, qu'il recoupe par coïncidence : celui-ci répond « sait-on
 dessiner ses tours ? », celui-là « le moteur va-t-il seulement monter cette phase ? ». Les six
 autres types ont un moteur de domaine mais **aucun consommateur de production** (`# DETTE-028`) —
 leur prélèvement ne sera pas honoré, donc il ne peut pas justifier un refus de démarrage. Le jour
 où l'un d'eux gagne son service, il rejoint cette liste **et** le plancher redevient exigible.
-Miroir de `_TYPES_RECONSTRUCTIBLES` (`application/palmares.py`) et du `TYPES_DEROULES` du front."""
+Miroir de `_TYPES_RECONSTRUCTIBLES` (`application/palmares.py`) et du `TYPES_DEROULES` du front.
+
+⚠️ **Cette table est en avance sur la réalité, et E06US006 l'a mis en évidence** : `placement` y
+figure alors qu'**aucun** service ne monte son tableau — les deux services de duels filtrent sur
+`ELIMINATION_DIRECTE` seul, comme `_TYPES_RECONSTRUCTIBLES` et le `TYPES_DEROULES` du front, qui
+divergent donc d'ici. Conséquence à instruire : une phase `placement` qui prélève « les rangs 33 et
+suivants » **relève le plancher d'inscrits** (E05US021) pour une phase que rien ne jouera, ce qui
+est le « refus abusif » que cette US se donnait pour pire défaillance. Défaut **préexistant**, hors
+périmètre d'E06US006 — corriger la table changerait le plancher, donc le comportement d'une autre
+US. Signalé plutôt que tranché ici."""
 
 
 class EtapeProjetable(EtapeSequencee, Protocol):
@@ -658,8 +662,14 @@ def _braquets(
     Le nombre de duels d'un tour est `engagés - places gagnantes` : au premier tour d'un tableau
     incomplet, cela donne exactement les byes que `ByesAuxMieuxClasses` distribuera (24 duellistes
     dans un tableau de 32 → 8 duels, 8 exemptés). La somme des duels vaut toujours `effectif - 1`.
+
+    ⚠️ `# DETTE-035` — c'est l'arbre **nu** : les duels que la politique `depth` ajoute (une petite
+    finale au preset, toute la cascade de placement en 1→N) **n'y sont pas comptés**. Depuis
+    E06US006 l'organisateur choisit cette profondeur juste à côté du schéma, sans en voir le coût
+    en duels. Les deux corrections évidentes sont pires que le mal (ensemencer un vrai tableau ici,
+    ou recopier la formule de l'arbre) : cf. le registre de dette.
     """
-    if etape.type not in _TYPES_EN_TABLEAU or resolu is None or tranche is None or resolu < 2:
+    if etape.type not in TYPES_EN_TABLEAU or resolu is None or tranche is None or resolu < 2:
         return ()
     taille = 1 << (resolu - 1).bit_length()
     plage = Plage(tranche[0], tranche[0] + taille - 1)

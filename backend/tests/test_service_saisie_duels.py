@@ -32,8 +32,8 @@ from domain.phase import IssueTour, Phase, PhaseId, SourcePhase, TypePhase
 from domain.politiques import (
     ByesAuxMieuxClasses,
     PlacementEnCascade,
-    ProfondeurPodium,
     SeedingSerpent,
+    registre_par_defaut,
 )
 from tests.conftest import (
     FauxArcherRepository,
@@ -146,7 +146,7 @@ class _Monde:
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
             PlacementEnCascade(),
-            ProfondeurPodium(),
+            registre_par_defaut(),
         )
 
 

@@ -41,7 +41,7 @@ from domain.politiques import (
     Aggregation,
     AggregationExAequo,
     AggregationParQualification,
-    ProfondeurPodium,
+    ProfondeurClassement,
 )
 from tests.test_service_routage import _Monde
 
@@ -439,7 +439,7 @@ def test_sans_petite_finale_le_bronze_n_est_pas_gagne_au_tir() -> None:
     quatre archers ont une place, mais seules les deux premières ont été **gagnées**. Le drapeau
     `decerne` porte la différence, et l'écran comme le PDF l'affichent.
     """
-    monde = _Monde(depth=ProfondeurPodium(jusqu_au=2))
+    monde = _Monde(profondeur=ProfondeurClassement.top(2))
     for valeurs in (("10", "10", "10"), ("10", "10", "9"), ("10", "9", "9"), ("9", "9", "9")):
         monde.inscrire_classe(valeurs)
     monde.creer_phase_tableau()

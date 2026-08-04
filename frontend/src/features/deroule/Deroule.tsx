@@ -24,6 +24,7 @@ import {
   AIDE_TYPE,
   LIBELLE_TYPE,
   TOUS_LES_TYPES,
+  TYPES_EN_TABLEAU,
   TYPES_SANS_CLASSEMENT,
   type TypePhase,
 } from '../../shared/phases/catalogue'
@@ -47,6 +48,13 @@ import {
   retirerEtape,
 } from './sequence'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
+import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
+import {
+  depuisProfondeur,
+  estValide,
+  versProfondeur,
+  PROFONDEUR_AU_PRESET,
+} from '../../shared/phases/profondeur'
 
 const EFFECTIF_PAR_DEFAUT = 120
 
@@ -599,7 +607,10 @@ function EditeurSequence({
   )
 }
 
-function FormulaireEtape({
+/** Exporté pour ses tests, comme `EffectifMinimum` : la composition d'une étape porte deux
+ * garde-fous (profondeur réservée aux tableaux, seuil obligatoire sur un top N) qui ne se
+ * vérifient qu'en manipulant le formulaire. */
+export function FormulaireEtape({
   etape,
   etapesAmont,
   surValider,
@@ -617,6 +628,11 @@ function FormulaireEtape({
     etape?.effectif === null ? '' : String(etape?.effectif ?? ''),
   )
   const [sources, setSources] = useState<Source[]>(etape?.sources ?? [])
+  // **Source unique** du réglage de profondeur : le formulaire le détient, `ChoixProfondeur` ne
+  // fait que le rendre. Le composant en détenait une copie, et comme il est monté sous condition,
+  // un aller-retour de type le réinitialisait sans réinitialiser celle-ci — l'écran affichait
+  // « Podium » et la soumission envoyait « classement intégral » (cf. l'en-tête du composant).
+  const [profondeur, setProfondeur] = useState(depuisProfondeur(etape?.profondeur ?? null))
 
   const volees = lireEntier(nbVolees)
   const fleches = lireEntier(nbFleches)
@@ -629,7 +645,12 @@ function FormulaireEtape({
     type === 'qualification' && typeof volees === 'number' && typeof fleches === 'number'
       ? { nb_volees: volees, nb_fleches_par_volee: fleches }
       : null
+  const enTableau = TYPES_EN_TABLEAU.includes(type)
   const saisieInvalide = volees === undefined || fleches === undefined || effectifLu === undefined
+  // Deux conditions de blocage, **un message chacune**. Les fondre ferait afficher au seuil vide le
+  // conseil générique « laissez le champ vide pour ne rien déclarer » — l'exact contraire de ce
+  // qu'il faut faire, puisqu'un top N sans rang d'arrêt est précisément ce qui est refusé.
+  const soumissionBloquee = saisieInvalide || (enTableau && !estValide(profondeur))
 
   const construire = (): Etape => ({
     ordre: etape?.ordre ?? etapesAmont.length + 1,
@@ -643,6 +664,9 @@ function FormulaireEtape({
         : null,
     sources,
     effectif: effectifLu ?? null,
+    // Même garde que le barème : une profondeur n'a de sens que sur un tableau. Retyper une phase
+    // de tableau en poule **efface** donc le réglage plutôt que de l'envoyer se faire refuser.
+    profondeur: enTableau ? (versProfondeur(profondeur) ?? null) : null,
   })
 
   return (
@@ -654,18 +678,29 @@ function FormulaireEtape({
         if (surAnnuler === undefined) {
           setSources([])
           setEffectif('')
+          // Comme sur l'écran « Phases » (relevé en 2ᵉ passe : le correctif n'avait été appliqué
+          // qu'à un des deux formulaires jumeaux). Ce formulaire n'est jamais démonté entre deux
+          // ajouts : sans ce reset, « classement intégral » se reportait en silence sur la phase
+          // suivante — deux tableaux de 120 partant à ~616 duels que personne n'a demandés.
+          setProfondeur(PROFONDEUR_AU_PRESET)
         }
       }}
     >
       <div className="formulaire__champ">
-        <label className="formulaire__libelle">Type de phase</label>
-        <select value={type} onChange={(e) => setType(e.target.value as TypePhase)}>
-          {TOUS_LES_TYPES.map((valeur) => (
-            <option key={valeur} value={valeur}>
-              {LIBELLE_TYPE[valeur]}
-            </option>
-          ))}
-        </select>
+        {/* Le libellé **enveloppe** son `<select>` (corrigé en E06US006) : il flottait à côté sans
+            `htmlFor` ni imbrication, donc ne labellisait rien — un lecteur d'écran annonçait une
+            liste anonyme, et le champ n'était pas atteignable par son intitulé. Les autres champs
+            de ce formulaire enveloppent déjà, celui-ci était le seul écart. */}
+        <label className="formulaire__libelle">
+          Type de phase
+          <select value={type} onChange={(e) => setType(e.target.value as TypePhase)}>
+            {TOUS_LES_TYPES.map((valeur) => (
+              <option key={valeur} value={valeur}>
+                {LIBELLE_TYPE[valeur]}
+              </option>
+            ))}
+          </select>
+        </label>
         <p className="carte__aide">{AIDE_TYPE[type]}</p>
       </div>
 
@@ -701,10 +736,18 @@ function FormulaireEtape({
         </label>
       </div>
 
+      {enTableau && (
+        <ChoixProfondeur
+          etat={profondeur}
+          surChangement={setProfondeur}
+          presetIntegral={type === 'placement'}
+        />
+      )}
+
       <EditeurSources etapesAmont={etapesAmont} sources={sources} surSources={setSources} />
 
       <div className="formulaire__actions">
-        <button type="submit" disabled={saisieInvalide}>
+        <button type="submit" disabled={soumissionBloquee}>
           {etape === undefined ? 'Ajouter la phase' : 'Valider'}
         </button>
         {saisieInvalide && (

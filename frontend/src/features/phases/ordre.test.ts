@@ -12,6 +12,7 @@ function phase(id: number, ordre: number): Phase {
     sources: [],
     effectif: null,
     barrage_jusqu_au: null,
+    profondeur: null,
   }
 }
 
