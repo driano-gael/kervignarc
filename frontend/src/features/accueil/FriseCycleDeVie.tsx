@@ -11,7 +11,8 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { StatutTournoi, Tournoi } from '../competition/api'
 import { getCompletude } from '../completude/api'
 import { messageConfirmationTerminer } from '../completude/presentation'
-import { useTransitionnerTournoi, useTransitions } from './hooks'
+import type { ExigenceEffectif } from './api'
+import { useExigenceEffectif, useTransitionnerTournoi, useTransitions } from './hooks'
 
 // Axe principal du cycle de vie (ADR-0026 §2). `en_pause` se rattache visuellement à `en_cours` ;
 // `annulé` est un état terminal **hors axe**, rendu à part.
@@ -34,11 +35,43 @@ const RANG: Record<StatutTournoi, number> = {
   annule: -1,
 }
 
+// E05US021 — l'avertissement d'effectif, **avant** le clic « Démarrer ».
+//
+// Ambre (`--warn`), jamais rouge : ce n'est pas encore un refus, c'est ce qui l'annonce (`DV-03`).
+// Le refus, lui, remontera du serveur par `MessageErreur` (rouge, `role="alert"`). Et jamais la
+// couleur seule — glyphe **et** mot portent le sens.
+//
+// Le message **chiffre** son impact et **nomme la cause** (`D-16` / `P-4`) : « une alerte qui ne
+// chiffre pas son impact est un clic de plus, pas une protection ». Sans la phase, l'organisateur
+// saurait qu'il manque du monde sans savoir quoi corriger dans son format.
+function AvertissementEffectif({ exigence }: { exigence: ExigenceEffectif }) {
+  const cause =
+    exigence.ordre_phase === null
+      ? ' Ce minimum est celui exigé pour ce format.'
+      : ` La phase ${exigence.ordre_phase} prélève à partir du rang ${exigence.rang_debut} :` +
+        ` il lui faut au moins ${exigence.minimum} classés pour avoir des tireurs.`
+  return (
+    <p className="carte__etat carte__etat--alerte" role="status">
+      <span aria-hidden="true">▲</span> <strong>Effectif insuffisant</strong> — {exigence.inscrits}{' '}
+      inscrit{exigence.inscrits > 1 ? 's' : ''} / {exigence.minimum} requis.
+      {cause}
+    </p>
+  )
+}
+
 export function FriseCycleDeVie({ tournoi }: { tournoi: Tournoi }) {
   const transitions = useTransitions(tournoi.id)
   const transitionner = useTransitionnerTournoi(tournoi.id)
+  const exigence = useExigenceEffectif(tournoi.id)
   const queryClient = useQueryClient()
   const rangCourant = RANG[tournoi.statut]
+  // Signalé tant que le compte n'y est pas — et **seulement** avant le départ : une fois le tournoi
+  // lancé, le rappeler serait un reproche sans action possible. Une lecture en échec n'affiche
+  // rien : l'avertissement est un confort, il ne doit pas transformer un hoquet réseau en alarme.
+  const manqueDuMonde =
+    exigence.data !== undefined &&
+    !exigence.data.suffisant &&
+    (tournoi.statut === 'brouillon' || tournoi.statut === 'pret')
 
   // Confirme avant les transitions qui figent (terminer) ou sont terminales (annuler/archiver). Pour
   // `terminer`, on chiffre ce qui reste via la même logique que l'écran Complétude ; si sa lecture
@@ -97,6 +130,10 @@ export function FriseCycleDeVie({ tournoi }: { tournoi: Tournoi }) {
           </li>
         )}
       </ol>
+
+      {manqueDuMonde && exigence.data !== undefined && (
+        <AvertissementEffectif exigence={exigence.data} />
+      )}
 
       <div className="frise__actions">
         {transitions.isError && (

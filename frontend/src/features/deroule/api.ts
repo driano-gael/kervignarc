@@ -22,6 +22,10 @@ export interface Diagnostic {
   applicable: boolean
   blocs: Bloc[]
   anomalies: Anomalie[]
+  // E05US021 — le nombre d'inscrits en dessous duquel ce format ne peut pas se dérouler. Une
+  // **donnée**, pas une anomalie : le cas « ce prélèvement ne prend personne » remonte déjà dans
+  // `anomalies`, l'annoncer deux fois signalerait le même défaut sous deux formes.
+  effectif_minimum: number
 }
 
 export interface LigneClassement {
