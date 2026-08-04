@@ -44,20 +44,26 @@ class VueEcran(str, Enum):
     """Les vues qu'un écran de salle sait afficher (CA : « classement, affectations, tableaux,
     plans »).
 
-    ⚠️ **Le catalogue reste plus court que le CA** : `TABLEAUX` (E07US005) n'est pas livrée —
-    l'inscrire ici ferait programmer un déroulé qui afficherait une page vide. Elle s'ajoutera avec
-    son US, et la migration n'aura rien à reprendre : la valeur persistée est la chaîne, pas un
-    rang.
+    ✅ **Le catalogue couvre désormais le CA en entier** (E07US005, 04/08/2026). Il s'est élargi
+    **trois fois sans une seule migration** — `PALMARES` (E06US004), `AFFECTATIONS` (E07US008),
+    `TABLEAUX` (E07US005) —, ce qui valide au-delà du doute le choix d'origine : persister la
+    **chaîne** et non un rang. Chaque élargissement a coûté une ligne ici et zéro dans la base.
 
-    `AFFECTATIONS` est entrée avec E07US008, **sans migration**, exactement comme annoncé : la
-    prévision de conception s'est vérifiée, ce qui est la meilleure preuve que persister la chaîne
-    plutôt qu'un rang était le bon choix. `PALMARES` (E06US004) est la **deuxième** à le faire.
+    La règle qui a gouverné ces trois ajouts, et qui vaut pour le suivant : **on n'inscrit une vue
+    qu'une fois son écran capable de l'afficher**, sinon le réglage programme une page vide — un
+    écran de salle n'a personne devant lui pour comprendre ce qui manque.
     """
 
     CLASSEMENT = "classement"
     PLAN_CIBLES = "plan_cibles"
     SUIVI_DEROULE = "suivi_deroule"
     AFFECTATIONS = "affectations"
+    TABLEAUX = "tableaux"
+    """Les **arbres de duels** du tournoi (E07US005).
+
+    Complète le CA d'E07US004 (« classement, affectations, **tableaux**, plans »). Comme
+    `AFFECTATIONS`, elle n'a de contenu qu'**après** la qualification — elle n'entre donc pas non
+    plus au déroulé par défaut, pour la même raison (cf. `SequenceVues.par_defaut`)."""
     PALMARES = "palmares"
     """Le classement **final** — podiums en tête (E06US004).
 

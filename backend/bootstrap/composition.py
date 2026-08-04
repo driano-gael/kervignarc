@@ -65,6 +65,7 @@ from api.v1.simulation import router as simulation_router
 from api.v1.suivi_deroule import router as suivi_deroule_router
 from api.v1.supervision import heartbeat_router as poste_heartbeat_router
 from api.v1.supervision import router as supervision_router
+from api.v1.tableaux import router as tableaux_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
 from application.archive import ServiceArchive
@@ -110,6 +111,7 @@ from application.simulation import HarnaisSimulation, ServiceSimulation
 from application.simulation_format import ServiceSimulationFormat
 from application.suivi_deroule import CompteurEngagesRepository, ServiceSuiviDeroule
 from application.supervision import ServiceSupervision
+from application.tableaux_publics import ServiceTableauxPublics
 from application.tournois import ServiceTournois
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.politiques import (
@@ -916,6 +918,18 @@ def create_app(
         app.state.service_saisie_duels,
     )
 
+    # --- Tableaux publics (E07US005) : « voir les arbres en direct », appli publique + écran de
+    # salle. Lecture pure, **sans authentification**, montée sur le même `ServiceSaisieDuels` que
+    # le routage, le palmarès et le suivi du déroulé — une seule source de vérité de la
+    # progression. Service **distinct** de `ServiceSaisieDuels` (qui est celui du scoreur, protégé
+    # par `exiger_scoreur`) : ce sont deux audiences, et la restriction de contenu se fait au DTO
+    # de `api/v1/tableaux.py` (règle 6). Aucun repo neuf, aucune écriture. ---
+    app.state.service_tableaux_publics = ServiceTableauxPublics(
+        tournoi_repository,
+        phase_repository,
+        app.state.service_saisie_duels,
+    )
+
     # --- Complétude du tournoi (E12US005) : « qu'est-ce qui manque pour finir ? », sportif et hors
     # sportif comptés **séparément** (`D-17`). Lecture pure : agrège les cibles de qualification
     # terminées (plan matérialisé + inscriptions + séries validées) et les archers réglés (port
@@ -1026,6 +1040,7 @@ def create_app(
     app.include_router(saisie_duels_router)
     app.include_router(pilotage_router)
     app.include_router(routage_router)
+    app.include_router(tableaux_router)
     app.include_router(forfaits_router)
     app.include_router(barrages_router)
     app.include_router(feuille_de_marque_router)
