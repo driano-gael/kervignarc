@@ -20,10 +20,16 @@ export function useTransitions(tournoiId: number) {
 }
 
 // E05US021 — l'effectif exigé par le déroulé, lu **en continu** pour prévenir avant le clic.
+//
+// `staleTime: 0` (même parti que la complétude) : ses deux entrées — les **inscriptions** et le
+// **format appliqué** — vivent dans d'autres features, qui n'ont aucune raison de connaître cette
+// clé de cache. Avec le `staleTime: 30_000` global, l'encart pouvait rester affiché après que le
+// compte était bon, ce que la fiche de recette liste précisément comme un défaut à signaler.
 export function useExigenceEffectif(tournoiId: number) {
   return useQuery({
     queryKey: cleExigenceEffectif(tournoiId),
     queryFn: () => getExigenceEffectif(tournoiId),
+    staleTime: 0,
   })
 }
 

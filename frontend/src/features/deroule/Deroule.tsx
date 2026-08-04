@@ -131,6 +131,13 @@ function CompositionDuFormat({
   )
   const [modifie, setModifie] = useState(false)
 
+  // `lireEntier` rend `null` (vide = aucune exigence), un entier, ou `undefined` (illisible).
+  // ⚠️ Le `Number()` nu qui était ici **effaçait** la règle du club : `Number('quarante')` vaut
+  // `NaN`, que `JSON.stringify` sérialise en `null` — le serveur comprenait « aucune exigence » et
+  // répondait 200. Le même piège était déjà résolu deux fonctions plus bas pour l'effectif simulé ;
+  // il n'avait pas été réappliqué ici.
+  const exigenceSaisie = lireEntier(minimumExige)
+
   const diagnostic = useDiagnostic(format.id, effectif)
   const enregistrer = useEnregistrerBrouillon()
   const simulation = useSimulerFormat(format.id)
@@ -163,20 +170,12 @@ function CompositionDuFormat({
         <div className="formulaire__actions">
           <button
             type="button"
-            disabled={!modifie || enregistrer.isPending}
+            disabled={!modifie || enregistrer.isPending || exigenceSaisie === undefined}
             onClick={() =>
               enregistrer.enregistrer(
                 {
                   id: format.id,
-                  entree: {
-                    nom,
-                    etapes,
-                    // Vide ⇒ `null` : « aucune exigence » se dit en ne réglant rien. Une saisie
-                    // illisible part telle quelle plutôt que d'être devinée — le serveur la refuse
-                    // en 422, ce qui vaut mieux qu'un zéro silencieux inventé ici.
-                    effectif_minimum_exige:
-                      minimumExige.trim() === '' ? null : Number(minimumExige),
-                  },
+                  entree: { nom, etapes, effectif_minimum_exige: exigenceSaisie ?? null },
                 },
                 { onSuccess: () => setModifie(false) },
               )
@@ -184,7 +183,12 @@ function CompositionDuFormat({
           >
             Enregistrer le brouillon
           </button>
-          {modifie && (
+          {exigenceSaisie === undefined && (
+            <span className="carte__etat carte__etat--alerte" role="status">
+              ▲ Le minimum d’inscrits doit être un nombre entier d’au moins 1 — ou vide.
+            </span>
+          )}
+          {modifie && exigenceSaisie !== undefined && (
             <span className="carte__etat" role="status">
               Modifications non enregistrées — le schéma montre encore la version enregistrée.
             </span>
@@ -885,7 +889,8 @@ function NouveauFormat({ surCreation }: { surCreation: (id: number) => void }) {
         // Un format **vide** est un brouillon parfaitement licite depuis E01US024 : c'est même
         // l'état normal de celui qu'on vient de nommer.
         creer.mutate(
-          { nom, etapes: [] },
+          // Un format neuf n'exige rien : la règle de club se pose ensuite, à la composition.
+          { nom, etapes: [], effectif_minimum_exige: null },
           {
             onSuccess: (cree: FormatTournoi) => {
               surCreation(cree.id)

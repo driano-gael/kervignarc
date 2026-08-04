@@ -66,7 +66,10 @@ describe('useEnregistrerBrouillon', () => {
     expect(getDiagnostic).toHaveBeenCalledTimes(1)
 
     await act(async () => {
-      rendu.result.current.sauvegarde.enregistrer({ id: 1, entree: { nom: 'X', etapes: [] } })
+      rendu.result.current.sauvegarde.enregistrer({
+        id: 1,
+        entree: { nom: 'X', etapes: [], effectif_minimum_exige: null },
+      })
     })
 
     await waitFor(() => expect(getDiagnostic).toHaveBeenCalledTimes(2))
@@ -80,7 +83,7 @@ describe('useEnregistrerBrouillon', () => {
 
     await act(async () => {
       rendu.result.current.enregistrer(
-        { id: 1, entree: { nom: 'X', etapes: [] } },
+        { id: 1, entree: { nom: 'X', etapes: [], effectif_minimum_exige: null } },
         { onSuccess: apresSucces },
       )
     })

@@ -186,9 +186,11 @@ export interface FormatTournoi {
 export interface NouveauFormat {
   nom: string
   etapes: Etape[]
-  // ⚠️ Le `PUT` est une édition **totale** : omettre ce champ **efface** l'exigence, comme omettre
-  // les étapes les effacerait. Tout appelant renvoie le format entier.
-  effectif_minimum_exige?: number | null
+  // ⚠️ **Requis, et c'est un garde-fou.** Le `PUT` est une édition **totale** : omettre ce champ
+  // efface l'exigence, comme omettre les étapes les effacerait. Il a d'abord été optionnel, et deux
+  // écrans l'ont aussitôt omis — la règle de club disparaissait sans message. En le rendant requis,
+  // le compilateur nomme tout appelant qui l'oublie. `null` reste la façon de dire « aucune ».
+  effectif_minimum_exige: number | null
 }
 
 export function getFormats(): Promise<FormatTournoi[]> {

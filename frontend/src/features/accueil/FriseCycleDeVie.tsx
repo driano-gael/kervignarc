@@ -45,11 +45,17 @@ const RANG: Record<StatutTournoi, number> = {
 // chiffre pas son impact est un clic de plus, pas une protection ». Sans la phase, l'organisateur
 // saurait qu'il manque du monde sans savoir quoi corriger dans son format.
 function AvertissementEffectif({ exigence }: { exigence: ExigenceEffectif }) {
+  // ⚠️ La cause se lit sur `origine`, **jamais** sur `ordre_phase === null`. Le déduire de l'absence
+  // de phase faisait annoncer « ce minimum est celui exigé pour ce format » — une règle de club —
+  // sur le simple plancher structurel d'une qualification seule, c'est-à-dire sur le format nominal
+  // du projet. Le produit inventait une cause (défaut relevé en revue).
   const cause =
-    exigence.ordre_phase === null
-      ? ' Ce minimum est celui exigé pour ce format.'
-      : ` La phase ${exigence.ordre_phase} prélève à partir du rang ${exigence.rang_debut} :` +
-        ` il lui faut au moins ${exigence.minimum} classés pour avoir des tireurs.`
+    exigence.origine === 'club'
+      ? ' Ce format exige ce minimum, au-delà de ce que son déroulé impose.'
+      : exigence.ordre_phase === null
+        ? ' Son déroulé ne peut pas se jouer à moins que cela.'
+        : ` La phase ${exigence.ordre_phase} prélève à partir du rang ${exigence.rang_debut} :` +
+          ` il lui faut au moins ${exigence.minimum} classés pour avoir des tireurs.`
   return (
     <p className="carte__etat carte__etat--alerte" role="status">
       <span aria-hidden="true">▲</span> <strong>Effectif insuffisant</strong> — {exigence.inscrits}{' '}
