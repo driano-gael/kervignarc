@@ -1363,6 +1363,13 @@ button:disabled {
   gap: 6px;
 }
 
+/* `.formulaire__champ` est `flex: 1` sans `min-width`, donc incompressible sous sa largeur
+   min-content : avec le libellé long (« Jusqu'à 4 couloirs de tir ») **et** l'aperçu des lettres,
+   la ligne déborderait sa piste de grille. On rend le sélecteur compressible. */
+.plan-cible .formulaire__champ {
+  min-width: 0;
+}
+
 .plan-cible__nom {
   flex: 0 0 auto;
   font-size: 13px;
@@ -1388,10 +1395,13 @@ button:disabled {
   color: var(--text-h);
 }
 
+/* Éteint = bord pointillé + graisse normale : la distinction ne repose pas sur la seule couleur
+   (WCAG 1.4.1). L'opacité reste assez haute pour que la lettre demeure lisible sous l'éclairage
+   variable d'un gymnase, dans les deux thèmes. */
 .plan-cible__couloir--inactif {
   border-style: dashed;
   color: var(--text);
-  opacity: 0.45;
+  opacity: 0.65;
   font-weight: 400;
 }
 

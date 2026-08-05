@@ -150,7 +150,7 @@ function FormulaireGabarit({ gabarit, onTermine }: { gabarit?: Gabarit; onTermin
         >
           {PLAFONDS.map((plafond) => (
             <option key={plafond} value={plafond}>
-              {plafond} couloir{plafond > 1 ? 's' : ''} de tir par cible
+              Jusqu'à {plafond} couloir{plafond > 1 ? 's' : ''} de tir par cible
             </option>
           ))}
         </select>

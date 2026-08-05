@@ -314,6 +314,8 @@ class PlacementORM(Base):
         ForeignKey("depart.id", ondelete="CASCADE"), nullable=False
     )
     cible_index: Mapped[int] = mapped_column(nullable=False)
+    # DETTE-042 : le terme métier est « couloir de tir » (ADR-0073) ; renommer cette colonne
+    # demande une migration, faite avec DETTE-010 (E01US019) pour n'en écrire qu'une.
     position: Mapped[str] = mapped_column(nullable=False)
 
 
@@ -341,6 +343,8 @@ class PlacementTableauORM(Base):
         ForeignKey("inscription.id", ondelete="CASCADE"), primary_key=True
     )
     cible_index: Mapped[int] = mapped_column(nullable=False)
+    # DETTE-042 : le terme métier est « couloir de tir » (ADR-0073) ; renommer cette colonne
+    # demande une migration, faite avec DETTE-010 (E01US019) pour n'en écrire qu'une.
     position: Mapped[str] = mapped_column(nullable=False)
 
 

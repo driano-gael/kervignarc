@@ -4,7 +4,7 @@
 // Le serveur dit **ce qui est** (issue, cible, rang, motif) ; ici on en fait la phrase que lit un
 // archer entre deux volées, debout, avec son arc à la main. Trois règles tenues par ces fonctions :
 //
-// 1. **La destination d'abord.** « Cible 4 · place B » est l'information qu'il est venu chercher ;
+// 1. **La destination d'abord.** « Cible 4 · couloir B » est l'information qu'il est venu chercher ;
 //    le reste (tour, adversaire) est du contexte.
 // 2. **Ce qui manque est dit, jamais laissé en blanc** (arbitrage de cadrage du 30/07/2026) : un
 //    champ vide se lit comme une panne, une phrase se lit comme une attente. Les motifs viennent du

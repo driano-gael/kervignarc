@@ -76,12 +76,12 @@ utile — mais on **nomme la butte de l'autre** : c'est ce qui permet de compren
 secondes qu'il faut aller voir l'organisateur plutôt que de s'installer.
 """
 
-PLACEMENT_VOISIN_ELOIGNE = "votre adversaire tire sur la même cible, place {position}"
-"""Même butte, places **non adjacentes** — c'est la disposition nominale d'une cible de salle.
+PLACEMENT_VOISIN_ELOIGNE = "votre adversaire tire sur la même cible, couloir {position}"
+"""Même butte, couloirs **non adjacents** — c'est la disposition nominale d'une cible de salle.
 
 Le duel se tire bien là où on l'annonce : la pose est le **bon** conseil, il n'y a rien à revoir
 avant de partir. On le dit quand même, parce qu'E03US009 veut les duellistes **côte à côte** et que
-l'intéressé est mieux placé que quiconque pour se décaler d'une place. Ton neutre, donc : ce n'est
+l'intéressé est mieux placé que quiconque pour se décaler d'un couloir. Ton neutre, donc : ce n'est
 pas la même situation que `PLACEMENT_AUTRE_CIBLE`, et les confondre — ce que faisait le message
 unique — c'était soit alarmer pour rien, soit envoyer quelqu'un sur la mauvaise butte.
 """
