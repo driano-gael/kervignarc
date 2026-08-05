@@ -48,7 +48,7 @@ function archer(patch: Partial<RoutageArcher> = {}): RoutageArcher {
 
 describe('destination', () => {
   it('donne la cible et la place', () => {
-    expect(destination(prochain())).toBe('Cible 4 · place B')
+    expect(destination(prochain())).toBe('Cible 4 · couloir B')
   })
 
   it('tolère une cible sans position', () => {
@@ -203,7 +203,7 @@ describe('partitionner (E07US008)', () => {
 
 describe('titre', () => {
   it('met la destination en avant — c’est ce que l’archer vient chercher', () => {
-    expect(titre(archer())).toBe('Cible 4 · place B')
+    expect(titre(archer())).toBe('Cible 4 · couloir B')
   })
 
   it('retombe sur le tour quand la cible n’est pas encore connue', () => {

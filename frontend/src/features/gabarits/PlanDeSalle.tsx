@@ -4,6 +4,12 @@
 // **copie** propre au tournoi, que l'on peut ensuite **ajuster** (nom, plafond cible par cible)
 // **sans altérer** le modèle d'origine. Un tournoi porte au plus un plan à la fois ; en choisir
 // un autre remplace le précédent. Ce plan sera la base du placement (EPIC-03).
+//
+// Vocabulaire (E16US001, ADR-0073) : un **pas de tir** est un groupement de cibles ; la place d'un
+// archer devant sa cible est un **couloir de tir** (A, B, C, D). Ce que règle cet écran est un
+// **plafond** de couloirs, pas un effectif : le placement en occupe au plus autant, et souvent
+// moins (les blasons ont leurs propres budgets — `domain/placement.py`). D'où « **jusqu'à** N
+// couloirs » dans les libellés, et l'aperçu des lettres en face de chaque réglage.
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
@@ -13,6 +19,13 @@ import { useAjusterGabarit, useAppliquerGabarit, useGabaritDuTournoi, useGabarit
 
 const PLAFONDS = [1, 2, 3, 4]
 const PLAFOND_DEFAUT = 4
+
+// La lettre d'un couloir se **dérive** de son rang (0 → A) plutôt que de sortir d'un tableau figé.
+// Volontaire : `DETTE-010` prévoit de délester le plafond de 4 (E01US019, lettres au-delà de `D`).
+// Un `['A','B','C','D']` de plus ici aurait été un 3ᵉ exemplaire à retrouver ce jour-là — et, pire,
+// l'aperçu aurait affiché quatre cases pleines en face de « jusqu'à 6 couloirs » sans rien signaler.
+// Ici, l'aperçu suit `PLAFONDS` : il n'y a plus qu'un seul endroit à changer.
+const lettreCouloir = (rang: number) => String.fromCharCode(65 + rang)
 
 export function PlanDeSalle({ tournoiId }: { tournoiId: number }) {
   const plan = useGabaritDuTournoi(tournoiId)
@@ -98,7 +111,8 @@ function SelecteurModele({
   if (modeles.isSuccess && disponibles.length === 0) {
     return (
       <p className="carte__etat">
-        Créez d'abord un gabarit dans « Gabarits de salle » ci-dessous, puis revenez l'appliquer.
+        Créez d'abord un gabarit dans « Gabarits (modèles) », dans l'axe Atelier, puis revenez
+        l'appliquer.
       </p>
     )
   }
@@ -141,7 +155,13 @@ function SelecteurModele({
 // Ajustement de la copie du tournoi : nom + plafond **cible par cible**. Le nombre de cibles se
 // règle par le champ dédié (les cibles ajoutées démarrent au plafond par défaut). L'état local
 // part de l'instance appliquée ; le composant est remonté (clé sur l'id) quand elle change.
-function FormulaireAjustement({ tournoiId, gabarit }: { tournoiId: number; gabarit: Gabarit }) {
+export function FormulaireAjustement({
+  tournoiId,
+  gabarit,
+}: {
+  tournoiId: number
+  gabarit: Gabarit
+}) {
   const [nom, setNom] = useState(gabarit.nom)
   const [capacites, setCapacites] = useState<number[]>(gabarit.cibles.map((c) => c.capacite))
   const ajuster = useAjusterGabarit(tournoiId)
@@ -198,23 +218,50 @@ function FormulaireAjustement({ tournoiId, gabarit }: { tournoiId: number; gabar
         />
       </label>
 
+      <p className="plan-cibles__legende">
+        Un <strong>pas de tir</strong> regroupe des cibles. Devant chaque cible, chaque archer tire
+        depuis son <strong>couloir de tir</strong>, repéré par une lettre. Le nombre réglé ici est
+        un <strong>plafond</strong> : les <strong>blasons</strong> posés sur la cible s'y
+        répartissent — deux blasons admettant deux archers chacun remplissent quatre couloirs A, B,
+        C, D — mais un blason encombrant peut en occuper moins. Le placement ne dépassera jamais ce
+        plafond ; il peut installer moins d'archers que de couloirs.
+      </p>
+
       <ul className="plan-cibles">
         {capacites.map((plafond, index) => (
-          // Les cibles sont numérotées par position, sans identité propre : l'index fait la clé.
+          // Les cibles sont numérotées par rang, sans identité propre : l'index fait la clé.
           <li key={index} className="plan-cible">
             <span className="plan-cible__nom">Cible {index + 1}</span>
             <select
               className="formulaire__champ"
               value={plafond}
               onChange={(e) => reglerCapacite(index, Number(e.target.value))}
-              aria-label={`Plafond d'archers de la cible ${index + 1}`}
+              aria-label={`Couloirs de tir de la cible ${index + 1}`}
             >
               {PLAFONDS.map((valeur) => (
                 <option key={valeur} value={valeur}>
-                  Max {valeur} archer{valeur > 1 ? 's' : ''}
+                  Jusqu'à {valeur} couloir{valeur > 1 ? 's' : ''} de tir
                 </option>
               ))}
             </select>
+            {/* Aperçu des lettres. `aria-hidden` parce que l'état occupable/inoccupable n'est
+                porté que par le **style** (pointillés, opacité) : l'exposer ferait énoncer « A B C
+                D » à l'identique quel que soit le réglage — une information fausse plutôt
+                qu'absente. Le nombre, lui, est déjà annoncé par le sélecteur. */}
+            <span className="plan-cible__couloirs" aria-hidden="true">
+              {PLAFONDS.map((_, rang) => (
+                <span
+                  key={rang}
+                  className={
+                    rang < plafond
+                      ? 'plan-cible__couloir'
+                      : 'plan-cible__couloir plan-cible__couloir--inactif'
+                  }
+                >
+                  {lettreCouloir(rang)}
+                </span>
+              ))}
+            </span>
           </li>
         ))}
       </ul>

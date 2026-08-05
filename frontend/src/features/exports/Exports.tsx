@@ -32,7 +32,7 @@ export function Exports({ tournoiId }: { tournoiId: number }) {
       <section>
         <h4 className="carte__soustitre">Liste de placement</h4>
         <p className="carte__etat">
-          Qui tire sur quelle cible et à quelle position — pour l'accueil des archers.
+          Qui tire sur quelle cible et dans quel couloir de tir — pour l'accueil des archers.
         </p>
         <div className="formulaire formulaire--colonne">
           <label className="formulaire__libelle">

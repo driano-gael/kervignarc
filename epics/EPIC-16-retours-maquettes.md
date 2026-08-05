@@ -17,7 +17,7 @@ questions ciblées et corrections de vocabulaire. C'est le retour le plus large 
 du projet, et il porte sur **toutes les surfaces à la fois** — admin, public, écran de salle, poste
 de cible, scoreur.
 
-Trois écrans sont **refusés en l'état** (🔴 « à refaire ») : `A07` phases, `A10` plan de salle, `A14`
+Trois écrans sont **refusés en l'état** (🔴 « à refaire ») : `A07` phases, ~~`A10` plan de salle~~ (**levé le 05/08/2026 par E16US001**, ADR-0073 — le refus ne portait que sur le vocabulaire), `A14`
 complétude — plus `P03` classements publics. Vingt sont validés **avec réserves** (🟡). Le reste est
 validé tel quel.
 

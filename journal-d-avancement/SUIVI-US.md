@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 05/08/2026** · **97 US livrées** · dernière : `E07US005` *(le public suit les **arbres de duels en direct** — « mon chemin » par archer suivi ou tableau complet par tour —, et l'écran de salle sait enfin projeter les tableaux : le catalogue de vues d'ADR-0064 est complet)*. Précédente : `E03US007` *(l'organisateur choisit **ce qu'une cible n'a pas le droit de mélanger** — rien, la catégorie, le blason, ou les deux : contrainte **dure** sur le plan de cibles **et** le plan de duels, réserve motivée, plan antérieur signalé — ADR-0071)*.
+**Dernière mise à jour : 05/08/2026** · **98 US livrées** · dernière : `E16US001` *(le **plan de salle** parle enfin de la salle du club : « **pas de tir** » = un groupement de cibles, « **couloir de tir** » = la place d'un archer (A/B/C/D), « poste » reste une tablette — et l'écran **montre** les couloirs cible par cible. Premier des quatre écrans refusés relevé ; ADR-0073, qui **amende ADR-0006** et ferme la variante « plan libre » ; DETTE-042 pour le renommage `position` → `couloir` en base, différé et rattaché à E01US019)*. Précédente : `E07US005` *(le public suit les **arbres de duels en direct** — « mon chemin » par archer suivi ou tableau complet par tour —, et l'écran de salle sait enfin projeter les tableaux : le catalogue de vues d'ADR-0064 est complet)*. Précédente : `E03US007` *(l'organisateur choisit **ce qu'une cible n'a pas le droit de mélanger** — rien, la catégorie, le blason, ou les deux : contrainte **dure** sur le plan de cibles **et** le plan de duels, réserve motivée, plan antérieur signalé — ADR-0071)*.
 
 ---
 
@@ -29,10 +29,17 @@
 >
 > | Ordre | US | Ce qu'elle lève |
 > |---|---|---|
-> | 1 | `E16US001` | **Plan de salle** (A10) — ⚠️ **commence par une question, pas par du code** : le commanditaire demande explicitement une explication du mot « pas de tir » avant de valider. Ne pas coder avant l'arbitrage. |
-> | 2 | `E16US003` | **Complétude** (A14) — séparer le déroulé de l'administratif ; le serveur rend déjà les deux listes, c'est un déplacement d'ossature. |
+> | ~~1~~ ✅ | ~~`E16US001`~~ | **Livrée le 05/08/2026** — **plan de salle** (A10). Le refus ne tenait qu'à un mot : arbitrage rendu (« pas de tir » = groupement de cibles, « **couloir de tir** » = place d'un archer, « poste » = tablette), appliqué partout où l'utilisateur lit, et l'écran **montre** désormais, cible par cible, les couloirs occupables (le maillon *blasons* reste expliqué en toutes lettres : le gabarit ne les connaît pas). Renommage `position` → `couloir` dans le code/l'API/la base **différé** ([DETTE-042](../docs/dette.md)). |
+> | 2 | `E16US003` | **Complétude** (A14) — séparer le déroulé de l'administratif ; le serveur rend déjà les deux listes, c'est un déplacement d'ossature. ⚠️ Deux questions à reposer avant de déplacer quoi que ce soit (cf. story). |
 > | 3 | `E16US004` | **Public multi-archers** (P03 🔴 + P01/P02/P05) — le socle de suivi existe depuis E07US006, la lecture n'en tire pas parti. |
 > | 4 | `E16US002` | **Phases** (A07) — le plus lourd : touche le domaine et l'API, probablement un ADR. À cadrer contre ADR-0060 et ADR-0062. |
+>
+> **🎯 Prochaine : `E16US003`** — séparer la complétude du déroulé de la complétude administrative.
+> ⚠️ Comme E16US001, elle **commence par une question** : la story porte deux points restés sans
+> réponse (« la séparation sportif / hors-sportif correspond-elle à ta façon de clore un tournoi ? »,
+> « "Terminer" fige le sportif et laisse les paiements ouverts : est-ce le bon découpage ? »). Le
+> refus A14 porte sur le **mélange à l'écran**, pas forcément sur le découpage du domaine — le
+> confirmer avant de déplacer une destination d'axe.
 >
 > Puis, sans ordre imposé : `E16US005` (placement), `E16US006` (origine FFTA + logo club),
 > `E16US008` (feu vert), `E16US009` (écran de salle), `E16US010` (recherche & alertes),
@@ -227,7 +234,9 @@
 >   porte aucun) et **reversées dans `stories/`**. Le CA d'origine tenait en une ligne : sans le
 >   cadrage, l'US aurait livré un tableau brut sans « mon chemin ».
 >
-> **🎯 Prochaine :** **`E13US002`** — composer les équipes.
+> **🎯 ~~Prochaine :~~ `E13US002`** — composer les équipes. ⚠️ **Supplanté** le 05/08/2026 : la
+> priorité est passée au lot **EPIC-16** (retours de maquettes), voir la section « Prochaine US » en
+> haut de ce fichier, qui **fait foi**. `E13US002` reste la meilleure candidate **hors E16**.
 > *(Choisie parmi les ⬜ : le **fil équipes** est débloqué depuis `E13US001` (abstraction
 > `Participant`, ADR-0028) et n'a jamais été repris ; c'est la dernière capacité **métier** encore
 > absente du MVP+1, là où les autres ⬜ de J3 sont du confort (`E01US016` identité visuelle) ou un

@@ -86,7 +86,7 @@ class GenerateurFeuilleDeMarquePdf:
         entete = (
             f"<b>{_echapper(ligne.prenom)} {_echapper(ligne.nom)}</b> — "
             f"{_echapper(ligne.categorie)}<br/>"
-            f"Cible <b>{ligne.cible_index}</b> · Position <b>{_echapper(ligne.position)}</b> · "
+            f"Cible <b>{ligne.cible_index}</b> · Couloir <b>{_echapper(ligne.position)}</b> · "
             f"Blason {_echapper(ligne.blason)}"
         )
         return [
