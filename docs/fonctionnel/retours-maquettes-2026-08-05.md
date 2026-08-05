@@ -132,14 +132,17 @@
    → *Résultat attendu :* le pavé s'ouvre **pour lui**. Son en-tête affiche le **cumul de série** en
    plus du total de la volée, et un lien **Fermer**.
 
-3. Touchez **le même nom** une seconde fois.
-   → *Résultat attendu :* le pavé se referme et la grille complète réapparaît.
+3. Touchez **un autre nom**, tapez une flèche ou deux, puis revenez sur le premier archer.
+   → *Résultat attendu :* le pavé suit l'archer touché, et **chaque frappe en cours est retrouvée
+   telle qu'on l'avait laissée** en revenant. Rien n'est perdu en changeant d'archer.
+   → Toucher **Fermer** referme le pavé sans rien demander : là encore, rouvrir retrouve la frappe.
 
 4. Regardez une ligne d'archer dans la grille.
-   → *Résultat attendu :* sous son nom, une **bande de petites cases**, une par volée du barème :
-   le **total** de chaque volée déjà saisie, un point pour celles qui restent, et un cadre vert pour
-   celles que le scoreur a validées. C'est la contre-vérification : chaque archer relit ce qui a été
-   tapé pour lui **sans toucher au pavé**.
+   → *Résultat attendu :* sous son nom, dans la même carte, une **bande de petites cases**, une par
+   volée du barème : le **total** de chaque volée saisie **et, en dessous, ses flèches** (« 9 9 8 »),
+   un point pour celles qui restent, un cadre vert pour celles que le scoreur a validées.
+   → Touchez cette bande : **rien ne se passe**. C'est voulu — c'est la contre-vérification, le geste
+   de celui qui vérifie, et il ne doit rien changer à la saisie en cours.
 
 5. Passez sur un **duel** (écran de saisie en duels), et regardez un camp.
    → *Résultat attendu :* le nom et le total sont sur une **première ligne**, les cases de flèches
@@ -171,9 +174,11 @@
    → *Résultat attendu :* l'écran affiche **« Vue imposée par l'organisation »**, mais **plus de compte
    à rebours**. Le décompte reste visible côté administration uniquement.
 
-5. Approchez-vous de la machine et passez la souris en haut à droite de l'écran (ou appuyez sur Tab).
-   → *Résultat attendu :* un bouton **« Décrocher cet écran »** apparaît. Il est **invisible au
-   repos** — depuis la salle, il n'y a rien à voir.
+5. Approchez-vous de la machine, entrez la souris dans l'écran (ou appuyez sur Tab).
+   → *Résultat attendu :* un bouton **« Décrocher cet écran »** apparaît en haut à droite. Il est
+   **invisible tant que rien ne le survole** — sans souris ni clavier branché, la salle ne voit rien.
+   → Cliquez-le : une fenêtre demande confirmation et prévient qu'il faudra retaper le code. Le geste
+   ne part jamais au premier clic.
 
 ---
 
@@ -184,8 +189,9 @@
    → *Résultat attendu :* les **huit premiers** restent affichés en permanence ; le reste est dans un
    **cadre qui défile** sous eux, colonnes alignées avec celles du haut.
 
-2. S'il existe deux archers **au même total dans la même catégorie**, regardez leurs lignes et le bas
-   du tableau.
+2. S'il existe deux archers **au même total non nul, dans la même catégorie**, regardez leurs lignes
+   et le bas du tableau. (Le matin, avant la première volée, tout le monde est à zéro : c'est une
+   absence de score, pas une égalité — rien ne doit être signalé.)
    → *Résultat attendu :* les lignes concernées portent un **filet ambre** à gauche, et une phrase
    apparaît sous le tableau : *« Ex æquo signalés : à total égal, le plus grand nombre de 10
    départage, puis le nombre de 9. »*
@@ -210,8 +216,11 @@
 
 3. Axe **Pilotage** → **Supervision**.
    → *Résultat attendu :* deux **bandeaux repliables** — « Écrans de cible » et « Écrans de salle » —
-   chacun avec son compteur (« 28/30 en ligne »). Si des postes ne sont pas en ligne, le bandeau
-   affiche **« ▲ 2 à vérifier »** et s'ouvre **de lui-même** ; sinon il est replié.
+   chacun avec son compteur (« 28/30 en ligne »). Si des postes **rattachés se sont tus** (hors
+   ligne), le bandeau affiche **« ▲ 2 à vérifier »** et s'ouvre **de lui-même** ; sinon il est replié.
+   → ⚠️ Un poste **non rattaché** ne déclenche pas d'alerte : avant la distribution des tablettes,
+   c'est l'état normal des 30 cibles, et un signal qui hurle le matin cesse d'être lu l'après-midi.
+   Le compteur « 0/30 en ligne » porte l'information.
 
 4. Repliez un bandeau qui porte une alerte.
    → *Résultat attendu :* l'alerte **reste lisible sur le bandeau fermé**. C'est le point : un bandeau

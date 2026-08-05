@@ -63,7 +63,15 @@ export function DialogueConfirmation({
   useEffect(() => {
     const dialogue = reference.current
     if (dialogue === null) return
-    if (ouvert && !dialogue.open) dialogue.showModal()
+    if (ouvert && !dialogue.open) {
+      dialogue.showModal()
+      // ⚠️ **Le focus se pose ici, et nulle part ailleurs.** `autoFocus` en JSX ne produit pas
+      // l'attribut HTML : React appelle `focus()` **au montage**, où le `<dialog>` est encore fermé
+      // donc `display: none` — un no-op. Un correctif précédent croyait déplacer le focus par ce
+      // biais ; il ne faisait rien du tout, dans les deux branches (2ᵉ passe de revue, vérifié dans
+      // le code de React). On focalise donc explicitement, **après** `showModal()`.
+      dialogue.querySelector<HTMLButtonElement>('[data-focus-initial]')?.focus()
+    }
     if (!ouvert && dialogue.open) dialogue.close()
   }, [ouvert])
 
@@ -87,16 +95,16 @@ export function DialogueConfirmation({
         <p className="dialogue__detail">{detail}</p>
       )}
       <div className="dialogue__actions">
-        {/* Sur un ton `danger`, c'est **« Annuler » qui prend le focus** : `showModal()` focalise le
-            premier élément focusable, et `Entrée` par réflexe ne doit pas déclencher un geste
-            irréversible. Le libellé qui redit l'action protège de l'ambiguïté, pas du réflexe
-            clavier (revue du 05/08/2026). */}
+        {/* Sur un ton `danger`, c'est **« Annuler » qui prend le focus** : `Entrée` par réflexe ne
+            doit pas déclencher un geste irréversible. Le libellé qui redit l'action protège de
+            l'ambiguïté, pas du réflexe clavier. Le marqueur est lu par l'effet ci-dessus, après
+            `showModal()` — cf. son commentaire pour la raison. */}
         <button
           type="button"
           className="bouton--discret"
           disabled={enCours}
           onClick={onAnnuler}
-          autoFocus={ton === 'danger'}
+          data-focus-initial={ton === 'danger' ? '' : undefined}
         >
           {libelleAnnuler}
         </button>
@@ -105,7 +113,7 @@ export function DialogueConfirmation({
           className={ton === 'danger' ? 'bouton--danger' : undefined}
           disabled={enCours}
           onClick={onConfirmer}
-          autoFocus={ton !== 'danger'}
+          data-focus-initial={ton === 'danger' ? undefined : ''}
         >
           {enCours ? 'En cours…' : libelleConfirmer}
         </button>

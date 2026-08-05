@@ -59,14 +59,18 @@ export function TableClassement({ tournoiId, lignes, admin, teteFigee = 0 }: Tab
   )
 
   return (
-    <div className="classement">
-      <table className="table">
-        <Colonnes admin={admin} />
-        <thead>
-          <EnTetes admin={admin} />
-        </thead>
-        {corps(tete)}
-      </table>
+    <div className={admin ? 'classement classement--admin' : 'classement'}>
+      {/* La tête est enveloppée pour **réserver la gouttière d'ascenseur** du cadre défilant : sans
+          conteneur, `scrollbar-gutter` n'a aucun effet et les deux tables se décalent. */}
+      <div className="classement__tete">
+        <table className="table">
+          <Colonnes admin={admin} />
+          <thead>
+            <EnTetes admin={admin} />
+          </thead>
+          {corps(tete)}
+        </table>
+      </div>
 
       {/* Le reste, dans son propre cadre défilant. Deux tables et non une seule à lignes
           `position: sticky` : figer des `<tr>` demande de connaître la hauteur de chaque ligne pour

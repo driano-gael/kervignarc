@@ -62,6 +62,7 @@
 | [DETTE-038](#dette-038--un-libellé-de-match-énonce-des-rangs-relatifs-au-tableau) | conception | mineur | `backend/domain/tableau.py` (`libelle_tour`, les deux branches nommées par des rangs), `backend/application/routage.py` (2 appels), `backend/api/v1/tableaux.py` | `construire_tableau` engendre **toujours** depuis `Plage(1, taille)` : les rangs d'un match sont **relatifs au tableau**. Un tableau qui prélève « les rangs 33 et suivants » (composable **et exécutable** depuis E05US020) décide donc des rangs absolus 37-40 dans un match que l'application annonce « **Places 5 à 8** » — et « Match pour la 5ᵉ place » pour son terminal | Nul aujourd'hui sur le **premier** tableau d'un tournoi (le cas courant : il part du rang 1, relatif = absolu). Devient **faux devant le public** dès qu'un déroulé enchaîne un tableau secondaire — ce que le catalogue de types et les prélèvements par rangs rendent possible depuis E05US015/E05US020 | Défaut **préexistant** sur `place_en_jeu` (E05US010) ; **élargi** par E07US005, qui ajoute la famille « Places N à M » et la porte pour la **première fois sur une surface publique** (onglet « Tableaux », écran de salle, panneau de routage) | Le dépôt sait déjà faire : `domain.palmares` applique `decalage = rang_premier - 1` pour convertir relatif → absolu, et `domain/deroule.py` en avertit deux fois. Remède : passer ce décalage à `libelle_tour`, comme `_numeroter` le fait pour le palmarès — il se lit sur le prélèvement de la phase. **À traiter dans l'US qui livrera un déroulé à tableau secondaire**, pas avant : aujourd'hui aucun format livré n'en produit, et l'on chiffrerait un décalage toujours nul. Marqueur `# DETTE-038` sur les deux branches de `libelle_tour` |
 | [DETTE-039](#dette-039--la-cadence-et-la-taille-dune-page-projetée-sont-en-dur) | technique | mineur | `frontend/src/features/routage/pagination.ts` (`NOMS_PAR_PAGE`, `SECONDES_PAR_PAGE`) | Le commanditaire demande « 20 s **(réglable)** » (questionnaire `p06`) ; la cadence et le nombre de noms par page sont deux constantes de module. `NOMS_PAR_PAGE = 40` n'a par ailleurs jamais été mesuré sur le vidéoprojecteur réel | Un club dont les noms sont longs, ou dont la salle est profonde, ne peut rien ajuster sans recompiler — sur la seule surface que personne ne peut manipuler pendant le tournoi | Lot « retours maquettes » du 05/08/2026 — assumé au commentaire ; **résorption : `E16US009`** |
 | [DETTE-040](#dette-040--lalphabet-des-codes-de-terrain-existe-en-trois-exemplaires) | conception | mineur | `backend/infrastructure/postes/codes.py`, `backend/infrastructure/scoreurs/codes.py`, `frontend/src/shared/ui/codeTerrain.ts` | La chaîne `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` et la longueur `6` sont écrites **trois fois**. Les deux fichiers Python annonçaient eux-mêmes attendre « une 3ᵉ preuve avant tout remède » : le front est cette troisième | Un alphabet modifié d'un côté et pas des deux autres produit des codes que le pavé refuse de composer, ou l'inverse. Le garde-fou réel reste que **le serveur tranche** — le front n'est qu'une aide à la frappe | Lot « retours maquettes » du 05/08/2026. **Aucun remède proposé** : réunir Python et TypeScript supposerait d'exposer l'alphabet par l'API, ce qui est une US à part entière et coûte plus que la duplication (règle 16 — « ne rien faire » est ici la bonne réponse) |
+| [DETTE-041](#dette-041--le-front-approxime--a-tiré--par--total-non-nul-) | conception | mineur | `frontend/src/features/competition/departage.ts` (`totauxExAequo`), `frontend/src/features/competition/api.ts` (`LigneClassement`) | Le domaine **distingue** `a_tire` de `total > 0` — `backend/domain/classement.py` le documente : « un archer qui a validé une volée entièrement manquée a bien tiré, pour un total nul ». Le DTO n'expose pas ce booléen, donc le front l'approxime par `total !== 0` | Deux archers réellement à zéro ne sont pas signalés ex æquo. Cas de fin de journée, quasi théorique, sans conséquence autre que l'absence d'une phrase d'aide. **Non traité et plus gênant** : deux archers à des avancements différents (3 volées contre 6) au même total sont signalés ex æquo à tort — le DTO ne porte aucun avancement | Lot « retours maquettes » du 05/08/2026, relevé en 2ᵉ passe de revue. Résorption : exposer `a_tire` (et l'avancement) dans `LigneClassement`. ⚠️ **Le second volet est un arbitrage** : « ex æquo » vaut-il à l'issue de la qualification, ou à avancement égal ? À poser au commanditaire |
 
 ## Dette résorbée
 
@@ -1770,3 +1771,26 @@ Ce qui manquait n'était donc pas un correctif, c'était la ligne — pour que l
 de l'alphabet trouve ses trois domiciles au lieu de deux.
 
 Marqueurs `# DETTE-040` sur les trois sites.
+
+### DETTE-041 — le front approxime « a tiré » par « total non nul »
+
+Le retour A16 demande la règle de départage **seulement en cas d'ex æquo**. Le premier jet la montrait
+en permanence : le domaine classe *tous* les inscrits, à `total = 0`, avant la première volée — tout le
+monde était donc à égalité. La garde ajoutée écarte les totaux nuls.
+
+C'est **le bon troc** — un faux positif permanent contre un faux négatif quasi théorique — mais ce
+n'est pas la bonne condition. Le domaine tranche déjà la question, et pas de cette façon :
+`backend/domain/classement.py` documente que `a_tire` est **distinct** de `total > 0`, « un archer qui
+a validé une volée entièrement manquée a bien tiré, pour un total nul ». Le discriminant juste existe
+donc côté serveur ; il n'est simplement pas dans le DTO.
+
+Reste un second volet, **non traité et plus gênant en pratique** : `LigneClassement` ne porte aucun
+avancement, si bien que deux archers ayant tiré 3 et 6 volées et affichant le même total sont
+signalés « ex æquo ». À 120 archers, une collision de totaux existe presque en permanence : la règle
+restera affichée une bonne partie de la journée malgré le correctif.
+
+⚠️ Ce second volet **n'est pas un bug à corriger seul, c'est un arbitrage à poser** : « ex æquo »
+désigne-t-il une égalité à l'issue de la qualification, ou à avancement égal ? La réponse change ce
+qu'il faut exposer.
+
+Marqueur `# DETTE-041` sur `totauxExAequo`.

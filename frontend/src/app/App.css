@@ -2043,18 +2043,33 @@ button:disabled {
   gap: 4px;
 }
 
+/* ⚠️ **La carte est portée par le `<li>`, pas par le `<button>`.** La bande de relecture a dû sortir
+   du bouton (la toucher fermait le pavé et jetait la volée en cours) ; restée stylée en enfant flex
+   du bouton, elle se rendait alors **hors de la carte** — sans fond, sans bordure, collée sous le
+   bord arrondi et à peine séparée de l'archer suivant, sur l'écran dont la fonction est précisément
+   de dire « ces volées sont celles de **cet** archer » (2ᵉ passe de revue). La carte englobe donc les
+   deux, le bouton n'en garde que la zone tapable. */
+.saisie__grille > li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
 .saisie__ligne {
   display: flex;
-  flex-wrap: wrap; /* la bande de relecture passe à la ligne sous le nom */
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   width: 100%;
   min-height: 48px;
-  padding: 6px 10px;
+  padding: 0;
   color: var(--text-h);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: transparent;
+  border: none;
   text-align: left;
 }
 
@@ -2066,7 +2081,6 @@ button:disabled {
    **sans ouvrir le pavé** est le point : le pavé est l'outil de celui qui saisit, s'en servir pour
    relire oblige à prendre la tablette et expose à une frappe accidentelle. */
 .saisie__relecture {
-  flex: 1 0 100%;
   display: flex;
   flex-wrap: wrap;
   gap: 3px;
@@ -2123,7 +2137,8 @@ button:disabled {
   text-align: center;
 }
 
-.saisie__ligne--actif {
+/* L'archer visé par le pavé : la mise en avant passe sur la carte, qui porte désormais la bordure. */
+.saisie__grille > li:has(.saisie__ligne--actif) {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
@@ -2397,35 +2412,55 @@ button:disabled {
    son propre cadre. `table-layout: fixed` est ce qui rend l'alignement des colonnes exact entre les
    deux — sans lui, chaque table calculerait ses largeurs sur son propre contenu et les colonnes se
    décaleraient dès qu'un nom serait plus long en bas qu'en haut. */
-/* `min-width` **en plus** de `width: 100%` : en `table-layout: fixed`, la largeur devient exacte, si
-   bien que les colonnes se compriment au lieu de déborder — et le conteneur `overflow-x` de
-   `VueClassement` n'avait plus rien à faire défiler. Sur un téléphone (classement public, 46 rem),
-   les huit colonnes étaient écrasées, c'est-à-dire exactement ce que ce conteneur existe pour
-   éviter. Le plancher rétablit le débordement, donc le défilement. (Revue du 05/08/2026, axes A,
-   C1 et adversarial.) */
+/* ⚠️ **Le plancher de largeur est sur le CONTENEUR, pas sur les tables** — et c'est tout le sujet.
+   Posé sur les tables, il en faisait deux éléments larges dans deux boîtes distinctes : celle du
+   haut défilait dans `.table-defilement` (le conteneur de `VueClassement`), celle du bas dans son
+   propre cadre, puisque `overflow-y: auto` force `overflow-x` à `auto`. Sur un téléphone, pousser le
+   tableau vers la gauche pour lire « Total » désalignait donc tête et corps de **plusieurs centaines
+   de pixels** — un défaut bien pire que les 15 px qu'on cherchait à corriger (2ᵉ passe de revue).
+   Ici, un seul bloc large, un seul défilement horizontal, celui du parent.
+
+   La valeur : 52 rem couvrent les 39 rem de colonnes fixes du mode public **plus** de quoi lire un
+   nom composé ; 60 rem font de même pour les 47 rem du mode admin (colonne « Placer » en plus). Un
+   plancher plus bas laissait « MARTIN Jean-Baptiste » sur 80 px, c'est-à-dire le symptôme même. */
+.classement {
+  min-width: 52rem;
+}
+
+.classement--admin {
+  min-width: 60rem;
+}
+
 .classement .table {
   table-layout: fixed;
   width: 100%;
-  min-width: 44rem;
 }
 
-/* ⚠️ `scrollbar-gutter: stable` : la table du bas vit dans un cadre défilant, celle du haut non.
-   Sans réservation de la gouttière, l'ascenseur (≈ 15 px sur Windows/Chrome — invisible sur macOS,
-   d'où le risque de ne le découvrir qu'au gymnase) rétrécit la seule colonne sans largeur fixe,
-   « Archer », et **décale les six colonnes suivantes** par rapport à leurs en-têtes. La promesse
-   d'alignement du `<colgroup>` partagé ne tenait que sur les machines de l'auteur. */
+/* ⚠️ **Les deux tables réservent la même gouttière d'ascenseur**, sans quoi elles ne s'alignent pas :
+   celle du bas défile, celle du haut non, et les ≈ 15 px de l'ascenseur (Windows/Chrome ; invisible
+   sur macOS, d'où le risque de ne le découvrir qu'au gymnase) rétrécissaient la seule colonne sans
+   largeur fixe — « Archer » — décalant les six suivantes.
+
+   `scrollbar-gutter` ne vaut que sur un **conteneur de défilement** : une première correction l'avait
+   posé sur `.classement > .table`, qui n'en est pas un — la règle était un no-op, et réserver la
+   gouttière du seul cadre du bas rendait le décalage **permanent** au lieu d'intermittent. La tête
+   est donc enveloppée dans un conteneur qui ne défile jamais mais réserve la même place.
+
+   `overflow-x: clip` sur le cadre du bas : le défilement horizontal appartient au parent, un second
+   ici les désynchroniserait à nouveau. */
+.classement__tete {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
 .classement__defilement {
   max-height: 22rem;
   overflow-y: auto;
+  overflow-x: clip;
   scrollbar-gutter: stable;
   border: 1px solid var(--border);
   border-top: none;
   border-radius: 0 0 8px 8px;
-}
-
-/* Même gouttière réservée sur la tête, pour que les deux tables partent du même bord. */
-.classement > .table {
-  scrollbar-gutter: stable;
 }
 
 /* Largeurs de colonnes — nécessaires dès lors que `table-layout` est `fixed` : sans elles, les huit

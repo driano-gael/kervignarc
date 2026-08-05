@@ -44,6 +44,7 @@ export function totauxExAequo(lignes: readonly LigneDepartageable[]): Map<number
     // afficherait la règle de départage **en permanence** toute la matinée — c'est-à-dire très
     // exactement ce qu'A16 demandait de supprimer. Le défaut a été trouvé en revue (axes C1 et
     // adversarial) ; il rendait la fonctionnalité contraire à son propre CA.
+    // DETTE-041 — approximation de `a_tire`, que le DTO n'expose pas. Cf. registre.
     if (ligne.total === 0) continue
     const parTotal = vus.get(ligne.categorie_id) ?? new Map<number, number>()
     parTotal.set(ligne.total, (parTotal.get(ligne.total) ?? 0) + 1)
