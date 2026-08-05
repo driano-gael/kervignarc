@@ -324,6 +324,10 @@ table.tk td.num { font-variant-numeric:tabular-nums; font-family:var(--doc-mono)
 .ui .barre .fin { margin-left:auto; }
 .ui .titre { font-weight:800; letter-spacing:.02em; font-size:15px; }
 .ui .corps { padding:14px; display:flex; flex-direction:column; gap:12px; }
+/* Dans un écran plein, le rembourrage est déjà porté par `.app` : la pile n'apporte que
+   l'empilement et le pas vertical. C'est ce que devient un ancien `.corps` à la conversion. */
+.ui .pile { display:flex; flex-direction:column; gap:14px; }
+.ui .pile.serre { gap:9px; }
 .ui .corps.serre { gap:8px; padding:10px; }
 .ui .faible { color:var(--text-muted); font-size:12.5px; }
 .ui .second { color:var(--text-secondary); font-size:13px; }

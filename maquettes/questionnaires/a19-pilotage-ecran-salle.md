@@ -1,6 +1,7 @@
 # A19 · Pilotage de l'écran de salle
 
 > **Écran** : [A19 — Pilotage de l'écran de salle](../a19-pilotage-ecran-salle.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Imposer une vue depuis son poste, sans traverser le gymnase — et savoir que la prise de contrôle se termine.
 >
 > **Pas encore rempli.**

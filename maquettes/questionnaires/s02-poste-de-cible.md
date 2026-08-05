@@ -1,6 +1,7 @@
 # S02 · Poste de cible — la grille
 
 > **Écran** : [S02 — Poste de cible — la grille](../s02-poste-de-cible.html) · **Appli** : Appli saisie (`/saisie`)
+> **Appareil** : Tablette · 1280 × 800
 > **Rôle** : L'écran le plus utilisé de la journée : un marqueur tape pour 3–4 archers, debout, d'une main.
 >
 > **Pas encore rempli.**

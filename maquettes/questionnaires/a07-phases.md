@@ -1,6 +1,7 @@
 # A07 · Phases — scoring et grain de validation
 
 > **Écran** : [A07 — Phases — scoring et grain de validation](../a07-phases.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Le grain de validation est une politique de phase, réglée une fois à la configuration, jamais le jour J.
 >
 > **Pas encore rempli.**

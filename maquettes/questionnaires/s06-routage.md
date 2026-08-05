@@ -1,6 +1,7 @@
 # S06 · Panneau de routage après validation
 
 > **Écran** : [S06 — Panneau de routage après validation](../s06-routage.html) · **Appli** : Appli saisie (`/saisie`)
+> **Appareil** : Tablette · 1280 × 800
 > **Rôle** : La tablette devient un panneau d'affichage : c'est là que se gagnent les 2 minutes.
 >
 > **Pas encore rempli.**

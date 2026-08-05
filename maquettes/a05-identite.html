@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · /admin</p>
   <h1><span class="num">A05</span>Identité du tournoi</h1>
@@ -42,14 +47,15 @@
 </ul>
 
 <h2 class="section">Partis pris <span class="code-sec">à départager</span></h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Réglages + aperçu permanent</span>
-      <span class="sous-etiquette">L'aperçu est à droite, il ne se ferme jamais.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">IDENTITÉ DU TOURNOI</span><span class="fin pas neutre">PRÉPARATION</span></div>
-      <div class="colonnes" style="grid-template-columns:minmax(0,1fr) 150px">
-        <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="atelier" data-ecran="identite">
+    <figcaption><span class="textes"><span class="etiquette">A · Réglages + aperçu permanent</span>
+      <span class="sous-etiquette">L'aperçu est à droite, il ne se ferme jamais.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="colonnes" style="grid-template-columns:minmax(0,1fr) 150px">
+        <div class="pile">
           <div class="carte"><div class="rang bloc" style="text-align:center;padding:18px">
             <span class="faible">Déposer le logo de l'événement</span></div></div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -68,18 +74,20 @@
           <div class="carte" style="padding:16px 6px;text-align:center;font-size:10px">téléphone</div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> L'aperçu <b>réagit pendant qu'on règle</b>.
     C'est ce qui transforme un formulaire en outil de décision.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Aperçu plein écran</span>
-      <span class="sous-etiquette">On voit la salle en grand, les réglages sont en surcouche.</span></figcaption>
-    <div class="ui">
-      <div class="ui salle" style="border:0;border-radius:0;box-shadow:none">
-        <div class="barre marque"><span class="titre-salle" style="font-size:17px">CHALLENGE DES CHAMPIONS</span></div>
-        <div class="corps" style="padding:20px">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="atelier" data-ecran="identite">
+    <figcaption><span class="textes"><span class="etiquette">B · Aperçu plein écran</span>
+      <span class="sous-etiquette">On voit la salle en grand, les réglages sont en surcouche.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="ui salle" style="border:0;border-radius:0;box-shadow:none">
+        
+        <div class="pile" style="padding:20px">
           <div class="second">1/4 DE FINALE</div>
           <div style="font-weight:800">MARTIN P. → CIBLE 4</div>
           <div class="carte" style="margin-top:8px;padding:8px;font-size:11px">
@@ -93,38 +101,47 @@
         </div>
         <div class="pied-salle"><span>logo événement</span><span>organisé par les Archers de Kervignac</span></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">à considérer</span> Le rendu est <b>vrai</b>, donc le jugement
     est juste. Mais régler par-dessus son propre aperçu est acrobatique sur un écran de PC ordinaire.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Le co-branding, montré</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Avec identité de tournoi</span>
-      <span class="sous-etiquette">L'événement domine, le club signe en pied — <span class="ref">DV-08</span>.</span></figcaption>
-    <div class="ui salle">
-      <div class="salle-cadre">
-        <div class="barre marque"><span class="titre-salle" style="font-size:18px">CHALLENGE DES CHAMPIONS</span></div>
-        <div class="corps-salle"><div style="font-weight:800;font-size:17px">1/4 DE FINALE — 14 h 20</div>
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="atelier" data-ecran="identite">
+    <figcaption><span class="textes"><span class="etiquette">Avec identité de tournoi</span>
+      <span class="sous-etiquette">L'événement domine, le club signe en pied — <span class="ref">DV-08</span>.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui salle">
+      <div class="ecran">
+        <div class="salle-cadre">
+        
+        <div class="pile"><div style="font-weight:800;font-size:17px">1/4 DE FINALE — 14 h 20</div>
           <div class="second">MARTIN P. → cible 4 · DURAND J. → cible 4</div></div>
         <div class="pied-salle"><span>organisé par les Archers de Kervignac</span><span>kervignac-tir.fr</span></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
   </figure>
-  <figure class="variante">
-    <figcaption><span class="etiquette">Sans identité de tournoi</span>
-      <span class="sous-etiquette">Le club reprend la place, la surface n'est jamais vide.</span></figcaption>
-    <div class="ui salle">
-      <div class="salle-cadre">
-        <div class="barre marque"><span class="titre-salle" style="font-size:18px">ARCHERS DE KERVIGNAC</span></div>
-        <div class="corps-salle"><div style="font-weight:800;font-size:17px">1/4 DE FINALE — 14 h 20</div>
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="atelier" data-ecran="identite">
+    <figcaption><span class="textes"><span class="etiquette">Sans identité de tournoi</span>
+      <span class="sous-etiquette">Le club reprend la place, la surface n'est jamais vide.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui salle">
+      <div class="ecran">
+        <div class="salle-cadre">
+        
+        <div class="pile"><div style="font-weight:800;font-size:17px">1/4 DE FINALE — 14 h 20</div>
           <div class="second">MARTIN P. → cible 4 · DURAND J. → cible 4</div></div>
         <div class="pied-salle"><span>Concours du 12 octobre</span><span>kervignac-tir.fr</span></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -143,5 +160,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

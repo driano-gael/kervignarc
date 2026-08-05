@@ -1,6 +1,7 @@
 # P07 · Écran de salle — classement et podium
 
 > **Écran** : [P07 — Écran de salle — classement et podium](../p07-salle-classement-podium.html) · **Appli** : Appli publique (`/`)
+> **Appareil** : Vidéoprojecteur · 1920 × 1080
 > **Rôle** : Les autres vues du déroulé, et le cas de la prise de contrôle par l'admin.
 >
 > **Pas encore rempli.**

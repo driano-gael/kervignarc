@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · /admin</p>
   <h1><span class="num">A11</span>Placement des archers</h1>
@@ -37,14 +42,15 @@
 </ul>
 
 <h2 class="section">Partis pris <span class="code-sec">le geste central change tout</span></h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Glisser-déposer</span>
-      <span class="sous-etiquette">On attrape un archer non placé, on le lâche sur une position.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">PLACEMENT · DÉPART 1</span><span class="fin pas att">3 NON PLACÉS</span></div>
-      <div class="colonnes" style="grid-template-columns:minmax(0,1fr) 130px">
-        <div class="corps serre">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="placement">
+    <figcaption><span class="textes"><span class="etiquette">A · Glisser-déposer</span>
+      <span class="sous-etiquette">On attrape un archer non placé, on le lâche sur une position.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="colonnes" style="grid-template-columns:minmax(0,1fr) 130px">
+        <div class="pile">
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
             <div class="carte" style="padding:6px;font-size:11px"><div style="font-weight:800">C1</div>
               <div>A MARTIN</div><div>B DURAND</div><div>C PETIT</div><div class="faible">D —</div></div>
@@ -63,18 +69,19 @@
           <div class="carte" style="padding:5px 7px;font-size:11px">THOMAS É. · SF</div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">si tu travailles sur PC</span> Geste naturel à la souris.
     <b>Impraticable au doigt</b> sur une tablette, et il faut de toute façon une alternative clavier
     (accessibilité, §7.3 du CDC design).</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Sélectionner puis affecter</span>
-      <span class="sous-etiquette">Un tap sur l'archer, un tap sur la position.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">PLACEMENT · DÉPART 1</span></div>
-      <div class="corps serre">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="placement">
+    <figcaption><span class="textes"><span class="etiquette">B · Sélectionner puis affecter</span>
+      <span class="sous-etiquette">Un tap sur l'archer, un tap sur la position.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte marquee"><div class="rang"><span class="pas marque">SÉLECTIONNÉ</span>
           <span style="font-weight:700">MARTINEAU Luc</span><span class="fin second">CH · Vannes</span></div></div>
         <p class="faible" style="margin:0">Touchez une position libre — les positions incompatibles sont estompées.</p>
@@ -83,17 +90,18 @@
           <span class="cible" style="opacity:.35">C2 —</span><span class="cible vide">C4 A</span><span class="cible vide">C4 B</span>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé si tablette</span> Marche <b>partout</b>, souris
     comprise, et donne gratuitement l'alternative clavier. Un tap de plus, mais aucun geste précis.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">C · Calcul puis retouches</span>
-      <span class="sous-etiquette">La machine propose, l'humain corrige.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">PLACEMENT</span><span class="fin bouton auto">Calculer</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="placement">
+    <figcaption><span class="textes"><span class="etiquette">C · Calcul puis retouches</span>
+      <span class="sous-etiquette">La machine propose, l'humain corrige.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span>PROPOSITION</span><span class="fin">153 / 156 placés</span></div>
           <div class="rang"><span class="pas ok">✓</span><span style="flex:1">Clubs séparés</span><span class="second">28 cibles</span></div>
@@ -103,11 +111,13 @@
         <div style="display:flex;gap:8px"><span class="bouton auto">Accepter</span>
           <span class="bouton auto" style="border-color:var(--border-subtle)">Recommencer</span></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">indispensable en complément</span> Personne ne place 156 archers
     à la main. Mais le calcul <b>ne suffit jamais</b> : il reste toujours des cas à arbitrer — d'où A ou B
     par-dessus.</p>
   </figure>
+
 </div>
 
 <h2 class="section">La question dure</h2>
@@ -135,5 +145,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

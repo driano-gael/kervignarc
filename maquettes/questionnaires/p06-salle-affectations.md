@@ -1,6 +1,7 @@
 # P06 · Écran de salle — affectations
 
 > **Écran** : [P06 — Écran de salle — affectations](../p06-salle-affectations.html) · **Appli** : Appli publique (`/`)
+> **Appareil** : Vidéoprojecteur · 1920 × 1080
 > **Rôle** : Probablement la vue la plus utile du produit — et la moins résolue : 200 archers ne tiennent pas à l'écran.
 >
 > **Pas encore rempli.**

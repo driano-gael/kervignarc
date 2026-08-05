@@ -1,6 +1,7 @@
 # P05 · Tableau de duels
 
 > **Écran** : [P05 — Tableau de duels](../p05-tableau-duels.html) · **Appli** : Appli publique (`/`)
+> **Appareil** : Téléphone · 390 × 844
 > **Rôle** : L'arbre d'élimination directe sur 360 px : le vrai problème de conception de l'appli publique.
 >
 > **Pas encore rempli.**

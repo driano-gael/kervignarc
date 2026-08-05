@@ -1,6 +1,7 @@
 # S07 · File du scoreur
 
 > **Écran** : [S07 — File du scoreur](../s07-file-scoreur.html) · **Appli** : Appli saisie (`/saisie`)
+> **Appareil** : Tablette · 1280 × 800
 > **Rôle** : Le goulot d'étranglement de la journée : aux duels, 8 cibles finissent ensemble et attendent toutes.
 >
 > **Pas encore rempli.**

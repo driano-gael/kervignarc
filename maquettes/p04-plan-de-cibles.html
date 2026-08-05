@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli publique · /</p>
   <h1><span class="num">P04</span>Plan de cibles</h1>
@@ -28,13 +33,14 @@
 </header>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">A · Ma cible d'abord</span>
-      <span class="sous-etiquette">La réponse en haut, le plan en dessous pour se repérer.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">PLAN DE CIBLES</span><span class="fin champ plein" style="padding:2px 8px;color:#fff;border-color:rgba(255,255,255,.5)">Départ 1 ▾</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">A · Ma cible d'abord</span>
+      <span class="sous-etiquette">La réponse en haut, le plan en dessous pour se repérer.</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte marquee">
           <div class="tete-carte"><span>VOTRE CIBLE</span></div>
           <div class="rang bloc"><div style="font-size:19px;font-weight:800">CIBLE 12 — position B</div>
@@ -46,17 +52,18 @@
         </div>
         <p class="faible" style="margin:0">Toucher une cible affiche ses archers.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> L'archer a <b>une</b> question. Le plan large
     ne l'aide qu'à se situer physiquement une fois qu'il connaît son numéro.</p>
   </figure>
 
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">B · Plan complet zoomable</span>
-      <span class="sous-etiquette">Toute la salle, sa cible en évidence.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">PLAN DE CIBLES</span></div>
-      <div class="corps serre">
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">B · Plan complet zoomable</span>
+      <span class="sous-etiquette">Toute la salle, sa cible en évidence.</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="plan" style="grid-template-columns:repeat(6,1fr)">
           <span class="cible">1</span><span class="cible">2</span><span class="cible">3</span><span class="cible">4</span><span class="cible">5</span><span class="cible">6</span>
           <span class="cible">7</span><span class="cible">8</span><span class="cible">9</span><span class="cible">10</span><span class="cible">11</span><span class="cible moi">12</span>
@@ -65,10 +72,12 @@
         </div>
         <p class="faible" style="margin:0">Pincer pour zoomer.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">utile en second</span> Bon pour <b>chercher quelqu'un d'autre</b>
     (un ami, son enfant). Comme vue par défaut, elle noie la seule réponse attendue.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Une question d'orientation</h2>
@@ -98,5 +107,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

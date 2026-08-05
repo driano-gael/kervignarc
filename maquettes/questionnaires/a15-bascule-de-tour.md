@@ -1,6 +1,7 @@
 # A15 · Bascule de tour
 
 > **Écran** : [A15 — Bascule de tour](../a15-bascule-de-tour.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Le cœur du produit : le moment où l'organisateur appuie et où 118 personnes apprennent où aller.
 >
 > **Pas encore rempli.**

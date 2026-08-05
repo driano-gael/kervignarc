@@ -1,6 +1,7 @@
 # A16 · Classements et podiums
 
 > **Écran** : [A16 — Classements et podiums](../a16-classements-podiums.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Deux besoins distincts : le classement consultable et le podium projetable.
 >
 > **Pas encore rempli.**

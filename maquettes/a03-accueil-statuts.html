@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · axe <strong>Pilotage</strong> · <code>/admin/pilotage/…</code>
      · <strong>réaligné le 30/07/2026</strong></p>
@@ -50,103 +55,301 @@
 
 <h2 class="section">Les trois registres</h2>
 
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Brouillon — dense, on a le temps</span>
-      <span class="sous-etiquette">L'accueil est une liste de ce qui manque, chaque ligne mène à sa destination.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">CHALLENGE DES CHAMPIONS</span><span class="fin pas neutre">BROUILLON</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin"
+          data-axe="pilotage" data-ecran="accueil"
+          data-statut="brouillon" data-depart="aucun"
+          data-aide="Tant que le tournoi est en brouillon, l'accueil liste ce qui manque. Chaque ligne mène à la destination qui la répare.">
+    <figcaption><span class="textes">
+      <span class="etiquette">1 · Brouillon — dense, on a le temps</span>
+      <span class="sous-etiquette">L'accueil est une liste de ce qui manque. Pas de départ courant : il n'y a rien qui tourne.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
         <div class="carte">
-          <div class="tete-carte"><span>À PRÉPARER</span><span class="fin">4 points</span></div>
-          <div class="rang"><span class="pas att">!</span><span>Aucun gabarit de salle</span><span class="fin bouton auto">Définir</span></div>
-          <div class="rang"><span class="pas att">!</span><span>Phases sans barème</span><span class="fin bouton auto">Configurer</span></div>
-          <div class="rang"><span class="pas neutre">~</span><span>12 inscriptions non réglées</span><span class="fin bouton auto">Voir</span></div>
-          <div class="rang"><span class="pas neutre">~</span><span>Placement non calculé</span><span class="fin bouton auto">Placer</span></div>
+          <div class="tete-carte">Ce qu'il reste à préparer <span class="fin">4 points bloquants · 3 avertissements</span></div>
+          <div class="rang"><span class="pas att">BLOQUANT</span><span style="flex:1">Aucun gabarit de salle choisi</span>
+            <span class="second">le placement en a besoin</span><span class="bouton auto">Définir</span></div>
+          <div class="rang"><span class="pas att">BLOQUANT</span><span style="flex:1">Phases sans barème de validation</span>
+            <span class="second">2 phases sur 3</span><span class="bouton auto">Configurer</span></div>
+          <div class="rang"><span class="pas att">BLOQUANT</span><span style="flex:1">Aucun scoreur affecté</span>
+            <span class="second">0 sur 4 attendus</span><span class="bouton auto">Affecter</span></div>
+          <div class="rang"><span class="pas att">BLOQUANT</span><span style="flex:1">Placement non calculé</span>
+            <span class="second">156 archers en attente</span><span class="bouton auto">Placer</span></div>
+          <div class="rang"><span class="pas neutre">À VOIR</span><span style="flex:1">12 inscriptions non réglées</span>
+            <span class="second">340 €</span><span class="bouton auto">Voir</span></div>
+          <div class="rang"><span class="pas neutre">À VOIR</span><span style="flex:1">2 doublons signalés</span>
+            <span class="second">même licence</span><span class="bouton auto">Arbitrer</span></div>
+          <div class="rang"><span class="pas neutre">À VOIR</span><span style="flex:1">Aucun écran de salle déclaré</span>
+            <span class="second">facultatif</span><span class="bouton auto">Ajouter</span></div>
         </div>
-        <button class="bouton inactif">DÉMARRER — bloqué tant que le sportif est incomplet</button>
+
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px">
+          <div class="carte"><div class="tete-carte">Composition</div>
+            <div class="rang"><span style="flex:1">Départs</span><span class="pas ok">3</span></div>
+            <div class="rang"><span style="flex:1">Catégories ouvertes</span><span class="pas ok">7</span></div>
+            <div class="rang"><span style="flex:1">Blasons</span><span class="pas ok">2</span></div></div>
+          <div class="carte"><div class="tete-carte">Salle</div>
+            <div class="rang"><span style="flex:1">Cibles</span><span class="pas att">—</span></div>
+            <div class="rang"><span style="flex:1">Pas de tir</span><span class="pas att">—</span></div>
+            <div class="rang"><span style="flex:1">Couloirs de tir</span><span class="faible">jusqu'à 2 / cible</span></div></div>
+          <div class="carte"><div class="tete-carte">Inscriptions</div>
+            <div class="rang"><span style="flex:1">Enregistrées</span><span class="pas ok">156</span></div>
+            <div class="rang"><span style="flex:1">Réglées</span><span class="pas neutre">144</span></div>
+            <div class="rang"><span style="flex:1">Clubs représentés</span><span class="pas ok">14</span></div></div>
+        </div>
+
+        <div style="max-width:560px;margin-top:16px">
+          <span class="bouton inactif">Démarrer le tournoi — 4 points bloquants à lever</span>
+        </div>
       </div>
-    </div>
+    </div></div></div>
+    <p class="verdict"><span class="pouce oui">le registre est le bon</span> En brouillon on a le temps : la
+    densité est un service, pas un défaut. <b>Chaque ligne dit où elle mène et ce qu'elle coûte</b> — « 2 phases
+    sur 3 », « 156 archers en attente » — au lieu d'un simple « à faire ».</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">En cours — gros, alertes, zéro formulaire</span>
-      <span class="sous-etiquette">La console de supervision devient l'accueil.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">CHALLENGE DES CHAMPIONS</span><span class="fin pas att">EN COURS</span></div>
-      <div class="corps">
-        <div style="display:flex;align-items:center;gap:10px"><span class="second">Qualification · volée 8/12</span>
-          <span class="jauge"><span style="width:62%"></span></span><span class="second">62 %</span></div>
-        <div class="aplat-alerte">▲ 2 postes hors ligne — cibles 7, 23 <span class="impact">14 mn</span></div>
-        <div class="carte">
-          <div class="rang"><span class="pas att">3</span><span>à valider</span><span class="fin second">le plus ancien : 4 mn 20</span></div>
+  <figure class="planche" data-appareil="pc" data-monde="admin"
+          data-axe="pilotage" data-ecran="accueil"
+          data-statut="prêt" data-depart="Départ 1 · 08 h 00 — dans 12 min"
+          data-aide="Tout est en place. Le feu vert est affiché, pas découvert en appuyant sur un bouton.">
+    <figcaption><span class="textes">
+      <span class="etiquette">2 · Prêt — le feu vert</span>
+      <span class="sous-etiquette">Le tournoi peut démarrer. L'écran le dit avant qu'on le demande.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="carte" style="border-color:var(--success)">
+          <div class="rang bloc" style="padding:20px">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+              <span class="pas ok">COMPLÉTUDE SATISFAITE</span>
+              <span style="font-size:22px;font-weight:800">Le tournoi peut démarrer</span></div>
+            <p class="second" style="margin:0">156 inscrits placés · 30 cibles · 2 pas de tir · 4 scoreurs
+            affectés · 28 postes rattachés sur 30.</p>
+          </div>
         </div>
-        <button class="bouton principal geant">LANCER LES DEMI-FINALES<br>
-          <span style="font-weight:600;font-size:13px">2 duels · cibles 4 et 7 · 14 h 20</span></button>
+
+        <div style="max-width:560px;margin-top:16px">
+          <span class="bouton valider geant">Démarrer le départ 1 — 08 h 00</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px">
+          <div class="carte"><div class="tete-carte">Ce qui reste, sans bloquer</div>
+            <div class="rang"><span class="pas neutre">~</span><span style="flex:1">2 postes de cible non rattachés</span>
+              <span class="second">cibles 19, 26</span></div>
+            <div class="rang"><span class="pas neutre">~</span><span style="flex:1">12 inscriptions non réglées</span>
+              <span class="second">340 €</span></div>
+            <div class="rang"><span class="pas neutre">~</span><span style="flex:1">Aucun écran de salle déclaré</span>
+              <span class="second">facultatif</span></div></div>
+          <div class="carte"><div class="tete-carte">Les trois départs</div>
+            <div class="rang"><span class="pas info">À VENIR</span><span style="flex:1">Départ 1 — 08 h 00</span>
+              <span class="second">52 archers</span></div>
+            <div class="rang"><span class="pas info">À VENIR</span><span style="flex:1">Départ 2 — 09 h 30</span>
+              <span class="second">56 archers</span></div>
+            <div class="rang"><span class="pas info">À VENIR</span><span style="flex:1">Départ 3 — 10 h 45</span>
+              <span class="second">48 archers</span></div></div>
+        </div>
       </div>
-    </div>
+    </div></div></div>
+    <p class="verdict"><span class="pouce oui">acquis</span> Le feu vert est <b>affiché</b>, pas découvert en
+    appuyant. Et ce qui reste ouvert sans bloquer est <b>listé à côté</b> plutôt que caché : deux postes non
+    rattachés à 8 h moins 12, c'est une information qu'on veut voir maintenant, pas quand la volée démarre.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">Terminé — lecture et export</span>
-      <span class="sous-etiquette">Le sportif est figé ; le hors-sportif reste ouvert.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">CHALLENGE DES CHAMPIONS</span><span class="fin pas ok">TERMINÉ</span></div>
-      <div class="corps">
-        <div class="carte info"><div class="rang bloc">
-          <span class="verrou">🔒 SPORTIF FIGÉ</span>
-          <p class="second" style="margin:6px 0 0">Scores et classements ne sont plus modifiables.
-          Les paiements, si.</p></div></div>
-        <div class="carte">
-          <div class="rang"><span>Podiums</span><span class="fin bouton auto">Voir</span></div>
-          <div class="rang"><span>Exports</span><span class="fin bouton auto">Télécharger</span></div>
-          <div class="rang"><span>Paiements</span><span class="fin pas att">12 dus</span></div>
+  <figure class="planche" data-appareil="pc" data-monde="admin"
+          data-axe="pilotage" data-ecran="accueil"
+          data-statut="en cours" data-depart="Départ 2 · 09 h 30 — en tir"
+          data-aide="Pendant le tir, l'accueil ne demande plus rien : il montre ce qui se passe et ce qui bloque.">
+    <figcaption><span class="textes">
+      <span class="etiquette">3 · En cours — gros, alertes, zéro formulaire</span>
+      <span class="sous-etiquette">La console de supervision devient l'accueil. C'est le pari du CDC UX, et il se juge ici.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="aplat-alerte forte">▲ 2 postes hors ligne — cibles 7 et 23
+          <span class="impact">14 min · 4 archers bloqués</span></div>
+
+        <div class="carte" style="margin-top:16px"><div class="rang bloc" style="padding:18px">
+          <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px">
+            <span style="font-size:24px;font-weight:800">Qualification · volée 8 sur 12</span>
+            <span class="fin second">62 % des flèches saisies</span></div>
+          <div class="jauge" style="max-width:none;height:12px"><span style="width:62%"></span></div>
+        </div></div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:16px">
+          <div class="carte"><div class="rang bloc"><div class="mini">Postes en ligne</div>
+            <div style="font-size:36px;font-weight:800;line-height:1.1">28<span class="faible" style="font-size:19px"> / 30</span></div></div></div>
+          <div class="carte"><div class="rang bloc"><div class="mini">Volées à valider</div>
+            <div style="font-size:36px;font-weight:800;line-height:1.1">3</div>
+            <div class="faible">le plus ancien : 4 min 20</div></div></div>
+          <div class="carte"><div class="rang bloc"><div class="mini">Archers en tir</div>
+            <div style="font-size:36px;font-weight:800;line-height:1.1">56</div></div></div>
+          <div class="carte"><div class="rang bloc"><div class="mini">Scoreurs actifs</div>
+            <div style="font-size:36px;font-weight:800;line-height:1.1">4</div></div></div>
+        </div>
+
+        <div style="max-width:640px;margin-top:16px">
+          <span class="bouton principal geant">Lancer les demi-finales<br>
+            <span style="font-weight:600;font-size:14px">2 duels · cibles 4 et 7 · 14 h 20</span></span>
+        </div>
+
+        <div class="carte" style="margin-top:16px">
+          <div class="tete-carte">Ce qui attend une décision</div>
+          <div class="rang"><span class="pas att">3</span><span style="flex:1">Volées à valider</span>
+            <span class="second">cibles 7, 14, 22</span><span class="bouton auto">Ouvrir la file</span></div>
+          <div class="rang"><span class="pas att">2</span><span style="flex:1">Postes hors ligne</span>
+            <span class="second">cibles 7, 23 — 14 min</span><span class="bouton auto">Superviser</span></div>
+          <div class="rang"><span class="pas info">1</span><span style="flex:1">Feu vert du départ 3</span>
+            <span class="second">10 h 45</span><span class="bouton auto">Préparer</span></div>
         </div>
       </div>
-    </div>
+    </div></div></div>
+    <p class="verdict"><span class="pouce peut">le pari à confirmer</span> Le CDC UX parie que <b>la
+    supervision est le bon accueil</b> quand le tournoi tourne. Vu en entier, l'écran tient — mais c'est
+    précisément la question du questionnaire : au petit matin, veux-tu d'abord voir <b>les inscriptions de
+    dernière minute</b> plutôt que les cibles hors ligne ?</p>
   </figure>
+
+  <figure class="planche" data-appareil="pc" data-monde="admin"
+          data-axe="pilotage" data-ecran="accueil"
+          data-statut="en pause" data-depart="Départ 2 · 09 h 30 — interrompu"
+          data-aide="Le tournoi est en pause : les 30 postes affichent « tir interrompu ». Aucune saisie n'est perdue.">
+    <figcaption><span class="textes">
+      <span class="etiquette">4 · En pause — saisie gelée</span>
+      <span class="sous-etiquette">L'état est global : il doit se voir de la porte, sinon on oublie qu'on a mis en pause.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="aplat-alerte forte" style="font-size:17px;padding:16px">■ TOURNOI EN PAUSE
+          <span class="impact">depuis 6 min</span></div>
+
+        <div class="carte" style="margin-top:16px"><div class="rang bloc" style="padding:20px">
+          <p style="font-size:19px;font-weight:700;margin:0 0 8px">Les 30 postes affichent « tir interrompu ».</p>
+          <p class="second" style="margin:0 0 4px">Aucune saisie n'est perdue : les volées déjà entrées sont
+          conservées, la volée 8 reprendra là où elle en était.</p>
+          <p class="second" style="margin:0">Les scoreurs ne peuvent plus valider tant que la pause dure.</p>
+        </div></div>
+
+        <div style="max-width:420px;margin-top:16px"><span class="bouton valider geant">Reprendre le tir</span></div>
+
+        <div class="carte" style="margin-top:16px">
+          <div class="tete-carte">Ce que la pause n'arrête pas</div>
+          <div class="rang"><span style="flex:1">Inscriptions et paiements</span><span class="pas ok">ouverts</span></div>
+          <div class="rang"><span style="flex:1">Écrans de salle</span><span class="pas ok">affichent le classement figé</span></div>
+          <div class="rang"><span style="flex:1">Consultation publique</span><span class="pas ok">ouverte</span></div>
+        </div>
+      </div>
+    </div></div></div>
+    <p class="verdict"><span class="pouce oui">l'état est global et visible</span> Ce que la planche gagne en
+    plein écran : elle peut dire <b>ce que la pause n'arrête pas</b>. En vignette il n'y avait la place que pour
+    « aucune saisie n'est perdue » — or la vraie question d'un organisateur qui met en pause, c'est de savoir ce
+    qui continue de tourner pendant ce temps.</p>
+  </figure>
+
+  <figure class="planche" data-appareil="pc" data-monde="admin"
+          data-axe="pilotage" data-ecran="accueil"
+          data-statut="terminé" data-depart="aucun"
+          data-aide="Le sportif est figé. Le hors-sportif — paiements, exports — reste ouvert.">
+    <figcaption><span class="textes">
+      <span class="etiquette">5 · Terminé — lecture et export</span>
+      <span class="sous-etiquette">Le sportif est figé ; le hors-sportif reste ouvert. La distinction est la clé de cet écran.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="carte info"><div class="rang bloc" style="padding:18px">
+          <span class="verrou">🔒 Sportif figé</span>
+          <p class="second" style="margin:10px 0 0">Scores, classements et podiums ne sont plus modifiables.
+          Les paiements et les exports, si.</p>
+        </div></div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px">
+          <div class="carte"><div class="tete-carte">Résultats</div>
+            <div class="rang"><span style="flex:1">Podiums</span><span class="pas ok">7 catégories</span><span class="bouton auto">Voir</span></div>
+            <div class="rang"><span style="flex:1">Classement général</span><span class="second">156 archers</span><span class="bouton auto">Voir</span></div>
+            <div class="rang"><span style="flex:1">Tableaux de duels</span><span class="second">3 phases</span><span class="bouton auto">Voir</span></div></div>
+          <div class="carte"><div class="tete-carte">Exports</div>
+            <div class="rang"><span style="flex:1">Résultats FFTA</span><span class="bouton auto">Télécharger</span></div>
+            <div class="rang"><span style="flex:1">Feuilles de marque</span><span class="bouton auto">Télécharger</span></div>
+            <div class="rang"><span style="flex:1">Liste de placement</span><span class="bouton auto">Télécharger</span></div></div>
+          <div class="carte"><div class="tete-carte">Reste ouvert</div>
+            <div class="rang"><span style="flex:1">Paiements</span><span class="pas att">12 dus · 340 €</span><span class="bouton auto">Régler</span></div>
+            <div class="rang"><span style="flex:1">Journal d'audit</span><span class="second">consultable</span><span class="bouton auto">Ouvrir</span></div>
+            <div class="rang"><span style="flex:1">Archiver le tournoi</span><span class="faible">verrou définitif</span><span class="bouton auto">Archiver</span></div></div>
+        </div>
+
+        <div class="carte" style="margin-top:16px"><div class="tete-carte">Le tournoi en un coup d'œil</div>
+          <div class="rang"><span style="flex:1">156 archers · 14 clubs · 3 départs · 30 cibles</span>
+            <span class="second">22 novembre 2026, 08 h 00 → 17 h 40</span></div>
+        </div>
+      </div>
+    </div></div></div>
+    <p class="verdict"><span class="pouce oui">la bonne distinction</span> « Terminé » n'est pas « fermé ». La
+    place gagnée sert à <b>montrer les trois régimes côte à côte</b> — ce qui se lit, ce qui s'exporte, ce qui
+    reste modifiable — au lieu de trois lignes qui ne disaient pas laquelle était encore ouverte.</p>
+  </figure>
+
 </div>
 
 <h2 class="section">Les 4 autres statuts</h2>
-<div class="rangee">
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Prêt — le feu vert</span></figcaption>
-    <div class="ui"><div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="accueil">
+    <figcaption><span class="textes"><span class="etiquette">Prêt — le feu vert</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
       <div class="carte" style="border-color:var(--success)"><div class="rang bloc">
         <span class="pas ok">COMPLÉTUDE SATISFAITE</span>
         <p class="second" style="margin:6px 0 0">156 inscrits · 30 cibles placées · 3 scoreurs</p></div></div>
       <button class="bouton valider geant">DÉMARRER LE TOURNOI</button>
-    </div></div>
+    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">Le feu vert est <b>affiché</b>, pas découvert en appuyant.</p>
   </figure>
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">En pause — saisie gelée</span></figcaption>
-    <div class="ui">
-      <div class="barre alerte"><span style="font-weight:800">■ TOURNOI EN PAUSE</span></div>
-      <div class="corps">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="accueil">
+    <figcaption><span class="textes"><span class="etiquette">En pause — saisie gelée</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="aplat-alerte forte">■ TOURNOI EN PAUSE</div>
+        <div class="pile">
         <p class="second" style="margin:0">Les 30 postes affichent « tir interrompu ». Aucune saisie n'est perdue.</p>
         <button class="bouton valider">REPRENDRE</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">L'état est <b>global et visible</b> : sinon on oublie qu'on a mis en pause.</p>
   </figure>
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Archivé — verrou total</span></figcaption>
-    <div class="ui"><div class="corps">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="accueil">
+    <figcaption><span class="textes"><span class="etiquette">Archivé — verrou total</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
       <div class="carte info"><div class="rang bloc"><span class="verrou">🔒 ARCHIVÉ</span>
         <p class="second" style="margin:6px 0 0">Lecture seule. Aucune action possible.</p></div></div>
       <div class="carte"><div class="rang"><span class="faible">Résultats · exports · journal d'audit</span></div></div>
-    </div></div>
+    </div>
+      </div>
+    </div></div></div>
   </figure>
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Annulé — trace conservée</span></figcaption>
-    <div class="ui"><div class="corps" style="text-align:center;padding:26px 14px">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="accueil">
+    <figcaption><span class="textes"><span class="etiquette">Annulé — trace conservée</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile" style="text-align:center;padding:26px 14px">
       <div style="font-weight:800">Tournoi annulé</div>
       <p class="second" style="margin:0">le 28/09 — « gymnase indisponible »</p>
       <p class="faible" style="margin:0">Inscriptions et paiements restent consultables.</p>
-    </div></div>
+    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">Annulé ≠ supprimé : les <b>paiements encaissés</b> doivent rester traçables.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher <span class="code-sec">reporté dans le questionnaire</span></h2>
@@ -164,5 +367,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

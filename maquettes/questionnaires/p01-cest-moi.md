@@ -1,6 +1,7 @@
 # P01 · « C'est moi » — première ouverture
 
 > **Écran** : [P01 — « C'est moi » — première ouverture](../p01-cest-moi.html) · **Appli** : Appli publique (`/`)
+> **Appareil** : Téléphone · 390 × 844
 > **Rôle** : L'archer tape son nom une fois ; l'appli le retient. La recherche devient l'exception, pas la porte d'entrée.
 >
 > **Pas encore rempli.**

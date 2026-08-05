@@ -1,6 +1,7 @@
 # A12 · Postes et jetons — rattachement, révocation
 
 > **Écran** : [A12 — Postes et jetons — rattachement, révocation](../a12-postes-jetons.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : L'identité d'un poste est le jeton, pas l'IP : ~30 tablettes personnelles sur un wifi de gymnase.
 >
 > **Pas encore rempli.**

@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · /admin · <strong>le cœur du produit</strong></p>
   <h1><span class="num">A15</span>Bascule de tour</h1>
@@ -56,13 +61,14 @@
 </ul>
 
 <h2 class="section">Partis pris <span class="code-sec">où vit ce moment ?</span></h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Écran dédié</span>
-      <span class="sous-etiquette">Une destination à part entière, qu'on ouvre pour lancer.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">BASCULE DE TOUR</span><span class="fin second">Quart de finale</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="feu-vert">
+    <figcaption><span class="textes"><span class="etiquette">A · Écran dédié</span>
+      <span class="sous-etiquette">Une destination à part entière, qu'on ouvre pour lancer.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte" style="border-color:var(--success)">
           <div class="rang"><span class="pas ok">4/4 DUELS VALIDÉS</span><span class="fin second">feu vert</span></div>
           <div class="rang bloc"><span class="second">Vainqueurs : MARTIN, DURAND, PETIT, LEROY</span></div>
@@ -79,17 +85,18 @@
           <strong>87 téléphones</strong> et l'écran de salle affichent les affectations.</span></div></div>
         <button class="bouton principal geant">LANCER LES DEMI-FINALES</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Le geste le plus important de la journée
     mérite <b>un écran qui ne parle que de lui</b>. Et le récapitulatif chiffré tient sans compromis.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Panneau depuis la supervision</span>
-      <span class="sous-etiquette">On ne quitte jamais la console.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">SUPERVISION</span><span class="pas ok">● LIVE</span></div>
-      <div class="corps serre">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="feu-vert">
+    <figcaption><span class="textes"><span class="etiquette">B · Panneau depuis la supervision</span>
+      <span class="sous-etiquette">On ne quitte jamais la console.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte"><div class="rang"><span class="faible">28/30 postes · 3 à valider</span></div></div>
         <div class="carte marquee">
           <div class="tete-carte"><span>PRÊT À LANCER</span><span class="fin"><span class="pas ok">4/4</span></span></div>
@@ -97,35 +104,40 @@
             <button class="bouton principal" style="margin-top:8px">LANCER — 118 personnes prévenues</button></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">sérieux concurrent</span> Colle au réel : l'organisateur
     <b>est déjà sur la supervision</b> le jour J. Revers — le panneau doit rester lisible sous une console déjà
     chargée d'alertes.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">C · Bandeau permanent</span>
-      <span class="sous-etiquette">En haut de toute l'appli admin, quel que soit l'écran ouvert.</span></figcaption>
-    <div class="ui">
-      <div class="barre succes"><span style="font-weight:800">▶ DEMI-FINALES PRÊTES</span>
-        <span class="fin" style="font-size:12px;font-weight:700">2 duels · 14 h 20 · LANCER</span></div>
-      <div class="corps serre">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="feu-vert">
+    <figcaption><span class="textes"><span class="etiquette">C · Bandeau permanent</span>
+      <span class="sous-etiquette">En haut de toute l'appli admin, quel que soit l'écran ouvert.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="aplat-alerte">▶ DEMI-FINALES PRÊTES 2 duels · 14 h 20 · LANCER</div>
+        <div class="pile">
         <div class="carte"><div class="rang"><span class="faible">— n'importe quel écran de l'admin —</span></div></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">à surveiller</span> On ne peut pas rater le feu vert. Mais un
     bandeau permanent <b>banalise</b> : au bout de trois heures on ne le voit plus, et il vole de la hauteur à
     tous les écrans.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Quand tout n'est pas mûr</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Lancement partiel — D-24</span>
-      <span class="sous-etiquette">Un duel attend encore son duel source.</span></figcaption>
-    <div class="ui">
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="feu-vert">
+    <figcaption><span class="textes"><span class="etiquette">Lancement partiel — D-24</span>
+      <span class="sous-etiquette">Un duel attend encore son duel source.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span>DEMI-FINALES</span><span class="fin">2 duels</span></div>
           <div class="rang"><span class="pas ok">✓</span><span style="flex:1;font-weight:700">MARTIN vs DURAND</span><span class="second">cible 4</span></div>
@@ -138,15 +150,17 @@
           <button class="bouton">TOUT LANCER</button>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">exigence</span> Deux boutons, deux intentions. « Tout lancer »
     reste offert — <b>l'appli n'empêche pas</b> (<span class="ref">P-3</span>), elle montre le coût.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">Forfait — une donnée, pas un trou</span></figcaption>
-    <div class="ui">
-      <div class="corps">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="feu-vert">
+    <figcaption><span class="textes"><span class="etiquette">Forfait — une donnée, pas un trou</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span>DÉCLARER UN FORFAIT</span></div>
           <div class="rang"><span style="flex:1">OLLIVIER Jo</span><span class="second">1/4 n° 3</span></div>
@@ -156,10 +170,12 @@
         </div>
         <button class="bouton principal">Enregistrer le forfait</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">D-24</span> L'archer absent n'est pas un blanc dans le tableau :
     c'est une <b>donnée datée</b>. Rien ne bloque jamais, tout se documente.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -180,5 +196,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

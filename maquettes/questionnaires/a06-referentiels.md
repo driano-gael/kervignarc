@@ -1,6 +1,7 @@
 # A06 · Référentiels — catégories, blasons, clubs, tarifs, barèmes
 
 > **Écran** : [A06 — Référentiels — catégories, blasons, clubs, tarifs, barèmes](../a06-referentiels.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Six destinations qui partagent un gabarit : liste + édition en place.
 >
 > **Pas encore rempli.**

@@ -1,6 +1,7 @@
 # A08 · Scoreurs
 
 > **Écran** : [A08 — Scoreurs](../a08-scoreurs.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : 3 à 4 scoreurs pour ~30 cibles, redéfinissables à tout moment — un scoreur qui ne vient pas, ça arrive.
 >
 > **Pas encore rempli.**

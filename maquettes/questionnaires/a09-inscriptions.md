@@ -1,6 +1,7 @@
 # A09 · Inscriptions — archers, doublons, retardataires
 
 > **Écran** : [A09 — Inscriptions — archers, doublons, retardataires](../a09-inscriptions.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : L'écran le plus fréquenté avant le jour J : il doit répondre en trois secondes à « cet archer est-il inscrit, et où tire-t-il ? ».
 >
 > **Pas encore rempli.**

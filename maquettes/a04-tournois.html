@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · <strong>accueil</strong> (l'assemblage) · <code>/admin</code>
      · <strong>réaligné le 30/07/2026</strong></p>
@@ -48,13 +53,14 @@
 </ul>
 
 <h2 class="section">Partis pris <span class="code-sec">à départager</span></h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Liste dense</span>
-      <span class="sous-etiquette">Une ligne par tournoi, statut en colonne.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">TOURNOIS</span><span class="fin bouton auto">+ Nouveau</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin">
+    <figcaption><span class="textes"><span class="etiquette">A · Liste dense</span>
+      <span class="sous-etiquette">Une ligne par tournoi, statut en colonne.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span style="flex:1">NOM</span><span style="width:60px">DATE</span><span style="width:90px">STATUT</span></div>
           <div class="rang"><span style="flex:1;font-weight:700">Challenge des Champions</span>
@@ -67,17 +73,18 @@
             <span style="width:60px" class="second">14/04</span><span style="width:90px"><span class="pas ok">TERMINÉ</span></span></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Dense, triable, et <b>deux « en cours » se
     voient immédiatement</b> — ce qui est exactement le risque à rendre visible.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Cartes avec frise</span>
-      <span class="sous-etiquette">Le cycle de vie dessiné sur chaque tournoi.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">TOURNOIS</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="pc" data-monde="admin">
+    <figcaption><span class="textes"><span class="etiquette">B · Cartes avec frise</span>
+      <span class="sous-etiquette">Le cycle de vie dessiné sur chaque tournoi.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte marquee">
           <div class="rang bloc">
             <div style="font-weight:800">Challenge des Champions</div>
@@ -99,25 +106,33 @@
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">séduisant</span> La frise apprend le cycle de vie… <b>une
     fois</b>. Ensuite elle occupe de la place pour une information déjà connue. Peut-être à réserver à la fiche
     du tournoi.</p>
   </figure>
+
 </div>
 
 <h2 class="section">État · refus expliqué</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Suppression refusée</span></figcaption>
-    <div class="ui"><div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin">
+    <figcaption><span class="textes"><span class="etiquette">Suppression refusée</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
       <div class="aplat-alerte">▲ Suppression impossible</div>
       <p class="second" style="margin:0">« Challenge des Champions » est <strong>en cours</strong> : 156 archers
       tirent dessus en ce moment. Terminez-le ou annulez-le d'abord.</p>
       <button class="bouton discret">Annuler le tournoi à la place</button>
-    </div></div>
+    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">Le service répond <b>409</b> ; l'écran traduit en langage humain et propose la sortie.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -133,5 +148,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

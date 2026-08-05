@@ -1,6 +1,7 @@
 # A11 · Placement des archers
 
 > **Écran** : [A11 — Placement des archers](../a11-placement.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : L'écran signature de l'admin — et le seul que le CDC UX note explicitement « non instruit ».
 >
 > **Pas encore rempli.**

@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · /admin</p>
   <h1><span class="num">A08</span>Scoreurs</h1>
@@ -37,13 +42,14 @@
 </ul>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Liste simple</span>
-      <span class="sous-etiquette">Qui est prévu, qui est connecté.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">SCOREURS</span><span class="fin bouton auto">+ Ajouter</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="scoreurs">
+    <figcaption><span class="textes"><span class="etiquette">A · Liste simple</span>
+      <span class="sous-etiquette">Qui est prévu, qui est connecté.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span style="flex:1">NOM</span><span style="width:90px">ÉTAT</span></div>
           <div class="rang"><span style="flex:1;font-weight:700">LE GALL Anne</span><span style="width:90px"><span class="pas ok">EN LIGNE</span></span></div>
@@ -52,17 +58,18 @@
         </div>
         <button class="bouton discret">Imprimer les accès (3 QR)</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Sobre, et suffisant : ce n'est pas un écran
     qu'on regarde longtemps.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Liste + charge en direct</span>
-      <span class="sous-etiquette">Combien chacun a validé, et depuis quand il n'a rien fait.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">SCOREURS</span><span class="fin second">60 validations au total</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="scoreurs">
+    <figcaption><span class="textes"><span class="etiquette">B · Liste + charge en direct</span>
+      <span class="sous-etiquette">Combien chacun a validé, et depuis quand il n'a rien fait.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="rang"><span style="flex:1;font-weight:700">LE GALL Anne</span>
             <span class="jauge" style="max-width:60px"><span style="width:75%"></span></span><span style="width:30px" class="second">27</span></div>
@@ -73,11 +80,13 @@
         </div>
         <div class="aplat-alerte">▲ 1 scoreur attendu absent <span class="impact">charge +50 %</span></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">à toi de voir</span> Utile pour <b>détecter une absence</b>
     (l'alerte chiffre l'impact sur les autres). Mais afficher qui en fait le moins entre bénévoles peut être
     mal pris — c'est une question de culture de club, pas d'ergonomie.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -95,5 +104,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

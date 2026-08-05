@@ -1,6 +1,7 @@
 # S09 · Le vocabulaire d'états
 
 > **Écran** : [S09 — Le vocabulaire d'états](../s09-etats-systeme.html) · **Appli** : Appli saisie (`/saisie`)
+> **Appareil** : Tablette · 1280 × 800
 > **Rôle** : Les sept états transverses dessinés une fois : chargement, vide, erreur, hors-ligne, live, verrou, conflit.
 >
 > **Pas encore rempli.**

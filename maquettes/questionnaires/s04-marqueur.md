@@ -1,6 +1,7 @@
 # S04 · Changer de marqueur
 
 > **Écran** : [S04 — Changer de marqueur](../s04-marqueur.html) · **Appli** : Appli saisie (`/saisie`)
+> **Appareil** : Tablette · 1280 × 800
 > **Rôle** : Un geste rare : l'interface ne doit pas s'organiser autour de lui.
 >
 > **Pas encore rempli.**

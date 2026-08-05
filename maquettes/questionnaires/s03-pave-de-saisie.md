@@ -1,6 +1,7 @@
 # S03 · Le pavé de saisie
 
 > **Écran** : [S03 — Le pavé de saisie](../s03-pave-de-saisie.html) · **Appli** : Appli saisie (`/saisie`)
+> **Appareil** : Tablette · 1280 × 800
 > **Rôle** : Le geste répété ~4 300 fois par départ : un demi-geste économisé ici pèse plus que n'importe quelle élégance ailleurs.
 >
 > **Pas encore rempli.**

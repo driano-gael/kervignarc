@@ -1,6 +1,7 @@
 # A03 · Accueil contextualisé — 7 statuts
 
 > **Écran** : [A03 — Accueil contextualisé — 7 statuts](../a03-accueil-statuts.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Ce qui change avec le statut du tournoi, ce n'est pas le menu, c'est ce que l'admin voit en premier.
 >
 > **Pas encore rempli.**

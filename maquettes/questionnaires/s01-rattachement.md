@@ -1,6 +1,7 @@
 # S01 · Rattachement du poste
 
 > **Écran** : [S01 — Rattachement du poste](../s01-rattachement.html) · **Appli** : Appli saisie (`/saisie`)
+> **Appareil** : Tablette · 1280 × 800
 > **Rôle** : Le premier geste du matin, fait 30 fois par des bénévoles pressés — et refait à chaque onglet fermé.
 >
 > **Pas encore rempli.**

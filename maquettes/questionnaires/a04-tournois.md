@@ -1,6 +1,7 @@
 # A04 · Tournois — liste et cycle de vie
 
 > **Écran** : [A04 — Tournois — liste et cycle de vie](../a04-tournois.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : La porte d'entrée : plusieurs tournois peuvent coexister en cours (intérieur + extérieur).
 >
 > **Pas encore rempli.**

@@ -1,6 +1,7 @@
 # P02 · Ma journée — maintenant / ensuite
 
 > **Écran** : [P02 — Ma journée — maintenant / ensuite](../p02-ma-journee.html) · **Appli** : Appli publique (`/`)
+> **Appareil** : Téléphone · 390 × 844
 > **Rôle** : L'écran qui porte la promesse : « où je tire, et où je tire ensuite ? », sans défilement.
 >
 > **Pas encore rempli.**

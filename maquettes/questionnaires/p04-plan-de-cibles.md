@@ -1,6 +1,7 @@
 # P04 · Plan de cibles
 
 > **Écran** : [P04 — Plan de cibles](../p04-plan-de-cibles.html) · **Appli** : Appli publique (`/`)
+> **Appareil** : Téléphone · 390 × 844
 > **Rôle** : Le plan tel que l'archer le lit en arrivant : « je suis où ? » — pas l'outil de placement.
 >
 > **Pas encore rempli.**

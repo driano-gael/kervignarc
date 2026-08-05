@@ -1,6 +1,7 @@
 # S05 · Saisie de duel
 
 > **Écran** : [S05 — Saisie de duel](../s05-saisie-duel.html) · **Appli** : Appli saisie (`/saisie`)
+> **Appareil** : Tablette · 1280 × 800
 > **Rôle** : Set-system, deux archers : ce qui décide du vainqueur, ce sont les points de set, pas le cumul.
 >
 > **Pas encore rempli.**

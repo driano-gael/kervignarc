@@ -1,6 +1,7 @@
 # A17 · Paiements
 
 > **Écran** : [A17 — Paiements](../a17-paiements.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Le seul écran hors sportif qui reste modifiable après « Terminé ».
 >
 > **Pas encore rempli.**

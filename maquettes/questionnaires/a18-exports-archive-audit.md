@@ -1,6 +1,7 @@
 # A18 · Exports, archive, journal d'audit
 
 > **Écran** : [A18 — Exports, archive, journal d'audit](../a18-exports-archive-audit.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Le temps « après » : sortir les résultats, verrouiller, et pouvoir répondre à une réclamation.
 >
 > **Pas encore rempli.**

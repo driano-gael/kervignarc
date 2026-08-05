@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · axe <strong>Gestion</strong> · <code>/admin/gestion/…</code>
      · <strong>réaligné le 30/07/2026</strong></p>
@@ -49,14 +54,14 @@
 </ul>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Tableau dense</span>
-      <span class="sous-etiquette">Tout est visible, on filtre en tapant.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">INSCRIPTIONS</span><span class="champ plein" style="margin-left:10px;padding:3px 8px">mart…</span>
-        <span class="fin pas att">2 DOUBLONS</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="gestion" data-ecran="inscriptions">
+    <figcaption><span class="textes"><span class="etiquette">A · Tableau dense</span>
+      <span class="sous-etiquette">Tout est visible, on filtre en tapant.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span style="flex:1">ARCHER</span><span style="width:70px">CAT.</span><span style="width:70px">CIBLE</span><span style="width:70px">PAIEMENT</span></div>
           <div class="rang"><span style="flex:1;font-weight:700">MARTIN Paul</span><span style="width:70px" class="second">SH</span>
@@ -73,32 +78,35 @@
               <span class="bouton auto">Fusionner</span><span class="bouton auto" style="border-color:var(--border-subtle)">Deux archers différents</span></div></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> La colonne <b>Cible vide</b> saute aux yeux :
     c'est l'information qui manque le plus souvent le matin du jour J.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Recherche d'abord</span>
-      <span class="sous-etiquette">Écran vide tant qu'on n'a pas cherché.</span></figcaption>
-    <div class="ui">
-      <div class="corps" style="padding:24px 16px;gap:14px">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="gestion" data-ecran="inscriptions">
+    <figcaption><span class="textes"><span class="etiquette">B · Recherche d'abord</span>
+      <span class="sous-etiquette">Écran vide tant qu'on n'a pas cherché.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile" style="padding:24px 16px;gap:14px">
         <div class="champ plein" style="font-size:17px;padding:12px">Nom de l'archer…</div>
         <p class="faible" style="margin:0;text-align:center">156 inscrits · 12 non réglés · 3 non placés</p>
         <div style="display:flex;gap:8px"><span class="bouton auto">Voir tous</span>
           <span class="bouton auto">Non placés (3)</span><span class="bouton auto">Non réglés (12)</span></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">bon pour la table</span> Optimise le cas « un archer devant
     moi ». Mais l'organisateur qui prépare veut <b>voir la masse</b>, pas la chercher.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">C · Groupé par départ</span>
-      <span class="sous-etiquette">La liste suit l'organisation réelle de la journée.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">INSCRIPTIONS</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="gestion" data-ecran="inscriptions">
+    <figcaption><span class="textes"><span class="etiquette">C · Groupé par départ</span>
+      <span class="sous-etiquette">La liste suit l'organisation réelle de la journée.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span>DÉPART 1 — 9 h</span><span class="fin">78 archers</span></div>
           <div class="rang"><span style="flex:1">MARTIN Paul</span><span class="second">cible 12 B</span></div>
@@ -109,19 +117,22 @@
           <div class="rang"><span style="flex:1">MARTINEAU Luc</span><span class="fin pas att">non placé</span></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">utile en impression</span> C'est la <b>bonne forme pour la
     feuille affichée à l'entrée</b>. Comme écran de travail, elle complique la recherche transverse.</p>
   </figure>
+
 </div>
 
 <h2 class="section">État · inscription pendant le tournoi</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Retardataire, tournoi en cours</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">NOUVEL ARCHER</span><span class="fin pas att">TOURNOI EN COURS</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="gestion" data-ecran="inscriptions">
+    <figcaption><span class="textes"><span class="etiquette">Retardataire, tournoi en cours</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte info"><div class="rang bloc"><span class="second">Le départ 2 a commencé il y a 12 min.
         Cet archer devra être placé <strong>manuellement</strong> sur une position libre — le placement
         automatique ne sera pas rejoué.</span></div></div>
@@ -129,10 +140,12 @@
         <div style="display:flex;gap:8px"><span class="champ plein" style="flex:1">Vannes</span><span class="champ plein" style="width:70px">CH</span></div>
         <button class="bouton principal">Inscrire et placer</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">exigence</span> L'appli <b>n'interdit pas</b>, elle prévient de
     la conséquence. C'est <span class="ref">P-3</span> et <span class="ref">P-4</span> ensemble.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -148,5 +161,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

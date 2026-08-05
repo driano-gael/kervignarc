@@ -1,6 +1,7 @@
 # A13 · Console de supervision
 
 > **Écran** : [A13 — Console de supervision](../a13-supervision.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Pas un graphique de progression : une console de 30 postes qui distingue « ils tirent lentement » de « leur tablette est morte ».
 >
 > **Pas encore rempli.**

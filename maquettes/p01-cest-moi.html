@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli publique · /</p>
   <h1><span class="num">P01</span>« C'est moi » — première ouverture</h1>
@@ -29,13 +34,14 @@
 </header>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">A · Recherche + case « c'est moi »</span>
-      <span class="sous-etiquette">On tape trois lettres, on se coche.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">CHALLENGE DES CHAMPIONS</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">A · Recherche + case « c'est moi »</span>
+      <span class="sous-etiquette">On tape trois lettres, on se coche.</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="champ plein" style="font-size:16px;padding:11px">mart|</div>
         <div class="carte">
           <div class="rang"><span style="flex:1;font-weight:700">MARTIN Paul</span><span class="faible">Kervignac · SH</span></div>
@@ -46,17 +52,18 @@
           <span style="font-size:16px">☑</span><span class="second">C'est moi — retenir sur ce téléphone</span></div>
         <p class="faible" style="margin:0">Aucun compte, aucune donnée envoyée : le choix reste sur l'appareil.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Zéro friction. La case est <b>cochée par
     défaut</b> : sur un téléphone personnel, il n'y a aucune raison de ne pas mémoriser.</p>
   </figure>
 
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">B · Liste par club</span>
-      <span class="sous-etiquette">On choisit son club, puis soi.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">CHALLENGE DES CHAMPIONS</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">B · Liste par club</span>
+      <span class="sous-etiquette">On choisit son club, puis soi.</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span>VOTRE CLUB</span></div>
           <div class="rang"><span style="flex:1">Archers de Kervignac</span><span class="faible">34</span></div>
@@ -64,25 +71,28 @@
           <div class="rang"><span style="flex:1">Vannes CTA</span><span class="faible">22</span></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">écarté</span> Deux écrans au lieu d'un, et ça <b>tombe en panne
     pour l'archer sans club</b> ou mal rattaché. La recherche par nom couvre tous les cas.</p>
   </figure>
 
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">C · Scan de la licence</span>
-      <span class="sous-etiquette">Le code-barres de la licence FFTA identifie l'archer.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">CHALLENGE DES CHAMPIONS</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">C · Scan de la licence</span>
+      <span class="sous-etiquette">Le code-barres de la licence FFTA identifie l'archer.</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte plate" style="border-style:dashed;height:120px;display:flex;align-items:center;justify-content:center">
           <span class="faible">scanner la licence</span></div>
         <button class="bouton discret">Chercher par nom</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">écarté</span> Suppose que chacun ait sa licence sur soi et une
     caméra qui coopère. <b>Un repli qui devient le cas courant</b>, comme en S01.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Pourquoi il n'y a pas de borne partagée</h2>
@@ -110,5 +120,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

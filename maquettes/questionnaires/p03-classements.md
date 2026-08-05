@@ -1,6 +1,7 @@
 # P03 · Classements
 
 > **Écran** : [P03 — Classements](../p03-classements.html) · **Appli** : Appli publique (`/`)
+> **Appareil** : Téléphone · 390 × 844
 > **Rôle** : Même donnée que côté admin, autre mise en forme : sur 360 px on ne montre pas six colonnes.
 >
 > **Pas encore rempli.**

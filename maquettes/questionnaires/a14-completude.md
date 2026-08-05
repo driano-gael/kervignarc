@@ -1,6 +1,7 @@
 # A14 · Complétude — « qu'est-ce qui manque ? »
 
 > **Écran** : [A14 — Complétude — « qu'est-ce qui manque ? »](../a14-completude.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Le vrai visage de l'avancement : sportif et hors-sportif comptés séparément.
 >
 > **Pas encore rempli.**

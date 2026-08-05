@@ -28,6 +28,8 @@
     c'est même la plus rapide à exploiter. Tes réponses sont conservées dans ce navigateur au fil de la
     frappe ; <strong>« Télécharger le .md »</strong> produit le fichier à déposer dans
     <code>maquettes/questionnaires/</code>.</p>
+  <p style="margin-top:10px;font-size:14px;color:var(--doc-doux)">
+    <strong>Les questions ont changé.</strong> L'écran est désormais montré <strong>entier</strong>, à la taille réelle de son appareil (PC · 1600 × 900), avec sa navigation, ses bandeaux et son en-tête. Le choix de mise en page n'est donc plus la première question — d'abord ce que l'écran donne au premier coup d'œil, ce qui passe sous la ligne de flottaison, ce que vaut l'ossature, et comment l'espace est occupé.</p>
 </header>
 
 <div class="q-actions">
@@ -42,95 +44,22 @@
 
 <div class="q-apercu" id="q-apercu"><pre></pre></div>
 
-<form id="q-form" autocomplete="off">
+<noscript>
+  <div class="note"><p><strong>JavaScript est désactivé.</strong> Le formulaire est construit par
+  <code>assets/questionnaire.js</code> depuis une trame unique : sans lui, la page reste vide.</p></div>
+</noscript>
 
-  <section class="q-bloc">
-    <h2><span class="q-num">1</span>Quel parti pris retiens-tu ?</h2>
-    <p class="q-aide">Les mentions « recommandé » sur la maquette sont mon avis argumenté, pas une décision.</p>
-    <div class="q-choix">
-      <label><input type="radio" name="variante" value="0"><span>A — Écran dédié plein cadre</span></label>
-      <label><input type="radio" name="variante" value="1"><span>B — Panneau depuis la supervision</span></label>
-      <label><input type="radio" name="variante" value="2"><span>C — Bandeau permanent en haut de l'admin</span></label>
-      <label><input type="radio" name="variante" value="-1"><span>Aucun — voir « à refaire » plus bas</span></label>
-    </div>
-    <label class="q-champ">
-      <span>Pourquoi ce choix</span>
-      <em>Ce qui a emporté la décision, même si c'est un détail.</em>
-      <textarea data-champ="pourquoi" rows="3"></textarea>
-    </label>
-    <label class="q-champ">
-      <span>Ce que tu prendrais dans les autres variantes</span>
-      <textarea data-champ="ailleurs" rows="3"></textarea>
-    </label>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">2</span>Verdict</h2>
-    <div class="q-choix">
-      <label><input type="radio" name="verdict" value="0"><span>✅ Validé tel quel — on peut coder ça</span></label>
-      <label><input type="radio" name="verdict" value="1"><span>🟡 Validé avec les réserves ci-dessous</span></label>
-      <label><input type="radio" name="verdict" value="2"><span>🔴 À refaire — l'écran ne répond pas au besoin</span></label>
-    </div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">3</span>Critiques</h2>
-    <p class="q-aide">Hiérarchie, vocabulaire, information manquante, geste pénible, cas réel non couvert.</p>
-    <textarea data-champ="critiques" rows="5"></textarea>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">4</span>Évolutions souhaitées</h2>
-    <p class="q-aide">Ce que tu veux en plus ou en moins. Sans te censurer sur la faisabilité — c'est mon
-    travail de dire ce que ça coûte.</p>
-    <textarea data-champ="evolutions" rows="5"></textarea>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">5</span>Questions ciblées</h2>
-    <p class="q-aide">Ces questions viennent de points que la maquette n'a pas pu trancher seule.</p>
-    <div class="q-ciblee"><p><span class="q-idx">1</span>E12US002 a livré le feu vert le 28/07 : l'écran actuel te convient-il, ou une des variantes ci-contre est-elle meilleure ?</p><textarea data-question="0" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">2</span>La confirmation passe par un window.confirm que le code signale comme provisoire — que veux-tu à la place ?</p><textarea data-question="1" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">3</span>Qui appuie sur le bouton : toi seul, ou n'importe quel organisateur présent ?</p><textarea data-question="2" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">4</span>Le lancement duel par duel (ne pas bloquer 4 archers à cause d'un 5e en retard) te paraît-il utile ou dangereux ?</p><textarea data-question="3" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">5</span>Qui déclare un forfait — toi depuis l'admin, ou le scoreur depuis la cible ?</p><textarea data-question="4" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">6</span>Quelles informations veux-tu voir obligatoirement avant d'appuyer ?</p><textarea data-question="5" rows="3"></textarea></div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">6</span>Vocabulaire</h2>
-    <p class="q-aide">Un mot faux à l'écran coûte cher toute la journée. Corrige sans hésiter.</p>
-    <div class="q-vocab">
-      <span class="q-vocab-tete">À l'écran</span><span class="q-vocab-tete">Le bon mot</span>
-    </div>
-    <div class="q-vocab" style="margin-top:6px">
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-    </div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">7</span>Ce qui manque complètement</h2>
-    <p class="q-aide">Un écran, un état, un cas que cette maquette ignore.</p>
-    <textarea data-champ="manque" rows="4"></textarea>
-  </section>
-
-</form>
+<!-- Le formulaire est GÉNÉRÉ depuis la trame de questionnaire.js : une section n'est décrite
+     qu'à un seul endroit, pour les 36 écrans à la fois. -->
+<form id="q-form" autocomplete="off"></form>
 
 <footer class="pied">
   <span><a href="../index.html">Tous les écrans</a></span>
   <span><a href="../a15-bascule-de-tour.html">Maquette A15</a></span>
-  <span class="fin"><a href="a16-classements-podiums.html">Suivant : A16 · Classements et podiums →</a></span>
+  <span class="fin"><a href="a16-classements-podiums.html">Suivant : A16 →</a></span>
 </footer>
 
-<script type="application/json" id="q-modele">{"code": "A15", "titre": "Bascule de tour", "slug": "a15-bascule-de-tour", "appli": "Appli admin", "route": "/admin", "role": "Le cœur du produit : le moment où l'organisateur appuie et où 118 personnes apprennent où aller.", "variantes": ["A — Écran dédié plein cadre", "B — Panneau depuis la supervision", "C — Bandeau permanent en haut de l'admin"], "questions": ["E12US002 a livré le feu vert le 28/07 : l'écran actuel te convient-il, ou une des variantes ci-contre est-elle meilleure ?", "La confirmation passe par un window.confirm que le code signale comme provisoire — que veux-tu à la place ?", "Qui appuie sur le bouton : toi seul, ou n'importe quel organisateur présent ?", "Le lancement duel par duel (ne pas bloquer 4 archers à cause d'un 5e en retard) te paraît-il utile ou dangereux ?", "Qui déclare un forfait — toi depuis l'admin, ou le scoreur depuis la cible ?", "Quelles informations veux-tu voir obligatoirement avant d'appuyer ?"]}</script>
+<script type="application/json" id="q-modele">{"code":"A15","titre":"Bascule de tour","slug":"a15-bascule-de-tour","appli":"Appli admin","route":"/admin","appareil":"PC · 1600 × 900","role":"Le cœur du produit : le moment où l'organisateur appuie et où 118 personnes apprennent où aller.","variantes":["A — Écran dédié plein cadre","B — Panneau depuis la supervision","C — Bandeau permanent en haut de l'admin"],"questions":["E12US002 a livré le feu vert le 28/07 : l'écran actuel te convient-il, ou une des variantes ci-contre est-elle meilleure ?","La confirmation passe par un window.confirm que le code signale comme provisoire — que veux-tu à la place ?","Qui appuie sur le bouton : toi seul, ou n'importe quel organisateur présent ?","Le lancement duel par duel (ne pas bloquer 4 archers à cause d'un 5e en retard) te paraît-il utile ou dangereux ?","Qui déclare un forfait — toi depuis l'admin, ou le scoreur depuis la cible ?","Quelles informations veux-tu voir obligatoirement avant d'appuyer ?"]}</script>
 <script src="../assets/questionnaire.js"></script>
 
 </div>

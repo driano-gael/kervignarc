@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli publique · poste « écran de salle »</p>
   <h1><span class="num">P07</span>Écran de salle — classement et podium</h1>
@@ -28,15 +33,16 @@
 </header>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Classement rotatif</span>
-      <span class="sous-etiquette">Une catégorie à la fois, rotation réglable.</span></figcaption>
-    <div class="ui salle">
-      <div class="salle-cadre">
-        <div class="barre marque"><span class="titre-salle">QUALIFICATION — SENIOR HOMME</span>
-          <span class="fin" style="font-size:12px">mise à jour en direct</span></div>
-        <div class="corps-salle">
+<div class="planches">
+
+  <figure class="planche" data-appareil="salle" data-monde="salle">
+    <figcaption><span class="textes"><span class="etiquette">A · Classement rotatif</span>
+      <span class="sous-etiquette">Une catégorie à la fois, rotation réglable.</span></span></figcaption>
+    <div class="cadre" data-appareil="salle"><div class="appareil"><div class="ui salle">
+      <div class="ecran">
+        <div class="salle-cadre">
+        
+        <div class="pile">
           <div style="display:flex;align-items:center;gap:12px"><span style="width:26px;font-weight:800">1</span>
             <span style="flex:1;font-weight:800">PETIT Luc</span><span class="second">Vannes</span><span class="somme">548</span></div>
           <div style="display:flex;align-items:center;gap:12px"><span style="width:26px;font-weight:800">2</span>
@@ -46,38 +52,41 @@
         </div>
         <div class="pied-salle"><span>organisé par les Archers de Kervignac</span><span>SH · 1/4 des catégories</span></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Peu d'items, gros corps. Le pied indique
     <b>où on en est dans la rotation</b> — même logique que les pages de P06.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Podium plein écran</span>
-      <span class="sous-etiquette">Trois noms, rien d'autre. Le moment de la remise.</span></figcaption>
-    <div class="ui salle">
-      <div class="salle-cadre">
-        <div class="barre marque"><span class="titre-salle">PODIUM — SENIOR HOMME</span>
-          <span class="fin pas att" style="color:var(--sur-danger);background:var(--danger);border-color:var(--danger)">retour dans 7 min</span></div>
-        <div class="corps-salle" style="align-items:center;justify-content:center;gap:6px">
+  <figure class="planche" data-appareil="salle" data-monde="salle">
+    <figcaption><span class="textes"><span class="etiquette">B · Podium plein écran</span>
+      <span class="sous-etiquette">Trois noms, rien d'autre. Le moment de la remise.</span></span></figcaption>
+    <div class="cadre" data-appareil="salle"><div class="appareil"><div class="ui salle">
+      <div class="ecran">
+        <div class="salle-cadre">
+        
+        <div class="pile" style="align-items:center;justify-content:center;gap:6px">
           <div style="font-size:26px;font-weight:800">1 · PETIT Luc</div>
           <div style="font-size:20px;font-weight:700">2 · MARTIN Paul</div>
           <div style="font-size:20px;font-weight:700">3 · DURAND Jean</div>
         </div>
         <div class="pied-salle"><span>organisé par les Archers de Kervignac</span><span>12 octobre 2026</span></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">le compte à rebours est intentionnel</span> Il rend la prise de
     contrôle <b>visible depuis la salle</b>, pas seulement depuis la console. Celui qui a imposé le podium et
     qui est parti serrer des mains voit, en levant les yeux, que ça se terminera tout seul.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">C · Vue mixte</span>
-      <span class="sous-etiquette">Classement + prochain tour dans le même écran.</span></figcaption>
-    <div class="ui salle">
-      <div class="salle-cadre">
-        <div class="barre marque"><span class="titre-salle">CHALLENGE DES CHAMPIONS</span></div>
-        <div class="corps-salle" style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px">
+  <figure class="planche" data-appareil="salle" data-monde="salle">
+    <figcaption><span class="textes"><span class="etiquette">C · Vue mixte</span>
+      <span class="sous-etiquette">Classement + prochain tour dans le même écran.</span></span></figcaption>
+    <div class="cadre" data-appareil="salle"><div class="appareil"><div class="ui salle">
+      <div class="ecran">
+        <div class="salle-cadre">
+        
+        <div class="pile" style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px">
           <div>
             <div class="mini" style="margin-bottom:5px">CLASSEMENT SH</div>
             <div style="display:flex;gap:8px"><span style="width:16px">1</span><span style="flex:1;font-weight:700">PETIT L.</span><span>548</span></div>
@@ -93,10 +102,12 @@
         </div>
         <div class="pied-salle"><span>organisé par les Archers de Kervignac</span><span></span></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">écarté</span> Deux messages sur un écran vu à 10 m, c'est
     <b>zéro message</b>. Le CDC design est explicite : <em>hiérarchie très forte, peu d'items par vue</em>.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Question ouverte · la signature graphique</h2>
@@ -126,5 +137,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

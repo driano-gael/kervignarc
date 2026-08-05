@@ -1,6 +1,7 @@
 # S08 · Validation d'une cible
 
 > **Écran** : [S08 — Validation d'une cible](../s08-validation-cible.html) · **Appli** : Appli saisie (`/saisie`)
+> **Appareil** : Tablette · 1280 × 800
 > **Rôle** : L'acte qui tient lieu de seconde marque : le scoreur doit pouvoir vérifier, pas seulement approuver.
 >
 > **Pas encore rempli.**

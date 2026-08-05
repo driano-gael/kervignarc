@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · /admin</p>
   <h1><span class="num">A12</span>Postes et jetons</h1>
@@ -36,13 +41,14 @@
 </ul>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Liste des postes</span>
-      <span class="sous-etiquette">Une ligne par poste, actions au bout.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">POSTES</span><span class="fin bouton auto">Imprimer les 30 QR</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="postes">
+    <figcaption><span class="textes"><span class="etiquette">A · Liste des postes</span>
+      <span class="sous-etiquette">Une ligne par poste, actions au bout.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span style="flex:1">POSTE</span><span style="width:100px">RATTACHEMENT</span><span style="width:80px">SIGNE DE VIE</span></div>
           <div class="rang"><span style="flex:1;font-weight:700">Cible 1</span><span style="width:100px"><span class="pas ok">RATTACHÉ</span></span><span style="width:80px" class="second">2 mn</span></div>
@@ -51,17 +57,18 @@
           <div class="rang"><span style="flex:1;font-weight:700">Écran salle A</span><span style="width:100px"><span class="pas ok">RATTACHÉ</span></span><span style="width:80px" class="second">5 s</span></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> C'est un écran d'<b>administration</b>, pas de
     supervision : la liste triable convient. La vue temps réel, c'est A13.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Vue plan de salle</span>
-      <span class="sous-etiquette">L'état des postes projeté sur la géographie réelle.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">POSTES · PLAN</span><span class="fin second">28/30 rattachés</span></div>
-      <div class="corps serre">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="postes">
+    <figcaption><span class="textes"><span class="etiquette">B · Vue plan de salle</span>
+      <span class="sous-etiquette">L'état des postes projeté sur la géographie réelle.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="plan" style="grid-template-columns:repeat(10,1fr)">
           <span class="cible">1</span><span class="cible">2</span><span class="cible">3</span><span class="cible">4</span><span class="cible">5</span>
           <span class="cible">6</span><span class="cible hs">7</span><span class="cible">8</span><span class="cible">9</span><span class="cible">10</span>
@@ -73,11 +80,13 @@
           <span class="faible">■ rattaché</span><span style="color:var(--danger)">■ hors ligne</span>
           <span class="faible">▫ non rattaché</span></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">excellent en supervision</span> Voir <b>où</b> est le problème
     dans la salle fait gagner des pas. Sa vraie place est plutôt A13 — ici, on administre des jetons, on ne
     court pas.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Pièges connus</h2>
@@ -104,5 +113,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 # A05 · Identité du tournoi
 
 > **Écran** : [A05 — Identité du tournoi](../a05-identite.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Un logo, deux couleurs d'accent : le système dérive tout le reste. L'aperçu compte plus que le nuancier.
 >
 > **Pas encore rempli.**

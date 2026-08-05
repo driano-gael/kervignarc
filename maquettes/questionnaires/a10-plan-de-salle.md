@@ -1,6 +1,7 @@
 # A10 · Plan de salle (gabarit)
 
 > **Écran** : [A10 — Plan de salle (gabarit)](../a10-plan-de-salle.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : La salle telle qu'elle est : cibles, pas de tir, postes par cible. Réutilisable d'un tournoi à l'autre.
 >
 > **Pas encore rempli.**
