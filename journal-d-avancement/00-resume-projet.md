@@ -100,7 +100,13 @@ club en aplats (jamais en texte : sur le sombre, il ne se lit pas), **ambre** po
 chiffres alignés en colonnes. Une tablette neuve s'ouvre en **sombre** quel que soit le goût de son
 propriétaire, tout en gardant son réglage de luminosité par poste. Et les **maquettes font désormais
 foi** : un écart entre un écran livré et sa planche est devenu un défaut constatable, là où le dossier
-se déclarait jusqu'ici sans autorité.
+se déclarait jusqu'ici sans autorité. Dans la foulée, le **06/08/2026**, elle en a pris la **forme** :
+boutons, champs, cartes, onglets et étiquettes reprennent les valeurs des planches — l'ossature
+s'arrondit franchement, le contenu très peu, là où l'application appliquait le même arrondi partout.
+Deux exceptions assumées : l'**espacement** reste celui, plus aéré, que vous aviez demandé, et les
+tableaux gardent leur vraie structure sous l'apparence des planches. Les écrans ont cette fois été
+ouverts **un par un dans un navigateur**, ce qui a fait apparaître deux défauts qu'aucun test ne
+voyait — dont un bouton « Annuler le tournoi » qui criait plus fort que l'action principale.
 
 ---
 
@@ -465,7 +471,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **99 US livrées** sur `main` (mergées, revues, CI verte) à la date du 05/08/2026. **`SUIVI-US.md`
+- **100 US livrées** sur `main` (mergées, revues, CI verte) à la date du 05/08/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès

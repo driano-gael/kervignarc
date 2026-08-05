@@ -12,7 +12,14 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 05/08/2026, 22 h 44** · **99 US livrées** · dernière : `E17US001`
+**Dernière mise à jour : 06/08/2026, 00 h 23** · **100 US livrées** · dernière : `E17US002`
+*(le catalogue de composants — boutons, champs, cartes, onglets, pastilles, en-têtes de table —
+adopte les **formes** des planches : deux familles de rayons (ossature 8-10 px, contenu 4-6 px), bouton
+d'action en graisse 800, pastilles en petites capitales. **Deux non-reprises assumées** : la densité
+(le commanditaire a demandé plus d'aération en A02, la planche est en retard) et le balisage des
+listes (un `<table>` reste un `<table>`, il n'en prend que l'apparence). Vérifiée **au navigateur**,
+ce qui a levé deux défauts invisibles aux tests — portes d'accueil en graisse 800, et « Annuler le
+tournoi » en aplat ambre écrasant l'action principale)*. Précédente : `E17US001`
 *(l'application **prend les couleurs du club** : elle tournait encore sur la palette du walking
 skeleton — accent violet `#aa3bff`, fond blanc, `system-ui` — parce que les « US design » annoncées en
 tête d'`index.css` n'ont jamais été écrites. Les jetons portent désormais la **charte mesurée**
@@ -785,6 +792,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | US | Titre | Jalon | État |
 |---|---|---|---|
 | E17US001 | Poser la **charte du club** dans l'application | J1 | ✅ *(ADR-0074 ; `--warn`/`--ok`/`--accent` supprimés, garde-fou `charte.test.ts`)* |
+| E17US002 | Le **catalogue de composants** adopte les formes des planches | J1 | ✅ *(vérifié au navigateur ; densité **non** reprise — arbitrage A02)* |
 | — | Embarquer **Inter** pour le jour J (`DV-07`) | J3 | ⬜ *(**arbitrage d'actif en attente** — règle 11)* |
 | — | Confronter les 19 planches `A**`, 9 `S**`, 7 `P**` aux écrans livrés | J3 | ⬜ |
 
