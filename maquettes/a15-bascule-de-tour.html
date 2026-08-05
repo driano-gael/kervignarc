@@ -64,67 +64,63 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="feu-vert">
-    <figcaption><span class="textes"><span class="etiquette">A · Écran dédié</span>
-      <span class="sous-etiquette">Une destination à part entière, qu'on ouvre pour lancer.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">A · Le feu vert, avant</span>
+      <span class="sous-etiquette">Ce que l’organisateur voit juste avant de lancer le tour suivant.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte" style="border-color:var(--success)">
-          <div class="rang"><span class="pas ok">4/4 DUELS VALIDÉS</span><span class="fin second">feu vert</span></div>
-          <div class="rang bloc"><span class="second">Vainqueurs : MARTIN, DURAND, PETIT, LEROY</span></div>
-        </div>
-        <div class="carte">
-          <div class="tete-carte"><span>DEMI-FINALES</span><span class="fin">2 duels</span></div>
-          <div class="rang"><span class="pas ok">✓</span><span style="width:60px" class="second">Duel 1</span>
-            <span style="flex:1;font-weight:700">MARTIN vs DURAND</span><span class="second">cible 4</span></div>
-          <div class="rang"><span class="pas ok">✓</span><span style="width:60px" class="second">Duel 2</span>
-            <span style="flex:1;font-weight:700">PETIT vs LEROY</span><span class="second">cible 7</span></div>
-          <div class="rang"><span class="second">Départ 14 h 20</span></div>
-        </div>
-        <div class="carte info"><div class="rang bloc"><span class="second">En lançant : <strong>31 postes</strong>,
-          <strong>87 téléphones</strong> et l'écran de salle affichent les affectations.</span></div></div>
-        <button class="bouton principal geant">LANCER LES DEMI-FINALES</button>
-      </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap"><span class="mini">Bascule — qualification vers élimination directe</span><span class="pas pas ok">complétude satisfaite</span><span class="pas pas info">32 qualifiés</span><span class="fin" style="display:flex;gap:10px"><span class="bouton auto">Revoir le classement</span><span class="bouton auto principal">Lancer l’élimination directe</span></span></div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:16px"><div class="carte"><div class="rang bloc"><div class="mini">Archers classés</div><div style="font-size:32px;font-weight:800;line-height:1.1">156</div></div></div><div class="carte"><div class="rang bloc"><div class="mini">Qualifiés retenus</div><div style="font-size:32px;font-weight:800;line-height:1.1">32</div></div></div><div class="carte"><div class="rang bloc"><div class="mini">Duels du 1ᵉʳ tour</div><div style="font-size:32px;font-weight:800;line-height:1.1">16</div></div></div><div class="carte"><div class="rang bloc"><div class="mini">Cibles nécessaires</div><div style="font-size:32px;font-weight:800;line-height:1.1">16</div></div></div></div>
+
+        <div class="carte"><div class="tete-carte">Ce que le lancement va figer<span class="fin faible">irréversible sans annulation</span></div><div class="tete-carte"><span style="width:110px"></span><span style="flex:1">CE QUI SE FIGE</span><span style="width:420px">CONSÉQUENCE</span></div><div class="rang"><span style="width:110px"><span class="pas ok">FIGÉ</span></span><span style="flex:1" class=""><b>Le classement de qualification</b></span><span style="width:420px" class="second">Il devient le tableau : plus aucun score de qualification ne sera pris en compte</span></div><div class="rang"><span style="width:110px"><span class="pas ok">FIGÉ</span></span><span style="flex:1" class=""><b>La liste des 32 qualifiés</b></span><span style="width:420px" class="second">Un archer arrivé 33ᵉ ne peut plus entrer, même si un qualifié se retire</span></div><div class="rang"><span style="width:110px"><span class="pas ok">FIGÉ</span></span><span style="flex:1" class=""><b>Les appariements du 1ᵉʳ tour</b></span><span style="width:420px" class="second">1 contre 32, 2 contre 31 — la cascade de placement est calculée maintenant</span></div><div class="rang"><span style="width:110px"><span class="pas neutre">OUVERT</span></span><span style="flex:1" class="second">Les paiements et les inscriptions</span><span style="width:420px" class="second">La gestion reste ouverte : un retardataire peut encore régler</span></div></div>
+
+        <div class="carte" style="margin-top:14px"><div class="tete-carte">Les 16 duels du premier tour</div><div class="tete-carte"><span style="width:90px">DUEL</span><span style="width:90px">CIBLE</span><span style="flex:1">ARCHER A</span><span style="width:60px"></span><span style="flex:1">ARCHER B</span><span style="width:100px">HEURE</span></div><div class="rang"><span style="width:90px" class="second">1</span><span style="width:90px" class="second">cible 1</span><span style="flex:1" class=""><b>MARTIN Paul — 1ᵉʳ, 552 pts</b></span><span style="width:60px" class="second">vs</span><span style="flex:1" class="second">URVOAS Killian — 32ᵉ, 441 pts</span><span style="width:100px" class="second">14 h 20</span></div><div class="rang"><span style="width:90px" class="second">2</span><span style="width:90px" class="second">cible 2</span><span style="flex:1" class=""><b>LE GOFF Erwan — 2ᵉ, 549 pts</b></span><span style="width:60px" class="second">vs</span><span style="flex:1" class="second">SALAÜN Maëlle — 31ᵉ, 443 pts</span><span style="width:100px" class="second">14 h 20</span></div><div class="rang"><span style="width:90px" class="second">3</span><span style="width:90px" class="second">cible 3</span><span style="flex:1" class=""><b>RIOU Gwenaëlle — 3ᵉ, 546 pts</b></span><span style="width:60px" class="second">vs</span><span style="flex:1" class="second">BODIN Camille — 30ᵉ, 447 pts</span><span style="width:100px" class="second">14 h 20</span></div><div class="rang"><span style="width:90px" class="second">4</span><span style="width:90px" class="second">cible 4</span><span style="flex:1" class=""><b>DURAND Jean — 4ᵉ, 544 pts</b></span><span style="width:60px" class="second">vs</span><span style="flex:1" class="second">QUÉMÉNER Alan — 29ᵉ, 450 pts</span><span style="width:100px" class="second">14 h 20</span></div><div class="rang"><span class="faible" style="flex:1">… 12 autres duels, cibles 5 à 16</span><span class="faible">même horaire</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">recommandé</span> Le geste le plus important de la journée
-    mérite <b>un écran qui ne parle que de lui</b>. Et le récapitulatif chiffré tient sans compromis.</p>
+        <p class="verdict"><span class="pouce oui">recommandé</span> Le feu vert dit <b>ce qu’il fige</b> avant de le figer — et la distinction sportif / hors sportif est explicite : le classement se ferme, la gestion reste ouverte.</p>
+    <p class="verdict"><span class="pouce oui">ce que le plein écran permet</span> Les <b>16 duels sont montrés avant</b> le lancement, avec les scores de qualification. C’est ce qui permet de repérer une anomalie (un score aberrant, un archer qui ne devrait pas être là) <b>pendant</b> qu’elle est encore réparable.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="feu-vert">
-    <figcaption><span class="textes"><span class="etiquette">B · Panneau depuis la supervision</span>
-      <span class="sous-etiquette">On ne quitte jamais la console.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">B · Après la bascule</span>
+      <span class="sous-etiquette">Le tableau existe, les cibles sont réaffectées, les écrans de salle ont changé de vue.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte"><div class="rang"><span class="faible">28/30 postes · 3 à valider</span></div></div>
-        <div class="carte marquee">
-          <div class="tete-carte"><span>PRÊT À LANCER</span><span class="fin"><span class="pas ok">4/4</span></span></div>
-          <div class="rang bloc"><span class="second">Demi-finales · 2 duels · cibles 4 et 7 · 14 h 20</span>
-            <button class="bouton principal" style="margin-top:8px">LANCER — 118 personnes prévenues</button></div>
-        </div>
-      </div>
+        <div class="aplat-alerte">✔ Élimination directe lancée — 16 duels sur 16 cibles<span class="impact">14 h 20</span></div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:16px"><div class="carte"><div class="tete-carte">Le tir</div><div class="rang"><span style="flex:1">Duels en cours</span><span class="pas ok">16</span></div><div class="rang"><span style="flex:1">Volée</span><span class="pas neutre">1 sur 4</span></div><div class="rang"><span style="flex:1">Cibles utilisées</span><span class="pas neutre">1 à 16</span></div><div class="rang"><span style="flex:1">Cibles libérées</span><span class="pas neutre">17 à 30</span></div></div><div class="carte"><div class="tete-carte">Les postes</div><div class="rang"><span style="flex:1">Rattachés</span><span class="pas ok">16 sur 16</span></div><div class="rang"><span style="flex:1">Réaffectés automatiquement</span><span class="pas ok">16</span></div><div class="rang"><span style="flex:1">Mis en veille</span><span class="pas neutre">12</span></div><div class="rang"><span style="flex:1">Hors ligne</span><span class="pas ok">0</span></div></div><div class="carte"><div class="tete-carte">Les scoreurs</div><div class="rang"><span style="flex:1">Actifs</span><span class="pas ok">4</span></div><div class="rang"><span style="flex:1">Périmètre</span><span class="pas neutre">4 cibles chacun</span></div><div class="rang"><span style="flex:1">Grain de validation</span><span class="pas neutre">fin de duel</span></div><div class="rang"><span style="flex:1">Charge attendue</span><span class="pas att">pic court</span></div></div><div class="carte"><div class="tete-carte">Le public</div><div class="rang"><span style="flex:1">Écrans de salle</span><span class="pas ok">2 sur tableau</span></div><div class="rang"><span style="flex:1">Vue publique</span><span class="pas ok">tableau de duels</span></div><div class="rang"><span style="flex:1">Classement qualif</span><span class="pas neutre">figé, consultable</span></div><div class="rang"><span style="flex:1">Palmarès</span><span class="pas neutre">en attente</span></div></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">La bascule ne change pas seulement l’écran de l’organisateur : elle <b>réaffecte les postes</b>, met en veille les 12 cibles devenues inutiles, <b>change la vue des écrans de salle</b> et bascule l’appli publique sur le tableau. C’est le geste le plus large du produit, et c’est pour ça qu’il est précédé d’un feu vert.</span></div></div>
+
+        <div class="carte" style="margin-top:14px"><div class="tete-carte">Ce qui s’est passé, dans l’ordre</div><div class="tete-carte"><span style="width:90px"></span><span style="flex:1">ACTION</span><span style="width:320px">RÉSULTAT</span></div><div class="rang"><span style="width:90px"><span class="pas ok">OK</span></span><span style="flex:1" class="second">Classement de qualification figé</span><span style="width:320px" class="second">156 archers, départage par nombre de 10</span></div><div class="rang"><span style="width:90px"><span class="pas ok">OK</span></span><span style="flex:1" class="second">Tableau composé</span><span style="width:320px" class="second">32 qualifiés, 16 duels, aucun bye nécessaire</span></div><div class="rang"><span style="width:90px"><span class="pas ok">OK</span></span><span style="flex:1" class="second">Cibles réaffectées</span><span style="width:320px" class="second">16 cibles actives, 12 mises en veille, 2 indisponibles</span></div><div class="rang"><span style="width:90px"><span class="pas ok">OK</span></span><span style="flex:1" class="second">Postes notifiés</span><span style="width:320px" class="second">16 tablettes ont changé d’écran en moins de 2 s</span></div><div class="rang"><span style="width:90px"><span class="pas ok">OK</span></span><span style="flex:1" class="second">Écrans de salle basculés</span><span style="width:320px" class="second">affichage du tableau, cadence 12 s</span></div><div class="rang"><span style="width:90px"><span class="pas ok">OK</span></span><span style="flex:1" class="second">Appli publique basculée</span><span style="width:320px" class="second">le classement de qualification reste consultable</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">sérieux concurrent</span> Colle au réel : l'organisateur
-    <b>est déjà sur la supervision</b> le jour J. Revers — le panneau doit rester lisible sous une console déjà
-    chargée d'alertes.</p>
+        <p class="verdict"><span class="pouce oui">ce que la place gagnée sert à dire</span> Quatre colonnes — le tir, les postes, les scoreurs, le public — parce que la bascule <b>touche les quatre à la fois</b>. En vignette on ne voyait que l’écran de l’organisateur, donc on sous-estimait la portée du geste.</p>
+    <p class="verdict"><span class="pouce peut">à confirmer</span> Les 12 cibles inutilisées sont <b>mises en veille</b>, pas détachées : leurs tablettes affichent « en attente » et restent rattachées. Est-ce le bon comportement, ou faut-il les libérer pour qu’on puisse les rapatrier ?</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="feu-vert">
-    <figcaption><span class="textes"><span class="etiquette">C · Bandeau permanent</span>
-      <span class="sous-etiquette">En haut de toute l'appli admin, quel que soit l'écran ouvert.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Refus — la bascule est bloquée</span>
+      <span class="sous-etiquette">Le classement n’est pas complet : le tableau serait faux.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="aplat-alerte">▶ DEMI-FINALES PRÊTES 2 duels · 14 h 20 · LANCER</div>
-        <div class="pile">
-        <div class="carte"><div class="rang"><span class="faible">— n'importe quel écran de l'admin —</span></div></div>
-      </div>
+        <div class="aplat-alerte forte">▲ Impossible de lancer l’élimination directe<span class="impact">3 scores manquants</span></div>
+
+        <p style="font-size:22px;font-weight:800;margin:16px 0 6px">Le classement n’est pas complet</p><p class="second" style="margin:0 0 18px">Composer le tableau maintenant produirait des appariements faux, découverts au moment des duels — quand plus rien n’est réparable.</p>
+
+        <div class="carte"><div class="tete-carte"><span style="width:110px"></span><span style="flex:1">CE QUI MANQUE</span><span style="width:420px">EFFET SUR LE TABLEAU</span><span style="width:150px"></span></div><div class="rang"><span style="width:110px"><span class="pas att">BLOQUANT</span></span><span style="flex:1" class=""><b>Cible 7 — 2 archers, volée 6 sur 12</b></span><span style="width:420px" class="second">RIOU G. et HÉLIAS T. seraient classés sur 6 volées au lieu de 12</span><span style="width:150px"><span class="bouton auto">Superviser</span></span></div><div class="rang"><span style="width:110px"><span class="pas att">BLOQUANT</span></span><span style="flex:1" class=""><b>Cible 23 — jamais rattachée</b></span><span style="width:420px" class="second">PETIT L. et NICOL G. n’ont aucun score : ils sortiraient du tableau</span><span style="width:150px"><span class="bouton auto">Voir le QR</span></span></div><div class="rang"><span style="width:110px"><span class="pas att">BLOQUANT</span></span><span style="flex:1" class=""><b>3 volées non validées</b></span><span style="width:420px" class="second">Leurs points n’entrent pas au classement — le 32ᵉ qualifié pourrait changer</span><span style="width:150px"><span class="bouton auto">Ouvrir la file</span></span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Ce refus est plus fort que celui de la complétude : la complétude protège <b>le confort</b> de la journée, celui-ci protège <b>l’équité sportive</b>. Un tableau composé sur un classement incomplet ne se corrige pas après coup — les duels auront été tirés.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce peut">à surveiller</span> On ne peut pas rater le feu vert. Mais un
-    bandeau permanent <b>banalise</b> : au bout de trois heures on ne le voit plus, et il vole de la hauteur à
-    tous les écrans.</p>
+        <p class="verdict"><span class="pouce oui">le bon niveau de refus</span> L’écran ne dit pas « impossible », il dit <b>ce que le tableau aurait de faux</b> : « ils seraient classés sur 6 volées au lieu de 12 », « ils sortiraient du tableau ». C’est ce qui rend le refus acceptable au lieu de frustrant.</p>
+    <p class="verdict"><span class="pouce non">et ici, pas de « forcer »</span> Contrairement au feu vert de tour, cette bascule <b>n’offre aucun contournement</b>. C’est un parti pris à valider : préfères-tu pouvoir passer outre sous ta responsabilité ?</p>
   </figure>
 
 </div>
@@ -133,47 +129,41 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="feu-vert">
-    <figcaption><span class="textes"><span class="etiquette">Lancement partiel — D-24</span>
-      <span class="sous-etiquette">Un duel attend encore son duel source.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Bandeau permanent — variante C</span>
+      <span class="sous-etiquette">Le déroulé toujours visible en haut de l’admin.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="tete-carte"><span>DEMI-FINALES</span><span class="fin">2 duels</span></div>
-          <div class="rang"><span class="pas ok">✓</span><span style="flex:1;font-weight:700">MARTIN vs DURAND</span><span class="second">cible 4</span></div>
-          <div class="rang"><span class="pas att">○</span><span style="flex:1;font-weight:700">PETIT vs <span style="color:var(--text-muted)">?</span></span><span class="second">cible 7</span></div>
-          <div class="rang"><span class="faible">en attente : quart n° 3 non validé (cible 12, 6 mn)</span>
-            <span class="fin bouton auto">Déclarer un forfait</span></div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="bouton principal">LANCER LE DUEL 1</button>
-          <button class="bouton">TOUT LANCER</button>
-        </div>
-      </div>
+        <div class="carte marquee"><div class="rang" style="padding:14px 18px"><span class="pas marque">QUALIFICATION</span><span style="flex:1;font-weight:700;margin-left:12px">Volée 8 sur 12 — 62 %</span><div class="jauge" style="max-width:260px"><span style="width:62%"></span></div><span class="second" style="margin-left:14px">fin estimée 10 h 38</span><span class="pas att" style="margin-left:14px">3 bloquants</span><span class="bouton auto" style="margin-left:14px">Bascule au tour suivant</span></div></div>
+
+        <p style="font-size:18px;font-weight:800;margin:18px 0 6px">Et en dessous, l’écran sur lequel on travaille</p><p class="second" style="margin:0 0 18px">Le bandeau ne remplace pas l’écran : il l’accompagne, quel que soit celui qu’on a ouvert.</p>
+
+        <div class="carte"><div class="tete-carte">Inscriptions — écran courant</div><div class="tete-carte"><span style="flex:1">ARCHER</span><span style="width:160px">CLUB</span><span style="width:80px">CAT.</span><span style="width:160px">PLACEMENT</span><span style="width:120px">PAIEMENT</span></div><div class="rang"><span style="flex:1" class=""><b>MARTIN Paul</b></span><span style="width:160px" class="second">Kervignac</span><span style="width:80px" class="second">SH</span><span style="width:160px" class="second">cible 12 · couloir B</span><span style="width:120px"><span class="pas ok">RÉGLÉ</span></span></div><div class="rang"><span style="flex:1" class=""><b>MARTIN Sophie</b></span><span style="width:160px" class="second">Kervignac</span><span style="width:80px" class="second">SF</span><span style="width:160px" class="second">cible 14 · couloir A</span><span style="width:120px"><span class="pas att">DÛ — 14 €</span></span></div><div class="rang"><span style="flex:1" class="second">MARTINEAU Luc</span><span style="width:160px" class="second">Lorient</span><span style="width:80px" class="second">CH</span><span style="width:160px"><span class="pas att">non placé</span></span><span style="width:120px"><span class="pas ok">RÉGLÉ</span></span></div><div class="rang"><span class="faible" style="flex:1">… 153 autres inscrits</span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">La question de cette variante : le bandeau doit-il être <b>permanent</b> — donc voler 60 px de hauteur à tous les écrans de l’admin — ou <b>n’apparaître que sur les écrans du pilotage</b> ? Sur un écran de gestion (inscriptions, paiements) il rappelle utilement qu’un tir est en cours ; ou il distrait.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">exigence</span> Deux boutons, deux intentions. « Tout lancer »
-    reste offert — <b>l'appli n'empêche pas</b> (<span class="ref">P-3</span>), elle montre le coût.</p>
+        <p class="verdict"><span class="pouce peut">la variante que tu avais retenue en tête</span> C’est le « bandeau en haut » demandé le 04/08. Il est <b>déjà livré</b> sous forme de bandeau de contexte — tournoi, statut, départ — mais celui-ci va plus loin : il porte <b>l’avancement du tir</b> et le bouton de bascule.</p>
+    <p class="verdict"><span class="pouce peut">le coût</span> 60 px de hauteur sur <b>tous</b> les écrans admin, y compris ceux de gestion où le tir n’est pas le sujet. À toi de dire si ça vaut le rappel permanent.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="feu-vert">
-    <figcaption><span class="textes"><span class="etiquette">Forfait — une donnée, pas un trou</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Le tableau composé</span>
+      <span class="sous-etiquette">Ce que la bascule produit : 16 duels, la cascade de placement, les cibles.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="tete-carte"><span>DÉCLARER UN FORFAIT</span></div>
-          <div class="rang"><span style="flex:1">OLLIVIER Jo</span><span class="second">1/4 n° 3</span></div>
-          <div class="rang"><span class="second" style="flex:1">Motif</span><span class="champ plein">blessure ▾</span></div>
-          <div class="rang bloc"><span class="second">PETIT Luc passe en demi-finale.
-            Le forfait est daté, attribué et tracé au journal d'audit.</span></div>
-        </div>
-        <button class="bouton principal">Enregistrer le forfait</button>
-      </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap"><span class="mini">Élimination directe — 1ᵉʳ tour</span><span class="pas pas info">32 qualifiés</span><span class="pas pas neutre">16 duels</span><span class="pas pas ok">0 bye</span><span class="fin" style="display:flex;gap:10px"><span class="bouton auto">Imprimer le tableau</span><span class="bouton auto">Projeter en salle</span></span></div>
+
+        <div class="carte"><div class="tete-carte"><span style="width:80px">DUEL</span><span style="width:90px">CIBLE</span><span style="flex:1">TÊTE DE SÉRIE</span><span style="width:130px">SCORE QUALIF</span><span style="flex:1">ADVERSAIRE</span><span style="width:130px">SCORE QUALIF</span></div><div class="rang"><span style="width:80px" class="second">1</span><span style="width:90px" class="second">cible 1</span><span style="flex:1" class=""><b>MARTIN Paul (1)</b></span><span style="width:130px" class="second">552</span><span style="flex:1" class="second">URVOAS Killian (32)</span><span style="width:130px" class="second">441</span></div><div class="rang"><span style="width:80px" class="second">2</span><span style="width:90px" class="second">cible 2</span><span style="flex:1" class=""><b>LE GOFF Erwan (2)</b></span><span style="width:130px" class="second">549</span><span style="flex:1" class="second">SALAÜN Maëlle (31)</span><span style="width:130px" class="second">443</span></div><div class="rang"><span style="width:80px" class="second">3</span><span style="width:90px" class="second">cible 3</span><span style="flex:1" class=""><b>RIOU Gwenaëlle (3)</b></span><span style="width:130px" class="second">546</span><span style="flex:1" class="second">BODIN Camille (30)</span><span style="width:130px" class="second">447</span></div><div class="rang"><span style="width:80px" class="second">4</span><span style="width:90px" class="second">cible 4</span><span style="flex:1" class=""><b>DURAND Jean (4)</b></span><span style="width:130px" class="second">544</span><span style="flex:1" class="second">QUÉMÉNER Alan (29)</span><span style="width:130px" class="second">450</span></div><div class="rang"><span style="width:80px" class="second">5</span><span style="width:90px" class="second">cible 5</span><span style="flex:1" class=""><b>PETIT Luc (5)</b></span><span style="width:130px" class="second">541</span><span style="flex:1" class="second">ROPARS Ewen (28)</span><span style="width:130px" class="second">452</span></div><div class="rang"><span style="width:80px" class="second">6</span><span style="width:90px" class="second">cible 6</span><span style="flex:1" class=""><b>LEROY Marie (6)</b></span><span style="width:130px" class="second">538</span><span style="flex:1" class="second">CADIOU Yann (27)</span><span style="width:130px" class="second">455</span></div><div class="rang"><span style="width:80px" class="second">7</span><span style="width:90px" class="second">cible 7</span><span style="flex:1" class=""><b>NICOL Gaël (7)</b></span><span style="width:130px" class="second">536</span><span style="flex:1" class="second">JAFFRÉ Soizic (26)</span><span style="width:130px" class="second">458</span></div><div class="rang"><span style="width:80px" class="second">8</span><span style="width:90px" class="second">cible 8</span><span style="flex:1" class=""><b>GUILLOU Nolwenn (8)</b></span><span style="width:130px" class="second">534</span><span style="flex:1" class="second">KERVELLA Loïc (25)</span><span style="width:130px" class="second">461</span></div><div class="rang"><span class="faible" style="flex:1">… duels 9 à 16, cibles 9 à 16</span><span class="faible">appariement 9-24 jusqu’à 16-17</span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">L’appariement suit la règle <b>1 contre 32, 2 contre 31</b> : la meilleure qualification rencontre la moins bonne. Avec exactement 32 qualifiés, <b>aucun bye</b> n’est nécessaire — c’est le cas favorable. Si le tournoi n’avait eu que 28 qualifiés, les 4 premières têtes de série auraient passé le tour directement.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">D-24</span> L'archer absent n'est pas un blanc dans le tableau :
-    c'est une <b>donnée datée</b>. Rien ne bloque jamais, tout se documente.</p>
+        <p class="verdict"><span class="pouce oui">le tableau est lisible avant d’être joué</span> Les scores de qualification à côté de chaque nom montrent l’écart attendu — c’est ce qui permet de repérer un duel déséquilibré, ou une erreur de classement, avant de lancer.</p>
+    <p class="verdict"><span class="pouce peut">à confirmer</span> Une seule phase porte tout le tableau : les tours suivants (1/8, 1/4, demi, finale) se composeront <b>au fur et à mesure</b>, à partir des vainqueurs. Faut-il montrer l’arbre entier dès maintenant, avec les cases vides ?</p>
   </figure>
 
 </div>

@@ -46,64 +46,49 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
-    <figcaption><span class="textes"><span class="etiquette">A · Le QR domine</span>
-      <span class="sous-etiquette">La caméra prend l'écran, le code court est le repli.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">A · Saisie du code</span>
+      <span class="sous-etiquette">Ce que le bénévole voit en posant la tablette devant la cible.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte plate" style="border-style:dashed;height:150px;display:flex;align-items:center;justify-content:center">
-          <span class="faible">flux caméra</span></div>
-        <p class="second" style="margin:0;text-align:center">Scannez le QR collé sur la cible</p>
-        <button class="bouton discret">Saisir le code à la place</button>
-      </div>
+        <div style="max-width:520px;margin:40px auto 0;text-align:center"><p style="font-size:26px;font-weight:800;margin:0 0 8px">Quelle cible ?</p><p class="second" style="margin:0 0 24px">Entrez le code inscrit sur la fiche posée devant la cible, ou scannez son QR.</p><div class="champ" style="font-size:38px;padding:22px;letter-spacing:.3em">— — — — — —</div><div style="margin-top:20px"><span class="bouton principal geant">Rattacher cette tablette</span></div><p class="faible" style="margin:20px 0 0">Ce rattachement vaut pour toute la journée. Il se défait depuis l’en-tête, tant que la cible n’a pas commencé à tirer.</p></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Le code est <b>l’autorisation</b> : ouvrir l’adresse <code>/cible</code> ne donne accès à rien. C’est la première des trois barrières — le code, puis le tournoi ouvert, puis le départ lancé.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce non">réserve</span> Une tablette sans caméra ou une permission refusée,
-    et l'écran principal ne sert à rien : <b>le cas de repli devient le cas courant</b>.</p>
+        <p class="verdict"><span class="pouce oui">recommandé</span> Un écran, une question. Le code en corps de 38 px se lit et se tape debout, la tablette posée sur un pied.</p>
+    <p class="verdict"><span class="pouce oui">ce que le plein écran change</span> À 1280 × 800, la place gagnée sert à écrire <b>ce que le rattachement engage</b> — il vaut pour la journée, il se défait tant que le tir n’a pas commencé. En vignette, cette phrase n’avait pas de place, et c’est pourtant elle qui évite l’appel à l’organisateur.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
-    <figcaption><span class="textes"><span class="etiquette">B · Le code domine</span>
-      <span class="sous-etiquette">Pavé de saisie du code court, QR offert en second.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">B · Scan du QR</span>
+      <span class="sous-etiquette">Le geste le plus rapide, quand la caméra existe.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <p class="second" style="margin:0">Code affiché sur la cible</p>
-        <div style="display:flex;gap:8px">
-          <span class="fl" style="flex:1;font-size:24px;padding:12px 0">K</span>
-          <span class="fl" style="flex:1;font-size:24px;padding:12px 0">1</span>
-          <span class="fl" style="flex:1;font-size:24px;padding:12px 0">2</span>
-          <span class="fl saisie vide" style="flex:1;font-size:24px;padding:12px 0">_</span>
-        </div>
-        <div class="pave" style="grid-template-columns:repeat(3,1fr)">
-          <button>1</button><button>2</button><button>3</button>
-          <button>4</button><button>5</button><button>6</button>
-          <button>7</button><button>8</button><button>9</button>
-        </div>
-        <button class="bouton discret">Scanner le QR</button>
-      </div>
+        <div style="max-width:620px;margin:24px auto 0;text-align:center"><p style="font-size:24px;font-weight:800;margin:0 0 18px">Visez le QR posé devant la cible</p><div style="border:2px dashed var(--border);border-radius:12px;height:340px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)">aperçu de la caméra</div><div style="margin-top:18px"><span class="bouton auto discret">Entrer le code à la main</span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Le QR porte l’adresse <code>/cible?poste=&lt;code&gt;</code> : le rattachement est alors <b>automatique</b> et le rôle « écran de cible » est <b>forcé</b> — « Changer de rôle » disparaît de l’en-tête. C’est le verrou D-13 : le contrôle d’accès est physique.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">recommandé</span> Marche sur <b>tout</b> le parc, sans permission
-    à accorder. Le QR reste offert à ceux qui vont vite.</p>
+        <p class="verdict"><span class="pouce peut">dépend du parc</span> Toutes les tablettes n’ont pas une caméra utilisable, et certaines exigent une autorisation qu’un bénévole ne saura pas donner. La saisie manuelle doit rester accessible — elle l’est, en bas.</p>
+    <p class="verdict"><span class="pouce oui">un piège du jour J, déjà traité</span> Les QR déjà imprimés pointent vers l’<b>ancienne</b> adresse <code>/?poste=</code>. Elle doit continuer à fonctionner, sinon les étiquettes posées devant les cibles deviennent muettes.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
-    <figcaption><span class="textes"><span class="etiquette">C · Liste des cibles libres</span>
-      <span class="sous-etiquette">Ni QR ni code : on choisit.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Rattaché</span>
+      <span class="sous-etiquette">Ce qui s’affiche une fois la tablette liée à sa cible.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="tete-carte"><span>CIBLES LIBRES</span><span class="fin">2 / 30</span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">Cible 23</span><span class="second">pas de tir B</span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">Cible 28</span><span class="second">pas de tir B</span></div>
-        </div>
-      </div>
+        <div style="max-width:620px;margin:30px auto 0;text-align:center"><p style="font-size:48px;font-weight:800;margin:0">Cible 12</p><p class="second" style="font-size:19px;margin:6px 0 0">Départ 2 — 09 h 30 · pas de tir A</p><div class="carte" style="margin-top:22px;text-align:left"><div class="tete-carte">Les archers de cette cible</div><div class="rang"><span class="pos" style="width:40px">A</span><span style="flex:1;font-weight:700">MARTIN Paul</span><span class="second">Kervignac · SH · trispot 40</span></div><div class="rang"><span class="pos" style="width:40px">B</span><span style="flex:1;font-weight:700">DURAND Jean</span><span class="second">Lorient · SH · trispot 40</span></div></div><div class="carte info" style="margin-top:16px"><div class="rang bloc"><span class="second">Le tir n’a pas commencé. La saisie s’ouvrira au feu vert de l’organisateur.</span></div></div><div style="margin-top:18px"><span class="bouton auto discret">Détacher cette tablette</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce non">écarté</span> Rien n'empêche de prendre la cible du voisin.
-    On perd la <b>preuve de présence physique</b>, qui est tout l'intérêt du QR.</p>
+        <p class="verdict"><span class="pouce oui">la confirmation utile</span> Le numéro de cible en corps de 48 px se vérifie <b>de la ligne de tir</b> : c’est le seul moyen de repérer une tablette posée devant la mauvaise cible avant que quiconque tire.</p>
+    <p class="verdict"><span class="pouce oui">et les archers annoncés</span> Voir « MARTIN Paul, couloir A » avant le départ permet à l’archer de dire « ce n’est pas moi » — la correction coûte alors trente secondes au lieu d’une contestation en fin de série.</p>
   </figure>
 
 </div>
@@ -112,55 +97,43 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
-    <figcaption><span class="textes"><span class="etiquette">Rattaché</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Code refusé</span>
+      <span class="sous-etiquette">Le message dit quoi faire, pas ce qui a échoué.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="aplat-alerte">✓ POSTE RATTACHÉ</div>
-        <div class="pile">
-        <div class="carte">
-          <div class="rang"><span style="width:80px" class="second">Cible</span><span style="font-weight:800;flex:1">12</span><span class="faible">D-06</span></div>
-          <div class="rang"><span style="width:80px" class="second">Tournoi</span><span style="font-weight:800;flex:1">12 octobre</span><span class="faible">D-07</span></div>
-          <div class="rang"><span style="width:80px" class="second">Thème</span><span style="font-weight:800;flex:1">clair</span><span class="faible">D-26</span></div>
-        </div>
-        <button class="bouton principal geant">COMMENCER LA SAISIE</button>
-      </div>
+        <div style="max-width:520px;margin:40px auto 0;text-align:center"><div class="aplat-alerte forte" style="justify-content:center">▲ Ce code ne correspond à aucune cible</div><div class="champ plein" style="font-size:38px;padding:22px;letter-spacing:.3em;margin-top:18px">4 K 7 · 2 M 9</div><div class="carte" style="margin-top:18px;text-align:left"><div class="rang bloc" style="padding:16px"><p class="second" style="margin:0 0 8px">Trois causes possibles, dans l’ordre de fréquence :</p><p class="second" style="margin:0 0 4px">— le code a été mal lu (le <b>0</b> et le <b>O</b> se confondent) ;</p><p class="second" style="margin:0 0 4px">— la fiche vient d’un <b>autre tournoi</b> ;</p><p class="second" style="margin:0">— la cible a été <b>déclarée indisponible</b> par l’organisateur.</p></div></div><div style="margin-top:18px"><span class="bouton principal">Réessayer</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict">Le <b>thème est stocké avec le jeton</b>, pas dans l'onglet : l'onglet fermé par erreur ne
-    repart pas en sombre sous les néons.</p>
+        <p class="verdict"><span class="pouce oui">un refus qui aide</span> Trois causes ordonnées par fréquence, dont la première est une confusion de caractères. Le bénévole n’a personne à qui demander : le message doit faire le travail de l’organisateur absent.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
-    <figcaption><span class="textes"><span class="etiquette">Cible déjà tenue</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Cible déjà rattachée</span>
+      <span class="sous-etiquette">Deux tablettes pour une cible — le cas qui casse une journée.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="aplat-alerte">▲ Cible 12 déjà rattachée <span class="impact">il y a 4 h</span></div>
-        <p class="second" style="margin:0">Une autre tablette tient cette cible. Continuer la détachera
-        <strong>immédiatement</strong> — l'autre poste perdra la main.</p>
-        <button class="bouton principal">Reprendre la cible 12</button>
-        <button class="bouton discret">Annuler</button>
-      </div>
+        <div style="max-width:620px;margin:34px auto 0"><div class="aplat-alerte forte">▲ La cible 12 est déjà rattachée à une autre tablette</div><div class="carte" style="margin-top:18px"><div class="rang bloc" style="padding:18px"><p class="second" style="margin:0 0 6px">Cette cible a un poste actif depuis <b>08 h 02</b>, vu il y a <b>4 secondes</b>. Il a déjà saisi <b>7 volées</b>.</p><p class="second" style="margin:0">Rattacher cette tablette-ci <b>détacherait l’autre</b> : sa saisie en cours serait perdue.</p></div></div><div style="display:flex;gap:12px;margin-top:18px"><span class="bouton auto">Choisir une autre cible</span><span class="bouton auto discret">Prendre la main quand même</span></div><p class="faible" style="margin:14px 0 0">« Prendre la main » est tracé au journal d’audit, avec l’heure et la cible.</p></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">cas réel</span> Tablette à plat, remplacée en cours de journée.
-    On <b>chiffre la conséquence</b> au lieu d'interdire (<span class="ref">P-3</span>).</p>
+        <p class="verdict"><span class="pouce oui">le cas le plus coûteux, traité</span> Deux tablettes sur une cible, c’est deux saisies divergentes découvertes en fin de série. L’écran <b>chiffre ce qu’on écraserait</b> — 7 volées — au lieu de demander une confirmation abstraite.</p>
+    <p class="verdict"><span class="pouce peut">à trancher</span> Faut-il vraiment laisser « prendre la main quand même » à un bénévole, ou réserver ce geste à l’organisateur ? Une tablette tombée en panne rend le geste indispensable ; un mauvais tap le rend dangereux.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
-    <figcaption><span class="textes"><span class="etiquette">Hors ligne</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Détacher</span>
+      <span class="sous-etiquette">Le geste inverse, et ce qu’il libère.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="aplat-alerte">▲ Pas de réseau</div>
-        <p class="second" style="margin:0">Le rattachement a besoin du serveur. La saisie, elle, fonctionnera
-        hors ligne <em>une fois</em> le poste rattaché.</p>
-        <button class="bouton inactif">Rattacher</button>
-      </div>
+        <div style="max-width:560px;margin:44px auto 0"><p style="font-size:24px;font-weight:800;margin:0 0 10px">Détacher cette tablette de la cible 12 ?</p><div class="carte"><div class="rang bloc" style="padding:18px"><p class="second" style="margin:0 0 6px">Les <b>7 volées déjà saisies sont conservées</b> : elles sont sur le serveur, pas sur cette tablette.</p><p class="second" style="margin:0">La cible 12 redeviendra libre. Une autre tablette pourra la reprendre avec le même code, et retrouvera la saisie où elle en était.</p></div></div><div style="display:flex;gap:12px;margin-top:18px"><span class="bouton auto principal">Détacher</span><span class="bouton auto discret">Annuler</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict">Le <b>seul écran de l'appli réellement bloqué</b> hors ligne — et il faut le dire, pas
-    le laisser deviner.</p>
+        <p class="verdict"><span class="pouce oui">la peur à lever</span> « Les volées sont conservées » est la seule phrase qui compte ici. Sans elle, personne ne détache — et une tablette qui chauffe reste en place jusqu’à ce qu’elle s’éteigne toute seule.</p>
   </figure>
 
 </div>

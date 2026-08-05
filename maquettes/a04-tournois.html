@@ -60,23 +60,103 @@
       <span class="sous-etiquette">Une ligne par tournoi, statut en colonne.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="tete-carte"><span style="flex:1">NOM</span><span style="width:60px">DATE</span><span style="width:90px">STATUT</span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">Challenge des Champions</span>
-            <span style="width:60px" class="second">12/10</span><span style="width:90px"><span class="pas att">EN COURS</span></span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">Tir extérieur du club</span>
-            <span style="width:60px" class="second">18/10</span><span style="width:90px"><span class="pas att">EN COURS</span></span></div>
-          <div class="rang"><span style="flex:1">Interclubs jeunes</span>
-            <span style="width:60px" class="second">09/11</span><span style="width:90px"><span class="pas neutre">BROUILLON</span></span></div>
-          <div class="rang"><span style="flex:1">Concours de printemps</span>
-            <span style="width:60px" class="second">14/04</span><span style="width:90px"><span class="pas ok">TERMINÉ</span></span></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span class="mini">Filtrer par état</span>
+          <span class="pas marque">EN COURS 2</span><span class="pas info">PRÊT 1</span>
+          <span class="pas neutre">EN PAUSE 0</span><span class="pas neutre">TERMINÉ 6</span>
+          <span class="pas neutre">BROUILLON 3</span><span class="pas neutre">ARCHIVÉ 0</span>
+          <span class="pas neutre">ANNULÉ 0</span>
+          <span class="fin"><span class="bouton auto principal">Nouveau tournoi</span></span>
         </div>
-      </div>
+
+        <div class="carte">
+          <div class="tete-carte"><span style="width:96px">ÉTAT</span><span style="flex:1">NOM</span>
+            <span style="width:112px">DATE</span><span style="width:88px">INSCRITS</span>
+            <span style="width:80px">CIBLES</span><span style="width:150px">AVANCEMENT</span>
+            <span style="width:150px">CE QUI RESTE</span></div>
+
+          <div class="rang"><span style="width:96px"><span class="pas marque">EN COURS</span></span>
+            <span style="flex:1;font-weight:700">Challenge des champions</span>
+            <span style="width:112px" class="second">22/11/2026</span>
+            <span style="width:88px" class="second">156</span>
+            <span style="width:80px" class="second">30</span>
+            <div style="width:150px;display:flex;align-items:center;gap:8px">
+              <div class="jauge"><span style="width:62%"></span></div><span class="faible">62 %</span></div>
+            <span style="width:150px" class="pas att">▲ 2 cibles hors ligne</span></div>
+
+          <div class="rang"><span style="width:96px"><span class="pas marque">EN COURS</span></span>
+            <span style="flex:1;font-weight:700">Nocturne extérieur — 50 m</span>
+            <span style="width:112px" class="second">22/11/2026</span>
+            <span style="width:88px" class="second">48</span>
+            <span style="width:80px" class="second">12</span>
+            <div style="width:150px;display:flex;align-items:center;gap:8px">
+              <div class="jauge"><span style="width:18%"></span></div><span class="faible">18 %</span></div>
+            <span style="width:150px" class="faible">départ 1 en tir</span></div>
+
+          <div class="rang"><span style="width:96px"><span class="pas info">PRÊT</span></span>
+            <span style="flex:1">Championnat départemental jeunes</span>
+            <span style="width:112px" class="second">06/12/2026</span>
+            <span style="width:88px" class="second">92</span>
+            <span style="width:80px" class="second">24</span>
+            <div style="width:150px" class="faible">placement fait</div>
+            <span style="width:150px" class="pas ok">peut démarrer</span></div>
+
+          <div class="rang"><span style="width:96px"><span class="pas neutre">TERMINÉ</span></span>
+            <span style="flex:1">Trophée de la ville — 18 m</span>
+            <span style="width:112px" class="second">18/10/2026</span>
+            <span style="width:88px" class="second">134</span>
+            <span style="width:80px" class="second">28</span>
+            <div style="width:150px" class="faible">palmarès publié</div>
+            <span style="width:150px" class="pas att">7 paiements dus</span></div>
+
+          <div class="rang"><span style="width:96px"><span class="pas neutre">TERMINÉ</span></span>
+            <span style="flex:1">Concours jeunes d'automne</span>
+            <span style="width:112px" class="second">27/09/2026</span>
+            <span style="width:88px" class="second">71</span>
+            <span style="width:80px" class="second">18</span>
+            <div style="width:150px" class="faible">exporté</div>
+            <span style="width:150px" class="faible">—</span></div>
+
+          <div class="rang"><span style="width:96px"><span class="pas neutre">TERMINÉ</span></span>
+            <span style="flex:1">Challenge d'été — extérieur</span>
+            <span style="width:112px" class="second">14/06/2026</span>
+            <span style="width:88px" class="second">88</span>
+            <span style="width:80px" class="second">20</span>
+            <div style="width:150px" class="faible">exporté</div>
+            <span style="width:150px" class="faible">—</span></div>
+
+          <div class="rang"><span style="width:96px"><span class="pas neutre">BROUILLON</span></span>
+            <span style="flex:1">Salle de printemps 2027</span>
+            <span style="width:112px" class="second">14/03/2027</span>
+            <span style="width:88px" class="faible">—</span>
+            <span style="width:80px" class="faible">—</span>
+            <div style="width:150px" class="faible">déroulé à composer</div>
+            <span style="width:150px" class="pas att">4 points bloquants</span></div>
+
+          <div class="rang"><span style="width:96px"><span class="pas neutre">BROUILLON</span></span>
+            <span style="flex:1">Interclubs jeunes</span>
+            <span style="width:112px" class="second">09/11/2026</span>
+            <span style="width:88px" class="faible">—</span>
+            <span style="width:80px" class="faible">—</span>
+            <div style="width:150px" class="faible">créé le 02/08</div>
+            <span style="width:150px" class="pas att">6 points bloquants</span></div>
+        </div>
+
+        <div class="carte plate" style="margin-top:14px"><div class="rang">
+          <span class="faible" style="flex:1">8 tournois affichés sur 12 · les archivés et annulés sont masqués
+          par le filtre</span>
+          <span class="faible">Tri : état, puis date — croissante pour ce qui reste à jouer, décroissante pour
+          ce qui est clos</span></div></div>
       </div>
     </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Dense, triable, et <b>deux « en cours » se
-    voient immédiatement</b> — ce qui est exactement le risque à rendre visible.</p>
+    voient immédiatement</b> — ce qui est exactement le risque à rendre visible : sur cette installation,
+    l'intérieur et l'extérieur tournent le même jour.</p>
+    <p class="verdict"><span class="pouce peut">ce que la largeur permet, et qu'il faut valider</span> Sept
+    colonnes au lieu de trois : l'avancement, le nombre de cibles et <b>ce qui reste à faire</b> tiennent
+    maintenant sur la ligne. C'est ce que tu demandais le 04/08 — « on peut exploiter plus d'espace ». Reste à
+    dire si « ce qui reste » est la bonne dernière colonne, ou si tu préfères y voir autre chose (le lieu, le
+    responsable, l'heure du premier départ).</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin">
@@ -84,33 +164,84 @@
       <span class="sous-etiquette">Le cycle de vie dessiné sur chaque tournoi.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte marquee">
-          <div class="rang bloc">
-            <div style="font-weight:800">Challenge des Champions</div>
-            <div class="second">12 octobre · 156 inscrits</div>
-            <div style="display:flex;gap:4px;margin-top:8px;font-size:10px">
-              <span class="pas neutre">brouillon</span><span class="pas neutre">prêt</span>
-              <span class="pas att">en cours</span><span class="pas neutre">terminé</span>
-            </div>
-          </div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px">
+
+          <div class="carte marquee"><div class="rang bloc" style="padding:16px">
+            <div style="display:flex;align-items:baseline;gap:12px">
+              <span style="font-size:19px;font-weight:800">Challenge des champions</span>
+              <span class="pas marque">AUJOURD'HUI</span></div>
+            <div class="second" style="margin-top:4px">22 novembre 2026 · salle de Kervignarc · 156 inscrits ·
+            30 cibles</div>
+            <div style="display:flex;gap:5px;margin-top:12px;flex-wrap:wrap">
+              <span class="pas neutre">brouillon</span><span class="faible">›</span>
+              <span class="pas neutre">prêt</span><span class="faible">›</span>
+              <span class="pas marque">en cours</span><span class="faible">›</span>
+              <span class="pas neutre">en pause</span><span class="faible">›</span>
+              <span class="pas neutre">terminé</span><span class="faible">›</span>
+              <span class="pas neutre">archivé</span></div>
+            <div class="second" style="margin-top:12px">Qualification · volée 8 sur 12</div>
+            <div class="jauge" style="margin-top:6px;max-width:none"><span style="width:62%"></span></div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <span class="pas att">▲ 2 cibles hors ligne</span><span class="pas info">3 à valider</span></div>
+          </div></div>
+
+          <div class="carte marquee"><div class="rang bloc" style="padding:16px">
+            <div style="display:flex;align-items:baseline;gap:12px">
+              <span style="font-size:19px;font-weight:800">Nocturne extérieur — 50 m</span>
+              <span class="pas marque">AUJOURD'HUI</span></div>
+            <div class="second" style="margin-top:4px">22 novembre 2026 · terrain du club · 48 inscrits ·
+            12 cibles</div>
+            <div style="display:flex;gap:5px;margin-top:12px;flex-wrap:wrap">
+              <span class="pas neutre">brouillon</span><span class="faible">›</span>
+              <span class="pas neutre">prêt</span><span class="faible">›</span>
+              <span class="pas marque">en cours</span><span class="faible">›</span>
+              <span class="pas neutre">en pause</span><span class="faible">›</span>
+              <span class="pas neutre">terminé</span><span class="faible">›</span>
+              <span class="pas neutre">archivé</span></div>
+            <div class="second" style="margin-top:12px">Départ 1 · volée 2 sur 12</div>
+            <div class="jauge" style="margin-top:6px;max-width:none"><span style="width:18%"></span></div>
+            <div style="display:flex;gap:8px;margin-top:12px"><span class="pas ok">tout en ligne</span></div>
+          </div></div>
+
+          <div class="carte"><div class="rang bloc" style="padding:16px">
+            <div style="font-size:19px;font-weight:800">Championnat départemental jeunes</div>
+            <div class="second" style="margin-top:4px">6 décembre 2026 · salle de Kervignarc · 92 inscrits ·
+            24 cibles</div>
+            <div style="display:flex;gap:5px;margin-top:12px;flex-wrap:wrap">
+              <span class="pas neutre">brouillon</span><span class="faible">›</span>
+              <span class="pas info">prêt</span><span class="faible">›</span>
+              <span class="pas neutre">en cours</span><span class="faible">›</span>
+              <span class="pas neutre">en pause</span><span class="faible">›</span>
+              <span class="pas neutre">terminé</span><span class="faible">›</span>
+              <span class="pas neutre">archivé</span></div>
+            <div class="second" style="margin-top:12px">Complétude satisfaite — le tournoi peut démarrer</div>
+            <div style="margin-top:12px;max-width:260px"><span class="bouton auto valider">Ouvrir le pilotage</span></div>
+          </div></div>
+
+          <div class="carte"><div class="rang bloc" style="padding:16px">
+            <div style="font-size:19px;font-weight:800">Salle de printemps 2027</div>
+            <div class="second" style="margin-top:4px">14 mars 2027 · lieu non défini · aucun inscrit</div>
+            <div style="display:flex;gap:5px;margin-top:12px;flex-wrap:wrap">
+              <span class="pas att">brouillon</span><span class="faible">›</span>
+              <span class="pas neutre">prêt</span><span class="faible">›</span>
+              <span class="pas neutre">en cours</span><span class="faible">›</span>
+              <span class="pas neutre">en pause</span><span class="faible">›</span>
+              <span class="pas neutre">terminé</span><span class="faible">›</span>
+              <span class="pas neutre">archivé</span></div>
+            <div class="second" style="margin-top:12px">4 points bloquants : déroulé, gabarit de salle, barème,
+            scoreurs</div>
+            <div style="margin-top:12px;max-width:260px"><span class="bouton auto">Reprendre la préparation</span></div>
+          </div></div>
         </div>
-        <div class="carte">
-          <div class="rang bloc">
-            <div style="font-weight:800">Interclubs jeunes</div>
-            <div class="second">9 novembre · 0 inscrit</div>
-            <div style="display:flex;gap:4px;margin-top:8px;font-size:10px">
-              <span class="pas att">brouillon</span><span class="pas neutre">prêt</span>
-              <span class="pas neutre">en cours</span><span class="pas neutre">terminé</span>
-            </div>
-          </div>
-        </div>
-      </div>
       </div>
     </div></div></div>
     <p class="verdict"><span class="pouce peut">séduisant</span> La frise apprend le cycle de vie… <b>une
-    fois</b>. Ensuite elle occupe de la place pour une information déjà connue. Peut-être à réserver à la fiche
-    du tournoi.</p>
+    fois</b>. Ensuite elle occupe de la place pour une information déjà connue — et à quatre cartes visibles,
+    elle est répétée quatre fois avec sept pastilles chacune. Peut-être à réserver à la fiche du tournoi.</p>
+    <p class="verdict"><span class="pouce non">ce que le plein écran tranche</span> À cette taille, la comparaison
+    avec A est nette : la liste montre <b>huit tournois d'un coup</b>, les cartes en montrent <b>quatre</b> pour
+    la même hauteur — et l'information supplémentaire par carte (le lieu, la frise) n'est pas celle qu'on vient
+    chercher. Sur douze tournois, les cartes imposent de défiler.</p>
   </figure>
 
 </div>
@@ -122,15 +253,45 @@
     <figcaption><span class="textes"><span class="etiquette">Suppression refusée</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-      <div class="aplat-alerte">▲ Suppression impossible</div>
-      <p class="second" style="margin:0">« Challenge des Champions » est <strong>en cours</strong> : 156 archers
-      tirent dessus en ce moment. Terminez-le ou annulez-le d'abord.</p>
-      <button class="bouton discret">Annuler le tournoi à la place</button>
-    </div>
+        <div class="aplat-alerte forte">▲ Suppression impossible
+          <span class="impact">409 · conflit d'état</span></div>
+
+        <div class="carte" style="margin-top:16px;max-width:760px"><div class="rang bloc" style="padding:20px">
+          <p style="font-size:19px;font-weight:700;margin:0 0 10px">« Challenge des champions » est en cours.</p>
+          <p class="second" style="margin:0 0 6px">156 archers tirent dessus <b>en ce moment</b> : la volée 8 est
+          en saisie sur 28 cibles, et 3 volées attendent une validation. Supprimer le tournoi effacerait leurs
+          scores.</p>
+          <p class="second" style="margin:0 0 18px">Deux sorties possibles, et elles ne font pas la même chose.</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <span class="bouton auto">Terminer le tournoi</span>
+            <span class="bouton auto">Annuler le tournoi</span>
+            <span class="bouton auto discret">Revenir à la liste</span>
+          </div>
+        </div></div>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px;max-width:760px">
+          <div class="carte"><div class="tete-carte">Terminer</div><div class="rang bloc">
+            <span class="second">Le sportif est figé : scores, classements et podiums deviennent définitifs. Les
+            paiements et les exports restent ouverts. C'est la fin normale d'un tournoi qui s'est joué.</span>
+          </div></div>
+          <div class="carte"><div class="tete-carte">Annuler</div><div class="rang bloc">
+            <span class="second">Le tournoi est marqué annulé, avec sa date et son motif. <b>Rien n'est
+            supprimé</b> : inscriptions et paiements encaissés restent consultables — c'est ce qui rend
+            l'annulation traçable, et donc utilisable devant un trésorier.</span>
+          </div></div>
+        </div>
+
+        <div class="carte plate" style="margin-top:16px;max-width:760px"><div class="rang">
+          <span class="faible">Un tournoi n'est réellement supprimable qu'en brouillon, tant qu'aucune flèche
+          n'a été saisie.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict">Le service répond <b>409</b> ; l'écran traduit en langage humain et propose la sortie.</p>
+    <p class="verdict">Le service répond <b>409</b> ; l'écran traduit en langage humain et propose la sortie —
+    ce que la règle du projet exige : « un refus s'explique, il ne se signale pas par un bouton grisé muet ».</p>
+    <p class="verdict"><span class="pouce oui">ce que la place gagnée sert à dire</span> En vignette, le refus
+    ne pouvait offrir qu'un seul bouton de sortie. Ici les <b>deux</b> issues sont présentées <b>avec ce qu'elles
+    figent</b> : c'est exactement la question que se pose l'organisateur à ce moment-là, et il ne devrait pas
+    avoir à la trancher de mémoire.</p>
   </figure>
 
 </div>

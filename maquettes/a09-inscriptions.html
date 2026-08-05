@@ -61,27 +61,98 @@
       <span class="sous-etiquette">Tout est visible, on filtre en tapant.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="tete-carte"><span style="flex:1">ARCHER</span><span style="width:70px">CAT.</span><span style="width:70px">CIBLE</span><span style="width:70px">PAIEMENT</span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">MARTIN Paul</span><span style="width:70px" class="second">SH</span>
-            <span style="width:70px" class="second">12 B</span><span style="width:70px"><span class="pas ok">RÉGLÉ</span></span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">MARTIN Sophie</span><span style="width:70px" class="second">SF</span>
-            <span style="width:70px" class="second">14 A</span><span style="width:70px"><span class="pas att">DÛ</span></span></div>
-          <div class="rang"><span style="flex:1">MARTINEAU Luc</span><span style="width:70px" class="second">CH</span>
-            <span style="width:70px"><span class="pas att">—</span></span><span style="width:70px"><span class="pas ok">RÉGLÉ</span></span></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span class="champ" style="width:280px">Nom, licence, club…</span>
+          <span class="pas neutre">156 inscrits</span><span class="pas att">12 non réglés</span>
+          <span class="pas att">3 non placés</span><span class="pas info">2 doublons</span>
+          <span class="fin" style="display:flex;gap:10px">
+            <span class="bouton auto">Importer une liste</span>
+            <span class="bouton auto principal">Inscrire un archer</span></span>
         </div>
+
         <div class="carte">
-          <div class="tete-carte"><span>DOUBLON PROBABLE</span></div>
-          <div class="rang bloc"><span class="second">MARTIN Paul (Kervignac) ≈ MARTIN P. (Kervignac)</span>
-            <div style="display:flex;gap:8px;margin-top:8px">
-              <span class="bouton auto">Fusionner</span><span class="bouton auto" style="border-color:var(--border-subtle)">Deux archers différents</span></div></div>
+          <div class="tete-carte"><span style="flex:1">ARCHER</span><span style="width:150px">CLUB</span>
+            <span style="width:80px">LICENCE</span><span style="width:70px">CAT.</span>
+            <span style="width:80px">ARME</span><span style="width:90px">DÉPART</span>
+            <span style="width:130px">PLACEMENT</span><span style="width:110px">PAIEMENT</span></div>
+
+          <div class="rang"><span style="flex:1;font-weight:700">MARTIN Paul</span>
+            <span style="width:150px" class="second">Kervignac</span><span style="width:80px" class="second">784512</span>
+            <span style="width:70px" class="second">SH</span><span style="width:80px" class="second">classique</span>
+            <span style="width:90px" class="second">Départ 2</span>
+            <span style="width:130px" class="second">cible 12 · couloir B</span>
+            <span style="width:110px"><span class="pas ok">RÉGLÉ</span></span></div>
+
+          <div class="rang"><span style="flex:1;font-weight:700">MARTIN Sophie</span>
+            <span style="width:150px" class="second">Kervignac</span><span style="width:80px" class="second">784530</span>
+            <span style="width:70px" class="second">SF</span><span style="width:80px" class="second">classique</span>
+            <span style="width:90px" class="second">Départ 2</span>
+            <span style="width:130px" class="second">cible 14 · couloir A</span>
+            <span style="width:110px"><span class="pas att">DÛ — 14 €</span></span></div>
+
+          <div class="rang"><span style="flex:1">MARTINEAU Luc</span>
+            <span style="width:150px" class="second">Lorient</span><span style="width:80px" class="second">651203</span>
+            <span style="width:70px" class="second">CH</span><span style="width:80px" class="second">classique</span>
+            <span style="width:90px" class="second">Départ 3</span>
+            <span style="width:130px"><span class="pas att">non placé</span></span>
+            <span style="width:110px"><span class="pas ok">RÉGLÉ</span></span></div>
+
+          <div class="rang"><span style="flex:1">LE GOFF Erwan</span>
+            <span style="width:150px" class="second">Hennebont</span><span style="width:80px" class="second">712880</span>
+            <span style="width:70px" class="second">JH</span><span style="width:80px" class="second">poulies</span>
+            <span style="width:90px" class="second">Départ 1</span>
+            <span style="width:130px" class="second">cible 3 · couloir A</span>
+            <span style="width:110px"><span class="pas ok">RÉGLÉ</span></span></div>
+
+          <div class="rang"><span style="flex:1">RIOU Gwenaëlle</span>
+            <span style="width:150px" class="second">Kervignac</span><span style="width:80px" class="second">790114</span>
+            <span style="width:70px" class="second">MF</span><span style="width:80px" class="second">classique</span>
+            <span style="width:90px" class="second">Départ 1</span>
+            <span style="width:130px" class="second">cible 7 · couloir B</span>
+            <span style="width:110px"><span class="pas ok">RÉGLÉ</span></span></div>
+
+          <div class="rang"><span style="flex:1">TANGUY Morgane</span>
+            <span style="width:150px" class="second">Auray</span><span style="width:80px" class="second">668401</span>
+            <span style="width:70px" class="second">SF</span><span style="width:80px" class="second">arc nu</span>
+            <span style="width:90px" class="second">Départ 2</span>
+            <span style="width:130px" class="second">cible 21 · couloir A</span>
+            <span style="width:110px"><span class="pas att">DÛ — 14 €</span></span></div>
+
+          <div class="rang"><span style="flex:1">CADIOU Yann</span>
+            <span style="width:150px" class="second">Lorient</span><span style="width:80px" class="second">705332</span>
+            <span style="width:70px" class="second">VH</span><span style="width:80px" class="second">classique</span>
+            <span style="width:90px" class="second">Départ 3</span>
+            <span style="width:130px"><span class="pas att">non placé</span></span>
+            <span style="width:110px"><span class="pas ok">RÉGLÉ</span></span></div>
         </div>
-      </div>
+
+        <div class="carte info" style="margin-top:14px">
+          <div class="tete-carte">Doublons probables <span class="fin faible">jamais fusionnés automatiquement</span></div>
+          <div class="rang">
+            <span style="flex:1"><b>MARTIN Paul</b> (Kervignac, 784512) <span class="faible">≈</span>
+              <b>MARTIN P.</b> (Kervignac, licence absente)</span>
+            <span class="second" style="width:190px">même club, prénom abrégé</span>
+            <span class="bouton auto">Fusionner</span>
+            <span class="bouton auto discret">Deux archers différents</span></div>
+          <div class="rang">
+            <span style="flex:1"><b>LE GOFF Erwan</b> (Hennebont, 712880) <span class="faible">≈</span>
+              <b>LEGOFF Erwan</b> (Hennebont, 712880)</span>
+            <span class="second" style="width:190px">même licence, orthographe</span>
+            <span class="bouton auto">Fusionner</span>
+            <span class="bouton auto discret">Deux archers différents</span></div>
+          <div class="rang bloc"><span class="faible">Deux frères du même club existent : la fusion reste un
+            geste humain, jamais une déduction du logiciel.</span></div>
+        </div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">recommandé</span> La colonne <b>Cible vide</b> saute aux yeux :
+    <p class="verdict"><span class="pouce oui">recommandé</span> La colonne <b>placement vide</b> saute aux yeux :
     c'est l'information qui manque le plus souvent le matin du jour J.</p>
+    <p class="verdict"><span class="pouce peut">ce que la largeur ajoute</span> Huit colonnes au lieu de quatre.
+    Deux comptent vraiment : le <b>club</b> (le placement doit séparer les archers d'un même club, donc c'est ce
+    qu'on vérifie en cas de conflit) et l'<b>arme</b>, qui décide du blason et donc de la cible possible. Et
+    l'encart des doublons peut enfin dire <b>pourquoi</b> chacun est suspect — « même club, prénom abrégé » n'est
+    pas la même chose que « même licence, orthographe » : la seconde se fusionne les yeux fermés, la première
+    non.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="gestion" data-ecran="inscriptions">
@@ -89,16 +160,39 @@
       <span class="sous-etiquette">Écran vide tant qu'on n'a pas cherché.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile" style="padding:24px 16px;gap:14px">
-        <div class="champ plein" style="font-size:17px;padding:12px">Nom de l'archer…</div>
-        <p class="faible" style="margin:0;text-align:center">156 inscrits · 12 non réglés · 3 non placés</p>
-        <div style="display:flex;gap:8px"><span class="bouton auto">Voir tous</span>
-          <span class="bouton auto">Non placés (3)</span><span class="bouton auto">Non réglés (12)</span></div>
-      </div>
+        <div style="max-width:720px;margin:90px auto 0;text-align:center">
+          <p style="font-size:26px;font-weight:800;margin:0 0 8px">Qui cherchez-vous ?</p>
+          <p class="second" style="margin:0 0 22px">Tapez un début de nom, même mal orthographié, ou scannez
+          une licence.</p>
+          <div class="champ" style="font-size:20px;padding:16px 18px;text-align:left">Nom de l'archer…</div>
+
+          <div style="display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap">
+            <span class="bouton auto">Voir les 156 inscrits</span>
+            <span class="bouton auto">Non placés — 3</span>
+            <span class="bouton auto">Non réglés — 12</span>
+            <span class="bouton auto">Doublons — 2</span>
+            <span class="bouton auto principal">Inscrire un archer</span>
+          </div>
+
+          <div class="carte" style="margin-top:28px;text-align:left">
+            <div class="tete-carte">Derniers gestes <span class="fin faible">sur ce poste</span></div>
+            <div class="rang"><span style="flex:1">CADIOU Yann inscrit</span>
+              <span class="second">il y a 4 min</span><span class="bouton auto discret">Rouvrir</span></div>
+            <div class="rang"><span style="flex:1">Paiement encaissé — TANGUY Morgane</span>
+              <span class="second">il y a 11 min</span><span class="bouton auto discret">Rouvrir</span></div>
+            <div class="rang"><span style="flex:1">Doublon écarté — MARTIN Paul / MARTIN P.</span>
+              <span class="second">il y a 26 min</span><span class="bouton auto discret">Rouvrir</span></div>
+          </div>
+        </div>
       </div>
     </div></div></div>
     <p class="verdict"><span class="pouce peut">bon pour la table</span> Optimise le cas « un archer devant
-    moi ». Mais l'organisateur qui prépare veut <b>voir la masse</b>, pas la chercher.</p>
+    moi » — celui de la table d'accueil, à 8 h 50, avec la file qui attend.</p>
+    <p class="verdict"><span class="pouce non">ce que le plein écran rend impossible à ignorer</span> À 1600 ×
+    900, un champ de recherche seul laisse <b>l'écran presque entièrement vide</b>. J'y ai mis les compteurs et
+    les derniers gestes pour que ce ne soit pas un gâchis — mais c'est justement l'aveu du problème :
+    l'organisateur qui <b>prépare</b> veut voir la masse, pas la chercher. Cette variante optimise cinq minutes
+    de la journée et pénalise les trois semaines d'avant.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="gestion" data-ecran="inscriptions">
@@ -106,21 +200,68 @@
       <span class="sous-etiquette">La liste suit l'organisation réelle de la journée.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="tete-carte"><span>DÉPART 1 — 9 h</span><span class="fin">78 archers</span></div>
-          <div class="rang"><span style="flex:1">MARTIN Paul</span><span class="second">cible 12 B</span></div>
-          <div class="rang"><span style="flex:1">DURAND Jean</span><span class="second">cible 12 A</span></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span class="mini">Inscrits par départ</span><span class="pas neutre">156 archers · 3 départs</span>
+          <span class="fin" style="display:flex;gap:10px">
+            <span class="bouton auto">Imprimer — feuille d'entrée</span>
+            <span class="bouton auto discret">Revenir à la liste</span></span></div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+
+          <div class="carte">
+            <div class="tete-carte">Départ 1 — 08 h 00 <span class="fin">52 archers</span></div>
+            <div class="rang"><span style="flex:1">CADIOU Anne</span><span class="second">cible 1 · A</span></div>
+            <div class="rang"><span style="flex:1">LE GOFF Erwan</span><span class="second">cible 3 · A</span></div>
+            <div class="rang"><span style="flex:1">RIOU Gwenaëlle</span><span class="second">cible 7 · B</span></div>
+            <div class="rang"><span style="flex:1">GUILLOU Nolwenn</span><span class="second">cible 9 · A</span></div>
+            <div class="rang"><span style="flex:1">HÉLIAS Tristan</span><span class="second">cible 11 · B</span></div>
+            <div class="rang"><span style="flex:1">JAFFRÉ Soizic</span><span class="second">cible 15 · A</span></div>
+            <div class="rang"><span style="flex:1">KERVELLA Loïc</span><span class="second">cible 18 · B</span></div>
+            <div class="rang"><span class="faible" style="flex:1">… 45 autres</span></div>
+            <div class="rang"><span class="second" style="flex:1">Tous placés</span><span class="pas ok">✓</span></div>
+          </div>
+
+          <div class="carte">
+            <div class="tete-carte">Départ 2 — 09 h 30 <span class="fin">56 archers</span></div>
+            <div class="rang"><span style="flex:1">MARTIN Paul</span><span class="second">cible 12 · B</span></div>
+            <div class="rang"><span style="flex:1">MARTIN Sophie</span><span class="second">cible 14 · A</span></div>
+            <div class="rang"><span style="flex:1">TANGUY Morgane</span><span class="second">cible 21 · A</span></div>
+            <div class="rang"><span style="flex:1">DURAND Jean</span><span class="second">cible 12 · A</span></div>
+            <div class="rang"><span style="flex:1">PETIT Luc</span><span class="second">cible 23 · B</span></div>
+            <div class="rang"><span style="flex:1">LEROY Marie</span><span class="second">cible 25 · A</span></div>
+            <div class="rang"><span style="flex:1">NICOL Gaël</span><span class="second">cible 28 · B</span></div>
+            <div class="rang"><span class="faible" style="flex:1">… 49 autres</span></div>
+            <div class="rang"><span class="second" style="flex:1">Tous placés</span><span class="pas ok">✓</span></div>
+          </div>
+
+          <div class="carte">
+            <div class="tete-carte">Départ 3 — 10 h 45 <span class="fin">48 archers</span></div>
+            <div class="rang"><span style="flex:1">MARTINEAU Luc</span><span class="pas att">non placé</span></div>
+            <div class="rang"><span style="flex:1">CADIOU Yann</span><span class="pas att">non placé</span></div>
+            <div class="rang"><span style="flex:1">ROPARS Ewen</span><span class="pas att">non placé</span></div>
+            <div class="rang"><span style="flex:1">BODIN Camille</span><span class="second">cible 2 · A</span></div>
+            <div class="rang"><span style="flex:1">QUÉMÉNER Alan</span><span class="second">cible 5 · B</span></div>
+            <div class="rang"><span style="flex:1">SALAÜN Maëlle</span><span class="second">cible 8 · A</span></div>
+            <div class="rang"><span style="flex:1">URVOAS Killian</span><span class="second">cible 10 · B</span></div>
+            <div class="rang"><span class="faible" style="flex:1">… 41 autres</span></div>
+            <div class="rang"><span class="second" style="flex:1">3 archers sans couloir de tir</span>
+              <span class="pas att">à placer</span></div>
+          </div>
         </div>
-        <div class="carte">
-          <div class="tete-carte"><span>DÉPART 2 — 14 h</span><span class="fin">78 archers</span></div>
-          <div class="rang"><span style="flex:1">MARTINEAU Luc</span><span class="fin pas att">non placé</span></div>
-        </div>
-      </div>
+
+        <div class="carte plate" style="margin-top:14px"><div class="rang">
+          <span class="faible" style="flex:1">Les trois départs tiennent côte à côte : c'est ce qui manquait en
+          vignette, où il fallait faire défiler pour comparer.</span>
+          <span class="faible">Tri par cible croissante à l'intérieur de chaque départ</span></div></div>
       </div>
     </div></div></div>
     <p class="verdict"><span class="pouce peut">utile en impression</span> C'est la <b>bonne forme pour la
-    feuille affichée à l'entrée</b>. Comme écran de travail, elle complique la recherche transverse.</p>
+    feuille affichée à l'entrée</b>. Comme écran de travail, elle complique la recherche transverse : trouver
+    « Martineau » demande de savoir dans quel départ il tire.</p>
+    <p class="verdict"><span class="pouce oui">ce que le plein écran change au verdict</span> À trois colonnes
+    côte à côte, cette forme devient <b>meilleure qu'en vignette</b> pour une chose précise : elle montre d'un
+    coup d'œil <b>quel départ est en retard de placement</b> — les trois non placés sont tous au départ 3. En
+    vignette on ne voyait qu'un départ à la fois, donc jamais la comparaison.</p>
   </figure>
 
 </div>
@@ -132,18 +273,68 @@
     <figcaption><span class="textes"><span class="etiquette">Retardataire, tournoi en cours</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte info"><div class="rang bloc"><span class="second">Le départ 2 a commencé il y a 12 min.
-        Cet archer devra être placé <strong>manuellement</strong> sur une couloir libre — le placement
-        automatique ne sera pas rejoué.</span></div></div>
-        <div class="champ plein">MARTINEAU Luc</div>
-        <div style="display:flex;gap:8px"><span class="champ plein" style="flex:1">Vannes</span><span class="champ plein" style="width:70px">CH</span></div>
-        <button class="bouton principal">Inscrire et placer</button>
-      </div>
+        <div class="aplat-alerte">▲ Le départ 2 a commencé il y a 12 minutes
+          <span class="impact">volée 3 sur 12 en cours</span></div>
+
+        <div class="avec-panneau" style="margin-top:16px">
+          <div class="carte">
+            <div class="tete-carte">Inscrire un retardataire</div>
+            <div class="rang"><span style="width:150px" class="second">Nom</span>
+              <span class="champ plein" style="flex:1">MARTINEAU Luc</span></div>
+            <div class="rang"><span style="width:150px" class="second">Licence</span>
+              <span class="champ plein" style="flex:1">651203</span>
+              <span class="pas ok">reconnue — FFTA</span></div>
+            <div class="rang"><span style="width:150px" class="second">Club</span>
+              <span class="champ plein" style="flex:1">Lorient</span></div>
+            <div class="rang"><span style="width:150px" class="second">Catégorie</span>
+              <span class="champ plein" style="width:150px">Cadet Homme ▾</span>
+              <span class="faible">déduite de l'année de naissance</span></div>
+            <div class="rang"><span style="width:150px" class="second">Arme</span>
+              <span class="champ plein" style="width:150px">classique ▾</span>
+              <span class="faible">décide du blason : trispot 40</span></div>
+            <div class="rang"><span style="width:150px" class="second">Départ</span>
+              <span class="champ plein" style="width:150px">Départ 3 — 10 h 45 ▾</span>
+              <span class="pas ok">pas encore commencé</span></div>
+            <div class="rang"><span style="width:150px" class="second">Paiement</span>
+              <span class="champ plein" style="width:150px">14 € — à encaisser</span></div>
+            <div class="rang bloc" style="padding:16px">
+              <div style="display:flex;gap:12px">
+                <span class="bouton auto principal">Inscrire et placer</span>
+                <span class="bouton auto">Inscrire sans placer</span>
+                <span class="bouton auto discret">Annuler</span></div></div>
+          </div>
+
+          <div class="panneau">
+            <div class="groupe">Ce que ça implique</div>
+            <div class="carte plate"><div class="rang bloc">
+              <span class="second"><b>Départ 3 — aucun problème.</b> Il commence dans 1 h 15, le placement
+              automatique n'a pas encore tourné pour ce départ : cet archer y entrera normalement.</span></div></div>
+
+            <div class="groupe" style="margin-top:8px">Si vous choisissiez le départ 2</div>
+            <div class="carte plate"><div class="rang bloc">
+              <span class="second">Le tir a commencé. Le placement automatique <b>ne sera pas rejoué</b> — le
+              rejouer déplacerait des archers déjà en train de tirer. Il faudrait donc lui attribuer
+              <b>manuellement un couloir de tir libre</b>.</span></div></div>
+            <div class="carte plate"><div class="rang">
+              <span class="second" style="flex:1">Couloirs libres au départ 2</span>
+              <span class="pas ok">4</span></div></div>
+            <div class="carte plate"><div class="rang">
+              <span class="second" style="flex:1">Dont compatibles cadet / trispot 40</span>
+              <span class="pas ok">2</span></div></div>
+            <div class="carte plate"><div class="rang bloc">
+              <span class="faible">cible 19 · couloir B — cible 27 · couloir A</span></div></div>
+            <span class="faible">Il aurait 2 volées de retard : rattrapables, mais à signaler au scoreur.</span>
+          </div>
+        </div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">exigence</span> L'appli <b>n'interdit pas</b>, elle prévient de
-    la conséquence. C'est <span class="ref">P-3</span> et <span class="ref">P-4</span> ensemble.</p>
+    <p class="verdict"><span class="pouce oui">exigence</span> L'appli <b>n'interdit pas</b>, elle prévient de la
+    conséquence. C'est <span class="ref">P-3</span> et <span class="ref">P-4</span> ensemble : l'axe Gestion
+    reste ouvert le jour J, et le coût du geste est chiffré au moment du geste.</p>
+    <p class="verdict"><span class="pouce oui">ce que la place gagnée sert à dire</span> Le panneau montre
+    <b>les deux scénarios en parallèle</b> — le départ 3 qui ne pose aucun problème, et le départ 2 qui en pose
+    — avec le <b>nombre de couloirs de tir réellement disponibles</b> et lesquels sont compatibles avec sa
+    catégorie. En vignette, il n'y avait la place que pour l'avertissement, pas pour la sortie.</p>
   </figure>
 
 </div>

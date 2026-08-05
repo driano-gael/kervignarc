@@ -54,30 +54,105 @@
       <span class="sous-etiquette">L'aperçu est à droite, il ne se ferme jamais.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span class="mini">Identité du tournoi</span>
+          <span class="pas neutre">Challenge des champions</span>
+          <span class="fin" style="display:flex;gap:10px">
+            <span class="bouton auto discret">Repartir de l'identité du club</span>
+            <span class="bouton auto principal">Enregistrer</span></span>
+        </div>
+
         <div class="avec-panneau">
-        <div class="pile">
-          <div class="carte"><div class="rang bloc" style="text-align:center;padding:18px">
-            <span class="faible">Déposer le logo de l'événement</span></div></div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="width:26px;height:26px;border-radius:4px;background:#B71918;border:1px solid var(--border)"></span>
-            <span class="second" style="flex:1">Accent principal</span><span class="champ plein">#B71918</span></div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="width:26px;height:26px;border-radius:4px;background:#1D1D1B;border:1px solid var(--border)"></span>
-            <span class="second" style="flex:1">Accent secondaire</span><span class="champ plein">#1D1D1B</span></div>
-          <div class="aplat-alerte" style="align-items:flex-start">▲
-            <span style="font-weight:600;font-size:12.5px">Ce rouge donne <strong>2,55:1</strong> sur fond sombre.
-            Il servira d'aplat ; le texte utilisera <strong>#E84E4D</strong>.</span></div>
+          <div class="pile">
+            <div class="carte">
+              <div class="tete-carte">Logo de l'événement</div>
+              <div class="rang bloc" style="padding:22px;text-align:center;border:1px dashed var(--border);margin:12px;border-radius:6px">
+                <span class="faible">Déposer une image, ou cliquer pour choisir un fichier</span><br>
+                <span class="faible" style="font-size:11px">PNG ou SVG · fond transparent recommandé ·
+                hauteur minimale 200 px pour la projection</span></div>
+              <div class="rang"><span class="second" style="flex:1">Sans logo d'événement, le logo du club est
+                utilisé</span><span class="pas ok">logo du club présent</span></div>
+            </div>
+
+            <div class="carte">
+              <div class="tete-carte">Couleurs <span class="fin faible">chaque valeur est mesurée, pas estimée</span></div>
+              <div class="rang">
+                <span style="width:34px;height:34px;border-radius:5px;background:#B71918;border:1px solid var(--border)"></span>
+                <span style="flex:1"><span style="font-weight:700;display:block">Accent principal</span>
+                  <span class="faible">surfaces, aplats, entrée active</span></span>
+                <span class="champ plein" style="width:120px">#B71918</span>
+                <span class="pas att" style="width:96px">2,55:1</span></div>
+              <div class="rang">
+                <span style="width:34px;height:34px;border-radius:5px;background:#E84E4D;border:1px solid var(--border)"></span>
+                <span style="flex:1"><span style="font-weight:700;display:block">Accent en texte</span>
+                  <span class="faible">dérivé automatiquement du principal</span></span>
+                <span class="champ plein" style="width:120px">#E84E4D</span>
+                <span class="pas ok" style="width:96px">4,52:1</span></div>
+              <div class="rang">
+                <span style="width:34px;height:34px;border-radius:5px;background:#1D1D1B;border:1px solid var(--border)"></span>
+                <span style="flex:1"><span style="font-weight:700;display:block">Fond</span>
+                  <span class="faible">la banderole du club</span></span>
+                <span class="champ plein" style="width:120px">#1D1D1B</span>
+                <span class="faible" style="width:96px">référence</span></div>
+            </div>
+
+            <div class="aplat-alerte" style="align-items:flex-start">▲
+              <span style="font-weight:600;font-size:14px">Ce rouge donne <b>2,55:1</b> sur le fond sombre : il
+              est <b>illisible en texte</b>. Il servira donc d'<b>aplat</b> — on écrit en blanc dessus — et le
+              texte accentué utilisera <b>#E84E4D</b>, dérivé automatiquement. Aucun réglage ne peut produire un
+              couple illisible.</span></div>
+
+            <div class="carte">
+              <div class="tete-carte">Nom affiché</div>
+              <div class="rang"><span class="second" style="width:150px">Sur les écrans</span>
+                <span class="champ plein" style="flex:1">Challenge des champions</span></div>
+              <div class="rang"><span class="second" style="width:150px">Signature du club</span>
+                <span class="champ plein" style="flex:1">organisé par les Archers de Kervignac</span></div>
+              <div class="rang"><span class="second" style="width:150px">Adresse publique</span>
+                <span class="champ plein" style="flex:1">kervignac-tir.fr</span></div>
+            </div>
+          </div>
+
+          <div class="panneau">
+            <div class="groupe">Aperçu en direct</div>
+
+            <span class="faible">Écran de salle · 1920 × 1080</span>
+            <div style="background:#1D1D1B;border:1px solid var(--border-subtle);border-radius:4px;
+                        aspect-ratio:16/9;display:flex;flex-direction:column">
+              <div style="background:#B71918;color:#fff;padding:5px 8px;font-size:9px;font-weight:800">
+                CHALLENGE DES CHAMPIONS</div>
+              <div style="flex:1;padding:8px;font-size:9px;color:#fff">1/4 DE FINALE — 14 h 20</div>
+              <div style="border-top:1px solid #3D3D3A;padding:4px 8px;font-size:8px;color:#8A8A87">
+                Archers de Kervignac</div>
+            </div>
+
+            <span class="faible" style="margin-top:6px">Téléphone · 390 × 844</span>
+            <div style="background:#1D1D1B;border:1px solid var(--border-subtle);border-radius:4px;
+                        width:82px;height:178px;display:flex;flex-direction:column;margin:0 auto">
+              <div style="background:#B71918;color:#fff;padding:4px 5px;font-size:8px;font-weight:800">
+                Challenge…</div>
+              <div style="flex:1;padding:5px;font-size:8px;color:#fff">Classements</div>
+            </div>
+
+            <span class="faible" style="margin-top:6px">Feuille de marque · A4</span>
+            <div style="background:#fff;border:1px solid var(--border-subtle);border-radius:3px;
+                        aspect-ratio:1/1.414;width:96px;margin:0 auto;padding:6px;font-size:7px;color:#1D1D1B">
+              <div style="font-weight:800;color:#B71918">CHALLENGE DES CHAMPIONS</div>
+              <div style="margin-top:3px">Cible 12 · couloir A</div>
+            </div>
+            <span class="faible">L'imprimé est sur fond blanc : le rouge y redevient lisible en texte
+            (6,63:1).</span>
+          </div>
         </div>
-        <div class="panneau">
-          <div class="mini">APERÇU</div>
-          <div class="carte" style="padding:10px 6px;text-align:center;font-size:10px">écran de salle</div>
-          <div class="carte" style="padding:16px 6px;text-align:center;font-size:10px">téléphone</div>
-        </div>
-      </div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">recommandé</span> L'aperçu <b>réagit pendant qu'on règle</b>.
-    C'est ce qui transforme un formulaire en outil de décision.</p>
+    <p class="verdict"><span class="pouce oui">recommandé</span> L'aperçu <b>réagit pendant qu'on règle</b> :
+    c'est ce qui transforme un formulaire en outil de décision.</p>
+    <p class="verdict"><span class="pouce oui">ce que le plein écran rend possible</span> Les <b>trois</b>
+    surfaces tiennent dans le panneau — projection, téléphone, imprimé — au lieu de deux vignettes muettes. Et ça
+    fait apparaître un point que la vignette cachait : <b>l'imprimé est sur fond blanc</b>, donc le rouge du club
+    y est lisible en texte alors qu'il ne l'est pas à l'écran. Un même réglage, deux comportements — c'est
+    précisément ce qu'un aperçu doit montrer.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="atelier" data-ecran="identite">
@@ -85,26 +160,54 @@
       <span class="sous-etiquette">On voit la salle en grand, les réglages sont en surcouche.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="ui salle" style="border:0;border-radius:0;box-shadow:none">
-        
-        <div class="pile" style="padding:20px">
-          <div class="second">1/4 DE FINALE</div>
-          <div style="font-weight:800">MARTIN P. → CIBLE 4</div>
-          <div class="carte" style="margin-top:8px;padding:8px;font-size:11px">
-            <div style="display:flex;gap:8px;align-items:center">
-              <span style="width:18px;height:18px;background:#B71918;border-radius:3px"></span>
-              <span class="second">accent 1</span>
-              <span style="width:18px;height:18px;background:#1D1D1B;border:1px solid var(--border);border-radius:3px"></span>
-              <span class="second">accent 2</span>
+        <div style="position:relative;background:#1D1D1B;border:1px solid var(--border-subtle);
+                    border-radius:8px;overflow:hidden;height:660px;display:flex;flex-direction:column">
+          <div style="background:#B71918;color:#fff;padding:18px 26px;display:flex;align-items:center;gap:18px">
+            <span style="font-size:26px;font-weight:800;letter-spacing:.04em">CHALLENGE DES CHAMPIONS</span>
+            <span class="fin" style="margin-left:auto;font-size:15px;opacity:.9">22 novembre 2026</span></div>
+          <div style="flex:1;padding:30px;display:flex;flex-direction:column;gap:18px;color:#fff">
+            <div style="font-size:30px;font-weight:800">1/4 DE FINALE — 14 h 20</div>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;font-size:20px">
+              <div style="background:#262624;border:1px solid #3D3D3A;border-radius:6px;padding:14px 18px">
+                MARTIN P. <span style="color:#8A8A87">→</span> cible 4 · couloir A</div>
+              <div style="background:#262624;border:1px solid #3D3D3A;border-radius:6px;padding:14px 18px">
+                DURAND J. <span style="color:#8A8A87">→</span> cible 4 · couloir B</div>
+              <div style="background:#262624;border:1px solid #3D3D3A;border-radius:6px;padding:14px 18px">
+                PETIT L. <span style="color:#8A8A87">→</span> cible 7 · couloir A</div>
+              <div style="background:#262624;border:1px solid #3D3D3A;border-radius:6px;padding:14px 18px">
+                LEROY M. <span style="color:#8A8A87">→</span> cible 7 · couloir B</div>
             </div>
           </div>
+          <div style="border-top:1px solid #3D3D3A;padding:12px 26px;display:flex;justify-content:space-between;
+                      font-size:14px;color:#8A8A87">
+            <span>organisé par les Archers de Kervignac</span><span>kervignac-tir.fr</span></div>
+
+          <div style="position:absolute;right:22px;top:96px;width:330px;background:var(--surface-2);
+                      border:1px solid var(--border);border-radius:8px;padding:16px;
+                      box-shadow:0 12px 40px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:10px">
+            <div class="mini">Réglages — en surcouche</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="width:28px;height:28px;border-radius:5px;background:#B71918;border:1px solid var(--border)"></span>
+              <span class="second" style="flex:1">Accent principal</span>
+              <span class="champ plein" style="width:100px">#B71918</span></div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="width:28px;height:28px;border-radius:5px;background:#1D1D1B;border:1px solid var(--border)"></span>
+              <span class="second" style="flex:1">Fond</span>
+              <span class="champ plein" style="width:100px">#1D1D1B</span></div>
+            <div class="carte plate"><div class="rang"><span class="faible">Contraste mesuré : 2,55:1 —
+              aplat seulement</span></div></div>
+            <div style="display:flex;gap:8px"><span class="bouton auto principal" style="flex:1">Appliquer</span>
+              <span class="bouton auto discret">Fermer</span></div>
+          </div>
         </div>
-        <div class="pied-salle"><span>logo événement</span><span>organisé par les Archers de Kervignac</span></div>
-      </div>
       </div>
     </div></div></div>
     <p class="verdict"><span class="pouce peut">à considérer</span> Le rendu est <b>vrai</b>, donc le jugement
-    est juste. Mais régler par-dessus son propre aperçu est acrobatique sur un écran de PC ordinaire.</p>
+    est juste : on voit la projection telle qu'elle sera, pas une vignette de projection.</p>
+    <p class="verdict"><span class="pouce non">ce que le plein écran tranche</span> Le défaut saute aux yeux à
+    cette taille : <b>la surcouche masque exactement la zone qu'on règle</b>. Ici elle recouvre le bloc des
+    affectations, c'est-à-dire le contenu dont on veut juger la lisibilité. Sur un PC ordinaire il faudrait la
+    déplacer sans arrêt — le panneau permanent de la planche A n'a pas ce problème.</p>
   </figure>
 
 </div>
@@ -112,35 +215,85 @@
 <h2 class="section">Le co-branding, montré</h2>
 <div class="planches">
 
-  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="atelier" data-ecran="identite">
+  <figure class="planche" data-appareil="salle" data-monde="salle"
+          data-lieu="CHALLENGE DES CHAMPIONS" data-vue="Affectations du 1/4 de finale"
+          data-cadence="Vue suivante dans 12 s">
     <figcaption><span class="textes"><span class="etiquette">Avec identité de tournoi</span>
-      <span class="sous-etiquette">L'événement domine, le club signe en pied — <span class="ref">DV-08</span>.</span></span></figcaption>
-    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui salle">
+      <span class="sous-etiquette">L'événement domine, le club signe en pied — <span class="ref">DV-08</span>. Vu sur le vidéoprojecteur, 1920 × 1080.</span></span></figcaption>
+    <div class="cadre" data-appareil="salle"><div class="appareil"><div class="ui salle">
       <div class="ecran">
-        <div class="salle-cadre">
-        
-        <div class="pile"><div style="font-weight:800;font-size:17px">1/4 DE FINALE — 14 h 20</div>
-          <div class="second">MARTIN P. → cible 4 · DURAND J. → cible 4</div></div>
-        <div class="pied-salle"><span>organisé par les Archers de Kervignac</span><span>kervignac-tir.fr</span></div>
-      </div>
+        <div style="background:#B71918;color:#fff;margin:-20px -20px 0;padding:22px 30px;display:flex;
+                    align-items:center;gap:20px">
+          <span style="width:60px;height:60px;border-radius:8px;background:#fff2;display:flex;
+                       align-items:center;justify-content:center;font-size:11px">logo</span>
+          <span style="font-size:38px;font-weight:800;letter-spacing:.03em">CHALLENGE DES CHAMPIONS</span>
+          <span style="margin-left:auto;font-size:22px;opacity:.9">22 novembre 2026</span></div>
+
+        <div style="font-size:40px;font-weight:800;margin:26px 0 18px">1/4 de finale — 14 h 20</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;font-size:26px">
+          <div class="carte"><div class="rang" style="padding:16px 20px">
+            <span style="flex:1;font-weight:700">MARTIN Pierre</span>
+            <span class="second" style="font-size:22px">cible 4 · couloir A</span></div></div>
+          <div class="carte"><div class="rang" style="padding:16px 20px">
+            <span style="flex:1;font-weight:700">DURAND Jean</span>
+            <span class="second" style="font-size:22px">cible 4 · couloir B</span></div></div>
+          <div class="carte"><div class="rang" style="padding:16px 20px">
+            <span style="flex:1;font-weight:700">PETIT Luc</span>
+            <span class="second" style="font-size:22px">cible 7 · couloir A</span></div></div>
+          <div class="carte"><div class="rang" style="padding:16px 20px">
+            <span style="flex:1;font-weight:700">LEROY Marie</span>
+            <span class="second" style="font-size:22px">cible 7 · couloir B</span></div></div>
+        </div>
+
+        <div style="margin-top:auto;border-top:1px solid var(--border-subtle);padding-top:14px;
+                    display:flex;justify-content:space-between;font-size:18px;color:var(--text-muted)">
+          <span>organisé par les Archers de Kervignac</span><span>kervignac-tir.fr</span></div>
       </div>
     </div></div></div>
+    <p class="verdict"><span class="pouce oui">la règle DV-08 tient</span> L'événement domine, le club signe en
+    pied. À 1920 px et vu de loin, la hiérarchie se lit <b>du fond de la salle</b> : c'est le seul écran où la
+    taille du titre n'est pas une question de goût mais de distance de lecture.</p>
   </figure>
 
-  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="atelier" data-ecran="identite">
+  <figure class="planche" data-appareil="salle" data-monde="salle"
+          data-lieu="ARCHERS DE KERVIGNAC" data-vue="Affectations du 1/4 de finale"
+          data-cadence="Vue suivante dans 12 s">
     <figcaption><span class="textes"><span class="etiquette">Sans identité de tournoi</span>
       <span class="sous-etiquette">Le club reprend la place, la surface n'est jamais vide.</span></span></figcaption>
-    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui salle">
+    <div class="cadre" data-appareil="salle"><div class="appareil"><div class="ui salle">
       <div class="ecran">
-        <div class="salle-cadre">
-        
-        <div class="pile"><div style="font-weight:800;font-size:17px">1/4 DE FINALE — 14 h 20</div>
-          <div class="second">MARTIN P. → cible 4 · DURAND J. → cible 4</div></div>
-        <div class="pied-salle"><span>Concours du 12 octobre</span><span>kervignac-tir.fr</span></div>
-      </div>
+        <div style="background:#1D1D1B;border-bottom:2px solid #B71918;margin:-20px -20px 0;
+                    padding:22px 30px;display:flex;align-items:center;gap:20px">
+          <span style="width:60px;height:60px;border-radius:8px;background:#B71918;display:flex;
+                       align-items:center;justify-content:center;font-size:11px;color:#fff">club</span>
+          <span style="font-size:38px;font-weight:800;letter-spacing:.03em">ARCHERS DE KERVIGNAC</span>
+          <span style="margin-left:auto;font-size:22px;color:var(--text-secondary)">Concours du 22 novembre</span></div>
+
+        <div style="font-size:40px;font-weight:800;margin:26px 0 18px">1/4 de finale — 14 h 20</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;font-size:26px">
+          <div class="carte"><div class="rang" style="padding:16px 20px">
+            <span style="flex:1;font-weight:700">MARTIN Pierre</span>
+            <span class="second" style="font-size:22px">cible 4 · couloir A</span></div></div>
+          <div class="carte"><div class="rang" style="padding:16px 20px">
+            <span style="flex:1;font-weight:700">DURAND Jean</span>
+            <span class="second" style="font-size:22px">cible 4 · couloir B</span></div></div>
+          <div class="carte"><div class="rang" style="padding:16px 20px">
+            <span style="flex:1;font-weight:700">PETIT Luc</span>
+            <span class="second" style="font-size:22px">cible 7 · couloir A</span></div></div>
+          <div class="carte"><div class="rang" style="padding:16px 20px">
+            <span style="flex:1;font-weight:700">LEROY Marie</span>
+            <span class="second" style="font-size:22px">cible 7 · couloir B</span></div></div>
+        </div>
+
+        <div style="margin-top:auto;border-top:1px solid var(--border-subtle);padding-top:14px;
+                    display:flex;justify-content:space-between;font-size:18px;color:var(--text-muted)">
+          <span>kervignac-tir.fr</span><span>Écran 2 · gymnase, mur nord</span></div>
       </div>
     </div></div></div>
-  </figure>
+    <p class="verdict"><span class="pouce oui">le repli est propre</span> Sans identité d'événement, le club
+    reprend la place et <b>la surface n'est jamais vide</b> : c'est la garantie qui permet de laisser l'identité
+    facultative. La comparaison des deux planches est le vrai livrable de cet écran — c'est là que se décide si
+    régler une identité par tournoi en vaut la peine.</p>
 
 </div>
 

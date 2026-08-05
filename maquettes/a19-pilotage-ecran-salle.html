@@ -45,60 +45,63 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="ecrans">
-    <figcaption><span class="textes"><span class="etiquette">A · Durée obligatoire</span>
-      <span class="sous-etiquette">On ne peut pas imposer une vue sans dire pour combien de temps.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">A · Les écrans déclarés</span>
+      <span class="sous-etiquette">Ce qui est branché dans le gymnase, et ce que chacun affiche.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="tete-carte"><span>DÉROULÉ PAR DÉFAUT</span><span class="fin">rotation 20 s</span></div>
-          <div class="rang"><span style="flex:1">1 · Affectations du prochain tour</span><span class="pas ok">✓</span></div>
-          <div class="rang"><span style="flex:1">2 · Classement en cours</span><span class="pas ok">✓</span></div>
-          <div class="rang"><span style="flex:1">3 · Plan de cibles</span><span class="pas ok">✓</span></div>
-        </div>
-        <div class="carte marquee">
-          <div class="tete-carte"><span>IMPOSER UNE VUE</span></div>
-          <div class="rang"><span class="champ plein" style="flex:1">Podium — Senior Homme ▾</span></div>
-          <div class="rang"><span class="second">pendant</span><span class="champ plein" style="width:70px;text-align:center">10 min</span>
-            <span class="second">puis reprise</span></div>
-          <div class="rang"><button class="bouton principal">IMPOSER</button></div>
-        </div>
-      </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap"><span class="mini">Écrans de salle</span><span class="pas pas ok">2 en ligne</span><span class="pas pas neutre">1 déclaré, jamais rattaché</span><span class="fin" style="display:flex;gap:10px"><span class="bouton auto">Imprimer les QR</span><span class="bouton auto principal">Déclarer un écran</span></span></div>
+
+        <div class="carte"><div class="tete-carte"><span style="flex:1">ÉCRAN</span><span style="width:200px">EMPLACEMENT</span><span style="width:220px">VUE COURANTE</span><span style="width:130px">CADENCE</span><span style="width:130px">SIGNE DE VIE</span><span style="width:150px"></span></div><div class="rang"><span style="flex:1" class=""><b>Écran de salle A</b></span><span style="width:200px" class="second">gymnase, mur nord</span><span style="width:220px"><span class="pas marque">Affectations</span></span><span style="width:130px" class="second">12 s</span><span style="width:130px" class="second">il y a 5 s</span><span style="width:150px"><span class="bouton auto principal">Piloter</span></span></div><div class="rang"><span style="flex:1" class=""><b>Écran de salle B</b></span><span style="width:200px" class="second">entrée du public</span><span style="width:220px"><span class="pas marque">Affectations</span></span><span style="width:130px" class="second">12 s</span><span style="width:130px" class="second">il y a 7 s</span><span style="width:150px"><span class="bouton auto principal">Piloter</span></span></div><div class="rang"><span style="flex:1" class="second">Écran de salle C</span><span style="width:200px" class="second">buvette — prévu</span><span style="width:220px"><span class="pas neutre">—</span></span><span style="width:130px" class="second">—</span><span style="width:130px"><span class="pas att">jamais</span></span><span style="width:150px"><span class="bouton auto">Voir le QR</span></span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Un écran de salle est un <b>poste</b>, comme une tablette de cible : même code de rattachement, même jeton, même signe de vie. Ce qui change est le mot employé à la porte — « écran de salle » plutôt qu’« écran de cible » — et le fait que personne ne se tient devant.</span></div></div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px"><div class="carte"><div class="tete-carte">Vues disponibles</div><div class="rang"><span style="flex:1">Affectations du tour</span><span class="pas ok">en cours</span></div><div class="rang"><span style="flex:1">Classement en direct</span><span class="pas neutre">disponible</span></div><div class="rang"><span style="flex:1">Tableau de duels</span><span class="pas neutre">à la bascule</span></div><div class="rang"><span style="flex:1">Podiums</span><span class="pas neutre">à la clôture</span></div><div class="rang"><span style="flex:1">Plan de cibles</span><span class="pas neutre">disponible</span></div></div><div class="carte"><div class="tete-carte">Ce qui décide de la vue</div><div class="rang"><span style="flex:1" class="second">Le statut du tournoi</span><span class="second">impose la vue</span></div><div class="rang"><span style="flex:1" class="second">L’organisateur</span><span class="second">peut forcer</span></div><div class="rang"><span style="flex:1" class="second">La cadence</span><span class="second">fait tourner</span></div><div class="rang"><span style="flex:1" class="second">L’écran lui-même</span><span class="second">ne décide de rien</span></div></div><div class="carte"><div class="tete-carte">Si le serveur tombe</div><div class="rang"><span style="flex:1" class="second">Dernière vue reçue</span><span class="second">reste affichée</span></div><div class="rang"><span style="flex:1" class="second">Bandeau hors ligne</span><span class="second">apparaît</span></div><div class="rang"><span style="flex:1" class="second">Expiration locale</span><span class="second">après 90 s</span></div><div class="rang"><span style="flex:1" class="second">Écran noir</span><span class="second">jamais</span></div></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">recommandé</span> Le défaut protège de l'oubli. On peut toujours
-    reprendre la main avant la fin — mais on ne peut pas <b>ne pas décider</b>.</p>
+        <p class="verdict"><span class="pouce oui">recommandé</span> L’<b>emplacement</b> en clair — « mur nord », « entrée du public » — est la seule colonne qui permette de savoir lequel on pilote sans traverser le gymnase.</p>
+    <p class="verdict"><span class="pouce oui">la garantie qui compte</span> « Écran noir : jamais ». Un vidéoprojecteur qui s’éteint au milieu d’un tournoi est plus grave qu’un affichage périmé : la dernière vue reçue reste, avec un bandeau qui dit qu’elle date.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="ecrans">
-    <figcaption><span class="textes"><span class="etiquette">B · Bascule libre</span>
-      <span class="sous-etiquette">On impose, on annule quand on veut.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">B · Piloter un écran</span>
+      <span class="sous-etiquette">Forcer une vue, changer la cadence, reprendre la main.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="rang"><span style="flex:1">Affectations</span><span class="pas marque">EN COURS</span></div>
-          <div class="rang"><span style="flex:1">Classement</span><span class="fin bouton auto">Imposer</span></div>
-          <div class="rang"><span style="flex:1">Podium</span><span class="fin bouton auto">Imposer</span></div>
-        </div>
-        <button class="bouton discret">Reprendre le déroulé automatique</button>
-      </div>
+        <div class="avec-panneau"><div class="pile">        <div class="carte"><div class="tete-carte">Écran de salle A — gymnase, mur nord</div><div class="tete-carte"><span style="width:190px"></span><span style="flex:1"></span></div><div class="rang"><span style="width:190px" class="second">Vue courante</span><span style="flex:1" class="second">Affectations du tour</span></div><div class="rang"><span style="width:190px" class="second">Cadence</span><span style="flex:1" class="second">12 secondes</span></div><div class="rang"><span style="width:190px" class="second">Rattaché depuis</span><span style="flex:1" class="second">08 h 02</span></div><div class="rang"><span style="width:190px" class="second">Signe de vie</span><span style="flex:1" class="second">il y a 5 s</span></div><div class="rang"><span style="width:190px" class="second">Résolution annoncée</span><span style="flex:1" class="second">1920 × 1080</span></div></div>
+        <div class="carte" style="margin-top:14px"><div class="tete-carte">Choisir la vue</div><div class="tete-carte"><span style="width:40px"></span><span style="flex:1"></span><span style="width:280px"></span></div><div class="rang"><span style="width:40px"><span class="pas ok">●</span></span><span style="flex:1" class=""><b>Affectations du tour</b></span><span style="width:280px" class="second">qui tire sur quelle cible, quel couloir</span></div><div class="rang"><span style="width:40px"><span class="pas neutre">○</span></span><span style="flex:1" class="second">Classement en direct</span><span style="width:280px" class="second">mis à jour à chaque validation</span></div><div class="rang"><span style="width:40px"><span class="pas neutre">○</span></span><span style="flex:1" class="second">Plan de cibles</span><span style="width:280px" class="second">utile avant le départ</span></div><div class="rang"><span style="width:40px"><span class="pas neutre">○</span></span><span style="flex:1" class="second">Rotation automatique</span><span style="width:280px" class="second">enchaîne les trois, 12 s chacune</span></div></div>
+        <div style="display:flex;gap:12px;margin-top:16px;align-items:center;flex-wrap:wrap"><span class="bouton auto principal">Appliquer à cet écran</span><span class="bouton auto">Appliquer aux 2 écrans</span><span class="bouton auto discret">Rendre la main</span><span class="faible" style="margin-left:auto">Forcer une vue la fige jusqu’à ce qu’on rende la main</span></div></div><div class="panneau"><div class="groupe">Aperçu de ce qui est projeté</div>
+<div class="carte plate"><div class="rang bloc"><span class="second"><b>1/4 de finale — 14 h 20</b><br>MARTIN P. → cible 4 · couloir A<br>DURAND J. → cible 4 · couloir B<br>PETIT L. → cible 7 · couloir A</span></div></div>
+<div class="groupe">Prise de contrôle</div>
+<div class="carte plate"><div class="rang"><span class="second" style="flex:1">Qui pilote</span><span class="pas ok">vous</span></div></div>
+<div class="carte plate"><div class="rang"><span class="second" style="flex:1">Depuis</span><span class="second">2 min</span></div></div>
+<div class="carte plate"><div class="rang"><span class="second" style="flex:1">Expire dans</span><span class="pas att">8 min</span></div></div>
+<span class="faible">Une prise de contrôle expire seule : sans elle, un écran resterait figé sur une vue forcée si l’organisateur oublie de rendre la main.</span>
+<div class="groupe">À savoir</div>
+<div class="carte plate"><div class="rang bloc"><span class="second">Le compte à rebours n’est <b>pas affiché en salle</b> — c’est ton retour du 04/08 : « bruit à l’écran, seulement visible côté admin ».</span></div></div></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce non">risqué</span> Plus simple, et c'est exactement le scénario que le
-    CDC UX met en garde : <b>rien ne rappelle qu'on a pris la main</b>.</p>
+        <p class="verdict"><span class="pouce oui">ton arbitrage du 04/08, appliqué</span> Le compte à rebours d’expiration reste <b>côté admin</b>. Le fait « vue imposée » est écrit en salle ; l’échéance à la seconde n’y est plus.</p>
+    <p class="verdict"><span class="pouce peut">à confirmer</span> « Appliquer aux 2 écrans » traite les deux comme un seul. Or l’écran de l’entrée et celui du mur nord n’ont pas le même public — faut-il vraiment les piloter ensemble ?</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="ecrans">
-    <figcaption><span class="textes"><span class="etiquette">C · Télécommande flottante</span>
-      <span class="sous-etiquette">Un bandeau discret présent sur tous les écrans admin.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Écran non rattaché</span>
+      <span class="sous-etiquette">Ce que le vidéoprojecteur affiche tant qu’il n’a pas son code.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile"><div class="carte"><div class="rang"><span class="faible">— écran admin courant —</span></div></div></div>
+        <div class="carte" style="max-width:760px;margin:60px auto 0"><div class="rang bloc" style="padding:34px;text-align:center"><p style="font-size:30px;font-weight:800;margin:0 0 10px">Écran de salle</p><p class="second" style="margin:0 0 26px">Entrez le code affiché sur la fiche de l’écran, ou scannez son QR.</p><div class="champ" style="font-size:34px;padding:20px;letter-spacing:.3em;max-width:340px;margin:0 auto">— — — — — —</div><div style="max-width:340px;margin:22px auto 0"><span class="bouton principal geant">Rattacher</span></div><p class="faible" style="margin:22px 0 0">Personne ne se tient devant cet écran : ce clavier ne sert qu’une fois, à l’installation.</p></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">C’est l’écran que le bénévole voit en branchant le vidéoprojecteur à 07 h 45. Il doit être lisible <b>depuis l’estrade</b>, pas depuis le clavier — d’où le corps de 34 px sur le champ de code.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce peut">à combiner</span> Excellent <b>rappel</b> de l'état courant,
-    trop étroit pour régler une durée. Utile en complément de A.</p>
+        <p class="verdict"><span class="pouce oui">la contrainte est physique</span> Le code se lit <b>de loin</b> et se tape sur un clavier qu’on atteint mal. Tout est surdimensionné, et c’est la seule fois où cet écran demande quoi que ce soit.</p>
+    <p class="verdict"><span class="pouce peut">à confirmer</span> Faut-il aussi un scan de QR ici ? Un vidéoprojecteur n’a pas de caméra — mais le PC qui l’alimente, peut-être.</p>
   </figure>
 
 </div>
@@ -107,23 +110,21 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="ecrans">
-    <figcaption><span class="textes"><span class="etiquette">Deux écrans aux rôles différents</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Hors ligne — ce que la salle continue d’afficher</span>
+      <span class="sous-etiquette">La dernière vue reçue reste, et dit qu’elle date.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="rang bloc"><div style="font-weight:700">Salle A — près du pas de tir</div>
-            <div class="second">Affectations uniquement · pas de rotation</div></div>
-        </div>
-        <div class="carte">
-          <div class="rang bloc"><div style="font-weight:700">Salle B — côté public</div>
-            <div class="second">Classements + podiums · rotation 30 s</div></div>
-        </div>
-      </div>
+        <div class="aplat-alerte forte" style="font-size:20px;padding:16px 20px">▲ Affichage figé — serveur injoignable<span class="impact">dernière mise à jour il y a 2 min 40</span></div>
+
+        <div style="margin-top:20px;opacity:.72"><p style="font-size:34px;font-weight:800;margin:0 0 16px">1/4 de finale — 14 h 20</p><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;font-size:22px"><div class="carte"><div class="rang" style="padding:14px 18px"><span style="flex:1;font-weight:700">MARTIN Pierre</span><span class="second">cible 4 · couloir A</span></div></div><div class="carte"><div class="rang" style="padding:14px 18px"><span style="flex:1;font-weight:700">DURAND Jean</span><span class="second">cible 4 · couloir B</span></div></div><div class="carte"><div class="rang" style="padding:14px 18px"><span style="flex:1;font-weight:700">PETIT Luc</span><span class="second">cible 7 · couloir A</span></div></div><div class="carte"><div class="rang" style="padding:14px 18px"><span style="flex:1;font-weight:700">LEROY Marie</span><span class="second">cible 7 · couloir B</span></div></div></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">L’affichage <b>ne s’efface pas</b> et ne se remplace pas par un message d’erreur : les archers ont besoin de savoir sur quelle cible aller, même si l’information date de trois minutes. Le bandeau dit qu’elle date ; l’opacité réduite le confirme sans dépendre de la couleur.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">gratuit par construction</span> Chaque poste a son jeton, donc
-    son déroulé. Un écran pour les archers, un pour le public — <b>sans effort supplémentaire</b>.</p>
+        <p class="verdict"><span class="pouce oui">le bon comportement</span> Une information périmée <b>signalée comme telle</b> vaut mieux qu’un écran vide. C’est le seul écran du produit où l’on préfère afficher du faux plutôt que rien — parce que « rien » envoie les archers nulle part.</p>
+    <p class="verdict"><span class="pouce peut">à trancher</span> Au bout de combien de temps l’affichage doit-il s’effacer ? Ici il reste indéfiniment. Après un quart d’heure, « cible 4 » peut envoyer quelqu’un au mauvais endroit.</p>
   </figure>
 
 </div>

@@ -37,50 +37,43 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="completude">
-    <figcaption><span class="textes"><span class="etiquette">A · Deux blocs séparés</span>
-      <span class="sous-etiquette">Sportif d'un côté, hors sportif de l'autre. La séparation est structurelle.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">A · Trois listes — bloquant, à voir, vérifié</span>
+      <span class="sous-etiquette">Le feu vert ne se refuse pas en silence : il dit ce qui manque, et ce qui est déjà bon.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="tete-carte"><span>SPORTIF</span><span class="fin"><span class="pas att">INCOMPLET</span></span></div>
-          <div class="rang"><span style="flex:1">Qualification</span><span class="pas ok">OK</span><span style="width:80px" class="second">30/30</span></div>
-          <div class="rang"><span style="flex:1">1/8 de finale</span><span class="pas ok">OK</span><span style="width:80px" class="second">8/8 duels</span></div>
-          <div class="rang"><span style="flex:1">1/4 de finale</span><span class="pas att">!</span><span style="width:80px" class="second">3/4 duels</span></div>
-          <div class="rang"><span style="flex:1;color:var(--text-muted)">Demi-finales</span><span class="pas neutre">À VENIR</span><span style="width:80px"></span></div>
-          <div class="rang"><span style="flex:1;color:var(--text-muted)">Classement 1 → N</span><span class="pas neutre">EN ATTENTE</span><span style="width:80px"></span></div>
-        </div>
-        <div class="carte">
-          <div class="tete-carte"><span>HORS SPORTIF</span></div>
-          <div class="rang"><span style="flex:1">Paiements</span><span class="pas att">!</span><span style="width:80px" class="second">144/156</span></div>
-        </div>
-        <div class="carte info"><div class="rang bloc">
-          <span class="second"><strong>Terminer le tournoi</strong> figera le sportif.
-          Les paiements resteront modifiables.</span>
-          <button class="bouton principal" style="margin-top:8px">TERMINER LE TOURNOI</button></div></div>
-      </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap"><span class="mini">Complétude — départ 2</span><span class="pas att">3 bloquants</span><span class="pas neutre">4 avertissements</span><span class="pas ok">11 vérifiés</span><span class="fin" style="display:flex;gap:10px"><span class="bouton auto">Revérifier</span><span class="bouton auto principal">Donner le feu vert</span></span></div>
+
+        <div class="carte"><div class="tete-carte">Ce qui empêche de basculer au tour suivant<span class="fin faible">3 points</span></div><div class="tete-carte"><span style="width:110px">ÉTAT</span><span style="flex:1">POINT DE CONTRÔLE</span><span style="width:300px">DÉTAIL</span><span style="width:130px"></span></div><div class="rang"><span style="width:110px"><span class="pas att">BLOQUANT</span></span><span style="flex:1" class=""><b>3 volées non validées</b></span><span style="width:300px" class="second">cibles 7, 14, 22 — la plus ancienne depuis 4 min 20</span><span style="width:130px"><span class="bouton auto">Ouvrir la file</span></span></div><div class="rang"><span style="width:110px"><span class="pas att">BLOQUANT</span></span><span style="flex:1" class=""><b>2 postes hors ligne</b></span><span style="width:300px" class="second">cibles 7 et 29 — 4 archers ne peuvent plus saisir</span><span style="width:130px"><span class="bouton auto">Superviser</span></span></div><div class="rang"><span style="width:110px"><span class="pas att">BLOQUANT</span></span><span style="flex:1" class=""><b>1 poste jamais rattaché</b></span><span style="width:300px" class="second">cible 23 — le QR est peut-être tombé</span><span style="width:130px"><span class="bouton auto">Voir le QR</span></span></div></div>
+
+        <div class="carte" style="margin-top:14px"><div class="tete-carte">Ce qui mérite un regard, sans bloquer<span class="fin faible">4 points</span></div><div class="tete-carte"><span style="width:110px">ÉTAT</span><span style="flex:1">POINT DE CONTRÔLE</span><span style="width:300px">DÉTAIL</span><span style="width:130px"></span></div><div class="rang"><span style="width:110px"><span class="pas neutre">À VOIR</span></span><span style="flex:1" class="second">Écart de rythme entre cibles</span><span style="width:300px" class="second">3 volées entre la plus avancée et la plus en retard</span><span style="width:130px"><span class="bouton auto discret">Voir</span></span></div><div class="rang"><span style="width:110px"><span class="pas neutre">À VOIR</span></span><span style="flex:1" class="second">12 inscriptions non réglées</span><span style="width:300px" class="second">340 € — sans effet sur le tir</span><span style="width:130px"><span class="bouton auto discret">Paiements</span></span></div><div class="rang"><span style="width:110px"><span class="pas neutre">À VOIR</span></span><span style="flex:1" class="second">3 archers du départ 3 non placés</span><span style="width:300px" class="second">le départ 3 commence dans 1 h 15</span><span style="width:130px"><span class="bouton auto discret">Placement</span></span></div><div class="rang"><span style="width:110px"><span class="pas neutre">À VOIR</span></span><span style="flex:1" class="second">Aucun écran de salle sur le classement</span><span style="width:300px" class="second">les deux projettent les affectations</span><span style="width:130px"><span class="bouton auto discret">Écrans</span></span></div></div>
+
+        <div class="carte" style="margin-top:14px"><div class="tete-carte">Ce qui est vérifié<span class="fin faible">11 points</span></div><div class="tete-carte"><span style="width:110px">ÉTAT</span><span style="flex:1">POINT DE CONTRÔLE</span><span style="width:300px">DÉTAIL</span></div><div class="rang"><span style="width:110px"><span class="pas ok">OK</span></span><span style="flex:1" class="second">Tous les archers du départ ont un couloir de tir</span><span style="width:300px" class="second">56 sur 56</span></div><div class="rang"><span style="width:110px"><span class="pas ok">OK</span></span><span style="flex:1" class="second">Chaque couloir a le blason de la catégorie</span><span style="width:300px" class="second">56 sur 56</span></div><div class="rang"><span style="width:110px"><span class="pas ok">OK</span></span><span style="flex:1" class="second">Deux archers d’un même club ne partagent pas une cible</span><span style="width:300px" class="second">28 cibles vérifiées</span></div><div class="rang"><span style="width:110px"><span class="pas ok">OK</span></span><span style="flex:1" class="second">Les 4 scoreurs ont un périmètre</span><span style="width:300px" class="second">cibles 1-10, 11-20, 21-30</span></div><div class="rang"><span style="width:110px"><span class="pas ok">OK</span></span><span style="flex:1" class="second">Le barème de validation est réglé sur les 2 phases</span><span style="width:300px" class="second">fin de série · fin de duel</span></div><div class="rang"><span class="faible" style="flex:1">… 6 autres contrôles passés</span><span class="faible">aucune anomalie</span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">La complétude ne juge pas <b>le tournoi</b>, elle juge <b>le passage au tour suivant</b>. Un point bloquant ne ferme aucun écran : il empêche seulement le feu vert, et il dit lequel ouvrir pour le lever.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">recommandé</span> La séparation <b>est le message</b> : elle
-    explique visuellement pourquoi « terminé » ne bloque pas la trésorerie.</p>
+            <p class="verdict"><span class="pouce oui">recommandé</span> Trois listes plutôt qu’une : <b>ce qui bloque</b>, <b>ce qui mérite un regard</b>, <b>ce qui est vérifié</b>. La troisième est celle qu’on ne pouvait pas afficher en vignette, et c’est pourtant elle qui permet de donner le feu vert sans tout relire.</p>
+    <p class="verdict"><span class="pouce peut">à confirmer</span> Chaque ligne bloquante porte le bouton qui mène à l’écran qui la répare. Est-ce le bon geste, ou préfères-tu pouvoir la lever <b>depuis ici</b> — au risque de valider sans avoir regardé ?</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="completude">
-    <figcaption><span class="textes"><span class="etiquette">B · Liste unique priorisée</span>
-      <span class="sous-etiquette">Tout ce qui manque, dans l'ordre d'urgence.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">B · Vue compacte — trois compteurs</span>
+      <span class="sous-etiquette">La même information en un bloc, si la complétude doit vivre dans le tableau de bord.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="rang"><span class="pas att">1</span><span style="flex:1">1 duel de quart non validé</span><span class="fin bouton auto">Voir</span></div>
-          <div class="rang"><span class="pas neutre">2</span><span style="flex:1">12 paiements en attente</span><span class="fin bouton auto">Voir</span></div>
-        </div>
-        <p class="faible" style="margin:0">Plus court, mais on ne voit plus ce qui est <em>fait</em>.</p>
-      </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap"><span class="mini">Complétude — vue compacte</span><span class="pas att">3 bloquants</span><span class="fin faible">La même information en un bloc, pour le bandeau du tableau de bord</span></div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px"><div class="carte marquee"><div class="tete-carte">Bloquants</div><div class="rang"><span style="flex:1">Volées non validées</span><span class="pas att">3</span></div><div class="rang"><span style="flex:1">Postes hors ligne</span><span class="pas att">2</span></div><div class="rang"><span style="flex:1">Postes non rattachés</span><span class="pas att">1</span></div><div class="rang bloc"><span class="faible">Le feu vert est refusé tant qu’il en reste un.</span></div></div><div class="carte"><div class="tete-carte">À voir</div><div class="rang"><span style="flex:1">Écart de rythme</span><span class="pas neutre">3 volées</span></div><div class="rang"><span style="flex:1">Inscriptions non réglées</span><span class="pas neutre">12</span></div><div class="rang"><span style="flex:1">Archers non placés</span><span class="pas neutre">3</span></div><div class="rang"><span style="flex:1">Écrans de salle</span><span class="pas neutre">0 sur classement</span></div><div class="rang bloc"><span class="faible">Sans effet sur le passage au tour suivant.</span></div></div><div class="carte"><div class="tete-carte">Vérifié</div><div class="rang"><span style="flex:1">Placement complet</span><span class="pas ok">56/56</span></div><div class="rang"><span style="flex:1">Blasons compatibles</span><span class="pas ok">56/56</span></div><div class="rang"><span style="flex:1">Clubs séparés</span><span class="pas ok">28 cibles</span></div><div class="rang"><span style="flex:1">Scoreurs affectés</span><span class="pas ok">4</span></div><div class="rang"><span style="flex:1">Barèmes réglés</span><span class="pas ok">2 phases</span></div><div class="rang bloc"><span class="faible">11 contrôles passés.</span></div></div></div>
+
+        <div style="display:flex;gap:12px;margin-top:16px;align-items:center;flex-wrap:wrap"><span class="bouton auto principal">Donner le feu vert</span><span class="bouton auto">Voir le détail</span><span class="faible" style="margin-left:auto">Le feu vert est refusé : 3 points bloquants</span></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce non">écarté</span> Efficace pour agir, <b>inutilisable pour se
-    rassurer</b>. Or à 17 h la question est autant « qu'est-ce qui manque » que « est-ce que tout est bon ».</p>
+            <p class="verdict"><span class="pouce peut">utile en bandeau</span> Trois colonnes de compteurs disent l’essentiel sans lire. C’est la forme qu’il faut si la complétude doit vivre <b>dans le tableau de bord</b> plutôt que dans son propre écran.</p>
+    <p class="verdict"><span class="pouce non">mais insuffisant seul</span> « 3 volées non validées » ne dit pas <b>lesquelles</b> ni <b>depuis quand</b>. Cette vue oriente, elle ne permet pas d’agir — il faut l’autre derrière.</p>
   </figure>
 
 </div>
@@ -89,23 +82,25 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="completude">
-    <figcaption><span class="textes"><span class="etiquette">Terminer — confirmation chiffrée</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Feu vert refusé</span>
+      <span class="sous-etiquette">Le refus ordonne : ce qui coûte le moins cher à lever passe en premier.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="aplat-alerte">▲ Action irréversible</div>
-        <p class="second" style="margin:0">Vous allez figer <strong>156 scores</strong> et
-        <strong>4 classements</strong>. Un duel de quart n'est pas validé : il sera compté comme non joué.</p>
-        <div class="carte"><div class="rang"><span class="second">Tapez le nombre d'archers</span>
-          <span class="fin champ plein" style="width:70px;text-align:center">156</span></div></div>
-        <button class="bouton principal">TERMINER</button>
-        <button class="bouton discret">Annuler</button>
-      </div>
+        <div class="aplat-alerte forte">▲ Feu vert refusé — 3 points bloquants<span class="impact">le départ 3 est prévu à 10 h 45</span></div>
+
+        <p style="font-size:22px;font-weight:800;margin:16px 0 6px">Ce que le refus vous demande de faire</p><p class="second" style="margin:0 0 18px">Le refus n’est pas un bouton grisé : il dit ce qui manque, dans l’ordre où le lever coûte le moins cher.</p>
+
+        <div class="carte"><div class="tete-carte"><span style="width:90px">ORDRE</span><span style="flex:1">À FAIRE</span><span style="width:380px">POURQUOI ÇA BLOQUE</span><span style="width:150px"></span></div><div class="rang"><span style="width:90px" class="second">1</span><span style="flex:1" class=""><b>Rattacher la cible 23</b></span><span style="width:380px" class="second">Sans poste, ses 2 archers ne peuvent pas saisir : leurs scores manqueraient au classement</span><span style="width:150px"><span class="bouton auto principal">Voir le QR</span></span></div><div class="rang"><span style="width:90px" class="second">2</span><span style="flex:1" class=""><b>Récupérer les cibles 7 et 29</b></span><span style="width:380px" class="second">Hors ligne depuis 14 et 16 min — 4 archers bloqués en volée 6</span><span style="width:150px"><span class="bouton auto">Superviser</span></span></div><div class="rang"><span style="width:90px" class="second">3</span><span style="flex:1" class=""><b>Valider les 3 volées en attente</b></span><span style="width:380px" class="second">Un score non validé n’entre pas au classement : le tour suivant partirait sur un classement faux</span><span style="width:150px"><span class="bouton auto">Ouvrir la file</span></span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Aucun de ces trois points ne se contourne. Le feu vert engage le <b>classement</b> qui sert à composer le tableau du tour suivant : le donner avec des scores manquants produirait des duels faux, découverts trop tard.</span></div></div>
+
+        <div style="display:flex;gap:12px;margin-top:16px;align-items:center;flex-wrap:wrap"><span class="bouton auto discret">Forcer quand même</span><span class="faible" style="margin-left:auto">Réservé à l’organisateur, tracé au journal d’audit</span></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">justifié ici</span> La confirmation chiffrée se mérite : ailleurs
-    elle serait du bruit et on cliquerait « oui » sans lire (<span class="ref">D-16</span>). Ici l'action est
-    <b>irréversible et tardive</b> — c'est le bon endroit.</p>
+            <p class="verdict"><span class="pouce oui">un refus qui explique</span> Le service répond, l’écran traduit — et surtout il <b>ordonne</b> : rattacher d’abord (30 secondes), récupérer ensuite, valider en dernier. Un refus qui liste sans hiérarchiser laisse l’organisateur choisir au hasard.</p>
+    <p class="verdict"><span class="pouce peut">à trancher</span> « Forcer quand même » existe-t-il ? Il est ici, discret et tracé. C’est un pari : le jour J, un blocage qu’on ne peut pas lever est pire qu’un classement imparfait. Mais c’est ton arbitrage, pas le mien.</p>
   </figure>
 
 </div>

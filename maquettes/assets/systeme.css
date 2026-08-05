@@ -436,6 +436,10 @@ table.tk td.num { font-variant-numeric:tabular-nums; font-family:var(--doc-mono)
 .ui .salle__bandeau { display:flex; align-items:center; gap:16px; padding:12px 20px; background:var(--surface-1); border-bottom:1px solid var(--border-subtle); font-size:15px; }
 .ui .salle__bandeau .fin { margin-left:auto; }
 .ui .salle__scene { flex:1; padding:20px; display:flex; flex-direction:column; gap:12px; min-height:0; }
+/* Sur l'écran de salle, le pied se pose en bas du cadre (`margin-top:auto`) : il faut donc que
+   l'écran lui-même soit une colonne qui occupe toute la hauteur, pas un bloc qui s'arrête au
+   contenu. Ailleurs, l'écran suit le flux normal. */
+.ui .salle__scene > .ecran { flex:1; display:flex; flex-direction:column; min-height:0; }
 
 /* -- saisie (cible) -- */
 .ui .saisie__entete { display:flex; align-items:center; gap:12px; margin-bottom:12px; }

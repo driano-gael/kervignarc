@@ -36,45 +36,46 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="gestion" data-ecran="paiements">
-    <figcaption><span class="textes"><span class="etiquette">A · Liste des dus</span>
-      <span class="sous-etiquette">Ce qui reste à encaisser, en tête.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">A · Liste des dus</span>
+      <span class="sous-etiquette">Qui doit quoi, et par quel moyen ça a été réglé.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="tete-carte"><span style="flex:1">ARCHER</span><span style="width:56px">TARIF</span><span style="width:90px">ÉTAT</span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">MARTIN Sophie</span><span style="width:56px" class="second">12 €</span>
-            <span style="width:90px" class="fin bouton auto">Encaisser</span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">NOËL Alice</span><span style="width:56px" class="second">12 €</span>
-            <span style="width:90px" class="fin bouton auto">Encaisser</span></div>
-          <div class="rang"><span style="flex:1;color:var(--text-muted)">MARTIN Paul</span><span style="width:56px" class="second">12 €</span>
-            <span style="width:90px"><span class="pas ok">RÉGLÉ</span></span></div>
-        </div>
-      </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap"><span class="mini">Paiements — Challenge des champions</span><span class="champ" style="width:240px">Nom, club…</span><span class="pas pas att">12 dus · 340 €</span><span class="pas pas ok">144 réglés · 2 016 €</span><span class="fin" style="display:flex;gap:10px"><span class="bouton auto">Exporter pour le trésorier</span><span class="bouton auto principal">Encaisser</span></span></div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:16px"><div class="carte"><div class="rang bloc"><div class="mini">Attendu</div><div style="font-size:32px;font-weight:800;line-height:1.1">2 356 €</div></div></div><div class="carte"><div class="rang bloc"><div class="mini">Encaissé</div><div style="font-size:32px;font-weight:800;line-height:1.1">2 016 €</div></div></div><div class="carte"><div class="rang bloc"><div class="mini">Restant dû</div><div style="font-size:32px;font-weight:800;line-height:1.1;color:var(--danger)">340 €</div></div></div><div class="carte"><div class="rang bloc"><div class="mini">Archers concernés</div><div style="font-size:32px;font-weight:800;line-height:1.1">12</div></div></div></div>
+
+        <div class="carte" style="margin-top:16px"><div class="tete-carte">Restant dû<span class="fin faible">trié par montant décroissant</span></div><div class="tete-carte"><span style="flex:1">ARCHER</span><span style="width:160px">CLUB</span><span style="width:80px">CAT.</span><span style="width:100px">TARIF</span><span style="width:100px">DÛ</span><span style="width:130px">DEPUIS</span><span style="width:130px"></span></div><div class="rang"><span style="flex:1" class=""><b>MARTIN Sophie</b></span><span style="width:160px" class="second">Kervignac</span><span style="width:80px" class="second">SF</span><span style="width:100px" class="second">14 €</span><span style="width:100px"><span class="pas att">14 €</span></span><span style="width:130px" class="second">inscription du 02/11</span><span style="width:130px"><span class="bouton auto principal">Encaisser</span></span></div><div class="rang"><span style="flex:1" class=""><b>TANGUY Morgane</b></span><span style="width:160px" class="second">Auray</span><span style="width:80px" class="second">SF</span><span style="width:100px" class="second">14 €</span><span style="width:100px"><span class="pas att">14 €</span></span><span style="width:130px" class="second">inscription du 05/11</span><span style="width:130px"><span class="bouton auto principal">Encaisser</span></span></div><div class="rang"><span style="flex:1" class=""><b>BODIN Camille</b></span><span style="width:160px" class="second">Auray</span><span style="width:80px" class="second">SF</span><span style="width:100px" class="second">14 €</span><span style="width:100px"><span class="pas att">14 €</span></span><span style="width:130px" class="second">inscription du 05/11</span><span style="width:130px"><span class="bouton auto principal">Encaisser</span></span></div><div class="rang"><span style="flex:1" class="second">QUÉMÉNER Alan</span><span style="width:160px" class="second">Auray</span><span style="width:80px" class="second">SH</span><span style="width:100px" class="second">14 €</span><span style="width:100px"><span class="pas att">14 €</span></span><span style="width:130px" class="second">inscription du 06/11</span><span style="width:130px"><span class="bouton auto principal">Encaisser</span></span></div><div class="rang"><span style="flex:1" class="second">SALAÜN Maëlle</span><span style="width:160px" class="second">Lorient</span><span style="width:80px" class="second">MF</span><span style="width:100px" class="second">10 €</span><span style="width:100px"><span class="pas att">10 €</span></span><span style="width:130px" class="second">inscription du 08/11</span><span style="width:130px"><span class="bouton auto principal">Encaisser</span></span></div><div class="rang"><span class="faible" style="flex:1">… 7 autres archers</span><span class="faible">total 274 €</span></div></div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px"><div class="carte"><div class="tete-carte">Par moyen de paiement</div><div class="rang"><span style="flex:1">Espèces</span><span class="pas neutre">62 · 868 €</span></div><div class="rang"><span style="flex:1">Chèque</span><span class="pas neutre">58 · 812 €</span></div><div class="rang"><span style="flex:1">Virement club</span><span class="pas neutre">24 · 336 €</span></div></div><div class="carte"><div class="tete-carte">Par club</div><div class="rang"><span style="flex:1">Auray</span><span class="pas att">4 dus · 56 €</span></div><div class="rang"><span style="flex:1">Lorient</span><span class="pas att">3 dus · 38 €</span></div><div class="rang"><span style="flex:1">Kervignac</span><span class="pas att">2 dus · 28 €</span></div><div class="rang"><span style="flex:1" class="second">5 autres clubs</span><span class="pas att">3 dus · 218 €</span></div></div><div class="carte"><div class="tete-carte">Tarifs appliqués</div><div class="rang"><span style="flex:1">Adulte</span><span class="pas neutre">14 €</span></div><div class="rang"><span style="flex:1">Jeune (U18)</span><span class="pas neutre">10 €</span></div><div class="rang"><span style="flex:1">Licencié du club</span><span class="pas neutre">12 €</span></div></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">recommandé</span> L'écran sert à <b>une seule chose</b> :
-    encaisser ce qui manque. Les réglés passent en gris, en bas.</p>
+        <p class="verdict"><span class="pouce oui">recommandé</span> Le tri par montant met en tête ce qui coûte le plus à récupérer. La colonne « depuis » dit si c’est un oubli récent ou un dossier qui traîne.</p>
+    <p class="verdict"><span class="pouce oui">ce que la place gagnée sert à dire</span> Le regroupement <b>par club</b> change la manière de récupérer : quatre dus chez Auray, c’est un seul appel au responsable du club, pas quatre relances individuelles. En vignette il n’y avait la place que pour la liste.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="gestion" data-ecran="paiements">
-    <figcaption><span class="textes"><span class="etiquette">B · Vue caisse</span>
-      <span class="sous-etiquette">Totaux par moyen de paiement, pour la clôture de caisse.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">B · Encaisser</span>
+      <span class="sous-etiquette">Le geste à la table d’accueil, entre deux archers.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="rang"><span style="flex:1">Espèces</span><span class="somme">420 €</span></div>
-          <div class="rang"><span style="flex:1">Chèques</span><span class="somme">1 128 €</span></div>
-          <div class="rang"><span style="flex:1">Virement club</span><span class="somme">180 €</span></div>
-          <div class="rang"><span style="flex:1;font-weight:800">Restant dû</span><span class="somme" style="color:var(--danger)">144 €</span></div>
-        </div>
-        <button class="bouton discret">Exporter pour le trésorier</button>
-      </div>
+        <div class="avec-panneau"><div class="pile">        <div class="carte"><div class="tete-carte">MARTIN Sophie — Kervignac</div><div class="tete-carte"><span style="width:180px"></span><span style="flex:1"></span></div><div class="rang"><span style="width:180px" class="second">Catégorie</span><span style="flex:1" class="second">Senior Femme</span></div><div class="rang"><span style="width:180px" class="second">Tarif appliqué</span><span style="flex:1" class="second">Adulte — 14 €</span></div><div class="rang"><span style="width:180px" class="second">Inscription</span><span style="flex:1" class="second">2 novembre 2026</span></div><div class="rang"><span style="width:180px" class="second">Départ</span><span style="flex:1" class="second">Départ 2 — 09 h 30</span></div><div class="rang"><span style="width:180px" class="second">Placement</span><span style="flex:1" class="second">cible 14 · couloir A</span></div></div>
+        <div class="carte" style="margin-top:14px"><div class="tete-carte">Moyen de paiement</div><div class="tete-carte"><span style="width:40px"></span><span style="flex:1"></span><span style="width:200px"></span></div><div class="rang"><span style="width:40px"><span class="pas ok">●</span></span><span style="flex:1" class=""><b>Espèces</b></span><span style="width:200px" class="second">appoint fait — 14 €</span></div><div class="rang"><span style="width:40px"><span class="pas neutre">○</span></span><span style="flex:1" class="second">Chèque</span><span style="width:200px" class="second">à l’ordre des Archers de Kervignac</span></div><div class="rang"><span style="width:40px"><span class="pas neutre">○</span></span><span style="flex:1" class="second">Virement du club</span><span style="width:200px" class="second">facturé au club en fin de saison</span></div></div>
+        <div style="display:flex;gap:12px;margin-top:16px;align-items:center;flex-wrap:wrap"><span class="bouton auto principal">Encaisser 14 €</span><span class="bouton auto discret">Annuler</span><span class="faible" style="margin-left:auto">Le reçu s’imprime si une imprimante est branchée</span></div></div><div class="panneau"><div class="groupe">Conséquence</div>
+<div class="carte plate"><div class="rang bloc"><span class="second">L’encaissement <b>ne touche rien de sportif</b> : il n’ouvre ni ne ferme aucun droit de tirer. Un archer non réglé tire quand même.</span></div></div>
+<div class="groupe">Après encaissement</div>
+<div class="carte plate"><div class="rang"><span class="second" style="flex:1">Restant dû du tournoi</span><span class="pas att">326 €</span></div></div>
+<div class="carte plate"><div class="rang"><span class="second" style="flex:1">Archers concernés</span><span class="pas att">11</span></div></div>
+<div class="carte plate"><div class="rang"><span class="second" style="flex:1">Encaissé du jour</span><span class="pas ok">2 030 €</span></div></div>
+<div class="groupe">Traçabilité</div>
+<div class="carte plate"><div class="rang bloc"><span class="second">Encaissé par <b>l’organisateur connecté</b>, horodaté, inscrit au journal d’audit. Un encaissement ne s’efface pas : il s’annule par un geste inverse, également tracé.</span></div></div></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce peut">complément, pas alternative</span> C'est la vue du
-    <b>trésorier en fin de journée</b>. Elle ne remplace pas A, elle s'y ajoute.</p>
+        <p class="verdict"><span class="pouce oui">la bonne garantie, dite au bon endroit</span> « L’encaissement ne touche rien de sportif » : un archer non réglé <b>tire quand même</b>. C’est ce qui évite qu’un bénévole bloque quelqu’un à la table par excès de zèle.</p>
+    <p class="verdict"><span class="pouce peut">à confirmer</span> Le panneau montre le <b>restant dû après</b> l’encaissement. Utile, ou est-ce du bruit quand on a une file de trois personnes ?</p>
   </figure>
 
 </div>
@@ -83,18 +84,23 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="gestion" data-ecran="paiements">
-    <figcaption><span class="textes"><span class="etiquette">Tournoi terminé, caisse ouverte</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Le tournoi est terminé, les paiements restent ouverts</span>
+      <span class="sous-etiquette">Sportif figé, hors sportif ouvert : la distinction se voit ici.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte info"><div class="rang bloc"><span class="second">Le sportif est figé. <strong>Cet écran
-        reste actif</strong> : vous pouvez encaisser les retardataires.</span></div></div>
-        <div class="carte"><div class="rang"><span style="flex:1">MARTIN Sophie</span><span class="fin bouton auto">Encaisser</span></div></div>
-      </div>
+        <div class="carte info"><div class="rang bloc" style="padding:16px"><span class="verrou">🔒 Sportif figé</span><p class="second" style="margin:10px 0 0">Le tournoi est terminé depuis le 22 novembre à 17 h 40. Scores, classements et podiums ne sont plus modifiables. <b>Les paiements, si.</b></p></div></div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:16px"><div class="carte"><div class="rang bloc"><div class="mini">Restant dû</div><div style="font-size:32px;font-weight:800;line-height:1.1;color:var(--danger)">340 €</div></div></div><div class="carte"><div class="rang bloc"><div class="mini">Archers concernés</div><div style="font-size:32px;font-weight:800;line-height:1.1">12</div></div></div><div class="carte"><div class="rang bloc"><div class="mini">Depuis</div><div style="font-size:32px;font-weight:800;line-height:1.1">11 jours</div></div></div><div class="carte"><div class="rang bloc"><div class="mini">Relances envoyées</div><div style="font-size:32px;font-weight:800;line-height:1.1">0</div></div></div></div>
+
+        <div class="carte" style="margin-top:16px"><div class="tete-carte">Restant dû après clôture</div><div class="tete-carte"><span style="flex:1">ARCHER</span><span style="width:160px">CLUB</span><span style="width:100px">DÛ</span><span style="width:140px">DEPUIS</span><span style="width:260px"></span></div><div class="rang"><span style="flex:1" class=""><b>MARTIN Sophie</b></span><span style="width:160px" class="second">Kervignac</span><span style="width:100px"><span class="pas att">14 €</span></span><span style="width:140px" class="second">11 jours</span><span style="width:260px"><span class="bouton auto principal">Encaisser</span></span></div><div class="rang"><span style="flex:1" class=""><b>TANGUY Morgane</b></span><span style="width:160px" class="second">Auray</span><span style="width:100px"><span class="pas att">14 €</span></span><span style="width:140px" class="second">11 jours</span><span style="width:260px"><span class="bouton auto principal">Encaisser</span></span></div><div class="rang"><span class="faible" style="flex:1">… 10 autres archers</span><span class="faible">312 €</span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">C’est le seul écran où « terminé » ne veut pas dire « fermé ». Archiver le tournoi, <b>en revanche</b>, fermerait aussi les paiements : c’est ce qui rend l’archivage irréversible, et c’est pour ça qu’il est proposé séparément.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">le bandeau n'est pas décoratif</span> Sans lui, le trésorier croit
-    l'appli verrouillée et <b>ressort son carnet</b> — et la donnée se perd.</p>
+        <p class="verdict"><span class="pouce oui">la distinction est le sujet de l’écran</span> Le verrou dit ce qu’il verrouille <b>et ce qu’il ne verrouille pas</b>. Sans cette phrase, un organisateur suppose que « terminé » ferme tout, et va relancer par un autre moyen.</p>
+    <p class="verdict"><span class="pouce peut">manque peut-être</span> Aucune relance n’est proposée. Faut-il un export « à relancer » par club, ou est-ce hors du périmètre de l’outil ?</p>
   </figure>
 
 </div>
