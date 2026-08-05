@@ -54,21 +54,85 @@
       <span class="sous-etiquette">La ligne se transforme en champs, on valide, on passe à la suivante.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="tete-carte"><span style="width:60px">CODE</span><span style="flex:1">LIBELLÉ</span><span>DISTANCE · BLASON</span></div>
-          <div class="rang"><span style="width:60px;font-weight:700">SH</span><span style="flex:1">Senior Homme</span><span class="second">18 m · 40 cm</span></div>
-          <div class="rang"><span style="width:60px;font-weight:700">SF</span><span style="flex:1">Senior Femme</span><span class="second">18 m · 40 cm</span></div>
-          <div class="rang" style="background:var(--surface-2)">
-            <span style="width:60px" class="champ plein">BJ</span>
-            <span style="flex:1" class="champ plein">Benjamin</span>
-            <span class="bouton auto" style="border-color:var(--success);color:var(--success)">OK</span></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span class="mini">Catégories du club</span>
+          <span class="pas neutre">14 catégories · patrimoine, hors tournoi</span>
+          <span class="fin" style="display:flex;gap:10px">
+            <span class="bouton auto">Importer le référentiel FFTA</span>
+            <span class="bouton auto principal">Ajouter</span></span>
         </div>
-      </div>
+
+        <div class="carte">
+          <div class="tete-carte"><span style="width:64px">CODE</span><span style="flex:1">LIBELLÉ</span>
+            <span style="width:150px">ANNÉES DE NAISSANCE</span><span style="width:90px">DISTANCE</span>
+            <span style="width:120px">BLASON</span><span style="width:90px">ARME</span>
+            <span style="width:110px">EMPLOI</span></div>
+
+          <div class="rang"><span style="width:64px;font-weight:700">PH</span><span style="flex:1">Poussin Homme</span>
+            <span style="width:150px" class="second">2016 et après</span><span style="width:90px" class="second">10 m</span>
+            <span style="width:120px" class="second">Mono 80 cm</span><span style="width:90px" class="second">toutes</span>
+            <span style="width:110px"><span class="pas ok">4 tournois</span></span></div>
+          <div class="rang"><span style="width:64px;font-weight:700">PF</span><span style="flex:1">Poussin Femme</span>
+            <span style="width:150px" class="second">2016 et après</span><span style="width:90px" class="second">10 m</span>
+            <span style="width:120px" class="second">Mono 80 cm</span><span style="width:90px" class="second">toutes</span>
+            <span style="width:110px"><span class="pas ok">4 tournois</span></span></div>
+          <div class="rang"><span style="width:64px;font-weight:700">BH</span><span style="flex:1">Benjamin Homme</span>
+            <span style="width:150px" class="second">2014 – 2015</span><span style="width:90px" class="second">15 m</span>
+            <span style="width:120px" class="second">Mono 80 cm</span><span style="width:90px" class="second">toutes</span>
+            <span style="width:110px"><span class="pas ok">6 tournois</span></span></div>
+
+          <div class="rang" style="background:var(--surface-2)">
+            <span style="width:64px" class="champ plein">BF</span>
+            <span style="flex:1" class="champ plein">Benjamin Femme</span>
+            <span style="width:150px" class="champ plein">2014 – 2015</span>
+            <span style="width:90px" class="champ plein">15 m ▾</span>
+            <span style="width:120px" class="champ plein">Mono 80 ▾</span>
+            <span style="width:90px" class="champ plein">toutes ▾</span>
+            <span style="width:110px;display:flex;gap:6px">
+              <span class="bouton auto" style="border-color:var(--success);color:var(--success);padding:5px 9px">OK</span>
+              <span class="bouton auto discret" style="padding:5px 9px">✕</span></span></div>
+
+          <div class="rang"><span style="width:64px;font-weight:700">MH</span><span style="flex:1">Minime Homme</span>
+            <span style="width:150px" class="second">2012 – 2013</span><span style="width:90px" class="second">18 m</span>
+            <span style="width:120px" class="second">Trispot 40 cm</span><span style="width:90px" class="second">toutes</span>
+            <span style="width:110px"><span class="pas ok">6 tournois</span></span></div>
+          <div class="rang"><span style="width:64px;font-weight:700">CH</span><span style="flex:1">Cadet Homme</span>
+            <span style="width:150px" class="second">2009 – 2011</span><span style="width:90px" class="second">18 m</span>
+            <span style="width:120px" class="second">Trispot 40 cm</span><span style="width:90px" class="second">toutes</span>
+            <span style="width:110px"><span class="pas ok">6 tournois</span></span></div>
+          <div class="rang"><span style="width:64px;font-weight:700">JH</span><span style="flex:1">Junior Homme</span>
+            <span style="width:150px" class="second">2006 – 2008</span><span style="width:90px" class="second">18 m</span>
+            <span style="width:120px" class="second">Trispot 40 cm</span><span style="width:90px" class="second">toutes</span>
+            <span style="width:110px"><span class="pas ok">5 tournois</span></span></div>
+          <div class="rang"><span style="width:64px;font-weight:700">SH</span><span style="flex:1">Senior Homme</span>
+            <span style="width:150px" class="second">2005 et avant</span><span style="width:90px" class="second">18 m</span>
+            <span style="width:120px" class="second">Trispot 40 cm</span><span style="width:90px" class="second">toutes</span>
+            <span style="width:110px"><span class="pas ok">6 tournois</span></span></div>
+          <div class="rang"><span style="width:64px;font-weight:700">SF</span><span style="flex:1">Senior Femme</span>
+            <span style="width:150px" class="second">2005 et avant</span><span style="width:90px" class="second">18 m</span>
+            <span style="width:120px" class="second">Trispot 40 cm</span><span style="width:90px" class="second">toutes</span>
+            <span style="width:110px"><span class="pas ok">6 tournois</span></span></div>
+          <div class="rang"><span style="width:64px;font-weight:700">VH</span><span style="flex:1">Vétéran Homme</span>
+            <span style="width:150px" class="second">50 ans et plus</span><span style="width:90px" class="second">18 m</span>
+            <span style="width:120px" class="second">Trispot 40 cm</span><span style="width:90px" class="second">toutes</span>
+            <span style="width:110px"><span class="pas neutre">inutilisée</span></span></div>
+        </div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang">
+          <span class="second" style="flex:1">Ces catégories sont le <b>patrimoine du club</b> : elles vivent
+          d'année en année et sont <b>copiées</b> dans le tournoi à l'assemblage. Modifier une ligne ici ne
+          touche aucun tournoi déjà assemblé.</span>
+          <span class="faible">10 lignes sur 14 · les archères jeunes sont plus bas</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">recommandé</span> Trois champs ne méritent pas une page.
-    L'édition en place garde <b>le contexte des voisins</b> — utile quand on saisit une grille de catégories.</p>
+    <p class="verdict"><span class="pouce oui">recommandé</span> L'édition en place garde <b>le contexte des
+    voisins</b> — décisif quand on saisit une grille de catégories, parce que la ligne d'à côté est le modèle de
+    celle qu'on remplit.</p>
+    <p class="verdict"><span class="pouce peut">ce que le plein écran ajoute, et qu'il faut valider</span> Sept
+    colonnes au lieu de trois. Deux sont neuves et discutables : <b>« années de naissance »</b> (c'est ce qui
+    décide de la catégorie d'un archer, donc ce qu'on vérifie vraiment) et <b>« emploi »</b> — dans combien de
+    tournois la catégorie sert. Cette dernière répond à une question qui se pose une fois par an : « laquelle
+    puis-je supprimer sans rien casser ? » La ligne « Vétéran Homme · inutilisée » est là pour ça.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="atelier" data-ecran="categories">
@@ -76,27 +140,83 @@
       <span class="sous-etiquette">La liste reste, l'édition s'ouvre à droite.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span class="mini">Blasons du club</span>
+          <span class="pas neutre">6 blasons</span>
+          <span class="fin"><span class="bouton auto principal">Ajouter un blason</span></span>
+        </div>
+
         <div class="avec-panneau">
-        <div class="pile">
           <div class="carte">
-            <div class="rang"><span style="flex:1">Blason 40 cm</span><span class="second">10 zones</span></div>
-            <div class="rang" style="background:var(--surface-2)"><span style="flex:1;font-weight:700">Trispot 40 cm</span><span class="second">3 spots</span></div>
-            <div class="rang"><span style="flex:1">Blason 60 cm</span><span class="second">10 zones</span></div>
+            <div class="tete-carte"><span style="flex:1">BLASON</span><span style="width:110px">DIAMÈTRE</span>
+              <span style="width:120px">ZONES</span><span style="width:130px">DISTANCES</span>
+              <span style="width:120px">EMPLOI</span></div>
+            <div class="rang"><span style="flex:1">Mono 80 cm</span><span style="width:110px" class="second">80 cm</span>
+              <span style="width:120px" class="second">10 → 1</span><span style="width:130px" class="second">10 m · 15 m</span>
+              <span style="width:120px"><span class="pas ok">jeunes</span></span></div>
+            <div class="rang"><span style="flex:1">Mono 60 cm</span><span style="width:110px" class="second">60 cm</span>
+              <span style="width:120px" class="second">10 → 1</span><span style="width:130px" class="second">18 m</span>
+              <span style="width:120px"><span class="pas neutre">inutilisé</span></span></div>
+            <div class="rang" style="background:var(--surface-2)">
+              <span style="flex:1;font-weight:700">Trispot 40 cm</span><span style="width:110px" class="second">40 cm × 3</span>
+              <span style="width:120px" class="second">10 → 6</span><span style="width:130px" class="second">18 m</span>
+              <span style="width:120px"><span class="pas ok">6 catégories</span></span></div>
+            <div class="rang"><span style="flex:1">Mono 40 cm</span><span style="width:110px" class="second">40 cm</span>
+              <span style="width:120px" class="second">10 → 1</span><span style="width:130px" class="second">18 m</span>
+              <span style="width:120px"><span class="pas ok">arc nu</span></span></div>
+            <div class="rang"><span style="flex:1">Trispot 60 cm</span><span style="width:110px" class="second">60 cm × 3</span>
+              <span style="width:120px" class="second">10 → 6</span><span style="width:130px" class="second">18 m</span>
+              <span style="width:120px"><span class="pas neutre">inutilisé</span></span></div>
+            <div class="rang"><span style="flex:1">Mono 122 cm</span><span style="width:110px" class="second">122 cm</span>
+              <span style="width:120px" class="second">10 → 1</span><span style="width:130px" class="second">50 m · 70 m</span>
+              <span style="width:120px"><span class="pas ok">extérieur</span></span></div>
+          </div>
+
+          <div class="panneau">
+            <div class="groupe">Trispot 40 cm</div>
+
+            <div style="background:var(--surface-0);border:1px solid var(--border-subtle);border-radius:6px;
+                        padding:14px;display:flex;justify-content:center;gap:10px">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="width:44px;height:44px;border-radius:50%;border:2px solid var(--border);
+                             display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">10</span>
+                <span style="width:44px;height:44px;border-radius:50%;border:2px solid var(--border);
+                             display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">10</span>
+                <span style="width:44px;height:44px;border-radius:50%;border:2px solid var(--border);
+                             display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">10</span>
+              </div>
+            </div>
+            <span class="faible">Trois spots verticaux, une flèche par spot.</span>
+
+            <div class="mini" style="margin-top:6px">Nom</div>
+            <div class="champ plein">Trispot 40 cm</div>
+            <div class="mini">Diamètre d'un spot</div>
+            <div class="champ plein">40 cm</div>
+            <div class="mini">Nombre de spots</div>
+            <div class="champ plein">3</div>
+            <div class="mini">Zones marquées</div>
+            <div class="champ plein">10 à 6 — pas de 5 et moins</div>
+            <div class="mini">Distances autorisées</div>
+            <div class="champ plein">18 m</div>
+            <div class="mini">Flèches par volée</div>
+            <div class="champ plein">3 — une par spot</div>
+
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <span class="bouton auto principal" style="flex:1">Enregistrer</span>
+              <span class="bouton auto discret">Annuler</span></div>
+            <span class="faible">Utilisé par 6 catégories — une modification les touche toutes.</span>
           </div>
         </div>
-        <div class="panneau">
-          <div class="mini">TRISPOT 40 CM</div>
-          <div class="champ plein" style="font-size:12px">Trispot 40</div>
-          <div class="champ plein" style="font-size:12px">3 spots</div>
-          <div class="champ plein" style="font-size:12px">zones 10 → 6</div>
-          <button class="bouton auto" style="margin-top:6px">Enregistrer</button>
-        </div>
-      </div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce peut">utile pour les blasons</span> Dès qu'un élément porte
-    <b>plus de 4 champs ou un aperçu visuel</b>, le panneau devient meilleur que la ligne. C'est le cas des
-    blasons — le seul référentiel où l'image porte l'information.</p>
+    <p class="verdict"><span class="pouce peut">utile pour les blasons</span> Dès qu'un élément porte <b>plus de
+    quatre champs ou un aperçu visuel</b>, le panneau devient meilleur que la ligne. C'est le cas des blasons —
+    le seul référentiel où <b>l'image est l'information</b> : « trispot 40 » ne dit rien, trois cercles alignés
+    verticalement disent tout.</p>
+    <p class="verdict"><span class="pouce peut">deux choses à confirmer</span> Le panneau fait 320 px : assez
+    pour l'aperçu, mais il rétrécit la liste d'autant. Et il porte un <b>avertissement</b> — « utilisé par 6
+    catégories, une modification les touche toutes ». C'est le vrai risque de cet écran : les blasons sont du
+    patrimoine, corriger « zones marquées » ici change la façon de compter les points partout.</p>
   </figure>
 
 </div>
