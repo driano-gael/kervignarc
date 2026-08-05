@@ -3,8 +3,7 @@
 > **Écran** : [P03 — Classements](../p03-classements.html) · **Appli** : Appli publique (`/`)
 > **Rôle** : Même donnée que côté admin, autre mise en forme : sur 360 px on ne montre pas six colonnes.
 >
-> Remplis ce qui te parle, laisse le reste vide. Une ligne barrée ou un « non »
-> sec est une réponse parfaitement utile — c'est même la plus rapide à exploiter.
+> Rempli le 04/08/2026.
 
 ---
 
@@ -12,13 +11,15 @@
 
 - [ ] A — Liste compacte centrée sur soi
 - [ ] B — Tableau défilable complet
-- [ ] Aucun — voir « à refaire » plus bas
+- [x] Aucun — voir « à refaire » plus bas
 
-**Pourquoi ce choix** *(ce qui a emporté la décision, même si c'est un détail)*
->
+**Pourquoi ce choix**
+
+> il me faut les 2, soi le classement uniquementdes archers suivis, soit le classement general.
 
 **Ce que tu prendrais dans les autres variantes**
->
+
+> _(sans réponse)_
 
 ---
 
@@ -26,43 +27,35 @@
 
 - [ ] ✅ Validé tel quel — on peut coder ça
 - [ ] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
+- [x] 🔴 À refaire — l'écran ne répond pas au besoin
 
 ---
 
 ## 3. Critiques
 
-*Ce qui ne va pas : hiérarchie, vocabulaire, information manquante, geste pénible,
-cas réel non couvert.*
-
->
+> _(sans réponse)_
 
 ---
 
 ## 4. Évolutions souhaitées
 
-*Ce que tu veux en plus ou en moins. Sans te censurer sur la faisabilité —
-c'est mon travail de dire ce que ça coûte.*
-
->
+> _(sans réponse)_
 
 ---
 
 ## 5. Questions ciblées
 
-*Ces questions viennent de points que la maquette n'a pas pu trancher seule.*
-
 **1. Le classement doit-il être visible en direct pendant la qualification, ou seulement une fois la série finie ?**
->
+
+> en direct, des que les informations sont disponible, pareil pour les score en cours
 
 **2. Les archers doivent-ils voir le détail des flèches des autres, ou seulement les totaux ?**
->
+
+> oui pour le detail des fleches des autres
 
 ---
 
 ## 6. Vocabulaire
-
-*Un mot faux à l'écran coûte cher toute la journée. Corrige sans hésiter.*
 
 | À l'écran | Le bon mot |
 |---|---|
@@ -72,6 +65,4 @@ c'est mon travail de dire ce que ça coûte.*
 
 ## 7. Ce qui manque complètement
 
-*Un écran, un état, un cas que cette maquette ignore.*
-
->
+> _(sans réponse)_

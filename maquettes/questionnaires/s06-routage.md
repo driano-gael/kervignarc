@@ -3,29 +3,30 @@
 > **Écran** : [S06 — Panneau de routage après validation](../s06-routage.html) · **Appli** : Appli saisie (`/saisie`)
 > **Rôle** : La tablette devient un panneau d'affichage : c'est là que se gagnent les 2 minutes.
 >
-> Remplis ce qui te parle, laisse le reste vide. Une ligne barrée ou un « non »
-> sec est une réponse parfaitement utile — c'est même la plus rapide à exploiter.
+> Rempli le 04/08/2026.
 
 ---
 
 ## 1. Quel parti pris retiens-tu ?
 
-- [ ] A — Vainqueur et perdant à égalité
+- [x] A — Vainqueur et perdant à égalité
 - [ ] B — Plein écran vainqueur
 - [ ] C — Retour automatique compté
 - [ ] Aucun — voir « à refaire » plus bas
 
-**Pourquoi ce choix** *(ce qui a emporté la décision, même si c'est un détail)*
->
+**Pourquoi ce choix**
+
+> lisible et clair pour tout le monde
 
 **Ce que tu prendrais dans les autres variantes**
->
+
+> _(sans réponse)_
 
 ---
 
 ## 2. Verdict
 
-- [ ] ✅ Validé tel quel — on peut coder ça
+- [x] ✅ Validé tel quel — on peut coder ça
 - [ ] 🟡 Validé avec les réserves ci-dessous
 - [ ] 🔴 À refaire — l'écran ne répond pas au besoin
 
@@ -33,37 +34,29 @@
 
 ## 3. Critiques
 
-*Ce qui ne va pas : hiérarchie, vocabulaire, information manquante, geste pénible,
-cas réel non couvert.*
-
->
+> _(sans réponse)_
 
 ---
 
 ## 4. Évolutions souhaitées
 
-*Ce que tu veux en plus ou en moins. Sans te censurer sur la faisabilité —
-c'est mon travail de dire ce que ça coûte.*
-
->
+> _(sans réponse)_
 
 ---
 
 ## 5. Questions ciblées
 
-*Ces questions viennent de points que la maquette n'a pas pu trancher seule.*
-
 **1. Le perdant doit-il voir sa place finale immédiatement, ou est-ce brutal juste après la défaite ?**
->
+
+> visible si classement établis
 
 **2. Combien de temps ce panneau doit-il rester avant de rendre la tablette à la saisie ?**
->
+
+> 3mn si un autre tour suit.
 
 ---
 
 ## 6. Vocabulaire
-
-*Un mot faux à l'écran coûte cher toute la journée. Corrige sans hésiter.*
 
 | À l'écran | Le bon mot |
 |---|---|
@@ -73,6 +66,4 @@ c'est mon travail de dire ce que ça coûte.*
 
 ## 7. Ce qui manque complètement
 
-*Un écran, un état, un cas que cette maquette ignore.*
-
->
+> _(sans réponse)_

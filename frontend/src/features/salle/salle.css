@@ -10,6 +10,7 @@
    D'où une échelle typographique dédiée (`clamp` sur la largeur de vue : le même code sert un
    moniteur 24" et un vidéoprojecteur), un fond plein et aucune coquille « carte ». */
 .salle {
+  position: relative; /* ancre le bouton « décrocher », qui se pose en absolu dans un coin */
   display: flex;
   flex-direction: column;
   gap: clamp(12px, 1.5vw, 32px);
@@ -55,6 +56,27 @@
   margin-left: auto;
   color: var(--text);
   opacity: 0.6;
+}
+
+/* Décrocher cet écran (S01, retour maquettes du 04/08/2026) — **invisible au repos**.
+   L'affordance ne se révèle qu'au survol ou au focus clavier : depuis la salle, à dix mètres, il n'y
+   a rien à voir, donc « aucune interaction » (CA E07US004) reste tenu au sens où la règle l'entend ;
+   devant la machine, le geste existe enfin. `opacity` et non `display:none` : un bouton retiré du
+   flux ne serait pas atteignable au clavier, or c'est justement la façon dont on le trouve quand on
+   n'a pas de souris branchée sur un PC de projection. */
+.salle__decrocher {
+  position: absolute;
+  top: clamp(8px, 0.8vw, 18px);
+  right: clamp(8px, 0.8vw, 18px);
+  z-index: 1;
+  opacity: 0;
+  font-size: 0.7em;
+  transition: opacity 0.15s ease;
+}
+
+.salle__decrocher:hover,
+.salle__decrocher:focus-visible {
+  opacity: 1;
 }
 
 /* `DV-03` : couleur **et** mot. Ambre pour l'alerte (jamais le rouge club, cf. charte). */

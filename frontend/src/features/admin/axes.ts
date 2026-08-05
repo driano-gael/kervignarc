@@ -11,13 +11,15 @@ import type { DestinationAdminId } from './aide-ecrans'
 // club, il vit d'année en année — d'où l'absence de sélecteur de tournoi dans cet axe.
 export type Axe = 'atelier' | 'pilotage' | 'gestion'
 
+// **L'ordre a changé au retour maquettes du 04/08/2026** (A02) : *« la ligne de déroulé doit être la
+// première »*, *« mettre la section déroulé un peu plus en avant »*.
+//
+// Ce n'est pas une préférence d'affichage : l'accueil de l'admin est ce qu'on voit **le matin du jour
+// J**, l'écran devant lequel on est quand quelque chose se joue vraiment. L'atelier venait en tête
+// par héritage — il était le premier axe fabriqué, pas le premier à servir. Le pilotage est
+// désormais l'axe d'ouverture, l'atelier passe en dernier : on ne fabrique pas de briques pendant
+// qu'un tournoi tourne.
 export const AXES: { axe: Axe; libelle: string; phrase: string; besoinTournoi: boolean }[] = [
-  {
-    axe: 'atelier',
-    libelle: 'Atelier',
-    phrase: 'Fabriquer : briques du club, salles types, formats de déroulé, banc d’essai.',
-    besoinTournoi: false,
-  },
   {
     axe: 'pilotage',
     libelle: 'Pilotage',
@@ -29,6 +31,12 @@ export const AXES: { axe: Axe; libelle: string; phrase: string; besoinTournoi: b
     libelle: 'Gestion',
     phrase: 'L’administratif : inscriptions, paiements, exports, archives.',
     besoinTournoi: true,
+  },
+  {
+    axe: 'atelier',
+    libelle: 'Atelier',
+    phrase: 'Fabriquer : briques du club, salles types, formats de déroulé, banc d’essai.',
+    besoinTournoi: false,
   },
 ]
 

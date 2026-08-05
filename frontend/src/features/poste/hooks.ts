@@ -7,7 +7,10 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useSessionPosteStore } from '../../shared/stores/sessionPosteStore'
+import { useSessionRoleStore } from '../../shared/stores/sessionRoleStore'
+import { naviguer } from '../../shared/navigation/useChemin'
 import { cibleDuPoste, deconnexionPoste, heartbeatPoste, rattacherPoste } from './api'
+import { oublierCodePosteUrl } from './url'
 
 // Intervalle du heartbeat (E12US001, ADR-0038). Doit rester **inférieur** au seuil hors-ligne du
 // serveur (30 s), avec de la marge pour un ping manqué — les deux valeurs sont liées.
@@ -30,6 +33,42 @@ export function useDeconnexionPoste() {
     // formulaire de rattachement. Le nettoyage du `?poste=` de l'URL est fait par l'appelant.
     onSettled: () => detacher(),
   })
+}
+
+/**
+ * Le geste « cet appareil n'est plus ce lieu », **partagé** par le poste de cible et l'écran de salle.
+ *
+ * Hoisté hors d'`EspacePoste` au retour maquettes du 04/08/2026 : S01 demande *« on doit pouvoir
+ * décrocher un écran »*, or seule la cible avait son bouton — un écran de salle rattaché au mauvais
+ * tournoi n'était récupérable qu'en allant chercher l'organisateur pour révoquer le jeton.
+ *
+ * ⚠️ **L'ordre des opérations est critique** et chaque ligne est justifiée : le déplacer sans le
+ * comprendre rouvre la boucle « détacher me ramène au formulaire de rattachement ».
+ */
+export function useDetacherPoste() {
+  const deconnexion = useDeconnexionPoste()
+  const reinitialiserRole = useSessionRoleStore((s) => s.reinitialiser)
+  const quitterModePoste = useSessionPosteStore((s) => s.detacher)
+
+  const detacher = () => {
+    // Retirer `?poste=…` de l'URL **avant** de détacher : sinon `codePoste` resterait non nul et l'app
+    // réafficherait l'écran de poste (voire le re-rattacherait automatiquement) juste après.
+    oublierCodePosteUrl()
+    // Oublier aussi le marqueur de rôle (E00US017, ADR-0042) : sans quoi `resoudreRole` renverrait
+    // encore « tablette » (le choix persiste) → retour au rattachement au lieu de l'écran de choix.
+    reinitialiserRole()
+    // ⚠️ Quitter le mode poste **synchroniquement, avant de naviguer** (E14US003). `useDeconnexionPoste`
+    // ne le fait qu'en `onSettled`, donc après l'aller-retour HTTP : si on naviguait avant, `estPoste`
+    // serait encore vrai au rendu suivant, le verrou `D-13` de `mondeAServir` ramènerait l'adresse sur
+    // `/cible` — et une fois la mutation retombée, l'adresse (qui prime sur le marqueur de choix)
+    // rouvrirait le **formulaire de rattachement** au lieu de l'écran des cinq portes. Le store est
+    // idempotent : le `detacher()` d'`onSettled` reste sans effet.
+    quitterModePoste()
+    naviguer('/', { remplacer: true })
+    deconnexion.mutate()
+  }
+
+  return { detacher, enCours: deconnexion.isPending, erreur: deconnexion.error }
 }
 
 // À l'ouverture (réouverture après coupure), vérifie que la session vaut toujours : un 401 purge le

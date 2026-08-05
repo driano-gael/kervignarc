@@ -3,70 +3,65 @@
 > **Écran** : [A11 — Placement des archers](../a11-placement.html) · **Appli** : Appli admin (`/admin`)
 > **Rôle** : L'écran signature de l'admin — et le seul que le CDC UX note explicitement « non instruit ».
 >
-> Remplis ce qui te parle, laisse le reste vide. Une ligne barrée ou un « non »
-> sec est une réponse parfaitement utile — c'est même la plus rapide à exploiter.
+> Rempli le 04/08/2026.
 
 ---
 
 ## 1. Quel parti pris retiens-tu ?
 
-- [ ] A — Glisser-déposer sur le plan
+- [x] A — Glisser-déposer sur le plan
 - [ ] B — Sélectionner puis affecter (tactile)
 - [ ] C — Calcul automatique + retouches
 - [ ] Aucun — voir « à refaire » plus bas
 
-**Pourquoi ce choix** *(ce qui a emporté la décision, même si c'est un détail)*
->
+**Pourquoi ce choix**
+
+> geste simple
 
 **Ce que tu prendrais dans les autres variantes**
->
+
+> _(sans réponse)_
 
 ---
 
 ## 2. Verdict
 
 - [ ] ✅ Validé tel quel — on peut coder ça
-- [ ] 🟡 Validé avec les réserves ci-dessous
+- [x] 🟡 Validé avec les réserves ci-dessous
 - [ ] 🔴 À refaire — l'écran ne répond pas au besoin
 
 ---
 
 ## 3. Critiques
 
-*Ce qui ne va pas : hiérarchie, vocabulaire, information manquante, geste pénible,
-cas réel non couvert.*
-
->
+> trop tassé, on doit pouvoir mieux s'adapter sur la largeur d'un ecran pc.
+> une cible par ligne me parait plus adaptée.
 
 ---
 
 ## 4. Évolutions souhaitées
 
-*Ce que tu veux en plus ou en moins. Sans te censurer sur la faisabilité —
-c'est mon travail de dire ce que ça coûte.*
-
->
+> je ne vois pas de puits de reserve pour deplacer des archers sans les positionner, ce qui evite de toujours faire une inversion entre 2 archer.
 
 ---
 
 ## 5. Questions ciblées
 
-*Ces questions viennent de points que la maquette n'a pas pu trancher seule.*
-
 **1. Travailleras-tu le placement sur PC (souris) ou sur tablette ? Ça décide du geste central.**
->
+
+> sur pc uniquement
 
 **2. Après ajout d'un retardataire, le recalcul doit-il préserver les placements manuels déjà faits ? C'est la question dure de cet écran.**
->
+
+> oui
 
 **3. Quelles contraintes doivent être respectées : même club séparé, mixité des catégories, blasons compatibles, autre ?**
->
+
+> toutes les contraintes déja ennoncé, dans la mesure du possible. donc celles que tu propose sont bonnes.
 
 ---
 
 ## 6. Vocabulaire
-
-*Un mot faux à l'écran coûte cher toute la journée. Corrige sans hésiter.*
 
 | À l'écran | Le bon mot |
 |---|---|
@@ -76,6 +71,4 @@ c'est mon travail de dire ce que ça coûte.*
 
 ## 7. Ce qui manque complètement
 
-*Un écran, un état, un cas que cette maquette ignore.*
-
->
+> _(sans réponse)_

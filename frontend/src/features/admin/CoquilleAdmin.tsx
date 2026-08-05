@@ -85,6 +85,8 @@ import { Supervision } from '../supervision/Supervision'
 import { RechercheArcher } from '../recherche/RechercheArcher'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { AideEcran } from '../../shared/ui/AideEcran'
+import { ChangerDeRole } from '../../shared/ui/ChangerDeRole'
+import { BandeauContexte } from './BandeauContexte'
 import { ConnexionAdmin } from './ConnexionAdmin'
 import { AIDE_ECRANS, type DestinationAdminId } from './aide-ecrans'
 import {
@@ -110,9 +112,17 @@ export function CoquilleAdmin() {
   const estAdmin = useSessionAdminStore((s) => s.jeton) !== null
   if (estAdmin) return <Coquille />
   return (
-    <section className="carte carte--large">
+    <section className="carte carte--large carte--connexion">
       <h2 className="carte__titre">Administration</h2>
       <ConnexionAdmin />
+      {/* Retour explicite à l'écran des portes (A01, retour maquettes du 04/08/2026 : *« il manque
+          peut-être une possibilité de choisir un autre écran… il faut pouvoir sélectionner un rôle de
+          l'appareil »*).
+          L'échappatoire **existait déjà** — « Changer de rôle », dans l'en-tête, depuis E00US017 —
+          mais elle est délibérément discrète (action rare, ton neutre) et n'a donc pas été vue là où
+          on la cherche : sur le seul écran où l'on peut s'être trompé de porte. On ne la déplace pas,
+          on la **redouble ici**, au pied du formulaire, avec les mots de la question posée. */}
+      <ChangerDeRole libelle="← Choisir un autre appareil" />
     </section>
   )
 }
@@ -575,6 +585,19 @@ function Coquille() {
       </nav>
 
       <div className="coquille__contenu">
+        {/* Bandeau de contexte (A02, 04/08/2026) : sur quel tournoi, quel départ, quel écran. Rendu
+            au-dessus de l'aide et du contenu, à la façon dont la coquille rend déjà l'aide — un seul
+            point d'insertion couvre les 24 destinations. Il n'apparaît que si l'axe travaille sur un
+            tournoi **et** qu'un tournoi est choisi : sinon l'écran affiche déjà « choisissez un
+            tournoi », et un bandeau vide au-dessus ne ferait que répéter le manque. */}
+        {axe.besoinTournoi && courant !== null && (
+          <BandeauContexte
+            tournoi={courant}
+            axeLibelle={axe.libelle}
+            ecranLibelle={active.libelle}
+            avecDepart={axe.axe === 'pilotage'}
+          />
+        )}
         {/* Aide contextuelle de la destination active (E14US002). Rendue **ici**, au niveau de la
             coquille, plutôt que dans chacune des 22 features : la coquille connaît déjà la destination
             active, un seul point d'insertion couvre donc tous les écrans (`AIDE_ECRANS` fournit le

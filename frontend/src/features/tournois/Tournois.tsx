@@ -11,19 +11,26 @@
 // La couche données (types + hooks React Query) reste dans `competition/` : c'est un hub partagé
 // (archers, placement en dépendent aussi), qu'on ne déplace pas au titre de cette US.
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useDeconnexionAdmin } from '../admin/hooks'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { FriseCycleDeVie } from '../accueil/FriseCycleDeVie'
 import { BadgeStatut } from '../competition/BadgeStatut'
-import type { Tournoi, TypeTournoi } from '../competition/api'
+import type { StatutTournoi, Tournoi, TypeTournoi } from '../competition/api'
 import {
   useCreerTournoi,
   useModifierTournoi,
   useSupprimerTournoi,
   useTournois,
 } from '../competition/hooks'
+import {
+  dateDuJour,
+  estAujourdhui,
+  filtrerParStatut,
+  ordonnerTournois,
+  statutsPresents,
+} from './tri'
 
 // Destination « Tournoi » de la coquille (E00US015) et accueil public (liste en lecture seule).
 // Fetch interne : la feature est autonome, on ne lui passe pas la liste. Un tournoi sélectionné
@@ -43,6 +50,34 @@ export function GestionTournois({
   // toujours faux, ces contrôles restent masqués. Le serveur reste l'autorité en dernier ressort.
   const estAdmin = useSessionAdminStore((s) => s.jeton) !== null
   const tournois = useTournois()
+
+  // Filtre par état (A04 : *« j'ajouterais également un filtre sur les états »*). Ensemble **vide au
+  // départ** = tout est montré : un écran qui s'ouvre déjà filtré ferait chercher longtemps un
+  // tournoi qui existe.
+  const [statutsRetenus, setStatutsRetenus] = useState<ReadonlySet<StatutTournoi>>(new Set())
+
+  // `useMemo` sur le `??` lui-même : sans lui, une liste absente rendrait un tableau **neuf** à
+  // chaque rendu, donc les deux `useMemo` qui en dépendent recalculeraient toujours — le lint le
+  // signale, et il a raison : le tri d'une liste de tournois est peu coûteux, mais la référence
+  // instable se propagerait à tout ce qui prendrait `visibles` en dépendance plus tard.
+  const liste = useMemo(() => tournois.data ?? [], [tournois.data])
+  // L'horloge est lue **ici**, au bord — les règles de `tri.ts` la reçoivent en paramètre pour rester
+  // déterministes (règle 9). `useMemo` sur la liste seule : la date du jour ne change pas assez vite
+  // pour justifier un abonnement, et un tournoi consulté à minuit pile se corrigera au prochain
+  // rafraîchissement de la liste.
+  const aujourdhui = useMemo(() => dateDuJour(new Date()), [])
+  const visibles = useMemo(
+    () => ordonnerTournois(filtrerParStatut(liste, statutsRetenus)),
+    [liste, statutsRetenus],
+  )
+  const filtres = useMemo(() => statutsPresents(liste), [liste])
+
+  const basculerStatut = (statut: StatutTournoi) =>
+    setStatutsRetenus((precedent) => {
+      const suivant = new Set(precedent)
+      if (!suivant.delete(statut)) suivant.add(statut)
+      return suivant
+    })
 
   // Version **fraîche** du tournoi courant : après un démarrer/terminer, la liste est invalidée et
   // re-lue, ce qui rafraîchit le statut ici sans état local à synchroniser.
@@ -74,20 +109,63 @@ export function GestionTournois({
 
       {estAdmin && <FormulaireNouveauTournoi onChoisi={onChoisi} />}
 
-      {(tournois.data ?? []).length > 0 && (
+      {liste.length > 0 && (
         <>
           <h3 className="carte__soustitre">Tournois existants</h3>
+
+          {/* Filtre par état (A04). Des **bascules** et non un `<select>` : on veut pouvoir garder
+              « en cours + prêt » ensemble, ce qu'une liste déroulante à choix unique interdit. Chaque
+              bascule porte son décompte, pour qu'on sache ce qu'on écarte avant de cliquer. */}
+          {filtres.length > 1 && (
+            <div className="filtre-statuts" role="group" aria-label="Filtrer par état">
+              <button
+                type="button"
+                className={
+                  statutsRetenus.size === 0 ? 'filtre-statut filtre-statut--actif' : 'filtre-statut'
+                }
+                aria-pressed={statutsRetenus.size === 0}
+                onClick={() => setStatutsRetenus(new Set())}
+              >
+                Tous ({liste.length})
+              </button>
+              {filtres.map(({ statut, nombre }) => (
+                <button
+                  key={statut}
+                  type="button"
+                  className={
+                    statutsRetenus.has(statut)
+                      ? 'filtre-statut filtre-statut--actif'
+                      : 'filtre-statut'
+                  }
+                  aria-pressed={statutsRetenus.has(statut)}
+                  onClick={() => basculerStatut(statut)}
+                >
+                  <BadgeStatut statut={statut} /> {nombre}
+                </button>
+              ))}
+            </div>
+          )}
+
           <ul className="liste-tournois">
-            {(tournois.data ?? []).map((t) => (
+            {visibles.map((t) => (
               <LigneTournoi
                 key={t.id}
                 tournoi={t}
                 estAdmin={estAdmin}
                 selectionne={t.id === selectionneId}
+                aujourdhui={aujourdhui}
                 onChoisi={onChoisi}
               />
             ))}
           </ul>
+
+          {/* Un filtre qui ne rend rien doit **le dire** : sans ce mot, l'écran est indiscernable
+              d'une base vide, et on cherche un tournoi qui est là. */}
+          {visibles.length === 0 && (
+            <p className="carte__etat">
+              Aucun tournoi dans les états retenus — décochez un filtre pour élargir.
+            </p>
+          )}
         </>
       )}
     </section>
@@ -101,11 +179,13 @@ function LigneTournoi({
   tournoi,
   estAdmin,
   selectionne,
+  aujourdhui,
   onChoisi,
 }: {
   tournoi: Tournoi
   estAdmin: boolean
   selectionne: boolean
+  aujourdhui: string
   onChoisi: (t: Tournoi) => void
 }) {
   const [edition, setEdition] = useState(false)
@@ -133,6 +213,11 @@ function LigneTournoi({
           {tournoi.lieu ? ` · ${tournoi.lieu}` : ''} · {tournoi.type_tournoi.replace('_', ' ')}
         </button>
         <BadgeStatut statut={tournoi.statut} />
+        {/* « surtout si on est à la date prévue du tournoi » (A02) : l'ordre le fait déjà remonter,
+            cette marque dit **pourquoi** il est là. Un mot et non une couleur seule (`DV-03`). */}
+        {estAujourdhui(tournoi, aujourdhui) && (
+          <span className="tournoi__aujourdhui">Aujourd’hui</span>
+        )}
         {estAdmin && (
           <span className="tournoi__actions">
             <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
