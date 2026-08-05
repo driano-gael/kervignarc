@@ -21,10 +21,18 @@
 ### E16US001 — Plan de salle : se mettre d'accord sur ce qu'est un pas de tir
 *En tant qu'*organisateur, *je veux* que l'écran de plan de salle parle **de la salle que je connais**, *afin de* pouvoir le valider au lieu de deviner ce qu'il représente.
 - **Contexte** : A10 est refusé (🔴) sur un **malentendu de vocabulaire**, pas sur un défaut d'écran. Le commanditaire écrit : *« je ne comprends pas l'usage. Pour moi un pas de tir, c'est le couloir de tir d'un archer et, suivant le nombre de blasons et le nombre d'archers que je positionne sur la cible, exemple 4 archers 2 blasons → A, B, C, D. Explique-moi ce que toi tu vois avant de valider l'écran. »*
-- **CA — l'explication d'abord** : avant toute ligne de code, produire une note courte qui met face à face les deux lectures du mot (le **couloir d'un archer** vs la **rangée de cibles**), avec le vocabulaire de [`docs/glossaire.md`](../docs/glossaire.md) et un schéma de la salle réelle. La faire arbitrer.
-- **CA — l'écran ensuite** : le gabarit de salle nomme ce qu'il dessine avec le mot retenu, et rend visible le lien **cible → blasons → positions A/B/C/D** que le commanditaire décrit.
-- **CA — questions restées sans réponse, à reposer** : *« ta salle a-t-elle une disposition particulière (deux pas de tir, cibles décalées, piliers) ? »* et *« le gabarit doit-il porter autre chose que les cibles : table d'organisation, zone d'échauffement, entrée du public ? »* — les deux conditionnent le modèle.
+- **CA — l'explication d'abord** : avant toute ligne de code, produire une note courte qui met face à face les deux lectures du mot (le **couloir d'un archer** vs la **rangée de cibles**), avec le vocabulaire de [`docs/glossaire.md`](../docs/glossaire.md) et un schéma de la salle réelle. La faire arbitrer. ✅ **Fait le 05/08/2026.**
+- **CA — l'écran ensuite** : le gabarit de salle nomme ce qu'il dessine avec le mot retenu, et rend visible le lien **cible → blasons → couloirs A/B/C/D** que le commanditaire décrit.
+- **✅ ARBITRÉ le 05/08/2026** *(reversé ici depuis la session, règle 9 — sans quoi ce CA resterait périmé et l'US suivante en dériverait ses tests)* :
+  - **« pas de tir » = un groupement de cibles** (la rangée tirée depuis la même ligne de tir). C'est le sens que l'appli employait déjà : **rien à renommer** de ce côté, et les maquettes A10/S01/S07/A13 restent justes.
+  - **« couloir de tir » = la place d'un archer devant sa cible** (A, B, C, D) — le champ que le code nomme `position`. Le mot **« poste » ne doit jamais** désigner cette place : dans l'appli livrée, un `poste` est une **tablette ou un écran** (ADR-0064). La maquette A10 disait « nombre de postes par cible » : c'était la collision réelle, corrigée.
+  - **Le renommage `position` → `couloir` dans le code, l'API et la base est différé** : appliqué dans l'**application livrée** (écrans, aide, messages d'API, les deux **PDF**, maquette A10 + planche wireframe, glossaire), pas dans les identifiants → **DETTE-042** (majeur, résorption rattachée à `E01US019` avec DETTE-010 — même symbole, même colonne, une seule migration).
+  - **Le plafond d'une cible reste un majorant** : les libellés disent « **jusqu'à** N couloirs de tir ». Le placement en installe au plus autant, souvent moins (un blason encombrant occupe la face entière) — écrire « N couloirs » tout court affirmerait une égalité que le moteur contredit.
+  - **Reliquat déclaré, à balayer par les US qui rouvrent ces écrans** : les maquettes `a11-placement`, `p02-ma-journee`, `p04-plan-de-cibles`, `s06-routage`, `a09-inscriptions` et plusieurs fiches de [`docs/fonctionnel/`](../docs/fonctionnel/) disent encore « position ». ⚠️ **`E16US004` et `E16US005` corrigent le mot en même temps que l'écran** — ne pas le laisser filer une deuxième fois. Les **questionnaires** (`maquettes/questionnaires/`), eux, ne se corrigent **pas** : ce sont les réponses brutes du commanditaire, un artefact d'archive.
+  - **La salle rentre dans une grille régulière** : le gabarit reste une **liste** (`N cibles × nombre de couloirs`), **sans** coordonnées ni obstacles. La variante « plan libre » de A10 reste écartée.
+  - **Le gabarit ne porte que les cibles** : ni table d'organisation, ni zone d'échauffement, ni entrée du public.
 - **Notes** : ⚠️ **US bloquante par nature** — elle commence par une question, pas par du code. C'est le cas prévu par la règle « CA ambigu ⇒ questionner avant d'implémenter ». Toucher `docs/glossaire.md` si le mot change. US à **surface visible** → doc fonctionnelle + journal.
+  Les deux arbitrages « grille » et « cibles seules » **ferment aussi** la porte à un modèle géométrique : toute US ultérieure qui voudrait des coordonnées (plan libre, repères) rouvre l'arbitrage, elle ne l'hérite pas.
 - **Dépend de** : E03 (gabarits, plan de salle) · **Jalon** : J2 · **Origine** : questionnaire A10, 04/08/2026
 
 ---
@@ -64,6 +72,7 @@
 - **CA — récapitulatif repliable** de la journée, couvrant **tous les tours de toutes les phases** joués.
 - **CA — détail des flèches des autres** accessible depuis le classement.
 - **Notes** : le multi-archers **existe déjà** au socle (`sessionSuivisStore`, E07US006) — c'est la lecture qui n'en tire pas parti. Front majoritaire ; vérifier si l'API rend le détail des flèches d'un tiers en lecture publique. **Redécoupable** par écran. US à **surface visible** → doc fonctionnelle + journal.
+- **⚠️ Vocabulaire (E16US001, [ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md))** : cette US rouvre des écrans dont la maquette dit encore « position » pour la place d'un archer. **Corriger le mot en « couloir de tir » dans le même diff** — maquette et écran. Le laisser filer rejouerait le refus d'A10 sur un autre écran.
 - **Dépend de** : E07US006, E07US005, E06US001 · **Jalon** : J3 · **Origine** : questionnaires P01, P02, P03, P05, 04/08/2026
 
 ---
@@ -74,6 +83,7 @@
 - **CA — une cible par ligne**, exploitant la largeur disponible (les jetons `--largeur-app` sont posés depuis le lot front du 04/08).
 - **CA — puits de réserve** : une zone où déposer un archer retiré du plan, d'où on le replace ensuite. Un archer en réserve n'est **pas** placé — il doit se distinguer d'un archer sans cible.
 - **CA — préservation** : un recalcul après ajout ne défait pas les placements manuels.
+- **⚠️ Vocabulaire (E16US001, [ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md))** : cette US rouvre des écrans dont la maquette dit encore « position » pour la place d'un archer. **Corriger le mot en « couloir de tir » dans le même diff** — maquette et écran. Le laisser filer rejouerait le refus d'A10 sur un autre écran.
 - **Notes** : vérifier si « en réserve » se représente côté serveur (`cible = null` suffit-il ?) ou seulement à l'écran ; la réponse décide si l'US est front seul. Le glisser-déposer existe (variante A retenue).
 - **Dépend de** : E03US011, E05US010 · **Jalon** : J2 · **Origine** : questionnaire A11, 04/08/2026
 
@@ -134,6 +144,7 @@
 - **CA — pastille de complétude en liste** : deux niveaux — incomplet (avertissement) et **impossible à lancer** (alerte forte).
 - **CA — doublons discrets** : une icône cliquable sur la ligne de l'archer, qui montre le problème et propose l'action, au lieu d'un écran dédié qui pollue.
 - **Notes** : la recherche d'archer existe (E12US006), scopée au tournoi — c'est la **variante toutes entités** qui manque, et elle était déjà annoncée « lot suivant » dans `CoquilleAdmin`. La pastille demande un **agrégat serveur** : la complétude est aujourd'hui un appel **par tournoi**, en faire N sur la liste ne tient pas.
+- **⚠️ Vocabulaire (E16US001, [ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md))** : cette US rouvre des maquettes qui disent encore « position » pour la place d'un archer. **Corriger le mot en « couloir de tir » dans le même diff** — maquette et écran.
 - **Dépend de** : E12US005, E12US006, E02US005 · **Jalon** : J3 · **Origine** : questionnaires A02, A09, 04/08/2026
 
 ---
@@ -148,6 +159,7 @@
 - **CA — A02** : *« une fois un tournoi choisi, on arrive sur la page du déroulé du tournoi avec un accueil qui reprend les informations du tournoi **par départ dans un grand encart** (mettre toutes les informations utiles au déroulé) »*. Seul le bandeau a été livré ; l'encart par départ, non.
 - **CA — P05** : *« [les horaires prévisionnels] seulement pour les départs des différentes phases du tournoi, les autres sont trop imprévisibles »*.
 - **Notes** : ⚠️ **US de rattrapage — à découper avant de prendre.** Elle rassemble sept règles hétérogènes dont deux sont des **contradictions à arbitrer** (S08 vs endpoint existant, A09 vs ADR-0014/0015) et une une **politique d'autorisation** (S09). Ne pas la coder telle quelle : la lire, poser les deux questions, puis redécouper. Elle est ici pour que rien ne se reperde, pas comme un plan de travail.
+- **⚠️ Vocabulaire (E16US001, [ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md))** : cette US rouvre des maquettes qui disent encore « position » pour la place d'un archer. **Corriger le mot en « couloir de tir » dans le même diff** — maquette et écran.
 - **Dépend de** : E04US018 (routage), E04US003 (validation), E10US001 (rôles), E02US002 (inscriptions) · **Jalon** : J3 · **Origine** : revue adversariale du 05/08/2026 sur le tri des questionnaires
 
 ---

@@ -110,7 +110,7 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'Repérez les archers qui semblent en double (même nom, même club) et fusionnez leurs fiches. ' +
     'Nettoyer la liste évite les erreurs de placement et de comptage.',
   placement:
-    'Répartissez les archers inscrits sur les cibles et les postes. Le plan peut être généré ' +
+    'Répartissez les archers inscrits sur les cibles et les couloirs de tir. Le plan peut être généré ' +
     'automatiquement puis ajusté au doigt (glisser-déposer) ; il détermine où chacun tire.',
   duels:
     'Ajustez le placement des duellistes d’une phase à élimination directe pour mettre les adversaires ' +

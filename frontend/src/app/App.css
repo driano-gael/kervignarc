@@ -1344,8 +1344,17 @@ button:disabled {
   padding: 0;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 6px;
+}
+
+/* Le vocabulaire arbitré en E16US001 : pas de tir (groupe de cibles) vs couloir de tir (place
+   d'un archer). Rappelé à l'écran parce que c'est ce malentendu qui avait fait refuser A10. */
+.plan-cibles__legende {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
 }
 
 .plan-cible {
@@ -1354,10 +1363,48 @@ button:disabled {
   gap: 6px;
 }
 
+/* `.formulaire__champ` est `flex: 1` sans `min-width`, donc incompressible sous sa largeur
+   min-content : avec le libellé long (« Jusqu'à 4 couloirs de tir ») **et** l'aperçu des lettres,
+   la ligne déborderait sa piste de grille. On rend le sélecteur compressible. */
+.plan-cible .formulaire__champ {
+  min-width: 0;
+}
+
 .plan-cible__nom {
   flex: 0 0 auto;
   font-size: 13px;
   color: var(--text);
+}
+
+/* Aperçu des couloirs de tir d'une cible : les lettres occupables, les autres en creux. */
+.plan-cible__couloirs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.plan-cible__couloir {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+/* Éteint : la distinction ne repose pas sur la seule couleur (WCAG 1.4.1) — mais c'est la
+   **graisse** (600 → 400) qui la porte, pas le pointillé : en thème clair, `--border` sur
+   `--surface` fait ~1,1:1, donc le bord se voit à peine dans les deux états. Le contraste de la
+   lettre éteinte tourne autour de 3:1, sous l'AA texte : admissible au titre de l'exemption
+   « composant inactif » (1.4.3), pas parce que le seuil serait atteint. */
+.plan-cible__couloir--inactif {
+  border-style: dashed;
+  color: var(--text);
+  opacity: 0.65;
+  font-weight: 400;
 }
 
 /* Pastille de statut du cycle de vie. */

@@ -279,7 +279,7 @@ function CarteArcherSuivi({
                 {l.horaire ? ` · ${l.horaire}` : ''}
               </span>
               <span className="suivi-depart__place">
-                Cible {l.cible} · Pos. {l.position}
+                Cible {l.cible} · couloir {l.position}
               </span>
             </li>
           ))}

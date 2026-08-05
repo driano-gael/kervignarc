@@ -2,7 +2,7 @@
 
 Rend les deux listes papier d'organisation :
 
-- `placement` : un tableau **archer → départ / cible / position** (une ligne par archer placé),
+- `placement` : un tableau **archer → départ / cible / couloir** (une ligne par archer placé),
   ordonné en amont par le service (par cible ou par nom) — pour l'accueil des archers ;
 - `club_paiement` : un bloc **par club**, tableau des archers (départs, dû, payé, statut) suivi de
   la ligne de total du club — pour l'administratif.
@@ -102,7 +102,7 @@ class GenerateurListesImpressionPdf:
         if not liste.lignes:
             elements.append(Paragraph("Aucun archer placé.", self._info))
             return elements
-        entete = ["Départ", "Cible", "Pos.", "Nom", "Prénom", "Catégorie"]
+        entete = ["Départ", "Cible", "Couloir", "Nom", "Prénom", "Catégorie"]
         # Cellules de `Table` : chaînes **brutes** — ReportLab les dessine telles quelles
         # (`drawString`), sans passer par le parseur mini-HTML des `Paragraph`. Les échapper y
         # afficherait « Dupont &amp; Cie » au lieu de « Dupont & Cie » (le mini-HTML ne vaut que
