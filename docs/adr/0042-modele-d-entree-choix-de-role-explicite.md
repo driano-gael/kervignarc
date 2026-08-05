@@ -109,3 +109,18 @@ revue adversariale de l'US : « tablette » recouvrait trois états — choisie,
 - **Pas de tests de rendu.** La logique risquée (la précédence de résolution) est isolée dans la
   fonction pure `resoudreRole`, **testée**. Le rendu des portes se vérifie **à l'écran** (les trois/
   quatre profils sur appareils isolés), comme noté au CA.
+
+---
+
+## Amendement du 05/08/2026 — cinq portes
+
+L'écran de choix en compte désormais **cinq** : le commanditaire a demandé une porte dédiée aux
+écrans de projection (`maquettes/questionnaires/a00-portes.md`). Elle **n'ajoute pas de rôle** —
+« écran de salle » et « écran de cible » mènent tous deux au rôle `tablette`, parce qu'un écran de
+salle est un poste au même titre qu'une tablette de cible (E07US004). Ce qu'elle ajoute est une
+adresse (`/salle`) et un intitulé ; cf. l'amendement d'[ADR-0059](0059-routage-par-role-dans-l-url-routeur-maison.md).
+
+Le **vocabulaire** des portes suit le tableau du même questionnaire : « tablette de cible » devient
+**« écran de cible »** (la réponse à la question 3 dit que ces appareils doivent pouvoir être des
+téléphones), et « téléphone (public) » devient **« public »** (le public consulte aussi depuis une
+tablette d'accueil). Le mot promettait un appareil précis dans les deux cas.

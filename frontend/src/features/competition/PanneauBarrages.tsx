@@ -254,7 +254,7 @@ function BarrageEnCours({
             disabled={annuler.isPending}
             enCours={annuler.isPending}
             titre="Annuler ce barrage ?"
-            message={`${derniere} manche(s) deja saisie(s) seront effacees.`}
+            message={`${derniere} manche(s) déjà saisie(s) seront effacées.`}
             detail={barrage.clos && !barrage.perime ? 'Les archers repartageront leur rang.' : null}
             libelleConfirmer="Annuler le barrage"
             ton="danger"

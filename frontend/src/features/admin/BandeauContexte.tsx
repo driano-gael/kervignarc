@@ -48,12 +48,16 @@ export function BandeauContexte({
 
       {avecDepart && (
         <span className="bandeau-contexte__depart">
-          {depart === null
-            ? // Ni « départ 0 » ni case vide : les deux se lisent comme une panne. On dit l'état.
-              (departs.data ?? []).length === 0
-              ? 'Aucun départ configuré'
-              : 'Tous les départs sont clos'
-            : `Départ ${depart.numero} · ${depart.horaire} — ${libelleEtatDepart(depart)}`}
+          {departs.data === undefined
+            ? // Tant que la lecture n'a pas répondu, on **ne conclut pas** : afficher « aucun départ
+              // configuré » sur un tournoi qui en a dix est un repère faux, donc pire qu'absent.
+              '…'
+            : depart === null
+              ? // Ni « départ 0 » ni case vide : les deux se lisent comme une panne. On dit l'état.
+                departs.data.length === 0
+                ? 'Aucun départ configuré'
+                : 'Tous les départs sont clos'
+              : `Départ ${depart.numero} · ${depart.horaire} — ${libelleEtatDepart(depart)}`}
         </span>
       )}
 

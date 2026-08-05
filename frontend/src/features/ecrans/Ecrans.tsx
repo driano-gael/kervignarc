@@ -40,10 +40,10 @@ export function Ecrans({ tournoiId }: { tournoiId: number }) {
     <section className="carte carte--large">
       <h2 className="carte__titre">Écrans de salle</h2>
       <p className="carte__aide">
-        Un écran de salle est un <strong>poste</strong>, comme une tablette de cible : on le
-        rattache en scannant son code depuis le navigateur de l’écran. Il fait ensuite défiler les
-        vues de son déroulé, tout seul, sans que personne n’ait à y toucher. Depuis la console de
-        supervision, vous pouvez lui imposer une vue à distance.
+        Un écran de salle est un <strong>poste</strong>, comme un écran de cible : on le rattache en
+        scannant son code depuis le navigateur de l’écran. Il fait ensuite défiler les vues de son
+        déroulé, tout seul, sans que personne n’ait à y toucher. Depuis la console de supervision,
+        vous pouvez lui imposer une vue à distance.
       </p>
       <NouvelEcran tournoiId={tournoiId} />
       <MessageErreur erreur={ecrans.error} />

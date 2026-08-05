@@ -18,7 +18,7 @@
 // dépendance. Support : Chrome 37+, Safari 15.4+, Firefox 98+ ; le parc du jour J est BYOD mais un
 // navigateur antérieur à 2022 ne ferait pas tourner le reste de l'app non plus.
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 
 export type TonConfirmation = 'normal' | 'danger'
 
@@ -50,6 +50,12 @@ export function DialogueConfirmation({
   onAnnuler: () => void
 }) {
   const reference = useRef<HTMLDialogElement>(null)
+  // ⚠️ `useId` et **jamais** un identifiant littéral : `BoutonConfirme` monte son dialogue en
+  // permanence, y compris fermé, et il y en a **un par ligne** dans la supervision (~30 postes le
+  // jour J) comme dans la liste des écrans. Un `id` en dur produisait 30 nœuds homonymes — HTML
+  // invalide — et `aria-labelledby` résolvant toujours vers le premier, tout dialogue ouvert était
+  // annoncé « Révoquer la cible 1 ? » quelle que soit la ligne. Relevé par quatre axes de revue.
+  const idTitre = useId()
 
   // `showModal()` / `close()` sont **impératifs** : c'est le seul point du composant qui ne se déduit
   // pas du rendu. On les synchronise sur `ouvert` plutôt que d'exposer l'élément, pour que l'appelant
@@ -65,7 +71,7 @@ export function DialogueConfirmation({
     <dialog
       ref={reference}
       className={`dialogue dialogue--${ton}`}
-      aria-labelledby="dialogue-titre"
+      aria-labelledby={idTitre}
       // `Échap` ferme nativement : sans ce relais, l'élément se fermerait sans que `ouvert` change,
       // et le dialogue ne pourrait plus jamais être rouvert (l'effet croirait le travail fait).
       onCancel={(evenement) => {
@@ -73,7 +79,7 @@ export function DialogueConfirmation({
         if (!enCours) onAnnuler()
       }}
     >
-      <h2 className="dialogue__titre" id="dialogue-titre">
+      <h2 className="dialogue__titre" id={idTitre}>
         {titre}
       </h2>
       <p className="dialogue__message">{message}</p>
@@ -81,7 +87,17 @@ export function DialogueConfirmation({
         <p className="dialogue__detail">{detail}</p>
       )}
       <div className="dialogue__actions">
-        <button type="button" className="bouton--discret" disabled={enCours} onClick={onAnnuler}>
+        {/* Sur un ton `danger`, c'est **« Annuler » qui prend le focus** : `showModal()` focalise le
+            premier élément focusable, et `Entrée` par réflexe ne doit pas déclencher un geste
+            irréversible. Le libellé qui redit l'action protège de l'ambiguïté, pas du réflexe
+            clavier (revue du 05/08/2026). */}
+        <button
+          type="button"
+          className="bouton--discret"
+          disabled={enCours}
+          onClick={onAnnuler}
+          autoFocus={ton === 'danger'}
+        >
           {libelleAnnuler}
         </button>
         <button
@@ -89,10 +105,7 @@ export function DialogueConfirmation({
           className={ton === 'danger' ? 'bouton--danger' : undefined}
           disabled={enCours}
           onClick={onConfirmer}
-          // Le geste confirmé prend le focus à l'ouverture : c'est celui qu'on est venu faire, et
-          // `Entrée` doit tomber dessus. Le garde-fou reste le **libellé**, qui redit le geste
-          // (« Lancer le tour ») là où un `confirm` natif n'offre que « OK ».
-          autoFocus
+          autoFocus={ton !== 'danger'}
         >
           {enCours ? 'En cours…' : libelleConfirmer}
         </button>

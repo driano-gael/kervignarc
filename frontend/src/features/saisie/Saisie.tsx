@@ -16,6 +16,7 @@
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
+import { DialogueConfirmation } from '../../shared/ui/DialogueConfirmation'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { PanneauRoutage } from '../routage/PanneauRoutage'
 import { apresRetour, panneauOuvert, serieClose } from '../routage/presentation'
@@ -182,11 +183,14 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
                 ligne={ligne}
                 nbVolees={bareme.data?.nb_volees ?? null}
                 actif={ligne.archer_id === archerActif}
-                // Re-taper la ligne ouverte **referme** le pavé : c'est le geste inverse du geste
-                // d'appel, celui qu'on essaie d'instinct pour revenir à la grille complète.
-                onSelectionner={() =>
-                  setArcherChoisi((actuel) => (actuel === ligne.archer_id ? null : ligne.archer_id))
-                }
+                // ⚠️ **Pas une bascule.** Une première version refermait le pavé quand on re-tapait
+                // la ligne ouverte — geste « inverse » séduisant, mais `PaveArcher` porte son tampon
+                // de frappe en état local : le refermer **jette la volée en cours**, sans un mot.
+                // Sur une cible, ce tap arrive tout seul (on re-touche le nom pour lire le cumul).
+                // La fermeture passe donc par **un seul geste explicite**, le bouton « Fermer » du
+                // pavé, qui sait ce qu'il y a dans le tampon et demande confirmation s'il n'est pas
+                // vide (revue du 05/08/2026, axes C1 et adversarial).
+                onSelectionner={() => setArcherChoisi(ligne.archer_id)}
               />
             ))}
           </ul>
@@ -348,36 +352,45 @@ function LigneArcher({
             rappel sur la cible »*). Il l'était déjà ; il le reste maintenant que le pavé ne masque
             plus la grille. */}
         <span className="saisie__cumul">{cumul}</span>
+      </button>
 
-        {/* **Relecture par les autres archers** (S02, question 2 : *« oui »* — contre-vérification
-            FFTA B.6.1.1). Elle était techniquement possible — ouvrir le pavé de l'archer, naviguer
-            de volée en volée — mais c'est le geste de *celui qui saisit*, pas de celui qui vérifie :
-            il fallait s'emparer de la tablette et risquer une frappe. Ici, chaque volée montre son
-            total, en lecture seule, sur la ligne de son archer. Le cadenas dit ce que le scoreur a
-            déjà verrouillé, donc ce qui n'est plus discutable à la cible. */}
-        {nbVolees !== null && nbVolees > 0 && (
-          <span className="saisie__relecture" aria-label={`Volées de ${ligne.nom}`}>
-            {Array.from({ length: nbVolees }, (_, i) => {
-              const volee = volees.find((v) => v.numero === i + 1)
-              if (volee === undefined) {
-                return (
-                  <span key={i} className="saisie__relecture-volee saisie__relecture-volee--vide">
-                    ·
-                  </span>
-                )
-              }
-              const classes = volee.verrouillee
-                ? 'saisie__relecture-volee saisie__relecture-volee--verrou'
-                : 'saisie__relecture-volee'
+      {/* **Relecture par les autres archers** (S02, question 2 : *« oui »* — contre-vérification
+          FFTA B.6.1.1). Chaque volée montre son total, en lecture seule ; le cadenas dit ce que le
+          scoreur a déjà verrouillé, donc ce qui n'est plus discutable à la cible.
+          ⚠️ **Hors du `<button>`, et c'est le point.** Placée dedans, cette bande — la plus large
+          zone tapable de la ligne — déclenchait `onSelectionner`, donc **fermait le pavé** (le bouton
+          est une bascule) et **démontait `PaveArcher` avec son tampon de frappe** : l'archer qui se
+          penchait pour vérifier ses volées faisait disparaître les flèches que le marqueur venait de
+          taper, sans un mot. Le geste de *vérifier* ne doit rien changer à l'état de *saisir* —
+          c'était l'intention de départ, elle n'était pas tenue (revue du 05/08/2026, axes C1 et
+          adversarial). `role="group"` plutôt qu'`aria-label` sur un `<span>` nu : sans rôle, le
+          libellé était ignoré des lecteurs d'écran. */}
+      {nbVolees !== null && nbVolees > 0 && (
+        <span className="saisie__relecture" role="group" aria-label={`Volées de ${ligne.nom}`}>
+          {Array.from({ length: nbVolees }, (_, i) => {
+            const volee = volees.find((v) => v.numero === i + 1)
+            if (volee === undefined) {
               return (
-                <span key={i} className={classes} title={volee.valeurs.join(' ')}>
-                  {totalVolee(volee.valeurs)}
+                <span key={i} className="saisie__relecture-volee saisie__relecture-volee--vide">
+                  ·
                 </span>
               )
-            })}
-          </span>
-        )}
-      </button>
+            }
+            const classes = volee.verrouillee
+              ? 'saisie__relecture-volee saisie__relecture-volee--verrou'
+              : 'saisie__relecture-volee'
+            // Les valeurs flèche par flèche sont **écrites**, pas mises en `title` : une infobulle au
+            // survol n'existe pas sur une tablette, c'est-à-dire sur l'appareil visé. B.6.1.1 porte
+            // sur les valeurs, pas sur un cumul (revue, axe B).
+            return (
+              <span key={i} className={classes}>
+                <span className="saisie__relecture-total">{totalVolee(volee.valeurs)}</span>
+                <span className="saisie__relecture-detail">{volee.valeurs.join(' ')}</span>
+              </span>
+            )
+          })}
+        </span>
+      )}
     </li>
   )
 }
@@ -416,6 +429,7 @@ function PaveArcher({
   // Tampon de la frappe, remis au contenu **persisté** de la volée visée quand celle-ci change (ou
   // quand la série relue change après un enregistrement). Ajustement d'état **au rendu** (pas en
   // effet) : le pattern recommandé pour réinitialiser un état sur changement d'entrée sans cascade.
+  const [fermetureAConfirmer, setFermetureAConfirmer] = useState(false)
   const signature = `${numeroActif}:${(valeursExistantes ?? []).join(',')}`
   const [ancre, setAncre] = useState(signature)
   const [buffer, setBuffer] = useState<string[]>(valeursExistantes ?? [])
@@ -476,15 +490,32 @@ function PaveArcher({
         <span className="saisie__total">
           {buffer.length}/{bareme.nb_fleches_par_volee} · {totalVolee(buffer)} pts
         </span>
+        {/* Le **seul** geste de fermeture. Il connaît le tampon : refermer sur une volée commencée
+            la perdrait (état local, démonté avec le composant), donc on demande. Tampon vide, on
+            ferme sans rien demander — une friction sans enjeu se paie en agacement. */}
         <button
           type="button"
           className="lien saisie__fermer-pave"
-          onClick={onFermer}
+          onClick={() => (buffer.length > 0 ? setFermetureAConfirmer(true) : onFermer())}
           aria-label="Fermer le pavé de saisie"
         >
           Fermer
         </button>
       </div>
+
+      <DialogueConfirmation
+        ouvert={fermetureAConfirmer}
+        titre="Fermer sans enregistrer ?"
+        message={`La volée ${numeroActif} de ${ligne.nom} est commencée mais pas enregistrée.`}
+        detail={`${buffer.length} flèche(s) saisie(s) : ${buffer.join(' ')} — elles seront perdues.`}
+        libelleConfirmer="Fermer sans enregistrer"
+        ton="danger"
+        onAnnuler={() => setFermetureAConfirmer(false)}
+        onConfirmer={() => {
+          setFermetureAConfirmer(false)
+          onFermer()
+        }}
+      />
 
       {existante !== null && (
         <p className="saisie__meta">

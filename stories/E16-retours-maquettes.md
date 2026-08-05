@@ -8,6 +8,10 @@
 > domaine ou d'API. Les US ci-dessous sont **le reste** — ce qui exige un arbitrage, du backend, ou
 > plus qu'une passe de mise en forme.
 >
+> **Recette du lot déjà livré** : [`docs/fonctionnel/retours-maquettes-2026-08-05.md`](../docs/fonctionnel/retours-maquettes-2026-08-05.md)
+> — neuf scénarios, en langage non technique. La fiche ne suit pas la convention `<ExxUSyyy>.md`
+> parce que le lot n'est pas une US numérotée ; elle est rattachée ici pour rester trouvable.
+>
 > ⚠️ **Chaque US cite la phrase du questionnaire dont elle dérive.** C'est la source du CA (règle 9) :
 > ne pas la remplacer par une reformulation au moment de coder — c'est elle qui dit ce qui est
 > demandé, et elle est parfois plus étroite ou plus large qu'elle n'en a l'air.
@@ -134,6 +138,20 @@
 
 ---
 
+### E16US011 — Ce que trois questionnaires « validés » demandaient quand même
+*En tant qu'*organisateur, *je veux* que les règles énoncées dans les questionnaires validés soient tenues, *afin de* ne pas croire acquis ce qui n'a jamais été codé.
+- **Contexte** : ⚠️ **cette US existe parce que le tri initial était faux.** Le lot du 05/08/2026 avait rangé S06, S08 et S09 parmi les « validés tels quels, aucune évolution demandée » — au motif que leur verdict était ✅. Or leur verdict porte sur **l'écran**, pas sur les réponses aux questions ciblées, et celles-ci énoncent des **règles** qui ne sont nulle part dans le code. Défaut relevé par la revue adversariale du 05/08/2026, et c'est le plus coûteux du lot : un retour classé ✅ n'est **jamais relu**.
+- **CA — S06 (routage)** : *« 3 mn si un autre tour suit »* — le panneau de routage doit rendre la tablette à la saisie au bout de trois minutes lorsqu'un tour suit. `PanneauRoutage` n'a aucun minuteur. Et *« visible si classement établi »* pour la place finale du perdant.
+- **CA — S08 (validation cible)** : *« plus de modification une fois validé »*. ⚠️ **Cela contredit un endpoint vivant** (`POST /api/v1/saisie/…`, correction d'une volée verrouillée) : c'est un arbitrage, pas une implémentation — à trancher avant de coder. Et *« [une validation peut être annulée] oui, par admin et scoreur »*, qui n'a aucune route.
+- **CA — S09 (états système)** : *« hiérarchie → archer < scoreur < admin »* pour trancher un conflit de modification concurrente. C'est une politique d'autorisation, énoncée sans ambiguïté et non implémentée.
+- **CA — A09 (inscriptions)** : *« on ne permettra pas 2 fois le même numéro de licence »*. ⚠️ **Contredit [ADR-0014](../docs/adr/0014-club-inconnu-plutot-que-club-sentinelle.md) et ADR-0015**, qui écartent explicitement le champ licence. À trancher, pas à implémenter en l'état. Et *« placement manuel obligatoire, mais seulement si possible »* pour un retardataire.
+- **CA — A02** : *« une fois un tournoi choisi, on arrive sur la page du déroulé du tournoi avec un accueil qui reprend les informations du tournoi **par départ dans un grand encart** (mettre toutes les informations utiles au déroulé) »*. Seul le bandeau a été livré ; l'encart par départ, non.
+- **CA — P05** : *« [les horaires prévisionnels] seulement pour les départs des différentes phases du tournoi, les autres sont trop imprévisibles »*.
+- **Notes** : ⚠️ **US de rattrapage — à découper avant de prendre.** Elle rassemble sept règles hétérogènes dont deux sont des **contradictions à arbitrer** (S08 vs endpoint existant, A09 vs ADR-0014/0015) et une une **politique d'autorisation** (S09). Ne pas la coder telle quelle : la lire, poser les deux questions, puis redécouper. Elle est ici pour que rien ne se reperde, pas comme un plan de travail.
+- **Dépend de** : E04US018 (routage), E04US003 (validation), E10US001 (rôles), E02US002 (inscriptions) · **Jalon** : J3 · **Origine** : revue adversariale du 05/08/2026 sur le tri des questionnaires
+
+---
+
 ## Retours **écartés** (traités, sans US)
 
 Consignés ici pour qu'aucun questionnaire ne reste sans réponse.
@@ -142,7 +160,14 @@ Consignés ici pour qu'aucun questionnaire ne reste sans réponse.
   frise **porte les boutons d'action** (démarrer, terminer) ; la replier ou la borner par axe
   risquerait de masquer l'action principale du jour J. Le mot « peut-être » du questionnaire marque
   d'ailleurs une hésitation, pas une demande. À rouvrir si la gêne se confirme à l'usage.
-- **A13, A03, A19, S03, S04, S06, S07, S08, S09** : validés ✅ tels quels, aucune évolution demandée.
-- **A03 question 1 (« des statuts que tu n'utiliseras jamais ? »), A05 questions 1-2, A06 question 1,
-  A13 questions 1-3, A19 questions 1-2, S03 questions 1-3, S04 questions 1-2** : restées **sans
-  réponse** au questionnaire. À reposer si le sujet revient — aucune n'est bloquante aujourd'hui.
+- **A03, A13, A19, S03, S04, S07** : validés ✅, et leurs réponses aux questions ciblées ne
+  demandent rien qui ne soit déjà livré. ⚠️ **S06, S08 et S09 ont été retirés de cette liste** le
+  05/08/2026 : leur verdict ✅ portait sur l'écran, mais leurs réponses portaient des règles — elles
+  sont passées en `E16US011`.
+- **Questions restées sans réponse au questionnaire**, à reposer si le sujet revient : A02 Q3
+  (« espace » / « étape » / « Résultats »), Q4 (le mot pour un niveau qui boucle) et Q5 (référence ou
+  copie des briques à l'assemblage) ; A03 Q1-Q2 ; A05 Q1-Q2 ; A06 Q1-Q2 ; A07 Q1 ; A08 Q2 (comment
+  un scoreur reçoit son accès) ; A13 Q1-Q3 ; A15 Q4 (lancement duel par duel) et Q6 (ce qu'il faut
+  voir avant d'appuyer) ; A19 Q1-Q2 ; P04 Q1-Q2 ; S03 Q1-Q3 ; S04 Q1-Q2 ; S07 Q1-Q2. Aucune n'est
+  bloquante aujourd'hui. **A02 Q5 mérite d'être reposée en priorité** : « si tu changes un tarif en
+  2027, le tournoi 2026 archivé doit-il bouger ? » décide du modèle de l'assemblage.

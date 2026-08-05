@@ -63,21 +63,7 @@ export function TableClassement({ tournoiId, lignes, admin, teteFigee = 0 }: Tab
       <table className="table">
         <Colonnes admin={admin} />
         <thead>
-          <tr>
-            <th scope="col">Rang cat.</th>
-            <th scope="col">Scratch</th>
-            <th scope="col">Archer</th>
-            <th scope="col">Catégorie</th>
-            <th scope="col">Cible</th>
-            <th scope="col">Total</th>
-            <th scope="col" title="Nombre de 10 (départage FFTA)">
-              10
-            </th>
-            <th scope="col" title="Nombre de 9 (départage FFTA)">
-              9
-            </th>
-            {admin && <th scope="col">Placer</th>}
-          </tr>
+          <EnTetes admin={admin} />
         </thead>
         {corps(tete)}
       </table>
@@ -92,6 +78,13 @@ export function TableClassement({ tournoiId, lignes, admin, teteFigee = 0 }: Tab
         <div className="classement__defilement">
           <table className="table">
             <Colonnes admin={admin} />
+            {/* En-têtes **répétés et masqués visuellement** : sans eux, toutes les lignes hors de la
+                tête figée perdaient l'association `scope="col"` — un lecteur d'écran annonçait des
+                nombres sans dire de quelle colonne (revue du 05/08/2026). `sr-only` existe déjà dans
+                la feuille du projet. */}
+            <thead className="sr-only">
+              <EnTetes admin={admin} />
+            </thead>
             {corps(reste)}
           </table>
         </div>
@@ -108,6 +101,29 @@ export function TableClassement({ tournoiId, lignes, admin, teteFigee = 0 }: Tab
         </p>
       )}
     </div>
+  )
+}
+
+/** La rangée d'en-têtes, **partagée** par les deux tables — visible en tête, masquée (mais lue) dans
+ * la table défilante. Un seul point de vérité : ajouter une colonne sans toucher les deux endroits
+ * ne peut plus décaler l'une par rapport à l'autre. */
+function EnTetes({ admin }: { admin: boolean }) {
+  return (
+    <tr>
+      <th scope="col">Rang cat.</th>
+      <th scope="col">Scratch</th>
+      <th scope="col">Archer</th>
+      <th scope="col">Catégorie</th>
+      <th scope="col">Cible</th>
+      <th scope="col">Total</th>
+      <th scope="col" title="Nombre de 10 (départage FFTA)">
+        10
+      </th>
+      <th scope="col" title="Nombre de 9 (départage FFTA)">
+        9
+      </th>
+      {admin && <th scope="col">Placer</th>}
+    </tr>
   )
 }
 

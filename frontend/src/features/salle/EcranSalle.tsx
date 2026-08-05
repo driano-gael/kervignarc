@@ -19,6 +19,7 @@
 
 import { useEffect, useState } from 'react'
 
+import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { VueClassement } from '../competition/VueClassement'
 import { LIBELLE_VUE, type VueEcran } from '../ecrans/api'
 import { useAffichageEcran } from '../ecrans/hooks'
@@ -106,9 +107,22 @@ export function EcranSalle({
         rotation={rotation}
       />
       {onDecrocher !== undefined && (
-        <button type="button" className="salle__decrocher" onClick={onDecrocher}>
-          Décrocher cet écran
-        </button>
+        // ⚠️ **Confirmé, comme les sept autres gestes destructeurs du produit.** Une première version
+        // décrochait au premier clic : sur un parc tactile il n'y a **pas de survol**, donc rien ne
+        // se révélait — le premier tap dans le coin agissait directement, et sur un PC de projection
+        // ce coin est exactement l'endroit où l'on va chercher la fermeture d'une fenêtre. Le
+        // recouvrement, lui, coûte de retaper un code à six caractères en pleine salle (revue du
+        // 05/08/2026, axes A et C1).
+        <BoutonConfirme
+          libelle="Décrocher cet écran"
+          className="salle__decrocher"
+          ton="danger"
+          titre="Décrocher cet écran ?"
+          message="Cet appareil quitte le tournoi et revient à l’écran de choix."
+          detail="Il faudra retaper son code pour le rattacher."
+          libelleConfirmer="Décrocher"
+          onConfirmer={onDecrocher}
+        />
       )}
       <div className="salle__scene">
         {/* Tant que la première réponse n'est pas arrivée, on n'affiche **rien de faux** : un

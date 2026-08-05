@@ -65,15 +65,22 @@ export function VueClassement({
         // laisse défiler horizontalement plutôt que d'écraser les colonnes.
         <div className="table-defilement">
           {/* `teteFigee` (A16) : *« les x premiers sont toujours affichés, mais le dessous du tableau
-              a un défilé jusqu'à n »*. Trois sur l'écran de salle — P07 est explicite : *« ok pour
-              les 3 premiers toujours visible, mais défilement de tous les autres archers dessous »*.
-              Huit sur les surfaces qu'on manipule : on y suit le haut d'une catégorie, pas seulement
-              le podium, et huit lignes tiennent sans écraser le cadre défilant. */}
+              a un défilé jusqu'à n »*. Huit sur les surfaces qu'on **manipule** : on y suit le haut
+              d'une catégorie, pas seulement le podium, et huit lignes tiennent sans écraser le cadre
+              défilant.
+              ⚠️ **Zéro sur l'écran de salle** (`filtrable === false`), et c'est délibéré. P07 demande
+              bien « les 3 premiers toujours visibles, mais **défilement** de tous les autres archers
+              dessous » — mais un cadre `overflow-y: auto` sur un vidéoprojecteur est un cadre que
+              **personne ne peut faire défiler** : ni souris, ni doigt, « aucune interaction » (CA
+              E07US004). Livrer la tête figée sans le défilement automatique aurait réduit un
+              classement de 40 archers à 3 lignes — une **régression** de ce que la salle affichait
+              avant ce lot (revue du 05/08/2026, axe B). Le défilement automatique est spécifié en
+              `E16US009` ; jusque-là, la salle rend le classement entier, comme avant. */}
           <TableClassement
             tournoiId={tournoiId}
             lignes={classement.data.lignes}
             admin={admin}
-            teteFigee={filtrable ? 8 : 3}
+            teteFigee={filtrable ? 8 : 0}
           />
         </div>
       )}

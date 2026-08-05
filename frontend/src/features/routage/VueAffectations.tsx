@@ -143,7 +143,7 @@ export function VueAffectations({
  * chercher. Ce sont les pages nominatives, elles, qui pagineraient sur 200 archers.
  */
 function SalleParPages({ poses, tous }: { poses: RoutageArcher[]; tous: RoutageArcher[] }) {
-  const secondes = useHorlogeDeSalle()
+  const secondes = useSecondesDAffichage()
 
   const parNom = [...tous].sort((a, b) => nomComplet(a).localeCompare(nomComplet(b), 'fr'))
   const pagesDeNoms = nombreDePages(parNom.length)
@@ -215,19 +215,46 @@ function EnteteDePage({
   )
 }
 
-/** L'horloge de la surface projetée, en secondes.
+/**
+ * Temps d'affichage **cumulé de cette vue**, en secondes — pas l'heure du monde.
  *
- * Une **horloge** et non un compteur, pour la raison déjà écrite dans `salle/rotation.ts` : les
- * minuteurs d'un onglet en arrière-plan sont bridés, et huit heures de dérive font un écran bloqué
- * sur une page. Jumelle de `useHorlogeLocale` (`EcranSalle`) — 2ᵉ occurrence, donc dupliquée
- * volontairement : la règle du projet attend une 3ᵉ preuve avant tout remède structurel. */
-function useHorlogeDeSalle(): number {
-  const [secondes, setSecondes] = useState(() => Date.now() / 1000)
+ * ⚠️ **C'est la correction d'un défaut trouvé en revue adversariale (05/08/2026), et il n'était pas
+ * théorique.** La première version dérivait la page de `Date.now()` nu, comme `salle/rotation.ts` le
+ * fait pour la rotation des vues. Le raisonnement était faux d'un cran : la rotation, elle, tourne
+ * **en continu** ; la vue « affectations », non — elle n'est à l'écran qu'une étape sur N du déroulé.
+ * Une page calée sur l'heure absolue n'avance donc que **par sauts**, et quand la période du déroulé
+ * et les 20 s tombent juste, certaines pages ne sortent **jamais**. Vérifié en exécutant la
+ * fonction : déroulé « affectations 30 s + classement 30 s » et trois pages → la page 2 n'est jamais
+ * projetée de la journée. La moitié des archers ne verrait jamais son nom, c'est-à-dire exactement
+ * la fonction demandée en P06.
+ *
+ * On compte donc le temps **pendant lequel la vue est affichée**, cumulé d'un passage à l'autre : la
+ * séquence reprend où elle s'était arrêtée, et toutes les pages finissent par sortir quelle que soit
+ * la découpe du déroulé.
+ *
+ * Le cumul vit **au module** et non dans un état React : le composant est démonté à chaque fois que
+ * l'écran passe à une autre vue, donc tout état interne serait perdu — c'est précisément ce qu'on
+ * cherche à conserver. Une seule surface projetée par onglet, donc pas de collision possible.
+ *
+ * Reste une **horloge** et non un compteur incrémenté, pour la raison écrite dans `rotation.ts` : un
+ * onglet en arrière-plan voit ses minuteurs bridés, et huit heures de dérive figeraient l'écran.
+ */
+let secondesAffichees = 0
+
+function useSecondesDAffichage(): number {
+  const [ecoulees, setEcoulees] = useState(secondesAffichees)
   useEffect(() => {
-    const battement = window.setInterval(() => setSecondes(Date.now() / 1000), 1000)
-    return () => window.clearInterval(battement)
+    const debut = Date.now() / 1000
+    const battement = window.setInterval(
+      () => setEcoulees(secondesAffichees + (Date.now() / 1000 - debut)),
+      1000,
+    )
+    return () => {
+      window.clearInterval(battement)
+      secondesAffichees += Date.now() / 1000 - debut
+    }
   }, [])
-  return secondes
+  return ecoulees
 }
 
 // Le pas de tir, groupé par butte : la disposition physique de la salle. L'ordre vient du serveur —

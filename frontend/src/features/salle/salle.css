@@ -72,11 +72,19 @@
   opacity: 0;
   font-size: 0.7em;
   transition: opacity 0.15s ease;
+
+  /* ⚠️ **`pointer-events: none` au repos, sans quoi l'invisibilité est un piège** : `opacity: 0` ne
+     retire ni le bouton du flux ni les clics, si bien qu'un bouton qu'on ne voit pas restait
+     cliquable au premier coup — et sur un parc tactile, où le survol n'existe pas, c'était le seul
+     comportement possible. Le survol est désormais porté par `.salle` (le bouton, une fois inerte,
+     ne peut plus recevoir son propre `:hover`), et le geste passe par une confirmation. */
+  pointer-events: none;
 }
 
-.salle__decrocher:hover,
+.salle:hover .salle__decrocher,
 .salle__decrocher:focus-visible {
   opacity: 1;
+  pointer-events: auto;
 }
 
 /* `DV-03` : couleur **et** mot. Ambre pour l'alerte (jamais le rouge club, cf. charte). */

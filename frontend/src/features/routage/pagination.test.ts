@@ -57,11 +57,13 @@ describe('pageCourante', () => {
     expect(pageCourante(3, -20, 20)).toBe(2)
   })
 
-  it('deux écrans allumés à des heures différentes montrent la même page', () => {
-    // Le calcul est calé sur l'heure absolue : c'est ce qui évite deux projections voisines
-    // affichant deux pages différentes à sept secondes d'écart.
-    const heureAbsolue = 1_754_000_137
-    expect(pageCourante(4, heureAbsolue, 20)).toBe(pageCourante(4, heureAbsolue, 20))
+  it('deux instants du même cycle donnent la même page ; le cycle suivant en donne une autre', () => {
+    // ⚠️ La première version de ce test comparait **le même appel à lui-même** — vrai pour
+    // n'importe quelle fonction déterministe, y compris une qui aurait cassé la propriété annoncée
+    // par son titre (relevé par trois axes de revue le 05/08/2026). On compare désormais des
+    // instants **distincts**, ce qui est la seule façon de tester une découpe du temps.
+    expect(pageCourante(4, 40, 20)).toBe(pageCourante(4, 55, 20))
+    expect(pageCourante(4, 40, 20)).not.toBe(pageCourante(4, 60, 20))
   })
 })
 

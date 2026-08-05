@@ -27,6 +27,13 @@ export function Supervision({ tournoiId }: { tournoiId: number }) {
   const postes = supervision.data?.postes ?? []
   const cibles = postes.filter((poste) => poste.type === 'cible')
   const ecrans = postes.filter((poste) => poste.type === 'ecran')
+  // ⚠️ **Anomalie = `hors_ligne`, jamais `non_rattache`.** Un poste non rattaché est l'état
+  // **nominal** de la préparation : compter les 30 cibles avant distribution des tablettes faisait
+  // hurler « 30 à vérifier » toute la matinée, et un signal qui hurle dans l'état normal cesse
+  // d'être lu le jour où il dit vrai — l'inverse d'A13, « seuls les problèmes sautent aux yeux ».
+  // Hors ligne, en revanche, c'est un poste **rattaché qui s'est tu** : là, il y a quelqu'un à
+  // envoyer. (Revue du 05/08/2026, axe C1.)
+  const muets = (liste: typeof postes) => liste.filter((p) => p.etat === 'hors_ligne').length
 
   return (
     <section className="carte carte--large">
@@ -57,7 +64,7 @@ export function Supervision({ tournoiId }: { tournoiId: number }) {
             <GroupeRepliable
               titre="Écrans de cible"
               resume={`${supervision.data.nb_en_ligne}/${supervision.data.nb_total} en ligne`}
-              nbAnomalies={cibles.filter((p) => p.etat !== 'en_ligne').length}
+              nbAnomalies={muets(cibles)}
               libelleAnomalies="à vérifier"
               enfants={
                 <table className="table supervision__table">
@@ -90,7 +97,7 @@ export function Supervision({ tournoiId }: { tournoiId: number }) {
           <GroupeRepliable
             titre="Écrans de salle"
             resume={`${supervision.data.nb_ecrans_en_ligne}/${supervision.data.nb_ecrans} en ligne`}
-            nbAnomalies={ecrans.filter((p) => p.etat !== 'en_ligne').length}
+            nbAnomalies={muets(ecrans)}
             libelleAnomalies="à vérifier"
             enfants={
               <PiloterEcrans

@@ -77,3 +77,29 @@ comme les 27 tests déjà en place. Fichiers de test `*.test.tsx` co-localisés 
 - **La règle 9 côté front s'en trouve renforcée** : un comportement de composant qui mappe un CA
   devient testable ; l'absence de test de rendu sur une US front à comportement non trivial pourra
   être remontée en revue (elle ne l'était pas tant que l'outillage manquait).
+
+---
+
+## Amendement du 05/08/2026 — jsdom n'implémente pas `<dialog>`
+
+Le fichier de setup unique décidé au §3 accueille un **complément d'environnement** : jsdom rend
+l'élément `<dialog>` mais ne fournit ni `showModal()` ni `close()`. Sans lui, tout test montant un
+composant qui contient un `DialogueConfirmation` ([ADR-0072](0072-confirmation-destructrice-dialog-natif.md))
+échoue sur « showModal is not a function ».
+
+Le complément est **dans le setup et non dans le composant**, et c'est le point : une garde
+`typeof … === 'function'` en production n'aurait protégé de rien de réel — les navigateurs visés
+fournissent ces méthodes depuis 2022 — et n'aurait existé que pour le test, c'est-à-dire une branche
+qu'on ne saurait plus retirer. Il est par ailleurs **conditionnel** : un jsdom qui implémenterait
+`showModal` reprend la main sans qu'on touche à ce fichier.
+
+**⚠️ Limite permanente, à connaître avant d'écrire un test.** Le complément ne pose que l'attribut
+`open`. Il ne simule ni le piège de focus, ni l'inertie de l'arrière-plan, ni `::backdrop` : **aucun
+test du dépôt ne pourra jamais prouver la sémantique modale**. Un futur composant qui s'y appuierait
+(clic à travers l'arrière-plan, ordre de tabulation) passerait en test et casserait au navigateur.
+Ce qui reste prouvable est ce dont les tests ont besoin : le dialogue s'ouvre, son contenu se lit
+(`getByRole('dialog')` filtre bien un dialogue fermé, jsdom appliquant `dialog:not([open]) {
+display: none }`), et il se referme.
+
+Même geste, même endroit et même raison que le `localStorage.clear()` consigné plus haut : ce que
+l'environnement partagé ne fournit pas se complète une fois, en un point, avec sa limite écrite.

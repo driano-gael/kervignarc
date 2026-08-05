@@ -27,6 +27,7 @@
  * et de la longueur des noms du club. Elle est isolée ici, en un seul point, pour être ajustée sans
  * relire le composant.
  */
+// DETTE-039 — valeur en dur, jamais mesurée sur un vidéoprojecteur réel. Résorption : E16US009.
 export const NOMS_PAR_PAGE = 40
 
 /** Durée d'affichage d'une page, en secondes. *« On peut dire que 20 s (réglable) est correct. »*
@@ -34,6 +35,7 @@ export const NOMS_PAR_PAGE = 40
  * Le « réglable » n'est **pas** livré ici : rendre la durée configurable suppose de l'attacher à la
  * configuration de l'écran, donc au serveur — hors du périmètre front de ce lot. La valeur est le
  * défaut, surchargeable par paramètre, et le réglage côté admin est programmé en US suivante. */
+// DETTE-039 — le « (réglable) » du questionnaire n'est pas livré. Résorption : E16US009.
 export const SECONDES_PAR_PAGE = 20
 
 /** Nombre de pages nécessaires pour `total` noms. Toujours ≥ 1 : une liste vide a une page, celle
@@ -46,9 +48,14 @@ export function nombreDePages(total: number, parPage = NOMS_PAR_PAGE): number {
 /**
  * L'index (base 0) de la page à afficher après `secondes_ecoulees`.
  *
- * Calé sur l'**heure absolue** et non sur le temps depuis l'allumage : deux écrans voisins qui
- * affichent la même liste tournent alors ensemble, au lieu de montrer deux pages différentes à sept
- * secondes d'écart — l'effet le plus désagréable d'un mur de projection.
+ * ⚠️ **`secondes_ecoulees` est le temps d'affichage de la vue, pas l'heure du monde.** Une première
+ * version passait `Date.now()` nu, par analogie avec la rotation des vues de `salle/rotation.ts` —
+ * l'analogie était fausse d'un cran : la rotation tourne en continu, cette vue non, elle n'est à
+ * l'écran qu'une étape sur N du déroulé. Une page calée sur l'heure absolue n'avançait donc que par
+ * sauts, et quand la période du déroulé et la cadence de page tombaient juste, **certaines pages ne
+ * sortaient jamais** (vérifié : déroulé « affectations 30 s + classement 30 s », trois pages → la
+ * page 2 jamais projetée de la journée). L'appelant fournit désormais le temps **cumulé
+ * d'affichage** ; cf. `useSecondesDAffichage` dans `VueAffectations.tsx`.
  */
 export function pageCourante(
   nbPages: number,

@@ -12,6 +12,7 @@
 // aide à la frappe, pas une validation — un code refusé par le serveur reste refusé.
 
 /** Miroir de `ALPHABET_CODE` (backend) : 32 symboles, sans les confondables `I`, `O`, `0`, `1`. */
+// DETTE-040 — 3ᵉ exemplaire (les deux autres sont en Python). Aucun remède : cf. registre.
 export const ALPHABET_CODE = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
 /** Miroir de `LONGUEUR_CODE` (backend) — sert à dessiner les cases et à borner la frappe, jamais à

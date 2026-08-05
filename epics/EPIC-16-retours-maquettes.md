@@ -68,6 +68,7 @@ règle de départage à la demande (A16/P07), dialogue de confirmation en rempla
 - [ ] Feu vert : agir sur la ligne du duel (E16US008).
 - [ ] Écran de salle : réglages et défilement (E16US009).
 - [ ] Recherche transverse et alerte de complétude en liste (E16US010).
+- [ ] Rattrapage : les règles de S06, S08, S09, A09, A02 et P05 (E16US011).
 
 ## Critères d'acceptation (epic)
 

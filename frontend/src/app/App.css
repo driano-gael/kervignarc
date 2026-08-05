@@ -2073,7 +2073,10 @@ button:disabled {
 }
 
 .saisie__relecture-volee {
-  min-width: 2.2em;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 2.6em;
   padding: 1px 4px;
   border-radius: 4px;
   background: var(--bg);
@@ -2081,6 +2084,19 @@ button:disabled {
   font-family: var(--mono);
   font-size: 12px;
   text-align: center;
+}
+
+.saisie__relecture-total {
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+/* Le détail flèche par flèche est **écrit**, pas mis en infobulle : un `title` au survol n'existe pas
+   sur une tablette, or c'est l'appareil visé — et B.6.1.1 porte sur les valeurs, pas sur un cumul. */
+.saisie__relecture-detail {
+  color: var(--text);
+  font-size: 10px;
+  letter-spacing: 0.02em;
 }
 
 .saisie__relecture-volee--vide {
@@ -2381,17 +2397,35 @@ button:disabled {
    son propre cadre. `table-layout: fixed` est ce qui rend l'alignement des colonnes exact entre les
    deux — sans lui, chaque table calculerait ses largeurs sur son propre contenu et les colonnes se
    décaleraient dès qu'un nom serait plus long en bas qu'en haut. */
+/* `min-width` **en plus** de `width: 100%` : en `table-layout: fixed`, la largeur devient exacte, si
+   bien que les colonnes se compriment au lieu de déborder — et le conteneur `overflow-x` de
+   `VueClassement` n'avait plus rien à faire défiler. Sur un téléphone (classement public, 46 rem),
+   les huit colonnes étaient écrasées, c'est-à-dire exactement ce que ce conteneur existe pour
+   éviter. Le plancher rétablit le débordement, donc le défilement. (Revue du 05/08/2026, axes A,
+   C1 et adversarial.) */
 .classement .table {
   table-layout: fixed;
   width: 100%;
+  min-width: 44rem;
 }
 
+/* ⚠️ `scrollbar-gutter: stable` : la table du bas vit dans un cadre défilant, celle du haut non.
+   Sans réservation de la gouttière, l'ascenseur (≈ 15 px sur Windows/Chrome — invisible sur macOS,
+   d'où le risque de ne le découvrir qu'au gymnase) rétrécit la seule colonne sans largeur fixe,
+   « Archer », et **décale les six colonnes suivantes** par rapport à leurs en-têtes. La promesse
+   d'alignement du `<colgroup>` partagé ne tenait que sur les machines de l'auteur. */
 .classement__defilement {
   max-height: 22rem;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   border: 1px solid var(--border);
   border-top: none;
   border-radius: 0 0 8px 8px;
+}
+
+/* Même gouttière réservée sur la tête, pour que les deux tables partent du même bord. */
+.classement > .table {
+  scrollbar-gutter: stable;
 }
 
 /* Largeurs de colonnes — nécessaires dès lors que `table-layout` est `fixed` : sans elles, les huit

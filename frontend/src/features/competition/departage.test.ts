@@ -63,4 +63,18 @@ describe('totauxExAequo', () => {
   it('un classement vide ne plante pas', () => {
     expect(aDesExAequo(totauxExAequo([]))).toBe(false)
   })
+
+  it('avant la première volée, personne n’est ex æquo — même si tout le monde est à zéro', () => {
+    // Le domaine classe **tous** les inscrits dès l'ouverture, à `total = 0`. Les compter aurait
+    // affiché la règle de départage en permanence toute la matinée, c'est-à-dire l'inverse d'A16.
+    const matin = [ligne(0), ligne(0), ligne(0), ligne(0)]
+    expect(aDesExAequo(totauxExAequo(matin))).toBe(false)
+  })
+
+  it('un archer qui n’a pas encore tiré n’est pas ex æquo avec un autre qui n’a pas tiré', () => {
+    const enCours = [ligne(0), ligne(0), ligne(240), ligne(240)]
+    const egalites = totauxExAequo(enCours)
+    expect(estExAequo(ligne(0), egalites)).toBe(false)
+    expect(estExAequo(ligne(240), egalites)).toBe(true)
+  })
 })

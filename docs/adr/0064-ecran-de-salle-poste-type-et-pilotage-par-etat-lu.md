@@ -217,3 +217,35 @@ salle affiche le dessin de l'atelier, simplement plus gros.
   même schéma » perdue à la première divergence.
 - **Paramétrer la géométrie par densité.** Même problème sous une autre forme : le lecteur aurait dû
   réapprendre le dessin d'un écran à l'autre, alors que le `viewBox` suffit à changer d'échelle.
+
+---
+
+## Amendement du 05/08/2026 — une seconde cadence, non pilotée, sur la surface projetée
+
+Le lot « retours du questionnaire de maquettes » a **paginé** la vue « affectations » de l'écran de
+salle (`maquettes/questionnaires/p06-salle-affectations.md`), fermant une question que E07US008
+laissait explicitement ouverte — « 200 archers ne tiennent pas sur un écran projeté ».
+
+**Compatible sur le mécanisme.** La page se déduit du temps écoulé, jamais d'un compteur incrémenté :
+c'est le raisonnement du §2 de cet ADR et de `salle/rotation.ts`, et pour la même raison (minuteurs
+bridés en arrière-plan, huit heures d'affilée).
+
+**⚠️ Divergent sur le modèle, et il faut le dire.** Le §3 pose que tout ce qui gouverne l'affichage
+d'un écran de salle est un **état lu** : le déroulé est un réglage persisté sur le poste, la prise de
+contrôle un registre serveur. La cadence de page est la **première horloge de cette surface qui n'est
+ni persistée, ni réglable, ni visible en supervision** — l'organisateur ne peut ni la voir ni la
+changer. Elle est inscrite au registre de dette (**DETTE-039**) et son réglage est spécifié en
+`E16US009`.
+
+**Deux cadences coexistent donc**, et leur rencontre a produit un défaut réel, corrigé avant merge :
+la pagination était d'abord calée sur l'heure absolue, comme la rotation de vues. L'analogie était
+fausse d'un cran — la rotation tourne **en continu**, la vue paginée non, elle n'est à l'écran qu'une
+étape sur N. Résultat : certaines pages ne sortaient **jamais** (déroulé « affectations 30 s +
+classement 30 s », trois pages → la page 2 jamais projetée de la journée). La pagination compte
+désormais son **temps d'affichage cumulé**, et reprend où elle s'était arrêtée.
+
+**Conséquence de ce correctif, à connaître** : deux écrans voisins portant le même déroulé ne
+tournent plus forcément sur la même page — ils tournent ensemble sur les **vues** (heure absolue),
+plus sur les **pages** (temps d'affichage propre, qui dépend de l'instant d'allumage). C'est le prix
+assumé pour que toutes les pages sortent : mieux vaut deux écrans décalés que des archers dont le nom
+n'est jamais projeté.

@@ -71,3 +71,16 @@ moteur ou les données : distinguer ce qui vient de la fédération de ce qu'on 
 le format d'un export, encaisser par club, configurer les podiums.
 
 Tout cela est écrit et ordonné. Rien n'attend dans un coin.
+
+## Une correction, avant même la livraison
+
+La relecture du travail — faite par cinq examinateurs indépendants avant de le proposer — a arrêté
+deux choses qui auraient gêné le jour J. La première : sur la tablette d'une cible, toucher la
+nouvelle bande de relecture refermait le pavé et **effaçait les flèches en cours de frappe**, sans
+prévenir. La seconde : l'écran projeté n'aurait plus montré que les trois premiers du classement, le
+reste étant relégué dans une zone qu'aucun vidéoprojecteur ne peut faire défiler.
+
+Deux autres corrections méritent d'être connues : la règle de départage s'affichait pour **tout le
+monde** tant que personne n'avait tiré (tous à zéro, donc tous à égalité), et les pages de noms
+projetées, calées sur l'heure du jour plutôt que sur leur propre temps d'écran, pouvaient **ne jamais
+sortir** certaines pages — la moitié des archers n'aurait jamais vu son nom.

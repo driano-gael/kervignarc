@@ -38,6 +38,13 @@ export function totauxExAequo(lignes: readonly LigneDepartageable[]): Map<number
   const vus = new Map<number, Map<number, number>>()
   for (const ligne of lignes) {
     if (ligne.statut !== 'en_lice') continue
+    // ⚠️ **Un total nul n'est pas un score, c'est une absence de score.** Le domaine crée une ligne
+    // `EN_LICE` pour *chaque* inscrit, qu'il ait tiré ou non (`calculer_classement`) : avant la
+    // première volée, les 120 archers sont à zéro. Les compter ferait de tout le monde un ex æquo et
+    // afficherait la règle de départage **en permanence** toute la matinée — c'est-à-dire très
+    // exactement ce qu'A16 demandait de supprimer. Le défaut a été trouvé en revue (axes C1 et
+    // adversarial) ; il rendait la fonctionnalité contraire à son propre CA.
+    if (ligne.total === 0) continue
     const parTotal = vus.get(ligne.categorie_id) ?? new Map<number, number>()
     parTotal.set(ligne.total, (parTotal.get(ligne.total) ?? 0) + 1)
     vus.set(ligne.categorie_id, parTotal)

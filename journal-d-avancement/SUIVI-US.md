@@ -36,7 +36,10 @@
 >
 > Puis, sans ordre imposé : `E16US005` (placement), `E16US006` (origine FFTA + logo club),
 > `E16US008` (feu vert), `E16US009` (écran de salle), `E16US010` (recherche & alertes),
-> `E16US007` (exports/paiements/podiums — **à redécouper avant de prendre**).
+> `E16US007` (exports/paiements/podiums — **à redécouper avant de prendre**), et `E16US011`
+> (**rattrapage** : sept règles énoncées dans des questionnaires que le premier tri avait classés
+> « validés tels quels » à tort — dont **deux contradictions à arbitrer**, S08 contre un endpoint
+> vivant et A09 contre ADR-0014/0015).
 >
 > Les retours **écartés** et les questions **restées sans réponse** sont listés en fin de
 > [`stories/E16`](../stories/E16-retours-maquettes.md) : aucun questionnaire ne reste sans suite.
