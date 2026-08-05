@@ -3,7 +3,7 @@
 // le tournoi**. La lecture est réservée à l'admin (la réponse porte les **codes**, secrets à imprimer
 // puis coller sur les cibles avec leur QR — E09US008).
 
-import { fetchBlob, fetchJson } from '../../shared/api/client'
+import { fetchBlob, fetchJson, telechargerFichier } from '../../shared/api/client'
 
 export interface PosteAdmin {
   id: number
@@ -35,6 +35,21 @@ export function preparerPostes(tournoiId: number): Promise<PosteAdmin[]> {
 export async function getQrCible(tournoiId: number, cibleIndex: number): Promise<string> {
   const blob = await fetchBlob(`/api/v1/tournois/${tournoiId}/postes/${cibleIndex}/qr`)
   return svgEnDataUrl(await blob.text())
+}
+
+/**
+ * Le PDF des **étiquettes de cible** — une page par cible, QR + code, à découper et à coller.
+ *
+ * Retour maquettes du 04/08/2026 (A12) : *« les QR peuvent être imprimés en avance et/ou affichés
+ * sur l'écran à la demande »*. L'affichage à la demande existait (`getQrCible`) ; **l'impression en
+ * avance, non** — la route était livrée côté serveur (E09US008) mais n'était atteignable depuis
+ * aucun écran de l'application. C'était donc une fonctionnalité complète, payée, et invisible.
+ *
+ * `fetchBlob` et non un `<a href>` : la route est admin et le Bearer vit en JS, pas dans un cookie.
+ */
+export async function telechargerEtiquettesQr(tournoiId: number): Promise<void> {
+  const blob = await fetchBlob(`/api/v1/tournois/${tournoiId}/postes/etiquettes-qr`)
+  telechargerFichier(blob, `etiquettes-qr-tournoi-${tournoiId}.pdf`)
 }
 
 // Construit la data URL d'un SVG pour un `<img src>`. `encodeURIComponent` échappe tout le contenu

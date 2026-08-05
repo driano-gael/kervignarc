@@ -13,6 +13,7 @@
 
 import { ErreurApi } from '../../shared/api/client'
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
+import { GroupeRepliable } from '../../shared/ui/GroupeRepliable'
 import type { PosteSupervision } from './api'
 import { PiloterEcrans } from './PiloterEcrans'
 import { afficheEtat, avancementLibelle } from './etat'
@@ -21,6 +22,11 @@ import { tempsRelatif } from './tempsRelatif'
 
 export function Supervision({ tournoiId }: { tournoiId: number }) {
   const supervision = useSupervision(tournoiId)
+  // Les deux natures de poste, séparées **une fois** : elles alimentent chacune leur bandeau, et
+  // chaque bandeau a besoin de son décompte d'anomalies avant même d'être déplié (A12).
+  const postes = supervision.data?.postes ?? []
+  const cibles = postes.filter((poste) => poste.type === 'cible')
+  const ecrans = postes.filter((poste) => poste.type === 'ecran')
 
   return (
     <section className="carte carte--large">
@@ -48,33 +54,51 @@ export function Supervision({ tournoiId }: { tournoiId: number }) {
               cible&nbsp;»).
             </p>
           ) : (
-            <table className="table supervision__table">
-              <thead>
-                <tr>
-                  <th scope="col">Cible</th>
-                  <th scope="col">État</th>
-                  <th scope="col">Dernière activité</th>
-                  <th scope="col">Avancement</th>
-                  <th scope="col">IP</th>
-                  <th scope="col">
-                    <span className="sr-only">Action</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {supervision.data.postes
-                  .filter((poste) => poste.type === 'cible')
-                  .map((poste) => (
-                    <LignePoste key={poste.poste_id} poste={poste} tournoiId={tournoiId} />
-                  ))}
-              </tbody>
-            </table>
+            <GroupeRepliable
+              titre="Écrans de cible"
+              resume={`${supervision.data.nb_en_ligne}/${supervision.data.nb_total} en ligne`}
+              nbAnomalies={cibles.filter((p) => p.etat !== 'en_ligne').length}
+              libelleAnomalies="à vérifier"
+              enfants={
+                <table className="table supervision__table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Cible</th>
+                      <th scope="col">État</th>
+                      <th scope="col">Dernière activité</th>
+                      <th scope="col">Avancement</th>
+                      <th scope="col">IP</th>
+                      <th scope="col">
+                        <span className="sr-only">Action</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cibles.map((poste) => (
+                      <LignePoste key={poste.poste_id} poste={poste} tournoiId={tournoiId} />
+                    ))}
+                  </tbody>
+                </table>
+              }
+            />
           )}
 
-          <PiloterEcrans
-            tournoiId={tournoiId}
-            ecrans={supervision.data.postes.filter((poste) => poste.type === 'ecran')}
-            nbEnLigne={supervision.data.nb_ecrans_en_ligne}
+          {/* Second bandeau : les écrans de salle. Deux natures de poste, deux groupes — c'est
+              exactement le découpage qu'A12 demande (« chaque type d'écran est sous un bandeau
+              repliable de type »), et il existait déjà en substance ici, sans repli ni remontée
+              d'alerte. */}
+          <GroupeRepliable
+            titre="Écrans de salle"
+            resume={`${supervision.data.nb_ecrans_en_ligne}/${supervision.data.nb_ecrans} en ligne`}
+            nbAnomalies={ecrans.filter((p) => p.etat !== 'en_ligne').length}
+            libelleAnomalies="à vérifier"
+            enfants={
+              <PiloterEcrans
+                tournoiId={tournoiId}
+                ecrans={ecrans}
+                nbEnLigne={supervision.data.nb_ecrans_en_ligne}
+              />
+            }
           />
         </>
       )}

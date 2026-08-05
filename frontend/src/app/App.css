@@ -621,6 +621,64 @@
   border-top: 4px solid var(--danger);
 }
 
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Groupe repliable à alerte remontée (A12, retour maquettes du 04/08/2026)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   « Le bandeau affiche une icône d'erreur ; quand on déplie, on voit les postes en erreur avec plus
+   de détail. » Le bandeau est donc dimensionné pour être lu **replié** : c'est son état de repos. */
+.groupe {
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.groupe__bandeau {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: none;
+  color: var(--text-h);
+  text-align: left;
+  cursor: pointer;
+}
+
+.groupe__chevron {
+  color: var(--text);
+}
+
+.groupe__titre {
+  font-weight: 600;
+}
+
+.groupe__resume {
+  color: var(--text);
+  font-size: 14px;
+}
+
+/* L'alerte part à droite et reste lisible **repliée** — c'est tout l'intérêt du composant : un
+   bandeau fermé sur trois tablettes mortes ne doit pas ressembler à un bandeau fermé sur un parc
+   intact. Ambre et non rouge (`DV-03`, arbitrage ADR-0038 : hors ligne n'est pas une faute). */
+.groupe__alerte {
+  margin-left: auto;
+  color: var(--warn);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.groupe--alerte {
+  border-color: var(--warn);
+}
+
+.groupe__contenu {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+
 /* Carte générique. Ses largeurs viennent des jetons de surface (cf. tête de fichier) : les valeurs
    figées `360px` / `560px` étaient dimensionnées pour un téléphone et s'appliquaient tout autant au
    PC d'organisation — c'est la cause directe du « trop tassé » relevé en A02 et A11. */

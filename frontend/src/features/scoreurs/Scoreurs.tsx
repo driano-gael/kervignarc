@@ -12,10 +12,17 @@
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Scoreur } from './api'
-import { useCreerScoreur, useModifierScoreur, useScoreurs, useSupprimerScoreur } from './hooks'
+import {
+  useCreerScoreur,
+  useModifierScoreur,
+  useScoreurs,
+  useSupprimerScoreur,
+  useTelechargerCartesScoreurs,
+} from './hooks'
 
 export function Scoreurs({ tournoiId }: { tournoiId: number }) {
   const scoreurs = useScoreurs(tournoiId)
+  const cartes = useTelechargerCartesScoreurs(tournoiId)
 
   return (
     <section>
@@ -30,11 +37,25 @@ export function Scoreurs({ tournoiId }: { tournoiId: number }) {
         <p className="carte__etat">Aucun scoreur déclaré pour ce tournoi.</p>
       )}
       {scoreurs.data && scoreurs.data.length > 0 && (
-        <ul className="liste-scoreurs">
-          {scoreurs.data.map((scoreur) => (
-            <LigneScoreur key={scoreur.id} tournoiId={tournoiId} scoreur={scoreur} />
-          ))}
-        </ul>
+        <>
+          <ul className="liste-scoreurs">
+            {scoreurs.data.map((scoreur) => (
+              <LigneScoreur key={scoreur.id} tournoiId={tournoiId} scoreur={scoreur} />
+            ))}
+          </ul>
+          {/* **Imprimer toutes les cartes** (A08 : *« garde quand meme la possibilite de pouvoir
+              tous les imprimer »*). Comme les etiquettes de cible, la route existait cote serveur
+              depuis E09US008 sans qu'aucun ecran ne l'atteigne. */}
+          <button
+            type="button"
+            className="bouton--discret"
+            disabled={cartes.isPending}
+            onClick={() => cartes.mutate()}
+          >
+            {cartes.isPending ? 'Generation...' : 'Imprimer toutes les cartes (PDF)'}
+          </button>
+          <MessageErreur erreur={cartes.error} />
+        </>
       )}
     </section>
   )
