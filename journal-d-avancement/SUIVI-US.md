@@ -12,7 +12,9 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 05/08/2026** · **98 US livrées** · dernière : `E16US001` *(le **plan de salle** parle enfin de la salle du club : « **pas de tir** » = un groupement de cibles, « **couloir de tir** » = la place d'un archer (A/B/C/D), « poste » reste une tablette — et l'écran **montre** les couloirs cible par cible. Premier des quatre écrans refusés relevé ; ADR-0073, qui **amende ADR-0006** et ferme la variante « plan libre » ; DETTE-042 pour le renommage `position` → `couloir` en base, différé et rattaché à E01US019)*. Précédente : `E07US005` *(le public suit les **arbres de duels en direct** — « mon chemin » par archer suivi ou tableau complet par tour —, et l'écran de salle sait enfin projeter les tableaux : le catalogue de vues d'ADR-0064 est complet)*. Précédente : `E03US007` *(l'organisateur choisit **ce qu'une cible n'a pas le droit de mélanger** — rien, la catégorie, le blason, ou les deux : contrainte **dure** sur le plan de cibles **et** le plan de duels, réserve motivée, plan antérieur signalé — ADR-0071)*.
+**Dernière mise à jour : 05/08/2026, 20 h 21** · **98 US livrées** *(compte inchangé : la refonte du
+dossier de maquettes en écrans pleins, livrée le même jour, est **hors US numérotée** — support de
+conception, aucune décision métier)* · dernière : `E16US001` *(le **plan de salle** parle enfin de la salle du club : « **pas de tir** » = un groupement de cibles, « **couloir de tir** » = la place d'un archer (A/B/C/D), « poste » reste une tablette — et l'écran **montre** les couloirs cible par cible. Premier des quatre écrans refusés relevé ; ADR-0073, qui **amende ADR-0006** et ferme la variante « plan libre » ; DETTE-042 pour le renommage `position` → `couloir` en base, différé et rattaché à E01US019)*. Précédente : `E07US005` *(le public suit les **arbres de duels en direct** — « mon chemin » par archer suivi ou tableau complet par tour —, et l'écran de salle sait enfin projeter les tableaux : le catalogue de vues d'ADR-0064 est complet)*. Précédente : `E03US007` *(l'organisateur choisit **ce qu'une cible n'a pas le droit de mélanger** — rien, la catégorie, le blason, ou les deux : contrainte **dure** sur le plan de cibles **et** le plan de duels, réserve motivée, plan antérieur signalé — ADR-0071)*.
 
 ---
 
@@ -50,6 +52,34 @@
 >
 > Les retours **écartés** et les questions **restées sans réponse** sont listés en fin de
 > [`stories/E16`](../stories/E16-retours-maquettes.md) : aucun questionnaire ne reste sans suite.
+
+> **⚠️ Le dossier de maquettes a changé de forme le 05/08/2026 — lire avant de prendre une US E16.**
+> Les 36 planches sont désormais rendues **entières, à la taille réelle de leur appareil** (PC
+> 1600 × 900, tablette 1280 × 800, vidéoprojecteur 1920 × 1080, téléphone 390 × 844), avec navigation,
+> bandeaux et en-têtes — **151 écrans pleins**. Elles ne montraient jusqu'ici que des vignettes de
+> 430 px sans ossature. Hors US numérotée : aucune décision métier, aucun changement de domaine, le
+> compte d'US est **inchangé**. PR #135 et #136.
+>
+> **Trois conséquences pour E16, à ne pas manquer :**
+>
+> 1. **Les réponses du tour 1 sont archivées, pas perdues** —
+>    `maquettes/questionnaires/tour-1-2026-08-04/`. Elles restent la **source des dix US E16** et
+>    gardent toute leur valeur : c'est sur elles que E16US001 a été livrée. Les fichiers de travail
+>    sont repartis vierges pour un **tour 2**, sur des écrans que le commanditaire n'a pas encore vus.
+> 2. **Trois des quatre écrans refusés ont été redessinés en même temps.** A07 (phases), A14
+>    (complétude) et P03 (classements publics) ont maintenant une proposition en plein écran — qui
+>    **n'a pas été validée**. Prendre `E16US003` ou `E16US002` sans avoir la réponse du tour 2 sur ces
+>    planches, c'est risquer d'implémenter une proposition que le commanditaire écartera.
+> 3. **Une erreur de fond a été corrigée sur A07, et elle change le cadrage d'`E16US002`.** La planche
+>    listait « 1/8 de finale » et « 1/4 de finale » comme **des phases**. C'est faux :
+>    `backend/domain/tableau.py` ne connaît qu'**une** phase d'élimination directe, qui porte tout le
+>    tableau — les niveaux sont des `tour` de match. Le refus de A07 doit donc être relu à la lumière
+>    de cette correction : une partie portait peut-être sur ce malentendu.
+>
+> Le dossier a par ailleurs fait remonter **deux écrans qui n'existaient nulle part** : le **barrage**
+> (égalité 5–5 en duel, le seul moment où l'application cède la décision à un juge) et le **conflit de
+> saisie** (deux postes modifiant la même volée). Ni l'un ni l'autre n'est spécifié — ils sont
+> maquettés, pas décidés.
 
 
 > **⚡ Priorité immédiate — retours de la démo du 27/07/2026.** Avant de reprendre la séquence J2,
