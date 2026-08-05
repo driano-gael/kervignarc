@@ -3,67 +3,18 @@
 > **Écran** : [A09 — Inscriptions — archers, doublons, retardataires](../a09-inscriptions.html) · **Appli** : Appli admin (`/admin`)
 > **Rôle** : L'écran le plus fréquenté avant le jour J : il doit répondre en trois secondes à « cet archer est-il inscrit, et où tire-t-il ? ».
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](a09-inscriptions.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [ ] A — Tableau dense filtrable
-- [x] B — Recherche d'abord, liste ensuite
-- [ ] C — Liste groupée par départ
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> c'est une barre de recherche qui doit rester accessible sut tout le deroulé du pilotage et se concenté sur le tournoi en cours selectionné. donc elle ne doit pas pollué le reste de l'ecran
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [x] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> _(sans réponse)_
-
----
-
-## 5. Questions ciblées
-
-**1. Un retardataire s'inscrit pendant le tournoi : que doit-il se passer côté placement — proposition automatique, ou placement manuel obligatoire ?**
-
-> placement manuel obligatoire, mais seulement si possible.
-
-**2. La détection de doublons doit-elle bloquer la création, ou seulement avertir ?**
-
-> on avertit seulement ca ne doit pas pollué les ecran ni le fonctionnement. une simple icone cliquable sur la ligne de l'archer peut suffire, on clique et ca nous montre le probleme et donne le choix de l'action. normalement avec les numero de license les doublons seront effacé (d'ailleur on ne permettra pas 2 fois le meme numero de license)
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/a09-inscriptions.md`](tour-1-2026-08-04/a09-inscriptions.md).

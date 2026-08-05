@@ -3,66 +3,18 @@
 > **Écran** : [A18 — Exports, archive, journal d'audit](../a18-exports-archive-audit.html) · **Appli** : Appli admin (`/admin`)
 > **Rôle** : Le temps « après » : sortir les résultats, verrouiller, et pouvoir répondre à une réclamation.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](a18-exports-archive-audit.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [x] A — Trois destinations séparées
-- [ ] B — Une page « clôture » qui enchaîne les trois
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> tout y est
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [x] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> chaque ligne d'export doit proposer plusieur formats possible, (CSV, EXEL, PDF, ...)
-
----
-
-## 5. Questions ciblées
-
-**1. Quels exports te sont réellement demandés (FFTA, tableur, PDF d'affichage, site du club) ?**
-
-> ca peut evoluer et donc etre parametrable
-
-**2. Le journal d'audit doit-il être consultable en cours de tournoi, ou seulement après ?**
-
-> en cours egalement
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/a18-exports-archive-audit.md`](tour-1-2026-08-04/a18-exports-archive-audit.md).

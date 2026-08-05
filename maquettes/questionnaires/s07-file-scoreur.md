@@ -3,67 +3,18 @@
 > **Écran** : [S07 — File du scoreur](../s07-file-scoreur.html) · **Appli** : Appli saisie (`/saisie`)
 > **Rôle** : Le goulot d'étranglement de la journée : aux duels, 8 cibles finissent ensemble et attendent toutes.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](s07-file-scoreur.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [x] A — Liste par ancienneté d'attente
-- [ ] B — Carte unique « suivant »
-- [ ] C — Groupé par zone de la salle
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> clair et pratique
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [x] ✅ Validé tel quel — on peut coder ça
-- [ ] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> _(sans réponse)_
-
----
-
-## 5. Questions ciblées
-
-**1. Le scoreur optimise-t-il sa tournée physique (grouper par zone) ou traite-t-il strictement par ancienneté ?**
-
-> _(sans réponse)_
-
-**2. Faut-il pouvoir « réserver » une cible pour éviter que deux scoreurs s'y déplacent, malgré le principe de non-prise en charge ?**
-
-> _(sans réponse)_
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/s07-file-scoreur.md`](tour-1-2026-08-04/s07-file-scoreur.md).

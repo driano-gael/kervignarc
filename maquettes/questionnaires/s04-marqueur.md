@@ -3,67 +3,18 @@
 > **Écran** : [S04 — Changer de marqueur](../s04-marqueur.html) · **Appli** : Appli saisie (`/saisie`)
 > **Rôle** : Un geste rare : l'interface ne doit pas s'organiser autour de lui.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](s04-marqueur.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [x] A — Feuille appelée par un lien discret
-- [ ] B — Sélecteur permanent
-- [ ] C — Confirmation à la validation
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> _(sans réponse)_
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [x] ✅ Validé tel quel — on peut coder ça
-- [ ] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> _(sans réponse)_
-
----
-
-## 5. Questions ciblées
-
-**1. Le marqueur change-t-il vraiment rarement chez vous, ou tournez-vous à chaque volée ?**
-
-> _(sans réponse)_
-
-**2. Le marqueur est-il toujours un des archers de la cible, ou parfois un accompagnateur extérieur ?**
-
-> _(sans réponse)_
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/s04-marqueur.md`](tour-1-2026-08-04/s04-marqueur.md).

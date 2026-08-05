@@ -3,66 +3,18 @@
 > **Écran** : [P03 — Classements](../p03-classements.html) · **Appli** : Appli publique (`/`)
 > **Rôle** : Même donnée que côté admin, autre mise en forme : sur 360 px on ne montre pas six colonnes.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](p03-classements.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [ ] A — Liste compacte centrée sur soi
-- [ ] B — Tableau défilable complet
-- [x] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> il me faut les 2, soi le classement uniquementdes archers suivis, soit le classement general.
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [ ] 🟡 Validé avec les réserves ci-dessous
-- [x] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> _(sans réponse)_
-
----
-
-## 5. Questions ciblées
-
-**1. Le classement doit-il être visible en direct pendant la qualification, ou seulement une fois la série finie ?**
-
-> en direct, des que les informations sont disponible, pareil pour les score en cours
-
-**2. Les archers doivent-ils voir le détail des flèches des autres, ou seulement les totaux ?**
-
-> oui pour le detail des fleches des autres
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/p03-classements.md`](tour-1-2026-08-04/p03-classements.md).

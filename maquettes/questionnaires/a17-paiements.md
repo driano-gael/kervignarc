@@ -3,66 +3,18 @@
 > **Écran** : [A17 — Paiements](../a17-paiements.html) · **Appli** : Appli admin (`/admin`)
 > **Rôle** : Le seul écran hors sportif qui reste modifiable après « Terminé ».
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](a17-paiements.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [x] A — Liste des dus avec encaissement rapide
-- [ ] B — Vue caisse (total, moyens, écarts)
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> simple, rapide
-
-**Ce que tu prendrais dans les autres variantes**
-
-> le detail des mode de versement en options
-
----
-
-## 2. Verdict
-
-- [x] ✅ Validé tel quel — on peut coder ça
-- [ ] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> _(sans réponse)_
-
----
-
-## 5. Questions ciblées
-
-**1. Qui tient les paiements le jour J : toi, ou une personne dédiée avec son propre accès ?**
-
-> admin
-
-**2. Faut-il gérer les paiements par club (un chèque pour 12 archers) ou seulement individuels ?**
-
-> oui
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/a17-paiements.md`](tour-1-2026-08-04/a17-paiements.md).

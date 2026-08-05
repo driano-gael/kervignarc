@@ -3,67 +3,18 @@
 > **Écran** : [S06 — Panneau de routage après validation](../s06-routage.html) · **Appli** : Appli saisie (`/saisie`)
 > **Rôle** : La tablette devient un panneau d'affichage : c'est là que se gagnent les 2 minutes.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](s06-routage.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [x] A — Vainqueur et perdant à égalité
-- [ ] B — Plein écran vainqueur
-- [ ] C — Retour automatique compté
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> lisible et clair pour tout le monde
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [x] ✅ Validé tel quel — on peut coder ça
-- [ ] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> _(sans réponse)_
-
----
-
-## 5. Questions ciblées
-
-**1. Le perdant doit-il voir sa place finale immédiatement, ou est-ce brutal juste après la défaite ?**
-
-> visible si classement établis
-
-**2. Combien de temps ce panneau doit-il rester avant de rendre la tablette à la saisie ?**
-
-> 3mn si un autre tour suit.
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/s06-routage.md`](tour-1-2026-08-04/s06-routage.md).

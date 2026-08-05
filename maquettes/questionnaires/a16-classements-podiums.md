@@ -3,66 +3,18 @@
 > **Écran** : [A16 — Classements et podiums](../a16-classements-podiums.html) · **Appli** : Appli admin (`/admin`)
 > **Rôle** : Deux besoins distincts : le classement consultable et le podium projetable.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](a16-classements-podiums.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [x] A — Tableau filtrable + bouton projeter
-- [ ] B — Onglets classement / podium
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> _(sans réponse)_
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [x] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> les x premiers sont toujours affiché, mais le dessous du tableau a un defilé jusqu'a n
-
----
-
-## 5. Questions ciblées
-
-**1. La règle de départage doit-elle être affichée en permanence, ou seulement en cas d'ex æquo ?**
-
-> seulement en cas d'ex aequo
-
-**2. Les podiums sont-ils par catégorie uniquement, ou aussi scratch / par club / par équipe ?**
-
-> podium configurable, tout doit etre possible.
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/a16-classements-podiums.md`](tour-1-2026-08-04/a16-classements-podiums.md).
