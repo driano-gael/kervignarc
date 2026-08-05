@@ -36,59 +36,59 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">A · Pavé numérique complet</span>
-      <span class="sous-etiquette">Toutes les valeurs, taille égale, ordre de lecture naturel.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">A · Pavé à dix touches</span>
+      <span class="sous-etiquette">Une touche par valeur, plus M et les utilitaires.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="pave">
-          <button>X</button><button>10</button><button>9</button><button>8</button><button>7</button>
-          <button>6</button><button>5</button><button>4</button><button>3</button><button>2</button>
-          <button>1</button><button class="util">M</button><button class="util">↶</button><button class="util">✓</button><button class="util">…</button>
-        </div>
-      </div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px"><span style="font-size:20px;font-weight:800">DURAND Jean — couloir B</span><span class="second">volée 8 · flèche 3</span><span class="fin second" style="margin-left:auto">trispot 40 · zones 10 à 6</span></div>
+
+        <div class="archers"><div class="arc actif"><span class="pos">B</span><span class="nom">DURAND Jean</span><span class="fl">9</span><span class="fl">9</span><span class="fl saisie">_</span><span class="somme">18</span></div></div>
+
+        <div class="pave" style="margin-top:20px"><button class="">10</button><button class="">9</button><button class="">8</button><button class="">7</button><button class="">6</button><button class="">5</button><button class="">4</button><button class="">3</button><button class="">2</button><button class="">1</button><button class="attenue">M</button><button class="util">←</button><button class="util">Flèche suivante</button><button class="util">Corriger</button><button class="util">Fin de volée</button></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Sur un <b>trispot 40</b>, les zones 5 et moins n’existent pas : les touches 5 à 1 pourraient être masquées. Elles sont laissées visibles mais atténuables — un pavé dont la forme change selon le blason force à relocaliser les touches à chaque cible.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">recommandé</span> Zéro apprentissage, aucune visée précise :
-    <b>15 cibles de ~60 px</b>. « M » (manqué) et « X » (10 centre) sont des valeurs de plein droit, pas des cas
-    cachés dans un menu.</p>
+        <p class="verdict"><span class="pouce oui">recommandé</span> Dix touches de 19 px de corps sur une largeur de tablette : chaque cible tactile fait plus de 90 px de large. On tape sans regarder, ce qui est la seule façon de saisir en même temps qu’on lit les flèches dans le blason.</p>
+    <p class="verdict"><span class="pouce peut">à trancher</span> Faut-il <b>masquer</b> les zones impossibles selon le blason, ou seulement les atténuer ? Masquer réduit l’erreur ; atténuer garde le pavé stable d’une cible à l’autre.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">B · Blason tactile</span>
-      <span class="sous-etiquette">On tape la zone touchée, comme sur la vraie cible.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">B · Pavé réduit au blason</span>
+      <span class="sous-etiquette">Seules les valeurs possibles sont proposées.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile" style="align-items:center">
-        <div style="width:190px;height:190px;border-radius:50%;border:1px solid var(--border);
-          background:radial-gradient(circle,#F6E05E 0 20%,#E15241 20% 40%,#3E8FC7 40% 60%,#2B2B29 60% 80%,#E9E9E6 80% 100%)"></div>
-        <p class="faible" style="margin:0;text-align:center">Séduisant… mais l'anneau du 1 fait 6 px de large.</p>
-      </div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px"><span style="font-size:20px;font-weight:800">DURAND Jean — couloir B</span><span class="pas info">trispot 40 — zones 10 à 6 seulement</span></div>
+
+        <div class="archers"><div class="arc actif"><span class="pos">B</span><span class="nom">DURAND Jean</span><span class="fl">9</span><span class="fl">9</span><span class="fl saisie">_</span><span class="somme">18</span></div></div>
+
+        <div class="pave" style="margin-top:20px;grid-template-columns:repeat(6,minmax(0,1fr))"><button class="">10</button><button class="">9</button><button class="">8</button><button class="">7</button><button class="">6</button><button class="attenue">M</button></div>
+
+        <div class="pave" style="margin-top:12px;grid-template-columns:repeat(4,minmax(0,1fr))"><button class="util">←</button><button class="util">Flèche suivante</button><button class="util">Corriger</button><button class="util">Fin de volée</button></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Six touches au lieu de onze : chacune fait <b>200 px de large</b>. C’est confortable, mais le pavé change de forme quand un archer tire sur un mono 40 — et la mémoire du geste est perdue.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce non">écarté</span> Métaphore juste, ergonomie fausse : les zones
-    extérieures sont des anneaux <b>très fins</b>. Et surtout — le marqueur <b>ne voit pas l'impact</b>, il tape
-    ce qu'on lui <em>annonce</em>. La métaphore est donc même conceptuellement à côté.</p>
+        <p class="verdict"><span class="pouce peut">plus sûr, moins stable</span> Une valeur impossible ne peut plus être saisie. Mais sur une cible mixte — un trispot et un mono côte à côte — le pavé change entre deux archers de la même volée.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">C · Décroissant contextuel</span>
-      <span class="sous-etiquette">Après un 8, les valeurs supérieures s'estompent — sans se verrouiller.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">C · Saisie par la cible</span>
+      <span class="sous-etiquette">On touche l’endroit où la flèche est plantée.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="pave">
-          <button class="attenue">X</button><button class="attenue">10</button><button class="attenue">9</button><button>8</button><button>7</button>
-          <button>6</button><button>5</button><button>4</button><button>3</button><button>2</button>
-          <button>1</button><button class="util">M</button><button class="util">↶</button><button class="util">✓</button><button class="util">…</button>
-        </div>
-        <p class="faible" style="margin:0">Ordre décroissant (B.6.1.3) — les valeurs grisées restent tapables.</p>
-      </div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px"><span style="font-size:20px;font-weight:800">DURAND Jean — couloir B</span><span class="second">volée 8 · flèche 3</span></div><div style="display:flex;justify-content:center;margin-top:10px"><div style="width:330px;height:330px;border-radius:50%;border:3px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative"><div style="width:250px;height:250px;border-radius:50%;border:2px solid var(--border-subtle);position:absolute"></div><div style="width:170px;height:170px;border-radius:50%;border:2px solid var(--border-subtle);position:absolute"></div><div style="width:90px;height:90px;border-radius:50%;border:2px solid var(--brand-border);position:absolute"></div><span style="position:absolute;font-weight:800;font-size:15px">10</span><span style="position:absolute;top:56px;font-weight:700;font-size:13px;color:var(--text-muted)">9</span><span style="position:absolute;top:22px;font-weight:700;font-size:13px;color:var(--text-muted)">8</span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Le geste colle au réel : on touche la zone où la flèche est plantée. Mais une <b>cible tactile de 20 px</b> pour la zone 10 demande une précision que ni des gants ni une tablette posée sur pied ne permettent — et une erreur de tap coûte un point, pas une correction évidente.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">à combiner avec A</span> Ce n'est pas une alternative : c'est
-    <b>A + une aide</b>. Estomper guide sans interdire (<span class="ref">P-3</span>) ; verrouiller casserait
-    la correction d'une flèche mal annoncée.</p>
+        <p class="verdict"><span class="pouce non">écarté</span> Séduisant sur le papier, dangereux en salle : les zones centrales sont les plus petites et les plus fréquentes. Le pavé de chiffres reste plus rapide et plus sûr.</p>
   </figure>
 
 </div>
@@ -97,40 +97,39 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">Le bouton chiffre avant d'envoyer</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Correction d’une flèche</span>
+      <span class="sous-etiquette">Revenir sur une valeur déjà entrée, avant validation.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div style="display:flex;gap:8px;justify-content:center">
-          <span class="fl" style="width:52px;font-size:18px">10</span>
-          <span class="fl" style="width:52px;font-size:18px">10</span>
-          <span class="fl" style="width:52px;font-size:18px">9</span>
-        </div>
-        <button class="bouton valider geant">VALIDER LA VOLÉE — 29 pts</button>
-        <button class="bouton discret">↶ Corriger la dernière flèche</button>
-      </div>
+        <div class="carte info"><div class="rang bloc" style="padding:16px"><span class="second">Correction — volée 8, flèche 2 de <b>DURAND Jean</b>. La valeur actuelle est <b>9</b>.</span></div></div>
+
+        <div class="archers"><div class="arc actif"><span class="pos">B</span><span class="nom">DURAND Jean</span><span class="fl">9</span><span class="fl saisie">_</span><span class="fl">8</span><span class="somme">17</span></div></div>
+
+        <div class="pave" style="margin-top:20px"><button class="">10</button><button class="">9</button><button class="">8</button><button class="">7</button><button class="">6</button><button class="">5</button><button class="">4</button><button class="">3</button><button class="">2</button><button class="">1</button><button class="attenue">M</button><button class="util">Annuler</button><button class="util">Valider la correction</button></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Tant que la série n’est pas validée par le scoreur, la correction est <b>libre et non tracée</b> : c’est une saisie en cours, pas un résultat. Après validation, la même correction passe par l’organisateur et laisse une trace au journal d’audit, avec son motif.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">P-4</span> Le total affiché sur le bouton est la
-    <b>dernière chance</b> de voir une faute de frappe. « Valider » tout court ne dit rien.</p>
+        <p class="verdict"><span class="pouce oui">la bonne frontière</span> Corriger avant validation ne demande aucune justification ; après, si. Sans cette distinction, soit on trace tout (et le journal devient illisible), soit on ne trace rien (et une contestation n’a plus de réponse).</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">Correction d'une flèche déjà saisie</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Flèche manquée — M</span>
+      <span class="sous-etiquette">La valeur qui n’est pas un chiffre.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte info"><div class="rang bloc">
-          <span class="second">Correction de <strong>PETIT · flèche 2</strong> — actuellement <strong>10</strong></span></div></div>
-        <div class="pave" style="grid-template-columns:repeat(5,1fr)">
-          <button>X</button><button class="centre">10</button><button>9</button><button>8</button><button>7</button>
-        </div>
-        <p class="faible" style="margin:0">Avant validation : correction libre. Après : passe par le scoreur (S08).</p>
-      </div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px"><span style="font-size:20px;font-weight:800">DURAND Jean — couloir B</span><span class="pas att">flèche manquée</span></div>
+
+        <div class="archers"><div class="arc"><span class="pos">B</span><span class="nom">DURAND Jean</span><span class="fl">9</span><span class="fl">9</span><span class="fl">M</span><span class="somme">18</span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Un <b>M</b> vaut zéro mais ne s’écrit pas « 0 » : la distinction compte pour le départage et pour la relecture de la feuille de marque. La touche est <b>atténuée</b> et à l’écart des chiffres — un M tapé par erreur coûte plus cher qu’un 9 tapé à la place d’un 10.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict">La frontière <b>avant / après validation</b> est le vrai sujet : c'est elle qui donne sa
-    valeur au verrou.</p>
+        <p class="verdict"><span class="pouce oui">une touche à part</span> Ni dans la rangée des chiffres, ni de la même couleur. C’est la seule touche du pavé dont l’erreur ne se rattrape pas par une correction évidente : personne ne remarque un M en trop dans une somme.</p>
   </figure>
 
 </div>

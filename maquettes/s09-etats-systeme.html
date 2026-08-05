@@ -36,51 +36,64 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">1 · Chargement</span>
-      <span class="sous-etiquette">Squelettes à la forme du contenu attendu.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Chargement</span>
+      <span class="sous-etiquette">Des squelettes à la forme du contenu attendu.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-      <div class="squelette" style="width:60%"></div><div class="squelette large"></div><div class="squelette large"></div></div>
+        <div class="carte"><div class="rang bloc" style="padding:18px"><span class="squelette large" style="width:220px"></span><div style="margin-top:16px;display:flex;flex-direction:column;gap:10px"><span class="squelette"></span><span class="squelette"></span><span class="squelette" style="width:60%"></span></div></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Le squelette <b>annonce la forme</b> : deux lignes pleines et une courte, donc une liste. Un sablier centré ne dit rien de ce qui arrive, et l’œil doit se replacer quand le contenu s’affiche.</span></div></div>
       </div>
     </div></div></div>
+      <p class="verdict"><span class="pouce oui">règle générale</span> Un squelette à la forme du contenu, jamais un sablier.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">2 · Vide</span>
-      <span class="sous-etiquette">Message + action, jamais une page blanche.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Vide</span>
+      <span class="sous-etiquette">Il n’y a rien, et ce n’est pas une panne.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile" style="text-align:center;padding:20px 12px">
-      <div style="font-weight:700">Aucune volée</div>
-      <p class="second" style="margin:0">La série commencera au top de l'arbitre.</p>
-      <button class="bouton discret">Commencer</button></div>
+        <div style="max-width:560px;margin:60px auto 0;text-align:center"><p style="font-size:24px;font-weight:800;margin:0 0 8px">Aucun archer sur cette cible</p><p class="second" style="margin:0 0 20px">Le placement n’a pas encore été publié pour le départ 2.</p><span class="bouton auto discret">Actualiser</span></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Un écran vide dit <b>pourquoi</b> il est vide et <b>ce qui le remplira</b>. « Aucune donnée » laisse croire à une panne.</span></div></div>
       </div>
     </div></div></div>
+      <p class="verdict"><span class="pouce oui">règle générale</span> Un vide explique sa cause et nomme ce qui le lèvera.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">3 · Erreur récupérable</span>
-      <span class="sous-etiquette">Ce qui s'est passé, ce qui va se passer.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Erreur récupérable</span>
+      <span class="sous-etiquette">Ça a échoué, ça se répare tout seul.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-      <div class="aplat-alerte">▲ Envoi impossible</div>
-      <p class="second" style="margin:0">Nouvel essai dans 15 s.</p>
-      <button class="bouton discret">Réessayer</button></div>
+        <div class="aplat-alerte">▲ Envoi impossible<span class="impact">nouvelle tentative dans 4 s</span></div><div class="carte" style="margin-top:16px"><div class="rang bloc" style="padding:18px"><p class="second" style="margin:0 0 6px">Votre saisie est conservée. L’application réessaie seule.</p><p class="second" style="margin:0">Au-delà d’une minute, prévenez l’organisateur — mais continuez à saisir.</p></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Une erreur récupérable donne <b>le seuil</b> au-delà duquel il faut appeler quelqu’un. Sans seuil, chacun juge : soit personne n’appelle, soit tout le monde appelle.</span></div></div>
       </div>
     </div></div></div>
+      <p class="verdict"><span class="pouce oui">règle générale</span> Récupérable veut dire automatique — et borné dans le temps.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">4 · Hors ligne / synchro</span>
-      <span class="sous-etiquette">Aplat ambre sur toute la barre.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Hors ligne</span>
+      <span class="sous-etiquette">Aplat ambre plein, sur toute la largeur.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="aplat-alerte forte">▲ HORS LIGNE 3 en attente</div>
-        <div class="pile"><p class="second" style="margin:0">La saisie continue, l'envoi reprendra seul.</p></div>
+        <div class="aplat-alerte forte" style="font-size:17px;padding:14px 18px">▲ Hors ligne — la saisie continue<span class="impact">3 volées en attente d’envoi</span></div><div class="archers" style="margin-top:16px"><div class="arc"><span class="pos">A</span><span class="nom">MARTIN Paul</span><span class="fl">10</span><span class="fl">9</span><span class="fl">8</span><span class="somme">27</span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Le signal se joue sur la <b>luminance</b>, pas la teinte : l’ambre en aplat plein reste lisible pour un daltonien, et le mot « hors ligne » ne dépend d’aucune couleur.</span></div></div>
       </div>
     </div></div></div>
+      <p class="verdict"><span class="pouce oui">l’aplat, pas la bordure</span> Un bandeau plein se voit du coin de l’œil pendant qu’on regarde la cible. Une bordure colorée, non.</p>
+    <p class="verdict"><span class="pouce peut">ta question du 04/08</span> Tu demandais si l’aplat ambre plein n’est pas trop agressif. Vu en plein écran sur une tablette, il occupe 3 % de la surface — mais il est le premier élément que l’œil trouve. C’est voulu ; à toi de dire si c’est trop.</p>
   </figure>
 
 </div>
@@ -88,55 +101,63 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">5 · Live</span>
-      <span class="sous-etiquette">La fraîcheur se dit en secondes.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Verrou</span>
+      <span class="sous-etiquette">Ce qui est validé ne se modifie plus.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile"><p class="second" style="margin:0">Pas d'animation permanente : un texte suffit et ne
-      fatigue pas.</p></div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px"><span style="font-size:20px;font-weight:800">Cible 12</span><span class="verrou">🔒 Série 1 validée</span><span class="fin second" style="margin-left:auto">par MOREAU Yves à 09 h 42</span></div><div class="archers"><div class="arc"><span class="pos">A</span><span class="nom">MARTIN Paul</span><span class="fl">10</span><span class="fl">9</span><span class="fl">8</span><span class="somme">277</span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Le verrou <b>nomme son auteur et son heure</b>. Un cadenas anonyme oblige à ouvrir le journal d’audit pour savoir à qui parler.</span></div></div>
       </div>
     </div></div></div>
+      <p class="verdict"><span class="pouce oui">règle générale</span> Un verrou dit qui l’a posé et quand.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">6 · Verrou</span>
-      <span class="sous-etiquette">Qui a verrouillé, et quand.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Conflit</span>
+      <span class="sous-etiquette">Deux versions de la même volée.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-      <span class="verrou">🔒 VALIDÉ · LE GALL 10 h 44</span>
-      <p class="second" style="margin:0">Modifiable uniquement par le scoreur.</p></div>
+        <div class="aplat-alerte forte">▲ Volée 8 modifiée ailleurs<span class="impact">il y a 40 s</span></div><div class="carte" style="margin-top:16px"><div class="rang"><span style="width:190px" class="second">Votre saisie</span><span style="flex:1;display:flex;gap:8px"><span class="fl saisie">10</span><span class="fl saisie">9</span><span class="fl saisie">8</span></span><span class="somme">27</span></div><div class="rang"><span style="width:190px" class="second">Reçue du serveur</span><span style="flex:1;display:flex;gap:8px"><span class="fl">10</span><span class="fl">9</span><span class="fl">9</span></span><span class="somme">28</span></div></div><div style="display:flex;gap:12px;margin-top:16px"><span class="bouton auto principal">Garder la mienne</span><span class="bouton auto">Garder celle du serveur</span><span class="bouton auto discret">Appeler le scoreur</span></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Écran <b>trouvé en maquettant</b> : il n’est décrit ni dans le CDC UX ni dans les stories, alors qu’il devient inévitable dès que le scoreur peut corriger pendant que la tablette saisit.</span></div></div>
       </div>
     </div></div></div>
+      <p class="verdict"><span class="pouce oui">règle générale</span> Un conflit montre les deux valeurs, jamais seulement la question.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">7 · Conflit</span>
-      <span class="sous-etiquette">Les deux valeurs, et un choix.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Live</span>
+      <span class="sous-etiquette">Ce qui bouge tout seul, et comment on le sait.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-      <div class="aplat-alerte">▲ Modifié ailleurs</div>
-      <div class="carte">
-        <div class="rang"><span class="second" style="flex:1">Ici</span><span style="font-weight:800">8</span></div>
-        <div class="rang"><span class="second" style="flex:1">Serveur</span><span style="font-weight:800">9</span></div>
-      </div></div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px"><span style="font-size:20px;font-weight:800">Classement en direct</span><span class="conn"><span class="point"></span>à jour</span><span class="fin second" style="margin-left:auto">dernière mise à jour il y a 3 s</span></div><div class="carte"><div class="rang"><span style="width:60px" class="pos">1</span><span style="flex:1;font-weight:700">MARTIN Paul</span><span class="somme">552</span></div><div class="rang" style="background:var(--surface-2)"><span style="width:60px" class="pos">2</span><span style="flex:1;font-weight:700">DURAND Jean</span><span class="pas info">+2 rangs</span><span class="somme">544</span></div><div class="rang"><span style="width:60px" class="pos">3</span><span style="flex:1">NICOL Gaël</span><span class="somme">536</span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">Un contenu qui change seul doit dire <b>quand</b> il a changé et <b>ce</b> qui a changé — ici le surlignage et « +2 rangs ». Sinon on doute de ce qu’on a lu la seconde d’avant.</span></div></div>
       </div>
     </div></div></div>
+      <p class="verdict"><span class="pouce oui">règle générale</span> Le live signale son âge et son delta.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">Règle · jamais la couleur seule</span>
-      <span class="sous-etiquette">Forme + couleur + mot.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Jamais la couleur seule</span>
+      <span class="sous-etiquette">Chaque état porte un second signal.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-      <div class="conn"><span class="point"></span>EN LIGNE — point rond</div>
-      <div class="conn off"><span class="point"></span>HORS LIGNE — carré + mot</div>
-      <p class="faible" style="margin:0">Lisible en daltonisme, en plein soleil, et sur une tablette bas de gamme.</p>
-    </div>
+        <div class="carte"><div class="tete-carte">Les six états et leurs deux signaux</div><div class="tete-carte"><span style="width:190px">ÉTAT</span><span style="width:190px">COULEUR</span><span style="flex:1">SECOND SIGNAL</span><span style="width:320px">POURQUOI</span></div><div class="rang"><span style="width:190px" class=""><b>En ligne</b></span><span style="width:190px" class="second">vert</span><span style="flex:1" class="second">point rond + le mot « connecté »</span><span style="width:320px" class="second">un daltonien lit le mot</span></div><div class="rang"><span style="width:190px" class=""><b>Hors ligne</b></span><span style="width:190px" class="second">ambre</span><span style="flex:1" class="second">carré + aplat plein + le mot</span><span style="width:320px" class="second">la forme change, pas seulement la teinte</span></div><div class="rang"><span style="width:190px" class=""><b>Verrou</b></span><span style="width:190px" class="second">bleu</span><span style="flex:1" class="second">cadenas + « validée par… »</span><span style="width:320px" class="second">l’icône porte le sens</span></div><div class="rang"><span style="width:190px" class=""><b>Alerte</b></span><span style="width:190px" class="second">ambre</span><span style="flex:1" class="second">triangle ▲ + aplat plein</span><span style="width:320px" class="second">lisible en niveaux de gris</span></div><div class="rang"><span style="width:190px" class=""><b>Succès</b></span><span style="width:190px" class="second">vert</span><span style="flex:1" class="second">coche ✔ + aplat plein</span><span style="width:320px" class="second">idem</span></div><div class="rang"><span style="width:190px" class=""><b>Désactivé</b></span><span style="width:190px" class="second">gris</span><span style="flex:1" class="second">opacité réduite + pointillés</span><span style="width:320px" class="second">deux signaux non colorés</span></div></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc"><span class="second">C’est une règle de la charte, pas une préférence : le jour J, un bénévole daltonien doit pouvoir tenir un poste sans qu’on lui explique les couleurs.</span></div></div>
       </div>
     </div></div></div>
+      <p class="verdict"><span class="pouce oui">la règle transverse</span> Elle vaut pour les 36 écrans, et c’est la seule planche qui la montre en entier.</p>
   </figure>
 
 </div>
@@ -145,30 +166,29 @@
 <div class="planches">
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">✗ Le réflexe</span>
-      <span class="sous-etiquette">Pastille colorée dans une liste : à 3 m, sur fond sombre, ça disparaît.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Session expirée</span>
+      <span class="sous-etiquette">On revient exactement où on était.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-      <div class="carte">
-        <div class="rang"><span style="flex:1">Cible 7</span><span style="color:#FFB000;font-size:12px">● hors ligne</span></div>
-        <div class="rang"><span style="flex:1">Cible 12</span><span class="faible">en ligne</span></div>
-      </div></div>
+        <div style="max-width:560px;margin:56px auto 0;text-align:center"><div class="carte info"><div class="rang bloc" style="padding:22px"><span class="verrou">🔒 Session expirée</span><p style="font-size:19px;font-weight:700;margin:12px 0 6px">Reconnectez-vous pour reprendre</p><p class="second" style="margin:0">Vous reviendrez sur la <b>cible 12, départ 2, volée 8</b>. Rien n’est perdu.</p></div></div><div style="margin-top:18px"><span class="bouton principal geant">Reprendre</span></div></div>
       </div>
     </div></div></div>
+      <p class="verdict"><span class="pouce oui">règle générale</span> La reprise nomme la position plutôt que de promettre vaguement.</p>
   </figure>
 
   <figure class="planche" data-appareil="tablette" data-monde="tablette">
-    <figcaption><span class="textes"><span class="etiquette">✓ La charte — DV-03</span>
-      <span class="sous-etiquette">Aplat ambre plein, texte anthracite, impact chiffré.</span></span></figcaption>
+    <figcaption><span class="textes">
+      <span class="etiquette">Serveur injoignable</span>
+      <span class="sous-etiquette">La panne qui nomme le réseau.</span>
+    </span></figcaption>
     <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-      <div class="aplat-alerte">▲ Cible 7 hors ligne <span class="impact">14 mn</span></div>
-      <div class="carte"><div class="rang"><span style="flex:1">Cible 12</span><span class="faible">en ligne · volée 8</span></div></div>
-    </div>
+        <div class="aplat-alerte forte">▲ Serveur injoignable</div><div class="carte" style="margin-top:16px"><div class="rang bloc" style="padding:18px"><p style="font-size:18px;font-weight:700;margin:0 0 8px">L’appli ne passe pas par internet.</p><p class="second" style="margin:0 0 4px">Vérifiez que cet appareil est sur le réseau <b>kervignarc-local</b>.</p><p class="second" style="margin:0">Si le réseau est bon, c’est le PC de la table d’organisation qui ne répond pas.</p></div></div><div style="margin-top:16px;max-width:320px"><span class="bouton principal">Réessayer</span></div>
       </div>
     </div></div></div>
+      <p class="verdict"><span class="pouce oui">règle générale</span> L’erreur nomme le réseau et donne la seconde hypothèse. Jamais « connexion perdue ».</p>
   </figure>
 
 </div>
