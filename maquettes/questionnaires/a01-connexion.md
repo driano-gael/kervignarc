@@ -1,7 +1,8 @@
 # A01 · Connexion
 
 > **Écran** : [A01 — Connexion](../a01-connexion.html) · **Appli** : Appli admin (`/admin`)
-> **Rôle** : Le seul écran à mot de passe du produit : l'admin est le seul rôle authentifié par compte.
+> **Appareil** : PC · 1600 × 900
+> **Rôle** : Le seul écran à mot de passe du produit. L'admin est le seul rôle authentifié par compte : le scoreur est identifié sans compte, l'archer reste anonyme.
 >
 > **Pas encore rempli.**
 

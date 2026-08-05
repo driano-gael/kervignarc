@@ -11,12 +11,17 @@
 
 <nav class="nav-ecran">
   <a href="index.html">← Tous les écrans</a>
-  <a href="a00-portes.html">← A00 · Les quatre portes</a>
+  <a href="a00-portes.html">← A00 · Les cinq portes</a>
   <span class="fin">
     <a href="a02-ossature.html">A02 · Ossature →</a>
     <a class="lien-questionnaire" href="questionnaires/a01-connexion.html">Remplir le questionnaire</a>
   </span>
 </nav>
+
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
 
 <header class="entete">
   <p class="fil">Appli admin · <code>/admin</code> · <strong>corrigée le 30/07/2026</strong></p>
@@ -51,100 +56,189 @@
 
 <h2 class="section">Partis pris <span class="code-sec">à départager</span></h2>
 
-<div class="rangee">
-  <figure class="variante">
-    <figcaption>
-      <span class="etiquette">A · Formulaire sobre</span>
-      <span class="sous-etiquette">On s'identifie, on choisit le tournoi ensuite, dans l'appli.</span>
-    </figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">KERVIGNARC</span><span class="fin" style="font-size:11px;opacity:.85">ADMINISTRATION</span></div>
-      <div class="corps" style="padding:22px 18px;gap:14px">
-        <div>
-          <div class="mini" style="margin-bottom:4px">IDENTIFIANT</div>
-          <div class="champ plein">organisateur</div>
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-changer-role="oui">
+    <figcaption><span class="textes">
+      <span class="etiquette">A · Formulaire sobre — retenu</span>
+      <span class="sous-etiquette">On s'identifie, on choisit le tournoi ensuite, dans l'appli. « Choisir un autre appareil » au pied : la sortie est là où on la cherche.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div style="max-width:420px;margin:0 auto">
+          <div class="carte">
+            <div class="tete-carte">Connexion administrateur</div>
+            <div class="rang bloc" style="padding:20px">
+              <div class="mini" style="margin-bottom:5px">Identifiant</div>
+              <div class="champ plein" style="margin-bottom:16px">organisateur</div>
+              <div class="mini" style="margin-bottom:5px">Mot de passe</div>
+              <div class="champ" style="margin-bottom:20px">••••••••</div>
+              <span class="bouton principal">Se connecter</span>
+            </div>
+          </div>
+          <p class="second" style="text-align:center;margin:16px 0 0">Choisir un autre appareil</p>
         </div>
-        <div>
-          <div class="mini" style="margin-bottom:4px">MOT DE PASSE</div>
-          <div class="champ">••••••••</div>
-        </div>
-        <button class="bouton principal">SE CONNECTER</button>
       </div>
-    </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">retenu par le commanditaire</span> « Suffisant, respecte le
-    thème. » Un écran qui fait une chose. Le choix du tournoi arrive <b>après</b> — et seulement dans les axes
-    qui en ont besoin (<a href="a02-ossature.html">A02</a>) : l'atelier, lui, n'a pas de tournoi.</p>
+    thème. » Un écran qui fait une chose. Le choix du tournoi arrive <b>après</b>, et seulement dans les axes
+    qui en ont besoin (<a href="a02-ossature.html">A02</a>) : l'atelier n'a pas de tournoi.</p>
+    <p class="verdict"><span class="pouce peut">ce que le plein écran montre</span> <b>Un formulaire de 420 px
+    au milieu de 1600.</b> C'est voulu — un champ de saisie plus large ne se remplit pas mieux — mais c'est le
+    seul écran du produit où « trop vide » est la bonne réponse. À confirmer : faut-il quelque chose dans cette
+    place (nom du club, version, état du serveur), ou le vide est-il le message ?</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption>
-      <span class="etiquette">B · Connexion + tournoi</span>
-      <span class="sous-etiquette">On entre directement dans le bon tournoi.</span>
-    </figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">KERVIGNARC</span></div>
-      <div class="corps" style="padding:22px 18px;gap:14px">
-        <div class="champ plein">organisateur</div>
-        <div class="champ">••••••••</div>
-        <div>
-          <div class="mini" style="margin-bottom:4px">TOURNOI</div>
-          <div class="champ plein">Challenge des Champions — 12 oct ▾</div>
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-changer-role="oui">
+    <figcaption><span class="textes">
+      <span class="etiquette">B · Première utilisation — définir l'accès</span>
+      <span class="sous-etiquette">Écran livré, jamais maquetté : au tout premier lancement, il n'y a pas de compte à qui se connecter. Il faut le créer.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div style="max-width:420px;margin:0 auto">
+          <div class="carte marquee">
+            <div class="tete-carte">Définir l'accès administrateur</div>
+            <div class="rang bloc" style="padding:20px">
+              <p class="second" style="margin:0 0 16px">Aucun compte n'existe encore sur ce serveur. Ce premier
+              compte sera le seul à pouvoir organiser les tournois.</p>
+              <div class="mini" style="margin-bottom:5px">Identifiant</div>
+              <div class="champ" style="margin-bottom:14px">Identifiant</div>
+              <div class="mini" style="margin-bottom:5px">Mot de passe</div>
+              <div class="champ" style="margin-bottom:14px">Mot de passe</div>
+              <div class="mini" style="margin-bottom:5px">Confirmer le mot de passe</div>
+              <div class="champ" style="margin-bottom:20px">Confirmer le mot de passe</div>
+              <span class="bouton principal">Créer l'accès</span>
+            </div>
+          </div>
+          <p class="second" style="text-align:center;margin:16px 0 0">Choisir un autre appareil</p>
         </div>
-        <button class="bouton principal">OUVRIR LE TOURNOI</button>
       </div>
-    </div>
-    <p class="verdict"><span class="pouce non">écarté</span> Séduisant, mais la liste des tournois est une
-    donnée <b>protégée</b> : l'afficher avant l'authentification la publie. Et comme le sélecteur reste
+    </div></div></div>
+    <p class="verdict"><span class="pouce peut">trou du dossier</span> Cet état <b>existe dans le code</b>
+    (<code>ConnexionAdmin.tsx</code>) et n'était maquetté nulle part — comme A00 l'était avant le 30/07. C'est
+    pourtant le <b>tout premier écran</b> qu'on verra en installant le serveur au club. Deux questions ouvertes :
+    faut-il prévenir qu'<b>il n'y aura pas de « mot de passe oublié »</b> (pas d'e-mail, pas d'internet), et
+    faut-il pouvoir créer un <b>second</b> compte ensuite, pour ne pas dépendre d'une seule personne le jour J ?</p>
+  </figure>
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-changer-role="oui">
+    <figcaption><span class="textes">
+      <span class="etiquette">C · Connexion + tournoi — écarté</span>
+      <span class="sous-etiquette">On entrerait directement dans le bon tournoi.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div style="max-width:460px;margin:0 auto">
+          <div class="carte">
+            <div class="tete-carte">Connexion administrateur</div>
+            <div class="rang bloc" style="padding:20px">
+              <div class="champ plein" style="margin-bottom:14px">organisateur</div>
+              <div class="champ" style="margin-bottom:16px">••••••••</div>
+              <div class="mini" style="margin-bottom:5px">Tournoi</div>
+              <div class="champ plein" style="margin-bottom:8px">Challenge des champions — 22/11/2026 ▾</div>
+              <div class="carte plate" style="margin-bottom:18px">
+                <div class="rang"><span class="faible" style="flex:1">Nocturne extérieur — 50 m</span></div>
+                <div class="rang"><span class="faible" style="flex:1">Championnat départemental jeunes</span></div>
+                <div class="rang"><span class="faible" style="flex:1">Trophée de la ville — 18 m</span></div>
+              </div>
+              <span class="bouton principal">Ouvrir le tournoi</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div></div>
+    <p class="verdict"><span class="pouce non">écarté</span> Séduisant, mais la liste des tournois est une donnée
+    <b>protégée</b> : l'afficher avant l'authentification la publie — et le plein écran le rend visible, les
+    quatre noms de tournois se lisent <b>avant d'avoir tapé quoi que ce soit</b>. Comme le sélecteur reste
     accessible partout ensuite, on n'économise rien.</p>
   </figure>
+
 </div>
 
 <h2 class="section">États</h2>
 
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Échec d'authentification</span></figcaption>
-    <div class="ui">
-      <div class="corps" style="padding:20px 18px;gap:12px">
-        <div class="aplat-alerte">▲ Identifiant ou mot de passe incorrect</div>
-        <div class="champ plein">organisateur</div>
-        <div class="champ">••••••••</div>
-        <button class="bouton principal">SE CONNECTER</button>
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-changer-role="oui">
+    <figcaption><span class="textes">
+      <span class="etiquette">Échec d'authentification</span>
+      <span class="sous-etiquette">Le message reste volontairement indistinct.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div style="max-width:420px;margin:0 auto">
+          <div class="aplat-alerte" style="margin-bottom:14px">▲ Identifiant ou mot de passe incorrect</div>
+          <div class="carte">
+            <div class="tete-carte">Connexion administrateur</div>
+            <div class="rang bloc" style="padding:20px">
+              <div class="mini" style="margin-bottom:5px">Identifiant</div>
+              <div class="champ plein" style="margin-bottom:16px">organisateur</div>
+              <div class="mini" style="margin-bottom:5px">Mot de passe</div>
+              <div class="champ" style="margin-bottom:20px">••••••••</div>
+              <span class="bouton principal">Se connecter</span>
+            </div>
+          </div>
+          <p class="second" style="text-align:center;margin:16px 0 0">Choisir un autre appareil</p>
+        </div>
       </div>
-    </div>
+    </div></div></div>
     <p class="verdict">Message <b>volontairement indistinct</b> : dire « cet identifiant n'existe pas »
-    renseignerait un curieux sur les comptes valides.</p>
+    renseignerait un curieux sur les comptes valides. Aucun détail technique ne sort — il reste dans le log
+    serveur (<span class="ref">règle 5</span>).</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">Serveur injoignable</span></figcaption>
-    <div class="ui">
-      <div class="corps" style="padding:20px 18px;gap:12px">
-        <div class="aplat-alerte">▲ Serveur injoignable</div>
-        <p class="second" style="margin:0">Vérifiez que vous êtes bien sur le réseau du gymnase
-        (<code>kervignarc-local</code>). L'appli ne passe pas par internet.</p>
-        <button class="bouton">Réessayer</button>
+  <figure class="planche" data-appareil="pc" data-monde="admin"
+          data-changer-role="oui" data-connexion="hors-ligne">
+    <figcaption><span class="textes">
+      <span class="etiquette">Serveur injoignable</span>
+      <span class="sous-etiquette">Le cas le plus probable du jour J — et le voyant de l'en-tête le dit aussi.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div style="max-width:480px;margin:0 auto">
+          <div class="aplat-alerte forte" style="margin-bottom:14px">▲ Serveur injoignable</div>
+          <div class="carte"><div class="rang bloc" style="padding:20px">
+            <p style="font-size:17px;font-weight:700;margin:0 0 8px">L'appli ne passe pas par internet.</p>
+            <p class="second" style="margin:0 0 6px">Vérifiez que ce PC est bien sur le réseau du gymnase :
+            <b>kervignarc-local</b>.</p>
+            <p class="second" style="margin:0 0 18px">Si le réseau est bon, c'est le serveur qui ne répond pas.</p>
+            <span class="bouton">Réessayer</span>
+          </div></div>
+        </div>
       </div>
-    </div>
-    <p class="verdict"><span class="pouce oui">important</span> Le cas <b>le plus probable</b> le jour J.
-    L'erreur doit nommer le réseau, pas parler de « connexion perdue ».</p>
+    </div></div></div>
+    <p class="verdict"><span class="pouce oui">important</span> L'erreur <b>nomme le réseau</b> plutôt que de
+    parler de « connexion perdue ». Le voyant de l'en-tête est passé à <b>hors ligne</b> en même temps : deux
+    signaux qui disent la même chose, à deux endroits où le regard tombe.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">Session expirée</span></figcaption>
-    <div class="ui">
-      <div class="corps" style="padding:20px 18px;gap:12px">
-        <div class="carte info"><div class="rang bloc">
-          <span class="verrou">🔒 SESSION EXPIRÉE</span>
-          <p class="second" style="margin:6px 0 0">Reconnectez-vous : vous reviendrez sur la supervision.</p>
-        </div></div>
-        <div class="champ">••••••••</div>
-        <button class="bouton principal">REPRENDRE</button>
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-changer-role="oui">
+    <figcaption><span class="textes">
+      <span class="etiquette">Session expirée</span>
+      <span class="sous-etiquette">On revient là où on était, et l'écran le nomme.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div style="max-width:440px;margin:0 auto">
+          <div class="carte info" style="margin-bottom:14px"><div class="rang bloc" style="padding:16px">
+            <span class="verrou">🔒 Session expirée</span>
+            <p class="second" style="margin:10px 0 0">Reconnectez-vous : vous reviendrez sur
+            <b>Pilotage › Supervision</b>, tournoi « Challenge des champions ».</p>
+          </div></div>
+          <div class="carte"><div class="rang bloc" style="padding:20px">
+            <div class="mini" style="margin-bottom:5px">Mot de passe</div>
+            <div class="champ" style="margin-bottom:20px">••••••••</div>
+            <span class="bouton principal">Reprendre</span>
+          </div></div>
+        </div>
       </div>
-    </div>
-    <p class="verdict">On <b>revient là où on était</b>. Une session qui expire et renvoie à l'accueil fait
-    perdre le fil au pire moment.</p>
+    </div></div></div>
+    <p class="verdict">Une session qui expire et renvoie à l'accueil fait perdre le fil au pire moment. La
+    reprise <b>nomme la destination</b> — pas « on revient là où on était », mais l'écran et le tournoi. Noter
+    que l'identifiant n'est pas redemandé : on sait qui c'était, on vérifie seulement que c'est toujours lui.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Tranché le 30/07/2026 <span class="code-sec">réponse du commanditaire</span></h2>
@@ -167,5 +261,6 @@ case cochée en §2 du questionnaire). Noté tel quel plutôt qu'interprété.</
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>
