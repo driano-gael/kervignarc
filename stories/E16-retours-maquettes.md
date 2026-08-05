@@ -21,10 +21,16 @@
 ### E16US001 — Plan de salle : se mettre d'accord sur ce qu'est un pas de tir
 *En tant qu'*organisateur, *je veux* que l'écran de plan de salle parle **de la salle que je connais**, *afin de* pouvoir le valider au lieu de deviner ce qu'il représente.
 - **Contexte** : A10 est refusé (🔴) sur un **malentendu de vocabulaire**, pas sur un défaut d'écran. Le commanditaire écrit : *« je ne comprends pas l'usage. Pour moi un pas de tir, c'est le couloir de tir d'un archer et, suivant le nombre de blasons et le nombre d'archers que je positionne sur la cible, exemple 4 archers 2 blasons → A, B, C, D. Explique-moi ce que toi tu vois avant de valider l'écran. »*
-- **CA — l'explication d'abord** : avant toute ligne de code, produire une note courte qui met face à face les deux lectures du mot (le **couloir d'un archer** vs la **rangée de cibles**), avec le vocabulaire de [`docs/glossaire.md`](../docs/glossaire.md) et un schéma de la salle réelle. La faire arbitrer.
-- **CA — l'écran ensuite** : le gabarit de salle nomme ce qu'il dessine avec le mot retenu, et rend visible le lien **cible → blasons → positions A/B/C/D** que le commanditaire décrit.
-- **CA — questions restées sans réponse, à reposer** : *« ta salle a-t-elle une disposition particulière (deux pas de tir, cibles décalées, piliers) ? »* et *« le gabarit doit-il porter autre chose que les cibles : table d'organisation, zone d'échauffement, entrée du public ? »* — les deux conditionnent le modèle.
+- **CA — l'explication d'abord** : avant toute ligne de code, produire une note courte qui met face à face les deux lectures du mot (le **couloir d'un archer** vs la **rangée de cibles**), avec le vocabulaire de [`docs/glossaire.md`](../docs/glossaire.md) et un schéma de la salle réelle. La faire arbitrer. ✅ **Fait le 05/08/2026.**
+- **CA — l'écran ensuite** : le gabarit de salle nomme ce qu'il dessine avec le mot retenu, et rend visible le lien **cible → blasons → couloirs A/B/C/D** que le commanditaire décrit.
+- **✅ ARBITRÉ le 05/08/2026** *(reversé ici depuis la session, règle 9 — sans quoi ce CA resterait périmé et l'US suivante en dériverait ses tests)* :
+  - **« pas de tir » = un groupement de cibles** (la rangée tirée depuis la même ligne de tir). C'est le sens que l'appli employait déjà : **rien à renommer** de ce côté, et les maquettes A10/S01/S07/A13 restent justes.
+  - **« couloir de tir » = la place d'un archer devant sa cible** (A, B, C, D) — le champ que le code nomme `position`. Le mot **« poste » ne doit jamais** désigner cette place : dans l'appli livrée, un `poste` est une **tablette ou un écran** (ADR-0064). La maquette A10 disait « nombre de postes par cible » : c'était la collision réelle, corrigée.
+  - **Le renommage `position` → `couloir` dans le code, l'API et la base est différé** : appliqué partout où l'utilisateur lit, pas dans les identifiants → **DETTE-042**.
+  - **La salle rentre dans une grille régulière** : le gabarit reste une **liste** (`N cibles × nombre de couloirs`), **sans** coordonnées ni obstacles. La variante « plan libre » de A10 reste écartée.
+  - **Le gabarit ne porte que les cibles** : ni table d'organisation, ni zone d'échauffement, ni entrée du public.
 - **Notes** : ⚠️ **US bloquante par nature** — elle commence par une question, pas par du code. C'est le cas prévu par la règle « CA ambigu ⇒ questionner avant d'implémenter ». Toucher `docs/glossaire.md` si le mot change. US à **surface visible** → doc fonctionnelle + journal.
+  Les deux arbitrages « grille » et « cibles seules » **ferment aussi** la porte à un modèle géométrique : toute US ultérieure qui voudrait des coordonnées (plan libre, repères) rouvre l'arbitrage, elle ne l'hérite pas.
 - **Dépend de** : E03 (gabarits, plan de salle) · **Jalon** : J2 · **Origine** : questionnaire A10, 04/08/2026
 
 ---
