@@ -19,6 +19,7 @@
 
 import { useEffect, useState } from 'react'
 
+import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { VueClassement } from '../competition/VueClassement'
 import { LIBELLE_VUE, type VueEcran } from '../ecrans/api'
 import { useAffichageEcran } from '../ecrans/hooks'
@@ -40,7 +41,25 @@ import {
  * seul le compte à rebours d'une prise de contrôle demande une précision à la seconde. */
 const BATTEMENT_MS = 1000
 
-export function EcranSalle({ libelle, tournoiId }: { libelle: string | null; tournoiId: number }) {
+export function EcranSalle({
+  libelle,
+  tournoiId,
+  onDecrocher,
+}: {
+  libelle: string | null
+  tournoiId: number
+  // Décrocher cet écran (S01, retour maquettes du 04/08/2026 : *« on doit pouvoir décrocher un
+  // écran »*). Fourni par `EspacePoste`, qui possède la session — l'écran de salle ne connaît pas le
+  // jeton, et lui faire importer la feature `poste` créerait un cycle d'imports.
+  //
+  // ⚠️ **Ce n'est pas une entorse à « aucune interaction »** (CA E07US004) : la règle vise ce qui se
+  // voit depuis la salle, à dix mètres, sur un écran que personne ne touche. L'affordance reste donc
+  // **invisible au repos** et n'apparaît qu'au survol ou au focus clavier — c'est-à-dire uniquement
+  // pour quelqu'un physiquement devant la machine, exactement la personne qui a le droit de la
+  // reconfigurer. Sans elle, un écran rattaché au mauvais tournoi n'était récupérable qu'en allant
+  // chercher l'organisateur pour révoquer le jeton depuis l'admin.
+  onDecrocher?: () => void
+}) {
   const affichage = useAffichageEcran(true)
   const secondes = useHorlogeLocale()
 
@@ -84,10 +103,27 @@ export function EcranSalle({ libelle, tournoiId }: { libelle: string | null; tou
         libelle={libelle}
         vue={affiche.vue}
         sousControle={affiche.sous_controle}
-        reste={reste}
         aJour={affichage.isError !== true}
         rotation={rotation}
       />
+      {onDecrocher !== undefined && (
+        // ⚠️ **Confirmé, comme les sept autres gestes destructeurs du produit.** Une première version
+        // décrochait au premier clic : sur un parc tactile il n'y a **pas de survol**, donc rien ne
+        // se révélait — le premier tap dans le coin agissait directement, et sur un PC de projection
+        // ce coin est exactement l'endroit où l'on va chercher la fermeture d'une fenêtre. Le
+        // recouvrement, lui, coûte de retaper un code à six caractères en pleine salle (revue du
+        // 05/08/2026, axes A et C1).
+        <BoutonConfirme
+          libelle="Décrocher cet écran"
+          className="salle__decrocher"
+          ton="danger"
+          titre="Décrocher cet écran ?"
+          message="Cet appareil quitte le tournoi et revient à l’écran de choix."
+          detail="Il faudra retaper son code pour le rattacher."
+          libelleConfirmer="Décrocher"
+          onConfirmer={onDecrocher}
+        />
+      )}
       <div className="salle__scene">
         {/* Tant que la première réponse n'est pas arrivée, on n'affiche **rien de faux** : un
             message d'attente vaut mieux qu'un classement vide qui ressemblerait à un classement. */}
@@ -168,21 +204,26 @@ function SuiviDeSalle({ tournoiId }: { tournoiId: number }) {
 
 /** Le bandeau permanent : où on est, ce qu'on regarde, et si l'écran est piloté.
  *
- * Il porte le seul indicateur que le CA exige côté salle — savoir que l'écran est **sous contrôle**
- * et pour combien de temps. Sans lui, un podium figé serait indiscernable d'un écran planté, et
- * personne dans le gymnase ne saurait lequel des deux appeler l'organisateur. */
+ * Il porte le seul indicateur que le CA exige côté salle — savoir que l'écran est **sous contrôle**.
+ * Sans lui, un podium figé serait indiscernable d'un écran planté, et personne dans le gymnase ne
+ * saurait lequel des deux appeler l'organisateur.
+ *
+ * **Le compte à rebours de reprise en a été retiré** (P07, retour maquettes du 04/08/2026 : *« bruit
+ * à l'écran, seulement visible côté admin »*). Le fait — « cette vue est imposée » — reste écrit,
+ * parce qu'il répond à la question que se pose la salle ; l'échéance à la seconde ne répond qu'à
+ * celle de l'organisateur, qui la lit sur son propre écran. `reste` n'est donc plus un paramètre du
+ * bandeau — il continue de piloter l'**expiration locale** dans `EcranSalle`, ce qui est le cœur
+ * d'ADR-0064 et n'a jamais dépendu de son affichage. */
 function BandeauSalle({
   libelle,
   vue,
   sousControle,
-  reste,
   aJour,
   rotation,
 }: {
   libelle: string | null
   vue: VueEcran | null
   sousControle: boolean
-  reste: number | null
   aJour: boolean
   rotation: EtatRotation | null
 }) {
@@ -195,7 +236,6 @@ function BandeauSalle({
       {sousControle && (
         <span className="salle__controle" role="status">
           Vue imposée par l’organisation
-          {reste === null ? '' : ` · reprise dans ${formaterReste(reste)}`}
         </span>
       )}
       {/* `reste_s` de la **rotation**, pas la cadence de l'étape : la première version affichait

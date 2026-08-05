@@ -20,6 +20,7 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { PanneauRoutage } from '../routage/PanneauRoutage'
 import { apresRetour, panneauOuvert, serieClose } from '../routage/presentation'
 import type { Bareme, LigneGrille } from './api'
+import { lireBrouillon, noterBrouillon, type Brouillons } from './brouillons'
 import {
   useBareme,
   useDeparts,
@@ -53,6 +54,26 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
   const [archerChoisi, setArcherChoisi] = useState<number | null>(null)
   const [marqueur, setMarqueur] = useState<string | null>(null)
 
+  // ⚠️ **Les frappes en cours vivent ici, pas dans le pavé.** Elles étaient un `useState` de
+  // `PaveArcher`, monté avec `key={archer_id}` : **tout** ce qui démontait ce composant jetait la
+  // volée en cours sans un mot, et quatre chemins le démontent — changer d'archer (le geste le plus
+  // fréquent d'une cible à quatre), ouvrir « Où tire-t-on ensuite ? », changer de départ, fermer le
+  // pavé. Une première correction n'avait gardé que le quatrième, le plus rare, et affirmait en
+  // commentaire les avoir tous couverts (2ᵉ passe de revue, 05/08/2026).
+  //
+  // Remonter l'état d'un cran **supprime la classe entière de défauts** au lieu d'en garder les
+  // chemins un par un : le brouillon survit au démontage, donc changer d'archer et revenir retrouve
+  // la frappe telle qu'on l'avait laissée. Et comme plus rien ne se perd, la confirmation de
+  // fermeture disparaît — elle criait de toute façon au loup à chaque fin de série, le tampon étant
+  // pré-rempli avec la volée déjà enregistrée.
+  //
+  // Clé `archerId:numeroDeVolee`. Un brouillon est effacé **à l'enregistrement** : la vérité repasse
+  // alors au serveur. Les brouillons d'archers disparus de la grille sont inertes (personne ne les
+  // lit) et partent au prochain démontage de l'écran.
+  const [brouillons, setBrouillons] = useState<Brouillons>({})
+  const changerBrouillon = (archerId: number, numero: number, valeurs: string[] | null) =>
+    setBrouillons((actuels) => noterBrouillon(actuels, archerId, numero, valeurs))
+
   // Départ courant non fixé : le serveur refuse la grille (409, ADR-0034 §1). C'est un état attendu,
   // pas un incident — on invite à choisir un départ plutôt que d'afficher une erreur.
   const besoinDepart =
@@ -62,15 +83,24 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
 
   const lignes = grille.data ?? []
 
-  // Archer et marqueur actifs **dérivés** (pas d'état par défaut posé en effet, qui cascaderait) : le
-  // choix explicite s'il est encore dans la grille, sinon le premier archer (position A). Ainsi le
-  // pavé est utilisable tout de suite, et un choix devenu obsolète (changement de départ) retombe
-  // proprement sur A au lieu de pointer un archer disparu.
+  // **Le pavé est appelé, pas permanent** — retour maquettes du 04/08/2026 (S02) : la variante
+  // retenue est « grille complète, pavé appelé », et l'évolution demandée est explicite, écrite deux
+  // fois dans le questionnaire — *« l'appel du pavé doit se faire à la sélection de la zone de
+  // saisie »*.
+  //
+  // L'écran ouvrait le pavé d'office sur l'archer en position A. C'était une commodité (« le pavé est
+  // utilisable tout de suite ») qui coûte cher sur une cible : la grille des quatre archers, celle
+  // qu'on lit pour savoir où l'on en est, était repoussée sous un pavé que personne n'avait demandé,
+  // et un tap malheureux saisissait pour l'archer A — celui qu'on n'avait jamais choisi.
+  //
+  // `archerActif` n'a donc **plus de repli** : il vaut `null` tant qu'aucune ligne n'a été tapée. Un
+  // choix devenu obsolète (changement de départ, archer retiré) referme le pavé au lieu de glisser
+  // silencieusement sur un autre archer — ce qui était le vrai danger du repli.
   const premier = lignes[0]
   const archerActif =
-    archerChoisi !== null && lignes.some((l) => l.archer_id === archerChoisi)
-      ? archerChoisi
-      : (premier?.archer_id ?? null)
+    archerChoisi !== null && lignes.some((l) => l.archer_id === archerChoisi) ? archerChoisi : null
+  // Le marqueur, lui, **garde** son repli : c'est une signature, pas une cible de frappe. Sans nom
+  // par défaut, la première volée de la journée partirait avec `saisie_par: null`.
   const marqueurActif =
     marqueur !== null && lignes.some((l) => l.nom === marqueur) ? marqueur : (premier?.nom ?? null)
 
@@ -173,6 +203,13 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
                 ligne={ligne}
                 nbVolees={bareme.data?.nb_volees ?? null}
                 actif={ligne.archer_id === archerActif}
+                // ⚠️ **Pas une bascule.** Une première version refermait le pavé quand on re-tapait
+                // la ligne ouverte — geste « inverse » séduisant, mais `PaveArcher` porte son tampon
+                // de frappe en état local : le refermer **jette la volée en cours**, sans un mot.
+                // Sur une cible, ce tap arrive tout seul (on re-touche le nom pour lire le cumul).
+                // La fermeture passe donc par **un seul geste explicite**, le bouton « Fermer » du
+                // pavé, qui sait ce qu'il y a dans le tampon et demande confirmation s'il n'est pas
+                // vide (revue du 05/08/2026, axes C1 et adversarial).
                 onSelectionner={() => setArcherChoisi(ligne.archer_id)}
               />
             ))}
@@ -185,13 +222,22 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
               ligne={ligneActive}
               bareme={bareme.data}
               marqueur={marqueurActif}
+              brouillons={brouillons}
+              onBrouillon={changerBrouillon}
+              onFermer={() => setArcherChoisi(null)}
             />
           ) : bareme.isSuccess && bareme.data === null ? (
             <p className="saisie__vide" role="status">
               Barème de qualification non défini pour ce tournoi : configurez la phase avant de
               saisir.
             </p>
-          ) : null}
+          ) : (
+            // Sans cette invite, une grille sans pavé se lit comme un écran en lecture seule : rien
+            // ne dit que taper un nom ouvre la saisie.
+            <p className="saisie__invite" role="status">
+              Touchez un archer pour ouvrir le pavé de saisie.
+            </p>
+          )}
         </>
       )}
 
@@ -305,7 +351,8 @@ function LigneArcher({
   onSelectionner: () => void
 }) {
   const serie = useSerie(tournoiId, ligne.archer_id)
-  const nbSaisies = serie.data?.volees.length ?? 0
+  const volees = serie.data?.volees ?? []
+  const nbSaisies = volees.length
   const cumul = serie.data?.cumul ?? 0
 
   return (
@@ -313,7 +360,9 @@ function LigneArcher({
       <button
         type="button"
         className={`saisie__ligne${actif ? ' saisie__ligne--actif' : ''}`}
-        aria-pressed={actif}
+        // `aria-current` et non `aria-pressed` : le bouton **désigne**, il ne bascule plus. Annoncer
+        // « pressé » promettrait un dépressage que le code ne fait pas (2ᵉ passe de revue).
+        aria-current={actif ? 'true' : undefined}
         onClick={onSelectionner}
       >
         <span className="saisie__position">{ligne.position}</span>
@@ -323,8 +372,49 @@ function LigneArcher({
         <span className="saisie__avancement">
           {nbSaisies}/{nbVolees ?? '?'} volées
         </span>
+        {/* Le cumul de série, **en permanence** (S02, question 3 : *« en permanence, c'est un bon
+            rappel sur la cible »*). Il l'était déjà ; il le reste maintenant que le pavé ne masque
+            plus la grille. */}
         <span className="saisie__cumul">{cumul}</span>
       </button>
+
+      {/* **Relecture par les autres archers** (S02, question 2 : *« oui »* — contre-vérification
+          FFTA B.6.1.1). Chaque volée montre son total, en lecture seule ; le cadenas dit ce que le
+          scoreur a déjà verrouillé, donc ce qui n'est plus discutable à la cible.
+          ⚠️ **Hors du `<button>`, et c'est le point.** Placée dedans, cette bande — la plus large
+          zone tapable de la ligne — déclenchait `onSelectionner`, donc **fermait le pavé** (le bouton
+          est une bascule) et **démontait `PaveArcher` avec son tampon de frappe** : l'archer qui se
+          penchait pour vérifier ses volées faisait disparaître les flèches que le marqueur venait de
+          taper, sans un mot. Le geste de *vérifier* ne doit rien changer à l'état de *saisir* —
+          c'était l'intention de départ, elle n'était pas tenue (revue du 05/08/2026, axes C1 et
+          adversarial). `role="group"` plutôt qu'`aria-label` sur un `<span>` nu : sans rôle, le
+          libellé était ignoré des lecteurs d'écran. */}
+      {nbVolees !== null && nbVolees > 0 && (
+        <span className="saisie__relecture" role="group" aria-label={`Volées de ${ligne.nom}`}>
+          {Array.from({ length: nbVolees }, (_, i) => {
+            const volee = volees.find((v) => v.numero === i + 1)
+            if (volee === undefined) {
+              return (
+                <span key={i} className="saisie__relecture-volee saisie__relecture-volee--vide">
+                  ·
+                </span>
+              )
+            }
+            const classes = volee.verrouillee
+              ? 'saisie__relecture-volee saisie__relecture-volee--verrou'
+              : 'saisie__relecture-volee'
+            // Les valeurs flèche par flèche sont **écrites**, pas mises en `title` : une infobulle au
+            // survol n'existe pas sur une tablette, c'est-à-dire sur l'appareil visé. B.6.1.1 porte
+            // sur les valeurs, pas sur un cumul (revue, axe B).
+            return (
+              <span key={i} className={classes}>
+                <span className="saisie__relecture-total">{totalVolee(volee.valeurs)}</span>
+                <span className="saisie__relecture-detail">{volee.valeurs.join(' ')}</span>
+              </span>
+            )
+          })}
+        </span>
+      )}
     </li>
   )
 }
@@ -339,11 +429,21 @@ function PaveArcher({
   ligne,
   bareme,
   marqueur,
+  brouillons,
+  onBrouillon,
+  onFermer,
 }: {
   tournoiId: number
   ligne: LigneGrille
   bareme: Bareme
   marqueur: string | null
+  // Les frappes en cours, **détenues par le parent** (cf. son commentaire) : le pavé les lit et les
+  // écrit, il ne les possède pas — c'est ce qui les fait survivre à son démontage.
+  brouillons: Brouillons
+  onBrouillon: (archerId: number, numero: number, valeurs: string[] | null) => void
+  // Depuis que le pavé est **appelé** (S02), il doit aussi pouvoir se refermer sans passer par la
+  // ligne : sur un téléphone, la grille est parfois hors de l'écran quand le pavé est ouvert.
+  onFermer: () => void
 }) {
   const serie = useSerie(tournoiId, ligne.archer_id)
   const saisir = useSaisirVolee(tournoiId, ligne.archer_id)
@@ -356,16 +456,11 @@ function PaveArcher({
   const verrouillee = existante?.verrouillee ?? false
   const valeursExistantes = existante?.valeurs
 
-  // Tampon de la frappe, remis au contenu **persisté** de la volée visée quand celle-ci change (ou
-  // quand la série relue change après un enregistrement). Ajustement d'état **au rendu** (pas en
-  // effet) : le pattern recommandé pour réinitialiser un état sur changement d'entrée sans cascade.
-  const signature = `${numeroActif}:${(valeursExistantes ?? []).join(',')}`
-  const [ancre, setAncre] = useState(signature)
-  const [buffer, setBuffer] = useState<string[]>(valeursExistantes ?? [])
-  if (ancre !== signature) {
-    setAncre(signature)
-    setBuffer(valeursExistantes ?? [])
-  }
+  // Le tampon est **dérivé** : le brouillon du parent s'il existe, sinon le contenu persisté de la
+  // volée visée. Plus d'ancre ni de réinitialisation au rendu — enregistrer efface le brouillon, ce
+  // qui fait retomber la lecture sur le serveur. Un état de moins, et le pattern d'ajustement au
+  // rendu (délicat) disparaît avec lui.
+  const buffer = lireBrouillon(brouillons, ligne.archer_id, numeroActif) ?? valeursExistantes ?? []
 
   if (ligne.zones.length === 0) {
     return (
@@ -381,9 +476,11 @@ function PaveArcher({
   const chargee = serie.isSuccess
   const complet = buffer.length >= bareme.nb_fleches_par_volee
   const ajouter = (valeur: string) => {
-    if (chargee && !complet && !verrouillee) setBuffer((actuel) => [...actuel, valeur])
+    if (chargee && !complet && !verrouillee) {
+      onBrouillon(ligne.archer_id, numeroActif, [...buffer, valeur])
+    }
   }
-  const effacer = () => setBuffer((actuel) => actuel.slice(0, -1))
+  const effacer = () => onBrouillon(ligne.archer_id, numeroActif, buffer.slice(0, -1))
   const enregistrer = () => {
     saisir.mutate(
       {
@@ -396,7 +493,14 @@ function PaveArcher({
         identifiant_saisie: nouvelIdentifiant(),
       },
       // De retour en mode « prochaine à saisir » : après avoir enregistré la volée visée, on avance.
-      { onSuccess: () => setNumeroChoisi(null) },
+      // Le brouillon est **effacé** : la vérité repasse au serveur, et une réouverture du pavé ne
+      // ressort pas une frappe déjà enregistrée.
+      {
+        onSuccess: () => {
+          onBrouillon(ligne.archer_id, numeroActif, null)
+          setNumeroChoisi(null)
+        },
+      },
     )
   }
 
@@ -413,9 +517,23 @@ function PaveArcher({
         <span>
           Volée {numeroActif}/{bareme.nb_volees} — <strong>{ligne.nom}</strong>
         </span>
+        {/* Le cumul de série **suit le pavé** (S02) : quand la grille est repoussée hors de l'écran
+            sur un téléphone, c'est ici qu'on relit « où j'en suis ». */}
+        <span className="saisie__cumul-serie">Cumul {serie.data?.cumul ?? 0}</span>
         <span className="saisie__total">
           {buffer.length}/{bareme.nb_fleches_par_volee} · {totalVolee(buffer)} pts
         </span>
+        {/* Fermeture **directe, et sans question** : le brouillon est détenu par le parent, donc
+            refermer ne perd rien — rouvrir le pavé le retrouve. Une confirmation ici aurait crié au
+            loup à chaque fin de série (le tampon est pré-rempli avec la volée déjà enregistrée). */}
+        <button
+          type="button"
+          className="lien saisie__fermer-pave"
+          onClick={onFermer}
+          aria-label="Fermer le pavé de saisie"
+        >
+          Fermer
+        </button>
       </div>
 
       {existante !== null && (

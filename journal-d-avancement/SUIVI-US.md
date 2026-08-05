@@ -12,11 +12,38 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 04/08/2026** · **97 US livrées** · dernière : `E07US005` *(le public suit les **arbres de duels en direct** — « mon chemin » par archer suivi ou tableau complet par tour —, et l'écran de salle sait enfin projeter les tableaux : le catalogue de vues d'ADR-0064 est complet)*. Précédente : `E03US007` *(l'organisateur choisit **ce qu'une cible n'a pas le droit de mélanger** — rien, la catégorie, le blason, ou les deux : contrainte **dure** sur le plan de cibles **et** le plan de duels, réserve motivée, plan antérieur signalé — ADR-0071)*.
+**Dernière mise à jour : 05/08/2026** · **97 US livrées** · dernière : `E07US005` *(le public suit les **arbres de duels en direct** — « mon chemin » par archer suivi ou tableau complet par tour —, et l'écran de salle sait enfin projeter les tableaux : le catalogue de vues d'ADR-0064 est complet)*. Précédente : `E03US007` *(l'organisateur choisit **ce qu'une cible n'a pas le droit de mélanger** — rien, la catégorie, le blason, ou les deux : contrainte **dure** sur le plan de cibles **et** le plan de duels, réserve motivée, plan antérieur signalé — ADR-0071)*.
 
 ---
 
 ## 🎯 Prochaine US
+
+> **⚡ PRIORITÉ — retours du questionnaire de maquettes (04/08/2026), [`EPIC-16`](../epics/EPIC-16-retours-maquettes.md).**
+> Les 36 planches ont été passées en revue par le commanditaire, une par une. Le **lot « front
+> seul »** (tout ce qui ne demandait ni décision métier ni backend) a été livré le 05/08/2026 sur la
+> branche `feat/retours-maquettes-front` — **hors US numérotée**, d'où un compte d'US inchangé. Ce qui
+> reste est spécifié dans [`stories/E16`](../stories/E16-retours-maquettes.md), dix US.
+>
+> **Prendre d'abord les quatre écrans refusés (🔴)** — ce sont les seuls retours qui disent « l'écran
+> ne répond pas au besoin » :
+>
+> | Ordre | US | Ce qu'elle lève |
+> |---|---|---|
+> | 1 | `E16US001` | **Plan de salle** (A10) — ⚠️ **commence par une question, pas par du code** : le commanditaire demande explicitement une explication du mot « pas de tir » avant de valider. Ne pas coder avant l'arbitrage. |
+> | 2 | `E16US003` | **Complétude** (A14) — séparer le déroulé de l'administratif ; le serveur rend déjà les deux listes, c'est un déplacement d'ossature. |
+> | 3 | `E16US004` | **Public multi-archers** (P03 🔴 + P01/P02/P05) — le socle de suivi existe depuis E07US006, la lecture n'en tire pas parti. |
+> | 4 | `E16US002` | **Phases** (A07) — le plus lourd : touche le domaine et l'API, probablement un ADR. À cadrer contre ADR-0060 et ADR-0062. |
+>
+> Puis, sans ordre imposé : `E16US005` (placement), `E16US006` (origine FFTA + logo club),
+> `E16US008` (feu vert), `E16US009` (écran de salle), `E16US010` (recherche & alertes),
+> `E16US007` (exports/paiements/podiums — **à redécouper avant de prendre**), et `E16US011`
+> (**rattrapage** : sept règles énoncées dans des questionnaires que le premier tri avait classés
+> « validés tels quels » à tort — dont **deux contradictions à arbitrer**, S08 contre un endpoint
+> vivant et A09 contre ADR-0014/0015).
+>
+> Les retours **écartés** et les questions **restées sans réponse** sont listés en fin de
+> [`stories/E16`](../stories/E16-retours-maquettes.md) : aucun questionnaire ne reste sans suite.
+
 
 > **⚡ Priorité immédiate — retours de la démo du 27/07/2026.** Avant de reprendre la séquence J2,
 > traiter le **lot démo** (bugs & petits ajouts), puis les épics **EPIC-14** (accueil admin) et

@@ -194,28 +194,28 @@ describe('PanneauBarrages', () => {
     expect(screen.getByRole('button', { name: /Faire tirer/ })).toBeInTheDocument()
   })
 
+  // ⚠️ Ces deux cas **interrogeaient `window.confirm`** jusqu'au 04/08/2026. La confirmation passe
+  // désormais par un vrai dialogue (A15), donc l'oracle change de support — mais **pas de contenu** :
+  // ce qu'ils garantissent reste exactement la même règle métier, à savoir que la perte des rangs
+  // n'est annoncée que lorsqu'elle est vraie. On lit maintenant le texte affiché plutôt que
+  // l'argument d'une boîte native, ce qui est en prime plus proche de ce que l'organisateur voit.
   it('annonce la perte des rangs quand on annule un barrage ACTÉ et sain', async () => {
-    // La phrase ajoutée par la 4e passe n'était couverte par rien. Elle compte : annuler un
-    // barrage acté **remet les archers à égalité**, ce que « N manche(s) seront effacées » ne dit
-    // pas. Sur un barrage périmé, en revanche, les rangs sont **déjà** repartagés — la promesse
-    // serait fausse, d'où la condition `clos && !perime`.
-    const confirmer = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    // Annuler un barrage acté **remet les archers à égalité**, ce que « N manche(s) seront
+    // effacées » ne dit pas. Sur un barrage périmé, en revanche, les rangs sont **déjà** repartagés
+    // — la promesse serait fausse, d'où la condition `clos && !perime`.
     afficher([barrage({ clos: true })])
 
     await userEvent.click(screen.getByRole('button', { name: /Annuler ce barrage/ }))
 
-    expect(confirmer).toHaveBeenCalledWith(expect.stringContaining('repartageront leur rang'))
-    confirmer.mockRestore()
+    expect(screen.getByRole('dialog')).toHaveTextContent('repartageront leur rang')
   })
 
   it('ne promet pas la perte des rangs sur un barrage PÉRIMÉ (ils sont déjà repartagés)', async () => {
-    const confirmer = vi.spyOn(window, 'confirm').mockReturnValue(false)
     afficher([barrage({ clos: true, perime: true })])
 
     await userEvent.click(screen.getByRole('button', { name: /Annuler ce barrage/ }))
 
-    expect(confirmer).toHaveBeenCalledWith(expect.not.stringContaining('repartageront'))
-    confirmer.mockRestore()
+    expect(screen.getByRole('dialog')).not.toHaveTextContent('repartageront')
   })
 
   it('allume l’ambre sur une égalité signalée, même sans aucun barrage', () => {

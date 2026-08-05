@@ -11,6 +11,7 @@ import {
   modifierScoreur,
   type NouveauScoreur,
   supprimerScoreur,
+  telechargerCartesScoreurs,
 } from './api'
 
 const cleScoreurs = (tournoiId: number) => ['scoreurs', tournoiId] as const
@@ -45,4 +46,10 @@ export function useSupprimerScoreur(tournoiId: number) {
     mutationFn: (scoreurId: number) => supprimerScoreur(tournoiId, scoreurId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: cleScoreurs(tournoiId) }),
   })
+}
+
+// Le PDF des cartes de scoreur (A08, 04/08/2026) : une **action** ponctuelle, comme le PDF des
+// etiquettes de cible — `useMutation`, jamais `useQuery`.
+export function useTelechargerCartesScoreurs(tournoiId: number) {
+  return useMutation({ mutationFn: () => telechargerCartesScoreurs(tournoiId) })
 }

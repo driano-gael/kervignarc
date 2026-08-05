@@ -13,44 +13,139 @@
 
 import { useState } from 'react'
 import type { LigneClassement } from './api'
+import { aDesExAequo, estExAequo, totauxExAequo } from './departage'
 import { usePlacerArcher } from './hooks'
 
 interface TableClassementProps {
   tournoiId: number
   lignes: LigneClassement[]
   admin: boolean
+  /**
+   * Combien de lignes de tête restent **toujours visibles** pendant que le reste défile (A16 :
+   * *« les x premiers sont toujours affichés, mais le dessous du tableau a un défilé jusqu'à n »*).
+   *
+   * `0` = pas de séparation, le tableau se comporte comme avant. La valeur est un **paramètre** et
+   * non une constante parce que « x » n'a pas la même valeur partout : trois sur un écran de salle
+   * (P07 : *« ok pour les 3 premiers toujours visible »*), davantage sur un PC d'organisation où
+   * l'on suit le haut d'une catégorie.
+   */
+  teteFigee?: number
 }
 
-export function TableClassement({ tournoiId, lignes, admin }: TableClassementProps) {
+export function TableClassement({ tournoiId, lignes, admin, teteFigee = 0 }: TableClassementProps) {
   if (lignes.length === 0) {
     return <p className="carte__etat">Aucun archer inscrit pour l'instant.</p>
   }
 
+  const egalites = totauxExAequo(lignes)
+  // Séparation seulement si elle **sert** : figer les 5 premiers d'une liste de 5 ne fait
+  // qu'ajouter un cadre autour de rien.
+  const separer = teteFigee > 0 && lignes.length > teteFigee
+  const tete = separer ? lignes.slice(0, teteFigee) : lignes
+  const reste = separer ? lignes.slice(teteFigee) : []
+
+  const corps = (source: LigneClassement[]) => (
+    <tbody>
+      {source.map((ligne) => (
+        <LigneArcher
+          key={ligne.archer_id}
+          tournoiId={tournoiId}
+          ligne={ligne}
+          admin={admin}
+          exAequo={estExAequo(ligne, egalites)}
+        />
+      ))}
+    </tbody>
+  )
+
   return (
-    <table className="table">
-      <thead>
-        <tr>
-          <th scope="col">Rang cat.</th>
-          <th scope="col">Scratch</th>
-          <th scope="col">Archer</th>
-          <th scope="col">Catégorie</th>
-          <th scope="col">Cible</th>
-          <th scope="col">Total</th>
-          <th scope="col" title="Nombre de 10 (départage FFTA)">
-            10
-          </th>
-          <th scope="col" title="Nombre de 9 (départage FFTA)">
-            9
-          </th>
-          {admin && <th scope="col">Placer</th>}
-        </tr>
-      </thead>
-      <tbody>
-        {lignes.map((ligne) => (
-          <LigneArcher key={ligne.archer_id} tournoiId={tournoiId} ligne={ligne} admin={admin} />
-        ))}
-      </tbody>
-    </table>
+    <div className={admin ? 'classement classement--admin' : 'classement'}>
+      {/* La tête est enveloppée pour **réserver la gouttière d'ascenseur** du cadre défilant : sans
+          conteneur, `scrollbar-gutter` n'a aucun effet et les deux tables se décalent. */}
+      <div className="classement__tete">
+        <table className="table">
+          <Colonnes admin={admin} />
+          <thead>
+            <EnTetes admin={admin} />
+          </thead>
+          {corps(tete)}
+        </table>
+      </div>
+
+      {/* Le reste, dans son propre cadre défilant. Deux tables et non une seule à lignes
+          `position: sticky` : figer des `<tr>` demande de connaître la hauteur de chaque ligne pour
+          calculer leur `top`, or une ligne peut grandir (badge « Club inconnu », nom qui passe à la
+          ligne) — le calage aurait été juste jusqu'au premier cas réel. `table-layout: fixed` et un
+          `<colgroup>` **partagé** (cf. `Colonnes`) garantissent l'alignement des colonnes entre les
+          deux tables, sans mesure ni JavaScript. */}
+      {separer && (
+        <div className="classement__defilement">
+          <table className="table">
+            <Colonnes admin={admin} />
+            {/* En-têtes **répétés et masqués visuellement** : sans eux, toutes les lignes hors de la
+                tête figée perdaient l'association `scope="col"` — un lecteur d'écran annonçait des
+                nombres sans dire de quelle colonne (revue du 05/08/2026). `sr-only` existe déjà dans
+                la feuille du projet. */}
+            <thead className="sr-only">
+              <EnTetes admin={admin} />
+            </thead>
+            {corps(reste)}
+          </table>
+        </div>
+      )}
+
+      {/* **La règle de départage, seulement en cas d'ex æquo** (A16). En permanence, elle explique
+          une règle qui ne s'applique pas — et un écran qui explique en continu finit par ne plus
+          être lu. Les lignes concernées sont marquées : dire « il y a des ex æquo » sans dire
+          lesquels serait une devinette. */}
+      {aDesExAequo(egalites) && (
+        <p className="classement__departage" role="note">
+          Ex æquo signalés : à total égal, le plus grand nombre de <strong>10</strong> départage,
+          puis le nombre de <strong>9</strong> (règle FFTA).
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** La rangée d'en-têtes, **partagée** par les deux tables — visible en tête, masquée (mais lue) dans
+ * la table défilante. Un seul point de vérité : ajouter une colonne sans toucher les deux endroits
+ * ne peut plus décaler l'une par rapport à l'autre. */
+function EnTetes({ admin }: { admin: boolean }) {
+  return (
+    <tr>
+      <th scope="col">Rang cat.</th>
+      <th scope="col">Scratch</th>
+      <th scope="col">Archer</th>
+      <th scope="col">Catégorie</th>
+      <th scope="col">Cible</th>
+      <th scope="col">Total</th>
+      <th scope="col" title="Nombre de 10 (départage FFTA)">
+        10
+      </th>
+      <th scope="col" title="Nombre de 9 (départage FFTA)">
+        9
+      </th>
+      {admin && <th scope="col">Placer</th>}
+    </tr>
+  )
+}
+
+/** Le `<colgroup>` **partagé** par la table de tête et la table défilante — c'est lui qui fait que
+ * les colonnes restent alignées entre les deux, sans mesurer quoi que ce soit au rendu. */
+function Colonnes({ admin }: { admin: boolean }) {
+  return (
+    <colgroup>
+      <col className="classement__col--rang" />
+      <col className="classement__col--rang" />
+      <col />
+      <col className="classement__col--categorie" />
+      <col className="classement__col--court" />
+      <col className="classement__col--court" />
+      <col className="classement__col--court" />
+      <col className="classement__col--court" />
+      {admin && <col className="classement__col--action" />}
+    </colgroup>
   )
 }
 
@@ -58,10 +153,12 @@ function LigneArcher({
   tournoiId,
   ligne,
   admin,
+  exAequo,
 }: {
   tournoiId: number
   ligne: LigneClassement
   admin: boolean
+  exAequo: boolean
 }) {
   const [cible, setCible] = useState('')
   const placer = usePlacerArcher(tournoiId)
@@ -83,8 +180,17 @@ function LigneArcher({
   const badgeStatut =
     ligne.statut === 'abandon' ? 'Abandon' : ligne.statut === 'disqualifie' ? 'Disqualifié' : null
 
+  // Deux marquages indépendants, qui peuvent se cumuler sans se contredire : forfait (le score
+  // reste, le rang part) et ex æquo (le rang tient à un départage).
+  const classes = [
+    ligne.statut !== 'en_lice' ? 'table__ligne--forfait' : '',
+    exAequo ? 'table__ligne--ex-aequo' : '',
+  ]
+    .filter((c) => c !== '')
+    .join(' ')
+
   return (
-    <tr className={ligne.statut !== 'en_lice' ? 'table__ligne--forfait' : undefined}>
+    <tr className={classes === '' ? undefined : classes}>
       <td>{ligne.rang_categorie ?? '—'}</td>
       <td className="table__scratch">{ligne.rang_scratch ?? '—'}</td>
       <td>

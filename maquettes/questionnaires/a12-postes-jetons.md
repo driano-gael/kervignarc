@@ -3,66 +3,59 @@
 > **Écran** : [A12 — Postes et jetons — rattachement, révocation](../a12-postes-jetons.html) · **Appli** : Appli admin (`/admin`)
 > **Rôle** : L'identité d'un poste est le jeton, pas l'IP : ~30 tablettes personnelles sur un wifi de gymnase.
 >
-> Remplis ce qui te parle, laisse le reste vide. Une ligne barrée ou un « non »
-> sec est une réponse parfaitement utile — c'est même la plus rapide à exploiter.
+> Rempli le 04/08/2026.
 
 ---
 
 ## 1. Quel parti pris retiens-tu ?
 
-- [ ] A — Liste des postes avec dernier signe de vie
+- [x] A — Liste des postes avec dernier signe de vie
 - [ ] B — Vue plan de salle colorée par état
 - [ ] Aucun — voir « à refaire » plus bas
 
-**Pourquoi ce choix** *(ce qui a emporté la décision, même si c'est un détail)*
->
+**Pourquoi ce choix**
+
+> visible, simple
 
 **Ce que tu prendrais dans les autres variantes**
->
+
+> _(sans réponse)_
 
 ---
 
 ## 2. Verdict
 
 - [ ] ✅ Validé tel quel — on peut coder ça
-- [ ] 🟡 Validé avec les réserves ci-dessous
+- [x] 🟡 Validé avec les réserves ci-dessous
 - [ ] 🔴 À refaire — l'écran ne répond pas au besoin
 
 ---
 
 ## 3. Critiques
 
-*Ce qui ne va pas : hiérarchie, vocabulaire, information manquante, geste pénible,
-cas réel non couvert.*
-
->
+> _(sans réponse)_
 
 ---
 
 ## 4. Évolutions souhaitées
 
-*Ce que tu veux en plus ou en moins. Sans te censurer sur la faisabilité —
-c'est mon travail de dire ce que ça coûte.*
-
->
+> chaque type d'ecranest sous un bandeau repliable de type, si besoin  d'info (erreur, deconnection, ....), le bandea affiche une icone d'erreur, quand on deplie on peut voir les postes en erreur avec plus de detail., chaque ligne de poste doit avoir un bouton pour affiché qr code et code de racrochement.
 
 ---
 
 ## 5. Questions ciblées
 
-*Ces questions viennent de points que la maquette n'a pas pu trancher seule.*
-
 **1. Les QR sont-ils imprimés à l'avance et collés sur les cibles, ou affichés à la demande ?**
->
+
+> les qrcode peuvent etre imprimé en avance et ou affiché sur l'ecran a la demande.
 
 **2. Que doit-il se passer si une tablette meurt en cours de journée : reprise par une autre tablette en un geste, ou passage obligé par toi ?**
->
+
+> si une tablette meurt, une autre tablette (ou telephone) doit pouvoir gerer la cible qui n'as plus de tablette.
 
 ---
 
 ## 6. Vocabulaire
-
-*Un mot faux à l'écran coûte cher toute la journée. Corrige sans hésiter.*
 
 | À l'écran | Le bon mot |
 |---|---|
@@ -72,6 +65,4 @@ c'est mon travail de dire ce que ça coûte.*
 
 ## 7. Ce qui manque complètement
 
-*Un écran, un état, un cas que cette maquette ignore.*
-
->
+> _(sans réponse)_

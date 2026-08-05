@@ -3,7 +3,7 @@
 // tournoi** (un scoreur appartient à un tournoi) : l'édition et la suppression portent le `tournoiId`.
 // La lecture aussi est réservée à l'admin (la réponse porte les **codes**, des secrets à distribuer).
 
-import { fetchJson } from '../../shared/api/client'
+import { fetchBlob, fetchJson, telechargerFichier } from '../../shared/api/client'
 
 export interface Scoreur {
   id: number
@@ -45,4 +45,18 @@ export function supprimerScoreur(tournoiId: number, scoreurId: number): Promise<
   return fetchJson<void>(`/api/v1/tournois/${tournoiId}/scoreurs/${scoreurId}`, {
     method: 'DELETE',
   })
+}
+
+/**
+ * Le PDF des **cartes de scoreur** — une page par scoreur : son nom et son code personnel.
+ *
+ * Retour maquettes du 04/08/2026 (A08) : *« garde quand meme la possibilite de pouvoir tous les
+ * imprimer »*. Comme les etiquettes de cible, la route existait cote serveur (E09US008) sans
+ * qu'aucun ecran ne l'atteigne : la fonctionnalite etait livree et invisible.
+ *
+ * `fetchBlob` et non un `<a href>` : route admin, Bearer en JS et non en cookie.
+ */
+export async function telechargerCartesScoreurs(tournoiId: number): Promise<void> {
+  const blob = await fetchBlob(`/api/v1/tournois/${tournoiId}/scoreurs/cartes-codes`)
+  telechargerFichier(blob, `cartes-scoreurs-tournoi-${tournoiId}.pdf`)
 }

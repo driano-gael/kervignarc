@@ -22,50 +22,74 @@ import { useEffect, useRef, useState } from 'react'
 import { EcranSalle } from '../salle/EcranSalle'
 import { Saisie } from '../saisie/Saisie'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { PaveCode } from '../../shared/ui/PaveCode'
 import { type PosteRattache, useSessionPosteStore } from '../../shared/stores/sessionPosteStore'
-import { useSessionRoleStore } from '../../shared/stores/sessionRoleStore'
 import type { Theme } from '../../shared/theme'
-import {
-  useDeconnexionPoste,
-  useHeartbeatPoste,
-  useRattacherPoste,
-  useVerifierPoste,
-} from './hooks'
-import { oublierCodePosteUrl } from './url'
-import { naviguer } from '../../shared/navigation/useChemin'
+import { useDetacherPoste, useHeartbeatPoste, useRattacherPoste, useVerifierPoste } from './hooks'
 
-export function EspacePoste({ codeInitial }: { codeInitial: string | null }) {
+// Ce que **cet appareil vient faire**, tel que l'adresse le dit (`/cible` ou `/salle`). Depuis le
+// retour maquettes du 04/08/2026 (A00), les deux usages ont leur propre porte à l'écran de choix :
+// la vocation ne change **rien à la mécanique** (même code, même jeton, même heartbeat) — elle
+// change les **mots** de l'écran de rattachement, qui est le seul moment où l'appareil ne sait pas
+// encore ce qu'il est. Une fois rattaché, la vérité vient du serveur (`poste.type`), pas d'ici.
+export type Vocation = 'cible' | 'salle'
+
+export function EspacePoste({
+  codeInitial,
+  vocation = 'cible',
+}: {
+  codeInitial: string | null
+  vocation?: Vocation
+}) {
   const jeton = useSessionPosteStore((s) => s.jeton)
   const poste = useSessionPosteStore((s) => s.poste)
   // Réouverture : dès qu'un jeton est présent, on vérifie qu'il vaut toujours (révocation → purge).
   useVerifierPoste(jeton !== null)
   // Signe de vie périodique tant que la session est active → « en ligne » dans la supervision.
   useHeartbeatPoste(jeton !== null)
+  // Appelé **avant** tout retour anticipé (règles des hooks) : l'écran de salle en a besoin autant
+  // que la cible depuis que S01 réclame de pouvoir décrocher un écran.
+  const decrochage = useDetacherPoste()
 
   // Un **écran de salle** rattaché sort de la coquille « carte » : il doit remplir l'écran, sans
   // titre ni sélecteur de luminosité (« aucune interaction », CA). Le rattachement, lui, garde la
   // coquille — c'est un geste humain, fait de près, sur un appareil qu'on tient encore en main.
   if (jeton !== null && poste !== null && poste.type === 'ecran') {
-    return <EcranSalle libelle={poste.libelle} tournoiId={poste.tournoi_id} />
+    return (
+      <EcranSalle
+        libelle={poste.libelle}
+        tournoiId={poste.tournoi_id}
+        onDecrocher={decrochage.detacher}
+      />
+    )
   }
 
   return (
     <section className="carte carte--large">
-      <h2 className="carte__titre">Poste de saisie</h2>
+      <h2 className="carte__titre">
+        {vocation === 'salle' ? 'Écran de salle' : 'Poste de saisie'}
+      </h2>
       {jeton !== null && poste !== null ? (
         <PosteDeCible poste={poste} />
       ) : (
-        <FormulaireRattachement codeInitial={codeInitial} />
+        <FormulaireRattachement codeInitial={codeInitial} vocation={vocation} />
       )}
       <BasculeTheme />
     </section>
   )
 }
 
-function FormulaireRattachement({ codeInitial }: { codeInitial: string | null }) {
+function FormulaireRattachement({
+  codeInitial,
+  vocation,
+}: {
+  codeInitial: string | null
+  vocation: Vocation
+}) {
   const [code, setCode] = useState(codeInitial ?? '')
   const rattacher = useRattacherPoste()
   const entreeValide = code.trim() !== ''
+  const salle = vocation === 'salle'
 
   // Scan du QR : l'URL a pré-rempli un code → rattachement **automatique**, une seule fois.
   const autoFait = useRef(false)
@@ -84,51 +108,36 @@ function FormulaireRattachement({ codeInitial }: { codeInitial: string | null })
 
   return (
     <div>
+      {/* **Le code domine, le QR est le secours** — retour maquettes du 04/08/2026 (S01), variante B :
+          *« je ne suis pas sûr que les caméras soient toujours accessibles »*. L'ordre des deux
+          phrases était l'inverse ; sur un parc dont on ne sait pas si les appareils photo marchent,
+          annoncer le QR en premier envoie le bénévole vers la voie la moins sûre. */}
       <p className="carte__etat">
-        Scannez le QR de votre cible, ou entrez le code imprimé en dessous pour rattacher cette
-        tablette.
+        {salle
+          ? 'Entrez le code imprimé sur l’écran de salle pour y rattacher cet appareil.'
+          : 'Entrez le code imprimé sur votre cible pour y rattacher cet appareil.'}
       </p>
-      <form className="formulaire" onSubmit={soumettre}>
-        <input
-          className="formulaire__champ"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="Code de la cible"
-          aria-label="Code de la cible"
-          autoComplete="one-time-code"
-          autoCapitalize="characters"
+      <form className="formulaire formulaire--colonne" onSubmit={soumettre}>
+        <PaveCode
+          code={code}
+          onChange={setCode}
+          libelle={salle ? 'Code de l’écran de salle' : 'Code de la cible'}
+          desactive={rattacher.isPending}
         />
         <button type="submit" disabled={rattacher.isPending || !entreeValide}>
-          Rattacher cette tablette
+          {salle ? 'Rattacher cet écran' : 'Rattacher cet appareil'}
         </button>
       </form>
+      <p className="carte__etat">
+        Le QR collé à côté du code fait la même chose, sans rien taper — si l’appareil photo répond.
+      </p>
       <MessageErreur erreur={rattacher.error} />
     </div>
   )
 }
 
 function PosteDeCible({ poste }: { poste: PosteRattache }) {
-  const deconnexion = useDeconnexionPoste()
-  const reinitialiserRole = useSessionRoleStore((s) => s.reinitialiser)
-  const quitterModePoste = useSessionPosteStore((s) => s.detacher)
-
-  const detacher = () => {
-    // Retirer `?poste=…` de l'URL **avant** de détacher : sinon `codePoste` resterait non nul et l'app
-    // réafficherait l'écran de poste (voire le re-rattacherait automatiquement) juste après.
-    oublierCodePosteUrl()
-    // Oublier aussi le marqueur de rôle (E00US017, ADR-0042) : sans quoi `resoudreRole` renverrait
-    // encore « tablette » (le choix persiste) → retour au rattachement au lieu de l'écran de choix.
-    reinitialiserRole()
-    // ⚠️ Quitter le mode poste **synchroniquement, avant de naviguer** (E14US003). `useDeconnexionPoste`
-    // ne le fait qu'en `onSettled`, donc après l'aller-retour HTTP : si on naviguait avant, `estPoste`
-    // serait encore vrai au rendu suivant, le verrou `D-13` de `mondeAServir` ramènerait l'adresse sur
-    // `/cible` — et une fois la mutation retombée, l'adresse (qui prime sur le marqueur de choix)
-    // rouvrirait le **formulaire de rattachement** au lieu de l'écran des quatre portes. Le store est
-    // idempotent : le `detacher()` d'`onSettled` reste sans effet.
-    quitterModePoste()
-    naviguer('/', { remplacer: true })
-    deconnexion.mutate()
-  }
+  const { detacher, enCours, erreur } = useDetacherPoste()
 
   // `cible_index` est facultatif au type depuis E07US004 (un écran n'en a pas) ; ici il est garanti
   // par l'aiguillage sur `type` — la garde protège d'une réponse serveur incohérente plutôt que
@@ -140,15 +149,10 @@ function PosteDeCible({ poste }: { poste: PosteRattache }) {
   return (
     <div>
       <Saisie tournoiId={poste.tournoi_id} cibleIndex={poste.cible_index} />
-      <button
-        type="button"
-        className="lien saisie__detacher"
-        disabled={deconnexion.isPending}
-        onClick={detacher}
-      >
-        Détacher cette tablette
+      <button type="button" className="lien saisie__detacher" disabled={enCours} onClick={detacher}>
+        Détacher cet appareil
       </button>
-      <MessageErreur erreur={deconnexion.error} />
+      <MessageErreur erreur={erreur} />
     </div>
   )
 }

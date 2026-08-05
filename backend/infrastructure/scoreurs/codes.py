@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import secrets
 
+# DETTE-040 - 3e exemplaire depuis le front (shared/ui/codeTerrain.ts). Cf. registre.
 ALPHABET_CODE = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 """32 symboles sans les confondables `I`, `O`, `0`, `1` — lisibles sur un papier de terrain."""
 

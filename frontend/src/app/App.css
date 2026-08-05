@@ -1,17 +1,98 @@
 /* Mise en forme du shell (E00US010) — sobre et fonctionnelle, en attendant le design. */
 
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Largeurs **par surface** — retour maquettes du 04/08/2026 (A02, A11).
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   Le shell imposait `960px` à tout le monde. C'était le socle du reproche « trop tassé, on peut
+   exploiter plus d'espace » : sur un PC d'organisation, un tiers de l'écran restait vide pendant que
+   la sidebar, le sélecteur et un tableau de 30 cibles se disputaient 700 px utiles.
+
+   Trois jetons, posés par `data-monde` (cf. `App.tsx`) et consommés par les règles ci-dessous plutôt
+   que redéclarés écran par écran :
+     --largeur-app    : la colonne du shell ;
+     --largeur-carte  : une carte ordinaire ;
+     --largeur-carte-l: une carte « large » (listes, formulaires à deux colonnes) ;
+     --respiration    : le pas d'espacement de la surface.
+
+   Le **défaut** (ci-dessous) reste prudent : c'est celui de l'écran de choix et de tout monde à
+   venir. Chaque surface l'élargit ou le resserre selon **sa** contrainte physique, qui est connue :
+   PC pour l'admin, téléphone pour le public, tablette *ou téléphone* pour la cible (A00, question 3),
+   mur pour la salle. */
 .app {
-  max-width: 960px;
+  --largeur-app: 64rem;
+  --largeur-carte: 24rem;
+  --largeur-carte-l: 40rem;
+  --respiration: 24px;
+
+  max-width: var(--largeur-app);
   margin: 0 auto;
-  padding: 24px;
+  padding: var(--respiration);
 }
 
+/* Administration — **un PC** (A00, question 3 : *« l'admin se fera sur pc »*). C'est la surface qui
+   souffrait le plus : sidebar + sélecteur + contenu dense dans 960 px. */
+.app[data-monde='admin'] {
+  --largeur-app: 100rem;
+  --largeur-carte: 30rem;
+  --largeur-carte-l: 64rem;
+  --respiration: 32px;
+}
+
+/* Public — un téléphone tenu en main. Élargir ne servirait à rien : au-delà d'une soixantaine de
+   caractères, une ligne cesse d'être lisible. On resserre plutôt qu'on ne s'aligne. */
+.app[data-monde='public'] {
+  --largeur-app: 46rem;
+}
+
+/* Scoreur — un appareil tenu en main, mais qui affiche des files et des grilles de contrôle. */
+.app[data-monde='scoreur'] {
+  --largeur-app: 60rem;
+}
+
+/* Écran de cible — tablette **ou téléphone** (A00 : *« les tablettes de cible doivent pouvoir
+   s'adapter à un téléphone »*). La grille de saisie veut de la largeur quand elle en a. */
+.app[data-monde='tablette'] {
+  --largeur-app: 72rem;
+}
+
+/* Écran de salle — **plein cadre, sans coquille**. Un vidéoprojecteur n'a ni marge ni en-tête d'appli
+   à montrer : le bandeau de la salle porte déjà le lieu et l'état hors ligne, et il n'y a personne
+   devant pour cliquer sur « Changer de rôle ». */
+.app[data-monde='salle'] {
+  --largeur-app: none;
+  --respiration: 0px;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+}
+
+.app[data-monde='salle'] .app__entete {
+  display: none;
+}
+
+/* `flex: 1` + `min-height: 0` : c'est ce qui donne au `.salle` (en `min-height: 100%`) une hauteur de
+   référence réelle. Sans lui, la scène se dimensionne sur son contenu et un classement court laisse
+   les deux tiers du mur en fond uni. */
+.app[data-monde='salle'] .app__contenu {
+  flex: 1;
+  min-height: 0;
+  padding-top: 0;
+}
+
+/* L'en-tête est une **bande** et non un simple filet (A01 : *« sépare le nom de l'appli et l'état
+   serveur dans un header séparé du formulaire »*). Le nom et le voyant de connexion appartiennent à
+   l'application, pas à l'écran courant : ils doivent se lire comme tels. Le débord négatif fait
+   filer le fond jusqu'aux bords de la fenêtre, sinon la bande s'arrêterait au milieu du padding et
+   ressemblerait à une carte de plus. */
 .app__entete {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding-bottom: 16px;
+  margin: calc(-1 * var(--respiration)) calc(-1 * var(--respiration)) 0;
+  padding: 16px var(--respiration);
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 
@@ -35,14 +116,14 @@
 }
 
 .app__contenu {
-  padding-top: 24px;
+  padding-top: var(--respiration);
 }
 
 .app__contenu--colonnes {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 24px;
+  gap: var(--respiration);
 }
 
 /* Indicateur d'état de connexion temps réel. */
@@ -93,16 +174,16 @@
 .coquille {
   display: flex;
   align-items: flex-start;
-  gap: 24px;
+  gap: var(--respiration);
 }
 
 .coquille__nav {
-  flex: 0 0 240px;
+  flex: 0 0 17rem;
   display: flex;
   flex-direction: column;
   gap: 8px;
   position: sticky;
-  top: 24px;
+  top: var(--respiration);
 }
 
 /* Le sélecteur de tournoi coiffe la navigation : tout ce qui suit lui appartient. */
@@ -210,6 +291,99 @@
 .coquille__contenu {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Bandeau de contexte de l'admin (A02, retour maquettes du 04/08/2026)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   « Sur quel tournoi on est et quel départ. » Il se lit **sans être cherché**, donc il est collant :
+   descendre dans un tableau de 200 inscrits ne doit pas faire perdre le sujet. Fond de surface et
+   filet bas pour qu'il se détache du contenu sans se faire passer pour une carte. */
+.bandeau-contexte {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.bandeau-contexte__tournoi {
+  color: var(--text-h);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.bandeau-contexte__date {
+  color: var(--text);
+  font-size: 14px;
+}
+
+/* Le départ courant est **l'information du jour J** : c'est elle qu'on vient relire entre deux
+   gestes. Elle se distingue donc du reste du bandeau, sans devenir une alerte. */
+.bandeau-contexte__depart {
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-h);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Le fil « axe › écran » part à droite : c'est un repère, pas une donnée qu'on lit en premier. */
+.bandeau-contexte__fil {
+  margin-left: auto;
+  color: var(--text);
+  font-size: 13px;
+}
+
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Filtre par état de la liste des tournois (A04)
+   ———————————————————————————————————————————————————————————————————————————————————————————————— */
+.filtre-statuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+
+.filtre-statut {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* `aria-pressed` porte déjà l'état pour les lecteurs d'écran ; la bordure accentuée le porte pour
+   l'œil. Pas d'aplat plein : le badge de statut qu'il contient a ses propres couleurs, les empiler
+   rendrait la pastille illisible. */
+.filtre-statut--actif {
+  border-color: var(--accent);
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+/* « Aujourd'hui » sur une ligne de tournoi (A02) — mot **et** couleur (`DV-03`). */
+.tournoi__aujourdhui {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 /* Retour à l'accueil des axes, en tête de sidebar : l'axe se quitte par un geste explicite
@@ -386,18 +560,146 @@
   padding-left: 8px;
 }
 
-/* Carte générique. */
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Dialogue de confirmation (A15, retour maquettes du 04/08/2026)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   « Une pop-up propre et bien design », en remplacement des huit `window.confirm`. `<dialog>` natif :
+   le piège de focus, `Échap` et l'inertie de l'arrière-plan sont fournis par le navigateur, on ne
+   style que l'apparence. `::backdrop` assombrit le fond — c'est lui qui dit « le reste attend ». */
+.dialogue {
+  max-width: 32rem;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 35%);
+}
+
+.dialogue::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.dialogue__titre {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.dialogue__message {
+  margin: 0;
+  color: var(--text-h);
+}
+
+/* Le détail chiffré (« il reste 3 séries à valider ») : registre secondaire, mais lisible — c'est
+   souvent lui qui fait renoncer, et c'est exactement ce qu'une boîte native ne savait pas mettre en
+   forme. */
+.dialogue__detail {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  white-space: pre-line;
+}
+
+.dialogue__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.dialogue__actions button {
+  min-height: 44px;
+  padding: 0 18px;
+}
+
+/* Ton « danger » : filet haut rouge. Le fond reste neutre — un aplat de danger sur toute la boîte
+   rendrait le texte moins lisible au moment précis où il faut le lire. */
+.dialogue--danger {
+  border-top: 4px solid var(--danger);
+}
+
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Groupe repliable à alerte remontée (A12, retour maquettes du 04/08/2026)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   « Le bandeau affiche une icône d'erreur ; quand on déplie, on voit les postes en erreur avec plus
+   de détail. » Le bandeau est donc dimensionné pour être lu **replié** : c'est son état de repos. */
+.groupe {
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.groupe__bandeau {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: none;
+  color: var(--text-h);
+  text-align: left;
+  cursor: pointer;
+}
+
+.groupe__chevron {
+  color: var(--text);
+}
+
+.groupe__titre {
+  font-weight: 600;
+}
+
+.groupe__resume {
+  color: var(--text);
+  font-size: 14px;
+}
+
+/* L'alerte part à droite et reste lisible **repliée** — c'est tout l'intérêt du composant : un
+   bandeau fermé sur trois tablettes mortes ne doit pas ressembler à un bandeau fermé sur un parc
+   intact. Ambre et non rouge (`DV-03`, arbitrage ADR-0038 : hors ligne n'est pas une faute). */
+.groupe__alerte {
+  margin-left: auto;
+  color: var(--warn);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.groupe--alerte {
+  border-color: var(--warn);
+}
+
+.groupe__contenu {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* Carte générique. Ses largeurs viennent des jetons de surface (cf. tête de fichier) : les valeurs
+   figées `360px` / `560px` étaient dimensionnées pour un téléphone et s'appliquaient tout autant au
+   PC d'organisation — c'est la cause directe du « trop tassé » relevé en A02 et A11. */
 .carte {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface);
-  padding: 20px;
-  max-width: 360px;
+  padding: calc(var(--respiration) * 0.85);
+  max-width: var(--largeur-carte);
 }
 
 .carte--large {
-  max-width: 560px;
-  flex: 1 1 480px;
+  max-width: var(--largeur-carte-l);
+  flex: 1 1 30rem;
+}
+
+/* Écran de connexion : la carte reste **étroite volontairement**, quelle que soit la surface. Un
+   formulaire de deux champs étalé sur 1000 px est plus difficile à remplir, pas plus confortable —
+   la règle d'aération d'A02 vise les écrans de travail denses, pas celui-ci. */
+.carte--connexion {
+  max-width: 30rem;
 }
 
 .carte__titre {
@@ -1741,21 +2043,102 @@ button:disabled {
   gap: 4px;
 }
 
+/* ⚠️ **La carte est portée par le `<li>`, pas par le `<button>`.** La bande de relecture a dû sortir
+   du bouton (la toucher fermait le pavé et jetait la volée en cours) ; restée stylée en enfant flex
+   du bouton, elle se rendait alors **hors de la carte** — sans fond, sans bordure, collée sous le
+   bord arrondi et à peine séparée de l'archer suivant, sur l'écran dont la fonction est précisément
+   de dire « ces volées sont celles de **cet** archer » (2ᵉ passe de revue). La carte englobe donc les
+   deux, le bouton n'en garde que la zone tapable. */
+.saisie__grille > li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
 .saisie__ligne {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   width: 100%;
   min-height: 48px;
-  padding: 6px 10px;
+  padding: 0;
   color: var(--text-h);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: transparent;
+  border: none;
   text-align: left;
 }
 
-.saisie__ligne--actif {
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Relecture d'une série depuis la grille (S02, retour maquettes du 04/08/2026)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   « Les autres archers doivent pouvoir relire ce qui a été tapé pour eux ? → oui. » (B.6.1.1)
+   Un total par volée, en lecture seule, sur la ligne de l'archer. Rendre la vérification possible
+   **sans ouvrir le pavé** est le point : le pavé est l'outil de celui qui saisit, s'en servir pour
+   relire oblige à prendre la tablette et expose à une frappe accidentelle. */
+.saisie__relecture {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.saisie__relecture-volee {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 2.6em;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+}
+
+.saisie__relecture-total {
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+/* Le détail flèche par flèche est **écrit**, pas mis en infobulle : un `title` au survol n'existe pas
+   sur une tablette, or c'est l'appareil visé — et B.6.1.1 porte sur les valeurs, pas sur un cumul. */
+.saisie__relecture-detail {
+  color: var(--text);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.saisie__relecture-volee--vide {
+  color: var(--text);
+  opacity: 0.45;
+}
+
+/* Verrouillée par le scoreur : même vert que la pastille du navigateur de volées, pour que les deux
+   surfaces disent « validé » de la même façon. */
+.saisie__relecture-volee--verrou {
+  border-color: var(--ok);
+  color: var(--ok);
+  font-weight: 700;
+}
+
+/* Invite d'appel du pavé (S02) : sans elle, une grille sans pavé se lit comme un écran en lecture
+   seule et rien ne dit que taper un nom ouvre la saisie. */
+.saisie__invite {
+  margin: 12px 0 0;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  text-align: center;
+}
+
+/* L'archer visé par le pavé : la mise en avant passe sur la carte, qui porte désormais la bordure. */
+.saisie__grille > li:has(.saisie__ligne--actif) {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
@@ -1790,6 +2173,59 @@ button:disabled {
   font-weight: 600;
 }
 
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Pavé de code de terrain (S01, retour maquettes du 04/08/2026)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   32 touches, sans les confondables. Grille auto-ajustée : quatre colonnes sur un téléphone, huit sur
+   une tablette — c'est la contrainte « adapté tablette et téléphone » traitée par la grille plutôt
+   que par un point de rupture, puisqu'on ne sait pas de quels appareils le parc est fait. */
+.pave-code {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pave-code__libelle {
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.pave-code__champ {
+  font-family: var(--mono);
+  font-size: 26px;
+  letter-spacing: 0.35em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.pave-code__touches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+  gap: 6px;
+}
+
+.pave-code__touche {
+  min-height: 48px;
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.pave-code__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.pave-code__actions button {
+  flex: 1;
+  min-height: 48px;
+}
+
 /* Le pavé : gros boutons de zone (≥ 48 px), volée en cours, correction, enregistrement. */
 .saisie__pave {
   padding: 12px;
@@ -1800,6 +2236,7 @@ button:disabled {
 
 .saisie__pave-entete {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
@@ -1809,6 +2246,19 @@ button:disabled {
 .saisie__total {
   font-family: var(--mono);
   color: var(--text);
+}
+
+/* Le cumul de série suit le pavé (S02 : « en permanence, c'est un bon rappel sur la cible ») — utile
+   surtout sur téléphone, où le pavé ouvert repousse la grille hors de l'écran. */
+.saisie__cumul-serie {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.saisie__fermer-pave {
+  margin-left: auto;
+  font-size: 13px;
 }
 
 /* Navigateur de volées : une pastille par volée. Défile horizontalement si le barème est long. */
@@ -1895,6 +2345,46 @@ button:disabled {
   min-height: 48px;
 }
 
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Écran de cible sur **téléphone** (A00 question 3, S02)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   « Les tablettes de cible doivent pouvoir s'adapter à un téléphone » — et à la question sur la
+   taille du parc : « tablette standard ou téléphone ». Le parc est donc **hétérogène et inconnu**,
+   ce qui interdit de dimensionner pour un appareil précis.
+
+   Sous 480 px : les zones passent en grille pleine largeur (un pouce, une colonne de touches larges,
+   plutôt qu'une rangée qui déborde), les cibles tactiles grandissent au lieu de rétrécir, et
+   l'avancement « n/12 volées » disparaît — la bande de relecture juste en dessous porte déjà la même
+   information, en plus détaillée. */
+@media (max-width: 480px) {
+  .saisie__zones {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  }
+
+  .saisie__zone {
+    min-height: 56px;
+    font-size: 20px;
+  }
+
+  .saisie__fleche {
+    min-width: 40px;
+    min-height: 48px;
+  }
+
+  .saisie__avancement {
+    display: none;
+  }
+
+  .saisie__actions {
+    flex-direction: column-reverse;
+  }
+
+  .saisie__actions button {
+    width: 100%;
+  }
+}
+
 /* Consultation d'une volée saisie : « Saisie par DURAND à 10:42 » (CA « marqueur »). */
 .saisie__meta {
   margin: 0 0 8px;
@@ -1913,6 +2403,101 @@ button:disabled {
 /* responsive mobile. Onglets de bascule, plan en lecture seule, et un        */
 /* conteneur défilant pour les larges tables sur petit écran.                 */
 /* ------------------------------------------------------------------------- */
+
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Classement à tête figée (A16 / P07, retour maquettes du 04/08/2026)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   « Les x premiers sont toujours affichés, mais le dessous du tableau a un défilé jusqu'à n. »
+   Deux tables empilées qui partagent un `<colgroup>` : la tête ne bouge pas, le reste défile dans
+   son propre cadre. `table-layout: fixed` est ce qui rend l'alignement des colonnes exact entre les
+   deux — sans lui, chaque table calculerait ses largeurs sur son propre contenu et les colonnes se
+   décaleraient dès qu'un nom serait plus long en bas qu'en haut. */
+/* ⚠️ **Le plancher de largeur est sur le CONTENEUR, pas sur les tables** — et c'est tout le sujet.
+   Posé sur les tables, il en faisait deux éléments larges dans deux boîtes distinctes : celle du
+   haut défilait dans `.table-defilement` (le conteneur de `VueClassement`), celle du bas dans son
+   propre cadre, puisque `overflow-y: auto` force `overflow-x` à `auto`. Sur un téléphone, pousser le
+   tableau vers la gauche pour lire « Total » désalignait donc tête et corps de **plusieurs centaines
+   de pixels** — un défaut bien pire que les 15 px qu'on cherchait à corriger (2ᵉ passe de revue).
+   Ici, un seul bloc large, un seul défilement horizontal, celui du parent.
+
+   La valeur : 52 rem couvrent les 39 rem de colonnes fixes du mode public **plus** de quoi lire un
+   nom composé ; 60 rem font de même pour les 47 rem du mode admin (colonne « Placer » en plus). Un
+   plancher plus bas laissait « MARTIN Jean-Baptiste » sur 80 px, c'est-à-dire le symptôme même. */
+.classement {
+  min-width: 52rem;
+}
+
+.classement--admin {
+  min-width: 60rem;
+}
+
+.classement .table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* ⚠️ **Les deux tables réservent la même gouttière d'ascenseur**, sans quoi elles ne s'alignent pas :
+   celle du bas défile, celle du haut non, et les ≈ 15 px de l'ascenseur (Windows/Chrome ; invisible
+   sur macOS, d'où le risque de ne le découvrir qu'au gymnase) rétrécissaient la seule colonne sans
+   largeur fixe — « Archer » — décalant les six suivantes.
+
+   `scrollbar-gutter` ne vaut que sur un **conteneur de défilement** : une première correction l'avait
+   posé sur `.classement > .table`, qui n'en est pas un — la règle était un no-op, et réserver la
+   gouttière du seul cadre du bas rendait le décalage **permanent** au lieu d'intermittent. La tête
+   est donc enveloppée dans un conteneur qui ne défile jamais mais réserve la même place.
+
+   `overflow-x: clip` sur le cadre du bas : le défilement horizontal appartient au parent, un second
+   ici les désynchroniserait à nouveau. */
+.classement__tete {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.classement__defilement {
+  max-height: 22rem;
+  overflow-y: auto;
+  overflow-x: clip;
+  scrollbar-gutter: stable;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+}
+
+/* Largeurs de colonnes — nécessaires dès lors que `table-layout` est `fixed` : sans elles, les huit
+   colonnes se partageraient la largeur à parts égales et le nom d'archer, seul contenu long,
+   serait le plus serré. Le nom n'a **pas** de largeur : il prend ce qui reste. */
+.classement__col--rang {
+  width: 5.5rem;
+}
+
+.classement__col--categorie {
+  width: 10rem;
+}
+
+.classement__col--court {
+  width: 4.5rem;
+}
+
+.classement__col--action {
+  width: 8rem;
+}
+
+/* Ligne à égalité : marquée pour que la règle de départage, affichée en dessous, désigne quelqu'un.
+   Filet à gauche plutôt qu'un aplat — le tableau porte déjà un marquage de forfait, et deux fonds
+   superposés deviendraient illisibles sur une ligne à la fois forfait et ex æquo. */
+.table__ligne--ex-aequo td:first-child {
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+
+/* La règle de départage : présente **seulement** quand il y a des ex æquo (A16). Registre de note,
+   pas d'alerte — une égalité est un cas normal du tir à l'arc, pas un incident. */
+.classement__departage {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--warn);
+  color: var(--text);
+  font-size: 14px;
+}
 
 /* Filtre catégorie / sélecteur de départ : libellé + menu déroulant en ligne. */
 .classement-filtre {
@@ -2465,14 +3050,20 @@ button:disabled {
   margin-bottom: 12px;
 }
 
-/* Une volée de camp : nom | flèches | total. Tapable pour devenir le camp actif (que le pavé remplit). */
+/* Une volée de camp, **sur deux hauteurs** (S05, retour maquettes du 04/08/2026) :
+     ligne 1 — nom … total
+     ligne 2 — les cases de flèches, sur toute la largeur.
+   Elles partageaient une seule rangée avec le nom : un nom long les réduisait à rien, alors que ce
+   sont les seules zones qu'on vise du doigt. Tapable pour devenir le camp actif (que le pavé
+   remplit). */
 .duel__volee {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   width: 100%;
   min-height: 56px;
-  padding: 6px 10px;
+  padding: 10px 12px;
   text-align: left;
   color: var(--text-h);
   background: var(--bg);
@@ -2487,20 +3078,38 @@ button:disabled {
   outline-offset: 1px;
 }
 
+.duel__volee-entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .duel__volee-nom {
   flex: 1;
   font-weight: 600;
 }
 
+/* Grille et non rangée : les cases se partagent la largeur disponible à parts égales, donc elles
+   grandissent sur une tablette au lieu de rester calées sur leur minimum. */
 .duel__volee-fleches {
-  display: flex;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  gap: 8px;
+}
+
+.duel__volee-fleches .saisie__fleche {
+  width: 100%;
+  min-height: 56px;
+  font-size: 22px;
 }
 
 .duel__volee-total {
   min-width: 32px;
   text-align: right;
   font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .duel__zones {

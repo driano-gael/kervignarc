@@ -15,6 +15,7 @@
 // seulement si on l'a coché : sans cela, un oubli de saisie ferait perdre quelqu'un qui a tiré.
 
 import { useState } from 'react'
+import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import type { Barrage, EgaliteADepartager, LigneClassement, PorteeBarrage, TirBarrage } from './api'
 import {
   correspond,
@@ -241,24 +242,34 @@ function BarrageEnCours({
             {correction ? 'Fermer la correction' : `Corriger la manche ${derniere}`}
           </button>
         )}
-        <button
-          type="button"
-          className="bouton--danger"
-          onClick={() => {
-            // Geste **irreversible** : les manches saisies partent avec le barrage, et le bouton
-            // est colle a « Corriger la manche N » sur une interface tactile. Le projet confirme
-            // des suppressions bien moins couteuses ; on s'aligne des qu'il y a quelque chose a
-            // perdre, et on laisse le clic unique sur un barrage vierge.
-            const perte =
-              `Annuler ce barrage ? ${derniere} manche(s) saisie(s) seront effacées` +
-              `${barrage.clos && !barrage.perime ? ', et les archers repartageront leur rang' : ''}.`
-            if (derniere > 0 && !window.confirm(perte)) return
-            annuler.mutate(barrage.id)
-          }}
-          disabled={annuler.isPending}
-        >
-          Annuler ce barrage
-        </button>
+        {/* Geste **irreversible** : les manches saisies partent avec le barrage, et le bouton est
+            colle a « Corriger la manche N » sur une interface tactile. On confirme des qu'il y a
+            quelque chose a perdre, et on laisse le clic unique sur un barrage vierge — un dialogue
+            sur un barrage vide serait une friction sans enjeu. Vrai dialogue depuis A15 (04/08/2026)
+            au lieu d'un `window.confirm` : la perte se chiffre, donc elle se lit. */}
+        {derniere > 0 ? (
+          <BoutonConfirme
+            libelle="Annuler ce barrage"
+            className="bouton--danger"
+            disabled={annuler.isPending}
+            enCours={annuler.isPending}
+            titre="Annuler ce barrage ?"
+            message={`${derniere} manche(s) déjà saisie(s) seront effacées.`}
+            detail={barrage.clos && !barrage.perime ? 'Les archers repartageront leur rang.' : null}
+            libelleConfirmer="Annuler le barrage"
+            ton="danger"
+            onConfirmer={() => annuler.mutate(barrage.id)}
+          />
+        ) : (
+          <button
+            type="button"
+            className="bouton--danger"
+            onClick={() => annuler.mutate(barrage.id)}
+            disabled={annuler.isPending}
+          >
+            Annuler ce barrage
+          </button>
+        )}
       </div>
       {correction && derniere > 0 && (
         // ⚠️ **Corriger la manche N tronque les suivantes** (le serveur s'en charge) : la partition

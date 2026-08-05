@@ -1,22 +1,21 @@
-# A02 · Ossature — sidebar groupée par temps
+# A02 · Ossature — rôle, espace, étape
 
-> **Écran** : [A02 — Ossature](../a02-ossature.html) · **Appli** : Appli admin (`/admin`)
-> **Rôle** : Le squelette stable de l'appli : 16 destinations rangées par temps du tournoi, toutes cliquables en permanence.
+> **Écran** : [A02 — Ossature — rôle, espace, étape](../a02-ossature.html) · **Appli** : Appli admin (`/admin`)
+> **Rôle** : Trois niveaux : le rôle choisit l'écran, l'espace choisit la situation de travail, l'étape dit où on en est.
 >
-> Rempli le 29/07/2026. **Réponse sur la v1** — la planche a été refaite le jour même à partir de ce retour.
+> Rempli le 04/08/2026.
 
 ---
 
 ## 1. Quel parti pris retiens-tu ?
 
-- [ ] A — Sidebar groupée repliable
-- [ ] B — Barre horizontale par temps
-- [ ] C — Sidebar plate (16 entrées à plat)
-- [x] Aucun — voir « à refaire » plus bas
+- [x] A — Accueil à trois portes, identique en permanence
+- [ ] B — Accueil qui s'efface le jour J (entrée directe dans le Déroulé)
+- [ ] Aucun — voir « à refaire » plus bas
 
 **Pourquoi ce choix**
 
-> ce n'est pas le cycle de vie que je souhaite, mais le theme et les design sont bien.
+> c'est clair, on voit les action que l'on doit faire au moment ou l'on est devant l'ordinateur, ce sont des moment differents.
 
 **Ce que tu prendrais dans les autres variantes**
 
@@ -27,40 +26,51 @@
 ## 2. Verdict
 
 - [ ] ✅ Validé tel quel — on peut coder ça
-- [ ] 🟡 Validé avec les réserves ci-dessous
-- [x] 🔴 À refaire — l'écran ne répond pas au besoin
+- [x] 🟡 Validé avec les réserves ci-dessous
+- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
 
 ---
 
 ## 3. Critiques
 
-> la sidebar fait vivire le tournoi sous tout ses etat en meme temps, je trouve cela confus. Un tournoi en preparation est le moment ou il est crée, il merite son propre cycle de vie, on ne dit pas etre pollué par jour J et apres.
-> Cela doit plutot passé par un accueil, qui choisit le cycle. puis on retourne a l'acceuil pour un autre cycle, mais le jour J, on est centré sur le déroulé du ou des tournois en cours. tournois, pas sur sa création ou son apres.
-> dans le menu on doit avoir un champs lancé un tournois. dans lequel on peut demarré plusieur tournois. et apres un espace dédié pour gerer le déroulé de ces tournois.
+> la ligne de deroulé doit etre la premiere. 
+> je mettrai plus d'espace, plus aéré, on est sur l'ecran admin donc un pc, on peut expoliter plus d'espace et cela pour tout les ecrans
 
 ---
 
 ## 4. Évolutions souhaitées
 
-> la navbar doit servir au action possible lors du déroulé.
+> mettre la section déroulé un peu plus en avant.
+> dérouler doit d'abord afficher les tournoi en cours, puis les tournoi pret a etre lancé, surtout si on est a la date prévu du tournoi.
 
 ---
 
 ## 5. Questions ciblées
 
-**1. Les groupes Préparation / Jour J / Après correspondent-ils à ta façon de travailler, ou raisonnes-tu par objet (archers, cibles, scores) ?**
+**1. Les étapes que je propose pour le **Déroulé** (lancer · supervision · validation · bascule · clôture) sont une déduction de ma part : quelles sont les tiennes ?**
 
-> _(sans réponse)_
+> lancer n'est necessaire que sur la page principale de déroulé, avec la liste des tournois. par contre sur cette liste laisse une pastille d'alerte si tout n'est pas complet. alerte forte si impossible de lancer en l'etat.
+> c'est un ecran principale de déroulé. ou l'on choisit le tournoi sur lequel on se place.
+> puis une fois untournois choisit, on arrive sur la page du déroulé du tournois avec un accueil qui reprend les information du tournois par départ dans un grand encart (mettre toutes les informations utiles au déroulé).
+> un bandeau en haut doit permettre de savoir sur quel tournoi on est et quel depart et suis tout le cycle de cette section
 
-**2. La recherche d'archer en haut de sidebar est-elle au bon endroit, ou la veux-tu ailleurs (barre du haut, raccourci clavier) ?**
+**2. Même question pour les **Résultats** (classements & podiums · comptes · exports & archive) — j'ai regroupé au jugé.**
 
 > la recherche d'un archer est bien, mais il depend du cycle ou l'on est.
 > dans le cycle preparation et apres, on doit pouvoir faire une recherche sur tout items-entité, par une liste deroulante et un champs de saisie. une completion de recherche montre une liste des items possible avec la possibilité de clique dessus et d'ouvrir la fiche en modification.
 > dans le cycle deroulé du tournoi, on peut faire une recherche d'un archer *du tournoi* et ouvrir sa fiche en consultation avec ses information du tournoi. puis possibilité d'agir dessus si besoin.
 
-**3. Le sélecteur de tournoi au-dessus de tout : suffisant pour éviter de modifier le mauvais tournoi ?**
+**3. Les mots te vont-ils : « espace » pour le niveau 1, « étape » pour le niveau 2, « Résultats » plutôt qu'« Après » ?**
 
-> Les tournoi en cycle déroulé, peuvent etre multiple et on doit etre sur de celui sur lequel on est placé, donc en déroulé la liste de selection doit etre bien visibible. (sous header par exemple, bien demarqé)
+> _(sans réponse)_
+
+**4. Dans le Déroulé, on repasse par supervision et validation en boucle toute la journée : « étape » reste-t-il le bon mot, ou faut-il autre chose pour ce niveau-là ?**
+
+> _(sans réponse)_
+
+**5. Les briques (catégories, tarifs, barèmes) sont le patrimoine du club. Si tu changes un tarif en 2027, le tournoi 2026 archivé doit-il bouger ? (référence) ou rester figé ? (copie à l'assemblage)**
+
+> _(sans réponse)_
 
 ---
 
@@ -75,25 +85,3 @@
 ## 7. Ce qui manque complètement
 
 > _(sans réponse)_
-
----
-
-## Précisions apportées en échange (29/07/2026)
-
-**Le découpage de la Préparation**, en quatre temps de travail distincts :
-
-1. créer / gérer les briques nécessaires à un tournoi
-2. assembler les briques pour créer un tournoi
-3. gérer l'organisation du tournoi en amont
-4. gérer le remplissage du tournoi
-
-Ce découpage **s'applique aussi au Déroulé et à l'Après**, qui ont chacun leurs propres temps de vie —
-non détaillés à ce stade.
-
-**Vocabulaire arrêté par le commanditaire :** *rôle* pour le choix de l'écran, *espace* pour le choix
-Préparation / Déroulé / Après. Le mot du troisième niveau et le nom exact des espaces sont laissés à
-l'assistant.
-
-**Non tranché par le commanditaire**, donc décidé par l'assistant et signalé sur la planche v2 :
-enchaînement contraignant ou non des étapes, portée des briques (patrimoine du club ou par tournoi),
-étapes du Déroulé et de l'Après.

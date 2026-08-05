@@ -7,6 +7,7 @@
 // L'état se rend en **couleur + pastille + texte** (jamais la couleur seule) ; l'alerte = **ambre**,
 // jamais rouge (charte, `DV-03`).
 
+import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import type { StatutTournoi } from '../competition/api'
 import type { LigneCompletude } from './api'
 import { useCompletude, useTerminerDepuisCompletude } from './hooks'
@@ -21,13 +22,11 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
   const completude = useCompletude(tournoiId)
   const terminer = useTerminerDepuisCompletude(tournoiId)
 
-  const demanderTerminer = () => {
-    // Contrôle en amont (`P-4`) : la confirmation **chiffre** ce qui reste et dit ce que terminer
-    // fige, avant de laisser passer. Confirmation simple (comme la révocation en supervision) — le
-    // « geste délibéré » des actions massives (taper un mot) relève d'E12US007.
-    if (!completude.data) return
-    if (window.confirm(messageConfirmationTerminer(completude.data))) terminer.mutate()
-  }
+  // Contrôle en amont (`P-4`) : la confirmation **chiffre** ce qui reste et dit ce que terminer
+  // fige, avant de laisser passer. Le « geste délibéré » des actions massives (taper un mot) relève
+  // d'E12US007. Depuis le retour maquettes du 04/08/2026 (A15), la question passe par un vrai
+  // dialogue et non plus par `window.confirm` — le chiffrage y devient lisible, ce qu'une boîte
+  // native ne permettait pas.
 
   return (
     <section className="carte carte--large">
@@ -56,14 +55,18 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
 
           {statut === 'en_cours' && (
             <div className="completude__actions">
-              <button
-                type="button"
+              <BoutonConfirme
+                libelle="Terminer le tournoi"
                 className="bouton--danger"
-                disabled={terminer.isPending}
-                onClick={demanderTerminer}
-              >
-                Terminer le tournoi
-              </button>
+                disabled={terminer.isPending || !completude.data}
+                enCours={terminer.isPending}
+                titre="Terminer ce tournoi ?"
+                message="Les résultats sportifs sont figés. Les paiements, eux, restent ouverts."
+                detail={completude.data ? messageConfirmationTerminer(completude.data) : null}
+                libelleConfirmer="Terminer"
+                ton="danger"
+                onConfirmer={() => terminer.mutate()}
+              />
               {terminer.isError && (
                 <span className="carte__etat--erreur" role="alert">
                   {terminer.error.message}

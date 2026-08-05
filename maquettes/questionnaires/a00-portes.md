@@ -3,27 +3,28 @@
 > **Écran** : [A00 — Les quatre portes](../a00-portes.html) · **Appli** : Toutes les applis (`/`)
 > **Rôle** : Le tout premier écran : choisir le rôle de l'appareil (tablette de cible, public, scoreur, administration).
 >
-> Remplis ce qui te parle, laisse le reste vide. Une ligne barrée ou un « non »
-> sec est une réponse parfaitement utile — c'est même la plus rapide à exploiter.
+> Rempli le 04/08/2026.
 
 ---
 
 ## 1. Quel parti pris retiens-tu ?
 
-- [ ] A — Les quatre portes telles que livrées
+- [x] A — Les quatre portes telles que livrées
 - [ ] Aucun — voir « à refaire » plus bas
 
-**Pourquoi ce choix** *(ce qui a emporté la décision, même si c'est un détail)*
->
+**Pourquoi ce choix**
 
-**Ce que tu changerais**
->
+> _(sans réponse)_
+
+**Ce que tu prendrais dans les autres variantes**
+
+> _(sans réponse)_
 
 ---
 
 ## 2. Verdict
 
-- [ ] ✅ Validé tel quel — on peut coder ça
+- [x] ✅ Validé tel quel — on peut coder ça
 - [ ] 🟡 Validé avec les réserves ci-dessous
 - [ ] 🔴 À refaire — l'écran ne répond pas au besoin
 
@@ -31,49 +32,41 @@
 
 ## 3. Critiques
 
-*Ce qui ne va pas : hiérarchie, vocabulaire, information manquante, geste pénible,
-cas réel non couvert.*
-
->
+> _(sans réponse)_
 
 ---
 
 ## 4. Évolutions souhaitées
 
-*Ce que tu veux en plus ou en moins. Sans te censurer sur la faisabilité —
-c'est mon travail de dire ce que ça coûte.*
-
->
+> _(sans réponse)_
 
 ---
 
 ## 5. Questions ciblées
 
-*Ces questions viennent de points que la maquette n'a pas pu trancher seule.*
-
 **1. Les quatre portes sont-elles les bonnes ? En particulier : « Tablette de cible » et « Scoreur » méritent-elles deux portes, alors qu'un même appareil peut servir aux deux dans un petit club ?**
->
 
-**2. Les QR déjà imprimés pointent vers l'ancienne adresse (`/?poste=…`). Faut-il garder cette compatibilité indéfiniment, ou prévoir une réimpression et une date de bascule ?**
->
+> oui garde les 2 porte, il faudrait quand meme ajouter une porte pour le ou les ecrans de projections.
+
+**2. Les QR déjà imprimés pointent vers l'ancienne adresse (/?poste=…). Faut-il garder cette compatibilité indéfiniment, ou prévoir une réimpression et une date de bascule ?**
+
+> met les qr, pour qu'il pointent et fixe l'appareil qui s'y accroche.
 
 **3. Le libellé « Administration (PC) » suppose un ordinateur. Est-ce voulu, ou l'admin peut-il légitimement piloter depuis une tablette le jour J ?**
->
+
+> oui l'admin se fera sur pc, les ecran doivent etre pensé pour s'adapter a la taille d'un pc. par contre les tablette de cible doivent pouvoir s'adapter a un telephone.
 
 ---
 
 ## 6. Vocabulaire
 
-*Un mot faux à l'écran coûte cher toute la journée. Corrige sans hésiter.*
-
 | À l'écran | Le bon mot |
 |---|---|
-|  |  |
+| tablette de cible | ecran de cible |
+| telephone(public) | public |
 
 ---
 
 ## 7. Ce qui manque complètement
 
-*Un écran, un état, un cas que cette maquette ignore.*
-
->
+> une porte pour le ou les ecrans de projections.

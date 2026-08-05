@@ -6,7 +6,9 @@
 // de la topologie — la frise ne décide rien, règle 1). Les transitions qui **figent** ou sont
 // terminales sont confirmées ; `terminer` réutilise le message chiffré de la complétude (E12US005).
 
+import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { DialogueConfirmation } from '../../shared/ui/DialogueConfirmation'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { StatutTournoi, Tournoi } from '../competition/api'
 import { getCompletude } from '../completude/api'
@@ -83,24 +85,66 @@ export function FriseCycleDeVie({ tournoi }: { tournoi: Tournoi }) {
   // `terminer`, on chiffre ce qui reste via la même logique que l'écran Complétude ; si sa lecture
   // échoue, on **laisse passer** (dégradé) — ne jamais bloquer la seule action irréversible sur un
   // hoquet réseau (`P-3`, comme l'ancien CycleDeVie).
+  //
+  // La confirmation passe par un **vrai dialogue** depuis le retour maquettes du 04/08/2026 (A15) :
+  // `window.confirm` bloquait le fil sur un écran temps réel et ne proposait que « OK / Annuler » —
+  // ambigu au point d'être trompeur sur la transition « annuler », où « Annuler » désignait à la
+  // fois le geste et son abandon.
+  //
+  // La transition en attente de confirmation, `null` si aucune. Elle porte **son** texte : les trois
+  // gestes qui se confirment n'ont ni le même ton ni les mêmes conséquences, et le message de
+  // « terminer » se calcule (chiffrage de ce qui reste) avant même que le dialogue s'ouvre.
+  const [aConfirmer, setAConfirmer] = useState<{
+    nom: string
+    titre: string
+    message: string
+    detail: string | null
+    libelleConfirmer: string
+  } | null>(null)
+
   const declencher = async (nom: string) => {
     if (nom === 'terminer') {
-      let message: string
+      let detail: string
       try {
         const completude = await queryClient.fetchQuery({
           queryKey: ['completude', tournoi.id],
           queryFn: () => getCompletude(tournoi.id),
         })
-        message = messageConfirmationTerminer(completude)
+        detail = messageConfirmationTerminer(completude)
       } catch {
-        message =
-          'Impossible de vérifier ce qui reste (complétude injoignable). Terminer quand même ?'
+        // Dégradé **volontaire** (`P-3`) : ne jamais bloquer la seule action irréversible sur un
+        // hoquet réseau. On dit qu'on n'a pas pu vérifier, et on laisse passer.
+        detail = 'Impossible de vérifier ce qui reste (complétude injoignable).'
       }
-      if (!window.confirm(message)) return
-    } else if (nom === 'annuler') {
-      if (!window.confirm('Annuler ce tournoi ? Il conservera sa trace (≠ suppression).')) return
-    } else if (nom === 'archiver') {
-      if (!window.confirm('Archiver ce tournoi ? Il passera en lecture seule définitive.')) return
+      setAConfirmer({
+        nom,
+        titre: 'Terminer ce tournoi ?',
+        message: 'Les résultats sportifs sont figés. Les paiements, eux, restent ouverts.',
+        detail,
+        libelleConfirmer: 'Terminer',
+      })
+      return
+    }
+    if (nom === 'annuler') {
+      setAConfirmer({
+        nom,
+        titre: 'Annuler ce tournoi ?',
+        message: 'Il conserve sa trace et reste consultable — ce n’est pas une suppression.',
+        detail: null,
+        libelleConfirmer: 'Annuler le tournoi',
+      })
+      return
+    }
+    if (nom === 'archiver') {
+      setAConfirmer({
+        nom,
+        titre: 'Archiver ce tournoi ?',
+        message:
+          'Il passe en lecture seule définitive : plus aucune modification ne sera possible.',
+        detail: null,
+        libelleConfirmer: 'Archiver',
+      })
+      return
     }
     transitionner.mutate(nom)
   }
@@ -171,6 +215,25 @@ export function FriseCycleDeVie({ tournoi }: { tournoi: Tournoi }) {
         ))}
       </div>
       <MessageErreur erreur={transitionner.error} />
+
+      {/* Un seul dialogue pour les trois transitions qui se confirment : c'est le même cadre, seul
+          son contenu change. `ton="danger"` — terminer fige, annuler et archiver sont terminaux
+          (A15 : *« une pop-up propre et bien design »*, en remplacement du `window.confirm`). */}
+      <DialogueConfirmation
+        ouvert={aConfirmer !== null}
+        titre={aConfirmer?.titre ?? ''}
+        message={aConfirmer?.message ?? ''}
+        detail={aConfirmer?.detail ?? null}
+        libelleConfirmer={aConfirmer?.libelleConfirmer ?? 'Confirmer'}
+        ton="danger"
+        enCours={transitionner.isPending}
+        onAnnuler={() => setAConfirmer(null)}
+        onConfirmer={() => {
+          const nom = aConfirmer?.nom
+          setAConfirmer(null)
+          if (nom !== undefined) transitionner.mutate(nom)
+        }}
+      />
     </div>
   )
 }

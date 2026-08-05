@@ -40,7 +40,64 @@ const MONDE_PAR_SEGMENT: Record<string, Monde> = {
   public: 'public',
   scoreur: 'scoreur',
   cible: 'tablette',
+  // `salle` **est** le monde tablette : un écran de projection est un *poste*, rattaché par le même
+  // code et le même jeton (cf. `Porte` ci-dessous). Deux adresses, une mécanique.
+  salle: 'tablette',
   admin: 'admin',
+}
+
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+// Portes — ce que l'utilisateur franchit, à distinguer du monde que l'app sert
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+//
+// Retour maquettes du 04/08/2026 (A00, « ce qui manque complètement ») : *« une porte pour le ou les
+// écrans de projections »*. Elle **n'ajoute pas un monde** : un écran de salle est un poste, avec le
+// même code de rattachement, le même jeton, le même heartbeat et la même révocation — c'est le `type`
+// rendu par le serveur qui aiguille ensuite vers la saisie ou l'affichage plein écran (cf. l'en-tête
+// d'`EspacePoste`, qui a déjà tranché ce point en E07US004).
+//
+// Ce qui manquait n'était donc pas de la mécanique mais de **l'orientation** : rien, à l'écran de
+// choix, ne disait au bénévole que le vidéoprojecteur passe par là — il devait franchir « Tablette de
+// cible » pour rattacher un écran, ce qui est faux dans les mots. D'où une **porte** de plus,
+// c'est-à-dire une adresse (`/salle`) et un intitulé, pour un monde inchangé.
+//
+// ⚠️ **Asymétrie assumée** : `porte → chemin` est total, `chemin → monde` écrase la distinction
+// (`/salle` et `/cible` donnent tous deux `tablette`). `construireChemin({ monde: 'tablette' })`
+// rend donc toujours `/cible`. Sans conséquence : l'app ne *reconstruit* jamais cette adresse pour
+// un poste déjà installé (`mondeAServir` ne corrige que depuis la racine), et un écran laissé sur
+// `/salle` y reste — c'est justement ce qu'on veut d'une machine allumée huit heures.
+export type Porte = Role | 'salle'
+
+const SEGMENT_PAR_PORTE: Record<Porte, string> = {
+  public: 'public',
+  scoreur: 'scoreur',
+  tablette: 'cible',
+  salle: 'salle',
+  admin: 'admin',
+}
+
+/** L'adresse d'une porte — ce vers quoi navigue un tap à l'écran de choix. */
+export function cheminDePorte(porte: Porte): string {
+  return `/${SEGMENT_PAR_PORTE[porte]}`
+}
+
+/** Le rôle d'appareil derrière une porte. Deux portes, un rôle : `salle` est un poste. */
+export function roleDeLaPorte(porte: Porte): Role {
+  return porte === 'salle' ? 'tablette' : porte
+}
+
+/**
+ * La porte que **l'adresse** nomme, ou `null` si l'adresse n'en nomme aucune.
+ *
+ * C'est ce qui permet à l'écran de rattachement de parler juste (« rattacher cet écran de salle »
+ * plutôt que « cette tablette ») **sans stocker de préférence** : l'adresse porte déjà l'information
+ * et survit au rechargement. Un état local de plus n'aurait fait que diverger d'elle.
+ */
+export function porteDuChemin(chemin: string): Porte | null {
+  const [tete] = decouper(chemin)
+  if (tete === undefined) return null
+  const entree = Object.entries(SEGMENT_PAR_PORTE).find(([, segment]) => segment === tete)
+  return entree === undefined ? null : (entree[0] as Porte)
 }
 
 /** Découpe un chemin en segments non vides (`/admin//pilotage/` → `['admin', 'pilotage']`). */

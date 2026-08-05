@@ -60,6 +60,9 @@
 | [DETTE-036](#dette-036--une-position-du-cloisonnement-na-pas-deffet-distinct) | conception | mineur | `backend/domain/cloisonnement.py` (`Cloisonnement.separe_blason`/`separe_categorie`), `frontend/src/features/placement/presentation.ts` (`LIBELLE_CLOISONNEMENT`) | Le réglage de cloisonnement offre **quatre** positions à l'organisateur, mais n'en produit que **trois** comportements : le blason d'un archer étant celui de sa catégorie (`Categorie.blason_id`), « un seul blason **et** une seule catégorie par cible » rend le même plan que « une seule catégorie par cible ». L'organisateur choisit une position plus stricte et obtient celle d'avant | Faible : aucun plan n'est faux, aucune règle n'est violée — le coût est un choix d'écran qui n'a pas l'effet qu'il annonce, sur la position la moins utilisée. Atténué par une mention explicite dans la fiche de recette, l'aide de l'écran et l'ADR | E03US007 ([ADR-0071](adr/0071-cloisonnement-categorie-blason-active-et-dur.md) §3) — **assumée au cadrage** (les quatre positions sont un choix du commanditaire, en connaissance de la redondance), **tracée** sur relevé de revue (axe C2) : le précédent DETTE-028 a établi qu'une capacité livrée sans effet se trace au registre et ne se contente pas d'un ADR | Se résorbe **d'elle-même** avec `EF-1.4` (une phase surcharge le blason : « toutes les finales sur triples ») — le couple (catégorie, blason) cesse alors d'être fonctionnel et les deux positions divergent, sans migration ni changement de contrat. **Ne rien faire d'ici là** : retirer la position coûterait une migration et un réapprentissage pour la remettre. Marqueurs `# DETTE-036` sur les deux prédicats de `Cloisonnement` et sur `LIBELLE_CLOISONNEMENT` |
 | [DETTE-037](#dette-037--lalerte-dimpact-ne-chiffre-pas-la-réserve-que-le-cloisonnement-va-créer) | conception | mineur | `backend/application/placement.py` (`ServicePlacement._impact`) | L'alerte qui protège une régénération tardive (E12US007) compte les archers **replacés** et les cibles **déjà scorées**, mais pas ceux qu'un cloisonnement plus strict va **exclure** : l'organisateur confirme, puis découvre la réserve. ADR-0071 invoque pourtant cette alerte comme la protection du réglage tournoi en cours | Faible à modéré : rien n'est perdu (la régénération est déterministe et réversible en desserrant le réglage), mais la décision est prise **sans** son chiffre — le défaut même que `P-4` et DETTE-035 nomment ailleurs | E03US007 ([ADR-0071](adr/0071-cloisonnement-categorie-blason-active-et-dur.md), Conséquences) — relevé en **2ᵉ passe** de revue par trois axes : le manque était **avoué dans l'ADR** et non tracé, alors que le même commit ouvrait DETTE-036 en invoquant « documenter ne suffit pas ». Deux poids, deux mesures dans un seul commit | Faire rendre à `_impact` un **compte de réserve projetée** : rejouer `placer` à blanc sur le gabarit et le réglage courants (lecture pure, aucun effet de bord — le moteur est déterministe et sans état) puis compter les conflits. Ne **pas** approcher le chiffre par une heuristique (« une cible par catégorie ») : il serait faux là où il compte, sur les gabarits justes. Marqueur `# DETTE-037` sur `ServicePlacement._impact` |
 | [DETTE-038](#dette-038--un-libellé-de-match-énonce-des-rangs-relatifs-au-tableau) | conception | mineur | `backend/domain/tableau.py` (`libelle_tour`, les deux branches nommées par des rangs), `backend/application/routage.py` (2 appels), `backend/api/v1/tableaux.py` | `construire_tableau` engendre **toujours** depuis `Plage(1, taille)` : les rangs d'un match sont **relatifs au tableau**. Un tableau qui prélève « les rangs 33 et suivants » (composable **et exécutable** depuis E05US020) décide donc des rangs absolus 37-40 dans un match que l'application annonce « **Places 5 à 8** » — et « Match pour la 5ᵉ place » pour son terminal | Nul aujourd'hui sur le **premier** tableau d'un tournoi (le cas courant : il part du rang 1, relatif = absolu). Devient **faux devant le public** dès qu'un déroulé enchaîne un tableau secondaire — ce que le catalogue de types et les prélèvements par rangs rendent possible depuis E05US015/E05US020 | Défaut **préexistant** sur `place_en_jeu` (E05US010) ; **élargi** par E07US005, qui ajoute la famille « Places N à M » et la porte pour la **première fois sur une surface publique** (onglet « Tableaux », écran de salle, panneau de routage) | Le dépôt sait déjà faire : `domain.palmares` applique `decalage = rang_premier - 1` pour convertir relatif → absolu, et `domain/deroule.py` en avertit deux fois. Remède : passer ce décalage à `libelle_tour`, comme `_numeroter` le fait pour le palmarès — il se lit sur le prélèvement de la phase. **À traiter dans l'US qui livrera un déroulé à tableau secondaire**, pas avant : aujourd'hui aucun format livré n'en produit, et l'on chiffrerait un décalage toujours nul. Marqueur `# DETTE-038` sur les deux branches de `libelle_tour` |
+| [DETTE-039](#dette-039--la-cadence-et-la-taille-dune-page-projetée-sont-en-dur) | technique | mineur | `frontend/src/features/routage/pagination.ts` (`NOMS_PAR_PAGE`, `SECONDES_PAR_PAGE`) | Le commanditaire demande « 20 s **(réglable)** » (questionnaire `p06`) ; la cadence et le nombre de noms par page sont deux constantes de module. `NOMS_PAR_PAGE = 40` n'a par ailleurs jamais été mesuré sur le vidéoprojecteur réel | Un club dont les noms sont longs, ou dont la salle est profonde, ne peut rien ajuster sans recompiler — sur la seule surface que personne ne peut manipuler pendant le tournoi | Lot « retours maquettes » du 05/08/2026 — assumé au commentaire ; **résorption : `E16US009`** |
+| [DETTE-040](#dette-040--lalphabet-des-codes-de-terrain-existe-en-trois-exemplaires) | conception | mineur | `backend/infrastructure/postes/codes.py`, `backend/infrastructure/scoreurs/codes.py`, `frontend/src/shared/ui/codeTerrain.ts` | La chaîne `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` et la longueur `6` sont écrites **trois fois**. Les deux fichiers Python annonçaient eux-mêmes attendre « une 3ᵉ preuve avant tout remède » : le front est cette troisième | Un alphabet modifié d'un côté et pas des deux autres produit des codes que le pavé refuse de composer, ou l'inverse. Le garde-fou réel reste que **le serveur tranche** — le front n'est qu'une aide à la frappe | Lot « retours maquettes » du 05/08/2026. **Aucun remède proposé** : réunir Python et TypeScript supposerait d'exposer l'alphabet par l'API, ce qui est une US à part entière et coûte plus que la duplication (règle 16 — « ne rien faire » est ici la bonne réponse) |
+| [DETTE-041](#dette-041--le-front-approxime--a-tiré--par--total-non-nul-) | conception | mineur | `frontend/src/features/competition/departage.ts` (`totauxExAequo`), `frontend/src/features/competition/api.ts` (`LigneClassement`) | Le domaine **distingue** `a_tire` de `total > 0` — `backend/domain/classement.py` le documente : « un archer qui a validé une volée entièrement manquée a bien tiré, pour un total nul ». Le DTO n'expose pas ce booléen, donc le front l'approxime par `total !== 0` | Deux archers réellement à zéro ne sont pas signalés ex æquo. Cas de fin de journée, quasi théorique, sans conséquence autre que l'absence d'une phrase d'aide. **Non traité et plus gênant** : deux archers à des avancements différents (3 volées contre 6) au même total sont signalés ex æquo à tort — le DTO ne porte aucun avancement | Lot « retours maquettes » du 05/08/2026, relevé en 2ᵉ passe de revue. Résorption : exposer `a_tire` (et l'avancement) dans `LigneClassement`. ⚠️ **Le second volet est un arbitrage** : « ex æquo » vaut-il à l'issue de la qualification, ou à avancement égal ? À poser au commanditaire |
 
 ## Dette résorbée
 
@@ -1724,3 +1727,70 @@ registre se relit à chaque US. Le jumeau le plus proche, **DETTE-035**, dit la 
 réglage : « la conséquence n'est pas chiffrée **au moment du choix** ».
 
 Marqueur `# DETTE-037` sur `ServicePlacement._impact` (`backend/application/placement.py`).
+
+
+### DETTE-039 — la cadence et la taille d'une page projetée sont **en dur**
+
+Le questionnaire `p06` répond, sur la durée d'affichage d'une page de noms : *« on peut dire que
+**20 s (réglable)** par écran de liste de noms est correct »*. Le lot livre la pagination et la
+durée, mais **pas le réglage** : `SECONDES_PAR_PAGE = 20` et `NOMS_PAR_PAGE = 40` sont deux
+constantes de `features/routage/pagination.ts`.
+
+Le raccourci est **assumé et argumenté au commentaire** — rendre la cadence réglable suppose de
+l'attacher à la configuration de l'écran, donc au serveur, hors du périmètre front du lot. Mais
+c'est précisément l'objection que **DETTE-036** a déjà tranchée : *« le précédent DETTE-028 a établi
+qu'une capacité livrée sans effet se trace au registre et ne se contente pas d'un ADR »*. Une US
+planifiée est un **plan de résorption**, pas une trace. Le précédent exact est **DETTE-010**
+(capacité de cible plafonnée à 4), inscrite pour la même raison : une valeur en dur qui devrait être
+paramétrée.
+
+`NOMS_PAR_PAGE` porte en plus une incertitude propre : la valeur est un pari sur ce qui se lit à dix
+mètres, jamais confronté à un vidéoprojecteur réel. Elle est isolée en un seul point pour être
+ajustée sans relire le composant.
+
+Marqueurs `# DETTE-039` sur les deux constantes. Résorption : **E16US009**.
+
+### DETTE-040 — l'alphabet des codes de terrain existe en **trois exemplaires**
+
+`ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (32 symboles, sans les confondables `I`, `O`, `0`, `1`) et la
+longueur `6` sont écrites dans `infrastructure/postes/codes.py`, `infrastructure/scoreurs/codes.py`
+et, depuis le lot « retours maquettes », `frontend/src/shared/ui/codeTerrain.ts`.
+
+Les deux fichiers Python portaient déjà la mention « volontairement dupliqué […] on attend une 3ᵉ
+preuve avant tout remède structurel (règle dette) ». **Le front est cette troisième occurrence**, et
+le seuil que le projet s'était fixé est donc atteint. Le précédent est **DETTE-017** (`_AUTEUR_ADMIN`
+sur trois sites) : constante dupliquée, seuil franchi, ligne au registre.
+
+**Aucun remède n'est proposé, et c'est délibéré** (règle 16). Les deux premières occurrences sont en
+Python, la troisième en TypeScript : aucun pattern ne les réunit sans **exposer l'alphabet par
+l'API**, ce qui serait une US à part entière pour supprimer une duplication de deux lignes. Le
+garde-fou réel n'est pas la constante mais l'autorité : **le serveur refuse un code invalide**, le
+front n'est qu'une aide à la frappe qui évite de proposer des touches inutilisables.
+
+Ce qui manquait n'était donc pas un correctif, c'était la ligne — pour que la prochaine modification
+de l'alphabet trouve ses trois domiciles au lieu de deux.
+
+Marqueurs `# DETTE-040` sur les trois sites.
+
+### DETTE-041 — le front approxime « a tiré » par « total non nul »
+
+Le retour A16 demande la règle de départage **seulement en cas d'ex æquo**. Le premier jet la montrait
+en permanence : le domaine classe *tous* les inscrits, à `total = 0`, avant la première volée — tout le
+monde était donc à égalité. La garde ajoutée écarte les totaux nuls.
+
+C'est **le bon troc** — un faux positif permanent contre un faux négatif quasi théorique — mais ce
+n'est pas la bonne condition. Le domaine tranche déjà la question, et pas de cette façon :
+`backend/domain/classement.py` documente que `a_tire` est **distinct** de `total > 0`, « un archer qui
+a validé une volée entièrement manquée a bien tiré, pour un total nul ». Le discriminant juste existe
+donc côté serveur ; il n'est simplement pas dans le DTO.
+
+Reste un second volet, **non traité et plus gênant en pratique** : `LigneClassement` ne porte aucun
+avancement, si bien que deux archers ayant tiré 3 et 6 volées et affichant le même total sont
+signalés « ex æquo ». À 120 archers, une collision de totaux existe presque en permanence : la règle
+restera affichée une bonne partie de la journée malgré le correctif.
+
+⚠️ Ce second volet **n'est pas un bug à corriger seul, c'est un arbitrage à poser** : « ex æquo »
+désigne-t-il une égalité à l'issue de la qualification, ou à avancement égal ? La réponse change ce
+qu'il faut exposer.
+
+Marqueur `# DETTE-041` sur `totauxExAequo`.

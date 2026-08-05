@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 4 août 2026
+# Résumé du projet — où on en est au 5 août 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -81,7 +81,18 @@ l'écran de salle : tout le pas de tir d'un coup d'œil, dans l'ordre des cibles
 **décide jusqu'où son tournoi classe** (podium, top N, ou un rang unique gagné au tir pour chacun) et
 **ce qu'une cible n'a pas le droit de mélanger** — rien, la catégorie, le blason, ou les deux : une
 règle d'arbitre que le placement automatique respecte sans exception et qu'aucun glisser-déposer ne
-contourne.
+contourne. Enfin, le **05/08/2026**, les **36 planches de maquettes** ont été relues une par
+une par le commanditaire et le produit s'est aligné sur ce qui pouvait l'être sans décision à
+prendre : une **cinquième porte** pour le vidéoprojecteur, des **largeurs par surface** (le PC
+d'organisation n'a plus la même que le téléphone d'un spectateur, et l'écran de salle passe en plein
+cadre), le **déroulé en premier** dans l'administration avec un **bandeau permanent** disant sur quel
+tournoi et quel départ on travaille, une **liste de tournois triée** par état puis par date, une
+**salle qui pagine** enfin ses 200 archers avec compteur et râteau de lettres lisibles de loin, un
+**pavé de saisie appelé** au lieu d'imposé — chaque archer pouvant relire ses volées sans prendre la
+tablette —, un **pavé de code** qui n'offre que des touches valides, de **vraies fenêtres de
+confirmation** à la place des huit boîtes grises du navigateur, et **deux impressions** (étiquettes de
+cible, cartes de scoreur) que le serveur produisait depuis longtemps sans qu'aucun écran ne puisse les
+déclencher.
 
 ---
 
@@ -469,6 +480,13 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   charges — « qu'est-ce qu'un Big Shoot Off ? » —, bloquante depuis l'origine du projet, est
   **fermée** : le commanditaire en a fourni la règle, comme celles des poules, de l'échauffement, du
   handicap, du système suisse, du King of the Hill, du Ladder et de la finale spectacle.
+- **Retours du questionnaire de maquettes (04/08/2026)** : 36 planches relues, verdict par écran.
+  **Quatre écrans refusés** en l'état (A07 phases, A10 plan de salle, A14 complétude, P03 classements
+  publics), vingt validés avec réserves. Le **lot « front seul »** a été livré le 05/08/2026 — **hors
+  US numérotée**, d'où un compte d'US inchangé : il ne portait aucune décision métier ni changement de
+  domaine. Le reste est spécifié en dix US dans [`stories/E16`](../stories/E16-retours-maquettes.md)
+  ([EPIC-16](../epics/EPIC-16-retours-maquettes.md)), et les retours **écartés** y sont consignés avec
+  leur raison — aucun questionnaire ne reste sans suite.
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,

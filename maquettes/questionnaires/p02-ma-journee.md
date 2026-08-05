@@ -3,67 +3,61 @@
 > **Écran** : [P02 — Ma journée — maintenant / ensuite](../p02-ma-journee.html) · **Appli** : Appli publique (`/`)
 > **Rôle** : L'écran qui porte la promesse : « où je tire, et où je tire ensuite ? », sans défilement.
 >
-> Remplis ce qui te parle, laisse le reste vide. Une ligne barrée ou un « non »
-> sec est une réponse parfaitement utile — c'est même la plus rapide à exploiter.
+> Rempli le 04/08/2026.
 
 ---
 
 ## 1. Quel parti pris retiens-tu ?
 
-- [ ] A — Maintenant / Ensuite empilés
+- [x] A — Maintenant / Ensuite empilés
 - [ ] B — Une seule carte qui bascule
 - [ ] C — Fil chronologique
 - [ ] Aucun — voir « à refaire » plus bas
 
-**Pourquoi ce choix** *(ce qui a emporté la décision, même si c'est un détail)*
->
+**Pourquoi ce choix**
+
+> on peut scroller sur un telephne, donc information en pile ok
 
 **Ce que tu prendrais dans les autres variantes**
->
+
+> _(sans réponse)_
 
 ---
 
 ## 2. Verdict
 
 - [ ] ✅ Validé tel quel — on peut coder ça
-- [ ] 🟡 Validé avec les réserves ci-dessous
+- [x] 🟡 Validé avec les réserves ci-dessous
 - [ ] 🔴 À refaire — l'écran ne répond pas au besoin
 
 ---
 
 ## 3. Critiques
 
-*Ce qui ne va pas : hiérarchie, vocabulaire, information manquante, geste pénible,
-cas réel non couvert.*
-
->
+> a retravailler pour accepter de suivre plusieur archer, 
+> ecran trop personnel, il s'adresse aussi bien au public qu'a un archer.
 
 ---
 
 ## 4. Évolutions souhaitées
 
-*Ce que tu veux en plus ou en moins. Sans te censurer sur la faisabilité —
-c'est mon travail de dire ce que ça coûte.*
-
->
+> rendre ca uniforme pour le public comme pour l'archer, ecran repliable pour le recapitulatif des information de la journées, on doit pouvoir retrouver tout les tour de toutes les phase joués.
 
 ---
 
 ## 5. Questions ciblées
 
-*Ces questions viennent de points que la maquette n'a pas pu trancher seule.*
-
 **1. « Ensuite » doit-il apparaître dès le début de la journée, ou seulement quand l'affectation est certaine ?**
->
+
+> oui
 
 **2. L'archer doit-il être prévenu (notification, son) quand son affectation change, ou consulte-t-il quand il veut ?**
->
+
+> non, il regarde son appareil comme un grand
 
 ---
 
 ## 6. Vocabulaire
-
-*Un mot faux à l'écran coûte cher toute la journée. Corrige sans hésiter.*
 
 | À l'écran | Le bon mot |
 |---|---|
@@ -73,6 +67,4 @@ c'est mon travail de dire ce que ça coûte.*
 
 ## 7. Ce qui manque complètement
 
-*Un écran, un état, un cas que cette maquette ignore.*
-
->
+> _(sans réponse)_

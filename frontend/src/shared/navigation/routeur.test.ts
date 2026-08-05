@@ -1,7 +1,17 @@
 // Tests du routeur maison (E14US003). Partie **pure** : aucune dépendance au DOM.
 
 import { describe, expect, it } from 'vitest'
-import { analyserChemin, construireChemin, mondeDuRole, roleDuMonde, type Route } from './routeur'
+import {
+  analyserChemin,
+  cheminDePorte,
+  construireChemin,
+  mondeDuRole,
+  porteDuChemin,
+  roleDeLaPorte,
+  roleDuMonde,
+  type Porte,
+  type Route,
+} from './routeur'
 
 describe('analyserChemin', () => {
   it('la racine ouvre l’écran de choix des quatre portes', () => {
@@ -79,5 +89,36 @@ describe('correspondance monde ↔ rôle', () => {
     for (const role of ['tablette', 'public', 'scoreur', 'admin'] as const) {
       expect(roleDuMonde(mondeDuRole(role))).toBe(role)
     }
+  })
+})
+
+// Portes — retour maquettes du 04/08/2026 (A00). Cinq portes pour quatre mondes : `cible` et `salle`
+// mènent toutes deux au monde `tablette`, parce qu'un écran de projection **est** un poste.
+describe('portes', () => {
+  const TOUTES: Porte[] = ['tablette', 'salle', 'public', 'scoreur', 'admin']
+
+  it.each(TOUTES)('la porte %s a une adresse, et cette adresse la redonne', (porte) => {
+    expect(porteDuChemin(cheminDePorte(porte))).toBe(porte)
+  })
+
+  it('« écran de cible » et « écran de salle » sont deux portes du même monde', () => {
+    expect(analyserChemin('/salle').monde).toBe('tablette')
+    expect(analyserChemin('/cible').monde).toBe('tablette')
+    expect(roleDeLaPorte('salle')).toBe('tablette')
+    expect(roleDeLaPorte('tablette')).toBe('tablette')
+  })
+
+  it('la racine et une adresse inconnue ne nomment aucune porte', () => {
+    expect(porteDuChemin('/')).toBeNull()
+    expect(porteDuChemin('/inconnu')).toBeNull()
+  })
+
+  it('l’adresse d’un écran de salle n’est pas réécrite en « /cible »', () => {
+    // Garde-fou de l'asymétrie **assumée** documentée dans `routeur.ts` : `construireChemin` ne sait
+    // rendre que `/cible` pour le monde tablette. Si l'app venait un jour à reconstruire l'adresse
+    // d'un poste installé, un écran de salle allumé pour la journée verrait son adresse changer sous
+    // lui — ce test dit que la distinction ne survit que parce qu'on **ne reconstruit pas**.
+    expect(construireChemin(analyserChemin('/salle'))).toBe('/cible')
+    expect(porteDuChemin('/salle')).toBe('salle')
   })
 })

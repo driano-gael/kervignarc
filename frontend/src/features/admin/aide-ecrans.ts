@@ -119,7 +119,7 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'Suivez qui a réglé son inscription et combien. Le montant dû se calcule à partir des départs de ' +
     'chaque archer ; vous pointez ici les paiements reçus.',
   postes:
-    'Affichez, cible par cible, le QR de rattachement à imprimer ou à scanner. Une tablette scanne le ' +
+    'Affichez, cible par cible, le QR de rattachement à imprimer ou à scanner. L’appareil posé sur la cible scanne le ' +
     'QR de sa cible pour ouvrir la saisie sans avoir à s’identifier.',
   supervision:
     'Suivez en direct l’état des postes de saisie le jour J : qui est connecté, où en est la saisie. ' +

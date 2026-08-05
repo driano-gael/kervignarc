@@ -12,6 +12,8 @@
 // qu'il voit, en rouge, les prises de contrôle qu'il a oublié de rendre.
 
 import { ErreurApi } from '../../shared/api/client'
+import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
+import { GroupeRepliable } from '../../shared/ui/GroupeRepliable'
 import type { PosteSupervision } from './api'
 import { PiloterEcrans } from './PiloterEcrans'
 import { afficheEtat, avancementLibelle } from './etat'
@@ -20,6 +22,18 @@ import { tempsRelatif } from './tempsRelatif'
 
 export function Supervision({ tournoiId }: { tournoiId: number }) {
   const supervision = useSupervision(tournoiId)
+  // Les deux natures de poste, séparées **une fois** : elles alimentent chacune leur bandeau, et
+  // chaque bandeau a besoin de son décompte d'anomalies avant même d'être déplié (A12).
+  const postes = supervision.data?.postes ?? []
+  const cibles = postes.filter((poste) => poste.type === 'cible')
+  const ecrans = postes.filter((poste) => poste.type === 'ecran')
+  // ⚠️ **Anomalie = `hors_ligne`, jamais `non_rattache`.** Un poste non rattaché est l'état
+  // **nominal** de la préparation : compter les 30 cibles avant distribution des tablettes faisait
+  // hurler « 30 à vérifier » toute la matinée, et un signal qui hurle dans l'état normal cesse
+  // d'être lu le jour où il dit vrai — l'inverse d'A13, « seuls les problèmes sautent aux yeux ».
+  // Hors ligne, en revanche, c'est un poste **rattaché qui s'est tu** : là, il y a quelqu'un à
+  // envoyer. (Revue du 05/08/2026, axe C1.)
+  const muets = (liste: typeof postes) => liste.filter((p) => p.etat === 'hors_ligne').length
 
   return (
     <section className="carte carte--large">
@@ -47,33 +61,51 @@ export function Supervision({ tournoiId }: { tournoiId: number }) {
               cible&nbsp;»).
             </p>
           ) : (
-            <table className="table supervision__table">
-              <thead>
-                <tr>
-                  <th scope="col">Cible</th>
-                  <th scope="col">État</th>
-                  <th scope="col">Dernière activité</th>
-                  <th scope="col">Avancement</th>
-                  <th scope="col">IP</th>
-                  <th scope="col">
-                    <span className="sr-only">Action</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {supervision.data.postes
-                  .filter((poste) => poste.type === 'cible')
-                  .map((poste) => (
-                    <LignePoste key={poste.poste_id} poste={poste} tournoiId={tournoiId} />
-                  ))}
-              </tbody>
-            </table>
+            <GroupeRepliable
+              titre="Écrans de cible"
+              resume={`${supervision.data.nb_en_ligne}/${supervision.data.nb_total} en ligne`}
+              nbAnomalies={muets(cibles)}
+              libelleAnomalies="à vérifier"
+              enfants={
+                <table className="table supervision__table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Cible</th>
+                      <th scope="col">État</th>
+                      <th scope="col">Dernière activité</th>
+                      <th scope="col">Avancement</th>
+                      <th scope="col">IP</th>
+                      <th scope="col">
+                        <span className="sr-only">Action</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cibles.map((poste) => (
+                      <LignePoste key={poste.poste_id} poste={poste} tournoiId={tournoiId} />
+                    ))}
+                  </tbody>
+                </table>
+              }
+            />
           )}
 
-          <PiloterEcrans
-            tournoiId={tournoiId}
-            ecrans={supervision.data.postes.filter((poste) => poste.type === 'ecran')}
-            nbEnLigne={supervision.data.nb_ecrans_en_ligne}
+          {/* Second bandeau : les écrans de salle. Deux natures de poste, deux groupes — c'est
+              exactement le découpage qu'A12 demande (« chaque type d'écran est sous un bandeau
+              repliable de type »), et il existait déjà en substance ici, sans repli ni remontée
+              d'alerte. */}
+          <GroupeRepliable
+            titre="Écrans de salle"
+            resume={`${supervision.data.nb_ecrans_en_ligne}/${supervision.data.nb_ecrans} en ligne`}
+            nbAnomalies={muets(ecrans)}
+            libelleAnomalies="à vérifier"
+            enfants={
+              <PiloterEcrans
+                tournoiId={tournoiId}
+                ecrans={ecrans}
+                nbEnLigne={supervision.data.nb_ecrans_en_ligne}
+              />
+            }
           />
         </>
       )}
@@ -85,15 +117,6 @@ function LignePoste({ poste, tournoiId }: { poste: PosteSupervision; tournoiId: 
   const revoquer = useRevoquerPoste(tournoiId)
   const { classe, libelle } = afficheEtat(poste.etat)
   const rattache = poste.etat !== 'non_rattache'
-
-  const demanderRevocation = () => {
-    // Garde-fou tactile : révoquer un poste en cours de tir le coupe. Confirmation simple en
-    // attendant E12US007 (« alerter par calcul d'impact »), qui généralisera les alertes chiffrées.
-    const ok = window.confirm(
-      `Révoquer la cible ${poste.cible_index ?? '?'} ? La tablette repassera à l'écran de rattachement.`,
-    )
-    if (ok) revoquer.mutate(poste.poste_id)
-  }
 
   return (
     <tr>
@@ -112,14 +135,19 @@ function LignePoste({ poste, tournoiId }: { poste: PosteSupervision; tournoiId: 
       <td className="supervision__ip">{poste.ip ?? '—'}</td>
       <td>
         {rattache && (
-          <button
-            type="button"
+          /* Garde-fou tactile : révoquer un poste en cours de tir le coupe. Vrai dialogue depuis
+             le retour maquettes du 04/08/2026 (A15) ; le calcul d'impact chiffré reste E12US007. */
+          <BoutonConfirme
+            libelle="Révoquer"
             className="lien"
             disabled={revoquer.isPending}
-            onClick={demanderRevocation}
-          >
-            Révoquer
-          </button>
+            enCours={revoquer.isPending}
+            titre={`Révoquer la cible ${poste.cible_index ?? '?'} ?`}
+            message="L’appareil repasse à l’écran de rattachement. S’il est en cours de saisie, il est coupé."
+            libelleConfirmer="Révoquer"
+            ton="danger"
+            onConfirmer={() => revoquer.mutate(poste.poste_id)}
+          />
         )}
         {revoquer.isError && (
           <span className="carte__etat--erreur" role="alert">

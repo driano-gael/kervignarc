@@ -7,13 +7,18 @@
 // réapparaîtrait jamais (cf. ADR-0042). Les sessions serveur expirent d'elles-mêmes (comme sur un 401
 // / redémarrage serveur) — purge côté client seulement, cohérent avec le périmètre LAN mono-club.
 
-import { useSessionAdminStore } from '../shared/stores/sessionAdminStore'
-import { useSessionPosteStore } from '../shared/stores/sessionPosteStore'
-import { useSessionRoleStore } from '../shared/stores/sessionRoleStore'
-import { useSessionScoreurStore } from '../shared/stores/sessionScoreurStore'
-import { naviguer } from '../shared/navigation/useChemin'
+import { useSessionAdminStore } from '../stores/sessionAdminStore'
+import { useSessionPosteStore } from '../stores/sessionPosteStore'
+import { useSessionRoleStore } from '../stores/sessionRoleStore'
+import { useSessionScoreurStore } from '../stores/sessionScoreurStore'
+import { naviguer } from '../navigation/useChemin'
 
-export function ChangerDeRole() {
+// `libelle` : le même geste s'appelle « Changer de rôle » dans l'en-tête (action rare, ton neutre) et
+// « Choisir un autre appareil » au pied de l'écran de connexion, où c'est la question que se pose
+// l'utilisateur (A01, 04/08/2026). Un paramètre plutôt qu'un second composant : la purge des quatre
+// stores est la partie risquée, la dupliquer pour changer trois mots serait le meilleur moyen d'en
+// oublier un le jour où l'on ajoute une session.
+export function ChangerDeRole({ libelle = 'Changer de rôle' }: { libelle?: string }) {
   const detacherPoste = useSessionPosteStore((s) => s.detacher)
   const effacerAdmin = useSessionAdminStore((s) => s.effacer)
   const effacerScoreur = useSessionScoreurStore((s) => s.effacer)
@@ -34,7 +39,7 @@ export function ChangerDeRole() {
 
   return (
     <button type="button" className="lien app__changer-role" onClick={changer}>
-      Changer de rôle
+      {libelle}
     </button>
   )
 }

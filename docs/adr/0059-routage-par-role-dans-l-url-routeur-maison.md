@@ -125,3 +125,32 @@ ne s'installe.
 - **⚠️ Les QR déjà imprimés** pointent vers `/?poste=<code>`. L'ancienne forme **doit continuer à
   fonctionner** — la racine porte toujours le paramètre et le verrou `D-13` force alors la tablette,
   quel que soit le chemin. Ne pas retirer ce comportement sans réimprimer les étiquettes (E09US008).
+
+---
+
+## Amendement du 05/08/2026 — une adresse par **porte**, plusieurs portes par monde
+
+Cet ADR décidait « **cinq adresses, une par monde** », et son en-tête parlait des « quatre portes »
+d'[ADR-0042](0042-ecran-d-entree-quatre-portes.md). Les deux formulations sont devenues **fausses**
+avec le lot « retours du questionnaire de maquettes ».
+
+**Ce qui a changé.** Le commanditaire a demandé une porte de plus (`maquettes/questionnaires/a00-portes.md`,
+« ce qui manque complètement ») : *« une porte pour le ou les écrans de projections »*. Or un écran de
+salle **est un poste** — même code de rattachement, même jeton, même heartbeat, même révocation
+(E07US004 l'avait déjà tranché). Ce qui manquait n'était donc pas un monde, c'était de
+l'**orientation** : rien, à l'écran de choix, ne disait au bénévole que le vidéoprojecteur passe par
+là, et il devait franchir « tablette de cible » pour rattacher un écran.
+
+**La décision est donc élargie, pas renversée** : « une adresse par **porte** », une porte pouvant
+partager son monde avec une autre. Le routeur gagne un type `Porte` (`Role | 'salle'`) à côté de
+`Monde` ; `roleDeLaPorte('salle') === 'tablette'`. La précédence d'entrée de `mondeAServir` — verrou
+`D-13`, puis adresse, puis choix mémorisé — est **inchangée**.
+
+**Asymétrie assumée, et pourquoi elle est sans conséquence.** `porte → chemin` est total, mais
+`chemin → monde` écrase la distinction : `construireChemin({ monde: 'tablette' })` rend toujours
+`/cible`. L'app ne *reconstruit* jamais l'adresse d'un poste installé — `mondeAServir` ne pose
+`corrigerUrl` que depuis la racine, ou sous verrou `D-13` avec une adresse d'un autre monde, et
+`analyserChemin('/salle').monde` vaut déjà `tablette`. Un écran laissé sur `/salle` **n'y est donc
+jamais réécrit**, ce que verrouille un test dédié (`routeur.test.ts`). La distinction cible/salle en
+**affichage** ne vient d'ailleurs pas de l'adresse mais de `poste.type`, rendu par le serveur — seule
+réponse correcte pour un écran atteint par QR, qui n'a pas d'adresse `/salle`.

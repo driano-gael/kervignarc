@@ -4,7 +4,7 @@
 // **mutation** idempotente qui invalide cette liste (rafraîchissement immédiat).
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getPostes, getQrCible, preparerPostes } from './api'
+import { getPostes, getQrCible, preparerPostes, telechargerEtiquettesQr } from './api'
 
 const clePostes = (tournoiId: number) => ['postes', tournoiId] as const
 
@@ -21,6 +21,13 @@ export function usePreparerPostes(tournoiId: number) {
     mutationFn: () => preparerPostes(tournoiId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: clePostes(tournoiId) }),
   })
+}
+
+// Le PDF des étiquettes (A12, 04/08/2026) : une **action**, pas de l'état serveur — `useMutation`,
+// comme les téléchargements de la feature « exports ». Un `useQuery` déclencherait la génération au
+// montage de l'écran et mettrait un PDF en cache, pour rien.
+export function useTelechargerEtiquettesQr(tournoiId: number) {
+  return useMutation({ mutationFn: () => telechargerEtiquettesQr(tournoiId) })
 }
 
 // QR de rattachement d'une cible (E11US008) : l'**image** (SVG) est de l'état **serveur**, mise en
