@@ -16,7 +16,7 @@
   gap: clamp(12px, 1.5vw, 32px);
   min-height: 100%;
   padding: clamp(12px, 1.5vw, 32px);
-  background: var(--bg);
+  background: var(--surface-0);
   font-size: clamp(16px, 1.15vw, 28px);
 }
 
@@ -25,18 +25,18 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: clamp(12px, 1.5vw, 32px);
-  border-bottom: 2px solid var(--border);
+  border-bottom: 2px solid var(--border-subtle);
   padding-bottom: clamp(8px, 0.8vw, 18px);
 }
 
 .salle__lieu {
-  color: var(--text-h);
+  color: var(--text);
   font-size: 1.5em;
   font-weight: 700;
 }
 
 .salle__vue {
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 1.2em;
   opacity: 0.85;
 }
@@ -46,15 +46,15 @@
 .salle__controle {
   margin-left: auto;
   border-radius: 999px;
-  background: var(--accent);
-  color: var(--bg);
+  background: var(--brand-surface);
+  color: var(--sur-brand);
   padding: 0.25em 0.9em;
   font-weight: 700;
 }
 
 .salle__cadence {
   margin-left: auto;
-  color: var(--text);
+  color: var(--text-secondary);
   opacity: 0.6;
 }
 
@@ -89,7 +89,7 @@
 
 /* `DV-03` : couleur **et** mot. Ambre pour l'alerte (jamais le rouge club, cf. charte). */
 .salle__hors-ligne {
-  color: var(--warn);
+  color: var(--danger);
   font-weight: 700;
 }
 
@@ -99,7 +99,7 @@
 }
 
 .salle__attente {
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 1.4em;
   opacity: 0.7;
   text-align: center;
@@ -132,7 +132,7 @@
 }
 
 .salle-pages__titre {
-  color: var(--text-h);
+  color: var(--text);
   font-size: 1.4em;
   font-weight: 700;
 }
@@ -143,7 +143,7 @@
   font-family: var(--mono);
   font-size: 2em;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--brand-text);
   letter-spacing: 0.05em;
 }
 
@@ -153,13 +153,13 @@
   font-family: var(--mono);
   font-size: 2.4em;
   font-weight: 700;
-  color: var(--text-h);
+  color: var(--text);
   line-height: 1;
 }
 
 .salle-pages__compteur-total {
   font-size: 0.55em;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* « Mettre le maximum d'archers sur une page quand même » : colonnes CSS plutôt qu'une grille figée
@@ -181,16 +181,16 @@
   justify-content: space-between;
   gap: 0.6em;
   padding: 0.15em 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .salle-pages__nom-texte {
-  color: var(--text-h);
+  color: var(--text);
   font-weight: 600;
 }
 
 .salle-pages__nom-destination {
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 0.8em;
   text-align: right;
 }

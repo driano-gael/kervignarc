@@ -30,7 +30,7 @@
 }
 
 .affectations__cible {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 0.5em 0.7em;
 }
@@ -39,7 +39,7 @@
 .affectations__cible-num {
   display: block;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--brand-text);
   font-size: 1.1em;
   margin-bottom: 0.3em;
 }
@@ -63,31 +63,31 @@
 .affectations__position {
   flex: 0 0 1.4em;
   font-weight: 700;
-  color: var(--text-h);
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
 .affectations__nom {
   flex: 1 1 auto;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .affectations__titre {
   flex: 0 0 auto;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* Encore quelque chose à jouer — un prochain duel, ou un repêchage. Distinguer visuellement le
    repêché de l'éliminé n'est pas décoratif : c'est la différence entre rester et rentrer chez soi. */
 .affectations__titre--en-lice {
-  color: var(--accent);
+  color: var(--brand-text);
 }
 
 .affectations__contexte {
   flex: 0 0 auto;
   font-size: 0.85em;
-  color: var(--text);
+  color: var(--text-secondary);
   opacity: 0.8;
 }
 
@@ -95,19 +95,19 @@
 .affectations__alerte {
   flex: 1 1 100%;
   font-size: 0.85em;
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .affectations__annexe {
   margin-top: 1em;
   padding-top: 0.6em;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .affectations__annexe-titre {
   display: block;
   font-size: 0.9em;
-  color: var(--text);
+  color: var(--text-secondary);
   opacity: 0.8;
   margin-bottom: 0.4em;
 }

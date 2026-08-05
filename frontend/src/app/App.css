@@ -92,8 +92,8 @@
   gap: 16px;
   margin: calc(-1 * var(--respiration)) calc(-1 * var(--respiration)) 0;
   padding: 16px var(--respiration);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .app__titre {
@@ -111,7 +111,7 @@
 
 /* « Changer de rôle » : échappatoire discrète, ton neutre (pas l'accent — c'est une action rare). */
 .app__changer-role {
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -143,11 +143,11 @@
 }
 
 .indicateur--connexion {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .indicateur--connecte {
-  color: var(--ok);
+  color: var(--success);
 }
 
 .indicateur--deconnecte {
@@ -156,7 +156,7 @@
 
 /* Rejeu de la file hors-ligne en cours (E04US009) : ambre + pastille pulsée pour signaler l'activité. */
 .indicateur--synchronisation {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .indicateur--synchronisation .indicateur__pastille {
@@ -192,7 +192,7 @@
   flex-direction: column;
   gap: 6px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 /* Recherche d'archer en tête de sidebar (E12US006) : séparée du reste par un filet, comme le
@@ -202,7 +202,7 @@
   flex-direction: column;
   gap: 6px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .recherche-places {
@@ -217,7 +217,7 @@
 
 .recherche-place {
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .recherche-place--vide,
@@ -243,7 +243,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: left;
-  color: var(--text-h);
+  color: var(--text);
   background: none;
   border: none;
   border-radius: 8px;
@@ -251,7 +251,7 @@
 }
 
 .coquille__entete-groupe:hover {
-  background: var(--surface);
+  background: var(--surface-1);
 }
 
 .coquille__liens {
@@ -271,7 +271,7 @@
   padding: 8px 12px;
   font: inherit;
   text-align: left;
-  color: var(--text-h);
+  color: var(--text);
   background: none;
   border: none;
   border-radius: 8px;
@@ -279,12 +279,12 @@
 }
 
 .coquille__lien:hover {
-  background: var(--surface);
+  background: var(--surface-1);
 }
 
 .coquille__lien--actif {
-  color: var(--bg);
-  background: var(--accent);
+  color: var(--sur-brand);
+  background: var(--brand-surface);
   font-weight: 600;
 }
 
@@ -309,19 +309,19 @@
   gap: 12px;
   margin-bottom: 16px;
   padding: 10px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
 }
 
 .bandeau-contexte__tournoi {
-  color: var(--text-h);
+  color: var(--text);
   font-size: 17px;
   font-weight: 700;
 }
 
 .bandeau-contexte__date {
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -329,9 +329,9 @@
    gestes. Elle se distingue donc du reste du bandeau, sans devenir une alerte. */
 .bandeau-contexte__depart {
   padding: 2px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 999px;
-  color: var(--text-h);
+  color: var(--text);
   font-weight: 600;
   font-size: 14px;
 }
@@ -339,7 +339,7 @@
 /* Le fil « axe › écran » part à droite : c'est un repère, pas une donnée qu'on lit en premier. */
 .bandeau-contexte__fil {
   margin-left: auto;
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -362,7 +362,7 @@
   border: 1px solid var(--border);
   border-radius: 999px;
   background: transparent;
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
 }
@@ -371,8 +371,8 @@
    l'œil. Pas d'aplat plein : le badge de statut qu'il contient a ses propres couleurs, les empiler
    rendrait la pastille illisible. */
 .filtre-statut--actif {
-  border-color: var(--accent);
-  color: var(--text-h);
+  border-color: var(--brand-text);
+  color: var(--text);
   font-weight: 600;
 }
 
@@ -380,8 +380,8 @@
 .tournoi__aujourdhui {
   padding: 1px 8px;
   border-radius: 999px;
-  background: var(--accent);
-  color: var(--bg);
+  background: var(--brand-surface);
+  color: var(--sur-brand);
   font-size: 12px;
   font-weight: 700;
 }
@@ -394,7 +394,7 @@
   padding: 8px 10px;
   font: inherit;
   font-size: 13px;
-  color: var(--dim);
+  color: var(--text-muted);
   background: none;
   border: none;
   border-radius: 8px;
@@ -402,8 +402,8 @@
 }
 
 .coquille__retour:hover {
-  color: var(--text);
-  background: var(--surface);
+  color: var(--text-secondary);
+  background: var(--surface-1);
 }
 
 /* Nom de l'axe courant : il remplace les en-têtes de groupe repliables, qui n'ont plus de raison
@@ -415,7 +415,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--brand-text);
 }
 
 /* Repli en colonne sous 720 px : la sidebar devient un bandeau au-dessus du contenu. */
@@ -460,15 +460,15 @@
   padding: 16px 18px;
   font: inherit;
   text-align: left;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   cursor: pointer;
 }
 
 .accueil-admin__axe:hover {
-  border-color: var(--accent);
+  border-color: var(--brand-text);
 }
 
 .accueil-admin__titre {
@@ -477,7 +477,7 @@
   gap: 10px;
   font-size: 18px;
   font-weight: 800;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 /* Marque d'état sur un axe : neutre par défaut. L'ambre reste réservé aux alertes (`DV-03`), donc
@@ -488,20 +488,20 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--dim);
-  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
   border-radius: 999px;
 }
 
 .accueil-admin__marque--vif {
-  color: var(--ok);
-  border-color: var(--ok);
+  color: var(--success);
+  border-color: var(--success);
 }
 
 .accueil-admin__phrase {
   font-size: 13.5px;
   line-height: 1.45;
-  color: var(--dim);
+  color: var(--text-muted);
 }
 
 /* Aide contextuelle par écran (E14US002) : bouton « ⓘ Aide » masqué par défaut, panneau déployé au
@@ -518,20 +518,20 @@
   /* Cible tactile confortable (≥ 44 px, WCAG 2.5.5) pour les tablettes BYOD. */
   min-height: 44px;
   padding: 8px 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
+  background: var(--surface-1);
+  color: var(--text-secondary);
   font: inherit;
   cursor: pointer;
 }
 
 .aide-ecran__bouton:hover {
-  border-color: var(--accent);
+  border-color: var(--brand-text);
 }
 
 .aide-ecran__glyphe {
-  color: var(--accent);
+  color: var(--brand-text);
   font-size: 18px;
   line-height: 1;
 }
@@ -540,23 +540,23 @@
   margin: 8px 0 0;
   padding: 12px 14px;
   max-width: 560px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--brand-border);
   border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
+  background: var(--surface-1);
+  color: var(--text-secondary);
 }
 
 /* Panneau du tournoi courant (cycle de vie), en tête de la destination « Tournoi ». */
 .tournoi-courant {
   padding-bottom: 12px;
   margin-bottom: 8px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 /* Tournoi mis en évidence dans la liste (celui qui est courant dans la coquille). */
 .tournoi--selectionne {
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid var(--brand-border);
   padding-left: 8px;
 }
 
@@ -569,10 +569,10 @@
 .dialogue {
   max-width: 32rem;
   padding: 24px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 14px;
-  background: var(--surface);
-  color: var(--text);
+  background: var(--surface-1);
+  color: var(--text-secondary);
   box-shadow: 0 18px 48px rgb(0 0 0 / 35%);
 }
 
@@ -587,7 +587,7 @@
 
 .dialogue__message {
   margin: 0;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 /* Le détail chiffré (« il reste 3 séries à valider ») : registre secondaire, mais lisible — c'est
@@ -597,8 +597,8 @@
   margin: 10px 0 0;
   padding: 10px 12px;
   border-radius: 8px;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--surface-0);
+  border: 1px solid var(--border-subtle);
   font-size: 14px;
   white-space: pre-line;
 }
@@ -628,7 +628,7 @@
    de détail. » Le bandeau est donc dimensionné pour être lu **replié** : c'est son état de repos. */
 .groupe {
   margin: 12px 0;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -640,15 +640,15 @@
   width: 100%;
   min-height: 48px;
   padding: 8px 12px;
-  background: var(--surface);
+  background: var(--surface-1);
   border: none;
-  color: var(--text-h);
+  color: var(--text);
   text-align: left;
   cursor: pointer;
 }
 
 .groupe__chevron {
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .groupe__titre {
@@ -656,7 +656,7 @@
 }
 
 .groupe__resume {
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -665,27 +665,27 @@
    intact. Ambre et non rouge (`DV-03`, arbitrage ADR-0038 : hors ligne n'est pas une faute). */
 .groupe__alerte {
   margin-left: auto;
-  color: var(--warn);
+  color: var(--danger);
   font-weight: 700;
   font-size: 14px;
 }
 
 .groupe--alerte {
-  border-color: var(--warn);
+  border-color: var(--danger);
 }
 
 .groupe__contenu {
   padding: 12px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-subtle);
 }
 
 /* Carte générique. Ses largeurs viennent des jetons de surface (cf. tête de fichier) : les valeurs
    figées `360px` / `560px` étaient dimensionnées pour un téléphone et s'appliquaient tout autant au
    PC d'organisation — c'est la cause directe du « trop tassé » relevé en A02 et A11. */
 .carte {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  background: var(--surface);
+  background: var(--surface-1);
   padding: calc(var(--respiration) * 0.85);
   max-width: var(--largeur-carte);
 }
@@ -710,7 +710,7 @@
 .carte__soustitre {
   margin: 20px 0 8px;
   font-size: 15px;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .carte__etat {
@@ -725,11 +725,11 @@
   /* `--text` et non `--text-h` : ce texte **porte de l'information métier** (ce que fait le format
      choisi), c'est le seul endroit où l'organisateur apprend ce qu'est une « colline ». Le token
      atténué est pour l'accessoire. Aligné sur `.zones__aide`, que le commentaire disait déjà viser. */
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .carte__etat--ok {
-  color: var(--ok);
+  color: var(--success);
 }
 
 .carte__etat--erreur {
@@ -741,7 +741,7 @@
    applicable » : ce n'est ni une réussite ni une erreur de saisie, c'est un état intermédiaire
    normal — le dire en rouge dramatiserait un brouillon en cours. */
 .carte__etat--alerte {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 /* Postes de cible : code + QR de rattachement à l'écran (E11US008). */
@@ -760,7 +760,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 8px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
 }
 
@@ -793,7 +793,7 @@
   justify-content: center;
   font-size: 12px;
   text-align: center;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 /* Agrandissement plein écran pour présenter le QR à une tablette et le scanner. */
@@ -874,7 +874,7 @@
 .lien {
   padding: 4px 0;
   font: inherit;
-  color: var(--accent);
+  color: var(--brand-text);
   background: none;
   border: none;
   text-align: left;
@@ -889,8 +889,8 @@
 .ligne-action__champ {
   padding: 6px 8px;
   font: inherit;
-  color: var(--text-h);
-  background: var(--bg);
+  color: var(--text);
+  background: var(--surface-0);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
@@ -899,8 +899,8 @@ button {
   padding: 6px 12px;
   font: inherit;
   font-weight: 500;
-  color: var(--bg);
-  background: var(--accent);
+  color: var(--sur-brand);
+  background: var(--brand-surface);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -913,13 +913,17 @@ button:disabled {
 
 /* Variantes de boutons : secondaire (discret) et destructif (suppression). */
 .bouton--discret {
-  color: var(--text-h);
-  background: var(--surface);
+  color: var(--text);
+  background: var(--surface-1);
   border: 1px solid var(--border);
 }
 
+/* Destructif : aplat ambre, **pas** rouge — sur l'anthracite de la charte le rouge ne fait que
+   2,55:1 et ne signale rien (`DV-03`). L'encre est redonnée explicitement : sans elle, la règle
+   hérite du blanc du bouton principal, illisible sur l'ambre (1,9:1). */
 .bouton--danger {
   background: var(--danger);
+  color: var(--sur-danger);
 }
 
 .formulaire__actions {
@@ -951,7 +955,7 @@ button:disabled {
 
 .tournoi__note {
   font-size: 12px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .tournoi__actions button {
@@ -987,7 +991,7 @@ button:disabled {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
 }
 
@@ -1010,13 +1014,13 @@ button:disabled {
 
 .categorie__libelle {
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .categorie__attributs {
   flex: 1 1 auto;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .categorie__actions {
@@ -1036,7 +1040,7 @@ button:disabled {
   flex-direction: column;
   gap: 2px;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* Choix unique : la case précède son libellé **sur la même ligne** (ex. grain de validation,
@@ -1068,13 +1072,13 @@ button:disabled {
 
 .blason__nom {
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .blason__attributs {
   flex: 1 1 auto;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .blason__actions {
@@ -1092,14 +1096,14 @@ button:disabled {
 .zones {
   margin: 0;
   padding: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
 }
 
 .zones__aide {
   margin: 4px 0 8px;
   font-size: 12px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .zones__cases {
@@ -1145,7 +1149,7 @@ button:disabled {
 .club__nom {
   flex: 1 1 auto;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .club__actions {
@@ -1179,7 +1183,7 @@ button:disabled {
 .scoreur__nom {
   flex: 1 1 auto;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 /* Le code, en évidence : monospace et espacé pour être recopié sans erreur sur le papier. */
@@ -1188,10 +1192,10 @@ button:disabled {
   font-size: 15px;
   letter-spacing: 0.15em;
   padding: 2px 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
-  background: var(--surface);
-  color: var(--text-h);
+  background: var(--surface-1);
+  color: var(--text);
 }
 
 .scoreur__actions {
@@ -1224,13 +1228,13 @@ button:disabled {
 
 .archer__identite {
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .archer__details {
   flex: 1 1 auto;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .archer__actions {
@@ -1247,7 +1251,7 @@ button:disabled {
 /* Une paire de doublons (E02US005) — les deux fiches rapprochées, encadrées pour se lire d'un bloc. */
 .doublon {
   padding: 8px 10px;
-  border: 1px solid var(--border, rgba(127, 127, 127, 0.3));
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   display: flex;
   flex-direction: column;
@@ -1259,7 +1263,7 @@ button:disabled {
 .inscriptions {
   margin: 6px 0 4px 12px;
   padding-left: 8px;
-  border-left: 2px solid var(--border, rgba(127, 127, 127, 0.3));
+  border-left: 2px solid var(--border-subtle);
 }
 
 .liste-inscriptions {
@@ -1281,11 +1285,11 @@ button:disabled {
 
 .inscription__creneau {
   flex: 1 1 auto;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .inscription__statut {
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .inscription__actions {
@@ -1318,13 +1322,13 @@ button:disabled {
 
 .gabarit__nom {
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .gabarit__attributs {
   flex: 1 1 auto;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .gabarit__actions {
@@ -1354,7 +1358,7 @@ button:disabled {
   margin: 8px 0 0;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .plan-cible {
@@ -1373,7 +1377,7 @@ button:disabled {
 .plan-cible__nom {
   flex: 0 0 auto;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* Aperçu des couloirs de tir d'une cible : les lettres occupables, les autres en creux. */
@@ -1388,11 +1392,11 @@ button:disabled {
   place-items: center;
   width: 18px;
   height: 18px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 3px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 /* Éteint : la distinction ne repose pas sur la seule couleur (WCAG 1.4.1) — mais c'est la
@@ -1402,7 +1406,7 @@ button:disabled {
    « composant inactif » (1.4.3), pas parce que le seuil serait atteint. */
 .plan-cible__couloir--inactif {
   border-style: dashed;
-  color: var(--text);
+  color: var(--text-secondary);
   opacity: 0.65;
   font-weight: 400;
 }
@@ -1418,26 +1422,26 @@ button:disabled {
 }
 
 .badge--brouillon {
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .badge--en-cours {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .badge--termine {
-  color: var(--ok);
+  color: var(--success);
 }
 
 /* Statuts ajoutés en E14US001 (front aligné sur les 7 d'ADR-0026) : prêt = feu vert (accent, feu
    vert au démarrage, distinct du vert « terminé »), archivé = neutre (verrou lecture seule), annulé
    = état terminal négatif (rouge — ce n'est pas une alerte non bloquante mais un état définitif). */
 .badge--pret {
-  color: var(--accent);
+  color: var(--brand-text);
 }
 
 .badge--archive {
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .badge--annule {
@@ -1447,29 +1451,29 @@ button:disabled {
 /* États d'un départ / créneau (E12US008) — même code couleur que le tournoi et les phases :
    ouvert neutre, lancé ambre (session de tir en cours, alerte non bloquante), clos vert. */
 .badge--ouvert {
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .badge--lance {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .badge--clos {
-  color: var(--ok);
+  color: var(--success);
 }
 
 /* Statuts de phase (E05US001) — même code couleur que le tournoi : à venir neutre, en cours/pause
    ambre (alerte non bloquante), terminée verte. */
 .badge--a-venir {
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .badge--en-pause {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .badge--terminee {
-  color: var(--ok);
+  color: var(--success);
 }
 
 /* Séquence de phases (E05US001). Liste ordonnée : chaque phase porte son rang, son type, son
@@ -1484,7 +1488,7 @@ button:disabled {
 }
 
 .phase {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 8px 10px;
 }
@@ -1504,20 +1508,20 @@ button:disabled {
   height: 24px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--surface-2, var(--border));
+  background: var(--surface-2, var(--border-subtle));
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .phase__type {
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .phase__details {
   flex: 1 1 auto;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .phase__actions {
@@ -1544,25 +1548,25 @@ button:disabled {
 .table td {
   padding: 8px 6px;
   text-align: left;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .table th {
-  color: var(--text-h);
+  color: var(--text);
   font-weight: 600;
 }
 
 .table__total {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 /* Donnée manquante à compléter (ex. « Club inconnu », E02US002) : une **alerte**, pas une erreur
    — l'inscription est valide, c'est l'information qui est incomplète. D'où le token ambre
    (`--warn`, `DV-03`) et non `--danger`. */
 .table__anomalie {
-  color: var(--warn);
+  color: var(--danger);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -1570,7 +1574,7 @@ button:disabled {
 /* Console de supervision des postes (E12US001, ADR-0038). */
 .supervision__compteur {
   font-size: 15px;
-  color: var(--text);
+  color: var(--text-secondary);
   margin: 0 0 12px;
 }
 
@@ -1589,22 +1593,22 @@ button:disabled {
 }
 
 .supervision__etat--en_ligne {
-  color: var(--ok);
+  color: var(--success);
 }
 
 /* Hors ligne = **ambre** (`--warn`), jamais rouge : sur l'anthracite de la charte le rouge ne
    contraste pas assez et ne signale rien (`DV-03`, arbitrage E12US001 / ADR-0038). */
 .supervision__etat--hors_ligne {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .supervision__etat--non_rattache {
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .supervision__ip {
   font-family: ui-monospace, monospace;
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -1634,7 +1638,7 @@ button:disabled {
   align-items: baseline;
   gap: 4px 16px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .feu-vert__match {
@@ -1643,12 +1647,12 @@ button:disabled {
 }
 
 .feu-vert__tour {
-  color: var(--text);
+  color: var(--text-secondary);
   font-weight: 400;
 }
 
 .feu-vert__opposants {
-  color: var(--text-h);
+  color: var(--text);
   flex: 1;
 }
 
@@ -1661,11 +1665,11 @@ button:disabled {
 }
 
 .feu-vert__etat--pret {
-  color: var(--ok);
+  color: var(--success);
 }
 
 .feu-vert__etat--attente {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .feu-vert__actions {
@@ -1679,7 +1683,7 @@ button:disabled {
    d'états. Comme la supervision : **couleur + pastille + texte**, jamais la couleur seule (DV-03).
    L'alerte = **ambre** (`--warn`), jamais rouge sur l'anthracite de la charte. */
 .completude__intro {
-  color: var(--text);
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 
@@ -1696,13 +1700,13 @@ button:disabled {
 }
 
 .completude__resume--ok {
-  color: var(--ok);
+  color: var(--success);
   font-weight: 500;
   font-size: 13px;
 }
 
 .completude__resume--alerte {
-  color: var(--warn);
+  color: var(--danger);
   font-weight: 500;
   font-size: 13px;
 }
@@ -1719,7 +1723,7 @@ button:disabled {
   align-items: center;
   gap: 12px;
   padding: 6px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .completude__etat {
@@ -1731,29 +1735,29 @@ button:disabled {
 }
 
 .completude__etat--ok {
-  color: var(--ok);
+  color: var(--success);
 }
 
 .completude__etat--alerte {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .completude__etat--en_attente,
 .completude__etat--a_venir {
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* Le libellé d'état à droite du décompte (« 28/30 cibles  À finir ») : discret, il double la
    pastille pour qui ne distingue pas les teintes. */
 .completude__mention {
-  color: var(--text);
+  color: var(--text-secondary);
   font-weight: 400;
   font-size: 13px;
 }
 
 .completude__implication {
   margin-top: 16px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .completude__actions {
@@ -1801,13 +1805,13 @@ button:disabled {
    geste était légitime, seulement pas applicable ici. */
 .placement__alerte {
   margin: 4px 0;
-  color: var(--warn);
+  color: var(--danger);
   font-size: 13px;
 }
 
 .placement__pret {
   margin: 4px 0;
-  color: var(--ok);
+  color: var(--success);
   font-weight: 600;
   font-size: 14px;
 }
@@ -1817,15 +1821,15 @@ button:disabled {
 .confirmation {
   margin: 8px 0;
   padding: 10px 12px;
-  border: 1px solid var(--warn);
+  border: 1px solid var(--danger);
   border-radius: 10px;
-  background: var(--surface);
+  background: var(--surface-1);
 }
 
 .confirmation__titre {
   margin: 0 0 4px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .confirmation__corps {
@@ -1858,9 +1862,9 @@ button:disabled {
 }
 
 .cible {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  background: var(--surface);
+  background: var(--surface-1);
   padding: 8px;
 }
 
@@ -1869,7 +1873,7 @@ button:disabled {
   margin-bottom: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .cible__cases {
@@ -1884,20 +1888,20 @@ button:disabled {
   align-items: center;
   min-height: 44px;
   padding: 2px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-subtle);
   border-radius: 8px;
 }
 
 .case--survol {
-  border-color: var(--accent);
+  border-color: var(--brand-text);
   border-style: solid;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: color-mix(in srgb, var(--brand-surface) 12%, transparent);
 }
 
 .case__libre {
   padding-left: 8px;
   font-size: 12px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* Position (A..D) d'un archer posé, côté admin (E03US011). Même parti pris visuel que
@@ -1909,7 +1913,7 @@ button:disabled {
   padding-left: 8px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--brand-text);
 }
 
 /* Jeton d'archer déplaçable. `grab`/`grabbing` signalent l'affordance de drag à la souris (PC). */
@@ -1918,9 +1922,9 @@ button:disabled {
   padding: 8px 10px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-h);
-  background: var(--bg);
-  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface-0);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   cursor: grab;
   user-select: none;
@@ -1934,14 +1938,14 @@ button:disabled {
 .reserve {
   margin-top: 8px;
   padding: 10px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-subtle);
   border-radius: 10px;
 }
 
 .reserve--survol {
-  border-color: var(--accent);
+  border-color: var(--brand-text);
   border-style: solid;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: color-mix(in srgb, var(--brand-surface) 12%, transparent);
 }
 
 .reserve__titre {
@@ -1949,7 +1953,7 @@ button:disabled {
   margin-bottom: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .reserve__liste {
@@ -1969,12 +1973,12 @@ button:disabled {
 
 .reserve__raison {
   font-size: 12px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* Anomalie à traiter (sans blason / aucune cible possible) : ambre (DV-03), jamais rouge. */
 .reserve__raison--anomalie {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 /* Mixité de club non garantie (E03US006, RG-3) : avertissement d'équité **ambre** (DV-03, `--warn`),
@@ -1985,11 +1989,11 @@ button:disabled {
   display: block;
   margin-bottom: 6px;
   font-size: 12px;
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .placement__mixite {
-  color: var(--warn);
+  color: var(--danger);
   font-size: 13px;
 }
 
@@ -2006,7 +2010,7 @@ button:disabled {
 .placement__reglage-libelle {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 /* Adjacence de duel non garantie (E03US009, ADR-0048) : même registre **ambre** (DV-03, `--warn`)
@@ -2017,7 +2021,7 @@ button:disabled {
   display: block;
   margin-bottom: 6px;
   font-size: 12px;
-  color: var(--warn);
+  color: var(--danger);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -2058,19 +2062,19 @@ button:disabled {
   gap: 2px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--surface-1);
 }
 
 /* État d'attente légitime (pas d'erreur) : ambre, discret. */
 .saisie__vide {
   margin: 0;
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .saisie__grain {
   margin: 4px 0 0;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .saisie__departs-liste {
@@ -2101,8 +2105,8 @@ button:disabled {
   flex-direction: column;
   gap: 4px;
   padding: 6px 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
 }
 
@@ -2114,7 +2118,7 @@ button:disabled {
   width: 100%;
   min-height: 48px;
   padding: 0;
-  color: var(--text-h);
+  color: var(--text);
   background: transparent;
   border: none;
   text-align: left;
@@ -2140,8 +2144,8 @@ button:disabled {
   min-width: 2.6em;
   padding: 1px 4px;
   border-radius: 4px;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--surface-0);
+  border: 1px solid var(--border-subtle);
   font-family: var(--mono);
   font-size: 12px;
   text-align: center;
@@ -2149,27 +2153,27 @@ button:disabled {
 
 .saisie__relecture-total {
   font-weight: 700;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 /* Le détail flèche par flèche est **écrit**, pas mis en infobulle : un `title` au survol n'existe pas
    sur une tablette, or c'est l'appareil visé — et B.6.1.1 porte sur les valeurs, pas sur un cumul. */
 .saisie__relecture-detail {
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 10px;
   letter-spacing: 0.02em;
 }
 
 .saisie__relecture-volee--vide {
-  color: var(--text);
+  color: var(--text-secondary);
   opacity: 0.45;
 }
 
 /* Verrouillée par le scoreur : même vert que la pastille du navigateur de volées, pour que les deux
    surfaces disent « validé » de la même façon. */
 .saisie__relecture-volee--verrou {
-  border-color: var(--ok);
-  color: var(--ok);
+  border-color: var(--success);
+  color: var(--success);
   font-weight: 700;
 }
 
@@ -2178,23 +2182,23 @@ button:disabled {
 .saisie__invite {
   margin: 12px 0 0;
   padding: 12px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-subtle);
   border-radius: 10px;
-  color: var(--text);
+  color: var(--text-secondary);
   text-align: center;
 }
 
 /* L'archer visé par le pavé : la mise en avant passe sur la carte, qui porte désormais la bordure. */
 .saisie__grille > li:has(.saisie__ligne--actif) {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: var(--brand-text);
+  background: color-mix(in srgb, var(--brand-surface) 12%, transparent);
 }
 
 .saisie__position {
   flex: 0 0 auto;
   width: 1.4em;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--brand-text);
 }
 
 .saisie__nom {
@@ -2202,14 +2206,14 @@ button:disabled {
 }
 
 .saisie__prenom {
-  color: var(--text);
+  color: var(--text-secondary);
   font-weight: 400;
 }
 
 .saisie__avancement {
   flex: 0 0 auto;
   font-size: 12px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .saisie__cumul {
@@ -2234,7 +2238,7 @@ button:disabled {
 
 .pave-code__libelle {
   font-size: 14px;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .pave-code__champ {
@@ -2257,8 +2261,8 @@ button:disabled {
   font-family: var(--mono);
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-h);
-  background: var(--bg);
+  color: var(--text);
+  background: var(--surface-0);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
@@ -2276,9 +2280,9 @@ button:disabled {
 /* Le pavé : gros boutons de zone (≥ 48 px), volée en cours, correction, enregistrement. */
 .saisie__pave {
   padding: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  background: var(--surface);
+  background: var(--surface-1);
 }
 
 .saisie__pave-entete {
@@ -2292,7 +2296,7 @@ button:disabled {
 
 .saisie__total {
   font-family: var(--mono);
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* Le cumul de série suit le pavé (S02 : « en permanence, c'est un bon rappel sur la cible ») — utile
@@ -2300,7 +2304,7 @@ button:disabled {
 .saisie__cumul-serie {
   font-family: var(--mono);
   font-weight: 700;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .saisie__fermer-pave {
@@ -2321,26 +2325,26 @@ button:disabled {
   min-height: 48px;
   padding: 0;
   font-family: var(--mono);
-  color: var(--text);
-  background: var(--bg);
+  color: var(--text-secondary);
+  background: var(--surface-0);
   border: 1px solid var(--border);
 }
 
 /* Volée déjà saisie : pleine. */
 .saisie__nav-volee--saisie {
-  color: var(--bg);
-  background: var(--text);
+  color: var(--surface-0);
+  background: var(--text-secondary);
 }
 
 /* Volée verrouillée par le scoreur : accent (validée). */
 .saisie__nav-volee--verrou {
-  color: var(--bg);
-  background: var(--ok);
+  color: var(--sur-success);
+  background: var(--success);
 }
 
 /* Volée visée par le pavé : surlignée. */
 .saisie__nav-volee--actif {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--brand-border);
   outline-offset: 1px;
 }
 
@@ -2359,9 +2363,9 @@ button:disabled {
   padding: 0 6px;
   font-family: var(--mono);
   font-size: 18px;
-  color: var(--text-h);
-  background: var(--bg);
-  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface-0);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
 }
 
@@ -2436,7 +2440,7 @@ button:disabled {
 .saisie__meta {
   margin: 0 0 8px;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* « Détacher » relégué en pied de l'écran de saisie : action rare, ne doit pas voler l'attention. */
@@ -2505,7 +2509,7 @@ button:disabled {
   overflow-y: auto;
   overflow-x: clip;
   scrollbar-gutter: stable;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-top: none;
   border-radius: 0 0 8px 8px;
 }
@@ -2533,7 +2537,7 @@ button:disabled {
    Filet à gauche plutôt qu'un aplat — le tableau porte déjà un marquage de forfait, et deux fonds
    superposés deviendraient illisibles sur une ligne à la fois forfait et ex æquo. */
 .table__ligne--ex-aequo td:first-child {
-  box-shadow: inset 3px 0 0 var(--warn);
+  box-shadow: inset 3px 0 0 var(--danger);
 }
 
 /* La règle de départage : présente **seulement** quand il y a des ex æquo (A16). Registre de note,
@@ -2541,8 +2545,8 @@ button:disabled {
 .classement__departage {
   margin: 8px 0 0;
   padding: 8px 10px;
-  border-left: 3px solid var(--warn);
-  color: var(--text);
+  border-left: 3px solid var(--danger);
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -2553,7 +2557,7 @@ button:disabled {
   gap: 6px;
   margin: 8px 0;
   font-size: 14px;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 /* Onglets de bascule entre vues publiques d'un tournoi (Classement / Plan de cibles). Cibles
@@ -2564,7 +2568,7 @@ button:disabled {
   flex-wrap: wrap;
   gap: 4px;
   margin: 8px 0 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .onglet {
@@ -2572,7 +2576,7 @@ button:disabled {
   padding: 8px 14px;
   font: inherit;
   font-weight: 500;
-  color: var(--text-h);
+  color: var(--text);
   background: none;
   border: none;
   border-radius: 8px 8px 0 0;
@@ -2580,12 +2584,12 @@ button:disabled {
 }
 
 .onglet:hover {
-  background: var(--surface);
+  background: var(--surface-1);
 }
 
 .onglet--actif {
-  color: var(--bg);
-  background: var(--accent);
+  color: var(--sur-brand);
+  background: var(--brand-surface);
   font-weight: 600;
 }
 
@@ -2608,9 +2612,9 @@ button:disabled {
 }
 
 .plan-public__cible {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  background: var(--surface);
+  background: var(--surface-1);
   padding: 8px 10px;
 }
 
@@ -2619,13 +2623,13 @@ button:disabled {
   margin-bottom: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 /* Cible sans archer posé : état neutre, discret (pas une anomalie). */
 .plan-public__vide {
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .plan-public__places {
@@ -2648,11 +2652,11 @@ button:disabled {
   flex: 0 0 auto;
   width: 1.4em;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--brand-text);
 }
 
 .plan-public__nom {
-  color: var(--text-h);
+  color: var(--text);
 }
 
 /* Vue « suivi » (E07US006) — recherche d'archers + cartes des archers suivis. */
@@ -2676,19 +2680,19 @@ button:disabled {
   gap: 8px;
   min-height: 44px; /* cible tactile confortable (règle 10) */
   padding: 4px 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--surface-1);
 }
 
 .recherche-resultat__nom {
   flex: 1 1 auto;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .recherche-resultat__suivi {
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* Les cartes des archers suivis : empilées, pleine largeur (une par archer). */
@@ -2711,7 +2715,7 @@ button:disabled {
 
 .carte-suivi__nom {
   font-size: 16px;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .suivi-departs {
@@ -2733,18 +2737,18 @@ button:disabled {
 .suivi-depart__creneau {
   flex: 1 1 auto;
   font-size: 14px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* La place (cible + position) est l'information qu'on vient chercher : mise en avant. */
 .suivi-depart__place {
   font-weight: 600;
-  color: var(--accent);
+  color: var(--brand-text);
 }
 
 .suivi-depart__attente {
   font-size: 14px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* Déroulé du tour (E07US009) : la feuille de marque live sous la place. Une ligne par volée —
@@ -2752,7 +2756,7 @@ button:disabled {
 .suivi-deroule {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .suivi-deroule__volees {
@@ -2773,20 +2777,20 @@ button:disabled {
 
 .suivi-volee__num {
   flex: 0 0 auto;
-  color: var(--text);
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
 .suivi-volee__valeurs {
   flex: 1 1 auto;
-  color: var(--text);
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
 .suivi-volee__points {
   flex: 0 0 auto;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2799,17 +2803,17 @@ button:disabled {
 }
 
 .suivi-volee__statut--attente {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .suivi-volee__statut--valide {
-  color: var(--ok);
+  color: var(--success);
 }
 
 .suivi-deroule__cumul {
   margin: 8px 0 0;
   font-size: 14px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* Consultation sur téléphone : marges réduites et cartes pleine largeur. Le conteneur
@@ -2839,7 +2843,7 @@ button:disabled {
   margin: 8px 0 12px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2857,7 +2861,7 @@ button:disabled {
 
 .bloc-club__total {
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2871,11 +2875,11 @@ button:disabled {
 }
 
 .statut--regle {
-  color: var(--ok);
+  color: var(--success);
 }
 
 .statut--partiel {
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .statut--du {
@@ -2883,7 +2887,7 @@ button:disabled {
 }
 
 .statut--neutre {
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -2909,7 +2913,7 @@ button:disabled {
    gardé n'est pas une erreur, il part à la reconnexion. */
 .duels-saisie__attente {
   font-size: 13px;
-  color: var(--warn);
+  color: var(--danger);
 }
 
 /* La barre « session ouverte / fermer » de l'espace scoreur, au-dessus de la saisie. */
@@ -2933,7 +2937,7 @@ button:disabled {
 .duels-liste__titre {
   margin: 0 0 6px;
   font-size: 14px;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .duels-liste__matchs {
@@ -2955,9 +2959,9 @@ button:disabled {
   min-height: 48px;
   padding: 8px 12px;
   text-align: left;
-  color: var(--text-h);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
 }
 
@@ -2966,7 +2970,7 @@ button:disabled {
 }
 
 .duels-liste__match--ouvrable:hover {
-  border-color: var(--accent);
+  border-color: var(--brand-text);
 }
 
 /* Bye / adversaires inconnus : présent mais non ouvrable, en retrait. */
@@ -2983,7 +2987,7 @@ button:disabled {
 
 .duels-liste__contre {
   font-size: 12px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .duels-liste__statut {
@@ -2994,25 +2998,25 @@ button:disabled {
 
 /* À valider : accent (une action attend le scoreur) ; validé : vert ; en attente d'adversaires : ambre. */
 .duels-liste__statut--a_valider {
-  color: var(--accent);
+  color: var(--brand-text);
 }
 
 .duels-liste__statut--valide {
-  color: var(--ok);
+  color: var(--success);
 }
 
 .duels-liste__statut--attente_adversaires,
 .duels-liste__statut--bye {
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* Podium (tableau terminé). */
 .duels-podium {
   margin-bottom: 16px;
   padding: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  background: var(--surface);
+  background: var(--surface-1);
 }
 
 .duels-podium__places {
@@ -3045,7 +3049,7 @@ button:disabled {
 
 .duel__camp {
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
   flex: 1;
 }
 
@@ -3057,36 +3061,36 @@ button:disabled {
 .duel__vs {
   font-family: var(--mono);
   font-size: 18px;
-  color: var(--accent);
+  color: var(--brand-text);
   padding: 0 8px;
 }
 
 .duel__meta {
   margin: 4px 0 0;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* Duel validé : verrou franc (comme la volée verrouillée de la qualif). */
 .duel__verrou {
   padding: 10px 12px;
-  color: var(--text-h);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
 }
 
 .duel__manche {
   padding: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  background: var(--surface);
+  background: var(--surface-1);
 }
 
 .duel__manche-titre {
   margin: 0 0 8px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 /* Les deux volées opposées d'une manche, l'une au-dessus de l'autre. */
@@ -3112,16 +3116,16 @@ button:disabled {
   min-height: 56px;
   padding: 10px 12px;
   text-align: left;
-  color: var(--text-h);
-  background: var(--bg);
-  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface-0);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   cursor: pointer;
 }
 
 /* Camp actif : le pavé écrit ici — surligné à l'accent. */
 .duel__volee--actif {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--brand-border);
   outline-offset: 1px;
 }
 
@@ -3168,15 +3172,15 @@ button:disabled {
 .duel__barrage {
   margin-top: 12px;
   padding: 12px;
-  border: 1px solid var(--warn);
+  border: 1px solid var(--danger);
   border-radius: 10px;
-  background: var(--surface);
+  background: var(--surface-1);
 }
 
 .duel__barrage-titre {
   margin: 0 0 8px;
   font-weight: 600;
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .duel__barrage-camps {
@@ -3197,7 +3201,7 @@ button:disabled {
   flex-direction: column;
   gap: 6px;
   font-size: 14px;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .duel__designation-choix {
@@ -3222,7 +3226,7 @@ button:disabled {
 
 .duel__validation-etat {
   margin: 0 0 8px;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .duel__validation button {
@@ -3232,7 +3236,7 @@ button:disabled {
 /* Forfaits — abandon / disqualification (E04US015, ADR-0050). Badge de statut au classement, ligne
    atténuée, et contrôles du scoreur (panneau qualif + action forfait en duels). */
 .table__badge-forfait {
-  color: var(--warn);
+  color: var(--danger);
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
@@ -3257,7 +3261,7 @@ button:disabled {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
 }
 
@@ -3269,13 +3273,13 @@ button:disabled {
 .duel__forfaits {
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px dashed var(--border);
+  border-top: 1px dashed var(--border-subtle);
 }
 
 .duel__forfaits-titre {
   margin: 0 0 6px;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .duel__forfaits-actions {
@@ -3313,20 +3317,20 @@ button:disabled {
   border-radius: 999px;
   border: 1px solid currentColor;
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
   opacity: 0.55;
 }
 
 .frise__etape--faite {
   opacity: 1;
-  color: var(--ok);
+  color: var(--success);
 }
 
 .frise__etape--courant {
   opacity: 1;
   font-weight: 700;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--brand-text);
+  background: color-mix(in srgb, var(--brand-surface) 12%, transparent);
 }
 
 .frise__etape--annule {
@@ -3363,12 +3367,12 @@ button:disabled {
 .chiffre__valeur {
   font-size: 24px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .chiffre__libelle {
   font-size: 12px;
-  color: var(--text);
+  color: var(--text-secondary);
   opacity: 0.75;
 }
 
@@ -3398,18 +3402,18 @@ button:disabled {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--text);
+  background: var(--text-secondary);
   opacity: 0.4;
 }
 
 .checklist__pastille--ok {
-  background: var(--ok);
+  background: var(--success);
   opacity: 1;
 }
 
 /* L'alerte se rend en **ambre**, jamais en rouge (charte, DV-03). */
 .checklist__pastille--alerte {
-  background: var(--warn);
+  background: var(--danger);
   opacity: 1;
 }
 
@@ -3419,13 +3423,13 @@ button:disabled {
 
 .checklist__etat {
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
   opacity: 0.75;
 }
 
 .alertes__ligne {
   padding: 4px 0;
-  color: var(--warn);
+  color: var(--danger);
 }
 
 /* --- Styles par feature ------------------------------------------------------------

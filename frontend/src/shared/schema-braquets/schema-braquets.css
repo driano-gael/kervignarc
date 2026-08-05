@@ -14,9 +14,9 @@
    jamais la page — même parti que les tableaux de duels. */
 .schema-braquets {
   overflow-x: auto;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  background: var(--surface);
+  background: var(--surface-1);
   padding: 8px;
 }
 
@@ -35,15 +35,15 @@
 }
 
 .schema-braquets__bloc rect {
-  fill: var(--bg);
-  stroke: var(--border);
+  fill: var(--surface-0);
+  stroke: var(--border-subtle);
   stroke-width: 1.5;
 }
 
 /* `DV-03` : la couleur ne porte jamais le sens seule — le bloc est aussi listé dans les anomalies,
    avec sa pastille et son mot. Ici la teinte n'est qu'un rappel. */
 .schema-braquets__bloc--alerte rect {
-  stroke: var(--warn);
+  stroke: var(--danger);
   stroke-width: 2;
 }
 
@@ -56,35 +56,35 @@
 /* Statuts du suivi (E07US004). Là encore `DV-03` : le statut est **écrit en toutes lettres** dans
    le bloc (« en cours », « terminée »), la teinte ne fait que le rappeler de loin. */
 .schema-braquets__bloc--en_cours rect {
-  stroke: var(--accent);
+  stroke: var(--brand-border);
   stroke-width: 2.5;
 }
 
 .schema-braquets__bloc--en_pause rect {
-  stroke: var(--warn);
+  stroke: var(--danger);
   stroke-width: 2;
   stroke-dasharray: 5 3;
 }
 
 .schema-braquets__bloc--terminee rect {
-  stroke: var(--ok);
+  stroke: var(--success);
   stroke-width: 1.5;
   opacity: 0.75;
 }
 
 .schema-braquets__bloc--a_venir rect {
-  stroke: var(--border);
+  stroke: var(--border-subtle);
   stroke-dasharray: 3 3;
 }
 
 .schema-braquets__bloc-titre {
-  fill: var(--text-h);
+  fill: var(--text);
   font-size: 14px;
   font-weight: 600;
 }
 
 .schema-braquets__bloc-statut {
-  fill: var(--text);
+  fill: var(--text-secondary);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -92,30 +92,30 @@
 }
 
 .schema-braquets__bloc-ligne {
-  fill: var(--text);
+  fill: var(--text-secondary);
   font-size: 12px;
 }
 
 .schema-braquets__bloc-braquet {
-  fill: var(--text);
+  fill: var(--text-secondary);
   font-size: 11px;
   opacity: 0.8;
 }
 
 .schema-braquets__bloc-braquet--courant {
-  fill: var(--accent);
+  fill: var(--brand-text);
   font-weight: 600;
   opacity: 1;
 }
 
 .schema-braquets__fleche path {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--brand-border);
   stroke-width: 1.5;
 }
 
 .schema-braquets__fleche text {
-  fill: var(--accent);
+  fill: var(--brand-text);
   font-size: 11px;
 }
 
@@ -130,14 +130,14 @@
 
 .deroule__anomalie {
   font-size: 13px;
-  border-left: 3px solid var(--border);
+  border-left: 3px solid var(--border-subtle);
   padding-left: 10px;
 }
 
 /* Ambre pour l'avertissement, rouge pour le bloquant (`DV-03` : l'alerte est ambre, le rouge est
    réservé à ce qui interdit). */
 .deroule__anomalie--avertissement {
-  border-left-color: var(--warn);
+  border-left-color: var(--danger);
 }
 
 .deroule__anomalie--bloquante {
@@ -145,14 +145,14 @@
 }
 
 .deroule__sources {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 10px 12px;
 }
 
 .deroule__sources legend {
   font-size: 13px;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .deroule__sources ul {
@@ -172,7 +172,7 @@
 .deroule__table caption {
   text-align: left;
   font-size: 12px;
-  color: var(--text-h);
+  color: var(--text);
   padding-bottom: 4px;
 }
 
@@ -180,16 +180,16 @@
 .deroule__table td {
   text-align: left;
   padding: 4px 8px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .deroule__ligne--ecart {
-  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 
 .deroule__ecart {
   font-size: 11px;
-  color: var(--warn);
+  color: var(--danger);
 }
 
 .deroule__classement {

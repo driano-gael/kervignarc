@@ -13,14 +13,14 @@
    acté — elle porte le seul chemin de correction d'un verdict faux. L'ambre est posé par
    `--actif` ci-dessous, et seulement s'il reste quelque chose à faire (`DV-03`). */
 .carte--barrages {
-  border-left: 3px solid var(--border);
+  border-left: 3px solid var(--border-subtle);
 }
 
 /* L'ambre ne s'allume que s'il **reste quelque chose à faire** (`DV-03`). Les barrages actés
    restent affichés — ils portent le seul chemin de correction d'un verdict faux — mais un tournoi
    terminé et réglé ne doit pas garder une alerte permanente. */
 .carte--barrages-actif {
-  border-left-color: var(--warn);
+  border-left-color: var(--danger);
 }
 
 .barrages__egalites {
@@ -41,20 +41,20 @@
 .barrage {
   margin-top: 12px;
   padding: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--surface-1);
 }
 
 .barrage__titre {
   margin: 0 0 8px;
-  color: var(--text-h);
+  color: var(--text);
   font-size: 1rem;
 }
 
 .barrage__verdict {
   margin: 0 0 8px;
-  color: var(--ok);
+  color: var(--success);
   font-weight: 600;
 }
 
@@ -76,7 +76,7 @@
 
 .barrage__nom {
   min-width: 10ch;
-  color: var(--text-h);
+  color: var(--text);
   font-weight: 600;
 }
 
@@ -98,7 +98,7 @@
 /* Portée non-qualification (poule, Big Shoot Off) : discrète, elle situe le barrage sans voler la
    vedette au rang disputé. */
 .barrage__portee {
-  color: var(--text);
+  color: var(--text-secondary);
   font-weight: 400;
 }
 
@@ -111,7 +111,7 @@
 
 .barrages__manuel > summary {
   cursor: pointer;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .barrages__manuel label {

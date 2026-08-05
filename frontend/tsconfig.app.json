@@ -4,7 +4,10 @@
     "target": "es2023",
     "lib": ["ES2023", "DOM"],
     "module": "esnext",
-    "types": ["vite/client"],
+    /* `node` s'ajoute pour un seul usage (E17US001) : `shared/charte.test.ts` lit l'arborescence
+       des sources sur disque, parce qu'il vérifie ce qui est **écrit** dans les feuilles de style,
+       y compris celles qu'aucun test ne monte. `@types/node` était déjà en devDependency. */
+    "types": ["vite/client", "node"],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 

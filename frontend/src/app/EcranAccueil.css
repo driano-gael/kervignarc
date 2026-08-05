@@ -9,7 +9,7 @@
 }
 
 .accueil__intro {
-  color: var(--text);
+  color: var(--text-secondary);
   text-align: center;
   margin: 0.5rem 0 1.5rem;
 }
@@ -33,9 +33,9 @@
   padding: 1.5rem 1rem;
   text-align: center;
   cursor: pointer;
-  color: var(--text-h);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   transition:
     border-color 0.15s ease,
@@ -43,7 +43,7 @@
 }
 
 .accueil__porte:hover {
-  border-color: var(--accent);
+  border-color: var(--brand-text);
 }
 
 .accueil__porte:active {
@@ -51,7 +51,7 @@
 }
 
 .accueil__porte:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--brand-border);
   outline-offset: 2px;
 }
 
@@ -66,6 +66,6 @@
 }
 
 .accueil__description {
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
