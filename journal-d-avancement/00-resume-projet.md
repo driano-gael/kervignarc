@@ -489,6 +489,19 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   leur raison — aucun questionnaire ne reste sans suite. **Premier écran refusé relevé : A10 (plan de
   salle)**, par E16US001 — le refus ne portait que sur le **vocabulaire**, désormais arbitré. Restent
   trois écrans refusés : A07 (phases), A14 (complétude), P03 (classements publics).
+- **Les maquettes montrent désormais l'écran entier (05/08/2026)** — **hors US numérotée**, support de
+  conception, compte d'US inchangé. Le commanditaire ne voyait *« que des composants de pages »* :
+  chaque planche était bornée à 430 px et **aucune ossature n'était dessinée** (ni navigation, ni
+  bandeau, ni en-tête). Les 36 écrans sont maintenant rendus **à la taille réelle de leur appareil** —
+  PC 1600 × 900, tablette 1280 × 800, vidéoprojecteur 1920 × 1080, téléphone 390 × 844 — soit
+  **151 écrans pleins**, avec une **hauteur fixe** qui fait enfin exister la ligne de flottaison :
+  43 planches signalent ce qui tombe sous le bord de l'écran. Les 36 questionnaires repartent sur une
+  trame en onze sections ; les réponses du tour 1 sont **archivées, pas effacées**
+  (`maquettes/questionnaires/tour-1-2026-08-04/`). L'exercice a fait remonter **deux écrans qui
+  n'existaient nulle part** — le *barrage* (égalité 5–5 en duel) et le *conflit de saisie* (deux postes
+  sur la même volée) —, un **écran livré jamais maquetté** (la création du compte administrateur au
+  tout premier lancement), et une **erreur de fond sur A07** : « 1/8 » et « 1/4 » y étaient présentés
+  comme des phases alors qu'une seule phase porte tout le tableau.
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
