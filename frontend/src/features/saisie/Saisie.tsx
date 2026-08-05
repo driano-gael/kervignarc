@@ -62,15 +62,24 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
 
   const lignes = grille.data ?? []
 
-  // Archer et marqueur actifs **dérivés** (pas d'état par défaut posé en effet, qui cascaderait) : le
-  // choix explicite s'il est encore dans la grille, sinon le premier archer (position A). Ainsi le
-  // pavé est utilisable tout de suite, et un choix devenu obsolète (changement de départ) retombe
-  // proprement sur A au lieu de pointer un archer disparu.
+  // **Le pavé est appelé, pas permanent** — retour maquettes du 04/08/2026 (S02) : la variante
+  // retenue est « grille complète, pavé appelé », et l'évolution demandée est explicite, écrite deux
+  // fois dans le questionnaire — *« l'appel du pavé doit se faire à la sélection de la zone de
+  // saisie »*.
+  //
+  // L'écran ouvrait le pavé d'office sur l'archer en position A. C'était une commodité (« le pavé est
+  // utilisable tout de suite ») qui coûte cher sur une cible : la grille des quatre archers, celle
+  // qu'on lit pour savoir où l'on en est, était repoussée sous un pavé que personne n'avait demandé,
+  // et un tap malheureux saisissait pour l'archer A — celui qu'on n'avait jamais choisi.
+  //
+  // `archerActif` n'a donc **plus de repli** : il vaut `null` tant qu'aucune ligne n'a été tapée. Un
+  // choix devenu obsolète (changement de départ, archer retiré) referme le pavé au lieu de glisser
+  // silencieusement sur un autre archer — ce qui était le vrai danger du repli.
   const premier = lignes[0]
   const archerActif =
-    archerChoisi !== null && lignes.some((l) => l.archer_id === archerChoisi)
-      ? archerChoisi
-      : (premier?.archer_id ?? null)
+    archerChoisi !== null && lignes.some((l) => l.archer_id === archerChoisi) ? archerChoisi : null
+  // Le marqueur, lui, **garde** son repli : c'est une signature, pas une cible de frappe. Sans nom
+  // par défaut, la première volée de la journée partirait avec `saisie_par: null`.
   const marqueurActif =
     marqueur !== null && lignes.some((l) => l.nom === marqueur) ? marqueur : (premier?.nom ?? null)
 
@@ -173,7 +182,11 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
                 ligne={ligne}
                 nbVolees={bareme.data?.nb_volees ?? null}
                 actif={ligne.archer_id === archerActif}
-                onSelectionner={() => setArcherChoisi(ligne.archer_id)}
+                // Re-taper la ligne ouverte **referme** le pavé : c'est le geste inverse du geste
+                // d'appel, celui qu'on essaie d'instinct pour revenir à la grille complète.
+                onSelectionner={() =>
+                  setArcherChoisi((actuel) => (actuel === ligne.archer_id ? null : ligne.archer_id))
+                }
               />
             ))}
           </ul>
@@ -185,13 +198,20 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
               ligne={ligneActive}
               bareme={bareme.data}
               marqueur={marqueurActif}
+              onFermer={() => setArcherChoisi(null)}
             />
           ) : bareme.isSuccess && bareme.data === null ? (
             <p className="saisie__vide" role="status">
               Barème de qualification non défini pour ce tournoi : configurez la phase avant de
               saisir.
             </p>
-          ) : null}
+          ) : (
+            // Sans cette invite, une grille sans pavé se lit comme un écran en lecture seule : rien
+            // ne dit que taper un nom ouvre la saisie.
+            <p className="saisie__invite" role="status">
+              Touchez un archer pour ouvrir le pavé de saisie.
+            </p>
+          )}
         </>
       )}
 
@@ -305,7 +325,8 @@ function LigneArcher({
   onSelectionner: () => void
 }) {
   const serie = useSerie(tournoiId, ligne.archer_id)
-  const nbSaisies = serie.data?.volees.length ?? 0
+  const volees = serie.data?.volees ?? []
+  const nbSaisies = volees.length
   const cumul = serie.data?.cumul ?? 0
 
   return (
@@ -323,7 +344,39 @@ function LigneArcher({
         <span className="saisie__avancement">
           {nbSaisies}/{nbVolees ?? '?'} volées
         </span>
+        {/* Le cumul de série, **en permanence** (S02, question 3 : *« en permanence, c'est un bon
+            rappel sur la cible »*). Il l'était déjà ; il le reste maintenant que le pavé ne masque
+            plus la grille. */}
         <span className="saisie__cumul">{cumul}</span>
+
+        {/* **Relecture par les autres archers** (S02, question 2 : *« oui »* — contre-vérification
+            FFTA B.6.1.1). Elle était techniquement possible — ouvrir le pavé de l'archer, naviguer
+            de volée en volée — mais c'est le geste de *celui qui saisit*, pas de celui qui vérifie :
+            il fallait s'emparer de la tablette et risquer une frappe. Ici, chaque volée montre son
+            total, en lecture seule, sur la ligne de son archer. Le cadenas dit ce que le scoreur a
+            déjà verrouillé, donc ce qui n'est plus discutable à la cible. */}
+        {nbVolees !== null && nbVolees > 0 && (
+          <span className="saisie__relecture" aria-label={`Volées de ${ligne.nom}`}>
+            {Array.from({ length: nbVolees }, (_, i) => {
+              const volee = volees.find((v) => v.numero === i + 1)
+              if (volee === undefined) {
+                return (
+                  <span key={i} className="saisie__relecture-volee saisie__relecture-volee--vide">
+                    ·
+                  </span>
+                )
+              }
+              const classes = volee.verrouillee
+                ? 'saisie__relecture-volee saisie__relecture-volee--verrou'
+                : 'saisie__relecture-volee'
+              return (
+                <span key={i} className={classes} title={volee.valeurs.join(' ')}>
+                  {totalVolee(volee.valeurs)}
+                </span>
+              )
+            })}
+          </span>
+        )}
       </button>
     </li>
   )
@@ -339,11 +392,15 @@ function PaveArcher({
   ligne,
   bareme,
   marqueur,
+  onFermer,
 }: {
   tournoiId: number
   ligne: LigneGrille
   bareme: Bareme
   marqueur: string | null
+  // Depuis que le pavé est **appelé** (S02), il doit aussi pouvoir se refermer sans passer par la
+  // ligne : sur un téléphone, la grille est parfois hors de l'écran quand le pavé est ouvert.
+  onFermer: () => void
 }) {
   const serie = useSerie(tournoiId, ligne.archer_id)
   const saisir = useSaisirVolee(tournoiId, ligne.archer_id)
@@ -413,9 +470,20 @@ function PaveArcher({
         <span>
           Volée {numeroActif}/{bareme.nb_volees} — <strong>{ligne.nom}</strong>
         </span>
+        {/* Le cumul de série **suit le pavé** (S02) : quand la grille est repoussée hors de l'écran
+            sur un téléphone, c'est ici qu'on relit « où j'en suis ». */}
+        <span className="saisie__cumul-serie">Cumul {serie.data?.cumul ?? 0}</span>
         <span className="saisie__total">
           {buffer.length}/{bareme.nb_fleches_par_volee} · {totalVolee(buffer)} pts
         </span>
+        <button
+          type="button"
+          className="lien saisie__fermer-pave"
+          onClick={onFermer}
+          aria-label="Fermer le pavé de saisie"
+        >
+          Fermer
+        </button>
       </div>
 
       {existante !== null && (

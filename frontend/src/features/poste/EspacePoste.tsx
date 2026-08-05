@@ -22,6 +22,7 @@ import { useEffect, useRef, useState } from 'react'
 import { EcranSalle } from '../salle/EcranSalle'
 import { Saisie } from '../saisie/Saisie'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { PaveCode } from '../../shared/ui/PaveCode'
 import { type PosteRattache, useSessionPosteStore } from '../../shared/stores/sessionPosteStore'
 import type { Theme } from '../../shared/theme'
 import { useDetacherPoste, useHeartbeatPoste, useRattacherPoste, useVerifierPoste } from './hooks'
@@ -107,25 +108,29 @@ function FormulaireRattachement({
 
   return (
     <div>
+      {/* **Le code domine, le QR est le secours** — retour maquettes du 04/08/2026 (S01), variante B :
+          *« je ne suis pas sûr que les caméras soient toujours accessibles »*. L'ordre des deux
+          phrases était l'inverse ; sur un parc dont on ne sait pas si les appareils photo marchent,
+          annoncer le QR en premier envoie le bénévole vers la voie la moins sûre. */}
       <p className="carte__etat">
         {salle
-          ? 'Entrez le code de l’écran de salle, ou scannez son QR, pour rattacher cet appareil.'
-          : 'Scannez le QR de votre cible, ou entrez le code imprimé en dessous pour rattacher cet appareil.'}
+          ? 'Entrez le code imprimé sur l’écran de salle pour y rattacher cet appareil.'
+          : 'Entrez le code imprimé sur votre cible pour y rattacher cet appareil.'}
       </p>
-      <form className="formulaire" onSubmit={soumettre}>
-        <input
-          className="formulaire__champ"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder={salle ? 'Code de l’écran' : 'Code de la cible'}
-          aria-label={salle ? 'Code de l’écran de salle' : 'Code de la cible'}
-          autoComplete="one-time-code"
-          autoCapitalize="characters"
+      <form className="formulaire formulaire--colonne" onSubmit={soumettre}>
+        <PaveCode
+          code={code}
+          onChange={setCode}
+          libelle={salle ? 'Code de l’écran de salle' : 'Code de la cible'}
+          desactive={rattacher.isPending}
         />
         <button type="submit" disabled={rattacher.isPending || !entreeValide}>
           {salle ? 'Rattacher cet écran' : 'Rattacher cet appareil'}
         </button>
       </form>
+      <p className="carte__etat">
+        Le QR collé à côté du code fait la même chose, sans rien taper — si l’appareil photo répond.
+      </p>
       <MessageErreur erreur={rattacher.error} />
     </div>
   )

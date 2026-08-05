@@ -563,8 +563,19 @@ function SaisieManche({
   )
 }
 
-// Une volée d'un camp : nom, pastilles des flèches, total provisoire. Tapable pour devenir le camp
-// **actif** (celui que le pavé remplit). Cible tactile ≥ 48 px.
+// Une volée d'un camp : nom et total sur une première ligne, pastilles des flèches sur une seconde.
+// Tapable pour devenir le camp **actif** (celui que le pavé remplit). Cible tactile ≥ 48 px.
+//
+// **Deux hauteurs, pas une seule rangée** — retour maquettes du 04/08/2026 (S05) : *« les
+// emplacements de saisie des volées est trop étroit »*, *« au lieu de 2 colonnes je préférerais sur
+// 2 hauteurs, adapté tablette et téléphone »*.
+//
+// Nuance utile pour la lecture du retour : la variante critiquée (« deux colonnes symétriques »)
+// était celle de la **maquette** ; le code, lui, empilait déjà les deux camps l'un au-dessus de
+// l'autre. Ce qui restait juste du reproche, c'est l'intérieur de chaque camp — nom, flèches et
+// total se partageaient **une** rangée, si bien que les cases de flèches, seule zone qu'on vise du
+// doigt, recevaient ce que le nom voulait bien leur laisser. Un nom long les écrasait. Elles ont
+// désormais leur propre ligne, sur toute la largeur.
 function VoleeCamp({
   nom,
   valeurs,
@@ -585,7 +596,10 @@ function VoleeCamp({
       aria-pressed={actif}
       onClick={onActiver}
     >
-      <span className="duel__volee-nom">{nom}</span>
+      <span className="duel__volee-entete">
+        <span className="duel__volee-nom">{nom}</span>
+        <span className="duel__volee-total">{totalVolee(valeurs)}</span>
+      </span>
       <span className="duel__volee-fleches" aria-live="polite">
         {Array.from({ length: nbFleches }, (_, i) => (
           <span key={i} className="saisie__fleche">
@@ -593,7 +607,6 @@ function VoleeCamp({
           </span>
         ))}
       </span>
-      <span className="duel__volee-total">{totalVolee(valeurs)}</span>
     </button>
   )
 }

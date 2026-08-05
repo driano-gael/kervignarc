@@ -1926,6 +1926,7 @@ button:disabled {
 
 .saisie__ligne {
   display: flex;
+  flex-wrap: wrap; /* la bande de relecture passe à la ligne sous le nom */
   align-items: center;
   gap: 10px;
   width: 100%;
@@ -1936,6 +1937,55 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: 8px;
   text-align: left;
+}
+
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Relecture d'une série depuis la grille (S02, retour maquettes du 04/08/2026)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   « Les autres archers doivent pouvoir relire ce qui a été tapé pour eux ? → oui. » (B.6.1.1)
+   Un total par volée, en lecture seule, sur la ligne de l'archer. Rendre la vérification possible
+   **sans ouvrir le pavé** est le point : le pavé est l'outil de celui qui saisit, s'en servir pour
+   relire oblige à prendre la tablette et expose à une frappe accidentelle. */
+.saisie__relecture {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.saisie__relecture-volee {
+  min-width: 2.2em;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+}
+
+.saisie__relecture-volee--vide {
+  color: var(--text);
+  opacity: 0.45;
+}
+
+/* Verrouillée par le scoreur : même vert que la pastille du navigateur de volées, pour que les deux
+   surfaces disent « validé » de la même façon. */
+.saisie__relecture-volee--verrou {
+  border-color: var(--ok);
+  color: var(--ok);
+  font-weight: 700;
+}
+
+/* Invite d'appel du pavé (S02) : sans elle, une grille sans pavé se lit comme un écran en lecture
+   seule et rien ne dit que taper un nom ouvre la saisie. */
+.saisie__invite {
+  margin: 12px 0 0;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  text-align: center;
 }
 
 .saisie__ligne--actif {
@@ -1973,6 +2023,59 @@ button:disabled {
   font-weight: 600;
 }
 
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Pavé de code de terrain (S01, retour maquettes du 04/08/2026)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   32 touches, sans les confondables. Grille auto-ajustée : quatre colonnes sur un téléphone, huit sur
+   une tablette — c'est la contrainte « adapté tablette et téléphone » traitée par la grille plutôt
+   que par un point de rupture, puisqu'on ne sait pas de quels appareils le parc est fait. */
+.pave-code {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pave-code__libelle {
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.pave-code__champ {
+  font-family: var(--mono);
+  font-size: 26px;
+  letter-spacing: 0.35em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.pave-code__touches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+  gap: 6px;
+}
+
+.pave-code__touche {
+  min-height: 48px;
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.pave-code__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.pave-code__actions button {
+  flex: 1;
+  min-height: 48px;
+}
+
 /* Le pavé : gros boutons de zone (≥ 48 px), volée en cours, correction, enregistrement. */
 .saisie__pave {
   padding: 12px;
@@ -1983,6 +2086,7 @@ button:disabled {
 
 .saisie__pave-entete {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
@@ -1992,6 +2096,19 @@ button:disabled {
 .saisie__total {
   font-family: var(--mono);
   color: var(--text);
+}
+
+/* Le cumul de série suit le pavé (S02 : « en permanence, c'est un bon rappel sur la cible ») — utile
+   surtout sur téléphone, où le pavé ouvert repousse la grille hors de l'écran. */
+.saisie__cumul-serie {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.saisie__fermer-pave {
+  margin-left: auto;
+  font-size: 13px;
 }
 
 /* Navigateur de volées : une pastille par volée. Défile horizontalement si le barème est long. */
@@ -2076,6 +2193,46 @@ button:disabled {
 .saisie__actions button,
 .saisie__departs-liste button {
   min-height: 48px;
+}
+
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Écran de cible sur **téléphone** (A00 question 3, S02)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   « Les tablettes de cible doivent pouvoir s'adapter à un téléphone » — et à la question sur la
+   taille du parc : « tablette standard ou téléphone ». Le parc est donc **hétérogène et inconnu**,
+   ce qui interdit de dimensionner pour un appareil précis.
+
+   Sous 480 px : les zones passent en grille pleine largeur (un pouce, une colonne de touches larges,
+   plutôt qu'une rangée qui déborde), les cibles tactiles grandissent au lieu de rétrécir, et
+   l'avancement « n/12 volées » disparaît — la bande de relecture juste en dessous porte déjà la même
+   information, en plus détaillée. */
+@media (max-width: 480px) {
+  .saisie__zones {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  }
+
+  .saisie__zone {
+    min-height: 56px;
+    font-size: 20px;
+  }
+
+  .saisie__fleche {
+    min-width: 40px;
+    min-height: 48px;
+  }
+
+  .saisie__avancement {
+    display: none;
+  }
+
+  .saisie__actions {
+    flex-direction: column-reverse;
+  }
+
+  .saisie__actions button {
+    width: 100%;
+  }
 }
 
 /* Consultation d'une volée saisie : « Saisie par DURAND à 10:42 » (CA « marqueur »). */
@@ -2648,14 +2805,20 @@ button:disabled {
   margin-bottom: 12px;
 }
 
-/* Une volée de camp : nom | flèches | total. Tapable pour devenir le camp actif (que le pavé remplit). */
+/* Une volée de camp, **sur deux hauteurs** (S05, retour maquettes du 04/08/2026) :
+     ligne 1 — nom … total
+     ligne 2 — les cases de flèches, sur toute la largeur.
+   Elles partageaient une seule rangée avec le nom : un nom long les réduisait à rien, alors que ce
+   sont les seules zones qu'on vise du doigt. Tapable pour devenir le camp actif (que le pavé
+   remplit). */
 .duel__volee {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   width: 100%;
   min-height: 56px;
-  padding: 6px 10px;
+  padding: 10px 12px;
   text-align: left;
   color: var(--text-h);
   background: var(--bg);
@@ -2670,20 +2833,38 @@ button:disabled {
   outline-offset: 1px;
 }
 
+.duel__volee-entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .duel__volee-nom {
   flex: 1;
   font-weight: 600;
 }
 
+/* Grille et non rangée : les cases se partagent la largeur disponible à parts égales, donc elles
+   grandissent sur une tablette au lieu de rester calées sur leur minimum. */
 .duel__volee-fleches {
-  display: flex;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  gap: 8px;
+}
+
+.duel__volee-fleches .saisie__fleche {
+  width: 100%;
+  min-height: 56px;
+  font-size: 22px;
 }
 
 .duel__volee-total {
   min-width: 32px;
   text-align: right;
   font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .duel__zones {
