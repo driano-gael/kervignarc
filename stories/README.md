@@ -19,6 +19,13 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 > [`E14`](E14-lisibilite-admin.md) (accueil & lisibilité admin) et
 > [`E15`](E15-jeu-d-essai-simulation.md) (jeu d'essai & simulation). Priorité et suivi :
 > [`SUIVI-US.md`](../journal-d-avancement/SUIVI-US.md) § « Ajouts de la démo du 27/07/2026 ».
+>
+> ⚠️ **Retours du questionnaire de maquettes du 04/08/2026** — les 36 planches ont été passées en
+> revue une par une (verdict, critiques, évolutions, vocabulaire). Le **lot front seul** a été livré
+> dans la foulée, hors US ; le reste est un épic neuf : [`E16`](E16-retours-maquettes.md). Trois
+> écrans y sont refusés en l'état (A07 phases, A10 plan de salle, A14 complétude) plus P03
+> (classements publics). Suivi : [`SUIVI-US.md`](../journal-d-avancement/SUIVI-US.md) § « Retours du
+> questionnaire de maquettes (04/08/2026) ».
 
 ## Jalons de valeur
 | Jalon | Valeur livrée |
