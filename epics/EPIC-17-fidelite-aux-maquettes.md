@@ -31,9 +31,18 @@ livrées n'avait de raison de s'en apercevoir : chacune était conforme à *son*
 
 - **La charte, posée une fois pour toutes** : jetons, thème de référence, typographie (E17US001).
 - **La confrontation planche par planche** des 36 écrans, et la correction des écarts de mise en
-  page, de densité et de hiérarchie de l'information.
+  page et de hiérarchie de l'information.
 - **Le maintien de la correspondance** : `maquettes/assets/appareils.js` se désynchronise d'`axes.ts`
   à chaque US qui renomme une destination — la resynchronisation fait partie de l'épic.
+
+> ⚠️ **Méthode — lire le questionnaire avant la planche.** Une planche montre **plusieurs partis
+> pris** ; c'est le questionnaire qui dit lequel a été **retenu**, et la réponse est parfois
+> « **telles que livrées** » — c'est-à-dire le front lui-même. Cas vérifié sur **A00** : le
+> commanditaire a coché « A — Les quatre portes telles que livrées » et « ✅ Validé tel quel », alors
+> que la planche propose à côté une liste verticale à URL affichées. S'aligner sur la première
+> variante venue aurait **défait un écran validé**. L'ordre est donc : questionnaire → variante
+> retenue → comparaison → alignement. *(Ajouté le 06/08/2026 : la première rédaction de cet épic
+> disait « confronter les planches », sans cette précaution.)*
 
 ### Exclus
 
@@ -53,6 +62,7 @@ livrées n'avait de raison de s'en apercevoir : chacune était conforme à *son*
 ## Capacités
 
 - [x] Poser la charte du club dans l'application (E17US001).
+- [x] Aligner le catalogue de composants sur les formes des planches (E17US002).
 - [ ] Embarquer **Inter** pour le jour J, sans réseau (`DV-07`) — **arbitrage d'actif en attente**.
 - [ ] Confronter les 19 planches `A**` (admin) aux écrans livrés et lister les écarts.
 - [ ] Confronter les 9 planches `S**` (saisie & scoreur).
@@ -61,8 +71,10 @@ livrées n'avait de raison de s'en apercevoir : chacune était conforme à *son*
 
 ## Critères d'acceptation (epic)
 
-- Un écran livré et sa planche sont **superposables** : mêmes zones, même hiérarchie, même densité,
-  aux écarts documentés près.
+- Un écran livré et sa planche sont **superposables** : mêmes zones, même hiérarchie, mêmes formes,
+  aux écarts documentés près. **La densité fait exception** : le commanditaire a demandé en A02 « plus
+  d'espace, plus aéré […] pour tous les écrans », donc le produit est **volontairement plus aéré** que
+  les planches, et c'est la planche qui est en retard.
 - Aucune couleur du front n'est écrite hors de la charte ; les jetons sont **sémantiques**, jamais
   des noms de couleur.
 - Tout écart assumé est **écrit** — registre de dette ou note de planche —, jamais laissé au constat.

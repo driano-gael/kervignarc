@@ -48,3 +48,30 @@
   **couleur d'une action destructrice**, que la charte ne définit pas — elle est ambre par défaut,
   ce qui lui fait partager sa teinte avec « poste hors ligne ».
 - **Dépend de** : — · **Jalon** : J1 *(transverse : conditionne toute confrontation d'écran)*
+
+### E17US002 — Le catalogue de composants adopte les formes des planches
+*En tant qu'*organisateur, *je veux* que les boutons, cartes, champs, onglets et pastilles de l'application aient **la forme de ceux des maquettes**, *afin de* reconnaître l'outil validé sur toutes les pages à la fois, et pas seulement à ses couleurs.
+
+- **Contexte** : la charte (E17US001) a donné à l'application les bonnes **couleurs** ; il lui restait
+  la mauvaise **silhouette**. Le front arrondissait tout entre 8 et 12 px là où les planches
+  distinguent deux familles — l'ossature à 8-10 px, le contenu à 4-6 px —, et son bouton d'action
+  était en graisse 500 contre 800.
+- **CA** :
+  - les composants partagés reprennent les **valeurs des planches** : rayons, tailles, graisses,
+    interlettrages — bouton d'action, bouton discret, champ, carte, pastille d'état, onglets, titre
+    d'application, en-tête de table ;
+  - **la densité n'est pas reprise** : le commanditaire a demandé l'inverse en A02 (« je mettrai plus
+    d'espace, plus aéré […] et cela pour tous les écrans »). Un arbitrage explicite l'emporte sur la
+    planche (ADR-0074) ;
+  - **la structure sémantique n'est pas sacrifiée à l'allure** : une liste tabulaire reste un
+    `<table>` et prend l'**apparence** de la carte-tableau des planches, sans devenir une pile de
+    `<div>` — un lecteur d'écran doit continuer d'annoncer l'en-tête de colonne ;
+  - un `<button>` **composite** (une porte de l'accueil : icône + titre + phrase) n'hérite pas de la
+    typographie du bouton d'action ;
+  - une action **destructrice** est trouvable sans être dominante : elle ne prend pas l'aplat.
+- **Notes** : vérifiée **au navigateur**, écran par écran — c'est ce qui a fait apparaître les deux
+  seuls vrais défauts du lot, qu'aucun test ne pouvait voir : les portes de l'accueil rendues en
+  graisse 800, et « Annuler le tournoi » en aplat ambre **écrasant** « Marquer prêt ». La couleur
+  d'une action destructrice reste **un trou de la charte** : le choix retenu (ambre en texte et
+  contour, la sécurité étant portée par le dialogue d'ADR-0072) est **soumis au commanditaire**.
+- **Dépend de** : E17US001 · **Jalon** : J1

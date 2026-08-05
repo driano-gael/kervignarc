@@ -120,15 +120,28 @@ describe('CA — chaque déclinaison de thème redéfinit l’ensemble des jeton
 })
 
 describe('CA — le rouge du club est une surface, jamais un accent (DV-04)', () => {
-  it("`--brand-surface` n'est jamais employé comme encre ni comme contour", () => {
+  it("`--brand-surface` n'est jamais une encre, ni le contour d'autre chose que lui-même", () => {
     // 2,55:1 sur l'anthracite : en texte comme en contour, il échoue. Ce sont `--brand-text`
     // (4,52:1) et `--brand-border` (3,01:1) qui existent pour ça.
+    //
+    // Une exception, et une seule : le **bord d'un aplat de marque**. Quand la règle pose déjà
+    // `background: var(--brand-surface)`, le contour ne sépare pas la marque du fond — il affleure
+    // sa propre surface, et aucun contraste n'est en jeu. Lui imposer `--brand-border` tracerait un
+    // liseré plus clair d'1 px que les planches n'ont pas. D'où un jugement **par règle** et non par
+    // ligne : c'est la présence de l'aplat dans le même bloc qui rend le contour légitime.
     const fautes = features.flatMap(([chemin, source]) =>
-      lignesAvecSelecteur(source)
-        .filter(({ ligne }) =>
-          /(color|fill|stroke|border[a-z-]*)\s*:[^;]*var\(--brand-surface\)/.test(ligne),
-        )
-        .map(({ selecteur, ligne }) => `${chemin} — ${selecteur} — ${ligne.trim()}`),
+      source.split('\n}').flatMap((bloc) => {
+        const selecteur = [...bloc.matchAll(/^(.*)\{\s*$/gm)].at(-1)?.[1]?.trim() ?? '?'
+        const estUnAplat = /(^|\n)\s*background(-color)?:\s*var\(--brand-surface\)/.test(bloc)
+        return bloc
+          .split('\n')
+          .filter((ligne) => {
+            const encre = /^\s*(color|fill|stroke)\s*:[^;]*var\(--brand-surface\)/.test(ligne)
+            const contour = /^\s*border[a-z-]*\s*:[^;]*var\(--brand-surface\)/.test(ligne)
+            return encre || (contour && !estUnAplat)
+          })
+          .map((ligne) => `${chemin} — ${selecteur} — ${ligne.trim()}`)
+      }),
     )
 
     expect(fautes).toEqual([])

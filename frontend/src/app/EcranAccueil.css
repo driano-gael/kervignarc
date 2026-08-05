@@ -33,6 +33,11 @@
   padding: 1.5rem 1rem;
   text-align: center;
   cursor: pointer;
+  /* Une porte est un `<button>` **composite** — icône, titre, phrase —, pas un bouton d'action. Sans
+     ce `font: inherit`, elle hérite de la typographie du bouton principal (13 px, graisse 800,
+     interlettrage), et sa phrase de description se met à crier. Même convention que
+     `.coquille__lien` et `.onglet`, qui sont dans le même cas (E17US002). */
+  font: inherit;
   color: var(--text);
   background: var(--surface-1);
   border: 1px solid var(--border-subtle);

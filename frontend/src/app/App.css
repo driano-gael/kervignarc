@@ -100,6 +100,9 @@
   margin: 0;
   font-size: 28px;
   letter-spacing: -0.5px;
+  /* La hiérarchie des planches se joue sur la **graisse**, pas sur la couleur : le titre est en 800
+     et non en 600 hérité de `h1`. C'est ce qui lui permet de rester blanc sans écraser le reste. */
+  font-weight: 800;
 }
 
 /* Actions d'en-tête à droite (E00US017) : « Changer de rôle » discret + voyant de connexion. */
@@ -684,7 +687,13 @@
    PC d'organisation — c'est la cause directe du « trop tassé » relevé en A02 et A11. */
 .carte {
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  /* 6 px, valeur du `.panneau` des planches. Le système des maquettes distingue deux familles de
+     rayons : l'**ossature** s'arrondit à 8-10 px, le **contenu** à 4-6 px. Le front appliquait
+     8-12 px partout, d'où une silhouette générale plus molle que les planches.
+     Le **rembourrage n'est pas repris** : les planches sont à 14 px, mais le commanditaire a
+     demandé l'inverse en A02 — « je mettrai plus d'espace, plus aéré […] et cela pour tous les
+     écrans ». Un arbitrage explicite l'emporte sur la planche (ADR-0074). */
+  border-radius: 6px;
   background: var(--surface-1);
   padding: calc(var(--respiration) * 0.85);
   max-width: var(--largeur-carte);
@@ -887,22 +896,28 @@
 
 .formulaire__champ,
 .ligne-action__champ {
-  padding: 6px 8px;
+  padding: 8px 10px;
   font: inherit;
+  font-size: 13.5px;
   color: var(--text);
   background: var(--surface-0);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 4px;
 }
 
+/* Le `.bouton.auto.principal` des planches : la variante en ligne du bouton pleine largeur. La
+   graisse 800 n'est pas un excès de zèle — c'est elle qui rend l'action principale identifiable
+   sans s'appuyer sur la couleur seule, à 3 m d'une cible comme sur un PC d'organisation. */
 button {
-  padding: 6px 12px;
+  padding: 7px 14px;
   font: inherit;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   color: var(--sur-brand);
   background: var(--brand-surface);
   border: none;
-  border-radius: 8px;
+  border-radius: 5px;
   cursor: pointer;
 }
 
@@ -913,17 +928,25 @@ button:disabled {
 
 /* Variantes de boutons : secondaire (discret) et destructif (suppression). */
 .bouton--discret {
-  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
   background: var(--surface-1);
   border: 1px solid var(--border);
 }
 
-/* Destructif : aplat ambre, **pas** rouge — sur l'anthracite de la charte le rouge ne fait que
-   2,55:1 et ne signale rien (`DV-03`). L'encre est redonnée explicitement : sans elle, la règle
-   hérite du blanc du bouton principal, illisible sur l'ambre (1,9:1). */
+/* Destructif : ambre **en texte et en contour**, pas en aplat — et surtout **pas rouge**, qui ne
+   signale rien sur l'anthracite (2,55:1, `DV-03`).
+   L'aplat a été essayé et rejeté sur pièce (E17US002, vérification au navigateur) : sur l'accueil de
+   pilotage, « Annuler le tournoi » en ambre plein **écrasait** « Marquer prêt », l'action principale.
+   Une action destructrice doit être *trouvable*, pas *dominante* — et ce n'est de toute façon pas la
+   couleur du bouton qui protège ici, c'est le dialogue de confirmation ([ADR-0072](../../../docs/adr/0072-confirmation-destructrice-dialog-natif.md)).
+   La charte ne définit **aucune** couleur d'action destructrice : c'est un trou constaté, et ce choix
+   reste soumis au commanditaire. */
 .bouton--danger {
-  background: var(--danger);
-  color: var(--sur-danger);
+  color: var(--danger);
+  background: var(--surface-1);
+  border: 1px solid var(--danger);
 }
 
 .formulaire__actions {
@@ -1412,11 +1435,15 @@ button:disabled {
 }
 
 /* Pastille de statut du cycle de vie. */
+/* La `.pas` des planches — la classe la plus employée du dossier (567 occurrences). Plus petite et
+   plus grasse que le badge d'origine, avec un interlettrage qui la fait lire comme une étiquette et
+   non comme un mot de la phrase. */
 .badge {
   display: inline-block;
-  padding: 1px 8px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 2px 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   border-radius: 999px;
   border: 1px solid currentColor;
 }
@@ -1549,6 +1576,19 @@ button:disabled {
   padding: 8px 6px;
   text-align: left;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Les planches présentent une liste en `.carte` + `.tete-carte` + `.rang` : un bandeau de colonnes
+   en capitales, puis des lignes séparées d'un filet discret. On en reprend **l'allure**, pas le
+   balisage : ces listes sont de vrais `<table>` dans le produit, et un lecteur d'écran y annonce
+   l'en-tête de colonne à chaque cellule — ce qu'une pile de `<div>` ne fait pas. C'est le cas où la
+   planche décrit le rendu et le produit garde la meilleure structure (EPIC-17, § Risques). */
+.table th {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .table th {
@@ -2563,23 +2603,25 @@ button:disabled {
 /* Onglets de bascule entre vues publiques d'un tournoi (Classement / Plan de cibles). Cibles
    tactiles ≥ 44 px (consultation depuis un téléphone). L'onglet actif porte l'aplat d'accent, comme
    les destinations de la coquille admin — même grammaire visuelle. */
+/* Les planches n'ont pas d'onglets soulignés : ce sont des **pilules encadrées**, l'active étant un
+   aplat de marque. Le soulignement de barre disparaît donc — il dessinait un second trait sous des
+   éléments qui portent déjà le leur. */
 .onglets {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin: 8px 0 12px;
-  border-bottom: 1px solid var(--border-subtle);
+  gap: 6px;
+  margin: 12px 0;
 }
 
 .onglet {
   min-height: 44px;
-  padding: 8px 14px;
+  padding: 8px 12px;
   font: inherit;
-  font-weight: 500;
-  color: var(--text);
+  font-size: 14px;
+  color: var(--text-secondary);
   background: none;
-  border: none;
-  border-radius: 8px 8px 0 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
   cursor: pointer;
 }
 
@@ -2590,6 +2632,7 @@ button:disabled {
 .onglet--actif {
   color: var(--sur-brand);
   background: var(--brand-surface);
+  border-color: var(--brand-surface);
   font-weight: 600;
 }
 
