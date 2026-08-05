@@ -48,19 +48,95 @@
       <span class="sous-etiquette">Une ligne par poste, actions au bout.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="tete-carte"><span style="flex:1">POSTE</span><span style="width:100px">RATTACHEMENT</span><span style="width:80px">SIGNE DE VIE</span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">Cible 1</span><span style="width:100px"><span class="pas ok">RATTACHÉ</span></span><span style="width:80px" class="second">2 mn</span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">Cible 7</span><span style="width:100px"><span class="pas ok">RATTACHÉ</span></span><span style="width:80px"><span class="pas att">14 mn</span></span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">Cible 23</span><span style="width:100px"><span class="pas att">NON RATTACHÉ</span></span><span style="width:80px" class="fin bouton auto">QR</span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">Écran salle A</span><span style="width:100px"><span class="pas ok">RATTACHÉ</span></span><span style="width:80px" class="second">5 s</span></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span class="mini">Postes du tournoi</span>
+          <span class="pas ok">28 rattachés</span><span class="pas att">2 non rattachés</span>
+          <span class="pas info">2 écrans de salle</span>
+          <span class="fin" style="display:flex;gap:10px">
+            <span class="bouton auto">Imprimer les QR — 32</span>
+            <span class="bouton auto">Régénérer un jeton</span>
+            <span class="bouton auto principal">Déclarer un poste</span></span>
         </div>
-      </div>
+
+        <div class="carte">
+          <div class="tete-carte"><span style="flex:1">POSTE</span><span style="width:120px">TYPE</span>
+            <span style="width:130px">RATTACHEMENT</span><span style="width:150px">APPAREIL</span>
+            <span style="width:110px">SIGNE DE VIE</span><span style="width:120px">JETON</span>
+            <span style="width:110px"></span></div>
+
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 1</span>
+            <span style="width:120px" class="second">écran de cible</span>
+            <span style="width:130px"><span class="pas ok">RATTACHÉ</span></span>
+            <span style="width:150px" class="second">tablette · Chrome</span>
+            <span style="width:110px" class="second">il y a 2 s</span>
+            <span style="width:120px" class="faible">4K7-2M · valide</span>
+            <span style="width:110px"><span class="bouton auto discret">Détacher</span></span></div>
+
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 7</span>
+            <span style="width:120px" class="second">écran de cible</span>
+            <span style="width:130px"><span class="pas ok">RATTACHÉ</span></span>
+            <span style="width:150px" class="second">tablette · Chrome</span>
+            <span style="width:110px"><span class="pas att">il y a 14 min</span></span>
+            <span style="width:120px" class="faible">9R3-8T · valide</span>
+            <span style="width:110px"><span class="bouton auto discret">Détacher</span></span></div>
+
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 12</span>
+            <span style="width:120px" class="second">écran de cible</span>
+            <span style="width:130px"><span class="pas ok">RATTACHÉ</span></span>
+            <span style="width:150px" class="second">tablette · Chrome</span>
+            <span style="width:110px" class="second">il y a 4 s</span>
+            <span style="width:120px" class="faible">2P6-5C · valide</span>
+            <span style="width:110px"><span class="bouton auto discret">Détacher</span></span></div>
+
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 23</span>
+            <span style="width:120px" class="second">écran de cible</span>
+            <span style="width:130px"><span class="pas att">NON RATTACHÉ</span></span>
+            <span style="width:150px" class="faible">—</span>
+            <span style="width:110px" class="faible">jamais</span>
+            <span style="width:120px" class="faible">7B1-4X · en attente</span>
+            <span style="width:110px"><span class="bouton auto">Voir le QR</span></span></div>
+
+          <div class="rang"><span style="flex:1;font-weight:700">Cible 28</span>
+            <span style="width:120px" class="second">écran de cible</span>
+            <span style="width:130px"><span class="pas neutre">DÉSACTIVÉ</span></span>
+            <span style="width:150px" class="faible">—</span>
+            <span style="width:110px" class="faible">—</span>
+            <span style="width:120px" class="faible">cible indisponible</span>
+            <span style="width:110px"><span class="bouton auto discret">Réactiver</span></span></div>
+
+          <div class="rang"><span style="flex:1;font-weight:700">Écran de salle A</span>
+            <span style="width:120px" class="second">projection</span>
+            <span style="width:130px"><span class="pas ok">RATTACHÉ</span></span>
+            <span style="width:150px" class="second">PC · mur nord</span>
+            <span style="width:110px" class="second">il y a 5 s</span>
+            <span style="width:120px" class="faible">1D9-3F · valide</span>
+            <span style="width:110px"><span class="bouton auto discret">Détacher</span></span></div>
+
+          <div class="rang"><span style="flex:1;font-weight:700">Écran de salle B</span>
+            <span style="width:120px" class="second">projection</span>
+            <span style="width:130px"><span class="pas ok">RATTACHÉ</span></span>
+            <span style="width:150px" class="second">PC · entrée</span>
+            <span style="width:110px" class="second">il y a 7 s</span>
+            <span style="width:120px" class="faible">6H2-8K · valide</span>
+            <span style="width:110px"><span class="bouton auto discret">Détacher</span></span></div>
+
+          <div class="rang"><span class="faible" style="flex:1">… cibles 2 à 6, 8 à 11, 13 à 22, 24 à 27, 29, 30</span>
+            <span class="faible">24 postes rattachés, tous vus il y a moins d'une minute</span></div>
+        </div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc">
+          <span class="second">Un <b>poste</b> est une tablette ou un écran rattaché à un lieu — jamais la place
+          d'un archer (c'est un couloir de tir), jamais une rangée de cibles (c'est un pas de tir). Deux portes
+          mènent au même poste : « écran de cible » et « écran de salle », avec des mots différents pour deux
+          usages.</span></div></div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">recommandé</span> C'est un écran d'<b>administration</b>, pas de
+        <p class="verdict"><span class="pouce oui">recommandé</span> C'est un écran d'<b>administration</b>, pas de
     supervision : la liste triable convient. La vue temps réel, c'est A13.</p>
+    <p class="verdict"><span class="pouce oui">ce que les colonnes en plus permettent</span> L'<b>appareil</b>
+    (« tablette · Chrome », « PC · mur nord ») et l'<b>état du jeton</b> répondent aux deux questions qu'on se
+    pose ici : <em>qui est physiquement branché</em>, et <em>faut-il régénérer un accès</em>. La cible 28
+    apparaît « désactivée » plutôt qu'absente — le pilier de la salle a une conséquence visible.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="postes">
@@ -68,23 +144,80 @@
       <span class="sous-etiquette">L'état des postes projeté sur la géographie réelle.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="plan" style="grid-template-columns:repeat(10,1fr)">
-          <span class="cible">1</span><span class="cible">2</span><span class="cible">3</span><span class="cible">4</span><span class="cible">5</span>
-          <span class="cible">6</span><span class="cible hs">7</span><span class="cible">8</span><span class="cible">9</span><span class="cible">10</span>
-          <span class="cible">11</span><span class="cible">12</span><span class="cible">13</span><span class="cible">14</span><span class="cible">15</span>
-          <span class="cible">16</span><span class="cible">17</span><span class="cible">18</span><span class="cible">19</span><span class="cible">20</span>
-          <span class="cible">21</span><span class="cible">22</span><span class="cible vide">23</span><span class="cible">24</span><span class="cible">25</span>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span class="mini">Postes — vue plan de salle</span>
+          <span class="pas ok">28 en ligne</span><span class="pas att">2 hors ligne</span>
+          <span class="pas neutre">1 non rattaché</span>
+          <span class="fin"><span class="bouton auto discret">Revenir à la liste</span></span>
         </div>
-        <div style="display:flex;gap:12px;font-size:11px;margin-top:4px">
-          <span class="faible">■ rattaché</span><span style="color:var(--danger)">■ hors ligne</span>
-          <span class="faible">▫ non rattaché</span></div>
-      </div>
+
+        <div class="carte">
+          <div class="tete-carte">Pas de tir A <span class="fin faible">cibles 1 à 15</span></div>
+          <div class="rang bloc" style="padding:18px">
+            <div class="plan" style="grid-template-columns:repeat(15,minmax(0,1fr));gap:8px">
+              <span class="cible" style="padding:16px 0">1</span><span class="cible" style="padding:16px 0">2</span>
+              <span class="cible" style="padding:16px 0">3</span><span class="cible" style="padding:16px 0">4</span>
+              <span class="cible" style="padding:16px 0">5</span><span class="cible" style="padding:16px 0">6</span>
+              <span class="cible hs" style="padding:16px 0">7</span><span class="cible" style="padding:16px 0">8</span>
+              <span class="cible" style="padding:16px 0">9</span><span class="cible" style="padding:16px 0">10</span>
+              <span class="cible" style="padding:16px 0">11</span><span class="cible" style="padding:16px 0">12</span>
+              <span class="cible" style="padding:16px 0">13</span><span class="cible" style="padding:16px 0">14</span>
+              <span class="cible" style="padding:16px 0">15</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="carte" style="margin-top:14px">
+          <div class="tete-carte">Pas de tir B <span class="fin faible">cibles 16 à 30</span></div>
+          <div class="rang bloc" style="padding:18px">
+            <div class="plan" style="grid-template-columns:repeat(15,minmax(0,1fr));gap:8px">
+              <span class="cible" style="padding:16px 0">16</span><span class="cible" style="padding:16px 0">17</span>
+              <span class="cible" style="padding:16px 0">18</span><span class="cible" style="padding:16px 0">19</span>
+              <span class="cible" style="padding:16px 0">20</span><span class="cible" style="padding:16px 0">21</span>
+              <span class="cible" style="padding:16px 0">22</span><span class="cible vide" style="padding:16px 0">23</span>
+              <span class="cible" style="padding:16px 0">24</span><span class="cible" style="padding:16px 0">25</span>
+              <span class="cible" style="padding:16px 0">26</span><span class="cible" style="padding:16px 0">27</span>
+              <span class="cible vide" style="padding:16px 0">28</span><span class="cible hs" style="padding:16px 0">29</span>
+              <span class="cible" style="padding:16px 0">30</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;margin-top:16px">
+          <div class="carte">
+            <div class="tete-carte">Ce que le plan montre et que la liste cachait</div>
+            <div class="rang"><span class="pas att" style="width:110px">HORS LIGNE</span>
+              <span style="flex:1">Cibles 7 et 29 — <b>aux deux extrémités opposées</b> de la salle</span>
+              <span class="second">pas un problème de Wi-Fi localisé</span></div>
+            <div class="rang"><span class="pas neutre" style="width:110px">NON RATTACHÉ</span>
+              <span style="flex:1">Cible 23 — au milieu du pas de tir B</span>
+              <span class="second">le QR est peut-être tombé</span></div>
+            <div class="rang"><span class="pas neutre" style="width:110px">DÉSACTIVÉ</span>
+              <span style="flex:1">Cible 28 — pilier</span>
+              <span class="second">volontaire, déclaré au gabarit</span></div>
+          </div>
+
+          <div class="carte">
+            <div class="tete-carte">Légende</div>
+            <div class="rang"><span class="cible" style="width:44px;padding:6px 0">12</span>
+              <span class="second" style="flex:1">rattaché, en ligne</span></div>
+            <div class="rang"><span class="cible hs" style="width:44px;padding:6px 0">7</span>
+              <span class="second" style="flex:1">rattaché, hors ligne</span></div>
+            <div class="rang"><span class="cible vide" style="width:44px;padding:6px 0">23</span>
+              <span class="second" style="flex:1">non rattaché ou désactivé</span></div>
+            <div class="rang bloc"><span class="faible">La couleur n'est jamais seule : la bordure en pointillés
+              distingue « non rattaché » de « hors ligne » sans dépendre de la teinte.</span></div>
+          </div>
+        </div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce peut">excellent en supervision</span> Voir <b>où</b> est le problème
-    dans la salle fait gagner des pas. Sa vraie place est plutôt A13 — ici, on administre des jetons, on ne
-    court pas.</p>
+        <p class="verdict"><span class="pouce peut">excellent en supervision</span> Voir <b>où</b> est le problème
+    plutôt que <em>lequel</em> : c'est ce que la liste ne dira jamais.</p>
+    <p class="verdict"><span class="pouce oui">ce que le plein écran révèle, et qui est un vrai gain</span>
+    Les <b>30 cibles tiennent en deux rangées de 15</b>, à leur position réelle. On lit alors quelque chose
+    d'invisible en liste : les deux cibles hors ligne sont <b>aux extrémités opposées</b> de la salle — donc ce
+    n'est pas une zone de mauvaise couverture Wi-Fi, ce sont deux incidents indépendants. En vignette, le plan
+    tenait sur 10 colonnes arbitraires et cette lecture était impossible.</p>
   </figure>
 
 </div>

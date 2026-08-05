@@ -49,31 +49,104 @@
       <span class="sous-etiquette">On attrape un archer non placé, on le lâche sur un couloir de tir.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span class="mini">Placement — départ 2</span>
+          <span class="pas neutre">56 archers · 30 cibles · jusqu'à 2 couloirs de tir</span>
+          <span class="pas att">3 non placés</span>
+          <span class="fin" style="display:flex;gap:10px">
+            <span class="bouton auto">Calculer automatiquement</span>
+            <span class="bouton auto principal">Publier le placement</span></span>
+        </div>
+
         <div class="avec-panneau">
-        <div class="pile">
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
-            <div class="carte" style="padding:6px;font-size:11px"><div style="font-weight:800">C1</div>
-              <div>A MARTIN</div><div>B DURAND</div><div>C PETIT</div><div class="faible">D —</div></div>
-            <div class="carte" style="padding:6px;font-size:11px"><div style="font-weight:800">C2</div>
-              <div>A LEROY</div><div>B GARCIA</div><div>C NOËL</div><div>D FABRE</div></div>
-            <div class="carte marquee" style="padding:6px;font-size:11px;border-style:dashed"><div style="font-weight:800">C3</div>
-              <div>A BLANC</div><div>B ROUX</div><div class="faible">C ⌄ déposer ici</div><div class="faible">D —</div></div>
-            <div class="carte" style="padding:6px;font-size:11px"><div style="font-weight:800">C4</div>
-              <div class="faible">vide</div></div>
+          <div class="carte">
+            <div class="tete-carte">Une cible par ligne <span class="fin faible">glisser un archer depuis la
+              colonne de droite</span></div>
+
+            <div class="rang"><span style="width:80px;font-weight:700">Cible 1</span>
+              <span class="second" style="width:110px">trispot 40</span>
+              <span style="flex:1;display:flex;gap:10px">
+                <span class="carte plate" style="flex:1;padding:8px 12px"><b>A</b> · CADIOU Anne
+                  <span class="faible">— Kervignac · SF</span></span>
+                <span class="carte plate" style="flex:1;padding:8px 12px"><b>B</b> · BODIN Camille
+                  <span class="faible">— Auray · SF</span></span></span></div>
+
+            <div class="rang"><span style="width:80px;font-weight:700">Cible 2</span>
+              <span class="second" style="width:110px">trispot 40</span>
+              <span style="flex:1;display:flex;gap:10px">
+                <span class="carte plate" style="flex:1;padding:8px 12px"><b>A</b> · DURAND Jean
+                  <span class="faible">— Lorient · SH</span></span>
+                <span class="carte plate" style="flex:1;padding:8px 12px"><b>B</b> · NICOL Gaël
+                  <span class="faible">— Hennebont · SH</span></span></span></div>
+
+            <div class="rang" style="background:var(--surface-2);box-shadow:inset 3px 0 0 var(--brand-border)">
+              <span style="width:80px;font-weight:700">Cible 3</span>
+              <span class="second" style="width:110px">trispot 40</span>
+              <span style="flex:1;display:flex;gap:10px">
+                <span class="carte plate" style="flex:1;padding:8px 12px"><b>A</b> · MARTIN Paul
+                  <span class="faible">— Kervignac · SH</span></span>
+                <span class="carte plate" style="flex:1;padding:8px 12px;border:1px dashed var(--brand-border);
+                      color:var(--brand-text)"><b>B</b> · déposer ici</span></span></div>
+
+            <div class="rang"><span style="width:80px;font-weight:700">Cible 4</span>
+              <span class="second" style="width:110px">mono 40 · arc nu</span>
+              <span style="flex:1;display:flex;gap:10px">
+                <span class="carte plate" style="flex:1;padding:8px 12px"><b>A</b> · TANGUY Morgane
+                  <span class="faible">— Auray · SF arc nu</span></span>
+                <span class="faible" style="flex:1;padding:8px 12px">blason encombrant — un seul couloir</span></span></div>
+
+            <div class="rang"><span style="width:80px;font-weight:700">Cible 5</span>
+              <span class="second" style="width:110px">trispot 40</span>
+              <span style="flex:1;display:flex;gap:10px">
+                <span class="carte plate" style="flex:1;padding:8px 12px"><b>A</b> · PETIT Luc
+                  <span class="faible">— Lorient · JH</span></span>
+                <span class="carte plate" style="flex:1;padding:8px 12px"><b>B</b> · LEROY Marie
+                  <span class="faible">— Vannes · SF</span></span></span></div>
+
+            <div class="rang"><span style="width:80px;font-weight:700">Cible 6</span>
+              <span class="second" style="width:110px">trispot 40</span>
+              <span style="flex:1;display:flex;gap:10px">
+                <span class="carte plate" style="flex:1;padding:8px 12px"><b>A</b> · GUILLOU Nolwenn
+                  <span class="faible">— Kervignac · MF</span></span>
+                <span class="carte plate" style="flex:1;padding:8px 12px"><b>B</b> · HÉLIAS Tristan
+                  <span class="faible">— Lorient · MH</span></span></span></div>
+
+            <div class="rang"><span class="faible" style="flex:1">… cibles 7 à 30</span>
+              <span class="faible">24 cibles, 47 couloirs occupés</span></div>
+          </div>
+
+          <div class="panneau">
+            <div class="groupe">Non placés — 3</div>
+            <div class="carte" style="background:var(--surface-2)"><div class="rang bloc" style="padding:10px 12px">
+              <b>MARTINEAU Luc</b><span class="faible" style="display:block">Lorient · CH · trispot 40</span></div></div>
+            <div class="carte" style="background:var(--surface-2)"><div class="rang bloc" style="padding:10px 12px">
+              <b>CADIOU Yann</b><span class="faible" style="display:block">Lorient · VH · trispot 40</span></div></div>
+            <div class="carte" style="background:var(--surface-2)"><div class="rang bloc" style="padding:10px 12px">
+              <b>ROPARS Ewen</b><span class="faible" style="display:block">Hennebont · CH · trispot 40</span></div></div>
+
+            <div class="groupe" style="margin-top:10px">Contraintes actives</div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Même club séparé</span>
+              <span class="pas ok">respecté</span></div></div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Blason compatible</span>
+              <span class="pas ok">respecté</span></div></div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Catégories mélangées</span>
+              <span class="pas ok">autorisé</span></div></div>
+
+            <div class="groupe" style="margin-top:10px">Si vous lâchez ici</div>
+            <div class="carte plate"><div class="rang bloc"><span class="second">Cible 3, couloir B :
+              <b>MARTINEAU Luc</b> serait avec MARTIN Paul, deux clubs différents. <b>Compatible.</b></span></div></div>
           </div>
         </div>
-        <div class="panneau">
-          <div class="mini">NON PLACÉS</div>
-          <div class="carte" style="padding:5px 7px;font-size:11px">MARTINEAU L. · CH</div>
-          <div class="carte" style="padding:5px 7px;font-size:11px">OLLIVIER J. · BF</div>
-          <div class="carte" style="padding:5px 7px;font-size:11px">THOMAS É. · SF</div>
-        </div>
-      </div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce peut">si tu travailles sur PC</span> Geste naturel à la souris.
-    <b>Impraticable au doigt</b> sur une tablette, et il faut de toute façon une alternative clavier
-    (accessibilité, §7.3 du CDC design).</p>
+        <p class="verdict"><span class="pouce oui">ta critique du 04/08, appliquée</span> « Trop tassé, on doit
+    pouvoir mieux s'adapter sur la largeur d'un écran PC. <b>Une cible par ligne</b> me paraît plus adaptée. »
+    C'est exactement cette mise en page : une cible par ligne, ses couloirs de tir côte à côte, avec le club et
+    la catégorie de chaque archer lisibles sans survol.</p>
+    <p class="verdict"><span class="pouce peut">ce qui reste à trancher</span> Le glisser-déposer suppose une
+    <b>souris</b>. Le panneau annonce ce que la dépose impliquerait — « deux clubs différents, compatible » —
+    mais si tu fais le placement sur tablette, c'est la variante B qu'il faut retenir. La question est dans le
+    questionnaire.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="placement">
@@ -81,19 +154,93 @@
       <span class="sous-etiquette">Un tap sur l'archer, un tap sur le couloir de tir.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte marquee"><div class="rang"><span class="pas marque">SÉLECTIONNÉ</span>
-          <span style="font-weight:700">MARTINEAU Luc</span><span class="fin second">CH · Vannes</span></div></div>
-        <p class="faible" style="margin:0">Touchez une couloir libre — les couloirs incompatibles sont estompées.</p>
-        <div class="plan" style="grid-template-columns:repeat(6,1fr)">
-          <span class="cible vide">C1 D</span><span class="cible vide">C3 C</span><span class="cible vide">C3 D</span>
-          <span class="cible" style="opacity:.35">C2 —</span><span class="cible vide">C4 A</span><span class="cible vide">C4 B</span>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span class="mini">Placement — départ 2</span>
+          <span class="pas marque">MARTINEAU Luc sélectionné</span>
+          <span class="second">touchez un couloir de tir libre pour l'y placer</span>
+          <span class="fin"><span class="bouton auto discret">Désélectionner</span></span>
+        </div>
+
+        <div class="avec-panneau">
+          <div class="carte">
+            <div class="tete-carte">Couloirs de tir <span class="fin faible">les incompatibles sont estompés</span></div>
+
+            <div class="rang"><span style="width:80px;font-weight:700">Cible 1</span>
+              <span style="flex:1;display:flex;gap:10px">
+                <span class="carte plate" style="flex:1;padding:10px 12px;opacity:.4"><b>A</b> · CADIOU Anne</span>
+                <span class="carte plate" style="flex:1;padding:10px 12px;opacity:.4"><b>B</b> · BODIN Camille</span></span></div>
+
+            <div class="rang"><span style="width:80px;font-weight:700">Cible 2</span>
+              <span style="flex:1;display:flex;gap:10px">
+                <span class="carte plate" style="flex:1;padding:10px 12px;opacity:.4"><b>A</b> · DURAND Jean</span>
+                <span class="carte plate" style="flex:1;padding:10px 12px;opacity:.4"><b>B</b> · NICOL Gaël</span></span></div>
+
+            <div class="rang"><span style="width:80px;font-weight:700">Cible 3</span>
+              <span style="flex:1;display:flex;gap:10px">
+                <span class="carte plate" style="flex:1;padding:10px 12px;opacity:.4"><b>A</b> · MARTIN Paul</span>
+                <span class="carte" style="flex:1;padding:10px 12px;border-color:var(--success);
+                      color:var(--success);font-weight:700"><b>B</b> · libre — placer ici</span></span></div>
+
+            <div class="rang"><span style="width:80px;font-weight:700">Cible 4</span>
+              <span style="flex:1;display:flex;gap:10px">
+                <span class="carte plate" style="flex:1;padding:10px 12px;opacity:.4"><b>A</b> · TANGUY Morgane</span>
+                <span class="faible" style="flex:1;padding:10px 12px">blason encombrant — pas de couloir B</span></span></div>
+
+            <div class="rang"><span style="width:80px;font-weight:700">Cible 5</span>
+              <span style="flex:1;display:flex;gap:10px">
+                <span class="carte plate" style="flex:1;padding:10px 12px;opacity:.4"><b>A</b> · PETIT Luc</span>
+                <span class="carte plate" style="flex:1;padding:10px 12px;opacity:.4"><b>B</b> · LEROY Marie</span></span></div>
+
+            <div class="rang"><span style="width:80px;font-weight:700">Cible 9</span>
+              <span style="flex:1;display:flex;gap:10px">
+                <span class="carte plate" style="flex:1;padding:10px 12px;opacity:.4"><b>A</b> · ROPARS Ewen (Hennebont)</span>
+                <span class="carte plate" style="flex:1;padding:10px 12px;opacity:.35;border:1px dashed var(--danger)">
+                  <b>B</b> · libre <span class="faible">— même club que Luc ? non, Lorient ≠ Hennebont</span></span></span></div>
+
+            <div class="rang"><span style="width:80px;font-weight:700">Cible 14</span>
+              <span style="flex:1;display:flex;gap:10px">
+                <span class="carte plate" style="flex:1;padding:10px 12px;opacity:.4"><b>A</b> · CADIOU Yann (Lorient)</span>
+                <span class="carte plate" style="flex:1;padding:10px 12px;opacity:.35;border:1px dashed var(--danger)">
+                  <b>B</b> · libre <span class="faible">— même club, écarté</span></span></span></div>
+
+            <div class="rang"><span class="faible" style="flex:1">… cibles 6 à 30</span>
+              <span class="pas ok">4 couloirs compatibles au total</span></div>
+          </div>
+
+          <div class="panneau">
+            <div class="groupe">Archer sélectionné</div>
+            <div class="carte" style="background:var(--surface-2)"><div class="rang bloc" style="padding:12px">
+              <b style="font-size:16px">MARTINEAU Luc</b>
+              <span class="faible" style="display:block;margin-top:4px">Lorient · Cadet Homme · arc classique</span>
+              <span class="faible" style="display:block">blason requis : trispot 40 cm</span></div></div>
+
+            <div class="groupe" style="margin-top:10px">Ce qui filtre les couloirs</div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Blason compatible</span>
+              <span class="pas ok">29 cibles</span></div></div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Couloir libre</span>
+              <span class="pas ok">6</span></div></div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Pas de coéquipier de Lorient</span>
+              <span class="pas att">−2</span></div></div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Restent proposables</span>
+              <span class="pas ok" style="font-weight:800">4</span></div></div>
+
+            <div class="groupe" style="margin-top:10px">Deux autres attendent</div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">CADIOU Yann</span>
+              <span class="faible">Lorient · VH</span></div></div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">ROPARS Ewen</span>
+              <span class="faible">Hennebont · CH</span></div></div>
+          </div>
         </div>
       </div>
-      </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">recommandé si tablette</span> Marche <b>partout</b>, souris
-    comprise, et donne gratuitement l'alternative clavier. Un tap de plus, mais aucun geste précis.</p>
+        <p class="verdict"><span class="pouce oui">le geste tactile</span> Un tap sur l'archer, un tap sur le
+    couloir de tir. Aucun glissement, donc aucune précision de pointage requise : c'est le seul des trois qui
+    marche sur une tablette posée sur une table, avec des gants ou les mains froides.</p>
+    <p class="verdict"><span class="pouce oui">ce que le plein écran permet enfin de montrer</span> Le panneau
+    <b>décompte le filtrage</b> : 29 cibles au blason compatible, 6 couloirs libres, moins 2 pour cause de
+    coéquipiers du même club, donc <b>4 proposables</b>. En vignette, les couloirs incompatibles étaient
+    seulement estompés — on voyait <em>qu'</em>ils l'étaient, jamais <em>pourquoi</em>. Ici la cible 14 dit
+    « même club, écarté » à l'endroit où on la regarde.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="placement">
@@ -101,21 +248,78 @@
       <span class="sous-etiquette">La machine propose, l'humain corrige.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="tete-carte"><span>PROPOSITION</span><span class="fin">153 / 156 placés</span></div>
-          <div class="rang"><span class="pas ok">✓</span><span style="flex:1">Clubs séparés</span><span class="second">28 cibles</span></div>
-          <div class="rang"><span class="pas ok">✓</span><span style="flex:1">Blasons compatibles</span><span class="second">30 cibles</span></div>
-          <div class="rang"><span class="pas att">!</span><span style="flex:1">3 archers sans couloir de tir</span><span class="fin bouton auto">Voir</span></div>
+        <div class="aplat-alerte">▲ Proposition de placement — <b>rien n'est encore acté</b>
+          <span class="impact">53 archers placés sur 56 · 3 conflits</span></div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:16px">
+          <div class="carte"><div class="rang bloc"><div class="mini">Archers à placer</div>
+            <div style="font-size:34px;font-weight:800;line-height:1.1">56</div></div></div>
+          <div class="carte"><div class="rang bloc"><div class="mini">Placés par le calcul</div>
+            <div style="font-size:34px;font-weight:800;line-height:1.1">53</div></div></div>
+          <div class="carte"><div class="rang bloc"><div class="mini">Conflits à arbitrer</div>
+            <div style="font-size:34px;font-weight:800;line-height:1.1;color:var(--danger)">3</div></div></div>
+          <div class="carte"><div class="rang bloc"><div class="mini">Couloirs restants</div>
+            <div style="font-size:34px;font-weight:800;line-height:1.1">5</div></div></div>
         </div>
-        <div style="display:flex;gap:8px"><span class="bouton auto">Accepter</span>
-          <span class="bouton auto" style="border-color:var(--border-subtle)">Recommencer</span></div>
-      </div>
+
+        <div class="carte" style="margin-top:16px">
+          <div class="tete-carte">Ce que le calcul n'a pas su trancher
+            <span class="fin faible">chaque ligne demande une décision humaine</span></div>
+
+          <div class="rang"><span class="pas att" style="width:96px">CONFLIT</span>
+            <span style="flex:1"><b>MARTINEAU Luc</b> et <b>CADIOU Yann</b> — tous deux de Lorient</span>
+            <span class="second" style="width:250px">il ne reste que la cible 14, deux couloirs libres</span>
+            <span class="bouton auto">Les séparer ailleurs</span>
+            <span class="bouton auto discret">Accepter côte à côte</span></div>
+
+          <div class="rang"><span class="pas att" style="width:96px">CONFLIT</span>
+            <span style="flex:1"><b>ROPARS Ewen</b> — arc classique, cadet</span>
+            <span class="second" style="width:250px">aucun couloir libre au blason trispot 40</span>
+            <span class="bouton auto">Ouvrir un 2ᵉ couloir</span>
+            <span class="bouton auto discret">Déplacer un autre archer</span></div>
+
+          <div class="rang"><span class="pas neutre" style="width:96px">À VOIR</span>
+            <span style="flex:1">Cible 4 — <b>TANGUY Morgane</b> seule</span>
+            <span class="second" style="width:250px">blason mono 40 encombrant : un couloir perdu</span>
+            <span class="bouton auto">Changer son blason</span>
+            <span class="bouton auto discret">Laisser</span></div>
+        </div>
+
+        <div class="carte" style="margin-top:16px">
+          <div class="tete-carte">Ce que le calcul a respecté <span class="fin faible">à vérifier avant de publier</span></div>
+          <div class="rang"><span class="pas ok" style="width:96px">OK</span>
+            <span style="flex:1">Deux archers d'un même club ne partagent pas une cible</span>
+            <span class="second">51 cas sur 53</span></div>
+          <div class="rang"><span class="pas ok" style="width:96px">OK</span>
+            <span style="flex:1">Chaque archer a le blason de sa catégorie</span>
+            <span class="second">53 sur 53</span></div>
+          <div class="rang"><span class="pas ok" style="width:96px">OK</span>
+            <span style="flex:1">Les cibles sont remplies en partant du pas de tir A</span>
+            <span class="second">pas de trou</span></div>
+          <div class="rang"><span class="pas ok" style="width:96px">OK</span>
+            <span style="flex:1">La cible 28 (pilier) est restée vide</span>
+            <span class="second">déclarée indisponible</span></div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:16px">
+          <span class="bouton auto principal">Publier le placement</span>
+          <span class="bouton auto">Recalculer</span>
+          <span class="bouton auto discret">Repartir de zéro</span>
+          <span class="faible" style="margin-left:auto;align-self:center">Publier rend le placement visible des
+          archers et des écrans de salle. Les 3 conflits resteront non placés.</span>
+        </div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce oui">indispensable en complément</span> Personne ne place 156 archers
-    à la main. Mais le calcul <b>ne suffit jamais</b> : il reste toujours des cas à arbitrer — d'où A ou B
-    par-dessus.</p>
+        <p class="verdict"><span class="pouce oui">recommandé</span> La machine propose, l'humain corrige — et le mot
+    <b>proposition</b> est en tête d'écran, pas en note de bas de page. C'est ce qui empêche de prendre un calcul
+    pour une décision actée.</p>
+    <p class="verdict"><span class="pouce oui">ce que la place gagnée sert à dire</span> Deux listes au lieu
+    d'une : <b>ce que le calcul n'a pas su trancher</b>, avec les sorties possibles ligne par ligne, et
+    <b>ce qu'il a respecté</b>, chiffré. La seconde est celle qu'on ne pouvait pas afficher en vignette, et c'est
+    pourtant elle qui permet de publier sans relire les 53 placements un par un.</p>
+    <p class="verdict"><span class="pouce peut">à confirmer</span> Publier avec 3 conflits non résolus les
+    laisse <b>non placés</b>. Est-ce le bon comportement, ou faut-il refuser la publication tant qu'il reste un
+    conflit ?</p>
   </figure>
 
 </div>

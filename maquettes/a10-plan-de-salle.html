@@ -44,12 +44,47 @@ messages, les deux PDF et le glossaire. Les maquettes A11, P02, P04, S06 et A09 
       <span class="sous-etiquette">Un <b>groupement de cibles</b>.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="mini">PAS DE TIR — CIBLES 1 À 5</div>
-        <div class="plan" style="grid-template-columns:repeat(5,1fr)">
-          <span class="cible">1</span><span class="cible">2</span><span class="cible">3</span><span class="cible">4</span><span class="cible">5</span>
+        <p style="font-size:24px;font-weight:800;margin:0 0 6px">Pas de tir</p>
+        <p class="second" style="margin:0 0 20px">Un <b>groupement de cibles</b> : la rangée que l'on tire
+        depuis la même ligne de tir. La salle de Kervignac en a deux.</p>
+
+        <div class="carte">
+          <div class="tete-carte">Pas de tir A <span class="fin faible">cibles 1 à 15</span></div>
+          <div class="rang bloc" style="padding:16px">
+            <div class="plan" style="grid-template-columns:repeat(15,minmax(0,1fr))">
+              <span class="cible moi">1</span><span class="cible moi">2</span><span class="cible moi">3</span>
+              <span class="cible moi">4</span><span class="cible moi">5</span><span class="cible moi">6</span>
+              <span class="cible moi">7</span><span class="cible moi">8</span><span class="cible moi">9</span>
+              <span class="cible moi">10</span><span class="cible moi">11</span><span class="cible moi">12</span>
+              <span class="cible moi">13</span><span class="cible moi">14</span><span class="cible moi">15</span>
+            </div>
+          </div>
         </div>
-      </div>
+
+        <div class="carte" style="margin-top:14px">
+          <div class="tete-carte">Pas de tir B <span class="fin faible">cibles 16 à 30</span></div>
+          <div class="rang bloc" style="padding:16px">
+            <div class="plan" style="grid-template-columns:repeat(15,minmax(0,1fr))">
+              <span class="cible">16</span><span class="cible">17</span><span class="cible">18</span>
+              <span class="cible">19</span><span class="cible">20</span><span class="cible">21</span>
+              <span class="cible">22</span><span class="cible">23</span><span class="cible">24</span>
+              <span class="cible">25</span><span class="cible">26</span><span class="cible">27</span>
+              <span class="cible">28</span><span class="cible">29</span><span class="cible">30</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px">
+          <div class="carte"><div class="tete-carte">Ce que ça désigne</div>
+            <div class="rang"><span style="flex:1">Une rangée de cibles</span><span class="pas ok">oui</span></div>
+            <div class="rang"><span style="flex:1">Les archers qui tirent en même temps depuis cette ligne</span>
+              <span class="pas ok">oui</span></div>
+            <div class="rang"><span style="flex:1">L'ordre de service des affectations</span><span class="pas ok">oui</span></div></div>
+          <div class="carte"><div class="tete-carte">Ce que ça ne désigne jamais</div>
+            <div class="rang"><span style="flex:1">La place d'un archer</span><span class="pas att">non — c'est un couloir de tir</span></div>
+            <div class="rang"><span style="flex:1">Une tablette ou un écran</span><span class="pas att">non — c'est un poste</span></div>
+            <div class="rang"><span style="flex:1">Un créneau de la journée</span><span class="pas att">non — c'est un départ</span></div></div>
+        </div>
       </div>
     </div></div></div>
     <p class="verdict">La rangée que l'on tire depuis la même ligne de tir. Notion <b>de salle</b> : aucune
@@ -61,15 +96,63 @@ messages, les deux PDF et le glossaire. Les maquettes A11, P02, P04, S06 et A09 
       <span class="sous-etiquette">La place d'<b>un archer</b> devant sa cible.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="mini">CIBLE 7 · 2 BLASONS · 4 COULOIRS</div>
-        <div class="plan" style="grid-template-columns:repeat(2,1fr)">
-          <span class="cible">blason g.</span><span class="cible">blason d.</span>
+        <p style="font-size:24px;font-weight:800;margin:0 0 6px">Couloir de tir</p>
+        <p class="second" style="margin:0 0 20px">La place d'<b>un archer</b> devant sa cible, repérée par une
+        lettre. Les blasons posés sur la cible se répartissent les couloirs.</p>
+
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+
+          <div class="carte">
+            <div class="tete-carte">Cible 7 <span class="fin faible">1 blason · 1 couloir</span></div>
+            <div class="rang bloc" style="padding:18px;text-align:center">
+              <div style="display:flex;justify-content:center;margin-bottom:12px">
+                <span style="width:96px;height:96px;border-radius:50%;border:3px solid var(--border);
+                             display:flex;align-items:center;justify-content:center;font-weight:700">mono 40</span></div>
+              <div class="plan" style="grid-template-columns:repeat(1,1fr);max-width:120px;margin:0 auto">
+                <span class="cible moi">A</span></div>
+              <div class="faible" style="margin-top:10px">Un blason encombrant occupe la face entière.</div>
+            </div>
+          </div>
+
+          <div class="carte">
+            <div class="tete-carte">Cible 12 <span class="fin faible">2 blasons · 2 couloirs</span></div>
+            <div class="rang bloc" style="padding:18px;text-align:center">
+              <div style="display:flex;justify-content:center;gap:10px;margin-bottom:12px">
+                <span style="width:76px;height:76px;border-radius:50%;border:3px solid var(--border);
+                             display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">trispot</span>
+                <span style="width:76px;height:76px;border-radius:50%;border:3px solid var(--border);
+                             display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">trispot</span></div>
+              <div class="plan" style="grid-template-columns:repeat(2,1fr);max-width:180px;margin:0 auto">
+                <span class="cible moi">A</span><span class="cible moi">B</span></div>
+              <div class="faible" style="margin-top:10px">Le cas courant de ce tournoi.</div>
+            </div>
+          </div>
+
+          <div class="carte">
+            <div class="tete-carte">Cible 21 <span class="fin faible">2 blasons · 4 couloirs</span></div>
+            <div class="rang bloc" style="padding:18px;text-align:center">
+              <div style="display:flex;justify-content:center;gap:10px;margin-bottom:12px">
+                <span style="width:76px;height:76px;border-radius:50%;border:3px solid var(--border);
+                             display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">trispot</span>
+                <span style="width:76px;height:76px;border-radius:50%;border:3px solid var(--border);
+                             display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">trispot</span></div>
+              <div class="plan" style="grid-template-columns:repeat(4,1fr);max-width:260px;margin:0 auto">
+                <span class="cible moi">A</span><span class="cible moi">B</span>
+                <span class="cible moi">C</span><span class="cible moi">D</span></div>
+              <div class="faible" style="margin-top:10px">Deux archers par blason : c'est ta lecture du 04/08.</div>
+            </div>
+          </div>
         </div>
-        <div class="plan" style="grid-template-columns:repeat(4,1fr);margin-top:4px">
-          <span class="cible">A</span><span class="cible">B</span><span class="cible">C</span><span class="cible">D</span>
-        </div>
-      </div>
+
+        <div class="carte info" style="margin-top:16px"><div class="rang bloc">
+          <span class="second">Le plafond réglé sur une cible est un <b>majorant</b> : les libellés disent
+          « <b>jusqu'à</b> N couloirs de tir », jamais « N couloirs ». Le placement en installe au plus autant,
+          et souvent moins.</span></div></div>
+
+        <div class="carte" style="margin-top:14px"><div class="rang">
+          <span class="second" style="flex:1">Côté code, le couloir de tir est encore stocké sous le nom
+          <code>position</code> — renommage différé, déclaré en <b>DETTE-042</b>. Ce que tu lis à l'écran est,
+          lui, aligné.</span><span class="pas info">ADR-0073</span></div></div>
       </div>
     </div></div></div>
     <p class="verdict">Repérée par une lettre. Les <b>blasons</b> posés sur la cible se répartissent les
@@ -98,22 +181,82 @@ l'appli, un poste est une <b>tablette ou un écran</b> rattaché à un lieu (A16
       <span class="sous-etiquette">Des rangées de cibles numérotées, un pas de tir par bloc.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="mini">PAS DE TIR — CIBLES 1 À 15</div>
-        <div class="plan" style="grid-template-columns:repeat(10,1fr)">
-          <span class="cible">1</span><span class="cible">2</span><span class="cible">3</span><span class="cible">4</span><span class="cible">5</span>
-          <span class="cible">6</span><span class="cible">7</span><span class="cible">8</span><span class="cible">9</span><span class="cible">10</span>
-          <span class="cible">11</span><span class="cible">12</span><span class="cible">13</span><span class="cible">14</span><span class="cible">15</span>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span class="mini">Gabarit de salle</span>
+          <span class="pas neutre">Gymnase de Kervignac — 30 cibles, 2 pas de tir</span>
+          <span class="fin" style="display:flex;gap:10px">
+            <span class="bouton auto">Charger un gabarit du club</span>
+            <span class="bouton auto principal">Enregistrer comme gabarit</span></span>
         </div>
-        <div class="mini" style="margin-top:6px">PAS DE TIR — CIBLES 16 À 30</div>
-        <div class="plan" style="grid-template-columns:repeat(10,1fr)">
-          <span class="cible">16</span><span class="cible">17</span><span class="cible">18</span><span class="cible">19</span><span class="cible">20</span>
-          <span class="cible">21</span><span class="cible">22</span><span class="cible">23</span><span class="cible">24</span><span class="cible">25</span>
-          <span class="cible">26</span><span class="cible">27</span><span class="cible">28</span><span class="cible">29</span><span class="cible">30</span>
+
+        <div class="avec-panneau">
+          <div class="pile">
+            <div class="carte">
+              <div class="tete-carte">Pas de tir A <span class="fin faible">15 cibles · ligne de tir à 18 m</span></div>
+              <div class="rang bloc" style="padding:16px">
+                <div class="plan" style="grid-template-columns:repeat(15,minmax(0,1fr))">
+                  <div class="cible">1</div><div class="cible">2</div><div class="cible">3</div>
+                  <div class="cible">4</div><div class="cible">5</div><div class="cible">6</div>
+                  <div class="cible">7</div><div class="cible">8</div><div class="cible">9</div>
+                  <div class="cible">10</div><div class="cible">11</div><div class="cible">12</div>
+                  <div class="cible">13</div><div class="cible">14</div><div class="cible">15</div>
+                </div>
+                <div style="display:flex;gap:4px;margin-top:6px">
+                  <span class="faible" style="flex:1;text-align:center">jusqu'à 2 couloirs de tir par cible</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="carte">
+              <div class="tete-carte">Pas de tir B <span class="fin faible">15 cibles · ligne de tir à 18 m</span></div>
+              <div class="rang bloc" style="padding:16px">
+                <div class="plan" style="grid-template-columns:repeat(15,minmax(0,1fr))">
+                  <div class="cible">16</div><div class="cible">17</div><div class="cible">18</div>
+                  <div class="cible">19</div><div class="cible">20</div><div class="cible">21</div>
+                  <div class="cible">22</div><div class="cible">23</div><div class="cible">24</div>
+                  <div class="cible">25</div><div class="cible">26</div><div class="cible">27</div>
+                  <div class="cible hs">28</div><div class="cible">29</div><div class="cible">30</div>
+                </div>
+                <div class="faible" style="text-align:center;margin-top:6px">la cible 28 est déclarée
+                indisponible — pilier</div>
+              </div>
+            </div>
+
+            <div class="carte info"><div class="rang bloc">
+              <span class="second">Le gabarit est une <b>liste</b>, pas un plan : « N cibles, chacune avec son
+              plafond de couloirs de tir ». Ni coordonnées, ni obstacles, ni éléments non-cibles. La salle du
+              club rentre dans une grille régulière, et c'est ce qui rend le gabarit réutilisable d'une année
+              sur l'autre.</span></div></div>
+          </div>
+
+          <div class="panneau">
+            <div class="groupe">Réglages du gabarit</div>
+            <div class="mini">Nom</div>
+            <div class="champ plein">Gymnase de Kervignac</div>
+            <div class="mini">Nombre de cibles</div>
+            <div class="champ plein">30</div>
+            <div class="mini">Pas de tir</div>
+            <div class="champ plein">2 rangées de 15</div>
+            <div class="mini">Plafond de couloirs de tir</div>
+            <div class="champ plein">jusqu'à 2 par cible</div>
+            <span class="faible">C'est un <b>majorant</b> : le placement en installe au plus autant, et souvent
+            moins — un blason encombrant occupe la face entière.</span>
+
+            <div class="groupe" style="margin-top:10px">Capacité</div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Cibles utilisables</span>
+              <span class="pas ok">29</span></div></div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Couloirs de tir au maximum</span>
+              <span class="pas ok">58</span></div></div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Archers par départ</span>
+              <span class="second">52 à 56</span></div></div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Marge</span>
+              <span class="pas ok">2 à 6 couloirs</span></div></div>
+
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <span class="bouton auto principal" style="flex:1">Appliquer</span>
+              <span class="bouton auto discret">Annuler</span></div>
+          </div>
         </div>
-        <div class="carte plate" style="border-style:dashed;text-align:center;padding:6px;margin-top:6px">
-          <span class="faible">ligne de tir · 18 m</span></div>
-      </div>
       </div>
     </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Suffisant dans <b>l'immense majorité</b> des
@@ -125,22 +268,79 @@ l'appli, un poste est une <b>tablette ou un écran</b> rattaché à un lieu (A16
       <span class="sous-etiquette">On positionne les cibles où elles sont réellement.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte plate" style="border-style:dashed;height:150px;position:relative">
-          <span class="cible" style="position:absolute;top:14px;left:16px;width:34px">1</span>
-          <span class="cible" style="position:absolute;top:14px;left:60px;width:34px">2</span>
-          <span class="cible" style="position:absolute;top:14px;left:104px;width:34px">3</span>
-          <span class="cible" style="position:absolute;top:70px;left:16px;width:34px">4</span>
-          <span class="cible" style="position:absolute;top:70px;left:60px;width:34px">5</span>
-          <span class="faible" style="position:absolute;bottom:8px;right:12px;font-size:10px">pilier</span>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span class="mini">Plan libre — variante écartée</span>
+          <span class="pas att">ADR-0073 : le gabarit reste une liste</span>
         </div>
-        <p class="faible" style="margin:0">Glisser pour positionner · utile si la salle a des contraintes physiques.</p>
-      </div>
+
+        <div class="avec-panneau">
+          <div class="carte">
+            <div class="tete-carte">Poser les cibles là où elles sont réellement</div>
+            <div class="rang bloc" style="padding:18px">
+              <div style="position:relative;background:var(--surface-0);border:1px solid var(--border-subtle);
+                          border-radius:6px;height:420px">
+                <span style="position:absolute;left:6%;top:14%;width:52px;height:34px;border-radius:4px;
+                             background:var(--surface-1);border:1px solid var(--border-subtle);display:flex;
+                             align-items:center;justify-content:center;font-size:12px;font-weight:700">1</span>
+                <span style="position:absolute;left:20%;top:14%;width:52px;height:34px;border-radius:4px;
+                             background:var(--surface-1);border:1px solid var(--border-subtle);display:flex;
+                             align-items:center;justify-content:center;font-size:12px;font-weight:700">2</span>
+                <span style="position:absolute;left:34%;top:16%;width:52px;height:34px;border-radius:4px;
+                             background:var(--surface-1);border:1px solid var(--border-subtle);display:flex;
+                             align-items:center;justify-content:center;font-size:12px;font-weight:700">3</span>
+                <span style="position:absolute;left:52%;top:14%;width:52px;height:34px;border-radius:4px;
+                             background:var(--surface-1);border:1px solid var(--border-subtle);display:flex;
+                             align-items:center;justify-content:center;font-size:12px;font-weight:700">4</span>
+                <span style="position:absolute;left:70%;top:15%;width:52px;height:34px;border-radius:4px;
+                             background:var(--surface-1);border:1px solid var(--border-subtle);display:flex;
+                             align-items:center;justify-content:center;font-size:12px;font-weight:700">5</span>
+                <span style="position:absolute;left:42%;top:44%;width:34px;height:110px;border-radius:4px;
+                             background:var(--danger);opacity:.5"></span>
+                <span style="position:absolute;left:38%;top:58%;font-size:11px;color:var(--sur-danger);
+                             font-weight:700">pilier</span>
+                <span style="position:absolute;left:6%;top:66%;width:52px;height:34px;border-radius:4px;
+                             background:var(--surface-1);border:1px solid var(--border-subtle);display:flex;
+                             align-items:center;justify-content:center;font-size:12px;font-weight:700">16</span>
+                <span style="position:absolute;left:20%;top:66%;width:52px;height:34px;border-radius:4px;
+                             background:var(--surface-1);border:1px solid var(--border-subtle);display:flex;
+                             align-items:center;justify-content:center;font-size:12px;font-weight:700">17</span>
+                <span style="position:absolute;left:66%;top:70%;width:104px;height:40px;border-radius:4px;
+                             border:1px dashed var(--border);display:flex;align-items:center;
+                             justify-content:center;font-size:11px;color:var(--text-muted)">table d'orga</span>
+                <span style="position:absolute;right:12px;bottom:10px;font-size:11px;color:var(--text-muted)">
+                  glisser pour déplacer · double-clic pour retirer</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panneau">
+            <div class="groupe">Ce que ça demanderait</div>
+            <div class="carte plate"><div class="rang bloc"><span class="second">Des <b>coordonnées</b> par cible,
+              des <b>obstacles</b>, et des éléments non-cibles (table d'organisation, échauffement, entrée du
+              public). Le modèle de données actuel ne peut rien stocker de tout ça.</span></div></div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Migration du modèle</span>
+              <span class="pas att">nécessaire</span></div></div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Réutilisable d'une année sur l'autre</span>
+              <span class="pas ok">oui</span></div></div>
+            <div class="carte plate"><div class="rang"><span class="second" style="flex:1">Utile au placement</span>
+              <span class="pas att">non — il place par cible, pas par géométrie</span></div></div>
+
+            <div class="groupe" style="margin-top:10px">Décision</div>
+            <div class="carte plate"><div class="rang bloc"><span class="second"><b>Écartée</b> par ADR-0073.
+              La salle du club rentre dans une grille régulière : un gabarit est « N cibles, chacune avec son
+              plafond de couloirs de tir ». Toute US qui voudrait de la géométrie <b>rouvre l'ADR</b> — elle ne
+              l'hérite pas.</span></div></div>
+          </div>
+        </div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce non">écarté sauf besoin réel</span> Beaucoup de travail (édition
-    graphique, sauvegarde de coordonnées) pour un gain qui n'existe que si <b>ta salle a une forme
-    particulière</b>. À rouvrir seulement si la grille ne sait pas la représenter.</p>
+        <p class="verdict"><span class="pouce non">écartée par ADR-0073</span> Dessinée en grand, la variante montre
+    exactement ce qu'elle réclamerait : des <b>coordonnées</b>, des <b>obstacles</b>, et des éléments qui ne
+    sont pas des cibles. Le modèle de données ne peut rien en stocker, et le placement n'en a pas l'usage — il
+    place par cible, pas par géométrie.</p>
+    <p class="verdict">Elle reste dessinée plutôt que supprimée, pour une raison : c'est <b>ce qu'on perd</b>. Si
+    la salle cessait un jour de rentrer dans une grille régulière, c'est cette planche qu'il faudrait rouvrir —
+    par un ADR nouveau, pas en héritant de celui-ci.</p>
   </figure>
 
 </div>
