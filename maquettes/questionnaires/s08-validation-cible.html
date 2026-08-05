@@ -28,6 +28,8 @@
     c'est même la plus rapide à exploiter. Tes réponses sont conservées dans ce navigateur au fil de la
     frappe ; <strong>« Télécharger le .md »</strong> produit le fichier à déposer dans
     <code>maquettes/questionnaires/</code>.</p>
+  <p style="margin-top:10px;font-size:14px;color:var(--doc-doux)">
+    <strong>Les questions ont changé.</strong> L'écran est désormais montré <strong>entier</strong>, à la taille réelle de son appareil (Tablette · 1280 × 800), avec sa navigation, ses bandeaux et son en-tête. Le choix de mise en page n'est donc plus la première question — d'abord ce que l'écran donne au premier coup d'œil, ce qui passe sous la ligne de flottaison, ce que vaut l'ossature, et comment l'espace est occupé.</p>
 </header>
 
 <div class="q-actions">
@@ -42,91 +44,22 @@
 
 <div class="q-apercu" id="q-apercu"><pre></pre></div>
 
-<form id="q-form" autocomplete="off">
+<noscript>
+  <div class="note"><p><strong>JavaScript est désactivé.</strong> Le formulaire est construit par
+  <code>assets/questionnaire.js</code> depuis une trame unique : sans lui, la page reste vide.</p></div>
+</noscript>
 
-  <section class="q-bloc">
-    <h2><span class="q-num">1</span>Quel parti pris retiens-tu ?</h2>
-    <p class="q-aide">Les mentions « recommandé » sur la maquette sont mon avis argumenté, pas une décision.</p>
-    <div class="q-choix">
-      <label><input type="radio" name="variante" value="0"><span>A — Totaux par volée, détail sur demande</span></label>
-      <label><input type="radio" name="variante" value="1"><span>B — Détail flèche à flèche déplié</span></label>
-      <label><input type="radio" name="variante" value="-1"><span>Aucun — voir « à refaire » plus bas</span></label>
-    </div>
-    <label class="q-champ">
-      <span>Pourquoi ce choix</span>
-      <em>Ce qui a emporté la décision, même si c'est un détail.</em>
-      <textarea data-champ="pourquoi" rows="3"></textarea>
-    </label>
-    <label class="q-champ">
-      <span>Ce que tu prendrais dans les autres variantes</span>
-      <textarea data-champ="ailleurs" rows="3"></textarea>
-    </label>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">2</span>Verdict</h2>
-    <div class="q-choix">
-      <label><input type="radio" name="verdict" value="0"><span>✅ Validé tel quel — on peut coder ça</span></label>
-      <label><input type="radio" name="verdict" value="1"><span>🟡 Validé avec les réserves ci-dessous</span></label>
-      <label><input type="radio" name="verdict" value="2"><span>🔴 À refaire — l'écran ne répond pas au besoin</span></label>
-    </div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">3</span>Critiques</h2>
-    <p class="q-aide">Hiérarchie, vocabulaire, information manquante, geste pénible, cas réel non couvert.</p>
-    <textarea data-champ="critiques" rows="5"></textarea>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">4</span>Évolutions souhaitées</h2>
-    <p class="q-aide">Ce que tu veux en plus ou en moins. Sans te censurer sur la faisabilité — c'est mon
-    travail de dire ce que ça coûte.</p>
-    <textarea data-champ="evolutions" rows="5"></textarea>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">5</span>Questions ciblées</h2>
-    <p class="q-aide">Ces questions viennent de points que la maquette n'a pas pu trancher seule.</p>
-    <div class="q-ciblee"><p><span class="q-idx">1</span>Le scoreur vérifie-t-il vraiment les flèches une à une, ou contrôle-t-il les totaux et l'allure générale ?</p><textarea data-question="0" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">2</span>Le renvoi en correction : la cible peut-elle corriger seule, ou le scoreur corrige-t-il lui-même sur place ?</p><textarea data-question="1" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">3</span>Une validation peut-elle être annulée après coup, et par qui ?</p><textarea data-question="2" rows="3"></textarea></div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">6</span>Vocabulaire</h2>
-    <p class="q-aide">Un mot faux à l'écran coûte cher toute la journée. Corrige sans hésiter.</p>
-    <div class="q-vocab">
-      <span class="q-vocab-tete">À l'écran</span><span class="q-vocab-tete">Le bon mot</span>
-    </div>
-    <div class="q-vocab" style="margin-top:6px">
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-    </div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">7</span>Ce qui manque complètement</h2>
-    <p class="q-aide">Un écran, un état, un cas que cette maquette ignore.</p>
-    <textarea data-champ="manque" rows="4"></textarea>
-  </section>
-
-</form>
+<!-- Le formulaire est GÉNÉRÉ depuis la trame de questionnaire.js : une section n'est décrite
+     qu'à un seul endroit, pour les 36 écrans à la fois. -->
+<form id="q-form" autocomplete="off"></form>
 
 <footer class="pied">
   <span><a href="../index.html">Tous les écrans</a></span>
   <span><a href="../s08-validation-cible.html">Maquette S08</a></span>
-  <span class="fin"><a href="s09-etats-systeme.html">Suivant : S09 · Le vocabulaire d'états →</a></span>
+  <span class="fin"><a href="s09-etats-systeme.html">Suivant : S09 →</a></span>
 </footer>
 
-<script type="application/json" id="q-modele">{"code": "S08", "titre": "Validation d'une cible", "slug": "s08-validation-cible", "appli": "Appli saisie", "route": "/saisie", "role": "L'acte qui tient lieu de seconde marque : le scoreur doit pouvoir vérifier, pas seulement approuver.", "variantes": ["A — Totaux par volée, détail sur demande", "B — Détail flèche à flèche déplié"], "questions": ["Le scoreur vérifie-t-il vraiment les flèches une à une, ou contrôle-t-il les totaux et l'allure générale ?", "Le renvoi en correction : la cible peut-elle corriger seule, ou le scoreur corrige-t-il lui-même sur place ?", "Une validation peut-elle être annulée après coup, et par qui ?"]}</script>
+<script type="application/json" id="q-modele">{"code":"S08","titre":"Validation d'une cible","slug":"s08-validation-cible","appli":"Appli saisie","route":"/saisie","appareil":"Tablette · 1280 × 800","role":"L'acte qui tient lieu de seconde marque : le scoreur doit pouvoir vérifier, pas seulement approuver.","variantes":["A — Totaux par volée, détail sur demande","B — Détail flèche à flèche déplié"],"questions":["Le scoreur vérifie-t-il vraiment les flèches une à une, ou contrôle-t-il les totaux et l'allure générale ?","Le renvoi en correction : la cible peut-elle corriger seule, ou le scoreur corrige-t-il lui-même sur place ?","Une validation peut-elle être annulée après coup, et par qui ?"]}</script>
 <script src="../assets/questionnaire.js"></script>
 
 </div>

@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · axe <strong>Atelier</strong> · <code>/admin/atelier/…</code>
      · <strong>réaligné le 30/07/2026</strong></p>
@@ -42,13 +47,14 @@
 </div>
 
 <h2 class="section">Partis pris <span class="code-sec">à départager</span></h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Édition en place</span>
-      <span class="sous-etiquette">La ligne se transforme en champs, on valide, on passe à la suivante.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">CATÉGORIES</span><span class="champ" style="margin-left:10px;padding:3px 8px">Filtrer…</span><span class="fin bouton auto">+ Ajouter</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="atelier" data-ecran="categories">
+    <figcaption><span class="textes"><span class="etiquette">A · Édition en place</span>
+      <span class="sous-etiquette">La ligne se transforme en champs, on valide, on passe à la suivante.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span style="width:60px">CODE</span><span style="flex:1">LIBELLÉ</span><span>DISTANCE · BLASON</span></div>
           <div class="rang"><span style="width:60px;font-weight:700">SH</span><span style="flex:1">Senior Homme</span><span class="second">18 m · 40 cm</span></div>
@@ -59,25 +65,26 @@
             <span class="bouton auto" style="border-color:var(--success);color:var(--success)">OK</span></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Trois champs ne méritent pas une page.
     L'édition en place garde <b>le contexte des voisins</b> — utile quand on saisit une grille de catégories.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Panneau latéral</span>
-      <span class="sous-etiquette">La liste reste, l'édition s'ouvre à droite.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">BLASONS</span></div>
-      <div class="colonnes" style="grid-template-columns:minmax(0,1fr) 160px">
-        <div class="corps">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="atelier" data-ecran="categories">
+    <figcaption><span class="textes"><span class="etiquette">B · Panneau latéral</span>
+      <span class="sous-etiquette">La liste reste, l'édition s'ouvre à droite.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="avec-panneau">
+        <div class="pile">
           <div class="carte">
             <div class="rang"><span style="flex:1">Blason 40 cm</span><span class="second">10 zones</span></div>
             <div class="rang" style="background:var(--surface-2)"><span style="flex:1;font-weight:700">Trispot 40 cm</span><span class="second">3 spots</span></div>
             <div class="rang"><span style="flex:1">Blason 60 cm</span><span class="second">10 zones</span></div>
           </div>
         </div>
-        <div class="flanc" style="border-right:0;border-left:1px solid var(--border-subtle)">
+        <div class="panneau">
           <div class="mini">TRISPOT 40 CM</div>
           <div class="champ plein" style="font-size:12px">Trispot 40</div>
           <div class="champ plein" style="font-size:12px">3 spots</div>
@@ -85,11 +92,13 @@
           <button class="bouton auto" style="margin-top:6px">Enregistrer</button>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">utile pour les blasons</span> Dès qu'un élément porte
     <b>plus de 4 champs ou un aperçu visuel</b>, le panneau devient meilleur que la ligne. C'est le cas des
     blasons — le seul référentiel où l'image porte l'information.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Les six destinations et leurs écarts</h2>
@@ -117,5 +126,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

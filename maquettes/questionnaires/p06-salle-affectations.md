@@ -1,73 +1,21 @@
 # P06 · Écran de salle — affectations
 
 > **Écran** : [P06 — Écran de salle — affectations](../p06-salle-affectations.html) · **Appli** : Appli publique (`/`)
+> **Appareil** : Vidéoprojecteur · 1920 × 1080
 > **Rôle** : Probablement la vue la plus utile du produit — et la moins résolue : 200 archers ne tiennent pas à l'écran.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](p06-salle-affectations.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [x] A — Défilement par pages, tri par nom
-- [ ] B — Deux colonnes, tri par cible
-- [ ] C — Seulement le tour qu'on lance
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> oui pour le compteur de pages
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [x] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> mettre le maximum d'archer sur une page quand meme, grossir le compteur de page, il faut qu'il soit visible, de meme que les lettre comprise dans le rateau de nom
-
----
-
-## 4. Évolutions souhaitées
-
-> _(sans réponse)_
-
----
-
-## 5. Questions ciblées
-
-**1. Tri par nom (l'archer se cherche) ou par cible (l'organisation vérifie) : lequel sert le mieux la salle ?**
-
-> par nom, c'est plus clair
-
-**2. Combien de temps un archer accepte-t-il d'attendre pour revoir son nom passer ?**
-
-> on peut dire que 20s (reglable) par ecran de liste de nom est correct
-
-**3. Faut-il n'afficher que le tour en cours de lancement plutôt que tous les archers ?**
-
-> d'abord par tour, puis par archer
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/p06-salle-affectations.md`](tour-1-2026-08-04/p06-salle-affectations.md).

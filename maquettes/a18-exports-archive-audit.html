@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · /admin</p>
   <h1><span class="num">A18</span>Exports, archive, journal d'audit</h1>
@@ -29,13 +34,14 @@
 </header>
 
 <h2 class="section">Les trois écrans</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Exports</span>
-      <span class="sous-etiquette">Sortir la donnée vers l'extérieur.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">EXPORTS</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="gestion" data-ecran="exports">
+    <figcaption><span class="textes"><span class="etiquette">Exports</span>
+      <span class="sous-etiquette">Sortir la donnée vers l'extérieur.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="rang"><span style="flex:1;font-weight:700">Résultats FFTA</span><span class="fin bouton auto">CSV</span></div>
           <div class="rang"><span style="flex:1;font-weight:700">Classements par catégorie</span><span class="fin bouton auto">PDF</span></div>
@@ -44,33 +50,34 @@
         </div>
         <p class="faible" style="margin:0">Généré localement — aucune donnée ne quitte le réseau du gymnase.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">La mention « localement » compte : c'est un club, pas un service en ligne.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">Archive</span>
-      <span class="sous-etiquette">Verrou total, lecture seule.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">ARCHIVE</span><span class="fin verrou">🔒 LECTURE SEULE</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="gestion" data-ecran="exports">
+    <figcaption><span class="textes"><span class="etiquette">Archive</span>
+      <span class="sous-etiquette">Verrou total, lecture seule.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="rang"><span style="flex:1">Concours de printemps</span><span class="second">14/04/2026</span></div>
           <div class="rang"><span style="flex:1">Challenge 2025</span><span class="second">13/10/2025</span></div>
         </div>
         <p class="faible" style="margin:0">Aucune action possible. Consultation et export uniquement.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">Archiver ≠ supprimer : les résultats d'un club se consultent des années après.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">Journal d'audit</span>
-      <span class="sous-etiquette">Qui a fait quoi, quand.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">JOURNAL D'AUDIT</span>
-        <span class="champ plein" style="padding:3px 8px">Cible 12 ▾</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="gestion" data-ecran="exports">
+    <figcaption><span class="textes"><span class="etiquette">Journal d'audit</span>
+      <span class="sous-etiquette">Qui a fait quoi, quand.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span style="width:50px">HEURE</span><span style="flex:1">QUI</span><span>QUOI</span></div>
           <div class="rang"><span style="width:50px" class="second">10:42</span>
@@ -81,10 +88,12 @@
             <span style="flex:1">admin</span><span class="second">forfait OLLIVIER</span></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">indispensable</span> Sans cet écran, la trace existe en base mais
     reste <b>inatteignable le jour d'une réclamation</b> — c'est-à-dire qu'elle n'existe pas.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -102,5 +111,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

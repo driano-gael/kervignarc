@@ -18,6 +18,12 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature
+  (navigation, bandeau de contexte, en-tête d'application) et sans être mis à l'échelle de leur appareil :
+  le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · <strong>v3 — refonte du 30/07/2026</strong></p>
   <h1><span class="num">A02</span>Ossature — trois axes de travail</h1>
@@ -80,93 +86,285 @@ utilisateur, sa durée de vie et son tempo — c'est ce qui justifie de les sép
 </div>
 
 <h2 class="section">Niveau 1 · l'accueil de l'admin choisit l'axe</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Accueil de l'administration</span>
-      <span class="sous-etiquette">Trois axes. Le tournoi n'est demandé que par ceux qui en ont besoin.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">KERVIGNARC · ADMINISTRATION</span>
-        <span class="fin" style="font-size:11px;opacity:.85">Changer de rôle</span></div>
-      <div class="corps">
-        <div class="carte">
-          <div class="rang bloc">
-            <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-size:17px;font-weight:800">ATELIER</span>
-              <span class="pas neutre">SANS TOURNOI</span></div>
-            <div class="second">Briques du club, salles types, formats de déroulé, modèles de tournoi</div>
-          </div>
-        </div>
-        <div class="carte marquee">
-          <div class="rang bloc">
-            <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-size:17px;font-weight:800">PILOTAGE</span>
+<p class="intro">Trois écrans complets, à la taille d'un PC. Les deux derniers montrent le même axe ouvert
+sur deux activités différentes : c'est là que la thèse de cette planche se vérifie ou s'effondre — <strong>le
+pilotage demande un tournoi, l'atelier n'en demande pas</strong>, et ça ne se plaide plus, ça se voit.</p>
+
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin">
+    <figcaption><span class="textes">
+      <span class="etiquette">A — L'accueil de l'administration</span>
+      <span class="sous-etiquette">Aucun axe ouvert : ni navigation latérale, ni bandeau de contexte. On choisit d'abord ce qu'on vient faire.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <p class="mini" style="margin:0 0 4px">Que venez-vous faire ?</p>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+          <div class="carte marquee"><div class="rang bloc">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+              <span style="font-size:20px;font-weight:800">PILOTAGE</span>
               <span class="pas ok">● 2 EN COURS</span>
               <span class="fin"><span class="pas att">▲ 2 alertes</span></span></div>
-            <div class="second">Lancer, superviser, valider, faire tourner la journée</div>
-          </div>
-        </div>
-        <div class="carte">
-          <div class="rang bloc">
-            <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-size:17px;font-weight:800">GESTION</span>
+            <div class="second">Le temps réel : lancer, superviser, valider, faire tourner la journée.</div>
+            <div class="faible" style="margin-top:10px">Challenge des champions · Départ 2 en tir · 28/30 postes en ligne</div>
+          </div></div>
+          <div class="carte"><div class="rang bloc">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+              <span style="font-size:20px;font-weight:800">GESTION</span>
               <span class="fin second">12 tournois</span></div>
-            <div class="second">Inscriptions, paiements, exports, archives</div>
-          </div>
+            <div class="second">L'administratif : inscriptions, paiements, exports, archives.</div>
+            <div class="faible" style="margin-top:10px">156 inscrits · 11 paiements en attente · 2 doublons signalés</div>
+          </div></div>
+          <div class="carte"><div class="rang bloc">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+              <span style="font-size:20px;font-weight:800">ATELIER</span>
+              <span class="pas neutre">SANS TOURNOI</span></div>
+            <div class="second">Fabriquer : briques du club, salles types, formats de déroulé, banc d'essai.</div>
+            <div class="faible" style="margin-top:10px">7 catégories · 4 blasons · 3 formats · 5 gabarits de salle</div>
+          </div></div>
         </div>
-        <div class="carte plate">
+
+        <div class="carte plate" style="margin-top:16px">
           <div class="rang"><span class="second" style="flex:1">Nouveau tournoi à partir d'un modèle</span>
             <span class="faible">assemblage</span></div>
         </div>
+
+        <div class="carte" style="margin-top:16px">
+          <div class="tete-carte">Tournois
+            <span class="fin" style="display:flex;gap:6px">
+              <span class="pas ok">EN COURS 2</span><span class="pas info">PRÊT 1</span>
+              <span class="pas neutre">TERMINÉ 6</span><span class="pas neutre">BROUILLON 3</span></span></div>
+          <div class="rang"><span class="pas ok">EN COURS</span>
+            <span style="flex:1;font-weight:700">Challenge des champions</span>
+            <span class="pas marque">AUJOURD'HUI</span>
+            <span class="second" style="width:130px">22/11/2026</span>
+            <span class="second" style="width:110px">156 inscrits</span>
+            <div class="jauge" style="max-width:110px"><span style="width:62%"></span></div>
+            <span class="second" style="width:44px;text-align:right">62 %</span></div>
+          <div class="rang"><span class="pas ok">EN COURS</span>
+            <span style="flex:1;font-weight:700">Nocturne extérieur — 50 m</span>
+            <span class="second" style="width:130px">22/11/2026</span>
+            <span class="second" style="width:110px">48 inscrits</span>
+            <div class="jauge" style="max-width:110px"><span style="width:18%"></span></div>
+            <span class="second" style="width:44px;text-align:right">18 %</span></div>
+          <div class="rang"><span class="pas info">PRÊT</span>
+            <span style="flex:1">Championnat départemental jeunes</span>
+            <span class="second" style="width:130px">06/12/2026</span>
+            <span class="second" style="width:110px">92 inscrits</span>
+            <span class="faible" style="flex:0 0 154px;text-align:right">placement fait</span></div>
+          <div class="rang"><span class="pas neutre">TERMINÉ</span>
+            <span style="flex:1">Trophée de la ville — 18 m</span>
+            <span class="second" style="width:130px">18/10/2026</span>
+            <span class="second" style="width:110px">134 inscrits</span>
+            <span class="faible" style="flex:0 0 154px;text-align:right">palmarès publié</span></div>
+          <div class="rang"><span class="pas neutre">TERMINÉ</span>
+            <span style="flex:1">Concours jeunes d'automne</span>
+            <span class="second" style="width:130px">27/09/2026</span>
+            <span class="second" style="width:110px">71 inscrits</span>
+            <span class="faible" style="flex:0 0 154px;text-align:right">archivé</span></div>
+          <div class="rang"><span class="pas neutre">BROUILLON</span>
+            <span style="flex:1">Salle de printemps 2027</span>
+            <span class="second" style="width:130px">14/03/2027</span>
+            <span class="second" style="width:110px">—</span>
+            <span class="faible" style="flex:0 0 154px;text-align:right">déroulé à composer</span></div>
+        </div>
       </div>
-    </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">le point clé</span> <b>L'atelier ne demande pas de tournoi</b> —
     et c'est l'URL qui le porte : <code>/admin/atelier/blasons</code> n'a rien à porter, quand
-    <code>/admin/pilotage/12/supervision</code> désigne son tournoi. L'exception « ici le sélecteur ne
-    s'applique pas » <b>disparaît au lieu d'être expliquée</b>.</p>
+    <code>/admin/12/pilotage/supervision</code> désigne son tournoi. L'exception « ici le sélecteur ne s'applique
+    pas » <b>disparaît au lieu d'être expliquée</b>.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">Ce que l'accueil rend enfin visible</span>
-      <span class="sous-etiquette">Le tableau de bord et le banc d'essai cessent d'être des entrées de menu.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">PILOTAGE · CHALLENGE DES CHAMPIONS</span>
-        <span class="fin" style="font-size:11px;opacity:.85">← Accueil</span></div>
-      <div class="corps">
-        <div class="carte info">
-          <div class="rang bloc">
-            <div class="second">Brouillon → Prêt → <b>En cours</b> → En pause → Terminé → Archivé</div>
-            <div class="second">Qualification · volée 8/12 — 62 %</div>
-          </div>
+  <figure class="planche" data-appareil="pc" data-monde="admin"
+          data-axe="pilotage" data-ecran="accueil"
+          data-tournoi="Challenge des champions" data-statut="en cours"
+          data-date="22 novembre 2026" data-depart="Départ 2 · 09 h 30 — en tir"
+          data-aide="Le tableau de bord se contextualise par statut : ce qu'il montre dépend d'où en est le tournoi.">
+    <figcaption><span class="textes">
+      <span class="etiquette">B — L'axe Pilotage ouvert</span>
+      <span class="sous-etiquette">Dix-huit destinations, un sélecteur de tournoi, une recherche d'archer, un bandeau de contexte collant. Voici ce que ça donne en vrai.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="carte info"><div class="rang bloc">
+          <div class="mini" style="margin-bottom:8px">Cycle de vie</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span class="pas neutre">Brouillon</span><span class="faible">→</span>
+            <span class="pas neutre">Prêt</span><span class="faible">→</span>
+            <span class="pas marque">En cours</span><span class="faible">→</span>
+            <span class="pas neutre">En pause</span><span class="faible">→</span>
+            <span class="pas neutre">Terminé</span><span class="faible">→</span>
+            <span class="pas neutre">Archivé</span><span class="faible">→</span>
+            <span class="pas neutre">Annulé</span></div>
+          <div class="second" style="margin-top:10px">Qualification · volée 8 sur 12 — 62 % des flèches saisies</div>
+          <div class="jauge" style="margin-top:8px;max-width:none"><span style="width:62%"></span></div>
+        </div></div>
+
+        <div class="aplat-alerte" style="margin-top:16px">▲ Cible 7 hors ligne depuis 4 min
+          <span class="impact">2 archers bloqués</span></div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:16px">
+          <div class="carte"><div class="rang bloc">
+            <div class="mini">Postes en ligne</div>
+            <div style="font-size:34px;font-weight:800;line-height:1.1">28<span class="faible" style="font-size:18px"> / 30</span></div>
+          </div></div>
+          <div class="carte"><div class="rang bloc">
+            <div class="mini">Volées à valider</div>
+            <div style="font-size:34px;font-weight:800;line-height:1.1">3</div>
+          </div></div>
+          <div class="carte"><div class="rang bloc">
+            <div class="mini">Archers présents</div>
+            <div style="font-size:34px;font-weight:800;line-height:1.1">152<span class="faible" style="font-size:18px"> / 156</span></div>
+          </div></div>
+          <div class="carte"><div class="rang bloc">
+            <div class="mini">Scoreurs actifs</div>
+            <div style="font-size:34px;font-weight:800;line-height:1.1">4</div>
+          </div></div>
         </div>
-        <div class="carte">
-          <div class="rang"><span style="flex:1">28/30 postes en ligne</span><span class="pas att">▲ Cible 7</span></div>
-          <div class="rang"><span style="flex:1">À valider</span><span class="pas info">3</span></div>
+
+        <div class="carte" style="margin-top:16px">
+          <div class="tete-carte">Ce qu'il reste à faire avant le tour suivant
+            <span class="fin faible">3 sur 5</span></div>
+          <div class="rang"><span class="pas ok">FAIT</span><span style="flex:1">Placement des 156 inscrits</span>
+            <span class="faible">30 cibles · jusqu'à 2 couloirs de tir</span></div>
+          <div class="rang"><span class="pas ok">FAIT</span><span style="flex:1">Rattachement des postes de cible</span>
+            <span class="faible">28 sur 30</span></div>
+          <div class="rang"><span class="pas ok">FAIT</span><span style="flex:1">Affectation des 4 scoreurs</span>
+            <span class="faible">départ 2</span></div>
+          <div class="rang"><span class="pas att">À FAIRE</span><span style="flex:1">Valider les 3 volées en attente</span>
+            <span class="faible">cibles 7, 14, 22</span></div>
+          <div class="rang"><span class="pas att">À FAIRE</span><span style="flex:1">Donner le feu vert du départ 3</span>
+            <span class="faible">10 h 45</span></div>
+        </div>
+
+        <div class="carte" style="margin-top:16px">
+          <div class="tete-carte">Départs de la journée</div>
+          <div class="rang"><span class="pas neutre">TERMINÉ</span><span style="flex:1">Départ 1 — 08 h 00</span>
+            <span class="second">52 archers</span>
+            <div class="jauge" style="max-width:160px"><span style="width:100%"></span></div></div>
+          <div class="rang"><span class="pas marque">EN TIR</span><span style="flex:1">Départ 2 — 09 h 30</span>
+            <span class="second">56 archers</span>
+            <div class="jauge" style="max-width:160px"><span style="width:62%"></span></div></div>
+          <div class="rang"><span class="pas info">À VENIR</span><span style="flex:1">Départ 3 — 10 h 45</span>
+            <span class="second">48 archers</span>
+            <div class="jauge" style="max-width:160px"><span style="width:0%"></span></div></div>
         </div>
       </div>
-    </div>
-    <p class="verdict"><span class="pouce oui">inversion de hiérarchie</span> <code>Accueil</code>
-    (<span class="ref">E14US001</span> : frise des 7 statuts, checklist, chiffres-clés) et
-    <code>Simulation</code> (<span class="ref">E15US003</span> : cockpit multi-vues) étaient rangés
-    <b>parmi dix-neuf destinations</b>, entre « Blasons » et « Postes de cible ». Ils deviennent des
-    <b>points d'entrée</b>.</p>
+    </div></div></div>
+    <p class="verdict"><span class="pouce peut">à regarder de près</span> <b>La navigation latérale ne tient pas
+    dans la hauteur d'un PC</b> : <b>1 074 px</b> mesurés pour <b>811 px</b> disponibles — dix-huit destinations à
+    44 px, plus le retour, le libellé d'axe, la recherche et le sélecteur. Ce n'est pas un défaut de la maquette,
+    c'est le front livré ; il était invisible dans une vignette de 430 px.</p>
+    <p class="verdict"><b>Le piège n'est pas là où on le croit.</b> Ici la navigation est <em>plus haute</em> que
+    le contenu (1 074 contre 798 px) : elle ne se colle donc pas, et défiler la découvre entièrement. Mais
+    <code>.coquille__nav</code> est <code>position:sticky</code> — dès qu'un écran a <b>plus de contenu que
+    d'entrées de menu</b> (supervision de 30 cibles, 156 inscrits, palmarès), la navigation se fige en haut et ses
+    <b>dernières destinations deviennent définitivement hors d'atteinte</b>. À vérifier écran par écran : les
+    planches concernées le signaleront.</p>
   </figure>
+
+  <figure class="planche" data-appareil="pc" data-monde="admin"
+          data-axe="atelier" data-ecran="categories"
+          data-aide="Les briques sont le patrimoine du club : elles vivent d'année en année et sont copiées dans le tournoi à l'assemblage.">
+    <figcaption><span class="textes">
+      <span class="etiquette">C — L'axe Atelier ouvert</span>
+      <span class="sous-etiquette">Sept destinations, et surtout : ni sélecteur de tournoi, ni recherche d'archer, ni bandeau de contexte. C'est la démonstration de la planche.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="carte">
+          <div class="tete-carte">Catégories du club
+            <span class="fin faible">7 catégories · patrimoine, hors tournoi</span></div>
+          <div class="rang"><span style="flex:0 0 90px;font-weight:700">Poussin</span>
+            <span class="second" style="flex:1">U11 — 2016 et après</span>
+            <span class="second" style="width:120px">Blason 80 cm</span>
+            <span class="second" style="width:110px">Distance 10 m</span>
+            <span class="pas ok">UTILISÉE</span></div>
+          <div class="rang"><span style="flex:0 0 90px;font-weight:700">Benjamin</span>
+            <span class="second" style="flex:1">U13 — 2014-2015</span>
+            <span class="second" style="width:120px">Blason 80 cm</span>
+            <span class="second" style="width:110px">Distance 15 m</span>
+            <span class="pas ok">UTILISÉE</span></div>
+          <div class="rang"><span style="flex:0 0 90px;font-weight:700">Minime</span>
+            <span class="second" style="flex:1">U15 — 2012-2013</span>
+            <span class="second" style="width:120px">Trispot 40 cm</span>
+            <span class="second" style="width:110px">Distance 18 m</span>
+            <span class="pas ok">UTILISÉE</span></div>
+          <div class="rang"><span style="flex:0 0 90px;font-weight:700">Cadet</span>
+            <span class="second" style="flex:1">U18 — 2009-2011</span>
+            <span class="second" style="width:120px">Trispot 40 cm</span>
+            <span class="second" style="width:110px">Distance 18 m</span>
+            <span class="pas ok">UTILISÉE</span></div>
+          <div class="rang"><span style="flex:0 0 90px;font-weight:700">Junior</span>
+            <span class="second" style="flex:1">U21 — 2006-2008</span>
+            <span class="second" style="width:120px">Trispot 40 cm</span>
+            <span class="second" style="width:110px">Distance 18 m</span>
+            <span class="pas ok">UTILISÉE</span></div>
+          <div class="rang"><span style="flex:0 0 90px;font-weight:700">Senior</span>
+            <span class="second" style="flex:1">2005 et avant</span>
+            <span class="second" style="width:120px">Trispot 40 cm</span>
+            <span class="second" style="width:110px">Distance 18 m</span>
+            <span class="pas ok">UTILISÉE</span></div>
+          <div class="rang"><span style="flex:0 0 90px;font-weight:700">Vétéran</span>
+            <span class="second" style="flex:1">50 ans et plus</span>
+            <span class="second" style="width:120px">Trispot 40 cm</span>
+            <span class="second" style="width:110px">Distance 18 m</span>
+            <span class="pas neutre">INUTILISÉE</span></div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:16px;max-width:520px">
+          <span class="bouton auto principal">Ajouter une catégorie</span>
+          <span class="bouton auto">Importer le référentiel FFTA</span>
+        </div>
+
+        <div class="carte info" style="margin-top:16px"><div class="rang bloc">
+          <div class="second">Une modification faite ici ne touche <b>aucun tournoi en cours</b> : les briques sont
+          copiées dans le tournoi au moment de l'assemblage. Une correction déclarée permanente pendant un tournoi
+          remonte, elle, dans cette bibliothèque.</div>
+        </div></div>
+      </div>
+    </div></div></div>
+    <p class="verdict"><span class="pouce oui">la démonstration</span> Mis côte à côte avec la planche B, l'écart
+    saute aux yeux : <b>même coquille, deux régimes</b>. Pas de sélecteur, pas de bandeau, sept entrées au lieu de
+    dix-huit — et la navigation tient largement dans la hauteur. Le problème de B n'est donc pas « la coquille »,
+    c'est <b>la longueur de l'axe Pilotage</b>.</p>
+  </figure>
+
 </div>
 
-<h2 class="section">Où atterrissent les 25 destinations livrées</h2>
-<p class="intro">Relevé sur <code>frontend/src/features/admin/CoquilleAdmin.tsx</code> : 19 destinations dans le
-tiroir « Préparation », 6 dans « Jour J ». Le tiroir « Préparation » contient <strong>les trois axes à la
-fois</strong> ; le tiroir « Jour J » mélange 4 écrans de pilotage et 2 écrans administratifs.</p>
+<h2 class="section">Où atterrissent les 30 destinations livrées</h2>
+<p class="intro">Relevé le 05/08/2026 sur <code>frontend/src/features/admin/axes.ts</code>, qui est désormais la
+<strong>source unique</strong> de la répartition (<code>AXE_PAR_DESTINATION</code>, exhaustif à la compilation).
+Le découpage est livré : ce tableau ne propose plus, il constate.</p>
 
-<div class="enveloppe"><table class="tk">
-  <tr><th style="width:33%">1 · Atelier</th><th style="width:33%">2 · Pilotage</th><th>3 · Gestion</th></tr>
+<div class="enveloppe large"><table class="tk">
+  <tr><th style="width:33%">1 · Pilotage <span class="faible">18</span></th>
+      <th style="width:33%">2 · Gestion <span class="faible">5</span></th>
+      <th>3 · Atelier <span class="faible">7</span></th></tr>
   <tr>
-    <td>Catégories · Blasons · Clubs · Gabarits (salles types) · Barème · <strong>Jeu d'essai</strong> ·
-        <strong>Simulation</strong></td>
-    <td>Supervision · <strong>Feu vert</strong> · Complétude · Classement en direct · Postes de cible ·
-        Scoreurs · Plan de salle · Plan de duels</td>
+    <td>Accueil (tableau de bord) · Assemblage · Plan de salle · Barème &amp; validation · Phases (format) ·
+        Départs &amp; tarifs · Scoreurs · Placement · Plan de duels · Postes de cible · Simulation ·
+        Supervision · Écrans de salle · Suivi du déroulé · Feu vert · Complétude · Classement en direct ·
+        Palmarès</td>
     <td>Inscriptions · Doublons · Paiements · Exports · Archive</td>
+    <td>Catégories · Blasons · Formats (déroulés) · Composer un déroulé · Gabarits (modèles) · Clubs ·
+        Jeu d'essai</td>
   </tr>
 </table></div>
+
+<div class="note">
+  <p><strong>Deux corrections par rapport à la v3 de cette planche.</strong> Elle annonçait 25 destinations et
+  rangeait <code>Barème</code> et <code>Simulation</code> dans l'atelier. Il y en a <strong>30</strong>, et ces
+  deux-là sont passées au <strong>pilotage</strong> : elles règlent — ou rejouent — <em>une</em> édition, donc
+  elles exigent un tournoi, que l'atelier ne propose pas de choisir. Les y laisser rouvrait l'impasse de
+  <span class="ref">DETTE-023</span> (« choisissez un tournoi ci-dessus » sur un axe sans sélecteur).</p>
+  <p>C'est le vieillissement annoncé au README : une planche se démode pendant qu'on la relit. Le remède ici
+  n'est pas de recopier la liste, c'est que la navigation des maquettes soit <strong>générée depuis une seule
+  déclaration</strong> (<code>assets/appareils.js</code>), elle-même transcrite d'<code>axes.ts</code> à une
+  date écrite en tête de fichier.</p>
+</div>
 
 <h2 class="section">Les six écrans que les axes coupent en deux</h2>
 <p class="intro">Ce sont eux qui matérialisent le « tout est mélangé » : un seul écran y sert deux activités
@@ -237,5 +435,6 @@ différentes.</p>
 </div>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

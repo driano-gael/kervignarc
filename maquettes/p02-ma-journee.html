@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli publique · / · <strong>écran majeur</strong></p>
   <h1><span class="num">P02</span>Ma journée — maintenant / ensuite</h1>
@@ -40,17 +45,18 @@
 </ul>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">A · Maintenant / Ensuite empilés</span>
-      <span class="sous-etiquette">Deux blocs, hiérarchie explicite.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">MARTIN Paul</span><span class="fin conn"><span class="point"></span>LIVE</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">A · Maintenant / Ensuite empilés</span>
+      <span class="sous-etiquette">Deux blocs, hiérarchie explicite.</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span>MAINTENANT</span></div>
           <div class="rang bloc">
-            <div style="font-size:21px;font-weight:800">CIBLE 12 · position B</div>
+            <div style="font-size:21px;font-weight:800">CIBLE 12 · couloir B</div>
             <div class="second">Qualification · volée 8/12</div>
             <div class="faible">Départ 1 — 9 h</div>
           </div>
@@ -69,38 +75,39 @@
           <div class="rang"><span style="flex:1">Tableaux</span><span class="faible">▸</span></div>
         </div>
       </div>
-      <div class="barre" style="justify-content:center;font-size:10px"><span class="faible">organisé par les Archers de Kervignac</span></div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Les deux informations vitales tiennent
     <b>sans défilement</b>, et la hiérarchie est lisible d'un coup d'œil au bord du pas de tir.</p>
   </figure>
 
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">B · Une carte qui bascule</span>
-      <span class="sous-etiquette">Une seule information à la fois, énorme.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">MARTIN Paul</span></div>
-      <div class="corps" style="text-align:center;padding:24px 14px">
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">B · Une carte qui bascule</span>
+      <span class="sous-etiquette">Une seule information à la fois, énorme.</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile" style="text-align:center;padding:24px 14px">
         <div class="mini">MAINTENANT</div>
         <div style="font-size:34px;font-weight:800;line-height:1.05">CIBLE 12</div>
-        <div style="font-size:17px;font-weight:700">position B · volée 8/12</div>
+        <div style="font-size:17px;font-weight:700">couloir B · volée 8/12</div>
         <div style="display:flex;gap:6px;justify-content:center;margin-top:12px">
           <span style="width:22px;height:4px;background:var(--brand-surface);border-radius:2px"></span>
           <span style="width:22px;height:4px;background:var(--border-subtle);border-radius:2px"></span>
         </div>
         <p class="faible" style="margin:0">glisser pour voir « ensuite »</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">écarté</span> Superbe, et <b>ça cache l'information la plus
     précieuse</b> derrière un geste. Un archer pressé ne glissera pas.</p>
   </figure>
 
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">C · Fil chronologique</span>
-      <span class="sous-etiquette">Toute la journée, passée et à venir.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">MARTIN Paul</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">C · Fil chronologique</span>
+      <span class="sous-etiquette">Toute la journée, passée et à venir.</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="rang" style="opacity:.55"><span class="faible" style="width:44px">9 h</span>
             <span style="flex:1">Série 1 — cible 12</span><span class="second">271</span></div>
@@ -110,32 +117,39 @@
             <span style="flex:1;font-weight:700">1/4 — cible 4</span><span class="second">à venir</span></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">séduisant</span> Donne le contexte complet. Mais le passé
     <b>occupe la place du futur</b>, et c'est le futur qui fait rater son tour.</p>
   </figure>
+
 </div>
 
 <h2 class="section">États</h2>
-<div class="rangee">
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Rien « ensuite » — encore incertain</span></figcaption>
-    <div class="ui">
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">Rien « ensuite » — encore incertain</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span>ENSUITE</span></div>
           <div class="rang bloc"><div class="second">Dépend du résultat de votre duel.</div>
             <div class="faible">Vous saurez dès la validation, ici et sur la tablette.</div></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">Même quand l'appli ne sait pas, elle <b>dit quand elle saura</b>. C'est ce qui évite
     d'aller demander.</p>
   </figure>
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Journée terminée</span></figcaption>
-    <div class="ui">
-      <div class="corps">
+
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">Journée terminée</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span>TERMINÉ</span></div>
           <div class="rang bloc"><div style="font-size:19px;font-weight:800">12<sup>e</sup> place</div>
@@ -144,21 +158,25 @@
         </div>
         <div class="carte plate"><div class="rang"><span style="flex:1">Classement final</span><span class="faible">▸</span></div></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
   </figure>
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Hors ligne</span></figcaption>
-    <div class="ui">
-      <div class="barre alerte"><span style="font-weight:800">▲ HORS LIGNE</span>
-        <span class="fin" style="font-size:11px;font-weight:700">màj il y a 4 mn</span></div>
-      <div class="corps">
-        <div class="carte"><div class="rang bloc"><div style="font-size:19px;font-weight:800">CIBLE 12 · position B</div>
+
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">Hors ligne</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="aplat-alerte forte">▲ HORS LIGNE màj il y a 4 mn</div>
+        <div class="pile">
+        <div class="carte"><div class="rang bloc"><div style="font-size:19px;font-weight:800">CIBLE 12 · couloir B</div>
           <div class="faible">Dernière information connue — peut avoir changé.</div></div></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">honnêteté</span> On affiche la dernière valeur connue
     <b>en la datant</b>. Cacher l'écran serait pire ; le montrer sans dater serait mentir.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -176,5 +194,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

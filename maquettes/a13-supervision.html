@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · /admin · <strong>écran majeur</strong></p>
   <h1><span class="num">A13</span>Console de supervision</h1>
@@ -40,14 +45,14 @@
 </ul>
 
 <h2 class="section">Partis pris <span class="code-sec">30 postes, trois façons de les montrer</span></h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Liste dense triable</span>
-      <span class="sous-etiquette">Tri par ancienneté du dernier signe : les morts remontent.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">SUPERVISION</span><span class="pas ok">● LIVE</span>
-        <span class="fin second">volée 8/12 · 62 %</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="supervision">
+    <figcaption><span class="textes"><span class="etiquette">A · Liste dense triable</span>
+      <span class="sous-etiquette">Tri par ancienneté du dernier signe : les morts remontent.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="aplat-alerte">▲ Cible 7 hors ligne <span class="impact">14 mn</span></div>
         <div class="carte">
           <div class="tete-carte"><span style="flex:1">POSTE</span><span style="width:70px">VOLÉE</span><span style="width:80px">SIGNE DE VIE</span></div>
@@ -61,17 +66,18 @@
             <span style="width:80px" class="second">5 s</span></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Le tri fait le travail : <b>ce qui va mal est
     en haut</b>, le reste n'a pas besoin d'être regardé. Scannable même à 30 lignes.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Grille de tuiles</span>
-      <span class="sous-etiquette">Les 30 postes d'un seul coup d'œil.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">SUPERVISION</span><span class="fin second">28/30 en ligne</span></div>
-      <div class="corps serre">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="supervision">
+    <figcaption><span class="textes"><span class="etiquette">B · Grille de tuiles</span>
+      <span class="sous-etiquette">Les 30 postes d'un seul coup d'œil.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px">
           <div class="carte" style="padding:5px;text-align:center;font-size:10px"><div style="font-weight:800">C1</div><div class="second">v8</div></div>
           <div class="carte" style="padding:5px;text-align:center;font-size:10px"><div style="font-weight:800">C2</div><div class="second">v8</div></div>
@@ -85,18 +91,19 @@
           <div class="carte" style="padding:5px;text-align:center;font-size:10px;border-style:dashed"><div style="font-weight:800">C23</div><div class="faible">—</div></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">sérieux concurrent</span> L'aplat ambre <b>saute aux yeux</b>
     dans une grille — c'est exactement l'effet visé par <span class="ref">DV-03</span>. Revers : il faut cliquer
     pour tout détail, et 30 tuiles muettes n'apprennent rien quand tout va bien.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">C · Plan de salle coloré</span>
-      <span class="sous-etiquette">L'état projeté sur la géographie réelle.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">SUPERVISION · PLAN</span></div>
-      <div class="corps serre">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="supervision">
+    <figcaption><span class="textes"><span class="etiquette">C · Plan de salle coloré</span>
+      <span class="sous-etiquette">L'état projeté sur la géographie réelle.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="plan" style="grid-template-columns:repeat(10,1fr)">
           <span class="cible">1</span><span class="cible">2</span><span class="cible">3</span><span class="cible">4</span><span class="cible">5</span>
           <span class="cible">6</span><span class="cible hs">7</span><span class="cible">8</span><span class="cible">9</span><span class="cible">10</span>
@@ -106,10 +113,12 @@
         </div>
         <p class="faible" style="margin:0">Cible 7 : au fond à gauche, près de la porte.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">à combiner</span> Répond à une question que A et B ne traitent
     pas : <b>où aller</b>. Idéal en second panneau, pas en vue principale.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Ce qui manque encore</h2>
@@ -137,5 +146,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

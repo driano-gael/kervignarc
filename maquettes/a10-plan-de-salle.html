@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · /admin</p>
   <h1><span class="num">A10</span>Plan de salle — le gabarit</h1>
@@ -32,27 +37,31 @@
 tranché (E16US001, 05/08/2026, ADR-0073) et vaut dans l'application livrée — écrans, aide,
 messages, les deux PDF et le glossaire. Les maquettes A11, P02, P04, S06 et A09 disent encore
 « position » : elles seront balayées par E16US004 / E16US005, qui les rouvrent.</p>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Pas de tir</span>
-      <span class="sous-etiquette">Un <b>groupement de cibles</b>.</span></figcaption>
-    <div class="ui">
-      <div class="corps serre">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="plan">
+    <figcaption><span class="textes"><span class="etiquette">Pas de tir</span>
+      <span class="sous-etiquette">Un <b>groupement de cibles</b>.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="mini">PAS DE TIR — CIBLES 1 À 5</div>
         <div class="plan" style="grid-template-columns:repeat(5,1fr)">
           <span class="cible">1</span><span class="cible">2</span><span class="cible">3</span><span class="cible">4</span><span class="cible">5</span>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">La rangée que l'on tire depuis la même ligne de tir. Notion <b>de salle</b> : aucune
     donnée ne la porte, elle sert à se repérer.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">Couloir de tir</span>
-      <span class="sous-etiquette">La place d'<b>un archer</b> devant sa cible.</span></figcaption>
-    <div class="ui">
-      <div class="corps serre">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="plan">
+    <figcaption><span class="textes"><span class="etiquette">Couloir de tir</span>
+      <span class="sous-etiquette">La place d'<b>un archer</b> devant sa cible.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="mini">CIBLE 7 · 2 BLASONS · 4 COULOIRS</div>
         <div class="plan" style="grid-template-columns:repeat(2,1fr)">
           <span class="cible">blason g.</span><span class="cible">blason d.</span>
@@ -61,10 +70,12 @@ messages, les deux PDF et le glossaire. Les maquettes A11, P02, P04, S06 et A09 
           <span class="cible">A</span><span class="cible">B</span><span class="cible">C</span><span class="cible">D</span>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">Repérée par une lettre. Les <b>blasons</b> posés sur la cible se répartissent les
     couloirs : 2 blasons de 2 archers → A, B, C, D. C'est le champ <code>position</code> du code.</p>
   </figure>
+
 </div>
 <p class="chapo" style="margin-top:6px">⚠️ « Poste » ne désigne <b>jamais</b> la place d'un archer : dans
 l'appli, un poste est une <b>tablette ou un écran</b> rattaché à un lieu (A16, A19).</p>
@@ -80,13 +91,14 @@ l'appli, un poste est une <b>tablette ou un écran</b> rattaché à un lieu (A16
 </ul>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Grille schématique</span>
-      <span class="sous-etiquette">Des rangées de cibles numérotées, un pas de tir par bloc.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">GABARIT « GYMNASE MUNICIPAL »</span><span class="fin second">30 cibles · jusqu'à 4 couloirs/cible</span></div>
-      <div class="corps serre">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="plan">
+    <figcaption><span class="textes"><span class="etiquette">A · Grille schématique</span>
+      <span class="sous-etiquette">Des rangées de cibles numérotées, un pas de tir par bloc.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="mini">PAS DE TIR — CIBLES 1 À 15</div>
         <div class="plan" style="grid-template-columns:repeat(10,1fr)">
           <span class="cible">1</span><span class="cible">2</span><span class="cible">3</span><span class="cible">4</span><span class="cible">5</span>
@@ -102,17 +114,18 @@ l'appli, un poste est une <b>tablette ou un écran</b> rattaché à un lieu (A16
         <div class="carte plate" style="border-style:dashed;text-align:center;padding:6px;margin-top:6px">
           <span class="faible">ligne de tir · 18 m</span></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Suffisant dans <b>l'immense majorité</b> des
     gymnases : des cibles alignées, un ou deux pas de tir. Simple à saisir, simple à relire.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Plan libre</span>
-      <span class="sous-etiquette">On positionne les cibles où elles sont réellement.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">PLAN LIBRE</span><span class="fin bouton auto">+ Cible</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="plan">
+    <figcaption><span class="textes"><span class="etiquette">B · Plan libre</span>
+      <span class="sous-etiquette">On positionne les cibles où elles sont réellement.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte plate" style="border-style:dashed;height:150px;position:relative">
           <span class="cible" style="position:absolute;top:14px;left:16px;width:34px">1</span>
           <span class="cible" style="position:absolute;top:14px;left:60px;width:34px">2</span>
@@ -123,11 +136,13 @@ l'appli, un poste est une <b>tablette ou un écran</b> rattaché à un lieu (A16
         </div>
         <p class="faible" style="margin:0">Glisser pour positionner · utile si la salle a des contraintes physiques.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">écarté sauf besoin réel</span> Beaucoup de travail (édition
     graphique, sauvegarde de coordonnées) pour un gain qui n'existe que si <b>ta salle a une forme
     particulière</b>. À rouvrir seulement si la grille ne sait pas la représenter.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Tranché</h2>
@@ -151,5 +166,6 @@ questionnaire A10 : l'écran est validable en l'état.</p>
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

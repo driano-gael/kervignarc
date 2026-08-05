@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · /admin</p>
   <h1><span class="num">A14</span>Complétude — « qu'est-ce qui manque ? »</h1>
@@ -29,13 +34,14 @@
 </header>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Deux blocs séparés</span>
-      <span class="sous-etiquette">Sportif d'un côté, hors sportif de l'autre. La séparation est structurelle.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">TOURNOI DU 12 OCTOBRE</span><span class="fin pas att">EN COURS</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="completude">
+    <figcaption><span class="textes"><span class="etiquette">A · Deux blocs séparés</span>
+      <span class="sous-etiquette">Sportif d'un côté, hors sportif de l'autre. La séparation est structurelle.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span>SPORTIF</span><span class="fin"><span class="pas att">INCOMPLET</span></span></div>
           <div class="rang"><span style="flex:1">Qualification</span><span class="pas ok">OK</span><span style="width:80px" class="second">30/30</span></div>
@@ -53,35 +59,40 @@
           Les paiements resteront modifiables.</span>
           <button class="bouton principal" style="margin-top:8px">TERMINER LE TOURNOI</button></div></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> La séparation <b>est le message</b> : elle
     explique visuellement pourquoi « terminé » ne bloque pas la trésorerie.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Liste unique priorisée</span>
-      <span class="sous-etiquette">Tout ce qui manque, dans l'ordre d'urgence.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">CE QU'IL MANQUE</span><span class="fin second">2 points</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="completude">
+    <figcaption><span class="textes"><span class="etiquette">B · Liste unique priorisée</span>
+      <span class="sous-etiquette">Tout ce qui manque, dans l'ordre d'urgence.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="rang"><span class="pas att">1</span><span style="flex:1">1 duel de quart non validé</span><span class="fin bouton auto">Voir</span></div>
           <div class="rang"><span class="pas neutre">2</span><span style="flex:1">12 paiements en attente</span><span class="fin bouton auto">Voir</span></div>
         </div>
         <p class="faible" style="margin:0">Plus court, mais on ne voit plus ce qui est <em>fait</em>.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">écarté</span> Efficace pour agir, <b>inutilisable pour se
     rassurer</b>. Or à 17 h la question est autant « qu'est-ce qui manque » que « est-ce que tout est bon ».</p>
   </figure>
+
 </div>
 
 <h2 class="section">Confirmation d'une action irréversible</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Terminer — confirmation chiffrée</span></figcaption>
-    <div class="ui">
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="completude">
+    <figcaption><span class="textes"><span class="etiquette">Terminer — confirmation chiffrée</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="aplat-alerte">▲ Action irréversible</div>
         <p class="second" style="margin:0">Vous allez figer <strong>156 scores</strong> et
         <strong>4 classements</strong>. Un duel de quart n'est pas validé : il sera compté comme non joué.</p>
@@ -90,11 +101,13 @@
         <button class="bouton principal">TERMINER</button>
         <button class="bouton discret">Annuler</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">justifié ici</span> La confirmation chiffrée se mérite : ailleurs
     elle serait du bruit et on cliquerait « oui » sans lire (<span class="ref">D-16</span>). Ici l'action est
     <b>irréversible et tardive</b> — c'est le bon endroit.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -111,5 +124,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

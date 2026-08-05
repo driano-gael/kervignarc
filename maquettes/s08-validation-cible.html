@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli saisie · <code>/cible</code></p>
   <h1><span class="num">S08</span>Validation d'une cible</h1>
@@ -29,13 +34,14 @@
 </header>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">A · Totaux par volée</span>
-      <span class="sous-etiquette">On repère l'anomalie, on déplie si besoin.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">CIBLE 7 · SÉRIE 2</span><span class="fin" style="color:var(--danger);font-weight:700;font-size:12px">4 mn 20</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="scoreur">
+    <figcaption><span class="textes"><span class="etiquette">A · Totaux par volée</span>
+      <span class="sous-etiquette">On repère l'anomalie, on déplie si besoin.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span style="flex:1">ARCHER</span><span style="width:28px">V7</span><span style="width:28px">V8</span><span style="width:44px">SÉRIE</span></div>
           <div class="rang"><span style="flex:1;font-weight:700">GARCIA M.</span><span style="width:28px">26</span><span style="width:28px">28</span><span style="width:44px" class="somme">271</span></div>
@@ -46,18 +52,19 @@
         <button class="bouton valider geant">VALIDER — 3 archers</button>
         <button class="bouton discret">Renvoyer pour correction</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Rapide <b>et</b> vérifiable. Le renvoi en
     correction est indispensable : sans lui, le scoreur n'a le choix qu'entre valider un score faux ou aller
     chercher l'admin.</p>
   </figure>
 
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">B · Détail flèche à flèche</span>
-      <span class="sous-etiquette">Tout déplié d'emblée.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">CIBLE 7 · SÉRIE 2</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="tablette" data-monde="scoreur">
+    <figcaption><span class="textes"><span class="etiquette">B · Détail flèche à flèche</span>
+      <span class="sous-etiquette">Tout déplié d'emblée.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span style="flex:1">GARCIA M. · volée 7</span><span>26</span></div>
           <div class="rang"><span class="fl">9</span><span class="fl">9</span><span class="fl">8</span></div>
@@ -66,35 +73,40 @@
         </div>
         <p class="faible" style="margin:0">3 archers × 6 volées = 18 blocs à faire défiler.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">écarté</span> Fidèle à la feuille papier, mais avec ~20
     validations par scoreur et par départ, <b>le défilement coûte plus que le contrôle n'apporte</b>.</p>
   </figure>
 
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Conflit · déjà validée</span>
-      <span class="sous-etiquette">Un autre scoreur est passé pendant le trajet.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">CIBLE 7 · SÉRIE 2</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="tablette" data-monde="scoreur">
+    <figcaption><span class="textes"><span class="etiquette">Conflit · déjà validée</span>
+      <span class="sous-etiquette">Un autre scoreur est passé pendant le trajet.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte info"><div class="rang bloc">
           <span class="verrou">🔒 DÉJÀ VALIDÉE</span>
           <div class="second" style="margin-top:6px">par MOREAU Yves, il y a 40 s</div></div></div>
         <p class="second" style="margin:0">Rien à faire ici. La cible 3 attend depuis 2 mn 10.</p>
         <button class="bouton principal">Aller à la cible 3</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">conséquence de D-12</span> Pas de verrou <em>a priori</em>, donc
     collision possible <em>a posteriori</em>. L'écran ne s'excuse pas : il <b>réoriente</b>.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Le renvoi en correction</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Le scoreur voit une anomalie</span></figcaption>
-    <div class="ui">
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="scoreur">
+    <figcaption><span class="textes"><span class="etiquette">Le scoreur voit une anomalie</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span>RENVOYER À LA CIBLE 7</span></div>
           <div class="rang"><span class="second" style="flex:1">Volée concernée</span><span class="champ plein">Volée 8 ▾</span></div>
@@ -104,9 +116,11 @@
         </div>
         <button class="bouton principal">Renvoyer</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">Le motif compte : « corrigez » sans dire quoi fait perdre plus de temps que de repasser.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -127,5 +141,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

@@ -1,73 +1,21 @@
 # S02 · Poste de cible — la grille
 
 > **Écran** : [S02 — Poste de cible — la grille](../s02-poste-de-cible.html) · **Appli** : Appli saisie (`/saisie`)
+> **Appareil** : Tablette · 1280 × 800
 > **Rôle** : L'écran le plus utilisé de la journée : un marqueur tape pour 3–4 archers, debout, d'une main.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](s02-poste-de-cible.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [x] A — Grille complète, pavé appelé
-- [ ] B — Un archer à la fois
-- [ ] C — Grille + pavé permanent
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> simple, l'appel du pavée doit se faire a la selection de la zone de saisie
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [x] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> l'appel du pavée doit se faire a la selection de la zone de saisie
-
----
-
-## 5. Questions ciblées
-
-**1. Quelle est la taille réelle des tablettes du parc ? A et C ne se départagent que là-dessus.**
-
-> tabelette standard ou telephone, a + adapté
-
-**2. Les autres archers doivent-ils pouvoir relire ce qui a été tapé pour eux (contre-vérification B.6.1.1) ?**
-
-> oui
-
-**3. Le cumul de série affiché en permanence est-il utile, ou est-ce une source de calcul mental parasite ?**
-
-> en permanence, c'est un bon rappel sur la cible
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/s02-poste-de-cible.md`](tour-1-2026-08-04/s02-poste-de-cible.md).

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Questionnaire A00 · Les quatre portes — Kervignarc</title>
+<title>Questionnaire A00 · Les cinq portes — Kervignarc</title>
 <link rel="stylesheet" href="../assets/systeme.css">
 <link rel="stylesheet" href="../assets/questionnaire.css">
 </head>
@@ -20,14 +20,19 @@
 
 <header class="entete">
   <p class="fil">Questionnaire · Toutes les applis · /</p>
-  <h1><span class="num">A00</span>Les quatre portes</h1>
-  <p class="chapo">Le tout premier écran du produit : choisir le rôle de l'appareil. Livré depuis le
-  21/07/2026, jamais maquetté jusqu'ici.</p>
+  <h1><span class="num">A00</span>Les cinq portes</h1>
+  <p class="chapo">Le tout premier écran du produit : une application, cinq portes. L'écran de cible et
+  l'écran de salle mènent au même poste, avec des mots différents.</p>
   <p style="margin-top:12px;font-size:14px;color:var(--doc-doux)">
     Remplis ce qui te parle, laisse le reste vide. Un « non » sec est une réponse parfaitement utile —
     c'est même la plus rapide à exploiter. Tes réponses sont conservées dans ce navigateur au fil de la
     frappe ; <strong>« Télécharger le .md »</strong> produit le fichier à déposer dans
     <code>maquettes/questionnaires/</code>.</p>
+  <p style="margin-top:10px;font-size:14px;color:var(--doc-doux)">
+    <strong>Les questions ont changé.</strong> L'écran est désormais montré entier, à la taille réelle de
+    l'appareil — sur une <strong>tablette 1280 × 800</strong> et sur un <strong>téléphone 390 × 844</strong>.
+    Ta cinquième porte (l'écran de projection) est en place, et le vocabulaire que tu avais corrigé le 04/08
+    est appliqué : « écran de cible », « public ».</p>
 </header>
 
 <div class="q-actions">
@@ -40,85 +45,16 @@
   </span>
 </div>
 
-<div class="q-apercu" id="q-apercu" hidden><pre id="q-apercu-texte"></pre></div>
+<div class="q-apercu" id="q-apercu"><pre></pre></div>
 
-<form id="q-form" autocomplete="off">
+<noscript>
+  <div class="note"><p><strong>JavaScript est désactivé.</strong> Le formulaire est construit par
+  <code>assets/questionnaire.js</code> depuis une trame unique : sans lui, la page reste vide.</p></div>
+</noscript>
 
-  <section class="q-bloc">
-    <h2><span class="q-num">1</span>Quel parti pris retiens-tu ?</h2>
-    <p class="q-aide">Cet écran est <strong>déjà livré</strong> : la maquette le décrit plutôt qu'elle ne le
-    propose. La question est donc de savoir s'il te va tel quel.</p>
-    <div class="q-choix">
-      <label><input type="radio" name="variante" value="0"><span>A — Les quatre portes telles que livrées</span></label>
-      <label><input type="radio" name="variante" value="-1"><span>Aucun — voir « à refaire » plus bas</span></label>
-    </div>
-    <label class="q-champ">
-      <span>Pourquoi ce choix</span>
-      <em>Ce qui a emporté la décision, même si c'est un détail.</em>
-      <textarea data-champ="pourquoi" rows="3"></textarea>
-    </label>
-    <label class="q-champ">
-      <span>Ce que tu changerais</span>
-      <textarea data-champ="ailleurs" rows="3"></textarea>
-    </label>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">2</span>Verdict</h2>
-    <div class="q-choix">
-      <label><input type="radio" name="verdict" value="0"><span>✅ Validé tel quel — on peut coder ça</span></label>
-      <label><input type="radio" name="verdict" value="1"><span>🟡 Validé avec les réserves ci-dessous</span></label>
-      <label><input type="radio" name="verdict" value="2"><span>🔴 À refaire — l'écran ne répond pas au besoin</span></label>
-    </div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">3</span>Critiques</h2>
-    <p class="q-aide">Hiérarchie, vocabulaire, information manquante, geste pénible, cas réel non couvert.</p>
-    <textarea data-champ="critiques" rows="5"></textarea>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">4</span>Évolutions souhaitées</h2>
-    <p class="q-aide">Ce que tu veux en plus ou en moins. Sans te censurer sur la faisabilité — c'est mon
-    travail de dire ce que ça coûte.</p>
-    <textarea data-champ="evolutions" rows="5"></textarea>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">5</span>Questions ciblées</h2>
-    <p class="q-aide">Ces questions viennent de points que la maquette n'a pas pu trancher seule.</p>
-    <div class="q-ciblee"><p><span class="q-idx">1</span>Les quatre portes sont-elles les bonnes ? En particulier : « Tablette de cible » et « Scoreur » méritent-elles deux portes, alors qu'un même appareil peut servir aux deux dans un petit club ?</p><textarea data-question="0" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">2</span>Les QR déjà imprimés pointent vers l'ancienne adresse (<code>/?poste=…</code>). Faut-il garder cette compatibilité indéfiniment, ou prévoir une réimpression et une date de bascule ?</p><textarea data-question="1" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">3</span>Le libellé « Administration (PC) » suppose un ordinateur. Est-ce voulu, ou l'admin peut-il légitimement piloter depuis une tablette le jour J ?</p><textarea data-question="2" rows="3"></textarea></div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">6</span>Vocabulaire</h2>
-    <p class="q-aide">Un mot faux à l'écran coûte cher toute la journée. Corrige sans hésiter.</p>
-    <div class="q-vocab">
-      <span class="q-vocab-tete">À l'écran</span><span class="q-vocab-tete">Le bon mot</span>
-    </div>
-    <div class="q-vocab" style="margin-top:6px">
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-    </div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">7</span>Ce qui manque complètement</h2>
-    <p class="q-aide">Un écran, un état, un cas que cette maquette ignore.</p>
-    <textarea data-champ="manque" rows="4"></textarea>
-  </section>
-
-</form>
+<!-- Le formulaire est GÉNÉRÉ depuis la trame de questionnaire.js : une section n'est décrite
+     qu'à un seul endroit, pour les 36 écrans à la fois. -->
+<form id="q-form" autocomplete="off"></form>
 
 <footer class="pied">
   <span><a href="../index.html">Tous les écrans</a></span>
@@ -126,7 +62,7 @@
   <span class="fin"><a href="a01-connexion.html">Suivant : A01 · Connexion →</a></span>
 </footer>
 
-<script type="application/json" id="q-modele">{"code": "A00", "titre": "Les quatre portes", "slug": "a00-portes", "appli": "Toutes les applis", "route": "/", "role": "Le tout premier écran : choisir le rôle de l'appareil (tablette de cible, public, scoreur, administration).", "variantes": ["A — Les quatre portes telles que livrées"], "questions": ["Les quatre portes sont-elles les bonnes ? En particulier : « Tablette de cible » et « Scoreur » méritent-elles deux portes, alors qu'un même appareil peut servir aux deux dans un petit club ?", "Les QR déjà imprimés pointent vers l'ancienne adresse (/?poste=…). Faut-il garder cette compatibilité indéfiniment, ou prévoir une réimpression et une date de bascule ?", "Le libellé « Administration (PC) » suppose un ordinateur. Est-ce voulu, ou l'admin peut-il légitimement piloter depuis une tablette le jour J ?"]}</script>
+<script type="application/json" id="q-modele">{"code":"A00","titre":"Les cinq portes","slug":"a00-portes","appli":"Toutes les applis","route":"/","appareil":"Tablette 1280 × 800 et téléphone 390 × 844","role":"Le tout premier écran : une application, cinq portes. L'écran de cible et l'écran de salle mènent au même poste.","variantes":[],"questions":["Sur un téléphone (planche B), quatre portes sur cinq ne servent à personne : le spectateur ne rattachera jamais une cible et ne pilotera pas le tournoi. Faut-il présenter les cinq portes partout — c'est simple et honnête — ou mettre « Public » en premier et replier les autres derrière un « cet appareil sert à autre chose » ?","« Écran de cible » et « Écran de salle » sont deux portes vers le même poste, avec des mots différents. Est-ce que ça se comprend en arrivant, ou faut-il quelque chose à l'écran qui les rapproche ?","Les QR déjà imprimés pointent vers l'ancienne adresse « /?poste=<code> ». Confirmes-tu qu'elle doit rester valide, ou les étiquettes seront-elles réimprimées avant le jour J ?","Le message d'erreur nomme le réseau « kervignarc-local ». Est-ce bien le nom que le bénévole verra dans la liste Wi-Fi de sa tablette, ou faut-il en écrire un autre ?","Cinq portes couvrent-elles tout ce que tu brancheras le jour J, ou en manque-t-il une (poste de la table d'organisation, borne d'affichage à l'entrée, autre) ?"]}</script>
 <script src="../assets/questionnaire.js"></script>
 
 </div>

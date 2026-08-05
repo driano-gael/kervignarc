@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli saisie · <code>/cible</code> · <strong>poste critique</strong></p>
   <h1><span class="num">S03</span>Le pavé de saisie</h1>
@@ -28,47 +33,50 @@
 </header>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Pavé numérique complet</span>
-      <span class="sous-etiquette">Toutes les valeurs, taille égale, ordre de lecture naturel.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">PETIT</span><span class="fin second">flèche 3/3</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">A · Pavé numérique complet</span>
+      <span class="sous-etiquette">Toutes les valeurs, taille égale, ordre de lecture naturel.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="pave">
           <button>X</button><button>10</button><button>9</button><button>8</button><button>7</button>
           <button>6</button><button>5</button><button>4</button><button>3</button><button>2</button>
           <button>1</button><button class="util">M</button><button class="util">↶</button><button class="util">✓</button><button class="util">…</button>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Zéro apprentissage, aucune visée précise :
     <b>15 cibles de ~60 px</b>. « M » (manqué) et « X » (10 centre) sont des valeurs de plein droit, pas des cas
     cachés dans un menu.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Blason tactile</span>
-      <span class="sous-etiquette">On tape la zone touchée, comme sur la vraie cible.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">PETIT</span><span class="fin second">flèche 3/3</span></div>
-      <div class="corps" style="align-items:center">
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">B · Blason tactile</span>
+      <span class="sous-etiquette">On tape la zone touchée, comme sur la vraie cible.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile" style="align-items:center">
         <div style="width:190px;height:190px;border-radius:50%;border:1px solid var(--border);
           background:radial-gradient(circle,#F6E05E 0 20%,#E15241 20% 40%,#3E8FC7 40% 60%,#2B2B29 60% 80%,#E9E9E6 80% 100%)"></div>
         <p class="faible" style="margin:0;text-align:center">Séduisant… mais l'anneau du 1 fait 6 px de large.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">écarté</span> Métaphore juste, ergonomie fausse : les zones
     extérieures sont des anneaux <b>très fins</b>. Et surtout — le marqueur <b>ne voit pas l'impact</b>, il tape
     ce qu'on lui <em>annonce</em>. La métaphore est donc même conceptuellement à côté.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">C · Décroissant contextuel</span>
-      <span class="sous-etiquette">Après un 8, les valeurs supérieures s'estompent — sans se verrouiller.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">PETIT</span><span class="fin second">après un 8</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">C · Décroissant contextuel</span>
+      <span class="sous-etiquette">Après un 8, les valeurs supérieures s'estompent — sans se verrouiller.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="pave">
           <button class="attenue">X</button><button class="attenue">10</button><button class="attenue">9</button><button>8</button><button>7</button>
           <button>6</button><button>5</button><button>4</button><button>3</button><button>2</button>
@@ -76,19 +84,23 @@
         </div>
         <p class="faible" style="margin:0">Ordre décroissant (B.6.1.3) — les valeurs grisées restent tapables.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">à combiner avec A</span> Ce n'est pas une alternative : c'est
     <b>A + une aide</b>. Estomper guide sans interdire (<span class="ref">P-3</span>) ; verrouiller casserait
     la correction d'une flèche mal annoncée.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Le moment de la validation</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Le bouton chiffre avant d'envoyer</span></figcaption>
-    <div class="ui">
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">Le bouton chiffre avant d'envoyer</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div style="display:flex;gap:8px;justify-content:center">
           <span class="fl" style="width:52px;font-size:18px">10</span>
           <span class="fl" style="width:52px;font-size:18px">10</span>
@@ -97,14 +109,17 @@
         <button class="bouton valider geant">VALIDER LA VOLÉE — 29 pts</button>
         <button class="bouton discret">↶ Corriger la dernière flèche</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">P-4</span> Le total affiché sur le bouton est la
     <b>dernière chance</b> de voir une faute de frappe. « Valider » tout court ne dit rien.</p>
   </figure>
-  <figure class="variante">
-    <figcaption><span class="etiquette">Correction d'une flèche déjà saisie</span></figcaption>
-    <div class="ui">
-      <div class="corps">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">Correction d'une flèche déjà saisie</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte info"><div class="rang bloc">
           <span class="second">Correction de <strong>PETIT · flèche 2</strong> — actuellement <strong>10</strong></span></div></div>
         <div class="pave" style="grid-template-columns:repeat(5,1fr)">
@@ -112,10 +127,12 @@
         </div>
         <p class="faible" style="margin:0">Avant validation : correction libre. Après : passe par le scoreur (S08).</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">La frontière <b>avant / après validation</b> est le vrai sujet : c'est elle qui donne sa
     valeur au verrou.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -133,5 +150,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

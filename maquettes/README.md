@@ -5,7 +5,7 @@
 > [`cahier-des-charges-ux.md`](../cahier-des-charges-ux.md) ou
 > [`cahier-des-charges-design.md`](../cahier-des-charges-design.md), **les CDC gagnent**.
 
-## Point de reprise — au 30/07/2026
+## Point de reprise — au 05/08/2026
 
 *Cette section est le **point d'entrée d'une nouvelle session**. Elle dit où on en est, ce qui attend
 une décision, et ce qu'il ne faut surtout pas refaire trop tôt. Elle se met à jour à chaque avancée.*
@@ -15,10 +15,35 @@ une décision, et ce qu'il ne faut surtout pas refaire trop tôt. Elle se met à
 | | |
 |---|---|
 | **36 écrans maquettés** | 1 porte d'entrée · 19 admin · 9 saisie · 7 publique |
-| **36 questionnaires saisissables** | on répond dans le navigateur, « Télécharger le .md » produit le fichier à déposer dans `questionnaires/` |
+| **151 écrans pleins** | chaque planche est rendue à la **taille réelle de son appareil**, ossature comprise — PC 1600 × 900, tablette 1280 × 800, vidéoprojecteur 1920 × 1080, téléphone 390 × 844 |
+| **36 questionnaires saisissables** | trame en **onze sections**, générée depuis `assets/questionnaire.js` ; « Télécharger le .md » produit le fichier à déposer dans `questionnaires/` |
 | **Système de design** | `assets/systeme.css` — transcrit la charte **mesurée** du CDC design §3.3, ratio de contraste en commentaire sur chaque token |
-| **Revue** | **2 écrans arbitrés** — A02 (🔴, refait deux fois) et A01 (parti pris A retenu, verdict d'ensemble non rendu). |
-| **Livré dans le code** | le modèle d'ossature de ce dossier **est implémenté** : E14US003, [ADR-0058](../docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md) |
+| **Ossature** | `assets/appareils.js` — la navigation des trois axes est **transcrite d'`axes.ts`** (30 destinations), pas recopiée à la main |
+| **Revue** | **tour 1 clos** : les 36 questionnaires ont été remplis le 04/08/2026 et sont archivés dans `questionnaires/tour-1-2026-08-04/`. Le **tour 2** repart de zéro sur les écrans pleins. |
+| **Livré dans le code** | l'ossature de ce dossier **est implémentée** : E14US003, [ADR-0058](../docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md). Le vocabulaire de salle aussi : E16US001, [ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md) |
+
+### Pourquoi le dossier a basculé en plein écran — 05/08/2026
+
+Le commanditaire ne voyait *« que des composants de pages »*. Deux causes, cumulées : `.variante`
+bornait chaque maquette à **430 px**, et **aucune ossature n'était balisée** — les `.colonnes` /
+`.flanc` du CSS étaient des vestiges du modèle v1 refusé, utilisés par **zéro** page sur 36. On
+jugeait donc un composant hors de son emplacement final, ce qui rend la critique difficile à formuler.
+
+Quatre choses à savoir avant de toucher au dossier :
+
+- **`transform: scale()`, jamais `zoom`.** `zoom` refait la mise en page aux dimensions réduites : les
+  retours à la ligne ne tombent pas où ils tombent à 100 %, on jugerait une mise en page qui n'existe
+  pas. Et **ne jamais ajouter `will-change:transform` ni `translateZ(0)`** sur un cadre — le texte
+  deviendrait flou sur les 151 planches d'un coup.
+- **La hauteur est fixe**, donc la ligne de flottaison existe : un voile annonce « ↓ N px sous la
+  ligne », mesuré à l'exécution. C'est ce qui permet enfin de poser la question « le bouton est-il
+  visible sans défiler ? », impossible tant que les `.ui` s'étiraient au contenu.
+- **L'ossature est générée** depuis des attributs `data-*`, pas écrite dans chaque bloc — sans quoi une
+  correction toucherait 151 endroits. Contrepartie : `appareils.js` **se désynchronise d'`axes.ts`** à
+  chaque US qui renomme ou ajoute une destination. Le resynchroniser fait partie de la reprise.
+- **Le cadre est l'écran nu**, sans chrome navigateur. Exact pour la cible et le vidéoprojecteur, qui
+  tournent en plein écran le jour J ; **optimiste d'environ 120 px** sur PC et téléphone, où une barre
+  d'adresse mange le haut. Décision assumée, à ne pas « corriger » sans la rouvrir.
 
 ### Le modèle d'ossature, arrêté le 30/07/2026 — **trois axes d'activité**
 
@@ -71,7 +96,10 @@ libérera ; dessiner avant, c'est dessiner un écran qui ne peut pas exister.
 Dire simplement « **on reprend les maquettes** ». L'état réel se lit dans les fichiers, pas dans la
 mémoire d'une session :
 
-- `questionnaires/*.md` — un fichier rempli = un écran arbitré ;
+- `questionnaires/*.md` — un **talon** = écran non arbitré, un fichier rempli = écran arbitré ;
+- `questionnaires/tour-1-2026-08-04/` — les 36 réponses du premier tour, rendues sur les vignettes.
+  Plusieurs ont déjà piloté des changements du front (commit `a660f8f`) : à lire avant de refaire un
+  écran, pour ne pas redemander ce qui est acquis ;
 - `git log main --first-parent -- maquettes/` — l'historique des décisions.
 
 Pour consulter les pages sans perturber un agent qui travaillerait en parallèle sur le dépôt, créer
@@ -99,8 +127,13 @@ l'index.
 
 **Pourquoi cette mécanique en deux temps.** Le livrable versionné reste le **Markdown** : c'est lui qui se
 diffe, se relit et se commente dans Git. Mais un `.md` ouvert dans un navigateur n'est qu'un texte mort — d'où
-la feuille HTML, qui n'est qu'un **moyen de le remplir confortablement**. Rien n'oblige à passer par elle :
-les gabarits `.md` vierges restent dans `questionnaires/` pour qui préfère son éditeur.
+la feuille HTML, qui n'est qu'un **moyen de le remplir confortablement**.
+
+**Il n'y a plus de gabarit `.md` vierge**, et c'est délibéré. Depuis le 05/08/2026 la trame vit à un seul
+endroit (`assets/questionnaire.js`), qui construit le formulaire *et* produit le markdown. La recopier dans
+36 fichiers rejouerait la dérive constatée ce jour-là : le questionnaire d'A02 posait encore les questions de
+la v2 « rôle, espace, étape » quand la maquette était passée en v3 « trois axes » depuis une semaine. Chaque
+`questionnaires/<slug>.md` est donc un **talon** court, remplacé par le fichier téléchargé quand on répond.
 
 Trois détails utiles :
 
@@ -145,7 +178,13 @@ maquettes/
 Le CSS est **partagé** : une correction de token se répercute sur les 36 pages. C'est aussi ce qui garantit
 qu'aucune page n'invente sa propre couleur.
 
-## Deux limites à connaître
+## Quatre limites à connaître
+
+1. **Les cadres sont réduits.** Un écran est dessiné à sa taille réelle puis ramené à l'échelle pour tenir
+   dans la page : les **proportions et la densité sont justes**, la **taille perçue du texte ne l'est pas**.
+   Pour juger une taille de texte ou une cible tactile, passer en **« taille réelle »** (bouton en haut à
+   droite de chaque planche) *et* remettre le zoom du navigateur à 100 %. Le cadre représente l'**écran nu** :
+   sur PC et téléphone, une barre d'adresse mangerait encore ~120 px en vrai.
 
 1. **La police n'est pas la bonne.** La charte impose **Inter** (`DV-07`), qui n'est pas embarquée ici. Si tu
    ne l'as pas installée, tu vois une police système : les *proportions* sont justes, le *dessin* des lettres

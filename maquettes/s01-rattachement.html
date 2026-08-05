@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli saisie · <code>/cible</code></p>
   <h1><span class="num">S01</span>Rattachement du poste</h1>
@@ -38,29 +43,31 @@
 </ul>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Le QR domine</span>
-      <span class="sous-etiquette">La caméra prend l'écran, le code court est le repli.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="conn off"><span class="point"></span>NON RATTACHÉ</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">A · Le QR domine</span>
+      <span class="sous-etiquette">La caméra prend l'écran, le code court est le repli.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte plate" style="border-style:dashed;height:150px;display:flex;align-items:center;justify-content:center">
           <span class="faible">flux caméra</span></div>
         <p class="second" style="margin:0;text-align:center">Scannez le QR collé sur la cible</p>
         <button class="bouton discret">Saisir le code à la place</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">réserve</span> Une tablette sans caméra ou une permission refusée,
     et l'écran principal ne sert à rien : <b>le cas de repli devient le cas courant</b>.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Le code domine</span>
-      <span class="sous-etiquette">Pavé de saisie du code court, QR offert en second.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="conn off"><span class="point"></span>NON RATTACHÉ</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">B · Le code domine</span>
+      <span class="sous-etiquette">Pavé de saisie du code court, QR offert en second.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <p class="second" style="margin:0">Code affiché sur la cible</p>
         <div style="display:flex;gap:8px">
           <span class="fl" style="flex:1;font-size:24px;padding:12px 0">K</span>
@@ -75,36 +82,41 @@
         </div>
         <button class="bouton discret">Scanner le QR</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Marche sur <b>tout</b> le parc, sans permission
     à accorder. Le QR reste offert à ceux qui vont vite.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">C · Liste des cibles libres</span>
-      <span class="sous-etiquette">Ni QR ni code : on choisit.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="conn off"><span class="point"></span>NON RATTACHÉ</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">C · Liste des cibles libres</span>
+      <span class="sous-etiquette">Ni QR ni code : on choisit.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span>CIBLES LIBRES</span><span class="fin">2 / 30</span></div>
           <div class="rang"><span style="flex:1;font-weight:700">Cible 23</span><span class="second">pas de tir B</span></div>
           <div class="rang"><span style="flex:1;font-weight:700">Cible 28</span><span class="second">pas de tir B</span></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">écarté</span> Rien n'empêche de prendre la cible du voisin.
     On perd la <b>preuve de présence physique</b>, qui est tout l'intérêt du QR.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Confirmation — ce que le poste retient</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Rattaché</span></figcaption>
-    <div class="ui">
-      <div class="barre succes"><span style="font-weight:800">✓ POSTE RATTACHÉ</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">Rattaché</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="aplat-alerte">✓ POSTE RATTACHÉ</div>
+        <div class="pile">
         <div class="carte">
           <div class="rang"><span style="width:80px" class="second">Cible</span><span style="font-weight:800;flex:1">12</span><span class="faible">D-06</span></div>
           <div class="rang"><span style="width:80px" class="second">Tournoi</span><span style="font-weight:800;flex:1">12 octobre</span><span class="faible">D-07</span></div>
@@ -112,39 +124,45 @@
         </div>
         <button class="bouton principal geant">COMMENCER LA SAISIE</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">Le <b>thème est stocké avec le jeton</b>, pas dans l'onglet : l'onglet fermé par erreur ne
     repart pas en sombre sous les néons.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">Cible déjà tenue</span></figcaption>
-    <div class="ui">
-      <div class="corps">
+  <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">Cible déjà tenue</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="aplat-alerte">▲ Cible 12 déjà rattachée <span class="impact">il y a 4 h</span></div>
         <p class="second" style="margin:0">Une autre tablette tient cette cible. Continuer la détachera
         <strong>immédiatement</strong> — l'autre poste perdra la main.</p>
         <button class="bouton principal">Reprendre la cible 12</button>
         <button class="bouton discret">Annuler</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">cas réel</span> Tablette à plat, remplacée en cours de journée.
     On <b>chiffre la conséquence</b> au lieu d'interdire (<span class="ref">P-3</span>).</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">Hors ligne</span></figcaption>
-    <div class="ui">
-      <div class="corps">
+  <figure class="planche" data-appareil="tablette" data-monde="tablette" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">Hors ligne</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="aplat-alerte">▲ Pas de réseau</div>
         <p class="second" style="margin:0">Le rattachement a besoin du serveur. La saisie, elle, fonctionnera
         hors ligne <em>une fois</em> le poste rattaché.</p>
         <button class="bouton inactif">Rattacher</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">Le <b>seul écran de l'appli réellement bloqué</b> hors ligne — et il faut le dire, pas
     le laisser deviner.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -161,5 +179,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

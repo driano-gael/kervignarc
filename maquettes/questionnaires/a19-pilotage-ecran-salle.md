@@ -1,69 +1,21 @@
 # A19 · Pilotage de l'écran de salle
 
 > **Écran** : [A19 — Pilotage de l'écran de salle](../a19-pilotage-ecran-salle.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Imposer une vue depuis son poste, sans traverser le gymnase — et savoir que la prise de contrôle se termine.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](a19-pilotage-ecran-salle.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [x] A — Panneau avec durée obligatoire
-- [ ] B — Bascule libre + retour manuel
-- [ ] C — Télécommande flottante
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> j'aime bien le garde fou qui permet de ne pas s'occuper de l'ecran, tout en povant imposer une vue a n'importe quel moment.
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [x] ✅ Validé tel quel — on peut coder ça
-- [ ] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> _(sans réponse)_
-
----
-
-## 5. Questions ciblées
-
-**1. Une prise de contrôle doit-elle expirer automatiquement (podium 10 min puis reprise) ou rester jusqu'à annulation ?**
-
-> _(sans réponse)_
-
-**2. Combien d'écrans de salle prévois-tu réellement : un, ou plusieurs avec des déroulés différents ?**
-
-> _(sans réponse)_
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/a19-pilotage-ecran-salle.md`](tour-1-2026-08-04/a19-pilotage-ecran-salle.md).

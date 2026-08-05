@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli saisie · <code>/cible</code> · <strong>écran majeur</strong></p>
   <h1><span class="num">S06</span>Panneau de routage — après validation</h1>
@@ -38,14 +43,15 @@
 </div>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Les deux archers à égalité</span>
-      <span class="sous-etiquette">Vainqueur et perdant, même place.</span></figcaption>
-    <div class="ui">
-      <div class="barre succes"><span style="font-weight:800">✓ DUEL VALIDÉ</span>
-        <span class="fin" style="font-size:11px">par LE GALL Anne · 14 h 02</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="scoreur">
+    <figcaption><span class="textes"><span class="etiquette">A · Les deux archers à égalité</span>
+      <span class="sous-etiquette">Vainqueur et perdant, même place.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="aplat-alerte">✓ DUEL VALIDÉ par LE GALL Anne · 14 h 02</div>
+        <div class="pile">
         <div class="carte">
           <div class="rang bloc">
             <div style="font-size:18px;font-weight:800">MARTIN Paul</div>
@@ -62,66 +68,74 @@
         </div>
         <button class="bouton discret">Retour à la saisie</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Le perdant est <b>encore devant la
     tablette</b>. Ne rien lui dire, c'est le renvoyer vers l'organisateur — exactement ce que le produit veut
     éviter.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Plein écran vainqueur</span>
-      <span class="sous-etiquette">Une information, énorme, lisible à 2 m.</span></figcaption>
-    <div class="ui">
-      <div class="corps" style="text-align:center;padding:24px 14px">
+  <figure class="planche" data-appareil="tablette" data-monde="scoreur">
+    <figcaption><span class="textes"><span class="etiquette">B · Plein écran vainqueur</span>
+      <span class="sous-etiquette">Une information, énorme, lisible à 2 m.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile" style="text-align:center;padding:24px 14px">
         <div class="mini">PROCHAIN TOUR</div>
         <div style="font-size:20px;font-weight:800">MARTIN Paul</div>
         <div style="font-size:38px;font-weight:800;color:var(--brand-text);line-height:1.05">CIBLE 4</div>
         <div style="font-size:18px;font-weight:700">14 h 20 · demi-finale</div>
         <div class="second" style="margin-top:8px">DURAND Jean — terminé, 12<sup>e</sup></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">excellent au pic</span> Impeccable quand 8 duels finissent
     ensemble. Le perdant en petit reste un <b>compromis à assumer</b>.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">C · Retour automatique compté</span>
-      <span class="sous-etiquette">Le panneau se referme seul.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span style="font-weight:800;color:var(--success)">✓ VALIDÉ</span>
-        <span class="fin pas info">retour dans 12 s</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="tablette" data-monde="scoreur">
+    <figcaption><span class="textes"><span class="etiquette">C · Retour automatique compté</span>
+      <span class="sous-etiquette">Le panneau se referme seul.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte"><div class="rang bloc">
           <div style="font-weight:800">MARTIN Paul</div>
           <div style="font-size:19px;font-weight:800;color:var(--brand-text)">▸ CIBLE 4 — 14 h 20</div></div></div>
         <button class="bouton">Rester sur l'affichage</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">réserve</span> 12 s, c'est court pour un archer qui range ses
     flèches — et le retour automatique <b>efface l'information pour celui qui arrive en retard</b>.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Cas particulier — la qualification</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Fin de série en qualification</span>
-      <span class="sous-etiquette">Pas de changement de cible : l'archer reste sur place.</span></figcaption>
-    <div class="ui">
-      <div class="barre succes"><span style="font-weight:800">✓ SÉRIE 1 VALIDÉE</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="scoreur">
+    <figcaption><span class="textes"><span class="etiquette">Fin de série en qualification</span>
+      <span class="sous-etiquette">Pas de changement de cible : l'archer reste sur place.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="aplat-alerte">✓ SÉRIE 1 VALIDÉE</div>
+        <div class="pile">
         <div class="carte">
           <div class="rang"><span style="flex:1">MARTIN Paul</span><span class="somme">271</span></div>
           <div class="rang"><span style="flex:1">DURAND Jean</span><span class="somme">248</span></div>
           <div class="rang"><span style="flex:1">PETIT Luc</span><span class="somme">283</span></div>
         </div>
-        <p class="second" style="margin:0">Série 2 après la pause · <strong>même cible, mêmes positions</strong>.</p>
+        <p class="second" style="margin:0">Série 2 après la pause · <strong>même cible, mêmes couloirs de tir</strong>.</p>
         <button class="bouton principal">Continuer</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict">En qualification le routage <b>n'a rien à dire</b> — et c'est une information en soi :
     « reste où tu es » évite les questions.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -138,5 +152,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

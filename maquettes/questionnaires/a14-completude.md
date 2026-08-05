@@ -1,68 +1,21 @@
 # A14 · Complétude — « qu'est-ce qui manque ? »
 
 > **Écran** : [A14 — Complétude — « qu'est-ce qui manque ? »](../a14-completude.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Le vrai visage de l'avancement : sportif et hors-sportif comptés séparément.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](a14-completude.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [ ] A — Deux blocs sportif / hors-sportif
-- [ ] B — Liste unique priorisée
-- [x] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> je n'aime pas le melange entre le déroulé et la gestion administrative
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [ ] 🟡 Validé avec les réserves ci-dessous
-- [x] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> completude en déroulé n'est pas completude administrative. en déroulé on est centré sur l'evenement.
-
----
-
-## 4. Évolutions souhaitées
-
-> _(sans réponse)_
-
----
-
-## 5. Questions ciblées
-
-**1. La séparation sportif / hors-sportif correspond-elle à ta façon de clore un tournoi ?**
-
-> _(sans réponse)_
-
-**2. « Terminer » fige le sportif et laisse les paiements ouverts. Est-ce le bon découpage, ou faut-il figer autre chose ?**
-
-> _(sans réponse)_
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/a14-completude.md`](tour-1-2026-08-04/a14-completude.md).

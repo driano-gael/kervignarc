@@ -1,69 +1,21 @@
 # S05 · Saisie de duel
 
 > **Écran** : [S05 — Saisie de duel](../s05-saisie-duel.html) · **Appli** : Appli saisie (`/saisie`)
+> **Appareil** : Tablette · 1280 × 800
 > **Rôle** : Set-system, deux archers : ce qui décide du vainqueur, ce sont les points de set, pas le cumul.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](s05-saisie-duel.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [ ] A — Deux colonnes symétriques
-- [ ] B — Score de set dominant
-- [ ] C — Archer actif agrandi
-- [x] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> trop tassé
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [x] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> les emplacement de saisie des volée est trop etroit
-
----
-
-## 4. Évolutions souhaitées
-
-> au lieu de 2 clonnes je preferais sur 2 hauteur. adapté tablette et telephone.
-
----
-
-## 5. Questions ciblées
-
-**1. La flèche de barrage (égalité 5–5) : confirmes-tu qu'elle doit avoir son propre écran ?**
-
-> oui
-
-**2. Le duel se saisit-il sur la tablette de la cible, ou le scoreur saisit-il directement aux duels ?**
-
-> les 2
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/s05-saisie-duel.md`](tour-1-2026-08-04/s05-saisie-duel.md).

@@ -14,7 +14,7 @@
   <a href="../index.html">← Tous les écrans</a>
   <a href="../a01-connexion.html"><strong>Voir la maquette A01</strong></a>
   <span class="fin">
-    
+    <a href="a00-portes.html">← A00</a>
     <a href="a02-ossature.html"><strong>Questionnaire suivant : A02 →</strong></a>
   </span>
 </nav>
@@ -22,12 +22,14 @@
 <header class="entete">
   <p class="fil">Questionnaire · Appli admin · /admin</p>
   <h1><span class="num">A01</span>Connexion</h1>
-  <p class="chapo">Le seul écran à mot de passe du produit : l'admin est le seul rôle authentifié par compte.</p>
+  <p class="chapo">Le seul écran à mot de passe du produit. L'admin est le seul rôle authentifié par compte : le scoreur est identifié sans compte, l'archer reste anonyme.</p>
   <p style="margin-top:12px;font-size:14px;color:var(--doc-doux)">
     Remplis ce qui te parle, laisse le reste vide. Un « non » sec est une réponse parfaitement utile —
     c'est même la plus rapide à exploiter. Tes réponses sont conservées dans ce navigateur au fil de la
     frappe ; <strong>« Télécharger le .md »</strong> produit le fichier à déposer dans
     <code>maquettes/questionnaires/</code>.</p>
+  <p style="margin-top:10px;font-size:14px;color:var(--doc-doux)">
+    <strong>Les questions ont changé.</strong> L'écran est désormais montré <strong>entier</strong>, à la taille réelle de son appareil (PC · 1600 × 900), avec sa navigation, ses bandeaux et son en-tête. Le choix de mise en page n'est donc plus la première question — d'abord ce que l'écran donne au premier coup d'œil, ce qui passe sous la ligne de flottaison, ce que vaut l'ossature, et comment l'espace est occupé.</p>
 </header>
 
 <div class="q-actions">
@@ -42,90 +44,22 @@
 
 <div class="q-apercu" id="q-apercu"><pre></pre></div>
 
-<form id="q-form" autocomplete="off">
+<noscript>
+  <div class="note"><p><strong>JavaScript est désactivé.</strong> Le formulaire est construit par
+  <code>assets/questionnaire.js</code> depuis une trame unique : sans lui, la page reste vide.</p></div>
+</noscript>
 
-  <section class="q-bloc">
-    <h2><span class="q-num">1</span>Quel parti pris retiens-tu ?</h2>
-    <p class="q-aide">Les mentions « recommandé » sur la maquette sont mon avis argumenté, pas une décision.</p>
-    <div class="q-choix">
-      <label><input type="radio" name="variante" value="0"><span>A — Formulaire sobre plein cadre</span></label>
-      <label><input type="radio" name="variante" value="1"><span>B — Connexion + choix du tournoi en une étape</span></label>
-      <label><input type="radio" name="variante" value="-1"><span>Aucun — voir « à refaire » plus bas</span></label>
-    </div>
-    <label class="q-champ">
-      <span>Pourquoi ce choix</span>
-      <em>Ce qui a emporté la décision, même si c'est un détail.</em>
-      <textarea data-champ="pourquoi" rows="3"></textarea>
-    </label>
-    <label class="q-champ">
-      <span>Ce que tu prendrais dans les autres variantes</span>
-      <textarea data-champ="ailleurs" rows="3"></textarea>
-    </label>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">2</span>Verdict</h2>
-    <div class="q-choix">
-      <label><input type="radio" name="verdict" value="0"><span>✅ Validé tel quel — on peut coder ça</span></label>
-      <label><input type="radio" name="verdict" value="1"><span>🟡 Validé avec les réserves ci-dessous</span></label>
-      <label><input type="radio" name="verdict" value="2"><span>🔴 À refaire — l'écran ne répond pas au besoin</span></label>
-    </div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">3</span>Critiques</h2>
-    <p class="q-aide">Hiérarchie, vocabulaire, information manquante, geste pénible, cas réel non couvert.</p>
-    <textarea data-champ="critiques" rows="5"></textarea>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">4</span>Évolutions souhaitées</h2>
-    <p class="q-aide">Ce que tu veux en plus ou en moins. Sans te censurer sur la faisabilité — c'est mon
-    travail de dire ce que ça coûte.</p>
-    <textarea data-champ="evolutions" rows="5"></textarea>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">5</span>Questions ciblées</h2>
-    <p class="q-aide">Ces questions viennent de points que la maquette n'a pas pu trancher seule.</p>
-    <div class="q-ciblee"><p><span class="q-idx">1</span>Faut-il proposer une reconnexion automatique sur le poste de la table d'organisation, ou est-ce un risque le jour J (poste laissé sans surveillance) ?</p><textarea data-question="0" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">2</span>Le lien de secours vers /saisie et / est-il utile, ou source de confusion pour un bénévole ?</p><textarea data-question="1" rows="3"></textarea></div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">6</span>Vocabulaire</h2>
-    <p class="q-aide">Un mot faux à l'écran coûte cher toute la journée. Corrige sans hésiter.</p>
-    <div class="q-vocab">
-      <span class="q-vocab-tete">À l'écran</span><span class="q-vocab-tete">Le bon mot</span>
-    </div>
-    <div class="q-vocab" style="margin-top:6px">
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-    </div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">7</span>Ce qui manque complètement</h2>
-    <p class="q-aide">Un écran, un état, un cas que cette maquette ignore.</p>
-    <textarea data-champ="manque" rows="4"></textarea>
-  </section>
-
-</form>
+<!-- Le formulaire est GÉNÉRÉ depuis la trame de questionnaire.js : une section n'est décrite
+     qu'à un seul endroit, pour les 36 écrans à la fois. -->
+<form id="q-form" autocomplete="off"></form>
 
 <footer class="pied">
   <span><a href="../index.html">Tous les écrans</a></span>
   <span><a href="../a01-connexion.html">Maquette A01</a></span>
-  <span class="fin"><a href="a02-ossature.html">Suivant : A02 · Ossature — rôle, espace, étape →</a></span>
+  <span class="fin"><a href="a02-ossature.html">Suivant : A02 →</a></span>
 </footer>
 
-<script type="application/json" id="q-modele">{"code": "A01", "titre": "Connexion", "slug": "a01-connexion", "appli": "Appli admin", "route": "/admin", "role": "Le seul écran à mot de passe du produit : l'admin est le seul rôle authentifié par compte.", "variantes": ["A — Formulaire sobre plein cadre", "B — Connexion + choix du tournoi en une étape"], "questions": ["Faut-il proposer une reconnexion automatique sur le poste de la table d'organisation, ou est-ce un risque le jour J (poste laissé sans surveillance) ?", "Le lien de secours vers /saisie et / est-il utile, ou source de confusion pour un bénévole ?"]}</script>
+<script type="application/json" id="q-modele">{"code":"A01","titre":"Connexion","slug":"a01-connexion","appli":"Appli admin","route":"/admin","appareil":"PC · 1600 × 900","role":"Le seul écran à mot de passe du produit. L'admin est le seul rôle authentifié par compte : le scoreur est identifié sans compte, l'archer reste anonyme.","variantes":["A — Formulaire sobre : on s'identifie, le tournoi vient après","C — Connexion + choix du tournoi dans le même écran"],"questions":["Le formulaire fait 420 px au milieu d'un écran de 1600. C'est volontaire — un champ plus large ne se remplit pas mieux — mais c'est le seul écran du produit où « trop vide » pourrait être la bonne réponse. Faut-il quelque chose dans cette place (nom du club, version, état du serveur), ou le vide est-il le message ?","La planche B montre un écran livré que le dossier n'avait jamais maquetté : la toute première utilisation, où il faut CRÉER le compte administrateur. Faut-il y prévenir qu'il n'y aura pas de « mot de passe oublié » — pas d'e-mail, pas d'internet le jour J ?","Toujours sur cette première utilisation : faut-il pouvoir créer un SECOND compte administrateur ensuite, pour ne pas dépendre d'une seule personne le jour J ? Si oui, qui a le droit de le créer ?","« Choisir un autre appareil » est au pied du formulaire, parce que tu avais dit ne pas trouver la sortie. Est-ce là que tu la cherches, ou faut-il la laisser aussi en en-tête ?","Le 04/08 tu n'avais pas rendu de verdict d'ensemble sur cet écran (aucune case cochée). Maintenant que tu le vois en entier, la section « Verdict » attend ta réponse."]}</script>
 <script src="../assets/questionnaire.js"></script>
 
 </div>

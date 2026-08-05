@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli publique · /</p>
   <h1><span class="num">P03</span>Classements</h1>
@@ -28,13 +33,14 @@
 </header>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">A · Liste centrée sur soi</span>
-      <span class="sous-etiquette">L'écran s'ouvre positionné sur sa propre ligne, mise en évidence.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">CLASSEMENTS</span><span class="fin champ plein" style="padding:2px 8px;color:#fff;border-color:rgba(255,255,255,.5)">SH ▾</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">A · Liste centrée sur soi</span>
+      <span class="sous-etiquette">L'écran s'ouvre positionné sur sa propre ligne, mise en évidence.</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="rang"><span style="width:26px;font-weight:800">1</span><span style="flex:1">PETIT Luc</span><span class="somme">548</span></div>
           <div class="rang" style="background:var(--surface-2);box-shadow:inset 3px 0 0 var(--brand-border)">
@@ -44,17 +50,18 @@
         </div>
         <p class="faible" style="margin:0">Ex æquo 541 départagés au <strong>nombre de 10</strong>.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Sur 200 archers, <b>chercher son nom dans une
     liste est exactement ce qu'on veut éviter</b>. L'écran fait le travail.</p>
   </figure>
 
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">B · Tableau complet</span>
-      <span class="sous-etiquette">Toutes les colonnes, défilement horizontal.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">CLASSEMENTS</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">B · Tableau complet</span>
+      <span class="sous-etiquette">Toutes les colonnes, défilement horizontal.</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span style="width:22px">RG</span><span style="flex:1">ARCHER</span><span style="width:36px">TOT</span><span style="width:24px">10</span><span style="width:24px">9</span></div>
           <div class="rang"><span style="width:22px">1</span><span style="flex:1;font-size:13px">PETIT L.</span><span style="width:36px" class="somme">548</span><span style="width:24px" class="second">21</span><span style="width:24px" class="second">18</span></div>
@@ -62,36 +69,45 @@
         </div>
         <p class="faible" style="margin:0">Dense — proche de la version admin.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">écarté par défaut</span> Utile pour un entraîneur, illisible au
     bord du pas de tir. <b>Peut rester en option</b> (« voir le détail »).</p>
   </figure>
+
 </div>
 
 <h2 class="section">États</h2>
-<div class="rangee">
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Classement provisoire</span></figcaption>
-    <div class="ui">
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">Classement provisoire</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte info"><div class="rang bloc"><span class="second">Classement <strong>provisoire</strong> —
           volée 8 sur 12. Il bougera encore.</span></div></div>
         <div class="carte"><div class="rang"><span style="width:26px;font-weight:800">2</span>
           <span style="flex:1;font-weight:800">MARTIN Paul</span><span class="somme">541</span></div></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">important</span> Un classement affiché sans dire qu'il est
     provisoire <b>crée des discussions</b> au bord du pas de tir.</p>
   </figure>
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Catégorie vide</span></figcaption>
-    <div class="ui">
-      <div class="corps" style="text-align:center;padding:22px 12px">
+
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">Catégorie vide</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile" style="text-align:center;padding:22px 12px">
         <div style="font-weight:700">Aucun archer en Benjamin Femme</div>
         <p class="second" style="margin:0">Choisissez une autre catégorie.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -109,5 +125,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

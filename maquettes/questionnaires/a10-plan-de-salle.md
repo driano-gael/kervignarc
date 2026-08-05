@@ -1,68 +1,21 @@
 # A10 · Plan de salle (gabarit)
 
 > **Écran** : [A10 — Plan de salle (gabarit)](../a10-plan-de-salle.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : La salle telle qu'elle est : cibles, pas de tir, postes par cible. Réutilisable d'un tournoi à l'autre.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](a10-plan-de-salle.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [ ] A — Grille schématique
-- [ ] B — Plan libre positionnable
-- [x] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> je ne comprend pas l'usage, pour moi un pas de tir, c'est le couloir de tir d'un archer et suivant le nombre de blason, et le nombre d'archer que je positionne sur la cible, exemple 4 archer 2 blason, = A,B,C,D -> explique moi ce que toi tu vois avant de valider l'ecran
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [ ] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> _(sans réponse)_
-
----
-
-## 5. Questions ciblées
-
-**1. Ta salle a-t-elle une disposition particulière (deux pas de tir, cibles décalées, piliers) que la grille ne saurait pas représenter ?**
-
-> _(sans réponse)_
-
-**2. Le gabarit doit-il porter autre chose que les cibles : table d'organisation, zone d'échauffement, entrée du public ?**
-
-> _(sans réponse)_
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/a10-plan-de-salle.md`](tour-1-2026-08-04/a10-plan-de-salle.md).

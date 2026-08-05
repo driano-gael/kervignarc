@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · /admin</p>
   <h1><span class="num">A16</span>Classements et podiums</h1>
@@ -29,16 +34,14 @@
 </header>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Tableau filtrable + projection</span>
-      <span class="sous-etiquette">Un seul écran, le podium part d'ici.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">CLASSEMENTS</span>
-        <span class="champ plein" style="padding:3px 8px">SH ▾</span>
-        <span class="champ plein" style="padding:3px 8px">Qualification ▾</span>
-        <span class="fin bouton auto">Projeter le podium</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="palmares">
+    <figcaption><span class="textes"><span class="etiquette">A · Tableau filtrable + projection</span>
+      <span class="sous-etiquette">Un seul écran, le podium part d'ici.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span style="width:34px">RG</span><span style="flex:1">ARCHER</span>
             <span style="width:56px">TOTAL</span><span style="width:34px">10</span><span style="width:34px">9</span></div>
@@ -51,30 +54,31 @@
           <div class="rang"><span class="faible">Ex æquo 541 départagés au <strong>nombre de 10</strong> — MARTIN devant.</span></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> La <b>règle de départage est nommée à
     l'écran</b>. Un ex æquo tranché sans dire pourquoi, c'est un litige en puissance au moment de la remise des
     récompenses.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Onglets classement / podium</span>
-      <span class="sous-etiquette">Deux vues, deux usages assumés.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="second">Classement</span>
-        <span style="font-weight:800;border-bottom:2px solid var(--brand-border);padding-bottom:2px">Podium</span>
-        <span class="fin champ plein" style="padding:3px 8px">SH ▾</span></div>
-      <div class="corps" style="text-align:center;padding:20px">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="palmares">
+    <figcaption><span class="textes"><span class="etiquette">B · Onglets classement / podium</span>
+      <span class="sous-etiquette">Deux vues, deux usages assumés.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile" style="text-align:center;padding:20px">
         <div style="font-size:20px;font-weight:800">1 · PETIT Luc</div>
         <div style="font-size:17px">2 · MARTIN Paul</div>
         <div style="font-size:17px">3 · DURAND Jean</div>
         <div style="display:flex;gap:8px;margin-top:12px">
           <span class="bouton auto">Projeter</span><span class="bouton auto">Imprimer</span></div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">utile pour la remise</span> Le podium a une vraie vie propre
     (projection, impression, photo). Deux onglets, c'est honnête.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -93,5 +97,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

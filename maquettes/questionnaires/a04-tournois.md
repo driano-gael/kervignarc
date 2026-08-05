@@ -1,70 +1,21 @@
 # A04 · Tournois — liste et cycle de vie
 
 > **Écran** : [A04 — Tournois — liste et cycle de vie](../a04-tournois.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : La porte d'entrée : plusieurs tournois peuvent coexister en cours (intérieur + extérieur).
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](a04-tournois.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [x] A — Liste dense avec statut
-- [ ] B — Cartes avec frise du cycle de vie
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> une liste simple suffit, pas besoin de connaitre tout les etat possible.
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [x] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> je les classerait dans l'order suivant de haut en bas -> statut (1.en cours, 2. pret a lancer, 3.terminer, 4. brouillon) puis par date.
-> j'ajouterais également un filtre sur les état.
-
----
-
-## 4. Évolutions souhaitées
-
-> _(sans réponse)_
-
----
-
-## 5. Questions ciblées
-
-**1. La frise du cycle de vie (brouillon → prêt → en cours → terminé) est-elle utile en permanence ou seulement à la création ?**
-
-> non la frise n'est peut etre pas utile tout le temps, en atelier on a l'etat brouillon jusqu'a pret. et en pilotage on recupere a partir de pret jusqu'a terminer, puis en gestion on a tout les statut entre pret et archivé.
-> cela deplace le tournoi sur son axe en fonction de son cycle de vie.
-
-**2. Faut-il un tournoi épinglé en tête (celui du jour) ou l'ordre chronologique suffit-il ?**
-
-> En pilotage on doit pouvoir switcher de tournoi (pret, en cours). donc peut un items d'affichage qui le permette serait bien. Et un visuel sur le tournoi que l'on pilote
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/a04-tournois.md`](tour-1-2026-08-04/a04-tournois.md).

@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli admin · /admin</p>
   <h1><span class="num">A19</span>Pilotage de l'écran de salle</h1>
@@ -37,13 +42,14 @@
 </div>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Durée obligatoire</span>
-      <span class="sous-etiquette">On ne peut pas imposer une vue sans dire pour combien de temps.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">ÉCRAN DE SALLE A</span><span class="fin pas ok">EN LIGNE</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="ecrans">
+    <figcaption><span class="textes"><span class="etiquette">A · Durée obligatoire</span>
+      <span class="sous-etiquette">On ne peut pas imposer une vue sans dire pour combien de temps.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="tete-carte"><span>DÉROULÉ PAR DÉFAUT</span><span class="fin">rotation 20 s</span></div>
           <div class="rang"><span style="flex:1">1 · Affectations du prochain tour</span><span class="pas ok">✓</span></div>
@@ -58,17 +64,18 @@
           <div class="rang"><button class="bouton principal">IMPOSER</button></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Le défaut protège de l'oubli. On peut toujours
     reprendre la main avant la fin — mais on ne peut pas <b>ne pas décider</b>.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Bascule libre</span>
-      <span class="sous-etiquette">On impose, on annule quand on veut.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="titre">ÉCRAN DE SALLE A</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="ecrans">
+    <figcaption><span class="textes"><span class="etiquette">B · Bascule libre</span>
+      <span class="sous-etiquette">On impose, on annule quand on veut.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="rang"><span style="flex:1">Affectations</span><span class="pas marque">EN COURS</span></div>
           <div class="rang"><span style="flex:1">Classement</span><span class="fin bouton auto">Imposer</span></div>
@@ -76,31 +83,34 @@
         </div>
         <button class="bouton discret">Reprendre le déroulé automatique</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">risqué</span> Plus simple, et c'est exactement le scénario que le
     CDC UX met en garde : <b>rien ne rappelle qu'on a pris la main</b>.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">C · Télécommande flottante</span>
-      <span class="sous-etiquette">Un bandeau discret présent sur tous les écrans admin.</span></figcaption>
-    <div class="ui">
-      <div class="barre" style="justify-content:space-between">
-        <span style="font-size:12px">📺 Salle A · <strong>Affectations</strong></span>
-        <span class="second" style="font-size:11px">Classement · Podium · Auto</span></div>
-      <div class="corps serre"><div class="carte"><div class="rang"><span class="faible">— écran admin courant —</span></div></div></div>
-    </div>
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="ecrans">
+    <figcaption><span class="textes"><span class="etiquette">C · Télécommande flottante</span>
+      <span class="sous-etiquette">Un bandeau discret présent sur tous les écrans admin.</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile"><div class="carte"><div class="rang"><span class="faible">— écran admin courant —</span></div></div></div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">à combiner</span> Excellent <b>rappel</b> de l'état courant,
     trop étroit pour régler une durée. Utile en complément de A.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Plusieurs écrans, plusieurs déroulés</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Deux écrans aux rôles différents</span></figcaption>
-    <div class="ui">
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="ecrans">
+    <figcaption><span class="textes"><span class="etiquette">Deux écrans aux rôles différents</span></span></figcaption>
+    <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="rang bloc"><div style="font-weight:700">Salle A — près du pas de tir</div>
             <div class="second">Affectations uniquement · pas de rotation</div></div>
@@ -110,10 +120,12 @@
             <div class="second">Classements + podiums · rotation 30 s</div></div>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">gratuit par construction</span> Chaque poste a son jeton, donc
     son déroulé. Un écran pour les archers, un pour le public — <b>sans effort supplémentaire</b>.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -129,5 +141,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

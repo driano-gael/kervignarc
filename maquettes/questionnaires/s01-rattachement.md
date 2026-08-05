@@ -1,69 +1,21 @@
 # S01 · Rattachement du poste
 
 > **Écran** : [S01 — Rattachement du poste](../s01-rattachement.html) · **Appli** : Appli saisie (`/saisie`)
+> **Appareil** : Tablette · 1280 × 800
 > **Rôle** : Le premier geste du matin, fait 30 fois par des bénévoles pressés — et refait à chaque onglet fermé.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](s01-rattachement.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [ ] A — Le QR domine
-- [x] B — Le code court domine
-- [ ] C — Liste des cibles libres
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> en effet je ne suis pas sur que les camera soient toujours accessible.
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [x] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> un pavée de saisies ok mais qui ne laisse pas de caractere non accessible et adapté tablette et telephone.
-
----
-
-## 5. Questions ciblées
-
-**1. Les tablettes du parc ont-elles toutes une caméra utilisable ? (ça décide entre A et B)**
-
-> pas sur
-
-**2. Que se passe-t-il si quelqu'un rattache la mauvaise cible : correction possible par lui-même, ou par toi seul ?**
-
-> possible par lui meme, on doit pouvoir decroché un ecran
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/s01-rattachement.md`](tour-1-2026-08-04/s01-rattachement.md).

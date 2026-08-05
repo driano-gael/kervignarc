@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli publique · /</p>
   <h1><span class="num">P05</span>Tableau de duels</h1>
@@ -27,13 +32,14 @@
 </header>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">A · « Mon chemin »</span>
-      <span class="sous-etiquette">L'arbre réduit à la trajectoire de l'archer, en liste verticale.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">TABLEAU · SH</span><span class="fin champ plein" style="padding:2px 8px;color:#fff;border-color:rgba(255,255,255,.5)">Mon chemin ▾</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">A · « Mon chemin »</span>
+      <span class="sous-etiquette">L'arbre réduit à la trajectoire de l'archer, en liste verticale.</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="carte">
           <div class="rang"><span style="width:38px" class="faible">1/8</span>
             <span style="flex:1">MARTIN <strong>6</strong> — 2 BLANC</span><span class="pas ok">GAGNÉ</span></div>
@@ -44,17 +50,18 @@
         </div>
         <p class="faible" style="margin:0">Bascule vers le tableau complet en haut à droite.</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Cohérent avec tout le reste de l'appli :
     <b>l'archer est le sujet, la compétition est le contexte</b>.</p>
   </figure>
 
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">B · Arbre complet</span>
-      <span class="sous-etiquette">Défilement horizontal, tour par tour.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">TABLEAU COMPLET</span></div>
-      <div class="corps serre">
+  <figure class="planche" data-appareil="telephone" data-monde="public" data-changer-role="oui">
+    <figcaption><span class="textes"><span class="etiquette">B · Arbre complet</span>
+      <span class="sous-etiquette">Défilement horizontal, tour par tour.</span></span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="mini">QUARTS</div>
         <div class="carte">
           <div class="rang"><span style="flex:1;font-size:12px">MARTIN / DURAND</span><span class="faible">C4</span></div>
@@ -64,10 +71,12 @@
         </div>
         <p class="faible" style="margin:0">→ glisser pour les demi-finales</p>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce peut">nécessaire en second</span> L'arbre en vraies branches ne tient
     pas ; en <b>liste par tour</b>, si. C'est la bonne concession sur mobile.</p>
   </figure>
+
 </div>
 
 <h2 class="section">À trancher</h2>
@@ -85,5 +94,6 @@
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

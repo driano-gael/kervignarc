@@ -1,71 +1,21 @@
 # A07 · Phases — scoring et grain de validation
 
 > **Écran** : [A07 — Phases — scoring et grain de validation](../a07-phases.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : Le grain de validation est une politique de phase, réglée une fois à la configuration, jamais le jour J.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](a07-phases.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [ ] A — Tableau des phases + édition en place
-- [ ] B — Assistant pas à pas par phase
-- [x] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> _(sans réponse)_
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [ ] 🟡 Validé avec les réserves ci-dessous
-- [x] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> la création/gestion d'une phase est assez compliqué et demande des ecran plus détaillé.
-> je voudrais une listes des phases dans un ecrans, avec la possibilité d'en ajouter de nouvelles a partir d'un gabarit de phase.
-> par exemple je peut avoir plusieur phase de type qualification, ou duel qui n'ont pas les meme reglages.
-> Sur chaque ligne du tableau on peut ouvrir une fiche de la phase, qui reprend son titre et ses reglage (nb de serie, volée, fleche, set, ..... suivant le type de phases)
-
----
-
-## 5. Questions ciblées
-
-**1. L'affichage de la charge chiffrée (« ≈ 60 validations, 20 par scoreur ») au moment du choix t'aide-t-il, ou est-ce du bruit ?**
-
-> _(sans réponse)_
-
-**2. Faut-il des gabarits de phases prêts à l'emploi (qualification 2×10 + tableau) pour ne pas tout reconfigurer chaque année ?**
-
-> chaque phase reste une brique qui peut servir d'une années sur l'autre, donc l peut y avoir plusieures phase de meme type mais avec des reglages differents.
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/a07-phases.md`](tour-1-2026-08-04/a07-phases.md).

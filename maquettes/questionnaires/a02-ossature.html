@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Questionnaire A02 · Ossature — rôle, espace, étape — Kervignarc</title>
+<title>Questionnaire A02 · Ossature — trois axes de travail — Kervignarc</title>
 <link rel="stylesheet" href="../assets/systeme.css">
 <link rel="stylesheet" href="../assets/questionnaire.css">
 </head>
@@ -21,13 +21,19 @@
 
 <header class="entete">
   <p class="fil">Questionnaire · Appli admin · /admin</p>
-  <h1><span class="num">A02</span>Ossature — rôle, espace, étape</h1>
-  <p class="chapo">Trois niveaux : le rôle choisit l'écran, l'espace choisit la situation de travail, l'étape dit où on en est.</p>
+  <h1><span class="num">A02</span>Ossature — trois axes de travail</h1>
+  <p class="chapo">Le découpage se fait par nature d'activité : pilotage (temps réel), gestion
+  (administratif), atelier (fabriquer, hors tournoi). L'accueil de l'admin choisit l'axe.</p>
   <p style="margin-top:12px;font-size:14px;color:var(--doc-doux)">
     Remplis ce qui te parle, laisse le reste vide. Un « non » sec est une réponse parfaitement utile —
     c'est même la plus rapide à exploiter. Tes réponses sont conservées dans ce navigateur au fil de la
     frappe ; <strong>« Télécharger le .md »</strong> produit le fichier à déposer dans
     <code>maquettes/questionnaires/</code>.</p>
+  <p style="margin-top:10px;font-size:14px;color:var(--doc-doux)">
+    <strong>Les questions ont changé.</strong> Les précédentes arbitraient entre deux vignettes de 430 px ;
+    l'écran est désormais montré entier, à la taille d'un PC. Le choix de mise en page n'est donc plus la
+    première question — d'abord ce que l'écran donne au premier coup d'œil, ce qui passe sous la ligne de
+    flottaison, ce que vaut l'ossature, et comment l'espace est occupé.</p>
 </header>
 
 <div class="q-actions">
@@ -42,85 +48,15 @@
 
 <div class="q-apercu" id="q-apercu"><pre></pre></div>
 
-<form id="q-form" autocomplete="off">
+<noscript>
+  <div class="note"><p><strong>JavaScript est désactivé.</strong> Le formulaire est construit par
+  <code>assets/questionnaire.js</code> depuis une trame unique : sans lui, la page reste vide. Le gabarit
+  Markdown de ce questionnaire est lisible dans <code>questionnaires/a02-ossature.md</code>.</p></div>
+</noscript>
 
-  <section class="q-bloc">
-    <h2><span class="q-num">1</span>Quel parti pris retiens-tu ?</h2>
-    <p class="q-aide">Les mentions « recommandé » sur la maquette sont mon avis argumenté, pas une décision.</p>
-    <div class="q-choix">
-      <label><input type="radio" name="variante" value="0"><span>A — Accueil à trois portes, identique en permanence</span></label>
-      <label><input type="radio" name="variante" value="1"><span>B — Accueil qui s'efface le jour J (entrée directe dans le Déroulé)</span></label>
-      <label><input type="radio" name="variante" value="-1"><span>Aucun — voir « à refaire » plus bas</span></label>
-    </div>
-    <label class="q-champ">
-      <span>Pourquoi ce choix</span>
-      <em>Ce qui a emporté la décision, même si c'est un détail.</em>
-      <textarea data-champ="pourquoi" rows="3"></textarea>
-    </label>
-    <label class="q-champ">
-      <span>Ce que tu prendrais dans les autres variantes</span>
-      <textarea data-champ="ailleurs" rows="3"></textarea>
-    </label>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">2</span>Verdict</h2>
-    <div class="q-choix">
-      <label><input type="radio" name="verdict" value="0"><span>✅ Validé tel quel — on peut coder ça</span></label>
-      <label><input type="radio" name="verdict" value="1"><span>🟡 Validé avec les réserves ci-dessous</span></label>
-      <label><input type="radio" name="verdict" value="2"><span>🔴 À refaire — l'écran ne répond pas au besoin</span></label>
-    </div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">3</span>Critiques</h2>
-    <p class="q-aide">Hiérarchie, vocabulaire, information manquante, geste pénible, cas réel non couvert.</p>
-    <textarea data-champ="critiques" rows="5"></textarea>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">4</span>Évolutions souhaitées</h2>
-    <p class="q-aide">Ce que tu veux en plus ou en moins. Sans te censurer sur la faisabilité — c'est mon
-    travail de dire ce que ça coûte.</p>
-    <textarea data-champ="evolutions" rows="5"></textarea>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">5</span>Questions ciblées</h2>
-    <p class="q-aide">Ces questions viennent de points que la maquette n'a pas pu trancher seule.</p>
-    <div class="q-ciblee"><p><span class="q-idx">1</span>Les étapes que je propose pour le **Déroulé** (lancer · supervision · validation · bascule · clôture) sont une déduction de ma part : quelles sont les tiennes ?</p><textarea data-question="0" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">2</span>Même question pour les **Résultats** (classements & podiums · comptes · exports & archive) — j'ai regroupé au jugé.</p><textarea data-question="1" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">3</span>Les mots te vont-ils : « espace » pour le niveau 1, « étape » pour le niveau 2, « Résultats » plutôt qu'« Après » ?</p><textarea data-question="2" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">4</span>Dans le Déroulé, on repasse par supervision et validation en boucle toute la journée : « étape » reste-t-il le bon mot, ou faut-il autre chose pour ce niveau-là ?</p><textarea data-question="3" rows="3"></textarea></div>
-    <div class="q-ciblee"><p><span class="q-idx">5</span>Les briques (catégories, tarifs, barèmes) sont le patrimoine du club. Si tu changes un tarif en 2027, le tournoi 2026 archivé doit-il bouger ? (référence) ou rester figé ? (copie à l'assemblage)</p><textarea data-question="4" rows="3"></textarea></div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">6</span>Vocabulaire</h2>
-    <p class="q-aide">Un mot faux à l'écran coûte cher toute la journée. Corrige sans hésiter.</p>
-    <div class="q-vocab">
-      <span class="q-vocab-tete">À l'écran</span><span class="q-vocab-tete">Le bon mot</span>
-    </div>
-    <div class="q-vocab" style="margin-top:6px">
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-      <div class="q-vocab-ligne" style="display:contents">
-        <input type="text" data-vocab="ecran"><input type="text" data-vocab="bon">
-      </div>
-    </div>
-  </section>
-
-  <section class="q-bloc">
-    <h2><span class="q-num">7</span>Ce qui manque complètement</h2>
-    <p class="q-aide">Un écran, un état, un cas que cette maquette ignore.</p>
-    <textarea data-champ="manque" rows="4"></textarea>
-  </section>
-
-</form>
+<!-- Le formulaire est GÉNÉRÉ depuis la trame de questionnaire.js : une section n'est donc
+     décrite qu'à un seul endroit, pour les 36 écrans à la fois. -->
+<form id="q-form" autocomplete="off"></form>
 
 <footer class="pied">
   <span><a href="../index.html">Tous les écrans</a></span>
@@ -128,7 +64,7 @@
   <span class="fin"><a href="a03-accueil-statuts.html">Suivant : A03 · Accueil contextualisé — 7 statuts →</a></span>
 </footer>
 
-<script type="application/json" id="q-modele">{"code": "A02", "titre": "Ossature — rôle, espace, étape", "slug": "a02-ossature", "appli": "Appli admin", "route": "/admin", "role": "Trois niveaux : le rôle choisit l'écran, l'espace choisit la situation de travail, l'étape dit où on en est.", "variantes": ["A — Accueil à trois portes, identique en permanence", "B — Accueil qui s'efface le jour J (entrée directe dans le Déroulé)"], "questions": ["Les étapes que je propose pour le **Déroulé** (lancer · supervision · validation · bascule · clôture) sont une déduction de ma part : quelles sont les tiennes ?", "Même question pour les **Résultats** (classements & podiums · comptes · exports & archive) — j'ai regroupé au jugé.", "Les mots te vont-ils : « espace » pour le niveau 1, « étape » pour le niveau 2, « Résultats » plutôt qu'« Après » ?", "Dans le Déroulé, on repasse par supervision et validation en boucle toute la journée : « étape » reste-t-il le bon mot, ou faut-il autre chose pour ce niveau-là ?", "Les briques (catégories, tarifs, barèmes) sont le patrimoine du club. Si tu changes un tarif en 2027, le tournoi 2026 archivé doit-il bouger ? (référence) ou rester figé ? (copie à l'assemblage)"]}</script>
+<script type="application/json" id="q-modele">{"code":"A02","titre":"Ossature — trois axes de travail","slug":"a02-ossature","appli":"Appli admin","route":"/admin","appareil":"PC · 1600 × 900","role":"Le découpage se fait par nature d'activité : pilotage, gestion, atelier. L'accueil de l'admin choisit l'axe.","variantes":[],"questions":["« Pilotage », « Gestion », « Atelier » sont mes mots, pas les tiens : tu m'as donné les contenus des trois axes, jamais leurs étiquettes. Lesquelles emploierais-tu ?","La navigation du pilotage fait 18 entrées, soit 1 074 px de haut pour 811 px d'écran. Faut-il la raccourcir (regrouper, masquer ce qui ne sert pas aujourd'hui), la laisser défiler, ou lui donner une autre forme ?","Le bandeau de contexte dit : tournoi, statut, date, départ courant, et le fil « axe › écran ». C'est ta demande du 04/08. Maintenant que tu le vois en place — manque-t-il quelque chose, ou dit-il déjà trop ?","L'atelier n'a ni sélecteur de tournoi ni bandeau de contexte (planche C). Est-ce que ça se comprend tout seul en arrivant, ou faut-il l'écrire quelque part à l'écran ?","Le jour J, l'atelier n'a rien à faire dans la journée, alors que la gestion doit rester ouverte (le retardataire de 8 h 50 s'inscrit et paie). Faut-il masquer l'atelier ce jour-là, ou seulement le laisser en dernier ?"]}</script>
 <script src="../assets/questionnaire.js"></script>
 
 </div>

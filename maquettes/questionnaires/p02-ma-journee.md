@@ -1,70 +1,21 @@
 # P02 · Ma journée — maintenant / ensuite
 
 > **Écran** : [P02 — Ma journée — maintenant / ensuite](../p02-ma-journee.html) · **Appli** : Appli publique (`/`)
+> **Appareil** : Téléphone · 390 × 844
 > **Rôle** : L'écran qui porte la promesse : « où je tire, et où je tire ensuite ? », sans défilement.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](p02-ma-journee.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [x] A — Maintenant / Ensuite empilés
-- [ ] B — Une seule carte qui bascule
-- [ ] C — Fil chronologique
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> on peut scroller sur un telephne, donc information en pile ok
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [x] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> a retravailler pour accepter de suivre plusieur archer, 
-> ecran trop personnel, il s'adresse aussi bien au public qu'a un archer.
-
----
-
-## 4. Évolutions souhaitées
-
-> rendre ca uniforme pour le public comme pour l'archer, ecran repliable pour le recapitulatif des information de la journées, on doit pouvoir retrouver tout les tour de toutes les phase joués.
-
----
-
-## 5. Questions ciblées
-
-**1. « Ensuite » doit-il apparaître dès le début de la journée, ou seulement quand l'affectation est certaine ?**
-
-> oui
-
-**2. L'archer doit-il être prévenu (notification, son) quand son affectation change, ou consulte-t-il quand il veut ?**
-
-> non, il regarde son appareil comme un grand
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/p02-ma-journee.md`](tour-1-2026-08-04/p02-ma-journee.md).

@@ -18,6 +18,11 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
   <p class="fil">Appli saisie · <code>/cible</code> · <strong>poste critique</strong></p>
   <h1><span class="num">S02</span>Poste de cible — la grille</h1>
@@ -39,14 +44,14 @@
 </ul>
 
 <h2 class="section">Partis pris</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">A · Grille complète, pavé appelé</span>
-      <span class="sous-etiquette">Les 4 archers visibles, saisie sur la ligne active.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="conn"><span class="point"></span>EN LIGNE</span>
-        <span class="titre">CIBLE 12</span><span class="fin second">Volée 8/12</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">A · Grille complète, pavé appelé</span>
+      <span class="sous-etiquette">Les 4 archers visibles, saisie sur la ligne active.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div style="display:flex;align-items:center;gap:10px">
           <span class="second" style="border-bottom:1px dotted var(--border)">Marqueur : <strong>MARTIN</strong> ▸</span>
           <span class="fin faible">Validation en fin de série</span></div>
@@ -62,18 +67,18 @@
         </div>
         <div class="faible">Cumul série : 214</div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Tout ce qui a été saisi reste <b>lisible par
     les quatre archers</b>. C'est la condition de la contre-vérification réglementaire.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">B · Un archer à la fois</span>
-      <span class="sous-etiquette">« Une action à la fois » poussé à son terme.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="conn"><span class="point"></span></span>
-        <span class="titre">CIBLE 12</span><span class="fin second">V8/12</span></div>
-      <div class="corps">
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">B · Un archer à la fois</span>
+      <span class="sous-etiquette">« Une action à la fois » poussé à son terme.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div style="display:flex;gap:6px">
           <span class="fl" style="flex:1;font-size:11px;padding:7px 0">A ✓</span>
           <span class="fl" style="flex:1;font-size:11px;padding:7px 0">B ✓</span>
@@ -90,18 +95,18 @@
           <span class="fl saisie vide" style="width:54px;font-size:19px">_</span>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce non">écarté</span> Confortable pour le marqueur, mais <b>les autres
     archers ne peuvent plus vérifier</b>. On échange une exigence réglementaire contre du confort individuel.</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">C · Grille + pavé permanent</span>
-      <span class="sous-etiquette">Le pavé ne s'ouvre jamais : il est là, en bas.</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="conn"><span class="point"></span></span>
-        <span class="titre">CIBLE 12</span><span class="fin second">V8/12</span></div>
-      <div class="corps serre">
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">C · Grille + pavé permanent</span>
+      <span class="sous-etiquette">Le pavé ne s'ouvre jamais : il est là, en bas.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="archers" style="gap:4px">
           <div class="arc" style="padding:6px 10px"><span class="pos">A</span><span class="nom" style="font-size:13px">MARTIN</span>
             <span class="fl" style="padding:3px 0">10</span><span class="fl" style="padding:3px 0">9</span><span class="fl" style="padding:3px 0">8</span><span class="somme" style="font-size:14px">27</span></div>
@@ -119,60 +124,78 @@
           <button class="util" style="padding:10px 0">M</button>
         </div>
       </div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">sérieux concurrent</span> Zéro ouverture/fermeture de pavé, donc
     <b>le geste le plus rapide</b>. Mais l'écran est chargé : sur une tablette 8″ la grille devient étroite.</p>
   </figure>
+
 </div>
 
 <h2 class="section">États système <span class="code-sec">les 7 du CDC design §7.2</span></h2>
-<div class="rangee">
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Chargement</span></figcaption>
-    <div class="ui"><div class="barre"><span class="conn"><span class="point"></span></span><span class="titre">CIBLE 12</span></div>
-      <div class="corps"><div class="squelette large"></div><div class="squelette large"></div><div class="squelette large"></div></div></div>
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">Chargement</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile"><div class="squelette large"></div><div class="squelette large"></div><div class="squelette large"></div></div>
+      </div>
+    </div></div></div>
     <p class="verdict">Squelettes à la forme du contenu, pas un sablier centré.</p>
   </figure>
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Vide — avant la 1re volée</span></figcaption>
-    <div class="ui"><div class="barre"><span class="conn"><span class="point"></span></span><span class="titre">CIBLE 12</span><span class="fin second">V1/12</span></div>
-      <div class="corps" style="text-align:center;padding:22px 14px">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">Vide — avant la 1re volée</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile" style="text-align:center;padding:22px 14px">
         <div style="font-weight:700">4 archers sur cette cible</div>
         <p class="second" style="margin:0">MARTIN · DURAND · PETIT · LEROY</p>
-        <button class="bouton principal">Commencer la volée 1</button></div></div>
+        <button class="bouton principal">Commencer la volée 1</button></div>
+      </div>
+    </div></div></div>
     <p class="verdict">Un vide dit <b>ce qui va se passer</b> et propose l'action.</p>
   </figure>
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Hors ligne — la saisie continue</span></figcaption>
-    <div class="ui">
-      <div class="barre alerte"><span class="conn off" style="color:var(--sur-danger)">
-        <span class="point" style="background:var(--sur-danger)"></span>HORS LIGNE</span>
-        <span class="fin" style="font-weight:800">3 volées en attente</span></div>
-      <div class="corps">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">Hors ligne — la saisie continue</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="aplat-alerte forte">HORS LIGNE 3 volées en attente</div>
+        <div class="pile">
         <div class="archers"><div class="arc actif"><span class="pos">B</span><span class="nom">DURAND</span>
           <span class="fl">9</span><span class="fl saisie vide">_</span><span class="fl vide">·</span><span class="somme">9</span></div></div>
         <p class="faible" style="margin:0">Tout est conservé sur la tablette et repartira seul.</p></div>
-    </div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">exigence</span> La barre entière passe en ambre — visible du coin
     de l'œil. <b>La saisie n'est jamais bloquée.</b></p>
   </figure>
+
 </div>
 
-<div class="rangee" style="margin-top:20px">
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Verrouillé — série validée</span></figcaption>
-    <div class="ui"><div class="barre"><span class="conn"><span class="point"></span></span><span class="titre">CIBLE 12</span>
-      <span class="fin verrou">🔒 SÉRIE 1 VALIDÉE</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">Verrouillé — série validée</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="archers"><div class="arc" style="opacity:.7"><span class="pos">A</span><span class="nom">MARTIN</span>
           <span class="fl">10</span><span class="fl">9</span><span class="fl">8</span><span class="somme">27</span></div></div>
         <p class="faible" style="margin:0">Validé par LE GALL Anne à 10 h 44.</p>
-        <button class="bouton discret">Demander une correction</button></div></div>
+        <button class="bouton discret">Demander une correction</button></div>
+      </div>
+    </div></div></div>
     <p class="verdict">Le verrou <b>nomme qui a validé</b> : c'est la trace de la seconde marque.</p>
   </figure>
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Conflit — correction concurrente</span></figcaption>
-    <div class="ui"><div class="corps">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">Conflit — correction concurrente</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
       <div class="aplat-alerte">▲ Volée 8 modifiée ailleurs</div>
       <div class="carte">
         <div class="tete-carte"><span>PETIT · FLÈCHE 3</span></div>
@@ -180,48 +203,61 @@
         <div class="rang"><span class="second" style="flex:1">Corrigé par le scoreur</span><span style="font-weight:800">9</span></div>
       </div>
       <button class="bouton principal">Garder la correction</button>
-      <button class="bouton discret">Conserver ma saisie</button></div></div>
+      <button class="bouton discret">Conserver ma saisie</button></div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">écran manquant du CDC</span> Sans lui, <b>la dernière écriture
     gagne en silence</b> et personne ne le sait.</p>
   </figure>
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Erreur récupérable</span></figcaption>
-    <div class="ui"><div class="corps">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">Erreur récupérable</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
       <div class="aplat-alerte">▲ Envoi impossible <span class="impact">3 essais</span></div>
       <p class="second" style="margin:0">La volée est conservée. Nouvel essai dans 15 s.</p>
-      <button class="bouton">Réessayer maintenant</button></div></div>
+      <button class="bouton">Réessayer maintenant</button></div>
+      </div>
+    </div></div></div>
     <p class="verdict">Récupérable = l'utilisateur n'a <b>rien</b> à faire, mais il peut forcer.</p>
   </figure>
+
 </div>
 
 <h2 class="section">Thèmes <span class="code-sec">le piège que la charte a mesuré</span></h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Sombre — référence</span>
-      <span class="sous-etiquette">Alerte ambre #FFB000 · 9,22:1</span></figcaption>
-    <div class="ui">
-      <div class="barre"><span class="conn"><span class="point"></span>EN LIGNE</span><span class="titre">CIBLE 12</span></div>
-      <div class="corps">
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette">
+    <figcaption><span class="textes"><span class="etiquette">Sombre — référence</span>
+      <span class="sous-etiquette">Alerte ambre #FFB000 · 9,22:1</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="pile">
         <div class="archers"><div class="arc actif"><span class="pos">C</span><span class="nom">PETIT</span>
           <span class="fl">10</span><span class="fl">10</span><span class="fl saisie vide">_</span><span class="somme">20</span></div></div>
         <div class="aplat-alerte">▲ Volée 7 non validée <span class="impact">6 mn</span></div>
         <button class="bouton valider">VALIDER LA VOLÉE — 27 pts</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
   </figure>
-  <figure class="variante">
-    <figcaption><span class="etiquette">Clair — déclinaison</span>
-      <span class="sous-etiquette">L'ambre <b>doit</b> devenir #9F6D00 : #FFB000 tombe à 1,83:1 sur blanc.</span></figcaption>
-    <div class="ui clair">
-      <div class="barre"><span class="conn"><span class="point"></span>EN LIGNE</span><span class="titre">CIBLE 12</span></div>
-      <div class="corps">
+
+  <figure class="planche" data-appareil="tablette" data-monde="tablette" data-theme-clair="">
+    <figcaption><span class="textes"><span class="etiquette">Clair — déclinaison</span>
+      <span class="sous-etiquette">L'ambre <b>doit</b> devenir #9F6D00 : #FFB000 tombe à 1,83:1 sur blanc.</span></span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui clair">
+      <div class="ecran">
+        <div class="pile">
         <div class="archers"><div class="arc actif"><span class="pos">C</span><span class="nom">PETIT</span>
           <span class="fl">10</span><span class="fl">10</span><span class="fl saisie vide">_</span><span class="somme">20</span></div></div>
         <div class="aplat-alerte">▲ Volée 7 non validée <span class="impact">6 mn</span></div>
         <button class="bouton valider">VALIDER LA VOLÉE — 27 pts</button>
       </div>
-    </div>
+      </div>
+    </div></div></div>
   </figure>
+
 </div>
 <p class="verdict" style="max-width:78ch"><span class="pouce oui">à retenir</span> Un token sémantique
 <b>n'est pas une couleur, c'est une paire</b>. Si le clair réutilisait l'ambre du sombre, l'alerte deviendrait
@@ -243,5 +279,6 @@ tablettes seulement. Le pire type de bug : celui qui ne se reproduit pas chez to
 </footer>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

@@ -1,68 +1,21 @@
 # A12 · Postes et jetons — rattachement, révocation
 
 > **Écran** : [A12 — Postes et jetons — rattachement, révocation](../a12-postes-jetons.html) · **Appli** : Appli admin (`/admin`)
+> **Appareil** : PC · 1600 × 900
 > **Rôle** : L'identité d'un poste est le jeton, pas l'IP : ~30 tablettes personnelles sur un wifi de gymnase.
 >
-> Rempli le 04/08/2026.
+> **Pas encore rempli.**
 
 ---
 
-## 1. Quel parti pris retiens-tu ?
+Ce fichier est un **talon**. Pour répondre, ouvre [la feuille de saisie](a12-postes-jetons.html) dans un
+navigateur : elle construit les onze sections du questionnaire, conserve tes réponses au fil de la
+frappe, et « ⬇ Télécharger le .md » produit le fichier qui **remplace celui-ci**.
 
-- [x] A — Liste des postes avec dernier signe de vie
-- [ ] B — Vue plan de salle colorée par état
-- [ ] Aucun — voir « à refaire » plus bas
+Il ne contient pas de gabarit vierge recopié, et c'est délibéré : la trame vit à un seul endroit
+(`assets/questionnaire.js`). La recopier dans 36 fichiers rejouerait la dérive constatée le
+05/08/2026 — le questionnaire d'A02 posait encore les questions de la v2 « rôle, espace, étape »
+quand la maquette était passée en v3 « trois axes de travail ».
 
-**Pourquoi ce choix**
-
-> visible, simple
-
-**Ce que tu prendrais dans les autres variantes**
-
-> _(sans réponse)_
-
----
-
-## 2. Verdict
-
-- [ ] ✅ Validé tel quel — on peut coder ça
-- [x] 🟡 Validé avec les réserves ci-dessous
-- [ ] 🔴 À refaire — l'écran ne répond pas au besoin
-
----
-
-## 3. Critiques
-
-> _(sans réponse)_
-
----
-
-## 4. Évolutions souhaitées
-
-> chaque type d'ecranest sous un bandeau repliable de type, si besoin  d'info (erreur, deconnection, ....), le bandea affiche une icone d'erreur, quand on deplie on peut voir les postes en erreur avec plus de detail., chaque ligne de poste doit avoir un bouton pour affiché qr code et code de racrochement.
-
----
-
-## 5. Questions ciblées
-
-**1. Les QR sont-ils imprimés à l'avance et collés sur les cibles, ou affichés à la demande ?**
-
-> les qrcode peuvent etre imprimé en avance et ou affiché sur l'ecran a la demande.
-
-**2. Que doit-il se passer si une tablette meurt en cours de journée : reprise par une autre tablette en un geste, ou passage obligé par toi ?**
-
-> si une tablette meurt, une autre tablette (ou telephone) doit pouvoir gerer la cible qui n'as plus de tablette.
-
----
-
-## 6. Vocabulaire
-
-| À l'écran | Le bon mot |
-|---|---|
-|  |  |
-
----
-
-## 7. Ce qui manque complètement
-
-> _(sans réponse)_
+Les réponses du **tour 1**, données le 04/08/2026 sur les maquettes en vignettes, sont conservées
+telles quelles dans [`tour-1-2026-08-04/a12-postes-jetons.md`](tour-1-2026-08-04/a12-postes-jetons.md).

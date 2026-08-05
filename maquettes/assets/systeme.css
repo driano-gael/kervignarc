@@ -1,12 +1,18 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Kervignarc — système de maquettage
    ---------------------------------------------------------------------------
-   Deux couches strictement séparées :
+   Trois couches strictement séparées :
 
    1. LE DOCUMENT  (préfixe .doc-*, variables --doc-*)
       La page qui présente les maquettes. Suit le thème du lecteur.
 
-   2. LES MAQUETTES (.ui, variables sans préfixe)
+   2. LES APPAREILS (.planche, .cadre, .appareil)
+      Le cadre physique dans lequel l'écran est rendu : PC 1600×900,
+      tablette 1280×800, vidéoprojecteur 1920×1080, téléphone 390×844.
+      L'écran est DESSINÉ à sa taille réelle, puis RÉDUIT pour tenir dans
+      la page — réduction photographique, jamais de re-mise en page.
+
+   3. LES MAQUETTES (.ui, variables sans préfixe)
       L'application elle-même. Palette FIGÉE, issue de la charte mesurée
       du CDC design §3.3 — elle ne suit PAS le thème du lecteur, sinon on
       ne juge plus rien.
@@ -52,7 +58,10 @@ body {
 a { color:var(--doc-accent); }
 a:focus-visible, button:focus-visible { outline:2px solid var(--doc-accent); outline-offset:2px; }
 
-.page { max-width:1240px; margin:0 auto; padding:0 22px 110px; }
+/* La page s'élargit pour laisser passer un cadre de 1920 px, MAIS la colonne de lecture
+   reste bornée : au-delà de ~78 caractères une ligne cesse d'être lisible. C'est pourquoi
+   `--lisible` borne chaque bloc de texte, au lieu de borner la page entière. */
+.page { max-width:1964px; margin:0 auto; padding:0 22px 110px; --lisible:78ch; }
 
 /* — barre de navigation inter-écrans — */
 .nav-ecran {
@@ -75,7 +84,7 @@ a:focus-visible, button:focus-visible { outline:2px solid var(--doc-accent); out
 /* — en-tête d'écran — */
 .entete { border-bottom:2px solid var(--doc-encre); padding-bottom:22px; }
 .fil { font-family:var(--doc-mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--doc-accent); margin:0 0 10px; }
-h1 { font-size:clamp(26px,4.2vw,38px); line-height:1.08; margin:0 0 12px; letter-spacing:-.02em; font-weight:800; text-wrap:balance; }
+h1 { font-size:clamp(26px,4.2vw,38px); line-height:1.08; margin:0 0 12px; letter-spacing:-.02em; font-weight:800; text-wrap:balance; max-width:24ch; }
 h1 .num { font-family:var(--doc-mono); font-size:.55em; color:var(--doc-doux); font-weight:600; letter-spacing:0; margin-right:10px; vertical-align:.12em; }
 .chapo { max-width:66ch; color:var(--doc-doux); margin:0; font-size:17px; }
 
@@ -105,15 +114,47 @@ ul.exigences { list-style:none; margin:0 0 8px; padding:0; display:grid; gap:10p
 ul.exigences li { padding-left:22px; position:relative; font-size:15px; }
 ul.exigences li::before { content:"▸"; position:absolute; left:4px; color:var(--doc-accent); font-weight:700; }
 
-/* — grille de variantes — */
+/* — grille de variantes — HÉRITÉ, en cours de migration vers .planches / .planche.
+   Les 36 pages ne basculent pas dans le même commit : ces trois règles restent tant qu'une
+   seule page les utilise encore, et disparaissent au dernier lot. */
 .rangee { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; }
 .variante { flex:1 1 320px; min-width:0; max-width:430px; margin:0; }
 .variante.etroit { max-width:340px; }
 .variante > figcaption { margin-bottom:9px; }
+
+/* — pile de planches (le format cible) — */
+/* Les écrans ne sont plus côte à côte : ils s'empilent, chacun à la taille de son appareil.
+   Comparer deux partis pris se fait en faisant défiler, pas en rétrécissant. */
+.planches { display:flex; flex-direction:column; gap:64px; margin-top:22px; }
+.planche { margin:0; }
+.planche > figcaption {
+  display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+  max-width:none; margin-bottom:14px;
+}
+.planche > figcaption > .textes { max-width:var(--lisible); }
+
 .etiquette { font-family:var(--doc-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--doc-encre); font-weight:700; display:block; }
 .sous-etiquette { font-size:13px; color:var(--doc-doux); display:block; margin-top:3px; line-height:1.45; }
+/* Sur une planche l'étiquette n'est plus une légende de vignette mais l'intitulé d'un écran
+   entier : elle doit tenir le poids du cadre posé dessous. */
+.planche > figcaption .etiquette { font-size:15px; letter-spacing:.06em; }
+.planche > figcaption .sous-etiquette { font-size:14px; }
 
-.verdict { font-size:13.5px; margin:11px 0 0; color:var(--doc-doux); line-height:1.5; }
+/* Jeton d'appareil, posé par appareils.js : « PC · 1600 × 900 · affiché à 78 % ».
+   Indispensable — le relecteur doit savoir qu'il regarde une réduction. */
+.jeton-appareil {
+  margin-left:auto; display:inline-flex; align-items:center; gap:10px;
+  font-family:var(--doc-mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--doc-doux); border:1px solid var(--doc-trait); border-radius:3px;
+  padding:3px 9px; background:var(--doc-carte); white-space:nowrap;
+}
+.jeton-appareil button {
+  font:inherit; letter-spacing:inherit; text-transform:inherit;
+  color:var(--doc-accent); background:none; border:0; padding:0; cursor:pointer;
+  border-bottom:1px solid currentColor;
+}
+
+.verdict { font-size:13.5px; margin:11px 0 0; color:var(--doc-doux); line-height:1.5; max-width:var(--lisible); }
 .verdict b { color:var(--doc-encre); }
 .pouce { font-family:var(--doc-mono); font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:2px; margin-right:6px; white-space:nowrap; }
 .pouce.oui { background:#22D3AA22; color:#0C7A61; border:1px solid #22D3AA88; }
@@ -127,12 +168,15 @@ ul.exigences li::before { content:"▸"; position:absolute; left:4px; color:var(
 :root[data-theme="dark"] .pouce.peut { color:#FFB000; }
 
 /* — encadrés — */
-.note { border-left:3px solid var(--doc-accent); background:var(--doc-carte); padding:14px 18px; margin:24px 0; font-size:14.5px; }
+.note { border-left:3px solid var(--doc-accent); background:var(--doc-carte); padding:14px 18px; margin:24px 0; font-size:14.5px; max-width:var(--lisible); }
 .note p { margin:0 0 8px; } .note p:last-child { margin:0; }
 .ref { font-family:var(--doc-mono); font-size:11px; font-weight:700; padding:0 5px; border:1px solid var(--doc-trait); border-radius:2px; white-space:nowrap; background:var(--doc-carte); }
 
 /* — tableaux — */
-.enveloppe { overflow-x:auto; }
+/* Borné comme le texte : un tableau d'argumentation étiré sur 1900 px ne se lit plus.
+   `.enveloppe.large` libère la contrainte pour les grandes tables de répartition (A02). */
+.enveloppe { overflow-x:auto; max-width:var(--lisible); }
+.enveloppe.large { max-width:none; }
 table.tk { border-collapse:collapse; width:100%; font-size:13.5px; margin-top:12px; }
 table.tk th, table.tk td { border-bottom:1px solid var(--doc-trait); padding:8px 14px 8px 0; text-align:left; vertical-align:top; }
 table.tk th { font-family:var(--doc-mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--doc-doux); font-weight:700; }
@@ -144,7 +188,76 @@ table.tk td.num { font-variant-numeric:tabular-nums; font-family:var(--doc-mono)
 .pied .fin { margin-left:auto; }
 
 
-/* ─────────────────────────── 2. MAQUETTES ─────────────────────────── */
+/* ─────────────────────────── 2. APPAREILS ─────────────────────────── */
+/* Un écran se juge dans son cadre. Deux boîtes emboîtées :
+
+     .cadre     — la place que la planche occupe DANS LE DOCUMENT (dimensions réduites)
+     .appareil  — l'écran à sa taille RÉELLE, ramené à l'échelle par transform: scale()
+
+   Pourquoi `transform` et pas la propriété `zoom` : `zoom` refait la mise en page aux
+   dimensions réduites, donc les retours à la ligne et les arrondis sous-pixel ne tombent
+   pas où ils tombent à 100 % — on jugerait une mise en page qui n'existe pas. `transform`
+   est une réduction photographique : mise en page calculée à 1600×900, puis image réduite.
+
+   `transform` ne retire pas l'élément du flux : c'est `.cadre` qui porte la hauteur réduite
+   en calc(), et son overflow:hidden qui mange les pixels non transformés. */
+
+.cadre {
+  --large:1600; --haut:900;   /* pixels CSS de l'appareil réel, SANS unité */
+  --k:.78;                    /* repli statique : ce qu'on voit si appareils.js ne tourne pas */
+  position:relative; margin:0 auto; overflow:hidden;
+  width: calc(var(--large) * var(--k) * 1px);
+  height:calc(var(--haut)  * var(--k) * 1px);
+  border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,.30);
+  background:#000;
+}
+.cadre[data-appareil="tablette"]  { --large:1280; --haut:800;  --k:.92; }
+.cadre[data-appareil="salle"]     { --large:1920; --haut:1080; --k:.65; }
+.cadre[data-appareil="telephone"] { --large:390;  --haut:844;  --k:1;   }
+
+.appareil {
+  width: calc(var(--large) * 1px);
+  height:calc(var(--haut)  * 1px);
+  transform:scale(var(--k)); transform-origin:0 0;
+  overflow:hidden;            /* un appareil ne montre pas ce qui dépasse de son écran */
+  /* NE JAMAIS ajouter will-change:transform ni translateZ(0) ici : ils figent une texture
+     rastérisée à la taille d'origine et le texte devient flou sur les 145 planches. */
+}
+
+/* Bascule « taille réelle », posée sur <html> par appareils.js. */
+:root[data-echelle="reelle"] .cadre { --k:1 !important; }
+:root[data-echelle="reelle"] .planches { overflow-x:auto; }
+
+/* Mode déroulé : le cadre libère sa hauteur et un filet marque où tombe la ligne de
+   flottaison. Pour les écrans intrinsèquement longs (supervision, listes d'inscrits). */
+.cadre[data-deroule] { height:auto; }
+.cadre[data-deroule] .appareil { height:auto; min-height:calc(var(--haut) * 1px); overflow:visible; }
+.cadre[data-deroule]::before {
+  content:"ligne de flottaison";
+  position:absolute; left:0; right:0; top:calc(var(--haut) * var(--k) * 1px);
+  border-top:2px dashed var(--doc-accent); color:var(--doc-accent);
+  font:700 10px/1.9 var(--doc-mono); letter-spacing:.12em; text-transform:uppercase;
+  padding-left:8px; z-index:3; pointer-events:none;
+}
+
+/* Voile bas : dit qu'il y a une suite sous la ligne, sans la montrer. */
+.cadre[data-sous-la-ligne]:not([data-deroule])::after {
+  content:attr(data-sous-la-ligne);
+  position:absolute; inset:auto 0 0 0; height:54px;
+  background:linear-gradient(to top, rgba(0,0,0,.62), transparent);
+  color:#fff; font:700 11px/54px var(--doc-mono); letter-spacing:.12em;
+  text-align:center; pointer-events:none; z-index:2;
+}
+
+/* Sans JavaScript, l'ossature n'est pas construite : on le dit au lieu de laisser croire
+   que l'écran est incomplet par conception. */
+.sans-js {
+  border-left:3px solid var(--doc-accent); background:var(--doc-carte);
+  padding:12px 16px; margin:18px 0; font-size:14px; max-width:var(--lisible);
+}
+
+
+/* ─────────────────────────── 3. MAQUETTES ─────────────────────────── */
 /* Thème sombre = RÉFÉRENCE de la charte (DV-02) : #1D1D1B est le fond de la
    banderole du club. Toutes les valeurs sont mesurées (ratio sur #1D1D1B). */
 
@@ -169,9 +282,19 @@ table.tk td.num { font-variant-numeric:tabular-nums; font-family:var(--doc-mono)
 
   background:var(--surface-0); color:var(--text);
   border:1px solid var(--border-subtle); border-radius:6px; overflow:hidden;
-  font-family:var(--ui); font-size:15px; line-height:1.4;
+  font-family:var(--ui); font-size:16px; line-height:1.4;
   font-variant-numeric:tabular-nums;
   box-shadow:0 6px 22px rgba(0,0,0,.28);
+}
+/* 16 px, comme le `body` du vrai produit. À 15 px la maquette montrait une densité
+   flatteuse qui n'existe pas. */
+
+/* Dans un appareil, le .ui EST l'écran : il le remplit, et c'est le cadre qui porte le
+   contour et l'ombre. Sinon on verrait le bord d'une carte flotter dans un écran. */
+.appareil > .ui {
+  width:100%; height:100%;
+  border:0; border-radius:0; box-shadow:none;
+  display:flex; flex-direction:column;
 }
 
 /* Thème clair — déclinaison complète, pas un mode dégradé.
@@ -201,20 +324,142 @@ table.tk td.num { font-variant-numeric:tabular-nums; font-family:var(--doc-mono)
 .ui .barre .fin { margin-left:auto; }
 .ui .titre { font-weight:800; letter-spacing:.02em; font-size:15px; }
 .ui .corps { padding:14px; display:flex; flex-direction:column; gap:12px; }
+/* Dans un écran plein, le rembourrage est déjà porté par `.app` : la pile n'apporte que
+   l'empilement et le pas vertical. C'est ce que devient un ancien `.corps` à la conversion. */
+.ui .pile { display:flex; flex-direction:column; gap:14px; }
+.ui .pile.serre { gap:9px; }
 .ui .corps.serre { gap:8px; padding:10px; }
 .ui .faible { color:var(--text-muted); font-size:12.5px; }
 .ui .second { color:var(--text-secondary); font-size:13px; }
 .ui .fin { margin-left:auto; }
 .mini { font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-muted); font-weight:700; }
 
-/* -- sidebar admin -- */
-.colonnes { display:grid; grid-template-columns:180px minmax(0,1fr); }
-.colonnes.icones { grid-template-columns:44px minmax(0,1fr); }
-.flanc { border-right:1px solid var(--border-subtle); background:var(--surface-1); padding:10px 8px; display:flex; flex-direction:column; gap:3px; font-size:12.5px; }
-.flanc .groupe { color:var(--text-muted); font-size:10px; letter-spacing:.12em; text-transform:uppercase; margin-top:10px; font-weight:700; }
-.flanc .item { padding:4px 8px; border-radius:3px; display:flex; align-items:center; gap:8px; }
-.flanc .item .fin { margin-left:auto; }
-.flanc .item.actif { background:var(--surface-2); box-shadow:inset 2px 0 0 var(--brand-border); font-weight:700; }
+/* ─── OSSATURE DE L'APPLICATION ───
+   Transcrite de `frontend/src/app/App.css` et `features/admin/CoquilleAdmin.tsx` au
+   05/08/2026. Les noms de classes sont ceux du produit, volontairement : une critique
+   portée ici se transpose directement en correction là-bas.
+
+   Les anciennes `.colonnes` / `.flanc` ont été SUPPRIMÉES : elles décrivaient le modèle
+   à sidebar v1, refusé le 30/07 (« la sidebar fait vivre le tournoi sous tous ses états
+   en même temps »), et n'étaient utilisées par aucune des 36 pages.
+
+   Trois jetons posés par `data-monde`, comme dans le produit. */
+.ui .app {
+  --largeur-app:64rem; --respiration:24px;
+  width:100%; max-width:var(--largeur-app); margin:0 auto; padding:var(--respiration);
+  flex:1; display:flex; flex-direction:column; min-height:0;
+}
+.ui[data-monde="admin"]    .app { --largeur-app:100rem; --respiration:32px; }  /* 1600 px */
+.ui[data-monde="tablette"] .app { --largeur-app:72rem; }                       /* 1152 px */
+.ui[data-monde="scoreur"]  .app { --largeur-app:60rem; }                       /*  960 px */
+.ui[data-monde="public"]   .app { --largeur-app:46rem; }                       /*  736 px */
+.ui[data-monde="salle"]    .app { --largeur-app:none; --respiration:0px; }
+.ui[data-monde="salle"] .app__entete { display:none; }
+
+/* -- bande d'en-tête d'application -- */
+.ui .app__entete {
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  margin:calc(-1 * var(--respiration)) calc(-1 * var(--respiration)) 0;
+  padding:16px var(--respiration);
+  background:var(--surface-1); border-bottom:1px solid var(--border-subtle);
+}
+.ui .app__titre { margin:0; font-size:28px; letter-spacing:-.5px; font-weight:800; }
+.ui .app__actions { display:inline-flex; align-items:center; gap:16px; }
+.ui .app__changer-role { color:var(--text-secondary); font-size:14px; }
+.ui .app__contenu { padding-top:var(--respiration); flex:1; min-height:0; }
+.ui .app__contenu--colonnes { display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--respiration); }
+
+/* -- coquille admin : flexbox, pas de grille, pas de topbar dans la coquille -- */
+.ui .coquille { display:flex; align-items:flex-start; gap:var(--respiration); min-height:0; }
+.ui .coquille__nav {
+  flex:0 0 17rem;                    /* 272 px — valeur du produit */
+  display:flex; flex-direction:column; gap:8px;
+}
+.ui .coquille__retour {
+  align-self:flex-start; min-height:44px; padding:8px 10px;
+  font-size:13px; color:var(--text-muted); background:none; border:0; border-radius:8px;
+  display:flex; align-items:center;
+}
+.ui .coquille__axe {
+  margin:0 0 4px; padding:0 10px;
+  font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--brand-text);
+}
+.ui .coquille__recherche,
+.ui .coquille__selecteur {
+  display:flex; flex-direction:column; gap:6px;
+  padding-bottom:12px; border-bottom:1px solid var(--border-subtle);
+}
+.ui .coquille__selecteur .rang-select { display:flex; align-items:center; gap:8px; }
+.ui .coquille__liens { margin:2px 0 8px; padding:0; list-style:none; display:flex; flex-direction:column; gap:2px; }
+.ui .coquille__lien {
+  width:100%; min-height:44px; padding:8px 12px;
+  font:inherit; text-align:left; color:var(--text);
+  background:none; border:0; border-radius:8px;
+  display:flex; align-items:center; gap:8px;
+}
+/* L'entrée active est un APLAT de la marque, texte blanc dessus (DV-04 : le rouge du club
+   est une surface, jamais un accent). Le produit y pose `color: var(--bg)` — divergence
+   assumée ici, la charte mesurée l'emporte. */
+.ui .coquille__lien--actif { background:var(--brand-surface); color:#FFFFFF; font-weight:600; }
+/* Destination maquettée qui n'existe pas encore dans le code livré. */
+.ui .coquille__lien--absent { color:var(--text-muted); border:1px dashed var(--border-subtle); }
+.ui .coquille__lien--absent .marque-absente { margin-left:auto; font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; }
+.ui .coquille__contenu { flex:1 1 auto; min-width:0; }
+
+/* -- bandeau de contexte (A02, retour du 04/08/2026) -- */
+.ui .bandeau-contexte {
+  display:flex; flex-wrap:wrap; align-items:center; gap:12px;
+  margin-bottom:16px; padding:10px 14px;
+  background:var(--surface-1); border:1px solid var(--border-subtle); border-radius:10px;
+}
+.ui .bandeau-contexte__tournoi { color:var(--text); font-size:17px; font-weight:700; }
+.ui .bandeau-contexte__date { color:var(--text-secondary); font-size:14px; }
+.ui .bandeau-contexte__depart {
+  padding:2px 10px; border:1px solid var(--border); border-radius:999px;
+  color:var(--text); font-weight:600; font-size:14px;
+}
+.ui .bandeau-contexte__fil { margin-left:auto; color:var(--text-secondary); font-size:13px; }
+
+/* -- aide d'écran, repliée par défaut -- */
+.ui .aide-ecran {
+  margin-bottom:16px; padding:8px 12px; font-size:13px; color:var(--text-secondary);
+  border:1px solid var(--border-subtle); border-radius:8px; background:transparent;
+}
+
+/* -- onglets (public) -- */
+.ui .onglets { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0; padding:0; list-style:none; }
+.ui .onglet { padding:8px 12px; min-height:44px; display:flex; align-items:center; border:1px solid var(--border-subtle); border-radius:8px; font-size:14px; color:var(--text-secondary); }
+.ui .onglet--actif { background:var(--brand-surface); border-color:var(--brand-surface); color:#FFFFFF; font-weight:600; }
+
+/* -- écran de salle -- */
+.ui .salle__bandeau { display:flex; align-items:center; gap:16px; padding:12px 20px; background:var(--surface-1); border-bottom:1px solid var(--border-subtle); font-size:15px; }
+.ui .salle__bandeau .fin { margin-left:auto; }
+.ui .salle__scene { flex:1; padding:20px; display:flex; flex-direction:column; gap:12px; min-height:0; }
+
+/* -- saisie (cible) -- */
+.ui .saisie__entete { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.ui .saisie__grille { display:flex; flex-direction:column; gap:10px; }
+
+/* Le défilement se fait LÀ OÙ L'APPLI LE FAIT vraiment : dans le produit, c'est **la page
+   entière** qui défile — pas la colonne de contenu. Le cadre joue donc le rôle de fenêtre,
+   et c'est le `.ui` qui défile. La nuance n'est pas cosmétique : elle décide de ce qui reste
+   à l'écran quand on descend, et donc de ce qu'on peut encore atteindre. */
+.appareil > .ui { overflow:auto; }
+.ui .coquille__nav { position:sticky; top:var(--respiration); }
+.ui .bandeau-contexte { position:sticky; top:0; z-index:2; }
+
+/* -- panneau latéral DE CONTENU --
+   À ne pas confondre avec la navigation d'axe : trois écrans ont un second volet *dans* leur
+   contenu — l'aperçu d'identité (A05), l'édition d'une brique (A06), la liste des non placés
+   (A11). Ils utilisaient `.flanc`, la classe de la sidebar v1 refusée, avec des largeurs
+   calibrées pour une vignette de 430 px. */
+.ui .avec-panneau { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:16px; align-items:start; }
+.ui .panneau {
+  background:var(--surface-1); border:1px solid var(--border-subtle); border-radius:6px;
+  padding:14px; display:flex; flex-direction:column; gap:9px; font-size:13.5px;
+}
+.ui .panneau .groupe { color:var(--text-muted); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; }
 
 /* -- cartes & listes -- */
 .carte { background:var(--surface-1); border:1px solid var(--border-subtle); border-radius:5px; }
@@ -306,4 +551,12 @@ table.tk td.num { font-variant-numeric:tabular-nums; font-family:var(--doc-mono)
   body { background:#fff; }
   .nav-ecran { position:static; backdrop-filter:none; }
   .ui { box-shadow:none; }
+  /* --k est calculé sur la fenêtre : il est faux au moment d'imprimer. On le fige sur
+     une largeur de page A4 paysage (~1050 px utiles à 96 dpi). */
+  .cadre { --k:.65 !important; box-shadow:none; break-inside:avoid; }
+  .cadre[data-appareil="tablette"]  { --k:.80 !important; }
+  .cadre[data-appareil="salle"]     { --k:.54 !important; }
+  .cadre[data-appareil="telephone"] { --k:1 !important; }
+  .planche { break-inside:avoid; }
+  .jeton-appareil button { display:none; }
 }
