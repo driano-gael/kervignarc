@@ -48,24 +48,91 @@
       <span class="sous-etiquette">Toutes les phases visibles, la charge chiffrée sous le choix.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span class="mini">Déroulé du tournoi</span>
+          <span class="pas neutre">2 phases · 156 archers</span>
+          <span class="fin"><span class="bouton auto">Ajouter une phase</span></span>
+        </div>
+
         <div class="carte">
-          <div class="tete-carte"><span style="flex:1">PHASE</span><span style="width:100px">SCORING</span><span style="width:90px">VALIDATION</span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">Qualification</span><span style="width:100px" class="second">points cumulés</span><span style="width:90px" class="second">fin de série</span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">1/8 de finale</span><span style="width:100px" class="second">set-system</span><span style="width:90px" class="second">fin de duel</span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">1/4 de finale</span><span style="width:100px" class="second">set-system</span><span style="width:90px" class="second">fin de duel</span></div>
+          <div class="tete-carte"><span style="width:40px">#</span><span style="flex:1">PHASE</span>
+            <span style="width:150px">SCORING</span><span style="width:150px">VALIDATION</span>
+            <span style="width:130px">PARTICIPANTS</span><span style="width:190px">CHARGE SCOREURS</span></div>
+
+          <div class="rang" style="background:var(--surface-2)">
+            <span style="width:40px" class="faible">1</span>
+            <span style="flex:1;font-weight:700">Qualification</span>
+            <span style="width:150px" class="second">points cumulés</span>
+            <span style="width:150px" class="second">fin de série</span>
+            <span style="width:130px" class="second">156 archers</span>
+            <span style="width:190px"><span class="pas ok">≈ 60 / départ — confortable</span></span></div>
+
+          <div class="rang">
+            <span style="width:40px" class="faible">2</span>
+            <span style="flex:1;font-weight:700">Élimination directe</span>
+            <span style="width:150px" class="second">set-system</span>
+            <span style="width:150px" class="second">fin de duel</span>
+            <span style="width:130px" class="second">32 qualifiés</span>
+            <span style="width:190px"><span class="pas att">8 en simultané — pic court</span></span></div>
         </div>
-        <div class="carte marquee">
-          <div class="tete-carte"><span>QUALIFICATION</span></div>
-          <div class="rang"><span style="width:110px" class="second">Scoring</span><span class="champ plein" style="flex:1">points cumulés ▾</span></div>
-          <div class="rang"><span style="width:110px" class="second">Validation</span><span class="champ plein" style="flex:1">fin de série ▾</span></div>
-          <div class="rang bloc"><span class="faible">≈ 60 validations par départ · 20 par scoreur — <strong>confortable</strong></span></div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang">
+          <span class="second" style="flex:1"><b>Une seule phase porte tout le tableau.</b> « 1/8 », « 1/4 »,
+          demi-finale et finale ne sont pas des phases : ce sont des <b>tours</b> à l'intérieur de l'élimination
+          directe, avec les byes et la cascade de placement. Les régler séparément n'aurait pas de sens — le
+          grain de validation est le même du premier tour à la finale.</span></div></div>
+
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:16px">
+          <div class="carte marquee">
+            <div class="tete-carte">Qualification <span class="fin faible">en cours de réglage</span></div>
+            <div class="rang"><span style="width:150px" class="second">Scoring</span>
+              <span class="champ plein" style="flex:1">points cumulés ▾</span></div>
+            <div class="rang"><span style="width:150px" class="second">Validation</span>
+              <span class="champ plein" style="flex:1">fin de série ▾</span></div>
+            <div class="rang"><span style="width:150px" class="second">Séries</span>
+              <span class="champ plein" style="flex:1">2 séries de 6 volées</span></div>
+            <div class="rang"><span style="width:150px" class="second">Flèches par volée</span>
+              <span class="champ plein" style="flex:1">3</span></div>
+            <div class="rang"><span style="width:150px" class="second">Départage</span>
+              <span class="champ plein" style="flex:1">nombre de 10, puis de 9 ▾</span></div>
+            <div class="rang bloc" style="background:var(--surface-2)">
+              <div class="mini" style="margin-bottom:6px">Ce que ce grain coûte aux scoreurs</div>
+              <div style="display:flex;align-items:baseline;gap:12px">
+                <span style="font-size:30px;font-weight:800">≈ 60</span>
+                <span class="second">validations par départ · <b>20 par scoreur</b> avec 3 scoreurs</span></div>
+              <div class="second" style="margin-top:6px">Une validation toutes les 2 minutes environ.
+                <b>Confortable.</b></div></div>
+          </div>
+
+          <div class="carte">
+            <div class="tete-carte">Si on changeait le grain <span class="fin faible">simulation</span></div>
+            <div class="rang"><span class="pas neutre">○</span><span style="flex:1">Chaque volée</span>
+              <span class="second" style="width:70px;text-align:right">≈ 360</span>
+              <span class="pas att" style="width:150px">une toutes les 20 s</span></div>
+            <div class="rang"><span class="pas neutre">○</span><span style="flex:1">Toutes les 2 volées</span>
+              <span class="second" style="width:70px;text-align:right">≈ 180</span>
+              <span class="pas att" style="width:150px">intenable</span></div>
+            <div class="rang" style="background:var(--surface-2)"><span class="pas ok">●</span>
+              <span style="flex:1;font-weight:700">Fin de série</span>
+              <span class="second" style="width:70px;text-align:right">≈ 60</span>
+              <span class="pas ok" style="width:150px">confortable</span></div>
+            <div class="rang"><span class="pas neutre">○</span><span style="flex:1">Fin de départ</span>
+              <span class="second" style="width:70px;text-align:right">≈ 30</span>
+              <span class="pas att" style="width:150px">erreurs découvertes trop tard</span></div>
+            <div class="rang bloc"><span class="faible">Chiffré sur <b>30 cibles, jusqu'à 2 couloirs de tir</b>,
+              3 scoreurs, 2 séries de 6 volées. Change avec le plan de salle.</span></div>
+          </div>
         </div>
-      </div>
       </div>
     </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> La ligne de charge <b>change quand on change
-    le grain</b> : c'est ce qui rend le mauvais choix impossible à faire par inadvertance.</p>
+    le grain</b> : c'est ce qui rend le mauvais choix impossible à faire par inadvertance. C'est le seul réglage
+    de toute la préparation qui peut rendre la journée intenable.</p>
+    <p class="verdict"><span class="pouce peut">correction apportée en remplissant</span> La planche listait
+    « 1/8 de finale » et « 1/4 de finale » comme <b>des phases</b>. C'est faux : <code>backend/domain/tableau.py</code>
+    ne connaît qu'<b>une</b> phase d'élimination directe, qui porte tout le tableau — les niveaux sont des
+    <code>tour</code> de match. La table le dit maintenant, et un encadré explique pourquoi ça ne peut pas se
+    régler tour par tour.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="phases">
@@ -73,19 +140,61 @@
       <span class="sous-etiquette">Une phase à la fois, questions guidées.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="second">Quand le scoreur valide-t-il ?</div>
-        <div class="carte">
-          <div class="rang"><span class="pas neutre">○</span><span style="flex:1">Chaque volée</span><span class="fin faible">~360 · une toutes les 20 s</span></div>
-          <div class="rang"><span class="pas neutre">○</span><span style="flex:1">Toutes les 2 volées</span><span class="fin faible">~180 · intenable</span></div>
-          <div class="rang" style="background:var(--surface-2)"><span class="pas ok">●</span><span style="flex:1;font-weight:700">Fin de série</span><span class="fin faible">~60 · confortable</span></div>
+        <div style="max-width:820px;margin:0 auto">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+            <span class="pas ok">1 · Phases</span><span class="faible">›</span>
+            <span class="pas marque">2 · Validation</span><span class="faible">›</span>
+            <span class="pas neutre">3 · Séries</span><span class="faible">›</span>
+            <span class="pas neutre">4 · Départage</span><span class="faible">›</span>
+            <span class="pas neutre">5 · Récapitulatif</span>
+            <span class="fin faible">étape 2 sur 5</span></div>
+
+          <p style="font-size:26px;font-weight:800;margin:0 0 6px">Quand le scoreur valide-t-il ?</p>
+          <p class="second" style="margin:0 0 20px">Ce choix décide de la charge de travail des scoreurs pendant
+          toute la qualification. Il ne se change pas le jour J.</p>
+
+          <div class="carte">
+            <div class="rang" style="padding:16px"><span class="pas neutre">○</span>
+              <span style="flex:1"><span style="font-weight:700;display:block">Chaque volée</span>
+                <span class="faible">Le scoreur valide après chaque volée de 3 flèches.</span></span>
+              <span class="second" style="width:90px;text-align:right">≈ 360</span>
+              <span class="pas att" style="width:180px">une toutes les 20 s — ils ne font plus que ça</span></div>
+            <div class="rang" style="padding:16px"><span class="pas neutre">○</span>
+              <span style="flex:1"><span style="font-weight:700;display:block">Toutes les 2 volées</span>
+                <span class="faible">Un passage sur deux.</span></span>
+              <span class="second" style="width:90px;text-align:right">≈ 180</span>
+              <span class="pas att" style="width:180px">une toutes les 40 s — intenable</span></div>
+            <div class="rang" style="padding:16px;background:var(--surface-2)"><span class="pas ok">●</span>
+              <span style="flex:1"><span style="font-weight:700;display:block">Fin de série</span>
+                <span class="faible">Le scoreur valide les 6 volées d'un coup, à la fin de chaque série.</span></span>
+              <span class="second" style="width:90px;text-align:right">≈ 60</span>
+              <span class="pas ok" style="width:180px">20 par scoreur — confortable</span></div>
+            <div class="rang" style="padding:16px"><span class="pas neutre">○</span>
+              <span style="flex:1"><span style="font-weight:700;display:block">Fin de départ</span>
+                <span class="faible">Une seule validation par archer, tout à la fin.</span></span>
+              <span class="second" style="width:90px;text-align:right">≈ 30</span>
+              <span class="pas att" style="width:180px">une erreur se découvre 2 h trop tard</span></div>
+          </div>
+
+          <div class="carte info" style="margin-top:16px"><div class="rang">
+            <span class="second">Chiffré sur ce tournoi : <b>30 cibles, jusqu'à 2 couloirs de tir</b>,
+            3 scoreurs, 2 séries de 6 volées. Si le plan de salle change, ces nombres changent.</span></div></div>
+
+          <div style="display:flex;gap:12px;margin-top:20px">
+            <span class="bouton auto discret">← Précédent</span>
+            <span class="bouton auto principal">Suivant — les séries</span>
+            <span class="fin faible" style="margin-left:auto;align-self:center">Vous pourrez tout revoir à
+            l'étape 5</span></div>
         </div>
-        <button class="bouton principal">Suivant</button>
-      </div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce peut">bon pour la 1re fois</span> Pédagogique, mais on configure les
-    phases <b>une fois par an</b> et on les ajuste souvent : un assistant devient vite un péage.</p>
+    <p class="verdict"><span class="pouce peut">bon pour la 1re fois</span> Pédagogique, et à cette taille chaque
+    option peut porter <b>sa phrase d'explication</b> en plus de son chiffre — ce qui n'était pas possible en
+    vignette. « Une erreur se découvre 2 h trop tard » vaut mieux que « intenable ».</p>
+    <p class="verdict"><span class="pouce non">mais</span> On configure les phases <b>une fois par an</b> et on
+    les ajuste souvent. Cinq étapes pour changer un seul réglage, c'est un péage — et le plein écran le rend
+    littéral : la frise d'étapes occupe le haut de l'écran pour dire qu'on est au 2 sur 5 d'une opération qui,
+    dans la planche A, tient dans un menu déroulant.</p>
   </figure>
 
 </div>

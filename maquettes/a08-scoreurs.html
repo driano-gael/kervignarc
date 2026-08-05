@@ -49,19 +49,67 @@
       <span class="sous-etiquette">Qui est prévu, qui est connecté.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
-          <div class="tete-carte"><span style="flex:1">NOM</span><span style="width:90px">ÉTAT</span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">LE GALL Anne</span><span style="width:90px"><span class="pas ok">EN LIGNE</span></span></div>
-          <div class="rang"><span style="flex:1;font-weight:700">MOREAU Yves</span><span style="width:90px"><span class="pas ok">EN LIGNE</span></span></div>
-          <div class="rang"><span style="flex:1">RIOU Claire</span><span style="width:90px"><span class="pas neutre">ATTENDUE</span></span></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span class="mini">Scoreurs du tournoi</span>
+          <span class="pas ok">3 en ligne</span><span class="pas neutre">1 attendue</span>
+          <span class="fin" style="display:flex;gap:10px">
+            <span class="bouton auto">Imprimer les accès — 4 QR</span>
+            <span class="bouton auto principal">Ajouter un scoreur</span></span>
         </div>
-        <button class="bouton discret">Imprimer les accès (3 QR)</button>
-      </div>
+
+        <div class="carte">
+          <div class="tete-carte"><span style="flex:1">NOM</span><span style="width:110px">CODE D'ACCÈS</span>
+            <span style="width:120px">ÉTAT</span><span style="width:200px">PÉRIMÈTRE</span>
+            <span style="width:150px">DERNIÈRE VALIDATION</span><span style="width:100px"></span></div>
+
+          <div class="rang"><span style="flex:1;font-weight:700">LE GALL Anne</span>
+            <span style="width:110px" class="second">4K7-2M</span>
+            <span style="width:120px"><span class="pas ok">EN LIGNE</span></span>
+            <span style="width:200px" class="second">cibles 1 à 10 · pas de tir A</span>
+            <span style="width:150px" class="second">il y a 40 s</span>
+            <span style="width:100px"><span class="bouton auto discret">Modifier</span></span></div>
+
+          <div class="rang"><span style="flex:1;font-weight:700">MOREAU Yves</span>
+            <span style="width:110px" class="second">9R3-8T</span>
+            <span style="width:120px"><span class="pas ok">EN LIGNE</span></span>
+            <span style="width:200px" class="second">cibles 11 à 20 · pas de tir A</span>
+            <span style="width:150px" class="second">il y a 1 min 10</span>
+            <span style="width:100px"><span class="bouton auto discret">Modifier</span></span></div>
+
+          <div class="rang"><span style="flex:1;font-weight:700">TANGUY Hervé</span>
+            <span style="width:110px" class="second">2P6-5C</span>
+            <span style="width:120px"><span class="pas ok">EN LIGNE</span></span>
+            <span style="width:200px" class="second">cibles 21 à 30 · pas de tir B</span>
+            <span style="width:150px" class="second">il y a 25 s</span>
+            <span style="width:100px"><span class="bouton auto discret">Modifier</span></span></div>
+
+          <div class="rang"><span style="flex:1;color:var(--text-muted)">RIOU Claire</span>
+            <span style="width:110px" class="second">7B1-4X</span>
+            <span style="width:120px"><span class="pas neutre">ATTENDUE</span></span>
+            <span style="width:200px" class="faible">aucun périmètre</span>
+            <span style="width:150px" class="faible">jamais connectée</span>
+            <span style="width:100px"><span class="bouton auto discret">Modifier</span></span></div>
+        </div>
+
+        <div class="carte info" style="margin-top:14px"><div class="rang bloc">
+          <span class="second"><b>Identifié sans compte.</b> Un scoreur n'a ni identifiant ni mot de passe : il
+          entre son code personnel, ou scanne son QR. C'est le mode intermédiaire entre l'admin (mot de passe) et
+          l'archer (anonyme) — assez pour que <b>chaque validation porte un nom</b>, ce qui donne sa valeur
+          réglementaire à la seconde marque.</span></div></div>
+
+        <div class="carte" style="margin-top:14px"><div class="rang">
+          <span class="second" style="flex:1">Un scoreur peut être ajouté <b>à 10 h du matin</b> : il apparaît
+          dans la liste, reçoit un code, et prend son périmètre sans redémarrage ni reconfiguration.</span>
+          <span class="pas ok">aucun blocage</span></div></div>
       </div>
     </div></div></div>
     <p class="verdict"><span class="pouce oui">recommandé</span> Sobre, et suffisant : ce n'est pas un écran
     qu'on regarde longtemps.</p>
+    <p class="verdict"><span class="pouce peut">deux colonnes que la largeur permet, et qui changent l'écran</span>
+    <b>Le périmètre</b> — quelles cibles chacun couvre — répond à la seule question qu'on se pose vraiment ici :
+    « si Claire ne vient pas, qui reprend ses cibles ? ». Et <b>la dernière validation</b> dit sans jugement si
+    quelqu'un est réellement actif ou juste connecté. À confirmer : le périmètre est-il attribué à la main, ou
+    déduit du plan de salle ?</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="scoreurs">
@@ -69,22 +117,68 @@
       <span class="sous-etiquette">Combien chacun a validé, et depuis quand il n'a rien fait.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="pile">
-        <div class="carte">
+        <div class="aplat-alerte forte">▲ Une scoreuse attendue n'est pas venue
+          <span class="impact">10 cibles à répartir · charge +33 % sur les trois autres</span></div>
+
+        <div class="carte" style="margin-top:16px">
+          <div class="tete-carte"><span style="flex:1">NOM</span><span style="width:180px">PÉRIMÈTRE</span>
+            <span style="width:230px">VALIDATIONS DE LA SÉRIE</span><span style="width:130px">EN ATTENTE</span>
+            <span style="width:140px">DERNIÈRE ACTION</span></div>
+
           <div class="rang"><span style="flex:1;font-weight:700">LE GALL Anne</span>
-            <span class="jauge" style="max-width:60px"><span style="width:75%"></span></span><span style="width:30px" class="second">27</span></div>
+            <span style="width:180px" class="second">cibles 1 à 10</span>
+            <div style="width:230px;display:flex;align-items:center;gap:10px">
+              <div class="jauge"><span style="width:75%"></span></div><span class="second">27</span></div>
+            <span style="width:130px"><span class="pas ok">0</span></span>
+            <span style="width:140px" class="second">il y a 40 s</span></div>
+
           <div class="rang"><span style="flex:1;font-weight:700">MOREAU Yves</span>
-            <span class="jauge" style="max-width:60px"><span style="width:90%"></span></span><span style="width:30px" class="second">33</span></div>
+            <span style="width:180px" class="second">cibles 11 à 20</span>
+            <div style="width:230px;display:flex;align-items:center;gap:10px">
+              <div class="jauge"><span style="width:90%"></span></div><span class="second">33</span></div>
+            <span style="width:130px"><span class="pas ok">1</span></span>
+            <span style="width:140px" class="second">il y a 1 min 10</span></div>
+
+          <div class="rang"><span style="flex:1;font-weight:700">TANGUY Hervé</span>
+            <span style="width:180px" class="second">cibles 21 à 30</span>
+            <div style="width:230px;display:flex;align-items:center;gap:10px">
+              <div class="jauge"><span style="width:52%"></span></div><span class="second">19</span></div>
+            <span style="width:130px"><span class="pas att">2</span></span>
+            <span style="width:140px" class="second">il y a 25 s</span></div>
+
           <div class="rang"><span style="flex:1;color:var(--text-muted)">RIOU Claire</span>
-            <span class="fin faible">jamais connectée</span></div>
+            <span style="width:180px" class="pas att">aucun périmètre</span>
+            <span style="width:230px" class="faible">—</span>
+            <span style="width:130px" class="faible">—</span>
+            <span style="width:140px" class="faible">jamais connectée</span></div>
         </div>
-        <div class="aplat-alerte">▲ 1 scoreur attendu absent <span class="impact">charge +50 %</span></div>
-      </div>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px">
+          <div class="carte"><div class="tete-carte">Ce que l'absence coûte</div>
+            <div class="rang"><span style="flex:1">Cibles sans scoreur attitré</span><span class="pas att">0</span></div>
+            <div class="rang"><span style="flex:1">Validations par scoreur, prévu</span><span class="second">15</span></div>
+            <div class="rang"><span style="flex:1">Validations par scoreur, réel</span><span class="pas att">20</span></div>
+            <div class="rang"><span style="flex:1">Délai moyen d'attente</span><span class="second">1 min 40</span></div></div>
+          <div class="carte"><div class="tete-carte">Sorties possibles</div>
+            <div class="rang"><span style="flex:1">Ajouter un scoreur maintenant</span>
+              <span class="bouton auto principal">Ajouter</span></div>
+            <div class="rang"><span style="flex:1">Répartir ses 10 cibles sur les trois autres</span>
+              <span class="bouton auto">Répartir</span></div>
+            <div class="rang"><span style="flex:1">Alléger le grain de validation</span>
+              <span class="bouton auto discret">Voir les phases</span></div>
+            <div class="rang bloc"><span class="faible">Le grain est déjà « fin de série » : l'alléger encore
+              ferait découvrir les erreurs trop tard.</span></div></div>
+        </div>
       </div>
     </div></div></div>
-    <p class="verdict"><span class="pouce peut">à toi de voir</span> Utile pour <b>détecter une absence</b>
-    (l'alerte chiffre l'impact sur les autres). Mais afficher qui en fait le moins entre bénévoles peut être
-    mal pris — c'est une question de culture de club, pas d'ergonomie.</p>
+    <p class="verdict"><span class="pouce peut">à toi de voir</span> Utile pour <b>détecter une absence</b> —
+    l'alerte chiffre l'impact sur les autres. Mais afficher qui en fait le moins entre bénévoles peut être mal
+    pris : c'est une question de culture de club, pas d'ergonomie.</p>
+    <p class="verdict"><span class="pouce oui">ce que le plein écran permet de désamorcer</span> La colonne qui
+    compte n'est pas « combien il en a fait », c'est <b>« combien attendent chez lui »</b> — 2 chez Hervé, 0
+    chez Anne. Elle dit où ça coince <b>sans classer les personnes</b>. Et la place gagnée permet d'afficher les
+    <b>sorties</b> à côté du constat : ajouter quelqu'un, répartir, ou alléger le grain — avec la raison pour
+    laquelle la troisième est déjà exclue.</p>
   </figure>
 
 </div>
