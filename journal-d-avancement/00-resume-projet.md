@@ -506,7 +506,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   connaît) — US **à surface visible**. L'écran de plan de salle avait été **refusé** à la relecture
   des maquettes pour un seul mot : le logiciel appelait « pas de tir » une rangée de cibles et
   « poste » la place d'un archer, alors que « poste » désigne déjà les **tablettes**. Le vocabulaire
-  est **tranché et appliqué partout** où l'utilisateur lit : un **pas de tir** est un groupement de
+  est **tranché** (ADR-0073, qui amende ADR-0006) et appliqué dans toute l'application — jusqu'aux **papiers imprimés du jour J** : un **pas de tir** est un groupement de
   cibles, un **couloir de tir** est la place d'un archer (A, B, C, D), un **poste** reste une
   tablette ou un écran. L'écran ne se contente plus de nommer, il **montre** : en face de chaque
   cible, quatre cases portent les lettres, pleines pour les couloirs occupables, en pointillés pour
