@@ -2254,6 +2254,63 @@ button:disabled {
 /* conteneur défilant pour les larges tables sur petit écran.                 */
 /* ------------------------------------------------------------------------- */
 
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Classement à tête figée (A16 / P07, retour maquettes du 04/08/2026)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   « Les x premiers sont toujours affichés, mais le dessous du tableau a un défilé jusqu'à n. »
+   Deux tables empilées qui partagent un `<colgroup>` : la tête ne bouge pas, le reste défile dans
+   son propre cadre. `table-layout: fixed` est ce qui rend l'alignement des colonnes exact entre les
+   deux — sans lui, chaque table calculerait ses largeurs sur son propre contenu et les colonnes se
+   décaleraient dès qu'un nom serait plus long en bas qu'en haut. */
+.classement .table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.classement__defilement {
+  max-height: 22rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+}
+
+/* Largeurs de colonnes — nécessaires dès lors que `table-layout` est `fixed` : sans elles, les huit
+   colonnes se partageraient la largeur à parts égales et le nom d'archer, seul contenu long,
+   serait le plus serré. Le nom n'a **pas** de largeur : il prend ce qui reste. */
+.classement__col--rang {
+  width: 5.5rem;
+}
+
+.classement__col--categorie {
+  width: 10rem;
+}
+
+.classement__col--court {
+  width: 4.5rem;
+}
+
+.classement__col--action {
+  width: 8rem;
+}
+
+/* Ligne à égalité : marquée pour que la règle de départage, affichée en dessous, désigne quelqu'un.
+   Filet à gauche plutôt qu'un aplat — le tableau porte déjà un marquage de forfait, et deux fonds
+   superposés deviendraient illisibles sur une ligne à la fois forfait et ex æquo. */
+.table__ligne--ex-aequo td:first-child {
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+
+/* La règle de départage : présente **seulement** quand il y a des ex æquo (A16). Registre de note,
+   pas d'alerte — une égalité est un cas normal du tir à l'arc, pas un incident. */
+.classement__departage {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--warn);
+  color: var(--text);
+  font-size: 14px;
+}
+
 /* Filtre catégorie / sélecteur de départ : libellé + menu déroulant en ligne. */
 .classement-filtre {
   display: inline-flex;

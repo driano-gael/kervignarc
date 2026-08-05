@@ -64,7 +64,17 @@ export function VueClassement({
         // Conteneur défilant : à 8 colonnes, la table déborde sur mobile (CA « responsive ») — on la
         // laisse défiler horizontalement plutôt que d'écraser les colonnes.
         <div className="table-defilement">
-          <TableClassement tournoiId={tournoiId} lignes={classement.data.lignes} admin={admin} />
+          {/* `teteFigee` (A16) : *« les x premiers sont toujours affichés, mais le dessous du tableau
+              a un défilé jusqu'à n »*. Trois sur l'écran de salle — P07 est explicite : *« ok pour
+              les 3 premiers toujours visible, mais défilement de tous les autres archers dessous »*.
+              Huit sur les surfaces qu'on manipule : on y suit le haut d'une catégorie, pas seulement
+              le podium, et huit lignes tiennent sans écraser le cadre défilant. */}
+          <TableClassement
+            tournoiId={tournoiId}
+            lignes={classement.data.lignes}
+            admin={admin}
+            teteFigee={filtrable ? 8 : 3}
+          />
         </div>
       )}
       {/* Departage manuel (poule, Big Shoot Off) : replie, hors de la carte d'alerte. Ces formats
