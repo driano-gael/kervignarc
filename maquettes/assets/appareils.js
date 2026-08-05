@@ -25,9 +25,28 @@
    critique portera sur l'incohérence plutôt que sur la mise en page :
 
      Tournoi     « Challenge des champions » — 22/11/2026, salle de Kervignarc
-     Inscrits    156          Cibles      30 (2 archers par cible en qualif)
+     Inscrits    156          Cibles      30, jusqu'à 2 couloirs de tir chacune
      Départs     3            Scoreurs    4
      Départ 2    09 h 30, en tir          Blasons     trispot 40 / mono 40
+     Pas de tir  2 rangées de 15 cibles
+
+   ---------------------------------------------------------------------------
+   VOCABULAIRE OPPOSABLE — ADR-0073 (05/08/2026). Trois mots qui se
+   confondaient, et dont la confusion a fait REFUSER la maquette A10 :
+
+     pas de tir      un GROUPEMENT de cibles — la rangée tirée depuis la même
+                     ligne de tir. Jamais la place d'un archer.
+     couloir de tir  la place d'UN archer devant sa cible, repérée par une
+                     lettre (A, B, C, D…). Jamais une rangée, jamais une tablette.
+     poste           une TABLETTE ou un ÉCRAN rattaché à un lieu (ADR-0064).
+                     Jamais la place d'un archer.
+
+   Et le plafond est un MAJORANT : on écrit « jusqu'à 2 couloirs de tir », jamais
+   « 2 couloirs » — le placement en installe au plus autant, souvent moins (un
+   blason encombrant occupe la face entière).
+
+   Reliquat déclaré par l'ADR : a11, p02, p04, s06 et a09 emploient encore
+   « position » en prose. À corriger en convertissant chacune de ces planches.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 (function () {

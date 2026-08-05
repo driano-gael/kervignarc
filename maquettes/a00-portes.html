@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>A00 · Les quatre portes — Kervignarc</title>
+<title>A00 · Les cinq portes — Kervignarc</title>
 <link rel="stylesheet" href="assets/systeme.css">
 </head>
 <body>
@@ -17,12 +17,18 @@
   </span>
 </nav>
 
+<div class="sans-js">
+  <strong>JavaScript est désactivé.</strong> Les écrans ci-dessous s'affichent alors sans leur ossature et sans
+  être mis à l'échelle de leur appareil : le contenu reste lisible, mais ce n'est plus une maquette d'écran.
+</div>
+
 <header class="entete">
-  <p class="fil">Toutes les applis · <code>/</code> · <strong>planche ajoutée le 30/07/2026</strong></p>
-  <h1><span class="num">A00</span>Les quatre portes — choisir le rôle de l'appareil</h1>
+  <p class="fil">Toutes les applis · <code>/</code> · <strong>cinq portes depuis le 05/08/2026</strong></p>
+  <h1><span class="num">A00</span>Les cinq portes — choisir le rôle de l'appareil</h1>
   <p class="chapo">C'est le <strong>tout premier écran</strong> du produit, et il était <strong>absent de ce
   dossier</strong> alors qu'il est livré depuis le 21/07/2026. Les 35 planches décrivaient trois applications à
-  trois URL ; la réalité est <strong>une application, quatre portes</strong>.</p>
+  trois URL ; la réalité est <strong>une application, cinq portes</strong> — dont quatre mondes, l'écran de
+  salle et l'écran de cible étant deux portes vers le même poste, avec des mots différents.</p>
   <p style="margin-top:14px"><span class="etat-pill code">écran existant</span></p>
 </header>
 
@@ -35,60 +41,125 @@
 </div>
 
 <h2 class="section">L'écran livré</h2>
-<div class="rangee">
-  <figure class="variante">
-    <figcaption><span class="etiquette">Premier lancement</span>
-      <span class="sous-etiquette">Quatre portes explicites, au lieu de deviner le rôle.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">KERVIGNARC</span>
-        <span class="fin conn"><span class="point"></span>en ligne</span></div>
-      <div class="corps">
-        <div class="second">Choisissez comment cet appareil sera utilisé. Ce choix est mémorisé : on ne vous le
-        redemandera pas au prochain lancement.</div>
-        <div class="carte">
-          <div class="rang bloc"><span style="font-size:16px;font-weight:800">🎯 Tablette de cible</span>
-            <span class="second">Cette tablette saisit les scores d'une cible.</span></div>
-        </div>
-        <div class="carte">
-          <div class="rang bloc"><span style="font-size:16px;font-weight:800">📱 Téléphone (public)</span>
-            <span class="second">Suivre le tournoi : classements, plans, mes archers.</span></div>
-        </div>
-        <div class="carte">
-          <div class="rang bloc"><span style="font-size:16px;font-weight:800">✅ Scoreur</span>
-            <span class="second">Valider les scores avec mon code.</span></div>
-        </div>
-        <div class="carte">
-          <div class="rang bloc"><span style="font-size:16px;font-weight:800">🖥️ Administration (PC)</span>
-            <span class="second">Organiser et piloter le tournoi.</span></div>
+<p class="intro">C'est le même écran partout — mais il n'est pas vu sur le même appareil. Le bénévole qui
+installe une tablette de cible, et le spectateur qui ouvre l'adresse sur son téléphone, voient les
+<strong>mêmes cinq portes</strong> dans deux boîtes très différentes. Les deux premières planches montrent
+exactement ça.</p>
+
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="accueil" data-changer-role="non">
+    <figcaption><span class="textes">
+      <span class="etiquette">A — Premier lancement, sur une tablette</span>
+      <span class="sous-etiquette">Cinq portes explicites, au lieu de deviner le rôle de l'appareil. Aucun « Changer de rôle » : il n'y a pas encore de rôle à quitter.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <p style="font-size:22px;font-weight:800;margin:0 0 4px">Comment cet appareil sera-t-il utilisé ?</p>
+        <p class="second" style="margin:0 0 18px">Ce choix est mémorisé : on ne vous le redemandera pas au
+        prochain lancement.</p>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="carte"><div class="rang">
+            <span style="font-size:30px;flex:0 0 44px;text-align:center">🎯</span>
+            <span style="flex:1"><span style="font-size:18px;font-weight:800;display:block">Écran de cible</span>
+              <span class="second">Cet appareil saisit les scores d'une cible.</span></span>
+            <span class="faible">/cible</span></div></div>
+          <div class="carte"><div class="rang">
+            <span style="font-size:30px;flex:0 0 44px;text-align:center">📺</span>
+            <span style="flex:1"><span style="font-size:18px;font-weight:800;display:block">Écran de salle</span>
+              <span class="second">Projection : classements et plans en continu, sans personne devant.</span></span>
+            <span class="faible">/salle</span></div></div>
+          <div class="carte"><div class="rang">
+            <span style="font-size:30px;flex:0 0 44px;text-align:center">📱</span>
+            <span style="flex:1"><span style="font-size:18px;font-weight:800;display:block">Public</span>
+              <span class="second">Suivre le tournoi : classements, plans, mes archers.</span></span>
+            <span class="faible">/public</span></div></div>
+          <div class="carte"><div class="rang">
+            <span style="font-size:30px;flex:0 0 44px;text-align:center">✅</span>
+            <span style="flex:1"><span style="font-size:18px;font-weight:800;display:block">Scoreur</span>
+              <span class="second">Valider les scores avec mon code.</span></span>
+            <span class="faible">/scoreur</span></div></div>
+          <div class="carte"><div class="rang">
+            <span style="font-size:30px;flex:0 0 44px;text-align:center">🖥️</span>
+            <span style="flex:1"><span style="font-size:18px;font-weight:800;display:block">Administration (PC)</span>
+              <span class="second">Organiser et piloter le tournoi.</span></span>
+            <span class="faible">/admin</span></div></div>
         </div>
       </div>
-    </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">livré tel quel</span> Chaque porte dit <b>à qui c'est</b> et
     <b>ce qu'on y fait</b> — pour qu'un bénévole choisisse sans hésiter. L'habillage est <b>club/neutre</b> :
-    l'identité <em>par tournoi</em> n'a pas de sens sur un écran pré-tournoi.</p>
+    l'identité <em>par tournoi</em> n'a pas de sens sur un écran pré-tournoi. La cinquième porte
+    (<b>Écran de salle</b>) vient de ton retour du 04/08 : « il faudrait quand même ajouter une porte pour le ou
+    les écrans de projections ».</p>
   </figure>
 
-  <figure class="variante">
-    <figcaption><span class="etiquette">Lancements suivants</span>
-      <span class="sous-etiquette">On va droit au monde choisi ; « Changer de rôle » reste en en-tête.</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">KERVIGNARC</span>
-        <span class="fin" style="font-size:11px;opacity:.85">Changer de rôle</span></div>
-      <div class="corps">
-        <div class="carte info">
-          <div class="rang bloc"><span>Le monde du rôle mémorisé s'ouvre directement</span>
-            <span class="second">Une session en cours <b>prime</b> sur le choix : un rechargement ne renvoie
-            jamais à l'écran de choix.</span></div>
-        </div>
-        <div class="carte plate">
-          <div class="rang"><span class="second" style="flex:1">Arrivée par le QR d'une cible</span>
-            <span class="pas marque">RÔLE TABLETTE FORCÉ</span></div>
+  <figure class="planche" data-appareil="telephone" data-monde="accueil" data-changer-role="non">
+    <figcaption><span class="textes">
+      <span class="etiquette">B — Le même écran, sur un téléphone</span>
+      <span class="sous-etiquette">390 px de large, 342 utiles. C'est ce que voit le spectateur qui scanne l'affiche à l'entrée du gymnase.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="telephone"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <p style="font-size:19px;font-weight:800;margin:0 0 4px;line-height:1.2">Comment cet appareil
+        sera-t-il utilisé ?</p>
+        <p class="second" style="margin:0 0 14px">Ce choix est mémorisé.</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="carte"><div class="rang">
+            <span style="font-size:24px;flex:0 0 32px;text-align:center">🎯</span>
+            <span style="flex:1"><span style="font-weight:800;display:block">Écran de cible</span>
+              <span class="faible">Saisir les scores d'une cible.</span></span></div></div>
+          <div class="carte"><div class="rang">
+            <span style="font-size:24px;flex:0 0 32px;text-align:center">📺</span>
+            <span style="flex:1"><span style="font-weight:800;display:block">Écran de salle</span>
+              <span class="faible">Projection en continu.</span></span></div></div>
+          <div class="carte marquee"><div class="rang">
+            <span style="font-size:24px;flex:0 0 32px;text-align:center">📱</span>
+            <span style="flex:1"><span style="font-weight:800;display:block">Public</span>
+              <span class="faible">Classements, plans, mes archers.</span></span></div></div>
+          <div class="carte"><div class="rang">
+            <span style="font-size:24px;flex:0 0 32px;text-align:center">✅</span>
+            <span style="flex:1"><span style="font-weight:800;display:block">Scoreur</span>
+              <span class="faible">Valider avec mon code.</span></span></div></div>
+          <div class="carte"><div class="rang">
+            <span style="font-size:24px;flex:0 0 32px;text-align:center">🖥️</span>
+            <span style="flex:1"><span style="font-weight:800;display:block">Administration</span>
+              <span class="faible">Organiser et piloter.</span></span></div></div>
         </div>
       </div>
-    </div>
+    </div></div></div>
+    <p class="verdict"><span class="pouce peut">à trancher</span> Sur un téléphone, <b>quatre portes sur cinq
+    ne servent à personne</b> : le spectateur ne rattachera jamais une cible ni ne pilotera un tournoi. Faut-il
+    présenter les mêmes cinq portes partout — c'est simple et honnête — ou <b>mettre « Public » en premier et
+    replier les autres</b> derrière un « Cet appareil sert à autre chose » ? La question ne pouvait pas se poser
+    tant qu'on ne voyait pas l'écran à 390 px.</p>
+  </figure>
+
+  <figure class="planche" data-appareil="tablette" data-monde="accueil" data-changer-role="oui">
+    <figcaption><span class="textes">
+      <span class="etiquette">C — Lancements suivants</span>
+      <span class="sous-etiquette">On va droit au monde mémorisé ; « Changer de rôle » reste en en-tête.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="carte info"><div class="rang bloc">
+          <span style="font-weight:700">Le monde du rôle mémorisé s'ouvre directement</span>
+          <span class="second">Une session en cours <b>prime</b> sur le choix : un rechargement ne renvoie
+          jamais à l'écran de choix.</span></div></div>
+        <div class="carte plate" style="margin-top:14px"><div class="rang">
+          <span class="second" style="flex:1">Arrivée par le QR posé devant une cible</span>
+          <span class="pas marque">RÔLE TABLETTE FORCÉ</span></div></div>
+        <div class="carte" style="margin-top:14px"><div class="rang bloc">
+          <span class="mini" style="display:block;margin-bottom:6px">Le verrou de la cible — D-13</span>
+          <span class="second">Dès que cet appareil est <b>rattaché</b> à une cible, ou arrivé par le QR,
+          « Changer de rôle » <b>disparaît</b> de l'en-tête : le contrôle d'accès est physique, personne ne doit
+          pouvoir sortir du poste de saisie en pleine qualification.</span></div></div>
+      </div>
+    </div></div></div>
     <p class="verdict"><span class="pouce oui">ton exigence, déjà satisfaite</span> Le questionnaire A01
     demandait « un retour vers les autres écrans (public, cible, scoreur…) » : c'est <b>ce bouton</b>, livré.</p>
   </figure>
+
 </div>
 
 <h2 class="section">La règle qui n'est pas un détail : le verrou de la tablette</h2>
@@ -127,33 +198,58 @@
 </div>
 
 <h2 class="section">États du système</h2>
-<div class="rangee">
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Serveur injoignable</span></figcaption>
-    <div class="ui">
-      <div class="barre alerte"><span class="titre">▲ Serveur injoignable</span></div>
-      <div class="corps">
-        <div class="second">Vérifiez que vous êtes bien sur le réseau du gymnase
-        (<code>kervignarc-local</code>). L'appli ne passe pas par internet.</div>
-        <button class="bouton principal">Réessayer</button>
+<p class="intro">Un état se juge sur ce qu'il occupe de l'écran, pas sur son message seul. Un bandeau ambre
+tient très bien dans une vignette de 340 px ; sur une tablette de 1280, la question devient « et le reste de
+l'écran, il fait quoi pendant ce temps ? ».</p>
+
+<div class="planches">
+
+  <figure class="planche" data-appareil="tablette" data-monde="accueil"
+          data-changer-role="non" data-connexion="hors-ligne">
+    <figcaption><span class="textes">
+      <span class="etiquette">Serveur injoignable</span>
+      <span class="sous-etiquette">Le cas le plus probable du jour J : l'appareil n'est pas sur le bon réseau.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="aplat-alerte forte">▲ Serveur injoignable</div>
+        <div class="carte" style="margin-top:16px"><div class="rang bloc">
+          <p style="font-size:18px;font-weight:700;margin:0 0 8px">L'appli ne passe pas par internet.</p>
+          <p class="second" style="margin:0 0 4px">Vérifiez que cet appareil est bien connecté au réseau du
+          gymnase : <b>kervignarc-local</b>.</p>
+          <p class="second" style="margin:0">Si le réseau est bon et que le message persiste, c'est le PC de la
+          table d'organisation qui ne répond pas — prévenez l'organisateur.</p>
+        </div></div>
+        <div style="max-width:320px;margin-top:16px"><span class="bouton principal">Réessayer</span></div>
       </div>
-    </div>
-    <p class="verdict"><span class="pouce oui">important</span> Le cas <b>le plus probable</b> le jour J.
-    L'erreur nomme le réseau, elle ne parle pas de « connexion perdue ».</p>
+    </div></div></div>
+    <p class="verdict"><span class="pouce oui">important</span> L'erreur <b>nomme le réseau</b>, elle ne parle
+    pas de « connexion perdue » — le bénévole doit savoir quoi faire, pas ce qui a échoué. En plein écran,
+    l'espace restant permet d'ajouter la <b>seconde hypothèse</b> (le serveur, pas le réseau) sans la noyer :
+    c'est de la place utile, pas du remplissage.</p>
   </figure>
 
-  <figure class="variante etroit">
-    <figcaption><span class="etiquette">Rôle mémorisé, session expirée</span></figcaption>
-    <div class="ui">
-      <div class="barre marque"><span class="titre">KERVIGNARC</span></div>
-      <div class="corps">
-        <div class="carte info"><div class="rang bloc"><span class="verrou">🔒 Session expirée</span>
-          <span class="second">On revient là où on était après reconnexion.</span></div></div>
+  <figure class="planche" data-appareil="tablette" data-monde="accueil" data-changer-role="oui">
+    <figcaption><span class="textes">
+      <span class="etiquette">Rôle mémorisé, session expirée</span>
+      <span class="sous-etiquette">On ne repasse pas par l'écran de choix pour une session qui expire.</span>
+    </span></figcaption>
+    <div class="cadre" data-appareil="tablette"><div class="appareil"><div class="ui">
+      <div class="ecran">
+        <div class="carte info"><div class="rang bloc">
+          <span class="verrou">🔒 Session expirée</span>
+          <p style="margin:10px 0 4px;font-size:17px;font-weight:700">Reconnectez-vous pour reprendre</p>
+          <p class="second" style="margin:0">On revient exactement là où vous étiez : cible 12, départ 2,
+          volée 8. Rien n'est perdu.</p>
+        </div></div>
+        <div style="max-width:320px;margin-top:16px"><span class="bouton principal">Se reconnecter</span></div>
       </div>
-    </div>
-    <p class="verdict"><span class="pouce oui">acquis</span> Le rôle reste mémorisé : on ne repasse pas par
-    l'écran de choix pour une session qui expire.</p>
+    </div></div></div>
+    <p class="verdict"><span class="pouce oui">acquis</span> Le rôle reste mémorisé. La reprise <b>nomme la
+    position</b> plutôt que de promettre vaguement « on revient là où on était » : c'est ce que la place gagnée
+    permet d'écrire.</p>
   </figure>
+
 </div>
 
 <div class="pied">
@@ -163,5 +259,6 @@
 </div>
 
 </div>
+<script src="assets/appareils.js"></script>
 </body>
 </html>

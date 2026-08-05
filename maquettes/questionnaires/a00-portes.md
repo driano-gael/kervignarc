@@ -1,7 +1,8 @@
-# A00 · Les quatre portes
+# A00 · Les cinq portes
 
-> **Écran** : [A00 — Les quatre portes](../a00-portes.html) · **Appli** : Toutes les applis (`/`)
-> **Rôle** : Le tout premier écran : choisir le rôle de l'appareil (tablette de cible, public, scoreur, administration).
+> **Écran** : [A00 — Les cinq portes](../a00-portes.html) · **Appli** : Toutes les applis (`/`)
+> **Appareil** : Tablette 1280 × 800 et téléphone 390 × 844
+> **Rôle** : Le tout premier écran : une application, cinq portes. L'écran de cible et l'écran de salle mènent au même poste.
 >
 > **Pas encore rempli.**
 
