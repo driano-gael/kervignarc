@@ -457,7 +457,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **97 US livrées** sur `main` (mergées, revues, CI verte) à la date du 04/08/2026. **`SUIVI-US.md`
+- **98 US livrées** sur `main` (mergées, revues, CI verte) à la date du 05/08/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -486,7 +486,9 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   US numérotée**, d'où un compte d'US inchangé : il ne portait aucune décision métier ni changement de
   domaine. Le reste est spécifié en dix US dans [`stories/E16`](../stories/E16-retours-maquettes.md)
   ([EPIC-16](../epics/EPIC-16-retours-maquettes.md)), et les retours **écartés** y sont consignés avec
-  leur raison — aucun questionnaire ne reste sans suite.
+  leur raison — aucun questionnaire ne reste sans suite. **Premier écran refusé relevé : A10 (plan de
+  salle)**, par E16US001 — le refus ne portait que sur le **vocabulaire**, désormais arbitré. Restent
+  trois écrans refusés : A07 (phases), A14 (complétude), P03 (classements publics).
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,
@@ -500,7 +502,30 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   disqualification** (E04US015 — qualif *et* duels), le **cycle de vie d'un départ** (E12US008), le
   **feu vert + lancement d'un tour** (E12US002), le **remboursement d'une inscription payée
   annulée** (E08US005) l'**affichage de la prochaine cible après validation** (E04US018), le **barrage de tir pour les places décisives** (E06US003) et le **palmarès** (E06US004), qui le referme.
-- Dernière US livrée : **E03US007** (cloisonner les cibles par catégorie ou par blason) — US **à
+- Dernière US livrée : **E16US001** (le plan de salle parle enfin de la salle que l'organisateur
+  connaît) — US **à surface visible**. L'écran de plan de salle avait été **refusé** à la relecture
+  des maquettes pour un seul mot : le logiciel appelait « pas de tir » une rangée de cibles et
+  « poste » la place d'un archer, alors que « poste » désigne déjà les **tablettes**. Le vocabulaire
+  est **tranché et appliqué partout** où l'utilisateur lit : un **pas de tir** est un groupement de
+  cibles, un **couloir de tir** est la place d'un archer (A, B, C, D), un **poste** reste une
+  tablette ou un écran. L'écran ne se contente plus de nommer, il **montre** : en face de chaque
+  cible, quatre cases portent les lettres, pleines pour les couloirs occupables, en pointillés pour
+  les autres — et elles s'éteignent à la seconde où l'on réduit une cible, avant même
+  d'enregistrer. Deux questions ouvertes depuis les maquettes sont fermées du même coup : la salle
+  **rentre dans une grille**, donc le plan reste une **liste** (tant de cibles, tant de couloirs) et
+  non un dessin à l'échelle ; et il ne porte **que les cibles**. Ce qui écarte pour de bon la
+  variante « plan libre ». Rien ne change au fonctionnement — placement, saisie et classements sont
+  identiques ; ce qui change, c'est qu'on peut **valider l'écran** au lieu de deviner ce qu'il
+  représente. ⚠️ À l'intérieur du logiciel, la place d'un archer s'appelle encore techniquement
+  « position » : écart assumé et tracé (**DETTE-042**), invisible pour l'utilisateur.
+- Avant-dernière US livrée : **E07US005** (voir les tableaux de duels en direct) — US **à surface
+  visible**. L'arbre des duels n'était visible que du scoreur : le public savait qui tirait où et
+  qui avait gagné à la fin, mais pas **contre qui** ni **où en était** la compétition. Un onglet
+  **« Tableaux »** l'ouvre au public, avec deux lectures du même arbre — **« Mon chemin »**, le
+  parcours de chaque archer suivi tour par tour, et **« Tableau complet »**, tous les duels groupés
+  par branche (quarts, demies, finale, petite finale, et les blocs de placement quand le tournoi
+  classe au-delà du podium). L'écran de salle sait désormais **projeter** ces tableaux.
+- Antépénultième US livrée : **E03US007** (cloisonner les cibles par catégorie ou par blason) — US **à
   surface visible**. Le placement automatique remplissait une cible avec ce qui tenait dedans : deux
   catégories pouvaient s'y retrouver côte à côte, ce que l'arbitre interdit sur certains tournois.
   L'organisateur **choisit désormais ce qu'une cible n'a pas le droit de mélanger** — rien (défaut),
@@ -513,7 +538,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   l'organisateur qui décide du moment. ⚠️ Cloisonner **coûte des cibles** (chaque catégorie entame sa
   propre butte) : sur une salle juste, il y aura plus d'archers en réserve — visible aussitôt, et
   réversible. *(Livré juste avant : **E06US006**, jusqu'où le tournoi classe ses archers.)*
-- Avant-dernière US livrée : **E06US006** (choisir jusqu'où le tournoi classe ses archers) — US **à surface
+- Livrée avant : **E06US006** (choisir jusqu'où le tournoi classe ses archers) — US **à surface
   visible**. Un tableau de duels s'arrêtait toujours au podium : on tirait la finale et la petite
   finale, et les archers sortis plus tôt restaient groupés — les quatre battus des quarts partageaient
   « 5ᵉ-8ᵉ », sans que rien ne dise lequel était 5ᵉ. Le moteur savait pourtant faire autrement depuis
@@ -527,7 +552,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   rappelle et la simulation en donne le compte exact. Ne rien changer ne change rien — les tournois
   déjà composés continuent de se jouer au podium. *(Livré juste avant : **E05US021**, un tournoi ne se
   lance plus s'il manque des archers.)*
-- Antépénultième US livrée : **E05US021** (un tournoi ne se lance plus s'il manque des archers) — US **à
+- Livrée avant : **E05US021** (un tournoi ne se lance plus s'il manque des archers) — US **à
   surface visible**. Un déroulé composé pour 120 archers appliqué à une édition qui en réunit 28
   démarrait sans rien dire, et le problème n'éclatait qu'**en pleine compétition**, sur une tablette,
   au moment de monter un tableau vide. Le contrôle remonte là où la décision se prend : l'application
