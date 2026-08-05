@@ -449,6 +449,18 @@ table.tk td.num { font-variant-numeric:tabular-nums; font-family:var(--doc-mono)
 .ui .coquille__nav { position:sticky; top:var(--respiration); }
 .ui .bandeau-contexte { position:sticky; top:0; z-index:2; }
 
+/* -- panneau latéral DE CONTENU --
+   À ne pas confondre avec la navigation d'axe : trois écrans ont un second volet *dans* leur
+   contenu — l'aperçu d'identité (A05), l'édition d'une brique (A06), la liste des non placés
+   (A11). Ils utilisaient `.flanc`, la classe de la sidebar v1 refusée, avec des largeurs
+   calibrées pour une vignette de 430 px. */
+.ui .avec-panneau { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:16px; align-items:start; }
+.ui .panneau {
+  background:var(--surface-1); border:1px solid var(--border-subtle); border-radius:6px;
+  padding:14px; display:flex; flex-direction:column; gap:9px; font-size:13.5px;
+}
+.ui .panneau .groupe { color:var(--text-muted); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; }
+
 /* -- cartes & listes -- */
 .carte { background:var(--surface-1); border:1px solid var(--border-subtle); border-radius:5px; }
 .carte.plate { background:transparent; }

@@ -34,9 +34,9 @@
 
 <h2 class="section">Ce que l'écran doit faire</h2>
 <ul class="exigences">
-  <li>Placer ~156 archers sur 30 cibles × 4 positions, en respectant des contraintes (même club séparé,
+  <li>Placer ~156 archers sur 30 cibles × 4 couloirs de tir, en respectant des contraintes (même club séparé,
   blasons compatibles, mixité des catégories).</li>
-  <li>Rester utilisable <strong>après coup</strong> : un retardataire arrive, une position se libère, un archer
+  <li>Rester utilisable <strong>après coup</strong> : un retardataire arrive, un couloir de tir se libère, un archer
   change de départ.</li>
   <li>Montrer en permanence <strong>qui n'est pas encore placé</strong> — c'est un point de complétude (A14).</li>
 </ul>
@@ -46,10 +46,10 @@
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="placement">
     <figcaption><span class="textes"><span class="etiquette">A · Glisser-déposer</span>
-      <span class="sous-etiquette">On attrape un archer non placé, on le lâche sur une position.</span></span></figcaption>
+      <span class="sous-etiquette">On attrape un archer non placé, on le lâche sur un couloir de tir.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
-        <div class="colonnes" style="grid-template-columns:minmax(0,1fr) 130px">
+        <div class="avec-panneau">
         <div class="pile">
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
             <div class="carte" style="padding:6px;font-size:11px"><div style="font-weight:800">C1</div>
@@ -62,7 +62,7 @@
               <div class="faible">vide</div></div>
           </div>
         </div>
-        <div class="flanc" style="border-right:0;border-left:1px solid var(--border-subtle)">
+        <div class="panneau">
           <div class="mini">NON PLACÉS</div>
           <div class="carte" style="padding:5px 7px;font-size:11px">MARTINEAU L. · CH</div>
           <div class="carte" style="padding:5px 7px;font-size:11px">OLLIVIER J. · BF</div>
@@ -78,13 +78,13 @@
 
   <figure class="planche" data-appareil="pc" data-monde="admin" data-axe="pilotage" data-ecran="placement">
     <figcaption><span class="textes"><span class="etiquette">B · Sélectionner puis affecter</span>
-      <span class="sous-etiquette">Un tap sur l'archer, un tap sur la position.</span></span></figcaption>
+      <span class="sous-etiquette">Un tap sur l'archer, un tap sur le couloir de tir.</span></span></figcaption>
     <div class="cadre" data-appareil="pc"><div class="appareil"><div class="ui">
       <div class="ecran">
         <div class="pile">
         <div class="carte marquee"><div class="rang"><span class="pas marque">SÉLECTIONNÉ</span>
           <span style="font-weight:700">MARTINEAU Luc</span><span class="fin second">CH · Vannes</span></div></div>
-        <p class="faible" style="margin:0">Touchez une position libre — les positions incompatibles sont estompées.</p>
+        <p class="faible" style="margin:0">Touchez une couloir libre — les couloirs incompatibles sont estompées.</p>
         <div class="plan" style="grid-template-columns:repeat(6,1fr)">
           <span class="cible vide">C1 D</span><span class="cible vide">C3 C</span><span class="cible vide">C3 D</span>
           <span class="cible" style="opacity:.35">C2 —</span><span class="cible vide">C4 A</span><span class="cible vide">C4 B</span>
@@ -106,7 +106,7 @@
           <div class="tete-carte"><span>PROPOSITION</span><span class="fin">153 / 156 placés</span></div>
           <div class="rang"><span class="pas ok">✓</span><span style="flex:1">Clubs séparés</span><span class="second">28 cibles</span></div>
           <div class="rang"><span class="pas ok">✓</span><span style="flex:1">Blasons compatibles</span><span class="second">30 cibles</span></div>
-          <div class="rang"><span class="pas att">!</span><span style="flex:1">3 archers sans position</span><span class="fin bouton auto">Voir</span></div>
+          <div class="rang"><span class="pas att">!</span><span style="flex:1">3 archers sans couloir de tir</span><span class="fin bouton auto">Voir</span></div>
         </div>
         <div style="display:flex;gap:8px"><span class="bouton auto">Accepter</span>
           <span class="bouton auto" style="border-color:var(--border-subtle)">Recommencer</span></div>
