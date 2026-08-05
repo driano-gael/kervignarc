@@ -83,9 +83,10 @@ entière). Les libellés disent donc « **jusqu'à** N couloirs de tir », jamai
   deux **PDF** (feuille de marque, liste de placement), les messages d'erreur d'API, l'alerte de
   routage, la maquette A10, la planche wireframe correspondante, le glossaire.
 - **Reliquat déclaré** : les maquettes `a11`, `p02`, `p04`, `s06`, `a09` et plusieurs fiches de
-  `docs/fonctionnel/` emploient encore « position » en prose. Elles sont **rouvertes** par
-  E16US004/E16US005, dont les stories portent la consigne de balayage. Ce reliquat est nommé plutôt
-  que tu : ne pas le confondre avec une exhaustivité atteinte.
+  `docs/fonctionnel/` emploient encore « position » en prose. Porteurs vérifiés : `a11` → E16US005, `p02` → E16US004,
+  `s06` → E16US011, `a09` → E16US010/E16US011 — leurs stories portent la consigne de balayage.
+  **`p04` n'a aucune US porteuse** : le reliquat y reste sans échéance, et c'est dit plutôt que tu —
+  ne pas confondre ce périmètre avec une exhaustivité atteinte.
 - **Toute US ultérieure qui voudrait de la géométrie** (coordonnées de cibles, obstacles, repères
   d'orientation sur le plan public — cf. la question ouverte de la maquette P04) **rouvre cet ADR**
   par un ADR nouveau : elle ne l'hérite pas. Le modèle actuel ne peut pas stocker cette information.

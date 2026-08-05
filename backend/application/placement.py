@@ -319,7 +319,7 @@ class ServicePlacement:
             )
         if not contexte.est_placable(inscription_id):
             raise DeplacementInvalide(
-                "Cet archer n'a pas de blason : sa place ne peut pas être déterminée."
+                "Cet archer n'a pas de blason : son couloir de tir ne peut pas être déterminé."
             )
 
         affectations = self._placements.par_depart(depart_id)
@@ -403,7 +403,7 @@ class ServicePlacement:
         """Valide et applique l'échange atomique de l'archer déplacé avec l'occupant de la case."""
         if source is None:
             raise DeplacementInvalide(
-                "Cette case est occupée : déposez sur une place libre, ou échangez deux archers "
+                "Cette case est occupée : déposez sur un couloir libre, ou échangez deux archers "
                 "déjà placés."
             )
         occupant_archer = contexte.archer_par_inscription[occupant.inscription_id]

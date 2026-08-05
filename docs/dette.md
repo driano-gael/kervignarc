@@ -1840,9 +1840,11 @@ l'alerte de routage, les **deux PDF** (feuille de marque, liste de placement), l
 planche wireframe correspondante, le glossaire. **Restent en « position » ou « poste »**, sciemment :
 les maquettes `a11-placement`, `p02-ma-journee`, `p04-plan-de-cibles`, `s06-routage`,
 `a09-inscriptions`, plusieurs fiches de `docs/fonctionnel/` en prose (dont le **titre** d'E03US011),
-et les documents de cadrage (`cahier-des-charges*.md`). Ces écrans sont **rouverts** par E16US004 et
-E16US005, dont les stories portent désormais la consigne de balayage — c'est là que le mot se
-corrigera, avec le reste de l'écran. Les **questionnaires** (`maquettes/questionnaires/`) ne sont
+et les documents de cadrage (`cahier-des-charges*.md`). Porteurs, vérifiés un par un : `a11` → **E16US005**, `p02` → **E16US004**, `s06` → **E16US011**,
+`a09` → **E16US010**/E16US011 — les quatre stories portent désormais la consigne de balayage.
+⚠️ **`p04-plan-de-cibles` n'a aucune US porteuse** dans EPIC-16 : son vocabulaire ne se corrigera
+pas tout seul. La maquette porte au moins le renvoi d'arbitrage d'ADR-0073 ; le mot y reste à
+reprendre, sans échéance. Les **questionnaires** (`maquettes/questionnaires/`) ne sont
 **pas** à corriger : ce sont les réponses brutes du commanditaire, un artefact d'archive.
 
 **Résorption : rattachée à `E01US019`** (voir [DETTE-010](#dette-010--capacité-de-cible-plafonnée-à-4-en-dur)).

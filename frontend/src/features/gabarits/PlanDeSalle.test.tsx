@@ -15,7 +15,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ajusterGabarit, type Gabarit } from './api'
 import { FormulaireAjustement } from './PlanDeSalle'
@@ -65,6 +65,9 @@ function couloir(lettre: string): HTMLElement {
 
 const eteint = (lettre: string) => couloir(lettre).className.includes('--inactif')
 
+// Les compteurs d'appel sont partagés dans le fichier (pas de `clearMocks` global côté vite).
+beforeEach(() => vi.clearAllMocks())
+
 describe('aperçu des couloirs de tir', () => {
   it('montre les couloirs occupables pleins et les autres éteints', () => {
     poser([4])
@@ -84,8 +87,16 @@ describe('aperçu des couloirs de tir', () => {
     expect(eteint('B')).toBe(false)
     expect(eteint('C')).toBe(true)
     expect(eteint('D')).toBe(true)
-    // Le cœur du CA : c'est un aperçu de la saisie, il ne persiste rien.
+    // Garde-fou contre un enregistrement implicite : rien ne doit partir sans « Enregistrer ».
     expect(vi.mocked(ajusterGabarit)).not.toHaveBeenCalled()
+  })
+
+  it('annonce un plafond, pas un effectif', () => {
+    // Le mot « Jusqu'à » est la correction de fond de la revue : un plafond n'est pas une égalité.
+    poser([4])
+
+    expect(screen.getByRole('option', { name: "Jusqu'à 2 couloirs de tir" })).toBeTruthy()
+    expect(screen.getByRole('option', { name: "Jusqu'à 1 couloir de tir" })).toBeTruthy()
   })
 
   it('rallume les couloirs quand on remonte le plafond', async () => {

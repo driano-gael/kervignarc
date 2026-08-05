@@ -1395,9 +1395,11 @@ button:disabled {
   color: var(--text-h);
 }
 
-/* Éteint = bord pointillé + graisse normale : la distinction ne repose pas sur la seule couleur
-   (WCAG 1.4.1). L'opacité reste assez haute pour que la lettre demeure lisible sous l'éclairage
-   variable d'un gymnase, dans les deux thèmes. */
+/* Éteint : la distinction ne repose pas sur la seule couleur (WCAG 1.4.1) — mais c'est la
+   **graisse** (600 → 400) qui la porte, pas le pointillé : en thème clair, `--border` sur
+   `--surface` fait ~1,1:1, donc le bord se voit à peine dans les deux états. Le contraste de la
+   lettre éteinte tourne autour de 3:1, sous l'AA texte : admissible au titre de l'exemption
+   « composant inactif » (1.4.3), pas parce que le seuil serait atteint. */
 .plan-cible__couloir--inactif {
   border-style: dashed;
   color: var(--text);

@@ -224,7 +224,7 @@ class ServicePlacementDuels:
             )
         if not contexte.est_placable(inscription_id):
             raise DeplacementInvalide(
-                "Ce duelliste n'a pas de blason : sa place ne peut pas être déterminée."
+                "Ce duelliste n'a pas de blason : son couloir de tir ne peut pas être déterminé."
             )
 
         affectations = self._poses_a_jour(phase_id, contexte)
@@ -328,8 +328,8 @@ class ServicePlacementDuels:
         """Valide et applique l'échange atomique du duelliste déplacé avec l'occupant de la case."""
         if source is None:
             raise DeplacementInvalide(
-                "Cette case est occupée : déposez sur une place libre, ou échangez deux duellistes "
-                "déjà placés."
+                "Cette case est occupée : déposez sur un couloir libre, ou échangez "
+                "deux duellistes déjà placés."
             )
         occupant_archer = contexte.archer_par_inscription[occupant.inscription_id]
         occupant_candidat = contexte.donnees[occupant_archer]

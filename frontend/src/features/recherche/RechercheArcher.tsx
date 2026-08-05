@@ -1,7 +1,7 @@
 // Recherche d'archer depuis la sidebar admin (E12US006) — le **4ᵉ canal de routage** (`D-09`).
 //
 // La table de l'organisation tape un nom → l'appli répond **immédiatement** « il tire là » :
-// départ, cible, position, pour chaque créneau où l'archer est posé. Le champ est présent **en
+// départ, cible, couloir de tir, pour chaque créneau où l'archer est posé. Le champ est présent **en
 // permanence en tête de la sidebar** (`D-19`), quel que soit l'écran admin affiché, et accessible
 // **au clavier** (un simple `<input>` + liste). C'est la table d'organisation qui l'utilise, un
 // humain — pas de borne en libre-service (`D-10`), donc pas de « retour à l'accueil » comme côté
@@ -9,7 +9,7 @@
 //
 // **Réutilise la logique pure de la feature publique « suivi »** (`filtrerArchers` / `construireJournee`) :
 // c'est le même geste (nom → place), donc une source unique, déjà **testée depuis le CA** dans
-// `suivi.test.ts` (recherche tolérante à la casse et aux accents, place = cible/position/départ).
+// `suivi.test.ts` (recherche tolérante à la casse et aux accents, place = cible/couloir/départ).
 // L'alternative — dupliquer ces fonctions — divergerait ; les remonter dans `shared/` attendra un
 // 3ᵉ consommateur (discipline « attendre le 3ᵉ cas » ; `shared/` reste sans dépendance vers `features/`).
 //
@@ -130,7 +130,7 @@ export function RechercheArcher({ tournoiId }: { tournoiId: number | null }) {
 }
 
 // La place d'un archer trouvé : une ligne par créneau où il est posé (départ + horaire → cible /
-// position). Ce qu'on CONNAÎT d'abord (la journée), puis erreur, puis chargement, et « pas encore
+// couloir). Ce qu'on CONNAÎT d'abord (la journée), puis erreur, puis chargement, et « pas encore
 // placé » (le fait négatif) toujours en dernier — jamais présenté à la place d'un plan qui charge ou
 // échoue (ordre de VueSuivi : on ne confond jamais « pas chargé » et « pas placé »).
 function PlaceTrouvee({
@@ -155,7 +155,11 @@ function PlaceTrouvee({
     )
   }
   if (enErreur)
-    return <span className="recherche-place recherche-place--attente">Place indisponible.</span>
+    return (
+      <span className="recherche-place recherche-place--attente">
+        Placement momentanément indisponible.
+      </span>
+    )
   if (enChargement)
     return <span className="recherche-place recherche-place--attente">Chargement…</span>
   return <span className="recherche-place recherche-place--vide">Pas encore placé.</span>

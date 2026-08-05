@@ -144,6 +144,7 @@
 - **CA — pastille de complétude en liste** : deux niveaux — incomplet (avertissement) et **impossible à lancer** (alerte forte).
 - **CA — doublons discrets** : une icône cliquable sur la ligne de l'archer, qui montre le problème et propose l'action, au lieu d'un écran dédié qui pollue.
 - **Notes** : la recherche d'archer existe (E12US006), scopée au tournoi — c'est la **variante toutes entités** qui manque, et elle était déjà annoncée « lot suivant » dans `CoquilleAdmin`. La pastille demande un **agrégat serveur** : la complétude est aujourd'hui un appel **par tournoi**, en faire N sur la liste ne tient pas.
+- **⚠️ Vocabulaire (E16US001, [ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md))** : cette US rouvre des maquettes qui disent encore « position » pour la place d'un archer. **Corriger le mot en « couloir de tir » dans le même diff** — maquette et écran.
 - **Dépend de** : E12US005, E12US006, E02US005 · **Jalon** : J3 · **Origine** : questionnaires A02, A09, 04/08/2026
 
 ---
@@ -158,6 +159,7 @@
 - **CA — A02** : *« une fois un tournoi choisi, on arrive sur la page du déroulé du tournoi avec un accueil qui reprend les informations du tournoi **par départ dans un grand encart** (mettre toutes les informations utiles au déroulé) »*. Seul le bandeau a été livré ; l'encart par départ, non.
 - **CA — P05** : *« [les horaires prévisionnels] seulement pour les départs des différentes phases du tournoi, les autres sont trop imprévisibles »*.
 - **Notes** : ⚠️ **US de rattrapage — à découper avant de prendre.** Elle rassemble sept règles hétérogènes dont deux sont des **contradictions à arbitrer** (S08 vs endpoint existant, A09 vs ADR-0014/0015) et une une **politique d'autorisation** (S09). Ne pas la coder telle quelle : la lire, poser les deux questions, puis redécouper. Elle est ici pour que rien ne se reperde, pas comme un plan de travail.
+- **⚠️ Vocabulaire (E16US001, [ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md))** : cette US rouvre des maquettes qui disent encore « position » pour la place d'un archer. **Corriger le mot en « couloir de tir » dans le même diff** — maquette et écran.
 - **Dépend de** : E04US018 (routage), E04US003 (validation), E10US001 (rôles), E02US002 (inscriptions) · **Jalon** : J3 · **Origine** : revue adversariale du 05/08/2026 sur le tri des questionnaires
 
 ---
