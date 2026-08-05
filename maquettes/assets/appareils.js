@@ -279,13 +279,24 @@
   // c'est la question « le bouton est-il visible sans défiler ? ».
   function mesurerFlottaison(cadre) {
     if (cadre.hasAttribute('data-deroule')) return
-    var zone = cadre.querySelector('.coquille__contenu, .app__contenu, .salle__scene')
-    var nav = cadre.querySelector('.coquille__nav')
-    var debord = 0
-    if (zone) debord = Math.max(debord, zone.scrollHeight - zone.clientHeight)
-    if (nav) debord = Math.max(debord, nav.scrollHeight - nav.clientHeight)
+    var ui = cadre.querySelector('.ui')
+    if (!ui) return
+    var debord = ui.scrollHeight - ui.clientHeight
     if (debord > 8) cadre.setAttribute('data-sous-la-ligne', '↓ ' + debord + ' px sous la ligne de flottaison')
     else cadre.removeAttribute('data-sous-la-ligne')
+
+    // Une navigation `sticky` plus haute que la fenêtre a ses dernières entrées
+    // DÉFINITIVEMENT hors d'atteinte : elle se colle en haut et n'en repart plus tant que
+    // le contenu à côté est plus long qu'elle. Ce n'est pas « il faut défiler ».
+    var nav = cadre.querySelector('.coquille__nav')
+    var contenu = cadre.querySelector('.coquille__contenu')
+    if (nav && contenu) {
+      var perdu = Math.round(nav.scrollHeight - (ui.clientHeight - parseFloat(getComputedStyle(nav).top || 0)))
+      var pris = contenu.scrollHeight >= nav.scrollHeight
+      cadre.setAttribute('data-nav-debordement', perdu > 0 ? String(perdu) : '0')
+      if (perdu > 0 && pris) cadre.setAttribute('data-nav-inatteignable', String(perdu))
+      else cadre.removeAttribute('data-nav-inatteignable')
+    }
   }
 
   var cadres = []

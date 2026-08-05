@@ -370,7 +370,6 @@ table.tk td.num { font-variant-numeric:tabular-nums; font-family:var(--doc-mono)
 .ui .coquille__nav {
   flex:0 0 17rem;                    /* 272 px — valeur du produit */
   display:flex; flex-direction:column; gap:8px;
-  align-self:stretch;
 }
 .ui .coquille__retour {
   align-self:flex-start; min-height:44px; padding:8px 10px;
@@ -402,7 +401,7 @@ table.tk td.num { font-variant-numeric:tabular-nums; font-family:var(--doc-mono)
 /* Destination maquettée qui n'existe pas encore dans le code livré. */
 .ui .coquille__lien--absent { color:var(--text-muted); border:1px dashed var(--border-subtle); }
 .ui .coquille__lien--absent .marque-absente { margin-left:auto; font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; }
-.ui .coquille__contenu { flex:1 1 auto; min-width:0; align-self:stretch; }
+.ui .coquille__contenu { flex:1 1 auto; min-width:0; }
 
 /* -- bandeau de contexte (A02, retour du 04/08/2026) -- */
 .ui .bandeau-contexte {
@@ -438,10 +437,13 @@ table.tk td.num { font-variant-numeric:tabular-nums; font-family:var(--doc-mono)
 .ui .saisie__entete { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
 .ui .saisie__grille { display:flex; flex-direction:column; gap:10px; }
 
-/* Le défilement se fait LÀ OÙ L'APPLI LE FAIT vraiment — pas un overflow global qui
-   mentirait sur ce qui reste collant (le bandeau de contexte, la nav). */
-.ui .coquille__contenu,
-.ui[data-monde="public"] .app__contenu { overflow:auto; }
+/* Le défilement se fait LÀ OÙ L'APPLI LE FAIT vraiment : dans le produit, c'est **la page
+   entière** qui défile — pas la colonne de contenu. Le cadre joue donc le rôle de fenêtre,
+   et c'est le `.ui` qui défile. La nuance n'est pas cosmétique : elle décide de ce qui reste
+   à l'écran quand on descend, et donc de ce qu'on peut encore atteindre. */
+.appareil > .ui { overflow:auto; }
+.ui .coquille__nav { position:sticky; top:var(--respiration); }
+.ui .bandeau-contexte { position:sticky; top:0; z-index:2; }
 
 /* -- cartes & listes -- */
 .carte { background:var(--surface-1); border:1px solid var(--border-subtle); border-radius:5px; }

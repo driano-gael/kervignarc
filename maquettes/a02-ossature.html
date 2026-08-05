@@ -254,9 +254,15 @@ pilotage demande un tournoi, l'atelier n'en demande pas</strong>, et ça ne se p
       </div>
     </div></div></div>
     <p class="verdict"><span class="pouce peut">à regarder de près</span> <b>La navigation latérale ne tient pas
-    dans la hauteur d'un PC.</b> Dix-huit destinations à 44 px de haut chacune, plus le retour, le libellé d'axe,
-    la recherche et le sélecteur : environ <b>1 070 px</b> pour <b>811 px</b> disponibles. Ce n'est pas un défaut
-    de la maquette, c'est le front livré — invisible tant qu'on le regardait dans une vignette de 430 px.</p>
+    dans la hauteur d'un PC</b> : <b>1 074 px</b> mesurés pour <b>811 px</b> disponibles — dix-huit destinations à
+    44 px, plus le retour, le libellé d'axe, la recherche et le sélecteur. Ce n'est pas un défaut de la maquette,
+    c'est le front livré ; il était invisible dans une vignette de 430 px.</p>
+    <p class="verdict"><b>Le piège n'est pas là où on le croit.</b> Ici la navigation est <em>plus haute</em> que
+    le contenu (1 074 contre 798 px) : elle ne se colle donc pas, et défiler la découvre entièrement. Mais
+    <code>.coquille__nav</code> est <code>position:sticky</code> — dès qu'un écran a <b>plus de contenu que
+    d'entrées de menu</b> (supervision de 30 cibles, 156 inscrits, palmarès), la navigation se fige en haut et ses
+    <b>dernières destinations deviennent définitivement hors d'atteinte</b>. À vérifier écran par écran : les
+    planches concernées le signaleront.</p>
   </figure>
 
   <figure class="planche" data-appareil="pc" data-monde="admin"
