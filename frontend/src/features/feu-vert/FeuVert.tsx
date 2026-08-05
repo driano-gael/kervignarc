@@ -9,6 +9,7 @@
 // court (les validations de duels d'un scoreur font avancer le tableau, cf. `hooks`).
 
 import { useState } from 'react'
+import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { usePhases } from '../phases/hooks'
 import type { DuelAVenir } from './api'
@@ -34,13 +35,6 @@ export function FeuVert({ tournoiId }: { tournoiId: number }) {
   const lancer = useLancerTour(tournoiId, phaseId)
 
   const libelle = impact.data ? libelleBouton(impact.data) : null
-
-  const demanderLancement = () => {
-    if (libelle === null) return
-    // Le bouton chiffre déjà l'impact ; la confirmation le redit pour éviter un lancement par
-    // réflexe (le geste prévient les postes). Simple `confirm` en attendant une friction plus riche.
-    if (window.confirm(`${libelle.replace('Lancer — ', 'Lancer ')} ?`)) lancer.mutate()
-  }
 
   return (
     <section className="carte carte--large">
@@ -93,13 +87,20 @@ export function FeuVert({ tournoiId }: { tournoiId: number }) {
           )}
 
           <div className="feu-vert__actions">
-            <button
-              type="button"
+            {/* Le geste le plus lourd du jour J : il prévient les postes et les écrans. La question
+                **redit ce qui part** au lieu du « OK / Annuler » d'un `confirm` natif (A15 : *« une
+                pop-up propre et bien design »*), et le bouton de confirmation porte le même libellé
+                que le déclencheur — c'est le même geste, le renommer ferait douter. */}
+            <BoutonConfirme
+              libelle={libelle ?? 'Aucun duel prêt à lancer'}
               disabled={libelle === null || lancer.isPending}
-              onClick={demanderLancement}
-            >
-              {libelle ?? 'Aucun duel prêt à lancer'}
-            </button>
+              enCours={lancer.isPending}
+              titre="Lancer le tour ?"
+              message="Les postes de cible et les écrans de salle sont prévenus immédiatement."
+              detail={impact.data === undefined ? null : (libelleBouton(impact.data) ?? null)}
+              libelleConfirmer="Lancer le tour"
+              onConfirmer={() => lancer.mutate()}
+            />
             {lancer.isError && <MessageErreur erreur={lancer.error} />}
             {lancer.isSuccess && (
               <p className="carte__etat carte__etat--ok" role="status">

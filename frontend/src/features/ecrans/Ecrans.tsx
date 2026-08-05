@@ -14,6 +14,7 @@
 
 import { useState } from 'react'
 
+import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import {
   CADENCE_MAX_S,
@@ -106,13 +107,6 @@ function CarteEcran({ ecran, tournoiId }: { ecran: Ecran; tournoiId: number }) {
   const supprimer = useSupprimerEcran(tournoiId)
   const [nom, setNom] = useState(ecran.libelle)
 
-  const demanderSuppression = () => {
-    const ok = window.confirm(
-      `Retirer l’écran « ${ecran.libelle} » ? Son code cessera de fonctionner et l’écran repassera à l’accueil.`,
-    )
-    if (ok) supprimer.mutate(ecran.id)
-  }
-
   return (
     <li className="liste__item">
       <div className="formulaire">
@@ -134,14 +128,19 @@ function CarteEcran({ ecran, tournoiId }: { ecran: Ecran; tournoiId: number }) {
         <span className="liste__meta">
           Code&nbsp;: <strong>{ecran.code}</strong>
         </span>
-        <button
-          type="button"
+        {/* A15 : vrai dialogue plutôt que `window.confirm`. Retirer un écran coupe son code —
+            l'appareil projeté repasse à l'accueil, en pleine salle. */}
+        <BoutonConfirme
+          libelle="Retirer"
           className="lien"
           disabled={supprimer.isPending}
-          onClick={demanderSuppression}
-        >
-          Retirer
-        </button>
+          enCours={supprimer.isPending}
+          titre={`Retirer l’écran « ${ecran.libelle} » ?`}
+          message="Son code cesse de fonctionner et l’appareil repasse à l’écran d’accueil."
+          libelleConfirmer="Retirer l’écran"
+          ton="danger"
+          onConfirmer={() => supprimer.mutate(ecran.id)}
+        />
       </div>
       <ReglageDeroule ecran={ecran} tournoiId={tournoiId} />
       <MessageErreur erreur={renommer.error ?? supprimer.error} />

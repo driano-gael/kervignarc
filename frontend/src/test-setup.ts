@@ -13,6 +13,36 @@ import '@testing-library/jest-dom/vitest'
 import { afterEach } from 'vitest'
 import { cleanup } from '@testing-library/react'
 
+// `<dialog>` : jsdom rend l'élément mais **n'implémente ni `showModal()` ni `close()`** (limitation
+// connue de jsdom, pas du produit). Sans ce complément, tout test qui monte un composant contenant
+// un `DialogueConfirmation` (A15, 04/08/2026) échoue sur « showModal is not a function », alors que
+// le navigateur, lui, les fournit depuis 2022.
+//
+// On complète donc l'environnement plutôt que d'affaiblir le composant : ajouter un `typeof ===
+// 'function'` dans le code de production reviendrait à écrire une garde qui ne protège de rien en
+// vrai et n'existe que pour le test — exactement le genre de branche qu'on ne saurait plus retirer.
+//
+// L'implémentation reste **minimale et honnête** : elle ne simule ni le piège de focus, ni l'inertie
+// de l'arrière-plan, ni `::backdrop`. Elle ne pose que `open`, ce dont les tests ont besoin pour
+// interroger le contenu du dialogue. Un test qui prétendrait vérifier le piège de focus ici
+// mesurerait ce polyfill, pas le navigateur.
+if (typeof HTMLDialogElement !== 'undefined') {
+  const prototype = HTMLDialogElement.prototype as HTMLDialogElement & {
+    showModal?: () => void
+    close?: () => void
+  }
+  if (typeof prototype.showModal !== 'function') {
+    prototype.showModal = function showModal(this: HTMLDialogElement) {
+      this.open = true
+    }
+  }
+  if (typeof prototype.close !== 'function') {
+    prototype.close = function close(this: HTMLDialogElement) {
+      this.open = false
+    }
+  }
+}
+
 afterEach(() => {
   cleanup()
   localStorage.clear()

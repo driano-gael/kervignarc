@@ -560,6 +560,67 @@
   padding-left: 8px;
 }
 
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Dialogue de confirmation (A15, retour maquettes du 04/08/2026)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   « Une pop-up propre et bien design », en remplacement des huit `window.confirm`. `<dialog>` natif :
+   le piège de focus, `Échap` et l'inertie de l'arrière-plan sont fournis par le navigateur, on ne
+   style que l'apparence. `::backdrop` assombrit le fond — c'est lui qui dit « le reste attend ». */
+.dialogue {
+  max-width: 32rem;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 35%);
+}
+
+.dialogue::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.dialogue__titre {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.dialogue__message {
+  margin: 0;
+  color: var(--text-h);
+}
+
+/* Le détail chiffré (« il reste 3 séries à valider ») : registre secondaire, mais lisible — c'est
+   souvent lui qui fait renoncer, et c'est exactement ce qu'une boîte native ne savait pas mettre en
+   forme. */
+.dialogue__detail {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  white-space: pre-line;
+}
+
+.dialogue__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.dialogue__actions button {
+  min-height: 44px;
+  padding: 0 18px;
+}
+
+/* Ton « danger » : filet haut rouge. Le fond reste neutre — un aplat de danger sur toute la boîte
+   rendrait le texte moins lisible au moment précis où il faut le lire. */
+.dialogue--danger {
+  border-top: 4px solid var(--danger);
+}
+
 /* Carte générique. Ses largeurs viennent des jetons de surface (cf. tête de fichier) : les valeurs
    figées `360px` / `560px` étaient dimensionnées pour un téléphone et s'appliquaient tout autant au
    PC d'organisation — c'est la cause directe du « trop tassé » relevé en A02 et A11. */
