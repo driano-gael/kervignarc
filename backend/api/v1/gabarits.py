@@ -62,7 +62,11 @@ class AjusterGabaritRequete(BaseModel):
 
 
 class CibleReponse(BaseModel):
-    """Une cible du gabarit : rang, plafond d'archers et positions déduites."""
+    """Une cible du gabarit : rang, plafond d'archers et couloirs de tir déduits.
+
+    Le champ reste nommé ``positions`` : le terme métier arbitré est « couloir de tir »
+    (E16US001), le renommage du champ est différé — voir ``docs/dette.md`` DETTE-042.
+    """
 
     index: int
     capacite: int

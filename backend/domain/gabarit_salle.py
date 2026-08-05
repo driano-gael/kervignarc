@@ -25,7 +25,12 @@ GabaritSalleId = int
 """Identifiant technique d'un gabarit de salle, attribué par la persistance."""
 
 POSITIONS = ("A", "B", "C", "D")
-"""Positions physiques d'une cible, dans l'ordre de remplissage."""
+"""Les **couloirs de tir** d'une cible, dans l'ordre de remplissage.
+
+DETTE-042 : le terme métier arbitré est « couloir de tir » (E16US001, 05/08/2026) ; le nom
+`POSITIONS`/`position` subsiste dans tout le code, l'API et la base. Écart au vocabulaire assumé,
+résorption en US de renommage dédiée (migration Alembic comprise).
+"""
 
 CAPACITE_CIBLE_MIN = 1
 CAPACITE_CIBLE_MAX = len(POSITIONS)  # 4 : autant de positions que de lettres A/B/C/D

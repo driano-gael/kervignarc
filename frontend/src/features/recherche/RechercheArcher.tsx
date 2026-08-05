@@ -148,7 +148,7 @@ function PlaceTrouvee({
         {journee.map((l) => (
           <li key={l.departId} className="recherche-place">
             Départ {l.numeroDepart}
-            {l.horaire ? ` · ${l.horaire}` : ''} — Cible {l.cible} · Pos. {l.position}
+            {l.horaire ? ` · ${l.horaire}` : ''} — Cible {l.cible} · couloir {l.position}
           </li>
         ))}
       </ul>

@@ -63,6 +63,7 @@
 | [DETTE-039](#dette-039--la-cadence-et-la-taille-dune-page-projetée-sont-en-dur) | technique | mineur | `frontend/src/features/routage/pagination.ts` (`NOMS_PAR_PAGE`, `SECONDES_PAR_PAGE`) | Le commanditaire demande « 20 s **(réglable)** » (questionnaire `p06`) ; la cadence et le nombre de noms par page sont deux constantes de module. `NOMS_PAR_PAGE = 40` n'a par ailleurs jamais été mesuré sur le vidéoprojecteur réel | Un club dont les noms sont longs, ou dont la salle est profonde, ne peut rien ajuster sans recompiler — sur la seule surface que personne ne peut manipuler pendant le tournoi | Lot « retours maquettes » du 05/08/2026 — assumé au commentaire ; **résorption : `E16US009`** |
 | [DETTE-040](#dette-040--lalphabet-des-codes-de-terrain-existe-en-trois-exemplaires) | conception | mineur | `backend/infrastructure/postes/codes.py`, `backend/infrastructure/scoreurs/codes.py`, `frontend/src/shared/ui/codeTerrain.ts` | La chaîne `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` et la longueur `6` sont écrites **trois fois**. Les deux fichiers Python annonçaient eux-mêmes attendre « une 3ᵉ preuve avant tout remède » : le front est cette troisième | Un alphabet modifié d'un côté et pas des deux autres produit des codes que le pavé refuse de composer, ou l'inverse. Le garde-fou réel reste que **le serveur tranche** — le front n'est qu'une aide à la frappe | Lot « retours maquettes » du 05/08/2026. **Aucun remède proposé** : réunir Python et TypeScript supposerait d'exposer l'alphabet par l'API, ce qui est une US à part entière et coûte plus que la duplication (règle 16 — « ne rien faire » est ici la bonne réponse) |
 | [DETTE-041](#dette-041--le-front-approxime--a-tiré--par--total-non-nul-) | conception | mineur | `frontend/src/features/competition/departage.ts` (`totauxExAequo`), `frontend/src/features/competition/api.ts` (`LigneClassement`) | Le domaine **distingue** `a_tire` de `total > 0` — `backend/domain/classement.py` le documente : « un archer qui a validé une volée entièrement manquée a bien tiré, pour un total nul ». Le DTO n'expose pas ce booléen, donc le front l'approxime par `total !== 0` | Deux archers réellement à zéro ne sont pas signalés ex æquo. Cas de fin de journée, quasi théorique, sans conséquence autre que l'absence d'une phrase d'aide. **Non traité et plus gênant** : deux archers à des avancements différents (3 volées contre 6) au même total sont signalés ex æquo à tort — le DTO ne porte aucun avancement | Lot « retours maquettes » du 05/08/2026, relevé en 2ᵉ passe de revue. Résorption : exposer `a_tire` (et l'avancement) dans `LigneClassement`. ⚠️ **Le second volet est un arbitrage** : « ex æquo » vaut-il à l'issue de la qualification, ou à avancement égal ? À poser au commanditaire |
+| [DETTE-042](#dette-042--le-métier-dit--couloir-de-tir--le-code-dit-position) | conception | mineur | `backend/domain/gabarit_salle.py` (`POSITIONS`), `backend/domain/placement.py` (`Placement.position`), les DTO de `backend/api/v1/{gabarits,placement,placement_duels,saisie,routage}.py`, leurs miroirs front, et la colonne en base | **E16US001** a arbitré le terme métier : la place d'un archer devant sa cible est un **couloir de tir**, pas une « position ». Corrigé partout où l'utilisateur lit (écrans, messages d'API, PDF, maquettes, glossaire), **pas** dans les identifiants ni en base — écart à la **règle 3**, créé par cette US | Aucun effet à l'exécution : purement de lecture. Qui part du glossaire cherche `couloir` et ne trouve rien ; l'API expose un mot que l'UI contredit | Non fait dans l'US : le renommage traverse domaine + ORM + **migration Alembic** + 5 modules d'API + front, ~20 fichiers mécaniques, dont le diff noierait celui du vocabulaire d'écran. Résorption : US de renommage dédiée `position` → `couloir`, **après** solde d'EPIC-16 (conflits sinon) |
 
 ## Dette résorbée
 
@@ -1794,3 +1795,35 @@ désigne-t-il une égalité à l'issue de la qualification, ou à avancement ég
 qu'il faut exposer.
 
 Marqueur `# DETTE-041` sur `totauxExAequo`.
+
+### DETTE-042 — le métier dit « couloir de tir », le code dit `position`
+
+E16US001 a tranché le vocabulaire de la place d'un archer devant sa cible : c'est un **couloir de
+tir** (A, B, C, D), pas une « position ». L'arbitrage est appliqué **partout où l'utilisateur lit** —
+écrans, messages d'erreur d'API, PDF, maquettes, glossaire. Il ne l'est **pas** dans les
+identifiants : `Placement.position`, `Cible.positions`, `POSITIONS`, les DTO
+(`PlacementReponse.position`, `DeplacerRequete.position`, `ArcherGrilleReponse.position`,
+`CibleReponse.positions`, `ProchainDuelReponse.position`), les types front miroirs, et la **colonne
+en base** portent toujours l'ancien mot.
+
+C'est un écart frontal à la **règle 3** (« vocabulaire cohérent entre code, API, UI et doc »), et il
+est **créé par cette US** : avant l'arbitrage, `position` correspondait exactement au terme du
+glossaire. Le nommer ici plutôt que le taire est le seul moyen qu'il ne se sédimente pas.
+
+**Pourquoi non corrigé dans l'US** : le renommage traverse le domaine, l'ORM, une **migration
+Alembic**, cinq modules d'API, les types front et leurs appelants — une vingtaine de fichiers de
+transformation purement mécanique. Le mêler à une US de vocabulaire d'écran rendrait son diff
+illisible et sa revue inopérante, alors que le renommage ne change **rien** pour l'utilisateur : ce
+qu'il lit est déjà corrigé.
+
+**Conséquence si on ne fait rien** : un lecteur du code (ou un futur agent) qui part du glossaire
+cherche `couloir` et ne trouve rien ; l'API publique continue d'exposer un mot que l'UI contredit.
+Gênant à la lecture, sans effet à l'exécution.
+
+**Résorption** : US de renommage dédiée `position` → `couloir`, migration comprise, sans autre
+changement de comportement. À prendre quand le fil « retours maquettes » (EPIC-16) sera soldé — pas
+avant, sous peine de conflits sur des fichiers que ces US touchent encore.
+
+Marqueurs `DETTE-042` sur `backend/domain/gabarit_salle.py` (`POSITIONS`),
+`backend/domain/placement.py` (`Placement.position`) et `backend/api/v1/gabarits.py`
+(`CibleReponse`).

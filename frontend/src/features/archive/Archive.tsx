@@ -33,7 +33,7 @@ const PARTIES: ReadonlyArray<{ cle: keyof OptionsArchive; libelle: string; descr
     {
       cle: 'listePlacement',
       libelle: 'Liste de placement (PDF)',
-      description: 'Qui tire sur quelle cible et à quelle position.',
+      description: 'Qui tire sur quelle cible et dans quel couloir de tir.',
     },
     {
       cle: 'listeClubPaiement',

@@ -16,12 +16,12 @@
 import { nommerType } from '../../shared/phases/catalogue'
 import type { ProchainDuel, RoutageArcher } from './api'
 
-// « Cible 4 · place B », ou `null` si la cible n'est pas encore attribuée (tour ≥ 2, ou plan de
+// « Cible 4 · couloir B », ou `null` si la cible n'est pas encore attribuée (tour ≥ 2, ou plan de
 // duels non matérialisé) — le panneau affiche alors `manque` à la place.
 export function destination(prochain: ProchainDuel): string | null {
   if (prochain.cible === null) return null
-  const place = prochain.position !== null ? ` · place ${prochain.position}` : ''
-  return `Cible ${prochain.cible}${place}`
+  const couloir = prochain.position !== null ? ` · couloir ${prochain.position}` : ''
+  return `Cible ${prochain.cible}${couloir}`
 }
 
 // Qui il affronte : le nom si le duel amont est tranché, sinon **quel duel** on attend.

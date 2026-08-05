@@ -310,12 +310,12 @@ class ServicePlacement:
 
         if position is None:
             raise DeplacementInvalide(
-                "Une position est requise pour poser un archer sur une cible."
+                "Un couloir de tir est requis pour poser un archer sur une cible."
             )
         cible = self._cible(contexte.gabarit, cible_index)
         if position not in cible.positions:
             raise DeplacementInvalide(
-                f"La position {position} n'existe pas sur la cible {cible_index}."
+                f"Le couloir de tir {position} n'existe pas sur la cible {cible_index}."
             )
         if not contexte.est_placable(inscription_id):
             raise DeplacementInvalide(

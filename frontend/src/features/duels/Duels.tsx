@@ -300,7 +300,7 @@ function Case({
   return (
     <div
       className={`case${survole ? ' case--survol' : ''}`}
-      aria-label={`Position ${position}`}
+      aria-label={`Couloir de tir ${position}`}
       // `preventDefault` sur `dragOver` : sans lui, le navigateur **refuse** le dépôt (comportement
       // par défaut = pas de zone de drop).
       onDragOver={(e) => {

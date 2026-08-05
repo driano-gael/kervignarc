@@ -4,6 +4,10 @@
 // **copie** propre au tournoi, que l'on peut ensuite **ajuster** (nom, plafond cible par cible)
 // **sans altérer** le modèle d'origine. Un tournoi porte au plus un plan à la fois ; en choisir
 // un autre remplace le précédent. Ce plan sera la base du placement (EPIC-03).
+//
+// Vocabulaire (E16US001, arbitré le 05/08/2026) : un **pas de tir** est un groupement de cibles ;
+// la place d'un archer devant sa cible est un **couloir de tir** (A, B, C, D). Le plafond d'une
+// cible *est* son nombre de couloirs — d'où l'aperçu des lettres en face de chaque réglage.
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
@@ -13,6 +17,9 @@ import { useAjusterGabarit, useAppliquerGabarit, useGabaritDuTournoi, useGabarit
 
 const PLAFONDS = [1, 2, 3, 4]
 const PLAFOND_DEFAUT = 4
+// Les lettres de couloir, dans l'ordre. Le serveur les redéduit du plafond (`Cible.positions`) ;
+// on les recalcule ici pour que l'aperçu suive la saisie sans attendre l'aller-retour.
+const COULOIRS = ['A', 'B', 'C', 'D']
 
 export function PlanDeSalle({ tournoiId }: { tournoiId: number }) {
   const plan = useGabaritDuTournoi(tournoiId)
@@ -198,23 +205,46 @@ function FormulaireAjustement({ tournoiId, gabarit }: { tournoiId: number; gabar
         />
       </label>
 
+      <p className="plan-cibles__legende">
+        Un <strong>pas de tir</strong> regroupe des cibles. Devant chaque cible, chaque archer tire
+        depuis son <strong>couloir de tir</strong>, repéré par une lettre. Le nombre de couloirs
+        d'une cible est son plafond d'archers : les <strong>blasons</strong> posés dessus se les
+        répartissent — deux blasons admettant deux archers chacun font quatre couloirs A, B, C, D.
+      </p>
+
       <ul className="plan-cibles">
         {capacites.map((plafond, index) => (
-          // Les cibles sont numérotées par position, sans identité propre : l'index fait la clé.
+          // Les cibles sont numérotées par rang, sans identité propre : l'index fait la clé.
           <li key={index} className="plan-cible">
             <span className="plan-cible__nom">Cible {index + 1}</span>
             <select
               className="formulaire__champ"
               value={plafond}
               onChange={(e) => reglerCapacite(index, Number(e.target.value))}
-              aria-label={`Plafond d'archers de la cible ${index + 1}`}
+              aria-label={`Couloirs de tir de la cible ${index + 1}`}
             >
               {PLAFONDS.map((valeur) => (
                 <option key={valeur} value={valeur}>
-                  Max {valeur} archer{valeur > 1 ? 's' : ''}
+                  {valeur} couloir{valeur > 1 ? 's' : ''} de tir
                 </option>
               ))}
             </select>
+            {/* Aperçu des lettres : redit visuellement ce que le sélecteur annonce déjà, donc
+                masqué aux lecteurs d'écran plutôt que doublé. */}
+            <span className="plan-cible__couloirs" aria-hidden="true">
+              {COULOIRS.map((lettre, rang) => (
+                <span
+                  key={lettre}
+                  className={
+                    rang < plafond
+                      ? 'plan-cible__couloir'
+                      : 'plan-cible__couloir plan-cible__couloir--inactif'
+                  }
+                >
+                  {lettre}
+                </span>
+              ))}
+            </span>
           </li>
         ))}
       </ul>

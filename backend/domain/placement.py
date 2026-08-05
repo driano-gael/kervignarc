@@ -162,7 +162,7 @@ class Placement:
     ne connaît pas les inscriptions : il laisse `None` ; c'est le **service** qui la renseigne en
     construisant le plan persisté (E03US004)."""
 
-    position: str  # "A".."D"
+    position: str  # "A".."D" — le **couloir de tir** (DETTE-042 : nom du champ non aligné)
     archer_id: ArcherId
     blason_id: BlasonId
     inscription_id: InscriptionId | None = None
