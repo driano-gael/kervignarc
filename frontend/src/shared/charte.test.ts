@@ -163,7 +163,14 @@ describe('CA — le rouge du club est une surface, jamais un accent (DV-04)', ()
         ),
     )
 
-    // Les pastilles de la checklist sont des points de couleur **sans texte** : rien à encrer.
-    expect(aplats.filter((a) => !a.includes('checklist__pastille'))).toEqual([])
+    // L'invariant porte sur les aplats **qui contiennent du texte** — eux seuls peuvent hériter
+    // d'une encre illisible. Une surface purement décorative n'a rien à encrer. Le test ne sait pas
+    // lire le DOM depuis une feuille de style : ces cas se déclarent, un par un et avec leur raison,
+    // plutôt que d'assouplir la règle pour tout le monde.
+    const REMPLISSAGES_SANS_TEXTE = [
+      'checklist__pastille', // un point de couleur en regard d'une ligne
+      '.jauge span', // le remplissage d'une jauge, dans une piste
+    ]
+    expect(aplats.filter((a) => !REMPLISSAGES_SANS_TEXTE.some((r) => a.includes(r)))).toEqual([])
   })
 })

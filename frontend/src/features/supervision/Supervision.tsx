@@ -6,7 +6,10 @@
 // (hors ligne). Live par poll court (cf. `useSupervision`). L'état se rend en **couleur + pastille +
 // texte** (jamais la couleur seule) ; hors ligne = **ambre**, pas rouge (arbitrage ADR-0038 / DV-03).
 //
-// **Les écrans de salle y figurent aussi** (E07US004), dans un second tableau — pas dans un autre
+// Les cibles se lisent en **grille de tuiles** depuis E17US004 (planche A13, variante B retenue) ; le
+// tableau qui tenait ce rôle était la variante écartée.
+//
+// **Les écrans de salle y figurent aussi** (E07US004), dans un second bandeau — pas dans un autre
 // écran. Le CA le dit sans détour : *« un écran figé ne se plaint pas, seule la supervision le
 // révèle »*. C'est aussi d'ici que l'organisateur **impose une vue** sans traverser le gymnase, et
 // qu'il voit, en rouge, les prises de contrôle qu'il a oublié de rendre.
@@ -16,7 +19,7 @@ import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { GroupeRepliable } from '../../shared/ui/GroupeRepliable'
 import type { PosteSupervision } from './api'
 import { PiloterEcrans } from './PiloterEcrans'
-import { afficheEtat, avancementLibelle } from './etat'
+import { afficheEtat, avancementLibelle, fractionAvancement, voleeCourte } from './etat'
 import { useRevoquerPoste, useSupervision } from './hooks'
 import { tempsRelatif } from './tempsRelatif'
 
@@ -67,25 +70,16 @@ export function Supervision({ tournoiId }: { tournoiId: number }) {
               nbAnomalies={muets(cibles)}
               libelleAnomalies="à vérifier"
               enfants={
-                <table className="table supervision__table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Cible</th>
-                      <th scope="col">État</th>
-                      <th scope="col">Dernière activité</th>
-                      <th scope="col">Avancement</th>
-                      <th scope="col">IP</th>
-                      <th scope="col">
-                        <span className="sr-only">Action</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <>
+                  <p className="supervision__legende">
+                    Chaque tuile&nbsp;: cible, volée en cours, dernier signe de vie.
+                  </p>
+                  <ul className="supervision__grille">
                     {cibles.map((poste) => (
-                      <LignePoste key={poste.poste_id} poste={poste} tournoiId={tournoiId} />
+                      <TuilePoste key={poste.poste_id} poste={poste} tournoiId={tournoiId} />
                     ))}
-                  </tbody>
-                </table>
+                  </ul>
+                </>
               }
             />
           )}
@@ -113,33 +107,63 @@ export function Supervision({ tournoiId }: { tournoiId: number }) {
   )
 }
 
-function LignePoste({ poste, tournoiId }: { poste: PosteSupervision; tournoiId: number }) {
+/**
+ * Une cible, en tuile — planche A13, variante **B « grille de tuiles (30 d'un œil) »**, retenue au
+ * questionnaire du 04/08/2026 et **validée sans réserve** (E17US004).
+ *
+ * Le tableau qui tenait ce rôle était la variante **A**, écartée. Le motif du choix est dans le nom
+ * de la variante : trente lignes ne se balaient pas d'un regard, trente tuiles si — et cet écran
+ * n'existe que pour répondre à « qui s'est tu ? » en traversant le gymnase le moins possible.
+ *
+ * **Deux informations que la planche ne montre pas sont conservées** : l'IP (diagnostic `D-06` —
+ * c'est elle qui permet de retrouver *physiquement* une tablette) et la révocation. Les perdre aurait
+ * été troquer une régression fonctionnelle contre une ressemblance ; la planche est une maquette à
+ * données fictives, elle n'a pas vocation à énumérer les actions.
+ */
+function TuilePoste({ poste, tournoiId }: { poste: PosteSupervision; tournoiId: number }) {
   const revoquer = useRevoquerPoste(tournoiId)
   const { classe, libelle } = afficheEtat(poste.etat)
   const rattache = poste.etat !== 'non_rattache'
+  const volee = voleeCourte(poste.avancement)
+  const fraction = fractionAvancement(poste.avancement)
+  const vu = poste.derniere_saisie === null ? null : tempsRelatif(poste.derniere_saisie, new Date())
+
+  // `DV-03` — **couleur + pastille + texte**, jamais la couleur seule. La planche met le temps écoulé
+  // dans la pastille (« 2 s », « 6 min ») ; ça marche tant que le poste répond, parce que le temps
+  // *est* l'information. Un poste **muet** n'a pas de temps qui veuille dire quelque chose : on y
+  // écrit alors l'état en toutes lettres, sinon seule la teinte de la bordure le distinguerait.
+  const marque = poste.etat === 'en_ligne' ? (vu ?? libelle) : libelle
 
   return (
-    <tr>
-      <td>Cible {poste.cible_index ?? '—'}</td>
-      <td>
-        <span className={`supervision__etat supervision__etat--${classe}`}>
-          <span className="indicateur__pastille" aria-hidden="true" />
-          {libelle}
+    <li className={`supervision__tuile supervision__tuile--${classe}`}>
+      <p className="supervision__tuile-tete">
+        <span className="supervision__cible">
+          <span className="sr-only">Cible </span>
+          {poste.cible_index ?? '—'}
         </span>
-      </td>
-      <td>
-        {poste.derniere_saisie === null ? '—' : tempsRelatif(poste.derniere_saisie, new Date())}
-      </td>
-      <td>{avancementLibelle(poste.avancement)}</td>
-      {/* IP en diagnostic (D-06), jamais une identité : sert à retrouver physiquement la tablette. */}
-      <td className="supervision__ip">{poste.ip ?? '—'}</td>
-      <td>
-        {rattache && (
-          /* Garde-fou tactile : révoquer un poste en cours de tir le coupe. Vrai dialogue depuis
-             le retour maquettes du 04/08/2026 (A15) ; le calcul d'impact chiffré reste E12US007. */
+        {volee !== null && <span className="supervision__volee">{volee}</span>}
+        <span className={`supervision__etat supervision__etat--${classe} supervision__signe`}>
+          <span className="indicateur__pastille" aria-hidden="true" />
+          {marque}
+        </span>
+      </p>
+
+      {/* La jauge est une image d'information : sans équivalent textuel, un lecteur d'écran ne lit
+          qu'une boîte vide. L'`aria-label` reprend le libellé **du tableau**, mot pour mot. */}
+      {fraction !== null && (
+        <p className="jauge" role="img" aria-label={avancementLibelle(poste.avancement)}>
+          <span style={{ width: `${Math.round(fraction * 100)}%` }} />
+        </p>
+      )}
+
+      {rattache && (
+        <p className="supervision__pied">
+          <span className="supervision__ip">{poste.ip ?? '—'}</span>
+          {/* Garde-fou tactile : révoquer un poste en cours de tir le coupe. Vrai dialogue depuis
+              le retour maquettes du 04/08/2026 (A15) ; le calcul d'impact chiffré reste E12US007. */}
           <BoutonConfirme
             libelle="Révoquer"
-            className="lien"
+            className="lien supervision__revoquer"
             disabled={revoquer.isPending}
             enCours={revoquer.isPending}
             titre={`Révoquer la cible ${poste.cible_index ?? '?'} ?`}
@@ -148,15 +172,14 @@ function LignePoste({ poste, tournoiId }: { poste: PosteSupervision; tournoiId: 
             ton="danger"
             onConfirmer={() => revoquer.mutate(poste.poste_id)}
           />
-        )}
-        {revoquer.isError && (
-          <span className="carte__etat--erreur" role="alert">
-            {revoquer.error instanceof ErreurApi
-              ? revoquer.error.message
-              : 'Échec de la révocation.'}
-          </span>
-        )}
-      </td>
-    </tr>
+        </p>
+      )}
+
+      {revoquer.isError && (
+        <p className="carte__etat--erreur" role="alert">
+          {revoquer.error instanceof ErreurApi ? revoquer.error.message : 'Échec de la révocation.'}
+        </p>
+      )}
+    </li>
   )
 }

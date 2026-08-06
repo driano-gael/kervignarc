@@ -63,6 +63,9 @@ livrées n'avait de raison de s'en apercevoir : chacune était conforme à *son*
 
 - [x] Poser la charte du club dans l'application (E17US001).
 - [x] Aligner le catalogue de composants sur les formes des planches (E17US002).
+- [x] Relever les écarts des 19 planches admin (ci-dessous).
+- [x] A01 connexion + A02 accueil des axes (E17US003).
+- [x] A13 supervision — la grille de tuiles (E17US004).
 - [ ] Embarquer **Inter** pour le jour J, sans réseau (`DV-07`) — **arbitrage d'actif en attente**.
 - [ ] Confronter les 19 planches `A**` (admin) aux écrans livrés et lister les écarts.
 - [ ] Confronter les 9 planches `S**` (saisie & scoreur).
@@ -92,7 +95,7 @@ une refonte d'écran, mais ne pas corriger, c'est livrer ce qu'il a refusé.
 
 | Planche | Retenu | Livré | Constat |
 |---|---|---|---|
-| **A13 · supervision** ✅ | **B — grille de tuiles** (« 30 d'un œil ») | `<table>` = variante **A** (liste dense) | `Supervision.tsx` et `PiloterEcrans.tsx` rendent deux tableaux. **Verdict ✅ « validé tel quel » sur B** : aucune réserve ne couvre l'écart. |
+| ~~**A13 · supervision** ✅~~ **corrigé** (E17US004) | **B — grille de tuiles** (« 30 d'un œil ») | ~~`<table>` = variante **A**~~ → **grille de tuiles** | Les cibles se lisent désormais en tuiles ; l'IP et la révocation, absentes de la planche, ont été **conservées dans la tuile**. Le tableau des **écrans de salle** reste (A19 est conforme). |
 | **A06 · référentiels** 🟡 | **B — panneau latéral d'édition** | édition **en place** = variante **A** | `Blasons.tsx` bascule tout l'écran en formulaire (`if (edition) …`). Le panneau latéral (`.avec-panneau` des planches) n'existe pas dans le front. |
 | **A09 · inscriptions** 🟡 | **B — recherche d'abord, liste ensuite** | formulaire puis liste = variante **A** | Ni recherche en tête, ni compteurs d'entrée (« Voir les 156 inscrits », « Non placés · 3 », « Non réglés · 12 », « Doublons · 2 »). |
 
@@ -116,8 +119,8 @@ L'écart le plus **systématique** : les planches présentent les données d'adm
 
 | Planche | Écart |
 |---|---|
-| **A01 · connexion** 🟡 | La planche retient « **formulaire sobre plein cadre** ». Le produit affiche une petite carte **collée en haut à gauche** — constaté au navigateur. |
-| **A02 · ossature** 🟡 | L'accueil des trois axes n'affiche pas les **compteurs par état** de la planche (« EN COURS 2 · PRÊT 1 · TERMINÉ 6 · BROUILLON 3 »). |
+| ~~**A01 · connexion** 🟡~~ **corrigé** (E17US003) | La planche retient « **formulaire sobre plein cadre** » ; le produit affichait une carte collée en haut à gauche. Désormais colonne centrée, bandeau de titre, libellés visibles, bouton pleine largeur, échappatoire centrée sous la carte. |
+| ~~**A02 · ossature** 🟡~~ **partiellement corrigé** (E17US003) | La question « Que venez-vous faire ? » et la ligne de contexte de l'axe Pilotage sont posées. ⚠️ **Le relevé initial se trompait** sur les compteurs : le front affichait **déjà** « N en cours » (`CoquilleAdmin.tsx`) — je l'avais jugé sur un tournoi en **brouillon**, donc sur un état où le compteur ne s'affiche pas. C'est exactement la limite annoncée plus bas (« les écrans sans jeu de données n'ont pu être vus qu'à l'état vide »). Restent hors périmètre : la pastille d'alerte de complétude (`E16US010`) et « 28/30 postes en ligne » (agrégat absent du serveur). |
 
 ### Ce que ce relevé ne dit pas
 

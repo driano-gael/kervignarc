@@ -75,3 +75,49 @@
   d'une action destructrice reste **un trou de la charte** : le choix retenu (ambre en texte et
   contour, la sécurité étant portée par le dialogue d'ADR-0072) est **soumis au commanditaire**.
 - **Dépend de** : E17US001 · **Jalon** : J1
+
+### E17US003 — Les deux premiers écrans de l'admin se conforment à leur planche
+*En tant qu'*organisateur, *je veux* que l'écran de connexion et l'accueil de l'administration ressemblent aux planches validées, *afin de* ne pas ouvrir l'outil sur un formulaire perdu dans un coin d'écran.
+
+- **Contexte** : `A01` retient la variante **A — « formulaire sobre plein cadre »**, `A02` la variante
+  **A — « accueil à trois portes »**. Les deux sont 🟡, donc leurs réserves font partie de la cible.
+- **CA** :
+  - la connexion est une **colonne centrée** (≈ 420 px), pas une carte dans l'angle haut-gauche ;
+  - la carte porte un **bandeau de titre** disant ce qu'on y fait, et les champs ont un **libellé
+    visible au-dessus** — un `placeholder` disparaît à la première frappe et n'est pas un libellé ;
+  - le bouton d'envoi est **pleine largeur** (`.bouton principal` des planches, pas la variante en
+    ligne) ;
+  - l'échappatoire « Choisir un autre appareil » est **sous** la carte et centrée ;
+  - l'accueil des axes s'ouvre sur la **question** de la planche, et l'axe Pilotage dit **sur quoi il
+    travaille** quand un tournoi est en cours.
+- **Notes** : réserve A01 « sépare le nom de l'appli et l'état serveur dans un header séparé » : **déjà
+  satisfaite** avant cette US. Question A01 « le lien de secours est-il utile ? » — réponse « je ne sais
+  pas s'il est utile » : **pas une consigne de suppression**, et la planche le conserve ; il reste
+  (`ADR-0042` impose une échappatoire). **Non fait** : la pastille d'alerte de complétude sur la liste
+  (c'est `E16US010`) et la ligne « 28/30 postes en ligne » de la planche, qui demanderait un agrégat
+  que le serveur n'expose pas — on n'affiche que ce que l'écran sait déjà.
+- **Dépend de** : E17US002 · **Jalon** : J1
+
+### E17US004 — La supervision passe en grille de tuiles
+*En tant qu'*organisateur, *je veux* voir mes trente postes **d'un seul coup d'œil**, *afin de* repérer celui qui s'est tu sans lire trente lignes.
+
+- **Contexte** : `A13` retient la variante **B — « grille de tuiles (30 d'un œil) »** et le verdict est
+  **✅ validé tel quel**. Le produit livrait la variante **A**, le tableau — c'est-à-dire le parti pris
+  écarté. C'est l'écran du jour J.
+- **CA** :
+  - les cibles se lisent en **grille de tuiles**, une tuile par cible, sans défilement de tableau ;
+  - une tuile porte le **numéro de cible**, la **volée en cours** en forme courte, le **dernier signe
+    de vie** et une **jauge d'avancement** ;
+  - un poste **muet** se distingue **au cadre**, pas seulement à sa pastille — et son état est écrit
+    **en toutes lettres** (`DV-03` : jamais la couleur seule) ;
+  - **rien n'est perdu** de ce que le tableau portait : l'IP de diagnostic (`D-06`) et la révocation
+    restent atteignables depuis la tuile ;
+  - la jauge a un **équivalent textuel** — sans lui, un lecteur d'écran ne lit qu'une boîte vide.
+- **Notes** : `voleeCourte` et `fractionAvancement` sont **pures et testées avant le rendu**, comme le
+  reste d'`etat.ts` ; un test vérifie qu'elles ne peuvent pas diverger d'`avancementLibelle` — sinon
+  une tuile afficherait une jauge là où le tableau affiche « — », sur le même poste au même instant.
+  La fraction est **bornée à 1** : le serveur peut annoncer une volée au-delà de la grille (reprise,
+  grille raccourcie), et la jauge déborderait de sa piste. **Vérifié au navigateur** avec 30 postes
+  réels, non rattachés ; l'état **rattaché** (jauge + IP + révocation) n'a pas pu être vu faute
+  d'appareil connecté — il est couvert par les tests unitaires et la relecture.
+- **Dépend de** : E17US002 · **Jalon** : J2 *(écran du jour J)*

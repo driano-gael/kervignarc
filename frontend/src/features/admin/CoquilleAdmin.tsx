@@ -111,19 +111,29 @@ import { GestionTournois } from '../tournois/Tournois'
 export function CoquilleAdmin() {
   const estAdmin = useSessionAdminStore((s) => s.jeton) !== null
   if (estAdmin) return <Coquille />
+  // Mise en page de la planche A01, variante **A — « formulaire sobre plein cadre »** (retenue au
+  // questionnaire du 04/08/2026, E17US003) : une **colonne centrée**, et non une carte posée dans
+  // l'angle haut-gauche de l'écran. Le titre « Administration » disparaît : l'en-tête d'application
+  // dit déjà « Kervignarc », et le bandeau de la carte dit ce qu'on y fait — la planche ne porte
+  // qu'un seul de ces trois niveaux.
   return (
-    <section className="carte carte--large carte--connexion">
-      <h2 className="carte__titre">Administration</h2>
-      <ConnexionAdmin />
+    <div className="connexion">
+      <section className="carte carte--connexion">
+        <ConnexionAdmin />
+      </section>
       {/* Retour explicite à l'écran des portes (A01, retour maquettes du 04/08/2026 : *« il manque
           peut-être une possibilité de choisir un autre écran… il faut pouvoir sélectionner un rôle de
           l'appareil »*).
           L'échappatoire **existait déjà** — « Changer de rôle », dans l'en-tête, depuis E00US017 —
           mais elle est délibérément discrète (action rare, ton neutre) et n'a donc pas été vue là où
           on la cherche : sur le seul écran où l'on peut s'être trompé de porte. On ne la déplace pas,
-          on la **redouble ici**, au pied du formulaire, avec les mots de la question posée. */}
-      <ChangerDeRole libelle="← Choisir un autre appareil" />
-    </section>
+          on la **redouble ici**, au pied du formulaire, avec les mots de la question posée.
+          Depuis E17US003 elle est **hors de la carte et centrée**, comme sur la planche : dedans,
+          elle se lisait comme une action du formulaire. */}
+      <p className="connexion__echappatoire">
+        <ChangerDeRole libelle="← Choisir un autre appareil" />
+      </p>
+    </div>
   )
 }
 
@@ -464,11 +474,19 @@ function Coquille() {
   }, [chemin, chemAttendu])
 
   if (axeActif === null) {
-    const enCours = (tournois.data ?? []).filter(
+    const enCoursListe = (tournois.data ?? []).filter(
       (t) => t.statut === 'en_cours' || t.statut === 'en_pause',
-    ).length
+    )
+    const enCours = enCoursListe.length
+    // Ligne de contexte de la planche A02 (« Challenge des champions · Départ 2 en tir · 28/30 postes
+    // en ligne ») : on n'en sert que la part **déjà connue de cet écran**, le nom des tournois en
+    // cours. Le départ courant et le compte de postes en ligne demanderaient un agrégat que le
+    // serveur n'expose pas ; les inventer côté client par une requête par tournoi ferait payer
+    // l'accueil pour une information de confort. Écart assumé, noté au relevé d'écarts d'EPIC-17.
+    const contextePilotage = enCours === 0 ? null : enCoursListe.map((t) => t.nom).join(' · ')
     return (
       <div className="accueil-admin">
+        <h2 className="accueil-admin__question">Que venez-vous faire ?</h2>
         <ul className="accueil-admin__axes">
           {AXES.map((a) => (
             <li key={a.axe}>
@@ -489,6 +507,9 @@ function Coquille() {
                   )}
                 </span>
                 <span className="accueil-admin__phrase">{a.phrase}</span>
+                {a.axe === 'pilotage' && contextePilotage !== null && (
+                  <span className="accueil-admin__contexte">{contextePilotage}</span>
+                )}
               </button>
             </li>
           ))}

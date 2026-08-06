@@ -438,10 +438,25 @@
    Accueil de l'admin (E14US003) : choisir son axe de travail, et assembler un tournoi.
    C'est la porte du produit — pas une entrée de menu parmi dix-neuf.
    ———————————————————————————————————————————————————————————————————————————————————————————————— */
+/* Planche A02, variante A retenue — l'accueil des trois axes s'ouvre sur **une question**, pas sur
+   une grille nue : c'est elle qui dit que ces trois cartes sont un choix, et non un sommaire. */
 .accueil-admin {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.accueil-admin__question {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+/* Ce sur quoi l'axe travaille en ce moment. Discret par construction : la carte porte d'abord ce
+   qu'on vient y faire, l'état n'est qu'un repère. */
+.accueil-admin__contexte {
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 .accueil-admin__axes {
@@ -707,8 +722,67 @@
 /* Écran de connexion : la carte reste **étroite volontairement**, quelle que soit la surface. Un
    formulaire de deux champs étalé sur 1000 px est plus difficile à remplir, pas plus confortable —
    la règle d'aération d'A02 vise les écrans de travail denses, pas celui-ci. */
+/* Planche A01, variante A retenue — « formulaire sobre plein cadre » : une **colonne centrée**, et
+   non une carte dans l'angle. 26rem ≈ les 420 px de la planche. La carte perd son rembourrage : sur
+   la planche, le bandeau de titre touche les bords et c'est le corps qui respire. */
+.connexion {
+  max-width: 26rem;
+  margin: 0 auto;
+}
+
 .carte--connexion {
-  max-width: 30rem;
+  max-width: none;
+  padding: 0;
+}
+
+/* Bandeau de titre d'une carte — la `.tete-carte` des planches : petites capitales espacées, séparées
+   du corps par un filet. Dit *ce qu'on fait ici*, sans concurrencer le titre d'application. */
+.carte__entete {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.connexion__corps {
+  padding: 20px;
+}
+
+.connexion__champ {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.connexion__champ .formulaire__champ {
+  width: 100%;
+}
+
+/* Le libellé au-dessus du champ, en `.mini` de planche. */
+.connexion__etiquette {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Le `.bouton.principal` **pleine largeur** des planches — la variante en ligne (`.bouton.auto`) est
+   celle des barres d'action, pas celle d'un formulaire qui n'a qu'une issue. */
+.connexion__envoi {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+}
+
+.connexion__echappatoire {
+  margin: 16px 0 0;
+  text-align: center;
 }
 
 .carte__titre {
@@ -1616,6 +1690,87 @@ button:disabled {
   font-size: 15px;
   color: var(--text-secondary);
   margin: 0 0 12px;
+}
+
+/* Planche A13, variante B retenue — **la grille de tuiles**. `auto-fill` plutôt que les 6 colonnes
+   fixes de la planche : la planche est dessinée pour un PC de 1600 px, l'écran de supervision se
+   consulte aussi sur un portable à la table d'organisation. La tuile garde sa largeur, c'est leur
+   nombre par ligne qui s'ajuste. */
+.supervision__grille {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 12px;
+}
+
+.supervision__legende {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.supervision__tuile {
+  padding: 12px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+}
+
+/* Un poste **muet** se voit au cadre, pas seulement à sa pastille : c'est ce qui permet de repérer
+   le trou dans la grille sans lire les trente tuiles une par une. Ambre, jamais rouge (`DV-03`). */
+.supervision__tuile--hors_ligne {
+  border-color: var(--danger);
+}
+
+.supervision__tuile-tete {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+}
+
+.supervision__cible {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.supervision__volee {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.supervision__signe {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+/* La jauge des planches : une piste creuse, un remplissage. */
+.jauge {
+  margin: 8px 0 0;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.jauge span {
+  display: block;
+  height: 100%;
+  background: var(--success);
+}
+
+.supervision__pied {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+}
+
+.supervision__revoquer {
+  margin-left: auto;
+  font-size: 12px;
 }
 
 .supervision__table {
