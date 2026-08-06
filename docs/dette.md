@@ -64,6 +64,9 @@
 | [DETTE-040](#dette-040--lalphabet-des-codes-de-terrain-existe-en-trois-exemplaires) | conception | mineur | `backend/infrastructure/postes/codes.py`, `backend/infrastructure/scoreurs/codes.py`, `frontend/src/shared/ui/codeTerrain.ts` | La chaîne `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` et la longueur `6` sont écrites **trois fois**. Les deux fichiers Python annonçaient eux-mêmes attendre « une 3ᵉ preuve avant tout remède » : le front est cette troisième | Un alphabet modifié d'un côté et pas des deux autres produit des codes que le pavé refuse de composer, ou l'inverse. Le garde-fou réel reste que **le serveur tranche** — le front n'est qu'une aide à la frappe | Lot « retours maquettes » du 05/08/2026. **Aucun remède proposé** : réunir Python et TypeScript supposerait d'exposer l'alphabet par l'API, ce qui est une US à part entière et coûte plus que la duplication (règle 16 — « ne rien faire » est ici la bonne réponse) |
 | [DETTE-041](#dette-041--le-front-approxime--a-tiré--par--total-non-nul-) | conception | mineur | `frontend/src/features/competition/departage.ts` (`totauxExAequo`), `frontend/src/features/competition/api.ts` (`LigneClassement`) | Le domaine **distingue** `a_tire` de `total > 0` — `backend/domain/classement.py` le documente : « un archer qui a validé une volée entièrement manquée a bien tiré, pour un total nul ». Le DTO n'expose pas ce booléen, donc le front l'approxime par `total !== 0` | Deux archers réellement à zéro ne sont pas signalés ex æquo. Cas de fin de journée, quasi théorique, sans conséquence autre que l'absence d'une phrase d'aide. **Non traité et plus gênant** : deux archers à des avancements différents (3 volées contre 6) au même total sont signalés ex æquo à tort — le DTO ne porte aucun avancement | Lot « retours maquettes » du 05/08/2026, relevé en 2ᵉ passe de revue. Résorption : exposer `a_tire` (et l'avancement) dans `LigneClassement`. ⚠️ **Le second volet est un arbitrage** : « ex æquo » vaut-il à l'issue de la qualification, ou à avancement égal ? À poser au commanditaire |
 | [DETTE-042](#dette-042--le-métier-dit--couloir-de-tir--le-code-dit-position) | conception | majeur | `backend/domain/gabarit_salle.py` (`POSITIONS`), `backend/domain/placement.py` (`Placement.position`), les DTO de `backend/api/v1/{gabarits,placement,placement_duels,saisie,routage}.py`, leurs miroirs front, et les colonnes `placement.position` / `placement_duel.position` en base | **E16US001** ([ADR-0073](adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md)) a arbitré le terme métier : la place d'un archer devant sa cible est un **couloir de tir**, pas une « position ». Corrigé dans **l'application livrée** (écrans, aide contextuelle, messages d'API, les deux PDF, maquette A10 + planche wireframe, glossaire), **pas** dans les identifiants ni en base — écart à la **règle 3**, **amendant ADR-0006**, créé par cette US | Aucun effet à l'exécution : purement de lecture. Qui part du glossaire cherche `couloir` et ne trouve rien ; l'API expose un mot que l'UI contredit — soit les deux critères de « majeur » (invariant du projet + piège du prochain contributeur) | Non fait dans l'US : le renommage traverse domaine + ORM + **migration Alembic** + 5 modules d'API + front, ~20 fichiers mécaniques, dont le diff noierait celui du vocabulaire d'écran. Résorption **rattachée à `E01US019`** (voir DETTE-010) : même symbole, même colonne, **une seule migration** |
+| [DETTE-044](#dette-044--tournoiid-et-departid-sont-le-même-type-pour-mypy) | conception | majeur | `backend/domain/tournoi.py` (`TournoiId`), `backend/domain/depart.py` (`DepartId`), et tous les alias d'identifiant du projet (`ArcherId`, `PhaseId`, `CategorieId`…) | Les identifiants sont des **alias** (`TournoiId = int`), pas des types distincts. Passer un identifiant de tournoi là où on attend un départ **typecheck parfaitement** | Démontré à l'échelle pendant E01US025 : la bascule de portée n'a produit que **10 erreurs mypy** ; renommer les méthodes de port (`par_tournoi` → `par_depart`) en a révélé **157 de plus** — toutes des appels compilables et faux. Sans ce renommage, le refactor aurait été « vert » et cassé | Résorption : `NewType("DepartId", int)` sur les identifiants. Invasif (tout le dépôt), mais **mécanique** et guidé par mypy. À faire en US dédiée. Le garde-fou `tests/test_portee_sportive.py` couvre le cas du départ ; il ne couvre pas les autres paires |
+| [DETTE-045](#dette-045--le-palmarès-et-la-simulation-ne-voient-que-le-premier-départ) | conception | majeur | `backend/application/palmares.py` (`_premier_depart`), `backend/application/simulation.py`, `backend/application/simulation_format.py` | Le classement vit **par départ** ([ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md)), mais le palmarès et le rejeu de simulation sont restés à la maille tournoi : ils prennent le **premier créneau** et ignorent les autres | Sur un tournoi multi-créneaux, le palmarès n'affiche que le podium du matin ; les autres départs n'ont **aucun** palmarès. Silencieux — rien à l'écran ne dit que la vue est partielle | ⚠️ **La résorption est un arbitrage métier, pas une correction technique** : sur 4 départs, un palmarès d'ensemble **additionne-t-il** les podiums ou les **juxtapose-t-il** ? À poser au commanditaire avant de coder. Tracé plutôt que bricolé |
+| [DETTE-046](#dette-046--un-archer-inscrit-sur-deux-départs-ne-peut-avoir-quune-série) | conception | majeur | table `serie` (`UNIQUE(tournoi_id, archer_id)`), `backend/domain/serie.py`, `backend/infrastructure/db/repositories/tir.py` | Le modèle autorise un archer à s'inscrire sur **plusieurs** créneaux (`ARCHER }o--o{ DEPART`), mais `serie` est unique **par tournoi et par archer** : ses flèches du matin et de l'après-midi n'ont qu'un seul emplacement | Un archer tirant deux créneaux voit sa seconde série écraser la première, ou son enregistrement échouer. **Découvert** pendant E01US025 en portant le classement au départ ; non traité, l'US portait déjà sur le moteur entier | Résorption : `UNIQUE(depart_id, archer_id)` et `Serie.depart_id`. C'est **la même famille** que DETTE-044 et ADR-0075 — une portée restée au tournoi alors que la réalité est le créneau. À traiter dans la foulée, migration comprise |
 | [DETTE-043](#dette-043--la-charte-impose-inter-lapplication-ne-lembarque-pas) | conception | mineur | `frontend/src/index.css` (`--sans`) | `DV-07` impose **Inter**. La pile de polices la déclare en tête, mais **aucun fichier de police n'est livré** : sur un poste qui ne l'a pas installée, le navigateur retombe silencieusement sur `Segoe UI` ou la police système | Le jour J tourne **sans internet** : aucune tablette ne pourra la télécharger. Le rendu réel sera donc, en pratique, celui de la police système sur la quasi-totalité du parc — proportions justes, dessin des lettres faux. Aucun effet fonctionnel, mais la charte est **déclarée satisfaite alors qu'elle ne l'est pas** | **E17US001** (05/08/2026, [ADR-0074](adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md)) : la charte a été posée sans embarquer la police | Embarquer les `.woff2` d'Inter dans `frontend/public/` avec un `@font-face` local. **Bloqué sur arbitrage** : c'est un ajout d'actif au dépôt (règle 11) — ~100 à 300 Ko, licence OFL —, donc une décision du commanditaire, pas de l'implémenteur |
 
 ## Dette résorbée
@@ -1889,3 +1892,68 @@ plomberie.
 **Ce qu'il faudra faire.** Déposer les `.woff2` sous `frontend/public/fonts/`, déclarer les
 `@font-face` avec `font-display: swap`, et **vérifier hors ligne** — c'est-à-dire couper le réseau,
 pas seulement recharger la page. Marqueur `# DETTE-043` sur la déclaration `--sans` d'`index.css`.
+
+### DETTE-044 — `TournoiId` et `DepartId` sont le même type pour mypy
+
+**Où** : `backend/domain/tournoi.py`, `backend/domain/depart.py`, et tous les alias d'identifiant.
+
+Les identifiants du projet sont des **alias** de `int` :
+
+```python
+TournoiId = int
+DepartId = int
+```
+
+Pour mypy, ce sont donc le **même type**. Un service qui reçoit un identifiant de tournoi là où il
+attend un départ compile parfaitement, et se trompe silencieusement à l'exécution — au mieux une
+violation de clé étrangère, au pire une donnée fausse.
+
+**La démonstration a été faite à l'échelle pendant E01US025.** En basculant `Phase.tournoi_id` vers
+`depart_id`, mypy n'a signalé que **10 erreurs de production**. Renommer les méthodes du port
+(`par_tournoi` → `par_depart`) — un changement de **nom**, pas de type — en a révélé **157 de plus**.
+Toutes étaient des appels que le typage laissait passer. Sans ce renommage, le refactor aurait été
+« vert » et faux.
+
+**Résorption** : `DepartId = NewType("DepartId", int)`, et de même pour les autres identifiants.
+Invasif (tout le dépôt) mais **mécanique** : mypy nomme chaque site à corriger. À faire en US
+dédiée, pas en douce.
+
+⚠️ Le garde-fou `tests/test_portee_sportive.py` ferme le cas **départ ↔ tournoi**. Il ne dit rien des
+autres paires (`ArcherId` ↔ `InscriptionId`, `PhaseId` ↔ `DuelId`…), qui restent exposées.
+
+### DETTE-045 — le palmarès et la simulation ne voient que le premier départ
+
+**Où** : `backend/application/palmares.py` (`_premier_depart`), `backend/application/simulation.py`,
+`backend/application/simulation_format.py`.
+
+[ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md) a fait du départ la portée sportive : le
+classement se calcule **par créneau**. Le palmarès et le rejeu de simulation, eux, sont restés à la
+maille tournoi. Ils résolvent « le premier départ » et ignorent les autres.
+
+**Effet** : sur un tournoi à plusieurs créneaux, le palmarès n'affiche que le podium du premier ; les
+autres n'en ont aucun. Et rien à l'écran ne signale que la vue est partielle — c'est un demi-résultat
+présenté comme un résultat.
+
+⚠️ **La résorption est un arbitrage métier, pas une correction technique.** Sur un tournoi de 4
+départs, un palmarès « du tournoi » **additionne**-t-il les podiums de chaque créneau, ou les
+**juxtapose**-t-il (quatre podiums côte à côte) ? Les deux se défendent, et le choix appartient au
+commanditaire. C'est pourquoi le raccourci est **tracé** plutôt que tranché seul dans l'US.
+
+### DETTE-046 — un archer inscrit sur deux départs ne peut avoir qu'une série
+
+**Où** : table `serie` (`UNIQUE(tournoi_id, archer_id)`), `backend/domain/serie.py`,
+`backend/infrastructure/db/repositories/tir.py`.
+
+Le modèle de données autorise explicitement un archer à s'inscrire sur **plusieurs** créneaux
+(`ARCHER }o--o{ DEPART`, E02US009). Mais la table `serie` est unique **par tournoi et par archer** :
+ses flèches du matin et celles de l'après-midi n'ont qu'un seul emplacement pour deux tirs.
+
+**Effet** : un archer tirant deux créneaux voit sa seconde série écraser la première, ou son
+enregistrement échouer sur la contrainte.
+
+**Découverte** pendant E01US025, en portant le classement au départ. Non traitée : l'US remaniait
+déjà le moteur entier, et l'y ajouter aurait noyé un diff déjà large.
+
+C'est **la même famille** que DETTE-044 et ADR-0075 — une portée restée au tournoi alors que la
+réalité métier est le créneau. Résorption : `Serie.depart_id` et `UNIQUE(depart_id, archer_id)`,
+migration comprise. À traiter dans la foulée, tant que le contexte est frais.

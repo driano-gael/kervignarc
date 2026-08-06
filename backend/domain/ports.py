@@ -630,7 +630,7 @@ class PhaseRepository(Protocol):
     `TournoiId` sont tous deux des alias de `int`, donc mypy n'aurait **rien** signalé si les
     méthodes avaient gardé leur nom : chaque appelant serait resté compilable et faux, cherchant des
     phases par un identifiant de tournoi dans une colonne de départ. Renommer était le seul moyen
-    de forcer la revisite de tous les appels. *(Voir DETTE-043 : des `NewType` supprimeraient cette
+    de forcer la revisite de tous les appels. *(Voir DETTE-044 : des `NewType` supprimeraient cette
     classe entière de confusions.)*
     """
 

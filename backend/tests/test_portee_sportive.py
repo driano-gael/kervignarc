@@ -9,7 +9,7 @@ mois**, produisant un classement de 400 là où il en fallait quatre de 100.
 **Pourquoi un test et pas une relecture.** La confusion est *invisible au typage* :
 `TournoiId = int` et `DepartId = int` sont le même type pour mypy. Un service qui reçoit un
 identifiant de tournoi là où on attend un départ compile parfaitement et se trompe silencieusement
-(cf. `DETTE-043`, qui propose des `NewType` pour fermer la classe entière). Le renommage des
+(cf. `DETTE-044`, qui propose des `NewType` pour fermer la classe entière). Le renommage des
 méthodes de port (`par_tournoi` → `par_depart`) a été le seul levier de détection lors de la
 bascule : il a révélé **157 appels** que mypy laissait passer. Ce fichier fige le résultat.
 
