@@ -361,14 +361,20 @@ class PhaseORM(Base):
     et la relecture reste tolérante à l'ancienne forme à plat de `scoring` (repli `_lire_scoring`,
     la migration `0028` réécrivant les lignes existantes). `ordre` et `statut` sont conformes au
     modèle de données mais non exploités avant le moteur (EPIC-05).
+
+    ⚠️ **La phase pend au `depart`, plus au `tournoi`** (E01US025, ADR-0075, migration 0042) : le
+    départ est la **portée sportive** — il rejoue le tournoi en entier, donc il porte sa séquence,
+    ses classements et ses tableaux. `ordre` est contigu 1..N **par départ**. Le lien au tournoi
+    reste atteignable par jointure `phase → depart → tournoi`, et c'est ce que font les lectures
+    transverses (supervision, complétude, suppression en cascade).
     """
 
     __tablename__ = "phase"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
-    # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
-    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant du départ depuis ADR-0075, donc
+    # petit-enfant du tournoi ; même politique de suppression non tranchée, ne pas contourner ici.
+    depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
     ordre: Mapped[int] = mapped_column(nullable=False)
     type: Mapped[str] = mapped_column(nullable=False)
     config: Mapped[str] = mapped_column(nullable=False)
@@ -681,7 +687,9 @@ class BarrageORM(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
     # dans la politique de suppression du tournoi (non tranchée) ; ne pas contourner ici.
-    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    # Portée sportive : le barrage départage une place dans le classement **d'un départ**
+    # (E01US025, ADR-0075, migration 0042) — c'était `tournoi_id`.
+    depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
     # DETTE-001 : FK sans ON DELETE CASCADE — lien latéral dans la descendance du tournoi.
     phase_id: Mapped[int | None] = mapped_column(ForeignKey("phase.id"), nullable=True)
     portee: Mapped[str] = mapped_column(nullable=False)

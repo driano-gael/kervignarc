@@ -52,7 +52,7 @@ from domain.depart import Depart, DepartId
 from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait
 from domain.inscription import Inscription, InscriptionId
-from domain.phase import PhaseId
+from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
 from domain.remboursement import Remboursement, RemboursementId
 from domain.tournoi import TournoiId
@@ -215,6 +215,18 @@ class FauxDepartRepository:
         self.remboursements: list[Remboursement] = []
 
     def ajouter(self, depart: Depart) -> Depart:
+        """Persiste le départ ; un `id` **déjà fourni est préservé**, sinon un est attribué.
+
+        Même règle que `FauxPhaseRepository` et que l'adapter in-memory de production : des tests
+        posent un décor à identifiants choisis (`_DEPART = 7`) pour pouvoir s'y référer depuis le
+        module. Écraser l'`id` fourni les obligerait à contourner le port — et, plus insidieux,
+        laisserait les phases pointer un créneau que le magasin ne connaît pas : la vue transverse
+        rendrait alors « ce tournoi n'a aucune phase » sans que rien ne le signale.
+        """
+        if depart.id is not None:
+            self._sequence = max(self._sequence, depart.id)
+            self._departs[depart.id] = depart
+            return depart
         self._sequence += 1
         persiste = dataclasses.replace(depart, id=self._sequence)
         self._departs[self._sequence] = persiste
@@ -449,3 +461,82 @@ def connecter_admin() -> ConnecterAdmin:
         client.headers["Authorization"] = f"Bearer {reponse.json()['jeton']}"
 
     return _connecter
+
+
+class FauxPhaseRepository:
+    """Repository de phases en mémoire conforme au port `PhaseRepository` (E01US025, ADR-0075).
+
+    **Hissée ici depuis neuf fichiers de tests** qui en portaient chacun une copie quasi identique.
+    Ce n'est pas un patron introduit par anticipation : les neuf existaient, et la bascule de portée
+    (`tournoi_id` → `depart_id`) aurait demandé la même correction neuf fois — avec neuf occasions
+    de la faire à moitié. C'est exactement la duplication d'invariant que le registre de dette
+    proscrit.
+
+    ⚠️ **`departs` est nécessaire à la seule vue transverse `par_tournoi`** : une phase ne connaît
+    plus que son créneau, donc « les phases de ce tournoi » exige la jointure `phase → depart`. Les
+    tests qui n'interrogent que `par_depart` peuvent l'omettre ; ceux qui passent par un service
+    lisant le barème « du tournoi » (`application/portee.py`) doivent le câbler, sans quoi
+    l'assertion ci-dessous les arrête au lieu de les laisser croire à un tournoi sans phase.
+    """
+
+    def __init__(self, departs: FauxDepartRepository | None = None) -> None:
+        self._phases: dict[int, Phase] = {}
+        self._sequence = 0
+        self._departs = departs
+
+    def ajouter(self, phase: Phase) -> Phase:
+        """Persiste la phase ; un `id` **déjà fourni est préservé**, sinon un est attribué.
+
+        Même règle que l'adapter in-memory de production (`_AllocateurId`) : certains tests posent
+        un décor à identifiants choisis pour pouvoir s'y référer. Écraser l'`id` fourni les
+        obligerait à contourner le port — ce que faisaient plusieurs des neuf copies, chacune à sa
+        manière.
+        """
+        if phase.id is not None:
+            self._sequence = max(self._sequence, phase.id)
+            self._phases[phase.id] = phase
+            return phase
+        self._sequence += 1
+        persiste = dataclasses.replace(phase, id=self._sequence)
+        self._phases[self._sequence] = persiste
+        return persiste
+
+    def par_id(self, phase_id: PhaseId) -> Phase | None:
+        return self._phases.get(phase_id)
+
+    def par_depart_et_type(self, depart_id: DepartId, type_phase: TypePhase) -> Phase | None:
+        """La phase de ce type dans ce créneau ; la **plus récente** en cas de multiplicité.
+
+        Même règle que l'adapter SQL (`ORDER BY id DESC`) : une doublure qui rendrait la première
+        divergerait du vrai comportement, et le test passerait là où la production échouerait.
+        """
+        trouvees = [
+            p for p in self._phases.values() if p.depart_id == depart_id and p.type is type_phase
+        ]
+        return trouvees[-1] if trouvees else None
+
+    def par_depart(self, depart_id: DepartId) -> list[Phase]:
+        phases = [p for p in self._phases.values() if p.depart_id == depart_id]
+        return sorted(phases, key=lambda p: p.ordre)
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
+        """Vue transverse : les phases de **tous** les départs, triées (départ, ordre).
+
+        Ce n'est **pas** une séquence — c'est la concaténation de N suites 1..M. La passer à
+        `SequencePhases` lèverait `SequenceOrdreInvalide`, et c'est le comportement voulu.
+        """
+        assert self._departs is not None, (
+            "Cette doublure a besoin du magasin de départs pour la vue transverse « phases du "
+            "tournoi » : passez-le au constructeur (FauxPhaseRepository(departs))."
+        )
+        connus = {d.id for d in self._departs.par_tournoi(tournoi_id)}
+        phases = [p for p in self._phases.values() if p.depart_id in connus]
+        return sorted(phases, key=lambda p: (p.depart_id, p.ordre))
+
+    def enregistrer(self, phase: Phase) -> Phase:
+        assert phase.id in self._phases
+        self._phases[phase.id] = phase
+        return phase
+
+    def supprimer(self, phase_id: PhaseId) -> None:
+        del self._phases[phase_id]

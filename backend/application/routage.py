@@ -31,6 +31,7 @@ from enum import Enum
 
 from application.erreurs import GabaritDuTournoiAbsent, PhaseIntrouvable
 from application.placement_duels import ServicePlacementDuels
+from application.portee import phase_du_tournoi
 from application.saisie_duels import Duelliste, ServiceSaisieDuels
 from domain.classement import LigneClassement
 from domain.erreurs import EffectifTableauInvalide
@@ -412,8 +413,8 @@ class ServiceRoutage:
         en « terminé ».
         """
         if phase_id is not None:
-            phase = self._phases.par_id(phase_id)
-            if phase is None or phase.tournoi_id != tournoi_id:
+            phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+            if phase is None:
                 raise PhaseIntrouvable(f"Aucune phase {phase_id} pour le tournoi {tournoi_id}.")
             return phase
         tableaux = [

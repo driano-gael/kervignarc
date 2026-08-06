@@ -42,7 +42,7 @@ def _vers_barrage(ligne: BarrageORM, tirs: Sequence[BarrageTirORM]) -> BarrageDe
             )
         )
     return BarrageDePlaces(
-        tournoi_id=ligne.tournoi_id,
+        depart_id=ligne.depart_id,
         portee=PorteeBarrage(ligne.portee),
         participants=participants,
         cree_le=ligne.cree_le,

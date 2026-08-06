@@ -69,6 +69,29 @@ class FormatSansEtape(DomainError):
     code = "format_sans_etape"
 
 
+class FormatSansDepart(DomainError):
+    """Un format est appliqué à un tournoi qui n'a **aucun départ** (E01US025, ADR-0075).
+
+    Symétrique de `FormatSansEtape`, à l'autre bout de l'application : le départ étant la portée
+    sportive, un format s'instancie **par départ**. Sans créneau, l'application ne créerait aucune
+    phase — et le silence ferait croire à un succès, exactement le piège que `FormatSansEtape` évite
+    du côté du format.
+    """
+
+    code = "format_sans_depart"
+
+
+class PhasesDeDepartsMeles(DomainError):
+    """On promeut en format des phases venant de **plusieurs départs** (E01US025, ADR-0075).
+
+    Un format décrit **une** séquence 1..N ; chaque départ a la sienne. Mêler deux départs
+    produirait des ordres en doublon — détectés plus tard comme incohérence de séquence, donc trop
+    loin de la cause pour être compréhensibles.
+    """
+
+    code = "phases_de_departs_meles"
+
+
 class NomBlasonInvalide(DomainError):
     """Le nom d'un blason est vide (après normalisation)."""
 

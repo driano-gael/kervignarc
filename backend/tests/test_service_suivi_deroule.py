@@ -23,6 +23,7 @@ import pytest
 from application.erreurs import TournoiIntrouvable
 from application.suivi_deroule import ServiceSuiviDeroule
 from domain.bareme import BaremeQualification
+from domain.depart import Depart
 from domain.deroule import projeter
 from domain.grain_validation import GrainValidation
 from domain.participant import Participant
@@ -35,6 +36,7 @@ from domain.politiques import (
 )
 from domain.tableau import Tableau, construire_tableau
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
+from tests.conftest import FauxDepartRepository, FauxPhaseRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -62,16 +64,6 @@ def _jouer(tableau: Tableau, numeros: Sequence[int]) -> Tableau:
         assert match.haut is not None, f"Le match {numero} n'a pas d'occupant haut."
         tableau = tableau.jouer(numero, match.haut)
     return tableau
-
-
-class FauxPhaseRepository:
-    """Repository de phases en mémoire — juste ce que le service lit."""
-
-    def __init__(self) -> None:
-        self.phases: list[Phase] = []
-
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        return [p for p in self.phases if p.tournoi_id == tournoi_id]
 
 
 class FauxTournoiRepository:
@@ -110,11 +102,11 @@ class FauxLecteurTableau:
 
 
 def _qualification(
-    tournoi_id: int, ordre: int = 1, statut: StatutPhase = StatutPhase.A_VENIR
+    depart_id: int, ordre: int = 1, statut: StatutPhase = StatutPhase.A_VENIR
 ) -> Phase:
     """La phase de qualification du tournoi, dans le statut voulu."""
     phase = Phase.qualification(
-        tournoi_id=tournoi_id,
+        depart_id=depart_id,
         bareme=BaremeQualification.creer(12, 3),
         validation=GrainValidation.fin_de_serie(),
     )
@@ -125,7 +117,8 @@ def _qualification(
 class Contexte:
     def __init__(self, nb_engages: int = 8) -> None:
         self.tournois = FauxTournoiRepository()
-        self.phases = FauxPhaseRepository()
+        self.departs = FauxDepartRepository()
+        self.phases = FauxPhaseRepository(self.departs)
         self.engages = FauxCompteurEngages(nb_engages)
         self.tableaux = FauxLecteurTableau()
         tournoi = self.tournois.ajouter(
@@ -133,17 +126,23 @@ class Contexte:
         )
         assert tournoi.id is not None
         self.tournoi_id: TournoiId = tournoi.id
+        # Le créneau qui porte la séquence : le suivi de déroulé lit des phases (ADR-0075).
+        _d = self.departs.ajouter(
+            Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert _d.id is not None
+        self.depart_id = _d.id
         self.service = ServiceSuiviDeroule(
             tournoi_repository=self.tournois,  # type: ignore[arg-type]
-            phase_repository=self.phases,  # type: ignore[arg-type]
+            phase_repository=self.phases,
             engages=self.engages,
             tableaux=self.tableaux,
         )
 
     def ajouter_phase(self, phase: Phase, phase_id: PhaseId) -> Phase:
-        persistee = dataclasses.replace(phase, id=phase_id)
-        self.phases.phases.append(persistee)
-        return persistee
+        # Passe par le **port** : la doublure partagée préserve un identifiant fourni, il n'y a
+        # donc plus à toucher son magasin interne (ce que faisait la copie locale de ce fichier).
+        return self.phases.ajouter(dataclasses.replace(phase, id=phase_id))
 
 
 @pytest.fixture
@@ -151,10 +150,10 @@ def ctx() -> Contexte:
     return Contexte()
 
 
-def _tableau_ed(tournoi_id: int, ordre: int, statut: StatutPhase) -> Phase:
+def _tableau_ed(depart_id: int, ordre: int, statut: StatutPhase) -> Phase:
     """Une élimination directe alimentée par les rangs 1..8 de la qualification."""
     phase = Phase.creer(
-        tournoi_id=tournoi_id,
+        depart_id=depart_id,
         ordre=ordre,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8, nature=NatureSource.RANGS),),
@@ -176,12 +175,12 @@ def test_la_projection_est_celle_de_l_atelier(ctx: Contexte) -> None:
     Le test compare au résultat brut de `domain.deroule.projeter` sur les mêmes étapes et le même
     effectif — si un jour le suivi se mettait à dessiner autrement, il échouerait.
     """
-    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
-    ctx.ajouter_phase(_tableau_ed(ctx.tournoi_id, 2, StatutPhase.A_VENIR), 2)
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    ctx.ajouter_phase(_tableau_ed(ctx.depart_id, 2, StatutPhase.A_VENIR), 2)
 
     suivi = ctx.service.pour_tournoi(ctx.tournoi_id)
 
-    attendue = projeter(ctx.phases.par_tournoi(ctx.tournoi_id), 8)
+    attendue = projeter(ctx.phases.par_depart(ctx.tournoi_id), 8)
     assert suivi.projection == attendue
     assert suivi.effectif == 8
 
@@ -189,7 +188,7 @@ def test_la_projection_est_celle_de_l_atelier(ctx: Contexte) -> None:
 def test_toutes_les_phases_sont_suivies_meme_sans_braquet(ctx: Contexte) -> None:
     """Une qualification n'a pas de braquet : elle reste dans le suivi, avec son statut."""
     ctx.ajouter_phase(_qualification(ctx.tournoi_id, statut=StatutPhase.EN_COURS), 1)
-    ctx.ajouter_phase(_tableau_ed(ctx.tournoi_id, 2, StatutPhase.A_VENIR), 2)
+    ctx.ajouter_phase(_tableau_ed(ctx.depart_id, 2, StatutPhase.A_VENIR), 2)
 
     suivi = ctx.service.pour_tournoi(ctx.tournoi_id)
 
@@ -203,8 +202,8 @@ def test_toutes_les_phases_sont_suivies_meme_sans_braquet(ctx: Contexte) -> None
 
 
 def test_un_tableau_neuf_n_a_aucun_duel_joue(ctx: Contexte) -> None:
-    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
-    ctx.ajouter_phase(_tableau_ed(ctx.tournoi_id, 2, StatutPhase.EN_COURS), 2)
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    ctx.ajouter_phase(_tableau_ed(ctx.depart_id, 2, StatutPhase.EN_COURS), 2)
     ctx.tableaux.tableaux[2] = _tableau(8)
 
     bloc = ctx.service.pour_tournoi(ctx.tournoi_id).avancement.blocs[1]
@@ -216,8 +215,8 @@ def test_un_tableau_neuf_n_a_aucun_duel_joue(ctx: Contexte) -> None:
 
 def test_les_duels_tranches_remplissent_leur_braquet(ctx: Contexte) -> None:
     """« braquets qui **se remplissent** au fur et à mesure »."""
-    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
-    ctx.ajouter_phase(_tableau_ed(ctx.tournoi_id, 2, StatutPhase.EN_COURS), 2)
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    ctx.ajouter_phase(_tableau_ed(ctx.depart_id, 2, StatutPhase.EN_COURS), 2)
     tableau = _tableau(8)
     ctx.tableaux.tableaux[2] = _jouer(
         tableau, [m.numero for m in tableau.matchs if m.tour == 1][:2]
@@ -247,8 +246,8 @@ def test_la_petite_finale_ne_termine_pas_la_phase(ctx: Contexte) -> None:
     trou. Jouer tout le tableau ne prouverait rien, et n'en jouer qu'un tour non plus — ce que
     faisaient les tests d'origine.
     """
-    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
-    ctx.ajouter_phase(_tableau_ed(ctx.tournoi_id, 2, StatutPhase.EN_COURS), 2)
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    ctx.ajouter_phase(_tableau_ed(ctx.depart_id, 2, StatutPhase.EN_COURS), 2)
     tableau = _tableau(8)
     petite_finale = next(m.numero for m in tableau.matchs if m.place_en_jeu == (3, 4))
     # Tous les duels **sauf la finale** : les 4 du tour 1, les 2 demies, puis la petite finale.
@@ -266,8 +265,8 @@ def test_la_petite_finale_ne_termine_pas_la_phase(ctx: Contexte) -> None:
 
 def test_la_finale_tranchee_ferme_le_dernier_braquet(ctx: Contexte) -> None:
     """Le pendant du test précédent : c'est bien **la finale** qui clôt le dernier braquet."""
-    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
-    ctx.ajouter_phase(_tableau_ed(ctx.tournoi_id, 2, StatutPhase.EN_COURS), 2)
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    ctx.ajouter_phase(_tableau_ed(ctx.depart_id, 2, StatutPhase.EN_COURS), 2)
     tableau = _tableau(8)
     finale = next(m.numero for m in tableau.matchs if m.place_en_jeu == (1, 2))
     ordre = [m.numero for m in tableau.matchs if m.tour < 3] + [finale]
@@ -301,9 +300,9 @@ def test_un_tableau_alimente_par_une_tranche_haute_compte_correctement() -> None
     prouvait une arithmétique sur un chemin que le produit n'emprunte jamais.
     """
     ctx = Contexte(nb_engages=16)
-    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
     tranche_haute = Phase.creer(
-        tournoi_id=ctx.tournoi_id,
+        depart_id=ctx.depart_id,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(
@@ -341,9 +340,9 @@ def test_une_phase_ne_se_termine_jamais_avant_sa_finale() -> None:
     à chaque tour, parce que c'est la progression tour à tour qui a menti, pas l'état final.
     """
     ctx = Contexte(nb_engages=120)
-    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
     phase = Phase.creer(
-        tournoi_id=ctx.tournoi_id,
+        depart_id=ctx.depart_id,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(
@@ -397,8 +396,8 @@ def test_un_tableau_plus_large_que_la_tranche_declaree_ne_reste_pas_bloque() -> 
     ne reste pas bloqué à zéro comme il l'avait fait après le premier correctif.
     """
     ctx = Contexte(nb_engages=12)
-    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
-    ctx.ajouter_phase(_tableau_ed(ctx.tournoi_id, 2, StatutPhase.EN_COURS), 2)
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    ctx.ajouter_phase(_tableau_ed(ctx.depart_id, 2, StatutPhase.EN_COURS), 2)
     tableau = _tableau(12)
     dernier = max(m.tour for m in tableau.matchs)
     ctx.tableaux.tableaux[2] = _jouer(
@@ -420,9 +419,9 @@ def test_un_exempt_n_est_pas_un_duel_joue() -> None:
     8 duels, 8 exemptés »). Les deux comptes doivent parler de la même chose.
     """
     ctx = Contexte(nb_engages=6)
-    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
     phase = Phase.creer(
-        tournoi_id=ctx.tournoi_id,
+        depart_id=ctx.depart_id,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=6, nature=NatureSource.RANGS),),
@@ -459,8 +458,8 @@ def test_un_tableau_illisible_ne_fait_pas_tomber_le_suivi(ctx: Contexte) -> None
     câblée) laisse un bloc **à zéro joué**, jamais une page d'erreur — l'écran de salle tourne
     en permanence et personne n'est devant pour le relancer.
     """
-    ctx.ajouter_phase(_qualification(ctx.tournoi_id), 1)
-    ctx.ajouter_phase(_tableau_ed(ctx.tournoi_id, 2, StatutPhase.EN_COURS), 2)
+    ctx.ajouter_phase(_qualification(ctx.depart_id), 1)
+    ctx.ajouter_phase(_tableau_ed(ctx.depart_id, 2, StatutPhase.EN_COURS), 2)
     # aucun tableau enregistré pour la phase 2 : le lecteur lèvera un KeyError
 
     bloc = ctx.service.pour_tournoi(ctx.tournoi_id).avancement.blocs[1]

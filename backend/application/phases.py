@@ -38,6 +38,8 @@ from application.erreurs import (
     TournoiIntrouvable,
     TransitionStatutInvalide,
 )
+from application.portee import phase_du_depart
+from domain.depart import DepartId
 from domain.phase import (
     Phase,
     PhaseId,
@@ -47,32 +49,42 @@ from domain.phase import (
     TypePhase,
 )
 from domain.politiques import ProfondeurClassement
-from domain.ports import PhaseRepository, TournoiRepository
-from domain.tournoi import TournoiId
+from domain.ports import DepartRepository, PhaseRepository, TournoiRepository
 
 
 class ServicePhases:
     """Cas d'usage de la séquence de phases : composer, éditer, ordonner, cycle de vie."""
 
-    def __init__(self, tournois: TournoiRepository, phases: PhaseRepository) -> None:
+    def __init__(
+        self,
+        tournois: TournoiRepository,
+        phases: PhaseRepository,
+        departs: DepartRepository,
+    ) -> None:
         self._tournois = tournois
         self._phases = phases
+        # ⚠️ **Ce service compose une séquence, donc il travaille dans un départ** (E01US025,
+        # ADR-0075). Il lisait `par_tournoi`, qui rend désormais la **concaténation** des séquences
+        # de tous les créneaux : la passer à `SequencePhases` lèverait `SequenceOrdreInvalide`,
+        # puisque les ordres y repartent de 1 à chaque départ. Le magasin de créneaux sert à
+        # valider l'existence de celui qu'on compose.
+        self._departs = departs
 
     # --- Lecture -------------------------------------------------------------------------------
 
-    def lister(self, tournoi_id: TournoiId) -> list[Phase]:
+    def lister(self, depart_id: DepartId) -> list[Phase]:
         """Renvoie les phases du tournoi, ordonnées (liste éventuellement vide).
 
         Lève `TournoiIntrouvable` si le tournoi n'existe pas.
         """
-        self._exiger_tournoi(tournoi_id)
-        return self._phases.par_tournoi(tournoi_id)
+        self._exiger_tournoi(depart_id)
+        return self._phases.par_depart(depart_id)
 
     # --- Composition & édition -----------------------------------------------------------------
 
     def ajouter(
         self,
-        tournoi_id: TournoiId,
+        depart_id: DepartId,
         type: TypePhase,
         sources: tuple[SourcePhase, ...] = (),
         effectif: int | None = None,
@@ -85,10 +97,10 @@ class ServicePhases:
         ou la séquence obtenue est incohérente (ex. barème manquant pour une qualification, source
         mal formée). Rien n'est persisté si la validation échoue.
         """
-        self._exiger_tournoi(tournoi_id)
-        existantes = self._phases.par_tournoi(tournoi_id)
+        self._exiger_tournoi(depart_id)
+        existantes = self._phases.par_depart(depart_id)
         nouvelle = Phase.creer(
-            tournoi_id,
+            depart_id,
             ordre=len(existantes) + 1,
             type=type,
             sources=sources,
@@ -102,7 +114,7 @@ class ServicePhases:
 
     def modifier(
         self,
-        tournoi_id: TournoiId,
+        depart_id: DepartId,
         phase_id: PhaseId,
         type: TypePhase,
         sources: tuple[SourcePhase, ...],
@@ -116,7 +128,7 @@ class ServicePhases:
         Lève `PhaseIntrouvable` si la phase n'est pas dans ce tournoi, une `DomainError` (→ 422) si
         le résultat est incohérent (ex. retyper en `qualification` sans barème, source hors bornes).
         """
-        phase = self._exiger_phase(tournoi_id, phase_id)
+        phase = self._exiger_phase(depart_id, phase_id)
         modifiee = replace(
             phase,
             type=type,
@@ -125,11 +137,11 @@ class ServicePhases:
             barrage_jusqu_au=barrage_jusqu_au,
             profondeur=profondeur,
         )
-        autres = [p for p in self._phases.par_tournoi(tournoi_id) if p.id != phase_id]
+        autres = [p for p in self._phases.par_depart(depart_id) if p.id != phase_id]
         SequencePhases(phases=(*autres, modifiee))
         return self._phases.enregistrer(modifiee)
 
-    def reordonner(self, tournoi_id: TournoiId, phases_ordonnees: list[PhaseId]) -> list[Phase]:
+    def reordonner(self, depart_id: DepartId, phases_ordonnees: list[PhaseId]) -> list[Phase]:
         """Réordonne **l'ensemble** des phases du tournoi selon la liste d'identifiants fournie.
 
         Chaque phase reçoit un nouvel `ordre` (position dans la liste) ; les références de source
@@ -138,8 +150,8 @@ class ServicePhases:
         du tournoi, et une `DomainError` (→ 422) si l'ordre demandé rend la séquence incohérente
         (ex. une source se retrouve **après** la phase qu'elle alimente).
         """
-        self._exiger_tournoi(tournoi_id)
-        actuelles = self._phases.par_tournoi(tournoi_id)
+        self._exiger_tournoi(depart_id)
+        actuelles = self._phases.par_depart(depart_id)
         if not actuelles and not phases_ordonnees:
             return []
         par_id: dict[int, Phase] = {}
@@ -163,19 +175,19 @@ class ServicePhases:
         SequencePhases(phases=tuple(reordonnees))  # valide l'ordre demandé
         return [self._phases.enregistrer(phase) for phase in reordonnees]
 
-    def supprimer(self, tournoi_id: TournoiId, phase_id: PhaseId) -> None:
+    def supprimer(self, depart_id: DepartId, phase_id: PhaseId) -> None:
         """Retire une phase de la séquence et **recompacte** les ordres (1..N sans trou).
 
         Lève `PhaseIntrouvable` si la phase n'est pas dans ce tournoi, `PhaseSourceReferencee`
         (→ 409) si une **autre** phase tire d'elle ses participants (il faut d'abord la réaffecter).
         Les références de source des phases restantes sont remappées après recompactage.
         """
-        cible = self._exiger_phase(tournoi_id, phase_id)
+        cible = self._exiger_phase(depart_id, phase_id)
         if cible.type is TypePhase.QUALIFICATION:
             raise PhaseQualificationNonSupprimable(
                 "La phase de qualification se gère via le barème ; elle ne se supprime pas ici."
             )
-        restantes = [p for p in self._phases.par_tournoi(tournoi_id) if p.id != phase_id]
+        restantes = [p for p in self._phases.par_depart(depart_id) if p.id != phase_id]
         if any(s.ordre_source == cible.ordre for p in restantes for s in p.sources):
             raise PhaseSourceReferencee(
                 "Cette phase alimente une autre phase de la séquence ; réaffectez-la d'abord."
@@ -200,41 +212,39 @@ class ServicePhases:
 
     # --- Cycle de vie (transitions gardées, patron ServiceTournois) ----------------------------
 
-    def demarrer(self, tournoi_id: TournoiId, phase_id: PhaseId) -> Phase:
+    def demarrer(self, depart_id: DepartId, phase_id: PhaseId) -> Phase:
         """`a_venir → en_cours`. Lève `TransitionStatutInvalide` (→ 409) hors de `a_venir`."""
-        return self._transition(
-            tournoi_id, phase_id, StatutPhase.A_VENIR, Phase.demarrer, "à venir"
-        )
+        return self._transition(depart_id, phase_id, StatutPhase.A_VENIR, Phase.demarrer, "à venir")
 
-    def mettre_en_pause(self, tournoi_id: TournoiId, phase_id: PhaseId) -> Phase:
+    def mettre_en_pause(self, depart_id: DepartId, phase_id: PhaseId) -> Phase:
         """`en_cours → en_pause`. Lève `TransitionStatutInvalide` (→ 409) hors de `en_cours`."""
         return self._transition(
-            tournoi_id, phase_id, StatutPhase.EN_COURS, Phase.mettre_en_pause, "en cours"
+            depart_id, phase_id, StatutPhase.EN_COURS, Phase.mettre_en_pause, "en cours"
         )
 
-    def reprendre(self, tournoi_id: TournoiId, phase_id: PhaseId) -> Phase:
+    def reprendre(self, depart_id: DepartId, phase_id: PhaseId) -> Phase:
         """`en_pause → en_cours`. Lève `TransitionStatutInvalide` (→ 409) hors de `en_pause`."""
         return self._transition(
-            tournoi_id, phase_id, StatutPhase.EN_PAUSE, Phase.reprendre, "en pause"
+            depart_id, phase_id, StatutPhase.EN_PAUSE, Phase.reprendre, "en pause"
         )
 
-    def terminer(self, tournoi_id: TournoiId, phase_id: PhaseId) -> Phase:
+    def terminer(self, depart_id: DepartId, phase_id: PhaseId) -> Phase:
         """`en_cours → terminee`. Lève `TransitionStatutInvalide` (→ 409) hors de `en_cours`."""
         return self._transition(
-            tournoi_id, phase_id, StatutPhase.EN_COURS, Phase.terminer, "en cours"
+            depart_id, phase_id, StatutPhase.EN_COURS, Phase.terminer, "en cours"
         )
 
     # --- Internes ------------------------------------------------------------------------------
 
     def _transition(
         self,
-        tournoi_id: TournoiId,
+        depart_id: DepartId,
         phase_id: PhaseId,
         attendu: StatutPhase,
         muter: Callable[[Phase], Phase],
         libelle_attendu: str,
     ) -> Phase:
-        phase = self._exiger_phase(tournoi_id, phase_id)
+        phase = self._exiger_phase(depart_id, phase_id)
         if phase.statut is not attendu:
             raise TransitionStatutInvalide(
                 f"Cette transition n'est possible que sur une phase {libelle_attendu}."
@@ -262,14 +272,14 @@ class ServicePhases:
             )
         )
 
-    def _exiger_tournoi(self, tournoi_id: TournoiId) -> None:
-        if self._tournois.par_id(tournoi_id) is None:
-            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+    def _exiger_tournoi(self, depart_id: DepartId) -> None:
+        if self._tournois.par_id(depart_id) is None:
+            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {depart_id}.")
 
-    def _exiger_phase(self, tournoi_id: TournoiId, phase_id: PhaseId) -> Phase:
-        phase = self._phases.par_id(phase_id)
-        if phase is None or phase.tournoi_id != tournoi_id:
+    def _exiger_phase(self, depart_id: DepartId, phase_id: PhaseId) -> Phase:
+        phase = phase_du_depart(self._phases, depart_id, phase_id)
+        if phase is None:
             raise PhaseIntrouvable(
-                f"Aucune phase d'identifiant {phase_id} dans le tournoi {tournoi_id}."
+                f"Aucune phase d'identifiant {phase_id} dans le tournoi {depart_id}."
             )
         return phase

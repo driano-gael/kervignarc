@@ -27,6 +27,7 @@ from application.erreurs import (
 )
 from application.formats import ServiceFormats
 from domain.bareme import BaremeQualification
+from domain.depart import Depart
 from domain.erreurs import PhaseQualificationIncomplete, ProfondeurInvalide
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.patrimoine import OrigineBrique
@@ -34,8 +35,8 @@ from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase, grain_par_d
 from domain.phase import PhaseId as _PhaseId
 from domain.politiques import ProfondeurClassement
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
+from tests.conftest import FauxDepartRepository, FauxPhaseRepository
 from tests.test_service_blasons import FauxTournoiRepository
-from tests.test_service_phases import FauxPhaseRepository
 
 
 class FauxLecteurDonneesDePhase:
@@ -108,6 +109,7 @@ class Contexte:
     forfaits: FauxLecteurDonneesDePhase
     placements_tableau: FauxLecteurDonneesDePhase
     tournoi_id: TournoiId
+    depart_id: int
 
 
 def _id(valeur: int | None) -> int:
@@ -119,20 +121,27 @@ def _id(valeur: int | None) -> int:
 def ctx() -> Contexte:
     tournois = FauxTournoiRepository()
     formats = FauxFormatTournoiRepository()
-    phases = FauxPhaseRepository()
+    departs = FauxDepartRepository()
+    phases = FauxPhaseRepository(departs)
     forfaits = FauxLecteurDonneesDePhase()
     placements_tableau = FauxLecteurDonneesDePhase()
     tournoi = tournois.ajouter(
         Tournoi.creer(nom="Kervignac 2026", date=_DATE, type_tournoi=TypeTournoi.OFFICIEL)
     )
+    assert tournoi.id is not None
+    # Appliquer un format crée **une séquence par départ** : sans créneau, il n'y a rien à créer.
+    departs.ajouter(
+        Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+    )
     return Contexte(
-        service=ServiceFormats(tournois, formats, phases, forfaits, placements_tableau),
+        service=ServiceFormats(tournois, formats, phases, forfaits, placements_tableau, departs),
         tournois=tournois,
         formats=formats,
         phases=phases,
         forfaits=forfaits,
         placements_tableau=placements_tableau,
         tournoi_id=_id(tournoi.id),
+        depart_id=_id(departs.par_tournoi(_id(tournoi.id))[0].id),
     )
 
 
@@ -231,7 +240,9 @@ def test_appliquer_cree_les_phases_a_venir_dans_l_ordre(ctx: Contexte) -> None:
 
     assert [p.ordre for p in phases] == [1, 2]
     assert all(p.statut is StatutPhase.A_VENIR for p in phases)
-    assert all(p.tournoi_id == ctx.tournoi_id for p in phases)
+    # Les phases pendent au **créneau** du tournoi (ADR-0075) ; la vue transverse par tournoi les
+    # retrouve toutes, tous départs confondus.
+    assert all(p.depart_id == ctx.depart_id for p in phases)
     assert ctx.phases.par_tournoi(ctx.tournoi_id) == phases
 
 

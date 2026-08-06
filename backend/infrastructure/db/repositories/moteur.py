@@ -44,6 +44,7 @@ from domain.placement import Affectation
 from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.tournoi import TournoiId
 from infrastructure.db.models import (
+    DepartORM,
     FormatTournoiORM,
     PhaseORM,
     PlacementORM,
@@ -121,7 +122,7 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
         raise InfrastructureError("Configuration de phase illisible.") from exc
     try:
         return Phase(
-            tournoi_id=ligne.tournoi_id,
+            depart_id=ligne.depart_id,
             ordre=ligne.ordre,
             type=type_phase,
             bareme=bareme,
@@ -836,7 +837,7 @@ class PhaseRepositorySQL:
         try:
             with self._session_factory() as session:
                 ligne = PhaseORM(
-                    tournoi_id=phase.tournoi_id,
+                    depart_id=phase.depart_id,
                     ordre=phase.ordre,
                     type=phase.type.value,
                     config=_config_phase(phase),
@@ -857,11 +858,11 @@ class PhaseRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture de la phase.") from exc
 
-    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
-        """Renvoie la phase d'un tournoi pour un type donné, ou `None` s'il n'y en a pas.
+    def par_depart_et_type(self, depart_id: DepartId, type_phase: TypePhase) -> Phase | None:
+        """Renvoie la phase d'un **départ** pour un type donné, ou `None` s'il n'y en a pas.
 
-        En cas de multiplicité (ne devrait pas survenir en E01US009), la plus récente (`id` le
-        plus élevé) l'emporte.
+        En cas de multiplicité (ne devrait pas survenir), la plus récente (`id` le plus élevé)
+        l'emporte.
         """
         try:
             with self._session_factory() as session:
@@ -869,7 +870,7 @@ class PhaseRepositorySQL:
                     session.execute(
                         select(PhaseORM)
                         .where(
-                            PhaseORM.tournoi_id == tournoi_id,
+                            PhaseORM.depart_id == depart_id,
                             PhaseORM.type == type_phase.value,
                         )
                         .order_by(PhaseORM.id.desc())
@@ -879,10 +880,10 @@ class PhaseRepositorySQL:
                 )
                 return None if ligne is None else _vers_phase(ligne)
         except SQLAlchemyError as exc:
-            raise InfrastructureError("Échec de lecture de la phase du tournoi.") from exc
+            raise InfrastructureError("Échec de lecture de la phase du départ.") from exc
 
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        """Renvoie toutes les phases d'un tournoi, **ordonnées par `ordre`** (E05US001).
+    def par_depart(self, depart_id: DepartId) -> list[Phase]:
+        """Renvoie toutes les phases d'un **départ**, **ordonnées par `ordre`** (E05US001).
 
         Le tri à la source garantit l'invariant de séquence exploité par `ServicePhases` (les
         phases se lisent, se composent et se valident dans leur ordre).
@@ -892,8 +893,32 @@ class PhaseRepositorySQL:
                 lignes = (
                     session.execute(
                         select(PhaseORM)
-                        .where(PhaseORM.tournoi_id == tournoi_id)
+                        .where(PhaseORM.depart_id == depart_id)
                         .order_by(PhaseORM.ordre)
+                    )
+                    .scalars()
+                    .all()
+                )
+                return [_vers_phase(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des phases du départ.") from exc
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
+        """Renvoie les phases de **tous les départs** d'un tournoi, triées (départ, ordre).
+
+        Jointure `phase → depart` : le lien au tournoi n'est plus direct depuis ADR-0075.
+
+        ⚠️ **Ce n'est pas une séquence** — c'est la concaténation de N suites 1..M, une par départ.
+        Réservée aux vues transverses ; le moteur passe toujours par `par_depart`.
+        """
+        try:
+            with self._session_factory() as session:
+                lignes = (
+                    session.execute(
+                        select(PhaseORM)
+                        .join(DepartORM, PhaseORM.depart_id == DepartORM.id)
+                        .where(DepartORM.tournoi_id == tournoi_id)
+                        .order_by(PhaseORM.depart_id, PhaseORM.ordre)
                     )
                     .scalars()
                     .all()

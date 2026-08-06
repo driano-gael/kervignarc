@@ -24,10 +24,12 @@ from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.classement import StatutClassement
+from domain.depart import Depart
 from domain.duel import BaremeDuel, Duel, ModeDuel, ResolveurBaremeDuelFfta
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import EffectifTableauInvalide, MatchNonJouable
 from domain.forfait import Forfait, NatureForfait
+from domain.inscription import Inscription
 from domain.phase import IssueTour, Phase, PhaseId, SourcePhase, TypePhase
 from domain.politiques import (
     ByesAuxMieuxClasses,
@@ -38,11 +40,13 @@ from domain.politiques import (
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
+    FauxDepartRepository,
     FauxForfaitRepository,
+    FauxInscriptionRepository,
+    FauxPhaseRepository,
 )
 from tests.test_service_placement_duels import (
     FauxBlasonRepository,
-    FauxPhaseRepository,
     FauxSerieRepository,
     FauxTournoiRepository,
 )
@@ -88,7 +92,16 @@ class _Monde:
     def __init__(self, *, arme: str = "Arc Classique", avec_blason: bool = True) -> None:
         self.tournoi_id = 1
         self.tournois = FauxTournoiRepository({1})
-        self.phases = FauxPhaseRepository()
+        # Le créneau porte les phases et le classement depuis ADR-0075 ; les archers y sont
+        # **inscrits**, car c'est l'inscription — et non `Archer.tournoi_id` — qui dit qui tire ici.
+        self.departs = FauxDepartRepository()
+        depart = self.departs.ajouter(
+            Depart.creer(tournoi_id=self.tournoi_id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert depart.id is not None
+        self.depart_id = depart.id
+        self.inscriptions = FauxInscriptionRepository()
+        self.phases = FauxPhaseRepository(self.departs)
         self.archers = FauxArcherRepository()
         self.categories = FauxCategorieRepository()
         self.blasons = FauxBlasonRepository()
@@ -109,13 +122,13 @@ class _Monde:
         )
         assert categorie.id is not None
         self.categorie_id = categorie.id
-        phase = self.phases.ajouter(Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE))
+        phase = self.phases.ajouter(Phase.creer(self.depart_id, 2, TypePhase.ELIMINATION_DIRECTE))
         assert phase.id is not None
         self.phase_id = phase.id
         # Phase de qualification (pour les tests de scope de phase du forfait, E04US015) : le
         # classement lit ses forfaits, le tableau lit les siens — les deux ne se mélangent pas.
         qualif = self.phases.ajouter(
-            Phase.qualification(self.tournoi_id, BaremeQualification.creer(1, 3))
+            Phase.qualification(self.depart_id, BaremeQualification.creer(1, 3))
         )
         assert qualif.id is not None
         self.qualif_id = qualif.id
@@ -128,11 +141,19 @@ class _Monde:
         )
         assert archer.id is not None
         self.series.semer(self.tournoi_id, archer.id, tuple(ZoneScore(v) for v in valeurs))
+        self.inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
         return archer.id
 
     def service(self) -> ServiceSaisieDuels:
         classement = ServiceClassement(
-            self.tournois, self.archers, self.series, self.categories, self.phases, self.forfaits
+            self.tournois,
+            self.archers,
+            self.series,
+            self.categories,
+            self.phases,
+            self.forfaits,
+            self.departs,
+            self.inscriptions,
         )
         return ServiceSaisieDuels(
             self.tournois,
@@ -325,7 +346,7 @@ def test_phase_de_qualification_refusee() -> None:
     monde.inscrire_classe(("10", "10", "10"))
     monde.inscrire_classe(("9", "9", "9"))
     quali = monde.phases.ajouter(
-        Phase.qualification(monde.tournoi_id, BaremeQualification.preset_ffta_18m())
+        Phase.qualification(monde.depart_id, BaremeQualification.preset_ffta_18m())
     )
     assert quali.id is not None
     service = monde.service()
@@ -399,7 +420,14 @@ def _forfait(
 
 def _classement_du(monde: _Monde) -> ServiceClassement:
     return ServiceClassement(
-        monde.tournois, monde.archers, monde.series, monde.categories, monde.phases, monde.forfaits
+        monde.tournois,
+        monde.archers,
+        monde.series,
+        monde.categories,
+        monde.phases,
+        monde.forfaits,
+        monde.departs,
+        monde.inscriptions,
     )
 
 
@@ -410,7 +438,7 @@ def test_forfait_de_duel_ne_relegue_pas_le_rang_de_qualif() -> None:
     fort = monde.inscrire_classe(("10", "10", "10"))  # rang 1
     monde.inscrire_classe(("8", "8"))  # rang 2
     monde.forfaits.semer(_forfait(monde, fort, monde.phase_id))  # forfait EN DUELS
-    classement = _classement_du(monde).pour_tournoi(monde.tournoi_id)
+    classement = _classement_du(monde).pour_depart(monde.depart_id)
     lignes = {ligne.archer_id: ligne for ligne in classement.lignes}
     assert lignes[fort].rang_scratch == 1  # rang de qualif intact
     assert lignes[fort].statut is StatutClassement.EN_LICE
@@ -516,7 +544,9 @@ def test_le_tableau_prend_les_bons_archers_pas_seulement_le_bon_compte() -> None
     Les rangs 1 à 8 sont les huit **premiers du classement** — pas huit archers quelconques.
     """
     monde = _monde_classe(12)
-    attendus = [ligne.archer_id for ligne in _classement_du(monde).pour_tournoi(1).lignes[:8]]
+    attendus = [
+        ligne.archer_id for ligne in _classement_du(monde).pour_depart(monde.depart_id).lignes[:8]
+    ]
     _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8))
 
     assert sorted(_archers_du_tableau(monde)) == sorted(attendus)
@@ -563,7 +593,7 @@ def test_le_rang_preleve_suit_le_classement_au_moment_de_la_lecture() -> None:
     repêchage décidé par le moteur, c'est la conséquence du classement, recalculé à chaque lecture.
     """
     monde = _monde_classe(12)
-    avant = [ligne.archer_id for ligne in _classement_du(monde).pour_tournoi(1).lignes]
+    avant = [ligne.archer_id for ligne in _classement_du(monde).pour_depart(monde.depart_id).lignes]
     cinquieme, neuvieme = avant[4], avant[8]
     monde.forfaits.semer(_forfait(monde, cinquieme, monde.qualif_id))
     _prelever(monde, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8))
@@ -597,7 +627,9 @@ def test_deux_sources_de_rangs_se_cumulent() -> None:
     Relevé en revue : le `any(...)` du service n'était jamais exercé à plus d'un intervalle.
     """
     monde = _monde_classe(12)
-    ordonnes = [ligne.archer_id for ligne in _classement_du(monde).pour_tournoi(1).lignes]
+    ordonnes = [
+        ligne.archer_id for ligne in _classement_du(monde).pour_depart(monde.depart_id).lignes
+    ]
     _prelever(
         monde,
         SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=4),
@@ -617,7 +649,7 @@ def test_l_effectif_source_compte_les_classes_pas_les_inscrits() -> None:
     ligne survivaient, alors que c'est la plus commentée du diff.
     """
     monde = _monde_classe(12)
-    dernier = _classement_du(monde).pour_tournoi(1).lignes[-1].archer_id
+    dernier = _classement_du(monde).pour_depart(monde.depart_id).lignes[-1].archer_id
     monde.forfaits.semer(
         _forfait(monde, dernier, monde.qualif_id, nature=NatureForfait.DISQUALIFICATION)
     )

@@ -28,6 +28,7 @@ from application.erreurs import (
     PhasePasUnTableau,
     TournoiIntrouvable,
 )
+from application.portee import phase_du_tournoi, qualification_representative
 from application.prelevement import preleves, profondeur_de
 from domain.blason import ZoneScore
 from domain.classement import LigneClassement
@@ -276,14 +277,16 @@ class ServiceSaisieDuels:
         """Valide les gardes puis reconstruit l'arbre, duels validés **rejoués** (progression)."""
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        phase = self._phases.par_id(phase_id)
-        if phase is None or phase.tournoi_id != tournoi_id:
+        phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        if phase is None:
             raise PhaseIntrouvable(f"Aucune phase {phase_id} dans le tournoi {tournoi_id}.")
         if phase.type is not TypePhase.ELIMINATION_DIRECTE:
             raise PhasePasUnTableau(
                 f"La phase {phase_id} n'est pas une élimination directe : pas de duels."
             )
-        classement = self._classements.pour_tournoi(tournoi_id)
+        # Le classement **du départ de cette phase** (ADR-0075) : ensemencer un tableau avec les
+        # rangs tous créneaux confondus y ferait entrer des archers qui ne tirent pas ici.
+        classement = self._classements.pour_depart(phase.depart_id)
         lignes = {ligne.archer_id: ligne for ligne in classement.lignes}
         # Ensemencement : **seuls les archers en lice** entrent dans le tableau. Un forfait déclaré
         # en **qualification** (abandon relégué / DSQ exclu, `statut != EN_LICE`) n'accède pas aux
@@ -310,7 +313,7 @@ class ServiceSaisieDuels:
         retombe sur tous les archers en lice. C'est le cas des décors de test montés sans
         qualification, et celui d'un tournoi dont la séquence commence autrement.
         """
-        qualification = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        qualification = qualification_representative(self._phases, tournoi_id)
         return qualification.ordre if qualification is not None else None
 
     def _appliquer_forfaits(self, tableau: Tableau, phase_id: PhaseId) -> Tableau:

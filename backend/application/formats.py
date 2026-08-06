@@ -33,7 +33,12 @@ from application.erreurs import (
 from domain.deroule import ProjectionDeroule
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
-from domain.ports import FormatTournoiRepository, PhaseRepository, TournoiRepository
+from domain.ports import (
+    DepartRepository,
+    FormatTournoiRepository,
+    PhaseRepository,
+    TournoiRepository,
+)
 from domain.tournoi import Tournoi, TournoiId
 
 
@@ -73,8 +78,12 @@ class ServiceFormats:
         phases: PhaseRepository,
         forfaits: LecteurDonneesDePhase,
         placements_tableau: LecteurDonneesDePhase,
+        departs: DepartRepository,
     ) -> None:
         self._tournois = tournois
+        # Appliquer un format crée une séquence **par départ** (ADR-0075) : sans les créneaux,
+        # le service ne saurait pas combien de séquences instancier.
+        self._departs = departs
         self._formats = formats
         self._phases = phases
         self._forfaits = forfaits
@@ -204,7 +213,11 @@ class ServiceFormats:
         # tournoi **sans aucune phase** — et sans son barème de qualification, que le troisième
         # garde ci-dessus existe précisément pour protéger. Relevé par trois axes de la revue,
         # reproduit de bout en bout.
-        nouvelles = format_tournoi.appliquer(tournoi_id)
+        # **Une séquence par départ** (E01US025, ADR-0075) : le format distribue le même déroulé
+        # à chaque créneau, qui vit ensuite sa vie. `appliquer` refuse un tournoi sans départ
+        # (`FormatSansDepart`) plutôt que de ne rien créer en silence.
+        departs = [d.id for d in self._departs.par_tournoi(tournoi_id) if d.id is not None]
+        nouvelles = format_tournoi.appliquer(departs)
         # DETTE-025 — suppression puis recréation en **transactions séparées** (une session par
         # appel de repository) : une panne entre les deux boucles laisse le tournoi sans phase. Le
         # remède est un `remplacer_sequence` atomique sur l'adapter concret (patron
@@ -305,7 +318,20 @@ class ServiceFormats:
         règle de club qu'elle ne sait pas exprimer.
         """
         tournoi = self._tournoi_existant(tournoi_id)
-        phases = self._phases.par_tournoi(tournoi_id)
+        # **Le déroulé d'un seul départ** (E01US025, ADR-0075). `par_tournoi` concatène les
+        # séquences de tous les créneaux : les promouvoir ensemble produirait des ordres en doublon
+        # (`PhasesDeDepartsMeles`). Le premier départ fait référence — ils reçoivent des copies
+        # identiques du format, et les faire diverger est un geste délibéré de l'organisateur, pas
+        # l'état courant.
+        departs = self._departs.par_tournoi(tournoi_id)
+        phases = next(
+            (
+                self._phases.par_depart(depart.id)
+                for depart in departs
+                if depart.id is not None and self._phases.par_depart(depart.id)
+            ),
+            [],
+        )
         if not phases:
             raise TournoiSansPhase(
                 f"Le tournoi {tournoi_id} n'a aucune phase : il n'y a pas de déroulé à promouvoir."

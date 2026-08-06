@@ -136,7 +136,7 @@ def _semer(
     assert depart.id is not None
     PhaseRepositorySQL(sf).ajouter(
         Phase.qualification(
-            tournoi_id=tournoi.id,
+            depart_id=depart.id,
             bareme=BaremeQualification.creer(2, 3),
             validation=GrainValidation.fin_de_serie(),
         )

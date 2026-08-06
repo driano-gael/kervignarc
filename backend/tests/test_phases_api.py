@@ -38,9 +38,22 @@ def app_phases(tmp_path: Path) -> Iterator[FastAPI]:
 
 
 def _creer_tournoi(client: TestClient) -> int:
+    """Crée un tournoi **et son créneau**, et renvoie l'identifiant du **créneau**.
+
+    Les phases pendent au départ depuis E01US025 (ADR-0075) : c'est lui que les routes prennent
+    pour parent (`/departs/{depart_id}/phases`). Le nom de la fonction est conservé pour limiter le
+    diff, mais ce qu'elle rend a changé — d'où cette docstring, sans quoi le prochain lecteur
+    croirait manipuler un identifiant de tournoi.
+    """
     reponse = client.post("/api/v1/tournois", json={"nom": "Kervignarc", "date": "2026-03-14"})
     assert reponse.status_code == 201, reponse.text
-    return int(reponse.json()["id"])
+    tournoi_id = int(reponse.json()["id"])
+    creneau = client.post(
+        f"/api/v1/tournois/{tournoi_id}/departs",
+        json={"horaire": "09:00", "tarif_centimes": 800},
+    )
+    assert creneau.status_code == 201, creneau.text
+    return int(creneau.json()["id"])
 
 
 def test_composer_editer_et_lister(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> None:
@@ -48,7 +61,7 @@ def test_composer_editer_et_lister(app_phases: FastAPI, connecter_admin: Connect
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
 
         assert client.get(base).json() == []
 
@@ -89,7 +102,7 @@ def test_reordonner(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> Non
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         p1 = client.post(base, json={"type": "elimination_directe"}).json()
         p2 = client.post(base, json={"type": "placement"}).json()
 
@@ -103,7 +116,7 @@ def test_supprimer(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> None
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         p1 = client.post(base, json={"type": "elimination_directe"}).json()
         client.post(base, json={"type": "placement"})
 
@@ -118,7 +131,7 @@ def test_cycle_de_vie(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> N
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         phase = client.post(base, json={"type": "elimination_directe"}).json()
         statut_url = f"{base}/{phase['id']}/statut"
 
@@ -141,7 +154,7 @@ def test_transition_illegale_409(app_phases: FastAPI, connecter_admin: Connecter
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         phase = client.post(base, json={"type": "elimination_directe"}).json()
 
         reponse = client.post(
@@ -156,7 +169,7 @@ def test_source_incoherente_422(app_phases: FastAPI, connecter_admin: ConnecterA
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         client.post(base, json={"type": "placement", "effectif": 32})
 
         reponse = client.post(
@@ -176,7 +189,7 @@ def test_supprimer_source_referencee_409(
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         source = client.post(base, json={"type": "placement", "effectif": 40}).json()
         conso = client.post(base, json={"type": "elimination_directe"}).json()
         client.put(
@@ -197,9 +210,9 @@ def test_lecture_publique(app_phases: FastAPI, connecter_admin: ConnecterAdmin) 
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        client.post(f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "elimination_directe"})
+        client.post(f"/api/v1/departs/{tournoi_id}/phases", json={"type": "elimination_directe"})
     with TestClient(app_phases) as anonyme:
-        reponse = anonyme.get(f"/api/v1/tournois/{tournoi_id}/phases")
+        reponse = anonyme.get(f"/api/v1/departs/{tournoi_id}/phases")
     assert reponse.status_code == 200
     assert len(reponse.json()) == 1
 
@@ -210,16 +223,16 @@ def test_ajouter_sans_jeton_401(app_phases: FastAPI, connecter_admin: ConnecterA
         tournoi_id = _creer_tournoi(client)
     with TestClient(app_phases) as anonyme:
         reponse = anonyme.post(
-            f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "elimination_directe"}
+            f"/api/v1/departs/{tournoi_id}/phases", json={"type": "elimination_directe"}
         )
     assert reponse.status_code == 401
     assert reponse.json()["code"] == "non_authentifie"
 
 
-def test_ajouter_tournoi_inconnu_404(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+def test_ajouter_depart_inconnu_404(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> None:
     with TestClient(app_phases) as client:
         connecter_admin(client)
-        reponse = client.post("/api/v1/tournois/999/phases", json={"type": "elimination_directe"})
+        reponse = client.post("/api/v1/departs/999/phases", json={"type": "elimination_directe"})
     assert reponse.status_code == 404
     assert reponse.json()["code"] == "tournoi_introuvable"
 
@@ -229,7 +242,7 @@ def test_modifier_phase_inconnue_404(app_phases: FastAPI, connecter_admin: Conne
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         reponse = client.put(
-            f"/api/v1/tournois/{tournoi_id}/phases/999",
+            f"/api/v1/departs/{tournoi_id}/phases/999",
             json={"type": "placement", "sources": [], "effectif": None},
         )
     assert reponse.status_code == 404
@@ -245,7 +258,7 @@ def test_definir_bareme_apres_ajout_place_la_qualification_en_tete(
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         elim = client.post(base, json={"type": "elimination_directe"})
         assert elim.status_code == 201 and elim.json()["ordre"] == 1
 
@@ -277,7 +290,7 @@ def test_supprimer_la_qualification_409(
             f"/api/v1/tournois/{tournoi_id}/bareme-qualification",
             json={"nb_volees": 20, "nb_fleches_par_volee": 3},
         )
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         qualif = next(p for p in client.get(base).json() if p["type"] == "qualification")
 
         reponse = client.delete(f"{base}/{qualif['id']}")
@@ -291,7 +304,7 @@ def test_type_inconnu_400(app_phases: FastAPI, connecter_admin: ConnecterAdmin) 
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         reponse = client.post(
-            f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "poules_magiques"}
+            f"/api/v1/departs/{tournoi_id}/phases", json={"type": "poules_magiques"}
         )
     assert reponse.status_code == 400
     assert reponse.json()["code"] == "requete_invalide"
@@ -310,7 +323,7 @@ def test_une_phase_se_compose_de_plusieurs_sources_de_natures_differentes(
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         client.post(base, json={"type": "elimination_directe", "effectif": 8})
 
         reponse = client.post(
@@ -339,7 +352,7 @@ def test_une_plage_a_fin_ouverte_fait_l_aller_retour(
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         client.post(base, json={"type": "elimination_directe", "effectif": 120})
 
         reponse = client.post(
@@ -360,7 +373,7 @@ def test_une_source_mal_formee_rend_422_avec_son_code(
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         client.post(base, json={"type": "elimination_directe", "effectif": 8})
 
         reponse = client.post(
@@ -388,7 +401,7 @@ def test_deux_sources_qui_se_recoupent_rendent_422_avec_leur_code(
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         client.post(base, json={"type": "elimination_directe", "effectif": 64})
 
         reponse = client.post(
@@ -418,7 +431,7 @@ def test_l_ancienne_forme_source_est_refusee_et_n_efface_rien(
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         client.post(base, json={"type": "elimination_directe", "effectif": 64})
         creee = client.post(
             base,
@@ -450,7 +463,7 @@ def test_trop_de_sources_est_refuse(app_phases: FastAPI, connecter_admin: Connec
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
         client.post(base, json={"type": "elimination_directe", "effectif": 64})
 
         reponse = client.post(
@@ -474,7 +487,7 @@ def test_profondeur_aller_retour(app_phases: FastAPI, connecter_admin: Connecter
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
 
         reponse = client.post(
             base,
@@ -515,7 +528,7 @@ def test_profondeur_sur_un_type_sans_tableau_422(
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
 
         reponse = client.post(
             base,
@@ -532,7 +545,7 @@ def test_profondeur_top_n_sans_seuil_422(
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
 
         reponse = client.post(
             base,
@@ -552,7 +565,7 @@ def test_profondeur_rang_zero_422(app_phases: FastAPI, connecter_admin: Connecte
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
-        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        base = f"/api/v1/departs/{tournoi_id}/phases"
 
         reponse = client.post(
             base,

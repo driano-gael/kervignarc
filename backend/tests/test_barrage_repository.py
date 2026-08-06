@@ -56,9 +56,9 @@ def _contexte(tmp_path: Path, nb_archers: int = 3) -> tuple[Database, int, list[
     return db, tournoi.id, ids
 
 
-def _annonce(tournoi_id: int, archers: list[int], rang: int = 8) -> BarrageDePlaces:
+def _annonce(depart_id: int, archers: list[int], rang: int = 8) -> BarrageDePlaces:
     return BarrageDePlaces(
-        tournoi_id=tournoi_id,
+        depart_id=depart_id,
         portee=PorteeBarrage.QUALIFICATION,
         participants=tuple(Participant.individuel(archer_id) for archer_id in archers),
         cree_le=_QUAND,

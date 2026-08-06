@@ -20,9 +20,11 @@ from application.erreurs import (
     TransitionStatutInvalide,
 )
 from application.phases import ServicePhases
+from domain.depart import Depart
 from domain.erreurs import EffectifIncompatible, SourceApresPhase
-from domain.phase import Phase, PhaseId, SourcePhase, StatutPhase, TypePhase
+from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
+from tests.conftest import FauxDepartRepository, FauxPhaseRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -53,46 +55,18 @@ class FauxTournoiRepository:
         del self._tournois[tournoi_id]
 
 
-class FauxPhaseRepository:
-    def __init__(self) -> None:
-        self._phases: dict[int, Phase] = {}
-        self._sequence = 0
-
-    def ajouter(self, phase: Phase) -> Phase:
-        self._sequence += 1
-        persiste = dataclasses.replace(phase, id=self._sequence)
-        self._phases[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, phase_id: PhaseId) -> Phase | None:
-        return self._phases.get(phase_id)
-
-    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
-        trouvees = [
-            p for p in self._phases.values() if p.tournoi_id == tournoi_id and p.type is type_phase
-        ]
-        return trouvees[-1] if trouvees else None
-
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        phases = [p for p in self._phases.values() if p.tournoi_id == tournoi_id]
-        return sorted(phases, key=lambda p: p.ordre)
-
-    def enregistrer(self, phase: Phase) -> Phase:
-        assert phase.id in self._phases
-        self._phases[phase.id] = phase
-        return phase
-
-    def supprimer(self, phase_id: PhaseId) -> None:
-        del self._phases[phase_id]
-
-
 def _service() -> tuple[ServicePhases, int]:
     tournois = FauxTournoiRepository()
     tournoi = tournois.ajouter(
         Tournoi(nom="Kervignarc", date=_DATE, lieu=None, type_tournoi=TypeTournoi.NON_OFFICIEL)
     )
     assert tournoi.id is not None
-    return ServicePhases(tournois, FauxPhaseRepository()), tournoi.id
+    departs = FauxDepartRepository()
+    depart = departs.ajouter(
+        Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+    )
+    assert depart.id is not None
+    return ServicePhases(tournois, FauxPhaseRepository(departs), departs), depart.id
 
 
 # --- Lister / ajouter --------------------------------------------------------------------------
@@ -331,13 +305,18 @@ def test_supprimer_la_qualification_est_refuse() -> None:
         Tournoi(nom="Kervignarc", date=_DATE, lieu=None, type_tournoi=TypeTournoi.NON_OFFICIEL)
     )
     assert tournoi.id is not None
-    phases = FauxPhaseRepository()
-    service = ServicePhases(tournois, phases)
-    qualif = phases.ajouter(Phase.qualification(tournoi.id, BaremeQualification.preset_ffta_18m()))
+    departs = FauxDepartRepository()
+    depart = departs.ajouter(
+        Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+    )
+    assert depart.id is not None
+    phases = FauxPhaseRepository(departs)
+    service = ServicePhases(tournois, phases, departs)
+    qualif = phases.ajouter(Phase.qualification(depart.id, BaremeQualification.preset_ffta_18m()))
     assert qualif.id is not None
 
     with pytest.raises(PhaseQualificationNonSupprimable):
-        service.supprimer(tournoi.id, qualif.id)
+        service.supprimer(depart.id, qualif.id)
 
 
 def test_reordonner_leve_si_tournoi_inconnu() -> None:

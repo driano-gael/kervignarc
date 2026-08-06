@@ -162,6 +162,7 @@ from infrastructure.memory.repositories import (
     InMemoryArcherRepository,
     InMemoryBlasonRepository,
     InMemoryCategorieRepository,
+    InMemoryDepartRepository,
     InMemoryDuelRepository,
     InMemoryForfaitRepository,
     InMemoryGabaritSalleRepository,
@@ -213,12 +214,17 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
     blasons = InMemoryBlasonRepository()
     gabarits = InMemoryGabaritSalleRepository()
     inscriptions = InMemoryInscriptionRepository()
-    phases = InMemoryPhaseRepository()
+    # Les créneaux du harnais (E01US025, ADR-0075) : la portée sportive étant le départ, le
+    # magasin de phases a besoin d'eux pour sa lecture transverse `par_tournoi`.
+    departs = InMemoryDepartRepository()
+    phases = InMemoryPhaseRepository(departs)
     series = InMemorySerieRepository()
     forfaits = InMemoryForfaitRepository()
     duels = InMemoryDuelRepository()
     placements_tableau = InMemoryPlacementTableauRepository()
-    classement = ServiceClassement(tournois, archers, series, categories, phases, forfaits)
+    classement = ServiceClassement(
+        tournois, archers, series, categories, phases, forfaits, departs, inscriptions
+    )
     # **Un seul** registre pour les deux services (E06US006) : c'est lui qui résout la profondeur
     # lue sur chaque phase, et deux catalogues distincts laisseraient croire qu'ils divergent.
     registre = registre_par_defaut()
@@ -258,6 +264,7 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         blasons,
         gabarits,
         inscriptions,
+        departs,
         phases,
         series,
         classement,
@@ -465,11 +472,12 @@ def create_app(
         phase_repository,
         forfait_repository,
         placement_tableau_repository,
+        depart_repository,
     )
     # Barème de qualification (E01US009) : porté par la phase `qualification` du tournoi
     # (introduction minimale de `Phase`, ADR-0011). Le service vérifie l'existence du tournoi.
     app.state.service_bareme_qualification = ServiceBaremeQualification(
-        tournoi_repository, phase_repository
+        tournoi_repository, phase_repository, depart_repository
     )
     # Grain de validation (E01US015, `D-11`) : porté par la même phase, à la racine de `config`
     # (`config.validation`) — ce n'est pas une politique de moteur, il reste hors `config.policies`
@@ -481,7 +489,9 @@ def create_app(
     # tournoi et faire vivre leur cycle de vie. Le service vérifie l'existence du tournoi et arbitre
     # les conflits d'état ; la cohérence de la séquence (source, ordres) est une règle du domaine
     # (`SequencePhases`). Même port `phase_repository` que le barème/grain (une table `phase`).
-    app.state.service_phases = ServicePhases(tournoi_repository, phase_repository)
+    app.state.service_phases = ServicePhases(
+        tournoi_repository, phase_repository, depart_repository
+    )
     # Registre des politiques injectables (E05US003, ADR-0004/ADR-0046) : le catalogue
     # nom → implémentation par famille (routing/scoring/seeding/byes/tiebreak/depth), peuplé **ici**
     # (règle 2 : le domaine définit les stratégies, la composition root les assemble). C'est le
@@ -524,6 +534,8 @@ def create_app(
         categorie_repository,
         phase_repository,
         forfait_repository,
+        depart_repository,
+        inscription_repository,
         barrage_repository,
         app.state.registre_politiques,
     )
@@ -750,6 +762,7 @@ def create_app(
         app.state.service_saisie_duels,
         duel_repository,
         GenerateurPalmaresPdf(),
+        depart_repository,
         cast(
             "Aggregation",
             app.state.registre_politiques.resoudre(

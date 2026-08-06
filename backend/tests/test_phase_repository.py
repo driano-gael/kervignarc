@@ -3,7 +3,7 @@
 Exerce l'adapter sur une **vraie base** créée par les migrations (`alembic upgrade head`) :
 persistance du barème (sérialisation JSON `config.policies.scoring`, forme cible ADR-0046) et du
 grain de validation (`config.validation`, hors `policies`), relecture par tournoi + type, mise à
-jour, et enveloppe d'une `config` illisible. Une phase requiert un tournoi (FK `tournoi_id`).
+jour, et enveloppe d'une `config` illisible. Une phase requiert un tournoi (FK `depart_id`).
 
 E01US015 n'ajoute **aucune migration** : la politique s'ajoute dans le JSON existant. Les tests
 `…_sans_cle_validation_…` verrouillent la contrepartie de ce choix — une ligne écrite avant
@@ -28,11 +28,18 @@ from alembic.config import Config
 from sqlalchemy import text
 
 from domain.bareme import BaremeQualification
+from domain.depart import Depart, DepartId
 from domain.grain_validation import GrainValidation
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.politiques import ProfondeurClassement
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
-from infrastructure.db import Database, PhaseORM, PhaseRepositorySQL, TournoiRepositorySQL
+from infrastructure.db import (
+    Database,
+    DepartRepositorySQL,
+    PhaseORM,
+    PhaseRepositorySQL,
+    TournoiRepositorySQL,
+)
 from infrastructure.erreurs import InfrastructureError
 from tests.base_migree import preparer_base
 
@@ -49,8 +56,13 @@ def _base(tmp_path: Path) -> Database:
     return Database(url)
 
 
-def _tournoi(db: Database) -> TournoiId:
-    """Persiste un tournoi (FK requise par une phase) et renvoie son identifiant."""
+def _depart(db: Database) -> DepartId:
+    """Persiste un tournoi **et son créneau**, et renvoie l'identifiant du créneau.
+
+    Une phase pend au **départ** depuis E01US025 (ADR-0075) : la FK `phase.depart_id` refuse
+    désormais un identifiant de tournoi. C'est le seul test du lot où la distinction mord vraiment
+    — ailleurs l'identifiant n'est qu'un entier de décor, ici c'est une contrainte SQL.
+    """
     tournoi = TournoiRepositorySQL(db.session_factory).ajouter(
         Tournoi(
             nom="Kervignarc",
@@ -60,25 +72,29 @@ def _tournoi(db: Database) -> TournoiId:
         )
     )
     assert tournoi.id is not None
-    return tournoi.id
+    depart = DepartRepositorySQL(db.session_factory).ajouter(
+        Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+    )
+    assert depart.id is not None
+    return depart.id
 
 
-def test_ajouter_puis_relire_par_tournoi_et_type(tmp_path: Path) -> None:
+def test_ajouter_puis_relire_par_depart_et_type(tmp_path: Path) -> None:
     """`ajouter` attribue un id ; `par_tournoi_et_type` relit le barème (config JSON comprise)."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        assert repository.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION) is None
+        assert repository.par_depart_et_type(depart_id, TypePhase.QUALIFICATION) is None
 
         cree = repository.ajouter(
-            Phase.qualification(tournoi_id, BaremeQualification.preset_ffta_18m())
+            Phase.qualification(depart_id, BaremeQualification.preset_ffta_18m())
         )
         assert cree.id is not None
         assert cree.bareme is not None and cree.bareme.nb_volees == 20
         assert cree.bareme is not None and cree.bareme.nb_fleches_par_volee == 3
 
-        relue = repository.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        relue = repository.par_depart_et_type(depart_id, TypePhase.QUALIFICATION)
         assert relue == cree
     finally:
         db.engine.dispose()
@@ -88,9 +104,9 @@ def test_enregistrer_met_a_jour_le_bareme(tmp_path: Path) -> None:
     """`enregistrer` persiste l'édition du barème et conserve l'identifiant."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Phase.qualification(tournoi_id, BaremeQualification.creer(20, 3)))
+        cree = repository.ajouter(Phase.qualification(depart_id, BaremeQualification.creer(20, 3)))
         assert cree.id is not None
 
         enregistre = repository.enregistrer(cree.avec_bareme(BaremeQualification.creer(10, 6)))
@@ -106,14 +122,14 @@ def test_par_tournoi_et_type_isole_les_tournois(tmp_path: Path) -> None:
     """`par_tournoi_et_type` ne renvoie que la phase du tournoi demandé."""
     db = _base(tmp_path)
     try:
-        premier = _tournoi(db)
-        second = _tournoi(db)
+        premier = _depart(db)
+        second = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
         repository.ajouter(Phase.qualification(premier, BaremeQualification.creer(20, 3)))
 
-        assert repository.par_tournoi_et_type(second, TypePhase.QUALIFICATION) is None
-        du_premier = repository.par_tournoi_et_type(premier, TypePhase.QUALIFICATION)
-        assert du_premier is not None and du_premier.tournoi_id == premier
+        assert repository.par_depart_et_type(second, TypePhase.QUALIFICATION) is None
+        du_premier = repository.par_depart_et_type(premier, TypePhase.QUALIFICATION)
+        assert du_premier is not None and du_premier.depart_id == premier
     finally:
         db.engine.dispose()
 
@@ -122,11 +138,11 @@ def test_config_corrompue_leve_infrastructure_error(tmp_path: Path) -> None:
     """Une `config` illisible en base est enveloppée en `InfrastructureError` (pas de 500 brut)."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         with db.session_factory() as session:
             session.add(
                 PhaseORM(
-                    tournoi_id=tournoi_id,
+                    depart_id=depart_id,
                     ordre=1,
                     type="qualification",
                     config="pas du json",
@@ -135,8 +151,8 @@ def test_config_corrompue_leve_infrastructure_error(tmp_path: Path) -> None:
             )
             session.commit()
         with pytest.raises(InfrastructureError):
-            PhaseRepositorySQL(db.session_factory).par_tournoi_et_type(
-                tournoi_id, TypePhase.QUALIFICATION
+            PhaseRepositorySQL(db.session_factory).par_depart_et_type(
+                depart_id, TypePhase.QUALIFICATION
             )
     finally:
         db.engine.dispose()
@@ -150,11 +166,11 @@ def test_config_lisible_mais_hors_regle_leve_infrastructure_error(tmp_path: Path
     """
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         with db.session_factory() as session:
             session.add(
                 PhaseORM(
-                    tournoi_id=tournoi_id,
+                    depart_id=depart_id,
                     ordre=1,
                     type="qualification",
                     config='{"scoring": {"volees": 0, "fleches": 3, "mode": "cumul"}}',
@@ -163,8 +179,8 @@ def test_config_lisible_mais_hors_regle_leve_infrastructure_error(tmp_path: Path
             )
             session.commit()
         with pytest.raises(InfrastructureError):
-            PhaseRepositorySQL(db.session_factory).par_tournoi_et_type(
-                tournoi_id, TypePhase.QUALIFICATION
+            PhaseRepositorySQL(db.session_factory).par_depart_et_type(
+                depart_id, TypePhase.QUALIFICATION
             )
     finally:
         db.engine.dispose()
@@ -201,13 +217,31 @@ def _tournoi_au_schema_historique(db: Database) -> TournoiId:
     return identifiant
 
 
-def _phase_brute(db: Database, tournoi_id: TournoiId, config: str) -> None:
+def _phase_brute_au_schema_0027(db: Database, tournoi_id: TournoiId, config: str) -> None:
+    """Écrit une ligne `phase` **au schéma d'avant la 0042** (colonne `tournoi_id`).
+
+    Réservée au test de la migration `0028`, qui monte une base à la 0027 : à cette date la portée
+    sportive était encore le tournoi. Utiliser le helper courant y écrirait une colonne qui n'existe
+    pas encore.
+    """
+    with db.session_factory() as session:
+        session.execute(
+            text(
+                "INSERT INTO phase (tournoi_id, ordre, type, config, statut) "
+                "VALUES (:tournoi_id, 1, 'qualification', :config, 'a_venir')"
+            ),
+            {"tournoi_id": tournoi_id, "config": config},
+        )
+        session.commit()
+
+
+def _phase_brute(db: Database, depart_id: DepartId, config: str) -> None:
     """Écrit une ligne `phase` directement, pour simuler une `config` que le repository n'écrit
     pas (ligne antérieure à E01US015, ou base altérée)."""
     with db.session_factory() as session:
         session.add(
             PhaseORM(
-                tournoi_id=tournoi_id,
+                depart_id=depart_id,
                 ordre=1,
                 type="qualification",
                 config=config,
@@ -221,11 +255,11 @@ def test_le_grain_est_persiste_et_relu(tmp_path: Path) -> None:
     """Le grain fait l'aller-retour en base, cadence comprise (`config.validation`)."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
         cree = repository.ajouter(
             Phase.qualification(
-                tournoi_id,
+                depart_id,
                 BaremeQualification.creer(20, 3),
                 GrainValidation.toutes_les_n_volees(2),
             )
@@ -243,9 +277,9 @@ def test_enregistrer_met_a_jour_le_grain(tmp_path: Path) -> None:
     """`enregistrer` persiste l'édition du grain et conserve le barème."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Phase.qualification(tournoi_id, BaremeQualification.creer(20, 3)))
+        cree = repository.ajouter(Phase.qualification(depart_id, BaremeQualification.creer(20, 3)))
         assert cree.validation == GrainValidation.fin_de_serie()
 
         enregistre = repository.enregistrer(
@@ -261,9 +295,9 @@ def test_un_grain_de_fin_nest_pas_serialise_avec_une_cadence(tmp_path: Path) -> 
     """`fin de série` n'a pas de cadence : `n_volees` est absent du JSON, pas mis à `null`."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Phase.qualification(tournoi_id, BaremeQualification.creer(20, 3)))
+        cree = repository.ajouter(Phase.qualification(depart_id, BaremeQualification.creer(20, 3)))
         assert cree.id is not None
 
         with db.session_factory() as session:
@@ -280,11 +314,11 @@ def test_une_phase_sans_cle_validation_se_relit_avec_le_preset_du_type(tmp_path:
     `validation` ; elle se relit avec le preset de son type (`fin de série`), sans erreur."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
-        _phase_brute(db, tournoi_id, '{"scoring": {"volees": 20, "fleches": 3, "mode": "cumul"}}')
+        depart_id = _depart(db)
+        _phase_brute(db, depart_id, '{"scoring": {"volees": 20, "fleches": 3, "mode": "cumul"}}')
 
-        relue = PhaseRepositorySQL(db.session_factory).par_tournoi_et_type(
-            tournoi_id, TypePhase.QUALIFICATION
+        relue = PhaseRepositorySQL(db.session_factory).par_depart_et_type(
+            depart_id, TypePhase.QUALIFICATION
         )
         assert relue is not None
         assert relue.validation == GrainValidation.fin_de_serie()
@@ -297,10 +331,10 @@ def test_une_phase_sans_cle_validation_reecrit_le_grain_a_lenregistrement(tmp_pa
     """La ligne héritée se complète d'elle-même dès la première écriture : pas de rattrapage."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
-        _phase_brute(db, tournoi_id, '{"scoring": {"volees": 20, "fleches": 3, "mode": "cumul"}}')
+        depart_id = _depart(db)
+        _phase_brute(db, depart_id, '{"scoring": {"volees": 20, "fleches": 3, "mode": "cumul"}}')
         repository = PhaseRepositorySQL(db.session_factory)
-        relue = repository.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        relue = repository.par_depart_et_type(depart_id, TypePhase.QUALIFICATION)
         assert relue is not None and relue.id is not None
 
         repository.enregistrer(relue.avec_validation(GrainValidation.toutes_les_n_volees(2)))
@@ -320,16 +354,16 @@ def test_un_grain_present_mais_illisible_leve_infrastructure_error(tmp_path: Pat
     """Une clé `validation` **présente** et hors règle est une incohérence, pas un héritage."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         _phase_brute(
             db,
-            tournoi_id,
+            depart_id,
             '{"scoring": {"volees": 20, "fleches": 3, "mode": "cumul"},'
             ' "validation": {"grain": "toutes_les_n_volees", "n_volees": 0}}',
         )
         with pytest.raises(InfrastructureError):
-            PhaseRepositorySQL(db.session_factory).par_tournoi_et_type(
-                tournoi_id, TypePhase.QUALIFICATION
+            PhaseRepositorySQL(db.session_factory).par_depart_et_type(
+                depart_id, TypePhase.QUALIFICATION
             )
     finally:
         db.engine.dispose()
@@ -347,16 +381,16 @@ def test_une_cle_validation_qui_nest_pas_un_objet_leve_infrastructure_error(
     altérée, pas une phase héritée (dont la clé serait *absente*) → `InfrastructureError`."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         _phase_brute(
             db,
-            tournoi_id,
+            depart_id,
             '{"scoring": {"volees": 20, "fleches": 3, "mode": "cumul"},'
             f' "validation": {validation}}}',
         )
         with pytest.raises(InfrastructureError):
-            PhaseRepositorySQL(db.session_factory).par_tournoi_et_type(
-                tournoi_id, TypePhase.QUALIFICATION
+            PhaseRepositorySQL(db.session_factory).par_depart_et_type(
+                depart_id, TypePhase.QUALIFICATION
             )
     finally:
         db.engine.dispose()
@@ -366,16 +400,16 @@ def test_un_grain_inconnu_leve_infrastructure_error(tmp_path: Path) -> None:
     """Un grain hors énumération (base altérée) ne produit pas de value object bancal."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         _phase_brute(
             db,
-            tournoi_id,
+            depart_id,
             '{"scoring": {"volees": 20, "fleches": 3, "mode": "cumul"},'
             ' "validation": {"grain": "quand_ca_arrange"}}',
         )
         with pytest.raises(InfrastructureError):
-            PhaseRepositorySQL(db.session_factory).par_tournoi_et_type(
-                tournoi_id, TypePhase.QUALIFICATION
+            PhaseRepositorySQL(db.session_factory).par_depart_et_type(
+                depart_id, TypePhase.QUALIFICATION
             )
     finally:
         db.engine.dispose()
@@ -386,16 +420,16 @@ def test_un_grain_incoherent_avec_le_bareme_leve_infrastructure_error(tmp_path: 
     jamais ça (l'agrégat le refuse) — donc la base a été altérée → `InfrastructureError`."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         _phase_brute(
             db,
-            tournoi_id,
+            depart_id,
             '{"scoring": {"volees": 5, "fleches": 3, "mode": "cumul"},'
             ' "validation": {"grain": "toutes_les_n_volees", "n_volees": 30}}',
         )
         with pytest.raises(InfrastructureError):
-            PhaseRepositorySQL(db.session_factory).par_tournoi_et_type(
-                tournoi_id, TypePhase.QUALIFICATION
+            PhaseRepositorySQL(db.session_factory).par_depart_et_type(
+                depart_id, TypePhase.QUALIFICATION
             )
     finally:
         db.engine.dispose()
@@ -409,13 +443,13 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
     y font l'aller-retour (config JSON à plat, ADR-0045)."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        repository.ajouter(Phase.qualification(tournoi_id, BaremeQualification.creer(20, 3)))
+        repository.ajouter(Phase.qualification(depart_id, BaremeQualification.creer(20, 3)))
 
         elim = repository.ajouter(
             Phase.creer(
-                tournoi_id,
+                depart_id,
                 ordre=2,
                 type=TypePhase.ELIMINATION_DIRECTE,
                 sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
@@ -449,23 +483,23 @@ def test_par_tournoi_renvoie_les_phases_ordonnees(tmp_path: Path) -> None:
     """`par_tournoi` trie par `ordre` et isole le tournoi demandé."""
     db = _base(tmp_path)
     try:
-        premier = _tournoi(db)
-        second = _tournoi(db)
+        premier = _depart(db)
+        second = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
         repository.ajouter(Phase.qualification(premier, BaremeQualification.creer(20, 3)))
         repository.ajouter(Phase.creer(premier, ordre=2, type=TypePhase.ELIMINATION_DIRECTE))
         repository.ajouter(Phase.creer(premier, ordre=3, type=TypePhase.PLACEMENT))
         repository.ajouter(Phase.qualification(second, BaremeQualification.creer(10, 3)))
 
-        phases = repository.par_tournoi(premier)
+        phases = repository.par_depart(premier)
         assert [p.ordre for p in phases] == [1, 2, 3]
         assert [p.type for p in phases] == [
             TypePhase.QUALIFICATION,
             TypePhase.ELIMINATION_DIRECTE,
             TypePhase.PLACEMENT,
         ]
-        assert repository.par_tournoi(second) == [
-            repository.par_tournoi_et_type(second, TypePhase.QUALIFICATION)
+        assert repository.par_depart(second) == [
+            repository.par_depart_et_type(second, TypePhase.QUALIFICATION)
         ]
     finally:
         db.engine.dispose()
@@ -474,17 +508,17 @@ def test_par_tournoi_renvoie_les_phases_ordonnees(tmp_path: Path) -> None:
 def test_supprimer_retire_la_phase(tmp_path: Path) -> None:
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
         phase = repository.ajouter(
-            Phase.creer(tournoi_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE)
+            Phase.creer(depart_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE)
         )
         assert phase.id is not None
 
         repository.supprimer(phase.id)
 
         assert repository.par_id(phase.id) is None
-        assert repository.par_tournoi(tournoi_id) == []
+        assert repository.par_depart(depart_id) == []
     finally:
         db.engine.dispose()
 
@@ -493,10 +527,10 @@ def test_le_statut_en_pause_fait_l_aller_retour(tmp_path: Path) -> None:
     """`en_pause` (E05US001) se persiste et se relit comme les autres statuts."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
         phase = repository.ajouter(
-            Phase.creer(tournoi_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE)
+            Phase.creer(depart_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE)
         )
         assert phase.id is not None
 
@@ -514,11 +548,11 @@ def test_un_statut_illisible_leve_infrastructure_error(tmp_path: Path) -> None:
     le cast est dans le bloc qui enveloppe (revue axe C1)."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         with db.session_factory() as session:
             session.add(
                 PhaseORM(
-                    tournoi_id=tournoi_id,
+                    depart_id=depart_id,
                     ordre=1,
                     type="elimination_directe",
                     config="{}",
@@ -527,7 +561,7 @@ def test_un_statut_illisible_leve_infrastructure_error(tmp_path: Path) -> None:
             )
             session.commit()
         with pytest.raises(InfrastructureError):
-            PhaseRepositorySQL(db.session_factory).par_tournoi(tournoi_id)
+            PhaseRepositorySQL(db.session_factory).par_tournoi(depart_id)
     finally:
         db.engine.dispose()
 
@@ -537,11 +571,11 @@ def test_une_source_illisible_leve_infrastructure_error(tmp_path: Path) -> None:
     repository relit via `SourcePhase`, donc jamais un value object silencieusement invalide."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         with db.session_factory() as session:
             session.add(
                 PhaseORM(
-                    tournoi_id=tournoi_id,
+                    depart_id=depart_id,
                     ordre=2,
                     type="elimination_directe",
                     config='{"source": {"ordre_source": 1, "rang_debut": 8, "rang_fin": 4}}',
@@ -550,7 +584,7 @@ def test_une_source_illisible_leve_infrastructure_error(tmp_path: Path) -> None:
             )
             session.commit()
         with pytest.raises(InfrastructureError):
-            PhaseRepositorySQL(db.session_factory).par_tournoi(tournoi_id)
+            PhaseRepositorySQL(db.session_factory).par_tournoi(depart_id)
     finally:
         db.engine.dispose()
 
@@ -563,9 +597,9 @@ def test_le_scoring_est_persiste_sous_policies(tmp_path: Path) -> None:
     et paramétré (volées x flèches), **pas** à la racine. C'est la résorption de DETTE-003."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
+        depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Phase.qualification(tournoi_id, BaremeQualification.creer(20, 3)))
+        cree = repository.ajouter(Phase.qualification(depart_id, BaremeQualification.creer(20, 3)))
         assert cree.id is not None
 
         with db.session_factory() as session:
@@ -584,11 +618,11 @@ def test_ancienne_forme_a_plat_du_scoring_se_relit(tmp_path: Path) -> None:
     antérieure à la migration `0028`. Le barème est intact ; `mode`/`nom` n'entre pas en jeu."""
     db = _base(tmp_path)
     try:
-        tournoi_id = _tournoi(db)
-        _phase_brute(db, tournoi_id, '{"scoring": {"volees": 15, "fleches": 6, "mode": "cumul"}}')
+        depart_id = _depart(db)
+        _phase_brute(db, depart_id, '{"scoring": {"volees": 15, "fleches": 6, "mode": "cumul"}}')
 
-        relue = PhaseRepositorySQL(db.session_factory).par_tournoi_et_type(
-            tournoi_id, TypePhase.QUALIFICATION
+        relue = PhaseRepositorySQL(db.session_factory).par_depart_et_type(
+            depart_id, TypePhase.QUALIFICATION
         )
         assert relue is not None
         assert relue.bareme is not None
@@ -609,8 +643,12 @@ def test_migration_0028_deplace_le_scoring_sous_policies(tmp_path: Path) -> None
 
     db = Database(url)
     try:
+        # ⚠️ **À la révision 0027, `phase` pend encore au tournoi** : la bascule vers `depart_id`
+        # est la 0042. Un test de migration doit parler le schéma **de sa révision**, sinon il
+        # vérifie un passé qui n'a jamais existé. D'où l'écriture SQL brute ci-dessous, sur
+        # `tournoi_id`, et non le helper `_phase_brute` qui suit le schéma d'aujourd'hui.
         tournoi_id = _tournoi_au_schema_historique(db)
-        _phase_brute(
+        _phase_brute_au_schema_0027(
             db,
             tournoi_id,
             '{"scoring": {"volees": 20, "fleches": 3, "mode": "cumul"},'
@@ -636,7 +674,7 @@ def test_migration_0028_deplace_le_scoring_sous_policies(tmp_path: Path) -> None
 # --- Profondeur de classement (E06US006, ADR-0070) ----------------------------------------------
 
 
-def _tableau_brut(db: Database, tournoi_id: TournoiId, config: str) -> None:
+def _tableau_brut(db: Database, depart_id: DepartId, config: str) -> None:
     """Écrit une ligne `phase` **de tableau** directement, config imposée.
 
     Jumeau de `_phase_brute`, qui force `type="qualification"` : une profondeur ne se règle que sur
@@ -646,7 +684,7 @@ def _tableau_brut(db: Database, tournoi_id: TournoiId, config: str) -> None:
     with db.session_factory() as session:
         session.add(
             PhaseORM(
-                tournoi_id=tournoi_id,
+                depart_id=depart_id,
                 ordre=1,
                 type="elimination_directe",
                 config=config,
@@ -659,12 +697,12 @@ def _tableau_brut(db: Database, tournoi_id: TournoiId, config: str) -> None:
 def test_la_profondeur_fait_l_aller_retour(tmp_path: Path) -> None:
     """`config.policies.depth` s'écrit et se relit à l'identique, sans migration."""
     db = _base(tmp_path)
-    tournoi_id = _tournoi(db)
+    depart_id = _depart(db)
     repo = PhaseRepositorySQL(db.session_factory)
 
     integrale = repo.ajouter(
         Phase.creer(
-            tournoi_id,
+            depart_id,
             ordre=1,
             type=TypePhase.ELIMINATION_DIRECTE,
             profondeur=ProfondeurClassement.integrale(),
@@ -672,14 +710,14 @@ def test_la_profondeur_fait_l_aller_retour(tmp_path: Path) -> None:
     )
     top = repo.ajouter(
         Phase.creer(
-            tournoi_id,
+            depart_id,
             ordre=2,
             type=TypePhase.ELIMINATION_DIRECTE,
             profondeur=ProfondeurClassement.top(8),
         )
     )
 
-    relues = {p.ordre: p.profondeur for p in repo.par_tournoi(tournoi_id)}
+    relues = {p.ordre: p.profondeur for p in repo.par_tournoi(depart_id)}
     assert relues[1] == ProfondeurClassement.integrale()
     assert relues[2] == ProfondeurClassement.top(8)
     assert integrale.profondeur == relues[1] and top.profondeur == relues[2]
@@ -693,10 +731,10 @@ def test_une_phase_sans_cle_depth_se_relit_non_reglee(tmp_path: Path) -> None:
     vérifiait avant cette correction de revue.
     """
     db = _base(tmp_path)
-    tournoi_id = _tournoi(db)
-    _tableau_brut(db, tournoi_id, json.dumps({"validation": {"grain": "fin_de_duel"}}))
+    depart_id = _depart(db)
+    _tableau_brut(db, depart_id, json.dumps({"validation": {"grain": "fin_de_duel"}}))
 
-    phase = PhaseRepositorySQL(db.session_factory).par_tournoi(tournoi_id)[0]
+    phase = PhaseRepositorySQL(db.session_factory).par_tournoi(depart_id)[0]
 
     assert phase.profondeur is None
 
@@ -721,8 +759,8 @@ def test_une_profondeur_alteree_remonte_en_erreur_typee(
     en 500 — la panne déjà documentée sur `_vers_modele_phase`, sans route pour s'en sortir.
     """
     db = _base(tmp_path)
-    tournoi_id = _tournoi(db)
-    _tableau_brut(db, tournoi_id, json.dumps({"policies": {"depth": depth}}))
+    depart_id = _depart(db)
+    _tableau_brut(db, depart_id, json.dumps({"policies": {"depth": depth}}))
 
     with pytest.raises(InfrastructureError):
-        PhaseRepositorySQL(db.session_factory).par_tournoi(tournoi_id)
+        PhaseRepositorySQL(db.session_factory).par_tournoi(depart_id)

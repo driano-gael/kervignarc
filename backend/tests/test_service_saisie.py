@@ -25,21 +25,23 @@ from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId, ZoneScore
 from domain.categorie import Categorie, CategorieId
-from domain.depart import DepartId
+from domain.depart import Depart, DepartId
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import NumeroVoleeInvalide, ValeurHorsBlason
 from domain.forfait import Forfait, NatureForfait
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription, InscriptionId
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase, TypePhase
 from domain.placement import Affectation
 from domain.serie import Serie
 from domain.tournoi import TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
+    FauxDepartRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
+    FauxPhaseRepository,
 )
 
 _DEPART: DepartId = 7
@@ -100,45 +102,6 @@ class FauxSerieRepository:
     def enregistrer_avec_trace(self, serie: Serie, entree: EntreeAudit) -> Serie:
         self.traces.append(entree)
         return self.enregistrer(serie)
-
-
-class FauxPhaseRepository:
-    """Repository de phases en mémoire conforme au port `PhaseRepository`."""
-
-    def __init__(self) -> None:
-        self._phases: dict[int, Phase] = {}
-        self._sequence = 0
-
-    def ajouter(self, phase: Phase) -> Phase:
-        self._sequence += 1
-        persiste = dataclasses.replace(phase, id=self._sequence)
-        self._phases[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, phase_id: PhaseId) -> Phase | None:
-        return self._phases.get(phase_id)
-
-    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
-        return next(
-            (
-                p
-                for p in self._phases.values()
-                if p.tournoi_id == tournoi_id and p.type is type_phase
-            ),
-            None,
-        )
-
-    def enregistrer(self, phase: Phase) -> Phase:
-        assert phase.id in self._phases
-        self._phases[phase.id] = phase
-        return phase
-
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        phases = [p for p in self._phases.values() if p.tournoi_id == tournoi_id]
-        return sorted(phases, key=lambda p: p.ordre)
-
-    def supprimer(self, phase_id: PhaseId) -> None:
-        del self._phases[phase_id]
 
 
 class FauxBlasonRepository:
@@ -227,7 +190,16 @@ class Montage:
         nb_volees: int = 2,
     ) -> None:
         self.series = FauxSerieRepository()
-        self.phases = FauxPhaseRepository()
+        # Le créneau conventionnel `_DEPART` de ce montage, matérialisé : la doublure de phases
+        # en a besoin pour la vue transverse « phases du tournoi » que lit le service.
+        self.departs = FauxDepartRepository()
+        self.departs.ajouter(
+            dataclasses.replace(
+                Depart.creer(tournoi_id=1, numero=1, tarif_centimes=800, horaire="09:00"),
+                id=_DEPART,
+            )
+        )
+        self.phases = FauxPhaseRepository(self.departs)
         self.archers = FauxArcherRepository()
         self.categories = FauxCategorieRepository()
         self.blasons = FauxBlasonRepository()
@@ -255,7 +227,7 @@ class Montage:
         if avec_phase:
             self.phases.ajouter(
                 Phase.qualification(
-                    tournoi_id=1,
+                    depart_id=_DEPART,
                     bareme=BaremeQualification.creer(nb_volees, 3),
                     validation=GrainValidation.fin_de_serie(),
                 )
@@ -414,7 +386,7 @@ def test_archers_du_poste_signalent_un_forfait_de_qualification() -> None:
     b = m.nouvel_archer("BRAVO")
     m.placer(a, _DEPART, cible_index=1, position="A")
     m.placer(b, _DEPART, cible_index=1, position="B")
-    phase = m.phases.par_tournoi_et_type(m.tournoi_id, TypePhase.QUALIFICATION)
+    phase = m.phases.par_depart_et_type(_DEPART, TypePhase.QUALIFICATION)
     assert phase is not None and phase.id is not None
     m.forfaits.semer(
         Forfait.creer(m.tournoi_id, a, phase.id, NatureForfait.ABANDON, "DURAND", _QUAND)

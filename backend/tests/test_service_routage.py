@@ -39,6 +39,7 @@ from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
+from domain.depart import Depart
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.forfait import Forfait, NatureForfait
 from domain.gabarit_salle import GabaritSalle
@@ -58,13 +59,14 @@ from domain.politiques import (
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
+    FauxDepartRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
+    FauxPhaseRepository,
 )
 from tests.test_service_placement_duels import (
     FauxBlasonRepository,
     FauxGabaritRepository,
-    FauxPhaseRepository,
     FauxPlacementTableauRepository,
     FauxSerieRepository,
     FauxTournoiRepository,
@@ -106,7 +108,14 @@ class _Monde:
         self.profondeur = profondeur
         self.tournoi_id = 1
         self.tournois = FauxTournoiRepository({1})
-        self.phases = FauxPhaseRepository()
+        # Créneau et inscriptions : le classement dont dérive ce décor est celui d'un départ.
+        self.departs = FauxDepartRepository()
+        _d = self.departs.ajouter(
+            Depart.creer(tournoi_id=1, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert _d.id is not None
+        self.depart_id = _d.id
+        self.phases = FauxPhaseRepository(self.departs)
         self.gabarits = FauxGabaritRepository()
         self.inscriptions = FauxInscriptionRepository()
         self.archers = FauxArcherRepository()
@@ -159,7 +168,14 @@ class _Monde:
 
     def _classement(self) -> ServiceClassement:
         return ServiceClassement(
-            self.tournois, self.archers, self.series, self.categories, self.phases, self.forfaits
+            self.tournois,
+            self.archers,
+            self.series,
+            self.categories,
+            self.phases,
+            self.forfaits,
+            self.departs,
+            self.inscriptions,
         )
 
     @property
@@ -639,7 +655,7 @@ def test_phase_imposee_d_un_autre_tournoi_est_refusee() -> None:
     monde = _Monde()
     archers = _quatre(monde)
     autre = monde.phases.ajouter(
-        Phase.creer(tournoi_id=42, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
+        Phase.creer(depart_id=42, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
     )
     assert autre.id is not None
 

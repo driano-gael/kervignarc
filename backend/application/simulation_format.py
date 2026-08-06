@@ -59,6 +59,7 @@ from domain.archer import Archer
 from domain.blason import Blason
 from domain.categorie import Categorie, CategorieId
 from domain.classement import Classement
+from domain.depart import Depart
 from domain.deroule import ProjectionDeroule
 from domain.format_tournoi import FormatTournoi, FormatTournoiId
 from domain.phase import TypePhase
@@ -312,7 +313,13 @@ def _fonder(
     )
     assert categorie.id is not None, "Le magasin in-memory attribue un identifiant."
     _peupler(harnais, tournoi.id, categorie.id, effectif, graine)
-    for phase in format_tournoi.appliquer(tournoi.id):
+    # **Un créneau** pour la simulation (E01US025, ADR-0075) : le format s'applique à des départs,
+    # pas à un tournoi. Un seul suffit ici — on simule un déroulé, pas une logistique de journée.
+    depart = harnais.departs.ajouter(
+        Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=0, horaire="09:00")
+    )
+    assert depart.id is not None, "Le magasin in-memory attribue un identifiant."
+    for phase in format_tournoi.appliquer([depart.id]):
         harnais.phases.ajouter(phase)
     return tournoi
 

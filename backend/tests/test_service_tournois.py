@@ -33,7 +33,7 @@ from domain.tournoi import (
     TypeTournoi,
     transitions_possibles,
 )
-from tests.conftest import FauxDepartRepository
+from tests.conftest import FauxDepartRepository, FauxPhaseRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -66,16 +66,6 @@ class FauxTournoiRepository:
         del self._tournois[tournoi_id]
 
 
-class FauxPhaseRepository:
-    """Repository de phases en mémoire — juste ce que le service lit (E05US021)."""
-
-    def __init__(self) -> None:
-        self.phases: list[Phase] = []
-
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        return [p for p in self.phases if p.tournoi_id == tournoi_id]
-
-
 class FauxCompteurEngages:
     """Combien d'archers sont inscrits — réglable, c'est ce que la garde de démarrage confronte."""
 
@@ -97,7 +87,7 @@ def _service_complet() -> (
 ):
     """Le service et **tous** ses dépôts, pour les tests qui garnissent phases et inscrits."""
     departs = FauxDepartRepository()
-    phases = FauxPhaseRepository()
+    phases = FauxPhaseRepository(departs)
     engages = FauxCompteurEngages()
     tournois = FauxTournoiRepository()
     service = ServiceTournois(tournois, departs, phases, engages)
@@ -303,21 +293,21 @@ def test_demarrer_refuse_si_pas_pret() -> None:
 # (`EffectifTableauInvalide`, E05US020) remonte là où la décision se prend.
 
 
-def _deroule_120(tournoi_id: int) -> list[Phase]:
+def _deroule_120(depart_id: int) -> list[Phase]:
     """Le déroulé d'ADR-0068 §6 : qualification, tableau 1-32, tableau de classement 33 et suivants.
 
     Son minimum déduit est **34** — la phase 3 ne monte un tableau de 2 qu'à partir du 34ᵉ classé.
     """
     return [
-        Phase.qualification(tournoi_id, BaremeQualification.preset_ffta_18m()),
+        Phase.qualification(depart_id, BaremeQualification.preset_ffta_18m()),
         Phase(
-            tournoi_id=tournoi_id,
+            depart_id=depart_id,
             ordre=2,
             type=TypePhase.ELIMINATION_DIRECTE,
             sources=(SourcePhase.par_rangs(1, 1, 32),),
         ),
         Phase(
-            tournoi_id=tournoi_id,
+            depart_id=depart_id,
             ordre=3,
             type=TypePhase.ELIMINATION_DIRECTE,
             sources=(SourcePhase.par_rangs(1, rang_debut=33),),
@@ -329,7 +319,12 @@ def _pret_avec_deroule(inscrits: int) -> tuple[ServiceTournois, int]:
     """Un tournoi `prêt`, doté du déroulé à 34 minimum et de `inscrits` archers."""
     service, departs, phases, engages = _service_complet()[:4]
     tid = _id_cree(service, departs)
-    phases.phases = _deroule_120(tid)
+    # Le déroulé se pose **sur le créneau** du tournoi (ADR-0075), par le port plutôt qu'en
+    # écrivant dans le magasin de la doublure — ce que faisait la copie locale de ce fichier.
+    depart = departs.par_tournoi(tid)[0]
+    assert depart.id is not None
+    for _phase in _deroule_120(depart.id):
+        phases.ajouter(_phase)
     engages.nb = inscrits
     service.vers_pret(tid)
     return service, tid
@@ -404,7 +399,12 @@ def test_lexigence_du_tournoi_prime_quand_elle_depasse_le_minimum_deduit() -> No
     accepterait — et le message ne parle **pas** d'un prélèvement, puisqu'aucun n'est en cause."""
     service, departs, phases, engages, tournois = _service_complet()
     tid = _id_cree(service, departs)
-    phases.phases = _deroule_120(tid)
+    # Le déroulé se pose **sur le créneau** du tournoi (ADR-0075), par le port plutôt qu'en
+    # écrivant dans le magasin de la doublure — ce que faisait la copie locale de ce fichier.
+    depart = departs.par_tournoi(tid)[0]
+    assert depart.id is not None
+    for _phase in _deroule_120(depart.id):
+        phases.ajouter(_phase)
     engages.nb = 36
     _exiger(service, tournois, tid, 40)
     service.vers_pret(tid)
@@ -427,7 +427,12 @@ def test_une_exigence_plus_basse_que_le_deduit_ne_labaisse_pas() -> None:
     le moteur ne saura pas dérouler."""
     service, departs, phases, engages, tournois = _service_complet()
     tid = _id_cree(service, departs)
-    phases.phases = _deroule_120(tid)
+    # Le déroulé se pose **sur le créneau** du tournoi (ADR-0075), par le port plutôt qu'en
+    # écrivant dans le magasin de la doublure — ce que faisait la copie locale de ce fichier.
+    depart = departs.par_tournoi(tid)[0]
+    assert depart.id is not None
+    for _phase in _deroule_120(depart.id):
+        phases.ajouter(_phase)
     engages.nb = 20
     _exiger(service, tournois, tid, 10)
     service.vers_pret(tid)
@@ -443,7 +448,9 @@ def test_un_deroule_meme_minimal_exige_au_moins_un_inscrit() -> None:
     **zéro** inscrit ne démarre plus, là où il le pouvait avant."""
     service, departs, phases, engages = _service_complet()[:4]
     tid = _id_cree(service, departs)
-    phases.phases = [Phase.qualification(tid, BaremeQualification.preset_ffta_18m())]
+    depart = departs.par_tournoi(tid)[0]
+    assert depart.id is not None
+    phases.ajouter(Phase.qualification(depart.id, BaremeQualification.preset_ffta_18m()))
     engages.nb = 0
     service.vers_pret(tid)
 

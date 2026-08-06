@@ -32,6 +32,7 @@ from bootstrap.composition import fabriquer_harnais_simulation
 from domain.archer import Archer
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
+from domain.depart import Depart
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
@@ -41,6 +42,7 @@ from infrastructure.memory.repositories import (
     InMemoryArcherRepository,
     InMemoryBlasonRepository,
     InMemoryCategorieRepository,
+    InMemoryDepartRepository,
     InMemoryForfaitRepository,
     InMemoryGabaritSalleRepository,
     InMemoryInscriptionRepository,
@@ -74,6 +76,14 @@ class _Reel:
         self.blasons = InMemoryBlasonRepository()
         self.gabarits = InMemoryGabaritSalleRepository()
         self.inscriptions = InMemoryInscriptionRepository()
+        # Le créneau conventionnel de ce décor (`depart_id=1` dans les inscriptions ci-dessous) :
+        # le classement est celui d'un départ depuis ADR-0075, il doit donc exister vraiment.
+        self.departs = InMemoryDepartRepository()
+        self.departs.ajouter(
+            dataclasses.replace(
+                Depart.creer(tournoi_id=1, numero=1, tarif_centimes=800, horaire="09:00"), id=1
+            )
+        )
         self.phases = InMemoryPhaseRepository()
         self.series = InMemorySerieRepository()
 
@@ -131,6 +141,8 @@ class _Reel:
             self.categories,
             self.phases,
             InMemoryForfaitRepository(),
+            self.departs,
+            self.inscriptions,
         )
 
     def service(self) -> ServiceSimulation:
@@ -197,7 +209,7 @@ def test_rejeu_ephemere_reproduit_le_classement_reel() -> None:
     reel.inscrire_classe((ZoneScore.DIX, ZoneScore.DIX))  # 20 → 1er
     reel.inscrire_classe((ZoneScore.NEUF, ZoneScore.NEUF))  # 18
 
-    attendu = reel.classement_reel().pour_tournoi(reel.tournoi_id)
+    attendu = reel.classement_reel().pour_depart(reel.tournoi_id)
     resultat = reel.service().simuler(reel.tournoi_id)
 
     assert resultat.classement == attendu

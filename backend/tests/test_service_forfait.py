@@ -38,9 +38,10 @@ from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
+    FauxDepartRepository,
     FauxForfaitRepository,
+    FauxPhaseRepository,
 )
-from tests.test_service_placement_duels import FauxPhaseRepository
 
 _QUAND = datetime.datetime(2026, 3, 14, 10, 42, tzinfo=datetime.UTC)
 
@@ -90,7 +91,8 @@ class _Monde:
         self.tournois = FauxTournoiRepository(statut)
         self.archers = FauxArcherRepository()
         self.categories = FauxCategorieRepository()
-        self.phases = FauxPhaseRepository()
+        self.departs = FauxDepartRepository()
+        self.phases = FauxPhaseRepository(self.departs)
         self.forfaits = FauxForfaitRepository()
         cat = self.categories.ajouter(Categorie.creer(self.tournoi_id, "Senior 1 H"))
         assert cat.id is not None
@@ -161,7 +163,7 @@ def test_archer_inconnu_leve_introuvable() -> None:
 def test_qualif_absente_leve_erreur() -> None:
     """Sans phase de qualification configurée, on ne peut pas déclarer un abandon de qualif."""
     m = _Monde()
-    m.phases = FauxPhaseRepository()  # aucune phase
+    m.phases = FauxPhaseRepository(m.departs)  # aucune phase
     m.service = ServiceForfait(m.forfaits, m.tournois, m.archers, m.phases, HorlogeFigee())
     with pytest.raises(PhaseQualificationAbsente):
         m.service.declarer_en_qualification(m.tournoi_id, m.archer_id, NatureForfait.ABANDON, "S")

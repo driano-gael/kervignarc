@@ -97,10 +97,10 @@ def _contrat_phase(tournois: TournoiRepository, phases: PhaseRepository) -> None
     du_tournoi = phases.par_tournoi(tournoi.id)
     assert [p.ordre for p in du_tournoi] == [1, 2, 3], "par_tournoi filtre puis trie par ordre."
 
-    placement = phases.par_tournoi_et_type(tournoi.id, TypePhase.PLACEMENT)
+    placement = phases.par_depart_et_type(tournoi.id, TypePhase.PLACEMENT)
     assert placement is not None and placement.ordre == 1, "par_tournoi_et_type résout la phase."
     assert (
-        phases.par_tournoi_et_type(tournoi.id, TypePhase.QUALIFICATION) is None
+        phases.par_depart_et_type(tournoi.id, TypePhase.QUALIFICATION) is None
     ), "par_tournoi_et_type → None si le type est absent."
 
 

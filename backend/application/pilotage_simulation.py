@@ -41,6 +41,7 @@ from application.erreurs import (
     UniteSimulationInvalide,
 )
 from application.generateur_scores import GenerateurScores, valeur_zone
+from application.portee import qualification_representative
 from application.saisie_duels import Duelliste, EtatDuel, EtatTableau
 from application.simulation import (
     HarnaisSimulation,
@@ -326,7 +327,7 @@ class ServicePilotageSimulation:
         """
         assert tournoi.id is not None, "Un tournoi de simulation porte un identifiant."
         tournoi_id = tournoi.id
-        phase_qualif = harnais.phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        phase_qualif = qualification_representative(harnais.phases, tournoi_id)
         if phase_qualif is None or phase_qualif.bareme is None or phase_qualif.id is None:
             raise PhaseQualificationAbsente(
                 "Pour simuler le déroulé, le tournoi doit avoir une phase de qualification avec un "
@@ -768,7 +769,9 @@ class ServicePilotageSimulation:
         return None
 
     def _etat(self, session: SessionSimulation) -> EtatSession:
-        classement = session.harnais.classement.pour_tournoi(session.tournoi_id)
+        depart_simule = session.harnais.departs.par_tournoi(session.tournoi_id)[0]
+        assert depart_simule.id is not None, "Le magasin in-memory attribue un identifiant."
+        classement = session.harnais.classement.pour_depart(depart_simule.id)
         tableaux = self._tableaux(session)
         prochaine = self._prochaine_unite(session)
         if isinstance(prochaine, ProchaineVolee):

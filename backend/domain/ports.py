@@ -622,8 +622,16 @@ class PhaseRepository(Protocol):
     """Port de persistance des phases (adapter fourni par l'infrastructure).
 
     Introduit minimalement pour la qualification (E01US009 / ADR-0011), **étendu par E05US001** à
-    toute la séquence : `par_tournoi` (liste ordonnée) et `supprimer` servent la composition et le
+    toute la séquence : `par_depart` (liste ordonnée) et `supprimer` servent la composition et le
     cycle de vie des phases du moteur (ADR-0045).
+
+    ⚠️ **Les lectures sont passées de `par_tournoi` à `par_depart` en E01US025** (ADR-0075) : la
+    portée sportive est le **départ**. Le renommage est délibérément **cassant** — `DepartId` et
+    `TournoiId` sont tous deux des alias de `int`, donc mypy n'aurait **rien** signalé si les
+    méthodes avaient gardé leur nom : chaque appelant serait resté compilable et faux, cherchant des
+    phases par un identifiant de tournoi dans une colonne de départ. Renommer était le seul moyen
+    de forcer la revisite de tous les appels. *(Voir DETTE-043 : des `NewType` supprimeraient cette
+    classe entière de confusions.)*
     """
 
     def ajouter(self, phase: Phase) -> Phase:
@@ -634,18 +642,29 @@ class PhaseRepository(Protocol):
         """Renvoie la phase d'identifiant donné, ou `None` si elle n'existe pas."""
         ...
 
-    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
-        """Renvoie la phase d'un tournoi pour un type donné, ou `None` s'il n'y en a pas.
+    def par_depart_et_type(self, depart_id: DepartId, type_phase: TypePhase) -> Phase | None:
+        """Renvoie la phase d'un **départ** pour un type donné, ou `None` s'il n'y en a pas.
 
-        En E01US009, un tournoi porte **au plus une** phase de `qualification`.
+        Un départ porte **au plus une** phase de `qualification` (E01US009, portée corrigée par
+        ADR-0075).
+        """
+        ...
+
+    def par_depart(self, depart_id: DepartId) -> list[Phase]:
+        """Renvoie **toutes** les phases d'un **départ**, **ordonnées par `ordre`** (E05US001).
+
+        La séquence de phases (`ServicePhases`) se compose et se valide sur cette liste ; l'ordre
+        y est significatif (1..N sans trou **dans le départ**), d'où le tri à la source.
         """
         ...
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        """Renvoie **toutes** les phases d'un tournoi, **ordonnées par `ordre`** (E05US001).
+        """Renvoie les phases de **tous les départs** d'un tournoi, triées (départ, ordre).
 
-        La séquence de phases (`ServicePhases`) se compose et se valide sur cette liste ; l'ordre
-        y est significatif (1..N sans trou), d'où le tri à la source.
+        ⚠️ **Ce n'est pas une séquence** : la liste renvoyée contient N suites 1..M concaténées, une
+        par départ. La passer à `SequencePhases` lèverait `SequenceOrdreInvalide` — et c'est voulu.
+        Elle sert aux vues **transverses** (supervision, complétude, suppression en cascade d'un
+        tournoi), jamais au moteur, qui raisonne toujours dans un départ.
         """
         ...
 
@@ -1121,12 +1140,25 @@ class BarrageRepository(Protocol):
     [ADR-0066]: ../../docs/adr/0066-seuil-de-barrage-porte-par-la-politique-tiebreak.md
     """
 
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[BarrageDePlaces]:
-        """Tous les barrages d'un tournoi, clos compris (liste éventuellement vide).
+    def par_depart(self, depart_id: DepartId) -> list[BarrageDePlaces]:
+        """Tous les barrages **d'un départ**, clos compris (liste éventuellement vide).
 
         Les **clos** sont rendus eux aussi : ce sont eux qui portent les verdicts déjà appliqués au
         classement. Les filtrer ici ferait retomber les rangs tranchés en ex æquo à la lecture
         suivante.
+
+        **D'un départ depuis E01US025** (ADR-0075) : un barrage départage une place dans le
+        classement d'un créneau. Renommé comme `PhaseRepository.par_depart`, et pour la même
+        raison — `TournoiId` et `DepartId` étant deux alias de `int`, garder le nom aurait laissé
+        chaque appelant compilable et faux.
+        """
+        ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[BarrageDePlaces]:
+        """Les barrages de **tous les départs** d'un tournoi (vue transverse, jointure).
+
+        Comme `PhaseRepository.par_tournoi` : réservée aux lectures d'ensemble, jamais au moteur,
+        qui raisonne toujours dans un départ.
         """
         ...
 

@@ -14,8 +14,12 @@ supposerait d'inventer un barème que l'organisateur n'a pas choisi. Le cas remo
 from __future__ import annotations
 
 from application.erreurs import PhaseQualificationAbsente, TournoiIntrouvable
+from application.portee import (
+    qualification_representative,
+    qualifications_de_chaque_depart,
+)
 from domain.grain_validation import GrainValidation, TypeGrain
-from domain.phase import Phase, TypePhase
+from domain.phase import Phase
 from domain.ports import PhaseRepository, TournoiRepository
 from domain.tournoi import TournoiId
 
@@ -34,7 +38,7 @@ class ServiceGrainValidation:
         Lève `TournoiIntrouvable` si le tournoi n'existe pas.
         """
         self._tournoi_existant(tournoi_id)
-        phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        phase = qualification_representative(self._phases, tournoi_id)
         return None if phase is None else phase.validation
 
     def definir(
@@ -48,8 +52,12 @@ class ServiceGrainValidation:
         """
         self._tournoi_existant(tournoi_id)
         grain = GrainValidation.creer(type_grain, n_volees)
-        phase = self._phase_de_qualification(tournoi_id)
-        self._phases.enregistrer(phase.avec_validation(grain))
+        # **Écriture en éventail** (E01US025, ADR-0075) : la qualification vit par départ, donc
+        # régler « le grain du tournoi » l'écrit sur chacune. N'en servir qu'une laisserait les
+        # autres créneaux valider à un autre rythme — un scoreur verrait sa tablette se comporter
+        # différemment selon l'heure, sans que rien ne l'explique.
+        for phase in self._qualifications(tournoi_id):
+            self._phases.enregistrer(phase.avec_validation(grain))
         # Le grain persisté est celui qu'on vient d'écrire ; le renvoyer directement évite de
         # re-narrower `validation` (optionnel depuis E05US001, toujours présent sur une
         # qualification — ADR-0045 §2).
@@ -59,11 +67,12 @@ class ServiceGrainValidation:
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
 
-    def _phase_de_qualification(self, tournoi_id: TournoiId) -> Phase:
-        phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
-        if phase is None:
+    def _qualifications(self, tournoi_id: TournoiId) -> list[Phase]:
+        """Les qualifications de **tous** les départs ; lève si le tournoi n'en a aucune."""
+        phases = qualifications_de_chaque_depart(self._phases, tournoi_id)
+        if not phases:
             raise PhaseQualificationAbsente(
                 "Le grain de validation se règle sur la qualification du tournoi : "
                 "définissez d'abord son barème."
             )
-        return phase
+        return phases

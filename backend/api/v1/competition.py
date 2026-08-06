@@ -490,15 +490,22 @@ async def saisir_score(
     return ScoreReponse.de_agregat(score)
 
 
-@router.get("/tournois/{tournoi_id}/classement", response_model=ClassementReponse)
+@router.get("/departs/{depart_id}/classement", response_model=ClassementReponse)
 async def consulter_classement(
-    tournoi_id: int, request: Request, categorie_id: int | None = None
+    depart_id: int, request: Request, categorie_id: int | None = None
 ) -> ClassementReponse:
-    """Renvoie le classement de qualification d'un tournoi (lecture directe hors boucle).
+    """Renvoie le classement de qualification **d'un départ** (lecture directe hors boucle).
+
+    ⚠️ **La route a changé de parent en E01US025** (ADR-0075) : elle pendait au tournoi et
+    fusionnait tous les créneaux — 4 départs de 100 archers rendaient un classement de 400, où
+    l'archer du matin était rangé contre celui du soir qu'il n'a jamais affronté. Un départ rejoue
+    le tournoi en entier, donc il a **son** classement. Rupture assumée : l'application n'a aucun
+    client tiers (mono-club, réseau local).
 
     `categorie_id` (optionnel) **filtre** l'affichage à une catégorie ; les rangs (scratch et
-    catégorie) restent ceux du classement complet — filtrer une catégorie ne réordonne pas le reste.
+    catégorie) restent ceux du classement complet **du départ** — filtrer une catégorie ne
+    réordonne pas le reste.
     """
     service: ServiceClassement = request.app.state.service_classement
-    classement = await run_in_threadpool(service.pour_tournoi, tournoi_id, categorie_id)
-    return ClassementReponse.de_agregat(tournoi_id, classement)
+    classement = await run_in_threadpool(service.pour_depart, depart_id, categorie_id)
+    return ClassementReponse.de_agregat(depart_id, classement)

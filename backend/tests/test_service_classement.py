@@ -19,21 +19,28 @@ import datetime
 import pytest
 
 from application.classements import ServiceClassement
-from application.erreurs import TournoiIntrouvable
+from application.erreurs import DepartIntrouvable
 from domain.archer import Archer, ArcherId
 from domain.blason import ZoneScore
 from domain.categorie import Categorie
+from domain.depart import Depart
 from domain.entree_audit import EntreeAudit
+from domain.inscription import Inscription
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
+    FauxDepartRepository,
     FauxForfaitRepository,
+    FauxInscriptionRepository,
+    FauxPhaseRepository,
 )
-from tests.test_service_placement_duels import FauxPhaseRepository
 
 _DATE = datetime.date(2026, 3, 14)
+
+# Le créneau du décor : premier départ créé, donc identifiant 1 (la doublure alloue en séquence).
+_DEPART_ID = 1
 
 
 class FauxTournoiRepository:
@@ -110,20 +117,43 @@ def _service() -> ServiceClassement:
             _serie(chloe.id, (ZoneScore.HUIT, ZoneScore.HUIT)),  # 16
         ]
     )
+    # Le classement est celui **d'un départ** (ADR-0075) : le décor lui donne son créneau, et y
+    # inscrit les trois archers — c'est l'inscription qui dit qui tire ici, pas `Archer.tournoi_id`.
+    departs = FauxDepartRepository()
+    depart = departs.ajouter(
+        Depart.creer(tournoi_id=1, numero=1, tarif_centimes=800, horaire="09:00")
+    )
+    assert depart.id is not None
+    inscriptions = FauxInscriptionRepository()
+    for archer_id in (alice.id, bob.id, chloe.id):
+        inscriptions.ajouter(Inscription.creer(archer_id, depart.id))
     return ServiceClassement(
-        tournois, archers, series, categories, FauxPhaseRepository(), FauxForfaitRepository()
+        tournois,
+        archers,
+        series,
+        categories,
+        FauxPhaseRepository(departs),
+        FauxForfaitRepository(),
+        departs,
+        inscriptions,
     )
 
 
-def test_tournoi_inconnu_leve_tournoi_introuvable() -> None:
-    """Un tournoi inexistant ne rend pas un classement vide : il lève une erreur métier."""
-    with pytest.raises(TournoiIntrouvable):
-        _service().pour_tournoi(999)
+def test_depart_inconnu_leve_depart_introuvable() -> None:
+    """Un créneau inexistant ne rend pas un classement vide : il lève une erreur métier.
+
+    ⚠️ **L'erreur a changé avec la portée** (E01US025, ADR-0075) : c'était `TournoiIntrouvable`,
+    c'est désormais `DepartIntrouvable`, parce que l'identifiant reçu désigne un départ. Le contrat
+    « on ne rend pas un classement vide pour une entité inconnue » est, lui, inchangé — c'est lui
+    que ce test protège.
+    """
+    with pytest.raises(DepartIntrouvable):
+        _service().pour_depart(999)
 
 
 def test_sans_filtre_le_classement_couvre_toutes_les_categories() -> None:
     """`categorie_id=None` → tous les archers, dans l'ordre scratch (meilleur total d'abord)."""
-    lignes = _service().pour_tournoi(1).lignes
+    lignes = _service().pour_depart(_DEPART_ID).lignes
     assert [(ligne.nom, ligne.rang_scratch) for ligne in lignes] == [
         ("Durand", 1),
         ("Martin", 2),
@@ -134,7 +164,7 @@ def test_sans_filtre_le_classement_couvre_toutes_les_categories() -> None:
 def test_filtre_par_categorie_ne_garde_que_ses_archers_sans_recalculer_les_rangs() -> None:
     """CA catégorie : filtrer à la catégorie 1 ne garde qu'Alice et Chloé, mais leurs rangs restent
     ceux du classement complet — scratch **global** (2 et 3), catégorie **repart de 1** (1 et 2)."""
-    lignes = _service().pour_tournoi(1, categorie_id=1).lignes
+    lignes = _service().pour_depart(_DEPART_ID, categorie_id=1).lignes
     assert [(ligne.nom, ligne.rang_scratch, ligne.rang_categorie) for ligne in lignes] == [
         ("Martin", 2, 1),
         ("Petit", 3, 2),

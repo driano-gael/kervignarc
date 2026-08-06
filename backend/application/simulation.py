@@ -38,6 +38,7 @@ from domain.ports import (
     ArcherRepository,
     BlasonRepository,
     CategorieRepository,
+    DepartRepository,
     GabaritSalleRepository,
     InscriptionRepository,
     PhaseRepository,
@@ -127,6 +128,9 @@ class HarnaisSimulation:
     blasons: BlasonRepository
     gabarits: GabaritSalleRepository
     inscriptions: InscriptionRepository
+    # Le harnais porte ses **créneaux** depuis E01US025 (ADR-0075) : la portée sportive est le
+    # départ, donc une simulation sans départ n'aurait ni phase ni classement.
+    departs: DepartRepository
     phases: PhaseRepository
     series: SerieRepository
     classement: ServiceClassement
@@ -206,7 +210,11 @@ class ServiceSimulation:
             series=self._series,
         )
 
-        classement = harnais.classement.pour_tournoi(tournoi_id)
+        # La simulation rejoue **un** créneau : le premier du tournoi simulé (le harnais n'en
+        # fabrique qu'un — cf. `simulation_format`). Le rejeu multi-départs relève de DETTE-044.
+        depart_simule = harnais.departs.par_tournoi(tournoi_id)[0]
+        assert depart_simule.id is not None, "Le magasin in-memory attribue un identifiant."
+        classement = harnais.classement.pour_depart(depart_simule.id)
         gabarit_present = harnais.gabarits.par_tournoi(tournoi_id) is not None
         tableaux: list[EtatTableau] = []
         for phase in harnais.phases.par_tournoi(tournoi_id):

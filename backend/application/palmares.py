@@ -23,10 +23,12 @@ from __future__ import annotations
 import logging
 
 from application.classements import ServiceClassement
-from application.erreurs import PhaseIntrouvable, TournoiIntrouvable
+from application.erreurs import PhaseIntrouvable, TournoiIntrouvable, TournoiSansDepart
+from application.portee import qualification_representative
 from application.prelevement import tranche
 from application.saisie_duels import ServiceSaisieDuels
 from domain.categorie import CategorieId
+from domain.depart import DepartId
 from domain.erreurs import EffectifTableauInvalide
 from domain.palmares import (
     Palmares,
@@ -38,6 +40,7 @@ from domain.participant import GenreParticipant
 from domain.phase import Phase, TypePhase
 from domain.politiques import Aggregation, AggregationParQualification
 from domain.ports import (
+    DepartRepository,
     DuelRepository,
     GenerateurPalmares,
     PhaseRepository,
@@ -68,9 +71,12 @@ class ServicePalmares:
         saisie_duels: ServiceSaisieDuels,
         duels: DuelRepository,
         generateur: GenerateurPalmares,
+        departs: DepartRepository,
         aggregation: Aggregation | None = None,
     ) -> None:
         self._tournois = tournois
+        # Le classement — donc le palmarès — vit par départ depuis ADR-0075.
+        self._departs = departs
         self._phases = phases
         self._classements = classements
         self._saisie_duels = saisie_duels
@@ -101,7 +107,10 @@ class ServicePalmares:
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        qualification = self._classements.pour_tournoi(tournoi_id)
+        # Le palmarès d'un **départ** (ADR-0075) : il s'appuie sur le classement de qualification,
+        # qui n'existe plus qu'à cette maille. Le premier départ qui en porte un fait référence
+        # tant que la route reste au niveau tournoi — cf. DETTE-044.
+        qualification = self._classements.pour_depart(self._premier_depart(tournoi_id))
         resultats = tuple(
             resultat
             for phase in self._phases.par_tournoi(tournoi_id)
@@ -122,6 +131,25 @@ class ServicePalmares:
         if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         return self._generateur.palmares(tournoi.nom, self.pour_tournoi(tournoi_id, categorie_id))
+
+    def _premier_depart(self, tournoi_id: TournoiId) -> DepartId:
+        """Le premier créneau du tournoi — référence tant que la route reste au niveau tournoi.
+
+        ⚠️ **Raccourci tracé (`DETTE-044`).** Le palmarès est rendu « du tournoi » alors que le
+        classement dont il dérive est celui d'un **départ** : sur un tournoi multi-créneaux, il
+        n'affiche donc que le podium du premier. Le remède est une route par départ, plus un
+        palmarès d'ensemble dont la règle reste à définir avec le commanditaire — additionne-t-on
+        les podiums de chaque créneau, ou les juxtapose-t-on ? C'est une **question métier**, pas
+        une omission technique : elle est posée au registre plutôt que tranchée ici.
+        """
+        departs = self._departs.par_tournoi(tournoi_id)
+        if not departs:
+            raise TournoiSansDepart(
+                "Ce tournoi n'a aucun créneau : il n'y a pas de classement dont tirer un palmarès."
+            )
+        premier = departs[0]
+        assert premier.id is not None, "Un départ relu du dépôt porte toujours son identifiant."
+        return premier.id
 
     def _resultat(self, tournoi_id: TournoiId, phase: Phase) -> ResultatPhase | None:
         """Ce qu'une phase à tableau a décidé — `None` si elle n'a **rien** décidé (encore).
@@ -190,10 +218,10 @@ class ServicePalmares:
         # prélevant « les rangs 5 et suivants » joue pour la 5ᵉ place, pas pour la victoire. Sans
         # ce décalage, son vainqueur passait devant le finaliste du tableau principal — c'était
         # `DETTE-034`, inatteignable tant qu'aucun moteur ne consommait les prélèvements.
-        qualification = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        qualification = qualification_representative(self._phases, tournoi_id)
         rang_premier = tranche(
             phase,
-            self._classements.pour_tournoi(tournoi_id),
+            self._classements.pour_depart(phase.depart_id),
             qualification.ordre if qualification is not None else None,
         )
         return ResultatPhase(ordre=phase.ordre, positions=positions, rang_premier=rang_premier)

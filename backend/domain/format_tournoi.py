@@ -26,17 +26,20 @@ Agrégats de domaine **purs** (immuables, sans dépendance framework), validés 
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
 
 from domain.anomalie import Anomalie, Gravite
 from domain.bareme import BaremeQualification
+from domain.depart import DepartId
 from domain.deroule import ProjectionDeroule, effectif_minimum, projeter
 from domain.erreurs import (
     EffectifMinimumIncoherent,
     ExigenceEffectifInvalide,
+    FormatSansDepart,
     FormatSansEtape,
     NomFormatInvalide,
+    PhasesDeDepartsMeles,
 )
 from domain.grain_validation import GrainValidation
 from domain.patrimoine import OrigineBrique
@@ -48,7 +51,6 @@ from domain.phase import (
     grain_par_defaut,
 )
 from domain.politiques import ProfondeurClassement
-from domain.tournoi import TournoiId
 
 FormatTournoiId = int
 """Identifiant technique d'un format de tournoi, attribué par la persistance."""
@@ -108,18 +110,22 @@ class ModelePhase:
             effectif=effectif,
         )
 
-    def pour_tournoi(self, tournoi_id: TournoiId) -> Phase:
-        """Instancie ce modèle en **phase réelle** d'un tournoi, au statut `à venir`.
+    def pour_depart(self, depart_id: DepartId) -> Phase:
+        """Instancie ce modèle en **phase réelle** d'un départ, au statut `à venir`.
 
-        C'est ici que `tournoi_id` et `statut` **naissent** : le modèle ne les portait pas. La phase
+        C'est ici que `depart_id` et `statut` **naissent** : le modèle ne les portait pas. La phase
         obtenue est ensuite ajustable (barème, grain, ordre…) **sans altérer** le format — même
         promesse qu'un gabarit appliqué (E01US008).
+
+        **D'un départ et non d'un tournoi depuis E01US025** (ADR-0075) : un départ rejoue le tournoi
+        en entier, donc c'est lui qui porte une séquence. Un format appliqué à un tournoi de N
+        départs produit donc N séquences — cf. `FormatTournoi.appliquer`.
 
         Passe par le constructeur de `Phase`, donc par ses invariants : un format qui décrirait une
         phase impossible échoue **à l'application**, pas silencieusement à l'exécution du moteur.
         """
         return Phase(
-            tournoi_id=tournoi_id,
+            depart_id=depart_id,
             ordre=self.ordre,
             type=self.type,
             bareme=self.bareme,
@@ -341,8 +347,17 @@ class FormatTournoi:
         """
         return replace(self, nom=_nom_valide(nom), origine=OrigineBrique.UTILISATEUR, id=None)
 
-    def appliquer(self, tournoi_id: TournoiId) -> tuple[Phase, ...]:
-        """Instancie le format en **phases** d'un tournoi (statut `à venir`, ordres 1..N).
+    def appliquer(self, departs: Sequence[DepartId]) -> tuple[Phase, ...]:
+        """Instancie le format en **phases**, une séquence 1..N **par départ** (statut `à venir`).
+
+        **Un format s'applique à des départs, pas à un tournoi** (E01US025, ADR-0075) : la portée
+        sportive est le départ, donc un tournoi de 4 départs reçoit **4 séquences identiques** qui
+        vivent ensuite leur vie — ajuster la phase 2 du départ 1 ne touche pas le départ 2. C'est le
+        patron de copie du patrimoine (ADR-0060), un cran plus bas.
+
+        `departs` **vide** est refusé : appliquer un format à un tournoi sans créneau ne créerait
+        aucune phase, et le silence ferait croire à un succès. Le diagnostic reste celui du format
+        (`anomalies`), qui ne connaît pas les départs — d'où ce contrôle ici.
 
         **C'est ici que l'invariant est tenu** (ADR-0063). L'enregistrement accepte le brouillon ;
         l'application, elle, refuse en **disant pourquoi** : la première anomalie bloquante est
@@ -358,28 +373,46 @@ class FormatTournoi:
         ajustables sans remonter. Aucune écriture ici — le service décide quoi persister et
         comment traiter les phases déjà présentes.
         """
+        if not departs:
+            raise FormatSansDepart(
+                "Ce tournoi n'a aucun départ : appliquer un format ne créerait aucune phase. "
+                "Créez au moins un créneau avant d'appliquer un déroulé."
+            )
         for anomalie in self.anomalies():
             if anomalie.gravite is Gravite.BLOQUANTE:
                 raise anomalie.erreur
-        return tuple(etape.pour_tournoi(tournoi_id) for etape in self.etapes)
+        return tuple(etape.pour_depart(depart_id) for depart_id in departs for etape in self.etapes)
 
     @staticmethod
     def de_phases(
         nom: str, phases: Iterable[Phase], effectif_minimum_exige: int | None = None
     ) -> FormatTournoi:
-        """Capture les phases d'un tournoi en format de bibliothèque (**promotion**).
+        """Capture les phases d'**un départ** en format de bibliothèque (**promotion**).
+
+        **D'un seul départ** (E01US025, ADR-0075) : un format décrit **une** séquence 1..N, et
+        chaque départ a la sienne. Promouvoir les phases de plusieurs départs produirait un format
+        aux ordres en doublon — diagnostiqué plus tard comme incohérent, donc un aller-retour perdu
+        pour l'organisateur. Le contrôle est ici, où l'information existe encore.
 
         Les statuts sont perdus (cf. `ModelePhase.de_phase`) : on promeut un **déroulé**, pas un
         avancement. L'exigence d'effectif, elle, **remonte** si l'appelant la fournit : à la
         différence du statut, c'est une propriété du déroulé et non de l'édition. Elle n'est pas
         lisible depuis les phases — le tournoi la porte —, d'où le paramètre explicite.
 
-        Lève `FormatSansEtape` si le tournoi n'a aucune phase à promouvoir, et les erreurs de
+        Lève `FormatSansEtape` si le départ n'a aucune phase à promouvoir,
+        `PhasesDeDepartsMeles` si elles n'appartiennent pas toutes au même départ, et les erreurs de
         séquence si ses phases n'en forment pas une valide.
         """
+        retenues = tuple(phases)
+        departs = {phase.depart_id for phase in retenues}
+        if len(departs) > 1:
+            raise PhasesDeDepartsMeles(
+                f"Ces phases appartiennent à {len(departs)} départs différents : un format décrit "
+                "le déroulé d'un seul départ. Promouvez le déroulé d'un départ à la fois."
+            )
         return FormatTournoi.creer(
             nom,
-            [ModelePhase.de_phase(phase) for phase in phases],
+            [ModelePhase.de_phase(phase) for phase in retenues],
             effectif_minimum_exige=effectif_minimum_exige,
         )
 

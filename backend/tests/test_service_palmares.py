@@ -140,6 +140,7 @@ def _service(
         monde.saisie,
         monde.duels,
         generateur or _FauxGenerateurPalmares(),
+        monde.departs,
         aggregation,
     )
 

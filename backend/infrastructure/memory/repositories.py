@@ -32,6 +32,7 @@ from domain.archer import Archer, ArcherId
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.club import ClubId
+from domain.depart import Depart, DepartId
 from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait
@@ -39,9 +40,11 @@ from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
+from domain.ports import DepartRepository
 from domain.remboursement import Remboursement
 from domain.serie import Serie
 from domain.tournoi import Tournoi, TournoiId
+from infrastructure.erreurs import InfrastructureError
 
 
 class _AllocateurId:
@@ -290,12 +293,61 @@ class InMemoryInscriptionRepository(_AllocateurId):
         self._items.pop(inscription_id, None)
 
 
-class InMemoryPhaseRepository(_AllocateurId):
-    """Port `PhaseRepository` en mémoire (`par_tournoi` **ordonné par `ordre`**, comme SQL)."""
+class InMemoryDepartRepository(_AllocateurId):
+    """Port `DepartRepository` en mémoire (E01US025, ADR-0075).
+
+    Absent jusqu'ici : le harnais de simulation n'avait pas besoin des créneaux, la portée sportive
+    étant le tournoi. Elle est devenue le **départ**, donc une simulation qui n'en aurait aucun ne
+    pourrait ni composer de phases, ni produire de classement.
+    """
 
     def __init__(self) -> None:
         super().__init__()
+        self._items: dict[int, Depart] = {}
+
+    def ajouter(self, depart: Depart) -> Depart:
+        identifiant = self._identifiant(depart.id)
+        persiste = dataclasses.replace(depart, id=identifiant)
+        self._items[identifiant] = persiste
+        return persiste
+
+    def par_id(self, depart_id: DepartId) -> Depart | None:
+        return self._items.get(depart_id)
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Depart]:
+        departs = [d for d in self._items.values() if d.tournoi_id == tournoi_id]
+        # Tri par numéro **garanti par le port** : le service en dérive le prochain numéro.
+        return sorted(departs, key=lambda d: d.numero)
+
+    def enregistrer(self, depart: Depart) -> Depart:
+        assert depart.id is not None
+        self._items[depart.id] = depart
+        return depart
+
+    def supprimer(self, depart_id: DepartId) -> None:
+        self._items.pop(depart_id, None)
+
+    def supprimer_avec_remboursements(
+        self, depart_id: DepartId, remboursements: Sequence[Remboursement]
+    ) -> None:
+        """Supprime le créneau ; les remboursements sont **ignorés** en simulation.
+
+        Même parti que les no-op d'audit du module (ADR-0054) : une simulation ne touche à aucune
+        caisse. Ignorer n'est pas un raccourci — ouvrir un remboursement fictif serait pire, il
+        n'aurait aucun sens à relire.
+        """
+        self.supprimer(depart_id)
+
+
+class InMemoryPhaseRepository(_AllocateurId):
+    """Port `PhaseRepository` en mémoire (`par_tournoi` **ordonné par `ordre`**, comme SQL)."""
+
+    def __init__(self, departs: DepartRepository | None = None) -> None:
+        super().__init__()
         self._items: dict[int, Phase] = {}
+        # Facultatif : seule la lecture **transverse** `par_tournoi` en a besoin (ADR-0075). Le
+        # moteur, lui, ne lit que `par_depart` et n'a donc rien à câbler.
+        self._departs = departs
 
     def ajouter(self, phase: Phase) -> Phase:
         identifiant = self._identifiant(phase.id)
@@ -306,15 +358,32 @@ class InMemoryPhaseRepository(_AllocateurId):
     def par_id(self, phase_id: PhaseId) -> Phase | None:
         return self._items.get(phase_id)
 
-    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
+    def par_depart_et_type(self, depart_id: DepartId, type_phase: TypePhase) -> Phase | None:
         for phase in self._items.values():
-            if phase.tournoi_id == tournoi_id and phase.type == type_phase:
+            if phase.depart_id == depart_id and phase.type == type_phase:
                 return phase
         return None
 
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        phases = [p for p in self._items.values() if p.tournoi_id == tournoi_id]
+    def par_depart(self, depart_id: DepartId) -> list[Phase]:
+        phases = [p for p in self._items.values() if p.depart_id == depart_id]
         return sorted(phases, key=lambda p: p.ordre)
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
+        """Les phases de **tous les départs** du tournoi, triées (départ, ordre) — pas une séquence.
+
+        Le magasin des phases ne connaît que des `depart_id` : remonter au tournoi exige le magasin
+        des **départs**, d'où l'injection. Non câblé, cette lecture **lève** au lieu de rendre une
+        liste vide : un `[]` silencieux ferait passer « je ne sais pas répondre » pour « ce tournoi
+        n'a aucune phase », c'est-à-dire exactement le genre d'écart muet qu'ADR-0075 corrige.
+        """
+        if self._departs is None:
+            raise InfrastructureError(
+                "Ce magasin de phases n'a pas de magasin de départs : la lecture transverse "
+                "« phases d'un tournoi » exige la jointure phase → départ → tournoi (ADR-0075)."
+            )
+        departs = {d.id for d in self._departs.par_tournoi(tournoi_id)}
+        phases = [p for p in self._items.values() if p.depart_id in departs]
+        return sorted(phases, key=lambda p: (p.depart_id, p.ordre))
 
     def enregistrer(self, phase: Phase) -> Phase:
         assert phase.id is not None

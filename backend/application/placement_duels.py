@@ -27,6 +27,7 @@ from application.erreurs import (
     PhasePasUnTableau,
     TournoiIntrouvable,
 )
+from application.portee import phase_du_tournoi, qualification_representative
 from application.prelevement import preleves, profondeur_de
 from domain.archer import ArcherId
 from domain.cloisonnement import Cloisonnement
@@ -588,8 +589,8 @@ class ServicePlacementDuels:
         tournoi = self._tournois.par_id(tournoi_id)
         if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        phase = self._phases.par_id(phase_id)
-        if phase is None or phase.tournoi_id != tournoi_id:
+        phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        if phase is None:
             raise PhaseIntrouvable(f"Aucune phase {phase_id} dans le tournoi {tournoi_id}.")
         if phase.type is not TypePhase.ELIMINATION_DIRECTE:
             raise PhasePasUnTableau(
@@ -604,14 +605,16 @@ class ServicePlacementDuels:
         contexte = _Contexte(
             phase_id=phase_id, gabarit=gabarit, cloisonnement=tournoi.cloisonnement
         )
-        classement = self._classements.pour_tournoi(tournoi_id)
+        # Le classement **du départ de cette phase** (ADR-0075) — même ensemencement que la
+        # reconstruction, donc même portée : le plan pose les duellistes que le tableau jouera.
+        classement = self._classements.pour_depart(phase.depart_id)
         # ⚠️ **Même ensemencement que la reconstruction, par la même fonction** (E05US020) : le
         # plan pose les duellistes que le tableau fera jouer. Les deux règles étaient **recopiées**,
         # avec un commentaire affirmant leur parité ; la recopie a lâché à la première évolution —
         # E05US020 a fait consommer les prélèvements d'un seul côté, et la revue a mesuré un plan de
         # 8 placements pour un tableau de 4. Un archer posté sur une butte sans duel, un autre en
         # face du mauvais adversaire, invisibles jusqu'au jour J.
-        qualification = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        qualification = qualification_representative(self._phases, tournoi_id)
         participants = [
             Participant.individuel(ligne.archer_id)
             for ligne in preleves(

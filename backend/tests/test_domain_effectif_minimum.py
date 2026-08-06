@@ -317,7 +317,7 @@ def test_un_format_au_minimum_incoherent_refuse_de_sappliquer() -> None:
     )
 
     with pytest.raises(EffectifMinimumIncoherent):
-        format_tournoi.appliquer(tournoi_id=1)
+        format_tournoi.appliquer([1])
 
 
 @pytest.mark.parametrize("absurde", [0, -1])

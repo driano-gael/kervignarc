@@ -27,6 +27,7 @@ from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId, ZoneScore
 from domain.categorie import Categorie
 from domain.cloisonnement import Cloisonnement
+from domain.depart import Depart
 from domain.entree_audit import EntreeAudit
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
@@ -43,8 +44,10 @@ from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
+    FauxDepartRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
+    FauxPhaseRepository,
 )
 
 _DATE = datetime.date(2026, 3, 14)
@@ -75,55 +78,6 @@ class FauxTournoiRepository:
         raise NotImplementedError
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
-        raise NotImplementedError
-
-
-class FauxPhaseRepository:
-    """Double de `PhaseRepository` : le service ne lit que `par_id` (reste = conformité)."""
-
-    def __init__(self) -> None:
-        self._phases: dict[int, Phase] = {}
-        self._sequence = 0
-
-    def ajouter(self, phase: Phase) -> Phase:
-        self._sequence += 1
-        # ⚠️ `replace()` et non une reconstruction champ par champ (corrigé en E06US006). La forme
-        # précédente énumérait les champs de `Phase` : chaque champ ajouté à l'agrégat depuis était
-        # **silencieusement perdu** à l'écriture — `barrage_jusqu_au` l'était déjà, `profondeur` l'a
-        # été à son tour, et le symptôme (un décor qui ignore le réglage qu'on vient de lui poser)
-        # ne désigne jamais ce double. Un faux qui recopie la forme de l'agrégat dérive à chaque US.
-        persiste = replace(phase, id=self._sequence)
-        self._phases[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, phase_id: PhaseId) -> Phase | None:
-        return self._phases.get(phase_id)
-
-    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
-        # `ServiceClassement` interroge la phase de qualif (forfaits, ADR-0050) : ces tests de
-        # tableau n'en configurent pas, d'où `None` (aucun forfait de qualif appliqué).
-        return next(
-            (
-                p
-                for p in self._phases.values()
-                if p.tournoi_id == tournoi_id and p.type is type_phase
-            ),
-            None,
-        )
-
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        # Implémenté pour E04US018 : le routage résout **lui-même** la phase de tableau (la tablette
-        # de qualification ne la connaît pas), en prenant la première élimination directe de la
-        # séquence — d'où le tri par `ordre` que le port garantit (E05US001).
-        return sorted(
-            (p for p in self._phases.values() if p.tournoi_id == tournoi_id),
-            key=lambda p: p.ordre,
-        )
-
-    def enregistrer(self, phase: Phase) -> Phase:
-        raise NotImplementedError
-
-    def supprimer(self, phase_id: PhaseId) -> None:
         raise NotImplementedError
 
 
@@ -256,7 +210,13 @@ class _Monde:
     def __init__(self, capacites: tuple[int, ...] = (4,), *, taille: float = 0.25) -> None:
         self.tournoi_id = 1
         self.tournois = FauxTournoiRepository({1})
-        self.phases = FauxPhaseRepository()
+        self.departs = FauxDepartRepository()
+        _depart = self.departs.ajouter(
+            Depart.creer(tournoi_id=1, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert _depart.id is not None
+        self.depart_id = _depart.id
+        self.phases = FauxPhaseRepository(self.departs)
         self.gabarits = FauxGabaritRepository()
         self.inscriptions = FauxInscriptionRepository()
         self.archers = FauxArcherRepository()
@@ -283,7 +243,7 @@ class _Monde:
         self.autre_categorie_id = autre.id
         depart = 1  # un seul « départ » logique ; l'inscription suffit (pas de repo départ ici)
         self.depart_id = depart
-        phase = self.phases.ajouter(Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE))
+        phase = self.phases.ajouter(Phase.creer(self.depart_id, 2, TypePhase.ELIMINATION_DIRECTE))
         assert phase.id is not None
         self.phase_id = phase.id
         self.inscription_par_archer: dict[int, int] = {}
@@ -331,6 +291,8 @@ class _Monde:
                 self.categories,
                 self.phases,
                 self.forfaits,
+                self.departs,
+                self.inscriptions,
             ),
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
