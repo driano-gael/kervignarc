@@ -70,6 +70,33 @@ archers de deux départs ne sont jamais comparés.
    pas le départ 2. C'est le même patron de copie que partout ailleurs dans le patrimoine
    (ADR-0060) — un cran plus bas.
 
+### Composer n'est pas piloter — deux mailles, deux écrans
+
+*(Précision apportée par l'organisateur le 06/08/2026, en cours d'US.)*
+
+Le départ est la portée **d'exécution**, pas la portée d'**édition**. La distinction se lit sur les
+axes de l'application :
+
+| | Maille | Où |
+|---|---|---|
+| **Composer** le déroulé (ajouter, éditer, réordonner, supprimer une phase) | **tournoi** | atelier |
+| **Placer** une phase sur un créneau et la **faire vivre** (démarrer, mettre en pause, terminer) | **départ** | pilotage |
+
+**Pourquoi la composition reste au tournoi.** Le déroulé n'est pas plus « par créneau » que le
+barème : c'est le **même** déroulé rejoué, et c'est exactement ce que fait `FormatTournoi.appliquer`
+en distribuant des copies identiques. Régler la séquence « pour le tournoi » l'écrit donc sur la
+séquence de chaque départ — **écriture en éventail**, comme le barème et le grain. L'atelier ignore
+les créneaux, et le format aussi : *seul le tournoi concret sait sur combien de départs il se joue.*
+
+**Pourquoi le cycle de vie descend au départ.** Il ne peut pas s'appliquer en éventail : le créneau
+du matin peut être **en duels** pendant que celui de l'après-midi **qualifie encore**. C'est même
+l'un des bénéfices annoncés plus haut. Démarrer une phase « pour tout le tournoi » forcerait les
+deux vagues à avancer du même pas, ce que la journée réelle ne permet pas.
+
+⚠️ **`ServicePhases` porte donc deux mailles**, et c'est délibéré, non un oubli : ses opérations de
+composition prennent un `tournoi_id`, celles de cycle de vie un `depart_id`. Un service qui n'en
+aurait qu'une serait faux dans un sens ou dans l'autre.
+
 ### Ce qui a été écarté
 
 - **Garder `Phase.tournoi_id` et ajouter `depart_id`.** Deux portées coexistantes obligeraient chaque
