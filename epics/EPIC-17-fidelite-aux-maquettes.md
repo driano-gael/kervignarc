@@ -69,6 +69,65 @@ livrées n'avait de raison de s'en apercevoir : chacune était conforme à *son*
 - [ ] Confronter les 7 planches `P**` (public & écran de salle).
 - [ ] Resynchroniser `maquettes/assets/appareils.js` sur `axes.ts`.
 
+## Relevé d'écarts — les 19 planches admin (06/08/2026)
+
+Méthode appliquée : **questionnaire → variante retenue → écran livré**. Les écarts ci-dessous sont
+mesurés contre la **variante retenue**, jamais contre la première proposition d'une planche. Sources
+vérifiées : questionnaires du 04/08, balisage des planches, code des features, et rendu réel au
+navigateur pour les écrans atteignables sans jeu de données.
+
+**Hors périmètre d'E17, et pourquoi :**
+
+| Planche | Motif |
+|---|---|
+| A07 · phases, A14 · complétude | 🔴 **« à refaire »**, aucune variante retenue — il n'y a rien à quoi s'aligner. `E16US002` / `E16US003`. |
+| A10 · plan de salle | 🔴 levé par `E16US001` (le refus portait sur le vocabulaire). |
+| A05 · identité | L'écran **n'existe pas** : `E01US016` est ⬜. Ce n'est pas un écart de fidélité, c'est une US non livrée. |
+| A00 · portes, A03 · accueil-statuts, A19 · écran de salle | **Conformes.** A03 adapte bien son contenu au statut (`FriseCycleDeVie`) ; A19 porte emplacement, cadence, QR et pilotage. |
+
+### 🔴 Le produit implémente une variante **écartée** — le plus grave
+
+Ces trois écrans ont un parti pris explicitement **non retenu** par le commanditaire. Corriger coûte
+une refonte d'écran, mais ne pas corriger, c'est livrer ce qu'il a refusé.
+
+| Planche | Retenu | Livré | Constat |
+|---|---|---|---|
+| **A13 · supervision** ✅ | **B — grille de tuiles** (« 30 d'un œil ») | `<table>` = variante **A** (liste dense) | `Supervision.tsx` et `PiloterEcrans.tsx` rendent deux tableaux. **Verdict ✅ « validé tel quel » sur B** : aucune réserve ne couvre l'écart. |
+| **A06 · référentiels** 🟡 | **B — panneau latéral d'édition** | édition **en place** = variante **A** | `Blasons.tsx` bascule tout l'écran en formulaire (`if (edition) …`). Le panneau latéral (`.avec-panneau` des planches) n'existe pas dans le front. |
+| **A09 · inscriptions** 🟡 | **B — recherche d'abord, liste ensuite** | formulaire puis liste = variante **A** | Ni recherche en tête, ni compteurs d'entrée (« Voir les 156 inscrits », « Non placés · 3 », « Non réglés · 12 », « Doublons · 2 »). |
+
+### 🟠 Les listes du produit ne sont pas des tableaux à colonnes
+
+L'écart le plus **systématique** : les planches présentent les données d'administration en
+**carte-tableau à colonnes nommées**, le produit en listes ou en cartes. Cinq écrans n'ont **aucun**
+`<table>`.
+
+| Planche | Colonnes attendues | Livré |
+|---|---|---|
+| **A12 · postes** 🟡 | POSTE · TYPE · RATTACHEMENT · APPAREIL · SIGNE DE VIE · JETON | aucune table ; actions « Régénérer un jeton », « Détacher », « Réactiver » non repérées |
+| **A08 · scoreurs** 🟡 | NOM · CODE D'ACCÈS · ÉTAT · PÉRIMÈTRE · DERNIÈRE VALIDATION | aucune table ; l'impression des accès existe |
+| **A15 · bascule de tour** 🟡 | DUEL · CIBLE · ARCHER A · ARCHER B · HEURE, + encart « CE QUI SE FIGE / CONSÉQUENCE » | aucune table (recoupe `E16US008`) |
+| **A18 · exports** 🟡 | DOCUMENT · FORMAT · POUR QUI · CONTENU, + « Tout télécharger » | aucune table (recoupe `E16US007`) |
+| **A11 · placement** 🟡 | panneaux « Non placés — 3 » et « Contraintes actives » | aucune table (recoupe `E16US005`) |
+| **A04 · tournois** 🟡 | ÉTAT · NOM · DATE · INSCRITS · CIBLES · AVANCEMENT · CE QUI RESTE | ligne simple + pastille ; **les colonnes de droite supposent des données que l'écran ne va pas chercher** |
+| **A17 · paiements** ✅ | ARCHER · CLUB · CAT. · TARIF · DÛ · DEPUIS, + bandeau Attendu / Encaissé / Restant dû / Archers concernés, + « Exporter pour le trésorier » | table présente mais colonnes ARCHER · DÛ · PAYÉ · RESTE · STATUT · ACTION ; **ni bandeau de totaux, ni export trésorier, ni ancienneté** — et l'écran est ✅ |
+
+### 🟡 Écarts de forme, peu coûteux
+
+| Planche | Écart |
+|---|---|
+| **A01 · connexion** 🟡 | La planche retient « **formulaire sobre plein cadre** ». Le produit affiche une petite carte **collée en haut à gauche** — constaté au navigateur. |
+| **A02 · ossature** 🟡 | L'accueil des trois axes n'affiche pas les **compteurs par état** de la planche (« EN COURS 2 · PRÊT 1 · TERMINÉ 6 · BROUILLON 3 »). |
+
+### Ce que ce relevé ne dit pas
+
+- Il compare des **structures**, pas des pixels : un écran peut être structurellement conforme et mal
+  proportionné, et l'inverse.
+- Les écrans sans jeu de données n'ont pu être vus qu'à l'état vide ; les écarts de **densité de
+  liste** y sont invisibles.
+- Un écart marqué « recoupe `E16Uxxx` » **ne doit pas être traité deux fois** : l'US E16 porte déjà le
+  besoin, E17 n'ajoute que l'exigence de ressemblance.
+
 ## Critères d'acceptation (epic)
 
 - Un écran livré et sa planche sont **superposables** : mêmes zones, même hiérarchie, mêmes formes,
