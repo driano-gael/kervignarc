@@ -10,6 +10,20 @@
 
 > Ce guide fait autorité sur les questions de structure et de style. Les décisions structurantes sont journalisées en **ADR** (`docs/adr/`). Toute exception à une règle doit être justifiée par un ADR.
 
+> **Règle — un ADR nomme les modules qui le portent.** Tout ADR comporte une section
+> « **Porté dans le code par** » listant les fichiers responsables de sa mise en œuvre. Un ADR qui
+> n'en nomme aucun n'est pas une décision mais une **intention** : rien ne permet de vérifier qu'il
+> est appliqué, et il diverge en silence — d'autant plus vite que le projet grossit. La section se
+> **relit en revue d'US** quand l'US touche un module qu'un ADR revendique.
+>
+> *(Règle née d'un cas réel, le 06/08/2026 : [ADR-0017](docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md)
+> avait décidé qu'« un départ rejoue le tournoi » ; seule la **logistique** l'a porté, le moteur a
+> gardé la portée tournoi pendant **treize mois**, produisant un classement unique là où il en
+> fallait un par départ. Corrigé par [ADR-0075](docs/adr/0075-le-depart-est-la-portee-sportive.md),
+> qui pose aussi les deux autres remèdes : un **test de conformité de portée** et un **oracle
+> multi-départ** — l'écart était invisible parce que l'oracle 120 est mono-départ, cas où les deux
+> portées se confondent.)*
+
 ---
 
 ## 1. Principes directeurs

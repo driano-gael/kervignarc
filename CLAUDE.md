@@ -289,7 +289,13 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   archer, front-only ; l'intention réelle était « suivre plusieurs archers avec le déroulé du tour en
   direct » — backend + ADR. Redécoupé en deux tranches ; le cadrage aurait évité de brancher et
   d'explorer la version étroite d'abord.)*
-- **Décision structurante ⇒ ADR** dans `docs/adr/` (contexte / décision / conséquences).
+- **Décision structurante ⇒ ADR** dans `docs/adr/` (contexte / décision / conséquences), **plus une
+  section « Porté dans le code par »** qui nomme les modules chargés de l'appliquer. Un ADR sans
+  cette section est une **intention**, pas une décision : rien ne permet de vérifier qu'il est tenu.
+  *(Cas réel, 06/08/2026 : [ADR-0017](docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md) décidait
+  qu'« un départ rejoue le tournoi » ; seule la logistique l'a porté, le moteur a gardé la portée
+  tournoi **treize mois** — un classement de 400 au lieu de quatre de 100. Cf.
+  [ADR-0075](docs/adr/0075-le-depart-est-la-portee-sportive.md).)*
 - Une US trop grosse pour une branche doit être **redécoupée** (maille INVEST).
 
 ## Documents de référence

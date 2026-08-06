@@ -18,6 +18,23 @@
   (`PLACEMENT.depart_id` désigne désormais un vrai créneau), et la résorption de
   [DETTE-001](../dette.md)
 
+- **Porté dans le code par** *(champ ajouté rétroactivement le 06/08/2026 — cf. l'avertissement
+  ci-dessous)* : `backend/domain/depart.py`, `backend/application/departs.py`,
+  `backend/infrastructure/db/repositories/` (table `DEPART`), `backend/api/v1/departs.py`
+- **Prolongé par** : [ADR-0075](0075-le-depart-est-la-portee-sportive.md)
+
+> ⚠️ **Cet ADR n'a été porté qu'à moitié pendant treize mois.** Sa décision — « comme si le tournoi
+> pouvait se jouer plusieurs fois dans la même journée » — n'avait été suivie que par la
+> **logistique** (horaire, tarif, quota, inscriptions, placement, feuille de marque). Le **moteur
+> sportif** est resté à la portée tournoi : `Phase.tournoi_id`, classement sur tous les archers du
+> tournoi, tableaux et duels sans départ. Sur 4 départs de 100 archers, l'application produisait
+> **un** classement de 400. L'écart n'a été vu que le 06/08/2026, et corrigé par
+> [ADR-0075](0075-le-depart-est-la-portee-sportive.md).
+>
+> C'est ce ratage qui a fait naître le champ « **Porté dans le code par** », désormais attendu de
+> tout ADR : une décision qui ne nomme pas les modules chargés de l'appliquer ne peut pas être
+> vérifiée, donc diverge en silence.
+
 ## Contexte et problème
 
 Le mot **« départ »** portait **deux sens** dans le dépôt, jamais réconciliés :
