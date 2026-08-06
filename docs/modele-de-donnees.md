@@ -1,7 +1,7 @@
 # Modèle de données détaillé — Kervignarc
 
 - **Version** : 0.11
-- **Date** : 2026-08-06 *(v0.11 : **`PHASE` change de parent** — `depart_id` remplace `tournoi_id`, le **départ** devenant la portée sportive (séquence, classements, tableaux, duels). Rattrapage d'une divergence de treize mois avec [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md), qui l'avait décidé sans que le moteur le porte — E01US025, [ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md), migration 0043)*
+- **Date** : 2026-08-06 *(v0.11 : **`PHASE` change de parent** — `depart_id` remplace `tournoi_id`, le **départ** devenant la portée sportive (séquence, classements, tableaux, duels). Rattrapage d'une divergence de treize mois avec [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md), qui l'avait décidé sans que le moteur le porte — E01US025, [ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md), migration 0042)*
 - *v0.10 : 2026-08-04 — `TOURNOI` gagne `cloisonnement` — ce qu'une cible n'a pas le droit de mêler (`aucun` | `categorie` | `blason` | `blason_et_categorie`), réglage **activable** du tournoi et non du gabarit, qui est partagé entre tournois — E03US007, [ADR-0071](adr/0071-cloisonnement-categorie-blason-active-et-dur.md), migration 0041)*
 - *v0.9 : 2026-08-04 — `TOURNOI` gagne `effectif_minimum_exige` et `FORMAT_TOURNOI.config` la clé sœur — le minimum d'inscrits **exigé** par le club ; le plancher **technique**, lui, se déduit des prélèvements et n'est **pas** stocké — E05US021, [ADR-0069](adr/0069-effectif-minimum-deduit-et-exige.md), migration 0040)*
 - *v0.8 : 2026-07-31 — `ARCHER` gagne `handicap_officiel` et `handicap_surcharge` — deux valeurs et non une, la surcharge primant l'officiel pour une édition — E05US015, [ADR-0062](adr/0062-catalogue-de-types-de-phase.md), migration 0037*
@@ -327,7 +327,7 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 
 ### PHASE
 | id | INTEGER | PK |
-| depart_id | INTEGER | FK → DEPART, NOT NULL — **portée sportive** ([ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md), migration 0043) |
+| depart_id | INTEGER | FK → DEPART, NOT NULL — **portée sportive** ([ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md), migration 0042) |
 | ordre | INTEGER | position dans la séquence **de ce départ** (1..N contigus par départ) |
 | type | TEXT | `qualification`\|`barrage`\|`elimination_directe`\|`placement`\|`finale`\|`big_shoot_off` |
 | config | TEXT (JSON) | **politiques** + paramètres (voir §Config phase) |
@@ -348,7 +348,7 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 > validation n'aurait lieu ; les deux politiques sont donc **cohérentes par construction**.
 >
 > **Changement de parent (E01US025, [ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md),
-> migration 0043).** `tournoi_id` devient `depart_id` : un **départ rejoue le tournoi en entier**,
+> migration 0042).** `tournoi_id` devient `depart_id` : un **départ rejoue le tournoi en entier**,
 > donc il porte sa propre séquence, ses propres classements et ses propres tableaux. Les rangs 1..N
 > sont contigus **par départ**, et un prélèvement (`config.sources`) ne traverse jamais un départ.
 > Les phases d'un tournoi sont désormais l'**union** de celles de ses départs — il n'en possède plus

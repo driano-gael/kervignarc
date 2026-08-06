@@ -121,5 +121,5 @@ appliquées dans l'US qui porte cet ADR :
 - `backend/domain/classement.py` + `backend/application/classements.py` (portée du classement)
 - `backend/domain/tableau.py`, `backend/domain/duel.py` (rattachement des tableaux et duels)
 - `backend/domain/format_tournoi.py` (`appliquer` produit une séquence par départ)
-- `backend/infrastructure/db/repositories/moteur.py` + migration `0043`
+- `backend/infrastructure/db/repositories/moteur.py` + migration `0042`
 - `backend/tests/test_portee_sportive.py` (garde-fou mécanique)
