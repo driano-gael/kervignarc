@@ -22,6 +22,8 @@ from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
+from domain.depart import Depart
+from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi
@@ -31,6 +33,8 @@ from infrastructure.db import (
     BlasonRepositorySQL,
     CategorieRepositorySQL,
     Database,
+    DepartRepositorySQL,
+    InscriptionRepositorySQL,
     PhaseRepositorySQL,
     SerieRepositorySQL,
     TournoiRepositorySQL,
@@ -66,6 +70,15 @@ class Scenario:
         series = SerieRepositorySQL(
             db.session_factory, AuditRepositorySQL(db.session_factory), HorlogeSysteme()
         )
+        depart = DepartRepositorySQL(db.session_factory).ajouter(
+            Depart.creer(tournoi_id=self.tournoi_id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert depart.id is not None
+        self.depart_id = depart.id
+        _depart_id = depart.id
+        inscriptions = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
         self.archers: list[int] = []
         for valeurs in (("10", "10", "10"), ("8", "8", "8")):  # rang 1 (fort), rang 2 (faible)
             archer = archers.ajouter(
@@ -85,14 +98,15 @@ class Scenario:
                     ),
                 )
             )
+            # C'est l'**inscription** qui fait entrer l'archer au classement du créneau
+            # (ADR-0075) — sans elle, le tableau s'ensemencerait sur zéro participant.
+            inscriptions.ajouter(Inscription.creer(archer.id, _depart_id))
             self.archers.append(archer.id)
         phases = PhaseRepositorySQL(db.session_factory)
-        qualif = phases.ajouter(
-            Phase.qualification(self.tournoi_id, BaremeQualification.creer(1, 3))
-        )
+        qualif = phases.ajouter(Phase.qualification(_depart_id, BaremeQualification.creer(1, 3)))
         assert qualif.id is not None
         self.qualif_id = qualif.id
-        tableau = phases.ajouter(Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE))
+        tableau = phases.ajouter(Phase.creer(_depart_id, 2, TypePhase.ELIMINATION_DIRECTE))
         assert tableau.id is not None
         self.phase_id = tableau.id
 
@@ -119,8 +133,8 @@ def _scoreur(
     return {"X-Jeton-Scoreur": jeton}
 
 
-def _classement(client: TestClient, tournoi_id: int) -> dict[int, dict[str, object]]:
-    reponse = client.get(f"/api/v1/tournois/{tournoi_id}/classement")
+def _classement(client: TestClient, depart_id: int) -> dict[int, dict[str, object]]:
+    reponse = client.get(f"/api/v1/departs/{depart_id}/classement")
     assert reponse.status_code == 200, reponse.text
     return {ligne["archer_id"]: ligne for ligne in reponse.json()["lignes"]}
 

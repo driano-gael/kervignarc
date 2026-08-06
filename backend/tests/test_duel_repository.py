@@ -13,11 +13,18 @@ import datetime
 from pathlib import Path
 
 from domain.blason import ZoneScore
+from domain.depart import Depart
 from domain.duel import BaremeDuel, Cote, Duel
 from domain.participant import Participant
 from domain.phase import Phase, TypePhase
 from domain.tournoi import Tournoi
-from infrastructure.db import Database, DuelRepositorySQL, PhaseRepositorySQL, TournoiRepositorySQL
+from infrastructure.db import (
+    Database,
+    DepartRepositorySQL,
+    DuelRepositorySQL,
+    PhaseRepositorySQL,
+    TournoiRepositorySQL,
+)
 from tests.base_migree import preparer_base
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -43,8 +50,14 @@ class _Decor:
             Tournoi.creer("Salle 18m", _DATE)
         )
         assert tournoi.id is not None
+        depart = DepartRepositorySQL(self.db.session_factory).ajouter(
+            Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert depart.id is not None
+        self.depart_id = depart.id
+        _depart_id = depart.id
         phase = PhaseRepositorySQL(self.db.session_factory).ajouter(
-            Phase.creer(tournoi.id, 2, TypePhase.ELIMINATION_DIRECTE)
+            Phase.creer(_depart_id, 2, TypePhase.ELIMINATION_DIRECTE)
         )
         assert phase.id is not None
         self.phase_id = phase.id

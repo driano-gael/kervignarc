@@ -24,6 +24,8 @@ from bootstrap.composition import create_app
 from domain.archer import Archer
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
+from domain.depart import Depart
+from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi
@@ -33,6 +35,8 @@ from infrastructure.db import (
     BlasonRepositorySQL,
     CategorieRepositorySQL,
     Database,
+    DepartRepositorySQL,
+    InscriptionRepositorySQL,
     PhaseRepositorySQL,
     SerieRepositorySQL,
     TournoiRepositorySQL,
@@ -68,6 +72,15 @@ class Scenario:
         series = SerieRepositorySQL(
             db.session_factory, AuditRepositorySQL(db.session_factory), HorlogeSysteme()
         )
+        depart = DepartRepositorySQL(db.session_factory).ajouter(
+            Depart.creer(tournoi_id=self.tournoi_id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert depart.id is not None
+        self.depart_id = depart.id
+        _depart_id = depart.id
+        inscriptions = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
         self.archers: list[int] = []
         for valeurs in (("10", "10", "10"), ("9", "9", "9")):  # scores décroissants → rang 1, 2
             archer = archers.ajouter(
@@ -87,9 +100,12 @@ class Scenario:
                     ),
                 )
             )
+            # C'est l'**inscription** qui fait entrer l'archer au classement du créneau
+            # (ADR-0075) — sans elle, le tableau s'ensemencerait sur zéro participant.
+            inscriptions.ajouter(Inscription.creer(archer.id, _depart_id))
             self.archers.append(archer.id)
         phase = PhaseRepositorySQL(db.session_factory).ajouter(
-            Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE)
+            Phase.creer(_depart_id, 2, TypePhase.ELIMINATION_DIRECTE)
         )
         assert phase.id is not None
         self.phase_id = phase.id

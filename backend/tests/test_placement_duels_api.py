@@ -24,6 +24,7 @@ from domain.phase import Phase, TypePhase
 from domain.serie import Serie, Volee
 from infrastructure.db import (
     AuditRepositorySQL,
+    DepartRepositorySQL,
     PhaseRepositorySQL,
     SerieRepositorySQL,
 )
@@ -43,6 +44,17 @@ _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 def _migrer(url: str) -> None:
     preparer_base(url)
+
+
+def _premier_depart(app: FastAPI, tournoi_id: int) -> int:
+    """Le créneau du tournoi — porteur des phases depuis ADR-0075.
+
+    Le décor en pose déjà un ; on le relit plutôt que d'en inventer un second, qui fausserait les
+    comptes de placement.
+    """
+    departs = DepartRepositorySQL(app.state.database.session_factory).par_tournoi(tournoi_id)
+    assert departs and departs[0].id is not None, "Le décor doit poser au moins un créneau."
+    return departs[0].id
 
 
 @pytest.fixture
@@ -72,7 +84,7 @@ def _semer(app: FastAPI, tournoi_id: int, archer_id: int, valeurs: tuple[ZoneSco
 def _phase_elimination(app: FastAPI, tournoi_id: int) -> int:
     """Insère une phase d'élimination directe (ordre 2) et renvoie son id."""
     phase = PhaseRepositorySQL(app.state.database.session_factory).ajouter(
-        Phase.creer(tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE)
+        Phase.creer(_premier_depart(app, tournoi_id), 2, TypePhase.ELIMINATION_DIRECTE)
     )
     assert phase.id is not None
     return phase.id
@@ -133,8 +145,15 @@ def test_phase_de_qualification_refuse_le_plan_de_duels(
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         _appliquer_gabarit(client, tournoi_id, nb_cibles=2)
+        # Un créneau nu : ce test ne vérifie qu'un refus, aucun archer n'est nécessaire.
+        client.post(
+            f"/api/v1/tournois/{tournoi_id}/departs",
+            json={"horaire": "09:00", "tarif_centimes": 800},
+        )
         qualif = PhaseRepositorySQL(app_duels.state.database.session_factory).ajouter(
-            Phase.qualification(tournoi_id, BaremeQualification.creer(2, 3))
+            Phase.qualification(
+                _premier_depart(app_duels, tournoi_id), BaremeQualification.creer(2, 3)
+            )
         )
         assert qualif.id is not None
 

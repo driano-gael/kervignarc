@@ -81,6 +81,7 @@ def hydrater_harnais(
     blasons: BlasonRepository,
     gabarits: GabaritSalleRepository,
     inscriptions: InscriptionRepository,
+    departs: DepartRepository,
     phases: PhaseRepository,
     series: SerieRepository,
 ) -> None:
@@ -95,6 +96,11 @@ def hydrater_harnais(
     assert tournoi.id is not None, "Un tournoi relu est persisté."
     tournoi_id = tournoi.id
     harnais.tournois.ajouter(tournoi)
+    # **Les créneaux d'abord** (E01US025, ADR-0075) : ils portent les phases et le classement, et
+    # les identifiants sont **préservés** par les magasins in-memory — sans eux, les phases
+    # recopiées pointeraient un départ absent, et le harnais rendrait un classement vide.
+    for depart in departs.par_tournoi(tournoi_id):
+        harnais.departs.ajouter(depart)
     for categorie in categories.par_tournoi(tournoi_id):
         harnais.categories.ajouter(categorie)
     for blason in blasons.par_tournoi(tournoi_id):
@@ -170,6 +176,7 @@ class ServiceSimulation:
         blasons: BlasonRepository,
         gabarits: GabaritSalleRepository,
         inscriptions: InscriptionRepository,
+        departs: DepartRepository,
         phases: PhaseRepository,
         series: SerieRepository,
         usine_harnais: Callable[[], HarnaisSimulation],
@@ -182,6 +189,8 @@ class ServiceSimulation:
         self._blasons = blasons
         self._gabarits = gabarits
         self._inscriptions = inscriptions
+        # Les créneaux : le harnais les hydrate en premier (ADR-0075).
+        self._departs = departs
         self._phases = phases
         self._series = series
         self._usine_harnais = usine_harnais
@@ -206,6 +215,7 @@ class ServiceSimulation:
             blasons=self._blasons,
             gabarits=self._gabarits,
             inscriptions=self._inscriptions,
+            departs=self._departs,
             phases=self._phases,
             series=self._series,
         )

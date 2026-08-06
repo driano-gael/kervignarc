@@ -24,6 +24,8 @@ from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
+from domain.depart import Depart
+from domain.inscription import Inscription
 from domain.phase import Phase
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi
@@ -34,6 +36,8 @@ from infrastructure.db import (
     BlasonRepositorySQL,
     CategorieRepositorySQL,
     Database,
+    DepartRepositorySQL,
+    InscriptionRepositorySQL,
     PhaseRepositorySQL,
     SerieRepositorySQL,
     TournoiRepositorySQL,
@@ -53,6 +57,16 @@ class Scenario:
         tournoi = TournoiRepositorySQL(db.session_factory).ajouter(Tournoi.creer("Salle", _DATE))
         assert tournoi.id is not None
         self.tournoi_id = tournoi.id
+        # Le créneau porte la qualification, le classement et le barrage (E01US025, ADR-0075) : les
+        # archers y sont **inscrits**, car c'est l'inscription qui dit qui tire ici.
+        depart = DepartRepositorySQL(db.session_factory).ajouter(
+            Depart.creer(tournoi_id=self.tournoi_id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert depart.id is not None
+        self.depart_id = depart.id
+        inscriptions = InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        )
         blason = BlasonRepositorySQL(db.session_factory).ajouter(
             Blason.creer(self.tournoi_id, "Triple", taille=0.25, capacite=1)
         )
@@ -86,10 +100,11 @@ class Scenario:
                     ),
                 )
             )
+            inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
             self.archers.append(archer.id)
         phases = PhaseRepositorySQL(db.session_factory)
         qualif = phases.ajouter(
-            Phase.qualification(self.tournoi_id, BaremeQualification.creer(1, 3))
+            Phase.qualification(self.depart_id, BaremeQualification.creer(1, 3))
         )
         assert qualif.id is not None
         self.qualif_id = qualif.id
@@ -106,8 +121,8 @@ def app_barrages(tmp_path: Path) -> Iterator[FastAPI]:
         app.state.database.engine.dispose()
 
 
-def _classement(client: TestClient, tournoi_id: int) -> dict[str, object]:
-    reponse = client.get(f"/api/v1/tournois/{tournoi_id}/classement")
+def _classement(client: TestClient, depart_id: int) -> dict[str, object]:
+    reponse = client.get(f"/api/v1/departs/{depart_id}/classement")
     assert reponse.status_code == 200, reponse.text
     corps: dict[str, object] = reponse.json()
     return corps
@@ -122,7 +137,7 @@ def _rangs(client: TestClient, tournoi_id: int) -> dict[int, int | None]:
 def _regler_le_seuil(client: TestClient, scenario: Scenario, jusqu_au: int | None) -> None:
     """Règle (ou efface) le seuil de barrage sur la phase de qualification."""
     reponse = client.put(
-        f"/api/v1/tournois/{scenario.tournoi_id}/phases/{scenario.qualif_id}",
+        f"/api/v1/departs/{scenario.depart_id}/phases/{scenario.qualif_id}",
         json={"type": "qualification", "sources": [], "barrage_jusqu_au": jusqu_au},
     )
     assert reponse.status_code == 200, reponse.text
@@ -141,6 +156,12 @@ def _ajouter_archer(app: FastAPI, scenario: Scenario, valeurs: tuple[str, ...]) 
         )
     )
     assert archer.id is not None
+    # ⚠️ **L'inscrire sur le créneau**, sans quoi il n'entre pas dans le classement du départ
+    # (ADR-0075) : c'est l'inscription qui dit qui tire ici, pas `Archer.tournoi_id`. Sans elle,
+    # l'archer « en retard » ne ferait bouger aucun rang et le scénario de péremption serait muet.
+    InscriptionRepositorySQL(db.session_factory, AuditRepositorySQL(db.session_factory)).ajouter(
+        Inscription.creer(archer.id, scenario.depart_id)
+    )
     SerieRepositorySQL(
         db.session_factory, AuditRepositorySQL(db.session_factory), HorlogeSysteme()
     ).enregistrer(
@@ -166,7 +187,7 @@ def test_sans_seuil_le_classement_est_celui_d_e06us001(
     scenario = Scenario(app_barrages)
     with TestClient(app_barrages) as client:
         connecter_admin(client)
-        corps = _classement(client, scenario.tournoi_id)
+        corps = _classement(client, scenario.depart_id)
 
         assert corps["egalites_a_departager"] == []
         assert _rangs(client, scenario.tournoi_id) == {
@@ -184,7 +205,7 @@ def test_un_seuil_regle_signale_l_egalite(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
 
-        egalites = _classement(client, scenario.tournoi_id)["egalites_a_departager"]
+        egalites = _classement(client, scenario.depart_id)["egalites_a_departager"]
 
         assert egalites == [{"rang": 2, "archer_ids": [scenario.archers[1], scenario.archers[2]]}]
 
@@ -198,7 +219,7 @@ def test_le_seuil_se_relit_sur_la_phase(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
 
-        phases = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/phases").json()
+        phases = client.get(f"/api/v1/departs/{scenario.depart_id}/phases").json()
 
         assert phases[0]["barrage_jusqu_au"] == 8
 
@@ -213,7 +234,10 @@ def test_le_barrage_tire_rend_les_rangs_consecutifs(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
 
-        annonce = client.post(f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2})
+        annonce = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
+        )
         assert annonce.status_code == 201, annonce.text
         barrage_id = annonce.json()["id"]
         assert annonce.json()["est_resolu"] is False
@@ -238,7 +262,7 @@ def test_le_barrage_tire_rend_les_rangs_consecutifs(
         }
         # L'égalité tranchée ne doit plus être réclamée, sans quoi l'écran redemanderait un barrage
         # qui vient d'être tiré.
-        assert _classement(client, scenario.tournoi_id)["egalites_a_departager"] == []
+        assert _classement(client, scenario.depart_id)["egalites_a_departager"] == []
 
 
 def test_un_barrage_non_resolu_laisse_le_rang_partage(
@@ -251,7 +275,8 @@ def test_un_barrage_non_resolu_laisse_le_rang_partage(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
 
         manche = client.put(
@@ -279,7 +304,8 @@ def test_clore_un_barrage_indecis_est_refuse(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
         client.put(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
@@ -307,7 +333,10 @@ def test_annoncer_sur_un_rang_sans_egalite_est_refuse(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
 
-        reponse = client.post(f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 1})
+        reponse = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 1},
+        )
 
         assert reponse.status_code == 409
         assert reponse.json()["code"] == "egalite_non_departageable"
@@ -322,8 +351,14 @@ def test_annoncer_deux_fois_ne_cree_qu_un_barrage(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
 
-        premier = client.post(f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2})
-        second = client.post(f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2})
+        premier = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
+        )
+        second = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
+        )
 
         assert premier.json()["id"] == second.json()["id"]
         liste = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/barrages").json()
@@ -341,7 +376,8 @@ def test_un_tireur_etranger_au_barrage_est_refuse(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
 
         reponse = client.put(
@@ -362,7 +398,10 @@ def test_les_ecritures_du_barrage_exigent_l_admin(app_barrages: FastAPI) -> None
     """Annoncer un barrage change le classement publié : c'est un acte d'organisation."""
     scenario = Scenario(app_barrages)
     with TestClient(app_barrages) as client:
-        reponse = client.post(f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2})
+        reponse = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
+        )
 
         assert reponse.status_code == 401
 
@@ -385,7 +424,8 @@ def test_une_manche_refusee_ne_laisse_aucune_trace_et_le_classement_reste_lisibl
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
 
         # Deux tirs, mais du **même** archer : la manche passe le DTO (deux entrées) et échoue au
@@ -406,7 +446,7 @@ def test_une_manche_refusee_ne_laisse_aucune_trace_et_le_classement_reste_lisibl
         barrages = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/barrages").json()
         assert barrages[0]["manches"] == []
         # …et les deux lectures restent saines.
-        assert client.get(f"/api/v1/tournois/{scenario.tournoi_id}/classement").status_code == 200
+        assert client.get(f"/api/v1/departs/{scenario.depart_id}/classement").status_code == 200
 
 
 def test_corriger_la_manche_1_tronque_les_suivantes(
@@ -423,7 +463,8 @@ def test_corriger_la_manche_1_tronque_les_suivantes(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
         url = f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche"
         client.put(
@@ -459,7 +500,7 @@ def test_corriger_la_manche_1_tronque_les_suivantes(
         assert corrige.status_code == 200, corrige.text
         assert len(corrige.json()["manches"]) == 1
         assert corrige.json()["ordre"] == [second, troisieme]
-        assert client.get(f"/api/v1/tournois/{scenario.tournoi_id}/classement").status_code == 200
+        assert client.get(f"/api/v1/departs/{scenario.depart_id}/classement").status_code == 200
 
 
 def test_annuler_un_barrage_libere_le_rang(
@@ -471,7 +512,8 @@ def test_annuler_un_barrage_libere_le_rang(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
 
         annulation = client.delete(f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}")
@@ -481,7 +523,8 @@ def test_annuler_un_barrage_libere_le_rang(
         # Le rang est de nouveau annonçable.
         assert (
             client.post(
-                f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+                f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+                json={"depart_id": scenario.depart_id, "rang": 2},
             ).status_code
             == 201
         )
@@ -497,7 +540,8 @@ def test_un_barrage_d_un_autre_tournoi_est_introuvable(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
         autre = client.post("/api/v1/tournois", json={"nom": "Autre", "date": "2026-03-15"}).json()[
             "id"
@@ -526,7 +570,8 @@ def test_corriger_un_barrage_clos_le_rouvre(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
         url = f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche"
         client.put(
@@ -569,7 +614,8 @@ def test_le_verdict_survit_a_l_effacement_du_seuil(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
         client.put(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
@@ -583,7 +629,7 @@ def test_le_verdict_survit_a_l_effacement_du_seuil(
 
         _regler_le_seuil(client, scenario, None)
 
-        assert _classement(client, scenario.tournoi_id)["egalites_a_departager"] == []
+        assert _classement(client, scenario.depart_id)["egalites_a_departager"] == []
         assert _rangs(client, scenario.tournoi_id) == {
             scenario.archers[0]: 1,
             troisieme: 2,
@@ -604,7 +650,8 @@ def test_un_score_hors_bareme_est_refuse(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
 
         reponse = client.put(
@@ -639,6 +686,7 @@ def test_un_barrage_de_poule_se_declare_avec_ses_tireurs(
         annonce = client.post(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
             json={
+                "depart_id": scenario.depart_id,
                 "portee": "poule",
                 "archer_ids": [premier, second],
                 "phase_id": scenario.qualif_id,
@@ -662,7 +710,12 @@ def test_un_barrage_de_poule_se_tire_et_rend_son_verdict(
         connecter_admin(client)
         barrage_id = client.post(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
-            json={"portee": "poule", "archer_ids": [premier, second], "reference": "Poule A"},
+            json={
+                "depart_id": scenario.depart_id,
+                "portee": "poule",
+                "archer_ids": [premier, second],
+                "reference": "Poule A",
+            },
         ).json()["id"]
 
         manche = client.put(
@@ -693,7 +746,12 @@ def test_un_barrage_de_poule_ne_touche_pas_le_classement_de_qualification(
         avant = _rangs(client, scenario.tournoi_id)
         barrage_id = client.post(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
-            json={"portee": "poule", "archer_ids": [second, troisieme], "reference": "Poule A"},
+            json={
+                "depart_id": scenario.depart_id,
+                "portee": "poule",
+                "archer_ids": [second, troisieme],
+                "reference": "Poule A",
+            },
         ).json()["id"]
         client.put(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
@@ -721,6 +779,7 @@ def test_un_big_shoot_off_se_declare_sans_rang(
         annonce = client.post(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
             json={
+                "depart_id": scenario.depart_id,
                 "portee": "big_shoot_off",
                 "archer_ids": [premier, second],
                 "reference": "manche 3",
@@ -743,7 +802,11 @@ def test_un_barrage_designe_exige_deux_archers_distincts(
 
         reponse = client.post(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
-            json={"portee": "poule", "archer_ids": [premier, premier]},
+            json={
+                "depart_id": scenario.depart_id,
+                "portee": "poule",
+                "archer_ids": [premier, premier],
+            },
         )
 
         assert reponse.status_code == 409
@@ -762,14 +825,31 @@ def test_deux_poules_distinctes_ne_se_confondent_pas(
         url = f"/api/v1/tournois/{scenario.tournoi_id}/barrages"
 
         a = client.post(
-            url, json={"portee": "poule", "archer_ids": [premier, second], "reference": "Poule A"}
+            url,
+            json={
+                "depart_id": scenario.depart_id,
+                "portee": "poule",
+                "archer_ids": [premier, second],
+                "reference": "Poule A",
+            },
         )
         b = client.post(
             url,
-            json={"portee": "poule", "archer_ids": [second, troisieme], "reference": "Poule B"},
+            json={
+                "depart_id": scenario.depart_id,
+                "portee": "poule",
+                "archer_ids": [second, troisieme],
+                "reference": "Poule B",
+            },
         )
         bis = client.post(
-            url, json={"portee": "poule", "archer_ids": [premier, second], "reference": "Poule A"}
+            url,
+            json={
+                "depart_id": scenario.depart_id,
+                "portee": "poule",
+                "archer_ids": [premier, second],
+                "reference": "Poule A",
+            },
         )
 
         assert a.json()["id"] != b.json()["id"]
@@ -813,8 +893,22 @@ def test_deux_egalites_de_poule_sans_repere_ne_se_confondent_pas(
         connecter_admin(client)
         url = f"/api/v1/tournois/{scenario.tournoi_id}/barrages"
 
-        a = client.post(url, json={"portee": "poule", "archer_ids": [premier, second]})
-        b = client.post(url, json={"portee": "poule", "archer_ids": [second, troisieme]})
+        a = client.post(
+            url,
+            json={
+                "depart_id": scenario.depart_id,
+                "portee": "poule",
+                "archer_ids": [premier, second],
+            },
+        )
+        b = client.post(
+            url,
+            json={
+                "depart_id": scenario.depart_id,
+                "portee": "poule",
+                "archer_ids": [second, troisieme],
+            },
+        )
 
         assert a.status_code == 201 and b.status_code == 201, b.text
         assert a.json()["id"] != b.json()["id"]
@@ -831,8 +925,22 @@ def test_reannoncer_les_memes_tireurs_reste_idempotent(
         connecter_admin(client)
         url = f"/api/v1/tournois/{scenario.tournoi_id}/barrages"
 
-        a = client.post(url, json={"portee": "poule", "archer_ids": [premier, second]})
-        bis = client.post(url, json={"portee": "poule", "archer_ids": [second, premier]})
+        a = client.post(
+            url,
+            json={
+                "depart_id": scenario.depart_id,
+                "portee": "poule",
+                "archer_ids": [premier, second],
+            },
+        )
+        bis = client.post(
+            url,
+            json={
+                "depart_id": scenario.depart_id,
+                "portee": "poule",
+                "archer_ids": [second, premier],
+            },
+        )
 
         assert a.json()["id"] == bis.json()["id"]
 
@@ -851,12 +959,14 @@ def test_un_barrage_perime_est_refuse_au_lieu_d_etre_rendu(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         url = f"/api/v1/tournois/{scenario.tournoi_id}/barrages"
-        assert client.post(url, json={"rang": 2}).status_code == 201
+        assert (
+            client.post(url, json={"depart_id": scenario.depart_id, "rang": 2}).status_code == 201
+        )
 
         # Un 4ᵉ archer, dont la volée est validée en retard, rejoint l'égalité du rang 2.
         _ajouter_archer(app_barrages, scenario, ("10", "9", "8"))
 
-        reponse = client.post(url, json={"rang": 2})
+        reponse = client.post(url, json={"depart_id": scenario.depart_id, "rang": 2})
 
         assert reponse.status_code == 409
         assert reponse.json()["code"] == "barrage_perime"
@@ -872,7 +982,9 @@ def test_la_qualification_refuse_les_champs_du_regime_designe(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         url = f"/api/v1/tournois/{scenario.tournoi_id}/barrages"
-        assert client.post(url, json={"rang": 2}).status_code == 201
+        assert (
+            client.post(url, json={"depart_id": scenario.depart_id, "rang": 2}).status_code == 201
+        )
 
         reponse = client.post(url, json={"rang": 2, "reference": "x"})
 
@@ -895,7 +1007,8 @@ def test_un_barrage_incoherent_n_emporte_pas_le_panneau(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
         client.put(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
@@ -933,7 +1046,8 @@ def test_annuler_exige_l_admin(app_barrages: FastAPI, connecter_admin: Connecter
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
         client.cookies.clear()
         client.headers.pop("Authorization", None)
@@ -957,7 +1071,11 @@ def test_un_archer_d_un_vrai_autre_tournoi_est_refuse(
 
         reponse = client.post(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
-            json={"portee": "poule", "archer_ids": [premier, voisin.archers[0]]},
+            json={
+                "depart_id": scenario.depart_id,
+                "portee": "poule",
+                "archer_ids": [premier, voisin.archers[0]],
+            },
         )
 
         assert reponse.status_code == 409
@@ -976,6 +1094,7 @@ def test_une_phase_d_un_vrai_autre_tournoi_est_refusee(
         reponse = client.post(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
             json={
+                "depart_id": scenario.depart_id,
                 "portee": "poule",
                 "archer_ids": [premier, second],
                 "phase_id": voisin.qualif_id,
@@ -1005,7 +1124,8 @@ def test_le_verdict_est_visible_du_classement_que_consomme_le_placement(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
 
         client.put(
@@ -1040,7 +1160,8 @@ def test_un_barrage_acte_devient_perime_si_le_groupe_change(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
         client.put(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
@@ -1080,7 +1201,8 @@ def test_un_barrage_acte_dont_le_verdict_tient_n_est_pas_perime(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
         client.put(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
@@ -1115,7 +1237,8 @@ def test_un_barrage_acte_est_perime_meme_si_le_groupe_glisse_de_rang(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
         client.put(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
@@ -1152,7 +1275,8 @@ def test_un_barrage_acte_est_perime_meme_si_le_seuil_est_efface(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
         barrage_id = client.post(
-            f"/api/v1/tournois/{scenario.tournoi_id}/barrages", json={"rang": 2}
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": scenario.depart_id, "rang": 2},
         ).json()["id"]
         client.put(
             f"/api/v1/tournois/{scenario.tournoi_id}/barrages/{barrage_id}/manche",
@@ -1168,7 +1292,7 @@ def test_un_barrage_acte_est_perime_meme_si_le_seuil_est_efface(
 
         _regler_le_seuil(client, scenario, None)
 
-        assert _classement(client, scenario.tournoi_id)["egalites_a_departager"] == []
+        assert _classement(client, scenario.depart_id)["egalites_a_departager"] == []
         barrage = client.get(f"/api/v1/tournois/{scenario.tournoi_id}/barrages").json()[0]
         assert (
             _rangs(client, scenario.tournoi_id)[second]

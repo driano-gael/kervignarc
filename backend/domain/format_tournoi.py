@@ -373,14 +373,18 @@ class FormatTournoi:
         ajustables sans remonter. Aucune écriture ici — le service décide quoi persister et
         comment traiter les phases déjà présentes.
         """
+        # ⚠️ **L'ordre compte.** La cohérence du **format** se juge d'abord : un format sans étape
+        # est faux en lui-même, quel que soit le tournoi auquel on l'applique. Contrôler les
+        # créneaux avant masquerait `FormatSansEtape` derrière `FormatSansDepart`, et
+        # l'organisateur irait créer un départ pour découvrir ensuite que son format est vide.
+        for anomalie in self.anomalies():
+            if anomalie.gravite is Gravite.BLOQUANTE:
+                raise anomalie.erreur
         if not departs:
             raise FormatSansDepart(
                 "Ce tournoi n'a aucun départ : appliquer un format ne créerait aucune phase. "
                 "Créez au moins un créneau avant d'appliquer un déroulé."
             )
-        for anomalie in self.anomalies():
-            if anomalie.gravite is Gravite.BLOQUANTE:
-                raise anomalie.erreur
         return tuple(etape.pour_depart(depart_id) for depart_id in departs for etape in self.etapes)
 
     @staticmethod

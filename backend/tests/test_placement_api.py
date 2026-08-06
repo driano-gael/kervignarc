@@ -68,6 +68,13 @@ def app_placement(tmp_path: Path) -> Iterator[FastAPI]:
 
 
 def _creer_tournoi(client: TestClient) -> int:
+    """Crée un tournoi **sans créneau** — les décors qui en ont besoin le posent eux-mêmes.
+
+    ⚠️ Ne pas y ajouter la création d'un départ : plusieurs décors en créent déjà un (avec leur
+    horaire et leur tarif propres) et y inscrivent leurs archers. Un second créneau ferait pendre
+    les phases à l'un pendant que les inscriptions vivent sur l'autre — classement vide, sans
+    erreur. Vécu à la bascule d'ADR-0075.
+    """
     reponse = client.post("/api/v1/tournois", json={"nom": "Trophée", "date": "2026-03-14"})
     assert reponse.status_code == 201, reponse.text
     return int(reponse.json()["id"])

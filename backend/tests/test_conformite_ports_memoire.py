@@ -23,11 +23,13 @@ import pytest
 
 from domain.archer import Archer
 from domain.categorie import Categorie
+from domain.depart import Depart
 from domain.gabarit_salle import GabaritSalle
 from domain.phase import Phase, TypePhase
 from domain.ports import (
     ArcherRepository,
     CategorieRepository,
+    DepartRepository,
     GabaritSalleRepository,
     PhaseRepository,
     TournoiRepository,
@@ -37,6 +39,7 @@ from infrastructure.db import (
     ArcherRepositorySQL,
     CategorieRepositorySQL,
     Database,
+    DepartRepositorySQL,
     GabaritSalleRepositorySQL,
     PhaseRepositorySQL,
     TournoiRepositorySQL,
@@ -44,6 +47,7 @@ from infrastructure.db import (
 from infrastructure.memory.repositories import (
     InMemoryArcherRepository,
     InMemoryCategorieRepository,
+    InMemoryDepartRepository,
     InMemoryGabaritSalleRepository,
     InMemoryPhaseRepository,
     InMemoryTournoiRepository,
@@ -81,27 +85,53 @@ def _contrat_tournoi(repo: TournoiRepository) -> None:
     assert {t.nom for t in repo.lister()} == {"Salle A", "Salle B"}, "lister renvoie tout."
 
 
-def _contrat_phase(tournois: TournoiRepository, phases: PhaseRepository) -> None:
+def _contrat_phase(
+    tournois: TournoiRepository, phases: PhaseRepository, departs: DepartRepository
+) -> None:
+    """Contrat du port `PhaseRepository`, **à la maille du départ** (E01US025, ADR-0075).
+
+    Le contrat portait sur le tournoi ; il porte désormais sur le créneau, et vérifie **les deux**
+    lectures : `par_depart` (la séquence, celle du moteur) et `par_tournoi` (la vue transverse,
+    concaténation des séquences de tous les créneaux). Les distinguer ici a du sens : c'est leur
+    confusion qui a produit le défaut qu'ADR-0075 corrige.
+    """
     assert phases.par_id(999) is None, "par_id sur un identifiant absent → None."
     tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
     autre = tournois.ajouter(Tournoi.creer("Autre salle", _DATE))
     assert tournoi.id is not None and autre.id is not None
+    matin = departs.ajouter(
+        Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+    )
+    apres_midi = departs.ajouter(
+        Depart.creer(tournoi_id=tournoi.id, numero=2, tarif_centimes=800, horaire="14:00")
+    )
+    ailleurs = departs.ajouter(
+        Depart.creer(tournoi_id=autre.id, numero=1, tarif_centimes=800, horaire="09:00")
+    )
+    assert matin.id is not None and apres_midi.id is not None and ailleurs.id is not None
 
-    # Ajoutées dans le désordre (ordres 3, 1, 2) : `par_tournoi` doit les rendre **triées**.
+    # Ajoutées dans le désordre (ordres 3, 1, 2) : `par_depart` doit les rendre **triées**.
     # (On évite le type `qualification`, qui exigerait un barème — hors sujet ici.)
-    phases.ajouter(Phase.creer(tournoi.id, 3, TypePhase.ELIMINATION_DIRECTE))
-    phases.ajouter(Phase.creer(tournoi.id, 1, TypePhase.PLACEMENT))
-    phases.ajouter(Phase.creer(tournoi.id, 2, TypePhase.ELIMINATION_DIRECTE))
-    phases.ajouter(Phase.creer(autre.id, 1, TypePhase.PLACEMENT))  # d'un autre tournoi
+    phases.ajouter(Phase.creer(matin.id, 3, TypePhase.ELIMINATION_DIRECTE))
+    phases.ajouter(Phase.creer(matin.id, 1, TypePhase.PLACEMENT))
+    phases.ajouter(Phase.creer(matin.id, 2, TypePhase.ELIMINATION_DIRECTE))
+    phases.ajouter(Phase.creer(apres_midi.id, 1, TypePhase.PLACEMENT))  # même tournoi, autre vague
+    phases.ajouter(Phase.creer(ailleurs.id, 1, TypePhase.PLACEMENT))  # d'un autre tournoi
 
+    du_depart = phases.par_depart(matin.id)
+    assert [p.ordre for p in du_depart] == [1, 2, 3], "par_depart filtre puis trie par ordre."
+
+    # La vue transverse voit **les deux** créneaux du tournoi, et aucun de l'autre tournoi. Les
+    # ordres y repartent de 1 à chaque départ : ce n'est pas une séquence, et c'est le propos.
     du_tournoi = phases.par_tournoi(tournoi.id)
-    assert [p.ordre for p in du_tournoi] == [1, 2, 3], "par_tournoi filtre puis trie par ordre."
+    assert len(du_tournoi) == 4, "par_tournoi couvre tous les départs du tournoi."
+    assert {p.depart_id for p in du_tournoi} == {matin.id, apres_midi.id}
 
-    placement = phases.par_depart_et_type(tournoi.id, TypePhase.PLACEMENT)
-    assert placement is not None and placement.ordre == 1, "par_tournoi_et_type résout la phase."
+    placement = phases.par_depart_et_type(matin.id, TypePhase.PLACEMENT)
+    assert placement is not None and placement.ordre == 1, "par_depart_et_type résout la phase."
     assert (
-        phases.par_depart_et_type(tournoi.id, TypePhase.QUALIFICATION) is None
-    ), "par_tournoi_et_type → None si le type est absent."
+        phases.par_depart_et_type(matin.id, TypePhase.QUALIFICATION) is None
+    ), "par_depart_et_type → None si le type est absent."
 
 
 def _contrat_archer(
@@ -160,13 +190,15 @@ def test_tournoi_sql(base_sql: Database) -> None:
 
 
 def test_phase_memoire() -> None:
-    _contrat_phase(InMemoryTournoiRepository(), InMemoryPhaseRepository())
+    departs = InMemoryDepartRepository()
+    _contrat_phase(InMemoryTournoiRepository(), InMemoryPhaseRepository(departs), departs)
 
 
 def test_phase_sql(base_sql: Database) -> None:
     _contrat_phase(
         TournoiRepositorySQL(base_sql.session_factory),
         PhaseRepositorySQL(base_sql.session_factory),
+        DepartRepositorySQL(base_sql.session_factory),
     )
 
 

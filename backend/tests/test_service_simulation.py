@@ -84,7 +84,7 @@ class _Reel:
                 Depart.creer(tournoi_id=1, numero=1, tarif_centimes=800, horaire="09:00"), id=1
             )
         )
-        self.phases = InMemoryPhaseRepository()
+        self.phases = InMemoryPhaseRepository(self.departs)
         self.series = InMemorySerieRepository()
 
         tournoi = self.tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
@@ -153,6 +153,7 @@ class _Reel:
             self.blasons,
             self.gabarits,
             self.inscriptions,
+            self.departs,
             self.phases,
             self.series,
             # L'**usine de production** (pas une copie) : le harnais éprouvé ici est celui déployé

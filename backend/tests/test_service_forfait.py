@@ -32,6 +32,7 @@ from application.forfaits import ServiceForfait
 from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.categorie import Categorie
+from domain.depart import Depart
 from domain.forfait import NatureForfait
 from domain.phase import Phase, TypePhase
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
@@ -92,6 +93,13 @@ class _Monde:
         self.archers = FauxArcherRepository()
         self.categories = FauxCategorieRepository()
         self.departs = FauxDepartRepository()
+        # Le créneau qui porte les phases : sans lui, la lecture transverse « la qualification de
+        # ce tournoi » ne trouve rien (ADR-0075) et le service croit la phase absente.
+        _d = self.departs.ajouter(
+            Depart.creer(tournoi_id=self.tournoi_id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert _d.id is not None
+        self.depart_id = _d.id
         self.phases = FauxPhaseRepository(self.departs)
         self.forfaits = FauxForfaitRepository()
         cat = self.categories.ajouter(Categorie.creer(self.tournoi_id, "Senior 1 H"))
@@ -100,13 +108,11 @@ class _Monde:
         assert archer.id is not None
         self.archer_id = archer.id
         qualif = self.phases.ajouter(
-            Phase.qualification(self.tournoi_id, BaremeQualification.creer(3, 3))
+            Phase.qualification(self.depart_id, BaremeQualification.creer(3, 3))
         )
         assert qualif.id is not None
         self.qualif_id = qualif.id
-        tableau = self.phases.ajouter(
-            Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE)
-        )
+        tableau = self.phases.ajouter(Phase.creer(self.depart_id, 2, TypePhase.ELIMINATION_DIRECTE))
         assert tableau.id is not None
         self.tableau_id = tableau.id
         self.service = ServiceForfait(

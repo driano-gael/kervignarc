@@ -110,6 +110,7 @@ class Contexte:
     placements_tableau: FauxLecteurDonneesDePhase
     tournoi_id: TournoiId
     depart_id: int
+    departs: FauxDepartRepository
 
 
 def _id(valeur: int | None) -> int:
@@ -140,6 +141,7 @@ def ctx() -> Contexte:
         phases=phases,
         forfaits=forfaits,
         placements_tableau=placements_tableau,
+        departs=departs,
         tournoi_id=_id(tournoi.id),
         depart_id=_id(departs.par_tournoi(_id(tournoi.id))[0].id),
     )
@@ -473,8 +475,15 @@ def test_promouvoir_ne_retroagit_pas_sur_les_tournois_deja_assembles(ctx: Contex
         Tournoi.creer(nom="Édition 2025", date=_DATE, type_tournoi=TypeTournoi.OFFICIEL)
     )
     ancien_id = _id(autre.id)
-    ctx.phases.ajouter(Phase.qualification(ancien_id, BaremeQualification.creer(5, 3)))
-    ctx.phases.ajouter(Phase.qualification(ctx.tournoi_id, BaremeQualification.creer(20, 3)))
+    # L'édition passée a **son** créneau : c'est lui qui porte sa phase (ADR-0075), et c'est par
+    # lui que la vue transverse la retrouvera pour vérifier qu'elle n'a pas bougé.
+    ancien_depart = _id(
+        ctx.departs.ajouter(
+            Depart.creer(tournoi_id=ancien_id, numero=1, tarif_centimes=800, horaire="09:00")
+        ).id
+    )
+    ctx.phases.ajouter(Phase.qualification(ancien_depart, BaremeQualification.creer(5, 3)))
+    ctx.phases.ajouter(Phase.qualification(ctx.depart_id, BaremeQualification.creer(20, 3)))
 
     ctx.service.promouvoir(ctx.tournoi_id, "Le format du club")
 
@@ -502,6 +511,10 @@ def test_promouvoir_oublie_l_avancement(ctx: Contexte) -> None:
         ctx.tournois.ajouter(
             Tournoi.creer(nom="Édition 2027", date=_DATE, type_tournoi=TypeTournoi.OFFICIEL)
         ).id
+    )
+    # L'édition suivante a aussi ses créneaux : un format s'applique **à des départs** (ADR-0075).
+    ctx.departs.ajouter(
+        Depart.creer(tournoi_id=edition_suivante, numero=1, tarif_centimes=800, horaire="09:00")
     )
 
     promu = ctx.service.promouvoir(ctx.tournoi_id, "Le format 2026")

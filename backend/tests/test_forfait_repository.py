@@ -17,6 +17,7 @@ from pathlib import Path
 
 from domain.archer import Archer
 from domain.categorie import Categorie
+from domain.depart import Depart
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.forfait import Forfait, NatureForfait
 from domain.phase import Phase, TypePhase
@@ -26,6 +27,7 @@ from infrastructure.db import (
     AuditRepositorySQL,
     CategorieRepositorySQL,
     Database,
+    DepartRepositorySQL,
     ForfaitRepositorySQL,
     PhaseRepositorySQL,
     TournoiRepositorySQL,
@@ -62,8 +64,13 @@ class _Contexte:
         archer = self.archers.ajouter(Archer.creer("DURAND", "Jean", tournoi.id, categorie.id))
         assert archer.id is not None
         self.archer_id = archer.id
+        depart = DepartRepositorySQL(self.db.session_factory).ajouter(
+            Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert depart.id is not None
+        self.depart_id = depart.id
         phase = PhaseRepositorySQL(self.db.session_factory).ajouter(
-            Phase.creer(tournoi.id, 2, TypePhase.ELIMINATION_DIRECTE)
+            Phase.creer(depart.id, 2, TypePhase.ELIMINATION_DIRECTE)
         )
         assert phase.id is not None
         self.phase_id = phase.id

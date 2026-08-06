@@ -46,6 +46,7 @@ from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
+from domain.depart import Depart
 from domain.duel import Cote
 from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
@@ -54,6 +55,7 @@ from infrastructure.memory.repositories import (
     InMemoryArcherRepository,
     InMemoryBlasonRepository,
     InMemoryCategorieRepository,
+    InMemoryDepartRepository,
     InMemoryGabaritSalleRepository,
     InMemoryInscriptionRepository,
     InMemoryPhaseRepository,
@@ -98,7 +100,8 @@ class _Contexte:
         self.blasons = InMemoryBlasonRepository()
         self.gabarits = InMemoryGabaritSalleRepository()
         self.inscriptions = InMemoryInscriptionRepository()
-        self.phases = InMemoryPhaseRepository()
+        self.departs = InMemoryDepartRepository()
+        self.phases = InMemoryPhaseRepository(self.departs)
         self.series = InMemorySerieRepository()
         self.diffusion = _DiffusionFausse()
 
@@ -115,15 +118,21 @@ class _Contexte:
         )
         assert categorie.id is not None
         self.categorie_id = categorie.id
+        # Le créneau qui porte les phases et le classement (ADR-0075).
+        _d = self.departs.ajouter(
+            Depart.creer(tournoi_id=self.tournoi_id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert _d.id is not None
+        self.depart_id = _d.id
 
         if avec_qualif:
             self.phases.ajouter(
                 Phase.qualification(
-                    self.tournoi_id, BaremeQualification.creer(nb_volees, nb_fleches)
+                    self.depart_id, BaremeQualification.creer(nb_volees, nb_fleches)
                 )
             )
         if avec_duels:
-            self.phases.ajouter(Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE))
+            self.phases.ajouter(Phase.creer(self.depart_id, 2, TypePhase.ELIMINATION_DIRECTE))
 
         self.archer_ids: list[int] = []
         for indice in range(nb_archers):
@@ -147,6 +156,7 @@ class _Contexte:
             self.blasons,
             self.gabarits,
             self.inscriptions,
+            self.departs,
             self.phases,
             self.series,
             fabriquer_harnais_simulation,

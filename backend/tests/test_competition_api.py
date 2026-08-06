@@ -115,6 +115,12 @@ def test_tranche_verticale_bout_en_bout(
         ).json()["id"]
         assert ws.receive_json()["type"] == "donnees_modifiees"
 
+        # Le classement est celui d'un **créneau** (ADR-0075) : sans inscription, ni Alice ni Bob
+        # n'y figureraient — la tranche verticale s'arrêterait à un classement vide.
+        depart_id = _creer_depart(client, int(tournoi["id"]))
+        _engager(client, int(alice_id), depart_id)
+        _engager(client, int(bob_id), depart_id)
+
         place = client.post(f"/api/v1/archers/{alice_id}/placement", json={"cible": 3})
         assert place.status_code == 200
         assert place.json()["cible"] == 3
@@ -125,7 +131,7 @@ def test_tranche_verticale_bout_en_bout(
         _semer_serie(app_competition, tournoi["id"], alice_id, (ZoneScore.DIX, ZoneScore.NEUF))
         _semer_serie(app_competition, tournoi["id"], bob_id, (ZoneScore.HUIT, ZoneScore.HUIT))
 
-        classement = client.get(f"/api/v1/tournois/{tournoi['id']}/classement")
+        classement = client.get(f"/api/v1/departs/{depart_id}/classement")
         assert classement.status_code == 200
         corps = classement.json()
         assert corps["tournoi_id"] == tournoi["id"]
@@ -194,12 +200,12 @@ def test_score_hors_plage_422(app_competition: FastAPI, connecter_admin: Connect
     assert reponse.json()["code"] == "score_invalide"
 
 
-def test_classement_tournoi_inconnu_404(app_competition: FastAPI) -> None:
+def test_classement_depart_inconnu_404(app_competition: FastAPI) -> None:
     """Consulter le classement d'un tournoi inexistant → 404."""
     with TestClient(app_competition) as client:
-        reponse = client.get("/api/v1/tournois/999/classement")
+        reponse = client.get("/api/v1/departs/999/classement")
     assert reponse.status_code == 404
-    assert reponse.json()["code"] == "tournoi_introuvable"
+    assert reponse.json()["code"] == "depart_introuvable"
 
 
 def test_classement_filtre_par_categorie(
@@ -223,12 +229,16 @@ def test_classement_filtre_par_categorie(
             ).json()["id"]
         )
 
+        depart_id = _creer_depart(client, int(tournoi["id"]))
+
         def _inscrire(nom: str, prenom: str, categorie_id: int) -> int:
             reponse = client.post(
                 f"/api/v1/tournois/{tournoi['id']}/archers",
                 json={"nom": nom, "prenom": prenom, "categorie_id": categorie_id},
             )
-            return int(reponse.json()["id"])
+            archer_id = int(reponse.json()["id"])
+            _engager(client, archer_id, depart_id)
+            return archer_id
 
         alice = _inscrire("Martin", "Alice", cat_a)  # 18
         bob = _inscrire("Durand", "Bob", cat_b)  # 20 → 1er scratch
@@ -237,7 +247,7 @@ def test_classement_filtre_par_categorie(
         _semer_serie(app_competition, tournoi["id"], bob, (ZoneScore.DIX, ZoneScore.DIX))
         _semer_serie(app_competition, tournoi["id"], chloe, (ZoneScore.HUIT, ZoneScore.HUIT))
 
-        complet = client.get(f"/api/v1/tournois/{tournoi['id']}/classement").json()
+        complet = client.get(f"/api/v1/departs/{depart_id}/classement").json()
         assert [(ligne["nom"], ligne["rang_scratch"]) for ligne in complet["lignes"]] == [
             ("Durand", 1),
             ("Martin", 2),
@@ -245,7 +255,7 @@ def test_classement_filtre_par_categorie(
         ]
 
         filtre = client.get(
-            f"/api/v1/tournois/{tournoi['id']}/classement", params={"categorie_id": cat_a}
+            f"/api/v1/departs/{depart_id}/classement", params={"categorie_id": cat_a}
         ).json()
     # Filtré à la catégorie A : seulement Alice et Chloé ; rang scratch **global** (2, 3), rang de
     # catégorie **repartant de 1** (1, 2) ; le libellé remonte pour l'affichage.
@@ -262,6 +272,25 @@ def _tournoi_avec_categorie(client: TestClient, nom: str = "Salle 18m") -> tuple
     """Crée un tournoi et une catégorie ; renvoie leurs identifiants."""
     tournoi = client.post("/api/v1/tournois", json={"nom": nom, "date": "2026-03-14"}).json()
     return int(tournoi["id"]), _creer_categorie(client, tournoi["id"])
+
+
+def _creer_depart(client: TestClient, tournoi_id: int) -> int:
+    """Crée un créneau et renvoie son identifiant — porteur du classement (ADR-0075)."""
+    reponse = client.post(
+        f"/api/v1/tournois/{tournoi_id}/departs",
+        json={"horaire": "09:00", "tarif_centimes": 800},
+    )
+    assert reponse.status_code == 201, reponse.text
+    return int(reponse.json()["id"])
+
+
+def _engager(client: TestClient, archer_id: int, depart_id: int) -> None:
+    """Inscrit l'archer sur le créneau : c'est **l'inscription** qui le fait entrer au classement
+    de ce départ, et non son rattachement au tournoi (ADR-0075)."""
+    reponse = client.post(
+        f"/api/v1/archers/{archer_id}/inscriptions", json={"depart_id": depart_id}
+    )
+    assert reponse.status_code == 201, reponse.text
 
 
 def test_inscrire_sans_prenom_rend_400(
@@ -491,6 +520,9 @@ def test_supprimer_archer_rend_204_et_le_retire_du_classement(
     """DELETE désinscrit un archer ni placé ni engagé → 204, et il quitte le classement."""
     with TestClient(app_competition) as client:
         connecter_admin(client)
+        # ⚠️ **Ni placé ni engagé** : c'est la prémisse de ce test (204 sans confirmation).
+        # L'inscrire sur un créneau le rendrait « engagé » et rendrait 409 — un autre scénario,
+        # couvert par `test_supprimer_archer_engage_409_puis_passe_sur_confirmation`.
         tournoi_id, categorie_id = _tournoi_avec_categorie(client)
         archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
 
@@ -513,7 +545,9 @@ def test_supprimer_archer_engage_409_puis_passe_sur_confirmation(
     with TestClient(app_competition) as client:
         connecter_admin(client)
         tournoi_id, categorie_id = _tournoi_avec_categorie(client)
+        depart_id = _creer_depart(client, tournoi_id)
         archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
+        _engager(client, archer_id, depart_id)
         client.post(f"/api/v1/archers/{archer_id}/placement", json={"cible": 3})
         # « A tiré » = volées **validées** (E04US002), plus l'agrégat `Score` mort (DETTE-013).
         _semer_serie(app_competition, tournoi_id, archer_id, (ZoneScore.NEUF,) * 3)
@@ -526,7 +560,7 @@ def test_supprimer_archer_engage_409_puis_passe_sur_confirmation(
 
         confirme = client.delete(f"/api/v1/archers/{archer_id}?autoriser_suppression_engage=true")
         restants = client.get(f"/api/v1/tournois/{tournoi_id}/archers").json()
-        classement = client.get(f"/api/v1/tournois/{tournoi_id}/classement").json()
+        classement = client.get(f"/api/v1/departs/{depart_id}/classement").json()
 
     assert confirme.status_code == 204, confirme.text
     assert restants == []

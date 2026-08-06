@@ -43,6 +43,16 @@ def _tournoi(client: TestClient, connecter_admin: ConnecterAdmin) -> int:
     )
 
 
+def _depart(client: TestClient, tournoi_id: int) -> int:
+    """Le créneau porteur de la séquence (ADR-0075) — les phases y pendent, pas au tournoi."""
+    reponse = client.post(
+        f"/api/v1/tournois/{tournoi_id}/departs",
+        json={"horaire": "09:00", "tarif_centimes": 800},
+    )
+    assert reponse.status_code == 201, reponse.text
+    return int(reponse.json()["id"])
+
+
 def test_un_tournoi_sans_phase_repond_un_suivi_vide(
     app_session: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
@@ -88,8 +98,9 @@ def test_les_phases_apparaissent_avec_leur_statut(
     """Le calque `avancement` s'apparie aux `blocs` par `ordre` — la clé du dessin superposé."""
     with TestClient(app_session) as client:
         tournoi_id = _tournoi(client, connecter_admin)
+        depart_id = _depart(client, tournoi_id)
         creation = client.post(
-            f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "placement", "effectif": 8}
+            f"/api/v1/departs/{depart_id}/phases", json={"type": "placement", "effectif": 8}
         )
         assert creation.status_code == 201, creation.text
 
