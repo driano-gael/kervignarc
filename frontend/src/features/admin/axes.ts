@@ -6,6 +6,10 @@
 // n'en fait que l'affichage.
 
 import type { DestinationAdminId } from './aide-ecrans'
+// Import **de type seulement** : `axes.ts` reste pur et sans dépendance d'exécution vers une autre
+// feature. Le statut est une union fermée — le typer `string` laissait une faute de frappe cesser
+// silencieusement de matcher (relevé à la revue).
+import type { Tournoi } from '../competition/api'
 
 // `besoinTournoi` dit si l'axe travaille **sur un tournoi**. L'atelier, non : c'est le patrimoine du
 // club, il vit d'année en année — d'où l'absence de sélecteur de tournoi dans cet axe.
@@ -216,4 +220,32 @@ export function destinationValide(
   destinationsDeLAxe: readonly DestinationAdminId[],
 ): DestinationAdminId | null {
   return destinationsDeLAxe.find((d) => d === demandee) ?? null
+}
+
+/**
+ * Ce sur quoi l'axe **Pilotage** travaille en ce moment — la ligne de contexte de la planche A02
+ * (E17US003).
+ *
+ * Pure et sortie du composant pour être **testable** : elle porte deux règles qui ne se voient pas en
+ * lisant le rendu — un tournoi **en pause** compte comme en cours (il est lancé, il attend), et
+ * « aucun tournoi en cours » rend `null` plutôt qu'une chaîne vide, pour que l'appelant n'ait pas à
+ * distinguer « rien à dire » de « quelque chose à dire, mais vide ».
+ *
+ * La planche montre aussi le départ courant et « 28/30 postes en ligne ». Non repris : ce sont des
+ * agrégats que le serveur n'expose pas, et les recomposer côté client coûterait une requête par
+ * tournoi à chaque ouverture de l'accueil. Écart inscrit au relevé d'EPIC-17.
+ */
+export function tournoisEnCours<T extends { statut: Tournoi['statut'] }>(
+  tournois: readonly T[],
+): readonly T[] {
+  // « En pause » compte : le tournoi est **lancé**, il attend. La règle vit ici et nulle part
+  // ailleurs — la dupliquer dans le composant, c'est se donner deux définitions qui divergeront.
+  return tournois.filter((t) => t.statut === 'en_cours' || t.statut === 'en_pause')
+}
+
+export function contextePilotage(
+  tournois: readonly Pick<Tournoi, 'nom' | 'statut'>[],
+): string | null {
+  const enCours = tournoisEnCours(tournois)
+  return enCours.length === 0 ? null : enCours.map((t) => t.nom).join(' · ')
 }

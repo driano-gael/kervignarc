@@ -30,13 +30,13 @@
 
 .tableaux__phase-libelle {
   font-size: 0.9em;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .tableaux__entete {
   margin: 0 0 0.8em;
   font-size: 0.9em;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* --- A · « Mon chemin » ------------------------------------------------------------------------- */
@@ -57,7 +57,7 @@
 }
 
 .tableaux__chemin {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 0.6em 0.7em;
 }
@@ -65,7 +65,7 @@
 .tableaux__chemin-nom {
   display: block;
   font-weight: 700;
-  color: var(--text-h);
+  color: var(--text);
   margin-bottom: 0.4em;
 }
 
@@ -89,12 +89,12 @@
 .tableaux__tour {
   flex: 0 0 7.5em;
   font-size: 0.85em;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .tableaux__contre {
   flex: 1 1 8em;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .tableaux__score {
@@ -104,24 +104,24 @@
 .tableaux__statut {
   flex: 0 0 auto;
   font-size: 0.8em;
-  color: var(--text);
+  color: var(--text-secondary);
   opacity: 0.85;
 }
 
 /* `DV-03` : la couleur ne porte jamais le sens seule — chaque étape écrit son statut en toutes
    lettres (`LIBELLE_STATUT`). Ces teintes ne font qu'accélérer la lecture. */
 .tableaux__etape--gagne .tableaux__statut {
-  color: var(--ok);
+  color: var(--success);
   opacity: 1;
 }
 
 .tableaux__etape--perdu .tableaux__statut {
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* Ambre pour l'attente, jamais le rouge : rien n'est en faute, le scoreur n'a pas encore scellé. */
 .tableaux__etape--en-attente .tableaux__statut {
-  color: var(--warn);
+  color: var(--danger);
   opacity: 1;
 }
 
@@ -136,7 +136,7 @@
 .tableaux__sortie {
   margin: 0.5em 0 0;
   font-size: 0.85em;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* --- B · Arbre complet, en liste par tour -------------------------------------------------------- */
@@ -152,7 +152,7 @@
   font-size: 0.9em;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--accent);
+  color: var(--brand-text);
 }
 
 .tableaux__duels {
@@ -166,16 +166,16 @@
   align-items: baseline;
   gap: 0.6em;
   flex-wrap: wrap;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   padding: 0.4em 0.6em;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .tableaux__vs {
   flex: 0 0 auto;
   font-size: 0.85em;
-  color: var(--text);
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -186,13 +186,13 @@
 .tableaux__enjeu {
   flex: 0 0 auto;
   font-size: 0.8em;
-  color: var(--accent);
+  color: var(--brand-text);
 }
 
 .tableaux__attente {
   flex: 1 1 100%;
   font-size: 0.8em;
-  color: var(--warn);
+  color: var(--danger);
 }
 
 /* --- Places acquises ----------------------------------------------------------------------------- */
@@ -200,7 +200,7 @@
 .tableaux__podium {
   margin-top: 1em;
   padding-top: 0.6em;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .tableaux__places {
@@ -213,12 +213,12 @@
   display: flex;
   align-items: baseline;
   gap: 0.6em;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .tableaux__rang {
   flex: 0 0 1.6em;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--brand-text);
   font-variant-numeric: tabular-nums;
 }

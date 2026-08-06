@@ -16,12 +16,12 @@
   gap: 2px;
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .suivi-ensuite__libelle {
   font-size: 12px;
-  color: var(--text);
+  color: var(--text-secondary);
   opacity: 0.7;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -30,17 +30,17 @@
 /* La destination est ce que l'archer vient chercher : même mise en avant que `.suivi-depart__place`. */
 .suivi-ensuite__titre {
   font-weight: 600;
-  color: var(--accent);
+  color: var(--brand-text);
 }
 
 .suivi-ensuite__detail {
   font-size: 14px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 /* `DV-03` : ambre pour l'avertissement (la cible est annoncée mais le duel n'est pas côte à côte),
    jamais le rouge club — c'est un signalement, pas une erreur. */
 .suivi-ensuite__alerte {
   font-size: 14px;
-  color: var(--warn);
+  color: var(--danger);
 }

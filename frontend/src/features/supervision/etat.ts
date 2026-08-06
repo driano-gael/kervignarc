@@ -2,7 +2,8 @@
 //
 // Isolée du rendu React pour être **testée** en node (comme `shared/realtime/indicateur.ts`). Rappel
 // de l'arbitrage (ADR-0038, story E12US001) : un poste **hors ligne** se signale en **ambre** (token
-// sémantique `--warn`), **jamais** en rouge — sur l'anthracite de la charte le rouge ne contraste pas
+// sémantique `--danger` — il s'appelait `--warn` jusqu'à E17US001, qui a posé la charte et fondu les
+// deux anciennes alertes ; l'escalade est `--danger-strong`), **jamais** en rouge — sur l'anthracite de la charte le rouge ne contraste pas
 // assez et ne signale rien (`DV-03`). Et toujours **couleur + pastille + texte**, jamais la couleur
 // seule (le `libelle` porte l'information pour qui ne distingue pas les teintes).
 
@@ -34,4 +35,38 @@ export function avancementLibelle(
   if (avancement === null || avancement.nb_volees === 0 || avancement.volee_courante === 0)
     return '—'
   return `volée ${avancement.volee_courante}/${avancement.nb_volees}`
+}
+
+export interface Avancement {
+  volee_courante: number
+  nb_volees: number
+}
+
+/** Y a-t-il un avancement **situable** ? Trois cas où la réponse est non, et ils viennent tous du
+ *  serveur : pas de grille du tout, qualification non configurée, ou aucun archer placé. Extrait de
+ *  `avancementLibelle` pour que la jauge et le libellé ne puissent pas diverger (E17US004). */
+function situable(a: Avancement | null): a is Avancement {
+  return a !== null && a.nb_volees !== 0 && a.volee_courante !== 0
+}
+
+/**
+ * La volée en cours, en forme courte — le « v8 » de la tuile de la planche A13.
+ *
+ * Court **à dessein** : une tuile de 150 px vue parmi trente doit se lire d'un coup d'œil, pas se
+ * déchiffrer. Le libellé long (« volée 8/12 ») reste celui du tableau, où il y a la place.
+ */
+export function voleeCourte(avancement: Avancement | null): string | null {
+  return situable(avancement) ? `v${avancement.volee_courante}` : null
+}
+
+/**
+ * La part de la grille déjà tirée, entre 0 et 1 — le remplissage de la jauge de la tuile.
+ *
+ * **Bornée volontairement à 1** : le serveur peut annoncer une volée courante au-delà du nombre de
+ * volées (une reprise, une grille raccourcie en cours de route). Sans borne, la jauge déborderait de
+ * sa piste — un défaut d'affichage pour une donnée qui, elle, n'est pas fausse.
+ */
+export function fractionAvancement(avancement: Avancement | null): number | null {
+  if (!situable(avancement)) return null
+  return Math.min(1, avancement.volee_courante / avancement.nb_volees)
 }

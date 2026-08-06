@@ -30,7 +30,7 @@
 
 .routage__vide {
   margin: 0;
-  color: var(--text);
+  color: var(--text-secondary);
   opacity: 0.75;
 }
 
@@ -48,9 +48,9 @@
   flex-direction: column;
   gap: 2px;
   padding: 10px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-left: 4px solid var(--brand-border);
   border-radius: 8px;
 }
 
@@ -58,12 +58,12 @@
    montre, elle n'empêche rien). Le liseré perd son accent, rien ne passe en rouge. */
 .routage__ligne--termine,
 .routage__ligne--indisponible {
-  border-left-color: var(--border);
+  border-left-color: var(--border-subtle);
 }
 
 .routage__archer {
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .routage__prenom {
@@ -73,12 +73,12 @@
 .routage__destination {
   font-size: 22px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--text);
 }
 
 .routage__detail {
   font-size: 13px;
-  color: var(--text);
+  color: var(--text-secondary);
   opacity: 0.85;
 }
 
@@ -86,5 +86,5 @@
    voisinage du duel qui est à revoir. */
 .routage__alerte {
   font-size: 13px;
-  color: var(--warn);
+  color: var(--danger);
 }

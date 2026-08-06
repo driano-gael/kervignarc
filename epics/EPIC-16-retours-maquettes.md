@@ -52,8 +52,12 @@ règle de départage à la demande (A16/P07), dialogue de confirmation en rempla
 
 - La refonte de l'identité visuelle par tournoi (**E01US016**), qui porte déjà le logo d'événement.
   L'ajout d'un **logo de club** (A05) s'y rattache et est traité ici seulement pour mémoire.
-- Toute reprise des planches `maquettes/` elles-mêmes : elles décrivent un état daté et servent de
-  support au questionnaire, pas de spécification vivante.
+- Toute reprise des planches `maquettes/` elles-mêmes : elles servent ici de support au
+  questionnaire. ⚠️ **Amendé le 05/08/2026 par [ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md)** :
+  les planches sont devenues la **référence opposable** de mise en page du front. « Pas de
+  spécification vivante » ne vaut plus que **pour cet épic-ci**, qui traite les retours *sur* les
+  maquettes ; amener le produit *jusqu'aux* maquettes est le sujet de
+  [`EPIC-17`](EPIC-17-fidelite-aux-maquettes.md).
 
 ## Capacités
 

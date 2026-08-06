@@ -28,6 +28,7 @@ Découpage en grandes fonctionnalités (EPICs), **par capacité produit**. Strat
 | [EPIC-14](EPIC-14-lisibilite-admin.md) | **Accueil & lisibilité de l'admin** — dashboard `D-20`, aide contextuelle | MVP | 00, 01, 12 |
 | [EPIC-15](EPIC-15-jeu-d-essai-simulation.md) | **Jeu d'essai & simulation** — inscrits fake, scénarios, bot + cockpit | MVP+1 | 02, 05, 06 |
 | [EPIC-16](EPIC-16-retours-maquettes.md) | **Retours du questionnaire de maquettes** — 36 planches revues le 04/08/2026 | MVP | 03, 05, 07, 14 |
+| [EPIC-17](EPIC-17-fidelite-aux-maquettes.md) | **Fidélité de l'application aux maquettes** — charte du club, puis confrontation écran par écran | MVP | 14, 16 |
 
 > 🎯 **EPIC-12 porte la valeur du produit** (créé le 14/07/2026). Les 12 EPICs ci-dessus couvraient tout le
 > cycle — configuration, inscriptions, placement, saisie, moteur, classements, affichage, paiements, exports,

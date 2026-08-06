@@ -89,7 +89,7 @@ export function SchemaBraquets({
             refY="4"
             orient="auto"
           >
-            <path d="M 0 0 L 8 4 L 0 8 z" fill="var(--accent)" />
+            <path d="M 0 0 L 8 4 L 0 8 z" fill="var(--brand-text)" />
           </marker>
         </defs>
         {plan.aretes.map((arete) => (

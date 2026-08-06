@@ -1,9 +1,18 @@
 # Maquettes — dossier de conception
 
-> **Statut : support de travail en cours de revue. Ne fait autorité sur rien.**
-> Ce dossier n'est pas du cadrage. En cas de divergence avec
+> **Statut : référence opposable de mise en page du front** depuis le 05/08/2026
+> ([ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md)).
+> Un écart entre un écran livré et sa planche est un **défaut**, constatable en revue — c'est
+> [`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md) qui le traite.
+> Ce dossier n'est pas pour autant du cadrage : en cas de divergence avec
 > [`cahier-des-charges-ux.md`](../cahier-des-charges-ux.md) ou
-> [`cahier-des-charges-design.md`](../cahier-des-charges-design.md), **les CDC gagnent**.
+> [`cahier-des-charges-design.md`](../cahier-des-charges-design.md), **les CDC gagnent** — et c'est la
+> **planche** qui est corrigée.
+>
+> *(Avant cette date, le dossier se déclarait « support de travail […] ne fait autorité sur rien ».
+> L'effet pervers était mécanique : un écart entre le produit et sa planche n'était le défaut de
+> personne, et la confrontation annoncée plus bas — « Confronter les deux reste à faire » — n'avait
+> aucun destinataire.)*
 
 ## Point de reprise — au 05/08/2026
 
@@ -80,14 +89,21 @@ Décisions actées avec le commanditaire :
    plutôt que de disparaître — reste à dire s'il faut encore un niveau, ou juste une liste plate.
 3. **L'étanchéité le jour J** — l'axe Gestion doit rester ouvert (`P-3`, le retardataire de 8 h 50) ;
    l'atelier n'a rien à faire dans la journée (`P-6`). Masqué, ou seulement rangé ailleurs ?
-4. **Le verdict d'ensemble d'A01** n'a pas été rendu (aucune case cochée en §2).
+4. ~~**Le verdict d'ensemble d'A01** n'a pas été rendu.~~ **Levé** : le questionnaire
+   `questionnaires/tour-1-2026-08-04/a01-connexion.md` coche bien « A — Formulaire sobre plein
+   cadre » (§1) et « 🟡 Validé avec les réserves » (§2). La note disait le contraire et a fait
+   compter un quatrième arbitrage ouvert qui n'existait pas — corrigé le 06/08/2026 (E17US003).
 
 ### ⚠️ Ce qu'il ne faut pas faire tout de suite
 
-**Ne pas redessiner les écrans de l'Atelier en supposant qu'ils sont hors tournoi.** Quatre d'entre
-eux — catégories, blasons, barèmes, phases — portent encore un identifiant de tournoi côté serveur
-(**DETTE-023**). Seuls **Clubs** et **Gabarits** tiennent la promesse. Le lot « atelier » les
-libérera ; dessiner avant, c'est dessiner un écran qui ne peut pas exister.
+~~**Ne pas redessiner les écrans de l'Atelier en supposant qu'ils sont hors tournoi.**~~ **Levé.**
+L'avertissement visait **DETTE-023** — quatre briques (catégories, blasons, barèmes, phases) portaient
+encore un identifiant de tournoi côté serveur, donc l'écran maquetté ne pouvait pas exister. La dette
+est **résorbée depuis le 31/07/2026** (E01US023, [ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md)) :
+les six destinations de l'atelier s'ouvrent sans tournoi, `bareme` et `phases` étant parties au
+**pilotage** parce qu'elles règlent **une** édition. Les écrans de l'Atelier sont donc dessinables.
+*(Note corrigée le 05/08/2026 en E17US001 : elle avait survécu de cinq jours à sa cause, et faisait
+renoncer à des écrans devenus faisables.)*
 
 **Ne pas rouvrir le débat « trois URL de premier niveau »** : tranché, écarté par le commanditaire.
 
@@ -195,7 +211,9 @@ qu'aucune page n'invente sa propre couleur.
    ouverture d'un questionnaire, vérifier `git log main --first-parent` si l'écran a l'air d'avoir bougé.
 3. **« Écran existant » ne veut pas dire « conforme ».** La mention signale qu'un composant du même rôle vit
    dans `frontend/src/features/` — elle ne dit rien de la ressemblance entre l'écran livré et la maquette.
-   Confronter les deux reste à faire.
+   **Cette confrontation est désormais un chantier tenu** :
+   [`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md). Premier écart relevé, et il était total — le
+   front tournait encore sur la palette du walking skeleton (E17US001, ADR-0074).
 
 ## Trous trouvés en maquettant
 

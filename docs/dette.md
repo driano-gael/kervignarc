@@ -64,6 +64,7 @@
 | [DETTE-040](#dette-040--lalphabet-des-codes-de-terrain-existe-en-trois-exemplaires) | conception | mineur | `backend/infrastructure/postes/codes.py`, `backend/infrastructure/scoreurs/codes.py`, `frontend/src/shared/ui/codeTerrain.ts` | La chaîne `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` et la longueur `6` sont écrites **trois fois**. Les deux fichiers Python annonçaient eux-mêmes attendre « une 3ᵉ preuve avant tout remède » : le front est cette troisième | Un alphabet modifié d'un côté et pas des deux autres produit des codes que le pavé refuse de composer, ou l'inverse. Le garde-fou réel reste que **le serveur tranche** — le front n'est qu'une aide à la frappe | Lot « retours maquettes » du 05/08/2026. **Aucun remède proposé** : réunir Python et TypeScript supposerait d'exposer l'alphabet par l'API, ce qui est une US à part entière et coûte plus que la duplication (règle 16 — « ne rien faire » est ici la bonne réponse) |
 | [DETTE-041](#dette-041--le-front-approxime--a-tiré--par--total-non-nul-) | conception | mineur | `frontend/src/features/competition/departage.ts` (`totauxExAequo`), `frontend/src/features/competition/api.ts` (`LigneClassement`) | Le domaine **distingue** `a_tire` de `total > 0` — `backend/domain/classement.py` le documente : « un archer qui a validé une volée entièrement manquée a bien tiré, pour un total nul ». Le DTO n'expose pas ce booléen, donc le front l'approxime par `total !== 0` | Deux archers réellement à zéro ne sont pas signalés ex æquo. Cas de fin de journée, quasi théorique, sans conséquence autre que l'absence d'une phrase d'aide. **Non traité et plus gênant** : deux archers à des avancements différents (3 volées contre 6) au même total sont signalés ex æquo à tort — le DTO ne porte aucun avancement | Lot « retours maquettes » du 05/08/2026, relevé en 2ᵉ passe de revue. Résorption : exposer `a_tire` (et l'avancement) dans `LigneClassement`. ⚠️ **Le second volet est un arbitrage** : « ex æquo » vaut-il à l'issue de la qualification, ou à avancement égal ? À poser au commanditaire |
 | [DETTE-042](#dette-042--le-métier-dit--couloir-de-tir--le-code-dit-position) | conception | majeur | `backend/domain/gabarit_salle.py` (`POSITIONS`), `backend/domain/placement.py` (`Placement.position`), les DTO de `backend/api/v1/{gabarits,placement,placement_duels,saisie,routage}.py`, leurs miroirs front, et les colonnes `placement.position` / `placement_duel.position` en base | **E16US001** ([ADR-0073](adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md)) a arbitré le terme métier : la place d'un archer devant sa cible est un **couloir de tir**, pas une « position ». Corrigé dans **l'application livrée** (écrans, aide contextuelle, messages d'API, les deux PDF, maquette A10 + planche wireframe, glossaire), **pas** dans les identifiants ni en base — écart à la **règle 3**, **amendant ADR-0006**, créé par cette US | Aucun effet à l'exécution : purement de lecture. Qui part du glossaire cherche `couloir` et ne trouve rien ; l'API expose un mot que l'UI contredit — soit les deux critères de « majeur » (invariant du projet + piège du prochain contributeur) | Non fait dans l'US : le renommage traverse domaine + ORM + **migration Alembic** + 5 modules d'API + front, ~20 fichiers mécaniques, dont le diff noierait celui du vocabulaire d'écran. Résorption **rattachée à `E01US019`** (voir DETTE-010) : même symbole, même colonne, **une seule migration** |
+| [DETTE-043](#dette-043--la-charte-impose-inter-lapplication-ne-lembarque-pas) | conception | mineur | `frontend/src/index.css` (`--sans`) | `DV-07` impose **Inter**. La pile de polices la déclare en tête, mais **aucun fichier de police n'est livré** : sur un poste qui ne l'a pas installée, le navigateur retombe silencieusement sur `Segoe UI` ou la police système | Le jour J tourne **sans internet** : aucune tablette ne pourra la télécharger. Le rendu réel sera donc, en pratique, celui de la police système sur la quasi-totalité du parc — proportions justes, dessin des lettres faux. Aucun effet fonctionnel, mais la charte est **déclarée satisfaite alors qu'elle ne l'est pas** | **E17US001** (05/08/2026, [ADR-0074](adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md)) : la charte a été posée sans embarquer la police | Embarquer les `.woff2` d'Inter dans `frontend/public/` avec un `@font-face` local. **Bloqué sur arbitrage** : c'est un ajout d'actif au dépôt (règle 11) — ~100 à 300 Ko, licence OFL —, donc une décision du commanditaire, pas de l'implémenteur |
 
 ## Dette résorbée
 
@@ -1859,3 +1860,32 @@ et les deux colonnes ORM de `backend/infrastructure/db/models.py` — c'est là 
 frappera, donc là où la surprise coûterait le plus cher. Les quatre autres modules d'API et les
 types front miroirs ne portent **pas** de marqueur : ils suivront mécaniquement le renommage des
 entités, et les cribler de commentaires coûterait plus que ça ne préviendrait.
+
+---
+
+### DETTE-043 — la charte impose Inter, l'application ne l'embarque pas
+
+**Le raccourci.** `frontend/src/index.css` déclare `--sans: Inter, 'Inter var', 'Segoe UI',
+system-ui, …`. La première entrée n'est honorée que si la police est **installée sur le poste** :
+rien n'est livré avec l'application, et aucune règle `@font-face` ne pointe vers un fichier local.
+
+**Pourquoi ça ne se voit pas en développement.** Un poste de développement a souvent Inter installée,
+ou une police système au dessin proche ; et le repli est **silencieux** par construction — c'est tout
+l'intérêt d'une pile de polices. Le défaut ne se manifeste donc qu'au moment le plus coûteux : le jour
+J, dans le gymnase, sur des tablettes personnelles, **sans internet** pour rattraper.
+
+**Ce qui a été fait à la place.** La pile de repli retenue est **exactement celle des maquettes**
+(`maquettes/assets/systeme.css`, `--ui`). Ce n'est pas cosmétique : cela garantit que l'application et
+les planches se dégradent **vers la même police**, donc qu'une comparaison écran ↔ planche reste
+valable même sans Inter. Le dossier de maquettes assume la même limite, et l'écrit
+(« La police n'est pas la bonne »).
+
+**Pourquoi ce n'est pas résorbé dans l'US.** Embarquer une police est un **ajout d'actif au dépôt** —
+règle 11, donc un arbitrage du commanditaire et non de l'implémenteur : poids (~100 à 300 Ko selon les
+graisses et le sous-ensemble de glyphes retenus), licence (OFL, permissive), et le choix des graisses
+réellement utilisées. Le trancher sans le poser aurait fait passer une décision de dépôt pour de la
+plomberie.
+
+**Ce qu'il faudra faire.** Déposer les `.woff2` sous `frontend/public/fonts/`, déclarer les
+`@font-face` avec `font-display: swap`, et **vérifier hors ligne** — c'est-à-dire couper le réseau,
+pas seulement recharger la page. Marqueur `# DETTE-043` sur la déclaration `--sans` d'`index.css`.

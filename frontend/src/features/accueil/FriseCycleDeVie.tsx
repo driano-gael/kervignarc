@@ -39,7 +39,7 @@ const RANG: Record<StatutTournoi, number> = {
 
 // E05US021 — l'avertissement d'effectif, **avant** le clic « Démarrer ».
 //
-// Ambre (`--warn`), jamais rouge : ce n'est pas encore un refus, c'est ce qui l'annonce (`DV-03`).
+// Ambre (`--danger`), jamais rouge : ce n'est pas encore un refus, c'est ce qui l'annonce (`DV-03`).
 // Le refus, lui, remontera du serveur par `MessageErreur` (rouge, `role="alert"`). Et jamais la
 // couleur seule — glyphe **et** mot portent le sens.
 //

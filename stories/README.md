@@ -26,6 +26,14 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 > écrans y sont refusés en l'état (A07 phases, A10 plan de salle, A14 complétude) plus P03
 > (classements publics). Suivi : [`SUIVI-US.md`](../journal-d-avancement/SUIVI-US.md) § « Retours du
 > questionnaire de maquettes (04/08/2026) ».
+>
+> ⚠️ **Nouveau le 05/08/2026 — [`E17`](E17-fidelite-aux-maquettes.md), à ne pas confondre avec `E16`.**
+> E16 traite ce que le commanditaire reproche **aux maquettes** ; **E17 amène le produit jusqu'à
+> elles**. Le premier écart relevé était total : le front tournait encore sur la palette du walking
+> skeleton (accent violet, fond blanc), les « US design » annoncées dans `index.css` n'ayant jamais
+> été écrites. E17US001 pose la charte ;
+> [ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md)
+> rend les planches **opposables** en revue.
 
 ## Jalons de valeur
 | Jalon | Valeur livrée |
