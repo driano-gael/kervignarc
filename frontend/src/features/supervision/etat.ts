@@ -2,8 +2,8 @@
 //
 // Isolée du rendu React pour être **testée** en node (comme `shared/realtime/indicateur.ts`). Rappel
 // de l'arbitrage (ADR-0038, story E12US001) : un poste **hors ligne** se signale en **ambre** (token
-// sémantique `--danger` — nommé `--danger` jusqu'à E17US001, qui a fondu les deux alertes en une seule
-// depuis que la charte est posée), **jamais** en rouge — sur l'anthracite de la charte le rouge ne contraste pas
+// sémantique `--danger` — il s'appelait `--warn` jusqu'à E17US001, qui a posé la charte et fondu les
+// deux anciennes alertes ; l'escalade est `--danger-strong`), **jamais** en rouge — sur l'anthracite de la charte le rouge ne contraste pas
 // assez et ne signale rien (`DV-03`). Et toujours **couleur + pastille + texte**, jamais la couleur
 // seule (le `libelle` porte l'information pour qui ne distingue pas les teintes).
 

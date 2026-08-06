@@ -6,6 +6,10 @@
 // n'en fait que l'affichage.
 
 import type { DestinationAdminId } from './aide-ecrans'
+// Import **de type seulement** : `axes.ts` reste pur et sans dépendance d'exécution vers une autre
+// feature. Le statut est une union fermée — le typer `string` laissait une faute de frappe cesser
+// silencieusement de matcher (relevé à la revue).
+import type { Tournoi } from '../competition/api'
 
 // `besoinTournoi` dit si l'axe travaille **sur un tournoi**. L'atelier, non : c'est le patrimoine du
 // club, il vit d'année en année — d'où l'absence de sélecteur de tournoi dans cet axe.
@@ -231,9 +235,17 @@ export function destinationValide(
  * agrégats que le serveur n'expose pas, et les recomposer côté client coûterait une requête par
  * tournoi à chaque ouverture de l'accueil. Écart inscrit au relevé d'EPIC-17.
  */
+export function tournoisEnCours<T extends { statut: Tournoi['statut'] }>(
+  tournois: readonly T[],
+): readonly T[] {
+  // « En pause » compte : le tournoi est **lancé**, il attend. La règle vit ici et nulle part
+  // ailleurs — la dupliquer dans le composant, c'est se donner deux définitions qui divergeront.
+  return tournois.filter((t) => t.statut === 'en_cours' || t.statut === 'en_pause')
+}
+
 export function contextePilotage(
-  tournois: readonly { nom: string; statut: string }[],
+  tournois: readonly Pick<Tournoi, 'nom' | 'statut'>[],
 ): string | null {
-  const enCours = tournois.filter((t) => t.statut === 'en_cours' || t.statut === 'en_pause')
+  const enCours = tournoisEnCours(tournois)
   return enCours.length === 0 ? null : enCours.map((t) => t.nom).join(' · ')
 }

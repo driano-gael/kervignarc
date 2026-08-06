@@ -25,14 +25,21 @@ describe('CA — le thème sombre est le défaut, sans suivre le système (DV-02
     expect(document.documentElement.dataset.theme).toBe('dark')
   })
 
-  it('le défaut ne dépend pas de la préférence de l’appareil', () => {
-    // La valeur posée est la même quelle que soit la lumière du poste : c'est tout l'enjeu du jour J,
-    // où ~30 tablettes BYOD suivraient sinon chacune le réglage de son propriétaire.
-    appliquerTheme(null)
-    const sansPreference = document.documentElement.dataset.theme
-    delete document.documentElement.dataset.theme
-    appliquerTheme(null)
-    expect(document.documentElement.dataset.theme).toBe(sansPreference)
+  it('la charte ne fait suivre l’OS que sur choix explicite', () => {
+    // L'autre moitié de la garantie, et elle vit dans le CSS : tant qu'aucune règle
+    // `prefers-color-scheme` ne cible `:root` **nu**, le défaut ne peut pas se remettre à suivre
+    // l'appareil. C'est la seule façon dont le défaut corrigé pourrait revenir.
+    //
+    // *(Une première version comparait ici `appliquerTheme(null)` à lui-même : une assertion qui ne
+    // pouvait pas échouer, dans le fichier écrit pour prouver qu'un CA est tenu. Relevée à la revue.)*
+    const charte = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8')
+    const reglesSuivantLOS = [
+      ...charte.matchAll(/@media \(prefers-color-scheme:[^)]*\)\s*\{([^}]*)\{/g),
+    ]
+    expect(reglesSuivantLOS.length).toBeGreaterThan(0)
+    for (const [, cible] of reglesSuivantLOS) {
+      expect((cible ?? '').trim()).toMatch(/data-theme='systeme'/)
+    }
   })
 })
 

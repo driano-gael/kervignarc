@@ -812,7 +812,7 @@
 .carte__aide {
   margin: -4px 0 4px;
   font-size: 12px;
-  /* `--text` (le niveau fort) et non `--text-secondary` : ce texte **porte de l'information métier** (ce que fait le format
+  /* `--text-secondary` (le corps) et non `--text` : ce texte **porte de l'information métier** (ce que fait le format
      choisi), c'est le seul endroit où l'organisateur apprend ce qu'est une « colline ». Le token
      atténué est pour l'accessoire. Aligné sur `.zones__aide`, que le commentaire disait déjà viser. */
   color: var(--text-secondary);
@@ -2325,7 +2325,11 @@ button:disabled {
   border-radius: 8px;
 }
 
+/* `font: inherit` — bouton **composite** (cf. la note plus haut) : la ligne d'archer contient cinq
+   `<span>`, dont le nom de famille et l'avancement. Sans lui, ils héritent des 13 px / graisse 800
+   du bouton d'action, sur l'écran de saisie — celui qui se lit une flèche à la main. */
 .saisie__ligne {
+  font: inherit;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

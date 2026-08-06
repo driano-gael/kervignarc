@@ -79,13 +79,20 @@ it('les sources du front sont lisibles depuis le répertoire d’exécution', ()
  *
  *  `[^{}]*` borne chaque corps à une règle sans accolade : la prélude d'une `@media` ne matche donc
  *  pas, et ce sont ses règles **internes** qui sont énumérées — exactement ce qu'on veut examiner. */
-function regles(source: string): { selecteur: string; corps: string }[] {
-  return [...source.matchAll(/([^{}]*)\{([^{}]*)\}/g)].map((m) => ({
-    // Le préambule capturé contient le commentaire d'introduction ; le sélecteur en est la dernière
-    // ligne.
-    selecteur: ((m[1] ?? '').split('\n').at(-1) ?? '').trim(),
-    corps: m[2] ?? '',
-  }))
+function regles(source: string): { selecteurs: string[]; corps: string }[] {
+  return [...source.matchAll(/([^{}]*)\{([^{}]*)\}/g)].map((m) => {
+    // Le préambule contient le commentaire d'introduction **et** les éventuels sélecteurs du groupe,
+    // un par ligne terminée d'une virgule. On remonte tant que la ligne précédente en est un : sans
+    // ça, `.autre,\n.jauge span { … }` profitait de la dérogation accordée au seul dernier.
+    const lignes = (m[1] ?? '').split('\n')
+    let i = lignes.length - 1
+    const selecteurs = [(lignes[i] ?? '').trim()]
+    while (i > 0 && (lignes[i - 1] ?? '').trim().endsWith(',')) {
+      i--
+      selecteurs.unshift((lignes[i] ?? '').trim().replace(/,$/, ''))
+    }
+    return { selecteurs: selecteurs.filter((s) => s !== ''), corps: m[2] ?? '' }
+  })
 }
 
 /** Blanchit le contenu des commentaires **en gardant les retours à la ligne**, pour que les numéros
@@ -107,18 +114,43 @@ function neutraliserCommentaires(source: string): string {
     .replace(/(^|[^:])\/\/.*/g, (tout, avant: string) => avant + blanchir(tout.slice(avant.length)))
 }
 
-/** Le dernier sélecteur ouvert avant chaque ligne — pour dire *où* une faute se trouve. Remis à
- *  zéro sur une accolade fermante, sinon les lignes hors règle héritent du sélecteur précédent et
- *  se retrouvent couvertes par sa dérogation. */
-function lignesAvecSelecteur(source: string): { selecteur: string; ligne: string }[] {
-  let selecteur = '(hors règle)'
+/** Le **groupe** de sélecteurs ouvert avant chaque ligne — pour dire *où* une faute se trouve, et
+ *  pour qu'une dérogation ne puisse pas excuser ses voisins.
+ *
+ *  Le groupe, et non le dernier sélecteur : `.autre,\n.qr-cible__vignette { … }` faisait profiter
+ *  `.autre` de la dérogation accordée au QR. Remis à zéro sur une accolade fermante, sinon les
+ *  lignes hors règle héritent du groupe précédent. */
+function lignesAvecSelecteur(source: string): { selecteurs: string[]; ligne: string }[] {
+  const HORS = ['(hors règle)']
+  let groupe = HORS
+  let enAttente: string[] = []
   return source.split('\n').map((ligne) => {
+    const brut = ligne.trim()
     const ouvre = ligne.match(/^(.*?)\{/)
-    if (ouvre) selecteur = (ouvre[1] ?? '').trim()
-    const resultat = { selecteur, ligne }
-    if (/\}/.test(ligne)) selecteur = '(hors règle)'
+    if (ouvre) {
+      groupe = [...enAttente, (ouvre[1] ?? '').trim()].filter((s) => s !== '')
+      enAttente = []
+    } else if (brut.endsWith(',')) {
+      enAttente.push(brut.slice(0, -1).trim())
+    } else if (brut === '') {
+      enAttente = []
+    }
+    const resultat = { selecteurs: groupe.length > 0 ? groupe : HORS, ligne }
+    if (/\}/.test(ligne)) {
+      groupe = HORS
+      enAttente = []
+    }
     return resultat
   })
+}
+
+/** Retire le **nom** d'un jeton, en gardant sa valeur de repli.
+ *
+ *  `var(--danger, #ff0000)` doit rester examinable : le repli est précisément l'idiome qu'on écrit
+ *  quand un jeton manque, et effacer le `var()` entier laissait passer n'importe quel littéral —
+ *  vérifié par mutation. On efface donc `var(--danger` et pas plus. */
+function sansNomsDeJetons(texte: string): string {
+  return texte.replace(/var\(\s*--[\w-]+/g, '')
 }
 
 describe('CA — aucune couleur écrite hors de la charte', () => {
@@ -151,9 +183,10 @@ describe('CA — aucune couleur écrite hors de la charte', () => {
   it('aucune couleur littérale hors `index.css`, sauf les exceptions nommées', () => {
     const fautes = features.flatMap(([chemin, source]) =>
       lignesAvecSelecteur(neutraliserCommentaires(source))
-        .filter(({ ligne }) => COULEUR.test(ligne.replace(/var\([^)]*\)/g, '')))
-        .filter(({ selecteur }) => !(selecteur in COULEURS_ADMISES))
-        .map(({ selecteur, ligne }) => `${chemin} — ${selecteur} — ${ligne.trim()}`),
+        .filter(({ ligne }) => COULEUR.test(sansNomsDeJetons(ligne)))
+        // **Tous** les sélecteurs du groupe doivent être dérogés, pas seulement le dernier.
+        .filter(({ selecteurs }) => !selecteurs.every((s) => Object.hasOwn(COULEURS_ADMISES, s)))
+        .map(({ selecteurs, ligne }) => `${chemin} — ${selecteurs.join(', ')} — ${ligne.trim()}`),
     )
 
     expect(fautes).toEqual([])
@@ -273,17 +306,22 @@ describe('CA — le rouge du club est une surface, jamais un accent (DV-04)', ()
     // Une exception, et une seule : le **bord d'un aplat de marque**. Quand la règle pose déjà
     // `background: var(--brand-surface)`, le contour ne sépare pas la marque du fond — il affleure
     // sa propre surface, et aucun contraste n'est en jeu.
+    // `var\(\s*--brand-surface\s*[,)]` et non `var\(--brand-surface\)` : la forme **à repli**
+    // `var(--brand-surface, #b71918)` échappait aux trois gardes de ce fichier.
+    const MARQUE = String.raw`var\(\s*--brand-surface\s*[,)]`
     const fautes = features.flatMap(([chemin, source]) =>
-      regles(source).flatMap(({ selecteur, corps }) => {
-        const estUnAplat = /(^|[;\n])\s*background(-color)?:\s*var\(--brand-surface\)/.test(corps)
+      regles(source).flatMap(({ selecteurs, corps }) => {
+        const estUnAplat = new RegExp(
+          String.raw`(^|[;\n])\s*background(-color)?:\s*${MARQUE}`,
+        ).test(corps)
         return corps
-          .split('\n')
-          .filter((ligne) => {
-            const encre = /^\s*(color|fill|stroke)\s*:[^;]*var\(--brand-surface\)/.test(ligne)
-            const contour = /^\s*border[a-z-]*\s*:[^;]*var\(--brand-surface\)/.test(ligne)
+          .split(/[;\n]/)
+          .filter((decl) => {
+            const encre = new RegExp(String.raw`^\s*(color|fill|stroke)\s*:.*${MARQUE}`).test(decl)
+            const contour = new RegExp(String.raw`^\s*border[a-z-]*\s*:.*${MARQUE}`).test(decl)
             return encre || (contour && !estUnAplat)
           })
-          .map((ligne) => `${chemin} — ${selecteur} — ${ligne.trim()}`)
+          .map((decl) => `${chemin} — ${selecteurs.join(', ')} — ${decl.trim()}`)
       }),
     )
 
@@ -303,16 +341,37 @@ describe('CA — le rouge du club est une surface, jamais un accent (DV-04)', ()
       '.jauge span', // le remplissage d'une jauge, dans sa piste
     ]
 
+    // L'encre doit être le jeton **apparié** au fond, pas une encre quelconque : `background:
+    // var(--danger); color: var(--text)` est blanc sur ambre — 1,9:1 — et passait le contrôle de
+    // simple présence. C'est exactement le défaut que ce test dit empêcher.
     const fautes = features.flatMap(([chemin, source]) =>
       regles(source)
-        .filter(
-          ({ corps }) =>
-            /(^|[;\n])\s*background(-color)?:\s*var\(--(brand-surface|danger|danger-strong|success)\)/.test(
-              corps,
-            ) && !/(^|[;\n])\s*color:/.test(corps),
+        .filter(({ corps }) =>
+          /(^|[;\n])\s*background(-color)?:\s*var\(--(brand-surface|danger|danger-strong|success|info)\)/.test(
+            corps,
+          ),
         )
-        .filter(({ selecteur }) => !REMPLISSAGES_SANS_TEXTE.includes(selecteur))
-        .map(({ selecteur }) => `${chemin} — ${selecteur}`),
+        .filter(({ corps }) => !/(^|[;\n])\s*color:\s*var\(--sur-[\w-]+\)/.test(corps))
+        .filter(({ selecteurs }) => !selecteurs.every((s) => REMPLISSAGES_SANS_TEXTE.includes(s)))
+        .map(({ selecteurs }) => `${chemin} — ${selecteurs.join(', ')}`),
+    )
+
+    expect(fautes).toEqual([])
+  })
+
+  it('aucune feuille de feature ne redéfinit un jeton de la charte', () => {
+    // Dernier chemin de contournement trouvé par mutation : `:root[data-theme='dark'] { --danger:
+    // var(--brand-surface); }` posé dans une feuille de feature repeint toute l'alerte en rouge sans
+    // écrire une seule couleur littérale, ni ressusciter un jeton abandonné. La palette « à un seul
+    // endroit » exige donc aussi que **personne d'autre ne la redéfinisse**.
+    const jetonsDeLaCharte = Object.keys(declinaison("data-theme='dark'").jetons)
+    const fautes = features.flatMap(([chemin, source]) =>
+      regles(neutraliserCommentaires(source)).flatMap(({ selecteurs, corps }) =>
+        [...corps.matchAll(/(^|[;\n])\s*(--[a-z0-9-]+)\s*:/g)]
+          .map((m) => m[2] as string)
+          .filter((jeton) => jetonsDeLaCharte.includes(jeton))
+          .map((jeton) => `${chemin} — ${selecteurs.join(', ')} — redéfinit ${jeton}`),
+      ),
     )
 
     expect(fautes).toEqual([])

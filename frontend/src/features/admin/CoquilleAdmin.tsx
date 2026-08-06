@@ -96,6 +96,7 @@ import {
   analyserSegmentsAdmin,
   contextePilotage,
   destinationParDefaut,
+  tournoisEnCours,
   destinationValide,
   segmentsAdmin,
   type Axe,
@@ -478,7 +479,7 @@ function Coquille() {
     // Les deux dérivations sont **pures et testées** dans `axes.ts` : elles portent des règles
     // invisibles au rendu (un tournoi *en pause* compte comme en cours) que seul un test tient.
     const liste = tournois.data ?? []
-    const enCours = liste.filter((t) => t.statut === 'en_cours' || t.statut === 'en_pause').length
+    const enCours = tournoisEnCours(liste).length
     const contexte = contextePilotage(liste)
     return (
       <div className="accueil-admin">

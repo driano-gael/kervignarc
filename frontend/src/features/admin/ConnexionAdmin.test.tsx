@@ -42,6 +42,11 @@ describe('CA — les champs ont un libellé visible, pas un placeholder', () => 
 
     expect(await screen.findByLabelText(/identifiant/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/mot de passe/i)).toBeInTheDocument()
+    // `getByLabelText` matche aussi un `aria-label` — donc le retour au `placeholder` + `aria-label`
+    // que cette US a précisément retiré repasserait au vert. C'est le caractère **visible** du
+    // libellé que le CA demande : on l'assert séparément.
+    expect(screen.getByText('Identifiant')).toBeVisible()
+    expect(screen.getByText('Mot de passe')).toBeVisible()
   })
 
   it('le premier accès étiquette aussi sa confirmation', async () => {

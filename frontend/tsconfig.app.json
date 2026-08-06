@@ -4,11 +4,13 @@
     "target": "es2023",
     "lib": ["ES2023", "DOM"],
     "module": "esnext",
-    /* `node` **n'est pas** ici : l'ajouter au projet rendait `process`, `Buffer` et `node:fs`
-       résolvables depuis n'importe quel composant — donc du code Node type-checké au vert avant
-       d'exploser au chargement, sur une tablette, dans le gymnase. Le seul fichier qui en a besoin
-       (`shared/charte.test.ts`, qui lit les feuilles de style sur disque) le référence lui-même par
-       `/// <reference types="node" />`. Trou refermé à la revue d'E17US001. */
+    /* `node` **n'est pas** ici. Mais attention au faux sentiment de sécurité : les deux tests qui
+       lisent les sources sur disque le déclarent par `/// <reference types="node" />`, et cette
+       directive **injecte le paquet dans le programme entier**, pas dans le seul fichier. Retirer
+       `node` d'ici ne referme donc rien à soi seul — vérifié par mutation à la revue, après qu'une
+       première correction eut affirmé le contraire.
+       La frontière est tenue par **eslint** (`no-restricted-imports` / `no-restricted-globals` sur
+       tout `src/` hors tests), qui est dans la porte de CI. Cf. `eslint.config.js`. */
     "types": ["vite/client"],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,

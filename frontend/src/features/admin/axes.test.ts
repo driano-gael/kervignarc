@@ -191,12 +191,12 @@ describe('contextePilotage', () => {
       contextePilotage([
         { nom: 'Challenge des champions', statut: 'en_cours' },
         { nom: 'Nocturne extérieur', statut: 'en_cours' },
-      ]),
+      ] as const),
     ).toBe('Challenge des champions · Nocturne extérieur')
   })
 
   it('compte un tournoi **en pause** comme en cours — il est lancé, il attend', () => {
-    expect(contextePilotage([{ nom: 'Trophée de la ville', statut: 'en_pause' }])).toBe(
+    expect(contextePilotage([{ nom: 'Trophée de la ville', statut: 'en_pause' }] as const)).toBe(
       'Trophée de la ville',
     )
   })
@@ -205,7 +205,7 @@ describe('contextePilotage', () => {
     ['aucun tournoi', []],
     ['que des brouillons', [{ nom: 'À venir', statut: 'brouillon' }]],
     ['que du terminé ou de l’archivé', [{ nom: 'L’an dernier', statut: 'archive' }]],
-  ])('ne dit rien quand rien n’est en cours — %s', (_cas, tournois) => {
+  ] as const)('ne dit rien quand rien n’est en cours — %s', (_cas, tournois) => {
     // `null` et non `''` : l'appelant n'a pas à distinguer « rien à dire » de « quelque chose à
     // dire, mais vide ».
     expect(contextePilotage(tournois)).toBeNull()

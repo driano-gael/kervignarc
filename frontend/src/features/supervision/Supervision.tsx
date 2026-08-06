@@ -136,7 +136,13 @@ function TuilePoste({ poste, tournoiId }: { poste: PosteSupervision; tournoiId: 
   // attend) et « muet depuis 25 min » (tablette morte, on traverse le gymnase) appellent deux gestes
   // opposés — c'est la seule décision que cet écran sert à prendre. L'ancien tableau les portait dans
   // deux colonnes distinctes ; les fondre en une seule marque était une régression. (Revue E17US004.)
-  const signe = vu ?? libelle
+  //
+  // Quand le poste est **muet**, le mot est porté par le bandeau : la pastille n'a donc pas à le
+  // redire — elle affiche « — » si le serveur ne connaît aucun temps (cas réel : une cible rattachée
+  // qui se tait **avant d'avoir saisi quoi que ce soit**, `derniere_saisie` étant l'horodatage de la
+  // dernière volée et non un battement de cœur). Sans cette nuance, « Hors ligne » apparaissait deux
+  // fois dans une tuile de 150 px.
+  const signe = vu ?? (poste.etat === 'hors_ligne' ? '—' : libelle)
 
   return (
     <li className={`supervision__tuile supervision__tuile--${classe}`}>
@@ -148,7 +154,13 @@ function TuilePoste({ poste, tournoiId }: { poste: PosteSupervision; tournoiId: 
         {volee !== null && <span className="supervision__volee">{volee}</span>}
         <span className={`supervision__etat supervision__etat--${classe} supervision__signe`}>
           <span className="indicateur__pastille" aria-hidden="true" />
-          <span className="sr-only">dernier signe de vie&nbsp;: </span>
+          {/* Le préfixe **suit la nature de la valeur**, il ne la précède pas d'office : `signe` vaut
+              le temps écoulé quand il y en a un, l'état sinon. Annoncer « dernier signe de vie : Non
+              rattaché » serait faux — et le cas est atteignable, `derniere_saisie` étant l'horodatage
+              de la dernière volée, nul tant que la cible n'a rien saisi. */}
+          <span className="sr-only">
+            {vu === null ? 'signe de vie : ' : 'dernier signe de vie : '}
+          </span>
           {signe}
         </span>
       </p>
