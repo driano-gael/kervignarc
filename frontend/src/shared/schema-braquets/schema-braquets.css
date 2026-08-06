@@ -48,7 +48,7 @@
 }
 
 .schema-braquets__bloc--bloquant rect {
-  stroke: var(--danger);
+  stroke: var(--danger-strong);
   stroke-width: 2;
   stroke-dasharray: 5 3;
 }
@@ -134,14 +134,16 @@
   padding-left: 10px;
 }
 
-/* Ambre pour l'avertissement, rouge pour le bloquant (`DV-03` : l'alerte est ambre, le rouge est
-   réservé à ce qui interdit). */
+/* Deux niveaux d'**ambre** : `--danger` avertit, `--danger-strong` interdit. Ce n'était pas le cas
+   avant la revue d'E17US001 — la fusion des deux anciennes alertes avait rendu les deux lignes
+   identiques, et ce commentaire promettait un rouge que `DV-03` exclut de toute façon sur
+   l'anthracite (2,55:1, il ne signale rien). */
 .deroule__anomalie--avertissement {
   border-left-color: var(--danger);
 }
 
 .deroule__anomalie--bloquante {
-  border-left-color: var(--danger);
+  border-left-color: var(--danger-strong);
 }
 
 .deroule__sources {

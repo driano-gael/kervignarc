@@ -265,7 +265,7 @@ function Verdict({ diagnostic }: { diagnostic: Diagnostic }) {
  * Deux registres, et c'est délibéré. Tant que le compte est bon (ou qu'on ne simule rien), c'est une
  * **information** neutre : `carte__aide`, pas d'alerte — le format n'a rien de fautif, il a
  * simplement un plancher. Dès que l'effectif simulé passe dessous, ça devient un **avertissement**
- * ambre (`--warn`, `DV-03`), avec glyphe *et* mot : à cet effectif-là, le tournoi ne se lancera pas.
+ * ambre (`--danger`, `DV-03`), avec glyphe *et* mot : à cet effectif-là, le tournoi ne se lancera pas.
  *
  * Jamais bloquant : un format composé pour 120 archers reste parfaitement valide le jour où l'on en
  * simule 28 — c'est la simulation qui ne correspond pas, pas le format. Le blocage n'a lieu qu'au

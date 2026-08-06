@@ -5,7 +5,7 @@ import type { DuelAVenir, Duelliste, ResumeLancement } from './api'
 
 export type ClasseEtat = 'pret' | 'attente'
 
-// L'état visuel d'un duel : **prêt** (vert `--ok`) ou **en attente** (ambre `--warn`, jamais rouge
+// L'état visuel d'un duel : **prêt** (vert `--success`) ou **en attente** (ambre `--danger`, jamais rouge
 // sur fond sombre — DV-03). Le libellé nomme ce qui bloque (le CA : « pas seulement signalé »).
 export function afficheDuel(duel: DuelAVenir): { classe: ClasseEtat; libelle: string } {
   if (duel.pret_a_lancer) return { classe: 'pret', libelle: 'Prêt' }

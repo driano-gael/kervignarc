@@ -153,8 +153,11 @@
   color: var(--success);
 }
 
+/* `--danger-strong` et non `--danger` : la fusion des deux anciennes alertes (E17US001) avait rendu
+   cet état **identique** à son voisin moins grave. La charte porte deux niveaux d'ambre — c'est le
+   second qui porte l'escalade, et le rouge reste exclu (`DV-03`). */
 .indicateur--deconnecte {
-  color: var(--danger);
+  color: var(--danger-strong);
 }
 
 /* Rejeu de la file hors-ligne en cours (E04US009) : ambre + pastille pulsée pour signaler l'activité. */
@@ -499,7 +502,7 @@
 }
 
 /* Marque d'état sur un axe : neutre par défaut. L'ambre reste réservé aux alertes (`DV-03`), donc
-   « en cours » se signale en `--ok` — c'est un état vivant, pas un incident. */
+   « en cours » se signale en `--success` — c'est un état vivant, pas un incident. */
 .accueil-admin__marque {
   padding: 2px 8px;
   font-size: 11px;
@@ -651,7 +654,11 @@
   overflow: hidden;
 }
 
+/* `font: inherit` — bouton **composite** : sans lui, il hérite de la typographie du bouton d'action
+   (13 px, graisse 800, interlettrage) posée sur le sélecteur `button` nu. Même convention que
+   `.coquille__lien`, `.onglet` et `.accueil__porte`. */
 .groupe__bandeau {
+  font: inherit;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -805,7 +812,7 @@
 .carte__aide {
   margin: -4px 0 4px;
   font-size: 12px;
-  /* `--text` et non `--text-h` : ce texte **porte de l'information métier** (ce que fait le format
+  /* `--text` (le niveau fort) et non `--text-secondary` : ce texte **porte de l'information métier** (ce que fait le format
      choisi), c'est le seul endroit où l'organisateur apprend ce qu'est une « colline ». Le token
      atténué est pour l'accessoire. Aligné sur `.zones__aide`, que le commentaire disait déjà viser. */
   color: var(--text-secondary);
@@ -815,12 +822,15 @@
   color: var(--success);
 }
 
+/* `--danger-strong` et non `--danger` : la fusion des deux anciennes alertes (E17US001) avait rendu
+   cet état **identique** à son voisin moins grave. La charte porte deux niveaux d'ambre — c'est le
+   second qui porte l'escalade, et le rouge reste exclu (`DV-03`). */
 .carte__etat--erreur {
-  color: var(--danger);
+  color: var(--danger-strong);
 }
 
-/* Ambre : ce qui appelle l'attention **sans** interdire (`DV-03` — l'alerte est ambre, le rouge est
-   réservé au refus). Introduit par E01US024 pour le verdict « brouillon enregistré mais pas encore
+/* Ambre simple : ce qui appelle l'attention **sans** interdire. L'escalade est `--danger-strong`,
+   pas le rouge — sur l'anthracite le rouge ne signale rien (`DV-03`, 2,55:1). Introduit par E01US024 pour le verdict « brouillon enregistré mais pas encore
    applicable » : ce n'est ni une réussite ni une erreur de saisie, c'est un état intermédiaire
    normal — le dire en rouge dramatiserait un brouillon en cours. */
 .carte__etat--alerte {
@@ -1545,8 +1555,11 @@ button:disabled {
   color: var(--text-secondary);
 }
 
+/* `--danger-strong` et non `--danger` : la fusion des deux anciennes alertes (E17US001) avait rendu
+   cet état **identique** à son voisin moins grave. La charte porte deux niveaux d'ambre — c'est le
+   second qui porte l'escalade, et le rouge reste exclu (`DV-03`). */
 .badge--annule {
-  color: var(--danger);
+  color: var(--danger-strong);
 }
 
 /* États d'un départ / créneau (E12US008) — même code couleur que le tournoi et les phases :
@@ -1665,11 +1678,6 @@ button:disabled {
   color: var(--text-muted);
 }
 
-.table th {
-  color: var(--text);
-  font-weight: 600;
-}
-
 .table__total {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
@@ -1678,7 +1686,7 @@ button:disabled {
 
 /* Donnée manquante à compléter (ex. « Club inconnu », E02US002) : une **alerte**, pas une erreur
    — l'inscription est valide, c'est l'information qui est incomplète. D'où le token ambre
-   (`--warn`, `DV-03`) et non `--danger`. */
+   (`--danger`, `DV-03`) — l'ambre simple, l'escalade étant `--danger-strong`. */
 .table__anomalie {
   color: var(--danger);
   font-size: 12px;
@@ -1761,6 +1769,18 @@ button:disabled {
   background: var(--success);
 }
 
+/* Le `.aplat-alerte` de la planche, à la taille d'une tuile : aplat plein, encre anthracite. Il
+   remplace la jauge d'un poste muet — un avancement figé n'apprend rien. */
+.supervision__alerte {
+  margin: 8px 0 0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--danger);
+  color: var(--sur-danger);
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .supervision__pied {
   display: flex;
   align-items: center;
@@ -1791,7 +1811,7 @@ button:disabled {
   color: var(--success);
 }
 
-/* Hors ligne = **ambre** (`--warn`), jamais rouge : sur l'anthracite de la charte le rouge ne
+/* Hors ligne = **ambre** (`--danger`), jamais rouge : sur l'anthracite de la charte le rouge ne
    contraste pas assez et ne signale rien (`DV-03`, arbitrage E12US001 / ADR-0038). */
 .supervision__etat--hors_ligne {
   color: var(--danger);
@@ -1808,8 +1828,8 @@ button:disabled {
 }
 
 /* Feu vert / lancer le tour (E12US002) : une ligne par duel à venir, avec son état en **couleur +
-   pastille + texte** (jamais la couleur seule, DV-03) — prêt = vert (`--ok`), en attente = **ambre**
-   (`--warn`), jamais rouge sur l'anthracite de la charte. */
+   pastille + texte** (jamais la couleur seule, DV-03) — prêt = vert (`--success`), en attente = **ambre**
+   (`--danger`), jamais rouge sur l'anthracite de la charte. */
 .feu-vert__selecteur {
   display: flex;
   flex-direction: column;
@@ -1876,7 +1896,7 @@ button:disabled {
 
 /* Complétude du tournoi (E12US005) : deux sections (sportif / hors sportif), chacune une liste
    d'états. Comme la supervision : **couleur + pastille + texte**, jamais la couleur seule (DV-03).
-   L'alerte = **ambre** (`--warn`), jamais rouge sur l'anthracite de la charte. */
+   L'alerte = **ambre** (`--danger`), jamais rouge sur l'anthracite de la charte. */
 .completude__intro {
   color: var(--text-secondary);
   margin-bottom: 8px;
@@ -1996,7 +2016,7 @@ button:disabled {
   margin: 8px 0;
 }
 
-/* Refus de déplacement (409) : une **alerte** ambre (DV-03, `--warn`), pas une erreur rouge — le
+/* Refus de déplacement (409) : une **alerte** ambre (DV-03, `--danger`), pas une erreur rouge — le
    geste était légitime, seulement pas applicable ici. */
 .placement__alerte {
   margin: 4px 0;
@@ -2011,7 +2031,7 @@ button:disabled {
   font-size: 14px;
 }
 
-/* Confirmation par calcul d'impact (E12US007, ADR-0040) : panneau chiffré, ambre (`--warn`) — une
+/* Confirmation par calcul d'impact (E12US007, ADR-0040) : panneau chiffré, ambre (`--danger`) — une
    alerte à lire, pas une erreur rouge ; le mot à taper arme le bouton pour l'action massive. */
 .confirmation {
   margin: 8px 0;
@@ -2176,7 +2196,7 @@ button:disabled {
   color: var(--danger);
 }
 
-/* Mixité de club non garantie (E03US006, RG-3) : avertissement d'équité **ambre** (DV-03, `--warn`),
+/* Mixité de club non garantie (E03US006, RG-3) : avertissement d'équité **ambre** (DV-03, `--danger`),
    jamais rouge — l'objectif « ≥ 2 clubs par cible » n'est pas atteignable ici (un seul club, ou club
    inconnu). Signal, pas erreur bloquante : l'admin peut ajuster à la main. Badge par cible + bannière
    récapitulative dans le même registre. */
@@ -2208,7 +2228,7 @@ button:disabled {
   color: var(--text);
 }
 
-/* Adjacence de duel non garantie (E03US009, ADR-0048) : même registre **ambre** (DV-03, `--warn`)
+/* Adjacence de duel non garantie (E03US009, ADR-0048) : même registre **ambre** (DV-03, `--danger`)
    que la mixité de club, jamais rouge — au moins un duel n'est pas placé côte à côte (adversaires
    séparés). Signal d'organisation, pas erreur bloquante : l'admin peut ajuster à la main. Badge par
    cible, dans le même style discret que `.cible__mixite`. */
@@ -2515,7 +2535,9 @@ button:disabled {
   margin-bottom: 10px;
 }
 
+/* `font: inherit` puis la fonte mono : cf. la note des boutons composites ci-dessus. */
 .saisie__nav-volee {
+  font: inherit;
   min-width: 48px;
   min-height: 48px;
   padding: 0;
@@ -2993,8 +3015,8 @@ button:disabled {
 }
 
 /* Statut d'une volée : « en attente de validation » = score provisoire (ADR-0039) → **alerte ambre**
-   (DV-03, `--warn`), jamais rouge — c'est un état légitime, pas une erreur ; « validé » = **vert**
-   (`--ok`, verrouillé, confirmé). La paire ambre/vert lit le provisoire vs l'acquis d'un coup d'œil. */
+   (DV-03, `--danger`), jamais rouge — c'est un état légitime, pas une erreur ; « validé » = **vert**
+   (`--success`, verrouillé, confirmé). La paire ambre/vert lit le provisoire vs l'acquis d'un coup d'œil. */
 .suivi-volee__statut {
   flex: 0 0 auto;
   font-size: 12px;
@@ -3064,7 +3086,8 @@ button:disabled {
 }
 
 /* Statut de paiement : **texte + couleur** (jamais la couleur seule — DV-03). Réglé au vert d'appui
-   (`--ok`), partiel à l'ambre d'alerte (`--warn`), à régler au rouge d'action (`--danger`), rien à
+   (`--success`), partiel à l'ambre simple (`--danger`), à régler à l'ambre fort (`--danger-strong`,
+   le rouge ne signale rien sur l'anthracite), rien à
    payer au gris neutre. */
 .statut {
   font-size: 13px;
@@ -3080,8 +3103,11 @@ button:disabled {
   color: var(--danger);
 }
 
+/* `--danger-strong` et non `--danger` : la fusion des deux anciennes alertes (E17US001) avait rendu
+   cet état **identique** à son voisin moins grave. La charte porte deux niveaux d'ambre — c'est le
+   second qui porte l'escalade, et le rouge reste exclu (`DV-03`). */
 .statut--du {
-  color: var(--danger);
+  color: var(--danger-strong);
 }
 
 .statut--neutre {
@@ -3107,7 +3133,7 @@ button:disabled {
   flex-wrap: wrap;
 }
 
-/* Actes en attente d'envoi (hors-ligne) : **ambre** (`--warn`, DV-03), jamais rouge — un score
+/* Actes en attente d'envoi (hors-ligne) : **ambre** (`--danger`, DV-03), jamais rouge — un score
    gardé n'est pas une erreur, il part à la reconnexion. */
 .duels-saisie__attente {
   font-size: 13px;
@@ -3148,7 +3174,11 @@ button:disabled {
 }
 
 /* Une ligne de duel : les deux duellistes + un statut. Tapable (bouton) si ouvrable. */
+/* `font: inherit` — bouton **composite** : sans lui, il hérite de la typographie du bouton d'action
+   (13 px, graisse 800, interlettrage) posée sur le sélecteur `button` nu. Même convention que
+   `.coquille__lien`, `.onglet` et `.accueil__porte`. */
 .duels-liste__match {
+  font: inherit;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3305,7 +3335,11 @@ button:disabled {
    Elles partageaient une seule rangée avec le nom : un nom long les réduisait à rien, alors que ce
    sont les seules zones qu'on vise du doigt. Tapable pour devenir le camp actif (que le pavé
    remplit). */
+/* `font: inherit` — bouton **composite** : sans lui, il hérite de la typographie du bouton d'action
+   (13 px, graisse 800, interlettrage) posée sur le sélecteur `button` nu. Même convention que
+   `.coquille__lien`, `.onglet` et `.accueil__porte`. */
 .duel__volee {
+  font: inherit;
   display: flex;
   flex-direction: column;
   align-items: stretch;

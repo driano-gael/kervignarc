@@ -94,6 +94,7 @@ import {
   BESOIN_TOURNOI,
   AXE_PAR_DESTINATION,
   analyserSegmentsAdmin,
+  contextePilotage,
   destinationParDefaut,
   destinationValide,
   segmentsAdmin,
@@ -474,16 +475,11 @@ function Coquille() {
   }, [chemin, chemAttendu])
 
   if (axeActif === null) {
-    const enCoursListe = (tournois.data ?? []).filter(
-      (t) => t.statut === 'en_cours' || t.statut === 'en_pause',
-    )
-    const enCours = enCoursListe.length
-    // Ligne de contexte de la planche A02 (« Challenge des champions · Départ 2 en tir · 28/30 postes
-    // en ligne ») : on n'en sert que la part **déjà connue de cet écran**, le nom des tournois en
-    // cours. Le départ courant et le compte de postes en ligne demanderaient un agrégat que le
-    // serveur n'expose pas ; les inventer côté client par une requête par tournoi ferait payer
-    // l'accueil pour une information de confort. Écart assumé, noté au relevé d'écarts d'EPIC-17.
-    const contextePilotage = enCours === 0 ? null : enCoursListe.map((t) => t.nom).join(' · ')
+    // Les deux dérivations sont **pures et testées** dans `axes.ts` : elles portent des règles
+    // invisibles au rendu (un tournoi *en pause* compte comme en cours) que seul un test tient.
+    const liste = tournois.data ?? []
+    const enCours = liste.filter((t) => t.statut === 'en_cours' || t.statut === 'en_pause').length
+    const contexte = contextePilotage(liste)
     return (
       <div className="accueil-admin">
         <h2 className="accueil-admin__question">Que venez-vous faire ?</h2>
@@ -507,8 +503,8 @@ function Coquille() {
                   )}
                 </span>
                 <span className="accueil-admin__phrase">{a.phrase}</span>
-                {a.axe === 'pilotage' && contextePilotage !== null && (
-                  <span className="accueil-admin__contexte">{contextePilotage}</span>
+                {a.axe === 'pilotage' && contexte !== null && (
+                  <span className="accueil-admin__contexte">{contexte}</span>
                 )}
               </button>
             </li>

@@ -7,7 +7,7 @@
 
 /* --- Composer un déroulé (E01US024, ADR-0063) -------------------------------------------------
    L'écran de composition d'un format : l'éditeur de séquence à gauche, le schéma à braquets et la
-   simulation à droite. Tout passe par les tokens (`--accent`, `--warn`, `--danger`, `--surface`)
+   simulation à droite. Tout passe par les tokens (`--brand-*`, `--danger`, `--danger`, `--surface`)
    pour que le thème clair/sombre suive sans code conditionnel — le SVG compris, ce qui est
    précisément pourquoi il est **inline** plutôt qu'une image. */
 .deroule__entete {

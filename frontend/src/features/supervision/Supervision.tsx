@@ -128,11 +128,15 @@ function TuilePoste({ poste, tournoiId }: { poste: PosteSupervision; tournoiId: 
   const fraction = fractionAvancement(poste.avancement)
   const vu = poste.derniere_saisie === null ? null : tempsRelatif(poste.derniere_saisie, new Date())
 
-  // `DV-03` — **couleur + pastille + texte**, jamais la couleur seule. La planche met le temps écoulé
-  // dans la pastille (« 2 s », « 6 min ») ; ça marche tant que le poste répond, parce que le temps
-  // *est* l'information. Un poste **muet** n'a pas de temps qui veuille dire quelque chose : on y
-  // écrit alors l'état en toutes lettres, sinon seule la teinte de la bordure le distinguerait.
-  const marque = poste.etat === 'en_ligne' ? (vu ?? libelle) : libelle
+  // La pastille porte **toujours** le temps écoulé quand il existe — y compris sur un poste muet.
+  //
+  // La première version l'y remplaçait par l'état, sur une lecture fausse de la planche : sa tuile
+  // hors ligne (A13, tuile 7) porte **« 14 min » ET** un bandeau « hors ligne ». Elle superpose, elle
+  // ne substitue pas. Et c'est bien le temps qui compte ici : « muet depuis 90 s » (coupure wifi, on
+  // attend) et « muet depuis 25 min » (tablette morte, on traverse le gymnase) appellent deux gestes
+  // opposés — c'est la seule décision que cet écran sert à prendre. L'ancien tableau les portait dans
+  // deux colonnes distinctes ; les fondre en une seule marque était une régression. (Revue E17US004.)
+  const signe = vu ?? libelle
 
   return (
     <li className={`supervision__tuile supervision__tuile--${classe}`}>
@@ -144,23 +148,36 @@ function TuilePoste({ poste, tournoiId }: { poste: PosteSupervision; tournoiId: 
         {volee !== null && <span className="supervision__volee">{volee}</span>}
         <span className={`supervision__etat supervision__etat--${classe} supervision__signe`}>
           <span className="indicateur__pastille" aria-hidden="true" />
-          {marque}
+          <span className="sr-only">dernier signe de vie&nbsp;: </span>
+          {signe}
         </span>
       </p>
 
-      {/* La jauge est une image d'information : sans équivalent textuel, un lecteur d'écran ne lit
-          qu'une boîte vide. L'`aria-label` reprend le libellé **du tableau**, mot pour mot. */}
-      {fraction !== null && (
-        <p className="jauge" role="img" aria-label={avancementLibelle(poste.avancement)}>
-          <span style={{ width: `${Math.round(fraction * 100)}%` }} />
-        </p>
+      {/* Un poste **muet** porte le bandeau d'alerte de la planche **à la place** de sa jauge : un
+          avancement figé n'apprend rien, et c'est le mot qui doit rester lisible sans la couleur
+          (`DV-03`). **Seulement `hors_ligne`** : « non rattaché » est l'état *nominal* de la matinée,
+          le crier trente fois apprendrait à ne plus lire l'alerte le jour où elle dit vrai. */}
+      {poste.etat === 'hors_ligne' ? (
+        <p className="supervision__alerte">{libelle}</p>
+      ) : (
+        /* La jauge est une image d'information : sans équivalent textuel, un lecteur d'écran ne lit
+           qu'une boîte vide. L'`aria-label` reprend le libellé **du tableau**, mot pour mot. */
+        fraction !== null && (
+          <p className="jauge" role="img" aria-label={avancementLibelle(poste.avancement)}>
+            <span style={{ width: `${Math.round(fraction * 100)}%` }} />
+          </p>
+        )
       )}
 
-      {rattache && (
-        <p className="supervision__pied">
-          <span className="supervision__ip">{poste.ip ?? '—'}</span>
-          {/* Garde-fou tactile : révoquer un poste en cours de tir le coupe. Vrai dialogue depuis
-              le retour maquettes du 04/08/2026 (A15) ; le calcul d'impact chiffré reste E12US007. */}
+      {/* `<div>` et non `<p>` : `BoutonConfirme` rend un `<dialog>`, que le contenu phrasé d'un
+          paragraphe n'admet pas. Rendu inchangé, HTML valide. */}
+      <div className="supervision__pied">
+        {/* L'IP est rendue même sans rattachement — comme le faisait la colonne du tableau : « — »
+            dit que la tablette n'a pas encore parlé, ce que l'absence de ligne ne dit pas. */}
+        <span className="supervision__ip">{poste.ip ?? '—'}</span>
+        {/* Garde-fou tactile : révoquer un poste en cours de tir le coupe. Vrai dialogue depuis
+            le retour maquettes du 04/08/2026 (A15) ; le calcul d'impact chiffré reste E12US007. */}
+        {rattache && (
           <BoutonConfirme
             libelle="Révoquer"
             className="lien supervision__revoquer"
@@ -172,8 +189,8 @@ function TuilePoste({ poste, tournoiId }: { poste: PosteSupervision; tournoiId: 
             ton="danger"
             onConfirmer={() => revoquer.mutate(poste.poste_id)}
           />
-        </p>
-      )}
+        )}
+      </div>
 
       {revoquer.isError && (
         <p className="carte__etat--erreur" role="alert">

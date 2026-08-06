@@ -69,11 +69,17 @@
   - un `<button>` **composite** (une porte de l'accueil : icône + titre + phrase) n'hérite pas de la
     typographie du bouton d'action ;
   - une action **destructrice** est trouvable sans être dominante : elle ne prend pas l'aplat.
-- **Notes** : vérifiée **au navigateur**, écran par écran — c'est ce qui a fait apparaître les deux
-  seuls vrais défauts du lot, qu'aucun test ne pouvait voir : les portes de l'accueil rendues en
-  graisse 800, et « Annuler le tournoi » en aplat ambre **écrasant** « Marquer prêt ». La couleur
-  d'une action destructrice reste **un trou de la charte** : le choix retenu (ambre en texte et
-  contour, la sécurité étant portée par le dialogue d'ADR-0072) est **soumis au commanditaire**.
+- **Notes** : vérifiée **au navigateur**, écran par écran — c'est ce qui a fait apparaître deux
+  défauts qu'aucun test ne pouvait voir : les portes de l'accueil rendues en graisse 800, et
+  « Annuler le tournoi » en aplat ambre **écrasant** « Marquer prêt ». La couleur d'une action
+  destructrice reste **un trou de la charte** : le choix retenu (ambre en texte et contour, la
+  sécurité étant portée par le dialogue d'ADR-0072) est **soumis au commanditaire**.
+  **Arbitrage reversé à la revue** : la fusion de `--warn` dans `--danger` avait rendu **identiques**
+  cinq paires d'états que le produit distinguait. La charte porte **deux** niveaux d'ambre —
+  `--danger` avertit, `--danger-strong` escalade — et c'est cette paire qui rétablit la distinction,
+  sans réintroduire de rouge. Quatre boutons **composites** (bandeau repliable, ligne de duel, volée,
+  navigateur de volées) avaient aussi hérité de la typographie du bouton d'action : ils déclarent
+  désormais `font: inherit`, comme `.coquille__lien` et `.onglet`.
 - **Dépend de** : E17US001 · **Jalon** : J1
 
 ### E17US003 — Les deux premiers écrans de l'admin se conforment à leur planche
@@ -108,8 +114,12 @@
   - les cibles se lisent en **grille de tuiles**, une tuile par cible, sans défilement de tableau ;
   - une tuile porte le **numéro de cible**, la **volée en cours** en forme courte, le **dernier signe
     de vie** et une **jauge d'avancement** ;
-  - un poste **muet** se distingue **au cadre**, pas seulement à sa pastille — et son état est écrit
-    **en toutes lettres** (`DV-03` : jamais la couleur seule) ;
+  - un poste **muet** se distingue **au cadre**, pas seulement à sa pastille ; son état est écrit
+    **en toutes lettres** (`DV-03` : jamais la couleur seule) **et sa tuile conserve le temps écoulé
+    depuis le dernier signe de vie** — c'est lui qui distingue « le wifi a sauté » de « la tablette
+    est morte », donc lui qui décide du geste. *(Arbitrage reversé à la revue : la première version
+    remplaçait le temps par l'état, sur une lecture inexacte de la planche — sa tuile hors ligne
+    porte bien les deux.)* ;
   - **rien n'est perdu** de ce que le tableau portait : l'IP de diagnostic (`D-06`) et la révocation
     restent atteignables depuis la tuile ;
   - la jauge a un **équivalent textuel** — sans lui, un lecteur d'écran ne lit qu'une boîte vide.

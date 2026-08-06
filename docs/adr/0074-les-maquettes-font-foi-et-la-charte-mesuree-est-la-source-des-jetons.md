@@ -46,6 +46,16 @@ rien »*, et [`EPIC-16`](../../epics/EPIC-16-retours-maquettes.md) excluait les 
 divergence tolérée. Les CDC restent au-dessus : en cas de conflit planche ↔ charte, **la charte
 mesurée l'emporte** (elle porte les ratios de contraste), et la planche est corrigée.
 
+Deux réserves, permanentes, à lire avec la règle :
+
+- **La fidélité porte sur la mise en page, pas sur le balisage.** Là où la planche décrit un rendu
+  qu'une structure sémantique rend mieux — un `<table>` contre une pile de `<div>` —, le produit
+  garde la structure et n'en prend que l'apparence. Une planche est dessinée, elle n'est pas lue par
+  un lecteur d'écran.
+- **Un arbitrage explicite du commanditaire l'emporte sur la planche.** Cas déjà constaté : la
+  densité. Les planches sont serrées, le questionnaire A02 demande l'inverse (« je mettrai plus
+  d'espace, plus aéré […] pour tous les écrans ») — c'est la planche qui est en retard.
+
 **2. `frontend/src/index.css` ne définit plus de couleur : il transcrit la charte.** Les jetons du
 produit adoptent le **vocabulaire des maquettes**, un seul pour les deux dépôts de vérité. La table
 de correspondance appliquée :
@@ -59,13 +69,19 @@ de correspondance appliquée :
 | `--dim` | `--text-muted` | métadonnées |
 | `--border` | `--border-subtle`, **sauf** contours actionnables → `--border` | WCAG 1.4.11 |
 | `--accent` | `--brand-surface` / `--brand-border` / `--brand-text` **selon l'usage** | `DV-04` |
-| `--warn` **et** `--danger` | `--danger` | `DV-03` — une seule alerte, ambre |
+| `--warn` **et** `--danger` | `--danger`, escaladé en `--danger-strong` là où deux états coexistent | `DV-03` — l'alerte est ambre ; deux niveaux d'ambre, jamais de rouge |
 | `--ok` | `--success` | |
 
 **3. Le sombre est le défaut, sans suivre l'OS.** `:root` porte la déclinaison sombre de la charte
 (`DV-02` : `#1D1D1B` est le fond de la banderole du club). L'option « Système » de `D-26` est
-**conservée** : `appliquerTheme(null)` pose désormais `data-theme="systeme"`, auquel une unique règle
-`@media (prefers-color-scheme: light)` rend son effet.
+**conservée**, comme une valeur à part entière : `appliquerTheme('systeme')` pose
+`data-theme="systeme"`, auquel une unique règle `@media (prefers-color-scheme: light)` rend son effet.
+
+⚠️ **« Aucun choix » et « Système » sont deux choses distinctes**, et les confondre annule la
+décision. La première version les confondait — `appliquerTheme(null)` posait `"systeme"`, or le store
+initialise à `null` : une tablette neuve sous OS clair ouvrait donc l'application **en clair**,
+c'est-à-dire l'alternative rejetée plus bas. Depuis la revue, `null` (jamais choisi) donne le
+**sombre**, et seul un choix explicite active le suivi de l'OS.
 
 **4. Deux valeurs ⟦DÉRIVÉ⟧ sont adoptées** : `--success:#0C7A61` et `--info:#0B6E9E` en thème clair,
 absentes du CDC design §3.3.4 et proposées par le dossier de maquettes.
@@ -81,10 +97,18 @@ absentes du CDC design §3.3.4 et proposées par le dossier de maquettes.
 - **`--warn` disparaît.** [`stories/E12`](../../stories/E12-pilotage-jour-j.md) le citait nommément
   pour le poste hors ligne ; la note y est corrigée. L'invariant réellement porté par le CA est
   inchangé : **couleur + icône + texte**, jamais la couleur seule (`DV-03`).
-- **Un bouton destructif devient ambre.** Conséquence directe de `DV-03` — le rouge ne signale rien
-  sur l'anthracite. **Point à confirmer par le commanditaire** : l'ambre porte alors deux sens
-  (« poste hors ligne » et « action destructrice »). La charte ne définit pas de couleur d'action
-  destructrice ; c'est un **trou constaté**, pas un choix.
+- **Un bouton destructif devient ambre — en contour et en texte, jamais en aplat.** L'aplat a été
+  essayé puis rejeté sur pièce (E17US002) : sur l'accueil de pilotage, « Annuler le tournoi » y
+  écrasait « Marquer prêt », l'action principale. Ce n'est de toute façon pas la couleur du bouton
+  qui protège, c'est le dialogue de confirmation ([ADR-0072](0072-confirmation-destructrice-dialog-natif.md)).
+  **Point à confirmer par le commanditaire**, porté par une case à cocher d'`EPIC-17 § Capacités`
+  pour qu'il ne se perde pas : la charte ne définit **aucune** couleur d'action destructrice ; c'est
+  un **trou constaté**, pas un choix.
+- **L'alerte a deux niveaux, pas un.** La fusion de `--warn` dans `--danger` avait rendu
+  **identiques** des paires d'états que le produit distinguait (déconnecté / connexion en cours,
+  erreur / alerte, annulé / en cours, dû / partiel, bloquant / avertissement). La charte porte
+  `--danger` (9,22:1) **et** `--danger-strong` (11,79:1) : c'est le second qui porte l'escalade, le
+  rouge restant exclu. *(Défaut trouvé à la revue : la substitution avait été mécanique.)*
 - **Inter n'est pas embarquée.** `DV-07` l'impose, mais l'ajouter est un **ajout d'actif à arbitrer**
   (règle 11) et le jour J tourne **sans internet** : sans fichier local, aucune tablette ne la
   chargera. La pile de repli retenue est **exactement celle des maquettes**, de sorte que

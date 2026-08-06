@@ -67,6 +67,8 @@ livrées n'avait de raison de s'en apercevoir : chacune était conforme à *son*
 - [x] A01 connexion + A02 accueil des axes (E17US003).
 - [x] A13 supervision — la grille de tuiles (E17US004).
 - [ ] Embarquer **Inter** pour le jour J, sans réseau (`DV-07`) — **arbitrage d'actif en attente**.
+- [ ] Trancher la **couleur d'une action destructrice** — trou de la charte (`DV-03` exclut le rouge,
+      rien n'est prévu pour ce cas) : aujourd'hui contour ambre, **arbitrage en attente**.
 - [ ] Confronter les 19 planches `A**` (admin) aux écrans livrés et lister les écarts.
 - [ ] Confronter les 9 planches `S**` (saisie & scoreur).
 - [ ] Confronter les 7 planches `P**` (public & écran de salle).
@@ -146,9 +148,13 @@ L'écart le plus **systématique** : les planches présentent les données d'adm
 - **Les planches vieillissent pendant qu'on les relit.** Le cas s'est déjà produit (A15, corrigée le
   jour même où E12US002 a livré le feu vert). Vérifier `git log main --first-parent` quand un écran a
   l'air d'avoir bougé.
-- **Quatre arbitrages du dossier restent ouverts** (noms des trois axes, niveau sous l'axe,
-  étanchéité de l'Atelier le jour J, verdict d'A01). Les écrans qu'ils touchent ne peuvent pas être
-  figés avant réponse — ADR-0074 rend les planches opposables, il ne tranche pas ces quatre points.
+- **Trois arbitrages du dossier restent ouverts** (noms des trois axes, niveau sous l'axe,
+  étanchéité de l'Atelier le jour J). Les écrans qu'ils touchent ne peuvent pas être figés avant
+  réponse — ADR-0074 rend les planches opposables, il ne tranche pas ces trois points.
+  *(Le « verdict d'A01 », longtemps compté comme quatrième, **a été rendu** : le questionnaire du
+  04/08 coche « A — Formulaire sobre plein cadre » et « 🟡 validé avec réserves ». C'est
+  `maquettes/README.md` qui était périmé, et cet épic l'avait recopié — corrigé à la revue
+  d'E17US003.)*
 - **La fidélité peut se retourner contre l'ergonomie.** Une planche est jugée à l'arrêt ; un écran de
   saisie est jugé une flèche à la main, à 3 m d'une cible. Là où les deux s'opposent, l'usage gagne
   et la planche est corrigée — pas l'inverse.

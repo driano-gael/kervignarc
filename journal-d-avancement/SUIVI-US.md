@@ -59,7 +59,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | 3 | `E16US004` | **Public multi-archers** (P03 🔴 + P01/P02/P05) — le socle de suivi existe depuis E07US006, la lecture n'en tire pas parti. |
 > | 4 | `E16US002` | **Phases** (A07) — le plus lourd : touche le domaine et l'API, probablement un ADR. À cadrer contre ADR-0060 et ADR-0062. |
 >
-> **⚡ Passé devant le 05/08/2026 — `E17US001`** *(hors séquence E16)* : le commanditaire a comparé
+> **⚡ Passé devant les 05 et 06/08/2026 — `E17US001` → `E17US004`** *(hors séquence E16)* : le commanditaire a comparé
 > l'application aux maquettes et constaté qu'elles n'avaient rien à voir. La cause n'était pas un
 > écran mais **la palette**, jamais posée. Traité en une passe sur les ~40 features, avec un épic neuf
 > pour la suite ([`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md) — confronter les 36 planches
@@ -793,7 +793,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E14US003 | Admin rangée en **trois axes d'activité** + une adresse par rôle | E14 🆕 | ✅ *(ADR-0058 révise `D-19` ; ADR-0059 remplace ADR-0032)* |
 | E01US023 | Les briques de l'atelier deviennent le **patrimoine du club** (bibliothèque, copie, promotion) | E01 🆕 | ✅ *(ADR-0060 ; DETTE-023 résorbée ; brique `FormatTournoi` ajoutée)* |
 
-## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (1/…)**
+## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (4 US livrées)**
 
 > Amener le **produit** jusqu'aux maquettes, là où [`E16`](../stories/E16-retours-maquettes.md) traite
 > les retours *sur* les maquettes. Cf. [ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md),

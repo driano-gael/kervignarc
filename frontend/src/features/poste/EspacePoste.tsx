@@ -159,11 +159,16 @@ function PosteDeCible({ poste }: { poste: PosteRattache }) {
 
 // Luminosité du poste (D-26) : « Système » (suit `prefers-color-scheme`), « Clair » ou « Sombre »
 // forcés. Le choix est persisté et revient tout seul à la réouverture (cf. `sessionPosteStore`).
+//
+// Tant que **rien** n'a été choisi, le thème appliqué est le **sombre de la charte** (`DV-02`) — pas
+// « Système ». La bascule le dit : c'est « Sombre » qui apparaît actif, parce que c'est ce qui est à
+// l'écran. Afficher « Système » actif par défaut serait le mensonge qui a masqué le défaut corrigé à
+// la revue d'E17US001.
 function BasculeTheme() {
   const theme = useSessionPosteStore((s) => s.theme)
   const definirTheme = useSessionPosteStore((s) => s.definirTheme)
-  const options: { valeur: Theme | null; libelle: string }[] = [
-    { valeur: null, libelle: 'Système' },
+  const options: { valeur: Theme; libelle: string }[] = [
+    { valeur: 'systeme', libelle: 'Système' },
     { valeur: 'clair', libelle: 'Clair' },
     { valeur: 'sombre', libelle: 'Sombre' },
   ]
@@ -176,7 +181,7 @@ function BasculeTheme() {
           key={o.libelle}
           type="button"
           className="lien"
-          aria-pressed={theme === o.valeur}
+          aria-pressed={(theme ?? 'sombre') === o.valeur}
           onClick={() => definirTheme(o.valeur)}
         >
           {o.libelle}

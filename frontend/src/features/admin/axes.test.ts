@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   AXES,
   AXE_PAR_DESTINATION,
+  contextePilotage,
   BESOIN_TOURNOI,
   analyserSegmentsAdmin,
   destinationParDefaut,
@@ -177,5 +178,36 @@ describe('destinationValide', () => {
 
   it('sans destination demandée : rien, l’axe choisira son ouverture', () => {
     expect(destinationValide(null, ['gabarits'])).toBeNull()
+  })
+})
+
+// — Ligne de contexte de l'axe Pilotage (E17US003, planche A02). —
+//
+// Deux règles que le rendu ne montre pas, et qui sont donc à la charge du test : un tournoi **en
+// pause** compte comme en cours, et l'absence rend `null` (pas une chaîne vide).
+describe('contextePilotage', () => {
+  it('nomme les tournois en cours', () => {
+    expect(
+      contextePilotage([
+        { nom: 'Challenge des champions', statut: 'en_cours' },
+        { nom: 'Nocturne extérieur', statut: 'en_cours' },
+      ]),
+    ).toBe('Challenge des champions · Nocturne extérieur')
+  })
+
+  it('compte un tournoi **en pause** comme en cours — il est lancé, il attend', () => {
+    expect(contextePilotage([{ nom: 'Trophée de la ville', statut: 'en_pause' }])).toBe(
+      'Trophée de la ville',
+    )
+  })
+
+  it.each([
+    ['aucun tournoi', []],
+    ['que des brouillons', [{ nom: 'À venir', statut: 'brouillon' }]],
+    ['que du terminé ou de l’archivé', [{ nom: 'L’an dernier', statut: 'archive' }]],
+  ])('ne dit rien quand rien n’est en cours — %s', (_cas, tournois) => {
+    // `null` et non `''` : l'appelant n'a pas à distinguer « rien à dire » de « quelque chose à
+    // dire, mais vide ».
+    expect(contextePilotage(tournois)).toBeNull()
   })
 })

@@ -89,7 +89,10 @@ Décisions actées avec le commanditaire :
    plutôt que de disparaître — reste à dire s'il faut encore un niveau, ou juste une liste plate.
 3. **L'étanchéité le jour J** — l'axe Gestion doit rester ouvert (`P-3`, le retardataire de 8 h 50) ;
    l'atelier n'a rien à faire dans la journée (`P-6`). Masqué, ou seulement rangé ailleurs ?
-4. **Le verdict d'ensemble d'A01** n'a pas été rendu (aucune case cochée en §2).
+4. ~~**Le verdict d'ensemble d'A01** n'a pas été rendu.~~ **Levé** : le questionnaire
+   `questionnaires/tour-1-2026-08-04/a01-connexion.md` coche bien « A — Formulaire sobre plein
+   cadre » (§1) et « 🟡 Validé avec les réserves » (§2). La note disait le contraire et a fait
+   compter un quatrième arbitrage ouvert qui n'existait pas — corrigé le 06/08/2026 (E17US003).
 
 ### ⚠️ Ce qu'il ne faut pas faire tout de suite
 

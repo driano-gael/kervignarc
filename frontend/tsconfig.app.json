@@ -4,10 +4,12 @@
     "target": "es2023",
     "lib": ["ES2023", "DOM"],
     "module": "esnext",
-    /* `node` s'ajoute pour un seul usage (E17US001) : `shared/charte.test.ts` lit l'arborescence
-       des sources sur disque, parce qu'il vérifie ce qui est **écrit** dans les feuilles de style,
-       y compris celles qu'aucun test ne monte. `@types/node` était déjà en devDependency. */
-    "types": ["vite/client", "node"],
+    /* `node` **n'est pas** ici : l'ajouter au projet rendait `process`, `Buffer` et `node:fs`
+       résolvables depuis n'importe quel composant — donc du code Node type-checké au vert avant
+       d'exploser au chargement, sur une tablette, dans le gymnase. Le seul fichier qui en a besoin
+       (`shared/charte.test.ts`, qui lit les feuilles de style sur disque) le référence lui-même par
+       `/// <reference types="node" />`. Trou refermé à la revue d'E17US001. */
+    "types": ["vite/client"],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 
