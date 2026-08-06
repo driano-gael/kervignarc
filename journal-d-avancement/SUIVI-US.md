@@ -12,7 +12,17 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 06/08/2026, 00 h 23** · **100 US livrées** · dernière : `E17US002`
+**Dernière mise à jour : 06/08/2026, 02 h 36** · **102 US livrées** · dernière : `E17US004`
+*(la **supervision passe en grille de tuiles** — planche A13, variante **B** « 30 d'un œil », retenue
+et **validée sans réserve**, alors que le produit livrait la variante **A**, le tableau. Écran du jour
+J : une tablette muette se repère au **cadre ambre** de sa tuile, état écrit en toutes lettres
+(`DV-03`) ; l'IP de diagnostic et la révocation, **absentes de la planche**, sont conservées dans la
+tuile. `voleeCourte`/`fractionAvancement` pures et testées **avant** le rendu, avec un test qui leur
+interdit de diverger d'`avancementLibelle`)*. Précédente : `E17US003` *(A01 **connexion en colonne
+centrée** — bandeau de titre, étiquettes visibles au-dessus des champs, bouton pleine largeur,
+échappatoire sous la carte — et A02 **accueil des axes** — la question « Que venez-vous faire ? » et le
+contexte de l'axe Pilotage. Précédée du **relevé d'écarts des 19 planches admin**, méthode
+« questionnaire → variante retenue → écran »)*. Précédente : `E17US002`
 *(le catalogue de composants — boutons, champs, cartes, onglets, pastilles, en-têtes de table —
 adopte les **formes** des planches : deux familles de rayons (ossature 8-10 px, contenu 4-6 px), bouton
 d'action en graisse 800, pastilles en petites capitales. **Deux non-reprises assumées** : la densité
@@ -793,6 +803,9 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 |---|---|---|---|
 | E17US001 | Poser la **charte du club** dans l'application | J1 | ✅ *(ADR-0074 ; `--warn`/`--ok`/`--accent` supprimés, garde-fou `charte.test.ts`)* |
 | E17US002 | Le **catalogue de composants** adopte les formes des planches | J1 | ✅ *(vérifié au navigateur ; densité **non** reprise — arbitrage A02)* |
+| — | **Relevé d'écarts des 19 planches admin** | — | ✅ *(dans [`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md) ; 6 planches hors périmètre, 3 variantes écartées, 5 écrans sans tableau)* |
+| E17US003 | A01 **connexion** + A02 **accueil des axes** conformes à leur planche | J1 | ✅ |
+| E17US004 | A13 **supervision en grille de tuiles** (variante B retenue) | J2 | ✅ *(écran du jour J ; IP + révocation conservées)* |
 | — | Embarquer **Inter** pour le jour J (`DV-07`) | J3 | ⬜ *(**arbitrage d'actif en attente** — règle 11)* |
 | — | Confronter les 19 planches `A**`, 9 `S**`, 7 `P**` aux écrans livrés | J3 | ⬜ |
 

@@ -106,7 +106,16 @@ s'arrondit franchement, le contenu très peu, là où l'application appliquait l
 Deux exceptions assumées : l'**espacement** reste celui, plus aéré, que vous aviez demandé, et les
 tableaux gardent leur vraie structure sous l'apparence des planches. Les écrans ont cette fois été
 ouverts **un par un dans un navigateur**, ce qui a fait apparaître deux défauts qu'aucun test ne
-voyait — dont un bouton « Annuler le tournoi » qui criait plus fort que l'action principale.
+voyait — dont un bouton « Annuler le tournoi » qui criait plus fort que l'action principale. Les **19
+planches d'administration** ont ensuite été confrontées une par une aux écrans livrés — en lisant
+d'abord, pour chacune, **quelle proposition avait été retenue** au questionnaire —, et trois écrans
+ont été repris : la **connexion** (colonne centrée, étiquettes au-dessus des champs, bouton pleine
+largeur), l'**accueil de l'administration** (la question « Que venez-vous faire ? » et le tournoi sur
+lequel le pilotage travaille) et surtout la **supervision des postes**, qui passe en **grille de
+tuiles** : l'écran du jour J affichait un tableau, c'est-à-dire la présentation écartée, alors qu'on
+lui demande de répondre d'un coup d'œil à « qui s'est tu ? ». Une tablette muette s'y repère
+désormais au cadre ambre de sa tuile — sans perdre l'adresse IP ni la révocation, absentes de la
+maquette mais indispensables sur le terrain.
 
 ---
 
@@ -471,7 +480,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **100 US livrées** sur `main` (mergées, revues, CI verte) à la date du 05/08/2026. **`SUIVI-US.md`
+- **102 US livrées** sur `main` (mergées, revues, CI verte) à la date du 05/08/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
