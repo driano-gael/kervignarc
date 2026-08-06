@@ -220,10 +220,13 @@ function Coquille() {
     },
     {
       id: 'formats',
-      libelle: 'Formats (déroulés)',
-      // Le déroulé type d'une compétition (ADR-0060 §5). Ce qui se réutilise d'une année sur
-      // l'autre est le **format**, pas la phase — celle-ci porte un statut et un rang propres à
-      // une édition.
+      libelle: 'Formats de tournoi',
+      // Ce qui se réutilise d'une année sur l'autre est le **format**, pas la phase — celle-ci
+      // porte un statut et un rang propres à une édition (ADR-0060 §5).
+      //
+      // Renommé en E01US025 : « Formats (déroulés) » réduisait le format à sa séquence de phases,
+      // alors qu'il devient le point d'entrée de l'atelier — tout ce dont un tournoi concret a
+      // besoin, pas seulement son déroulé.
       rendu: () => <Formats />,
     },
     {
