@@ -152,17 +152,19 @@ export const BESOIN_TOURNOI: Record<Exclude<DestinationAdminId, 'tournoi'>, bool
  * Pour le pilotage, c'est **l'accueil-tableau de bord** (`D-20`, E14US001) : c'est lui qui se
  * contextualise par statut, inutile donc d'aiguiller selon le statut.
  *
- * Pour l'atelier, c'est **`categories`** depuis E01US023 : les briques du club sont devenues des
- * modèles de bibliothèque (ADR-0060), donc toutes les destinations de l'axe s'ouvrent sans tournoi.
- * C'était `gabarits` tant que quatre d'entre elles en exigeaient un que l'axe ne propose pas de
- * choisir (DETTE-023, résorbée) : ouvrir sur l'une d'elles affichait, dès le premier clic, un écran
- * vide disant « choisissez un tournoi **ci-dessus** » — sans rien au-dessus. On ouvre désormais sur
- * la brique la plus consultée.
+ * Pour l'atelier, c'est **`formats`** depuis E01US025 : le format de tournoi devient le **point
+ * d'entrée** de l'axe — c'est de lui que découle un tournoi concret, les autres destinations ne
+ * fabriquant que les briques qu'il assemble. Ouvrir ailleurs ferait entrer par un composant.
+ *
+ * C'était `categories` depuis E01US023 (les briques du club devenues modèles de bibliothèque,
+ * ADR-0060), et `gabarits` avant elle, tant que quatre destinations exigeaient un tournoi que l'axe
+ * ne propose pas de choisir (DETTE-023, résorbée) : ouvrir sur l'une d'elles affichait, dès le
+ * premier clic, un écran vide disant « choisissez un tournoi **ci-dessus** » — sans rien au-dessus.
  */
 export function destinationParDefaut(axe: Axe): DestinationAdminId {
   if (axe === 'pilotage') return 'accueil'
   if (axe === 'gestion') return 'inscriptions'
-  return 'categories'
+  return 'formats'
 }
 
 // ————————————————————————————————————————————————————————————————————————————————————————————————

@@ -80,7 +80,9 @@ describe('destinationParDefaut', () => {
     expect(destinationsAtelier.filter((d) => BESOIN_TOURNOI[d])).toEqual([])
     expect(destinationsAtelier).toContain('categories')
     expect(destinationsAtelier).toContain('formats')
-    expect(destinationParDefaut('atelier')).toBe('categories')
+    // E01US025 : l'atelier ouvre sur le **format de tournoi**, son point d'entrée — et non plus sur
+    // `categories`, qui n'est qu'une des briques que le format assemble.
+    expect(destinationParDefaut('atelier')).toBe('formats')
   })
 
   it('les destinations qui règlent UNE édition sont au pilotage, pas à l’atelier', () => {
