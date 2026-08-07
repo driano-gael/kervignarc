@@ -13,6 +13,7 @@
 import { useState } from 'react'
 import { useCategories } from '../categories/hooks'
 import { ChoixCreneau } from '../departs/ChoixCreneau'
+import { creneauRetenu } from '../departs/libelle'
 import { useDeparts } from '../departs/hooks'
 import { departDeSalle } from '../salle/rotation'
 import { useClassement } from './hooks'
@@ -46,7 +47,7 @@ export function VueClassement({
   // journée, retomber sur `departs[0]` afficherait le classement du matin, clos depuis six heures,
   // sans rien signaler. `departDeSalle` est pur et testé (`salle/rotation.ts`) — le réécrire ici
   // serait la duplication d'invariant que le registre proscrit.
-  const departId = choixDepart ?? departDeSalle(liste)?.id ?? null
+  const departId = creneauRetenu(liste, choixDepart, departDeSalle)
   const classement = useClassement(tournoiId, departId, filtrable ? categorieId : undefined)
 
   return (

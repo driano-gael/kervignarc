@@ -98,7 +98,11 @@ export interface EgaliteADepartager {
 }
 
 export interface Classement {
-  tournoi_id: number
+  // ⚠️ **Le classement est celui d'un créneau** (E01US025, ADR-0075) : la route est
+  // `/departs/{id}/classement`. Le champ s'appelait `tournoi_id` et transportait déjà un
+  // identifiant de départ — même confusion que `Barrage` ci-dessous, invisible au typage des deux
+  // côtés puisque les deux sont des `number` (`DETTE-044`).
+  depart_id: number
   lignes: LigneClassement[]
   egalites_a_departager: EgaliteADepartager[]
 }

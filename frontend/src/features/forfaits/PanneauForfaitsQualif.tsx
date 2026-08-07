@@ -10,6 +10,7 @@ import { useState } from 'react'
 import type { LigneClassement } from '../competition/api'
 import { useClassement } from '../competition/hooks'
 import { ChoixCreneau } from '../departs/ChoixCreneau'
+import { creneauRetenu } from '../departs/libelle'
 import { useDeparts } from '../departs/hooks'
 import { departDeSalle } from '../salle/rotation'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
@@ -23,7 +24,7 @@ export function PanneauForfaitsQualif({ tournoiId }: { tournoiId: number }) {
   const [choixDepart, setChoixDepart] = useState<number | null>(null)
   const departs = useDeparts(tournoiId)
   const liste = departs.data ?? []
-  const departId = choixDepart ?? departDeSalle(liste)?.id ?? null
+  const departId = creneauRetenu(liste, choixDepart, departDeSalle)
   const classement = useClassement(tournoiId, departId)
   const declarer = useDeclarerForfaitQualif(tournoiId)
   const annuler = useAnnulerForfaitQualif(tournoiId)

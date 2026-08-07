@@ -15,14 +15,10 @@
 // ⚠️ Ce module n'est **pas** monté sur l'écran de salle (`EcranSalle` compose sa propre vue à partir
 // des mêmes hooks) : « aucune interaction » y reste vrai, CA E07US004.
 
-import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
-import { ChoixCreneau } from '../departs/ChoixCreneau'
-import { useDeparts } from '../departs/hooks'
 import { LIBELLE_TYPE } from '../../shared/phases/catalogue'
 import type { Phase, StatutPhase, TransitionPhase } from '../phases/api'
 import { useAvancementPhases, useChangerStatutPhase } from '../phases/hooks'
-import { departDeSalle } from '../salle/rotation'
 
 const LIBELLE_STATUT: Record<StatutPhase, string> = {
   a_venir: 'À venir',
@@ -44,14 +40,19 @@ const TRANSITIONS: Record<StatutPhase, { transition: TransitionPhase; libelle: s
   terminee: [],
 }
 
-export function PilotageCreneau({ tournoiId }: { tournoiId: number }) {
-  const [choixDepart, setChoixDepart] = useState<number | null>(null)
-  const departs = useDeparts(tournoiId)
-  const liste = departs.data ?? []
-  // Défaut : le créneau qu'on est en train de tirer — le même choix que le plan de cibles et le
-  // classement de salle, par le même helper pur (`salle/rotation.ts`). Retomber sur `departs[0]`
-  // proposerait de piloter le départ du matin, clos depuis des heures.
-  const departId = choixDepart ?? departDeSalle(liste)?.id ?? null
+/** ⚠️ Le créneau est **reçu**, plus choisi ici (E01US025). Le sélecteur a été hissé dans
+ * `SuiviDeroule` : le schéma au-dessus est lui aussi celui d’un créneau depuis ADR-0075, et deux
+ * sélecteurs sur le même écran laisseraient lire l’avancement du matin sous le dessin de
+ * l’après-midi. Un écran, un créneau. */
+export function PilotageCreneau({
+  tournoiId,
+  departId,
+  aucunCreneau,
+}: {
+  tournoiId: number
+  departId: number | null
+  aucunCreneau: boolean
+}) {
   const phases = useAvancementPhases(departId)
 
   return (
@@ -61,12 +62,11 @@ export function PilotageCreneau({ tournoiId }: { tournoiId: number }) {
         Le déroulé est commun au tournoi ; son <strong>avancement</strong> appartient à chaque
         créneau. Le départ du matin peut être en duels pendant que celui de l’après-midi qualifie.
       </p>
-      {departs.isSuccess && liste.length === 0 && (
+      {aucunCreneau && (
         <p className="carte__etat">
           Aucun départ n’est encore défini pour ce tournoi : il n’y a rien à piloter.
         </p>
       )}
-      <ChoixCreneau departs={liste} valeur={departId} surChangement={setChoixDepart} />
       <MessageErreur erreur={phases.error} />
       {departId !== null && phases.isPending && <p className="carte__etat">Chargement…</p>}
       {phases.data?.length === 0 && (

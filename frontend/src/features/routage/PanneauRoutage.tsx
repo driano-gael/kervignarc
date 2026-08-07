@@ -18,6 +18,8 @@
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { RoutageArcher } from './api'
+import { useDeparts } from '../departs/hooks'
+import { departDeSalle } from '../salle/rotation'
 import { useRoutage } from './hooks'
 import { alerte, detail, titre } from './presentation'
 
@@ -36,7 +38,16 @@ export function PanneauRoutage({
   onRetour: () => void
   libelleRetour?: string
 }) {
-  const routage = useRoutage(tournoiId, archerIds, phaseId)
+  // ⚠️ **Le routage entre par le créneau** (E01US025, ADR-0075) : « le tableau qui vient » n'a de
+  // sens que dans une séquence, et un tournoi en compte autant qu'il a de départs. La tablette
+  // connaît déjà « sa cible et son départ » — mais elle ne le passe pas encore explicitement, faute
+  // de le porter dans son état de poste. On résout donc le **créneau qu'on est en train de tirer**,
+  // par le même helper pur que le classement, le plan de cibles et l'écran de salle. C'est la
+  // même hypothèse qu'eux, tenue au même endroit ; un poste qui saisirait pour un créneau clos
+  // recevrait un 404 plutôt qu'un routage d'un autre départ, ce qui est le bon échec.
+  const departs = useDeparts(tournoiId)
+  const departId = departDeSalle(departs.data ?? [])?.id ?? null
+  const routage = useRoutage(departId, archerIds, phaseId)
   const lignes = routage.data?.archers ?? []
 
   return (

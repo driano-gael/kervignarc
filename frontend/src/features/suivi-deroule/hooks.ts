@@ -15,12 +15,15 @@ import { getSuiviDeroule } from './api'
  * et chaque tick reconstruit les tableaux des phases en tableau côté serveur. */
 const INTERVALLE_POLL_MS = 10000
 
-const cleSuivi = (tournoiId: number) => ['suivi-deroule', tournoiId] as const
+const cleSuivi = (departId: number | null) => ['suivi-deroule', departId] as const
 
-export function useSuiviDeroule(tournoiId: number) {
+/** Le suivi du **créneau** désigné. `null` tant qu'aucun n'est choisi : la requête est alors
+ * désactivée plutôt que lancée sur un identifiant inventé (ADR-0075). */
+export function useSuiviDeroule(departId: number | null) {
   return useQuery({
-    queryKey: cleSuivi(tournoiId),
-    queryFn: () => getSuiviDeroule(tournoiId),
+    queryKey: cleSuivi(departId),
+    queryFn: () => getSuiviDeroule(departId as number),
+    enabled: departId !== null,
     refetchInterval: INTERVALLE_POLL_MS,
     staleTime: 0,
   })

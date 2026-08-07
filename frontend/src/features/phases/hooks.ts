@@ -24,7 +24,15 @@ import {
 // chaque créneau. Une transition de statut ne change pas le déroulé ; éditer le déroulé change en
 // revanche ce que tous les créneaux affichent — d'où l'invalidation croisée ci-dessous.
 const clePhases = (tournoiId: number) => ['phases', tournoiId] as const
-const cleAvancement = (departId: number) => ['avancement-phases', departId] as const
+
+// La **racine** du cache d'avancement, nommée une fois. Les quatre mutations ci-dessous
+// invalidaient `['avancement-phases']` en littéral recopié : React Query traite cette clé partielle
+// comme un préfixe, donc « tous les créneaux » — ce qui est bien l'intention (éditer le déroulé
+// change ce que chacun affiche), mais qu'une chaîne dupliquée quatre fois ne dit pas, et qu'un
+// renommage n'aurait mis à jour qu'en partie. Convention du fichier voisin (`departs/hooks.ts`) :
+// la clé se construit, elle ne s'écrit pas.
+const RACINE_AVANCEMENT = ['avancement-phases'] as const
+const cleAvancement = (departId: number) => [...RACINE_AVANCEMENT, departId] as const
 
 export function usePhases(tournoiId: number) {
   return useQuery({
@@ -52,7 +60,7 @@ export function useAjouterPhase(tournoiId: number) {
       // ⚠️ **Et l'avancement de tous les créneaux** (ADR-0076) : ils portent la définition
       // *assemblée*, donc éditer l'étape change ce que chacun affiche. Sans préfixe de départ, on
       // invalide la famille entière — il y a une poignée de créneaux, pas mille.
-      void queryClient.invalidateQueries({ queryKey: ['avancement-phases'] })
+      void queryClient.invalidateQueries({ queryKey: RACINE_AVANCEMENT })
       // ⚠️ **Le classement aussi.** `barrage_jusqu_au` vit sur la phase mais ne se **voit** que
       // dans le classement (égalités signalées). Sans cette invalidation, le cache de 30 s faisait
       // que régler le seuil puis revenir au classement n'affichait rien — le recetteur concluait à
@@ -72,7 +80,7 @@ export function useModifierPhase(tournoiId: number) {
       // ⚠️ **Et l'avancement de tous les créneaux** (ADR-0076) : ils portent la définition
       // *assemblée*, donc éditer l'étape change ce que chacun affiche. Sans préfixe de départ, on
       // invalide la famille entière — il y a une poignée de créneaux, pas mille.
-      void queryClient.invalidateQueries({ queryKey: ['avancement-phases'] })
+      void queryClient.invalidateQueries({ queryKey: RACINE_AVANCEMENT })
       // ⚠️ **Le classement aussi.** `barrage_jusqu_au` vit sur la phase mais ne se **voit** que
       // dans le classement (égalités signalées). Sans cette invalidation, le cache de 30 s faisait
       // que régler le seuil puis revenir au classement n'affichait rien — le recetteur concluait à
@@ -91,7 +99,7 @@ export function useReordonnerPhases(tournoiId: number) {
     // donc aussi, sans quoi un créneau afficherait l'ancien ordre jusqu'au prochain rechargement.
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: clePhases(tournoiId) })
-      await queryClient.invalidateQueries({ queryKey: ['avancement-phases'] })
+      await queryClient.invalidateQueries({ queryKey: RACINE_AVANCEMENT })
     },
   })
 }
@@ -105,7 +113,7 @@ export function useSupprimerPhase(tournoiId: number) {
       // ⚠️ **Et l'avancement de tous les créneaux** (ADR-0076) : ils portent la définition
       // *assemblée*, donc éditer l'étape change ce que chacun affiche. Sans préfixe de départ, on
       // invalide la famille entière — il y a une poignée de créneaux, pas mille.
-      void queryClient.invalidateQueries({ queryKey: ['avancement-phases'] })
+      void queryClient.invalidateQueries({ queryKey: RACINE_AVANCEMENT })
       // ⚠️ **Le classement aussi.** `barrage_jusqu_au` vit sur la phase mais ne se **voit** que
       // dans le classement (égalités signalées). Sans cette invalidation, le cache de 30 s faisait
       // que régler le seuil puis revenir au classement n'affichait rien — le recetteur concluait à

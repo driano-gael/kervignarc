@@ -23,6 +23,8 @@
 import { useMemo, useState } from 'react'
 import { nommerType } from '../../shared/phases/catalogue'
 import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
+import { useDeparts } from '../departs/hooks'
+import { departDeSalle } from '../salle/rotation'
 import type { DuelPublic, DuellistePublic, TableauPublic } from './api'
 import { useTableaux } from './hooks'
 import { cheminDeArcher, parTour, type EtapeChemin } from './presentation'
@@ -66,13 +68,22 @@ export function VueTableaux({
   // l'utilisateur suit quelqu'un — même principe que l'onglet « Suivi » ouvert d'entrée (D-09).
   const [lecture, setLecture] = useState<Lecture>(suivis.length > 0 ? 'chemin' : 'complet')
   const [phaseChoisie, setPhaseChoisie] = useState<number | null>(null)
-  const tableaux = useTableaux(tournoiId)
+  // ⚠️ **Les arbres appartiennent à un créneau** (E01US025, ADR-0075). Ni l'écran de salle ni
+  // l'appli publique n'ont de sélecteur de départ ici — le CA veut « aucune interaction » sur le
+  // premier et une lecture immédiate sur le second : on prend donc le créneau **qu'on est en train
+  // de tirer**, par le même helper pur que le classement et le plan de cibles.
+  const departs = useDeparts(tournoiId)
+  const departId = departDeSalle(departs.data ?? [])?.id ?? null
+  const tableaux = useTableaux(departId)
   const donnees = tableaux.data
 
   // Les **données priment sur l'erreur** : React Query garde le `data` de la dernière lecture
   // réussie pendant un échec. Tester `isError` d'abord jetterait un arbre encore exact au premier
   // clignotement réseau et laisserait l'écran projeté sur un message d'erreur ≥ 20 s — le défaut
   // qu'E07US008 a dû corriger en revue, à ne pas refaire ici.
+  if (departs.isSuccess && (departs.data ?? []).length === 0) {
+    return <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
+  }
   if (donnees === undefined) {
     return (
       <p className="carte__etat">

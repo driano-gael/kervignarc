@@ -70,10 +70,14 @@ export interface TableauPublic {
 }
 
 export interface Tableaux {
-  tournoi_id: number
+  // ⚠️ **Les arbres sont ceux d'un créneau** (E01US025, ADR-0075) : deux départs portent chacun
+  // leur tableau du même rang, et rien dans `TableauPublic` ne les distinguerait. À la maille
+  // tournoi, la réponse les concaténait — l'écran montrait l'arbre du matin sous l'onglet de
+  // l'après-midi.
+  depart_id: number
   tableaux: TableauPublic[]
 }
 
-export function getTableaux(tournoiId: number): Promise<Tableaux> {
-  return fetchJson<Tableaux>(`/api/v1/tableaux/${tournoiId}`)
+export function getTableaux(departId: number): Promise<Tableaux> {
+  return fetchJson<Tableaux>(`/api/v1/tableaux/departs/${departId}`)
 }

@@ -17,3 +17,27 @@ export interface CreneauChoisissable {
 export function libelleCreneau(depart: CreneauChoisissable): string {
   return `Départ ${depart.numero}${depart.horaire !== null ? ` — ${depart.horaire}` : ''}`
 }
+
+/**
+ * Le créneau **retenu** par un écran : le choix de l'utilisateur s'il est encore valide, sinon
+ * celui qu'on est en train de tirer, sinon rien.
+ *
+ * ⚠️ **Le second filtre n'est pas cosmétique** (correctif de revue E01US025). Les trois écrans qui
+ * portent un sélecteur de créneau (classement, forfaits de qualification, suivi du déroulé) gardent
+ * leur choix dans un `useState` : supprimer ce créneau — ou changer de tournoi — laissait
+ * `choixDepart` pointer un identifiant **disparu**, et l'écran continuait d'interroger le serveur
+ * dessus. Selon la route, cela donne un 404 permanent ou, pire, une liste vide qui se lit comme
+ * « rien à afficher ». Vérifier l'appartenance à la liste courante fait retomber proprement sur le
+ * défaut.
+ *
+ * Fonction **pure**, à côté de `libelleCreneau` et pour la même raison : les trois écrans doivent
+ * se comporter pareil, et c'est le genre de règle qu'on n'aligne pas en la recopiant.
+ */
+export function creneauRetenu<T extends { id: number }>(
+  departs: readonly T[],
+  choix: number | null,
+  defaut: (departs: readonly T[]) => T | undefined,
+): number | null {
+  if (choix !== null && departs.some((depart) => depart.id === choix)) return choix
+  return defaut(departs)?.id ?? null
+}

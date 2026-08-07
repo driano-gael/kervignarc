@@ -18,6 +18,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
+import type { Depart } from '../departs/api'
+import { getDeparts } from '../departs/api'
 import type { DuelPublic, TableauPublic, Tableaux } from './api'
 import { getTableaux } from './api'
 import { VueTableaux } from './VueTableaux'
@@ -26,6 +28,22 @@ vi.mock('./api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./api')>()),
   getTableaux: vi.fn(),
 }))
+
+// Les arbres se lisent **par créneau** depuis ADR-0075 : la vue résout d'abord le départ en cours.
+vi.mock('../departs/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../departs/api')>()),
+  getDeparts: vi.fn(),
+}))
+
+const _CRENEAU: Depart = {
+  id: 41,
+  tournoi_id: 1,
+  numero: 1,
+  horaire: '09:00',
+  tarif_centimes: 800,
+  quota: null,
+  etat: 'ouvert',
+}
 
 function duel(patch: Partial<DuelPublic> = {}): DuelPublic {
   return {
@@ -58,7 +76,7 @@ function reponse(duels: DuelPublic[] = [duel()]): Tableaux {
     duels,
     podium: [],
   }
-  return { tournoi_id: 1, tableaux: [tableau] }
+  return { depart_id: 41, tableaux: [tableau] }
 }
 
 function Cadre({ enfants }: { enfants: ReactNode }) {
@@ -69,6 +87,7 @@ function Cadre({ enfants }: { enfants: ReactNode }) {
 describe('VueTableaux — montage', () => {
   beforeEach(() => {
     vi.mocked(getTableaux).mockResolvedValue(reponse())
+    vi.mocked(getDeparts).mockResolvedValue([_CRENEAU])
     useSessionSuivisStore.setState({ suivis: [] })
   })
 
@@ -93,7 +112,7 @@ describe('VueTableaux — montage', () => {
   })
 
   it('n’ouvre pas de requête et le dit quand aucun tableau n’existe', async () => {
-    vi.mocked(getTableaux).mockResolvedValue({ tournoi_id: 1, tableaux: [] })
+    vi.mocked(getTableaux).mockResolvedValue({ depart_id: 41, tableaux: [] })
 
     render(<Cadre enfants={<VueTableaux tournoiId={1} />} />)
 

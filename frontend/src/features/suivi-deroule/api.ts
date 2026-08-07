@@ -22,6 +22,10 @@ export interface SuiviDeroule {
   avancement: AvancementBloc[]
 }
 
-export function getSuiviDeroule(tournoiId: number): Promise<SuiviDeroule> {
-  return fetchJson<SuiviDeroule>(`/api/v1/tournois/${tournoiId}/suivi-deroule`, undefined, 'aucune')
+// ⚠️ **Le suivi est celui d'un créneau, pas du tournoi** (E01US025, ADR-0075) : un départ rejoue le
+// tournoi en entier, avec son effectif et son avancement propres. La route était
+// `/tournois/{id}/suivi-deroule` et fusionnait les créneaux — déroulé dessiné en double, avancement
+// du dernier créneau écrasant les autres, et tableaux dimensionnés sur la somme des inscrits.
+export function getSuiviDeroule(departId: number): Promise<SuiviDeroule> {
+  return fetchJson<SuiviDeroule>(`/api/v1/departs/${departId}/suivi-deroule`, undefined, 'aucune')
 }

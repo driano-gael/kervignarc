@@ -8,15 +8,33 @@
 // `hooks.ts`. C'est le signe que le partage a fonctionné — si cet écran avait dû réécrire du dessin,
 // c'est que le composant n'aurait pas été assez paramétré.
 
+import { useState } from 'react'
+
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { LIBELLE_STATUT, type AvancementBloc } from '../../shared/schema-braquets/modele'
+import { ChoixCreneau } from '../departs/ChoixCreneau'
+import { creneauRetenu } from '../departs/libelle'
+import { useDeparts } from '../departs/hooks'
+import { departDeSalle } from '../salle/rotation'
 import type { SuiviDeroule as SuiviDerouleData } from './api'
 import { useSuiviDeroule } from './hooks'
 import { PilotageCreneau } from './PilotageCreneau'
 
 export function SuiviDeroule({ tournoiId }: { tournoiId: number }) {
-  const suivi = useSuiviDeroule(tournoiId)
+  // ⚠️ **Le suivi est celui d'un créneau** (E01US025, ADR-0075) : un départ rejoue le tournoi en
+  // entier, donc le dessin *et* son remplissage dépendent du créneau — l'effectif projeté n'est pas
+  // le même à 100 inscrits le matin et 60 l'après-midi. Le choix est hissé ici plutôt que laissé au
+  // panneau de pilotage : il commande les deux, et deux sélecteurs indépendants laisseraient lire
+  // l'avancement d'un créneau sous le dessin d'un autre.
+  const [choixDepart, setChoixDepart] = useState<number | null>(null)
+  const departs = useDeparts(tournoiId)
+  const liste = departs.data ?? []
+  // Défaut : le créneau qu'on est en train de tirer (`salle/rotation.ts`, pur et testé) — le même
+  // que le classement et le plan de cibles. Retomber sur `departs[0]` afficherait le suivi du
+  // matin, clos depuis des heures, sans rien signaler.
+  const departId = creneauRetenu(liste, choixDepart, departDeSalle)
+  const suivi = useSuiviDeroule(departId)
 
   return (
     <>
@@ -27,8 +45,13 @@ export function SuiviDeroule({ tournoiId }: { tournoiId: number }) {
           venir, tour en cours, et duels joués sur duels attendus. C’est le même schéma que l’écran
           de salle affiche au public.
         </p>
+        <ChoixCreneau departs={liste} valeur={departId} surChangement={setChoixDepart} />
         <MessageErreur erreur={suivi.error} />
-        {suivi.data === undefined ? (
+        {departs.isSuccess && liste.length === 0 ? (
+          <p className="carte__etat">
+            Aucun départ n’est encore défini pour ce tournoi : il n’y a rien à suivre.
+          </p>
+        ) : suivi.data === undefined ? (
           <p className="carte__etat">Chargement du déroulé…</p>
         ) : (
           <>
@@ -46,7 +69,11 @@ export function SuiviDeroule({ tournoiId }: { tournoiId: number }) {
       {/* La **commande**, sous la vue d'ensemble (ADR-0076). Le schéma dit où en est le tournoi ; le
           cycle de vie, lui, s'exerce dans un créneau — c'est le seul endroit où il a un
           destinataire. Le rapprochement est délibéré : on agit là où l'on vient de lire. */}
-      <PilotageCreneau tournoiId={tournoiId} />
+      <PilotageCreneau
+        tournoiId={tournoiId}
+        departId={departId}
+        aucunCreneau={departs.isSuccess && liste.length === 0}
+      />
     </>
   )
 }

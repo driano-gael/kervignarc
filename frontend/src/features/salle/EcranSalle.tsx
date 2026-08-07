@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react'
 
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { VueClassement } from '../competition/VueClassement'
+import { useDeparts } from '../departs/hooks'
 import { LIBELLE_VUE, type VueEcran } from '../ecrans/api'
 import { useAffichageEcran } from '../ecrans/hooks'
 import { PlanCiblesDeSalle } from '../placement/PlanCiblesPublic'
@@ -29,6 +30,7 @@ import { VueAffectations } from '../routage/VueAffectations'
 import { VueTableaux } from '../tableaux/VueTableaux'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { useSuiviDeroule } from '../suivi-deroule/hooks'
+import { departDeSalle } from './rotation'
 import {
   formaterReste,
   resteDeLaPrise,
@@ -187,7 +189,14 @@ function VueDeSalle({ vue, tournoiId }: { vue: VueEcran; tournoiId: number }) {
  * l'écran montre autre chose — soit, sur huit heures, des milliers de reconstructions inutiles,
  * sur un endpoint public non authentifié (correctif de revue). */
 function SuiviDeSalle({ tournoiId }: { tournoiId: number }) {
-  const suivi = useSuiviDeroule(tournoiId)
+  // ⚠️ **Le suivi se lit par créneau** (E01US025, ADR-0075), et un écran de salle n'a personne pour
+  // en choisir un : on prend celui qu'on est en train de tirer, par le même helper pur que le
+  // classement et le plan de cibles (`departDeSalle`). Passer `tournoiId` à ce hook « compilait »
+  // — les deux identifiants sont des `number` des deux côtés (`DETTE-044`) — et interrogeait un
+  // créneau au hasard.
+  const departs = useDeparts(tournoiId)
+  const departId = departDeSalle(departs.data ?? [])?.id ?? null
+  const suivi = useSuiviDeroule(departId)
   // Surface **salle** : taille ajustée (le dessin remplit l'écran, le `viewBox` agrandit texte
   // compris) et habillage « identité ». `DV-08` sera honoré quand E01US016 livrera les couleurs du
   // tournoi ; d'ici là l'habillage se distingue de l'outil par sa mise en page, pas par sa palette.
