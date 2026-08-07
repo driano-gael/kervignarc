@@ -41,6 +41,7 @@ from application.erreurs import (
     UniteSimulationInvalide,
 )
 from application.generateur_scores import GenerateurScores, valeur_zone
+from application.portee import qualification_du_tournoi
 from application.saisie_duels import Duelliste, EtatDuel, EtatTableau
 from application.simulation import (
     HarnaisSimulation,
@@ -59,6 +60,8 @@ from domain.ports import (
     ArcherRepository,
     BlasonRepository,
     CategorieRepository,
+    DepartRepository,
+    DerouleRepository,
     GabaritSalleRepository,
     InscriptionRepository,
     PhaseRepository,
@@ -265,6 +268,8 @@ class ServicePilotageSimulation:
         blasons: BlasonRepository,
         gabarits: GabaritSalleRepository,
         inscriptions: InscriptionRepository,
+        departs: DepartRepository,
+        deroules: DerouleRepository,
         phases: PhaseRepository,
         series: SerieRepository,
         usine_harnais: UsineHarnais,
@@ -279,6 +284,9 @@ class ServicePilotageSimulation:
         self._blasons = blasons
         self._gabarits = gabarits
         self._inscriptions = inscriptions
+        # Les créneaux : le harnais les hydrate en premier (ADR-0075).
+        self._departs = departs
+        self._deroules = deroules
         self._phases = phases
         self._series = series
         self._usine_harnais = usine_harnais
@@ -308,6 +316,8 @@ class ServicePilotageSimulation:
             blasons=self._blasons,
             gabarits=self._gabarits,
             inscriptions=self._inscriptions,
+            departs=self._departs,
+            deroules=self._deroules,
             phases=self._phases,
             series=self._series,
         )
@@ -326,7 +336,7 @@ class ServicePilotageSimulation:
         """
         assert tournoi.id is not None, "Un tournoi de simulation porte un identifiant."
         tournoi_id = tournoi.id
-        phase_qualif = harnais.phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        phase_qualif = qualification_du_tournoi(harnais.phases, tournoi_id)
         if phase_qualif is None or phase_qualif.bareme is None or phase_qualif.id is None:
             raise PhaseQualificationAbsente(
                 "Pour simuler le déroulé, le tournoi doit avoir une phase de qualification avec un "
@@ -768,7 +778,9 @@ class ServicePilotageSimulation:
         return None
 
     def _etat(self, session: SessionSimulation) -> EtatSession:
-        classement = session.harnais.classement.pour_tournoi(session.tournoi_id)
+        depart_simule = session.harnais.departs.par_tournoi(session.tournoi_id)[0]
+        assert depart_simule.id is not None, "Le magasin in-memory attribue un identifiant."
+        classement = session.harnais.classement.pour_depart(depart_simule.id)
         tableaux = self._tableaux(session)
         prochaine = self._prochaine_unite(session)
         if isinstance(prochaine, ProchaineVolee):

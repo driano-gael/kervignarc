@@ -46,6 +46,8 @@ from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
+from domain.depart import Depart
+from domain.deroule_etape import EtapeDeroule
 from domain.duel import Cote
 from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
@@ -54,6 +56,8 @@ from infrastructure.memory.repositories import (
     InMemoryArcherRepository,
     InMemoryBlasonRepository,
     InMemoryCategorieRepository,
+    InMemoryDepartRepository,
+    InMemoryDerouleRepository,
     InMemoryGabaritSalleRepository,
     InMemoryInscriptionRepository,
     InMemoryPhaseRepository,
@@ -98,7 +102,11 @@ class _Contexte:
         self.blasons = InMemoryBlasonRepository()
         self.gabarits = InMemoryGabaritSalleRepository()
         self.inscriptions = InMemoryInscriptionRepository()
-        self.phases = InMemoryPhaseRepository()
+        self.departs = InMemoryDepartRepository()
+        # Le déroulé du tournoi simulé (ADR-0076) : le magasin de phases s'en sert pour assembler
+        # définition et avancement, comme l'adapter SQL.
+        self.deroules = InMemoryDerouleRepository()
+        self.phases = InMemoryPhaseRepository(self.departs, self.deroules)
         self.series = InMemorySerieRepository()
         self.diffusion = _DiffusionFausse()
 
@@ -115,15 +123,24 @@ class _Contexte:
         )
         assert categorie.id is not None
         self.categorie_id = categorie.id
+        # Le créneau qui porte les phases et le classement (ADR-0075).
+        _d = self.departs.ajouter(
+            Depart.creer(tournoi_id=self.tournoi_id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert _d.id is not None
+        self.depart_id = _d.id
 
+        # Deux gestes depuis ADR-0076 : l'étape définit (au tournoi), la phase avance (au créneau).
+        # L'adapter refuse un avancement sans définition — une instance orpheline serait invisible
+        # à toute lecture, et le bot croirait piloter une phase que personne ne voit.
         if avec_qualif:
-            self.phases.ajouter(
+            self._poser_etape(
                 Phase.qualification(
-                    self.tournoi_id, BaremeQualification.creer(nb_volees, nb_fleches)
+                    self.depart_id, BaremeQualification.creer(nb_volees, nb_fleches)
                 )
             )
         if avec_duels:
-            self.phases.ajouter(Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE))
+            self._poser_etape(Phase.creer(self.depart_id, 2, TypePhase.ELIMINATION_DIRECTE))
 
         self.archer_ids: list[int] = []
         for indice in range(nb_archers):
@@ -139,6 +156,23 @@ class _Contexte:
             self.archer_ids.append(archer.id)
             self.inscriptions.ajouter(Inscription(archer_id=archer.id, depart_id=1))
 
+    def _poser_etape(self, phase: Phase) -> None:
+        """Définit l'étape au tournoi, puis l'instancie dans le créneau (ADR-0076)."""
+        etape = self.deroules.ajouter(
+            EtapeDeroule(
+                tournoi_id=self.tournoi_id,
+                ordre=phase.ordre,
+                type=phase.type,
+                bareme=phase.bareme,
+                validation=phase.validation,
+                sources=phase.sources,
+                effectif=phase.effectif,
+                barrage_jusqu_au=phase.barrage_jusqu_au,
+                profondeur=phase.profondeur,
+            )
+        )
+        self.phases.ajouter(etape.instancier(self.depart_id))
+
     def service(self, diffusion: DiffusionSimulation | None = None) -> ServicePilotageSimulation:
         return ServicePilotageSimulation(
             self.tournois,
@@ -147,6 +181,8 @@ class _Contexte:
             self.blasons,
             self.gabarits,
             self.inscriptions,
+            self.departs,
+            self.deroules,
             self.phases,
             self.series,
             fabriquer_harnais_simulation,

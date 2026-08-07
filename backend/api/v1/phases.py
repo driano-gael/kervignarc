@@ -4,7 +4,8 @@ Suit le patron de bout en bout (E00US009) : **DTO Pydantic** distincts des agré
 routées par la file (writer unique, ADR-0005) et protégées par `exiger_admin`, **lectures** hors
 boucle (threadpool), **erreurs typées** traduites à la frontière (`api/erreurs.py`).
 
-Ressource rattachée au tournoi : `/tournois/{tournoi_id}/phases`. Lecture ouverte (comme les autres
+Ressource rattachée au **départ** : `/departs/{depart_id}/phases` (E01US025, ADR-0075 —
+c'est le créneau qui porte une séquence, pas le tournoi). Lecture ouverte (comme les autres
 consultations, E10US001) ; composition et cycle de vie réservés à l'admin. La **cohérence** de la
 séquence (source vide / rangs inexistants / effectif incompatible) est une règle du domaine → elle
 remonte en 422 ; les conflits d'état (transition illégale, suppression d'une source référencée) en
@@ -22,6 +23,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.phases import ServicePhases
+from domain.deroule_etape import EtapeDeroule
 from domain.phase import (
     IssueTour,
     NatureSource,
@@ -182,7 +184,7 @@ class PhaseReponse(BaseModel):
     scoring — celles-ci ont leurs propres endpoints)."""
 
     id: int
-    tournoi_id: int
+    depart_id: int
     ordre: int
     type: TypePhase
     statut: StatutPhase
@@ -196,7 +198,7 @@ class PhaseReponse(BaseModel):
         assert phase.id is not None, "Une phase renvoyée par le service est persistée."
         return PhaseReponse(
             id=phase.id,
-            tournoi_id=phase.tournoi_id,
+            depart_id=phase.depart_id,
             ordre=phase.ordre,
             type=phase.type,
             statut=phase.statut,
@@ -209,23 +211,73 @@ class PhaseReponse(BaseModel):
         )
 
 
-@router.get("/tournois/{tournoi_id}/phases", response_model=list[PhaseReponse])
-async def lister_phases(tournoi_id: int, request: Request) -> list[PhaseReponse]:
+class EtapeReponse(BaseModel):
+    """Une **étape du déroulé** d'un tournoi — la définition, sans créneau ni avancement.
+
+    Miroir de `EtapeDeroule` (ADR-0076). Distincte de `PhaseReponse`, qui décrit *où en est un
+    créneau* de cette étape : les deux se ressemblent parce que l'une définit ce que l'autre joue,
+    mais les confondre reviendrait à réintroduire le mélange que l'ADR sépare.
+    """
+
+    id: int
+    tournoi_id: int
+    ordre: int
+    type: TypePhase
+    sources: list[SourceDTO]
+    effectif: int | None
+    profondeur: ProfondeurDTO | None = None
+    barrage_jusqu_au: int | None = None
+
+    @staticmethod
+    def de_agregat(etape: EtapeDeroule) -> EtapeReponse:
+        assert etape.id is not None, "Une étape renvoyée par le service est persistée."
+        return EtapeReponse(
+            id=etape.id,
+            tournoi_id=etape.tournoi_id,
+            ordre=etape.ordre,
+            type=etape.type,
+            sources=[SourceDTO.de_agregat(source) for source in etape.sources],
+            effectif=etape.effectif,
+            profondeur=(
+                None if etape.profondeur is None else ProfondeurDTO.de_agregat(etape.profondeur)
+            ),
+            barrage_jusqu_au=etape.barrage_jusqu_au,
+        )
+
+
+@router.get("/tournois/{tournoi_id}/phases", response_model=list[EtapeReponse])
+async def lister_phases(tournoi_id: int, request: Request) -> list[EtapeReponse]:
     """Renvoie les phases du tournoi, ordonnées. Lève `TournoiIntrouvable` (404) si inconnu."""
     service: ServicePhases = request.app.state.service_phases
     phases = await run_in_threadpool(service.lister, tournoi_id)
+    return [EtapeReponse.de_agregat(phase) for phase in phases]
+
+
+@router.get("/departs/{depart_id}/phases", response_model=list[PhaseReponse])
+async def lister_avancement(depart_id: int, request: Request) -> list[PhaseReponse]:
+    """Renvoie **où en est ce créneau** : ses phases ordonnées, avec leur statut.
+
+    Pendant de `lister_phases` à l'autre maille (ADR-0076) : celle-ci rend le déroulé *prévu* du
+    tournoi (`EtapeReponse`, sans statut), celle-là ce qu'un créneau en a *joué*. C'est cette
+    lecture que l'écran de pilotage consomme — les transitions de statut s'adressent à un
+    `phase_id`, qui n'existe qu'ici.
+
+    Lève `DepartIntrouvable` (404) si le créneau est inconnu.
+    """
+    service: ServicePhases = request.app.state.service_phases
+    phases = await run_in_threadpool(service.avancement, depart_id)
     return [PhaseReponse.de_agregat(phase) for phase in phases]
 
 
 @router.post(
     "/tournois/{tournoi_id}/phases",
-    response_model=PhaseReponse,
+    response_model=EtapeReponse,
     status_code=201,
     dependencies=[Depends(exiger_admin)],
 )
 async def ajouter_phase(
     tournoi_id: int, requete: ConfigPhaseRequete, request: Request
-) -> PhaseReponse:
+) -> EtapeReponse:
     """Ajoute une phase en fin de séquence (**action admin**), écriture via la file (ADR-0005)."""
     service: ServicePhases = request.app.state.service_phases
     write_queue: WriteQueue = request.app.state.write_queue
@@ -242,17 +294,17 @@ async def ajouter_phase(
             )
         )
     )
-    return PhaseReponse.de_agregat(phase)
+    return EtapeReponse.de_agregat(phase)
 
 
 @router.put(
-    "/tournois/{tournoi_id}/phases/{phase_id}",
-    response_model=PhaseReponse,
+    "/tournois/{tournoi_id}/phases/{etape_id}",
+    response_model=EtapeReponse,
     dependencies=[Depends(exiger_admin)],
 )
 async def modifier_phase(
-    tournoi_id: int, phase_id: int, requete: ConfigPhaseRequete, request: Request
-) -> PhaseReponse:
+    tournoi_id: int, etape_id: int, requete: ConfigPhaseRequete, request: Request
+) -> EtapeReponse:
     """Édite (totalement) la config de séquence d'une phase (**action admin**)."""
     service: ServicePhases = request.app.state.service_phases
     write_queue: WriteQueue = request.app.state.write_queue
@@ -261,7 +313,7 @@ async def modifier_phase(
         write_queue.submit(
             lambda: service.modifier(
                 tournoi_id,
-                phase_id,
+                etape_id,
                 requete.type,
                 sources,
                 requete.effectif,
@@ -270,46 +322,46 @@ async def modifier_phase(
             )
         )
     )
-    return PhaseReponse.de_agregat(phase)
+    return EtapeReponse.de_agregat(phase)
 
 
 @router.post(
     "/tournois/{tournoi_id}/phases/reordonner",
-    response_model=list[PhaseReponse],
+    response_model=list[EtapeReponse],
     dependencies=[Depends(exiger_admin)],
 )
 async def reordonner_phases(
     tournoi_id: int, requete: ReordonnerRequete, request: Request
-) -> list[PhaseReponse]:
+) -> list[EtapeReponse]:
     """Réordonne l'ensemble des phases du tournoi (**action admin**)."""
     service: ServicePhases = request.app.state.service_phases
     write_queue: WriteQueue = request.app.state.write_queue
     phases = await asyncio.wrap_future(
         write_queue.submit(lambda: service.reordonner(tournoi_id, requete.phases))
     )
-    return [PhaseReponse.de_agregat(phase) for phase in phases]
+    return [EtapeReponse.de_agregat(phase) for phase in phases]
 
 
 @router.delete(
-    "/tournois/{tournoi_id}/phases/{phase_id}",
+    "/tournois/{tournoi_id}/phases/{etape_id}",
     status_code=204,
     dependencies=[Depends(exiger_admin)],
 )
-async def supprimer_phase(tournoi_id: int, phase_id: int, request: Request) -> None:
+async def supprimer_phase(tournoi_id: int, etape_id: int, request: Request) -> None:
     """Retire une phase de la séquence (**action admin**). Refuse (409) si elle en alimente une
     autre (`PhaseSourceReferencee`)."""
     service: ServicePhases = request.app.state.service_phases
     write_queue: WriteQueue = request.app.state.write_queue
-    await asyncio.wrap_future(write_queue.submit(lambda: service.supprimer(tournoi_id, phase_id)))
+    await asyncio.wrap_future(write_queue.submit(lambda: service.supprimer(tournoi_id, etape_id)))
 
 
 @router.post(
-    "/tournois/{tournoi_id}/phases/{phase_id}/statut",
+    "/departs/{depart_id}/phases/{phase_id}/statut",
     response_model=PhaseReponse,
     dependencies=[Depends(exiger_admin)],
 )
 async def changer_statut(
-    tournoi_id: int, phase_id: int, requete: TransitionRequete, request: Request
+    depart_id: int, phase_id: int, requete: TransitionRequete, request: Request
 ) -> PhaseReponse:
     """Applique une transition de cycle de vie à une phase (**action admin**).
 
@@ -324,5 +376,5 @@ async def changer_statut(
         TransitionPhase.TERMINER: service.terminer,
     }
     action = transitions[requete.transition]
-    phase = await asyncio.wrap_future(write_queue.submit(lambda: action(tournoi_id, phase_id)))
+    phase = await asyncio.wrap_future(write_queue.submit(lambda: action(depart_id, phase_id)))
     return PhaseReponse.de_agregat(phase)

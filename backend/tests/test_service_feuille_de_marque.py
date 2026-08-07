@@ -31,7 +31,7 @@ from domain.categorie import Categorie
 from domain.depart import Depart
 from domain.feuille_marque import FeuilleDeMarque
 from domain.inscription import Inscription
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase
 from domain.placement import Affectation
 from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import (
@@ -39,6 +39,7 @@ from tests.conftest import (
     FauxCategorieRepository,
     FauxDepartRepository,
     FauxInscriptionRepository,
+    FauxPhaseRepository,
     FauxPlacementRepository,
 )
 
@@ -103,41 +104,6 @@ class FauxBlasonRepository:
 
     def supprimer(self, blason_id: BlasonId) -> None:
         del self._blasons[blason_id]
-
-
-class FauxPhaseRepository:
-    """Repository de phases en mémoire (barème via `par_tournoi_et_type`)."""
-
-    def __init__(self) -> None:
-        self._phases: dict[int, Phase] = {}
-        self._sequence = 0
-
-    def ajouter(self, phase: Phase) -> Phase:
-        self._sequence += 1
-        persiste = dataclasses.replace(phase, id=self._sequence)
-        self._phases[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, phase_id: PhaseId) -> Phase | None:
-        return self._phases.get(phase_id)
-
-    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
-        trouvees = [
-            p for p in self._phases.values() if p.tournoi_id == tournoi_id and p.type is type_phase
-        ]
-        return trouvees[-1] if trouvees else None
-
-    def enregistrer(self, phase: Phase) -> Phase:
-        assert phase.id in self._phases
-        self._phases[phase.id] = phase
-        return phase
-
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        phases = [p for p in self._phases.values() if p.tournoi_id == tournoi_id]
-        return sorted(phases, key=lambda p: p.ordre)
-
-    def supprimer(self, phase_id: PhaseId) -> None:
-        del self._phases[phase_id]
 
 
 class FauxGenerateur:
@@ -249,7 +215,7 @@ def _monde(*, avec_bareme: BaremeQualification | None = _BAREME_DEFAUT) -> _Mond
     archers = FauxArcherRepository()
     categories = FauxCategorieRepository()
     blasons = FauxBlasonRepository()
-    phases = FauxPhaseRepository()
+    phases = FauxPhaseRepository(departs)
     generateur = FauxGenerateur()
 
     tournoi = tournois.ajouter(Tournoi.creer("Tournoi Test", datetime.date(2026, 1, 18)))

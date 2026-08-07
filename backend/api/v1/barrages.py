@@ -73,6 +73,14 @@ class AnnonceRequete(BaseModel):
       pas une place.
     """
 
+    depart_id: int = Field(ge=1)
+    """Le créneau où se tire ce barrage (E01US025, ADR-0075).
+
+    **Obligatoire dans les deux régimes** : un barrage départage une place dans le classement d'un
+    départ, et deux créneaux ont des classements distincts. Le déduire du tournoi n'est pas
+    possible — c'est justement la confusion que l'ADR corrige.
+    """
+
     rang: int | None = Field(default=None, ge=1)
     portee: PorteeBarrage = PorteeBarrage.QUALIFICATION
     archer_ids: list[int] = Field(default_factory=list, max_length=64)
@@ -157,7 +165,7 @@ class BarrageReponse(BaseModel):
     garantie (`clore.mutate(barrage.id)`) sans qu'elle soit exprimée.
     """
 
-    tournoi_id: int
+    depart_id: int
     portee: str
     rang_dispute: int | None
     reference: str | None
@@ -181,7 +189,7 @@ class BarrageReponse(BaseModel):
             perime=perime,
             incoherent=incoherent,
             id=barrage.id,
-            tournoi_id=barrage.tournoi_id,
+            depart_id=barrage.depart_id,
             portee=barrage.portee.value,
             rang_dispute=barrage.rang_dispute,
             reference=barrage.reference,
@@ -235,6 +243,7 @@ async def annoncer_barrage(
         write_queue.submit(
             lambda: service.annoncer(
                 tournoi_id,
+                requete.depart_id,
                 rang=requete.rang,
                 portee=requete.portee,
                 archer_ids=requete.archer_ids,

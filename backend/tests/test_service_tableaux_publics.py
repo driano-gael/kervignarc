@@ -32,16 +32,17 @@ from __future__ import annotations
 
 import pytest
 
-from application.erreurs import TournoiIntrouvable
+from application.erreurs import DepartIntrouvable
 from application.tableaux_publics import ServiceTableauxPublics
 from domain.bareme import BaremeQualification
 from domain.phase import Phase, SourcePhase, TypePhase
 from domain.politiques import ProfondeurClassement
+from tests.conftest import poser_phase_factice
 from tests.test_service_routage import _huit, _Monde, _quatre
 
 
 def _service(monde: _Monde) -> ServiceTableauxPublics:
-    return ServiceTableauxPublics(monde.tournois, monde.phases, monde.saisie)
+    return ServiceTableauxPublics(monde.departs, monde.phases, monde.saisie)
 
 
 # --- CA « l'arbre (principal + placement) » -----------------------------------------------------
@@ -64,7 +65,7 @@ def test_l_arbre_rendu_porte_le_principal_et_le_placement() -> None:
     _huit(monde)
     monde.placer()
 
-    tableaux = _service(monde).pour_tournoi(monde.tournoi_id).tableaux
+    tableaux = _service(monde).pour_depart(monde.depart_id).tableaux
 
     assert [t.type for t in tableaux] == [TypePhase.ELIMINATION_DIRECTE]
     assert [t.ordre for t in tableaux] == [2]
@@ -90,7 +91,7 @@ def test_sans_profondeur_integrale_il_n_y_a_pas_de_match_de_placement() -> None:
     _huit(monde)
     monde.placer()
 
-    tableaux = _service(monde).pour_tournoi(monde.tournoi_id).tableaux
+    tableaux = _service(monde).pour_depart(monde.depart_id).tableaux
 
     places = {duel.place_en_jeu for duel in tableaux[0].etat.duels}
     assert (1, 2) in places and (3, 4) in places
@@ -112,7 +113,7 @@ def test_un_match_de_placement_non_terminal_ne_se_nomme_pas_comme_une_demi_final
     _huit(monde)
     monde.placer()
 
-    duels = _service(monde).pour_tournoi(monde.tournoi_id).tableaux[0].etat.duels
+    duels = _service(monde).pour_depart(monde.depart_id).tableaux[0].etat.duels
     par_libelle = {duel.numero: (duel.libelle, duel.plage) for duel in duels if duel.tour == 2}
 
     demies = [num for num, (lib, _) in par_libelle.items() if lib == "Demi-finale"]
@@ -135,17 +136,20 @@ def test_une_phase_de_type_placement_est_omise_tant_que_le_moteur_l_ignore() -> 
     """
     monde = _Monde()
     _quatre(monde)
-    placement = monde.phases.ajouter(
+    placement = poser_phase_factice(
+        monde.departs,
+        monde.deroules,
+        monde.phases,
         Phase.creer(
-            monde.tournoi_id,
+            monde.depart_id,
             3,
             TypePhase.PLACEMENT,
             profondeur=ProfondeurClassement.integrale(),
-        )
+        ),
     )
     assert placement.id is not None
 
-    tableaux = _service(monde).pour_tournoi(monde.tournoi_id).tableaux
+    tableaux = _service(monde).pour_depart(monde.depart_id).tableaux
 
     assert [t.ordre for t in tableaux] == [2]
 
@@ -159,9 +163,14 @@ def test_une_phase_sans_arbre_n_est_pas_rendue() -> None:
     """
     monde = _Monde()
     _quatre(monde)
-    monde.phases.ajouter(Phase.qualification(monde.tournoi_id, BaremeQualification.creer(2, 3)))
+    poser_phase_factice(
+        monde.departs,
+        monde.deroules,
+        monde.phases,
+        Phase.qualification(monde.depart_id, BaremeQualification.creer(2, 3)),
+    )
 
-    tableaux = _service(monde).pour_tournoi(monde.tournoi_id).tableaux
+    tableaux = _service(monde).pour_depart(monde.depart_id).tableaux
 
     assert [t.type for t in tableaux] == [TypePhase.ELIMINATION_DIRECTE]
 
@@ -174,16 +183,16 @@ def test_un_tournoi_sans_phase_rend_une_liste_vide_et_non_une_erreur() -> None:
     """
     monde = _Monde()
 
-    assert _service(monde).pour_tournoi(monde.tournoi_id).tableaux == ()
+    assert _service(monde).pour_depart(monde.depart_id).tableaux == ()
 
 
-def test_un_tournoi_inconnu_est_refuse() -> None:
-    """Un identifiant inventé n'est pas un tournoi vide : la frontière API doit pouvoir répondre
-    404 plutôt que d'afficher un tournoi fantôme sans tableau."""
+def test_un_creneau_inconnu_est_refuse() -> None:
+    """Un identifiant inventé n'est pas un créneau vide : la frontière API doit pouvoir répondre
+    404 plutôt que d'afficher un créneau fantôme sans tableau."""
     monde = _Monde()
 
-    with pytest.raises(TournoiIntrouvable):
-        _service(monde).pour_tournoi(404)
+    with pytest.raises(DepartIntrouvable):
+        _service(monde).pour_depart(404)
 
 
 # --- CA « mis à jour en live » ------------------------------------------------------------------
@@ -203,7 +212,7 @@ def test_l_arbre_rendu_porte_le_vainqueur_acquis_et_le_match_suivant() -> None:
     vainqueur = monde.gagne_de(1)
     monde.gagner(1)
 
-    tableaux = _service(monde).pour_tournoi(monde.tournoi_id).tableaux
+    tableaux = _service(monde).pour_depart(monde.depart_id).tableaux
 
     assert len(tableaux) == 1
     duels = {duel.numero: duel for duel in tableaux[0].etat.duels}
@@ -229,7 +238,7 @@ def test_le_podium_acquis_est_rendu() -> None:
     for numero in (3, 4):
         monde.gagner(numero)
 
-    tableaux = _service(monde).pour_tournoi(monde.tournoi_id).tableaux
+    tableaux = _service(monde).pour_depart(monde.depart_id).tableaux
 
     assert tableaux[0].etat.est_termine
     assert [rang for rang, _ in tableaux[0].etat.podium] == [1, 2, 3, 4]
@@ -251,7 +260,7 @@ def test_la_lecture_est_pure() -> None:
         list(monde.series._series),
     )
 
-    _service(monde).pour_tournoi(monde.tournoi_id)
+    _service(monde).pour_depart(monde.depart_id)
 
     assert dict(monde.duels._tirs) == avant[0]
     assert dict(monde.placements._plan) == avant[1]
@@ -275,17 +284,51 @@ def test_un_tableau_illisible_est_omis_sans_emporter_les_autres() -> None:
     """
     monde = _Monde()
     _quatre(monde)
-    monde.phases.ajouter(Phase.qualification(monde.tournoi_id, BaremeQualification.creer(2, 3)))
-    a_venir = monde.phases.ajouter(
+    poser_phase_factice(
+        monde.departs,
+        monde.deroules,
+        monde.phases,
+        Phase.qualification(monde.depart_id, BaremeQualification.creer(2, 3)),
+    )
+    a_venir = poser_phase_factice(
+        monde.departs,
+        monde.deroules,
+        monde.phases,
         Phase.creer(
-            monde.tournoi_id,
+            monde.depart_id,
             3,
             TypePhase.ELIMINATION_DIRECTE,
             sources=(SourcePhase(ordre_source=1, rang_debut=5, rang_fin=8),),
-        )
+        ),
     )
     assert a_venir.id is not None
 
-    tableaux = _service(monde).pour_tournoi(monde.tournoi_id).tableaux
+    tableaux = _service(monde).pour_depart(monde.depart_id).tableaux
 
     assert [t.ordre for t in tableaux] == [2]
+
+
+# --- Portée : les arbres sont ceux d'un créneau (ADR-0075) ---------------------------------------
+
+
+def test_les_arbres_rendus_sont_ceux_du_creneau_interroge() -> None:
+    """**La garde de portée.** Deux créneaux, chacun son tableau de rang 2 : chaque appel n'en voit
+    qu'un.
+
+    À la maille tournoi, `par_tournoi` concaténait les deux et la réponse portait **deux** entrées
+    d'`ordre` 2 — indiscernables, puisque `TableauPublic` ne porte pas de `depart_id`. Le
+    spectateur voyait l'arbre du matin sous l'onglet de l'après-midi, sans rien pour s'en douter.
+    """
+    monde = _Monde()
+    _quatre(monde)
+    matin = monde.phase_id
+    assert matin is not None
+    _quatre(monde, depart_id=monde.depart_id_2)
+    apres_midi = monde.phase_id
+    assert apres_midi is not None and apres_midi != matin
+
+    vus_le_matin = _service(monde).pour_depart(monde.depart_id).tableaux
+    vus_l_apres_midi = _service(monde).pour_depart(monde.depart_id_2).tableaux
+
+    assert [t.phase_id for t in vus_le_matin] == [matin]
+    assert [t.phase_id for t in vus_l_apres_midi] == [apres_midi]

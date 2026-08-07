@@ -17,6 +17,7 @@ from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.documents_salle import CartesScoreurs, EtiquettesCibles
 from domain.duel import BaremeDuel, Duel
 from domain.ecran import PriseDeControle
@@ -618,12 +619,84 @@ class ScoreRepository(Protocol):
         ...
 
 
+class DerouleRepository(Protocol):
+    """Port de persistance du **déroulé** d'un tournoi — la définition, une seule fois (ADR-0076).
+
+    Distinct de `PhaseRepository`, qui porte l'**avancement** de chaque créneau. La séparation est
+    le propos : tant que la définition était recopiée par départ, elle pouvait diverger en silence.
+
+    L'ordre 1..N est la clé de lecture **et** la clé de jointure vers les phases : une phase joue
+    l'étape de même rang, dans le tournoi de son créneau.
+    """
+
+    def ajouter(self, etape: EtapeDeroule) -> EtapeDeroule:
+        """Persiste une étape et la renvoie avec son identifiant attribué."""
+        ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[EtapeDeroule]:
+        """Le déroulé du tournoi, **ordonné par `ordre`** (liste éventuellement vide).
+
+        Le tri est garanti par le port : la séquence se compose et se valide dans son ordre, et un
+        appelant qui devrait trier lui-même finirait par oublier de le faire.
+        """
+        ...
+
+    def enregistrer(self, etape: EtapeDeroule) -> EtapeDeroule:
+        """Met à jour une étape déjà persistée (barème, grain, type, sources, rang…)."""
+        ...
+
+    def reordonner(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
+        """Réécrit **en un bloc** les rangs (et définitions remappées) de tout un déroulé.
+
+        ⚠️ **Pourquoi ce n'est pas une boucle sur `enregistrer`.** Un déroulé est une suite 1..N
+        *sans doublon* : l'échange de deux rangs voisins passe forcément par un état où deux étapes
+        portent le même, et l'adapter SQL, qui fait respecter cette unicité, refuse la première
+        écriture. La sortie de ce piège — parquer les rangs hors de portée puis les reposer — est
+        une affaire de **persistance**, pas de métier : le service dit quel déroulé il veut, il n'a
+        pas à connaître l'ordre dans lequel les lignes tolèrent d'être touchées (ADR-0003).
+
+        L'écriture est **atomique** : ou tout le déroulé prend ses nouveaux rangs, ou rien ne bouge.
+        Un réordonnancement à moitié appliqué laisserait une séquence que le domaine rejette, donc
+        un tournoi que plus personne ne peut composer.
+
+        Renvoie les étapes relues, dans l'ordre demandé.
+
+        `# DETTE-026` — **cette méthode n'existe que parce que le rang porte l'identité.** Elle est,
+        avec son pendant `PhaseRepository.reordonner`, le 3ᵉ et le 4ᵉ écrivain de la séquence : le
+        seuil que le registre s'était fixé avant de proposer un remède structurel (ancrer par
+        identité plutôt que par ordre). Cf. `docs/dette.md`.
+        """
+        ...
+
+    def supprimer(self, etape_id: EtapeDerouleId) -> None:
+        """Supprime une étape du déroulé (existence garantie par l'appelant)."""
+        ...
+
+
 class PhaseRepository(Protocol):
-    """Port de persistance des phases (adapter fourni par l'infrastructure).
+    """Port de persistance des phases — l'**avancement** d'une étape dans un créneau (ADR-0076).
+
+    ⚠️ **Une phase ne persiste plus sa définition.** Depuis ADR-0076, seuls `depart_id`, `ordre` et
+    `statut` sont écrits ; le barème, le grain, les prélèvements et la profondeur viennent de
+    l'`EtapeDeroule` de même rang. Les `Phase` **rendues** par ce port portent malgré tout leur
+    définition — le repository l'**assemble** —, si bien que les modules qui lisent `phase.bareme`
+    ignorent la couture. C'est l'affaire de l'adapter (ADR-0003), pas celle du domaine.
+
+    Corollaire à connaître : passer une `Phase` à `ajouter` ou `enregistrer` avec un barème modifié
+    **ne change rien** — la définition s'édite sur l'étape, via `DerouleRepository`. Le seul champ
+    qu'une écriture de phase déplace est le `statut`.
 
     Introduit minimalement pour la qualification (E01US009 / ADR-0011), **étendu par E05US001** à
-    toute la séquence : `par_tournoi` (liste ordonnée) et `supprimer` servent la composition et le
+    toute la séquence : `par_depart` (liste ordonnée) et `supprimer` servent la composition et le
     cycle de vie des phases du moteur (ADR-0045).
+
+    ⚠️ **Les lectures sont passées de `par_tournoi` à `par_depart` en E01US025** (ADR-0075) : la
+    portée sportive est le **départ**. Le renommage est délibérément **cassant** — `DepartId` et
+    `TournoiId` sont tous deux des alias de `int`, donc mypy n'aurait **rien** signalé si les
+    méthodes avaient gardé leur nom : chaque appelant serait resté compilable et faux, cherchant des
+    phases par un identifiant de tournoi dans une colonne de départ. Renommer était le seul moyen
+    de forcer la revisite de tous les appels. *(Voir DETTE-044 : des `NewType` supprimeraient cette
+    classe entière de confusions.)*
     """
 
     def ajouter(self, phase: Phase) -> Phase:
@@ -634,23 +707,51 @@ class PhaseRepository(Protocol):
         """Renvoie la phase d'identifiant donné, ou `None` si elle n'existe pas."""
         ...
 
-    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
-        """Renvoie la phase d'un tournoi pour un type donné, ou `None` s'il n'y en a pas.
+    def par_depart_et_type(self, depart_id: DepartId, type_phase: TypePhase) -> Phase | None:
+        """Renvoie la phase d'un **départ** pour un type donné, ou `None` s'il n'y en a pas.
 
-        En E01US009, un tournoi porte **au plus une** phase de `qualification`.
+        Un départ porte **au plus une** phase de `qualification` (E01US009, portée corrigée par
+        ADR-0075).
+        """
+        ...
+
+    def par_depart(self, depart_id: DepartId) -> list[Phase]:
+        """Renvoie **toutes** les phases d'un **départ**, **ordonnées par `ordre`** (E05US001).
+
+        La séquence de phases (`ServicePhases`) se compose et se valide sur cette liste ; l'ordre
+        y est significatif (1..N sans trou **dans le départ**), d'où le tri à la source.
         """
         ...
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        """Renvoie **toutes** les phases d'un tournoi, **ordonnées par `ordre`** (E05US001).
+        """Renvoie les phases de **tous les départs** d'un tournoi, triées (départ, ordre).
 
-        La séquence de phases (`ServicePhases`) se compose et se valide sur cette liste ; l'ordre
-        y est significatif (1..N sans trou), d'où le tri à la source.
+        ⚠️ **Ce n'est pas une séquence** : la liste renvoyée contient N suites 1..M concaténées, une
+        par départ. La passer à `SequencePhases` lèverait `SequenceOrdreInvalide` — et c'est voulu.
+        Elle sert aux vues **transverses** (supervision, complétude, suppression en cascade d'un
+        tournoi), jamais au moteur, qui raisonne toujours dans un départ.
         """
         ...
 
     def enregistrer(self, phase: Phase) -> Phase:
-        """Met à jour une phase déjà persistée (édition du barème, du type, de la source…)."""
+        """Met à jour l'**avancement** d'une phase déjà persistée — son `statut`, et son rang.
+
+        ⚠️ La définition portée par l'objet reçu est **ignorée** (voir l'avertissement du port) :
+        elle s'édite sur l'étape, par `DerouleRepository`.
+        """
+        ...
+
+    def reordonner(self, phases: list[Phase]) -> None:
+        """Réécrit **en un bloc** le rang des phases d'un créneau (réalignement sur les étapes).
+
+        Pendant de `DerouleRepository.reordonner`, et pour la même raison : un créneau ne porte
+        qu'un avancement par rang, donc décaler les phases une à une bute sur cette unicité dès que
+        deux rangs s'échangent. Le rang **est** la clé de jointure vers la définition (ADR-0076) :
+        une phase laissée sur son ancien rang pointerait l'étape voisine — un changement de barème
+        silencieux, sans la moindre erreur visible. D'où l'atomicité.
+
+        `# DETTE-026` — 4ᵉ écrivain de la séquence, même remarque que sur `DerouleRepository`.
+        """
         ...
 
     def supprimer(self, phase_id: PhaseId) -> None:
@@ -1121,12 +1222,25 @@ class BarrageRepository(Protocol):
     [ADR-0066]: ../../docs/adr/0066-seuil-de-barrage-porte-par-la-politique-tiebreak.md
     """
 
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[BarrageDePlaces]:
-        """Tous les barrages d'un tournoi, clos compris (liste éventuellement vide).
+    def par_depart(self, depart_id: DepartId) -> list[BarrageDePlaces]:
+        """Tous les barrages **d'un départ**, clos compris (liste éventuellement vide).
 
         Les **clos** sont rendus eux aussi : ce sont eux qui portent les verdicts déjà appliqués au
         classement. Les filtrer ici ferait retomber les rangs tranchés en ex æquo à la lecture
         suivante.
+
+        **D'un départ depuis E01US025** (ADR-0075) : un barrage départage une place dans le
+        classement d'un créneau. Renommé comme `PhaseRepository.par_depart`, et pour la même
+        raison — `TournoiId` et `DepartId` étant deux alias de `int`, garder le nom aurait laissé
+        chaque appelant compilable et faux.
+        """
+        ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[BarrageDePlaces]:
+        """Les barrages de **tous les départs** d'un tournoi (vue transverse, jointure).
+
+        Comme `PhaseRepository.par_tournoi` : réservée aux lectures d'ensemble, jamais au moteur,
+        qui raisonne toujours dans un départ.
         """
         ...
 

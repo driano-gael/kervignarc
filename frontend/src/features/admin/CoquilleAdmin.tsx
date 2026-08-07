@@ -208,6 +208,18 @@ function Coquille() {
       rendu: () => courant && <Accueil tournoi={courant} />,
     },
     {
+      id: 'formats',
+      libelle: 'Formats de tournoi',
+      // **Première destination de l'atelier depuis E01US025** — et l'ordre est le propos : c'est du
+      // format que découle un tournoi concret, les autres destinations ne fabriquant que les briques
+      // qu'il assemble. Y entrer par `categories` faisait commencer par un composant.
+      //
+      // Ce qui se réutilise d'une année sur l'autre est le **format**, pas la phase — celle-ci
+      // porte un statut et un rang propres à une édition (ADR-0060 §5). Renommé au passage :
+      // « Formats (déroulés) » le réduisait à sa séquence de phases.
+      rendu: () => <Formats />,
+    },
+    {
       id: 'categories',
       libelle: 'Catégories',
       // Brique du **club** depuis E01US023 : plus aucun tournoi requis (DETTE-023 résorbée).
@@ -217,14 +229,6 @@ function Coquille() {
       id: 'blasons',
       libelle: 'Blasons',
       rendu: () => <BlasonsBibliotheque />,
-    },
-    {
-      id: 'formats',
-      libelle: 'Formats (déroulés)',
-      // Le déroulé type d'une compétition (ADR-0060 §5). Ce qui se réutilise d'une année sur
-      // l'autre est le **format**, pas la phase — celle-ci porte un statut et un rang propres à
-      // une édition.
-      rendu: () => <Formats />,
     },
     {
       id: 'deroule',

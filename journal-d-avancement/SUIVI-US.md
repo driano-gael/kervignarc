@@ -12,7 +12,14 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 06/08/2026, 02 h 36** · **102 US livrées** · dernière : `E17US004`
+**Dernière mise à jour : 07/08/2026, 18 h 46** · **103 US livrées** · dernière : `E01US025`
+*(**le départ est la portée sportive** — une décision de juillet 2025 que seule la logistique avait
+portée : le moteur classait les 4 créneaux ensemble, soit un classement de 400 au lieu de quatre de
+100. Corrigé, et la correction a révélé un second défaut — le déroulé **recopié** par créneau, libre
+de diverger : il se définit désormais **une fois** au tournoi, chaque départ n'en portant que
+l'avancement. Composer et piloter deviennent deux écrans. ADR-0075 + ADR-0076, migrations 0042/0043,
+garde-fou mécanique. ⚠️ **US prise hors tracker et spécifiée après coup** — sa fiche vaut
+non-régression, pas oracle)*. Précédente : `E17US004`
 *(la **supervision passe en grille de tuiles** — planche A13, variante **B** « 30 d'un œil », retenue
 et **validée sans réserve**, alors que le produit livrait la variante **A**, le tableau. Écran du jour
 J : une tablette muette se repère au **cadre ambre** de sa tuile, état écrit en toutes lettres
@@ -64,6 +71,18 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > écran mais **la palette**, jamais posée. Traité en une passe sur les ~40 features, avec un épic neuf
 > pour la suite ([`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md) — confronter les 36 planches
 > aux écrans livrés). La file E16 ci-dessous est **inchangée**.
+
+> ⚠️ **`E01US025` a été prise hors de cette file** (06–07/08/2026) et n'y change rien : c'était la
+> correction d'un **défaut de fond** — le moteur classait les créneaux ensemble —, découverte en
+> relisant [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md), pas une US planifiée.
+> Elle n'avait ni fiche ni ligne ici avant sa livraison ; les deux ont été écrites **après**, ce qui
+> est un manquement à signaler et non un précédent à suivre. La 🎯 ci-dessous est donc inchangée.
+>
+> ⚠️ **Conséquence pour `E16US002` (écran « Phases », A07, refusé)** : elle doit être **recadrée**
+> avant d'être prise. L'écran a changé de nature avec [ADR-0076](../docs/adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md)
+> — il compose désormais un déroulé **sans statut**, le pilotage ayant migré vers « Suivi du
+> déroulé ». Une partie du refus A07 (« 1/8 et 1/4 présentés comme des phases ») porte sur un écran
+> qui n'existe plus sous cette forme.
 
 > **🎯 Prochaine : `E16US003`** — séparer la complétude du déroulé de la complétude administrative.
 > ⚠️ Comme E16US001, elle **commence par une question** : la story porte deux points restés sans
@@ -697,13 +716,14 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 71 | E06US003 | Barrage de tir pour places décisives | ✅ *(seuil dans la politique `tiebreak`, manches persistées, verdict recalculé, ADR-0066)* |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ✅ *(palmarès : fusion des rangs de phases, podiums par catégorie, export PDF, politique `aggregation`, ADR-0067)* |
 
-## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (10/12)**
+## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (11/13)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
 | 73 | E05US010 | Placement intégral 1→N **& peuplement multiple** | ✅ *(routing générique + cascade, sources multiples, oracle 120, ADR-0061 ; absorbe E05US018, résorbe DETTE-015)* |
 | 74 | E05US015 | **Catalogue de types de phase** (échauffement, barrage, poules, repêchage, BSO) | ✅ *(11 formats : + suisse, colline, handicap, finale spectacle — le commanditaire a fourni leurs règles le 31/07 ; ADR-0062)* |
 | 74bis | E01US024 | **Composer, diagnostiquer et simuler un déroulé** | ✅ *(brouillon + invariant déplacé vers `appliquer`, schéma SVG maison, 2 gravités d'anomalie, simulation composée sur ADR-0054/0055 ; ADR-0063 — résorbe DETTE-030, ne résorbe DETTE-028 qu'à moitié)* |
+| 74ter | E01US025 | **Le départ est la portée sportive** + le déroulé se définit **une fois** | ✅ *(corrige [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md), resté **13 mois** sans portage dans le moteur : 4 départs de 100 rendaient UN classement de 400. `Phase`/`BarrageDePlaces` pendent au départ, `EtapeDeroule` porte la définition au tournoi ; migrations 0042/0043 ; garde-fou mécanique `test_portee_sportive.py` ; ADR-0075 + ADR-0076. ⚠️ **fiche écrite après coup**, US prise hors tracker — CA de non-régression, pas oracle. Ouvre DETTE-044/045/046, aggrave DETTE-025/026. **Reliquat de revue soldé le 07/08** : portée départ appliquée au suivi du déroulé, aux tableaux publics, au routage jour J et au contrôle d'effectif ; migrations 0042/0043 rendues réversibles ; cloisonnement du barrage ; décors de test passés à **deux créneaux**)* |
 | 75 | ~~E05US018~~ | ~~Oracle 120~~ → **absorbée par E05US010** | ⬜ *(le moteur et sa preuve ne se séparent pas)* |
 | 76 | E06US006 | **Classement intégral 1→N & profondeur configurable** | ✅ *(la profondeur se règle **par phase** et non plus au câblage ; absence = preset du type, podium pour une élimination directe et intégral pour un placement — ADR-0070, DETTE-035 ouverte)* |
 | 76bis | E05US020 | **Le moteur consomme les prélèvements déclarés** | ✅ *(cœur de DETTE-028 : prélèvement par rangs honoré, plage relative résolue, tranche de rangs au palmarès — DETTE-034 soldée, ADR-0068)* |
@@ -808,6 +828,24 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E17US004 | A13 **supervision en grille de tuiles** (variante B retenue) | J2 | ✅ *(écran du jour J ; IP + révocation conservées)* |
 | — | Embarquer **Inter** pour le jour J (`DV-07`) | J3 | ⬜ *(**arbitrage d'actif en attente** — règle 11)* |
 | — | Confronter les 19 planches `A**`, 9 `S**`, 7 `P**` aux écrans livrés | J3 | ⬜ |
+
+## Résorptions de dette planifiées (arbitrages du 07/08/2026)
+
+> Quatre questions ouvertes du registre ont été **tranchées par le commanditaire** à la revue
+> d'E01US025. Elles ne sont pas dans le jalon courant : elles sont ici pour que « reprend les US »
+> les retrouve, et parce qu'une décision non planifiée se reperd.
+
+| US | Titre | Résorbe | État |
+|---|---|---|---|
+| E05US023 | **Rendre jouables** poules, suisse, colline, Big Shoot Off — **et composables à l'atelier** | `DETTE-028` | ⬜ *(**« au plus tôt dans le backlog »** — priorité donnée par le commanditaire ; **à découper**, 4 moteurs × 2 surfaces ne tient pas dans une branche)* |
+| E06US009 | Un palmarès **par départ, juxtaposés** | `DETTE-045` | ⬜ *(arbitrage rendu : « 4 départs = 4 podiums », donc **aucune** agrégation inter-départs à écrire)* |
+| E01US026 | Supprimer un tournoi : **signaler puis confirmer** | `DETTE-001` | ⬜ *([ADR-0077](../docs/adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md) — étend ADR-0016 ; ferme la **plus ancienne** dette du registre et le `xfail` d'E02US010)* |
+| E05US022 | Ancrer la séquence sur **l'identité** de l'étape | `DETTE-026` | ⬜ *([ADR-0078](../docs/adr/0078-la-sequence-s-ancre-sur-l-identite-de-l-etape.md) — seuil de la règle 16 **dépassé** : 4 écrivains ; allège aussi `DETTE-025`)* |
+
+⚠️ **`DETTE-044` (`NewType` sur les identifiants) n'a pas d'US** et reste sans arbitrage requis :
+c'est elle qui a rendu tout le reste invisible pendant E01US025 — la bascule de portée n'a produit
+que 10 erreurs mypy, le **renommage** des méthodes de port en a révélé 157 de plus, toutes des
+appels compilables et faux. À prendre avant la prochaine US qui touche une portée.
 
 ## US caduque
 

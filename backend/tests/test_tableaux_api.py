@@ -28,8 +28,12 @@ from fastapi.testclient import TestClient
 from bootstrap.composition import create_app
 from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin
-from tests.test_placement_api import _appliquer_gabarit, _creer_tournoi
-from tests.test_placement_duels_api import _phase_elimination, _quatre_archers_classes
+from tests.test_placement_api import _appliquer_gabarit, _creer_depart, _creer_tournoi
+from tests.test_placement_duels_api import (
+    _phase_elimination,
+    _premier_depart,
+    _quatre_archers_classes,
+)
 
 
 @pytest.fixture
@@ -43,15 +47,21 @@ def app_tableaux(tmp_path: Path) -> Iterator[FastAPI]:
         app.state.database.engine.dispose()
 
 
-def _preparer(app: FastAPI, client: TestClient) -> tuple[int, int]:
-    """Tournoi peuplé : gabarit, 4 archers classés, phase de tableau, plan de duels posé."""
+def _preparer(app: FastAPI, client: TestClient) -> tuple[int, int, int]:
+    """Tournoi peuplé : gabarit, 4 archers classés, phase de tableau, plan de duels posé.
+
+    Rend `(tournoi_id, depart_id, phase_id)` : la lecture publique des tableaux s'adresse au
+    **créneau** depuis ADR-0075, il faut donc son identifiant — et il n'est *pas* égal à celui du
+    tournoi dès qu'une base porte plus d'une édition.
+    """
     tournoi_id = _creer_tournoi(client)
     _appliquer_gabarit(client, tournoi_id, nb_cibles=2)
     _quatre_archers_classes(app, client, tournoi_id)
     phase_id = _phase_elimination(app, tournoi_id)
+    depart_id = _premier_depart(app, tournoi_id)
     regen = client.post(f"/api/v1/tournois/{tournoi_id}/phases/{phase_id}/plan-de-duels/regenerer")
     assert regen.status_code == 200, regen.text
-    return tournoi_id, phase_id
+    return tournoi_id, depart_id, phase_id
 
 
 def _entete_scoreur(client: TestClient, tournoi_id: int) -> dict[str, str]:
@@ -86,13 +96,13 @@ def test_les_tableaux_du_tournoi_sont_rendus_avec_leurs_matchs(
     """La forme attendue par le front : une liste de tableaux, chacun avec ses duels et son type."""
     with TestClient(app_tableaux) as client:
         connecter_admin(client)
-        tournoi_id, phase_id = _preparer(app_tableaux, client)
+        tournoi_id, depart_id, phase_id = _preparer(app_tableaux, client)
 
-        reponse = client.get(f"/api/v1/tableaux/{tournoi_id}")
+        reponse = client.get(f"/api/v1/tableaux/departs/{depart_id}")
 
         assert reponse.status_code == 200, reponse.text
         corps = reponse.json()
-        assert corps["tournoi_id"] == tournoi_id
+        assert corps["depart_id"] == depart_id
         assert len(corps["tableaux"]) == 1
         tableau = corps["tableaux"][0]
         assert tableau["phase_id"] == phase_id
@@ -128,7 +138,7 @@ def test_le_dto_public_ne_porte_ni_identite_de_scoreur_ni_detail_de_tir(
     """
     with TestClient(app_tableaux) as client:
         connecter_admin(client)
-        tournoi_id, phase_id = _preparer(app_tableaux, client)
+        tournoi_id, depart_id, phase_id = _preparer(app_tableaux, client)
         entete = _entete_scoreur(client, tournoi_id)
         for manche in (1, 2, 3):
             saisie = client.post(
@@ -144,7 +154,7 @@ def test_le_dto_public_ne_porte_ni_identite_de_scoreur_ni_detail_de_tir(
         )
         assert valide.status_code == 200, valide.text
 
-        duels: list[dict[str, Any]] = client.get(f"/api/v1/tableaux/{tournoi_id}").json()[
+        duels: list[dict[str, Any]] = client.get(f"/api/v1/tableaux/departs/{depart_id}").json()[
             "tableaux"
         ][0]["duels"]
 
@@ -171,7 +181,7 @@ def test_le_dto_public_ne_porte_ni_identite_de_scoreur_ni_detail_de_tir(
         # **L'enveloppe aussi** (correctif de la 2ᵉ passe) : le verrou ne couvrait que le duel
         # et son duelliste, alors que le commit affirmait fermer « les deux trous d'un coup ».
         # Un champ ajouté à `TableauPublicReponse` partirait sur le LAN sans casser un test.
-        tableau = client.get(f"/api/v1/tableaux/{tournoi_id}").json()["tableaux"][0]
+        tableau = client.get(f"/api/v1/tableaux/departs/{depart_id}").json()["tableaux"][0]
         assert set(tableau) == {
             "phase_id",
             "ordre",
@@ -193,7 +203,7 @@ def test_un_resultat_non_valide_n_est_pas_annonce_comme_acquis(
     vainqueur comme acquis ferait mentir l'arbre affiché juste en dessous."""
     with TestClient(app_tableaux) as client:
         connecter_admin(client)
-        tournoi_id, phase_id = _preparer(app_tableaux, client)
+        tournoi_id, depart_id, phase_id = _preparer(app_tableaux, client)
         entete = _entete_scoreur(client, tournoi_id)
         for manche in (1, 2, 3):
             client.post(
@@ -202,7 +212,7 @@ def test_un_resultat_non_valide_n_est_pas_annonce_comme_acquis(
                 headers=entete,
             )
 
-        duels = client.get(f"/api/v1/tableaux/{tournoi_id}").json()["tableaux"][0]["duels"]
+        duels = client.get(f"/api/v1/tableaux/departs/{depart_id}").json()["tableaux"][0]["duels"]
 
         joue = next(duel for duel in duels if duel["numero"] == 1)
         assert joue["termine"] is True
@@ -216,26 +226,26 @@ def test_lecture_publique_sans_authentification(
     l'écran de salle. Protéger cette route les éteindrait tous les deux."""
     with TestClient(app_tableaux) as client:
         connecter_admin(client)
-        tournoi_id, _ = _preparer(app_tableaux, client)
+        _, depart_id, _ = _preparer(app_tableaux, client)
 
     with TestClient(app_tableaux) as anonyme:
-        reponse = anonyme.get(f"/api/v1/tableaux/{tournoi_id}")
+        reponse = anonyme.get(f"/api/v1/tableaux/departs/{depart_id}")
 
         assert reponse.status_code == 200, reponse.text
         assert reponse.json()["tableaux"]
 
 
-def test_tournoi_inconnu_rend_404(app_tableaux: FastAPI) -> None:
-    """Un identifiant inventé n'est pas un tournoi sans tableau : le dire évite d'afficher une vue
+def test_creneau_inconnu_rend_404(app_tableaux: FastAPI) -> None:
+    """Un identifiant inventé n'est pas un créneau sans tableau : le dire évite d'afficher une vue
     vide plausible pour une adresse fausse."""
     with TestClient(app_tableaux) as client:
-        reponse = client.get("/api/v1/tableaux/4242")
+        reponse = client.get("/api/v1/tableaux/departs/4242")
 
         assert reponse.status_code == 404, reponse.text
-        assert reponse.json()["code"] == "tournoi_introuvable"
+        assert reponse.json()["code"] == "depart_introuvable"
 
 
-def test_un_tournoi_sans_phase_rend_une_liste_vide(
+def test_un_creneau_sans_phase_rend_une_liste_vide(
     app_tableaux: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
     """L'onglet s'ouvre à 8 h du matin : « pas encore de tableau » est une réponse, pas une
@@ -243,8 +253,9 @@ def test_un_tournoi_sans_phase_rend_une_liste_vide(
     with TestClient(app_tableaux) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
+        depart_id = _creer_depart(client, tournoi_id)
 
-        reponse = client.get(f"/api/v1/tableaux/{tournoi_id}")
+        reponse = client.get(f"/api/v1/tableaux/departs/{depart_id}")
 
         assert reponse.status_code == 200, reponse.text
         assert reponse.json()["tableaux"] == []

@@ -36,7 +36,7 @@ from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait, NatureForfait
 from domain.inscription import Inscription, InscriptionId
 from domain.paiement import RecapPaiement
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase
 from domain.placement import Affectation
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
@@ -44,6 +44,7 @@ from tests.conftest import (
     FauxDepartRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
+    FauxPhaseRepository,
 )
 
 _DATE = datetime.date(2026, 3, 14)
@@ -131,36 +132,6 @@ class FauxSerieRepository:
         raise NotImplementedError
 
 
-class FauxPhaseRepository:
-    """Double de `PhaseRepository` : seul `par_tournoi_et_type` sert (reste = conformité)."""
-
-    def __init__(self) -> None:
-        self._phase: Phase | None = None
-
-    def definir(self, phase: Phase) -> None:
-        self._phase = phase
-
-    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
-        if self._phase is None or type_phase is not TypePhase.QUALIFICATION:
-            return None
-        return self._phase
-
-    def ajouter(self, phase: Phase) -> Phase:
-        raise NotImplementedError
-
-    def par_id(self, phase_id: PhaseId) -> Phase | None:
-        raise NotImplementedError
-
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        raise NotImplementedError
-
-    def enregistrer(self, phase: Phase) -> Phase:
-        raise NotImplementedError
-
-    def supprimer(self, phase_id: PhaseId) -> None:
-        raise NotImplementedError
-
-
 class FauxLecteurPaiements:
     """Double du port étroit `LecteurPaiements` : réponses pré-réglées par archer réglé / dû."""
 
@@ -211,21 +182,27 @@ class Montage:
         self.placements = FauxPlacementRepository()
         self.inscriptions = FauxInscriptionRepository()
         self.series = FauxSerieRepository()
-        self.phases = FauxPhaseRepository()
+        self.phases = FauxPhaseRepository(self.departs)
         self.forfaits = FauxForfaitRepository()
         self.paiements = FauxLecteurPaiements()
         tournoi = self.tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
         assert tournoi.id is not None
         self.tournoi_id: TournoiId = tournoi.id
+        # Le créneau qui porte la qualification (ADR-0075).
+        depart = self.departs.ajouter(
+            Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert depart.id is not None
+        self.depart_id = depart.id
         self.nb_volees_bareme = nb_volees_bareme
         self.qualif_phase_id = 1
         if nb_volees_bareme > 0:
             import dataclasses
 
-            self.phases.definir(
+            self.phases.ajouter(
                 dataclasses.replace(
                     Phase.qualification(
-                        self.tournoi_id, BaremeQualification.creer(nb_volees_bareme, 3)
+                        self.depart_id, BaremeQualification.creer(nb_volees_bareme, 3)
                     ),
                     id=self.qualif_phase_id,
                 )

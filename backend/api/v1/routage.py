@@ -208,9 +208,9 @@ générale contre la charge."""
 # --- Lecture ---
 
 
-@router.get("/{tournoi_id}", response_model=RoutageReponse)
+@router.get("/departs/{depart_id}", response_model=RoutageReponse)
 async def lire_routage(
-    tournoi_id: int,
+    depart_id: int,
     request: Request,
     archer_id: Annotated[
         list[int] | None,
@@ -231,13 +231,13 @@ async def lire_routage(
     grille.
     """
     service: ServiceRoutage = request.app.state.service_routage
-    routage = await run_in_threadpool(service.routage, tournoi_id, tuple(archer_id or ()), phase_id)
+    routage = await run_in_threadpool(service.routage, depart_id, tuple(archer_id or ()), phase_id)
     return RoutageReponse.de_routage(routage)
 
 
-@router.get("/{tournoi_id}/affectations", response_model=RoutageReponse)
+@router.get("/departs/{depart_id}/affectations", response_model=RoutageReponse)
 async def lire_affectations(
-    tournoi_id: int,
+    depart_id: int,
     request: Request,
     phase_id: Annotated[int | None, Query(description="Phase de tableau visée")] = None,
 ) -> RoutageReponse:
@@ -261,5 +261,5 @@ async def lire_affectations(
     client dans une réponse 400).
     """
     service: ServiceRoutage = request.app.state.service_routage
-    routage = await run_in_threadpool(service.affectations, tournoi_id, phase_id)
+    routage = await run_in_threadpool(service.affectations, depart_id, phase_id)
     return RoutageReponse.de_routage(routage)

@@ -1,8 +1,12 @@
-"""Lecture **publique** des tableaux d'un tournoi (E07US005) — « voir les arbres en direct ».
+"""Lecture **publique** des tableaux d'un **créneau** (E07US005) — « voir les arbres en direct ».
 
 Le CA d'E07US005 dit « rendu de l'arbre (**principal + placement**) mis à jour en live ». Ce
-service est le côté serveur de cette phrase : il rend, pour un tournoi, **tous** ses arbres —
+service est le côté serveur de cette phrase : il rend, pour un **départ**, **tous** ses arbres —
 élimination directe *et* placement (`TYPES_EN_TABLEAU`, E05US010) — dans l'ordre du déroulé.
+
+⚠️ **La maille est le créneau** depuis E01US025 (ADR-0075) : un départ rejoue le tournoi en entier,
+donc chaque créneau a ses propres arbres, aux mêmes rangs. Lire à la maille tournoi les concaténait
+sans marqueur d'origine — cf. `TableauxDuDepart`.
 
 **Pourquoi un service à part et non une méthode de `ServiceSaisieDuels`.** `ServiceSaisieDuels` est
 le service du **scoreur** : il saisit, il valide, et sa lecture `etat_tableau` est protégée par
@@ -22,11 +26,12 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from application.erreurs import ApplicationError, TournoiIntrouvable
+from application.erreurs import ApplicationError, DepartIntrouvable
 from application.saisie_duels import EtatTableau, ServiceSaisieDuels
+from domain.depart import DepartId
 from domain.erreurs import DomainError
 from domain.phase import TYPES_EN_TABLEAU, PhaseId, TypePhase
-from domain.ports import PhaseRepository, TournoiRepository
+from domain.ports import DepartRepository, PhaseRepository
 from domain.tournoi import TournoiId
 
 _logger = logging.getLogger(__name__)
@@ -49,51 +54,61 @@ class TableauPublic:
 
 
 @dataclass(frozen=True)
-class TableauxDuTournoi:
-    """Tous les arbres lisibles d'un tournoi, dans l'ordre du déroulé."""
+class TableauxDuDepart:
+    """Tous les arbres lisibles d'un **créneau**, dans l'ordre du déroulé.
 
-    tournoi_id: TournoiId
+    ⚠️ **D'un créneau et non d'un tournoi** (E01US025, ADR-0075) : les phases pendent au départ, et
+    deux créneaux portent chacun leur rang 2. À la maille tournoi, la liste rendait N tableaux
+    d'`ordre` identique **sans rien pour les distinguer** — `TableauPublic` ne porte pas de
+    `depart_id` —, donc un client incapable de dire de quel créneau il regardait l'arbre.
+    """
+
+    depart_id: DepartId
     tableaux: tuple[TableauPublic, ...]
 
 
 class ServiceTableauxPublics:
-    """Cas d'usage « voir les arbres du tournoi » — lecture pure, publique, sans identité."""
+    """Cas d'usage « voir les arbres du créneau » — lecture pure, publique, sans identité."""
 
     def __init__(
         self,
-        tournois: TournoiRepository,
+        departs: DepartRepository,
         phases: PhaseRepository,
         saisie: ServiceSaisieDuels,
     ) -> None:
-        self._tournois = tournois
+        # `TournoiRepository` a disparu du câblage avec la bascule de maille : la garde d'existence
+        # porte désormais sur le **créneau**, et le tournoi se lit sur le départ retrouvé. Garder le
+        # repository « au cas où » aurait laissé une dépendance que rien n'exerce.
+        self._departs = departs
         self._phases = phases
         self._saisie = saisie
 
-    def pour_tournoi(self, tournoi_id: TournoiId) -> TableauxDuTournoi:
-        """Les arbres du tournoi. `TournoiIntrouvable` si le tournoi n'existe pas.
+    def pour_depart(self, depart_id: DepartId) -> TableauxDuDepart:
+        """Les arbres de ce créneau. `DepartIntrouvable` si le créneau n'existe pas.
 
-        Un tournoi **sans phase en tableau** rend une liste vide plutôt qu'une erreur : l'onglet
+        Un créneau **sans phase en tableau** rend une liste vide plutôt qu'une erreur : l'onglet
         s'ouvre à 8 h du matin comme à 17 h, et « pas encore de tableau » est une réponse, pas une
         panne.
 
         # DETTE-031 : chaque appel **reconstruit** intégralement chaque tableau (classement complet
-        # du tournoi, arbre rebâti, duels rejoués, forfaits appliqués) — et ici **une fois par
+        # du départ, arbre rebâti, duels rejoués, forfaits appliqués) — et ici **une fois par
         # phase**, sur un endpoint public non authentifié pollé par autant d'appareils qu'il y a de
         # spectateurs. Régime assumé au contexte mono-club et local ; cf. docs/dette.md.
         """
-        if self._tournois.par_id(tournoi_id) is None:
-            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        phases = sorted(self._phases.par_tournoi(tournoi_id), key=lambda phase: phase.ordre)
+        depart = self._departs.par_id(depart_id)
+        if depart is None:
+            raise DepartIntrouvable(f"Aucun départ d'identifiant {depart_id}.")
+        phases = sorted(self._phases.par_depart(depart_id), key=lambda phase: phase.ordre)
         lisibles = []
         for phase in phases:
             if phase.type not in TYPES_EN_TABLEAU or phase.id is None:
                 continue
-            etat = self._etat_ou_rien(tournoi_id, phase.id)
+            etat = self._etat_ou_rien(depart.tournoi_id, phase.id)
             if etat is not None:
                 lisibles.append(
                     TableauPublic(phase_id=phase.id, ordre=phase.ordre, type=phase.type, etat=etat)
                 )
-        return TableauxDuTournoi(tournoi_id=tournoi_id, tableaux=tuple(lisibles))
+        return TableauxDuDepart(depart_id=depart_id, tableaux=tuple(lisibles))
 
     def _etat_ou_rien(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatTableau | None:
         """La photo d'un tableau, ou `None` s'il n'est **pas encore lisible**.

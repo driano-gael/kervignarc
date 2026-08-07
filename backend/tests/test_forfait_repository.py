@@ -17,6 +17,7 @@ from pathlib import Path
 
 from domain.archer import Archer
 from domain.categorie import Categorie
+from domain.depart import Depart
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.forfait import Forfait, NatureForfait
 from domain.phase import Phase, TypePhase
@@ -26,11 +27,12 @@ from infrastructure.db import (
     AuditRepositorySQL,
     CategorieRepositorySQL,
     Database,
+    DepartRepositorySQL,
     ForfaitRepositorySQL,
-    PhaseRepositorySQL,
     TournoiRepositorySQL,
 )
 from tests.base_migree import preparer_base
+from tests.conftest import poser_phase_sql
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -62,8 +64,13 @@ class _Contexte:
         archer = self.archers.ajouter(Archer.creer("DURAND", "Jean", tournoi.id, categorie.id))
         assert archer.id is not None
         self.archer_id = archer.id
-        phase = PhaseRepositorySQL(self.db.session_factory).ajouter(
-            Phase.creer(tournoi.id, 2, TypePhase.ELIMINATION_DIRECTE)
+        depart = DepartRepositorySQL(self.db.session_factory).ajouter(
+            Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert depart.id is not None
+        self.depart_id = depart.id
+        phase = poser_phase_sql(
+            self.db.session_factory, Phase.creer(depart.id, 2, TypePhase.ELIMINATION_DIRECTE)
         )
         assert phase.id is not None
         self.phase_id = phase.id
@@ -106,8 +113,8 @@ class _Contexte:
 
     def autre_phase(self) -> int:
         """Une seconde phase d'élimination (pour la fusion mixte multi-phases)."""
-        phase = PhaseRepositorySQL(self.db.session_factory).ajouter(
-            Phase.creer(self.tournoi_id, 3, TypePhase.ELIMINATION_DIRECTE)
+        phase = poser_phase_sql(
+            self.db.session_factory, Phase.creer(self.tournoi_id, 3, TypePhase.ELIMINATION_DIRECTE)
         )
         assert phase.id is not None
         return phase.id

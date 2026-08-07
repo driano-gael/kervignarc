@@ -29,11 +29,11 @@ from typing import Protocol
 
 from application.erreurs import TournoiIntrouvable
 from application.paiements import LignePaiementArcher
+from application.portee import qualification_du_tournoi
 from domain.archer import ArcherId
 from domain.completude import Completude, evaluer_completude
 from domain.cycle_depart import AvancementDepart
 from domain.depart import DepartId
-from domain.phase import TypePhase
 from domain.ports import (
     DepartRepository,
     ForfaitRepository,
@@ -111,7 +111,7 @@ class ServiceCompletude:
         (`# DETTE-022` — le 3ᵉ cas est arrivé avec `ServiceSaisie` en E04US018 ; l'extraction
         est inscrite au registre, elle se fera en US dédiée).
         """
-        phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        phase = qualification_du_tournoi(self._phases, tournoi_id)
         nb_volees = phase.bareme.nb_volees if phase is not None and phase.bareme is not None else 0
         forfaits_qualif: set[ArcherId] = (
             {f.archer_id for f in self._forfaits.par_phase(phase.id)}
@@ -153,7 +153,7 @@ class ServiceCompletude:
         remonte en **« en attente »** — pas un « 0/N à finir » trompeur qui laisserait croire la
         saisie en cours. On n'échoue pas là-dessus (robustesse jour J).
         """
-        phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        phase = qualification_du_tournoi(self._phases, tournoi_id)
         # `bareme` est optionnel depuis E05US001 (ADR-0045 §2) mais présent sur une qualification ;
         # absent (données incohérentes) → même issue « rien de scorable » que barème non configuré.
         nb_volees = phase.bareme.nb_volees if phase is not None and phase.bareme is not None else 0

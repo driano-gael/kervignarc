@@ -43,6 +43,7 @@ from domain.politiques import (
     AggregationParQualification,
     ProfondeurClassement,
 )
+from tests.conftest import poser_phase_factice
 from tests.test_service_routage import _Monde
 
 _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
@@ -97,8 +98,13 @@ def _abandonner_en_qualification(monde: _Monde, archer_id: int) -> None:
     Il faut une phase de qualification pour cela — `ServiceClassement` filtre les forfaits par
     phase, un forfait déclaré en duels ne reléguant pas le rang de qualif.
     """
-    phase = monde.phases.ajouter(
-        Phase.qualification(monde.tournoi_id, BaremeQualification.creer(1, 3))
+    # La qualification pend au **créneau** (ADR-0075) : posée sur `tournoi_id`, elle était
+    # orpheline — l'assemblage l'écartait, et le forfait ne reléguait plus personne.
+    phase = poser_phase_factice(
+        monde.departs,
+        monde.deroules,
+        monde.phases,
+        Phase.qualification(monde.depart_id, BaremeQualification.creer(1, 3)),
     )
     assert phase.id is not None
     monde.forfaits.semer(
@@ -140,6 +146,7 @@ def _service(
         monde.saisie,
         monde.duels,
         generateur or _FauxGenerateurPalmares(),
+        monde.departs,
         aggregation,
     )
 

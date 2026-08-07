@@ -22,19 +22,25 @@ import { getAffectations, getRoutage } from './api'
 
 const INTERVALLE_POLL_MS = 20000
 
-const cleRoutage = (tournoiId: number, archerIds: number[], phaseId: number | null) =>
-  ['routage', tournoiId, phaseId, archerIds.join(',')] as const
+const cleRoutage = (departId: number | null, archerIds: number[], phaseId: number | null) =>
+  ['routage', departId, phaseId, archerIds.join(',')] as const
 
-const cleAffectations = (tournoiId: number, phaseId: number | null) =>
-  ['routage', 'affectations', tournoiId, phaseId] as const
+const cleAffectations = (departId: number | null, phaseId: number | null) =>
+  ['routage', 'affectations', departId, phaseId] as const
 
-export function useRoutage(tournoiId: number, archerIds: number[], phaseId: number | null = null) {
+/** Le routage **d'un créneau** (ADR-0075) : « le tableau qui vient » n'existe que dans une
+ * séquence. `null` tant qu'aucun créneau n'est résolu — la requête est alors désactivée. */
+export function useRoutage(
+  departId: number | null,
+  archerIds: number[],
+  phaseId: number | null = null,
+) {
   return useQuery({
-    queryKey: cleRoutage(tournoiId, archerIds, phaseId),
-    queryFn: () => getRoutage(tournoiId, archerIds, phaseId),
-    // Aucun archer à router : pas de requête. (Panneau fermé = composant **démonté** par les deux
-    // appelants — inutile d'ajouter un drapeau `actif` qui ne serait jamais passé à `false`.)
-    enabled: archerIds.length > 0,
+    queryKey: cleRoutage(departId, archerIds, phaseId),
+    queryFn: () => getRoutage(departId as number, archerIds, phaseId),
+    // Aucun archer à router — ou aucun créneau résolu : pas de requête. (Panneau fermé = composant
+    // **démonté** par les deux appelants.)
+    enabled: departId !== null && archerIds.length > 0,
     refetchInterval: INTERVALLE_POLL_MS,
     staleTime: 0,
   })
@@ -53,11 +59,15 @@ export function useRoutage(tournoiId: number, archerIds: number[], phaseId: numb
 // régime dominant, puisque `useRealtime` invalide **sans clé** : chaque écriture serveur refetch
 // tous les clients montés. C'est `# DETTE-031`, que cette US aggrave et dont elle élargit la ligne.
 // D'où `actif` : les appelants qui n'ont rien à afficher ne montent pas la requête.
-export function useAffectations(tournoiId: number, phaseId: number | null = null, actif = true) {
+export function useAffectations(
+  departId: number | null,
+  phaseId: number | null = null,
+  actif = true,
+) {
   return useQuery({
-    queryKey: cleAffectations(tournoiId, phaseId),
-    queryFn: () => getAffectations(tournoiId, phaseId),
-    enabled: actif,
+    queryKey: cleAffectations(departId, phaseId),
+    queryFn: () => getAffectations(departId as number, phaseId),
+    enabled: actif && departId !== null,
     refetchInterval: INTERVALLE_POLL_MS,
     staleTime: 0,
   })

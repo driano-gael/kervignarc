@@ -69,29 +69,39 @@ export interface Routage {
   archers: RoutageArcher[]
 }
 
-// `phaseId` omis = le serveur vise la première phase d'élimination directe du tournoi : la tablette
-// de qualification ne connaît que sa cible et son départ, pas l'arbre. L'ordre des `archerIds` est
-// **conservé** par le serveur — le panneau affiche A, B, C, D dans l'ordre de la grille.
+// ⚠️ **L'entrée est le créneau** (E01US025, ADR-0075) : « le tableau qui vient » n'a de sens que
+// dans une séquence, et un tournoi en a autant qu'il a de départs. À la maille tournoi, le serveur
+// renvoyait tout le monde vers le tableau du **premier** créneau — les archers de l'après-midi
+// compris, sur les quatre canaux de routage à la fois. C'est d'ailleurs ce que la tablette connaît
+// déjà : « sa cible et son départ ».
+//
+// `phaseId` omis = le serveur vise la première élimination directe non terminée **du créneau**.
+// L'ordre des `archerIds` est **conservé** par le serveur — le panneau affiche A, B, C, D dans
+// l'ordre de la grille.
 export function getRoutage(
-  tournoiId: number,
+  departId: number,
   archerIds: number[],
   phaseId?: number | null,
 ): Promise<Routage> {
   const parametres = new URLSearchParams()
   for (const archerId of archerIds) parametres.append('archer_id', String(archerId))
   if (phaseId != null) parametres.set('phase_id', String(phaseId))
-  return fetchJson<Routage>(`/api/v1/routage/${tournoiId}?${parametres}`, undefined, 'aucune')
+  return fetchJson<Routage>(
+    `/api/v1/routage/departs/${departId}?${parametres}`,
+    undefined,
+    'aucune',
+  )
 }
 
 // **Toutes** les affectations du tableau, dans l'ordre du pas de tir (E07US008) — aucun `archer_id`
 // à fournir. C'est ce qui distingue cette lecture de `getRoutage` : l'écran de salle et la table de
 // l'organisation ne connaissent pas la liste des archers, et la leur faire reconstituer reviendrait
 // à leur faire connaître le tableau. Même type de réponse : les quatre canaux disent la même chose.
-export function getAffectations(tournoiId: number, phaseId?: number | null): Promise<Routage> {
+export function getAffectations(departId: number, phaseId?: number | null): Promise<Routage> {
   const parametres = new URLSearchParams()
   if (phaseId != null) parametres.set('phase_id', String(phaseId))
   return fetchJson<Routage>(
-    `/api/v1/routage/${tournoiId}/affectations?${parametres}`,
+    `/api/v1/routage/departs/${departId}/affectations?${parametres}`,
     undefined,
     'aucune',
   )

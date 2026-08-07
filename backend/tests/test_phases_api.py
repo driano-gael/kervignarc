@@ -38,9 +38,21 @@ def app_phases(tmp_path: Path) -> Iterator[FastAPI]:
 
 
 def _creer_tournoi(client: TestClient) -> int:
+    """Crée un tournoi **et son créneau**, et renvoie l'identifiant du **tournoi**.
+
+    Le déroulé se compose au tournoi (ADR-0076) — c'est lui que les routes de composition prennent
+    pour parent. Le créneau est créé quand même : sans lui, appliquer un déroulé ne produirait
+    aucun avancement, et les tests de cycle de vie n'auraient rien à faire vivre.
+    """
     reponse = client.post("/api/v1/tournois", json={"nom": "Kervignarc", "date": "2026-03-14"})
     assert reponse.status_code == 201, reponse.text
-    return int(reponse.json()["id"])
+    tournoi_id = int(reponse.json()["id"])
+    creneau = client.post(
+        f"/api/v1/tournois/{tournoi_id}/departs",
+        json={"horaire": "09:00", "tarif_centimes": 800},
+    )
+    assert creneau.status_code == 201, creneau.text
+    return tournoi_id
 
 
 def test_composer_editer_et_lister(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> None:
@@ -119,8 +131,13 @@ def test_cycle_de_vie(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> N
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         base = f"/api/v1/tournois/{tournoi_id}/phases"
-        phase = client.post(base, json={"type": "elimination_directe"}).json()
-        statut_url = f"{base}/{phase['id']}/statut"
+        client.post(base, json={"type": "elimination_directe"})
+        # ⚠️ **Composer et faire vivre sont deux mailles** (ADR-0076) : l'étape se pose au tournoi,
+        # mais son avancement se pilote **dans un créneau**. On relit donc la phase du départ pour
+        # obtenir l'identifiant que la route de statut attend.
+        depart_id = client.get(f"/api/v1/tournois/{tournoi_id}/departs").json()[0]["id"]
+        phase = client.get(f"/api/v1/departs/{depart_id}/phases").json()[-1]
+        statut_url = f"/api/v1/departs/{depart_id}/phases/{phase['id']}/statut"
 
         assert (
             client.post(statut_url, json={"transition": "demarrer"}).json()["statut"] == "en_cours"
@@ -138,14 +155,23 @@ def test_cycle_de_vie(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> N
 
 
 def test_transition_illegale_409(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """Une transition depuis le mauvais état → 409, sur la route du **créneau** (ADR-0076).
+
+    Le cycle de vie ne s'adresse pas au déroulé du tournoi : mettre en pause « la phase 2 » n'aurait
+    pas de sens si les quatre créneaux la jouaient à des moments différents — c'est le propos même
+    de la séparation.
+    """
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         base = f"/api/v1/tournois/{tournoi_id}/phases"
-        phase = client.post(base, json={"type": "elimination_directe"}).json()
+        client.post(base, json={"type": "elimination_directe"})
+        depart_id = client.get(f"/api/v1/tournois/{tournoi_id}/departs").json()[0]["id"]
+        phase = client.get(f"/api/v1/departs/{depart_id}/phases").json()[-1]
 
         reponse = client.post(
-            f"{base}/{phase['id']}/statut", json={"transition": "mettre_en_pause"}
+            f"/api/v1/departs/{depart_id}/phases/{phase['id']}/statut",
+            json={"transition": "mettre_en_pause"},
         )
         assert reponse.status_code == 409
         assert reponse.json()["code"] == "transition_statut_invalide"

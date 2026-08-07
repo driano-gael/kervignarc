@@ -234,17 +234,25 @@ class EgaliteADepartagerReponse(BaseModel):
 
 
 class ClassementReponse(BaseModel):
-    """Classement d'un tournoi renvoyé au client."""
+    """Classement d'un **créneau** renvoyé au client.
 
-    tournoi_id: int
+    ⚠️ `depart_id` et non `tournoi_id` (correctif de revue E01US025). Le champ s'appelait
+    `tournoi_id` et la route est passée à `/departs/{depart_id}/classement` : le DTO **publiait donc
+    un identifiant de départ sous un nom de tournoi**. C'est `DETTE-044` en acte — `DepartId` et
+    `TournoiId` sont deux alias de `int`, mypy ne voit rien — et le test censé l'attraper la
+    consacrait, vert parce que le tournoi et le départ du décor portaient tous deux l'`id` 1. Un
+    client qui refaisait une requête avec cette valeur interrogeait un autre objet.
+    """
+
+    depart_id: int
     lignes: list[LigneClassementReponse]
     egalites_a_departager: list[EgaliteADepartagerReponse] = []
 
     @staticmethod
-    def de_agregat(tournoi_id: int, classement: Classement) -> ClassementReponse:
+    def de_agregat(depart_id: int, classement: Classement) -> ClassementReponse:
         """Traduit le classement de domaine en DTO de réponse."""
         return ClassementReponse(
-            tournoi_id=tournoi_id,
+            depart_id=depart_id,
             egalites_a_departager=[
                 EgaliteADepartagerReponse(
                     rang=egalite.rang,
@@ -490,15 +498,22 @@ async def saisir_score(
     return ScoreReponse.de_agregat(score)
 
 
-@router.get("/tournois/{tournoi_id}/classement", response_model=ClassementReponse)
+@router.get("/departs/{depart_id}/classement", response_model=ClassementReponse)
 async def consulter_classement(
-    tournoi_id: int, request: Request, categorie_id: int | None = None
+    depart_id: int, request: Request, categorie_id: int | None = None
 ) -> ClassementReponse:
-    """Renvoie le classement de qualification d'un tournoi (lecture directe hors boucle).
+    """Renvoie le classement de qualification **d'un départ** (lecture directe hors boucle).
+
+    ⚠️ **La route a changé de parent en E01US025** (ADR-0075) : elle pendait au tournoi et
+    fusionnait tous les créneaux — 4 départs de 100 archers rendaient un classement de 400, où
+    l'archer du matin était rangé contre celui du soir qu'il n'a jamais affronté. Un départ rejoue
+    le tournoi en entier, donc il a **son** classement. Rupture assumée : l'application n'a aucun
+    client tiers (mono-club, réseau local).
 
     `categorie_id` (optionnel) **filtre** l'affichage à une catégorie ; les rangs (scratch et
-    catégorie) restent ceux du classement complet — filtrer une catégorie ne réordonne pas le reste.
+    catégorie) restent ceux du classement complet **du départ** — filtrer une catégorie ne
+    réordonne pas le reste.
     """
     service: ServiceClassement = request.app.state.service_classement
-    classement = await run_in_threadpool(service.pour_tournoi, tournoi_id, categorie_id)
-    return ClassementReponse.de_agregat(tournoi_id, classement)
+    classement = await run_in_threadpool(service.pour_depart, depart_id, categorie_id)
+    return ClassementReponse.de_agregat(depart_id, classement)

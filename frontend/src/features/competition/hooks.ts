@@ -29,22 +29,38 @@ import {
 // Exportée : la feature `archers` (E02US003) invalide le classement après une édition ou une
 // désinscription — un archer corrigé ou retiré doit quitter le tableau sans attendre. La clé se
 // déclare **une fois**, ici, où vit la requête ; deux littéraux `['classement', id]` finiraient
-// par diverger et l'invalidation raterait sa cible en silence. Elle **préfixe** la clé filtrée par
-// catégorie (E06US001) : invalider `['classement', id]` couvre toutes les vues filtrées du tournoi.
-export const cleClassement = (tournoiId: number, categorieId?: number) =>
+// par diverger et l'invalidation raterait sa cible en silence.
+//
+// ⚠️ **La clé reste ancrée au tournoi alors que la donnée est celle d'un départ** (ADR-0075), et
+// c'est délibéré : React Query invalide **par préfixe**, donc `['classement', tournoiId]` couvre
+// les N créneaux du tournoi *et* leurs vues filtrées par catégorie. Les six invalidations
+// existantes (archers, forfaits, barrages, phases) raisonnent au tournoi — un archer corrigé peut
+// tirer dans n'importe quel créneau. Descendre la clé au seul départ les aurait toutes fait rater
+// leur cible **en silence** : l'écran cesserait de se rafraîchir sans qu'aucune erreur ne le dise.
+export const cleClassement = (tournoiId: number) => ['classement', tournoiId] as const
+
+// La clé d'une vue **précise** : ce créneau, éventuellement cette catégorie. Préfixée par la
+// précédente, donc couverte par ses invalidations.
+export const cleClassementDepart = (tournoiId: number, departId: number, categorieId?: number) =>
   categorieId === undefined
-    ? (['classement', tournoiId] as const)
-    : (['classement', tournoiId, categorieId] as const)
+    ? (['classement', tournoiId, departId] as const)
+    : (['classement', tournoiId, departId, categorieId] as const)
 // Exportée : la feature « accueil » (E14US001) invalide la liste des tournois après une transition
 // de cycle de vie (le statut change → badge, frise, accueil contextualisé). La clé se déclare **une
 // fois**, ici où vit la requête, pour ne pas diverger d'un littéral `['tournois']` recopié ailleurs.
 export const CLE_TOURNOIS = ['tournois'] as const
 
-// `categorieId` optionnel : filtre le classement à une catégorie (les rangs restent globaux).
-export function useClassement(tournoiId: number, categorieId?: number) {
+// Le classement **d'un créneau** (ADR-0075). `categorieId` optionnel : filtre l'affichage à une
+// catégorie (les rangs restent ceux du classement complet du départ).
+//
+// `departId` peut être `null` le temps que la liste des créneaux arrive : la requête est alors
+// **désactivée** plutôt que lancée sur un identifiant inventé. Un `enabled: false` rend un état
+// `pending`, que l'appelant affiche comme un chargement — ce qu'il est réellement.
+export function useClassement(tournoiId: number, departId: number | null, categorieId?: number) {
   return useQuery({
-    queryKey: cleClassement(tournoiId, categorieId),
-    queryFn: () => getClassement(tournoiId, categorieId),
+    queryKey: cleClassementDepart(tournoiId, departId ?? 0, categorieId),
+    queryFn: () => getClassement(departId as number, categorieId),
+    enabled: departId !== null,
   })
 }
 
@@ -104,6 +120,10 @@ export function usePlacerArcher(tournoiId: number) {
 
 // Clé exportée pour la même raison que `cleClassement` : elle est invalidée depuis plusieurs
 // mutations, et deux littéraux recopiés finiraient par diverger en silence.
+// ⚠️ Clé **au tournoi**, volontairement, alors que le barrage pend au départ (ADR-0075) : la route
+// `GET /tournois/{id}/barrages` rend tous les créneaux en une fois, et la lui indexer par départ
+// mettrait N copies de la même charge en cache. Le tri par créneau est donc à l'affichage
+// (`PanneauBarrages`), pas au cache — la seule chose à ne jamais oublier est de le **faire**.
 export const cleBarrages = (tournoiId: number) => ['barrages', tournoiId] as const
 
 export function useBarrages(tournoiId: number) {

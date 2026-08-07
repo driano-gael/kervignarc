@@ -262,7 +262,7 @@ def test_un_verdict_vide_ne_range_personne() -> None:
 
 def _annonce(participants: tuple[Participant, ...]) -> BarrageDePlaces:
     return BarrageDePlaces(
-        tournoi_id=1,
+        depart_id=1,
         portee=PorteeBarrage.QUALIFICATION,
         participants=participants,
         cree_le=datetime.datetime(2026, 8, 2, 12, 0, tzinfo=datetime.UTC),

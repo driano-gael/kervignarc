@@ -16,6 +16,7 @@ from __future__ import annotations
 import datetime
 import json
 from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import SQLAlchemyError
@@ -28,6 +29,7 @@ from domain.barrage import (
     TirBarrage,
 )
 from domain.blason import ZoneScore
+from domain.depart import DepartId
 from domain.duel import BaremeDuel, Barrage, Cote, Duel, MancheDuel
 from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait, NatureForfait
@@ -43,6 +45,7 @@ from infrastructure.db.models import (
     ArcherORM,
     BarrageORM,
     BarrageTirORM,
+    DepartORM,
     DuelORM,
     ForfaitORM,
     ScoreORM,
@@ -618,16 +621,27 @@ class BarrageRepositorySQL:
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
+    def par_depart(self, depart_id: DepartId) -> list[BarrageDePlaces]:
+        """Tous les barrages **d'un départ**, **clos compris** — ce sont eux qui portent les
+        verdicts déjà acquis, et les filtrer ferait retomber les rangs tranchés en ex æquo."""
+        return self._lire(BarrageORM.depart_id == depart_id)
+
     def par_tournoi(self, tournoi_id: TournoiId) -> list[BarrageDePlaces]:
-        """Tous les barrages d'un tournoi, **clos compris** — ce sont eux qui portent les verdicts
-        déjà acquis, et les filtrer ferait retomber les rangs tranchés en ex æquo."""
+        """Les barrages de **tous les départs** d'un tournoi (vue transverse, jointure).
+
+        Le lien au tournoi n'est plus direct depuis ADR-0075 : il passe par le départ.
+        """
+        return self._lire(
+            BarrageORM.depart_id.in_(select(DepartORM.id).where(DepartORM.tournoi_id == tournoi_id))
+        )
+
+    def _lire(self, critere: Any) -> list[BarrageDePlaces]:
+        """Relit les barrages satisfaisant `critere`, avec leurs manches (source unique)."""
         try:
             with self._session_factory() as session:
                 lignes = list(
                     session.execute(
-                        select(BarrageORM)
-                        .where(BarrageORM.tournoi_id == tournoi_id)
-                        .order_by(BarrageORM.id)
+                        select(BarrageORM).where(critere).order_by(BarrageORM.id)
                     ).scalars()
                 )
                 if not lignes:
@@ -669,7 +683,7 @@ class BarrageRepositorySQL:
         try:
             with self._session_factory() as session:
                 ligne = BarrageORM(
-                    tournoi_id=barrage.tournoi_id,
+                    depart_id=barrage.depart_id,
                     phase_id=barrage.phase_id,
                     portee=barrage.portee.value,
                     reference=barrage.reference,

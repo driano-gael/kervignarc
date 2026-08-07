@@ -24,8 +24,12 @@ from application.routage import IssueRoutage
 from bootstrap.composition import create_app
 from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin
-from tests.test_placement_api import _appliquer_gabarit, _creer_tournoi
-from tests.test_placement_duels_api import _phase_elimination, _quatre_archers_classes
+from tests.test_placement_api import _appliquer_gabarit, _creer_depart, _creer_tournoi
+from tests.test_placement_duels_api import (
+    _phase_elimination,
+    _premier_depart,
+    _quatre_archers_classes,
+)
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
@@ -47,14 +51,19 @@ def app_routage(tmp_path: Path) -> Iterator[FastAPI]:
 
 
 def _preparer(app: FastAPI, client: TestClient) -> tuple[int, int, list[int]]:
-    """Tournoi peuplé (gabarit, 4 archers classés, phase de tableau) avec le plan de duels posé."""
+    """Tournoi peuplé (gabarit, 4 archers classés, phase de tableau) avec le plan de duels posé.
+
+    Rend `(depart_id, phase_id, archers)` : les quatre canaux de routage entrent par le **créneau**
+    depuis ADR-0075 — « le tableau qui vient » n'a de sens que dans une séquence, et la vue
+    transverse d'un tournoi en concatène autant qu'il a de départs.
+    """
     tournoi_id = _creer_tournoi(client)
     _appliquer_gabarit(client, tournoi_id, nb_cibles=2)
     archers = _quatre_archers_classes(app, client, tournoi_id)
     phase_id = _phase_elimination(app, tournoi_id)
     regen = client.post(f"/api/v1/tournois/{tournoi_id}/phases/{phase_id}/plan-de-duels/regenerer")
     assert regen.status_code == 200, regen.text
-    return tournoi_id, phase_id, archers
+    return _premier_depart(app, tournoi_id), phase_id, archers
 
 
 def test_route_les_archers_demandes_dans_l_ordre_demande(
@@ -63,10 +72,10 @@ def test_route_les_archers_demandes_dans_l_ordre_demande(
     """Câblage : une ligne par `archer_id`, dans l'ordre de la grille (A→D), avec sa cible."""
     with TestClient(app_routage) as client:
         connecter_admin(client)
-        tournoi_id, phase_id, archers = _preparer(app_routage, client)
+        depart_id, phase_id, archers = _preparer(app_routage, client)
 
         reponse = client.get(
-            f"/api/v1/routage/{tournoi_id}",
+            f"/api/v1/routage/departs/{depart_id}",
             params={"archer_id": archers, "phase_id": phase_id},
         )
 
@@ -92,9 +101,11 @@ def test_phase_de_tableau_resolue_sans_la_donner(
     """Sans `phase_id` — le cas de la tablette de qualification — le service trouve le tableau."""
     with TestClient(app_routage) as client:
         connecter_admin(client)
-        tournoi_id, phase_id, archers = _preparer(app_routage, client)
+        depart_id, phase_id, archers = _preparer(app_routage, client)
 
-        reponse = client.get(f"/api/v1/routage/{tournoi_id}", params={"archer_id": archers[:1]})
+        reponse = client.get(
+            f"/api/v1/routage/departs/{depart_id}", params={"archer_id": archers[:1]}
+        )
 
     assert reponse.status_code == 200, reponse.text
     assert reponse.json()["phase_id"] == phase_id
@@ -107,10 +118,10 @@ def test_lecture_publique_sans_authentification(
     destiné à finir sur l'écran de salle et l'appli publique."""
     with TestClient(app_routage) as client:
         connecter_admin(client)
-        tournoi_id, _, archers = _preparer(app_routage, client)
+        depart_id, _, archers = _preparer(app_routage, client)
 
     with TestClient(app_routage) as anonyme:
-        reponse = anonyme.get(f"/api/v1/routage/{tournoi_id}", params={"archer_id": archers})
+        reponse = anonyme.get(f"/api/v1/routage/departs/{depart_id}", params={"archer_id": archers})
 
     assert reponse.status_code == 200, reponse.text
     assert len(reponse.json()["archers"]) == len(archers)
@@ -126,8 +137,9 @@ def test_sans_phase_de_tableau_le_panneau_repond_motive(
         tournoi_id = _creer_tournoi(client)
         _appliquer_gabarit(client, tournoi_id, nb_cibles=2)
         archers = _quatre_archers_classes(app_routage, client, tournoi_id)
+        depart_id = _premier_depart(app_routage, tournoi_id)
 
-        reponse = client.get(f"/api/v1/routage/{tournoi_id}", params={"archer_id": archers})
+        reponse = client.get(f"/api/v1/routage/departs/{depart_id}", params={"archer_id": archers})
 
     assert reponse.status_code == 200, reponse.text
     corps = reponse.json()
@@ -142,9 +154,9 @@ def test_sans_archer_demande_la_reponse_est_vide(
     """Aucun `archer_id` : la phase est résolue, la liste est vide — pas d'erreur de contrat."""
     with TestClient(app_routage) as client:
         connecter_admin(client)
-        tournoi_id, phase_id, _ = _preparer(app_routage, client)
+        depart_id, phase_id, _ = _preparer(app_routage, client)
 
-        reponse = client.get(f"/api/v1/routage/{tournoi_id}")
+        reponse = client.get(f"/api/v1/routage/departs/{depart_id}")
 
     assert reponse.status_code == 200, reponse.text
     assert reponse.json() == {"phase_id": phase_id, "archers": []}
@@ -157,10 +169,10 @@ def test_phase_imposee_introuvable_rend_404(
     un placide « phase finale non configurée » (`PhaseIntrouvable` → 404, `api/erreurs.py`)."""
     with TestClient(app_routage) as client:
         connecter_admin(client)
-        tournoi_id, _, archers = _preparer(app_routage, client)
+        depart_id, _, archers = _preparer(app_routage, client)
 
         reponse = client.get(
-            f"/api/v1/routage/{tournoi_id}",
+            f"/api/v1/routage/departs/{depart_id}",
             params={"archer_id": archers[:1], "phase_id": 9999},
         )
 
@@ -176,10 +188,14 @@ def test_trop_d_archers_demandes_est_refuse(
     garder."""
     with TestClient(app_routage) as client:
         connecter_admin(client)
-        tournoi_id, _, _ = _preparer(app_routage, client)
+        depart_id, _, _ = _preparer(app_routage, client)
 
-        limite = client.get(f"/api/v1/routage/{tournoi_id}", params={"archer_id": list(range(64))})
-        au_dela = client.get(f"/api/v1/routage/{tournoi_id}", params={"archer_id": list(range(65))})
+        limite = client.get(
+            f"/api/v1/routage/departs/{depart_id}", params={"archer_id": list(range(64))}
+        )
+        au_dela = client.get(
+            f"/api/v1/routage/departs/{depart_id}", params={"archer_id": list(range(65))}
+        )
 
     assert limite.status_code == 200, limite.text  # la borne ne gêne pas les appelants réels
     assert au_dela.status_code == 400, au_dela.text
@@ -202,9 +218,9 @@ def test_affectations_rend_tout_le_tableau_sans_qu_on_le_demande(
     sortie. C'est le point de la route — l'écran de salle ne connaît pas la liste."""
     with TestClient(app_routage) as client:
         connecter_admin(client)
-        tournoi_id, phase_id, archers = _preparer(app_routage, client)
+        depart_id, phase_id, archers = _preparer(app_routage, client)
 
-        reponse = client.get(f"/api/v1/routage/{tournoi_id}/affectations")
+        reponse = client.get(f"/api/v1/routage/departs/{depart_id}/affectations")
 
     assert reponse.status_code == 200, reponse.text
     corps = reponse.json()
@@ -218,9 +234,9 @@ def test_affectations_sont_ordonnees_par_cible_puis_position(
     """L'écran de salle n'a aucune interaction : l'ordre du serveur est le seul qu'il aura."""
     with TestClient(app_routage) as client:
         connecter_admin(client)
-        tournoi_id, _, _ = _preparer(app_routage, client)
+        depart_id, _, _ = _preparer(app_routage, client)
 
-        corps = client.get(f"/api/v1/routage/{tournoi_id}/affectations").json()
+        corps = client.get(f"/api/v1/routage/departs/{depart_id}/affectations").json()
 
     # Filtre repris du test de service (correctif de revue) : sans lui, le jour où ce décor tranche
     # un duel, l'assertion casse en `TypeError` sur un `prochain` nul — un échec qui ne désigne pas
@@ -244,10 +260,10 @@ def test_affectations_en_lecture_publique_sans_authentification(
     """
     with TestClient(app_routage) as admin:
         connecter_admin(admin)
-        tournoi_id, _, _ = _preparer(app_routage, admin)
+        depart_id, _, _ = _preparer(app_routage, admin)
 
     with TestClient(app_routage) as anonyme:
-        reponse = anonyme.get(f"/api/v1/routage/{tournoi_id}/affectations")
+        reponse = anonyme.get(f"/api/v1/routage/departs/{depart_id}/affectations")
 
     assert reponse.status_code == 200, reponse.text
 
@@ -260,8 +276,9 @@ def test_affectations_sans_phase_de_tableau_rendent_une_phase_nulle(
     with TestClient(app_routage) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
+        depart_id = _creer_depart(client, tournoi_id)
 
-        corps = client.get(f"/api/v1/routage/{tournoi_id}/affectations").json()
+        corps = client.get(f"/api/v1/routage/departs/{depart_id}/affectations").json()
 
     assert corps["phase_id"] is None
     assert corps["archers"] == []

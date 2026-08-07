@@ -74,7 +74,9 @@ const LIGNES: LigneClassement[] = [
 function barrage(surcharge: Partial<Barrage> = {}): Barrage {
   return {
     id: 1,
-    tournoi_id: 1,
+    // Le barrage pend au **créneau** depuis ADR-0075 ; distinct du tournoi pour que le décor ne
+    // puisse pas être vert par coïncidence d'identifiants (DETTE-044).
+    depart_id: 7,
     portee: 'qualification',
     rang_dispute: 2,
     reference: null,
@@ -97,7 +99,7 @@ function barrage(surcharge: Partial<Barrage> = {}): Barrage {
 
 function afficher(barrages: Barrage[], egalites: { rang: number; archer_ids: number[] }[] = []) {
   barragesRendus = barrages
-  return render(<PanneauBarrages tournoiId={1} egalites={egalites} lignes={LIGNES} />)
+  return render(<PanneauBarrages tournoiId={1} departId={7} egalites={egalites} lignes={LIGNES} />)
 }
 
 describe('PanneauBarrages', () => {
@@ -182,6 +184,40 @@ describe('PanneauBarrages', () => {
     )
 
     expect(screen.getByRole('button', { name: /Faire tirer/ })).toBeInTheDocument()
+  })
+
+  it('ne masque pas « Faire tirer » à cause d’un barrage d’un AUTRE CRÉNEAU au MÊME rang', () => {
+    // ⚠️ Le bloquant trouvé à la seconde revue d'E01US025 (axe adversarial). Le serveur avait été
+    // passé à la portée départ ; ce composant, lui, lisait encore **tous** les barrages du tournoi.
+    // Or les rangs se répètent d'un créneau à l'autre : une égalité au rang 2 le matin **et**
+    // l'après-midi est le cas ordinaire, pas le cas tordu. `dejaOuvert` passait donc à `true` et
+    // **retirait du DOM** le seul bouton permettant de départager la dernière place qualificative
+    // de l'après-midi — alors que le serveur, lui, aurait accepté l'annonce.
+    //
+    // Le décor est celui qui rend le défaut visible : `departId={7}`, un barrage encore ouvert au
+    // même rang sur le créneau 8. Sur un tournoi mono-départ, ce test ne peut pas exister.
+    afficher(
+      [
+        barrage({
+          depart_id: 8,
+          est_resolu: false,
+          groupes_a_rejouer: [[1, 2]],
+          participants: [1, 2],
+        }),
+      ],
+      [{ rang: 2, archer_ids: [1, 2] }],
+    )
+
+    expect(screen.getByRole('button', { name: /Faire tirer/ })).toBeInTheDocument()
+  })
+
+  it('n’affiche pas les barrages d’un AUTRE créneau', () => {
+    // Corollaire du précédent : les cartes du matin s'affichaient sous l'en-tête de l'après-midi,
+    // sans rien qui les distingue — et allumaient l'alerte ambre pour un créneau qu'on ne regarde
+    // pas. La carte entière ne doit pas même apparaître s'il n'y a rien pour **ce** créneau.
+    const { container } = afficher([barrage({ depart_id: 8, clos: true })])
+
+    expect(container).toBeEmptyDOMElement()
   })
 
   it('ne masque pas « Faire tirer » à cause d’un barrage de POULE au même rang', () => {

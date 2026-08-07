@@ -28,7 +28,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from application.classements import ServiceClassement
-from application.erreurs import SimulationTournoiDemarre, TournoiIntrouvable
+from application.erreurs import (
+    SimulationTournoiDemarre,
+    TournoiIntrouvable,
+    TournoiSansDepart,
+)
 from application.placement_duels import ServicePlacementDuels
 from application.saisie_duels import EtatTableau, ServiceSaisieDuels
 from domain.classement import Classement
@@ -38,6 +42,8 @@ from domain.ports import (
     ArcherRepository,
     BlasonRepository,
     CategorieRepository,
+    DepartRepository,
+    DerouleRepository,
     GabaritSalleRepository,
     InscriptionRepository,
     PhaseRepository,
@@ -80,6 +86,8 @@ def hydrater_harnais(
     blasons: BlasonRepository,
     gabarits: GabaritSalleRepository,
     inscriptions: InscriptionRepository,
+    departs: DepartRepository,
+    deroules: DerouleRepository,
     phases: PhaseRepository,
     series: SerieRepository,
 ) -> None:
@@ -94,6 +102,14 @@ def hydrater_harnais(
     assert tournoi.id is not None, "Un tournoi relu est persisté."
     tournoi_id = tournoi.id
     harnais.tournois.ajouter(tournoi)
+    # **Les créneaux d'abord** (E01US025, ADR-0075) : ils portent les phases et le classement, et
+    # les identifiants sont **préservés** par les magasins in-memory — sans eux, les phases
+    # recopiées pointeraient un départ absent, et le harnais rendrait un classement vide.
+    for depart in departs.par_tournoi(tournoi_id):
+        harnais.departs.ajouter(depart)
+    # Le déroulé **avant** les phases : celles-ci n'ont de sens qu'assemblées avec leur étape.
+    for etape in deroules.par_tournoi(tournoi_id):
+        harnais.deroules.ajouter(etape)
     for categorie in categories.par_tournoi(tournoi_id):
         harnais.categories.ajouter(categorie)
     for blason in blasons.par_tournoi(tournoi_id):
@@ -127,6 +143,12 @@ class HarnaisSimulation:
     blasons: BlasonRepository
     gabarits: GabaritSalleRepository
     inscriptions: InscriptionRepository
+    # Le harnais porte ses **créneaux** depuis E01US025 (ADR-0075) : la portée sportive est le
+    # départ, donc une simulation sans départ n'aurait ni phase ni classement.
+    departs: DepartRepository
+    # Le **déroulé** du tournoi simulé : la définition, une fois (ADR-0076). Les phases n'en
+    # portent plus que l'avancement, et le magasin les assemble à la lecture.
+    deroules: DerouleRepository
     phases: PhaseRepository
     series: SerieRepository
     classement: ServiceClassement
@@ -166,6 +188,8 @@ class ServiceSimulation:
         blasons: BlasonRepository,
         gabarits: GabaritSalleRepository,
         inscriptions: InscriptionRepository,
+        departs: DepartRepository,
+        deroules: DerouleRepository,
         phases: PhaseRepository,
         series: SerieRepository,
         usine_harnais: Callable[[], HarnaisSimulation],
@@ -178,6 +202,9 @@ class ServiceSimulation:
         self._blasons = blasons
         self._gabarits = gabarits
         self._inscriptions = inscriptions
+        # Les créneaux : le harnais les hydrate en premier (ADR-0075).
+        self._departs = departs
+        self._deroules = deroules
         self._phases = phases
         self._series = series
         self._usine_harnais = usine_harnais
@@ -202,11 +229,29 @@ class ServiceSimulation:
             blasons=self._blasons,
             gabarits=self._gabarits,
             inscriptions=self._inscriptions,
+            departs=self._departs,
+            deroules=self._deroules,
             phases=self._phases,
             series=self._series,
         )
 
-        classement = harnais.classement.pour_tournoi(tournoi_id)
+        # La simulation rejoue **un** créneau : le premier du tournoi simulé (le harnais n'en
+        # fabrique qu'un — cf. `simulation_format`). Le rejeu multi-départs relève de DETTE-045.
+        #
+        # ⚠️ La garde n'est pas décorative : un tournoi `brouillon` **sans aucun créneau** est le
+        # chemin normal de l'atelier (on crée le tournoi, puis les départs), et l'indexation nue
+        # levait un `IndexError` — donc un **500**, sans message exploitable, sur une simulation
+        # parfaitement légitime. Les services voisins lèvent déjà `TournoiSansDepart` (409 — conflit
+        # d'état : créer un créneau rend la requête acceptable) ; on ne laisse pas une route se
+        # comporter autrement que ses sœurs sur le même état.
+        creneaux = harnais.departs.par_tournoi(tournoi_id)
+        if not creneaux:
+            raise TournoiSansDepart(
+                "Ce tournoi n'a aucun créneau : il n'y a rien à rejouer en simulation."
+            )
+        depart_simule = creneaux[0]
+        assert depart_simule.id is not None, "Le magasin in-memory attribue un identifiant."
+        classement = harnais.classement.pour_depart(depart_simule.id)
         gabarit_present = harnais.gabarits.par_tournoi(tournoi_id) is not None
         tableaux: list[EtatTableau] = []
         for phase in harnais.phases.par_tournoi(tournoi_id):

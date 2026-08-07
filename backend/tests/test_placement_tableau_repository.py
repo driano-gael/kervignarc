@@ -27,11 +27,11 @@ from infrastructure.db import (
     Database,
     DepartRepositorySQL,
     InscriptionRepositorySQL,
-    PhaseRepositorySQL,
     PlacementTableauRepositorySQL,
     TournoiRepositorySQL,
 )
 from tests.base_migree import preparer_base
+from tests.conftest import poser_phase_sql
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -63,8 +63,8 @@ class _Decor:
         )
         assert depart.id is not None
         self.depart_id = depart.id
-        phase = PhaseRepositorySQL(self.db.session_factory).ajouter(
-            Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE)
+        phase = poser_phase_sql(
+            self.db.session_factory, Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE)
         )
         assert phase.id is not None
         self.phase_id = phase.id

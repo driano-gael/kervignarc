@@ -41,9 +41,16 @@ def app_patrimoine(tmp_path: Path) -> Iterator[FastAPI]:
 
 
 def _creer_tournoi(client: TestClient, nom: str = "Trophée") -> int:
+    """Crée un tournoi **et son créneau** : un format s'applique à des départs (ADR-0075)."""
     reponse = client.post("/api/v1/tournois", json={"nom": nom, "date": "2026-03-14"})
     assert reponse.status_code == 201, reponse.text
-    return int(reponse.json()["id"])
+    tournoi_id = int(reponse.json()["id"])
+    creneau = client.post(
+        f"/api/v1/tournois/{tournoi_id}/departs",
+        json={"horaire": "09:00", "tarif_centimes": 800},
+    )
+    assert creneau.status_code == 201, creneau.text
+    return tournoi_id
 
 
 _QUALIFICATION: dict[str, Any] = {
@@ -508,10 +515,19 @@ def test_appliquer_un_format_cree_les_phases_du_tournoi(
         )
 
         assert application.status_code == 200, application.text
-        phases = client.get(f"/api/v1/tournois/{tournoi_id}/phases").json()
+        # Appliquer un format écrit **un** déroulé au tournoi (ADR-0076) et l'instancie dans chaque
+        # créneau. On vérifie donc les deux mailles : la définition posée, et l'avancement né « à
+        # venir » sur le départ. Ici le tournoi n'a qu'un créneau, donc une seule instance.
+        etapes = client.get(f"/api/v1/tournois/{tournoi_id}/phases").json()
+        assert [e["ordre"] for e in etapes] == [1]
+        assert "statut" not in etapes[0], "une étape définit, elle n'avance pas (ADR-0076)"
+
+        departs = client.get(f"/api/v1/tournois/{tournoi_id}/departs").json()
+        depart_id = departs[0]["id"]
+        phases = client.get(f"/api/v1/departs/{depart_id}/phases").json()
         assert [p["ordre"] for p in phases] == [1]
         assert phases[0]["statut"] == "a_venir"
-        assert phases[0]["tournoi_id"] == tournoi_id
+        assert phases[0]["depart_id"] == depart_id
 
 
 def test_appliquer_un_format_inconnu_renvoie_404(

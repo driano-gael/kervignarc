@@ -20,11 +20,21 @@ from application.erreurs import (
     TransitionStatutInvalide,
 )
 from application.phases import ServicePhases
+from domain.depart import Depart
 from domain.erreurs import EffectifIncompatible, SourceApresPhase
-from domain.phase import Phase, PhaseId, SourcePhase, StatutPhase, TypePhase
+from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
+from tests.conftest import (
+    FauxDepartRepository,
+    FauxDerouleRepository,
+    FauxPhaseRepository,
+    poser_phase_factice,
+)
 
 _DATE = datetime.date(2026, 3, 14)
+_DEPART = 500
+"""Identifiant du créneau du décor, **distinct** de celui du tournoi (1) : c'est ce qui fait
+tomber un test qui confondrait les deux mailles."""
 
 
 class FauxTournoiRepository:
@@ -53,46 +63,53 @@ class FauxTournoiRepository:
         del self._tournois[tournoi_id]
 
 
-class FauxPhaseRepository:
-    def __init__(self) -> None:
-        self._phases: dict[int, Phase] = {}
-        self._sequence = 0
-
-    def ajouter(self, phase: Phase) -> Phase:
-        self._sequence += 1
-        persiste = dataclasses.replace(phase, id=self._sequence)
-        self._phases[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, phase_id: PhaseId) -> Phase | None:
-        return self._phases.get(phase_id)
-
-    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
-        trouvees = [
-            p for p in self._phases.values() if p.tournoi_id == tournoi_id and p.type is type_phase
-        ]
-        return trouvees[-1] if trouvees else None
-
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        phases = [p for p in self._phases.values() if p.tournoi_id == tournoi_id]
-        return sorted(phases, key=lambda p: p.ordre)
-
-    def enregistrer(self, phase: Phase) -> Phase:
-        assert phase.id in self._phases
-        self._phases[phase.id] = phase
-        return phase
-
-    def supprimer(self, phase_id: PhaseId) -> None:
-        del self._phases[phase_id]
-
-
 def _service() -> tuple[ServicePhases, int]:
+    """Le décor de composition — maille **tournoi**. Rend `(service, tournoi_id)`.
+
+    ⚠️ **Le créneau porte un identifiant volontairement distinct** (`_DEPART`). Les doublures
+    partent toutes de `_sequence = 0` : sans cette désynchronisation, `tournoi.id == depart.id == 1`
+    et un test qui passe l'un pour l'autre reste **vert par coïncidence numérique**. C'est
+    exactement `DETTE-044` (`TournoiId` et `DepartId` sont le même type pour mypy) reproduite dans
+    les tests censés garder la correction qui la combat — le défaut a été relevé en revue sur les
+    cinq tests de cycle de vie de ce fichier.
+    """
     tournois = FauxTournoiRepository()
     tournoi = tournois.ajouter(
         Tournoi(nom="Kervignarc", date=_DATE, lieu=None, type_tournoi=TypeTournoi.NON_OFFICIEL)
     )
     assert tournoi.id is not None
-    return ServicePhases(tournois, FauxPhaseRepository()), tournoi.id
+    departs = FauxDepartRepository()
+    depart = departs.ajouter(
+        dataclasses.replace(
+            Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00"),
+            id=_DEPART,
+        )
+    )
+    assert depart.id is not None
+    deroules = FauxDerouleRepository()
+    # `deroules` est **câblé** à la doublure de phases : sans lui elle reste en « mode indulgent »
+    # et rend les phases telles qu'elles ont été posées — les tests de service ne franchiraient
+    # jamais la couture d'assemblage, celle-là même qu'ADR-0076 introduit.
+    phases = FauxPhaseRepository(departs, deroules)
+    return ServicePhases(tournois, phases, departs, deroules), tournoi.id
+
+
+def _service_avec_creneau() -> tuple[ServicePhases, int, int]:
+    """Idem, plus l'identifiant du créneau — pour la maille **pilotage** (cycle de vie)."""
+    service, tournoi_id = _service()
+    return service, tournoi_id, _DEPART
+
+
+def _phase_du_creneau(service: ServicePhases, depart_id: int, ordre: int = 1) -> int:
+    """L'identifiant de l'**avancement** de rang `ordre` dans ce créneau.
+
+    Le cycle de vie s'adresse à une **phase**, pas à une étape (ADR-0076) : `ServicePhases.ajouter`
+    rend une `EtapeDeroule`, dont l'`id` n'a rien à voir. Les relire ici évite de reconduire la
+    confusion que ce fichier vient de fermer.
+    """
+    phase = next(p for p in service.avancement(depart_id) if p.ordre == ordre)
+    assert phase.id is not None
+    return phase.id
 
 
 # --- Lister / ajouter --------------------------------------------------------------------------
@@ -322,7 +339,12 @@ def test_supprimer_leve_si_phase_inconnue() -> None:
 
 def test_supprimer_la_qualification_est_refuse() -> None:
     """Garde en profondeur (revue axe D) : la qualification se gère via le barème, pas ici — la
-    retirer par cet écran l'orphelinerait (barème sans phase porteuse)."""
+    retirer par cet écran l'orphelinerait (barème sans phase porteuse).
+
+    ⚠️ On supprime une **étape du déroulé du tournoi** (ADR-0076), pas une phase d'un créneau : la
+    composition se fait à l'atelier, et retirer l'étape retirerait l'avancement de *tous* les
+    créneaux d'un coup — raison de plus pour que la garde tienne.
+    """
     from application.erreurs import PhaseQualificationNonSupprimable
     from domain.bareme import BaremeQualification
 
@@ -331,13 +353,25 @@ def test_supprimer_la_qualification_est_refuse() -> None:
         Tournoi(nom="Kervignarc", date=_DATE, lieu=None, type_tournoi=TypeTournoi.NON_OFFICIEL)
     )
     assert tournoi.id is not None
-    phases = FauxPhaseRepository()
-    service = ServicePhases(tournois, phases)
-    qualif = phases.ajouter(Phase.qualification(tournoi.id, BaremeQualification.preset_ffta_18m()))
-    assert qualif.id is not None
+    departs = FauxDepartRepository()
+    depart = departs.ajouter(
+        Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+    )
+    assert depart.id is not None
+    phases = FauxPhaseRepository(departs)
+    deroules = FauxDerouleRepository()
+    service = ServicePhases(tournois, phases, departs, deroules)
+    poser_phase_factice(
+        departs,
+        deroules,
+        phases,
+        Phase.qualification(depart.id, BaremeQualification.preset_ffta_18m()),
+    )
+    (etape,) = deroules.par_tournoi(tournoi.id)
+    assert etape.id is not None
 
     with pytest.raises(PhaseQualificationNonSupprimable):
-        service.supprimer(tournoi.id, qualif.id)
+        service.supprimer(tournoi.id, etape.id)
 
 
 def test_reordonner_leve_si_tournoi_inconnu() -> None:
@@ -350,45 +384,50 @@ def test_reordonner_leve_si_tournoi_inconnu() -> None:
 
 
 def test_cycle_de_vie_nominal() -> None:
-    service, tournoi_id = _service()
-    phase = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE)
-    assert phase.id is not None
+    service, tournoi_id, depart_id = _service_avec_creneau()
+    service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE)
+    phase_id = _phase_du_creneau(service, depart_id)
 
-    assert service.demarrer(tournoi_id, phase.id).statut is StatutPhase.EN_COURS
-    assert service.mettre_en_pause(tournoi_id, phase.id).statut is StatutPhase.EN_PAUSE
-    assert service.reprendre(tournoi_id, phase.id).statut is StatutPhase.EN_COURS
-    assert service.terminer(tournoi_id, phase.id).statut is StatutPhase.TERMINEE
+    assert service.demarrer(depart_id, phase_id).statut is StatutPhase.EN_COURS
+    assert service.mettre_en_pause(depart_id, phase_id).statut is StatutPhase.EN_PAUSE
+    assert service.reprendre(depart_id, phase_id).statut is StatutPhase.EN_COURS
+    assert service.terminer(depart_id, phase_id).statut is StatutPhase.TERMINEE
 
 
 def test_demarrer_une_phase_deja_en_cours_est_refuse() -> None:
-    service, tournoi_id = _service()
-    phase = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE)
-    assert phase.id is not None
-    service.demarrer(tournoi_id, phase.id)
+    service, tournoi_id, depart_id = _service_avec_creneau()
+    service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE)
+    phase_id = _phase_du_creneau(service, depart_id)
+    service.demarrer(depart_id, phase_id)
 
     with pytest.raises(TransitionStatutInvalide):
-        service.demarrer(tournoi_id, phase.id)
+        service.demarrer(depart_id, phase_id)
 
 
 def test_mettre_en_pause_une_phase_a_venir_est_refuse() -> None:
-    service, tournoi_id = _service()
-    phase = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE)
-    assert phase.id is not None
+    service, tournoi_id, depart_id = _service_avec_creneau()
+    service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE)
+    phase_id = _phase_du_creneau(service, depart_id)
 
     with pytest.raises(TransitionStatutInvalide):
-        service.mettre_en_pause(tournoi_id, phase.id)
+        service.mettre_en_pause(depart_id, phase_id)
 
 
 def test_terminer_une_phase_non_en_cours_est_refuse() -> None:
-    service, tournoi_id = _service()
-    phase = service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE)
-    assert phase.id is not None
+    service, tournoi_id, depart_id = _service_avec_creneau()
+    service.ajouter(tournoi_id, TypePhase.ELIMINATION_DIRECTE)
+    phase_id = _phase_du_creneau(service, depart_id)
 
     with pytest.raises(TransitionStatutInvalide):
-        service.terminer(tournoi_id, phase.id)
+        service.terminer(depart_id, phase_id)
 
 
-def test_transition_leve_si_phase_d_un_autre_tournoi() -> None:
-    service, tournoi_id = _service()
+def test_transition_leve_si_phase_hors_du_creneau() -> None:
+    """Garde d'autorisation : un identifiant de phase étranger au créneau est refusé.
+
+    Renommé — l'ancien nom parlait d'« un autre tournoi », mais la garde porte désormais sur le
+    **créneau** (`phase_du_depart`), qui est la maille du cycle de vie (ADR-0076).
+    """
+    service, _, depart_id = _service_avec_creneau()
     with pytest.raises(PhaseIntrouvable):
-        service.demarrer(tournoi_id, 999)
+        service.demarrer(depart_id, 999)

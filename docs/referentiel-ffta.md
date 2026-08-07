@@ -172,7 +172,23 @@ Aux **éliminatoires et finales**, les triples 40 cm sont placés **par paire su
 | **Arc Classique / Arc Nu** | meilleur des **5 sets de 3 flèches** (système de sets) | premier à **6 points de set** | ✅ FFTA (A.7.5.1, B.6.1.4.1) |
 | **Arc à Poulies** | **5 volées de 3 flèches**, **score cumulé** (pas de sets) | plus haut cumul | ✅ FFTA (A.7.5.2, B.6.1.4.2) |
 
-### 6.3 Épreuves par équipes (3 archers, art. A.7.5)
+### 6.3 Portée d'un classement : le départ
+
+Un tournoi peut se jouer en plusieurs **départs** (créneaux : le hall se remplit, tire, se vide,
+puis se remplit d'une autre vague). **Chaque départ est une exécution complète de la compétition** :
+il a sa séquence de phases, ses classements, ses tableaux et son podium.
+
+Deux archers de **départs différents ne sont jamais comparés** — un tournoi de 4 départs de 100
+archers produit **4 classements de 100**, pas un de 400. De même, un prélèvement (« les 16 meilleurs
+de la qualification ») s'entend toujours **dans le départ** de la phase qui prélève.
+
+> **Statut** : `⚙️ règle du club` — arbitrage de l'organisateur (16/07/2026,
+> [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md) ; portée sportive explicitée le
+> 06/08/2026, [ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md)). Le règlement FFTA ne
+> tranche pas ce point ici : ce paragraphe existe précisément parce que ce référentiel **était muet**,
+> ce qui a laissé le moteur classer tous les départs ensemble pendant treize mois.
+
+### 6.4 Épreuves par équipes (3 archers, art. A.7.5)
 Éliminatoire : 16 équipes/sexe placées selon la qualification ; finale : 4 équipes/sexe. Volée tirée en **2 minutes**.
 
 | Division | Format d'un match | Victoire | Statut |

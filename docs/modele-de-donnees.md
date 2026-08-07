@@ -1,7 +1,9 @@
 # Modèle de données détaillé — Kervignarc
 
-- **Version** : 0.10
-- **Date** : 2026-08-04 *(v0.10 : `TOURNOI` gagne `cloisonnement` — ce qu'une cible n'a pas le droit de mêler (`aucun` | `categorie` | `blason` | `blason_et_categorie`), réglage **activable** du tournoi et non du gabarit, qui est partagé entre tournois — E03US007, [ADR-0071](adr/0071-cloisonnement-categorie-blason-active-et-dur.md), migration 0041)*
+- **Version** : 0.12
+- **Date** : 2026-08-07 *(v0.12 : **la définition quitte `PHASE`** — table **`DEROULE_ETAPE`** neuve (le déroulé, défini **une fois** au tournoi : `ordre`, `type`, `config`), `PHASE` réduite à l'**avancement** d'une étape dans un créneau (`depart_id`, `ordre`, `statut`) et perd `type`/`config` — E01US025, [ADR-0076](adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md), migration 0043)*
+- *v0.11 : 2026-08-06 — **`PHASE` change de parent** — `depart_id` remplace `tournoi_id`, le **départ** devenant la portée sportive (séquence, classements, tableaux, duels). Rattrapage d'une divergence de treize mois avec [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md), qui l'avait décidé sans que le moteur le porte — E01US025, [ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md), migration 0042)*
+- *v0.10 : 2026-08-04 — `TOURNOI` gagne `cloisonnement` — ce qu'une cible n'a pas le droit de mêler (`aucun` | `categorie` | `blason` | `blason_et_categorie`), réglage **activable** du tournoi et non du gabarit, qui est partagé entre tournois — E03US007, [ADR-0071](adr/0071-cloisonnement-categorie-blason-active-et-dur.md), migration 0041)*
 - *v0.9 : 2026-08-04 — `TOURNOI` gagne `effectif_minimum_exige` et `FORMAT_TOURNOI.config` la clé sœur — le minimum d'inscrits **exigé** par le club ; le plancher **technique**, lui, se déduit des prélèvements et n'est **pas** stocké — E05US021, [ADR-0069](adr/0069-effectif-minimum-deduit-et-exige.md), migration 0040)*
 - *v0.8 : 2026-07-31 — `ARCHER` gagne `handicap_officiel` et `handicap_surcharge` — deux valeurs et non une, la surcharge primant l'officiel pour une édition — E05US015, [ADR-0062](adr/0062-catalogue-de-types-de-phase.md), migration 0037*
 - *v0.7 : 2026-07-31 — les **briques deviennent le patrimoine du club** — `CATEGORIE.tournoi_id` et `BLASON.tournoi_id` passent **nullable** (`NULL` = modèle de bibliothèque), les deux tables gagnent `origine`, et la table **`FORMAT_TOURNOI`** apparaît (sans FK vers `TOURNOI`) — E01US023, [ADR-0060](adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md), migrations 0034 et 0035)*
@@ -23,9 +25,16 @@ erDiagram
     TOURNOI |o--o{ BLASON : "définit"
     TOURNOI ||--o{ ARCHER : "inscrit"
     TOURNOI ||--o{ CIBLE : "instancie"
-    TOURNOI ||--o{ PHASE : "séquence"
     TOURNOI |o--o| GABARIT_SALLE : "plan (copie)"
     TOURNOI ||--o{ DEPART : "planifie (créneaux)"
+    %% Le DÉPART est la **portée sportive** : il rejoue le tournoi en entier, donc il porte la
+    %% séquence de phases, ses classements et ses tableaux (ADR-0075). La PHASE pendait au TOURNOI
+    %% jusqu'au 06/08/2026 — treize mois de divergence avec ADR-0017, qui l'avait pourtant décidé.
+    %% Depuis ADR-0076, la **définition** du déroulé est au TOURNOI (DEROULE_ETAPE, une seule fois)
+    %% et la PHASE n'est plus que l'**avancement** de cette étape dans un créneau. Le lien
+    %% définition ↔ avancement se fait par `ordre`, pas par une FK (cf. DEROULE_ETAPE).
+    TOURNOI ||--o{ DEROULE_ETAPE : "définit (déroulé, 1..N)"
+    DEPART ||--o{ PHASE : "avancement (portée sportive)"
     %% FORMAT_TOURNOI et CLUB n'ont **aucune** FK vers TOURNOI : ce sont des
     %% référentiels du club, pas de la descendance d'une édition (E01US023).
     FORMAT_TOURNOI
@@ -321,27 +330,68 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 > de revue). **`ON DELETE CASCADE` assumé** (exception DETTE-001, comme `PLACEMENT`) : donnée dérivée,
 > reconstructible, feuille — elle suit la phase ou l'inscription.
 
+### DEROULE_ETAPE (E01US025, [ADR-0076](adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md))
+| id | INTEGER | PK |
+| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL — le déroulé se **définit au tournoi**, une seule fois |
+| ordre | INTEGER | position dans le déroulé (1..N contigus **par tournoi**) ; `UNIQUE (tournoi_id, ordre)` |
+| type | TEXT | `qualification`\|`barrage`\|`elimination_directe`\|`placement`\|`echauffement`\|`poules`\|`big_shoot_off`\|`suisse`\|`colline` |
+| config | TEXT (JSON) | **politiques** + paramètres — forme inchangée, elle a seulement **changé de table** (voir §Config d'une étape) |
+
+> **Une définition, N avancements.** Jusqu'au 07/08/2026, appliquer un format à un tournoi de 4
+> créneaux écrivait **4 copies complètes** de chaque phase, libres de diverger en silence (barème du
+> départ 3 s'écartant des autres). `DEROULE_ETAPE` porte la **définition** — commune au tournoi — et
+> `PHASE` ne garde que l'**avancement** — propre au créneau. La divergence n'est plus improbable :
+> elle est **impossible**, il n'y a qu'un exemplaire.
+>
+> **La jointure définition ↔ avancement se fait par `ordre`**, pas par une FK `phase.etape_id`. Le
+> déroulé s'édite **par rang**, et un réordonnancement remappe déjà les ordres partout ; une FK
+> dupliquerait l'information tout en pouvant en diverger. ⚠️ La contrepartie est réelle et
+> inscrite au registre (**DETTE-026**) : le rang étant à la fois la clé de la séquence **et** la clé
+> de jointure, tout réordonnancement passe par un état transitoire à rangs dupliqués — d'où le
+> `reordonner` des deux repositories, qui gare les rangs hors de portée avant de les reposer.
+>
+> ⚠️ **Migration 0043** : les définitions sont reprises depuis les phases du **premier départ** de
+> chaque tournoi. Les copies des autres créneaux sont **perdues si elles avaient divergé** — c'est le
+> sens de la décision (elles n'auraient pas dû pouvoir diverger), mais c'est une perte réelle.
+
+> **Histoire de `config`** *(elle est née sur `PHASE`, elle a changé de table en gardant sa forme)*.
+>
+> **Introduction minimale (E01US009 / [ADR-0011](adr/0011-phase-qualification-anticipee.md)).** La
+> table `phase` était créée dès J1 pour héberger le **barème de qualification** dans `config.scoring`
+> (`{"volees": N, "fleches": M, "mode": "cumul"}`) — une seule phase `qualification` par tournoi.
+> `ordre` et `statut` étaient conformes au schéma mais **non exploités** avant le moteur (EPIC-05,
+> ADR-0004), qui a ajouté les autres politiques dans `config` et les autres types/transitions.
+>
+> **Grain de validation (E01US015, `D-11`).** Deuxième politique de la même étape, dans
+> `config.validation` (`{"grain": …}`, + `"n_volees": N` pour `toutes_les_n_volees`) — **sans
+> migration**, comme l'annonçait l'ADR-0011. Une ligne écrite avant E01US015 n'a pas cette clé :
+> elle se relit avec le **preset de son type** (`qualification` → `fin_de_serie`), et se complète à
+> la première écriture. Le grain doit être **admis par le type** (pas de `fin_de_duel` sur une
+> qualification) et sa cadence **ne peut pas dépasser** `config.scoring.volees` — sinon aucune
+> validation n'aurait lieu ; les deux politiques sont donc **cohérentes par construction**.
+
 ### PHASE
 | id | INTEGER | PK |
-| tournoi_id | INTEGER | FK → TOURNOI, NOT NULL |
-| ordre | INTEGER | position dans la séquence |
-| type | TEXT | `qualification`\|`barrage`\|`elimination_directe`\|`placement`\|`finale`\|`big_shoot_off` |
-| config | TEXT (JSON) | **politiques** + paramètres (voir §Config phase) |
+| depart_id | INTEGER | FK → DEPART, NOT NULL — **portée sportive** ([ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md), migration 0042) |
+| ordre | INTEGER | rang de l'étape **dans ce départ** (1..N contigus par départ) **et clé de jointure** vers `DEROULE_ETAPE` de même rang ; `UNIQUE (depart_id, ordre)` |
 | statut | TEXT | `a_venir`\|`en_cours`\|`en_pause`\|`terminee` — `en_pause` **gèle la phase** ([ADR-0026](adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md) §3, distinct du `en_pause` du tournoi) |
 
-> **Introduction minimale (E01US009 / [ADR-0011](adr/0011-phase-qualification-anticipee.md)).** La
-> table est créée dès J1 pour héberger le **barème de qualification** dans `config.scoring`
-> (`{"volees": N, "fleches": M, "mode": "cumul"}`) — une seule phase `qualification` par tournoi.
-> `ordre` et `statut` sont conformes à ce schéma mais **non exploités** avant le moteur (EPIC-05,
-> ADR-0004), qui ajoutera les autres politiques dans `config` et les autres types/transitions.
+> **La phase est un avancement, plus une définition** (E01US025,
+> [ADR-0076](adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md), migration 0043) :
+> `type` et `config` ont quitté la table pour `DEROULE_ETAPE`. En **mémoire**, l'agrégat `Phase`
+> porte toujours sa définition — le repository l'**assemble** depuis l'étape de même rang (ADR-0003)
+> —, de sorte que les modules qui lisent `phase.bareme` n'ont pas changé.
+
+> **Changement de parent (E01US025, [ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md),
+> migration 0042).** `tournoi_id` devient `depart_id` : un **départ rejoue le tournoi en entier**,
+> donc il porte sa propre séquence, ses propres classements et ses propres tableaux. Les rangs 1..N
+> sont contigus **par départ**, et un prélèvement (`config.sources`) ne traverse jamais un départ.
+> Les phases d'un tournoi sont désormais l'**union** de celles de ses départs — il n'en possède plus
+> en propre.
 >
-> **Grain de validation (E01US015, `D-11`).** Deuxième politique de la même phase, dans
-> `config.validation` (`{"grain": …}`, + `"n_volees": N` pour `toutes_les_n_volees`) — **sans
-> migration**, comme l'annonçait l'ADR-0011. Une phase écrite avant E01US015 n'a pas cette clé :
-> elle se relit avec le **preset de son type** (`qualification` → `fin_de_serie`), et se complète à
-> la première écriture. Le grain doit être **admis par le type de phase** (pas de `fin_de_duel` sur
-> une qualification) et sa cadence **ne peut pas dépasser** `config.scoring.volees` — sinon aucune
-> validation n'aurait lieu ; les deux politiques sont donc **cohérentes par construction**.
+> ⚠️ **Migration** : les tournois **mono-départ** se migrent sans perte (leur unique départ reçoit la
+> séquence). Un tournoi **sans départ** ne peut pas conserver ses phases : la migration le traite
+> explicitement plutôt que de laisser une FK orpheline.
 
 ### MATCH
 | id | INTEGER | PK |
@@ -603,7 +653,11 @@ de moteur (DETTE-028).
 
 ---
 
-## Config d'une PHASE (champ `config` JSON)
+## Config d'une étape de déroulé (champ `DEROULE_ETAPE.config` JSON)
+
+> *Ce champ vivait sur `PHASE` jusqu'au 07/08/2026 ; il a changé de table
+> ([ADR-0076](adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md), migration 0043) sans
+> changer de forme.*
 
 Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Depuis E05US003
 ([ADR-0046](adr/0046-config-policies-politiques-nommees-parametrees.md)), chaque politique est un

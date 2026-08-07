@@ -25,6 +25,8 @@
 
 import { useEffect, useState } from 'react'
 import type { RoutageArcher } from './api'
+import { useDeparts } from '../departs/hooks'
+import { departDeSalle } from '../salle/rotation'
 import { useAffectations } from './hooks'
 import { alerte, detail, encoreEnLice, partitionner, titre } from './presentation'
 import { nombreDePages, pageCourante, rateauDePage, trancheDePage } from './pagination'
@@ -41,7 +43,12 @@ export function VueAffectations({
   interactif?: boolean
 }) {
   const [tri, setTri] = useState<Tri>('cible')
-  const affectations = useAffectations(tournoiId)
+  // Le pas de tir est celui d'un **créneau** (ADR-0075). Ni l'écran de salle ni la table
+  // d'organisation n'ont de sélecteur ici : on prend le créneau qu'on est en train de tirer, par le
+  // même helper pur que les vues sœurs.
+  const departs = useDeparts(tournoiId)
+  const departId = departDeSalle(departs.data ?? [])?.id ?? null
+  const affectations = useAffectations(departId)
   const donnees = affectations.data
 
   // ⚠️ **Les données priment sur l'erreur** (correctif de revue, axe adversarial). React Query

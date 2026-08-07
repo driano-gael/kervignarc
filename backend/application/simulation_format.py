@@ -59,8 +59,10 @@ from domain.archer import Archer
 from domain.blason import Blason
 from domain.categorie import Categorie, CategorieId
 from domain.classement import Classement
+from domain.depart import Depart, DepartId
 from domain.deroule import ProjectionDeroule
 from domain.format_tournoi import FormatTournoi, FormatTournoiId
+from domain.inscription import Inscription
 from domain.phase import TypePhase
 from domain.ports import FormatTournoiRepository
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
@@ -311,9 +313,20 @@ def _fonder(
         Categorie.creer(tournoi_id=tournoi.id, libelle="Simulation", blason_id=blason.id)
     )
     assert categorie.id is not None, "Le magasin in-memory attribue un identifiant."
-    _peupler(harnais, tournoi.id, categorie.id, effectif, graine)
-    for phase in format_tournoi.appliquer(tournoi.id):
-        harnais.phases.ajouter(phase)
+    # **Un créneau** pour la simulation (E01US025, ADR-0075) : le format s'applique à des départs,
+    # pas à un tournoi. Un seul suffit ici — on simule un déroulé, pas une logistique de journée.
+    # Créé **avant** le peuplement : c'est sur lui que les archers s'inscrivent.
+    depart = harnais.departs.ajouter(
+        Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=0, horaire="09:00")
+    )
+    assert depart.id is not None, "Le magasin in-memory attribue un identifiant."
+    _peupler(harnais, tournoi.id, categorie.id, depart.id, effectif, graine)
+    # **Un déroulé, puis son avancement** (ADR-0076) : le format définit les étapes du tournoi
+    # simulé, et le créneau unique reçoit une instance par étape. La simulation n'a qu'un départ —
+    # on simule un déroulé, pas une logistique de journée.
+    for etape in format_tournoi.appliquer(tournoi.id):
+        posee = harnais.deroules.ajouter(etape)
+        harnais.phases.ajouter(posee.instancier(depart.id))
     return tournoi
 
 
@@ -321,6 +334,7 @@ def _peupler(
     harnais: HarnaisSimulation,
     tournoi_id: TournoiId,
     categorie_id: CategorieId,
+    depart_id: DepartId,
     effectif: int,
     graine: int,
 ) -> None:
@@ -331,7 +345,7 @@ def _peupler(
     """
     alea = random.Random(graine)
     for numero in range(1, effectif + 1):
-        harnais.archers.ajouter(
+        archer = harnais.archers.ajouter(
             Archer.creer(
                 nom=alea.choice(_NOMS),
                 prenom=f"{alea.choice(_PRENOMS)} {numero}",
@@ -339,6 +353,11 @@ def _peupler(
                 categorie_id=categorie_id,
             )
         )
+        assert archer.id is not None, "Le magasin in-memory attribue un identifiant."
+        # ⚠️ **L'inscrire sur le créneau** : depuis ADR-0075 c'est l'inscription qui fait entrer un
+        # archer au classement d'un départ, pas son rattachement au tournoi. Sans elle, la
+        # simulation tournerait sur un classement vide — sans erreur, ce qui est le pire cas.
+        harnais.inscriptions.ajouter(Inscription.creer(archer.id, depart_id))
 
 
 def _phases_jouees(

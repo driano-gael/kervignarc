@@ -23,9 +23,11 @@ from application.erreurs import (
 )
 from application.tournois import OrigineExigence, ServiceTournois
 from domain.bareme import BaremeQualification
-from domain.depart import Depart
+from domain.depart import Depart, DepartId
+from domain.deroule_etape import EtapeDeroule
 from domain.erreurs import NomTournoiInvalide
-from domain.phase import Phase, SourcePhase, TypePhase
+from domain.grain_validation import GrainValidation
+from domain.phase import SourcePhase, TypePhase
 from domain.tournoi import (
     StatutTournoi,
     Tournoi,
@@ -33,7 +35,7 @@ from domain.tournoi import (
     TypeTournoi,
     transitions_possibles,
 )
-from tests.conftest import FauxDepartRepository
+from tests.conftest import FauxDepartRepository, FauxDerouleRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -66,42 +68,47 @@ class FauxTournoiRepository:
         del self._tournois[tournoi_id]
 
 
-class FauxPhaseRepository:
-    """Repository de phases en mémoire — juste ce que le service lit (E05US021)."""
-
-    def __init__(self) -> None:
-        self.phases: list[Phase] = []
-
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        return [p for p in self.phases if p.tournoi_id == tournoi_id]
-
-
 class FauxCompteurEngages:
-    """Combien d'archers sont inscrits — réglable, c'est ce que la garde de démarrage confronte."""
+    """Combien d'archers sont inscrits **dans un créneau** — ce que la garde de démarrage confronte.
+
+    Le compte est par départ depuis ADR-0075 : le déroulé doit se jouer dans **chaque** créneau,
+    donc l'exigence se juge sur le moins garni. `nb` reste le réglage commun (ces tests n'ont qu'un
+    créneau) ; `regler` sert aux cas multi-créneaux.
+    """
 
     def __init__(self, nb: int = 0) -> None:
         self.nb = nb
+        self.par_depart: dict[int, int] = {}
 
-    def nb_engages(self, tournoi_id: TournoiId) -> int:
-        return self.nb
+    def regler(self, depart_id: int, nb: int) -> None:
+        self.par_depart[depart_id] = nb
+
+    def nb_engages_du_depart(self, depart_id: DepartId) -> int:
+        return self.par_depart.get(depart_id, self.nb)
 
 
 def _service_complet() -> (
     tuple[
         ServiceTournois,
         FauxDepartRepository,
-        FauxPhaseRepository,
+        FauxDerouleRepository,
         FauxCompteurEngages,
         FauxTournoiRepository,
     ]
 ):
-    """Le service et **tous** ses dépôts, pour les tests qui garnissent phases et inscrits."""
+    """Le service et **tous** ses dépôts, pour les tests qui garnissent le déroulé et les inscrits.
+
+    ⚠️ Le troisième dépôt est le **déroulé** (`FauxDerouleRepository`) et non les phases
+    (E01US025, ADR-0076) : l'exigence d'effectif se déduit de la **définition**, écrite une seule
+    fois au tournoi. Elle se lisait sur `PhaseRepository.par_tournoi`, qui concatène les N copies
+    d'avancement des créneaux — un plancher faux dès le deuxième départ.
+    """
     departs = FauxDepartRepository()
-    phases = FauxPhaseRepository()
+    deroules = FauxDerouleRepository()
     engages = FauxCompteurEngages()
     tournois = FauxTournoiRepository()
-    service = ServiceTournois(tournois, departs, phases, engages)
-    return service, departs, phases, engages, tournois
+    service = ServiceTournois(tournois, departs, deroules, engages)
+    return service, departs, deroules, engages, tournois
 
 
 def _service() -> tuple[ServiceTournois, FauxDepartRepository]:
@@ -303,20 +310,29 @@ def test_demarrer_refuse_si_pas_pret() -> None:
 # (`EffectifTableauInvalide`, E05US020) remonte là où la décision se prend.
 
 
-def _deroule_120(tournoi_id: int) -> list[Phase]:
+def _deroule_120(tournoi_id: int) -> list[EtapeDeroule]:
     """Le déroulé d'ADR-0068 §6 : qualification, tableau 1-32, tableau de classement 33 et suivants.
 
-    Son minimum déduit est **34** — la phase 3 ne monte un tableau de 2 qu'à partir du 34ᵉ classé.
+    Son minimum déduit est **34** — l'étape 3 ne monte un tableau de 2 qu'à partir du 34ᵉ classé.
+
+    Des **étapes** et non des phases (ADR-0076) : c'est une *définition*, elle appartient au
+    tournoi et s'écrit une seule fois quel que soit le nombre de créneaux.
     """
     return [
-        Phase.qualification(tournoi_id, BaremeQualification.preset_ffta_18m()),
-        Phase(
+        EtapeDeroule(
+            tournoi_id=tournoi_id,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.preset_ffta_18m(),
+            validation=GrainValidation.fin_de_serie(),
+        ),
+        EtapeDeroule(
             tournoi_id=tournoi_id,
             ordre=2,
             type=TypePhase.ELIMINATION_DIRECTE,
             sources=(SourcePhase.par_rangs(1, 1, 32),),
         ),
-        Phase(
+        EtapeDeroule(
             tournoi_id=tournoi_id,
             ordre=3,
             type=TypePhase.ELIMINATION_DIRECTE,
@@ -327,9 +343,11 @@ def _deroule_120(tournoi_id: int) -> list[Phase]:
 
 def _pret_avec_deroule(inscrits: int) -> tuple[ServiceTournois, int]:
     """Un tournoi `prêt`, doté du déroulé à 34 minimum et de `inscrits` archers."""
-    service, departs, phases, engages = _service_complet()[:4]
+    service, departs, deroules, engages = _service_complet()[:4]
     tid = _id_cree(service, departs)
-    phases.phases = _deroule_120(tid)
+    # Le déroulé se pose **sur le tournoi** (ADR-0076) : une définition, pas N copies.
+    for _etape in _deroule_120(tid):
+        deroules.ajouter(_etape)
     engages.nb = inscrits
     service.vers_pret(tid)
     return service, tid
@@ -402,9 +420,11 @@ def _exiger(
 def test_lexigence_du_tournoi_prime_quand_elle_depasse_le_minimum_deduit() -> None:
     """Le « minimum exigé » copié du format (« pas sous 40 ») refuse un effectif que le déduit
     accepterait — et le message ne parle **pas** d'un prélèvement, puisqu'aucun n'est en cause."""
-    service, departs, phases, engages, tournois = _service_complet()
+    service, departs, deroules, engages, tournois = _service_complet()
     tid = _id_cree(service, departs)
-    phases.phases = _deroule_120(tid)
+    # Le déroulé se pose **sur le tournoi** (ADR-0076) : une définition, pas N copies.
+    for _etape in _deroule_120(tid):
+        deroules.ajouter(_etape)
     engages.nb = 36
     _exiger(service, tournois, tid, 40)
     service.vers_pret(tid)
@@ -425,9 +445,11 @@ def test_lexigence_du_tournoi_prime_quand_elle_depasse_le_minimum_deduit() -> No
 def test_une_exigence_plus_basse_que_le_deduit_ne_labaisse_pas() -> None:
     """Le déduit est un **plancher** : une exigence inférieure ne peut pas autoriser un tournoi que
     le moteur ne saura pas dérouler."""
-    service, departs, phases, engages, tournois = _service_complet()
+    service, departs, deroules, engages, tournois = _service_complet()
     tid = _id_cree(service, departs)
-    phases.phases = _deroule_120(tid)
+    # Le déroulé se pose **sur le tournoi** (ADR-0076) : une définition, pas N copies.
+    for _etape in _deroule_120(tid):
+        deroules.ajouter(_etape)
     engages.nb = 20
     _exiger(service, tournois, tid, 10)
     service.vers_pret(tid)
@@ -441,9 +463,17 @@ def test_une_exigence_plus_basse_que_le_deduit_ne_labaisse_pas() -> None:
 def test_un_deroule_meme_minimal_exige_au_moins_un_inscrit() -> None:
     """Changement de comportement de l'US, à fixer explicitement : un tournoi **avec** déroulé et
     **zéro** inscrit ne démarre plus, là où il le pouvait avant."""
-    service, departs, phases, engages = _service_complet()[:4]
+    service, departs, deroules, engages = _service_complet()[:4]
     tid = _id_cree(service, departs)
-    phases.phases = [Phase.qualification(tid, BaremeQualification.preset_ffta_18m())]
+    deroules.ajouter(
+        EtapeDeroule(
+            tournoi_id=tid,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.preset_ffta_18m(),
+            validation=GrainValidation.fin_de_serie(),
+        )
+    )
     engages.nb = 0
     service.vers_pret(tid)
 
@@ -485,6 +515,60 @@ def test_lexigence_dun_tournoi_sans_deroule_est_toujours_satisfaite() -> None:
 
     assert exigence.suffisant is True
     assert exigence.ordre_phase is None
+
+
+# --- Portée : l'exigence se juge sur le créneau le moins garni (ADR-0075) ------------------------
+
+
+def test_lexigence_se_juge_sur_le_creneau_le_moins_garni_pas_sur_la_somme() -> None:
+    """**La garde de portée.** Deux créneaux, 40 et 8 inscrits : le tournoi ne démarre pas.
+
+    Un départ **rejoue le tournoi en entier**, donc un déroulé qui prélève à partir du 33ᵉ rang doit
+    trouver 34 classés dans *chaque* créneau. L'exigence se lisait sur `nb_engages(tournoi_id)` —
+    la somme, 48 — et laissait donc démarrer un tournoi dont la moitié était injouable, l'échec ne
+    se manifestant qu'en salle, l'après-midi. Le refus doit en plus **nommer le créneau**, sans quoi
+    « 8 inscrits pour 34 requis » contredit le total affiché partout ailleurs.
+    """
+    service, departs, deroules, engages = _service_complet()[:4]
+    tid = _id_cree(service, departs)
+    matin = departs.par_tournoi(tid)[0]
+    assert matin.id is not None
+    apres_midi = departs.ajouter(Depart.creer(tid, 2, 810, "14:00"))
+    assert apres_midi.id is not None
+    for _etape in _deroule_120(tid):
+        deroules.ajouter(_etape)
+    engages.regler(matin.id, 40)
+    engages.regler(apres_midi.id, 8)
+    service.vers_pret(tid)
+
+    exigence = service.exigence_effectif(tid)
+    assert exigence.inscrits == 8, "le compte retenu est celui du créneau le plus faible"
+    assert exigence.minimum == 34
+    assert exigence.suffisant is False
+    assert exigence.depart_numero == 2
+
+    with pytest.raises(EffectifInsuffisantPourDemarrer) as leve:
+        service.demarrer(tid)
+    assert "départ 2" in str(leve.value), "le refus doit nommer le créneau en cause"
+
+
+def test_lexigence_est_satisfaite_quand_tous_les_creneaux_suivent() -> None:
+    """Le miroir : deux créneaux au-dessus du plancher, le tournoi démarre.
+
+    Sans lui, le test ci-dessus serait satisfait par un service qui refuserait *toujours* — c'est le
+    couple qui prouve que la garde discrimine.
+    """
+    service, departs, deroules, engages = _service_complet()[:4]
+    tid = _id_cree(service, departs)
+    apres_midi = departs.ajouter(Depart.creer(tid, 2, 810, "14:00"))
+    assert apres_midi.id is not None
+    for _etape in _deroule_120(tid):
+        deroules.ajouter(_etape)
+    engages.nb = 34
+    service.vers_pret(tid)
+
+    assert service.exigence_effectif(tid).suffisant is True
+    assert service.demarrer(tid).statut is StatutTournoi.EN_COURS
 
 
 def test_reprendre_refuse_si_pas_en_pause() -> None:

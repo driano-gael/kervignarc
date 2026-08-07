@@ -38,6 +38,7 @@ import { useArchers } from '../archers/hooks'
 import type { Archer } from '../competition/api'
 import type { Depart } from '../departs/api'
 import { useDeparts } from '../departs/hooks'
+import { departDeSalle } from '../salle/rotation'
 import { getPlanDeCibles, type PlanDeCibles } from '../placement/api'
 import { clePlan } from '../placement/hooks'
 import type { RoutageArcher } from '../routage/api'
@@ -94,7 +95,8 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
   // tableau **pas encore constituable** (phase présente, aucune ligne — le cas de la matinée), et
   // tableau constitué dont cet archer est absent. Les confondre faisait annoncer « non retenu » à
   // tout le monde un matin où personne n'était encore placé.
-  const affectations = useAffectations(tournoiId, null, besoinPlans)
+  // Le créneau en cours (ADR-0075) : les affectations sont celles d'un départ, pas du tournoi.
+  const affectations = useAffectations(departDeSalle(departs)?.id ?? null, null, besoinPlans)
   const lignesAffectations = affectations.data?.archers ?? []
   const tableauConstitue = affectations.data?.phase_id != null && lignesAffectations.length > 0
   const routageParArcher = new Map(lignesAffectations.map((ligne) => [ligne.archer_id, ligne]))

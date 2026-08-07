@@ -39,7 +39,7 @@ def _phase(
 ) -> Phase:
     """Une phase de qualification persistée (id=3), valeurs par défaut surchargeables."""
     return Phase(
-        tournoi_id=7,
+        depart_id=7,
         ordre=1,
         type=TypePhase.QUALIFICATION,
         bareme=bareme or BaremeQualification.creer(20, 3),
@@ -52,8 +52,8 @@ def _phase(
 def test_qualification_cree_la_premiere_phase() -> None:
     """`qualification` crée une phase qualification, ordre 1, statut à venir, non persistée."""
     bareme = BaremeQualification.preset_ffta_18m()
-    phase = Phase.qualification(tournoi_id=7, bareme=bareme)
-    assert phase.tournoi_id == 7
+    phase = Phase.qualification(depart_id=7, bareme=bareme)
+    assert phase.depart_id == 7
     assert phase.ordre == 1
     assert phase.type is TypePhase.QUALIFICATION
     assert phase.statut is StatutPhase.A_VENIR
@@ -63,14 +63,14 @@ def test_qualification_cree_la_premiere_phase() -> None:
 
 def test_qualification_applique_le_preset_fin_de_serie_par_defaut() -> None:
     """Sans grain explicite, la qualification valide en fin de série (`D-11`)."""
-    phase = Phase.qualification(tournoi_id=7, bareme=BaremeQualification.preset_ffta_18m())
+    phase = Phase.qualification(depart_id=7, bareme=BaremeQualification.preset_ffta_18m())
 
     assert phase.validation == GrainValidation.fin_de_serie()
 
 
 def test_qualification_accepte_un_grain_explicite() -> None:
     phase = Phase.qualification(
-        tournoi_id=7,
+        depart_id=7,
         bareme=BaremeQualification.preset_ffta_18m(),
         validation=GrainValidation.toutes_les_n_volees(2),
     )
@@ -89,14 +89,14 @@ def test_grain_par_defaut_de_l_elimination_directe_est_fin_de_duel() -> None:
 
 def test_elimination_directe_accepte_le_grain_fin_de_duel() -> None:
     """Le grain `fin de duel` est **admis** pour l'élimination directe (E04US013)."""
-    phase = Phase.creer(tournoi_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
+    phase = Phase.creer(depart_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
     modifiee = phase.avec_validation(GrainValidation.fin_de_duel())
     assert modifiee.validation == GrainValidation.fin_de_duel()
 
 
 def test_elimination_directe_refuse_un_grain_de_serie() -> None:
     """« Fin de série » n'a pas de sens pour un duel : seul `fin de duel` est admis (E04US013)."""
-    phase = Phase.creer(tournoi_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
+    phase = Phase.creer(depart_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
     with pytest.raises(GrainIncompatibleAvecTypePhase):
         phase.avec_validation(GrainValidation.fin_de_serie())
 
@@ -106,7 +106,7 @@ def test_avec_bareme_remplace_le_bareme_et_preserve_le_reste() -> None:
     phase = _phase(bareme=BaremeQualification.creer(20, 3))
     modifiee = phase.avec_bareme(BaremeQualification.creer(10, 3))
     assert modifiee.id == 3
-    assert modifiee.tournoi_id == 7
+    assert modifiee.depart_id == 7
     assert modifiee.ordre == 1
     assert modifiee.type is TypePhase.QUALIFICATION
     assert modifiee.statut is StatutPhase.A_VENIR
@@ -122,7 +122,7 @@ def test_avec_validation_remplace_le_grain_et_preserve_le_reste() -> None:
     modifiee = phase.avec_validation(GrainValidation.toutes_les_n_volees(4))
 
     assert modifiee.id == 3
-    assert modifiee.tournoi_id == 7
+    assert modifiee.depart_id == 7
     assert modifiee.ordre == 1
     assert modifiee.type is TypePhase.QUALIFICATION
     assert modifiee.statut is StatutPhase.A_VENIR
@@ -136,7 +136,7 @@ def test_une_qualification_refuse_le_grain_fin_de_duel() -> None:
     """Une qualification se tire en séries : « fin de duel » n'y a pas de sens (`D-11`)."""
     with pytest.raises(GrainIncompatibleAvecTypePhase):
         Phase.qualification(
-            tournoi_id=7,
+            depart_id=7,
             bareme=BaremeQualification.preset_ffta_18m(),
             validation=GrainValidation.fin_de_duel(),
         )
@@ -204,7 +204,7 @@ def test_le_grain_fin_de_duel_reste_declare_pour_le_moteur() -> None:
 
 def test_creer_une_phase_generique_sans_bareme() -> None:
     """Une phase d'élimination directe n'a **pas** de barème de qualification (ADR-0045 §2)."""
-    phase = Phase.creer(tournoi_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
+    phase = Phase.creer(depart_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
 
     assert phase.type is TypePhase.ELIMINATION_DIRECTE
     assert phase.ordre == 2
@@ -224,16 +224,16 @@ def test_une_qualification_sans_bareme_est_refusee() -> None:
     """L'invariant « qualification ⇒ barème + grain » ferme le seul cas dangereux du barème
     facultatif (ADR-0045 §2)."""
     with pytest.raises(PhaseQualificationIncomplete):
-        Phase(tournoi_id=7, ordre=1, type=TypePhase.QUALIFICATION)
+        Phase(depart_id=7, ordre=1, type=TypePhase.QUALIFICATION)
 
 
 def test_un_effectif_nul_ou_negatif_est_refuse() -> None:
     with pytest.raises(EffectifPhaseInvalide):
-        Phase.creer(tournoi_id=7, ordre=2, type=TypePhase.PLACEMENT, effectif=0)
+        Phase.creer(depart_id=7, ordre=2, type=TypePhase.PLACEMENT, effectif=0)
 
 
 def test_un_effectif_declare_est_conserve() -> None:
-    phase = Phase.creer(tournoi_id=7, ordre=2, type=TypePhase.PLACEMENT, effectif=16)
+    phase = Phase.creer(depart_id=7, ordre=2, type=TypePhase.PLACEMENT, effectif=16)
 
     assert phase.effectif == 16
 
@@ -243,7 +243,7 @@ def test_un_effectif_declare_est_conserve() -> None:
 
 def test_transitions_de_statut_enchainent_a_venir_en_cours_terminee() -> None:
     """Les transitions sont **pures** : chacune renvoie une copie au nouveau statut."""
-    phase = Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.PLACEMENT)
+    phase = Phase.creer(depart_id=7, ordre=1, type=TypePhase.PLACEMENT)
 
     en_cours = phase.demarrer()
     assert en_cours.statut is StatutPhase.EN_COURS
@@ -254,7 +254,7 @@ def test_transitions_de_statut_enchainent_a_venir_en_cours_terminee() -> None:
 
 def test_mettre_en_pause_puis_reprendre_est_reversible() -> None:
     """`en_pause` gèle la phase (ADR-0045 §1) ; `reprendre` la ramène `en_cours`, sans perte."""
-    en_cours = Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.PLACEMENT).demarrer()
+    en_cours = Phase.creer(depart_id=7, ordre=1, type=TypePhase.PLACEMENT).demarrer()
 
     en_pause = en_cours.mettre_en_pause()
     assert en_pause.statut is StatutPhase.EN_PAUSE
@@ -293,7 +293,7 @@ def test_un_rang_de_debut_inferieur_a_un_est_refuse() -> None:
 def _qualification(effectif: int | None = None) -> Phase:
     """Une qualification (ordre 1) éventuellement dotée d'un effectif déclaré."""
     return Phase(
-        tournoi_id=7,
+        depart_id=7,
         ordre=1,
         type=TypePhase.QUALIFICATION,
         bareme=BaremeQualification.preset_ffta_18m(),
@@ -311,7 +311,7 @@ def test_une_sequence_ordonnee_et_bien_sourcee_est_valide() -> None:
     """Qualification (40) → élimination directe (16) alimentée par les 16 premiers : cohérent."""
     qualif = _qualification(effectif=40)
     elim = Phase.creer(
-        tournoi_id=7,
+        depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
@@ -325,7 +325,7 @@ def test_une_sequence_ordonnee_et_bien_sourcee_est_valide() -> None:
 
 def test_un_trou_dans_les_ordres_est_refuse() -> None:
     qualif = _qualification()
-    elim = Phase.creer(tournoi_id=7, ordre=3, type=TypePhase.ELIMINATION_DIRECTE)
+    elim = Phase.creer(depart_id=7, ordre=3, type=TypePhase.ELIMINATION_DIRECTE)
 
     with pytest.raises(SequenceOrdreInvalide):
         SequencePhases(phases=(qualif, elim))
@@ -333,7 +333,7 @@ def test_un_trou_dans_les_ordres_est_refuse() -> None:
 
 def test_un_doublon_dans_les_ordres_est_refuse() -> None:
     qualif = _qualification()
-    autre = Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.PLACEMENT)
+    autre = Phase.creer(depart_id=7, ordre=1, type=TypePhase.PLACEMENT)
 
     with pytest.raises(SequenceOrdreInvalide):
         SequencePhases(phases=(qualif, autre))
@@ -342,7 +342,7 @@ def test_un_doublon_dans_les_ordres_est_refuse() -> None:
 def test_une_source_vers_une_phase_inexistante_est_refusee() -> None:
     qualif = _qualification()
     elim = Phase.creer(
-        tournoi_id=7,
+        depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(SourcePhase(ordre_source=5, rang_debut=1, rang_fin=8),),
@@ -356,7 +356,7 @@ def test_une_source_vers_une_phase_non_anterieure_est_refusee() -> None:
     """Une phase ne peut se nourrir que d'une phase d'ordre strictement inférieur."""
     qualif = _qualification()
     elim = Phase.creer(
-        tournoi_id=7,
+        depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(SourcePhase(ordre_source=2, rang_debut=1, rang_fin=8),),
@@ -370,7 +370,7 @@ def test_prelever_au_dela_de_l_effectif_de_la_source_est_refuse() -> None:
     """« rangs inexistants » (volet séquence) : prendre 40 rangs d'une phase qui en classe 32."""
     qualif = _qualification(effectif=32)
     elim = Phase.creer(
-        tournoi_id=7,
+        depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=40),),
@@ -384,7 +384,7 @@ def test_un_effectif_consommateur_incompatible_avec_la_source_est_refuse() -> No
     """« effectif incompatible » : une phase déclarée pour 16 mais dont la source prélève 8."""
     qualif = _qualification(effectif=40)
     elim = Phase.creer(
-        tournoi_id=7,
+        depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=8),),
@@ -400,7 +400,7 @@ def test_prelever_plus_que_l_effectif_declare_est_aussi_refuse() -> None:
     40 de la source, donc rangs valides) pour une phase qui n'en attend que 16."""
     qualif = _qualification(effectif=40)
     elim = Phase.creer(
-        tournoi_id=7,
+        depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=20),),
@@ -415,7 +415,7 @@ def test_sans_effectif_declare_la_source_ne_declenche_pas_de_controle_d_effectif
     """Les contrôles d'effectif sont silencieux quand l'effectif n'est pas déclaré (ADR-0045 §3)."""
     qualif = _qualification()  # pas d'effectif
     elim = Phase.creer(
-        tournoi_id=7,
+        depart_id=7,
         ordre=2,
         type=TypePhase.ELIMINATION_DIRECTE,
         sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=999),),
@@ -459,7 +459,7 @@ def test_l_echauffement_n_admet_aucun_grain_de_validation() -> None:
     with pytest.raises(GrainIncompatibleAvecTypePhase):
         grain_par_defaut(TypePhase.ECHAUFFEMENT)
     with pytest.raises(GrainIncompatibleAvecTypePhase):
-        Phase.creer(tournoi_id=7, ordre=2, type=TypePhase.ECHAUFFEMENT).avec_validation(
+        Phase.creer(depart_id=7, ordre=2, type=TypePhase.ECHAUFFEMENT).avec_validation(
             GrainValidation.fin_de_serie()
         )
 
@@ -479,9 +479,9 @@ def test_on_ne_preleve_pas_de_rangs_dans_un_echauffement() -> None:
     with pytest.raises(PhaseSansClassementPrelevee):
         SequencePhases(
             (
-                Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT),
+                Phase.creer(depart_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT),
                 Phase.creer(
-                    tournoi_id=7,
+                    depart_id=7,
                     ordre=2,
                     type=TypePhase.ELIMINATION_DIRECTE,
                     sources=(SourcePhase.par_rangs(1, 1, 8),),
@@ -495,9 +495,9 @@ def test_succeder_a_un_echauffement_par_le_reste_est_licite() -> None:
     sans quoi une phase d'échauffement serait un cul-de-sac dans le déroulé."""
     sequence = SequencePhases(
         (
-            Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT),
+            Phase.creer(depart_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT),
             Phase(
-                tournoi_id=7,
+                depart_id=7,
                 ordre=2,
                 type=TypePhase.QUALIFICATION,
                 sources=(SourcePhase.le_reste(1),),
@@ -513,9 +513,9 @@ def test_preleve_des_rangs_dans_un_type_classant_reste_licite() -> None:
     """Le nouveau contrôle ne doit pas déborder sur les types qui, eux, classent bien."""
     sequence = SequencePhases(
         (
-            Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.POULES, effectif=16),
+            Phase.creer(depart_id=7, ordre=1, type=TypePhase.POULES, effectif=16),
             Phase.creer(
-                tournoi_id=7,
+                depart_id=7,
                 ordre=2,
                 type=TypePhase.ELIMINATION_DIRECTE,
                 sources=(SourcePhase.par_rangs(1, 1, 8),),
@@ -536,9 +536,9 @@ def test_on_ne_preleve_pas_non_plus_une_issue_de_tour_dans_un_echauffement() -> 
     with pytest.raises(PhaseSansClassementPrelevee):
         SequencePhases(
             (
-                Phase.creer(tournoi_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT),
+                Phase.creer(depart_id=7, ordre=1, type=TypePhase.ECHAUFFEMENT),
                 Phase.creer(
-                    tournoi_id=7,
+                    depart_id=7,
                     ordre=2,
                     type=TypePhase.ELIMINATION_DIRECTE,
                     sources=(SourcePhase.par_issue_de_tour(1, tour=1, issue=IssueTour.GAGNANTS),),

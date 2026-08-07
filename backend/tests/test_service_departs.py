@@ -33,7 +33,9 @@ from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxDepartRepository,
+    FauxDerouleRepository,
     FauxInscriptionRepository,
+    FauxPhaseRepository,
     HorlogeFigee,
 )
 
@@ -119,7 +121,16 @@ def _monter() -> Montage:
     tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
     assert tournoi.id is not None
     return Montage(
-        ServiceDeparts(departs, tournois, inscriptions, avancements, archers, HorlogeFigee(_QUAND)),
+        ServiceDeparts(
+            departs,
+            tournois,
+            inscriptions,
+            avancements,
+            archers,
+            HorlogeFigee(_QUAND),
+            FauxDerouleRepository(),
+            FauxPhaseRepository(),
+        ),
         departs,
         inscriptions,
         avancements,
@@ -220,6 +231,8 @@ def test_lister_trie_par_numero_et_isole_le_tournoi() -> None:
         FauxLecteurAvancement(),
         FauxArcherRepository(),
         HorlogeFigee(_QUAND),
+        FauxDerouleRepository(),
+        FauxPhaseRepository(departs),
     )
     service.creer(a.id, 810, "09:00")
     service.creer(a.id, 810, "09:00")
@@ -270,6 +283,8 @@ def test_modifier_leve_si_depart_d_un_autre_tournoi() -> None:
         FauxLecteurAvancement(),
         FauxArcherRepository(),
         HorlogeFigee(_QUAND),
+        FauxDerouleRepository(),
+        FauxPhaseRepository(departs),
     )
     depart = service.creer(a.id, 810, "09:00")
     assert depart.id is not None
@@ -305,6 +320,8 @@ def test_supprimer_leve_si_depart_d_un_autre_tournoi() -> None:
         FauxLecteurAvancement(),
         FauxArcherRepository(),
         HorlogeFigee(_QUAND),
+        FauxDerouleRepository(),
+        FauxPhaseRepository(departs),
     )
     depart = service.creer(a.id, 810, "09:00")
     assert depart.id is not None

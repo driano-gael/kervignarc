@@ -48,6 +48,7 @@ from typing import Protocol
 
 from domain.anomalie import Anomalie
 from domain.bareme import BaremeQualification
+from domain.depart import DepartId
 from domain.erreurs import (
     CadenceValidationSuperieureAuBareme,
     EffectifIncompatible,
@@ -69,7 +70,6 @@ from domain.erreurs import (
 )
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.politiques import RANGS_DU_PODIUM, ProfondeurClassement
-from domain.tournoi import TournoiId
 
 PhaseId = int
 """Identifiant technique d'une phase, attribué par la persistance."""
@@ -449,7 +449,17 @@ class SourcePhase:
 
 @dataclass(frozen=True)
 class Phase:
-    """Une phase d'un tournoi. `id` vaut `None` tant qu'elle n'est pas persistée.
+    """Une phase **d'un départ**. `id` vaut `None` tant qu'elle n'est pas persistée.
+
+    ⚠️ **D'un départ, pas d'un tournoi** (E01US025, ADR-0075). Un départ *rejoue le tournoi en
+    entier* : il porte sa propre séquence de phases, ses propres classements et ses propres
+    tableaux. Deux archers de départs différents ne sont jamais comparés, et un prélèvement
+    (`sources`) ne traverse jamais un départ. Les phases d'un tournoi sont l'**union** de celles de
+    ses départs — il n'en possède aucune en propre.
+
+    C'était `tournoi_id` jusqu'au 06/08/2026, ce qui faisait classer ensemble les 400 archers de 4
+    départs de 100. ADR-0017 avait pourtant décidé le contraire treize mois plus tôt : seule la
+    logistique l'avait porté.
 
     `bareme` et `validation` ne concernent que la **qualification** (barème de cumul + grain,
     `D-11`) : ils sont `None` pour les autres types, dont les politiques propres viendront en
@@ -463,7 +473,7 @@ class Phase:
     est admis par le type et sa cadence ne dépasse pas le barème.
     """
 
-    tournoi_id: TournoiId
+    depart_id: DepartId
     ordre: int
     type: TypePhase
     bareme: BaremeQualification | None = None
@@ -499,17 +509,17 @@ class Phase:
 
     @staticmethod
     def qualification(
-        tournoi_id: TournoiId,
+        depart_id: DepartId,
         bareme: BaremeQualification,
         validation: GrainValidation | None = None,
     ) -> Phase:
-        """Crée la phase de **qualification** d'un tournoi (première de la séquence, `ordre=1`).
+        """Crée la phase de **qualification** d'un départ (première de sa séquence, `ordre=1`).
 
         Sans grain explicite, applique le preset du type (`fin de série`, `D-11`) : une phase de
         qualification existe toujours **avec** un grain, jamais sans.
         """
         return Phase(
-            tournoi_id=tournoi_id,
+            depart_id=depart_id,
             ordre=1,
             type=TypePhase.QUALIFICATION,
             bareme=bareme,
@@ -519,7 +529,7 @@ class Phase:
 
     @staticmethod
     def creer(
-        tournoi_id: TournoiId,
+        depart_id: DepartId,
         ordre: int,
         type: TypePhase,
         sources: tuple[SourcePhase, ...] = (),
@@ -533,7 +543,7 @@ class Phase:
         appelée ici, elle lèverait `PhaseQualificationIncomplete` faute de barème.
         """
         return Phase(
-            tournoi_id=tournoi_id,
+            depart_id=depart_id,
             ordre=ordre,
             type=type,
             sources=sources,
@@ -600,7 +610,13 @@ class Phase:
 
 @dataclass(frozen=True)
 class SequencePhases:
-    """La séquence **ordonnée** des phases d'un tournoi, gardienne de sa cohérence (E05US001).
+    """La séquence **ordonnée** des phases **d'un départ**, gardienne de sa cohérence (E05US001).
+
+    ⚠️ **D'un départ depuis E01US025** (ADR-0075) : les ordres forment la suite contiguë 1..N *dans
+    un départ*, et chaque départ a la sienne. Les invariants ci-dessous sont inchangés — seule leur
+    **portée** l'est. Assembler dans une même séquence les phases de deux départs lèverait
+    `SequenceOrdreInvalide`, ce qui est le comportement voulu : c'est le garde-fou qui signale une
+    lecture restée à la portée tournoi.
 
     Value object pur validé à la construction : les ordres forment la suite contiguë 1..N, et
     chaque source désigne une phase **antérieure** existante dont l'effectif couvre les rangs
@@ -620,7 +636,7 @@ class EtapeSequencee(Protocol):
 
     Deux agrégats satisfont ce contrat : la `Phase` d'un tournoi (ci-dessus) et le `ModelePhase`
     d'un `FormatTournoi` (E01US023, ADR-0060 §5). Les contrôles d'ordre et de source ne regardent
-    que `ordre`, `sources` et `effectif` — ni le statut, ni le tournoi, qui n'existent que sur une
+    que `ordre`, `sources` et `effectif` — ni le statut, ni le départ, qui n'existent que sur une
     phase réelle. Le protocole rend cette frontière explicite au lieu de la laisser deviner.
 
     Membres déclarés en **propriétés** (lecture seule) : les deux implémentations sont des
@@ -692,9 +708,9 @@ def verifier_coherence_etape(
     Effectif ≥ 1 s'il est déclaré ; une `qualification` porte barème **et** grain ; le grain — s'il
     y en a un — est admis par le type et sa cadence ne dépasse pas le barème.
 
-    Partagée pour la même raison que `verifier_sequence` : une phase de tournoi et un modèle de
+    Partagée pour la même raison que `verifier_sequence` : une phase de départ et un modèle de
     phase d'un format obéissent aux **mêmes** règles de cohérence interne ; seul le contexte
-    (statut, tournoi) les distingue.
+    (statut, départ) les distingue.
 
     **Enveloppe levante** depuis E01US024 (cf. `verifier_sequence`).
     """

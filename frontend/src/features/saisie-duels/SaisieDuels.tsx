@@ -11,6 +11,8 @@
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { ChoixCreneau } from '../departs/ChoixCreneau'
+import { useCreneauDesDuels } from '../departs/hooks'
 import { useDeclarerForfaitDuel } from '../forfaits/hooks'
 import { PanneauRoutage } from '../routage/PanneauRoutage'
 import type { Cote, Duel, Tableau } from './api'
@@ -50,13 +52,20 @@ export function SaisieDuels({ tournoiId }: { tournoiId: number }) {
   // saisit — inutile de le faire tourner ailleurs.
   useRejeuDuelsHorsLigne()
 
-  const phases = usePhases(tournoiId)
+  // Le créneau **dont on joue les duels**, figé dès qu'il est résolu : sans ce gel, la clôture de
+  // la qualification faisait basculer l'écran sous les doigts du scoreur (cf. `useCreneauDesDuels`).
+  const { departs, liste, departId, choisir } = useCreneauDesDuels(tournoiId)
+  const phases = usePhases(departId)
   const [phaseId, setPhaseId] = useState<number | null>(null)
 
   // La saisie en duels ne vaut que pour une phase de **tableau** : on ne propose que celles-là (le
   // serveur reste l'autorité — `phase_pas_un_tableau` si l'on force — mais restreindre évite d'y
   // arriver par mégarde). Jumeau du sélecteur du plan de duels (E03US009).
   const tableaux = (phases.data ?? []).filter((p) => p.type === 'elimination_directe')
+  // Changer de créneau rend l'ancien `phaseId` étranger à la liste : le garder ferait scorer le
+  // tableau de l'autre départ, avec un identifiant valide et donc sans la moindre erreur.
+  const phaseRetenue =
+    phaseId !== null && tableaux.some((phase) => phase.id === phaseId) ? phaseId : null
 
   return (
     <div className="duels-saisie">
@@ -64,6 +73,11 @@ export function SaisieDuels({ tournoiId }: { tournoiId: number }) {
         <h3 className="carte__soustitre">Saisie des duels</h3>
         <IndicateurAttente />
       </div>
+
+      <ChoixCreneau departs={liste} valeur={departId} surChangement={choisir} />
+      {departs.isSuccess && liste.length === 0 && (
+        <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
+      )}
 
       {phases.isError && <MessageErreur erreur={phases.error} />}
       {phases.isSuccess && tableaux.length === 0 && (
@@ -75,7 +89,7 @@ export function SaisieDuels({ tournoiId }: { tournoiId: number }) {
       {tableaux.length > 0 && (
         <select
           className="formulaire__champ"
-          value={phaseId ?? ''}
+          value={phaseRetenue ?? ''}
           onChange={(e) => setPhaseId(e.target.value === '' ? null : Number(e.target.value))}
           aria-label="Phase de tableau à scorer"
         >
@@ -89,7 +103,9 @@ export function SaisieDuels({ tournoiId }: { tournoiId: number }) {
       )}
 
       {/* `key` sur la phase : en changer **remonte** le sous-arbre (reset propre de la sélection). */}
-      {phaseId !== null && <TableauScoreur key={phaseId} tournoiId={tournoiId} phaseId={phaseId} />}
+      {phaseRetenue !== null && (
+        <TableauScoreur key={phaseRetenue} tournoiId={tournoiId} phaseId={phaseRetenue} />
+      )}
     </div>
   )
 }

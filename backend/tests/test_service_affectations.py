@@ -29,6 +29,7 @@ from domain.forfait import Forfait, NatureForfait
 from domain.grain_validation import GrainValidation
 from domain.phase import IssueTour, Phase, SourcePhase, TypePhase
 from domain.politiques import PlacementEnCascade, RoutingRepechage
+from tests.conftest import poser_phase_factice
 from tests.test_service_routage import _QUAND, _huit, _Monde, _quatre
 
 # --- CA « une vue "toutes les affectations" » ---------------------------------------------------
@@ -48,7 +49,7 @@ def test_la_vue_collective_ne_demande_aucun_identifiant() -> None:
     archers = _huit(monde)
     monde.placer()
 
-    affectations = monde.routage.affectations(monde.tournoi_id)
+    affectations = monde.routage.affectations(monde.depart_id)
 
     assert affectations.phase_id == monde.phase_id
     assert sorted(ligne.archer_id for ligne in affectations.archers) == sorted(archers)
@@ -67,7 +68,7 @@ def test_la_vue_collective_ordonne_par_cible_puis_position() -> None:
     _huit(monde)
     monde.placer()
 
-    affectations = monde.routage.affectations(monde.tournoi_id)
+    affectations = monde.routage.affectations(monde.depart_id)
 
     poses = [
         (ligne.prochain.cible, ligne.prochain.position)
@@ -90,7 +91,7 @@ def test_la_vue_collective_range_a_la_fin_ceux_qui_n_ont_plus_de_pose() -> None:
     monde.placer()
     monde.gagner(1)  # un quart tranché : son perdant n'a plus de duel
 
-    affectations = monde.routage.affectations(monde.tournoi_id)
+    affectations = monde.routage.affectations(monde.depart_id)
 
     a_une_pose = [
         ligne.prochain is not None and ligne.prochain.cible is not None
@@ -114,12 +115,17 @@ def test_la_vue_collective_ignore_un_archer_hors_tableau() -> None:
     monde = _Monde()
     archers = _huit(monde)
     monde.placer()
-    qualif = monde.phases.ajouter(
+    # La qualification pend au **créneau** (ADR-0075) ; posée sur `tournoi_id`, elle serait
+    # orpheline et l'assemblage l'écarterait — le forfait ne s'appliquerait alors à rien.
+    qualif = poser_phase_factice(
+        monde.departs,
+        monde.deroules,
+        monde.phases,
         Phase.qualification(
-            monde.tournoi_id,
+            monde.depart_id,
             BaremeQualification.creer(1, 2),
             GrainValidation.fin_de_serie(),
-        )
+        ),
     )
     assert qualif.id is not None
     monde.forfaits.semer(
@@ -133,7 +139,7 @@ def test_la_vue_collective_ignore_un_archer_hors_tableau() -> None:
         )
     )
 
-    affectations = monde.routage.affectations(monde.tournoi_id)
+    affectations = monde.routage.affectations(monde.depart_id)
 
     assert archers[0] not in [ligne.archer_id for ligne in affectations.archers]
 
@@ -148,7 +154,7 @@ def test_la_vue_collective_sans_phase_de_tableau_le_dit() -> None:
     monde = _Monde()
     monde.inscrire_classe(("10", "10"))  # inscrit, mais aucune phase d'élimination
 
-    affectations = monde.routage.affectations(monde.tournoi_id)
+    affectations = monde.routage.affectations(monde.depart_id)
 
     assert affectations.phase_id is None
     assert affectations.archers == ()
@@ -166,9 +172,9 @@ def test_la_vue_collective_dit_la_meme_chose_que_le_panneau_de_la_tablette() -> 
     monde.placer()
 
     collectif = {
-        ligne.archer_id: ligne for ligne in monde.routage.affectations(monde.tournoi_id).archers
+        ligne.archer_id: ligne for ligne in monde.routage.affectations(monde.depart_id).archers
     }
-    individuel = monde.routage.routage(monde.tournoi_id, tuple(archers))
+    individuel = monde.routage.routage(monde.depart_id, tuple(archers))
 
     for ligne in individuel.archers:
         assert collectif[ligne.archer_id] == ligne
@@ -194,7 +200,7 @@ def test_l_elimine_hors_podium_voit_sa_fourchette_de_rangs() -> None:
     monde.gagner(1)
     battu = monde.perd_de(1)
 
-    ligne = _ligne(monde.routage, monde.tournoi_id, battu)
+    ligne = _ligne(monde.routage, monde.depart_id, battu)
 
     assert ligne.issue is IssueRoutage.TERMINE
     assert (ligne.rang_min, ligne.rang_max) == (5, 8)
@@ -224,7 +230,7 @@ def test_la_fourchette_ne_depasse_jamais_l_effectif_reel() -> None:
     monde.gagner(duel.numero)
     battu = monde.perd_de(duel.numero)
 
-    ligne = _ligne(monde.routage, monde.tournoi_id, battu)
+    ligne = _ligne(monde.routage, monde.depart_id, battu)
 
     # L'issue est assertée explicitement (remarque de revue) : tout le test **dépend** du fait que
     # ce battu n'a plus de match aval. Sans elle, un changement de profondeur le ferait échouer sur
@@ -250,7 +256,7 @@ def test_la_vue_collective_distingue_un_tableau_non_constitue_d_une_phase_absent
     monde.inscrire_classe(("10", "10"))  # un seul archer : pas d'arbre possible
     phase_id = monde.creer_phase_tableau()
 
-    affectations = monde.routage.affectations(monde.tournoi_id)
+    affectations = monde.routage.affectations(monde.depart_id)
 
     assert affectations.phase_id == phase_id  # ...la phase existe (≠ « pas encore de tableau »)
     assert affectations.archers == ()
@@ -272,7 +278,7 @@ def test_le_perdant_d_un_match_terminal_voit_un_rang_exact() -> None:
     monde.gagner(3)  # la finale
     battu = monde.perd_de(3)
 
-    ligne = _ligne(monde.routage, monde.tournoi_id, battu)
+    ligne = _ligne(monde.routage, monde.depart_id, battu)
 
     assert ligne.issue is IssueRoutage.TERMINE
     assert (ligne.rang_min, ligne.rang_max) == (2, 2)
@@ -293,7 +299,7 @@ def test_le_vainqueur_garde_son_rang_de_podium() -> None:
     monde.gagner(3)
     champion = monde.gagne_de(3)
 
-    ligne = _ligne(monde.routage, monde.tournoi_id, champion)
+    ligne = _ligne(monde.routage, monde.depart_id, champion)
 
     assert ligne.rang_final == 1
     assert (ligne.rang_min, ligne.rang_max) == (1, 1)
@@ -309,7 +315,7 @@ def test_l_archer_encore_en_lice_n_a_pas_de_rang() -> None:
     _huit(monde)
     monde.placer()
 
-    ligne = _ligne(monde.routage, monde.tournoi_id, monde.gagne_de(1))
+    ligne = _ligne(monde.routage, monde.depart_id, monde.gagne_de(1))
 
     assert ligne.issue is IssueRoutage.PROCHAIN_DUEL
     assert (ligne.rang_min, ligne.rang_max) == (None, None)
@@ -333,7 +339,7 @@ def test_le_repeche_n_est_pas_annonce_elimine() -> None:
     monde.gagner(1)
     repeche = monde.perd_de(1)
 
-    ligne = _ligne(monde.routage, monde.tournoi_id, repeche)
+    ligne = _ligne(monde.routage, monde.depart_id, repeche)
 
     assert ligne.issue is IssueRoutage.REPECHE
     assert ligne.rang_final is None  # un repêché n'a pas de rang : il peut encore remonter
@@ -354,7 +360,7 @@ def test_le_repeche_voit_la_phase_qui_le_reprend() -> None:
     monde.gagner(1)
     repeche = monde.perd_de(1)
 
-    ligne = _ligne(monde.routage, monde.tournoi_id, repeche)
+    ligne = _ligne(monde.routage, monde.depart_id, repeche)
 
     assert ligne.destination is not None
     assert ligne.destination.phase_id == repechage_id
@@ -376,7 +382,7 @@ def test_le_repeche_sans_phase_avale_le_dit_au_lieu_de_se_taire() -> None:
     monde.gagner(1)
     repeche = monde.perd_de(1)
 
-    ligne = _ligne(monde.routage, monde.tournoi_id, repeche)
+    ligne = _ligne(monde.routage, monde.depart_id, repeche)
 
     assert ligne.issue is IssueRoutage.REPECHE
     assert ligne.destination is None
@@ -402,7 +408,7 @@ def test_le_battu_d_un_tour_non_repeche_reste_elimine() -> None:
     monde.gagner(1)
     battu_du_tour_1 = monde.perd_de(1)
 
-    ligne = _ligne(monde.routage, monde.tournoi_id, battu_du_tour_1)
+    ligne = _ligne(monde.routage, monde.depart_id, battu_du_tour_1)
 
     assert ligne.issue is IssueRoutage.TERMINE  # son tour n'est pas repêché
     assert (ligne.rang_min, ligne.rang_max) == (5, 8)
@@ -436,7 +442,7 @@ def test_le_battu_repris_par_la_sequence_n_est_pas_encore_annonce() -> None:
     monde.gagner(1)
     battu = monde.perd_de(1)
 
-    ligne = _ligne(monde.routage, monde.tournoi_id, battu)
+    ligne = _ligne(monde.routage, monde.depart_id, battu)
 
     assert ligne.issue is IssueRoutage.TERMINE
     assert (ligne.rang_min, ligne.rang_max) == (5, 8)  # le rang acquis, lui, est bien annoncé
@@ -461,23 +467,32 @@ class _MondeRepechage(_Monde):
         )
 
     def declarer_phase_de_repechage(self, tour: int = 1) -> int:
-        """La phase avale qui **prélève les perdants du tour** donné de la phase de tableau."""
-        phase = self.phases.ajouter(
+        """La phase avale qui **prélève les perdants du tour** donné de la phase de tableau.
+
+        Posée **dans le créneau** (ADR-0075) : `_repechages` cherche la destination d'un repêché
+        parmi les phases du départ, une séquence n'existant que là. Sur `tournoi_id`, elle était
+        orpheline — le repêché n'avait plus de destination et le panneau le disait « non
+        configuré ».
+        """
+        phase = poser_phase_factice(
+            self.departs,
+            self.deroules,
+            self.phases,
             Phase.creer(
-                self.tournoi_id,
+                self.depart_id,
                 3,
                 TypePhase.ELIMINATION_DIRECTE,
                 sources=(SourcePhase.par_issue_de_tour(2, tour=tour, issue=IssueTour.PERDANTS),),
-            )
+            ),
         )
         assert phase.id is not None
         return phase.id
 
 
-def _ligne(routage: ServiceRoutage, tournoi_id: int, archer_id: int) -> RoutageArcher:
+def _ligne(routage: ServiceRoutage, depart_id: int, archer_id: int) -> RoutageArcher:
     """La ligne d'un archer dans la **vue collective** — c'est elle que cette US livre."""
     lignes = [
-        ligne for ligne in routage.affectations(tournoi_id).archers if ligne.archer_id == archer_id
+        ligne for ligne in routage.affectations(depart_id).archers if ligne.archer_id == archer_id
     ]
     assert len(lignes) == 1, f"L'archer {archer_id} devrait avoir exactement une ligne."
     return lignes[0]

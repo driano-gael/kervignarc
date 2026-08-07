@@ -33,6 +33,7 @@ from domain.archer import Archer, ArcherId
 from domain.blason import ZoneScore
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club
+from domain.depart import Depart
 from domain.doublons import NiveauDoublon
 from domain.entree_audit import EntreeAudit
 from domain.erreurs import (
@@ -50,10 +51,11 @@ from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
     FauxClubRepository,
+    FauxDepartRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
+    FauxPhaseRepository,
 )
-from tests.test_service_placement_duels import FauxPhaseRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -236,14 +238,25 @@ def _monter() -> Montage:
     clubs = FauxClubRepository()
     categories = FauxCategorieRepository()
     inscriptions = FauxInscriptionRepository()
+    departs = FauxDepartRepository()
     tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
     assert tournoi.id is not None
+    departs.ajouter(
+        Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+    )
     categorie = categories.ajouter(Categorie.creer(tournoi.id, "Senior 1 H"))
     assert categorie.id is not None
     return Montage(
         archers=ServiceArchers(tournois, archers, scores, clubs, categories, inscriptions, series),
         classement=ServiceClassement(
-            tournois, archers, series, categories, FauxPhaseRepository(), FauxForfaitRepository()
+            tournois,
+            archers,
+            series,
+            categories,
+            FauxPhaseRepository(departs),
+            FauxForfaitRepository(),
+            departs,
+            inscriptions,
         ),
         inscrits=archers,
         scores=scores,
@@ -294,7 +307,7 @@ def test_ajouter_archer_categorie_inconnue_leve() -> None:
     m = _monter()
     with pytest.raises(CategorieHorsTournoi):
         m.archers.ajouter(m.tournoi_id, "Robin", "Jean", 404)
-    assert m.classement.pour_tournoi(m.tournoi_id).lignes == ()
+    assert m.classement.pour_depart(m.tournoi_id).lignes == ()
 
 
 def test_ajouter_archer_categorie_d_un_autre_tournoi_leve() -> None:
@@ -303,7 +316,7 @@ def test_ajouter_archer_categorie_d_un_autre_tournoi_leve() -> None:
     _, categorie_etrangere = m.autre_tournoi()
     with pytest.raises(CategorieHorsTournoi):
         m.archers.ajouter(m.tournoi_id, "Robin", "Jean", categorie_etrangere)
-    assert m.classement.pour_tournoi(m.tournoi_id).lignes == ()
+    assert m.classement.pour_depart(m.tournoi_id).lignes == ()
 
 
 def test_ajouter_archer_sans_club_laisse_le_rattachement_vide() -> None:
@@ -326,7 +339,7 @@ def test_ajouter_archer_club_inconnu_leve() -> None:
     m = _monter()
     with pytest.raises(ClubIntrouvable):
         m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id, 404)
-    assert m.classement.pour_tournoi(m.tournoi_id).lignes == ()
+    assert m.classement.pour_depart(m.tournoi_id).lignes == ()
 
 
 def test_ajouter_archer_saisie_invalide_leve_avant_l_homonymie() -> None:
@@ -862,7 +875,7 @@ def test_supprimer_archer_retire_l_inscription() -> None:
     assert archer.id is not None
     m.archers.supprimer(archer.id)
     assert m.inscrits.par_id(archer.id) is None
-    assert m.classement.pour_tournoi(m.tournoi_id).lignes == ()
+    assert m.classement.pour_depart(m.tournoi_id).lignes == ()
 
 
 def test_supprimer_archer_inconnu_leve() -> None:
@@ -1086,7 +1099,7 @@ def test_supprimer_archer_engage_confirme_efface_l_archer_et_ses_fleches() -> No
     m.archers.supprimer(archer.id, autoriser_suppression_engage=True)
     assert m.inscrits.par_id(archer.id) is None
     assert m.series.par_archer(m.tournoi_id, archer.id) is None
-    assert m.classement.pour_tournoi(m.tournoi_id).lignes == ()
+    assert m.classement.pour_depart(m.tournoi_id).lignes == ()
 
 
 def test_supprimer_archer_engage_confirme_ne_touche_pas_aux_autres() -> None:

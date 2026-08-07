@@ -32,6 +32,8 @@ from domain.archer import Archer, ArcherId
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.club import ClubId
+from domain.depart import Depart, DepartId
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait
@@ -39,9 +41,11 @@ from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
+from domain.ports import DepartRepository, DerouleRepository
 from domain.remboursement import Remboursement
 from domain.serie import Serie
 from domain.tournoi import Tournoi, TournoiId
+from infrastructure.erreurs import InfrastructureError
 
 
 class _AllocateurId:
@@ -290,36 +294,231 @@ class InMemoryInscriptionRepository(_AllocateurId):
         self._items.pop(inscription_id, None)
 
 
-class InMemoryPhaseRepository(_AllocateurId):
-    """Port `PhaseRepository` en mémoire (`par_tournoi` **ordonné par `ordre`**, comme SQL)."""
+class InMemoryDepartRepository(_AllocateurId):
+    """Port `DepartRepository` en mémoire (E01US025, ADR-0075).
+
+    Absent jusqu'ici : le harnais de simulation n'avait pas besoin des créneaux, la portée sportive
+    étant le tournoi. Elle est devenue le **départ**, donc une simulation qui n'en aurait aucun ne
+    pourrait ni composer de phases, ni produire de classement.
+    """
 
     def __init__(self) -> None:
         super().__init__()
-        self._items: dict[int, Phase] = {}
+        self._items: dict[int, Depart] = {}
 
-    def ajouter(self, phase: Phase) -> Phase:
-        identifiant = self._identifiant(phase.id)
-        persiste = dataclasses.replace(phase, id=identifiant)
+    def ajouter(self, depart: Depart) -> Depart:
+        identifiant = self._identifiant(depart.id)
+        persiste = dataclasses.replace(depart, id=identifiant)
         self._items[identifiant] = persiste
         return persiste
 
-    def par_id(self, phase_id: PhaseId) -> Phase | None:
-        return self._items.get(phase_id)
+    def par_id(self, depart_id: DepartId) -> Depart | None:
+        return self._items.get(depart_id)
 
-    def par_tournoi_et_type(self, tournoi_id: TournoiId, type_phase: TypePhase) -> Phase | None:
-        for phase in self._items.values():
-            if phase.tournoi_id == tournoi_id and phase.type == type_phase:
-                return phase
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Depart]:
+        departs = [d for d in self._items.values() if d.tournoi_id == tournoi_id]
+        # Tri par numéro **garanti par le port** : le service en dérive le prochain numéro.
+        return sorted(departs, key=lambda d: d.numero)
+
+    def enregistrer(self, depart: Depart) -> Depart:
+        assert depart.id is not None
+        self._items[depart.id] = depart
+        return depart
+
+    def supprimer(self, depart_id: DepartId) -> None:
+        self._items.pop(depart_id, None)
+
+    def supprimer_avec_remboursements(
+        self, depart_id: DepartId, remboursements: Sequence[Remboursement]
+    ) -> None:
+        """Supprime le créneau ; les remboursements sont **ignorés** en simulation.
+
+        Même parti que les no-op d'audit du module (ADR-0054) : une simulation ne touche à aucune
+        caisse. Ignorer n'est pas un raccourci — ouvrir un remboursement fictif serait pire, il
+        n'aurait aucun sens à relire.
+        """
+        self.supprimer(depart_id)
+
+
+class InMemoryDerouleRepository(_AllocateurId):
+    """Port `DerouleRepository` en mémoire — la **définition** du déroulé (ADR-0076)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._items: dict[int, EtapeDeroule] = {}
+
+    def ajouter(self, etape: EtapeDeroule) -> EtapeDeroule:
+        identifiant = self._identifiant(etape.id)
+        persiste = dataclasses.replace(etape, id=identifiant)
+        self._items[identifiant] = persiste
+        return persiste
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[EtapeDeroule]:
+        etapes = [e for e in self._items.values() if e.tournoi_id == tournoi_id]
+        return sorted(etapes, key=lambda e: e.ordre)
+
+    def enregistrer(self, etape: EtapeDeroule) -> EtapeDeroule:
+        assert etape.id is not None
+        self._items[etape.id] = etape
+        return etape
+
+    def reordonner(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
+        """Réécrit le lot d'un coup. Sans contrainte d'unicité à ménager, une passe suffit ici —
+        le contrat visible (« ou tout, ou rien ») est le même que celui de l'adapter SQL."""
+        for etape in etapes:
+            assert etape.id is not None
+            self._items[etape.id] = etape
+        return list(etapes)
+
+    def supprimer(self, etape_id: EtapeDerouleId) -> None:
+        self._items.pop(etape_id, None)
+
+
+class InMemoryPhaseRepository(_AllocateurId):
+    """Port `PhaseRepository` en mémoire — l'**avancement** d'une étape (ADR-0076).
+
+    ⚠️ Comme l'adapter SQL, il **assemble** : le magasin ne retient que `(depart_id, ordre, statut)`,
+    et la définition vient du déroulé du tournoi de ce créneau. Les deux implémentations doivent
+    répondre pareil — c'est ce que vérifient les tests de conformité de port.
+    """
+
+    def __init__(
+        self,
+        departs: DepartRepository | None = None,
+        # Le **port**, pas la classe concrète (règle 2) : le paramètre voisin est déjà typé ainsi,
+        # et dépendre de `InMemoryDerouleRepository` interdisait d'injecter une autre doublure.
+        deroules: DerouleRepository | None = None,
+    ) -> None:
+        super().__init__()
+        self._items: dict[int, Phase] = {}
+        # Facultatifs : seules les lectures qui **assemblent** ou remontent au tournoi en ont
+        # besoin.
+        # Le harnais de simulation les câble ; un décor de test qui ne lit que des statuts non.
+        self._departs = departs
+        self._deroules = deroules
+
+    @property
+    def _assemble(self) -> bool:
+        """Vrai quand le magasin sait joindre `phase → départ → tournoi → étape`.
+
+        Faux, il reste en **mode indulgent** : la phase conservée porte déjà sa définition (elle y
+        a été mise à l'ajout), on la rend telle quelle. C'est ce qui permet aux décors de test qui
+        ne lisent que des statuts de rester simples, sans jamais rendre une phase amputée.
+
+        # DETTE-049 : cette indulgence fait répondre la doublure **autrement que la production**
+        # (qui, elle, câble toujours les deux magasins — cf. `bootstrap/composition.py`). Un décor
+        # ainsi monté peut donc *consacrer* un bug au lieu de l'attraper, ce qui est exactement le
+        # mode de panne rencontré deux fois pendant E01US025. Branche morte au câblage réel, d'où
+        # la sévérité mineure ; à supprimer en rendant les deux magasins obligatoires.
+        """
+        return self._departs is not None and self._deroules is not None
+
+    def _etape(self, phase: Phase) -> EtapeDeroule | None:
+        """La définition de cette phase : l'étape de même rang, dans le tournoi de son créneau."""
+        if self._departs is None or self._deroules is None:
+            return None
+        depart = self._departs.par_id(phase.depart_id)
+        if depart is None:
+            return None
+        for etape in self._deroules.par_tournoi(depart.tournoi_id):
+            if etape.ordre == phase.ordre:
+                return etape
         return None
 
+    def _assembler(self, phases: list[Phase]) -> list[Phase]:
+        """Complète chaque phase de sa définition ; une **orpheline** est écartée de la lecture.
+
+        Même règle que l'adapter SQL, et pour la même raison : une phase sans définition ne peut
+        rien dire d'utile, mais faire échouer *toute* la lecture pour elle priverait l'organisateur
+        du reste de son déroulé le jour J. Les deux adapters doivent répondre pareil — c'est
+        l'objet des tests de conformité de port.
+        """
+        if not self._assemble:
+            return phases
+        assemblees = []
+        for phase in phases:
+            etape = self._etape(phase)
+            if etape is not None:
+                assemblees.append(
+                    dataclasses.replace(
+                        etape.instancier(phase.depart_id), statut=phase.statut, id=phase.id
+                    )
+                )
+        return assemblees
+
+    def _assembler_une(self, phase: Phase) -> Phase | None:
+        assemblees = self._assembler([phase])
+        return assemblees[0] if assemblees else None
+
+    def ajouter(self, phase: Phase) -> Phase:
+        """Persiste l'**avancement** ; la définition portée par l'objet reçu est ignorée.
+
+        Écrire une instance dont le rang n'existe pas au déroulé du tournoi est une **erreur**, pas
+        un cas limite : elle serait invisible à toute lecture (écartée comme orpheline) et le
+        service la croirait posée. L'adapter SQL lève ici aussi.
+        """
+        identifiant = self._identifiant(phase.id)
+        persiste = dataclasses.replace(phase, id=identifiant)
+        self._items[identifiant] = persiste
+        assemblee = self._assembler_une(persiste)
+        if assemblee is None:
+            del self._items[identifiant]
+            raise InfrastructureError(
+                "Phase créée sans étape de déroulé de même rang : le tournoi de ce créneau "
+                "n'a pas ce rang à son déroulé."
+            )
+        return assemblee
+
+    def par_id(self, phase_id: PhaseId) -> Phase | None:
+        phase = self._items.get(phase_id)
+        return None if phase is None else self._assembler_une(phase)
+
+    def par_depart_et_type(self, depart_id: DepartId, type_phase: TypePhase) -> Phase | None:
+        trouvees = [p for p in self.par_depart(depart_id) if p.type is type_phase]
+        return trouvees[-1] if trouvees else None
+
+    def par_depart(self, depart_id: DepartId) -> list[Phase]:
+        phases = [p for p in self._items.values() if p.depart_id == depart_id]
+        return self._assembler(sorted(phases, key=lambda p: p.ordre))
+
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        phases = [p for p in self._items.values() if p.tournoi_id == tournoi_id]
-        return sorted(phases, key=lambda p: p.ordre)
+        """Les phases de **tous les départs** du tournoi, triées (départ, ordre) — pas une séquence.
+
+        Le magasin des phases ne connaît que des `depart_id` : remonter au tournoi exige le magasin
+        des **départs**, d'où l'injection. Non câblé, cette lecture **lève** au lieu de rendre une
+        liste vide : un `[]` silencieux ferait passer « je ne sais pas répondre » pour « ce tournoi
+        n'a aucune phase », c'est-à-dire exactement le genre d'écart muet qu'ADR-0075 corrige.
+        """
+        if self._departs is None:
+            raise InfrastructureError(
+                "Ce magasin de phases n'a pas de magasin de départs : la lecture transverse "
+                "« phases d'un tournoi » exige la jointure phase → départ → tournoi (ADR-0075)."
+            )
+        departs = {d.id for d in self._departs.par_tournoi(tournoi_id)}
+        phases = [p for p in self._items.values() if p.depart_id in departs]
+        return self._assembler(sorted(phases, key=lambda p: (p.depart_id, p.ordre)))
 
     def enregistrer(self, phase: Phase) -> Phase:
+        """Met à jour l'**avancement** (statut, rang) ; la définition s'édite sur l'étape.
+
+        ⚠️ **On assemble avant d'écrire**, comme `ajouter` juste au-dessus et comme l'adapter SQL
+        depuis la revue E01US025 : écrire puis lever laissait le magasin porter une phase orpheline
+        alors que l'appelant venait de recevoir un échec. Les deux adapters doivent répondre pareil
+        jusque dans leur comportement en cas d'échec — sans quoi le test de conformité ne prouve
+        que le chemin heureux.
+        """
         assert phase.id is not None
+        assemblee = self._assembler_une(phase)
+        if assemblee is None:
+            raise InfrastructureError("Phase mise à jour sans étape de déroulé de même rang.")
         self._items[phase.id] = phase
-        return phase
+        return assemblee
+
+    def reordonner(self, phases: list[Phase]) -> None:
+        """Réaligne les rangs du lot. Seul l'`ordre` bouge, comme dans l'adapter SQL."""
+        for phase in phases:
+            assert phase.id is not None
+            self._items[phase.id] = dataclasses.replace(self._items[phase.id], ordre=phase.ordre)
 
     def supprimer(self, phase_id: PhaseId) -> None:
         self._items.pop(phase_id, None)

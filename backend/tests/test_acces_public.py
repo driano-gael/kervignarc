@@ -53,7 +53,7 @@ _LECTURES = [
     "/api/v1/auth/etat",
     "/api/v1/tournois",
     "/api/v1/tournois/1",
-    "/api/v1/tournois/1/classement",
+    "/api/v1/departs/1/classement",
     "/api/v1/tournois/1/categories",
     "/api/v1/tournois/1/departs",
     "/api/v1/tournois/1/departs/1/plan-de-cibles",

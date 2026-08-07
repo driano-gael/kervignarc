@@ -32,15 +32,17 @@ from application.forfaits import ServiceForfait
 from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.categorie import Categorie
+from domain.depart import Depart
 from domain.forfait import NatureForfait
 from domain.phase import Phase, TypePhase
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
+    FauxDepartRepository,
     FauxForfaitRepository,
+    FauxPhaseRepository,
 )
-from tests.test_service_placement_duels import FauxPhaseRepository
 
 _QUAND = datetime.datetime(2026, 3, 14, 10, 42, tzinfo=datetime.UTC)
 
@@ -90,7 +92,15 @@ class _Monde:
         self.tournois = FauxTournoiRepository(statut)
         self.archers = FauxArcherRepository()
         self.categories = FauxCategorieRepository()
-        self.phases = FauxPhaseRepository()
+        self.departs = FauxDepartRepository()
+        # Le créneau qui porte les phases : sans lui, la lecture transverse « la qualification de
+        # ce tournoi » ne trouve rien (ADR-0075) et le service croit la phase absente.
+        _d = self.departs.ajouter(
+            Depart.creer(tournoi_id=self.tournoi_id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert _d.id is not None
+        self.depart_id = _d.id
+        self.phases = FauxPhaseRepository(self.departs)
         self.forfaits = FauxForfaitRepository()
         cat = self.categories.ajouter(Categorie.creer(self.tournoi_id, "Senior 1 H"))
         assert cat.id is not None
@@ -98,13 +108,11 @@ class _Monde:
         assert archer.id is not None
         self.archer_id = archer.id
         qualif = self.phases.ajouter(
-            Phase.qualification(self.tournoi_id, BaremeQualification.creer(3, 3))
+            Phase.qualification(self.depart_id, BaremeQualification.creer(3, 3))
         )
         assert qualif.id is not None
         self.qualif_id = qualif.id
-        tableau = self.phases.ajouter(
-            Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE)
-        )
+        tableau = self.phases.ajouter(Phase.creer(self.depart_id, 2, TypePhase.ELIMINATION_DIRECTE))
         assert tableau.id is not None
         self.tableau_id = tableau.id
         self.service = ServiceForfait(
@@ -161,7 +169,7 @@ def test_archer_inconnu_leve_introuvable() -> None:
 def test_qualif_absente_leve_erreur() -> None:
     """Sans phase de qualification configurée, on ne peut pas déclarer un abandon de qualif."""
     m = _Monde()
-    m.phases = FauxPhaseRepository()  # aucune phase
+    m.phases = FauxPhaseRepository(m.departs)  # aucune phase
     m.service = ServiceForfait(m.forfaits, m.tournois, m.archers, m.phases, HorlogeFigee())
     with pytest.raises(PhaseQualificationAbsente):
         m.service.declarer_en_qualification(m.tournoi_id, m.archer_id, NatureForfait.ABANDON, "S")

@@ -30,7 +30,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-from application.erreurs import ApplicationError, TournoiIntrouvable
+from application.erreurs import ApplicationError, DepartIntrouvable
+from domain.depart import DepartId
 from domain.deroule import ProjectionDeroule, TourBraquet, projeter
 from domain.erreurs import DomainError
 from domain.phase import TYPES_EN_TABLEAU, Phase, PhaseId
@@ -46,15 +47,22 @@ from domain.tournoi import TournoiId
 
 
 class CompteurEngages(Protocol):
-    """Port étroit : combien d'archers sont engagés dans ce tournoi.
+    """Port étroit : combien d'archers sont engagés dans ce **créneau**.
 
     C'est l'effectif sur lequel la projection se résout — l'équivalent live du « je simule à N
     archers » de l'atelier. Port étroit plutôt que dépendance à un service entier, même parti que
     `application.supervision.LecteurAvancement`.
+
+    ⚠️ **Par départ, et le nom le dit** (E01US025, ADR-0075). La méthode s'appelait `nb_engages` et
+    prenait un `tournoi_id` : un départ **rejoue le tournoi en entier**, donc un déroulé se résout
+    sur les inscrits **de son créneau** — quatre créneaux de 100 archers dimensionnaient un tableau
+    pour 400. Le renommage n'est pas cosmétique : `TournoiId` et `DepartId` sont le même type pour
+    mypy (`DETTE-044`), donc seul un **nom qui change** force la revisite de chaque appel. C'est la
+    leçon du reste de cette US — tout ce qui gardait un nom valide est resté en portée tournoi.
     """
 
-    def nb_engages(self, tournoi_id: TournoiId) -> int:
-        """Nombre d'archers inscrits au tournoi, tous départs confondus."""
+    def nb_engages_du_depart(self, depart_id: DepartId) -> int:
+        """Nombre d'archers inscrits sur ce créneau."""
         ...
 
 
@@ -131,12 +139,11 @@ def _est_de_la_branche(match: Match, braquet: TourBraquet) -> bool:
 
 
 class CompteurEngagesRepository:
-    """Réalisation de `CompteurEngages` sur les repositories : les inscriptions de tous les départs.
+    """Réalisation de `CompteurEngages` sur les repositories : les inscriptions **d'un créneau**.
 
-    Un archer inscrit à **deux** créneaux (cas rare mais légal) serait compté deux fois par une
-    simple somme : on dénombre donc les **archers distincts**. C'est l'effectif que la projection
-    doit résoudre — « combien de personnes ce format doit-il faire tirer », pas « combien de
-    dossards ont été vendus ».
+    C'est l'effectif que la projection doit résoudre — « combien de personnes ce déroulé doit-il
+    faire tirer *dans ce créneau* », pas « combien de dossards le tournoi a vendus ». Les archers
+    sont **dédoublonnés** : une double inscription au même créneau ne fait pas deux tireurs.
 
     Vit ici plutôt qu'en `infrastructure/` : il ne connaît que des **ports** (règle 2), aucune
     technologie de persistance.
@@ -148,16 +155,9 @@ class CompteurEngagesRepository:
         self._departs = depart_repository
         self._inscriptions = inscription_repository
 
-    def nb_engages(self, tournoi_id: TournoiId) -> int:
-        """Nombre d'archers **distincts** inscrits au tournoi, tous départs confondus."""
-        archers: set[int] = set()
-        for depart in self._departs.par_tournoi(tournoi_id):
-            if depart.id is None:
-                continue
-            archers.update(
-                inscription.archer_id for inscription in self._inscriptions.par_depart(depart.id)
-            )
-        return len(archers)
+    def nb_engages_du_depart(self, depart_id: DepartId) -> int:
+        """Nombre d'archers **distincts** inscrits sur ce créneau."""
+        return len({i.archer_id for i in self._inscriptions.par_depart(depart_id)})
 
 
 @dataclass(frozen=True)
@@ -176,36 +176,50 @@ class SuiviDeroule:
 
 
 class ServiceSuiviDeroule:
-    """Cas d'usage : « où en est le tournoi ? », pour le pilotage et pour l'écran de salle."""
+    """Cas d'usage : « où en est ce **créneau** ? », pour le pilotage et pour l'écran de salle."""
 
     def __init__(
         self,
         tournoi_repository: TournoiRepository,
+        depart_repository: DepartRepository,
         phase_repository: PhaseRepository,
         engages: CompteurEngages,
         tableaux: LecteurTableau,
     ) -> None:
         self._tournois = tournoi_repository
+        self._departs = depart_repository
         self._phases = phase_repository
         self._engages = engages
         self._tableaux = tableaux
 
-    def pour_tournoi(self, tournoi_id: TournoiId) -> SuiviDeroule:
-        """Le suivi complet d'un tournoi. `TournoiIntrouvable` si le tournoi n'existe pas.
+    def pour_depart(self, depart_id: DepartId) -> SuiviDeroule:
+        """Le suivi complet d'un **créneau**. `DepartIntrouvable` si le créneau n'existe pas.
 
-        Un tournoi **sans phase** rend un suivi vide plutôt qu'une erreur : avant qu'un format soit
+        ⚠️ **La maille est le départ, pas le tournoi** (E01US025, ADR-0075). Cette méthode s'appelait
+        `pour_tournoi` et lisait `PhaseRepository.par_tournoi`, dont la docstring dit pourtant « ce
+        n'est **pas** une séquence : c'est la concaténation de N suites 1..M ». Sur deux créneaux,
+        cela produisait quatre défauts d'un coup : le déroulé dessiné **en double**, l'avancement
+        du dernier créneau **écrasant** celui des autres (`{phase.ordre: phase}`), l'effectif
+        **fusionné** (donc des tableaux dimensionnés pour 400 au lieu de 100), et deux anomalies
+        fausses (`SequenceOrdreInvalide`, `PlusieursQualifications`) sur une route **publique**
+        pollée toutes les 10 s. Le suivi n'a de sens que dans un créneau : c'est lui qui a son
+        effectif, son avancement et son horaire.
+
+        Un créneau **sans phase** rend un suivi vide plutôt qu'une erreur : avant qu'un format soit
         appliqué, l'écran doit afficher « rien à suivre », pas une page cassée.
 
         # DETTE-031 : tout est **recalculé à chaque appel** — le compte des engagés, et surtout la
-        # reconstruction de chaque phase en tableau (qui rejoue le classement complet du tournoi).
+        # reconstruction de chaque phase en tableau (qui rejoue le classement complet du départ).
         # Endpoint public, pollé toutes les 10 s par deux surfaces. Assumé au contexte mono-club et
         # local ; le remède est borné (mémoïsation par version, invalidée par donnees_modifiees),
         # mais aucune mesure ne le réclame aujourd'hui. Cf. docs/dette.md.
         """
-        if self._tournois.par_id(tournoi_id) is None:
-            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        phases = sorted(self._phases.par_tournoi(tournoi_id), key=lambda phase: phase.ordre)
-        effectif = self._engages.nb_engages(tournoi_id)
+        depart = self._departs.par_id(depart_id)
+        if depart is None:
+            raise DepartIntrouvable(f"Aucun départ d'identifiant {depart_id}.")
+        tournoi_id = depart.tournoi_id
+        phases = sorted(self._phases.par_depart(depart_id), key=lambda phase: phase.ordre)
+        effectif = self._engages.nb_engages_du_depart(depart_id)
         projection = projeter(phases, effectif)
         par_ordre = {phase.ordre: phase for phase in phases}
         blocs = tuple(

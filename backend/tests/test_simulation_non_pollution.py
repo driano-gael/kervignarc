@@ -23,8 +23,9 @@ from sqlalchemy import text
 from bootstrap.composition import create_app
 from domain.gabarit_salle import GabaritSalle
 from domain.phase import Phase, TypePhase
-from infrastructure.db import GabaritSalleRepositorySQL, PhaseRepositorySQL
+from infrastructure.db import DepartRepositorySQL, GabaritSalleRepositorySQL
 from tests.base_migree import preparer_base
+from tests.conftest import poser_phase_sql
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -83,7 +84,11 @@ def test_une_simulation_ne_modifie_pas_la_base(app_simulation: FastAPI) -> None:
     # **Fidélité SQL → in-memory** : le classement simulé (hydraté depuis SQLite) est **identique**
     # à celui que la production calcule sur les mêmes adapters SQL — l'hydratation ne perd rien.
     # (On compare le contenu, pas seulement le nombre de lignes.)
-    oracle_sql = app_simulation.state.service_classement.pour_tournoi(tournoi_id)
+    _departs_oracle = DepartRepositorySQL(
+        app_simulation.state.database.session_factory
+    ).par_tournoi(tournoi_id)
+    assert _departs_oracle and _departs_oracle[0].id is not None
+    oracle_sql = app_simulation.state.service_classement.pour_depart(_departs_oracle[0].id)
     assert simulation.classement == oracle_sql
 
     apres = _photo(app_simulation)
@@ -108,7 +113,9 @@ def test_le_chemin_duels_ne_pollue_pas_la_base(app_simulation: FastAPI) -> None:
     GabaritSalleRepositorySQL(fabrique).ajouter(
         GabaritSalle(nom="Salle", capacites=(4, 4, 4, 4, 4), tournoi_id=tournoi_id)
     )
-    PhaseRepositorySQL(fabrique).ajouter(Phase.creer(tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE))
+    departs = DepartRepositorySQL(fabrique).par_tournoi(tournoi_id)
+    assert departs and departs[0].id is not None
+    poser_phase_sql(fabrique, Phase.creer(departs[0].id, 2, TypePhase.ELIMINATION_DIRECTE))
 
     avant = _photo(app_simulation)  # photo APRÈS l'ajout salle + phase (données réelles assumées)
     simulation = app_simulation.state.service_simulation.simuler(tournoi_id)

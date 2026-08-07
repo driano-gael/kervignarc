@@ -361,18 +361,56 @@ class PhaseORM(Base):
     et la relecture reste tolérante à l'ancienne forme à plat de `scoring` (repli `_lire_scoring`,
     la migration `0028` réécrivant les lignes existantes). `ordre` et `statut` sont conformes au
     modèle de données mais non exploités avant le moteur (EPIC-05).
+
+    ⚠️ **La phase pend au `depart`, plus au `tournoi`** (E01US025, ADR-0075, migration 0042) : le
+    départ est la **portée sportive** — il rejoue le tournoi en entier, donc il porte sa séquence,
+    ses classements et ses tableaux. `ordre` est contigu 1..N **par départ**. Le lien au tournoi
+    reste atteignable par jointure `phase → depart → tournoi`, et c'est ce que font les lectures
+    transverses (supervision, complétude, suppression en cascade).
     """
 
     __tablename__ = "phase"
+    # Une seule instance par (créneau, rang) : deux avancements du même rang dans le même départ
+    # n'auraient aucun sens, et le service s'appuie sur cette unicité pour synchroniser.
+    __table_args__ = (UniqueConstraint("depart_id", "ordre", name="uq_phase_depart_ordre"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
-    # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
+    # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant du départ depuis ADR-0075, donc
+    # petit-enfant du tournoi ; même politique de suppression non tranchée, ne pas contourner ici.
+    depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
+    # `ordre` est la **clé de jointure** vers la définition (`deroule_etape` du tournoi de ce
+    # départ) : c'est lui, et non un `etape_id`, parce que le déroulé s'édite par rang — un
+    # réordonnancement remappe déjà les ordres partout (DETTE-026), et une FK dupliquerait
+    # l'information tout en pouvant en diverger.
+    ordre: Mapped[int] = mapped_column(nullable=False)
+    statut: Mapped[str] = mapped_column(nullable=False)
+
+
+class DerouleEtapeORM(Base):
+    """Table `deroule_etape` — la **définition** d'une étape du déroulé d'un tournoi (ADR-0076).
+
+    Le déroulé se définit **une fois** par tournoi ; chaque départ le rejoue en portant un simple
+    **avancement** (`PhaseORM`, qui n'a plus que `depart_id`, `ordre` et `statut`). Avant le
+    07/08/2026, appliquer un format écrivait N copies complètes — une par créneau —, libres de
+    diverger en silence.
+
+    `type` stocke la valeur de `TypePhase`. Les **politiques** vivent dans `config` (JSON), forme
+    `config.policies` d'ADR-0046 : c'est ce qui permet d'ajouter une politique **sans migration de
+    schéma** (ADR-0011). La traduction JSON ↔ agrégat est faite par le repository, à l'identique de
+    ce que faisait `PhaseORM` — le format de la `config` n'a pas changé, il a **changé de table**.
+    """
+
+    __tablename__ = "deroule_etape"
+    # Un seul réglage par rang dans un tournoi : c'est la définition même d'une séquence 1..N.
+    __table_args__ = (UniqueConstraint("tournoi_id", "ordre", name="uq_deroule_tournoi_ordre"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 : FK sans ON DELETE CASCADE — enfant direct du tournoi, même politique de
+    # suppression non tranchée que le reste de sa descendance.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     ordre: Mapped[int] = mapped_column(nullable=False)
     type: Mapped[str] = mapped_column(nullable=False)
     config: Mapped[str] = mapped_column(nullable=False)
-    statut: Mapped[str] = mapped_column(nullable=False)
 
 
 class ScoreurORM(Base):
@@ -460,6 +498,13 @@ class SerieORM(Base):
     # UNIQUE(tournoi_id, archer_id) : une seule série de qualification par archer. Nommée comme dans
     # la migration `0026` — présente ici, dans le `Base.metadata` cible de l'autogénération, sinon
     # un futur `--autogenerate` émettrait un `drop_constraint` fantôme et retirerait le garde-fou.
+    #
+    # DETTE-046 (docs/dette.md) : **la portée de cette unicité est fausse depuis ADR-0075**. Le
+    # modèle autorise un archer à s'inscrire sur **plusieurs** créneaux (`ARCHER }o--o{ DEPART`),
+    # mais ses flèches n'ont ici qu'un seul emplacement pour tout le tournoi : la seconde série
+    # écrase la première ou échoue à l'enregistrement. La résorption est `UNIQUE(depart_id,
+    # archer_id)` + `Serie.depart_id` (migration comprise) — même famille que DETTE-044, une portée
+    # restée au tournoi alors que la réalité est le créneau. Ne pas contourner ici.
     __table_args__ = (UniqueConstraint("tournoi_id", "archer_id", name="uq_serie_tournoi_archer"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -681,7 +726,9 @@ class BarrageORM(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
     # dans la politique de suppression du tournoi (non tranchée) ; ne pas contourner ici.
-    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
+    # Portée sportive : le barrage départage une place dans le classement **d'un départ**
+    # (E01US025, ADR-0075, migration 0042) — c'était `tournoi_id`.
+    depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
     # DETTE-001 : FK sans ON DELETE CASCADE — lien latéral dans la descendance du tournoi.
     phase_id: Mapped[int | None] = mapped_column(ForeignKey("phase.id"), nullable=True)
     portee: Mapped[str] = mapped_column(nullable=False)

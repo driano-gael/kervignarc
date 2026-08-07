@@ -31,9 +31,17 @@ from application.erreurs import (
     TournoiSansPhase,
 )
 from domain.deroule import ProjectionDeroule
+from domain.deroule_etape import EtapeDeroule
+from domain.erreurs import FormatSansDepart
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
-from domain.ports import FormatTournoiRepository, PhaseRepository, TournoiRepository
+from domain.ports import (
+    DepartRepository,
+    DerouleRepository,
+    FormatTournoiRepository,
+    PhaseRepository,
+    TournoiRepository,
+)
 from domain.tournoi import Tournoi, TournoiId
 
 
@@ -73,8 +81,16 @@ class ServiceFormats:
         phases: PhaseRepository,
         forfaits: LecteurDonneesDePhase,
         placements_tableau: LecteurDonneesDePhase,
+        departs: DepartRepository,
+        deroules: DerouleRepository,
     ) -> None:
         self._tournois = tournois
+        # Le **déroulé** du tournoi : la définition, écrite une fois (ADR-0076). Les phases,
+        # elles, ne sont plus que des avancements — une par créneau et par étape.
+        self._deroules = deroules
+        # Appliquer un format crée une séquence **par départ** (ADR-0075) : sans les créneaux,
+        # le service ne saurait pas combien de séquences instancier.
+        self._departs = departs
         self._formats = formats
         self._phases = phases
         self._forfaits = forfaits
@@ -173,8 +189,12 @@ class ServiceFormats:
 
     # --- Application à un tournoi ---------------------------------------------------------
 
-    def appliquer(self, tournoi_id: TournoiId, format_id: FormatTournoiId) -> list[Phase]:
-        """Instancie le format en **phases** du tournoi et renvoie la séquence créée.
+    def appliquer(self, tournoi_id: TournoiId, format_id: FormatTournoiId) -> list[EtapeDeroule]:
+        """Instancie le format en **déroulé** du tournoi et renvoie la séquence créée.
+
+        **Rend des étapes, plus des phases** (ADR-0076) : le déroulé se définit une fois, et
+        les phases créées dans la foulée ne sont que des **avancements** (une par créneau et
+        par étape), sans réglage propre.
 
         **Remplace** la séquence existante : les phases déjà posées sont supprimées d'abord, sans
         quoi les ordres du format entreraient en collision avec elles et `SequencePhases`
@@ -196,36 +216,46 @@ class ServiceFormats:
         format_tournoi = self._format_existant(format_id)
         existantes = self._phases.par_tournoi(tournoi_id)
         self._exiger_sequence_remplacable(tournoi_id, existantes, format_tournoi)
-        # ⚠️ **Instancier AVANT de détruire** (E01US024). `format_tournoi.appliquer` peut désormais
-        # lever : depuis ADR-0063 un format incohérent s'enregistre, et c'est ici que l'invariant
-        # est tenu. Tant que c'était impossible, l'ordre « supprimer puis recréer » était sans
-        # risque ; il ne l'est plus. Les suppressions sont **committées** (une session par appel de
-        # repository, cf. DETTE-025 ci-dessous), donc une exception levée après elles laissait le
-        # tournoi **sans aucune phase** — et sans son barème de qualification, que le troisième
-        # garde ci-dessus existe précisément pour protéger. Relevé par trois axes de la revue,
-        # reproduit de bout en bout.
-        nouvelles = format_tournoi.appliquer(tournoi_id)
-        # DETTE-025 — suppression puis recréation en **transactions séparées** (une session par
-        # appel de repository) : une panne entre les deux boucles laisse le tournoi sans phase. Le
-        # remède est un `remplacer_sequence` atomique sur l'adapter concret (patron
-        # `consigner_dans`,
-        # ADR-0035), qui touche le **port** — hors périmètre de cette US. Les trois gardes ci-dessus
-        # bornent la perte à une séquence `à venir` sans données attachées. Cf. `docs/dette.md`.
+
+        # ⚠️ **Instancier AVANT de détruire** (E01US024). `format_tournoi.appliquer` peut lever :
+        # depuis ADR-0063 un format incohérent s'enregistre, et c'est ici que l'invariant est tenu.
+        # Les suppressions sont **committées** (une session par appel de repository, DETTE-025),
+        # donc une exception levée après elles laisserait le tournoi **sans aucun déroulé** — et
+        # sans son barème de qualification, que le troisième garde existe pour protéger.
+        etapes = format_tournoi.appliquer(tournoi_id)
+
+        # Le domaine ignore les créneaux (ADR-0076) : c'est ici qu'on refuse un tournoi qui n'en a
+        # aucun. Sans départ, le déroulé serait défini mais **personne ne le jouerait** — et le
+        # silence ferait croire à un succès.
+        departs = [d.id for d in self._departs.par_tournoi(tournoi_id) if d.id is not None]
+        if not departs:
+            raise FormatSansDepart(
+                "Ce tournoi n'a aucun départ : appliquer un format ne créerait aucune phase. "
+                "Créez au moins un créneau avant d'appliquer un déroulé."
+            )
+
+        # DETTE-025 — destruction puis recréation en **transactions séparées** : une panne entre
+        # les deux laisse le tournoi sans déroulé. Le remède est un `remplacer_sequence` atomique
+        # sur l'adapter concret, qui touche le **port** — hors périmètre. Les gardes ci-dessus
+        # bornent la perte à une séquence `à venir` sans données attachées.
         for phase in existantes:
-            # `assert` et non une erreur typée : la revue a justement relevé qu'il disparaît sous
-            # `python -O`. Le remède serait `InfrastructureError`, que la couche application **ne
-            # peut pas importer** sans inverser le sens des dépendances (règle 2) — le remède serait
-            # pire que le défaut. C'est l'idiome du projet pour cet invariant (« un agrégat persisté
-            # porte un identifiant »), tenu par le repository ; le projet ne tourne pas sous `-O`.
             assert phase.id is not None, "une phase relue du dépôt porte toujours un identifiant."
             self._phases.supprimer(phase.id)
-        posees = [self._phases.ajouter(phase) for phase in nouvelles]
-        # DETTE-025 (élargie par E05US021) — **troisième** écriture, dans sa propre transaction :
-        # une panne ici laisse un tournoi aux phases du nouveau format et à l'exigence de l'ancien,
-        # état silencieux qu'aucun écran ne signale. Placée après les phases à dessein : le tournoi
-        # ne doit porter l'exigence que si le déroulé qui la justifie est réellement en place. Le
-        # remède est le `remplacer_sequence` atomique du registre, qui devra réunir les deux
-        # écritures. Cf. `docs/dette.md`.
+        for ancienne in self._deroules.par_tournoi(tournoi_id):
+            assert ancienne.id is not None, "une étape relue du dépôt porte un identifiant."
+            self._deroules.supprimer(ancienne.id)
+
+        posees = [self._deroules.ajouter(etape) for etape in etapes]
+        # **Un avancement par créneau et par étape** : c'est le seul éventail qui subsiste, et il
+        # ne porte aucun réglage — juste « où en est ce départ de cette étape ».
+        for depart_id in departs:
+            for etape in posees:
+                self._phases.ajouter(etape.instancier(depart_id))
+
+        # DETTE-025 (élargie par E05US021) — écriture supplémentaire, dans sa propre transaction :
+        # une panne ici laisse un tournoi au déroulé du nouveau format et à l'exigence de l'ancien.
+        # Placée après le déroulé à dessein : le tournoi ne porte l'exigence que si les étapes qui
+        # la justifient sont en place.
         self._tournois.enregistrer(
             tournoi.exiger_effectif_minimum(format_tournoi.effectif_minimum_exige)
         )
@@ -305,12 +335,13 @@ class ServiceFormats:
         règle de club qu'elle ne sait pas exprimer.
         """
         tournoi = self._tournoi_existant(tournoi_id)
-        phases = self._phases.par_tournoi(tournoi_id)
-        if not phases:
-            raise TournoiSansPhase(
-                f"Le tournoi {tournoi_id} n'a aucune phase : il n'y a pas de déroulé à promouvoir."
-            )
-        capture = FormatTournoi.de_phases(nom, phases, tournoi.effectif_minimum_exige)
+        # **Le déroulé, tout simplement** (ADR-0076). Tant que la définition était recopiée par
+        # créneau, promouvoir obligeait à choisir *laquelle* des N copies faisait foi — et à
+        # refuser les lots mêlés. Le déroulé étant unique, la question ne se pose plus.
+        etapes = self._deroules.par_tournoi(tournoi_id)
+        if not etapes:
+            raise TournoiSansPhase(f"Le tournoi {tournoi_id} n'a aucun déroulé à promouvoir.")
+        capture = FormatTournoi.de_deroule(nom, etapes, tournoi.effectif_minimum_exige)
         existant = self._formats.par_nom(capture.nom)
         if existant is None:
             return self._formats.ajouter(capture)

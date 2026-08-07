@@ -26,21 +26,29 @@ import datetime
 import pytest
 
 from application.classements import ServiceClassement
-from application.erreurs import SimulationTournoiDemarre, TournoiIntrouvable
+from application.erreurs import (
+    SimulationTournoiDemarre,
+    TournoiIntrouvable,
+    TournoiSansDepart,
+)
 from application.simulation import ServiceSimulation
 from bootstrap.composition import fabriquer_harnais_simulation
 from domain.archer import Archer
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
+from domain.depart import Depart
+from domain.deroule_etape import EtapeDeroule
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
-from domain.phase import Phase, TypePhase
+from domain.phase import TypePhase
 from domain.serie import Serie, Volee
 from domain.tournoi import StatutTournoi, Tournoi
 from infrastructure.memory.repositories import (
     InMemoryArcherRepository,
     InMemoryBlasonRepository,
     InMemoryCategorieRepository,
+    InMemoryDepartRepository,
+    InMemoryDerouleRepository,
     InMemoryForfaitRepository,
     InMemoryGabaritSalleRepository,
     InMemoryInscriptionRepository,
@@ -74,7 +82,16 @@ class _Reel:
         self.blasons = InMemoryBlasonRepository()
         self.gabarits = InMemoryGabaritSalleRepository()
         self.inscriptions = InMemoryInscriptionRepository()
-        self.phases = InMemoryPhaseRepository()
+        self.deroules = InMemoryDerouleRepository()
+        # Le créneau conventionnel de ce décor (`depart_id=1` dans les inscriptions ci-dessous) :
+        # le classement est celui d'un départ depuis ADR-0075, il doit donc exister vraiment.
+        self.departs = InMemoryDepartRepository()
+        self.departs.ajouter(
+            dataclasses.replace(
+                Depart.creer(tournoi_id=1, numero=1, tarif_centimes=800, horaire="09:00"), id=1
+            )
+        )
+        self.phases = InMemoryPhaseRepository(self.departs, self.deroules)
         self.series = InMemorySerieRepository()
 
         tournoi = self.tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
@@ -99,9 +116,15 @@ class _Reel:
             self.gabarits.ajouter(
                 GabaritSalle(nom="Salle", capacites=(4,), tournoi_id=self.tournoi_id)
             )
-            phase = self.phases.ajouter(
-                Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE)
+            # Deux gestes depuis ADR-0076 : l'étape définit le tableau **au tournoi**, la phase en
+            # porte l'avancement **dans le créneau**. Poser l'avancement seul est refusé par
+            # l'adapter — une instance sans définition serait invisible à toute lecture.
+            etape = self.deroules.ajouter(
+                EtapeDeroule(
+                    tournoi_id=self.tournoi_id, ordre=2, type=TypePhase.ELIMINATION_DIRECTE
+                )
             )
+            phase = self.phases.ajouter(etape.instancier(1))
             assert phase.id is not None
             self.phase_tableau_id = phase.id
 
@@ -131,6 +154,8 @@ class _Reel:
             self.categories,
             self.phases,
             InMemoryForfaitRepository(),
+            self.departs,
+            self.inscriptions,
         )
 
     def service(self) -> ServiceSimulation:
@@ -141,6 +166,8 @@ class _Reel:
             self.blasons,
             self.gabarits,
             self.inscriptions,
+            self.departs,
+            self.deroules,
             self.phases,
             self.series,
             # L'**usine de production** (pas une copie) : le harnais éprouvé ici est celui déployé
@@ -159,6 +186,22 @@ def test_tournoi_inconnu_leve_tournoi_introuvable() -> None:
     reel = _Reel()
     with pytest.raises(TournoiIntrouvable):
         reel.service().simuler(999)
+
+
+def test_tournoi_sans_creneau_leve_une_erreur_metier_et_non_un_500() -> None:
+    """Un tournoi `brouillon` **sans aucun départ** est un état ordinaire de l'atelier.
+
+    On crée le tournoi, *puis* ses créneaux : entre les deux, la simulation est parfaitement
+    légitime et doit répondre par une erreur métier lisible. Relevé en revue E01US025 : l'accès
+    indexé `par_tournoi(tournoi_id)[0]` levait un `IndexError` — donc un **500** sans message
+    exploitable — là où `ServicePalmares` lève déjà `TournoiSansDepart` sur exactement le même
+    état. Deux routes ne doivent pas se comporter différemment sur le même tournoi.
+    """
+    reel = _Reel()
+    reel.departs.supprimer(1)
+
+    with pytest.raises(TournoiSansDepart):
+        reel.service().simuler(reel.tournoi_id)
 
 
 @pytest.mark.parametrize("statut", [StatutTournoi.BROUILLON, StatutTournoi.PRET])
@@ -197,7 +240,7 @@ def test_rejeu_ephemere_reproduit_le_classement_reel() -> None:
     reel.inscrire_classe((ZoneScore.DIX, ZoneScore.DIX))  # 20 → 1er
     reel.inscrire_classe((ZoneScore.NEUF, ZoneScore.NEUF))  # 18
 
-    attendu = reel.classement_reel().pour_tournoi(reel.tournoi_id)
+    attendu = reel.classement_reel().pour_depart(reel.tournoi_id)
     resultat = reel.service().simuler(reel.tournoi_id)
 
     assert resultat.classement == attendu

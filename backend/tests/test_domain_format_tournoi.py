@@ -54,14 +54,14 @@ def test_un_modele_de_phase_ne_porte_ni_statut_ni_tournoi() -> None:
     """
     champs = {champ.name for champ in dataclasses.fields(ModelePhase)}
     assert "statut" not in champs
-    assert "tournoi_id" not in champs
+    assert "depart_id" not in champs
 
 
 def test_un_format_existe_sans_aucun_tournoi() -> None:
     """Brique de bibliothèque : le format se construit sans qu'aucun tournoi n'existe."""
     format_tournoi = _format()
     champs = {champ.name for champ in dataclasses.fields(FormatTournoi)}
-    assert "tournoi_id" not in champs
+    assert "depart_id" not in champs
     assert format_tournoi.nom == "Mon format"
 
 
@@ -89,15 +89,32 @@ def test_appliquer_cree_une_phase_par_etape_dans_l_ordre() -> None:
     ]
 
 
-def test_les_phases_appliquees_naissent_a_venir_et_rattachees_au_tournoi() -> None:
-    """`statut` et `tournoi_id` **naissent** à l'application — ils n'existaient pas au modèle."""
-    phases = _format().appliquer(TOURNOI)
+def test_les_etapes_appliquees_sont_rattachees_au_tournoi() -> None:
+    """`tournoi_id` **naît** à l'application — il n'existait pas au modèle de bibliothèque."""
+    etapes = _format().appliquer(TOURNOI)
 
-    assert all(phase.statut is StatutPhase.A_VENIR for phase in phases)
-    assert all(phase.tournoi_id == TOURNOI for phase in phases)
+    assert all(etape.tournoi_id == TOURNOI for etape in etapes)
 
 
-def test_les_phases_appliquees_ne_sont_pas_persistees() -> None:
+def test_le_statut_naît_a_l_instanciation_dans_un_creneau() -> None:
+    """L'autre moitié du CA, en **deux temps** depuis ADR-0076.
+
+    Le CA disait « l'appliquer à un tournoi crée ses phases, statut *à venir* ». C'est toujours
+    vrai, mais en deux gestes : `appliquer` définit le **déroulé** (une fois), `instancier`
+    en crée l'**avancement** dans un créneau. Ce sont ces deux natures que l'ADR sépare — et les
+    tenir ensemble était précisément ce qui laissait les copies diverger.
+    """
+    (etape,) = _format().appliquer(TOURNOI)
+
+    phase = etape.instancier(depart_id=7)
+
+    assert phase.statut is StatutPhase.A_VENIR
+    assert phase.depart_id == 7
+    # La définition suit dans l'objet du moteur, sans être persistée en double.
+    assert phase.bareme == BaremeQualification.preset_ffta_18m()
+
+
+def test_les_etapes_appliquees_ne_sont_pas_persistees() -> None:
     """L'application est **pure** : c'est le service qui décide d'écrire (aucun `id` attribué)."""
     assert all(phase.id is None for phase in _format().appliquer(TOURNOI))
 
@@ -135,9 +152,9 @@ def test_appliquer_deux_fois_donne_des_phases_independantes() -> None:
 def test_ajuster_une_phase_appliquee_n_altere_pas_le_format() -> None:
     """La promesse centrale de l'US, côté format : la copie s'ajuste, le modèle ne bouge pas."""
     format_tournoi = _format()
-    (phase,) = format_tournoi.appliquer(TOURNOI)
+    (etape,) = format_tournoi.appliquer(TOURNOI)
 
-    phase.avec_bareme(BaremeQualification.creer(nb_volees=3, nb_fleches_par_volee=3))
+    dataclasses.replace(etape, bareme=BaremeQualification.creer(3, 3))
 
     assert format_tournoi.etapes[0].bareme == BaremeQualification.preset_ffta_18m()
 
@@ -145,7 +162,7 @@ def test_ajuster_une_phase_appliquee_n_altere_pas_le_format() -> None:
 def test_modifier_le_format_n_altere_pas_les_phases_deja_appliquees() -> None:
     """Le sens inverse, qui est la raison d'être de la copie : l'archive ne doit pas bouger."""
     format_tournoi = _format()
-    (phase,) = format_tournoi.appliquer(TOURNOI)
+    (etape,) = format_tournoi.appliquer(TOURNOI)
 
     format_tournoi.modifier(
         "Renommé",
@@ -153,7 +170,7 @@ def test_modifier_le_format_n_altere_pas_les_phases_deja_appliquees() -> None:
         None,
     )
 
-    assert phase.bareme == BaremeQualification.preset_ffta_18m()
+    assert etape.bareme == BaremeQualification.preset_ffta_18m()
 
 
 # --- CA « modifier un officiel : copie ou sur place » ------------------------------------------
@@ -190,15 +207,21 @@ def test_en_creation_utilisateur_detache_une_copie_non_persistee() -> None:
 # --- CA « promotion » : capturer les phases d'un tournoi en format -----------------------------
 
 
-def test_de_phases_capture_le_deroule_et_oublie_l_avancement() -> None:
-    """On promeut un **déroulé**, pas un état : le statut d'une phase en cours ne remonte pas."""
-    (phase,) = _format().appliquer(TOURNOI)
-    en_cours = phase.demarrer()
+def test_de_deroule_capture_la_regle_et_oublie_le_rattachement() -> None:
+    """On promeut une **règle**, pas une édition : le tournoi ne remonte pas dans le format.
 
-    promu = FormatTournoi.de_phases("Le format de l'an dernier", [en_cours])
+    Le statut ne peut plus remonter *par construction* depuis ADR-0076 — une étape n'en porte
+    aucun. Ce test garde donc son intention (« ce qui appartient à l'édition ne devient pas une
+    propriété du format ») en la portant sur ce qui reste séparable : le `tournoi_id`.
+    """
+    (etape,) = _format().appliquer(TOURNOI)
+
+    promu = FormatTournoi.de_deroule("Le format de l'an dernier", [etape])
 
     assert promu.etapes[0].bareme == BaremeQualification.preset_ffta_18m()
-    assert "statut" not in {champ.name for champ in dataclasses.fields(type(promu.etapes[0]))}
+    champs = {champ.name for champ in dataclasses.fields(type(promu.etapes[0]))}
+    assert "tournoi_id" not in champs
+    assert "statut" not in champs
 
 
 def test_de_phases_diagnostique_un_tournoi_sans_phase_au_lieu_de_le_refuser() -> None:
@@ -208,7 +231,7 @@ def test_de_phases_diagnostique_un_tournoi_sans_phase_au_lieu_de_le_refuser() ->
     `TournoiSansPhase` (409) avant d'en arriver là — c'est lui qui porte cette règle, et il ne
     dépendait déjà pas du domaine pour l'appliquer.
     """
-    capture = FormatTournoi.de_phases("Vide", [])
+    capture = FormatTournoi.de_deroule("Vide", [])
 
     assert capture.etapes == ()
     assert "format_sans_etape" in {anomalie.code for anomalie in capture.anomalies()}

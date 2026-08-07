@@ -24,12 +24,15 @@ import { getTableaux } from './api'
 
 const INTERVALLE_POLL_MS = 20000
 
-const cleTableaux = (tournoiId: number) => ['tableaux', tournoiId] as const
+const cleTableaux = (departId: number | null) => ['tableaux', departId] as const
 
-export function useTableaux(tournoiId: number) {
+/** Les arbres du **créneau** désigné. `null` tant qu'aucun n'est choisi : la requête est alors
+ * désactivée plutôt que lancée sur un identifiant inventé (ADR-0075). */
+export function useTableaux(departId: number | null) {
   return useQuery({
-    queryKey: cleTableaux(tournoiId),
-    queryFn: () => getTableaux(tournoiId),
+    queryKey: cleTableaux(departId),
+    queryFn: () => getTableaux(departId as number),
+    enabled: departId !== null,
     refetchInterval: INTERVALLE_POLL_MS,
     // Écran vivant, pas une fiche : ce qu'on relit doit être considéré périmé d'emblée.
     staleTime: 0,

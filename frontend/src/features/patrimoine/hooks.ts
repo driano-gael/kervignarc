@@ -14,6 +14,9 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cleBlasons } from '../blasons/hooks'
+import { cleClassement } from '../competition/hooks'
+import { clePhases, RACINE_AVANCEMENT } from '../phases/hooks'
+import { RACINE_SUIVI } from '../suivi-deroule/hooks'
 import {
   appliquerFormat,
   assemblerTournoi,
@@ -213,13 +216,32 @@ export function useAppliquerFormat(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (formatId: number) => appliquerFormat(tournoiId, formatId),
-    // Applique = **crée les phases** du tournoi. Trois caches en dépendent, pas un : la séquence
-    // de phases, mais aussi le **barème** et le **grain de validation**, qui vivent *dans* la phase
-    // de qualification et sont servis par leurs propres clés. Ne rafraîchir que `phases` laissait
-    // l'écran « Barème & validation » afficher l'ancien réglage — soit l'étape suivante prescrite
-    // par la recette.
+    // Applique = **compose le déroulé** du tournoi, et l'instancie dans chaque créneau. Plusieurs
+    // caches en dépendent, pas un : la séquence de phases, mais aussi le **barème** et le **grain
+    // de validation**, qui vivent *dans* la phase de qualification et sont servis par leurs propres
+    // clés. Ne rafraîchir que `phases` laissait l'écran « Barème & validation » afficher l'ancien
+    // réglage — soit l'étape suivante prescrite par la recette.
+    //
+    // ⚠️ **Et l'avancement de chaque créneau, le suivi du déroulé, et le classement** (ADR-0076,
+    // revue E01US025). Les quatre mutations d'édition du déroulé (`phases/hooks.ts`) invalident ces
+    // trois racines ; celle-ci est la **cinquième voie d'écriture** et les avait toutes oubliées.
+    // Elle est de surcroît la plus large : les quatre autres éditent *une* étape, celle-ci
+    // **détruit et recrée** tout le déroulé de tous les créneaux.
+    //
+    // Le classement est le moins évident des trois, et c'est le piège que ses sœurs documentent :
+    // `barrage_jusqu_au` est porté par les étapes d'un format, mais ne se **voit** que dans le
+    // classement (égalités signalées). `PUT /tournois/{id}/format` ne diffuse aucun événement temps
+    // réel ; sans cette ligne, le cache de 30 s faisait qu'appliquer un format puis revenir au
+    // classement n'affichait rien — le recetteur concluait à un échec.
+    //
+    // Les racines sont **importées**, pas recopiées : elles étaient jusqu'ici écrites en littéral
+    // ici alors que `phases/hooks.ts` porte une constante nommée exprès contre ce geste. La sixième
+    // voie d'écriture serait repartie de la chaîne.
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['phases', tournoiId] })
+      queryClient.invalidateQueries({ queryKey: clePhases(tournoiId) })
+      queryClient.invalidateQueries({ queryKey: RACINE_AVANCEMENT })
+      queryClient.invalidateQueries({ queryKey: RACINE_SUIVI })
+      queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) })
       queryClient.invalidateQueries({ queryKey: ['bareme-qualification', tournoiId] })
       queryClient.invalidateQueries({ queryKey: ['grain-validation', tournoiId] })
     },

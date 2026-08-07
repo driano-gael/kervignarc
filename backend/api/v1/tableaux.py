@@ -166,18 +166,22 @@ class TableauPublicReponse(BaseModel):
 
 
 class TableauxReponse(BaseModel):
-    """Tous les arbres lisibles du tournoi, dans l'ordre du déroulé."""
+    """Tous les arbres lisibles du **créneau**, dans l'ordre du déroulé.
 
-    tournoi_id: int
+    ⚠️ `depart_id` et non `tournoi_id` (E01US025, ADR-0075) : deux créneaux portent chacun leur
+    arbre de rang 2, et rien dans `TableauPublicReponse` ne les distinguerait.
+    """
+
+    depart_id: int
     tableaux: list[TableauPublicReponse]
 
 
 # --- Lecture ---
 
 
-@router.get("/{tournoi_id}", response_model=TableauxReponse)
-async def lire_tableaux(tournoi_id: int, request: Request) -> TableauxReponse:
-    """Les arbres du tournoi, lecture publique. `404` si le tournoi n'existe pas.
+@router.get("/departs/{depart_id}", response_model=TableauxReponse)
+async def lire_tableaux(depart_id: int, request: Request) -> TableauxReponse:
+    """Les arbres du créneau, lecture publique. `404` si le créneau n'existe pas.
 
     Lecture **synchrone hors boucle événementielle** (règle 7) : la reconstruction est du calcul
     pur mais lourd, elle n'a rien à faire dans l'`event loop` d'un serveur qui sert aussi des
@@ -189,8 +193,8 @@ async def lire_tableaux(tournoi_id: int, request: Request) -> TableauxReponse:
     que cette US élargit (une route publique de plus, et une surface de polling par spectateur).
     """
     service: ServiceTableauxPublics = request.app.state.service_tableaux_publics
-    tableaux = await run_in_threadpool(service.pour_tournoi, tournoi_id)
+    tableaux = await run_in_threadpool(service.pour_depart, depart_id)
     return TableauxReponse(
-        tournoi_id=tableaux.tournoi_id,
+        depart_id=tableaux.depart_id,
         tableaux=[TableauPublicReponse.de_tableau(t) for t in tableaux.tableaux],
     )

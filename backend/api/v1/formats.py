@@ -25,7 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
-from api.v1.phases import PhaseReponse
+from api.v1.phases import EtapeReponse
 from application.formats import ServiceFormats
 from application.simulation_format import (
     EFFECTIF_MAX,
@@ -645,23 +645,26 @@ async def simuler_format(
 
 @router.put(
     "/tournois/{tournoi_id}/format",
-    response_model=list[PhaseReponse],
+    response_model=list[EtapeReponse],
     dependencies=[Depends(exiger_admin)],
 )
 async def appliquer_format(
     tournoi_id: int, requete: AppliquerFormatRequete, request: Request
-) -> list[PhaseReponse]:
-    """Applique un format au tournoi (**action admin**) : **crée ses phases**, via la file.
+) -> list[EtapeReponse]:
+    """Applique un format au tournoi (**action admin**) : **crée son déroulé**, via la file.
+
+    Rend les **étapes** créées (la définition, une par rang) et non les phases : celles-ci ne sont
+    que l'avancement de chaque créneau, et il y en a autant que de départs (ADR-0076).
 
     **Remplace** la séquence existante. Renvoie 409 (`phases_engagees`) si une phase du tournoi
     n'est plus `à venir` : le remplacement jetterait un déroulé en cours.
     """
     service: ServiceFormats = request.app.state.service_formats
     write_queue: WriteQueue = request.app.state.write_queue
-    phases = await asyncio.wrap_future(
+    etapes = await asyncio.wrap_future(
         write_queue.submit(lambda: service.appliquer(tournoi_id, requete.format_id))
     )
-    return [PhaseReponse.de_agregat(phase) for phase in phases]
+    return [EtapeReponse.de_agregat(etape) for etape in etapes]
 
 
 @router.post(

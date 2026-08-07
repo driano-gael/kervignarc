@@ -98,7 +98,11 @@ export interface EgaliteADepartager {
 }
 
 export interface Classement {
-  tournoi_id: number
+  // ⚠️ **Le classement est celui d'un créneau** (E01US025, ADR-0075) : la route est
+  // `/departs/{id}/classement`. Le champ s'appelait `tournoi_id` et transportait déjà un
+  // identifiant de départ — même confusion que `Barrage` ci-dessous, invisible au typage des deux
+  // côtés puisque les deux sont des `number` (`DETTE-044`).
+  depart_id: number
   lignes: LigneClassement[]
   egalites_a_departager: EgaliteADepartager[]
 }
@@ -125,7 +129,10 @@ export type PorteeBarrage = 'qualification' | 'poule' | 'big_shoot_off'
 
 export interface Barrage {
   id: number
-  tournoi_id: number
+  // ⚠️ **Le barrage pend au créneau, plus au tournoi** (E01US025, ADR-0075) : une place se dispute
+  // dans le classement d'un départ. Le champ s'appelait `tournoi_id` et lisait déjà un identifiant
+  // de départ — la confusion que `DETTE-044` décrit, invisible au typage des deux côtés.
+  depart_id: number
   portee: PorteeBarrage
   rang_dispute: number | null
   // Numéro de poule ou de manche. Le **seul** champ qui distingue deux barrages de même portée :
@@ -154,6 +161,12 @@ export function getBarrages(tournoiId: number): Promise<Barrage[]> {
 // (seul `rang` est requis, et seule une égalité signalée est annonçable) ; en **poule** et en **Big
 // Shoot Off** ils sont **désignés**, faute de classement calculé où les lire (DETTE-028).
 export interface AnnonceBarrage {
+  /** Le créneau où se tire ce barrage — **obligatoire** (ADR-0075).
+   *
+   * Deux créneaux ont des classements distincts, donc « le rang 3 » ne désigne rien sans lui. Le
+   * serveur le refuse en 422 s'il manque : c'est ce qui rendait l'annonce inopérante tant que ce
+   * champ n'existait pas côté client. */
+  depart_id: number
   rang?: number | null
   portee?: PorteeBarrage
   archer_ids?: number[]
@@ -241,10 +254,15 @@ export function placerArcher(archerId: number, cible: number): Promise<Archer> {
 // Le classement dérive des séries de saisie (E04US002) depuis E06US001 ; l'ancienne écriture de
 // score isolé (`saisirScore` du walking skeleton) n'y contribuait plus et a été retirée du front.
 
+// ⚠️ **Le classement est celui d'un créneau, plus du tournoi** (E01US025, ADR-0075). La route
+// pendait au tournoi et fusionnait tous les départs : 4 créneaux de 100 archers rendaient un
+// classement de 400, où l'archer du matin était rangé contre celui du soir qu'il n'a jamais
+// affronté. Un départ rejoue le tournoi en entier, donc il a **son** classement.
+//
 // `categorieId` optionnel : filtre l'affichage à une catégorie. Les rangs (scratch **et** catégorie)
-// restent ceux du classement complet — filtrer ne réordonne pas le reste (E06US001).
-export function getClassement(tournoiId: number, categorieId?: number): Promise<Classement> {
+// restent ceux du classement complet **du départ** — filtrer ne réordonne pas le reste (E06US001).
+export function getClassement(departId: number, categorieId?: number): Promise<Classement> {
   const requete =
     categorieId === undefined ? '' : `?categorie_id=${encodeURIComponent(categorieId)}`
-  return fetchJson<Classement>(`/api/v1/tournois/${tournoiId}/classement${requete}`)
+  return fetchJson<Classement>(`/api/v1/departs/${departId}/classement${requete}`)
 }

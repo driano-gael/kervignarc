@@ -6,13 +6,26 @@
 // en fin de classement) ou **Disqualification** (sorti du classement). L'acte est **réversible**
 // (« Annuler ») tant que le tournoi n'est pas terminé (`D-15`). Le classement se resynchronise seul.
 
+import { useState } from 'react'
 import type { LigneClassement } from '../competition/api'
 import { useClassement } from '../competition/hooks'
+import { ChoixCreneau } from '../departs/ChoixCreneau'
+import { creneauRetenu } from '../departs/libelle'
+import { useDeparts } from '../departs/hooks'
+import { departDeSalle } from '../salle/rotation'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useAnnulerForfaitQualif, useDeclarerForfaitQualif } from './hooks'
 
 export function PanneauForfaitsQualif({ tournoiId }: { tournoiId: number }) {
-  const classement = useClassement(tournoiId)
+  // ⚠️ **Le classement est celui d'un créneau** (ADR-0075) : ce panneau listait « les archers du
+  // tournoi », ce qui n'existe plus. Le défaut est le départ qu'on tire ; le sélecteur reste, parce
+  // qu'un scoreur peut avoir à statuer sur un archer d'un **autre** créneau — le lui interdire
+  // serait une régression déguisée en simplification.
+  const [choixDepart, setChoixDepart] = useState<number | null>(null)
+  const departs = useDeparts(tournoiId)
+  const liste = departs.data ?? []
+  const departId = creneauRetenu(liste, choixDepart, departDeSalle)
+  const classement = useClassement(tournoiId, departId)
   const declarer = useDeclarerForfaitQualif(tournoiId)
   const annuler = useAnnulerForfaitQualif(tournoiId)
 
@@ -25,6 +38,7 @@ export function PanneauForfaitsQualif({ tournoiId }: { tournoiId: number }) {
         Déclarez l'abandon ou la disqualification d'un archer. Ses flèches déjà tirées sont
         conservées ; l'acte est réversible tant que le tournoi n'est pas terminé.
       </p>
+      <ChoixCreneau departs={liste} valeur={departId} surChangement={setChoixDepart} />
       <MessageErreur erreur={declarer.error ?? annuler.error} />
       {lignes.length === 0 ? (
         <p className="carte__etat">Aucun archer inscrit pour l'instant.</p>

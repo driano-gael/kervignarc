@@ -44,7 +44,16 @@ def _creer_tournoi(client: TestClient) -> int:
     """Crée un tournoi via l'API (admin déjà connecté) et renvoie son identifiant."""
     reponse = client.post("/api/v1/tournois", json={"nom": "Kervignarc", "date": "2026-03-14"})
     assert reponse.status_code == 201, reponse.text
-    return int(reponse.json()["id"])
+    tournoi_id = int(reponse.json()["id"])
+    # Un créneau est requis : le barème et le grain se règlent sur la qualification, qui vit sur un
+    # départ (E01US025, ADR-0075). Sans lui, le service refuse en 409 (`tournoi_sans_depart`) —
+    # il ne saurait ni sur quoi écrire, ni combien de fois.
+    creneau = client.post(
+        f"/api/v1/tournois/{tournoi_id}/departs",
+        json={"horaire": "09:00", "tarif_centimes": 800},
+    )
+    assert creneau.status_code == 201, creneau.text
+    return tournoi_id
 
 
 def _creer_tournoi_avec_bareme(client: TestClient, nb_volees: int = 20) -> int:

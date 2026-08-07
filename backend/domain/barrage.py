@@ -34,11 +34,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 
+from domain.depart import DepartId
 from domain.erreurs import ConfigurationBarrageInvalide
 from domain.participant import Participant
 from domain.phase import PhaseId
 from domain.politiques import Tiebreak
-from domain.tournoi import TournoiId
 
 BarrageId = int
 
@@ -450,7 +450,17 @@ class BarrageDePlaces:
     perdre quelqu'un qui n'a pas encore tiré, ce dont `TirBarrage` avertit déjà.
     """
 
-    tournoi_id: TournoiId
+    depart_id: DepartId
+    """Le créneau où ce barrage se tire (E01US025, ADR-0075).
+
+    C'était `tournoi_id` jusqu'au 06/08/2026. Un barrage départage une place **dans un
+    classement**, or un classement appartient désormais à un départ : garder la portée tournoi
+    aurait fait départager des archers de créneaux différents, qui ne se sont jamais rencontrés.
+    Le tournoi reste atteignable par `depart → tournoi`, et **n'est pas dupliqué ici** — deux
+    portées coexistantes obligeraient chaque lecture à choisir laquelle honorer (ADR-0075,
+    « ce qui a été écarté »).
+    """
+
     portee: PorteeBarrage
     participants: tuple[Participant, ...]
     cree_le: datetime.datetime

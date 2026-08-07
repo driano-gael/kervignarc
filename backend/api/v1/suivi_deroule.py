@@ -1,7 +1,15 @@
 """Endpoint REST du **suivi du déroulé** (E07US004, ADR-0064) — le plan rempli par la réalité.
 
-`GET /api/v1/tournois/{tournoi_id}/suivi-deroule` — **lecture publique**, comme le classement, le
-plan de cibles et le tableau de duels. Deux consommateurs, et c'est le CA lui-même qui l'exige :
+`GET /api/v1/departs/{depart_id}/suivi-deroule` — **lecture publique**, comme le classement, le
+plan de cibles et le tableau de duels.
+
+⚠️ **La route est celle d'un créneau** depuis E01US025 (ADR-0075,
+`docs/adr/0075-le-depart-est-la-portee-sportive.md`) : elle était
+`/tournois/{id}/suivi-deroule` et fusionnait les créneaux — même chemin que
+`/departs/{id}/classement` et `/departs/{id}/phases`, et pour la même raison (un départ rejoue le
+tournoi en entier, avec son effectif et son avancement propres).
+
+Deux consommateurs, et c'est le CA lui-même qui l'exige :
 l'**écran de salle** (projeté, sans authentification possible — c'est un poste public) et le
 **pilotage** (écran PC de l'organisateur). Un endpoint et non deux : la donnée est la même, seul
 l'habillage change (« un seul composant de dessin, trois surfaces »).
@@ -25,7 +33,7 @@ from application.suivi_deroule import ServiceSuiviDeroule, SuiviDeroule
 from domain.deroule import BlocDeroule, Flux, TourBraquet
 from domain.suivi_deroule import AvancementBloc, AvancementTour
 
-router = APIRouter(prefix="/api/v1/tournois/{tournoi_id}", tags=["suivi"])
+router = APIRouter(prefix="/api/v1/departs/{depart_id}", tags=["suivi"])
 
 
 class FluxReponse(BaseModel):
@@ -168,13 +176,13 @@ class SuiviDerouleReponse(BaseModel):
 
 
 @router.get("/suivi-deroule", response_model=SuiviDerouleReponse)
-async def suivi_deroule(tournoi_id: int, request: Request) -> SuiviDerouleReponse:
-    """Où en est le tournoi : phases, braquets et duels joués (**lecture publique**).
+async def suivi_deroule(depart_id: int, request: Request) -> SuiviDerouleReponse:
+    """Où en est ce créneau : phases, braquets et duels joués (**lecture publique**).
 
-    `404 tournoi_introuvable` si le tournoi n'existe pas. Un tournoi sans phase rend des listes
+    `404 depart_introuvable` si le créneau n'existe pas. Un créneau sans phase rend des listes
     vides — avant qu'un format soit appliqué, il n'y a rien à suivre, ce n'est pas une erreur.
     Lecture (phases + tableaux reconstruits) : hors file, dans le threadpool.
     """
     service: ServiceSuiviDeroule = request.app.state.service_suivi_deroule
-    suivi = await run_in_threadpool(service.pour_tournoi, tournoi_id)
+    suivi = await run_in_threadpool(service.pour_depart, depart_id)
     return SuiviDerouleReponse.de_suivi(suivi)

@@ -32,10 +32,11 @@ from application.erreurs import (
     PhaseQualificationAbsente,
     TournoiIntrouvable,
 )
+from application.portee import phase_du_tournoi, qualification_du_tournoi
 from domain.archer import ArcherId
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.forfait import Forfait, NatureForfait
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase, PhaseId
 from domain.ports import (
     ArcherRepository,
     ForfaitRepository,
@@ -183,7 +184,13 @@ class ServiceForfait:
             raise ArcherIntrouvable(f"Aucun archer d'identifiant {archer_id} dans ce tournoi.")
 
     def _phase_qualification(self, tournoi_id: TournoiId) -> Phase:
-        phase = self._phases.par_tournoi_et_type(tournoi_id, TypePhase.QUALIFICATION)
+        # DETTE-047 : le forfait est écrit sur la qualification du **premier** créneau, quel que
+        # soit celui où l'archer tire — `ServiceClassement._forfaits_qualif` le relit par le même
+        # chemin, d'où un affichage juste *par accident*. Deux conséquences réelles : supprimer le
+        # premier créneau efface (cascade) les forfaits de tous les autres, et un archer engagé sur
+        # deux créneaux déclaré forfait sur l'un est relégué sur les deux. Résorption : porter un
+        # `depart_id` jusqu'ici — change la route et le front, donc une US à part entière.
+        phase = qualification_du_tournoi(self._phases, tournoi_id)
         if phase is None:
             raise PhaseQualificationAbsente(
                 "La qualification n'est pas encore configurée pour ce tournoi."
@@ -191,7 +198,7 @@ class ServiceForfait:
         return phase
 
     def _phase_du_tournoi(self, tournoi_id: TournoiId, phase_id: PhaseId) -> Phase:
-        phase = self._phases.par_id(phase_id)
-        if phase is None or phase.tournoi_id != tournoi_id:
+        phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        if phase is None:
             raise PhaseIntrouvable(f"Aucune phase {phase_id} dans le tournoi {tournoi_id}.")
         return phase

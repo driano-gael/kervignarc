@@ -20,6 +20,7 @@ import pytest
 from domain.archer import Archer
 from domain.barrage import BarrageDePlaces, PorteeBarrage, TirBarrage
 from domain.categorie import Categorie
+from domain.depart import Depart
 from domain.erreurs import ConfigurationBarrageInvalide
 from domain.participant import Participant
 from domain.tournoi import Tournoi
@@ -28,6 +29,7 @@ from infrastructure.db import (
     BarrageRepositorySQL,
     CategorieRepositorySQL,
     Database,
+    DepartRepositorySQL,
     TournoiRepositorySQL,
 )
 from tests.base_migree import preparer_base
@@ -36,12 +38,25 @@ _DATE = datetime.date(2026, 3, 14)
 _QUAND = datetime.datetime(2026, 3, 14, 10, 42, tzinfo=datetime.UTC)
 
 
-def _contexte(tmp_path: Path, nb_archers: int = 3) -> tuple[Database, int, list[int]]:
-    """Migre une base jetable, crée un tournoi et `nb_archers` archers ; rend les identifiants."""
+def _contexte(tmp_path: Path, nb_archers: int = 3) -> tuple[Database, int, int, list[int]]:
+    """Migre une base jetable, crée un tournoi, **son créneau** et `nb_archers` archers.
+
+    Rend `(db, tournoi_id, depart_id, archer_ids)` : un barrage pend au **départ** depuis E01US025
+    (ADR-0075), et la FK refuse un identifiant de tournoi. Mais la vue **transverse**
+    `par_tournoi` attend, elle, un identifiant de tournoi — et les tests lui passaient le
+    `depart_id`, vert par la seule coïncidence des deux `id` valant 1. Rendre les **deux** supprime
+    l'ambiguïté à l'appel plutôt que de compter sur la vigilance (`DETTE-044` : même type pour
+    mypy).
+
+    ⚠️ Un tournoi **leurre** est créé d'abord, exprès : sans lui, `tournoi.id == depart.id == 1` et
+    la confusion redeviendrait invisible au premier test distrait.
+    """
     url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
     preparer_base(url)
     db = Database(url)
-    tournoi = TournoiRepositorySQL(db.session_factory).ajouter(Tournoi.creer("Salle 18m", _DATE))
+    depot_tournois = TournoiRepositorySQL(db.session_factory)
+    depot_tournois.ajouter(Tournoi.creer("Leurre — désynchronise les identifiants", _DATE))
+    tournoi = depot_tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
     assert tournoi.id is not None
     categorie = CategorieRepositorySQL(db.session_factory).ajouter(
         Categorie.creer(tournoi.id, "Senior 1 H")
@@ -53,12 +68,16 @@ def _contexte(tmp_path: Path, nb_archers: int = 3) -> tuple[Database, int, list[
         archer = depot.ajouter(Archer.creer(f"Martin{rang}", "Alice", tournoi.id, categorie.id))
         assert archer.id is not None
         ids.append(archer.id)
-    return db, tournoi.id, ids
+    depart = DepartRepositorySQL(db.session_factory).ajouter(
+        Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
+    )
+    assert depart.id is not None
+    return db, tournoi.id, depart.id, ids
 
 
-def _annonce(tournoi_id: int, archers: list[int], rang: int = 8) -> BarrageDePlaces:
+def _annonce(depart_id: int, archers: list[int], rang: int = 8) -> BarrageDePlaces:
     return BarrageDePlaces(
-        tournoi_id=tournoi_id,
+        depart_id=depart_id,
         portee=PorteeBarrage.QUALIFICATION,
         participants=tuple(Participant.individuel(archer_id) for archer_id in archers),
         cree_le=_QUAND,
@@ -67,10 +86,10 @@ def _annonce(tournoi_id: int, archers: list[int], rang: int = 8) -> BarrageDePla
 
 
 def test_ouvrir_puis_relire(tmp_path: Path) -> None:
-    db, tournoi_id, archers = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 2)
     depot = BarrageRepositorySQL(db.session_factory)
 
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
 
     assert ouvert.id is not None
     relu = depot.par_id(ouvert.id)
@@ -85,9 +104,9 @@ def test_ouvrir_puis_relire(tmp_path: Path) -> None:
 def test_un_barrage_sans_manche_est_a_tirer_et_non_resolu(tmp_path: Path) -> None:
     """Tant que rien n'est saisi, tout le monde est à égalité — un barrage « à tirer », pas un
     verdict vide qui laisserait croire à une résolution."""
-    db, tournoi_id, archers = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 2)
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
     assert ouvert.id is not None
 
     resultat = ouvert.resultat()
@@ -98,9 +117,9 @@ def test_un_barrage_sans_manche_est_a_tirer_et_non_resolu(tmp_path: Path) -> Non
 
 
 def test_une_manche_saisie_se_relit_et_departage(tmp_path: Path) -> None:
-    db, tournoi_id, archers = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 2)
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
     assert ouvert.id is not None
     premier, second = (Participant.individuel(a) for a in archers)
 
@@ -117,9 +136,9 @@ def test_un_score_nul_se_relit_absent_et_fait_perdre(tmp_path: Path) -> None:
     """B.6.5.2.4 : l'archer absent au barrage annoncé est **déclaré perdant**. Le `NULL` en base
     porte cette issue réglementaire — ce n'est pas une saisie manquante, qui n'aurait pas de ligne.
     """
-    db, tournoi_id, archers = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 2)
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
     assert ouvert.id is not None
     present, absent = (Participant.individuel(a) for a in archers)
 
@@ -135,9 +154,9 @@ def test_ressaisir_une_manche_remplace_ses_tirs(tmp_path: Path) -> None:
     """Le mode de **correction** d'une flèche mal notée : on ressaisit la manche, et le verdict —
     qui n'est jamais stocké — se recalcule. Des tirs qui s'ajouteraient laisseraient deux flèches au
     même archer pour la même manche, donc un verdict faux et plausible."""
-    db, tournoi_id, archers = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 2)
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
     assert ouvert.id is not None
     premier, second = (Participant.individuel(a) for a in archers)
 
@@ -154,9 +173,9 @@ def test_ressaisir_une_manche_remplace_ses_tirs(tmp_path: Path) -> None:
 def test_les_manches_se_relisent_dans_l_ordre(tmp_path: Path) -> None:
     """L'ordre des manches porte le sens : ce que la manche 1 a acquis, les suivantes ne le défont
     pas. Les relire triées est donc une exigence, pas un confort."""
-    db, tournoi_id, archers = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 2)
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
     assert ouvert.id is not None
     premier, second = (Participant.individuel(a) for a in archers)
 
@@ -171,9 +190,9 @@ def test_les_manches_se_relisent_dans_l_ordre(tmp_path: Path) -> None:
 
 
 def test_la_distance_au_centre_survit_a_l_aller_retour(tmp_path: Path) -> None:
-    db, tournoi_id, archers = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 2)
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
     assert ouvert.id is not None
     premier, second = (Participant.individuel(a) for a in archers)
 
@@ -187,9 +206,9 @@ def test_la_distance_au_centre_survit_a_l_aller_retour(tmp_path: Path) -> None:
 
 
 def test_clore_marque_le_barrage_sans_toucher_aux_tirs(tmp_path: Path) -> None:
-    db, tournoi_id, archers = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 2)
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
     assert ouvert.id is not None
     premier, second = (Participant.individuel(a) for a in archers)
     depot.enregistrer_manche(ouvert.id, 1, [TirBarrage(premier, 9), TirBarrage(second, 10)])
@@ -204,10 +223,10 @@ def test_clore_marque_le_barrage_sans_toucher_aux_tirs(tmp_path: Path) -> None:
 def test_par_tournoi_rend_les_barrages_clos_aussi(tmp_path: Path) -> None:
     """Ce sont les barrages **clos** qui portent les verdicts déjà appliqués : les filtrer ferait
     retomber en ex æquo des rangs pourtant tranchés."""
-    db, tournoi_id, archers = _contexte(tmp_path, 3)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 3)
     depot = BarrageRepositorySQL(db.session_factory)
-    premier = depot.ouvrir(_annonce(tournoi_id, archers[:2], rang=4))
-    second = depot.ouvrir(_annonce(tournoi_id, archers[1:], rang=8))
+    premier = depot.ouvrir(_annonce(depart_id, archers[:2], rang=4))
+    second = depot.ouvrir(_annonce(depart_id, archers[1:], rang=8))
     assert premier.id is not None and second.id is not None
     depot.clore(premier.id)
 
@@ -218,20 +237,20 @@ def test_par_tournoi_rend_les_barrages_clos_aussi(tmp_path: Path) -> None:
 
 
 def test_par_tournoi_vide_rend_liste_vide(tmp_path: Path) -> None:
-    db, tournoi_id, _ = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, _ = _contexte(tmp_path, 2)
     assert BarrageRepositorySQL(db.session_factory).par_tournoi(tournoi_id) == []
 
 
 def test_par_id_inconnu_rend_none(tmp_path: Path) -> None:
-    db, _, _ = _contexte(tmp_path, 2)
+    db, tournoi_id, _, _ = _contexte(tmp_path, 2)
     assert BarrageRepositorySQL(db.session_factory).par_id(4242) is None
 
 
 def test_un_barrage_a_un_seul_tireur_est_refuse(tmp_path: Path) -> None:
     """Garde d'agrégat : à un seul participant, il n'y a rien à départager."""
-    _, tournoi_id, archers = _contexte(tmp_path, 2)
+    _, _, depart_id, archers = _contexte(tmp_path, 2)
     with pytest.raises(ConfigurationBarrageInvalide, match="au moins deux"):
-        _annonce(tournoi_id, archers[:1])
+        _annonce(depart_id, archers[:1])
 
 
 # --- cascade archer et barrage (correctif de revue, bloquant) -------------------------------------
@@ -246,9 +265,9 @@ def test_supprimer_un_archer_qui_a_tire_un_barrage(tmp_path: Path) -> None:
     **barrage entier**, pas seulement les tirs : un barrage amputé d'un tireur annoncé serait refusé
     à la relecture.
     """
-    db, tournoi_id, archers = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 2)
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
     assert ouvert.id is not None
     premier, second = (Participant.individuel(a) for a in archers)
     depot.enregistrer_manche(ouvert.id, 1, [TirBarrage(premier, 9), TirBarrage(second, 10)])
@@ -261,9 +280,9 @@ def test_supprimer_un_archer_qui_a_tire_un_barrage(tmp_path: Path) -> None:
 def test_supprimer_un_archer_seulement_annonce_au_barrage(tmp_path: Path) -> None:
     """Un archer peut être **annoncé sans avoir tiré** : il n'a alors aucune ligne de tir, et seul
     `participants_json` le mentionne. C'est le cas que la lecture des seuls tirs manquerait."""
-    db, tournoi_id, archers = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 2)
     depot = BarrageRepositorySQL(db.session_factory)
-    depot.ouvrir(_annonce(tournoi_id, archers))
+    depot.ouvrir(_annonce(depart_id, archers))
 
     ArcherRepositorySQL(db.session_factory).supprimer(archers[1])
 
@@ -272,10 +291,10 @@ def test_supprimer_un_archer_seulement_annonce_au_barrage(tmp_path: Path) -> Non
 
 def test_fusionner_deux_archers_dont_un_a_tire_un_barrage(tmp_path: Path) -> None:
     """La fusion de doublons (E02US005) ne doit pas casser dès qu'un des deux a barré."""
-    db, tournoi_id, archers = _contexte(tmp_path, 3)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 3)
     gagnant, perdant, tiers = archers
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, [perdant, tiers]))
+    ouvert = depot.ouvrir(_annonce(depart_id, [perdant, tiers]))
     assert ouvert.id is not None
     depot.enregistrer_manche(
         ouvert.id,
@@ -302,10 +321,10 @@ def test_fusionner_deux_archers_dont_un_a_tire_un_barrage(tmp_path: Path) -> Non
 def test_fusionner_deux_archers_du_meme_barrage_le_rend_caduc(tmp_path: Path) -> None:
     """Si les deux fiches fusionnées étaient les **seuls** tireurs, le barrage n'oppose plus
     personne : on le supprime plutôt que de laisser un agrégat que le domaine rejetterait."""
-    db, tournoi_id, archers = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 2)
     gagnant, perdant = archers
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
     assert ouvert.id is not None
     depot.enregistrer_manche(
         ouvert.id,
@@ -327,9 +346,9 @@ def test_reecrire_une_manche_tronque_les_suivantes(tmp_path: Path) -> None:
     Les conserver produisait un agrégat que le moteur refuse à la relecture, donc un classement en
     422 permanent.
     """
-    db, tournoi_id, archers = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 2)
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
     assert ouvert.id is not None
     premier, second = (Participant.individuel(a) for a in archers)
     depot.enregistrer_manche(ouvert.id, 1, [TirBarrage(premier, 9), TirBarrage(second, 9)])
@@ -344,9 +363,9 @@ def test_reecrire_une_manche_tronque_les_suivantes(tmp_path: Path) -> None:
 
 
 def test_supprimer_un_barrage_efface_ses_tirs(tmp_path: Path) -> None:
-    db, tournoi_id, archers = _contexte(tmp_path, 2)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 2)
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
     assert ouvert.id is not None
     premier, second = (Participant.individuel(a) for a in archers)
     depot.enregistrer_manche(ouvert.id, 1, [TirBarrage(premier, 9), TirBarrage(second, 10)])
@@ -366,10 +385,10 @@ def test_fusionner_preserve_un_barrage_qui_se_relit_encore(tmp_path: Path) -> No
     routine, et un barrage tiré et acté sur la dernière place qualificative disparaissait sans
     trace, le classement revenant silencieusement au rang partagé.
     """
-    db, tournoi_id, archers = _contexte(tmp_path, 3)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 3)
     gagnant, perdant, tiers = archers
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
     assert ouvert.id is not None
     depot.enregistrer_manche(
         ouvert.id,
@@ -394,10 +413,10 @@ def test_fusionner_preserve_un_barrage_qui_se_relit_encore(tmp_path: Path) -> No
 
 def test_fusionner_supprime_un_barrage_devenu_illisible(tmp_path: Path) -> None:
     """…mais un agrégat que le moteur refuse doit bien partir : sinon chaque lecture lèverait."""
-    db, tournoi_id, archers = _contexte(tmp_path, 3)
+    db, tournoi_id, depart_id, archers = _contexte(tmp_path, 3)
     gagnant, perdant, tiers = archers
     depot = BarrageRepositorySQL(db.session_factory)
-    ouvert = depot.ouvrir(_annonce(tournoi_id, archers))
+    ouvert = depot.ouvrir(_annonce(depart_id, archers))
     assert ouvert.id is not None
     depot.enregistrer_manche(
         ouvert.id,

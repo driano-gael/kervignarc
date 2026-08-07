@@ -16,17 +16,9 @@
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
-import type {
-  ConfigPhase,
-  Phase,
-  SourcePhase,
-  StatutPhase,
-  TransitionPhase,
-  TypePhase,
-} from './api'
+import type { ConfigPhase, EtapeDeroule, SourcePhase, TypePhase } from './api'
 import {
   useAjouterPhase,
-  useChangerStatutPhase,
   useModifierPhase,
   usePhases,
   useReordonnerPhases,
@@ -62,35 +54,18 @@ const TYPES_AJOUTABLES: TypePhase[] = [
   'colline',
 ]
 
-const LIBELLE_STATUT: Record<StatutPhase, string> = {
-  a_venir: 'À venir',
-  en_cours: 'En cours',
-  en_pause: 'En pause',
-  terminee: 'Terminée',
-}
-
-// Transitions offertes selon le statut courant (ADR-0045 §1). Le serveur reste l'autorité (409 si
-// l'état a changé entre l'affichage et le clic).
-const TRANSITIONS: Record<StatutPhase, { transition: TransitionPhase; libelle: string }[]> = {
-  a_venir: [{ transition: 'demarrer', libelle: 'Démarrer' }],
-  en_cours: [
-    { transition: 'mettre_en_pause', libelle: 'Mettre en pause' },
-    { transition: 'terminer', libelle: 'Terminer' },
-  ],
-  en_pause: [{ transition: 'reprendre', libelle: 'Reprendre' }],
-  terminee: [],
-}
-
 export function Phases({ tournoiId }: { tournoiId: number }) {
   const phases = usePhases(tournoiId)
   const liste = phases.data ?? []
 
   return (
     <section>
-      <h3 className="carte__soustitre">Phases (format du tournoi)</h3>
+      <h3 className="carte__soustitre">Phases (déroulé du tournoi)</h3>
       <p className="carte__etat">
         Composez la suite des phases après la qualification (élimination directe, placement). La
-        qualification se règle dans « Barème &amp; validation ».
+        qualification se règle dans « Barème &amp; validation ». Ce déroulé est défini{' '}
+        <strong>une fois</strong> : chaque départ le rejoue. Pour démarrer, mettre en pause ou
+        terminer une phase sur un créneau donné, c'est « Suivi du déroulé ».
       </p>
       <FormulairePhase tournoiId={tournoiId} phases={liste} />
       {phases.isError && <MessageErreur erreur={phases.error} />}
@@ -112,12 +87,6 @@ export function Phases({ tournoiId }: { tournoiId: number }) {
   )
 }
 
-function BadgePhase({ statut }: { statut: StatutPhase }) {
-  return (
-    <span className={`badge badge--${statut.replace('_', '-')}`}>{LIBELLE_STATUT[statut]}</span>
-  )
-}
-
 function LignePhase({
   tournoiId,
   phase,
@@ -126,8 +95,8 @@ function LignePhase({
   dernier,
 }: {
   tournoiId: number
-  phase: Phase
-  phases: Phase[]
+  phase: EtapeDeroule
+  phases: EtapeDeroule[]
   premier: boolean
   dernier: boolean
 }) {
@@ -135,7 +104,6 @@ function LignePhase({
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const reordonner = useReordonnerPhases(tournoiId)
   const supprimer = useSupprimerPhase(tournoiId)
-  const changerStatut = useChangerStatutPhase(tournoiId)
 
   const deplacer = (direction: Direction) => {
     const ordre = ordreApresDeplacement(phases, phase.id, direction)
@@ -143,7 +111,7 @@ function LignePhase({
   }
 
   // La qualification se gère sur l'écran « Barème & validation » : on n'offre pas ici de l'éditer ni
-  // de la supprimer (ce serait perdre son barème par surprise). Elle reste réordonnable et pilotable.
+  // de la supprimer (ce serait perdre son barème par surprise). Elle reste réordonnable.
   const gereeAilleurs = phase.type === 'qualification'
 
   if (edition) {
@@ -164,7 +132,6 @@ function LignePhase({
       <div className="phase__ligne">
         <span className="phase__ordre">{phase.ordre}</span>
         <span className="phase__type">{LIBELLE_TYPE[phase.type]}</span>
-        <BadgePhase statut={phase.statut} />
         <span className="phase__details">
           {decrireSources(phase.sources)}
           {phase.effectif !== null && ` · ${phase.effectif} participants`}
@@ -194,19 +161,6 @@ function LignePhase({
         >
           ↓
         </button>
-        {TRANSITIONS[phase.statut].map((action) => (
-          <button
-            key={action.transition}
-            type="button"
-            className="bouton--discret"
-            disabled={changerStatut.isPending}
-            onClick={() =>
-              changerStatut.mutate({ phaseId: phase.id, transition: action.transition })
-            }
-          >
-            {action.libelle}
-          </button>
-        ))}
         {gereeAilleurs && <ReglageBarrage tournoiId={tournoiId} phase={phase} />}
         {!gereeAilleurs &&
           (editableIci(phase.sources) ? (
@@ -248,7 +202,6 @@ function LignePhase({
           ))}
       </div>
       <MessageErreur erreur={reordonner.error} />
-      <MessageErreur erreur={changerStatut.error} />
       <MessageErreur erreur={supprimer.error} />
     </li>
   )
@@ -264,8 +217,8 @@ export function FormulairePhase({
   onTermine,
 }: {
   tournoiId: number
-  phases: Phase[]
-  phase?: Phase
+  phases: EtapeDeroule[]
+  phase?: EtapeDeroule
   onTermine?: () => void
 }) {
   const enEdition = phase !== undefined
@@ -502,7 +455,7 @@ export function FormulairePhase({
  * qualification risquerait au contraire d'écraser son barème par surprise — la raison même pour
  * laquelle elle est « gérée ailleurs ».
  */
-function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: Phase }) {
+function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeDeroule }) {
   const [valeur, setValeur] = useState(
     phase.barrage_jusqu_au != null ? String(phase.barrage_jusqu_au) : '',
   )

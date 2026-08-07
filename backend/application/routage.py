@@ -29,10 +29,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from application.erreurs import GabaritDuTournoiAbsent, PhaseIntrouvable
+from application.erreurs import DepartIntrouvable, GabaritDuTournoiAbsent, PhaseIntrouvable
 from application.placement_duels import ServicePlacementDuels
+from application.portee import phase_du_depart
 from application.saisie_duels import Duelliste, ServiceSaisieDuels
 from domain.classement import LigneClassement
+from domain.depart import DepartId
 from domain.erreurs import EffectifTableauInvalide
 from domain.participant import GenreParticipant, Participant
 from domain.phase import (
@@ -44,7 +46,7 @@ from domain.phase import (
     TypePhase,
 )
 from domain.politiques import ContexteRoutage, VersRepechage
-from domain.ports import ArcherRepository, PhaseRepository
+from domain.ports import ArcherRepository, DepartRepository, PhaseRepository
 from domain.tableau import (
     Match,
     PerdantDe,
@@ -265,30 +267,49 @@ class ServiceRoutage:
         placement_duels: ServicePlacementDuels,
         archers: ArcherRepository,
         phases: PhaseRepository,
+        departs: DepartRepository,
     ) -> None:
         self._saisie_duels = saisie_duels
         self._placement_duels = placement_duels
         self._archers = archers
         self._phases = phases
+        # `DepartRepository` depuis E01US025 : la maille d'entrée est le créneau (ADR-0075), et les
+        # lectures internes (identités, plan, arbre) restent au tournoi — il faut donc remonter.
+        self._departs = departs
+
+    def _tournoi_du_depart(self, depart_id: DepartId) -> TournoiId:
+        """Le tournoi de ce créneau. `DepartIntrouvable` (404) s'il n'existe pas.
+
+        Garde d'existence **et** conversion de maille : les lectures internes (archers du tournoi,
+        plan de duels, reconstruction) travaillent au tournoi, l'entrée publique au créneau.
+        """
+        depart = self._departs.par_id(depart_id)
+        if depart is None:
+            raise DepartIntrouvable(f"Aucun départ d'identifiant {depart_id}.")
+        return depart.tournoi_id
 
     def routage(
         self,
-        tournoi_id: TournoiId,
+        depart_id: DepartId,
         archer_ids: tuple[int, ...],
         phase_id: PhaseId | None = None,
     ) -> Routage:
         """Route chaque archer demandé, **dans l'ordre demandé** (l'ordre des positions A→D).
 
-        `phase_id` non fourni ⇒ on vise le **tableau qui vient** (cf. `_phase_de_tableau`) : la
-        tablette de qualification ne connaît que sa cible et son départ, pas l'arbre. Fourni (écran
-        de duels), il est **validé** — `PhaseIntrouvable` (404) s'il est inconnu ou relève d'un
-        autre
-        tournoi ; `PhasePasUnTableau` remonte ensuite du service de saisie, comme partout ailleurs.
+        La maille est le **créneau** (E01US025, ADR-0075) : c'est déjà ce que la tablette connaît
+        (« sa cible et son départ »), et c'est la seule où « le tableau qui vient » veut dire
+        quelque chose. `DepartIntrouvable` (404) si le créneau n'existe pas.
+
+        `phase_id` non fourni ⇒ on vise le **tableau qui vient** (cf. `_phase_de_tableau`). Fourni
+        (écran de duels), il est **validé** — `PhaseIntrouvable` (404) s'il est inconnu ou relève
+        d'un autre créneau ; `PhasePasUnTableau` remonte ensuite du service de saisie, comme
+        partout ailleurs.
 
         Aucune erreur n'est levée pour un archer : une ligne **indisponible** motivée vaut mieux
         qu'un panneau qui échoue en bloc parce qu'un seul des quatre n'est pas dans le tableau.
         """
-        phase = self._phase_de_tableau(tournoi_id, phase_id)
+        tournoi_id = self._tournoi_du_depart(depart_id)
+        phase = self._phase_de_tableau(depart_id, phase_id)
         if phase is None or phase.id is None:
             return self._tous_indisponibles(tournoi_id, None, archer_ids, PHASE_ABSENTE)
         grille = self._grille(tournoi_id, phase, phase.id)
@@ -301,7 +322,7 @@ class ServiceRoutage:
             archers=tuple(self._router(archer_id, grille) for archer_id in archer_ids),
         )
 
-    def affectations(self, tournoi_id: TournoiId, phase_id: PhaseId | None = None) -> Routage:
+    def affectations(self, depart_id: DepartId, phase_id: PhaseId | None = None) -> Routage:
         """**Tout** le tableau, dans l'ordre du pas de tir — le canal n°2 (E07US008).
 
         Différence de fond avec `routage`, et non de commodité : l'appelant ne fournit **aucun**
@@ -317,7 +338,8 @@ class ServiceRoutage:
         archer (`_identites`), et une équipe n'a pas de nom d'archer. Les afficher rendrait des
         lignes anonymes — la résolution `Participant → équipe` viendra avec les équipes elles-mêmes.
         """
-        phase = self._phase_de_tableau(tournoi_id, phase_id)
+        tournoi_id = self._tournoi_du_depart(depart_id)
+        phase = self._phase_de_tableau(depart_id, phase_id)
         if phase is None or phase.id is None:
             return Routage(phase_id=None, archers=())
         grille = self._grille(tournoi_id, phase, phase.id)
@@ -360,10 +382,10 @@ class ServiceRoutage:
             plan=self._plan_lu(tournoi_id, phase_id),
             rangs={place.participant: place.rang for place in tableau.classement()},
             identites=self._identites(tournoi_id),
-            repechages=self._repechages(tournoi_id, phase),
+            repechages=self._repechages(phase),
         )
 
-    def _repechages(self, tournoi_id: TournoiId, phase: Phase) -> dict[int, DestinationRepechage]:
+    def _repechages(self, phase: Phase) -> dict[int, DestinationRepechage]:
         """`tour perdu → phase qui reprend ses battus`, lu dans les **sources de la séquence**.
 
         `VersRepechage` « ne construit rien » (`domain/politiques.py`) : la réintégration est un
@@ -371,11 +393,15 @@ class ServiceRoutage:
         La destination d'un repêché n'est donc pas dans son tableau — elle est dans le déroulé, et
         c'est la seule lecture qui puisse la donner.
 
-        `par_tournoi` trie par ordre (E05US001) : `setdefault` retient donc la phase **la plus
-        proche**, celle qui reprendra effectivement ces battus si deux la déclarent.
+        ⚠️ **Lecture `par_depart`, et le tri en dépend.** Ce texte disait « `par_tournoi` trie par
+        ordre (E05US001) » — faux depuis ADR-0075 : la vue transverse trie par `(départ, ordre)` et
+        concatène N suites 1..M. Le `setdefault` ne retenait donc pas « la phase la plus proche »
+        mais celle du **premier créneau**, et le filtre `autre.ordre <= phase.ordre` comparait des
+        rangs de créneaux différents. Un repêché du créneau de l'après-midi était renvoyé vers un
+        tableau du matin, clos depuis des heures. La séquence n'existe que **dans** un départ.
         """
         destinations: dict[int, DestinationRepechage] = {}
-        for autre in self._phases.par_tournoi(tournoi_id):
+        for autre in self._phases.par_depart(phase.depart_id):
             if autre.id is None or autre.ordre <= phase.ordre:
                 continue
             for source in autre.sources:
@@ -393,40 +419,42 @@ class ServiceRoutage:
 
     # --- Résolution de la phase ----------------------------------------------------------------
 
-    def _phase_de_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId | None) -> Phase | None:
-        """La phase visée : celle **imposée** par le client, sinon celle du tournoi qui **vient**.
+    def _phase_de_tableau(self, depart_id: DepartId, phase_id: PhaseId | None) -> Phase | None:
+        """La phase visée : celle **imposée** par le client, sinon celle du créneau qui **vient**.
 
         Deux contrats distincts, et c'est volontaire :
 
         - `phase_id` **imposé** (écran de duels) : un identifiant fourni par le client est
-          **validé**, comme partout ailleurs — inconnu, ou relevant d'un autre tournoi ⇒
+          **validé**, comme partout ailleurs — inconnu, ou relevant d'un autre créneau ⇒
           `PhaseIntrouvable` (404). Sans cette garde, un `phase_id` périmé (phase supprimée
           entre-temps) rendrait un placide « phase finale non configurée » au lieu d'un vrai
           refus : l'écran mentirait.
         - **résolution implicite** (tablette de qualification, qui ne connaît que sa cible et son
-          départ) : best-effort, `None` si le tournoi n'a pas de tableau — l'écran le dit.
+          départ) : best-effort, `None` si le créneau n'a pas de tableau — l'écran le dit.
 
         « Celle qui vient » = la première élimination directe **non terminée**, dans l'ordre de la
-        séquence (`par_tournoi` garantit le tri, E05US001). Prendre la première tout court
-        épinglerait un tournoi à deux tableaux sur le premier **à jamais**, et router tout le monde
-        en « terminé ».
+        séquence — celle **du créneau**, seule à être une suite 1..N (ADR-0075).
+
+        ⚠️ **C'était le bug du routage jour J.** La lecture passait par `par_tournoi`, qui trie par
+        `(départ, ordre)` : `en_cours[0]` désignait donc la première ED du créneau de plus petit
+        identifiant, et `tableaux[-1]` celle du **dernier** créneau. Concrètement, tous les archers
+        de l'après-midi étaient envoyés vers le tableau du matin — sur les quatre canaux de routage
+        à la fois (tablette, écran de salle, table d'organisation, panneau de duels).
         """
         if phase_id is not None:
-            phase = self._phases.par_id(phase_id)
-            if phase is None or phase.tournoi_id != tournoi_id:
-                raise PhaseIntrouvable(f"Aucune phase {phase_id} pour le tournoi {tournoi_id}.")
+            phase = phase_du_depart(self._phases, depart_id, phase_id)
+            if phase is None:
+                raise PhaseIntrouvable(f"Aucune phase {phase_id} pour le départ {depart_id}.")
             return phase
         tableaux = [
-            p
-            for p in self._phases.par_tournoi(tournoi_id)
-            if p.type is TypePhase.ELIMINATION_DIRECTE
+            p for p in self._phases.par_depart(depart_id) if p.type is TypePhase.ELIMINATION_DIRECTE
         ]
         en_cours = [p for p in tableaux if p.statut is not StatutPhase.TERMINEE]
         if en_cours:
             return en_cours[0]
-        # Tous terminés : on vise le **dernier**, pas le premier. C'est celui où se trouve le
-        # dénouement — router vers le premier rendrait « non retenu pour le tableau » à tout archer
-        # qui n'a joué que le second, alors qu'il a un rang à afficher.
+        # Tous terminés : on vise le **dernier** de ce créneau, pas le premier. C'est celui où se
+        # trouve le dénouement — router vers le premier rendrait « non retenu pour le tableau » à
+        # tout archer qui n'a joué que le second, alors qu'il a un rang à afficher.
         return tableaux[-1] if tableaux else None
 
     def _tous_indisponibles(

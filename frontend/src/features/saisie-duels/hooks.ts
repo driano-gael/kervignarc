@@ -31,14 +31,23 @@ import { injecterBarrage, injecterManche } from './duel'
 import { estDejaHorsLigne, estRefusServeur } from './horsLigne'
 import { rejouerActes } from './rejeu'
 
-const clePhases = (tournoiId: number) => ['duels-phases', tournoiId] as const
+// ⚠️ La clé porte le **créneau**, pas le tournoi : c'est l'avancement d'un départ qu'on cache
+// (ADR-0075). Indexée par tournoi, elle aurait servi les phases du matin au scoreur de
+// l'après-midi — le cache aurait recréé le bug que la route vient de fermer.
+const clePhases = (departId: number) => ['duels-phases', departId] as const
 const cleTableau = (tournoiId: number, phaseId: number) =>
   ['duels-tableau', tournoiId, phaseId] as const
 const cleDuel = (tournoiId: number, phaseId: number, matchNumero: number) =>
   ['duels-duel', tournoiId, phaseId, matchNumero] as const
 
-export function usePhases(tournoiId: number) {
-  return useQuery({ queryKey: clePhases(tournoiId), queryFn: () => getPhases(tournoiId) })
+// `departId` peut être `null` le temps que la liste des créneaux arrive : la requête est alors
+// désactivée plutôt que lancée sur un identifiant inventé (convention de `phases/hooks.ts`).
+export function usePhases(departId: number | null) {
+  return useQuery({
+    queryKey: clePhases(departId ?? 0),
+    queryFn: () => getPhases(departId as number),
+    enabled: departId !== null,
+  })
 }
 
 export function useTableau(tournoiId: number, phaseId: number) {

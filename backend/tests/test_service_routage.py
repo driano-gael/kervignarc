@@ -25,7 +25,7 @@ from dataclasses import replace
 import pytest
 
 from application.classements import ServiceClassement
-from application.erreurs import PhaseIntrouvable
+from application.erreurs import DepartIntrouvable, PhaseIntrouvable
 from application.placement_duels import ServicePlacementDuels
 from application.routage import (
     CIBLE_A_VENIR,
@@ -39,6 +39,7 @@ from domain.archer import Archer
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
+from domain.depart import Depart
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.forfait import Forfait, NatureForfait
 from domain.gabarit_salle import GabaritSalle
@@ -58,13 +59,16 @@ from domain.politiques import (
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
+    FauxDepartRepository,
+    FauxDerouleRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
+    FauxPhaseRepository,
+    poser_phase_factice,
 )
 from tests.test_service_placement_duels import (
     FauxBlasonRepository,
     FauxGabaritRepository,
-    FauxPhaseRepository,
     FauxPlacementTableauRepository,
     FauxSerieRepository,
     FauxTournoiRepository,
@@ -75,6 +79,10 @@ _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
 
 _REGISTRE = registre_par_defaut()
 
+# Identifiants de créneau **volontairement distincts** de `tournoi_id` (qui vaut 1) : sans cette
+# désynchronisation, passer l'un pour l'autre reste vert par coïncidence numérique.
+_MATIN = 41
+_APRES_MIDI = 42
 _CASCADE = PlacementEnCascade()
 _PODIUM = ProfondeurClassement.top(RANGS_DU_PODIUM)
 """Le routing par défaut du décor, en **singleton de module** : `ruff` refuse un appel de fonction
@@ -106,7 +114,21 @@ class _Monde:
         self.profondeur = profondeur
         self.tournoi_id = 1
         self.tournois = FauxTournoiRepository({1})
-        self.phases = FauxPhaseRepository()
+        # Créneau et inscriptions : le classement dont dérive ce décor est celui d'un départ.
+        #
+        # ⚠️ **Deux créneaux, à identifiants distincts de celui du tournoi.** Ce décor posait un
+        # seul départ *puis* écrasait son identifiant par `self.depart_id = 1` — soit exactement
+        # `tournoi_id`. Toute confusion des deux mailles restait donc verte par coïncidence
+        # numérique (`DETTE-044` : même type pour mypy), et c'est ce qui a laissé passer le routage
+        # à la maille tournoi. Le second créneau, lui, rend le bug *observable* : sans lui, « les
+        # phases du tournoi » et « celles du départ » sont la même liste.
+        self.departs = FauxDepartRepository()
+        self.depart_id = self._creneau(numero=1, horaire="09:00", depart_id=_MATIN)
+        self.depart_id_2 = self._creneau(numero=2, horaire="14:00", depart_id=_APRES_MIDI)
+        self.deroules = FauxDerouleRepository()
+        # `deroules` câblé : sans lui la doublure reste en « mode indulgent » et ne franchit jamais
+        # la couture d'assemblage définition ↔ avancement d'ADR-0076.
+        self.phases = FauxPhaseRepository(self.departs, self.deroules)
         self.gabarits = FauxGabaritRepository()
         self.inscriptions = FauxInscriptionRepository()
         self.archers = FauxArcherRepository()
@@ -129,29 +151,59 @@ class _Monde:
         )
         assert categorie.id is not None
         self.categorie_id = categorie.id
-        self.depart_id = 1
         self.phase_id: int | None = None
 
-    def creer_phase_tableau(self) -> int:
-        phase = self.phases.ajouter(
+    def _creneau(self, numero: int, horaire: str, depart_id: int) -> int:
+        depart = self.departs.ajouter(
+            replace(
+                Depart.creer(
+                    tournoi_id=self.tournoi_id,
+                    numero=numero,
+                    tarif_centimes=800,
+                    horaire=horaire,
+                ),
+                id=depart_id,
+            )
+        )
+        assert depart.id is not None
+        return depart.id
+
+    def creer_phase_tableau(self, depart_id: int | None = None) -> int:
+        """Pose le tableau de rang 2 dans un créneau — **celui du matin** par défaut.
+
+        Le premier paramètre de `Phase.creer` est un `depart_id` depuis ADR-0075 ; ce décor y
+        passait `self.tournoi_id`, ce qui « marchait » tant que les deux valaient 1.
+        """
+        phase = poser_phase_factice(
+            self.departs,
+            self.deroules,
+            self.phases,
             Phase.creer(
-                self.tournoi_id,
+                depart_id if depart_id is not None else self.depart_id,
                 2,
                 TypePhase.ELIMINATION_DIRECTE,
                 profondeur=self.profondeur,
-            )
+            ),
         )
         assert phase.id is not None
         self.phase_id = phase.id
         return phase.id
 
-    def inscrire_classe(self, valeurs: tuple[str, ...]) -> int:
+    def inscrire_classe(self, valeurs: tuple[str, ...], depart_id: int | None = None) -> int:
+        """Inscrit un archer sur un créneau — **celui du matin** par défaut — et sème ses flèches.
+
+        `depart_id` est explicite pour les tests de portée, qui ont besoin d'un second créneau
+        réellement peuplé : un créneau vide n'a pas de tableau lisible, donc il ne prouverait rien.
+        """
         archer = self.archers.ajouter(
             Archer(nom="N", prenom="P", tournoi_id=self.tournoi_id, categorie_id=self.categorie_id)
         )
         assert archer.id is not None
         inscription = self.inscriptions.ajouter(
-            Inscription(archer_id=archer.id, depart_id=self.depart_id)
+            Inscription(
+                archer_id=archer.id,
+                depart_id=depart_id if depart_id is not None else self.depart_id,
+            )
         )
         assert inscription.id is not None
         self.series.semer(self.tournoi_id, archer.id, tuple(ZoneScore(v) for v in valeurs))
@@ -159,7 +211,14 @@ class _Monde:
 
     def _classement(self) -> ServiceClassement:
         return ServiceClassement(
-            self.tournois, self.archers, self.series, self.categories, self.phases, self.forfaits
+            self.tournois,
+            self.archers,
+            self.series,
+            self.categories,
+            self.phases,
+            self.forfaits,
+            self.departs,
+            self.inscriptions,
         )
 
     @property
@@ -199,7 +258,7 @@ class _Monde:
 
     @property
     def routage(self) -> ServiceRoutage:
-        return ServiceRoutage(self.saisie, self.placement, self.archers, self.phases)
+        return ServiceRoutage(self.saisie, self.placement, self.archers, self.phases, self.departs)
 
     def placer(self) -> None:
         """Matérialise le plan de duels du 1er tour (les duellistes reçoivent cible et position)."""
@@ -273,10 +332,17 @@ class _Monde:
         raise AssertionError(f"L'archer {archer_id} n'a pas de duel au tour 1.")
 
 
-def _quatre(monde: _Monde) -> list[int]:
-    """Quatre archers aux totaux décroissants → rangs scratch 1..4, puis la phase de tableau."""
-    archers = [monde.inscrire_classe(v) for v in (("10", "10"), ("9", "9"), ("8", "8"), ("7", "7"))]
-    monde.creer_phase_tableau()
+def _quatre(monde: _Monde, depart_id: int | None = None) -> list[int]:
+    """Quatre archers aux totaux décroissants → rangs scratch 1..4, puis la phase de tableau.
+
+    `depart_id` permet de peupler **un second créneau** à l'identique : c'est ce qui rend un bug de
+    portée observable — deux créneaux jouant le même déroulé, chacun son arbre.
+    """
+    archers = [
+        monde.inscrire_classe(v, depart_id)
+        for v in (("10", "10"), ("9", "9"), ("8", "8"), ("7", "7"))
+    ]
+    monde.creer_phase_tableau(depart_id)
     return archers
 
 
@@ -312,7 +378,7 @@ def test_chaque_archer_de_la_cible_voit_son_prochain_duel() -> None:
     monde.placer()
 
     poses = monde.poses()  # source indépendante : le plan de duels persisté
-    routage = monde.routage.routage(monde.tournoi_id, tuple(archers))
+    routage = monde.routage.routage(monde.depart_id, tuple(archers))
 
     assert [r.archer_id for r in routage.archers] == archers  # l'ordre demandé est conservé
     for ligne in routage.archers:
@@ -343,7 +409,7 @@ def test_le_vainqueur_est_route_vers_le_tour_suivant() -> None:
     vainqueur = monde.gagne_de(1)
     monde.gagner(1)
 
-    ligne = monde.routage.routage(monde.tournoi_id, (vainqueur,)).archers[0]
+    ligne = monde.routage.routage(monde.depart_id, (vainqueur,)).archers[0]
 
     assert ligne.issue is IssueRoutage.PROCHAIN_DUEL
     assert ligne.prochain is not None
@@ -360,7 +426,7 @@ def test_l_exempt_est_route_directement_au_tour_deux() -> None:
     monde.creer_phase_tableau()
     monde.placer()
 
-    ligne = monde.routage.routage(monde.tournoi_id, (archers[0],)).archers[0]
+    ligne = monde.routage.routage(monde.depart_id, (archers[0],)).archers[0]
 
     assert ligne.issue is IssueRoutage.PROCHAIN_DUEL
     assert ligne.prochain is not None
@@ -380,7 +446,7 @@ def test_pas_de_cible_au_dela_du_premier_tour_et_le_manque_est_nomme() -> None:
     vainqueur = monde.gagne_de(1)
     monde.gagner(1)
 
-    ligne = monde.routage.routage(monde.tournoi_id, (vainqueur,)).archers[0]
+    ligne = monde.routage.routage(monde.depart_id, (vainqueur,)).archers[0]
 
     assert ligne.prochain is not None
     assert ligne.prochain.cible is None
@@ -400,7 +466,7 @@ def test_adversaire_pas_encore_connu_nomme_le_duel_attendu() -> None:
     vainqueur = monde.gagne_de(1)
     monde.gagner(1)
 
-    ligne = monde.routage.routage(monde.tournoi_id, (vainqueur,)).archers[0]
+    ligne = monde.routage.routage(monde.depart_id, (vainqueur,)).archers[0]
 
     assert ligne.prochain is not None
     assert ligne.prochain.adversaire is None
@@ -414,7 +480,7 @@ def test_sans_plan_de_duels_la_cible_manque_sans_faire_echouer_le_panneau() -> N
     archers = _quatre(monde)
     # pas de `placer()`
 
-    ligne = monde.routage.routage(monde.tournoi_id, (archers[0],)).archers[0]
+    ligne = monde.routage.routage(monde.depart_id, (archers[0],)).archers[0]
 
     assert ligne.issue is IssueRoutage.PROCHAIN_DUEL
     assert ligne.prochain is not None
@@ -442,7 +508,7 @@ def test_l_elimine_sort_du_tableau_et_son_tour_de_sortie_est_nomme() -> None:
     perdant = monde.perd_de(1)
     monde.gagner(1)
 
-    ligne = monde.routage.routage(monde.tournoi_id, (perdant,)).archers[0]
+    ligne = monde.routage.routage(monde.depart_id, (perdant,)).archers[0]
 
     assert ligne.issue is IssueRoutage.TERMINE
     assert ligne.prochain is None
@@ -471,7 +537,7 @@ def test_le_battu_qui_descend_en_placement_lit_le_nom_de_sa_branche() -> None:
     perdant = monde.perd_de(1)
     monde.gagner(1)
 
-    ligne = monde.routage.routage(monde.tournoi_id, (perdant,)).archers[0]
+    ligne = monde.routage.routage(monde.depart_id, (perdant,)).archers[0]
 
     assert (
         ligne.issue is IssueRoutage.PROCHAIN_DUEL
@@ -494,7 +560,7 @@ def test_rang_final_publie_quand_le_podium_est_acquis() -> None:
     monde.gagner(tableau.finale.numero)
     monde.gagner(petite.numero)
 
-    routage = monde.routage.routage(monde.tournoi_id, tuple(archers))
+    routage = monde.routage.routage(monde.depart_id, tuple(archers))
 
     rangs = {r.archer_id: r.rang_final for r in routage.archers}
     assert sorted(rang for rang in rangs.values() if rang is not None) == [1, 2, 3, 4]
@@ -512,7 +578,7 @@ def test_sans_phase_de_tableau_le_panneau_le_dit() -> None:
     monde.inscrire_classe(("9", "9"))
     # aucune phase ELIMINATION_DIRECTE créée
 
-    routage = monde.routage.routage(monde.tournoi_id, (archer,))
+    routage = monde.routage.routage(monde.depart_id, (archer,))
 
     assert routage.phase_id is None
     ligne = routage.archers[0]
@@ -527,7 +593,7 @@ def test_archer_absent_du_tableau_le_panneau_le_dit() -> None:
     archers = _quatre(monde)
     monde.placer()
 
-    routage = monde.routage.routage(monde.tournoi_id, (archers[0], 9999))
+    routage = monde.routage.routage(monde.depart_id, (archers[0], 9999))
 
     assert routage.archers[0].issue is IssueRoutage.PROCHAIN_DUEL
     assert routage.archers[1].issue is IssueRoutage.INDISPONIBLE
@@ -544,14 +610,14 @@ def test_pose_perimee_par_un_reclassement_est_signalee() -> None:
     monde = _Monde(capacites=(2, 2))  # un duel par cible : deux poses distinctes
     archers = _quatre(monde)
     monde.placer()
-    avant = monde.routage.routage(monde.tournoi_id, (archers[0],)).archers[0].prochain
+    avant = monde.routage.routage(monde.depart_id, (archers[0],)).archers[0].prochain
     assert avant is not None and avant.cible is not None  # sain au départ
     assert avant.alerte is None
     assert avant.adversaire is not None
 
     # Le 1er tombe au 2e rang : le serpent l'oppose maintenant au 3e, posé sur l'autre cible.
     monde.reclasser(archers[0], ("9", "8"))
-    apres = monde.routage.routage(monde.tournoi_id, (archers[0],)).archers[0].prochain
+    apres = monde.routage.routage(monde.depart_id, (archers[0],)).archers[0].prochain
 
     assert apres is not None
     assert apres.adversaire is not None
@@ -574,11 +640,11 @@ def test_pose_perimee_meme_quand_les_deux_restent_sur_la_meme_cible() -> None:
     monde = _Monde(capacites=(4,))  # les quatre sur une seule cible
     archers = _quatre(monde)
     monde.placer()
-    avant = monde.routage.routage(monde.tournoi_id, (archers[0],)).archers[0].prochain
+    avant = monde.routage.routage(monde.depart_id, (archers[0],)).archers[0].prochain
     assert avant is not None and avant.alerte is None
 
     monde.reclasser(archers[0], ("9", "8"))
-    apres = monde.routage.routage(monde.tournoi_id, (archers[0],)).archers[0].prochain
+    apres = monde.routage.routage(monde.depart_id, (archers[0],)).archers[0].prochain
 
     assert apres is not None
     assert apres.cible == avant.cible  # même butte, forcément : il n'y en a qu'une
@@ -598,7 +664,7 @@ def test_un_plan_sain_mais_separe_garde_sa_cible() -> None:
     archers = _quatre(monde)
     monde.placer()
 
-    routage = monde.routage.routage(monde.tournoi_id, tuple(archers))
+    routage = monde.routage.routage(monde.depart_id, tuple(archers))
 
     for ligne in routage.archers:
         assert ligne.prochain is not None
@@ -616,7 +682,7 @@ def test_le_panneau_degrade_reste_nominatif() -> None:
     archers = [monde.inscrire_classe(v) for v in (("10", "10"), ("9", "9"))]
     # aucune phase ELIMINATION_DIRECTE créée
 
-    routage = monde.routage.routage(monde.tournoi_id, tuple(archers))
+    routage = monde.routage.routage(monde.depart_id, tuple(archers))
 
     assert all(ligne.issue is IssueRoutage.INDISPONIBLE for ligne in routage.archers)
     assert all(ligne.nom != "" for ligne in routage.archers)
@@ -630,21 +696,24 @@ def test_phase_imposee_introuvable_est_refusee() -> None:
     archers = _quatre(monde)
 
     with pytest.raises(PhaseIntrouvable):
-        monde.routage.routage(monde.tournoi_id, (archers[0],), phase_id=9999)
+        monde.routage.routage(monde.depart_id, (archers[0],), phase_id=9999)
 
 
-def test_phase_imposee_d_un_autre_tournoi_est_refusee() -> None:
+def test_phase_imposee_d_un_autre_creneau_est_refusee() -> None:
     """La moitié la plus sensible de la garde : la route est **publique et non authentifiée**, un
-    `phase_id` d'un autre tournoi ne doit pas ouvrir son arbre par l'URL de celui-ci."""
+    `phase_id` d'ailleurs ne doit pas ouvrir son arbre par l'URL de ce créneau.
+
+    ⚠️ La garde s'est **resserrée** avec la maille (ADR-0075) : elle portait sur « un autre
+    tournoi », elle porte désormais sur « un autre **créneau** » — donc *a fortiori* sur un autre
+    tournoi, dont les phases pendent forcément à d'autres départs. C'est le cloisonnement le plus
+    étroit des deux, et celui que le moteur exige.
+    """
     monde = _Monde()
     archers = _quatre(monde)
-    autre = monde.phases.ajouter(
-        Phase.creer(tournoi_id=42, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
-    )
-    assert autre.id is not None
+    autre = monde.creer_phase_tableau(depart_id=monde.depart_id_2)
 
     with pytest.raises(PhaseIntrouvable):
-        monde.routage.routage(monde.tournoi_id, (archers[0],), phase_id=autre.id)
+        monde.routage.routage(monde.depart_id, (archers[0],), phase_id=autre)
 
 
 def test_la_phase_visee_est_le_tableau_qui_vient() -> None:
@@ -660,9 +729,38 @@ def test_la_phase_visee_est_le_tableau_qui_vient() -> None:
     )
     second = monde.creer_phase_tableau()
 
-    routage = monde.routage.routage(monde.tournoi_id, (archers[0],))
+    routage = monde.routage.routage(monde.depart_id, (archers[0],))
 
     assert routage.phase_id == second
+
+
+def test_le_routage_d_un_creneau_ne_vise_jamais_le_tableau_d_un_autre() -> None:
+    """**Le bug du routage jour J** : l'après-midi était envoyé vers le tableau du matin.
+
+    `_phase_de_tableau` lisait `PhaseRepository.par_tournoi`, trié `(départ, ordre)` : « la première
+    ED non terminée » désignait donc celle du créneau de plus petit identifiant, quel que soit le
+    créneau interrogé. Comme les quatre canaux de routage (tablette, écran de salle, table
+    d'organisation, panneau de duels) passent tous par là, l'erreur était générale.
+
+    Le décor le rend observable : le tableau du matin est **en cours**, celui de l'après-midi aussi.
+    À la maille tournoi, les deux appels rendaient le **même** identifiant de phase.
+    """
+    monde = _Monde()
+    _quatre(monde)
+    matin = monde.phase_id
+    assert matin is not None
+    apres_midi = monde.creer_phase_tableau(depart_id=monde.depart_id_2)
+
+    assert monde.routage.affectations(monde.depart_id).phase_id == matin
+    assert monde.routage.affectations(monde.depart_id_2).phase_id == apres_midi
+
+
+def test_un_creneau_inconnu_est_refuse_par_le_routage() -> None:
+    """La maille d'entrée est le créneau : un identifiant inconnu est un 404, pas un panneau
+    vide."""
+    monde = _Monde()
+    with pytest.raises(DepartIntrouvable):
+        monde.routage.routage(9999, ())
 
 
 def test_tous_les_tableaux_termines_vise_le_dernier() -> None:
@@ -679,7 +777,7 @@ def test_tous_les_tableaux_termines_vise_le_dernier() -> None:
             monde.phases._phases[phase_id], statut=StatutPhase.TERMINEE
         )
 
-    routage = monde.routage.routage(monde.tournoi_id, (archers[0],))
+    routage = monde.routage.routage(monde.depart_id, (archers[0],))
 
     assert routage.phase_id == second
 
@@ -692,12 +790,17 @@ def test_un_archer_disqualifie_garde_son_nom() -> None:
     monde = _Monde()
     archers = _quatre(monde)
     monde.placer()
-    qualif = monde.phases.ajouter(
+    # La qualification pend au **créneau** (ADR-0075) : passer `tournoi_id` ici posait une phase
+    # orpheline, que l'assemblage écarte — le forfait ne s'appliquait alors à rien.
+    qualif = poser_phase_factice(
+        monde.departs,
+        monde.deroules,
+        monde.phases,
         Phase.qualification(
-            monde.tournoi_id,
+            monde.depart_id,
             BaremeQualification.creer(1, 2),
             GrainValidation.fin_de_serie(),
-        )
+        ),
     )
     assert qualif.id is not None
     monde.forfaits.semer(
@@ -711,7 +814,7 @@ def test_un_archer_disqualifie_garde_son_nom() -> None:
         )
     )
 
-    ligne = monde.routage.routage(monde.tournoi_id, (archers[0],)).archers[0]
+    ligne = monde.routage.routage(monde.depart_id, (archers[0],)).archers[0]
 
     assert ligne.issue is IssueRoutage.INDISPONIBLE  # sorti du classement, donc du tableau
     assert ligne.nom != ""
@@ -726,7 +829,7 @@ def test_un_participant_equipe_n_est_pas_route() -> None:
     archers = _quatre(monde)
     monde.placer()
 
-    ligne = monde.routage.routage(monde.tournoi_id, (archers[0], 4242)).archers[1]
+    ligne = monde.routage.routage(monde.depart_id, (archers[0], 4242)).archers[1]
 
     assert ligne.issue is IssueRoutage.INDISPONIBLE
     assert ligne.motif is not None
@@ -745,8 +848,8 @@ def test_le_routage_est_une_lecture_pure() -> None:
     poses_avant = len(monde.placements.par_phase(monde.phase_id or 0))
     duels_avant = len(monde.duels._tirs)
 
-    premier = monde.routage.routage(monde.tournoi_id, tuple(archers))
-    second = monde.routage.routage(monde.tournoi_id, tuple(archers))
+    premier = monde.routage.routage(monde.depart_id, tuple(archers))
+    second = monde.routage.routage(monde.depart_id, tuple(archers))
 
     assert premier == second
     assert len(monde.placements.par_phase(monde.phase_id or 0)) == poses_avant

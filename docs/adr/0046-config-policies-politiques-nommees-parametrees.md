@@ -117,5 +117,6 @@ d'injection concret d'ADR-0004 — « un format est de la **configuration**, pas
 
 ADR-0004 (moteur à politiques injectables), ADR-0011 (Phase minimale, forme `config` d'origine),
 ADR-0045 (séquence de phases) ; [`docs/dette.md`](../dette.md) DETTE-003 ;
-[`docs/modele-de-donnees.md`](../modele-de-donnees.md) § « Config d'une PHASE » ;
+[`docs/modele-de-donnees.md`](../modele-de-donnees.md) § « Config d'une étape de déroulé »
+*(le champ s'appelait `PHASE.config` jusqu'à [ADR-0076](0076-un-deroule-defini-une-fois-un-avancement-par-depart.md))* ;
 `stories/E05-moteur-phases.md` (E05US003).

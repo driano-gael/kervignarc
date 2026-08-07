@@ -30,6 +30,7 @@ from application.classements import ServiceClassement
 from application.erreurs import (
     BarrageIntrouvable,
     BarragePerime,
+    DepartIntrouvable,
     EgaliteNonDepartageable,
     TireursDesignesInvalides,
     TournoiIntrouvable,
@@ -41,12 +42,14 @@ from domain.barrage import (
     PorteeBarrage,
     TirBarrage,
 )
+from domain.depart import DepartId
 from domain.erreurs import ConfigurationBarrageInvalide
 from domain.participant import Participant
 from domain.phase import PhaseId
 from domain.ports import (
     ArcherRepository,
     BarrageRepository,
+    DepartRepository,
     Horloge,
     PhaseRepository,
     TournoiRepository,
@@ -73,11 +76,15 @@ class ServiceBarrage:
         horloge: Horloge,
         archers: ArcherRepository,
         phases: PhaseRepository,
+        departs: DepartRepository,
     ) -> None:
         self._tournois = tournois
         self._barrages = barrages
         self._classements = classements
         self._horloge = horloge
+        # Le **cloisonnement** du créneau : `annoncer` reçoit un `depart_id` du corps de la requête
+        # et doit vérifier qu'il relève bien du tournoi de la route (`_exiger_depart_du_tournoi`).
+        self._departs = departs
         # Requis par les portées **poule** et **Big Shoot Off**, où les tireurs sont *désignés*
         # et non dérivés d'un classement : ce sont les **seules** protections de ce régime. Rendus
         # obligatoires après revue — il n'existe qu'un site de construction (composition root,
@@ -102,9 +109,19 @@ class ServiceBarrage:
         barrages = self._barrages.par_tournoi(tournoi_id)
         if not barrages:
             return []
-        ecartes = self._verdicts_ecartes(tournoi_id)
+        # La péremption se juge **dans le départ** du barrage (ADR-0075) : un verdict écarté du
+        # classement du matin ne dit rien de celui de l'après-midi. Le classement est calculé une
+        # fois par créneau concerné, et non une fois par barrage — un tournoi de 4 départs peut
+        # porter des dizaines de barrages.
+        ecartes_par_depart = {
+            depart_id: self._verdicts_ecartes(depart_id)
+            for depart_id in {barrage.depart_id for barrage in barrages}
+        }
         return [
-            BarrageAffiche(barrage=barrage, perime=self._est_perime(barrage, ecartes))
+            BarrageAffiche(
+                barrage=barrage,
+                perime=self._est_perime(barrage, ecartes_par_depart[barrage.depart_id]),
+            )
             for barrage in barrages
         ]
 
@@ -138,6 +155,7 @@ class ServiceBarrage:
     def annoncer(
         self,
         tournoi_id: TournoiId,
+        depart_id: DepartId,
         rang: int | None = None,
         portee: PorteeBarrage = PorteeBarrage.QUALIFICATION,
         archer_ids: Sequence[ArcherId] = (),
@@ -164,10 +182,11 @@ class ServiceBarrage:
         « faire tirer » ne doit pas ouvrir deux barrages sur la même place.
         """
         self._exiger_tournoi(tournoi_id)
+        self._exiger_depart_du_tournoi(tournoi_id, depart_id)
         if portee is PorteeBarrage.QUALIFICATION:
-            participants = self._egalite_signalee(tournoi_id, rang)
+            participants = self._egalite_signalee(depart_id, rang)
         else:
-            participants = self._participants_designes(tournoi_id, archer_ids, phase_id)
+            participants = self._participants_designes(tournoi_id, depart_id, archer_ids, phase_id)
         # ⚠️ **Les barrages CLOS comptent ici aussi, dès qu'ils sont périmés.** Une première
         # version ne regardait que les non-clos : sur une place où un barrage acté était devenu
         # périmé, l'alerte disait « annulez-le puis relancez » **et** le bouton « Faire tirer »
@@ -175,11 +194,22 @@ class ServiceBarrage:
         # aux verdicts **inversés**, sans le moindre signal — et annuler la mauvaise détruisait le
         # verdict réellement appliqué.
         ecartes = (
-            self._verdicts_ecartes(tournoi_id) if portee is PorteeBarrage.QUALIFICATION else set()
+            self._verdicts_ecartes(depart_id) if portee is PorteeBarrage.QUALIFICATION else set()
         )
+        # ⚠️ **`par_depart` et non `par_tournoi`** (revue E01US025, axe A) : deux créneaux ayant
+        # chacun une égalité au même **rang** se voyaient comme « le même endroit », et le second se
+        # faisait refuser son barrage en `BarragePerime` — avec un message (« le classement a
+        # bougé ») désignant une cause qui n'existait pas. Une place se dispute dans le classement
+        # d'**un** départ (ADR-0075).
+        #
+        # ⚠️ Une première rédaction de ce commentaire affirmait que ce bloc était **le seul** resté à
+        # la portée tournoi. C'était faux, et la seconde revue l'a montré : `_participants_designes`
+        # (plus bas) et `ServiceClassement._verdicts_qualif` l'étaient aussi. Un correctif qui se
+        # déclare exhaustif ferme la recherche chez le relecteur suivant — on décrit ce qu'on a
+        # corrigé, jamais ce qui resterait.
         meme_endroit = [
             barrage
-            for barrage in self._barrages.par_tournoi(tournoi_id)
+            for barrage in self._barrages.par_depart(depart_id)
             if barrage.portee is portee
             and barrage.rang_dispute == rang
             and barrage.phase_id == phase_id
@@ -210,7 +240,7 @@ class ServiceBarrage:
             )
         return self._barrages.ouvrir(
             BarrageDePlaces(
-                tournoi_id=tournoi_id,
+                depart_id=depart_id,
                 portee=portee,
                 participants=participants,
                 cree_le=self._horloge.maintenant(),
@@ -220,7 +250,7 @@ class ServiceBarrage:
             )
         )
 
-    def _egalite_signalee(self, tournoi_id: TournoiId, rang: int | None) -> tuple[Participant, ...]:
+    def _egalite_signalee(self, depart_id: DepartId, rang: int | None) -> tuple[Participant, ...]:
         """Les tireurs d'une égalité **que la politique réclame** — régime qualification."""
         if rang is None:
             raise EgaliteNonDepartageable(
@@ -229,7 +259,7 @@ class ServiceBarrage:
         egalite = next(
             (
                 candidate
-                for candidate in self._classements.pour_tournoi(tournoi_id).egalites_a_departager
+                for candidate in self._classements.pour_depart(depart_id).egalites_a_departager
                 if candidate.rang == rang
             ),
             None,
@@ -244,6 +274,7 @@ class ServiceBarrage:
     def _participants_designes(
         self,
         tournoi_id: TournoiId,
+        depart_id: DepartId,
         archer_ids: Sequence[ArcherId],
         phase_id: PhaseId | None,
     ) -> tuple[Participant, ...]:
@@ -251,9 +282,16 @@ class ServiceBarrage:
 
         Aucun classement ne les valide ici : c'est donc au service de vérifier ce que le régime
         qualification obtenait gratuitement — des archers **de ce tournoi**, distincts, au moins
-        deux, et une phase qui appartient elle aussi au tournoi. Sans cela, un identifiant deviné
-        ferait tirer l'archer d'un autre tournoi (deux tournois tournent en parallèle par
+        deux, et une phase qui appartient elle aussi **à ce créneau**. Sans cela, un identifiant
+        deviné ferait tirer l'archer d'un autre tournoi (deux tournois tournent en parallèle par
         conception).
+
+        ⚠️ **La phase se valide `par_depart`, pas `par_tournoi`** (ADR-0075). L'archer, lui, reste
+        validé au tournoi : c'est bien à cette maille qu'il est inscrit. La phase non — et accepter
+        celle d'un autre créneau ne produisait pas seulement une donnée croisée : la suppression de
+        ce créneau purge ses phases, laissant le barrage pointer une phase disparue, donc une
+        `IntegrityError` sur `DELETE /tournois/{id}/departs/{id}` — précisément ce que la purge
+        existe pour éviter.
         """
         distincts: list[ArcherId] = []
         for archer_id in archer_ids:
@@ -270,10 +308,10 @@ class ServiceBarrage:
                 f"{len(etrangers)} archer(s) désigné(s) n'appartiennent pas à ce tournoi."
             )
         if phase_id is not None:
-            phases = {phase.id for phase in self._phases.par_tournoi(tournoi_id)}
+            phases = {phase.id for phase in self._phases.par_depart(depart_id)}
             if phase_id not in phases:
                 raise TireursDesignesInvalides(
-                    f"La phase {phase_id} n'appartient pas à ce tournoi."
+                    f"La phase {phase_id} n'appartient pas à ce créneau."
                 )
         return tuple(Participant.individuel(archer_id) for archer_id in distincts)
 
@@ -376,48 +414,33 @@ class ServiceBarrage:
             )
         return self._barrages.clore(barrage_id)
 
-    def _verdicts_ecartes(self, tournoi_id: TournoiId) -> set[frozenset[Participant]]:
-        """Les verdicts que le classement **n'a pas retenus**, par ensemble de tireurs."""
+    def _verdicts_ecartes(self, depart_id: DepartId) -> set[frozenset[Participant]]:
+        """Les verdicts que le classement **du départ** n'a pas retenus, par ensemble de tireurs."""
         return {
             frozenset(verdict.ordre)
-            for verdict in self._classements.pour_tournoi(tournoi_id).verdicts_ecartes
+            for verdict in self._classements.pour_depart(depart_id).verdicts_ecartes
         }
-
-    def _ouverts_au_meme_endroit(
-        self,
-        tournoi_id: TournoiId,
-        portee: PorteeBarrage,
-        rang: int | None,
-        phase_id: PhaseId | None,
-        reference: str | None,
-    ) -> list[BarrageDePlaces]:
-        """Les barrages non clos qui disputent la même **place** — tireurs non regardés.
-
-        ⚠️ **L'identité d'un barrage inclut ses TIREURS, et c'était le trou.** Une première version
-        s'arrêtait au quadruplet `(portée, phase, référence, rang)`. En qualification `rang`
-        discrimine, mais hors qualification les quatre composantes sont facultatives — et le
-        formulaire n'envoie ni rang ni phase, et laisse la référence vide. Deux égalités de poule
-        successives tombaient donc sur la **même clé** : le second appel rendait le **premier**
-        barrage, l'écran vidait la sélection, et la deuxième égalité n'avait pas de barrage sans
-        que rien ne le dise.
-
-        `annoncer` compare donc les tireurs : même place **et** mêmes tireurs → c'est le même
-        barrage (idempotence) ; même place, tireurs différents → l'ancien est **périmé**, et on
-        refuse plutôt que de laisser faire tirer le mauvais groupe.
-        """
-        return [
-            barrage
-            for barrage in self._barrages.par_tournoi(tournoi_id)
-            if barrage.portee is portee
-            and barrage.rang_dispute == rang
-            and barrage.phase_id == phase_id
-            and barrage.reference == reference
-            and not barrage.clos
-        ]
 
     def _exiger_tournoi(self, tournoi_id: TournoiId) -> None:
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+
+    def _exiger_depart_du_tournoi(self, tournoi_id: TournoiId, depart_id: DepartId) -> None:
+        """Le créneau doit appartenir **au tournoi de la route**. `DepartIntrouvable` sinon.
+
+        ⚠️ **Garde de cloisonnement, pas de commodité** (correctif de revue E01US025). `annoncer`
+        reçoit le `tournoi_id` du chemin et le `depart_id` du **corps** : rien ne les reliait. Un
+        `depart_id` deviné ouvrait donc un barrage sur le créneau d'un **autre tournoi**, en
+        passant par l'URL de celui-ci — et deux tournois `EN_COURS` en parallèle est une capacité
+        **voulue** (intérieur et extérieur), pas un cas d'école. Le service faisait déjà ce contrôle
+        pour les barrages (`_exiger_barrage`) et pour les phases (`ServicePhases._exiger_etape`) ;
+        c'est le départ qui y échappait, faute de `DepartRepository` injecté.
+        """
+        depart = self._departs.par_id(depart_id)
+        if depart is None or depart.tournoi_id != tournoi_id:
+            raise DepartIntrouvable(
+                f"Aucun départ d'identifiant {depart_id} dans le tournoi {tournoi_id}."
+            )
 
     def _exiger_barrage(self, tournoi_id: TournoiId, barrage_id: BarrageId) -> BarrageDePlaces:
         """Le barrage, à condition qu'il appartienne bien à **ce** tournoi.
@@ -428,7 +451,11 @@ class ServiceBarrage:
         """
         self._exiger_tournoi(tournoi_id)
         barrage = self._barrages.par_id(barrage_id)
-        if barrage is None or barrage.tournoi_id != tournoi_id:
+        # Appartenance au tournoi par `depart → tournoi` : un barrage ne connaît plus que son
+        # créneau (ADR-0075). La garde reste indispensable — deux tournois tournent en parallèle
+        # par conception (intérieur et extérieur).
+        connus = {b.id for b in self._barrages.par_tournoi(tournoi_id)}
+        if barrage is None or barrage.id not in connus:
             raise BarrageIntrouvable(
                 f"Aucun barrage d'identifiant {barrage_id} dans le tournoi {tournoi_id}."
             )

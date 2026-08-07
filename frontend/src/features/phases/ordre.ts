@@ -3,9 +3,16 @@
 // cf. `placement/planConsultation.ts`). Le geste UI (boutons monter/descendre) délègue ici, puis
 // envoie la liste d'identifiants obtenue à l'API `reordonner`.
 
-import type { Phase } from './api'
-
 export type Direction = 'monter' | 'descendre'
+
+/** Ce qu'il faut savoir d'une étape pour la déplacer : rien d'autre que son identité.
+ *
+ * Structural plutôt qu'`EtapeDeroule` : cette logique ne lit ni type, ni barème, ni statut, et
+ * l'ancrer au DTO complet l'aurait fait suivre chaque évolution de la frontière API — la
+ * réécriture qu'ADR-0076 vient d'imposer à ce fichier en est la démonstration. */
+export interface Deplacable {
+  id: number
+}
 
 // Déplace l'élément d'index `de` vers l'index `vers` (immuable). Hors bornes → liste inchangée.
 export function deplacer<T>(liste: readonly T[], de: number, vers: number): T[] {
@@ -19,11 +26,11 @@ export function deplacer<T>(liste: readonly T[], de: number, vers: number): T[] 
   return copie
 }
 
-// Renvoie la liste des identifiants de phases **dans le nouvel ordre** après avoir monté ou
-// descendu la phase `phaseId` d'un cran. Si le mouvement est impossible (déjà en tête / en queue,
-// ou phase absente), renvoie `null` — l'appelant n'émet alors aucune requête.
+// Renvoie la liste des identifiants **dans le nouvel ordre** après avoir monté ou descendu
+// l'étape `phaseId` d'un cran. Si le mouvement est impossible (déjà en tête / en queue, ou étape
+// absente), renvoie `null` — l'appelant n'émet alors aucune requête.
 export function ordreApresDeplacement(
-  phases: readonly Phase[],
+  phases: readonly Deplacable[],
   phaseId: number,
   direction: Direction,
 ): number[] | null {

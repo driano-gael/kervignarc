@@ -1,19 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { Phase } from './api'
-import { deplacer, ordreApresDeplacement } from './ordre'
+import { deplacer, ordreApresDeplacement, type Deplacable } from './ordre'
 
-function phase(id: number, ordre: number): Phase {
-  return {
-    id,
-    tournoi_id: 1,
-    ordre,
-    type: 'elimination_directe',
-    statut: 'a_venir',
-    sources: [],
-    effectif: null,
-    barrage_jusqu_au: null,
-    profondeur: null,
-  }
+// Le déplacement ne lit que l'identité : le décor n'a donc rien d'autre à porter (cf. `Deplacable`).
+// `ordre` reste, parce que les cas de test se lisent mieux en nommant le rang qu'on croit occuper.
+function phase(id: number, ordre: number): Deplacable & { ordre: number } {
+  return { id, ordre }
 }
 
 describe('deplacer', () => {
