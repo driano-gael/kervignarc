@@ -22,6 +22,13 @@ toutes existantes, aucune supposée. La factorisation se fait donc ici et non «
 ⚠️ **Ces lectures sont des raccourcis assumés, pas la vérité du moteur.** Le moteur, lui, raisonne
 toujours dans un départ (`PhaseRepository.par_depart`). Quiconque a un `depart_id` sous la main doit
 l'utiliser : passer par ici perdrait justement la distinction qu'ADR-0075 rétablit.
+
+# DETTE-048 : ce module concentre la portée tournoi résiduelle, et il est le seul à n'être **ni
+# testé ni surveillé**. Aucun test ne l'importe ; et le garde-fou `tests/test_portee_sportive.py` le
+# manque par construction — son balayage AST reconnaît des *noms de variables* (`phase`, `barrage`),
+# pas un `tournoi_id` reçu en **paramètre**, qui est justement la forme d'ici. Les deux défauts de
+# portée trouvés à la 2ᵉ revue d'E01US025 en sont sortis tous les deux (DETTE-047, et les verdicts
+# de barrage corrigés dans l'US). Avant d'ajouter un dixième appelant, lire le registre.
 """
 
 from __future__ import annotations

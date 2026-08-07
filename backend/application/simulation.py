@@ -28,7 +28,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from application.classements import ServiceClassement
-from application.erreurs import SimulationTournoiDemarre, TournoiIntrouvable
+from application.erreurs import (
+    SimulationTournoiDemarre,
+    TournoiIntrouvable,
+    TournoiSansDepart,
+)
 from application.placement_duels import ServicePlacementDuels
 from application.saisie_duels import EtatTableau, ServiceSaisieDuels
 from domain.classement import Classement
@@ -233,7 +237,18 @@ class ServiceSimulation:
 
         # La simulation rejoue **un** créneau : le premier du tournoi simulé (le harnais n'en
         # fabrique qu'un — cf. `simulation_format`). Le rejeu multi-départs relève de DETTE-045.
-        depart_simule = harnais.departs.par_tournoi(tournoi_id)[0]
+        #
+        # ⚠️ La garde n'est pas décorative : un tournoi `brouillon` **sans aucun créneau** est le
+        # chemin normal de l'atelier (on crée le tournoi, puis les départs), et l'indexation nue
+        # levait un `IndexError` — donc un **500**, sans message exploitable, sur une simulation
+        # parfaitement légitime. Les services voisins lèvent déjà `TournoiSansDepart` (404) ; on ne
+        # laisse pas une route se comporter autrement que ses sœurs sur le même état.
+        creneaux = harnais.departs.par_tournoi(tournoi_id)
+        if not creneaux:
+            raise TournoiSansDepart(
+                "Ce tournoi n'a aucun créneau : il n'y a rien à rejouer en simulation."
+            )
+        depart_simule = creneaux[0]
         assert depart_simule.id is not None, "Le magasin in-memory attribue un identifiant."
         classement = harnais.classement.pour_depart(depart_simule.id)
         gabarit_present = harnais.gabarits.par_tournoi(tournoi_id) is not None

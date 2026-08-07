@@ -1093,12 +1093,19 @@ class PhaseRepositorySQL:
                     raise InfrastructureError("Phase à mettre à jour introuvable en base.")
                 ligne.ordre = phase.ordre
                 ligne.statut = phase.statut.value
-                session.commit()
+                # ⚠️ **`flush` puis contrôle puis `commit`** — même discipline que `ajouter`, et
+                # pour la même raison (relevé en revue E01US025 : le correctif avait été appliqué à
+                # `ajouter` seul, le trou était déplacé, pas fermé). En committant d'abord, un
+                # avancement orphelin — sans étape de déroulé de même rang — était **acté en base**
+                # puis signalé en `InfrastructureError` : l'appelant recevait un échec sur une
+                # écriture qui, elle, avait bien eu lieu.
+                session.flush()
                 assemblees = self._assembler(session, [ligne])
                 if not assemblees:
                     raise InfrastructureError(
                         "Phase mise à jour sans étape de déroulé de même rang."
                     )
+                session.commit()
                 return assemblees[0]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour de la phase.") from exc

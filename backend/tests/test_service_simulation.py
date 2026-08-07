@@ -26,7 +26,11 @@ import datetime
 import pytest
 
 from application.classements import ServiceClassement
-from application.erreurs import SimulationTournoiDemarre, TournoiIntrouvable
+from application.erreurs import (
+    SimulationTournoiDemarre,
+    TournoiIntrouvable,
+    TournoiSansDepart,
+)
 from application.simulation import ServiceSimulation
 from bootstrap.composition import fabriquer_harnais_simulation
 from domain.archer import Archer
@@ -182,6 +186,22 @@ def test_tournoi_inconnu_leve_tournoi_introuvable() -> None:
     reel = _Reel()
     with pytest.raises(TournoiIntrouvable):
         reel.service().simuler(999)
+
+
+def test_tournoi_sans_creneau_leve_une_erreur_metier_et_non_un_500() -> None:
+    """Un tournoi `brouillon` **sans aucun départ** est un état ordinaire de l'atelier.
+
+    On crée le tournoi, *puis* ses créneaux : entre les deux, la simulation est parfaitement
+    légitime et doit répondre par une erreur métier lisible. Relevé en revue E01US025 : l'accès
+    indexé `par_tournoi(tournoi_id)[0]` levait un `IndexError` — donc un **500** sans message
+    exploitable — là où `ServicePalmares` lève déjà `TournoiSansDepart` sur exactement le même
+    état. Deux routes ne doivent pas se comporter différemment sur le même tournoi.
+    """
+    reel = _Reel()
+    reel.departs.supprimer(1)
+
+    with pytest.raises(TournoiSansDepart):
+        reel.service().simuler(reel.tournoi_id)
 
 
 @pytest.mark.parametrize("statut", [StatutTournoi.BROUILLON, StatutTournoi.PRET])

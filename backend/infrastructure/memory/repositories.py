@@ -41,7 +41,7 @@ from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
-from domain.ports import DepartRepository
+from domain.ports import DepartRepository, DerouleRepository
 from domain.remboursement import Remboursement
 from domain.serie import Serie
 from domain.tournoi import Tournoi, TournoiId
@@ -385,7 +385,9 @@ class InMemoryPhaseRepository(_AllocateurId):
     def __init__(
         self,
         departs: DepartRepository | None = None,
-        deroules: InMemoryDerouleRepository | None = None,
+        # Le **port**, pas la classe concrète (règle 2) : le paramètre voisin est déjà typé ainsi,
+        # et dépendre de `InMemoryDerouleRepository` interdisait d'injecter une autre doublure.
+        deroules: DerouleRepository | None = None,
     ) -> None:
         super().__init__()
         self._items: dict[int, Phase] = {}
@@ -402,6 +404,12 @@ class InMemoryPhaseRepository(_AllocateurId):
         Faux, il reste en **mode indulgent** : la phase conservée porte déjà sa définition (elle y
         a été mise à l'ajout), on la rend telle quelle. C'est ce qui permet aux décors de test qui
         ne lisent que des statuts de rester simples, sans jamais rendre une phase amputée.
+
+        # DETTE-049 : cette indulgence fait répondre la doublure **autrement que la production**
+        # (qui, elle, câble toujours les deux magasins — cf. `bootstrap/composition.py`). Un décor
+        # ainsi monté peut donc *consacrer* un bug au lieu de l'attraper, ce qui est exactement le
+        # mode de panne rencontré deux fois pendant E01US025. Branche morte au câblage réel, d'où
+        # la sévérité mineure ; à supprimer en rendant les deux magasins obligatoires.
         """
         return self._departs is not None and self._deroules is not None
 
@@ -491,12 +499,19 @@ class InMemoryPhaseRepository(_AllocateurId):
         return self._assembler(sorted(phases, key=lambda p: (p.depart_id, p.ordre)))
 
     def enregistrer(self, phase: Phase) -> Phase:
-        """Met à jour l'**avancement** (statut, rang) ; la définition s'édite sur l'étape."""
+        """Met à jour l'**avancement** (statut, rang) ; la définition s'édite sur l'étape.
+
+        ⚠️ **On assemble avant d'écrire**, comme `ajouter` juste au-dessus et comme l'adapter SQL
+        depuis la revue E01US025 : écrire puis lever laissait le magasin porter une phase orpheline
+        alors que l'appelant venait de recevoir un échec. Les deux adapters doivent répondre pareil
+        jusque dans leur comportement en cas d'échec — sans quoi le test de conformité ne prouve
+        que le chemin heureux.
+        """
         assert phase.id is not None
-        self._items[phase.id] = phase
         assemblee = self._assembler_une(phase)
         if assemblee is None:
             raise InfrastructureError("Phase mise à jour sans étape de déroulé de même rang.")
+        self._items[phase.id] = phase
         return assemblee
 
     def reordonner(self, phases: list[Phase]) -> None:

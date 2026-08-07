@@ -94,6 +94,32 @@ def upgrade() -> None:
         )
     )
 
+    # ⚠️ **Instancier le déroulé dans les créneaux 2..N** (correctif de revue E01US025).
+    #
+    # La `0042` rattache **toutes** les phases d'un tournoi à son *premier* créneau : dans le modèle
+    # d'avant, un tournoi n'avait qu'une séquence 1..N, sans notion de créneau. Les créneaux 2..N
+    # ressortaient donc de la migration **sans aucune phase** — donc sans avancement, un pilotage
+    # vide et un « ce créneau ne joue encore aucune phase » sur des tournois qui, eux, avaient bien
+    # deux départs. L'état est invalide au regard d'ADR-0076 (« une instance par étape et par
+    # créneau ») et rien, ensuite, ne le répare : ajouter une étape n'instancie que celle-là.
+    #
+    # Le raisonnement qui justifiait la perte dans la `0042` (« recopier créerait des phases neuves
+    # auxquelles rien ne pendrait ») est **périmé par cette migration même** : une instance ne porte
+    # plus que `(depart_id, ordre, statut)`, la définition vit dans `deroule_etape`. La recopie est
+    # donc exactement le geste juste, et elle ne coûte rien. Les phases nées ici partent `a_venir` :
+    # ce créneau n'a effectivement rien joué, c'est la vérité et non un défaut.
+    connexion.execute(
+        sa.text(
+            "INSERT INTO phase (depart_id, ordre, statut, type, config) "
+            "SELECT d.id, e.ordre, 'a_venir', e.type, e.config "
+            "FROM depart AS d "
+            "JOIN deroule_etape AS e ON e.tournoi_id = d.tournoi_id "
+            "WHERE NOT EXISTS ("
+            "    SELECT 1 FROM phase AS p WHERE p.depart_id = d.id AND p.ordre = e.ordre"
+            ")"
+        )
+    )
+
     with op.batch_alter_table("phase") as batch:
         batch.drop_column("type")
         batch.drop_column("config")

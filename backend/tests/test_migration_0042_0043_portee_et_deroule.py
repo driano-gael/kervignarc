@@ -187,6 +187,45 @@ def test_0043_promeut_la_definition_une_seule_fois(tmp_path: Path) -> None:
         engine.dispose()
 
 
+def test_0043_instancie_le_deroule_dans_chaque_creneau(tmp_path: Path) -> None:
+    """Une base migrée ne laisse **aucun créneau sans avancement** (ADR-0076).
+
+    Relevé à la seconde revue d'E01US025. La 0042 rattache toutes les phases au *premier* créneau —
+    dans le modèle d'avant, un tournoi n'avait qu'une séquence, sans notion de créneau. Les créneaux
+    2..N ressortaient donc de la migration **vides** : pilotage impossible, « ce créneau ne joue
+    encore aucune phase » sur un tournoi qui avait bel et bien deux départs, et rien ensuite pour le
+    réparer (ajouter une étape n'instancie que celle-là).
+
+    ⚠️ Ce test **exige deux créneaux**. Sur un tournoi mono-départ il passerait quel que soit le
+    code — c'est exactement pourquoi le défaut avait survécu à la première revue.
+    """
+    url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
+    cfg = _config(url)
+    command.upgrade(cfg, _AVANT)
+    engine = sa.create_engine(url)
+    try:
+        _semer_un_tournoi_a_deux_creneaux(engine)
+
+        command.upgrade(cfg, _DEROULE)
+
+        # Le déroulé reste défini **une** fois, et chaque créneau porte les deux rangs.
+        assert _etapes(engine) == [(1, 1, "qualification"), (1, 2, "elimination_directe")]
+        assert [(depart, ordre) for _, depart, ordre in _phases(engine)] == [
+            (41, 1),
+            (41, 2),
+            (42, 1),
+            (42, 2),
+        ]
+        # Le créneau qui n'a rien joué part bien « à venir » — c'est la vérité, pas un défaut.
+        with engine.connect() as conn:
+            statuts = conn.execute(
+                sa.text("SELECT statut FROM phase WHERE depart_id = 42 ORDER BY ordre")
+            ).scalars()
+            assert list(statuts) == ["a_venir", "a_venir"]
+    finally:
+        engine.dispose()
+
+
 # --- L'aller-retour, qui échouait ----------------------------------------------------------------
 
 
@@ -213,16 +252,10 @@ def test_l_aller_retour_est_reversible_meme_avec_des_phases_dans_chaque_creneau(
     try:
         _semer_un_tournoi_a_deux_creneaux(engine)
         command.upgrade(cfg, _DEROULE)
-        # L'état réel du jour : le second créneau porte lui aussi son avancement des deux rangs.
-        with engine.begin() as conn:
-            for phase_id, ordre in ((3, 1), (4, 2)):
-                conn.execute(
-                    sa.text(
-                        "INSERT INTO phase (id, depart_id, ordre, statut) "
-                        "VALUES (:id, 42, :ordre, 'a_venir')"
-                    ),
-                    {"id": phase_id, "ordre": ordre},
-                )
+        # ⚠️ L'état d'après 0043 **n'a plus besoin d'être simulé** : depuis le correctif de revue
+        # E01US025, la 0043 instancie elle-même le déroulé dans les créneaux 2..N. Le décor posait
+        # ces deux lignes à la main, ce qui masquait précisément le défaut — la migration les
+        # laissait manquantes, et le test les rajoutait avant de vérifier l'aller-retour.
         assert len(_phases(engine)) == 4
 
         command.downgrade(cfg, _AVANT)
@@ -230,8 +263,10 @@ def test_l_aller_retour_est_reversible_meme_avec_des_phases_dans_chaque_creneau(
 
         # Le déroulé est intact — une définition par rang, pas deux.
         assert _etapes(engine) == [(1, 1, "qualification"), (1, 2, "elimination_directe")]
-        # Et l'avancement du premier créneau a survécu au voyage, identifiants compris.
-        assert _phases(engine) == [(1, 41, 1), (2, 41, 2)]
+        # L'avancement du premier créneau a survécu au voyage, identifiants compris ; celui du
+        # second est réinstancié par la 0043 (le downgrade l'a replié, cf. la docstring).
+        assert _phases(engine)[:2] == [(1, 41, 1), (2, 41, 2)]
+        assert [(depart, ordre) for _, depart, ordre in _phases(engine)[2:]] == [(42, 1), (42, 2)]
     finally:
         engine.dispose()
 
@@ -251,9 +286,14 @@ def test_le_downgrade_redistribue_la_definition_dans_chaque_phase(tmp_path: Path
 
         with engine.connect() as conn:
             lignes = conn.execute(
-                sa.text("SELECT ordre, type, config FROM phase ORDER BY ordre")
+                sa.text("SELECT ordre, type, config FROM phase ORDER BY depart_id, ordre")
             ).all()
+        # Quatre lignes et non deux : la 0043 instancie le déroulé dans **chaque** créneau, et le
+        # downgrade doit rendre sa définition à chacune — y compris à celles du second créneau, qui
+        # n'existaient pas avant le correctif de revue E01US025.
         assert [(int(a), str(b)) for a, b, _ in lignes] == [
+            (1, "qualification"),
+            (2, "elimination_directe"),
             (1, "qualification"),
             (2, "elimination_directe"),
         ]

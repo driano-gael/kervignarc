@@ -116,6 +116,12 @@ class ServiceDeparts:
         # Le créneau rejoue le déroulé **déjà** défini pour ce tournoi : une instance par étape, au
         # statut « à venir ». Sur un tournoi non encore composé, la boucle est vide — et les étapes
         # ajoutées ensuite s'instancieront dans ce créneau comme dans les autres.
+        #
+        # DETTE-025 (5ᵉ site, élargi à la 2ᵉ revue d'E01US025) : `ajouter` le départ puis N fois
+        # `ajouter` une phase, ce sont N+1 transactions. Une panne au milieu laisse un créneau au
+        # déroulé **partiel**, qu'aucun geste ultérieur ne répare — ajouter une étape n'instancie
+        # que celle-là. Même remède que les quatre autres sites : un geste atomique sur l'adapter
+        # concret, patron `consigner_dans` (ADR-0035).
         for etape in self._deroules.par_tournoi(tournoi_id):
             self._phases.ajouter(etape.instancier(pose.id))
         return pose

@@ -184,6 +184,12 @@ class ServiceForfait:
             raise ArcherIntrouvable(f"Aucun archer d'identifiant {archer_id} dans ce tournoi.")
 
     def _phase_qualification(self, tournoi_id: TournoiId) -> Phase:
+        # DETTE-047 : le forfait est écrit sur la qualification du **premier** créneau, quel que
+        # soit celui où l'archer tire — `ServiceClassement._forfaits_qualif` le relit par le même
+        # chemin, d'où un affichage juste *par accident*. Deux conséquences réelles : supprimer le
+        # premier créneau efface (cascade) les forfaits de tous les autres, et un archer engagé sur
+        # deux créneaux déclaré forfait sur l'un est relégué sur les deux. Résorption : porter un
+        # `depart_id` jusqu'ici — change la route et le front, donc une US à part entière.
         phase = qualification_du_tournoi(self._phases, tournoi_id)
         if phase is None:
             raise PhaseQualificationAbsente(

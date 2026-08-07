@@ -335,11 +335,6 @@ class ServiceFormats:
         règle de club qu'elle ne sait pas exprimer.
         """
         tournoi = self._tournoi_existant(tournoi_id)
-        # **Le déroulé d'un seul départ** (E01US025, ADR-0075). `par_tournoi` concatène les
-        # séquences de tous les créneaux : les promouvoir ensemble produirait des ordres en doublon
-        # (`PhasesDeDepartsMeles`). Le premier départ fait référence — ils reçoivent des copies
-        # identiques du format, et les faire diverger est un geste délibéré de l'organisateur, pas
-        # l'état courant.
         # **Le déroulé, tout simplement** (ADR-0076). Tant que la définition était recopiée par
         # créneau, promouvoir obligeait à choisir *laquelle* des N copies faisait foi — et à
         # refuser les lots mêlés. Le déroulé étant unique, la question ne se pose plus.

@@ -115,7 +115,7 @@ class ServiceClassement:
             categories,
             [f for f in self._forfaits_qualif(tournoi_id) if f.archer_id in engages],
             tiebreak=self._tiebreak(phase),
-            verdicts=self._verdicts_qualif(tournoi_id),
+            verdicts=self._verdicts_qualif(depart_id),
         )
         if categorie_id is not None:
             classement = Classement(
@@ -145,8 +145,15 @@ class ServiceClassement:
         )
         return politiques.tiebreak if politiques.tiebreak is not None else TiebreakFftaDefaut()
 
-    def _verdicts_qualif(self, tournoi_id: TournoiId) -> list[VerdictBarrage]:
-        """Les verdicts des barrages **de qualification** de ce tournoi.
+    def _verdicts_qualif(self, depart_id: DepartId) -> list[VerdictBarrage]:
+        """Les verdicts des barrages **de qualification** de ce créneau.
+
+        ⚠️ **`par_depart` et non `par_tournoi`.** Une place se dispute dans le classement d'**un**
+        départ (ADR-0075) : lire les barrages du tournoi entier faisait appliquer au créneau de
+        l'après-midi le verdict d'une égalité départagée le matin — au même rang, puisque les rangs
+        se répètent d'un créneau à l'autre. Le service des barrages avait été corrigé sur ce point
+        en revue, avec un commentaire affirmant qu'il s'agissait du dernier bloc concerné ; celui-ci
+        lui avait échappé, et c'est lui que voit le public sur le classement projeté en salle.
 
         Les barrages **clos comme ouverts** sont lus : un barrage résolu mais non encore clos a déjà
         un verdict exploitable, et attendre la clôture pour l'appliquer laisserait le classement
@@ -156,7 +163,7 @@ class ServiceClassement:
         if self._barrages is None:
             return []
         verdicts: list[VerdictBarrage] = []
-        for barrage in self._barrages.par_tournoi(tournoi_id):
+        for barrage in self._barrages.par_depart(depart_id):
             if barrage.portee is not PorteeBarrage.QUALIFICATION:
                 continue
             try:
@@ -175,6 +182,10 @@ class ServiceClassement:
 
     # DETTE-022 : même résolution que la complétude (deux fois) et la saisie — extraction en US
     # dédiée.
+    # DETTE-047 : et cette résolution est à la maille **tournoi** alors que le classement est celui
+    # d'un créneau. Ce n'est pas corrigeable ici seul : `ServiceForfait` **écrit** par le même
+    # chemin, si bien que ne changer que la lecture rendrait les forfaits invisibles au lieu de les
+    # rendre justes. Les deux côtés se portent au départ ensemble, dans l'US de résorption.
     def _forfaits_qualif(self, tournoi_id: TournoiId) -> list[Forfait]:
         """Les forfaits déclarés **en phase de qualification** (relégation/exclusion, ADR-0050).
 

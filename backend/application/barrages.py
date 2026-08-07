@@ -186,7 +186,7 @@ class ServiceBarrage:
         if portee is PorteeBarrage.QUALIFICATION:
             participants = self._egalite_signalee(depart_id, rang)
         else:
-            participants = self._participants_designes(tournoi_id, archer_ids, phase_id)
+            participants = self._participants_designes(tournoi_id, depart_id, archer_ids, phase_id)
         # ⚠️ **Les barrages CLOS comptent ici aussi, dès qu'ils sont périmés.** Une première
         # version ne regardait que les non-clos : sur une place où un barrage acté était devenu
         # périmé, l'alerte disait « annulez-le puis relancez » **et** le bouton « Faire tirer »
@@ -196,12 +196,17 @@ class ServiceBarrage:
         ecartes = (
             self._verdicts_ecartes(depart_id) if portee is PorteeBarrage.QUALIFICATION else set()
         )
-        # ⚠️ **`par_depart` et non `par_tournoi`** (revue E01US025, axe A). Ce bloc était le seul du
-        # service resté à la portée tournoi : deux créneaux ayant chacun une égalité au même
-        # **rang**
-        # se voyaient comme « le même endroit », et le second se faisait refuser son barrage en
-        # `BarragePerime` — avec un message (« le classement a bougé ») désignant une cause qui
-        # n'existait pas. Une place se dispute dans le classement d'**un** départ (ADR-0075).
+        # ⚠️ **`par_depart` et non `par_tournoi`** (revue E01US025, axe A) : deux créneaux ayant
+        # chacun une égalité au même **rang** se voyaient comme « le même endroit », et le second se
+        # faisait refuser son barrage en `BarragePerime` — avec un message (« le classement a
+        # bougé ») désignant une cause qui n'existait pas. Une place se dispute dans le classement
+        # d'**un** départ (ADR-0075).
+        #
+        # ⚠️ Une première rédaction de ce commentaire affirmait que ce bloc était **le seul** resté à
+        # la portée tournoi. C'était faux, et la seconde revue l'a montré : `_participants_designes`
+        # (plus bas) et `ServiceClassement._verdicts_qualif` l'étaient aussi. Un correctif qui se
+        # déclare exhaustif ferme la recherche chez le relecteur suivant — on décrit ce qu'on a
+        # corrigé, jamais ce qui resterait.
         meme_endroit = [
             barrage
             for barrage in self._barrages.par_depart(depart_id)
@@ -269,6 +274,7 @@ class ServiceBarrage:
     def _participants_designes(
         self,
         tournoi_id: TournoiId,
+        depart_id: DepartId,
         archer_ids: Sequence[ArcherId],
         phase_id: PhaseId | None,
     ) -> tuple[Participant, ...]:
@@ -276,9 +282,16 @@ class ServiceBarrage:
 
         Aucun classement ne les valide ici : c'est donc au service de vérifier ce que le régime
         qualification obtenait gratuitement — des archers **de ce tournoi**, distincts, au moins
-        deux, et une phase qui appartient elle aussi au tournoi. Sans cela, un identifiant deviné
-        ferait tirer l'archer d'un autre tournoi (deux tournois tournent en parallèle par
+        deux, et une phase qui appartient elle aussi **à ce créneau**. Sans cela, un identifiant
+        deviné ferait tirer l'archer d'un autre tournoi (deux tournois tournent en parallèle par
         conception).
+
+        ⚠️ **La phase se valide `par_depart`, pas `par_tournoi`** (ADR-0075). L'archer, lui, reste
+        validé au tournoi : c'est bien à cette maille qu'il est inscrit. La phase non — et accepter
+        celle d'un autre créneau ne produisait pas seulement une donnée croisée : la suppression de
+        ce créneau purge ses phases, laissant le barrage pointer une phase disparue, donc une
+        `IntegrityError` sur `DELETE /tournois/{id}/departs/{id}` — précisément ce que la purge
+        existe pour éviter.
         """
         distincts: list[ArcherId] = []
         for archer_id in archer_ids:
@@ -295,10 +308,10 @@ class ServiceBarrage:
                 f"{len(etrangers)} archer(s) désigné(s) n'appartiennent pas à ce tournoi."
             )
         if phase_id is not None:
-            phases = {phase.id for phase in self._phases.par_tournoi(tournoi_id)}
+            phases = {phase.id for phase in self._phases.par_depart(depart_id)}
             if phase_id not in phases:
                 raise TireursDesignesInvalides(
-                    f"La phase {phase_id} n'appartient pas à ce tournoi."
+                    f"La phase {phase_id} n'appartient pas à ce créneau."
                 )
         return tuple(Participant.individuel(archer_id) for archer_id in distincts)
 

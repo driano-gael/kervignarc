@@ -110,10 +110,19 @@ class ServicePalmares:
         # Le palmarès d'un **départ** (ADR-0075) : il s'appuie sur le classement de qualification,
         # qui n'existe plus qu'à cette maille. Le premier départ qui en porte un fait référence
         # tant que la route reste au niveau tournoi — cf. DETTE-045.
-        qualification = self._classements.pour_depart(self._premier_depart(tournoi_id))
+        premier = self._premier_depart(tournoi_id)
+        qualification = self._classements.pour_depart(premier)
+        # ⚠️ **Les phases du même créneau que la qualification**, pas celles du tournoi. Le résultat
+        # affiché ne changeait pas — `calculer_palmares` écarte les archers absents du classement de
+        # référence —, mais on reconstruisait le tableau de **tous** les créneaux pour les jeter
+        # ensuite : sur quatre départs, quatre fois le travail de `ServiceSaisieDuels.reconstruire`
+        # (DETTE-031) sur deux routes **publiques**, l'écran et le PDF. Et le résultat n'était juste
+        # que par ricochet : un archer engagé sur deux créneaux (cas soutenu, DETTE-046) pouvait se
+        # voir attribuer la position acquise dans le tableau de l'autre créneau, les rangs se
+        # répétant d'un départ à l'autre.
         resultats = tuple(
             resultat
-            for phase in self._phases.par_tournoi(tournoi_id)
+            for phase in self._phases.par_depart(premier)
             if phase.type in _TYPES_RECONSTRUCTIBLES
             if (resultat := self._resultat(tournoi_id, phase)) is not None
         )
@@ -137,10 +146,11 @@ class ServicePalmares:
 
         ⚠️ **Raccourci tracé (`DETTE-045`).** Le palmarès est rendu « du tournoi » alors que le
         classement dont il dérive est celui d'un **départ** : sur un tournoi multi-créneaux, il
-        n'affiche donc que le podium du premier. Le remède est une route par départ, plus un
-        palmarès d'ensemble dont la règle reste à définir avec le commanditaire — additionne-t-on
-        les podiums de chaque créneau, ou les juxtapose-t-on ? C'est une **question métier**, pas
-        une omission technique : elle est posée au registre plutôt que tranchée ici.
+        n'affiche donc que le podium du premier. La question métier qui bloquait la résorption —
+        additionne-t-on les podiums de chaque créneau, ou les juxtapose-t-on ? — a été **tranchée
+        par le commanditaire le 07/08/2026** : *juxtaposé*, quatre départs font quatre podiums. Il
+        n'y a donc aucune agrégation à écrire, et le remède se réduit à une route par départ,
+        planifiée en **E06US009**.
         """
         departs = self._departs.par_tournoi(tournoi_id)
         if not departs:
