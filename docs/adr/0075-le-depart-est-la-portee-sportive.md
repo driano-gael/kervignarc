@@ -5,11 +5,14 @@
 - **Décideurs** : Organisateur / Architecte
 - **Amende** : [ADR-0017](0017-le-depart-est-un-creneau-du-tournoi.md) (dont la décision n'avait été
   portée que par la **logistique** — cf. « Contexte » ci-dessous) ;
-  [ADR-0045](0045-sequence-de-phases-ordonnee-et-invariants-collectifs.md) (la séquence 1..N est
+  [ADR-0045](0045-sequence-de-phases-cycle-de-vie-typage-source.md) (la séquence 1..N est
   désormais celle **d'un départ**) ; [`docs/modele-de-donnees.md`](../modele-de-donnees.md)
   (`PHASE` change de parent : `DEPART` et non plus `TOURNOI`) ;
   [`docs/glossaire.md`](../glossaire.md) (*Départ*, *Phase*, *Classement*) ;
   [`docs/referentiel-ffta.md`](../referentiel-ffta.md) (§ « portée d'un classement », qui était muet)
+- **Complété et partiellement révisé par** : [ADR-0076](0076-un-deroule-defini-une-fois-un-avancement-par-depart.md)
+  — le §1 ci-dessous (« la séquence 1..N est celle d'un départ ») est **remplacé** : elle est celle du
+  **déroulé du tournoi**, chaque départ n'en portant que l'avancement
 - **Introduit par** : E01US025 (le format de tournoi porte un effectif **par départ** et un déroulé
   rejoué **par départ**) — la décision la précède logiquement et a donc été appliquée d'abord
 
@@ -145,8 +148,11 @@ appliquées dans l'US qui porte cet ADR :
 ## Porté dans le code par
 
 - `backend/domain/phase.py` (`Phase.depart_id`, `SequencePhases`)
-- `backend/domain/classement.py` + `backend/application/classements.py` (portée du classement)
-- `backend/domain/tableau.py`, `backend/domain/duel.py` (rattachement des tableaux et duels)
+- `backend/application/classements.py` (`pour_depart`, et **plus** de `pour_tournoi`)
+  ⚠️ *Corrigé le 07/08/2026 en revue : cette liste nommait aussi `domain/classement.py`,
+  `domain/tableau.py` et `domain/duel.py`, qui ne portent **rien** de la portée — aucun n'a de champ
+  de rattachement, ils suivent la phase par `phase_id`. Une section « Porté dans le code par » qui
+  nomme des modules vides reproduit exactement le défaut d'ADR-0017 qu'elle existe pour empêcher.*
 - `backend/domain/format_tournoi.py` (`appliquer` produit une séquence par départ)
 - `backend/infrastructure/db/repositories/moteur.py` + migration `0042`
 - `backend/tests/test_portee_sportive.py` (garde-fou mécanique)

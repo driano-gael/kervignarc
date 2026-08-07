@@ -109,7 +109,7 @@ class ServicePalmares:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         # Le palmarès d'un **départ** (ADR-0075) : il s'appuie sur le classement de qualification,
         # qui n'existe plus qu'à cette maille. Le premier départ qui en porte un fait référence
-        # tant que la route reste au niveau tournoi — cf. DETTE-044.
+        # tant que la route reste au niveau tournoi — cf. DETTE-045.
         qualification = self._classements.pour_depart(self._premier_depart(tournoi_id))
         resultats = tuple(
             resultat
@@ -135,7 +135,7 @@ class ServicePalmares:
     def _premier_depart(self, tournoi_id: TournoiId) -> DepartId:
         """Le premier créneau du tournoi — référence tant que la route reste au niveau tournoi.
 
-        ⚠️ **Raccourci tracé (`DETTE-044`).** Le palmarès est rendu « du tournoi » alors que le
+        ⚠️ **Raccourci tracé (`DETTE-045`).** Le palmarès est rendu « du tournoi » alors que le
         classement dont il dérive est celui d'un **départ** : sur un tournoi multi-créneaux, il
         n'affiche donc que le podium du premier. Le remède est une route par départ, plus un
         palmarès d'ensemble dont la règle reste à définir avec le commanditaire — additionne-t-on

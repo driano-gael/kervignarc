@@ -232,7 +232,7 @@ class ServiceSimulation:
         )
 
         # La simulation rejoue **un** créneau : le premier du tournoi simulé (le harnais n'en
-        # fabrique qu'un — cf. `simulation_format`). Le rejeu multi-départs relève de DETTE-044.
+        # fabrique qu'un — cf. `simulation_format`). Le rejeu multi-départs relève de DETTE-045.
         depart_simule = harnais.departs.par_tournoi(tournoi_id)[0]
         assert depart_simule.id is not None, "Le magasin in-memory attribue un identifiant."
         classement = harnais.classement.pour_depart(depart_simule.id)
