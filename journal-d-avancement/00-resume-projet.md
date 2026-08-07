@@ -115,7 +115,13 @@ lequel le pilotage travaille) et surtout la **supervision des postes**, qui pass
 tuiles** : l'écran du jour J affichait un tableau, c'est-à-dire la présentation écartée, alors qu'on
 lui demande de répondre d'un coup d'œil à « qui s'est tu ? ». Une tablette muette s'y repère
 désormais au cadre ambre de sa tuile — sans perdre l'adresse IP ni la révocation, absentes de la
-maquette mais indispensables sur le terrain.
+maquette mais indispensables sur le terrain. Enfin, le **07/08/2026**, **chaque départ rejoue le
+tournoi** : l'application classait jusque-là tous les créneaux ensemble — sur quatre départs de cent
+archers, **un** classement de quatre cents, où l'archer du matin était rangé contre celui du soir
+qu'il n'a jamais croisé. Elle en produit désormais **quatre de cent**. Et la distinction se voit à
+l'écran : ce qui se **prévoit** (la suite des phases) se compose **une seule fois** pour le tournoi,
+ce qui se **tire** se pilote **créneau par créneau** — le matin peut être en duels pendant que
+l'après-midi qualifie, ce qui était impossible avant.
 
 ---
 
@@ -480,7 +486,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **102 US livrées** sur `main` (mergées, revues, CI verte) à la date du 06/08/2026. **`SUIVI-US.md`
+- **103 US livrées** sur `main` (mergées, revues, CI verte) à la date du 07/08/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -525,6 +531,22 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   sur la même volée) —, un **écran livré jamais maquetté** (la création du compte administrateur au
   tout premier lancement), et une **erreur de fond sur A07** : « 1/8 » et « 1/4 » y étaient présentés
   comme des phases alors qu'une seule phase porte tout le tableau.
+- **Le départ est devenu la portée sportive (07/08/2026, E01US025)** — une correction de fond, pas un
+  écran. Une décision prise en **juillet 2025** (« un départ rejoue le tournoi ») n'avait été portée
+  que par la logistique : le moteur est resté à la maille tournoi **treize mois**, produisant un
+  classement de 400 là où il en fallait quatre de 100. En la corrigeant, un second défaut est
+  apparu — le déroulé était **recopié** sur chaque créneau, donc libre de diverger en silence : il se
+  définit maintenant **une fois**, et chaque départ n'en porte que l'avancement. Deux décisions
+  d'architecture ([ADR-0075](../docs/adr/0075-le-depart-est-la-portee-sportive.md),
+  [ADR-0076](../docs/adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md)), deux
+  migrations, et un **garde-fou mécanique** qui fait désormais échouer les tests si quelqu'un
+  rebranche une phase sur le tournoi — c'est précisément ce qui manquait à la décision de 2025. Trois
+  limites restent **tracées** plutôt que corrigées à la hâte : palmarès mono-départ (`DETTE-045`,
+  dont la résorption demande un arbitrage du commanditaire), série unique par tournoi pour un archer
+  inscrit sur deux créneaux (`DETTE-046`), et l'absence de vue d'ensemble des N classements.
+  ⚠️ **Cette US a été spécifiée après avoir été écrite** : partie d'un constat de bug, elle n'avait
+  ni fiche ni entrée au tracker. Ses critères d'acceptation décrivent donc le livré et valent comme
+  non-régression, pas comme preuve que le besoin a été compris — c'est à la recette de le confirmer.
 - Jalon **J0 (walking skeleton) : 100 %**. Jalon **J1 (qualification de bout en bout) : terminé
   (46/46)** — supervision, classement, vues publiques, suivi d'archers, déroulé du tour en direct,
   alerte par calcul d'impact, suivi des paiements, complétude du tournoi, recherche d'un archer,

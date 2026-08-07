@@ -173,7 +173,7 @@
 ### E01US022 — Blason FFTA par défaut par catégorie + affichage du blason hérité
 *En tant qu'*organisateur, *je veux* que chaque catégorie ait, par défaut, le blason prévu par la FFTA à 18 m, et que l'écran archer montre le blason **hérité de sa catégorie**, *afin de* ne pas avoir à choisir un blason par archer ni me demander « par défaut, ça vaut quoi ? ».
 - **Contexte** : retour de la démo du 27/07/2026 (« je n'ai pas trouvé comment ajouter un blason sur un archer → ok vu avec la catégorie, du coup par défaut ça vaut quoi ? »). E01US006 (livré) pose déjà le **mécanisme** — le blason est un défaut **porté par la catégorie**, surchargeable par une phase — mais le pré-chargement FFTA (E01US004) ne renseigne **aucune** valeur de défaut, et l'écran archer n'expose pas le blason hérité.
-- **CA — défaut FFTA par catégorie** : le pré-réglage FFTA renseigne le blason par défaut de chaque catégorie selon le [référentiel §3](../docs/referentiel-ffta.md) à 18 m — **Classique** : U11 = 80, U13/U15 = 60, U18/U21/S1/S2/S3 = 40 ; **Poulies** : triples 40 ; **Arc Nu** : U18 = 60, Scratch = 40 — **modifiable** (le référentiel est un template, jamais imposé ; [ADR-0020](../docs/adr/0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md)/[ADR-0022](../docs/adr/0022-hauteur-de-centre-portee-par-la-categorie.md)).
+- **CA — défaut FFTA par catégorie** : le pré-réglage FFTA renseigne le blason par défaut de chaque catégorie selon le [référentiel §3](../docs/referentiel-ffta.md) à 18 m — **Classique** : U11 = 80, U13/U15 = 60, U18/U21/S1/S2/S3 = 40 ; **Poulies** : triples 40 ; **Arc Nu** : U18 = 60, Scratch = 40 — **modifiable** (le référentiel est un template, jamais imposé ; [ADR-0020](../docs/adr/0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md)/[ADR-0022](../docs/adr/0022-hauteur-de-centre-sur-la-categorie.md)).
 - **CA — blason hérité visible** : l'écran archer (`Archers.tsx` / `NouvelArcher.tsx`) affiche, **en lecture**, le blason **hérité de la catégorie** de l'archer (pas de champ blason **par archer** — la surcharge par archer reste **hors périmètre**).
 - **Notes** : s'appuie sur `precharger_ffta` (`application/referentiel_ffta.py`, déjà câblé) + l'association E01US006. La règle FFTA exacte est à **revérifier au référentiel** à l'implémentation. Tests **service** (le défaut posé par le preset) après implémentation ; front vérifié **à l'écran**. US à **surface visible** (écran archer) → doc fonctionnelle + journal d'avancement.
 - **Arbitrage tranché en cours d'US (28/07/2026, périmètre — option « preset blasons + défauts + affichage »)** : le CA supposait qu'il suffisait de **renseigner** le blason par défaut, l'association E01US006 étant déjà là. Mais `blason_id` est une **clé étrangère vers un blason existant du tournoi**, et **aucun blason n'était pré-chargé** (E01US005 n'a livré qu'un CRUD manuel, pas de jeu FFTA ; `precharger_ffta` ne créait que des catégories). Renseigner le défaut supposait donc d'abord de **créer les blasons**. E01US022 **absorbe** ce pré-chargement de blasons : `precharger_ffta` crée d'abord (idempotemment, par nom) les **quatre blasons canoniques** du §3 — « Blason 80 cm », « Blason 60 cm », « Blason 40 cm », « Triple 40 cm » — puis relie chaque catégorie au sien. `taille` étant une **fraction de place** (pas un diamètre), les valeurs retenues sont celles que le placement traite déjà comme canoniques (80 → `1.0`, 60 → `0.5`, 40 et triple → `0.25` ; `capacite` 1) ; le triple 40 se distingue par ses **zones** (10 → 6 + M, pas de 5 → 1, §4.4). Blasons et liens restent modifiables (template, RG-8). Affichage livré sur **`Archers.tsx`** (liste, blason à côté de la catégorie) **et `NouvelArcher.tsx`** (indice « Blason hérité de la catégorie » sous le choix de catégorie). Pas de champ blason **par archer** (hors périmètre, inchangé).
@@ -348,3 +348,75 @@ coup d'œil au lieu de le déduire d'une liste de réglages.
   montrer les braquets ni s'ajuster à l'effectif) · **Jalon** : J3 ·
   **ADR** : [ADR-0063](../docs/adr/0063-brouillon-de-format-invariant-a-l-application.md)
 - **Origine** : cadrage du 31/07/2026, parti du constat que l'écran d'E01US023 ne composait rien.
+
+### E01US025 — Le départ est la portée sportive, le déroulé se définit une fois
+*En tant qu'*organisateur d'un tournoi à plusieurs créneaux, *je veux* que chaque départ rejoue le
+tournoi en entier — son classement, ses tableaux, son avancement — tout en ne composant le déroulé
+qu'**une seule fois**, *afin de* ne pas classer l'archer du matin contre celui du soir qu'il n'a
+jamais affronté, ni régler quatre fois le même barème.
+
+> ⚠️ **Fiche rédigée après coup (07/08/2026), et c'est un défaut.** Cette US a été prise sans fiche
+> et hors tracker : le travail est parti d'un constat de bug, pas d'un CA. La règle 9 du projet dit
+> que le test dérive du CA — ici l'ordre a été inverse, et les CA ci-dessous **décrivent ce qui a
+> été livré**. Ils valent donc comme **référence de non-régression**, pas comme oracle : un
+> malentendu de conception qu'ils entérineraient ne serait rattrapé par rien. Les deux ADR
+> ([ADR-0075](../docs/adr/0075-le-depart-est-la-portee-sportive.md),
+> [ADR-0076](../docs/adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md)) portent, eux,
+> le raisonnement et les options écartées — c'est là qu'il faut lire le *pourquoi*.
+
+- **Contexte** : [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md) avait décidé en
+  juillet 2025 qu'« un départ rejoue le tournoi ». Seule la **logistique** l'a porté (inscriptions,
+  plan de cibles, quotas) ; le **moteur** est resté à la portée tournoi **treize mois**. Sur quatre
+  départs de cent archers, l'application produisait **un** classement de 400. L'ADR n'avait pas de
+  section « Porté dans le code par » : rien ne permettait de voir qu'il n'était pas tenu.
+- **CA — le classement est celui d'un créneau** : un tournoi de N départs produit **N** classements
+  de leurs seuls inscrits. `ServiceClassement.pour_tournoi` disparaît ; s'il faut une vue
+  d'ensemble, elle s'**assemble** à partir des N, elle ne les fusionne pas.
+- **CA — la phase et le barrage pendent au départ** : `Phase` et `BarrageDePlaces` portent
+  `depart_id` et **pas** `tournoi_id`. Les deux à la fois seraient pire qu'un seul mauvais : chaque
+  lecture devrait choisir laquelle honorer, et la première qui se tromperait rétablirait le bug en
+  silence. Pour remonter au tournoi, on joint par le départ.
+- **CA — le déroulé se compose une fois, au tournoi** : ajouter, éditer, réordonner ou supprimer une
+  étape est **une** écriture, pas une écriture en éventail. Arbitrage de l'organisateur (06/08/2026)
+  : « *l'écran phase n'est pas concerné par le départ, ni le format de tournoi ; seul le tournoi
+  concret a besoin de savoir sur combien de départs on le joue* ».
+- **CA — l'avancement appartient au créneau** : démarrer, mettre en pause et terminer s'adressent à
+  un départ. Le créneau du matin peut être **en duels** pendant que celui de l'après-midi
+  **qualifie**. Arbitrage du même jour : « *on doit pouvoir les placer en dehors de l'atelier sur un
+  créneau de départ* ».
+- **CA — la divergence est impossible, pas seulement improbable** : il n'existe **qu'une**
+  définition par étape. Une garde qu'on peut contourner n'est pas un invariant ; c'est le modèle qui
+  doit interdire, pas une vérification. Éprouvé **structurellement** par
+  `backend/tests/test_portee_sportive.py` (la table `phase` ne porte que l'avancement) et non par un
+  contrôle de comportement, qu'un code de lecture réécrit rendrait complaisant.
+- **CA — surface visible** : les écrans se répartissent selon les deux mailles. « Phases » compose
+  le déroulé (sans statut) ; « Suivi du déroulé » pilote un créneau ; le classement se lit par
+  créneau — au choix sur les surfaces interactives, sur le **départ en cours** sur l'écran de salle,
+  où le CA d'E07US004 interdit toute interaction.
+
+**Notes.**
+
+> **Trois révisions du modèle dans la même US**, assumées : portée sportive (migration `0042`), puis
+> séparation déroulé / avancement (`0043`). La seconde est née en **écrivant le code** de la
+> première — `application/portee.py` a dû documenter qu'il ne rendait qu'« une approximation
+> d'affichage, jamais une base de calcul ». Un helper qui doit s'excuser signale un modèle bancal ;
+> le découvrir maintenant coûtait moins cher que dans six mois.
+
+> **Le renommage de port était l'outil de détection**, pas de la cosmétique. `TournoiId` et
+> `DepartId` sont deux alias de `int` : garder `par_tournoi` aurait laissé **157 appels**
+> compilables et faux. Même levier pour `qualification_representative` → `qualification_du_tournoi`.
+> C'est aussi ce que `DETTE-044` propose de fermer pour de bon, par des `NewType`.
+
+> **Renuméroter est devenu une écriture d'ensemble.** Le rang est à la fois la clé de la séquence et
+> la clé de jointure définition ↔ avancement, d'où son unicité — que tout réordonnancement viole
+> transitoirement. Les ports ont gagné un `reordonner` atomique. C'est la contrepartie d'une
+> contrainte qui dit vrai, pas son contournement.
+
+- **Dépend de** : **E05US010** (sources multiples) · **Jalon** : J2 ·
+  **ADR** : [ADR-0075](../docs/adr/0075-le-depart-est-la-portee-sportive.md) ·
+  [ADR-0076](../docs/adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md) —
+  **amende** [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md) et
+  [ADR-0045](../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md)
+- **Origine** : défaut constaté le 06/08/2026 en relisant ADR-0017 — un ADR accepté que le code ne
+  portait pas. C'est ce cas qui a fait ajouter la section « Porté dans le code par » à la règle des
+  ADR (`CLAUDE.md`, § Workflow).
