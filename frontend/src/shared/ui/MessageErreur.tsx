@@ -1,4 +1,4 @@
-import { ErreurApi } from '../api/client'
+import { texteErreur } from './texteErreur'
 
 /**
  * Affichage standard d'une erreur de features — **point de vérité unique** (E00US013, DETTE-004).
@@ -13,7 +13,7 @@ import { ErreurApi } from '../api/client'
  */
 export function MessageErreur({ erreur }: { erreur: Error | null }) {
   if (erreur === null) return null
-  const message = erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
+  const message = texteErreur(erreur)
   return (
     <p className="carte__etat carte__etat--erreur" role="alert">
       {message}

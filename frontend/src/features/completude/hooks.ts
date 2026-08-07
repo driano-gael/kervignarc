@@ -13,7 +13,11 @@ import { getCompletude } from './api'
 
 const INTERVALLE_POLL_MS = 5000
 
-const cleCompletude = (tournoiId: number) => ['completude', tournoiId] as const
+// Exportée depuis E16US003 : la complétude est désormais lue par **trois** endroits hors de cette
+// feature (accueil, frise du cycle de vie, écran Paiements), dont un qui doit l'**invalider** après
+// un marquage de paiement. Un littéral `['completude', id]` recopié dans chaque appelant se serait
+// désynchronisé au premier changement de clé — et l'un d'eux (`FriseCycleDeVie`) l'avait déjà recopié.
+export const cleCompletude = (tournoiId: number) => ['completude', tournoiId] as const
 
 export function useCompletude(tournoiId: number) {
   return useQuery({

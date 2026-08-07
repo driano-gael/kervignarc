@@ -1,5 +1,13 @@
-// Écran de complétude du **déroulé** (E12US005, recentré en E16US003) — « qu'est-ce qui manque pour
-// que le tournoi soit fini ? », côté sportif.
+// Écran « **Prêt à terminer ?** » (E12US005, recentré et renommé en E16US003) — « qu'est-ce qui
+// manque pour que le tournoi soit fini ? », côté sportif.
+//
+// **Pourquoi ce nom.** L'écran s'est d'abord appelé « Complétude », puis « Complétude du déroulé » —
+// abandonné en revue : la sidebar du pilotage porte déjà « Suivi du déroulé » trois entrées plus
+// haut, et ADR-0076 réserve « déroulé » au **plan composé une fois**. Deux libellés voisins pour deux
+// choses différentes, c'est le motif exact du refus d'A10 (ADR-0073). Le nom retenu dit la
+// **question à laquelle l'écran répond** plutôt que son contenu. Le commanditaire vise à terme une
+// famille de « prêt à… » (démarrer / terminer / archiver / exporter) : c'est plus large que cette US
+// et c'est écrit dans `stories/E16` — ne pas l'improviser ici.
 //
 // Pas une barre de progression : une **liste d'états** (`D-17`, CDC UX §8.3). L'écran dit aussi **ce
 // que « terminer » implique** et pose le **contrôle en amont** de cette action (la seule
@@ -15,13 +23,23 @@
 // dupliqué, c'est la destination qui change.
 //
 // Le bouton « Terminer » **reste ici** (arbitrage confirmé le 07/08/2026) : ce qu'il fige est le
-// sportif, les paiements restent modifiables après. Il ne se garde que sur `sportif_complet`. ⚠️ Son
-// message de confirmation, lui, **continue de chiffrer les impayés** (`messageConfirmationTerminer`
+// sportif, les paiements restent modifiables après. ⚠️ Il n'est **jamais bloqué** — ni par le
+// sportif, ni par l'administratif : `D-15` (« l'appli n'empêche pas, elle avertit ; blocage =
+// *terminé* seul ») et le CA d'E12US005 le disent, et `sportif_complet` ne pilote que le **libellé
+// de la question** posée à la confirmation (« Terminer quand même ? » vs « Terminer le tournoi ? »,
+// cf. `presentation.ts`). Une garde dure ici empêcherait de clore un tournoi pour une cible
+// abandonnée — le contraire de `D-15`.
+//
+// ⚠️ Son message de confirmation **continue de chiffrer les impayés** (`messageConfirmationTerminer`
 // lit `hors_sportif`) — ce n'est pas un résidu du mélange : la confirmation est justement le seul
 // moment où les deux mondes doivent se croiser, puisqu'elle annonce ce qui se fige et ce qui reste
-// ouvert. Ne pas « nettoyer » ce lien (`presentation.test.ts` le garde).
+// ouvert. C'est aussi le **contrôle compensatoire** de tout ce recentrage : c'est lui qui fait que
+// retirer l'administratif de cet écran ne perd rien. Ne pas « nettoyer » ce lien — `Completude.test.tsx`
+// garde le **site d'appel** (il ouvre le dialogue et lit les impayés dedans) et `presentation.test.ts`
+// la fonction ; il fallait les deux, la fonction seule laissait le câblage libre de disparaître.
 
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
+import { texteErreur } from '../../shared/ui/texteErreur'
 import type { StatutTournoi } from '../competition/api'
 import { useCompletude, useTerminerDepuisCompletude } from './hooks'
 import { IMPLICATION_TERMINER, messageConfirmationTerminer } from './presentation'
@@ -39,7 +57,7 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
 
   return (
     <section className="carte carte--large">
-      <h2 className="carte__titre">Complétude du déroulé</h2>
+      <h2 className="carte__titre">Prêt à terminer ?</h2>
       <p className="completude__intro">
         Ce qui reste à jouer avant de pouvoir terminer ce tournoi. Les inscriptions et les paiements
         se suivent sur l’axe <strong>Gestion</strong> : ils ne bloquent pas la clôture sportive.
@@ -48,7 +66,7 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
       {completude.isPending && <p className="carte__etat">Chargement…</p>}
       {completude.isError && (
         <p className="carte__etat carte__etat--erreur" role="alert">
-          Complétude injoignable — {completude.error.message}
+          Complétude injoignable — {texteErreur(completude.error)}
         </p>
       )}
 

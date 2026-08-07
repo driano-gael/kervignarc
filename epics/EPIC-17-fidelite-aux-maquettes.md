@@ -85,7 +85,8 @@ navigateur pour les écrans atteignables sans jeu de données.
 
 | Planche | Motif |
 |---|---|
-| A07 · phases, A14 · complétude | 🔴 **« à refaire »**, aucune variante retenue — il n'y a rien à quoi s'aligner. `E16US002` / `E16US003`. |
+| A07 · phases | 🔴 **« à refaire »**, aucune variante retenue — il n'y a rien à quoi s'aligner. `E16US002`. |
+| A14 · complétude | **Tranchée le 07/08/2026 par `E16US003`** : l'**écran livré fait foi**, pas la planche. `maquettes/a14-completude.html` a été redessinée le 05/08 **après** le questionnaire et **sans** tour 2 de validation ; elle range les impayés dans une liste « À voir » à côté des contrôles sportifs — donc elle **re-mélange** ce que le commanditaire a refusé. Écartée au titre de la **réserve 2 d'[ADR-0074](../docs/adr/0074-les-maquettes-sont-la-reference-visuelle.md)** (« un arbitrage explicite du commanditaire l'emporte sur la planche »). Ce n'est **pas** un écart de fidélité à résorber ; sa proposition reste une piste pour `E16US008` (feu vert). |
 | A10 · plan de salle | 🔴 levé par `E16US001` (le refus portait sur le vocabulaire). |
 | A05 · identité | L'écran **n'existe pas** : `E01US016` est ⬜. Ce n'est pas un écart de fidélité, c'est une US non livrée. |
 | A00 · portes, A03 · accueil-statuts, A19 · écran de salle | **Conformes.** A03 adapte bien son contenu au statut (`FriseCycleDeVie`) ; A19 porte emplacement, cadence, QR et pilotage. |

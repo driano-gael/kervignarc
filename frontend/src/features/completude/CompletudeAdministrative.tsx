@@ -19,6 +19,7 @@
 // pas des montants. « 113/120 » répond à « combien de personnes reste-t-il à encaisser », question
 // d'accueil, quand « reste 56 € » répond à « combien manque-t-il en caisse ». Les deux se lisent.
 
+import { texteErreur } from '../../shared/ui/texteErreur'
 import { useCompletude } from './hooks'
 import { SectionCompletude } from './SectionCompletude'
 
@@ -31,13 +32,17 @@ export function CompletudeAdministrative({ tournoiId }: { tournoiId: number }) {
   if (completude.isError) {
     return (
       <p className="carte__etat carte__etat--erreur" role="alert">
-        Complétude administrative injoignable — {completude.error.message}
+        Complétude administrative injoignable — {texteErreur(completude.error)}
       </p>
     )
   }
   if (!completude.data) return null
 
   return (
-    <SectionCompletude titre="Complétude administrative" lignes={completude.data.hors_sportif} />
+    <SectionCompletude
+      titre="Complétude administrative"
+      lignes={completude.data.hors_sportif}
+      niveau={4}
+    />
   )
 }

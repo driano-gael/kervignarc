@@ -130,11 +130,12 @@ sur la somme des inscrits ; et le contrôle d'effectif laissait démarrer un tou
 garni**, et le refus le **nomme**. Enfin, le **07/08/2026 au soir**, l'écran qui répond à « où en est
 mon tournoi ? » a **cessé de mélanger le déroulé et l'argent** : il affichait, l'un sous l'autre, les
 cibles restant à terminer et les archers n'ayant pas réglé, alors qu'au milieu d'une journée de tir
-on pilote un tour. Le sportif reste au pilotage sous le nom « **Complétude du déroulé** », le compte
-des archers à encaisser a rejoint l'écran **Paiements** — même information, calculée une seule fois,
-donc jamais contradictoire. Le bouton « Terminer » ne bouge pas : ce qu'il fige, c'est le sportif, et
-il continue de rappeler les impayés **au moment de confirmer**, seul endroit où les deux mondes
-doivent se croiser.
+on pilote un tour. Le sportif reste au pilotage sur un écran renommé « **Prêt à terminer ?** », le
+compte des archers à encaisser a rejoint l'écran **Paiements** — même information, calculée une seule
+fois, donc jamais contradictoire. Le **tableau de bord d'accueil** a été filtré au passage : lui aussi
+ouvrait l'axe pilotage en mêlant cibles et impayés. Le bouton « Terminer » ne bouge pas : ce qu'il
+fige, c'est le sportif, il n'est **jamais bloqué** par un manque, et il continue de rappeler les
+impayés **au moment de confirmer** — seul endroit où les deux mondes doivent se croiser.
 
 ---
 
@@ -529,8 +530,9 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   domaine. Le reste est spécifié en dix US dans [`stories/E16`](../stories/E16-retours-maquettes.md)
   ([EPIC-16](../epics/EPIC-16-retours-maquettes.md)), et les retours **écartés** y sont consignés avec
   leur raison — aucun questionnaire ne reste sans suite. **Premier écran refusé relevé : A10 (plan de
-  salle)**, par E16US001 — le refus ne portait que sur le **vocabulaire**, désormais arbitré. Restent
-  trois écrans refusés : A07 (phases), A14 (complétude), P03 (classements publics).
+  salle)**, par E16US001 — le refus ne portait que sur le **vocabulaire**, désormais arbitré. **A14
+  (complétude) a été levé le 07/08/2026** par E16US003. Restent **deux** écrans refusés : A07 (phases)
+  et P03 (classements publics).
 - **Les maquettes montrent désormais l'écran entier (05/08/2026)** — **hors US numérotée**, support de
   conception, compte d'US inchangé. Le commanditaire ne voyait *« que des composants de pages »* :
   chaque planche était bornée à 430 px et **aucune ossature n'était dessinée** (ni navigation, ni
@@ -573,7 +575,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   disqualification** (E04US015 — qualif *et* duels), le **cycle de vie d'un départ** (E12US008), le
   **feu vert + lancement d'un tour** (E12US002), le **remboursement d'une inscription payée
   annulée** (E08US005) l'**affichage de la prochaine cible après validation** (E04US018), le **barrage de tir pour les places décisives** (E06US003) et le **palmarès** (E06US004), qui le referme.
-- Dernière US livrée : **E16US001** (le plan de salle parle enfin de la salle que l'organisateur
+- Dernière US livrée : **E16US003** (piloter un tour sans avoir les impayés sous les yeux) — US **à
+  surface visible**, décrite plus haut et dans son
+  [fait marquant daté](2026-08-07-21h29-piloter-un-tour-sans-voir-les-impayes.md).
+- Avant elle, **E16US001** (le plan de salle parle enfin de la salle que l'organisateur
   connaît) — US **à surface visible**. L'écran de plan de salle avait été **refusé** à la relecture
   des maquettes pour un seul mot : le logiciel appelait « pas de tir » une rangée de cibles et
   « poste » la place d'un archer, alors que « poste » désigne déjà les **tablettes**. Le vocabulaire

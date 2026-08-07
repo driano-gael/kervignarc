@@ -409,7 +409,7 @@ function Coquille() {
       // « Du déroulé » depuis E16US003 (A14) : l'écran ne porte plus que le sportif, la complétude
       // administrative étant partie sur l'axe Gestion. Le libellé le dit **dans la sidebar**, là où
       // l'organisateur choisit — sans quoi il continuerait d'y chercher les paiements.
-      libelle: 'Complétude du déroulé',
+      libelle: 'Prêt à terminer ?',
       // « Qu'est-ce qui manque pour finir ? » (E12US005) + contrôle avant de terminer. Le statut
       // pilote l'apparition du bouton « Terminer » (uniquement *en cours*).
       rendu: () => courant && <Completude tournoiId={courant.id} statut={courant.statut} />,
