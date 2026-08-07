@@ -18,11 +18,12 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
-import { modifierPhase, type ConfigPhase, type Phase } from './api'
+import { modifierPhase, type ConfigPhase, type EtapeDeroule } from './api'
 import { FormulairePhase } from './Phases'
 
 vi.mock('./api', () => ({
   getPhases: vi.fn(),
+  getAvancement: vi.fn(),
   ajouterPhase: vi.fn(),
   modifierPhase: vi.fn(),
   reordonnerPhases: vi.fn(),
@@ -30,19 +31,20 @@ vi.mock('./api', () => ({
   changerStatutPhase: vi.fn(),
 }))
 
-const PHASE: Phase = {
+// Une **étape du déroulé** : cet écran ne compose plus que la définition (ADR-0076). Elle n'a donc
+// ni `statut` ni `depart_id` — c'est précisément ce que la séparation garantit.
+const PHASE: EtapeDeroule = {
   id: 7,
   tournoi_id: 1,
   ordre: 2,
   type: 'elimination_directe',
-  statut: 'a_venir',
   sources: [],
   effectif: 16,
   barrage_jusqu_au: null,
   profondeur: { nom: 'un_vers_n', jusqu_au: null },
 }
 
-function poser(phase: Phase = PHASE) {
+function poser(phase: EtapeDeroule = PHASE) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   function Enveloppe({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={client}>{children}</QueryClientProvider>

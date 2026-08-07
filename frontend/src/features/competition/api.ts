@@ -241,10 +241,15 @@ export function placerArcher(archerId: number, cible: number): Promise<Archer> {
 // Le classement dérive des séries de saisie (E04US002) depuis E06US001 ; l'ancienne écriture de
 // score isolé (`saisirScore` du walking skeleton) n'y contribuait plus et a été retirée du front.
 
+// ⚠️ **Le classement est celui d'un créneau, plus du tournoi** (E01US025, ADR-0075). La route
+// pendait au tournoi et fusionnait tous les départs : 4 créneaux de 100 archers rendaient un
+// classement de 400, où l'archer du matin était rangé contre celui du soir qu'il n'a jamais
+// affronté. Un départ rejoue le tournoi en entier, donc il a **son** classement.
+//
 // `categorieId` optionnel : filtre l'affichage à une catégorie. Les rangs (scratch **et** catégorie)
-// restent ceux du classement complet — filtrer ne réordonne pas le reste (E06US001).
-export function getClassement(tournoiId: number, categorieId?: number): Promise<Classement> {
+// restent ceux du classement complet **du départ** — filtrer ne réordonne pas le reste (E06US001).
+export function getClassement(departId: number, categorieId?: number): Promise<Classement> {
   const requete =
     categorieId === undefined ? '' : `?categorie_id=${encodeURIComponent(categorieId)}`
-  return fetchJson<Classement>(`/api/v1/tournois/${tournoiId}/classement${requete}`)
+  return fetchJson<Classement>(`/api/v1/departs/${departId}/classement${requete}`)
 }

@@ -13,34 +13,41 @@ import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { LIBELLE_STATUT, type AvancementBloc } from '../../shared/schema-braquets/modele'
 import type { SuiviDeroule as SuiviDerouleData } from './api'
 import { useSuiviDeroule } from './hooks'
+import { PilotageCreneau } from './PilotageCreneau'
 
 export function SuiviDeroule({ tournoiId }: { tournoiId: number }) {
   const suivi = useSuiviDeroule(tournoiId)
 
   return (
-    <section className="carte">
-      <h2>Suivi du déroulé</h2>
-      <p className="carte__aide">
-        Le déroulé composé pour ce tournoi, rempli par la réalité : phase terminée, en cours ou à
-        venir, tour en cours, et duels joués sur duels attendus. C’est le même schéma que l’écran de
-        salle affiche au public.
-      </p>
-      <MessageErreur erreur={suivi.error} />
-      {suivi.data === undefined ? (
-        <p className="carte__etat">Chargement du déroulé…</p>
-      ) : (
-        <>
-          <EnTeteSuivi suivi={suivi.data} />
-          {/* Surface **pilotage** : taille fixe (on lit les chiffres, on fait défiler), habillage
-              outil (`D-27`), et le calque d'avancement superposé. */}
-          <SchemaBraquets
-            blocs={suivi.data.blocs}
-            avancement={suivi.data.avancement}
-            messageVide="Aucune phase n’est encore appliquée à ce tournoi : appliquez un format depuis « Assemblage » pour voir le déroulé se dessiner."
-          />
-        </>
-      )}
-    </section>
+    <>
+      <section className="carte">
+        <h2>Suivi du déroulé</h2>
+        <p className="carte__aide">
+          Le déroulé composé pour ce tournoi, rempli par la réalité : phase terminée, en cours ou à
+          venir, tour en cours, et duels joués sur duels attendus. C’est le même schéma que l’écran
+          de salle affiche au public.
+        </p>
+        <MessageErreur erreur={suivi.error} />
+        {suivi.data === undefined ? (
+          <p className="carte__etat">Chargement du déroulé…</p>
+        ) : (
+          <>
+            <EnTeteSuivi suivi={suivi.data} />
+            {/* Surface **pilotage** : taille fixe (on lit les chiffres, on fait défiler), habillage
+                outil (`D-27`), et le calque d'avancement superposé. */}
+            <SchemaBraquets
+              blocs={suivi.data.blocs}
+              avancement={suivi.data.avancement}
+              messageVide="Aucune phase n’est encore appliquée à ce tournoi : appliquez un format depuis « Assemblage » pour voir le déroulé se dessiner."
+            />
+          </>
+        )}
+      </section>
+      {/* La **commande**, sous la vue d'ensemble (ADR-0076). Le schéma dit où en est le tournoi ; le
+          cycle de vie, lui, s'exerce dans un créneau — c'est le seul endroit où il a un
+          destinataire. Le rapprochement est délibéré : on agit là où l'on vient de lire. */}
+      <PilotageCreneau tournoiId={tournoiId} />
+    </>
   )
 }
 

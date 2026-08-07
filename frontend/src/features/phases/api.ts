@@ -29,12 +29,17 @@ export interface SourcePhase {
   issue: IssueTour | null
 }
 
-export interface Phase {
+// ⚠️ **Une étape définit, une phase avance** (E01US025, ADR-0076). Le déroulé se compose **une
+// fois** au tournoi ; chaque créneau le rejoue en portant son propre avancement. Les deux formes se
+// ressemblent parce que l'une décrit ce que l'autre joue — les confondre reviendrait à rétablir les
+// N copies libres de diverger que l'ADR vient de supprimer.
+//
+// L'**étape** : la définition, portée par le tournoi. Aucun statut, aucun créneau.
+export interface EtapeDeroule {
   id: number
   tournoi_id: number
   ordre: number
   type: TypePhase
-  statut: StatutPhase
   // [] = première de la séquence (alimentée par les inscriptions).
   sources: SourcePhase[]
   // null = effectif non déclaré (borne les rangs prélevables et le contrôle « effectif incompatible »).
@@ -45,6 +50,15 @@ export interface Phase {
   // Jusqu'où cette phase départage (E06US006, ADR-0070). `null` = **non réglée**, donc le preset de
   // son type — le podium pour un tableau. Pas « 1→N » : l'absence rejoue ce qui se jouait hier.
   profondeur: Profondeur | null
+}
+
+// La **phase** : l'avancement de cette étape dans un créneau. Elle porte la définition **assemblée**
+// par le serveur (le repository la joint depuis l'étape de même rang), plus ce qui n'appartient
+// qu'au créneau : `depart_id`, `statut`, et son propre `id` — celui auquel s'adressent les
+// transitions de cycle de vie.
+export interface Phase extends Omit<EtapeDeroule, 'tournoi_id'> {
+  depart_id: number
+  statut: StatutPhase
 }
 
 // Config de séquence envoyée au serveur (ajout et édition totale partagent la même forme).
@@ -62,12 +76,14 @@ export interface ConfigPhase {
   profondeur?: Profondeur | null
 }
 
-export function getPhases(tournoiId: number): Promise<Phase[]> {
-  return fetchJson<Phase[]>(`/api/v1/tournois/${tournoiId}/phases`)
+// --- Composition : le déroulé du tournoi (atelier) ----------------------------------------------
+
+export function getPhases(tournoiId: number): Promise<EtapeDeroule[]> {
+  return fetchJson<EtapeDeroule[]>(`/api/v1/tournois/${tournoiId}/phases`)
 }
 
-export function ajouterPhase(tournoiId: number, config: ConfigPhase): Promise<Phase> {
-  return fetchJson<Phase>(`/api/v1/tournois/${tournoiId}/phases`, {
+export function ajouterPhase(tournoiId: number, config: ConfigPhase): Promise<EtapeDeroule> {
+  return fetchJson<EtapeDeroule>(`/api/v1/tournois/${tournoiId}/phases`, {
     method: 'POST',
     body: JSON.stringify(config),
   })
@@ -75,32 +91,40 @@ export function ajouterPhase(tournoiId: number, config: ConfigPhase): Promise<Ph
 
 export function modifierPhase(
   tournoiId: number,
-  phaseId: number,
+  etapeId: number,
   config: ConfigPhase,
-): Promise<Phase> {
-  return fetchJson<Phase>(`/api/v1/tournois/${tournoiId}/phases/${phaseId}`, {
+): Promise<EtapeDeroule> {
+  return fetchJson<EtapeDeroule>(`/api/v1/tournois/${tournoiId}/phases/${etapeId}`, {
     method: 'PUT',
     body: JSON.stringify(config),
   })
 }
 
-export function reordonnerPhases(tournoiId: number, phases: number[]): Promise<Phase[]> {
-  return fetchJson<Phase[]>(`/api/v1/tournois/${tournoiId}/phases/reordonner`, {
+export function reordonnerPhases(tournoiId: number, phases: number[]): Promise<EtapeDeroule[]> {
+  return fetchJson<EtapeDeroule[]>(`/api/v1/tournois/${tournoiId}/phases/reordonner`, {
     method: 'POST',
     body: JSON.stringify({ phases }),
   })
 }
 
-export function supprimerPhase(tournoiId: number, phaseId: number): Promise<void> {
-  return fetchJson<void>(`/api/v1/tournois/${tournoiId}/phases/${phaseId}`, { method: 'DELETE' })
+export function supprimerPhase(tournoiId: number, etapeId: number): Promise<void> {
+  return fetchJson<void>(`/api/v1/tournois/${tournoiId}/phases/${etapeId}`, { method: 'DELETE' })
+}
+
+// --- Avancement : ce qu'un créneau a joué (pilotage) --------------------------------------------
+
+// Les phases d'un créneau, ordonnées, définition assemblée et statut à jour. C'est **ici** que
+// vivent les identifiants auxquels s'adressent les transitions : le déroulé du tournoi n'en a pas.
+export function getAvancement(departId: number): Promise<Phase[]> {
+  return fetchJson<Phase[]>(`/api/v1/departs/${departId}/phases`)
 }
 
 export function changerStatutPhase(
-  tournoiId: number,
+  departId: number,
   phaseId: number,
   transition: TransitionPhase,
 ): Promise<Phase> {
-  return fetchJson<Phase>(`/api/v1/tournois/${tournoiId}/phases/${phaseId}/statut`, {
+  return fetchJson<Phase>(`/api/v1/departs/${departId}/phases/${phaseId}/statut`, {
     method: 'POST',
     body: JSON.stringify({ transition }),
   })
