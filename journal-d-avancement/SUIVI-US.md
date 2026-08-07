@@ -12,7 +12,16 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 07/08/2026, 18 h 46** · **103 US livrées** · dernière : `E01US025`
+**Dernière mise à jour : 07/08/2026, 21 h 29** · **104 US livrées** · dernière : `E16US003`
+*(**la complétude du déroulé ne parle plus d'argent** — refus A14 levé. Les deux questions ouvertes
+de la story ont été reposées et **confirment le CA** : le refus portait sur le mélange **à l'écran**,
+pas sur le découpage du domaine, et « Terminer » ne regarde bien que le sportif. Front seul : le
+serveur séparait déjà `sportif` / `hors_sportif`, seule la **destination** change — le sportif reste
+au pilotage sous « Complétude du déroulé », l'administratif part en tête de l'écran **Paiements**
+(axe gestion). **Pas de destination neuve** : `hors_sportif` ne porte qu'une ligne, et `paiements`
+est déjà une destination de l'axe. La planche A14 redessinée du 05/08 est **écartée** — non validée,
+et elle mélange encore. La confirmation de « Terminer » **continue** de chiffrer les impayés : c'est
+le seul point de croisement légitime)*. Précédente : `E01US025`
 *(**le départ est la portée sportive** — une décision de juillet 2025 que seule la logistique avait
 portée : le moteur classait les 4 créneaux ensemble, soit un classement de 400 au lieu de quatre de
 100. Corrigé, et la correction a révélé un second défaut — le déroulé **recopié** par créneau, libre
@@ -62,7 +71,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | Ordre | US | Ce qu'elle lève |
 > |---|---|---|
 > | ~~1~~ ✅ | ~~`E16US001`~~ | **Livrée le 05/08/2026** — **plan de salle** (A10). Le refus ne tenait qu'à un mot : arbitrage rendu (« pas de tir » = groupement de cibles, « **couloir de tir** » = place d'un archer, « poste » = tablette), appliqué partout où l'utilisateur lit, et l'écran **montre** désormais, cible par cible, les couloirs occupables (le maillon *blasons* reste expliqué en toutes lettres : le gabarit ne les connaît pas). Renommage `position` → `couloir` dans le code/l'API/la base **différé** ([DETTE-042](../docs/dette.md)). |
-> | 2 | `E16US003` | **Complétude** (A14) — séparer le déroulé de l'administratif ; le serveur rend déjà les deux listes, c'est un déplacement d'ossature. ⚠️ Deux questions à reposer avant de déplacer quoi que ce soit (cf. story). |
+> | ~~2~~ ✅ | ~~`E16US003`~~ | **Livrée le 07/08/2026** — **complétude** (A14). Les deux questions ouvertes ont été reposées et **confirment le CA** : le refus visait le mélange **à l'écran**, pas le découpage du domaine ; « Terminer » ne regarde que le sportif. Front seul, aucun changement de domaine ni d'API. Le sportif reste au pilotage (« **Complétude du déroulé** »), l'administratif part **en tête de l'écran Paiements** — pas sur une destination neuve : `hors_sportif` ne porte qu'une ligne et `paiements` est déjà une destination de l'axe gestion. La planche A14 redessinée du 05/08 est **écartée** (non validée, et elle mélange encore). |
 > | 3 | `E16US004` | **Public multi-archers** (P03 🔴 + P01/P02/P05) — le socle de suivi existe depuis E07US006, la lecture n'en tire pas parti. |
 > | 4 | `E16US002` | **Phases** (A07) — le plus lourd : touche le domaine et l'API, probablement un ADR. À cadrer contre ADR-0060 et ADR-0062. |
 >
@@ -84,12 +93,18 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > déroulé ». Une partie du refus A07 (« 1/8 et 1/4 présentés comme des phases ») porte sur un écran
 > qui n'existe plus sous cette forme.
 
-> **🎯 Prochaine : `E16US003`** — séparer la complétude du déroulé de la complétude administrative.
-> ⚠️ Comme E16US001, elle **commence par une question** : la story porte deux points restés sans
-> réponse (« la séparation sportif / hors-sportif correspond-elle à ta façon de clore un tournoi ? »,
-> « "Terminer" fige le sportif et laisse les paiements ouverts : est-ce le bon découpage ? »). Le
-> refus A14 porte sur le **mélange à l'écran**, pas forcément sur le découpage du domaine — le
-> confirmer avant de déplacer une destination d'axe.
+> **🎯 Prochaine : `E16US004`** — le public suit **plusieurs** archers de bout en bout (P03 🔴, plus
+> P01 / P02 / P05). Le socle existe depuis E07US006 (`sessionSuivisStore`) : c'est la **lecture** qui
+> n'en tire pas parti. ⚠️ Trois points à ne pas manquer au cadrage : (a) elle est **redécoupable par
+> écran** — classement, tableaux, récapitulatif de journée, recherche — et probablement trop large
+> pour une seule branche ; (b) elle rouvre des écrans dont la maquette dit encore « position » →
+> **corriger en « couloir de tir » dans le même diff** ([ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md)),
+> sans quoi on rejoue le refus d'A10 ailleurs ; (c) vérifier si l'API rend **le détail des flèches
+> d'un tiers** en lecture publique (P03 : *« oui »*) — si non, l'US n'est pas front seul.
+>
+> ⚠️ La planche **P03 a été redessinée le 05/08** et **n'a pas été validée** (le tour 2 n'a pas eu
+> lieu) — même piège que sur A14, où elle a été écartée après vérification. La lire, mais faire foi
+> sur le **questionnaire du tour 1**.
 >
 > Puis, sans ordre imposé : `E16US005` (placement), `E16US006` (origine FFTA + logo club),
 > `E16US008` (feu vert), `E16US009` (écran de salle), `E16US010` (recherche & alertes),

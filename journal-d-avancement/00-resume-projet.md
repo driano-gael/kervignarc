@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 5 août 2026
+# Résumé du projet — où on en est au 7 août 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -127,7 +127,14 @@ répondent à « où est-ce que je tire ensuite ? » envoyaient les archers de l
 tableau du **matin** ; le suivi du déroulé se dessinait **en double** et dimensionnait ses tableaux
 sur la somme des inscrits ; et le contrôle d'effectif laissait démarrer un tournoi de deux créneaux
 à 40 et 8 inscrits, pour échouer en salle l'après-midi. Il porte désormais sur le créneau **le moins
-garni**, et le refus le **nomme**.
+garni**, et le refus le **nomme**. Enfin, le **07/08/2026 au soir**, l'écran qui répond à « où en est
+mon tournoi ? » a **cessé de mélanger le déroulé et l'argent** : il affichait, l'un sous l'autre, les
+cibles restant à terminer et les archers n'ayant pas réglé, alors qu'au milieu d'une journée de tir
+on pilote un tour. Le sportif reste au pilotage sous le nom « **Complétude du déroulé** », le compte
+des archers à encaisser a rejoint l'écran **Paiements** — même information, calculée une seule fois,
+donc jamais contradictoire. Le bouton « Terminer » ne bouge pas : ce qu'il fige, c'est le sportif, et
+il continue de rappeler les impayés **au moment de confirmer**, seul endroit où les deux mondes
+doivent se croiser.
 
 ---
 
