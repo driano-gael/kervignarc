@@ -563,3 +563,77 @@ format ; le logiciel doit connaître la fourchette basse et avertir l'admin avan
   avertissement sur le même défaut le ferait remonter deux fois, le piège déjà documenté dans
   `_anomalies_effectif_declare`.
 - **Dépend de** : E05US020 · **Jalon** : J3
+
+---
+
+### E05US022 — Ancrer la séquence sur l'identité de l'étape
+*En tant que* développeur, *je veux* qu'une phase et une source désignent leur cible par son
+**identité** et non par son rang, *afin qu'*un réordonnancement ne puisse plus faire exécuter à un
+créneau le barème d'une autre étape.
+
+Origine : `DETTE-026`, dont le seuil de résorption (règle 16 — « au 3ᵉ écrivain de la séquence ») a
+été **dépassé** par E01US025 : il y en a quatre. Arbitrage du commanditaire du 07/08/2026 —
+« prévois ADR et US pour le remède ». Décision : [ADR-0078](../docs/adr/0078-la-sequence-s-ancre-sur-l-identite-de-l-etape.md).
+
+- **CA — la phase pend à son étape** : `phase.etape_id` (clé étrangère vers `deroule_etape`)
+  remplace l'appariement par rang. Le rang reste porté par la **seule** étape, et ne décrit plus que
+  l'ordre d'affichage.
+- **CA — une source désigne une identité** : dans une **édition concrète**, `SourcePhase` cite
+  `etape_source_id`. Migration des `config` JSON existantes, la résolution `ordre → identité` se
+  faisant **avant** que les rangs perdent leur rôle.
+- **CA — le format garde l'ancrage par ordre** : `FormatTournoi` est inchangé. Ses `ModelePhase`
+  n'ont pas d'identité par construction ([ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5) ;
+  l'ordre y est **correct**, pas dégradé. La conversion se fait à `appliquer`, seul point où les
+  deux mondes se touchent.
+- **CA — les deux `reordonner` de port disparaissent** : renuméroter ne touche plus qu'une colonne
+  sans signification relationnelle, donc plus d'état transitoire à doublon et plus d'écriture
+  d'ensemble à orchestrer.
+- **CA — non-régression** : l'oracle 120 et l'oracle multi-départ restent verts, et le garde-fou de
+  portée (`test_portee_sportive.py`) aussi. Le comportement observable ne change **pas** : c'est un
+  remède structurel, pas une évolution fonctionnelle.
+- **Notes — le contre-argument est écarté explicitement, pas ignoré.** `models.py` objecte qu'« une
+  FK dupliquerait l'information tout en pouvant en diverger ». L'ADR répond : le remède ne duplique
+  pas, il **sépare** deux rôles que le rang cumulait depuis ADR-0076 (ordre d'affichage **et**
+  appariement définition ↔ avancement) — et c'est ce cumul qui produisait la divergence.
+- **Notes — l'asymétrie est permanente.** Deux ancrages coexisteront (identité côté édition, ordre
+  côté bibliothèque). Ils doivent porter des **noms différents** dans le code, jamais un champ
+  polymorphe : un lecteur doit savoir lequel il tient sans relire l'ADR.
+- **Résorbe** : `DETTE-026` ; **allège** `DETTE-025` (moins d'écritures à réunir, et celles qui
+  restent ne peuvent plus produire d'appariement faux). **Dépend de** : E01US025 · **Jalon** : J3
+
+---
+
+### E05US023 — Rendre jouables poules, système suisse, colline et Big Shoot Off
+*En tant qu'*organisateur, *je veux* **composer** ces formats dans le déroulé à l'atelier **et** les
+faire jouer le jour J, *afin de* couvrir les compétitions que le club organise réellement et pas
+seulement l'élimination directe.
+
+Origine : `DETTE-028` — les six moteurs et les trois politiques livrés par E05US015 n'ont **aucun
+appelant de production** : aucun service ne les instancie, aucune `config.policies` ne sait porter
+leurs paramètres, et `ServiceSaisieDuels._decor` refuse tout type autre que l'élimination directe.
+**Arbitrage du commanditaire (07/08/2026)** : « oui je veux ces formats jouables, **au plus tôt dans
+le backlog**, et aussi et surtout pouvoir les **générer dans le déroulé du format de tournoi dans
+l'atelier** ».
+
+⚠️ **Cette US est une tranche à découper** (maille INVEST) : quatre moteurs × deux surfaces
+(composition et exécution) ne tient pas dans une branche. Le découpage se fera au cadrage ; ce qui
+suit est le **périmètre visé**, pas une seule livraison.
+
+- **CA — composables à l'atelier** *(la moitié que le commanditaire souligne)* : l'écran « Composer
+  un déroulé » propose ces types **avec leurs paramètres** — `nb_poules`, `nb_manches`,
+  `portee_de_defi`, restants… — et le schéma à braquets les **dessine** comme il dessine les
+  tableaux. Aujourd'hui le type est sélectionnable mais ses réglages n'ont nulle part où aller.
+- **CA — `config.policies` sait les porter** : les paramètres entrent dans la forme nommée
+  d'[ADR-0046](../docs/adr/0046-config-policies-politiques-nommees-parametrees.md), sans migration
+  de schéma — c'est exactement ce que le `config` JSON permet.
+- **CA — exécutables le jour J** : le service de saisie sait monter le décor de ces phases, le
+  classement sait en lire l'issue, et le routage sait dire « où je tire ensuite ».
+- **CA — le barrage y retourne son verdict** : en poule et en Big Shoot Off, le barrage est
+  aujourd'hui pleinement opérationnel mais son verdict **ne retourne dans aucun classement**, faute
+  de classement à alimenter. Cette US ferme la boucle.
+- **Notes — l'écart est déjà affiché, pas caché** : E01US024 signale à l'atelier qu'un type composé
+  n'est pas exécutable. Ce signal doit **disparaître** type par type, au fur et à mesure — et non
+  d'un coup, sans quoi il mentirait pour ceux qui restent.
+- **Notes — priorité** : « au plus tôt dans le backlog » (commanditaire, 07/08/2026). À positionner
+  au cadrage du prochain jalon.
+- **Résorbe** : `DETTE-028` (par tranches). **Dépend de** : E05US015 · **Jalon** : J3

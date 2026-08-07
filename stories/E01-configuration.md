@@ -420,3 +420,48 @@ jamais affronté, ni régler quatre fois le même barème.
 - **Origine** : défaut constaté le 06/08/2026 en relisant ADR-0017 — un ADR accepté que le code ne
   portait pas. C'est ce cas qui a fait ajouter la section « Porté dans le code par » à la règle des
   ADR (`CLAUDE.md`, § Workflow).
+
+---
+
+### E01US026 — Supprimer un tournoi : signaler ce qui partira, puis confirmer
+*En tant qu'*administrateur, *je veux* pouvoir supprimer un tournoi peuplé après avoir vu **ce que
+cela détruit**, *afin de* nettoyer une édition d'essai sans me retrouver devant une erreur serveur
+ni détruire des données par surprise.
+
+Origine : `DETTE-001`, la plus ancienne du registre (E01US002), aggravée à **chaque** table ajoutée
+à la descendance du tournoi. Supprimer un tournoi non vide lève une `IntegrityError` — donc un
+**500**, ni un refus qu'on comprend ni une suppression qui aboutit. E02US010 a rendu le cas
+**systématique** (passer à `prêt` exige un départ, donc plus aucun tournoi non-brouillon n'est
+vide) : `test_supprimer_un_termine` est en `xfail` depuis.
+
+**Arbitrage du commanditaire (07/08/2026)** : « faire l'équivalent d'ADR-0016 — **faire
+confirmer** ». Décision : [ADR-0077](../docs/adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md).
+
+- **CA — un tournoi vide se supprime sans rien demander.** La confirmation doit rester rare pour
+  rester lue.
+- **CA — un tournoi peuplé est signalé (409) avec un décompte chiffré** de ce qui partira : archers,
+  inscriptions, scores, séries, duels, forfaits, barrages, remboursements. Le message **nomme les
+  natures et leurs nombres** — « une alerte qui ne chiffre pas son impact est un clic de plus, pas
+  une protection » (`D-16`).
+- **CA — la confirmation est explicite**, puis la suppression s'exécute **en une transaction**.
+- **CA — les refus d'état ne deviennent pas confirmables** : `TournoiEnCoursNonSupprimable` reste un
+  refus **définitif**. Un tournoi qu'on est en train de tirer ne se supprime pas, quelle que soit la
+  confirmation — ce n'est pas la même question.
+- **CA — aucun `ON DELETE CASCADE` en base.** La confirmation vit dans le service ; une cascade SQL
+  armerait une purge **silencieuse** sur tout autre chemin (import, script, futur endpoint). C'est
+  l'option qu'[ADR-0016](../docs/adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md) avait
+  déjà écartée sur `score`, pour cette raison exacte.
+- **CA — le `xfail` tombe** : `test_supprimer_un_termine` redevient un test vert.
+- **Notes — l'ordre de la cascade n'est pas commutatif**, et s'y tromper redonne l'`IntegrityError`
+  qu'on corrige : les `inscription` avant les archers *et* avant les départs (deux FK) ; les `phase`
+  avant les départs (elles y pendent depuis ADR-0075 — ce **n'est plus** un enfant direct du
+  tournoi) ; la `categorie` avant son `blason`, l'`archer` avant sa `categorie`.
+- **Notes — réutiliser les trois adapters existants** qui connaissent déjà la descendance d'`archer`
+  (`supprimer`, `fusionner`, cascades partielles d'E02US003/E02US009) plutôt que d'en écrire un
+  quatrième : une table ajoutée demain serait sinon oubliée dans l'un des quatre.
+- **Notes — `remboursement` est à trancher dans l'US** : effacer une somme encaissée sans ouvrir de
+  remboursement est précisément ce que décrit `DETTE-018`. Le décompte doit le **dire** ; reste à
+  décider si la suppression ouvre des remboursements ou les efface avec le reste.
+- **Résorbe** : `DETTE-001`. **Dépend de** : — · **Jalon** : J3 ·
+  **ADR** : [ADR-0077](../docs/adr/0077-supprimer-un-tournoi-signaler-puis-confirmer.md) —
+  **étend** [ADR-0016](../docs/adr/0016-supprimer-un-archer-engage-plutot-que-le-refuser.md)

@@ -154,6 +154,41 @@
 
 ---
 
+### E06US009 — Un palmarès par départ, juxtaposés
+*En tant qu'*organisateur, *je veux* un palmarès **par créneau**, présentés côte à côte, *afin de*
+remettre les récompenses de chaque départ sans que l'application invente un classement d'ensemble
+que le règlement ne prévoit pas.
+
+Origine : `DETTE-045`, ouverte par E01US025 en portant le classement au départ
+([ADR-0075](../docs/adr/0075-le-depart-est-la-portee-sportive.md)). Le palmarès et le rejeu de
+simulation étaient restés à la maille tournoi : ils lisent le **premier** créneau et ignorent les
+autres, silencieusement — rien à l'écran ne dit que la vue est partielle.
+
+**Arbitrage du commanditaire (07/08/2026)** : « **juxtaposé — 4 départs = 4 podiums** ». La question
+posée était « additionne-t-on les podiums ou les juxtapose-t-on ? » ; elle est tranchée, et il n'y a
+donc **aucune** agrégation inter-départs à écrire.
+
+- **CA — un palmarès par créneau** : le palmarès rend **N podiums**, un par départ du tournoi, chacun
+  calculé sur le classement de **son** créneau. Un tournoi mono-départ rend un seul podium — le
+  rendu d'aujourd'hui, inchangé.
+- **CA — juxtaposition, pas addition** : l'application ne produit **aucun** classement « du
+  tournoi » toutes catégories et tous départs confondus. Deux archers de créneaux différents ne sont
+  jamais comparés. *(C'est l'arbitrage : le tournoi est un contenant, le départ la portée sportive.)*
+- **CA — chaque podium est nommé** : le créneau est identifié par son libellé usuel (« Départ 2 —
+  14:00 »), le **même** partout dans le produit. Un podium anonyme dans une pile de quatre ne se
+  distribue pas.
+- **CA — la simulation suit** : le rejeu de simulation cesse de ne voir que le premier départ.
+- **Notes — ce n'est pas qu'un changement d'affichage.** `_premier_depart` disparaît de
+  `application/palmares.py` : tant qu'il existe, la vue reste juste par accident sur les tournois
+  mono-créneau et fausse partout ailleurs. Les marqueurs `# DETTE-045` posés dans `palmares.py`,
+  `simulation.py` et `simulation_format.py` désignent les sites exacts.
+- **Notes — exports** : tout export du palmarès (EPIC-09) hérite de la juxtaposition. Un fichier par
+  départ ou un fichier à N sections est un choix de **format d'export**, pas de classement — à
+  trancher dans l'US d'export, pas ici.
+- **Résorbe** : `DETTE-045`. **Dépend de** : E01US025 · **Jalon** : J3
+
+---
+
 ## Correspondance ancien → nouveau (maille du 17/07/2026)
 
 | Ancienne US | Titre d'origine | Devient |
