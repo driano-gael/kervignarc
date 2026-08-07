@@ -25,9 +25,9 @@
 // Le bouton « Terminer » **reste ici** (arbitrage confirmé le 07/08/2026) : ce qu'il fige est le
 // sportif, les paiements restent modifiables après. ⚠️ Il n'est **jamais bloqué** — ni par le
 // sportif, ni par l'administratif : `D-15` (« l'appli n'empêche pas, elle avertit ; blocage =
-// *terminé* seul ») et le CA d'E12US005 le disent, et `sportif_complet` ne pilote que le **libellé
-// de la question** posée à la confirmation (« Terminer quand même ? » vs « Terminer le tournoi ? »,
-// cf. `presentation.ts`). Une garde dure ici empêcherait de clore un tournoi pour une cible
+// *terminé* seul ») et le CA d'E12US005 le disent. `sportif_complet` ne **garde** rien : il choisit
+// le **libellé de la question** posée à la confirmation (« Terminer quand même ? » vs « Terminer le
+// tournoi ? », cf. `presentation.ts`) et la mention « complet »/« incomplet » de la section. Une garde dure ici empêcherait de clore un tournoi pour une cible
 // abandonnée — le contraire de `D-15`.
 //
 // ⚠️ Son message de confirmation **continue de chiffrer les impayés** (`messageConfirmationTerminer`
@@ -81,34 +81,44 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
           {/* Ce que « terminer » implique (`D-17`) : source unique `IMPLICATION_TERMINER`, partagée
               avec le message de confirmation — les deux ne peuvent plus diverger. */}
           <p className="completude__implication">{IMPLICATION_TERMINER}</p>
-
-          {statut === 'en_cours' && (
-            <div className="completude__actions">
-              <BoutonConfirme
-                libelle="Terminer le tournoi"
-                className="bouton--danger"
-                disabled={terminer.isPending || !completude.data}
-                enCours={terminer.isPending}
-                titre="Terminer ce tournoi ?"
-                message="Les résultats sportifs sont figés. Les paiements, eux, restent ouverts."
-                detail={completude.data ? messageConfirmationTerminer(completude.data) : null}
-                libelleConfirmer="Terminer"
-                ton="danger"
-                onConfirmer={() => terminer.mutate()}
-              />
-              {terminer.isError && (
-                <span className="carte__etat--erreur" role="alert">
-                  {terminer.error.message}
-                </span>
-              )}
-            </div>
-          )}
-          {statut === 'termine' && (
-            <p className="carte__etat">
-              Ce tournoi est <strong>terminé</strong> : le sportif est figé.
-            </p>
-          )}
         </>
+      )}
+
+      {/* ⚠️ Les actions sont **hors** de la garde `completude.data`. Elles y étaient, et c'était une
+          contradiction avec `D-15` relevée en revue : si la lecture de la complétude échouait (LAN
+          coupé à l'ouverture de l'écran), le bouton « Terminer » **disparaissait** — l'appli
+          empêchait, au lieu d'avertir. On dégrade comme le fait déjà `FriseCycleDeVie` (`P-3`) : on
+          dit qu'on n'a pas pu vérifier ce qui reste, et on laisse passer. Le manque d'information
+          ne doit jamais verrouiller la seule action irréversible du produit. */}
+      {statut === 'en_cours' && !completude.isPending && (
+        <div className="completude__actions">
+          <BoutonConfirme
+            libelle="Terminer le tournoi"
+            className="bouton--danger"
+            disabled={terminer.isPending}
+            enCours={terminer.isPending}
+            titre="Terminer ce tournoi ?"
+            message="Les résultats sportifs sont figés. Les paiements, eux, restent ouverts."
+            detail={
+              completude.data
+                ? messageConfirmationTerminer(completude.data)
+                : 'Impossible de vérifier ce qui reste (complétude injoignable).'
+            }
+            libelleConfirmer="Terminer"
+            ton="danger"
+            onConfirmer={() => terminer.mutate()}
+          />
+          {terminer.isError && (
+            <span className="carte__etat--erreur" role="alert">
+              {texteErreur(terminer.error)}
+            </span>
+          )}
+        </div>
+      )}
+      {statut === 'termine' && (
+        <p className="carte__etat">
+          Ce tournoi est <strong>terminé</strong> : le sportif est figé.
+        </p>
       )}
     </section>
   )

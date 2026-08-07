@@ -17,7 +17,7 @@ questions ciblées et corrections de vocabulaire. C'est le retour le plus large 
 du projet, et il porte sur **toutes les surfaces à la fois** — admin, public, écran de salle, poste
 de cible, scoreur.
 
-Trois écrans sont **refusés en l'état** (🔴 « à refaire ») : `A07` phases, ~~`A10` plan de salle~~ (**levé le 05/08/2026 par E16US001**, ADR-0073 — le refus ne portait que sur le vocabulaire), ~~`A14`
+Quatre écrans avaient été **refusés en l'état** (🔴 « à refaire ») ; **il en reste deux** : `A07` phases, ~~`A10` plan de salle~~ (**levé le 05/08/2026 par E16US001**, ADR-0073 — le refus ne portait que sur le vocabulaire), ~~`A14`
 complétude~~ (**levé le 07/08/2026 par E16US003** — le refus portait sur le **mélange à l'écran** : le sportif est resté au pilotage sous « Prêt à terminer ? », l'administratif est parti sur l'axe gestion) — plus `P03` classements publics. Vingt sont validés **avec réserves** (🟡). Le reste est
 validé tel quel.
 
@@ -73,6 +73,8 @@ règle de départage à la demande (A16/P07), dialogue de confirmation en rempla
 - [ ] Écran de salle : réglages et défilement (E16US009).
 - [ ] Recherche transverse et alerte de complétude en liste (E16US010).
 - [ ] Rattrapage : les règles de S06, S08, S09, A09, A02 et P05 (E16US011).
+- [ ] Famille « prêt à… » : démarrer / terminer / archiver / exporter (E16US012) — **née d'E16US003**,
+      refonte de navigation, ADR probable.
 
 ## Critères d'acceptation (epic)
 

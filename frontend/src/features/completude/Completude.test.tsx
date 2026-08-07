@@ -28,14 +28,25 @@
 // composant qui ne rend rien du tout).
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ErreurApi } from '../../shared/api/client'
 import { Accueil } from '../accueil/Accueil'
+import type { ExigenceEffectif } from '../accueil/api'
+import { getExigenceEffectif, getTransitions } from '../accueil/api'
 import type { Tournoi } from '../competition/api'
+import type { LignePaiementArcher } from '../paiements/api'
+import {
+  getPaiementsArchers,
+  getPaiementsClubs,
+  getRemboursements,
+  marquerArcher,
+} from '../paiements/api'
 import { Paiements } from '../paiements/Paiements'
+import type { Supervision } from '../supervision/api'
+import { getSupervision } from '../supervision/api'
 import type { Completude as CompletudeDTO } from './api'
 import { getCompletude } from './api'
 import { Completude } from './Completude'
@@ -48,28 +59,63 @@ vi.mock('./api', async (importOriginal) => ({
 
 // Les écrans réels tirent d'autres sources : on les neutralise pour n'observer que le placement de
 // la complétude. Mocker l'`api` (et non les hooks) garde le câblage hook → écran dans le test.
+//
+// ⚠️ Les fixtures sont **typées** (`satisfait: ExigenceEffectif`, etc.). Les `vi.fn()` d'une factory
+// `vi.mock` ne le sont pas : sans annotation explicite, une fixture qui s'éloigne de son DTO passe
+// `tsc` sans bruit, et le test finit par passer *pour la mauvaise raison* — un champ manquant lu
+// comme `undefined` prend silencieusement la branche « tout va bien ».
 vi.mock('../paiements/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../paiements/api')>()),
-  getPaiementsArchers: vi.fn().mockResolvedValue([]),
-  getPaiementsClubs: vi.fn().mockResolvedValue([]),
-  getRemboursements: vi.fn().mockResolvedValue([]),
+  getPaiementsArchers: vi.fn(),
+  getPaiementsClubs: vi.fn(),
+  getRemboursements: vi.fn(),
+  marquerArcher: vi.fn(),
 }))
 
 vi.mock('../supervision/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../supervision/api')>()),
-  getSupervision: vi.fn().mockResolvedValue({ nb_total: 0, nb_en_ligne: 0, postes: [] }),
+  getSupervision: vi.fn(),
 }))
 
 vi.mock('../accueil/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../accueil/api')>()),
-  getTransitions: vi.fn().mockResolvedValue([]),
-  getExigenceEffectif: vi.fn().mockResolvedValue({
-    origine: 'aucune',
-    minimum: null,
-    inscrits: 0,
-    satisfaite: true,
-  }),
+  getTransitions: vi.fn(),
+  getExigenceEffectif: vi.fn(),
 }))
+
+const SUPERVISION: Supervision = {
+  postes: [],
+  nb_en_ligne: 0,
+  nb_total: 0,
+  nb_ecrans_en_ligne: 0,
+  nb_ecrans: 0,
+}
+
+const EXIGENCE: ExigenceEffectif = {
+  inscrits: 0,
+  minimum: 0,
+  suffisant: true,
+  origine: 'aucune',
+  ordre_phase: null,
+  rang_debut: null,
+}
+
+// Registre de paiements **réaliste** : 120 inscrits dont 113 réglés, cohérent avec la ligne
+// `paiements 113/120` de la complétude. Une fixture vide rendrait « 0/0 » à l'entête de l'accueil et
+// ferait passer pour la mauvaise raison l'assertion qui distingue le **repère** de la **tâche**.
+function registrePaiements(regles = 113, total = 120): LignePaiementArcher[] {
+  return Array.from({ length: total }, (_, i) => ({
+    archer_id: i + 1,
+    nom: `Nom${i}`,
+    prenom: `Prenom${i}`,
+    club_id: null,
+    recap: {
+      du_centimes: 1000,
+      paye_centimes: i < regles ? 1000 : 0,
+      reste_centimes: i < regles ? 0 : 1000,
+    },
+  }))
+}
 
 function reponse(): CompletudeDTO {
   return {
@@ -116,19 +162,29 @@ function monter(enfants: ReactNode) {
 }
 
 beforeEach(() => {
-  // Sans ce reset, l'historique d'appels s'accumule sur tout le fichier et aucun
-  // `toHaveBeenCalledTimes` n'est fiable.
+  // `clearAllMocks` = `mockClear` : il vide l'**historique d'appels**, pas les implémentations. Sans
+  // lui, l'historique s'accumule sur tout le fichier et aucun `toHaveBeenCalledTimes` n'est fiable.
   vi.clearAllMocks()
   vi.mocked(getCompletude).mockResolvedValue(reponse())
+  vi.mocked(getPaiementsArchers).mockResolvedValue(registrePaiements())
+  vi.mocked(getPaiementsClubs).mockResolvedValue([])
+  vi.mocked(getRemboursements).mockResolvedValue([])
+  vi.mocked(getSupervision).mockResolvedValue(SUPERVISION)
+  vi.mocked(getTransitions).mockResolvedValue([])
+  vi.mocked(getExigenceEffectif).mockResolvedValue(EXIGENCE)
 })
 
 describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
-  it('rend les lignes sportives', async () => {
+  it('rend les lignes sportives, sous le titre « Prêt à terminer ? »', async () => {
     monter(<Completude tournoiId={1} statut="en_cours" />)
 
     await waitFor(() => expect(screen.getByText('Qualification')).toBeInTheDocument())
     expect(screen.getByText('Classement')).toBeInTheDocument()
     expect(screen.getByText('28/30 cibles')).toBeInTheDocument()
+    // Le renommage est un **arbitrage du commanditaire** (« Complétude du déroulé » entrait en
+    // collision avec « Suivi du déroulé »). Sans cette ligne il repartait sans filet mécanique :
+    // remettre l'ancien titre laissait toute la suite verte.
+    expect(screen.getByRole('heading', { name: 'Prêt à terminer ?' })).toBeInTheDocument()
   })
 
   it('ne rend AUCUNE ligne administrative — c’est le refus d’A14', async () => {
@@ -158,6 +214,23 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
 
     await waitFor(() => expect(screen.getByText('Qualification')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Terminer le tournoi' })).toBeEnabled()
+  })
+
+  it('CA `D-15` — même complétude injoignable, le bouton reste : on dégrade, on ne verrouille pas', async () => {
+    // L'autre moitié de `D-15`, et celle qui manquait : le bouton vivait **dans** la garde
+    // `completude.data`, donc une lecture en échec le faisait disparaître — l'appli empêchait au lieu
+    // d'avertir. `P-3` : ne jamais bloquer la seule action irréversible sur un hoquet réseau.
+    vi.mocked(getCompletude).mockRejectedValue(new TypeError('Failed to fetch'))
+
+    monter(<Completude tournoiId={1} statut="en_cours" />)
+
+    const bouton = await screen.findByRole('button', { name: 'Terminer le tournoi' })
+    expect(bouton).toBeEnabled()
+
+    await userEvent.click(bouton)
+    expect(await screen.findByRole('dialog')).toHaveTextContent(
+      'Impossible de vérifier ce qui reste',
+    )
   })
 
   it('CA — la confirmation chiffre les impayés, seul point où les deux mondes se croisent', async () => {
@@ -249,17 +322,48 @@ describe('CA E16US003 — la gestion porte la complétude administrative', () =>
     expect(screen.getByRole('alert')).not.toHaveTextContent('Failed to fetch')
     expect(screen.getByRole('alert')).toHaveTextContent('Une erreur est survenue.')
   })
+
+  it('CA « une source » — marquer un règlement rafraîchit AUSSI le décompte du haut', async () => {
+    // La seule vraie modification de comportement du recentrage, et elle n'était gardée par rien :
+    // sans l'invalidation de `['completude']`, la ligne du tableau bascule sur « Réglé » pendant que
+    // l'encart garde l'ancien compte jusqu'au tick de poll (5 s). Le même écran se contredit —
+    // exactement ce que « deux écrans, une source » veut rendre impossible.
+    vi.mocked(marquerArcher).mockResolvedValue(registrePaiements()[119]!)
+    monter(<Paiements tournoiId={1} />)
+
+    await waitFor(() => expect(screen.getByText('Complétude administrative')).toBeInTheDocument())
+    expect(getCompletude).toHaveBeenCalledTimes(1)
+
+    await userEvent.click(screen.getAllByRole('button', { name: /Marquer réglé/ })[0]!)
+
+    await waitFor(() => expect(getCompletude).toHaveBeenCalledTimes(2))
+  })
 })
 
 describe('CA E16US003 — le tableau de bord d’accueil ne mélange plus non plus', () => {
   // `accueil` est la destination d'**ouverture** de l'axe pilotage : y laisser les impayés aurait
   // rejoué le refus d'A14 sur l'écran le plus vu de l'axe — le trou déplacé, pas fermé.
   it('rend le sportif dans « À faire » et n’y met AUCUNE ligne administrative', async () => {
-    monter(<Accueil tournoi={TOURNOI} />)
+    const { container } = monter(<Accueil tournoi={TOURNOI} />)
 
     await waitFor(() => expect(screen.getByText('Qualification')).toBeInTheDocument())
-    expect(screen.queryByText('Paiements')).toBeNull()
-    expect(screen.queryByText('113/120')).toBeNull()
+    // Négation **bornée à la checklist**, pas à l'écran : « 113/120 » doit au contraire s'afficher
+    // dans l'entête (cf. le test suivant). Nier son absence de tout l'écran encodait l'inverse du
+    // CA, et ne passait que parce que la fixture de paiements était vide.
+    const checklist = container.querySelector('.checklist')!
+    expect(within(checklist as HTMLElement).queryByText('Paiements')).toBeNull()
+    expect(within(checklist as HTMLElement).queryByText('113/120')).toBeNull()
+  })
+
+  it('CA — le repère « Réglés » de l’entête RESTE : un repère n’est pas une tâche', async () => {
+    // C'est le critère de partage retenu à l'arbitrage, et il n'était gardé par rien : supprimer le
+    // chiffre-clé laissait toute la suite verte. Savoir où l'on en est ≠ se voir réclamer une tâche.
+    const { container } = monter(<Accueil tournoi={TOURNOI} />)
+
+    await waitFor(() => expect(screen.getByText('Qualification')).toBeInTheDocument())
+    const chiffres = container.querySelector('.accueil__chiffres')!
+    expect(within(chiffres as HTMLElement).getByText('Réglés')).toBeInTheDocument()
+    expect(within(chiffres as HTMLElement).getByText('113/120')).toBeInTheDocument()
   })
 
   it('ne construit AUCUNE alerte à partir des impayés', async () => {

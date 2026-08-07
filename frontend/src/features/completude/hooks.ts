@@ -13,10 +13,11 @@ import { getCompletude } from './api'
 
 const INTERVALLE_POLL_MS = 5000
 
-// Exportée depuis E16US003 : la complétude est désormais lue par **trois** endroits hors de cette
-// feature (accueil, frise du cycle de vie, écran Paiements), dont un qui doit l'**invalider** après
-// un marquage de paiement. Un littéral `['completude', id]` recopié dans chaque appelant se serait
-// désynchronisé au premier changement de clé — et l'un d'eux (`FriseCycleDeVie`) l'avait déjà recopié.
+// Exportée depuis E16US003. Deux consommateurs hors de cette feature ont besoin de la **clé**
+// elle-même, pas du hook : `FriseCycleDeVie` (qui pré-charge la complétude par `fetchQuery` avant de
+// confirmer « Terminer ») et `paiements/hooks` (qui doit l'**invalider** après un marquage). Le
+// premier recopiait déjà le littéral `['completude', id]` en dur — une 2ᵉ copie l'aurait
+// désynchronisé au premier changement de clé, sans que rien ne le signale.
 export const cleCompletude = (tournoiId: number) => ['completude', tournoiId] as const
 
 export function useCompletude(tournoiId: number) {

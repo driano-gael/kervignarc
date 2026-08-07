@@ -406,9 +406,12 @@ function Coquille() {
     },
     {
       id: 'completude',
-      // « Du déroulé » depuis E16US003 (A14) : l'écran ne porte plus que le sportif, la complétude
-      // administrative étant partie sur l'axe Gestion. Le libellé le dit **dans la sidebar**, là où
-      // l'organisateur choisit — sans quoi il continuerait d'y chercher les paiements.
+      // Renommé en E16US003 (A14) : l'écran ne porte plus que le sportif, la complétude
+      // administrative étant partie sur l'axe Gestion. Le libellé doit le dire **dans la sidebar**,
+      // là où l'organisateur choisit — sans quoi il continuerait d'y chercher les paiements.
+      // « Complétude du déroulé » a été écarté en revue : « Suivi du déroulé » est trois entrées
+      // plus haut dans cette même liste, et ADR-0076 réserve « déroulé » au plan composé une fois.
+      // Le nom retenu pose la **question** à laquelle l'écran répond (cf. `Completude.tsx`).
       libelle: 'Prêt à terminer ?',
       // « Qu'est-ce qui manque pour finir ? » (E12US005) + contrôle avant de terminer. Le statut
       // pilote l'apparition du bouton « Terminer » (uniquement *en cours*).

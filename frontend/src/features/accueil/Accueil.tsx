@@ -6,8 +6,9 @@
 //  - chiffres-clés : inscrits & réglés (paiements, E08US002), postes en ligne (supervision, E12US001) ;
 //  - checklist « à faire » et alertes dérivées de la complétude (E12US005) + des postes hors ligne.
 //
-// Front sans test de rendu (règle 9) → à vérifier **à l'écran**. Les lectures pollent (complétude,
-// supervision) : l'accueil est un écran **live**.
+// Couverture : deux tests de rendu depuis E16US003 (`completude/Completude.test.tsx`) gardent le
+// fait que la checklist et les alertes ne portent **que** le sportif. Le reste de l'écran se vérifie
+// **à l'œil**. Les lectures pollent (complétude, supervision) : l'accueil est un écran **live**.
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { texteErreur } from '../../shared/ui/texteErreur'
