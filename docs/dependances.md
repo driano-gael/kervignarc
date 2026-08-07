@@ -88,7 +88,7 @@
 
 ## Épingles de version transitives (`frontend/package.json` › `overrides`)
 
-Trois paquets **transitifs** (jamais importés par notre code) sont épinglés à une version précise.
+Cinq paquets **transitifs** (jamais importés par notre code) sont épinglés à une version précise.
 Un `overrides` npm force la version d'une dépendance de dépendance ; c'est le seul levier quand le
 problème vient d'un paquet qu'on ne déclare pas soi-même.
 
@@ -97,6 +97,8 @@ problème vient d'un paquet qu'on ne déclare pas soi-même.
 | `@emnapi/core` | `1.11.1` | `npm ci` échouait en CI sur « Missing @emnapi/core/runtime » — un lockfile valide pour `npm install` peut ne pas l'être pour `npm ci`, qui est plus strict. Dépendance optionnelle de binaires par plateforme (rollup/oxide). |
 | `@emnapi/runtime` | `1.11.1` | idem. |
 | `brace-expansion` | `5.0.9` | Advisory **GHSA-rgw5-rvv9-x895** (DoS, sévérité **high**) couvrant `4.0.0 – 5.0.8`. Tiré par `eslint` → `minimatch`. **Dev only** : rien n'en part dans le bundle du jour J. |
+| `nanoid` | `^3.3.17` | Advisory **GHSA-2v37-7h3g-55p8** (boucle infinie si `size` vaut zéro, sévérité **high**) couvrant `< 3.3.17`. Tiré par `vite` → `postcss`. **Dev only** : `postcss` ne tourne qu'au *build*, rien n'en part dans le bundle du jour J — et le défaut suppose un générateur personnalisé, que nous n'écrivons pas. Épinglé quand même : `npm audit --audit-level=high` est **bloquant en CI**, il ne distingue pas dev et prod. |
+| `postcss` | `^8.5.23` | Advisory **GHSA-fxqj-rqcc-2cmp** (lecture de `.map` arbitraires via `sourceMappingURL` quand `from` n'est pas défini, sévérité *moderate*) couvrant `<= 8.5.22`. Tiré par `vite`. **Dev only**, même raisonnement. Sévérité sous le seuil de la CI, montée **au passage** de `nanoid` : les deux advisories visent la même chaîne, les traiter séparément aurait fait deux allers-retours. |
 
 ### ⚠️ Une épingle doit être **relue** à chaque advisory
 
@@ -134,3 +136,32 @@ exactement la condition que `npm ci` contrôle.
 *(Constaté le 04/08/2026. C'est la **deuxième fois** que ce lockfile piège le projet, et la première
 où la cause profonde est nommée : ce n'est pas `@emnapi` qui est capricieux, c'est **régénérer un
 lockfile multiplateforme depuis une seule plateforme**.)*
+
+#### Le piège s'est représenté le 07/08/2026 — et la consigne ci-dessus a tenu
+
+Deux advisories (`nanoid` **high**, `postcss` *moderate*) ont été publiées **pendant** la revue
+d'E16US003 : `npm audit` était vert au début de la session, rouge à la fin, **lockfile inchangé**. La
+CI a donc cassé sur une PR qui ne touchait aucune dépendance.
+
+Ce qui a été fait, dans l'ordre, et vaut d'être reproduit :
+
+1. `npm audit fix` a été lancé **pour observer**, pas pour livrer : il a élagué les deux entrées
+   `@emnapi` (11 → 6 mentions), exactement comme en 2026-08-04. **Le piège est donc reproductible et
+   n'a rien d'accidentel** — il se déclenchera à chaque fois.
+2. `npm install --package-lock-only` élague **tout autant** : ce n'est pas `audit fix` le fautif,
+   c'est bien *régénérer depuis une seule plateforme*. Utile à savoir, la note de 2026-08-04 ne visait
+   que `--package-lock-only` et on pouvait croire l'autre commande sûre.
+3. Remède appliqué : lockfile d'origine + **édition chirurgicale** des deux entrées visées
+   (`version`, `resolved`, `integrity` relevés par `npm view`), plus l'ajout des deux clés à
+   `overrides` — l'épingle **déclare l'intention** et survivra à une régénération future.
+4. Vérifications : `@emnapi` toujours à 11 mentions, 272 paquets (inchangé), JSON valide, **les cinq
+   clés d'`overrides` ont leur entrée à la bonne version**, puis `npm ci` + `npm audit` + la porte
+   complète.
+
+⚠️ **Ce que la vérification locale ne prouve toujours pas.** Un `npm ci` vert sous Windows ne dit rien
+de la CI Linux — c'est écrit plus haut et ça reste vrai. Ici le risque est **faible** parce que le
+lockfile d'origine (multiplateforme) a été conservé et que seuls six champs ont bougé ; mais la preuve
+reste la CI.
+
+*(Troisième fois que ce lockfile coûte un aller-retour. La **cause** est nommée depuis le 04/08 ; ce
+qui manquait était de savoir que `npm audit fix` tombe dans le même trou que `--package-lock-only`.)*
