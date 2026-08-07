@@ -44,6 +44,15 @@ jointure `depart → tournoi` et redonne un schéma valide. Mais les tournois mu
 retrouveront un déroulé **fusionné** — c'est-à-dire le bug qu'ADR-0075 corrige. Le downgrade existe
 pour dépanner un déploiement, pas pour revenir en arrière durablement.
 
+⚠️ **Il ne garde que les phases du premier créneau** (`_replier_les_copies_de_creneau`, correctif de
+revue). Le modèle de destination ne connaît qu'une séquence 1..N par tournoi : y rebrancher les N
+copies par créneau produisait des rangs en doublon, invisibles ici — aucune contrainte ne les
+interdit avant la `0042` — mais fatals au `upgrade` suivant, où la `0043` doublonnait
+`(tournoi, ordre)` dans `deroule_etape` et laissait la base **bloquée à mi-migration**. L'avancement
+des autres créneaux est donc **perdu** : c'est le prix d'un modèle qui n'a pas de place pour lui.
+L'aller-retour `upgrade → downgrade → upgrade` est éprouvé par
+`tests/test_migration_0042_0043_portee_et_deroule.py`.
+
 [ADR-0017]: ../../../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md
 [ADR-0075]: ../../../docs/adr/0075-le-depart-est-la-portee-sportive.md
 """
@@ -143,6 +152,41 @@ def upgrade() -> None:
     _basculer(connexion, "barrage")
 
 
+def _replier_les_copies_de_creneau(connexion: sa.Connection) -> None:
+    """Ne garde que les phases du **premier créneau** de chaque tournoi (downgrade).
+
+    ⚠️ **C'est ce qui rend l'aller-retour possible**, et c'est un correctif de revue. L'`upgrade`
+    ci-dessus part d'un modèle où un tournoi a **une** séquence 1..N et la rattache à un créneau ;
+    depuis, chaque créneau porte la sienne. Rebrancher naïvement *toutes* les phases sur le tournoi
+    lui en donnait donc N par rang — un état que le modèle d'avant la `0042` n'a jamais connu et
+    dont aucune contrainte ne le protège. Le `upgrade` suivant les rattachait toutes au même
+    créneau, et la `0043` butait sur son propre `INSERT … SELECT` : `(tournoi, ordre)` en doublon
+    dans `deroule_etape`, base **bloquée à mi-migration**.
+
+    La perte est réelle et assumée — l'avancement des autres créneaux n'a pas de place où aller
+    dans le modèle de destination —, du même ordre que celle qu'annonce déjà la `0043` sur les
+    définitions divergentes. On la **dit** plutôt que de la laisser découvrir.
+
+    Les artefacts d'exécution des phases supprimées partent explicitement : leurs FK déclarent bien
+    `ON DELETE CASCADE`, mais SQLite ne l'applique que si `PRAGMA foreign_keys` est actif — ce
+    qu'Alembic ne fait pas. Compter dessus laisserait des `duel` orphelins pointant un `phase_id`
+    disparu.
+    """
+    cibles = _depart_cible_par_tournoi(connexion)
+    if not cibles:
+        return
+    gardes = ",".join(str(depart_id) for depart_id in cibles.values())
+    condamnees = f"SELECT id FROM phase WHERE depart_id NOT IN ({gardes})"
+    for enfant in ("duel", "placement_tableau", "forfait"):
+        connexion.execute(sa.text(f"DELETE FROM {enfant} WHERE phase_id IN ({condamnees})"))
+    # `barrage.phase_id` est **nullable** et sans cascade : on délie plutôt que de supprimer — un
+    # barrage annoncé reste une trace de ce qui s'est passé, il n'est pas dérivé de la phase.
+    connexion.execute(
+        sa.text(f"UPDATE barrage SET phase_id = NULL WHERE phase_id IN ({condamnees})")
+    )
+    connexion.execute(sa.text(f"DELETE FROM phase WHERE depart_id NOT IN ({gardes})"))
+
+
 def _rebasculer(connexion: sa.Connection, table: str) -> None:
     """Retour à `tournoi_id` par la jointure `depart → tournoi` (downgrade)."""
     with op.batch_alter_table(table) as batch:
@@ -163,4 +207,7 @@ def _rebasculer(connexion: sa.Connection, table: str) -> None:
 def downgrade() -> None:
     connexion = op.get_bind()
     _rebasculer(connexion, "barrage")
+    # Le repli **précède** la rebascule : une fois `tournoi_id` rétabli, on ne saurait plus quelles
+    # phases venaient de quel créneau.
+    _replier_les_copies_de_creneau(connexion)
     _rebasculer(connexion, "phase")

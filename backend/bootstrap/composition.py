@@ -431,10 +431,13 @@ def create_app(
     compteur_engages = CompteurEngagesRepository(depart_repository, inscription_repository)
     # `ServiceTournois` lit aussi les **départs** (port `depart_repository`) : le passage à `prêt`
     # exige au moins un créneau (garde `TournoiSansDepart`, E02US010). Depuis E05US021 il lit en
-    # plus les **phases** et les **engagés** : démarrer exige assez d'inscrits pour que le déroulé
+    # plus le **déroulé** et les **engagés** : démarrer exige assez d'inscrits pour que le déroulé
     # composé puisse se dérouler ([ADR-0069]).
+    # ⚠️ `deroule_repository` et non `phase_repository` (E01US025, ADR-0076) : l'exigence se déduit
+    # de la **définition** — unique au tournoi —, pas des N copies d'avancement des créneaux, dont
+    # la concaténation faussait le plancher.
     app.state.service_tournois = ServiceTournois(
-        tournoi_repository, depart_repository, phase_repository, compteur_engages
+        tournoi_repository, depart_repository, deroule_repository, compteur_engages
     )
     # `service_departs` est câblé **plus bas**, après `service_completude` : son garde-fou de cycle
     # (E12US008) dépend du port étroit `LecteurAvancementDepart`, que réalise `ServiceCompletude`.
@@ -551,6 +554,9 @@ def create_app(
     )
     # Organisation du barrage : annoncer sur une égalité **signalée par le classement** (jamais
     # recalculée ici, sous peine d'une seconde version qui dériverait), saisir ses manches, clore.
+    # `depart_repository` : `annoncer` reçoit le créneau dans le **corps** de la requête et le
+    # tournoi dans le **chemin** — le service doit vérifier qu'ils vont ensemble (cloisonnement
+    # inter-tournois, correctif de revue E01US025).
     app.state.service_barrage = ServiceBarrage(
         tournoi_repository,
         barrage_repository,
@@ -558,6 +564,7 @@ def create_app(
         HorlogeSysteme(),
         archer_repository,
         phase_repository,
+        depart_repository,
     )
     # Inscriptions archer↔départ (E02US009, ADR-0017) : inscrire sur des créneaux du tournoi de
     # l'archer (même tournoi, unicité), marquer payé, désinscrire ; le montant dû dérive du tarif.
@@ -885,11 +892,15 @@ def create_app(
     # quelle cible), et résout lui-même la phase de tableau (`phase_repository`) puisque la tablette
     # de qualification ne la connaît pas. Aucun repo neuf, aucune écriture (`D-08` : rien n'est
     # calculé au moment de la bascule). ---
+    # ⚠️ `depart_repository` depuis E01US025 : les quatre canaux de routage entrent par le
+    # **créneau** (ADR-0075) — « le tableau qui vient » n'a de sens que dans une séquence, et la
+    # vue transverse `par_tournoi` en concatène N.
     app.state.service_routage = ServiceRoutage(
         app.state.service_saisie_duels,
         app.state.service_placement_duels,
         archer_repository,
         phase_repository,
+        depart_repository,
     )
 
     # --- Saisie de qualification (E04US002) : moteur métier `Serie`/`Volee` persisté. Le service
@@ -938,8 +949,11 @@ def create_app(
     # `ServiceSaisieDuels.reconstruire` pour les duels tranchés (une seule source de vérité de la
     # progression, déjà partagée par la saisie, le placement et le feu vert). L'effectif est le
     # nombre d'engagés — l'équivalent live du « je simule à N archers » de l'atelier. ---
+    # ⚠️ `depart_repository` depuis E01US025 : le suivi se lit **par créneau** (ADR-0075), il lui
+    # faut donc résoudre le départ (garde 404) et remonter à son tournoi pour la reconstruction.
     app.state.service_suivi_deroule = ServiceSuiviDeroule(
         tournoi_repository,
+        depart_repository,
         phase_repository,
         compteur_engages,
         app.state.service_saisie_duels,
@@ -951,8 +965,10 @@ def create_app(
     # progression. Service **distinct** de `ServiceSaisieDuels` (qui est celui du scoreur, protégé
     # par `exiger_scoreur`) : ce sont deux audiences, et la restriction de contenu se fait au DTO
     # de `api/v1/tableaux.py` (règle 6). Aucun repo neuf, aucune écriture. ---
+    # ⚠️ `depart_repository` remplace `tournoi_repository` (E01US025, ADR-0075) : la lecture est
+    # celle d'un **créneau**, et la garde 404 porte sur lui.
     app.state.service_tableaux_publics = ServiceTableauxPublics(
-        tournoi_repository,
+        depart_repository,
         phase_repository,
         app.state.service_saisie_duels,
     )

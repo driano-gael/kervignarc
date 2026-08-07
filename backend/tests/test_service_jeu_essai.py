@@ -36,7 +36,7 @@ from application.tournois import ServiceTournois
 from domain.categorie import Categorie
 from domain.cycle_depart import AvancementDepart
 from domain.depart import Depart, DepartId
-from domain.phase import Phase
+from domain.deroule_etape import EtapeDeroule
 from domain.tournoi import StatutTournoi, TournoiId
 from tests.conftest import (
     FauxArcherRepository,
@@ -72,14 +72,16 @@ class _AvancementInerte:
         raise NotImplementedError("Le jeu d'essai ne crée que des départs (pas de lecture d'état).")
 
 
-class _PhasesVides:
-    """Double du port `PhaseRepository` pour la garde d'effectif d'E05US021.
+class _DerouleVide:
+    """Double du port `LecteurDerouleDuTournoi` pour la garde d'effectif d'E05US021.
 
     Le jeu d'essai **peuple** un tournoi (archers, départs, inscriptions) mais ne lui compose aucun
-    déroulé : sans phase, il n'y a aucun prélèvement à honorer, donc rien à exiger au démarrage.
+    déroulé : sans étape, il n'y a aucun prélèvement à honorer, donc rien à exiger au démarrage.
+
+    Le port lit des `EtapeDeroule` depuis ADR-0076 — la **définition**, écrite une fois au tournoi.
     """
 
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[EtapeDeroule]:
         return []
 
 
@@ -106,13 +108,13 @@ def _atteler() -> Attelage:
     score_repo = FauxScoreRepository(archer_repo)
     serie_repo = FauxSerieRepository(archer_repo)
 
-    # E05US021 : `ServiceTournois` lit désormais phases et engagés (garde d'effectif au démarrage).
-    # Le jeu d'essai ne compose aucun déroulé — la garde reste donc muette, et un dépôt de phases
-    # vide suffit à câbler comme la composition root.
+    # E05US021 : `ServiceTournois` lit désormais le déroulé et les engagés (garde d'effectif au
+    # démarrage). Le jeu d'essai ne compose aucun déroulé — la garde reste donc muette, et un dépôt
+    # d'étapes vide suffit à câbler comme la composition root.
     service_tournois = ServiceTournois(
         tournoi_repo,
         depart_repo,
-        _PhasesVides(),
+        _DerouleVide(),
         CompteurEngagesRepository(depart_repo, inscription_repo),
     )
     service_categories = ServiceCategories(tournoi_repo, categorie_repo, blason_repo)

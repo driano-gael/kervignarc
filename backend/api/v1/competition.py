@@ -234,17 +234,25 @@ class EgaliteADepartagerReponse(BaseModel):
 
 
 class ClassementReponse(BaseModel):
-    """Classement d'un tournoi renvoyé au client."""
+    """Classement d'un **créneau** renvoyé au client.
 
-    tournoi_id: int
+    ⚠️ `depart_id` et non `tournoi_id` (correctif de revue E01US025). Le champ s'appelait
+    `tournoi_id` et la route est passée à `/departs/{depart_id}/classement` : le DTO **publiait donc
+    un identifiant de départ sous un nom de tournoi**. C'est `DETTE-044` en acte — `DepartId` et
+    `TournoiId` sont deux alias de `int`, mypy ne voit rien — et le test censé l'attraper la
+    consacrait, vert parce que le tournoi et le départ du décor portaient tous deux l'`id` 1. Un
+    client qui refaisait une requête avec cette valeur interrogeait un autre objet.
+    """
+
+    depart_id: int
     lignes: list[LigneClassementReponse]
     egalites_a_departager: list[EgaliteADepartagerReponse] = []
 
     @staticmethod
-    def de_agregat(tournoi_id: int, classement: Classement) -> ClassementReponse:
+    def de_agregat(depart_id: int, classement: Classement) -> ClassementReponse:
         """Traduit le classement de domaine en DTO de réponse."""
         return ClassementReponse(
-            tournoi_id=tournoi_id,
+            depart_id=depart_id,
             egalites_a_departager=[
                 EgaliteADepartagerReponse(
                     rang=egalite.rang,

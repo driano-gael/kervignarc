@@ -27,7 +27,7 @@ from application.erreurs import (
 )
 from application.suivi_deroule import CompteurEngages
 from domain.deroule import exigence_minimale
-from domain.phase import Phase
+from domain.deroule_etape import EtapeDeroule
 from domain.ports import DepartRepository, TournoiRepository
 from domain.tournoi import (
     StatutTournoi,
@@ -41,19 +41,26 @@ from domain.tournoi import (
 )
 
 
-class LecteurSequencePhases(Protocol):
-    """Port **étroit** : la séquence de phases d'un tournoi, et rien d'autre (E05US021).
+class LecteurDerouleDuTournoi(Protocol):
+    """Port **étroit** : le déroulé composé d'un tournoi, et rien d'autre (E05US021).
 
     La garde de démarrage n'a besoin que de « quel déroulé ce tournoi a-t-il ? » — pas d'un
-    `PhaseRepository` entier (ajouter, supprimer, chercher par type). Même patron que
-    `CompteurEngages` et `LecteurDonneesDePhase` (`application/formats.py`), et même bénéfice : le
-    couplage dit exactement ce qu'il est, et le faux de test se réduit à une méthode.
+    `DerouleRepository` entier (ajouter, réordonner, supprimer). Même patron que `CompteurEngages`
+    et `LecteurDonneesDePhase` (`application/formats.py`), et même bénéfice : le couplage dit
+    exactement ce qu'il est, et le faux de test se réduit à une méthode.
 
-    `PhaseRepositorySQL` le satisfait structurellement, sans rien déclarer.
+    ⚠️ **Il lit des `EtapeDeroule`, plus des `Phase`** (E01US025, ADR-0076). Il s'appelait
+    `LecteurSequencePhases` et lisait `PhaseRepository.par_tournoi`, dont la docstring dit pourtant
+    « ce n'est **pas** une séquence ». Sur quatre créneaux, `exigence_minimale` recevait quatre
+    copies concaténées du déroulé et en déduisait un plancher faux. Le déroulé étant désormais
+    **défini une fois au tournoi**, la lecture qui en dérive une exigence est naturellement à cette
+    maille — la duplication qui faussait le calcul n'existe plus.
+
+    `DerouleRepositorySQL` le satisfait structurellement, sans rien déclarer.
     """
 
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        """Renvoie les phases du tournoi (liste éventuellement vide)."""
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[EtapeDeroule]:
+        """Renvoie les étapes du déroulé du tournoi (liste éventuellement vide)."""
         ...
 
 
@@ -100,6 +107,13 @@ class ExigenceEffectifTournoi:
     origine: OrigineExigence = OrigineExigence.AUCUNE
     ordre_phase: int | None = None
     rang_debut: int | None = None
+    depart_numero: int | None = None
+    """Le **numéro du créneau** dont `inscrits` est le compte — le moins garni (E01US025).
+
+    `None` quand le tournoi n'a aucun départ. Le porter explicitement plutôt que de laisser
+    l'organisateur deviner : « 8 inscrits pour 34 requis » sur un tournoi qui en affiche 48 au
+    total est incompréhensible tant qu'on ne dit pas *dans quel créneau* le compte manque.
+    """
 
     def message_de_refus(self) -> str:
         """Le message rendu à l'organisateur — **chiffré et actionnable** (`D-16` / `P-4`).
@@ -107,8 +121,12 @@ class ExigenceEffectifTournoi:
         « Une alerte qui ne chiffre pas son impact est un clic de plus, pas une protection » : on
         nomme donc le manque *et* ce qui le cause, pour que l'organisateur sache quoi changer dans
         son format plutôt que de rester devant un refus opaque.
+
+        Le **créneau** est nommé dès qu'on le connaît : le compte est celui du départ le moins
+        garni, et sans cette précision le chiffre semble contredire le total affiché ailleurs.
         """
-        manque = f"{self.inscrits} archer(s) inscrit(s) pour {self.minimum} requis"
+        ou = "" if self.depart_numero is None else f" sur le départ {self.depart_numero}"
+        manque = f"{self.inscrits} archer(s) inscrit(s){ou} pour {self.minimum} requis"
         if self.origine is OrigineExigence.CLUB:
             return (
                 f"Ce tournoi ne peut pas démarrer : {manque}. Ce format exige au moins "
@@ -133,19 +151,19 @@ class ServiceTournois:
         self,
         repository: TournoiRepository,
         depart_repository: DepartRepository,
-        phase_repository: LecteurSequencePhases,
+        deroule_repository: LecteurDerouleDuTournoi,
         engages: CompteurEngages,
     ) -> None:
         self._repository = repository
         # E02US010 : le passage à `prêt` exige **au moins un départ**. `ServiceTournois` lit donc
         # les créneaux (port `DepartRepository`, un port de domaine — pas l'autre service, pas
-        # d'infra), comme il lit les tournois. Couplage minimal : une seule lecture (`par_tournoi`),
-        # dont on ne prend que le compte.
+        # d'infra), comme il lit les tournois. Depuis E01US025 il en lit aussi l'**effectif**, un
+        # créneau à la fois : le déroulé doit se jouer dans chacun (cf. `exigence_effectif`).
         self._departs = depart_repository
         # E05US021 : le **démarrage** confronte les inscrits au minimum que le déroulé réclame. Même
-        # parti que ci-dessus — deux lectures de plus, par des ports (`PhaseRepository`, et le port
-        # étroit `CompteurEngages` déjà réalisé pour le suivi), pas par d'autres services.
-        self._phases = phase_repository
+        # parti que ci-dessus — deux lectures de plus, par des ports (le déroulé du tournoi, et le
+        # port étroit `CompteurEngages` déjà réalisé pour le suivi), pas par d'autres services.
+        self._deroules = deroule_repository
         self._engages = engages
 
     def creer(
@@ -254,11 +272,21 @@ class ServiceTournois:
         Lève `TournoiIntrouvable` (→ 404) — la seule levée, et elle porte sur l'**existence**, pas
         sur l'effectif. Un tournoi inconnu rendrait sinon « aucune exigence, tout va bien », un 200
         rassurant sur une ressource qui n'existe pas.
+
+        ⚠️ **Le minimum vient du déroulé (unique, au tournoi) ; les inscrits, du créneau le moins
+        garni** (E01US025, ADR-0075/0076). Un départ **rejoue le tournoi en entier** : un déroulé
+        qui prélève 32 rangs doit les trouver dans *chaque* créneau. Confronter le plancher à la
+        **somme** des inscrits — ce que faisait `nb_engages(tournoi_id)` — laissait démarrer un
+        tournoi de deux créneaux à 40 et 8 archers, puis échouer en salle sur le second. Le créneau
+        retenu est donc le plus faible, et `depart_numero` le nomme pour que le refus soit
+        actionnable.
         """
         tournoi = self.consulter(tournoi_id)
-        phases = self._phases.par_tournoi(tournoi_id)
-        inscrits = self._engages.nb_engages(tournoi_id)
-        if not phases:
+        etapes = self._deroules.par_tournoi(tournoi_id)
+        creneau = self._creneau_le_moins_garni(tournoi_id)
+        inscrits = 0 if creneau is None else creneau[1]
+        numero = None if creneau is None else creneau[0]
+        if not etapes:
             # Aucun déroulé composé : rien n'est prélevé, donc rien n'est exigé. Le dire
             # « satisfait » plutôt que « minimum 1 » évite d'afficher une exigence là où
             # l'organisateur n'a encore rien décidé.
@@ -267,10 +295,11 @@ class ServiceTournois:
                 minimum=0,
                 suffisant=True,
                 origine=OrigineExigence.AUCUNE,
+                depart_numero=numero,
             )
 
         exige = tournoi.effectif_minimum_exige
-        deduite = exigence_minimale(phases)
+        deduite = exigence_minimale(etapes)
         if exige is not None and exige > deduite.minimum:
             # L'exigence du club dépasse le plancher technique : c'est elle qui commande, et aucune
             # phase n'est en cause — le manque vient d'une règle sportive, pas d'un prélèvement.
@@ -279,6 +308,7 @@ class ServiceTournois:
                 minimum=exige,
                 suffisant=inscrits >= exige,
                 origine=OrigineExigence.CLUB,
+                depart_numero=numero,
             )
         return ExigenceEffectifTournoi(
             inscrits=inscrits,
@@ -287,7 +317,23 @@ class ServiceTournois:
             origine=OrigineExigence.DEROULE,
             ordre_phase=deduite.ordre,
             rang_debut=deduite.rang_debut,
+            depart_numero=numero,
         )
+
+    def _creneau_le_moins_garni(self, tournoi_id: TournoiId) -> tuple[int, int] | None:
+        """`(numéro, inscrits)` du créneau le plus faible — `None` si le tournoi n'a aucun départ.
+
+        C'est **lui** que le déroulé doit pouvoir se jouer : chaque départ rejoue le tournoi en
+        entier (ADR-0075), donc l'exigence se juge sur le maillon faible, jamais sur la somme. En
+        cas d'égalité, le **plus petit numéro** l'emporte — un choix stable, pour que l'écran
+        n'alterne pas entre deux créneaux d'un rafraîchissement à l'autre.
+        """
+        comptes = [
+            (depart.numero, self._engages.nb_engages_du_depart(depart.id))
+            for depart in self._departs.par_tournoi(tournoi_id)
+            if depart.id is not None
+        ]
+        return min(comptes, key=lambda couple: (couple[1], couple[0])) if comptes else None
 
     def _exiger_un_effectif_suffisant(self, tournoi_id: TournoiId) -> None:
         """Refuse le démarrage si les inscrits ne couvrent pas ce que le déroulé réclame."""

@@ -134,7 +134,11 @@ def test_tranche_verticale_bout_en_bout(
         classement = client.get(f"/api/v1/departs/{depart_id}/classement")
         assert classement.status_code == 200
         corps = classement.json()
-        assert corps["tournoi_id"] == tournoi["id"]
+        # ⚠️ `depart_id`, et comparé au **départ** : cette assertion disait `corps["tournoi_id"] ==
+        # tournoi["id"]` et passait par coïncidence — le tournoi et le départ du décor portent tous
+        # deux l'`id` 1. Le test consacrait donc le défaut qu'il aurait dû attraper (`DETTE-044` :
+        # les deux identifiants sont le même type pour mypy).
+        assert corps["depart_id"] == depart_id
         assert [
             (
                 ligne["nom"],

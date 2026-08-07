@@ -1297,3 +1297,39 @@ def test_un_barrage_acte_est_perime_meme_si_le_seuil_est_efface(
             == _rangs(client, scenario.tournoi_id)[troisieme]
         )
         assert barrage["perime"] is True
+
+
+def test_un_creneau_d_un_autre_tournoi_est_refuse(
+    app_barrages: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**Cloisonnement inter-tournois** — le `depart_id` du corps doit relever du tournoi du chemin.
+
+    `annoncer` reçoit le tournoi par l'URL et le créneau par le **corps** : rien ne les reliait, si
+    bien qu'un identifiant deviné ouvrait un barrage sur le créneau d'un *autre* tournoi en passant
+    par l'URL de celui-ci. Ce n'est pas un cas d'école — faire tourner deux tournois `EN_COURS` en
+    parallèle (intérieur et extérieur) est une capacité **voulue** du produit.
+
+    La garde est refusée en **404** et non en 403 : du point de vue de ce tournoi, ce créneau
+    n'existe pas — et distinguer les deux réponses dirait à un client non autorisé qu'il a deviné
+    juste.
+    """
+    scenario = Scenario(app_barrages)
+    voisin = Scenario(app_barrages)
+    assert voisin.depart_id != scenario.depart_id
+    with TestClient(app_barrages) as client:
+        connecter_admin(client)
+        # Les **deux** tournois ont une égalité signalée au rang 2 : sans la garde, l'annonce
+        # aboutissait en 201 sur le créneau du voisin. Régler le seuil du seul tournoi de la route
+        # aurait fait échouer le test pour la mauvaise raison (409 « égalité non départageable »),
+        # et n'aurait donc rien prouvé du cloisonnement.
+        _regler_le_seuil(client, scenario, 8)
+        _regler_le_seuil(client, voisin, 8)
+
+        annonce = client.post(
+            f"/api/v1/tournois/{scenario.tournoi_id}/barrages",
+            json={"depart_id": voisin.depart_id, "rang": 2},
+        )
+
+        assert annonce.status_code == 404, annonce.text
+        assert annonce.json()["code"] == "depart_introuvable"
+        assert client.get(f"/api/v1/tournois/{voisin.tournoi_id}/barrages").json() == []

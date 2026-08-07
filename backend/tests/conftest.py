@@ -682,6 +682,13 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
 
     Passer par le repository plutôt que par l'ORM est délibéré : c'est le chemin de production, et
     un décor qui l'emprunte éprouve la vraie couture d'assemblage.
+
+    ⚠️ **`statut` et `id` de la phase reçue sont conservés**, comme dans le jumeau en mémoire
+    (`poser_phase_factice`). Ce helper les **perdait** : `etape.instancier()` rend une phase
+    `a_venir` sans identifiant, si bien qu'un décor SQL posant un avancement déjà engagé —
+    `Phase.qualification(...).demarrer()` — obtenait silencieusement une phase `à venir`. Deux
+    jumeaux qui divergent sur ce qu'ils préservent, c'est un test qui passe en mémoire et échoue en
+    base (ou l'inverse) sans que la différence se voie à l'appel.
     """
     from domain.deroule_etape import EtapeDeroule
     from infrastructure.db import (
@@ -710,4 +717,6 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
                 profondeur=phase.profondeur,
             )
         )
-    return PhaseRepositorySQL(session_factory).ajouter(etape.instancier(phase.depart_id))
+    return PhaseRepositorySQL(session_factory).ajouter(
+        dataclasses.replace(etape.instancier(phase.depart_id), statut=phase.statut, id=phase.id)
+    )

@@ -59,8 +59,9 @@ def test_un_tournoi_sans_phase_repond_un_suivi_vide(
     """Avant qu'un format soit appliqué, il n'y a rien à suivre — ce n'est pas une erreur."""
     with TestClient(app_session) as client:
         tournoi_id = _tournoi(client, connecter_admin)
+        depart_id = _depart(client, tournoi_id)
 
-        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/suivi-deroule")
+        reponse = client.get(f"/api/v1/departs/{depart_id}/suivi-deroule")
 
         assert reponse.status_code == 200, reponse.text
         assert reponse.json() == {
@@ -77,19 +78,21 @@ def test_le_suivi_est_une_lecture_publique(
     """L'écran de salle n'a pas de jeton admin : sans lecture publique, il n'affiche rien."""
     with TestClient(app_session) as client:
         tournoi_id = _tournoi(client, connecter_admin)
+        depart_id = _depart(client, tournoi_id)
 
     with TestClient(app_session) as anonyme:
-        reponse = anonyme.get(f"/api/v1/tournois/{tournoi_id}/suivi-deroule")
+        reponse = anonyme.get(f"/api/v1/departs/{depart_id}/suivi-deroule")
 
     assert reponse.status_code == 200, reponse.text
 
 
-def test_un_tournoi_inconnu_est_un_404(app_session: FastAPI) -> None:
+def test_un_creneau_inconnu_est_un_404(app_session: FastAPI) -> None:
+    """La garde porte sur le **créneau** : c'est lui que la route désigne depuis ADR-0075."""
     with TestClient(app_session) as client:
-        reponse = client.get("/api/v1/tournois/9999/suivi-deroule")
+        reponse = client.get("/api/v1/departs/9999/suivi-deroule")
 
         assert reponse.status_code == 404
-        assert reponse.json()["code"] == "tournoi_introuvable"
+        assert reponse.json()["code"] == "depart_introuvable"
 
 
 def test_les_phases_apparaissent_avec_leur_statut(
@@ -100,11 +103,11 @@ def test_les_phases_apparaissent_avec_leur_statut(
         tournoi_id = _tournoi(client, connecter_admin)
         depart_id = _depart(client, tournoi_id)
         creation = client.post(
-            f"/api/v1/tournois/{depart_id}/phases", json={"type": "placement", "effectif": 8}
+            f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "placement", "effectif": 8}
         )
         assert creation.status_code == 201, creation.text
 
-        corps = client.get(f"/api/v1/tournois/{tournoi_id}/suivi-deroule").json()
+        corps = client.get(f"/api/v1/departs/{depart_id}/suivi-deroule").json()
 
         assert [bloc["ordre"] for bloc in corps["blocs"]] == [1]
         assert [av["ordre"] for av in corps["avancement"]] == [1]

@@ -39,10 +39,19 @@ divergence n'a eu le temps de naître.
 
 ## Downgrade
 
-Réversible : la définition est **redistribuée** dans chaque phase de chaque créneau du tournoi.
-On retrouve donc exactement l'état de la `0042` — N copies identiques. Les phases d'un départ dont
-le tournoi n'a plus d'étape (cas impossible en pratique) sont supprimées faute de `config` à écrire,
-`phase.config` étant `NOT NULL`.
+La définition est **redistribuée** dans chaque phase de chaque créneau du tournoi. On retrouve donc
+exactement l'état de la `0042` — N copies identiques. Les phases d'un départ dont le tournoi n'a
+plus d'étape (cas impossible en pratique) sont supprimées faute de `config` à écrire, `phase.config`
+étant `NOT NULL`.
+
+⚠️ **« Réversible » tout court était faux**, et la revue l'a relevé : ce `downgrade`-ci fait bien
+son travail, mais l'aller-retour complet `upgrade → downgrade → upgrade` **échouait** — la `0042`
+rebranchait les N copies de créneau sur le tournoi, et l'`INSERT … SELECT` ci-dessous doublonnait
+alors `(tournoi, ordre)`, laissant la base bloquée à mi-migration. Le correctif est dans la `0042`
+(`_replier_les_copies_de_creneau`), qui ne remonte que les phases du premier créneau ;
+l'aller-retour est désormais éprouvé par
+`tests/test_migration_0042_0043_portee_et_deroule.py`. Une annonce de réversibilité que rien ne
+teste est une **promesse**, pas une propriété.
 
 [ADR-0076]: ../../../docs/adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md
 """

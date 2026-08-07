@@ -30,6 +30,7 @@ from application.classements import ServiceClassement
 from application.erreurs import (
     BarrageIntrouvable,
     BarragePerime,
+    DepartIntrouvable,
     EgaliteNonDepartageable,
     TireursDesignesInvalides,
     TournoiIntrouvable,
@@ -48,6 +49,7 @@ from domain.phase import PhaseId
 from domain.ports import (
     ArcherRepository,
     BarrageRepository,
+    DepartRepository,
     Horloge,
     PhaseRepository,
     TournoiRepository,
@@ -74,11 +76,15 @@ class ServiceBarrage:
         horloge: Horloge,
         archers: ArcherRepository,
         phases: PhaseRepository,
+        departs: DepartRepository,
     ) -> None:
         self._tournois = tournois
         self._barrages = barrages
         self._classements = classements
         self._horloge = horloge
+        # Le **cloisonnement** du créneau : `annoncer` reçoit un `depart_id` du corps de la requête
+        # et doit vérifier qu'il relève bien du tournoi de la route (`_exiger_depart_du_tournoi`).
+        self._departs = departs
         # Requis par les portées **poule** et **Big Shoot Off**, où les tireurs sont *désignés*
         # et non dérivés d'un classement : ce sont les **seules** protections de ce régime. Rendus
         # obligatoires après revue — il n'existe qu'un site de construction (composition root,
@@ -176,6 +182,7 @@ class ServiceBarrage:
         « faire tirer » ne doit pas ouvrir deux barrages sur la même place.
         """
         self._exiger_tournoi(tournoi_id)
+        self._exiger_depart_du_tournoi(tournoi_id, depart_id)
         if portee is PorteeBarrage.QUALIFICATION:
             participants = self._egalite_signalee(depart_id, rang)
         else:
@@ -401,41 +408,26 @@ class ServiceBarrage:
             for verdict in self._classements.pour_depart(depart_id).verdicts_ecartes
         }
 
-    def _ouverts_au_meme_endroit(
-        self,
-        tournoi_id: TournoiId,
-        portee: PorteeBarrage,
-        rang: int | None,
-        phase_id: PhaseId | None,
-        reference: str | None,
-    ) -> list[BarrageDePlaces]:
-        """Les barrages non clos qui disputent la même **place** — tireurs non regardés.
-
-        ⚠️ **L'identité d'un barrage inclut ses TIREURS, et c'était le trou.** Une première version
-        s'arrêtait au quadruplet `(portée, phase, référence, rang)`. En qualification `rang`
-        discrimine, mais hors qualification les quatre composantes sont facultatives — et le
-        formulaire n'envoie ni rang ni phase, et laisse la référence vide. Deux égalités de poule
-        successives tombaient donc sur la **même clé** : le second appel rendait le **premier**
-        barrage, l'écran vidait la sélection, et la deuxième égalité n'avait pas de barrage sans
-        que rien ne le dise.
-
-        `annoncer` compare donc les tireurs : même place **et** mêmes tireurs → c'est le même
-        barrage (idempotence) ; même place, tireurs différents → l'ancien est **périmé**, et on
-        refuse plutôt que de laisser faire tirer le mauvais groupe.
-        """
-        return [
-            barrage
-            for barrage in self._barrages.par_tournoi(tournoi_id)
-            if barrage.portee is portee
-            and barrage.rang_dispute == rang
-            and barrage.phase_id == phase_id
-            and barrage.reference == reference
-            and not barrage.clos
-        ]
-
     def _exiger_tournoi(self, tournoi_id: TournoiId) -> None:
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+
+    def _exiger_depart_du_tournoi(self, tournoi_id: TournoiId, depart_id: DepartId) -> None:
+        """Le créneau doit appartenir **au tournoi de la route**. `DepartIntrouvable` sinon.
+
+        ⚠️ **Garde de cloisonnement, pas de commodité** (correctif de revue E01US025). `annoncer`
+        reçoit le `tournoi_id` du chemin et le `depart_id` du **corps** : rien ne les reliait. Un
+        `depart_id` deviné ouvrait donc un barrage sur le créneau d'un **autre tournoi**, en
+        passant par l'URL de celui-ci — et deux tournois `EN_COURS` en parallèle est une capacité
+        **voulue** (intérieur et extérieur), pas un cas d'école. Le service faisait déjà ce contrôle
+        pour les barrages (`_exiger_barrage`) et pour les phases (`ServicePhases._exiger_etape`) ;
+        c'est le départ qui y échappait, faute de `DepartRepository` injecté.
+        """
+        depart = self._departs.par_id(depart_id)
+        if depart is None or depart.tournoi_id != tournoi_id:
+            raise DepartIntrouvable(
+                f"Aucun départ d'identifiant {depart_id} dans le tournoi {tournoi_id}."
+            )
 
     def _exiger_barrage(self, tournoi_id: TournoiId, barrage_id: BarrageId) -> BarrageDePlaces:
         """Le barrage, à condition qu'il appartienne bien à **ce** tournoi.
