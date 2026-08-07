@@ -117,7 +117,9 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'côte à côte. Le plan est proposé automatiquement et modifiable au glisser-déposer.',
   paiements:
     'Suivez qui a réglé son inscription et combien. Le montant dû se calcule à partir des départs de ' +
-    'chaque archer ; vous pointez ici les paiements reçus.',
+    'chaque archer ; vous pointez ici les paiements reçus. Le bloc du haut compte les archers ' +
+    'déjà réglés sur le total (« 113/120 ») — c’est la complétude administrative, et elle ' +
+    'n’empêche jamais de terminer le tournoi.',
   postes:
     'Affichez, cible par cible, le QR de rattachement à imprimer ou à scanner. L’appareil posé sur la cible scanne le ' +
     'QR de sa cible pour ouvrir la saisie sans avoir à s’identifier.',
@@ -134,8 +136,10 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'cours et combien de duels restent à jouer. C’est le même schéma que celui composé à l’atelier, ' +
     'rempli par la réalité.',
   completude:
-    'Vérifiez ce qui manque avant de terminer le tournoi (inscriptions, placement, scores…). Le ' +
-    'contrôle liste les points bloquants et débloque la clôture quand tout est prêt.',
+    'Répond à une seule question : peut-on terminer ce tournoi ? La liste montre ce qui reste à ' +
+    'jouer — cibles de qualification non terminées, phases, classement. Rien ne vous empêche de ' +
+    'terminer malgré un manque : l’écran avertit, il ne bloque pas. Terminer fige le sportif — les ' +
+    'inscriptions et les paiements, eux, se suivent sur l’axe Gestion et restent modifiables après.',
   classement:
     'Consultez le classement, mis à jour en direct au fil de la saisie. C’est une vue de lecture : ' +
     'rien ne s’y saisit, elle reflète les scores validés.',

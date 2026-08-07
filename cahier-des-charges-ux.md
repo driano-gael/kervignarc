@@ -699,7 +699,14 @@ feu vert : `Q-UX6`.*
 « qu'est-ce qui manque pour que ce tournoi soit fini ? »**, avec **le sportif et le tiers comptés
 séparément** (`D-17`).
 
+> ⚠️ **Révisé le 07/08/2026 (E16US003, refus A14).** Le **comptage** séparé de `D-17` est maintenu,
+> mais l'**affichage conjoint** ne l'est plus : *« je n'aime pas le mélange entre le déroulé et la
+> gestion administrative ; complétude en déroulé n'est pas complétude administrative »*. Les deux
+> sections se rendent désormais sur **deux axes** ([ADR-0058](docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md)),
+> depuis la **même** réponse serveur. Le schéma ci-dessous est scindé en conséquence.
+
 ```
+   PILOTAGE > Pret a terminer ?          (ex-« Complétude »)
    TOURNOI DU 12 OCTOBRE - En cours
    +---------------------------------------------+
    | SPORTIF                          incomplet  |
@@ -709,11 +716,16 @@ séparément** (`D-17`).
    |   Demi-finales                  a venir     |
    |   Classement 1->N               en attente  |
    +---------------------------------------------+
-   | HORS SPORTIF                                |
-   |   Paiements                !   144/156      |
-   +---------------------------------------------+
    | Terminer le tournoi -> figera le sportif.   |
    | Les paiements resteront modifiables.        |
+   +---------------------------------------------+
+     ^ jamais bloque (`D-15`) : le manque est annonce,
+       et la confirmation chiffre AUSSI les impayes.
+
+   GESTION > Paiements                   (en tete de l'ecran, hors onglets)
+   +---------------------------------------------+
+   | COMPLETUDE ADMINISTRATIVE                   |
+   |   Paiements                !   144/156      |
    +---------------------------------------------+
 ```
 
@@ -823,7 +835,7 @@ viendront comme features dédiées ».
 | **D-15** | **Accès complet en permanence** ; l'appli n'empêche pas, elle avertit. Blocage = « terminé » seul | Actée | 0.1 | — |
 | **D-16** | Alerte par **calcul d'impact** : pas d'impact → pas d'alerte | Actée | 0.1 | — |
 | **D-17** | **Sportif vs hors sportif** : « terminé » ne fige que le sportif ; les paiements restent ouverts | Actée | 0.1 | E01US002 (cycle de vie) |
-| **D-18** | **Complétude** affichée, sportif et tiers comptés séparément | Actée | 0.1 | Réponse à « afficher l'avancement » |
+| **D-18** | **Complétude** affichée, sportif et tiers comptés séparément — et rendus sur **deux axes** : le sportif au pilotage (« Prêt à terminer ? »), l'administratif en tête de l'écran Paiements | **Révisée** | 0.3 | Le comptage séparé est inchangé ; l'**affichage conjoint** est refusé par le commanditaire le 04/08/2026 (questionnaire A14) — scindé par E16US003, [ADR-0058](docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md) |
 | **D-19** | Ossature admin : **trois axes d'activité** (atelier hors tournoi · pilotage · gestion), un accueil choisit l'axe, un seul axe ouvert à la fois ; repli pour le plan de salle | **Révisée** | 0.3 | Remplace « sidebar groupée par temps », refusée par le commanditaire le 30/07/2026 après livraison — [ADR-0058](docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md) |
 | **D-20** | **Accueil contextualisé** par le statut ; *accessible* ≠ *au premier plan* | Actée | 0.1 | — |
 | **D-21** | Écran de salle = **poste de l'appli publique** ; déroulé par défaut + prise de contrôle admin | Actée | 0.1 | E07US004 |

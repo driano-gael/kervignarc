@@ -10,8 +10,10 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { DialogueConfirmation } from '../../shared/ui/DialogueConfirmation'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { texteErreur } from '../../shared/ui/texteErreur'
 import type { StatutTournoi, Tournoi } from '../competition/api'
 import { getCompletude } from '../completude/api'
+import { cleCompletude } from '../completude/hooks'
 import { messageConfirmationTerminer } from '../completude/presentation'
 import type { ExigenceEffectif } from './api'
 import { useExigenceEffectif, useTransitionnerTournoi, useTransitions } from './hooks'
@@ -107,7 +109,7 @@ export function FriseCycleDeVie({ tournoi }: { tournoi: Tournoi }) {
       let detail: string
       try {
         const completude = await queryClient.fetchQuery({
-          queryKey: ['completude', tournoi.id],
+          queryKey: cleCompletude(tournoi.id),
           queryFn: () => getCompletude(tournoi.id),
         })
         detail = messageConfirmationTerminer(completude)
@@ -188,7 +190,7 @@ export function FriseCycleDeVie({ tournoi }: { tournoi: Tournoi }) {
       <div className="frise__actions">
         {transitions.isError && (
           <p className="carte__etat carte__etat--erreur" role="alert">
-            Actions injoignables — {transitions.error.message}
+            Actions injoignables — {texteErreur(transitions.error)}
           </p>
         )}
         {!transitions.isLoading &&

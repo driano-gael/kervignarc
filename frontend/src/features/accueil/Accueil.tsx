@@ -6,10 +6,12 @@
 //  - chiffres-clés : inscrits & réglés (paiements, E08US002), postes en ligne (supervision, E12US001) ;
 //  - checklist « à faire » et alertes dérivées de la complétude (E12US005) + des postes hors ligne.
 //
-// Front sans test de rendu (règle 9) → à vérifier **à l'écran**. Les lectures pollent (complétude,
-// supervision) : l'accueil est un écran **live**.
+// Couverture : deux tests de rendu depuis E16US003 (`completude/Completude.test.tsx`) gardent le
+// fait que la checklist et les alertes ne portent **que** le sportif. Le reste de l'écran se vérifie
+// **à l'œil**. Les lectures pollent (complétude, supervision) : l'accueil est un écran **live**.
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { texteErreur } from '../../shared/ui/texteErreur'
 import type { LigneCompletude } from '../completude/api'
 import { useCompletude } from '../completude/hooks'
 import { afficheEtat, detailLigne } from '../completude/presentation'
@@ -31,10 +33,14 @@ export function Accueil({ tournoi }: { tournoi: Tournoi }) {
   const postesEnLigne = supervision.data?.nb_en_ligne ?? null
   const postesTotal = supervision.data?.nb_total ?? null
 
-  const lignes: LigneCompletude[] = [
-    ...(completude.data?.sportif ?? []),
-    ...(completude.data?.hors_sportif ?? []),
-  ]
+  // E16US003 — **le sportif seul**, ici aussi. Le refus d'A14 (« je n'aime pas le mélange entre le
+  // déroulé et la gestion administrative ») porte sur l'axe **pilotage**, et ce tableau de bord en
+  // est la destination d'ouverture (`AXE_PAR_DESTINATION.accueil === 'pilotage'`) : y laisser
+  // « Paiements 113/120 » sous « Qualification 28/30 cibles » aurait rejoué le refus sur l'écran le
+  // plus vu de l'axe — le trou aurait été *déplacé*, pas fermé. Le hors-sportif se lit sur l'axe
+  // gestion, en tête de l'écran Paiements (`CompletudeAdministrative`). Le chiffre-clé « Réglés »
+  // ci-dessus reste, lui : c'est un **repère**, pas une tâche à faire.
+  const lignes: LigneCompletude[] = completude.data?.sportif ?? []
   const alertes = construireAlertes(lignes, supervision.data)
 
   return (
@@ -63,7 +69,7 @@ export function Accueil({ tournoi }: { tournoi: Tournoi }) {
           <h3 className="carte__soustitre">À faire</h3>
           {completude.isError && (
             <p className="carte__etat carte__etat--erreur" role="alert">
-              Complétude injoignable — {completude.error.message}
+              Complétude injoignable — {texteErreur(completude.error)}
             </p>
           )}
           <ul className="checklist">

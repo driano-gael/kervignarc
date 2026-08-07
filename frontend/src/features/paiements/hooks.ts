@@ -5,6 +5,7 @@
 // détail par archer que les totaux par club), en plus de la diffusion temps réel post-commit.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { cleCompletude } from '../completude/hooks'
 import {
   getPaiementsArchers,
   getPaiementsClubs,
@@ -37,11 +38,18 @@ export function usePaiementsClubs(tournoiId: number) {
 
 // Invalide les deux vues du tournoi : marquer un paiement modifie le détail par archer **et** les
 // totaux par club — les deux caches doivent se rafraîchir.
+//
+// E16US003 — **plus la complétude**. Depuis que l'encart administratif est rendu en tête de cet
+// écran, le compteur « 113/120 » et le tableau qui le suit lisent la même réalité : sans cette
+// invalidation, le tableau basculait sur « Réglé » instantanément pendant que l'encart gardait
+// l'ancien compte jusqu'au prochain tick du poll (5 s). Le même écran se contredisait — exactement
+// ce que le CA « deux écrans, une source » veut rendre impossible.
 function useInvaliderPaiements(tournoiId: number) {
   const queryClient = useQueryClient()
   return () => {
     void queryClient.invalidateQueries({ queryKey: cleArchers(tournoiId) })
     void queryClient.invalidateQueries({ queryKey: cleClubs(tournoiId) })
+    void queryClient.invalidateQueries({ queryKey: cleCompletude(tournoiId) })
   }
 }
 

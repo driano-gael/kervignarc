@@ -8,6 +8,7 @@
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import { CompletudeAdministrative } from '../completude/CompletudeAdministrative'
 import { decrireTarif } from '../competition/format'
 import type { LignePaiementArcher, RecapClub, RecapPaiement, Remboursement } from './api'
 import {
@@ -29,6 +30,12 @@ export function Paiements({ tournoiId }: { tournoiId: number }) {
     <section className="carte">
       <h3 className="carte__titre">Paiements</h3>
       <p className="carte__soustitre">Suivi des règlements par archer et par club.</p>
+
+      {/* E16US003 — la complétude **administrative** atterrit ici, hors des onglets : elle porte sur
+          tout le tournoi, pas sur la vue courante, et doit rester lisible quel que soit l'onglet.
+          Elle vient de `GET /completude` (section `hors_sportif`), séparée du sportif — resté au
+          pilotage — après le refus d'A14. */}
+      <CompletudeAdministrative tournoiId={tournoiId} />
 
       <div className="onglets" role="tablist" aria-label="Vue des paiements">
         <button
