@@ -115,6 +115,11 @@ Tournoi ──► Déroulé : suite d'ÉTAPES (définition, une seule fois)
 - `backend/domain/deroule_etape.py` (`EtapeDeroule`) et `backend/domain/phase.py` (`Phase`,
   `SequencePhases` sur les étapes)
 - `backend/domain/format_tournoi.py` (`appliquer` produit **un** déroulé)
+- `backend/application/departs.py` (`ServiceDeparts.creer`) : le **sens inverse** de la
+  synchronisation — un créneau créé après coup rejoue le déroulé **déjà** composé, une instance par
+  étape. L'ADR n'énonçait l'invariant que dans un sens (« ajouter une étape l'instancie dans chaque
+  créneau ») ; c'est cette asymétrie qui avait produit le défaut, et la migration `0043` porte le
+  même geste pour les bases existantes
 - `backend/application/phases.py` (composition au tournoi, cycle de vie au départ), et
   `backend/application/portee.py`, où `qualification_representative` devient
   `qualification_du_tournoi` — la lecture transverse n'est plus une approximation

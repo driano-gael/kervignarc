@@ -69,6 +69,26 @@ Sur le palmarès, **vous avez tranché le 7 août** : ce sera **juxtaposé** —
 podiums, et aucun classement d'ensemble. La correction est planifiée, mais elle n'est pas dans cette
 livraison : jusque-là, le palmarès d'un tournoi à plusieurs créneaux n'affiche que le premier.
 
+**Deux défauts graves trouvés à la relecture finale.** Ils méritent d'être racontés, parce qu'ils
+ont exactement la même forme que celui que cette livraison corrige — et qu'aucun des deux ne se
+voyait sur un tournoi à un seul créneau.
+
+- **Les écrans de duels s'adressaient au mauvais créneau.** Le plan de duels, la saisie des duels et
+  « Feu vert » proposaient les phases du *tournoi* au lieu de celles du créneau. L'identifiant qu'ils
+  envoyaient au serveur n'était même pas celui d'une phase, mais celui d'une ligne du déroulé —
+  deux choses différentes, qui portent par hasard les mêmes numéros quand il n'y a qu'un créneau. Le
+  scoreur de l'après-midi aurait écrasé les duels du matin, et « Feu vert » aurait lancé le tour du
+  mauvais créneau sur toutes les tablettes, **sans le moindre message d'erreur**.
+- **Le panneau des barrages faisait disparaître un bouton.** Il affichait les barrages de tous les
+  créneaux. Un barrage encore ouvert le matin, au même rang qu'une égalité de l'après-midi — cas
+  parfaitement ordinaire —, retirait le bouton « Faire tirer » de l'après-midi : plus aucun moyen de
+  départager la dernière place qualificative.
+
+Les deux sont corrigés, et chacun a désormais un test qui **échoue** si on remet l'erreur. Ce qui
+manquait n'était pas l'attention : c'était un banc d'essai à **deux créneaux**. La quasi-totalité des
+tests du projet tournaient sur un tournoi à un seul départ, où les deux façons de compter donnent le
+même résultat. Un tel banc existe maintenant.
+
 **À dire franchement sur la méthode** : cette correction est partie d'un constat de bug, pas d'une
 fiche d'US. Elle a donc été spécifiée **après** avoir été écrite — l'inverse de la règle que le
 projet se donne. Le raisonnement est consigné dans deux décisions d'architecture, mais les critères

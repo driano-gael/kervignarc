@@ -153,6 +153,8 @@ appliquées dans l'US qui porte cet ADR :
   `domain/tableau.py` et `domain/duel.py`, qui ne portent **rien** de la portée — aucun n'a de champ
   de rattachement, ils suivent la phase par `phase_id`. Une section « Porté dans le code par » qui
   nomme des modules vides reproduit exactement le défaut d'ADR-0017 qu'elle existe pour empêcher.*
-- `backend/domain/format_tournoi.py` (`appliquer` produit une séquence par départ)
+- `backend/domain/format_tournoi.py` (`appliquer` produit **le déroulé** du tournoi — une séquence
+  unique, ADR-0076 ayant révisé cette ligne : elle annonçait « une séquence par départ », ce que le
+  code n'a jamais fait dans sa forme livrée)
 - `backend/infrastructure/db/repositories/moteur.py` + migration `0042`
 - `backend/tests/test_portee_sportive.py` (garde-fou mécanique)
