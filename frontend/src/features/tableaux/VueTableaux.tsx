@@ -24,6 +24,7 @@ import { useMemo, useState } from 'react'
 import { nommerType } from '../../shared/phases/catalogue'
 import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import { useDeparts } from '../departs/hooks'
+import { suivisDuTournoi, type ModeAffichage } from '../public/focus'
 import { departDeSalle } from '../salle/rotation'
 import type { DuelPublic, DuellistePublic, TableauPublic } from './api'
 import { useTableaux } from './hooks'
@@ -48,9 +49,19 @@ const LIBELLE_STATUT: Record<EtapeChemin['statut'], string> = {
 export function VueTableaux({
   tournoiId,
   interactif = true,
+  mode = 'tout',
 }: {
   tournoiId: number
   interactif?: boolean
+  /** La bascule « mes archers / tout » de l'appli publique (E16US004).
+   *
+   * ⚠️ **Elle remplace le sélecteur local « Mon chemin / Tableau complet »** que cette vue portait
+   * depuis E07US005. Les deux disaient exactement la même chose ; les laisser coexister aurait
+   * donné deux interrupteurs contradictoires sur le même écran — un spectateur en « Mes archers »
+   * global voyant l'arbre entier parce qu'un second bouton, ailleurs, dit le contraire. Le CA P05
+   * (*« une bascule pour suivre tous les tableaux du tournoi ou uniquement centré sur les archers
+   * que l'on choisit de suivre »*) est désormais servi par l'interrupteur d'en-tête. */
+  mode?: ModeAffichage
 }) {
   // ⚠️ Sélecteur **stable** : on lit la référence brute `s.suivis`, puis on filtre dans le corps.
   // Filtrer DANS le sélecteur rend un tableau neuf à chaque appel, donc un `getSnapshot` instable
@@ -60,13 +71,9 @@ export function VueTableaux({
   // l'attraper — d'où le test de montage `VueTableaux.test.tsx`, qui, lui, le peut.
   const tousLesSuivis = useSessionSuivisStore((s) => s.suivis)
   const suivis = useMemo(
-    () => tousLesSuivis.filter((x) => x.tournoiId === tournoiId).map((x) => x.archerId),
+    () => suivisDuTournoi(tousLesSuivis, tournoiId),
     [tousLesSuivis, tournoiId],
   )
-  // Sur l'écran de salle il n'y a personne à suivre : la lecture y est **toujours** l'arbre
-  // complet, et le sélecteur n'existe pas. Dans l'appli publique, on ouvre sur « mon chemin » si
-  // l'utilisateur suit quelqu'un — même principe que l'onglet « Suivi » ouvert d'entrée (D-09).
-  const [lecture, setLecture] = useState<Lecture>(suivis.length > 0 ? 'chemin' : 'complet')
   const [phaseChoisie, setPhaseChoisie] = useState<number | null>(null)
   // ⚠️ **Les arbres appartiennent à un créneau** (E01US025, ADR-0075). Ni l'écran de salle ni
   // l'appli publique n'ont de sélecteur de départ ici — le CA veut « aucune interaction » sur le
@@ -107,7 +114,10 @@ export function VueTableaux({
     // aussi la garde d'indexation — une liste non vide rend toujours un élément.)
     return <p className="carte__etat">Pas encore de tableau — les duels ne sont pas lancés.</p>
   }
-  const lectureEffective: Lecture = interactif ? lecture : 'complet'
+  // Sur l'écran de salle il n'y a personne à suivre : la lecture y est **toujours** l'arbre complet
+  // (CA E07US004, « aucune interaction »). Dans l'appli publique, c'est l'interrupteur d'en-tête qui
+  // décide — et lui ne rend « suivis » que s'il y a au moins un archer suivi (`modeEffectif`).
+  const lectureEffective: Lecture = interactif && mode === 'suivis' ? 'chemin' : 'complet'
 
   return (
     <div className="tableaux">
@@ -130,25 +140,6 @@ export function VueTableaux({
               </select>
             </label>
           )}
-
-          <div className="tableaux__lecture" role="group" aria-label="Lecture du tableau">
-            <button
-              type="button"
-              className={lecture === 'chemin' ? 'onglet onglet--actif' : 'onglet'}
-              aria-pressed={lecture === 'chemin'}
-              onClick={() => setLecture('chemin')}
-            >
-              Mon chemin
-            </button>
-            <button
-              type="button"
-              className={lecture === 'complet' ? 'onglet onglet--actif' : 'onglet'}
-              aria-pressed={lecture === 'complet'}
-              onClick={() => setLecture('complet')}
-            >
-              Tableau complet
-            </button>
-          </div>
         </div>
       )}
 
@@ -171,13 +162,15 @@ export function VueTableaux({
 /** Variante A : l'arbre réduit à la trajectoire de chaque archer suivi. */
 function MonChemin({ tableau, suivis }: { tableau: TableauPublic; suivis: number[] }) {
   if (suivis.length === 0) {
-    // On ne bascule pas d'autorité sur l'autre lecture : ce serait répondre à côté sans le dire.
-    // On nomme le geste manquant — la liste de suivis se remplit dans l'onglet « Suivi »
-    // (E07US006), et c'est le seul endroit où elle se remplit.
+    // Défense en profondeur : l'interrupteur d'en-tête ne rend « suivis » qu'avec au moins un
+    // archer suivi (`modeEffectif`), donc ce cas ne devrait pas se produire depuis l'appli publique.
+    // On ne bascule pas d'autorité sur l'autre lecture — ce serait répondre à côté sans le dire —
+    // et l'on nomme le geste manquant : la liste se remplit dans l'onglet « Suivi » (E07US006), et
+    // nulle part ailleurs.
     return (
       <p className="carte__etat">
-        Aucun archer suivi. Ajoutez-en dans l’onglet « Suivi » pour voir son parcours ici, ou passez
-        au tableau complet.
+        Aucun archer suivi. Ajoutez-en dans l’onglet « Suivi » pour voir son parcours ici, ou
+        repassez l’affichage sur « Tout le tournoi ».
       </p>
     )
   }

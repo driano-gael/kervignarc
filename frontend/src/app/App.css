@@ -2817,10 +2817,41 @@ button:disabled {
   font-weight: 600;
 }
 
+/* Bascule « mes archers / tout » de l'appli publique (E16US004). Même grammaire que les onglets —
+   pilules, aplat de marque sur l'actif — mais précédée de son libellé : ce n'est pas une
+   navigation, c'est un réglage d'affichage, et il vaut mieux le dire que le laisser deviner. */
+.bascule-suivis {
+  align-items: center;
+  margin: 4px 0 0;
+}
+
+.bascule-suivis__libelle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-right: 4px;
+}
+
 /* Conteneur défilant : à 8 colonnes, le classement déborde d'un écran de téléphone. On le laisse
    défiler horizontalement plutôt que d'écraser les colonnes (CA « responsive mobile »). */
 .table-defilement {
   overflow-x: auto;
+}
+
+/* Détail des flèches déplié sous une ligne de classement (E16US004, P03). Le bouton porte le nom de
+   l'archer : il doit rester lisible comme un nom, pas comme un lien de navigation — d'où le
+   soulignement pointillé, plus discret que celui de `.lien`. */
+.table__detail-bascule {
+  text-align: left;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.table__detail > td {
+  background: var(--surface-1);
+}
+
+.table__fleches {
+  padding: 4px 0;
 }
 
 /* Plan de cibles en **lecture seule** (public) : une grille de cartes-cibles, sans glisser-déposer

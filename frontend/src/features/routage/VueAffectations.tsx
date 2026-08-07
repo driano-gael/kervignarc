@@ -26,6 +26,7 @@
 import { useEffect, useState } from 'react'
 import type { RoutageArcher } from './api'
 import { useDeparts } from '../departs/hooks'
+import { centrerLignes, type ModeAffichage } from '../public/focus'
 import { departDeSalle } from '../salle/rotation'
 import { useAffectations } from './hooks'
 import { alerte, detail, encoreEnLice, partitionner, titre } from './presentation'
@@ -38,9 +39,16 @@ const nomComplet = (ligne: RoutageArcher) => `${ligne.prenom} ${ligne.nom}`.trim
 export function VueAffectations({
   tournoiId,
   interactif = true,
+  mode = 'tout',
+  suivis = [],
 }: {
   tournoiId: number
   interactif?: boolean
+  /** Bascule « mes archers / tout » de l'appli publique (E16US004). Par défaut `'tout'` : l'écran
+   * de salle et la table de l'organisation ne suivent personne. */
+  mode?: ModeAffichage
+  /** Les archers suivis sur ce tournoi — n'a de sens qu'avec `mode === 'suivis'`. */
+  suivis?: number[]
 }) {
   const [tri, setTri] = useState<Tri>('cible')
   // Le pas de tir est celui d'un **créneau** (ADR-0075). Ni l'écran de salle ni la table
@@ -83,10 +91,25 @@ export function VueAffectations({
     return <p className="carte__etat">Tableau final pas encore constitué.</p>
   }
 
+  // Centrage « mes archers » (E16US004) **avant** la partition : c'est bien la même liste qu'on
+  // restreint, poses / attente / sortis compris. Filtrer après aurait demandé de le refaire trois
+  // fois, et la troisième aurait fini par diverger.
+  const archersAffiches = centrerLignes(donnees.archers, mode, suivis)
+  if (archersAffiches.length === 0) {
+    // Le tableau route du monde, mais aucun de *vos* archers : le dire précisément, sinon la page
+    // se lit comme le « Tableau final pas encore constitué » juste au-dessus, qui est faux ici.
+    return (
+      <p className="carte__etat">
+        Aucun des archers que vous suivez n’est affecté sur ce tableau. Passez à « Tout le tournoi »
+        pour voir le pas de tir complet.
+      </p>
+    )
+  }
+
   // La partition vit dans `presentation.ts` — c'est elle qui portait le bloquant de la revue, et
   // la laisser ici la privait de tout test (remarque de la 2ᵉ passe). Le composant ne fait plus que
   // du rendu.
-  const { poses, attente, sortis } = partitionner(donnees.archers)
+  const { poses, attente, sortis } = partitionner(archersAffiches)
 
   return (
     <div className="affectations">
@@ -114,9 +137,9 @@ export function VueAffectations({
       {/* L'écran projeté ne peut rien actionner : il ne choisit donc pas son tri, il **cycle**
           (P06). `interactif` fait plus que masquer deux boutons — il change la nature de la vue. */}
       {!interactif ? (
-        <SalleParPages poses={poses} tous={donnees.archers} />
+        <SalleParPages poses={poses} tous={archersAffiches} />
       ) : tri === 'nom' ? (
-        <ListeParNom lignes={donnees.archers} />
+        <ListeParNom lignes={archersAffiches} />
       ) : (
         <>
           <ListeParCible poses={poses} />

@@ -100,15 +100,28 @@ describe('VueTableaux — montage', () => {
     expect(screen.getByText(/MARTIN/)).toBeInTheDocument()
   })
 
-  it('se monte et ouvre sur « Mon chemin » quand on suit un archer', async () => {
+  it('rend « Mon chemin » quand l’affichage est centré sur les archers suivis', async () => {
+    // ⚠️ **Comportement modifié en E16US004, volontairement.** Jusqu'ici la vue décidait seule
+    // d'ouvrir sur « Mon chemin » dès qu'on suivait quelqu'un, et portait son propre sélecteur
+    // « Mon chemin / Tableau complet ». Ce choix est remonté d'un cran : c'est l'interrupteur
+    // « mes archers / tout » de l'en-tête public (P05) qui le porte, pour tout l'onglet à la fois.
+    // Deux interrupteurs disant la même chose sur le même écran finissaient par se contredire.
+    useSessionSuivisStore.setState({ suivis: [{ archerId: 1, tournoiId: 1 }] })
+
+    render(<Cadre enfants={<VueTableaux tournoiId={1} mode="suivis" />} />)
+
+    await waitFor(() => expect(screen.getByText(/MARTIN/)).toBeInTheDocument())
+    // En « mon chemin », c'est le nom de l'archer qui titre sa carte, pas un en-tête de tour.
+    expect(screen.getByText('Luc MARTIN')).toBeInTheDocument()
+  })
+
+  it('rend l’arbre complet en affichage « tout », même en suivant un archer', async () => {
     useSessionSuivisStore.setState({ suivis: [{ archerId: 1, tournoiId: 1 }] })
 
     render(<Cadre enfants={<VueTableaux tournoiId={1} />} />)
 
-    await waitFor(() => expect(screen.getByText(/MARTIN/)).toBeInTheDocument())
-    // « Mon chemin » est la lecture par défaut dès qu'on suit quelqu'un (D-09) : c'est le nom de
-    // l'archer qui titre sa carte, pas un en-tête de tour.
-    expect(screen.getByText('Luc MARTIN')).toBeInTheDocument()
+    // L'en-tête de branche est la signature de l'arbre complet ; « mon chemin » ne l'affiche pas.
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Demi-finale' })).toBeVisible())
   })
 
   it('n’ouvre pas de requête et le dit quand aucun tableau n’existe', async () => {

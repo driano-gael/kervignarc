@@ -26,14 +26,28 @@ export interface ArcherSuivi {
 
 interface SessionSuivisState {
   suivis: ArcherSuivi[]
+  /** La bascule « mes archers / tout » de l'appli publique (E16US004).
+   *
+   * **Une préférence de lecture, donc globale** — pas par tournoi, contrairement aux suivis :
+   * « je regarde mes archers » se dit une fois et vaut partout. C'est `focus.modeEffectif` qui la
+   * retombe sur « tout » lorsqu'on ouvre un tournoi où l'on ne suit personne (sans quoi tous les
+   * écrans publics seraient vides sans que rien ne l'explique).
+   *
+   * Persistée avec la liste : elle survit à un rechargement, ce qui compte sur un téléphone qu'on
+   * range et ressort toute la journée. Une clé absente du `localStorage` d'hier retombe sur `false`
+   * par la fusion de `persist` — aucune migration à écrire.
+   */
+  centrerSurSuivis: boolean
   suivre: (archer: ArcherSuivi) => void
   nePlusSuivre: (archerId: number) => void
+  centrer: (valeur: boolean) => void
 }
 
 export const useSessionSuivisStore = create<SessionSuivisState>()(
   persist(
     (set) => ({
       suivis: [],
+      centrerSurSuivis: false,
       suivre: (archer) =>
         set((etat) =>
           // Idempotent : re-suivre un archer déjà dans la liste ne le duplique pas.
@@ -43,6 +57,7 @@ export const useSessionSuivisStore = create<SessionSuivisState>()(
         ),
       nePlusSuivre: (archerId) =>
         set((etat) => ({ suivis: etat.suivis.filter((s) => s.archerId !== archerId) })),
+      centrer: (valeur) => set({ centrerSurSuivis: valeur }),
     }),
     { name: 'kervignarc-session-suivis' },
   ),
