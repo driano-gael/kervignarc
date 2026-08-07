@@ -12,11 +12,9 @@ import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { ChoixCreneau } from '../departs/ChoixCreneau'
-import { useDeparts } from '../departs/hooks'
-import { creneauRetenu } from '../departs/libelle'
+import { useCreneauDesDuels } from '../departs/hooks'
 import { useDeclarerForfaitDuel } from '../forfaits/hooks'
 import { PanneauRoutage } from '../routage/PanneauRoutage'
-import { departDeSalle } from '../salle/rotation'
 import type { Cote, Duel, Tableau } from './api'
 import {
   estJouable,
@@ -54,12 +52,9 @@ export function SaisieDuels({ tournoiId }: { tournoiId: number }) {
   // saisit — inutile de le faire tourner ailleurs.
   useRejeuDuelsHorsLigne()
 
-  const [choixDepart, setChoixDepart] = useState<number | null>(null)
-  const departs = useDeparts(tournoiId)
-  const liste = departs.data ?? []
-  // Le scoreur score le créneau **qu'on tire** ; il peut en changer si besoin (une saisie de
-  // rattrapage sur le créneau du matin reste légitime).
-  const departId = creneauRetenu(liste, choixDepart, departDeSalle)
+  // Le créneau **dont on joue les duels**, figé dès qu'il est résolu : sans ce gel, la clôture de
+  // la qualification faisait basculer l'écran sous les doigts du scoreur (cf. `useCreneauDesDuels`).
+  const { departs, liste, departId, choisir } = useCreneauDesDuels(tournoiId)
   const phases = usePhases(departId)
   const [phaseId, setPhaseId] = useState<number | null>(null)
 
@@ -79,7 +74,7 @@ export function SaisieDuels({ tournoiId }: { tournoiId: number }) {
         <IndicateurAttente />
       </div>
 
-      <ChoixCreneau departs={liste} valeur={departId} surChangement={setChoixDepart} />
+      <ChoixCreneau departs={liste} valeur={departId} surChangement={choisir} />
       {departs.isSuccess && liste.length === 0 && (
         <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
       )}

@@ -241,8 +241,9 @@ class ServiceSimulation:
         # ⚠️ La garde n'est pas décorative : un tournoi `brouillon` **sans aucun créneau** est le
         # chemin normal de l'atelier (on crée le tournoi, puis les départs), et l'indexation nue
         # levait un `IndexError` — donc un **500**, sans message exploitable, sur une simulation
-        # parfaitement légitime. Les services voisins lèvent déjà `TournoiSansDepart` (404) ; on ne
-        # laisse pas une route se comporter autrement que ses sœurs sur le même état.
+        # parfaitement légitime. Les services voisins lèvent déjà `TournoiSansDepart` (409 — conflit
+        # d'état : créer un créneau rend la requête acceptable) ; on ne laisse pas une route se
+        # comporter autrement que ses sœurs sur le même état.
         creneaux = harnais.departs.par_tournoi(tournoi_id)
         if not creneaux:
             raise TournoiSansDepart(

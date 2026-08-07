@@ -15,7 +15,8 @@ import { getSuiviDeroule } from './api'
  * et chaque tick reconstruit les tableaux des phases en tableau côté serveur. */
 const INTERVALLE_POLL_MS = 10000
 
-const cleSuivi = (departId: number | null) => ['suivi-deroule', departId] as const
+export const RACINE_SUIVI = ['suivi-deroule'] as const
+const cleSuivi = (departId: number | null) => [...RACINE_SUIVI, departId] as const
 
 /** Le suivi du **créneau** désigné. `null` tant qu'aucun n'est choisi : la requête est alors
  * désactivée plutôt que lancée sur un identifiant inventé (ADR-0075). */

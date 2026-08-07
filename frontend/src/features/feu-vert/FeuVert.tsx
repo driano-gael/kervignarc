@@ -12,19 +12,16 @@ import { useState } from 'react'
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { ChoixCreneau } from '../departs/ChoixCreneau'
-import { useDeparts } from '../departs/hooks'
-import { creneauRetenu } from '../departs/libelle'
+import { useCreneauDesDuels } from '../departs/hooks'
 import { useAvancementPhases } from '../phases/hooks'
-import { departDeSalle } from '../salle/rotation'
 import type { DuelAVenir } from './api'
 import { afficheDuel, libelleBouton, libelleCibles, nomDuelliste } from './etat'
 import { useFeuVert, useImpactLancement, useLancerTour } from './hooks'
 
 export function FeuVert({ tournoiId }: { tournoiId: number }) {
-  const [choixDepart, setChoixDepart] = useState<number | null>(null)
-  const departs = useDeparts(tournoiId)
-  const liste = departs.data ?? []
-  const departId = creneauRetenu(liste, choixDepart, departDeSalle)
+  // Créneau **figé une fois résolu** (cf. `useCreneauDesDuels`) : le pilotage du tour ne doit pas
+  // changer de créneau tout seul parce qu'une qualification vient de se clore ailleurs.
+  const { departs, liste, departId, choisir } = useCreneauDesDuels(tournoiId)
   // ⚠️ **`useAvancementPhases(departId)` et non `usePhases(tournoiId)`** (revue E01US025, axe
   // adversarial). Depuis ADR-0076, `GET /tournois/{id}/phases` rend le **déroulé** — des `id` de
   // `deroule_etape` —, alors que « lancer le tour » s'adresse à une **phase**, l'avancement d'une
@@ -55,9 +52,9 @@ export function FeuVert({ tournoiId }: { tournoiId: number }) {
       <h2 className="carte__titre">Feu vert — lancer le tour</h2>
 
       {/* Le créneau commande tout l'écran : on lance le tour d'**un** départ (ADR-0075). Le défaut
-          est celui qu'on tire (`departDeSalle`) — en fin de journée, retomber sur `departs[0]`
-          piloterait le matin, clos depuis six heures. */}
-      <ChoixCreneau departs={liste} valeur={departId} surChangement={setChoixDepart} />
+          est celui **dont on joue les duels** (`creneauDesDuels`) — et non celui de l'écran de
+          salle, qui désignerait le créneau suivant dès la qualification close. */}
+      <ChoixCreneau departs={liste} valeur={departId} surChangement={choisir} />
       {departs.isSuccess && liste.length === 0 && (
         <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
       )}

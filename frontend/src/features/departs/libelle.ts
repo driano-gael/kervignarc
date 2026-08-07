@@ -18,6 +18,39 @@ export function libelleCreneau(depart: CreneauChoisissable): string {
   return `Départ ${depart.numero}${depart.horaire !== null ? ` — ${depart.horaire}` : ''}`
 }
 
+/** Le créneau **dont on joue les duels** — et ce n'est pas celui de `departDeSalle`.
+ *
+ * ⚠️ **La règle de l'écran de salle ne se transpose pas ici** (correctif de 2ᵉ revue E01US025).
+ * `departDeSalle` prend « le premier `lancé`, sinon le premier `ouvert` ». Or `EtatDepart` se dérive
+ * de la **qualification seule** (`backend/domain/cycle_depart.py`) : un créneau passe `clos` quand
+ * toutes ses séries sont closes, c'est-à-dire **à l'instant précis où ses duels commencent**. En
+ * réutilisant la règle de salle, les écrans de duels désignaient donc le créneau *suivant* — celui
+ * qui n'a pas encore tiré et n'a évidemment aucun tableau. Le seul créneau où il y avait des duels
+ * à lancer était le seul qu'aucun des trois écrans n'affichait.
+ *
+ * La règle juste part du **dernier créneau clos** : sa qualification est finie, ce sont ses duels
+ * qu'on joue. Elle reste correcte dans les trois moments de la journée, y compris le chevauchement
+ * (duels du matin pendant la qualification de l'après-midi), où « le premier lancé » désignerait
+ * l'après-midi alors que les duels sont ceux du matin :
+ *
+ * | Matin | Après-midi | Rendu | Duels réellement en cours |
+ * |---|---|---|---|
+ * | `lance` | `ouvert` | matin | matin (à venir) |
+ * | `clos` | `lance` | matin | matin ✔ |
+ * | `clos` | `clos` | après-midi | après-midi ✔ |
+ *
+ * Pure et testée, comme `departDeSalle` et pour la même raison : c'est une règle de choix, et trois
+ * écrans doivent l'appliquer à l'identique.
+ */
+export function creneauDesDuels<T extends { etat: string }>(departs: readonly T[]): T | undefined {
+  const clos = departs.filter((depart) => depart.etat === 'clos')
+  return (
+    clos[clos.length - 1] ??
+    departs.find((depart) => depart.etat === 'lance') ??
+    departs[departs.length - 1]
+  )
+}
+
 /**
  * Le créneau **retenu** par un écran : le choix de l'utilisateur s'il est encore valide, sinon
  * celui qu'on est en train de tirer, sinon rien.

@@ -19,10 +19,8 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useArchers } from '../archers/hooks'
 import type { Archer } from '../competition/api'
 import { ChoixCreneau } from '../departs/ChoixCreneau'
-import { useDeparts } from '../departs/hooks'
-import { creneauRetenu } from '../departs/libelle'
+import { useCreneauDesDuels } from '../departs/hooks'
 import { useAvancementPhases } from '../phases/hooks'
-import { departDeSalle } from '../salle/rotation'
 import type { CiblePlaceeDuel, Conflit, Destination, PlanDeDuels } from './api'
 import {
   useDeplacerDuelliste,
@@ -41,10 +39,9 @@ import { resumeAdjacenceNonGarantie } from './presentation'
 const POSITIONS = ['A', 'B', 'C', 'D']
 
 export function Duels({ tournoiId }: { tournoiId: number }) {
-  const [choixDepart, setChoixDepart] = useState<number | null>(null)
-  const departs = useDeparts(tournoiId)
-  const liste = departs.data ?? []
-  const departId = creneauRetenu(liste, choixDepart, departDeSalle)
+  // Créneau **figé une fois résolu** (cf. `useCreneauDesDuels`) : recalculé à chaque rendu, il
+  // suivait les changements d'état poussés par le temps réel et déplaçait l'écran tout seul.
+  const { departs, liste, departId, choisir } = useCreneauDesDuels(tournoiId)
   // ⚠️ **`useAvancementPhases(departId)` et non `usePhases(tournoiId)`** (revue E01US025, axe
   // adversarial) : `GET /tournois/{id}/phases` rend le **déroulé** depuis ADR-0076, donc des `id`
   // de `deroule_etape`, alors que le plan de duels se place sur une **phase**. Les deux séquences
@@ -67,7 +64,7 @@ export function Duels({ tournoiId }: { tournoiId: number }) {
   return (
     <section>
       <h3 className="carte__soustitre">Plan de duels</h3>
-      <ChoixCreneau departs={liste} valeur={departId} surChangement={setChoixDepart} />
+      <ChoixCreneau departs={liste} valeur={departId} surChangement={choisir} />
       {departs.isSuccess && liste.length === 0 && (
         <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
       )}

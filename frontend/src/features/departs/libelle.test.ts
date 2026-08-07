@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { creneauRetenu, libelleCreneau } from './libelle'
+import { creneauDesDuels, creneauRetenu, libelleCreneau } from './libelle'
 
 describe('libelleCreneau', () => {
   it('nomme un créneau par son numéro et son horaire', () => {
@@ -35,5 +35,39 @@ describe('creneauRetenu', () => {
 
   it('rend null quand il n’y a plus aucun créneau', () => {
     expect(creneauRetenu([], 42, premier)).toBeNull()
+  })
+})
+
+describe('creneauDesDuels', () => {
+  // ⚠️ **La règle de l'écran de salle donnerait la mauvaise réponse au cas 2**, et c'est tout
+  // l'objet de cette fonction : `EtatDepart` se dérive de la qualification seule, donc un créneau
+  // passe `clos` à l'instant où ses duels commencent. Les trois cas ci-dessous sont les trois
+  // moments d'une vraie journée à deux créneaux.
+  const matin = (etat: string) => ({ id: 41, etat })
+  const apresMidi = (etat: string) => ({ id: 42, etat })
+
+  it('cas 1 — le matin tire, l’après-midi n’a pas commencé : on rend le matin', () => {
+    expect(creneauDesDuels([matin('lance'), apresMidi('ouvert')])?.id).toBe(41)
+  })
+
+  it('cas 2 — la qualif du matin est close, l’après-midi tire : on rend LE MATIN', () => {
+    // **Le défaut corrigé.** `departDeSalle` rendait ici l'après-midi (premier `lance`), alors que
+    // les duels qu'on joue sont ceux du matin : les trois écrans affichaient « aucune phase à
+    // élimination directe » pour le seul créneau où il y avait quelque chose à lancer.
+    expect(creneauDesDuels([matin('clos'), apresMidi('lance')])?.id).toBe(41)
+  })
+
+  it('cas 3 — tout est clos : on rend le dernier, pas le premier', () => {
+    expect(creneauDesDuels([matin('clos'), apresMidi('clos')])?.id).toBe(42)
+  })
+
+  it('avant que quiconque ait tiré, on rend le dernier plutôt que rien', () => {
+    // Aucun `clos`, aucun `lance` : mieux vaut un créneau à montrer qu'un écran vide. Le sélecteur
+    // reste là pour en changer.
+    expect(creneauDesDuels([matin('ouvert'), apresMidi('ouvert')])?.id).toBe(42)
+  })
+
+  it('rend undefined sans aucun créneau', () => {
+    expect(creneauDesDuels([])).toBeUndefined()
   })
 })

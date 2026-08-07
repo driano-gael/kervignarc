@@ -23,7 +23,7 @@ import {
 // Deux caches pour deux mailles (ADR-0076) : le **déroulé** du tournoi, et l'**avancement** de
 // chaque créneau. Une transition de statut ne change pas le déroulé ; éditer le déroulé change en
 // revanche ce que tous les créneaux affichent — d'où l'invalidation croisée ci-dessous.
-const clePhases = (tournoiId: number) => ['phases', tournoiId] as const
+export const clePhases = (tournoiId: number) => ['phases', tournoiId] as const
 
 // La **racine** du cache d'avancement, nommée une fois. Les quatre mutations ci-dessous
 // invalidaient `['avancement-phases']` en littéral recopié : React Query traite cette clé partielle
@@ -31,7 +31,7 @@ const clePhases = (tournoiId: number) => ['phases', tournoiId] as const
 // change ce que chacun affiche), mais qu'une chaîne dupliquée quatre fois ne dit pas, et qu'un
 // renommage n'aurait mis à jour qu'en partie. Convention du fichier voisin (`departs/hooks.ts`) :
 // la clé se construit, elle ne s'écrit pas.
-const RACINE_AVANCEMENT = ['avancement-phases'] as const
+export const RACINE_AVANCEMENT = ['avancement-phases'] as const
 const cleAvancement = (departId: number) => [...RACINE_AVANCEMENT, departId] as const
 
 export function usePhases(tournoiId: number) {

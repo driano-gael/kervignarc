@@ -60,10 +60,12 @@ si vous en créez plusieurs.
 différents pour le même rang de phase, seul celui du **premier départ** est conservé. C'est le sens
 de la correction — ces écarts n'auraient jamais dû être possibles — mais c'est une perte réelle.
 
-**Trois limites restent ouvertes**, toutes tracées au registre plutôt que corrigées à la hâte : le
+**Quatre limites restent ouvertes**, toutes tracées au registre plutôt que corrigées à la hâte : le
 **palmarès** ne voit encore que le premier créneau ; un archer inscrit sur **deux créneaux** ne peut
-pas encore y tirer deux séries distinctes ; et il n'existe pas d'écran rassemblant les N classements
-d'un tournoi.
+pas encore y tirer deux séries distinctes ; les **forfaits de qualification** sont eux aussi encore
+rattachés au premier créneau — supprimer celui-ci effacerait les forfaits de tous les autres, à
+éviter donc sur un tournoi à plusieurs créneaux ; et il n'existe pas d'écran rassemblant les N
+classements d'un tournoi.
 
 Sur le palmarès, **vous avez tranché le 7 août** : ce sera **juxtaposé** — quatre départs, quatre
 podiums, et aucun classement d'ensemble. La correction est planifiée, mais elle n'est pas dans cette
@@ -88,6 +90,15 @@ Les deux sont corrigés, et chacun a désormais un test qui **échoue** si on re
 manquait n'était pas l'attention : c'était un banc d'essai à **deux créneaux**. La quasi-totalité des
 tests du projet tournaient sur un tournoi à un seul départ, où les deux façons de compter donnent le
 même résultat. Un tel banc existe maintenant.
+
+**Et un troisième, trouvé en relisant les corrections elles-mêmes.** En rattachant les écrans de
+duels à un créneau, ils avaient repris la règle de l'écran de salle : « montrer celui qu'on est en
+train de tirer ». Or un créneau est considéré comme terminé dès que sa qualification est finie —
+c'est-à-dire à l'instant précis où ses duels commencent. Les trois écrans désignaient donc le
+créneau *suivant*, le seul qui n'avait rien à scorer. Pire : comme l'application se rafraîchit toute
+seule, l'écran d'un scoreur en pleine saisie pouvait **changer de créneau sous ses doigts** à la
+clôture de la qualification. Les deux sont corrigés — une règle propre aux duels, et un créneau qui
+ne bouge plus une fois l'écran ouvert.
 
 **À dire franchement sur la méthode** : cette correction est partie d'un constat de bug, pas d'une
 fiche d'US. Elle a donc été spécifiée **après** avoir été écrite — l'inverse de la règle que le
