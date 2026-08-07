@@ -498,6 +498,13 @@ class SerieORM(Base):
     # UNIQUE(tournoi_id, archer_id) : une seule série de qualification par archer. Nommée comme dans
     # la migration `0026` — présente ici, dans le `Base.metadata` cible de l'autogénération, sinon
     # un futur `--autogenerate` émettrait un `drop_constraint` fantôme et retirerait le garde-fou.
+    #
+    # DETTE-046 (docs/dette.md) : **la portée de cette unicité est fausse depuis ADR-0075**. Le
+    # modèle autorise un archer à s'inscrire sur **plusieurs** créneaux (`ARCHER }o--o{ DEPART`),
+    # mais ses flèches n'ont ici qu'un seul emplacement pour tout le tournoi : la seconde série
+    # écrase la première ou échoue à l'enregistrement. La résorption est `UNIQUE(depart_id,
+    # archer_id)` + `Serie.depart_id` (migration comprise) — même famille que DETTE-044, une portée
+    # restée au tournoi alors que la réalité est le créneau. Ne pas contourner ici.
     __table_args__ = (UniqueConstraint("tournoi_id", "archer_id", name="uq_serie_tournoi_archer"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)

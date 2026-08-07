@@ -660,6 +660,11 @@ class DerouleRepository(Protocol):
         un tournoi que plus personne ne peut composer.
 
         Renvoie les étapes relues, dans l'ordre demandé.
+
+        `# DETTE-026` — **cette méthode n'existe que parce que le rang porte l'identité.** Elle est,
+        avec son pendant `PhaseRepository.reordonner`, le 3ᵉ et le 4ᵉ écrivain de la séquence : le
+        seuil que le registre s'était fixé avant de proposer un remède structurel (ancrer par
+        identité plutôt que par ordre). Cf. `docs/dette.md`.
         """
         ...
 
@@ -744,6 +749,8 @@ class PhaseRepository(Protocol):
         deux rangs s'échangent. Le rang **est** la clé de jointure vers la définition (ADR-0076) :
         une phase laissée sur son ancien rang pointerait l'étape voisine — un changement de barème
         silencieux, sans la moindre erreur visible. D'où l'atomicité.
+
+        `# DETTE-026` — 4ᵉ écrivain de la séquence, même remarque que sur `DerouleRepository`.
         """
         ...
 

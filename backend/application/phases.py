@@ -219,6 +219,12 @@ class ServicePhases:
         # **En un bloc, pas étape par étape** : un déroulé n'a qu'une étape par rang, donc tout
         # échange passerait par un doublon transitoire que la persistance refuse. Le port porte
         # cette écriture d'ensemble, à charge pour l'adapter de savoir s'y prendre (ADR-0003).
+        # DETTE-025 (docs/dette.md) : ces **deux** écritures ne forment pas une unité de travail —
+        # chaque appel de repository ouvre sa session et son commit. Une panne entre elles laisse
+        # les étapes renumérotées et les avancements sur leurs anciens rangs, donc chaque phase
+        # pointant la **définition voisine** : le créneau exécuterait un autre barème, sans erreur
+        # ni signal. Le remède est un geste atomique sur l'adapter concret (patron
+        # `consigner_dans`), hors périmètre ici ; ne pas contourner en réordonnant une à une.
         posees = self._deroules.reordonner(reordonnees)
         self._realigner_avancements(tournoi_id, ancien_vers_nouveau)
         return posees
@@ -280,6 +286,10 @@ class ServicePhases:
         # relecture : elle n'était jamais réalignée, restait en base à son ancien rang, et l'ajout
         # d'étape suivant heurtait `uq_phase_depart_ordre` — écran d'atelier en 500, définitivement.
         # Ici les rangs des phases correspondent encore tous à une étape : elles se relisent toutes.
+        # DETTE-025 : même défaut qu'à `reordonner`, sur **trois** écritures ici (retrait des
+        # avancements, retrait de l'étape, réalignement + recompactage). Le trou de numérotation
+        # décrit ci-dessus est assumé *dans* le geste ; ce qui ne l'est pas, c'est une panne qui le
+        # fige — le déroulé garderait un rang manquant et des phases mal appariées.
         self._realigner_avancements(tournoi_id, ancien_vers_nouveau)
         self._deroules.reordonner(recompactees)
 
