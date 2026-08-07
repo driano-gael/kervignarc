@@ -31,7 +31,7 @@ from application.erreurs import (
     PhaseQualificationAbsente,
     SaisieHorsCible,
 )
-from application.portee import qualification_representative
+from application.portee import qualification_du_tournoi
 from domain.archer import Archer, ArcherId
 from domain.blason import ZoneScore
 from domain.depart import DepartId
@@ -198,7 +198,7 @@ class ServiceSaisie:
         La « dernière saisie » (dernier `created_at`) alimente la colonne *dernière activité* — le
         dernier **tir**, jamais le dernier heartbeat.
         """
-        phase = qualification_representative(self._phases, tournoi_id)
+        phase = qualification_du_tournoi(self._phases, tournoi_id)
         # `bareme` optionnel depuis E05US001 (ADR-0045 §2), présent sur une qualification ; absent
         # (ou phase non configurée) → 0, la supervision affiche « — » sans lever d'erreur.
         nb_volees = phase.bareme.nb_volees if phase is not None and phase.bareme is not None else 0
@@ -389,7 +389,7 @@ class ServiceSaisie:
 
     def _phase_qualification(self, tournoi_id: TournoiId) -> Phase:
         """La phase de qualification ; `PhaseQualificationAbsente` si elle n'existe pas."""
-        phase = qualification_representative(self._phases, tournoi_id)
+        phase = qualification_du_tournoi(self._phases, tournoi_id)
         if phase is None:
             raise PhaseQualificationAbsente(
                 "La qualification n'est pas encore configurée pour ce tournoi."
@@ -422,7 +422,7 @@ class ServiceSaisie:
         Best-effort : sans phase de qualification configurée, personne n'est forfait — la grille
         s'affiche quand même (robustesse jour J, même parti que `avancement_cible` sur le barème).
         """
-        phase = qualification_representative(self._phases, tournoi_id)
+        phase = qualification_du_tournoi(self._phases, tournoi_id)
         if phase is None or phase.id is None:
             return frozenset()
         return frozenset(forfait.archer_id for forfait in self._forfaits.par_phase(phase.id))

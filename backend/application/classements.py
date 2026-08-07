@@ -15,7 +15,7 @@ perdre la position d'ensemble.
 from __future__ import annotations
 
 from application.erreurs import DepartIntrouvable, TournoiIntrouvable
-from application.portee import qualification_representative
+from application.portee import qualification_du_tournoi
 from domain.barrage import PorteeBarrage, VerdictBarrage
 from domain.categorie import CategorieId
 from domain.classement import Classement, calculer_classement
@@ -181,7 +181,7 @@ class ServiceClassement:
         Filtrés par phase : un forfait déclaré **en duels** ne touche pas le classement de qualif
         (l'archer avait bien qualifié). Phase de qualif absente → aucun forfait applicable ici.
         """
-        phase = qualification_representative(self._phases, tournoi_id)
+        phase = qualification_du_tournoi(self._phases, tournoi_id)
         if phase is None or phase.id is None:
             return []
         return self._forfaits.par_phase(phase.id)

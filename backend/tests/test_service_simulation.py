@@ -33,9 +33,10 @@ from domain.archer import Archer
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.depart import Depart
+from domain.deroule_etape import EtapeDeroule
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
-from domain.phase import Phase, TypePhase
+from domain.phase import TypePhase
 from domain.serie import Serie, Volee
 from domain.tournoi import StatutTournoi, Tournoi
 from infrastructure.memory.repositories import (
@@ -111,9 +112,15 @@ class _Reel:
             self.gabarits.ajouter(
                 GabaritSalle(nom="Salle", capacites=(4,), tournoi_id=self.tournoi_id)
             )
-            phase = self.phases.ajouter(
-                Phase.creer(self.tournoi_id, 2, TypePhase.ELIMINATION_DIRECTE)
+            # Deux gestes depuis ADR-0076 : l'étape définit le tableau **au tournoi**, la phase en
+            # porte l'avancement **dans le créneau**. Poser l'avancement seul est refusé par
+            # l'adapter — une instance sans définition serait invisible à toute lecture.
+            etape = self.deroules.ajouter(
+                EtapeDeroule(
+                    tournoi_id=self.tournoi_id, ordre=2, type=TypePhase.ELIMINATION_DIRECTE
+                )
             )
+            phase = self.phases.ajouter(etape.instancier(1))
             assert phase.id is not None
             self.phase_tableau_id = phase.id
 

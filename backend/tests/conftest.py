@@ -480,10 +480,44 @@ class FauxPhaseRepository:
     l'assertion ci-dessous les arrête au lieu de les laisser croire à un tournoi sans phase.
     """
 
-    def __init__(self, departs: FauxDepartRepository | None = None) -> None:
+    def __init__(
+        self,
+        departs: FauxDepartRepository | None = None,
+        deroules: FauxDerouleRepository | None = None,
+    ) -> None:
         self._phases: dict[int, Phase] = {}
         self._sequence = 0
         self._departs = departs
+        # ⚠️ **Câblé, cette doublure `assemble` comme les deux adapters de production** (ADR-0076) :
+        # la définition rendue vient de l'étape de même rang, pas de ce qui dort dans le magasin.
+        # Sans lui, elle reste en **mode indulgent** et rend la phase telle qu'elle a été posée —
+        # ce qui suffit aux décors qui ne lisent que des statuts, mais **ment** dès qu'un test
+        # édite une définition : il verrait l'ancienne valeur et conclurait à un bug qui n'existe
+        # que dans son décor.
+        self._deroules = deroules
+
+    def _assembler(self, phases: list[Phase]) -> list[Phase]:
+        """Complète chaque phase de sa définition ; une **orpheline** est écartée, comme en SQL."""
+        if self._departs is None or self._deroules is None:
+            return phases
+        assemblees = []
+        for phase in phases:
+            depart = self._departs.par_id(phase.depart_id)
+            if depart is None:
+                continue
+            deroule = self._deroules.par_tournoi(depart.tournoi_id)
+            etape = next((e for e in deroule if e.ordre == phase.ordre), None)
+            if etape is not None:
+                assemblees.append(
+                    dataclasses.replace(
+                        etape.instancier(phase.depart_id), statut=phase.statut, id=phase.id
+                    )
+                )
+        return assemblees
+
+    def _assembler_une(self, phase: Phase) -> Phase | None:
+        assemblees = self._assembler([phase])
+        return assemblees[0] if assemblees else None
 
     def ajouter(self, phase: Phase) -> Phase:
         """Persiste la phase ; un `id` **déjà fourni est préservé**, sinon un est attribué.
@@ -503,7 +537,8 @@ class FauxPhaseRepository:
         return persiste
 
     def par_id(self, phase_id: PhaseId) -> Phase | None:
-        return self._phases.get(phase_id)
+        phase = self._phases.get(phase_id)
+        return None if phase is None else self._assembler_une(phase)
 
     def par_depart_et_type(self, depart_id: DepartId, type_phase: TypePhase) -> Phase | None:
         """La phase de ce type dans ce créneau ; la **plus récente** en cas de multiplicité.
@@ -511,14 +546,12 @@ class FauxPhaseRepository:
         Même règle que l'adapter SQL (`ORDER BY id DESC`) : une doublure qui rendrait la première
         divergerait du vrai comportement, et le test passerait là où la production échouerait.
         """
-        trouvees = [
-            p for p in self._phases.values() if p.depart_id == depart_id and p.type is type_phase
-        ]
+        trouvees = [p for p in self.par_depart(depart_id) if p.type is type_phase]
         return trouvees[-1] if trouvees else None
 
     def par_depart(self, depart_id: DepartId) -> list[Phase]:
         phases = [p for p in self._phases.values() if p.depart_id == depart_id]
-        return sorted(phases, key=lambda p: p.ordre)
+        return self._assembler(sorted(phases, key=lambda p: p.ordre))
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
         """Vue transverse : les phases de **tous** les départs, triées (départ, ordre).
@@ -532,12 +565,20 @@ class FauxPhaseRepository:
         )
         connus = {d.id for d in self._departs.par_tournoi(tournoi_id)}
         phases = [p for p in self._phases.values() if p.depart_id in connus]
-        return sorted(phases, key=lambda p: (p.depart_id, p.ordre))
+        return self._assembler(sorted(phases, key=lambda p: (p.depart_id, p.ordre)))
 
     def enregistrer(self, phase: Phase) -> Phase:
+        """Met à jour l'**avancement** ; la définition passée est ignorée (contrat du port)."""
         assert phase.id in self._phases
         self._phases[phase.id] = phase
-        return phase
+        assemblee = self._assembler_une(phase)
+        return phase if assemblee is None else assemblee
+
+    def reordonner(self, phases: list[Phase]) -> None:
+        """Réaligne les rangs du lot ; seul l'`ordre` bouge, comme les deux adapters réels."""
+        for phase in phases:
+            assert phase.id in self._phases
+            self._phases[phase.id] = dataclasses.replace(self._phases[phase.id], ordre=phase.ordre)
 
     def supprimer(self, phase_id: PhaseId) -> None:
         del self._phases[phase_id]
@@ -574,8 +615,60 @@ class FauxDerouleRepository:
         self._items[etape.id] = etape
         return etape
 
+    def reordonner(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
+        """Réécrit le lot d'un coup (contrat « ou tout, ou rien » de `DerouleRepository`)."""
+        for etape in etapes:
+            assert etape.id in self._items
+            self._items[etape.id] = etape
+        return list(etapes)
+
     def supprimer(self, etape_id: EtapeDerouleId) -> None:
         self._items.pop(etape_id, None)
+
+
+def poser_phase_factice(
+    departs: FauxDepartRepository,
+    deroules: FauxDerouleRepository,
+    phases: FauxPhaseRepository,
+    phase: Phase,
+) -> Phase:
+    """Jumeau en mémoire de `poser_phase_sql` : définit l'**étape**, puis l'instancie (ADR-0076).
+
+    Les décors de service posaient une `Phase` complète en un seul `phases.ajouter(...)`. Depuis la
+    séparation déroulé / avancement, faire cela laisse le tournoi **sans déroulé** : le service qui
+    lit `DerouleRepository` n'y trouve rien, et le test échoue pour une raison de décor — non pour
+    ce qu'il voulait éprouver. Ce helper rétablit le confort d'un seul appel sans rétablir la
+    duplication : l'étape est **réutilisée** si son rang existe déjà, si bien que deux créneaux d'un
+    même tournoi partagent bien la même définition.
+
+    `statut` et `id` de la phase reçue sont **conservés** : plusieurs décors posent un avancement
+    déjà engagé, ou à identifiant choisi pour pouvoir s'y référer.
+    """
+    depart = departs.par_id(phase.depart_id)
+    assert depart is not None, (
+        "Le décor doit créer le créneau avant d'y poser une phase — une phase pend au départ "
+        "(ADR-0075), et son déroulé au tournoi de ce départ (ADR-0076)."
+    )
+    etape = next(
+        (e for e in deroules.par_tournoi(depart.tournoi_id) if e.ordre == phase.ordre), None
+    )
+    if etape is None:
+        etape = deroules.ajouter(
+            EtapeDeroule(
+                tournoi_id=depart.tournoi_id,
+                ordre=phase.ordre,
+                type=phase.type,
+                bareme=phase.bareme,
+                validation=phase.validation,
+                sources=phase.sources,
+                effectif=phase.effectif,
+                barrage_jusqu_au=phase.barrage_jusqu_au,
+                profondeur=phase.profondeur,
+            )
+        )
+    return phases.ajouter(
+        dataclasses.replace(etape.instancier(phase.depart_id), statut=phase.statut, id=phase.id)
+    )
 
 
 def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:

@@ -41,7 +41,7 @@ from application.erreurs import (
     UniteSimulationInvalide,
 )
 from application.generateur_scores import GenerateurScores, valeur_zone
-from application.portee import qualification_representative
+from application.portee import qualification_du_tournoi
 from application.saisie_duels import Duelliste, EtatDuel, EtatTableau
 from application.simulation import (
     HarnaisSimulation,
@@ -336,7 +336,7 @@ class ServicePilotageSimulation:
         """
         assert tournoi.id is not None, "Un tournoi de simulation porte un identifiant."
         tournoi_id = tournoi.id
-        phase_qualif = qualification_representative(harnais.phases, tournoi_id)
+        phase_qualif = qualification_du_tournoi(harnais.phases, tournoi_id)
         if phase_qualif is None or phase_qualif.bareme is None or phase_qualif.id is None:
             raise PhaseQualificationAbsente(
                 "Pour simuler le déroulé, le tournoi doit avoir une phase de qualification avec un "

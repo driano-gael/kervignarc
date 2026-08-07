@@ -362,6 +362,14 @@ class InMemoryDerouleRepository(_AllocateurId):
         self._items[etape.id] = etape
         return etape
 
+    def reordonner(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
+        """Réécrit le lot d'un coup. Sans contrainte d'unicité à ménager, une passe suffit ici —
+        le contrat visible (« ou tout, ou rien ») est le même que celui de l'adapter SQL."""
+        for etape in etapes:
+            assert etape.id is not None
+            self._items[etape.id] = etape
+        return list(etapes)
+
     def supprimer(self, etape_id: EtapeDerouleId) -> None:
         self._items.pop(etape_id, None)
 
@@ -387,6 +395,16 @@ class InMemoryPhaseRepository(_AllocateurId):
         self._departs = departs
         self._deroules = deroules
 
+    @property
+    def _assemble(self) -> bool:
+        """Vrai quand le magasin sait joindre `phase → départ → tournoi → étape`.
+
+        Faux, il reste en **mode indulgent** : la phase conservée porte déjà sa définition (elle y
+        a été mise à l'ajout), on la rend telle quelle. C'est ce qui permet aux décors de test qui
+        ne lisent que des statuts de rester simples, sans jamais rendre une phase amputée.
+        """
+        return self._departs is not None and self._deroules is not None
+
     def _etape(self, phase: Phase) -> EtapeDeroule | None:
         """La définition de cette phase : l'étape de même rang, dans le tournoi de son créneau."""
         if self._departs is None or self._deroules is None:
@@ -399,29 +417,53 @@ class InMemoryPhaseRepository(_AllocateurId):
                 return etape
         return None
 
-    def _assembler(self, phase: Phase) -> Phase:
-        """Rend la phase **complétée** de sa définition ; telle quelle si le déroulé est absent.
+    def _assembler(self, phases: list[Phase]) -> list[Phase]:
+        """Complète chaque phase de sa définition ; une **orpheline** est écartée de la lecture.
 
-        Le repli n'est pas un renoncement : sans magasin de déroulé câblé, la phase conservée en
-        mémoire porte déjà sa définition (elle y a été mise à l'ajout). C'est ce qui permet aux
-        décors de test simples de rester simples, sans jamais rendre une phase amputée.
+        Même règle que l'adapter SQL, et pour la même raison : une phase sans définition ne peut
+        rien dire d'utile, mais faire échouer *toute* la lecture pour elle priverait l'organisateur
+        du reste de son déroulé le jour J. Les deux adapters doivent répondre pareil — c'est
+        l'objet des tests de conformité de port.
         """
-        etape = self._etape(phase)
-        if etape is None:
-            return phase
-        return dataclasses.replace(
-            etape.instancier(phase.depart_id), statut=phase.statut, id=phase.id
-        )
+        if not self._assemble:
+            return phases
+        assemblees = []
+        for phase in phases:
+            etape = self._etape(phase)
+            if etape is not None:
+                assemblees.append(
+                    dataclasses.replace(
+                        etape.instancier(phase.depart_id), statut=phase.statut, id=phase.id
+                    )
+                )
+        return assemblees
+
+    def _assembler_une(self, phase: Phase) -> Phase | None:
+        assemblees = self._assembler([phase])
+        return assemblees[0] if assemblees else None
 
     def ajouter(self, phase: Phase) -> Phase:
+        """Persiste l'**avancement** ; la définition portée par l'objet reçu est ignorée.
+
+        Écrire une instance dont le rang n'existe pas au déroulé du tournoi est une **erreur**, pas
+        un cas limite : elle serait invisible à toute lecture (écartée comme orpheline) et le
+        service la croirait posée. L'adapter SQL lève ici aussi.
+        """
         identifiant = self._identifiant(phase.id)
         persiste = dataclasses.replace(phase, id=identifiant)
         self._items[identifiant] = persiste
-        return self._assembler(persiste)
+        assemblee = self._assembler_une(persiste)
+        if assemblee is None:
+            del self._items[identifiant]
+            raise InfrastructureError(
+                "Phase créée sans étape de déroulé de même rang : le tournoi de ce créneau "
+                "n'a pas ce rang à son déroulé."
+            )
+        return assemblee
 
     def par_id(self, phase_id: PhaseId) -> Phase | None:
         phase = self._items.get(phase_id)
-        return None if phase is None else self._assembler(phase)
+        return None if phase is None else self._assembler_une(phase)
 
     def par_depart_et_type(self, depart_id: DepartId, type_phase: TypePhase) -> Phase | None:
         trouvees = [p for p in self.par_depart(depart_id) if p.type is type_phase]
@@ -429,7 +471,7 @@ class InMemoryPhaseRepository(_AllocateurId):
 
     def par_depart(self, depart_id: DepartId) -> list[Phase]:
         phases = [p for p in self._items.values() if p.depart_id == depart_id]
-        return [self._assembler(p) for p in sorted(phases, key=lambda p: p.ordre)]
+        return self._assembler(sorted(phases, key=lambda p: p.ordre))
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
         """Les phases de **tous les départs** du tournoi, triées (départ, ordre) — pas une séquence.
@@ -446,12 +488,22 @@ class InMemoryPhaseRepository(_AllocateurId):
             )
         departs = {d.id for d in self._departs.par_tournoi(tournoi_id)}
         phases = [p for p in self._items.values() if p.depart_id in departs]
-        return [self._assembler(p) for p in sorted(phases, key=lambda p: (p.depart_id, p.ordre))]
+        return self._assembler(sorted(phases, key=lambda p: (p.depart_id, p.ordre)))
 
     def enregistrer(self, phase: Phase) -> Phase:
+        """Met à jour l'**avancement** (statut, rang) ; la définition s'édite sur l'étape."""
         assert phase.id is not None
         self._items[phase.id] = phase
-        return self._assembler(phase)
+        assemblee = self._assembler_une(phase)
+        if assemblee is None:
+            raise InfrastructureError("Phase mise à jour sans étape de déroulé de même rang.")
+        return assemblee
+
+    def reordonner(self, phases: list[Phase]) -> None:
+        """Réaligne les rangs du lot. Seul l'`ordre` bouge, comme dans l'adapter SQL."""
+        for phase in phases:
+            assert phase.id is not None
+            self._items[phase.id] = dataclasses.replace(self._items[phase.id], ordre=phase.ordre)
 
     def supprimer(self, phase_id: PhaseId) -> None:
         self._items.pop(phase_id, None)

@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 
 from application.erreurs import DepartIntrouvable, TournoiIntrouvable
-from application.portee import qualification_representative
+from application.portee import qualification_du_tournoi
 from domain.bareme import BaremeQualification
 from domain.depart import DepartId
 from domain.feuille_marque import FeuilleDeMarque, LigneArcher
@@ -100,7 +100,7 @@ class ServiceFeuilleDeMarque:
 
     def _bareme_du_tournoi(self, tournoi_id: TournoiId) -> BaremeQualification:
         """Le barème de qualification du tournoi, ou le preset FFTA 18 m s'il n'est pas défini."""
-        phase = qualification_representative(self._phases, tournoi_id)
+        phase = qualification_du_tournoi(self._phases, tournoi_id)
         # `bareme` est optionnel depuis E05US001 (ADR-0045 §2) mais toujours présent sur une
         # qualification ; à défaut (données incohérentes), on retombe sur le preset FFTA.
         if phase is None or phase.bareme is None:

@@ -2,9 +2,15 @@
 
 Un tournoi n'a plus de phases en propre : il en a autant de séquences que de départs. Or plusieurs
 services ont besoin d'une information qui, elle, est **commune** au tournoi — combien de volées
-compte une qualification, à quel grain le scoreur valide. Ces réglages viennent du **format**, qui
-distribue le même déroulé à tous les départs (`FormatTournoi.appliquer`), donc les lire sur un
-départ ou sur un autre revient au même tant qu'ils n'ont pas divergé.
+compte une qualification, à quel grain le scoreur valide.
+
+**Et elle l'est réellement depuis [ADR-0076]** : ces réglages vivent sur l'`EtapeDeroule`, définie
+**une fois** pour le tournoi, que le repository assemble sur la phase de chaque créneau. Les lire
+sur un départ ou sur un autre ne « revient au même » plus par convention — c'est la *même* donnée.
+La réserve « tant qu'ils n'ont pas divergé », que ce module portait, n'a plus d'objet : la
+divergence n'est pas improbable, elle est impossible.
+
+[ADR-0076]: ../../docs/adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md
 
 **Pourquoi un module et non un copier-coller de plus.** Six services faisaient déjà la même
 résolution « la qualification de ce tournoi » : `bareme_qualification`, `grain_validation`,
@@ -26,37 +32,30 @@ from domain.ports import PhaseRepository
 from domain.tournoi import TournoiId
 
 
-def qualification_representative(phases: PhaseRepository, tournoi_id: TournoiId) -> Phase | None:
-    """La qualification **d'un** départ du tournoi, ou `None` si aucun n'en porte.
+def qualification_du_tournoi(phases: PhaseRepository, tournoi_id: TournoiId) -> Phase | None:
+    """La qualification du tournoi — telle que jouée dans un créneau —, ou `None` s'il n'y en a pas.
 
-    « Représentative » et non « du tournoi » : le mot dit le raccourci. Les départs reçoivent des
-    copies **identiques** du déroulé du format, donc la première trouvée porte le même barème et le
-    même grain que les autres — jusqu'au jour où l'organisateur en ajuste une seule depuis l'écran
-    des phases. Ce jour-là, les vues transverses afficheront la valeur d'un départ pour tous : c'est
-    une **approximation d'affichage**, jamais une base de calcul.
+    ⚠️ **Cette lecture était une approximation ; ADR-0076 la rend exacte.** Elle s'appelait
+    `qualification_representative`, et sa docstring devait reconnaître ne rendre « une approximation
+    d'affichage, jamais une base de calcul » : chaque départ portait alors sa **copie** du déroulé,
+    libre de diverger, et cette fonction en désignait une au hasard des tris. Le déroulé étant
+    désormais **défini une fois** (`EtapeDeroule`), toutes les instances portent la même définition
+    — l'adapter l'assemble depuis l'étape de même rang. Il n'y a plus de représentant : il n'y a
+    plus qu'une valeur. Le renommage est délibéré, pour que rien ne continue de citer l'ancienne
+    prudence comme si elle valait encore.
+
+    Ce qui **reste** propre au créneau, et donc à lire par `par_depart` : le `statut` et l'`id` de
+    la phase. Quiconque a un `depart_id` sous la main doit l'utiliser (ADR-0075).
 
     `par_tournoi` (transverse, jointure `phase → depart → tournoi`) sert de source : les phases y
-    sont triées par départ puis par ordre, donc « la première qualification » est celle du premier
-    départ — un choix **stable** d'un appel à l'autre, ce qui évite qu'un écran change de valeur
-    entre deux rafraîchissements.
+    sont triées par départ puis par ordre, donc la première trouvée est celle du premier départ —
+    un choix **stable** d'un appel à l'autre, ce qui évite qu'un écran change d'identifiant entre
+    deux rafraîchissements.
     """
     for phase in phases.par_tournoi(tournoi_id):
         if phase.type is TypePhase.QUALIFICATION:
             return phase
     return None
-
-
-def qualifications_de_chaque_depart(phases: PhaseRepository, tournoi_id: TournoiId) -> list[Phase]:
-    """Toutes les qualifications du tournoi, **une par départ** qui en porte une.
-
-    C'est la lecture des services qui **écrivent** en éventail — régler le barème « pour le
-    tournoi » signifie l'écrire sur la qualification de chaque départ. Une écriture ne peut pas se
-    contenter d'un représentant : elle laisserait les autres départs sur l'ancienne valeur, et la
-    divergence serait invisible jusqu'au jour J.
-    """
-    return [
-        phase for phase in phases.par_tournoi(tournoi_id) if phase.type is TypePhase.QUALIFICATION
-    ]
 
 
 def phase_du_tournoi(

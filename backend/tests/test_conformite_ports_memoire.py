@@ -24,12 +24,14 @@ import pytest
 from domain.archer import Archer
 from domain.categorie import Categorie
 from domain.depart import Depart
+from domain.deroule_etape import EtapeDeroule
 from domain.gabarit_salle import GabaritSalle
 from domain.phase import Phase, TypePhase
 from domain.ports import (
     ArcherRepository,
     CategorieRepository,
     DepartRepository,
+    DerouleRepository,
     GabaritSalleRepository,
     PhaseRepository,
     TournoiRepository,
@@ -40,14 +42,17 @@ from infrastructure.db import (
     CategorieRepositorySQL,
     Database,
     DepartRepositorySQL,
+    DerouleEtapeRepositorySQL,
     GabaritSalleRepositorySQL,
     PhaseRepositorySQL,
     TournoiRepositorySQL,
 )
+from infrastructure.erreurs import InfrastructureError
 from infrastructure.memory.repositories import (
     InMemoryArcherRepository,
     InMemoryCategorieRepository,
     InMemoryDepartRepository,
+    InMemoryDerouleRepository,
     InMemoryGabaritSalleRepository,
     InMemoryPhaseRepository,
     InMemoryTournoiRepository,
@@ -86,14 +91,23 @@ def _contrat_tournoi(repo: TournoiRepository) -> None:
 
 
 def _contrat_phase(
-    tournois: TournoiRepository, phases: PhaseRepository, departs: DepartRepository
+    tournois: TournoiRepository,
+    phases: PhaseRepository,
+    departs: DepartRepository,
+    deroules: DerouleRepository,
 ) -> None:
-    """Contrat du port `PhaseRepository`, **à la maille du départ** (E01US025, ADR-0075).
+    """Contrat du port `PhaseRepository`, **à la maille du départ** (E01US025, ADR-0075/0076).
 
     Le contrat portait sur le tournoi ; il porte désormais sur le créneau, et vérifie **les deux**
     lectures : `par_depart` (la séquence, celle du moteur) et `par_tournoi` (la vue transverse,
     concaténation des séquences de tous les créneaux). Les distinguer ici a du sens : c'est leur
     confusion qui a produit le défaut qu'ADR-0075 corrige.
+
+    ⚠️ **Depuis ADR-0076, une phase n'est qu'un avancement** : sa définition (type, barème…) vient
+    de l'`EtapeDeroule` de même rang, dans le tournoi de son créneau. Le décor pose donc **d'abord**
+    le déroulé, une fois par tournoi, puis les instances — et le contrat vérifie que les deux
+    adapters **assemblent** pareil, ce qui est précisément ce qu'un second jeu d'adapters risque de
+    ne pas faire.
     """
     assert phases.par_id(999) is None, "par_id sur un identifiant absent → None."
     tournoi = tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
@@ -110,8 +124,16 @@ def _contrat_phase(
     )
     assert matin.id is not None and apres_midi.id is not None and ailleurs.id is not None
 
-    # Ajoutées dans le désordre (ordres 3, 1, 2) : `par_depart` doit les rendre **triées**.
+    # Le déroulé, **une fois par tournoi** : c'est lui qui porte le type de chaque rang.
     # (On évite le type `qualification`, qui exigerait un barème — hors sujet ici.)
+    for ordre, type_etape in ((1, TypePhase.PLACEMENT), (2, TypePhase.ELIMINATION_DIRECTE)):
+        deroules.ajouter(EtapeDeroule(tournoi_id=tournoi.id, ordre=ordre, type=type_etape))
+    deroules.ajouter(
+        EtapeDeroule(tournoi_id=tournoi.id, ordre=3, type=TypePhase.ELIMINATION_DIRECTE)
+    )
+    deroules.ajouter(EtapeDeroule(tournoi_id=autre.id, ordre=1, type=TypePhase.PLACEMENT))
+
+    # Les instances, ajoutées dans le désordre (3, 1, 2) : `par_depart` doit les rendre **triées**.
     phases.ajouter(Phase.creer(matin.id, 3, TypePhase.ELIMINATION_DIRECTE))
     phases.ajouter(Phase.creer(matin.id, 1, TypePhase.PLACEMENT))
     phases.ajouter(Phase.creer(matin.id, 2, TypePhase.ELIMINATION_DIRECTE))
@@ -120,6 +142,11 @@ def _contrat_phase(
 
     du_depart = phases.par_depart(matin.id)
     assert [p.ordre for p in du_depart] == [1, 2, 3], "par_depart filtre puis trie par ordre."
+    assert [p.type for p in du_depart] == [
+        TypePhase.PLACEMENT,
+        TypePhase.ELIMINATION_DIRECTE,
+        TypePhase.ELIMINATION_DIRECTE,
+    ], "la définition est **assemblée** depuis l'étape de même rang (ADR-0076)."
 
     # La vue transverse voit **les deux** créneaux du tournoi, et aucun de l'autre tournoi. Les
     # ordres y repartent de 1 à chaque départ : ce n'est pas une séquence, et c'est le propos.
@@ -132,6 +159,12 @@ def _contrat_phase(
     assert (
         phases.par_depart_et_type(matin.id, TypePhase.QUALIFICATION) is None
     ), "par_depart_et_type → None si le type est absent."
+
+    # Une instance dont le rang n'existe pas au déroulé serait **invisible** à toute lecture (elle
+    # n'a pas de définition à assembler) : les deux adapters refusent de l'écrire plutôt que de la
+    # laisser croire posée. C'est exactement le genre d'écart qu'un second jeu d'adapters creuse.
+    with pytest.raises(InfrastructureError):
+        phases.ajouter(Phase.creer(matin.id, 9, TypePhase.PLACEMENT))
 
 
 def _contrat_archer(
@@ -191,7 +224,13 @@ def test_tournoi_sql(base_sql: Database) -> None:
 
 def test_phase_memoire() -> None:
     departs = InMemoryDepartRepository()
-    _contrat_phase(InMemoryTournoiRepository(), InMemoryPhaseRepository(departs), departs)
+    deroules = InMemoryDerouleRepository()
+    _contrat_phase(
+        InMemoryTournoiRepository(),
+        InMemoryPhaseRepository(departs, deroules),
+        departs,
+        deroules,
+    )
 
 
 def test_phase_sql(base_sql: Database) -> None:
@@ -199,6 +238,7 @@ def test_phase_sql(base_sql: Database) -> None:
         TournoiRepositorySQL(base_sql.session_factory),
         PhaseRepositorySQL(base_sql.session_factory),
         DepartRepositorySQL(base_sql.session_factory),
+        DerouleEtapeRepositorySQL(base_sql.session_factory),
     )
 
 

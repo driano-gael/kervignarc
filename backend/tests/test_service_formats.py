@@ -35,7 +35,12 @@ from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase, grain_par_d
 from domain.phase import PhaseId as _PhaseId
 from domain.politiques import ProfondeurClassement
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
-from tests.conftest import FauxDepartRepository, FauxDerouleRepository, FauxPhaseRepository
+from tests.conftest import (
+    FauxDepartRepository,
+    FauxDerouleRepository,
+    FauxPhaseRepository,
+    poser_phase_factice,
+)
 from tests.test_service_blasons import FauxTournoiRepository
 
 
@@ -150,6 +155,16 @@ def ctx() -> Contexte:
         tournoi_id=_id(tournoi.id),
         depart_id=_id(departs.par_tournoi(_id(tournoi.id))[0].id),
     )
+
+
+def _poser(ctx: Contexte, phase: Phase) -> Phase:
+    """Pose l'**étape** puis son avancement dans le créneau — les deux gestes d'ADR-0076.
+
+    Les décors de ce fichier posaient une `Phase` complète en un seul appel. Depuis la séparation
+    déroulé / avancement, cela laisserait le tournoi **sans déroulé** : `promouvoir`, qui capture
+    la définition, n'y trouverait rien à promouvoir.
+    """
+    return poser_phase_factice(ctx.departs, ctx.deroules, ctx.phases, phase)
 
 
 def _qualification(ordre: int = 1, effectif: int | None = None) -> ModelePhase:
@@ -323,10 +338,11 @@ def test_repromouvoir_ne_detruit_pas_lexigence_du_format_existant(ctx: Contexte)
 
 def test_appliquer_remplace_les_phases_a_venir_existantes(ctx: Contexte) -> None:
     """Reconfigurer un tournoi non engagé ne doit pas empiler deux séquences."""
-    ctx.phases.ajouter(
+    _poser(
+        ctx,
         Phase.qualification(
-            ctx.tournoi_id, BaremeQualification.creer(nb_volees=2, nb_fleches_par_volee=3)
-        )
+            ctx.depart_id, BaremeQualification.creer(nb_volees=2, nb_fleches_par_volee=3)
+        ),
     )
     format_tournoi = ctx.service.creer("Officiel", [_qualification()])
 
@@ -339,9 +355,7 @@ def test_appliquer_remplace_les_phases_a_venir_existantes(ctx: Contexte) -> None
 
 def test_appliquer_refuse_si_une_phase_est_engagee(ctx: Contexte) -> None:
     """Remplacer un déroulé **en cours**, ce serait jeter les séries qui y pendent."""
-    posee = ctx.phases.ajouter(
-        Phase.qualification(ctx.tournoi_id, BaremeQualification.preset_ffta_18m())
-    )
+    posee = _poser(ctx, Phase.qualification(ctx.depart_id, BaremeQualification.preset_ffta_18m()))
     ctx.phases.enregistrer(posee.demarrer())
     format_tournoi = ctx.service.creer("Officiel", [_qualification()])
 
@@ -352,9 +366,7 @@ def test_appliquer_refuse_si_une_phase_est_engagee(ctx: Contexte) -> None:
 def test_appliquer_refuse_si_un_forfait_pend_sur_une_phase_a_venir(ctx: Contexte) -> None:
     """Le statut ne suffit pas : `forfait.phase_id` est en `ON DELETE CASCADE`, et un forfait
     déclaré au pointage vit sur une phase encore « à venir ». Le remplacement l'effacerait."""
-    posee = ctx.phases.ajouter(
-        Phase.qualification(ctx.tournoi_id, BaremeQualification.preset_ffta_18m())
-    )
+    posee = _poser(ctx, Phase.qualification(ctx.depart_id, BaremeQualification.preset_ffta_18m()))
     ctx.forfaits.par_identifiant[_id(posee.id)] = [object()]
     format_tournoi = ctx.service.creer("Officiel", [_qualification()])
 
@@ -370,8 +382,13 @@ def test_un_forfait_sur_la_phase_d_un_autre_tournoi_ne_bloque_pas(ctx: Contexte)
     autre = ctx.tournois.ajouter(
         Tournoi.creer(nom="Autre", date=_DATE, type_tournoi=TypeTournoi.OFFICIEL)
     )
-    phase_ailleurs = ctx.phases.ajouter(
-        Phase.qualification(_id(autre.id), BaremeQualification.preset_ffta_18m())
+    depart_ailleurs = _id(
+        ctx.departs.ajouter(
+            Depart.creer(tournoi_id=_id(autre.id), numero=1, tarif_centimes=800, horaire="09:00")
+        ).id
+    )
+    phase_ailleurs = _poser(
+        ctx, Phase.qualification(depart_ailleurs, BaremeQualification.preset_ffta_18m())
     )
     ctx.forfaits.par_identifiant[_id(phase_ailleurs.id)] = [object()]
     format_tournoi = ctx.service.creer("Officiel", [_qualification()])
@@ -385,9 +402,7 @@ def test_appliquer_refuse_si_des_duellistes_sont_poses(ctx: Contexte) -> None:
     """`placement_tableau.phase_id` est aussi en `ON DELETE CASCADE`, et un plan de duels ajusté à
     la main la veille pend sur une phase « à venir » — l'ajustement manuel *est* la fonctionnalité
     (E03US009). La garde le nommait sans le compter ; la revue l'a démontré à l'exécution."""
-    posee = ctx.phases.ajouter(
-        Phase.qualification(ctx.tournoi_id, BaremeQualification.preset_ffta_18m())
-    )
+    posee = _poser(ctx, Phase.qualification(ctx.depart_id, BaremeQualification.preset_ffta_18m()))
     ctx.placements_tableau.par_identifiant[_id(posee.id)] = [object(), object()]
     format_tournoi = ctx.service.creer("Officiel", [_qualification()])
 
@@ -451,10 +466,11 @@ def test_supprimer_un_format_laisse_les_phases_deja_appliquees(ctx: Contexte) ->
 
 
 def test_promouvoir_capture_le_deroule_du_tournoi(ctx: Contexte) -> None:
-    ctx.phases.ajouter(
+    _poser(
+        ctx,
         Phase.qualification(
-            ctx.tournoi_id, BaremeQualification.creer(nb_volees=12, nb_fleches_par_volee=3)
-        )
+            ctx.depart_id, BaremeQualification.creer(nb_volees=12, nb_fleches_par_volee=3)
+        ),
     )
 
     promu = ctx.service.promouvoir(ctx.tournoi_id, "Le format 2026")
@@ -465,11 +481,12 @@ def test_promouvoir_capture_le_deroule_du_tournoi(ctx: Contexte) -> None:
 
 def test_promouvoir_deux_fois_sous_le_meme_nom_met_a_jour(ctx: Contexte) -> None:
     """Idempotence : la bibliothèque ne doit pas accumuler trois « Le format 2026 »."""
-    posee = ctx.phases.ajouter(
-        Phase.qualification(ctx.tournoi_id, BaremeQualification.creer(12, 3))
-    )
+    _poser(ctx, Phase.qualification(ctx.depart_id, BaremeQualification.creer(12, 3)))
     premier = ctx.service.promouvoir(ctx.tournoi_id, "Le format 2026")
-    ctx.phases.enregistrer(posee.avec_bareme(BaremeQualification.creer(20, 3)))
+    # Le barème s'édite sur l'**étape** (ADR-0076) : le passer à `phases.enregistrer` ne
+    # changerait rien, et la seconde promotion recapturerait l'ancien réglage.
+    (etape,) = ctx.deroules.par_tournoi(ctx.tournoi_id)
+    ctx.deroules.enregistrer(dataclasses.replace(etape, bareme=BaremeQualification.creer(20, 3)))
 
     second = ctx.service.promouvoir(ctx.tournoi_id, "Le format 2026")
 
@@ -491,8 +508,8 @@ def test_promouvoir_ne_retroagit_pas_sur_les_tournois_deja_assembles(ctx: Contex
             Depart.creer(tournoi_id=ancien_id, numero=1, tarif_centimes=800, horaire="09:00")
         ).id
     )
-    ctx.phases.ajouter(Phase.qualification(ancien_depart, BaremeQualification.creer(5, 3)))
-    ctx.phases.ajouter(Phase.qualification(ctx.depart_id, BaremeQualification.creer(20, 3)))
+    _poser(ctx, Phase.qualification(ancien_depart, BaremeQualification.creer(5, 3)))
+    _poser(ctx, Phase.qualification(ctx.depart_id, BaremeQualification.creer(20, 3)))
 
     ctx.service.promouvoir(ctx.tournoi_id, "Le format du club")
 
@@ -512,9 +529,7 @@ def test_promouvoir_oublie_l_avancement(ctx: Contexte) -> None:
     Le format promu est réappliqué à une **autre** édition — le tournoi d'origine, lui, a une phase
     engagée, et le service refuserait à juste titre d'y remplacer quoi que ce soit.
     """
-    posee = ctx.phases.ajouter(
-        Phase.qualification(ctx.tournoi_id, BaremeQualification.preset_ffta_18m())
-    )
+    posee = _poser(ctx, Phase.qualification(ctx.depart_id, BaremeQualification.preset_ffta_18m()))
     ctx.phases.enregistrer(posee.demarrer().terminer())
     edition_suivante = _id(
         ctx.tournois.ajouter(
@@ -541,9 +556,7 @@ def test_supprimer_un_format_inconnu_est_refuse(ctx: Contexte) -> None:
 
 def test_les_phases_supprimees_au_remplacement_ne_laissent_pas_de_trace(ctx: Contexte) -> None:
     """Garde-fou de l'implémentation du remplacement : pas d'orphelin dans le dépôt."""
-    ancienne = ctx.phases.ajouter(
-        Phase.qualification(ctx.tournoi_id, BaremeQualification.creer(2, 3))
-    )
+    ancienne = _poser(ctx, Phase.qualification(ctx.depart_id, BaremeQualification.creer(2, 3)))
     format_tournoi = ctx.service.creer("Officiel", [_qualification()])
 
     ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
@@ -646,13 +659,14 @@ def test_promouvoir_transporte_la_profondeur_des_phases(ctx: Contexte) -> None:
     Sans elle, un organisateur qui remonte son tournoi en brique de bibliothèque perdrait le
     classement intégral **en silence** — et c'est précisément la boucle que la fiche recommande.
     """
-    ctx.phases.ajouter(
+    _poser(
+        ctx,
         Phase.creer(
-            ctx.tournoi_id,
+            ctx.depart_id,
             ordre=1,
             type=TypePhase.ELIMINATION_DIRECTE,
             profondeur=ProfondeurClassement.integrale(),
-        )
+        ),
     )
 
     promu = ctx.service.promouvoir(ctx.tournoi_id, "Déroulé du jour")

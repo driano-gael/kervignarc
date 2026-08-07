@@ -24,7 +24,12 @@ from domain.depart import Depart
 from domain.erreurs import EffectifIncompatible, SourceApresPhase
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
-from tests.conftest import FauxDepartRepository, FauxDerouleRepository, FauxPhaseRepository
+from tests.conftest import (
+    FauxDepartRepository,
+    FauxDerouleRepository,
+    FauxPhaseRepository,
+    poser_phase_factice,
+)
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -297,7 +302,12 @@ def test_supprimer_leve_si_phase_inconnue() -> None:
 
 def test_supprimer_la_qualification_est_refuse() -> None:
     """Garde en profondeur (revue axe D) : la qualification se gère via le barème, pas ici — la
-    retirer par cet écran l'orphelinerait (barème sans phase porteuse)."""
+    retirer par cet écran l'orphelinerait (barème sans phase porteuse).
+
+    ⚠️ On supprime une **étape du déroulé du tournoi** (ADR-0076), pas une phase d'un créneau : la
+    composition se fait à l'atelier, et retirer l'étape retirerait l'avancement de *tous* les
+    créneaux d'un coup — raison de plus pour que la garde tienne.
+    """
     from application.erreurs import PhaseQualificationNonSupprimable
     from domain.bareme import BaremeQualification
 
@@ -312,12 +322,19 @@ def test_supprimer_la_qualification_est_refuse() -> None:
     )
     assert depart.id is not None
     phases = FauxPhaseRepository(departs)
-    service = ServicePhases(tournois, phases, departs, FauxDerouleRepository())
-    qualif = phases.ajouter(Phase.qualification(depart.id, BaremeQualification.preset_ffta_18m()))
-    assert qualif.id is not None
+    deroules = FauxDerouleRepository()
+    service = ServicePhases(tournois, phases, departs, deroules)
+    poser_phase_factice(
+        departs,
+        deroules,
+        phases,
+        Phase.qualification(depart.id, BaremeQualification.preset_ffta_18m()),
+    )
+    (etape,) = deroules.par_tournoi(tournoi.id)
+    assert etape.id is not None
 
     with pytest.raises(PhaseQualificationNonSupprimable):
-        service.supprimer(depart.id, qualif.id)
+        service.supprimer(tournoi.id, etape.id)
 
 
 def test_reordonner_leve_si_tournoi_inconnu() -> None:

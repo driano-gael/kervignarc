@@ -487,11 +487,13 @@ def create_app(
     app.state.service_bareme_qualification = ServiceBaremeQualification(
         tournoi_repository, phase_repository, depart_repository, deroule_repository
     )
-    # Grain de validation (E01US015, `D-11`) : porté par la même phase, à la racine de `config`
-    # (`config.validation`) — ce n'est pas une politique de moteur, il reste hors `config.policies`
-    # où E05US003 a rangé le barème (ADR-0046), sans changement de schéma.
+    # Grain de validation (E01US015, `D-11`) : porté par la même **étape de déroulé** que le
+    # barème, à la racine de sa `config` (`config.validation`) — ce n'est pas une politique de
+    # moteur, il reste hors `config.policies` où E05US003 a rangé le barème (ADR-0046), sans
+    # changement de schéma. Le port injecté est le **déroulé** et non les phases : depuis ADR-0076,
+    # écrire une définition par `PhaseRepository` ne déplacerait rien.
     app.state.service_grain_validation = ServiceGrainValidation(
-        tournoi_repository, phase_repository
+        tournoi_repository, deroule_repository
     )
     # Séquence de phases (E05US001, ADR-0045) : composer/éditer/ordonner/supprimer les phases d'un
     # tournoi et faire vivre leur cycle de vie. Le service vérifie l'existence du tournoi et arbitre

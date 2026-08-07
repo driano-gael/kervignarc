@@ -32,7 +32,7 @@ from application.erreurs import (
     PhaseQualificationAbsente,
     TournoiIntrouvable,
 )
-from application.portee import phase_du_tournoi, qualification_representative
+from application.portee import phase_du_tournoi, qualification_du_tournoi
 from domain.archer import ArcherId
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.forfait import Forfait, NatureForfait
@@ -184,7 +184,7 @@ class ServiceForfait:
             raise ArcherIntrouvable(f"Aucun archer d'identifiant {archer_id} dans ce tournoi.")
 
     def _phase_qualification(self, tournoi_id: TournoiId) -> Phase:
-        phase = qualification_representative(self._phases, tournoi_id)
+        phase = qualification_du_tournoi(self._phases, tournoi_id)
         if phase is None:
             raise PhaseQualificationAbsente(
                 "La qualification n'est pas encore configurée pour ce tournoi."

@@ -645,6 +645,24 @@ class DerouleRepository(Protocol):
         """Met à jour une étape déjà persistée (barème, grain, type, sources, rang…)."""
         ...
 
+    def reordonner(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
+        """Réécrit **en un bloc** les rangs (et définitions remappées) de tout un déroulé.
+
+        ⚠️ **Pourquoi ce n'est pas une boucle sur `enregistrer`.** Un déroulé est une suite 1..N
+        *sans doublon* : l'échange de deux rangs voisins passe forcément par un état où deux étapes
+        portent le même, et l'adapter SQL, qui fait respecter cette unicité, refuse la première
+        écriture. La sortie de ce piège — parquer les rangs hors de portée puis les reposer — est
+        une affaire de **persistance**, pas de métier : le service dit quel déroulé il veut, il n'a
+        pas à connaître l'ordre dans lequel les lignes tolèrent d'être touchées (ADR-0003).
+
+        L'écriture est **atomique** : ou tout le déroulé prend ses nouveaux rangs, ou rien ne bouge.
+        Un réordonnancement à moitié appliqué laisserait une séquence que le domaine rejette, donc
+        un tournoi que plus personne ne peut composer.
+
+        Renvoie les étapes relues, dans l'ordre demandé.
+        """
+        ...
+
     def supprimer(self, etape_id: EtapeDerouleId) -> None:
         """Supprime une étape du déroulé (existence garantie par l'appelant)."""
         ...
@@ -711,7 +729,22 @@ class PhaseRepository(Protocol):
         ...
 
     def enregistrer(self, phase: Phase) -> Phase:
-        """Met à jour une phase déjà persistée (édition du barème, du type, de la source…)."""
+        """Met à jour l'**avancement** d'une phase déjà persistée — son `statut`, et son rang.
+
+        ⚠️ La définition portée par l'objet reçu est **ignorée** (voir l'avertissement du port) :
+        elle s'édite sur l'étape, par `DerouleRepository`.
+        """
+        ...
+
+    def reordonner(self, phases: list[Phase]) -> None:
+        """Réécrit **en un bloc** le rang des phases d'un créneau (réalignement sur les étapes).
+
+        Pendant de `DerouleRepository.reordonner`, et pour la même raison : un créneau ne porte
+        qu'un avancement par rang, donc décaler les phases une à une bute sur cette unicité dès que
+        deux rangs s'échangent. Le rang **est** la clé de jointure vers la définition (ADR-0076) :
+        une phase laissée sur son ancien rang pointerait l'étape voisine — un changement de barème
+        silencieux, sans la moindre erreur visible. D'où l'atomicité.
+        """
         ...
 
     def supprimer(self, phase_id: PhaseId) -> None:

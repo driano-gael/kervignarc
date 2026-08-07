@@ -27,7 +27,7 @@ from application.erreurs import (
     PhasePasUnTableau,
     TournoiIntrouvable,
 )
-from application.portee import phase_du_tournoi, qualification_representative
+from application.portee import phase_du_tournoi, qualification_du_tournoi
 from application.prelevement import preleves, profondeur_de
 from domain.archer import ArcherId
 from domain.cloisonnement import Cloisonnement
@@ -614,7 +614,7 @@ class ServicePlacementDuels:
         # E05US020 a fait consommer les prélèvements d'un seul côté, et la revue a mesuré un plan de
         # 8 placements pour un tableau de 4. Un archer posté sur une butte sans duel, un autre en
         # face du mauvais adversaire, invisibles jusqu'au jour J.
-        qualification = qualification_representative(self._phases, tournoi_id)
+        qualification = qualification_du_tournoi(self._phases, tournoi_id)
         participants = [
             Participant.individuel(ligne.archer_id)
             for ligne in preleves(

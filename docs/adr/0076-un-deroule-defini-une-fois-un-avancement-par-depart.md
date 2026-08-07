@@ -100,12 +100,28 @@ Tournoi ──► Déroulé : suite d'ÉTAPES (définition, une seule fois)
 - **Synchronisation instances ↔ étapes** : ajouter une étape doit créer son instance dans chaque
   créneau, en supprimer une doit les retirer. C'est le seul endroit où l'éventail subsiste — mais
   il porte sur des lignes vides de définition, pas sur des réglages.
+- **Renuméroter devient une écriture d'ensemble** *(découvert à l'implémentation, 07/08/2026)*. Le
+  rang est à la fois la clé de la séquence **et** la clé de jointure définition ↔ avancement, d'où
+  l'unicité `(tournoi, ordre)` et `(départ, ordre)`. Or tout réordonnancement, tout recompactage
+  après suppression et toute insertion de la qualification en tête passent par un état où deux
+  lignes portent le même rang : les écrire une à une bute sur la contrainte. `DerouleRepository` et
+  `PhaseRepository` gagnent donc un `reordonner` — l'adapter SQL gare les rangs hors de portée avant
+  de les reposer, en une transaction. Ce n'est pas un contournement de la contrainte mais sa
+  contrepartie : on la garde *parce qu'*elle dit vrai, et on paie le prix d'écriture qu'elle impose.
+  Le service, lui, dit quel déroulé il veut — l'ordre des `UPDATE` ne le regarde pas (ADR-0003).
 
 ## Porté dans le code par
 
 - `backend/domain/deroule_etape.py` (`EtapeDeroule`) et `backend/domain/phase.py` (`Phase`,
   `SequencePhases` sur les étapes)
 - `backend/domain/format_tournoi.py` (`appliquer` produit **un** déroulé)
-- `backend/application/phases.py` (composition au tournoi, cycle de vie au départ)
+- `backend/application/phases.py` (composition au tournoi, cycle de vie au départ), et
+  `backend/application/portee.py`, où `qualification_representative` devient
+  `qualification_du_tournoi` — la lecture transverse n'est plus une approximation
+- `backend/application/grain_validation.py` (le grain s'écrit **une fois**, sur l'étape : il passait
+  par `PhaseRepository`, qui depuis cet ADR ne déplace que l'avancement — l'écriture *paraissait*
+  réussir sans rien changer)
+- `backend/api/v1/phases.py` : deux lectures pour deux mailles — `GET /tournois/{id}/phases` rend le
+  déroulé prévu (sans statut), `GET /departs/{id}/phases` rend l'avancement du créneau
 - `backend/infrastructure/db/models.py` (`DerouleEtapeORM`, `PhaseORM` allégée) + migration `0043`
 - `backend/tests/test_portee_sportive.py` (garde-fou élargi : la définition n'est pas dupliquée)

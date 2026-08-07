@@ -86,6 +86,20 @@ def _depart(db: Database) -> DepartId:
     return depart.id
 
 
+def _tournoi_du(db: Database, depart_id: DepartId) -> TournoiId:
+    """Le tournoi qui porte ce créneau — donc **le déroulé** de sa phase (ADR-0076).
+
+    Le détour n'est pas de la cérémonie : `par_tournoi` attend un identifiant de **tournoi**, et
+    `TournoiId` comme `DepartId` sont des alias de `int`, donc mypy ne dirait rien d'une confusion
+    (DETTE-044). Les décors mono-créneau de ce fichier donnaient jusqu'ici le même entier des deux
+    côtés — vrai par accident, faux dès le second départ.
+    """
+    with db.session_factory() as session:
+        depart = session.get(DepartORM, depart_id)
+        assert depart is not None, "Le décor doit avoir créé le créneau."
+        return depart.tournoi_id
+
+
 def _poser(db: Database, depart_id: DepartId, **reglages: Any) -> Phase:
     """Définit une étape sur le tournoi du créneau, l'y instancie, et rend la phase **assemblée**.
 
@@ -93,12 +107,8 @@ def _poser(db: Database, depart_id: DepartId, **reglages: Any) -> Phase:
     l'avancement sur `phase`. Les tests de ce fichier éprouvent l'aller-retour de la config — ils
     doivent donc écrire là où elle vit désormais, sinon ils vérifieraient une table vide.
     """
-    with db.session_factory() as session:
-        depart = session.get(DepartORM, depart_id)
-        assert depart is not None, "Le décor doit avoir créé le créneau."
-        tournoi_id = depart.tournoi_id
     etape = DerouleEtapeRepositorySQL(db.session_factory).ajouter(
-        EtapeDeroule(tournoi_id=tournoi_id, **reglages)
+        EtapeDeroule(tournoi_id=_tournoi_du(db, depart_id), **reglages)
     )
     return poser_phase_sql(db.session_factory, etape.instancier(depart_id))
 
@@ -129,8 +139,55 @@ def test_ajouter_puis_relire_par_depart_et_type(tmp_path: Path) -> None:
         db.engine.dispose()
 
 
-def test_enregistrer_met_a_jour_le_bareme(tmp_path: Path) -> None:
-    """`enregistrer` persiste l'édition du barème et conserve l'identifiant."""
+def test_editer_le_bareme_sur_l_etape_change_toutes_ses_instances(tmp_path: Path) -> None:
+    """Le barème s'édite sur l'**étape** — et la phase de chaque créneau le relit (ADR-0076).
+
+    Avant ADR-0076 cette édition passait par `PhaseRepository.enregistrer`, et un tournoi de N
+    créneaux portait N copies : éditer l'une laissait les autres en arrière, sans que rien ne le
+    signale. Le test le vérifie donc sur **deux** créneaux — une écriture, deux lectures d'accord.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        tournoi_id = _tournoi_du(db, depart_id)
+        second = DepartRepositorySQL(db.session_factory).ajouter(
+            Depart.creer(tournoi_id=tournoi_id, numero=2, tarif_centimes=800, horaire="14:00")
+        )
+        assert second.id is not None
+        repository = PhaseRepositorySQL(db.session_factory)
+        cree = _poser(
+            db,
+            depart_id,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(20, 3),
+            validation=GrainValidation.fin_de_serie(),
+        )
+        assert cree.id is not None
+
+        # L'étape est **partagée** : le second créneau l'instancie, il ne la redéfinit pas. C'est
+        # le geste de production (`ServicePhases` fait exactement cela pour chaque créneau).
+        deroules = DerouleEtapeRepositorySQL(db.session_factory)
+        (etape,) = deroules.par_tournoi(tournoi_id)
+        repository.ajouter(etape.instancier(second.id))
+
+        deroules.enregistrer(dataclasses.replace(etape, bareme=BaremeQualification.creer(10, 6)))
+
+        for identifiant in (depart_id, second.id):
+            (relue,) = repository.par_depart(identifiant)
+            assert relue.bareme is not None
+            assert (relue.bareme.nb_volees, relue.bareme.nb_fleches_par_volee) == (10, 6)
+    finally:
+        db.engine.dispose()
+
+
+def test_enregistrer_une_phase_ne_deplace_pas_sa_definition(tmp_path: Path) -> None:
+    """Contrat du port : un barème modifié passé à `PhaseRepository.enregistrer` ne change **rien**.
+
+    C'est le piège que la séparation crée, donc celui qu'il faut fermer par un test : le code
+    d'avant ADR-0076 éditait ainsi, et il compile toujours. Sans ce verrou, une régression
+    ressemblerait à une écriture réussie — et se lirait comme une donnée perdue.
+    """
     db = _base(tmp_path)
     try:
         depart_id = _depart(db)
@@ -146,9 +203,12 @@ def test_enregistrer_met_a_jour_le_bareme(tmp_path: Path) -> None:
         assert cree.id is not None
 
         enregistre = repository.enregistrer(cree.avec_bareme(BaremeQualification.creer(10, 6)))
+
         assert enregistre.id == cree.id
-        assert enregistre.bareme is not None and enregistre.bareme.nb_volees == 10
-        assert enregistre.bareme is not None and enregistre.bareme.nb_fleches_par_volee == 6
+        assert enregistre.bareme == BaremeQualification.creer(20, 3), (
+            "La définition vient de l'étape : `PhaseRepository.enregistrer` ne déplace que "
+            "l'avancement (ADR-0076). L'éditer ici doit être sans effet, pas silencieusement pris."
+        )
         assert repository.par_id(cree.id) == enregistre
     finally:
         db.engine.dispose()
@@ -182,17 +242,7 @@ def test_config_corrompue_leve_infrastructure_error(tmp_path: Path) -> None:
     db = _base(tmp_path)
     try:
         depart_id = _depart(db)
-        with db.session_factory() as session:
-            session.add(
-                PhaseORM(
-                    depart_id=depart_id,
-                    ordre=1,
-                    type="qualification",
-                    config="pas du json",
-                    statut="a_venir",
-                )
-            )
-            session.commit()
+        _phase_brute(db, depart_id, "pas du json")
         with pytest.raises(InfrastructureError):
             PhaseRepositorySQL(db.session_factory).par_depart_et_type(
                 depart_id, TypePhase.QUALIFICATION
@@ -210,17 +260,7 @@ def test_config_lisible_mais_hors_regle_leve_infrastructure_error(tmp_path: Path
     db = _base(tmp_path)
     try:
         depart_id = _depart(db)
-        with db.session_factory() as session:
-            session.add(
-                PhaseORM(
-                    depart_id=depart_id,
-                    ordre=1,
-                    type="qualification",
-                    config='{"scoring": {"volees": 0, "fleches": 3, "mode": "cumul"}}',
-                    statut="a_venir",
-                )
-            )
-            session.commit()
+        _phase_brute(db, depart_id, '{"scoring": {"volees": 0, "fleches": 3, "mode": "cumul"}}')
         with pytest.raises(InfrastructureError):
             PhaseRepositorySQL(db.session_factory).par_depart_et_type(
                 depart_id, TypePhase.QUALIFICATION
@@ -321,8 +361,12 @@ def test_le_grain_est_persiste_et_relu(tmp_path: Path) -> None:
         db.engine.dispose()
 
 
-def test_enregistrer_met_a_jour_le_grain(tmp_path: Path) -> None:
-    """`enregistrer` persiste l'édition du grain et conserve le barème."""
+def test_editer_le_grain_sur_l_etape_conserve_le_bareme(tmp_path: Path) -> None:
+    """Éditer le grain sur l'étape le persiste et **laisse le barème intact** (ADR-0076).
+
+    Les deux réglages vivent dans la même `config` JSON : une écriture partielle qui écraserait
+    l'autre serait une perte silencieuse, du même genre que celle qu'ADR-0076 vient de fermer.
+    """
     db = _base(tmp_path)
     try:
         depart_id = _depart(db)
@@ -335,13 +379,18 @@ def test_enregistrer_met_a_jour_le_grain(tmp_path: Path) -> None:
             bareme=BaremeQualification.creer(20, 3),
             validation=GrainValidation.fin_de_serie(),
         )
-        assert cree.validation == GrainValidation.fin_de_serie()
+        assert cree.id is not None and cree.validation == GrainValidation.fin_de_serie()
 
-        enregistre = repository.enregistrer(
-            cree.avec_validation(GrainValidation.toutes_les_n_volees(4))
+        deroules = DerouleEtapeRepositorySQL(db.session_factory)
+        (etape,) = deroules.par_tournoi(_tournoi_du(db, depart_id))
+        deroules.enregistrer(
+            dataclasses.replace(etape, validation=GrainValidation.toutes_les_n_volees(4))
         )
-        assert enregistre.validation == GrainValidation.toutes_les_n_volees(4)
-        assert enregistre.bareme == cree.bareme
+
+        relue = repository.par_id(cree.id)
+        assert relue is not None
+        assert relue.validation == GrainValidation.toutes_les_n_volees(4)
+        assert relue.bareme == cree.bareme
     finally:
         db.engine.dispose()
 
@@ -544,9 +593,10 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
         assert relue.sources == (SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),)
         assert relue.effectif == 16
 
-        # Le JSON ne porte ni scoring ni validation pour une phase non-qualification.
+        # Le JSON ne porte ni scoring ni validation pour une phase non-qualification. On vise
+        # l'étape **de rang 2** : le décor en a posé deux, la qualification occupant le rang 1.
         with db.session_factory() as session:
-            ligne = session.query(DerouleEtapeORM).one()
+            ligne = session.query(DerouleEtapeORM).filter_by(ordre=2).one()
             config = json.loads(ligne.config)
         assert "scoring" not in config and "validation" not in config
         assert config["sources"] == [
@@ -642,19 +692,9 @@ def test_un_statut_illisible_leve_infrastructure_error(tmp_path: Path) -> None:
     db = _base(tmp_path)
     try:
         depart_id = _depart(db)
-        with db.session_factory() as session:
-            session.add(
-                PhaseORM(
-                    depart_id=depart_id,
-                    ordre=1,
-                    type="elimination_directe",
-                    config="{}",
-                    statut="en_vacances",
-                )
-            )
-            session.commit()
+        _tableau_brut(db, depart_id, "{}", statut="en_vacances")
         with pytest.raises(InfrastructureError):
-            PhaseRepositorySQL(db.session_factory).par_tournoi(depart_id)
+            PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))
     finally:
         db.engine.dispose()
 
@@ -665,19 +705,11 @@ def test_une_source_illisible_leve_infrastructure_error(tmp_path: Path) -> None:
     db = _base(tmp_path)
     try:
         depart_id = _depart(db)
-        with db.session_factory() as session:
-            session.add(
-                PhaseORM(
-                    depart_id=depart_id,
-                    ordre=2,
-                    type="elimination_directe",
-                    config='{"source": {"ordre_source": 1, "rang_debut": 8, "rang_fin": 4}}',
-                    statut="a_venir",
-                )
-            )
-            session.commit()
+        _tableau_brut(
+            db, depart_id, '{"source": {"ordre_source": 1, "rang_debut": 8, "rang_fin": 4}}'
+        )
         with pytest.raises(InfrastructureError):
-            PhaseRepositorySQL(db.session_factory).par_tournoi(depart_id)
+            PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))
     finally:
         db.engine.dispose()
 
@@ -772,12 +804,15 @@ def test_migration_0028_deplace_le_scoring_sous_policies(tmp_path: Path) -> None
 # --- Profondeur de classement (E06US006, ADR-0070) ----------------------------------------------
 
 
-def _tableau_brut(db: Database, depart_id: DepartId, config: str) -> None:
-    """Écrit une ligne `phase` **de tableau** directement, config imposée.
+def _tableau_brut(db: Database, depart_id: DepartId, config: str, statut: str = "a_venir") -> None:
+    """Écrit une **étape de tableau et son avancement** directement, config et statut imposés.
 
     Jumeau de `_phase_brute`, qui force `type="qualification"` : une profondeur ne se règle que sur
     un tableau, et la relire sur une qualification échouerait pour une **autre** raison (barème
     manquant), donc sans rien prouver de ce qu'on veut vérifier.
+
+    `statut` est paramétrable parce que c'est le **seul** champ de la phase qu'une base altérée peut
+    encore corrompre depuis ADR-0076 — tout le reste a migré sur l'étape.
     """
     with db.session_factory() as session:
         depart = session.get(DepartORM, depart_id)
@@ -794,7 +829,7 @@ def _tableau_brut(db: Database, depart_id: DepartId, config: str) -> None:
             PhaseORM(
                 depart_id=depart_id,
                 ordre=1,
-                statut="a_venir",
+                statut=statut,
             )
         )
         session.commit()
@@ -806,24 +841,26 @@ def test_la_profondeur_fait_l_aller_retour(tmp_path: Path) -> None:
     depart_id = _depart(db)
     repo = PhaseRepositorySQL(db.session_factory)
 
-    integrale = repo.ajouter(
+    integrale = poser_phase_sql(
+        db.session_factory,
         Phase.creer(
             depart_id,
             ordre=1,
             type=TypePhase.ELIMINATION_DIRECTE,
             profondeur=ProfondeurClassement.integrale(),
-        )
+        ),
     )
-    top = repo.ajouter(
+    top = poser_phase_sql(
+        db.session_factory,
         Phase.creer(
             depart_id,
             ordre=2,
             type=TypePhase.ELIMINATION_DIRECTE,
             profondeur=ProfondeurClassement.top(8),
-        )
+        ),
     )
 
-    relues = {p.ordre: p.profondeur for p in repo.par_tournoi(depart_id)}
+    relues = {p.ordre: p.profondeur for p in repo.par_tournoi(_tournoi_du(db, depart_id))}
     assert relues[1] == ProfondeurClassement.integrale()
     assert relues[2] == ProfondeurClassement.top(8)
     assert integrale.profondeur == relues[1] and top.profondeur == relues[2]
@@ -840,7 +877,7 @@ def test_une_phase_sans_cle_depth_se_relit_non_reglee(tmp_path: Path) -> None:
     depart_id = _depart(db)
     _tableau_brut(db, depart_id, json.dumps({"validation": {"grain": "fin_de_duel"}}))
 
-    phase = PhaseRepositorySQL(db.session_factory).par_tournoi(depart_id)[0]
+    phase = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
 
     assert phase.profondeur is None
 
@@ -868,10 +905,5 @@ def test_une_profondeur_alteree_remonte_en_erreur_typee(
     depart_id = _depart(db)
     _tableau_brut(db, depart_id, json.dumps({"policies": {"depth": depth}}))
 
-    with db.session_factory() as session:
-        depart = session.get(DepartORM, depart_id)
-        assert depart is not None
-        tournoi_id = depart.tournoi_id
-
     with pytest.raises(InfrastructureError):
-        PhaseRepositorySQL(db.session_factory).par_tournoi(tournoi_id)
+        PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))

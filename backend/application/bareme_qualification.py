@@ -19,7 +19,6 @@ from __future__ import annotations
 from dataclasses import replace
 
 from application.erreurs import TournoiIntrouvable, TournoiSansDepart
-from application.portee import qualification_representative
 from domain.bareme import BaremeQualification
 from domain.deroule_etape import EtapeDeroule
 from domain.phase import TypePhase, grain_par_defaut, verifier_sequence
@@ -56,8 +55,18 @@ class ServiceBaremeQualification:
         Lève `TournoiIntrouvable` si le tournoi n'existe pas.
         """
         self._tournoi_existant(tournoi_id)
-        phase = qualification_representative(self._phases, tournoi_id)
-        return None if phase is None else phase.bareme
+        # Lu sur le **déroulé** (ADR-0076) : c'est là que le barème est défini, une seule fois.
+        # Le lire sur une phase passerait par l'assemblage de l'adapter — exact, mais indirect, et
+        # surtout faux tant qu'aucun créneau n'existe encore.
+        etape = next(
+            (
+                etape
+                for etape in self._deroules.par_tournoi(tournoi_id)
+                if etape.type is TypePhase.QUALIFICATION
+            ),
+            None,
+        )
+        return None if etape is None else etape.bareme
 
     def definir(
         self, tournoi_id: TournoiId, nb_volees: int, nb_fleches_par_volee: int
@@ -102,17 +111,21 @@ class ServiceBaremeQualification:
         )
         decalees = [_decaler_dun_cran(e) for e in etapes]
         verifier_sequence([neuve, *decalees])  # valide l'ensemble avant d'écrire
+        # ⚠️ **Décaler d'abord, insérer ensuite.** Un tournoi ne porte qu'une étape par rang : poser
+        # la qualification en tête avant d'avoir libéré le rang 1 heurterait cette unicité. Le
+        # décalage passe par `reordonner`, l'écriture d'ensemble du port — le faire étape par étape
+        # produirait le même doublon transitoire, un cran plus bas.
+        self._deroules.reordonner(decalees)
         posee = self._deroules.ajouter(neuve)
-        for etape_decalee in decalees:
-            self._deroules.enregistrer(etape_decalee)
 
-        # Les **avancements** suivent : une instance de la nouvelle étape dans chaque créneau, et
-        # le rang des instances déjà posées se décale comme leur étape. C'est le seul éventail qui
-        # subsiste, et il ne porte aucun réglage.
+        # Les **avancements** suivent, au même ordre de gestes : une instance de la nouvelle étape
+        # dans chaque créneau, et le rang des instances déjà posées décalé comme leur étape. C'est
+        # le seul éventail qui subsiste, et il ne porte aucun réglage.
         for depart in departs:
             assert depart.id is not None, "Un départ relu du dépôt porte toujours son identifiant."
-            for phase in self._phases.par_depart(depart.id):
-                self._phases.enregistrer(phase.avec_ordre(phase.ordre + 1))
+            a_decaler = [p.avec_ordre(p.ordre + 1) for p in self._phases.par_depart(depart.id)]
+            if a_decaler:
+                self._phases.reordonner(a_decaler)
             self._phases.ajouter(posee.instancier(depart.id))
         return bareme
 

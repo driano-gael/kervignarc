@@ -253,6 +253,22 @@ async def lister_phases(tournoi_id: int, request: Request) -> list[EtapeReponse]
     return [EtapeReponse.de_agregat(phase) for phase in phases]
 
 
+@router.get("/departs/{depart_id}/phases", response_model=list[PhaseReponse])
+async def lister_avancement(depart_id: int, request: Request) -> list[PhaseReponse]:
+    """Renvoie **où en est ce créneau** : ses phases ordonnées, avec leur statut.
+
+    Pendant de `lister_phases` à l'autre maille (ADR-0076) : celle-ci rend le déroulé *prévu* du
+    tournoi (`EtapeReponse`, sans statut), celle-là ce qu'un créneau en a *joué*. C'est cette
+    lecture que l'écran de pilotage consomme — les transitions de statut s'adressent à un
+    `phase_id`, qui n'existe qu'ici.
+
+    Lève `DepartIntrouvable` (404) si le créneau est inconnu.
+    """
+    service: ServicePhases = request.app.state.service_phases
+    phases = await run_in_threadpool(service.avancement, depart_id)
+    return [PhaseReponse.de_agregat(phase) for phase in phases]
+
+
 @router.post(
     "/tournois/{tournoi_id}/phases",
     response_model=EtapeReponse,

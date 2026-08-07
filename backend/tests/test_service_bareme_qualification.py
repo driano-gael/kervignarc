@@ -17,7 +17,12 @@ from domain.depart import Depart
 from domain.erreurs import NombreFlechesParVoleeInvalide, NombreVoleesInvalide
 from domain.phase import Phase, SourcePhase, TypePhase
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
-from tests.conftest import FauxDepartRepository, FauxDerouleRepository, FauxPhaseRepository
+from tests.conftest import (
+    FauxDepartRepository,
+    FauxDerouleRepository,
+    FauxPhaseRepository,
+    poser_phase_factice,
+)
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -140,27 +145,33 @@ def test_definir_apres_composition_place_la_qualification_en_tete() -> None:
     assert tournoi.id is not None
     departs = FauxDepartRepository()
     deroules = FauxDerouleRepository()
-    phases = FauxPhaseRepository(departs)
-    # Le créneau porte la séquence depuis ADR-0075 : c'est sur lui que la qualification se pose et
-    # que les phases déjà composées se décalent.
+    phases = FauxPhaseRepository(departs, deroules)
+    # Le créneau porte l'avancement depuis ADR-0075 ; la **définition**, elle, est celle du tournoi
+    # (ADR-0076) — c'est elle que le décalage réordonne, les instances suivant leur étape.
     depart = departs.ajouter(
         Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
     )
     assert depart.id is not None
     service = ServiceBaremeQualification(tournois, phases, departs, deroules)
-    # Deux phases composées avant le barème : élim (ordre 1, effectif 32) puis placement (ordre 2)
+    # Deux étapes composées avant le barème : élim (ordre 1, effectif 32) puis placement (ordre 2)
     # alimenté par les 16 premiers de l'élim.
-    phases.ajouter(
-        Phase.creer(tournoi.id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE, effectif=32)
+    poser_phase_factice(
+        departs,
+        deroules,
+        phases,
+        Phase.creer(depart.id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE, effectif=32),
     )
-    phases.ajouter(
+    poser_phase_factice(
+        departs,
+        deroules,
+        phases,
         Phase.creer(
             depart.id,
             ordre=2,
             type=TypePhase.PLACEMENT,
             sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
             effectif=16,
-        )
+        ),
     )
 
     service.definir(tournoi.id, 20, 3)

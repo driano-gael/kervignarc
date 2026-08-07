@@ -895,6 +895,41 @@ class DerouleEtapeRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour de l'étape de déroulé.") from exc
 
+    def reordonner(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
+        """Réécrit les rangs de tout un déroulé en **une** transaction, en deux passes.
+
+        `uq_deroule_tournoi_ordre` interdit deux étapes de même rang dans un tournoi. Échanger deux
+        rangs voisins passe pourtant par cet état : la première ligne écrite prend un rang que la
+        seconde n'a pas encore libéré, et SQLite refuse. On **gare** donc tous les rangs en négatif
+        — un domaine que la séquence 1..N n'atteint jamais, donc libre par construction — avant de
+        poser les rangs voulus.
+
+        Un `flush` sépare les deux passes : sans lui, SQLAlchemy est libre d'ordonner les `UPDATE`
+        comme il veut à l'intérieur d'un même vidage, et la collision réapparaîtrait au hasard des
+        exécutions — le pire des bugs, celui qui passe en test et tombe le jour J.
+        """
+        try:
+            with self._session_factory() as session:
+                lignes = []
+                for etape in etapes:
+                    ligne = session.get(DerouleEtapeORM, etape.id)
+                    if ligne is None:
+                        raise InfrastructureError(
+                            "Étape de déroulé à réordonner introuvable en base."
+                        )
+                    lignes.append(ligne)
+                for rang, ligne in enumerate(lignes, start=1):
+                    ligne.ordre = -rang
+                session.flush()
+                for etape, ligne in zip(etapes, lignes, strict=True):
+                    ligne.ordre = etape.ordre
+                    ligne.type = etape.type.value
+                    ligne.config = _config_etape(etape)
+                session.commit()
+                return [_vers_etape(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec du réordonnancement du déroulé.") from exc
+
     def supprimer(self, etape_id: EtapeDerouleId) -> None:
         """Supprime une étape du déroulé (existence garantie par l'appelant)."""
         try:
@@ -1057,6 +1092,33 @@ class PhaseRepositorySQL:
                 return assemblees[0]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour de la phase.") from exc
+
+    def reordonner(self, phases: list[Phase]) -> None:
+        """Réaligne les rangs d'un lot de phases en **une** transaction, en deux passes.
+
+        Même piège et même sortie que `DerouleEtapeRepositorySQL.reordonner` :
+        `uq_phase_depart_ordre` interdit deux avancements de même rang dans un créneau, or un
+        décalage y passe. Les rangs sont **garés en négatif**, puis reposés.
+
+        Ne touche que l'`ordre` — le `statut` d'un avancement n'a aucune raison de bouger parce que
+        son étape a changé de place dans le déroulé.
+        """
+        try:
+            with self._session_factory() as session:
+                lignes = []
+                for phase in phases:
+                    ligne = session.get(PhaseORM, phase.id)
+                    if ligne is None:
+                        raise InfrastructureError("Phase à réordonner introuvable en base.")
+                    lignes.append(ligne)
+                for rang, ligne in enumerate(lignes, start=1):
+                    ligne.ordre = -rang
+                session.flush()
+                for phase, ligne in zip(phases, lignes, strict=True):
+                    ligne.ordre = phase.ordre
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec du réalignement des phases du créneau.") from exc
 
     def supprimer(self, phase_id: PhaseId) -> None:
         """Supprime l'avancement d'une phase (retrait d'une étape de la séquence, E05US001).

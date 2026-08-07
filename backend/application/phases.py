@@ -31,6 +31,7 @@ from collections.abc import Callable
 from dataclasses import replace
 
 from application.erreurs import (
+    DepartIntrouvable,
     PhaseIntrouvable,
     PhaseQualificationNonSupprimable,
     PhaseSourceReferencee,
@@ -94,6 +95,22 @@ class ServicePhases:
         """
         self._exiger_tournoi(tournoi_id)
         return self._deroules.par_tournoi(tournoi_id)
+
+    def avancement(self, depart_id: DepartId) -> list[Phase]:
+        """Renvoie **où en est ce créneau** : ses phases, ordonnées, définition assemblée.
+
+        Pendant de `lister` à l'autre maille (ADR-0076) : `lister` dit *ce qui est prévu* pour le
+        tournoi, `avancement` dit *où en est* un créneau. C'est cette lecture-ci que l'écran de
+        pilotage consomme — le déroulé seul ne lui donnerait aucun identifiant de phase à faire
+        vivre, ni le statut de chacune.
+
+        Lève `DepartIntrouvable` si le créneau n'existe pas : rendre `[]` ferait passer « ce départ
+        n'existe pas » pour « ce départ n'a rien à jouer », deux situations qui n'appellent pas la
+        même réaction côté écran.
+        """
+        if self._departs.par_id(depart_id) is None:
+            raise DepartIntrouvable(f"Aucun départ d'identifiant {depart_id}.")
+        return self._phases.par_depart(depart_id)
 
     # --- Composition & édition (maille **tournoi**, à l'atelier) --------------------------------
 
@@ -199,7 +216,10 @@ class ServicePhases:
             for rang, etape_id in enumerate(etapes_ordonnees, start=1)
         ]
         verifier_sequence(reordonnees)  # valide l'ordre demandé
-        posees = [self._deroules.enregistrer(etape) for etape in reordonnees]
+        # **En un bloc, pas étape par étape** : un déroulé n'a qu'une étape par rang, donc tout
+        # échange passerait par un doublon transitoire que la persistance refuse. Le port porte
+        # cette écriture d'ensemble, à charge pour l'adapter de savoir s'y prendre (ADR-0003).
+        posees = self._deroules.reordonner(reordonnees)
         self._realigner_avancements(tournoi_id, ancien_vers_nouveau)
         return posees
 
@@ -235,19 +255,26 @@ class ServicePhases:
             for e in restantes
         ]
         verifier_sequence(recompactees)
-        # ⚠️ **Les avancements d'abord.** Le rang étant la clé de jointure vers la définition,
-        # décaler les étapes avant d'avoir retiré la phase supprimée ferait pointer celle-ci sur
-        # l'étape voisine — une phase orpheline qui ressusciterait sous une autre définition.
+        # ⚠️ **On retire avant de recompacter, et les avancements avant leur étape.** Deux raisons,
+        # dans cet ordre :
+        # 1. le rang étant la clé de jointure vers la définition, décaler les étapes avant d'avoir
+        #    retiré la phase supprimée la ferait pointer sur l'étape voisine — une phase orpheline
+        #    qui ressusciterait sous une autre définition ;
+        # 2. un tournoi ne porte qu'une étape par rang : recompacter avant d'avoir retiré la cible
+        #    ferait écrire son rang sur sa voisine alors qu'elle l'occupe encore.
+        # Le déroulé a donc, le temps de ces trois gestes, un trou dans sa numérotation. C'est
+        # assumé : rien ne le lit entre-temps (écrivain unique, règle 7), et l'alternative — poser
+        # la séquence complète en une écriture — demanderait au port de savoir supprimer et
+        # renuméroter du même mouvement, pour un gain nul ici.
         for depart_id in self._creneaux(tournoi_id):
             for phase in self._phases.par_depart(depart_id):
                 if phase.ordre == cible.ordre:
                     assert phase.id is not None, "Une phase relue est persistée."
                     self._phases.supprimer(phase.id)
-        for etape in recompactees:
-            self._deroules.enregistrer(etape)
-        self._realigner_avancements(tournoi_id, ancien_vers_nouveau)
         assert cible.id is not None, "Une étape consultée est persistée."
         self._deroules.supprimer(cible.id)
+        self._deroules.reordonner(recompactees)
+        self._realigner_avancements(tournoi_id, ancien_vers_nouveau)
 
     def _creneaux(self, tournoi_id: TournoiId) -> list[int]:
         """Les identifiants des créneaux du tournoi — là où les avancements se déclinent."""
@@ -261,12 +288,18 @@ class ServicePhases:
         Le rang **est** la clé de jointure (ADR-0076) : une phase restée sur son ancien ordre
         pointerait la définition d'une autre étape, sans la moindre erreur visible. C'est le seul
         éventail qui subsiste après la séparation — et il ne déplace aucun réglage, juste un rang.
+
+        L'écriture se fait **par créneau et en un bloc** : un créneau ne porte qu'un avancement par
+        rang, donc les décaler un à un buterait sur cette unicité dès que deux rangs s'échangent.
         """
         for depart_id in self._creneaux(tournoi_id):
-            for phase in self._phases.par_depart(depart_id):
-                nouveau = ancien_vers_nouveau.get(phase.ordre)
-                if nouveau is not None and nouveau != phase.ordre:
-                    self._phases.enregistrer(phase.avec_ordre(nouveau))
+            a_realigner = [
+                phase.avec_ordre(ancien_vers_nouveau[phase.ordre])
+                for phase in self._phases.par_depart(depart_id)
+                if ancien_vers_nouveau.get(phase.ordre, phase.ordre) != phase.ordre
+            ]
+            if a_realigner:
+                self._phases.reordonner(a_realigner)
 
     # --- Cycle de vie (transitions gardées, patron ServiceTournois) ----------------------------
 

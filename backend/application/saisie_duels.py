@@ -28,7 +28,7 @@ from application.erreurs import (
     PhasePasUnTableau,
     TournoiIntrouvable,
 )
-from application.portee import phase_du_tournoi, qualification_representative
+from application.portee import phase_du_tournoi, qualification_du_tournoi
 from application.prelevement import preleves, profondeur_de
 from domain.blason import ZoneScore
 from domain.classement import LigneClassement
@@ -313,7 +313,7 @@ class ServiceSaisieDuels:
         retombe sur tous les archers en lice. C'est le cas des décors de test montés sans
         qualification, et celui d'un tournoi dont la séquence commence autrement.
         """
-        qualification = qualification_representative(self._phases, tournoi_id)
+        qualification = qualification_du_tournoi(self._phases, tournoi_id)
         return qualification.ordre if qualification is not None else None
 
     def _appliquer_forfaits(self, tableau: Tableau, phase_id: PhaseId) -> Tableau:

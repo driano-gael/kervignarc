@@ -135,7 +135,7 @@ def test_cycle_de_vie(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> N
         # ⚠️ **Composer et faire vivre sont deux mailles** (ADR-0076) : l'étape se pose au tournoi,
         # mais son avancement se pilote **dans un créneau**. On relit donc la phase du départ pour
         # obtenir l'identifiant que la route de statut attend.
-        depart_id = client.get(f"/api/v1/tournois/{tournoi_id}/departs/").json()[0]["id"]
+        depart_id = client.get(f"/api/v1/tournois/{tournoi_id}/departs").json()[0]["id"]
         phase = client.get(f"/api/v1/departs/{depart_id}/phases").json()[-1]
         statut_url = f"/api/v1/departs/{depart_id}/phases/{phase['id']}/statut"
 
@@ -155,14 +155,23 @@ def test_cycle_de_vie(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> N
 
 
 def test_transition_illegale_409(app_phases: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    """Une transition depuis le mauvais état → 409, sur la route du **créneau** (ADR-0076).
+
+    Le cycle de vie ne s'adresse pas au déroulé du tournoi : mettre en pause « la phase 2 » n'aurait
+    pas de sens si les quatre créneaux la jouaient à des moments différents — c'est le propos même
+    de la séparation.
+    """
     with TestClient(app_phases) as client:
         connecter_admin(client)
         tournoi_id = _creer_tournoi(client)
         base = f"/api/v1/tournois/{tournoi_id}/phases"
-        phase = client.post(base, json={"type": "elimination_directe"}).json()
+        client.post(base, json={"type": "elimination_directe"})
+        depart_id = client.get(f"/api/v1/tournois/{tournoi_id}/departs").json()[0]["id"]
+        phase = client.get(f"/api/v1/departs/{depart_id}/phases").json()[-1]
 
         reponse = client.post(
-            f"{base}/{phase['id']}/statut", json={"transition": "mettre_en_pause"}
+            f"/api/v1/departs/{depart_id}/phases/{phase['id']}/statut",
+            json={"transition": "mettre_en_pause"},
         )
         assert reponse.status_code == 409
         assert reponse.json()["code"] == "transition_statut_invalide"

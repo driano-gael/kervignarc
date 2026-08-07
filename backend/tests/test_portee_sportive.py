@@ -16,7 +16,13 @@ bascule : il a révélé **157 appels** que mypy laissait passer. Ce fichier fig
 Ces tests échouent si quelqu'un rebranche une phase, un classement ou un barrage sur le tournoi —
 y compris « juste pour dépanner ». Le message d'échec dit quoi faire à la place.
 
+⚠️ **[ADR-0076] nuance la portée sans la contredire** : le départ est la portée d'**exécution**
+(avancement, classements, tableaux), le tournoi celle d'**édition** (le déroulé, défini une fois).
+Ce fichier garde donc les deux mailles — et ajoute le contrôle qui rend la nuance tenable : la
+définition d'une étape n'est **pas** dupliquée par créneau.
+
 [ADR-0017]: ../../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md
+[ADR-0076]: ../../docs/adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md
 """
 
 from __future__ import annotations
@@ -32,6 +38,7 @@ from application.phases import ServicePhases
 from domain.barrage import BarrageDePlaces
 from domain.phase import Phase
 from domain.ports import BarrageRepository, PhaseRepository
+from infrastructure.db.models import DerouleEtapeORM, PhaseORM
 
 _BACKEND = pathlib.Path(__file__).resolve().parent.parent
 
@@ -96,20 +103,60 @@ def test_le_classement_se_calcule_par_depart() -> None:
     )
 
 
-def test_la_sequence_de_phases_se_compose_par_depart() -> None:
-    """`ServicePhases` compose la séquence **d'un départ**.
+def test_le_deroule_se_compose_au_tournoi_et_se_pilote_au_depart() -> None:
+    """`ServicePhases` porte **deux mailles**, et le premier paramètre dit laquelle (ADR-0076).
 
-    Le contrôle porte sur le nom du premier paramètre : c'est lui qui dit la maille. Le service
-    lisait `par_tournoi` — devenue la concaténation de N suites 1..M —, et la passer à
-    `SequencePhases` lève `SequenceOrdreInvalide`, les ordres repartant de 1 à chaque créneau.
+    Nuance apportée à ADR-0075 : le départ est la portée **d'exécution**, pas d'**édition**. On
+    compose **un** déroulé au tournoi (atelier) — une écriture, plus d'éventail — et on le fait
+    vivre **par créneau** (pilotage), le matin pouvant être en duels pendant que l'après-midi
+    qualifie. Se tromper de maille est invisible au typage (`TournoiId` et `DepartId` sont tous
+    deux `int`), d'où ce contrôle sur le **nom** du paramètre.
     """
-    for operation in ("lister", "ajouter", "supprimer", "reordonner"):
+    for operation in ("lister", "ajouter", "modifier", "supprimer", "reordonner"):
+        methode = getattr(ServicePhases, operation)
+        premier = methode.__code__.co_varnames[1]
+        assert premier == "tournoi_id", (
+            f"`ServicePhases.{operation}` doit prendre un `tournoi_id` (reçu « {premier} ») : le "
+            "déroulé se définit **une fois** pour le tournoi, jamais par créneau (ADR-0076). "
+            "Composer par départ rouvrirait la divergence silencieuse entre copies."
+        )
+
+    for operation in ("demarrer", "mettre_en_pause", "reprendre", "terminer"):
         methode = getattr(ServicePhases, operation)
         premier = methode.__code__.co_varnames[1]
         assert premier == "depart_id", (
-            f"`ServicePhases.{operation}` doit prendre un `depart_id` (reçu « {premier} ») : une "
-            "séquence 1..N appartient à un créneau, pas au tournoi (ADR-0075)."
+            f"`ServicePhases.{operation}` doit prendre un `depart_id` (reçu « {premier} ») : "
+            "l'avancement appartient au créneau qui joue l'étape, pas au tournoi (ADR-0076)."
         )
+
+
+def test_la_definition_d_une_etape_n_est_pas_dupliquee_par_depart() -> None:
+    """La table `phase` ne porte que l'**avancement** : ni type, ni barème, ni `config`.
+
+    C'est le garde-fou structurel d'ADR-0076. La décision n'était pas « ne pas laisser diverger les
+    copies » — une garde contournable n'est pas un invariant — mais « rendre la divergence
+    **impossible** » en n'ayant qu'une définition. Cela ne tient que tant que `PhaseORM` reste
+    vide de définition : le jour où quelqu'un y rajoute une colonne « pour éviter une jointure »,
+    les N créneaux redeviennent libres de s'écarter les uns des autres, en silence.
+
+    Le contrôle est **structurel** (les colonnes) et non comportemental : c'est la seule forme qui
+    résiste à un code de lecture qu'on réécrirait pour s'accommoder de la colonne fautive.
+    """
+    colonnes_avancement = {"id", "depart_id", "ordre", "statut"}
+    colonnes = {colonne.name for colonne in PhaseORM.__table__.columns}
+    assert colonnes == colonnes_avancement, (
+        "`phase` ne porte que l'avancement d'une étape dans un créneau (ADR-0076) ; sa définition "
+        f"vit dans `deroule_etape`, une seule fois par tournoi. Colonnes en trop : "
+        f"{sorted(colonnes - colonnes_avancement)} — les remettre ici rétablit N copies libres de "
+        "diverger. Une définition qui doit changer se change sur l'étape."
+    )
+
+    definition = {"type", "config"}
+    etape = {colonne.name for colonne in DerouleEtapeORM.__table__.columns}
+    assert definition <= etape, (
+        "`deroule_etape` doit porter la définition (type et politiques) : c'est le pendant du "
+        f"contrôle ci-dessus — manquants : {sorted(definition - etape)}."
+    )
 
 
 def _modules_de_production() -> list[pathlib.Path]:

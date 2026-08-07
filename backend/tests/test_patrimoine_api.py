@@ -515,11 +515,16 @@ def test_appliquer_un_format_cree_les_phases_du_tournoi(
         )
 
         assert application.status_code == 200, application.text
-        # Les phases se lisent **par créneau** (ADR-0075) : appliquer un format en pose une
-        # séquence sur chacun. Ici le tournoi n'a qu'un départ, donc une seule séquence.
+        # Appliquer un format écrit **un** déroulé au tournoi (ADR-0076) et l'instancie dans chaque
+        # créneau. On vérifie donc les deux mailles : la définition posée, et l'avancement né « à
+        # venir » sur le départ. Ici le tournoi n'a qu'un créneau, donc une seule instance.
+        etapes = client.get(f"/api/v1/tournois/{tournoi_id}/phases").json()
+        assert [e["ordre"] for e in etapes] == [1]
+        assert "statut" not in etapes[0], "une étape définit, elle n'avance pas (ADR-0076)"
+
         departs = client.get(f"/api/v1/tournois/{tournoi_id}/departs").json()
         depart_id = departs[0]["id"]
-        phases = client.get(f"/api/v1/tournois/{depart_id}/phases").json()
+        phases = client.get(f"/api/v1/departs/{depart_id}/phases").json()
         assert [p["ordre"] for p in phases] == [1]
         assert phases[0]["statut"] == "a_venir"
         assert phases[0]["depart_id"] == depart_id

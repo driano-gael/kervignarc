@@ -24,7 +24,7 @@ import logging
 
 from application.classements import ServiceClassement
 from application.erreurs import PhaseIntrouvable, TournoiIntrouvable, TournoiSansDepart
-from application.portee import qualification_representative
+from application.portee import qualification_du_tournoi
 from application.prelevement import tranche
 from application.saisie_duels import ServiceSaisieDuels
 from domain.categorie import CategorieId
@@ -218,7 +218,7 @@ class ServicePalmares:
         # prélevant « les rangs 5 et suivants » joue pour la 5ᵉ place, pas pour la victoire. Sans
         # ce décalage, son vainqueur passait devant le finaliste du tableau principal — c'était
         # `DETTE-034`, inatteignable tant qu'aucun moteur ne consommait les prélèvements.
-        qualification = qualification_representative(self._phases, tournoi_id)
+        qualification = qualification_du_tournoi(self._phases, tournoi_id)
         rang_premier = tranche(
             phase,
             self._classements.pour_depart(phase.depart_id),
