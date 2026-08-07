@@ -25,12 +25,11 @@ from domain.serie import Serie, Volee
 from infrastructure.db import (
     AuditRepositorySQL,
     DepartRepositorySQL,
-    PhaseRepositorySQL,
     SerieRepositorySQL,
 )
 from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
-from tests.conftest import ConnecterAdmin
+from tests.conftest import ConnecterAdmin, poser_phase_sql
 from tests.test_placement_api import (
     _appliquer_gabarit,
     _creer_categorie,
@@ -83,8 +82,9 @@ def _semer(app: FastAPI, tournoi_id: int, archer_id: int, valeurs: tuple[ZoneSco
 
 def _phase_elimination(app: FastAPI, tournoi_id: int) -> int:
     """Insère une phase d'élimination directe (ordre 2) et renvoie son id."""
-    phase = PhaseRepositorySQL(app.state.database.session_factory).ajouter(
-        Phase.creer(_premier_depart(app, tournoi_id), 2, TypePhase.ELIMINATION_DIRECTE)
+    phase = poser_phase_sql(
+        app.state.database.session_factory,
+        Phase.creer(_premier_depart(app, tournoi_id), 2, TypePhase.ELIMINATION_DIRECTE),
     )
     assert phase.id is not None
     return phase.id
@@ -150,10 +150,11 @@ def test_phase_de_qualification_refuse_le_plan_de_duels(
             f"/api/v1/tournois/{tournoi_id}/departs",
             json={"horaire": "09:00", "tarif_centimes": 800},
         )
-        qualif = PhaseRepositorySQL(app_duels.state.database.session_factory).ajouter(
+        qualif = poser_phase_sql(
+            app_duels.state.database.session_factory,
             Phase.qualification(
                 _premier_depart(app_duels, tournoi_id), BaremeQualification.creer(2, 3)
-            )
+            ),
         )
         assert qualif.id is not None
 

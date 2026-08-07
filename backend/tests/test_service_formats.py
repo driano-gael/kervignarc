@@ -35,7 +35,7 @@ from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase, grain_par_d
 from domain.phase import PhaseId as _PhaseId
 from domain.politiques import ProfondeurClassement
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
-from tests.conftest import FauxDepartRepository, FauxPhaseRepository
+from tests.conftest import FauxDepartRepository, FauxDerouleRepository, FauxPhaseRepository
 from tests.test_service_blasons import FauxTournoiRepository
 
 
@@ -111,6 +111,7 @@ class Contexte:
     tournoi_id: TournoiId
     depart_id: int
     departs: FauxDepartRepository
+    deroules: FauxDerouleRepository
 
 
 def _id(valeur: int | None) -> int:
@@ -123,6 +124,7 @@ def ctx() -> Contexte:
     tournois = FauxTournoiRepository()
     formats = FauxFormatTournoiRepository()
     departs = FauxDepartRepository()
+    deroules = FauxDerouleRepository()
     phases = FauxPhaseRepository(departs)
     forfaits = FauxLecteurDonneesDePhase()
     placements_tableau = FauxLecteurDonneesDePhase()
@@ -135,13 +137,16 @@ def ctx() -> Contexte:
         Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
     )
     return Contexte(
-        service=ServiceFormats(tournois, formats, phases, forfaits, placements_tableau, departs),
+        service=ServiceFormats(
+            tournois, formats, phases, forfaits, placements_tableau, departs, deroules
+        ),
         tournois=tournois,
         formats=formats,
         phases=phases,
         forfaits=forfaits,
         placements_tableau=placements_tableau,
         departs=departs,
+        deroules=deroules,
         tournoi_id=_id(tournoi.id),
         depart_id=_id(departs.par_tournoi(_id(tournoi.id))[0].id),
     )
@@ -238,14 +243,17 @@ def test_appliquer_cree_les_phases_a_venir_dans_l_ordre(ctx: Contexte) -> None:
         ],
     )
 
-    phases = ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
+    etapes = ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
 
+    # `appliquer` rend le **déroulé** (la définition, une fois) — ADR-0076.
+    assert [e.ordre for e in etapes] == [1, 2]
+    assert all(e.tournoi_id == ctx.tournoi_id for e in etapes)
+    # Et il en pose l'**avancement** dans chaque créneau : ici un seul départ, donc deux phases,
+    # toutes `à venir`, toutes rattachées à ce créneau.
+    phases = ctx.phases.par_tournoi(ctx.tournoi_id)
     assert [p.ordre for p in phases] == [1, 2]
     assert all(p.statut is StatutPhase.A_VENIR for p in phases)
-    # Les phases pendent au **créneau** du tournoi (ADR-0075) ; la vue transverse par tournoi les
-    # retrouve toutes, tous départs confondus.
     assert all(p.depart_id == ctx.depart_id for p in phases)
-    assert ctx.phases.par_tournoi(ctx.tournoi_id) == phases
 
 
 def test_appliquer_recopie_le_minimum_exige_sur_le_tournoi(ctx: Contexte) -> None:
@@ -404,9 +412,10 @@ def test_appliquer_refuse_un_tournoi_inconnu(ctx: Contexte) -> None:
 def test_ajuster_une_phase_appliquee_n_altere_pas_le_format(ctx: Contexte) -> None:
     """La promesse « ajustable sans altérer le modèle », vue depuis le service."""
     format_tournoi = ctx.service.creer("Officiel", [_qualification()])
-    (phase,) = ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
+    (etape,) = ctx.service.appliquer(ctx.tournoi_id, _id(format_tournoi.id))
 
-    ctx.phases.enregistrer(phase.avec_bareme(BaremeQualification.creer(1, 1)))
+    # La définition s'ajuste sur l'**étape** (ADR-0076) : c'est là qu'elle vit désormais.
+    ctx.deroules.enregistrer(dataclasses.replace(etape, bareme=BaremeQualification.creer(1, 1)))
 
     relu = ctx.formats.par_id(_id(format_tournoi.id))
     assert relu is not None
@@ -519,8 +528,10 @@ def test_promouvoir_oublie_l_avancement(ctx: Contexte) -> None:
 
     promu = ctx.service.promouvoir(ctx.tournoi_id, "Le format 2026")
 
-    phases = ctx.service.appliquer(edition_suivante, _id(promu.id))
-    assert all(p.statut is StatutPhase.A_VENIR for p in phases)
+    etapes = ctx.service.appliquer(edition_suivante, _id(promu.id))
+    # Le déroulé promu se réapplique tel quel ; ses avancements naissent `à venir` dans le créneau.
+    assert [e.ordre for e in etapes] == [1]
+    assert all(p.statut is StatutPhase.A_VENIR for p in ctx.phases.par_tournoi(edition_suivante))
 
 
 def test_supprimer_un_format_inconnu_est_refuse(ctx: Contexte) -> None:

@@ -519,7 +519,7 @@ def test_appliquer_un_format_cree_les_phases_du_tournoi(
         # séquence sur chacun. Ici le tournoi n'a qu'un départ, donc une seule séquence.
         departs = client.get(f"/api/v1/tournois/{tournoi_id}/departs").json()
         depart_id = departs[0]["id"]
-        phases = client.get(f"/api/v1/departs/{depart_id}/phases").json()
+        phases = client.get(f"/api/v1/tournois/{depart_id}/phases").json()
         assert [p["ordre"] for p in phases] == [1]
         assert phases[0]["statut"] == "a_venir"
         assert phases[0]["depart_id"] == depart_id

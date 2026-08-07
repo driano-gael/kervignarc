@@ -44,12 +44,11 @@ from infrastructure.db import (
     DepartRepositorySQL,
     GabaritSalleRepositorySQL,
     InscriptionRepositorySQL,
-    PhaseRepositorySQL,
     PlacementRepositorySQL,
     TournoiRepositorySQL,
 )
 from tests.base_migree import preparer_base
-from tests.conftest import ConnecterAdmin
+from tests.conftest import ConnecterAdmin, poser_phase_sql
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -134,12 +133,13 @@ def _semer(
         Depart.creer(tournoi.id, 1, tarif_centimes=1000, horaire="09:00")
     )
     assert depart.id is not None
-    PhaseRepositorySQL(sf).ajouter(
+    poser_phase_sql(
+        sf,
         Phase.qualification(
             depart_id=depart.id,
             bareme=BaremeQualification.creer(2, 3),
             validation=GrainValidation.fin_de_serie(),
-        )
+        ),
     )
     archer_id = _placer_archer(db, tournoi.id, depart.id, categorie.id, cible_index=1, position="A")
     # Prépare les codes de cible (admin) et rattache la tablette à la cible 1.

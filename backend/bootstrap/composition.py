@@ -139,6 +139,7 @@ from infrastructure.db import (
     ClubRepositorySQL,
     Database,
     DepartRepositorySQL,
+    DerouleEtapeRepositorySQL,
     DuelRepositorySQL,
     ForfaitRepositorySQL,
     FormatTournoiRepositorySQL,
@@ -163,6 +164,7 @@ from infrastructure.memory.repositories import (
     InMemoryBlasonRepository,
     InMemoryCategorieRepository,
     InMemoryDepartRepository,
+    InMemoryDerouleRepository,
     InMemoryDuelRepository,
     InMemoryForfaitRepository,
     InMemoryGabaritSalleRepository,
@@ -217,7 +219,10 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
     # Les créneaux du harnais (E01US025, ADR-0075) : la portée sportive étant le départ, le
     # magasin de phases a besoin d'eux pour sa lecture transverse `par_tournoi`.
     departs = InMemoryDepartRepository()
-    phases = InMemoryPhaseRepository(departs)
+    # Le déroulé du tournoi simulé (ADR-0076) : le magasin de phases s'en sert pour **assembler**
+    # définition et avancement, exactement comme l'adapter SQL.
+    deroules = InMemoryDerouleRepository()
+    phases = InMemoryPhaseRepository(departs, deroules)
     series = InMemorySerieRepository()
     forfaits = InMemoryForfaitRepository()
     duels = InMemoryDuelRepository()
@@ -265,6 +270,7 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         gabarits,
         inscriptions,
         departs,
+        deroules,
         phases,
         series,
         classement,
@@ -380,6 +386,7 @@ def create_app(
     club_repository = ClubRepositorySQL(database.session_factory)
     gabarit_repository = GabaritSalleRepositorySQL(database.session_factory)
     format_repository = FormatTournoiRepositorySQL(database.session_factory)
+    deroule_repository = DerouleEtapeRepositorySQL(database.session_factory)
     phase_repository = PhaseRepositorySQL(database.session_factory)
     archer_repository = ArcherRepositorySQL(database.session_factory)
     score_repository = ScoreRepositorySQL(database.session_factory)
@@ -473,11 +480,12 @@ def create_app(
         forfait_repository,
         placement_tableau_repository,
         depart_repository,
+        deroule_repository,
     )
     # Barème de qualification (E01US009) : porté par la phase `qualification` du tournoi
     # (introduction minimale de `Phase`, ADR-0011). Le service vérifie l'existence du tournoi.
     app.state.service_bareme_qualification = ServiceBaremeQualification(
-        tournoi_repository, phase_repository, depart_repository
+        tournoi_repository, phase_repository, depart_repository, deroule_repository
     )
     # Grain de validation (E01US015, `D-11`) : porté par la même phase, à la racine de `config`
     # (`config.validation`) — ce n'est pas une politique de moteur, il reste hors `config.policies`
@@ -490,7 +498,7 @@ def create_app(
     # les conflits d'état ; la cohérence de la séquence (source, ordres) est une règle du domaine
     # (`SequencePhases`). Même port `phase_repository` que le barème/grain (une table `phase`).
     app.state.service_phases = ServicePhases(
-        tournoi_repository, phase_repository, depart_repository
+        tournoi_repository, phase_repository, depart_repository, deroule_repository
     )
     # Registre des politiques injectables (E05US003, ADR-0004/ADR-0046) : le catalogue
     # nom → implémentation par famille (routing/scoring/seeding/byes/tiebreak/depth), peuplé **ici**
@@ -673,6 +681,7 @@ def create_app(
         gabarit_repository,
         inscription_repository,
         depart_repository,
+        deroule_repository,
         phase_repository,
         serie_repository,
         fabriquer_harnais_simulation,
@@ -693,6 +702,7 @@ def create_app(
         gabarit_repository,
         inscription_repository,
         depart_repository,
+        deroule_repository,
         phase_repository,
         serie_repository,
         fabriquer_harnais_simulation,

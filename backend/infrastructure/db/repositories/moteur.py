@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from domain.bareme import BaremeQualification
 from domain.depart import DepartId
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.entree_audit import EntreeAudit
 from domain.erreurs import DomainError
 from domain.format_tournoi import FormatTournoi, FormatTournoiId, ModelePhase
@@ -45,6 +46,7 @@ from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.tournoi import TournoiId
 from infrastructure.db.models import (
     DepartORM,
+    DerouleEtapeORM,
     FormatTournoiORM,
     PhaseORM,
     PlacementORM,
@@ -58,8 +60,8 @@ from infrastructure.db.repositories.exploitation import AuditRepositorySQL
 from infrastructure.erreurs import InfrastructureError
 
 
-def _vers_phase(ligne: PhaseORM) -> Phase:
-    """Traduit une ligne ORM en agrégat `Phase` (config JSON → barème, grain, source, effectif).
+def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
+    """Traduit une ligne ORM en `EtapeDeroule` (config JSON → barème, grain, source, effectif).
 
     **Qualification** (E01US009/E01US015) : le barème est lu depuis `config.policies.scoring`
     (forme cible, ADR-0046), le grain depuis `config.validation`. Une `config` illisible **ou hors
@@ -84,7 +86,6 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
     try:
         config = json.loads(ligne.config)
         type_phase = TypePhase(ligne.type)
-        statut = StatutPhase(ligne.statut)
         bareme = None
         validation = None
         if type_phase is TypePhase.QUALIFICATION:
@@ -119,10 +120,10 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
         ValueError,
         DomainError,
     ) as exc:
-        raise InfrastructureError("Configuration de phase illisible.") from exc
+        raise InfrastructureError("Configuration d'étape de déroulé illisible.") from exc
     try:
-        return Phase(
-            depart_id=ligne.depart_id,
+        return EtapeDeroule(
+            tournoi_id=ligne.tournoi_id,
             ordre=ligne.ordre,
             type=type_phase,
             bareme=bareme,
@@ -131,13 +132,27 @@ def _vers_phase(ligne: PhaseORM) -> Phase:
             effectif=effectif,
             barrage_jusqu_au=barrage_jusqu_au,
             profondeur=profondeur,
-            statut=statut,
             id=ligne.id,
         )
     except DomainError as exc:
         # Les politiques sont individuellement valides mais incohérentes entre elles : le repository
         # n'écrit jamais ça (l'agrégat le refuse en amont) — donc la base a été altérée.
-        raise InfrastructureError("Configuration de phase illisible.") from exc
+        raise InfrastructureError("Configuration d'étape de déroulé illisible.") from exc
+
+
+def _vers_phase(ligne: PhaseORM, etape: EtapeDeroule) -> Phase:
+    """Assemble l'objet du moteur : l'**avancement** d'une ligne `phase` + la **définition** de son
+    étape (ADR-0076).
+
+    C'est *la* couture de la séparation. Le domaine et les services ne la voient pas : ils
+    reçoivent une `Phase` complète, comme avant. La jointure est l'affaire de l'adapter (ADR-0003),
+    et c'est ce qui permet aux 34 modules qui lisent `phase.bareme` de n'avoir pas bougé.
+    """
+    try:
+        statut = StatutPhase(ligne.statut)
+    except ValueError as exc:
+        raise InfrastructureError("Statut de phase illisible.") from exc
+    return dataclasses.replace(etape.instancier(ligne.depart_id), statut=statut, id=ligne.id)
 
 
 def _lire_scoring(config: Any) -> Any:
@@ -236,7 +251,7 @@ def _vers_grain(validation: Any) -> GrainValidation:
     )
 
 
-def _config_phase(phase: Phase) -> str:
+def _config_etape(etape: EtapeDeroule) -> str:
     """Sérialise les politiques et le peuplement d'une phase en JSON (forme cible, ADR-0046).
 
     Forme : `{"policies"?: {...}, "validation"?: {...}, "source"?: {...}, "effectif"?: int}`. Les
@@ -247,17 +262,17 @@ def _config_phase(phase: Phase) -> str:
     paramètres portent le barème). Le grain de `validation` **n'est pas** une politique de moteur —
     il reste **hors** `policies`, à la racine (ADR-0046), et ne porte `n_volees` que pour le grain
     « toutes les N volées ». La **source** (peuplement) et l'**effectif** sont écrits s'ils sont
-    déclarés, quel que soit le type. La relecture (`_vers_phase`) reste tolérante à l'ancienne forme
+    déclarés, quel que soit le type. La relecture (`_vers_etape`) reste tolérante à l'ancienne forme
     à plat pour une base non migrée.
     """
     return json.dumps(
         _politiques_json(
-            phase.bareme,
-            phase.validation,
-            phase.sources,
-            phase.effectif,
-            phase.barrage_jusqu_au,
-            phase.profondeur,
+            etape.bareme,
+            etape.validation,
+            etape.sources,
+            etape.effectif,
+            etape.barrage_jusqu_au,
+            etape.profondeur,
         )
     )
 
@@ -826,26 +841,139 @@ class FormatTournoiRepositorySQL:
             raise InfrastructureError("Échec de suppression du format de tournoi.") from exc
 
 
-class PhaseRepositorySQL:
-    """Adapter SQLite du port `PhaseRepository` (introduction minimale, E01US009/ADR-0011)."""
+class DerouleEtapeRepositorySQL:
+    """Adapter SQLite du port `DerouleRepository` — la **définition** du déroulé (ADR-0076)."""
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
+    def ajouter(self, etape: EtapeDeroule) -> EtapeDeroule:
+        """Persiste une étape et la renvoie avec son identifiant attribué."""
+        try:
+            with self._session_factory() as session:
+                ligne = DerouleEtapeORM(
+                    tournoi_id=etape.tournoi_id,
+                    ordre=etape.ordre,
+                    type=etape.type.value,
+                    config=_config_etape(etape),
+                )
+                session.add(ligne)
+                session.commit()
+                return _vers_etape(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de persistance de l'étape de déroulé.") from exc
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[EtapeDeroule]:
+        """Le déroulé du tournoi, **ordonné par `ordre`** — le tri est garanti par le port."""
+        try:
+            with self._session_factory() as session:
+                lignes = (
+                    session.execute(
+                        select(DerouleEtapeORM)
+                        .where(DerouleEtapeORM.tournoi_id == tournoi_id)
+                        .order_by(DerouleEtapeORM.ordre)
+                    )
+                    .scalars()
+                    .all()
+                )
+                return [_vers_etape(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du déroulé du tournoi.") from exc
+
+    def enregistrer(self, etape: EtapeDeroule) -> EtapeDeroule:
+        """Met à jour une étape déjà persistée (barème, grain, type, sources, rang…)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(DerouleEtapeORM, etape.id)
+                if ligne is None:
+                    raise InfrastructureError("Étape de déroulé à mettre à jour introuvable.")
+                ligne.ordre = etape.ordre
+                ligne.type = etape.type.value
+                ligne.config = _config_etape(etape)
+                session.commit()
+                return _vers_etape(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour de l'étape de déroulé.") from exc
+
+    def supprimer(self, etape_id: EtapeDerouleId) -> None:
+        """Supprime une étape du déroulé (existence garantie par l'appelant)."""
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(DerouleEtapeORM, etape_id)
+                if ligne is None:
+                    raise InfrastructureError("Étape de déroulé à supprimer introuvable.")
+                session.delete(ligne)
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de suppression de l'étape de déroulé.") from exc
+
+
+class PhaseRepositorySQL:
+    """Adapter SQLite du port `PhaseRepository` — l'**avancement** d'une étape (ADR-0076).
+
+    ⚠️ Chaque lecture **assemble** : la ligne `phase` ne porte que `depart_id`, `ordre` et `statut`,
+    et la définition vient de l'étape de même rang, dans le tournoi du créneau. C'est la couture de
+    la séparation, et elle vit ici pour que le domaine et les services l'ignorent (ADR-0003).
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def _etapes(
+        self, session: Session, depart_ids: Sequence[int]
+    ) -> dict[tuple[int, int], EtapeDeroule]:
+        """Les définitions applicables aux créneaux donnés, indexées `(depart_id, ordre)`.
+
+        Une seule requête pour tout un lot : lire l'étape phase par phase ferait N+1 requêtes sur un
+        écran qui en affiche déjà plusieurs dizaines.
+        """
+        if not depart_ids:
+            return {}
+        lignes = session.execute(
+            select(DepartORM.id, DerouleEtapeORM)
+            .join(DerouleEtapeORM, DerouleEtapeORM.tournoi_id == DepartORM.tournoi_id)
+            .where(DepartORM.id.in_(depart_ids))
+        ).all()
+        return {(depart_id, etape.ordre): _vers_etape(etape) for depart_id, etape in lignes}
+
+    def _assembler(self, session: Session, lignes: Sequence[PhaseORM]) -> list[Phase]:
+        """Assemble les phases d'un lot ; une instance **orpheline** de définition est ignorée.
+
+        L'orphelin ne devrait pas exister — le service tient instances et étapes alignées. S'il en
+        reste un (base altérée, étape retirée hors service), l'écarter vaut mieux que lever : une
+        phase sans définition ne peut rien dire d'utile, et faire échouer *toute* la lecture pour
+        elle priverait l'organisateur du reste de son déroulé le jour J.
+        """
+        etapes = self._etapes(session, [ligne.depart_id for ligne in lignes])
+        assemblees = []
+        for ligne in lignes:
+            etape = etapes.get((ligne.depart_id, ligne.ordre))
+            if etape is not None:
+                assemblees.append(_vers_phase(ligne, etape))
+        return assemblees
+
     def ajouter(self, phase: Phase) -> Phase:
-        """Persiste la phase et la renvoie avec son identifiant attribué."""
+        """Persiste l'**avancement** d'une phase ; sa définition n'est **pas** écrite ici.
+
+        Le barème, le grain et les prélèvements portés par l'objet reçu sont ignorés : ils vivent
+        sur l'étape (`DerouleRepository`). Seuls `depart_id`, `ordre` et `statut` sont écrits.
+        """
         try:
             with self._session_factory() as session:
                 ligne = PhaseORM(
                     depart_id=phase.depart_id,
                     ordre=phase.ordre,
-                    type=phase.type.value,
-                    config=_config_phase(phase),
                     statut=phase.statut.value,
                 )
                 session.add(ligne)
                 session.commit()
-                return _vers_phase(ligne)
+                assemblees = self._assembler(session, [ligne])
+                if not assemblees:
+                    raise InfrastructureError(
+                        "Phase créée sans étape de déroulé de même rang : le tournoi de ce créneau "
+                        "n'a pas ce rang à son déroulé."
+                    )
+                return assemblees[0]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de persistance de la phase.") from exc
 
@@ -854,84 +982,64 @@ class PhaseRepositorySQL:
         try:
             with self._session_factory() as session:
                 ligne = session.get(PhaseORM, phase_id)
-                return None if ligne is None else _vers_phase(ligne)
+                if ligne is None:
+                    return None
+                assemblees = self._assembler(session, [ligne])
+                return assemblees[0] if assemblees else None
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture de la phase.") from exc
 
     def par_depart_et_type(self, depart_id: DepartId, type_phase: TypePhase) -> Phase | None:
-        """Renvoie la phase d'un **départ** pour un type donné, ou `None` s'il n'y en a pas.
+        """La phase d'un **départ** pour un type donné, ou `None`.
 
-        En cas de multiplicité (ne devrait pas survenir), la plus récente (`id` le plus élevé)
-        l'emporte.
+        Le type vient de la **définition** : le filtre s'applique donc après assemblage, non en SQL.
+        En cas de multiplicité, la plus récente (`ordre` le plus élevé) l'emporte — même règle que
+        l'adapter en mémoire, pour que les deux ne divergent pas.
         """
-        try:
-            with self._session_factory() as session:
-                ligne = (
-                    session.execute(
-                        select(PhaseORM)
-                        .where(
-                            PhaseORM.depart_id == depart_id,
-                            PhaseORM.type == type_phase.value,
-                        )
-                        .order_by(PhaseORM.id.desc())
-                    )
-                    .scalars()
-                    .first()
-                )
-                return None if ligne is None else _vers_phase(ligne)
-        except SQLAlchemyError as exc:
-            raise InfrastructureError("Échec de lecture de la phase du départ.") from exc
+        candidates = [p for p in self.par_depart(depart_id) if p.type is type_phase]
+        return candidates[-1] if candidates else None
 
     def par_depart(self, depart_id: DepartId) -> list[Phase]:
-        """Renvoie toutes les phases d'un **départ**, **ordonnées par `ordre`** (E05US001).
-
-        Le tri à la source garantit l'invariant de séquence exploité par `ServicePhases` (les
-        phases se lisent, se composent et se valident dans leur ordre).
-        """
+        """Toutes les phases d'un **départ**, **ordonnées par `ordre`** (E05US001)."""
         try:
             with self._session_factory() as session:
-                lignes = (
+                lignes = list(
                     session.execute(
                         select(PhaseORM)
                         .where(PhaseORM.depart_id == depart_id)
                         .order_by(PhaseORM.ordre)
-                    )
-                    .scalars()
-                    .all()
+                    ).scalars()
                 )
-                return [_vers_phase(ligne) for ligne in lignes]
+                return self._assembler(session, lignes)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des phases du départ.") from exc
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
-        """Renvoie les phases de **tous les départs** d'un tournoi, triées (départ, ordre).
+        """Les phases de **tous les départs** d'un tournoi, triées (départ, ordre).
 
-        Jointure `phase → depart` : le lien au tournoi n'est plus direct depuis ADR-0075.
-
-        ⚠️ **Ce n'est pas une séquence** — c'est la concaténation de N suites 1..M, une par départ.
+        ⚠️ **Ce n'est pas une séquence** — c'est la concaténation de N suites 1..M, une par créneau.
         Réservée aux vues transverses ; le moteur passe toujours par `par_depart`.
         """
         try:
             with self._session_factory() as session:
-                lignes = (
+                lignes = list(
                     session.execute(
                         select(PhaseORM)
                         .join(DepartORM, PhaseORM.depart_id == DepartORM.id)
                         .where(DepartORM.tournoi_id == tournoi_id)
                         .order_by(PhaseORM.depart_id, PhaseORM.ordre)
-                    )
-                    .scalars()
-                    .all()
+                    ).scalars()
                 )
-                return [_vers_phase(ligne) for ligne in lignes]
+                return self._assembler(session, lignes)
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des phases du tournoi.") from exc
 
     def enregistrer(self, phase: Phase) -> Phase:
-        """Met à jour une phase déjà persistée (barème, type, source, effectif, statut, ordre).
+        """Met à jour l'**avancement** d'une phase — son `statut`, et son rang.
 
-        **Contrat** : l'appelant (le service) garantit l'existence. La ligne absente est une
-        **incohérence technique** (non un cas métier) → `InfrastructureError`.
+        La définition n'est pas touchée : l'éditer passe par `DerouleRepository.enregistrer`. Un
+        appelant qui modifierait `phase.bareme` avant d'appeler ici ne verrait **rien** changer, et
+        c'est le contrat — le port le dit explicitement.
         """
         try:
             with self._session_factory() as session:
@@ -939,16 +1047,19 @@ class PhaseRepositorySQL:
                 if ligne is None:
                     raise InfrastructureError("Phase à mettre à jour introuvable en base.")
                 ligne.ordre = phase.ordre
-                ligne.type = phase.type.value
-                ligne.config = _config_phase(phase)
                 ligne.statut = phase.statut.value
                 session.commit()
-                return _vers_phase(ligne)
+                assemblees = self._assembler(session, [ligne])
+                if not assemblees:
+                    raise InfrastructureError(
+                        "Phase mise à jour sans étape de déroulé de même rang."
+                    )
+                return assemblees[0]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de mise à jour de la phase.") from exc
 
     def supprimer(self, phase_id: PhaseId) -> None:
-        """Supprime une phase persistée (retrait d'une phase de la séquence, E05US001).
+        """Supprime l'avancement d'une phase (retrait d'une étape de la séquence, E05US001).
 
         **Contrat** : l'appelant (le service) garantit l'existence et l'absence de référence
         (`PhaseSourceReferencee` est arbitré en amont). La ligne absente est une incohérence

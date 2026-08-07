@@ -23,8 +23,9 @@ from sqlalchemy import text
 from bootstrap.composition import create_app
 from domain.gabarit_salle import GabaritSalle
 from domain.phase import Phase, TypePhase
-from infrastructure.db import DepartRepositorySQL, GabaritSalleRepositorySQL, PhaseRepositorySQL
+from infrastructure.db import DepartRepositorySQL, GabaritSalleRepositorySQL
 from tests.base_migree import preparer_base
+from tests.conftest import poser_phase_sql
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -114,9 +115,7 @@ def test_le_chemin_duels_ne_pollue_pas_la_base(app_simulation: FastAPI) -> None:
     )
     departs = DepartRepositorySQL(fabrique).par_tournoi(tournoi_id)
     assert departs and departs[0].id is not None
-    PhaseRepositorySQL(fabrique).ajouter(
-        Phase.creer(departs[0].id, 2, TypePhase.ELIMINATION_DIRECTE)
-    )
+    poser_phase_sql(fabrique, Phase.creer(departs[0].id, 2, TypePhase.ELIMINATION_DIRECTE))
 
     avant = _photo(app_simulation)  # photo APRÈS l'ajout salle + phase (données réelles assumées)
     simulation = app_simulation.state.service_simulation.simuler(tournoi_id)

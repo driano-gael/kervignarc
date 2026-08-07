@@ -19,9 +19,9 @@ from fastapi.testclient import TestClient
 from bootstrap.composition import create_app
 from domain.bareme import BaremeQualification
 from domain.phase import Phase
-from infrastructure.db import DepartRepositorySQL, PhaseRepositorySQL
+from infrastructure.db import DepartRepositorySQL
 from tests.base_migree import preparer_base
-from tests.conftest import ConnecterAdmin
+from tests.conftest import ConnecterAdmin, poser_phase_sql
 from tests.test_placement_api import _appliquer_gabarit, _creer_tournoi
 from tests.test_placement_duels_api import _phase_elimination, _quatre_archers_classes
 
@@ -144,11 +144,12 @@ def test_feu_vert_sur_qualification_renvoie_409(
             f"/api/v1/tournois/{tournoi_id}/departs",
             json={"horaire": "09:00", "tarif_centimes": 800},
         )
-        qualif = PhaseRepositorySQL(app_pilotage.state.database.session_factory).ajouter(
+        qualif = poser_phase_sql(
+            app_pilotage.state.database.session_factory,
             Phase.qualification(
                 _premier_depart(app_pilotage, tournoi_id),
                 BaremeQualification.creer(2, 3),
-            )
+            ),
         )
         assert qualif.id is not None
 

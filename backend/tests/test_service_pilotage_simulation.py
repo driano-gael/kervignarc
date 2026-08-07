@@ -56,6 +56,7 @@ from infrastructure.memory.repositories import (
     InMemoryBlasonRepository,
     InMemoryCategorieRepository,
     InMemoryDepartRepository,
+    InMemoryDerouleRepository,
     InMemoryGabaritSalleRepository,
     InMemoryInscriptionRepository,
     InMemoryPhaseRepository,
@@ -101,7 +102,10 @@ class _Contexte:
         self.gabarits = InMemoryGabaritSalleRepository()
         self.inscriptions = InMemoryInscriptionRepository()
         self.departs = InMemoryDepartRepository()
-        self.phases = InMemoryPhaseRepository(self.departs)
+        # Le déroulé du tournoi simulé (ADR-0076) : le magasin de phases s'en sert pour assembler
+        # définition et avancement, comme l'adapter SQL.
+        self.deroules = InMemoryDerouleRepository()
+        self.phases = InMemoryPhaseRepository(self.departs, self.deroules)
         self.series = InMemorySerieRepository()
         self.diffusion = _DiffusionFausse()
 
@@ -157,6 +161,7 @@ class _Contexte:
             self.gabarits,
             self.inscriptions,
             self.departs,
+            self.deroules,
             self.phases,
             self.series,
             fabriquer_harnais_simulation,

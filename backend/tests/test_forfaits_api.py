@@ -35,13 +35,12 @@ from infrastructure.db import (
     Database,
     DepartRepositorySQL,
     InscriptionRepositorySQL,
-    PhaseRepositorySQL,
     SerieRepositorySQL,
     TournoiRepositorySQL,
 )
 from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
-from tests.conftest import ConnecterAdmin
+from tests.conftest import ConnecterAdmin, poser_phase_sql
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -102,11 +101,14 @@ class Scenario:
             # (ADR-0075) — sans elle, le tableau s'ensemencerait sur zéro participant.
             inscriptions.ajouter(Inscription.creer(archer.id, _depart_id))
             self.archers.append(archer.id)
-        phases = PhaseRepositorySQL(db.session_factory)
-        qualif = phases.ajouter(Phase.qualification(_depart_id, BaremeQualification.creer(1, 3)))
+        qualif = poser_phase_sql(
+            db.session_factory, Phase.qualification(_depart_id, BaremeQualification.creer(1, 3))
+        )
         assert qualif.id is not None
         self.qualif_id = qualif.id
-        tableau = phases.ajouter(Phase.creer(_depart_id, 2, TypePhase.ELIMINATION_DIRECTE))
+        tableau = poser_phase_sql(
+            db.session_factory, Phase.creer(_depart_id, 2, TypePhase.ELIMINATION_DIRECTE)
+        )
         assert tableau.id is not None
         self.phase_id = tableau.id
 

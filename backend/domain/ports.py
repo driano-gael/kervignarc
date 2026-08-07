@@ -17,6 +17,7 @@ from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId
 from domain.depart import Depart, DepartId
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.documents_salle import CartesScoreurs, EtiquettesCibles
 from domain.duel import BaremeDuel, Duel
 from domain.ecran import PriseDeControle
@@ -618,8 +619,49 @@ class ScoreRepository(Protocol):
         ...
 
 
+class DerouleRepository(Protocol):
+    """Port de persistance du **déroulé** d'un tournoi — la définition, une seule fois (ADR-0076).
+
+    Distinct de `PhaseRepository`, qui porte l'**avancement** de chaque créneau. La séparation est
+    le propos : tant que la définition était recopiée par départ, elle pouvait diverger en silence.
+
+    L'ordre 1..N est la clé de lecture **et** la clé de jointure vers les phases : une phase joue
+    l'étape de même rang, dans le tournoi de son créneau.
+    """
+
+    def ajouter(self, etape: EtapeDeroule) -> EtapeDeroule:
+        """Persiste une étape et la renvoie avec son identifiant attribué."""
+        ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[EtapeDeroule]:
+        """Le déroulé du tournoi, **ordonné par `ordre`** (liste éventuellement vide).
+
+        Le tri est garanti par le port : la séquence se compose et se valide dans son ordre, et un
+        appelant qui devrait trier lui-même finirait par oublier de le faire.
+        """
+        ...
+
+    def enregistrer(self, etape: EtapeDeroule) -> EtapeDeroule:
+        """Met à jour une étape déjà persistée (barème, grain, type, sources, rang…)."""
+        ...
+
+    def supprimer(self, etape_id: EtapeDerouleId) -> None:
+        """Supprime une étape du déroulé (existence garantie par l'appelant)."""
+        ...
+
+
 class PhaseRepository(Protocol):
-    """Port de persistance des phases (adapter fourni par l'infrastructure).
+    """Port de persistance des phases — l'**avancement** d'une étape dans un créneau (ADR-0076).
+
+    ⚠️ **Une phase ne persiste plus sa définition.** Depuis ADR-0076, seuls `depart_id`, `ordre` et
+    `statut` sont écrits ; le barème, le grain, les prélèvements et la profondeur viennent de
+    l'`EtapeDeroule` de même rang. Les `Phase` **rendues** par ce port portent malgré tout leur
+    définition — le repository l'**assemble** —, si bien que les modules qui lisent `phase.bareme`
+    ignorent la couture. C'est l'affaire de l'adapter (ADR-0003), pas celle du domaine.
+
+    Corollaire à connaître : passer une `Phase` à `ajouter` ou `enregistrer` avec un barème modifié
+    **ne change rien** — la définition s'édite sur l'étape, via `DerouleRepository`. Le seul champ
+    qu'une écriture de phase déplace est le `statut`.
 
     Introduit minimalement pour la qualification (E01US009 / ADR-0011), **étendu par E05US001** à
     toute la séquence : `par_depart` (liste ordonnée) et `supprimer` servent la composition et le

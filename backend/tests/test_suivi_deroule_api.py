@@ -100,7 +100,7 @@ def test_les_phases_apparaissent_avec_leur_statut(
         tournoi_id = _tournoi(client, connecter_admin)
         depart_id = _depart(client, tournoi_id)
         creation = client.post(
-            f"/api/v1/departs/{depart_id}/phases", json={"type": "placement", "effectif": 8}
+            f"/api/v1/tournois/{depart_id}/phases", json={"type": "placement", "effectif": 8}
         )
         assert creation.status_code == 201, creation.text
 

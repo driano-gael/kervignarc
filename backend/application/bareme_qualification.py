@@ -21,9 +21,14 @@ from dataclasses import replace
 from application.erreurs import TournoiIntrouvable, TournoiSansDepart
 from application.portee import qualification_representative
 from domain.bareme import BaremeQualification
-from domain.depart import DepartId
-from domain.phase import Phase, SequencePhases, TypePhase
-from domain.ports import DepartRepository, PhaseRepository, TournoiRepository
+from domain.deroule_etape import EtapeDeroule
+from domain.phase import TypePhase, grain_par_defaut, verifier_sequence
+from domain.ports import (
+    DepartRepository,
+    DerouleRepository,
+    PhaseRepository,
+    TournoiRepository,
+)
 from domain.tournoi import TournoiId
 
 
@@ -35,12 +40,15 @@ class ServiceBaremeQualification:
         tournois: TournoiRepository,
         phases: PhaseRepository,
         departs: DepartRepository,
+        deroules: DerouleRepository,
     ) -> None:
         self._tournois = tournois
         self._phases = phases
         # La qualification vit **par départ** (ADR-0075) : sans les créneaux, ce service ne
         # saurait ni sur quoi écrire, ni combien de fois.
         self._departs = departs
+        # Le barème vit sur l'**étape** du déroulé depuis ADR-0076 : une définition, pas N.
+        self._deroules = deroules
 
     def bareme_du_tournoi(self, tournoi_id: TournoiId) -> BaremeQualification | None:
         """Renvoie le barème de qualification du tournoi, ou `None` s'il n'est pas encore défini.
@@ -66,48 +74,54 @@ class ServiceBaremeQualification:
         departs = self._departs.par_tournoi(tournoi_id)
         if not departs:
             raise TournoiSansDepart(
-                "Ce tournoi n'a aucun créneau : le barème se règle sur la qualification d'un "
-                "départ. Créez au moins un départ avant de définir le barème."
+                "Ce tournoi n'a aucun créneau : le barème se règle sur la qualification, et une "
+                "qualification que personne ne joue n'aurait pas de sens. Créez au moins un départ."
             )
-        # **Écriture en éventail** (E01US025, ADR-0075) : la portée sportive est le départ, donc la
-        # qualification existe **par départ**. Régler « le barème du tournoi » l'écrit sur chacune —
-        # se contenter d'un représentant laisserait les autres créneaux sur l'ancienne valeur, et la
-        # divergence ne se verrait que le jour J, sur la tablette.
+
+        # **Une seule écriture** depuis ADR-0076 : le barème vit sur l'étape du déroulé, définie une
+        # fois pour le tournoi. Avant, il fallait l'écrire « en éventail » sur la qualification de
+        # chaque créneau — et rien n'empêchait les copies de diverger.
+        etapes = self._deroules.par_tournoi(tournoi_id)
+        qualification = next((e for e in etapes if e.type is TypePhase.QUALIFICATION), None)
+        if qualification is not None:
+            self._deroules.enregistrer(replace(qualification, bareme=bareme))
+            return bareme
+
+        # Création. La qualification est la **première** étape du déroulé (ordre 1, E05US001). Si
+        # des étapes ont déjà été composées (l'écran « Phases » n'impose pas de définir le barème
+        # d'abord), on les **décale d'un cran** pour lui faire place en tête : le barème et la
+        # composition sont **deux écrivains** du même déroulé, et celui-ci ne doit pas contourner
+        # l'invariant `SequencePhases` — sans ce décalage, deux « ordre 1 » coexisteraient et
+        # bloqueraient toute composition ultérieure (revue E05US001, axe D).
+        neuve = EtapeDeroule(
+            tournoi_id=tournoi_id,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=bareme,
+            validation=grain_par_defaut(TypePhase.QUALIFICATION),
+        )
+        decalees = [_decaler_dun_cran(e) for e in etapes]
+        verifier_sequence([neuve, *decalees])  # valide l'ensemble avant d'écrire
+        posee = self._deroules.ajouter(neuve)
+        for etape_decalee in decalees:
+            self._deroules.enregistrer(etape_decalee)
+
+        # Les **avancements** suivent : une instance de la nouvelle étape dans chaque créneau, et
+        # le rang des instances déjà posées se décale comme leur étape. C'est le seul éventail qui
+        # subsiste, et il ne porte aucun réglage.
         for depart in departs:
             assert depart.id is not None, "Un départ relu du dépôt porte toujours son identifiant."
-            self._definir_sur_depart(depart.id, bareme)
-        # Le barème persisté est celui qu'on vient d'écrire (l'aller-retour ne le transforme pas) ;
-        # le renvoyer directement évite de re-narrower `phase.bareme` (optionnel depuis E05US001,
-        # mais toujours présent sur une qualification — ADR-0045 §2).
+            for phase in self._phases.par_depart(depart.id):
+                self._phases.enregistrer(phase.avec_ordre(phase.ordre + 1))
+            self._phases.ajouter(posee.instancier(depart.id))
         return bareme
-
-    def _definir_sur_depart(self, depart_id: DepartId, bareme: BaremeQualification) -> None:
-        """Écrit le barème sur la qualification de **ce** départ, en la créant au besoin."""
-        phase = self._phases.par_depart_et_type(depart_id, TypePhase.QUALIFICATION)
-        if phase is not None:
-            self._phases.enregistrer(phase.avec_bareme(bareme))
-            return
-        # Création. La qualification est la **première** phase de la séquence (ordre 1, E05US001).
-        # Si des phases ont déjà été composées (l'écran « Phases » n'impose pas de définir le barème
-        # d'abord), on les **décale d'un cran** pour lui faire place en tête : la qualification et
-        # la composition de séquence sont **deux écrivains** de la même table `phase`, et celui-ci
-        # ne doit pas contourner l'invariant `SequencePhases` — sans ce décalage, deux « ordre 1 »
-        # coexisteraient et bloqueraient toute composition ultérieure (revue E05US001, axe D).
-        # La séquence validée est bien celle **du départ** : mêler les phases de deux créneaux
-        # produirait des ordres en doublon et ferait échouer une composition pourtant licite.
-        qualification = Phase.qualification(depart_id, bareme)
-        decalees = [_decaler_dun_cran(p) for p in self._phases.par_depart(depart_id)]
-        SequencePhases(phases=(qualification, *decalees))  # valide l'ensemble avant d'écrire
-        self._phases.ajouter(qualification)
-        for phase_decalee in decalees:
-            self._phases.enregistrer(phase_decalee)
 
     def _tournoi_existant(self, tournoi_id: TournoiId) -> None:
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
 
 
-def _decaler_dun_cran(phase: Phase) -> Phase:
+def _decaler_dun_cran(etape: EtapeDeroule) -> EtapeDeroule:
     """Décale une phase d'un cran vers le bas (ordre +1) pour faire place à la qualification en
     tête. Les sources **suivent** : leur ancre `ordre_source` est incrémentée d'autant, toutes les
     phases se décalant du même cran, donc les références restent valides (E05US001).
@@ -115,9 +129,9 @@ def _decaler_dun_cran(phase: Phase) -> Phase:
     Depuis E05US010 une phase porte **plusieurs** prélèvements : ils se décalent tous, faute de quoi
     la séquence obtenue serait refusée (`SourceApresPhase`) ou, pire, pointerait la mauvaise phase.
     """
-    decalee = phase.avec_ordre(phase.ordre + 1)
-    if not phase.sources:
+    decalee = etape.avec_ordre(etape.ordre + 1)
+    if not etape.sources:
         return decalee
     return decalee.avec_sources(
-        tuple(replace(source, ordre_source=source.ordre_source + 1) for source in phase.sources)
+        tuple(replace(source, ordre_source=source.ordre_source + 1) for source in etape.sources)
     )

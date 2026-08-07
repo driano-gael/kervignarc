@@ -28,7 +28,7 @@ from domain.grain_validation import GrainValidation, TypeGrain
 from domain.patrimoine import OrigineBrique
 from domain.phase import SourcePhase, StatutPhase, TypePhase
 
-DEPART = 7
+TOURNOI = 7
 
 
 def _qualification(ordre: int = 1, effectif: int | None = None) -> ModelePhase:
@@ -80,7 +80,7 @@ def test_appliquer_cree_une_phase_par_etape_dans_l_ordre() -> None:
                 effectif=8,
             ),
         ],
-    ).appliquer([DEPART])
+    ).appliquer(TOURNOI)
 
     assert [phase.ordre for phase in phases] == [1, 2]
     assert [phase.type for phase in phases] == [
@@ -89,17 +89,34 @@ def test_appliquer_cree_une_phase_par_etape_dans_l_ordre() -> None:
     ]
 
 
-def test_les_phases_appliquees_naissent_a_venir_et_rattachees_au_tournoi() -> None:
-    """`statut` et `depart_id` **naissent** à l'application — ils n'existaient pas au modèle."""
-    phases = _format().appliquer([DEPART])
+def test_les_etapes_appliquees_sont_rattachees_au_tournoi() -> None:
+    """`tournoi_id` **naît** à l'application — il n'existait pas au modèle de bibliothèque."""
+    etapes = _format().appliquer(TOURNOI)
 
-    assert all(phase.statut is StatutPhase.A_VENIR for phase in phases)
-    assert all(phase.depart_id == DEPART for phase in phases)
+    assert all(etape.tournoi_id == TOURNOI for etape in etapes)
 
 
-def test_les_phases_appliquees_ne_sont_pas_persistees() -> None:
+def test_le_statut_naît_a_l_instanciation_dans_un_creneau() -> None:
+    """L'autre moitié du CA, en **deux temps** depuis ADR-0076.
+
+    Le CA disait « l'appliquer à un tournoi crée ses phases, statut *à venir* ». C'est toujours
+    vrai, mais en deux gestes : `appliquer` définit le **déroulé** (une fois), `instancier`
+    en crée l'**avancement** dans un créneau. Ce sont ces deux natures que l'ADR sépare — et les
+    tenir ensemble était précisément ce qui laissait les copies diverger.
+    """
+    (etape,) = _format().appliquer(TOURNOI)
+
+    phase = etape.instancier(depart_id=7)
+
+    assert phase.statut is StatutPhase.A_VENIR
+    assert phase.depart_id == 7
+    # La définition suit dans l'objet du moteur, sans être persistée en double.
+    assert phase.bareme == BaremeQualification.preset_ffta_18m()
+
+
+def test_les_etapes_appliquees_ne_sont_pas_persistees() -> None:
     """L'application est **pure** : c'est le service qui décide d'écrire (aucun `id` attribué)."""
-    assert all(phase.id is None for phase in _format().appliquer([DEPART]))
+    assert all(phase.id is None for phase in _format().appliquer(TOURNOI))
 
 
 def test_appliquer_transporte_bareme_grain_effectif_et_source() -> None:
@@ -110,7 +127,7 @@ def test_appliquer_transporte_bareme_grain_effectif_et_source() -> None:
     (phase,) = FormatTournoi.creer(
         "Transport",
         [ModelePhase.qualification(bareme, validation=grain, effectif=24)],
-    ).appliquer([DEPART])
+    ).appliquer(TOURNOI)
 
     assert phase.bareme == bareme
     assert phase.validation == grain
@@ -121,11 +138,11 @@ def test_appliquer_deux_fois_donne_des_phases_independantes() -> None:
     """Deux tournois assemblés depuis le **même** format ne partagent rien (CA « copie »)."""
     format_tournoi = _format()
 
-    (phase_a,) = format_tournoi.appliquer([1])
-    (phase_b,) = format_tournoi.appliquer([2])
+    (phase_a,) = format_tournoi.appliquer(1)
+    (phase_b,) = format_tournoi.appliquer(2)
 
-    assert phase_a.depart_id == 1
-    assert phase_b.depart_id == 2
+    assert phase_a.tournoi_id == 1
+    assert phase_b.tournoi_id == 2
     assert phase_a is not phase_b
 
 
@@ -135,9 +152,9 @@ def test_appliquer_deux_fois_donne_des_phases_independantes() -> None:
 def test_ajuster_une_phase_appliquee_n_altere_pas_le_format() -> None:
     """La promesse centrale de l'US, côté format : la copie s'ajuste, le modèle ne bouge pas."""
     format_tournoi = _format()
-    (phase,) = format_tournoi.appliquer([DEPART])
+    (etape,) = format_tournoi.appliquer(TOURNOI)
 
-    phase.avec_bareme(BaremeQualification.creer(nb_volees=3, nb_fleches_par_volee=3))
+    dataclasses.replace(etape, bareme=BaremeQualification.creer(3, 3))
 
     assert format_tournoi.etapes[0].bareme == BaremeQualification.preset_ffta_18m()
 
@@ -145,7 +162,7 @@ def test_ajuster_une_phase_appliquee_n_altere_pas_le_format() -> None:
 def test_modifier_le_format_n_altere_pas_les_phases_deja_appliquees() -> None:
     """Le sens inverse, qui est la raison d'être de la copie : l'archive ne doit pas bouger."""
     format_tournoi = _format()
-    (phase,) = format_tournoi.appliquer([DEPART])
+    (etape,) = format_tournoi.appliquer(TOURNOI)
 
     format_tournoi.modifier(
         "Renommé",
@@ -153,7 +170,7 @@ def test_modifier_le_format_n_altere_pas_les_phases_deja_appliquees() -> None:
         None,
     )
 
-    assert phase.bareme == BaremeQualification.preset_ffta_18m()
+    assert etape.bareme == BaremeQualification.preset_ffta_18m()
 
 
 # --- CA « modifier un officiel : copie ou sur place » ------------------------------------------
@@ -190,15 +207,21 @@ def test_en_creation_utilisateur_detache_une_copie_non_persistee() -> None:
 # --- CA « promotion » : capturer les phases d'un tournoi en format -----------------------------
 
 
-def test_de_phases_capture_le_deroule_et_oublie_l_avancement() -> None:
-    """On promeut un **déroulé**, pas un état : le statut d'une phase en cours ne remonte pas."""
-    (phase,) = _format().appliquer([DEPART])
-    en_cours = phase.demarrer()
+def test_de_deroule_capture_la_regle_et_oublie_le_rattachement() -> None:
+    """On promeut une **règle**, pas une édition : le tournoi ne remonte pas dans le format.
 
-    promu = FormatTournoi.de_phases("Le format de l'an dernier", [en_cours])
+    Le statut ne peut plus remonter *par construction* depuis ADR-0076 — une étape n'en porte
+    aucun. Ce test garde donc son intention (« ce qui appartient à l'édition ne devient pas une
+    propriété du format ») en la portant sur ce qui reste séparable : le `tournoi_id`.
+    """
+    (etape,) = _format().appliquer(TOURNOI)
+
+    promu = FormatTournoi.de_deroule("Le format de l'an dernier", [etape])
 
     assert promu.etapes[0].bareme == BaremeQualification.preset_ffta_18m()
-    assert "statut" not in {champ.name for champ in dataclasses.fields(type(promu.etapes[0]))}
+    champs = {champ.name for champ in dataclasses.fields(type(promu.etapes[0]))}
+    assert "tournoi_id" not in champs
+    assert "statut" not in champs
 
 
 def test_de_phases_diagnostique_un_tournoi_sans_phase_au_lieu_de_le_refuser() -> None:
@@ -208,7 +231,7 @@ def test_de_phases_diagnostique_un_tournoi_sans_phase_au_lieu_de_le_refuser() ->
     `TournoiSansPhase` (409) avant d'en arriver là — c'est lui qui porte cette règle, et il ne
     dépendait déjà pas du domaine pour l'appliquer.
     """
-    capture = FormatTournoi.de_phases("Vide", [])
+    capture = FormatTournoi.de_deroule("Vide", [])
 
     assert capture.etapes == ()
     assert "format_sans_etape" in {anomalie.code for anomalie in capture.anomalies()}
@@ -235,7 +258,7 @@ def test_un_format_sans_etape_s_enregistre_mais_ne_s_applique_pas() -> None:
 
     assert "format_sans_etape" in _codes(vide)
     with pytest.raises(FormatSansEtape):
-        vide.appliquer([DEPART])
+        vide.appliquer(TOURNOI)
 
 
 def test_un_nom_vide_reste_refuse_a_l_enregistrement() -> None:
@@ -255,7 +278,7 @@ def test_des_ordres_non_contigus_s_enregistrent_mais_ne_s_appliquent_pas() -> No
 
     assert "sequence_ordre_invalide" in _codes(troue)
     with pytest.raises(SequenceOrdreInvalide):
-        troue.appliquer([DEPART])
+        troue.appliquer(TOURNOI)
 
 
 def test_une_source_posterieure_s_enregistre_mais_ne_s_applique_pas() -> None:
@@ -273,7 +296,7 @@ def test_une_source_posterieure_s_enregistre_mais_ne_s_applique_pas() -> None:
 
     assert "source_apres_phase" in _codes(en_avant)
     with pytest.raises(SourceApresPhase):
-        en_avant.appliquer([DEPART])
+        en_avant.appliquer(TOURNOI)
 
 
 def test_un_modele_de_qualification_sans_bareme_se_compose_mais_ne_s_applique_pas() -> None:
@@ -285,7 +308,7 @@ def test_un_modele_de_qualification_sans_bareme_se_compose_mais_ne_s_applique_pa
 
     assert "phase_qualification_incomplete" in _codes(brouillon)
     with pytest.raises(PhaseQualificationIncomplete):
-        brouillon.appliquer([DEPART])
+        brouillon.appliquer(TOURNOI)
 
 
 def test_un_format_qui_decrirait_une_phase_impossible_echoue_a_l_application() -> None:
@@ -310,7 +333,7 @@ def test_un_format_qui_decrirait_une_phase_impossible_echoue_a_l_application() -
 
     assert "grain_incompatible_avec_type_phase" in _codes(impossible)
     with pytest.raises(Exception) as echec:
-        impossible.appliquer([DEPART])
+        impossible.appliquer(TOURNOI)
     assert echec.typename == "GrainIncompatibleAvecTypePhase"
 
 

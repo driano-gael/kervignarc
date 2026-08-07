@@ -29,10 +29,10 @@ from infrastructure.db import (
     Database,
     DepartRepositorySQL,
     ForfaitRepositorySQL,
-    PhaseRepositorySQL,
     TournoiRepositorySQL,
 )
 from tests.base_migree import preparer_base
+from tests.conftest import poser_phase_sql
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -69,8 +69,8 @@ class _Contexte:
         )
         assert depart.id is not None
         self.depart_id = depart.id
-        phase = PhaseRepositorySQL(self.db.session_factory).ajouter(
-            Phase.creer(depart.id, 2, TypePhase.ELIMINATION_DIRECTE)
+        phase = poser_phase_sql(
+            self.db.session_factory, Phase.creer(depart.id, 2, TypePhase.ELIMINATION_DIRECTE)
         )
         assert phase.id is not None
         self.phase_id = phase.id
@@ -113,8 +113,8 @@ class _Contexte:
 
     def autre_phase(self) -> int:
         """Une seconde phase d'élimination (pour la fusion mixte multi-phases)."""
-        phase = PhaseRepositorySQL(self.db.session_factory).ajouter(
-            Phase.creer(self.tournoi_id, 3, TypePhase.ELIMINATION_DIRECTE)
+        phase = poser_phase_sql(
+            self.db.session_factory, Phase.creer(self.tournoi_id, 3, TypePhase.ELIMINATION_DIRECTE)
         )
         assert phase.id is not None
         return phase.id

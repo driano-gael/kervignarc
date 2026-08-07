@@ -23,6 +23,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.phases import ServicePhases
+from domain.deroule_etape import EtapeDeroule
 from domain.phase import (
     IssueTour,
     NatureSource,
@@ -210,23 +211,57 @@ class PhaseReponse(BaseModel):
         )
 
 
-@router.get("/departs/{depart_id}/phases", response_model=list[PhaseReponse])
-async def lister_phases(depart_id: int, request: Request) -> list[PhaseReponse]:
+class EtapeReponse(BaseModel):
+    """Une **étape du déroulé** d'un tournoi — la définition, sans créneau ni avancement.
+
+    Miroir de `EtapeDeroule` (ADR-0076). Distincte de `PhaseReponse`, qui décrit *où en est un
+    créneau* de cette étape : les deux se ressemblent parce que l'une définit ce que l'autre joue,
+    mais les confondre reviendrait à réintroduire le mélange que l'ADR sépare.
+    """
+
+    id: int
+    tournoi_id: int
+    ordre: int
+    type: TypePhase
+    sources: list[SourceDTO]
+    effectif: int | None
+    profondeur: ProfondeurDTO | None = None
+    barrage_jusqu_au: int | None = None
+
+    @staticmethod
+    def de_agregat(etape: EtapeDeroule) -> EtapeReponse:
+        assert etape.id is not None, "Une étape renvoyée par le service est persistée."
+        return EtapeReponse(
+            id=etape.id,
+            tournoi_id=etape.tournoi_id,
+            ordre=etape.ordre,
+            type=etape.type,
+            sources=[SourceDTO.de_agregat(source) for source in etape.sources],
+            effectif=etape.effectif,
+            profondeur=(
+                None if etape.profondeur is None else ProfondeurDTO.de_agregat(etape.profondeur)
+            ),
+            barrage_jusqu_au=etape.barrage_jusqu_au,
+        )
+
+
+@router.get("/tournois/{tournoi_id}/phases", response_model=list[EtapeReponse])
+async def lister_phases(tournoi_id: int, request: Request) -> list[EtapeReponse]:
     """Renvoie les phases du tournoi, ordonnées. Lève `TournoiIntrouvable` (404) si inconnu."""
     service: ServicePhases = request.app.state.service_phases
-    phases = await run_in_threadpool(service.lister, depart_id)
-    return [PhaseReponse.de_agregat(phase) for phase in phases]
+    phases = await run_in_threadpool(service.lister, tournoi_id)
+    return [EtapeReponse.de_agregat(phase) for phase in phases]
 
 
 @router.post(
-    "/departs/{depart_id}/phases",
-    response_model=PhaseReponse,
+    "/tournois/{tournoi_id}/phases",
+    response_model=EtapeReponse,
     status_code=201,
     dependencies=[Depends(exiger_admin)],
 )
 async def ajouter_phase(
-    depart_id: int, requete: ConfigPhaseRequete, request: Request
-) -> PhaseReponse:
+    tournoi_id: int, requete: ConfigPhaseRequete, request: Request
+) -> EtapeReponse:
     """Ajoute une phase en fin de séquence (**action admin**), écriture via la file (ADR-0005)."""
     service: ServicePhases = request.app.state.service_phases
     write_queue: WriteQueue = request.app.state.write_queue
@@ -234,7 +269,7 @@ async def ajouter_phase(
     phase = await asyncio.wrap_future(
         write_queue.submit(
             lambda: service.ajouter(
-                depart_id,
+                tournoi_id,
                 requete.type,
                 sources,
                 requete.effectif,
@@ -243,17 +278,17 @@ async def ajouter_phase(
             )
         )
     )
-    return PhaseReponse.de_agregat(phase)
+    return EtapeReponse.de_agregat(phase)
 
 
 @router.put(
-    "/departs/{depart_id}/phases/{phase_id}",
-    response_model=PhaseReponse,
+    "/tournois/{tournoi_id}/phases/{etape_id}",
+    response_model=EtapeReponse,
     dependencies=[Depends(exiger_admin)],
 )
 async def modifier_phase(
-    depart_id: int, phase_id: int, requete: ConfigPhaseRequete, request: Request
-) -> PhaseReponse:
+    tournoi_id: int, etape_id: int, requete: ConfigPhaseRequete, request: Request
+) -> EtapeReponse:
     """Édite (totalement) la config de séquence d'une phase (**action admin**)."""
     service: ServicePhases = request.app.state.service_phases
     write_queue: WriteQueue = request.app.state.write_queue
@@ -261,8 +296,8 @@ async def modifier_phase(
     phase = await asyncio.wrap_future(
         write_queue.submit(
             lambda: service.modifier(
-                depart_id,
-                phase_id,
+                tournoi_id,
+                etape_id,
                 requete.type,
                 sources,
                 requete.effectif,
@@ -271,37 +306,37 @@ async def modifier_phase(
             )
         )
     )
-    return PhaseReponse.de_agregat(phase)
+    return EtapeReponse.de_agregat(phase)
 
 
 @router.post(
-    "/departs/{depart_id}/phases/reordonner",
-    response_model=list[PhaseReponse],
+    "/tournois/{tournoi_id}/phases/reordonner",
+    response_model=list[EtapeReponse],
     dependencies=[Depends(exiger_admin)],
 )
 async def reordonner_phases(
-    depart_id: int, requete: ReordonnerRequete, request: Request
-) -> list[PhaseReponse]:
+    tournoi_id: int, requete: ReordonnerRequete, request: Request
+) -> list[EtapeReponse]:
     """Réordonne l'ensemble des phases du tournoi (**action admin**)."""
     service: ServicePhases = request.app.state.service_phases
     write_queue: WriteQueue = request.app.state.write_queue
     phases = await asyncio.wrap_future(
-        write_queue.submit(lambda: service.reordonner(depart_id, requete.phases))
+        write_queue.submit(lambda: service.reordonner(tournoi_id, requete.phases))
     )
-    return [PhaseReponse.de_agregat(phase) for phase in phases]
+    return [EtapeReponse.de_agregat(phase) for phase in phases]
 
 
 @router.delete(
-    "/departs/{depart_id}/phases/{phase_id}",
+    "/tournois/{tournoi_id}/phases/{etape_id}",
     status_code=204,
     dependencies=[Depends(exiger_admin)],
 )
-async def supprimer_phase(depart_id: int, phase_id: int, request: Request) -> None:
+async def supprimer_phase(tournoi_id: int, etape_id: int, request: Request) -> None:
     """Retire une phase de la séquence (**action admin**). Refuse (409) si elle en alimente une
     autre (`PhaseSourceReferencee`)."""
     service: ServicePhases = request.app.state.service_phases
     write_queue: WriteQueue = request.app.state.write_queue
-    await asyncio.wrap_future(write_queue.submit(lambda: service.supprimer(depart_id, phase_id)))
+    await asyncio.wrap_future(write_queue.submit(lambda: service.supprimer(tournoi_id, etape_id)))
 
 
 @router.post(

@@ -25,7 +25,7 @@ from domain.erreurs import (
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.phase import Phase, TypePhase
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
-from tests.conftest import FauxDepartRepository, FauxPhaseRepository
+from tests.conftest import FauxDepartRepository, FauxDerouleRepository, FauxPhaseRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -199,7 +199,7 @@ def test_reduire_le_bareme_sous_la_cadence_est_refuse_de_bout_en_bout() -> None:
     departs.ajouter(
         Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
     )
-    baremes = ServiceBaremeQualification(tournois, phases, departs)
+    baremes = ServiceBaremeQualification(tournois, phases, departs, FauxDerouleRepository())
     grains = ServiceGrainValidation(tournois, phases)
     baremes.definir(tournoi.id, 20, 3)
     grains.definir(tournoi.id, TypeGrain.TOUTES_LES_N_VOLEES, 10)

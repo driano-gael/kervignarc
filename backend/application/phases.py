@@ -40,16 +40,23 @@ from application.erreurs import (
 )
 from application.portee import phase_du_depart
 from domain.depart import DepartId
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.phase import (
     Phase,
     PhaseId,
-    SequencePhases,
     SourcePhase,
     StatutPhase,
     TypePhase,
+    verifier_sequence,
 )
 from domain.politiques import ProfondeurClassement
-from domain.ports import DepartRepository, PhaseRepository, TournoiRepository
+from domain.ports import (
+    DepartRepository,
+    DerouleRepository,
+    PhaseRepository,
+    TournoiRepository,
+)
+from domain.tournoi import TournoiId
 
 
 class ServicePhases:
@@ -60,6 +67,7 @@ class ServicePhases:
         tournois: TournoiRepository,
         phases: PhaseRepository,
         departs: DepartRepository,
+        deroules: DerouleRepository,
     ) -> None:
         self._tournois = tournois
         self._phases = phases
@@ -69,38 +77,45 @@ class ServicePhases:
         # puisque les ordres y repartent de 1 à chaque départ. Le magasin de créneaux sert à
         # valider l'existence de celui qu'on compose.
         self._departs = departs
+        # Le **déroulé** : la définition, une fois par tournoi (ADR-0076). Ce service porte
+        # donc deux mailles, délibérément — composer au tournoi, faire vivre au départ.
+        self._deroules = deroules
 
     # --- Lecture -------------------------------------------------------------------------------
 
-    def lister(self, depart_id: DepartId) -> list[Phase]:
-        """Renvoie les phases du tournoi, ordonnées (liste éventuellement vide).
+    def lister(self, tournoi_id: TournoiId) -> list[EtapeDeroule]:
+        """Renvoie le **déroulé** du tournoi, ordonné (liste éventuellement vide).
+
+        **Au tournoi et non au départ** (ADR-0076) : le déroulé se définit une fois, et chaque
+        créneau le rejoue. Pour savoir *où en est* un créneau, c'est `PhaseRepository.par_depart`
+        qu'il faut lire — deux questions différentes, deux lectures différentes.
 
         Lève `TournoiIntrouvable` si le tournoi n'existe pas.
         """
-        self._exiger_tournoi(depart_id)
-        return self._phases.par_depart(depart_id)
+        self._exiger_tournoi(tournoi_id)
+        return self._deroules.par_tournoi(tournoi_id)
 
-    # --- Composition & édition -----------------------------------------------------------------
+    # --- Composition & édition (maille **tournoi**, à l'atelier) --------------------------------
 
     def ajouter(
         self,
-        depart_id: DepartId,
+        tournoi_id: TournoiId,
         type: TypePhase,
         sources: tuple[SourcePhase, ...] = (),
         effectif: int | None = None,
         barrage_jusqu_au: int | None = None,
         profondeur: ProfondeurClassement | None = None,
-    ) -> Phase:
-        """Ajoute une phase **en fin de séquence** (ordre = N+1) et la persiste.
+    ) -> EtapeDeroule:
+        """Ajoute une étape **en fin de déroulé** (ordre = N+1) et l'instancie dans chaque créneau.
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, une `DomainError` (→ 422) si la phase
+        Lève `TournoiIntrouvable` si le tournoi n'existe pas, une `DomainError` (→ 422) si l'étape
         ou la séquence obtenue est incohérente (ex. barème manquant pour une qualification, source
         mal formée). Rien n'est persisté si la validation échoue.
         """
-        self._exiger_tournoi(depart_id)
-        existantes = self._phases.par_depart(depart_id)
-        nouvelle = Phase.creer(
-            depart_id,
+        self._exiger_tournoi(tournoi_id)
+        existantes = self._deroules.par_tournoi(tournoi_id)
+        nouvelle = EtapeDeroule(
+            tournoi_id=tournoi_id,
             ordre=len(existantes) + 1,
             type=type,
             sources=sources,
@@ -109,106 +124,149 @@ class ServicePhases:
             profondeur=profondeur,
         )
         # Valide la séquence complète (la nouvelle incluse) avant d'écrire.
-        SequencePhases(phases=(*existantes, nouvelle))
-        return self._phases.ajouter(nouvelle)
+        verifier_sequence([*existantes, nouvelle])
+        posee = self._deroules.ajouter(nouvelle)
+        for depart_id in self._creneaux(tournoi_id):
+            self._phases.ajouter(posee.instancier(depart_id))
+        return posee
 
     def modifier(
         self,
-        depart_id: DepartId,
-        phase_id: PhaseId,
+        tournoi_id: TournoiId,
+        etape_id: EtapeDerouleId,
         type: TypePhase,
         sources: tuple[SourcePhase, ...],
         effectif: int | None,
         barrage_jusqu_au: int | None = None,
         profondeur: ProfondeurClassement | None = None,
-    ) -> Phase:
-        """Édite le type, la source et l'effectif d'une phase (édition **totale** de sa config de
-        séquence — `ordre`, `statut`, barème/grain sont préservés).
+    ) -> EtapeDeroule:
+        """Édite le type, les sources et l'effectif d'une étape (édition **totale** de sa config de
+        séquence — `ordre` et barème/grain sont préservés).
 
-        Lève `PhaseIntrouvable` si la phase n'est pas dans ce tournoi, une `DomainError` (→ 422) si
+        **Une seule écriture** (ADR-0076) : la définition ne vit qu'ici, donc tous les créneaux la
+        voient changer d'un coup. Les avancements ne bougent pas — modifier le déroulé ne remet
+        personne à zéro.
+
+        Lève `PhaseIntrouvable` si l'étape n'est pas dans ce tournoi, une `DomainError` (→ 422) si
         le résultat est incohérent (ex. retyper en `qualification` sans barème, source hors bornes).
         """
-        phase = self._exiger_phase(depart_id, phase_id)
+        etape = self._exiger_etape(tournoi_id, etape_id)
         modifiee = replace(
-            phase,
+            etape,
             type=type,
             sources=sources,
             effectif=effectif,
             barrage_jusqu_au=barrage_jusqu_au,
             profondeur=profondeur,
         )
-        autres = [p for p in self._phases.par_depart(depart_id) if p.id != phase_id]
-        SequencePhases(phases=(*autres, modifiee))
-        return self._phases.enregistrer(modifiee)
+        autres = [e for e in self._deroules.par_tournoi(tournoi_id) if e.id != etape_id]
+        verifier_sequence([*autres, modifiee])
+        return self._deroules.enregistrer(modifiee)
 
-    def reordonner(self, depart_id: DepartId, phases_ordonnees: list[PhaseId]) -> list[Phase]:
-        """Réordonne **l'ensemble** des phases du tournoi selon la liste d'identifiants fournie.
+    def reordonner(
+        self, tournoi_id: TournoiId, etapes_ordonnees: list[EtapeDerouleId]
+    ) -> list[EtapeDeroule]:
+        """Réordonne **l'ensemble** du déroulé selon la liste d'identifiants fournie.
 
-        Chaque phase reçoit un nouvel `ordre` (position dans la liste) ; les références de source
-        sont **remappées** pour suivre la phase qu'elles désignaient. Lève
-        `ReordonnancementPhasesInvalide` (→ 409) si la liste ne recouvre pas exactement les phases
-        du tournoi, et une `DomainError` (→ 422) si l'ordre demandé rend la séquence incohérente
-        (ex. une source se retrouve **après** la phase qu'elle alimente).
+        Chaque étape reçoit un nouvel `ordre` (position dans la liste) ; les références de source
+        sont **remappées** pour suivre l'étape qu'elles désignaient. Les avancements de chaque
+        créneau sont réalignés dans la foulée, sinon une phase pointerait la mauvaise définition.
+
+        Lève `ReordonnancementPhasesInvalide` (→ 409) si la liste ne recouvre pas exactement le
+        déroulé, et une `DomainError` (→ 422) si l'ordre demandé rend la séquence incohérente (ex.
+        une source se retrouve **après** l'étape qu'elle alimente).
         """
-        self._exiger_tournoi(depart_id)
-        actuelles = self._phases.par_depart(depart_id)
-        if not actuelles and not phases_ordonnees:
+        self._exiger_tournoi(tournoi_id)
+        actuelles = self._deroules.par_tournoi(tournoi_id)
+        if not actuelles and not etapes_ordonnees:
             return []
-        par_id: dict[int, Phase] = {}
-        for phase in actuelles:
-            assert phase.id is not None, "Une phase listée est persistée."
-            par_id[phase.id] = phase
-        if sorted(phases_ordonnees) != sorted(par_id):
+        par_id: dict[int, EtapeDeroule] = {}
+        for etape in actuelles:
+            assert etape.id is not None, "Une étape listée est persistée."
+            par_id[etape.id] = etape
+        if sorted(etapes_ordonnees) != sorted(par_id):
             raise ReordonnancementPhasesInvalide(
-                "Réordonner exige la liste complète des phases du tournoi, chacune une seule fois."
+                "Réordonner exige la liste complète des étapes du déroulé, chacune une seule fois."
             )
         # Ancien ordre → nouvel ordre (position dans la liste, 1-indexée).
         ancien_vers_nouveau = {
-            par_id[phase_id].ordre: rang for rang, phase_id in enumerate(phases_ordonnees, start=1)
+            par_id[etape_id].ordre: rang for rang, etape_id in enumerate(etapes_ordonnees, start=1)
         }
         reordonnees = [
             self._remapper(
-                par_id[phase_id], nouvel_ordre=rang, ancien_vers_nouveau=ancien_vers_nouveau
+                par_id[etape_id], nouvel_ordre=rang, ancien_vers_nouveau=ancien_vers_nouveau
             )
-            for rang, phase_id in enumerate(phases_ordonnees, start=1)
+            for rang, etape_id in enumerate(etapes_ordonnees, start=1)
         ]
-        SequencePhases(phases=tuple(reordonnees))  # valide l'ordre demandé
-        return [self._phases.enregistrer(phase) for phase in reordonnees]
+        verifier_sequence(reordonnees)  # valide l'ordre demandé
+        posees = [self._deroules.enregistrer(etape) for etape in reordonnees]
+        self._realigner_avancements(tournoi_id, ancien_vers_nouveau)
+        return posees
 
-    def supprimer(self, depart_id: DepartId, phase_id: PhaseId) -> None:
-        """Retire une phase de la séquence et **recompacte** les ordres (1..N sans trou).
+    def supprimer(self, tournoi_id: TournoiId, etape_id: EtapeDerouleId) -> None:
+        """Retire une étape du déroulé et **recompacte** les ordres (1..N sans trou).
 
-        Lève `PhaseIntrouvable` si la phase n'est pas dans ce tournoi, `PhaseSourceReferencee`
-        (→ 409) si une **autre** phase tire d'elle ses participants (il faut d'abord la réaffecter).
-        Les références de source des phases restantes sont remappées après recompactage.
+        Les avancements correspondants disparaissent de chaque créneau : une phase sans définition
+        ne pourrait rien dire d'utile.
+
+        Lève `PhaseIntrouvable` si l'étape n'est pas dans ce tournoi, `PhaseSourceReferencee`
+        (→ 409) si une **autre** étape tire d'elle ses participants (il faut d'abord la réaffecter).
         """
-        cible = self._exiger_phase(depart_id, phase_id)
+        cible = self._exiger_etape(tournoi_id, etape_id)
         if cible.type is TypePhase.QUALIFICATION:
             raise PhaseQualificationNonSupprimable(
                 "La phase de qualification se gère via le barème ; elle ne se supprime pas ici."
             )
-        restantes = [p for p in self._phases.par_depart(depart_id) if p.id != phase_id]
-        if any(s.ordre_source == cible.ordre for p in restantes for s in p.sources):
+        restantes = [e for e in self._deroules.par_tournoi(tournoi_id) if e.id != etape_id]
+        if any(s.ordre_source == cible.ordre for e in restantes for s in e.sources):
             raise PhaseSourceReferencee(
                 "Cette phase alimente une autre phase de la séquence ; réaffectez-la d'abord."
             )
-        # Recompactage : les ordres au-delà de la phase retirée descendent d'un cran.
+        # Recompactage : les ordres au-delà de l'étape retirée descendent d'un cran.
         ancien_vers_nouveau = {
-            p.ordre: (p.ordre if p.ordre < cible.ordre else p.ordre - 1) for p in restantes
+            e.ordre: (e.ordre if e.ordre < cible.ordre else e.ordre - 1) for e in restantes
         }
         recompactees = [
             self._remapper(
-                p,
-                nouvel_ordre=ancien_vers_nouveau[p.ordre],
+                e,
+                nouvel_ordre=ancien_vers_nouveau[e.ordre],
                 ancien_vers_nouveau=ancien_vers_nouveau,
             )
-            for p in restantes
+            for e in restantes
         ]
-        SequencePhases(phases=tuple(recompactees))
-        for phase in recompactees:
-            self._phases.enregistrer(phase)
-        assert cible.id is not None, "Une phase consultée est persistée."
-        self._phases.supprimer(cible.id)
+        verifier_sequence(recompactees)
+        # ⚠️ **Les avancements d'abord.** Le rang étant la clé de jointure vers la définition,
+        # décaler les étapes avant d'avoir retiré la phase supprimée ferait pointer celle-ci sur
+        # l'étape voisine — une phase orpheline qui ressusciterait sous une autre définition.
+        for depart_id in self._creneaux(tournoi_id):
+            for phase in self._phases.par_depart(depart_id):
+                if phase.ordre == cible.ordre:
+                    assert phase.id is not None, "Une phase relue est persistée."
+                    self._phases.supprimer(phase.id)
+        for etape in recompactees:
+            self._deroules.enregistrer(etape)
+        self._realigner_avancements(tournoi_id, ancien_vers_nouveau)
+        assert cible.id is not None, "Une étape consultée est persistée."
+        self._deroules.supprimer(cible.id)
+
+    def _creneaux(self, tournoi_id: TournoiId) -> list[int]:
+        """Les identifiants des créneaux du tournoi — là où les avancements se déclinent."""
+        return [d.id for d in self._departs.par_tournoi(tournoi_id) if d.id is not None]
+
+    def _realigner_avancements(
+        self, tournoi_id: TournoiId, ancien_vers_nouveau: dict[int, int]
+    ) -> None:
+        """Fait suivre le rang des phases quand celui de leur étape change.
+
+        Le rang **est** la clé de jointure (ADR-0076) : une phase restée sur son ancien ordre
+        pointerait la définition d'une autre étape, sans la moindre erreur visible. C'est le seul
+        éventail qui subsiste après la séparation — et il ne déplace aucun réglage, juste un rang.
+        """
+        for depart_id in self._creneaux(tournoi_id):
+            for phase in self._phases.par_depart(depart_id):
+                nouveau = ancien_vers_nouveau.get(phase.ordre)
+                if nouveau is not None and nouveau != phase.ordre:
+                    self._phases.enregistrer(phase.avec_ordre(nouveau))
 
     # --- Cycle de vie (transitions gardées, patron ServiceTournois) ----------------------------
 
@@ -252,9 +310,11 @@ class ServicePhases:
         return self._phases.enregistrer(muter(phase))
 
     @staticmethod
-    def _remapper(phase: Phase, *, nouvel_ordre: int, ancien_vers_nouveau: dict[int, int]) -> Phase:
-        """Renvoie la phase à son nouvel ordre, **chacune** de ses sources remappée sur le nouvel
-        ordre de la phase qu'elle désignait.
+    def _remapper(
+        etape: EtapeDeroule, *, nouvel_ordre: int, ancien_vers_nouveau: dict[int, int]
+    ) -> EtapeDeroule:
+        """Renvoie l'étape à son nouvel ordre, **chacune** de ses sources remappée sur le nouvel
+        ordre de l'étape qu'elle désignait.
 
         `# DETTE-026` — les ancres de source sont des `ordre`, non des `id` : déplacer une phase
         oblige donc à réécrire les références de toutes celles qui la citent. Depuis E05US010 une
@@ -262,24 +322,38 @@ class ServicePhases:
         suivrait le déplacement et les autres pointeraient une phase arbitraire. C'est la surface de
         ce raccourci qui a grandi, pas sa nature.
         """
-        deplacee = phase.avec_ordre(nouvel_ordre)
-        if not phase.sources:
+        deplacee = etape.avec_ordre(nouvel_ordre)
+        if not etape.sources:
             return deplacee
         return deplacee.avec_sources(
             tuple(
                 replace(source, ordre_source=ancien_vers_nouveau[source.ordre_source])
-                for source in phase.sources
+                for source in etape.sources
             )
         )
 
-    def _exiger_tournoi(self, depart_id: DepartId) -> None:
-        if self._tournois.par_id(depart_id) is None:
-            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {depart_id}.")
+    def _exiger_tournoi(self, tournoi_id: TournoiId) -> None:
+        """Le tournoi doit exister : c'est lui qui porte le **déroulé** (ADR-0076)."""
+        if self._tournois.par_id(tournoi_id) is None:
+            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+
+    def _exiger_etape(self, tournoi_id: TournoiId, etape_id: EtapeDerouleId) -> EtapeDeroule:
+        """L'étape `etape_id` **si elle appartient à ce tournoi** — garde d'autorisation.
+
+        Sans elle, l'identifiant d'une étape d'un *autre* tournoi serait accepté sur cette route.
+        """
+        etape = next((e for e in self._deroules.par_tournoi(tournoi_id) if e.id == etape_id), None)
+        if etape is None:
+            raise PhaseIntrouvable(
+                f"Aucune étape d'identifiant {etape_id} dans le déroulé du tournoi {tournoi_id}."
+            )
+        return etape
 
     def _exiger_phase(self, depart_id: DepartId, phase_id: PhaseId) -> Phase:
+        """La phase `phase_id` **si elle appartient à ce créneau** — maille du cycle de vie."""
         phase = phase_du_depart(self._phases, depart_id, phase_id)
         if phase is None:
             raise PhaseIntrouvable(
-                f"Aucune phase d'identifiant {phase_id} dans le tournoi {depart_id}."
+                f"Aucune phase d'identifiant {phase_id} dans le départ {depart_id}."
             )
         return phase

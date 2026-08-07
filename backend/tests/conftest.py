@@ -40,7 +40,7 @@ from __future__ import annotations
 import dataclasses
 import datetime
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -49,6 +49,7 @@ from domain.blason import BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait
 from domain.inscription import Inscription, InscriptionId
@@ -540,3 +541,80 @@ class FauxPhaseRepository:
 
     def supprimer(self, phase_id: PhaseId) -> None:
         del self._phases[phase_id]
+
+
+class FauxDerouleRepository:
+    """Repository du **déroulé** en mémoire, conforme au port `DerouleRepository` (ADR-0076).
+
+    Porte la **définition** des étapes d'un tournoi — une seule fois, quel que soit le nombre de
+    créneaux. Son pendant `FauxPhaseRepository` ne porte que l'avancement.
+    """
+
+    def __init__(self) -> None:
+        self._items: dict[int, EtapeDeroule] = {}
+        self._sequence = 0
+
+    def ajouter(self, etape: EtapeDeroule) -> EtapeDeroule:
+        """Persiste l'étape ; un `id` **déjà fourni est préservé** (même règle que les phases)."""
+        if etape.id is not None:
+            self._sequence = max(self._sequence, etape.id)
+            self._items[etape.id] = etape
+            return etape
+        self._sequence += 1
+        persiste = dataclasses.replace(etape, id=self._sequence)
+        self._items[self._sequence] = persiste
+        return persiste
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[EtapeDeroule]:
+        etapes = [e for e in self._items.values() if e.tournoi_id == tournoi_id]
+        return sorted(etapes, key=lambda e: e.ordre)
+
+    def enregistrer(self, etape: EtapeDeroule) -> EtapeDeroule:
+        assert etape.id in self._items
+        self._items[etape.id] = etape
+        return etape
+
+    def supprimer(self, etape_id: EtapeDerouleId) -> None:
+        self._items.pop(etape_id, None)
+
+
+def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
+    """Définit l'**étape** puis l'instancie dans le créneau — les deux gestes d'ADR-0076.
+
+    Depuis la séparation déroulé / avancement, poser une phase demande deux écritures : la
+    définition va sur `deroule_etape` (au tournoi), l'avancement sur `phase` (au créneau). Les
+    décors de tests posaient une `Phase` complète en un seul appel ; ce helper préserve ce confort
+    sans rétablir la duplication — l'étape est **réutilisée** si elle existe déjà, si bien que deux
+    créneaux d'un même tournoi partagent bien la même définition.
+
+    Passer par le repository plutôt que par l'ORM est délibéré : c'est le chemin de production, et
+    un décor qui l'emprunte éprouve la vraie couture d'assemblage.
+    """
+    from domain.deroule_etape import EtapeDeroule
+    from infrastructure.db import (
+        DepartRepositorySQL,
+        DerouleEtapeRepositorySQL,
+        PhaseRepositorySQL,
+    )
+
+    depart = DepartRepositorySQL(session_factory).par_id(phase.depart_id)
+    assert depart is not None, "Le décor doit avoir créé le créneau avant d'y poser une phase."
+    deroules = DerouleEtapeRepositorySQL(session_factory)
+    etape = next(
+        (e for e in deroules.par_tournoi(depart.tournoi_id) if e.ordre == phase.ordre), None
+    )
+    if etape is None:
+        etape = deroules.ajouter(
+            EtapeDeroule(
+                tournoi_id=depart.tournoi_id,
+                ordre=phase.ordre,
+                type=phase.type,
+                bareme=phase.bareme,
+                validation=phase.validation,
+                sources=phase.sources,
+                effectif=phase.effectif,
+                barrage_jusqu_au=phase.barrage_jusqu_au,
+                profondeur=phase.profondeur,
+            )
+        )
+    return PhaseRepositorySQL(session_factory).ajouter(etape.instancier(phase.depart_id))

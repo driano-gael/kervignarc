@@ -90,6 +90,7 @@ def service() -> tuple[ServiceSimulationFormat, _FormatsEnMemoire]:
         harnais_temoin.gabarits,
         harnais_temoin.inscriptions,
         harnais_temoin.departs,
+        harnais_temoin.deroules,
         harnais_temoin.phases,
         harnais_temoin.series,
         fabriquer_harnais_simulation,

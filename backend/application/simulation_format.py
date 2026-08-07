@@ -321,8 +321,12 @@ def _fonder(
     )
     assert depart.id is not None, "Le magasin in-memory attribue un identifiant."
     _peupler(harnais, tournoi.id, categorie.id, depart.id, effectif, graine)
-    for phase in format_tournoi.appliquer([depart.id]):
-        harnais.phases.ajouter(phase)
+    # **Un déroulé, puis son avancement** (ADR-0076) : le format définit les étapes du tournoi
+    # simulé, et le créneau unique reçoit une instance par étape. La simulation n'a qu'un départ —
+    # on simule un déroulé, pas une logistique de journée.
+    for etape in format_tournoi.appliquer(tournoi.id):
+        posee = harnais.deroules.ajouter(etape)
+        harnais.phases.ajouter(posee.instancier(depart.id))
     return tournoi
 
 

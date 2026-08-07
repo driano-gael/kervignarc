@@ -39,6 +39,7 @@ from domain.ports import (
     BlasonRepository,
     CategorieRepository,
     DepartRepository,
+    DerouleRepository,
     GabaritSalleRepository,
     InscriptionRepository,
     PhaseRepository,
@@ -82,6 +83,7 @@ def hydrater_harnais(
     gabarits: GabaritSalleRepository,
     inscriptions: InscriptionRepository,
     departs: DepartRepository,
+    deroules: DerouleRepository,
     phases: PhaseRepository,
     series: SerieRepository,
 ) -> None:
@@ -101,6 +103,9 @@ def hydrater_harnais(
     # recopiées pointeraient un départ absent, et le harnais rendrait un classement vide.
     for depart in departs.par_tournoi(tournoi_id):
         harnais.departs.ajouter(depart)
+    # Le déroulé **avant** les phases : celles-ci n'ont de sens qu'assemblées avec leur étape.
+    for etape in deroules.par_tournoi(tournoi_id):
+        harnais.deroules.ajouter(etape)
     for categorie in categories.par_tournoi(tournoi_id):
         harnais.categories.ajouter(categorie)
     for blason in blasons.par_tournoi(tournoi_id):
@@ -137,6 +142,9 @@ class HarnaisSimulation:
     # Le harnais porte ses **créneaux** depuis E01US025 (ADR-0075) : la portée sportive est le
     # départ, donc une simulation sans départ n'aurait ni phase ni classement.
     departs: DepartRepository
+    # Le **déroulé** du tournoi simulé : la définition, une fois (ADR-0076). Les phases n'en
+    # portent plus que l'avancement, et le magasin les assemble à la lecture.
+    deroules: DerouleRepository
     phases: PhaseRepository
     series: SerieRepository
     classement: ServiceClassement
@@ -177,6 +185,7 @@ class ServiceSimulation:
         gabarits: GabaritSalleRepository,
         inscriptions: InscriptionRepository,
         departs: DepartRepository,
+        deroules: DerouleRepository,
         phases: PhaseRepository,
         series: SerieRepository,
         usine_harnais: Callable[[], HarnaisSimulation],
@@ -191,6 +200,7 @@ class ServiceSimulation:
         self._inscriptions = inscriptions
         # Les créneaux : le harnais les hydrate en premier (ADR-0075).
         self._departs = departs
+        self._deroules = deroules
         self._phases = phases
         self._series = series
         self._usine_harnais = usine_harnais
@@ -216,6 +226,7 @@ class ServiceSimulation:
             gabarits=self._gabarits,
             inscriptions=self._inscriptions,
             departs=self._departs,
+            deroules=self._deroules,
             phases=self._phases,
             series=self._series,
         )

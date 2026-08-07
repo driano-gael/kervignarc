@@ -33,6 +33,7 @@ from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.club import ClubId
 from domain.depart import Depart, DepartId
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait
@@ -339,34 +340,96 @@ class InMemoryDepartRepository(_AllocateurId):
         self.supprimer(depart_id)
 
 
-class InMemoryPhaseRepository(_AllocateurId):
-    """Port `PhaseRepository` en mémoire (`par_tournoi` **ordonné par `ordre`**, comme SQL)."""
+class InMemoryDerouleRepository(_AllocateurId):
+    """Port `DerouleRepository` en mémoire — la **définition** du déroulé (ADR-0076)."""
 
-    def __init__(self, departs: DepartRepository | None = None) -> None:
+    def __init__(self) -> None:
+        super().__init__()
+        self._items: dict[int, EtapeDeroule] = {}
+
+    def ajouter(self, etape: EtapeDeroule) -> EtapeDeroule:
+        identifiant = self._identifiant(etape.id)
+        persiste = dataclasses.replace(etape, id=identifiant)
+        self._items[identifiant] = persiste
+        return persiste
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[EtapeDeroule]:
+        etapes = [e for e in self._items.values() if e.tournoi_id == tournoi_id]
+        return sorted(etapes, key=lambda e: e.ordre)
+
+    def enregistrer(self, etape: EtapeDeroule) -> EtapeDeroule:
+        assert etape.id is not None
+        self._items[etape.id] = etape
+        return etape
+
+    def supprimer(self, etape_id: EtapeDerouleId) -> None:
+        self._items.pop(etape_id, None)
+
+
+class InMemoryPhaseRepository(_AllocateurId):
+    """Port `PhaseRepository` en mémoire — l'**avancement** d'une étape (ADR-0076).
+
+    ⚠️ Comme l'adapter SQL, il **assemble** : le magasin ne retient que `(depart_id, ordre, statut)`,
+    et la définition vient du déroulé du tournoi de ce créneau. Les deux implémentations doivent
+    répondre pareil — c'est ce que vérifient les tests de conformité de port.
+    """
+
+    def __init__(
+        self,
+        departs: DepartRepository | None = None,
+        deroules: InMemoryDerouleRepository | None = None,
+    ) -> None:
         super().__init__()
         self._items: dict[int, Phase] = {}
-        # Facultatif : seule la lecture **transverse** `par_tournoi` en a besoin (ADR-0075). Le
-        # moteur, lui, ne lit que `par_depart` et n'a donc rien à câbler.
+        # Facultatifs : seules les lectures qui **assemblent** ou remontent au tournoi en ont
+        # besoin.
+        # Le harnais de simulation les câble ; un décor de test qui ne lit que des statuts non.
         self._departs = departs
+        self._deroules = deroules
+
+    def _etape(self, phase: Phase) -> EtapeDeroule | None:
+        """La définition de cette phase : l'étape de même rang, dans le tournoi de son créneau."""
+        if self._departs is None or self._deroules is None:
+            return None
+        depart = self._departs.par_id(phase.depart_id)
+        if depart is None:
+            return None
+        for etape in self._deroules.par_tournoi(depart.tournoi_id):
+            if etape.ordre == phase.ordre:
+                return etape
+        return None
+
+    def _assembler(self, phase: Phase) -> Phase:
+        """Rend la phase **complétée** de sa définition ; telle quelle si le déroulé est absent.
+
+        Le repli n'est pas un renoncement : sans magasin de déroulé câblé, la phase conservée en
+        mémoire porte déjà sa définition (elle y a été mise à l'ajout). C'est ce qui permet aux
+        décors de test simples de rester simples, sans jamais rendre une phase amputée.
+        """
+        etape = self._etape(phase)
+        if etape is None:
+            return phase
+        return dataclasses.replace(
+            etape.instancier(phase.depart_id), statut=phase.statut, id=phase.id
+        )
 
     def ajouter(self, phase: Phase) -> Phase:
         identifiant = self._identifiant(phase.id)
         persiste = dataclasses.replace(phase, id=identifiant)
         self._items[identifiant] = persiste
-        return persiste
+        return self._assembler(persiste)
 
     def par_id(self, phase_id: PhaseId) -> Phase | None:
-        return self._items.get(phase_id)
+        phase = self._items.get(phase_id)
+        return None if phase is None else self._assembler(phase)
 
     def par_depart_et_type(self, depart_id: DepartId, type_phase: TypePhase) -> Phase | None:
-        for phase in self._items.values():
-            if phase.depart_id == depart_id and phase.type == type_phase:
-                return phase
-        return None
+        trouvees = [p for p in self.par_depart(depart_id) if p.type is type_phase]
+        return trouvees[-1] if trouvees else None
 
     def par_depart(self, depart_id: DepartId) -> list[Phase]:
         phases = [p for p in self._items.values() if p.depart_id == depart_id]
-        return sorted(phases, key=lambda p: p.ordre)
+        return [self._assembler(p) for p in sorted(phases, key=lambda p: p.ordre)]
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Phase]:
         """Les phases de **tous les départs** du tournoi, triées (départ, ordre) — pas une séquence.
@@ -383,12 +446,12 @@ class InMemoryPhaseRepository(_AllocateurId):
             )
         departs = {d.id for d in self._departs.par_tournoi(tournoi_id)}
         phases = [p for p in self._items.values() if p.depart_id in departs]
-        return sorted(phases, key=lambda p: (p.depart_id, p.ordre))
+        return [self._assembler(p) for p in sorted(phases, key=lambda p: (p.depart_id, p.ordre))]
 
     def enregistrer(self, phase: Phase) -> Phase:
         assert phase.id is not None
         self._items[phase.id] = phase
-        return phase
+        return self._assembler(phase)
 
     def supprimer(self, phase_id: PhaseId) -> None:
         self._items.pop(phase_id, None)

@@ -18,9 +18,11 @@ et la migration de données (`0028`) ont leurs tests dédiés en fin de fichier.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 from alembic import command
@@ -29,19 +31,24 @@ from sqlalchemy import text
 
 from domain.bareme import BaremeQualification
 from domain.depart import Depart, DepartId
+from domain.deroule_etape import EtapeDeroule
 from domain.grain_validation import GrainValidation
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.politiques import ProfondeurClassement
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from infrastructure.db import (
     Database,
+    DepartORM,
     DepartRepositorySQL,
+    DerouleEtapeORM,
+    DerouleEtapeRepositorySQL,
     PhaseORM,
     PhaseRepositorySQL,
     TournoiRepositorySQL,
 )
 from infrastructure.erreurs import InfrastructureError
 from tests.base_migree import preparer_base
+from tests.conftest import poser_phase_sql
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
@@ -79,6 +86,23 @@ def _depart(db: Database) -> DepartId:
     return depart.id
 
 
+def _poser(db: Database, depart_id: DepartId, **reglages: Any) -> Phase:
+    """Définit une étape sur le tournoi du créneau, l'y instancie, et rend la phase **assemblée**.
+
+    Deux gestes depuis ADR-0076 : la définition (barème, grain, sources…) va sur `deroule_etape`,
+    l'avancement sur `phase`. Les tests de ce fichier éprouvent l'aller-retour de la config — ils
+    doivent donc écrire là où elle vit désormais, sinon ils vérifieraient une table vide.
+    """
+    with db.session_factory() as session:
+        depart = session.get(DepartORM, depart_id)
+        assert depart is not None, "Le décor doit avoir créé le créneau."
+        tournoi_id = depart.tournoi_id
+    etape = DerouleEtapeRepositorySQL(db.session_factory).ajouter(
+        EtapeDeroule(tournoi_id=tournoi_id, **reglages)
+    )
+    return poser_phase_sql(db.session_factory, etape.instancier(depart_id))
+
+
 def test_ajouter_puis_relire_par_depart_et_type(tmp_path: Path) -> None:
     """`ajouter` attribue un id ; `par_tournoi_et_type` relit le barème (config JSON comprise)."""
     db = _base(tmp_path)
@@ -87,8 +111,13 @@ def test_ajouter_puis_relire_par_depart_et_type(tmp_path: Path) -> None:
         repository = PhaseRepositorySQL(db.session_factory)
         assert repository.par_depart_et_type(depart_id, TypePhase.QUALIFICATION) is None
 
-        cree = repository.ajouter(
-            Phase.qualification(depart_id, BaremeQualification.preset_ffta_18m())
+        cree = _poser(
+            db,
+            depart_id,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.preset_ffta_18m(),
+            validation=GrainValidation.fin_de_serie(),
         )
         assert cree.id is not None
         assert cree.bareme is not None and cree.bareme.nb_volees == 20
@@ -106,7 +135,14 @@ def test_enregistrer_met_a_jour_le_bareme(tmp_path: Path) -> None:
     try:
         depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Phase.qualification(depart_id, BaremeQualification.creer(20, 3)))
+        cree = _poser(
+            db,
+            depart_id,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(20, 3),
+            validation=GrainValidation.fin_de_serie(),
+        )
         assert cree.id is not None
 
         enregistre = repository.enregistrer(cree.avec_bareme(BaremeQualification.creer(10, 6)))
@@ -125,7 +161,14 @@ def test_par_tournoi_et_type_isole_les_tournois(tmp_path: Path) -> None:
         premier = _depart(db)
         second = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        repository.ajouter(Phase.qualification(premier, BaremeQualification.creer(20, 3)))
+        _poser(
+            db,
+            premier,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(20, 3),
+            validation=GrainValidation.fin_de_serie(),
+        )
 
         assert repository.par_depart_et_type(second, TypePhase.QUALIFICATION) is None
         du_premier = repository.par_depart_et_type(premier, TypePhase.QUALIFICATION)
@@ -236,18 +279,22 @@ def _phase_brute_au_schema_0027(db: Database, tournoi_id: TournoiId, config: str
 
 
 def _phase_brute(db: Database, depart_id: DepartId, config: str) -> None:
-    """Écrit une ligne `phase` directement, pour simuler une `config` que le repository n'écrit
-    pas (ligne antérieure à E01US015, ou base altérée)."""
+    """Écrit **l'étape et son avancement** directement, pour simuler une `config` que le repository
+    n'écrit pas (ligne antérieure à E01US015, ou base altérée).
+
+    Deux lignes depuis ADR-0076 : la `config` vit sur l'étape du **tournoi**, l'avancement sur la
+    phase du **créneau**. Le test qui s'en sert éprouve la relecture d'une config douteuse — donc
+    c'est bien l'étape qu'il faut salir, la phase n'en portant plus.
+    """
     with db.session_factory() as session:
+        depart = session.get(DepartORM, depart_id)
+        assert depart is not None, "Le décor doit avoir créé le créneau."
         session.add(
-            PhaseORM(
-                depart_id=depart_id,
-                ordre=1,
-                type="qualification",
-                config=config,
-                statut="a_venir",
+            DerouleEtapeORM(
+                tournoi_id=depart.tournoi_id, ordre=1, type="qualification", config=config
             )
         )
+        session.add(PhaseORM(depart_id=depart_id, ordre=1, statut="a_venir"))
         session.commit()
 
 
@@ -257,12 +304,13 @@ def test_le_grain_est_persiste_et_relu(tmp_path: Path) -> None:
     try:
         depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        cree = repository.ajouter(
+        cree = poser_phase_sql(
+            db.session_factory,
             Phase.qualification(
                 depart_id,
                 BaremeQualification.creer(20, 3),
                 GrainValidation.toutes_les_n_volees(2),
-            )
+            ),
         )
         assert cree.id is not None
 
@@ -279,7 +327,14 @@ def test_enregistrer_met_a_jour_le_grain(tmp_path: Path) -> None:
     try:
         depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Phase.qualification(depart_id, BaremeQualification.creer(20, 3)))
+        cree = _poser(
+            db,
+            depart_id,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(20, 3),
+            validation=GrainValidation.fin_de_serie(),
+        )
         assert cree.validation == GrainValidation.fin_de_serie()
 
         enregistre = repository.enregistrer(
@@ -296,13 +351,18 @@ def test_un_grain_de_fin_nest_pas_serialise_avec_une_cadence(tmp_path: Path) -> 
     db = _base(tmp_path)
     try:
         depart_id = _depart(db)
-        repository = PhaseRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Phase.qualification(depart_id, BaremeQualification.creer(20, 3)))
+        cree = _poser(
+            db,
+            depart_id,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(20, 3),
+            validation=GrainValidation.fin_de_serie(),
+        )
         assert cree.id is not None
 
         with db.session_factory() as session:
-            ligne = session.get(PhaseORM, cree.id)
-            assert ligne is not None
+            ligne = session.query(DerouleEtapeORM).one()
             validation = json.loads(ligne.config)["validation"]
         assert validation == {"grain": "fin_de_serie"}
     finally:
@@ -337,11 +397,21 @@ def test_une_phase_sans_cle_validation_reecrit_le_grain_a_lenregistrement(tmp_pa
         relue = repository.par_depart_et_type(depart_id, TypePhase.QUALIFICATION)
         assert relue is not None and relue.id is not None
 
-        repository.enregistrer(relue.avec_validation(GrainValidation.toutes_les_n_volees(2)))
+        # ⚠️ **La définition s'édite sur l'étape, pas sur la phase** (ADR-0076) : le port le dit
+        # explicitement, et passer par `PhaseRepositorySQL.enregistrer` ne changerait *rien* — c'est
+        # précisément le piège que ce contrat existe pour fermer.
+        deroules = DerouleEtapeRepositorySQL(db.session_factory)
+        with db.session_factory() as session:
+            depart = session.get(DepartORM, depart_id)
+            assert depart is not None
+            tournoi_id = depart.tournoi_id
+        (etape,) = deroules.par_tournoi(tournoi_id)
+        deroules.enregistrer(
+            dataclasses.replace(etape, validation=GrainValidation.toutes_les_n_volees(2))
+        )
 
         with db.session_factory() as session:
-            ligne = session.get(PhaseORM, relue.id)
-            assert ligne is not None
+            ligne = session.query(DerouleEtapeORM).one()
             assert json.loads(ligne.config)["validation"] == {
                 "grain": "toutes_les_n_volees",
                 "n_volees": 2,
@@ -445,16 +515,24 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
     try:
         depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        repository.ajouter(Phase.qualification(depart_id, BaremeQualification.creer(20, 3)))
+        _poser(
+            db,
+            depart_id,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(20, 3),
+            validation=GrainValidation.fin_de_serie(),
+        )
 
-        elim = repository.ajouter(
+        elim = poser_phase_sql(
+            db.session_factory,
             Phase.creer(
                 depart_id,
                 ordre=2,
                 type=TypePhase.ELIMINATION_DIRECTE,
                 sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=16),),
                 effectif=16,
-            )
+            ),
         )
         assert elim.id is not None
 
@@ -468,8 +546,7 @@ def test_une_phase_generique_sans_bareme_fait_l_aller_retour(tmp_path: Path) -> 
 
         # Le JSON ne porte ni scoring ni validation pour une phase non-qualification.
         with db.session_factory() as session:
-            ligne = session.get(PhaseORM, elim.id)
-            assert ligne is not None
+            ligne = session.query(DerouleEtapeORM).one()
             config = json.loads(ligne.config)
         assert "scoring" not in config and "validation" not in config
         assert config["sources"] == [
@@ -486,10 +563,26 @@ def test_par_tournoi_renvoie_les_phases_ordonnees(tmp_path: Path) -> None:
         premier = _depart(db)
         second = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        repository.ajouter(Phase.qualification(premier, BaremeQualification.creer(20, 3)))
-        repository.ajouter(Phase.creer(premier, ordre=2, type=TypePhase.ELIMINATION_DIRECTE))
-        repository.ajouter(Phase.creer(premier, ordre=3, type=TypePhase.PLACEMENT))
-        repository.ajouter(Phase.qualification(second, BaremeQualification.creer(10, 3)))
+        _poser(
+            db,
+            premier,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(20, 3),
+            validation=GrainValidation.fin_de_serie(),
+        )
+        poser_phase_sql(
+            db.session_factory, Phase.creer(premier, ordre=2, type=TypePhase.ELIMINATION_DIRECTE)
+        )
+        poser_phase_sql(db.session_factory, Phase.creer(premier, ordre=3, type=TypePhase.PLACEMENT))
+        _poser(
+            db,
+            second,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(10, 3),
+            validation=GrainValidation.fin_de_serie(),
+        )
 
         phases = repository.par_depart(premier)
         assert [p.ordre for p in phases] == [1, 2, 3]
@@ -510,8 +603,8 @@ def test_supprimer_retire_la_phase(tmp_path: Path) -> None:
     try:
         depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        phase = repository.ajouter(
-            Phase.creer(depart_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE)
+        phase = poser_phase_sql(
+            db.session_factory, Phase.creer(depart_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE)
         )
         assert phase.id is not None
 
@@ -529,8 +622,8 @@ def test_le_statut_en_pause_fait_l_aller_retour(tmp_path: Path) -> None:
     try:
         depart_id = _depart(db)
         repository = PhaseRepositorySQL(db.session_factory)
-        phase = repository.ajouter(
-            Phase.creer(depart_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE)
+        phase = poser_phase_sql(
+            db.session_factory, Phase.creer(depart_id, ordre=1, type=TypePhase.ELIMINATION_DIRECTE)
         )
         assert phase.id is not None
 
@@ -598,13 +691,18 @@ def test_le_scoring_est_persiste_sous_policies(tmp_path: Path) -> None:
     db = _base(tmp_path)
     try:
         depart_id = _depart(db)
-        repository = PhaseRepositorySQL(db.session_factory)
-        cree = repository.ajouter(Phase.qualification(depart_id, BaremeQualification.creer(20, 3)))
+        cree = _poser(
+            db,
+            depart_id,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(20, 3),
+            validation=GrainValidation.fin_de_serie(),
+        )
         assert cree.id is not None
 
         with db.session_factory() as session:
-            ligne = session.get(PhaseORM, cree.id)
-            assert ligne is not None
+            ligne = session.query(DerouleEtapeORM).one()
             config = json.loads(ligne.config)
         assert "scoring" not in config  # plus à la racine
         assert config["policies"]["scoring"] == {"nom": "cumul", "volees": 20, "fleches": 3}
@@ -662,7 +760,7 @@ def test_migration_0028_deplace_le_scoring_sous_policies(tmp_path: Path) -> None
     db = Database(url)
     try:
         with db.session_factory() as session:
-            ligne = session.query(PhaseORM).one()
+            ligne = session.query(DerouleEtapeORM).one()
             config = json.loads(ligne.config)
         assert "scoring" not in config  # déplacé
         assert config["policies"]["scoring"] == {"nom": "cumul", "volees": 20, "fleches": 3}
@@ -682,12 +780,20 @@ def _tableau_brut(db: Database, depart_id: DepartId, config: str) -> None:
     manquant), donc sans rien prouver de ce qu'on veut vérifier.
     """
     with db.session_factory() as session:
+        depart = session.get(DepartORM, depart_id)
+        assert depart is not None, "Le décor doit avoir créé le créneau."
+        session.add(
+            DerouleEtapeORM(
+                tournoi_id=depart.tournoi_id,
+                ordre=1,
+                type="elimination_directe",
+                config=config,
+            )
+        )
         session.add(
             PhaseORM(
                 depart_id=depart_id,
                 ordre=1,
-                type="elimination_directe",
-                config=config,
                 statut="a_venir",
             )
         )
@@ -762,5 +868,10 @@ def test_une_profondeur_alteree_remonte_en_erreur_typee(
     depart_id = _depart(db)
     _tableau_brut(db, depart_id, json.dumps({"policies": {"depth": depth}}))
 
+    with db.session_factory() as session:
+        depart = session.get(DepartORM, depart_id)
+        assert depart is not None
+        tournoi_id = depart.tournoi_id
+
     with pytest.raises(InfrastructureError):
-        PhaseRepositorySQL(db.session_factory).par_tournoi(depart_id)
+        PhaseRepositorySQL(db.session_factory).par_tournoi(tournoi_id)

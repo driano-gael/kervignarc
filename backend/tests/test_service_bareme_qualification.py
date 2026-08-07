@@ -17,7 +17,7 @@ from domain.depart import Depart
 from domain.erreurs import NombreFlechesParVoleeInvalide, NombreVoleesInvalide
 from domain.phase import Phase, SourcePhase, TypePhase
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
-from tests.conftest import FauxDepartRepository, FauxPhaseRepository
+from tests.conftest import FauxDepartRepository, FauxDerouleRepository, FauxPhaseRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -65,7 +65,9 @@ def _service_avec_tournoi() -> tuple[ServiceBaremeQualification, int]:
     departs.ajouter(
         Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
     )
-    return ServiceBaremeQualification(tournois, FauxPhaseRepository(departs), departs), tournoi.id
+    return ServiceBaremeQualification(
+        tournois, FauxPhaseRepository(departs), departs, FauxDerouleRepository()
+    ), tournoi.id
 
 
 def test_bareme_absent_par_defaut() -> None:
@@ -77,7 +79,10 @@ def test_bareme_absent_par_defaut() -> None:
 def test_bareme_du_tournoi_leve_si_tournoi_inconnu() -> None:
     """Lire le barème d'un tournoi inexistant lève `TournoiIntrouvable`."""
     service = ServiceBaremeQualification(
-        FauxTournoiRepository(), FauxPhaseRepository(FauxDepartRepository()), FauxDepartRepository()
+        FauxTournoiRepository(),
+        FauxPhaseRepository(FauxDepartRepository()),
+        FauxDepartRepository(),
+        FauxDerouleRepository(),
     )
     with pytest.raises(TournoiIntrouvable):
         service.bareme_du_tournoi(404)
@@ -105,7 +110,10 @@ def test_definir_met_a_jour_sans_creer_de_seconde_phase() -> None:
 def test_definir_leve_si_tournoi_inconnu() -> None:
     """Définir sur un tournoi inexistant lève `TournoiIntrouvable`."""
     service = ServiceBaremeQualification(
-        FauxTournoiRepository(), FauxPhaseRepository(FauxDepartRepository()), FauxDepartRepository()
+        FauxTournoiRepository(),
+        FauxPhaseRepository(FauxDepartRepository()),
+        FauxDepartRepository(),
+        FauxDerouleRepository(),
     )
     with pytest.raises(TournoiIntrouvable):
         service.definir(404, 20, 3)
@@ -131,6 +139,7 @@ def test_definir_apres_composition_place_la_qualification_en_tete() -> None:
     )
     assert tournoi.id is not None
     departs = FauxDepartRepository()
+    deroules = FauxDerouleRepository()
     phases = FauxPhaseRepository(departs)
     # Le créneau porte la séquence depuis ADR-0075 : c'est sur lui que la qualification se pose et
     # que les phases déjà composées se décalent.
@@ -138,7 +147,7 @@ def test_definir_apres_composition_place_la_qualification_en_tete() -> None:
         Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
     )
     assert depart.id is not None
-    service = ServiceBaremeQualification(tournois, phases, departs)
+    service = ServiceBaremeQualification(tournois, phases, departs, deroules)
     # Deux phases composées avant le barème : élim (ordre 1, effectif 32) puis placement (ordre 2)
     # alimenté par les 16 premiers de l'élim.
     phases.ajouter(
@@ -178,6 +187,7 @@ def test_redefinir_le_bareme_ne_decale_pas_les_phases_deja_composees() -> None:
     )
     assert tournoi.id is not None
     departs = FauxDepartRepository()
+    deroules = FauxDerouleRepository()
     phases = FauxPhaseRepository(departs)
     # Le créneau porte la séquence depuis ADR-0075 : c'est sur lui que la qualification se pose et
     # que les phases déjà composées se décalent.
@@ -185,7 +195,7 @@ def test_redefinir_le_bareme_ne_decale_pas_les_phases_deja_composees() -> None:
         Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
     )
     assert depart.id is not None
-    service = ServiceBaremeQualification(tournois, phases, departs)
+    service = ServiceBaremeQualification(tournois, phases, departs, deroules)
     service.definir(tournoi.id, 20, 3)  # qualification créée en ordre 1
     phases.ajouter(
         Phase.creer(

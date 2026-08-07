@@ -61,6 +61,7 @@ from domain.ports import (
     BlasonRepository,
     CategorieRepository,
     DepartRepository,
+    DerouleRepository,
     GabaritSalleRepository,
     InscriptionRepository,
     PhaseRepository,
@@ -268,6 +269,7 @@ class ServicePilotageSimulation:
         gabarits: GabaritSalleRepository,
         inscriptions: InscriptionRepository,
         departs: DepartRepository,
+        deroules: DerouleRepository,
         phases: PhaseRepository,
         series: SerieRepository,
         usine_harnais: UsineHarnais,
@@ -284,6 +286,7 @@ class ServicePilotageSimulation:
         self._inscriptions = inscriptions
         # Les créneaux : le harnais les hydrate en premier (ADR-0075).
         self._departs = departs
+        self._deroules = deroules
         self._phases = phases
         self._series = series
         self._usine_harnais = usine_harnais
@@ -314,6 +317,7 @@ class ServicePilotageSimulation:
             gabarits=self._gabarits,
             inscriptions=self._inscriptions,
             departs=self._departs,
+            deroules=self._deroules,
             phases=self._phases,
             series=self._series,
         )

@@ -26,31 +26,28 @@ Agrégats de domaine **purs** (immuables, sans dépendance framework), validés 
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 
 from domain.anomalie import Anomalie, Gravite
 from domain.bareme import BaremeQualification
-from domain.depart import DepartId
 from domain.deroule import ProjectionDeroule, effectif_minimum, projeter
+from domain.deroule_etape import EtapeDeroule
 from domain.erreurs import (
     EffectifMinimumIncoherent,
     ExigenceEffectifInvalide,
-    FormatSansDepart,
     FormatSansEtape,
     NomFormatInvalide,
-    PhasesDeDepartsMeles,
 )
 from domain.grain_validation import GrainValidation
 from domain.patrimoine import OrigineBrique
 from domain.phase import (
-    Phase,
     SourcePhase,
-    StatutPhase,
     TypePhase,
     grain_par_defaut,
 )
 from domain.politiques import ProfondeurClassement
+from domain.tournoi import TournoiId
 
 FormatTournoiId = int
 """Identifiant technique d'un format de tournoi, attribué par la persistance."""
@@ -89,6 +86,14 @@ class ModelePhase:
     # double ; DETTE-015 est résorbée.
     sources: tuple[SourcePhase, ...] = ()
     effectif: int | None = None
+    barrage_jusqu_au: int | None = None
+    """Jusqu'à quel rang un barrage départage (E06US003, ADR-0066).
+
+    ⚠️ **Ce champ manquait** jusqu'au 07/08/2026, alors que `Phase` le portait : promouvoir un
+    tournoi dont une phase avait un seuil de barrage **perdait ce seuil**, et le format réappliqué
+    n'en avait plus. Défaut silencieux, trouvé en mesurant l'écart de champs entre les deux
+    représentations pour ADR-0076."""
+
     profondeur: ProfondeurClassement | None = None
     """Jusqu'où cette étape départage (E06US006). Non validée ici — c'est le brouillon d'ADR-0063 :
     une profondeur réglée sur un type qui ne monte pas de tableau est un modèle **licite** qui
@@ -110,48 +115,54 @@ class ModelePhase:
             effectif=effectif,
         )
 
-    def pour_depart(self, depart_id: DepartId) -> Phase:
-        """Instancie ce modèle en **phase réelle** d'un départ, au statut `à venir`.
+    def pour_tournoi(self, tournoi_id: TournoiId) -> EtapeDeroule:
+        """Instancie ce modèle en **étape du déroulé** d'un tournoi.
 
-        C'est ici que `depart_id` et `statut` **naissent** : le modèle ne les portait pas. La phase
+        C'est ici que `tournoi_id` naît : le modèle de bibliothèque ne le portait pas. L'étape
         obtenue est ensuite ajustable (barème, grain, ordre…) **sans altérer** le format — même
         promesse qu'un gabarit appliqué (E01US008).
 
-        **D'un départ et non d'un tournoi depuis E01US025** (ADR-0075) : un départ rejoue le tournoi
-        en entier, donc c'est lui qui porte une séquence. Un format appliqué à un tournoi de N
-        départs produit donc N séquences — cf. `FormatTournoi.appliquer`.
+        **Vers le tournoi et non vers un départ** (ADR-0076) : le déroulé se définit **une fois**,
+        et chaque créneau le rejoue. C'est `EtapeDeroule.instancier` qui descend ensuite au départ,
+        en ne créant qu'un **avancement** — jamais une seconde copie de la définition.
 
-        Passe par le constructeur de `Phase`, donc par ses invariants : un format qui décrirait une
-        phase impossible échoue **à l'application**, pas silencieusement à l'exécution du moteur.
+        Passe par le constructeur d'`EtapeDeroule`, donc par les mêmes invariants qu'une phase : un
+        format qui décrirait une étape impossible échoue **à l'application**, pas silencieusement à
+        l'exécution du moteur.
         """
-        return Phase(
-            depart_id=depart_id,
+        return EtapeDeroule(
+            tournoi_id=tournoi_id,
             ordre=self.ordre,
             type=self.type,
             bareme=self.bareme,
             validation=self.validation,
             sources=self.sources,
             effectif=self.effectif,
+            barrage_jusqu_au=self.barrage_jusqu_au,
             profondeur=self.profondeur,
-            statut=StatutPhase.A_VENIR,
         )
 
     @staticmethod
-    def de_phase(phase: Phase) -> ModelePhase:
-        """Extrait le **modèle** d'une phase réelle : on retient le déroulé, on oublie l'édition.
+    def d_etape(etape: EtapeDeroule) -> ModelePhase:
+        """Extrait le **modèle** d'une étape de déroulé : on retient la règle, on oublie l'édition.
 
-        Sert à la **promotion** (« ce format est permanent ») : les phases d'un tournoi remontent
-        en brique de bibliothèque. Le `statut` est délibérément perdu — c'est l'avancement d'une
+        Sert à la **promotion** (« ce format est permanent ») : le déroulé d'un tournoi remonte en
+        brique de bibliothèque. Le `tournoi_id` est délibérément perdu — c'est le rattachement à une
         édition, pas une propriété du format.
+
+        **Depuis une étape et non d'une phase** (ADR-0076) : la définition ne vit plus que là.
+        Avant,
+        promouvoir lisait une phase — donc *l'une des N copies*, et rien ne garantissait laquelle.
         """
         return ModelePhase(
-            ordre=phase.ordre,
-            type=phase.type,
-            bareme=phase.bareme,
-            validation=phase.validation,
-            sources=phase.sources,
-            effectif=phase.effectif,
-            profondeur=phase.profondeur,
+            ordre=etape.ordre,
+            type=etape.type,
+            bareme=etape.bareme,
+            validation=etape.validation,
+            sources=etape.sources,
+            effectif=etape.effectif,
+            barrage_jusqu_au=etape.barrage_jusqu_au,
+            profondeur=etape.profondeur,
         )
 
 
@@ -324,8 +335,8 @@ class FormatTournoi:
         l'appelant passe par `en_creation_utilisateur`.
 
         ⚠️ `effectif_minimum_exige` est **remplacé**, pas fusionné : le passer à `None` *efface*
-        l'exigence, exactement comme passer une liste vide efface les étapes. C'est le contrat d'un
-        `PUT`.
+        l'exigence, exactement comme passer une liste vide efface les étapes. C'est le contrat
+        d'un `PUT`.
 
         **Le paramètre est délibérément sans défaut**, et c'est un garde-fou, pas une rigidité : un
         défaut `None` avait laissé **deux** appelants de production effacer la règle du club en
@@ -347,76 +358,58 @@ class FormatTournoi:
         """
         return replace(self, nom=_nom_valide(nom), origine=OrigineBrique.UTILISATEUR, id=None)
 
-    def appliquer(self, departs: Sequence[DepartId]) -> tuple[Phase, ...]:
-        """Instancie le format en **phases**, une séquence 1..N **par départ** (statut `à venir`).
+    def appliquer(self, tournoi_id: TournoiId) -> tuple[EtapeDeroule, ...]:
+        """Instancie le format en **déroulé** du tournoi : une séquence 1..N, définie **une fois**.
 
-        **Un format s'applique à des départs, pas à un tournoi** (E01US025, ADR-0075) : la portée
-        sportive est le départ, donc un tournoi de 4 départs reçoit **4 séquences identiques** qui
-        vivent ensuite leur vie — ajuster la phase 2 du départ 1 ne touche pas le départ 2. C'est le
-        patron de copie du patrimoine (ADR-0060), un cran plus bas.
+        **Vers le tournoi, plus vers des départs** (ADR-0076). ADR-0075 faisait produire ici N
+        séquences, une par créneau — donc N copies de chaque définition, libres de diverger. Le
+        déroulé se définit désormais une seule fois ; ce sont les **avancements** qui se déclinent
+        par départ (`EtapeDeroule.instancier`), et eux ne portent aucun réglage.
 
-        `departs` **vide** est refusé : appliquer un format à un tournoi sans créneau ne créerait
-        aucune phase, et le silence ferait croire à un succès. Le diagnostic reste celui du format
-        (`anomalies`), qui ne connaît pas les départs — d'où ce contrôle ici.
+        Le domaine ignore donc les créneaux : c'est le **service** qui, connaissant les départs,
+        crée les instances et refuse un tournoi qui n'en aurait aucun. Faire descendre les départs
+        jusqu'ici aurait mêlé une contrainte de logistique à une règle de déroulé.
 
         **C'est ici que l'invariant est tenu** (ADR-0063). L'enregistrement accepte le brouillon ;
         l'application, elle, refuse en **disant pourquoi** : la première anomalie bloquante est
         levée telle quelle, donc avec le même type d'exception, le même code et le même message
-        d'organisateur qu'avant l'US — et donc le même 422 à la frontière API.
+        d'organisateur — et donc le même 422 à la frontière API.
 
         Seules les **bloquantes** arrêtent : un format dont la seule anomalie est conjoncturelle
         (« les rangs 33 à 120 » alors qu'il n'y a que 82 inscrits) s'applique, parce qu'il n'est pas
         faux — le tournoi n'a simplement pas l'effectif prévu, et le déroulé s'y adapte (CA
         « ajustement d'effectif »). Ce contrôle-là est le rôle du diagnostic, à l'écran.
 
-        Le format d'origine reste intact : les phases produites sont des copies indépendantes,
-        ajustables sans remonter. Aucune écriture ici — le service décide quoi persister et
-        comment traiter les phases déjà présentes.
+        Le format d'origine reste intact : les étapes produites sont des copies indépendantes,
+        ajustables sans remonter. Aucune écriture ici — le service décide quoi persister.
         """
-        # ⚠️ **L'ordre compte.** La cohérence du **format** se juge d'abord : un format sans étape
-        # est faux en lui-même, quel que soit le tournoi auquel on l'applique. Contrôler les
-        # créneaux avant masquerait `FormatSansEtape` derrière `FormatSansDepart`, et
-        # l'organisateur irait créer un départ pour découvrir ensuite que son format est vide.
         for anomalie in self.anomalies():
             if anomalie.gravite is Gravite.BLOQUANTE:
                 raise anomalie.erreur
-        if not departs:
-            raise FormatSansDepart(
-                "Ce tournoi n'a aucun départ : appliquer un format ne créerait aucune phase. "
-                "Créez au moins un créneau avant d'appliquer un déroulé."
-            )
-        return tuple(etape.pour_depart(depart_id) for depart_id in departs for etape in self.etapes)
+        return tuple(etape.pour_tournoi(tournoi_id) for etape in self.etapes)
 
     @staticmethod
-    def de_phases(
-        nom: str, phases: Iterable[Phase], effectif_minimum_exige: int | None = None
+    def de_deroule(
+        nom: str, etapes: Iterable[EtapeDeroule], effectif_minimum_exige: int | None = None
     ) -> FormatTournoi:
-        """Capture les phases d'**un départ** en format de bibliothèque (**promotion**).
+        """Capture le **déroulé d'un tournoi** en format de bibliothèque (**promotion**).
 
-        **D'un seul départ** (E01US025, ADR-0075) : un format décrit **une** séquence 1..N, et
-        chaque départ a la sienne. Promouvoir les phases de plusieurs départs produirait un format
-        aux ordres en doublon — diagnostiqué plus tard comme incohérent, donc un aller-retour perdu
-        pour l'organisateur. Le contrôle est ici, où l'information existe encore.
+        **Depuis le déroulé, plus depuis les phases d'un départ** (ADR-0076). Tant que la définition
+        était dupliquée par créneau, promouvoir obligeait à choisir *laquelle* des N copies faisait
+        foi — et à refuser les lots mêlés (`PhasesDeDepartsMeles`, désormais sans objet). Le déroulé
+        étant unique, la question ne se pose plus : il n'y a rien à départager.
 
-        Les statuts sont perdus (cf. `ModelePhase.de_phase`) : on promeut un **déroulé**, pas un
-        avancement. L'exigence d'effectif, elle, **remonte** si l'appelant la fournit : à la
-        différence du statut, c'est une propriété du déroulé et non de l'édition. Elle n'est pas
-        lisible depuis les phases — le tournoi la porte —, d'où le paramètre explicite.
+        Le `tournoi_id` est perdu (cf. `ModelePhase.d_etape`) : on promeut une **règle**, pas un
+        rattachement. L'exigence d'effectif, elle, **remonte** si l'appelant la fournit : à la
+        différence du rattachement, c'est une propriété du déroulé et non de l'édition. Elle n'est
+        pas lisible depuis les étapes — le tournoi la porte —, d'où le paramètre explicite.
 
-        Lève `FormatSansEtape` si le départ n'a aucune phase à promouvoir,
-        `PhasesDeDepartsMeles` si elles n'appartiennent pas toutes au même départ, et les erreurs de
-        séquence si ses phases n'en forment pas une valide.
+        Lève `FormatSansEtape` si le tournoi n'a aucun déroulé à promouvoir, et les erreurs de
+        séquence si ses étapes n'en forment pas une valide.
         """
-        retenues = tuple(phases)
-        departs = {phase.depart_id for phase in retenues}
-        if len(departs) > 1:
-            raise PhasesDeDepartsMeles(
-                f"Ces phases appartiennent à {len(departs)} départs différents : un format décrit "
-                "le déroulé d'un seul départ. Promouvez le déroulé d'un départ à la fois."
-            )
         return FormatTournoi.creer(
             nom,
-            [ModelePhase.de_phase(phase) for phase in retenues],
+            [ModelePhase.d_etape(etape) for etape in etapes],
             effectif_minimum_exige=effectif_minimum_exige,
         )
 

@@ -370,15 +370,47 @@ class PhaseORM(Base):
     """
 
     __tablename__ = "phase"
+    # Une seule instance par (créneau, rang) : deux avancements du même rang dans le même départ
+    # n'auraient aucun sens, et le service s'appuie sur cette unicité pour synchroniser.
+    __table_args__ = (UniqueConstraint("depart_id", "ordre", name="uq_phase_depart_ordre"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant du départ depuis ADR-0075, donc
     # petit-enfant du tournoi ; même politique de suppression non tranchée, ne pas contourner ici.
     depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
+    # `ordre` est la **clé de jointure** vers la définition (`deroule_etape` du tournoi de ce
+    # départ) : c'est lui, et non un `etape_id`, parce que le déroulé s'édite par rang — un
+    # réordonnancement remappe déjà les ordres partout (DETTE-026), et une FK dupliquerait
+    # l'information tout en pouvant en diverger.
+    ordre: Mapped[int] = mapped_column(nullable=False)
+    statut: Mapped[str] = mapped_column(nullable=False)
+
+
+class DerouleEtapeORM(Base):
+    """Table `deroule_etape` — la **définition** d'une étape du déroulé d'un tournoi (ADR-0076).
+
+    Le déroulé se définit **une fois** par tournoi ; chaque départ le rejoue en portant un simple
+    **avancement** (`PhaseORM`, qui n'a plus que `depart_id`, `ordre` et `statut`). Avant le
+    07/08/2026, appliquer un format écrivait N copies complètes — une par créneau —, libres de
+    diverger en silence.
+
+    `type` stocke la valeur de `TypePhase`. Les **politiques** vivent dans `config` (JSON), forme
+    `config.policies` d'ADR-0046 : c'est ce qui permet d'ajouter une politique **sans migration de
+    schéma** (ADR-0011). La traduction JSON ↔ agrégat est faite par le repository, à l'identique de
+    ce que faisait `PhaseORM` — le format de la `config` n'a pas changé, il a **changé de table**.
+    """
+
+    __tablename__ = "deroule_etape"
+    # Un seul réglage par rang dans un tournoi : c'est la définition même d'une séquence 1..N.
+    __table_args__ = (UniqueConstraint("tournoi_id", "ordre", name="uq_deroule_tournoi_ordre"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 : FK sans ON DELETE CASCADE — enfant direct du tournoi, même politique de
+    # suppression non tranchée que le reste de sa descendance.
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     ordre: Mapped[int] = mapped_column(nullable=False)
     type: Mapped[str] = mapped_column(nullable=False)
     config: Mapped[str] = mapped_column(nullable=False)
-    statut: Mapped[str] = mapped_column(nullable=False)
 
 
 class ScoreurORM(Base):

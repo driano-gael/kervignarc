@@ -62,6 +62,7 @@ from infrastructure.db import (
 )
 from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
+from tests.conftest import poser_phase_sql
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -103,8 +104,8 @@ class _TournoiADeuxDeparts:
         # deux « ordre 1 » coexistent parce qu'ils vivent dans des départs différents.
         phases = PhaseRepositorySQL(sf)
         for depart_id in (self.matin, self.apres_midi):
-            phases.ajouter(Phase.qualification(depart_id, BaremeQualification.creer(1, 3)))
-            phases.ajouter(Phase.creer(depart_id, 2, TypePhase.ELIMINATION_DIRECTE))
+            poser_phase_sql(sf, Phase.qualification(depart_id, BaremeQualification.creer(1, 3)))
+            poser_phase_sql(sf, Phase.creer(depart_id, 2, TypePhase.ELIMINATION_DIRECTE))
 
         self.classement = ServiceClassement(
             TournoiRepositorySQL(sf),

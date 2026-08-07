@@ -38,13 +38,12 @@ from infrastructure.db import (
     Database,
     DepartRepositorySQL,
     InscriptionRepositorySQL,
-    PhaseRepositorySQL,
     SerieRepositorySQL,
     TournoiRepositorySQL,
 )
 from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
-from tests.conftest import ConnecterAdmin
+from tests.conftest import ConnecterAdmin, poser_phase_sql
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -102,9 +101,8 @@ class Scenario:
             )
             inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
             self.archers.append(archer.id)
-        phases = PhaseRepositorySQL(db.session_factory)
-        qualif = phases.ajouter(
-            Phase.qualification(self.depart_id, BaremeQualification.creer(1, 3))
+        qualif = poser_phase_sql(
+            db.session_factory, Phase.qualification(self.depart_id, BaremeQualification.creer(1, 3))
         )
         assert qualif.id is not None
         self.qualif_id = qualif.id
@@ -137,7 +135,7 @@ def _rangs(client: TestClient, tournoi_id: int) -> dict[int, int | None]:
 def _regler_le_seuil(client: TestClient, scenario: Scenario, jusqu_au: int | None) -> None:
     """Règle (ou efface) le seuil de barrage sur la phase de qualification."""
     reponse = client.put(
-        f"/api/v1/departs/{scenario.depart_id}/phases/{scenario.qualif_id}",
+        f"/api/v1/tournois/{scenario.depart_id}/phases/{scenario.qualif_id}",
         json={"type": "qualification", "sources": [], "barrage_jusqu_au": jusqu_au},
     )
     assert reponse.status_code == 200, reponse.text
@@ -219,7 +217,7 @@ def test_le_seuil_se_relit_sur_la_phase(
         connecter_admin(client)
         _regler_le_seuil(client, scenario, 8)
 
-        phases = client.get(f"/api/v1/departs/{scenario.depart_id}/phases").json()
+        phases = client.get(f"/api/v1/tournois/{scenario.depart_id}/phases").json()
 
         assert phases[0]["barrage_jusqu_au"] == 8
 

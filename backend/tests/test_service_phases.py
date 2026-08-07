@@ -24,7 +24,7 @@ from domain.depart import Depart
 from domain.erreurs import EffectifIncompatible, SourceApresPhase
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
-from tests.conftest import FauxDepartRepository, FauxPhaseRepository
+from tests.conftest import FauxDepartRepository, FauxDerouleRepository, FauxPhaseRepository
 
 _DATE = datetime.date(2026, 3, 14)
 
@@ -66,7 +66,8 @@ def _service() -> tuple[ServicePhases, int]:
         Depart.creer(tournoi_id=tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
     )
     assert depart.id is not None
-    return ServicePhases(tournois, FauxPhaseRepository(departs), departs), depart.id
+    deroules = FauxDerouleRepository()
+    return ServicePhases(tournois, FauxPhaseRepository(departs), departs, deroules), tournoi.id
 
 
 # --- Lister / ajouter --------------------------------------------------------------------------
@@ -311,7 +312,7 @@ def test_supprimer_la_qualification_est_refuse() -> None:
     )
     assert depart.id is not None
     phases = FauxPhaseRepository(departs)
-    service = ServicePhases(tournois, phases, departs)
+    service = ServicePhases(tournois, phases, departs, FauxDerouleRepository())
     qualif = phases.ajouter(Phase.qualification(depart.id, BaremeQualification.preset_ffta_18m()))
     assert qualif.id is not None
 

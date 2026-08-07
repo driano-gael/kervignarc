@@ -43,6 +43,7 @@ from infrastructure.memory.repositories import (
     InMemoryBlasonRepository,
     InMemoryCategorieRepository,
     InMemoryDepartRepository,
+    InMemoryDerouleRepository,
     InMemoryForfaitRepository,
     InMemoryGabaritSalleRepository,
     InMemoryInscriptionRepository,
@@ -76,6 +77,7 @@ class _Reel:
         self.blasons = InMemoryBlasonRepository()
         self.gabarits = InMemoryGabaritSalleRepository()
         self.inscriptions = InMemoryInscriptionRepository()
+        self.deroules = InMemoryDerouleRepository()
         # Le créneau conventionnel de ce décor (`depart_id=1` dans les inscriptions ci-dessous) :
         # le classement est celui d'un départ depuis ADR-0075, il doit donc exister vraiment.
         self.departs = InMemoryDepartRepository()
@@ -84,7 +86,7 @@ class _Reel:
                 Depart.creer(tournoi_id=1, numero=1, tarif_centimes=800, horaire="09:00"), id=1
             )
         )
-        self.phases = InMemoryPhaseRepository(self.departs)
+        self.phases = InMemoryPhaseRepository(self.departs, self.deroules)
         self.series = InMemorySerieRepository()
 
         tournoi = self.tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
@@ -154,6 +156,7 @@ class _Reel:
             self.gabarits,
             self.inscriptions,
             self.departs,
+            self.deroules,
             self.phases,
             self.series,
             # L'**usine de production** (pas une copie) : le harnais éprouvé ici est celui déployé
