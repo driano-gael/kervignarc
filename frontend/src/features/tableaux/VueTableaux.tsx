@@ -28,23 +28,11 @@ import { suivisDuTournoi, type ModeAffichage } from '../public/focus'
 import { departDeSalle } from '../salle/rotation'
 import type { DuelPublic, DuellistePublic, TableauPublic } from './api'
 import { useTableaux } from './hooks'
-import { cheminDeArcher, parTour, type EtapeChemin } from './presentation'
+import { cheminDeArcher, LIBELLE_STATUT, parTour } from './presentation'
 
 type Lecture = 'chemin' | 'complet'
 
 const nomComplet = (qui: DuellistePublic) => `${qui.prenom} ${qui.nom}`.trim()
-
-/** Ce qu'on écrit en face de chaque étape du chemin. Un mot par situation, jamais une couleur
- * seule (`DV-03`) : l'écran de salle est vu de loin et l'appli publique est lue en plein soleil. */
-const LIBELLE_STATUT: Record<EtapeChemin['statut'], string> = {
-  gagne: 'Gagné',
-  perdu: 'Perdu',
-  en_attente: 'En attente de validation',
-  a_jouer: 'À tirer',
-  attente_adversaire: 'Adversaire à désigner',
-  exempt: 'Exempt',
-  a_venir: 'À venir',
-}
 
 export function VueTableaux({
   tournoiId,

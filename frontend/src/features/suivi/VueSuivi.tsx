@@ -1,9 +1,16 @@
-// Vue « suivi » de l'appli publique (E07US006) — « je retrouve mes archers sans chercher ».
+// Vue « suivi » de l'appli publique (E07US006, élargie par E16US004) — « je retrouve **mes** archers
+// sans chercher », au pluriel.
 //
-// Deux gestes : **rechercher** un archer par son nom pour le **suivre**, et voir la **carte** de chaque
-// archer suivi — sa cible / position / départ, à jour en direct. Le choix des archers suivis est
-// mémorisé localement (`sessionSuivisStore`, `localStorage`) : aux ouvertures suivantes, la vue s'ouvre
-// directement sur eux. Aucun compte, aucune authentification — la lecture publique est anonyme.
+// Deux gestes : **rechercher** des archers (par nom **ou par club**) pour les **suivre**, et voir la
+// **carte** de chacun — sa cible / son couloir / son départ, à jour en direct. Le choix des archers
+// suivis est mémorisé localement (`sessionSuivisStore`, `localStorage`) : aux ouvertures suivantes,
+// la vue s'ouvre directement sur eux. Aucun compte, aucune authentification — la lecture publique
+// est anonyme.
+//
+// **Cette vue n'est plus le seul endroit où le suivi sert** : depuis E16US004, l'interrupteur
+// « mes archers / tout » de l'en-tête public centre aussi le classement, les affectations, les
+// tableaux, le palmarès et le plan de cibles (`features/public/focus.ts`). Ici on **compose** la
+// liste ; là-bas on la **lit**.
 //
 // **Source des données** : la journée d'un archer se reconstruit depuis **la liste des départs**
 // (`useDeparts`, numéro/horaire) et **les plans de cibles** (`getPlanDeCibles`/`useQueries`, la place).
@@ -35,6 +42,7 @@
 import { useState } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { useArchers } from '../archers/hooks'
+import { useClubs } from '../clubs/hooks'
 import type { Archer } from '../competition/api'
 import type { Depart } from '../departs/api'
 import { useDeparts } from '../departs/hooks'
@@ -44,9 +52,13 @@ import { clePlan } from '../placement/hooks'
 import type { RoutageArcher } from '../routage/api'
 import { useAffectations } from '../routage/hooks'
 import { alerte, detail, titre } from '../routage/presentation'
+import type { TableauPublic } from '../tableaux/api'
+import { useTableaux } from '../tableaux/hooks'
+import { LIBELLE_STATUT, parcoursToutesPhases, type ParcoursPhase } from '../tableaux/presentation'
+import { nommerType } from '../../shared/phases/catalogue'
 import { type ArcherSuivi, useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
-import { useDeroule } from './deroule'
-import { construireJournee, filtrerArchers } from './suivi'
+import { useDeroule, type VoleeDeroule } from './deroule'
+import { construireJournee, rechercherArchers } from './suivi'
 
 // Borne l'affichage des résultats de recherche : au-delà, on invite à préciser plutôt que de dérouler
 // tout un club (et de risquer de cacher l'archer cherché en silence).
@@ -96,16 +108,26 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
   // tableau constitué dont cet archer est absent. Les confondre faisait annoncer « non retenu » à
   // tout le monde un matin où personne n'était encore placé.
   // Le créneau en cours (ADR-0075) : les affectations sont celles d'un départ, pas du tournoi.
-  const affectations = useAffectations(departDeSalle(departs)?.id ?? null, null, besoinPlans)
+  const departCourant = departDeSalle(departs)?.id ?? null
+  const affectations = useAffectations(departCourant, null, besoinPlans)
   const lignesAffectations = affectations.data?.archers ?? []
   const tableauConstitue = affectations.data?.phase_id != null && lignesAffectations.length > 0
   const routageParArcher = new Map(lignesAffectations.map((ligne) => [ligne.archer_id, ligne]))
 
+  // Les arbres du créneau, lus **une fois** pour toutes les cartes — comme `useAffectations`
+  // ci-dessus et pour la même raison : un appel par archer suivi multiplierait la lecture la plus
+  // chère du serveur (`# DETTE-031`). Ils alimentent le récapitulatif de journée (E16US004, P02 :
+  // *« on doit pouvoir retrouver tous les tours de toutes les phases joués »*), que la carte compose
+  // en filtrant les duels sur l'archer — le DTO public les porte déjà tous.
+  const tableaux = useTableaux(besoinPlans ? departCourant : null)
+  const arbres = tableaux.data?.tableaux ?? []
+
   return (
     <div>
       <p className="carte__etat">
-        Cherchez un archer par son nom et suivez-le : sa cible apparaît ci-dessous, à jour en
-        direct, à chaque ouverture de l’appli.
+        Cherchez des archers par leur nom ou leur club et suivez-les — vous pouvez en suivre
+        plusieurs. Leur journée apparaît ci-dessous, à jour en direct, à chaque ouverture de
+        l’appli, et l’affichage de tout le tournoi peut se centrer sur eux.
       </p>
 
       <RechercheArcher
@@ -135,6 +157,7 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
               erreur={erreurPlans}
               routage={routageParArcher.get(s.archerId) ?? null}
               tableauConstitue={tableauConstitue}
+              arbres={arbres}
             />
           ))}
         </ul>
@@ -143,9 +166,21 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
   )
 }
 
-// La recherche : un champ, et sous lui la liste des archers dont le nom correspond. Tant que le champ
-// est vide, rien ne s'affiche (D-09 : la recherche est l'exception). Un archer déjà suivi est marqué
-// comme tel plutôt que proposé une 2ᵉ fois ; au-delà de MAX_RESULTATS, on invite à préciser.
+// La recherche : un nom, un club, et sous eux la liste qui se met à jour à la frappe. Sans aucun
+// critère, rien ne s'affiche (D-09 : la recherche est l'exception). Au-delà de MAX_RESULTATS, on
+// invite à préciser.
+//
+// **Trois évolutions d'E16US004**, dérivées du questionnaire P01 (*« mettre un filtre de tri par
+// club en plus dans la recherche ; une liste d'archers se met à jour à mesure de la recherche ; dans
+// la ligne d'un archer mettre un état : suivi, à suivre, ne plus suivre »*) :
+//  1. un **filtre par club** qui, choisi seul, liste les archers du club — sans quoi il ne serait
+//     qu'un raffinage d'une recherche déjà tapée, pas un filtre ;
+//  2. chaque ligne porte son **état actionnable** dans les deux sens : on suit **et** on cesse de
+//     suivre depuis la recherche. Auparavant un archer déjà suivi n'affichait qu'un « Suivi ✓ »
+//     inerte, et il fallait aller le retrouver dans sa carte pour le retirer ;
+//  3. la recherche **ne se vide plus** après un « Suivre » : on en suit désormais plusieurs d'affilée
+//     (c'est tout l'objet de l'US), et repartir d'un champ vide à chaque ajout imposait de retaper
+//     le club à chaque archer.
 function RechercheArcher({
   archers,
   enChargement,
@@ -160,25 +195,51 @@ function RechercheArcher({
   suivis: ArcherSuivi[]
 }) {
   const [requete, setRequete] = useState('')
+  const [clubId, setClubId] = useState<number | null>(null)
   const suivre = useSessionSuivisStore((s) => s.suivre)
+  const nePlusSuivre = useSessionSuivisStore((s) => s.nePlusSuivre)
+  // Référentiel **global** et public en lecture (E02US001) : pas de tournoi dans la clé de cache,
+  // et rien à authentifier.
+  const clubs = useClubs().data ?? []
   const dejaSuivis = new Set(suivis.map((s) => s.archerId))
-  const correspondances = filtrerArchers(archers, requete)
+  const correspondances = rechercherArchers(archers, { requete, clubId })
   const resultats = correspondances.slice(0, MAX_RESULTATS)
   const tropDeResultats = correspondances.length > resultats.length
-  const requeteVide = requete.trim() === ''
+  const sansCritere = requete.trim() === '' && clubId === null
 
   return (
     <div className="recherche-suivi">
-      <input
-        className="formulaire__champ"
-        value={requete}
-        onChange={(e) => setRequete(e.target.value)}
-        placeholder="Rechercher un archer…"
-        aria-label="Rechercher un archer par son nom"
-        autoComplete="off"
-      />
+      <div className="recherche-suivi__criteres">
+        <input
+          className="formulaire__champ"
+          value={requete}
+          onChange={(e) => setRequete(e.target.value)}
+          placeholder="Rechercher un archer…"
+          aria-label="Rechercher un archer par son nom"
+          autoComplete="off"
+        />
+        {/* Le filtre ne s'affiche que si le référentiel a répondu : un `<select>` à une seule option
+            « Tous les clubs » ferait croire qu'aucun club n'existe. */}
+        {clubs.length > 0 && (
+          <label className="recherche-suivi__club">
+            <span className="sr-only">Filtrer par club</span>
+            <select
+              className="formulaire__champ"
+              value={clubId ?? ''}
+              onChange={(e) => setClubId(e.target.value === '' ? null : Number(e.target.value))}
+            >
+              <option value="">Tous les clubs</option>
+              {clubs.map((club) => (
+                <option key={club.id} value={club.id}>
+                  {club.nom}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
 
-      {!requeteVide &&
+      {!sansCritere &&
         // On ne présente jamais une erreur ni un chargement comme un « aucun archer » (fait négatif) :
         // erreur d'abord, puis résultats, puis chargement, et seulement en dernier « aucun » (revue C1).
         (enErreur ? (
@@ -194,27 +255,28 @@ function RechercheArcher({
                     {a.prenom} {a.nom}
                   </span>
                   {dejaSuivis.has(a.id) ? (
-                    <span className="recherche-resultat__suivi">Suivi ✓</span>
+                    <>
+                      <span className="recherche-resultat__suivi">Suivi ✓</span>
+                      <button type="button" className="lien" onClick={() => nePlusSuivre(a.id)}>
+                        Ne plus suivre
+                      </button>
+                    </>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        suivre({ archerId: a.id, tournoiId })
-                        setRequete('')
-                      }}
-                    >
+                    <button type="button" onClick={() => suivre({ archerId: a.id, tournoiId })}>
                       Suivre
                     </button>
                   )}
                 </li>
               ))}
             </ul>
-            {tropDeResultats && <p className="carte__etat">Trop de résultats — précisez le nom.</p>}
+            {tropDeResultats && (
+              <p className="carte__etat">Trop de résultats — précisez le nom ou le club.</p>
+            )}
           </>
         ) : enChargement ? (
           <p className="carte__etat">Chargement…</p>
         ) : (
-          <p className="carte__etat">Aucun archer à ce nom.</p>
+          <p className="carte__etat">Aucun archer ne correspond.</p>
         ))}
     </div>
   )
@@ -236,6 +298,7 @@ function CarteArcherSuivi({
   erreur,
   routage,
   tableauConstitue,
+  arbres,
 }: {
   tournoiId: number
   archerId: number
@@ -248,6 +311,9 @@ function CarteArcherSuivi({
   erreur: boolean
   routage: RoutageArcher | null
   tableauConstitue: boolean
+  /** Les arbres du créneau, lus une seule fois par `VueSuivi` — la carte n'en extrait que ce qui
+   * concerne son archer. */
+  arbres: TableauPublic[]
 }) {
   const nePlusSuivre = useSessionSuivisStore((s) => s.nePlusSuivre)
   const journee = construireJournee(archerId, departs, plansParDepart)
@@ -325,8 +391,47 @@ function CarteArcherSuivi({
         </div>
       )}
 
+      <RecapitulatifJournee
+        volees={volees}
+        cumul={deroule?.cumul ?? 0}
+        parcours={parcoursToutesPhases(arbres, archerId)}
+      />
+    </li>
+  )
+}
+
+/** Le récapitulatif de la journée d'un archer suivi — **repliable** (E16US004).
+ *
+ * P02 le demande en ces termes : *« écran repliable pour le récapitulatif des informations de la
+ * journée, on doit pouvoir retrouver tous les tours de toutes les phases joués »*. Deux parties :
+ * la **qualification** (les volées, telles que la carte les montrait déjà) et les **duels**, phase
+ * par phase.
+ *
+ * ⚠️ **Ouvert par défaut, et c'est délibéré.** P02 demande « repliable », pas « replié » — et P03
+ * demande de voir les scores *« en direct, dès que les informations sont disponibles »*. Livrer le
+ * bloc fermé aurait caché derrière un clic ce que la carte affichait jusqu'ici, donc **retiré** une
+ * information au nom d'une demande qui n'en réclamait aucune. `<details>` natif : l'état replié, le
+ * clavier et le lecteur d'écran sont acquis sans une ligne de JavaScript (règle 11).
+ */
+function RecapitulatifJournee({
+  volees,
+  cumul,
+  parcours,
+}: {
+  volees: VoleeDeroule[]
+  cumul: number
+  parcours: ParcoursPhase[]
+}) {
+  // Rien de tiré, aucun duel joué : pas de section creuse — la carte reste sur « où il tire ».
+  if (volees.length === 0 && parcours.length === 0) return null
+
+  return (
+    <details className="suivi-recap" open>
+      <summary className="suivi-recap__titre">Récapitulatif de la journée</summary>
+
       {volees.length > 0 && (
         <div className="suivi-deroule">
+          <h4 className="suivi-recap__section">Qualification</h4>
           <ul className="suivi-deroule__volees">
             {volees.map((v) => (
               <li key={v.numero} className="suivi-volee">
@@ -348,10 +453,35 @@ function CarteArcherSuivi({
             ))}
           </ul>
           <p className="suivi-deroule__cumul">
-            Total validé <strong>{deroule?.cumul ?? 0}</strong>
+            Total validé <strong>{cumul}</strong>
           </p>
         </div>
       )}
-    </li>
+
+      {parcours.map((phase) => (
+        <div key={phase.phaseId} className="suivi-recap__phase">
+          <h4 className="suivi-recap__section">{nommerType(phase.type)}</h4>
+          <ol className="tableaux__etapes">
+            {phase.etapes.map((etape) => (
+              <li
+                key={etape.tour}
+                className={`tableaux__etape tableaux__etape--${etape.statut.replace('_', '-')}`}
+              >
+                <span className="tableaux__tour">{etape.libelle ?? '—'}</span>
+                <span className="tableaux__contre">
+                  {etape.adversaire === null
+                    ? '—'
+                    : `${etape.adversaire.prenom} ${etape.adversaire.nom}`.trim()}
+                  {etape.score !== null && (
+                    <strong className="tableaux__score"> {etape.score}</strong>
+                  )}
+                </span>
+                <span className="tableaux__statut">{LIBELLE_STATUT[etape.statut]}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+    </details>
   )
 }

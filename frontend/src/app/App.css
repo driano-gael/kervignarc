@@ -2817,6 +2817,49 @@ button:disabled {
   font-weight: 600;
 }
 
+/* Recherche publique (E16US004) : nom et club côte à côte, empilés dès qu'un téléphone les serre.
+   Le champ de nom prend la place restante — c'est lui qu'on remplit le plus souvent. */
+.recherche-suivi__criteres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.recherche-suivi__criteres > .formulaire__champ {
+  flex: 1 1 12rem;
+}
+
+.recherche-suivi__club > select {
+  min-height: 44px;
+}
+
+/* Récapitulatif de journée d'un archer suivi (E16US004, P02) — un `<details>` natif : le repli, le
+   clavier et le lecteur d'écran sans une ligne de JavaScript. */
+.suivi-recap {
+  margin-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 8px;
+}
+
+.suivi-recap__titre {
+  /* Cible tactile : le triangle seul est intouchable au doigt sur un téléphone. */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.suivi-recap__section {
+  margin: 8px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
 /* Bascule « mes archers / tout » de l'appli publique (E16US004). Même grammaire que les onglets —
    pilules, aplat de marque sur l'actif — mais précédée de son libellé : ce n'est pas une
    navigation, c'est un réglage d'affichage, et il vaut mieux le dire que le laisser deviner. */

@@ -54,6 +54,22 @@ export interface EtapeChemin {
   score: string | null
 }
 
+/** Ce qu'on écrit en face de chaque étape d'un chemin. **Un mot par situation, jamais une couleur
+ * seule** (`DV-03`) : l'écran de salle est vu de loin et l'appli publique est lue en plein soleil.
+ *
+ * Vit ici et non dans un composant depuis E16US004 : deux écrans le lisent désormais (l'arbre
+ * « Mon chemin » et le récapitulatif de journée de la carte de suivi), et un vocabulaire dupliqué
+ * finit par diverger — c'est ce que `DETTE-020` compte déjà deux fois sur cette feature. */
+export const LIBELLE_STATUT: Record<StatutEtape, string> = {
+  gagne: 'Gagné',
+  perdu: 'Perdu',
+  en_attente: 'En attente de validation',
+  a_jouer: 'À tirer',
+  attente_adversaire: 'Adversaire à désigner',
+  exempt: 'Exempt',
+  a_venir: 'À venir',
+}
+
 export interface GroupeDeBranche {
   /** Clé de regroupement : le libellé du serveur. Deux branches partageant un tour (une demi-finale
    * et un match des places 5-8) forment donc **deux groupes**, pas un seul. */
