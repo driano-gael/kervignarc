@@ -120,6 +120,10 @@ export function usePlacerArcher(tournoiId: number) {
 
 // Clé exportée pour la même raison que `cleClassement` : elle est invalidée depuis plusieurs
 // mutations, et deux littéraux recopiés finiraient par diverger en silence.
+// ⚠️ Clé **au tournoi**, volontairement, alors que le barrage pend au départ (ADR-0075) : la route
+// `GET /tournois/{id}/barrages` rend tous les créneaux en une fois, et la lui indexer par départ
+// mettrait N copies de la même charge en cache. Le tri par créneau est donc à l'affichage
+// (`PanneauBarrages`), pas au cache — la seule chose à ne jamais oublier est de le **faire**.
 export const cleBarrages = (tournoiId: number) => ['barrages', tournoiId] as const
 
 export function useBarrages(tournoiId: number) {

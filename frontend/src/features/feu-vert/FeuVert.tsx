@@ -11,13 +11,27 @@
 import { useState } from 'react'
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
-import { usePhases } from '../phases/hooks'
+import { ChoixCreneau } from '../departs/ChoixCreneau'
+import { useDeparts } from '../departs/hooks'
+import { creneauRetenu } from '../departs/libelle'
+import { useAvancementPhases } from '../phases/hooks'
+import { departDeSalle } from '../salle/rotation'
 import type { DuelAVenir } from './api'
 import { afficheDuel, libelleBouton, libelleCibles, nomDuelliste } from './etat'
 import { useFeuVert, useImpactLancement, useLancerTour } from './hooks'
 
 export function FeuVert({ tournoiId }: { tournoiId: number }) {
-  const phases = usePhases(tournoiId)
+  const [choixDepart, setChoixDepart] = useState<number | null>(null)
+  const departs = useDeparts(tournoiId)
+  const liste = departs.data ?? []
+  const departId = creneauRetenu(liste, choixDepart, departDeSalle)
+  // ⚠️ **`useAvancementPhases(departId)` et non `usePhases(tournoiId)`** (revue E01US025, axe
+  // adversarial). Depuis ADR-0076, `GET /tournois/{id}/phases` rend le **déroulé** — des `id` de
+  // `deroule_etape` —, alors que « lancer le tour » s'adresse à une **phase**, l'avancement d'une
+  // étape dans un créneau. Les deux tables ont des séquences d'`id` indépendantes : sur un tournoi
+  // mono-départ elles coïncident une à une, si bien que l'erreur était invisible ; sur deux
+  // créneaux, l'organisateur de l'après-midi lançait le tour du **matin**, sans la moindre erreur.
+  const phases = useAvancementPhases(departId)
   // Le pilotage ne vaut que pour une phase de **tableau** : on ne propose que celles-là (jumeau du
   // sélecteur de la saisie en duels et du plan de duels). Le serveur reste l'autorité.
   const tableaux = (phases.data ?? []).filter((p) => p.type === 'elimination_directe')
@@ -40,8 +54,16 @@ export function FeuVert({ tournoiId }: { tournoiId: number }) {
     <section className="carte carte--large">
       <h2 className="carte__titre">Feu vert — lancer le tour</h2>
 
-      {phases.isPending && <p className="carte__etat">Chargement…</p>}
-      {!phases.isPending && tableaux.length === 0 && (
+      {/* Le créneau commande tout l'écran : on lance le tour d'**un** départ (ADR-0075). Le défaut
+          est celui qu'on tire (`departDeSalle`) — en fin de journée, retomber sur `departs[0]`
+          piloterait le matin, clos depuis six heures. */}
+      <ChoixCreneau departs={liste} valeur={departId} surChangement={setChoixDepart} />
+      {departs.isSuccess && liste.length === 0 && (
+        <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
+      )}
+
+      {departId !== null && phases.isPending && <p className="carte__etat">Chargement…</p>}
+      {departId !== null && !phases.isPending && tableaux.length === 0 && (
         <p className="carte__etat">
           Aucune phase à élimination directe : définissez-en une dans «&nbsp;Phases&nbsp;».
         </p>

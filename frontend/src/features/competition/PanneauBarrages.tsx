@@ -65,7 +65,17 @@ export function PanneauBarrages({
   // s'appliquant), et la carte entière s'effaçait. Le juge qui avait inversé deux flèches sur la
   // dernière place qualificative envoyait le mauvais archer au tableau, définitivement — le
   // dommage même que le correctif serveur disait avoir fermé.
-  const tous = barrages.data ?? []
+  //
+  // ⚠️ **…mais uniquement ceux de CE créneau** (ADR-0075, revue E01US025, axe adversarial). La
+  // route reste au niveau tournoi ; le filtre est donc ici. Le serveur avait été corrigé sur ce
+  // point (`ServiceBarrage._meme_endroit` lit `par_depart`), le miroir client ne l'avait pas suivi.
+  // Sans lui, deux créneaux ayant chacun une égalité au **même rang** — cas ordinaire, les rangs se
+  // répètent d'un départ à l'autre — se voyaient comme « le même endroit » : `dejaOuvert` passait à
+  // `true` et **retirait du DOM** le bouton « Faire tirer » de l'après-midi. Le serveur aurait
+  // accepté l'annonce ; l'organisateur n'avait plus aucun chemin pour départager sa dernière place
+  // qualificative. Les cartes du matin s'affichaient de surcroît sous l'en-tête de l'après-midi,
+  // sans rien qui les distingue, et allumaient l'alerte ambre.
+  const tous = (barrages.data ?? []).filter((barrage) => barrage.depart_id === departId)
   const nomDe = (archerId: number) => {
     const ligne = lignes.find((candidate) => candidate.archer_id === archerId)
     return ligne ? `${ligne.nom} ${ligne.prenom}` : `Archer ${archerId}`

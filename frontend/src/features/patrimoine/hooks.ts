@@ -213,13 +213,21 @@ export function useAppliquerFormat(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (formatId: number) => appliquerFormat(tournoiId, formatId),
-    // Applique = **crée les phases** du tournoi. Trois caches en dépendent, pas un : la séquence
-    // de phases, mais aussi le **barème** et le **grain de validation**, qui vivent *dans* la phase
-    // de qualification et sont servis par leurs propres clés. Ne rafraîchir que `phases` laissait
-    // l'écran « Barème & validation » afficher l'ancien réglage — soit l'étape suivante prescrite
-    // par la recette.
+    // Applique = **compose le déroulé** du tournoi, et l'instancie dans chaque créneau. Plusieurs
+    // caches en dépendent, pas un : la séquence de phases, mais aussi le **barème** et le **grain
+    // de validation**, qui vivent *dans* la phase de qualification et sont servis par leurs propres
+    // clés. Ne rafraîchir que `phases` laissait l'écran « Barème & validation » afficher l'ancien
+    // réglage — soit l'étape suivante prescrite par la recette.
+    //
+    // ⚠️ **Et l'avancement de chaque créneau, et le suivi du déroulé** (ADR-0076, revue E01US025).
+    // Les quatre mutations d'édition du déroulé (`phases/hooks.ts`) invalident bien ces deux
+    // racines ; celle-ci est la **cinquième voie d'écriture** et avait été oubliée. Résultat :
+    // après « appliquer un format », le pilotage de créneau affichait encore « ce créneau ne joue
+    // encore aucune phase » alors que le déroulé venait d'y être instancié.
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['phases', tournoiId] })
+      queryClient.invalidateQueries({ queryKey: ['avancement-phases'] })
+      queryClient.invalidateQueries({ queryKey: ['suivi-deroule'] })
       queryClient.invalidateQueries({ queryKey: ['bareme-qualification', tournoiId] })
       queryClient.invalidateQueries({ queryKey: ['grain-validation', tournoiId] })
     },

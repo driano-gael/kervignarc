@@ -95,8 +95,13 @@ export interface Tableau {
   podium: Place[]
 }
 
-// Une phase du tournoi (sous-ensemble de `features/phases/api` — on ne garde que ce que le scoreur
-// consomme : l'id à scorer, l'ordre à afficher, le type pour ne retenir que les tableaux).
+// Une phase **d'un créneau** (sous-ensemble de `features/phases/api` — on ne garde que ce que le
+// scoreur consomme : l'id à scorer, l'ordre à afficher, le type pour ne retenir que les tableaux).
+//
+// ⚠️ **C'est une phase, pas une étape du déroulé** (ADR-0076). Ce type était alimenté par
+// `/tournois/{id}/phases`, qui rend depuis lors des `deroule_etape` — structurellement identiques
+// (`id`, `ordre`, `type`), donc TypeScript ne voyait rien, et les deux séquences d'`id` coïncident
+// sur un tournoi mono-départ. Le scoreur de l'après-midi scorait ainsi le tableau du matin.
 export interface Phase {
   id: number
   ordre: number
@@ -134,9 +139,11 @@ export interface ValiderDuel {
 
 // --- Lectures ---
 
-// Phases du tournoi : lecture **publique** (aucune garde serveur), lue **sans jeton** par le scoreur.
-export function getPhases(tournoiId: number): Promise<Phase[]> {
-  return fetchJson<Phase[]>(`/api/v1/tournois/${tournoiId}/phases`, undefined, 'aucune')
+// Phases **d'un créneau** : lecture **publique** (aucune garde serveur), lue **sans jeton** par le
+// scoreur. C'est bien `/departs/{id}/phases` — l'avancement —, pas `/tournois/{id}/phases`, qui rend
+// le déroulé et dont les `id` appartiennent à une autre table (cf. `Phase` ci-dessus).
+export function getPhases(departId: number): Promise<Phase[]> {
+  return fetchJson<Phase[]>(`/api/v1/departs/${departId}/phases`, undefined, 'aucune')
 }
 
 export function getTableau(tournoiId: number, phaseId: number): Promise<Tableau> {

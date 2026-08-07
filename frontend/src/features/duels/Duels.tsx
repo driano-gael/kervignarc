@@ -18,7 +18,11 @@ import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useArchers } from '../archers/hooks'
 import type { Archer } from '../competition/api'
-import { usePhases } from '../phases/hooks'
+import { ChoixCreneau } from '../departs/ChoixCreneau'
+import { useDeparts } from '../departs/hooks'
+import { creneauRetenu } from '../departs/libelle'
+import { useAvancementPhases } from '../phases/hooks'
+import { departDeSalle } from '../salle/rotation'
 import type { CiblePlaceeDuel, Conflit, Destination, PlanDeDuels } from './api'
 import {
   useDeplacerDuelliste,
@@ -37,17 +41,36 @@ import { resumeAdjacenceNonGarantie } from './presentation'
 const POSITIONS = ['A', 'B', 'C', 'D']
 
 export function Duels({ tournoiId }: { tournoiId: number }) {
-  const phases = usePhases(tournoiId)
+  const [choixDepart, setChoixDepart] = useState<number | null>(null)
+  const departs = useDeparts(tournoiId)
+  const liste = departs.data ?? []
+  const departId = creneauRetenu(liste, choixDepart, departDeSalle)
+  // ⚠️ **`useAvancementPhases(departId)` et non `usePhases(tournoiId)`** (revue E01US025, axe
+  // adversarial) : `GET /tournois/{id}/phases` rend le **déroulé** depuis ADR-0076, donc des `id`
+  // de `deroule_etape`, alors que le plan de duels se place sur une **phase**. Les deux séquences
+  // d'`id` coïncident sur un tournoi mono-départ — d'où l'invisibilité — et divergent dès le second
+  // créneau : on plaçait alors les duellistes dans le tableau de l'autre départ.
+  const phases = useAvancementPhases(departId)
   const [phaseId, setPhaseId] = useState<number | null>(null)
 
   // Le plan de duels n'a de sens que pour une phase de **tableau** (élimination directe) : on ne
   // propose que celles-là dans le sélecteur. Le serveur reste l'autorité (`phase_pas_un_tableau`
   // si l'on force une autre phase), mais restreindre la liste évite d'y arriver par mégarde.
   const tableaux = (phases.data ?? []).filter((p) => p.type === 'elimination_directe')
+  // Le choix de phase est **relatif au créneau** : changer de départ rend l'ancien `phaseId`
+  // étranger à la liste. Le garder afficherait le tableau de l'autre créneau — un identifiant
+  // valide, donc pas la moindre erreur —, exactement le défaut qu'on vient de fermer un cran plus
+  // haut. On retombe alors sur « aucune phase choisie ».
+  const phaseRetenue =
+    phaseId !== null && tableaux.some((phase) => phase.id === phaseId) ? phaseId : null
 
   return (
     <section>
       <h3 className="carte__soustitre">Plan de duels</h3>
+      <ChoixCreneau departs={liste} valeur={departId} surChangement={setChoixDepart} />
+      {departs.isSuccess && liste.length === 0 && (
+        <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
+      )}
       {phases.isSuccess && tableaux.length === 0 && (
         <p className="carte__etat">
           Aucune phase de tableau (élimination directe) dans ce tournoi : ajoutez-en une dans «
@@ -57,7 +80,7 @@ export function Duels({ tournoiId }: { tournoiId: number }) {
       {tableaux.length > 0 && (
         <select
           className="formulaire__champ"
-          value={phaseId ?? ''}
+          value={phaseRetenue ?? ''}
           onChange={(e) => setPhaseId(e.target.value === '' ? null : Number(e.target.value))}
           aria-label="Phase de tableau à placer"
         >
@@ -71,7 +94,9 @@ export function Duels({ tournoiId }: { tournoiId: number }) {
       )}
       {/* `key` sur la phase : changer de phase **remonte** le sous-arbre, ce qui réinitialise l'état
           de drag sans le synchroniser à la main. */}
-      {phaseId !== null && <PlanPhase key={phaseId} tournoiId={tournoiId} phaseId={phaseId} />}
+      {phaseRetenue !== null && (
+        <PlanPhase key={phaseRetenue} tournoiId={tournoiId} phaseId={phaseRetenue} />
+      )}
     </section>
   )
 }
