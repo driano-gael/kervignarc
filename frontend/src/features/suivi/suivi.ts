@@ -12,13 +12,34 @@ function normaliser(texte: string): string {
   return texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
 
-// Filtre les archers dont le nom ou le prénom contient la requête (accent/casse-insensible). Une
-// requête **vide** renvoie une liste **vide** : la recherche n'est pas un déversoir de tout l'annuaire
-// — tant qu'on n'a rien tapé, on ne propose rien (D-09 : la recherche est l'exception, pas la porte).
+// Les critères de recherche de l'appli publique (E16US004) : un nom **et/ou** un club.
+export interface CritereRecherche {
+  requete: string
+  /** `null` = tous clubs confondus. Ne se confond pas avec `Archer.club_id === null`, qui veut dire
+   * « club encore **inconnu** » (ADR-0014) et n'appartient donc à aucun club filtré. */
+  clubId: number | null
+}
+
+// Filtre les archers sur le nom/prénom (accent/casse-insensible) **et** sur le club (E16US004,
+// questionnaire P01 : *« mettre un filtre de tri par club en plus dans la recherche »*).
+//
+// **Aucun critère → liste vide** : la recherche n'est pas un déversoir de tout l'annuaire (D-09,
+// règle héritée d'E07US006). Mais un **club seul suffit** — c'est ce qui fait du club un filtre à
+// part entière et non un simple raffinage d'une recherche déjà tapée.
+export function rechercherArchers(archers: Archer[], critere: CritereRecherche): Archer[] {
+  const q = normaliser(critere.requete)
+  if (q === '' && critere.clubId === null) return []
+  return archers.filter((a) => {
+    if (critere.clubId !== null && a.club_id !== critere.clubId) return false
+    if (q === '') return true
+    return normaliser(a.nom).includes(q) || normaliser(a.prenom).includes(q)
+  })
+}
+
+// Filtre les archers sur le seul nom — la recherche de la sidebar admin (E12US006), qui n'a pas de
+// filtre par club. Délègue à `rechercherArchers` : deux implémentations du même geste divergeraient.
 export function filtrerArchers(archers: Archer[], requete: string): Archer[] {
-  const q = normaliser(requete)
-  if (q === '') return []
-  return archers.filter((a) => normaliser(a.nom).includes(q) || normaliser(a.prenom).includes(q))
+  return rechercherArchers(archers, { requete, clubId: null })
 }
 
 // La place d'un archer sur un départ : sa cible (rang de salle) et sa position (« A »…« D »).

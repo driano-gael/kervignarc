@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import type { Archer } from '../competition/api'
 import type { Depart } from '../departs/api'
 import type { PlanDeCibles } from '../placement/api'
-import { construireJournee, filtrerArchers, placeDansPlan } from './suivi'
+import { construireJournee, filtrerArchers, placeDansPlan, rechercherArchers } from './suivi'
 
 const archer = (id: number, nom: string, prenom: string): Archer => ({
   id,
@@ -75,6 +75,54 @@ describe('filtrerArchers — recherche par nom', () => {
 
   it('sans correspondance, renvoie une liste vide', () => {
     expect(filtrerArchers(archers, 'zzz')).toEqual([])
+  })
+})
+
+// E16US004, **dérivé du CA** « recherche : filtre par club, liste qui se met à jour à la frappe,
+// état de suivi actionnable sur chaque ligne » (questionnaire P01 : *« mettre un filtre de tri par
+// club en plus dans la recherche ; une liste d'archers se met à jour à mesure de la recherche »*).
+// Écrit avant le câblage de l'écran (règle 9). Seuls les deux premiers volets sont de la logique
+// pure ; l'« état actionnable » est du rendu, vérifié à la recette.
+describe('rechercherArchers — nom et club', () => {
+  const archers = [
+    { ...archer(1, 'Martin', 'Paul'), club_id: 7 },
+    { ...archer(2, 'Durand', 'Rémy'), club_id: 8 },
+    { ...archer(3, 'Martinez', 'Sophie'), club_id: 7 },
+    // Club encore **inconnu** (ADR-0014) : `null` n'est jamais « aucun club ».
+    { ...archer(4, 'Marty', 'Jean'), club_id: null },
+  ]
+
+  it('sans nom ni club, ne propose rien', () => {
+    // On garde la règle d'E07US006 (D-09 : la recherche est l'exception, pas la porte) : sans aucun
+    // critère, on ne déverse pas l'annuaire.
+    expect(rechercherArchers(archers, { requete: '', clubId: null })).toEqual([])
+  })
+
+  it('un club seul suffit à lister ses archers, sans rien taper', () => {
+    // C'est le « filtre en plus » demandé : on choisit un club et la liste apparaît — sinon le
+    // filtre ne servirait qu'à réduire une recherche déjà faite, ce qui n'est pas ce qui est
+    // demandé (« un filtre de tri par club **en plus** »).
+    expect(rechercherArchers(archers, { requete: '', clubId: 7 }).map((a) => a.id)).toEqual([1, 3])
+  })
+
+  it('nom et club se cumulent', () => {
+    expect(rechercherArchers(archers, { requete: 'martin', clubId: 7 }).map((a) => a.id)).toEqual([
+      1, 3,
+    ])
+    expect(rechercherArchers(archers, { requete: 'martin', clubId: 8 })).toEqual([])
+  })
+
+  it('le nom seul ignore le club (comportement d’avant, inchangé)', () => {
+    expect(rechercherArchers(archers, { requete: 'mart', clubId: null }).map((a) => a.id)).toEqual([
+      1, 3, 4,
+    ])
+  })
+
+  it('un archer au club inconnu ne tombe dans aucun club', () => {
+    // Le piège d'ADR-0014 : `club_id === null` veut dire « pas encore renseigné ». Le ranger
+    // d'office dans le club filtré ferait croire qu'il en est, et l'y chercher ensuite en vain.
+    expect(rechercherArchers(archers, { requete: 'marty', clubId: 7 })).toEqual([])
+    expect(rechercherArchers(archers, { requete: '', clubId: 7 }).map((a) => a.id)).toEqual([1, 3])
   })
 })
 
