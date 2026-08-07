@@ -121,7 +121,13 @@ archers, **un** classement de quatre cents, où l'archer du matin était rangé 
 qu'il n'a jamais croisé. Elle en produit désormais **quatre de cent**. Et la distinction se voit à
 l'écran : ce qui se **prévoit** (la suite des phases) se compose **une seule fois** pour le tournoi,
 ce qui se **tire** se pilote **créneau par créneau** — le matin peut être en duels pendant que
-l'après-midi qualifie, ce qui était impossible avant.
+l'après-midi qualifie, ce qui était impossible avant. La relecture de cette correction en a trouvé
+**trois autres du même tonneau**, corrigées dans la foulée : le jour J, les quatre écrans qui
+répondent à « où est-ce que je tire ensuite ? » envoyaient les archers de l'après-midi vers le
+tableau du **matin** ; le suivi du déroulé se dessinait **en double** et dimensionnait ses tableaux
+sur la somme des inscrits ; et le contrôle d'effectif laissait démarrer un tournoi de deux créneaux
+à 40 et 8 inscrits, pour échouer en salle l'après-midi. Il porte désormais sur le créneau **le moins
+garni**, et le refus le **nomme**.
 
 ---
 
