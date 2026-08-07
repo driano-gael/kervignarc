@@ -52,6 +52,7 @@ from infrastructure.db.models import (
     ForfaitORM,
     GabaritSalleORM,
     InscriptionORM,
+    PhaseORM,
     RemboursementORM,
     ScoreORM,
     SerieORM,
@@ -64,6 +65,27 @@ from infrastructure.db.repositories._mapping import _vers_barrage
 # direct et acyclique — `exploitation` n'importe aucun autre thème.
 from infrastructure.db.repositories.exploitation import AuditRepositorySQL
 from infrastructure.erreurs import InfrastructureError
+
+
+def _purger_descendance_du_depart(session: Session, depart_id: DepartId) -> None:
+    """Supprime ce qui pend au créneau **avant** lui — cascade applicative maîtrisée (DETTE-001).
+
+    ⚠️ **Élargi par E01US025** (ADR-0075) : le départ est devenu la portée **sportive**, donc
+    `phase.depart_id` et `barrage.depart_id` sont des FK **sans `ON DELETE`** qui n'existaient pas
+    avant. Sans cette purge, supprimer un créneau d'un tournoi configuré partait en `IntegrityError`
+    → 500, à la place des refus typés que le service arbitre (`DepartAvecInscriptions`,
+    `DepartEnCoursNonConfirme`, `DernierDepartNonSupprimable`). Défaut relevé en revue.
+
+    L'ordre suit les dépendances : `barrage_tir` → `barrage` → `phase` → `inscription`. Ce qui pend
+    à la **phase** (plan de duels, duels, forfaits) porte `ON DELETE CASCADE` et part avec elle ;
+    `placement` porte la même cascade depuis le départ. On ne supprime donc à la main que ce que le
+    schéma ne sait pas emporter.
+    """
+    barrages = select(BarrageORM.id).where(BarrageORM.depart_id == depart_id)
+    session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id.in_(barrages)))
+    session.execute(delete(BarrageORM).where(BarrageORM.depart_id == depart_id))
+    session.execute(delete(PhaseORM).where(PhaseORM.depart_id == depart_id))
+    session.execute(delete(InscriptionORM).where(InscriptionORM.depart_id == depart_id))
 
 
 def _vers_tournoi(ligne: TournoiORM) -> Tournoi:
@@ -706,7 +728,7 @@ class DepartRepositorySQL:
                 ligne = session.get(DepartORM, depart_id)
                 if ligne is None:
                     raise InfrastructureError("Départ à supprimer introuvable en base.")
-                session.execute(delete(InscriptionORM).where(InscriptionORM.depart_id == depart_id))
+                _purger_descendance_du_depart(session, depart_id)
                 session.delete(ligne)
                 session.commit()
         except SQLAlchemyError as exc:
@@ -735,7 +757,7 @@ class DepartRepositorySQL:
                     raise InfrastructureError("Départ à supprimer introuvable en base.")
                 for remboursement in remboursements:
                     session.add(_remboursement_orm(remboursement))
-                session.execute(delete(InscriptionORM).where(InscriptionORM.depart_id == depart_id))
+                _purger_descendance_du_depart(session, depart_id)
                 session.delete(ligne)
                 session.commit()
         except SQLAlchemyError as exc:

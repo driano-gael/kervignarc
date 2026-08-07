@@ -1001,13 +1001,23 @@ class PhaseRepositorySQL:
                     statut=phase.statut.value,
                 )
                 session.add(ligne)
-                session.commit()
+                # ⚠️ **`flush` et non `commit` avant le contrôle** (revue E01US025, axe B). Committer
+                # d'abord laissait la ligne orpheline **en base** quand l'exception partait :
+                # invisible à toute lecture (l'assemblage l'écarte), mais occupant le couple
+                # `(depart_id, ordre)` de `uq_phase_depart_ordre` — si bien que le jour où le
+                # déroulé
+                # gagnait ce rang, l'instanciation légitime butait sur l'unicité, sans recours par
+                # l'écran. Le `flush` donne l'identifiant sans rien acter ; sortir du `with` sans
+                # commit annule tout. L'adapter en mémoire fait déjà ce choix (il retire l'entrée
+                # avant de lever) : les deux ne doivent pas diverger.
+                session.flush()
                 assemblees = self._assembler(session, [ligne])
                 if not assemblees:
                     raise InfrastructureError(
                         "Phase créée sans étape de déroulé de même rang : le tournoi de ce créneau "
                         "n'a pas ce rang à son déroulé."
                     )
+                session.commit()
                 return assemblees[0]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de persistance de la phase.") from exc

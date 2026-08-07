@@ -43,7 +43,9 @@ from tests.conftest import (
     FauxCategorieRepository,
     FauxClubRepository,
     FauxDepartRepository,
+    FauxDerouleRepository,
     FauxInscriptionRepository,
+    FauxPhaseRepository,
     HorlogeFigee,
 )
 from tests.test_service_archers import (
@@ -115,7 +117,16 @@ def _atteler() -> Attelage:
     )
     service_categories = ServiceCategories(tournoi_repo, categorie_repo, blason_repo)
     service_departs = ServiceDeparts(
-        depart_repo, tournoi_repo, inscription_repo, _AvancementInerte(), archer_repo, _horloge()
+        depart_repo,
+        tournoi_repo,
+        inscription_repo,
+        _AvancementInerte(),
+        archer_repo,
+        _horloge(),
+        # Le jeu d'essai crée ses créneaux **avant** toute composition : le déroulé est vide, donc
+        # rien à instancier. Les ports sont câblés pour respecter le contrat, pas pour agir ici.
+        FauxDerouleRepository(),
+        FauxPhaseRepository(depart_repo),
     )
     service_archers = ServiceArchers(
         tournoi_repo,

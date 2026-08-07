@@ -990,6 +990,10 @@ def create_app(
         app.state.service_completude,
         archer_repository,
         HorlogeSysteme(),
+        # Un créneau ouvert après la composition **rejoue le déroulé** du tournoi (ADR-0076) :
+        # sans ces deux ports, il naissait sans aucune phase, donc impilotable.
+        deroule_repository,
+        phase_repository,
     )
 
     # Jeu d'essai — générateur d'inscrits + scénarios rejouables (E15US001) : outil admin de démo/QA

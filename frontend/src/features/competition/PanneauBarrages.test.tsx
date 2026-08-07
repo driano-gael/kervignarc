@@ -74,7 +74,9 @@ const LIGNES: LigneClassement[] = [
 function barrage(surcharge: Partial<Barrage> = {}): Barrage {
   return {
     id: 1,
-    tournoi_id: 1,
+    // Le barrage pend au **créneau** depuis ADR-0075 ; distinct du tournoi pour que le décor ne
+    // puisse pas être vert par coïncidence d'identifiants (DETTE-044).
+    depart_id: 7,
     portee: 'qualification',
     rang_dispute: 2,
     reference: null,
@@ -97,7 +99,7 @@ function barrage(surcharge: Partial<Barrage> = {}): Barrage {
 
 function afficher(barrages: Barrage[], egalites: { rang: number; archer_ids: number[] }[] = []) {
   barragesRendus = barrages
-  return render(<PanneauBarrages tournoiId={1} egalites={egalites} lignes={LIGNES} />)
+  return render(<PanneauBarrages tournoiId={1} departId={7} egalites={egalites} lignes={LIGNES} />)
 }
 
 describe('PanneauBarrages', () => {

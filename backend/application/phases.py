@@ -273,8 +273,15 @@ class ServicePhases:
                     self._phases.supprimer(phase.id)
         assert cible.id is not None, "Une étape consultée est persistée."
         self._deroules.supprimer(cible.id)
-        self._deroules.reordonner(recompactees)
+        # ⚠️ **Réaligner AVANT de recompacter, jamais après** (revue E01US025, axe C2).
+        # `_realigner_avancements` relit les phases par `par_depart`, qui **assemble** — et
+        # l'assemblage **écarte silencieusement** toute phase dont le rang n'a plus d'étape.
+        # Recompacter d'abord rendait donc la dernière phase de chaque créneau invisible à la
+        # relecture : elle n'était jamais réalignée, restait en base à son ancien rang, et l'ajout
+        # d'étape suivant heurtait `uq_phase_depart_ordre` — écran d'atelier en 500, définitivement.
+        # Ici les rangs des phases correspondent encore tous à une étape : elles se relisent toutes.
         self._realigner_avancements(tournoi_id, ancien_vers_nouveau)
+        self._deroules.reordonner(recompactees)
 
     def _creneaux(self, tournoi_id: TournoiId) -> list[int]:
         """Les identifiants des créneaux du tournoi — là où les avancements se déclinent."""

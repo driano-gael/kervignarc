@@ -32,8 +32,10 @@ from domain.depart import Depart, DepartId
 from domain.ports import (
     ArcherRepository,
     DepartRepository,
+    DerouleRepository,
     Horloge,
     InscriptionRepository,
+    PhaseRepository,
     TournoiRepository,
 )
 from domain.remboursement import MotifRemboursement, Remboursement
@@ -69,6 +71,8 @@ class ServiceDeparts:
         lecteur_avancement: LecteurAvancementDepart,
         archer_repository: ArcherRepository,
         horloge: Horloge,
+        deroule_repository: DerouleRepository,
+        phase_repository: PhaseRepository,
     ) -> None:
         self._departs = depart_repository
         self._tournois = tournoi_repository
@@ -76,6 +80,14 @@ class ServiceDeparts:
         self._avancement = lecteur_avancement
         self._archers = archer_repository
         self._horloge = horloge
+        # ⚠️ **Un créneau neuf doit rejouer le déroulé déjà composé** (ADR-0076, relevé en revue).
+        # L'ADR n'énonçait la synchronisation que dans un sens — « ajouter une étape crée son
+        # instance dans chaque créneau » — et le sens inverse manquait : un départ ouvert après
+        # coup n'avait **aucune** phase, donc rien à piloter et pas de qualification d'où tirer un
+        # barème. Le seul remède aurait été de réappliquer le format, ce qui détruit les phases
+        # déjà engagées des autres créneaux.
+        self._deroules = deroule_repository
+        self._phases = phase_repository
 
     def creer(
         self,
@@ -99,7 +111,14 @@ class ServiceDeparts:
         existants = self._departs.par_tournoi(tournoi_id)
         numero = existants[-1].numero + 1 if existants else 1
         depart = Depart.creer(tournoi_id, numero, tarif_centimes, horaire, quota)
-        return self._departs.ajouter(depart)
+        pose = self._departs.ajouter(depart)
+        assert pose.id is not None, "Un départ persisté porte toujours son identifiant."
+        # Le créneau rejoue le déroulé **déjà** défini pour ce tournoi : une instance par étape, au
+        # statut « à venir ». Sur un tournoi non encore composé, la boucle est vide — et les étapes
+        # ajoutées ensuite s'instancieront dans ce créneau comme dans les autres.
+        for etape in self._deroules.par_tournoi(tournoi_id):
+            self._phases.ajouter(etape.instancier(pose.id))
+        return pose
 
     def lister(self, tournoi_id: TournoiId) -> list[Depart]:
         """Renvoie les départs d'un tournoi, triés par numéro (liste éventuellement vide).

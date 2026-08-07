@@ -189,9 +189,15 @@ class ServiceBarrage:
         ecartes = (
             self._verdicts_ecartes(depart_id) if portee is PorteeBarrage.QUALIFICATION else set()
         )
+        # ⚠️ **`par_depart` et non `par_tournoi`** (revue E01US025, axe A). Ce bloc était le seul du
+        # service resté à la portée tournoi : deux créneaux ayant chacun une égalité au même
+        # **rang**
+        # se voyaient comme « le même endroit », et le second se faisait refuser son barrage en
+        # `BarragePerime` — avec un message (« le classement a bougé ») désignant une cause qui
+        # n'existait pas. Une place se dispute dans le classement d'**un** départ (ADR-0075).
         meme_endroit = [
             barrage
-            for barrage in self._barrages.par_tournoi(tournoi_id)
+            for barrage in self._barrages.par_depart(depart_id)
             if barrage.portee is portee
             and barrage.rang_dispute == rang
             and barrage.phase_id == phase_id

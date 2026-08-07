@@ -125,7 +125,10 @@ export type PorteeBarrage = 'qualification' | 'poule' | 'big_shoot_off'
 
 export interface Barrage {
   id: number
-  tournoi_id: number
+  // ⚠️ **Le barrage pend au créneau, plus au tournoi** (E01US025, ADR-0075) : une place se dispute
+  // dans le classement d'un départ. Le champ s'appelait `tournoi_id` et lisait déjà un identifiant
+  // de départ — la confusion que `DETTE-044` décrit, invisible au typage des deux côtés.
+  depart_id: number
   portee: PorteeBarrage
   rang_dispute: number | null
   // Numéro de poule ou de manche. Le **seul** champ qui distingue deux barrages de même portée :
@@ -154,6 +157,12 @@ export function getBarrages(tournoiId: number): Promise<Barrage[]> {
 // (seul `rang` est requis, et seule une égalité signalée est annonçable) ; en **poule** et en **Big
 // Shoot Off** ils sont **désignés**, faute de classement calculé où les lire (DETTE-028).
 export interface AnnonceBarrage {
+  /** Le créneau où se tire ce barrage — **obligatoire** (ADR-0075).
+   *
+   * Deux créneaux ont des classements distincts, donc « le rang 3 » ne désigne rien sans lui. Le
+   * serveur le refuse en 422 s'il manque : c'est ce qui rendait l'annonce inopérante tant que ce
+   * champ n'existait pas côté client. */
+  depart_id: number
   rang?: number | null
   portee?: PorteeBarrage
   archer_ids?: number[]

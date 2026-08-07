@@ -80,9 +80,10 @@ export function VueClassement({
       {/* Barrages : surface d'**organisation**, donc admin seulement — le public voit le
           classement, pas les places encore à trancher. Le panneau se replie de lui-même quand il
           n'y a ni égalité signalée ni barrage en cours (aucun seuil réglé = rien à afficher). */}
-      {admin && classement.data && (
+      {admin && classement.data && departId !== null && (
         <PanneauBarrages
           tournoiId={tournoiId}
+          departId={departId}
           egalites={classement.data.egalites_a_departager}
           lignes={classement.data.lignes}
         />
@@ -114,8 +115,12 @@ export function VueClassement({
       {/* Departage manuel (poule, Big Shoot Off) : replie, hors de la carte d'alerte. Ces formats
           n'ont aucun classement calcule qui pourrait signaler leurs ex aequo, donc c'est
           l'organisateur qui designe les tireurs — il lui faut un point d'entree permanent. */}
-      {admin && classement.data && (
-        <DepartageManuel tournoiId={tournoiId} lignes={classement.data.lignes} />
+      {admin && classement.data && departId !== null && (
+        <DepartageManuel
+          tournoiId={tournoiId}
+          departId={departId}
+          lignes={classement.data.lignes}
+        />
       )}
     </>
   )

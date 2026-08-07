@@ -42,10 +42,13 @@ const LIBELLE_PORTEE: Record<PorteeBarrage, string> = {
 
 export function PanneauBarrages({
   tournoiId,
+  departId,
   egalites,
   lignes,
 }: {
   tournoiId: number
+  /** Le créneau dont on affiche le classement : un barrage s'y rattache (ADR-0075). */
+  departId: number
   egalites: EgaliteADepartager[]
   /** Le classement affiché — sert à **nommer** les archers d'un barrage.
    *
@@ -91,6 +94,7 @@ export function PanneauBarrages({
             <EgaliteALancer
               key={egalite.rang}
               tournoiId={tournoiId}
+              departId={departId}
               egalite={egalite}
               nomDe={nomDe}
               dejaOuvert={tous.some(
@@ -122,11 +126,14 @@ export function PanneauBarrages({
 /** Une égalité signalée par le format, avec le bouton qui l'ouvre. */
 function EgaliteALancer({
   tournoiId,
+  departId,
   egalite,
   nomDe,
   dejaOuvert,
 }: {
   tournoiId: number
+  /** Le créneau où se dispute cette place (ADR-0075) : le serveur l'exige à l'annonce. */
+  departId: number
   egalite: EgaliteADepartager
   nomDe: (archerId: number) => string
   dejaOuvert: boolean
@@ -140,7 +147,7 @@ function EgaliteALancer({
       {!dejaOuvert && (
         <button
           type="button"
-          onClick={() => annoncer.mutate({ rang: egalite.rang })}
+          onClick={() => annoncer.mutate({ depart_id: departId, rang: egalite.rang })}
           disabled={annoncer.isPending}
         >
           Faire tirer
@@ -410,9 +417,12 @@ function SaisieGroupe({
  */
 export function DepartageManuel({
   tournoiId,
+  departId,
   lignes,
 }: {
   tournoiId: number
+  /** Le créneau dont on affiche le classement : un barrage s'y rattache (ADR-0075). */
+  departId: number
   lignes: LigneClassement[]
 }) {
   const [portee, setPortee] = useState<'poule' | 'big_shoot_off'>('poule')
@@ -438,6 +448,7 @@ export function DepartageManuel({
   const soumettre = () =>
     annoncer.mutate(
       {
+        depart_id: departId,
         portee,
         archer_ids: choisis,
         reference: reference.trim() === '' ? null : reference.trim(),
