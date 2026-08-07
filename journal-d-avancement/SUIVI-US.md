@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 07/08/2026, 21 h 29** · **104 US livrées** · dernière : `E16US003`
+**Dernière mise à jour : 08/08/2026, 00 h 44** · **105 US livrées** · dernière : `E16US004`
 *(**la complétude sportive ne parle plus d'argent** — refus A14 levé. Les deux questions ouvertes
 de la story ont été reposées et **confirment le CA** : le refus portait sur le mélange **à l'écran**,
 pas sur le découpage du domaine, et « Terminer » ne regarde bien que le sportif. Front seul : le
@@ -69,14 +69,14 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > reste est spécifié dans [`stories/E16`](../stories/E16-retours-maquettes.md), dix US.
 >
 > **Prendre d'abord les quatre écrans refusés (🔴)** — ce sont les seuls retours qui disent « l'écran
-> ne répond pas au besoin » :
+> ne répond pas au besoin ». **Trois sur quatre sont levés** (A10, A14, P03) ; reste A07 :
 >
 > | Ordre | US | Ce qu'elle lève |
 > |---|---|---|
 > | ~~1~~ ✅ | ~~`E16US001`~~ | **Livrée le 05/08/2026** — **plan de salle** (A10). Le refus ne tenait qu'à un mot : arbitrage rendu (« pas de tir » = groupement de cibles, « **couloir de tir** » = place d'un archer, « poste » = tablette), appliqué partout où l'utilisateur lit, et l'écran **montre** désormais, cible par cible, les couloirs occupables (le maillon *blasons* reste expliqué en toutes lettres : le gabarit ne les connaît pas). Renommage `position` → `couloir` dans le code/l'API/la base **différé** ([DETTE-042](../docs/dette.md)). |
 > | ~~2~~ ✅ | ~~`E16US003`~~ | **Livrée le 07/08/2026** — **complétude** (A14). Les deux questions ouvertes ont été reposées et **confirment le CA** : le refus visait le mélange **à l'écran**, pas le découpage du domaine ; « Terminer » ne regarde que le sportif. Front seul, aucun changement de domaine ni d'API. Le sportif reste au pilotage sur un écran renommé « **Prêt à terminer ?** » (« Complétude du déroulé » a été écarté en revue : la sidebar porte déjà « Suivi du déroulé », et ADR-0076 réserve « déroulé » au plan composé une fois), l'administratif part **en tête de l'écran Paiements** — pas sur une destination neuve : `hors_sportif` ne porte qu'une ligne et `paiements` est déjà une destination de l'axe gestion. Le **tableau de bord d'accueil** est filtré lui aussi. La planche A14 redessinée du 05/08 est **écartée** (réserve 2 d'ADR-0074). ⚠️ Cadrage à reprendre : le commanditaire vise une **famille « prêt à… »** (démarrer / terminer / archiver / exporter) — refonte de navigation, US dédiée à instruire, cf. `stories/E16`. |
-> | 3 | `E16US004` | **Public multi-archers** (P03 🔴 + P01/P02/P05) — le socle de suivi existe depuis E07US006, la lecture n'en tire pas parti. |
-> | 4 | `E16US002` | **Phases** (A07) — le plus lourd : touche le domaine et l'API, probablement un ADR. À cadrer contre ADR-0060 et ADR-0062. |
+> | ~~3~~ ✅ | ~~`E16US004`~~ | **Livrée le 08/08/2026** — **public multi-archers** (P03). **Front seul, vérification faite** : `…/archers/{id}/deroule` est déjà public et anonyme pour n'importe quel archer (ADR-0039) et `…/tableaux` rend toutes les phases — aucune ligne de backend. Cadrage : **un seul interrupteur « mes archers / tout » en tête de l'écran public**, gouvernant les six onglets, et non un par vue. Conséquences : `VueTableaux` **perd** son sélecteur local « Mon chemin / Tableau complet » (E07US005), qui disait la même chose ; le palmarès ne centre que le classement final, **jamais les podiums** ; chaque vue nomme « aucun de vos archers ici » distinctement de son propre vide ; l'interrupteur disparaît sur un tournoi sans suivi. Recherche par club (un club seul suffit), suivi actionnable dans les deux sens, récapitulatif de journée en `<details>` **ouvert par défaut** (P02 dit « repliable », pas « replié »), détail des flèches dépliable depuis le classement. ⚠️ Reliquat « position » : la liste de maquettes de `stories/E16` était **fausse** (déjà corrigées par E16US001) — le vrai reliquat était dans `docs/fonctionnel/`, balayé ici. |
+> | 4 🎯 | `E16US002` | **Phases** (A07) — **le dernier écran refusé**, et le plus lourd : touche le domaine et l'API, probablement un ADR. À cadrer contre ADR-0060 et ADR-0062, et **à recadrer** contre ADR-0076 (voir plus bas : une partie du refus porte sur un écran qui n'existe plus sous cette forme). |
 > | — | `E16US012` | **Famille « prêt à… »** — *née d'E16US003, hors file des 🔴*. Le commanditaire vise quatre écrans « puis-je passer à l'étape suivante, et sinon que manque-t-il ? » : **prêt à démarrer / terminer / archiver / exporter**. E16US003 n'en a livré qu'un (l'écran de complétude sportive, renommé). C'est une **refonte de navigation** qui recoupe la frise du cycle de vie (E14US001, ADR-0026), le feu vert (`E16US008`) et les exports (`E16US007`) : à instruire d'un bloc, ADR probable, **avant** que ces deux US ne figent chacune leur variante dans leur coin. |
 >
 > **⚡ Passé devant les 05 et 06/08/2026 — `E17US001` → `E17US004`** *(hors séquence E16)* : le commanditaire a comparé
@@ -97,18 +97,17 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > déroulé ». Une partie du refus A07 (« 1/8 et 1/4 présentés comme des phases ») porte sur un écran
 > qui n'existe plus sous cette forme.
 
-> **🎯 Prochaine : `E16US004`** — le public suit **plusieurs** archers de bout en bout (P03 🔴, plus
-> P01 / P02 / P05). Le socle existe depuis E07US006 (`sessionSuivisStore`) : c'est la **lecture** qui
-> n'en tire pas parti. ⚠️ Trois points à ne pas manquer au cadrage : (a) elle est **redécoupable par
-> écran** — classement, tableaux, récapitulatif de journée, recherche — et probablement trop large
-> pour une seule branche ; (b) elle rouvre des écrans dont la maquette dit encore « position » →
-> **corriger en « couloir de tir » dans le même diff** ([ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md)),
-> sans quoi on rejoue le refus d'A10 ailleurs ; (c) vérifier si l'API rend **le détail des flèches
-> d'un tiers** en lecture publique (P03 : *« oui »*) — si non, l'US n'est pas front seul.
+> **🎯 Prochaine : `E16US002`** — l'écran **« Phases »** (A07), **dernier des quatre écrans refusés**.
+> ⚠️ **À recadrer avant d'être prise**, pour la raison notée juste au-dessus : depuis
+> [ADR-0076](../docs/adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md), cet écran
+> compose un déroulé **sans statut**, le pilotage ayant migré vers « Suivi du déroulé » — une partie
+> du refus (« 1/8 et 1/4 présentés comme des phases ») porte donc sur un écran qui n'existe plus sous
+> cette forme. C'est la plus lourde du lot : elle touche le **domaine et l'API**, probablement un ADR,
+> et se cadre contre ADR-0060 et ADR-0062.
 >
-> ⚠️ La planche **P03 a été redessinée le 05/08** et **n'a pas été validée** (le tour 2 n'a pas eu
-> lieu) — même piège que sur A14, où elle a été écartée après vérification. La lire, mais faire foi
-> sur le **questionnaire du tour 1**.
+> ⚠️ La planche **A07 a été redessinée le 05/08** et **n'a pas été validée** (pas de tour 2). Le
+> précédent est posé deux fois désormais (A14 en E16US003, P03 en E16US004) : la lire, mais faire foi
+> sur le **questionnaire du tour 1**, au titre de la **réserve 2 d'ADR-0074**.
 >
 > Puis, sans ordre imposé : `E16US005` (placement), `E16US006` (origine FFTA + logo club),
 > `E16US008` (feu vert), `E16US009` (écran de salle), `E16US010` (recherche & alertes),
