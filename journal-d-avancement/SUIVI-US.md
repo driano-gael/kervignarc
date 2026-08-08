@@ -12,7 +12,26 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 08/08/2026, 00 h 44** · **105 US livrées** · dernière : `E16US004`
+**Dernière mise à jour : 08/08/2026, 12 h 37** · **106 US livrées** · dernière : `E05US024`
+*(**le club est libre de son format** : un prélèvement est lu dans le classement de **sa** phase
+source, plus seulement dans la qualification — poules→tableau, tableau→consolante, sur autant de
+crans que le format en compte. Le plancher d'inscrits remonte la même chaîne. Née d'un arbitrage du
+commanditaire au cadrage d'`E16US002` — « la création du déroulé doit permettre de composer les
+phases comme on en a envie ». [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md) ;
+reste de `DETTE-028` sur les rangs **résorbé**. ⚠️ **Plusieurs qualifications reste interdit** —
+c'est `E05US025`, qui ne pouvait pas passer devant : sans cette lecture, une 2ᵉ qualification aurait
+reçu *tous* les inscrits.)*
+
+Avant elle : `E16US004`
+*(**le public suit plusieurs archers de bout en bout** — refus P03 levé. **Un seul interrupteur
+« mes archers / tout »** en tête de l'onglet public, armé par défaut, qui gouverne les cinq vues
+(classement, tableaux, affectations, palmarès, plan de cibles) au lieu d'un réglage par écran ;
+recherche par club, récapitulatif repliable de la journée, détail des flèches d'un tiers. Front seul.
+[ADR-0079](../docs/adr/0079-un-seul-interrupteur-mes-archers-pour-tout-l-onglet-public.md))*.
+Avant elle : `E16US003`
+*(⚠️ **corrigé le 08/08/2026** : ce paragraphe décrivait `E16US003` sous l'étiquette `E16US004` — la
+ligne d'en-tête avait été mise à jour sans son texte, et « précédente » sautait donc une US. Défaut
+de tracker, pas de code ; relevé en tenant ce fichier pour `E05US024`.)*
 *(**la complétude sportive ne parle plus d'argent** — refus A14 levé. Les deux questions ouvertes
 de la story ont été reposées et **confirment le CA** : le refus portait sur le mélange **à l'écran**,
 pas sur le découpage du domaine, et « Terminer » ne regarde bien que le sportif. Front seul : le
@@ -24,7 +43,7 @@ au pilotage sur un écran renommé « **Prêt à terminer ?** », l'administrati
 fermer). La planche A14 redessinée du 05/08 est **écartée** au titre de la réserve 2 d'ADR-0074 (un
 arbitrage du commanditaire prime la planche) — elle mélange encore. La confirmation de « Terminer »
 **continue** de chiffrer les impayés : c'est le seul point de croisement légitime, et le bouton
-n'est **jamais bloqué** par un manque, `D-15`)*. Précédente : `E01US025`
+n'est **jamais bloqué** par un manque, `D-15`)*. Avant elle : `E01US025`
 *(**le départ est la portée sportive** — une décision de juillet 2025 que seule la logistique avait
 portée : le moteur classait les 4 créneaux ensemble, soit un classement de 400 au lieu de quatre de
 100. Corrigé, et la correction a révélé un second défaut — le déroulé **recopié** par créneau, libre
@@ -76,7 +95,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~1~~ ✅ | ~~`E16US001`~~ | **Livrée le 05/08/2026** — **plan de salle** (A10). Le refus ne tenait qu'à un mot : arbitrage rendu (« pas de tir » = groupement de cibles, « **couloir de tir** » = place d'un archer, « poste » = tablette), appliqué partout où l'utilisateur lit, et l'écran **montre** désormais, cible par cible, les couloirs occupables (le maillon *blasons* reste expliqué en toutes lettres : le gabarit ne les connaît pas). Renommage `position` → `couloir` dans le code/l'API/la base **différé** ([DETTE-042](../docs/dette.md)). |
 > | ~~2~~ ✅ | ~~`E16US003`~~ | **Livrée le 07/08/2026** — **complétude** (A14). Les deux questions ouvertes ont été reposées et **confirment le CA** : le refus visait le mélange **à l'écran**, pas le découpage du domaine ; « Terminer » ne regarde que le sportif. Front seul, aucun changement de domaine ni d'API. Le sportif reste au pilotage sur un écran renommé « **Prêt à terminer ?** » (« Complétude du déroulé » a été écarté en revue : la sidebar porte déjà « Suivi du déroulé », et ADR-0076 réserve « déroulé » au plan composé une fois), l'administratif part **en tête de l'écran Paiements** — pas sur une destination neuve : `hors_sportif` ne porte qu'une ligne et `paiements` est déjà une destination de l'axe gestion. Le **tableau de bord d'accueil** est filtré lui aussi. La planche A14 redessinée du 05/08 est **écartée** (réserve 2 d'ADR-0074). ⚠️ Cadrage à reprendre : le commanditaire vise une **famille « prêt à… »** (démarrer / terminer / archiver / exporter) — refonte de navigation, US dédiée à instruire, cf. `stories/E16`. |
 > | ~~3~~ ✅ | ~~`E16US004`~~ | **Livrée le 08/08/2026** — **public multi-archers** (P03). **Front seul, vérification faite** : `…/archers/{id}/deroule` est déjà public et anonyme pour n'importe quel archer (ADR-0039) et `…/tableaux` rend toutes les phases — aucune ligne de backend. Cadrage : **un seul interrupteur « mes archers / tout » en tête de l'écran public**, gouvernant les six onglets, et non un par vue. Conséquences : `VueTableaux` **perd** son sélecteur local « Mon chemin / Tableau complet » (E07US005), qui disait la même chose ; le palmarès ne centre que le classement final, **jamais les podiums** ; chaque vue nomme « aucun de vos archers ici » distinctement de son propre vide ; l'interrupteur disparaît sur un tournoi sans suivi. Recherche par club (un club seul suffit), suivi actionnable dans les deux sens, récapitulatif de journée en `<details>` **ouvert par défaut** (P02 dit « repliable », pas « replié »), détail des flèches dépliable depuis le classement. **Arbitrage du commanditaire, rendu en revue** : l'appli publique **s'ouvre centrée** sur les archers suivis — le CA d'E07US005 le promettait (« *Mon chemin* par défaut dès qu'on suit quelqu'un ») et l'interrupteur unique l'aurait révoqué en silence ; porté par [ADR-0079](../docs/adr/0079-un-seul-interrupteur-mes-archers-pour-tout-l-onglet-public.md). **Trois passes de revue** (1 bloquant + 14 majeurs à la 1ʳᵉ, 3 majeurs à la 2ᵉ dont un défaut *introduit* par le correctif précédent, 0 majeur à la 3ᵉ) ; DETTE-031 élargie. ⚠️ Reliquat « position » : la liste de maquettes de `stories/E16` était **fausse** (déjà corrigées par E16US001) — le vrai reliquat était dans `docs/fonctionnel/`, balayé ici. |
-> | 4 🎯 | `E16US002` | **Phases** (A07) — **le dernier écran refusé**, et le plus lourd : touche le domaine et l'API, probablement un ADR. À cadrer contre ADR-0060 et ADR-0062, et **à recadrer** contre ADR-0076 (voir plus bas : une partie du refus porte sur un écran qui n'existe plus sous cette forme). |
+> | 4 | `E16US002` | **Phases** (A07) — **le dernier écran refusé**. ⚠️ **Périmètre rétréci au cadrage du 08/08/2026, et deux US en sont sorties.** Le CA « plusieurs phases de même type » n'était pas un problème d'écran : le moteur ne lisait qu'un classement, celui de la qualification, et l'unicité de la qualification n'était que le pansement de ce raccourci → `E05US024` (livrée) + `E05US025` (🎯, hors file E16). Le CA « gabarit de phase » est **tranché** : un seul niveau, ADR-0060 §5 confirmé — la brique réutilisable reste le **format**. Il reste donc la **liste**, le **titre de phase** (champ neuf → migration) et la **fiche de réglages** par type. Toujours à recadrer contre ADR-0076 (une partie du refus porte sur un écran qui n'existe plus sous cette forme). |
 > | — | `E16US012` | **Famille « prêt à… »** — *née d'E16US003, hors file des 🔴*. Le commanditaire vise quatre écrans « puis-je passer à l'étape suivante, et sinon que manque-t-il ? » : **prêt à démarrer / terminer / archiver / exporter**. E16US003 n'en a livré qu'un (l'écran de complétude sportive, renommé). C'est une **refonte de navigation** qui recoupe la frise du cycle de vie (E14US001, ADR-0026), le feu vert (`E16US008`) et les exports (`E16US007`) : à instruire d'un bloc, ADR probable, **avant** que ces deux US ne figent chacune leur variante dans leur coin. |
 >
 > **⚡ Passé devant les 05 et 06/08/2026 — `E17US001` → `E17US004`** *(hors séquence E16)* : le commanditaire a comparé
@@ -97,7 +116,23 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > déroulé ». Une partie du refus A07 (« 1/8 et 1/4 présentés comme des phases ») porte sur un écran
 > qui n'existe plus sous cette forme.
 
-> **🎯 Prochaine : `E16US002`** — l'écran **« Phases »** (A07), **dernier des quatre écrans refusés**.
+> **🎯 Prochaine : `E05US025`** — **plusieurs qualifications dans un même déroulé**, la seconde
+> moitié du chantier ouvert le 08/08/2026 par `E05US024`. **Hors file E16**, et assumé : le cadrage
+> d'`E16US002` a montré que le refus A07 n'était pas d'abord un problème d'écran (voir ci-dessous).
+> Elle **dépend d'E05US024** par nécessité, pas par confort — sans le peuplement générique livré
+> hier, une 2ᵉ qualification recevrait *tous* les inscrits. Ce qui reste à faire n'est plus le
+> peuplement mais les **lecteurs** : `ServiceBaremeQualification` est bâti de bout en bout sur
+> « **le** barème du tournoi », et les 12 appels de `portee.qualification_du_tournoi` sont à trier un
+> par un — terrain `DETTE-048`, « le seul module à n'être ni testé ni surveillé ». **ADR attendu**,
+> et **trois points à trancher au cadrage**, listés dans la story (classement publié quand il y a
+> deux qualifications ; ce que voit un archer engagé dans les deux ; ce qu'exige la complétude).
+>
+> **Ensuite : `E16US002`** — l'écran **« Phases »** (A07), **dernier des quatre écrans refusés**.
+> Son périmètre a **rétréci** au cadrage du 08/08/2026 : le CA « plusieurs phases de même type » en a
+> été **sorti** (devenu `E05US024` + `E05US025`), et le CA « gabarit de phase » est **tranché** — un
+> seul niveau, [ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5
+> confirmé, la brique réutilisable reste le **format**. Restent la **liste**, le **titre de phase**
+> (champ neuf sur `EtapeDeroule` → migration) et la **fiche de réglages** par type.
 > ⚠️ **À recadrer avant d'être prise**, pour la raison notée juste au-dessus : depuis
 > [ADR-0076](../docs/adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md), cet écran
 > compose un déroulé **sans statut**, le pilotage ayant migré vers « Suivi du déroulé » — une partie
@@ -752,6 +787,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 76 | E06US006 | **Classement intégral 1→N & profondeur configurable** | ✅ *(la profondeur se règle **par phase** et non plus au câblage ; absence = preset du type, podium pour une élimination directe et intégral pour un placement — ADR-0070, DETTE-035 ouverte)* |
 | 76bis | E05US020 | **Le moteur consomme les prélèvements déclarés** | ✅ *(cœur de DETTE-028 : prélèvement par rangs honoré, plage relative résolue, tranche de rangs au palmarès — DETTE-034 soldée, ADR-0068)* |
 | 76ter | E05US021 | **Un format connaît son effectif minimum** (avertir avant de lancer) | ✅ *(minimum **déduit** des prélèvements, exigence de club au-dessus, refus au démarrage + annonce avant le clic — ADR-0069)* |
+| 76quater | E05US024 | **Un prélèvement lit le classement de sa phase source** | ✅ *(reste de `DETTE-028` sur les rangs **résorbé** : poules→tableau, tableau→consolante, cascade récursive sur un graphe acyclique ; un tableau se lit comme un classement, fourchettes *ex æquo* fermées par la politique `aggregation` (ADR-0067) et non par un départage local qui aurait contredit le palmarès ; le plancher d'inscrits remonte la chaîne et refuse de chiffrer une fenêtre amont plafonnée. Le « cycle » invoqué par E05US020 pour reporter ce cas **n'existait pas** — récursion, pas cycle de modules : une justification de report se re-vérifie à la reprise. [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md))* |
+| 76quinquies | E05US025 | **Plusieurs qualifications dans un même déroulé** | ⬜ 🎯 *(**dépend d'E05US024**, nécessairement : sans peuplement générique, une 2ᵉ qualification recevrait *tous* les inscrits. L'unicité (`_anomalies_unicite_qualification`, E05US021) n'est **pas une règle métier** — sa docstring la dit « supposée partout et vérifiée nulle part », posée pour fermer un bug plutôt que pour exprimer une règle du tir à l'arc. Reste à faire : les **lecteurs**, pas le peuplement — `ServiceBaremeQualification` est bâti sur « **le** barème du tournoi », et les 12 appels de `portee.qualification_du_tournoi` (terrain `DETTE-048`) sont à trier un par un. **ADR attendu** ; 3 points à trancher au cadrage, listés dans la story)* |
 | 77 | E03US007 | **Contrainte séparation catégorie/blason** | ✅ *(réglage de tournoi à 4 positions, contrainte **dure** au placement auto **et** au glisser-déposer, **sur les deux plans** (cibles et duels), raison de réserve propre `cloisonnement`, cibles non conformes signalées — ADR-0071, DETTE-036/037 ; tranche la priorité des contraintes restée ouverte à EPIC-03)* |
 | 78 | E09US005 | Classements PDF | ⬜ *(rétrécie par E06US004 : le **palmarès** a son PDF ; reste celui du classement de **qualification**)* |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |

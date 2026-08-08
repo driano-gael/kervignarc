@@ -512,7 +512,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **105 US livrées** sur `main` (mergées, revues, CI verte) à la date du 08/08/2026. **`SUIVI-US.md`
+- **106 US livrées** sur `main` (mergées, revues, CI verte) à la date du 08/08/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -589,7 +589,24 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   disqualification** (E04US015 — qualif *et* duels), le **cycle de vie d'un départ** (E12US008), le
   **feu vert + lancement d'un tour** (E12US002), le **remboursement d'une inscription payée
   annulée** (E08US005) l'**affichage de la prochaine cible après validation** (E04US018), le **barrage de tir pour les places décisives** (E06US003) et le **palmarès** (E06US004), qui le referme.
-- Dernière US livrée : **E16US003** (piloter un tour sans avoir les impayés sous les yeux) — US **à
+- **Le club est enfin libre de son format (08/08/2026, E05US024)** — une correction de fond, sans
+  écran neuf. L'organisateur pouvait déjà **composer** ce qu'il voulait : « les huit premiers de mes
+  poules », « les rangs 33 et suivants de mon tableau ». L'écran l'acceptait, le diagnostic le
+  validait — mais **le moteur ne savait lire qu'un seul classement**, celui de la qualification. Tout
+  prélèvement visant une autre phase était **ignoré sans rien dire**, et la phase récupérait *tous*
+  les archers encore en lice : un tableau d'apparence normale, et faux, qui ne se serait vu que le
+  jour J. Désormais chaque prélèvement est lu **dans la phase qu'il désigne**, sur autant de crans que
+  le format en compte, et le seuil « il vous faut au moins N inscrits » suit la même chaîne au lieu de
+  s'arrêter à la première phase. ⚠️ Une limite reste **volontairement** en place, pour la suite
+  immédiate : on ne peut toujours pas mettre **deux qualifications** dans un même tournoi — c'est
+  l'objet d'`E05US025`, qui ne pouvait pas passer avant celle-ci (sans cette lecture, une seconde
+  qualification aurait reçu tous les inscrits). Décision d'architecture :
+  [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md).
+- Dernière US livrée : **E05US024** (un prélèvement lit le classement de sa phase source) — US de
+  **moteur**, sans écran neuf : elle change ce que la salle joue, pas ce que l'organisateur voit.
+- Avant elle, **E16US004** (le public suit plusieurs archers de bout en bout) — US **à surface
+  visible**, avec son [fait marquant daté](2026-08-08-00h44-le-public-suit-plusieurs-archers.md).
+- Et avant, **E16US003** (piloter un tour sans avoir les impayés sous les yeux) — US **à
   surface visible**, décrite plus haut et dans son
   [fait marquant daté](2026-08-07-21h29-piloter-un-tour-sans-voir-les-impayes.md).
 - Avant elle, **E16US001** (le plan de salle parle enfin de la salle que l'organisateur

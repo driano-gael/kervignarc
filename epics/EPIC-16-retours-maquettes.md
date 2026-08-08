@@ -63,9 +63,12 @@ règle de départage à la demande (A16/P07), dialogue de confirmation en rempla
 
 - [x] Lot front seul du 04/08/2026 (cf. ci-dessus).
 - [x] Plan de salle : lever le malentendu de modèle (E16US001).
-- [ ] Phases : catalogue, gabarits, fiche de réglages (E16US002).
+- [ ] Phases : catalogue, gabarits, fiche de réglages (E16US002). ⚠️ **Rétrécie le 08/08/2026** : le
+      CA « plusieurs qualifications » en est sorti (→ `E05US024` livrée + `E05US025`), le CA
+      « gabarit » est tranché (ADR-0060 §5 confirmé, la brique reste le **format**). Restent liste,
+      titre de phase et fiche de réglages.
 - [x] Complétude : séparer le déroulé de l'administratif (E16US003).
-- [ ] Public : suivre plusieurs archers de bout en bout (E16US004).
+- [x] Public : suivre plusieurs archers de bout en bout (E16US004).
 - [ ] Placement : largeur, une cible par ligne, puits de réserve (E16US005).
 - [ ] Patrimoine : origine FFTA/local, logo du club (E16US006).
 - [ ] Impressions, exports et podiums paramétrables (E16US007).
