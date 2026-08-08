@@ -160,6 +160,7 @@ function GrilleCibles({
     return <p className="carte__etat">Chargement…</p>
   }
   if (plan.isError) {
+    // DETTE-050
     return (
       <p className="carte__etat carte__etat--erreur" role="alert">
         Plan injoignable — {plan.error.message}

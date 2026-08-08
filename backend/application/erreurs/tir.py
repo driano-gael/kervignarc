@@ -72,8 +72,8 @@ class ArcherEngage(ApplicationError):
     **Ce signalement n'est pas la façon d'enregistrer un abandon.** Un archer qui arrête en cours
     d'épreuve n'est pas une donnée à effacer : c'est un **forfait tracé** (daté, attribué, motif,
     réversible, audité) — E04US015 / ADR-0050, ex-E12US004 —, qui **préserve** ses flèches. La
-    suppression, elle, ne sert
-    que l'**erreur de saisie** (cet archer n'aurait jamais dû être inscrit) et le **cas majeur**.
+    suppression, elle, ne sert que l'**erreur de saisie** (cet archer n'aurait jamais dû être
+    inscrit) et le **cas majeur**.
     D'où le message, qui dit ce qui sera détruit plutôt que d'inviter à cliquer.
 
     **Refus définitif d'abord retenu, renversé le 16/07/2026** (arbitrage métier). Il tenait la

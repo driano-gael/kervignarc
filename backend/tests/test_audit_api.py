@@ -5,8 +5,8 @@ consultation renvoie les entrées d'un tournoi en ordre chronologique avec tous 
 route est **réservée à l'admin** (401 sans session), et un tournoi inconnu répond 404.
 
 Il n'y a **pas d'endpoint d'écriture** : les entrées naissent d'un acte métier
-(E04US002 la validation, E04US015 le forfait).
-le test **ensemence** directement via `ServiceAudit.consigner` — la primitive du socle — avant de
+(E04US002 la validation, E04US015 le forfait) — le test **ensemence** donc directement via
+`ServiceAudit.consigner` — la primitive du socle — avant de
 consulter par l'API. L'horodatage vient de l'horloge système câblée : on n'en vérifie que la
 présence (ISO), pas la valeur (le déterminisme de l'horloge est couvert côté service).
 """

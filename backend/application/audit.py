@@ -12,7 +12,10 @@ Deux cas d'usage :
   ⚠️ **Il y a deux façons de produire une entrée d'audit dans ce projet, et `consigner` est la
   minoritaire.** Ne pas conclure d'un `grep consigner` que l'audit n'a qu'un producteur :
 
-  1. **Trace atomique avec l'agrégat** — le cas **général** (7 producteurs sur 8). Le service
+  1. **Trace atomique avec l'agrégat** — le cas **général** : **7 des 8 chemins d'écriture**.
+     ⚠️ L'unité est le *chemin d'écriture*, pas l'action : `ActionAuditee` n'a que **7** membres,
+     le forfait en consommant deux (`declarer` et `annuler`). Compter l'enum donne 6/7, pas 7/8 —
+     les deux comptes décrivent la même réalité. Le service
      construit l'`EntreeAudit` lui-même et la passe au repository dans **la même** méthode que son
      écriture métier : `declarer_avec_trace` / `annuler_avec_trace` (`application/forfaits.py`),
      et de même pour `PAIEMENT`, `REPLACEMENT`, `REMBOURSEMENT`, `VALIDATION`, `CORRECTION_SCORE`.

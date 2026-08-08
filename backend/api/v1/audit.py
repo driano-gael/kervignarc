@@ -9,8 +9,8 @@ Un seul router, imbriqué sous le tournoi (`/api/v1/tournois/{tournoi_id}/audit`
 correction — E04US002 ; un forfait — E04US015 / ADR-0050, ex-E12US004), écrit **dans la commande
 d'écriture** du producteur (file, règle 7) — le plus souvent **atomiquement avec son agrégat**
 (`*_avec_trace`), et par `ServiceAudit.consigner` quand il n'y a pas d'agrégat à écrire (cf.
-`application/audit.py`). Écrire une trace « à la main » par une route
-dédiée n'aurait pas de sens — l'audit reflète des actes, il ne s'édite pas. La consultation, elle,
+`application/audit.py`). Écrire une trace « à la main » par une route dédiée n'aurait pas de
+sens — l'audit reflète des actes, il ne s'édite pas. La consultation, elle,
 est une **lecture** (hors file, `run_in_threadpool`), comme le listing des scoreurs.
 """
 

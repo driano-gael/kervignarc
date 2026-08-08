@@ -11,7 +11,7 @@ n'exploitait. E01US015 a ajouté la 2ᵉ politique de qualification (le grain de
   `en_pause` **de tournoi**, ADR-0026 §3). L'agrégat porte la **valeur** et des transitions
   **pures** ; le service arbitre l'enchaînement (patron `ServiceTournois`).
 - **Typage ouvert** : `elimination_directe` et `placement` rejoignent `qualification`. Déclarer un
-  type ne présuppose pas son moteur ; leurs politiques propres viendront en E05US003. En
+  type ne présuppose pas son moteur ; leurs politiques propres sont **arrivées** en E05US003. En
   conséquence, `bareme`/`validation` deviennent **facultatifs** (obligatoires pour `qualification`
   seulement).
 - **Peuplement** : une phase est alimentée par des `SourcePhase`. E05US001 n'en admettait
@@ -256,7 +256,7 @@ def grain_par_defaut(type_phase: TypePhase) -> GrainValidation:
     `config` ne porte pas encore de clé `validation` (cf. `repositories._vers_phase`).
 
     Lève `GrainIncompatibleAvecTypePhase` si le type n'a pas de preset déclaré (les types à duels,
-    dont le preset viendra avec E05US003) : explicite plutôt qu'un `KeyError` que `_vers_phase`
+    dont le preset est venu avec E05US003) : explicite plutôt qu'un `KeyError` que `_vers_phase`
     diagnostiquerait « configuration illisible ».
     """
     preset = _GRAIN_PAR_DEFAUT.get(type_phase)
@@ -462,7 +462,7 @@ class Phase:
     logistique l'avait porté.
 
     `bareme` et `validation` ne concernent que la **qualification** (barème de cumul + grain,
-    `D-11`) : ils sont `None` pour les autres types, dont les politiques propres viendront en
+    `D-11`) : ils sont `None` pour les autres types, dont les politiques propres sont venues en
     E05US003 (ADR-0045 §2). `sources` décrit d'où la phase tire ses participants — **plusieurs**
     prélèvements possibles depuis E05US010 (`()` = première de la séquence, alimentée par les
     inscriptions). `effectif` (facultatif) déclare combien de participants la phase classe/produit —

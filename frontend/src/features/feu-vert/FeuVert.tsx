@@ -5,7 +5,7 @@
 // est prêt à partir et ce qui bloque (nommé : « en attente du duel n°2 », « cible non attribuée ») —
 // il n'empêche rien (`P-3`), il montre. Le bouton **chiffre** ce qu'il déclenche (« N duels, cibles
 // …, K archers ») et, à l'appui, fait **partir** les duels prêts : le serveur émet un signal diffusé
-// aux postes/écrans (les récepteurs ciblés viendront avec E04US018/E07US008/E07US004). Live par poll
+// aux postes/écrans (les récepteurs ciblés sont livrés : E04US018/E07US008/E07US004). Live par poll
 // court (les validations de duels d'un scoreur font avancer le tableau, cf. `hooks`).
 
 import { useState } from 'react'
