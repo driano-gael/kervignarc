@@ -98,7 +98,7 @@ nature (abandon ↔ DSQ) = **annuler puis re-déclarer** — deux traces plutôt
 ## Liens
 
 [ADR-0016](0016-supprimer-un-archer-engage-plutot-que-le-refuser.md) (forfait ≠ suppression) ;
-[ADR-0035](0035-atomicite-acte-audit.md) (co-écriture acte↔trace) ;
+[ADR-0035](0035-atomicite-acte-trace-session-partagee.md) (co-écriture acte↔trace) ;
 [ADR-0049](0049-saisie-et-scoring-des-duels.md) (reconstruction/rejeu du tableau) ;
 `backend/domain/forfait.py`, `backend/domain/classement.py` (`StatutClassement`),
 `backend/application/forfaits.py`, `backend/api/v1/forfaits.py` ;

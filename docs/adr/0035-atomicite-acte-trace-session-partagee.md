@@ -73,8 +73,10 @@ distinct de `NULL` à la relecture).
 
 - **+** Zéro écriture déchirée : une validation sans trace, ou une trace sans acte, devient
   **impossible** — la contrainte d'intégrité que le journal-signature exige.
-- **+** La couture est réutilisable : tout futur acte devant être tracé atomiquement (forfait —
-  E12US004, remboursement…) passera par le même patron « écriture + `consigner_dans(session, …)` ».
+- **+** La couture est réutilisable : tout acte devant être tracé atomiquement passera par le même
+  patron « écriture + `consigner_dans(session, …)` ». *(Confirmé depuis : le forfait — **E04US015**,
+  qui a absorbé ex-E12US004 — et le remboursement l'ont bien emprunté ; sept des huit chemins
+  d'écriture d'audit passent aujourd'hui par une méthode `*_avec_trace`.)*
 - **+** Rétrocompatible : le chemin « session propre » de `consigner` reste, les consignations
   autonomes d'E10US005 ne bougent pas.
 - **−** Le journal d'audit **cesse d'être totalement découplé** de l'écrivain métier : un repository

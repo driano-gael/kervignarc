@@ -7,9 +7,9 @@
   E01US011 **corrigée**, arbitrages reversés) ; [`docs/glossaire.md`](../glossaire.md)
   (`duel`, `set`/`manche`, `point de set`, `barrage`/`shoot-off`, `barème de duel`)
 - **Introduit par** : E04US013 (saisie en duels — système de sets, vainqueur, barrage).
-- **S'appuie sur** : [ADR-0004](0004-politiques-de-tableau-injectables.md) /
+- **S'appuie sur** : [ADR-0004](0004-moteur-de-phases-politiques.md) /
   [ADR-0046](0046-config-policies-politiques-nommees-parametrees.md) (politiques `scoring`/`tiebreak`
-  injectables, ressignature assumée « un implémenteur, aucun consommateur ») · [ADR-0028](0028-participant-abstraction-du-competiteur.md)
+  injectables, ressignature assumée « un implémenteur, aucun consommateur ») · [ADR-0028](0028-epreuves-par-equipes-participant.md)
   (le moteur oppose des `Participant`) · [ADR-0023](0023-moteur-de-placement-glouton-deterministe.md)
   /[ADR-0048](0048-cote-a-cote-des-duellistes-par-reordonnancement.md) (le tableau est **recalculé**,
   jamais persisté ; seul le tir/la pose se matérialise).
@@ -207,3 +207,33 @@ sans dédup à l'enfilage**, car l'ordre des actes (manches → barrage → vali
 rejeu (valider suppose les manches déjà passées). Le front **ne recompute jamais** l'issue d'un duel :
 `termine`/`vainqueur`/`barrage_requis` restent l'autorité serveur ; hors-ligne, la grille avance en
 affichant les actes « en attente » sans en déduire le résultat.
+
+## Porté dans le code par
+
+*(Section ajoutée le 08/08/2026 — cf. [ADR-0075 § « Portée de la règle »](0075-le-depart-est-la-portee-sportive.md).
+Chaque symbole vérifié dans le code du jour.)*
+
+- `backend/domain/duel.py` — **l'agrégat** : `Duel` (`saisir_manche`, `saisir_barrage`, `valider`,
+  `resultat`, `vainqueur`, `verrouille`), avec `MancheDuel`, `ResultatDuel` et les deux modes
+  (`ModeDuel` : sets / cumul). Le **barrage est bien dans l'agrégat** — dataclass `Barrage`, champ
+  `Duel.barrage`, et `_vainqueur_barrage` — et non dans un objet satellite.
+- `backend/domain/duel.py` — **le barème** : `BaremeDuel` et ses presets
+  (`preset_ffta_classique`, `preset_ffta_poulies`, `preset_club`), résolu derrière le `Protocol`
+  `ResolveurBaremeDuel` (`bareme_pour(arme)`), implémenté par `ResolveurBaremeDuelFfta`, injecté au
+  composition root (`bootstrap/composition.py`).
+- `backend/application/saisie_duels.py` — **le tableau reconstruit** : `_decor` revalide les gardes
+  puis rejoue l'arbre à chaque lecture (duels validés rejoués), et `_etat_du_match` masque un tir
+  dont les duellistes divergent des occupants recalculés (§4).
+- `backend/infrastructure/db/repositories/tir.py` — **les résultats persistés** :
+  `DuelRepositorySQL`, avec `_manches_json` / `_barrage_json`. Ce sont les **actes** qui sont
+  stockés ; le verdict, lui, se recalcule (§ Alternatives écartées : « stocker le verdict » a été
+  refusé).
+
+⚠️ **Écart entre le titre et le code, constaté le 08/08/2026.** Le titre annonce un « barème résolu
+par **(phase, arme)** ». Le code ne résout que par l'**arme** : `_bareme_du` appelle
+`bareme_pour(self._arme_du(...))`, et sa propre docstring dit « résolu par l'**arme** du
+participant ». Il n'existe **aucun** réglage de `BaremeDuel` au niveau de la phase —
+`Phase.bareme` est un `BaremeQualification`, qui « ne concerne que la qualification ». Le champ
+`EtatDuel.bareme` n'est pas un réglage mais le barème **calculé** exposé à la grille front. La
+composante « phase » de la résolution reste donc **à faire** : ne pas la supposer acquise en
+lisant ce titre — c'est le mode de défaillance d'ADR-0017 et d'ADR-0028.

@@ -4,7 +4,7 @@
 - **Date** : 2026-07-30
 - **Décideurs** : Organisateur / Architecte
 - **Portée** : E01US023 (catégories, blasons et formats de tournoi hors périmètre d'un tournoi)
-- **Lie** : [ADR-0011](0011-phase-minimale-et-passive.md) et [ADR-0045](0045-sequence-de-phases-cycle-de-vie-typage-source.md)
+- **Lie** : [ADR-0011](0011-phase-qualification-anticipee.md) et [ADR-0045](0045-sequence-de-phases-cycle-de-vie-typage-source.md)
   (la `Phase` et l'invariant de séquence que cet ADR **ne** touche pas),
   [ADR-0020](0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md) (RG-8 : le règlement est
   un template, jamais une contrainte), [ADR-0058](0058-decoupage-de-l-admin-en-trois-axes-d-activite.md)

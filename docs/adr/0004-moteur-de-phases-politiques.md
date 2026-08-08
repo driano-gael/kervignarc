@@ -64,8 +64,16 @@ composition root. C'est la résorption de DETTE-003.
   format, seulement des `Protocol`.
 - `backend/domain/phase.py` — la phase porte le type (`TypePhase`) et la `config` où vivent les
   politiques ; `SourcePhase` porte le peuplement.
-- `backend/bootstrap/composition.py` — le registre est **câblé à la main** (règle 8, pas de DI
-  magique) : c'est le seul endroit où un nom de politique rencontre sa classe.
+- `backend/domain/politiques.py` — `registre_par_defaut()` est **la table `nom → classe`** : les
+  appariements y sont enregistrés un par un. C'est **là** qu'on ajoute une politique, pas ailleurs.
+- `backend/bootstrap/composition.py` — le registre est **instancié à la main** (règle 8, pas de DI
+  magique) : `app.state.registre_politiques = registre_par_defaut()`. C'est le **point d'extension**
+  prévu — la composition root peut y ajouter d'autres implémentations —, mais il ne contient
+  aujourd'hui **aucun** appariement en propre.
+  ⚠️ *Rectifié le 08/08/2026 en revue : cette ligne disait « c'est le seul endroit où un nom de
+  politique rencontre sa classe ». C'est faux, et c'était le défaut d'ADR-0017 en miniature — un
+  module nommé pour son rôle supposé plutôt que pour son contenu. Un lecteur cherchant « où ajouter
+  une politique » y serait allé pour rien.*
 
 ⚠️ **Deux écarts entre le texte de 2026-07-08 et le code d'aujourd'hui**, à connaître avant de citer
 cet ADR :

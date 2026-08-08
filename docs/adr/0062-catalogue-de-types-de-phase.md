@@ -262,5 +262,12 @@ SQLite et remontait en **500** au lieu d'un 422 typé.
 🔴 **Écart connu et suivi : quatre types du catalogue ne sont pas jouables.** `poules`, `suisse`,
 `colline` et `big_shoot_off` ont leur moteur de domaine, testé, mais **aucun consommateur de
 production** — `ServiceSaisieDuels._decor` les refuse. C'est `DETTE-028`, et c'est `E05US023` qui la
-solde. La règle d'ADR-0045 §2 (« pas de type sans moteur ») est donc respectée à la lettre et
+solde.
+> ⚠️ **Ne pas lire `_decor` comme la liste des quatre.** La garde est écrite
+> `if phase.type is not TypePhase.ELIMINATION_DIRECTE` : elle refuse **tout** ce qui n'est pas un
+> tableau, donc aussi `placement` — que `DETTE-028` documente séparément comme « omise sans mention »
+> — et `echauffement` et `barrage`, qui n'ont simplement rien à y faire. Les **quatre** ci-dessus
+> sont les types qui ont un moteur et devraient être jouables ; le refus de `_decor`, lui, est plus
+> large. *(Précision ajoutée le 08/08/2026 en revue : le lecteur de l'ADR retenait 4, le registre de
+> dette en dit 5.)* La règle d'ADR-0045 §2 (« pas de type sans moteur ») est donc respectée à la lettre et
 enfreinte dans son intention : le moteur existe, mais rien ne l'appelle.

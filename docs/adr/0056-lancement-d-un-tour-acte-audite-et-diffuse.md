@@ -9,8 +9,8 @@
   lancer » au sens état), [ADR-0005](0005-async-et-sqlite.md) / règle 7 (writer unique + **diffusion
   post-commit** — le mécanisme sur lequel s'appuie l'émission), [ADR-0040](0040-alerte-par-calcul-d-impact.md)
   (« chiffrer ce qu'on déclenche », recalcul dans la file jamais cru sur parole — précédent réutilisé),
-  [ADR-0035](0035-trace-d-audit-co-ecrite.md) (la trace d'audit comme acte de première classe),
-  [ADR-0048](0048-cote-a-cote-des-duellistes.md) (le plan de duels d'où sort la cible d'un duelliste).
+  [ADR-0035](0035-atomicite-acte-trace-session-partagee.md) (la trace d'audit comme acte de première classe),
+  [ADR-0048](0048-cote-a-cote-des-duellistes-par-reordonnancement.md) (le plan de duels d'où sort la cible d'un duelliste).
 
 ## Contexte
 

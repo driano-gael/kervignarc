@@ -5,7 +5,7 @@
 - **US** : E05US021
 - **Prolonge** : [ADR-0068](0068-le-moteur-consomme-les-prelevements-declares.md) §6, qui ouvrait
   cette US ; [ADR-0063](0063-brouillon-de-format-invariant-a-l-application.md) (le brouillon
-  s'enregistre, l'application refuse) ; [ADR-0060](0060-briques-du-patrimoine-du-club.md) §5 (un
+  s'enregistre, l'application refuse) ; [ADR-0060](0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5 (un
   format n'a pas de copie de tournoi : sa copie, ce sont ses phases).
 
 ## Contexte
@@ -190,8 +190,13 @@ Le message **chiffre** ce qui manque et **nomme la phase et son prélèvement** 
 > module vide reproduirait exactement le défaut que la section existe pour empêcher.*
 
 - `backend/domain/deroule.py` — `exigence_minimale(etapes)` (le calcul du plancher, §1),
-  `ExigenceEffectif`, et `effectif_minimum` porté par l'étape séquencée. Le minimum est **déduit**,
-  jamais saisi : il n'existe aucun setter.
+  `ExigenceEffectif`, la fonction module `effectif_minimum(etapes)` et le champ
+  `ProjectionDeroule.effectif_minimum` qui le transporte.
+  ⚠️ *Rectifié le 08/08/2026 en revue : cette ligne annonçait « `effectif_minimum` porté par
+  l'étape séquencée ». `EtapeSequencee` n'a pas ce champ — le lecteur cherchait un attribut
+  inexistant.* **Au niveau du déroulé**, le minimum est **déduit**, jamais saisi : aucun setter.
+  L'**exigence de club**, elle, est bien saisie — `FormatTournoi.effectif_minimum_exige`, bullet
+  suivant : les deux ne se confondent pas, c'est tout l'objet du titre « déduit **et** exigé ».
 - `backend/domain/format_tournoi.py` — l'exigence remonte au diagnostic du déroulé composé.
 - `backend/application/formats.py` — l'exposition du minimum comme **donnée** du diagnostic (et non
   comme anomalie : `PrelevementVide` couvrait déjà le cas, l'ajouter signalerait deux fois le même

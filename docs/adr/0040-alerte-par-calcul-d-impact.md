@@ -10,7 +10,7 @@
 - **Introduit par** : E12US007 (alerter par calcul d'impact).
 - **S'appuie sur** : [ADR-0035](0035-atomicite-acte-trace-session-partagee.md) (co-écriture atomique
   acte↔trace), l'audit E10US005 (`EntreeAudit`, `ServiceAudit`), le placement matérialisé E03US004
-  ([ADR-0024](0024-plan-de-cibles-materialise-et-ajustable.md)), et le protocole de **signalement
+  ([ADR-0024](0024-plan-de-cibles-materialise-ajustable.md)), et le protocole de **signalement
   confirmable** d'[ADR-0016](0016-supprimer-un-archer-engage-plutot-que-le-refuser.md) /
   [ADR-0018](0018-supprimer-un-depart-a-inscriptions-confirmable.md).
 

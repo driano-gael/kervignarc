@@ -297,25 +297,27 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   tournoi **treize mois** — un classement de 400 au lieu de quatre de 100. Cf.
   [ADR-0075](docs/adr/0075-le-depart-est-la-portee-sportive.md).)*
 
-  **Portée de la règle sur les ADR antérieurs — tranchée le 08/08/2026, ne pas la rouvrir.** La
-  règle est née le 06/08/2026 et n'a **pas** été appliquée rétroactivement à tout le registre. Elle
-  vaut :
-  1. **pour tout ADR neuf**, sans exception ;
-  2. **pour les ADR structurants encore actifs** — moteur, portée, politiques —, rétro-équipés le
-     08/08/2026 : `0004`, `0011`, `0026`, `0028`, `0045`, `0046`, `0060`, `0061`, `0062`, `0068`,
-     `0069`, `0070`, en plus de `0017` déjà rattrapé.
+  **Portée de la règle — le critère ici, l'énumération dans l'ADR.** La règle est née le 06/08/2026
+  et n'a **pas** été appliquée rétroactivement à tout le registre (8 ADR sur 81 la portaient). Elle
+  vaut pour **tout ADR neuf**, pour **tout ADR rouvert** (un diff qui touche sa section *Décision*
+  ou *Conséquences*), et pour les **ADR structurants encore actifs** — statut *Accepté* non
+  remplacé, **et** décision appliquée par le moteur sportif, la portée, ou une politique injectable
+  au sens de la règle 2. Les ADR d'outillage, d'UI, de procédure ou de convention documentaire
+  n'entrent pas dans le critère : **leur absence de section n'est pas un défaut à relever en
+  revue.**
 
-  **Les autres ADR n'ont pas à porter la section**, et leur absence n'est **pas** un défaut à
-  relever en revue. Le critère est la **preuve**, pas la complétude : c'est un ADR de **moteur** non
-  porté qui a coûté treize mois, pas un ADR d'outillage — rétro-équiper les 73 aurait produit
-  soixante sections cosmétiques pour en sauver une utile. Un ADR ancien **gagne** la section le jour
-  où une US le rouvre.
+  **La liste nominative des ADR retenus vit dans
+  [ADR-0075 § « Portée de la règle »](docs/adr/0075-le-depart-est-la-portee-sportive.md)**, pas ici
+  — elle dérive à chaque US qui rouvre un ADR, et ce fichier n'est pas le bon endroit pour une liste
+  mouvante. Cet ADR porte aussi la **contrepartie** : la grille de `/revue-us` (axe C2, `12-ADR`)
+  exige la section sur tout ADR créé ou rouvert. Une règle qui borne ce qu'une revue peut relever
+  sans dire qui la vérifie ne fait que retirer de la détection.
 
   ⚠️ **Écrire la section, c'est vérifier dans le code du jour, pas déduire de l'ADR.** Le
-  rétro-équipement a fait apparaître qu'`ADR-0028` (équipes) n'est porté **qu'au quart** — la classe
-  `Equipe` n'existe pas —, alors que son statut « Accepté » et son point 1 livré le faisaient lire
-  comme tenu. Nommer un module vide reproduit exactement le défaut d'ADR-0017 : cf. la correction
-  déjà faite dans ADR-0075 lui-même, qui citait trois modules ne portant rien.
+  rétro-équipement l'a prouvé deux fois : `ADR-0028` (équipes) n'est porté **qu'au quart** — la
+  classe `Equipe` n'existe pas — et `ADR-0049` promet un barème résolu par « (phase, arme) » que le
+  code résout par l'**arme seule**. Nommer un module vide reproduit exactement le défaut
+  d'ADR-0017.
 - Une US trop grosse pour une branche doit être **redécoupée** (maille INVEST).
 
 ## Documents de référence

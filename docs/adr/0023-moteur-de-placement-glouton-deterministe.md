@@ -6,7 +6,7 @@
 - **Amende** : [`stories/E03-placement.md`](../../stories/E03-placement.md) (E03US001) ;
   [`docs/glossaire.md`](../glossaire.md) (`Plan de cibles`, `Conflit de placement`)
 - **Introduit par** : E03US001 (moteur de placement `domain/placement.py`).
-- **Voisin** : [ADR-0004](0004-format-de-tournoi-comme-configuration.md) formalise l'**autre** moteur
+- **Voisin** : [ADR-0004](0004-moteur-de-phases-politiques.md) formalise l'**autre** moteur
   (celui des phases, politiques injectables) ; celui-ci relève d'un régime différent, explicité au
   point 2. S'appuie sur [ADR-0022](0022-hauteur-de-centre-sur-la-categorie.md) pour la contrainte de
   hauteur.

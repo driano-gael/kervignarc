@@ -7,7 +7,7 @@
   « enregistrement » ex-005 et bloc « Arbitrages »). N'amende pas la dette (aucun raccourci assumé :
   la volatilité est un **choix** cohérent avec le modèle de session, pas un emprunt).
 - **Introduit par** : E04US002 (saisie de qualification — tranche exposition PR2b).
-- **S'appuie sur** : [ADR-0005](0005-file-d-ecriture-sqlite-writer-unique.md) (writer unique — la
+- **S'appuie sur** : [ADR-0005](0005-async-et-sqlite.md) (writer unique — la
   **sérialisation** des écritures, dont ce registre tire son atomicité), [ADR-0029](0029-mode-d-identite-poste-de-cible-et-jeton-de-poste.md)
   et [ADR-0034](0034-poste-selectionne-son-depart-courant.md) (états de session **en mémoire,
   volatils** — même parti retenu ici).

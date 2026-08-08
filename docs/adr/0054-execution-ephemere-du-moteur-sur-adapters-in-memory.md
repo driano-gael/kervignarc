@@ -5,7 +5,7 @@
 - **Décideurs** : Organisateur / Architecte
 - **Portée** : E15US002 (moteur de simulation éphémère + garde-fou de non-persistance)
 - **Lie** : [ADR-0003](0003-architecture-hexagonale.md) (ports & adapters — c'est cette frontière
-  qu'on rebranche), [ADR-0005](0005-writer-unique-file-d-ecriture.md) / règle 7 (single-writer — la
+  qu'on rebranche), [ADR-0005](0005-async-et-sqlite.md) / règle 7 (single-writer — la
   contrainte que la simulation ne doit **pas** violer), [ADR-0026](0026-cycle-de-vie-du-tournoi-sept-statuts.md)
   (statuts — d'où le garde-fou), E15US001 (jeu d'essai — voisin : lui **persiste**, la simulation
   **non**)

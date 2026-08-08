@@ -5,7 +5,7 @@
 - **US** : E05US024
 - **Complète** : [ADR-0080](0080-un-prelevement-lit-le-classement-de-sa-phase-source.md) (dont il
   corrige une conséquence affichée), [ADR-0065](0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md)
-  (Règle R), [ADR-0067](0067-le-palmares-ne-decerne-pas-l-or-avant-la-finale.md)
+  (Règle R), [ADR-0067](0067-palmares-agregation-des-rangs-de-phases.md)
 
 ## Contexte
 

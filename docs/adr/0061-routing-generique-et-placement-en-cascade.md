@@ -7,7 +7,7 @@
 - **Lie** : [ADR-0004](0004-moteur-de-phases-politiques.md) (les six familles de politiques, dont
   cet ADR honore la signature `route(perdant, tour, contexte)`),
   [ADR-0045](0045-sequence-de-phases-cycle-de-vie-typage-source.md) (la séquence de phases et son
-  peuplement, ici élargi), [ADR-0049](0049-tableau-reconstruit-plutot-que-persiste.md) (le tableau
+  peuplement, ici élargi), [ADR-0049](0049-saisie-et-scoring-des-duels.md) (le tableau
   est reconstruit — la raison pour laquelle le routage se décide à la construction),
   [ADR-0060](0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) (la seconde table
   à migrer), [DETTE-015](../dette.md#dette-015--modèle-de-source-de-phase-minimal-et-provisoire)
