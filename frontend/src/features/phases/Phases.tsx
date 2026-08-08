@@ -509,6 +509,7 @@ function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeD
           Un entier ≥ 1, ou vide (aucun barrage).
         </span>
       )}
+      {/* DETTE-050 : rendu ad hoc non rallié à `shared/ui/texteErreur` — `error.message` brut. */}
       {modifier.isError && (
         <span className="carte__etat carte__etat--erreur" role="alert">
           {modifier.error.message}

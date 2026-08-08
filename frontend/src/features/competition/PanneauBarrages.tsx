@@ -163,6 +163,10 @@ function EgaliteALancer({
           Faire tirer
         </button>
       )}
+      {/* DETTE-050 : ce fichier porte **cinq** rendus ad hoc non ralliés à
+          `shared/ui/texteErreur` (celui-ci, `clore`, `annuler`, `saisir`, et le second
+          `annoncer` plus bas) — `error.message` interpolé brut, donc « TypeError: Failed to
+          fetch » à l'écran sur coupure LAN. À traiter d'un bloc, pas au fil de l'eau. */}
       {annoncer.isError && (
         <span className="carte__etat carte__etat--erreur" role="alert">
           {annoncer.error.message}

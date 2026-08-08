@@ -69,7 +69,13 @@ class VueEcran(str, Enum):
 
     Distinct de `CLASSEMENT`, qui est celui de la **qualification** : à 17 h, ce qu'on projette
     n'est plus qui a le mieux tiré le matin mais qui a gagné. C'est le motif même du CA de pilotage
-    des écrans (E12US003) — « basculer sur le podium à 17 h et partir serrer des mains »."""
+    des écrans (**E07US004**, ADR-0064) — « basculer sur le podium à 17 h et partir serrer des
+    mains ».
+
+    *(Référence corrigée le 08/08/2026 : elle citait `E12US003`, qui est **doublement fausse** —
+    l'identifiant est absorbé par `E12US002` depuis le 17/07/2026, et `E12US002` est le **feu vert
+    et le lancement d'un tour**, pas le pilotage des écrans. La citation vient du CA d'`E07US004`,
+    `stories/E07-affichage-public.md`.)*"""
 
 
 @dataclass(frozen=True)

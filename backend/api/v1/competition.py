@@ -395,8 +395,8 @@ async def supprimer_archer(
 
     Renvoie `409 archer_engage` si l'archer est placé ou a déjà tiré : un **signalement**, que le
     client lève en rejouant l'appel avec `autoriser_suppression_engage`. La suppression confirmée
-    **efface ses scores et son placement**. Un archer qui abandonne relève du forfait (E04US015 en
-    qualification, E12US004 en duels), pas d'ici — voir ADR-0016.
+    **efface ses scores et son placement**. Un archer qui abandonne relève du forfait — **une seule
+    US pour les deux portées**, E04US015 (ADR-0050, ex-E12US004) —, pas d'ici : voir ADR-0016.
 
     Le drapeau est en **paramètre de requête** et non dans le corps, contrairement à la forme posée
     par ADR-0015 — qui prévoit ce cas (« soit justifier d'en diverger ») : un `DELETE` n'a pas de

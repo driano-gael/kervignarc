@@ -574,6 +574,9 @@ function MessageImpact({ impact }: { impact: ImpactRegeneration }) {
   )
 }
 
+// DETTE-050 : copie verbatim de `shared/ui/texteErreur` (l'autre est dans
+// `features/duels/Duels.tsx`). Le narrowing est correct ici — c'est sa **duplication** qui est la
+// dette : trois exemplaires du même invariant, dont un seul est le point de vérité.
 function messageErreur(erreur: Error): string {
   return erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
 }

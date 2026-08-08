@@ -83,6 +83,8 @@ export function FeuVert({ tournoiId }: { tournoiId: number }) {
       )}
 
       {phaseId !== null && feu.isPending && <p className="carte__etat">Chargement…</p>}
+      {/* DETTE-050 : rendu ad hoc non rallié à `shared/ui/texteErreur` — `error.message` brut.
+          Écran du jour J : c'est précisément là qu'une coupure LAN est probable. */}
       {feu.isError && (
         <p className="carte__etat carte__etat--erreur" role="alert">
           Feu vert injoignable — {feu.error.message}

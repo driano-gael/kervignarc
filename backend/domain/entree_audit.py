@@ -15,11 +15,15 @@ d'une validation doit survivre à la **suppression** du scoreur (E10US003) — u
 plus est retiré, ses validations passées restent lisibles. Stocker son `id` casserait à sa
 suppression ; on fige donc le nom au moment de l'acte.
 
-**Socle E10US005** : cet agrégat et son service (`ServiceAudit.consigner`) sont la primitive
-d'écriture. Les **producteurs** — la validation et la correction (E04US002), le forfait (E12US004) —
-appelleront `consigner` depuis leur propre commande d'écriture ; ils n'existent pas encore. La
-surface de **consultation** admin livrée ici (`lister` + endpoint `GET`) rend le journal exploitable
-dès qu'il se remplira.
+**Socle E10US005** : cet agrégat est ce que les producteurs construisent pour laisser leur trace.
+**Ils existent tous** — la validation et la correction (E04US002), le forfait (E04US015 / ADR-0050,
+ex-E12US004), le paiement (E08US002), le replacement (E12US007), le remboursement (E08US005), le
+lancement de tour (E12US002) —, et ils écrivent leur `EntreeAudit` **dans la même commande de file**
+que l'acte qu'elle décrit : le plus souvent **atomiquement avec leur agrégat** (`*_avec_trace` du
+repository), sinon par `ServiceAudit.consigner`. Voir `application/audit.py` pour le pourquoi des
+deux formes. La surface de **consultation** admin (`lister` + endpoint `GET`) est livrée elle aussi.
+
+*(Rectifié le 08/08/2026 : ce paragraphe disait que les producteurs « n'existent pas encore ».)*
 """
 
 from __future__ import annotations
@@ -39,7 +43,8 @@ class ActionAuditee(str, Enum):
     """Nature de l'acte sensible tracé — l'ensemble **fermé** des actions du CA E10US005.
 
     `(str, Enum)` : la valeur est un slug stable, stocké tel quel en base (comme `StatutTournoi`).
-    Producteurs : `VALIDATION`/`CORRECTION_SCORE` (E04US002), `FORFAIT` (E12US004, à venir),
+    Producteurs : `VALIDATION`/`CORRECTION_SCORE` (E04US002), `FORFAIT` (E04US015 / ADR-0050,
+    ex-E12US004 — **livré**, `application/forfaits.py`),
     `REPLACEMENT` (E12US007 — régénération **massive** du plan de cibles, quand des scores existent
     déjà, [ADR-0040]), `PAIEMENT` (E08US002 — marquage d'un statut de paiement, simple ou groupé :
     un mouvement d'argent se trace), `LANCEMENT` (E12US002, [ADR-0056] — l'organisateur fait

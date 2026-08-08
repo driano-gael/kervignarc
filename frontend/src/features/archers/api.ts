@@ -86,7 +86,7 @@ export function modifierArcher(id: number, entree: ModifierArcher): Promise<Arch
 // dans le corps (un DELETE n'en a pas) — divergence de forme sanctionnée par ADR-0016.
 //
 // Ne sert **pas** à enregistrer un abandon : un archer qui arrête en cours d'épreuve devient un
-// forfait tracé (E04US015 en qualification, E12US004 en duels), qui conserve ses résultats. Ici, on
+// forfait tracé (E04US015 / ADR-0050, ex-E12US004 — la même US couvre qualification et duels), qui conserve ses résultats. Ici, on
 // détruit. DETTE-007 : la confirmation est **aveugle** — elle ne rappelle pas au serveur le compte
 // de flèches que le signalement avait annoncé.
 export function supprimerArcher(id: number, autoriserSuppressionEngage = false): Promise<void> {

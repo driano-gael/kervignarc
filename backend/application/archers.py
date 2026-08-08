@@ -264,8 +264,9 @@ class ServiceArchers:
         construit et des flèches saisies — mais l'admin, lui, peut savoir qu'il s'agit d'une erreur
         d'inscription.
 
-        **Un abandon ne passe pas par ici** : c'est un forfait tracé (E04US015 en qualification,
-        E12US004 en duels), qui préserve les flèches. Voir `ArcherEngage`.
+        **Un abandon ne passe pas par ici** : c'est un forfait tracé (E04US015 / ADR-0050,
+        ex-E12US004 — la même US couvre la qualification **et** les duels), qui préserve les
+        flèches. Voir `ArcherEngage`.
         """
         archer = self._archer_existant(archer_id)
         # DETTE-007 : la confirmation est **aveugle**. Le compte de flèches annoncé par le
@@ -378,7 +379,8 @@ class ServiceArchers:
         **énumère ce qui sera détruit** plutôt que d'inviter à confirmer : c'est la seule chose qui
         distingue, à
         l'écran, une suppression légitime (erreur de saisie) d'un abandon mal enregistré — que le
-        forfait (E04US015, E12US004) doit servir en préservant les flèches. Un message qui dirait
+        forfait (E04US015 / ADR-0050, ex-E12US004) doit servir en préservant les flèches. Un
+        message qui dirait
         « confirmez pour supprimer » ferait de la destruction le chemin par défaut de l'archer.
 
         `archer_id` est passé par l'appelant, qui le tient déjà, plutôt que lu dans `archer.id` :
@@ -397,7 +399,11 @@ class ServiceArchers:
         # DETTE-018 : la suppression d'archer purge ses inscriptions en cascade **sans ouvrir de
         # remboursement** (E08US005 ne couvre que la désinscription et la suppression de départ).
         # Faute de mieux pour ce chemin, on **alerte** l'admin des sommes à rembourser — la création
-        # automatique du poste viendra dans l'US de suite. On compte les payées sur `paye`
+        # automatique du poste **n'est portée par aucune US à ce jour** : la référence est
+        # [DETTE-018] au registre, qui décrit le remède (`ArcherRepository.supprimer_avec_
+        # remboursements` + motif `ARCHER_SUPPRIME`, comme le départ) et l'arbitrage du 29/07/2026
+        # — différer plutôt qu'étendre la cascade sensible de l'archer (ADR-0016). Ne pas chercher
+        # « l'US de suite » : elle n'a jamais existé. On compte les payées sur `paye`
         # seul (sans relire les tarifs — pas de `depart_repository` ici) : un créneau gratuit marqué
         # payé est donc **sur-signalé**, tolérable pour un simple avertissement.
         payees = sum(1 for inscription in liste_inscriptions if inscription.paye)

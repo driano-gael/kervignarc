@@ -253,8 +253,17 @@ class AppariementImpossible(DomainError):
     « accepte de rejouer une rencontre, ou arrête-toi à cette ronde ». Les confondre obligerait le
     client à lire le message pour savoir quoi proposer à l'organisateur.
 
-    L'appariement du système suisse est **glouton** (ADR-0062, DETTE-027) : il peut échouer là où
-    une solution existait. On le dit franchement plutôt que de rejouer une rencontre en silence.
+    **Cette erreur est fiable** : l'appariement du système suisse procède par **essais successifs
+    avec retour arrière** (`domain/suisse.py`), donc elle n'est levée que si **aucun** appariement
+    sans ré-affrontement n'existe — jamais parce que l'algorithme a mal choisi. Le client peut donc
+    la présenter comme un fait du tournoi, pas comme une limite de l'outil.
+
+    *(Rectifié le 08/08/2026. Ce commentaire disait « l'appariement est **glouton** (ADR-0062,
+    DETTE-027) : il peut échouer là où une solution existait » — vrai du premier jet, **faux depuis
+    le 01/08/2026**, et contredit mot pour mot par la docstring de `domain/suisse.py` ; `DETTE-027`
+    est **résorbée**. C'était la contradiction la plus coûteuse du dépôt : elle aurait fait soit
+    « corriger » un glouton qui n'existe plus, soit déclarer cette erreur peu fiable et lui ajouter
+    un contournement inutile.)*
     """
 
     code = "appariement_impossible"

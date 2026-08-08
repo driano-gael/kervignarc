@@ -895,9 +895,11 @@ def create_app(
     )
 
     # --- Journal d'audit métier (E10US005, socle) : trace les actes sensibles (qui/quand/
-    # avant-après) pour gérer les litiges. `consigner` est la primitive d'écriture qu'appelleront
-    # les producteurs — validation/correction (E04US002), forfait (E12US004) — depuis leur
-    # commande de file ; la consultation admin (`GET .../audit`) est livrée. L'horodatage passe
+    # avant-après) pour gérer les litiges. Les producteurs sont **livrés** : validation/correction
+    # (E04US002), forfait (E04US015 / ADR-0050, ex-E12US004), paiement, replacement, remboursement
+    # — tous écrivent leur trace **atomiquement avec leur agrégat** (`*_avec_trace`). `consigner`
+    # est la primitive pour le seul cas sans agrégat, le lancement de tour (E12US002) ; voir
+    # `application/audit.py`. La consultation admin (`GET .../audit`) est livrée. L'horodatage passe
     # par le port `Horloge` (adapter système UTC), injecté pour des cas d'usage déterministes. ---
     app.state.service_audit = ServiceAudit(audit_repository, tournoi_repository, HorlogeSysteme())
 

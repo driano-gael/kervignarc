@@ -111,7 +111,7 @@ class ArcherRepository(Protocol):
         L'appelant a **déjà** obtenu la confirmation de l'admin si l'archer était placé ou
         engagé (`ArcherEngage`) : à ce niveau, la décision est prise et les données sont
         perdues volontairement. Un archer qui **abandonne** ne passe pas par ici — c'est un
-        forfait tracé (E12US004), qui préserve ses flèches.
+        forfait tracé (E04US015 / ADR-0050, ex-E12US004), qui préserve ses flèches.
         """
         ...
 
