@@ -3,7 +3,7 @@
 // Un gabarit décrit un **plan de cibles réutilisable** (indépendant d'un tournoi). Liste +
 // création + édition (nom, nombre de cibles, plafond d'archers par cible) + suppression à
 // confirmation. À la création, le **plafond** (1 à 4, défaut 4) s'applique à toutes les cibles ;
-// l'ajustement cible par cible viendra en E01US008. Les **couloirs de tir** (A/B/C/D) se
+// l'ajustement cible par cible est livré (E01US008). Les **couloirs de tir** (A/B/C/D) se
 // déduisent du plafond côté serveur (champ `position`, cf. glossaire et DETTE-042).
 
 import { useState } from 'react'

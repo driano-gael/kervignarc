@@ -119,3 +119,26 @@ que ce retravail reste peu coûteux. Inscrit à ce titre en **dette de conceptio
 ## Liens
 `stories/E05-moteur-phases.md` (E05US001), ADR-0004, ADR-0011, ADR-0026 §3, `docs/dette.md`
 (DETTE-003 assignée à E05US003 ; DETTE-015 modèle de source provisoire), `moteur-placement-lucky-loser.md`.
+
+## Porté dans le code par
+
+> *Section ajoutée le 08/08/2026 (rétro-équipement des ADR structurants encore actifs). La règle
+> « un ADR nomme les modules qui le portent » a été instituée le 06/08/2026 par
+> [ADR-0075](0075-le-depart-est-la-portee-sportive.md) et n'avait pas été appliquée rétroactivement.
+> Les modules ci-dessous ont été **vérifiés dans le code du jour**, pas déduits de l'ADR — nommer un
+> module vide reproduirait exactement le défaut que la section existe pour empêcher.*
+
+- `backend/domain/phase.py` — `StatutPhase` et les **transitions pures** de l'agrégat (`demarrer`,
+  `mettre_en_pause`, `reprendre`, `terminer`), qui renvoient une copie sans arbitrer l'enchaînement.
+- `backend/application/phases.py` — le **service** qui arbitre l'enchaînement et lève
+  `TransitionStatutInvalide` (→ 409), sur le patron de `ServiceTournois`.
+- `backend/api/v1/phases.py` — la table `transitions` qui mappe l'action demandée sur la méthode de
+  service ; aucune règle n'y vit.
+- `backend/domain/phase.py` (`SourcePhase`) — le typage de la source, généralisé en **liste** par
+  `E05US010` puis par [ADR-0068](0068-le-moteur-consomme-les-prelevements-declares.md).
+
+La règle « **on n'offre pas en façade un type qu'aucun moteur ne sait dérouler** » (§2) est portée
+par la docstring de `TypePhase`, qui nomme le moteur de chaque valeur. ⚠️ Elle est aujourd'hui
+**tenue à moitié** : `poules`, `suisse`, `colline` et `big_shoot_off` ont bien un moteur, mais aucun
+**consommateur de production** (`DETTE-028`) — ils sont composables et non exécutables. C'est
+`E05US023` qui referme l'écart.

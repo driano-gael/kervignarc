@@ -4,7 +4,7 @@
 - **Date** : 2026-07-30
 - **Décideurs** : Organisateur / Architecte
 - **Portée** : E01US023 (catégories, blasons et formats de tournoi hors périmètre d'un tournoi)
-- **Lie** : [ADR-0011](0011-phase-minimale-et-passive.md) et [ADR-0045](0045-sequence-de-phases-cycle-de-vie-typage-source.md)
+- **Lie** : [ADR-0011](0011-phase-qualification-anticipee.md) et [ADR-0045](0045-sequence-de-phases-cycle-de-vie-typage-source.md)
   (la `Phase` et l'invariant de séquence que cet ADR **ne** touche pas),
   [ADR-0020](0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md) (RG-8 : le règlement est
   un template, jamais une contrainte), [ADR-0058](0058-decoupage-de-l-admin-en-trois-axes-d-activite.md)
@@ -178,3 +178,27 @@ précisément pour être lisible par lui.
 | `par_tournoi(None)` plutôt qu'une lecture `par_bibliotheque()` dédiée | Confond deux lectures de nature différente et autorise « les catégories du tournoi `None` » |
 | Versionner les briques (chaque tournoi pointe une **version** figée) | Répond au même besoin que la copie, pour un coût de modèle bien supérieur (historique, purge, résolution de version) ; à reconsidérer si le patrimoine devient volumineux ou partagé entre clubs |
 | Marquer la conformité FFTA plutôt que la simple provenance | Suppose la **version du règlement** modélisée et un contrôle de conformité — un lot à part entière, et RG-8 dit que l'application ne vérifie pas la conformité |
+
+## Porté dans le code par
+
+> *Section ajoutée le 08/08/2026 (rétro-équipement des ADR structurants encore actifs). La règle
+> « un ADR nomme les modules qui le portent » a été instituée le 06/08/2026 par
+> [ADR-0075](0075-le-depart-est-la-portee-sportive.md) et n'avait pas été appliquée rétroactivement.
+> Les modules ci-dessous ont été **vérifiés dans le code du jour**, pas déduits de l'ADR — nommer un
+> module vide reproduirait exactement le défaut que la section existe pour empêcher.*
+
+- `backend/domain/patrimoine.py` — les briques de bibliothèque et leur distinction par `tournoi_id`.
+- `backend/application/patrimoine.py` — les trois gestes de l'ADR, un par méthode :
+  `appliquer_categorie` / `appliquer_blason` (**copier** vers un tournoi, §2),
+  `promouvoir_blason` / `promouvoir_categorie` (**remonter** au club, §3),
+  `dupliquer_categorie` / `dupliquer_blason`, et `precharger_ffta` (le pré-chargement se fait
+  désormais **dans la bibliothèque**, plus à chaque tournoi).
+- `backend/domain/ports.py` — `par_bibliotheque()` **distincte** de `par_tournoi()` sur les ports
+  `CategorieRepository` et `BlasonRepository`, exactement comme §1 le prescrit : deux lectures de
+  nature différente, jamais un `par_tournoi(None)`.
+- `backend/domain/format_tournoi.py` — `FormatTournoi`, la brique neuve introduite par cet ADR pour
+  que le déroulé devienne lui aussi du patrimoine.
+
+Le §5 (« la brique réutilisable reste le **format**, un seul niveau ») est ce qui a permis de
+trancher le CA « gabarit de phase » d'`E16US002` sans rouvrir le sujet : il est **porté par
+l'absence** d'un niveau intermédiaire, ce qu'aucun module ne peut montrer — d'où sa mention ici.

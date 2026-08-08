@@ -512,9 +512,17 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **106 US livrées** sur `main` (mergées, revues, CI verte) à la date du 08/08/2026. **`SUIVI-US.md`
-  fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
-  livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
+- **106 US livrées** sur `main` (mergées, revues, CI verte) à la date du 08/08/2026, la dernière
+  étant `E05US024`. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
+  tient pas un second décompte.
+  ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
+  compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
+  ligne de code** (elles sont ⬜), tandis qu'`E17US003` et `E17US004` ont été livrées sous la
+  branche d'`E17US001` (PR #138) et n'apparaissent pas sous leur propre nom.
+  **Quatre US sont *absorbées*** — leur capacité est livrée par une autre, elles ne comptent nulle
+  part : `E12US004` (« tracer un forfait », par `E04US015`, qui livre l'abandon/DSQ en qualif *et*
+  en duels — d'où un J2 de 14 et non 15), `E05US016` (par `E05US015`), `E05US018` et `E05US019`
+  (par `E05US010` et `E01US023`). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
   réseau LAN + QR E11US008, retour visuel de génération + position A..D E03US011, blason FFTA par
   défaut E01US022), le **lot démo a bouclé EPIC-14** (lisibilité admin : accueil-tableau de bord
@@ -539,7 +547,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   **Quatre écrans refusés** en l'état (A07 phases, A10 plan de salle, A14 complétude, P03 classements
   publics), vingt validés avec réserves. Le **lot « front seul »** a été livré le 05/08/2026 — **hors
   US numérotée**, d'où un compte d'US inchangé : il ne portait aucune décision métier ni changement de
-  domaine. Le reste est spécifié en dix US dans [`stories/E16`](../stories/E16-retours-maquettes.md)
+  domaine. Le reste est spécifié en **douze US** dans [`stories/E16`](../stories/E16-retours-maquettes.md)
   ([EPIC-16](../epics/EPIC-16-retours-maquettes.md)), et les retours **écartés** y sont consignés avec
   leur raison — aucun questionnaire ne reste sans suite. **Premier écran refusé relevé : A10 (plan de
   salle)**, par E16US001 — le refus ne portait que sur le **vocabulaire**, désormais arbitré. **A14
@@ -560,6 +568,27 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   sur la même volée) —, un **écran livré jamais maquetté** (la création du compte administrateur au
   tout premier lancement), et une **erreur de fond sur A07** : « 1/8 » et « 1/4 » y étaient présentés
   comme des phases alors qu'une seule phase porte tout le tableau.
+- **L'application a pris les couleurs du club (05–06/08/2026, E17US001 → E17US004)** — quatre US, et
+  le changement le plus **visible** de la semaine. En comparant l'outil aux maquettes validées, le
+  commanditaire a constaté qu'ils n'avaient « rien à voir ». La cause n'était pas un écran mais **la
+  palette, jamais posée** : le front tournait encore sur le décor du tout premier squelette
+  technique — accent violet, fond blanc, police système —, parce que les « US design » annoncées
+  dans le code n'avaient jamais été écrites, et qu'**aucune des 98 US livrées n'avait de raison de
+  s'en apercevoir** (chacune était conforme à son propre cahier). Ont suivi, dans l'ordre :
+  la **charte du club** posée une fois pour toutes (anthracite, rouge club en aplat seulement,
+  alerte **ambre**, thème sombre par défaut) ; le **catalogue de composants** — boutons, champs,
+  cartes, onglets, pastilles — aligné sur les **formes** des planches ; l'**écran de connexion** et
+  l'**accueil** conformes à leur maquette ; et la **supervision des tablettes** passée en **grille de
+  tuiles**, le jour J, pour repérer d'un coup d'œil celle qui s'est tue au lieu de lire trente
+  lignes. Décision de fond au passage : **les maquettes font foi**
+  ([ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md)) —
+  un écart entre un écran et sa planche est désormais un **défaut constatable**, plus une divergence
+  que personne n'avait à relever. **Deux points attendent une réponse du commanditaire** : embarquer
+  la police du dossier de maquettes (elle ne se chargera pas le jour J, qui tourne sans internet) et
+  la **couleur d'une action irréversible**, que la charte ne prévoit pas — aujourd'hui la même que
+  celle d'un avertissement.
+  *(⚠️ Ces quatre US étaient **absentes de ce résumé** jusqu'au 08/08/2026, alors que le tracker les
+  affichait livrées. Un résumé plus court que le tracker est **périmé**, pas synthétique.)*
 - **Le départ est devenu la portée sportive (07/08/2026, E01US025)** — une correction de fond, pas un
   écran. Une décision prise en **juillet 2025** (« un départ rejoue le tournoi ») n'avait été portée
   que par la logistique : le moteur est resté à la maille tournoi **treize mois**, produisant un

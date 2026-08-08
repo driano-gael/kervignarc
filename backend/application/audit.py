@@ -2,15 +2,35 @@
 
 Deux cas d'usage :
 
-- **`consigner`** : la primitive d'écriture du journal. C'est elle que les **producteurs**
-  appelleront — la validation et la correction d'un score (E04US002), le forfait (E12US004) —
-  depuis leur propre commande d'écriture (dans la file, règle 7), pour laisser une trace *qui /
-  quand / avant-après*. Le « quand » est lu **ici** via le port `Horloge` (jamais dans le domaine,
-  qui reste pur et déterministe) : l'appelant fournit *quoi*, le service **date**. Aucune garde sur
-  l'existence du tournoi : `consigner` est une primitive **interne**, invoquée par un producteur qui
-  a déjà validé son contexte — y rajouter une relecture du tournoi alourdirait le chemin d'écriture
-  sans rien garantir de plus (l'intégrité tient à la FK). Tant qu'E04US002/E12US004 ne sont pas
-  livrées, cette méthode n'a **pas encore d'appelant** : c'est le socle, pas du code mort.
+- **`consigner`** : la primitive d'écriture du journal, pour un producteur qui écrit sa trace
+  **séparément** de son agrégat. Le « quand » est lu **ici** via le port `Horloge` (jamais dans le
+  domaine, qui reste pur et déterministe) : l'appelant fournit *quoi*, le service **date**. Aucune
+  garde sur l'existence du tournoi : `consigner` est une primitive **interne**, invoquée par un
+  producteur qui a déjà validé son contexte — y rajouter une relecture du tournoi alourdirait le
+  chemin d'écriture sans rien garantir de plus (l'intégrité tient à la FK).
+
+  ⚠️ **Il y a deux façons de produire une entrée d'audit dans ce projet, et `consigner` est la
+  minoritaire.** Ne pas conclure d'un `grep consigner` que l'audit n'a qu'un producteur :
+
+  1. **Trace atomique avec l'agrégat** — le cas **général** : **7 des 8 chemins d'écriture**.
+     ⚠️ L'unité est le *chemin d'écriture*, pas l'action : `ActionAuditee` n'a que **7** membres,
+     le forfait en consommant deux (`declarer` et `annuler`). Compter l'enum donne 6/7, pas 7/8 —
+     les deux comptes décrivent la même réalité. Le service
+     construit l'`EntreeAudit` lui-même et la passe au repository dans **la même** méthode que son
+     écriture métier : `declarer_avec_trace` / `annuler_avec_trace` (`application/forfaits.py`),
+     et de même pour `PAIEMENT`, `REPLACEMENT`, `REMBOURSEMENT`, `VALIDATION`, `CORRECTION_SCORE`.
+     La raison est un invariant, pas une commodité : **une trace ne doit pas survivre à l'écriture
+     qu'elle décrit** si celle-ci est annulée, ni manquer si celle-ci passe. Deux appels successifs
+     dans la file ne le garantissent pas ; une seule méthode de repository, si.
+  2. **`consigner` seul** — quand il n'y a **pas d'agrégat à écrire**. Un seul cas aujourd'hui :
+     `ActionAuditee.LANCEMENT` (`application/pilotage_tour.py`, E12US002 / ADR-0056) — lancer un
+     tour ne pose **aucun statut** (le tableau est reconstruit, ADR-0049), donc la trace *est* le
+     seul écrit. C'est ce qui rend la primitive nécessaire malgré son unique appelant.
+
+  *(Réécrit le 08/08/2026. La version précédente affirmait que `consigner` n'avait « pas encore
+  d'appelant » et attendait E04US002 et E12US004 : E04US002 est livrée depuis le 30/07, E12US004
+  est **absorbée par E04US015** (27/07, ADR-0050) et n'arrivera jamais, et la méthode **a** un
+  appelant. Trois affirmations fausses dans un paragraphe qui sert de porte d'entrée au module.)*
 
 - **`lister`** : la consultation **admin** (« consultable par l'admin », CA). Garde
   `TournoiIntrouvable` pour qu'une consultation d'un tournoi inconnu réponde 404 (et non une liste

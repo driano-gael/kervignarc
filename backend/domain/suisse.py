@@ -436,10 +436,10 @@ def _apparier(
     dans l'ordre — c'est ce qui réalise « les vainqueurs rencontrent les vainqueurs », puisque
     l'ordre est trié par score.
 
-    Le repli quand deux voisins se sont déjà rencontrés : on descend chercher le premier adversaire
-    compatible. Glouton, donc faillible — d'où `AppariementImpossible` plutôt qu'un ré-affrontement
-    muet.
-
+    Quand deux voisins se sont déjà rencontrés, l'appariement est délégué à
+    `_apparier_en_reculant` : **essais successifs avec retour arrière**, et non un repli glouton.
+    `AppariementImpossible` n'est donc levée que si **aucun** appariement sans ré-affrontement
+    n'existe — l'échec est exact, pas un abandon en chemin (DETTE-027, résorbée le 01/08/2026).
     """
     if coupe_en_deux:
         moitie = len(ordre) // 2

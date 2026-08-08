@@ -43,6 +43,8 @@ export function Supervision({ tournoiId }: { tournoiId: number }) {
       <h2 className="carte__titre">Supervision des postes</h2>
 
       {supervision.isPending && <p className="carte__etat">Chargement…</p>}
+      {/* DETTE-050 : rendu ad hoc non rallié à `shared/ui/texteErreur` — `error.message` brut.
+          (Le rendu de `revoquer`, plus bas, est déjà gardé par `instanceof ErreurApi`.) */}
       {supervision.isError && (
         <p className="carte__etat carte__etat--erreur" role="alert">
           Supervision injoignable — {supervision.error.message}

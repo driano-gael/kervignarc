@@ -1,5 +1,13 @@
 # ADR-0016 — Supprimer un archer engagé : confirmer et détruire, plutôt que refuser — et ne pas confondre avec le forfait
 
+> ⚠️ **Amendé par [ADR-0050](0050-forfait-abandon-et-disqualification.md) (27/07/2026).** Cet ADR
+> répartit le forfait entre deux US, `E04US015` (qualification) et `E12US004` (duels) : cette
+> répartition **n'a plus cours**. `E12US004` est **absorbée** par `E04US015`, qui porte un concept
+> unique `Forfait` **scopé à la phase**, et qui est **livrée**. Partout ci-dessous, lire
+> « E04US015 / E12US004 » comme « **E04US015**, pour les deux portées », et ne pas attendre de
+> livraison au titre d'`E12US004` : elle n'arrivera jamais. La **décision** de cet ADR (confirmer et
+> détruire ≠ déclarer forfait) reste, elle, entièrement valide.
+
 - **Statut** : Accepté
 - **Date** : 2026-07-16
 - **Décideurs** : Organisateur / Architecte

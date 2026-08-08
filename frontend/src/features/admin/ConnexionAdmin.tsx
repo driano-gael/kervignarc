@@ -16,6 +16,8 @@ export function ConnexionAdmin() {
 
   if (etat.isPending) return <p className="carte__etat">Chargement…</p>
   if (etat.isError) {
+    // DETTE-050 : rendu ad hoc non rallié à `shared/ui/texteErreur` — `error.message` est
+    // interpolé brut, donc une coupure LAN affiche « TypeError: Failed to fetch ».
     return (
       <p className="carte__etat carte__etat--erreur" role="alert">
         Accès admin injoignable — {etat.error.message}

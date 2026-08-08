@@ -6,7 +6,7 @@
 - **Amende** : [`stories/E11-exploitation.md`](../../stories/E11-exploitation.md) (E11US003 — CA
   « sauvegarde périodique » et « export/archive »).
 - **Introduit par** : E11US003 (sauvegarde & archive).
-- **Réfs** : [ADR-0005](0005-concurrence-sqlite-writer-unique.md) (writer unique, file d'écriture,
+- **Réfs** : [ADR-0005](0005-async-et-sqlite.md) (writer unique, file d'écriture,
   WAL), `CLAUDE.md` règle 7 (SQLite single-writer) et règle 12 (simplicité hors domaine).
 
 ## Contexte et problème

@@ -61,6 +61,9 @@ export function PlanCiblesPublic({
     return <p className="carte__etat">Chargement…</p>
   }
   if (departs.isError) {
+    // DETTE-050 : deux rendus ad hoc dans ce fichier (celui-ci et « Plan injoignable » plus bas)
+    // ne sont pas ralliés à `shared/ui/texteErreur` — `error.message` interpolé brut. Écran
+    // **public** : le spectateur lirait « TypeError: Failed to fetch » sur coupure LAN.
     return (
       <p className="carte__etat carte__etat--erreur" role="alert">
         Départs injoignables — {departs.error.message}
@@ -157,6 +160,7 @@ function GrilleCibles({
     return <p className="carte__etat">Chargement…</p>
   }
   if (plan.isError) {
+    // DETTE-050
     return (
       <p className="carte__etat carte__etat--erreur" role="alert">
         Plan injoignable — {plan.error.message}

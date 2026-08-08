@@ -90,6 +90,7 @@ export function GestionTournois({
 
       {/* Sans ce bloc, une liste injoignable (backend coupé) se réduirait à « aucun tournoi » — un
           faux vide qui fait croire à une base vide plutôt qu'à une panne réseau. */}
+      {/* DETTE-050 : rendu ad hoc non rallié à `shared/ui/texteErreur` — `error.message` brut. */}
       {tournois.isError && (
         <p className="carte__etat carte__etat--erreur" role="alert">
           Liste des tournois injoignable — {tournois.error.message}

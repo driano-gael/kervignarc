@@ -11,8 +11,9 @@ Le forfait est **daté**, **attribué** (le nom de qui l'a déclaré, comme l'au
 `D-15`). L'agrégat est **immuable** (`frozen`), pur et déterministe : le « quand » lui est **donné**
 par l'appelant via le port `Horloge` (jamais lu ici — même contrat que `EntreeAudit`).
 
-**Scopé à une phase** (`phase_id`) — c'est la clé de la fusion E04US015 (qualification) + E12US004
-(duels), [ADR-0050](../../docs/adr/0050-forfait-abandon-et-disqualification.md). Un abandon **en
+**Scopé à une phase** (`phase_id`) — c'est la clé de la fusion d'E04US015 (qualification) et de
+l'ex-E12US004 (duels), **absorbée** par elle le 27/07/2026 :
+[ADR-0050](../../docs/adr/0050-forfait-abandon-et-disqualification.md). Un abandon **en
 qualification** relègue/exclut l'archer du **classement de qualification** (`domain.classement`) ;
 un forfait **en duels** ne touche **pas** le classement de qualif (l'archer avait bien qualifié) —
 il fait **passer l'adversaire** dans le tableau. Sans ce scope, un abandon en duels reléguerait à

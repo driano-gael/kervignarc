@@ -109,6 +109,7 @@ export function VueClassement({
         <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
       )}
       {liste.length > 0 && classement.isPending && <p className="carte__etat">Chargement…</p>}
+      {/* DETTE-050 : rendu ad hoc non rallié à `shared/ui/texteErreur` — `error.message` brut. */}
       {classement.isError && (
         <p className="carte__etat carte__etat--erreur" role="alert">
           Classement injoignable — {classement.error.message}

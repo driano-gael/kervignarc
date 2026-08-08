@@ -184,3 +184,26 @@ fige l'état actuel et **échouera** ce jour-là — c'est exactement ce qu'on l
   et une seconde notion de profondeur aurait fait deux réglages pour une question.
 - **Laisser `Depth` injectée au câblage et n'exposer qu'un préréglage de format.** Écarté : le
   format serait resté du code, contre la règle 2 (« un format de tournoi est de la configuration »).
+
+## Porté dans le code par
+
+> *Section ajoutée le 08/08/2026 (rétro-équipement des ADR structurants encore actifs). La règle
+> « un ADR nomme les modules qui le portent » a été instituée le 06/08/2026 par
+> [ADR-0075](0075-le-depart-est-la-portee-sportive.md) et n'avait pas été appliquée rétroactivement.
+> Les modules ci-dessous ont été **vérifiés dans le code du jour**, pas déduits de l'ADR — nommer un
+> module vide reproduirait exactement le défaut que la section existe pour empêcher.*
+
+- `backend/domain/politiques.py` — `ProfondeurClassement` (le **descripteur** sérialisable : `nom` +
+  `jusqu_au`), `NomProfondeur`, et les trois stratégies `ProfondeurUnVersN`, `ProfondeurPodium`,
+  `AucunClassement`. La distinction descripteur / stratégie **est** la décision §1.
+- `backend/domain/phase.py` — `Phase.profondeur: ProfondeurClassement | None` et
+  `profondeur_par_defaut(type_phase)` : l'absence de réglage vaut **preset du type** (podium pour une
+  élimination directe, intégral pour un placement), et ce preset vit en **un seul endroit**.
+- `backend/application/prelevement.py` — `profondeur_de(phase, registre)`, la résolution
+  descripteur → stratégie par le `RegistrePolitiques`, exactement comme le seuil de barrage
+  d'[ADR-0066](0066-seuil-de-barrage-porte-par-la-politique-tiebreak.md).
+
+Conforme à [ADR-0046](0046-config-policies-politiques-nommees-parametrees.md) : persistance sous
+`config.policies.depth`, **aucune migration Alembic**. `aucun` reste **au catalogue mais hors
+façade** (§2) — c'est le contenu du type `échauffement`, pas un réglage de tableau ; l'offrir
+proposerait un tableau qui ne classe personne.

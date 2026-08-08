@@ -158,3 +158,66 @@ appliquées dans l'US qui porte cet ADR :
   code n'a jamais fait dans sa forme livrée)
 - `backend/infrastructure/db/repositories/moteur.py` + migration `0042`
 - `backend/tests/test_portee_sportive.py` (garde-fou mécanique)
+
+## Portée de la règle « Porté dans le code par » — tranchée le 08/08/2026
+
+*(Cette section **borne** la règle que le présent ADR a fait naître le 06/08/2026 et que
+`CLAUDE.md` § Workflow énonce. Elle vit ici, et non seulement dans `CLAUDE.md`, pour qu'un lecteur
+qui arrive par `docs/adr/` ne lise jamais la règle sans sa borne.)*
+
+### Le problème
+
+La règle est née d'un cas réel — la décision d'[ADR-0017](0017-le-depart-est-un-creneau-du-tournoi.md)
+n'a été portée qu'à moitié pendant treize mois — mais elle n'a pas été appliquée rétroactivement :
+au 08/08/2026, **8 ADR sur 81** portaient la section. Les 73 autres étaient donc, à la lettre de
+`CLAUDE.md`, des « intentions ». Rétro-équiper les 73 aurait produit une soixantaine de sections
+cosmétiques pour en sauver une utile.
+
+### Décision
+
+La règle vaut :
+
+1. **Pour tout ADR neuf**, sans exception.
+2. **Pour tout ADR modifié** dont le diff touche sa section *Décision* ou *Conséquences* — c'est la
+   définition opératoire de « **une US le rouvre** ». Un ADR qui gagne une coquille corrigée ou un
+   lien réparé ne se « rouvre » pas.
+3. **Pour les ADR structurants encore actifs**, au sens du critère ci-dessous.
+
+**Critère (reproductible par un tiers).** Un ADR est *structurant encore actif* si **les deux**
+conditions tiennent :
+- son statut est **Accepté** et il n'a pas été *remplacé* par un ADR postérieur ; **et**
+- sa décision est appliquée par le **moteur sportif** (déroulé, séquence de phases, placement,
+  classement, duels, palmarès), par la **portée** (tournoi / départ / phase), ou par une
+  **politique injectable** au sens de la règle 2 (`routing`, `scoring`, `seeding`, `byes`,
+  `tiebreak`, `depth`, `aggregation`).
+
+Un ADR d'**outillage**, d'**UI**, de **procédure** ou de **convention documentaire** n'entre pas
+dans le critère : c'est un ADR de moteur non porté qui a coûté treize mois, pas un ADR de
+gestionnaire de paquets. **Leur absence de section n'est pas un défaut à relever en revue.**
+
+**Les seize ADR retenus**, rétro-équipés les 08/08/2026 :
+`0004`, `0011`, `0017`, `0026`, `0028`, `0045`, `0046`, `0049`, `0060`, `0061`, `0062`, `0066`,
+`0067`, `0068`, `0069`, `0070`.
+
+> *`0049`, `0066` et `0067` ont été ajoutés en revue le 08/08/2026 : le premier jet appliquait le
+> critère « politiques » tout en excluant deux ADR **de politique** (`0066` porte le seuil de
+> barrage dans `tiebreak`, `0067` ajoute la 7ᵉ famille `aggregation`) et l'ADR de **scoring** des
+> duels. La liste ne découlait donc pas de son propre critère — défaut relevé par l'axe adversarial.*
+
+### Le garde-fou
+
+Une règle qui borne ce qu'une revue a le droit de relever doit dire **qui la vérifie**, sinon elle
+ne retire que de la détection. La grille de revue (`.claude/commands/revue-us.md`, axe C2, `12-ADR`)
+porte donc la contrepartie : elle exige la section sur tout ADR **créé**, et sur tout ADR
+**rouvert** au sens du point 2. Sans cette contrepartie, le bornage serait un pur affaiblissement.
+
+### Conséquence assumée
+
+L'énumération ci-dessus **dérivera** : un ADR hors liste qui devient structurant la rejoindra le
+jour où une US le rouvre. C'est pourquoi elle vit **ici** — dans le registre que les US touchent —
+et non dans `CLAUDE.md`, qui ne porte que le critère.
+
+⚠️ **Écrire la section, c'est vérifier dans le code du jour, pas déduire de l'ADR.** Le
+rétro-équipement l'a prouvé deux fois : `ADR-0028` (équipes) n'est porté **qu'au quart** — la classe
+`Equipe` n'existe pas — et `ADR-0049` promet dans son titre un barème résolu par « (phase, arme) »
+que le code résout par l'**arme seule**. Ni l'un ni l'autre ne se voyait sans ouvrir les modules.

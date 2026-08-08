@@ -423,6 +423,12 @@ function nomComplet(archer: Archer): string {
   return `${archer.prenom} ${archer.nom}`.trim()
 }
 
+// DETTE-050 : copie verbatim de `shared/ui/texteErreur` (l'autre est dans
+// `features/placement/Placement.tsx`). Le narrowing est correct ici — c'est sa **duplication**
+// qui est la dette : **cinq** sites portent cet invariant — ce module, les deux copies verbatim,
+// et deux encodages inline (`supervision/Supervision.tsx`, `supervision/PiloterEcrans.tsx`) —
+// dont un seul est le point de vérité. Une résorption qui ne viserait que « les deux helpers
+// dupliqués » laisserait les deux inline derrière elle.
 function messageErreur(erreur: Error): string {
   return erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.'
 }

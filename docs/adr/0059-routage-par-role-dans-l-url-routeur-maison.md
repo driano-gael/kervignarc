@@ -131,7 +131,7 @@ ne s'installe.
 ## Amendement du 05/08/2026 — une adresse par **porte**, plusieurs portes par monde
 
 Cet ADR décidait « **cinq adresses, une par monde** », et son en-tête parlait des « quatre portes »
-d'[ADR-0042](0042-ecran-d-entree-quatre-portes.md). Les deux formulations sont devenues **fausses**
+d'[ADR-0042](0042-modele-d-entree-choix-de-role-explicite.md). Les deux formulations sont devenues **fausses**
 avec le lot « retours du questionnaire de maquettes ».
 
 **Ce qui a changé.** Le commanditaire a demandé une porte de plus (`maquettes/questionnaires/a00-portes.md`,

@@ -3,10 +3,10 @@
 - **Statut** : accepté
 - **Date** : 01/08/2026
 - **US** : E07US004 — « Écran de salle : déroulé automatique, pilotage admin, et suivi du plan »
-- **Liés** : [ADR-0029](0029-session-de-poste-par-code-de-cible.md) (session de poste),
-  [ADR-0038](0038-supervision-des-postes-par-heartbeat.md) (supervision par heartbeat),
+- **Liés** : [ADR-0029](0029-mode-d-identite-poste-de-cible-et-jeton-de-poste.md) (session de poste),
+  [ADR-0038](0038-presence-des-postes-par-heartbeat.md) (supervision par heartbeat),
   [ADR-0063](0063-brouillon-de-format-invariant-a-l-application.md) (schéma à braquets),
-  [ADR-0056](0056-lancement-de-tour-comme-evenement.md) (lancement-événement)
+  [ADR-0056](0056-lancement-d-un-tour-acte-audite-et-diffuse.md) (lancement-événement)
 
 ## Contexte
 

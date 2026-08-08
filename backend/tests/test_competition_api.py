@@ -544,7 +544,7 @@ def test_supprimer_archer_engage_409_puis_passe_sur_confirmation(
 
     Le drapeau est ici en **paramètre de requête** et non dans le corps (un `DELETE` n'en a pas) —
     divergence de forme prévue par ADR-0015. La confirmation efface l'archer **et ses flèches** ;
-    un abandon, lui, relèvera du forfait (E12US004), qui les préserve.
+    un abandon, lui, relève du forfait (E04US015 / ADR-0050, ex-E12US004), qui les préserve.
     """
     with TestClient(app_competition) as client:
         connecter_admin(client)

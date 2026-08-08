@@ -3,7 +3,7 @@
 - **Statut** : Accepté
 - **Date** : 2026-08-02
 - **US** : E06US003 — Barrage de tir pour places décisives
-- **Révise** : la signature de `tiebreak` d'[ADR-0004](0004-politiques-injectables.md) (une méthode → deux)
+- **Révise** : la signature de `tiebreak` d'[ADR-0004](0004-moteur-de-phases-politiques.md) (une méthode → deux)
 
 ## Contexte
 
@@ -244,3 +244,22 @@ Deux corrections de fait, également issues de la revue :
 | `Phase` porte la `config.policies` **brute** | L'agrégat porte des réglages **typés** (`bareme`, `validation`), jamais un dictionnaire d'infrastructure — règle 4 |
 | **Stocker le verdict** en base | Deux vérités, dont une périmée au premier correctif de flèche ; et plus aucune façon de corriger une saisie |
 | Enregistrer les tirs **flèche par flèche** | Exposerait une manche incomplète à la lecture, donc un verdict provisoire faux ; un barrage se tire d'un bloc |
+
+## Porté dans le code par
+
+*(Section ajoutée le 08/08/2026 — cf. [ADR-0075 § « Portée de la règle »](0075-le-depart-est-la-portee-sportive.md).
+Chaque symbole vérifié dans le code du jour.)*
+
+- `backend/domain/politiques.py` — **le siège de la décision** : le `Protocol` `Tiebreak` porte
+  **deux** méthodes (`departager`, et `barrage_requis(rang)` ajoutée par cet ADR), et
+  `TiebreakAvecBarrage` (`sous_jacent: Tiebreak`, `jusqu_au: int`) est le composite qui règle le
+  seuil. `TiebreakFftaDefaut.barrage_requis` et `TiebreakPoules.barrage_requis` renvoient `False` :
+  le barrage n'est **pas** systématique, c'est bien l'enveloppe qui le déclenche.
+- `backend/domain/barrage.py` (`… len(participants) > 1 and tiebreak.barrage_requis(rang)`) — le
+  **seul** consommateur de production de la seconde méthode : c'est là que le seuil devient un
+  barrage réel. Si cette ligne disparaît, l'ADR n'est plus porté par rien, quoi que dise
+  `politiques.py`.
+- ⚠️ **Ce que la section ne peut pas promettre** : `TiebreakAvecBarrage` n'enveloppe un tiebreak que
+  si `config.policies.tiebreak` le demande. Un tournoi qui ne le configure pas ne fait aucun barrage
+  — c'est le comportement voulu (§ Décision), pas un défaut, mais cela signifie que l'ADR est porté
+  par une **configuration**, pas seulement par du code.

@@ -12,7 +12,7 @@
   relatives**, sans lesquelles la question « à quel effectif ? » ne se poserait pas),
   [ADR-0062](0062-catalogue-de-types-de-phase.md) (les neuf types que cet écran compose enfin),
   [ADR-0054](0054-execution-ephemere-du-moteur-sur-adapters-in-memory.md) et
-  [ADR-0055](0055-cockpit-de-simulation-bot-pausable.md) (le substrat et le bot que la simulation
+  [ADR-0055](0055-session-de-simulation-vivante-pilotee-par-pas.md) (le substrat et le bot que la simulation
   de format **compose** au lieu de les réécrire),
   [ADR-0026](0026-cycle-de-vie-du-tournoi-sept-statuts.md) (le patron « on crée en brouillon, on ne
   passe `prêt` que si… », dont ceci est la transposition au format)

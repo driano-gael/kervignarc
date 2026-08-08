@@ -9,8 +9,8 @@
 - **S'appuie sur** : [ADR-0023](0023-moteur-de-placement-glouton-deterministe.md) (glouton
   déterministe recalculable) · [ADR-0024](0024-plan-de-cibles-materialise-ajustable.md) (plan
   **matérialisé et ajustable**, raisons **dérivées à la lecture**) · [ADR-0047](0047-mixite-clubs-par-reordonnancement-et-signal-derive.md)
-  (le patron jumeau : mixité par ré-ordonnancement + signal dérivé) · [ADR-0028](0028-participant-abstraction-du-competiteur.md)
-  (le moteur de tableau oppose des `Participant`) · [ADR-0004](0004-politiques-de-tableau-injectables.md)
+  (le patron jumeau : mixité par ré-ordonnancement + signal dérivé) · [ADR-0028](0028-epreuves-par-equipes-participant.md)
+  (le moteur de tableau oppose des `Participant`) · [ADR-0004](0004-moteur-de-phases-politiques.md)
   /[ADR-0046](0046-config-policies-politiques-nommees-parametrees.md) (politiques de tableau
   injectables).
 

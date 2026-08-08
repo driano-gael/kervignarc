@@ -192,7 +192,7 @@ silence (correctif de revue, axe C2).
 
 `VueEcran` persiste la **chaîne**, pas un rang (E07US004) : `AFFECTATIONS` l'avait vérifié en
 E07US008, `PALMARES` est la deuxième à en profiter. C'est le motif littéral du CA de pilotage des
-écrans (E12US003) — « basculer sur le podium à 17 h et partir serrer des mains ».
+écrans (E07US004, ADR-0064) — « basculer sur le podium à 17 h et partir serrer des mains ».
 
 ## Conséquences
 
@@ -215,3 +215,20 @@ E07US008, `PALMARES` est la deuxième à en profiter. C'est le motif littéral d
   règle métier.
 - **Coût** : un troisième consommateur de la reconstruction d'arbre non cachée sur route publique —
   `DETTE-031` élargie (poll de 30 s, plus long que les 20 s du routage, pour cette raison).
+
+## Porté dans le code par
+
+*(Section ajoutée le 08/08/2026 — cf. [ADR-0075 § « Portée de la règle »](0075-le-depart-est-la-portee-sportive.md).
+Chaque symbole vérifié dans le code du jour.)*
+
+- `backend/domain/politiques.py` — la **7ᵉ** famille : `ClePolitique.AGGREGATION`, le `Protocol`
+  `Aggregation`, et ses deux implémentations `AggregationParQualification` (défaut) et
+  `AggregationExAequo`. C'est ce qui fait de l'agrégation une politique **injectable** (règle 2) et
+  non une règle en dur.
+- `backend/domain/palmares.py` — l'agrégation elle-même : `calculer_palmares(…)` fusionne les
+  `ResultatPhase` en `LignePalmares` / `Palmares`, via `PositionPhase` et `OriginePalmares`.
+  ⚠️ La politique s'applique **au palmarès entier**, pas par phase — `Phase` ne persiste aucun
+  réglage d'agrégation (commentaire l. 84), et c'est délibéré.
+- `backend/application/palmares.py` — `ServicePalmares` reçoit `aggregation: Aggregation | None` et
+  **retombe sur `AggregationParQualification()`** si rien n'est injecté (l. 98-99) ; `pour_tournoi`
+  passe la politique à `calculer_palmares`. C'est le point d'injection réel.

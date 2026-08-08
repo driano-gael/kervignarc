@@ -120,3 +120,24 @@ ADR-0045 (séquence de phases) ; [`docs/dette.md`](../dette.md) DETTE-003 ;
 [`docs/modele-de-donnees.md`](../modele-de-donnees.md) § « Config d'une étape de déroulé »
 *(le champ s'appelait `PHASE.config` jusqu'à [ADR-0076](0076-un-deroule-defini-une-fois-un-avancement-par-depart.md))* ;
 `stories/E05-moteur-phases.md` (E05US003).
+
+## Porté dans le code par
+
+> *Section ajoutée le 08/08/2026 (rétro-équipement des ADR structurants encore actifs). La règle
+> « un ADR nomme les modules qui le portent » a été instituée le 06/08/2026 par
+> [ADR-0075](0075-le-depart-est-la-portee-sportive.md) et n'avait pas été appliquée rétroactivement.
+> Les modules ci-dessous ont été **vérifiés dans le code du jour**, pas déduits de l'ADR — nommer un
+> module vide reproduirait exactement le défaut que la section existe pour empêcher.*
+
+- `backend/domain/politiques.py` — `assembler_politiques(config, registre)` lit `config["policies"]`
+  et rend un `PolitiquesPhase` ; `RegistrePolitiques` résout `nom → implémentation`. C'est ici que
+  la forme « un nom **et** des paramètres » devient une stratégie.
+- `backend/infrastructure/db/repositories/moteur.py` — la **sérialisation** de `config` : la forme
+  JSON est une préoccupation du repository, l'agrégat pur ne sérialise rien (règle 1).
+- `backend/domain/phase.py` — la docstring du module documente la répartition retenue : les
+  politiques sous `config.policies`, le grain de `validation` **à la racine**.
+
+Le choix « pas de migration Alembic » de cet ADR tient toujours : `config` est un document JSON,
+donc chaque famille ajoutée depuis (`tiebreak` en [ADR-0066](0066-seuil-de-barrage-porte-par-la-politique-tiebreak.md),
+`depth` en [ADR-0070](0070-profondeur-de-classement-reglee-par-phase.md)) est entrée **sans**
+migration. C'est la conséquence la plus réutilisée de cet ADR.

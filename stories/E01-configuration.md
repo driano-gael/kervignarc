@@ -67,7 +67,7 @@
 ### E01US011 — Presets de barèmes multi-phases
 *En tant qu'*administrateur, *je veux* des presets pour chaque type de phase, *afin de* couvrir les formats riches.
 - **CA** : **deux jeux** de presets (*FFTA officiel* / *format club*), modifiables et réutilisables — barrage (1 flèche), sets (FFTA : 5 sets / 6 pts ; club : 4 pts), finales, Big Shoot Off ; un barème est **surchargeable par arme** (poulies au cumul, sans sets — FFTA A.7.5.2).
-- **Notes** : alimente les politiques `scoring` du moteur (EPIC-05) ; cf. EF-3.4 et `config.policies.scoring_par_arme` du [modèle de données](../docs/modele-de-donnees.md). ⚠️ Le **Big Shoot Off n'a pas de règle connue** (Q9 du CDC fonctionnel) — cette US est **bloquée** sur ce point tant que le club ne l'a pas fournie.
+- **Notes** : alimente les politiques `scoring` du moteur (EPIC-05) ; cf. EF-3.4 et `config.policies.scoring_par_arme` du [modèle de données](../docs/modele-de-donnees.md). ~~⚠️ Le **Big Shoot Off n'a pas de règle connue** (Q9 du CDC fonctionnel) — cette US est **bloquée** sur ce point tant que le club ne l'a pas fournie.~~ **Verrou levé le 31/07/2026** : le commanditaire a fourni la règle du Big Shoot Off, **Q9 est fermée**, et `E05US015` a livré les onze formats dont celui-ci ([ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md)). ⚠️ **La note de blocage a survécu huit jours à sa cause** et aurait fait renoncer à une US redevenue faisable — corrigée le 08/08/2026. Reste une dépendance **réelle et distincte** : le Big Shoot Off n'est pas encore **jouable** (`DETTE-028`), c'est `E05US023` ; un preset de barème pour un format que le moteur ne sait pas dérouler ne se recetterait pas.
 - **Dépend de** : E01US009 · **Jalon** : J4
 
 ### E01US012 — Gérer plusieurs gabarits

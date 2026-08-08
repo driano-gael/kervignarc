@@ -90,3 +90,33 @@ traiter un participant qui n'est pas un individu — d'où la **coordination par
   (entité MATCH) est aligné : `participant_a`/`participant_b` remplacent `archer_a_id`/`archer_b_id`.
   Restent à venir : l'entité `Equipe`/`MEMBRE_EQUIPE` et la composition (E13US002), le scoring
   d'équipe (E13US003), le placement/saisie/classement par équipe (E13US004).
+
+## Porté dans le code par
+
+> *Section ajoutée le 08/08/2026 (rétro-équipement des ADR structurants encore actifs). La règle
+> « un ADR nomme les modules qui le portent » a été instituée le 06/08/2026 par
+> [ADR-0075](0075-le-depart-est-la-portee-sportive.md) et n'avait pas été appliquée rétroactivement.
+> Les modules ci-dessous ont été **vérifiés dans le code du jour**, pas déduits de l'ADR — nommer un
+> module vide reproduirait exactement le défaut que la section existe pour empêcher.*
+
+- `backend/domain/participant.py` — `Participant` (`genre` + `ref_id`, `frozen`) et
+  `GenreParticipant`. Le moteur ne lit **que** l'identité, jamais pour décider d'un comportement.
+- `backend/domain/tableau.py`, `backend/domain/duel.py` — les matchs opposent des `Participant`,
+  conformément au point 1.
+
+🔴 **Cet ADR n'est porté qu'à un quart, et il faut le dire ici plutôt que le laisser croire.**
+Seul le **point 1** (l'abstraction) est livré, par `E13US001`. Les points 2, 3 et 4 **n'ont aucun
+module** :
+
+| Point de la décision | État |
+|---|---|
+| 1. Le match oppose des participants | ✅ `domain/participant.py` |
+| 2. `Equipe` est une entité du tournoi (+ `MEMBRE_EQUIPE`) | ⬜ **aucune classe `Equipe` dans le dépôt** — `E13US002` |
+| 3. Le scoring d'équipe est une politique injectable | ⬜ `E13US003` |
+| 4. Placement / saisie / classement clés sur le participant | ⬜ `E13US004` |
+
+`Participant.ref_id` **annonce** déjà `EquipeId` dans sa docstring, pour une classe qui n'existe pas :
+c'est une intention documentée, pas une capacité. Un lecteur qui verrait « ADR-0028 accepté » et
+`participant.py` livré pourrait conclure que les équipes sont supportées — elles ne le sont pas.
+C'est précisément le mode de défaillance d'ADR-0017 (une décision que seule une partie du code
+porte), et la seule parade est de l'écrire.

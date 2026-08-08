@@ -968,7 +968,8 @@ def test_signalement_d_engagement_dit_ce_qui_sera_detruit() -> None:
     """Le message énumère les flèches **et** le placement (CA E02US003).
 
     C'est la seule chose qui, à l'écran, distingue une suppression légitime (erreur de saisie)
-    d'un abandon mal enregistré — que le forfait d'E12US004 doit servir. Un message vague ferait
+    d'un abandon mal enregistré — que le forfait d'E04US015 (ADR-0050, ex-E12US004) doit
+    servir. Un message vague ferait
     de la destruction le chemin par défaut de l'archer qui s'en va, et les flèches partiraient
     avec.
     """
@@ -1088,7 +1089,7 @@ def test_supprimer_archer_engage_confirme_efface_l_archer_et_ses_fleches() -> No
 
     La suppression **emporte les flèches** (la série de saisie part en cascade) — c'est le contrat
     du port, et c'est le prix que le message annonce. Un archer qui abandonne ne passe pas par là
-    (forfait, E12US004).
+    (forfait, E04US015 / ADR-0050, ex-E12US004).
     """
     m = _monter()
     archer = m.archers.ajouter(m.tournoi_id, "Robin", "Jean", m.categorie_id)

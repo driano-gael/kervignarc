@@ -4,7 +4,7 @@
 - **Date** : 05/08/2026
 - **Contexte** : lot « retours du questionnaire de maquettes » (`maquettes/questionnaires/a15-bascule-de-tour.md`)
 - **Remplace** : rien. **Complète** [ADR-0059](0059-routage-par-role-dans-l-url-routeur-maison.md) et
-  [ADR-0008](0008-gestionnaire-de-paquets.md) sur la même question — « dépendance ou quelques lignes maison ? »
+  [ADR-0008](0008-outillage-npm-venv.md) sur la même question — « dépendance ou quelques lignes maison ? »
 
 ## Contexte
 

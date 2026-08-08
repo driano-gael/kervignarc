@@ -13,7 +13,8 @@
 // Le troisième est le seul dont la confirmation **détruit** (les flèches et le placement partent
 // avec) : bouton `--danger`, libellé qui nomme la perte. Les trois se ressemblent, leurs
 // conséquences non — et un archer qui **abandonne** ne se supprime pas : c'est un forfait tracé
-// (E12US004), qui conserve ses résultats. Le message du serveur le dit ; c'est lui qu'on lit.
+// (E04US015 / ADR-0050, ex-E12US004), qui conserve ses résultats. Le message du serveur
+// le dit ; c'est lui qu'on lit.
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
@@ -182,7 +183,8 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
           confirmation **détruit** (les flèches et le placement partent avec l'archer). D'où un
           bouton `--danger` et non neutre : les trois blocs se ressemblent, leurs conséquences
           non. Le message du serveur énumère ce qui sera effacé et rappelle qu'un abandon est un
-          forfait (E12US004), pas une suppression — le lire est le geste utile ici. */}
+          forfait (E04US015 / ADR-0050, ex-E12US004), pas une suppression — le lire est le
+          geste utile ici. */}
       {engagementSignale ? (
         <div className="carte__etat" role="alert">
           <p>{supprimer.error?.message}</p>

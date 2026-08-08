@@ -6,9 +6,11 @@ Un seul router, imbriqué sous le tournoi (`/api/v1/tournois/{tournoi_id}/audit`
 (E10US001) : un journal de litiges (qui a validé/corrigé quoi) n'a pas à s'ouvrir au public.
 
 **Pas d'endpoint d'écriture ici** : les entrées naissent d'un **acte métier** (une validation, une
-correction — E04US002 ; un forfait — E12US004), consigné par `ServiceAudit.consigner` **dans la
-commande d'écriture** du producteur (file, règle 7). Écrire une trace « à la main » par une route
-dédiée n'aurait pas de sens — l'audit reflète des actes, il ne s'édite pas. La consultation, elle,
+correction — E04US002 ; un forfait — E04US015 / ADR-0050, ex-E12US004), écrit **dans la commande
+d'écriture** du producteur (file, règle 7) — le plus souvent **atomiquement avec son agrégat**
+(`*_avec_trace`), et par `ServiceAudit.consigner` quand il n'y a pas d'agrégat à écrire (cf.
+`application/audit.py`). Écrire une trace « à la main » par une route dédiée n'aurait pas de
+sens — l'audit reflète des actes, il ne s'édite pas. La consultation, elle,
 est une **lecture** (hors file, `run_in_threadpool`), comme le listing des scoreurs.
 """
 

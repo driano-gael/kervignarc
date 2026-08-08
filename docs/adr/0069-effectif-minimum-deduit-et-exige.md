@@ -5,7 +5,7 @@
 - **US** : E05US021
 - **Prolonge** : [ADR-0068](0068-le-moteur-consomme-les-prelevements-declares.md) §6, qui ouvrait
   cette US ; [ADR-0063](0063-brouillon-de-format-invariant-a-l-application.md) (le brouillon
-  s'enregistre, l'application refuse) ; [ADR-0060](0060-briques-du-patrimoine-du-club.md) §5 (un
+  s'enregistre, l'application refuse) ; [ADR-0060](0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5 (un
   format n'a pas de copie de tournoi : sa copie, ce sont ses phases).
 
 ## Contexte
@@ -180,3 +180,33 @@ Le message **chiffre** ce qui manque et **nomme la phase et son prélèvement** 
   via le mapping ORM **courant** dans un schéma arrêté à `0027`, donc toute colonne nouvelle le
   cassait. Il insère désormais en SQL explicite — un test de migration décrit un passé, que le
   présent n'a pas à réécrire.
+
+## Porté dans le code par
+
+> *Section ajoutée le 08/08/2026 (rétro-équipement des ADR structurants encore actifs). La règle
+> « un ADR nomme les modules qui le portent » a été instituée le 06/08/2026 par
+> [ADR-0075](0075-le-depart-est-la-portee-sportive.md) et n'avait pas été appliquée rétroactivement.
+> Les modules ci-dessous ont été **vérifiés dans le code du jour**, pas déduits de l'ADR — nommer un
+> module vide reproduirait exactement le défaut que la section existe pour empêcher.*
+
+- `backend/domain/deroule.py` — `exigence_minimale(etapes)` (le calcul du plancher, §1),
+  `ExigenceEffectif`, la fonction module `effectif_minimum(etapes)` et le champ
+  `ProjectionDeroule.effectif_minimum` qui le transporte.
+  ⚠️ *Rectifié le 08/08/2026 en revue : cette ligne annonçait « `effectif_minimum` porté par
+  l'étape séquencée ». `EtapeSequencee` n'a pas ce champ — le lecteur cherchait un attribut
+  inexistant.* **Au niveau du déroulé**, le minimum est **déduit**, jamais saisi : aucun setter.
+  L'**exigence de club**, elle, est bien saisie — `FormatTournoi.effectif_minimum_exige`, bullet
+  suivant : les deux ne se confondent pas, c'est tout l'objet du titre « déduit **et** exigé ».
+- `backend/domain/format_tournoi.py` — l'exigence remonte au diagnostic du déroulé composé.
+- `backend/application/formats.py` — l'exposition du minimum comme **donnée** du diagnostic (et non
+  comme anomalie : `PrelevementVide` couvrait déjà le cas, l'ajouter signalerait deux fois le même
+  défaut).
+- `backend/application/tournois.py` — le refus au démarrage quand l'effectif inscrit est sous le
+  plancher.
+- `backend/api/v1/formats.py` — l'annonce **avant** le clic, élargissement du CA au cadrage du
+  04/08/2026 (un refus au clic n'apprend rien tant qu'on ne clique pas).
+
+⚠️ **Portée volontairement étroite, et c'est une décision, pas une lacune** : seuls les prélèvements
+visant la **première** phase se traduisent en nombre d'inscrits, un rang se lisant dans le classement
+de sa phase source et non dans les inscrits. Élargir aurait produit un chiffre **faux**, ce qui est
+pire que pas de chiffre.

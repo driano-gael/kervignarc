@@ -450,7 +450,7 @@ sidebar d'un axe est un **squelette stable** ; ce qui change avec le statut du t
 **l'accueil-tableau de bord** — destination d'ouverture du **pilotage** — et les **états portés par les
 entrées** (`3!`, `62%`, `HORS LIGNE`) :
 
-| Statut (**7 statuts** — [ADR-0026](../docs/adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md), E01US017) | Accueil | Registre |
+| Statut (**7 statuts** — [ADR-0026](docs/adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md), E01US017) | Accueil | Registre |
 |---|---|---|
 | **Brouillon** | La préparation | Dense, formulaires, on a le temps |
 | **Prêt** | La préparation, **feu vert** de démarrage | Complétude satisfaite, « Démarrer » actif |

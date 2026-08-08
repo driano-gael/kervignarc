@@ -100,3 +100,24 @@ dans le service/domaine, pas dans l'API). Aucune horloge injectée : toutes les 
   (implémentation), pas dans l'US livrée — dont le CA reçoit seulement une **note de renvoi**.
 - **Périmètre** : E01US017 livre l'enum, les transitions et leurs gardes. L'**archive** effective
   (contenu exporté, verrou physique) reste EPIC-11 ; la **réouverture** d'un `terminé` reste différée.
+
+## Porté dans le code par
+
+> *Section ajoutée le 08/08/2026 (rétro-équipement des ADR structurants encore actifs). La règle
+> « un ADR nomme les modules qui le portent » a été instituée le 06/08/2026 par
+> [ADR-0075](0075-le-depart-est-la-portee-sportive.md) et n'avait pas été appliquée rétroactivement.
+> Les modules ci-dessous ont été **vérifiés dans le code du jour**, pas déduits de l'ADR — nommer un
+> module vide reproduirait exactement le défaut que la section existe pour empêcher.*
+
+- `backend/domain/tournoi.py` — `StatutTournoi` (les sept valeurs), `TransitionTournoi`, et
+  `transitions_possibles(statut)` : la **topologie** vit dans le domaine, en source unique.
+- `backend/application/tournois.py` — l'arbitrage des transitions et le refus typé
+  (`TransitionStatutInvalide` → 409). La règle vit ici, jamais dans l'API (règle 2).
+- `backend/api/v1/tournois.py` — `GET /{tournoi_id}/transitions`, l'exposition **en lecture** de la
+  topologie, pour que le front n'en tienne pas une seconde copie.
+- `frontend/src/features/accueil/FriseCycleDeVie.tsx` — la frise des sept statuts (E14US001,
+  [ADR-0052](0052-accueil-admin-contextualise-par-statut.md)), qui **remplace** l'ancien
+  `CycleDeVie` à trois statuts.
+
+Le garde-fou de cohérence est un test qui confronte la topologie du domaine aux gardes du service :
+sans lui, `transitions_possibles` pourrait offrir une transition que le service refuse.
