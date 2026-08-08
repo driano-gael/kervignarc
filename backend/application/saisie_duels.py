@@ -28,15 +28,24 @@ from application.erreurs import (
     PhasePasUnTableau,
     TournoiIntrouvable,
 )
-from application.portee import phase_du_tournoi, qualification_du_tournoi
-from application.prelevement import preleves, profondeur_de
+from application.portee import phase_du_tournoi
+from application.prelevement import ResolveurClassement, preleves, profondeur_de
 from domain.blason import ZoneScore
-from domain.classement import LigneClassement
+from domain.classement import Classement, LigneClassement
+from domain.classement_de_tableau import classement_de_tableau
+from domain.depart import DepartId
 from domain.duel import BaremeDuel, Cote, Duel, ResolveurBaremeDuel
 from domain.erreurs import MatchNonJouable
 from domain.participant import GenreParticipant, Participant
 from domain.phase import PhaseId, TypePhase
-from domain.politiques import Byes, RegistrePolitiques, Routing, Seeding
+from domain.politiques import (
+    Aggregation,
+    AggregationParQualification,
+    Byes,
+    RegistrePolitiques,
+    Routing,
+    Seeding,
+)
 from domain.ports import (
     BlasonRepository,
     CategorieRepository,
@@ -138,6 +147,7 @@ class ServiceSaisieDuels:
         byes: Byes,
         routing: Routing,
         registre: RegistrePolitiques,
+        aggregation: Aggregation | None = None,
     ) -> None:
         self._tournois = tournois
         self._phases = phases
@@ -155,6 +165,13 @@ class ServiceSaisieDuels:
         # Profondeur lue **sur la phase** depuis E06US006 (`profondeur_de`), comme le plan de
         # duels : les deux montent le même arbre, ils ne peuvent pas le tronquer différemment.
         self._registre = registre
+        # E05US024 : ferme les fourchettes *ex æquo* d'un tableau amont pour qu'une phase aval
+        # puisse y prélever par rangs. Même patron d'injection que `ServicePalmares` — et **la même
+        # politique doit y être câblée**, sinon un archer entrerait dans la consolante par un ordre
+        # que le palmarès contredirait le même jour, sur le même écran.
+        self._aggregation = (
+            aggregation if aggregation is not None else AggregationParQualification()
+        )
 
     # --- Lecture -------------------------------------------------------------------------------
 
@@ -272,9 +289,16 @@ class ServiceSaisieDuels:
     # --- Interne : reconstruction du décor (classement → arbre → rejeu des duels validés) -------
 
     def _decor(
-        self, tournoi_id: TournoiId, phase_id: PhaseId
+        self, tournoi_id: TournoiId, phase_id: PhaseId, _chaine: tuple[PhaseId, ...] = ()
     ) -> tuple[Tableau, dict[int, LigneClassement]]:
-        """Valide les gardes puis reconstruit l'arbre, duels validés **rejoués** (progression)."""
+        """Valide les gardes puis reconstruit l'arbre, duels validés **rejoués** (progression).
+
+        `_chaine` porte les phases déjà en cours de reconstruction dans la descente courante
+        (E05US024) : une phase qui prélève dans un tableau amont fait reconstruire celui-ci, qui
+        peut
+        à son tour en prélever un autre. Elle ne sert qu'à refuser un déroulé qui bouclerait —
+        impossible par la composition, possible par une base incohérente.
+        """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
@@ -294,7 +318,11 @@ class ServiceSaisieDuels:
         # dans `lignes` pour résoudre les noms.
         participants = [
             Participant.individuel(ligne.archer_id)
-            for ligne in preleves(phase, classement, self._ordre_de_la_qualification(tournoi_id))
+            for ligne in preleves(
+                phase,
+                classement,
+                self.resolveur_de_classement(tournoi_id, phase.depart_id, (*_chaine, phase_id)),
+            )
         ]
         tableau = construire_tableau(
             participants,
@@ -306,15 +334,68 @@ class ServiceSaisieDuels:
         tableau = self._rejouer(tableau, phase_id, lignes)
         return self._appliquer_forfaits(tableau, phase_id), lignes
 
-    def _ordre_de_la_qualification(self, tournoi_id: TournoiId) -> int | None:
-        """L'`ordre` de la phase de qualification — le seul classement que ce service lit.
+    def resolveur_de_classement(
+        self, tournoi_id: TournoiId, depart_id: DepartId, _chaine: tuple[PhaseId, ...] = ()
+    ) -> ResolveurClassement:
+        """De quoi lire le classement de **n'importe quelle** phase amont de ce créneau (E05US024).
 
-        `None` si le tournoi n'en a pas : aucune source n'est alors honorée, et le tableau
-        retombe sur tous les archers en lice. C'est le cas des décors de test montés sans
-        qualification, et celui d'un tournoi dont la séquence commence autrement.
+        Remplace `_ordre_de_la_qualification`, qui ne désignait qu'un seul ordre lisible : toute
+        autre source était ignorée en silence et la phase recevait *tous* les archers en lice.
+
+        **Exposé** (et non privé) parce que `ServicePlacementDuels` doit lire **exactement** la même
+        chose : les deux services ensemencent le même arbre, l'un pour dire qui affronte qui,
+        l'autre
+        où ils tirent. C'est la raison d'être d'`application/prelevement.py`, et l'écart mesuré à la
+        revue d'E05US020 — plan de 8 placements pour un tableau de 4 — est ce qui arrive quand la
+        règle est recopiée au lieu d'être partagée.
+
+        **Mémoïsé par appel** : deux sources visant la même phase amont ne la reconstruisent qu'une
+        fois. Le cache ne franchit pas les niveaux de récursion — le cache transverse reste
+        `DETTE-031`, que cette US ne rouvre pas.
         """
-        qualification = qualification_du_tournoi(self._phases, tournoi_id)
-        return qualification.ordre if qualification is not None else None
+        cache: dict[int, Classement | None] = {}
+
+        def resoudre(ordre: int) -> Classement | None:
+            if ordre not in cache:
+                cache[ordre] = self._classement_de_l_ordre(tournoi_id, depart_id, ordre, _chaine)
+            return cache[ordre]
+
+        return resoudre
+
+    def _classement_de_l_ordre(
+        self, tournoi_id: TournoiId, depart_id: DepartId, ordre: int, chaine: tuple[PhaseId, ...]
+    ) -> Classement | None:
+        """Le classement produit par la phase de cet `ordre` **dans ce créneau**, ou `None`.
+
+        Trois cas, et le troisième compte autant que les deux autres :
+
+        1. **qualification** — le classement de tir du départ (ADR-0075 : jamais tous créneaux
+           confondus, ce qui y ferait entrer des archers qui ne tirent pas ici) ;
+        2. **élimination directe** — l'arbre reconstruit, lu comme un classement
+           (`domain/classement_de_tableau.py`). C'est ici que le service **s'appelle lui-même** ;
+        3. **tout autre type** — `None`. Poules, système suisse, colline et Big Shoot Off n'ont
+           aucun classement lisible tant qu'`E05US023` ne les rend pas jouables (`DETTE-028`).
+           Rendre `None` fait retomber la phase sur son comportement d'avant plutôt que d'inventer
+           un ordre — le prélèvement reste **inerte**, pas faux.
+        """
+        phase = next((p for p in self._phases.par_depart(depart_id) if p.ordre == ordre), None)
+        if phase is None:
+            return None
+        if phase.type is TypePhase.QUALIFICATION:
+            return self._classements.pour_depart(depart_id)
+        if phase.type is not TypePhase.ELIMINATION_DIRECTE or phase.id is None:
+            return None
+        if phase.id in chaine:
+            # Inatteignable par la composition : `verifier_sequence` exige qu'une source soit
+            # **antérieure**, donc le déroulé est acyclique. La garde vise une base incohérente
+            # (import, migration à la main) : mieux vaut un refus typé qu'un `RecursionError` en
+            # salle, qui remonterait en 500 sans rien dire de la cause.
+            raise PhaseIntrouvable(
+                f"Le déroulé boucle sur la phase {phase.id} : une phase ne peut pas se prélever "
+                "elle-même, directement ou par une chaîne de sources."
+            )
+        tableau, lignes = self._decor(tournoi_id, phase.id, (*chaine, phase.id))
+        return classement_de_tableau(tableau, lignes, self._aggregation)
 
     def _appliquer_forfaits(self, tableau: Tableau, phase_id: PhaseId) -> Tableau:
         """Fait **passer l'adversaire** de tout duelliste déclaré forfait **dans cette phase de

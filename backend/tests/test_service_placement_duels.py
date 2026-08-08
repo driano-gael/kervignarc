@@ -22,12 +22,14 @@ import pytest
 from application.classements import ServiceClassement
 from application.erreurs import DeplacementInvalide, PhasePasUnTableau
 from application.placement_duels import PlanDeDuels, ServicePlacementDuels
+from application.saisie_duels import ServiceSaisieDuels
 from domain.archer import Archer, ArcherId
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, BlasonId, ZoneScore
 from domain.categorie import Categorie
 from domain.cloisonnement import Cloisonnement
 from domain.depart import Depart
+from domain.duel import ResolveurBaremeDuelFfta
 from domain.entree_audit import EntreeAudit
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
@@ -45,6 +47,7 @@ from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
     FauxDepartRepository,
+    FauxDuelRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
@@ -275,6 +278,16 @@ class _Monde:
 
     @property
     def service(self) -> ServicePlacementDuels:
+        classement = ServiceClassement(
+            self.tournois,
+            self.archers,
+            self.series,
+            self.categories,
+            self.phases,
+            self.forfaits,
+            self.departs,
+            self.inscriptions,
+        )
         return ServicePlacementDuels(
             self.tournois,
             self.phases,
@@ -284,16 +297,29 @@ class _Monde:
             self.categories,
             self.blasons,
             self.placements,
-            ServiceClassement(
-                self.tournois,
-                self.archers,
-                self.series,
-                self.categories,
-                self.phases,
-                self.forfaits,
-                self.departs,
-                self.inscriptions,
-            ),
+            classement,
+            SeedingSerpent(),
+            ByesAuxMieuxClasses(),
+            PlacementEnCascade(),
+            registre_par_defaut(),
+            self._saisie_duels(classement),
+        )
+
+    def _saisie_duels(self, classement: ServiceClassement) -> ServiceSaisieDuels:
+        """Le jumeau dont le plan emprunte la résolution de classement amont (E05US024).
+
+        **Mêmes politiques que le plan** : les deux montent le même arbre, et les faire diverger ici
+        ferait mentir le décor avant même le test.
+        """
+        return ServiceSaisieDuels(
+            self.tournois,
+            self.phases,
+            self.categories,
+            self.blasons,
+            FauxDuelRepository(),
+            self.forfaits,
+            classement,
+            ResolveurBaremeDuelFfta(),
             SeedingSerpent(),
             ByesAuxMieuxClasses(),
             PlacementEnCascade(),

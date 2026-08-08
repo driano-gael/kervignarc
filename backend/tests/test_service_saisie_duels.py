@@ -18,19 +18,19 @@ from dataclasses import replace
 import pytest
 
 from application.classements import ServiceClassement
-from application.erreurs import DuelDesynchronise, PhasePasUnTableau
+from application.erreurs import DuelDesynchronise, PhaseIntrouvable, PhasePasUnTableau
 from application.saisie_duels import EtatDuel, ServiceSaisieDuels
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.classement import StatutClassement
 from domain.depart import Depart
-from domain.duel import BaremeDuel, Duel, ModeDuel, ResolveurBaremeDuelFfta
+from domain.duel import ModeDuel, ResolveurBaremeDuelFfta
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import EffectifTableauInvalide, MatchNonJouable
 from domain.forfait import Forfait, NatureForfait
 from domain.inscription import Inscription
-from domain.phase import IssueTour, Phase, PhaseId, SourcePhase, TypePhase
+from domain.phase import IssueTour, Phase, SourcePhase, TypePhase
 from domain.politiques import (
     ByesAuxMieuxClasses,
     PlacementEnCascade,
@@ -41,6 +41,7 @@ from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
     FauxDepartRepository,
+    FauxDuelRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
@@ -59,28 +60,6 @@ ZONES_TRIPLE = (
     ZoneScore.SIX,
     ZoneScore.MANQUE,
 )
-
-
-class FauxDuelRepository:
-    """Double de `DuelRepository` : ne garde que le **tir** ; réinjecte le contexte à `charger`."""
-
-    def __init__(self) -> None:
-        self._tirs: dict[tuple[int, int], Duel] = {}
-
-    def numeros_enregistres(self, phase_id: PhaseId) -> frozenset[int]:
-        return frozenset(numero for (phase, numero) in self._tirs if phase == phase_id)
-
-    def charger(self, phase_id: PhaseId, match_numero: int, *, bareme: BaremeDuel) -> Duel | None:
-        duel = self._tirs.get((phase_id, match_numero))
-        if duel is None:
-            return None
-        # Mime « le tir + l'identité des duellistes sont persistés » : seul le barème est réinjecté
-        # (dérivé de l'arme, ADR-0049). Les participants **stockés** sont conservés.
-        return replace(duel, bareme=bareme)
-
-    def enregistrer(self, phase_id: PhaseId, match_numero: int, duel: Duel) -> Duel:
-        self._tirs[(phase_id, match_numero)] = duel
-        return duel
 
 
 class _Monde:
@@ -659,20 +638,37 @@ def test_l_effectif_source_compte_les_classes_pas_les_inscrits() -> None:
     assert _effectif_du_tableau(monde) == 3
 
 
-def test_une_source_qui_ne_vise_pas_la_qualification_est_ignoree() -> None:
-    """CA, note (b) : une source dont la phase amont **n'est pas la qualification** garde le
-    comportement d'avant l'US.
+def test_une_source_visant_une_phase_absente_reste_inerte() -> None:
+    """Une source dont la phase amont **n'existe pas** ne prélève rien, et ne casse rien.
 
-    Le service ne sait lire qu'**un** classement, celui de la qualification. Appliquer « les rangs
-    1 à 8 de la phase 2 » à ce classement-là prendrait les 8 premiers de la **qualification** en
-    croyant prendre ceux du tableau principal : un tableau bien formé, plausible, et faux, que rien
-    ne signalerait. Défaut relevé en revue — le CA promettait déjà ce comportement, le code ne le
-    tenait pas.
+    ⚠️ **Ce test remplace `test_une_source_qui_ne_vise_pas_la_qualification_est_ignoree`**, tombé
+    avec E05US024 — c'était le signal attendu, comme E05US020 avait fait tomber le sien. L'ancien
+    était faux **deux fois** : il figeait le repli silencieux que cette US corrige, et son décor
+    déclarait `ordre_source=2` sur la phase d'ordre 2 — une phase se prélevant **elle-même**, que la
+    composition n'aurait jamais laissé passer (`verifier_sequence` exige une source *antérieure*).
+    Il passait donc pour la mauvaise raison.
+
+    Ce qui reste vrai, et qu'on garde : une source **illisible** fait retomber la phase sur les
+    inscrits plutôt que d'inventer une population. Le prélèvement est **inerte**, pas faux.
+    """
+    monde = _monde_classe(12)
+    _prelever(monde, SourcePhase.par_rangs(ordre_source=7, rang_debut=1, rang_fin=8))
+
+    assert _effectif_du_tableau(monde) == 12
+
+
+def test_un_deroule_qui_boucle_sur_lui_meme_est_refuse() -> None:
+    """Une phase qui se prélève elle-même est **refusée**, pas dépilée jusqu'au `RecursionError`.
+
+    Inatteignable par la composition (une source est antérieure, ADR-0045 §3) ; atteignable par une
+    base incohérente — import, migration à la main. Un refus typé dit la cause ; un `RecursionError`
+    remonterait en 500 muet, un jour de compétition.
     """
     monde = _monde_classe(12)
     _prelever(monde, SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=8))
 
-    assert _effectif_du_tableau(monde) == 12
+    with pytest.raises(PhaseIntrouvable, match="boucle"):
+        _effectif_du_tableau(monde)
 
 
 def test_un_prelevement_le_reste_reste_inerte() -> None:

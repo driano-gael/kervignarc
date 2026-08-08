@@ -24,7 +24,6 @@ import logging
 
 from application.classements import ServiceClassement
 from application.erreurs import PhaseIntrouvable, TournoiIntrouvable, TournoiSansDepart
-from application.portee import qualification_du_tournoi
 from application.prelevement import tranche
 from application.saisie_duels import ServiceSaisieDuels
 from domain.categorie import CategorieId
@@ -228,10 +227,13 @@ class ServicePalmares:
         # prélevant « les rangs 5 et suivants » joue pour la 5ᵉ place, pas pour la victoire. Sans
         # ce décalage, son vainqueur passait devant le finaliste du tableau principal — c'était
         # `DETTE-034`, inatteignable tant qu'aucun moteur ne consommait les prélèvements.
-        qualification = qualification_du_tournoi(self._phases, tournoi_id)
+        # E05US024 : la tranche se lit sur **chaque** phase source, plus seulement sur la
+        # qualification. Le même résolveur que l'ensemencement — un décalage calculé sur une autre
+        # base que celle qui a peuplé le tableau situerait ses positions dans le mauvais espace de
+        # rangs, ce qui est exactement `DETTE-034`.
         rang_premier = tranche(
             phase,
             self._classements.pour_depart(phase.depart_id),
-            qualification.ordre if qualification is not None else None,
+            self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id),
         )
         return ResultatPhase(ordre=phase.ordre, positions=positions, rang_premier=rang_premier)

@@ -316,18 +316,34 @@ def exigence_minimale(etapes: Sequence[EtapeSequencee]) -> ExigenceEffectif:
     if not triees:
         return ExigenceEffectif(minimum=1)
 
-    ordre_qualification = next(
-        (etape.ordre for etape in triees if etape.type is TypePhase.QUALIFICATION), None
-    )
+    par_ordre = {etape.ordre: etape for etape in triees}
     exigence = ExigenceEffectif(minimum=1)
     for etape in triees:
-        candidate = _exigence_de_letape(etape, ordre_qualification)
+        candidate = _exigence_de_letape(etape, par_ordre)
         if candidate.minimum > exigence.minimum:
             exigence = candidate
     return exigence
 
 
-def _exigence_de_letape(etape: EtapeSequencee, ordre_qualification: int | None) -> ExigenceEffectif:
+_TYPES_CLASSANTS_LUS = frozenset({TypePhase.QUALIFICATION, TypePhase.ELIMINATION_DIRECTE})
+"""Les types dont le moteur sait **lire le classement** pour y prélever (E05US024).
+
+⚠️ **À ne pas confondre avec `_TYPES_DEROULES`**, juste au-dessus, et la nuance décide de refus de
+démarrage : celui-là répond « le moteur va-t-il *monter* cette phase ? », celui-ci « sait-il *lire
+ce qu'elle a classé* ? ». Les deux ensembles ne coïncident pas — `placement` est monté sans être lu,
+`qualification` est lue sans être montée.
+
+Miroir exact de `ServiceSaisieDuels._classement_de_l_ordre` : ce qu'il résout, on l'exige ; ce qu'il
+rend `None`, on ne l'exige pas. Faire diverger les deux rouvrirait le défaut symétrique qu'E05US021
+a corrigé — soit un plancher réclamé pour un prélèvement que rien n'honore (refus abusif le jour J),
+soit un plancher tu pour un prélèvement que le moteur lira (le tournoi démarre puis casse en salle).
+Le jour où E05US023 rend les poules jouables **et lisibles**, ce type rejoint les deux tables.
+"""
+
+
+def _exigence_de_letape(
+    etape: EtapeSequencee, par_ordre: dict[int, EtapeSequencee]
+) -> ExigenceEffectif:
     """Le plancher d'inscrits qu'une seule étape réclame.
 
     `base` est le plancher **structurel** : ce qu'il faut pour que l'étape ait un sens, quelle que
@@ -350,9 +366,9 @@ def _exigence_de_letape(etape: EtapeSequencee, ordre_qualification: int | None) 
         # juste de quoi tenir debout.
         return ExigenceEffectif(minimum=base)
 
-    if ordre_qualification is None or etape.type not in _TYPES_DEROULES:
-        # Aucun classement à lire, ou aucun moteur pour dérouler cette phase : le prélèvement ne
-        # sera pas honoré, et réclamer son rang de départ refuserait un tournoi qui se jouera.
+    if etape.type not in _TYPES_DEROULES:
+        # Aucun moteur pour dérouler cette phase : le prélèvement ne sera pas honoré, et réclamer
+        # son rang de départ refuserait un tournoi qui se jouera.
         return ExigenceEffectif(minimum=base)
 
     # ⚠️ Une fenêtre de rangs **plus étroite que `base`** ne fournira jamais assez de participants,
@@ -360,18 +376,82 @@ def _exigence_de_letape(etape: EtapeSequencee, ordre_qualification: int | None) 
     # d'inscrits — c'est un défaut de composition, qu'aucun effectif ne répare. L'inclure dans le
     # `min` produirait un chiffre rassurant et **faux** : « rangs 1 à 1 » + « rangs 33 et suivants »
     # annoncerait 2 là où il en faut 34. On l'écarte plutôt que d'annoncer un mensonge.
-    rangs = [
-        source.rang_debut
+    lisibles = [
+        source
         for source in etape.sources
-        if source.nature is NatureSource.RANGS
-        and source.ordre_source == ordre_qualification
-        and _largeur(source) >= base
+        if _source_lisible(source, par_ordre) and _largeur(source) >= base
     ]
-    if not rangs:
+    if not lisibles:
         return ExigenceEffectif(minimum=base)
 
-    plus_bas = min(rangs)
-    return ExigenceEffectif(minimum=plus_bas - 1 + base, ordre=etape.ordre, rang_debut=plus_bas)
+    plus_bas = min(lisibles, key=lambda source: source.rang_debut)
+    # ⚠️ **E05US024 — on remonte la chaîne.** Avant, seule une source visant la qualification
+    # comptait
+    # et « rangs 33+ » se traduisait directement en 34 inscrits. Depuis que le moteur lit le
+    # classement de n'importe quelle phase classante, une source peut viser un **tableau**, qui a
+    # lui-même prélevé : « les rangs 5+ d'un tableau qui prend les rangs 17 à 32 de la
+    # qualification » réclame 21 inscrits, pas 6. Traduire un rang en inscrits sans remonter
+    # annoncerait un plancher trop bas — l'organisateur démarrerait, et la phase manquerait de
+    # monde en salle.
+    besoin = _inscrits_pour_classer(
+        par_ordre, plus_bas.ordre_source, plus_bas.rang_debut - 1 + base
+    )
+    if besoin is None:
+        return ExigenceEffectif(minimum=base)
+    return ExigenceEffectif(minimum=besoin, ordre=etape.ordre, rang_debut=plus_bas.rang_debut)
+
+
+def _source_lisible(source: SourcePhase, par_ordre: dict[int, EtapeSequencee]) -> bool:
+    """Ce prélèvement sera-t-il **honoré** par le moteur (E05US024) ?
+
+    Deux conditions, et les deux sont nécessaires : la nature doit être résolue (`RANGS` seule —
+    `le_reste` et `par_issue_de_tour` restent inertes, `DETTE-033`), et la phase visée doit produire
+    un classement que le moteur sait lire (`_TYPES_CLASSANTS_LUS`).
+    """
+    if source.nature is not NatureSource.RANGS:
+        return False
+    amont = par_ordre.get(source.ordre_source)
+    return amont is not None and amont.type in _TYPES_CLASSANTS_LUS
+
+
+def _inscrits_pour_classer(
+    par_ordre: dict[int, EtapeSequencee], ordre: int, combien: int
+) -> int | None:
+    """Combien d'**inscrits** il faut pour que la phase `ordre` classe `combien` participants.
+
+    La récursion du plancher (E05US024). Une phase alimentée par les inscriptions en réclame
+    exactement autant ; une phase qui prélève « à partir du rang *a* » a besoin que **sa** source en
+    classe `a - 1 + combien` — et ainsi de suite jusqu'à la tête du déroulé.
+
+    Rend **`None`** quand aucun effectif ne suffirait : une phase dont la fenêtre est **bornée** ne
+    classera jamais plus que sa largeur. « Les rangs 33 et suivants d'un tableau qui prend les rangs
+    1 à 32 » est infaisable à 34 inscrits comme à 400 — c'est un **défaut de composition**, que le
+    diagnostic de déroulé signale, et non un plancher. Annoncer 34 y serait un chiffre rassurant et
+    faux, exactement ce que la garde `_largeur(source) >= base` refuse un cran plus bas.
+
+    ⚠️ **Le plafond est mesuré sur la source la plus basse, pas sur la somme des sources.** Une
+    phase nourrie par « 1 à 32 » *et* « 40 à 50 » en accueille 43 ; on n'en compte que 32. C'est une
+    **sous-estimation de capacité**, donc un `None` rendu un peu trop tôt, donc un plancher **tu**
+    plutôt qu'un refus indu — le sens sûr, celui que cette US et E05US021 ont choisi partout
+    ailleurs (« refuser à tort est le pire mode de défaillance »). À resserrer le jour où un déroulé
+    réel en souffrira, pas avant.
+
+    **Termine** : une source est toujours **antérieure** (ADR-0045 §3, vérifié par
+    `verifier_sequence`), donc `ordre` décroît strictement à chaque appel. Le `par_ordre.get`
+    rendant `None` sur un ordre absent ferme le cas d'une composition incomplète.
+    """
+    etape = par_ordre.get(ordre)
+    if etape is None:
+        return combien
+    lisibles = [source for source in etape.sources if _source_lisible(source, par_ordre)]
+    if not lisibles:
+        return combien  # alimentée par les inscriptions : ce qu'elle classe, on l'y inscrit
+    plus_bas = min(lisibles, key=lambda source: source.rang_debut)
+    if _largeur(plus_bas) < combien:
+        return None
+    return _inscrits_pour_classer(
+        par_ordre, plus_bas.ordre_source, plus_bas.rang_debut - 1 + combien
+    )
 
 
 def _largeur(source: SourcePhase) -> int:

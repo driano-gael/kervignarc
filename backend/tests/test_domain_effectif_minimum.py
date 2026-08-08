@@ -140,10 +140,16 @@ def test_un_prelevement_dans_une_phase_intermediaire_ne_se_lit_pas_en_inscrits()
     assert effectif_minimum(etapes) == 2
 
 
-# --- Le classement traduisible est celui de la QUALIFICATION, pas celui de la première phase -----
-# L'oracle de cette section est le **moteur** : `ServiceSaisieDuels._ordre_de_la_qualification`
-# n'honore un prélèvement que s'il vise la phase de type `qualification`. Un plancher qui viserait
-# autre chose mentirait — et il a menti dans les deux sens avant d'être corrigé.
+# --- Le classement traduisible est celui d'une phase CLASSANTE, où qu'elle soit dans le déroulé ---
+# L'oracle de cette section est le **moteur** : `ServiceSaisieDuels._classement_de_l_ordre` sait
+# lire une qualification **et** un tableau, et rend `None` pour tout autre type. Un plancher qui
+# viserait autre chose mentirait — et il a menti dans les deux sens avant d'être corrigé.
+#
+# ⚠️ **Élargi par E05US024.** La section s'intitulait « celui de la QUALIFICATION, pas celui de la
+# première phase », et son oracle était `_ordre_de_la_qualification` — méthode qui n'existe plus.
+# Ce qui a changé n'est pas la règle (« le plancher vise exactement ce que le moteur lira ») mais
+# **ce que le moteur sait lire**. Les deux tests de refus abusif ci-dessous restent donc valables
+# tels quels : ils portent sur des types que rien n'exécute, ce que cette US ne touche pas.
 
 
 def test_un_echauffement_en_tete_ne_desactive_pas_le_controle() -> None:
@@ -164,11 +170,40 @@ def test_un_echauffement_en_tete_ne_desactive_pas_le_controle() -> None:
     assert effectif_minimum(etapes) == 34
 
 
-def test_sans_qualification_aucun_rang_ne_se_traduit_en_inscrits() -> None:
-    """Sans classement à lire, le moteur ensemence avec **tous** les archers en lice : réclamer le
-    rang de départ serait un refus abusif le jour J.
+def test_le_plancher_remonte_la_chaine_des_prelevements() -> None:
+    """**CA E05US024 — l'effectif minimum suit la chaîne.**
 
-    Il reste le plancher structurel — deux tireurs pour un tableau.
+    « Les rangs 5 et suivants d'un tableau qui prend lui-même les rangs 17 à 32 de la
+    qualification » : pour que ce tableau classe 6 archers (5ᵉ et 6ᵉ, soit les deux tireurs que le
+    tableau aval exige), la qualification doit en classer `17 - 1 + 6 = 22`. Le décalage se
+    **cumule** le long de la chaîne.
+
+    Avant cette US, seule une source visant la qualification comptait : ce déroulé n'annonçait que
+    son plancher structurel, 2. L'organisateur démarrait à 12 inscrits et la phase manquait de monde
+    en salle — le mode de défaillance que le plancher existe pour éviter.
+    """
+    etapes = [
+        _qualification(),
+        _tableau(2, SourcePhase.par_rangs(1, 17, 32)),
+        _tableau(3, SourcePhase.par_rangs(2, rang_debut=5)),
+    ]
+
+    assert effectif_minimum(etapes) == 22
+
+
+def test_un_tableau_en_tete_se_traduit_en_inscrits_comme_une_qualification() -> None:
+    """Une phase **en tête** est alimentée par les inscriptions, quel qu'en soit le type (E05US024).
+
+    ⚠️ **Ce test remplace `test_sans_qualification_aucun_rang_ne_se_traduit_en_inscrits`**, dont la
+    prémisse est tombée avec E05US024 : « sans qualification, il n'y a aucun classement à lire ». Ce
+    n'est plus vrai — le moteur lit désormais le classement de **toute** phase classante, et un
+    tableau en tête en est une. « Les rangs 33 et suivants » de ce tableau réclament donc bien 34
+    inscrits : le tableau les classe tous, puisque rien ne l'a filtré en amont.
+
+    Ce que l'ancien test protégeait reste protégé ailleurs, et c'est ce qui permet de le remplacer
+    sans perte : `test_un_type_sans_consommateur_ne_bloque_pas_le_lancement` couvre le refus abusif
+    (le vrai risque), et `test_une_fenetre_dun_seul_rang_ne_fixe_pas_de_plancher` la fenêtre trop
+    étroite.
     """
     etapes = [
         _tableau(1),
@@ -177,7 +212,7 @@ def test_sans_qualification_aucun_rang_ne_se_traduit_en_inscrits() -> None:
         ),
     ]
 
-    assert effectif_minimum(etapes) == 2
+    assert effectif_minimum(etapes) == 34
 
 
 def test_une_phase_sans_opposition_se_contente_dun_participant() -> None:
