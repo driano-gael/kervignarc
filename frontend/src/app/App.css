@@ -2883,10 +2883,22 @@ button:disabled {
 /* Détail des flèches déplié sous une ligne de classement (E16US004, P03). Le bouton porte le nom de
    l'archer : il doit rester lisible comme un nom, pas comme un lien de navigation — d'où le
    soulignement pointillé, plus discret que celui de `.lien`. */
+/* ⚠️ Forme **longue** (`underline dotted`), et non `text-decoration-style` seul — correctif de revue.
+   `.lien` ne pose aucun soulignement au repos : sans `text-decoration-line`, le pointillé n'était
+   jamais dessiné. Et `.lien:hover { text-decoration: underline }` est une forme courte, qui remet
+   `style` à `solid` et l'emporte en spécificité (0,2,0 contre 0,1,0) — d'où la reprise explicite
+   ci-dessous. Le repos comptait plus que le survol : sur une tablette, il n'y a pas de survol, donc
+   c'était l'affordance entière du dépliant qui manquait sur la cible principale de l'appli. */
 .table__detail-bascule {
   text-align: left;
-  text-decoration-style: dotted;
+  text-decoration: underline dotted;
   text-underline-offset: 3px;
+  /* Cible tactile (règle 10) : le nom se pointe au doigt, comme les autres surfaces publiques. */
+  min-height: 44px;
+}
+
+.table__detail-bascule:hover {
+  text-decoration: underline dotted;
 }
 
 .table__detail > td {

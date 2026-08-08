@@ -16,7 +16,7 @@
 import { useMemo, useState } from 'react'
 import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import type { Tournoi } from '../competition/api'
-import { modeEffectif, suivisDuTournoi, type ModeAffichage } from './focus'
+import { modeEffectif, suivisDuTournoi, type ModeAffichage } from '../../shared/suivis/focus'
 import { VueClassement } from '../competition/VueClassement'
 import { VuePalmares } from '../palmares/VuePalmares'
 import { PlanCiblesPublic } from '../placement/PlanCiblesPublic'
@@ -104,8 +104,12 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
 
       {/* L'interrupteur ne s'affiche que s'il y a quelque chose à centrer : proposer « mes archers »
           à qui n'en suit aucun offrirait un bouton dont le seul effet serait de vider l'écran. Le
-          geste manquant se fait dans l'onglet « Suivi », et c'est là qu'on l'apprend. */}
-      {suivisIci.length > 0 && (
+          geste manquant se fait dans l'onglet « Suivi », et c'est là qu'on l'apprend.
+          ⚠️ **Masqué sur l'onglet « Suivi »** (correctif de revue) : cette vue *est* déjà « mes
+          archers », elle ne lit donc pas le mode. Or « Suivi » est l'onglet d'atterrissage dès
+          qu'on suit quelqu'un — le tout premier geste d'un spectateur était d'actionner un réglage
+          qui ne changeait rien sous ses yeux, ce qui fait douter du reste de l'écran. */}
+      {suivisIci.length > 0 && vue !== 'suivi' && (
         <BasculeAffichage
           mode={mode}
           nbSuivis={suivisIci.length}
@@ -136,7 +140,7 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
       ) : vue === 'affectations' ? (
         <VueAffectations tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
       ) : vue === 'tableaux' ? (
-        <VueTableaux tournoiId={tournoi.id} mode={mode} />
+        <VueTableaux tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
       ) : vue === 'classement' ? (
         <VueClassement
           tournoiId={tournoi.id}

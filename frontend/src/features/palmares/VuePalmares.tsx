@@ -10,7 +10,7 @@
 
 import { useState } from 'react'
 import { useCategories } from '../categories/hooks'
-import { centrerLignes, type ModeAffichage } from '../public/focus'
+import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
 import type { LignePalmares, PodiumCategorie } from './api'
 import { urlPalmaresPdf } from './api'
 import { usePalmares } from './hooks'
@@ -149,8 +149,11 @@ function ClassementFinal({ lignes, mode }: { lignes: LignePalmares[]; mode: Mode
       </h4>
       {lignes.length === 0 ? (
         <p className="carte__etat">
-          Aucun des archers que vous suivez n’apparaît au palmarès. Passez à « Tout le tournoi »
-          pour voir le classement complet.
+          {/* Cause non nommée (correctif de revue) : le filtre par catégorie de cet écran vide la
+              liste tout aussi souvent que l'interrupteur, et désigner le second envoyait chercher
+              au mauvais endroit. Le podium, lui, reste entier au-dessus — il n'est jamais centré. */}
+          Aucun des archers que vous suivez n’apparaît dans cette sélection. Passez à « Tout le
+          tournoi », ou élargissez le filtre.
         </p>
       ) : (
         // Conteneur défilant : la table déborde sur mobile (CA « responsive ») — on la laisse

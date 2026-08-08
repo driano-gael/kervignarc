@@ -9,7 +9,7 @@
 // les archers que l'on choisit de suivre »*.
 
 import { describe, expect, it } from 'vitest'
-import type { ArcherSuivi } from '../../shared/stores/sessionSuivisStore'
+import type { ArcherSuivi } from '../stores/sessionSuivisStore'
 import { centrerCibles, centrerLignes, modeEffectif, suivisDuTournoi } from './focus'
 
 const suivi = (archerId: number, tournoiId: number): ArcherSuivi => ({ archerId, tournoiId })

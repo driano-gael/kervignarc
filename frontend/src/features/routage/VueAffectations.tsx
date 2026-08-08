@@ -26,7 +26,7 @@
 import { useEffect, useState } from 'react'
 import type { RoutageArcher } from './api'
 import { useDeparts } from '../departs/hooks'
-import { centrerLignes, type ModeAffichage } from '../public/focus'
+import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
 import { departDeSalle } from '../salle/rotation'
 import { useAffectations } from './hooks'
 import { alerte, detail, encoreEnLice, partitionner, titre } from './presentation'
@@ -111,6 +111,27 @@ export function VueAffectations({
   // du rendu.
   const { poses, attente, sortis } = partitionner(archersAffiches)
 
+  // ⚠️ **Le pas de tir garde ses buttes entières, adversaire compris** (correctif de revue).
+  //
+  // C'est la règle déjà posée par `focus.centrerCibles` pour le plan de cibles — « on garde la
+  // cible entière, voisins compris » — et elle n'avait pas été appliquée ici, où elle compte
+  // pourtant davantage : sur un tableau de duels, le voisin de butte **est** l'adversaire. Filtré
+  // ligne à ligne, « Cible 7 · B · MARTIN Luc » ne disait plus contre qui Luc tire, alors que
+  // l'affichage complet le montre en face de lui — et laissait croire à une butte à un seul tireur.
+  //
+  // Les sections annexes (attente, sortis) restent, elles, centrées sur les seuls archers suivis :
+  // ce sont des listes de personnes, pas une disposition de salle, et personne n'y cherche un
+  // vis-à-vis.
+  const ciblesSuivies = new Set(
+    poses.map((ligne) => ligne.prochain?.cible).filter((cible) => cible != null),
+  )
+  const posesParCible =
+    mode === 'tout'
+      ? poses
+      : partitionner(donnees.archers).poses.filter(
+          (ligne) => ligne.prochain?.cible != null && ciblesSuivies.has(ligne.prochain.cible),
+        )
+
   return (
     <div className="affectations">
       {interactif && (
@@ -142,7 +163,7 @@ export function VueAffectations({
         <ListeParNom lignes={archersAffiches} />
       ) : (
         <>
-          <ListeParCible poses={poses} />
+          <ListeParCible poses={posesParCible} />
           {/* Encore en lice, sans butte attribuée. Ni dans le pas de tir (ils n'ont pas de cible),
               ni parmi les sortis (ils n'ont rien perdu) : leur propre section, sinon l'écran ment
               dans un sens ou dans l'autre. Titre **neutre** — le groupe rassemble deux attentes que

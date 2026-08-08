@@ -9,6 +9,11 @@ le suivi était censé éviter.
 vaut pour **tous** les onglets à la fois. On le règle une fois — au lieu de le redire écran par
 écran — et il est retenu d'une ouverture à l'autre.
 
+Dès lors qu'on suit quelqu'un, **l'application s'ouvre centrée sur ses archers**. C'est la
+continuité de ce qu'elle faisait déjà en ouvrant d'emblée sur l'onglet « Suivi » : qui a désigné ses
+archers a dit ce qu'il venait regarder. Un clic suffit à revoir tout le tournoi, et ce choix-là est
+retenu aussi.
+
 Le reste suit le même fil :
 
 - **La recherche accepte le club** en plus du nom. Un club choisi seul suffit à lister ses archers,
@@ -30,6 +35,9 @@ Deux précautions, parce qu'un filtre mal posé ment plus qu'il n'aide :
   l'écran le **dit** et propose de revenir à l'affichage complet — au lieu d'un « aucun archer
   inscrit » qui serait faux et ferait chercher une panne. Et sur un tournoi où vous ne suivez
   personne, l'interrupteur n'apparaît pas du tout.
+- **Le pas de tir garde ses buttes entières.** Sur un tableau de duels, le voisin de cible **est**
+  l'adversaire : centrer la liste sur ses seuls archers aurait caché contre qui ils tirent, et fait
+  croire à une cible occupée par un seul tireur.
 
 C'est le **quatrième et dernier écran refusé** de la relecture des maquettes à être relevé pour la
 partie publique (P03, « classements »). Il ne reste que l'écran « Phases », qui doit être recadré

@@ -34,8 +34,16 @@ interface SessionSuivisState {
    * écrans publics seraient vides sans que rien ne l'explique).
    *
    * Persistée avec la liste : elle survit à un rechargement, ce qui compte sur un téléphone qu'on
-   * range et ressort toute la journée. Une clé absente du `localStorage` d'hier retombe sur `false`
-   * par la fusion de `persist` — aucune migration à écrire.
+   * range et ressort toute la journée. Une clé absente du `localStorage` d'hier retombe sur la
+   * valeur initiale par la fusion de `persist` — aucune migration à écrire.
+   *
+   * ⚠️ **Armée par défaut** (`true`), arbitrage du 08/08/2026 en revue d'E16US004. Le CA
+   * d'E07US005 promet que « la lecture *Mon chemin* est celle par défaut **dès qu'on suit
+   * quelqu'un** », et D-09 ouvre déjà l'onglet « Suivi » d'office pour la même raison : qui a
+   * désigné ses archers a dit ce qu'il venait regarder. L'interrupteur unique d'E16US004 ayant
+   * dissous les défauts **par vue**, laisser celui-ci sur `false` révoquait ce CA en silence.
+   * C'est `focus.modeEffectif` qui rend la valeur inoffensive quand on ne suit personne — armée ne
+   * veut donc pas dire « écran vide », jamais.
    */
   centrerSurSuivis: boolean
   suivre: (archer: ArcherSuivi) => void
@@ -47,7 +55,7 @@ export const useSessionSuivisStore = create<SessionSuivisState>()(
   persist(
     (set) => ({
       suivis: [],
-      centrerSurSuivis: false,
+      centrerSurSuivis: true,
       suivre: (archer) =>
         set((etat) =>
           // Idempotent : re-suivre un archer déjà dans la liste ne le duplique pas.

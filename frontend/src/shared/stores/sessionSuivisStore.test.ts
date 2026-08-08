@@ -8,7 +8,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { useSessionSuivisStore } from './sessionSuivisStore'
 
 beforeEach(() => {
-  useSessionSuivisStore.setState({ suivis: [] })
+  // ⚠️ **Remettre aussi `centrerSurSuivis`** (correctif de revue) : un état ajouté au store et
+  // oublié ici fuite d'un test au suivant, et l'ordre d'exécution décide alors du résultat. Le
+  // défaut ne se voit pas tant qu'aucun test ne l'arme — c'est-à-dire jusqu'au prochain.
+  useSessionSuivisStore.setState({ suivis: [], centrerSurSuivis: true })
 })
 
 describe('sessionSuivisStore — liste d’archers suivis', () => {
@@ -42,5 +45,21 @@ describe('sessionSuivisStore — liste d’archers suivis', () => {
       { archerId: 7, tournoiId: 1 },
       { archerId: 3, tournoiId: 2 },
     ])
+  })
+
+  it('la préférence d’affichage est armée d’entrée (CA E07US005, D-09)', () => {
+    // Le CA d'E07US005 veut « Mon chemin » **par défaut dès qu'on suit quelqu'un » ; E16US004 ayant
+    // remonté ce choix dans un interrupteur unique, c'est cette valeur initiale qui le porte
+    // désormais — pour les cinq vues publiques à la fois (arbitrage du 08/08/2026).
+    expect(useSessionSuivisStore.getInitialState().centrerSurSuivis).toBe(true)
+  })
+
+  it('centrer bascule la préférence sans toucher la liste', () => {
+    useSessionSuivisStore.getState().suivre({ archerId: 7, tournoiId: 1 })
+
+    useSessionSuivisStore.getState().centrer(false)
+
+    expect(useSessionSuivisStore.getState().centrerSurSuivis).toBe(false)
+    expect(useSessionSuivisStore.getState().suivis).toEqual([{ archerId: 7, tournoiId: 1 }])
   })
 })

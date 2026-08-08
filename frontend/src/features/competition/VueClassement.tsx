@@ -15,7 +15,7 @@ import { useCategories } from '../categories/hooks'
 import { ChoixCreneau } from '../departs/ChoixCreneau'
 import { creneauRetenu } from '../departs/libelle'
 import { useDeparts } from '../departs/hooks'
-import { centrerLignes, type ModeAffichage } from '../public/focus'
+import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
 import { departDeSalle } from '../salle/rotation'
 import { useClassement } from './hooks'
 import { DepartageManuel, PanneauBarrages } from './PanneauBarrages'
@@ -70,8 +70,15 @@ export function VueClassement({
   // « Aucun de vos archers ici » n'est pas « aucun archer inscrit » : la table dirait le second, qui
   // est faux et fait chercher une panne. Le cas est réel — un suivi engagé sur le départ du matin
   // quand on regarde le créneau de l'après-midi, ou filtré hors de sa catégorie.
+  // ⚠️ `classement.data.lignes.length > 0` (correctif de revue) : sans lui, un créneau **réellement
+  // vide** — aucun inscrit classé, ce qui arrive le matin avant la première volée — se présentait
+  // comme un vide de filtre. Le message envoyait alors chercher du côté de l'interrupteur ce qui
+  // n'y était pas : exactement le défaut que ce bloc existe pour éviter, retourné contre lui-même.
   const aucunSuiviIci =
-    mode === 'suivis' && classement.data !== undefined && lignesAffichees.length === 0
+    mode === 'suivis' &&
+    classement.data !== undefined &&
+    classement.data.lignes.length > 0 &&
+    lignesAffichees.length === 0
 
   return (
     <>
@@ -114,8 +121,11 @@ export function VueClassement({
       )}
       {aucunSuiviIci && (
         <p className="carte__etat">
-          Aucun des archers que vous suivez n’est classé sur ce créneau. Passez à « Tout le tournoi
-          » pour voir le classement complet.
+          {/* La cause n'est **pas** nommée (correctif de revue) : le créneau en est une, le filtre
+              par catégorie juste au-dessus en est une autre, tout aussi fréquente. Désigner le
+              créneau seul envoyait changer de départ quand il fallait élargir la catégorie. */}
+          Aucun des archers que vous suivez n’apparaît dans cette sélection. Passez à « Tout le
+          tournoi », ou élargissez le filtre.
         </p>
       )}
       {classement.data && !aucunSuiviIci && (
@@ -137,6 +147,9 @@ export function VueClassement({
           <TableClassement
             tournoiId={tournoiId}
             lignes={lignesAffichees}
+            // Les ex æquo se cherchent sur la liste **entière** : à égalité avec un archer qu'on ne
+            // suit pas, le signalement disparaîtrait avec lui (correctif de revue).
+            lignesCompletes={classement.data.lignes}
             admin={admin}
             // Centré sur ses archers, la liste est courte : figer une tête de 8 sur 3 lignes
             // n'encadre plus rien (même raison que `separer` dans `TableClassement`).

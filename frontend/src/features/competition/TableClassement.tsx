@@ -20,6 +20,18 @@ import { usePlacerArcher } from './hooks'
 interface TableClassementProps {
   tournoiId: number
   lignes: LigneClassement[]
+  /**
+   * La liste **complète**, quand `lignes` en est un sous-ensemble affiché. Sert au seul calcul des
+   * ex æquo. Par défaut : `lignes` (les deux se confondent hors centrage).
+   *
+   * ⚠️ **Ne pas confondre la source du calcul et la source de l'affichage** (correctif de revue,
+   * E16US004). `totauxExAequo` cherche les totaux qui apparaissent **plusieurs fois** : le lui
+   * donner déjà filtré fait disparaître l'égalité en même temps que l'archer avec qui elle
+   * existait. Centré sur un seul archer, un 542 à égalité avec un autre 542 non suivi se
+   * présentait comme un rang acquis — alors qu'il tient à un départage au nombre de 10, voire à
+   * un barrage à venir.
+   */
+  lignesCompletes?: LigneClassement[]
   admin: boolean
   /**
    * Combien de lignes de tête restent **toujours visibles** pendant que le reste défile (A16 :
@@ -48,6 +60,7 @@ interface TableClassementProps {
 export function TableClassement({
   tournoiId,
   lignes,
+  lignesCompletes,
   admin,
   teteFigee = 0,
   detailFleches = false,
@@ -56,7 +69,7 @@ export function TableClassement({
     return <p className="carte__etat">Aucun archer inscrit pour l'instant.</p>
   }
 
-  const egalites = totauxExAequo(lignes)
+  const egalites = totauxExAequo(lignesCompletes ?? lignes)
   // Séparation seulement si elle **sert** : figer les 5 premiers d'une liste de 5 ne fait
   // qu'ajouter un cadre autour de rien.
   const separer = teteFigee > 0 && lignes.length > teteFigee
@@ -128,9 +141,18 @@ export function TableClassement({
   )
 }
 
+/** Le nombre de colonnes **de lecture** (hors « Placer », réservée à l'admin).
+ *
+ * Troisième domicile de ce compte, et le seul qui ne se voie pas : `EnTetes` et `Colonnes` cassent
+ * le rendu ou le typage quand ils divergent, un `colSpan` faux se contente de laisser une case vide
+ * en bout de ligne de détail. La constante ne supprime pas la duplication — elle la rend nommée, ce
+ * qui suffit ici (correctif de revue, sans pattern : les trois listes restent côte à côte). */
+const NB_COLONNES_LECTURE = 8
+
 /** La rangée d'en-têtes, **partagée** par les deux tables — visible en tête, masquée (mais lue) dans
  * la table défilante. Un seul point de vérité : ajouter une colonne sans toucher les deux endroits
- * ne peut plus décaler l'une par rapport à l'autre. */
+ * ne peut plus décaler l'une par rapport à l'autre. ⚠️ Toute colonne ajoutée ici se compte aussi
+ * dans `NB_COLONNES_LECTURE` et se dessine dans `Colonnes`. */
 function EnTetes({ admin }: { admin: boolean }) {
   return (
     <tr>
@@ -212,10 +234,9 @@ function LigneArcher({
     .filter((c) => c !== '')
     .join(' ')
 
-  // Le nombre de colonnes, pour que la ligne de détail s'étale sous la table entière. Huit colonnes
-  // de lecture, plus « Placer » côté admin — un `colSpan` faux laisse une case vide en bout de
-  // ligne et casse l'alignement du `colgroup` partagé.
-  const nbColonnes = admin ? 9 : 8
+  // Le nombre de colonnes, pour que la ligne de détail s'étale sous la table entière. Les colonnes
+  // de lecture, plus « Placer » côté admin.
+  const nbColonnes = admin ? NB_COLONNES_LECTURE + 1 : NB_COLONNES_LECTURE
 
   return (
     <>
@@ -231,6 +252,9 @@ function LigneArcher({
               type="button"
               className="lien table__detail-bascule"
               aria-expanded={detailOuvert}
+              // `aria-controls` (correctif de revue) : sans lui, le lecteur d'écran annonce
+              // « déplié » sans pouvoir dire **quoi** — l'association bouton → région manquait.
+              aria-controls={`detail-archer-${ligne.archer_id}`}
               onClick={() => setDetailOuvert((ouvert) => !ouvert)}
             >
               {identite}
@@ -278,7 +302,7 @@ function LigneArcher({
         )}
       </tr>
       {detailOuvert && (
-        <tr className="table__detail">
+        <tr className="table__detail" id={`detail-archer-${ligne.archer_id}`}>
           <td colSpan={nbColonnes}>
             <DetailFleches tournoiId={tournoiId} archerId={ligne.archer_id} nom={identite} />
           </td>

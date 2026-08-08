@@ -17,7 +17,7 @@
 import { useMemo, useState } from 'react'
 import { useArchers } from '../archers/hooks'
 import { useDeparts } from '../departs/hooks'
-import { centrerCibles, type ModeAffichage } from '../public/focus'
+import { centrerCibles, type ModeAffichage } from '../../shared/suivis/focus'
 import { departDeSalle } from '../salle/rotation'
 import { usePlanDeCibles } from './hooks'
 import { construirePlanConsultation } from './planConsultation'

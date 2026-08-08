@@ -9,7 +9,7 @@
 //
 // **Cette vue n'est plus le seul endroit où le suivi sert** : depuis E16US004, l'interrupteur
 // « mes archers / tout » de l'en-tête public centre aussi le classement, les affectations, les
-// tableaux, le palmarès et le plan de cibles (`features/public/focus.ts`). Ici on **compose** la
+// tableaux, le palmarès et le plan de cibles (`shared/suivis/focus.ts`). Ici on **compose** la
 // liste ; là-bas on la **lit**.
 //
 // **Source des données** : la journée d'un archer se reconstruit depuis **la liste des départs**
@@ -53,7 +53,7 @@ import type { RoutageArcher } from '../routage/api'
 import { useAffectations } from '../routage/hooks'
 import { alerte, detail, titre } from '../routage/presentation'
 import type { TableauPublic } from '../tableaux/api'
-import { useTableaux } from '../tableaux/hooks'
+import { useTableauxDesDeparts } from '../tableaux/hooks'
 import { LIBELLE_STATUT, parcoursToutesPhases, type ParcoursPhase } from '../tableaux/presentation'
 import { nommerType } from '../../shared/phases/catalogue'
 import { type ArcherSuivi, useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
@@ -61,8 +61,18 @@ import { useDeroule, type VoleeDeroule } from './deroule'
 import { construireJournee, rechercherArchers } from './suivi'
 
 // Borne l'affichage des résultats de recherche : au-delà, on invite à préciser plutôt que de dérouler
-// tout un club (et de risquer de cacher l'archer cherché en silence).
+// tout l'annuaire (et de risquer de cacher l'archer cherché en silence).
 const MAX_RESULTATS = 8
+
+// ⚠️ **Un club sélectionné est déjà un critère** (correctif de revue). La borne de 8 visait la
+// recherche par nom, où trois lettres peuvent ramener la moitié du tournoi. Appliquée au filtre par
+// club, elle rendait inutilisable le parcours nominal de P01 — l'accompagnateur qui liste **les**
+// archers de son club : 8 lignes sur 40, plus un message « précisez le nom ou le club » alors que
+// le club **est** précisé. Un cul-de-sac : aucun geste proposé ne sortait de là.
+//
+// Un club de tournoi de club dépasse rarement la quarantaine d'engagés, et la liste est déjà
+// défilante : la borne haute n'est plus là que comme garde-fou d'affichage.
+const MAX_RESULTATS_CLUB = 60
 
 export function VueSuivi({ tournoiId }: { tournoiId: number }) {
   // Sélecteur **stable** : on lit la référence brute `s.suivis` (le store ne la recrée qu'à une vraie
@@ -114,13 +124,30 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
   const tableauConstitue = affectations.data?.phase_id != null && lignesAffectations.length > 0
   const routageParArcher = new Map(lignesAffectations.map((ligne) => [ligne.archer_id, ligne]))
 
-  // Les arbres du créneau, lus **une fois** pour toutes les cartes — comme `useAffectations`
-  // ci-dessus et pour la même raison : un appel par archer suivi multiplierait la lecture la plus
-  // chère du serveur (`# DETTE-031`). Ils alimentent le récapitulatif de journée (E16US004, P02 :
-  // *« on doit pouvoir retrouver tous les tours de toutes les phases joués »*), que la carte compose
-  // en filtrant les duels sur l'archer — le DTO public les porte déjà tous.
-  const tableaux = useTableaux(besoinPlans ? departCourant : null)
-  const arbres = tableaux.data?.tableaux ?? []
+  // Les arbres qui alimentent le récapitulatif de journée (E16US004, P02 : *« on doit pouvoir
+  // retrouver tous les tours de toutes les phases joués »*), lus **une fois** pour toutes les
+  // cartes — comme `useAffectations` ci-dessus et pour la même raison : un appel par archer suivi
+  // multiplierait la lecture la plus chère du serveur (`# DETTE-031`).
+  //
+  // ⚠️ **Les départs des archers suivis, pas celui de la salle** (correctif de revue). Un premier
+  // jet lisait `departCourant`, c'est-à-dire le créneau que la salle est en train de tirer : dès
+  // que le départ de l'après-midi était lancé, l'archer du matin perdait **en silence** toute la
+  // section « duels » de son récapitulatif — ses volées restant là, puisque `useDeroule` est scopé
+  // au tournoi. Un récapitulatif « de la journée » qui s'ampute à 15 h ne tient pas le CA.
+  //
+  // La liste se dérive des **plans déjà lus**, sans requête supplémentaire : `construireJournee`
+  // dit déjà où chaque archer suivi tire. On ne paie donc que les départs réellement concernés —
+  // un le plus souvent, deux quand on suit des archers de deux créneaux — et non tous ceux du
+  // tournoi, ce qui aurait aggravé `# DETTE-031` au lieu de la laisser où elle est.
+  const departsSuivis = [
+    ...new Set(
+      suivisIci.flatMap((s) =>
+        construireJournee(s.archerId, departs, plansParDepart).map((l) => l.departId),
+      ),
+    ),
+  ]
+  const tableauxResults = useTableauxDesDeparts(departsSuivis)
+  const arbres = tableauxResults.flatMap((r) => r.data?.tableaux ?? [])
 
   return (
     <div>
@@ -200,10 +227,19 @@ function RechercheArcher({
   const nePlusSuivre = useSessionSuivisStore((s) => s.nePlusSuivre)
   // Référentiel **global** et public en lecture (E02US001) : pas de tournoi dans la clé de cache,
   // et rien à authentifier.
-  const clubs = useClubs().data ?? []
+  //
+  // ⚠️ Restreint aux clubs **représentés ici** (correctif de revue) : le référentiel liste tous les
+  // clubs connus de la base, dont beaucoup n'ont personne sur ce tournoi. Les proposer menait à un
+  // « Aucun archer ne correspond » qui se lit comme une panne alors que le filtre a bien marché.
+  // `club_id === null` (club encore inconnu, ADR-0014) n'entre dans aucun club, ici comme dans
+  // `rechercherArchers`.
+  const clubsQuery = useClubs()
+  const clubsRepresentes = new Set(archers.map((a) => a.club_id).filter((id) => id !== null))
+  const clubs = (clubsQuery.data ?? []).filter((c) => clubsRepresentes.has(c.id))
   const dejaSuivis = new Set(suivis.map((s) => s.archerId))
   const correspondances = rechercherArchers(archers, { requete, clubId })
-  const resultats = correspondances.slice(0, MAX_RESULTATS)
+  const plafond = clubId === null ? MAX_RESULTATS : MAX_RESULTATS_CLUB
+  const resultats = correspondances.slice(0, plafond)
   const tropDeResultats = correspondances.length > resultats.length
   const sansCritere = requete.trim() === '' && clubId === null
 
@@ -219,7 +255,16 @@ function RechercheArcher({
           autoComplete="off"
         />
         {/* Le filtre ne s'affiche que si le référentiel a répondu : un `<select>` à une seule option
-            « Tous les clubs » ferait croire qu'aucun club n'existe. */}
+            « Tous les clubs » ferait croire qu'aucun club n'existe.
+            ⚠️ Un échec de `GET /clubs` retirait la fonctionnalité centrale de l'US **sans un mot**
+            (correctif de revue) — indiscernable d'un référentiel vide. Sur le LAN d'un gymnase, une
+            requête qui rate au montage est un cas banal : on le dit, c'est la règle que ce même
+            écran applique déjà à la liste d'archers. */}
+        {clubsQuery.isError && (
+          <p className="carte__etat carte__etat--erreur">
+            Liste des clubs indisponible — la recherche par nom reste utilisable.
+          </p>
+        )}
         {clubs.length > 0 && (
           <label className="recherche-suivi__club">
             <span className="sr-only">Filtrer par club</span>
@@ -270,7 +315,13 @@ function RechercheArcher({
               ))}
             </ul>
             {tropDeResultats && (
-              <p className="carte__etat">Trop de résultats — précisez le nom ou le club.</p>
+              <p className="carte__etat">
+                {/* Ne jamais demander de préciser un critère **déjà** posé : le message doit
+                    nommer un geste qui reste à faire (correctif de revue). */}
+                {clubId === null
+                  ? 'Trop de résultats — précisez le nom ou le club.'
+                  : 'Trop de résultats — précisez le nom.'}
+              </p>
             )}
           </>
         ) : enChargement ? (
