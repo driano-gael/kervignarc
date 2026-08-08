@@ -14,11 +14,15 @@
 
 **Dernière mise à jour : 08/08/2026, 12 h 37** · **106 US livrées** · dernière : `E05US024`
 *(**le club est libre de son format** : un prélèvement est lu dans le classement de **sa** phase
-source, plus seulement dans la qualification — poules→tableau, tableau→consolante, sur autant de
-crans que le format en compte. Le plancher d'inscrits remonte la même chaîne. Née d'un arbitrage du
+source, plus seulement dans la qualification — tableau→consolante, tableau→tableau, sur autant de
+crans que le format en compte, et l'écran public **dit** « en attente » tant que la source n'a pas
+départagé les places prélevées. Le plancher d'inscrits remonte la même chaîne. Née d'un arbitrage du
 commanditaire au cadrage d'`E16US002` — « la création du déroulé doit permettre de composer les
-phases comme on en a envie ». [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md) ;
-reste de `DETTE-028` sur les rangs **résorbé**. ⚠️ **Plusieurs qualifications reste interdit** —
+phases comme on en a envie ». [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md) et
+[ADR-0081](../docs/adr/0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md) ;
+reste de `DETTE-028` sur les rangs **résorbé pour les phases classantes lues** (qualification et
+élimination directe) — une source visant des **poules / suisse / colline / Big Shoot Off** reste
+ignorée jusqu'à `E05US023`. ⚠️ **Plusieurs qualifications reste interdit** —
 c'est `E05US025`, qui ne pouvait pas passer devant : sans cette lecture, une 2ᵉ qualification aurait
 reçu *tous* les inscrits.)*
 
@@ -787,7 +791,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 76 | E06US006 | **Classement intégral 1→N & profondeur configurable** | ✅ *(la profondeur se règle **par phase** et non plus au câblage ; absence = preset du type, podium pour une élimination directe et intégral pour un placement — ADR-0070, DETTE-035 ouverte)* |
 | 76bis | E05US020 | **Le moteur consomme les prélèvements déclarés** | ✅ *(cœur de DETTE-028 : prélèvement par rangs honoré, plage relative résolue, tranche de rangs au palmarès — DETTE-034 soldée, ADR-0068)* |
 | 76ter | E05US021 | **Un format connaît son effectif minimum** (avertir avant de lancer) | ✅ *(minimum **déduit** des prélèvements, exigence de club au-dessus, refus au démarrage + annonce avant le clic — ADR-0069)* |
-| 76quater | E05US024 | **Un prélèvement lit le classement de sa phase source** | ✅ *(reste de `DETTE-028` sur les rangs **résorbé** : poules→tableau, tableau→consolante, cascade récursive sur un graphe acyclique ; un tableau se lit comme un classement, fourchettes *ex æquo* fermées par la politique `aggregation` (ADR-0067) et non par un départage local qui aurait contredit le palmarès ; le plancher d'inscrits remonte la chaîne et refuse de chiffrer une fenêtre amont plafonnée. Le « cycle » invoqué par E05US020 pour reporter ce cas **n'existait pas** — récursion, pas cycle de modules : une justification de report se re-vérifie à la reprise. [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md))* |
+| 76quater | E05US024 | **Un prélèvement lit le classement de sa phase source** | ✅ *(reste de `DETTE-028` sur les rangs **résorbé pour les phases classantes lues** — qualification et élimination directe ; une source visant des poules / suisse / colline / Big Shoot Off reste ignorée jusqu'à E05US023 : tableau→consolante, tableau→tableau, cascade récursive sur un graphe acyclique ; un tableau se lit comme un classement, fourchettes *ex æquo* fermées par la politique `aggregation` (ADR-0067) et non par un départage local qui aurait contredit le palmarès ; le plancher d'inscrits remonte la chaîne et refuse de chiffrer une fenêtre amont plafonnée. **Une fenêtre qui coupe un bloc encore indécis est refusée et annoncée** (ADR-0081) : un tableau de 8 non commencé rendait « les rangs 5 à 8 » comme étant les 4 derniers **qualifiés** — bien formé, plausible, faux, et moins détectable qu'avant l'US ; l'écran public affiche désormais « en attente du tableau *n* ». Le « cycle » invoqué par E05US020 pour reporter ce cas **n'existait pas** — récursion, pas cycle de modules : une justification de report se re-vérifie à la reprise. [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md), [ADR-0081](../docs/adr/0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md))* |
 | 76quinquies | E05US025 | **Plusieurs qualifications dans un même déroulé** | ⬜ 🎯 *(**dépend d'E05US024**, nécessairement : sans peuplement générique, une 2ᵉ qualification recevrait *tous* les inscrits. L'unicité (`_anomalies_unicite_qualification`, E05US021) n'est **pas une règle métier** — sa docstring la dit « supposée partout et vérifiée nulle part », posée pour fermer un bug plutôt que pour exprimer une règle du tir à l'arc. Reste à faire : les **lecteurs**, pas le peuplement — `ServiceBaremeQualification` est bâti sur « **le** barème du tournoi », et les 12 appels de `portee.qualification_du_tournoi` (terrain `DETTE-048`) sont à trier un par un. **ADR attendu** ; 3 points à trancher au cadrage, listés dans la story)* |
 | 77 | E03US007 | **Contrainte séparation catégorie/blason** | ✅ *(réglage de tournoi à 4 positions, contrainte **dure** au placement auto **et** au glisser-déposer, **sur les deux plans** (cibles et duels), raison de réserve propre `cloisonnement`, cibles non conformes signalées — ADR-0071, DETTE-036/037 ; tranche la priorité des contraintes restée ouverte à EPIC-03)* |
 | 78 | E09US005 | Classements PDF | ⬜ *(rétrécie par E06US004 : le **palmarès** a son PDF ; reste celui du classement de **qualification**)* |

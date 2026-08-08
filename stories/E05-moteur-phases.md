@@ -663,10 +663,29 @@ qualification** et a laissé les autres au comportement d'avant, explicitement.
 - **CA — `tranche` suit la même règle** : le premier rang du tournoi qu'une phase dispute se lit sur
   **sa** phase source ([ADR-0068](../docs/adr/0068-le-moteur-consomme-les-prelevements-declares.md) §5).
   Sans quoi le palmarès resitue les positions dans le mauvais espace de rangs — c'était `DETTE-034`.
+  Le décalage se **cumule** : une phase prélevant « les rangs 1 à 2 » d'un tableau qui disputait
+  lui-même les places 33 et suivantes joue pour la **33ᵉ** place, pas pour la 1ᵉʳᵉ.
+- **CA — une phase attend que sa source ait départagé les places qu'elle prélève**
+  *(ajouté le 08/08/2026 sur relevé de revue adversariale — [ADR-0081](../docs/adr/0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md))*.
+  Un tableau ne décerne pas des rangs mais des **fourchettes**, et avant son premier duel un tableau
+  de 8 porte ses huit archers sur la même plage `[1..8]`. Une consolante « les rangs 5 à 8 » y
+  recevait les 4 derniers **qualifiés** au lieu des 4 battus des quarts — bien formé, plausible et
+  faux, et **moins détectable** qu'avant l'US (la population avait le bon cardinal).
+  La règle : une fenêtre est honorée si elle ne **coupe** pas un bloc indécis — chevaucher **sans
+  contenir**. « Les rangs 1 à 2 » sur les deux finalistes `[1..2]` reste honoré (elle veut les deux
+  finalistes) ; « les rangs 5 à 8 » sur un tableau non commencé est **refusé et annoncé**.
+  L'écran public affiche « en attente du tableau *n* », le plan de cibles n'est pas produit, la
+  saisie refuse (409), et le palmarès écarte la phase.
 - **CA — l'effectif minimum suit la chaîne** : `effectif_minimum` (E05US021) traduit un rang en
   nombre d'inscrits en **remontant la chaîne des sources** jusqu'à la phase alimentée par les
-  inscriptions, au lieu de ne reconnaître que la qualification. Un déroulé « poules → tableau des
-  rangs 33 et suivants » annonce donc son plancher, là où il est muet aujourd'hui.
+  inscriptions, au lieu de ne reconnaître que la qualification. Un déroulé « tableau des rangs 17 à
+  32 → tableau des rangs 5 et suivants » annonce donc son plancher (22 inscrits), là où il est muet
+  aujourd'hui.
+  ⚠️ **Arbitrage du 08/08/2026, reversé ici depuis la revue** : ce CA citait « poules → tableau »,
+  ce que l'US **ne livre pas** — le moteur ne sait lire que la qualification et l'élimination
+  directe (`_TYPES_CLASSANTS_LUS`), une source visant des poules reste ignorée en silence jusqu'à
+  **E05US023**. Le CA était **faux, et non ambigu** : il s'écrivait sans effort, donc le garde-fou
+  « CA ambigu » ne pouvait pas se déclencher, et l'US suivante en aurait dérivé ses tests.
 - **CA — plan de cibles et arbre restent ensemencés à l'identique** : `ServicePlacementDuels` et
   `ServiceSaisieDuels` continuent de lire la **même** règle (`application/prelevement.py`). L'écart
   mesuré à la revue d'E05US020 — plan de 8 placements pour un tableau de 4 — ne doit pas se rouvrir.

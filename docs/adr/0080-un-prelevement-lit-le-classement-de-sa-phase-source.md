@@ -33,9 +33,15 @@ la qualification** garde le comportement d'avant ».
 
 Deux conséquences, dont la seconde n'est pas intuitive :
 
-1. **Les formats en cascade étaient inaccessibles** — poules → tableau, tableau → consolante,
-   qualification → qualification restreinte. Toute la richesse qu'ADR-0061 avait rendue *exprimable*
-   restait *inexécutable*.
+1. **Les formats en cascade étaient inaccessibles** — tableau → consolante, tableau → tableau.
+   Toute la richesse qu'ADR-0061 avait rendue *exprimable* restait *inexécutable*.
+
+   ⚠️ **Correctif de revue** : une version antérieure de cette phrase citait aussi « poules →
+   tableau ». C'est faux, et §3 ci-dessous le dit correctement dix lignes plus bas : le moteur ne
+   sait lire que les types de `_TYPES_CLASSANTS_LUS` (qualification et élimination directe). Une
+   source visant des poules reste **ignorée en silence** jusqu'à E05US023 — reste ouvert de
+   `DETTE-028`. L'ADR se contredisait ; le registre de dette, le tracker, le journal et le **CA de
+   la story** avaient repris la version fausse.
 2. **L'unicité de la qualification était le pansement de ce raccourci.**
    `_anomalies_unicite_qualification` (E05US021) interdit plus d'une phase de qualification par
    séquence ; sa propre docstring la présente comme un invariant « **supposé partout et vérifié
@@ -157,9 +163,20 @@ déjà ce chemin. Corollaire au composition root : **la saisie se construit avan
 - **Le club est libre de son format**, au sens fort : ce que l'écran laisse composer, la salle le
   joue. La promesse d'E01US024 (« le tournoi se déroule comme le schéma que j'ai composé et validé »)
   cesse de s'arrêter à la première phase.
-- **Un défaut silencieux devient impossible** : un prélèvement est désormais honoré ou inerte, jamais
-  appliqué au mauvais classement. C'était la classe de bugs la plus coûteuse — plausible, non
-  signalée, découverte le jour J.
+- **Un défaut silencieux devient impossible** : un prélèvement est désormais honoré, **en attente**
+  ou inerte, jamais appliqué au mauvais classement. C'était la classe de bugs la plus coûteuse —
+  plausible, non signalée, découverte le jour J.
+
+  ⚠️ **Cette conséquence était fausse telle qu'écrite, et la revue adversariale l'a réfutée par la
+  mesure.** Le §2 ci-dessus (garder les archers `en_lice` dans le classement du tableau) est juste
+  quand la fenêtre demandée **coïncide** avec un bloc encore indécis — les deux finalistes `[1..2]`
+  — et **faux** dès qu'elle le **coupe**. Avant son premier duel, un tableau de 8 porte ses huit
+  archers sur la plage `[1..8]` de leur quart : « les rangs 5 à 8 » y rendait les 4 derniers
+  **qualifiés** au lieu des 4 battus des quarts. Le défaut n'était donc pas fermé sur ce chemin mais
+  **déplacé, et rendu moins détectable** (la population avait le bon cardinal). Fermé par
+  [ADR-0081](0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md), qui
+  ajoute le troisième état « en attente » — et qui **préserve** le raisonnement du §2 au lieu de le
+  jeter.
 - **Le plancher d'inscrits dit enfin la vérité sur les cascades**, là où il annonçait le minimum
   structurel (2) pour des déroulés qui en réclamaient vingt.
 

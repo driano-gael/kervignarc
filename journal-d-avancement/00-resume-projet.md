@@ -589,15 +589,20 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   disqualification** (E04US015 — qualif *et* duels), le **cycle de vie d'un départ** (E12US008), le
   **feu vert + lancement d'un tour** (E12US002), le **remboursement d'une inscription payée
   annulée** (E08US005) l'**affichage de la prochaine cible après validation** (E04US018), le **barrage de tir pour les places décisives** (E06US003) et le **palmarès** (E06US004), qui le referme.
-- **Le club est enfin libre de son format (08/08/2026, E05US024)** — une correction de fond, sans
-  écran neuf. L'organisateur pouvait déjà **composer** ce qu'il voulait : « les huit premiers de mes
-  poules », « les rangs 33 et suivants de mon tableau ». L'écran l'acceptait, le diagnostic le
+- **Le club est enfin libre de son format (08/08/2026, E05US024)** — une correction de fond.
+  L'organisateur pouvait déjà **composer** ce qu'il voulait : « les rangs 5 à 8 de mon tableau
+  principal », autrement dit les battus des quarts. L'écran l'acceptait, le diagnostic le
   validait — mais **le moteur ne savait lire qu'un seul classement**, celui de la qualification. Tout
   prélèvement visant une autre phase était **ignoré sans rien dire**, et la phase récupérait *tous*
   les archers encore en lice : un tableau d'apparence normale, et faux, qui ne se serait vu que le
   jour J. Désormais chaque prélèvement est lu **dans la phase qu'il désigne**, sur autant de crans que
   le format en compte, et le seuil « il vous faut au moins N inscrits » suit la même chaîne au lieu de
-  s'arrêter à la première phase. ⚠️ Une limite reste **volontairement** en place, pour la suite
+  s'arrêter à la première phase. Et **ce qui n'est pas encore joué est annoncé comme tel** : une
+  consolante composée le matin affiche « les places disputées ici ne sont pas encore connues »
+  plutôt qu'une liste d'archers plausible et fausse — le défaut le plus dangereux qu'ait trouvé la
+  relecture de cette US, le tableau affiché ayant le bon nombre d'archers et des noms crédibles.
+  ⚠️ Les phases en **poules**, système suisse, colline et Big Shoot Off restent hors du dispositif :
+  elles n'ont pas encore de moteur (E05US023). ⚠️ Une limite reste **volontairement** en place, pour la suite
   immédiate : on ne peut toujours pas mettre **deux qualifications** dans un même tournoi — c'est
   l'objet d'`E05US025`, qui ne pouvait pas passer avant celle-ci (sans cette lecture, une seconde
   qualification aurait reçu tous les inscrits). Décision d'architecture :
