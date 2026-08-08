@@ -142,8 +142,15 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
   // **engagé en duels mais jamais placé** (le tableau s'ensemence depuis le classement, qui compte
   // tout inscrit) n'aurait réclamé aucun départ, et aurait perdu sa section « duels » en silence :
   // le défaut d'origine, re-créé sous un autre déclencheur.
+  //
+  // ⚠️ `chargementPlans` dans la condition (3ᵉ passe) : sans lui, le repli se déclenchait pendant
+  // que les plans arrivaient — `departsSuivis` est **vide** à ce moment-là sans que cela veuille
+  // dire « aucun archer placé ». On tirait donc une reconstruction serveur complète de plus par
+  // ouverture d'appli, sur chaque téléphone, avant d'aller chercher le bon créneau au rendu
+  // suivant. Cela falsifiait de surcroît la promesse écrite dans `suivi.ts` (« aucune requête ne
+  // part tant que les plans ne sont pas chargés »), que son propre test verrouille.
   const departsARelire =
-    departsSuivis.length > 0 || !besoinPlans
+    departsSuivis.length > 0 || !besoinPlans || chargementPlans
       ? departsSuivis
       : departCourant !== null
         ? [departCourant]
@@ -156,7 +163,14 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
   // qualification restant affichées puisqu'elles viennent d'ailleurs. C'est très exactement le
   // défaut que ce bloc vient de corriger, déplacé du « mauvais départ » vers « le réseau ». Le
   // fan-out l'aggravait : sur deux départs, une panne partielle amputait un archer et pas l'autre.
-  const erreurArbres = tableauxResults.some((r) => r.isError)
+  //
+  // ⚠️ **`data === undefined` en plus d'`isError`** (3ᵉ passe). Ces requêtes se rafraîchissent
+  // toutes les 20 s : à l'échec d'un refetch d'**arrière-plan**, React Query passe en `error` mais
+  // **conserve** la dernière donnée lue. Sans ce second test, le bandeau rouge s'affichait
+  // au-dessus des duels qu'il déclarait indisponibles, alors qu'ils étaient là et justes. C'est le
+  // piège « les données priment sur l'erreur » que `VueAffectations` a déjà corrigé — deux fichiers
+  // plus loin, dans cette même US.
+  const erreurArbres = tableauxResults.some((r) => r.isError && r.data === undefined)
 
   return (
     <div>
@@ -500,10 +514,14 @@ function RecapitulatifJournee({
 
       {/* On ne présente jamais une panne comme une absence (2ᵉ passe de revue) : un « rien à
           afficher » silencieux se lit « il n'a pas encore joué », ce qui est faux et indétectable.
-          Même règle que la recherche d'archers vingt lignes plus haut. */}
+          Même règle que la recherche d'archers vingt lignes plus haut.
+          ⚠️ Pas de « la qualification reste à jour » (3ᵉ passe) : la phrase était **fausse dans le
+          cas qu'elle nommait**. Si la connexion est tombée, le déroulé de qualification passe par
+          le même réseau et est tout aussi figé — rassurer sur ce point aurait fait lire pour « à
+          jour » un écran qui ne l'est pas. On dit ce qu'on sait, et rien de plus. */}
       {arbresEnErreur && (
         <p className="carte__etat carte__etat--erreur">
-          Duels momentanément indisponibles — connexion perdue. La qualification reste à jour.
+          Duels momentanément indisponibles — connexion perdue.
         </p>
       )}
 

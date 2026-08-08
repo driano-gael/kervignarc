@@ -34,8 +34,12 @@ interface SessionSuivisState {
    * écrans publics seraient vides sans que rien ne l'explique).
    *
    * Persistée avec la liste : elle survit à un rechargement, ce qui compte sur un téléphone qu'on
-   * range et ressort toute la journée. Une clé absente du `localStorage` d'hier retombe sur la
-   * valeur initiale par la fusion de `persist` — aucune migration à écrire.
+   * range et ressort toute la journée. Une clé **absente** du `localStorage` d'hier retombe sur la
+   * valeur initiale par la fusion de `persist`.
+   *
+   * ⚠️ *(Cette phrase disait « aucune migration à écrire ». Elle ne vaut que pour une clé absente :
+   * un premier jet de cette US avait déjà **écrit** `false` chez tout appareil ayant ouvert la
+   * branche, et une valeur présente gagne. Cf. `migrate` en bas de fichier.)*
    *
    * ⚠️ **Armée par défaut** (`true`), arbitrage du 08/08/2026 en revue d'E16US004. Le CA
    * d'E07US005 promet que « la lecture *Mon chemin* est celle par défaut **dès qu'on suit

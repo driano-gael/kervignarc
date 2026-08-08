@@ -387,7 +387,15 @@ describe('posesParCible — le pas de tir en « mes archers »', () => {
   })
 
   it('ignore les archers sortis, même sur une butte retenue', () => {
-    const sorti = archer({ archer_id: 4, issue: 'termine', prochain: null })
+    // ⚠️ L'archer sorti porte **une butte retenue** (3ᵉ passe de revue). Un premier jet lui donnait
+    // `prochain: null` : il était alors écarté par le garde « pas de cible », jamais par son issue,
+    // si bien que le test passait avec une implémentation qui ignore complètement `partitionner` —
+    // c'est-à-dire fausse — tout en annonçant le contraire dans son titre.
+    const sorti = archer({
+      archer_id: 4,
+      issue: 'termine',
+      prochain: prochain({ cible: 7, position: 'C' }),
+    })
 
     const poses = posesParCible([moi], [...tous, sorti], true)
 

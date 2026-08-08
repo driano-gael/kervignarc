@@ -69,7 +69,18 @@ export function estExAequo(
   return egalites.get(ligne.categorie_id)?.has(ligne.total) === true
 }
 
-/** Y a-t-il au moins une égalité à départager ? C'est la condition d'affichage de la règle. */
+/** Y a-t-il au moins une égalité à départager **dans cette liste** ?
+ *
+ * ⚠️ **Ce n'est plus la condition d'affichage de la règle** (E16US004). Depuis que le classement
+ * peut être centré sur les archers suivis, la légende se décide sur `lignes.some(estExAequo)` — les
+ * égalités se **calculent** sur la liste complète (sinon on efface une égalité en même temps que
+ * l'archer non suivi avec qui elle existe) mais ne s'**annoncent** que si une ligne visible les
+ * porte, sans quoi on affiche « il y a des ex æquo » sans dire lesquels.
+ *
+ * Conservée : elle exprime l'invariant du module (« aucune égalité fantôme ») et c'est par elle que
+ * les tests de `totauxExAequo` vérifient les cas où il ne doit rien y avoir — matinée à zéro,
+ * forfaits, catégories disjointes. Plus aucun appelant en production.
+ */
 export function aDesExAequo(egalites: ReadonlyMap<number, ReadonlySet<number>>): boolean {
   return egalites.size > 0
 }
