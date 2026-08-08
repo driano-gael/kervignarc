@@ -55,6 +55,8 @@ function tableau(duels: DuelPublic[], patch: Partial<TableauPublic> = {}): Table
     est_termine: false,
     duels,
     podium: [],
+    // Non optionnel : le serveur sert toujours le champ (`null` quand l'arbre est monté).
+    en_attente_de: null,
     ...patch,
   }
 }

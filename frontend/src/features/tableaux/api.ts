@@ -75,7 +75,7 @@ export interface TableauPublic {
   // lice sur leur rang de qualification : la consolante affichait les 4 derniers **qualifiés** au
   // lieu des 4 battus des quarts. Bien formé, plausible, et faux. Les champs de dimensions valent
   // 0 et les listes sont vides quand ce champ est renseigné.
-  en_attente_de?: number | null
+  en_attente_de: number | null
 }
 
 export interface Tableaux {

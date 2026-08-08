@@ -80,6 +80,8 @@ function reponse(duels: DuelPublic[] = [duel()]): Tableaux {
     est_termine: false,
     duels,
     podium: [],
+    // Non optionnel : le serveur sert toujours le champ (`null` quand l'arbre est monté).
+    en_attente_de: null,
   }
   return { depart_id: 41, tableaux: [tableau] }
 }

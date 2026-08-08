@@ -118,7 +118,11 @@ export function VueTableaux({
               >
                 {donnees.tableaux.map((t) => (
                   <option key={t.phase_id} value={t.phase_id}>
-                    {nommerType(t.type)} —{' '}
+                    {/* ⚠️ L'`ordre` est affiché depuis E05US024 : le message « en attente du
+                        tableau n » ci-dessous le désigne, et sans lui le spectateur lisait « le
+                        tableau 2 » devant deux entrées toutes deux nommées « Élimination
+                        directe » — une référence sans référent (relevé en revue). */}
+                    {t.ordre}. {nommerType(t.type)} —{' '}
                     {t.en_attente_de != null ? 'en attente' : `${t.effectif} archers`}
                   </option>
                 ))}
@@ -141,9 +145,9 @@ export function VueTableaux({
           tableau à venir était indiscernable d'un tableau cassé. */}
       {tableau.en_attente_de != null ? (
         <p className="carte__etat">
-          Les places disputées ici ne sont pas encore connues : le tableau {tableau.en_attente_de}{' '}
-          doit d’abord être joué. L’arbre s’affichera dès que ses matchs auront départagé les
-          archers concernés.
+          Les places disputées ici ne sont pas encore connues : le tableau {tableau.en_attente_de}
+          {nomDeLOrdre(donnees.tableaux, tableau.en_attente_de)} doit d’abord être joué. L’arbre
+          s’affichera dès que ses matchs auront départagé les archers concernés.
         </p>
       ) : (
         <>
@@ -158,6 +162,17 @@ export function VueTableaux({
       )}
     </div>
   )
+}
+
+/** Le nom lisible de la phase d'un `ordre` donné, pour que « le tableau 2 » ait un référent.
+ *
+ * Rend une chaîne vide si l'ordre ne correspond à aucun tableau du créneau — c'est le cas quand la
+ * phase attendue n'est pas elle-même un tableau (une qualification, par exemple) : le numéro seul
+ * reste alors juste, et inventer un nom serait pire que de n'en donner aucun.
+ */
+function nomDeLOrdre(tableaux: TableauPublic[], ordre: number): string {
+  const cible = tableaux.find((t) => t.ordre === ordre)
+  return cible ? ` (${nommerType(cible.type)})` : ''
 }
 
 /** Variante A : l'arbre réduit à la trajectoire de chaque archer suivi. */
