@@ -195,3 +195,26 @@ plutôt que d'en perdre une moitié en silence. Un consommateur du domaine (`Pha
 - **Garder `podium()` comme seule sortie et lui ajouter des rangs** : `podium()` a une sémantique de
   tout-ou-rien (rien tant que la finale n'est pas jouée) que ses consommateurs utilisent. On a donc
   ajouté `classement()` (au fil de l'eau, 1→N) et laissé `podium()` en vue restreinte.
+
+## Porté dans le code par
+
+> *Section ajoutée le 08/08/2026 (rétro-équipement des ADR structurants encore actifs). La règle
+> « un ADR nomme les modules qui le portent » a été instituée le 06/08/2026 par
+> [ADR-0075](0075-le-depart-est-la-portee-sportive.md) et n'avait pas été appliquée rétroactivement.
+> Les modules ci-dessous ont été **vérifiés dans le code du jour**, pas déduits de l'ADR — nommer un
+> module vide reproduirait exactement le défaut que la section existe pour empêcher.*
+
+- `backend/domain/politiques.py` — `Routing.route(contexte) -> Destination` et les trois
+  destinations `HorsTableau`, `VersPlage`, `VersRepechage` ; les implémentations `EliminationSeche`,
+  `PlacementEnCascade`, `RoutingRepechage` ; `ContexteRoutage`.
+- `backend/domain/plage.py` — la **plage de rangs**, l'objet sur lequel la récursion se fait.
+- `backend/domain/tableau.py` — la génération par **récursion sur les plages**, dont l'élimination
+  directe d'`E05US005` est le cas particulier tronqué au rang 4 (§2), et le routage décidé **à la
+  construction** et non à chaque match joué (§ ADR-0049).
+- `backend/tests/` — l'**oracle 120** (rejeu du classeur réel), qui est la preuve de cet ADR : la
+  décision « le tableau livré *est* un placement tronqué » ne se vérifie que par la non-régression
+  structurelle à profondeur `podium`.
+
+La prévision de cet ADR — « le repêchage ajoutera une troisième destination sans toucher aux deux
+premières » — **s'est vérifiée au mot près** en `E05US015` (`VersRepechage`). C'est l'argument le
+plus solide en faveur de la séparation `Routing` / `Depth`.

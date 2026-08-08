@@ -150,3 +150,26 @@ un format connaît son effectif minimum, et le lancement le vérifie contre les 
   faite, mais les réglages (`nb_poules`, `nb_manches`…) restent inexprimables en `config.policies`,
   `classement.py` ne passe toujours pas par la famille `scoring`, et `poule`/`suisse`/`colline`/
   `big_shoot_off` n'ont toujours aucun consommateur.
+
+## Porté dans le code par
+
+> *Section ajoutée le 08/08/2026 (rétro-équipement des ADR structurants encore actifs). La règle
+> « un ADR nomme les modules qui le portent » a été instituée le 06/08/2026 par
+> [ADR-0075](0075-le-depart-est-la-portee-sportive.md) et n'avait pas été appliquée rétroactivement.
+> Les modules ci-dessous ont été **vérifiés dans le code du jour**, pas déduits de l'ADR — nommer un
+> module vide reproduirait exactement le défaut que la section existe pour empêcher.*
+
+- `backend/application/prelevement.py` — `preleves()` filtre le classement de la source sur les
+  intervalles déclarés ; `tranche()` calcule l'effectif prélevé ; `profondeur_de()` résout la
+  profondeur. C'est le module central de cet ADR.
+- `backend/domain/phase.py` — `SourcePhase.intervalle(effectif_source)`, qui **résout la fin
+  ouverte** sur l'effectif réel (« les rangs 33 et suivants » vaut 88 à 120 classés, 50 à 82). La
+  sémantique est dans le **domaine** : le service la consomme, il ne la réécrit pas.
+- `backend/application/saisie_duels.py` — le décor de phase, qui applique le prélèvement au
+  peuplement effectif.
+
+Le cas « une phase **sans** source reste alimentée par les inscriptions » est porté par le même
+chemin : c'est l'absence de `phase.sources` qui le déclenche, pas un drapeau. ⚠️ La portée de cet
+ADR a été **élargie deux fois depuis** — par [ADR-0080](0080-un-prelevement-lit-le-classement-de-sa-phase-source.md)
+(la source n'est plus forcément la qualification) et [ADR-0081](0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md)
+(une fenêtre coupant un bloc indécis est **refusée**). Le lire seul donnerait une image de 2026-08-01.

@@ -239,3 +239,28 @@ SQLite et remontait en **500** au lieu d'un 422 typé.
   sources, enchaîner les manches, publier les classements — relève d'**E01US024** (composer,
   diagnostiquer et simuler un déroulé) et d'**E07US004** (voir le tournoi se dérouler). Cette US
   livre les moteurs et la surface de composition, pas le pilotage en temps réel.
+
+## Porté dans le code par
+
+> *Section ajoutée le 08/08/2026 (rétro-équipement des ADR structurants encore actifs). La règle
+> « un ADR nomme les modules qui le portent » a été instituée le 06/08/2026 par
+> [ADR-0075](0075-le-depart-est-la-portee-sportive.md) et n'avait pas été appliquée rétroactivement.
+> Les modules ci-dessous ont été **vérifiés dans le code du jour**, pas déduits de l'ADR — nommer un
+> module vide reproduirait exactement le défaut que la section existe pour empêcher.*
+
+- `backend/domain/phase.py` — `TypePhase` : le catalogue lui-même, dont la docstring nomme le moteur
+  de **chaque** valeur (c'est elle qui porte le critère §1).
+- Les moteurs, un fichier par structure : `backend/domain/poule.py`,
+  `backend/domain/big_shoot_off.py`, `backend/domain/suisse.py`, `backend/domain/colline.py`,
+  `backend/domain/barrage.py`. L'échauffement est le seul type **sans** moteur, et c'est son
+  contenu — une phase qui ne calcule rien.
+- `backend/domain/politiques.py` — les trois formats qui **ne sont pas des types** :
+  `RoutingRepechage` (le repêchage **décore** un routing existant au lieu de le remplacer),
+  `ScoreAvecHandicap` (avec `ContexteScore`), et la finale spectacle qui n'est qu'un assemblage
+  d'`elimination_directe` + barème de duel, donc **aucun module**.
+
+🔴 **Écart connu et suivi : quatre types du catalogue ne sont pas jouables.** `poules`, `suisse`,
+`colline` et `big_shoot_off` ont leur moteur de domaine, testé, mais **aucun consommateur de
+production** — `ServiceSaisieDuels._decor` les refuse. C'est `DETTE-028`, et c'est `E05US023` qui la
+solde. La règle d'ADR-0045 §2 (« pas de type sans moteur ») est donc respectée à la lettre et
+enfreinte dans son intention : le moteur existe, mais rien ne l'appelle.

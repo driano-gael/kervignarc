@@ -46,3 +46,37 @@ Un **format** est donc un assemblage : ex. « placement intégral 120 » = `rout
 forme concrète de la `config` — politiques sous `config.policies`, chacune `{"nom": …, …paramètres}`,
 le grain de `validation` restant hors `policies` — et l'assemblage via un registre peuplé par la
 composition root. C'est la résorption de DETTE-003.
+
+## Porté dans le code par
+
+> *Section ajoutée le 08/08/2026 (rétro-équipement des ADR structurants encore actifs). La règle
+> « un ADR nomme les modules qui le portent » a été instituée le 06/08/2026 par
+> [ADR-0075](0075-le-depart-est-la-portee-sportive.md) et n'avait pas été appliquée rétroactivement.
+> Les modules ci-dessous ont été **vérifiés dans le code du jour**, pas déduits de l'ADR — nommer un
+> module vide reproduirait exactement le défaut que la section existe pour empêcher.*
+
+- `backend/domain/politiques.py` — **le cœur de cet ADR**. `FamillePolitique` énumère les familles ;
+  chaque famille est un `Protocol` du domaine (`Routing`, `Scoring`, `Seeding`, `Byes`, `Tiebreak`,
+  `Depth`, `Aggregation`) avec plusieurs implémentations pures. `PolitiquesPhase` est le jeu assemblé
+  d'une phase, `RegistrePolitiques` la table `nom → implémentation`, et `assembler_politiques()` la
+  fonction qui transforme une `config` en jeu de stratégies.
+- `backend/domain/tableau.py` — le moteur qui **consomme** les politiques : il ne connaît aucun
+  format, seulement des `Protocol`.
+- `backend/domain/phase.py` — la phase porte le type (`TypePhase`) et la `config` où vivent les
+  politiques ; `SourcePhase` porte le peuplement.
+- `backend/bootstrap/composition.py` — le registre est **câblé à la main** (règle 8, pas de DI
+  magique) : c'est le seul endroit où un nom de politique rencontre sa classe.
+
+⚠️ **Deux écarts entre le texte de 2026-07-08 et le code d'aujourd'hui**, à connaître avant de citer
+cet ADR :
+
+1. La signature `route(perdant, tour, contexte)` du tableau ci-dessus a été **ressignée en
+   `route(contexte)`** par [ADR-0061](0061-routing-generique-et-placement-en-cascade.md) — une
+   méthode sans contexte complet ne pouvait rendre qu'une réponse constante, ce qui bloquait tout le
+   moteur générique.
+2. Le vocabulaire du tableau n'est pas celui du code : « Barème » se dit `scoring`, « Départage » se
+   dit `tiebreak`, « Routage » se dit `routing`. Ce sont des **noms de famille**, pas une divergence
+   de conception — mais un `grep "Barème"` ne trouve pas la politique.
+
+Sept familles existent aujourd'hui, contre six au tableau : `aggregation` s'est ajoutée
+([ADR-0067](0067-palmares-agregation-des-rangs-de-phases.md)).

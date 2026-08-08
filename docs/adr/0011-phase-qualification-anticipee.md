@@ -75,3 +75,26 @@ autres politiques y viendront sans changement de schéma.
 ADR-0004 (moteur de phases à politiques injectables), ADR-0003 (hexagonale), ADR-0005 / ADR-0010
 (file d'écriture, unité de travail), ADR-0007 (erreurs par couche) ;
 [`referentiel-ffta.md`](../referentiel-ffta.md) §6.1 et §10.2 ; [`dette.md`](../dette.md) DETTE-001.
+
+## Porté dans le code par
+
+> *Section ajoutée le 08/08/2026 (rétro-équipement des ADR structurants encore actifs). La règle
+> « un ADR nomme les modules qui le portent » a été instituée le 06/08/2026 par
+> [ADR-0075](0075-le-depart-est-la-portee-sportive.md) et n'avait pas été appliquée rétroactivement.
+> Les modules ci-dessous ont été **vérifiés dans le code du jour**, pas déduits de l'ADR — nommer un
+> module vide reproduirait exactement le défaut que la section existe pour empêcher.*
+
+- `backend/domain/phase.py` — l'agrégat `Phase` (immuable), `TypePhase`, `StatutPhase`.
+- `backend/domain/bareme.py` — `BaremeQualification` (le value object validé décrit ici).
+- `backend/infrastructure/db/repositories/moteur.py` + migrations — la table `phase` et la
+  sérialisation de `config`.
+
+⚠️ **Cet ADR décrit un état de juillet 2026 qui a été dépassé de tous les côtés**, et c'est normal :
+il se déclarait lui-même « borné au strict nécessaire ». Ce qu'il annonçait « hors périmètre » est
+**livré** — le moteur, les politiques injectables, la séquence multi-phases, les transitions de
+statut, les autres types de phase. La forme de `config` est **amendée** par
+[ADR-0046](0046-config-policies-politiques-nommees-parametrees.md) (les politiques sous
+`config.policies`), et le rattachement de la phase par
+[ADR-0075](0075-le-depart-est-la-portee-sportive.md) (`Phase.depart_id`, plus `tournoi_id`).
+**Le lire comme un état des lieux serait une erreur** : sa valeur est historique — il explique
+*pourquoi* une `Phase` existe dès J1 alors que le moteur n'arrivait qu'en J2.

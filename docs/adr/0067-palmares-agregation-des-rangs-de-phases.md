@@ -192,7 +192,7 @@ silence (correctif de revue, axe C2).
 
 `VueEcran` persiste la **chaîne**, pas un rang (E07US004) : `AFFECTATIONS` l'avait vérifié en
 E07US008, `PALMARES` est la deuxième à en profiter. C'est le motif littéral du CA de pilotage des
-écrans (E12US003) — « basculer sur le podium à 17 h et partir serrer des mains ».
+écrans (E07US004, ADR-0064) — « basculer sur le podium à 17 h et partir serrer des mains ».
 
 ## Conséquences
 
