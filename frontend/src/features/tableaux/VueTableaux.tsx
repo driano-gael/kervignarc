@@ -118,7 +118,8 @@ export function VueTableaux({
               >
                 {donnees.tableaux.map((t) => (
                   <option key={t.phase_id} value={t.phase_id}>
-                    {nommerType(t.type)} — {t.effectif} archers
+                    {nommerType(t.type)} —{' '}
+                    {t.en_attente_de != null ? 'en attente' : `${t.effectif} archers`}
                   </option>
                 ))}
               </select>
@@ -128,17 +129,33 @@ export function VueTableaux({
       )}
 
       <p className="tableaux__entete">
-        {nommerType(tableau.type)} · {tableau.effectif} archers
+        {nommerType(tableau.type)}
+        {tableau.en_attente_de != null ? '' : ` · ${tableau.effectif} archers`}
         {tableau.est_termine ? ' · terminé' : ''}
       </p>
 
-      {centrerSurSuivis ? (
-        <MonChemin tableau={tableau} suivis={suivis} />
+      {/* ⚠️ **Une phase peut exister sans arbre** (E05US024, ADR-0081) : elle prélève des places
+          que sa source n'a pas encore attribuées. On le **dit** au lieu d'afficher un bracket
+          plausible et faux — c'est le cas d'une consolante composée le matin, avant que les quarts
+          du tableau principal ne soient tirés. La phase n'était alors pas montrée du tout : un
+          tableau à venir était indiscernable d'un tableau cassé. */}
+      {tableau.en_attente_de != null ? (
+        <p className="carte__etat">
+          Les places disputées ici ne sont pas encore connues : le tableau {tableau.en_attente_de}{' '}
+          doit d’abord être joué. L’arbre s’affichera dès que ses matchs auront départagé les
+          archers concernés.
+        </p>
       ) : (
-        <ArbreComplet tableau={tableau} />
-      )}
+        <>
+          {centrerSurSuivis ? (
+            <MonChemin tableau={tableau} suivis={suivis} />
+          ) : (
+            <ArbreComplet tableau={tableau} />
+          )}
 
-      {tableau.podium.length > 0 && <Podium places={tableau.podium} />}
+          {tableau.podium.length > 0 && <Podium places={tableau.podium} />}
+        </>
+      )}
     </div>
   )
 }

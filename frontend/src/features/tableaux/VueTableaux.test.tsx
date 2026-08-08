@@ -104,6 +104,39 @@ describe('VueTableaux — montage', () => {
     expect(screen.getByText(/MARTIN/)).toBeInTheDocument()
   })
 
+  it('annonce « en attente » plutôt que d’afficher un arbre que la compétition n’a pas décidé', async () => {
+    // E05US024/ADR-0081. Une consolante « les rangs 5 à 8 du tableau », composée le matin : tant
+    // que les quarts ne sont pas tirés, personne ne sait qui sont les rangs 5 à 8. Le serveur
+    // renvoyait auparavant un arbre peuplé des 4 derniers **qualifiés** — bien formé, plausible et
+    // faux —, puis, une fois le défaut vu, la phase disparaissait simplement de la liste.
+    // Le spectateur doit lire ce qui manque, pas se demander où est passée la consolante.
+    vi.mocked(getTableaux).mockResolvedValue({
+      depart_id: 41,
+      tableaux: [
+        {
+          phase_id: 7,
+          ordre: 3,
+          type: 'elimination_directe',
+          effectif: 0,
+          taille: 0,
+          nb_tours: 0,
+          est_termine: false,
+          duels: [],
+          podium: [],
+          en_attente_de: 2,
+        },
+      ],
+    })
+
+    render(<Cadre enfants={<VueTableaux tournoiId={1} />} />)
+
+    expect(await screen.findByText(/ne sont pas encore connues/)).toBeInTheDocument()
+    // …et surtout **aucun** duel affiché : c'est le fond du correctif.
+    expect(screen.queryByText('MARTIN')).not.toBeInTheDocument()
+    // L'effectif à 0 ne doit pas s'afficher comme « 0 archers », qui se lirait comme un vide réel.
+    expect(screen.queryByText(/0 archers/)).not.toBeInTheDocument()
+  })
+
   it('rend « Mon chemin » quand l’affichage est centré sur les archers suivis', async () => {
     // ⚠️ **Comportement modifié en E16US004, volontairement.** Jusqu'ici la vue décidait seule
     // d'ouvrir sur « Mon chemin » dès qu'on suivait quelqu'un, et portait son propre sélecteur
